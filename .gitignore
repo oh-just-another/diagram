@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build artifacts
+dist
+build
+out
+*.tsbuildinfo
+
+# Test artifacts
+coverage
+.vitest
+
+# Nx cache
+.nx
+.nx/cache
+.nx/workspace-data
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Editor / OS
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Misc
+*.tgz
+.turbo

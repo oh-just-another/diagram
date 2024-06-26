@@ -1,0 +1,32 @@
+{
+  "name": "@oh-just-another/renderer-core",
+  "version": "0.2.0",
+  "description": "renderer-core package",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src tests",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

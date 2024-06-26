@@ -1,0 +1,18 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{ts,tsx,js,mjs,cjs}"
+      run: pnpm exec eslint --fix {staged_files}
+      stage_fixed: true
+    format:
+      glob: "*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml}"
+      run: pnpm exec prettier --write {staged_files}
+      stage_fixed: true
+
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm typecheck
+    test:
+      run: pnpm test

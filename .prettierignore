@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+coverage
+.nx
+.changeset
+pnpm-lock.yaml
+*.tsbuildinfo

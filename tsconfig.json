@@ -1,0 +1,23 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/types/tsconfig.build.json" },
+    { "path": "./packages/math/tsconfig.build.json" },
+    { "path": "./packages/scene/tsconfig.build.json" },
+    { "path": "./packages/renderer-core/tsconfig.build.json" },
+    { "path": "./packages/history/tsconfig.build.json" },
+    { "path": "./packages/renderer-canvas/tsconfig.build.json" },
+    { "path": "./packages/renderer-svg/tsconfig.build.json" },
+    { "path": "./packages/state/tsconfig.build.json" },
+    { "path": "./packages/serialization/tsconfig.build.json" },
+    { "path": "./packages/templates/tsconfig.build.json" },
+    { "path": "./packages/headless/tsconfig.build.json" },
+    { "path": "./packages/exporter/tsconfig.build.json" },
+    { "path": "./packages/importers/tsconfig.build.json" },
+    { "path": "./packages/network/tsconfig.build.json" },
+    { "path": "./packages/collab/tsconfig.build.json" },
+    { "path": "./packages/react-ui/tsconfig.build.json" },
+    { "path": "./apps/demo/tsconfig.build.json" },
+    { "path": "./apps/cli/tsconfig.build.json" }
+  ]
+}
