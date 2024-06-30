@@ -68,7 +68,11 @@ importers:
 
   packages/importers: {}
 
-  packages/math: {}
+  packages/math:
+    dependencies:
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../types
 
   packages/network: {}
 
