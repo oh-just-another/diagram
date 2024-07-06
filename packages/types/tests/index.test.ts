@@ -1,27 +1,35 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
+  edgeId,
+  layerId,
   shapeId,
   type Bounds,
   type Color,
+  type EdgeId,
   type KeyboardEventData,
+  type LayerId,
   type Modifiers,
   type PointerEventData,
   type ShapeId,
   type Transform,
   type Vec2,
   type WheelEventData,
-} from "../src/index.js";
+} from "../src/index";
 
-describe("shapeId", () => {
-  it("preserves the underlying string", () => {
-    const id = shapeId("shape-1");
-    expect(id).toBe("shape-1");
+describe("id casts", () => {
+  it("preserve the underlying string", () => {
+    expect(shapeId("shape-1")).toBe("shape-1");
+    expect(edgeId("edge-1")).toBe("edge-1");
+    expect(layerId("layer-1")).toBe("layer-1");
   });
 
-  it("produces a ShapeId-branded type", () => {
-    const id = shapeId("x");
-    expectTypeOf(id).toEqualTypeOf<ShapeId>();
-    // Raw strings must not be assignable to ShapeId without the helper.
+  it("produce distinct branded types that don't mix", () => {
+    expectTypeOf(shapeId("x")).toEqualTypeOf<ShapeId>();
+    expectTypeOf(edgeId("x")).toEqualTypeOf<EdgeId>();
+    expectTypeOf(layerId("x")).toEqualTypeOf<LayerId>();
+    expectTypeOf<ShapeId>().not.toEqualTypeOf<EdgeId>();
+    expectTypeOf<ShapeId>().not.toEqualTypeOf<LayerId>();
+    expectTypeOf<EdgeId>().not.toEqualTypeOf<LayerId>();
     expectTypeOf<string>().not.toEqualTypeOf<ShapeId>();
   });
 });

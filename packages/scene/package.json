@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/scene",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "scene package",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,5 +28,10 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@oh-just-another/types": "workspace:*",
+    "@oh-just-another/math": "workspace:*",
+    "fractional-keys": "^0.1.1"
   }
 }

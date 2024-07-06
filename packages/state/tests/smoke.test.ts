@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { name } from "../src/index.js";
+import { name } from "../src/index";
 
 describe("@oh-just-another/state", () => {
   it("exports its name", () => {

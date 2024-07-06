@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as bounds from "../src/bounds.js";
+import * as bounds from "../src/bounds";
 
 describe("bounds", () => {
   describe("EMPTY / of", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as hitTest from "../src/hit-test.js";
+import * as hitTest from "../src/hit-test";
 
 describe("hit-test", () => {
   describe("pointInRect", () => {

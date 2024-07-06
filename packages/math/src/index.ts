@@ -1,10 +1,10 @@
-export * as vec2 from "./vec2.js";
-export * as matrix from "./matrix.js";
-export * as bounds from "./bounds.js";
-export * as hitTest from "./hit-test.js";
-export * as bezier from "./bezier.js";
-export * as intersect from "./intersect.js";
-export * as color from "./color.js";
+export * as vec2 from "./vec2";
+export * as matrix from "./matrix";
+export * as bounds from "./bounds";
+export * as hitTest from "./hit-test";
+export * as bezier from "./bezier";
+export * as intersect from "./intersect";
+export * as color from "./color";
 
-export type { DecomposedTransform } from "./matrix.js";
-export type { RGBA } from "./color.js";
+export type { DecomposedTransform } from "./matrix";
+export type { RGBA } from "./color";

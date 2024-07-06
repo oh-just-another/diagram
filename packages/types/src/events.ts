@@ -1,4 +1,4 @@
-import type { Vec2 } from "./vec2.js";
+import type { Vec2 } from "./vec2";
 
 export interface Modifiers {
   readonly shift: boolean;

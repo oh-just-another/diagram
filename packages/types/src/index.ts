@@ -1,9 +1,9 @@
-export type { Vec2, Point } from "./vec2.js";
-export type { Bounds } from "./bounds.js";
-export type { Transform } from "./transform.js";
-export type { Color } from "./color.js";
-export type { ShapeId } from "./shape-id.js";
-export { shapeId } from "./shape-id.js";
+export type { Vec2, Point } from "./vec2";
+export type { Bounds } from "./bounds";
+export type { Transform } from "./transform";
+export type { Color } from "./color";
+export type { ShapeId, EdgeId, LayerId } from "./ids";
+export { shapeId, edgeId, layerId } from "./ids";
 export type {
   Modifiers,
   PointerKind,
@@ -12,4 +12,4 @@ export type {
   KeyPhase,
   KeyboardEventData,
   WheelEventData,
-} from "./events.js";
+} from "./events";

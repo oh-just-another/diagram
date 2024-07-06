@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as intersect from "../src/intersect.js";
+import * as intersect from "../src/intersect";
 
 const close = (a: number, b: number, eps = 1e-9): boolean => Math.abs(a - b) < eps;
 

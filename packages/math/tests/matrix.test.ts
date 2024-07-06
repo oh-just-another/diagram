@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as matrix from "../src/matrix.js";
+import * as matrix from "../src/matrix";
 
 const close = (a: number, b: number, eps = 1e-10): boolean => Math.abs(a - b) < eps;
 

@@ -8,3 +8,6 @@
 
 ## 0.3.0
 - feat: types math
+
+## 0.4.0
+- feat: scene

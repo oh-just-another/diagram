@@ -1,5 +1,5 @@
 import type { Bounds, Vec2 } from "@oh-just-another/types";
-import { contains } from "./bounds.js";
+import { contains } from "./bounds";
 
 /** Inclusive on the boundary. */
 export const pointInRect = (p: Vec2, rect: Bounds): boolean => contains(rect, p);

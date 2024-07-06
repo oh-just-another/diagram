@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as vec2 from "../src/vec2.js";
+import * as vec2 from "../src/vec2";
 
 const close = (a: number, b: number, eps = 1e-10): boolean => Math.abs(a - b) < eps;
 

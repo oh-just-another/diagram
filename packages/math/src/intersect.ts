@@ -1,5 +1,5 @@
 import type { Vec2 } from "@oh-just-another/types";
-import { cubicAt, quadraticAt } from "./bezier.js";
+import { cubicAt, quadraticAt } from "./bezier";
 
 const EPS = 1e-12;
 

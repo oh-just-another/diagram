@@ -1,0 +1,96 @@
+import { layerId as castLayerId, type EdgeId, type LayerId, type ShapeId } from "@oh-just-another/types";
+import { generateKeyBetween, type FractionalIndex } from "fractional-keys";
+import type { Edge } from "./edge";
+import { type Layer } from "./layer";
+import type { Patch } from "./patch";
+import type { Shape } from "./shape";
+import { DEFAULT_VIEWPORT, type Viewport } from "./viewport";
+
+/**
+ * Whole-scene container. Entities are stored in immutable `ReadonlyMap`s for
+ * O(1) lookup; z-order is computed by sorting on the `order` field. The maps
+ * are replaced wholesale on every operation, but only the touched entries are
+ * actually reallocated (structural sharing).
+ */
+export interface Scene {
+  readonly shapes: ReadonlyMap<ShapeId, Shape>;
+  readonly edges: ReadonlyMap<EdgeId, Edge>;
+  readonly layers: ReadonlyMap<LayerId, Layer>;
+  readonly viewport: Viewport;
+}
+
+export const DEFAULT_LAYER_ID: LayerId = castLayerId("default");
+
+const defaultLayer = (): Layer => ({
+  id: DEFAULT_LAYER_ID,
+  name: "Default",
+  visible: true,
+  locked: false,
+  order: generateKeyBetween(null, null),
+});
+
+/** Empty scene with a single default layer and a zero-size viewport. */
+export const emptyScene = (): Scene => ({
+  shapes: new Map(),
+  edges: new Map(),
+  layers: new Map([[DEFAULT_LAYER_ID, defaultLayer()]]),
+  viewport: DEFAULT_VIEWPORT,
+});
+
+/** Apply a patch to a scene, returning a new scene. Pure. */
+export const apply = (scene: Scene, patch: Patch): Scene => {
+  switch (patch.kind) {
+    case "shape": {
+      const shapes = new Map(scene.shapes);
+      if (patch.after === null) shapes.delete(patch.id);
+      else shapes.set(patch.id, patch.after);
+      return { ...scene, shapes };
+    }
+    case "edge": {
+      const edges = new Map(scene.edges);
+      if (patch.after === null) edges.delete(patch.id);
+      else edges.set(patch.id, patch.after);
+      return { ...scene, edges };
+    }
+    case "layer": {
+      const layers = new Map(scene.layers);
+      if (patch.after === null) layers.delete(patch.id);
+      else layers.set(patch.id, patch.after);
+      return { ...scene, layers };
+    }
+    case "viewport":
+      return { ...scene, viewport: patch.after };
+    case "batch":
+      return patch.patches.reduce(apply, scene);
+  }
+};
+
+// --- Fractional-index helpers ---
+
+/**
+ * Pick an `order` key that places the new entity above every existing one in
+ * `layerId`. O(n) in the number of entities in that layer. For bulk inserts,
+ * compute once and chain manually.
+ */
+export const orderForTop = (existing: Iterable<FractionalIndex>): FractionalIndex => {
+  let highest: FractionalIndex | null = null;
+  for (const order of existing) {
+    if (highest === null || order > highest) highest = order;
+  }
+  return generateKeyBetween(highest, null);
+};
+
+/** Mirror of `orderForTop` for placing below everything. */
+export const orderForBottom = (existing: Iterable<FractionalIndex>): FractionalIndex => {
+  let lowest: FractionalIndex | null = null;
+  for (const order of existing) {
+    if (lowest === null || order < lowest) lowest = order;
+  }
+  return generateKeyBetween(null, lowest);
+};
+
+/** Pick an `order` that places strictly between two neighbors. */
+export const orderBetween = (
+  a: FractionalIndex | null,
+  b: FractionalIndex | null,
+): FractionalIndex => generateKeyBetween(a, b);

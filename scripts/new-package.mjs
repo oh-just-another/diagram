@@ -113,7 +113,7 @@ const indexTs = `export const name = "${pkgScope}/${name}";\n`;
 await writeFile(join(pkgRoot, "src", "index.ts"), indexTs);
 
 const smokeTest = `import { describe, it, expect } from "vitest";
-import { name } from "../src/index.js";
+import { name } from "../src/index";
 
 describe("${pkgScope}/${name}", () => {
  it("exports its name", () => {

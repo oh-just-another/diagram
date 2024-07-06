@@ -84,7 +84,17 @@ importers:
 
   packages/renderer-svg: {}
 
-  packages/scene: {}
+  packages/scene:
+    dependencies:
+      '@oh-just-another/math':
+        specifier: workspace:*
+        version: link:../math
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../types
+      fractional-keys:
+        specifier: ^0.1.1
+        version: 0.1.1
 
   packages/serialization: {}
 
@@ -1176,6 +1186,10 @@ packages:
   form-data@4.0.5:
     resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
     engines: {node: '>= 6'}
+
+  fractional-keys@0.1.1:
+    resolution: {integrity: sha512-mcLAC2daMWitFIgyem4HlTjJivnfYy2ZbxEyr/7w3tXnm0QxzCR79mgsuzfH5HGD7Zor5rWYBgxfLAuEewPTTg==}
+    engines: {node: '>=18'}
 
   front-matter@4.0.2:
     resolution: {integrity: sha512-I8ZuJ/qG92NWX8i5x1Y8qyj3vizhXS31OxjKDu3LKP+7/qBgfIKValiZIEwoVoJKUHlhWtYrktkxV1XsX+pPlg==}
@@ -3096,6 +3110,8 @@ snapshots:
       es-set-tostringtag: 2.1.0
       hasown: 2.0.3
       mime-types: 2.1.35
+
+  fractional-keys@0.1.1: {}
 
   front-matter@4.0.2:
     dependencies:
