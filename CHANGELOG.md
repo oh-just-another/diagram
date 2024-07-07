@@ -11,3 +11,6 @@
 
 ## 0.4.0
 - feat: scene
+
+## 0.5.0
+- feat: renderer canvas

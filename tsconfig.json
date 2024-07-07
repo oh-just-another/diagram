@@ -17,7 +17,6 @@
     { "path": "./packages/network/tsconfig.build.json" },
     { "path": "./packages/collab/tsconfig.build.json" },
     { "path": "./packages/react-ui/tsconfig.build.json" },
-    { "path": "./apps/demo/tsconfig.build.json" },
     { "path": "./apps/cli/tsconfig.build.json" }
   ]
 }

@@ -1,0 +1,69 @@
+import type { RenderTarget } from "@oh-just-another/renderer-core";
+
+export interface WrapOptions {
+  /** Max width in CSS pixels. */
+  readonly maxWidth: number;
+  /** Font size in CSS pixels — used to derive line height. */
+  readonly fontSize: number;
+  /** Multiplier applied to font size to derive line height. Default: 1.2. */
+  readonly lineHeightFactor?: number;
+}
+
+export interface WrappedLine {
+  readonly text: string;
+  readonly width: number;
+}
+
+/**
+ * Greedy word-wrap by `target.measureText`. Words longer than `maxWidth` are
+ * placed on their own line and overflow horizontally — they are not broken.
+ * Whitespace runs are collapsed; newlines (`\n`) in the input force a break.
+ *
+ * The caller is responsible for having set the font on the target before this
+ * call. Returns an array of lines plus the effective `lineHeight` so callers
+ * can compute total layout height.
+ */
+export const wrapText = (
+  text: string,
+  target: RenderTarget,
+  options: WrapOptions,
+): { readonly lines: readonly WrappedLine[]; readonly lineHeight: number } => {
+  const { maxWidth } = options;
+  const lineHeightFactor = options.lineHeightFactor ?? 1.2;
+
+  const out: WrappedLine[] = [];
+  const measure = (s: string) => target.measureText(s).width;
+
+  for (const paragraph of text.split("\n")) {
+    if (paragraph === "") {
+      out.push({ text: "", width: 0 });
+      continue;
+    }
+    const words = paragraph.split(/\s+/).filter((w) => w.length > 0);
+    if (words.length === 0) {
+      out.push({ text: "", width: 0 });
+      continue;
+    }
+
+    let current = words[0]!;
+    let currentWidth = measure(current);
+
+    for (let i = 1; i < words.length; i++) {
+      const word = words[i]!;
+      const candidate = `${current} ${word}`;
+      const w = measure(candidate);
+      if (w <= maxWidth) {
+        current = candidate;
+        currentWidth = w;
+      } else {
+        out.push({ text: current, width: currentWidth });
+        current = word;
+        currentWidth = measure(word);
+      }
+    }
+    out.push({ text: current, width: currentWidth });
+  }
+
+  const lineHeight = options.fontSize * lineHeightFactor;
+  return { lines: out, lineHeight };
+};

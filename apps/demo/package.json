@@ -1,33 +1,24 @@
 {
   "name": "@oh-just-another/demo",
-  "version": "0.4.0",
-  "description": "demo package",
+  "version": "0.5.0",
+  "description": "Demo application \u2014 visual sandbox for the diagram library.",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "CHANGELOG.md"
-  ],
-  "sideEffects": false,
+  "private": true,
   "scripts": {
-    "build": "tsc -b tsconfig.build.json",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "eslint src tests",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "lint": "eslint src"
   },
-  "publishConfig": {
-    "access": "restricted"
+  "dependencies": {
+    "@oh-just-another/types": "workspace:*",
+    "@oh-just-another/math": "workspace:*",
+    "@oh-just-another/scene": "workspace:*",
+    "@oh-just-another/renderer-core": "workspace:*",
+    "@oh-just-another/renderer-canvas": "workspace:*"
   },
-  "private": true
+  "devDependencies": {
+    "vite": "^6.0.7"
+  }
 }

@@ -4,8 +4,10 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
-    "noEmit": true
+    "noEmit": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"]
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*", "vite.config.ts"],
   "exclude": ["dist", "node_modules"]
 }
