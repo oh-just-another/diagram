@@ -3,9 +3,15 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "lib": ["ES2022", "DOM"]
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
-  "references": []
+  "references": [
+    { "path": "../types/tsconfig.build.json" },
+    { "path": "../math/tsconfig.build.json" },
+    { "path": "../scene/tsconfig.build.json" },
+    { "path": "../renderer-core/tsconfig.build.json" }
+  ]
 }

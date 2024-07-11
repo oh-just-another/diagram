@@ -14,3 +14,6 @@
 
 ## 0.5.0
 - feat: renderer canvas
+
+## 0.6.0
+- feat: state

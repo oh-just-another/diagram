@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@oh-just-another/demo — Phase 3 sandbox</title>
+    <title>@oh-just-another/demo — Phase 4 sandbox</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -27,6 +27,30 @@
         color: #888;
         letter-spacing: 0.5px;
       }
+      .toolbar {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .toolbar button {
+        background: #2a2a2a;
+        color: #ddd;
+        border: 1px solid #3a3a3a;
+        border-radius: 4px;
+        padding: 6px 12px;
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        transition: border-color 0.1s;
+      }
+      .toolbar button:hover {
+        border-color: #555;
+      }
+      .toolbar button.active {
+        border-color: #1a73e8;
+        color: #fff;
+        background: #1a3d6e;
+      }
       .stage {
         width: 1000px;
         height: 600px;
@@ -35,19 +59,35 @@
         border: 1px solid #333;
         border-radius: 4px;
         overflow: hidden;
+        touch-action: none;
+        user-select: none;
       }
       .hint {
         margin-top: 12px;
         font-size: 12px;
         color: #666;
       }
+      .hint kbd {
+        background: #2a2a2a;
+        padding: 1px 5px;
+        border-radius: 3px;
+        border: 1px solid #3a3a3a;
+        font-family: inherit;
+        font-size: 11px;
+      }
     </style>
   </head>
   <body>
-    <h1>Phase 3 — renderer-canvas visual sandbox</h1>
+    <h1>Phase 4 — interaction sandbox</h1>
+    <div class="toolbar" id="toolbar">
+      <button data-mode="select" class="active">Select</button>
+      <button data-mode="draw-rect">Rectangle</button>
+      <button data-mode="draw-ellipse">Ellipse</button>
+    </div>
     <div id="stage" class="stage"></div>
     <div class="hint">
-      Open DevTools -> Console to see a report of which shapes were drawn and how long it took.
+      Hotkeys: <kbd>V</kbd> select · <kbd>R</kbd> rectangle · <kbd>E</kbd> ellipse. Drag in
+      rectangle/ellipse mode to create. Click a shape to select. Drag a corner handle to resize.
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

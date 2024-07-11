@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/state",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "state package",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,5 +28,12 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@oh-just-another/types": "workspace:*",
+    "@oh-just-another/math": "workspace:*",
+    "@oh-just-another/scene": "workspace:*",
+    "@oh-just-another/renderer-core": "workspace:*",
+    "xstate": "^5.20.0"
   }
 }

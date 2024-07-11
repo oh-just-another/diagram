@@ -70,6 +70,9 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../../packages/scene
+      '@oh-just-another/state':
+        specifier: workspace:*
+        version: link:../../packages/state
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -141,7 +144,23 @@ importers:
 
   packages/serialization: {}
 
-  packages/state: {}
+  packages/state:
+    dependencies:
+      '@oh-just-another/math':
+        specifier: workspace:*
+        version: link:../math
+      '@oh-just-another/renderer-core':
+        specifier: workspace:*
+        version: link:../renderer-core
+      '@oh-just-another/scene':
+        specifier: workspace:*
+        version: link:../scene
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../types
+      xstate:
+        specifier: ^5.20.0
+        version: 5.31.1
 
   packages/templates: {}
 
@@ -2262,6 +2281,9 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
+  xstate@5.31.1:
+    resolution: {integrity: sha512-3P7t7GQ61BvLu+8Cj6Zq7rcS34vecL9pvfN2ucUWmIFIUG+rAREviOs4Xy4OO3BuJHSz6RLU8eqDXxSbVotjDQ==}
+
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
@@ -4289,6 +4311,8 @@ snapshots:
       strip-ansi: 7.2.0
 
   wrappy@1.0.2: {}
+
+  xstate@5.31.1: {}
 
   y18n@5.0.8: {}
 
