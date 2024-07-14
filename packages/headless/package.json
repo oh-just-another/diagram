@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/headless",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "headless package",
   "type": "module",
   "main": "./dist/index.js",

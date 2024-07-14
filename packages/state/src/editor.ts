@@ -16,6 +16,7 @@ import {
 } from "@oh-just-another/scene";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import { renderScene, type RenderTarget } from "@oh-just-another/renderer-core";
+import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
 import { fromPointerEvent } from "./dom-events";
 import { hitHandle } from "./handle";
 import {
@@ -37,6 +38,8 @@ export interface EditorOptions {
   readonly overlayTarget: RenderTarget;
   readonly initialScene: Scene;
   readonly initialMode?: Mode;
+  /** Pre-existing history instance, or options for one. */
+  readonly history?: History | HistoryOptions;
 }
 
 /**
@@ -63,11 +66,17 @@ export class Editor {
   private drawingPreview: Bounds | null = null;
   private nextId = 0;
 
+  private readonly _history: History;
+  /** Open transaction during a single drag/resize gesture. */
+  private gestureTx: TransactionHandle | null = null;
+
   constructor(options: EditorOptions) {
     this.host = options.host;
     this.mainTarget = options.mainTarget;
     this.overlayTarget = options.overlayTarget;
     this._scene = options.initialScene;
+    this._history =
+      options.history instanceof History ? options.history : new History(options.history ?? {});
 
     this.actor = createActor(interactionMachine);
     this.actor.subscribe({
@@ -100,15 +109,49 @@ export class Editor {
   get mode(): Mode {
     return this.actor.getSnapshot().context.mode;
   }
+  get history(): History {
+    return this._history;
+  }
+  get canUndo(): boolean {
+    return this._history.canUndo;
+  }
+  get canRedo(): boolean {
+    return this._history.canRedo;
+  }
 
-  /** Subscribe to scene/selection/mode changes. */
+  /** Subscribe to scene/selection/mode/history changes. */
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   }
 
   setMode(mode: Mode): void {
+    // Cancel any in-progress drag gesture so the partial state is not recorded.
+    if (this.gestureTx) {
+      this.gestureTx.cancel();
+      this.gestureTx = null;
+    }
     this.actor.send({ type: "SET_MODE", mode });
+  }
+
+  /** Undo the latest record. No-op if there is nothing to undo. */
+  undo(): boolean {
+    const inverse = this._history.undo();
+    if (!inverse) return false;
+    this._scene = apply(this._scene, inverse);
+    this.pruneSelection();
+    this.notify();
+    return true;
+  }
+
+  /** Redo the undone record. */
+  redo(): boolean {
+    const patch = this._history.redo();
+    if (!patch) return false;
+    this._scene = apply(this._scene, patch);
+    this.pruneSelection();
+    this.notify();
+    return true;
   }
 
   /** Detach all DOM listeners and stop the actor. */
@@ -155,11 +198,13 @@ export class Editor {
 
       this.drawingPreview = null;
       this.actor.send({ type: "POINTER_UP", point: worldPoint });
+      this.commitGesture();
     };
 
     const onCancel = () => {
       this.drawingPreview = null;
       this.actor.send({ type: "POINTER_CANCEL" });
+      this.cancelGesture();
     };
 
     this.host.addEventListener("pointerdown", onDown);
@@ -243,6 +288,7 @@ export class Editor {
     };
     const patch: Patch = { kind: "shape", id, before: shape, after: next };
     this._scene = apply(this._scene, patch);
+    this.recordGesturePatch(patch);
     this.notify();
   }
 
@@ -263,6 +309,7 @@ export class Editor {
     } as Shape;
     const patch: Patch = { kind: "shape", id, before: shape, after: next };
     this._scene = apply(this._scene, patch);
+    this.recordGesturePatch(patch);
     this.notify();
   }
 
@@ -292,7 +339,46 @@ export class Editor {
     const result = addShape(this._scene, shape);
     this._scene = result.scene;
     this._selection = Selection.single(id);
+    // CREATE is a single-shot operation, not part of a multi-tick gesture.
+    this._history.push(result.patch);
     this.notify();
+  }
+
+  /**
+   * Open a gesture transaction on the first drag-emitted patch, then add
+   * subsequent patches to it. POINTER_UP commits it as one history record.
+   */
+  private recordGesturePatch(patch: Patch): void {
+    this.gestureTx ??= this._history.transaction();
+    this.gestureTx.add(patch);
+  }
+
+  private commitGesture(): void {
+    if (!this.gestureTx) return;
+    this.gestureTx.commit();
+    this.gestureTx = null;
+  }
+
+  private cancelGesture(): void {
+    if (!this.gestureTx) return;
+    this.gestureTx.cancel();
+    this.gestureTx = null;
+  }
+
+  /**
+   * Drop ids from the selection that no longer exist in the scene. Needed
+   * after undoing a CREATE — the shape goes away and the selection becomes
+   * stale.
+   */
+  private pruneSelection(): void {
+    let next: Set<ShapeId> | null = null;
+    for (const id of this._selection) {
+      if (!this._scene.shapes.has(id)) {
+        next ??= new Set(this._selection);
+        next.delete(id);
+      }
+    }
+    if (next !== null) this._selection = next;
   }
 
   private notify(): void {

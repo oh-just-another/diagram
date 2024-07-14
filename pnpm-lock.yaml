@@ -58,6 +58,9 @@ importers:
 
   apps/demo:
     dependencies:
+      '@oh-just-another/history':
+        specifier: workspace:*
+        version: link:../../packages/history
       '@oh-just-another/math':
         specifier: workspace:*
         version: link:../../packages/math
@@ -87,7 +90,14 @@ importers:
 
   packages/headless: {}
 
-  packages/history: {}
+  packages/history:
+    dependencies:
+      '@oh-just-another/scene':
+        specifier: workspace:*
+        version: link:../scene
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../types
 
   packages/importers: {}
 
@@ -146,6 +156,9 @@ importers:
 
   packages/state:
     dependencies:
+      '@oh-just-another/history':
+        specifier: workspace:*
+        version: link:../history
       '@oh-just-another/math':
         specifier: workspace:*
         version: link:../math

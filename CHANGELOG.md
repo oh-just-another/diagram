@@ -17,3 +17,6 @@
 
 ## 0.6.0
 - feat: state
+
+## 0.7.0
+- feat: history
