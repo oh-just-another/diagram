@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/react-ui",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "react-ui package",
   "type": "module",
   "main": "./dist/index.js",

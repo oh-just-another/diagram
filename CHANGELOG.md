@@ -20,3 +20,6 @@
 
 ## 0.7.0
 - feat: history
+
+## 0.8.0
+- feat: serialization templates

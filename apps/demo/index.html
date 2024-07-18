@@ -99,13 +99,110 @@
         display: flex;
         min-height: 0;
       }
+
+      /* Palette panel (left) */
+      .palette {
+        width: 200px;
+        flex: 0 0 200px;
+        background: #161616;
+        border-right: 1px solid #2a2a2a;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .palette h2 {
+        margin: 0;
+        padding: 10px 12px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #777;
+        border-bottom: 1px solid #2a2a2a;
+      }
+      .palette-tabs {
+        display: flex;
+        gap: 4px;
+        padding: 6px 8px;
+        border-bottom: 1px solid #2a2a2a;
+        flex-wrap: wrap;
+      }
+      .palette-tabs button {
+        background: transparent;
+        color: #888;
+        border: 1px solid #2a2a2a;
+        border-radius: 3px;
+        padding: 3px 8px;
+        font: inherit;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .palette-tabs button.active {
+        color: #fff;
+        border-color: #1a73e8;
+        background: #1a3d6e;
+      }
+      .palette-items {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding: 8px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+        align-content: start;
+      }
+      .palette-item {
+        background: #1f1f1f;
+        border: 1px solid #2f2f2f;
+        border-radius: 4px;
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        color: #bbb;
+        cursor: grab;
+        transition:
+          border-color 0.1s,
+          background 0.1s;
+        padding: 6px 4px;
+        text-align: center;
+      }
+      .palette-item:hover {
+        border-color: #1a73e8;
+        background: #233042;
+        color: #fff;
+      }
+      .palette-item:active {
+        cursor: grabbing;
+      }
+      .palette-item svg {
+        width: 28px;
+        height: 28px;
+      }
+      .palette-item .name {
+        font-size: 10px;
+        line-height: 1.1;
+      }
+
       .stage {
         flex: 1 1 auto;
         background: #fff;
         overflow: hidden;
         touch-action: none;
         user-select: none;
+        position: relative;
       }
+      .stage.drop-target::after {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        border: 2px dashed #1a73e8;
+        border-radius: 4px;
+        pointer-events: none;
+      }
+
+      /* History panel (right) */
       .history-panel {
         width: 240px;
         flex: 0 0 240px;
@@ -192,13 +289,22 @@
         <span class="separator"></span>
         <button data-action="undo" id="btn-undo" disabled>Undo</button>
         <button data-action="redo" id="btn-redo" disabled>Redo</button>
+        <span class="separator"></span>
+        <button data-action="save">Save</button>
+        <button data-action="load">Load…</button>
+        <input type="file" id="file-input" accept="application/json" hidden />
       </div>
       <div class="hint">
         <kbd>V</kbd> select · <kbd>R</kbd> rectangle · <kbd>E</kbd> ellipse · <kbd>⌘Z</kbd> undo ·
-        <kbd>⌘⇧Z</kbd> redo
+        <kbd>⌘⇧Z</kbd> redo. Drag from the palette to drop a shape onto the canvas.
       </div>
     </header>
     <main>
+      <aside class="palette">
+        <h2>Palette</h2>
+        <div class="palette-tabs" id="palette-tabs"></div>
+        <div class="palette-items" id="palette-items"></div>
+      </aside>
       <div id="stage" class="stage"></div>
       <aside class="history-panel">
         <h2>

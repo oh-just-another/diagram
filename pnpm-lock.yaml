@@ -73,9 +73,15 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../../packages/scene
+      '@oh-just-another/serialization':
+        specifier: workspace:*
+        version: link:../../packages/serialization
       '@oh-just-another/state':
         specifier: workspace:*
         version: link:../../packages/state
+      '@oh-just-another/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -152,7 +158,20 @@ importers:
         specifier: ^0.1.1
         version: 0.1.1
 
-  packages/serialization: {}
+  packages/serialization:
+    dependencies:
+      '@oh-just-another/scene':
+        specifier: workspace:*
+        version: link:../scene
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../types
+      fractional-keys:
+        specifier: ^0.1.1
+        version: 0.1.1
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
 
   packages/state:
     dependencies:
@@ -175,7 +194,20 @@ importers:
         specifier: ^5.20.0
         version: 5.31.1
 
-  packages/templates: {}
+  packages/templates:
+    dependencies:
+      '@oh-just-another/scene':
+        specifier: workspace:*
+        version: link:../scene
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../types
+      fractional-keys:
+        specifier: ^0.1.1
+        version: 0.1.1
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
 
   packages/types: {}
 
@@ -2318,6 +2350,9 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
 snapshots:
 
   '@ampproject/remapping@2.3.0':
@@ -4344,3 +4379,5 @@ snapshots:
       yargs-parser: 21.1.1
 
   yocto-queue@0.1.0: {}
+
+  zod@3.25.76: {}

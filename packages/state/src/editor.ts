@@ -154,6 +154,38 @@ export class Editor {
     return true;
   }
 
+  /**
+   * Add a shape to the scene and push a single record onto the history stack.
+   * Returns the resulting patch (useful for tests). Intended for code paths
+   * that create shapes outside of a pointer gesture — drag-from-palette,
+   * paste, programmatic insert.
+   */
+  addShape(shape: Shape, options?: { select?: boolean }): Patch {
+    const result = addShape(this._scene, shape);
+    this._scene = result.scene;
+    if (options?.select ?? true) {
+      this._selection = Selection.single(shape.id);
+    }
+    this._history.push(result.patch);
+    this.notify();
+    return result.patch;
+  }
+
+  /**
+   * Replace the entire scene (e.g. after `parseScene`). Clears history,
+   * selection and any open gesture. Use to load a saved document.
+   */
+  loadScene(scene: Scene): void {
+    if (this.gestureTx) {
+      this.gestureTx.cancel();
+      this.gestureTx = null;
+    }
+    this._scene = scene;
+    this._selection = Selection.EMPTY;
+    this._history.clear();
+    this.notify();
+  }
+
   /** Detach all DOM listeners and stop the actor. */
   dispose(): void {
     this.unbind();
@@ -224,7 +256,12 @@ export class Editor {
     return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse";
   }
 
-  private screenToWorld(point: Vec2): Vec2 {
+  /**
+   * Convert a point in the host element's CSS-pixel coordinate space into
+   * world coordinates. Public so drop handlers (drag-from-palette, paste)
+   * can map pointer positions back to scene space.
+   */
+  screenToWorld(point: Vec2): Vec2 {
     return matrix.applyToPoint(getScreenToWorld(this._scene.viewport), point);
   }
 
