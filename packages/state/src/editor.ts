@@ -19,6 +19,7 @@ import { renderScene, type RenderTarget } from "@oh-just-another/renderer-core";
 import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
 import { fromPointerEvent } from "./dom-events";
 import { hitHandle } from "./handle";
+import { getInteractiveHitTester } from "./interactive";
 import {
   boundsFromPoints,
   interactionMachine,
@@ -29,7 +30,7 @@ import {
 } from "./machine";
 import type { HandleId } from "./handle";
 import type { Mode } from "./modes";
-import { renderOverlay } from "./overlay";
+import { isResizable, renderOverlay } from "./overlay";
 import * as Selection from "./selection";
 
 export interface EditorOptions {
@@ -201,6 +202,28 @@ export class Editor {
       this.host.setPointerCapture(ev.pointerId);
       const data = fromPointerEvent(ev, this.host);
       const worldPoint = this.screenToWorld(data.point);
+
+      // Interactive sub-element check: when the press lands on a shape whose
+      // type has a registered hit-tester (rich templates, etc.) and the
+      // tester finds an interactive node, fire its emit and skip the normal
+      // press flow entirely. This is what makes a click on a template Button
+      // behave differently from a click on the template body.
+      const topShape = getShapeAt(this._scene, worldPoint);
+      if (topShape) {
+        const tester = getInteractiveHitTester(topShape.type);
+        if (tester) {
+          const local = {
+            x: worldPoint.x - topShape.position.x,
+            y: worldPoint.y - topShape.position.y,
+          };
+          const emit = tester(topShape, local);
+          if (emit) {
+            this.applyEmit(emit);
+            return;
+          }
+        }
+      }
+
       const target = this.hitTest(worldPoint);
       this.actor.send({ type: "POINTER_DOWN", point: worldPoint, target });
     };
@@ -267,11 +290,13 @@ export class Editor {
 
   private hitTest(worldPoint: Vec2): PressTarget {
     // Selection takes priority: if the point hits a handle on a currently
-    // selected shape, dispatch a handle press.
+    // selected, *resizable* shape, dispatch a handle press. Non-resizable
+    // shapes (polygon, path, text) don't display handles, so we don't hit-test
+    // for them either.
     const zoom = this._scene.viewport.zoom;
     for (const id of this._selection) {
       const shape = getShape(this._scene, id);
-      if (!shape) continue;
+      if (!shape || !isResizable(shape)) continue;
       const bounds = getShapeWorldBounds(shape);
       const handle = hitHandle(worldPoint, bounds, zoom);
       if (handle) {
@@ -305,7 +330,53 @@ export class Editor {
       case "CREATE_SHAPE":
         this.applyCreate(emit.shapeType, emit.bounds);
         return;
+      case "TEMPLATE_TAP":
+        // Forward to subscribers via a custom listener path.
+        for (const fn of this.templateTapListeners) fn(emit);
+        return;
+      case "TEMPLATE_DROP":
+        for (const fn of this.templateDropListeners) fn(emit);
+        return;
     }
+  }
+
+  private readonly templateTapListeners = new Set<
+    (emit: Extract<InteractionEmit, { type: "TEMPLATE_TAP" }>) => void
+  >();
+  private readonly templateDropListeners = new Set<
+    (emit: Extract<InteractionEmit, { type: "TEMPLATE_DROP" }>) => void
+  >();
+
+  /**
+   * Subscribe to template button taps. Returns an unsubscribe function.
+   * Hosts use this to route template button clicks to their own actions.
+   */
+  onTemplateTap(
+    fn: (emit: Extract<InteractionEmit, { type: "TEMPLATE_TAP" }>) => void,
+  ): () => void {
+    this.templateTapListeners.add(fn);
+    return () => this.templateTapListeners.delete(fn);
+  }
+
+  /**
+   * Subscribe to drops onto template drop-zones. Returns an unsubscribe fn.
+   * Hosts decide what to do with the drop (e.g. add a child shape, link
+   * templates together).
+   */
+  onTemplateDrop(
+    fn: (emit: Extract<InteractionEmit, { type: "TEMPLATE_DROP" }>) => void,
+  ): () => void {
+    this.templateDropListeners.add(fn);
+    return () => this.templateDropListeners.delete(fn);
+  }
+
+  /**
+   * Dispatch a TEMPLATE_DROP emit programmatically. Hosts call this from their
+   * own DOM `drop` listener after looking up which drop-zone (if any) is
+   * under the pointer via `findDropZoneAt`.
+   */
+  dispatchTemplateDrop(emit: Extract<InteractionEmit, { type: "TEMPLATE_DROP" }>): void {
+    this.applyEmit(emit);
   }
 
   private applyMove(id: ShapeId, delta: Vec2, originalBounds: Bounds): void {
@@ -332,17 +403,23 @@ export class Editor {
   private applyResize(id: ShapeId, handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
     const shape = getShape(this._scene, id);
     if (!shape) return;
-    // Only built-in rectangle/ellipse have width/height to resize.
-    if (shape.type !== "rectangle" && shape.type !== "ellipse") return;
+    // Built-in shapes with a width/height box: rectangle, ellipse, image, template.
+    if (
+      shape.type !== "rectangle" &&
+      shape.type !== "ellipse" &&
+      shape.type !== "image" &&
+      shape.type !== "template"
+    )
+      return;
 
-    const nextBounds = resizeFromHandle(originalBounds, handle, delta);
-    const normalized = B.normalize(nextBounds);
+    const raw = resizeFromHandle(originalBounds, handle, delta);
+    const constrained = applyResizeConstraints(originalBounds, raw, handle, shape);
 
     const next: Shape = {
       ...shape,
-      position: { x: normalized.x, y: normalized.y },
-      width: normalized.width,
-      height: normalized.height,
+      position: { x: constrained.x, y: constrained.y },
+      width: constrained.width,
+      height: constrained.height,
     } as Shape;
     const patch: Patch = { kind: "shape", id, before: shape, after: next };
     this._scene = apply(this._scene, patch);
@@ -481,3 +558,99 @@ const resizeFromHandle = (b: Bounds, handle: HandleId, delta: Vec2): Bounds => {
   }
   return { x, y, width, height };
 };
+
+interface ResizeConstraints {
+  readonly minWidth?: number;
+  readonly minHeight?: number;
+  readonly maxWidth?: number;
+  readonly maxHeight?: number;
+  readonly noFlip?: boolean;
+}
+
+/**
+ * Apply min/max + no-flip constraints to a freshly-computed `raw` bounds.
+ *
+ * The constraints anchor on the edge **opposite** the dragged handle —
+ * dragging `se` keeps `(originalBounds.x, originalBounds.y)` fixed and
+ * adjusts width/height; dragging `nw` keeps the bottom-right corner. This
+ * matches the visual expectation that the opposite edge stays put.
+ *
+ * `noFlip` forces width/height to stay non-negative (or above `minWidth` /
+ * `minHeight` if set). Without it, dragging past the opposite edge mirrors
+ * the shape — restored by `bounds.normalize`.
+ */
+const applyResizeConstraints = (
+  original: Bounds,
+  raw: Bounds,
+  handle: HandleId,
+  constraints: ResizeConstraints,
+): Bounds => {
+  // Floor for width/height. `noFlip` clamps to the explicit min, or 0 if no
+  // min is set; otherwise the floor is just `minWidth` / `minHeight` (which
+  // may be undefined, meaning "no floor").
+  const minW = constraints.noFlip ? (constraints.minWidth ?? 0) : constraints.minWidth;
+  const minH = constraints.noFlip ? (constraints.minHeight ?? 0) : constraints.minHeight;
+  const maxW = constraints.maxWidth;
+  const maxH = constraints.maxHeight;
+
+  const clamp = (v: number, lo: number | undefined, hi: number | undefined): number => {
+    let r = v;
+    if (lo !== undefined && r < lo) r = lo;
+    if (hi !== undefined && r > hi) r = hi;
+    return r;
+  };
+
+  // When `noFlip` is true, clamp width/height first (preserving sign by working
+  // with non-negative values), then re-derive x/y so the anchor edge stays put.
+  // When `noFlip` is false, raw width/height may go negative; we still apply
+  // `maxWidth`/`maxHeight` by clamping the absolute value, then keep the raw
+  // sign so `bounds.normalize` later flips correctly.
+
+  const left = handleAffectsLeft(handle);
+  const right = handleAffectsRight(handle);
+  const top = handleAffectsTop(handle);
+  const bottom = handleAffectsBottom(handle);
+
+  // X / width
+  let x = raw.x;
+  let width = raw.width;
+  if (constraints.noFlip) {
+    width = clamp(width, minW, maxW);
+  } else if (maxW !== undefined && Math.abs(width) > maxW) {
+    width = width < 0 ? -maxW : maxW;
+  } else if (minW !== undefined && Math.abs(width) < minW && width !== 0) {
+    width = width < 0 ? -minW : minW;
+  }
+  if (left && !right) {
+    // Anchor right edge: x = original.right - width
+    x = original.x + original.width - width;
+  } else if (right && !left) {
+    x = original.x;
+  }
+
+  // Y / height
+  let y = raw.y;
+  let height = raw.height;
+  if (constraints.noFlip) {
+    height = clamp(height, minH, maxH);
+  } else if (maxH !== undefined && Math.abs(height) > maxH) {
+    height = height < 0 ? -maxH : maxH;
+  } else if (minH !== undefined && Math.abs(height) < minH && height !== 0) {
+    height = height < 0 ? -minH : minH;
+  }
+  if (top && !bottom) {
+    y = original.y + original.height - height;
+  } else if (bottom && !top) {
+    y = original.y;
+  }
+
+  const out = { x, y, width, height };
+  return constraints.noFlip ? out : bounds_normalize(out);
+};
+
+const bounds_normalize = (b: Bounds): Bounds => B.normalize(b);
+
+const handleAffectsLeft = (h: HandleId): boolean => h === "nw" || h === "w" || h === "sw";
+const handleAffectsRight = (h: HandleId): boolean => h === "ne" || h === "e" || h === "se";
+const handleAffectsTop = (h: HandleId): boolean => h === "nw" || h === "n" || h === "ne";
+const handleAffectsBottom = (h: HandleId): boolean => h === "sw" || h === "s" || h === "se";

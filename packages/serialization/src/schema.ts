@@ -41,6 +41,11 @@ const ShapeBaseZ = z.object({
   scale: Vec2Z,
   order: z.string(),
   metadata: MetadataZ,
+  minWidth: z.number().optional(),
+  minHeight: z.number().optional(),
+  maxWidth: z.number().optional(),
+  maxHeight: z.number().optional(),
+  noFlip: z.boolean().optional(),
 });
 
 const RectangleZ = ShapeBaseZ.extend({
@@ -94,6 +99,15 @@ const ImageZ = ShapeBaseZ.extend({
   height: z.number(),
 }).strict();
 
+const TemplateInstanceZ = ShapeBaseZ.extend({
+  type: z.literal("template"),
+  style: StyleZ.optional(),
+  templateId: z.string(),
+  data: z.record(z.string(), z.unknown()),
+  width: z.number(),
+  height: z.number(),
+}).strict();
+
 /**
  * Unknown-shape escape hatch: plugins that register custom shape types may
  * persist them. Accepts any object with the standard base fields plus a
@@ -104,11 +118,24 @@ const CustomShapeZ = ShapeBaseZ.extend({
   style: StyleZ.optional(),
 })
   .passthrough()
-  .refine((s) => !["rectangle", "ellipse", "polygon", "path", "text", "image"].includes(s.type), {
-    message: "Use the specific built-in schema for built-in shape types",
-  });
+  .refine(
+    (s) =>
+      !["rectangle", "ellipse", "polygon", "path", "text", "image", "template"].includes(s.type),
+    {
+      message: "Use the specific built-in schema for built-in shape types",
+    },
+  );
 
-const ShapeZ = z.union([RectangleZ, EllipseZ, PolygonZ, PathZ, TextZ, ImageZ, CustomShapeZ]);
+const ShapeZ = z.union([
+  RectangleZ,
+  EllipseZ,
+  PolygonZ,
+  PathZ,
+  TextZ,
+  ImageZ,
+  TemplateInstanceZ,
+  CustomShapeZ,
+]);
 
 // --- Edges ---
 

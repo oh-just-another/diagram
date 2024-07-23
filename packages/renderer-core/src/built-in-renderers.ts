@@ -7,11 +7,8 @@ import {
  type Style,
  type TextShape,
 } from "@oh-just-another/scene";
-import {
- registerShapeRenderer,
- type RenderTarget,
- type ShapeRenderer,
-} from "@oh-just-another/renderer-core";
+import { registerShapeRenderer, type ShapeRenderer } from "./shape-renderer";
+import type { RenderTarget } from "./render-target";
 import { wrapText } from "./text-layout";
 
 /**

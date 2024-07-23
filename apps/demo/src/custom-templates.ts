@@ -65,6 +65,148 @@ export const CUSTOM_TEMPLATES: TemplateLibrarySpec = {
     ],
    },
   },
+  // --- Rich templates () ---
+  {
+   id: "custom.swimlane",
+   name: "Swim-lane",
+   category: "rich",
+   icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1"/><line x1="3" y1="9" x2="21" y2="9"/></svg>',
+   blueprint: {
+    type: "template",
+    width: 360,
+    height: 200,
+    minWidth: 240,
+    minHeight: 140,
+    maxWidth: 1000,
+    maxHeight: 700,
+    noFlip: true,
+    defaults: { title: "Swim-lane", hint: "Drop a shape here" },
+    root: {
+     type: "container",
+     id: "lane",
+     style: { fill: "#ffffff", stroke: "#2f7a2f", strokeWidth: 2 },
+     layout: { flexDirection: "column", padding: 0, width: 360, height: 200 },
+     children: [
+      {
+       type: "container",
+       id: "header",
+       style: { fill: "#e6ffe6", stroke: "#2f7a2f", strokeWidth: 1 },
+       layout: { padding: 8, height: 32, alignItems: "center" },
+       children: [
+        {
+         type: "text",
+         id: "title",
+         text: { bind: "title" },
+         style: { color: "#1c4a1c", fontSize: 13, fontWeight: "bold" },
+        },
+       ],
+      },
+      {
+       type: "drop-zone",
+       id: "lane-body",
+       label: { bind: "hint" },
+       accepts: [
+        "basic.rectangle",
+        "basic.ellipse",
+        "flowchart.process",
+        "flowchart.decision",
+       ],
+       style: { stroke: "#9ccc9c", color: "#779977", fontSize: 12 },
+       layout: { flex: 1, margin: 8 },
+      },
+     ],
+    },
+   },
+  },
+  {
+   id: "custom.task-card",
+   name: "Task card",
+   category: "rich",
+   icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="14" y2="13"/></svg>',
+   blueprint: {
+    type: "template",
+    width: 260,
+    height: 120,
+    // Resize constraints — keep children visible at all times.
+    minWidth: 260,
+    minHeight: 120,
+    maxWidth: 600,
+    maxHeight: 240,
+    noFlip: true,
+    defaults: {
+     title: "New task",
+     subtitle: "Click the button to log an action",
+     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-5"/></svg>',
+     buttonLabel: "Action",
+    },
+    root: {
+     type: "container",
+     id: "card",
+     style: {
+      fill: "#efffe2",
+      stroke: "#1a73e8",
+      strokeWidth: 1.5,
+     },
+     layout: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 12,
+      gap: 12,
+      width: 220,
+      height: 96,
+     },
+     children: [
+      {
+       type: "container",
+       id: "avatar",
+       style: { fill: "#1a73e8" },
+       layout: { width: 36, height: 36, alignSelf: "center", padding: 6 },
+       children: [
+        {
+         type: "icon",
+         id: "avatar-icon",
+         svg: { bind: "icon" },
+         style: { color: "#fff" },
+         layout: { flex: 1 },
+        },
+       ],
+      },
+      {
+       type: "container",
+       id: "body",
+       layout: { flexDirection: "column", flex: 1, gap: 4 },
+       children: [
+        {
+         type: "text",
+         id: "title",
+         text: { bind: "title" },
+         style: { color: "#222", fontSize: 14, fontWeight: "bold" },
+        },
+        {
+         type: "text",
+         id: "subtitle",
+         text: { bind: "subtitle" },
+         style: { color: "#666", fontSize: 11 },
+        },
+        {
+         type: "button",
+         id: "primary",
+         action: "task.primary",
+         label: { bind: "buttonLabel" },
+         style: {
+          fill: "#1a73e8",
+          stroke: "#1a40b0",
+          color: "#fff",
+          fontSize: 11,
+         },
+         layout: { alignSelf: "start", margin: { top: 4 } },
+        },
+       ],
+      },
+     ],
+    },
+   },
+  },
  ],
 };
 

@@ -25,5 +25,8 @@ export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./overlay";
 
 export { fromPointerEvent, fromKeyboardEvent, fromWheelEvent } from "./dom-events";
 
+export type { InteractiveHitTester } from "./interactive";
+export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive";
+
 export type { EditorOptions } from "./editor";
 export { Editor } from "./editor";

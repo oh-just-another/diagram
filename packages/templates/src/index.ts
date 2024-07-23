@@ -12,3 +12,6 @@ export {
   loadTemplateLibrary,
   TemplateLibraryError,
 } from "./library";
+
+// Rich-template surface: node-tree + flex layout + bindings.
+export * as rich from "./rich/index";

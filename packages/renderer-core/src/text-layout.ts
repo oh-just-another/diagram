@@ -1,4 +1,4 @@
-import type { RenderTarget } from "@oh-just-another/renderer-core";
+import type { RenderTarget } from "./render-target";
 
 export interface WrapOptions {
   /** Max width in CSS pixels. */

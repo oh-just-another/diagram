@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+out
+coverage
+.nx
+.vitest
+*.tsbuildinfo
+external
+pnpm-lock.yaml

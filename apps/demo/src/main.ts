@@ -1,24 +1,30 @@
 import { describe as describePatch } from "@oh-just-another/history";
 import { installBuiltinRenderers, LayeredCanvas } from "@oh-just-another/renderer-canvas";
-import { Editor, type Mode } from "@oh-just-another/state";
+import { Editor, registerInteractiveHitTester, type Mode } from "@oh-just-another/state";
 import { DEFAULT_LAYER_ID, orderForTop } from "@oh-just-another/scene";
+import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { shapeId } from "@oh-just-another/types";
 import {
   defaultRegistry,
   installBuiltinTemplates,
   loadTemplateLibrary,
+  rich,
   type Category,
   type Template,
 } from "@oh-just-another/templates";
 import { CUSTOM_TEMPLATES } from "./custom-templates";
+import { JSX_TEMPLATES } from "./jsx-template";
 import { buildSampleScene } from "./scene-builder";
 
 // --- Bootstrap renderers + templates ---
 
 installBuiltinRenderers();
 installBuiltinTemplates(); // basic + flowchart
+rich.installTemplateShapeRenderer(); // renderer + bounder for type "template"
+registerInteractiveHitTester("template", rich.templateInteractiveHitTester);
 loadTemplateLibrary(CUSTOM_TEMPLATES, defaultRegistry); // custom — programmatic JSON import
+loadTemplateLibrary(JSX_TEMPLATES, defaultRegistry); // JSX-defined rich template (see jsx-template.tsx)
 
 // --- DOM lookups ---
 
@@ -82,7 +88,35 @@ toolbar.addEventListener("click", (ev) => {
   if (action === "redo") editor.redo();
   if (action === "save") saveToFile();
   if (action === "load") fileInput?.click();
+  if (action === "export-svg") exportSvg();
+  if (action === "clear") clearScene();
 });
+
+const exportSvg = (): void => {
+  // Force the SVG canvas to match the stage's CSS size — without that the
+  // scene viewport default (0×0) would emit an empty <svg viewBox="0 0 0 0">.
+  const rect = host.getBoundingClientRect();
+  const svg = renderSceneToSvg(editor.scene, { width: rect.width, height: rect.height });
+  const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  a.download = `scene-${stamp}.svg`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const clearScene = (): void => {
+  if (editor.scene.shapes.size === 0 && editor.scene.edges.size === 0) return;
+  if (!window.confirm("Clear the whole scene? This also resets undo history.")) return;
+  editor.loadScene({
+    shapes: new Map(),
+    edges: new Map(),
+    layers: editor.scene.layers,
+    viewport: editor.scene.viewport,
+  });
+};
 
 // --- Save / Load ---
 
@@ -138,7 +172,7 @@ editor.subscribe(() => {
 
 // --- Palette ---
 
-const TAB_ORDER: readonly Category[] = ["basic", "flowchart", "custom"];
+const TAB_ORDER: readonly Category[] = ["basic", "flowchart", "custom", "rich"];
 
 let activeCategory: Category = "basic";
 
@@ -219,6 +253,32 @@ host.addEventListener("drop", (ev) => {
   const rect = host.getBoundingClientRect();
   const screenPoint = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
   const worldPoint = editor.screenToWorld(screenPoint);
+
+  // First check: did we drop onto a template's drop-zone? If yes, emit
+  // TEMPLATE_DROP and let the host decide what to do — don't create a new
+  // free-floating shape from the palette item.
+  for (const candidate of editor.scene.shapes.values()) {
+    if (candidate.type !== "template") continue;
+    const local = {
+      x: worldPoint.x - candidate.position.x,
+      y: worldPoint.y - candidate.position.y,
+    };
+    const zone = rich.findDropZoneAt(candidate, local);
+    if (!zone) continue;
+    // Honour the drop-zone's `accepts` whitelist.
+    if (zone.accepts && !zone.accepts.includes(templateId)) {
+      continue;
+    }
+    editor.dispatchTemplateDrop({
+      type: "TEMPLATE_DROP",
+      shapeId: zone.shapeId,
+      ...(zone.nodeId !== undefined ? { nodeId: zone.nodeId } : {}),
+      templateId,
+      point: worldPoint,
+    });
+    return;
+  }
+
   const shape = template.factory({
     id: shapeId(`shape-${++createCounter}-${Date.now().toString(36)}`),
     layerId: DEFAULT_LAYER_ID,
@@ -274,6 +334,38 @@ const refreshUi = () => {
 };
 editor.subscribe(refreshUi);
 refreshUi();
+
+editor.onTemplateTap((emit) => {
+  console.warn(
+    `[demo] template tap: shape=${emit.shapeId} action=${emit.action} node=${emit.nodeId ?? "?"}`,
+  );
+  window.alert(`Template action: ${emit.action}`);
+});
+
+editor.onTemplateDrop((emit) => {
+  console.warn(
+    `[demo] template drop: into=${emit.shapeId} node=${emit.nodeId ?? "?"} ` +
+      `dropped=${emit.templateId ?? "?"} at=(${emit.point.x.toFixed(0)}, ${emit.point.y.toFixed(0)})`,
+  );
+  // Spawn the dropped template's shape at the drop point. A real host might
+  // instead parent the new shape to the template (group-relative coords),
+  // but the demo just creates a free-standing shape that visually lands
+  // inside the drop-zone.
+  if (!emit.templateId) return;
+  const template = defaultRegistry.get(emit.templateId);
+  if (!template) return;
+  const shape = template.factory({
+    id: shapeId(`shape-${++createCounter}-${Date.now().toString(36)}`),
+    layerId: DEFAULT_LAYER_ID,
+    position: emit.point,
+    order: orderForTop(
+      [...editor.scene.shapes.values()]
+        .filter((s) => s.layerId === DEFAULT_LAYER_ID)
+        .map((s) => s.order),
+    ),
+  });
+  editor.addShape(shape);
+});
 
 // --- Hotkeys ---
 

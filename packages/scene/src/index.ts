@@ -11,6 +11,7 @@ export type {
   PathCommand,
   TextShape,
   ImageShape,
+  TemplateShape,
   ShapeBounder,
 } from "./shape";
 export type { Edge, EdgeEndpoint, AnchorRef, NamedAnchor, StandardAnchor } from "./edge";
@@ -28,6 +29,7 @@ export {
   isPath,
   isText,
   isImage,
+  isTemplate,
   registerBounder,
   getBounder,
   getShapeLocalBounds,

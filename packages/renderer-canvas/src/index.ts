@@ -1,8 +1,12 @@
 export { Canvas2DTarget } from "./canvas-target";
 export { setupHiDpi } from "./hi-dpi";
 export { LayeredCanvas, type LayeredCanvasOptions } from "./layered-canvas";
-export { wrapText, type WrapOptions, type WrappedLine } from "./text-layout";
-export { installBuiltinRenderers } from "./built-in-renderers";
+
+// `installBuiltinRenderers` and `wrapText` live in
+// `@oh-just-another/renderer-core` so the SVG / headless backends can share them.
+// These re-exports keep existing imports working.
+export { installBuiltinRenderers, wrapText } from "@oh-just-another/renderer-core";
+export type { WrapOptions, WrappedLine } from "@oh-just-another/renderer-core";
 
 // `installBuiltinRenderers()` must be called once before `renderScene`
 // from `@oh-just-another/renderer-core` knows how to draw built-in shapes. It is

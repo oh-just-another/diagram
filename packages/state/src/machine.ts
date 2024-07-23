@@ -87,6 +87,25 @@ export type InteractionEmit =
       readonly type: "CREATE_SHAPE";
       readonly shapeType: "rect" | "ellipse";
       readonly bounds: Bounds;
+    }
+  | {
+      readonly type: "TEMPLATE_TAP";
+      readonly shapeId: ShapeId;
+      /** Action identifier from the tapped node (e.g. button `action`). */
+      readonly action: string;
+      /** Optional node id from the template tree. */
+      readonly nodeId?: string;
+    }
+  | {
+      readonly type: "TEMPLATE_DROP";
+      /** Template shape that owns the drop-zone. */
+      readonly shapeId: ShapeId;
+      /** Id of the drop-zone node within the template tree. */
+      readonly nodeId?: string;
+      /** Template-id from the DOM `application/x-template-id` payload, if any. */
+      readonly templateId: string | null;
+      /** World coordinates where the drop happened. */
+      readonly point: Vec2;
     };
 
 /** Pixels of pointer travel before a press becomes a drag. */

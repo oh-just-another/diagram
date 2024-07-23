@@ -1,5 +1,8 @@
 import { z } from "zod";
-import type { Shape } from "@oh-just-another/scene";
+import type { Shape, TemplateShape as SceneTemplateShape } from "@oh-just-another/scene";
+import { defaultRichRegistry } from "./rich/registry";
+import type { TemplateNode } from "./rich/node";
+import type { LayoutStyle, NodeStyle } from "./rich/style";
 import type { Template, TemplateContext } from "./types";
 
 /**
@@ -93,6 +96,25 @@ export const ShapeBlueprintZ = z.discriminatedUnion("type", [
       height: z.number(),
     })
     .strict(),
+  // Rich-template blueprint: serializable node tree + default data. Validated
+  // loosely here (`root` / `defaults` are `unknown` objects) because the rich
+  // tree schema is recursive — full validation runs against the live tree at
+  // `templateFromSpec` time via the rich-template renderer's loaders.
+  z
+    .object({
+      type: z.literal("template"),
+      root: z.unknown(),
+      defaults: z.record(z.string(), z.unknown()).optional(),
+      width: z.number(),
+      height: z.number(),
+      schema: z.record(z.string(), z.enum(["string", "number", "boolean"])).optional(),
+      minWidth: z.number().optional(),
+      minHeight: z.number().optional(),
+      maxWidth: z.number().optional(),
+      maxHeight: z.number().optional(),
+      noFlip: z.boolean().optional(),
+    })
+    .strict(),
 ]);
 
 export type ShapeBlueprint = z.infer<typeof ShapeBlueprintZ>;
@@ -133,21 +155,83 @@ const stripUndefined = <T extends object>(obj: T): T => {
 /**
  * Reconstruct a callable `Template` from a `TemplateSpec`. The factory closes
  * over the blueprint and is otherwise pure.
+ *
+ * For `type: "template"` blueprints the rich template tree is also registered
+ * in `defaultRichRegistry` so the renderer can find it by id. Repeated calls
+ * with the same `spec.id` use `replace` to keep the registry consistent with
+ * the most recent definition.
  */
-export const templateFromSpec = (spec: TemplateSpec): Template => ({
-  id: spec.id,
-  name: spec.name,
-  category: spec.category,
-  icon: spec.icon,
-  ...(spec.metadata !== undefined ? { metadata: spec.metadata } : {}),
-  factory: (ctx: TemplateContext): Shape =>
-    ({
-      ...stripUndefined(spec.blueprint),
-      id: ctx.id,
-      layerId: ctx.layerId,
-      position: ctx.position,
-      rotation: 0,
-      scale: { x: 1, y: 1 },
-      order: ctx.order,
-    }) as Shape,
-});
+export const templateFromSpec = (spec: TemplateSpec): Template => {
+  const blueprint = spec.blueprint;
+
+  if (blueprint.type === "template") {
+    // Side-effect: register the rich tree so the kernel renderer can resolve
+    // `templateId` → tree at draw time. `replace` makes repeated
+    // `loadTemplateLibrary` calls idempotent.
+    defaultRichRegistry.replace({
+      id: spec.id,
+      name: spec.name,
+      category: spec.category,
+      icon: spec.icon,
+      root: blueprint.root as TemplateNode,
+      ...(blueprint.defaults !== undefined ? { defaults: blueprint.defaults } : {}),
+      ...(blueprint.minWidth !== undefined ? { minWidth: blueprint.minWidth } : {}),
+      ...(blueprint.minHeight !== undefined ? { minHeight: blueprint.minHeight } : {}),
+      ...(blueprint.maxWidth !== undefined ? { maxWidth: blueprint.maxWidth } : {}),
+      ...(blueprint.maxHeight !== undefined ? { maxHeight: blueprint.maxHeight } : {}),
+      ...(blueprint.noFlip !== undefined ? { noFlip: blueprint.noFlip } : {}),
+    });
+
+    return {
+      id: spec.id,
+      name: spec.name,
+      category: spec.category,
+      icon: spec.icon,
+      ...(spec.metadata !== undefined ? { metadata: spec.metadata } : {}),
+      factory: (ctx: TemplateContext): Shape => {
+        const shape: SceneTemplateShape = {
+          id: ctx.id,
+          layerId: ctx.layerId,
+          type: "template",
+          templateId: spec.id,
+          data: blueprint.defaults ?? {},
+          position: ctx.position,
+          rotation: 0,
+          scale: { x: 1, y: 1 },
+          order: ctx.order,
+          style: {},
+          width: blueprint.width,
+          height: blueprint.height,
+          ...(blueprint.minWidth !== undefined ? { minWidth: blueprint.minWidth } : {}),
+          ...(blueprint.minHeight !== undefined ? { minHeight: blueprint.minHeight } : {}),
+          ...(blueprint.maxWidth !== undefined ? { maxWidth: blueprint.maxWidth } : {}),
+          ...(blueprint.maxHeight !== undefined ? { maxHeight: blueprint.maxHeight } : {}),
+          ...(blueprint.noFlip !== undefined ? { noFlip: blueprint.noFlip } : {}),
+        };
+        return shape;
+      },
+    };
+  }
+
+  // Simple, shape-blueprint case (rectangle / ellipse / polygon / path / text / image).
+  return {
+    id: spec.id,
+    name: spec.name,
+    category: spec.category,
+    icon: spec.icon,
+    ...(spec.metadata !== undefined ? { metadata: spec.metadata } : {}),
+    factory: (ctx: TemplateContext): Shape =>
+      ({
+        ...stripUndefined(blueprint),
+        id: ctx.id,
+        layerId: ctx.layerId,
+        position: ctx.position,
+        rotation: 0,
+        scale: { x: 1, y: 1 },
+        order: ctx.order,
+      }) as Shape,
+  };
+};
+
+// Quiet the unused-var checker for imports kept around for callers' .d.ts.
+void (null as unknown as LayoutStyle | NodeStyle);

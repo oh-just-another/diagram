@@ -6,7 +6,9 @@
     "declarationMap": false,
     "noEmit": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "@oh-just-another/templates-jsx"
   },
   "include": ["src/**/*", "vite.config.ts"],
   "exclude": ["dist", "node_modules"]

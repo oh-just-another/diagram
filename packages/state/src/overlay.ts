@@ -1,9 +1,23 @@
 import type { Bounds, Transform, Vec2 } from "@oh-just-another/types";
-import { getShapeWorldBounds, getWorldToScreen, type Scene } from "@oh-just-another/scene";
+import {
+  getShapeWorldBounds,
+  getWorldToScreen,
+  type Scene,
+  type ShapeBase,
+} from "@oh-just-another/scene";
 import { matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
 import { ALL_HANDLES, HANDLE_SIZE, handlePosition } from "./handle";
 import type { Selection } from "./selection";
+
+/**
+ * Shape types the editor can resize via the 8 corner/edge handles. Other
+ * shapes (polygon, path, text — they have free-form geometry) get only a
+ * selection outline.
+ */
+const RESIZABLE_TYPES: ReadonlySet<string> = new Set(["rectangle", "ellipse", "image", "template"]);
+
+export const isResizable = (shape: ShapeBase): boolean => RESIZABLE_TYPES.has(shape.type);
 
 export interface OverlayStyle {
   readonly selectionStroke: string;
@@ -53,6 +67,8 @@ export const renderOverlay = (
     const screenBounds = projectBounds(worldBounds, w2s);
 
     drawOutline(target, screenBounds, style);
+
+    if (!isResizable(shape)) continue;
 
     for (const handle of ALL_HANDLES) {
       const worldPoint = handlePosition(handle, worldBounds);

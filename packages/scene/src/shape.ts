@@ -24,6 +24,24 @@ export interface ShapeBase {
   readonly style: Style;
   /** Free-form metadata for plugins; the kernel never reads from here. */
   readonly metadata?: Readonly<Record<string, unknown>>;
+
+  /**
+   * Interactive-resize size constraints in local pixels. The editor clamps
+   * the shape's width/height into [min, max] after every resize gesture.
+   * Omitted = no constraint on that axis.
+   */
+  readonly minWidth?: number;
+  readonly minHeight?: number;
+  readonly maxWidth?: number;
+  readonly maxHeight?: number;
+
+  /**
+   * If true, interactive resize is prevented from dragging through the
+   * opposite edge — the shape cannot be mirrored by overshooting a handle.
+   * `width` / `height` are clamped to a non-negative range (or `minWidth` /
+   * `minHeight` if set). Defaults to `false` for backward compatibility.
+   */
+  readonly noFlip?: boolean;
 }
 
 export interface RectangleShape extends ShapeBase {
@@ -75,13 +93,30 @@ export interface ImageShape extends ShapeBase {
   readonly height: number;
 }
 
+/**
+ * Composite shape backed by a rich template (`@oh-just-another/templates`). The
+ * scene stores only the binding (`templateId` + `data`) plus a fixed box
+ * size — layout, hit-test and rendering live in the templates package.
+ *
+ * The kernel ships a basic bounder (uses `width` × `height`); the templates
+ * package can re-register a tighter bounder that respects the layout engine.
+ */
+export interface TemplateShape extends ShapeBase {
+  readonly type: "template";
+  readonly templateId: string;
+  readonly data: Readonly<Record<string, unknown>>;
+  readonly width: number;
+  readonly height: number;
+}
+
 export type BuiltinShape =
   | RectangleShape
   | EllipseShape
   | PolygonShape
   | PathShape
   | TextShape
-  | ImageShape;
+  | ImageShape
+  | TemplateShape;
 
 /**
  * Open shape type. `Shape` accepts any `ShapeBase` extension, which lets plugins
@@ -98,6 +133,7 @@ export const isPolygon = (s: ShapeBase): s is PolygonShape => s.type === "polygo
 export const isPath = (s: ShapeBase): s is PathShape => s.type === "path";
 export const isText = (s: ShapeBase): s is TextShape => s.type === "text";
 export const isImage = (s: ShapeBase): s is ImageShape => s.type === "image";
+export const isTemplate = (s: ShapeBase): s is TemplateShape => s.type === "template";
 
 // --- bounder registry ---
 
@@ -220,6 +256,16 @@ registerBounder<TextShape>("text", (s) => {
 });
 
 registerBounder<ImageShape>("image", (s) => ({
+  x: 0,
+  y: 0,
+  width: s.width,
+  height: s.height,
+}));
+
+// Built-in template bounder: uses the explicit `width` × `height` box. The
+// templates package can re-register a tighter bounder driven by the layout
+// engine when an instance is auto-sized.
+registerBounder<TemplateShape>("template", (s) => ({
   x: 0,
   y: 0,
   width: s.width,

@@ -11,6 +11,7 @@
     { "path": "./packages/state/tsconfig.build.json" },
     { "path": "./packages/serialization/tsconfig.build.json" },
     { "path": "./packages/templates/tsconfig.build.json" },
+    { "path": "./packages/templates-jsx/tsconfig.build.json" },
     { "path": "./packages/headless/tsconfig.build.json" },
     { "path": "./packages/exporter/tsconfig.build.json" },
     { "path": "./packages/importers/tsconfig.build.json" },
