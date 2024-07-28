@@ -1,8 +1,8 @@
 import type { EdgeId, LayerId, ShapeId } from "@oh-just-another/types";
-import type { Edge } from "./edge";
-import type { Layer } from "./layer";
-import type { Shape } from "./shape";
-import type { Viewport } from "./viewport";
+import type { Edge } from "./edge.js";
+import type { Layer } from "./layer.js";
+import type { Shape } from "./shape.js";
+import type { Viewport } from "./viewport.js";
 
 /**
  * Unified patch model: each entity update carries `before` and `after`.

@@ -1,4 +1,4 @@
-import type { Binding, TemplateNode } from "./node";
+import type { Binding, TemplateNode } from "./node.js";
 
 /**
  * Resolve every `{ bind: "key" }` reference in a tree against `data`. Returns

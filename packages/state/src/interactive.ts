@@ -1,6 +1,6 @@
 import type { ShapeBase } from "@oh-just-another/scene";
 import type { Vec2 } from "@oh-just-another/types";
-import type { InteractionEmit } from "./machine";
+import type { InteractionEmit } from "./machine.js";
 
 /**
  * Per-shape-type hit-tester for interactive sub-elements (buttons inside a

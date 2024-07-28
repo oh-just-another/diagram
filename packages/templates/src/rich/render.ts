@@ -5,8 +5,8 @@ import {
   type RenderTarget,
   type ShapeRenderer,
 } from "@oh-just-another/renderer-core";
-import { resolveBindings } from "./binding";
-import { layoutTree, type LayoutedNode, type MeasureText } from "./layout";
+import { resolveBindings } from "./binding.js";
+import { layoutTree, type LayoutedNode, type MeasureText } from "./layout.js";
 import type {
   ButtonNode,
   ContainerNode,
@@ -15,10 +15,10 @@ import type {
   ImageNode,
   TextNode,
   TemplateNode,
-} from "./node";
-import { defaultRichRegistry } from "./registry";
-import type { NodeStyle } from "./style";
-import { paintSvgIcon, parseSvg } from "./svg";
+} from "./node.js";
+import { defaultRichRegistry } from "./registry.js";
+import type { NodeStyle } from "./style.js";
+import { paintSvgIcon, parseSvg } from "./svg.js";
 
 /**
  * Render a `TemplateShape` onto a `RenderTarget`. The renderer:

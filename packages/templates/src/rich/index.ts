@@ -8,8 +8,8 @@ export type {
   Position,
   Length,
   LayoutStyle,
-} from "./style";
-export { resolveSpacing } from "./style";
+} from "./style.js";
+export { resolveSpacing } from "./style.js";
 
 export type {
   Binding,
@@ -21,27 +21,27 @@ export type {
   ButtonNode,
   DropZoneNode,
   TemplateNode,
-} from "./node";
-export { isContainer, isInteractive, childrenOf } from "./node";
+} from "./node.js";
+export { isContainer, isInteractive, childrenOf } from "./node.js";
 
-export type { MeasureText, LayoutedNode, LayoutOptions } from "./layout";
-export { layoutTree, fallbackMeasureText } from "./layout";
+export type { MeasureText, LayoutedNode, LayoutOptions } from "./layout.js";
+export { layoutTree, fallbackMeasureText } from "./layout.js";
 
-export { resolveBindings } from "./binding";
+export { resolveBindings } from "./binding.js";
 
-export { getTemplateLocalBounds } from "./bounds";
+export { getTemplateLocalBounds } from "./bounds.js";
 
-export type { RichTemplate, RichTemplateSchema } from "./define";
-export { defineRichTemplate } from "./define";
+export type { RichTemplate, RichTemplateSchema } from "./define.js";
+export { defineRichTemplate } from "./define.js";
 
-export { RichTemplateRegistry, defaultRichRegistry } from "./registry";
+export { RichTemplateRegistry, defaultRichRegistry } from "./registry.js";
 
-export { renderTemplateShape, installTemplateShapeRenderer } from "./render";
+export { renderTemplateShape, installTemplateShapeRenderer } from "./render.js";
 
-export { nodeAtPoint, interactiveNodeAtPoint } from "./hit-test";
+export { nodeAtPoint, interactiveNodeAtPoint } from "./hit-test.js";
 
-export type { TemplateTapPayload, DropZoneHit } from "./interactive";
-export { templateInteractiveHitTester, findDropZoneAt } from "./interactive";
+export type { TemplateTapPayload, DropZoneHit } from "./interactive.js";
+export { templateInteractiveHitTester, findDropZoneAt } from "./interactive.js";
 
-export type { SvgIcon } from "./svg";
-export { parseSvg, paintSvgIcon } from "./svg";
+export type { SvgIcon } from "./svg.js";
+export { parseSvg, paintSvgIcon } from "./svg.js";

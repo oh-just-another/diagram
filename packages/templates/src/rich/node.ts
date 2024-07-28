@@ -1,4 +1,4 @@
-import type { LayoutStyle, NodeStyle } from "./style";
+import type { LayoutStyle, NodeStyle } from "./style.js";
 
 /**
  * Data binding: either a literal value or `{ bind: "<key>" }` that resolves

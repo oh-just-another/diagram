@@ -1,4 +1,4 @@
-import type { RichTemplate } from "./define";
+import type { RichTemplate } from "./define.js";
 
 /**
  * Registry of rich templates, keyed by id. The render layer and the host UI

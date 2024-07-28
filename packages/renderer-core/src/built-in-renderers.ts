@@ -7,9 +7,9 @@ import {
  type Style,
  type TextShape,
 } from "@oh-just-another/scene";
-import { registerShapeRenderer, type ShapeRenderer } from "./shape-renderer";
-import type { RenderTarget } from "./render-target";
-import { wrapText } from "./text-layout";
+import { registerShapeRenderer, type ShapeRenderer } from "./shape-renderer.js";
+import type { RenderTarget } from "./render-target.js";
+import { wrapText } from "./text-layout.js";
 
 /**
  * Applies common style fields to a target. Returns whether any fill or stroke

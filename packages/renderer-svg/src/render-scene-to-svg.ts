@@ -4,8 +4,8 @@ import {
   type RenderSceneOptions,
 } from "@oh-just-another/renderer-core";
 import type { Scene } from "@oh-just-another/scene";
-import { SvgTarget } from "./svg-target";
-import type { approxTextWidth } from "./measure-text";
+import { SvgTarget } from "./svg-target.js";
+import type { approxTextWidth } from "./measure-text.js";
 
 export interface RenderSceneToSvgOptions extends RenderSceneOptions {
   /**

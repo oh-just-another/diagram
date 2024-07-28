@@ -1,4 +1,4 @@
-import type { TemplateNode } from "./node";
+import type { TemplateNode } from "./node.js";
 
 /**
  * Description of a rich template's data shape. Each entry maps a `{ bind: }`

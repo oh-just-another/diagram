@@ -1,7 +1,7 @@
 import { assign, enqueueActions, setup } from "xstate";
 import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
-import type { HandleId } from "./handle";
-import { DEFAULT_MODE, type Mode } from "./modes";
+import type { HandleId } from "./handle.js";
+import { DEFAULT_MODE, type Mode } from "./modes.js";
 
 /**
  * What the pointer landed on when the user pressed it down. The host computes

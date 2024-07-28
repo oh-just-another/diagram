@@ -1,6 +1,6 @@
 import { LAYER_ORDER, type LayerName } from "@oh-just-another/renderer-core";
-import { Canvas2DTarget } from "./canvas-target";
-import { setupHiDpi } from "./hi-dpi";
+import { Canvas2DTarget } from "./canvas-target.js";
+import { setupHiDpi } from "./hi-dpi.js";
 
 export interface LayeredCanvasOptions {
   /** Subset of layers to create. Defaults to all three. */

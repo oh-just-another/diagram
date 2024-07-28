@@ -1,6 +1,6 @@
 import type { Bounds, Vec2 } from "@oh-just-another/types";
-import { fromPoints } from "./bounds";
-import { distanceToSegmentSq } from "./hit-test";
+import { fromPoints } from "./bounds.js";
+import { distanceToSegmentSq } from "./hit-test.js";
 
 /** Evaluate a quadratic Bezier at parameter t ∈ [0, 1]. */
 export const quadraticAt = (p0: Vec2, p1: Vec2, p2: Vec2, t: number): Vec2 => {

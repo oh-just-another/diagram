@@ -1,11 +1,11 @@
-export type { Mode } from "./modes";
-export { DEFAULT_MODE } from "./modes";
+export type { Mode } from "./modes.js";
+export { DEFAULT_MODE } from "./modes.js";
 
-export type { Selection } from "./selection";
-export * as selection from "./selection";
+export type { Selection } from "./selection.js";
+export * as selection from "./selection.js";
 
-export type { HandleId } from "./handle";
-export { ALL_HANDLES, HANDLE_SIZE, handlePosition, hitHandle, resizeBounds } from "./handle";
+export type { HandleId } from "./handle.js";
+export { ALL_HANDLES, HANDLE_SIZE, handlePosition, hitHandle, resizeBounds } from "./handle.js";
 
 export type {
   InteractionContext,
@@ -17,16 +17,21 @@ export type {
   PointerUpEvent,
   PointerCancelEvent,
   SetModeEvent,
-} from "./machine";
-export { interactionMachine, interpretPressEnd, DRAG_THRESHOLD, boundsFromPoints } from "./machine";
+} from "./machine.js";
+export {
+  interactionMachine,
+  interpretPressEnd,
+  DRAG_THRESHOLD,
+  boundsFromPoints,
+} from "./machine.js";
 
-export type { OverlayStyle } from "./overlay";
-export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./overlay";
+export type { OverlayStyle } from "./overlay.js";
+export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./overlay.js";
 
-export { fromPointerEvent, fromKeyboardEvent, fromWheelEvent } from "./dom-events";
+export { fromPointerEvent, fromKeyboardEvent, fromWheelEvent } from "./dom-events.js";
 
-export type { InteractiveHitTester } from "./interactive";
-export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive";
+export type { InteractiveHitTester } from "./interactive.js";
+export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive.js";
 
-export type { EditorOptions } from "./editor";
-export { Editor } from "./editor";
+export type { EditorOptions } from "./editor.js";
+export { Editor } from "./editor.js";

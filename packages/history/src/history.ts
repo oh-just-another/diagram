@@ -1,5 +1,5 @@
 import { batch, invert, isNoop, type Patch } from "@oh-just-another/scene";
-import { mergeByEntity } from "./merge";
+import { mergeByEntity } from "./merge.js";
 
 export interface HistoryOptions {
   /**

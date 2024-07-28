@@ -1,9 +1,9 @@
 import { z } from "zod";
 import type { Shape, TemplateShape as SceneTemplateShape } from "@oh-just-another/scene";
-import { defaultRichRegistry } from "./rich/registry";
-import type { TemplateNode } from "./rich/node";
-import type { LayoutStyle, NodeStyle } from "./rich/style";
-import type { Template, TemplateContext } from "./types";
+import { defaultRichRegistry } from "./rich/registry.js";
+import type { TemplateNode } from "./rich/node.js";
+import type { LayoutStyle, NodeStyle } from "./rich/style.js";
+import type { Template, TemplateContext } from "./types.js";
 
 /**
  * A `TemplateSpec` is the *serializable* form of a `Template`. Functions

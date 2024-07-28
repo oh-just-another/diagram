@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/cli",
-  "version": "0.9.0",
-  "description": "cli package",
+  "version": "0.10.0",
+  "description": "Command-line interface for headless diagram rendering.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -11,6 +11,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
+  },
+  "bin": {
+    "diagram": "./dist/cli.js"
   },
   "files": [
     "dist",
@@ -29,5 +32,8 @@
   "publishConfig": {
     "access": "restricted"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@oh-just-another/headless": "workspace:*"
+  }
 }

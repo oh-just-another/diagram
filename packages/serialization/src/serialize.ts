@@ -1,5 +1,5 @@
 import type { Scene } from "@oh-just-another/scene";
-import { CURRENT_VERSION, type SceneDocument } from "./schema";
+import { CURRENT_VERSION, type SceneDocument } from "./schema.js";
 
 /**
  * Convert an in-memory `Scene` into a plain JSON-ready document. The result is

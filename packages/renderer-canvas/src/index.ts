@@ -1,6 +1,6 @@
-export { Canvas2DTarget } from "./canvas-target";
-export { setupHiDpi } from "./hi-dpi";
-export { LayeredCanvas, type LayeredCanvasOptions } from "./layered-canvas";
+export { Canvas2DTarget } from "./canvas-target.js";
+export { setupHiDpi } from "./hi-dpi.js";
+export { LayeredCanvas, type LayeredCanvasOptions } from "./layered-canvas.js";
 
 // `installBuiltinRenderers` and `wrapText` live in
 // `@oh-just-another/renderer-core` so the SVG / headless backends can share them.

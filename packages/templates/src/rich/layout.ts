@@ -8,8 +8,8 @@ import {
   type ImageNode,
   type TemplateNode,
   type TextNode,
-} from "./node";
-import { resolveSpacing, type LayoutStyle, type Length } from "./style";
+} from "./node.js";
+import { resolveSpacing, type LayoutStyle, type Length } from "./style.js";
 
 /**
  * `MeasureText(text, fontFamily, fontSize)` returns the rendered width of the

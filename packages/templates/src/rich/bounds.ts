@@ -1,7 +1,7 @@
 import type { Bounds } from "@oh-just-another/types";
-import { layoutTree, type MeasureText } from "./layout";
-import type { TemplateNode } from "./node";
-import { resolveBindings } from "./binding";
+import { layoutTree, type MeasureText } from "./layout.js";
+import type { TemplateNode } from "./node.js";
+import { resolveBindings } from "./binding.js";
 
 /**
  * Local AABB of a rich-template instance — the bounds of the root after

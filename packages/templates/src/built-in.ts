@@ -13,9 +13,9 @@ import {
   STICKY_ICON,
   TERMINATOR_ICON,
   TRIANGLE_ICON,
-} from "./icons";
-import { defaultRegistry, type TemplateRegistry } from "./registry";
-import type { Template, TemplateContext } from "./types";
+} from "./icons.js";
+import { defaultRegistry, type TemplateRegistry } from "./registry.js";
+import type { Template, TemplateContext } from "./types.js";
 
 // --- Local helpers ---
 

@@ -7,8 +7,8 @@ import {
 } from "@oh-just-another/scene";
 import { matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
-import { ALL_HANDLES, HANDLE_SIZE, handlePosition } from "./handle";
-import type { Selection } from "./selection";
+import { ALL_HANDLES, HANDLE_SIZE, handlePosition } from "./handle.js";
+import type { Selection } from "./selection.js";
 
 /**
  * Shape types the editor can resize via the 8 corner/edge handles. Other

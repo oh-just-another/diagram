@@ -1,6 +1,6 @@
 import type { Vec2 } from "@oh-just-another/types";
-import { isInteractive } from "./node";
-import type { LayoutedNode } from "./layout";
+import { isInteractive } from "./node.js";
+import type { LayoutedNode } from "./layout.js";
 
 const containsPoint = (
   b: { x: number; y: number; width: number; height: number },

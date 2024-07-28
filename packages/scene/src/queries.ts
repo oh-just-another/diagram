@@ -1,10 +1,10 @@
 import type { Bounds, EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
 import { bounds as B } from "@oh-just-another/math";
-import type { Edge } from "./edge";
-import type { Layer } from "./layer";
-import type { Scene } from "./scene";
-import { getShapeWorldBounds, type Shape } from "./shape";
-import { SpatialGrid } from "./spatial";
+import type { Edge } from "./edge.js";
+import type { Layer } from "./layer.js";
+import type { Scene } from "./scene.js";
+import { getShapeWorldBounds, type Shape } from "./shape.js";
+import { SpatialGrid } from "./spatial.js";
 
 // --- direct lookups ---
 

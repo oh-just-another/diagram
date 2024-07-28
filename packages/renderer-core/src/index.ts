@@ -6,18 +6,18 @@ export type {
   TextBaseline,
   FillRule,
   DrawPoint,
-} from "./render-target";
-export type { ShapeRenderer } from "./shape-renderer";
-export type { LayerName } from "./layers";
-export type { RenderSceneOptions } from "./scene-renderer";
+} from "./render-target.js";
+export type { ShapeRenderer } from "./shape-renderer.js";
+export type { LayerName } from "./layers.js";
+export type { RenderSceneOptions } from "./scene-renderer.js";
 
-export { registerShapeRenderer, getShapeRenderer, hasShapeRenderer } from "./shape-renderer";
-export { LAYER_ORDER } from "./layers";
-export { renderScene } from "./scene-renderer";
+export { registerShapeRenderer, getShapeRenderer, hasShapeRenderer } from "./shape-renderer.js";
+export { LAYER_ORDER } from "./layers.js";
+export { renderScene } from "./scene-renderer.js";
 
 // Backend-agnostic shape renderers for the 6 built-in `BuiltinShape` types.
 // `installBuiltinRenderers()` registers them via `registerShapeRenderer` and
 // is safe to call multiple times.
-export { installBuiltinRenderers } from "./built-in-renderers";
-export type { WrapOptions, WrappedLine } from "./text-layout";
-export { wrapText } from "./text-layout";
+export { installBuiltinRenderers } from "./built-in-renderers.js";
+export type { WrapOptions, WrappedLine } from "./text-layout.js";
+export { wrapText } from "./text-layout.js";

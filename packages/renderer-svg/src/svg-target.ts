@@ -8,7 +8,7 @@ import type {
   TextAlign,
   TextBaseline,
 } from "@oh-just-another/renderer-core";
-import { approxTextWidth } from "./measure-text";
+import { approxTextWidth } from "./measure-text.js";
 
 /**
  * `RenderTarget` implementation that builds an SVG-string snapshot of the

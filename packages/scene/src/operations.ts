@@ -1,10 +1,10 @@
 import type { EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
-import type { Edge } from "./edge";
-import type { Layer } from "./layer";
-import type { Patch } from "./patch";
-import { apply, type Scene } from "./scene";
-import type { Shape } from "./shape";
-import type { Viewport } from "./viewport";
+import type { Edge } from "./edge.js";
+import type { Layer } from "./layer.js";
+import type { Patch } from "./patch.js";
+import { apply, type Scene } from "./scene.js";
+import type { Shape } from "./shape.js";
+import type { Viewport } from "./viewport.js";
 
 /**
  * Every mutating operation returns the pair `{ scene, patch }`. The patch is

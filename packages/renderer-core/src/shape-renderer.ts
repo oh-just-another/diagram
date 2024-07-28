@@ -1,5 +1,5 @@
 import type { ShapeBase } from "@oh-just-another/scene";
-import type { RenderTarget } from "./render-target";
+import type { RenderTarget } from "./render-target.js";
 
 /**
  * Draws a single shape onto `target`. The shape's `position` / `rotation` /

@@ -1,6 +1,6 @@
 import type { EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
 import type { FractionalIndex } from "fractional-keys";
-import type { Style } from "./style";
+import type { Style } from "./style.js";
 
 /**
  * Standard named connection points. Renderers and templates own the mapping

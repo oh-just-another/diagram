@@ -1,1 +1,1 @@
-export const name = "@oh-just-another/cli";
+export { run, parseArgs } from "./run.js";

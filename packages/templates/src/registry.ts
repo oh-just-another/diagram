@@ -1,4 +1,4 @@
-import type { Category, Template } from "./types";
+import type { Category, Template } from "./types.js";
 
 /**
  * In-process registry of templates. Plugins register at module load; the demo

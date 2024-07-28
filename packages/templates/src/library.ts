@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { templateFromSpec, TemplateLibrarySpecZ, type TemplateLibrarySpec } from "./spec";
-import { defaultRegistry, type TemplateRegistry } from "./registry";
-import type { Template } from "./types";
+import { templateFromSpec, TemplateLibrarySpecZ, type TemplateLibrarySpec } from "./spec.js";
+import { defaultRegistry, type TemplateRegistry } from "./registry.js";
+import type { Template } from "./types.js";
 
 /**
  * Errors thrown by library import. Carries the underlying zod error in

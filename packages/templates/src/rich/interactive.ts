@@ -1,9 +1,9 @@
 import type { ShapeBase, TemplateShape as SceneTemplateShape } from "@oh-just-another/scene";
 import type { ShapeId, Vec2 } from "@oh-just-another/types";
-import { resolveBindings } from "./binding";
-import { fallbackMeasureText, layoutTree } from "./layout";
-import { defaultRichRegistry } from "./registry";
-import { interactiveNodeAtPoint } from "./hit-test";
+import { resolveBindings } from "./binding.js";
+import { fallbackMeasureText, layoutTree } from "./layout.js";
+import { defaultRichRegistry } from "./registry.js";
+import { interactiveNodeAtPoint } from "./hit-test.js";
 
 /**
  * Emit-shaped payload returned by `templateInteractiveHitTester`. Mirrors the

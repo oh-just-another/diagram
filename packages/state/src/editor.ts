@@ -17,9 +17,9 @@ import {
 import { bounds as B, matrix } from "@oh-just-another/math";
 import { renderScene, type RenderTarget } from "@oh-just-another/renderer-core";
 import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
-import { fromPointerEvent } from "./dom-events";
-import { hitHandle } from "./handle";
-import { getInteractiveHitTester } from "./interactive";
+import { fromPointerEvent } from "./dom-events.js";
+import { hitHandle } from "./handle.js";
+import { getInteractiveHitTester } from "./interactive.js";
 import {
   boundsFromPoints,
   interactionMachine,
@@ -27,11 +27,11 @@ import {
   type InteractionContext,
   type InteractionEmit,
   type PressTarget,
-} from "./machine";
-import type { HandleId } from "./handle";
-import type { Mode } from "./modes";
-import { isResizable, renderOverlay } from "./overlay";
-import * as Selection from "./selection";
+} from "./machine.js";
+import type { HandleId } from "./handle.js";
+import type { Mode } from "./modes.js";
+import { isResizable, renderOverlay } from "./overlay.js";
+import * as Selection from "./selection.js";
 
 export interface EditorOptions {
   readonly host: HTMLElement;

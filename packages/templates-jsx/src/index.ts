@@ -6,5 +6,5 @@ export type {
   ButtonProps,
   DropZoneProps,
   JsxChild,
-} from "./h";
-export { h, Fragment, bind, tsx2json } from "./h";
+} from "./h.js";
+export { h, Fragment, bind, tsx2json } from "./h.js";

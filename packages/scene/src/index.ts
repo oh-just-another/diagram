@@ -1,5 +1,5 @@
 // Types
-export type { Style, TextStyle, LineCap, LineJoin, TextAlign, TextBaseline } from "./style";
+export type { Style, TextStyle, LineCap, LineJoin, TextAlign, TextBaseline } from "./style.js";
 export type {
   Shape,
   ShapeBase,
@@ -13,13 +13,13 @@ export type {
   ImageShape,
   TemplateShape,
   ShapeBounder,
-} from "./shape";
-export type { Edge, EdgeEndpoint, AnchorRef, NamedAnchor, StandardAnchor } from "./edge";
-export type { Layer } from "./layer";
-export type { Viewport } from "./viewport";
-export type { Scene } from "./scene";
-export type { Patch } from "./patch";
-export type { OperationResult } from "./operations";
+} from "./shape.js";
+export type { Edge, EdgeEndpoint, AnchorRef, NamedAnchor, StandardAnchor } from "./edge.js";
+export type { Layer } from "./layer.js";
+export type { Viewport } from "./viewport.js";
+export type { Scene } from "./scene.js";
+export type { Patch } from "./patch.js";
+export type { OperationResult } from "./operations.js";
 
 // Shape helpers + bounder registry
 export {
@@ -34,7 +34,7 @@ export {
   getBounder,
   getShapeLocalBounds,
   getShapeWorldBounds,
-} from "./shape";
+} from "./shape.js";
 
 // Viewport helpers
 export {
@@ -44,7 +44,7 @@ export {
   panBy,
   zoomAt,
   resize,
-} from "./viewport";
+} from "./viewport.js";
 
 // Scene constructor + apply + ordering helpers
 export {
@@ -54,10 +54,10 @@ export {
   orderForTop,
   orderForBottom,
   orderBetween,
-} from "./scene";
+} from "./scene.js";
 
 // Patch utilities
-export { invert, batch, isNoop } from "./patch";
+export { invert, batch, isNoop } from "./patch.js";
 
 // Operations (return { scene, patch })
 export {
@@ -72,7 +72,7 @@ export {
   removeLayer,
   updateLayer,
   setViewport,
-} from "./operations";
+} from "./operations.js";
 
 // Queries
 export {
@@ -86,7 +86,7 @@ export {
   getShapeAt,
   buildSpatialIndex,
   queryByIndex,
-} from "./queries";
+} from "./queries.js";
 
 // Spatial index (the class itself, for advanced uses)
-export { SpatialGrid } from "./spatial";
+export { SpatialGrid } from "./spatial.js";

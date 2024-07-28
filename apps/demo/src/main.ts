@@ -13,9 +13,9 @@ import {
   type Category,
   type Template,
 } from "@oh-just-another/templates";
-import { CUSTOM_TEMPLATES } from "./custom-templates";
-import { JSX_TEMPLATES } from "./jsx-template";
-import { buildSampleScene } from "./scene-builder";
+import { CUSTOM_TEMPLATES } from "./custom-templates.js";
+import { JSX_TEMPLATES } from "./jsx-template.js";
+import { buildSampleScene } from "./scene-builder.js";
 
 // --- Bootstrap renderers + templates ---
 

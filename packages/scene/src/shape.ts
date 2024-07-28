@@ -1,7 +1,7 @@
 import type { Bounds, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
 import type { FractionalIndex } from "fractional-keys";
 import { bounds as B } from "@oh-just-another/math";
-import type { Style, TextStyle } from "./style";
+import type { Style, TextStyle } from "./style.js";
 
 /**
  * Fields shared by every shape variant. `order` is a fractional-index string

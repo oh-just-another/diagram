@@ -5,8 +5,8 @@ import {
   type Scene,
   type ShapeBase,
 } from "@oh-just-another/scene";
-import type { RenderTarget } from "./render-target";
-import { getShapeRenderer } from "./shape-renderer";
+import type { RenderTarget } from "./render-target.js";
+import { getShapeRenderer } from "./shape-renderer.js";
 
 export interface RenderSceneOptions {
   /** Skip clearing the target before drawing. Default: false. */

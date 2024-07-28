@@ -9,8 +9,8 @@ import {
 import type { Edge, Layer, Scene, Shape, Viewport } from "@oh-just-another/scene";
 import { type FractionalIndex } from "fractional-keys";
 import { z } from "zod";
-import { CURRENT_VERSION, type SceneDocument, SceneDocumentZ } from "./schema";
-import { runMigrations } from "./migrations";
+import { CURRENT_VERSION, type SceneDocument, SceneDocumentZ } from "./schema.js";
+import { runMigrations } from "./migrations.js";
 
 /**
  * Error thrown when validation fails. Carries the original `z.ZodError` for

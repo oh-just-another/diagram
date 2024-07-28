@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/headless",
-  "version": "0.9.0",
-  "description": "headless package",
+  "version": "0.10.0",
+  "description": "Headless rendering engine \u2014 turn a Scene into SVG / PNG in Node.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -23,10 +23,30 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "bench": "vitest bench --run",
     "lint": "eslint src tests",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@oh-just-another/types": "workspace:*",
+    "@oh-just-another/scene": "workspace:*",
+    "@oh-just-another/serialization": "workspace:*",
+    "@oh-just-another/renderer-core": "workspace:*",
+    "@oh-just-another/renderer-svg": "workspace:*"
+  },
+  "peerDependencies": {
+    "@resvg/resvg-js": "^2.6.0"
+  },
+  "peerDependenciesMeta": {
+    "@resvg/resvg-js": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.0",
+    "tinybench": "^3.0.0"
   }
 }

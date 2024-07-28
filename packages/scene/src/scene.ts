@@ -1,10 +1,10 @@
 import { layerId as castLayerId, type EdgeId, type LayerId, type ShapeId } from "@oh-just-another/types";
 import { generateKeyBetween, type FractionalIndex } from "fractional-keys";
-import type { Edge } from "./edge";
-import { type Layer } from "./layer";
-import type { Patch } from "./patch";
-import type { Shape } from "./shape";
-import { DEFAULT_VIEWPORT, type Viewport } from "./viewport";
+import type { Edge } from "./edge.js";
+import { type Layer } from "./layer.js";
+import type { Patch } from "./patch.js";
+import type { Shape } from "./shape.js";
+import { DEFAULT_VIEWPORT, type Viewport } from "./viewport.js";
 
 /**
  * Whole-scene container. Entities are stored in immutable `ReadonlyMap`s for

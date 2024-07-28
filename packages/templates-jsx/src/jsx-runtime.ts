@@ -10,7 +10,7 @@
  * will validate the intrinsic elements via the `JSX` namespace below.
  */
 
-import { h, Fragment as FragmentSymbol, type JsxChild } from "./h";
+import { h, Fragment as FragmentSymbol, type JsxChild } from "./h.js";
 
 export { FragmentSymbol as Fragment };
 
@@ -49,7 +49,7 @@ import type {
   IconProps,
   ImageProps,
   TextProps,
-} from "./h";
+} from "./h.js";
 import type { rich } from "@oh-just-another/templates";
 
 declare global {
