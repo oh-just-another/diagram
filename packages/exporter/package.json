@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/exporter",
-  "version": "0.10.0",
-  "description": "exporter package",
+  "version": "0.11.0",
+  "description": "Hi-res image and PDF export for @oh-just-another/scene documents.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -28,5 +28,35 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@oh-just-another/types": "workspace:*",
+    "@oh-just-another/scene": "workspace:*",
+    "@oh-just-another/serialization": "workspace:*",
+    "@oh-just-another/headless": "workspace:*",
+    "@oh-just-another/renderer-svg": "workspace:*"
+  },
+  "peerDependencies": {
+    "@resvg/resvg-js": "^2.6.0",
+    "pdfkit": "^0.15.0",
+    "svg-to-pdfkit": "^0.1.8"
+  },
+  "peerDependenciesMeta": {
+    "@resvg/resvg-js": {
+      "optional": true
+    },
+    "pdfkit": {
+      "optional": true
+    },
+    "svg-to-pdfkit": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.0",
+    "pdfkit": "^0.15.0",
+    "svg-to-pdfkit": "^0.1.8",
+    "@types/pdfkit": "^0.13.0",
+    "@types/svg-to-pdfkit": "^0.1.4"
   }
 }

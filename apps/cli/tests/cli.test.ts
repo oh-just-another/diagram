@@ -92,6 +92,63 @@ describe("run (render)", () => {
   });
 });
 
+const PDF_SIG = [0x25, 0x50, 0x44, 0x46]; // "%PDF"
+
+describe("run (export)", () => {
+  it("exports to PNG with crop + dpi", async () => {
+    const dir = await tempDir();
+    const input = join(dir, "scene.json");
+    const output = join(dir, "out.png");
+    await writeFile(input, fixture);
+    await run([
+      "export",
+      input,
+      "--out",
+      output,
+      "--crop",
+      "0,0,80,40",
+      "--dpi",
+      "300",
+      "--scale",
+      "2",
+    ]);
+    const png = await readFile(output);
+    expect(PNG_SIG.every((b, i) => png[i] === b)).toBe(true);
+    // pHYs chunk should be present.
+    const phys = Array.from(png).join(",").includes([0x70, 0x48, 0x59, 0x73].join(","));
+    expect(phys).toBe(true);
+  });
+
+  it("exports to PDF with page metadata", async () => {
+    const dir = await tempDir();
+    const input = join(dir, "scene.json");
+    const output = join(dir, "out.pdf");
+    await writeFile(input, fixture);
+    await run([
+      "export",
+      input,
+      "--out",
+      output,
+      "--page",
+      "Letter",
+      "--orientation",
+      "landscape",
+      "--title",
+      "Example",
+    ]);
+    const pdf = await readFile(output);
+    expect(PDF_SIG.every((b, i) => pdf[i] === b)).toBe(true);
+    expect(pdf.toString("latin1")).toContain("Example");
+  });
+
+  it("rejects unsupported export extension", async () => {
+    const dir = await tempDir();
+    const input = join(dir, "scene.json");
+    await writeFile(input, fixture);
+    await expect(run(["export", input, "--out", "x.svg"])).rejects.toThrow(/Unsupported export/);
+  });
+});
+
 let counter = 0;
 const tempDir = async (): Promise<string> => {
   const dir = join(tmpdir(), `diagram-cli-test-${process.pid}-${++counter}`);

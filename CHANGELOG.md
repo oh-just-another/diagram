@@ -29,3 +29,6 @@
 
 ## 0.10.0
 - feat: headless
+
+## 0.11.0
+- feat: misc
