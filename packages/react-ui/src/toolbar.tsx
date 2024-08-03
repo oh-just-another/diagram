@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { Editor, Mode } from "@oh-just-another/state";
-import { useDiagram, useHistory, useMode } from "./hooks.js";
+import { useDiagramOptional, useHistory, useMode } from "./hooks.js";
 
 /**
  * Single toolbar item. Builtin `mode` items wire to `editor.setMode`;
@@ -43,7 +43,7 @@ export interface ToolbarProps {
 }
 
 export const Toolbar = ({ items = DEFAULT_TOOLBAR, style, className }: ToolbarProps) => {
-  const editor = useDiagram();
+  const editor = useDiagramOptional();
   const mode = useMode();
   const { canUndo, canRedo, undo, redo } = useHistory();
 
@@ -66,8 +66,9 @@ export const Toolbar = ({ items = DEFAULT_TOOLBAR, style, className }: ToolbarPr
               <ToolbarButton
                 key={i}
                 {...(item.title !== undefined ? { title: item.title } : {})}
+                disabled={!editor}
                 active={active}
-                onClick={() => editor.setMode(item.mode)}
+                onClick={() => editor?.setMode(item.mode)}
               >
                 {item.label}
               </ToolbarButton>
@@ -78,8 +79,10 @@ export const Toolbar = ({ items = DEFAULT_TOOLBAR, style, className }: ToolbarPr
               <ToolbarButton
                 key={i}
                 {...(item.title !== undefined ? { title: item.title } : {})}
-                {...(item.disabled !== undefined ? { disabled: item.disabled } : {})}
-                onClick={() => item.onClick(editor)}
+                disabled={item.disabled ?? !editor}
+                onClick={() => {
+                  if (editor) item.onClick(editor);
+                }}
               >
                 {item.label}
               </ToolbarButton>

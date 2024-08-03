@@ -7,7 +7,7 @@ import {
   type Template,
   type TemplateRegistry,
 } from "@oh-just-another/templates";
-import { useDiagram } from "./hooks.js";
+import { useDiagramOptional } from "./hooks.js";
 
 /**
  * Draggable shape palette. Defaults to the global `defaultRegistry`; pass a
@@ -169,9 +169,10 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
  * canvas component installs an equivalent handler automatically.
  */
 export const usePaletteDropHandler = () => {
-  const editor = useDiagram();
+  const editor = useDiagramOptional();
   return (ev: DragEvent<HTMLElement>) => {
     ev.preventDefault();
+    if (!editor) return; // surface not mounted yet
     const templateId = ev.dataTransfer.getData("application/x-template-id");
     if (!templateId) return;
     const template = defaultRegistry.get(templateId);

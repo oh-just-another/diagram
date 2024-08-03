@@ -12,6 +12,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
+    "@oh-just-another/types": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/state": "workspace:*",
     "@oh-just-another/templates": "workspace:*",

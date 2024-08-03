@@ -1,19 +1,28 @@
 import { useMemo } from "react";
-import { emptyScene, type Scene } from "@oh-just-another/scene";
+import {
+  DEFAULT_LAYER_ID,
+  addShape,
+  emptyScene,
+  orderBetween,
+  type Scene,
+  type Shape,
+} from "@oh-just-another/scene";
+import { shapeId } from "@oh-just-another/types";
 import {
   defaultRegistry,
   installBuiltinTemplates,
   loadTemplateLibrary,
 } from "@oh-just-another/templates";
 import {
-  DiagramCanvas,
+  DiagramRoot,
+  DiagramSurface,
   Palette,
   PropertyPanel,
   Toolbar,
   usePaletteDropHandler,
 } from "@oh-just-another/react-ui";
 
-// One-time setup: install built-in templates (only on first import).
+// One-time template setup.
 let installed = false;
 const setupTemplates = () => {
   if (installed) return;
@@ -43,8 +52,35 @@ const setupTemplates = () => {
 };
 
 const initialScene = (): Scene => {
-  const s = emptyScene();
-  return { ...s, viewport: { ...s.viewport, size: { width: 800, height: 600 } } };
+  let s = emptyScene();
+  s = { ...s, viewport: { ...s.viewport, size: { width: 800, height: 600 } } };
+  const rect: Shape = {
+    id: shapeId("seed-rect"),
+    layerId: DEFAULT_LAYER_ID,
+    type: "rectangle",
+    position: { x: 80, y: 80 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: { fill: "#cfe1ff", stroke: "#1a40b0", strokeWidth: 2 },
+    width: 200,
+    height: 120,
+  };
+  const ellipse: Shape = {
+    id: shapeId("seed-ellipse"),
+    layerId: DEFAULT_LAYER_ID,
+    type: "ellipse",
+    position: { x: 360, y: 220 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(rect.order, null),
+    style: { fill: "#fff2a8", stroke: "#b18a00", strokeWidth: 2 },
+    width: 200,
+    height: 140,
+  };
+  ({ scene: s } = addShape(s, rect));
+  ({ scene: s } = addShape(s, ellipse));
+  return s;
 };
 
 export const App = () => {
@@ -67,64 +103,46 @@ export const App = () => {
         </h1>
       </header>
 
-      <main style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        <DiagramCanvas
-          initialScene={scene}
-          initialMode="select"
-          style={{ flex: 1, minHeight: 0, position: "relative" }}
-        >
-          <PlaygroundLayout />
-        </DiagramCanvas>
-      </main>
+      <DiagramRoot initialScene={scene} initialMode="select">
+        <main style={{ display: "flex", flex: 1, minHeight: 0 }}>
+          <Palette style={{ flex: "0 0 200px" }} />
+          <CanvasArea />
+          <PropertyPanel style={{ flex: "0 0 240px" }} />
+        </main>
+      </DiagramRoot>
     </div>
   );
 };
 
-/**
- * Renders inside `<DiagramCanvas>`'s `<DiagramProvider>`. We use absolute
- * positioning to layer toolbar / palette / property panel over the canvas
- * host, since `DiagramCanvas` itself fills its parent.
- */
-const PlaygroundLayout = () => {
+/** Canvas surface + floating toolbar. */
+const CanvasArea = () => {
   const onDrop = usePaletteDropHandler();
   return (
-    <>
-      <div
-        onDragEnter={(ev) => {
-          if (ev.dataTransfer.types.includes("application/x-template-id")) ev.preventDefault();
-        }}
-        onDragOver={(ev) => {
-          if (ev.dataTransfer.types.includes("application/x-template-id")) {
-            ev.preventDefault();
-            ev.dataTransfer.dropEffect = "copy";
-          }
-        }}
-        onDrop={onDrop}
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-        }}
-      >
-        <div style={{ display: "flex", height: "100%", pointerEvents: "auto" }}>
-          <Palette style={{ pointerEvents: "auto" }} />
-          {/* spacer takes drop events but doesn't block canvas interactions */}
-          <div
-            style={{
-              flex: 1,
-              pointerEvents: "none",
-            }}
-          />
-          <PropertyPanel style={{ pointerEvents: "auto" }} />
-        </div>
-      </div>
+    <section
+      onDragEnter={(ev) => {
+        if (ev.dataTransfer.types.includes("application/x-template-id")) ev.preventDefault();
+      }}
+      onDragOver={(ev) => {
+        if (ev.dataTransfer.types.includes("application/x-template-id")) {
+          ev.preventDefault();
+          ev.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDrop={onDrop}
+      style={{
+        flex: 1,
+        position: "relative",
+        background: "#fff",
+        minHeight: 0,
+      }}
+    >
+      <DiagramSurface />
       <div
         style={{
           position: "absolute",
           top: 12,
           left: "50%",
           transform: "translateX(-50%)",
-          pointerEvents: "auto",
           background: "#1a1a1a",
           padding: "4px 6px",
           borderRadius: 6,
@@ -133,6 +151,6 @@ const PlaygroundLayout = () => {
       >
         <Toolbar />
       </div>
-    </>
+    </section>
   );
 };

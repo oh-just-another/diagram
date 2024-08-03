@@ -35,3 +35,6 @@
 
 ## 0.12.0
 - feat: react ui
+
+## 0.13.0
+- feat: react-ui split (DiagramRoot + DiagramSurface), playground ghost shapes
