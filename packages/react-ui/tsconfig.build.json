@@ -3,9 +3,19 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
   "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
-  "references": []
+  "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.tsx.test"],
+  "references": [
+    { "path": "../types/tsconfig.build.json" },
+    { "path": "../scene/tsconfig.build.json" },
+    { "path": "../renderer-core/tsconfig.build.json" },
+    { "path": "../renderer-canvas/tsconfig.build.json" },
+    { "path": "../state/tsconfig.build.json" },
+    { "path": "../templates/tsconfig.build.json" },
+    { "path": "../history/tsconfig.build.json" }
+  ]
 }

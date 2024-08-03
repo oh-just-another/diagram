@@ -32,3 +32,6 @@
 
 ## 0.11.0
 - feat: misc
+
+## 0.12.0
+- feat: react ui

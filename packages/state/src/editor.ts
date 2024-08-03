@@ -133,6 +133,7 @@ export class Editor {
       this.gestureTx = null;
     }
     this.actor.send({ type: "SET_MODE", mode });
+    this.notify();
   }
 
   /** Undo the latest record. No-op if there is nothing to undo. */

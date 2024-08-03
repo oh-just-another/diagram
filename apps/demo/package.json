@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/demo",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "Demo application \u2014 visual sandbox for the diagram library.",
   "type": "module",
   "private": true,
