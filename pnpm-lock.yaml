@@ -74,15 +74,12 @@ importers:
       '@oh-just-another/history':
         specifier: workspace:*
         version: link:../../packages/history
-      '@oh-just-another/math':
+      '@oh-just-another/react-ui':
         specifier: workspace:*
-        version: link:../../packages/math
+        version: link:../../packages/react-ui
       '@oh-just-another/renderer-canvas':
         specifier: workspace:*
         version: link:../../packages/renderer-canvas
-      '@oh-just-another/renderer-core':
-        specifier: workspace:*
-        version: link:../../packages/renderer-core
       '@oh-just-another/renderer-svg':
         specifier: workspace:*
         version: link:../../packages/renderer-svg
@@ -101,31 +98,6 @@ importers:
       '@oh-just-another/templates-jsx':
         specifier: workspace:*
         version: link:../../packages/templates-jsx
-      '@oh-just-another/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-    devDependencies:
-      vite:
-        specifier: ^6.0.7
-        version: 6.4.2(@types/node@22.19.19)(lightningcss@1.32.0)(yaml@2.9.0)
-
-  apps/react-playground:
-    dependencies:
-      '@oh-just-another/react-ui':
-        specifier: workspace:*
-        version: link:../../packages/react-ui
-      '@oh-just-another/renderer-canvas':
-        specifier: workspace:*
-        version: link:../../packages/renderer-canvas
-      '@oh-just-another/scene':
-        specifier: workspace:*
-        version: link:../../packages/scene
-      '@oh-just-another/state':
-        specifier: workspace:*
-        version: link:../../packages/state
-      '@oh-just-another/templates':
-        specifier: workspace:*
-        version: link:../../packages/templates
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../../packages/types

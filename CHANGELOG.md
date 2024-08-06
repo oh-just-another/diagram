@@ -38,3 +38,6 @@
 
 ## 0.13.0
 - feat: react-ui split (DiagramRoot + DiagramSurface), playground ghost shapes
+
+## 0.14.0
+- feat: react demo

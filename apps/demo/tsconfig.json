@@ -7,8 +7,7 @@
     "noEmit": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "@oh-just-another/templates-jsx"
+    "jsx": "react-jsx"
   },
   "include": ["src/**/*", "vite.config.ts"],
   "exclude": ["dist", "node_modules"]
