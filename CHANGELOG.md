@@ -41,3 +41,6 @@
 
 ## 0.14.0
 - feat: react demo
+
+## 0.14.1
+- feat: register rich template renderer + hit-tester in demo

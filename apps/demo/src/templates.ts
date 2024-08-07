@@ -2,17 +2,28 @@ import {
  defaultRegistry,
  installBuiltinTemplates,
  loadTemplateLibrary,
+ rich,
 } from "@oh-just-another/templates";
+import { registerInteractiveHitTester } from "@oh-just-another/state";
 
 /**
  * One-time global template setup. Installs the 12 built-in basic +
- * flowchart presets, then loads a few hand-crafted custom + rich examples
- * so the palette demonstrates every category out of the box.
+ * flowchart presets, registers the rich-template shape renderer + hit
+ * tester (so `type: "template"` shapes draw and accept button taps), then
+ * loads a few hand-crafted custom + rich examples so the palette
+ * demonstrates every category out of the box.
  */
 let installed = false;
 export const setupTemplates = (): void => {
  if (installed) return;
  installBuiltinTemplates();
+ // `installBuiltinRenderers()` registers draw functions for the 6 built-in
+ // shape types (rect/ellipse/polygon/path/text/image). Rich templates
+ // introduce a 7th type (`"template"`) — register its renderer + bounder
+ // and the interactive hit-tester here so Task-card / Swim-lane render
+ // and react to clicks.
+ rich.installTemplateShapeRenderer();
+ registerInteractiveHitTester("template", rich.templateInteractiveHitTester);
  loadTemplateLibrary(
   {
    format: "oh-just-another/template-library",
