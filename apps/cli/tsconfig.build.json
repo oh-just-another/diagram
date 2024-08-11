@@ -9,6 +9,8 @@
   "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
   "references": [
     { "path": "../../packages/headless/tsconfig.build.json" },
-    { "path": "../../packages/exporter/tsconfig.build.json" }
+    { "path": "../../packages/exporter/tsconfig.build.json" },
+    { "path": "../../packages/importers/tsconfig.build.json" },
+    { "path": "../../packages/serialization/tsconfig.build.json" }
   ]
 }

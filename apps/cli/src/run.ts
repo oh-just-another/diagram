@@ -2,17 +2,21 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve as resolvePath } from "node:path";
 import { renderToPng, renderToSvg } from "@oh-just-another/headless";
 import { exportPdf, exportPng, type ExportRegion } from "@oh-just-another/exporter";
+import { importDot, importDrawio, importMermaid } from "@oh-just-another/importers";
+import { stringifyScene } from "@oh-just-another/serialization";
 
 const HELP = `diagram — headless renderer for @oh-just-another/scene documents.
 
 Usage:
   diagram render <scene.json> --out <file>   [options]
   diagram export <scene.json> --out <file>   [options]
+  diagram import <source>     --out <file>   [--from mermaid|dot|drawio]
   diagram --help
 
 Commands:
   render        Quick render via @headless. Format inferred from --out (.svg / .png).
   export        Hi-res / cropped / DPI-aware export via @exporter (.png / .pdf).
+  import        Convert Mermaid / Graphviz dot / drawio XML into a scene.json.
 
 Common options:
   --out, -o FILE        Destination file (required).
@@ -31,11 +35,18 @@ Export-only options:
   --title S             PDF: document title metadata.
   --author S            PDF: document author metadata.
 
+Import-only options:
+  --from FORMAT         Source format: mermaid / dot / drawio. Inferred from
+                        the source extension (.mmd/.mermaid → mermaid,
+                        .dot/.gv → dot, .drawio/.xml → drawio) when omitted.
+
 Examples:
   diagram render scene.json --out scene.svg
   diagram render scene.json --out scene.png --scale 2
   diagram export scene.json --out scene.pdf --page Letter --orientation landscape
   diagram export scene.json --out cropped.png --crop 0,0,400,300 --dpi 300
+  diagram import flow.mmd   --out scene.json
+  diagram import g.dot      --out scene.json --from dot
 `;
 
 interface Args {
@@ -53,6 +64,7 @@ interface Args {
   margin: number | null;
   title: string | null;
   author: string | null;
+  from: "mermaid" | "dot" | "drawio" | null;
   help: boolean;
 }
 
@@ -72,6 +84,7 @@ export const parseArgs = (argv: readonly string[]): Args => {
     margin: null,
     title: null,
     author: null,
+    from: null,
     help: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -94,7 +107,13 @@ export const parseArgs = (argv: readonly string[]): Args => {
     } else if (a === "--margin") out.margin = Number(argv[++i]);
     else if (a === "--title") out.title = argv[++i] ?? null;
     else if (a === "--author") out.author = argv[++i] ?? null;
-    else if (a.startsWith("-")) throw new Error(`Unknown option: ${a}`);
+    else if (a === "--from") {
+      const v = argv[++i];
+      if (v !== "mermaid" && v !== "dot" && v !== "drawio") {
+        throw new Error("--from must be mermaid / dot / drawio");
+      }
+      out.from = v;
+    } else if (a.startsWith("-")) throw new Error(`Unknown option: ${a}`);
     else if (out.command === null) out.command = a;
     else if (out.input === null) out.input = a;
     else throw new Error(`Unexpected positional argument: ${a}`);
@@ -120,7 +139,42 @@ export const run = async (argv: readonly string[]): Promise<void> => {
 
   if (args.command === "render") return runRender(args);
   if (args.command === "export") return runExport(args);
+  if (args.command === "import") return runImport(args);
   throw new Error(`Unknown command: ${args.command}`);
+};
+
+const runImport = async (args: Args): Promise<void> => {
+  if (!args.input) throw new Error("missing source file (positional argument)");
+  if (!args.output) throw new Error("--out is required");
+
+  const source = await readFile(resolvePath(process.cwd(), args.input), "utf8");
+  const format = args.from ?? inferImportFormat(args.input);
+  if (!format) {
+    throw new Error(
+      `Could not infer source format from "${args.input}" — pass --from mermaid|dot|drawio`,
+    );
+  }
+
+  const scene =
+    format === "mermaid"
+      ? importMermaid(source)
+      : format === "dot"
+        ? importDot(source)
+        : importDrawio(source);
+
+  const json = stringifyScene(scene, 2);
+  await writeFile(resolvePath(process.cwd(), args.output), json);
+  process.stderr.write(
+    `Imported ${scene.shapes.size} shapes / ${scene.edges.size} edges to ${args.output}\n`,
+  );
+};
+
+const inferImportFormat = (path: string): "mermaid" | "dot" | "drawio" | null => {
+  const ext = path.toLowerCase().split(".").pop() ?? "";
+  if (ext === "mmd" || ext === "mermaid") return "mermaid";
+  if (ext === "dot" || ext === "gv") return "dot";
+  if (ext === "drawio" || ext === "xml") return "drawio";
+  return null;
 };
 
 const runRender = async (args: Args): Promise<void> => {

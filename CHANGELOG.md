@@ -44,3 +44,6 @@
 
 ## 0.14.1
 - feat: register rich template renderer + hit-tester in demo
+
+## 0.15.0
+- feat: importers

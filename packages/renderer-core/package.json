@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-core",
-  "version": "0.14.1",
+  "version": "0.15.0",
   "description": "renderer-core package",
   "type": "module",
   "main": "./dist/index.js",

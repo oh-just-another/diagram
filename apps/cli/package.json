@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/cli",
-  "version": "0.14.1",
+  "version": "0.15.0",
   "description": "Command-line interface for headless diagram rendering.",
   "type": "module",
   "main": "./dist/index.js",
@@ -35,6 +35,8 @@
   "private": true,
   "dependencies": {
     "@oh-just-another/headless": "workspace:*",
-    "@oh-just-another/exporter": "workspace:*"
+    "@oh-just-another/exporter": "workspace:*",
+    "@oh-just-another/importers": "workspace:*",
+    "@oh-just-another/serialization": "workspace:*"
   }
 }
