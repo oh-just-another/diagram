@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/demo",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "Demo application \u2014 full-featured React editor built on top of @oh-just-another/react-ui.",
   "type": "module",
   "private": true,
@@ -21,9 +21,12 @@
     "@oh-just-another/renderer-canvas": "workspace:*",
     "@oh-just-another/renderer-svg": "workspace:*",
     "@oh-just-another/serialization": "workspace:*",
+    "@oh-just-another/network": "workspace:*",
+    "@oh-just-another/collab": "workspace:*",
     "@oh-just-another/react-ui": "workspace:*",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "yjs": "^13.6.20"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

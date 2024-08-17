@@ -1,0 +1,95 @@
+import * as Y from "yjs";
+import { DEFAULT_VIEWPORT, type Edge, type Layer, type Scene, type Shape } from "@oh-just-another/scene";
+import { layerId, edgeId, shapeId } from "@oh-just-another/types";
+
+/**
+ * CRDT-backed mirror of a `Scene`. Wraps a `Y.Doc` whose top-level maps
+ * are the canonical source of truth for collaborative editing:
+ *
+ *   - `shapes`   — `Y.Map<string, Shape>`
+ *   - `edges`    — `Y.Map<string, Edge>`
+ *   - `layers`   — `Y.Map<string, Layer>`
+ *   - `viewport` — `Y.Map<string, unknown>` (single "current" key)
+ *
+ * Shapes / edges / layers are stored as deep-cloned JSON snapshots — Yjs
+ * happily ships any structured-cloneable object. Concurrent edits to
+ * different ids merge automatically (last-writer-wins per id, classic
+ * Yjs `Y.Map` semantics).
+ */
+export class SceneDoc {
+  readonly doc: Y.Doc;
+  readonly shapes: Y.Map<Shape>;
+  readonly edges: Y.Map<Edge>;
+  readonly layers: Y.Map<Layer>;
+  readonly viewport: Y.Map<unknown>;
+
+  constructor(doc: Y.Doc = new Y.Doc()) {
+    this.doc = doc;
+    this.shapes = doc.getMap<Shape>("shapes");
+    this.edges = doc.getMap<Edge>("edges");
+    this.layers = doc.getMap<Layer>("layers");
+    this.viewport = doc.getMap<unknown>("viewport");
+  }
+
+  /** Build an in-memory `Scene` snapshot from the current CRDT state. */
+  snapshot(): Scene {
+    const shapeMap = new Map<Shape["id"], Shape>();
+    for (const [id, shape] of this.shapes) shapeMap.set(shapeId(id), shape);
+    const edgeMap = new Map<Edge["id"], Edge>();
+    for (const [id, edge] of this.edges) edgeMap.set(edgeId(id), edge);
+    const layerMap = new Map<Layer["id"], Layer>();
+    for (const [id, layer] of this.layers) layerMap.set(layerId(id), layer);
+
+    const vp = this.viewport.get("current");
+    const viewport = (vp ?? DEFAULT_VIEWPORT) as Scene["viewport"];
+
+    return { shapes: shapeMap, edges: edgeMap, layers: layerMap, viewport };
+  }
+
+  /**
+   * Replace the entire CRDT state with the given `Scene`. Wrapped in a
+   * single Yjs transaction so peers receive one update message instead of
+   * one per shape. Marks the transaction with `origin` so observers can
+   * skip the event they themselves caused.
+   */
+  replace(scene: Scene, origin?: unknown): void {
+    this.doc.transact(() => {
+      this.shapes.clear();
+      for (const [id, shape] of scene.shapes) this.shapes.set(id, shape);
+      this.edges.clear();
+      for (const [id, edge] of scene.edges) this.edges.set(id, edge);
+      this.layers.clear();
+      for (const [id, layer] of scene.layers) this.layers.set(id, layer);
+      this.viewport.set("current", scene.viewport);
+    }, origin);
+  }
+
+  /**
+   * Apply only the *delta* between an old scene and a new one. Cheaper
+   * over the wire than `replace` when a single shape changes. Used by
+   * `bindEditor` to ferry every editor mutation into the CRDT.
+   */
+  applyDelta(prev: Scene, next: Scene, origin?: unknown): void {
+    this.doc.transact(() => {
+      diffMap(prev.shapes, next.shapes, this.shapes);
+      diffMap(prev.edges, next.edges, this.edges);
+      diffMap(prev.layers, next.layers, this.layers);
+      if (prev.viewport !== next.viewport) {
+        this.viewport.set("current", next.viewport);
+      }
+    }, origin);
+  }
+}
+
+const diffMap = <K extends string, V>(
+  prev: ReadonlyMap<K, V>,
+  next: ReadonlyMap<K, V>,
+  target: Y.Map<V>,
+): void => {
+  for (const [id] of prev) {
+    if (!next.has(id)) target.delete(id);
+  }
+  for (const [id, value] of next) {
+    if (prev.get(id) !== value) target.set(id, value);
+  }
+};

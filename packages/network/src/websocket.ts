@@ -1,0 +1,121 @@
+import type { Transport } from "./transport.js";
+
+/**
+ * `Transport` backed by a single `WebSocket` connection. Suitable for
+ * point-to-point connections to a y-websocket (or compatible) server.
+ *
+ * The wrapper handles:
+ *   - lazy connection — `send`s issued before the socket opens are buffered
+ *     and flushed on `open`
+ *   - reconnect on transient errors (exponential backoff, capped at 30 s)
+ *   - clean shutdown on `close()` (no further auto-reconnect)
+ *
+ * It does **not** implement any wire protocol — payloads are forwarded as
+ * raw `Uint8Array`. Pair with `y-websocket`'s server or compatible.
+ */
+export interface WebSocketTransportOptions {
+  /** Override the global `WebSocket` constructor (e.g. for tests / Node). */
+  readonly webSocketImpl?: typeof globalThis.WebSocket;
+  /** Initial reconnect delay in ms. Default 500. */
+  readonly initialReconnectDelay?: number;
+  /** Max reconnect delay in ms. Default 30 000. */
+  readonly maxReconnectDelay?: number;
+}
+
+export class WebSocketTransport implements Transport {
+  private readonly url: string;
+  private readonly handlers = new Set<(payload: Uint8Array) => void>();
+  private readonly buffer: Uint8Array[] = [];
+  private readonly webSocketImpl: typeof globalThis.WebSocket;
+  private readonly initialDelay: number;
+  private readonly maxDelay: number;
+
+  private socket: WebSocket | null = null;
+  private closed = false;
+  private reconnectDelay: number;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(url: string, options: WebSocketTransportOptions = {}) {
+    this.url = url;
+    this.webSocketImpl = options.webSocketImpl ?? globalThis.WebSocket;
+    this.initialDelay = options.initialReconnectDelay ?? 500;
+    this.maxDelay = options.maxReconnectDelay ?? 30_000;
+    this.reconnectDelay = this.initialDelay;
+    if (typeof this.webSocketImpl !== "function") {
+      throw new Error(
+        "WebSocketTransport: no global WebSocket available — pass `webSocketImpl` in options.",
+      );
+    }
+    this.connect();
+  }
+
+  send(payload: Uint8Array): void {
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(payload);
+    } else {
+      this.buffer.push(payload);
+    }
+  }
+
+  onMessage(handler: (payload: Uint8Array) => void): () => void {
+    this.handlers.add(handler);
+    return () => this.handlers.delete(handler);
+  }
+
+  close(): void {
+    this.closed = true;
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
+    }
+    this.handlers.clear();
+    this.buffer.length = 0;
+  }
+
+  private connect(): void {
+    if (this.closed) return;
+    const sock = new this.webSocketImpl(this.url);
+    sock.binaryType = "arraybuffer";
+
+    sock.addEventListener("open", () => {
+      this.reconnectDelay = this.initialDelay;
+      while (this.buffer.length > 0) {
+        const next = this.buffer.shift()!;
+        sock.send(next);
+      }
+    });
+
+    sock.addEventListener("message", (ev: MessageEvent<unknown>) => {
+      let payload: Uint8Array | null = null;
+      const data = ev.data;
+      if (data instanceof ArrayBuffer) payload = new Uint8Array(data);
+      else if (data instanceof Uint8Array) payload = data;
+      if (!payload) return;
+      for (const h of this.handlers) h(payload);
+    });
+
+    const onTerminated = () => {
+      if (this.socket !== sock) return; // a newer connection already took over
+      this.socket = null;
+      if (this.closed) return;
+      this.scheduleReconnect();
+    };
+    sock.addEventListener("close", onTerminated);
+    sock.addEventListener("error", onTerminated);
+
+    this.socket = sock;
+  }
+
+  private scheduleReconnect(): void {
+    const delay = this.reconnectDelay;
+    this.reconnectDelay = Math.min(this.maxDelay, this.reconnectDelay * 2);
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, delay);
+  }
+}

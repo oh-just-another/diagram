@@ -18,6 +18,8 @@ const workspacePackages = [
   "templates",
   "templates-jsx",
   "serialization",
+  "network",
+  "collab",
   "react-ui",
 ];
 

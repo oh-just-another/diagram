@@ -25,6 +25,8 @@ import { setupTemplates } from "./templates";
 import { useTheme } from "./theme";
 import { useHotkeys } from "./hotkeys";
 import { HistoryPanel } from "./HistoryPanel";
+import { useCollab } from "./collab";
+import { Peers } from "./Peers";
 
 setupTemplates();
 
@@ -82,6 +84,7 @@ export const App = () => {
   const { theme, toggle } = useTheme();
   const [editor, setEditor] = useState<Editor | null>(null);
   useHotkeys(editor);
+  const { room, awareness } = useCollab(editor);
 
   return (
     <div className="root" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -95,32 +98,59 @@ export const App = () => {
           background: "var(--panel)",
         }}
       >
-        <h1
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: "var(--muted)",
-            margin: 0,
-            letterSpacing: 0.5,
-          }}
-        >
-          Diagram demo
-        </h1>
-        <button
-          type="button"
-          onClick={toggle}
-          style={{
-            background: "var(--button-bg)",
-            color: "var(--text)",
-            border: "1px solid var(--border)",
-            borderRadius: 4,
-            padding: "4px 10px",
-            fontSize: 12,
-            cursor: "pointer",
-          }}
-        >
-          {theme === "dark" ? "☀ Light" : "☾ Dark"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <h1
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--muted)",
+              margin: 0,
+              letterSpacing: 0.5,
+            }}
+          >
+            Diagram demo
+          </h1>
+          {room ? (
+            <span
+              style={{
+                fontSize: 11,
+                color: "var(--muted)",
+                padding: "2px 8px",
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+              }}
+              title="Open this URL in another tab to test real-time collaboration"
+            >
+              room: <code>{room}</code>
+            </span>
+          ) : (
+            <a
+              href="?room=demo"
+              style={{ fontSize: 11, color: "var(--muted)", textDecoration: "none" }}
+              title="Join the demo collab room"
+            >
+              + join collab room
+            </a>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Peers awareness={awareness} />
+          <button
+            type="button"
+            onClick={toggle}
+            style={{
+              background: "var(--button-bg)",
+              color: "var(--text)",
+              border: "1px solid var(--border)",
+              borderRadius: 4,
+              padding: "4px 10px",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            {theme === "dark" ? "☀ Light" : "☾ Dark"}
+          </button>
+        </div>
       </header>
 
       <DiagramRoot initialScene={initialScene} initialMode="select" onReady={setEditor}>

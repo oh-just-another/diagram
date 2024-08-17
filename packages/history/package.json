@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/history",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "history package",
   "type": "module",
   "main": "./dist/index.js",

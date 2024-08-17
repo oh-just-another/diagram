@@ -47,3 +47,6 @@
 
 ## 0.15.0
 - feat: importers
+
+## 0.16.0
+- feat: collab

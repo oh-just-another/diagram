@@ -7,5 +7,11 @@
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
-  "references": []
+  "references": [
+    { "path": "../types/tsconfig.build.json" },
+    { "path": "../scene/tsconfig.build.json" },
+    { "path": "../state/tsconfig.build.json" },
+    { "path": "../serialization/tsconfig.build.json" },
+    { "path": "../network/tsconfig.build.json" }
+  ]
 }

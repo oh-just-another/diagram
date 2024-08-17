@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/collab",
-  "version": "0.15.0",
-  "description": "collab package",
+  "version": "0.16.0",
+  "description": "Real-time collaboration: Yjs binding for scenes + awareness for presence.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -28,5 +28,14 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "@oh-just-another/types": "workspace:*",
+    "@oh-just-another/scene": "workspace:*",
+    "@oh-just-another/state": "workspace:*",
+    "@oh-just-another/serialization": "workspace:*",
+    "@oh-just-another/network": "workspace:*",
+    "yjs": "^13.6.20",
+    "y-protocols": "^1.0.6"
   }
 }
