@@ -44,6 +44,7 @@ const scenes = {
   10: makeScene(10),
   100: makeScene(100),
   1000: makeScene(1000),
+  5000: makeScene(5000),
 };
 
 describe("renderToSvg throughput", () => {
@@ -57,5 +58,9 @@ describe("renderToSvg throughput", () => {
 
   bench("1000 shapes", () => {
     renderToSvg(scenes[1000]);
+  });
+
+  bench("5000 shapes", () => {
+    renderToSvg(scenes[5000]);
   });
 });

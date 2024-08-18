@@ -53,3 +53,6 @@
 
 ## 0.16.1
 - feat: collab sync handshake + skip localStorage in room
+
+## 0.16.2
+- feat: cross-realm typed-array detect in BroadcastChannelTransport

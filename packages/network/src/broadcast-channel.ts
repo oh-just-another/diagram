@@ -44,11 +44,25 @@ export class BroadcastChannelTransport implements Transport {
 
  // Bound so we can remove the listener cleanly.
  private readonly onNativeMessage = (ev: MessageEvent<unknown>): void => {
-  const data = ev.data;
-  let payload: Uint8Array | null = null;
-  if (data instanceof Uint8Array) payload = data;
-  else if (data instanceof ArrayBuffer) payload = new Uint8Array(data);
+  const payload = toUint8Array(ev.data);
   if (!payload) return;
   for (const h of this.handlers) h(payload);
  };
 }
+
+/**
+ * `instanceof Uint8Array` returns `false` across realms — BroadcastChannel
+ * delivers structured-cloned data whose prototype lives in the *sender's*
+ * realm, not the receiver's. Detect typed arrays by their internal tag
+ * via `Object.prototype.toString.call` instead.
+ */
+const toUint8Array = (data: unknown): Uint8Array | null => {
+ if (data === null || data === undefined) return null;
+ const tag = Object.prototype.toString.call(data);
+ if (tag === "[object Uint8Array]") {
+  const view = data as { buffer: ArrayBuffer; byteOffset: number; byteLength: number };
+  return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+ }
+ if (tag === "[object ArrayBuffer]") return new Uint8Array(data as ArrayBuffer);
+ return null;
+};
