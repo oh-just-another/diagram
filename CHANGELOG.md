@@ -56,3 +56,6 @@
 
 ## 0.16.2
 - feat: cross-realm typed-array detect in BroadcastChannelTransport
+
+## 0.16.3
+- feat: release prep

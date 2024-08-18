@@ -2,7 +2,7 @@
 
 Monorepo library for drawing diagrams: browser editor + headless-render for servers, split into independent npm packages.
 
-## Quick start
+## Quick start (for contributors)
 
 ```bash
 pnpm install     # installing dependencies
@@ -11,6 +11,12 @@ pnpm test        # tests
 pnpm lint        # eslint
 pnpm typecheck   # tsc --noEmit
 pnpm format      # prettier --write .
+```
+
+Run the demo in the browser:
+
+```bash
+pnpm --filter @oh-just-another/demo dev   # http://localhost:5174
 ```
 
 Create a new package:

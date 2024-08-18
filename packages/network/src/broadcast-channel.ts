@@ -44,8 +44,21 @@ export class BroadcastChannelTransport implements Transport {
 
  // Bound so we can remove the listener cleanly.
  private readonly onNativeMessage = (ev: MessageEvent<unknown>): void => {
+  // eslint-disable-next-line no-console
+  console.debug(
+   "[BroadcastChannelTransport] native message",
+   Object.prototype.toString.call(ev.data),
+  );
   const payload = toUint8Array(ev.data);
-  if (!payload) return;
+  if (!payload) {
+    
+   console.warn(
+    "[BroadcastChannelTransport] dropped inbound message — unsupported payload type",
+    Object.prototype.toString.call(ev.data),
+    ev.data,
+   );
+   return;
+  }
   for (const h of this.handlers) h(payload);
  };
 }
