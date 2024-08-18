@@ -79,8 +79,18 @@ const restoreScene = (): Scene => {
   return seedScene();
 };
 
+const readRoomFromUrlBeforeMount = (): string | null => {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("room");
+};
+
 export const App = () => {
-  const initialScene = useMemo(restoreScene, []);
+  // Decide *before* the editor is created whether we're in collab mode.
+  // In collab mode we start the editor empty and let `bindEditor` adopt
+  // the room's CRDT state; loading from localStorage would race with
+  // peers and clobber the shared scene.
+  const isCollab = useMemo(() => readRoomFromUrlBeforeMount() !== null, []);
+  const initialScene = useMemo(() => (isCollab ? seedScene() : restoreScene()), [isCollab]);
   const { theme, toggle } = useTheme();
   const [editor, setEditor] = useState<Editor | null>(null);
   useHotkeys(editor);
@@ -154,7 +164,7 @@ export const App = () => {
       </header>
 
       <DiagramRoot initialScene={initialScene} initialMode="select" onReady={setEditor}>
-        <PersistSubscriber />
+        {isCollab ? null : <PersistSubscriber />}
         <main style={{ display: "flex", flex: 1, minHeight: 0, background: "var(--bg)" }}>
           <Palette style={paletteStyle} />
           <CanvasArea />

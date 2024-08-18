@@ -27,13 +27,32 @@ export const useCollab = (
     const aw = new CollabAwareness(doc);
     aw.updateLocal({ user: randomUser() });
 
-    const transport = new BroadcastChannelTransport(`demo-room-${room}`);
+    const channelName = `demo-room-${room}`;
+    console.warn(`[collab] joining room "${room}" (channel "${channelName}")`);
+    const transport = new BroadcastChannelTransport(channelName);
+    // Diagnostic wrapper — logs each tagged message in / out so we can
+    // confirm the BroadcastChannel hop in DevTools.
+    const wrappedTransport = {
+      send: (p: Uint8Array): void => {
+        console.debug(`[collab] → send tag=${p[0]} bytes=${p.length}`);
+        transport.send(p);
+      },
+      onMessage: (h: (p: Uint8Array) => void): (() => void) =>
+        transport.onMessage((p) => {
+          console.debug(`[collab] ← recv tag=${p[0]} bytes=${p.length}`);
+          h(p);
+        }),
+      close: (): void => transport.close(),
+    };
     const provider = new TransportProvider({
       doc,
-      transport,
+      transport: wrappedTransport,
       awareness: aw.awareness,
     });
-    const unbind = bindEditor(editor, sceneDoc);
+    // Wait briefly for peers to answer the implicit sync request before we
+    // decide to seed the room with our local scene. Without this, joiners
+    // would race the seeder and clobber the existing room state.
+    const unbind = bindEditor(editor, sceneDoc, { waitForSyncMs: 300 });
     setAwareness(aw);
 
     return () => {

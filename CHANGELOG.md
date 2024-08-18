@@ -50,3 +50,6 @@
 
 ## 0.16.0
 - feat: collab
+
+## 0.16.1
+- feat: collab sync handshake + skip localStorage in room
