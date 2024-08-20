@@ -34,12 +34,10 @@ export const useCollab = (
     // confirm the BroadcastChannel hop in DevTools.
     const wrappedTransport = {
       send: (p: Uint8Array): void => {
-        console.debug(`[collab] → send tag=${p[0]} bytes=${p.length}`);
         transport.send(p);
       },
       onMessage: (h: (p: Uint8Array) => void): (() => void) =>
         transport.onMessage((p) => {
-          console.debug(`[collab] ← recv tag=${p[0]} bytes=${p.length}`);
           h(p);
         }),
       close: (): void => transport.close(),

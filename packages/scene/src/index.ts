@@ -36,6 +36,16 @@ export {
   getShapeWorldBounds,
 } from "./shape.js";
 
+// Anchor helpers
+export {
+  STANDARD_ANCHORS,
+  STANDARD_ANCHOR_RATIOS,
+  getNamedAnchorLocal,
+  getAnchorLocal,
+  getAnchorWorld,
+  listAnchorsLocal,
+} from "./anchors.js";
+
 // Viewport helpers
 export {
   DEFAULT_VIEWPORT,

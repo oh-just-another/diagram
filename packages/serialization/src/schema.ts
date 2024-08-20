@@ -31,6 +31,15 @@ const TextStyleZ = StyleZ.extend({
 
 const MetadataZ = z.record(z.string(), z.unknown()).optional();
 
+// --- Anchors (referenced by both shapes and edges) ---
+
+const NamedAnchorZ = z.string(); // open enum (StandardAnchor + custom)
+const AnchorRefZ = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("named"), name: NamedAnchorZ }).strict(),
+  z.object({ kind: z.literal("ratio"), position: Vec2Z }).strict(),
+  z.object({ kind: z.literal("absolute"), offset: Vec2Z }).strict(),
+]);
+
 // --- Shapes ---
 
 const ShapeBaseZ = z.object({
@@ -46,6 +55,7 @@ const ShapeBaseZ = z.object({
   maxWidth: z.number().optional(),
   maxHeight: z.number().optional(),
   noFlip: z.boolean().optional(),
+  anchors: z.record(z.string(), AnchorRefZ).optional(),
 });
 
 const RectangleZ = ShapeBaseZ.extend({
@@ -139,11 +149,6 @@ const ShapeZ = z.union([
 
 // --- Edges ---
 
-const NamedAnchorZ = z.string(); // open enum (StandardAnchor + custom)
-const AnchorRefZ = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("named"), name: NamedAnchorZ }).strict(),
-  z.object({ kind: z.literal("ratio"), position: Vec2Z }).strict(),
-]);
 const EdgeEndpointZ = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("point"), position: Vec2Z }).strict(),
   z.object({ kind: z.literal("anchor"), shapeId: z.string(), anchor: AnchorRefZ }).strict(),

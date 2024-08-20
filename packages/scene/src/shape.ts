@@ -1,6 +1,7 @@
 import type { Bounds, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
 import type { FractionalIndex } from "fractional-keys";
 import { bounds as B } from "@oh-just-another/math";
+import type { AnchorRef } from "./edge.js";
 import type { Style, TextStyle } from "./style.js";
 
 /**
@@ -42,6 +43,18 @@ export interface ShapeBase {
    * `minHeight` if set). Defaults to `false` for backward compatibility.
    */
   readonly noFlip?: boolean;
+
+  /**
+   * Custom named connection points on this shape, on top of the 9 standard
+   * anchors (`top-left` / `top` / `top-right` / `right` / `bottom-right` /
+   * `bottom` / `bottom-left` / `left` / `center`). Entries with a standard
+   * name override the standard placement; new names add fresh ports.
+   *
+   * Values are `AnchorRef`s — `ratio` keeps the point proportional to the
+   * shape's bounds, `absolute` pins it at a fixed pixel offset. Resolving
+   * an anchor is `getAnchorLocal` / `getAnchorWorld` in `./anchors.ts`.
+   */
+  readonly anchors?: Readonly<Record<string, AnchorRef>>;
 }
 
 export interface RectangleShape extends ShapeBase {

@@ -59,3 +59,6 @@
 
 ## 0.16.3
 - feat: release prep
+
+## 0.16.4
+- feat: anchors
