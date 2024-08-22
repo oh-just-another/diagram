@@ -44,11 +44,21 @@ export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
  * Handles are sized in *screen* pixels regardless of zoom (4 × 4 CSS px) — the
  * caller passes the viewport so this function can compensate.
  */
+export interface EdgePreview {
+  /** World-space anchor on the source shape, or null for a free point. */
+  readonly from: Vec2;
+  readonly to: Vec2;
+}
+
 export const renderOverlay = (
   scene: Scene,
   selection: Selection,
   target: RenderTarget,
-  options: { drawingPreview?: Bounds; style?: Partial<OverlayStyle> } = {},
+  options: {
+    drawingPreview?: Bounds;
+    edgePreview?: EdgePreview;
+    style?: Partial<OverlayStyle>;
+  } = {},
 ): void => {
   const style = { ...DEFAULT_OVERLAY_STYLE, ...options.style };
   target.clear();
@@ -81,6 +91,13 @@ export const renderOverlay = (
   if (options.drawingPreview) {
     const screenBounds = projectBounds(options.drawingPreview, w2s);
     drawDrawingPreview(target, screenBounds, style);
+  }
+
+  // 3. Edge-drawing preview — straight dashed line in screen space.
+  if (options.edgePreview) {
+    const from = matrix.applyToPoint(w2s, options.edgePreview.from);
+    const to = matrix.applyToPoint(w2s, options.edgePreview.to);
+    drawEdgePreview(target, from, to, style);
   }
 
   target.restore();
@@ -121,5 +138,15 @@ const drawDrawingPreview = (target: RenderTarget, b: Bounds, style: OverlayStyle
   target.setDashArray(style.drawingDash);
   target.beginPath();
   target.rect(b.x, b.y, b.width, b.height);
+  target.stroke();
+};
+
+const drawEdgePreview = (target: RenderTarget, from: Vec2, to: Vec2, style: OverlayStyle): void => {
+  target.setStroke(style.drawingStroke);
+  target.setStrokeWidth(1.5);
+  target.setDashArray(style.drawingDash);
+  target.beginPath();
+  target.moveTo(from.x, from.y);
+  target.lineTo(to.x, to.y);
   target.stroke();
 };

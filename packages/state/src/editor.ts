@@ -2,20 +2,25 @@ import { createActor, type Actor } from "xstate";
 import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
 import { shapeId as castShapeId } from "@oh-just-another/types";
 import {
+  addEdge,
   addShape,
   apply,
   DEFAULT_LAYER_ID,
+  getAnchorWorld,
   getShape,
   getShapeAt,
   getShapeWorldBounds,
   getScreenToWorld,
   orderForTop,
+  type Edge,
+  type EdgeEndpoint,
   type Patch,
   type Scene,
   type Shape,
 } from "@oh-just-another/scene";
+import { edgeId as castEdgeId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
-import { renderScene, type RenderTarget } from "@oh-just-another/renderer-core";
+import { renderEdges, renderScene, type RenderTarget } from "@oh-just-another/renderer-core";
 import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
 import { fromPointerEvent } from "./dom-events.js";
 import { hitHandle } from "./handle.js";
@@ -65,6 +70,7 @@ export class Editor {
   private _selection: Selection.Selection = Selection.EMPTY;
   /** Live preview while drawing a new shape; null when not drawing. */
   private drawingPreview: Bounds | null = null;
+  private edgePreview: { from: Vec2; to: Vec2 } | null = null;
   private nextId = 0;
 
   private readonly _history: History;
@@ -253,7 +259,14 @@ export class Editor {
       if (clickEffect) this.applyEmit(clickEffect);
 
       this.drawingPreview = null;
-      this.actor.send({ type: "POINTER_UP", point: worldPoint });
+      // In draw-edge mode the machine wants the up-side hit-test so it
+      // can land the new edge on a shape under the release point.
+      const upTarget = ctxBeforeUp.mode === "draw-edge" ? this.hitTest(worldPoint) : undefined;
+      this.actor.send(
+        upTarget !== undefined
+          ? { type: "POINTER_UP", point: worldPoint, target: upTarget }
+          : { type: "POINTER_UP", point: worldPoint },
+      );
       this.commitGesture();
     };
 
@@ -277,7 +290,7 @@ export class Editor {
   }
 
   private isDrawingPhase(ctx: InteractionContext): boolean {
-    return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse";
+    return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse" || ctx.mode === "draw-edge";
   }
 
   /**
@@ -330,6 +343,18 @@ export class Editor {
         return;
       case "CREATE_SHAPE":
         this.applyCreate(emit.shapeType, emit.bounds);
+        return;
+      case "CREATE_EDGE":
+        this.applyCreateEdge(emit);
+        return;
+      case "DRAW_EDGE_PREVIEW":
+        this.applyEdgePreview(emit.fromShape, emit.fromPoint, emit.toPoint);
+        return;
+      case "DRAW_EDGE_PREVIEW_CLEAR":
+        if (this.edgePreview) {
+          this.edgePreview = null;
+          this.notify();
+        }
         return;
       case "TEMPLATE_TAP":
         // Forward to subscribers via a custom listener path.
@@ -460,6 +485,61 @@ export class Editor {
   }
 
   /**
+   * Build an `Edge` from a draw-edge gesture and commit it as a single
+   * history record. Endpoints are landed on `center` of the source /
+   * target shape when present and fall back to free `point`
+   * endpoints otherwise.
+   */
+  private applyCreateEdge(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
+    const buildEndpoint = (shapeId: ShapeId | null, point: Vec2): EdgeEndpoint => {
+      if (!shapeId) return { kind: "point", position: point };
+      return {
+        kind: "anchor",
+        shapeId,
+        anchor: { kind: "named", name: "center" },
+      };
+    };
+
+    const from = buildEndpoint(emit.fromShape, emit.fromPoint);
+    const to = buildEndpoint(emit.toShape, emit.toPoint);
+
+    const order = orderForTop(
+      Array.from(this._scene.edges.values())
+        .filter((e) => e.layerId === DEFAULT_LAYER_ID)
+        .map((e) => e.order),
+    );
+
+    const id = castEdgeId(`edge-${++this.nextId}-${Date.now().toString(36)}`);
+    const edge: Edge = {
+      id,
+      layerId: DEFAULT_LAYER_ID,
+      from,
+      to,
+      order,
+      style: { stroke: "#444", strokeWidth: 1.5 },
+      arrowheads: { to: "triangle" },
+    };
+    const result = addEdge(this._scene, edge);
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.edgePreview = null;
+    this.notify();
+  }
+
+  private applyEdgePreview(fromShape: ShapeId | null, fromPoint: Vec2, toPoint: Vec2): void {
+    // If the gesture started on a shape, snap the visible start to that
+    // shape's `center` anchor (matches what the final edge will use). Free-
+    // floating gestures keep the press-down world point.
+    let from = fromPoint;
+    if (fromShape) {
+      const shape = getShape(this._scene, fromShape);
+      if (shape) from = getAnchorWorld(shape, { kind: "named", name: "center" });
+    }
+    this.edgePreview = { from, to: toPoint };
+    this.notify();
+  }
+
+  /**
    * Open a gesture transaction on the first drag-emitted patch, then add
    * subsequent patches to it. POINTER_UP commits it as one history record.
    */
@@ -503,12 +583,11 @@ export class Editor {
 
   private render(): void {
     renderScene(this._scene, this.mainTarget);
-    renderOverlay(
-      this._scene,
-      this._selection,
-      this.overlayTarget,
-      this.drawingPreview ? { drawingPreview: this.drawingPreview } : {},
-    );
+    renderEdges(this._scene, this.mainTarget);
+    const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
+    if (this.drawingPreview) overlayOpts.drawingPreview = this.drawingPreview;
+    if (this.edgePreview) overlayOpts.edgePreview = this.edgePreview;
+    renderOverlay(this._scene, this._selection, this.overlayTarget, overlayOpts);
   }
 }
 

@@ -45,9 +45,47 @@ export type EdgeEndpoint =
   | { readonly kind: "anchor"; readonly shapeId: ShapeId; readonly anchor: AnchorRef };
 
 /**
+ * How to draw the line between an edge's two endpoints.
+ *   - `straight` — single segment endpoint-to-endpoint.
+ *   - `orthogonal` — Manhattan elbow (axis-aligned segments). The
+ *     renderer picks intermediate waypoints; explicit `waypoints` on
+ *     the edge override the default.
+ *   - `bezier` — cubic curve. Renderer derives sensible control points
+ *     from the endpoint directions.
+ */
+export type EdgeRouting = "straight" | "orthogonal" | "bezier";
+
+/**
+ * Decoration drawn at the end of an edge segment. Renderers map the
+ * style to its own primitives (Canvas2D / SVG marker / pdfkit shape).
+ */
+export type ArrowheadStyle = "none" | "arrow" | "triangle" | "diamond" | "circle";
+
+export interface EdgeArrowheads {
+  readonly from?: ArrowheadStyle;
+  readonly to?: ArrowheadStyle;
+  /** Length of the arrowhead in local pixels. Default 10. */
+  readonly size?: number;
+}
+
+/**
+ * Inline text rendered along the edge. Position is the fractional offset
+ * along the visible path (`0` = at `from`, `1` = at `to`, `0.5` = mid).
+ * Renderers handle background pill / alignment.
+ */
+export interface EdgeLabel {
+  readonly text: string;
+  readonly position?: number; // 0..1, default 0.5
+  readonly fontSize?: number; // default 12
+  readonly fill?: string; // text colour, default #222
+  readonly background?: string; // pill background, default #fff
+}
+
+/**
  * Connection between two endpoints, with optional waypoints for orthogonal /
- * routed lines. The kernel does not perform routing — that is up to the
- * renderer/layout pass.
+ * routed lines. The kernel does not perform routing itself — that is up to
+ * the renderer/layout pass, which reads `routing` + `waypoints` and either
+ * follows them or computes new ones.
  */
 export interface Edge {
   readonly id: EdgeId;
@@ -56,6 +94,12 @@ export interface Edge {
   readonly to: EdgeEndpoint;
   /** Intermediate waypoints in world coordinates. */
   readonly waypoints?: readonly Vec2[];
+  /** Routing strategy. Default `straight`. */
+  readonly routing?: EdgeRouting;
+  /** Arrowhead decoration on each end. Default: no arrowheads. */
+  readonly arrowheads?: EdgeArrowheads;
+  /** Optional inline label. */
+  readonly label?: EdgeLabel;
   /** Z-order key within `layerId`. */
   readonly order: FractionalIndex;
   readonly style: Style;

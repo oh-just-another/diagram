@@ -14,7 +14,18 @@ export type {
   TemplateShape,
   ShapeBounder,
 } from "./shape.js";
-export type { Edge, EdgeEndpoint, AnchorRef, NamedAnchor, StandardAnchor } from "./edge.js";
+export type {
+  Edge,
+  EdgeEndpoint,
+  EdgeRouting,
+  EdgeArrowheads,
+  EdgeLabel,
+  ArrowheadStyle,
+  AnchorRef,
+  NamedAnchor,
+  StandardAnchor,
+} from "./edge.js";
+export { getEdgeEndpointWorld, getEdgePath } from "./edge-geometry.js";
 export type { Layer } from "./layer.js";
 export type { Viewport } from "./viewport.js";
 export type { Scene } from "./scene.js";

@@ -47,6 +47,12 @@ export interface PointerMoveEvent {
 export interface PointerUpEvent {
   readonly type: "POINTER_UP";
   readonly point: Vec2;
+  /**
+   * Optional hit-test of the element under the pointer at release time.
+   * Hosts that want edge-creation to land on a shape provide this. When
+   * omitted the machine treats the release as happening on empty canvas.
+   */
+  readonly target?: PressTarget;
 }
 export interface PointerCancelEvent {
   readonly type: "POINTER_CANCEL";
@@ -88,6 +94,24 @@ export type InteractionEmit =
       readonly shapeType: "rect" | "ellipse";
       readonly bounds: Bounds;
     }
+  | {
+      readonly type: "CREATE_EDGE";
+      /** Shape the edge starts on, or `null` for a free-floating point. */
+      readonly fromShape: ShapeId | null;
+      /** Shape the edge lands on, or `null` for a free-floating point. */
+      readonly toShape: ShapeId | null;
+      /** Press-down world point — used as the fallback when `fromShape` is null. */
+      readonly fromPoint: Vec2;
+      /** Pointer-up world point — used as the fallback when `toShape` is null. */
+      readonly toPoint: Vec2;
+    }
+  | {
+      readonly type: "DRAW_EDGE_PREVIEW";
+      readonly fromShape: ShapeId | null;
+      readonly fromPoint: Vec2;
+      readonly toPoint: Vec2;
+    }
+  | { readonly type: "DRAW_EDGE_PREVIEW_CLEAR" }
   | {
       readonly type: "TEMPLATE_TAP";
       readonly shapeId: ShapeId;
@@ -191,11 +215,47 @@ export const interactionMachine = setup({
       if (bounds.width < 1 || bounds.height < 1) return;
       enqueue.emit({ type: "CREATE_SHAPE", shapeType: context.drawingType, bounds });
     }),
+    emitEdgePreview: enqueueActions(({ context, event, enqueue }) => {
+      if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return;
+      enqueue.emit({
+        type: "DRAW_EDGE_PREVIEW",
+        fromShape: context.pressTarget?.kind === "shape" ? context.pressTarget.id : null,
+        fromPoint: context.pressOrigin,
+        toPoint: event.point,
+      });
+    }),
+    emitEdgePreviewClear: enqueueActions(({ enqueue }) => {
+      enqueue.emit({ type: "DRAW_EDGE_PREVIEW_CLEAR" });
+    }),
+    emitCreateEdge: enqueueActions(({ context, event, enqueue }) => {
+      if (event.type !== "POINTER_UP" || !context.pressOrigin) return;
+      // `event.target` carries the *up*-side hit-test (host computed it
+      // the same way as POINTER_DOWN). Use it to land on a shape if the
+      // pointer is still over one.
+      const upTarget = event.target;
+      const toShape = upTarget?.kind === "shape" ? upTarget.id : null;
+      const fromShape = context.pressTarget?.kind === "shape" ? context.pressTarget.id : null;
+      // Reject degenerate (released right back on the source shape without
+      // moving — clearly an accidental click).
+      const dx = event.point.x - context.pressOrigin.x;
+      const dy = event.point.y - context.pressOrigin.y;
+      if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return;
+      enqueue.emit({
+        type: "CREATE_EDGE",
+        fromShape,
+        toShape,
+        fromPoint: context.pressOrigin,
+        toPoint: event.point,
+      });
+    }),
   },
   guards: {
     movedAndOnShape: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
       if (context.pressTarget?.kind !== "shape") return false;
+      // Dragging-on-shape moves the shape — only valid in `select` mode.
+      // In `draw-edge` mode the same gesture starts an edge from the shape.
+      if (context.mode !== "select") return false;
       return dragExceeded(context.pressOrigin, event.point);
     },
     movedAndOnHandle: ({ context, event }) => {
@@ -205,7 +265,12 @@ export const interactionMachine = setup({
     },
     movedAndDrawing: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
-      if (context.mode === "select") return false;
+      if (context.mode !== "draw-rect" && context.mode !== "draw-ellipse") return false;
+      return dragExceeded(context.pressOrigin, event.point);
+    },
+    movedAndDrawingEdge: ({ context, event }) => {
+      if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
+      if (context.mode !== "draw-edge") return false;
       return dragExceeded(context.pressOrigin, event.point);
     },
   },
@@ -269,6 +334,14 @@ export const interactionMachine = setup({
             ],
           },
           {
+            guard: "movedAndDrawingEdge",
+            target: "drawingEdge",
+            actions: [
+              { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+              { type: "emitEdgePreview" },
+            ],
+          },
+          {
             actions: [{ type: "updateLast", params: ({ event }) => ({ point: event.point }) }],
           },
         ],
@@ -312,6 +385,28 @@ export const interactionMachine = setup({
         POINTER_CANCEL: { target: "idle", actions: [{ type: "resetGesture" }] },
       },
     },
+    drawingEdge: {
+      on: {
+        POINTER_MOVE: {
+          actions: [
+            { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+            { type: "emitEdgePreview" },
+          ],
+        },
+        POINTER_UP: {
+          target: "idle",
+          actions: [
+            { type: "emitCreateEdge" },
+            { type: "emitEdgePreviewClear" },
+            { type: "resetGesture" },
+          ],
+        },
+        POINTER_CANCEL: {
+          target: "idle",
+          actions: [{ type: "emitEdgePreviewClear" }, { type: "resetGesture" }],
+        },
+      },
+    },
   },
 });
 
@@ -328,6 +423,9 @@ export const interpretPressEnd = (
 ): InteractionEmit | null => {
   if (!ctx.pressOrigin || !ctx.pressTarget) return null;
   if (dragExceeded(ctx.pressOrigin, upPoint)) return null;
+  // In draw-edge mode a click without movement shouldn't toggle selection —
+  // the user is mid-mode and meant to start an edge.
+  if (ctx.mode === "draw-edge") return null;
   if (ctx.pressTarget.kind === "shape") {
     return { type: "SELECT_REPLACE", id: ctx.pressTarget.id };
   }

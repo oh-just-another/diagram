@@ -154,6 +154,25 @@ const EdgeEndpointZ = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("anchor"), shapeId: z.string(), anchor: AnchorRefZ }).strict(),
 ]);
 
+const EdgeRoutingZ = z.enum(["straight", "orthogonal", "bezier"]);
+const ArrowheadStyleZ = z.enum(["none", "arrow", "triangle", "diamond", "circle"]);
+const EdgeArrowheadsZ = z
+  .object({
+    from: ArrowheadStyleZ.optional(),
+    to: ArrowheadStyleZ.optional(),
+    size: z.number().optional(),
+  })
+  .strict();
+const EdgeLabelZ = z
+  .object({
+    text: z.string(),
+    position: z.number().optional(),
+    fontSize: z.number().optional(),
+    fill: z.string().optional(),
+    background: z.string().optional(),
+  })
+  .strict();
+
 const EdgeZ = z
   .object({
     id: z.string(),
@@ -161,6 +180,9 @@ const EdgeZ = z
     from: EdgeEndpointZ,
     to: EdgeEndpointZ,
     waypoints: z.array(Vec2Z).readonly().optional(),
+    routing: EdgeRoutingZ.optional(),
+    arrowheads: EdgeArrowheadsZ.optional(),
+    label: EdgeLabelZ.optional(),
     order: z.string(),
     style: StyleZ,
     metadata: MetadataZ,

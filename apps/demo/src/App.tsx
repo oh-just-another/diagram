@@ -279,6 +279,7 @@ const FloatingToolbar = () => {
       { kind: "mode", mode: "select", label: "Select" },
       { kind: "mode", mode: "draw-rect", label: "Rectangle" },
       { kind: "mode", mode: "draw-ellipse", label: "Ellipse" },
+      { kind: "mode", mode: "draw-edge", label: "Edge" },
       { kind: "divider" },
       { kind: "undo" },
       { kind: "redo" },

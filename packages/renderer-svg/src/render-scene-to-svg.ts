@@ -1,5 +1,6 @@
 import {
   installBuiltinRenderers,
+  renderEdges,
   renderScene,
   type RenderSceneOptions,
 } from "@oh-just-another/renderer-core";
@@ -48,5 +49,6 @@ export const renderSceneToSvg = (scene: Scene, options: RenderSceneToSvgOptions 
   });
 
   renderScene(scene, target, options);
+  renderEdges(scene, target);
   return target.toSvg();
 };

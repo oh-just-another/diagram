@@ -126,6 +126,79 @@ describe("interactionMachine", () => {
     });
   });
 
+  describe("drawing edge", () => {
+    it("draw-edge mode + drag → drawingEdge state + DRAW_EDGE_PREVIEW emit", () => {
+      const { actor, emits } = start();
+      actor.send({ type: "SET_MODE", mode: "draw-edge" });
+      actor.send({ type: "POINTER_DOWN", point: { x: 10, y: 10 }, target: rectTarget("a") });
+      actor.send({ type: "POINTER_MOVE", point: { x: 80, y: 50 } });
+      expect(actor.getSnapshot().value).toBe("drawingEdge");
+      const preview = emits.find((e) => e.type === "DRAW_EDGE_PREVIEW");
+      expect(preview).toBeDefined();
+      if (preview?.type === "DRAW_EDGE_PREVIEW") {
+        expect(preview.fromShape).toBe(shapeId("a"));
+        expect(preview.toPoint).toEqual({ x: 80, y: 50 });
+      }
+    });
+
+    it("POINTER_UP on another shape emits CREATE_EDGE with both endpoints anchored", () => {
+      const { actor, emits } = start();
+      actor.send({ type: "SET_MODE", mode: "draw-edge" });
+      actor.send({ type: "POINTER_DOWN", point: { x: 10, y: 10 }, target: rectTarget("a") });
+      actor.send({ type: "POINTER_MOVE", point: { x: 80, y: 50 } });
+      actor.send({
+        type: "POINTER_UP",
+        point: { x: 200, y: 200 },
+        target: rectTarget("b"),
+      });
+      const create = emits.find((e) => e.type === "CREATE_EDGE");
+      expect(create).toBeDefined();
+      if (create?.type === "CREATE_EDGE") {
+        expect(create.fromShape).toBe(shapeId("a"));
+        expect(create.toShape).toBe(shapeId("b"));
+        expect(create.fromPoint).toEqual({ x: 10, y: 10 });
+        expect(create.toPoint).toEqual({ x: 200, y: 200 });
+      }
+    });
+
+    it("POINTER_UP on empty emits CREATE_EDGE with toShape=null", () => {
+      const { actor, emits } = start();
+      actor.send({ type: "SET_MODE", mode: "draw-edge" });
+      actor.send({ type: "POINTER_DOWN", point: { x: 10, y: 10 }, target: rectTarget("a") });
+      actor.send({ type: "POINTER_MOVE", point: { x: 80, y: 50 } });
+      actor.send({
+        type: "POINTER_UP",
+        point: { x: 200, y: 200 },
+        target: { kind: "empty" },
+      });
+      const create = emits.find((e) => e.type === "CREATE_EDGE");
+      expect(create).toBeDefined();
+      if (create?.type === "CREATE_EDGE") {
+        expect(create.fromShape).toBe(shapeId("a"));
+        expect(create.toShape).toBeNull();
+      }
+    });
+
+    it("releasing without movement does not emit", () => {
+      const { actor, emits } = start();
+      actor.send({ type: "SET_MODE", mode: "draw-edge" });
+      actor.send({ type: "POINTER_DOWN", point: { x: 10, y: 10 }, target: rectTarget("a") });
+      actor.send({ type: "POINTER_UP", point: { x: 10, y: 10 }, target: rectTarget("a") });
+      expect(emits.find((e) => e.type === "CREATE_EDGE")).toBeUndefined();
+    });
+
+    it("POINTER_CANCEL clears the preview", () => {
+      const { actor, emits } = start();
+      actor.send({ type: "SET_MODE", mode: "draw-edge" });
+      actor.send({ type: "POINTER_DOWN", point: { x: 10, y: 10 }, target: rectTarget("a") });
+      actor.send({ type: "POINTER_MOVE", point: { x: 80, y: 50 } });
+      actor.send({ type: "POINTER_CANCEL" });
+      expect(actor.getSnapshot().value).toBe("idle");
+      expect(emits.find((e) => e.type === "DRAW_EDGE_PREVIEW_CLEAR")).toBeDefined();
+      expect(emits.find((e) => e.type === "CREATE_EDGE")).toBeUndefined();
+    });
+  });
+
   describe("SET_MODE", () => {
     it("returns to idle and updates mode", () => {
       const { actor } = start();
