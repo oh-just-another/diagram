@@ -6,19 +6,25 @@ import {
   addShape,
   apply,
   DEFAULT_LAYER_ID,
+  findEdgeAt,
+  findNearestAnchor,
   getAnchorWorld,
+  getEdge,
+  getEdgePath,
   getShape,
   getShapeAt,
   getShapeWorldBounds,
   getScreenToWorld,
+  listAnchorsLocal,
   orderForTop,
+  updateEdge,
   type Edge,
   type EdgeEndpoint,
   type Patch,
   type Scene,
   type Shape,
 } from "@oh-just-another/scene";
-import { edgeId as castEdgeId } from "@oh-just-another/types";
+import { edgeId as castEdgeId, type EdgeId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import { renderEdges, renderScene, type RenderTarget } from "@oh-just-another/renderer-core";
 import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
@@ -71,6 +77,25 @@ export class Editor {
   /** Live preview while drawing a new shape; null when not drawing. */
   private drawingPreview: Bounds | null = null;
   private edgePreview: { from: Vec2; to: Vec2 } | null = null;
+  /**
+   * Shape being hovered while draw-edge mode is active. Drives the port-
+   * overlay render so the user sees attachment points. `null` outside
+   * draw-edge mode or when the pointer is over empty canvas.
+   */
+  private hoveredEdgeTarget: { shapeId: ShapeId; activeAnchor: string | null } | null = null;
+  /**
+   * Currently selected edge.
+   */
+  private _selectedEdge: EdgeId | null = null;
+  /**
+   * Mid-drag preview state when the user is dragging an edge endpoint.
+   * Drawn as an overlay line + handle dot so the user sees the target.
+   */
+  private edgeEndpointDrag: {
+    edgeId: EdgeId;
+    side: "from" | "to";
+    toPoint: Vec2;
+  } | null = null;
   private nextId = 0;
 
   private readonly _history: History;
@@ -137,6 +162,10 @@ export class Editor {
     if (this.gestureTx) {
       this.gestureTx.cancel();
       this.gestureTx = null;
+    }
+    // Hide the port overlay when leaving draw-edge.
+    if (mode !== "draw-edge" && this.hoveredEdgeTarget !== null) {
+      this.hoveredEdgeTarget = null;
     }
     this.actor.send({ type: "SET_MODE", mode });
     this.notify();
@@ -239,9 +268,23 @@ export class Editor {
       const data = fromPointerEvent(ev, this.host);
       const worldPoint = this.screenToWorld(data.point);
       const ctx = this.actor.getSnapshot().context;
-      if (ctx.pressOrigin && ctx.mode !== "select" && this.isDrawingPhase(ctx)) {
-        // Update drawing preview live before machine transitions occur.
+      if (
+        ctx.pressOrigin &&
+        ctx.mode !== "select" &&
+        ctx.mode !== "draw-edge" &&
+        this.isDrawingPhase(ctx)
+      ) {
+        // Update rubber-band preview live for rect / ellipse drawing.
         this.drawingPreview = boundsFromPoints(ctx.pressOrigin, worldPoint);
+      }
+      // Port-overlay tracking in draw-edge mode — both when idle (showing
+      // where you can start an edge) and during the gesture (showing the
+      // snap target as the pointer crosses shapes).
+      if (ctx.mode === "draw-edge") {
+        this.updateHoveredEdgeTarget(worldPoint);
+      } else if (this.hoveredEdgeTarget !== null) {
+        this.hoveredEdgeTarget = null;
+        this.notify();
       }
       this.actor.send({ type: "POINTER_MOVE", point: worldPoint });
     };
@@ -259,9 +302,13 @@ export class Editor {
       if (clickEffect) this.applyEmit(clickEffect);
 
       this.drawingPreview = null;
-      // In draw-edge mode the machine wants the up-side hit-test so it
-      // can land the new edge on a shape under the release point.
-      const upTarget = ctxBeforeUp.mode === "draw-edge" ? this.hitTest(worldPoint) : undefined;
+      // Provide the up-side hit-test when the gesture cares about where
+      // it lands: drawing a new edge, or re-binding an existing edge
+      // endpoint. The hit-test sees the *current* selection (edge or
+      // shape) and so resolves correctly to either kind.
+      const needsUpTarget =
+        ctxBeforeUp.mode === "draw-edge" || ctxBeforeUp.pressTarget?.kind === "edge-endpoint";
+      const upTarget = needsUpTarget ? this.hitTest(worldPoint) : undefined;
       this.actor.send(
         upTarget !== undefined
           ? { type: "POINTER_UP", point: worldPoint, target: upTarget }
@@ -303,11 +350,8 @@ export class Editor {
   }
 
   private hitTest(worldPoint: Vec2): PressTarget {
-    // Selection takes priority: if the point hits a handle on a currently
-    // selected, *resizable* shape, dispatch a handle press. Non-resizable
-    // shapes (polygon, path, text) don't display handles, so we don't hit-test
-    // for them either.
     const zoom = this._scene.viewport.zoom;
+    // 1. Resize handles on selected shapes win over everything else.
     for (const id of this._selection) {
       const shape = getShape(this._scene, id);
       if (!shape || !isResizable(shape)) continue;
@@ -317,10 +361,34 @@ export class Editor {
         return { kind: "handle", shapeId: id, handle, bounds };
       }
     }
-    // Otherwise: topmost shape under cursor.
+    // 2. Endpoint handles on a selected edge — only when an edge is
+    //    selected. Threshold in screen pixels, converted to world.
+    if (this._selectedEdge) {
+      const edge = getEdge(this._scene, this._selectedEdge);
+      if (edge) {
+        const path = getEdgePath(this._scene, edge);
+        if (path && path.length >= 2) {
+          const handleR = EDGE_ENDPOINT_HANDLE_RADIUS / zoom;
+          const fromPoint = path[0]!;
+          const toPoint = path[path.length - 1]!;
+          if (distanceTo(worldPoint, fromPoint) <= handleR) {
+            return { kind: "edge-endpoint", edgeId: edge.id, side: "from" };
+          }
+          if (distanceTo(worldPoint, toPoint) <= handleR) {
+            return { kind: "edge-endpoint", edgeId: edge.id, side: "to" };
+          }
+        }
+      }
+    }
+    // 3. Topmost shape under cursor.
     const shape = getShapeAt(this._scene, worldPoint);
     if (shape) {
       return { kind: "shape", id: shape.id, bounds: getShapeWorldBounds(shape) };
+    }
+    // 4. Edge body under cursor.
+    const edge = findEdgeAt(this._scene, worldPoint, EDGE_HIT_THRESHOLD / zoom);
+    if (edge) {
+      return { kind: "edge", id: edge.id };
     }
     return { kind: "empty" };
   }
@@ -329,11 +397,35 @@ export class Editor {
     switch (emit.type) {
       case "SELECT_REPLACE":
         this._selection = Selection.single(emit.id);
+        if (this._selectedEdge !== null) this._selectedEdge = null;
         this.notify();
         return;
       case "SELECT_CLEAR":
         this._selection = Selection.EMPTY;
+        if (this._selectedEdge !== null) this._selectedEdge = null;
         this.notify();
+        return;
+      case "SELECT_EDGE_REPLACE":
+        this._selectedEdge = emit.id;
+        this._selection = Selection.EMPTY;
+        this.notify();
+        return;
+      case "SELECT_EDGE_CLEAR":
+        if (this._selectedEdge !== null) {
+          this._selectedEdge = null;
+          this.notify();
+        }
+        return;
+      case "UPDATE_EDGE_ENDPOINT_PREVIEW":
+        this.edgeEndpointDrag = {
+          edgeId: emit.edgeId,
+          side: emit.side,
+          toPoint: emit.toPoint,
+        };
+        this.notify();
+        return;
+      case "UPDATE_EDGE_ENDPOINT":
+        this.applyEdgeEndpointUpdate(emit);
         return;
       case "MOVE_SHAPE":
         this.applyMove(emit.id, emit.delta, emit.originalBounds);
@@ -491,13 +583,15 @@ export class Editor {
    * endpoints otherwise.
    */
   private applyCreateEdge(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
-    const buildEndpoint = (shapeId: ShapeId | null, point: Vec2): EdgeEndpoint => {
-      if (!shapeId) return { kind: "point", position: point };
-      return {
-        kind: "anchor",
-        shapeId,
-        anchor: { kind: "named", name: "center" },
-      };
+    // Snap each endpoint to the nearest port on its shape (one of the 9
+    // standard anchors plus any custom ones). Free-floating endpoints fall
+    // back to the raw world point so the user gets exactly what they drew.
+    const buildEndpoint = (shapeId: ShapeId | null, worldPoint: Vec2): EdgeEndpoint => {
+      if (!shapeId) return { kind: "point", position: worldPoint };
+      const shape = getShape(this._scene, shapeId);
+      if (!shape) return { kind: "point", position: worldPoint };
+      const { ref } = findNearestAnchor(shape, worldPoint);
+      return { kind: "anchor", shapeId, anchor: ref };
     };
 
     const from = buildEndpoint(emit.fromShape, emit.fromPoint);
@@ -526,16 +620,68 @@ export class Editor {
     this.notify();
   }
 
+  private applyEdgeEndpointUpdate(
+    emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
+  ): void {
+    const edge = getEdge(this._scene, emit.edgeId);
+    if (!edge) {
+      this.edgeEndpointDrag = null;
+      this.notify();
+      return;
+    }
+    const newEndpoint: EdgeEndpoint = (() => {
+      if (!emit.toShape) {
+        return { kind: "point", position: emit.toPoint };
+      }
+      const targetShape = getShape(this._scene, emit.toShape);
+      if (!targetShape) return { kind: "point", position: emit.toPoint };
+      const { ref } = findNearestAnchor(targetShape, emit.toPoint);
+      return { kind: "anchor", shapeId: emit.toShape, anchor: ref };
+    })();
+    const result = updateEdge(this._scene, edge.id, (e) => ({ ...e, [emit.side]: newEndpoint }));
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.edgeEndpointDrag = null;
+    this.notify();
+  }
+
+  private updateHoveredEdgeTarget(worldPoint: Vec2): void {
+    const shape = getShapeAt(this._scene, worldPoint);
+    if (!shape) {
+      if (this.hoveredEdgeTarget !== null) {
+        this.hoveredEdgeTarget = null;
+        this.notify();
+      }
+      return;
+    }
+    const nearest = findNearestAnchor(shape, worldPoint);
+    const activeName = nearest.ref.kind === "named" ? nearest.ref.name : null;
+    const prev = this.hoveredEdgeTarget;
+    if (prev?.shapeId === shape.id && prev.activeAnchor === activeName) return;
+    this.hoveredEdgeTarget = { shapeId: shape.id, activeAnchor: activeName };
+    this.notify();
+  }
+
   private applyEdgePreview(fromShape: ShapeId | null, fromPoint: Vec2, toPoint: Vec2): void {
-    // If the gesture started on a shape, snap the visible start to that
-    // shape's `center` anchor (matches what the final edge will use). Free-
-    // floating gestures keep the press-down world point.
+    // When the gesture started on a shape, snap the visible start to the
+    // shape's nearest port relative to the press-down point. The final
+    // edge will use the same snap target on the to-side, so the preview
+    // already shows the user where the connector will land.
     let from = fromPoint;
     if (fromShape) {
       const shape = getShape(this._scene, fromShape);
-      if (shape) from = getAnchorWorld(shape, { kind: "named", name: "center" });
+      if (shape) from = findNearestAnchor(shape, fromPoint).world;
     }
-    this.edgePreview = { from, to: toPoint };
+    let to = toPoint;
+    // If the pointer is currently hovering a shape, snap the visible end
+    // to its nearest port too. The host has no way to know the hovered
+    // shape mid-drag (no PressTarget pushed in POINTER_MOVE) — but we can
+    // simply hit-test the scene here.
+    const hovered = getShapeAt(this._scene, toPoint);
+    if (hovered) {
+      to = findNearestAnchor(hovered, toPoint).world;
+    }
+    this.edgePreview = { from, to };
     this.notify();
   }
 
@@ -587,9 +733,49 @@ export class Editor {
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
     if (this.drawingPreview) overlayOpts.drawingPreview = this.drawingPreview;
     if (this.edgePreview) overlayOpts.edgePreview = this.edgePreview;
+    if (this.hoveredEdgeTarget) {
+      const shape = getShape(this._scene, this.hoveredEdgeTarget.shapeId);
+      if (shape) {
+        const names = [...listAnchorsLocal(shape).keys()];
+        const worldPoints = names.map((name) => getAnchorWorld(shape, { kind: "named", name }));
+        const activeIndex =
+          this.hoveredEdgeTarget.activeAnchor !== null
+            ? names.indexOf(this.hoveredEdgeTarget.activeAnchor)
+            : -1;
+        overlayOpts.ports = {
+          worldPoints,
+          ...(activeIndex >= 0 ? { activeIndex } : {}),
+        };
+      }
+    }
+    if (this._selectedEdge) {
+      const edge = getEdge(this._scene, this._selectedEdge);
+      if (edge) {
+        const path = getEdgePath(this._scene, edge);
+        if (path && path.length >= 2) {
+          // Endpoints in their stored positions; the dragged side jumps to
+          // the cursor so the user sees where the rebind will land. The
+          // edge itself stays on its old path until release.
+          let from = path[0]!;
+          let to = path[path.length - 1]!;
+          if (this.edgeEndpointDrag?.edgeId === this._selectedEdge) {
+            if (this.edgeEndpointDrag.side === "from") from = this.edgeEndpointDrag.toPoint;
+            else to = this.edgeEndpointDrag.toPoint;
+          }
+          overlayOpts.edgeSelection = { from, to };
+        }
+      }
+    }
     renderOverlay(this._scene, this._selection, this.overlayTarget, overlayOpts);
   }
 }
+
+/** Screen-pixel radius of edge endpoint handles. Scaled by zoom in hit-test. */
+const EDGE_ENDPOINT_HANDLE_RADIUS = 8;
+/** Screen-pixel tolerance for clicking on an edge body to select it. */
+const EDGE_HIT_THRESHOLD = 6;
+
+const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 // Local helper duplicated from `handle.ts` so this file does not introduce a
 // circular import. Equivalent to `handle.resizeBounds` for the case where the

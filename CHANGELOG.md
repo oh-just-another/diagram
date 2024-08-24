@@ -65,3 +65,6 @@
 
 ## 0.17.0
 - feat: (MVP)
+
+## 0.17.1
+- feat: follow-up: port overlay, snap, edge selection + endpoint editing

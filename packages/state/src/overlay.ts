@@ -50,6 +50,26 @@ export interface EdgePreview {
   readonly to: Vec2;
 }
 
+/**
+ * Set of world-space points to render as port dots — used when the editor
+ * wants to show "you can attach here" affordances on a hovered shape in
+ * draw-edge mode.
+ */
+export interface PortOverlay {
+  readonly worldPoints: readonly Vec2[];
+  /** Highlight one of the points (the snap target). Optional. */
+  readonly activeIndex?: number;
+}
+
+/**
+ * Selected edge with endpoint world positions. Renderer paints small
+ * handles on each end so the user can grab and re-bind them.
+ */
+export interface EdgeSelection {
+  readonly from: Vec2;
+  readonly to: Vec2;
+}
+
 export const renderOverlay = (
   scene: Scene,
   selection: Selection,
@@ -57,6 +77,8 @@ export const renderOverlay = (
   options: {
     drawingPreview?: Bounds;
     edgePreview?: EdgePreview;
+    ports?: PortOverlay;
+    edgeSelection?: EdgeSelection;
     style?: Partial<OverlayStyle>;
   } = {},
 ): void => {
@@ -98,6 +120,23 @@ export const renderOverlay = (
     const from = matrix.applyToPoint(w2s, options.edgePreview.from);
     const to = matrix.applyToPoint(w2s, options.edgePreview.to);
     drawEdgePreview(target, from, to, style);
+  }
+
+  // 4. Port dots — hover affordance in draw-edge mode.
+  if (options.ports && options.ports.worldPoints.length > 0) {
+    for (let i = 0; i < options.ports.worldPoints.length; i++) {
+      const screen = matrix.applyToPoint(w2s, options.ports.worldPoints[i]!);
+      const active = options.ports.activeIndex === i;
+      drawPortDot(target, screen, style, active);
+    }
+  }
+
+  // 5. Selected-edge endpoint handles.
+  if (options.edgeSelection) {
+    const from = matrix.applyToPoint(w2s, options.edgeSelection.from);
+    const to = matrix.applyToPoint(w2s, options.edgeSelection.to);
+    drawEdgeEndpointHandle(target, from, style);
+    drawEdgeEndpointHandle(target, to, style);
   }
 
   target.restore();
@@ -148,5 +187,34 @@ const drawEdgePreview = (target: RenderTarget, from: Vec2, to: Vec2, style: Over
   target.beginPath();
   target.moveTo(from.x, from.y);
   target.lineTo(to.x, to.y);
+  target.stroke();
+};
+
+const drawPortDot = (
+  target: RenderTarget,
+  center: Vec2,
+  style: OverlayStyle,
+  active: boolean,
+): void => {
+  const radius = active ? 5 : 3.5;
+  target.setStroke(style.selectionStroke);
+  target.setStrokeWidth(active ? 2 : 1);
+  target.setDashArray(null);
+  target.setFill(active ? style.selectionStroke : style.handleFill);
+  target.beginPath();
+  target.ellipse(center.x, center.y, radius, radius);
+  target.fill();
+  target.stroke();
+};
+
+const drawEdgeEndpointHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
+  const radius = 6;
+  target.setStroke(style.selectionStroke);
+  target.setStrokeWidth(2);
+  target.setDashArray(null);
+  target.setFill(style.handleFill);
+  target.beginPath();
+  target.ellipse(center.x, center.y, radius, radius);
+  target.fill();
   target.stroke();
 };

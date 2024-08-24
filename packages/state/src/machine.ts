@@ -1,5 +1,5 @@
 import { assign, enqueueActions, setup } from "xstate";
-import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, EdgeId, ShapeId, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "./handle.js";
 import { DEFAULT_MODE, type Mode } from "./modes.js";
 
@@ -16,6 +16,12 @@ export type PressTarget =
       readonly shapeId: ShapeId;
       readonly handle: HandleId;
       readonly bounds: Bounds;
+    }
+  | { readonly kind: "edge"; readonly id: EdgeId }
+  | {
+      readonly kind: "edge-endpoint";
+      readonly edgeId: EdgeId;
+      readonly side: "from" | "to";
     }
   | { readonly kind: "empty" };
 
@@ -76,6 +82,21 @@ export type InteractionEvent =
 export type InteractionEmit =
   | { readonly type: "SELECT_REPLACE"; readonly id: ShapeId }
   | { readonly type: "SELECT_CLEAR" }
+  | { readonly type: "SELECT_EDGE_REPLACE"; readonly id: EdgeId }
+  | { readonly type: "SELECT_EDGE_CLEAR" }
+  | {
+      readonly type: "UPDATE_EDGE_ENDPOINT_PREVIEW";
+      readonly edgeId: EdgeId;
+      readonly side: "from" | "to";
+      readonly toPoint: Vec2;
+    }
+  | {
+      readonly type: "UPDATE_EDGE_ENDPOINT";
+      readonly edgeId: EdgeId;
+      readonly side: "from" | "to";
+      readonly toPoint: Vec2;
+      readonly toShape: ShapeId | null;
+    }
   | {
       readonly type: "MOVE_SHAPE";
       readonly id: ShapeId;
@@ -227,6 +248,29 @@ export const interactionMachine = setup({
     emitEdgePreviewClear: enqueueActions(({ enqueue }) => {
       enqueue.emit({ type: "DRAW_EDGE_PREVIEW_CLEAR" });
     }),
+    emitEdgeEndpointPreview: enqueueActions(({ context, event, enqueue }) => {
+      if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return;
+      if (context.pressTarget?.kind !== "edge-endpoint") return;
+      enqueue.emit({
+        type: "UPDATE_EDGE_ENDPOINT_PREVIEW",
+        edgeId: context.pressTarget.edgeId,
+        side: context.pressTarget.side,
+        toPoint: event.point,
+      });
+    }),
+    emitEdgeEndpointUpdate: enqueueActions(({ context, event, enqueue }) => {
+      if (event.type !== "POINTER_UP" || !context.pressOrigin) return;
+      if (context.pressTarget?.kind !== "edge-endpoint") return;
+      const upTarget = event.target;
+      const toShape = upTarget?.kind === "shape" ? upTarget.id : null;
+      enqueue.emit({
+        type: "UPDATE_EDGE_ENDPOINT",
+        edgeId: context.pressTarget.edgeId,
+        side: context.pressTarget.side,
+        toPoint: event.point,
+        toShape,
+      });
+    }),
     emitCreateEdge: enqueueActions(({ context, event, enqueue }) => {
       if (event.type !== "POINTER_UP" || !context.pressOrigin) return;
       // `event.target` carries the *up*-side hit-test (host computed it
@@ -271,6 +315,11 @@ export const interactionMachine = setup({
     movedAndDrawingEdge: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
       if (context.mode !== "draw-edge") return false;
+      return dragExceeded(context.pressOrigin, event.point);
+    },
+    movedAndOnEdgeEndpoint: ({ context, event }) => {
+      if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
+      if (context.pressTarget?.kind !== "edge-endpoint") return false;
       return dragExceeded(context.pressOrigin, event.point);
     },
   },
@@ -342,6 +391,14 @@ export const interactionMachine = setup({
             ],
           },
           {
+            guard: "movedAndOnEdgeEndpoint",
+            target: "draggingEdgeEndpoint",
+            actions: [
+              { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+              { type: "emitEdgeEndpointPreview" },
+            ],
+          },
+          {
             actions: [{ type: "updateLast", params: ({ event }) => ({ point: event.point }) }],
           },
         ],
@@ -407,6 +464,21 @@ export const interactionMachine = setup({
         },
       },
     },
+    draggingEdgeEndpoint: {
+      on: {
+        POINTER_MOVE: {
+          actions: [
+            { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+            { type: "emitEdgeEndpointPreview" },
+          ],
+        },
+        POINTER_UP: {
+          target: "idle",
+          actions: [{ type: "emitEdgeEndpointUpdate" }, { type: "resetGesture" }],
+        },
+        POINTER_CANCEL: { target: "idle", actions: [{ type: "resetGesture" }] },
+      },
+    },
   },
 });
 
@@ -428,6 +500,9 @@ export const interpretPressEnd = (
   if (ctx.mode === "draw-edge") return null;
   if (ctx.pressTarget.kind === "shape") {
     return { type: "SELECT_REPLACE", id: ctx.pressTarget.id };
+  }
+  if (ctx.pressTarget.kind === "edge") {
+    return { type: "SELECT_EDGE_REPLACE", id: ctx.pressTarget.id };
   }
   if (ctx.pressTarget.kind === "empty" && ctx.mode === "select") {
     return { type: "SELECT_CLEAR" };

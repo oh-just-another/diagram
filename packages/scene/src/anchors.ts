@@ -88,6 +88,43 @@ export const getAnchorWorld = (shape: ShapeBase, anchor: AnchorRef): Vec2 => {
 };
 
 /**
+ * Find the anchor on `shape` whose world position is closest to
+ * `worldPoint`. Returns the canonical `AnchorRef` you can persist on an
+ * `EdgeEndpoint` so future renders stay locked to that port.
+ *
+ * Useful when committing an edge whose endpoint dropped near a shape:
+ * snap the drop position to the nearest of the 9 standard anchors (plus
+ * custom ones) so the edge tracks the shape on subsequent edits.
+ */
+export const findNearestAnchor = (
+  shape: ShapeBase,
+  worldPoint: Vec2,
+): { ref: AnchorRef; world: Vec2; distance: number } => {
+  let best: { ref: AnchorRef; world: Vec2; distance: number } | null = null;
+  for (const [name, _local] of listAnchorsLocal(shape)) {
+    void _local;
+    const ref: AnchorRef = { kind: "named", name };
+    const world = getAnchorWorld(shape, ref);
+    const dx = world.x - worldPoint.x;
+    const dy = world.y - worldPoint.y;
+    const distance = Math.hypot(dx, dy);
+    if (best === null || distance < best.distance) {
+      best = { ref, world, distance };
+    }
+  }
+  // `listAnchorsLocal` always returns at least the 9 standard anchors,
+  // so `best` is never null in practice — but keep the fallback typed.
+  if (!best) {
+    return {
+      ref: { kind: "named", name: "center" },
+      world: getAnchorWorld(shape, { kind: "named", name: "center" }),
+      distance: Infinity,
+    };
+  }
+  return best;
+};
+
+/**
  * Materialise the full anchor table for a shape — every standard anchor
  * plus every custom one declared in `shape.anchors`. Custom entries with
  * the same name as a standard anchor override the standard placement.

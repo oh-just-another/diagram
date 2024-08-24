@@ -25,7 +25,7 @@ export type {
   NamedAnchor,
   StandardAnchor,
 } from "./edge.js";
-export { getEdgeEndpointWorld, getEdgePath } from "./edge-geometry.js";
+export { getEdgeEndpointWorld, getEdgePath, findEdgeAt } from "./edge-geometry.js";
 export type { Layer } from "./layer.js";
 export type { Viewport } from "./viewport.js";
 export type { Scene } from "./scene.js";
@@ -55,6 +55,7 @@ export {
   getAnchorLocal,
   getAnchorWorld,
   listAnchorsLocal,
+  findNearestAnchor,
 } from "./anchors.js";
 
 // Viewport helpers
