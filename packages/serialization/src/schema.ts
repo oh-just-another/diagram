@@ -152,6 +152,7 @@ const ShapeZ = z.union([
 const EdgeEndpointZ = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("point"), position: Vec2Z }).strict(),
   z.object({ kind: z.literal("anchor"), shapeId: z.string(), anchor: AnchorRefZ }).strict(),
+  z.object({ kind: z.literal("outline"), shapeId: z.string(), ratio: z.number() }).strict(),
 ]);
 
 const EdgeRoutingZ = z.enum(["straight", "orthogonal", "bezier"]);
@@ -209,6 +210,7 @@ const ViewportZ = z
     zoom: z.number(),
     rotation: z.number(),
     size: z.object({ width: z.number(), height: z.number() }).strict(),
+    gridSize: z.number().optional(),
   })
   .strict();
 

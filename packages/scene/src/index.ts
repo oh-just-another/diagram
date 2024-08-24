@@ -58,6 +58,19 @@ export {
   findNearestAnchor,
 } from "./anchors.js";
 
+// Snap engine + built-in contributors
+export type { SnapCandidate, SnapContext, SnapContributor } from "./snap.js";
+export { SnapEngine, gridSnapper, anchorSnapper, outlineSnapper } from "./snap.js";
+
+// Outline samplers + helpers
+export type { OutlineSampler } from "./outline.js";
+export {
+  registerOutlineSampler,
+  getOutlineSampler,
+  getOutlinePoint,
+  findNearestOutlinePoint,
+} from "./outline.js";
+
 // Viewport helpers
 export {
   DEFAULT_VIEWPORT,

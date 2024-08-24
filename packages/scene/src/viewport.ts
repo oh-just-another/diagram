@@ -14,6 +14,12 @@ export interface Viewport {
   /** Rotation in radians, counter-clockwise. */
   readonly rotation: number;
   readonly size: { readonly width: number; readonly height: number };
+  /**
+   * Snap grid size in world units. When `undefined` the grid is hidden
+   * and snap-to-grid is off. Renderers that paint a background grid use
+   * the same value.
+   */
+  readonly gridSize?: number;
 }
 
 export const DEFAULT_VIEWPORT: Viewport = Object.freeze({

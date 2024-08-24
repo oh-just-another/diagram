@@ -4,6 +4,7 @@ import { shapeId as castShapeId } from "@oh-just-another/types";
 import {
   addEdge,
   addShape,
+  anchorSnapper,
   apply,
   DEFAULT_LAYER_ID,
   findEdgeAt,
@@ -15,14 +16,18 @@ import {
   getShapeAt,
   getShapeWorldBounds,
   getScreenToWorld,
+  gridSnapper,
   listAnchorsLocal,
   orderForTop,
+  outlineSnapper,
+  SnapEngine,
   updateEdge,
   type Edge,
   type EdgeEndpoint,
   type Patch,
   type Scene,
   type Shape,
+  type SnapCandidate,
 } from "@oh-just-another/scene";
 import { edgeId as castEdgeId, type EdgeId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
@@ -97,6 +102,19 @@ export class Editor {
     toPoint: Vec2;
   } | null = null;
   private nextId = 0;
+
+  /**
+   * Snap engine — defaults to grid + anchor + outline contributors. Hosts
+   * that want to tweak this can subclass or instantiate `Editor` with a
+   * custom `snapEngine` option.
+   */
+  private readonly snapEngine: SnapEngine = new SnapEngine([
+    gridSnapper,
+    anchorSnapper,
+    outlineSnapper,
+  ]);
+  /** Snap threshold in world units. */
+  private readonly snapThreshold = 12;
 
   private readonly _history: History;
   /** Open transaction during a single drag/resize gesture. */
@@ -583,19 +601,8 @@ export class Editor {
    * endpoints otherwise.
    */
   private applyCreateEdge(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
-    // Snap each endpoint to the nearest port on its shape (one of the 9
-    // standard anchors plus any custom ones). Free-floating endpoints fall
-    // back to the raw world point so the user gets exactly what they drew.
-    const buildEndpoint = (shapeId: ShapeId | null, worldPoint: Vec2): EdgeEndpoint => {
-      if (!shapeId) return { kind: "point", position: worldPoint };
-      const shape = getShape(this._scene, shapeId);
-      if (!shape) return { kind: "point", position: worldPoint };
-      const { ref } = findNearestAnchor(shape, worldPoint);
-      return { kind: "anchor", shapeId, anchor: ref };
-    };
-
-    const from = buildEndpoint(emit.fromShape, emit.fromPoint);
-    const to = buildEndpoint(emit.toShape, emit.toPoint);
+    const from = this.snapEdgeEndpoint(emit.fromShape, emit.fromPoint);
+    const to = this.snapEdgeEndpoint(emit.toShape, emit.toPoint);
 
     const order = orderForTop(
       Array.from(this._scene.edges.values())
@@ -620,6 +627,48 @@ export class Editor {
     this.notify();
   }
 
+  /**
+   * Build an `EdgeEndpoint` for a draw-edge / re-bind gesture. Runs the
+   * scene's snap engine for the probe point, prefers anchor snap when
+   * close enough, falls back to outline snap (so the user can attach
+   * "anywhere on the right edge"), then `point` for the free-floating
+   * case.
+   *
+   * `pressTargetShape` is the shape the gesture originated from or
+   * landed on (used as a strong hint — we don't snap onto unrelated
+   * shapes when the user clearly aimed for this one).
+   */
+  private snapEdgeEndpoint(pressTargetShape: ShapeId | null, worldPoint: Vec2): EdgeEndpoint {
+    if (!pressTargetShape) {
+      return { kind: "point", position: worldPoint };
+    }
+    const shape = getShape(this._scene, pressTargetShape);
+    if (!shape) return { kind: "point", position: worldPoint };
+
+    const result = this.snapEngine.snap({
+      scene: this._scene,
+      probe: worldPoint,
+      threshold: this.snapThreshold,
+      gesture: "draw-edge",
+    });
+
+    // Prefer a snap candidate that belongs to the press-target shape —
+    // avoids attaching to a neighbouring shape that happens to be even
+    // closer to the release point.
+    const onTarget = result.all.filter((c) => c.metadata?.shapeId === pressTargetShape);
+    const winner =
+      onTarget.find((c) => c.kind === "anchor") ??
+      onTarget.find((c) => c.kind === "outline") ??
+      null;
+    if (winner) return endpointFromSnap(pressTargetShape, winner, shape);
+
+    // No snap fired (release outside threshold of any port / outline) —
+    // fall back to nearest anchor on the target shape so the edge still
+    // sticks to it.
+    const { ref } = findNearestAnchor(shape, worldPoint);
+    return { kind: "anchor", shapeId: pressTargetShape, anchor: ref };
+  }
+
   private applyEdgeEndpointUpdate(
     emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
   ): void {
@@ -629,15 +678,7 @@ export class Editor {
       this.notify();
       return;
     }
-    const newEndpoint: EdgeEndpoint = (() => {
-      if (!emit.toShape) {
-        return { kind: "point", position: emit.toPoint };
-      }
-      const targetShape = getShape(this._scene, emit.toShape);
-      if (!targetShape) return { kind: "point", position: emit.toPoint };
-      const { ref } = findNearestAnchor(targetShape, emit.toPoint);
-      return { kind: "anchor", shapeId: emit.toShape, anchor: ref };
-    })();
+    const newEndpoint = this.snapEdgeEndpoint(emit.toShape, emit.toPoint);
     const result = updateEdge(this._scene, edge.id, (e) => ({ ...e, [emit.side]: newEndpoint }));
     this._scene = result.scene;
     this._history.push(result.patch);
@@ -776,6 +817,30 @@ const EDGE_ENDPOINT_HANDLE_RADIUS = 8;
 const EDGE_HIT_THRESHOLD = 6;
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
+
+/**
+ * Convert a snap candidate into an `EdgeEndpoint`. Anchor snap → named
+ * anchor ref; outline snap → outline ref with the sampled ratio. Falls
+ * back to a free point if the metadata isn't recognised.
+ */
+const endpointFromSnap = (
+  shapeId: ShapeId,
+  candidate: SnapCandidate,
+  shape: Shape,
+): EdgeEndpoint => {
+  if (candidate.kind === "anchor") {
+    const ref = candidate.metadata?.ref as AnchorRefLike | undefined;
+    if (ref) return { kind: "anchor", shapeId, anchor: ref };
+  }
+  if (candidate.kind === "outline" && typeof candidate.metadata?.ratio === "number") {
+    return { kind: "outline", shapeId, ratio: candidate.metadata.ratio };
+  }
+  // Defensive fallback — should not happen with built-in contributors.
+  void shape;
+  return { kind: "point", position: candidate.snapped };
+};
+
+type AnchorRefLike = Extract<EdgeEndpoint, { kind: "anchor" }>["anchor"];
 
 // Local helper duplicated from `handle.ts` so this file does not introduce a
 // circular import. Equivalent to `handle.resizeBounds` for the case where the

@@ -1,6 +1,7 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { getAnchorWorld } from "./anchors.js";
 import type { Edge, EdgeEndpoint } from "./edge.js";
+import { getOutlinePoint } from "./outline.js";
 import type { Scene } from "./scene.js";
 import { getShape } from "./queries.js";
 
@@ -20,7 +21,8 @@ export const getEdgeEndpointWorld = (scene: Scene, endpoint: EdgeEndpoint): Vec2
   if (endpoint.kind === "point") return endpoint.position;
   const shape = getShape(scene, endpoint.shapeId);
   if (!shape) return null;
-  return getAnchorWorld(shape, endpoint.anchor);
+  if (endpoint.kind === "anchor") return getAnchorWorld(shape, endpoint.anchor);
+  return getOutlinePoint(shape, endpoint.ratio);
 };
 
 /**

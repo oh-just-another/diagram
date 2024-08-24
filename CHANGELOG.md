@@ -68,3 +68,6 @@
 
 ## 0.17.1
 - feat: follow-up: port overlay, snap, edge selection + endpoint editing
+
+## 0.18.0
+- feat: snap outline

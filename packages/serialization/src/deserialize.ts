@@ -102,12 +102,11 @@ const hydrate = (doc: SceneDocument): Scene => {
     });
   }
 
-  return {
-    shapes,
-    edges,
-    layers,
-    viewport: doc.viewport satisfies Viewport,
-  };
+  // `doc.viewport` is the zod-parsed shape which carries explicit
+  // `undefined`s on optional fields; strip them so `exactOptionalPropertyTypes`
+  // is happy with the resulting `Viewport`.
+  const viewport: Viewport = stripUndefined(doc.viewport) as Viewport;
+  return { shapes, edges, layers, viewport };
 };
 
 const hydrateShape = (s: SceneDocument["shapes"][number], id: ShapeId): Shape => {
@@ -124,8 +123,14 @@ const hydrateShape = (s: SceneDocument["shapes"][number], id: ShapeId): Shape =>
 };
 
 const hydrateEdge = (e: SceneDocument["edges"][number], id: EdgeId): Edge => {
-  const from = e.from.kind === "anchor" ? { ...e.from, shapeId: shapeId(e.from.shapeId) } : e.from;
-  const to = e.to.kind === "anchor" ? { ...e.to, shapeId: shapeId(e.to.shapeId) } : e.to;
+  const hydrateEndpoint = (ep: SceneDocument["edges"][number]["from"]): Edge["from"] => {
+    if (ep.kind === "anchor" || ep.kind === "outline") {
+      return { ...ep, shapeId: shapeId(ep.shapeId) };
+    }
+    return ep;
+  };
+  const from = hydrateEndpoint(e.from);
+  const to = hydrateEndpoint(e.to);
   const cleaned = stripUndefined(e);
   return {
     ...cleaned,
