@@ -71,3 +71,6 @@
 
 ## 0.18.0
 - feat: snap outline
+
+## 0.18.1
+- feat: grid context menu

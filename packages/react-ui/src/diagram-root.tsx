@@ -81,6 +81,7 @@ export const DiagramRoot = ({
       host,
       mainTarget: layered.get("main"),
       overlayTarget: layered.get("overlay"),
+      backgroundTarget: layered.get("background"),
       initialScene,
       ...(initialMode !== undefined ? { initialMode } : {}),
     };

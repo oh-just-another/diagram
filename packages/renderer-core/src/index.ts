@@ -11,11 +11,13 @@ export type { ShapeRenderer } from "./shape-renderer.js";
 export type { LayerName } from "./layers.js";
 export type { RenderSceneOptions } from "./scene-renderer.js";
 export type { RenderEdgesOptions } from "./edge-renderer.js";
+export type { RenderGridOptions } from "./grid-renderer.js";
 
 export { registerShapeRenderer, getShapeRenderer, hasShapeRenderer } from "./shape-renderer.js";
 export { LAYER_ORDER } from "./layers.js";
 export { renderScene } from "./scene-renderer.js";
 export { renderEdges } from "./edge-renderer.js";
+export { renderGrid } from "./grid-renderer.js";
 
 // Backend-agnostic shape renderers for the 6 built-in `BuiltinShape` types.
 // `installBuiltinRenderers()` registers them via `registerShapeRenderer` and

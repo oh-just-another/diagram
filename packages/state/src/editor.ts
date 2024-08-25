@@ -18,10 +18,14 @@ import {
   getScreenToWorld,
   gridSnapper,
   listAnchorsLocal,
+  orderForBottom,
   orderForTop,
   outlineSnapper,
+  removeEdge,
+  removeShape,
   SnapEngine,
   updateEdge,
+  updateShape,
   type Edge,
   type EdgeEndpoint,
   type Patch,
@@ -31,7 +35,7 @@ import {
 } from "@oh-just-another/scene";
 import { edgeId as castEdgeId, type EdgeId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
-import { renderEdges, renderScene, type RenderTarget } from "@oh-just-another/renderer-core";
+import { renderEdges, renderGrid, renderScene, type RenderTarget } from "@oh-just-another/renderer-core";
 import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
 import { fromPointerEvent } from "./dom-events.js";
 import { hitHandle } from "./handle.js";
@@ -53,6 +57,13 @@ export interface EditorOptions {
   readonly host: HTMLElement;
   readonly mainTarget: RenderTarget;
   readonly overlayTarget: RenderTarget;
+  /**
+   * Optional dedicated background target — when provided, the editor
+   * paints the grid (`renderGrid`) onto it. Hosts without a background
+   * layer can omit this; in that case the grid is drawn on `mainTarget`
+   * before shapes.
+   */
+  readonly backgroundTarget?: RenderTarget;
   readonly initialScene: Scene;
   readonly initialMode?: Mode;
   /** Pre-existing history instance, or options for one. */
@@ -73,6 +84,7 @@ export class Editor {
   private readonly host: HTMLElement;
   private readonly mainTarget: RenderTarget;
   private readonly overlayTarget: RenderTarget;
+  private readonly backgroundTarget: RenderTarget | null;
   private readonly actor: Actor<typeof interactionMachine>;
   private readonly listeners = new Set<() => void>();
   private readonly unbind: () => void;
@@ -124,6 +136,7 @@ export class Editor {
     this.host = options.host;
     this.mainTarget = options.mainTarget;
     this.overlayTarget = options.overlayTarget;
+    this.backgroundTarget = options.backgroundTarget ?? null;
     this._scene = options.initialScene;
     this._history =
       options.history instanceof History ? options.history : new History(options.history ?? {});
@@ -167,6 +180,15 @@ export class Editor {
   }
   get canRedo(): boolean {
     return this._history.canRedo;
+  }
+
+  /**
+   * The DOM element the editor was mounted onto. Read-only — external
+   * code reads it for screen-↔-world coordinate conversions on events
+   * whose coordinates are in client-space (e.g. global `contextmenu`).
+   */
+  get hostElement(): HTMLElement {
+    return this.host;
   }
 
   /** Subscribe to scene/selection/mode/history changes. */
@@ -224,6 +246,138 @@ export class Editor {
     this._history.push(result.patch);
     this.notify();
     return result.patch;
+  }
+
+  /**
+   * Delete every currently-selected shape (or the currently-selected
+   * edge). No-op when nothing is selected. Single undo step regardless
+   * of how many shapes were removed.
+   */
+  deleteSelected(): void {
+    const targets = [...this._selection];
+    const selectedEdge = this._selectedEdge;
+    if (targets.length === 0 && !selectedEdge) return;
+
+    const tx = this._history.transaction();
+    for (const id of targets) {
+      // Drop edges first — removing a shape that still has edges attached
+      // would leave dangling endpoint references.
+      for (const edge of [...this._scene.edges.values()]) {
+        if (
+          (edge.from.kind !== "point" && edge.from.shapeId === id) ||
+          (edge.to.kind !== "point" && edge.to.shapeId === id)
+        ) {
+          const r = removeEdge(this._scene, edge.id);
+          this._scene = r.scene;
+          tx.add(r.patch);
+        }
+      }
+      const r = removeShape(this._scene, id);
+      this._scene = r.scene;
+      tx.add(r.patch);
+    }
+    if (selectedEdge) {
+      const r = removeEdge(this._scene, selectedEdge);
+      this._scene = r.scene;
+      tx.add(r.patch);
+      this._selectedEdge = null;
+    }
+    tx.commit();
+    this._selection = Selection.EMPTY;
+    this.notify();
+  }
+
+  /**
+   * Duplicate the selected shapes 10 px down-right of the originals.
+   * Links between selected shapes are NOT cloned. They break cleanly.
+   */
+  duplicateSelected(): void {
+    const targets = [...this._selection];
+    if (targets.length === 0) return;
+
+    const tx = this._history.transaction();
+    const newIds: ShapeId[] = [];
+    for (const id of targets) {
+      const shape = getShape(this._scene, id);
+      if (!shape) continue;
+      const newId = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
+      const order = orderForTop(
+        [...this._scene.shapes.values()]
+          .filter((s) => s.layerId === shape.layerId)
+          .map((s) => s.order),
+      );
+      const clone = {
+        ...shape,
+        id: newId,
+        position: { x: shape.position.x + 10, y: shape.position.y + 10 },
+        order,
+      } as Shape;
+      const r = addShape(this._scene, clone);
+      this._scene = r.scene;
+      tx.add(r.patch);
+      newIds.push(newId);
+    }
+    tx.commit();
+    if (newIds.length > 0) {
+      let next = Selection.EMPTY;
+      for (const id of newIds) next = Selection.add(next, id);
+      this._selection = next;
+    }
+    this.notify();
+  }
+
+  /** Move the selected shape (single-shape MVP) to the top of its layer. */
+  bringToFront(id?: ShapeId): void {
+    const target = id ?? (this._selection.size === 1 ? [...this._selection][0] : null);
+    if (!target) return;
+    const shape = getShape(this._scene, target);
+    if (!shape) return;
+    const order = orderForTop(
+      [...this._scene.shapes.values()]
+        .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
+        .map((s) => s.order),
+    );
+    if (order === shape.order) return;
+    const result = updateShape(this._scene, shape.id, (s) => ({ ...s, order }));
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /** Move the selected shape (single-shape MVP) to the bottom of its layer. */
+  sendToBack(id?: ShapeId): void {
+    const target = id ?? (this._selection.size === 1 ? [...this._selection][0] : null);
+    if (!target) return;
+    const shape = getShape(this._scene, target);
+    if (!shape) return;
+    const order = orderForBottom(
+      [...this._scene.shapes.values()]
+        .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
+        .map((s) => s.order),
+    );
+    if (order === shape.order) return;
+    const result = updateShape(this._scene, shape.id, (s) => ({ ...s, order }));
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Wipe every shape + edge from the scene. Layers and viewport survive.
+   * Clears history — restoring an empty scene through undo would be
+   * surprising and the operation is rarely chained with other edits.
+   */
+  clear(): void {
+    if (this._scene.shapes.size === 0 && this._scene.edges.size === 0) return;
+    this._scene = {
+      ...this._scene,
+      shapes: new Map(),
+      edges: new Map(),
+    };
+    this._selection = Selection.EMPTY;
+    this._selectedEdge = null;
+    this._history.clear();
+    this.notify();
   }
 
   /**
@@ -769,6 +923,12 @@ export class Editor {
   }
 
   private render(): void {
+    // Background layer (grid) — when the host gave us a dedicated target.
+    // Otherwise the grid lives on mainTarget *before* shapes are drawn,
+    // so renderScene's clear takes care of it.
+    if (this.backgroundTarget) {
+      renderGrid(this._scene, this.backgroundTarget);
+    }
     renderScene(this._scene, this.mainTarget);
     renderEdges(this._scene, this.mainTarget);
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};

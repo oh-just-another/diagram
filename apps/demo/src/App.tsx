@@ -12,6 +12,8 @@ import {
 import { shapeId } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import {
+  ContextMenu,
+  DEFAULT_CONTEXT_MENU,
   DiagramRoot,
   DiagramSurface,
   Palette,
@@ -34,7 +36,10 @@ const STORAGE_KEY = "oh-just-another-demo-scene-v2";
 
 const seedScene = (): Scene => {
   let s = emptyScene();
-  s = { ...s, viewport: { ...s.viewport, size: { width: 800, height: 600 } } };
+  s = {
+    ...s,
+    viewport: { ...s.viewport, size: { width: 800, height: 600 }, gridSize: 20 },
+  };
   const rect: Shape = {
     id: shapeId("seed-rect"),
     layerId: DEFAULT_LAYER_ID,
@@ -213,6 +218,7 @@ const CanvasArea = () => {
     >
       <DiagramSurface />
       <FloatingToolbar />
+      <ContextMenu items={DEFAULT_CONTEXT_MENU} />
     </section>
   );
 };
