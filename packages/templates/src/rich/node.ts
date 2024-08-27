@@ -62,13 +62,28 @@ export interface DropZoneNode extends NodeBase {
   readonly label?: Binding<string>;
 }
 
+/**
+ * Connection port — a named anchor on the rendered template shape. Edges
+ * snap to ports during draw / re-bind. Visible-on-hover is up to the host.
+ *
+ * Position the port the same way as any other node: typically with
+ * `layout.position = "spot"` + `anchor` / `anchorFocus` / `offset`.
+ * The port's `id` becomes the key in `shape.anchors`.
+ */
+export interface PortNode extends NodeBase {
+  readonly type: "port";
+  /** Required for ports — used as `shape.anchors[id]` lookup key. */
+  readonly id: string;
+}
+
 export type TemplateNode =
   | ContainerNode
   | TextNode
   | IconNode
   | ImageNode
   | ButtonNode
-  | DropZoneNode;
+  | DropZoneNode
+  | PortNode;
 
 /** Type guard: a node is a container (has `children`). */
 export const isContainer = (n: TemplateNode): n is ContainerNode => n.type === "container";

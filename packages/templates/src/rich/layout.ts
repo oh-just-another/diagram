@@ -9,7 +9,13 @@ import {
   type TemplateNode,
   type TextNode,
 } from "./node.js";
-import { resolveSpacing, type LayoutStyle, type Length } from "./style.js";
+import {
+  resolveSpacing,
+  resolveSpotRatio,
+  type LayoutStyle,
+  type Length,
+  type Position,
+} from "./style.js";
 
 /**
  * `MeasureText(text, fontFamily, fontSize)` returns the rendered width of the
@@ -108,6 +114,12 @@ const measureNode = (node: TemplateNode, available: Size, measure: MeasureText):
       break;
     case "drop-zone":
       intrinsic = { width: 80, height: 60 };
+      break;
+    case "port":
+      // Ports are dimensionless — they collapse to a 0×0 point at their
+      // computed position. The host paints the port-dot overlay from
+      // `shape.anchors`, not from the template tree.
+      intrinsic = { width: 0, height: 0 };
       break;
   }
 
@@ -219,8 +231,10 @@ const positionNode = (node: TemplateNode, bounds: Bounds, measure: MeasureText):
   const children: LayoutedNode[] = [];
   const allChildren = node.children ?? [];
 
-  const inFlow = allChildren.filter((c) => (c.layout?.position ?? "relative") !== "absolute");
-  const absolute = allChildren.filter((c) => (c.layout?.position ?? "relative") === "absolute");
+  const positionOf = (c: TemplateNode): Position => c.layout?.position ?? "relative";
+  const inFlow = allChildren.filter((c) => positionOf(c) === "relative");
+  const absolute = allChildren.filter((c) => positionOf(c) === "absolute");
+  const spot = allChildren.filter((c) => positionOf(c) === "spot");
 
   const sized: SizedChild[] = inFlow.map((c) => ({
     node: c,
@@ -315,6 +329,22 @@ const positionNode = (node: TemplateNode, bounds: Bounds, measure: MeasureText):
       else height = inner.height - cLayout.top - cLayout.bottom;
     }
     children.push(positionNode(child, { x, y, width, height }, measure));
+  }
+
+  // Spot-positioned children: pin the child's `anchorFocus` to the parent's
+  // `anchor`, then apply `offset`:
+  // parentAnchorPoint - childFocusOffset + offset = child top-left.
+  for (const child of spot) {
+    const cLayout = child.layout ?? {};
+    const childSize = measureNode(child, { width: inner.width, height: inner.height }, measure);
+    const parentAnchor = resolveSpotRatio(cLayout.anchor ?? "center");
+    const childFocus = resolveSpotRatio(cLayout.anchorFocus ?? "center");
+    const offset = cLayout.offset ?? { x: 0, y: 0 };
+    const x = inner.x + inner.width * parentAnchor.x - childSize.width * childFocus.x + offset.x;
+    const y = inner.y + inner.height * parentAnchor.y - childSize.height * childFocus.y + offset.y;
+    children.push(
+      positionNode(child, { x, y, width: childSize.width, height: childSize.height }, measure),
+    );
   }
 
   return { node, bounds, children };

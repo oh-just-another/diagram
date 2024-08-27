@@ -8,8 +8,10 @@ export type {
   Position,
   Length,
   LayoutStyle,
+  SpotName,
+  SpotRef,
 } from "./style.js";
-export { resolveSpacing } from "./style.js";
+export { resolveSpacing, resolveSpotRatio } from "./style.js";
 
 export type {
   Binding,
@@ -20,9 +22,12 @@ export type {
   ImageNode,
   ButtonNode,
   DropZoneNode,
+  PortNode,
   TemplateNode,
 } from "./node.js";
 export { isContainer, isInteractive, childrenOf } from "./node.js";
+
+export { extractPorts } from "./ports.js";
 
 export type { MeasureText, LayoutedNode, LayoutOptions } from "./layout.js";
 export { layoutTree, fallbackMeasureText } from "./layout.js";
@@ -33,6 +38,9 @@ export { getTemplateLocalBounds } from "./bounds.js";
 
 export type { RichTemplate, RichTemplateSchema } from "./define.js";
 export { defineRichTemplate } from "./define.js";
+
+export type { RichTemplateExtension } from "./extends.js";
+export { resolveRichTemplateChain } from "./extends.js";
 
 export { RichTemplateRegistry, defaultRichRegistry } from "./registry.js";
 

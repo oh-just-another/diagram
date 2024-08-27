@@ -28,6 +28,9 @@ export const resolveBindings = (
       return node.label === undefined ? node : { ...node, label: resolve(node.label, data, "") };
     case "drop-zone":
       return node.label === undefined ? node : { ...node, label: resolve(node.label, data, "") };
+    case "port":
+      // Ports carry no bindings — they're pure positional markers.
+      return node;
   }
 };
 

@@ -1,5 +1,7 @@
 import { z } from "zod";
 import type { Shape, TemplateShape as SceneTemplateShape } from "@oh-just-another/scene";
+import { layoutTree } from "./rich/layout.js";
+import { extractPorts } from "./rich/ports.js";
 import { defaultRichRegistry } from "./rich/registry.js";
 import type { TemplateNode } from "./rich/node.js";
 import type { LayoutStyle, NodeStyle } from "./rich/style.js";
@@ -189,6 +191,18 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
       icon: spec.icon,
       ...(spec.metadata !== undefined ? { metadata: spec.metadata } : {}),
       factory: (ctx: TemplateContext): Shape => {
+        // Lay the template out once at its declared natural size to
+        // extract every `port` node into a ratio-anchor map. The ratios
+        // survive resize — the editor's anchor-resolve always reads
+        // current bounds, then multiplies by `position`.
+        // `blueprint.root` is `unknown` per the spec schema (validation
+        // happens at instantiation time, not load time). Cast — if the
+        // root is malformed `layoutTree` will throw with a useful error.
+        const layouted = layoutTree(blueprint.root as TemplateNode, {
+          available: { width: blueprint.width, height: blueprint.height },
+        });
+        const portAnchors = extractPorts(layouted);
+
         const shape: SceneTemplateShape = {
           id: ctx.id,
           layerId: ctx.layerId,
@@ -202,6 +216,7 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
           style: {},
           width: blueprint.width,
           height: blueprint.height,
+          ...(Object.keys(portAnchors).length > 0 ? { anchors: portAnchors } : {}),
           ...(blueprint.minWidth !== undefined ? { minWidth: blueprint.minWidth } : {}),
           ...(blueprint.minHeight !== undefined ? { minHeight: blueprint.minHeight } : {}),
           ...(blueprint.maxWidth !== undefined ? { maxWidth: blueprint.maxWidth } : {}),

@@ -74,3 +74,6 @@
 
 ## 0.18.1
 - feat: grid context menu
+
+## 0.18.2
+- feat: template spot ports

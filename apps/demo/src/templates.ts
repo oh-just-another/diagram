@@ -204,6 +204,70 @@ export const setupTemplates = (): void => {
       },
      },
     },
+    // Gateway with declared ports — . Three ports (in, out,
+    // err) become entries in `shape.anchors`; drawing an edge near
+    // them snaps automatically via + 18 pipelines.
+    {
+     id: "rich.gateway",
+     name: "Gateway",
+     category: "rich",
+     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/></svg>',
+     blueprint: {
+      type: "template",
+      width: 200,
+      height: 100,
+      minWidth: 160,
+      minHeight: 80,
+      maxWidth: 600,
+      maxHeight: 400,
+      noFlip: true,
+      defaults: { title: "Gateway" },
+      root: {
+       type: "container",
+       id: "gateway-root",
+       style: { fill: "#fff", stroke: "#3b3b6e", strokeWidth: 2 },
+       layout: { flexDirection: "column", padding: 12, alignItems: "center" },
+       children: [
+        {
+         type: "text",
+         id: "title",
+         text: { bind: "title" },
+         style: { fontSize: 14, fontWeight: "bold", color: "#1f1f4a" },
+        },
+        // Declared connection ports — Edge mode snaps to them
+        // by name via the + 18 anchor + outline pipeline.
+        {
+         type: "port",
+         id: "in",
+         layout: {
+          position: "spot",
+          anchor: "left",
+          anchorFocus: "center",
+         },
+        },
+        {
+         type: "port",
+         id: "out",
+         layout: {
+          position: "spot",
+          anchor: "right",
+          anchorFocus: "center",
+         },
+        },
+        {
+         type: "port",
+         id: "err",
+         layout: {
+          position: "spot",
+          anchor: "bottom",
+          anchorFocus: "center",
+          offset: { x: 0, y: 0 },
+         },
+        },
+       ],
+      },
+     },
+    },
    ],
   },
   defaultRegistry,

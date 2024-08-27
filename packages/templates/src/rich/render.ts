@@ -93,6 +93,10 @@ const paintNode = (l: LayoutedNode, target: RenderTarget): void => {
     case "image":
       paintImagePlaceholder(l.node, l.bounds, target);
       break;
+    case "port":
+      // Ports are dimensionless — nothing to paint. Hosts paint port-dot
+      // overlays from `shape.anchors`.
+      break;
   }
 };
 

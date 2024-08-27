@@ -56,7 +56,50 @@ export type FlexDirection = "row" | "column";
 export type JustifyContent = "start" | "center" | "end" | "space-between" | "space-around";
 export type AlignItems = "start" | "center" | "end" | "stretch" | "baseline";
 export type FlexWrap = "nowrap" | "wrap";
-export type Position = "relative" | "absolute";
+export type Position = "relative" | "absolute" | "spot";
+
+/**
+ * Anchor reference inside a parent's bounding box (or on a child for
+ * `anchorFocus`). Either one of the 9 standard spots or a custom
+ * `{ratio: {x: 0..1, y: 0..1}}` inside the box.
+ *
+ * Mirrors the `StandardAnchor` set in `@scene` so anchor names round-trip
+ * cleanly between rich templates and edge endpoints.
+ */
+export type SpotName =
+  | "top-left"
+  | "top"
+  | "top-right"
+  | "right"
+  | "bottom-right"
+  | "bottom"
+  | "bottom-left"
+  | "left"
+  | "center";
+
+export type SpotRef = SpotName | { readonly ratio: { readonly x: number; readonly y: number } };
+
+const SPOT_RATIOS: Readonly<Record<SpotName, { readonly x: number; readonly y: number }>> = {
+  "top-left": { x: 0, y: 0 },
+  top: { x: 0.5, y: 0 },
+  "top-right": { x: 1, y: 0 },
+  right: { x: 1, y: 0.5 },
+  "bottom-right": { x: 1, y: 1 },
+  bottom: { x: 0.5, y: 1 },
+  "bottom-left": { x: 0, y: 1 },
+  left: { x: 0, y: 0.5 },
+  center: { x: 0.5, y: 0.5 },
+};
+
+/**
+ * Convert a `SpotRef` into a `{x, y}` ratio (0..1 each axis). Mirrors
+ * `STANDARD_ANCHOR_RATIOS` in `@scene` — keep the two in sync if you ever
+ * add new named spots.
+ */
+export const resolveSpotRatio = (ref: SpotRef): { readonly x: number; readonly y: number } => {
+  if (typeof ref === "string") return SPOT_RATIOS[ref];
+  return ref.ratio;
+};
 
 /**
  * Sizing value: a number is pixels, `"auto"` means intrinsic / shrink-to-fit,
@@ -98,10 +141,23 @@ export interface LayoutStyle {
    * `"absolute"` takes the node out of the parent's flex flow and positions
    * it via `top/left/right/bottom` relative to the parent's *padding box*.
    * Mixing absolute and flex siblings is allowed.
+   *
+   * `"spot"` positions the node by pinning one of its anchor points
+   * (`anchorFocus`) to one of the parent's anchor points (`anchor`),
+   * then applies `offset` in local pixels. Useful for corner badges,
+   * floating close buttons, overlay decorators — anything that should
+   * track a specific position on the parent regardless of layout flow.
    */
   readonly position?: Position;
   readonly top?: number;
   readonly left?: number;
   readonly right?: number;
   readonly bottom?: number;
+
+  /** Spot-only: anchor point on the *parent's* content box. Default `"center"`. */
+  readonly anchor?: SpotRef;
+  /** Spot-only: anchor point on the *child* (where to pin against parent's anchor). Default `"center"`. */
+  readonly anchorFocus?: SpotRef;
+  /** Spot-only: pixel offset applied after spot resolution. */
+  readonly offset?: { readonly x: number; readonly y: number };
 }
