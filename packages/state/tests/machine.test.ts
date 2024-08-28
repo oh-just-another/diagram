@@ -218,6 +218,7 @@ describe("interactionMachine", () => {
         pressLast: null,
         pressTarget: rectTarget(),
         drawingType: null,
+        pressModifiers: null,
       };
       expect(interpretPressEnd(ctx, { x: 0, y: 0 })).toEqual({
         type: "SELECT_REPLACE",
@@ -231,6 +232,7 @@ describe("interactionMachine", () => {
         pressLast: null,
         pressTarget: { kind: "empty" as const },
         drawingType: null,
+        pressModifiers: null,
       };
       expect(interpretPressEnd(ctx, { x: 0, y: 0 })).toEqual({ type: "SELECT_CLEAR" });
     });
@@ -241,8 +243,81 @@ describe("interactionMachine", () => {
         pressLast: null,
         pressTarget: rectTarget(),
         drawingType: null,
+        pressModifiers: null,
       };
       expect(interpretPressEnd(ctx, { x: 100, y: 100 })).toBeNull();
+    });
+
+    it("SELECT_TOGGLE when shift is held", () => {
+      const ctx = {
+        mode: "select" as const,
+        pressOrigin: { x: 0, y: 0 },
+        pressLast: null,
+        pressTarget: rectTarget(),
+        drawingType: null,
+        pressModifiers: { shift: true, ctrl: false, alt: false, meta: false },
+      };
+      expect(interpretPressEnd(ctx, { x: 0, y: 0 })).toEqual({
+        type: "SELECT_TOGGLE",
+        id: shapeId("a"),
+      });
+    });
+
+    it("SELECT_TOGGLE when meta is held", () => {
+      const ctx = {
+        mode: "select" as const,
+        pressOrigin: { x: 0, y: 0 },
+        pressLast: null,
+        pressTarget: rectTarget(),
+        drawingType: null,
+        pressModifiers: { shift: false, ctrl: false, alt: false, meta: true },
+      };
+      expect(interpretPressEnd(ctx, { x: 0, y: 0 })).toEqual({
+        type: "SELECT_TOGGLE",
+        id: shapeId("a"),
+      });
+    });
+  });
+
+  describe("lasso", () => {
+    it("press on empty + drag in select mode enters lassoing + emits LASSO_PROGRESS", () => {
+      const { actor, emits } = start();
+      actor.send({ type: "POINTER_DOWN", point: { x: 0, y: 0 }, target: { kind: "empty" } });
+      actor.send({ type: "POINTER_MOVE", point: { x: 50, y: 40 } });
+      expect(actor.getSnapshot().value).toBe("lassoing");
+      const prog = emits.find((e) => e.type === "LASSO_PROGRESS");
+      expect(prog).toBeDefined();
+      if (prog?.type === "LASSO_PROGRESS") {
+        expect(prog.bounds).toEqual({ x: 0, y: 0, width: 50, height: 40 });
+      }
+    });
+
+    it("POINTER_UP emits SELECT_BY_BOUNDS (replace) + LASSO_CLEAR", () => {
+      const { actor, emits } = start();
+      actor.send({ type: "POINTER_DOWN", point: { x: 0, y: 0 }, target: { kind: "empty" } });
+      actor.send({ type: "POINTER_MOVE", point: { x: 50, y: 40 } });
+      actor.send({ type: "POINTER_UP", point: { x: 50, y: 40 } });
+      const sel = emits.find((e) => e.type === "SELECT_BY_BOUNDS");
+      expect(sel).toBeDefined();
+      if (sel?.type === "SELECT_BY_BOUNDS") {
+        expect(sel.mode).toBe("replace");
+        expect(sel.bounds).toEqual({ x: 0, y: 0, width: 50, height: 40 });
+      }
+      expect(emits.find((e) => e.type === "LASSO_CLEAR")).toBeDefined();
+    });
+
+    it("shift-lasso emits SELECT_BY_BOUNDS with mode=add", () => {
+      const { actor, emits } = start();
+      actor.send({
+        type: "POINTER_DOWN",
+        point: { x: 0, y: 0 },
+        target: { kind: "empty" },
+        modifiers: { shift: true, ctrl: false, alt: false, meta: false },
+      });
+      actor.send({ type: "POINTER_MOVE", point: { x: 50, y: 40 } });
+      actor.send({ type: "POINTER_UP", point: { x: 50, y: 40 } });
+      const sel = emits.find((e) => e.type === "SELECT_BY_BOUNDS");
+      expect(sel?.type === "SELECT_BY_BOUNDS" && sel.mode).toBe("add");
     });
   });
 });

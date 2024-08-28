@@ -1,5 +1,5 @@
 import { assign, enqueueActions, setup } from "xstate";
-import type { Bounds, EdgeId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, EdgeId, Modifiers, ShapeId, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "./handle.js";
 import { DEFAULT_MODE, type Mode } from "./modes.js";
 
@@ -31,6 +31,8 @@ export interface InteractionContext {
   readonly pressLast: Vec2 | null;
   readonly pressTarget: PressTarget | null;
   readonly drawingType: "rect" | "ellipse" | null;
+  /** Keyboard state captured at POINTER_DOWN. */
+  readonly pressModifiers: Modifiers | null;
 }
 
 const initialContext = (): InteractionContext => ({
@@ -39,12 +41,19 @@ const initialContext = (): InteractionContext => ({
   pressLast: null,
   pressTarget: null,
   drawingType: null,
+  pressModifiers: null,
 });
 
 export interface PointerDownEvent {
   readonly type: "POINTER_DOWN";
   readonly point: Vec2;
   readonly target: PressTarget;
+  /**
+   * Keyboard state at press-down time. `interpretPressEnd` reads the
+   * modifiers to decide between SELECT_REPLACE (plain click) and
+   * SELECT_TOGGLE (shift / meta click) when the gesture is a tap.
+   */
+  readonly modifiers?: Modifiers;
 }
 export interface PointerMoveEvent {
   readonly type: "POINTER_MOVE";
@@ -81,7 +90,16 @@ export type InteractionEvent =
  */
 export type InteractionEmit =
   | { readonly type: "SELECT_REPLACE"; readonly id: ShapeId }
+  | { readonly type: "SELECT_TOGGLE"; readonly id: ShapeId }
   | { readonly type: "SELECT_CLEAR" }
+  | { readonly type: "LASSO_PROGRESS"; readonly bounds: Bounds }
+  | { readonly type: "LASSO_CLEAR" }
+  | {
+      readonly type: "SELECT_BY_BOUNDS";
+      readonly bounds: Bounds;
+      /** Add to existing selection (Shift/Cmd lasso) or replace. */
+      readonly mode: "replace" | "add";
+    }
   | { readonly type: "SELECT_EDGE_REPLACE"; readonly id: EdgeId }
   | { readonly type: "SELECT_EDGE_CLEAR" }
   | {
@@ -175,11 +193,14 @@ export const interactionMachine = setup({
     emitted: {} as InteractionEmit,
   },
   actions: {
-    startPress: assign((_, params: { point: Vec2; target: PressTarget }) => ({
-      pressOrigin: params.point,
-      pressLast: params.point,
-      pressTarget: params.target,
-    })),
+    startPress: assign(
+      (_, params: { point: Vec2; target: PressTarget; modifiers: Modifiers | null }) => ({
+        pressOrigin: params.point,
+        pressLast: params.point,
+        pressTarget: params.target,
+        pressModifiers: params.modifiers,
+      }),
+    ),
     updateLast: assign((_, params: { point: Vec2 }) => ({ pressLast: params.point })),
     setDrawingType: assign((_, params: { kind: "rect" | "ellipse" }) => ({
       drawingType: params.kind,
@@ -189,6 +210,7 @@ export const interactionMachine = setup({
       pressLast: null,
       pressTarget: null,
       drawingType: null,
+      pressModifiers: null,
     })),
     setMode: assign((_, params: { mode: Mode }) => ({ mode: params.mode })),
     emitMoveShape: enqueueActions(({ context, event, enqueue }) => {
@@ -271,6 +293,26 @@ export const interactionMachine = setup({
         toShape,
       });
     }),
+    emitLassoProgress: enqueueActions(({ context, event, enqueue }) => {
+      if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return;
+      enqueue.emit({
+        type: "LASSO_PROGRESS",
+        bounds: boundsFromPoints(context.pressOrigin, event.point),
+      });
+    }),
+    emitLassoCommit: enqueueActions(({ context, event, enqueue }) => {
+      if (event.type !== "POINTER_UP" || !context.pressOrigin) return;
+      const bounds = boundsFromPoints(context.pressOrigin, event.point);
+      // Tiny rectangles are click-style noise — ignore.
+      if (bounds.width < 1 && bounds.height < 1) {
+        enqueue.emit({ type: "LASSO_CLEAR" });
+        return;
+      }
+      const m = context.pressModifiers;
+      const additive = Boolean(m && (m.shift || m.meta || m.ctrl));
+      enqueue.emit({ type: "SELECT_BY_BOUNDS", bounds, mode: additive ? "add" : "replace" });
+      enqueue.emit({ type: "LASSO_CLEAR" });
+    }),
     emitCreateEdge: enqueueActions(({ context, event, enqueue }) => {
       if (event.type !== "POINTER_UP" || !context.pressOrigin) return;
       // `event.target` carries the *up*-side hit-test (host computed it
@@ -322,6 +364,12 @@ export const interactionMachine = setup({
       if (context.pressTarget?.kind !== "edge-endpoint") return false;
       return dragExceeded(context.pressOrigin, event.point);
     },
+    movedAndLasso: ({ context, event }) => {
+      if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
+      if (context.mode !== "select") return false;
+      if (context.pressTarget?.kind !== "empty") return false;
+      return dragExceeded(context.pressOrigin, event.point);
+    },
   },
 }).createMachine({
   id: "interaction",
@@ -344,7 +392,11 @@ export const interactionMachine = setup({
           actions: [
             {
               type: "startPress",
-              params: ({ event }) => ({ point: event.point, target: event.target }),
+              params: ({ event }) => ({
+                point: event.point,
+                target: event.target,
+                modifiers: event.modifiers ?? null,
+              }),
             },
           ],
         },
@@ -396,6 +448,14 @@ export const interactionMachine = setup({
             actions: [
               { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
               { type: "emitEdgeEndpointPreview" },
+            ],
+          },
+          {
+            guard: "movedAndLasso",
+            target: "lassoing",
+            actions: [
+              { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+              { type: "emitLassoProgress" },
             ],
           },
           {
@@ -479,6 +539,29 @@ export const interactionMachine = setup({
         POINTER_CANCEL: { target: "idle", actions: [{ type: "resetGesture" }] },
       },
     },
+    lassoing: {
+      on: {
+        POINTER_MOVE: {
+          actions: [
+            { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+            { type: "emitLassoProgress" },
+          ],
+        },
+        POINTER_UP: {
+          target: "idle",
+          actions: [{ type: "emitLassoCommit" }, { type: "resetGesture" }],
+        },
+        POINTER_CANCEL: {
+          target: "idle",
+          actions: [
+            {
+              type: "emitLassoCommit" /* fires LASSO_CLEAR only */,
+            },
+            { type: "resetGesture" },
+          ],
+        },
+      },
+    },
   },
 });
 
@@ -499,6 +582,12 @@ export const interpretPressEnd = (
   // the user is mid-mode and meant to start an edge.
   if (ctx.mode === "draw-edge") return null;
   if (ctx.pressTarget.kind === "shape") {
+    // Shift / meta click toggles the shape's membership in the current
+    // selection — every other modifier combination replaces.
+    const m = ctx.pressModifiers;
+    if (m && (m.shift || m.meta || m.ctrl)) {
+      return { type: "SELECT_TOGGLE", id: ctx.pressTarget.id };
+    }
     return { type: "SELECT_REPLACE", id: ctx.pressTarget.id };
   }
   if (ctx.pressTarget.kind === "edge") {

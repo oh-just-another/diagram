@@ -46,10 +46,41 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
  }
 
  if (size > 1) {
+  // Multi-selection — show count + the shared values across the group
+  // when every member agrees. Disagreement collapses to "—".
+  const shapes = [...selection]
+   .map((id) => scene.shapes.get(id))
+   .filter((s): s is ShapeBase => s !== undefined);
+  const types = new Set(shapes.map((s) => s.type));
+  const fills = new Set(shapes.map((s) => (hasFill(s) ? String(s.style.fill) : "")));
+  const strokes = new Set(shapes.map((s) => (hasStroke(s) ? String(s.style.stroke) : "")));
+  const sharedFill = fills.size === 1 && [...fills][0] !== "" ? [...fills][0] : null;
+  const sharedStroke = strokes.size === 1 && [...strokes][0] !== "" ? [...strokes][0] : null;
   return (
    <aside className={className} style={containerStyle}>
     <Header>Inspector</Header>
     <Field label="Selected">{size} shapes</Field>
+    <Field label="Types">{types.size === 1 ? [...types][0] : `${types.size} kinds`}</Field>
+    {sharedFill ? (
+     <Field label="Fill">
+      <Swatch color={sharedFill} />
+      <code>{sharedFill}</code>
+     </Field>
+    ) : fills.size > 1 ? (
+     <Field label="Fill">
+      <span style={{ color: "#666" }}>—</span>
+     </Field>
+    ) : null}
+    {sharedStroke ? (
+     <Field label="Stroke">
+      <Swatch color={sharedStroke} />
+      <code>{sharedStroke}</code>
+     </Field>
+    ) : strokes.size > 1 ? (
+     <Field label="Stroke">
+      <span style={{ color: "#666" }}>—</span>
+     </Field>
+    ) : null}
    </aside>
   );
  }

@@ -77,3 +77,6 @@
 
 ## 0.18.2
 - feat: template spot ports
+
+## 0.18.3
+- feat: multi select lasso

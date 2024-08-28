@@ -14,6 +14,7 @@ import {
   getEdgePath,
   getShape,
   getShapeAt,
+  getShapesInBounds,
   getShapeWorldBounds,
   getScreenToWorld,
   gridSnapper,
@@ -113,6 +114,15 @@ export class Editor {
     side: "from" | "to";
     toPoint: Vec2;
   } | null = null;
+  /** Live lasso bounds during a rubber-band select gesture. */
+  private lassoPreview: Bounds | null = null;
+  /**
+   * Snapshot of every selected shape's `position` at press-down. Used to
+   * translate the whole group additively during a multi-shape drag. The
+   * machine still emits per-shape MOVE_SHAPE — the editor intercepts and
+   * fans out when this map is populated.
+   */
+  private groupMoveOrigin: ReadonlyMap<ShapeId, Vec2> | null = null;
   private nextId = 0;
 
   /**
@@ -433,7 +443,25 @@ export class Editor {
       }
 
       const target = this.hitTest(worldPoint);
-      this.actor.send({ type: "POINTER_DOWN", point: worldPoint, target });
+      // Snapshot positions of every selected shape when the press lands
+      // on a member of a multi-selection — the editor will translate the
+      // whole group during the drag.
+      if (target.kind === "shape" && this._selection.size > 1 && this._selection.has(target.id)) {
+        const snap = new Map<ShapeId, Vec2>();
+        for (const id of this._selection) {
+          const s = getShape(this._scene, id);
+          if (s) snap.set(id, s.position);
+        }
+        this.groupMoveOrigin = snap;
+      } else {
+        this.groupMoveOrigin = null;
+      }
+      this.actor.send({
+        type: "POINTER_DOWN",
+        point: worldPoint,
+        target,
+        modifiers: data.modifiers,
+      });
     };
 
     const onMove = (ev: PointerEvent) => {
@@ -572,6 +600,11 @@ export class Editor {
         if (this._selectedEdge !== null) this._selectedEdge = null;
         this.notify();
         return;
+      case "SELECT_TOGGLE":
+        this._selection = Selection.toggle(this._selection, emit.id);
+        if (this._selectedEdge !== null) this._selectedEdge = null;
+        this.notify();
+        return;
       case "SELECT_CLEAR":
         this._selection = Selection.EMPTY;
         if (this._selectedEdge !== null) this._selectedEdge = null;
@@ -599,8 +632,25 @@ export class Editor {
       case "UPDATE_EDGE_ENDPOINT":
         this.applyEdgeEndpointUpdate(emit);
         return;
+      case "LASSO_PROGRESS":
+        this.lassoPreview = emit.bounds;
+        this.notify();
+        return;
+      case "LASSO_CLEAR":
+        if (this.lassoPreview !== null) {
+          this.lassoPreview = null;
+          this.notify();
+        }
+        return;
+      case "SELECT_BY_BOUNDS":
+        this.applySelectByBounds(emit.bounds, emit.mode);
+        return;
       case "MOVE_SHAPE":
-        this.applyMove(emit.id, emit.delta, emit.originalBounds);
+        if (this.groupMoveOrigin) {
+          this.applyGroupMove(emit.delta);
+        } else {
+          this.applyMove(emit.id, emit.delta, emit.originalBounds);
+        }
         return;
       case "RESIZE_SHAPE":
         this.applyResize(emit.id, emit.handle, emit.delta, emit.originalBounds);
@@ -687,6 +737,32 @@ export class Editor {
     const patch: Patch = { kind: "shape", id, before: shape, after: next };
     this._scene = apply(this._scene, patch);
     this.recordGesturePatch(patch);
+    this.notify();
+  }
+
+  /**
+   * Translate every shape in the active group-drag snapshot by `delta`.
+   * `delta` is the cumulative cursor displacement since press-down, so
+   * each shape lands at `originPosition + delta` every frame — no
+   * accumulator state inside the loop.
+   *
+   * All per-shape patches go through the gesture's open transaction so
+   * the entire move collapses into a single undo step.
+   */
+  private applyGroupMove(delta: Vec2): void {
+    if (!this.groupMoveOrigin) return;
+    for (const [id, origin] of this.groupMoveOrigin) {
+      const shape = getShape(this._scene, id);
+      if (!shape) continue;
+      const next: Shape = {
+        ...shape,
+        position: { x: origin.x + delta.x, y: origin.y + delta.y },
+      };
+      if (next.position.x === shape.position.x && next.position.y === shape.position.y) continue;
+      const patch: Patch = { kind: "shape", id, before: shape, after: next };
+      this._scene = apply(this._scene, patch);
+      this.recordGesturePatch(patch);
+    }
     this.notify();
   }
 
@@ -823,6 +899,26 @@ export class Editor {
     return { kind: "anchor", shapeId: pressTargetShape, anchor: ref };
   }
 
+  /**
+   * Select every shape whose world-bounds intersect the lasso rectangle.
+   * `mode: "replace"` swaps the selection wholesale; `"add"` extends it
+   * (Shift / Cmd lasso).
+   */
+  private applySelectByBounds(bounds: Bounds, mode: "replace" | "add"): void {
+    const hits = getShapesInBounds(this._scene, bounds);
+    let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : this._selection;
+    for (const shape of hits) {
+      next = Selection.add(next, shape.id);
+    }
+    if (this._selectedEdge !== null) this._selectedEdge = null;
+    if (Selection.equals(next, this._selection)) {
+      this.notify();
+      return;
+    }
+    this._selection = next;
+    this.notify();
+  }
+
   private applyEdgeEndpointUpdate(
     emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
   ): void {
@@ -890,12 +986,14 @@ export class Editor {
   }
 
   private commitGesture(): void {
+    this.groupMoveOrigin = null;
     if (!this.gestureTx) return;
     this.gestureTx.commit();
     this.gestureTx = null;
   }
 
   private cancelGesture(): void {
+    this.groupMoveOrigin = null;
     if (!this.gestureTx) return;
     this.gestureTx.cancel();
     this.gestureTx = null;
@@ -932,7 +1030,11 @@ export class Editor {
     renderScene(this._scene, this.mainTarget);
     renderEdges(this._scene, this.mainTarget);
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
-    if (this.drawingPreview) overlayOpts.drawingPreview = this.drawingPreview;
+    // Lasso and rect-draw share the same dashed-rect visual. Both can't
+    // run simultaneously (different gestures), so a single `drawingPreview`
+    // slot covers both.
+    if (this.lassoPreview) overlayOpts.drawingPreview = this.lassoPreview;
+    else if (this.drawingPreview) overlayOpts.drawingPreview = this.drawingPreview;
     if (this.edgePreview) overlayOpts.edgePreview = this.edgePreview;
     if (this.hoveredEdgeTarget) {
       const shape = getShape(this._scene, this.hoveredEdgeTarget.shapeId);
