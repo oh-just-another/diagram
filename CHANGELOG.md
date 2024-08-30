@@ -80,3 +80,6 @@
 
 ## 0.18.3
 - feat: multi select lasso
+
+## 0.19.0
+- feat: layers group resize

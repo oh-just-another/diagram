@@ -16,6 +16,7 @@ import {
   DEFAULT_CONTEXT_MENU,
   DiagramRoot,
   DiagramSurface,
+  LayerPanel,
   Palette,
   PropertyPanel,
   Toolbar,
@@ -174,6 +175,7 @@ export const App = () => {
           <Palette style={paletteStyle} />
           <CanvasArea />
           <PropertyPanel style={panelStyle} />
+          <LayerPanel />
           <HistoryPanel />
         </main>
       </DiagramRoot>

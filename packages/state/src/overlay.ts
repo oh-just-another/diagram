@@ -79,6 +79,13 @@ export const renderOverlay = (
     edgePreview?: EdgePreview;
     ports?: PortOverlay;
     edgeSelection?: EdgeSelection;
+    /**
+     * Combined world-space bounding box of a multi-selection. When set
+     * the overlay paints a 1-px outline and 8 resize handles on top of
+     * the per-shape selection outlines so the user can grab a group
+     * handle.
+     */
+    groupBounds?: Bounds;
     style?: Partial<OverlayStyle>;
   } = {},
 ): void => {
@@ -137,6 +144,17 @@ export const renderOverlay = (
     const to = matrix.applyToPoint(w2s, options.edgeSelection.to);
     drawEdgeEndpointHandle(target, from, style);
     drawEdgeEndpointHandle(target, to, style);
+  }
+
+  // 6. Multi-selection combined bounds — outline + 8 group handles.
+  if (options.groupBounds) {
+    const groupScreen = projectBounds(options.groupBounds, w2s);
+    drawOutline(target, groupScreen, style);
+    for (const handle of ALL_HANDLES) {
+      const worldPoint = handlePosition(handle, options.groupBounds);
+      const screenPoint = matrix.applyToPoint(w2s, worldPoint);
+      drawHandle(target, screenPoint, style);
+    }
   }
 
   target.restore();

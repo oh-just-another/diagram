@@ -17,6 +17,17 @@ export type PressTarget =
       readonly handle: HandleId;
       readonly bounds: Bounds;
     }
+  | {
+      /**
+       * Handle on the combined bounding box of a multi-selection. The
+       * editor uses it to drive a group resize gesture; the machine
+       * treats it the same as `handle` (per-frame RESIZE_SHAPE emits) and
+       * the editor's emit handler fans out the scaling to every member.
+       */
+      readonly kind: "group-handle";
+      readonly handle: HandleId;
+      readonly bounds: Bounds;
+    }
   | { readonly kind: "edge"; readonly id: EdgeId }
   | {
       readonly kind: "edge-endpoint";
@@ -124,6 +135,18 @@ export type InteractionEmit =
   | {
       readonly type: "RESIZE_SHAPE";
       readonly id: ShapeId;
+      readonly handle: HandleId;
+      readonly delta: Vec2;
+      readonly originalBounds: Bounds;
+    }
+  | {
+      /**
+       * Resize emit for a multi-selection's combined bounding box.
+       * Editor reads the press-down snapshot it kept and rescales every
+       * member proportionally. Single per-frame emit regardless of group
+       * size — the math is host-side.
+       */
+      readonly type: "RESIZE_GROUP";
       readonly handle: HandleId;
       readonly delta: Vec2;
       readonly originalBounds: Bounds;
@@ -250,6 +273,24 @@ export const interactionMachine = setup({
         originalBounds: context.pressTarget.bounds,
       });
     }),
+    emitResizeGroup: enqueueActions(({ context, event, enqueue }) => {
+      if (
+        event.type !== "POINTER_MOVE" ||
+        !context.pressOrigin ||
+        context.pressTarget?.kind !== "group-handle"
+      ) {
+        return;
+      }
+      enqueue.emit({
+        type: "RESIZE_GROUP",
+        handle: context.pressTarget.handle,
+        delta: {
+          x: event.point.x - context.pressOrigin.x,
+          y: event.point.y - context.pressOrigin.y,
+        },
+        originalBounds: context.pressTarget.bounds,
+      });
+    }),
     maybeEmitCreate: enqueueActions(({ context, event, enqueue }) => {
       if (event.type !== "POINTER_UP" || !context.pressOrigin || !context.drawingType) {
         return;
@@ -349,6 +390,11 @@ export const interactionMachine = setup({
       if (context.pressTarget?.kind !== "handle") return false;
       return dragExceeded(context.pressOrigin, event.point);
     },
+    movedAndOnGroupHandle: ({ context, event }) => {
+      if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
+      if (context.pressTarget?.kind !== "group-handle") return false;
+      return dragExceeded(context.pressOrigin, event.point);
+    },
     movedAndDrawing: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
       if (context.mode !== "draw-rect" && context.mode !== "draw-ellipse") return false;
@@ -411,6 +457,14 @@ export const interactionMachine = setup({
             actions: [
               { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
               { type: "emitResizeShape" },
+            ],
+          },
+          {
+            guard: "movedAndOnGroupHandle",
+            target: "draggingGroupHandle",
+            actions: [
+              { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+              { type: "emitResizeGroup" },
             ],
           },
           {
@@ -484,6 +538,18 @@ export const interactionMachine = setup({
           actions: [
             { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
             { type: "emitResizeShape" },
+          ],
+        },
+        POINTER_UP: { target: "idle", actions: [{ type: "resetGesture" }] },
+        POINTER_CANCEL: { target: "idle", actions: [{ type: "resetGesture" }] },
+      },
+    },
+    draggingGroupHandle: {
+      on: {
+        POINTER_MOVE: {
+          actions: [
+            { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+            { type: "emitResizeGroup" },
           ],
         },
         POINTER_UP: { target: "idle", actions: [{ type: "resetGesture" }] },

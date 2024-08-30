@@ -18,7 +18,10 @@ export {
   useSelection,
   useMode,
   useHistory,
+  useLayers,
+  useActiveLayerId,
 } from "./hooks.js";
+export { LayerPanel, type LayerPanelProps } from "./layer-panel.js";
 export { Toolbar, DEFAULT_TOOLBAR, type ToolbarItem, type ToolbarProps } from "./toolbar.js";
 export { Palette, usePaletteDropHandler, type PaletteProps } from "./palette.js";
 export { PropertyPanel, type PropertyPanelProps } from "./property-panel.js";

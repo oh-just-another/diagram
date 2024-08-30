@@ -3,6 +3,7 @@ import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
 import { shapeId as castShapeId } from "@oh-just-another/types";
 import {
   addEdge,
+  addLayer,
   addShape,
   anchorSnapper,
   apply,
@@ -23,18 +24,26 @@ import {
   orderForTop,
   outlineSnapper,
   removeEdge,
+  removeLayer,
   removeShape,
   SnapEngine,
   updateEdge,
+  updateLayer,
   updateShape,
   type Edge,
   type EdgeEndpoint,
+  type Layer,
   type Patch,
   type Scene,
   type Shape,
   type SnapCandidate,
 } from "@oh-just-another/scene";
-import { edgeId as castEdgeId, type EdgeId } from "@oh-just-another/types";
+import {
+  edgeId as castEdgeId,
+  layerId as castLayerId,
+  type EdgeId,
+  type LayerId,
+} from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import { renderEdges, renderGrid, renderScene, type RenderTarget } from "@oh-just-another/renderer-core";
 import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
@@ -123,6 +132,24 @@ export class Editor {
    * fans out when this map is populated.
    */
   private groupMoveOrigin: ReadonlyMap<ShapeId, Vec2> | null = null;
+  /**
+   * Per-shape snapshot for a group-resize gesture — `bounds` is the
+   * shape's world AABB at press-down. Editor scales the relative
+   * position / size against the combined bounds delta each frame.
+   */
+  private groupResizeOrigin: {
+    readonly combined: Bounds;
+    readonly shapes: ReadonlyMap<
+      ShapeId,
+      { readonly position: Vec2; readonly bounds: Bounds; readonly scale: Vec2 }
+    >;
+  } | null = null;
+  /**
+   * Active layer — new shapes created via `addShape` / `applyCreate` land
+   * here when their input doesn't specify a `layerId`. Defaults to the
+   * scene's `DEFAULT_LAYER_ID`; hosts switch via `setActiveLayer`.
+   */
+  private _activeLayerId: LayerId = castLayerId(DEFAULT_LAYER_ID);
   private nextId = 0;
 
   /**
@@ -390,6 +417,130 @@ export class Editor {
     this.notify();
   }
 
+  // --- Layer commands ---
+
+  /** Currently active layer — new shapes default into it. */
+  get activeLayerId(): LayerId {
+    return this._activeLayerId;
+  }
+
+  /** Switch the active layer. Hosts call this from a layer panel click. */
+  setActiveLayer(id: LayerId): void {
+    if (!this._scene.layers.has(id)) return;
+    if (this._activeLayerId === id) return;
+    this._activeLayerId = id;
+    this.notify();
+  }
+
+  /**
+   * Create a new top-of-stack layer with the given name and return its id.
+   * The new layer is made active. One undo step.
+   */
+  createLayer(name: string): LayerId {
+    const id = castLayerId(`layer-${++this.nextId}-${Date.now().toString(36)}`);
+    const topOrder = orderForTop([...this._scene.layers.values()].map((l) => l.order));
+    const layer: Layer = { id, name, visible: true, locked: false, order: topOrder };
+    const result = addLayer(this._scene, layer);
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this._activeLayerId = id;
+    this.notify();
+    return id;
+  }
+
+  /**
+   * Remove a layer + every shape and edge living on it. One undo step.
+   * No-op if the layer doesn't exist; throws if it's the only layer
+   * left (hosts get a clear signal that they need to keep at least one).
+   */
+  removeLayer(id: LayerId): void {
+    if (!this._scene.layers.has(id)) return;
+    if (this._scene.layers.size <= 1) {
+      throw new Error("Cannot remove the only remaining layer.");
+    }
+    const tx = this._history.transaction();
+    for (const shape of [...this._scene.shapes.values()]) {
+      if (shape.layerId !== id) continue;
+      const r = removeShape(this._scene, shape.id);
+      this._scene = r.scene;
+      tx.add(r.patch);
+    }
+    for (const edge of [...this._scene.edges.values()]) {
+      if (edge.layerId !== id) continue;
+      const r = removeEdge(this._scene, edge.id);
+      this._scene = r.scene;
+      tx.add(r.patch);
+    }
+    const r = removeLayer(this._scene, id);
+    this._scene = r.scene;
+    tx.add(r.patch);
+    tx.commit();
+    // If we just removed the active layer, fall back to the topmost remaining one.
+    if (this._activeLayerId === id) {
+      const top = [...this._scene.layers.values()].sort((a, b) =>
+        a.order > b.order ? -1 : a.order < b.order ? 1 : 0,
+      )[0];
+      if (top) this._activeLayerId = top.id;
+    }
+    this._selection = Selection.EMPTY;
+    this.notify();
+  }
+
+  /** Rename a layer. One undo step. */
+  renameLayer(id: LayerId, name: string): void {
+    const layer = this._scene.layers.get(id);
+    if (!layer || layer.name === name) return;
+    const result = updateLayer(this._scene, id, (l) => ({ ...l, name }));
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /** Flip a layer's `visible` flag. */
+  toggleLayerVisibility(id: LayerId): void {
+    const layer = this._scene.layers.get(id);
+    if (!layer) return;
+    const result = updateLayer(this._scene, id, (l) => ({ ...l, visible: !l.visible }));
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /** Flip a layer's `locked` flag. */
+  toggleLayerLock(id: LayerId): void {
+    const layer = this._scene.layers.get(id);
+    if (!layer) return;
+    const result = updateLayer(this._scene, id, (l) => ({ ...l, locked: !l.locked }));
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Move every currently-selected shape onto `targetLayer`. Edges follow
+   * automatically (they stay on whichever layer they were already on —
+   * cross-layer edges are valid). One undo step.
+   */
+  moveSelectionToLayer(targetLayer: LayerId): void {
+    if (!this._scene.layers.has(targetLayer) || this._selection.size === 0) return;
+    const tx = this._history.transaction();
+    let moved = 0;
+    for (const id of this._selection) {
+      const shape = getShape(this._scene, id);
+      if (!shape || shape.layerId === targetLayer) continue;
+      const result = updateShape(this._scene, id, (s) => ({ ...s, layerId: targetLayer }));
+      this._scene = result.scene;
+      tx.add(result.patch);
+      moved += 1;
+    }
+    if (moved === 0) {
+      tx.cancel();
+      return;
+    }
+    tx.commit();
+    this.notify();
+  }
+
   /**
    * Replace the entire scene (e.g. after `parseScene`). Clears history,
    * selection and any open gesture. Use to load a saved document.
@@ -401,6 +552,11 @@ export class Editor {
     }
     this._scene = scene;
     this._selection = Selection.EMPTY;
+    // Snap active layer back into the loaded scene's layer set.
+    if (!scene.layers.has(this._activeLayerId)) {
+      const first = scene.layers.keys().next().value;
+      this._activeLayerId = first ?? castLayerId(DEFAULT_LAYER_ID);
+    }
     this._history.clear();
     this.notify();
   }
@@ -455,6 +611,24 @@ export class Editor {
         this.groupMoveOrigin = snap;
       } else {
         this.groupMoveOrigin = null;
+      }
+      // Snapshot each member's world bounds + position + scale when the
+      // press lands on a group-handle so the per-frame resize math has
+      // a stable baseline to scale against.
+      if (target.kind === "group-handle") {
+        const shapes = new Map<ShapeId, { position: Vec2; bounds: Bounds; scale: Vec2 }>();
+        for (const id of this._selection) {
+          const s = getShape(this._scene, id);
+          if (!s) continue;
+          shapes.set(id, {
+            position: s.position,
+            bounds: getShapeWorldBounds(s),
+            scale: s.scale,
+          });
+        }
+        this.groupResizeOrigin = { combined: target.bounds, shapes };
+      } else {
+        this.groupResizeOrigin = null;
       }
       this.actor.send({
         type: "POINTER_DOWN",
@@ -551,7 +725,17 @@ export class Editor {
 
   private hitTest(worldPoint: Vec2): PressTarget {
     const zoom = this._scene.viewport.zoom;
-    // 1. Resize handles on selected shapes win over everything else.
+    // 1a. Group resize handles win when several shapes are selected.
+    if (this._selection.size > 1) {
+      const combined = this.combinedSelectionBounds();
+      if (combined) {
+        const handle = hitHandle(worldPoint, combined, zoom);
+        if (handle) {
+          return { kind: "group-handle", handle, bounds: combined };
+        }
+      }
+    }
+    // 1b. Resize handles on a single selected shape.
     for (const id of this._selection) {
       const shape = getShape(this._scene, id);
       if (!shape || !isResizable(shape)) continue;
@@ -651,6 +835,9 @@ export class Editor {
         } else {
           this.applyMove(emit.id, emit.delta, emit.originalBounds);
         }
+        return;
+      case "RESIZE_GROUP":
+        this.applyGroupResize(emit.handle, emit.delta, emit.originalBounds);
         return;
       case "RESIZE_SHAPE":
         this.applyResize(emit.id, emit.handle, emit.delta, emit.originalBounds);
@@ -766,6 +953,70 @@ export class Editor {
     this.notify();
   }
 
+  private combinedSelectionBounds(): Bounds | null {
+    let acc: Bounds | null = null;
+    for (const id of this._selection) {
+      const s = getShape(this._scene, id);
+      if (!s) continue;
+      const b = getShapeWorldBounds(s);
+      acc = acc ? B.union(acc, b) : b;
+    }
+    return acc;
+  }
+
+  /**
+   * Group resize — scale every snapshotted member proportionally based
+   * on how `originalBounds` morphs into the new combined bounds. Each
+   * member's *position offset* inside the original combined box scales
+   * by the same factor; each member's `scale.{x,y}` is multiplied so
+   * the visible size tracks the gesture. Mirroring (flip) is allowed
+   * when the user drags past the opposite edge.
+   *
+   * All per-shape patches collapse into the gesture transaction → one
+   * undo step.
+   */
+  private applyGroupResize(handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
+    if (!this.groupResizeOrigin) return;
+    const next = resizeFromHandle(originalBounds, handle, delta);
+    const minDim = 1;
+    const sx = originalBounds.width > 0 ? next.width / originalBounds.width : 1;
+    const sy = originalBounds.height > 0 ? next.height / originalBounds.height : 1;
+    // Anchor for the scale = the unchanging corner / edge midpoint of the
+    // original bounds (opposite to the dragged handle).
+    const ax = handle.includes("w")
+      ? originalBounds.x + originalBounds.width
+      : handle.includes("e")
+        ? originalBounds.x
+        : originalBounds.x;
+    const ay = handle.includes("n")
+      ? originalBounds.y + originalBounds.height
+      : handle.includes("s")
+        ? originalBounds.y
+        : originalBounds.y;
+
+    for (const [id, origin] of this.groupResizeOrigin.shapes) {
+      const shape = getShape(this._scene, id);
+      if (!shape) continue;
+      // Translate origin position around the anchor, then scale, then
+      // translate back. Same math for x and y independently.
+      const newPx = ax + (origin.position.x - ax) * sx;
+      const newPy = ay + (origin.position.y - ay) * sy;
+      const newScaleX = origin.scale.x * sx;
+      const newScaleY = origin.scale.y * sy;
+      if (Math.abs(newScaleX) < minDim / Math.max(1, origin.bounds.width)) continue;
+      if (Math.abs(newScaleY) < minDim / Math.max(1, origin.bounds.height)) continue;
+      const nextShape: Shape = {
+        ...shape,
+        position: { x: newPx, y: newPy },
+        scale: { x: newScaleX, y: newScaleY },
+      };
+      const patch: Patch = { kind: "shape", id, before: shape, after: nextShape };
+      this._scene = apply(this._scene, patch);
+      this.recordGesturePatch(patch);
+    }
+    this.notify();
+  }
+
   private applyResize(id: ShapeId, handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
     const shape = getShape(this._scene, id);
     if (!shape) return;
@@ -795,14 +1046,15 @@ export class Editor {
 
   private applyCreate(kind: "rect" | "ellipse", bounds: Bounds): void {
     const id = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
+    const layerId = this._activeLayerId;
     const order = orderForTop(
       Array.from(this._scene.shapes.values())
-        .filter((s) => s.layerId === DEFAULT_LAYER_ID)
+        .filter((s) => s.layerId === layerId)
         .map((s) => s.order),
     );
     const common = {
       id,
-      layerId: DEFAULT_LAYER_ID,
+      layerId,
       position: { x: bounds.x, y: bounds.y },
       rotation: 0,
       scale: { x: 1, y: 1 },
@@ -834,16 +1086,17 @@ export class Editor {
     const from = this.snapEdgeEndpoint(emit.fromShape, emit.fromPoint);
     const to = this.snapEdgeEndpoint(emit.toShape, emit.toPoint);
 
+    const layerId = this._activeLayerId;
     const order = orderForTop(
       Array.from(this._scene.edges.values())
-        .filter((e) => e.layerId === DEFAULT_LAYER_ID)
+        .filter((e) => e.layerId === layerId)
         .map((e) => e.order),
     );
 
     const id = castEdgeId(`edge-${++this.nextId}-${Date.now().toString(36)}`);
     const edge: Edge = {
       id,
-      layerId: DEFAULT_LAYER_ID,
+      layerId,
       from,
       to,
       order,
@@ -987,6 +1240,7 @@ export class Editor {
 
   private commitGesture(): void {
     this.groupMoveOrigin = null;
+    this.groupResizeOrigin = null;
     if (!this.gestureTx) return;
     this.gestureTx.commit();
     this.gestureTx = null;
@@ -994,6 +1248,7 @@ export class Editor {
 
   private cancelGesture(): void {
     this.groupMoveOrigin = null;
+    this.groupResizeOrigin = null;
     if (!this.gestureTx) return;
     this.gestureTx.cancel();
     this.gestureTx = null;
@@ -1050,6 +1305,10 @@ export class Editor {
           ...(activeIndex >= 0 ? { activeIndex } : {}),
         };
       }
+    }
+    if (this._selection.size > 1) {
+      const combined = this.combinedSelectionBounds();
+      if (combined) overlayOpts.groupBounds = combined;
     }
     if (this._selectedEdge) {
       const edge = getEdge(this._scene, this._selectedEdge);

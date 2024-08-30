@@ -1,5 +1,12 @@
 import { useCallback } from "react";
-import { emptyScene, type Scene } from "@oh-just-another/scene";
+import {
+  DEFAULT_LAYER_ID,
+  emptyScene,
+  getLayersInOrder,
+  type Layer,
+  type Scene,
+} from "@oh-just-another/scene";
+import { layerId as castLayerId, type LayerId } from "@oh-just-another/types";
 import { selection, type Editor, type Mode, type Selection } from "@oh-just-another/state";
 import { useDiagramContext, useDiagramContextOptional, useEditorSelector } from "./context.js";
 
@@ -55,3 +62,15 @@ export const useHistory = (): {
 
   return { canUndo, canRedo, undo, redo };
 };
+
+const EMPTY_LAYERS: readonly Layer[] = [];
+
+/** All layers in z-order (back → front). Returns an empty array pre-mount. */
+export const useLayers = (): readonly Layer[] =>
+  useEditorSelector((e) => getLayersInOrder(e.scene), EMPTY_LAYERS);
+
+const DEFAULT_ACTIVE_LAYER: LayerId = castLayerId(DEFAULT_LAYER_ID);
+
+/** Currently active layer id (new shapes go here). */
+export const useActiveLayerId = (): LayerId =>
+  useEditorSelector((e) => e.activeLayerId, DEFAULT_ACTIVE_LAYER);
