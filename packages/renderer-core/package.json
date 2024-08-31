@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-core",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "description": "renderer-core package",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,6 +23,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "bench": "vitest bench --run",
     "lint": "eslint src tests",
     "clean": "rm -rf dist *.tsbuildinfo"
   },

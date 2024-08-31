@@ -45,9 +45,22 @@ import {
   type LayerId,
 } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
-import { renderEdges, renderGrid, renderScene, type RenderTarget } from "@oh-just-another/renderer-core";
+import {
+  DEFAULT_LOD,
+  renderEdges,
+  renderGrid,
+  renderScene,
+  ShapeCache,
+  type RenderTarget,
+} from "@oh-just-another/renderer-core";
 import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
 import { fromPointerEvent } from "./dom-events.js";
+import {
+  DEFAULT_SNAP_THRESHOLD,
+  EDGE_ENDPOINT_HANDLE_RADIUS,
+  EDGE_HIT_THRESHOLD,
+  VIEWPORT_CULL_PADDING_RATIO,
+} from "./constants.js";
 import { hitHandle } from "./handle.js";
 import { getInteractiveHitTester } from "./interactive.js";
 import {
@@ -163,7 +176,15 @@ export class Editor {
     outlineSnapper,
   ]);
   /** Snap threshold in world units. */
-  private readonly snapThreshold = 12;
+  private readonly snapThreshold = DEFAULT_SNAP_THRESHOLD;
+
+  /**
+   * Persistent world-bounds cache shared with `renderScene` for viewport
+   * culling. Object-identity keyed — invalidates automatically whenever
+   * a scene op replaces the shape ref. Could be exposed for hit-test
+   * sharing in a follow-up.
+   */
+  private readonly boundsCache: ShapeCache<Bounds> = new ShapeCache<Bounds>();
 
   private readonly _history: History;
   /** Open transaction during a single drag/resize gesture. */
@@ -953,6 +974,27 @@ export class Editor {
     this.notify();
   }
 
+  /**
+   * World-space AABB of the screen viewport, inflated by ~10% so a slow
+   * pan does not flicker shapes near the edge. Returns `null` until the
+   * host has resized the viewport at least once (size is 0×0).
+   */
+  private computeViewportWorld(): Bounds | null {
+    const vp = this._scene.viewport;
+    const w = vp.size.width;
+    const h = vp.size.height;
+    if (w <= 0 || h <= 0) return null;
+    const s2w = getScreenToWorld(vp);
+    const corners = [
+      matrix.applyToPoint(s2w, { x: 0, y: 0 }),
+      matrix.applyToPoint(s2w, { x: w, y: 0 }),
+      matrix.applyToPoint(s2w, { x: 0, y: h }),
+      matrix.applyToPoint(s2w, { x: w, y: h }),
+    ];
+    const bb = B.fromPoints(corners);
+    return B.expand(bb, Math.max(bb.width, bb.height) * VIEWPORT_CULL_PADDING_RATIO);
+  }
+
   private combinedSelectionBounds(): Bounds | null {
     let acc: Bounds | null = null;
     for (const id of this._selection) {
@@ -1282,7 +1324,16 @@ export class Editor {
     if (this.backgroundTarget) {
       renderGrid(this._scene, this.backgroundTarget);
     }
-    renderScene(this._scene, this.mainTarget);
+    // World-space viewport rect — used by `renderScene` to skip off-screen
+    // shapes. Computed by mapping the screen viewport corners through the
+    // inverse projection. Slightly inflated so geometry near the edge
+    // does not flicker during pan.
+    const viewportWorld = this.computeViewportWorld();
+    renderScene(this._scene, this.mainTarget, {
+      ...(viewportWorld ? { viewport: viewportWorld } : {}),
+      boundsCache: this.boundsCache,
+      lod: DEFAULT_LOD,
+    });
     renderEdges(this._scene, this.mainTarget);
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
     // Lasso and rect-draw share the same dashed-rect visual. Both can't
@@ -1331,11 +1382,6 @@ export class Editor {
     renderOverlay(this._scene, this._selection, this.overlayTarget, overlayOpts);
   }
 }
-
-/** Screen-pixel radius of edge endpoint handles. Scaled by zoom in hit-test. */
-const EDGE_ENDPOINT_HANDLE_RADIUS = 8;
-/** Screen-pixel tolerance for clicking on an edge body to select it. */
-const EDGE_HIT_THRESHOLD = 6;
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 

@@ -9,7 +9,7 @@ export type {
 } from "./render-target.js";
 export type { ShapeRenderer } from "./shape-renderer.js";
 export type { LayerName } from "./layers.js";
-export type { RenderSceneOptions } from "./scene-renderer.js";
+export type { RenderSceneOptions, LodOptions } from "./scene-renderer.js";
 export type { RenderEdgesOptions } from "./edge-renderer.js";
 export type { RenderGridOptions } from "./grid-renderer.js";
 
@@ -25,3 +25,7 @@ export { renderGrid } from "./grid-renderer.js";
 export { installBuiltinRenderers } from "./built-in-renderers.js";
 export type { WrapOptions, WrappedLine } from "./text-layout.js";
 export { wrapText } from "./text-layout.js";
+
+export { ShapeCache, sharedBoundsCache, cachedWorldBounds } from "./shape-cache.js";
+
+export { DEFAULT_LOD, DEFAULT_PLACEHOLDER_FILL, VIEWPORT_CULL_PADDING_RATIO } from "./constants.js";

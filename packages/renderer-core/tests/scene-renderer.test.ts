@@ -9,9 +9,11 @@ import {
   type Layer,
   type Shape,
 } from "@oh-just-another/scene";
+import { buildSpatialIndex } from "@oh-just-another/scene";
 import {
   registerShapeRenderer,
   renderScene,
+  ShapeCache,
   type RenderTarget,
   type ShapeRenderer,
 } from "../src/index";
@@ -117,6 +119,136 @@ describe("renderScene", () => {
     const restores = calls.filter((c) => c.method === "restore").length;
     expect(saves).toBe(restores);
     expect(saves).toBeGreaterThanOrEqual(2);
+  });
+
+  describe("viewport culling", () => {
+    // Use built-in `rectangle` so the bounder registry resolves.
+    const placeRect = (id: string, x: number, y: number): Shape => ({
+      ...rect(id),
+      position: { x, y },
+    });
+
+    it("skips shapes whose AABB does not intersect the viewport", () => {
+      const renderer = vi.fn<ShapeRenderer>();
+      registerShapeRenderer("rectangle", renderer);
+      let scene = emptyScene();
+      ({ scene } = addShape(scene, placeRect("inside", 0, 0)));
+      ({ scene } = addShape(scene, placeRect("outside", 1000, 1000)));
+      const { target } = makeRecorder();
+      renderScene(scene, target, {
+        viewport: { x: -50, y: -50, width: 200, height: 200 },
+      });
+      expect(renderer).toHaveBeenCalledOnce();
+    });
+
+    it("renders all shapes when viewport is omitted", () => {
+      const renderer = vi.fn<ShapeRenderer>();
+      registerShapeRenderer("rectangle", renderer);
+      let scene = emptyScene();
+      ({ scene } = addShape(scene, placeRect("a", 0, 0)));
+      ({ scene } = addShape(scene, placeRect("b", 10000, 10000)));
+      const { target } = makeRecorder();
+      renderScene(scene, target);
+      expect(renderer).toHaveBeenCalledTimes(2);
+    });
+
+    it("spatialIndex pre-filters candidates", () => {
+      const renderer = vi.fn<ShapeRenderer>();
+      registerShapeRenderer("rectangle", renderer);
+      let scene = emptyScene();
+      ({ scene } = addShape(scene, placeRect("inside", 0, 0)));
+      ({ scene } = addShape(scene, placeRect("outside", 5000, 5000)));
+      const grid = buildSpatialIndex(scene);
+      const { target } = makeRecorder();
+      renderScene(scene, target, {
+        viewport: { x: -50, y: -50, width: 100, height: 100 },
+        spatialIndex: grid,
+      });
+      expect(renderer).toHaveBeenCalledOnce();
+    });
+
+    it("reuses bounds cache across calls", () => {
+      const renderer = vi.fn<ShapeRenderer>();
+      registerShapeRenderer("rectangle", renderer);
+      let scene = emptyScene();
+      ({ scene } = addShape(scene, placeRect("a", 0, 0)));
+      const cache = new ShapeCache<{ x: number; y: number; width: number; height: number }>();
+      const { target } = makeRecorder();
+      renderScene(scene, target, {
+        viewport: { x: -10, y: -10, width: 100, height: 100 },
+        boundsCache: cache,
+      });
+      expect(cache.size).toBe(1);
+      renderScene(scene, target, {
+        viewport: { x: -10, y: -10, width: 100, height: 100 },
+        boundsCache: cache,
+      });
+      // No second insert — cache hit on identity.
+      expect(cache.size).toBe(1);
+    });
+  });
+
+  describe("LOD", () => {
+    const placeRect = (id: string, x: number, y: number): Shape => ({
+      ...rect(id),
+      position: { x, y },
+    });
+
+    const sceneWithZoom = (zoom: number, shapes: Shape[]) => {
+      let scene = emptyScene();
+      scene = { ...scene, viewport: { ...scene.viewport, zoom } };
+      for (const s of shapes) {
+        ({ scene } = addShape(scene, s));
+      }
+      return scene;
+    };
+
+    it("hideText drops text shapes when zoom is below threshold", () => {
+      const rectRenderer = vi.fn<ShapeRenderer>();
+      const textRenderer = vi.fn<ShapeRenderer>();
+      registerShapeRenderer("rectangle", rectRenderer);
+      registerShapeRenderer("text", textRenderer);
+      const scene = sceneWithZoom(0.2, [
+        placeRect("r1", 0, 0),
+        {
+          id: shapeId("t1"),
+          layerId: DEFAULT_LAYER_ID,
+          type: "text",
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          scale: { x: 1, y: 1 },
+          order: orderBetween(null, null),
+          style: {},
+          text: "hi",
+          fontFamily: "sans",
+          fontSize: 12,
+        },
+      ]);
+      const { target } = makeRecorder();
+      renderScene(scene, target, { lod: { hideText: 0.5 } });
+      expect(rectRenderer).toHaveBeenCalledOnce();
+      expect(textRenderer).not.toHaveBeenCalled();
+    });
+
+    it("placeholder skips renderers and emits world-bounds rect", () => {
+      const rectRenderer = vi.fn<ShapeRenderer>();
+      registerShapeRenderer("rectangle", rectRenderer);
+      const scene = sceneWithZoom(0.1, [placeRect("a", 0, 0), placeRect("b", 100, 100)]);
+      const { target, calls } = makeRecorder();
+      renderScene(scene, target, { lod: { placeholder: 0.2 } });
+      expect(rectRenderer).not.toHaveBeenCalled();
+      const fills = calls.filter((c) => c.method === "fill").length;
+      expect(fills).toBe(2);
+    });
+
+    it("LOD inactive at high zoom — full render", () => {
+      const rectRenderer = vi.fn<ShapeRenderer>();
+      registerShapeRenderer("rectangle", rectRenderer);
+      const scene = sceneWithZoom(1.5, [placeRect("a", 0, 0)]);
+      const { target } = makeRecorder();
+      renderScene(scene, target, { lod: { placeholder: 0.2, hideText: 0.5 } });
+      expect(rectRenderer).toHaveBeenCalledOnce();
+    });
   });
 
   it("applies TRS transforms for each shape", () => {

@@ -4,15 +4,65 @@ import {
   getWorldToScreen,
   type Scene,
   type ShapeBase,
+  type SpatialGrid,
 } from "@oh-just-another/scene";
+import type { Bounds, ShapeId } from "@oh-just-another/types";
+import { bounds as B } from "@oh-just-another/math";
 import type { RenderTarget } from "./render-target.js";
 import { getShapeRenderer } from "./shape-renderer.js";
+import { cachedWorldBounds, ShapeCache } from "./shape-cache.js";
+import { DEFAULT_PLACEHOLDER_FILL } from "./constants.js";
+
+/**
+ * Zoom-based level-of-detail thresholds. Each threshold turns on a
+ * cheaper render path when the scene zoom drops below it:
+ *
+ * - **placeholder** → draw a flat fill at the shape's world AABB and
+ *   skip the registered renderer entirely. Highest savings, biggest
+ *   visual fidelity loss; reserve for very-zoomed-out overviews.
+ * - **hideText** → skip text shapes (their wrap+measure cost is high).
+ *
+ * Thresholds compare against `scene.viewport.zoom` (1.0 = 1:1 pixels).
+ * Omit a threshold to disable that level.
+ */
+export interface LodOptions {
+  readonly placeholder?: number;
+  readonly hideText?: number;
+}
 
 export interface RenderSceneOptions {
   /** Skip clearing the target before drawing. Default: false. */
   readonly skipClear?: boolean;
   /** Called for shapes whose `type` has no registered renderer. Default: ignore. */
   readonly onUnknownShape?: (shape: ShapeBase) => void;
+  /**
+   * World-space viewport bounds. When provided, shapes whose AABB does
+   * not intersect this rectangle are skipped (viewport culling). Pass
+   * a slightly inflated rect to avoid pop-in during pan.
+   */
+  readonly viewport?: Bounds;
+  /**
+   * Persistent bounds cache. When omitted a fresh per-render cache is
+   * created — fine for hot paths because lookups inside one frame still
+   * amortize. Pass a long-lived cache from `Editor` to share work across
+   * frames, hit-test, and overlay.
+   */
+  readonly boundsCache?: ShapeCache<Bounds>;
+  /**
+   * Pre-built spatial index. When provided together with `viewport`, the
+   * renderer picks candidate shapes from the index and skips full layer
+   * scans — pays off around ~10k shapes.
+   */
+  readonly spatialIndex?: SpatialGrid;
+  /**
+   * Zoom thresholds for cheaper render paths. See {@link LodOptions}.
+   */
+  readonly lod?: LodOptions;
+  /**
+   * Placeholder fill colour. Defaults to `#bbb`. Pick something close
+   * to the average shape colour so the transition is unobtrusive.
+   */
+  readonly placeholderFill?: string;
 }
 
 /**
@@ -38,10 +88,47 @@ export const renderScene = (
   target.save();
   target.setTransform(getWorldToScreen(scene.viewport));
 
+  const boundsCache = options.boundsCache ?? new ShapeCache<Bounds>();
+  const viewport = options.viewport;
+  // Spatial-index candidate set: when present, restricts the per-layer
+  // walk to shapes the index considers possibly-visible. Without it the
+  // per-shape AABB check on a cached bounds is still cheap (~50ns), so
+  // the index is only worth the build cost for very large scenes.
+  let candidates: ReadonlySet<ShapeId> | null = null;
+  if (viewport && options.spatialIndex) {
+    candidates = options.spatialIndex.query(viewport);
+  }
+
+  const zoom = scene.viewport.zoom;
+  const lod = options.lod;
+  const usePlaceholder = lod?.placeholder !== undefined && zoom < lod.placeholder;
+  const dropText = lod?.hideText !== undefined && zoom < lod.hideText;
+  const placeholderFill = options.placeholderFill ?? DEFAULT_PLACEHOLDER_FILL;
+
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;
 
     for (const shape of getShapesInLayer(scene, layer.id)) {
+      if (candidates && !candidates.has(shape.id)) continue;
+      if (viewport) {
+        const bb = cachedWorldBounds(boundsCache, shape);
+        if (!B.intersects(bb, viewport)) continue;
+      }
+
+      if (dropText && shape.type === "text") continue;
+
+      if (usePlaceholder) {
+        // Draw the AABB directly in world coords — skip the renderer
+        // entirely. The shape's TRS is folded into the cached bounds.
+        const bb = cachedWorldBounds(boundsCache, shape);
+        target.setFill(placeholderFill);
+        target.setStrokeWidth(0);
+        target.beginPath();
+        target.rect(bb.x, bb.y, bb.width, bb.height);
+        target.fill();
+        continue;
+      }
+
       const renderer = getShapeRenderer(shape.type);
       if (!renderer) {
         options.onUnknownShape?.(shape);

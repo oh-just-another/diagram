@@ -83,3 +83,6 @@
 
 ## 0.19.0
 - feat: layers group resize
+
+## 0.20.0
+- feat: perf scale up

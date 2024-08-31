@@ -7,6 +7,11 @@ import {
 } from "@oh-just-another/scene";
 import { matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
+import {
+  EDGE_ENDPOINT_HANDLE_DRAW_RADIUS,
+  PORT_DOT_ACTIVE_RADIUS,
+  PORT_DOT_RADIUS,
+} from "./constants.js";
 import { ALL_HANDLES, HANDLE_SIZE, handlePosition } from "./handle.js";
 import type { Selection } from "./selection.js";
 
@@ -214,7 +219,7 @@ const drawPortDot = (
   style: OverlayStyle,
   active: boolean,
 ): void => {
-  const radius = active ? 5 : 3.5;
+  const radius = active ? PORT_DOT_ACTIVE_RADIUS : PORT_DOT_RADIUS;
   target.setStroke(style.selectionStroke);
   target.setStrokeWidth(active ? 2 : 1);
   target.setDashArray(null);
@@ -226,7 +231,7 @@ const drawPortDot = (
 };
 
 const drawEdgeEndpointHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
-  const radius = 6;
+  const radius = EDGE_ENDPOINT_HANDLE_DRAW_RADIUS;
   target.setStroke(style.selectionStroke);
   target.setStrokeWidth(2);
   target.setDashArray(null);
