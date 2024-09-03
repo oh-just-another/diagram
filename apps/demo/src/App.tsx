@@ -30,6 +30,7 @@ import { useHotkeys } from "./hotkeys";
 import { HistoryPanel } from "./HistoryPanel";
 import { useCollab } from "./collab";
 import { Peers } from "./Peers";
+import { ConnectionBadge } from "./ConnectionBadge";
 
 setupTemplates();
 
@@ -100,7 +101,7 @@ export const App = () => {
   const { theme, toggle } = useTheme();
   const [editor, setEditor] = useState<Editor | null>(null);
   useHotkeys(editor);
-  const { room, awareness } = useCollab(editor);
+  const { room, awareness, status } = useCollab(editor);
 
   return (
     <div className="root" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -150,6 +151,7 @@ export const App = () => {
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {status ? <ConnectionBadge status={status} /> : null}
           <Peers awareness={awareness} />
           <button
             type="button"

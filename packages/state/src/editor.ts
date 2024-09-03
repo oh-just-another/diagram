@@ -73,8 +73,24 @@ import {
 } from "./machine.js";
 import type { HandleId } from "./handle.js";
 import type { Mode } from "./modes.js";
-import { isResizable, renderOverlay } from "./overlay.js";
+import { isResizable, renderOverlay, type PeerCursor, type PeerSelection } from "./overlay.js";
 import * as Selection from "./selection.js";
+
+export interface LoadSceneOptions {
+  /**
+   * Keep the existing undo/redo stack when swapping scenes. Used by
+   * `@collab/bindEditor` when a peer update arrives — the user's
+   * local history must survive remote edits. Default `false`:
+   * top-level callers loading a saved scene get a clean slate.
+   *
+   * **Caveat**: when `true`, history patches that reference shapes
+   * removed by the remote peer become un-applicable. The local user
+   * will see an undo no-op or an exception on that step; future work
+   * (Y.UndoManager integration) will replace the linear stack with
+   * a CRDT-aware undo that survives concurrent edits cleanly.
+   */
+  readonly preserveHistory?: boolean;
+}
 
 export interface EditorOptions {
   readonly host: HTMLElement;
@@ -186,6 +202,21 @@ export class Editor {
    */
   private readonly boundsCache: ShapeCache<Bounds> = new ShapeCache<Bounds>();
 
+  /**
+   * Remote peer cursors / selections, pushed in by the host (typically
+   * a `bindAwareness(editor, awareness)` helper in `@collab`). The
+   * editor only renders them; it doesn't fetch or interpret. Each
+   * setter triggers `render()` so the overlay updates immediately.
+   */
+  private _peerCursors: readonly PeerCursor[] = [];
+  private _peerSelections: readonly PeerSelection[] = [];
+
+  /**
+   * Subscribers notified on every host pointer move (world-space). Used
+   * by `@collab` to broadcast the local cursor into awareness.
+   */
+  private readonly cursorListeners = new Set<(point: Vec2) => void>();
+
   private readonly _history: History;
   /** Open transaction during a single drag/resize gesture. */
   private gestureTx: TransactionHandle | null = null;
@@ -253,6 +284,38 @@ export class Editor {
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  // --- Collab: remote presence push + local cursor push ---
+
+  /**
+   * Subscribe to local world-space pointer movement. Fires on every
+   * `pointermove` over the host. `@collab` uses this to broadcast the
+   * local cursor into the awareness room.
+   */
+  onCursorMove(fn: (point: Vec2) => void): () => void {
+    this.cursorListeners.add(fn);
+    return () => this.cursorListeners.delete(fn);
+  }
+
+  /**
+   * Replace the remote peer cursors painted by the overlay. Pass an
+   * empty array to clear. The host is expected to filter out the
+   * local user's cursor before calling.
+   */
+  setPeerCursors(cursors: readonly PeerCursor[]): void {
+    this._peerCursors = cursors;
+    this.render();
+  }
+
+  /**
+   * Replace the remote peer selections painted by the overlay. The
+   * host resolves a peer's `selection: ShapeId[]` into world bounds
+   * before passing them in.
+   */
+  setPeerSelections(selections: readonly PeerSelection[]): void {
+    this._peerSelections = selections;
+    this.render();
   }
 
   setMode(mode: Mode): void {
@@ -566,19 +629,28 @@ export class Editor {
    * Replace the entire scene (e.g. after `parseScene`). Clears history,
    * selection and any open gesture. Use to load a saved document.
    */
-  loadScene(scene: Scene): void {
+  loadScene(scene: Scene, options: LoadSceneOptions = {}): void {
     if (this.gestureTx) {
       this.gestureTx.cancel();
       this.gestureTx = null;
     }
     this._scene = scene;
-    this._selection = Selection.EMPTY;
     // Snap active layer back into the loaded scene's layer set.
     if (!scene.layers.has(this._activeLayerId)) {
       const first = scene.layers.keys().next().value;
       this._activeLayerId = first ?? castLayerId(DEFAULT_LAYER_ID);
     }
-    this._history.clear();
+    if (options.preserveHistory) {
+      // Used by collab when a peer update arrives — the local user's
+      // undo stack must survive remote edits. Drop selection entries
+      // that no longer point to existing shapes; the rest of the stack
+      // stays untouched (patches that reference removed shapes will
+      // throw on `apply` and need user-visible recovery later).
+      this.pruneSelection();
+    } else {
+      this._selection = Selection.EMPTY;
+      this._history.clear();
+    }
     this.notify();
   }
 
@@ -662,6 +734,10 @@ export class Editor {
     const onMove = (ev: PointerEvent) => {
       const data = fromPointerEvent(ev, this.host);
       const worldPoint = this.screenToWorld(data.point);
+      // Fan out to anyone listening for the local cursor — `@collab`
+      // broadcasts it via awareness. Fires on every move; subscribers
+      // throttle if they care.
+      for (const fn of this.cursorListeners) fn(worldPoint);
       const ctx = this.actor.getSnapshot().context;
       if (
         ctx.pressOrigin &&
@@ -1379,6 +1455,8 @@ export class Editor {
         }
       }
     }
+    if (this._peerCursors.length > 0) overlayOpts.peerCursors = this._peerCursors;
+    if (this._peerSelections.length > 0) overlayOpts.peerSelections = this._peerSelections;
     renderOverlay(this._scene, this._selection, this.overlayTarget, overlayOpts);
   }
 }

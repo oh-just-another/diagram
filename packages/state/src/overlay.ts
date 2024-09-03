@@ -8,7 +8,15 @@ import {
 import { matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
 import {
+  CURSOR_ARROW_SIZE,
+  CURSOR_NAME_CHIP_OFFSET,
+  CURSOR_NAME_CHIP_PADDING_X,
+  CURSOR_NAME_CHIP_PADDING_Y,
+  CURSOR_NAME_FONT_SIZE,
   EDGE_ENDPOINT_HANDLE_DRAW_RADIUS,
+  PEER_SELECTION_DASH,
+  PEER_SELECTION_PADDING,
+  PEER_SELECTION_STROKE_WIDTH,
   PORT_DOT_ACTIVE_RADIUS,
   PORT_DOT_RADIUS,
 } from "./constants.js";
@@ -75,6 +83,28 @@ export interface EdgeSelection {
   readonly to: Vec2;
 }
 
+/**
+ * Remote peer's cursor — world-space position plus identity. Rendered
+ * as a coloured arrow + name chip so the user can see who's pointing
+ * where. The local user's cursor is never in this list (the host
+ * filters by `clientId !== localId` before passing).
+ */
+export interface PeerCursor {
+  readonly position: Vec2;
+  readonly color: string;
+  readonly name: string;
+}
+
+/**
+ * Remote peer's selection — world-space bounding boxes that draw a
+ * dashed outline in the peer's colour. Computed by the host from the
+ * peer's `selection: ShapeId[]` and the current scene shapes.
+ */
+export interface PeerSelection {
+  readonly color: string;
+  readonly bounds: readonly Bounds[];
+}
+
 export const renderOverlay = (
   scene: Scene,
   selection: Selection,
@@ -91,6 +121,17 @@ export const renderOverlay = (
      * handle.
      */
     groupBounds?: Bounds;
+    /**
+     * Remote peer cursors. Each one renders as a small coloured arrow
+     * with a name chip in the peer's colour, anchored at the world-
+     * space position. The local cursor never appears here.
+     */
+    peerCursors?: readonly PeerCursor[];
+    /**
+     * Remote peer selections. Each entry paints a dashed outline in
+     * the peer's colour around every world-space bbox in `bounds`.
+     */
+    peerSelections?: readonly PeerSelection[];
     style?: Partial<OverlayStyle>;
   } = {},
 ): void => {
@@ -151,7 +192,19 @@ export const renderOverlay = (
     drawEdgeEndpointHandle(target, to, style);
   }
 
-  // 6. Multi-selection combined bounds — outline + 8 group handles.
+  // 6. Peer selection halos — dashed outline around shapes selected
+  // by remote users, painted in their colour. Drawn before own-
+  // selection outlines so own selection stays on top.
+  if (options.peerSelections) {
+    for (const peer of options.peerSelections) {
+      for (const wb of peer.bounds) {
+        const sb = projectBounds(wb, w2s);
+        drawPeerSelection(target, sb, peer.color);
+      }
+    }
+  }
+
+  // 7. Multi-selection combined bounds — outline + 8 group handles.
   if (options.groupBounds) {
     const groupScreen = projectBounds(options.groupBounds, w2s);
     drawOutline(target, groupScreen, style);
@@ -159,6 +212,15 @@ export const renderOverlay = (
       const worldPoint = handlePosition(handle, options.groupBounds);
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);
       drawHandle(target, screenPoint, style);
+    }
+  }
+
+  // 8. Remote peer cursors — drawn last so they sit on top of every
+  // other overlay element (including own selection handles).
+  if (options.peerCursors) {
+    for (const cursor of options.peerCursors) {
+      const screen = matrix.applyToPoint(w2s, cursor.position);
+      drawPeerCursor(target, screen, cursor.color, cursor.name);
     }
   }
 
@@ -240,4 +302,53 @@ const drawEdgeEndpointHandle = (target: RenderTarget, center: Vec2, style: Overl
   target.ellipse(center.x, center.y, radius, radius);
   target.fill();
   target.stroke();
+};
+
+const drawPeerSelection = (target: RenderTarget, b: Bounds, color: string): void => {
+  const pad = PEER_SELECTION_PADDING;
+  target.setStroke(color);
+  target.setStrokeWidth(PEER_SELECTION_STROKE_WIDTH);
+  target.setDashArray(PEER_SELECTION_DASH);
+  target.beginPath();
+  target.rect(b.x - pad, b.y - pad, b.width + 2 * pad, b.height + 2 * pad);
+  target.stroke();
+};
+
+const drawPeerCursor = (target: RenderTarget, tip: Vec2, color: string, name: string): void => {
+  // Arrow glyph — a triangle anchored at the cursor tip. Coordinates
+  // are relative to the tip; the canonical macOS pointer leans down-
+  // right.
+  const size = CURSOR_ARROW_SIZE;
+  target.setFill(color);
+  target.setStroke("#fff");
+  target.setStrokeWidth(1);
+  target.setDashArray(null);
+  target.beginPath();
+  target.moveTo(tip.x, tip.y);
+  target.lineTo(tip.x + size * 0.7, tip.y + size * 0.25);
+  target.lineTo(tip.x + size * 0.35, tip.y + size * 0.4);
+  target.lineTo(tip.x + size * 0.5, tip.y + size * 0.95);
+  target.lineTo(tip.x + size * 0.35, tip.y + size * 1.05);
+  target.lineTo(tip.x + size * 0.2, tip.y + size * 0.5);
+  target.lineTo(tip.x, tip.y + size * 0.65);
+  target.closePath();
+  target.fill();
+  target.stroke();
+
+  // Name chip — anchored down-right of the tip.
+  target.setFont("sans-serif", CURSOR_NAME_FONT_SIZE);
+  target.setTextBaseline("top");
+  target.setTextAlign("left");
+  const textWidth = target.measureText(name).width;
+  const chipX = tip.x + CURSOR_NAME_CHIP_OFFSET;
+  const chipY = tip.y + CURSOR_NAME_CHIP_OFFSET;
+  const chipW = textWidth + 2 * CURSOR_NAME_CHIP_PADDING_X;
+  const chipH = CURSOR_NAME_FONT_SIZE + 2 * CURSOR_NAME_CHIP_PADDING_Y;
+  target.setFill(color);
+  target.setStrokeWidth(0);
+  target.beginPath();
+  target.rect(chipX, chipY, chipW, chipH);
+  target.fill();
+  target.setFill("#fff");
+  target.fillText(name, chipX + CURSOR_NAME_CHIP_PADDING_X, chipY + CURSOR_NAME_CHIP_PADDING_Y);
 };

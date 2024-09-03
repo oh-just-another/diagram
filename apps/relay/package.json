@@ -1,0 +1,23 @@
+{
+  "name": "@oh-just-another/relay",
+  "version": "0.21.0",
+  "description": "Minimal WebSocket relay server for cross-machine collab in the demo.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "lint": "eslint src",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2"
+  }
+}

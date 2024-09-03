@@ -57,7 +57,7 @@ export const bindEditor = (
   const onUpdate = (_update: Uint8Array, originOfUpdate: unknown): void => {
     if (disposed || originOfUpdate === origin) return;
     const snapshot = sceneDoc.snapshot();
-    editor.loadScene(snapshot);
+    editor.loadScene(snapshot, { preserveHistory: true });
     lastSyncedScene = editor.scene;
   };
   sceneDoc.doc.on("update", onUpdate);

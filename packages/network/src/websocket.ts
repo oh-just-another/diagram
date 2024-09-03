@@ -22,9 +22,21 @@ export interface WebSocketTransportOptions {
   readonly maxReconnectDelay?: number;
 }
 
+/**
+ * Lifecycle states for the WebSocket connection. Hosts subscribe via
+ * `onStatusChange` to drive UI badges ("connected", "reconnecting"...).
+ *
+ *   - `connecting` — initial dial in progress, or after a transient drop
+ *   - `open` — socket is up, buffered frames have flushed
+ *   - `reconnecting` — back-off timer is running before next dial
+ *   - `closed` — `close()` has been called; no further attempts
+ */
+export type WebSocketStatus = "connecting" | "open" | "reconnecting" | "closed";
+
 export class WebSocketTransport implements Transport {
   private readonly url: string;
   private readonly handlers = new Set<(payload: Uint8Array) => void>();
+  private readonly statusHandlers = new Set<(status: WebSocketStatus) => void>();
   private readonly buffer: Uint8Array[] = [];
   private readonly webSocketImpl: typeof globalThis.WebSocket;
   private readonly initialDelay: number;
@@ -34,6 +46,7 @@ export class WebSocketTransport implements Transport {
   private closed = false;
   private reconnectDelay: number;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private _status: WebSocketStatus = "connecting";
 
   constructor(url: string, options: WebSocketTransportOptions = {}) {
     this.url = url;
@@ -62,6 +75,28 @@ export class WebSocketTransport implements Transport {
     return () => this.handlers.delete(handler);
   }
 
+  /** Current lifecycle state. Updates fire via `onStatusChange`. */
+  get status(): WebSocketStatus {
+    return this._status;
+  }
+
+  /**
+   * Subscribe to status transitions. Fires synchronously with the
+   * current value on subscribe so the caller doesn't miss the first
+   * `open`. Returns an unsubscribe function.
+   */
+  onStatusChange(handler: (status: WebSocketStatus) => void): () => void {
+    this.statusHandlers.add(handler);
+    handler(this._status);
+    return () => this.statusHandlers.delete(handler);
+  }
+
+  private setStatus(next: WebSocketStatus): void {
+    if (this._status === next) return;
+    this._status = next;
+    for (const h of this.statusHandlers) h(next);
+  }
+
   close(): void {
     this.closed = true;
     if (this.reconnectTimer !== null) {
@@ -72,12 +107,15 @@ export class WebSocketTransport implements Transport {
       this.socket.close();
       this.socket = null;
     }
+    this.setStatus("closed");
     this.handlers.clear();
+    this.statusHandlers.clear();
     this.buffer.length = 0;
   }
 
   private connect(): void {
     if (this.closed) return;
+    this.setStatus("connecting");
     const sock = new this.webSocketImpl(this.url);
     sock.binaryType = "arraybuffer";
 
@@ -87,6 +125,7 @@ export class WebSocketTransport implements Transport {
         const next = this.buffer.shift()!;
         sock.send(next);
       }
+      this.setStatus("open");
     });
 
     sock.addEventListener("message", (ev: MessageEvent<unknown>) => {
@@ -113,6 +152,7 @@ export class WebSocketTransport implements Transport {
   private scheduleReconnect(): void {
     const delay = this.reconnectDelay;
     this.reconnectDelay = Math.min(this.maxDelay, this.reconnectDelay * 2);
+    this.setStatus("reconnecting");
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect();

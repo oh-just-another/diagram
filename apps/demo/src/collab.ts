@@ -1,8 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import * as Y from "yjs";
 import type { Editor } from "@oh-just-another/state";
-import { CollabAwareness, SceneDoc, TransportProvider, bindEditor } from "@oh-just-another/collab";
-import { BroadcastChannelTransport } from "@oh-just-another/network";
+import {
+  bindAwareness,
+  bindEditor,
+  CollabAwareness,
+  SceneDoc,
+  TransportProvider,
+} from "@oh-just-another/collab";
+import {
+  BroadcastChannelTransport,
+  WebSocketTransport,
+  type Transport,
+  type WebSocketStatus,
+} from "@oh-just-another/network";
 
 /**
  * Reads `?room=<name>` from the current URL. When present, wires the
@@ -10,66 +21,85 @@ import { BroadcastChannelTransport } from "@oh-just-another/network";
  * tabs). Returns the awareness instance so the UI can render peer
  * cursors / lists.
  */
+export type ConnectionStatus = WebSocketStatus | "local";
+
 export const useCollab = (
   editor: Editor | null,
 ): {
   readonly room: string | null;
   readonly awareness: CollabAwareness | null;
+  readonly status: ConnectionStatus | null;
 } => {
-  const room = useMemo(readRoomFromUrl, []);
+  const config = useMemo(readCollabConfigFromUrl, []);
+  const room = config?.room ?? null;
   const [awareness, setAwareness] = useState<CollabAwareness | null>(null);
+  const [status, setStatus] = useState<ConnectionStatus | null>(null);
 
   useEffect(() => {
-    if (!editor || !room) return undefined;
+    if (!editor || !config) return undefined;
 
     const doc = new Y.Doc();
     const sceneDoc = new SceneDoc(doc);
     const aw = new CollabAwareness(doc);
-    aw.updateLocal({ user: randomUser() });
+    const user = randomUser();
 
-    const channelName = `demo-room-${room}`;
-    console.warn(`[collab] joining room "${room}" (channel "${channelName}")`);
-    const transport = new BroadcastChannelTransport(channelName);
-    // Diagnostic wrapper — logs each tagged message in / out so we can
-    // confirm the BroadcastChannel hop in DevTools.
-    const wrappedTransport = {
-      send: (p: Uint8Array): void => {
-        transport.send(p);
-      },
-      onMessage: (h: (p: Uint8Array) => void): (() => void) =>
-        transport.onMessage((p) => {
-          h(p);
-        }),
-      close: (): void => transport.close(),
-    };
+    // Pick transport based on URL: `?relay=ws://host:port` switches to
+    // the WebSocketTransport (cross-machine); otherwise BroadcastChannel
+    // (same-origin tabs).
+    let transport: Transport;
+    let unsubscribeStatus: (() => void) | null = null;
+    if (config.relayUrl) {
+      const url = `${config.relayUrl.replace(/\/$/, "")}/${config.room}`;
+      console.warn(`[collab] joining room "${config.room}" via relay ${url}`);
+      const ws = new WebSocketTransport(url);
+      unsubscribeStatus = ws.onStatusChange(setStatus);
+      transport = ws;
+    } else {
+      const channelName = `demo-room-${config.room}`;
+      console.warn(`[collab] joining room "${config.room}" (channel "${channelName}")`);
+      transport = new BroadcastChannelTransport(channelName);
+      setStatus("local");
+    }
     const provider = new TransportProvider({
       doc,
-      transport: wrappedTransport,
+      transport,
       awareness: aw.awareness,
     });
     // Wait briefly for peers to answer the implicit sync request before we
     // decide to seed the room with our local scene. Without this, joiners
     // would race the seeder and clobber the existing room state.
-    const unbind = bindEditor(editor, sceneDoc, { waitForSyncMs: 300 });
+    const unbindEditorRef = bindEditor(editor, sceneDoc, { waitForSyncMs: 300 });
+    const unbindAwarenessRef = bindAwareness(editor, aw, { user });
     setAwareness(aw);
 
     return () => {
-      unbind();
+      unsubscribeStatus?.();
+      unbindAwarenessRef();
+      unbindEditorRef();
       provider.destroy();
       aw.destroy();
       transport.close();
       doc.destroy();
       setAwareness(null);
+      setStatus(null);
     };
-  }, [editor, room]);
+  }, [editor, config]);
 
-  return { room, awareness };
+  return { room, awareness, status };
 };
 
-const readRoomFromUrl = (): string | null => {
+interface CollabConfig {
+  readonly room: string;
+  readonly relayUrl: string | null;
+}
+
+const readCollabConfigFromUrl = (): CollabConfig | null => {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
-  return params.get("room");
+  const room = params.get("room");
+  if (!room) return null;
+  const relayUrl = params.get("relay");
+  return { room, relayUrl: relayUrl && /^wss?:\/\//.test(relayUrl) ? relayUrl : null };
 };
 
 const COLORS = ["#1a73e8", "#e91e63", "#43a047", "#fb8c00", "#7b1fa2", "#00838f"];

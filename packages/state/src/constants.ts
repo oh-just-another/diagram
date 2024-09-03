@@ -52,3 +52,34 @@ export const EDGE_HIT_THRESHOLD = 6;
  */
 export const PORT_DOT_RADIUS = 3.5;
 export const PORT_DOT_ACTIVE_RADIUS = 5;
+
+/**
+ * Visual sizes for the remote-peer cursor overlay.
+ *
+ * - `CURSOR_ARROW_SIZE` — pixel side length of the arrow glyph.
+ * - `CURSOR_NAME_CHIP_OFFSET` — pixel offset of the name chip from
+ *   the arrow tip, both axes.
+ * - `CURSOR_NAME_CHIP_PADDING_X / Y` — inner padding of the chip.
+ * - `CURSOR_NAME_FONT_SIZE` — chip text font size.
+ */
+export const CURSOR_ARROW_SIZE = 16;
+export const CURSOR_NAME_CHIP_OFFSET = 14;
+export const CURSOR_NAME_CHIP_PADDING_X = 6;
+export const CURSOR_NAME_CHIP_PADDING_Y = 3;
+export const CURSOR_NAME_FONT_SIZE = 11;
+
+/**
+ * Peer selection halo — dashed outline drawn around each shape a peer
+ * has selected, in the peer's colour. `PEER_SELECTION_PADDING` insets
+ * the outline outward so it does not overlap own selection.
+ */
+export const PEER_SELECTION_STROKE_WIDTH = 1.5;
+export const PEER_SELECTION_DASH: readonly number[] = [4, 3];
+export const PEER_SELECTION_PADDING = 3;
+
+/**
+ * Throttle for broadcasting local pointer position to peers. 30 fps
+ * matches the perceptual cap for cursor motion; lower values create
+ * more network chatter without UX benefit.
+ */
+export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;

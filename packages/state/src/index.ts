@@ -25,13 +25,15 @@ export {
   boundsFromPoints,
 } from "./machine.js";
 
-export type { OverlayStyle } from "./overlay.js";
+export type { OverlayStyle, PeerCursor, PeerSelection } from "./overlay.js";
 export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./overlay.js";
+
+export { PEER_CURSOR_BROADCAST_INTERVAL_MS } from "./constants.js";
 
 export { fromPointerEvent, fromKeyboardEvent, fromWheelEvent } from "./dom-events.js";
 
 export type { InteractiveHitTester } from "./interactive.js";
 export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive.js";
 
-export type { EditorOptions } from "./editor.js";
+export type { EditorOptions, LoadSceneOptions } from "./editor.js";
 export { Editor } from "./editor.js";

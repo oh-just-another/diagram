@@ -86,3 +86,6 @@
 
 ## 0.20.0
 - feat: perf scale up
+
+## 0.21.0
+- feat: collab follow ups
