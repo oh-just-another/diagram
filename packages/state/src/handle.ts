@@ -41,9 +41,18 @@ export const handlePosition = (handle: HandleId, b: Bounds): Vec2 => {
  * Find which handle the point is over, given the shape's world bounds and the
  * current view zoom (handles stay the same size in screen pixels regardless
  * of zoom). Returns `null` if no handle is hit.
+ *
+ * `screenHalfSize` defaults to `HANDLE_SIZE` (mouse precision). Touch
+ * hosts pass a larger value (`TOUCH_HANDLE_HIT_SLOP`) so a finger can
+ * grab the handle without precision-pointing it.
  */
-export const hitHandle = (point: Vec2, b: Bounds, zoom: number): HandleId | null => {
-  const halfWorld = HANDLE_SIZE / zoom;
+export const hitHandle = (
+  point: Vec2,
+  b: Bounds,
+  zoom: number,
+  screenHalfSize: number = HANDLE_SIZE,
+): HandleId | null => {
+  const halfWorld = screenHalfSize / zoom;
   for (const id of ALL_HANDLES) {
     const p = handlePosition(id, b);
     if (Math.abs(point.x - p.x) <= halfWorld && Math.abs(point.y - p.y) <= halfWorld) {

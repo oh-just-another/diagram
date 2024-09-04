@@ -89,3 +89,6 @@
 
 ## 0.21.0
 - feat: collab follow ups
+
+## 0.21.1
+- feat: mobile touch

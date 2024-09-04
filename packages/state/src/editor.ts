@@ -18,6 +18,9 @@ import {
   getShapesInBounds,
   getShapeWorldBounds,
   getScreenToWorld,
+  panBy as viewportPanBy,
+  resize as viewportResize,
+  zoomAt as viewportZoomAt,
   gridSnapper,
   listAnchorsLocal,
   orderForBottom,
@@ -59,9 +62,19 @@ import {
   DEFAULT_SNAP_THRESHOLD,
   EDGE_ENDPOINT_HANDLE_RADIUS,
   EDGE_HIT_THRESHOLD,
+  LONG_PRESS_DELAY_MS,
+  LONG_PRESS_MAX_MOVEMENT_PX,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  PINCH_MIN_MOVEMENT_PX,
+  TOUCH_EDGE_HANDLE_HIT_SLOP,
+  TOUCH_EDGE_HIT_THRESHOLD,
+  TOUCH_HANDLE_HIT_SLOP,
   VIEWPORT_CULL_PADDING_RATIO,
+  WHEEL_PAN_FACTOR,
+  WHEEL_ZOOM_STEP,
 } from "./constants.js";
-import { hitHandle } from "./handle.js";
+import { HANDLE_SIZE, hitHandle } from "./handle.js";
 import { getInteractiveHitTester } from "./interactive.js";
 import {
   boundsFromPoints,
@@ -107,6 +120,16 @@ export interface EditorOptions {
   readonly initialMode?: Mode;
   /** Pre-existing history instance, or options for one. */
   readonly history?: History | HistoryOptions;
+  /**
+   * Primary input modality. Affects hit-test slop on handles and edges
+   * so a finger can grab them without precision-pointing.
+   *
+   * - `"mouse"` — pixel-accurate hit zones (default for desktop).
+   * - `"touch"` — 44 px+ touch targets (Apple HIG, WCAG AAA).
+   * - `"auto"` — pick `"touch"` if `matchMedia('(pointer: coarse)')`
+   *   reports a coarse primary pointer, else `"mouse"`. Default.
+   */
+  readonly inputMode?: "mouse" | "touch" | "auto";
 }
 
 /**
@@ -217,6 +240,41 @@ export class Editor {
    */
   private readonly cursorListeners = new Set<(point: Vec2) => void>();
 
+  /**
+   * Active screen-space pointer positions keyed by `pointerId`. With
+   * one entry the editor's normal single-pointer flow applies. With
+   * two or more entries we enter a pinch / pan gesture and bypass the
+   * interaction machine — `pinchOrigin` holds the baseline.
+   */
+  private readonly activePointers = new Map<number, Vec2>();
+  private pinchOrigin: {
+    readonly midpointWorld: Vec2;
+    readonly distance: number;
+    readonly midpointScreen: Vec2;
+  } | null = null;
+
+  /**
+   * Long-press tracking. Starts on `pointerdown`; cancelled on
+   * `pointermove > LONG_PRESS_MAX_MOVEMENT_PX` or `pointerup` before
+   * the timer fires. Hosts subscribe via `onLongPress` to surface a
+   * context menu (mobile alternative to right-click).
+   */
+  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  private longPressOrigin: Vec2 | null = null;
+  private readonly longPressListeners = new Set<
+    (payload: { screenPoint: Vec2; worldPoint: Vec2 }) => void
+  >();
+
+  /**
+   * Resolved primary input modality + derived hit slops. Computed once
+   * in the constructor from `EditorOptions.inputMode` (default `"auto"`
+   * uses `matchMedia('(pointer: coarse)')`).
+   */
+  private readonly inputMode: "mouse" | "touch";
+  private readonly handleHitSlop: number;
+  private readonly edgeHandleHitSlop: number;
+  private readonly edgeHitThreshold: number;
+
   private readonly _history: History;
   /** Open transaction during a single drag/resize gesture. */
   private gestureTx: TransactionHandle | null = null;
@@ -229,6 +287,29 @@ export class Editor {
     this._scene = options.initialScene;
     this._history =
       options.history instanceof History ? options.history : new History(options.history ?? {});
+
+    // Resolve input mode + derived hit slops once. `auto` reads
+    // `matchMedia('(pointer: coarse)')` when available; SSR falls
+    // back to `mouse`.
+    const requested = options.inputMode ?? "auto";
+    if (requested === "touch") {
+      this.inputMode = "touch";
+    } else if (requested === "mouse") {
+      this.inputMode = "mouse";
+    } else if (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(pointer: coarse)").matches
+    ) {
+      this.inputMode = "touch";
+    } else {
+      this.inputMode = "mouse";
+    }
+    this.handleHitSlop = this.inputMode === "touch" ? TOUCH_HANDLE_HIT_SLOP : HANDLE_SIZE;
+    this.edgeHandleHitSlop =
+      this.inputMode === "touch" ? TOUCH_EDGE_HANDLE_HIT_SLOP : EDGE_ENDPOINT_HANDLE_RADIUS;
+    this.edgeHitThreshold =
+      this.inputMode === "touch" ? TOUCH_EDGE_HIT_THRESHOLD : EDGE_HIT_THRESHOLD;
 
     this.actor = createActor(interactionMachine);
     this.actor.subscribe({
@@ -296,6 +377,18 @@ export class Editor {
   onCursorMove(fn: (point: Vec2) => void): () => void {
     this.cursorListeners.add(fn);
     return () => this.cursorListeners.delete(fn);
+  }
+
+  /**
+   * Subscribe to long-press events — a stationary touch / mouse-press
+   * held longer than `LONG_PRESS_DELAY_MS`. The mobile-equivalent of
+   * right-click; hosts open a context menu from this. The event
+   * carries both screen-space (for menu positioning) and world-space
+   * (for target hit-test) coordinates.
+   */
+  onLongPress(fn: (payload: { screenPoint: Vec2; worldPoint: Vec2 }) => void): () => void {
+    this.longPressListeners.add(fn);
+    return () => this.longPressListeners.delete(fn);
   }
 
   /**
@@ -625,6 +718,50 @@ export class Editor {
     this.notify();
   }
 
+  // --- Viewport commands ---
+
+  /**
+   * Pan the camera by a screen-space delta. Drives both wheel-pan and
+   * the two-finger pan gesture; deltas are in screen pixels (positive
+   * x → shapes move right relative to the user). Not recorded in
+   * history — viewport state is editor-local.
+   */
+  panBy(deltaScreen: Vec2): void {
+    if (deltaScreen.x === 0 && deltaScreen.y === 0) return;
+    this._scene = { ...this._scene, viewport: viewportPanBy(this._scene.viewport, deltaScreen) };
+    this.notify();
+  }
+
+  /**
+   * Multiplicative zoom around a world-space anchor (the anchor stays
+   * under the same screen pixel). `anchorWorld` typically comes from
+   * the cursor or pinch midpoint. Result is clamped to `[MIN_ZOOM,
+   * MAX_ZOOM]`; a zero-effect call is a no-op.
+   */
+  zoomAt(factor: number, anchorWorld: Vec2): void {
+    const currentZoom = this._scene.viewport.zoom;
+    const targetZoom = clampZoom(currentZoom * factor);
+    const effectiveFactor = targetZoom / currentZoom;
+    if (effectiveFactor === 1) return;
+    this._scene = {
+      ...this._scene,
+      viewport: viewportZoomAt(this._scene.viewport, effectiveFactor, anchorWorld),
+    };
+    this.notify();
+  }
+
+  /**
+   * Update the camera's screen-pixel size. Hosts call this from a
+   * `ResizeObserver` on the canvas element so culling rects and
+   * pinch-midpoint math stay in sync with the visible area.
+   */
+  setViewportSize(width: number, height: number): void {
+    const vp = this._scene.viewport;
+    if (vp.size.width === width && vp.size.height === height) return;
+    this._scene = { ...this._scene, viewport: viewportResize(vp, width, height) };
+    this.notify();
+  }
+
   /**
    * Replace the entire scene (e.g. after `parseScene`). Clears history,
    * selection and any open gesture. Use to load a saved document.
@@ -656,9 +793,12 @@ export class Editor {
 
   /** Detach all DOM listeners and stop the actor. */
   dispose(): void {
+    this.cancelLongPress();
     this.unbind();
     this.actor.stop();
     this.listeners.clear();
+    this.cursorListeners.clear();
+    this.longPressListeners.clear();
   }
 
   // --- Internal ---
@@ -668,6 +808,30 @@ export class Editor {
       ev.preventDefault();
       this.host.setPointerCapture(ev.pointerId);
       const data = fromPointerEvent(ev, this.host);
+
+      // Track every active pointer so we can detect a 2-finger pinch.
+      // On the *second* concurrent pointer, cancel whatever single-pointer
+      // gesture the machine started (it'd otherwise interpret the second
+      // touch as a one-finger drag) and enter pinch mode.
+      this.activePointers.set(ev.pointerId, data.point);
+      if (this.activePointers.size === 2) {
+        // First touch already kicked off a POINTER_DOWN — undo it so the
+        // shape under finger #1 doesn't get dragged when finger #2 lands.
+        this.actor.send({ type: "POINTER_CANCEL" });
+        this.cancelGesture();
+        this.cancelLongPress();
+        this.beginPinch();
+        return;
+      }
+      if (this.activePointers.size > 2) {
+        // 3-finger and more: stay in pinch mode but ignore additional
+        // contacts — the gesture math uses the first two pointers only.
+        return;
+      }
+
+      // Schedule a long-press fire — cancelled by movement or release.
+      this.startLongPress(data.point);
+
       const worldPoint = this.screenToWorld(data.point);
 
       // Interactive sub-element check: when the press lands on a shape whose
@@ -733,6 +897,24 @@ export class Editor {
 
     const onMove = (ev: PointerEvent) => {
       const data = fromPointerEvent(ev, this.host);
+
+      // Update tracked pointer position. In pinch mode, recompute the
+      // gesture and short-circuit before sending to the machine.
+      if (this.activePointers.has(ev.pointerId)) {
+        this.activePointers.set(ev.pointerId, data.point);
+      }
+      if (this.pinchOrigin) {
+        this.applyPinch();
+        return;
+      }
+
+      // Cancel long-press timer if the finger has moved beyond slop.
+      if (this.longPressOrigin) {
+        if (distanceTo(this.longPressOrigin, data.point) > LONG_PRESS_MAX_MOVEMENT_PX) {
+          this.cancelLongPress();
+        }
+      }
+
       const worldPoint = this.screenToWorld(data.point);
       // Fan out to anyone listening for the local cursor — `@collab`
       // broadcasts it via awareness. Fires on every move; subscribers
@@ -764,6 +946,21 @@ export class Editor {
       if (this.host.hasPointerCapture(ev.pointerId)) {
         this.host.releasePointerCapture(ev.pointerId);
       }
+      this.activePointers.delete(ev.pointerId);
+
+      // Exit pinch when the second-to-last finger lifts — the surviving
+      // touch (if any) does NOT resume as a single-finger drag, because
+      // we already cancelled the machine on pinch entry.
+      if (this.pinchOrigin) {
+        if (this.activePointers.size < 2) {
+          this.pinchOrigin = null;
+        }
+        return;
+      }
+
+      // Long-press loses its chance the moment the user releases.
+      this.cancelLongPress();
+
       const data = fromPointerEvent(ev, this.host);
       const worldPoint = this.screenToWorld(data.point);
 
@@ -788,7 +985,13 @@ export class Editor {
       this.commitGesture();
     };
 
-    const onCancel = () => {
+    const onCancel = (ev: PointerEvent) => {
+      this.activePointers.delete(ev.pointerId);
+      if (this.pinchOrigin) {
+        if (this.activePointers.size < 2) this.pinchOrigin = null;
+        return;
+      }
+      this.cancelLongPress();
       this.drawingPreview = null;
       this.actor.send({ type: "POINTER_CANCEL" });
       this.cancelGesture();
@@ -799,16 +1002,121 @@ export class Editor {
     this.host.addEventListener("pointerup", onUp);
     this.host.addEventListener("pointercancel", onCancel);
 
+    // Wheel: Cmd/Ctrl + wheel → zoom around the cursor (matches standard /
+    // standard). Plain wheel → pan; shift inverts axes so horizontal scroll
+    // works on mice that only emit deltaY. Always preventDefault so the
+    // page does not scroll.
+    const onWheel = (ev: WheelEvent): void => {
+      ev.preventDefault();
+      const rect = this.host.getBoundingClientRect();
+      const screenPoint = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+      if (ev.ctrlKey || ev.metaKey) {
+        const direction = ev.deltaY < 0 ? 1 : -1;
+        const factor = Math.pow(WHEEL_ZOOM_STEP, direction);
+        const currentZoom = this._scene.viewport.zoom;
+        const nextZoom = clampZoom(currentZoom * factor);
+        if (nextZoom === currentZoom) return;
+        const anchor = this.screenToWorld(screenPoint);
+        this.zoomAt(nextZoom / currentZoom, anchor);
+      } else {
+        const dx = ev.shiftKey ? ev.deltaY : ev.deltaX;
+        const dy = ev.shiftKey ? 0 : ev.deltaY;
+        this.panBy({ x: -dx * WHEEL_PAN_FACTOR, y: -dy * WHEEL_PAN_FACTOR });
+      }
+    };
+    // `passive: false` because we preventDefault. Browsers default wheel
+    // listeners to passive — must opt out explicitly.
+    this.host.addEventListener("wheel", onWheel, { passive: false });
+
     return () => {
       this.host.removeEventListener("pointerdown", onDown);
       this.host.removeEventListener("pointermove", onMove);
       this.host.removeEventListener("pointerup", onUp);
       this.host.removeEventListener("pointercancel", onCancel);
+      this.host.removeEventListener("wheel", onWheel);
     };
   }
 
   private isDrawingPhase(ctx: InteractionContext): boolean {
     return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse" || ctx.mode === "draw-edge";
+  }
+
+  // --- Long-press ---
+
+  private startLongPress(screenPoint: Vec2): void {
+    this.cancelLongPress();
+    this.longPressOrigin = screenPoint;
+    this.longPressTimer = setTimeout(() => {
+      this.longPressTimer = null;
+      const origin = this.longPressOrigin;
+      this.longPressOrigin = null;
+      if (!origin) return;
+      const worldPoint = this.screenToWorld(origin);
+      // Fire AFTER we clear local state so listeners can call back
+      // into the editor (e.g. select shape under press) safely.
+      for (const fn of this.longPressListeners) fn({ screenPoint: origin, worldPoint });
+    }, LONG_PRESS_DELAY_MS);
+  }
+
+  private cancelLongPress(): void {
+    if (this.longPressTimer !== null) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+    this.longPressOrigin = null;
+  }
+
+  // --- Pinch gesture ---
+
+  private beginPinch(): void {
+    const pts = [...this.activePointers.values()];
+    if (pts.length < 2) return;
+    const [p1, p2] = pts as [Vec2, Vec2];
+    const midpointScreen = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    this.pinchOrigin = {
+      midpointWorld: this.screenToWorld(midpointScreen),
+      distance: distanceTo(p1, p2),
+      midpointScreen,
+    };
+  }
+
+  private applyPinch(): void {
+    if (!this.pinchOrigin) return;
+    const pts = [...this.activePointers.values()];
+    if (pts.length < 2) return;
+    const [p1, p2] = pts as [Vec2, Vec2];
+
+    const distance = distanceTo(p1, p2);
+    const midScreen = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    // Skip jitter frames so resting fingers don't drift the camera.
+    const moved =
+      distanceTo(midScreen, this.pinchOrigin.midpointScreen) +
+      Math.abs(distance - this.pinchOrigin.distance);
+    if (moved < PINCH_MIN_MOVEMENT_PX) return;
+
+    // Zoom: ratio of current finger distance over the start distance,
+    // centered on the *current* midpoint (so the gesture feels grounded
+    // even as the user's fingers rotate / drift).
+    const factor = distance / this.pinchOrigin.distance;
+    if (factor !== 1) {
+      const anchorWorld = this.screenToWorld(midScreen);
+      this.zoomAt(factor, anchorWorld);
+    }
+    // Pan: screen delta between the original and current midpoint. After
+    // the zoom-around-current-midpoint above this delta translates to
+    // pure translation in world space.
+    const dx = midScreen.x - this.pinchOrigin.midpointScreen.x;
+    const dy = midScreen.y - this.pinchOrigin.midpointScreen.y;
+    if (dx !== 0 || dy !== 0) {
+      this.panBy({ x: dx, y: dy });
+    }
+
+    // Re-baseline so the next frame is incremental, not cumulative.
+    this.pinchOrigin = {
+      midpointWorld: this.screenToWorld(midScreen),
+      distance,
+      midpointScreen: midScreen,
+    };
   }
 
   /**
@@ -826,7 +1134,7 @@ export class Editor {
     if (this._selection.size > 1) {
       const combined = this.combinedSelectionBounds();
       if (combined) {
-        const handle = hitHandle(worldPoint, combined, zoom);
+        const handle = hitHandle(worldPoint, combined, zoom, this.handleHitSlop);
         if (handle) {
           return { kind: "group-handle", handle, bounds: combined };
         }
@@ -837,7 +1145,7 @@ export class Editor {
       const shape = getShape(this._scene, id);
       if (!shape || !isResizable(shape)) continue;
       const bounds = getShapeWorldBounds(shape);
-      const handle = hitHandle(worldPoint, bounds, zoom);
+      const handle = hitHandle(worldPoint, bounds, zoom, this.handleHitSlop);
       if (handle) {
         return { kind: "handle", shapeId: id, handle, bounds };
       }
@@ -849,7 +1157,7 @@ export class Editor {
       if (edge) {
         const path = getEdgePath(this._scene, edge);
         if (path && path.length >= 2) {
-          const handleR = EDGE_ENDPOINT_HANDLE_RADIUS / zoom;
+          const handleR = this.edgeHandleHitSlop / zoom;
           const fromPoint = path[0]!;
           const toPoint = path[path.length - 1]!;
           if (distanceTo(worldPoint, fromPoint) <= handleR) {
@@ -867,7 +1175,7 @@ export class Editor {
       return { kind: "shape", id: shape.id, bounds: getShapeWorldBounds(shape) };
     }
     // 4. Edge body under cursor.
-    const edge = findEdgeAt(this._scene, worldPoint, EDGE_HIT_THRESHOLD / zoom);
+    const edge = findEdgeAt(this._scene, worldPoint, this.edgeHitThreshold / zoom);
     if (edge) {
       return { kind: "edge", id: edge.id };
     }
@@ -1462,6 +1770,8 @@ export class Editor {
 }
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
+
+const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 /**
  * Convert a snap candidate into an `EdgeEndpoint`. Anchor snap → named

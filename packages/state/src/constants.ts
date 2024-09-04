@@ -83,3 +83,53 @@ export const PEER_SELECTION_PADDING = 3;
  * more network chatter without UX benefit.
  */
 export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
+
+/**
+ * Mouse-wheel handling.
+ *
+ * - `WHEEL_PAN_FACTOR` — how many world units (at zoom 1) to pan per
+ *   wheel notch on plain scroll. 1 = native pixel; lower than 1 makes
+ *   the wheel feel sluggish on high-DPI mice.
+ * - `WHEEL_ZOOM_STEP` — multiplicative zoom factor per wheel notch
+ *   when modifier (Ctrl/Cmd) is held. 1.1 = +10% per notch; smaller
+ *   feels smoother but takes more spins to traverse 10×.
+ * - `MIN_ZOOM` / `MAX_ZOOM` — hard caps. Below MIN_ZOOM (very far
+ *   out) culling/LOD save the frame; above MAX_ZOOM pixel-snapping
+ *   artefacts appear.
+ */
+export const WHEEL_PAN_FACTOR = 1;
+export const WHEEL_ZOOM_STEP = 1.1;
+export const MIN_ZOOM = 0.05;
+export const MAX_ZOOM = 32;
+
+/**
+ * Two-finger pinch / pan gesture.
+ *
+ * - `PINCH_MIN_MOVEMENT_PX` — ignore minor jitter while two fingers
+ *   stay roughly still (e.g. user resting both fingers on screen).
+ *   Below this displacement the gesture frame is a no-op.
+ */
+export const PINCH_MIN_MOVEMENT_PX = 0.5;
+
+/**
+ * Long-press → context menu. `LONG_PRESS_DELAY_MS` is the dwell time
+ * before a stationary press fires a `LONG_PRESS` emit; movement
+ * beyond `LONG_PRESS_MAX_MOVEMENT_PX` cancels it.
+ */
+export const LONG_PRESS_DELAY_MS = 500;
+export const LONG_PRESS_MAX_MOVEMENT_PX = 8;
+
+/**
+ * Touch hit-test slop. WCAG and Apple HIG ask for ≥ 44 pt touch
+ * targets; with `HANDLE_SIZE = 4` (8 px visual square) the visual
+ * stays small but the *hit area* enlarges so a finger can grab it.
+ *
+ * - `TOUCH_HANDLE_HIT_SLOP` — half-size of the resize-handle hit
+ *   rectangle in screen pixels (44 pt ≈ 22 px half = 44 px target).
+ * - `TOUCH_EDGE_HANDLE_HIT_SLOP` — same for edge-endpoint dots.
+ * - `TOUCH_EDGE_HIT_THRESHOLD` — line-tolerance for tapping on an
+ *   edge body.
+ */
+export const TOUCH_HANDLE_HIT_SLOP = 22;
+export const TOUCH_EDGE_HANDLE_HIT_SLOP = 22;
+export const TOUCH_EDGE_HIT_THRESHOLD = 18;

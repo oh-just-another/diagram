@@ -65,7 +65,9 @@ export const ContextMenu = ({ items, target, style, className }: ContextMenuProp
   const [open, setOpen] = useState<OpenState | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Wire the contextmenu listener.
+  // Wire the contextmenu listener (mouse right-click) AND long-press
+  // (touch). Both end up calling `setOpen` with viewport-relative
+  // screen coords.
   useEffect(() => {
     if (!editor) return undefined;
     const root: HTMLElement | Window = target ?? window;
@@ -81,7 +83,19 @@ export const ContextMenu = ({ items, target, style, className }: ContextMenuProp
       setOpen({ screenPoint, worldPoint });
     };
     root.addEventListener("contextmenu", onContext);
-    return () => root.removeEventListener("contextmenu", onContext);
+    // Touch fallback: editor fires onLongPress with host-relative
+    // coords; the menu needs viewport-relative for positioning.
+    const unsubscribeLongPress = editor.onLongPress(({ screenPoint, worldPoint }) => {
+      const rect = editor.hostElement.getBoundingClientRect();
+      setOpen({
+        screenPoint: { x: screenPoint.x + rect.left, y: screenPoint.y + rect.top },
+        worldPoint,
+      });
+    });
+    return () => {
+      root.removeEventListener("contextmenu", onContext);
+      unsubscribeLongPress();
+    };
   }, [editor, target]);
 
   // Dismiss on click outside / Escape.

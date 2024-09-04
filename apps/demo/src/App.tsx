@@ -173,12 +173,25 @@ export const App = () => {
 
       <DiagramRoot initialScene={initialScene} initialMode="select" onReady={setEditor}>
         {isCollab ? null : <PersistSubscriber />}
-        <main style={{ display: "flex", flex: 1, minHeight: 0, background: "var(--bg)" }}>
-          <Palette style={paletteStyle} />
-          <CanvasArea />
-          <PropertyPanel style={panelStyle} />
-          <LayerPanel />
-          <HistoryPanel />
+        <main
+          data-panel-stack="main"
+          style={{ display: "flex", flex: 1, minHeight: 0, background: "var(--bg)" }}
+        >
+          <div data-panel="palette" style={panelWrapperStyle}>
+            <Palette style={paletteStyle} />
+          </div>
+          <div data-panel="canvas" style={canvasWrapperStyle}>
+            <CanvasArea />
+          </div>
+          <div data-panel="property" style={panelWrapperStyle}>
+            <PropertyPanel style={panelStyle} />
+          </div>
+          <div data-panel="layers" style={panelWrapperStyle}>
+            <LayerPanel />
+          </div>
+          <div data-panel="history" style={panelWrapperStyle}>
+            <HistoryPanel />
+          </div>
         </main>
       </DiagramRoot>
     </div>
@@ -197,6 +210,18 @@ const panelStyle: React.CSSProperties = {
   background: "var(--panel)",
   color: "var(--text)",
   borderLeft: "1px solid var(--border)",
+};
+
+// Pass-through wrapper so panels can be targeted by CSS data-attribute
+// selectors. Empty `display: contents` is intentionally avoided — the
+// mobile media query needs to apply width/max-height to the wrapper
+// directly. `display: flex` keeps the panel inside laid out normally.
+const panelWrapperStyle: React.CSSProperties = { display: "flex", minHeight: 0 };
+const canvasWrapperStyle: React.CSSProperties = {
+  display: "flex",
+  flex: 1,
+  minHeight: 0,
+  minWidth: 0,
 };
 
 const CanvasArea = () => {

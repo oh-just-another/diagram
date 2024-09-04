@@ -68,6 +68,41 @@
         background: var(--bg);
         color: var(--text);
       }
+
+      /* Adaptive layout — phone width.
+       * On ≤640px the side panels stack at the bottom as a horizontal
+       * scroll strip ("bottom-sheet"-style). Header collapses to a
+       * compact row; canvas takes the full remaining height.
+       * Each panel column uses `data-panel-stack` to opt-in.
+       */
+      @media (max-width: 640px) {
+        [data-panel-stack="main"] {
+          flex-direction: column !important;
+        }
+        [data-panel-stack="main"] > [data-panel="palette"],
+        [data-panel-stack="main"] > [data-panel="property"],
+        [data-panel-stack="main"] > [data-panel="layers"],
+        [data-panel-stack="main"] > [data-panel="history"] {
+          width: 100% !important;
+          max-height: 35vh;
+          border-left: none !important;
+          border-right: none !important;
+          border-top: 1px solid var(--border);
+          flex: 0 0 auto !important;
+        }
+        [data-panel-stack="main"] > [data-panel="canvas"] {
+          flex: 1 1 auto !important;
+          min-height: 40vh;
+        }
+        [data-panel="palette"] {
+          display: flex;
+          flex-direction: row;
+          overflow-x: auto;
+        }
+        [data-mobile-only="hide"] {
+          display: none !important;
+        }
+      }
     </style>
   </head>
   <body>
