@@ -125,3 +125,7 @@ export {
 
 // Spatial index (the class itself, for advanced uses)
 export { SpatialGrid } from "./spatial.js";
+
+// Accessibility helpers
+export type { AccessibleNameResolver } from "./a11y.js";
+export { getShapeAccessibleName, registerAccessibleName } from "./a11y.js";

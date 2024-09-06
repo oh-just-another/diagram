@@ -14,6 +14,9 @@ import type { Editor } from "@oh-just-another/state";
  *   ⌘[              send selected to back
  *   ⌘Z / Ctrl-Z     undo
  *   ⌘⇧Z / ⌘Y        redo
+ *   Arrow keys      nudge selection by 1 px (10 px with shift)
+ *   Tab / Shift-Tab cycle selection through scene z-order
+ *   Escape          clear selection / cancel gesture
  *
  * Listeners are no-ops while focus is on an `<input>` / `<textarea>` so the
  * editor doesn't steal text editing keys.
@@ -54,6 +57,34 @@ export const useHotkeys = (editor: Editor | null): void => {
         return;
       }
       if (meta || ev.altKey) return;
+
+      // Keyboard navigation — arrows / tab / escape.
+      const nudge = ev.shiftKey ? 10 : 1;
+      switch (ev.key) {
+        case "ArrowLeft":
+          ev.preventDefault();
+          editor.moveSelectionBy({ x: -nudge, y: 0 });
+          return;
+        case "ArrowRight":
+          ev.preventDefault();
+          editor.moveSelectionBy({ x: nudge, y: 0 });
+          return;
+        case "ArrowUp":
+          ev.preventDefault();
+          editor.moveSelectionBy({ x: 0, y: -nudge });
+          return;
+        case "ArrowDown":
+          ev.preventDefault();
+          editor.moveSelectionBy({ x: 0, y: nudge });
+          return;
+        case "Tab":
+          ev.preventDefault();
+          editor.focusCycle(ev.shiftKey ? "prev" : "next");
+          return;
+        case "Escape":
+          editor.cancelInteraction();
+          return;
+      }
 
       if (ev.key === "v" || ev.key === "V") editor.setMode("select");
       else if (ev.key === "r" || ev.key === "R") editor.setMode("draw-rect");

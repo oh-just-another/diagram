@@ -14,6 +14,7 @@ import {
   getEdge,
   getEdgePath,
   getShape,
+  getShapeAccessibleName,
   getShapeAt,
   getShapesInBounds,
   getShapeWorldBounds,
@@ -266,6 +267,13 @@ export class Editor {
   >();
 
   /**
+   * Live-region announcements for assistive tech. The editor pushes
+   * short, human-readable strings ("Selected Rectangle", "Moved 5 px
+   * right") that hosts pipe into an `aria-live=polite` region.
+   */
+  private readonly announceListeners = new Set<(message: string) => void>();
+
+  /**
    * Resolved primary input modality + derived hit slops. Computed once
    * in the constructor from `EditorOptions.inputMode` (default `"auto"`
    * uses `matchMedia('(pointer: coarse)')`).
@@ -392,6 +400,29 @@ export class Editor {
   }
 
   /**
+   * Subscribe to accessibility live-region announcements. The host
+   * pipes these strings into an `aria-live="polite"` element so a
+   * screen-reader user hears the editor's status changes. Strings
+   * are short and pre-localised by the caller of `announce`.
+   */
+  onAnnounce(fn: (message: string) => void): () => void {
+    this.announceListeners.add(fn);
+    return () => this.announceListeners.delete(fn);
+  }
+
+  /**
+   * Push a live-region message to all `onAnnounce` listeners. Hosts
+   * (and plugins) call this when something happened that an SR user
+   * should hear: selection changed, shape moved, mode switched, etc.
+   * The editor itself emits a small set of canonical messages from
+   * `focusCycle` / `moveSelectionBy` / `cancelInteraction`.
+   */
+  announce(message: string): void {
+    if (!message) return;
+    for (const fn of this.announceListeners) fn(message);
+  }
+
+  /**
    * Replace the remote peer cursors painted by the overlay. Pass an
    * empty array to clear. The host is expected to filter out the
    * local user's cursor before calling.
@@ -499,6 +530,83 @@ export class Editor {
     tx.commit();
     this._selection = Selection.EMPTY;
     this.notify();
+  }
+
+  /**
+   * Translate every selected shape by the given world-space delta.
+   * Single undo step. No-op when selection is empty. Used by arrow-key
+   * keyboard navigation; hosts pass `{ x: 1, y: 0 }` for fine nudge
+   * and `{ x: 10, y: 0 }` for shift-arrow.
+   */
+  moveSelectionBy(delta: Vec2): void {
+    if (this._selection.size === 0 || (delta.x === 0 && delta.y === 0)) return;
+    const tx = this._history.transaction();
+    for (const id of this._selection) {
+      const shape = getShape(this._scene, id);
+      if (!shape) continue;
+      const r = updateShape(this._scene, id, (s) => ({
+        ...s,
+        position: { x: s.position.x + delta.x, y: s.position.y + delta.y },
+      }));
+      this._scene = r.scene;
+      tx.add(r.patch);
+    }
+    tx.commit();
+    this.notify();
+    this.announce(describeNudge(delta, this._selection.size));
+  }
+
+  /**
+   * Cycle keyboard selection through the scene's shapes in z-order.
+   * `direction: "next"` advances forward; `"prev"` backward. With no
+   * current selection (or selection not in scene), starts at the first
+   * (or last) shape. Single-select — modifier-aware multi-select via
+   * keyboard is a follow-up.
+   */
+  focusCycle(direction: "next" | "prev"): void {
+    const layers = [...this._scene.layers.values()]
+      .filter((l) => l.visible)
+      .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+    const ordered: ShapeId[] = [];
+    for (const layer of layers) {
+      const inLayer = [...this._scene.shapes.values()]
+        .filter((s) => s.layerId === layer.id)
+        .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+      for (const s of inLayer) ordered.push(s.id);
+    }
+    if (ordered.length === 0) return;
+    const current = [...this._selection][0];
+    let idx = current ? ordered.indexOf(current) : -1;
+    if (direction === "next") {
+      idx = idx === -1 ? 0 : (idx + 1) % ordered.length;
+    } else {
+      idx = idx === -1 ? ordered.length - 1 : (idx - 1 + ordered.length) % ordered.length;
+    }
+    const next = ordered[idx];
+    if (!next) return;
+    this._selection = Selection.single(next);
+    this.notify();
+    const shape = getShape(this._scene, next);
+    if (shape) this.announce(`Selected ${getShapeAccessibleName(shape)}`);
+  }
+
+  /**
+   * Clear selection + cancel any in-progress drag / draw gesture.
+   * Bound to Escape in default keyboard nav.
+   */
+  cancelInteraction(): void {
+    if (this.gestureTx) {
+      this.gestureTx.cancel();
+      this.gestureTx = null;
+    }
+    this.actor.send({ type: "POINTER_CANCEL" });
+    this.drawingPreview = null;
+    this.edgePreview = null;
+    this.lassoPreview = null;
+    this._selection = Selection.EMPTY;
+    this._selectedEdge = null;
+    this.notify();
+    this.announce("Selection cleared");
   }
 
   /**
@@ -799,6 +907,7 @@ export class Editor {
     this.listeners.clear();
     this.cursorListeners.clear();
     this.longPressListeners.clear();
+    this.announceListeners.clear();
   }
 
   // --- Internal ---
@@ -1772,6 +1881,16 @@ export class Editor {
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+
+const describeNudge = (delta: Vec2, count: number): string => {
+  const parts: string[] = [];
+  if (delta.x > 0) parts.push(`${delta.x} px right`);
+  else if (delta.x < 0) parts.push(`${-delta.x} px left`);
+  if (delta.y > 0) parts.push(`${delta.y} px down`);
+  else if (delta.y < 0) parts.push(`${-delta.y} px up`);
+  const subject = count === 1 ? "shape" : `${count} shapes`;
+  return `Moved ${subject} ${parts.join(" and ")}`;
+};
 
 /**
  * Convert a snap candidate into an `EdgeEndpoint`. Anchor snap → named

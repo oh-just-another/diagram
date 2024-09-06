@@ -105,6 +105,44 @@ export const mix = (a: RGBA, b: RGBA, t: number): RGBA => ({
 
 export const withAlpha = (color: RGBA, alpha: number): RGBA => ({ ...color, a: alpha });
 
+/**
+ * Relative luminance per WCAG 2.x — 0..1 (black .. white). Operates on
+ * straight sRGB; alpha is ignored (caller composes against background
+ * beforehand if they want pre-multiplied results).
+ */
+export const luminance = (c: RGBA): number => {
+  const lin = (channel: number): number => {
+    const v = channel / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+};
+
+/**
+ * Contrast ratio between two colours per WCAG 2.x. Range `[1, 21]`,
+ * higher = better readability. Order of arguments doesn't matter.
+ */
+export const contrastRatio = (a: RGBA, b: RGBA): number => {
+  const l1 = luminance(a);
+  const l2 = luminance(b);
+  const [lo, hi] = l1 < l2 ? [l1, l2] : [l2, l1];
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+/**
+ * WCAG AA threshold: 4.5:1 for normal text, 3:1 for large (18pt
+ * regular / 14pt bold +). Use this to flag low-contrast pairs in
+ * UI / scene colour-pickers.
+ */
+export const meetsContrastAA = (fg: RGBA, bg: RGBA, large = false): boolean =>
+  contrastRatio(fg, bg) >= (large ? 3 : 4.5);
+
+/**
+ * WCAG AAA threshold: 7:1 for normal text, 4.5:1 for large.
+ */
+export const meetsContrastAAA = (fg: RGBA, bg: RGBA, large = false): boolean =>
+  contrastRatio(fg, bg) >= (large ? 4.5 : 7);
+
 // --- helpers ---
 
 const parseHexByte = (s: string): number => parseInt(s, 16);

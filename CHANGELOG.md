@@ -92,3 +92,6 @@
 
 ## 0.21.1
 - feat: mobile touch
+
+## 0.21.2
+- feat: a11y

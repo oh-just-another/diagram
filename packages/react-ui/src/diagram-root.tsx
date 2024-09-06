@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -121,22 +122,68 @@ export const DiagramRoot = ({
     <DiagramEditorBridge.Provider value={editor}>
       <RegisterSurfaceContext.Provider value={registerSurface}>
         {children}
+        <LiveRegion editor={editor} />
       </RegisterSurfaceContext.Provider>
     </DiagramEditorBridge.Provider>
+  );
+};
+
+/**
+ * Hidden `aria-live="polite"` region that pipes `editor.onAnnounce`
+ * messages to assistive tech. Rendered automatically by every
+ * `<DiagramRoot>`; visually hidden but readable by screen readers.
+ */
+const LiveRegion = ({ editor }: { readonly editor: Editor | null }) => {
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    if (!editor) return undefined;
+    return editor.onAnnounce(setMessage);
+  }, [editor]);
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      style={{
+        position: "absolute",
+        width: 1,
+        height: 1,
+        padding: 0,
+        margin: -1,
+        overflow: "hidden",
+        clip: "rect(0,0,0,0)",
+        whiteSpace: "nowrap",
+        border: 0,
+      }}
+    >
+      {message}
+    </div>
   );
 };
 
 export interface DiagramSurfaceProps {
   readonly style?: CSSProperties;
   readonly className?: string;
+  /**
+   * Accessible name for the canvas region — read out by screen readers
+   * and shown as the visible focus-ring tooltip. Defaults to
+   * `"Diagram canvas"`. Override per-app to give context (e.g. the
+   * document title).
+   */
+  readonly ariaLabel?: string;
 }
 
 /**
  * Mounts the canvas host DOM where it is placed in the tree. Must live
  * inside a `<DiagramRoot>`. Renders a plain `<div>` and registers it with
  * the root; the root then creates the editor + `LayeredCanvas` against it.
+ *
+ * The surface is `tabIndex=0` + `role="application"` so keyboard users
+ * can land on it via Tab and screen readers announce it as an interactive
+ * canvas (the contents are non-DOM). Hosts that want a different
+ * accessible name pass `ariaLabel`.
  */
-export const DiagramSurface = ({ style, className }: DiagramSurfaceProps) => {
+export const DiagramSurface = ({ style, className, ariaLabel }: DiagramSurfaceProps) => {
   const register = useContext(RegisterSurfaceContext);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -154,6 +201,9 @@ export const DiagramSurface = ({ style, className }: DiagramSurfaceProps) => {
     <div
       ref={ref}
       className={className}
+      role="application"
+      tabIndex={0}
+      aria-label={ariaLabel ?? "Diagram canvas"}
       style={{
         position: "relative",
         width: "100%",
@@ -161,7 +211,18 @@ export const DiagramSurface = ({ style, className }: DiagramSurfaceProps) => {
         overflow: "hidden",
         touchAction: "none",
         userSelect: "none",
+        // Visible focus ring — UA-default for `outline` is sometimes
+        // suppressed by parent `*:focus { outline: none }` rules; we
+        // declare an explicit one so keyboard users always see focus.
+        outline: "none",
         ...style,
+      }}
+      onFocus={(ev) => {
+        ev.currentTarget.style.outline = "2px solid var(--accent, #1a73e8)";
+        ev.currentTarget.style.outlineOffset = "-2px";
+      }}
+      onBlur={(ev) => {
+        ev.currentTarget.style.outline = "none";
       }}
     />
   );
