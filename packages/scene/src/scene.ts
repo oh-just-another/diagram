@@ -1,5 +1,12 @@
-import { layerId as castLayerId, type EdgeId, type LayerId, type ShapeId } from "@oh-just-another/types";
+import {
+  layerId as castLayerId,
+  type AnnotationId,
+  type EdgeId,
+  type LayerId,
+  type ShapeId,
+} from "@oh-just-another/types";
 import { generateKeyBetween, type FractionalIndex } from "fractional-keys";
+import type { Annotation } from "./annotation.js";
 import type { Edge } from "./edge.js";
 import { type Layer } from "./layer.js";
 import type { Patch } from "./patch.js";
@@ -16,6 +23,13 @@ export interface Scene {
   readonly shapes: ReadonlyMap<ShapeId, Shape>;
   readonly edges: ReadonlyMap<EdgeId, Edge>;
   readonly layers: ReadonlyMap<LayerId, Layer>;
+  /**
+   * Threaded comments anchored to either a shape (id) or a free
+   * world-space position. Separate from shapes/edges because they
+   * are not part of the diagram's structure — they're meta-content
+   * that hosts may toggle on/off without affecting render output.
+   */
+  readonly annotations: ReadonlyMap<AnnotationId, Annotation>;
   readonly viewport: Viewport;
 }
 
@@ -34,6 +48,7 @@ export const emptyScene = (): Scene => ({
   shapes: new Map(),
   edges: new Map(),
   layers: new Map([[DEFAULT_LAYER_ID, defaultLayer()]]),
+  annotations: new Map(),
   viewport: DEFAULT_VIEWPORT,
 });
 
@@ -57,6 +72,12 @@ export const apply = (scene: Scene, patch: Patch): Scene => {
       if (patch.after === null) layers.delete(patch.id);
       else layers.set(patch.id, patch.after);
       return { ...scene, layers };
+    }
+    case "annotation": {
+      const annotations = new Map(scene.annotations);
+      if (patch.after === null) annotations.delete(patch.id);
+      else annotations.set(patch.id, patch.after);
+      return { ...scene, annotations };
     }
     case "viewport":
       return { ...scene, viewport: patch.after };

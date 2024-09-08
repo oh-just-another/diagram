@@ -3,10 +3,11 @@ import {
   DEFAULT_LAYER_ID,
   emptyScene,
   getLayersInOrder,
+  type Annotation,
   type Layer,
   type Scene,
 } from "@oh-just-another/scene";
-import { layerId as castLayerId, type LayerId } from "@oh-just-another/types";
+import { type AnnotationId, layerId as castLayerId, type LayerId } from "@oh-just-another/types";
 import { selection, type Editor, type Mode, type Selection } from "@oh-just-another/state";
 import { useDiagramContext, useDiagramContextOptional, useEditorSelector } from "./context.js";
 
@@ -74,3 +75,17 @@ const DEFAULT_ACTIVE_LAYER: LayerId = castLayerId(DEFAULT_LAYER_ID);
 /** Currently active layer id (new shapes go here). */
 export const useActiveLayerId = (): LayerId =>
   useEditorSelector((e) => e.activeLayerId, DEFAULT_ACTIVE_LAYER);
+
+const EMPTY_ANNOTATIONS: readonly Annotation[] = [];
+
+/**
+ * All annotations in scene order (insertion). Returns empty pre-mount.
+ * Newest annotations come last; hosts can sort by `createdAt` for
+ * chronological order.
+ */
+export const useAnnotations = (): readonly Annotation[] =>
+  useEditorSelector((e) => [...e.scene.annotations.values()], EMPTY_ANNOTATIONS);
+
+/** Currently focused annotation id (or null when nothing is open). */
+export const useSelectedAnnotation = (): AnnotationId | null =>
+  useEditorSelector<AnnotationId | null>((e) => e.selectedAnnotation, null);

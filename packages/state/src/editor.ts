@@ -2,6 +2,7 @@ import { createActor, type Actor } from "xstate";
 import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
 import { shapeId as castShapeId } from "@oh-just-another/types";
 import {
+  addAnnotation,
   addEdge,
   addLayer,
   addShape,
@@ -11,6 +12,7 @@ import {
   findEdgeAt,
   findNearestAnchor,
   getAnchorWorld,
+  getAnnotationWorldPosition,
   getEdge,
   getEdgePath,
   getShape,
@@ -27,13 +29,17 @@ import {
   orderForBottom,
   orderForTop,
   outlineSnapper,
+  removeAnnotation,
   removeEdge,
   removeLayer,
   removeShape,
   SnapEngine,
+  updateAnnotation,
   updateEdge,
   updateLayer,
   updateShape,
+  type Annotation,
+  type Comment,
   type Edge,
   type EdgeEndpoint,
   type Layer,
@@ -43,8 +49,12 @@ import {
   type SnapCandidate,
 } from "@oh-just-another/scene";
 import {
+  annotationId as castAnnotationId,
+  commentId as castCommentId,
   edgeId as castEdgeId,
   layerId as castLayerId,
+  type AnnotationId,
+  type CommentId,
   type EdgeId,
   type LayerId,
 } from "@oh-just-another/types";
@@ -60,6 +70,7 @@ import {
 import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
 import { fromPointerEvent } from "./dom-events.js";
 import {
+  ANNOTATION_PIN_HIT_SLOP,
   DEFAULT_SNAP_THRESHOLD,
   EDGE_ENDPOINT_HANDLE_RADIUS,
   EDGE_HIT_THRESHOLD,
@@ -168,6 +179,20 @@ export class Editor {
    */
   private _selectedEdge: EdgeId | null = null;
   /**
+   * Currently focused annotation thread — overlay highlights its pin
+   * with an accent ring and hosts (e.g. `<CommentsPopover>`) render
+   * the thread for this id. Independent of shape / edge selection so
+   * users can edit shapes while a comment thread is open.
+   */
+  private _selectedAnnotation: AnnotationId | null = null;
+  /**
+   * Author identity used for comments posted via `addComment` /
+   * `addAnnotation` without an explicit author. Hosts set this once
+   * (typically from the same user object passed to `bindAwareness`).
+   * Defaults to a synthetic local user.
+   */
+  private commentAuthor: { id: string; name: string } = { id: "local", name: "You" };
+  /**
    * Mid-drag preview state when the user is dragging an edge endpoint.
    * Drawn as an overlay line + handle dot so the user sees the target.
    */
@@ -204,6 +229,11 @@ export class Editor {
    */
   private _activeLayerId: LayerId = castLayerId(DEFAULT_LAYER_ID);
   private nextId = 0;
+
+  /** Generate a short unique id with a stable prefix. */
+  private uniqueId(prefix: string): string {
+    return `${prefix}-${++this.nextId}-${Date.now().toString(36)}`;
+  }
 
   /**
    * Snap engine — defaults to grid + anchor + outline contributors. Hosts
@@ -385,6 +415,159 @@ export class Editor {
   onCursorMove(fn: (point: Vec2) => void): () => void {
     this.cursorListeners.add(fn);
     return () => this.cursorListeners.delete(fn);
+  }
+
+  // --- Annotations ---
+
+  /** Set the local user's identity for comments authored via this editor. */
+  setCommentAuthor(author: { id: string; name: string }): void {
+    this.commentAuthor = author;
+  }
+
+  /** Currently focused annotation id (or null when nothing is open). */
+  get selectedAnnotation(): AnnotationId | null {
+    return this._selectedAnnotation;
+  }
+
+  /**
+   * Open or close an annotation thread. `null` clears the focus. The
+   * overlay highlights the pin; `<CommentsPopover>` reads this and
+   * renders the thread.
+   */
+  setSelectedAnnotation(id: AnnotationId | null): void {
+    if (this._selectedAnnotation === id) return;
+    this._selectedAnnotation = id;
+    this.notify();
+  }
+
+  /**
+   * Create a new annotation thread at `position`. When `shapeId` is
+   * passed, `position` is treated as an offset relative to that shape;
+   * the pin will follow shape moves. `firstComment` seeds the thread —
+   * pass an empty string to create an open pin without text.
+   *
+   * Returns the new annotation id; auto-selects it so the host UI
+   * opens the thread for the user to type in.
+   */
+  addAnnotation(opts: {
+    position: Vec2;
+    shapeId?: ShapeId | null;
+    firstComment?: string;
+  }): AnnotationId {
+    const now = new Date().toISOString();
+    const newId = castAnnotationId(this.uniqueId("ann"));
+    const thread: Comment[] = [];
+    if (opts.firstComment?.trim()) {
+      thread.push({
+        id: castCommentId(this.uniqueId("cmt")),
+        authorId: this.commentAuthor.id,
+        authorName: this.commentAuthor.name,
+        body: opts.firstComment.trim(),
+        createdAt: now,
+      });
+    }
+    const annotation: Annotation = {
+      id: newId,
+      shapeId: opts.shapeId ?? null,
+      position: opts.position,
+      resolved: false,
+      thread,
+      createdAt: now,
+    };
+    const result = addAnnotation(this._scene, annotation);
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this._selectedAnnotation = newId;
+    this.notify();
+    this.announce("Annotation added");
+    return newId;
+  }
+
+  /** Remove an annotation thread entirely. Single undo step. */
+  removeAnnotation(id: AnnotationId): void {
+    if (!this._scene.annotations.has(id)) return;
+    const result = removeAnnotation(this._scene, id);
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    if (this._selectedAnnotation === id) this._selectedAnnotation = null;
+    this.notify();
+    this.announce("Annotation removed");
+  }
+
+  /** Toggle the `resolved` flag on an annotation. */
+  toggleAnnotationResolved(id: AnnotationId): void {
+    const before = this._scene.annotations.get(id);
+    if (!before) return;
+    const result = updateAnnotation(this._scene, id, (a) => ({ ...a, resolved: !a.resolved }));
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+    this.announce(before.resolved ? "Annotation reopened" : "Annotation resolved");
+  }
+
+  /**
+   * Append a reply to an annotation thread. Body is trimmed; empty
+   * input is a no-op. Author defaults to `commentAuthor`; pass an
+   * explicit one when the caller knows better (e.g. host has full
+   * user record beyond id+name).
+   */
+  addComment(
+    annotationId: AnnotationId,
+    body: string,
+    author?: { id: string; name: string },
+  ): void {
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    if (!this._scene.annotations.has(annotationId)) return;
+    const u = author ?? this.commentAuthor;
+    const comment: Comment = {
+      id: castCommentId(this.uniqueId("cmt")),
+      authorId: u.id,
+      authorName: u.name,
+      body: trimmed,
+      createdAt: new Date().toISOString(),
+    };
+    const result = updateAnnotation(this._scene, annotationId, (a) => ({
+      ...a,
+      thread: [...a.thread, comment],
+    }));
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /** Remove a single comment from a thread. No-op if not found. */
+  removeComment(annotationId: AnnotationId, commentId: CommentId): void {
+    const before = this._scene.annotations.get(annotationId);
+    if (!before?.thread.some((c) => c.id === commentId)) return;
+    const result = updateAnnotation(this._scene, annotationId, (a) => ({
+      ...a,
+      thread: a.thread.filter((c) => c.id !== commentId),
+    }));
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Hit-test an annotation pin in world coordinates. Returns the
+   * topmost annotation whose pin contains the point (within
+   * `ANNOTATION_PIN_HIT_SLOP` screen pixels, scaled by zoom).
+   */
+  hitAnnotation(worldPoint: Vec2): AnnotationId | null {
+    const zoom = this._scene.viewport.zoom;
+    const radius = ANNOTATION_PIN_HIT_SLOP / zoom;
+    // Last-added wins (matches z-order intuition: pins on top respond
+    // to clicks first).
+    const list = [...this._scene.annotations.values()];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const ann = list[i]!;
+      const center = getAnnotationWorldPosition(this._scene, ann);
+      const dx = worldPoint.x - center.x;
+      const dy = worldPoint.y - center.y;
+      if (dx * dx + dy * dy <= radius * radius) return ann.id;
+    }
+    return null;
   }
 
   /**
@@ -1874,6 +2057,10 @@ export class Editor {
     }
     if (this._peerCursors.length > 0) overlayOpts.peerCursors = this._peerCursors;
     if (this._peerSelections.length > 0) overlayOpts.peerSelections = this._peerSelections;
+    if (this._scene.annotations.size > 0) {
+      overlayOpts.annotations = [...this._scene.annotations.values()];
+      overlayOpts.selectedAnnotation = this._selectedAnnotation;
+    }
     renderOverlay(this._scene, this._selection, this.overlayTarget, overlayOpts);
   }
 }

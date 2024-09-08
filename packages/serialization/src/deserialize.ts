@@ -1,12 +1,15 @@
 import {
+  annotationId,
+  type AnnotationId,
+  commentId,
   type EdgeId,
   edgeId,
   type LayerId,
   layerId,
-  type ShapeId,
   shapeId,
+  type ShapeId,
 } from "@oh-just-another/types";
-import type { Edge, Layer, Scene, Shape, Viewport } from "@oh-just-another/scene";
+import type { Annotation, Edge, Layer, Scene, Shape, Viewport } from "@oh-just-another/scene";
 import { type FractionalIndex } from "fractional-keys";
 import { z } from "zod";
 import { CURRENT_VERSION, type SceneDocument, SceneDocumentZ } from "./schema.js";
@@ -106,7 +109,29 @@ const hydrate = (doc: SceneDocument): Scene => {
   // `undefined`s on optional fields; strip them so `exactOptionalPropertyTypes`
   // is happy with the resulting `Viewport`.
   const viewport: Viewport = stripUndefined(doc.viewport) as Viewport;
-  return { shapes, edges, layers, viewport };
+
+  const annotations = new Map<AnnotationId, Annotation>();
+  if (doc.annotations) {
+    for (const a of doc.annotations) {
+      const id = annotationId(a.id);
+      annotations.set(id, {
+        id,
+        shapeId: a.shapeId === null ? null : shapeId(a.shapeId),
+        position: a.position,
+        resolved: a.resolved,
+        thread: a.thread.map((c) => ({
+          id: commentId(c.id),
+          authorId: c.authorId,
+          authorName: c.authorName,
+          body: c.body,
+          createdAt: c.createdAt,
+        })),
+        createdAt: a.createdAt,
+      });
+    }
+  }
+
+  return { shapes, edges, layers, annotations, viewport };
 };
 
 const hydrateShape = (s: SceneDocument["shapes"][number], id: ShapeId): Shape => {

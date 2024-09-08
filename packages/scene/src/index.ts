@@ -107,7 +107,14 @@ export {
   removeLayer,
   updateLayer,
   setViewport,
+  addAnnotation,
+  removeAnnotation,
+  updateAnnotation,
 } from "./operations.js";
+
+// Annotations
+export type { Annotation, Comment } from "./annotation.js";
+export { getAnnotationWorldPosition } from "./annotation-geometry.js";
 
 // Queries
 export {

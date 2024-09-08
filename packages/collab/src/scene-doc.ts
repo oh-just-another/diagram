@@ -1,6 +1,13 @@
 import * as Y from "yjs";
-import { DEFAULT_VIEWPORT, type Edge, type Layer, type Scene, type Shape } from "@oh-just-another/scene";
-import { layerId, edgeId, shapeId } from "@oh-just-another/types";
+import {
+  DEFAULT_VIEWPORT,
+  type Annotation,
+  type Edge,
+  type Layer,
+  type Scene,
+  type Shape,
+} from "@oh-just-another/scene";
+import { annotationId, layerId, edgeId, shapeId } from "@oh-just-another/types";
 
 /**
  * CRDT-backed mirror of a `Scene`. Wraps a `Y.Doc` whose top-level maps
@@ -21,6 +28,7 @@ export class SceneDoc {
   readonly shapes: Y.Map<Shape>;
   readonly edges: Y.Map<Edge>;
   readonly layers: Y.Map<Layer>;
+  readonly annotations: Y.Map<Annotation>;
   readonly viewport: Y.Map<unknown>;
 
   constructor(doc: Y.Doc = new Y.Doc()) {
@@ -28,6 +36,7 @@ export class SceneDoc {
     this.shapes = doc.getMap<Shape>("shapes");
     this.edges = doc.getMap<Edge>("edges");
     this.layers = doc.getMap<Layer>("layers");
+    this.annotations = doc.getMap<Annotation>("annotations");
     this.viewport = doc.getMap<unknown>("viewport");
   }
 
@@ -43,7 +52,16 @@ export class SceneDoc {
     const vp = this.viewport.get("current");
     const viewport = (vp ?? DEFAULT_VIEWPORT) as Scene["viewport"];
 
-    return { shapes: shapeMap, edges: edgeMap, layers: layerMap, viewport };
+    const annotationMap = new Map<Annotation["id"], Annotation>();
+    for (const [id, ann] of this.annotations) annotationMap.set(annotationId(id), ann);
+
+    return {
+      shapes: shapeMap,
+      edges: edgeMap,
+      layers: layerMap,
+      annotations: annotationMap,
+      viewport,
+    };
   }
 
   /**
@@ -60,6 +78,8 @@ export class SceneDoc {
       for (const [id, edge] of scene.edges) this.edges.set(id, edge);
       this.layers.clear();
       for (const [id, layer] of scene.layers) this.layers.set(id, layer);
+      this.annotations.clear();
+      for (const [id, ann] of scene.annotations) this.annotations.set(id, ann);
       this.viewport.set("current", scene.viewport);
     }, origin);
   }
@@ -74,6 +94,7 @@ export class SceneDoc {
       diffMap(prev.shapes, next.shapes, this.shapes);
       diffMap(prev.edges, next.edges, this.edges);
       diffMap(prev.layers, next.layers, this.layers);
+      diffMap(prev.annotations, next.annotations, this.annotations);
       if (prev.viewport !== next.viewport) {
         this.viewport.set("current", next.viewport);
       }

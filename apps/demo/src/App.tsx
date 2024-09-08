@@ -12,6 +12,8 @@ import {
 import { shapeId } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import {
+  CommentsPanel,
+  CommentsPopover,
   ContextMenu,
   DEFAULT_CONTEXT_MENU,
   DiagramRoot,
@@ -189,6 +191,9 @@ export const App = () => {
           <div data-panel="layers" style={panelWrapperStyle}>
             <LayerPanel />
           </div>
+          <div data-panel="comments" style={panelWrapperStyle}>
+            <CommentsPanel />
+          </div>
           <div data-panel="history" style={panelWrapperStyle}>
             <HistoryPanel />
           </div>
@@ -248,6 +253,7 @@ const CanvasArea = () => {
       <DiagramSurface />
       <FloatingToolbar />
       <ContextMenu items={DEFAULT_CONTEXT_MENU} />
+      <CommentsPopover />
     </section>
   );
 };
@@ -305,6 +311,7 @@ const FloatingToolbar = () => {
       shapes: new Map(),
       edges: new Map(),
       layers: editor.scene.layers,
+      annotations: new Map(),
       viewport: editor.scene.viewport,
     });
   }, [editor]);

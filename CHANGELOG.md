@@ -95,3 +95,6 @@
 
 ## 0.21.2
 - feat: a11y
+
+## 0.22.0
+- feat: comments

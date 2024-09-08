@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { annotationId, commentId, shapeId } from "@oh-just-another/types";
 import {
+  addAnnotation,
   addShape,
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
+  type Annotation,
   type Patch,
   type Shape,
 } from "@oh-just-another/scene";
@@ -133,5 +135,41 @@ describe("round-trip", () => {
     };
     const after = apply(restored, undo);
     expect(after.shapes.size).toBe(0);
+  });
+
+  it("serialize → deserialize preserves annotations", () => {
+    let scene = emptyScene();
+    const ann: Annotation = {
+      id: annotationId("a1"),
+      shapeId: shapeId("rect-1"),
+      position: { x: 10, y: 20 },
+      resolved: false,
+      thread: [
+        {
+          id: commentId("c1"),
+          authorId: "u1",
+          authorName: "Alice",
+          body: "First!",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    ({ scene } = addAnnotation(scene, ann));
+    const restored = deserializeScene(serializeScene(scene));
+    expect(restored.annotations.size).toBe(1);
+    expect(restored.annotations.get(ann.id)).toEqual(ann);
+  });
+
+  it("empty annotation map → no `annotations` field in document", () => {
+    const scene = emptyScene();
+    const doc = serializeScene(scene);
+    expect(doc.annotations).toBeUndefined();
+  });
+
+  it("parseScene of a document without annotations works", () => {
+    const legacy = stringifyScene(emptyScene());
+    const parsed = parseScene(legacy);
+    expect(parsed.annotations.size).toBe(0);
   });
 });

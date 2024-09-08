@@ -28,6 +28,11 @@ export const describe = (patch: Patch): string => {
       if (patch.after === null) return "Delete layer";
       return "Update layer";
     }
+    case "annotation": {
+      if (patch.before === null) return "Add comment";
+      if (patch.after === null) return "Delete comment";
+      return "Update comment";
+    }
     case "viewport":
       return "Camera change";
     case "batch": {

@@ -1,4 +1,5 @@
-import type { EdgeId, LayerId, ShapeId } from "@oh-just-another/types";
+import type { AnnotationId, EdgeId, LayerId, ShapeId } from "@oh-just-another/types";
+import type { Annotation } from "./annotation.js";
 import type { Edge } from "./edge.js";
 import type { Layer } from "./layer.js";
 import type { Shape } from "./shape.js";
@@ -33,6 +34,12 @@ export type Patch =
       readonly before: Layer | null;
       readonly after: Layer | null;
     }
+  | {
+      readonly kind: "annotation";
+      readonly id: AnnotationId;
+      readonly before: Annotation | null;
+      readonly after: Annotation | null;
+    }
   | { readonly kind: "viewport"; readonly before: Viewport; readonly after: Viewport }
   | { readonly kind: "batch"; readonly patches: readonly Patch[] };
 
@@ -45,6 +52,8 @@ export const invert = (patch: Patch): Patch => {
       return { kind: "edge", id: patch.id, before: patch.after, after: patch.before };
     case "layer":
       return { kind: "layer", id: patch.id, before: patch.after, after: patch.before };
+    case "annotation":
+      return { kind: "annotation", id: patch.id, before: patch.after, after: patch.before };
     case "viewport":
       return { kind: "viewport", before: patch.after, after: patch.before };
     case "batch":
@@ -69,6 +78,7 @@ export const isNoop = (patch: Patch): boolean => {
     case "shape":
     case "edge":
     case "layer":
+    case "annotation":
       return patch.before === patch.after;
     case "viewport":
       return patch.before === patch.after;

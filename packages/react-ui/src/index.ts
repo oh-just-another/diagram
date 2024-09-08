@@ -20,8 +20,16 @@ export {
   useHistory,
   useLayers,
   useActiveLayerId,
+  useAnnotations,
+  useSelectedAnnotation,
 } from "./hooks.js";
 export { LayerPanel, type LayerPanelProps } from "./layer-panel.js";
+export {
+  CommentsPanel,
+  CommentsPopover,
+  type CommentsPanelProps,
+  type CommentsPopoverProps,
+} from "./comments-panel.js";
 export { Toolbar, DEFAULT_TOOLBAR, type ToolbarItem, type ToolbarProps } from "./toolbar.js";
 export { Palette, usePaletteDropHandler, type PaletteProps } from "./palette.js";
 export { PropertyPanel, type PropertyPanelProps } from "./property-panel.js";

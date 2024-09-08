@@ -8,14 +8,23 @@ import { CURRENT_VERSION, type SceneDocument } from "./schema.js";
  *
  * Pure: doesn't read or write any global state.
  */
-export const serializeScene = (scene: Scene): SceneDocument => ({
-  format: "oh-just-another/scene",
-  version: CURRENT_VERSION,
-  shapes: [...scene.shapes.values()] as SceneDocument["shapes"],
-  edges: [...scene.edges.values()] as SceneDocument["edges"],
-  layers: [...scene.layers.values()],
-  viewport: scene.viewport,
-});
+export const serializeScene = (scene: Scene): SceneDocument => {
+  const annotations =
+    scene.annotations.size > 0
+      ? ([...scene.annotations.values()] as unknown as NonNullable<SceneDocument["annotations"]>)
+      : undefined;
+  const doc: SceneDocument = {
+    format: "oh-just-another/scene",
+    version: CURRENT_VERSION,
+    shapes: [...scene.shapes.values()] as SceneDocument["shapes"],
+    edges: [...scene.edges.values()] as SceneDocument["edges"],
+    layers: [...scene.layers.values()],
+    viewport: scene.viewport,
+  };
+  // Omit `annotations` for empty collections.
+  if (annotations) doc.annotations = annotations;
+  return doc;
+};
 
 /**
  * Stringify a scene. Convenience for `JSON.stringify(serializeScene(s))` with

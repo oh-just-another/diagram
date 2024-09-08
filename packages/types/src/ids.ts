@@ -1,6 +1,8 @@
 declare const shapeIdBrand: unique symbol;
 declare const edgeIdBrand: unique symbol;
 declare const layerIdBrand: unique symbol;
+declare const annotationIdBrand: unique symbol;
+declare const commentIdBrand: unique symbol;
 
 /**
  * Opaque, stable identifier for a shape.
@@ -25,3 +27,15 @@ export const edgeId = (raw: string): EdgeId => raw as EdgeId;
 
 /** Cast a raw string to LayerId. Caller owns uniqueness. */
 export const layerId = (raw: string): LayerId => raw as LayerId;
+
+/** Opaque identifier for an annotation (pin + thread). */
+export type AnnotationId = string & { readonly [annotationIdBrand]: true };
+
+/** Cast a raw string to AnnotationId. Caller owns uniqueness. */
+export const annotationId = (raw: string): AnnotationId => raw as AnnotationId;
+
+/** Opaque identifier for a single comment inside an annotation thread. */
+export type CommentId = string & { readonly [commentIdBrand]: true };
+
+/** Cast a raw string to CommentId. Caller owns uniqueness. */
+export const commentId = (raw: string): CommentId => raw as CommentId;

@@ -1,13 +1,20 @@
-import type { Bounds, Transform, Vec2 } from "@oh-just-another/types";
+import type { AnnotationId, Bounds, Transform, Vec2 } from "@oh-just-another/types";
 import {
+  getAnnotationWorldPosition,
   getShapeWorldBounds,
   getWorldToScreen,
+  type Annotation,
   type Scene,
   type ShapeBase,
 } from "@oh-just-another/scene";
 import { matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
 import {
+  ANNOTATION_PIN_BADGE_FONT_SIZE,
+  ANNOTATION_PIN_FILL,
+  ANNOTATION_PIN_RADIUS,
+  ANNOTATION_PIN_RESOLVED_FILL,
+  ANNOTATION_PIN_STROKE,
   CURSOR_ARROW_SIZE,
   CURSOR_NAME_CHIP_OFFSET,
   CURSOR_NAME_CHIP_PADDING_X,
@@ -132,6 +139,14 @@ export const renderOverlay = (
      * the peer's colour around every world-space bbox in `bounds`.
      */
     peerSelections?: readonly PeerSelection[];
+    /**
+     * Annotation pins to render on the overlay. Each pin is a small
+     * circle anchored at the annotation's world position; resolved
+     * annotations get a muted colour. Highlighted pin (the one in
+     * `selectedAnnotation`) gets an accent ring.
+     */
+    annotations?: readonly Annotation[];
+    selectedAnnotation?: AnnotationId | null;
     style?: Partial<OverlayStyle>;
   } = {},
 ): void => {
@@ -212,6 +227,17 @@ export const renderOverlay = (
       const worldPoint = handlePosition(handle, options.groupBounds);
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);
       drawHandle(target, screenPoint, style);
+    }
+  }
+
+  // 7.5. Annotation pins — drawn before peer cursors so cursors stay
+  // on top, but on top of selection handles. Each pin shows a comment
+  // count badge when the thread has > 0 replies.
+  if (options.annotations && options.annotations.length > 0) {
+    for (const ann of options.annotations) {
+      const world = getAnnotationWorldPosition(scene, ann);
+      const screen = matrix.applyToPoint(w2s, world);
+      drawAnnotationPin(target, screen, ann, options.selectedAnnotation ?? null);
     }
   }
 
@@ -351,4 +377,37 @@ const drawPeerCursor = (target: RenderTarget, tip: Vec2, color: string, name: st
   target.fill();
   target.setFill("#fff");
   target.fillText(name, chipX + CURSOR_NAME_CHIP_PADDING_X, chipY + CURSOR_NAME_CHIP_PADDING_Y);
+};
+
+const drawAnnotationPin = (
+  target: RenderTarget,
+  center: Vec2,
+  annotation: Annotation,
+  selectedId: AnnotationId | null,
+): void => {
+  const radius = ANNOTATION_PIN_RADIUS;
+  const fill = annotation.resolved ? ANNOTATION_PIN_RESOLVED_FILL : ANNOTATION_PIN_FILL;
+  const selected = annotation.id === selectedId;
+
+  // Circle body.
+  target.setFill(fill);
+  target.setStroke(selected ? "#1a73e8" : ANNOTATION_PIN_STROKE);
+  target.setStrokeWidth(selected ? 2 : 1.5);
+  target.setDashArray(null);
+  target.beginPath();
+  target.ellipse(center.x, center.y, radius, radius);
+  target.fill();
+  target.stroke();
+
+  // Comment-count badge (when thread length > 1; the first comment is the
+  // body of the pin itself).
+  if (annotation.thread.length > 0) {
+    const count = annotation.thread.length;
+    const label = count > 9 ? "9+" : String(count);
+    target.setFont("sans-serif", ANNOTATION_PIN_BADGE_FONT_SIZE);
+    target.setTextAlign("center");
+    target.setTextBaseline("middle");
+    target.setFill("#fff");
+    target.fillText(label, center.x, center.y);
+  }
 };

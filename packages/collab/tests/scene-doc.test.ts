@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { shapeId } from "@oh-just-another/types";
+import { annotationId, commentId, shapeId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
+  addAnnotation,
   addShape,
   emptyScene,
   orderBetween,
+  type Annotation,
   type Scene,
   type Shape,
 } from "@oh-just-another/scene";
@@ -83,5 +85,36 @@ describe("SceneDoc", () => {
     a.replace(seed());
     expect(b.snapshot().shapes.size).toBe(1);
     expect(b.snapshot().shapes.get(shapeId("r1"))?.position).toEqual({ x: 10, y: 20 });
+  });
+
+  it("annotations round-trip across two SceneDoc peers", () => {
+    const a = new SceneDoc();
+    const b = new SceneDoc();
+    a.doc.on("updateV2", (u) => Y.applyUpdateV2(b.doc, u));
+    b.doc.on("updateV2", (u) => Y.applyUpdateV2(a.doc, u));
+
+    let scene = seed();
+    const ann: Annotation = {
+      id: annotationId("a1"),
+      shapeId: shapeId("r1"),
+      position: { x: 5, y: 5 },
+      resolved: false,
+      thread: [
+        {
+          id: commentId("c1"),
+          authorId: "u1",
+          authorName: "Alice",
+          body: "Looks good",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    ({ scene } = addAnnotation(scene, ann));
+
+    a.replace(scene);
+    const snapshot = b.snapshot();
+    expect(snapshot.annotations.size).toBe(1);
+    expect(snapshot.annotations.get(ann.id)?.thread[0]?.body).toBe("Looks good");
   });
 });

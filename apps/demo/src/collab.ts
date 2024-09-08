@@ -42,6 +42,7 @@ export const useCollab = (
     const sceneDoc = new SceneDoc(doc);
     const aw = new CollabAwareness(doc);
     const user = randomUser();
+    editor.setCommentAuthor({ id: user.id, name: user.name });
 
     // Pick transport based on URL: `?relay=ws://host:port` switches to
     // the WebSocketTransport (cross-machine); otherwise BroadcastChannel

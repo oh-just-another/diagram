@@ -214,6 +214,29 @@ const ViewportZ = z
   })
   .strict();
 
+// --- Annotations ---
+
+const CommentZ = z
+  .object({
+    id: z.string(),
+    authorId: z.string(),
+    authorName: z.string(),
+    body: z.string(),
+    createdAt: z.string(),
+  })
+  .strict();
+
+const AnnotationZ = z
+  .object({
+    id: z.string(),
+    shapeId: z.string().nullable(),
+    position: Vec2Z,
+    resolved: z.boolean(),
+    thread: z.array(CommentZ),
+    createdAt: z.string(),
+  })
+  .strict();
+
 // --- Document ---
 
 export const SceneDocumentZ = z
@@ -224,6 +247,11 @@ export const SceneDocumentZ = z
     shapes: z.array(ShapeZ),
     edges: z.array(EdgeZ),
     layers: z.array(LayerZ),
+    /**
+     * Threaded comments. Optional for backwards compatibility — documents
+     * without an `annotations` field deserialize as an empty thread list.
+     */
+    annotations: z.array(AnnotationZ).optional(),
     viewport: ViewportZ,
   })
   .strict();
@@ -234,3 +262,5 @@ export type SerializedShape = z.infer<typeof ShapeZ>;
 export type SerializedEdge = z.infer<typeof EdgeZ>;
 export type SerializedLayer = z.infer<typeof LayerZ>;
 export type SerializedViewport = z.infer<typeof ViewportZ>;
+export type SerializedAnnotation = z.infer<typeof AnnotationZ>;
+export type SerializedComment = z.infer<typeof CommentZ>;

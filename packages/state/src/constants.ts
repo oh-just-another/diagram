@@ -133,3 +133,23 @@ export const LONG_PRESS_MAX_MOVEMENT_PX = 8;
 export const TOUCH_HANDLE_HIT_SLOP = 22;
 export const TOUCH_EDGE_HANDLE_HIT_SLOP = 22;
 export const TOUCH_EDGE_HIT_THRESHOLD = 18;
+
+/**
+ * Annotation pin visuals on the overlay.
+ *
+ * - `ANNOTATION_PIN_RADIUS` — screen-pixel radius of the circular pin
+ *   marker. Same size regardless of zoom so the marker stays grabable
+ *   at any scale.
+ * - `ANNOTATION_PIN_HIT_SLOP` — half-size of the hit rect used by
+ *   `hitAnnotation`. Should be ≥ touch target (44 px) when running in
+ *   touch mode; defaults give a comfortable mouse grab zone.
+ * - `ANNOTATION_PIN_FILL` / `STROKE` — colours when unselected.
+ * - `ANNOTATION_PIN_RESOLVED_FILL` — muted colour for resolved threads
+ *   (host can still cycle through them but they read as "settled").
+ */
+export const ANNOTATION_PIN_RADIUS = 9;
+export const ANNOTATION_PIN_HIT_SLOP = 12;
+export const ANNOTATION_PIN_FILL = "#f9a825";
+export const ANNOTATION_PIN_STROKE = "#fff";
+export const ANNOTATION_PIN_RESOLVED_FILL = "#888";
+export const ANNOTATION_PIN_BADGE_FONT_SIZE = 10;

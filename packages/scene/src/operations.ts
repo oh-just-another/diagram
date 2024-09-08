@@ -1,4 +1,5 @@
-import type { EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { AnnotationId, EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { Annotation } from "./annotation.js";
 import type { Edge } from "./edge.js";
 import type { Layer } from "./layer.js";
 import type { Patch } from "./patch.js";
@@ -103,6 +104,40 @@ export const updateLayer = (
   if (!before) throw new Error(`Layer not found: ${id}`);
   const after = update(before);
   const patch: Patch = { kind: "layer", id, before, after };
+  return { scene: apply(scene, patch), patch };
+};
+
+// --- Annotations ---
+
+export const addAnnotation = (scene: Scene, annotation: Annotation): OperationResult => {
+  if (scene.annotations.has(annotation.id)) {
+    throw new Error(`Annotation already exists: ${annotation.id}`);
+  }
+  const patch: Patch = {
+    kind: "annotation",
+    id: annotation.id,
+    before: null,
+    after: annotation,
+  };
+  return { scene: apply(scene, patch), patch };
+};
+
+export const removeAnnotation = (scene: Scene, id: AnnotationId): OperationResult => {
+  const before = scene.annotations.get(id);
+  if (!before) throw new Error(`Annotation not found: ${id}`);
+  const patch: Patch = { kind: "annotation", id, before, after: null };
+  return { scene: apply(scene, patch), patch };
+};
+
+export const updateAnnotation = (
+  scene: Scene,
+  id: AnnotationId,
+  update: (annotation: Annotation) => Annotation,
+): OperationResult => {
+  const before = scene.annotations.get(id);
+  if (!before) throw new Error(`Annotation not found: ${id}`);
+  const after = update(before);
+  const patch: Patch = { kind: "annotation", id, before, after };
   return { scene: apply(scene, patch), patch };
 };
 

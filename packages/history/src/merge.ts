@@ -3,6 +3,7 @@ import type { Patch } from "@oh-just-another/scene";
 type ShapePatch = Extract<Patch, { kind: "shape" }>;
 type EdgePatch = Extract<Patch, { kind: "edge" }>;
 type LayerPatch = Extract<Patch, { kind: "layer" }>;
+type AnnotationPatch = Extract<Patch, { kind: "annotation" }>;
 type ViewportPatch = Extract<Patch, { kind: "viewport" }>;
 
 interface Slot<P> {
@@ -25,6 +26,7 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
   const shapes = new Map<string, Slot<ShapePatch>>();
   const edges = new Map<string, Slot<EdgePatch>>();
   const layers = new Map<string, Slot<LayerPatch>>();
+  const annotations = new Map<string, Slot<AnnotationPatch>>();
   let viewport: Slot<ViewportPatch> | null = null;
 
   const order: Patch[] = [];
@@ -61,6 +63,16 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
         existing.latest = { ...existing.latest, after: p.after };
       } else {
         layers.set(p.id, { first: p, latest: p });
+        order.push(p);
+      }
+      return;
+    }
+    if (p.kind === "annotation") {
+      const existing = annotations.get(p.id);
+      if (existing) {
+        existing.latest = { ...existing.latest, after: p.after };
+      } else {
+        annotations.set(p.id, { first: p, latest: p });
         order.push(p);
       }
       return;
@@ -104,6 +116,14 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
         before: slot.first.before,
         after: slot.latest.after,
       };
+    } else if (p.kind === "annotation") {
+      const slot = annotations.get(p.id)!;
+      merged = {
+        kind: "annotation",
+        id: slot.first.id,
+        before: slot.first.before,
+        after: slot.latest.after,
+      };
     } else if (i === viewportOrderIndex && viewport !== null) {
       const vp: Slot<ViewportPatch> = viewport;
       merged = { kind: "viewport", before: vp.first.before, after: vp.latest.after };
@@ -117,7 +137,7 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
 };
 
 const isMergedNoop = (p: Patch): boolean => {
-  if (p.kind === "shape" || p.kind === "edge" || p.kind === "layer") {
+  if (p.kind === "shape" || p.kind === "edge" || p.kind === "layer" || p.kind === "annotation") {
     return p.before === p.after;
   }
   if (p.kind === "viewport") return p.before === p.after;

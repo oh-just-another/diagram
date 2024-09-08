@@ -287,6 +287,39 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   { kind: "divider" },
   {
     kind: "action",
+    id: "add-comment",
+    label: "Add comment",
+    onClick: (e, ctx) => {
+      const shapeUnder = e.scene.shapes.values
+        ? [...e.scene.shapes.values()].reverse().find((s) => {
+            const b = e.scene.shapes.get(s.id);
+            if (!b) return false;
+            const pos = b.position;
+            // Cheap AABB containment via bounder lookup at the world point.
+            return (
+              ctx.worldPoint.x >= pos.x &&
+              ctx.worldPoint.y >= pos.y &&
+              ctx.worldPoint.x <=
+                pos.x + ("width" in b && typeof b.width === "number" ? b.width : 0) &&
+              ctx.worldPoint.y <=
+                pos.y + ("height" in b && typeof b.height === "number" ? b.height : 0)
+            );
+          })
+        : null;
+      // Position relative to the shape origin when we anchor; absolute
+      // world position otherwise.
+      const position = shapeUnder
+        ? {
+            x: ctx.worldPoint.x - shapeUnder.position.x,
+            y: ctx.worldPoint.y - shapeUnder.position.y,
+          }
+        : ctx.worldPoint;
+      e.addAnnotation({ position, shapeId: shapeUnder?.id ?? null });
+    },
+  },
+  { kind: "divider" },
+  {
+    kind: "action",
     id: "clear",
     label: "Clear scene",
     visible: (e) => e.scene.shapes.size > 0,
