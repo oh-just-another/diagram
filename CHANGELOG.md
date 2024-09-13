@@ -98,3 +98,6 @@
 
 ## 0.22.0
 - feat: comments
+
+## 0.23.0
+- feat: versioning

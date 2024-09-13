@@ -24,8 +24,10 @@ import {
   Toolbar,
   useDiagramOptional,
   usePaletteDropHandler,
+  VersionPanel,
   type ToolbarItem,
 } from "@oh-just-another/react-ui";
+import { SnapshotStore } from "@oh-just-another/versioning";
 import { setupTemplates } from "./templates";
 import { useTheme } from "./theme";
 import { useHotkeys } from "./hotkeys";
@@ -104,6 +106,10 @@ export const App = () => {
   const [editor, setEditor] = useState<Editor | null>(null);
   useHotkeys(editor);
   const { room, awareness, status } = useCollab(editor);
+  // Per-session in-memory snapshot store. Persistence (localStorage,
+  // server) is a host concern — wrap `serializeStore` / `importIntoStore`.
+  const snapshotStore = useMemo(() => new SnapshotStore(), []);
+  const snapshotAuthor = useMemo(() => ({ id: "local", name: "You" }), []);
 
   return (
     <div className="root" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -193,6 +199,9 @@ export const App = () => {
           </div>
           <div data-panel="comments" style={panelWrapperStyle}>
             <CommentsPanel />
+          </div>
+          <div data-panel="versions" style={panelWrapperStyle}>
+            <VersionPanel store={snapshotStore} author={snapshotAuthor} />
           </div>
           <div data-panel="history" style={panelWrapperStyle}>
             <HistoryPanel />

@@ -1,0 +1,63 @@
+import type { AnnotationId, EdgeId, LayerId, ShapeId } from "@oh-just-another/types";
+import type { Scene } from "@oh-just-another/scene";
+
+/**
+ * Cheap structural diff between two scenes. Reports ids per category
+ * (shapes / edges / layers / annotations) split into `added`, `removed`,
+ * and `modified` (same id, different value).
+ *
+ * Identity comparison (`!==`) is enough because our scene ops always
+ * return new objects on change — same as the rationale behind
+ * `ShapeCache`. Skips deep structural comparison; if two snapshots
+ * have identical content but the host re-built shape objects, those
+ * shapes will appear as "modified" until a smarter equality is wired.
+ */
+export interface SceneDiff {
+  readonly shapes: DiffCategory<ShapeId>;
+  readonly edges: DiffCategory<EdgeId>;
+  readonly layers: DiffCategory<LayerId>;
+  readonly annotations: DiffCategory<AnnotationId>;
+}
+
+export interface DiffCategory<Id> {
+  readonly added: readonly Id[];
+  readonly removed: readonly Id[];
+  readonly modified: readonly Id[];
+}
+
+export const diffScenes = (before: Scene, after: Scene): SceneDiff => ({
+  shapes: diffMap(before.shapes, after.shapes),
+  edges: diffMap(before.edges, after.edges),
+  layers: diffMap(before.layers, after.layers),
+  annotations: diffMap(before.annotations, after.annotations),
+});
+
+const diffMap = <K, V>(before: ReadonlyMap<K, V>, after: ReadonlyMap<K, V>): DiffCategory<K> => {
+  const added: K[] = [];
+  const removed: K[] = [];
+  const modified: K[] = [];
+  for (const [id, value] of after) {
+    const prev = before.get(id);
+    if (prev === undefined) added.push(id);
+    else if (prev !== value) modified.push(id);
+  }
+  for (const [id] of before) {
+    if (!after.has(id)) removed.push(id);
+  }
+  return { added, removed, modified };
+};
+
+/** True when the diff has zero changes across every category. */
+export const isEmptyDiff = (d: SceneDiff): boolean =>
+  d.shapes.added.length === 0 &&
+  d.shapes.removed.length === 0 &&
+  d.shapes.modified.length === 0 &&
+  d.edges.added.length === 0 &&
+  d.edges.removed.length === 0 &&
+  d.edges.modified.length === 0 &&
+  d.layers.added.length === 0 &&
+  d.layers.removed.length === 0 &&
+  d.layers.modified.length === 0 &&
+  d.annotations.added.length === 0 &&
+  d.annotations.removed.length === 0 &&
+  d.annotations.modified.length === 0;

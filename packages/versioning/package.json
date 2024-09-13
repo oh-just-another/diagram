@@ -1,7 +1,7 @@
 {
-  "name": "@oh-just-another/collab",
+  "name": "@oh-just-another/versioning",
   "version": "0.23.0",
-  "description": "Real-time collaboration: Yjs binding for scenes + awareness for presence.",
+  "description": "Snapshot history + branch tree + diff utilities for diagram scenes.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -32,10 +32,6 @@
   "dependencies": {
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
-    "@oh-just-another/state": "workspace:*",
-    "@oh-just-another/serialization": "workspace:*",
-    "@oh-just-another/network": "workspace:*",
-    "yjs": "^13.6.20",
-    "y-protocols": "^1.0.6"
+    "@oh-just-another/serialization": "workspace:*"
   }
 }

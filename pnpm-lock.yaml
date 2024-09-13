@@ -113,6 +113,9 @@ importers:
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@oh-just-another/versioning':
+        specifier: workspace:*
+        version: link:../../packages/versioning
       react:
         specifier: ^19.0.0
         version: 19.2.6
@@ -287,6 +290,9 @@ importers:
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../types
+      '@oh-just-another/versioning':
+        specifier: workspace:*
+        version: link:../versioning
     devDependencies:
       '@testing-library/react':
         specifier: ^16.1.0
@@ -422,6 +428,18 @@ importers:
         version: link:../templates
 
   packages/types: {}
+
+  packages/versioning:
+    dependencies:
+      '@oh-just-another/scene':
+        specifier: workspace:*
+        version: link:../scene
+      '@oh-just-another/serialization':
+        specifier: workspace:*
+        version: link:../serialization
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../types
 
 packages:
 

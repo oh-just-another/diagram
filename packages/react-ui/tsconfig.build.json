@@ -16,6 +16,7 @@
     { "path": "../renderer-canvas/tsconfig.build.json" },
     { "path": "../state/tsconfig.build.json" },
     { "path": "../templates/tsconfig.build.json" },
-    { "path": "../history/tsconfig.build.json" }
+    { "path": "../history/tsconfig.build.json" },
+    { "path": "../versioning/tsconfig.build.json" }
   ]
 }
