@@ -101,3 +101,6 @@
 
 ## 0.23.0
 - feat: versioning
+
+## 0.23.1
+- Fix viewport culling: sync size from DiagramRoot ResizeObserver

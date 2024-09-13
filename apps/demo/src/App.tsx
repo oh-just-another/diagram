@@ -42,9 +42,12 @@ const STORAGE_KEY = "oh-just-another-demo-scene-v2";
 
 const seedScene = (): Scene => {
   let s = emptyScene();
+  // Do not pin size — `<DiagramRoot>` synchronises it with the actual
+  // canvas size via ResizeObserver. A stale size caused under-coverage
+  // of the viewport-culling rect.
   s = {
     ...s,
-    viewport: { ...s.viewport, size: { width: 800, height: 600 }, gridSize: 20 },
+    viewport: { ...s.viewport, gridSize: 20 },
   };
   const rect: Shape = {
     id: shapeId("seed-rect"),

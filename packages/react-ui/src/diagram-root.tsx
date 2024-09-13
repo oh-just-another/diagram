@@ -87,6 +87,12 @@ export const DiagramRoot = ({
       ...(initialMode !== undefined ? { initialMode } : {}),
     };
     const e = new Editor(opts);
+    // Sync viewport size to actual canvas dimensions — without this
+    // `Editor.computeViewportWorld()` uses a stale value from
+    // `initialScene.viewport.size` (host often seeds 0x0 or
+    // legacy hardcoded), which leads to under-coverage of the culling rect and
+    // shapes outside this rect are not rendered.
+    e.setViewportSize(width, height);
 
     layeredRef.current = layered;
     editorRef.current = e;
@@ -96,6 +102,7 @@ export const DiagramRoot = ({
     const ro = new ResizeObserver(() => {
       const next = host.getBoundingClientRect();
       layered.resize(next.width, next.height);
+      e.setViewportSize(next.width, next.height);
       e.setMode(e.mode); // forces a re-render at the new size
     });
     ro.observe(host);
