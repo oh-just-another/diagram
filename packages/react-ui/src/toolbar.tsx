@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { Editor, Mode } from "@oh-just-another/state";
+import { useEditorSelector } from "./context.js";
 import { useDiagramOptional, useHistory, useMode } from "./hooks.js";
 
 /**
@@ -24,16 +25,20 @@ export type ToolbarItem =
     }
   | { readonly kind: "divider" }
   | { readonly kind: "undo"; readonly label?: ReactNode }
-  | { readonly kind: "redo"; readonly label?: ReactNode };
+  | { readonly kind: "redo"; readonly label?: ReactNode }
+  | { readonly kind: "zoom" };
 
-/** Convenience default — Select / Rectangle / Ellipse / divider / Undo / Redo. */
+/** Convenience default — modes + undo/redo + zoom widget. */
 export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "mode", mode: "select", label: "Select" },
   { kind: "mode", mode: "draw-rect", label: "Rectangle" },
   { kind: "mode", mode: "draw-ellipse", label: "Ellipse" },
+  { kind: "mode", mode: "draw-edge", label: "Edge" },
   { kind: "divider" },
   { kind: "undo", label: "Undo" },
   { kind: "redo", label: "Redo" },
+  { kind: "divider" },
+  { kind: "zoom" },
 ];
 
 export interface ToolbarProps {
@@ -99,9 +104,53 @@ export const Toolbar = ({ items = DEFAULT_TOOLBAR, style, className }: ToolbarPr
                 {item.label ?? "Redo"}
               </ToolbarButton>
             );
+          case "zoom":
+            return <ZoomWidget key={i} />;
         }
       })}
     </div>
+  );
+};
+
+/**
+ * Inline zoom controls: − / current % / + / Fit.
+ * Percent click → resets zoom to 100%.
+ */
+const ZoomWidget = () => {
+  const editor = useDiagramOptional();
+  const zoom = useEditorSelector((e) => e.scene.viewport.zoom, 1);
+  const percent = `${Math.round(zoom * 100)}%`;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+      <ToolbarButton
+        disabled={!editor}
+        title="Zoom out (⌘−)"
+        onClick={() => editor?.zoomOut()}
+      >
+        −
+      </ToolbarButton>
+      <ToolbarButton
+        disabled={!editor}
+        title="Reset zoom to 100% (⌘0)"
+        onClick={() => editor?.resetZoom()}
+      >
+        <span style={{ minWidth: 40, display: "inline-block", textAlign: "center" }}>{percent}</span>
+      </ToolbarButton>
+      <ToolbarButton
+        disabled={!editor}
+        title="Zoom in (⌘+)"
+        onClick={() => editor?.zoomIn()}
+      >
+        +
+      </ToolbarButton>
+      <ToolbarButton
+        disabled={!editor}
+        title="Fit content (⌘1)"
+        onClick={() => editor?.zoomToFit()}
+      >
+        Fit
+      </ToolbarButton>
+    </span>
   );
 };
 

@@ -104,3 +104,6 @@
 
 ## 0.23.1
 - Fix viewport culling: sync size from DiagramRoot ResizeObserver
+
+## 0.23.2
+- feat: viewport controls + horizontal scroll fix + zoom hotkeys/toolbar/menu

@@ -831,6 +831,84 @@ export class Editor {
     this.notify();
   }
 
+  /**
+   * Select every shape in the scene. Skips shapes on hidden or
+   * locked layers (consistent with focusCycle).
+   */
+  selectAll(): void {
+    let next = Selection.EMPTY;
+    for (const shape of this._scene.shapes.values()) {
+      const layer = this._scene.layers.get(shape.layerId);
+      if (!layer || !layer.visible || layer.locked) continue;
+      next = Selection.add(next, shape.id);
+    }
+    if (Selection.equals(next, this._selection)) return;
+    this._selection = next;
+    this.notify();
+    this.announce(`Selected ${next.size} shapes`);
+  }
+
+  /**
+   * Internal clipboard. Stored as deep-cloned snapshots so subsequent
+   * mutations don't affect the buffer. Survives across editor calls
+   * within the same session; cross-tab paste uses host-level
+   * `navigator.clipboard` (out of scope for the editor).
+   */
+  private clipboard: Shape[] = [];
+
+  /** Copy current selection into the internal clipboard. */
+  copySelected(): void {
+    const out: Shape[] = [];
+    for (const id of this._selection) {
+      const s = getShape(this._scene, id);
+      if (s) out.push(structuredClone(s));
+    }
+    if (out.length === 0) return;
+    this.clipboard = out;
+    this.announce(`Copied ${out.length} shapes`);
+  }
+
+  /** Copy + delete in one transaction. */
+  cutSelected(): void {
+    this.copySelected();
+    this.deleteSelected();
+  }
+
+  /**
+   * Paste clipboard contents into the scene, offset 10 px down-right
+   * of the originals to make duplicates visible. New shapes get fresh
+   * ids and end up selected. Single undo step.
+   */
+  paste(): void {
+    if (this.clipboard.length === 0) return;
+    const tx = this._history.transaction();
+    const newIds: ShapeId[] = [];
+    for (const tmpl of this.clipboard) {
+      const newId = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
+      const order = orderForTop(
+        [...this._scene.shapes.values()]
+          .filter((s) => s.layerId === tmpl.layerId)
+          .map((s) => s.order),
+      );
+      const clone = {
+        ...structuredClone(tmpl),
+        id: newId,
+        position: { x: tmpl.position.x + 10, y: tmpl.position.y + 10 },
+        order,
+      } as Shape;
+      const r = addShape(this._scene, clone);
+      this._scene = r.scene;
+      tx.add(r.patch);
+      newIds.push(newId);
+    }
+    tx.commit();
+    let next = Selection.EMPTY;
+    for (const id of newIds) next = Selection.add(next, id);
+    this._selection = next;
+    this.notify();
+    this.announce(`Pasted ${newIds.length} shapes`);
+  }
+
   /** Move the selected shape (single-shape MVP) to the top of its layer. */
   bringToFront(id?: ShapeId): void {
     const target = id ?? (this._selection.size === 1 ? [...this._selection][0] : null);
@@ -1020,6 +1098,69 @@ export class Editor {
   panBy(deltaScreen: Vec2): void {
     if (deltaScreen.x === 0 && deltaScreen.y === 0) return;
     this._scene = { ...this._scene, viewport: viewportPanBy(this._scene.viewport, deltaScreen) };
+    this.notify();
+  }
+
+  /**
+   * Step zoom in / out by `WHEEL_ZOOM_STEP` around the viewport centre.
+   * Used by toolbar buttons / hotkeys. Use `zoomAt` for anchor-aware
+   * zoom (cursor / pinch).
+   */
+  zoomIn(): void {
+    this.zoomStep(WHEEL_ZOOM_STEP);
+  }
+  zoomOut(): void {
+    this.zoomStep(1 / WHEEL_ZOOM_STEP);
+  }
+
+  private zoomStep(factor: number): void {
+    const vp = this._scene.viewport;
+    const w = vp.size.width;
+    const h = vp.size.height;
+    if (w <= 0 || h <= 0) return;
+    const center = this.screenToWorld({ x: w / 2, y: h / 2 });
+    this.zoomAt(factor, center);
+  }
+
+  /** Reset zoom to 1.0 and pan to (0, 0). */
+  resetZoom(): void {
+    if (this._scene.viewport.zoom === 1 && this._scene.viewport.pan.x === 0 && this._scene.viewport.pan.y === 0) return;
+    this._scene = {
+      ...this._scene,
+      viewport: { ...this._scene.viewport, zoom: 1, pan: { x: 0, y: 0 } },
+    };
+    this.notify();
+  }
+
+  /**
+   * Fit every shape into the viewport with optional padding (px).
+   * No-op when scene is empty or viewport size is 0. Centres content.
+   */
+  zoomToFit(padding = 40): void {
+    if (this._scene.shapes.size === 0) return;
+    const vp = this._scene.viewport;
+    if (vp.size.width <= 0 || vp.size.height <= 0) return;
+    let combined: Bounds | null = null;
+    for (const s of this._scene.shapes.values()) {
+      const b = getShapeWorldBounds(s);
+      combined = combined ? B.union(combined, b) : b;
+    }
+    if (!combined || combined.width <= 0 || combined.height <= 0) return;
+    const availW = vp.size.width - padding * 2;
+    const availH = vp.size.height - padding * 2;
+    if (availW <= 0 || availH <= 0) return;
+    const zoom = clampZoom(Math.min(availW / combined.width, availH / combined.height));
+    // Centre the content: pick pan so that combined centre maps to
+    // viewport centre at the new zoom.
+    const centerWorld = {
+      x: combined.x + combined.width / 2,
+      y: combined.y + combined.height / 2,
+    };
+    const pan = {
+      x: centerWorld.x - vp.size.width / 2 / zoom,
+      y: centerWorld.y - vp.size.height / 2 / zoom,
+    };
+    this._scene = { ...this._scene, viewport: { ...vp, zoom, pan } };
     this.notify();
   }
 
@@ -1295,9 +1436,9 @@ export class Editor {
     this.host.addEventListener("pointercancel", onCancel);
 
     // Wheel: Cmd/Ctrl + wheel → zoom around the cursor (matches standard /
-    // standard). Plain wheel → pan; shift inverts axes so horizontal scroll
-    // works on mice that only emit deltaY. Always preventDefault so the
-    // page does not scroll.
+    // standard). Plain wheel → pan both axes from deltaX/deltaY simultaneously
+    // (trackpads emit both; mouse-wheel-only users use Shift+wheel for
+    // horizontal). Always preventDefault so the page does not scroll.
     const onWheel = (ev: WheelEvent): void => {
       ev.preventDefault();
       const rect = this.host.getBoundingClientRect();
@@ -1311,8 +1452,15 @@ export class Editor {
         const anchor = this.screenToWorld(screenPoint);
         this.zoomAt(nextZoom / currentZoom, anchor);
       } else {
-        const dx = ev.shiftKey ? ev.deltaY : ev.deltaX;
-        const dy = ev.shiftKey ? 0 : ev.deltaY;
+        // Pan: deltaX → horizontal, deltaY → vertical. Shift converts a
+        // vertical-only wheel into horizontal pan (and zeroes Y) — common
+        // pattern for users on mice without horizontal scroll.
+        let dx = ev.deltaX;
+        let dy = ev.deltaY;
+        if (ev.shiftKey && dx === 0) {
+          dx = dy;
+          dy = 0;
+        }
         this.panBy({ x: -dx * WHEEL_PAN_FACTOR, y: -dy * WHEEL_PAN_FACTOR });
       }
     };

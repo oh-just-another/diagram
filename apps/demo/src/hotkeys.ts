@@ -10,10 +10,16 @@ import type { Editor } from "@oh-just-another/state";
  *   L               draw-edge mode (L = link)
  *   Delete / ⌫      delete selected shapes / edge
  *   ⌘D              duplicate selection
+ *   ⌘A              select all
+ *   ⌘C / ⌘X / ⌘V    copy / cut / paste
  *   ⌘]              bring selected to front
  *   ⌘[              send selected to back
  *   ⌘Z / Ctrl-Z     undo
  *   ⌘⇧Z / ⌘Y        redo
+ *   ⌘+ / ⌘=         zoom in
+ *   ⌘− / ⌘_         zoom out
+ *   ⌘0              reset zoom (100%, pan 0,0)
+ *   ⌘1              fit content to viewport
  *   Arrow keys      nudge selection by 1 px (10 px with shift)
  *   Tab / Shift-Tab cycle selection through scene z-order
  *   Escape          clear selection / cancel gesture
@@ -46,6 +52,26 @@ export const useHotkeys = (editor: Editor | null): void => {
         editor.duplicateSelected();
         return;
       }
+      if (meta && (ev.key === "a" || ev.key === "A")) {
+        ev.preventDefault();
+        editor.selectAll();
+        return;
+      }
+      if (meta && (ev.key === "c" || ev.key === "C")) {
+        ev.preventDefault();
+        editor.copySelected();
+        return;
+      }
+      if (meta && (ev.key === "x" || ev.key === "X")) {
+        ev.preventDefault();
+        editor.cutSelected();
+        return;
+      }
+      if (meta && (ev.key === "v" || ev.key === "V")) {
+        ev.preventDefault();
+        editor.paste();
+        return;
+      }
       if (meta && ev.key === "]") {
         ev.preventDefault();
         editor.bringToFront();
@@ -54,6 +80,28 @@ export const useHotkeys = (editor: Editor | null): void => {
       if (meta && ev.key === "[") {
         ev.preventDefault();
         editor.sendToBack();
+        return;
+      }
+      // Zoom: ⌘+ / ⌘= zoom in, ⌘− / ⌘_ zoom out, ⌘0 reset, ⌘1 fit.
+      // Note: `+` arrives as `=` without shift; `-` arrives as `-` itself.
+      if (meta && (ev.key === "=" || ev.key === "+")) {
+        ev.preventDefault();
+        editor.zoomIn();
+        return;
+      }
+      if (meta && (ev.key === "-" || ev.key === "_")) {
+        ev.preventDefault();
+        editor.zoomOut();
+        return;
+      }
+      if (meta && ev.key === "0") {
+        ev.preventDefault();
+        editor.resetZoom();
+        return;
+      }
+      if (meta && ev.key === "1") {
+        ev.preventDefault();
+        editor.zoomToFit();
         return;
       }
       if (meta || ev.altKey) return;

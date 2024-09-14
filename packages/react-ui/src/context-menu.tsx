@@ -251,6 +251,7 @@ const collapseDividers = (items: readonly ContextMenuItem[]): readonly ContextMe
  * own custom items.
  */
 export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
+  // --- Selection ops (when there's a selection) ---
   {
     kind: "action",
     id: "delete",
@@ -267,7 +268,38 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     visible: (e) => e.selection.size > 0,
     onClick: (e) => e.duplicateSelected(),
   },
+  {
+    kind: "action",
+    id: "copy",
+    label: "Copy",
+    shortcut: "⌘C",
+    visible: (e) => e.selection.size > 0,
+    onClick: (e) => e.copySelected(),
+  },
+  {
+    kind: "action",
+    id: "cut",
+    label: "Cut",
+    shortcut: "⌘X",
+    visible: (e) => e.selection.size > 0,
+    onClick: (e) => e.cutSelected(),
+  },
+  {
+    kind: "action",
+    id: "paste",
+    label: "Paste",
+    shortcut: "⌘V",
+    onClick: (e) => e.paste(),
+  },
+  {
+    kind: "action",
+    id: "select-all",
+    label: "Select all",
+    shortcut: "⌘A",
+    onClick: (e) => e.selectAll(),
+  },
   { kind: "divider" },
+  // --- Z-order (single-selection scope) ---
   {
     kind: "action",
     id: "bring-to-front",
@@ -285,29 +317,54 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     onClick: (e) => e.sendToBack(),
   },
   { kind: "divider" },
+  // --- Annotation actions (when right-click hits a pin) ---
+  {
+    kind: "action",
+    id: "open-thread",
+    label: "Open thread",
+    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
+    onClick: (e, ctx) => {
+      const ann = e.hitAnnotation(ctx.worldPoint);
+      if (ann) e.setSelectedAnnotation(ann);
+    },
+  },
+  {
+    kind: "action",
+    id: "resolve-annotation",
+    label: "Toggle resolved",
+    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
+    onClick: (e, ctx) => {
+      const ann = e.hitAnnotation(ctx.worldPoint);
+      if (ann) e.toggleAnnotationResolved(ann);
+    },
+  },
+  {
+    kind: "action",
+    id: "remove-annotation",
+    label: "Delete annotation",
+    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
+    onClick: (e, ctx) => {
+      const ann = e.hitAnnotation(ctx.worldPoint);
+      if (ann) e.removeAnnotation(ann);
+    },
+  },
   {
     kind: "action",
     id: "add-comment",
     label: "Add comment",
+    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) === null,
     onClick: (e, ctx) => {
-      const shapeUnder = e.scene.shapes.values
-        ? [...e.scene.shapes.values()].reverse().find((s) => {
-            const b = e.scene.shapes.get(s.id);
-            if (!b) return false;
-            const pos = b.position;
-            // Cheap AABB containment via bounder lookup at the world point.
-            return (
-              ctx.worldPoint.x >= pos.x &&
-              ctx.worldPoint.y >= pos.y &&
-              ctx.worldPoint.x <=
-                pos.x + ("width" in b && typeof b.width === "number" ? b.width : 0) &&
-              ctx.worldPoint.y <=
-                pos.y + ("height" in b && typeof b.height === "number" ? b.height : 0)
-            );
-          })
-        : null;
-      // Position relative to the shape origin when we anchor; absolute
-      // world position otherwise.
+      const shapeUnder = [...e.scene.shapes.values()].reverse().find((s) => {
+        const pos = s.position;
+        const w = "width" in s && typeof s.width === "number" ? s.width : 0;
+        const h = "height" in s && typeof s.height === "number" ? s.height : 0;
+        return (
+          ctx.worldPoint.x >= pos.x &&
+          ctx.worldPoint.y >= pos.y &&
+          ctx.worldPoint.x <= pos.x + w &&
+          ctx.worldPoint.y <= pos.y + h
+        );
+      });
       const position = shapeUnder
         ? {
             x: ctx.worldPoint.x - shapeUnder.position.x,
@@ -318,6 +375,38 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     },
   },
   { kind: "divider" },
+  // --- Viewport ---
+  {
+    kind: "action",
+    id: "zoom-in",
+    label: "Zoom in",
+    shortcut: "⌘+",
+    onClick: (e) => e.zoomIn(),
+  },
+  {
+    kind: "action",
+    id: "zoom-out",
+    label: "Zoom out",
+    shortcut: "⌘−",
+    onClick: (e) => e.zoomOut(),
+  },
+  {
+    kind: "action",
+    id: "reset-zoom",
+    label: "Reset zoom (100%)",
+    shortcut: "⌘0",
+    onClick: (e) => e.resetZoom(),
+  },
+  {
+    kind: "action",
+    id: "fit-zoom",
+    label: "Fit to screen",
+    shortcut: "⌘1",
+    visible: (e) => e.scene.shapes.size > 0,
+    onClick: (e) => e.zoomToFit(),
+  },
+  { kind: "divider" },
+  // --- Scene-wide ---
   {
     kind: "action",
     id: "clear",
