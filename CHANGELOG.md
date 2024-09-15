@@ -110,3 +110,6 @@
 
 ## 0.23.3
 - feat: moveSelectionToLayer menu + removeComment UI + Save/Load/Export hotkeys
+
+## 0.23.4
+- feat: layer.locked enforcement (hit-test/lasso/focus/nudge skip locked)

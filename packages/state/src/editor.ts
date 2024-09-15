@@ -724,19 +724,27 @@ export class Editor {
   moveSelectionBy(delta: Vec2): void {
     if (this._selection.size === 0 || (delta.x === 0 && delta.y === 0)) return;
     const tx = this._history.transaction();
+    let moved = 0;
     for (const id of this._selection) {
       const shape = getShape(this._scene, id);
       if (!shape) continue;
+      // Skip shapes on locked layers — nudge has no effect.
+      if (this.isLayerLocked(shape.layerId)) continue;
       const r = updateShape(this._scene, id, (s) => ({
         ...s,
         position: { x: s.position.x + delta.x, y: s.position.y + delta.y },
       }));
       this._scene = r.scene;
       tx.add(r.patch);
+      moved++;
+    }
+    if (moved === 0) {
+      tx.cancel();
+      return;
     }
     tx.commit();
     this.notify();
-    this.announce(describeNudge(delta, this._selection.size));
+    this.announce(describeNudge(delta, moved));
   }
 
   /**
@@ -748,7 +756,8 @@ export class Editor {
    */
   focusCycle(direction: "next" | "prev"): void {
     const layers = [...this._scene.layers.values()]
-      .filter((l) => l.visible)
+      // Skip hidden and locked layers — focus jumps over them.
+      .filter((l) => l.visible && !l.locked)
       .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
     const ordered: ShapeId[] = [];
     for (const layer of layers) {
@@ -1609,17 +1618,23 @@ export class Editor {
         }
       }
     }
-    // 3. Topmost shape under cursor.
+    // 3. Topmost shape under cursor. Skip shapes on locked layers.
     const shape = getShapeAt(this._scene, worldPoint);
-    if (shape) {
+    if (shape && !this.isLayerLocked(shape.layerId)) {
       return { kind: "shape", id: shape.id, bounds: getShapeWorldBounds(shape) };
     }
     // 4. Edge body under cursor.
     const edge = findEdgeAt(this._scene, worldPoint, this.edgeHitThreshold / zoom);
-    if (edge) {
+    if (edge && !this.isLayerLocked(edge.layerId)) {
       return { kind: "edge", id: edge.id };
     }
     return { kind: "empty" };
+  }
+
+  /** True when the given layer exists and is marked `locked`. */
+  private isLayerLocked(layerId: LayerId): boolean {
+    const layer = this._scene.layers.get(layerId);
+    return layer?.locked === true;
   }
 
   private applyEmit(emit: InteractionEmit): void {
@@ -2027,6 +2042,8 @@ export class Editor {
     const hits = getShapesInBounds(this._scene, bounds);
     let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : this._selection;
     for (const shape of hits) {
+      // Skip shapes on locked layers — lock prevents selection / drag.
+      if (this.isLayerLocked(shape.layerId)) continue;
       next = Selection.add(next, shape.id);
     }
     if (this._selectedEdge !== null) this._selectedEdge = null;
