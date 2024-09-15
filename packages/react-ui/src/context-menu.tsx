@@ -316,6 +316,22 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     visible: (e) => e.selection.size === 1,
     onClick: (e) => e.sendToBack(),
   },
+  {
+    kind: "action",
+    id: "move-to-layer",
+    label: "Move to layer…",
+    visible: (e) => e.selection.size > 0 && e.scene.layers.size > 1,
+    onClick: (e) => {
+      if (typeof window === "undefined") return;
+      const layers = [...e.scene.layers.values()];
+      const names = layers.map((l, i) => `${i + 1}. ${l.name}`).join("\n");
+      const choice = window.prompt(`Move selection to layer (1-${layers.length}):\n${names}`);
+      if (!choice) return;
+      const idx = parseInt(choice, 10) - 1;
+      const target = layers[idx];
+      if (target) e.moveSelectionToLayer(target.id);
+    },
+  },
   { kind: "divider" },
   // --- Annotation actions (when right-click hits a pin) ---
   {

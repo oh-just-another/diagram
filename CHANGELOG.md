@@ -107,3 +107,6 @@
 
 ## 0.23.2
 - feat: viewport controls + horizontal scroll fix + zoom hotkeys/toolbar/menu
+
+## 0.23.3
+- feat: moveSelectionToLayer menu + removeComment UI + Save/Load/Export hotkeys

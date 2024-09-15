@@ -199,7 +199,27 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
           <div style={{ color: "var(--faint, #555)" }}>No comments yet.</div>
         ) : (
           ann.thread.map((c) => (
-            <div key={c.id} style={{ marginBottom: 10 }}>
+            <div key={c.id} style={{ marginBottom: 10, position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => editor.removeComment(ann.id, c.id)}
+                aria-label="Delete comment"
+                title="Delete comment"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--muted, #888)",
+                  cursor: "pointer",
+                  padding: "0 4px",
+                  fontSize: 12,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
               <div
                 style={{
                   fontSize: 11,
@@ -210,7 +230,7 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
                 <strong style={{ color: "var(--text, #ddd)" }}>{c.authorName}</strong>{" "}
                 {formatTime(c.createdAt)}
               </div>
-              <div style={{ whiteSpace: "pre-wrap" }}>{c.body}</div>
+              <div style={{ whiteSpace: "pre-wrap", paddingRight: 16 }}>{c.body}</div>
             </div>
           ))
         )}

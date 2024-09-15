@@ -347,6 +347,28 @@ const FloatingToolbar = () => {
     [onSave, onLoadClick, onExportSvg, onExportPng, onClear],
   );
 
+  // Save / Load / Export hotkeys — Cmd+S / Cmd+O / Cmd+E.
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent): void => {
+      const t = ev.target;
+      if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+      const meta = ev.metaKey || ev.ctrlKey;
+      if (!meta) return;
+      if (ev.key === "s" || ev.key === "S") {
+        ev.preventDefault();
+        onSave();
+      } else if (ev.key === "o" || ev.key === "O") {
+        ev.preventDefault();
+        onLoadClick();
+      } else if (ev.key === "e" || ev.key === "E") {
+        ev.preventDefault();
+        onExportSvg();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onSave, onLoadClick, onExportSvg]);
+
   return (
     <div
       style={{
