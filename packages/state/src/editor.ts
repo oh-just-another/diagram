@@ -715,6 +715,56 @@ export class Editor {
     this.notify();
   }
 
+  // --- Inline text editing ---
+
+  /**
+   * Currently edited text shape (or null). Set by `beginTextEdit`;
+   * cleared by `commitTextEdit` / `cancelTextEdit`. The host overlay
+   * (`<TextEditorOverlay>` in `@react-ui`) subscribes via `editor`
+   * and renders a `<textarea>` positioned over the shape.
+   */
+  private _editingTextShape: ShapeId | null = null;
+  get editingTextShape(): ShapeId | null {
+    return this._editingTextShape;
+  }
+
+  /**
+   * Begin editing a text shape's body. No-op when the shape doesn't
+   * exist or isn't a text shape. Concurrent edits cancel themselves
+   * (only one shape at a time).
+   */
+  beginTextEdit(id: ShapeId): void {
+    const shape = getShape(this._scene, id);
+    if (shape?.type !== "text") return;
+    if (this.isLayerLocked(shape.layerId)) return;
+    this._editingTextShape = id;
+    this.notify();
+  }
+
+  /** Replace the edited shape's text with `next`. Single undo step. */
+  commitTextEdit(next: string): void {
+    const id = this._editingTextShape;
+    if (!id) return;
+    const shape = getShape(this._scene, id);
+    if (shape?.type !== "text" || (shape as { text?: string }).text === next) {
+      this._editingTextShape = null;
+      this.notify();
+      return;
+    }
+    const r = updateShape(this._scene, id, (s) => ({ ...s, text: next }));
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this._editingTextShape = null;
+    this.notify();
+  }
+
+  /** Cancel without saving. */
+  cancelTextEdit(): void {
+    if (this._editingTextShape === null) return;
+    this._editingTextShape = null;
+    this.notify();
+  }
+
   /**
    * Translate every selected shape by the given world-space delta.
    * Single undo step. No-op when selection is empty. Used by arrow-key

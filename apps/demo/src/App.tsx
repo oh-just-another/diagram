@@ -21,6 +21,7 @@ import {
   LayerPanel,
   Palette,
   PropertyPanel,
+  TextEditorOverlay,
   Toolbar,
   useDiagramOptional,
   usePaletteDropHandler,
@@ -266,6 +267,7 @@ const CanvasArea = () => {
       <FloatingToolbar />
       <ContextMenu items={DEFAULT_CONTEXT_MENU} />
       <CommentsPopover />
+      <TextEditorOverlay />
     </section>
   );
 };

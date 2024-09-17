@@ -134,6 +134,19 @@ export const useHotkeys = (editor: Editor | null): void => {
           return;
       }
 
+      // Enter on single text shape selection → start inline edit.
+      if (ev.key === "Enter" && editor.selection.size === 1) {
+        const [id] = [...editor.selection];
+        if (id) {
+          const shape = editor.scene.shapes.get(id);
+          if (shape?.type === "text") {
+            ev.preventDefault();
+            editor.beginTextEdit(id);
+            return;
+          }
+        }
+      }
+
       if (ev.key === "v" || ev.key === "V") editor.setMode("select");
       else if (ev.key === "r" || ev.key === "R") editor.setMode("draw-rect");
       else if (ev.key === "e" || ev.key === "E") editor.setMode("draw-ellipse");

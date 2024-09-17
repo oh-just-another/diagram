@@ -113,3 +113,6 @@
 
 ## 0.23.4
 - feat: layer.locked enforcement (hit-test/lasso/focus/nudge skip locked)
+
+## 0.23.5
+- feat: inline text edit (Editor.beginTextEdit + TextEditorOverlay)
