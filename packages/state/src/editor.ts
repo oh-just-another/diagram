@@ -165,6 +165,18 @@ export class Editor {
 
   private _scene: Scene;
   private _selection: Selection.Selection = Selection.EMPTY;
+  /**
+   * Snapshot of an in-progress annotation drag (press on pin → move
+   * pointer → release). `originPosition` is the annotation's stored
+   * position at press time; per-move handler computes a delta from
+   * the current pointer in world space and writes it back.
+   */
+  private annotationDrag: {
+    id: AnnotationId;
+    originPosition: Vec2;
+    originWorldPoint: Vec2;
+    moved: boolean;
+  } | null = null;
   /** Live preview while drawing a new shape; null when not drawing. */
   private drawingPreview: Bounds | null = null;
   private edgePreview: { from: Vec2; to: Vec2 } | null = null;
@@ -1326,6 +1338,24 @@ export class Editor {
 
       const worldPoint = this.screenToWorld(data.point);
 
+      // Annotation pin drag — when the press lands on a pin, take over
+      // the gesture entirely (skip machine, skip interactive testers).
+      // Pin position updates per pointermove; commits on pointerup.
+      const annHit = this.hitAnnotation(worldPoint);
+      if (annHit) {
+        const ann = this._scene.annotations.get(annHit);
+        if (ann) {
+          this.annotationDrag = {
+            id: annHit,
+            originPosition: { ...ann.position },
+            originWorldPoint: worldPoint,
+            moved: false,
+          };
+          this.setSelectedAnnotation(annHit);
+          return;
+        }
+      }
+
       // Interactive sub-element check: when the press lands on a shape whose
       // type has a registered hit-tester (rich templates, etc.) and the
       // tester finds an interactive node, fire its emit and skip the normal
@@ -1408,6 +1438,28 @@ export class Editor {
       }
 
       const worldPoint = this.screenToWorld(data.point);
+
+      // Annotation drag — update annotation position from delta. No
+      // patches per-move; commit on pointerup so undo is one step.
+      if (this.annotationDrag) {
+        const drag = this.annotationDrag;
+        const dx = worldPoint.x - drag.originWorldPoint.x;
+        const dy = worldPoint.y - drag.originWorldPoint.y;
+        if (dx !== 0 || dy !== 0) drag.moved = true;
+        const ann = this._scene.annotations.get(drag.id);
+        if (ann) {
+          // Mutate via apply to keep render in sync; final commit on
+          // up rewrites the patch from origin to final.
+          const newPos = { x: drag.originPosition.x + dx, y: drag.originPosition.y + dy };
+          const next = { ...ann, position: newPos };
+          const annotations = new Map(this._scene.annotations);
+          annotations.set(drag.id, next);
+          this._scene = { ...this._scene, annotations };
+          this.notify();
+        }
+        return;
+      }
+
       // Fan out to anyone listening for the local cursor — `@collab`
       // broadcasts it via awareness. Fires on every move; subscribers
       // throttle if they care.
@@ -1453,6 +1505,28 @@ export class Editor {
       // Long-press loses its chance the moment the user releases.
       this.cancelLongPress();
 
+      // Annotation drag commit — issue a single patch that goes from
+      // origin position to final position so history has one undo step.
+      if (this.annotationDrag) {
+        const drag = this.annotationDrag;
+        this.annotationDrag = null;
+        if (drag.moved) {
+          const final = this._scene.annotations.get(drag.id);
+          if (final) {
+            // Reset to origin, then issue patch with proper before/after.
+            const origin = { ...final, position: drag.originPosition };
+            const annotations = new Map(this._scene.annotations);
+            annotations.set(drag.id, origin);
+            this._scene = { ...this._scene, annotations };
+            const r = updateAnnotation(this._scene, drag.id, () => final);
+            this._scene = r.scene;
+            this._history.push(r.patch);
+            this.notify();
+          }
+        }
+        return;
+      }
+
       const data = fromPointerEvent(ev, this.host);
       const worldPoint = this.screenToWorld(data.point);
 
@@ -1484,6 +1558,19 @@ export class Editor {
         return;
       }
       this.cancelLongPress();
+      // Annotation drag — revert to origin on cancel.
+      if (this.annotationDrag) {
+        const drag = this.annotationDrag;
+        this.annotationDrag = null;
+        const ann = this._scene.annotations.get(drag.id);
+        if (ann) {
+          const annotations = new Map(this._scene.annotations);
+          annotations.set(drag.id, { ...ann, position: drag.originPosition });
+          this._scene = { ...this._scene, annotations };
+          this.notify();
+        }
+        return;
+      }
       this.drawingPreview = null;
       this.actor.send({ type: "POINTER_CANCEL" });
       this.cancelGesture();

@@ -116,3 +116,6 @@
 
 ## 0.23.5
 - feat: inline text edit (Editor.beginTextEdit + TextEditorOverlay)
+
+## 0.23.6
+- feat: annotation drag (press pin Right move Right release commits)
