@@ -119,3 +119,6 @@
 
 ## 0.23.6
 - feat: annotation drag (press pin Right move Right release commits)
+
+## 0.23.7
+- feat: HistoryProvider interface + @mentions helpers + persistence demo SnapshotStore

@@ -28,7 +28,7 @@ import {
   VersionPanel,
   type ToolbarItem,
 } from "@oh-just-another/react-ui";
-import { SnapshotStore } from "@oh-just-another/versioning";
+import { importIntoStore, serializeStore, SnapshotStore } from "@oh-just-another/versioning";
 import { setupTemplates } from "./templates";
 import { useTheme } from "./theme";
 import { useHotkeys } from "./hotkeys";
@@ -40,6 +40,7 @@ import { ConnectionBadge } from "./ConnectionBadge";
 setupTemplates();
 
 const STORAGE_KEY = "oh-just-another-demo-scene-v2";
+const SNAPSHOT_STORAGE_KEY = "oh-just-another-demo-snapshots-v1";
 
 const seedScene = (): Scene => {
   let s = emptyScene();
@@ -110,9 +111,41 @@ export const App = () => {
   const [editor, setEditor] = useState<Editor | null>(null);
   useHotkeys(editor);
   const { room, awareness, status } = useCollab(editor);
-  // Per-session in-memory snapshot store. Persistence (localStorage,
-  // server) is a host concern — wrap `serializeStore` / `importIntoStore`.
-  const snapshotStore = useMemo(() => new SnapshotStore(), []);
+  // Snapshot store with localStorage persistence. Loaded once on
+  // mount; every capture / branch / restore re-serialises through a
+  // subscribe (debounced via microtask).
+  const snapshotStore = useMemo(() => {
+    const s = new SnapshotStore();
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(SNAPSHOT_STORAGE_KEY);
+        if (raw) importIntoStore(s, JSON.parse(raw) as ReturnType<typeof serializeStore>);
+      } catch (err) {
+        console.warn("[demo] stored snapshots unparseable, starting fresh", err);
+      }
+    }
+    return s;
+  }, []);
+  useEffect(() => {
+    let scheduled = false;
+    const unsub = snapshotStore.subscribe(() => {
+      if (scheduled) return;
+      scheduled = true;
+      queueMicrotask(() => {
+        scheduled = false;
+        if (typeof window === "undefined") return;
+        try {
+          window.localStorage.setItem(
+            SNAPSHOT_STORAGE_KEY,
+            JSON.stringify(serializeStore(snapshotStore)),
+          );
+        } catch {
+          /* quota / private mode — ignore */
+        }
+      });
+    });
+    return unsub;
+  }, [snapshotStore]);
   const snapshotAuthor = useMemo(() => ({ id: "local", name: "You" }), []);
 
   return (
