@@ -122,3 +122,6 @@
 
 ## 0.23.7
 - feat: HistoryProvider interface + @mentions helpers + persistence demo SnapshotStore
+
+## 0.23.8
+- feat: layout helpers + grouping/perf design specs + diff stats UI

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import {
   captureFromEditor,
+  diffScenes,
   restoreSnapshot,
   type Branch,
   type Snapshot,
@@ -99,6 +100,24 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
       store.setCurrentBranch(branch.id);
     },
     [store],
+  );
+
+  const onDiff = useCallback(
+    (id: VersionId): void => {
+      if (!editor) return;
+      const snap = store.get(id);
+      if (!snap) return;
+      const diff = diffScenes(snap.scene, editor.scene);
+      const summary = [
+        `Shapes:      +${diff.shapes.added.length} / -${diff.shapes.removed.length} / ~${diff.shapes.modified.length}`,
+        `Edges:       +${diff.edges.added.length} / -${diff.edges.removed.length} / ~${diff.edges.modified.length}`,
+        `Layers:      +${diff.layers.added.length} / -${diff.layers.removed.length} / ~${diff.layers.modified.length}`,
+        `Annotations: +${diff.annotations.added.length} / -${diff.annotations.removed.length} / ~${diff.annotations.modified.length}`,
+      ].join("\n");
+      if (typeof window !== "undefined")
+        window.alert(`Diff (${snap.message} → current):\n\n${summary}`);
+    },
+    [editor, store],
   );
 
   return (
@@ -218,6 +237,14 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
                         title="Restore this version"
                       >
                         ↻
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDiff(snap.id)}
+                        style={miniButtonStyle}
+                        title="Diff with current scene"
+                      >
+                        Δ
                       </button>
                       <button
                         type="button"

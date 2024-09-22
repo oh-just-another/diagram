@@ -136,3 +136,12 @@ export { SpatialGrid } from "./spatial.js";
 // Accessibility helpers
 export type { AccessibleNameResolver } from "./a11y.js";
 export { getShapeAccessibleName, registerAccessibleName } from "./a11y.js";
+
+// Layout helpers (pure functions returning patches)
+export type {
+  LayoutFn,
+  LayoutSpec,
+  GridLayoutSpec,
+  StackLayoutSpec,
+} from "./layout.js";
+export { gridLayout, stackLayout, allShapesInLayer } from "./layout.js";
