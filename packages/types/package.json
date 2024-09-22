@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/types",
-  "version": "0.23.8",
+  "version": "0.23.9",
   "description": "types package",
   "type": "module",
   "main": "./dist/index.js",

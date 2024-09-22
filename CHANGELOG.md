@@ -125,3 +125,6 @@
 
 ## 0.23.8
 - feat: layout helpers + grouping/perf design specs + diff stats UI
+
+## 0.23.9
+- feat: design specs (CRDT merge, OffscreenCanvas, mobile, a11y CI, e2e)
