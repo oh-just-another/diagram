@@ -128,3 +128,6 @@
 
 ## 0.23.9
 - feat: design specs (CRDT merge, OffscreenCanvas, mobile, a11y CI, e2e)
+
+## 0.23.10
+- feat: hit-test SpatialGrid, edge AABB cache, constants audit

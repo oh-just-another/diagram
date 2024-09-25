@@ -4,6 +4,7 @@ import { findNearestOutlinePoint } from "./outline.js";
 import type { Scene } from "./scene.js";
 import type { ShapeBase } from "./shape.js";
 import { findNearestAnchor } from "./anchors.js";
+import { SNAP_PROBE_CULL_RADIUS } from "./constants.js";
 
 /**
  * One snap target a contributor can offer for a probe point. `snapped` is
@@ -169,8 +170,10 @@ const isProbeNearShape = (shape: ShapeBase, probe: Vec2, threshold: number): boo
   const cushion = threshold;
   const px = probe.x - shape.position.x;
   const py = probe.y - shape.position.y;
-  // Treat shapes as roughly bounded by a 1000-unit radius for the cheap
-  // reject — this is intentionally generous; the inner `findNearestAnchor`
-  // does the precise check.
-  return Math.abs(px) <= 1000 + cushion && Math.abs(py) <= 1000 + cushion;
+  // `SNAP_PROBE_CULL_RADIUS` is intentionally generous; the inner
+  // `findNearestAnchor` does the precise check.
+  return (
+    Math.abs(px) <= SNAP_PROBE_CULL_RADIUS + cushion &&
+    Math.abs(py) <= SNAP_PROBE_CULL_RADIUS + cushion
+  );
 };

@@ -99,3 +99,43 @@ export const queryByIndex = (scene: Scene, grid: SpatialGrid, range: Bounds): re
   }
   return out;
 };
+
+/**
+ * Point hit-test backed by a SpatialGrid. Equivalent to `getShapeAt` but
+ * pre-filters candidates through `grid.query` — O(k) where k is the
+ * shapes overlapping the point's cell. Walks layers top-to-bottom for
+ * stable z-order; within a layer picks the highest-`order` shape that
+ * actually contains the point.
+ */
+export const getShapeAtIndexed = (
+  scene: Scene,
+  grid: SpatialGrid,
+  point: Vec2,
+): Shape | undefined => {
+  const pointRange: Bounds = { x: point.x, y: point.y, width: 0, height: 0 };
+  const candidates = grid.query(pointRange);
+  if (candidates.size === 0) return undefined;
+  let best: Shape | undefined;
+  let bestLayerOrder = "";
+  let bestShapeOrder = "";
+  let bestSet = false;
+  for (const id of candidates) {
+    const shape = scene.shapes.get(id);
+    if (!shape) continue;
+    if (!B.contains(getShapeWorldBounds(shape), point)) continue;
+    const layer = scene.layers.get(shape.layerId);
+    if (!layer || !layer.visible) continue;
+    const layerOrder = layer.order as string;
+    if (
+      !bestSet ||
+      layerOrder > bestLayerOrder ||
+      (layerOrder === bestLayerOrder && shape.order > bestShapeOrder)
+    ) {
+      best = shape;
+      bestLayerOrder = layerOrder;
+      bestShapeOrder = shape.order as string;
+      bestSet = true;
+    }
+  }
+  return best;
+};

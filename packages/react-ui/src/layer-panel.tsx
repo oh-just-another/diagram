@@ -2,6 +2,11 @@ import { useState, type CSSProperties } from "react";
 import type { Layer } from "@oh-just-another/scene";
 import type { LayerId } from "@oh-just-another/types";
 import { useActiveLayerId, useDiagramOptional, useLayers } from "./hooks.js";
+import {
+  LAYER_PANEL_WIDTH,
+  LAYER_SWATCH_SIZE,
+  LAYER_TOGGLE_ICON_SIZE,
+} from "./constants.js";
 
 /**
  * Read-write list of scene layers. Click a row to make it active; click
@@ -21,7 +26,7 @@ export const LayerPanel = ({ style, className }: LayerPanelProps) => {
   const [renamingId, setRenamingId] = useState<LayerId | null>(null);
 
   const containerStyle: CSSProperties = {
-    width: 220,
+    width: LAYER_PANEL_WIDTH,
     padding: 0,
     background: "var(--panel, #161616)",
     color: "var(--text, #ddd)",
@@ -210,8 +215,8 @@ const iconButtonStyle: CSSProperties = {
   color: "var(--text, #ddd)",
   border: "1px solid var(--border, #2a2a2a)",
   borderRadius: 3,
-  width: 20,
-  height: 20,
+  width: LAYER_TOGGLE_ICON_SIZE,
+  height: LAYER_TOGGLE_ICON_SIZE,
   cursor: "pointer",
   font: "inherit",
   fontSize: 12,
@@ -236,8 +241,8 @@ const IconBtn = ({
     style={{
       ...iconButtonStyle,
       opacity: muted ? 0.4 : 1,
-      width: 22,
-      height: 22,
+      width: LAYER_SWATCH_SIZE,
+      height: LAYER_SWATCH_SIZE,
     }}
   >
     {children}

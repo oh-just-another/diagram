@@ -8,8 +8,10 @@ import {
   type EdgeLabel,
   type Scene,
 } from "@oh-just-another/scene";
-import type { Vec2 } from "@oh-just-another/types";
+import { bounds as B } from "@oh-just-another/math";
+import type { Bounds, Vec2 } from "@oh-just-another/types";
 import type { RenderTarget } from "./render-target.js";
+import { sharedEdgeBoundsCache, type EdgeBoundsCache } from "./edge-cache.js";
 
 export interface RenderEdgesOptions {
   /**
@@ -18,6 +20,18 @@ export interface RenderEdgesOptions {
    * skip them.
    */
   readonly onMissingEndpoint?: (edge: Edge) => void;
+  /**
+   * World-space rect — only edges whose AABB intersects it are drawn.
+   * Omit to draw every edge. Match `RenderSceneOptions.viewportWorld`
+   * for consistent culling between shape and edge passes.
+   */
+  readonly viewportWorld?: Bounds;
+  /**
+   * Cache used to memoize per-edge world AABBs. Defaults to the shared
+   * module-level cache so per-frame edge-bounds work is amortized across
+   * paint passes.
+   */
+  readonly edgeBoundsCache?: EdgeBoundsCache;
 }
 
 /**
@@ -41,9 +55,20 @@ export const renderEdges = (
   target.save();
   target.setTransform(getWorldToScreen(scene.viewport));
 
+  const cache = options.edgeBoundsCache ?? sharedEdgeBoundsCache;
+  const cull = options.viewportWorld;
+
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;
     for (const edge of getEdgesInLayer(scene, layer.id)) {
+      if (cull) {
+        const b = cache.getOrCompute(scene, edge);
+        if (b === null) {
+          options.onMissingEndpoint?.(edge);
+          continue;
+        }
+        if (!B.intersects(b, cull)) continue;
+      }
       drawEdge(scene, edge, target, options);
     }
   }

@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { ShapeBase } from "@oh-just-another/scene";
 import { useScene, useSelection } from "./hooks.js";
+import { PROPERTY_PANEL_WIDTH, PROPERTY_SWATCH_SIZE } from "./constants.js";
 
 /**
  * Read-only inspector showing key properties of the currently selected
@@ -20,7 +21,7 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
  const scene = useScene();
 
  const containerStyle: CSSProperties = {
-  width: 240,
+  width: PROPERTY_PANEL_WIDTH,
   background: "#161616",
   color: "#ddd",
   padding: 12,
@@ -162,8 +163,8 @@ const Swatch = ({ color }: { readonly color: string }) => (
  <span
   aria-hidden
   style={{
-   width: 12,
-   height: 12,
+   width: PROPERTY_SWATCH_SIZE,
+   height: PROPERTY_SWATCH_SIZE,
    background: color,
    border: "1px solid #444",
    borderRadius: 2,

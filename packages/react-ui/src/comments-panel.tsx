@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from "react";
 import { useAnnotations, useDiagramOptional, useSelectedAnnotation } from "./hooks.js";
+import { COMMENTS_PANEL_WIDTH } from "./constants.js";
 
 /**
  * Side-panel listing every annotation thread in the scene. Each row is
@@ -143,7 +144,7 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
         position: "absolute",
         top: 16,
         right: 16,
-        width: 280,
+        width: COMMENTS_PANEL_WIDTH,
         maxHeight: "70vh",
         display: "flex",
         flexDirection: "column",

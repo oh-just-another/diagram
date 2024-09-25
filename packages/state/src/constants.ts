@@ -153,3 +153,13 @@ export const ANNOTATION_PIN_FILL = "#f9a825";
 export const ANNOTATION_PIN_STROKE = "#fff";
 export const ANNOTATION_PIN_RESOLVED_FILL = "#888";
 export const ANNOTATION_PIN_BADGE_FONT_SIZE = 10;
+
+/**
+ * Hit-test acceleration threshold. When `scene.shapes.size` reaches
+ * this value, `Editor.hitTest` switches from the linear `getShapeAt`
+ * scan to a lazy SpatialGrid keyed by scene-identity. The grid pays
+ * for itself only on large scenes; below the threshold the rebuild
+ * cost outweighs the per-click savings. Tune down if hosts profile
+ * regression on medium scenes (~3k–8k shapes).
+ */
+export const LARGE_SCENE_HIT_THRESHOLD = 2_000;

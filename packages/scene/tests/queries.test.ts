@@ -11,6 +11,7 @@ import {
   getLayersInOrder,
   getShape,
   getShapeAt,
+  getShapeAtIndexed,
   getShapesInBounds,
   getShapesInLayer,
   orderBetween,
@@ -147,6 +148,48 @@ describe("queries", () => {
       const indexHits = new Set(queryByIndex(scene, grid, range).map((s) => s.id));
       const linearHits = new Set(getShapesInBounds(scene, range).map((s) => s.id));
       expect(indexHits).toEqual(linearHits);
+    });
+
+    it("getShapeAtIndexed matches getShapeAt for every probe", () => {
+      let scene = emptyScene();
+      for (let i = 0; i < 40; i++) {
+        ({ scene } = addShape(
+          scene,
+          rect(`s${i}`, DEFAULT_LAYER_ID, { x: i * 25, y: (i % 3) * 25 }),
+        ));
+      }
+      const grid = buildSpatialIndex(scene, 50);
+      for (const probe of [
+        { x: 5, y: 5 },
+        { x: 27, y: 28 },
+        { x: 999, y: 999 },
+        { x: 100, y: 0 },
+        { x: 175, y: 50 },
+      ]) {
+        expect(getShapeAtIndexed(scene, grid, probe)?.id).toEqual(getShapeAt(scene, probe)?.id);
+      }
+    });
+
+    it("getShapeAtIndexed respects layer visibility and z-order", () => {
+      const a = rect("a", DEFAULT_LAYER_ID, { x: 0, y: 0 });
+      const b: Shape = {
+        ...rect("b", DEFAULT_LAYER_ID, { x: 0, y: 0 }),
+        order: orderBetween(a.order, null),
+      };
+      let scene = apply(emptyScene(), {
+        kind: "shape",
+        id: a.id,
+        before: null,
+        after: a,
+      } satisfies Patch);
+      scene = apply(scene, {
+        kind: "shape",
+        id: b.id,
+        before: null,
+        after: b,
+      } satisfies Patch);
+      const grid = buildSpatialIndex(scene);
+      expect(getShapeAtIndexed(scene, grid, { x: 5, y: 5 })?.id).toBe(b.id);
     });
   });
 });

@@ -8,6 +8,7 @@ import {
   type TemplateRegistry,
 } from "@oh-just-another/templates";
 import { useDiagramOptional } from "./hooks.js";
+import { PALETTE_ITEM_SIZE, PALETTE_WIDTH } from "./constants.js";
 
 /**
  * Draggable shape palette. Defaults to the global `defaultRegistry`; pass a
@@ -51,7 +52,7 @@ export const Palette = ({
     <aside
       className={className}
       style={{
-        width: 200,
+        width: PALETTE_WIDTH,
         background: "#161616",
         display: "flex",
         flexDirection: "column",
@@ -153,7 +154,7 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
       }}
     >
       <span
-        style={{ width: 28, height: 28 }}
+        style={{ width: PALETTE_ITEM_SIZE, height: PALETTE_ITEM_SIZE }}
         // Icons are trusted SVG markup defined in the registry by template
         // authors — same source of truth as the canvas renderer uses.
         dangerouslySetInnerHTML={{ __html: template.icon }}

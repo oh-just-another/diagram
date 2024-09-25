@@ -15,3 +15,6 @@ export {
 
 // Rich-template surface: node-tree + flex layout + bindings.
 export * as rich from "./rich/index.js";
+
+// Tunable visual constants.
+export { ICON_VIEWBOX_SIZE, ICON_STROKE_WIDTH } from "./constants.js";

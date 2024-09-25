@@ -27,5 +27,10 @@ export type { WrapOptions, WrappedLine } from "./text-layout.js";
 export { wrapText } from "./text-layout.js";
 
 export { ShapeCache, sharedBoundsCache, cachedWorldBounds } from "./shape-cache.js";
+export {
+  EdgeBoundsCache,
+  computeEdgeWorldBounds,
+  sharedEdgeBoundsCache,
+} from "./edge-cache.js";
 
 export { DEFAULT_LOD, DEFAULT_PLACEHOLDER_FILL, VIEWPORT_CULL_PADDING_RATIO } from "./constants.js";

@@ -7,8 +7,10 @@
  * `registry.replace({ ...template, icon: newSvg })`.
  */
 
+import { ICON_STROKE_WIDTH, ICON_VIEWBOX_SIZE } from "./constants.js";
+
 const wrap = (body: string): string =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${ICON_VIEWBOX_SIZE} ${ICON_VIEWBOX_SIZE}" fill="none" stroke="currentColor" stroke-width="${ICON_STROKE_WIDTH}" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
 export const RECT_ICON = wrap('<rect x="4" y="6" width="16" height="12" rx="1" />');
 export const ELLIPSE_ICON = wrap('<ellipse cx="12" cy="12" rx="8" ry="6" />');

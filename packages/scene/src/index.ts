@@ -128,6 +128,7 @@ export {
   getShapeAt,
   buildSpatialIndex,
   queryByIndex,
+  getShapeAtIndexed,
 } from "./queries.js";
 
 // Spatial index (the class itself, for advanced uses)
@@ -145,3 +146,6 @@ export type {
   StackLayoutSpec,
 } from "./layout.js";
 export { gridLayout, stackLayout, allShapesInLayer } from "./layout.js";
+
+// Tunable thresholds.
+export { SNAP_PROBE_CULL_RADIUS } from "./constants.js";

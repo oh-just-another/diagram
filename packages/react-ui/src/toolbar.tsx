@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { Editor, Mode } from "@oh-just-another/state";
 import { useEditorSelector } from "./context.js";
 import { useDiagramOptional, useHistory, useMode } from "./hooks.js";
+import { TOOLBAR_SEPARATOR_HEIGHT } from "./constants.js";
 
 /**
  * Single toolbar item. Builtin `mode` items wire to `editor.setMode`;
@@ -188,5 +189,7 @@ const ToolbarButton = ({ children, onClick, active, disabled, title }: ToolbarBu
 );
 
 const ToolbarDivider = () => (
-  <span style={{ width: 1, height: 20, background: "#333", margin: "0 4px" }} />
+  <span
+    style={{ width: 1, height: TOOLBAR_SEPARATOR_HEIGHT, background: "#333", margin: "0 4px" }}
+  />
 );

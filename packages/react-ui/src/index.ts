@@ -42,3 +42,16 @@ export {
   type ContextMenuContext,
   type ContextMenuProps,
 } from "./context-menu.js";
+
+// Tunable layout sizes for the built-in panels and toolbar.
+export {
+  PALETTE_WIDTH,
+  PALETTE_ITEM_SIZE,
+  PROPERTY_PANEL_WIDTH,
+  PROPERTY_SWATCH_SIZE,
+  LAYER_PANEL_WIDTH,
+  LAYER_TOGGLE_ICON_SIZE,
+  LAYER_SWATCH_SIZE,
+  COMMENTS_PANEL_WIDTH,
+  TOOLBAR_SEPARATOR_HEIGHT,
+} from "./constants.js";

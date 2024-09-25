@@ -8,6 +8,7 @@ import {
   addShape,
   anchorSnapper,
   apply,
+  buildSpatialIndex,
   DEFAULT_LAYER_ID,
   findEdgeAt,
   findNearestAnchor,
@@ -18,6 +19,7 @@ import {
   getShape,
   getShapeAccessibleName,
   getShapeAt,
+  getShapeAtIndexed,
   getShapesInBounds,
   getShapeWorldBounds,
   getScreenToWorld,
@@ -34,6 +36,7 @@ import {
   removeLayer,
   removeShape,
   SnapEngine,
+  SpatialGrid,
   updateAnnotation,
   updateEdge,
   updateLayer,
@@ -74,6 +77,7 @@ import {
   DEFAULT_SNAP_THRESHOLD,
   EDGE_ENDPOINT_HANDLE_RADIUS,
   EDGE_HIT_THRESHOLD,
+  LARGE_SCENE_HIT_THRESHOLD,
   LONG_PRESS_DELAY_MS,
   LONG_PRESS_MAX_MOVEMENT_PX,
   MAX_ZOOM,
@@ -267,6 +271,14 @@ export class Editor {
    * sharing in a follow-up.
    */
   private readonly boundsCache: ShapeCache<Bounds> = new ShapeCache<Bounds>();
+
+  /**
+   * Lazy SpatialGrid for hit-test acceleration in large scenes.
+   * Built on demand when `scene.shapes.size >= LARGE_SCENE_HIT_THRESHOLD`
+   * and the cached index's source-scene reference is stale (any scene
+   * op replaces the `_scene` field, invalidating identity).
+   */
+  private spatialIndexCache: { scene: Scene; index: SpatialGrid } | null = null;
 
   /**
    * Remote peer cursors / selections, pushed in by the host (typically
@@ -1361,7 +1373,7 @@ export class Editor {
       // tester finds an interactive node, fire its emit and skip the normal
       // press flow entirely. This is what makes a click on a template Button
       // behave differently from a click on the template body.
-      const topShape = getShapeAt(this._scene, worldPoint);
+      const topShape = this.acceleratedShapeAt(worldPoint);
       if (topShape) {
         const tester = getInteractiveHitTester(topShape.type);
         if (tester) {
@@ -1756,7 +1768,7 @@ export class Editor {
       }
     }
     // 3. Topmost shape under cursor. Skip shapes on locked layers.
-    const shape = getShapeAt(this._scene, worldPoint);
+    const shape = this.acceleratedShapeAt(worldPoint);
     if (shape && !this.isLayerLocked(shape.layerId)) {
       return { kind: "shape", id: shape.id, bounds: getShapeWorldBounds(shape) };
     }
@@ -1772,6 +1784,25 @@ export class Editor {
   private isLayerLocked(layerId: LayerId): boolean {
     const layer = this._scene.layers.get(layerId);
     return layer?.locked === true;
+  }
+
+  /**
+   * SpatialGrid-accelerated topmost-shape lookup. Linear scan for small
+   * scenes; for larger scenes builds a grid lazily, keyed by current 
+   * scene-identity. Scene operations replace `_scene` (immutable patches), 
+   * so reference-equality is a sufficient invalidation signal.
+   */
+  private acceleratedShapeAt(worldPoint: Vec2): Shape | undefined {
+    if (this._scene.shapes.size < LARGE_SCENE_HIT_THRESHOLD) {
+      return getShapeAt(this._scene, worldPoint);
+    }
+    const cached = this.spatialIndexCache;
+    if (cached && cached.scene === this._scene) {
+      return getShapeAtIndexed(this._scene, cached.index, worldPoint);
+    }
+    const index = buildSpatialIndex(this._scene);
+    this.spatialIndexCache = { scene: this._scene, index };
+    return getShapeAtIndexed(this._scene, index, worldPoint);
   }
 
   private applyEmit(emit: InteractionEmit): void {
@@ -2210,7 +2241,7 @@ export class Editor {
   }
 
   private updateHoveredEdgeTarget(worldPoint: Vec2): void {
-    const shape = getShapeAt(this._scene, worldPoint);
+    const shape = this.acceleratedShapeAt(worldPoint);
     if (!shape) {
       if (this.hoveredEdgeTarget !== null) {
         this.hoveredEdgeTarget = null;
@@ -2307,12 +2338,13 @@ export class Editor {
     // inverse projection. Slightly inflated so geometry near the edge
     // does not flicker during pan.
     const viewportWorld = this.computeViewportWorld();
+    const edgeRenderOpts = viewportWorld ? { viewportWorld } : {};
     renderScene(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
       boundsCache: this.boundsCache,
       lod: DEFAULT_LOD,
     });
-    renderEdges(this._scene, this.mainTarget);
+    renderEdges(this._scene, this.mainTarget, edgeRenderOpts);
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
     // Lasso and rect-draw share the same dashed-rect visual. Both can't
     // run simultaneously (different gestures), so a single `drawingPreview`
