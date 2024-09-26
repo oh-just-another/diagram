@@ -299,6 +299,30 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     onClick: (e) => e.selectAll(),
   },
   { kind: "divider" },
+  // --- Grouping ---
+  {
+    kind: "action",
+    id: "group",
+    label: "Group",
+    shortcut: "⌘G",
+    visible: (e) => e.selection.size > 1,
+    onClick: (e) => e.groupSelected(),
+  },
+  {
+    kind: "action",
+    id: "ungroup",
+    label: "Ungroup",
+    shortcut: "⌘⇧G",
+    visible: (e) => {
+      for (const id of e.selection) {
+        const s = e.scene.shapes.get(id);
+        if (s?.type === "group") return true;
+      }
+      return false;
+    },
+    onClick: (e) => e.ungroup(),
+  },
+  { kind: "divider" },
   // --- Z-order (single-selection scope) ---
   {
     kind: "action",

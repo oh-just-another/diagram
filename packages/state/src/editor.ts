@@ -158,6 +158,12 @@ export interface EditorOptions {
  * already invertible (`@scene.invert(patch)`), so wiring history later is a
  * one-line subscription.
  */
+
+/** Outcome of `Editor.groupSelected`. `noop` when nothing was selected. */
+export type GroupSelectedResult =
+  | { readonly kind: "noop" }
+  | { readonly kind: "grouped"; readonly groupId: ShapeId };
+
 export class Editor {
   private readonly host: HTMLElement;
   private readonly mainTarget: RenderTarget;
@@ -279,6 +285,14 @@ export class Editor {
    * op replaces the `_scene` field, invalidating identity).
    */
   private spatialIndexCache: { scene: Scene; index: SpatialGrid } | null = null;
+
+  /**
+   * The group the user has "entered" via double-click. While set, the
+   * hit-test stops promoting children of this group to the group root,
+   * letting the user directly manipulate inner shapes. Cleared on
+   * escape or double-click on empty space.
+   */
+  private _enteredGroup: ShapeId | null = null;
 
   /**
    * Remote peer cursors / selections, pushed in by the host (typically
@@ -799,7 +813,11 @@ export class Editor {
     if (this._selection.size === 0 || (delta.x === 0 && delta.y === 0)) return;
     const tx = this._history.transaction();
     let moved = 0;
-    for (const id of this._selection) {
+    // Expand the selection set with every descendant so groups translate
+    // as one unit. Dedup so a shape that is both selected and a descendant
+    // of another selected shape only moves once.
+    const targets = this.expandSelectionWithDescendants();
+    for (const id of targets) {
       const shape = getShape(this._scene, id);
       if (!shape) continue;
       // Skip shapes on locked layers — nudge has no effect.
@@ -819,6 +837,131 @@ export class Editor {
     tx.commit();
     this.notify();
     this.announce(describeNudge(delta, moved));
+  }
+
+  /**
+   * Wrap the currently selected shapes into a new group (zero-render
+   * container). The first selected shape's layer becomes the group's
+   * layer; existing `parentId` links are preserved (the new group
+   * becomes the parent of the *topmost* ancestors among selected, not
+   * already-nested children). Single undo step.
+   */
+  groupSelected(): GroupSelectedResult {
+    const roots = this.selectionRoots();
+    if (roots.length < 2) return { kind: "noop" };
+    const layerId = roots[0]!.layerId;
+    const groupShapeId = castShapeId(`group-${++this.nextId}-${Date.now().toString(36)}`);
+    const order = orderForTop(
+      [...this._scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
+    );
+    const groupShape: Shape = {
+      id: groupShapeId,
+      layerId,
+      type: "group",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order,
+      style: {},
+    };
+    const tx = this._history.transaction();
+    const addRes = addShape(this._scene, groupShape);
+    this._scene = addRes.scene;
+    tx.add(addRes.patch);
+    for (const child of roots) {
+      const r = updateShape(this._scene, child.id, (s) => ({ ...s, parentId: groupShapeId }));
+      this._scene = r.scene;
+      tx.add(r.patch);
+    }
+    tx.commit();
+    this._selection = Selection.single(groupShapeId);
+    this.notify();
+    return { kind: "grouped", groupId: groupShapeId };
+  }
+
+  /**
+   * Inverse of `groupSelected`. For each selected shape that is a group
+   * (type === "group"), drop the parent link on every direct child and
+   * remove the group shape itself. Children that were on locked layers
+   * stay put. Single undo step.
+   */
+  ungroup(): void {
+    const targets = [...this._selection]
+      .map((id) => getShape(this._scene, id))
+      .filter((s): s is Shape => s?.type === "group");
+    if (targets.length === 0) return;
+    const tx = this._history.transaction();
+    const newSelection = new Set<ShapeId>();
+    for (const group of targets) {
+      const children = [...this._scene.shapes.values()].filter((s) => s.parentId === group.id);
+      for (const child of children) {
+        const r = updateShape(this._scene, child.id, (s) => {
+          const next: Shape = { ...s };
+          delete (next as { parentId?: ShapeId }).parentId;
+          return next;
+        });
+        this._scene = r.scene;
+        tx.add(r.patch);
+        newSelection.add(child.id);
+      }
+      const rm = removeShape(this._scene, group.id);
+      this._scene = rm.scene;
+      tx.add(rm.patch);
+    }
+    tx.commit();
+    this._selection = newSelection;
+    this.notify();
+  }
+
+  /**
+   * Top-level shapes among the current selection — descends parents are
+   * elided when their group's root is also selected, so caller commands
+   * (group, move, copy) operate at the group level instead of double-
+   * processing children.
+   */
+  private selectionRoots(): readonly Shape[] {
+    const out: Shape[] = [];
+    const seen = new Set<ShapeId>();
+    for (const id of this._selection) {
+      const shape = getShape(this._scene, id);
+      if (!shape) continue;
+      // Walk up the parent chain; if any ancestor is also selected, skip.
+      let cursor: Shape | undefined = shape;
+      let hidden = false;
+      for (let i = 0; cursor?.parentId && i < 64; i++) {
+        if (this._selection.has(cursor.parentId)) {
+          hidden = true;
+          break;
+        }
+        cursor = getShape(this._scene, cursor.parentId);
+      }
+      if (hidden) continue;
+      if (seen.has(shape.id)) continue;
+      seen.add(shape.id);
+      out.push(shape);
+    }
+    return out;
+  }
+
+  /**
+   * Expand the current selection into a flat set of shapes that should
+   * be translated together: every selected shape plus every descendant
+   * of it (groups carry their children). Used by `moveSelectionBy` and
+   * shared with the drag-shape gesture below.
+   */
+  private expandSelectionWithDescendants(): ReadonlySet<ShapeId> {
+    const out = new Set<ShapeId>();
+    const visit = (id: ShapeId): void => {
+      if (out.has(id)) return;
+      const shape = getShape(this._scene, id);
+      if (!shape) return;
+      out.add(id);
+      for (const child of this._scene.shapes.values()) {
+        if (child.parentId === id) visit(child.id);
+      }
+    };
+    for (const id of this._selection) visit(id);
+    return out;
   }
 
   /**
@@ -911,6 +1054,23 @@ export class Editor {
       for (const id of newIds) next = Selection.add(next, id);
       this._selection = next;
     }
+    this.notify();
+  }
+
+  /**
+   * Replace the current shape selection with the given ids. Skips ids
+   * that no longer resolve to a shape. Notifies subscribers when the
+   * resulting selection differs from the current one.
+   */
+  setSelection(ids: Iterable<ShapeId>): void {
+    let next = Selection.EMPTY;
+    for (const id of ids) {
+      if (!this._scene.shapes.has(id)) continue;
+      next = Selection.add(next, id);
+    }
+    if (Selection.equals(next, this._selection)) return;
+    this._selection = next;
+    if (this._selectedEdge !== null) this._selectedEdge = null;
     this.notify();
   }
 
@@ -1390,16 +1550,22 @@ export class Editor {
       }
 
       const target = this.hitTest(worldPoint);
-      // Snapshot positions of every selected shape when the press lands
-      // on a member of a multi-selection — the editor will translate the
-      // whole group during the drag.
-      if (target.kind === "shape" && this._selection.size > 1 && this._selection.has(target.id)) {
-        const snap = new Map<ShapeId, Vec2>();
-        for (const id of this._selection) {
-          const s = getShape(this._scene, id);
-          if (s) snap.set(id, s.position);
+      // Snapshot positions of every selected shape (and every descendant
+      // of a selected group) when the press lands on a selected shape —
+      // the editor will translate them together during the drag, which
+      // covers both multi-selection and the single-group case.
+      if (target.kind === "shape" && this._selection.has(target.id)) {
+        const ids = this.expandSelectionWithDescendants();
+        if (ids.size > 1) {
+          const snap = new Map<ShapeId, Vec2>();
+          for (const id of ids) {
+            const s = getShape(this._scene, id);
+            if (s) snap.set(id, s.position);
+          }
+          this.groupMoveOrigin = snap;
+        } else {
+          this.groupMoveOrigin = null;
         }
-        this.groupMoveOrigin = snap;
       } else {
         this.groupMoveOrigin = null;
       }
@@ -1768,9 +1934,12 @@ export class Editor {
       }
     }
     // 3. Topmost shape under cursor. Skip shapes on locked layers.
+    //    When the hit shape is a child of a group, promote to the group
+    //    root unless the user has "entered" that group via double-click.
     const shape = this.acceleratedShapeAt(worldPoint);
     if (shape && !this.isLayerLocked(shape.layerId)) {
-      return { kind: "shape", id: shape.id, bounds: getShapeWorldBounds(shape) };
+      const target = this.promoteToGroupRoot(shape);
+      return { kind: "shape", id: target.id, bounds: getShapeWorldBounds(target) };
     }
     // 4. Edge body under cursor.
     const edge = findEdgeAt(this._scene, worldPoint, this.edgeHitThreshold / zoom);
@@ -1784,6 +1953,41 @@ export class Editor {
   private isLayerLocked(layerId: LayerId): boolean {
     const layer = this._scene.layers.get(layerId);
     return layer?.locked === true;
+  }
+
+  /**
+   * Promote a hit shape to the topmost ancestor whose group we have NOT
+   * "entered" yet. With no entered group, this returns the outermost
+   * ancestor; with `_enteredGroup` set to an ancestor, the walk stops
+   * at the first child below that group — so the user is free to click
+   * children directly inside the entered group.
+   */
+  private promoteToGroupRoot(shape: Shape): Shape {
+    let current: Shape = shape;
+    let depth = 0;
+    while (current.parentId && depth < 64) {
+      if (this._enteredGroup === current.parentId) break;
+      const parent = getShape(this._scene, current.parentId);
+      if (!parent) break;
+      current = parent;
+      depth++;
+    }
+    return current;
+  }
+
+  /**
+   * Enter a group — subsequent hits inside this group return children
+   * directly instead of the group root. `null` exits group-edit mode.
+   * Bound to double-click on a group in the default handler.
+   */
+  enterGroup(groupId: ShapeId | null): void {
+    this._enteredGroup = groupId;
+    this.notify();
+  }
+
+  /** Currently "entered" group, if any. */
+  get enteredGroup(): ShapeId | null {
+    return this._enteredGroup;
   }
 
   /**

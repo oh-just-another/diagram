@@ -56,6 +56,7 @@ const ShapeBaseZ = z.object({
   maxHeight: z.number().optional(),
   noFlip: z.boolean().optional(),
   anchors: z.record(z.string(), AnchorRefZ).optional(),
+  parentId: z.string().optional(),
 });
 
 const RectangleZ = ShapeBaseZ.extend({
@@ -118,6 +119,11 @@ const TemplateInstanceZ = ShapeBaseZ.extend({
   height: z.number(),
 }).strict();
 
+const GroupZ = ShapeBaseZ.extend({
+  type: z.literal("group"),
+  style: StyleZ.optional(),
+}).strict();
+
 /**
  * Unknown-shape escape hatch: plugins that register custom shape types may
  * persist them. Accepts any object with the standard base fields plus a
@@ -130,7 +136,9 @@ const CustomShapeZ = ShapeBaseZ.extend({
   .passthrough()
   .refine(
     (s) =>
-      !["rectangle", "ellipse", "polygon", "path", "text", "image", "template"].includes(s.type),
+      !["rectangle", "ellipse", "polygon", "path", "text", "image", "template", "group"].includes(
+        s.type,
+      ),
     {
       message: "Use the specific built-in schema for built-in shape types",
     },
@@ -144,6 +152,7 @@ const ShapeZ = z.union([
   TextZ,
   ImageZ,
   TemplateInstanceZ,
+  GroupZ,
   CustomShapeZ,
 ]);
 

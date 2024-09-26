@@ -131,3 +131,6 @@
 
 ## 0.23.10
 - feat: hit-test SpatialGrid, edge AABB cache, constants audit
+
+## 0.23.11
+- feat: parent-child grouping

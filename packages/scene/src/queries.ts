@@ -34,6 +34,63 @@ export const getEdgesInLayer = (scene: Scene, layerId: LayerId): readonly Edge[]
     .filter((e) => e.layerId === layerId)
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
 
+// --- group queries (parentId chain) ---
+
+/**
+ * Direct children of `parentId` — every shape whose `parentId` equals
+ * the argument, in z-order. Linear in scene size; for groups inside the
+ * editor's hot path, cache the result by `(scene, parentId)`.
+ */
+export const getChildrenOf = (scene: Scene, parentId: ShapeId): readonly Shape[] => {
+  const out: Shape[] = [];
+  for (const s of scene.shapes.values()) {
+    if (s.parentId === parentId) out.push(s);
+  }
+  out.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  return out;
+};
+
+/**
+ * Walks the `parentId` chain starting from `shapeId` and returns the
+ * topmost ancestor (the root). Returns the shape itself when it has no
+ * parent, or `undefined` when the shape (or any ancestor) is missing.
+ * Cycle-safe — bails after `MAX_PARENT_DEPTH` hops.
+ */
+export const getRootSelf = (scene: Scene, shapeId: ShapeId): Shape | undefined => {
+  let current = scene.shapes.get(shapeId);
+  for (let i = 0; current && current.parentId && i < MAX_PARENT_DEPTH; i++) {
+    const parent = scene.shapes.get(current.parentId);
+    if (!parent) break;
+    current = parent;
+  }
+  return current;
+};
+
+/**
+ * Every descendant of `parentId`, recursive, including the root itself.
+ * Order: parent first, then a depth-first walk. Cycle-safe via the
+ * `visited` set.
+ */
+export const getDescendantsOf = (scene: Scene, parentId: ShapeId): readonly Shape[] => {
+  const root = scene.shapes.get(parentId);
+  if (!root) return [];
+  const visited = new Set<ShapeId>([parentId]);
+  const out: Shape[] = [root];
+  const stack: ShapeId[] = [parentId];
+  while (stack.length > 0) {
+    const cur = stack.pop()!;
+    for (const child of getChildrenOf(scene, cur)) {
+      if (visited.has(child.id)) continue;
+      visited.add(child.id);
+      out.push(child);
+      stack.push(child.id);
+    }
+  }
+  return out;
+};
+
+const MAX_PARENT_DEPTH = 64;
+
 // --- spatial queries (linear scan) ---
 
 /**

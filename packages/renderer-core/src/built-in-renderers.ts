@@ -1,5 +1,6 @@
 import {
  type EllipseShape,
+ type GroupShape,
  type ImageShape,
  type PathShape,
  type PolygonShape,
@@ -155,4 +156,7 @@ export const installBuiltinRenderers = (): void => {
  registerShapeRenderer<PathShape>("path", drawPath);
  registerShapeRenderer<TextShape>("text", drawText);
  registerShapeRenderer<ImageShape>("image", drawImage);
+ // Group shapes are invisible containers — the editor's overlay draws
+ // a halo for selected groups, but the shape itself paints nothing.
+ registerShapeRenderer<GroupShape>("group", () => {});
 };

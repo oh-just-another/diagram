@@ -12,6 +12,7 @@ export type {
   TextShape,
   ImageShape,
   TemplateShape,
+  GroupShape,
   ShapeBounder,
 } from "./shape.js";
 export type {
@@ -41,6 +42,7 @@ export {
   isText,
   isImage,
   isTemplate,
+  isGroup,
   registerBounder,
   getBounder,
   getShapeLocalBounds,
@@ -129,6 +131,9 @@ export {
   buildSpatialIndex,
   queryByIndex,
   getShapeAtIndexed,
+  getChildrenOf,
+  getRootSelf,
+  getDescendantsOf,
 } from "./queries.js";
 
 // Spatial index (the class itself, for advanced uses)

@@ -72,6 +72,12 @@ export const useHotkeys = (editor: Editor | null): void => {
         editor.paste();
         return;
       }
+      if (meta && (ev.key === "g" || ev.key === "G")) {
+        ev.preventDefault();
+        if (ev.shiftKey) editor.ungroup();
+        else editor.groupSelected();
+        return;
+      }
       if (meta && ev.key === "]") {
         ev.preventDefault();
         editor.bringToFront();

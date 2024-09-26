@@ -1,4 +1,4 @@
-import type { AnnotationId, Bounds, Transform, Vec2 } from "@oh-just-another/types";
+import type { AnnotationId, Bounds, ShapeId, Transform, Vec2 } from "@oh-just-another/types";
 import {
   getAnnotationWorldPosition,
   getShapeWorldBounds,
@@ -7,7 +7,7 @@ import {
   type Scene,
   type ShapeBase,
 } from "@oh-just-another/scene";
-import { matrix } from "@oh-just-another/math";
+import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
 import {
   ANNOTATION_PIN_BADGE_FONT_SIZE,
@@ -38,6 +38,22 @@ import type { Selection } from "./selection.js";
 const RESIZABLE_TYPES: ReadonlySet<string> = new Set(["rectangle", "ellipse", "image", "template"]);
 
 export const isResizable = (shape: ShapeBase): boolean => RESIZABLE_TYPES.has(shape.type);
+
+/**
+ * Union AABB of every direct child of `groupId` (recursive). Returns
+ * `null` for empty groups so callers can skip the outline pass. Used
+ * by the selection overlay to draw a halo around grouped shapes.
+ */
+const groupWorldBounds = (scene: Scene, groupId: ShapeId): Bounds | null => {
+  let acc: Bounds | null = null;
+  for (const shape of scene.shapes.values()) {
+    if (shape.parentId !== groupId) continue;
+    const inner = shape.type === "group" ? groupWorldBounds(scene, shape.id) : getShapeWorldBounds(shape);
+    if (!inner) continue;
+    acc = acc ? B.union(acc, inner) : inner;
+  }
+  return acc;
+};
 
 export interface OverlayStyle {
   readonly selectionStroke: string;
@@ -163,7 +179,12 @@ export const renderOverlay = (
   for (const id of selection) {
     const shape = scene.shapes.get(id);
     if (!shape) continue;
-    const worldBounds = getShapeWorldBounds(shape);
+    // Groups have no intrinsic geometry — outline the union of their
+    // descendants instead. Otherwise the selection chrome would collapse
+    // to a zero-size point at the group's origin.
+    const worldBounds =
+      shape.type === "group" ? groupWorldBounds(scene, id) : getShapeWorldBounds(shape);
+    if (!worldBounds) continue;
     const screenBounds = projectBounds(worldBounds, w2s);
 
     drawOutline(target, screenBounds, style);

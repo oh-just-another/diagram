@@ -55,6 +55,17 @@ export interface ShapeBase {
    * an anchor is `getAnchorLocal` / `getAnchorWorld` in `./anchors.ts`.
    */
   readonly anchors?: Readonly<Record<string, AnchorRef>>;
+
+  /**
+   * Optional parent shape id. When set, the shape is considered part of
+   * the parent's group: hit-test and drag operations promote selection
+   * to the parent (grouped), and `moveSelectionBy` translates every
+   * descendant in lockstep. The kernel does not enforce a particular
+   * shape type for parents — `GroupShape` (type `"group"`) is just the
+   * default zero-render container; custom shape types can also act as
+   * parents.
+   */
+  readonly parentId?: ShapeId;
 }
 
 export interface RectangleShape extends ShapeBase {
@@ -122,6 +133,15 @@ export interface TemplateShape extends ShapeBase {
   readonly height: number;
 }
 
+/**
+ * Container shape that holds children via the shared `parentId` link.
+ * Rendered as a no-op (the group itself has no visual); the editor's
+ * overlay highlights the union AABB of the children when selected.
+ */
+export interface GroupShape extends ShapeBase {
+  readonly type: "group";
+}
+
 export type BuiltinShape =
   | RectangleShape
   | EllipseShape
@@ -129,7 +149,8 @@ export type BuiltinShape =
   | PathShape
   | TextShape
   | ImageShape
-  | TemplateShape;
+  | TemplateShape
+  | GroupShape;
 
 /**
  * Open shape type. `Shape` accepts any `ShapeBase` extension, which lets plugins
@@ -147,6 +168,7 @@ export const isPath = (s: ShapeBase): s is PathShape => s.type === "path";
 export const isText = (s: ShapeBase): s is TextShape => s.type === "text";
 export const isImage = (s: ShapeBase): s is ImageShape => s.type === "image";
 export const isTemplate = (s: ShapeBase): s is TemplateShape => s.type === "template";
+export const isGroup = (s: ShapeBase): s is GroupShape => s.type === "group";
 
 // --- bounder registry ---
 
@@ -284,3 +306,8 @@ registerBounder<TemplateShape>("template", (s) => ({
   width: s.width,
   height: s.height,
 }));
+
+// Group shapes have no intrinsic geometry — their world AABB is empty.
+// Callers that need the union of descendants must walk `parentId` via
+// `getChildrenOf` and union the children's world bounds instead.
+registerBounder<GroupShape>("group", () => ({ x: 0, y: 0, width: 0, height: 0 }));
