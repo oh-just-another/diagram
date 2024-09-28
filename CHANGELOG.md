@@ -134,3 +134,6 @@
 
 ## 0.23.11
 - feat: parent-child grouping
+
+## 0.23.12
+- feat: branch merge (three-way diff + MergeDialog)

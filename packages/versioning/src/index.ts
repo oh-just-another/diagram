@@ -26,3 +26,13 @@ export {
   type SerializedBranch,
   type SerializedStore,
 } from "./serialize.js";
+export {
+  findCommonAncestor,
+  threeWayMerge,
+  resolveConflict,
+  mergeBranchHeads,
+  type Conflict,
+  type SceneConflict,
+  type MergeReport,
+  type ConflictResolution,
+} from "./merge.js";
