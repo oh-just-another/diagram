@@ -137,3 +137,6 @@
 
 ## 0.23.12
 - feat: branch merge (three-way diff + MergeDialog)
+
+## 0.23.13
+- feat: OffscreenCanvas + WorkerPool primitives

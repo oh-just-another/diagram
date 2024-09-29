@@ -1,6 +1,13 @@
 export { Canvas2DTarget } from "./canvas-target.js";
 export { setupHiDpi } from "./hi-dpi.js";
 export { LayeredCanvas, type LayeredCanvasOptions } from "./layered-canvas.js";
+export {
+  supportsOffscreenCanvas,
+  createOffscreenCanvas2DTarget,
+  transferCanvasToWorker,
+} from "./offscreen.js";
+export { WorkerPool } from "./worker-pool.js";
+export { LARGE_SCENE_WORKER_THRESHOLD } from "./constants.js";
 
 // `installBuiltinRenderers` and `wrapText` live in
 // `@oh-just-another/renderer-core` so the SVG / headless backends can share them.
