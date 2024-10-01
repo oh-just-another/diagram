@@ -163,3 +163,19 @@ export const ANNOTATION_PIN_BADGE_FONT_SIZE = 10;
  * regression on medium scenes (~3k–8k shapes).
  */
 export const LARGE_SCENE_HIT_THRESHOLD = 2_000;
+
+/**
+ * Maximum local-pixel half-width of a brush vertex. Hosts compute the
+ * actual width as `pressure × MAX_BRUSH_WIDTH`; `pressure` is the
+ * `PointerEvent.pressure` field, which is normalised to [0, 1] on
+ * pointer devices that report it (Apple Pencil, Wacom). Devices
+ * without pressure get `0.5` from the browser, yielding mid-range
+ * width.
+ */
+export const MAX_BRUSH_WIDTH = 6;
+
+/**
+ * Half-width used when `PointerEvent.pressure` is 0 (most mice in
+ * Chromium) so a click-drag still produces a visible stroke.
+ */
+export const DEFAULT_BRUSH_WIDTH = 2;

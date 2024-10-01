@@ -140,3 +140,6 @@
 
 ## 0.23.13
 - feat: OffscreenCanvas + WorkerPool primitives
+
+## 0.23.14
+- feat: brush strokes (Apple Pencil pressure) + bottom-sheet

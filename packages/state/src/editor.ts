@@ -37,6 +37,7 @@ import {
   removeShape,
   SnapEngine,
   SpatialGrid,
+  type BrushPoint,
   updateAnnotation,
   updateEdge,
   updateLayer,
@@ -74,10 +75,12 @@ import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-a
 import { fromPointerEvent } from "./dom-events.js";
 import {
   ANNOTATION_PIN_HIT_SLOP,
+  DEFAULT_BRUSH_WIDTH,
   DEFAULT_SNAP_THRESHOLD,
   EDGE_ENDPOINT_HANDLE_RADIUS,
   EDGE_HIT_THRESHOLD,
   LARGE_SCENE_HIT_THRESHOLD,
+  MAX_BRUSH_WIDTH,
   LONG_PRESS_DELAY_MS,
   LONG_PRESS_MAX_MOVEMENT_PX,
   MAX_ZOOM,
@@ -293,6 +296,13 @@ export class Editor {
    * escape or double-click on empty space.
    */
   private _enteredGroup: ShapeId | null = null;
+
+  /**
+   * In-progress brush stroke. Hosts push points via
+   * `extendBrushStroke`; the overlay reads it through
+   * `pendingBrushStroke` to draw a live preview.
+   */
+  private brushStroke: { origin: Vec2; points: BrushPoint[] } | null = null;
 
   /**
    * Remote peer cursors / selections, pushed in by the host (typically
@@ -837,6 +847,67 @@ export class Editor {
     tx.commit();
     this.notify();
     this.announce(describeNudge(delta, moved));
+  }
+
+  beginBrushStroke(world: Vec2, pressure = 0.5): void {
+    this.brushStroke = {
+      points: [{ x: 0, y: 0, width: pressureToWidth(pressure) }],
+      origin: world,
+    };
+    this.notify();
+  }
+
+  extendBrushStroke(world: Vec2, pressure = 0.5): void {
+    if (!this.brushStroke) return;
+    const o = this.brushStroke.origin;
+    this.brushStroke.points.push({
+      x: world.x - o.x,
+      y: world.y - o.y,
+      width: pressureToWidth(pressure),
+    });
+    this.notify();
+  }
+
+  commitBrushStroke(): ShapeId | null {
+    if (!this.brushStroke || this.brushStroke.points.length === 0) {
+      this.brushStroke = null;
+      this.notify();
+      return null;
+    }
+    const id = castShapeId(`brush-${++this.nextId}-${Date.now().toString(36)}`);
+    const order = orderForTop(
+      [...this._scene.shapes.values()]
+        .filter((s) => s.layerId === this._activeLayerId)
+        .map((s) => s.order),
+    );
+    const shape: Shape = {
+      id,
+      layerId: this._activeLayerId,
+      type: "brush",
+      position: this.brushStroke.origin,
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order,
+      style: { fill: "#222" },
+      points: this.brushStroke.points.slice(),
+    } as Shape;
+    const r = addShape(this._scene, shape);
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this.brushStroke = null;
+    this.notify();
+    return id;
+  }
+
+  cancelBrushStroke(): void {
+    if (!this.brushStroke) return;
+    this.brushStroke = null;
+    this.notify();
+  }
+
+  /** Current in-progress brush stroke, exposed for the overlay preview. */
+  get pendingBrushStroke(): { readonly origin: Vec2; readonly points: readonly BrushPoint[] } | null {
+    return this.brushStroke;
   }
 
   /**
@@ -2604,6 +2675,17 @@ export class Editor {
 }
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
+
+/**
+ * Convert `PointerEvent.pressure` (0–1) to a brush half-width in local
+ * pixels. Devices without pressure (most mice on Chromium) report 0.5 by
+ * spec; zero pressure (some Windows touch) falls back to a sensible
+ * minimum so a stroke is still visible.
+ */
+const pressureToWidth = (pressure: number): number => {
+  if (pressure <= 0) return DEFAULT_BRUSH_WIDTH;
+  return Math.max(0.5, pressure * MAX_BRUSH_WIDTH);
+};
 
 const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 

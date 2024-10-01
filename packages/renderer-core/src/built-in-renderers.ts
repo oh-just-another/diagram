@@ -1,4 +1,5 @@
 import {
+ type BrushShape,
  type EllipseShape,
  type GroupShape,
  type ImageShape,
@@ -136,6 +137,50 @@ const drawText: ShapeRenderer<TextShape> = (shape, target) => {
  }
 };
 
+/**
+ * Variable-width brush stroke. Each segment between two `BrushPoint`s
+ * is drawn as a quad (two triangles) — its width interpolates from
+ * `p.width` at the head to `q.width` at the tail. Renders
+ * pressure-sensitive ink that gets thicker / thinner along the path
+ * without needing per-segment `setStrokeWidth` calls (which most 2D
+ * APIs treat as a single line width).
+ */
+const drawBrush: ShapeRenderer<BrushShape> = (shape, target) => {
+ const pts = shape.points;
+ if (pts.length === 0) return;
+ const fill = shape.style.fill ?? shape.style.stroke ?? "#000";
+ target.setFill(fill);
+ target.setStroke(null);
+ // Single dot for one-point strokes — degenerate quad would be invisible.
+ if (pts.length === 1) {
+  const p = pts[0]!;
+  target.beginPath();
+  target.ellipse(p.x, p.y, p.width, p.width);
+  target.fill();
+  return;
+ }
+ for (let i = 0; i < pts.length - 1; i++) {
+  const a = pts[i]!;
+  const b = pts[i + 1]!;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+  target.beginPath();
+  target.moveTo(a.x + nx * a.width, a.y + ny * a.width);
+  target.lineTo(b.x + nx * b.width, b.y + ny * b.width);
+  target.lineTo(b.x - nx * b.width, b.y - ny * b.width);
+  target.lineTo(a.x - nx * a.width, a.y - ny * a.width);
+  target.closePath();
+  target.fill();
+  // End-cap as a disk at the joint — smooths the kink between segments.
+  target.beginPath();
+  target.ellipse(b.x, b.y, b.width, b.width);
+  target.fill();
+ }
+};
+
 const drawImage: ShapeRenderer<ImageShape> = (shape, target) => {
  // The shape carries a URL string; the host app is responsible for resolving
  // it into a `CanvasImageSource` before calling the renderer. As a // safe default, we accept the URL directly via `target.drawImage` and let
@@ -159,4 +204,5 @@ export const installBuiltinRenderers = (): void => {
  // Group shapes are invisible containers — the editor's overlay draws
  // a halo for selected groups, but the shape itself paints nothing.
  registerShapeRenderer<GroupShape>("group", () => {});
+ registerShapeRenderer<BrushShape>("brush", drawBrush);
 };

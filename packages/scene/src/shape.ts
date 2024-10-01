@@ -134,6 +134,26 @@ export interface TemplateShape extends ShapeBase {
 }
 
 /**
+ * Variable-width brush stroke. Each `BrushPoint` carries its own width
+ * (typically derived from `PointerEvent.pressure × MAX_BRUSH_WIDTH`).
+ * The renderer interpolates between consecutive widths along the path.
+ *
+ * Coordinates are local; the shape's `position` / `rotation` / `scale`
+ * apply on top, same as any other shape variant.
+ */
+export interface BrushPoint {
+  readonly x: number;
+  readonly y: number;
+  /** Stroke half-width in local pixels at this vertex. */
+  readonly width: number;
+}
+
+export interface BrushShape extends ShapeBase {
+  readonly type: "brush";
+  readonly points: readonly BrushPoint[];
+}
+
+/**
  * Container shape that holds children via the shared `parentId` link.
  * Rendered as a no-op (the group itself has no visual); the editor's
  * overlay highlights the union AABB of the children when selected.
@@ -150,7 +170,8 @@ export type BuiltinShape =
   | TextShape
   | ImageShape
   | TemplateShape
-  | GroupShape;
+  | GroupShape
+  | BrushShape;
 
 /**
  * Open shape type. `Shape` accepts any `ShapeBase` extension, which lets plugins
@@ -169,6 +190,7 @@ export const isText = (s: ShapeBase): s is TextShape => s.type === "text";
 export const isImage = (s: ShapeBase): s is ImageShape => s.type === "image";
 export const isTemplate = (s: ShapeBase): s is TemplateShape => s.type === "template";
 export const isGroup = (s: ShapeBase): s is GroupShape => s.type === "group";
+export const isBrush = (s: ShapeBase): s is BrushShape => s.type === "brush";
 
 // --- bounder registry ---
 
@@ -306,6 +328,21 @@ registerBounder<TemplateShape>("template", (s) => ({
   width: s.width,
   height: s.height,
 }));
+
+registerBounder<BrushShape>("brush", (s) => {
+  if (s.points.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of s.points) {
+    if (p.x - p.width < minX) minX = p.x - p.width;
+    if (p.y - p.width < minY) minY = p.y - p.width;
+    if (p.x + p.width > maxX) maxX = p.x + p.width;
+    if (p.y + p.width > maxY) maxY = p.y + p.width;
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+});
 
 // Group shapes have no intrinsic geometry — their world AABB is empty.
 // Callers that need the union of descendants must walk `parentId` via

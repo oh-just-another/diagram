@@ -32,6 +32,7 @@ export {
 } from "./comments-panel.js";
 export { VersionPanel, useSnapshotStore, type VersionPanelProps } from "./versioning.js";
 export { MergeDialog, type MergeDialogProps } from "./merge-dialog.js";
+export { BottomSheet, type BottomSheetProps } from "./bottom-sheet.js";
 export { TextEditorOverlay } from "./text-editor-overlay.js";
 export { Toolbar, DEFAULT_TOOLBAR, type ToolbarItem, type ToolbarProps } from "./toolbar.js";
 export { Palette, usePaletteDropHandler, type PaletteProps } from "./palette.js";

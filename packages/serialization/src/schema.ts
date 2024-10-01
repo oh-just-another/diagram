@@ -124,6 +124,14 @@ const GroupZ = ShapeBaseZ.extend({
   style: StyleZ.optional(),
 }).strict();
 
+const BrushPointZ = z.object({ x: z.number(), y: z.number(), width: z.number() }).strict();
+
+const BrushZ = ShapeBaseZ.extend({
+  type: z.literal("brush"),
+  style: StyleZ,
+  points: z.array(BrushPointZ),
+}).strict();
+
 /**
  * Unknown-shape escape hatch: plugins that register custom shape types may
  * persist them. Accepts any object with the standard base fields plus a
@@ -136,9 +144,17 @@ const CustomShapeZ = ShapeBaseZ.extend({
   .passthrough()
   .refine(
     (s) =>
-      !["rectangle", "ellipse", "polygon", "path", "text", "image", "template", "group"].includes(
-        s.type,
-      ),
+      ![
+        "rectangle",
+        "ellipse",
+        "polygon",
+        "path",
+        "text",
+        "image",
+        "template",
+        "group",
+        "brush",
+      ].includes(s.type),
     {
       message: "Use the specific built-in schema for built-in shape types",
     },
@@ -153,6 +169,7 @@ const ShapeZ = z.union([
   ImageZ,
   TemplateInstanceZ,
   GroupZ,
+  BrushZ,
   CustomShapeZ,
 ]);
 

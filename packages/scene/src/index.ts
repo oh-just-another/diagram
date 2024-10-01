@@ -13,6 +13,8 @@ export type {
   ImageShape,
   TemplateShape,
   GroupShape,
+  BrushShape,
+  BrushPoint,
   ShapeBounder,
 } from "./shape.js";
 export type {
@@ -43,6 +45,7 @@ export {
   isImage,
   isTemplate,
   isGroup,
+  isBrush,
   registerBounder,
   getBounder,
   getShapeLocalBounds,
