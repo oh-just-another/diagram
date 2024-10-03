@@ -143,3 +143,6 @@
 
 ## 0.23.14
 - feat: brush strokes (Apple Pencil pressure) + bottom-sheet
+
+## 0.23.15
+- feat: accessibility audit + keyboard-only creation

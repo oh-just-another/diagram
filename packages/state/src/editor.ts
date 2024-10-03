@@ -849,6 +849,55 @@ export class Editor {
     this.announce(describeNudge(delta, moved));
   }
 
+  /**
+   * Keyboard-friendly creation flow. Picks the shape type from the
+   * current `mode` ("draw-rect" / "draw-ellipse" / fallback to
+   * rectangle) and inserts a sensible default-sized shape at the
+   * viewport center. Returns the new shape's id, or `null` when the
+   * scene has no active layer.
+   *
+   * Hosts can bind this to "Enter" while in a draw mode, providing a
+   * mouse-free alternative to drag-out creation.
+   */
+  createShapeAtCursor(): ShapeId | null {
+    const vp = this._scene.viewport;
+    const cssCenter: Vec2 = {
+      x: (vp.size.width || 200) / 2,
+      y: (vp.size.height || 200) / 2,
+    };
+    const world = this.screenToWorld(cssCenter);
+    const id = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
+    const order = orderForTop(
+      [...this._scene.shapes.values()]
+        .filter((s) => s.layerId === this._activeLayerId)
+        .map((s) => s.order),
+    );
+    const currentMode = this.mode;
+    const type: Shape["type"] =
+      currentMode === "draw-ellipse" ? "ellipse" : "rectangle";
+    const width = 120;
+    const height = 80;
+    const shape: Shape = {
+      id,
+      layerId: this._activeLayerId,
+      type,
+      position: { x: world.x - width / 2, y: world.y - height / 2 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order,
+      style: { fill: "#bbb", stroke: "#000", strokeWidth: 1 },
+      width,
+      height,
+    } as Shape;
+    const r = addShape(this._scene, shape);
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this._selection = Selection.single(id);
+    this.notify();
+    this.announce(`Created ${type} ${id}`);
+    return id;
+  }
+
   beginBrushStroke(world: Vec2, pressure = 0.5): void {
     this.brushStroke = {
       points: [{ x: 0, y: 0, width: pressureToWidth(pressure) }],

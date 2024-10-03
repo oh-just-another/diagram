@@ -153,6 +153,18 @@ export const useHotkeys = (editor: Editor | null): void => {
         }
       }
 
+      // Enter in a draw mode → keyboard-only shape creation at viewport
+      // center. Lets screen-reader / keyboard-only users add shapes
+      // without a drag gesture.
+      if (
+        ev.key === "Enter" &&
+        (editor.mode === "draw-rect" || editor.mode === "draw-ellipse")
+      ) {
+        ev.preventDefault();
+        editor.createShapeAtCursor();
+        return;
+      }
+
       if (ev.key === "v" || ev.key === "V") editor.setMode("select");
       else if (ev.key === "r" || ev.key === "R") editor.setMode("draw-rect");
       else if (ev.key === "e" || ev.key === "E") editor.setMode("draw-ellipse");
