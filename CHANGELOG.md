@@ -149,3 +149,6 @@
 
 ## 0.23.16
 - feat: Playwright E2E suite
+
+## 0.23.17
+- e2e: rename `test` Right `e2e` so workspace-wide pnpm -r test skips it

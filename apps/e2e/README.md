@@ -11,8 +11,12 @@ Playwright suite that drives the demo (`apps/demo`) end-to-end:
 
 ```bash
 pnpm --filter @oh-just-another/e2e install-browsers   # one-off — pulls chromium
-pnpm --filter @oh-just-another/e2e test               # boots demo + relay, runs suite
+pnpm --filter @oh-just-another/e2e e2e                # boots demo + relay, runs suite
 ```
+
+The suite is opted out of the workspace-wide `pnpm -r test` (script
+is named `e2e`, not `test`) because it needs a browser binary and
+spawns a dev server. Run it explicitly when you want it.
 
 The Playwright config auto-spawns the demo via `pnpm --filter demo dev`
 on port 5173. If you already have a dev server up locally it'll reuse
