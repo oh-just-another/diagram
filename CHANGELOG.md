@@ -152,3 +152,6 @@
 
 ## 0.23.17
 - e2e: rename `test` Right `e2e` so workspace-wide pnpm -r test skips it
+
+## 0.23.18
+- state: paste lands at cursor instead of original-position+10

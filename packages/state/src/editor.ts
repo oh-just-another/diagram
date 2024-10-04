@@ -305,6 +305,14 @@ export class Editor {
   private brushStroke: { origin: Vec2; points: BrushPoint[] } | null = null;
 
   /**
+   * Last world-space pointer position observed by the host's onMove
+   * handler. `paste()` uses it as the default drop target so a fresh
+   * paste lands under the cursor instead of overlapping the originals.
+   * `null` until the pointer first enters the host.
+   */
+  private lastPointerWorld: Vec2 | null = null;
+
+  /**
    * Remote peer cursors / selections, pushed in by the host (typically
    * a `bindAwareness(editor, awareness)` helper in `@collab`). The
    * editor only renders them; it doesn't fetch or interpret. Each
@@ -1238,12 +1246,33 @@ export class Editor {
   }
 
   /**
-   * Paste clipboard contents into the scene, offset 10 px down-right
-   * of the originals to make duplicates visible. New shapes get fresh
-   * ids and end up selected. Single undo step.
+   * Paste clipboard contents into the scene. The cluster lands so that
+   * its centroid sits at `targetWorld` (defaults to the last tracked
+   * cursor position; when even that is unavailable, falls back to a
+   * +10 px nudge so duplicates remain visible). Relative offsets
+   * between clipboard items are preserved.
+   *
+   * New shapes get fresh ids and end up selected. Single undo step.
    */
-  paste(): void {
+  paste(targetWorld?: Vec2): void {
     if (this.clipboard.length === 0) return;
+    const target = targetWorld ?? this.lastPointerWorld;
+
+    // Compute the centroid of the clipboard so we can translate the
+    // whole cluster as one unit. When there's no cursor target, fall
+    // back to the legacy +10 px nudge — never re-paste exactly on top.
+    let cx = 0;
+    let cy = 0;
+    for (const s of this.clipboard) {
+      cx += s.position.x;
+      cy += s.position.y;
+    }
+    cx /= this.clipboard.length;
+    cy /= this.clipboard.length;
+    const delta = target
+      ? { x: target.x - cx, y: target.y - cy }
+      : { x: 10, y: 10 };
+
     const tx = this._history.transaction();
     const newIds: ShapeId[] = [];
     for (const tmpl of this.clipboard) {
@@ -1256,7 +1285,7 @@ export class Editor {
       const clone = {
         ...structuredClone(tmpl),
         id: newId,
-        position: { x: tmpl.position.x + 10, y: tmpl.position.y + 10 },
+        position: { x: tmpl.position.x + delta.x, y: tmpl.position.y + delta.y },
         order,
       } as Shape;
       const r = addShape(this._scene, clone);
@@ -1736,6 +1765,9 @@ export class Editor {
       }
 
       const worldPoint = this.screenToWorld(data.point);
+      // Track cursor for paste-at-cursor and other commands that want a
+      // sensible drop target.
+      this.lastPointerWorld = worldPoint;
 
       // Annotation drag — update annotation position from delta. No
       // patches per-move; commit on pointerup so undo is one step.
