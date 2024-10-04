@@ -146,3 +146,6 @@
 
 ## 0.23.15
 - feat: accessibility audit + keyboard-only creation
+
+## 0.23.16
+- feat: Playwright E2E suite
