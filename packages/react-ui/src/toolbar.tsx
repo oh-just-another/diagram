@@ -7,7 +7,9 @@ import { TOOLBAR_SEPARATOR_HEIGHT } from "./constants.js";
 /**
  * Single toolbar item. Builtin `mode` items wire to `editor.setMode`;
  * `action` items receive the live editor and decide what to do; `divider`
- * draws a thin vertical separator.
+ * draws a thin vertical separator. The `zoom-*` kinds let hosts place
+ * individual zoom controls anywhere in the toolbar; `zoom` packs all
+ * four into a single compact widget (− / % / + / Fit).
  */
 export type ToolbarItem =
   | {
@@ -27,7 +29,12 @@ export type ToolbarItem =
   | { readonly kind: "divider" }
   | { readonly kind: "undo"; readonly label?: ReactNode }
   | { readonly kind: "redo"; readonly label?: ReactNode }
-  | { readonly kind: "zoom" };
+  | { readonly kind: "zoom" }
+  | { readonly kind: "zoom-in"; readonly label?: ReactNode }
+  | { readonly kind: "zoom-out"; readonly label?: ReactNode }
+  | { readonly kind: "zoom-reset"; readonly label?: ReactNode }
+  | { readonly kind: "zoom-fit"; readonly label?: ReactNode }
+  | { readonly kind: "zoom-display" };
 
 /** Convenience default — modes + undo/redo + zoom widget. */
 export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
@@ -107,71 +114,185 @@ export const Toolbar = ({ items = DEFAULT_TOOLBAR, style, className }: ToolbarPr
             );
           case "zoom":
             return <ZoomWidget key={i} />;
+          case "zoom-in":
+            return <ZoomInButton key={i} label={item.label} />;
+          case "zoom-out":
+            return <ZoomOutButton key={i} label={item.label} />;
+          case "zoom-reset":
+            return <ResetZoomButton key={i} label={item.label} />;
+          case "zoom-fit":
+            return <ZoomToFitButton key={i} label={item.label} />;
+          case "zoom-display":
+            return <ZoomDisplay key={i} />;
         }
       })}
     </div>
   );
 };
 
+// ---------------------------------------------------------------------------
+// Standalone zoom controls
+//
+// Each component is independently usable outside the Toolbar — hosts can drop
+// them into custom layouts (e.g. a corner overlay, a side panel) and still
+// get the same behaviour as the bundled widget. All four read the live
+// editor via useDiagramOptional, so they disable themselves gracefully when
+// there is no editor in context.
+// ---------------------------------------------------------------------------
+
+export interface ZoomButtonProps {
+  readonly label?: ReactNode;
+  readonly title?: string;
+  readonly className?: string;
+  readonly style?: CSSProperties;
+}
+
+/** "−" — calls `editor.zoomOut()`. */
+export const ZoomOutButton = ({
+  label = "−",
+  title = "Zoom out (⌘−)",
+  className,
+  style,
+}: ZoomButtonProps) => {
+  const editor = useDiagramOptional();
+  return (
+    <ToolbarButton
+      disabled={!editor}
+      title={title}
+      className={className}
+      style={style}
+      onClick={() => editor?.zoomOut()}
+    >
+      {label}
+    </ToolbarButton>
+  );
+};
+
+/** "+" — calls `editor.zoomIn()`. */
+export const ZoomInButton = ({
+  label = "+",
+  title = "Zoom in (⌘+)",
+  className,
+  style,
+}: ZoomButtonProps) => {
+  const editor = useDiagramOptional();
+  return (
+    <ToolbarButton
+      disabled={!editor}
+      title={title}
+      className={className}
+      style={style}
+      onClick={() => editor?.zoomIn()}
+    >
+      {label}
+    </ToolbarButton>
+  );
+};
+
+/** "100%" / "Reset" — calls `editor.resetZoom()`. */
+export const ResetZoomButton = ({
+  label = "100%",
+  title = "Reset zoom to 100% (⌘0)",
+  className,
+  style,
+}: ZoomButtonProps) => {
+  const editor = useDiagramOptional();
+  return (
+    <ToolbarButton
+      disabled={!editor}
+      title={title}
+      className={className}
+      style={style}
+      onClick={() => editor?.resetZoom()}
+    >
+      {label}
+    </ToolbarButton>
+  );
+};
+
+/** "Fit" — calls `editor.zoomToFit()`. */
+export const ZoomToFitButton = ({
+  label = "Fit",
+  title = "Fit content to viewport (⌘1)",
+  className,
+  style,
+}: ZoomButtonProps) => {
+  const editor = useDiagramOptional();
+  return (
+    <ToolbarButton
+      disabled={!editor}
+      title={title}
+      className={className}
+      style={style}
+      onClick={() => editor?.zoomToFit()}
+    >
+      {label}
+    </ToolbarButton>
+  );
+};
+
 /**
- * Inline zoom controls: − / current % / + / Fit.
- * Percent click → resets zoom to 100%.
+ * Live zoom percent. Clicks reset zoom to 100% — same UX as the percent
+ * button in `ZoomWidget`.
  */
-const ZoomWidget = () => {
+export const ZoomDisplay = ({ className, style }: { readonly className?: string; readonly style?: CSSProperties }) => {
   const editor = useDiagramOptional();
   const zoom = useEditorSelector((e) => e.scene.viewport.zoom, 1);
   const percent = `${Math.round(zoom * 100)}%`;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-      <ToolbarButton
-        disabled={!editor}
-        title="Zoom out (⌘−)"
-        onClick={() => editor?.zoomOut()}
-      >
-        −
-      </ToolbarButton>
-      <ToolbarButton
-        disabled={!editor}
-        title="Reset zoom to 100% (⌘0)"
-        onClick={() => editor?.resetZoom()}
-      >
-        <span style={{ minWidth: 40, display: "inline-block", textAlign: "center" }}>{percent}</span>
-      </ToolbarButton>
-      <ToolbarButton
-        disabled={!editor}
-        title="Zoom in (⌘+)"
-        onClick={() => editor?.zoomIn()}
-      >
-        +
-      </ToolbarButton>
-      <ToolbarButton
-        disabled={!editor}
-        title="Fit content (⌘1)"
-        onClick={() => editor?.zoomToFit()}
-      >
-        Fit
-      </ToolbarButton>
-    </span>
+    <ToolbarButton
+      disabled={!editor}
+      title="Reset zoom to 100% (⌘0)"
+      className={className}
+      style={style}
+      onClick={() => editor?.resetZoom()}
+    >
+      <span style={{ minWidth: 40, display: "inline-block", textAlign: "center" }}>{percent}</span>
+    </ToolbarButton>
   );
 };
+
+/**
+ * Pre-composed inline zoom widget: − / current % / + / Fit. Equivalent
+ * to laying the four standalone buttons + display in a row.
+ */
+export const ZoomWidget = ({ className, style }: { readonly className?: string; readonly style?: CSSProperties }) => (
+  <span className={className} style={{ display: "inline-flex", alignItems: "center", gap: 2, ...style }}>
+    <ZoomOutButton />
+    <ZoomDisplay />
+    <ZoomInButton />
+    <ZoomToFitButton />
+  </span>
+);
 
 // --- internal building blocks ---
 
 interface ToolbarButtonProps {
   readonly children: ReactNode;
   readonly onClick: () => void;
-  readonly active?: boolean;
-  readonly disabled?: boolean;
-  readonly title?: string;
+  readonly active?: boolean | undefined;
+  readonly disabled?: boolean | undefined;
+  readonly title?: string | undefined;
+  readonly className?: string | undefined;
+  readonly style?: CSSProperties | undefined;
 }
 
-const ToolbarButton = ({ children, onClick, active, disabled, title }: ToolbarButtonProps) => (
+const ToolbarButton = ({
+  children,
+  onClick,
+  active,
+  disabled,
+  title,
+  className,
+  style,
+}: ToolbarButtonProps) => (
   <button
     type="button"
     onClick={onClick}
     disabled={disabled}
     title={title}
     aria-pressed={active}
+    className={className}
     style={{
       background: active ? "#1a3d6e" : "#2a2a2a",
       color: "#ddd",
@@ -182,6 +303,7 @@ const ToolbarButton = ({ children, onClick, active, disabled, title }: ToolbarBu
       fontSize: 13,
       cursor: disabled ? "not-allowed" : "pointer",
       opacity: disabled ? 0.4 : 1,
+      ...style,
     }}
   >
     {children}

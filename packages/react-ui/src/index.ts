@@ -34,7 +34,19 @@ export { VersionPanel, useSnapshotStore, type VersionPanelProps } from "./versio
 export { MergeDialog, type MergeDialogProps } from "./merge-dialog.js";
 export { BottomSheet, type BottomSheetProps } from "./bottom-sheet.js";
 export { TextEditorOverlay } from "./text-editor-overlay.js";
-export { Toolbar, DEFAULT_TOOLBAR, type ToolbarItem, type ToolbarProps } from "./toolbar.js";
+export {
+  Toolbar,
+  DEFAULT_TOOLBAR,
+  ZoomWidget,
+  ZoomInButton,
+  ZoomOutButton,
+  ResetZoomButton,
+  ZoomToFitButton,
+  ZoomDisplay,
+  type ToolbarItem,
+  type ToolbarProps,
+  type ZoomButtonProps,
+} from "./toolbar.js";
 export { Palette, usePaletteDropHandler, type PaletteProps } from "./palette.js";
 export { PropertyPanel, type PropertyPanelProps } from "./property-panel.js";
 export {

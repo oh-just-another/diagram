@@ -155,3 +155,6 @@
 
 ## 0.23.18
 - state: paste lands at cursor instead of original-position+10
+
+## 0.23.19
+- react-ui: standalone zoom components + toolbar item kinds

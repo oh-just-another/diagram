@@ -373,6 +373,8 @@ const FloatingToolbar = () => {
       { kind: "undo" },
       { kind: "redo" },
       { kind: "divider" },
+      { kind: "zoom" },
+      { kind: "divider" },
       { kind: "action", id: "save", label: "Save", onClick: onSave },
       { kind: "action", id: "load", label: "Load…", onClick: onLoadClick },
       { kind: "action", id: "svg", label: "Export SVG", onClick: onExportSvg },
