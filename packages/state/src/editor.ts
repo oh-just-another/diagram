@@ -228,6 +228,14 @@ export class Editor {
   } | null = null;
   /** Live lasso bounds during a rubber-band select gesture. */
   private lassoPreview: Bounds | null = null;
+
+  /**
+   * Selection captured at lasso-press time. Used to compute the live
+   * preview correctly: in `replace` mode the lasso starts from empty
+   * each frame; in `add` mode it starts from this snapshot so shapes
+   * the user already had selected don't blink out and back.
+   */
+  private lassoBaseSelection: Selection.Selection | null = null;
   /**
    * Snapshot of every selected shape's `position` at press-down. Used to
    * translate the whole group additively during a multi-shape drag. The
@@ -2201,16 +2209,27 @@ export class Editor {
         this.applyEdgeEndpointUpdate(emit);
         return;
       case "LASSO_PROGRESS":
+        // Capture the pre-lasso selection on the first progress emit
+        // of a gesture; subsequent emits use it as the additive base.
+        if (this.lassoBaseSelection === null) {
+          this.lassoBaseSelection = this._selection;
+        }
         this.lassoPreview = emit.bounds;
+        this.applyLassoLiveSelection(emit.bounds, emit.mode);
         this.notify();
         return;
       case "LASSO_CLEAR":
-        if (this.lassoPreview !== null) {
+        if (this.lassoPreview !== null || this.lassoBaseSelection !== null) {
           this.lassoPreview = null;
+          this.lassoBaseSelection = null;
           this.notify();
         }
         return;
       case "SELECT_BY_BOUNDS":
+        // Final commit — uses the same logic as the live preview so
+        // the visible selection matches what lands. Reset the base
+        // snapshot so the next gesture re-captures it.
+        this.lassoBaseSelection = null;
         this.applySelectByBounds(emit.bounds, emit.mode);
         return;
       case "MOVE_SHAPE":
@@ -2577,6 +2596,27 @@ export class Editor {
     }
     this._selection = next;
     this.notify();
+  }
+
+  /**
+   * Live-preview variant of `applySelectByBounds` for in-progress
+   * lassos. Same hit-test rule, but the starting set comes from the
+   * captured `lassoBaseSelection` snapshot — that way `replace` mode
+   * shrinks the selection to whatever the box currently covers
+   * (instead of accumulating since press-down), and `add` mode keeps
+   * the user's pre-existing picks intact.
+   */
+  private applyLassoLiveSelection(bounds: Bounds, mode: "replace" | "add"): void {
+    const base = this.lassoBaseSelection ?? Selection.EMPTY;
+    let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : base;
+    const hits = getShapesInBounds(this._scene, bounds);
+    for (const shape of hits) {
+      if (this.isLayerLocked(shape.layerId)) continue;
+      next = Selection.add(next, shape.id);
+    }
+    if (Selection.equals(next, this._selection)) return;
+    if (this._selectedEdge !== null) this._selectedEdge = null;
+    this._selection = next;
   }
 
   private applyEdgeEndpointUpdate(

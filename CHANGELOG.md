@@ -158,3 +158,6 @@
 
 ## 0.23.19
 - react-ui: standalone zoom components + toolbar item kinds
+
+## 0.23.20
+- state: live selection preview during lasso drag

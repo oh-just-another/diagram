@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/scene",
-  "version": "0.23.19",
+  "version": "0.23.20",
   "description": "scene package",
   "type": "module",
   "main": "./dist/index.js",

@@ -103,7 +103,14 @@ export type InteractionEmit =
   | { readonly type: "SELECT_REPLACE"; readonly id: ShapeId }
   | { readonly type: "SELECT_TOGGLE"; readonly id: ShapeId }
   | { readonly type: "SELECT_CLEAR" }
-  | { readonly type: "LASSO_PROGRESS"; readonly bounds: Bounds }
+  | {
+      readonly type: "LASSO_PROGRESS";
+      readonly bounds: Bounds;
+      /** Same modifier semantics as `SELECT_BY_BOUNDS.mode` — lets the
+       * editor preview the additive variant of the lasso while the
+       * gesture is still in progress. */
+      readonly mode: "replace" | "add";
+    }
   | { readonly type: "LASSO_CLEAR" }
   | {
       readonly type: "SELECT_BY_BOUNDS";
@@ -336,9 +343,12 @@ export const interactionMachine = setup({
     }),
     emitLassoProgress: enqueueActions(({ context, event, enqueue }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return;
+      const m = context.pressModifiers;
+      const additive = Boolean(m && (m.shift || m.meta || m.ctrl));
       enqueue.emit({
         type: "LASSO_PROGRESS",
         bounds: boundsFromPoints(context.pressOrigin, event.point),
+        mode: additive ? "add" : "replace",
       });
     }),
     emitLassoCommit: enqueueActions(({ context, event, enqueue }) => {
