@@ -153,3 +153,43 @@ describe("grouping", () => {
     expect(groupShapes.length).toBe(0);
   });
 });
+
+describe("arrange layouts", () => {
+  it("arrangeAsGrid positions selection on a regular grid", () => {
+    const shapes = [
+      rect("a", 500, 500),
+      rect("b", 0, 0),
+      rect("c", 800, 800),
+      rect("d", 100, 100),
+    ];
+    const editor = makeEditor(sceneWith(...shapes));
+    editor.setSelection(new Set(shapes.map((s) => s.id)));
+    editor.arrangeAsGrid({ cols: 2, gap: 4 });
+    // 4 shapes → 2x2; cell = 20+4 = 24.
+    const positions = shapes.map((s) => editor.scene.shapes.get(s.id)!.position);
+    const xs = new Set(positions.map((p) => p.x));
+    const ys = new Set(positions.map((p) => p.y));
+    expect(xs.size).toBe(2);
+    expect(ys.size).toBe(2);
+  });
+
+  it("arrangeAsStack lays out shapes horizontally with gap", () => {
+    const a = rect("a", 0, 0);
+    const b = rect("b", 1000, 1000);
+    const editor = makeEditor(sceneWith(a, b));
+    editor.setSelection(new Set([a.id, b.id]));
+    editor.arrangeAsStack({ direction: "horizontal", gap: 10 });
+    const pa = editor.scene.shapes.get(a.id)!.position;
+    const pb = editor.scene.shapes.get(b.id)!.position;
+    expect(pb.y).toBe(pa.y);
+    expect(pb.x - pa.x).toBe(20 + 10); // shape width + gap
+  });
+
+  it("arrange is a no-op for single selection", () => {
+    const a = rect("a", 100, 100);
+    const editor = makeEditor(sceneWith(a));
+    editor.setSelection(new Set([a.id]));
+    editor.arrangeAsGrid({ cols: 2 });
+    expect(editor.scene.shapes.get(a.id)!.position).toEqual({ x: 100, y: 100 });
+  });
+});

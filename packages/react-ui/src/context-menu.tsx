@@ -322,6 +322,27 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     },
     onClick: (e) => e.ungroup(),
   },
+  {
+    kind: "action",
+    id: "arrange-grid",
+    label: "Arrange as grid",
+    visible: (e) => e.selection.size > 1,
+    onClick: (e) => e.arrangeAsGrid(),
+  },
+  {
+    kind: "action",
+    id: "arrange-stack-h",
+    label: "Stack horizontally",
+    visible: (e) => e.selection.size > 1,
+    onClick: (e) => e.arrangeAsStack({ direction: "horizontal" }),
+  },
+  {
+    kind: "action",
+    id: "arrange-stack-v",
+    label: "Stack vertically",
+    visible: (e) => e.selection.size > 1,
+    onClick: (e) => e.arrangeAsStack({ direction: "vertical" }),
+  },
   { kind: "divider" },
   // --- Z-order (single-selection scope) ---
   {

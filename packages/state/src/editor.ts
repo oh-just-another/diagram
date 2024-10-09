@@ -9,6 +9,8 @@ import {
   anchorSnapper,
   apply,
   buildSpatialIndex,
+  gridLayout,
+  stackLayout,
   DEFAULT_LAYER_ID,
   findEdgeAt,
   findNearestAnchor,
@@ -973,6 +975,51 @@ export class Editor {
   /** Current in-progress brush stroke, exposed for the overlay preview. */
   get pendingBrushStroke(): { readonly origin: Vec2; readonly points: readonly BrushPoint[] } | null {
     return this.brushStroke;
+  }
+
+  /**
+   * Re-position the current selection on a regular grid. `cols`
+   * controls column count; `gap` the world-unit spacing between cells.
+   * Anchored at the top-left corner of the existing selection bounds
+   * so the result lands roughly where the user already had the shapes.
+   * Single undo step. No-op when fewer than 2 shapes are selected.
+   */
+  arrangeAsGrid(opts: { cols?: number; gap?: number } = {}): void {
+    const ids = [...this._selection];
+    if (ids.length < 2) return;
+    const origin = this.combinedSelectionBounds() ?? { x: 0, y: 0 };
+    const cols = Math.max(1, opts.cols ?? Math.ceil(Math.sqrt(ids.length)));
+    const gap = opts.gap ?? 16;
+    const patch = gridLayout(this._scene, { shapeIds: ids, origin, cols, gap });
+    if (!patch) return;
+    this._scene = apply(this._scene, patch);
+    this._history.push(patch);
+    this.notify();
+    this.announce(`Arranged ${ids.length} shapes on a ${cols}-column grid`);
+  }
+
+  /**
+   * Stack the current selection horizontally or vertically with `gap`
+   * world units between adjacent shapes. Anchored at the selection's
+   * top-left, like `arrangeAsGrid`. Single undo step.
+   */
+  arrangeAsStack(opts: { direction?: "horizontal" | "vertical"; gap?: number } = {}): void {
+    const ids = [...this._selection];
+    if (ids.length < 2) return;
+    const origin = this.combinedSelectionBounds() ?? { x: 0, y: 0 };
+    const direction = opts.direction ?? "horizontal";
+    const gap = opts.gap ?? 16;
+    const patch = stackLayout(this._scene, {
+      shapeIds: ids,
+      origin,
+      direction,
+      gap,
+    });
+    if (!patch) return;
+    this._scene = apply(this._scene, patch);
+    this._history.push(patch);
+    this.notify();
+    this.announce(`Stacked ${ids.length} shapes ${direction}`);
   }
 
   /**

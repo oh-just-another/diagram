@@ -161,3 +161,6 @@
 
 ## 0.23.20
 - state: live selection preview during lasso drag
+
+## 0.23.21
+- state: grid layout — arrangeAsGrid / arrangeAsStack commands
