@@ -106,6 +106,53 @@ export const getShapesInBounds = (scene: Scene, range: Bounds): readonly Shape[]
 };
 
 /**
+ * Shapes whose world-AABB is at least `minCoverageRatio` covered by
+ * `range`. `1` requires full containment (containment-style lasso);
+ * `0.5` selects when at least half of the element sits inside the
+ * box — friendlier than pure intersection because brushing past an
+ * edge doesn't accidentally grab the shape.
+ *
+ * Always selects shapes that fully contain the lasso (small lasso
+ * inside a big shape) — same affordance as bidirectional containment.
+ * Zero-area shapes (groups, brushes-with-one-vertex) fall back to a
+ * plain intersection test.
+ */
+export const getShapesCoveredByBounds = (
+  scene: Scene,
+  range: Bounds,
+  minCoverageRatio = 0.5,
+): readonly Shape[] => {
+  const out: Shape[] = [];
+  for (const s of scene.shapes.values()) {
+    const b = getShapeWorldBounds(s);
+    if (!B.intersects(b, range)) continue;
+    const area = b.width * b.height;
+    if (area <= 0) {
+      out.push(s);
+      continue;
+    }
+    const ix = Math.max(b.x, range.x);
+    const iy = Math.max(b.y, range.y);
+    const ix2 = Math.min(b.x + b.width, range.x + range.width);
+    const iy2 = Math.min(b.y + b.height, range.y + range.height);
+    const iw = ix2 - ix;
+    const ih = iy2 - iy;
+    if (iw <= 0 || ih <= 0) continue;
+    const coverage = (iw * ih) / area;
+    if (coverage >= minCoverageRatio) {
+      out.push(s);
+      continue;
+    }
+    // Bidirectional: tiny lasso inside a big shape still picks it.
+    const lassoArea = range.width * range.height;
+    if (lassoArea > 0 && (iw * ih) / lassoArea >= minCoverageRatio) {
+      out.push(s);
+    }
+  }
+  return out;
+};
+
+/**
  * Topmost shape containing `point`. Iterates layers top-to-bottom, then shapes
  * within each layer top-to-bottom; returns the first hit. Hit-test here is the
  * conservative AABB test; renderer-specific shape-precise hit-tests belong

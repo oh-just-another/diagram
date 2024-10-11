@@ -130,6 +130,7 @@ export {
   getShapesInLayer,
   getEdgesInLayer,
   getShapesInBounds,
+  getShapesCoveredByBounds,
   getShapeAt,
   buildSpatialIndex,
   queryByIndex,

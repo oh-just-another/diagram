@@ -22,6 +22,7 @@ import {
   getShapeAccessibleName,
   getShapeAt,
   getShapeAtIndexed,
+  getShapesCoveredByBounds,
   getShapesInBounds,
   getShapeWorldBounds,
   getScreenToWorld,
@@ -82,6 +83,7 @@ import {
   EDGE_ENDPOINT_HANDLE_RADIUS,
   EDGE_HIT_THRESHOLD,
   LARGE_SCENE_HIT_THRESHOLD,
+  LASSO_COVERAGE_THRESHOLD,
   MAX_BRUSH_WIDTH,
   LONG_PRESS_DELAY_MS,
   LONG_PRESS_MAX_MOVEMENT_PX,
@@ -1754,6 +1756,22 @@ export class Editor {
       }
 
       const target = this.hitTest(worldPoint);
+      // Auto-select on press for shapes / edges that the user is about
+      // to act on (drag, resize handles). Matches standard/x5 graph: you
+      // can't manipulate an element that isn't selected — so pressing
+      // on an unselected one promotes it to the selection BEFORE the
+      // drag starts. Shift/Cmd extends instead of replacing. We don't
+      // promote inside the group-handle / edge-endpoint paths because
+      // those already act on the existing selection.
+      if (target.kind === "shape" && !this._selection.has(target.id)) {
+        const additive = Boolean(data.modifiers?.shift || data.modifiers?.meta || data.modifiers?.ctrl);
+        this._selection = additive ? Selection.add(this._selection, target.id) : Selection.single(target.id);
+        if (this._selectedEdge !== null) this._selectedEdge = null;
+        // Notify happens at the end of the gesture path; selecting now
+        // ensures the live `_selection` reflects what subsequent
+        // MOVE_SHAPE emits will operate on.
+        this.notify();
+      }
       // Snapshot positions of every selected shape (and every descendant
       // of a selected group) when the press lands on a selected shape —
       // the editor will translate them together during the drag, which
@@ -2629,7 +2647,7 @@ export class Editor {
    * (Shift / Cmd lasso).
    */
   private applySelectByBounds(bounds: Bounds, mode: "replace" | "add"): void {
-    const hits = getShapesInBounds(this._scene, bounds);
+    const hits = getShapesCoveredByBounds(this._scene, bounds, LASSO_COVERAGE_THRESHOLD);
     let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : this._selection;
     for (const shape of hits) {
       // Skip shapes on locked layers — lock prevents selection / drag.
@@ -2656,7 +2674,7 @@ export class Editor {
   private applyLassoLiveSelection(bounds: Bounds, mode: "replace" | "add"): void {
     const base = this.lassoBaseSelection ?? Selection.EMPTY;
     let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : base;
-    const hits = getShapesInBounds(this._scene, bounds);
+    const hits = getShapesCoveredByBounds(this._scene, bounds, LASSO_COVERAGE_THRESHOLD);
     for (const shape of hits) {
       if (this.isLayerLocked(shape.layerId)) continue;
       next = Selection.add(next, shape.id);

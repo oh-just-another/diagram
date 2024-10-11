@@ -165,6 +165,17 @@ export const ANNOTATION_PIN_BADGE_FONT_SIZE = 10;
 export const LARGE_SCENE_HIT_THRESHOLD = 2_000;
 
 /**
+ * Minimum AABB coverage ratio required for a shape to fall into the
+ * rubber-band lasso. `0` would behave like pure intersection (any
+ * touch grabs the shape — feels too eager); `1` requires full
+ * containment (needs precise lasso). `0.5` is the default — brushing
+ * past an edge does not grab the shape, but covering most of it does.
+ * Bidirectional rule: a tiny lasso entirely inside a big shape also
+ * picks it up.
+ */
+export const LASSO_COVERAGE_THRESHOLD = 0.5;
+
+/**
  * Maximum local-pixel half-width of a brush vertex. Hosts compute the
  * actual width as `pressure × MAX_BRUSH_WIDTH`; `pressure` is the
  * `PointerEvent.pressure` field, which is normalised to [0, 1] on

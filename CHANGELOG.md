@@ -164,3 +164,6 @@
 
 ## 0.23.21
 - state: grid layout — arrangeAsGrid / arrangeAsStack commands
+
+## 0.23.22
+- state: coverage-based lasso + auto-select on press
