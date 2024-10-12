@@ -175,7 +175,12 @@ export const renderOverlay = (
   target.save();
   target.setTransform(matrix.IDENTITY);
 
-  // 1. Selection outlines + handles
+  // 1. Selection outlines (+ handles only when a single shape is
+  //    selected). Multi-selection skips per-shape handles in favour of
+  //    the combined group bbox handles drawn later — otherwise the
+  //    overlay would look like a forest of corner squares and the user
+  //    could grab a child handle, which `hitTest` also blocks.
+  const multiSelect = selection.size > 1;
   for (const id of selection) {
     const shape = scene.shapes.get(id);
     if (!shape) continue;
@@ -189,7 +194,7 @@ export const renderOverlay = (
 
     drawOutline(target, screenBounds, style);
 
-    if (!isResizable(shape)) continue;
+    if (multiSelect || !isResizable(shape)) continue;
 
     for (const handle of ALL_HANDLES) {
       const worldPoint = handlePosition(handle, worldBounds);

@@ -2129,14 +2129,20 @@ export class Editor {
         }
       }
     }
-    // 1b. Resize handles on a single selected shape.
-    for (const id of this._selection) {
-      const shape = getShape(this._scene, id);
-      if (!shape || !isResizable(shape)) continue;
-      const bounds = getShapeWorldBounds(shape);
-      const handle = hitHandle(worldPoint, bounds, zoom, this.handleHitSlop);
-      if (handle) {
-        return { kind: "handle", shapeId: id, handle, bounds };
+    // 1b. Resize handles on a single selected shape — only when exactly
+    //     one shape is selected. Multi-selection drops per-shape handles
+    //     in favour of the group bbox handles above; otherwise users
+    //     could resize one child outside the combined frame, which is
+    //     surprising and inconsistent with the group outline.
+    if (this._selection.size === 1) {
+      for (const id of this._selection) {
+        const shape = getShape(this._scene, id);
+        if (!shape || !isResizable(shape)) continue;
+        const bounds = getShapeWorldBounds(shape);
+        const handle = hitHandle(worldPoint, bounds, zoom, this.handleHitSlop);
+        if (handle) {
+          return { kind: "handle", shapeId: id, handle, bounds };
+        }
       }
     }
     // 2. Endpoint handles on a selected edge — only when an edge is

@@ -167,3 +167,6 @@
 
 ## 0.23.22
 - state: coverage-based lasso + auto-select on press
+
+## 0.23.23
+- state: hide per-shape resize handles when multi-selected
