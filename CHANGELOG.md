@@ -170,3 +170,6 @@
 
 ## 0.23.23
 - state: hide per-shape resize handles when multi-selected
+
+## 0.23.24
+- state: bigger, rounded, easier-to-grab resize handles

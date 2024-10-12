@@ -171,6 +171,7 @@ export const renderOverlay = (
 
   // World → screen transform: handles draw at constant screen size.
   const w2s = getWorldToScreen(scene.viewport);
+  const zoom = scene.viewport.zoom;
 
   target.save();
   target.setTransform(matrix.IDENTITY);
@@ -197,7 +198,7 @@ export const renderOverlay = (
     if (multiSelect || !isResizable(shape)) continue;
 
     for (const handle of ALL_HANDLES) {
-      const worldPoint = handlePosition(handle, worldBounds);
+      const worldPoint = handlePosition(handle, worldBounds, zoom);
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);
       drawHandle(target, screenPoint, style);
     }
@@ -250,7 +251,7 @@ export const renderOverlay = (
     const groupScreen = projectBounds(options.groupBounds, w2s);
     drawOutline(target, groupScreen, style);
     for (const handle of ALL_HANDLES) {
-      const worldPoint = handlePosition(handle, options.groupBounds);
+      const worldPoint = handlePosition(handle, options.groupBounds, zoom);
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);
       drawHandle(target, screenPoint, style);
     }
@@ -297,13 +298,16 @@ const drawOutline = (target: RenderTarget, b: Bounds, style: OverlayStyle): void
 };
 
 const drawHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
-  const s = HANDLE_SIZE;
+  // Circle of radius HANDLE_SIZE — visually equivalent to a rounded
+  // square with maximum corner radius, but renders via `ellipse`
+  // which every RenderTarget already supports (canvas, svg). A rounded
+  // shape reads as "draggable handle" more clearly than a sharp rectangle.
   target.setFill(style.handleFill);
   target.setStroke(style.handleStroke);
   target.setStrokeWidth(1);
   target.setDashArray(null);
   target.beginPath();
-  target.rect(center.x - s, center.y - s, s * 2, s * 2);
+  target.ellipse(center.x, center.y, HANDLE_SIZE, HANDLE_SIZE);
   target.fill();
   target.stroke();
 };

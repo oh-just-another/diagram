@@ -97,7 +97,7 @@ import {
   WHEEL_PAN_FACTOR,
   WHEEL_ZOOM_STEP,
 } from "./constants.js";
-import { HANDLE_SIZE, hitHandle } from "./handle.js";
+import { HANDLE_HIT_SLOP, hitHandle } from "./handle.js";
 import { getInteractiveHitTester } from "./interactive.js";
 import {
   boundsFromPoints,
@@ -411,7 +411,7 @@ export class Editor {
     } else {
       this.inputMode = "mouse";
     }
-    this.handleHitSlop = this.inputMode === "touch" ? TOUCH_HANDLE_HIT_SLOP : HANDLE_SIZE;
+    this.handleHitSlop = this.inputMode === "touch" ? TOUCH_HANDLE_HIT_SLOP : HANDLE_HIT_SLOP;
     this.edgeHandleHitSlop =
       this.inputMode === "touch" ? TOUCH_EDGE_HANDLE_HIT_SLOP : EDGE_ENDPOINT_HANDLE_RADIUS;
     this.edgeHitThreshold =
