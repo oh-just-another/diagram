@@ -2496,6 +2496,38 @@ export class Editor {
       // translate back. Same math for x and y independently.
       const newPx = ax + (origin.position.x - ax) * sx;
       const newPy = ay + (origin.position.y - ay) * sy;
+
+      // Prefer changing the box's intrinsic width/height for shapes
+      // that have one — that way the stroke and other style fields
+      // stay at their authored thickness instead of being scaled by
+      // the matrix transform. Shapes without a width/height
+      // (polygons, paths, text, brush, group) still ride the scale
+      // multiplier — that's the only handle the renderer has on
+      // their size.
+      if (hasWidthHeight(shape)) {
+        const newWidth = origin.bounds.width * sx;
+        const newHeight = origin.bounds.height * sy;
+        if (Math.abs(newWidth) < minDim || Math.abs(newHeight) < minDim) continue;
+        const nextShape: Shape = {
+          ...shape,
+          position: { x: newPx, y: newPy },
+          // Pin scale at 1 / -1 so flipping past the anchor still
+          // mirrors the shape. The sign comes from the resize math —
+          // negative width / height means the user dragged past the
+          // opposite edge.
+          scale: {
+            x: newWidth >= 0 ? 1 : -1,
+            y: newHeight >= 0 ? 1 : -1,
+          },
+          width: Math.abs(newWidth),
+          height: Math.abs(newHeight),
+        } as Shape;
+        const patch: Patch = { kind: "shape", id, before: shape, after: nextShape };
+        this._scene = apply(this._scene, patch);
+        this.recordGesturePatch(patch);
+        continue;
+      }
+
       const newScaleX = origin.scale.x * sx;
       const newScaleY = origin.scale.y * sy;
       if (Math.abs(newScaleX) < minDim / Math.max(1, origin.bounds.width)) continue;
@@ -2516,20 +2548,20 @@ export class Editor {
     const shape = getShape(this._scene, id);
     if (!shape) return;
     // Built-in shapes with a width/height box: rectangle, ellipse, image, template.
-    if (
-      shape.type !== "rectangle" &&
-      shape.type !== "ellipse" &&
-      shape.type !== "image" &&
-      shape.type !== "template"
-    )
-      return;
+    if (!hasWidthHeight(shape)) return;
 
     const raw = resizeFromHandle(originalBounds, handle, delta);
     const constrained = applyResizeConstraints(originalBounds, raw, handle, shape);
 
+    // `constrained` is in world units (originalBounds was world AABB).
+    // For shapes with a width/height field, persist that directly and
+    // pin `scale` to 1 — otherwise a non-1 scale carried over from a
+    // previous group resize would multiply the new width and the
+    // shape would jump out from under the cursor on the next gesture.
     const next: Shape = {
       ...shape,
       position: { x: constrained.x, y: constrained.y },
+      scale: { x: 1, y: 1 },
       width: constrained.width,
       height: constrained.height,
     } as Shape;
@@ -2867,6 +2899,18 @@ export class Editor {
 }
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
+
+/**
+ * True when the shape's geometry is parametrised by `width` / `height`
+ * fields the editor can rewrite directly during a resize. Anything
+ * else (paths, polygons, brush strokes, text, groups) has to ride the
+ * `scale` multiplier instead.
+ */
+const hasWidthHeight = (s: Shape): s is Shape & { width: number; height: number } =>
+  s.type === "rectangle" ||
+  s.type === "ellipse" ||
+  s.type === "image" ||
+  s.type === "template";
 
 /**
  * Convert `PointerEvent.pressure` (0–1) to a brush half-width in local

@@ -173,3 +173,6 @@
 
 ## 0.23.24
 - state: bigger, rounded, easier-to-grab resize handles
+
+## 0.23.25
+- state: group resize writes width/height, not scale (fix border + jump)
