@@ -176,3 +176,6 @@
 
 ## 0.23.25
 - state: group resize writes width/height, not scale (fix border + jump)
+
+## 0.23.26
+- state: container / drop-zone protocol — swim-lane as parent

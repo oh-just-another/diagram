@@ -24,6 +24,12 @@ import {
   getShapeAtIndexed,
   getShapesCoveredByBounds,
   getShapesInBounds,
+  isContainer,
+  getContainerSpec,
+  getDropZoneWorld,
+  findContainerAt,
+  expandDropZoneToFit,
+  containerSizeForZone,
   getShapeWorldBounds,
   getScreenToWorld,
   panBy as viewportPanBy,
@@ -323,6 +329,23 @@ export class Editor {
    * `null` until the pointer first enters the host.
    */
   private lastPointerWorld: Vec2 | null = null;
+
+  /**
+   * Shape id that the user started dragging on press-down. Tracked
+   * separately from the state machine so the editor knows what to
+   * (re)parent / drop into a container on pointerup. `null` between
+   * gestures, set in onDown when press lands on a shape and cleared
+   * in onUp / cancel.
+   */
+  private dragShapeId: ShapeId | null = null;
+
+  /**
+   * Live container highlight: the container shape the dragged item is
+   * currently hovering over. Drawn by the overlay as a dashed
+   * accent rect on the container's drop-zone so the user knows where
+   * the shape will land after release.
+   */
+  private containerHover: { id: ShapeId; dropZone: Bounds } | null = null;
 
   /**
    * Remote peer cursors / selections, pushed in by the host (typically
@@ -1772,6 +1795,11 @@ export class Editor {
         // MOVE_SHAPE emits will operate on.
         this.notify();
       }
+      // Track the dragged shape id for container drop / drag-out
+      // logic on pointerup. Cleared in onUp / cancel.
+      this.dragShapeId = target.kind === "shape" ? target.id : null;
+      this.containerHover = null;
+
       // Snapshot positions of every selected shape (and every descendant
       // of a selected group) when the press lands on a selected shape —
       // the editor will translate them together during the drag, which
@@ -1841,6 +1869,44 @@ export class Editor {
       // Track cursor for paste-at-cursor and other commands that want a
       // sensible drop target.
       this.lastPointerWorld = worldPoint;
+
+      // Container drop preview: while dragging a single shape, find the
+      // topmost container under cursor (excluding the dragged shape and
+      // its descendants) and stash the drop-zone for the overlay.
+      if (this.dragShapeId) {
+        const dragged = this.dragShapeId;
+        const exclude = new Set<ShapeId>([dragged]);
+        // Don't drop a container onto itself or into one of its own
+        // descendants (would create a cycle).
+        for (const s of this._scene.shapes.values()) {
+          let cursor = s.parentId;
+          for (let i = 0; cursor && i < 64; i++) {
+            if (cursor === dragged) {
+              exclude.add(s.id);
+              break;
+            }
+            cursor = this._scene.shapes.get(cursor)?.parentId;
+          }
+        }
+        const container = findContainerAt(this._scene, worldPoint, exclude);
+        if (container) {
+          const zone = getDropZoneWorld(container);
+          if (zone) {
+            const next = { id: container.id, dropZone: zone };
+            if (
+              !this.containerHover ||
+              this.containerHover.id !== next.id ||
+              this.containerHover.dropZone !== next.dropZone
+            ) {
+              this.containerHover = next;
+              this.notify();
+            }
+          }
+        } else if (this.containerHover !== null) {
+          this.containerHover = null;
+          this.notify();
+        }
+      }
 
       // Annotation drag — update annotation position from delta. No
       // patches per-move; commit on pointerup so undo is one step.
@@ -1951,6 +2017,9 @@ export class Editor {
           ? { type: "POINTER_UP", point: worldPoint, target: upTarget }
           : { type: "POINTER_UP", point: worldPoint },
       );
+      // Container reparent / drag-out — must run before commitGesture
+      // so the parentId / autoGrow patches land in the same undo step.
+      this.applyContainerDrop(worldPoint);
       this.commitGesture();
     };
 
@@ -2791,9 +2860,151 @@ export class Editor {
   private commitGesture(): void {
     this.groupMoveOrigin = null;
     this.groupResizeOrigin = null;
+    this.dragShapeId = null;
+    if (this.containerHover !== null) {
+      this.containerHover = null;
+      this.notify();
+    }
     if (!this.gestureTx) return;
     this.gestureTx.commit();
     this.gestureTx = null;
+  }
+
+  /**
+   * End-of-drag container hookup. Runs after the state machine has
+   * received POINTER_UP but before the gesture transaction commits,
+   * so reparent + auto-grow land in a single undo step with the drag.
+   *
+   * Rules:
+   * - If the shape hovered over a container and is not yet its child →
+   *   set `parentId`. If the shape exceeds the dropZone bounds,
+   *   grow the zone (expand container size).
+   * - If the shape was a child of something but the final world bounds
+   *   no longer intersect the parent's drop-zone — clear `parentId` (drag-out).
+   * - Cycles (container into its own descendant) are prevented
+   *   by the `containerHover` pipeline above — the exclude set blocks them.
+   */
+  private applyContainerDrop(worldPoint: Vec2): void {
+    void worldPoint;
+    const dragId = this.dragShapeId;
+    if (!dragId) return;
+    const shape = getShape(this._scene, dragId);
+    if (!shape) return;
+    // Containers themselves can also be dragged into other
+    // containers (nesting); cycle-check is already performed in the hover-pipeline.
+
+    const hover = this.containerHover;
+    if (hover && hover.id !== shape.parentId) {
+      // Reparent into hovered container.
+      const tx = this.beginOrAttachGesture();
+      const r = updateShape(this._scene, dragId, (s) => ({ ...s, parentId: hover.id }));
+      this._scene = r.scene;
+      tx.add(r.patch);
+      this.maybeGrowContainer(hover.id, dragId);
+      return;
+    }
+
+    if (!hover && shape.parentId) {
+      // Drag-out: still inside parent's zone? If the shape bounds
+      // completely exit the zone — remove parentId.
+      const parent = getShape(this._scene, shape.parentId);
+      const parentZone = parent ? getDropZoneWorld(parent) : null;
+      const childBounds = getShapeWorldBounds(shape);
+      if (!parentZone || !B.intersects(parentZone, childBounds)) {
+        const tx = this.beginOrAttachGesture();
+        const r = updateShape(this._scene, dragId, (s) => {
+          const next: Shape = { ...s };
+          delete (next as { parentId?: ShapeId }).parentId;
+          return next;
+        });
+        this._scene = r.scene;
+        tx.add(r.patch);
+      }
+    }
+  }
+
+  /**
+   * If `childId` no longer fits inside `containerId`'s drop-zone,
+   * expand the zone + the container's outer size. Single patch added
+   * to the running gesture. Skips no-op cases (already fits, container
+   * has no width/height field).
+   */
+  private maybeGrowContainer(containerId: ShapeId, childId: ShapeId): void {
+    const container = getShape(this._scene, containerId);
+    const child = getShape(this._scene, childId);
+    if (!container || !child) return;
+    const spec = getContainerSpec(container);
+    if (!spec) return;
+    const childWorld = getShapeWorldBounds(child);
+    const expanded = expandDropZoneToFit(container, childWorld);
+    if (!expanded) return;
+
+    const containerHasBox =
+      container.type === "rectangle" ||
+      container.type === "ellipse" ||
+      container.type === "image" ||
+      container.type === "template";
+    const tx = this.beginOrAttachGesture();
+
+    if (containerHasBox) {
+      const widthHeight = container as Shape & { width: number; height: number };
+      const sized = containerSizeForZone(
+        { width: widthHeight.width, height: widthHeight.height, spec },
+        expanded,
+      );
+      const r = updateShape(this._scene, containerId, (s) => ({
+        ...s,
+        position: {
+          x: s.position.x + sized.positionOffset.x,
+          y: s.position.y + sized.positionOffset.y,
+        },
+        width: sized.width,
+        height: sized.height,
+        metadata: {
+          ...(s.metadata ?? {}),
+          container: { ...spec, dropZone: expanded },
+        },
+      }) as Shape);
+      this._scene = r.scene;
+      tx.add(r.patch);
+      // Position shift moved the container — without compensating, the
+      // child would visually jump too (its world position changed
+      // relative to the new origin). Translate child back so visually
+      // it stays put.
+      if (sized.positionOffset.x !== 0 || sized.positionOffset.y !== 0) {
+        const childRes = updateShape(this._scene, childId, (s) => ({
+          ...s,
+          position: {
+            x: s.position.x - sized.positionOffset.x,
+            y: s.position.y - sized.positionOffset.y,
+          },
+        }));
+        this._scene = childRes.scene;
+        tx.add(childRes.patch);
+      }
+    } else {
+      const r = updateShape(this._scene, containerId, (s) => ({
+        ...s,
+        metadata: {
+          ...(s.metadata ?? {}),
+          container: { ...spec, dropZone: expanded },
+        },
+      }));
+      this._scene = r.scene;
+      tx.add(r.patch);
+    }
+  }
+
+  /**
+   * Return the running gesture tx or open a new one if the drag ended
+   * with an empty transaction (move-by-zero pixels can still carry
+   * container reparent).
+   */
+  private beginOrAttachGesture(): TransactionHandle {
+    if (!this.gestureTx) {
+      this.gestureTx = this._history.transaction();
+    }
+    return this.gestureTx;
   }
 
   private cancelGesture(): void {
@@ -2869,6 +3080,9 @@ export class Editor {
     if (this._selection.size > 1) {
       const combined = this.combinedSelectionBounds();
       if (combined) overlayOpts.groupBounds = combined;
+    }
+    if (this.containerHover) {
+      overlayOpts.containerDropZone = this.containerHover.dropZone;
     }
     if (this._selectedEdge) {
       const edge = getEdge(this._scene, this._selectedEdge);

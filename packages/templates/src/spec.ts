@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Shape, TemplateShape as SceneTemplateShape } from "@oh-just-another/scene";
 import { layoutTree } from "./rich/layout.js";
 import { extractPorts } from "./rich/ports.js";
+import { extractDropZone } from "./rich/drop-zones.js";
 import { defaultRichRegistry } from "./rich/registry.js";
 import type { TemplateNode } from "./rich/node.js";
 import type { LayoutStyle, NodeStyle } from "./rich/style.js";
@@ -202,6 +203,11 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
           available: { width: blueprint.width, height: blueprint.height },
         });
         const portAnchors = extractPorts(layouted);
+        // The first drop-zone node in the template tree turns this shape into
+        // a container per the @scene container protocol: shapes dragged into
+        // this area get `parentId = this.id` and move together with the
+        // template.
+        const dropZone = extractDropZone(layouted);
 
         const shape: SceneTemplateShape = {
           id: ctx.id,
@@ -222,6 +228,7 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
           ...(blueprint.maxWidth !== undefined ? { maxWidth: blueprint.maxWidth } : {}),
           ...(blueprint.maxHeight !== undefined ? { maxHeight: blueprint.maxHeight } : {}),
           ...(blueprint.noFlip !== undefined ? { noFlip: blueprint.noFlip } : {}),
+          ...(dropZone ? { metadata: { container: { dropZone, padding: 8 } } } : {}),
         };
         return shape;
       },

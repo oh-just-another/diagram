@@ -145,6 +145,12 @@ export const renderOverlay = (
      */
     groupBounds?: Bounds;
     /**
+     * Drop-zone of the container currently under the dragged shape.
+     * Drawn as a dashed accent rect so the user sees where the element
+     * will be nested after release.
+     */
+    containerDropZone?: Bounds;
+    /**
      * Remote peer cursors. Each one renders as a small coloured arrow
      * with a name chip in the peer's colour, anchored at the world-
      * space position. The local cursor never appears here.
@@ -244,6 +250,22 @@ export const renderOverlay = (
         drawPeerSelection(target, sb, peer.color);
       }
     }
+  }
+
+  // 7.0. Container drop-zone highlight — drawn under selection chrome
+  //      so handles stay legible. Dashed rect + soft fill — same
+  //      visual language as the drawing preview.
+  if (options.containerDropZone) {
+    const zoneScreen = projectBounds(options.containerDropZone, w2s);
+    target.setFill("rgba(26, 115, 232, 0.10)");
+    target.setStroke("#1a73e8");
+    target.setStrokeWidth(2);
+    target.setDashArray([6, 3]);
+    target.beginPath();
+    target.rect(zoneScreen.x, zoneScreen.y, zoneScreen.width, zoneScreen.height);
+    target.fill();
+    target.stroke();
+    target.setDashArray(null);
   }
 
   // 7. Multi-selection combined bounds — outline + 8 group handles.

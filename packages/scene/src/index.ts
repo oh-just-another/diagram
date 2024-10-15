@@ -158,3 +158,14 @@ export { gridLayout, stackLayout, allShapesInLayer } from "./layout.js";
 
 // Tunable thresholds.
 export { SNAP_PROBE_CULL_RADIUS } from "./constants.js";
+
+// Container / drop-zone protocol.
+export {
+  isContainer,
+  getContainerSpec,
+  getDropZoneWorld,
+  findContainerAt,
+  expandDropZoneToFit,
+  containerSizeForZone,
+  type ContainerSpec,
+} from "./container.js";

@@ -28,6 +28,7 @@ export type {
 export { isContainer, isInteractive, childrenOf } from "./node.js";
 
 export { extractPorts } from "./ports.js";
+export { extractDropZone } from "./drop-zones.js";
 
 export type { MeasureText, LayoutedNode, LayoutOptions } from "./layout.js";
 export { layoutTree, fallbackMeasureText } from "./layout.js";
