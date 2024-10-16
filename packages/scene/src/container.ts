@@ -23,11 +23,43 @@ export interface ContainerSpec {
   readonly padding?: number;
 }
 
-/** True when the shape is declared as a container via metadata. */
+/**
+ * Live resolver that computes the current `ContainerSpec` for a shape
+ * — typically by re-running the template's layout against its current
+ * `width` / `height` so the drop-zone stays in sync after the user
+ * resizes the container. Returns `null` when the resolver doesn't
+ * handle this shape; the next resolver in the chain (or the static
+ * `metadata.container` fallback) is tried.
+ *
+ * Registered by `@templates` so kernel packages stay UI-agnostic.
+ */
+export type ContainerResolver = (shape: ShapeBase) => ContainerSpec | null;
+
+const resolvers: ContainerResolver[] = [];
+
+/**
+ * Plug in a resolver. Called in registration order — first non-null
+ * wins. Idempotent: a duplicate function reference is ignored so
+ * hot-reload doesn't double-register.
+ */
+export const registerContainerResolver = (resolver: ContainerResolver): void => {
+  if (!resolvers.includes(resolver)) resolvers.push(resolver);
+};
+
+/** True when a shape is declared a container — via resolver or metadata. */
 export const isContainer = (s: ShapeBase): boolean => getContainerSpec(s) !== null;
 
-/** Read the `ContainerSpec` or return null if the shape is not a container. */
+/**
+ * Resolve the current `ContainerSpec` for `s`. Tries every registered
+ * resolver first (live, layout-aware path for templates), then falls
+ * back to a static `metadata.container` spec. Returns `null` if
+ * shape is not a container.
+ */
 export const getContainerSpec = (s: ShapeBase): ContainerSpec | null => {
+  for (const resolver of resolvers) {
+    const spec = resolver(s);
+    if (spec) return spec;
+  }
   const m = s.metadata?.container;
   if (!m || typeof m !== "object") return null;
   const obj = m as { dropZone?: Bounds; padding?: number };

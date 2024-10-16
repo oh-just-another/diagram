@@ -1,5 +1,10 @@
 import type { Bounds, Color, Vec2 } from "@oh-just-another/types";
-import { registerBounder, type TemplateShape as SceneTemplateShape } from "@oh-just-another/scene";
+import {
+  registerBounder,
+  registerContainerResolver,
+  type TemplateShape as SceneTemplateShape,
+} from "@oh-just-another/scene";
+import { extractDropZone } from "./drop-zones.js";
 import {
   registerShapeRenderer,
   type RenderTarget,
@@ -269,5 +274,24 @@ export const installTemplateShapeRenderer = (): void => {
     // The shape's width/height drives both the bounder and the renderer so
     // the user's resize gesture changes both the AABB and the painted layout.
     return { x: 0, y: 0, width: shape.width, height: shape.height };
+  });
+  // Live drop-zone resolver for template shapes — re-layout the
+  // template tree against the shape's current `width / height` and
+  // return the actual `drop-zone` node bounds. Keeps the container
+  // hit area in sync with the visible body after the user resizes
+  // the template (e.g. growing a swim-lane).
+  registerContainerResolver((shape) => {
+    if (shape.type !== "template") return null;
+    const template = defaultRichRegistry.get((shape as SceneTemplateShape).templateId);
+    if (!template) return null;
+    const layouted = layoutTree(template.root, {
+      available: { width: (shape as SceneTemplateShape).width, height: (shape as SceneTemplateShape).height },
+    });
+    const dropZone = extractDropZone(layouted);
+    if (!dropZone) return null;
+    // Read padding from the shape's static metadata fallback (if any)
+    // so authors can tune it per-template; default 8.
+    const staticMeta = (shape.metadata?.container as { padding?: number } | undefined) ?? {};
+    return { dropZone, padding: staticMeta.padding ?? 8 };
   });
 };

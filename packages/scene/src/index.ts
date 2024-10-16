@@ -167,5 +167,7 @@ export {
   findContainerAt,
   expandDropZoneToFit,
   containerSizeForZone,
+  registerContainerResolver,
   type ContainerSpec,
+  type ContainerResolver,
 } from "./container.js";

@@ -2895,9 +2895,20 @@ export class Editor {
 
     const hover = this.containerHover;
     if (hover && hover.id !== shape.parentId) {
-      // Reparent into hovered container.
+      // Reparent into hovered container. Bump the dropped shape to
+      // top z-order of its layer so it lands ABOVE the container's
+      // visual body (otherwise the container's fill obscures it).
       const tx = this.beginOrAttachGesture();
-      const r = updateShape(this._scene, dragId, (s) => ({ ...s, parentId: hover.id }));
+      const topOrder = orderForTop(
+        [...this._scene.shapes.values()]
+          .filter((s) => s.layerId === shape.layerId && s.id !== dragId)
+          .map((s) => s.order),
+      );
+      const r = updateShape(this._scene, dragId, (s) => ({
+        ...s,
+        parentId: hover.id,
+        order: topOrder,
+      }));
       this._scene = r.scene;
       tx.add(r.patch);
       this.maybeGrowContainer(hover.id, dragId);
@@ -2967,21 +2978,10 @@ export class Editor {
       }) as Shape);
       this._scene = r.scene;
       tx.add(r.patch);
-      // Position shift moved the container — without compensating, the
-      // child would visually jump too (its world position changed
-      // relative to the new origin). Translate child back so visually
-      // it stays put.
-      if (sized.positionOffset.x !== 0 || sized.positionOffset.y !== 0) {
-        const childRes = updateShape(this._scene, childId, (s) => ({
-          ...s,
-          position: {
-            x: s.position.x - sized.positionOffset.x,
-            y: s.position.y - sized.positionOffset.y,
-          },
-        }));
-        this._scene = childRes.scene;
-        tx.add(childRes.patch);
-      }
+      // Children are stored in absolute world coords — translating the
+      // container's `position` does NOT visually move them, so no
+      // compensating patch is needed. (Earlier code shifted the child
+      // and pushed it off-screen.)
     } else {
       const r = updateShape(this._scene, containerId, (s) => ({
         ...s,

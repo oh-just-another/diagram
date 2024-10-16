@@ -179,3 +179,6 @@
 
 ## 0.23.26
 - state: container / drop-zone protocol — swim-lane as parent
+
+## 0.23.27
+- state: live drop-zone resolver + z-order fix + grid seed scene

@@ -10,6 +10,7 @@ import {
   type Shape,
 } from "@oh-just-another/scene";
 import { shapeId } from "@oh-just-another/types";
+import { defaultRegistry, type Template } from "@oh-just-another/templates";
 import type { Editor } from "@oh-just-another/state";
 import {
   CommentsPanel,
@@ -51,32 +52,36 @@ const seedScene = (): Scene => {
     ...s,
     viewport: { ...s.viewport, gridSize: 20 },
   };
-  const rect: Shape = {
-    id: shapeId("seed-rect"),
-    layerId: DEFAULT_LAYER_ID,
-    type: "rectangle",
-    position: { x: 80, y: 80 },
-    rotation: 0,
-    scale: { x: 1, y: 1 },
-    order: orderBetween(null, null),
-    style: { fill: "#cfe1ff", stroke: "#1a40b0", strokeWidth: 2 },
-    width: 200,
-    height: 120,
-  };
-  const ellipse: Shape = {
-    id: shapeId("seed-ellipse"),
-    layerId: DEFAULT_LAYER_ID,
-    type: "ellipse",
-    position: { x: 360, y: 220 },
-    rotation: 0,
-    scale: { x: 1, y: 1 },
-    order: orderBetween(rect.order, null),
-    style: { fill: "#fff2a8", stroke: "#b18a00", strokeWidth: 2 },
-    width: 200,
-    height: 140,
-  };
-  ({ scene: s } = addShape(s, rect));
-  ({ scene: s } = addShape(s, ellipse));
+  // Fill the scene with a grid of all registered templates —
+  // convenient for manual testing. Walk by categories, so that
+  // same-type shapes are adjacent. Templates without `factory` are skipped.
+  const templates: readonly Template[] = defaultRegistry.list();
+  if (templates.length === 0) return s;
+
+  const cols = 4;
+  const cellW = 260;
+  const cellH = 220;
+  const margin = 40;
+  let prevOrder = orderBetween(null, null);
+  templates.forEach((tmpl, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const id = shapeId(`seed-${tmpl.id}-${i}`);
+    const ctx = {
+      id,
+      layerId: DEFAULT_LAYER_ID,
+      position: { x: margin + col * cellW, y: margin + row * cellH },
+      order: prevOrder,
+    };
+    try {
+      const shape = tmpl.factory(ctx);
+      const next = { ...shape, order: prevOrder };
+      ({ scene: s } = addShape(s, next));
+      prevOrder = orderBetween(prevOrder, null);
+    } catch (err) {
+      console.warn(`[demo] template ${tmpl.id} factory failed`, err);
+    }
+  });
   return s;
 };
 
