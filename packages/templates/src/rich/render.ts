@@ -282,10 +282,21 @@ export const installTemplateShapeRenderer = (): void => {
   // the template (e.g. growing a swim-lane).
   registerContainerResolver((shape) => {
     if (shape.type !== "template") return null;
-    const template = defaultRichRegistry.get((shape as SceneTemplateShape).templateId);
+    const tmpl = shape as SceneTemplateShape;
+    const template = defaultRichRegistry.get(tmpl.templateId);
     if (!template) return null;
-    const layouted = layoutTree(template.root, {
-      available: { width: (shape as SceneTemplateShape).width, height: (shape as SceneTemplateShape).height },
+    // IMPORTANT: same trick as renderTemplateShape — inject the shape's
+    // current width/height into the root layout, otherwise the root
+    // container collapses to its intrinsic size (~80×60 driven by the
+    // drop-zone's intrinsic) and the resolver returns a tiny box.
+    // The renderer paints the lane at full size, but the layout pass
+    // for the *resolver* has to be primed too.
+    const rootWithSize: TemplateNode = {
+      ...template.root,
+      layout: { ...(template.root.layout ?? {}), width: tmpl.width, height: tmpl.height },
+    };
+    const layouted = layoutTree(rootWithSize, {
+      available: { width: tmpl.width, height: tmpl.height },
     });
     const dropZone = extractDropZone(layouted);
     if (!dropZone) return null;

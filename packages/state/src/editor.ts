@@ -2257,10 +2257,17 @@ export class Editor {
 
   /**
    * Promote a hit shape to the topmost ancestor whose group we have NOT
-   * "entered" yet. With no entered group, this returns the outermost
-   * ancestor; with `_enteredGroup` set to an ancestor, the walk stops
-   * at the first child below that group — so the user is free to click
-   * children directly inside the entered group.
+   * "entered" yet. Only **`group`**-typed parents promote — containers
+   * (swim-lane, frame) intentionally let click hits land on their
+   * children. Group is an abstract wrapper that has no visual identity,
+   * so promoting up to it is the only way to select it; a container has
+   * its own body, header, etc. and clicking inside it should let users
+   * pick the actual child shape (rectangle, sticky, …) — same affordance
+   * as standard.
+   *
+   * Stops at the first non-`group` parent. With `_enteredGroup` set,
+   * the walk also stops just below that group so children can be edited
+   * directly.
    */
   private promoteToGroupRoot(shape: Shape): Shape {
     let current: Shape = shape;
@@ -2269,6 +2276,7 @@ export class Editor {
       if (this._enteredGroup === current.parentId) break;
       const parent = getShape(this._scene, current.parentId);
       if (!parent) break;
+      if (parent.type !== "group") break;
       current = parent;
       depth++;
     }

@@ -166,7 +166,7 @@ export const setupTemplates = (): void => {
       maxWidth: 1000,
       maxHeight: 700,
       noFlip: true,
-      defaults: { title: "Swim-lane", hint: "Drop a shape here" },
+      defaults: { title: "Swim-lane", hint: "Drop an element here" },
       root: {
        type: "container",
        id: "lane",

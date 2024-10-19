@@ -182,3 +182,6 @@
 
 ## 0.23.27
 - state: live drop-zone resolver + z-order fix + grid seed scene
+
+## 0.23.28
+- templates: drop-zone resolver injects shape size into root layout
