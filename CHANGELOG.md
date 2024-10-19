@@ -185,3 +185,6 @@
 
 ## 0.23.28
 - templates: drop-zone resolver injects shape size into root layout
+
+## 0.23.29
+- state: auto-grow container when child moves past its drop-zone edge

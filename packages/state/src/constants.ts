@@ -176,6 +176,17 @@ export const LARGE_SCENE_HIT_THRESHOLD = 2_000;
 export const LASSO_COVERAGE_THRESHOLD = 0.5;
 
 /**
+ * Minimum coverage ratio for keeping a child inside its parent
+ * container after a drag. If `intersection.area / childBounds.area`
+ * stays above this threshold, the editor extends the container's
+ * drop-zone (+ outer size) instead of dropping the parent link.
+ * Below it — the user clearly dragged the child out, so `parentId`
+ * is cleared. 0.5 = "if more than half of the element is still in
+ * the lane, grow the lane to keep it".
+ */
+export const CONTAINER_KEEP_THRESHOLD = 0.5;
+
+/**
  * Maximum local-pixel half-width of a brush vertex. Hosts compute the
  * actual width as `pressure × MAX_BRUSH_WIDTH`; `pressure` is the
  * `PointerEvent.pressure` field, which is normalised to [0, 1] on

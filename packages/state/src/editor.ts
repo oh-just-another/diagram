@@ -87,6 +87,7 @@ import {
   DEFAULT_BRUSH_WIDTH,
   DEFAULT_SNAP_THRESHOLD,
   EDGE_ENDPOINT_HANDLE_RADIUS,
+  CONTAINER_KEEP_THRESHOLD,
   EDGE_HIT_THRESHOLD,
   LARGE_SCENE_HIT_THRESHOLD,
   LASSO_COVERAGE_THRESHOLD,
@@ -2923,22 +2924,34 @@ export class Editor {
       return;
     }
 
-    if (!hover && shape.parentId) {
-      // Drag-out: still inside parent's zone? If the shape bounds
-      // completely exit the zone — remove parentId.
+    if (hover && hover.id === shape.parentId) {
+      // Drag-within: cursor still over the same parent. If the child's
+      // bounds overflow the drop-zone, grow the parent to fit.
+      this.maybeGrowContainer(shape.parentId, dragId);
+      return;
+    }
+
+    if (shape.parentId) {
+      // hover = null: cursor left the parent's zone, but the child
+      // itself may still be mostly inside. Coverage check decides:
+      //   ≥ CONTAINER_KEEP_THRESHOLD → keep parent + grow zone to fit.
+      //   < threshold → un-parent (drag-out).
       const parent = getShape(this._scene, shape.parentId);
       const parentZone = parent ? getDropZoneWorld(parent) : null;
       const childBounds = getShapeWorldBounds(shape);
-      if (!parentZone || !B.intersects(parentZone, childBounds)) {
-        const tx = this.beginOrAttachGesture();
-        const r = updateShape(this._scene, dragId, (s) => {
-          const next: Shape = { ...s };
-          delete (next as { parentId?: ShapeId }).parentId;
-          return next;
-        });
-        this._scene = r.scene;
-        tx.add(r.patch);
+      const coverage = parentZone ? coverageRatio(childBounds, parentZone) : 0;
+      if (parentZone && coverage >= CONTAINER_KEEP_THRESHOLD) {
+        this.maybeGrowContainer(shape.parentId, dragId);
+        return;
       }
+      const tx = this.beginOrAttachGesture();
+      const r = updateShape(this._scene, dragId, (s) => {
+        const next: Shape = { ...s };
+        delete (next as { parentId?: ShapeId }).parentId;
+        return next;
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
     }
   }
 
@@ -3121,6 +3134,25 @@ export class Editor {
 }
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
+
+/**
+ * Fraction of `child`'s area that lies inside `zone`. Returns 0 when
+ * either bbox is degenerate or they don't intersect. Used by the
+ * container drop handler to decide between "child still belongs to
+ * the lane" and "user dragged it out".
+ */
+const coverageRatio = (child: Bounds, zone: Bounds): number => {
+  const area = child.width * child.height;
+  if (area <= 0) return 0;
+  const ix = Math.max(child.x, zone.x);
+  const iy = Math.max(child.y, zone.y);
+  const ix2 = Math.min(child.x + child.width, zone.x + zone.width);
+  const iy2 = Math.min(child.y + child.height, zone.y + zone.height);
+  const iw = ix2 - ix;
+  const ih = iy2 - iy;
+  if (iw <= 0 || ih <= 0) return 0;
+  return (iw * ih) / area;
+};
 
 /**
  * True when the shape's geometry is parametrised by `width` / `height`
