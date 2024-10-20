@@ -223,6 +223,7 @@ export const App = () => {
 
       <DiagramRoot initialScene={initialScene} initialMode="select" onReady={setEditor}>
         {isCollab ? null : <PersistSubscriber />}
+        <TemplateActionListener />
         <main
           data-panel-stack="main"
           style={{ display: "flex", flex: 1, minHeight: 0, background: "var(--bg)" }}
@@ -453,6 +454,49 @@ const PersistSubscriber = () => {
     };
     persist();
     return editor.subscribe(persist);
+  }, [editor]);
+  return null;
+};
+
+/**
+ * Subscribe to template button taps so the user sees something happen
+ * when they click the Action button inside Task Card — both standalone
+ * and nested inside Swim-lane. Without a subscriber the button click
+ * fires but no host action runs, which appears as "not working".
+ */
+const TemplateActionListener = () => {
+  const editor = useDiagramOptional();
+  useEffect(() => {
+    if (!editor) return undefined;
+    return editor.onTemplateTap((emit) => {
+      const shape = editor.scene.shapes.get(emit.shapeId);
+      const parent = shape?.parentId ? editor.scene.shapes.get(shape.parentId) : null;
+      const where = parent ? `nested in ${parent.id}` : "standalone";
+      console.info(`[demo] template tap → ${emit.action} on ${emit.shapeId} (${where})`);
+      // Tiny ephemeral toast so the user has visual confirmation.
+      const toast = document.createElement("div");
+      toast.textContent = `▶ ${emit.action}`;
+      Object.assign(toast.style, {
+        position: "fixed",
+        bottom: "24px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        background: "#1a73e8",
+        color: "#fff",
+        padding: "8px 14px",
+        borderRadius: "6px",
+        fontSize: "13px",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
+        zIndex: "9999",
+        pointerEvents: "none",
+        transition: "opacity 250ms ease",
+      } as CSSStyleDeclaration);
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+      }, 1200);
+      setTimeout(() => toast.remove(), 1500);
+    });
   }, [editor]);
   return null;
 };

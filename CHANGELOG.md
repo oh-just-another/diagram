@@ -188,3 +188,6 @@
 
 ## 0.23.29
 - state: auto-grow container when child moves past its drop-zone edge
+
+## 0.23.30
+- demo: wire Task-card button Right toast so taps are visible
