@@ -191,3 +191,6 @@
 
 ## 0.23.30
 - demo: wire Task-card button Right toast so taps are visible
+
+## 0.23.31
+- react-ui: stacked palette sections, no tab switching

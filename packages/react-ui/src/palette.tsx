@@ -14,6 +14,10 @@ import { PALETTE_ITEM_SIZE, PALETTE_WIDTH } from "./constants.js";
  * Draggable shape palette. Defaults to the global `defaultRegistry`; pass a
  * custom one if your host needs isolated registries (e.g. plugin sandbox).
  *
+ * Templates are grouped into collapsible sections by `Category` — no tab
+ * switching, so the user sees everything at once and scrolls vertically.
+ * Each section header doubles as a collapse toggle.
+ *
  * Drop semantics: an HTML5 drag is started with a `templateId` payload; the
  * canvas (or any other drop-target) reads it and calls
  * `editor.addShape(template.factory(...))`. Most hosts wire that in
@@ -21,9 +25,10 @@ import { PALETTE_ITEM_SIZE, PALETTE_WIDTH } from "./constants.js";
  */
 export interface PaletteProps {
   readonly registry?: TemplateRegistry;
-  /** Order of category tabs; only those present in the registry render. */
+  /** Order of category sections; only those present in the registry render. */
   readonly categories?: readonly Category[];
-  readonly initialCategory?: Category;
+  /** Categories that start collapsed. Defaults to none. */
+  readonly collapsedByDefault?: readonly Category[];
   readonly style?: CSSProperties;
   readonly className?: string;
 }
@@ -33,20 +38,31 @@ const DEFAULT_CATEGORIES: readonly Category[] = ["basic", "flowchart", "custom",
 export const Palette = ({
   registry = defaultRegistry,
   categories = DEFAULT_CATEGORIES,
-  initialCategory,
+  collapsedByDefault = [],
   style,
   className,
 }: PaletteProps) => {
   const present = useMemo(() => new Set(registry.categories()), [registry]);
-  const visibleTabs = useMemo(
+  const visibleCategories = useMemo(
     () => categories.filter((c) => present.has(c)),
     [categories, present],
   );
+  const sections = useMemo(
+    () => visibleCategories.map((cat) => ({ category: cat, items: registry.byCategory(cat) })),
+    [registry, visibleCategories],
+  );
 
-  const fallback = visibleTabs[0] ?? "basic";
-  const [active, setActive] = useState<Category>(initialCategory ?? fallback);
-
-  const items = useMemo(() => registry.byCategory(active), [registry, active]);
+  const [collapsed, setCollapsed] = useState<ReadonlySet<Category>>(
+    () => new Set(collapsedByDefault),
+  );
+  const toggle = (cat: Category): void => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
 
   return (
     <aside
@@ -77,49 +93,84 @@ export const Palette = ({
 
       <div
         style={{
-          display: "flex",
-          gap: 4,
-          padding: "6px 8px",
-          borderBottom: "1px solid #2a2a2a",
-          flexWrap: "wrap",
-        }}
-      >
-        {visibleTabs.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setActive(cat)}
-            style={{
-              background: cat === active ? "#1a3d6e" : "transparent",
-              color: cat === active ? "#fff" : "#888",
-              border: `1px solid ${cat === active ? "#1a73e8" : "#2a2a2a"}`,
-              borderRadius: 3,
-              padding: "3px 8px",
-              fontSize: 11,
-              cursor: "pointer",
-            }}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      <div
-        style={{
           flex: "1 1 auto",
           overflowY: "auto",
-          padding: 8,
-          display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: 6,
-          alignContent: "start",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        {items.map((template) => (
-          <PaletteItem key={template.id} template={template} />
+        {sections.map(({ category, items }) => (
+          <CategorySection
+            key={category}
+            category={category}
+            items={items}
+            collapsed={collapsed.has(category)}
+            onToggle={() => toggle(category)}
+          />
         ))}
       </div>
     </aside>
+  );
+};
+
+const CategorySection = ({
+  category,
+  items,
+  collapsed,
+  onToggle,
+}: {
+  readonly category: Category;
+  readonly items: readonly Template[];
+  readonly collapsed: boolean;
+  readonly onToggle: () => void;
+}) => {
+  if (items.length === 0) return null;
+  return (
+    <section>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={!collapsed}
+        style={{
+          width: "100%",
+          background: "transparent",
+          color: "#888",
+          border: "none",
+          borderBottom: "1px solid #2a2a2a",
+          padding: "8px 12px",
+          fontSize: 11,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          textAlign: "left",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          font: "inherit",
+          fontWeight: 600,
+        }}
+      >
+        <span>{category}</span>
+        <span style={{ fontSize: 9, opacity: 0.6 }}>{collapsed ? "▶" : "▼"}</span>
+      </button>
+      {collapsed ? null : (
+        <div
+          style={{
+            padding: 8,
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: 6,
+            alignContent: "start",
+            borderBottom: "1px solid #2a2a2a",
+          }}
+        >
+          {items.map((template) => (
+            <PaletteItem key={template.id} template={template} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 };
 
