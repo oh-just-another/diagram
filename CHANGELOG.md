@@ -194,3 +194,6 @@
 
 ## 0.23.31
 - react-ui: stacked palette sections, no tab switching
+
+## 0.23.32
+- state: container resize floors at children's union AABB

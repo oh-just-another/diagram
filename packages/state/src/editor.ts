@@ -2629,7 +2629,12 @@ export class Editor {
     if (!hasWidthHeight(shape)) return;
 
     const raw = resizeFromHandle(originalBounds, handle, delta);
-    const constrained = applyResizeConstraints(originalBounds, raw, handle, shape);
+    const intermediate = applyResizeConstraints(originalBounds, raw, handle, shape);
+    // If the shape is a container, never let the drop-zone shrink past
+    // the union AABB of its children. Anchored to the opposite edge
+    // so the dragged handle still controls direction — the shape only
+    // refuses to go smaller than the children require.
+    const constrained = this.clampContainerToChildren(shape, intermediate, handle);
 
     // `constrained` is in world units (originalBounds was world AABB).
     // For shapes with a width/height field, persist that directly and
@@ -3014,6 +3019,85 @@ export class Editor {
       this._scene = r.scene;
       tx.add(r.patch);
     }
+  }
+
+  /**
+   * Floor the proposed container bounds to whatever is required to keep
+   * every child fully inside the drop-zone. The expansion is applied at
+   * the edges touched by `handle`, so the dragged corner / side keeps
+   * controlling direction — the shape just refuses to go smaller than
+   * the children mandate.
+   *
+   * Works for any shape with a `ContainerSpec` (template-driven or
+   * static metadata). Returns `raw` unchanged when the shape has no
+   * children or isn't a container.
+   */
+  private clampContainerToChildren(shape: Shape, raw: Bounds, handle: HandleId): Bounds {
+    if (!isContainer(shape) || !hasWidthHeight(shape)) return raw;
+    const childrenBox = this.childrenWorldUnion(shape.id);
+    if (!childrenBox) return raw;
+    // Compose a hypothetical container with the proposed bounds, then
+    // ask the resolver where the drop-zone lands at that size. Chrome
+    // (header / margin / padding) stays constant across resize, so a
+    // single-pass expansion is sound for typical templates.
+    const hypothetical = {
+      ...shape,
+      position: { x: raw.x, y: raw.y },
+      width: raw.width,
+      height: raw.height,
+    } as Shape;
+    const dropZoneWorld = getDropZoneWorld(hypothetical);
+    if (!dropZoneWorld) return raw;
+
+    let { x, y, width, height } = raw;
+    const dx0 = dropZoneWorld.x;
+    const dy0 = dropZoneWorld.y;
+    const dx1 = dropZoneWorld.x + dropZoneWorld.width;
+    const dy1 = dropZoneWorld.y + dropZoneWorld.height;
+    const cx0 = childrenBox.x;
+    const cy0 = childrenBox.y;
+    const cx1 = childrenBox.x + childrenBox.width;
+    const cy1 = childrenBox.y + childrenBox.height;
+
+    // East side dragged: extend width rightward to cover children.
+    if (handle.includes("e") && dx1 < cx1) {
+      width += cx1 - dx1;
+    }
+    // South side dragged: extend height downward.
+    if (handle.includes("s") && dy1 < cy1) {
+      height += cy1 - dy1;
+    }
+    // West side dragged: position can't move past child's left edge.
+    // Shift x back and re-extend width to keep the right edge anchored.
+    if (handle.includes("w") && dx0 > cx0) {
+      const shift = dx0 - cx0;
+      x -= shift;
+      width += shift;
+    }
+    // North side dragged: same idea on the vertical axis.
+    if (handle.includes("n") && dy0 > cy0) {
+      const shift = dy0 - cy0;
+      y -= shift;
+      height += shift;
+    }
+    return { x, y, width, height };
+  }
+
+  /**
+   * Union of every direct child's world-space AABB. Returns `null` when
+   * the container has no children. Recursive descent isn't needed — we
+   * only constrain to direct children because container resize doesn't
+   * cascade into nested containers (the inner one self-constrains via
+   * its own `clampContainerToChildren` call).
+   */
+  private childrenWorldUnion(containerId: ShapeId): Bounds | null {
+    let acc: Bounds | null = null;
+    for (const s of this._scene.shapes.values()) {
+      if (s.parentId !== containerId) continue;
+      const b = getShapeWorldBounds(s);
+      acc = acc ? B.union(acc, b) : b;
+    }
+    return acc;
   }
 
   /**
