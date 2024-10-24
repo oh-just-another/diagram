@@ -769,6 +769,56 @@ export class Editor {
   }
 
   /**
+   * Drag-to-place flow for palette templates. Adds the shape to the
+   * scene immediately so the user sees it dragging under the cursor,
+   * but defers the history entry until `commit()` is called. `update`
+   * re-positions without writing per-move patches; `cancel` removes
+   * the shape entirely and leaves history intact (no undo entry).
+   *
+   * Typical wiring: HTML5 dragenter starts the placement, dragover
+   * updates, drop commits, dragleave / window keydown(Escape) cancel.
+   */
+  beginPlacement(shape: Shape): {
+    update: (worldCenter: Vec2) => void;
+    commit: () => void;
+    cancel: () => void;
+  } {
+    const tx = this._history.transaction();
+    const initialResult = addShape(this._scene, shape);
+    this._scene = initialResult.scene;
+    this._selection = Selection.single(shape.id);
+    this.notify();
+    let current = shape;
+    const half = getShapeWorldBounds(shape);
+    const offsetX = half.width / 2;
+    const offsetY = half.height / 2;
+    return {
+      update: (worldCenter) => {
+        const next = {
+          ...current,
+          position: { x: worldCenter.x - offsetX, y: worldCenter.y - offsetY },
+        } as Shape;
+        // Apply directly — we'll record a single add-patch on commit.
+        const patch: Patch = { kind: "shape", id: shape.id, before: current, after: next };
+        this._scene = apply(this._scene, patch);
+        current = next;
+        this.notify();
+      },
+      commit: () => {
+        tx.add({ kind: "shape", id: shape.id, before: null, after: current });
+        tx.commit();
+      },
+      cancel: () => {
+        const removeRes = removeShape(this._scene, shape.id);
+        this._scene = removeRes.scene;
+        tx.cancel();
+        this._selection = Selection.EMPTY;
+        this.notify();
+      },
+    };
+  }
+
+  /**
    * Delete every currently-selected shape (or the currently-selected
    * edge). No-op when nothing is selected. Single undo step regardless
    * of how many shapes were removed.

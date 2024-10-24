@@ -197,3 +197,6 @@
 
 ## 0.23.32
 - state: container resize floors at children's union AABB
+
+## 0.23.33
+- state+react-ui: drag-from-palette spawns live preview centred at cursor

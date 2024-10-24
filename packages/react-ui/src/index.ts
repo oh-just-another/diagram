@@ -47,7 +47,15 @@ export {
   type ToolbarProps,
   type ZoomButtonProps,
 } from "./toolbar.js";
-export { Palette, usePaletteDropHandler, type PaletteProps } from "./palette.js";
+export {
+  Palette,
+  usePaletteDropHandler,
+  usePalettePlacement,
+  usePaletteDrag,
+  getActivePaletteDrag,
+  subscribePaletteDrag,
+  type PaletteProps,
+} from "./palette.js";
 export { PropertyPanel, type PropertyPanelProps } from "./property-panel.js";
 export {
   ContextMenu,

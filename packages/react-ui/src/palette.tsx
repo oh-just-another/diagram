@@ -1,4 +1,11 @@
-import { useMemo, useState, type CSSProperties, type DragEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+} from "react";
 import { DEFAULT_LAYER_ID, orderForTop } from "@oh-just-another/scene";
 import { shapeId } from "@oh-just-another/types";
 import {
@@ -174,10 +181,44 @@ const CategorySection = ({
   );
 };
 
+// Module-level state — the canvas needs to know which template is
+// being dragged so it can spin up a live placement preview. HTML5 DnD
+// hides dataTransfer.getData() during dragover (security), so we use a
+// pub/sub for the active drag instead.
+let activeDrag: Template | null = null;
+const dragListeners = new Set<() => void>();
+const setActiveDrag = (tmpl: Template | null): void => {
+  if (activeDrag === tmpl) return;
+  activeDrag = tmpl;
+  for (const fn of dragListeners) fn();
+};
+
+/** Currently-dragged palette template, or `null` when nothing is in flight. */
+export const getActivePaletteDrag = (): Template | null => activeDrag;
+
+/** Subscribe to active-drag changes. Returns unsubscribe. */
+export const subscribePaletteDrag = (fn: () => void): (() => void) => {
+  dragListeners.add(fn);
+  return () => {
+    dragListeners.delete(fn);
+  };
+};
+
+/** Hook variant of `subscribePaletteDrag` — returns the current drag template. */
+export const usePaletteDrag = (): Template | null => {
+  const [tmpl, setTmpl] = useState<Template | null>(activeDrag);
+  useEffect(() => subscribePaletteDrag(() => setTmpl(activeDrag)), []);
+  return tmpl;
+};
+
 const PaletteItem = ({ template }: { readonly template: Template }) => {
   const onDragStart = (ev: DragEvent<HTMLDivElement>) => {
     ev.dataTransfer.setData("application/x-template-id", template.id);
     ev.dataTransfer.effectAllowed = "copy";
+    setActiveDrag(template);
+  };
+  const onDragEnd = (): void => {
+    setActiveDrag(null);
   };
 
   return (
@@ -186,6 +227,7 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
       draggable
       title={template.name}
       onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       style={{
         background: "#1f1f1f",
         border: "1px solid #2f2f2f",
@@ -216,9 +258,123 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
 };
 
 /**
+ * Drag-to-place handlers for a canvas element. Wires the full preview
+ * UX: as soon as the cursor enters the canvas with a palette drag in
+ * flight, the template's default shape appears centred under the
+ * cursor; dragover updates the position; drop commits as a single
+ * history entry; dragleave / Escape cancels (no history).
+ *
+ * Returns props that should spread onto the canvas wrapper element:
+ *
+ * ```tsx
+ * const placement = usePalettePlacement();
+ * <section {...placement}>...</section>
+ * ```
+ */
+export const usePalettePlacement = () => {
+  const editor = useDiagramOptional();
+  const placementRef = useRef<{
+    update: (worldCenter: { x: number; y: number }) => void;
+    commit: () => void;
+    cancel: () => void;
+  } | null>(null);
+
+  // Escape cancels — only listens when a placement is active.
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent): void => {
+      if (ev.key !== "Escape" || !placementRef.current) return;
+      placementRef.current.cancel();
+      placementRef.current = null;
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // If the drag ends outside any canvas — clean up.
+  useEffect(
+    () =>
+      subscribePaletteDrag(() => {
+        if (activeDrag === null && placementRef.current) {
+          placementRef.current.cancel();
+          placementRef.current = null;
+        }
+      }),
+    [],
+  );
+
+  const ensurePlacement = (ev: DragEvent<HTMLElement>): boolean => {
+    if (placementRef.current || !editor || !activeDrag) return false;
+    const template = activeDrag;
+    const rect = ev.currentTarget.getBoundingClientRect();
+    const screenPoint = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+    const worldPoint = editor.screenToWorld(screenPoint);
+    const id = shapeId(
+      `shape-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    );
+    const shape = template.factory({
+      id,
+      layerId: DEFAULT_LAYER_ID,
+      position: worldPoint, // temporary; placement.update will recenter
+      order: orderForTop(
+        [...editor.scene.shapes.values()]
+          .filter((s) => s.layerId === DEFAULT_LAYER_ID)
+          .map((s) => s.order),
+      ),
+    });
+    placementRef.current = editor.beginPlacement(shape);
+    placementRef.current.update(worldPoint);
+    return true;
+  };
+
+  const cursorWorld = (ev: DragEvent<HTMLElement>): { x: number; y: number } | null => {
+    if (!editor) return null;
+    const rect = ev.currentTarget.getBoundingClientRect();
+    return editor.screenToWorld({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+  };
+
+  return {
+    onDragEnter: (ev: DragEvent<HTMLElement>): void => {
+      if (!ev.dataTransfer.types.includes("application/x-template-id")) return;
+      ev.preventDefault();
+      ensurePlacement(ev);
+    },
+    onDragOver: (ev: DragEvent<HTMLElement>): void => {
+      if (!ev.dataTransfer.types.includes("application/x-template-id")) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = "copy";
+      if (!placementRef.current) {
+        ensurePlacement(ev);
+      }
+      const world = cursorWorld(ev);
+      if (world && placementRef.current) placementRef.current.update(world);
+    },
+    onDragLeave: (ev: DragEvent<HTMLElement>): void => {
+      // dragleave fires for every child element too — only act when the
+      // pointer truly left the current target.
+      if (ev.currentTarget.contains(ev.relatedTarget as Node | null)) return;
+      if (placementRef.current) {
+        placementRef.current.cancel();
+        placementRef.current = null;
+      }
+    },
+    onDrop: (ev: DragEvent<HTMLElement>): void => {
+      ev.preventDefault();
+      if (placementRef.current) {
+        const world = cursorWorld(ev);
+        if (world) placementRef.current.update(world);
+        placementRef.current.commit();
+        placementRef.current = null;
+      }
+    },
+  };
+};
+
+/**
  * Convenience wrapper to drop a palette item onto a host element. Hosts that
  * are not using `<DiagramCanvas>` can wire this themselves; the bundled
  * canvas component installs an equivalent handler automatically.
+ *
+ * Drops only — no live preview (use `usePalettePlacement` for that).
  */
 export const usePaletteDropHandler = () => {
   const editor = useDiagramOptional();

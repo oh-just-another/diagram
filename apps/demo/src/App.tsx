@@ -25,7 +25,7 @@ import {
   TextEditorOverlay,
   Toolbar,
   useDiagramOptional,
-  usePaletteDropHandler,
+  usePalettePlacement,
   VersionPanel,
   type ToolbarItem,
 } from "@oh-just-another/react-ui";
@@ -282,19 +282,10 @@ const canvasWrapperStyle: React.CSSProperties = {
 };
 
 const CanvasArea = () => {
-  const onDrop = usePaletteDropHandler();
+  const placement = usePalettePlacement();
   return (
     <section
-      onDragEnter={(ev) => {
-        if (ev.dataTransfer.types.includes("application/x-template-id")) ev.preventDefault();
-      }}
-      onDragOver={(ev) => {
-        if (ev.dataTransfer.types.includes("application/x-template-id")) {
-          ev.preventDefault();
-          ev.dataTransfer.dropEffect = "copy";
-        }
-      }}
-      onDrop={onDrop}
+      {...placement}
       style={{
         flex: 1,
         position: "relative",
