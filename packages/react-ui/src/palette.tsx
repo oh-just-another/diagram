@@ -211,10 +211,27 @@ export const usePaletteDrag = (): Template | null => {
   return tmpl;
 };
 
+// 1×1 transparent PNG, base64-encoded. Used as a fake drag image so
+// the browser doesn't paint its default ghost of the palette item —
+// the actual shape rendered on the canvas via `beginPlacement` is the
+// only thing the user should see following the cursor.
+let emptyDragImage: HTMLImageElement | null = null;
+const getEmptyDragImage = (): HTMLImageElement => {
+  if (emptyDragImage) return emptyDragImage;
+  const img = new Image();
+  img.src =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+  emptyDragImage = img;
+  return img;
+};
+
 const PaletteItem = ({ template }: { readonly template: Template }) => {
   const onDragStart = (ev: DragEvent<HTMLDivElement>) => {
     ev.dataTransfer.setData("application/x-template-id", template.id);
     ev.dataTransfer.effectAllowed = "copy";
+    // Hide the browser's default ghost. The canvas renders the real
+    // shape via beginPlacement.
+    ev.dataTransfer.setDragImage(getEmptyDragImage(), 0, 0);
     setActiveDrag(template);
   };
   const onDragEnd = (): void => {

@@ -200,3 +200,6 @@
 
 ## 0.23.33
 - state+react-ui: drag-from-palette spawns live preview centred at cursor
+
+## 0.23.34
+- react-ui: hide HTML5 drag ghost during palette drag
