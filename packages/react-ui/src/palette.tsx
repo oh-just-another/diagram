@@ -216,19 +216,26 @@ export const usePaletteDrag = (): Template | null => {
 // `beginPlacement` is the only thing the user should see following
 // the cursor.
 //
-// An `<img>` with a base64 src loads asynchronously; if the first
-// drag fires before the image is decoded, Chrome shows its
-// broken-image placeholder (a globe glyph) for a frame. A 1×1
-// transparent canvas avoids that — canvases are ready synchronously.
-let emptyDragImage: HTMLCanvasElement | null = null;
-const getEmptyDragImage = (): HTMLCanvasElement | null => {
+// Two earlier attempts failed:
+//   1. <img> with base64 src — loads async, Chrome falls back to its
+//      broken-image globe glyph for the first drag.
+//   2. detached <canvas> — Chrome ignores setDragImage when the
+//      element isn't in the DOM, falling back to a generic drag
+//      affordance icon that animates in from viewport (0,0).
+//
+// A 1×1 transparent <div> appended to body works reliably: visible
+// to setDragImage (so no fallback), but truly invisible to the user.
+let emptyDragImage: HTMLDivElement | null = null;
+const getEmptyDragImage = (): HTMLDivElement | null => {
   if (typeof document === "undefined") return null;
-  if (emptyDragImage) return emptyDragImage;
-  const c = document.createElement("canvas");
-  c.width = 1;
-  c.height = 1;
-  emptyDragImage = c;
-  return c;
+  if (emptyDragImage && document.body.contains(emptyDragImage)) return emptyDragImage;
+  const div = document.createElement("div");
+  div.setAttribute("aria-hidden", "true");
+  div.style.cssText =
+    "position:fixed;top:0;left:0;width:1px;height:1px;background:transparent;pointer-events:none;opacity:0;z-index:-9999";
+  document.body.appendChild(div);
+  emptyDragImage = div;
+  return div;
 };
 
 const PaletteItem = ({ template }: { readonly template: Template }) => {

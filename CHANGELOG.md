@@ -206,3 +206,6 @@
 
 ## 0.23.35
 - react-ui: 1×1 canvas as drag-image ghost (was broken-img globe)
+
+## 0.23.36
+- react-ui: drag ghost = transparent div in DOM (was detached canvas)
