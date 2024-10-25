@@ -211,18 +211,24 @@ export const usePaletteDrag = (): Template | null => {
   return tmpl;
 };
 
-// 1×1 transparent PNG, base64-encoded. Used as a fake drag image so
-// the browser doesn't paint its default ghost of the palette item —
-// the actual shape rendered on the canvas via `beginPlacement` is the
-// only thing the user should see following the cursor.
-let emptyDragImage: HTMLImageElement | null = null;
-const getEmptyDragImage = (): HTMLImageElement => {
+// Fake drag image so the browser doesn't paint its default ghost of
+// the palette item — the actual shape rendered on canvas via
+// `beginPlacement` is the only thing the user should see following
+// the cursor.
+//
+// An `<img>` with a base64 src loads asynchronously; if the first
+// drag fires before the image is decoded, Chrome shows its
+// broken-image placeholder (a globe glyph) for a frame. A 1×1
+// transparent canvas avoids that — canvases are ready synchronously.
+let emptyDragImage: HTMLCanvasElement | null = null;
+const getEmptyDragImage = (): HTMLCanvasElement | null => {
+  if (typeof document === "undefined") return null;
   if (emptyDragImage) return emptyDragImage;
-  const img = new Image();
-  img.src =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-  emptyDragImage = img;
-  return img;
+  const c = document.createElement("canvas");
+  c.width = 1;
+  c.height = 1;
+  emptyDragImage = c;
+  return c;
 };
 
 const PaletteItem = ({ template }: { readonly template: Template }) => {
@@ -231,7 +237,8 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
     ev.dataTransfer.effectAllowed = "copy";
     // Hide the browser's default ghost. The canvas renders the real
     // shape via beginPlacement.
-    ev.dataTransfer.setDragImage(getEmptyDragImage(), 0, 0);
+    const ghost = getEmptyDragImage();
+    if (ghost) ev.dataTransfer.setDragImage(ghost, 0, 0);
     setActiveDrag(template);
   };
   const onDragEnd = (): void => {

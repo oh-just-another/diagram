@@ -203,3 +203,6 @@
 
 ## 0.23.34
 - react-ui: hide HTML5 drag ghost during palette drag
+
+## 0.23.35
+- react-ui: 1×1 canvas as drag-image ghost (was broken-img globe)
