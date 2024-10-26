@@ -216,23 +216,21 @@ export const usePaletteDrag = (): Template | null => {
 // `beginPlacement` is the only thing the user should see following
 // the cursor.
 //
-// Two earlier attempts failed:
-//   1. <img> with base64 src — loads async, Chrome falls back to its
-//      broken-image globe glyph for the first drag.
-//   2. detached <canvas> — Chrome ignores setDragImage when the
-//      element isn't in the DOM, falling back to a generic drag
-//      affordance icon that animates in from viewport (0,0).
-//
-// A 1×1 transparent <div> appended to body works reliably: visible
-// to setDragImage (so no fallback), but truly invisible to the user.
+// An in-DOM div with a single near-transparent pixel of content
+// (background-color: rgba(0,0,0,0.01)) and a real width/height is
+// accepted by browsers as a valid drag image while rendering
+// effectively nothing.
 let emptyDragImage: HTMLDivElement | null = null;
 const getEmptyDragImage = (): HTMLDivElement | null => {
   if (typeof document === "undefined") return null;
   if (emptyDragImage && document.body.contains(emptyDragImage)) return emptyDragImage;
   const div = document.createElement("div");
   div.setAttribute("aria-hidden", "true");
+  // Off-screen position keeps it out of layout. 1×1 size and a barely-
+  // visible background satisfy the browser's "non-trivial drag image"
+  // check without showing anything to the user.
   div.style.cssText =
-    "position:fixed;top:0;left:0;width:1px;height:1px;background:transparent;pointer-events:none;opacity:0;z-index:-9999";
+    "position:fixed;top:-1000px;left:-1000px;width:1px;height:1px;background:rgba(0,0,0,0.01)";
   document.body.appendChild(div);
   emptyDragImage = div;
   return div;

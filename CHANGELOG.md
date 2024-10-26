@@ -209,3 +209,6 @@
 
 ## 0.23.36
 - react-ui: drag ghost = transparent div in DOM (was detached canvas)
+
+## 0.23.37
+- react-ui: drag ghost must have non-zero area + visible bg
