@@ -4,11 +4,12 @@
  * `draw-ellipse` start a rubber-band shape-creation gesture; `draw-edge`
  * starts an edge from the shape under the pointer (or from a free point on
  * empty canvas) and lands it on the shape (or free point) under the cursor
- * at release.
+ * at release. `brush` records a pressure-sensitive freehand stroke from
+ * pointer-down to pointer-up.
  *
  * Pan and zoom are not separate modes here — they are gestures (middle-mouse
  * drag, wheel) available in any mode.
  */
-export type Mode = "select" | "draw-rect" | "draw-ellipse" | "draw-edge";
+export type Mode = "select" | "draw-rect" | "draw-ellipse" | "draw-edge" | "brush";
 
 export const DEFAULT_MODE: Mode = "select";

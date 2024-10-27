@@ -42,6 +42,7 @@ export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "mode", mode: "draw-rect", label: "Rectangle" },
   { kind: "mode", mode: "draw-ellipse", label: "Ellipse" },
   { kind: "mode", mode: "draw-edge", label: "Edge" },
+  { kind: "mode", mode: "brush", label: "Brush" },
   { kind: "divider" },
   { kind: "undo", label: "Undo" },
   { kind: "redo", label: "Redo" },

@@ -151,6 +151,17 @@ export const renderOverlay = (
      */
     containerDropZone?: Bounds;
     /**
+     * Live brush stroke preview during a `brush`-mode drag. Drawn as a
+     * variable-width fill so the user sees pressure modulation as they
+     * stroke. `origin` is in world coords; `points` are local-to-origin
+     * (matches the BrushShape memory layout).
+     */
+    brushPreview?: {
+      readonly origin: { readonly x: number; readonly y: number };
+      readonly points: readonly { x: number; y: number; width: number }[];
+      readonly fill: string;
+    };
+    /**
      * Remote peer cursors. Each one renders as a small coloured arrow
      * with a name chip in the peer's colour, anchored at the world-
      * space position. The local cursor never appears here.
@@ -250,6 +261,52 @@ export const renderOverlay = (
         drawPeerSelection(target, sb, peer.color);
       }
     }
+  }
+
+  // 6.5. Live brush stroke preview — quad-strip with interpolated
+  //      widths, same render path as the committed BrushShape. Runs
+  //      in world coords so the stroke stays anchored to the cursor
+  //      as the user zooms / pans mid-stroke.
+  if (options.brushPreview && options.brushPreview.points.length > 0) {
+    const bp = options.brushPreview;
+    target.save();
+    target.setTransform(w2s);
+    target.setFill(bp.fill);
+    target.setStroke(null);
+    const pts = bp.points;
+    const ox = bp.origin.x;
+    const oy = bp.origin.y;
+    if (pts.length === 1) {
+      const p = pts[0]!;
+      target.beginPath();
+      target.ellipse(ox + p.x, oy + p.y, p.width, p.width);
+      target.fill();
+    } else {
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i]!;
+        const b = pts[i + 1]!;
+        const ax = ox + a.x;
+        const ay = oy + a.y;
+        const bx = ox + b.x;
+        const by = oy + b.y;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len;
+        const ny = dx / len;
+        target.beginPath();
+        target.moveTo(ax + nx * a.width, ay + ny * a.width);
+        target.lineTo(bx + nx * b.width, by + ny * b.width);
+        target.lineTo(bx - nx * b.width, by - ny * b.width);
+        target.lineTo(ax - nx * a.width, ay - ny * a.width);
+        target.closePath();
+        target.fill();
+        target.beginPath();
+        target.ellipse(bx, by, b.width, b.width);
+        target.fill();
+      }
+    }
+    target.restore();
   }
 
   // 7.0. Container drop-zone highlight — drawn under selection chrome

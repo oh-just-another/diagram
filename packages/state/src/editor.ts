@@ -1864,6 +1864,15 @@ export class Editor {
 
       const worldPoint = this.screenToWorld(data.point);
 
+      // Brush mode owns the gesture end-to-end — no machine, no
+      // interactive testers, no auto-select. Start a stroke at the
+      // press point with the device's pressure; onMove extends; onUp
+      // commits as a single BrushShape patch.
+      if (this.mode === "brush") {
+        this.beginBrushStroke(worldPoint, ev.pressure);
+        return;
+      }
+
       // Annotation pin drag — when the press lands on a pin, take over
       // the gesture entirely (skip machine, skip interactive testers).
       // Pin position updates per pointermove; commits on pointerup.
@@ -1995,6 +2004,13 @@ export class Editor {
       // sensible drop target.
       this.lastPointerWorld = worldPoint;
 
+      // Brush stroke in progress — append a vertex and skip everything
+      // else (machine, container hover, hovered-edge target).
+      if (this.brushStroke) {
+        this.extendBrushStroke(worldPoint, ev.pressure);
+        return;
+      }
+
       // Container drop preview: while dragging a single shape, find the
       // topmost container under cursor (excluding the dragged shape and
       // its descendants) and stash the drop-zone for the overlay.
@@ -2099,6 +2115,12 @@ export class Editor {
       // Long-press loses its chance the moment the user releases.
       this.cancelLongPress();
 
+      // Commit brush stroke if one is in progress.
+      if (this.brushStroke) {
+        this.commitBrushStroke();
+        return;
+      }
+
       // Annotation drag commit — issue a single patch that goes from
       // origin position to final position so history has one undo step.
       if (this.annotationDrag) {
@@ -2155,6 +2177,10 @@ export class Editor {
         return;
       }
       this.cancelLongPress();
+      if (this.brushStroke) {
+        this.cancelBrushStroke();
+        return;
+      }
       // Annotation drag — revert to origin on cancel.
       if (this.annotationDrag) {
         const drag = this.annotationDrag;
@@ -3312,6 +3338,13 @@ export class Editor {
     }
     if (this.containerHover) {
       overlayOpts.containerDropZone = this.containerHover.dropZone;
+    }
+    if (this.brushStroke) {
+      overlayOpts.brushPreview = {
+        origin: this.brushStroke.origin,
+        points: this.brushStroke.points,
+        fill: "#222",
+      };
     }
     if (this._selectedEdge) {
       const edge = getEdge(this._scene, this._selectedEdge);

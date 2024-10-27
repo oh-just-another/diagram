@@ -215,3 +215,6 @@
 
 ## 0.23.38
 - state: compactLayerZOrder — rebalance fractional indices on demand
+
+## 0.23.39
+- state: wire brush mode into pointer flow + live preview overlay
