@@ -5,7 +5,7 @@ import {
   type LayerId,
   type ShapeId,
 } from "@oh-just-another/types";
-import { generateKeyBetween, type FractionalIndex } from "fractional-keys";
+import { generateKeyBetween, generateNKeysBetween, type FractionalIndex } from "fractional-keys";
 import type { Annotation } from "./annotation.js";
 import type { Edge } from "./edge.js";
 import { type Layer } from "./layer.js";
@@ -115,3 +115,16 @@ export const orderBetween = (
   a: FractionalIndex | null,
   b: FractionalIndex | null,
 ): FractionalIndex => generateKeyBetween(a, b);
+
+/**
+ * Generate `n` evenly-spaced fractional indices strictly between `a` and
+ * `b`. Useful for compaction passes that rewrite a whole layer's
+ * z-order back to short balanced strings (`"a0"`, `"a1"`, `"a2"`, …)
+ * after a burst of insert-in-the-middle operations has lengthened the
+ * existing keys.
+ */
+export const orderBetweenMany = (
+  a: FractionalIndex | null,
+  b: FractionalIndex | null,
+  n: number,
+): readonly FractionalIndex[] => generateNKeysBetween(a, b, n);

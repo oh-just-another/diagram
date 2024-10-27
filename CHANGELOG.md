@@ -212,3 +212,6 @@
 
 ## 0.23.37
 - react-ui: drag ghost must have non-zero area + visible bg
+
+## 0.23.38
+- state: compactLayerZOrder — rebalance fractional indices on demand

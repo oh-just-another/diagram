@@ -94,7 +94,9 @@ export {
   orderForTop,
   orderForBottom,
   orderBetween,
+  orderBetweenMany,
 } from "./scene.js";
+export type { FractionalIndex } from "fractional-keys";
 
 // Patch utilities
 export { invert, batch, isNoop } from "./patch.js";

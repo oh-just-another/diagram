@@ -38,7 +38,9 @@ import {
   gridSnapper,
   listAnchorsLocal,
   orderForBottom,
+  orderBetweenMany,
   orderForTop,
+  type FractionalIndex,
   outlineSnapper,
   removeAnnotation,
   removeEdge,
@@ -1466,6 +1468,78 @@ export class Editor {
     this._scene = result.scene;
     this._history.push(result.patch);
     this.notify();
+  }
+
+  /**
+   * Rewrite z-order keys in `layerId` (or every layer when omitted) so
+   * they form a short, evenly-distributed sequence (`"a0"`, `"a1"`, …).
+   * Useful after a burst of `insert-in-the-middle` operations where
+   * fractional-index strings have grown long enough to bloat serialised
+   * scenes / patches.
+   *
+   * No-op when the layer is already compact (every key already short
+   * and monotonic). Skips when nothing changed — no history entry.
+   * Otherwise lands as a single undo step covering every touched shape
+   * + edge in the affected layer(s).
+   */
+  compactLayerZOrder(layerId?: LayerId): void {
+    const layerIds: readonly LayerId[] = layerId
+      ? [layerId]
+      : [...this._scene.layers.keys()];
+    const tx = this._history.transaction();
+    let touched = 0;
+    for (const lid of layerIds) {
+      // Shapes are rendered separately from edges — z-order is independent
+      // within each layer (renderScene makes two passes: shapes, then edges).
+      touched += this.rewriteOrders(
+        [...this._scene.shapes.values()].filter((s) => s.layerId === lid),
+        (shape, order) => {
+          const r = updateShape(this._scene, shape.id, (s) => ({ ...s, order }));
+          this._scene = r.scene;
+          tx.add(r.patch);
+        },
+      );
+      touched += this.rewriteOrders(
+        [...this._scene.edges.values()].filter((e) => e.layerId === lid),
+        (edge, order) => {
+          const r = updateEdge(this._scene, edge.id, (e) => ({ ...e, order }));
+          this._scene = r.scene;
+          tx.add(r.patch);
+        },
+      );
+    }
+    if (touched === 0) {
+      tx.cancel();
+      return;
+    }
+    tx.commit();
+    this.notify();
+    this.announce(`Compacted z-order across ${layerIds.length} layer(s)`);
+  }
+
+  /**
+   * Generic helper: replace each entity's `order` with the i-th key of
+   * `orderBetweenMany(null, null, n)`. Returns the count of entities
+   * whose order actually changed (so callers can skip the history
+   * entry on no-ops).
+   */
+  private rewriteOrders<T extends { readonly order: FractionalIndex }>(
+    entities: readonly T[],
+    apply: (entity: T, order: FractionalIndex) => void,
+  ): number {
+    if (entities.length === 0) return 0;
+    const sorted = [...entities].sort((a, b) =>
+      a.order < b.order ? -1 : a.order > b.order ? 1 : 0,
+    );
+    const fresh = orderBetweenMany(null, null, sorted.length);
+    let changed = 0;
+    sorted.forEach((entity, i) => {
+      const next = fresh[i]!;
+      if (next === entity.order) return;
+      apply(entity, next);
+      changed++;
+    });
+    return changed;
   }
 
   /**

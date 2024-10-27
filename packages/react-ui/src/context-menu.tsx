@@ -343,6 +343,12 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     visible: (e) => e.selection.size > 1,
     onClick: (e) => e.arrangeAsStack({ direction: "vertical" }),
   },
+  {
+    kind: "action",
+    id: "compact-z-order",
+    label: "Compact z-order",
+    onClick: (e) => e.compactLayerZOrder(),
+  },
   { kind: "divider" },
   // --- Z-order (single-selection scope) ---
   {
