@@ -9,6 +9,7 @@ import {
   type VersionId,
 } from "@oh-just-another/versioning";
 import { useDiagramOptional } from "./hooks.js";
+import { MergeDialog } from "./merge-dialog.js";
 
 interface StoreSnapshot {
   readonly branches: readonly Branch[];
@@ -69,6 +70,35 @@ export interface VersionPanelProps {
 export const VersionPanel = ({ store, author, style, className }: VersionPanelProps) => {
   const editor = useDiagramOptional();
   const { branches, currentBranchId } = useSnapshotStore(store);
+  const [mergeRequest, setMergeRequest] = useState<{
+    sourceVersionId: VersionId;
+    targetVersionId: VersionId;
+    sourceBranchName: string;
+  } | null>(null);
+
+  const onMerge = useCallback(
+    (sourceBranch: Branch): void => {
+      if (!sourceBranch.head) {
+        if (typeof window !== "undefined") {
+          window.alert("Source branch has no snapshots to merge.");
+        }
+        return;
+      }
+      const target = store.branches().find((b) => b.id === currentBranchId);
+      if (!target || !target.head) {
+        if (typeof window !== "undefined") {
+          window.alert("Current branch has no snapshots to merge into.");
+        }
+        return;
+      }
+      setMergeRequest({
+        sourceVersionId: sourceBranch.head,
+        targetVersionId: target.head,
+        sourceBranchName: sourceBranch.name,
+      });
+    },
+    [store, currentBranchId],
+  );
 
   const onCapture = useCallback((): void => {
     if (!editor) return;
@@ -199,6 +229,35 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
                 <span style={{ marginLeft: "auto", color: "var(--muted, #888)", fontWeight: 400 }}>
                   {snapshots.length}
                 </span>
+                {br.id !== currentBranchId && br.head ? (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      onMerge(br);
+                    }}
+                    onKeyDown={(ev) => {
+                      if (ev.key === "Enter" || ev.key === " ") {
+                        ev.preventDefault();
+                        onMerge(br);
+                      }
+                    }}
+                    title={`Merge ${br.name} into current branch`}
+                    style={{
+                      marginLeft: 6,
+                      background: "var(--button-bg, #2a2a2a)",
+                      border: "1px solid var(--border, #2a2a2a)",
+                      borderRadius: 3,
+                      padding: "0 6px",
+                      fontSize: 11,
+                      fontWeight: 400,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ⇄
+                  </span>
+                ) : null}
               </button>
               {snapshots.length === 0 ? (
                 <div style={{ padding: "6px 14px", color: "var(--faint, #555)" }}>No snapshots</div>
@@ -261,6 +320,24 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
           );
         })}
       </div>
+      {mergeRequest && editor ? (
+        <MergeDialog
+          store={store}
+          sourceVersionId={mergeRequest.sourceVersionId}
+          targetVersionId={mergeRequest.targetVersionId}
+          onCancel={() => setMergeRequest(null)}
+          onApply={(merged) => {
+            editor.loadScene(merged);
+            // Record the merged result as a new snapshot on the target
+            // (current) branch so the merge is part of history.
+            captureFromEditor(store, editor, {
+              author,
+              message: `Merge ${mergeRequest.sourceBranchName} into current`,
+            });
+            setMergeRequest(null);
+          }}
+        />
+      ) : null}
     </aside>
   );
 };

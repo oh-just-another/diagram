@@ -218,3 +218,6 @@
 
 ## 0.23.39
 - state: wire brush mode into pointer flow + live preview overlay
+
+## 0.23.40
+- react-ui: wire MergeDialog into VersionPanel
