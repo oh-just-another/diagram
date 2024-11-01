@@ -221,3 +221,6 @@
 
 ## 0.23.40
 - react-ui: wire MergeDialog into VersionPanel
+
+## 0.23.41
+- state+renderer-core: dirty-rect rendering for main canvas

@@ -75,6 +75,7 @@ import {
 } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import {
+  computeEdgeWorldBounds,
   DEFAULT_LOD,
   renderEdges,
   renderGrid,
@@ -332,6 +333,15 @@ export class Editor {
    * `null` until the pointer first enters the host.
    */
   private lastPointerWorld: Vec2 | null = null;
+
+  /**
+   * Scene rendered on the last frame. Used to compute a dirty rect by
+   * identity-diffing against the current scene — every shape / edge
+   * whose ref didn't change is also pixel-identical to its last paint
+   * and gets skipped together with the surrounding clear. `null` until
+   * the first render.
+   */
+  private lastRenderedScene: Scene | null = null;
 
   /**
    * Shape id that the user started dragging on press-down. Tracked
@@ -2676,6 +2686,65 @@ export class Editor {
     return B.expand(bb, Math.max(bb.width, bb.height) * VIEWPORT_CULL_PADDING_RATIO);
   }
 
+  /**
+   * Identity-diff the current scene against the last rendered one and
+   * return the union AABB of every shape/edge that changed reference
+   * (added, removed, or replaced). Returns `null` to force a full
+   * clear when something that affects the entire surface changes —
+   * viewport pan/zoom/resize, layer visibility, or the first frame.
+   *
+   * Empty union (returned as a zero-area bbox far off-screen) means
+   * nothing changed; renderScene will cull every shape via its
+   * `dirtyWorld` filter — effectively a no-op main pass.
+   */
+  private computeDirtyWorld(): Bounds | null {
+    const prev = this.lastRenderedScene;
+    const next = this._scene;
+    if (!prev) return null;
+    if (prev === next) {
+      // Scene ref unchanged → nothing to redraw on main canvas.
+      // Return an empty rect far off-screen so the dirtyWorld filter
+      // skips every shape but the clear still runs.
+      return { x: -1e9, y: -1e9, width: 0, height: 0 };
+    }
+    // Any of these flipping ref means we can't reason about per-shape
+    // changes — fall back to a full clear.
+    if (prev.viewport !== next.viewport) return null;
+    if (prev.layers !== next.layers) return null;
+    let acc: Bounds | null = null;
+    const add = (b: Bounds): void => {
+      acc = acc ? B.union(acc, b) : b;
+    };
+    for (const [id, shape] of next.shapes) {
+      const old = prev.shapes.get(id);
+      if (old === shape) continue;
+      add(getShapeWorldBounds(shape));
+      if (old) add(getShapeWorldBounds(old));
+    }
+    for (const [id, shape] of prev.shapes) {
+      if (!next.shapes.has(id)) add(getShapeWorldBounds(shape));
+    }
+    for (const [id, edge] of next.edges) {
+      const old = prev.edges.get(id);
+      if (old === edge) continue;
+      const b = computeEdgeWorldBounds(next, edge);
+      if (b) add(b);
+      if (old) {
+        const ob = computeEdgeWorldBounds(prev, old);
+        if (ob) add(ob);
+      }
+    }
+    for (const [id, edge] of prev.edges) {
+      if (!next.edges.has(id)) {
+        const b = computeEdgeWorldBounds(prev, edge);
+        if (b) add(b);
+      }
+    }
+    // Inflate by a couple pixels to cover anti-aliased stroke fuzz
+    // around the geometry edges.
+    return acc ? B.expand(acc, 4) : { x: -1e9, y: -1e9, width: 0, height: 0 };
+  }
+
   private combinedSelectionBounds(): Bounds | null {
     let acc: Bounds | null = null;
     for (const id of this._selection) {
@@ -3303,13 +3372,23 @@ export class Editor {
     // inverse projection. Slightly inflated so geometry near the edge
     // does not flicker during pan.
     const viewportWorld = this.computeViewportWorld();
-    const edgeRenderOpts = viewportWorld ? { viewportWorld } : {};
+    // Compute dirty area: shapes / edges whose ref changed since the
+    // last render. `null` → full clear (viewport changed, layers
+    // changed, or it's the first frame). Empty rect → nothing to redraw,
+    // but we still run the full pass so overlay / edges of the current
+    // selection are visible (cheap because dirty filter culls every shape).
+    const dirtyWorld = this.computeDirtyWorld();
     renderScene(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
+      ...(dirtyWorld ? { dirtyWorld } : {}),
       boundsCache: this.boundsCache,
       lod: DEFAULT_LOD,
     });
-    renderEdges(this._scene, this.mainTarget, edgeRenderOpts);
+    renderEdges(this._scene, this.mainTarget, {
+      ...(viewportWorld ? { viewportWorld } : {}),
+      ...(dirtyWorld ? { dirtyWorld } : {}),
+    });
+    this.lastRenderedScene = this._scene;
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
     // Lasso and rect-draw share the same dashed-rect visual. Both can't
     // run simultaneously (different gestures), so a single `drawingPreview`

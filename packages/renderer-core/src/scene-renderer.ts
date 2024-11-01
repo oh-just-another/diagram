@@ -7,7 +7,7 @@ import {
   type SpatialGrid,
 } from "@oh-just-another/scene";
 import type { Bounds, ShapeId } from "@oh-just-another/types";
-import { bounds as B } from "@oh-just-another/math";
+import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "./render-target.js";
 import { getShapeRenderer } from "./shape-renderer.js";
 import { cachedWorldBounds, ShapeCache } from "./shape-cache.js";
@@ -63,6 +63,16 @@ export interface RenderSceneOptions {
    * to the average shape colour so the transition is unobtrusive.
    */
   readonly placeholderFill?: string;
+  /**
+   * Optional dirty rectangle in **world** coords. When set:
+   *   • the renderer clears only the corresponding screen region;
+   *   • shapes whose world AABB doesn't intersect the dirty rect are
+   *     skipped entirely.
+   * Combined with shape-identity tracking by the host this drops most
+   * of the per-frame work for "single shape moves on otherwise static
+   * scene".
+   */
+  readonly dirtyWorld?: Bounds;
 }
 
 /**
@@ -83,10 +93,28 @@ export const renderScene = (
   target: RenderTarget,
   options: RenderSceneOptions = {},
 ): void => {
-  if (!options.skipClear) target.clear();
+  const w2s = getWorldToScreen(scene.viewport);
+  const dirtyWorld = options.dirtyWorld;
+  if (!options.skipClear) {
+    if (dirtyWorld) {
+      // Project the dirty rect to screen pixels, inflate by a few
+      // pixels to cover anti-aliased stroke fuzz.
+      const corners = [
+        matrix.applyToPoint(w2s, { x: dirtyWorld.x, y: dirtyWorld.y }),
+        matrix.applyToPoint(w2s, {
+          x: dirtyWorld.x + dirtyWorld.width,
+          y: dirtyWorld.y + dirtyWorld.height,
+        }),
+      ];
+      const screen = B.expand(B.fromPoints(corners), 2);
+      target.clear(screen);
+    } else {
+      target.clear();
+    }
+  }
 
   target.save();
-  target.setTransform(getWorldToScreen(scene.viewport));
+  target.setTransform(w2s);
 
   const boundsCache = options.boundsCache ?? new ShapeCache<Bounds>();
   const viewport = options.viewport;
@@ -113,6 +141,10 @@ export const renderScene = (
       if (viewport) {
         const bb = cachedWorldBounds(boundsCache, shape);
         if (!B.intersects(bb, viewport)) continue;
+      }
+      if (dirtyWorld) {
+        const bb = cachedWorldBounds(boundsCache, shape);
+        if (!B.intersects(bb, dirtyWorld)) continue;
       }
 
       if (dropText && shape.type === "text") continue;

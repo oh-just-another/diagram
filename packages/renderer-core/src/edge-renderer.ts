@@ -32,6 +32,13 @@ export interface RenderEdgesOptions {
    * paint passes.
    */
   readonly edgeBoundsCache?: EdgeBoundsCache;
+  /**
+   * Optional dirty rectangle (world coords). Edges whose AABB does
+   * not intersect this rect are skipped — mirrors the same dirty-rect
+   * filter `renderScene` applies to shapes. Caller is responsible for
+   * having cleared the corresponding screen region.
+   */
+  readonly dirtyWorld?: Bounds;
 }
 
 /**
@@ -57,17 +64,19 @@ export const renderEdges = (
 
   const cache = options.edgeBoundsCache ?? sharedEdgeBoundsCache;
   const cull = options.viewportWorld;
+  const dirty = options.dirtyWorld;
 
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;
     for (const edge of getEdgesInLayer(scene, layer.id)) {
-      if (cull) {
+      if (cull || dirty) {
         const b = cache.getOrCompute(scene, edge);
         if (b === null) {
           options.onMissingEndpoint?.(edge);
           continue;
         }
-        if (!B.intersects(b, cull)) continue;
+        if (cull && !B.intersects(b, cull)) continue;
+        if (dirty && !B.intersects(b, dirty)) continue;
       }
       drawEdge(scene, edge, target, options);
     }
