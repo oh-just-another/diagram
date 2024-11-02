@@ -2701,16 +2701,31 @@ export class Editor {
     const prev = this.lastRenderedScene;
     const next = this._scene;
     if (!prev) return null;
-    if (prev === next) {
-      // Scene ref unchanged → nothing to redraw on main canvas.
-      // Return an empty rect far off-screen so the dirtyWorld filter
-      // skips every shape but the clear still runs.
-      return { x: -1e9, y: -1e9, width: 0, height: 0 };
+    // Skip dirty-rect optimization until the canvas has been sized at
+    // least once — the first paint to a 0×0 viewport doesn't actually
+    // hit pixels, so we have to force a full repaint as soon as the
+    // host's ResizeObserver fires (even when the diff finds zero
+    // changed shapes, e.g. when only viewport.size changed but the
+    // viewport ref happened to equal — which can't happen, but defence
+    // in depth).
+    if (
+      prev.viewport.size.width <= 0 ||
+      prev.viewport.size.height <= 0 ||
+      next.viewport.size.width <= 0 ||
+      next.viewport.size.height <= 0
+    ) {
+      return null;
     }
-    // Any of these flipping ref means we can't reason about per-shape
-    // changes — fall back to a full clear.
+    // Anything that affects the global render — viewport (pan / zoom /
+    // size) or layer ordering / visibility — forces a full clear.
     if (prev.viewport !== next.viewport) return null;
     if (prev.layers !== next.layers) return null;
+    // Scene ref unchanged → nothing changed on main canvas → skip the
+    // whole pass via an empty off-screen rect that the dirty filter
+    // culls every shape against.
+    if (prev === next) {
+      return { x: -1e9, y: -1e9, width: 0, height: 0 };
+    }
     let acc: Bounds | null = null;
     const add = (b: Bounds): void => {
       acc = acc ? B.union(acc, b) : b;

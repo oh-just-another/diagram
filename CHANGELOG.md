@@ -224,3 +224,6 @@
 
 ## 0.23.41
 - state+renderer-core: dirty-rect rendering for main canvas
+
+## 0.23.42
+- state: force full clear until viewport has real size
