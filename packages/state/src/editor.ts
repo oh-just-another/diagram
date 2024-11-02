@@ -87,6 +87,7 @@ import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-a
 import { fromPointerEvent } from "./dom-events.js";
 import {
   ANNOTATION_PIN_HIT_SLOP,
+  AUTO_COMPACT_THRESHOLD,
   DEFAULT_BRUSH_WIDTH,
   DEFAULT_SNAP_THRESHOLD,
   EDGE_ENDPOINT_HANDLE_RADIUS,
@@ -342,6 +343,9 @@ export class Editor {
    * the first render.
    */
   private lastRenderedScene: Scene | null = null;
+
+  /** Set when an auto-compact check is queued for the current tick. */
+  private autoCompactScheduled = false;
 
   /**
    * Shape id that the user started dragging on press-down. Tracked
@@ -1492,11 +1496,15 @@ export class Editor {
    * Otherwise lands as a single undo step covering every touched shape
    * + edge in the affected layer(s).
    */
-  compactLayerZOrder(layerId?: LayerId): void {
+  compactLayerZOrder(
+    layerId?: LayerId,
+    options: { recordHistory?: boolean } = {},
+  ): void {
+    const recordHistory = options.recordHistory ?? true;
     const layerIds: readonly LayerId[] = layerId
       ? [layerId]
       : [...this._scene.layers.keys()];
-    const tx = this._history.transaction();
+    const tx = recordHistory ? this._history.transaction() : null;
     let touched = 0;
     for (const lid of layerIds) {
       // Shapes are rendered separately from edges — z-order is independent
@@ -1506,7 +1514,7 @@ export class Editor {
         (shape, order) => {
           const r = updateShape(this._scene, shape.id, (s) => ({ ...s, order }));
           this._scene = r.scene;
-          tx.add(r.patch);
+          tx?.add(r.patch);
         },
       );
       touched += this.rewriteOrders(
@@ -1514,17 +1522,19 @@ export class Editor {
         (edge, order) => {
           const r = updateEdge(this._scene, edge.id, (e) => ({ ...e, order }));
           this._scene = r.scene;
-          tx.add(r.patch);
+          tx?.add(r.patch);
         },
       );
     }
     if (touched === 0) {
-      tx.cancel();
+      tx?.cancel();
       return;
     }
-    tx.commit();
+    tx?.commit();
     this.notify();
-    this.announce(`Compacted z-order across ${layerIds.length} layer(s)`);
+    if (recordHistory) {
+      this.announce(`Compacted z-order across ${layerIds.length} layer(s)`);
+    }
   }
 
   /**
@@ -3373,6 +3383,36 @@ export class Editor {
   private notify(): void {
     this.render();
     for (const fn of this.listeners) fn();
+    this.scheduleAutoCompact();
+  }
+
+  /**
+   * Auto-compact fractional `order` keys whenever they grow past
+   * `AUTO_COMPACT_THRESHOLD` (same trigger as x5/graph's
+   * `syncInvalidIndices`). Runs in a microtask so it fires once per
+   * mutation burst, does not block the current call stack, and does not end up in
+   * history (transparent to undo).
+   */
+  private scheduleAutoCompact(): void {
+    if (this.autoCompactScheduled) return;
+    this.autoCompactScheduled = true;
+    queueMicrotask(() => {
+      this.autoCompactScheduled = false;
+      this.runAutoCompactCheck();
+    });
+  }
+
+  private runAutoCompactCheck(): void {
+    const layersToCompact = new Set<LayerId>();
+    for (const s of this._scene.shapes.values()) {
+      if (s.order.length > AUTO_COMPACT_THRESHOLD) layersToCompact.add(s.layerId);
+    }
+    for (const e of this._scene.edges.values()) {
+      if (e.order.length > AUTO_COMPACT_THRESHOLD) layersToCompact.add(e.layerId);
+    }
+    for (const lid of layersToCompact) {
+      this.compactLayerZOrder(lid, { recordHistory: false });
+    }
   }
 
   private render(): void {

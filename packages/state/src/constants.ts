@@ -187,6 +187,16 @@ export const LASSO_COVERAGE_THRESHOLD = 0.5;
 export const CONTAINER_KEEP_THRESHOLD = 0.5;
 
 /**
+ * Max `order` string length (chars) before the editor schedules an
+ * automatic layer-wide compaction. Fractional keys lengthen the key by
+ * 1–2 chars per insert-in-the-middle; > 12 means inserts have been
+ * bursting at the same spot and it is time to rebalance back to short
+ * keys. Compaction runs transparently in a microtask after the mutating
+ * notify, so the user never sees the long-key state.
+ */
+export const AUTO_COMPACT_THRESHOLD = 12;
+
+/**
  * Maximum local-pixel half-width of a brush vertex. Hosts compute the
  * actual width as `pressure × MAX_BRUSH_WIDTH`; `pressure` is the
  * `PointerEvent.pressure` field, which is normalised to [0, 1] on

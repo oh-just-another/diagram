@@ -227,3 +227,6 @@
 
 ## 0.23.42
 - state: force full clear until viewport has real size
+
+## 0.23.43
+- state: auto-compact fractional indices (x5/graph-style)
