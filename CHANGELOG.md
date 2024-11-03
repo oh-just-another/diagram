@@ -230,3 +230,6 @@
 
 ## 0.23.43
 - state: auto-compact fractional indices (x5/graph-style)
+
+## 0.23.44
+- state+react-ui: tests pinning the first-render path
