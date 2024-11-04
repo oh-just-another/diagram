@@ -233,3 +233,6 @@
 
 ## 0.23.44
 - state+react-ui: tests pinning the first-render path
+
+## 0.23.45
+- state: temporarily disable dirty-rect rendering (regression repro pending)

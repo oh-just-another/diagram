@@ -3427,21 +3427,18 @@ export class Editor {
     // inverse projection. Slightly inflated so geometry near the edge
     // does not flicker during pan.
     const viewportWorld = this.computeViewportWorld();
-    // Compute dirty area: shapes / edges whose ref changed since the
-    // last render. `null` → full clear (viewport changed, layers
-    // changed, or it's the first frame). Empty rect → nothing to redraw,
-    // but we still run the full pass so overlay / edges of the current
-    // selection are visible (cheap because dirty filter culls every shape).
-    const dirtyWorld = this.computeDirtyWorld();
+    // Dirty-rect optimization removed temporarily — it caused a
+    // hard-to-repro blank-canvas regression in the demo that our
+    // jsdom tests can't reproduce. Will re-add behind a feature flag
+    // once we have a reliable repro. Full clear + full shape walk on
+    // every notify is the pre-optimization baseline.
     renderScene(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
-      ...(dirtyWorld ? { dirtyWorld } : {}),
       boundsCache: this.boundsCache,
       lod: DEFAULT_LOD,
     });
     renderEdges(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewportWorld } : {}),
-      ...(dirtyWorld ? { dirtyWorld } : {}),
     });
     this.lastRenderedScene = this._scene;
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
