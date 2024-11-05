@@ -347,6 +347,9 @@ export class Editor {
   /** Set when an auto-compact check is queued for the current tick. */
   private autoCompactScheduled = false;
 
+  /** Counts render() calls for DEBUG_RENDER logging. */
+  private renderCallCount = 0;
+
   /**
    * Shape id that the user started dragging on press-down. Tracked
    * separately from the state machine so the editor knows what to
@@ -3427,18 +3430,44 @@ export class Editor {
     // inverse projection. Slightly inflated so geometry near the edge
     // does not flicker during pan.
     const viewportWorld = this.computeViewportWorld();
-    // Dirty-rect optimization removed temporarily — it caused a
-    // hard-to-repro blank-canvas regression in the demo that our
-    // jsdom tests can't reproduce. Will re-add behind a feature flag
-    // once we have a reliable repro. Full clear + full shape walk on
-    // every notify is the pre-optimization baseline.
+    const dirtyWorld = this.computeDirtyWorld();
+    if (isDebugRenderEnabled()) {
+      const shapes = this._scene.shapes.size;
+      const vp = this._scene.viewport;
+      // eslint-disable-next-line no-console
+      console.log("[editor.render]", {
+        renderNumber: ++this.renderCallCount,
+        shapeCount: shapes,
+        viewportSize: { w: vp.size.width, h: vp.size.height },
+        viewportPan: vp.pan,
+        viewportZoom: vp.zoom,
+        prevScene: this.lastRenderedScene
+          ? {
+              sameRef: this.lastRenderedScene === this._scene,
+              sameViewport: this.lastRenderedScene.viewport === this._scene.viewport,
+              prevSize: {
+                w: this.lastRenderedScene.viewport.size.width,
+                h: this.lastRenderedScene.viewport.size.height,
+              },
+            }
+          : null,
+        dirtyWorld:
+          dirtyWorld === null
+            ? "null (full clear)"
+            : dirtyWorld.width === 0 && dirtyWorld.height === 0
+              ? "empty (skip all)"
+              : { x: dirtyWorld.x, y: dirtyWorld.y, w: dirtyWorld.width, h: dirtyWorld.height },
+      });
+    }
     renderScene(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
+      ...(dirtyWorld ? { dirtyWorld } : {}),
       boundsCache: this.boundsCache,
       lod: DEFAULT_LOD,
     });
     renderEdges(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewportWorld } : {}),
+      ...(dirtyWorld ? { dirtyWorld } : {}),
     });
     this.lastRenderedScene = this._scene;
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
@@ -3504,6 +3533,22 @@ export class Editor {
     renderOverlay(this._scene, this._selection, this.overlayTarget, overlayOpts);
   }
 }
+
+/**
+ * Debug switch for the dirty-rect render path. Toggle from the browser
+ * console at any time:
+ *   `globalThis.__DIAGRAM_DEBUG_RENDER__ = true`
+ *   // trigger any mutation (move a shape, toggle a layer)
+ *   // → editor logs render trace to console
+ *   globalThis.__DIAGRAM_DEBUG_RENDER__ = false  // turn off
+ *
+ * Read on every render() call so the user can flip it without
+ * reloading the page.
+ */
+const isDebugRenderEnabled = (): boolean => {
+  if (typeof globalThis === "undefined") return false;
+  return (globalThis as { __DIAGRAM_DEBUG_RENDER__?: boolean }).__DIAGRAM_DEBUG_RENDER__ === true;
+};
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 

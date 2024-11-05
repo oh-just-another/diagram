@@ -236,3 +236,6 @@
 
 ## 0.23.45
 - state: temporarily disable dirty-rect rendering (regression repro pending)
+
+## 0.23.46
+- state: re-enable dirty-rect + debug logging; .md no-revert rule
