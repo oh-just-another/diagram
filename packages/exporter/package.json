@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/exporter",
-  "version": "0.23.46",
+  "version": "0.23.47",
   "description": "Hi-res image and PDF export for @oh-just-another/scene documents.",
   "type": "module",
   "main": "./dist/index.js",

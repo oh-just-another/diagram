@@ -3431,34 +3431,36 @@ export class Editor {
     // does not flicker during pan.
     const viewportWorld = this.computeViewportWorld();
     const dirtyWorld = this.computeDirtyWorld();
-    if (isDebugRenderEnabled()) {
-      const shapes = this._scene.shapes.size;
-      const vp = this._scene.viewport;
-      // eslint-disable-next-line no-console
-      console.log("[editor.render]", {
-        renderNumber: ++this.renderCallCount,
-        shapeCount: shapes,
-        viewportSize: { w: vp.size.width, h: vp.size.height },
-        viewportPan: vp.pan,
-        viewportZoom: vp.zoom,
-        prevScene: this.lastRenderedScene
-          ? {
-              sameRef: this.lastRenderedScene === this._scene,
-              sameViewport: this.lastRenderedScene.viewport === this._scene.viewport,
-              prevSize: {
-                w: this.lastRenderedScene.viewport.size.width,
-                h: this.lastRenderedScene.viewport.size.height,
-              },
-            }
-          : null,
-        dirtyWorld:
-          dirtyWorld === null
-            ? "null (full clear)"
-            : dirtyWorld.width === 0 && dirtyWorld.height === 0
-              ? "empty (skip all)"
-              : { x: dirtyWorld.x, y: dirtyWorld.y, w: dirtyWorld.width, h: dirtyWorld.height },
-      });
-    }
+    const vp = this._scene.viewport;
+    // eslint-disable-next-line no-console
+    console.log("[editor.render]", {
+      renderNumber: ++this.renderCallCount,
+      shapeCount: this._scene.shapes.size,
+      viewportSize: { w: vp.size.width, h: vp.size.height },
+      viewportPan: vp.pan,
+      viewportZoom: vp.zoom,
+      prevScene: this.lastRenderedScene
+        ? {
+            sameRef: this.lastRenderedScene === this._scene,
+            sameViewport: this.lastRenderedScene.viewport === this._scene.viewport,
+            sameShapes: this.lastRenderedScene.shapes === this._scene.shapes,
+            prevSize: {
+              w: this.lastRenderedScene.viewport.size.width,
+              h: this.lastRenderedScene.viewport.size.height,
+            },
+          }
+        : null,
+      dirtyWorld:
+        dirtyWorld === null
+          ? "null (full clear)"
+          : dirtyWorld.width === 0 && dirtyWorld.height === 0
+            ? "empty (skip all)"
+            : { x: dirtyWorld.x, y: dirtyWorld.y, w: dirtyWorld.width, h: dirtyWorld.height },
+      viewportWorld:
+        viewportWorld === null
+          ? "null"
+          : { x: viewportWorld.x, y: viewportWorld.y, w: viewportWorld.width, h: viewportWorld.height },
+    });
     renderScene(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
       ...(dirtyWorld ? { dirtyWorld } : {}),
@@ -3533,22 +3535,6 @@ export class Editor {
     renderOverlay(this._scene, this._selection, this.overlayTarget, overlayOpts);
   }
 }
-
-/**
- * Debug switch for the dirty-rect render path. Toggle from the browser
- * console at any time:
- *   `globalThis.__DIAGRAM_DEBUG_RENDER__ = true`
- *   // trigger any mutation (move a shape, toggle a layer)
- *   // → editor logs render trace to console
- *   globalThis.__DIAGRAM_DEBUG_RENDER__ = false  // turn off
- *
- * Read on every render() call so the user can flip it without
- * reloading the page.
- */
-const isDebugRenderEnabled = (): boolean => {
-  if (typeof globalThis === "undefined") return false;
-  return (globalThis as { __DIAGRAM_DEBUG_RENDER__?: boolean }).__DIAGRAM_DEBUG_RENDER__ === true;
-};
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 

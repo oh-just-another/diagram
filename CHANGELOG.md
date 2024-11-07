@@ -239,3 +239,6 @@
 
 ## 0.23.46
 - state: re-enable dirty-rect + debug logging; .md no-revert rule
+
+## 0.23.47
+- state: render trace logs unconditionally (debug)
