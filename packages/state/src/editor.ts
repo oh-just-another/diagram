@@ -347,9 +347,6 @@ export class Editor {
   /** Set when an auto-compact check is queued for the current tick. */
   private autoCompactScheduled = false;
 
-  /** Counts render() calls for DEBUG_RENDER logging. */
-  private renderCallCount = 0;
-
   /**
    * Shape id that the user started dragging on press-down. Tracked
    * separately from the state machine so the editor knows what to
@@ -3431,36 +3428,6 @@ export class Editor {
     // does not flicker during pan.
     const viewportWorld = this.computeViewportWorld();
     const dirtyWorld = this.computeDirtyWorld();
-    const vp = this._scene.viewport;
-    // eslint-disable-next-line no-console
-    console.log("[editor.render]", {
-      renderNumber: ++this.renderCallCount,
-      shapeCount: this._scene.shapes.size,
-      viewportSize: { w: vp.size.width, h: vp.size.height },
-      viewportPan: vp.pan,
-      viewportZoom: vp.zoom,
-      prevScene: this.lastRenderedScene
-        ? {
-            sameRef: this.lastRenderedScene === this._scene,
-            sameViewport: this.lastRenderedScene.viewport === this._scene.viewport,
-            sameShapes: this.lastRenderedScene.shapes === this._scene.shapes,
-            prevSize: {
-              w: this.lastRenderedScene.viewport.size.width,
-              h: this.lastRenderedScene.viewport.size.height,
-            },
-          }
-        : null,
-      dirtyWorld:
-        dirtyWorld === null
-          ? "null (full clear)"
-          : dirtyWorld.width === 0 && dirtyWorld.height === 0
-            ? "empty (skip all)"
-            : { x: dirtyWorld.x, y: dirtyWorld.y, w: dirtyWorld.width, h: dirtyWorld.height },
-      viewportWorld:
-        viewportWorld === null
-          ? "null"
-          : { x: viewportWorld.x, y: viewportWorld.y, w: viewportWorld.width, h: viewportWorld.height },
-    });
     renderScene(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
       ...(dirtyWorld ? { dirtyWorld } : {}),

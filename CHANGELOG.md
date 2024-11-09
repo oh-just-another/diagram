@@ -242,3 +242,6 @@
 
 ## 0.23.47
 - state: render trace logs unconditionally (debug)
+
+## 0.23.48
+- renderer-canvas: setupHiDpi + LayeredCanvas.resize are idempotent

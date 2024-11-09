@@ -79,8 +79,16 @@ export class LayeredCanvas {
     return canvas;
   }
 
-  /** Resize every canvas in the stack to the new CSS-pixel size. */
+  /**
+   * Resize every canvas in the stack to the new CSS-pixel size.
+   *
+   * No-op when neither `width` nor `height` changed. Setting `canvas.width`
+   * resets the bitmap even when the new value equals the old, so this guard
+   * prevents the content getting wiped when a `ResizeObserver` fires with
+   * the current box size on its initial attach tick.
+   */
   resize(width: number, height: number): void {
+    if (this.width === width && this.height === height) return;
     this.width = width;
     this.height = height;
     for (const [name, canvas] of this.canvases) {

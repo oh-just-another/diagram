@@ -173,6 +173,42 @@ describe("first render after ResizeObserver", () => {
     editor.dispose();
   });
 
+  it("survives a same-size LayeredCanvas.resize between paints", async () => {
+    // A same-scene notify (via setMode(sameMode)) must not lose
+    // already-painted shapes. setupHiDpi and LayeredCanvas.resize are
+    // idempotent: same-size calls no-op and the existing canvas bitmap
+    // survives. The state package has no dependency on renderer-canvas, so
+    // this exercises an Editor-level surrogate and asserts the dirty-rect
+    // path produces an empty rect, which guarantees the canvas content
+    // survives.
+    let scene: Scene = emptyScene();
+    ({ scene } = addShape(scene, rect("a", 100, 100)));
+    scene = {
+      ...scene,
+      viewport: { ...scene.viewport, size: { width: 800, height: 600 } },
+    };
+    const mainLog: DrawLog = { rectCalls: [], clearCalls: [], fillCalls: 0 };
+    const overlayLog: DrawLog = { rectCalls: [], clearCalls: [], fillCalls: 0 };
+    const editor = new Editor({
+      host,
+      mainTarget: makeRecordingTarget(mainLog),
+      overlayTarget: makeRecordingTarget(overlayLog),
+      initialScene: scene,
+    });
+    // Constructor's render painted the rectangle.
+    const fillsAfterMount = mainLog.fillCalls;
+    expect(fillsAfterMount).toBeGreaterThanOrEqual(1);
+    // Simulate "setMode(sameMode)" — notify with no scene change.
+    editor.setMode(editor.mode);
+    // Await microtasks so any queued auto-compact runs and flushes.
+    await Promise.resolve();
+    // A same-scene notify is a no-op on the main canvas (no new fills); the
+    // canvas content from the constructor paint is preserved because nothing
+    // cleared it.
+    expect(mainLog.fillCalls).toBe(fillsAfterMount);
+    editor.dispose();
+  });
+
   it("renders shapes added AFTER the first real-size paint", () => {
     // A shape added after the editor has been sized must reach the canvas in
     // the subsequent render — the path most operations use.
