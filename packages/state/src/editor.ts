@@ -393,6 +393,26 @@ export class Editor {
   } | null = null;
 
   /**
+   * Space-bar held → next pointer drag pans the canvas instead of
+   * doing whatever the current mode would do. Visual cursor goes to
+   * "grab" / "grabbing". Wires a window-level keydown/keyup listener
+   * in `bindPointerEvents`.
+   */
+  private spaceHeld = false;
+
+  /**
+   * Active pan gesture (right-click drag or Space + left drag).
+   * `pointerId` is captured by the host so move/up events keep
+   * arriving even after the cursor leaves the host bounds; `lastPoint`
+   * holds the previous screen-space position so we can compute a
+   * delta per move.
+   */
+  private panGesture: { pointerId: number; lastPoint: Vec2 } | null = null;
+
+  /** Cursor style we set on the host while a pan gesture is in flight. */
+  private previousHostCursor: string | null = null;
+
+  /**
    * Long-press tracking. Starts on `pointerdown`; cancelled on
    * `pointermove > LONG_PRESS_MAX_MOVEMENT_PX` or `pointerup` before
    * the timer fires. Hosts subscribe via `onLongPress` to surface a
@@ -1859,6 +1879,20 @@ export class Editor {
       this.host.setPointerCapture(ev.pointerId);
       const data = fromPointerEvent(ev, this.host);
 
+      // Pan gesture detection — must come BEFORE the normal flow so a
+      // right-click or Space+left-click never starts a select/draw
+      // gesture. Two triggers:
+      //   • Right mouse button (button === 2).
+      //   • Left mouse button + Space currently held.
+      // Middle-click (button === 1) historically pans in editors too;
+      // we cover it under the same trigger for parity.
+      const isRightClick = ev.button === 2 || ev.button === 1;
+      const isSpaceLeftDrag = ev.button === 0 && this.spaceHeld;
+      if (isRightClick || isSpaceLeftDrag) {
+        this.beginPanGesture(ev.pointerId, data.point);
+        return;
+      }
+
       // Track every active pointer so we can detect a 2-finger pinch.
       // On the *second* concurrent pointer, cancel whatever single-pointer
       // gesture the machine started (it'd otherwise interpret the second
@@ -2002,6 +2036,16 @@ export class Editor {
     const onMove = (ev: PointerEvent) => {
       const data = fromPointerEvent(ev, this.host);
 
+      // Pan gesture in flight — translate cursor delta to a screen
+      // pan and short-circuit. Doesn't touch the machine.
+      if (this.panGesture && this.panGesture.pointerId === ev.pointerId) {
+        const dx = data.point.x - this.panGesture.lastPoint.x;
+        const dy = data.point.y - this.panGesture.lastPoint.y;
+        this.panGesture.lastPoint = data.point;
+        this.panBy({ x: -dx, y: -dy });
+        return;
+      }
+
       // Update tracked pointer position. In pinch mode, recompute the
       // gesture and short-circuit before sending to the machine.
       if (this.activePointers.has(ev.pointerId)) {
@@ -2122,6 +2166,12 @@ export class Editor {
       }
       this.activePointers.delete(ev.pointerId);
 
+      // Pan gesture ends — clean up cursor and state, skip the rest.
+      if (this.panGesture && this.panGesture.pointerId === ev.pointerId) {
+        this.endPanGesture();
+        return;
+      }
+
       // Exit pinch when the second-to-last finger lifts — the surviving
       // touch (if any) does NOT resume as a single-finger drag, because
       // we already cancelled the machine on pinch entry.
@@ -2192,6 +2242,10 @@ export class Editor {
 
     const onCancel = (ev: PointerEvent) => {
       this.activePointers.delete(ev.pointerId);
+      if (this.panGesture && this.panGesture.pointerId === ev.pointerId) {
+        this.endPanGesture();
+        return;
+      }
       if (this.pinchOrigin) {
         if (this.activePointers.size < 2) this.pinchOrigin = null;
         return;
@@ -2223,6 +2277,59 @@ export class Editor {
     this.host.addEventListener("pointermove", onMove);
     this.host.addEventListener("pointerup", onUp);
     this.host.addEventListener("pointercancel", onCancel);
+
+    // Suppress the native context menu on the canvas — right-click is
+    // wired to pan. Hosts that want a context menu should use the
+    // `@react-ui/ContextMenu` (driven by `editor.onLongPress` /
+    // explicit listener), not the browser default.
+    const onContextMenu = (ev: MouseEvent): void => {
+      ev.preventDefault();
+    };
+    this.host.addEventListener("contextmenu", onContextMenu);
+
+    // Window-level Space tracking so Space anywhere on the page
+    // arms the next mouse drag as a pan. Skip when focus is in a
+    // text input — Space should still type a space there.
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      return (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target.isContentEditable
+      );
+    };
+    const onKeyDown = (ev: KeyboardEvent): void => {
+      if (ev.code !== "Space" && ev.key !== " ") return;
+      if (isEditableTarget(ev.target)) return;
+      if (this.spaceHeld) return;
+      this.spaceHeld = true;
+      // Visual affordance: "grab" cursor signals the user can drag-pan.
+      if (this.previousHostCursor === null) {
+        this.previousHostCursor = this.host.style.cursor;
+        this.host.style.cursor = "grab";
+      }
+      // Prevent page scroll on Space — common in browsers when no
+      // input is focused. We're holding it as a modifier, not as text.
+      ev.preventDefault();
+    };
+    const onKeyUp = (ev: KeyboardEvent): void => {
+      if (ev.code !== "Space" && ev.key !== " ") return;
+      if (!this.spaceHeld) return;
+      this.spaceHeld = false;
+      // Don't reset cursor if a pan gesture is still in flight — the
+      // gesture's own end-handler restores it. Otherwise restore now.
+      if (!this.panGesture && this.previousHostCursor !== null) {
+        this.host.style.cursor = this.previousHostCursor;
+        this.previousHostCursor = null;
+      }
+    };
+    // window guard so node-env tests can still construct the editor.
+    if (typeof window !== "undefined") {
+      window.addEventListener("keydown", onKeyDown);
+      window.addEventListener("keyup", onKeyUp);
+    }
 
     // Wheel: Cmd/Ctrl + wheel → zoom around the cursor (matches standard /
     // standard). Plain wheel → pan both axes from deltaX/deltaY simultaneously
@@ -2262,8 +2369,47 @@ export class Editor {
       this.host.removeEventListener("pointermove", onMove);
       this.host.removeEventListener("pointerup", onUp);
       this.host.removeEventListener("pointercancel", onCancel);
+      this.host.removeEventListener("contextmenu", onContextMenu);
       this.host.removeEventListener("wheel", onWheel);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("keydown", onKeyDown);
+        window.removeEventListener("keyup", onKeyUp);
+      }
     };
+  }
+
+  /**
+   * Open a pan gesture: capture the pointer so subsequent move / up
+   * events arrive even outside the host bounds, cancel anything the
+   * machine might have started this tick, and switch the cursor.
+   */
+  private beginPanGesture(pointerId: number, point: Vec2): void {
+    this.actor.send({ type: "POINTER_CANCEL" });
+    this.cancelGesture();
+    this.cancelLongPress();
+    this.host.setPointerCapture(pointerId);
+    this.panGesture = { pointerId, lastPoint: point };
+    if (this.previousHostCursor === null) {
+      this.previousHostCursor = this.host.style.cursor;
+    }
+    this.host.style.cursor = "grabbing";
+  }
+
+  /**
+   * End an in-progress pan gesture. Restores the cursor unless Space
+   * is still held (then we drop back to "grab" so the user knows
+   * another drag is armed).
+   */
+  private endPanGesture(): void {
+    this.panGesture = null;
+    if (this.spaceHeld) {
+      this.host.style.cursor = "grab";
+      return;
+    }
+    if (this.previousHostCursor !== null) {
+      this.host.style.cursor = this.previousHostCursor;
+      this.previousHostCursor = null;
+    }
   }
 
   private isDrawingPhase(ctx: InteractionContext): boolean {

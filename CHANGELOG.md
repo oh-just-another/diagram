@@ -245,3 +245,6 @@
 
 ## 0.23.48
 - renderer-canvas: setupHiDpi + LayeredCanvas.resize are idempotent
+
+## 0.23.49
+- state: pan canvas with right-click drag or held Space + drag
