@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/demo",
-  "version": "0.23.50",
+  "version": "0.23.51",
   "description": "Demo application \u2014 full-featured React editor built on top of @oh-just-another/react-ui.",
   "type": "module",
   "private": true,

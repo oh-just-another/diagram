@@ -2381,15 +2381,25 @@ export class Editor {
       window.addEventListener("keyup", onKeyUp);
     }
 
-    // Wheel: Cmd/Ctrl + wheel → zoom around the cursor (matches standard /
-    // standard). Plain wheel → pan both axes from deltaX/deltaY simultaneously
-    // (trackpads emit both; mouse-wheel-only users use Shift+wheel for
-    // horizontal). Always preventDefault so the page does not scroll.
+    // Wheel — modern-style:
+    //   • Mouse wheel → zoom around cursor (deltaX === 0 AND
+    //     |deltaY| ≥ 50 — wheel notches typically report ±100 in
+    //     pixel mode).
+    //   • Cmd / Ctrl + wheel → zoom (browser sets ctrlKey for
+    //     trackpad 2-finger pinch too).
+    //   • Shift + wheel → horizontal pan from the vertical delta
+    //     (back-compat for vertical-only mice).
+    //   • Trackpad 2-finger swipe → pan (deltaX non-zero OR small
+    //     |deltaY|; trackpads report fine-grained pixel deltas).
+    // Always preventDefault so the page doesn't scroll along.
     const onWheel = (ev: WheelEvent): void => {
       ev.preventDefault();
       const rect = this.host.getBoundingClientRect();
       const screenPoint = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
-      if (ev.ctrlKey || ev.metaKey) {
+      const isPinch = ev.ctrlKey || ev.metaKey;
+      const looksLikeMouseWheel = ev.deltaX === 0 && Math.abs(ev.deltaY) >= 50;
+      const doZoom = isPinch || (looksLikeMouseWheel && !ev.shiftKey);
+      if (doZoom) {
         const direction = ev.deltaY < 0 ? 1 : -1;
         const factor = Math.pow(WHEEL_ZOOM_STEP, direction);
         const currentZoom = this._scene.viewport.zoom;
@@ -2397,18 +2407,21 @@ export class Editor {
         if (nextZoom === currentZoom) return;
         const anchor = this.screenToWorld(screenPoint);
         this.zoomAt(nextZoom / currentZoom, anchor);
-      } else {
-        // Pan: deltaX → horizontal, deltaY → vertical. Shift converts a
-        // vertical-only wheel into horizontal pan (and zeroes Y) — common
-        // pattern for users on mice without horizontal scroll.
-        let dx = ev.deltaX;
-        let dy = ev.deltaY;
-        if (ev.shiftKey && dx === 0) {
-          dx = dy;
-          dy = 0;
-        }
-        this.panBy({ x: -dx * WHEEL_PAN_FACTOR, y: -dy * WHEEL_PAN_FACTOR });
+        return;
       }
+      // Pan: Shift+wheel (horizontal swap) or trackpad swipe. Wheel
+      // semantics use scroll-feel (swipe up → content up), which is
+      // the OPPOSITE convention from cursor-pan (grab-feel: drag
+      // right → content right). `panBy` subtracts deltaScreen from
+      // viewport.pan; passing the negated wheel delta produces the
+      // scroll feel.
+      let dx = ev.deltaX;
+      let dy = ev.deltaY;
+      if (ev.shiftKey && dx === 0) {
+        dx = dy;
+        dy = 0;
+      }
+      this.panBy({ x: -dx * WHEEL_PAN_FACTOR, y: -dy * WHEEL_PAN_FACTOR });
     };
     // `passive: false` because we preventDefault. Browsers default wheel
     // listeners to passive — must opt out explicitly.

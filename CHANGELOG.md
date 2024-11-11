@@ -251,3 +251,6 @@
 
 ## 0.23.50
 - state: fix pan direction + right-click vs context-menu disambiguation
+
+## 0.23.51
+- state: mouse wheel zooms by default (modern-style); trackpad still pans
