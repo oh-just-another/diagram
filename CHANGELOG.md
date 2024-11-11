@@ -248,3 +248,6 @@
 
 ## 0.23.49
 - state: pan canvas with right-click drag or held Space + drag
+
+## 0.23.50
+- state: fix pan direction + right-click vs context-menu disambiguation

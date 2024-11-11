@@ -403,11 +403,31 @@ export class Editor {
   /**
    * Active pan gesture (right-click drag or Space + left drag).
    * `pointerId` is captured by the host so move/up events keep
-   * arriving even after the cursor leaves the host bounds; `lastPoint`
-   * holds the previous screen-space position so we can compute a
-   * delta per move.
+   * arriving even after the cursor leaves the host bounds.
+   * `startPoint` is the press position — used to decide "click vs
+   * drag" at pointerup (a near-zero displacement right-click is a
+   * context-menu request, not a pan). `lastPoint` tracks the
+   * previous move so per-frame delta is correct.
+   *
+   * `button` records which mouse button started the gesture so we
+   * only treat right-click releases as potential context-menu
+   * triggers (Space + left-drag never opens a menu).
    */
-  private panGesture: { pointerId: number; lastPoint: Vec2 } | null = null;
+  private panGesture: {
+    pointerId: number;
+    button: number;
+    startPoint: Vec2;
+    lastPoint: Vec2;
+    moved: boolean;
+  } | null = null;
+
+  /**
+   * Set on right-click pointerdown result so the upcoming native
+   * `contextmenu` event can be unconditionally preventDefault'ed
+   * (the gesture decides whether to fire the menu manually on
+   * pointerup based on whether the user dragged).
+   */
+  private suppressNextContextMenu = false;
 
   /** Cursor style we set on the host while a pan gesture is in flight. */
   private previousHostCursor: string | null = null;
@@ -1889,7 +1909,11 @@ export class Editor {
       const isRightClick = ev.button === 2 || ev.button === 1;
       const isSpaceLeftDrag = ev.button === 0 && this.spaceHeld;
       if (isRightClick || isSpaceLeftDrag) {
-        this.beginPanGesture(ev.pointerId, data.point);
+        // Suppress the next native contextmenu — we'll either pan
+        // (if user drags) or manually fire the long-press callback
+        // at pointerup (if it was a click-style right-click).
+        if (isRightClick) this.suppressNextContextMenu = true;
+        this.beginPanGesture(ev.pointerId, ev.button, data.point);
         return;
       }
 
@@ -2042,7 +2066,20 @@ export class Editor {
         const dx = data.point.x - this.panGesture.lastPoint.x;
         const dy = data.point.y - this.panGesture.lastPoint.y;
         this.panGesture.lastPoint = data.point;
-        this.panBy({ x: -dx, y: -dy });
+        // Mark as moved once total displacement crosses the slop
+        // threshold — used at pointerup to decide context-menu vs
+        // drag for right-click gestures.
+        if (
+          !this.panGesture.moved &&
+          distanceTo(this.panGesture.startPoint, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
+        ) {
+          this.panGesture.moved = true;
+        }
+        // Natural-grab direction: cursor right → world moves right
+        // (shapes follow the finger). `viewportPanBy` already
+        // subtracts deltaScreen from pan, so we pass the raw cursor
+        // delta — no extra inversion.
+        this.panBy({ x: dx, y: dy });
         return;
       }
 
@@ -2278,14 +2315,27 @@ export class Editor {
     this.host.addEventListener("pointerup", onUp);
     this.host.addEventListener("pointercancel", onCancel);
 
-    // Suppress the native context menu on the canvas — right-click is
-    // wired to pan. Hosts that want a context menu should use the
-    // `@react-ui/ContextMenu` (driven by `editor.onLongPress` /
-    // explicit listener), not the browser default.
+    // Right-click handling: the contextmenu DOM event fires once per
+    // right mouse press, AFTER pointerup on most browsers. We use
+    // `suppressNextContextMenu` (set on right-click pointerdown) to:
+    //   • preventDefault the native browser menu;
+    //   • stopPropagation so window-level listeners (like
+    //     `@react-ui/ContextMenu` default) don't re-open a menu when
+    //     the user was actually panning.
+    // The "menu on click without drag" path lives in `endPanGesture`:
+    // it fires `longPressListeners` directly, which is what
+    // ContextMenu also subscribes to. So a clean right-click still
+    // produces a menu — through our event channel, not the native
+    // contextmenu DOM event.
     const onContextMenu = (ev: MouseEvent): void => {
+      if (!this.suppressNextContextMenu) return;
+      this.suppressNextContextMenu = false;
       ev.preventDefault();
+      ev.stopPropagation();
     };
-    this.host.addEventListener("contextmenu", onContextMenu);
+    // Capture phase so we beat the window-level listener that
+    // ContextMenu attaches in its useEffect.
+    this.host.addEventListener("contextmenu", onContextMenu, true);
 
     // Window-level Space tracking so Space anywhere on the page
     // arms the next mouse drag as a pan. Skip when focus is in a
@@ -2369,7 +2419,7 @@ export class Editor {
       this.host.removeEventListener("pointermove", onMove);
       this.host.removeEventListener("pointerup", onUp);
       this.host.removeEventListener("pointercancel", onCancel);
-      this.host.removeEventListener("contextmenu", onContextMenu);
+      this.host.removeEventListener("contextmenu", onContextMenu, true);
       this.host.removeEventListener("wheel", onWheel);
       if (typeof window !== "undefined") {
         window.removeEventListener("keydown", onKeyDown);
@@ -2383,12 +2433,18 @@ export class Editor {
    * events arrive even outside the host bounds, cancel anything the
    * machine might have started this tick, and switch the cursor.
    */
-  private beginPanGesture(pointerId: number, point: Vec2): void {
+  private beginPanGesture(pointerId: number, button: number, point: Vec2): void {
     this.actor.send({ type: "POINTER_CANCEL" });
     this.cancelGesture();
     this.cancelLongPress();
     this.host.setPointerCapture(pointerId);
-    this.panGesture = { pointerId, lastPoint: point };
+    this.panGesture = {
+      pointerId,
+      button,
+      startPoint: point,
+      lastPoint: point,
+      moved: false,
+    };
     if (this.previousHostCursor === null) {
       this.previousHostCursor = this.host.style.cursor;
     }
@@ -2398,10 +2454,28 @@ export class Editor {
   /**
    * End an in-progress pan gesture. Restores the cursor unless Space
    * is still held (then we drop back to "grab" so the user knows
-   * another drag is armed).
+   * another drag is armed). For right-click that didn't move past
+   * the slop threshold, fires the long-press callback so the context
+   * menu opens at the click position — that's the "right-click =
+   * menu, right-drag = pan" decision rule.
    */
   private endPanGesture(): void {
+    const gesture = this.panGesture;
     this.panGesture = null;
+    if (gesture && (gesture.button === 2 || gesture.button === 1) && !gesture.moved) {
+      // Right-click without drag → trigger the context-menu listeners.
+      // Same payload as touch long-press so existing UI (e.g.
+      // `@react-ui/ContextMenu`) works without changes.
+      const worldPoint = this.screenToWorld(gesture.startPoint);
+      for (const fn of this.longPressListeners) {
+        fn({ screenPoint: gesture.startPoint, worldPoint });
+      }
+    } else {
+      // Either it was a real drag, or Space + left drag. In both
+      // cases we DO want to keep the native context menu suppressed
+      // until the upcoming `contextmenu` event lands (Chrome fires
+      // it after pointerup on right button).
+    }
     if (this.spaceHeld) {
       this.host.style.cursor = "grab";
       return;
