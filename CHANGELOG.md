@@ -254,3 +254,6 @@
 
 ## 0.23.51
 - state: mouse wheel zooms by default (modern-style); trackpad still pans
+
+## 0.23.52
+- state: wheel always zooms — drop mouse-vs-trackpad heuristic
