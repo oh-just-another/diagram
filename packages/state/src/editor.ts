@@ -2381,28 +2381,44 @@ export class Editor {
       window.addEventListener("keyup", onKeyUp);
     }
 
-    // Wheel — universal zoom around cursor. Single source of truth —
-    // any wheel event (mouse notch, trackpad two-finger swipe,
-    // ctrl/cmd+wheel pinch) zooms. Trackpad-driven pan goes through
-    // other affordances (Space+drag, right-drag) so the heuristic-
-    // based "mouse vs trackpad" classification (which produced
-    // simultaneous zoom + pan on smooth-scroll wheels) is gone.
+    // Wheel — x5/graph-style. No mouse-vs-trackpad detection (the
+    // heuristic-based one we had before misfired on smooth-scroll
+    // wheels). Universal rules:
+    //   • Cmd / Ctrl + wheel → zoom around cursor. Browsers set
+    //     ctrlKey on trackpad 2-finger pinch too, so this catches
+    //     both Cmd+wheel and trackpad pinch.
+    //   • Shift + wheel → horizontal pan from the vertical delta
+    //     (back-compat for vertical-only mice).
+    //   • Plain wheel → pan along both axes — trackpad two-finger
+    //     swipes naturally; mouse-wheel users pan vertically and
+    //     zoom via Cmd+wheel or +/− hotkeys.
     //
-    // Direction: deltaY < 0 (wheel up / swipe up) → zoom in. Shift
-    // is no longer a special case — the rare user who wants pan via
-    // wheel uses Space+drag.
+    // Direction: `panBy` subtracts deltaScreen from `viewport.pan`.
+    // For wheel-pan that matches the natural trackpad feel (swipe up
+    // → content up): pass raw deltas, no extra negation. Same
+    // convention as cursor-pan (right-drag, Space+drag).
     const onWheel = (ev: WheelEvent): void => {
       ev.preventDefault();
-      if (ev.deltaY === 0) return;
       const rect = this.host.getBoundingClientRect();
       const screenPoint = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
-      const direction = ev.deltaY < 0 ? 1 : -1;
-      const factor = Math.pow(WHEEL_ZOOM_STEP, direction);
-      const currentZoom = this._scene.viewport.zoom;
-      const nextZoom = clampZoom(currentZoom * factor);
-      if (nextZoom === currentZoom) return;
-      const anchor = this.screenToWorld(screenPoint);
-      this.zoomAt(nextZoom / currentZoom, anchor);
+      if (ev.ctrlKey || ev.metaKey) {
+        if (ev.deltaY === 0) return;
+        const direction = ev.deltaY < 0 ? 1 : -1;
+        const factor = Math.pow(WHEEL_ZOOM_STEP, direction);
+        const currentZoom = this._scene.viewport.zoom;
+        const nextZoom = clampZoom(currentZoom * factor);
+        if (nextZoom === currentZoom) return;
+        const anchor = this.screenToWorld(screenPoint);
+        this.zoomAt(nextZoom / currentZoom, anchor);
+        return;
+      }
+      let dx = ev.deltaX;
+      let dy = ev.deltaY;
+      if (ev.shiftKey && dx === 0) {
+        dx = dy;
+        dy = 0;
+      }
+      this.panBy({ x: dx * WHEEL_PAN_FACTOR, y: dy * WHEEL_PAN_FACTOR });
     };
     // `passive: false` because we preventDefault. Browsers default wheel
     // listeners to passive — must opt out explicitly.

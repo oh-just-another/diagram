@@ -257,3 +257,6 @@
 
 ## 0.23.52
 - state: wheel always zooms — drop mouse-vs-trackpad heuristic
+
+## 0.23.53
+- state: wheel = pan, Cmd/Ctrl + wheel = zoom (x5/graph )
