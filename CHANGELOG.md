@@ -260,3 +260,6 @@
 
 ## 0.23.53
 - state: wheel = pan, Cmd/Ctrl + wheel = zoom (x5/graph )
+
+## 0.23.54
+- state: restore wheel-pan negation (trackpad direction fix)

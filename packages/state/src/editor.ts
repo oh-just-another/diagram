@@ -2418,7 +2418,15 @@ export class Editor {
         dx = dy;
         dy = 0;
       }
-      this.panBy({ x: dx * WHEEL_PAN_FACTOR, y: dy * WHEEL_PAN_FACTOR });
+      // Wheel-pan convention (matches x5/graph):
+      // `scrollX -= deltaX` in graph; their `scrollX` has the opposite
+      // sign of our `pan.x` (graph projects via `+scrollX`, we project
+      // via `-pan.x`), so the equivalent here is `pan.x += deltaX`.
+      // Our `panBy` subtracts the screen delta from `pan`, so we
+      // negate the wheel delta on the way in. Positive deltaX (page
+      // scrolls right) → world / camera moves right → content shifts
+      // LEFT on screen, which matches the OS-level scroll convention.
+      this.panBy({ x: -dx * WHEEL_PAN_FACTOR, y: -dy * WHEEL_PAN_FACTOR });
     };
     // `passive: false` because we preventDefault. Browsers default wheel
     // listeners to passive — must opt out explicitly.
