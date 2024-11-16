@@ -90,15 +90,26 @@ export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
  * - `WHEEL_PAN_FACTOR` — how many world units (at zoom 1) to pan per
  *   wheel notch on plain scroll. 1 = native pixel; lower than 1 makes
  *   the wheel feel sluggish on high-DPI mice.
- * - `WHEEL_ZOOM_STEP` — multiplicative zoom factor per wheel notch
- *   when modifier (Ctrl/Cmd) is held. 1.1 = +10% per notch; smaller
- *   feels smoother but takes more spins to traverse 10×.
+ * - `WHEEL_ZOOM_STEP` — multiplicative zoom factor used by the
+ *   programmatic button-style zoom (`Editor.zoomIn` / `zoomOut`).
+ *   1.1 = +10% per call.
+ * - `WHEEL_ZOOM_SENSITIVITY` — controls how aggressively a Ctrl/Cmd +
+ *   wheel (or trackpad pinch) maps |deltaY| to a zoom factor. The
+ *   handler applies `factor = exp(-deltaY * SENSITIVITY)`, so the
+ *   factor scales with the magnitude of the wheel/pinch delta instead
+ *   of stepping by a fixed amount per event. Tuned so that one mouse
+ *   wheel notch (`|deltaY| ≈ 100` in Chrome `DOM_DELTA_PIXEL`) lands
+ *   near `WHEEL_ZOOM_STEP` (≈ 1.1), and a trackpad pinch frame
+ *   (`|deltaY| ≈ 2–5`) produces a gentle 0.2–0.5% step that adds up
+ *   smoothly over the gesture. Increase for a snappier feel; decrease
+ *   if pinch feels jumpy. Default = `ln(WHEEL_ZOOM_STEP) / 100`.
  * - `MIN_ZOOM` / `MAX_ZOOM` — hard caps. Below MIN_ZOOM (very far
  *   out) culling/LOD save the frame; above MAX_ZOOM pixel-snapping
  *   artefacts appear.
  */
 export const WHEEL_PAN_FACTOR = 1;
 export const WHEEL_ZOOM_STEP = 1.1;
+export const WHEEL_ZOOM_SENSITIVITY = Math.log(WHEEL_ZOOM_STEP) / 100;
 export const MIN_ZOOM = 0.05;
 export const MAX_ZOOM = 32;
 

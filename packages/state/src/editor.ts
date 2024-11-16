@@ -106,6 +106,7 @@ import {
   TOUCH_HANDLE_HIT_SLOP,
   VIEWPORT_CULL_PADDING_RATIO,
   WHEEL_PAN_FACTOR,
+  WHEEL_ZOOM_SENSITIVITY,
   WHEEL_ZOOM_STEP,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP, hitHandle } from "./handle.js";
@@ -2403,8 +2404,15 @@ export class Editor {
       const screenPoint = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
       if (ev.ctrlKey || ev.metaKey) {
         if (ev.deltaY === 0) return;
-        const direction = ev.deltaY < 0 ? 1 : -1;
-        const factor = Math.pow(WHEEL_ZOOM_STEP, direction);
+        // Browsers fire `wheel` with `ctrlKey: true` for both
+        // Cmd/Ctrl+wheel (large |deltaY| ≈ 100 per notch) AND trackpad
+        // two-finger pinch (small |deltaY| ≈ 2–5 per frame, many
+        // events per second). A fixed-step factor (Math.pow(STEP, ±1))
+        // makes pinch explode because every pinch frame multiplies by
+        // 1.1; instead, scale the factor exponentially with |deltaY|
+        // so one wheel notch ≈ WHEEL_ZOOM_STEP and one pinch frame is
+        // a tiny fraction that integrates smoothly over the gesture.
+        const factor = Math.exp(-ev.deltaY * WHEEL_ZOOM_SENSITIVITY);
         const currentZoom = this._scene.viewport.zoom;
         const nextZoom = clampZoom(currentZoom * factor);
         if (nextZoom === currentZoom) return;

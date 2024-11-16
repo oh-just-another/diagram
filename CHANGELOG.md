@@ -263,3 +263,6 @@
 
 ## 0.23.54
 - state: restore wheel-pan negation (trackpad direction fix)
+
+## 0.23.55
+- state: scale wheel zoom factor with |deltaY| (trackpad pinch fix)
