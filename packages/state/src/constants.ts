@@ -97,20 +97,19 @@ export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
  *   wheel (or trackpad pinch) maps |deltaY| to a zoom factor. The
  *   handler applies `factor = exp(-deltaY * SENSITIVITY)`, so the
  *   factor scales with the magnitude of the wheel/pinch delta instead
- *   of stepping by a fixed amount per event. Tuned so that ~60 px of
- *   accumulated |deltaY| matches `WHEEL_ZOOM_STEP` (≈ 1.1) — slightly
- *   faster than one mouse notch (~100 px) so the pinch gesture
- *   doesn't feel sluggish, while a single pinch frame
- *   (`|deltaY| ≈ 2–5`) still steps a gentle 0.3–0.9 %. Increase the
- *   divisor for a calmer pinch; decrease for a snappier one. Default
- *   = `ln(WHEEL_ZOOM_STEP) / 60`.
+ *   of stepping by a fixed amount per event. Tuned so that ~20 px of
+ *   accumulated |deltaY| matches `WHEEL_ZOOM_STEP` (≈ 1.1) — markedly
+ *   faster than one mouse notch (~100 px) so the pinch gesture feels
+ *   responsive, while a single pinch frame (`|deltaY| ≈ 2–5`) still
+ *   steps a gentle 1–2.4 %. Increase the divisor for a calmer pinch;
+ *   decrease for a snappier one. Default = `ln(WHEEL_ZOOM_STEP) / 20`.
  * - `MIN_ZOOM` / `MAX_ZOOM` — hard caps. Below MIN_ZOOM (very far
  *   out) culling/LOD save the frame; above MAX_ZOOM pixel-snapping
  *   artefacts appear.
  */
 export const WHEEL_PAN_FACTOR = 1;
 export const WHEEL_ZOOM_STEP = 1.1;
-export const WHEEL_ZOOM_SENSITIVITY = Math.log(WHEEL_ZOOM_STEP) / 60;
+export const WHEEL_ZOOM_SENSITIVITY = Math.log(WHEEL_ZOOM_STEP) / 20;
 export const MIN_ZOOM = 0.05;
 export const MAX_ZOOM = 32;
 

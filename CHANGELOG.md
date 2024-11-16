@@ -269,3 +269,6 @@
 
 ## 0.23.56
 - state: bump trackpad pinch zoom speed (~1.67×)
+
+## 0.23.57
+- state: tune WHEEL_ZOOM_SENSITIVITY to ln(STEP)/20
