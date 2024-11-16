@@ -266,3 +266,6 @@
 
 ## 0.23.55
 - state: scale wheel zoom factor with |deltaY| (trackpad pinch fix)
+
+## 0.23.56
+- state: bump trackpad pinch zoom speed (~1.67×)
