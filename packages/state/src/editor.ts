@@ -105,7 +105,9 @@ import {
   TOUCH_EDGE_HIT_THRESHOLD,
   TOUCH_HANDLE_HIT_SLOP,
   VIEWPORT_CULL_PADDING_RATIO,
+  WHEEL_MOUSE_DETECTION_THRESHOLD,
   WHEEL_PAN_FACTOR,
+  WHEEL_STREAM_GAP_MS,
   WHEEL_ZOOM_SENSITIVITY,
   WHEEL_ZOOM_STEP,
 } from "./constants.js";
@@ -2382,58 +2384,84 @@ export class Editor {
       window.addEventListener("keyup", onKeyUp);
     }
 
-    // Wheel — x5/graph-style. No mouse-vs-trackpad detection (the
-    // heuristic-based one we had before misfired on smooth-scroll
-    // wheels). Universal rules:
-    //   • Cmd / Ctrl + wheel → zoom around cursor. Browsers set
-    //     ctrlKey on trackpad 2-finger pinch too, so this catches
-    //     both Cmd+wheel and trackpad pinch.
-    //   • Shift + wheel → horizontal pan from the vertical delta
-    //     (back-compat for vertical-only mice).
-    //   • Plain wheel → pan along both axes — trackpad two-finger
-    //     swipes naturally; mouse-wheel users pan vertically and
-    //     zoom via Cmd+wheel or +/− hotkeys.
+    // Wheel routing — distinguish mouse wheel (→ zoom) from trackpad
+    // two-finger swipe (→ pan) using a *stream-locked* heuristic.
     //
-    // Direction: `panBy` subtracts deltaScreen from `viewport.pan`.
-    // For wheel-pan that matches the natural trackpad feel (swipe up
-    // → content up): pass raw deltas, no extra negation. Same
-    // convention as cursor-pan (right-drag, Space+drag).
+    // Browsers fire identical `wheel` events for both devices; the
+    // only signals are `deltaMode`, `|deltaY|`, and the presence of
+    // `deltaX`. A naive per-event classifier failed because smooth-
+    // scroll wheels burst many events with mixed magnitudes — the
+    // first event might look like a mouse notch, the next like a
+    // trackpad swipe, producing both zoom AND pan in one stroke.
+    //
+    // Solution: classify only on the *first* event of a stream and
+    // lock the mode for the rest. A stream ends after
+    // `WHEEL_STREAM_GAP_MS` of quiet; the next event opens a fresh
+    // stream and re-classifies.
+    //
+    // Universal rules (modifier always wins):
+    //   • Cmd / Ctrl + wheel → zoom around cursor. ctrlKey is also
+    //     set by browsers on trackpad pinch, so this catches both.
+    //   • Shift + wheel → horizontal pan from vertical delta.
+    //   • Otherwise: stream-mode (zoom for mouse, pan for trackpad).
+    //
+    // Pan direction: `panBy` subtracts deltaScreen from `viewport.pan`,
+    // so we negate the wheel delta — positive deltaX (page scrolls
+    // right) → camera right → content shifts LEFT, matching native
+    // browser scroll feel.
+    let wheelStreamMode: "pan" | "zoom" | null = null;
+    let wheelStreamLastAt = 0;
     const onWheel = (ev: WheelEvent): void => {
       ev.preventDefault();
       const rect = this.host.getBoundingClientRect();
       const screenPoint = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
-      if (ev.ctrlKey || ev.metaKey) {
+
+      const applyZoom = (): void => {
         if (ev.deltaY === 0) return;
-        // Browsers fire `wheel` with `ctrlKey: true` for both
-        // Cmd/Ctrl+wheel (large |deltaY| ≈ 100 per notch) AND trackpad
-        // two-finger pinch (small |deltaY| ≈ 2–5 per frame, many
-        // events per second). A fixed-step factor (Math.pow(STEP, ±1))
-        // makes pinch explode because every pinch frame multiplies by
-        // 1.1; instead, scale the factor exponentially with |deltaY|
-        // so one wheel notch ≈ WHEEL_ZOOM_STEP and one pinch frame is
-        // a tiny fraction that integrates smoothly over the gesture.
         const factor = Math.exp(-ev.deltaY * WHEEL_ZOOM_SENSITIVITY);
         const currentZoom = this._scene.viewport.zoom;
         const nextZoom = clampZoom(currentZoom * factor);
         if (nextZoom === currentZoom) return;
         const anchor = this.screenToWorld(screenPoint);
         this.zoomAt(nextZoom / currentZoom, anchor);
+      };
+
+      // Modifier-driven zoom (Cmd/Ctrl+wheel and trackpad pinch).
+      // Pinch resets the stream lock so a following pan gesture
+      // re-classifies cleanly.
+      if (ev.ctrlKey || ev.metaKey) {
+        wheelStreamMode = null;
+        wheelStreamLastAt = performance.now();
+        applyZoom();
         return;
       }
+
+      const now = performance.now();
+      if (now - wheelStreamLastAt > WHEEL_STREAM_GAP_MS) {
+        // Fresh stream — classify the device.
+        // - `deltaMode !== 0` (LINE / PAGE) is always mouse — only
+        //   classical wheels report non-pixel units.
+        // - On pixel mode: `deltaX === 0` AND `|deltaY|` past the
+        //   mouse-notch threshold = mouse; otherwise trackpad.
+        const looksLikeMouse =
+          ev.deltaMode !== 0 ||
+          (ev.deltaX === 0 && Math.abs(ev.deltaY) >= WHEEL_MOUSE_DETECTION_THRESHOLD);
+        wheelStreamMode = looksLikeMouse ? "zoom" : "pan";
+      }
+      wheelStreamLastAt = now;
+
+      if (wheelStreamMode === "zoom") {
+        applyZoom();
+        return;
+      }
+
+      // Pan path.
       let dx = ev.deltaX;
       let dy = ev.deltaY;
       if (ev.shiftKey && dx === 0) {
         dx = dy;
         dy = 0;
       }
-      // Wheel-pan convention (matches x5/graph):
-      // `scrollX -= deltaX` in graph; their `scrollX` has the opposite
-      // sign of our `pan.x` (graph projects via `+scrollX`, we project
-      // via `-pan.x`), so the equivalent here is `pan.x += deltaX`.
-      // Our `panBy` subtracts the screen delta from `pan`, so we
-      // negate the wheel delta on the way in. Positive deltaX (page
-      // scrolls right) → world / camera moves right → content shifts
-      // LEFT on screen, which matches the OS-level scroll convention.
       this.panBy({ x: -dx * WHEEL_PAN_FACTOR, y: -dy * WHEEL_PAN_FACTOR });
     };
     // `passive: false` because we preventDefault. Browsers default wheel

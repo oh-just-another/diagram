@@ -88,28 +88,46 @@ export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
  * Mouse-wheel handling.
  *
  * - `WHEEL_PAN_FACTOR` — how many world units (at zoom 1) to pan per
- *   wheel notch on plain scroll. 1 = native pixel; lower than 1 makes
- *   the wheel feel sluggish on high-DPI mice.
+ *   wheel notch when the handler routes the wheel event to pan
+ *   (trackpad two-finger swipe). 1 = native pixel; lower than 1
+ *   makes the wheel feel sluggish on high-DPI mice.
  * - `WHEEL_ZOOM_STEP` — multiplicative zoom factor used by the
- *   programmatic button-style zoom (`Editor.zoomIn` / `zoomOut`).
- *   1.1 = +10% per call.
- * - `WHEEL_ZOOM_SENSITIVITY` — controls how aggressively a Ctrl/Cmd +
- *   wheel (or trackpad pinch) maps |deltaY| to a zoom factor. The
- *   handler applies `factor = exp(-deltaY * SENSITIVITY)`, so the
- *   factor scales with the magnitude of the wheel/pinch delta instead
- *   of stepping by a fixed amount per event. Tuned so that ~20 px of
- *   accumulated |deltaY| matches `WHEEL_ZOOM_STEP` (≈ 1.1) — markedly
- *   faster than one mouse notch (~100 px) so the pinch gesture feels
- *   responsive, while a single pinch frame (`|deltaY| ≈ 2–5`) still
- *   steps a gentle 1–2.4 %. Increase the divisor for a calmer pinch;
- *   decrease for a snappier one. Default = `ln(WHEEL_ZOOM_STEP) / 20`.
+ *   programmatic button-style zoom (`Editor.zoomIn` / `zoomOut`) and
+ *   as the calibration point for `WHEEL_ZOOM_SENSITIVITY` below.
+ *   `1.6 = +60% per call` — punchy single-step zoom.
+ * - `WHEEL_ZOOM_SENSITIVITY` — controls how aggressively a wheel /
+ *   pinch event maps `|deltaY|` to a zoom factor. The handler
+ *   applies `factor = exp(-deltaY * SENSITIVITY)`, so the factor
+ *   scales with the magnitude of the wheel/pinch delta. Tuned so
+ *   that ~20 px of accumulated `|deltaY|` matches `WHEEL_ZOOM_STEP`
+ *   — one mouse notch (`|deltaY| ≈ 100`) ≈ `WHEEL_ZOOM_STEP^5`,
+ *   and one pinch frame (`|deltaY| ≈ 2–5`) ≈ 5–13 %. Increase the
+ *   divisor for a calmer pinch; decrease for a snappier one.
+ *   Default = `ln(WHEEL_ZOOM_STEP) / 20`.
+ * - `WHEEL_STREAM_GAP_MS` — gap between consecutive wheel events
+ *   that ends the current "wheel stream". On each fresh stream the
+ *   handler re-classifies the input device (mouse vs trackpad) and
+ *   locks that mode for the rest of the stream. Without the lock,
+ *   smooth-scroll wheel bursts mixed large + small deltas and
+ *   triggered both zoom AND pan branches in the same stroke. 150 ms
+ *   covers a typical Apple smooth-scroll wheel notch (~100 ms of
+ *   ramp + small tail) without bleeding into a fresh gesture.
+ * - `WHEEL_MOUSE_DETECTION_THRESHOLD` — `|deltaY|` at or above this
+ *   value with `deltaX === 0` on the first event of a stream is
+ *   treated as a discrete mouse notch → zoom. Below it (or with any
+ *   `deltaX`) → trackpad two-finger swipe → pan. 40 px catches even
+ *   the first sample of a Chrome smooth-scroll mouse notch while
+ *   leaving trackpad pan (single-event |deltaY| usually 1–10) on
+ *   the pan path.
  * - `MIN_ZOOM` / `MAX_ZOOM` — hard caps. Below MIN_ZOOM (very far
  *   out) culling/LOD save the frame; above MAX_ZOOM pixel-snapping
  *   artefacts appear.
  */
 export const WHEEL_PAN_FACTOR = 1;
-export const WHEEL_ZOOM_STEP = 1.1;
+export const WHEEL_ZOOM_STEP = 1.6;
 export const WHEEL_ZOOM_SENSITIVITY = Math.log(WHEEL_ZOOM_STEP) / 20;
+export const WHEEL_STREAM_GAP_MS = 150;
+export const WHEEL_MOUSE_DETECTION_THRESHOLD = 40;
 export const MIN_ZOOM = 0.05;
 export const MAX_ZOOM = 32;
 

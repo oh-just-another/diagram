@@ -272,3 +272,6 @@
 
 ## 0.23.57
 - state: tune WHEEL_ZOOM_SENSITIVITY to ln(STEP)/20
+
+## 0.23.58
+- state: stream-locked wheel routing — mouse=zoom, trackpad=pan
