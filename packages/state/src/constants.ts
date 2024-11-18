@@ -104,30 +104,19 @@ export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
  *   and one pinch frame (`|deltaY| ≈ 2–5`) ≈ 5–13 %. Increase the
  *   divisor for a calmer pinch; decrease for a snappier one.
  *   Default = `ln(WHEEL_ZOOM_STEP) / 20`.
- * - `WHEEL_STREAM_GAP_MS` — gap between consecutive wheel events
- *   that ends the current "wheel stream". On each fresh stream the
- *   handler re-classifies the input device (mouse vs trackpad) and
- *   locks that mode for the rest of the stream. Without the lock,
- *   smooth-scroll wheel bursts mixed large + small deltas and
- *   triggered both zoom AND pan branches in the same stroke. 150 ms
- *   covers a typical Apple smooth-scroll wheel notch (~100 ms of
- *   ramp + small tail) without bleeding into a fresh gesture.
- * - `WHEEL_MOUSE_DETECTION_THRESHOLD` — `|deltaY|` at or above this
- *   value with `deltaX === 0` on the first event of a stream is
- *   treated as a discrete mouse notch → zoom. Below it (or with any
- *   `deltaX`) → trackpad two-finger swipe → pan. 40 px catches even
- *   the first sample of a Chrome smooth-scroll mouse notch while
- *   leaving trackpad pan (single-event |deltaY| usually 1–10) on
- *   the pan path.
  * - `MIN_ZOOM` / `MAX_ZOOM` — hard caps. Below MIN_ZOOM (very far
  *   out) culling/LOD save the frame; above MAX_ZOOM pixel-snapping
  *   artefacts appear.
+ *
+ * Device classification in the wheel handler is `deltaX`-based —
+ * mouse wheels never set deltaX, so any horizontal component routes
+ * to pan and pure-vertical routes to zoom. Pure-vertical trackpad
+ * swipes (rare) fall into zoom; users can pan via Space+drag or
+ * right-click drag if needed.
  */
 export const WHEEL_PAN_FACTOR = 1;
 export const WHEEL_ZOOM_STEP = 1.6;
 export const WHEEL_ZOOM_SENSITIVITY = Math.log(WHEEL_ZOOM_STEP) / 20;
-export const WHEEL_STREAM_GAP_MS = 150;
-export const WHEEL_MOUSE_DETECTION_THRESHOLD = 40;
 export const MIN_ZOOM = 0.05;
 export const MAX_ZOOM = 32;
 

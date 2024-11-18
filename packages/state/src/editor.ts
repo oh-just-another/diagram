@@ -105,9 +105,7 @@ import {
   TOUCH_EDGE_HIT_THRESHOLD,
   TOUCH_HANDLE_HIT_SLOP,
   VIEWPORT_CULL_PADDING_RATIO,
-  WHEEL_MOUSE_DETECTION_THRESHOLD,
   WHEEL_PAN_FACTOR,
-  WHEEL_STREAM_GAP_MS,
   WHEEL_ZOOM_SENSITIVITY,
   WHEEL_ZOOM_STEP,
 } from "./constants.js";
@@ -2384,33 +2382,42 @@ export class Editor {
       window.addEventListener("keyup", onKeyUp);
     }
 
-    // Wheel routing — distinguish mouse wheel (→ zoom) from trackpad
-    // two-finger swipe (→ pan) using a *stream-locked* heuristic.
+    // Wheel routing — standard model: mouse wheel → zoom, trackpad → pan
+    // / pinch. Browsers fire identical `wheel` events for both
+    // devices and no per-event signal is bulletproof (standard,
+    // standard, normalize-wheel all give up on per-event device
+    // discrimination — see notes below).
     //
-    // Browsers fire identical `wheel` events for both devices; the
-    // only signals are `deltaMode`, `|deltaY|`, and the presence of
-    // `deltaX`. A naive per-event classifier failed because smooth-
-    // scroll wheels burst many events with mixed magnitudes — the
-    // first event might look like a mouse notch, the next like a
-    // trackpad swipe, producing both zoom AND pan in one stroke.
+    // We use the **modern-style sticky** approach combined with the
+    // `deltaX` signal:
     //
-    // Solution: classify only on the *first* event of a stream and
-    // lock the mode for the rest. A stream ends after
-    // `WHEEL_STREAM_GAP_MS` of quiet; the next event opens a fresh
-    // stream and re-classifies.
+    // 1. Cmd/Ctrl + wheel (and trackpad pinch, which browsers
+    //    synthesize as `ctrlKey: true`) → ZOOM around cursor.
+    // 2. Shift + wheel → horizontal pan from the vertical delta.
+    // 3. Otherwise:
+    //    • If we've already observed a trackpad signal in this
+    //      session (sticky `trackpadDetected` flag) → PAN.
+    //    • Per-event signal `deltaX !== 0` (any horizontal component
+    //      — mouse wheels never set this) → PAN, AND lock the
+    //      sticky flag so subsequent pure-vertical trackpad swipes
+    //      also pan.
+    //    • A pinch event (`ctrlKey && deltaY` without `metaKey`)
+    //      also locks the trackpad flag — once the user has pinched
+    //      we know they're on a trackpad.
+    //    • Otherwise (plain vertical, no trackpad ever detected) →
+    //      ZOOM. This is the mouse-wheel branch.
     //
-    // Universal rules (modifier always wins):
-    //   • Cmd / Ctrl + wheel → zoom around cursor. ctrlKey is also
-    //     set by browsers on trackpad pinch, so this catches both.
-    //   • Shift + wheel → horizontal pan from vertical delta.
-    //   • Otherwise: stream-mode (zoom for mouse, pan for trackpad).
+    // Result: mouse-only users always get zoom on wheel (they never
+    // emit deltaX or pinch, so the sticky flag never trips).
+    // Trackpad users get zoom on pinch + Cmd, and pan on any swipe
+    // including pure-vertical ones after the first non-pure-vertical
+    // event (or first pinch).
     //
     // Pan direction: `panBy` subtracts deltaScreen from `viewport.pan`,
     // so we negate the wheel delta — positive deltaX (page scrolls
     // right) → camera right → content shifts LEFT, matching native
     // browser scroll feel.
-    let wheelStreamMode: "pan" | "zoom" | null = null;
-    let wheelStreamLastAt = 0;
+    let trackpadDetected = false;
     const onWheel = (ev: WheelEvent): void => {
       ev.preventDefault();
       const rect = this.host.getBoundingClientRect();
@@ -2426,43 +2433,46 @@ export class Editor {
         this.zoomAt(nextZoom / currentZoom, anchor);
       };
 
-      // Modifier-driven zoom (Cmd/Ctrl+wheel and trackpad pinch).
-      // Pinch resets the stream lock so a following pan gesture
-      // re-classifies cleanly.
+      const applyPan = (): void => {
+        let dx = ev.deltaX;
+        let dy = ev.deltaY;
+        if (ev.shiftKey && dx === 0) {
+          dx = dy;
+          dy = 0;
+        }
+        this.panBy({ x: -dx * WHEEL_PAN_FACTOR, y: -dy * WHEEL_PAN_FACTOR });
+      };
+
+      // Sticky trackpad-detection update. Run BEFORE modifier branch
+      // so a pinch flips the flag too.
+      // - deltaX !== 0: mouse wheels never report horizontal motion.
+      // - ctrlKey + deltaY without metaKey: macOS browsers synthesize
+      //   ctrlKey on trackpad pinch; a Cmd+wheel zoom on mouse uses
+      //   metaKey, not ctrlKey, so this doesn't false-positive on
+      //   Mac. On Linux/Windows Ctrl+wheel is a different intent
+      //   (Ctrl+wheel = zoom), but those platforms also rarely have
+      //   trackpads with pinch gestures, so the trade is acceptable.
+      if (!trackpadDetected) {
+        if (ev.deltaX !== 0 || (ev.ctrlKey && !ev.metaKey && ev.deltaY !== 0)) {
+          trackpadDetected = true;
+        }
+      }
+
+      // Modifier-driven zoom (Cmd/Ctrl+wheel + trackpad pinch).
       if (ev.ctrlKey || ev.metaKey) {
-        wheelStreamMode = null;
-        wheelStreamLastAt = performance.now();
         applyZoom();
         return;
       }
 
-      const now = performance.now();
-      if (now - wheelStreamLastAt > WHEEL_STREAM_GAP_MS) {
-        // Fresh stream — classify the device.
-        // - `deltaMode !== 0` (LINE / PAGE) is always mouse — only
-        //   classical wheels report non-pixel units.
-        // - On pixel mode: `deltaX === 0` AND `|deltaY|` past the
-        //   mouse-notch threshold = mouse; otherwise trackpad.
-        const looksLikeMouse =
-          ev.deltaMode !== 0 ||
-          (ev.deltaX === 0 && Math.abs(ev.deltaY) >= WHEEL_MOUSE_DETECTION_THRESHOLD);
-        wheelStreamMode = looksLikeMouse ? "zoom" : "pan";
-      }
-      wheelStreamLastAt = now;
-
-      if (wheelStreamMode === "zoom") {
-        applyZoom();
+      // Once trackpad detected — all plain wheel = pan, including
+      // pure-vertical 2-finger swipes that followed.
+      if (trackpadDetected) {
+        applyPan();
         return;
       }
 
-      // Pan path.
-      let dx = ev.deltaX;
-      let dy = ev.deltaY;
-      if (ev.shiftKey && dx === 0) {
-        dx = dy;
-        dy = 0;
-      }
-      this.panBy({ x: -dx * WHEEL_PAN_FACTOR, y: -dy * WHEEL_PAN_FACTOR });
+      // Default: mouse wheel → zoom (standard behaviour).
+      applyZoom();
     };
     // `passive: false` because we preventDefault. Browsers default wheel
     // listeners to passive — must opt out explicitly.

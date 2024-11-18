@@ -275,3 +275,6 @@
 
 ## 0.23.58
 - state: stream-locked wheel routing — mouse=zoom, trackpad=pan
+
+## 0.23.59
+- state: modern-style wheel routing — mouse=zoom, trackpad=pan (sticky)
