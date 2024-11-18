@@ -278,3 +278,6 @@
 
 ## 0.23.59
 - state: modern-style wheel routing — mouse=zoom, trackpad=pan (sticky)
+
+## 0.23.60
+- .md: rule 8 — UI/UX changes need approval before edit
