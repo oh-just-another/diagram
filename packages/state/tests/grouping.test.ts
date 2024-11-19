@@ -140,6 +140,74 @@ describe("grouping", () => {
     expect(editor.scene.shapes.get(b.id)?.position).toEqual({ x: 150, y: 10 });
   });
 
+  it("nested groups: ungroup of outer (G2 = (G1 + C)) restores inner G1 = (A + B)", () => {
+    // A + B grouped into G1, then G1 + C grouped into G2. Ungrouping G2
+    // yields G1 and C as top-level — G1 stays intact with A and B as children.
+    const a = rect("a", 0, 0);
+    const b = rect("b", 100, 0);
+    const c = rect("c", 200, 0);
+    const editor = makeEditor(sceneWith(a, b, c));
+
+    editor.setSelection(new Set([a.id, b.id]));
+    const r1 = editor.groupSelected();
+    if (r1.kind !== "grouped") throw new Error("expected G1");
+    const g1Id = r1.groupId;
+
+    editor.setSelection(new Set([g1Id, c.id]));
+    const r2 = editor.groupSelected();
+    if (r2.kind !== "grouped") throw new Error("expected G2");
+    const g2Id = r2.groupId;
+
+    // Pre-ungroup state: nested.
+    expect(editor.scene.shapes.get(g1Id)?.parentId).toBe(g2Id);
+    expect(editor.scene.shapes.get(c.id)?.parentId).toBe(g2Id);
+    expect(editor.scene.shapes.get(a.id)?.parentId).toBe(g1Id);
+    expect(editor.scene.shapes.get(b.id)?.parentId).toBe(g1Id);
+
+    editor.setSelection(new Set([g2Id]));
+    editor.ungroup();
+
+    // G2 removed.
+    expect(editor.scene.shapes.has(g2Id)).toBe(false);
+    // G1 survives, no longer parented to G2.
+    expect(editor.scene.shapes.has(g1Id)).toBe(true);
+    expect(editor.scene.shapes.get(g1Id)?.parentId).toBeUndefined();
+    // A, B still children of G1.
+    expect(editor.scene.shapes.get(a.id)?.parentId).toBe(g1Id);
+    expect(editor.scene.shapes.get(b.id)?.parentId).toBe(g1Id);
+    // C un-parented.
+    expect(editor.scene.shapes.get(c.id)?.parentId).toBeUndefined();
+    // Selection picked up the direct ex-children of G2.
+    expect(editor.selection.has(g1Id)).toBe(true);
+    expect(editor.selection.has(c.id)).toBe(true);
+  });
+
+  it("nested groups: groupSelected with G1 and a sibling shape doesn't flatten G1", () => {
+    // Verifies the "selectionRoots" path: only top-level group becomes a
+    // child of the new group, not its descendants.
+    const a = rect("a", 0, 0);
+    const b = rect("b", 100, 0);
+    const c = rect("c", 200, 0);
+    const editor = makeEditor(sceneWith(a, b, c));
+    editor.setSelection(new Set([a.id, b.id]));
+    const r1 = editor.groupSelected();
+    if (r1.kind !== "grouped") throw new Error("expected G1");
+    const g1Id = r1.groupId;
+
+    // Select G1 and C, then group again.
+    editor.setSelection(new Set([g1Id, c.id]));
+    const r2 = editor.groupSelected();
+    if (r2.kind !== "grouped") throw new Error("expected G2");
+    const g2Id = r2.groupId;
+
+    // A and B must still be parented to G1, NOT to G2 directly.
+    expect(editor.scene.shapes.get(a.id)?.parentId).toBe(g1Id);
+    expect(editor.scene.shapes.get(b.id)?.parentId).toBe(g1Id);
+    // G1 itself parented to G2; same for C.
+    expect(editor.scene.shapes.get(g1Id)?.parentId).toBe(g2Id);
+    expect(editor.scene.shapes.get(c.id)?.parentId).toBe(g2Id);
+  });
+
   it("undo restores pre-group state", () => {
     const a = rect("a", 0, 0);
     const b = rect("b", 100, 0);

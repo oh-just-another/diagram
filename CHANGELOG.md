@@ -281,3 +281,6 @@
 
 ## 0.23.60
 - .md: rule 8 — UI/UX changes need approval before edit
+
+## 0.23.61
+- state/tests: pin nested-group behaviour ((A+B)+C) Right ungroup
