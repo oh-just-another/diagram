@@ -284,3 +284,6 @@
 
 ## 0.23.61
 - state/tests: pin nested-group behaviour ((A+B)+C) Right ungroup
+
+## 0.23.62
+- state: drill-down into groups via double-click + Esc/click-outside exit

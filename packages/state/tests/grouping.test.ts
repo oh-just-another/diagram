@@ -208,6 +208,54 @@ describe("grouping", () => {
     expect(editor.scene.shapes.get(c.id)?.parentId).toBe(g2Id);
   });
 
+  it("enterGroup + child click selects the inner shape (bypasses promote-to-root)", () => {
+    // After entering a group, calling setSelection on a child must not be
+    // auto-promoted back to the group.
+    const a = rect("a", 0, 0);
+    const b = rect("b", 100, 0);
+    const editor = makeEditor(sceneWith(a, b));
+    editor.setSelection(new Set([a.id, b.id]));
+    const r = editor.groupSelected();
+    if (r.kind !== "grouped") throw new Error("expected group");
+    const groupId = r.groupId;
+
+    editor.enterGroup(groupId);
+    expect(editor.enteredGroup).toBe(groupId);
+
+    editor.setSelection(new Set([a.id]));
+    expect([...editor.selection]).toEqual([a.id]);
+  });
+
+  it("cancelInteraction (Esc) exits group isolation and clears selection", () => {
+    const a = rect("a", 0, 0);
+    const b = rect("b", 100, 0);
+    const editor = makeEditor(sceneWith(a, b));
+    editor.setSelection(new Set([a.id, b.id]));
+    const r = editor.groupSelected();
+    if (r.kind !== "grouped") throw new Error("expected group");
+    editor.enterGroup(r.groupId);
+    editor.setSelection(new Set([a.id]));
+
+    editor.cancelInteraction();
+    expect(editor.enteredGroup).toBe(null);
+    expect(editor.selection.size).toBe(0);
+  });
+
+  it("enterGroup(null) is the explicit exit (independent of cancelInteraction)", () => {
+    const a = rect("a", 0, 0);
+    const b = rect("b", 100, 0);
+    const editor = makeEditor(sceneWith(a, b));
+    editor.setSelection(new Set([a.id, b.id]));
+    const r = editor.groupSelected();
+    if (r.kind !== "grouped") throw new Error("expected group");
+    editor.enterGroup(r.groupId);
+    expect(editor.enteredGroup).toBe(r.groupId);
+    editor.enterGroup(null);
+    expect(editor.enteredGroup).toBe(null);
+    // Selection unchanged on a clean exit (only Esc clears).
+    expect([...editor.selection]).toEqual([r.groupId]);
+  });
+
   it("undo restores pre-group state", () => {
     const a = rect("a", 0, 0);
     const b = rect("b", 100, 0);

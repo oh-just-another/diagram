@@ -105,6 +105,8 @@ import {
   TOUCH_EDGE_HIT_THRESHOLD,
   TOUCH_HANDLE_HIT_SLOP,
   VIEWPORT_CULL_PADDING_RATIO,
+  DOUBLE_CLICK_MS,
+  DOUBLE_CLICK_TOLERANCE_PX,
   WHEEL_PAN_FACTOR,
   WHEEL_ZOOM_SENSITIVITY,
   WHEEL_ZOOM_STEP,
@@ -317,9 +319,18 @@ export class Editor {
    * The group the user has "entered" via double-click. While set, the
    * hit-test stops promoting children of this group to the group root,
    * letting the user directly manipulate inner shapes. Cleared on
-   * escape or double-click on empty space.
+   * escape, click outside the group's descendants, or `cancelInteraction`.
    */
   private _enteredGroup: ShapeId | null = null;
+
+  /**
+   * Double-click detection state. Updated on every non-drag pointer
+   * up; the next pointer-up within `DOUBLE_CLICK_MS` and within
+   * `DOUBLE_CLICK_TOLERANCE_PX` of `lastClickWorldPoint` counts as a
+   * double-click. Used to trigger group drill-down (enter isolation).
+   */
+  private lastClickAt = 0;
+  private lastClickWorldPoint: Vec2 | null = null;
 
   /**
    * In-progress brush stroke. Hosts push points via
@@ -1328,6 +1339,12 @@ export class Editor {
     this.drawingPreview = null;
     this.edgePreview = null;
     this.lassoPreview = null;
+    // Esc exits group-isolation if active. The selection that was
+    // active inside the group is dropped (Esc reads as a full
+    // "back out" — selecting the group is a separate gesture).
+    if (this._enteredGroup !== null) {
+      this._enteredGroup = null;
+    }
     this._selection = Selection.EMPTY;
     this._selectedEdge = null;
     this.notify();
@@ -2257,7 +2274,20 @@ export class Editor {
       // First, fire any click-style effect derived from the press context.
       const ctxBeforeUp = this.actor.getSnapshot().context;
       const clickEffect = interpretPressEnd(ctxBeforeUp, worldPoint);
-      if (clickEffect) this.applyEmit(clickEffect);
+
+      // Group isolation routing:
+      //   - Double-click on a grouped shape → enter the topmost group
+      //     ancestor; select the inner shape directly (skipping the
+      //     promote-to-group logic that would otherwise re-select the
+      //     group root).
+      //   - Inside isolation, a click that lands outside the entered
+      //     group's descendants (empty space OR another shape) exits
+      //     isolation and lets the normal selection happen.
+      // Both branches override what `interpretPressEnd` produced.
+      const handledByIsolation = this.routeIsolationClick(clickEffect, worldPoint);
+      if (!handledByIsolation && clickEffect) {
+        this.applyEmit(clickEffect);
+      }
 
       this.drawingPreview = null;
       // Provide the up-side hit-test when the gesture cares about where
@@ -2739,6 +2769,44 @@ export class Editor {
   }
 
   /**
+   * Topmost group ancestor of `shape` (i.e. walk parentId chain, stop
+   * at the highest `type === "group"` parent). `null` if `shape` has
+   * no group ancestor. Used by drill-down: a double-click on a shape
+   * with a group ancestor enters that group.
+   */
+  private topGroupAncestor(shape: Shape): Shape | null {
+    let topGroup: Shape | null = null;
+    let cursor: Shape | undefined = shape;
+    let depth = 0;
+    while (cursor?.parentId && depth < 64) {
+      const parent = getShape(this._scene, cursor.parentId);
+      if (!parent) break;
+      if (parent.type === "group") topGroup = parent;
+      cursor = parent;
+      depth++;
+    }
+    return topGroup;
+  }
+
+  /**
+   * True when `shapeId`'s parent chain contains `groupId`. Used by the
+   * isolation exit path: a click on a shape whose parent chain *does
+   * not* lead through the entered group is a click "outside" the
+   * group, which exits isolation.
+   */
+  private isDescendantOfGroup(shapeId: ShapeId, groupId: ShapeId): boolean {
+    let cursor = getShape(this._scene, shapeId);
+    let depth = 0;
+    while (cursor && depth < 64) {
+      if (cursor.id === groupId) return true;
+      if (!cursor.parentId) return false;
+      cursor = getShape(this._scene, cursor.parentId);
+      depth++;
+    }
+    return false;
+  }
+
+  /**
    * Enter a group — subsequent hits inside this group return children
    * directly instead of the group root. `null` exits group-edit mode.
    * Bound to double-click on a group in the default handler.
@@ -2770,6 +2838,110 @@ export class Editor {
     const index = buildSpatialIndex(this._scene);
     this.spatialIndexCache = { scene: this._scene, index };
     return getShapeAtIndexed(this._scene, index, worldPoint);
+  }
+
+  /**
+   * Group-isolation click routing. Returns `true` if the click was
+   * handled (caller should skip the default applyEmit), `false` if the
+   * normal selection emit should still run.
+   *
+   * Three paths fire here:
+   *   1. **Double-click on a grouped shape (not yet in isolation):**
+   *      enter that group; select the raw inner shape (bypassing the
+   *      group-root promotion that ran in hitTest).
+   *   2. **Inside isolation, click on a non-descendant shape OR empty
+   *      space:** exit isolation. Let the normal click then run so the
+   *      newly clicked element / empty selection takes hold.
+   *   3. **Inside isolation, double-click on the entered group's own
+   *      child group:** drill another level deeper. (Implicit: same as
+   *      case 1 but topGroupAncestor here returns the inner child
+   *      group because the outer group is already entered.)
+   *
+   * Side-effect: updates `lastClickAt` / `lastClickWorldPoint`
+   * regardless of result, so subsequent calls can detect a double-
+   * click against this event.
+   */
+  private routeIsolationClick(
+    clickEffect: InteractionEmit | null,
+    worldPoint: Vec2,
+  ): boolean {
+    const now = performance.now();
+    const isDouble =
+      now - this.lastClickAt < DOUBLE_CLICK_MS &&
+      this.lastClickWorldPoint !== null &&
+      distanceTo(this.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX;
+    this.lastClickAt = now;
+    this.lastClickWorldPoint = worldPoint;
+
+    if (!clickEffect) return false;
+
+    // Click outside the entered group while in isolation → exit; let
+    // the normal click effect run after.
+    if (this._enteredGroup !== null) {
+      const targetId =
+        clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE"
+          ? clickEffect.id
+          : null;
+      const stillInside =
+        targetId !== null && this.isDescendantOfGroup(targetId, this._enteredGroup);
+      if (!stillInside) {
+        this._enteredGroup = null;
+        this.notify();
+        // Fall through — apply the normal click effect (caller).
+        return false;
+      }
+    }
+
+    // Double-click on a shape that has a group ancestor → drill into
+    // that group. Only matters when the click effect was a single-
+    // shape SELECT_REPLACE / SELECT_TOGGLE (lasso / edge ops are not
+    // group-promote candidates).
+    if (isDouble && (clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE")) {
+      const raw = this.acceleratedShapeAt(worldPoint);
+      if (raw) {
+        const top = this.topGroupAncestor(raw);
+        // If the topmost group is the one we've already entered, drill
+        // one level deeper — pick the next-down group on the chain.
+        const target = this.pickDrillTarget(raw, top);
+        if (target) {
+          this._enteredGroup = target.id;
+          this._selection = Selection.single(raw.id);
+          if (this._selectedEdge !== null) this._selectedEdge = null;
+          this.notify();
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Given the raw shape under the cursor and its topmost group
+   * ancestor, pick which group to "enter" on a drill-down.
+   *
+   * - No group ancestor → null (drill-down doesn't apply).
+   * - Top group not yet entered → enter top.
+   * - Top group already entered → walk down the chain to find the
+   *   next group inward (one level deeper).
+   */
+  private pickDrillTarget(raw: Shape, top: Shape | null): Shape | null {
+    if (!top) return null;
+    if (this._enteredGroup !== top.id) return top;
+    // Already inside `top` — find the next inner group between top
+    // and raw.
+    let cursor: Shape | undefined = raw;
+    let next: Shape | null = null;
+    let depth = 0;
+    while (cursor?.parentId && depth < 64) {
+      const parent = getShape(this._scene, cursor.parentId);
+      if (!parent) break;
+      if (parent.id === top.id) break; // reached entered group from below
+      if (parent.type === "group") next = parent;
+      cursor = parent;
+      depth++;
+    }
+    return next;
   }
 
   private applyEmit(emit: InteractionEmit): void {

@@ -138,6 +138,27 @@ export const LONG_PRESS_DELAY_MS = 500;
 export const LONG_PRESS_MAX_MOVEMENT_PX = 8;
 
 /**
+ * Double-click recognition for group drill-down. A second pointer-up
+ * within `DOUBLE_CLICK_MS` of the previous AND landing within
+ * `DOUBLE_CLICK_TOLERANCE_PX` of the first point counts as a double-
+ * click. Matches OS-level double-click windows (Windows default
+ * 500 ms is too lenient for canvas; 300 ms feels snappier).
+ */
+export const DOUBLE_CLICK_MS = 300;
+export const DOUBLE_CLICK_TOLERANCE_PX = 8;
+
+/**
+ * Multiplier applied to non-isolated shapes' globalAlpha when the
+ * editor is in "entered group" mode (isolation). Shapes inside the
+ * entered group stay at full alpha; everything outside fades to this
+ * value so the active group reads as the focal area without losing
+ * context. 0.6 keeps outsiders visible enough to be referenced; lower
+ * (~0.3) makes isolation visually louder but at the cost of obscuring
+ * context.
+ */
+export const ISOLATION_DIM_OPACITY = 0.6;
+
+/**
  * Touch hit-test slop. WCAG and Apple HIG ask for ≥ 44 pt touch
  * targets; with `HANDLE_SIZE = 4` (8 px visual square) the visual
  * stays small but the *hit area* enlarges so a finger can grab it.

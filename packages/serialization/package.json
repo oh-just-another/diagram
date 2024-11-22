@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/serialization",
-  "version": "0.23.61",
+  "version": "0.23.62",
   "description": "serialization package",
   "type": "module",
   "main": "./dist/index.js",
