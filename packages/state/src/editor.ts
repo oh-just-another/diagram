@@ -107,6 +107,7 @@ import {
   VIEWPORT_CULL_PADDING_RATIO,
   DOUBLE_CLICK_MS,
   DOUBLE_CLICK_TOLERANCE_PX,
+  ISOLATION_DIM_OPACITY,
   WHEEL_PAN_FACTOR,
   WHEEL_ZOOM_SENSITIVITY,
   WHEEL_ZOOM_STEP,
@@ -2807,6 +2808,24 @@ export class Editor {
   }
 
   /**
+   * Compute the dim set for isolation rendering: every shape whose
+   * parent chain does NOT pass through `enteredGroupId`. The entered
+   * group itself is treated as "inside" (returns true from
+   * isDescendantOfGroup) so it stays at full alpha — but groups have
+   * no intrinsic geometry, so this only matters for the
+   * group-bounds-outline overlay path, not the shape render.
+   */
+  private computeDimShapes(enteredGroupId: ShapeId): ReadonlySet<ShapeId> {
+    const dim = new Set<ShapeId>();
+    for (const s of this._scene.shapes.values()) {
+      if (!this.isDescendantOfGroup(s.id, enteredGroupId)) {
+        dim.add(s.id);
+      }
+    }
+    return dim;
+  }
+
+  /**
    * Enter a group — subsequent hits inside this group return children
    * directly instead of the group root. `null` exits group-edit mode.
    * Bound to double-click on a group in the default handler.
@@ -3884,11 +3903,15 @@ export class Editor {
     // does not flicker during pan.
     const viewportWorld = this.computeViewportWorld();
     const dirtyWorld = this.computeDirtyWorld();
+    const dimShapes = this._enteredGroup
+      ? this.computeDimShapes(this._enteredGroup)
+      : undefined;
     renderScene(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
       ...(dirtyWorld ? { dirtyWorld } : {}),
       boundsCache: this.boundsCache,
       lod: DEFAULT_LOD,
+      ...(dimShapes ? { dimShapes, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
     });
     renderEdges(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewportWorld } : {}),

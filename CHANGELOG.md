@@ -287,3 +287,6 @@
 
 ## 0.23.62
 - state: drill-down into groups via double-click + Esc/click-outside exit
+
+## 0.23.63
+- renderer-core+state: dim non-isolation shapes (modern-style)

@@ -73,6 +73,25 @@ export interface RenderSceneOptions {
    * scene".
    */
   readonly dirtyWorld?: Bounds;
+  /**
+   * Shapes to render with reduced alpha (modern-style group isolation).
+   * For each shape whose `id` appears in this set, the renderer sets
+   * `globalAlpha = dimOpacity` for the per-shape draw pass before
+   * dispatching to the registered renderer.
+   *
+   * Caveat: shapes whose own `style.opacity` is explicitly set will
+   * have their renderer call `setOpacity` again and override the
+   * dim — the dim affects only the common case where shapes don't
+   * carry an explicit opacity. Acceptable for the isolation UX
+   * because outsiders are usually plain opaque shapes.
+   */
+  readonly dimShapes?: ReadonlySet<ShapeId>;
+  /**
+   * Alpha to use for `dimShapes`. Default 1 (no-op). Hosts using the
+   * isolation feature should pass their `ISOLATION_DIM_OPACITY`
+   * constant.
+   */
+  readonly dimOpacity?: number;
 }
 
 /**
@@ -168,6 +187,12 @@ export const renderScene = (
       }
 
       target.save();
+      // Isolation dim — set BEFORE the renderer runs so any
+      // shape-style-specific setOpacity inside the renderer can
+      // override (acceptable trade — see RenderSceneOptions.dimShapes).
+      if (options.dimShapes?.has(shape.id) && options.dimOpacity !== undefined) {
+        target.setOpacity(options.dimOpacity);
+      }
       target.translate(shape.position.x, shape.position.y);
       if (shape.rotation !== 0) target.rotate(shape.rotation);
       if (shape.scale.x !== 1 || shape.scale.y !== 1) {
