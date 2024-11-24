@@ -27,7 +27,7 @@ import {
   PORT_DOT_ACTIVE_RADIUS,
   PORT_DOT_RADIUS,
 } from "./constants.js";
-import { ALL_HANDLES, HANDLE_SIZE, handlePosition } from "./handle.js";
+import { ALL_HANDLES, CORNER_HANDLES, HANDLE_SIZE, handlePosition } from "./handle.js";
 import type { Selection } from "./selection.js";
 
 /**
@@ -138,12 +138,19 @@ export const renderOverlay = (
     ports?: PortOverlay;
     edgeSelection?: EdgeSelection;
     /**
-     * Combined world-space bounding box of a multi-selection. When set
-     * the overlay paints a 1-px outline and 8 resize handles on top of
-     * the per-shape selection outlines so the user can grab a group
-     * handle.
+     * Combined world-space bounding box of a multi-selection (or a
+     * single group-typed shape's children union). When set the overlay
+     * paints a 1-px outline and resize handles on top of the per-shape
+     * selection outlines so the user can grab a group handle.
      */
     groupBounds?: Bounds;
+    /**
+     * Restrict the group-bounds handles to the four corners (aspect-
+     * locked resize) instead of the default 8 corner+midpoint set.
+     * Used by group-typed shapes which cannot be stretched
+     * independently along one axis.
+     */
+    groupAspectLocked?: boolean;
     /**
      * Drop-zone of the container currently under the dragged shape.
      * Drawn as a dashed accent rect so the user sees where the element
@@ -325,11 +332,13 @@ export const renderOverlay = (
     target.setDashArray(null);
   }
 
-  // 7. Multi-selection combined bounds — outline + 8 group handles.
+  // 7. Multi-selection / group-typed combined bounds — outline + handles.
+  //    Aspect-locked groups: corner handles only; otherwise full 8.
   if (options.groupBounds) {
     const groupScreen = projectBounds(options.groupBounds, w2s);
     drawOutline(target, groupScreen, style);
-    for (const handle of ALL_HANDLES) {
+    const handleSet = options.groupAspectLocked ? CORNER_HANDLES : ALL_HANDLES;
+    for (const handle of handleSet) {
       const worldPoint = handlePosition(handle, options.groupBounds, zoom);
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);
       drawHandle(target, screenPoint, style);

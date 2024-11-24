@@ -112,7 +112,7 @@ import {
   WHEEL_ZOOM_SENSITIVITY,
   WHEEL_ZOOM_STEP,
 } from "./constants.js";
-import { HANDLE_HIT_SLOP, hitHandle } from "./handle.js";
+import { ALL_HANDLES, CORNER_HANDLES, HANDLE_HIT_SLOP, hitHandle } from "./handle.js";
 import { getInteractiveHitTester } from "./interactive.js";
 import {
   boundsFromPoints,
@@ -2674,11 +2674,24 @@ export class Editor {
 
   private hitTest(worldPoint: Vec2): PressTarget {
     const zoom = this._scene.viewport.zoom;
-    // 1a. Group resize handles win when several shapes are selected.
-    if (this._selection.size > 1) {
+    // 1a. Group resize handles win when several shapes are selected,
+    //     OR when a single group-typed shape is selected (which has
+    //     no intrinsic bounds — children's union AABB serves as the
+    //     resize frame). Aspect-locked groups restrict the hit set to
+    //     the four corner handles.
+    const useGroupHandles = this._selection.size > 1 || this.selectionIsAspectLocked();
+    if (useGroupHandles) {
       const combined = this.combinedSelectionBounds();
       if (combined) {
-        const handle = hitHandle(worldPoint, combined, zoom, this.handleHitSlop);
+        const aspectLocked = this.selectionIsAspectLocked();
+        const handleSet = aspectLocked ? CORNER_HANDLES : ALL_HANDLES;
+        const handle = hitHandle(
+          worldPoint,
+          combined,
+          zoom,
+          this.handleHitSlop,
+          handleSet,
+        );
         if (handle) {
           return { kind: "group-handle", handle, bounds: combined };
         }
@@ -3250,10 +3263,45 @@ export class Editor {
     for (const id of this._selection) {
       const s = getShape(this._scene, id);
       if (!s) continue;
-      const b = getShapeWorldBounds(s);
+      // Group shapes carry no intrinsic geometry — substitute the
+      // union AABB of their descendants so the combined bbox actually
+      // reflects on-screen content.
+      const b = s.type === "group" ? this.groupChildrenUnion(s.id) : getShapeWorldBounds(s);
+      if (!b) continue;
       acc = acc ? B.union(acc, b) : b;
     }
     return acc;
+  }
+
+  /**
+   * Union of every direct/indirect descendant's world AABB. `null`
+   * for empty groups (which is the only failure mode — every leaf
+   * has bounds). Mirrors the helper in overlay.ts kept private there;
+   * duplicated here so editor doesn't depend on overlay internals.
+   */
+  private groupChildrenUnion(groupId: ShapeId): Bounds | null {
+    let acc: Bounds | null = null;
+    for (const s of this._scene.shapes.values()) {
+      if (s.parentId !== groupId) continue;
+      const inner = s.type === "group" ? this.groupChildrenUnion(s.id) : getShapeWorldBounds(s);
+      if (!inner) continue;
+      acc = acc ? B.union(acc, inner) : inner;
+    }
+    return acc;
+  }
+
+  /**
+   * True when the current selection should be treated as aspect-
+   * locked for group-handle resize. Currently: a single `group`-typed
+   * shape selected. Multi-selection of free shapes keeps the default
+   * 8-handle / free-aspect behaviour (matches user expectation:
+   * grouping is the explicit "lock the ratio" gesture).
+   */
+  private selectionIsAspectLocked(): boolean {
+    if (this._selection.size !== 1) return false;
+    const [only] = [...this._selection];
+    if (!only) return false;
+    return getShape(this._scene, only)?.type === "group";
   }
 
   /**
@@ -3271,8 +3319,17 @@ export class Editor {
     if (!this.groupResizeOrigin) return;
     const next = resizeFromHandle(originalBounds, handle, delta);
     const minDim = 1;
-    const sx = originalBounds.width > 0 ? next.width / originalBounds.width : 1;
-    const sy = originalBounds.height > 0 ? next.height / originalBounds.height : 1;
+    let sx = originalBounds.width > 0 ? next.width / originalBounds.width : 1;
+    let sy = originalBounds.height > 0 ? next.height / originalBounds.height : 1;
+    // Aspect-lock: groups can only scale uniformly. Use the larger
+    // magnitude so the dragged corner moves along the diagonal toward
+    // the cursor (modern-style); sign is preserved per-axis so a drag
+    // past the anchor still mirrors the group uniformly.
+    if (this.selectionIsAspectLocked()) {
+      const locked = Math.max(Math.abs(sx), Math.abs(sy));
+      sx = locked * (sx >= 0 ? 1 : -1);
+      sy = locked * (sy >= 0 ? 1 : -1);
+    }
     // Anchor for the scale = the unchanging corner / edge midpoint of the
     // original bounds (opposite to the dragged handle).
     const ax = handle.includes("w")
@@ -3940,9 +3997,13 @@ export class Editor {
         };
       }
     }
-    if (this._selection.size > 1) {
+    // Group-handle overlay: multi-selection OR a single group-typed
+    // shape. Aspect-locked groups also flag the overlay so it draws
+    // only the four corner handles.
+    if (this._selection.size > 1 || this.selectionIsAspectLocked()) {
       const combined = this.combinedSelectionBounds();
       if (combined) overlayOpts.groupBounds = combined;
+      if (this.selectionIsAspectLocked()) overlayOpts.groupAspectLocked = true;
     }
     if (this.containerHover) {
       overlayOpts.containerDropZone = this.containerHover.dropZone;

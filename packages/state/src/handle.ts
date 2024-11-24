@@ -9,6 +9,13 @@ export type HandleId = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 export const ALL_HANDLES: readonly HandleId[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
 /**
+ * Subset of `ALL_HANDLES` containing only the four corner positions. Used for
+ * aspect-locked resize (groups, fixed-ratio media) — only corner drags carry
+ * the diagonal that the resize math projects onto a single scale factor.
+ */
+export const CORNER_HANDLES: readonly HandleId[] = ["nw", "ne", "se", "sw"];
+
+/**
  * Pixel half-size of the visible handle square. Handles are drawn
  * `HANDLE_SIZE * 2` wide. Bumped from 4 (8×8) to 5 (10×10) so the
  * mouse target reads clearly without looking heavy.
@@ -83,9 +90,10 @@ export const hitHandle = (
   b: Bounds,
   zoom: number,
   screenHalfSize: number = HANDLE_HIT_SLOP,
+  handleSet: readonly HandleId[] = ALL_HANDLES,
 ): HandleId | null => {
   const halfWorld = screenHalfSize / zoom;
-  for (const id of ALL_HANDLES) {
+  for (const id of handleSet) {
     const p = handlePosition(id, b, zoom);
     if (Math.abs(point.x - p.x) <= halfWorld && Math.abs(point.y - p.y) <= halfWorld) {
       return id;

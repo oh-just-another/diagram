@@ -290,3 +290,6 @@
 
 ## 0.23.63
 - renderer-core+state: dim non-isolation shapes (modern-style)
+
+## 0.23.64
+- state: corner-only handles + aspect-locked resize for groups
