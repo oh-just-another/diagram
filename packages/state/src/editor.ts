@@ -356,6 +356,14 @@ export class Editor {
    * the first render.
    */
   private lastRenderedScene: Scene | null = null;
+  /**
+   * Last-painted isolation root — paired with `lastRenderedScene` so
+   * the dirty-rect optimization invalidates when the user enters or
+   * exits a group, even when the scene reference is unchanged. Without
+   * this, drilling into a group never triggers a redraw → the dim
+   * pass would never visibly apply.
+   */
+  private lastRenderedEnteredGroup: ShapeId | null = null;
 
   /** Set when an auto-compact check is queued for the current tick. */
   private autoCompactScheduled = false;
@@ -2053,9 +2061,15 @@ export class Editor {
       // Snapshot each member's world bounds + position + scale when the
       // press lands on a group-handle so the per-frame resize math has
       // a stable baseline to scale against.
+      //
+      // For single-group selection the selection itself is just the
+      // group wrapper (zero intrinsic bounds), so the snapshot would
+      // be useless. Expand to include every descendant — those are
+      // the leaves applyGroupResize actually scales. Same expansion
+      // is harmless for plain multi-selection (no descendants).
       if (target.kind === "group-handle") {
         const shapes = new Map<ShapeId, { position: Vec2; bounds: Bounds; scale: Vec2 }>();
-        for (const id of this._selection) {
+        for (const id of this.expandSelectionWithDescendants()) {
           const s = getShape(this._scene, id);
           if (!s) continue;
           shapes.set(id, {
@@ -3218,6 +3232,10 @@ export class Editor {
     // size) or layer ordering / visibility — forces a full clear.
     if (prev.viewport !== next.viewport) return null;
     if (prev.layers !== next.layers) return null;
+    // Isolation transition (enter / exit a group) re-dims a wide swath
+    // of shapes without touching the scene reference, so force a full
+    // repaint when the entered-group identity changes between frames.
+    if (this.lastRenderedEnteredGroup !== this._enteredGroup) return null;
     // Scene ref unchanged → nothing changed on main canvas → skip the
     // whole pass via an empty off-screen rect that the dirty filter
     // culls every shape against.
@@ -3975,6 +3993,7 @@ export class Editor {
       ...(dirtyWorld ? { dirtyWorld } : {}),
     });
     this.lastRenderedScene = this._scene;
+    this.lastRenderedEnteredGroup = this._enteredGroup;
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
     // Lasso and rect-draw share the same dashed-rect visual. Both can't
     // run simultaneously (different gestures), so a single `drawingPreview`

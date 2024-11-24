@@ -293,3 +293,6 @@
 
 ## 0.23.64
 - state: corner-only handles + aspect-locked resize for groups
+
+## 0.23.65
+- state: fix group resize + dim invalidation regressions
