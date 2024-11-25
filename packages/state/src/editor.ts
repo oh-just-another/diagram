@@ -2866,10 +2866,16 @@ export class Editor {
    * isDescendantOfGroup) so it stays at full alpha — but groups have
    * no intrinsic geometry, so this only matters for the
    * group-bounds-outline overlay path, not the shape render.
+   *
+   * Defensive: shapes in the current selection are never dimmed. The
+   * focus shape (drilled-into child) is always a group descendant in
+   * practice, but the guard keeps the contract simple — "what you've
+   * selected, you can see".
    */
   private computeDimShapes(enteredGroupId: ShapeId): ReadonlySet<ShapeId> {
     const dim = new Set<ShapeId>();
     for (const s of this._scene.shapes.values()) {
+      if (this._selection.has(s.id)) continue;
       if (!this.isDescendantOfGroup(s.id, enteredGroupId)) {
         dim.add(s.id);
       }

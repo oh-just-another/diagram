@@ -299,3 +299,6 @@
 
 ## 0.23.66
 - state: drag on group always carries descendants, even when unselected
+
+## 0.23.67
+- state: never dim the selected shape (isolation guard)

@@ -256,6 +256,32 @@ describe("grouping", () => {
     expect([...editor.selection]).toEqual([r.groupId]);
   });
 
+  it("dim set excludes group descendants AND the current selection", () => {
+    // Inside isolation, dim must skip both every descendant of the entered
+    // group (so siblings stay readable) and the focus shape itself.
+    const a = rect("a", 0, 0);
+    const b = rect("b", 100, 0);
+    const outside = rect("c", 500, 500);
+    const editor = makeEditor(sceneWith(a, b, outside));
+    editor.setSelection(new Set([a.id, b.id]));
+    const r = editor.groupSelected();
+    if (r.kind !== "grouped") throw new Error("expected group");
+    const groupId = r.groupId;
+
+    editor.enterGroup(groupId);
+    editor.setSelection(new Set([a.id]));
+
+    // The method is private; its contract is the source of truth for what
+    // the renderer dims.
+    const dim = (editor as unknown as {
+      computeDimShapes(id: typeof groupId): ReadonlySet<typeof a.id>;
+    }).computeDimShapes(groupId);
+
+    expect(dim.has(a.id)).toBe(false);
+    expect(dim.has(b.id)).toBe(false);
+    expect(dim.has(outside.id)).toBe(true);
+  });
+
   it("undo restores pre-group state", () => {
     const a = rect("a", 0, 0);
     const b = rect("b", 100, 0);
