@@ -296,3 +296,6 @@
 
 ## 0.23.65
 - state: fix group resize + dim invalidation regressions
+
+## 0.23.66
+- state: drag on group always carries descendants, even when unselected

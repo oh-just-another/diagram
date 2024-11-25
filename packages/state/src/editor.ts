@@ -2039,19 +2039,44 @@ export class Editor {
       this.dragShapeId = target.kind === "shape" ? target.id : null;
       this.containerHover = null;
 
-      // Snapshot positions of every selected shape (and every descendant
-      // of a selected group) when the press lands on a selected shape —
-      // the editor will translate them together during the drag, which
-      // covers both multi-selection and the single-group case.
-      if (target.kind === "shape" && this._selection.has(target.id)) {
-        const ids = this.expandSelectionWithDescendants();
-        if (ids.size > 1) {
-          const snap = new Map<ShapeId, Vec2>();
-          for (const id of ids) {
-            const s = getShape(this._scene, id);
-            if (s) snap.set(id, s.position);
+      // Snapshot positions for the upcoming drag. Two paths populate the
+      // group-move snapshot:
+      //   1. Press lands on an already-selected shape → drag the whole
+      //      selection (with descendants of any selected group).
+      //   2. Press lands on a group shape (whether selected or not) →
+      //      drag that group and its descendants. Without this, a click-
+      //      drag on an unselected group would only move the wrapper
+      //      (zero-bounds, invisible) and leave its children behind —
+      //      looking exactly like the group had been ungrouped.
+      if (target.kind === "shape") {
+        const pressedShape = getShape(this._scene, target.id);
+        const pressedIsGroup = pressedShape?.type === "group";
+        const inSelection = this._selection.has(target.id);
+        if (inSelection || pressedIsGroup) {
+          const ids = new Set<ShapeId>();
+          if (inSelection) {
+            for (const id of this.expandSelectionWithDescendants()) ids.add(id);
           }
-          this.groupMoveOrigin = snap;
+          if (pressedIsGroup) {
+            const visit = (parentId: ShapeId): void => {
+              if (ids.has(parentId)) return;
+              ids.add(parentId);
+              for (const child of this._scene.shapes.values()) {
+                if (child.parentId === parentId) visit(child.id);
+              }
+            };
+            visit(target.id);
+          }
+          if (ids.size > 1) {
+            const snap = new Map<ShapeId, Vec2>();
+            for (const id of ids) {
+              const s = getShape(this._scene, id);
+              if (s) snap.set(id, s.position);
+            }
+            this.groupMoveOrigin = snap;
+          } else {
+            this.groupMoveOrigin = null;
+          }
         } else {
           this.groupMoveOrigin = null;
         }
