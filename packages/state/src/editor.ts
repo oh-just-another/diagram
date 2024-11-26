@@ -3762,11 +3762,16 @@ export class Editor {
     }
 
     if (shape.parentId) {
+      const parent = getShape(this._scene, shape.parentId);
+      // Group parents have no drop-zone — they're logical wrappers,
+      // not spatial containers. The drag-out / coverage logic is for
+      // proper containers (swimlane, frame, template); a group child
+      // must stay parented to its group regardless of its world bounds.
+      if (parent?.type === "group") return;
       // hover = null: cursor left the parent's zone, but the child
       // itself may still be mostly inside. Coverage check decides:
       //   ≥ CONTAINER_KEEP_THRESHOLD → keep parent + grow zone to fit.
       //   < threshold → un-parent (drag-out).
-      const parent = getShape(this._scene, shape.parentId);
       const parentZone = parent ? getDropZoneWorld(parent) : null;
       const childBounds = getShapeWorldBounds(shape);
       const coverage = parentZone ? coverageRatio(childBounds, parentZone) : 0;

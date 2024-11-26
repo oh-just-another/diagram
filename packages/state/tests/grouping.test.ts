@@ -282,6 +282,28 @@ describe("grouping", () => {
     expect(dim.has(outside.id)).toBe(true);
   });
 
+  it("applyContainerDrop preserves group parentId after dragging a child", () => {
+    // For a shape whose parent is a group (which has no container dropZone),
+    // applyContainerDrop must not strip parentId.
+    const a = rect("a", 0, 0);
+    const b = rect("b", 100, 0);
+    const editor = makeEditor(sceneWith(a, b));
+    editor.setSelection(new Set([a.id, b.id]));
+    const r = editor.groupSelected();
+    if (r.kind !== "grouped") throw new Error("expected group");
+    const groupId = r.groupId;
+
+    // Simulate the editor's drag pipeline at the moment applyContainerDrop fires.
+    (editor as unknown as { dragShapeId: typeof a.id | null }).dragShapeId = a.id;
+    (editor as unknown as { applyContainerDrop(p: { x: number; y: number }): void }).applyContainerDrop({
+      x: a.position.x,
+      y: a.position.y,
+    });
+
+    // parentId must still point at the group.
+    expect(editor.scene.shapes.get(a.id)?.parentId).toBe(groupId);
+  });
+
   it("undo restores pre-group state", () => {
     const a = rect("a", 0, 0);
     const b = rect("b", 100, 0);

@@ -302,3 +302,6 @@
 
 ## 0.23.67
 - state: never dim the selected shape (isolation guard)
+
+## 0.23.68
+- state: applyContainerDrop must not strip parentId for group children
