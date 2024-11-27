@@ -1,7 +1,10 @@
 import type { Vec2 } from "@oh-just-another/types";
+import { isContainer } from "./container.js";
 import type { AnchorRef, NamedAnchor, StandardAnchor } from "./edge.js";
 import type { ShapeBase } from "./shape.js";
 import { getShapeLocalBounds } from "./shape.js";
+
+const EMPTY_ANCHOR_EXCLUDE: ReadonlySet<string> = new Set<string>();
 
 /**
  * The 9 canonical named anchors every built-in shape exposes. They map to
@@ -99,10 +102,12 @@ export const getAnchorWorld = (shape: ShapeBase, anchor: AnchorRef): Vec2 => {
 export const findNearestAnchor = (
   shape: ShapeBase,
   worldPoint: Vec2,
+  excludeNames: ReadonlySet<string> = EMPTY_ANCHOR_EXCLUDE,
 ): { ref: AnchorRef; world: Vec2; distance: number } => {
   let best: { ref: AnchorRef; world: Vec2; distance: number } | null = null;
   for (const [name, _local] of listAnchorsLocal(shape)) {
     void _local;
+    if (excludeNames.has(name)) continue;
     const ref: AnchorRef = { kind: "named", name };
     const world = getAnchorWorld(shape, ref);
     const dx = world.x - worldPoint.x;
@@ -133,6 +138,22 @@ export const findNearestAnchor = (
  * Renderers that draw port-dots use this to enumerate the dots once per
  * frame instead of resolving each name individually.
  */
+/**
+ * Anchor names that should not be offered as snap targets for the
+ * given shape, used by the edge-draw snap engine and the hover port-
+ * dot overlay. Containers omit `center` because that point lives
+ * inside the drop-zone, where a snap-to-anchor would compete with
+ * the reparent / drop gesture. Hosts can still target the centre
+ * explicitly via `kind: "anchor", anchor: { kind: "named", name:
+ * "center" }` — only the auto snap is filtered.
+ */
+export const snapExcludedAnchors = (shape: ShapeBase): ReadonlySet<string> => {
+  if (isContainer(shape)) return CONTAINER_SNAP_EXCLUDED;
+  return EMPTY_ANCHOR_EXCLUDE;
+};
+
+const CONTAINER_SNAP_EXCLUDED: ReadonlySet<string> = new Set(["center"]);
+
 export const listAnchorsLocal = (shape: ShapeBase): ReadonlyMap<string, Vec2> => {
   const out = new Map<string, Vec2>();
   const b = getShapeLocalBounds(shape);

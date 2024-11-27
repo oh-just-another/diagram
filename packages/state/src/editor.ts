@@ -37,6 +37,7 @@ import {
   zoomAt as viewportZoomAt,
   gridSnapper,
   listAnchorsLocal,
+  snapExcludedAnchors,
   orderForBottom,
   orderBetweenMany,
   orderForTop,
@@ -3583,7 +3584,7 @@ export class Editor {
     // No snap fired (release outside threshold of any port / outline) —
     // fall back to nearest anchor on the target shape so the edge still
     // sticks to it.
-    const { ref } = findNearestAnchor(shape, worldPoint);
+    const { ref } = findNearestAnchor(shape, worldPoint, snapExcludedAnchors(shape));
     return { kind: "anchor", shapeId: pressTargetShape, anchor: ref };
   }
 
@@ -3656,7 +3657,7 @@ export class Editor {
       }
       return;
     }
-    const nearest = findNearestAnchor(shape, worldPoint);
+    const nearest = findNearestAnchor(shape, worldPoint, snapExcludedAnchors(shape));
     const activeName = nearest.ref.kind === "named" ? nearest.ref.name : null;
     const prev = this.hoveredEdgeTarget;
     if (prev?.shapeId === shape.id && prev.activeAnchor === activeName) return;
@@ -3672,7 +3673,7 @@ export class Editor {
     let from = fromPoint;
     if (fromShape) {
       const shape = getShape(this._scene, fromShape);
-      if (shape) from = findNearestAnchor(shape, fromPoint).world;
+      if (shape) from = findNearestAnchor(shape, fromPoint, snapExcludedAnchors(shape)).world;
     }
     let to = toPoint;
     // If the pointer is currently hovering a shape, snap the visible end
@@ -3681,7 +3682,7 @@ export class Editor {
     // simply hit-test the scene here.
     const hovered = getShapeAt(this._scene, toPoint);
     if (hovered) {
-      to = findNearestAnchor(hovered, toPoint).world;
+      to = findNearestAnchor(hovered, toPoint, snapExcludedAnchors(hovered)).world;
     }
     this.edgePreview = { from, to };
     this.notify();
@@ -4040,7 +4041,8 @@ export class Editor {
     if (this.hoveredEdgeTarget) {
       const shape = getShape(this._scene, this.hoveredEdgeTarget.shapeId);
       if (shape) {
-        const names = [...listAnchorsLocal(shape).keys()];
+        const excluded = snapExcludedAnchors(shape);
+        const names = [...listAnchorsLocal(shape).keys()].filter((n) => !excluded.has(n));
         const worldPoints = names.map((name) => getAnchorWorld(shape, { kind: "named", name }));
         const activeIndex =
           this.hoveredEdgeTarget.activeAnchor !== null

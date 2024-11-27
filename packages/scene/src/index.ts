@@ -61,6 +61,7 @@ export {
   getAnchorWorld,
   listAnchorsLocal,
   findNearestAnchor,
+  snapExcludedAnchors,
 } from "./anchors.js";
 
 // Snap engine + built-in contributors

@@ -305,3 +305,6 @@
 
 ## 0.23.68
 - state: applyContainerDrop must not strip parentId for group children
+
+## 0.23.69
+- scene+state: containers omit center from snap anchors

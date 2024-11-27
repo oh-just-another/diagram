@@ -3,7 +3,7 @@ import type { AnchorRef } from "./edge.js";
 import { findNearestOutlinePoint } from "./outline.js";
 import type { Scene } from "./scene.js";
 import type { ShapeBase } from "./shape.js";
-import { findNearestAnchor } from "./anchors.js";
+import { findNearestAnchor, snapExcludedAnchors } from "./anchors.js";
 import { SNAP_PROBE_CULL_RADIUS } from "./constants.js";
 
 /**
@@ -119,7 +119,7 @@ export const anchorSnapper: SnapContributor = {
       if (ctx.excludeShapeIds?.has(shape.id)) continue;
       // Cheap reject: skip shapes whose AABB is far from the probe.
       if (!isProbeNearShape(shape, ctx.probe, ctx.threshold)) continue;
-      const nearest = findNearestAnchor(shape, ctx.probe);
+      const nearest = findNearestAnchor(shape, ctx.probe, snapExcludedAnchors(shape));
       const dx = nearest.world.x - ctx.probe.x;
       const dy = nearest.world.y - ctx.probe.y;
       out.push({
