@@ -3278,24 +3278,44 @@ export class Editor {
     const add = (b: Bounds): void => {
       acc = acc ? B.union(acc, b) : b;
     };
+    // Track shapes that changed (added / removed / mutated). Edges
+    // attached to any of these have stale rendered paths even when
+    // the edge object itself is reference-equal — the path resolves
+    // through the shape's new position, but the old path stays on
+    // screen as a "ghost" trail unless we explicitly invalidate it.
+    const changedShapeIds = new Set<ShapeId>();
     for (const [id, shape] of next.shapes) {
       const old = prev.shapes.get(id);
       if (old === shape) continue;
+      changedShapeIds.add(id);
       add(getShapeWorldBounds(shape));
       if (old) add(getShapeWorldBounds(old));
     }
     for (const [id, shape] of prev.shapes) {
-      if (!next.shapes.has(id)) add(getShapeWorldBounds(shape));
+      if (!next.shapes.has(id)) {
+        changedShapeIds.add(id);
+        add(getShapeWorldBounds(shape));
+      }
     }
+    const edgeTouchesChangedShape = (edge: Edge): boolean => {
+      for (const ep of [edge.from, edge.to]) {
+        if (ep.kind === "anchor" || ep.kind === "outline") {
+          if (changedShapeIds.has(ep.shapeId)) return true;
+        }
+      }
+      return false;
+    };
     for (const [id, edge] of next.edges) {
       const old = prev.edges.get(id);
-      if (old === edge) continue;
+      // Refresh edge dirty-rect when: edge object changed, OR an
+      // endpoint references a shape that moved this frame (path is
+      // re-resolved every render but the old screen pixels persist).
+      if (old === edge && !edgeTouchesChangedShape(edge)) continue;
       const b = computeEdgeWorldBounds(next, edge);
       if (b) add(b);
-      if (old) {
-        const ob = computeEdgeWorldBounds(prev, old);
-        if (ob) add(ob);
-      }
+      const oldEdge = old ?? edge; // prev scene resolves with prev shapes for ghost-clear
+      const ob = computeEdgeWorldBounds(prev, oldEdge);
+      if (ob) add(ob);
     }
     for (const [id, edge] of prev.edges) {
       if (!next.edges.has(id)) {

@@ -308,3 +308,6 @@
 
 ## 0.23.69
 - scene+state: containers omit center from snap anchors
+
+## 0.23.70
+- state: dirty-rect must invalidate edges attached to moved shapes
