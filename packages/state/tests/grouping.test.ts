@@ -318,6 +318,93 @@ describe("grouping", () => {
   });
 });
 
+describe("auto-layout containers", () => {
+  const containerWithAutoLayout = (kind: "grid" | "stack"): Shape => ({
+    id: shapeId("parent"),
+    layerId: DEFAULT_LAYER_ID,
+    type: "rectangle",
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: { fill: "#fff" },
+    width: 400,
+    height: 400,
+    metadata: {
+      autoLayout:
+        kind === "grid"
+          ? { kind: "grid", cols: 2, gap: 10 }
+          : { kind: "stack", direction: "horizontal", gap: 10 },
+    },
+  });
+
+  const childOf = (id: string, parentId: ReturnType<typeof shapeId>, x: number, y: number): Shape => ({
+    id: shapeId(id),
+    layerId: DEFAULT_LAYER_ID,
+    type: "rectangle",
+    position: { x, y },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: { fill: "#aaa" },
+    width: 50,
+    height: 50,
+    parentId,
+  });
+
+  it("runLayout(parent) arranges children of a grid-spec container", () => {
+    const parent = containerWithAutoLayout("grid");
+    const c1 = childOf("c1", parent.id, 999, 999);
+    const c2 = childOf("c2", parent.id, 0, 0);
+    const c3 = childOf("c3", parent.id, 200, 0);
+    const editor = makeEditor(sceneWith(parent, c1, c2, c3));
+
+    editor.runLayout(parent.id);
+
+    // Cells are 50 + 10 = 60 wide/tall, parent origin 0,0.
+    // Children are sorted by `order`; c1/c2/c3 all share orderBetween(null,null)
+    // so the natural insertion order persists. Verify they landed on a 2×2 lattice.
+    const positions = [c1, c2, c3].map((s) => editor.scene.shapes.get(s.id)!.position);
+    expect(positions[0]).toEqual({ x: 0, y: 0 });
+    expect(positions[1]).toEqual({ x: 60, y: 0 });
+    expect(positions[2]).toEqual({ x: 0, y: 60 });
+  });
+
+  it("auto-runs layout when a child is added (microtask after addShape)", async () => {
+    const parent = containerWithAutoLayout("stack");
+    const editor = makeEditor(sceneWith(parent));
+    editor.addShape(childOf("c1", parent.id, 999, 999));
+    editor.addShape(childOf("c2", parent.id, 999, 999));
+    // Auto-layout fires in a microtask after notify; await it.
+    await Promise.resolve();
+
+    const p1 = editor.scene.shapes.get(shapeId("c1"))!.position;
+    const p2 = editor.scene.shapes.get(shapeId("c2"))!.position;
+    expect(p1).toEqual({ x: 0, y: 0 });
+    expect(p2).toEqual({ x: 60, y: 0 }); // 50 width + 10 gap
+  });
+
+  it("auto-layout fingerprint ignores pure position changes", async () => {
+    // Manual nudge of a child after auto-layout fires must NOT trigger
+    // another re-layout (children set unchanged).
+    const parent = containerWithAutoLayout("stack");
+    const c1 = childOf("c1", parent.id, 999, 999);
+    const editor = makeEditor(sceneWith(parent, c1));
+    editor.runLayout(parent.id);
+    await Promise.resolve();
+    const after1 = editor.scene.shapes.get(c1.id)!.position;
+    expect(after1).toEqual({ x: 0, y: 0 });
+
+    // Move the child manually.
+    editor.setSelection(new Set([c1.id]));
+    editor.moveSelectionBy({ x: 100, y: 50 });
+    await Promise.resolve();
+    // Position survived — auto-layout didn't snap it back.
+    const after2 = editor.scene.shapes.get(c1.id)!.position;
+    expect(after2).toEqual({ x: 100, y: 50 });
+  });
+});
+
 describe("arrange layouts", () => {
   it("arrangeAsGrid positions selection on a regular grid", () => {
     const shapes = [

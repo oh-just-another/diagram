@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/importers",
-  "version": "0.23.70",
+  "version": "0.23.71",
   "description": "Importers: Mermaid, Graphviz dot, drawio XML \u2192 @oh-just-another/scene documents.",
   "type": "module",
   "main": "./dist/index.js",

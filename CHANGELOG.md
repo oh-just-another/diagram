@@ -311,3 +311,6 @@
 
 ## 0.23.70
 - state: dirty-rect must invalidate edges attached to moved shapes
+
+## 0.23.71
+- scene+state: auto-layout containers

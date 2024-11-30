@@ -156,8 +156,15 @@ export type {
   LayoutSpec,
   GridLayoutSpec,
   StackLayoutSpec,
+  AutoLayoutSpec,
 } from "./layout.js";
-export { gridLayout, stackLayout, allShapesInLayer } from "./layout.js";
+export {
+  gridLayout,
+  stackLayout,
+  allShapesInLayer,
+  getAutoLayoutSpec,
+  runAutoLayout,
+} from "./layout.js";
 
 // Tunable thresholds.
 export { SNAP_PROBE_CULL_RADIUS } from "./constants.js";

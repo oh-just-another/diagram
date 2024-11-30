@@ -108,3 +108,83 @@ export const stackLayout: LayoutFn<StackLayoutSpec> = (scene, spec) => {
  */
 export const allShapesInLayer = (scene: Scene, layerId: Scene["layers"] extends ReadonlyMap<infer K, unknown> ? K : never): readonly ShapeId[] =>
   getShapesInLayer(scene, layerId).map((s) => s.id);
+
+// --- auto-layout container ---
+
+/**
+ * Declarative auto-layout spec stored on a parent shape's
+ * `metadata.autoLayout`. Children of the parent (via `parentId`)
+ * are arranged whenever the children set changes — see
+ * `Editor.runLayout` for the host-side hook.
+ *
+ * Adding more layout kinds (tree, radial) means widening this union
+ * and matching it in `runAutoLayout`. Hosts can ignore the union and
+ * call `gridLayout` / `stackLayout` directly with custom spec.
+ */
+export type AutoLayoutSpec =
+  | { readonly kind: "grid"; readonly cols: number; readonly gap?: number }
+  | { readonly kind: "stack"; readonly direction: "horizontal" | "vertical"; readonly gap?: number };
+
+/**
+ * Parse and validate the `metadata.autoLayout` field on a shape.
+ * Returns `null` when the shape has no auto-layout configured or the
+ * stored payload doesn't match a known kind / required fields are
+ * missing. Callers should treat `null` as "not an auto-layout
+ * container — leave its children alone".
+ */
+export const getAutoLayoutSpec = (shape: Shape): AutoLayoutSpec | null => {
+  const m = shape.metadata?.autoLayout;
+  if (!m || typeof m !== "object") return null;
+  const raw = m as { kind?: string; cols?: number; gap?: number; direction?: string };
+  if (raw.kind === "grid") {
+    if (typeof raw.cols !== "number" || raw.cols < 1) return null;
+    return {
+      kind: "grid",
+      cols: raw.cols,
+      ...(typeof raw.gap === "number" ? { gap: raw.gap } : {}),
+    };
+  }
+  if (raw.kind === "stack") {
+    if (raw.direction !== "horizontal" && raw.direction !== "vertical") return null;
+    return {
+      kind: "stack",
+      direction: raw.direction,
+      ...(typeof raw.gap === "number" ? { gap: raw.gap } : {}),
+    };
+  }
+  return null;
+};
+
+/**
+ * Run the parent shape's declared auto-layout against its direct
+ * children. Returns a batched patch (or `null` when nothing
+ * changed). Children are anchored at the parent's `position` —
+ * containers with a richer drop-zone can compose this with a
+ * custom origin.
+ */
+export const runAutoLayout = (scene: Scene, parentId: ShapeId): Patch | null => {
+  const parent = getShape(scene, parentId);
+  if (!parent) return null;
+  const spec = getAutoLayoutSpec(parent);
+  if (!spec) return null;
+  const children: ShapeId[] = [];
+  for (const s of scene.shapes.values()) {
+    if (s.parentId === parentId) children.push(s.id);
+  }
+  if (children.length === 0) return null;
+  const origin = parent.position;
+  if (spec.kind === "grid") {
+    return gridLayout(scene, {
+      shapeIds: children,
+      origin,
+      cols: spec.cols,
+      ...(spec.gap !== undefined ? { gap: spec.gap } : {}),
+    });
+  }
+  return stackLayout(scene, {
+    shapeIds: children,
+    origin,
+    direction: spec.direction,
+    ...(spec.gap !== undefined ? { gap: spec.gap } : {}),
+  });
+};

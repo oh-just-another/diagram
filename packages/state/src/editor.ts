@@ -9,7 +9,9 @@ import {
   anchorSnapper,
   apply,
   buildSpatialIndex,
+  getAutoLayoutSpec,
   gridLayout,
+  runAutoLayout,
   stackLayout,
   DEFAULT_LAYER_ID,
   findEdgeAt,
@@ -368,6 +370,18 @@ export class Editor {
 
   /** Set when an auto-compact check is queued for the current tick. */
   private autoCompactScheduled = false;
+
+  /** Set when an auto-layout check is queued for the current tick. */
+  private autoLayoutScheduled = false;
+
+  /**
+   * Children-set signature per auto-layout parent recorded after the
+   * last successful auto-layout run. Re-run fires only when the set
+   * of children differs (add / remove / reparent). Pure position
+   * changes inside an existing children set are ignored so the user
+   * can still nudge a child without the layout snapping it back.
+   */
+  private autoLayoutSignatures = new Map<ShapeId, string>();
 
   /**
    * Shape id that the user started dragging on press-down. Tracked
@@ -3991,6 +4005,91 @@ export class Editor {
     this.render();
     for (const fn of this.listeners) fn();
     this.scheduleAutoCompact();
+    this.scheduleAutoLayoutCheck();
+  }
+
+  /**
+   * Public command — re-run the auto-layout spec on the given
+   * container shape, regardless of whether the children set actually
+   * changed. Useful as an "auto-arrange" toolbar action or for hosts
+   * adopting auto-layout after creating shapes programmatically.
+   * Returns the patch that was applied, or `null` when nothing
+   * changed (no spec, no children, or children already in position).
+   * Single undo step.
+   */
+  runLayout(parentId: ShapeId): Patch | null {
+    const patch = runAutoLayout(this._scene, parentId);
+    if (!patch) return null;
+    this._scene = apply(this._scene, patch);
+    this._history.push(patch);
+    // Refresh the recorded signature so the post-notify auto-check
+    // doesn't fire a second redundant run.
+    this.autoLayoutSignatures.set(parentId, this.computeChildrenSignature(parentId));
+    this.notify();
+    return patch;
+  }
+
+  /**
+   * Children-set fingerprint used for auto-layout dirty detection.
+   * Sorted ids joined by comma — cheap to compute, stable under
+   * pure position edits (we want those), changes under add / remove /
+   * reparent (we want to react to those).
+   */
+  private computeChildrenSignature(parentId: ShapeId): string {
+    const ids: string[] = [];
+    for (const s of this._scene.shapes.values()) {
+      if (s.parentId === parentId) ids.push(s.id);
+    }
+    ids.sort();
+    return ids.join(",");
+  }
+
+  /**
+   * Auto-layout dirty check — runs in a microtask after notify,
+   * mirrors the auto-compact pattern. Walks every shape with an
+   * `autoLayout` metadata spec, compares its children-set signature
+   * against the last successful run, and re-runs the layout when
+   * the signature changed.
+   *
+   * The applied patches commit through the gesture transaction so
+   * dragging a child into a container collapses the reparent +
+   * relayout into one undo step. Outside a gesture, patches go
+   * straight to history as a separate step.
+   */
+  private scheduleAutoLayoutCheck(): void {
+    if (this.autoLayoutScheduled) return;
+    this.autoLayoutScheduled = true;
+    queueMicrotask(() => {
+      this.autoLayoutScheduled = false;
+      this.runAutoLayoutCheck();
+    });
+  }
+
+  private runAutoLayoutCheck(): void {
+    let mutated = false;
+    for (const parent of this._scene.shapes.values()) {
+      if (!getAutoLayoutSpec(parent)) continue;
+      const sig = this.computeChildrenSignature(parent.id);
+      if (this.autoLayoutSignatures.get(parent.id) === sig) continue;
+      this.autoLayoutSignatures.set(parent.id, sig);
+      const patch = runAutoLayout(this._scene, parent.id);
+      if (!patch) continue;
+      this._scene = apply(this._scene, patch);
+      if (this.gestureTx) {
+        this.gestureTx.add(patch);
+      } else {
+        this._history.push(patch);
+      }
+      mutated = true;
+    }
+    if (mutated) {
+      // Re-render only; do NOT call notify() — that would re-schedule
+      // the check and risk a microtask loop. Listeners already saw
+      // the previous notify; the auto-layout adjustment is a
+      // synchronous fix-up on top of the same external event.
+      this.render();
+      for (const fn of this.listeners) fn();
+    }
   }
 
   /**
