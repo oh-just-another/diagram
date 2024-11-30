@@ -314,3 +314,6 @@
 
 ## 0.23.71
 - scene+state: auto-layout containers
+
+## 0.23.72
+- react-ui: context-menu "Auto-arrange children" for layout containers

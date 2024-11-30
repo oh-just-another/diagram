@@ -7,6 +7,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
+import { getAutoLayoutSpec } from "@oh-just-another/scene";
 import type { Editor } from "@oh-just-another/state";
 import { useDiagramOptional } from "./hooks.js";
 
@@ -342,6 +343,26 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Stack vertically",
     visible: (e) => e.selection.size > 1,
     onClick: (e) => e.arrangeAsStack({ direction: "vertical" }),
+  },
+  {
+    kind: "action",
+    id: "auto-arrange",
+    label: "Auto-arrange children",
+    // Visible only when the single selected shape carries an
+    // auto-layout spec in metadata. Manual nudge of children is
+    // preserved between auto-runs (fingerprint ignores positions),
+    // so this entry is the "rebuild from spec right now" command.
+    visible: (e) => {
+      if (e.selection.size !== 1) return false;
+      const [id] = [...e.selection];
+      if (!id) return false;
+      const shape = e.scene.shapes.get(id);
+      return shape ? getAutoLayoutSpec(shape) !== null : false;
+    },
+    onClick: (e) => {
+      const [id] = [...e.selection];
+      if (id) e.runLayout(id);
+    },
   },
   {
     kind: "action",
