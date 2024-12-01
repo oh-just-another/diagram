@@ -141,6 +141,8 @@ export {
   getChildrenOf,
   getRootSelf,
   getDescendantsOf,
+  isShapeLocked,
+  isShapeHidden,
 } from "./queries.js";
 
 // Spatial index (the class itself, for advanced uses)

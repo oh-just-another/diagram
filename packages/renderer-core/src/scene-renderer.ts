@@ -92,6 +92,14 @@ export interface RenderSceneOptions {
    * constant.
    */
   readonly dimOpacity?: number;
+  /**
+   * Shape ids that should NOT render this pass. Used by hosts that
+   * implement per-shape / group hide propagation: the editor walks
+   * the parent chain to compute which shapes are effectively hidden
+   * and forwards the set here. Hidden shapes are also skipped in
+   * hit-test on the editor side, so they read as "absent" entirely.
+   */
+  readonly hideShapes?: ReadonlySet<ShapeId>;
 }
 
 /**
@@ -156,6 +164,7 @@ export const renderScene = (
     if (!layer.visible) continue;
 
     for (const shape of getShapesInLayer(scene, layer.id)) {
+      if (options.hideShapes?.has(shape.id)) continue;
       if (candidates && !candidates.has(shape.id)) continue;
       if (viewport) {
         const bb = cachedWorldBounds(boundsCache, shape);

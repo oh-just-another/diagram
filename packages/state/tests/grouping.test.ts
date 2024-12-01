@@ -318,6 +318,56 @@ describe("grouping", () => {
   });
 });
 
+describe("group lock / hide propagation", () => {
+  it("locking a group locks every descendant for hit-test", () => {
+    const a = rect("a", 0, 0);
+    const b = rect("b", 100, 0);
+    const editor = makeEditor(sceneWith(a, b));
+    editor.setSelection(new Set([a.id, b.id]));
+    const r = editor.groupSelected();
+    if (r.kind !== "grouped") throw new Error("expected group");
+    const groupId = r.groupId;
+
+    // Mark the group locked directly on the scene.
+    const before = editor.scene.shapes.get(groupId)!;
+    const locked: Shape = { ...before, locked: true };
+    (editor as unknown as { _scene: Scene })._scene = {
+      ...editor.scene,
+      shapes: new Map(editor.scene.shapes).set(groupId, locked),
+    };
+
+    // Click on A should miss now (descendant of locked group).
+    const target = (editor as unknown as { hitTest(p: { x: number; y: number }): { kind: string } }).hitTest({
+      x: 10,
+      y: 10,
+    });
+    expect(target.kind).toBe("empty");
+  });
+
+  it("hiding a group adds every descendant to the render hide set", () => {
+    const a = rect("a", 0, 0);
+    const b = rect("b", 100, 0);
+    const editor = makeEditor(sceneWith(a, b));
+    editor.setSelection(new Set([a.id, b.id]));
+    const r = editor.groupSelected();
+    if (r.kind !== "grouped") throw new Error("expected group");
+    const groupId = r.groupId;
+
+    const before = editor.scene.shapes.get(groupId)!;
+    const hidden: Shape = { ...before, hidden: true };
+    (editor as unknown as { _scene: Scene })._scene = {
+      ...editor.scene,
+      shapes: new Map(editor.scene.shapes).set(groupId, hidden),
+    };
+
+    const hideSet = (editor as unknown as { computeHiddenShapes(): ReadonlySet<typeof a.id> | undefined }).computeHiddenShapes();
+    expect(hideSet).toBeDefined();
+    expect(hideSet!.has(groupId)).toBe(true);
+    expect(hideSet!.has(a.id)).toBe(true);
+    expect(hideSet!.has(b.id)).toBe(true);
+  });
+});
+
 describe("auto-layout containers", () => {
   const containerWithAutoLayout = (kind: "grid" | "stack"): Shape => ({
     id: shapeId("parent"),

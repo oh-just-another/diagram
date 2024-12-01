@@ -51,6 +51,37 @@ export const getChildrenOf = (scene: Scene, parentId: ShapeId): readonly Shape[]
 };
 
 /**
+ * `true` when the shape (or any of its ancestors via `parentId`) has
+ * `locked: true`. Walks the parent chain bounded by
+ * `MAX_PARENT_DEPTH` so the answer stays O(depth) for a freshly
+ * grouped scene. Independent from `Layer.locked` — callers that need
+ * the combined interactivity gate should `||` both flags.
+ */
+export const isShapeLocked = (scene: Scene, shape: Shape): boolean => {
+  let current: Shape | undefined = shape;
+  for (let i = 0; current && i < MAX_PARENT_DEPTH; i++) {
+    if (current.locked === true) return true;
+    if (!current.parentId) return false;
+    current = scene.shapes.get(current.parentId);
+  }
+  return false;
+};
+
+/**
+ * `true` when the shape (or any of its ancestors via `parentId`) has
+ * `hidden: true`. Same propagation semantics as `isShapeLocked`.
+ */
+export const isShapeHidden = (scene: Scene, shape: Shape): boolean => {
+  let current: Shape | undefined = shape;
+  for (let i = 0; current && i < MAX_PARENT_DEPTH; i++) {
+    if (current.hidden === true) return true;
+    if (!current.parentId) return false;
+    current = scene.shapes.get(current.parentId);
+  }
+  return false;
+};
+
+/**
  * Walks the `parentId` chain starting from `shapeId` and returns the
  * topmost ancestor (the root). Returns the shape itself when it has no
  * parent, or `undefined` when the shape (or any ancestor) is missing.

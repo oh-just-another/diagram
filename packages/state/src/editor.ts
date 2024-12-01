@@ -11,6 +11,8 @@ import {
   buildSpatialIndex,
   getAutoLayoutSpec,
   gridLayout,
+  isShapeHidden,
+  isShapeLocked,
   runAutoLayout,
   stackLayout,
   DEFAULT_LAYER_ID,
@@ -2786,11 +2788,15 @@ export class Editor {
         }
       }
     }
-    // 3. Topmost shape under cursor. Skip shapes on locked layers.
-    //    When the hit shape is a child of a group, promote to the group
-    //    root unless the user has "entered" that group via double-click.
+    // 3. Topmost shape under cursor. Skip shapes whose layer is locked
+    //    OR whose own / ancestor `locked` flag is set (group lock
+    //    propagation). When the hit shape is a child of a group,
+    //    promote to the group root unless the user has "entered" that
+    //    group via double-click.
     const shape = this.acceleratedShapeAt(worldPoint);
-    if (shape && !this.isLayerLocked(shape.layerId)) {
+    if (shape && !this.isShapeInteractable(shape)) {
+      // Hit landed on a non-interactable shape; treat as miss.
+    } else if (shape) {
       const target = this.promoteToGroupRoot(shape);
       return { kind: "shape", id: target.id, bounds: getShapeWorldBounds(target) };
     }
@@ -2806,6 +2812,20 @@ export class Editor {
   private isLayerLocked(layerId: LayerId): boolean {
     const layer = this._scene.layers.get(layerId);
     return layer?.locked === true;
+  }
+
+  /**
+   * Combined interactivity check: false when the shape's layer is
+   * locked, or when the shape itself or any ancestor via `parentId`
+   * carries `locked: true` (group lock propagation). Hit-test treats
+   * non-interactable hits as misses; render still draws them so the
+   * user can see what's locked.
+   */
+  private isShapeInteractable(shape: Shape): boolean {
+    if (this.isLayerLocked(shape.layerId)) return false;
+    if (isShapeLocked(this._scene, shape)) return false;
+    if (isShapeHidden(this._scene, shape)) return false;
+    return true;
   }
 
   /**
@@ -2875,18 +2895,23 @@ export class Editor {
   }
 
   /**
-   * Compute the dim set for isolation rendering: every shape whose
-   * parent chain does NOT pass through `enteredGroupId`. The entered
-   * group itself is treated as "inside" (returns true from
-   * isDescendantOfGroup) so it stays at full alpha — but groups have
-   * no intrinsic geometry, so this only matters for the
-   * group-bounds-outline overlay path, not the shape render.
-   *
-   * Defensive: shapes in the current selection are never dimmed. The
-   * focus shape (drilled-into child) is always a group descendant in
-   * practice, but the guard keeps the contract simple — "what you've
-   * selected, you can see".
+   * Collect every shape that should be hidden this frame due to its
+   * own `hidden` flag or that of any ancestor via `parentId`.
+   * Returns `undefined` when nothing is hidden — keeps the
+   * RenderSceneOptions payload empty in the common case so the
+   * renderer's hot loop skips the `has()` check entirely.
    */
+  private computeHiddenShapes(): ReadonlySet<ShapeId> | undefined {
+    let out: Set<ShapeId> | null = null;
+    for (const s of this._scene.shapes.values()) {
+      if (isShapeHidden(this._scene, s)) {
+        if (!out) out = new Set();
+        out.add(s.id);
+      }
+    }
+    return out ?? undefined;
+  }
+
   private computeDimShapes(enteredGroupId: ShapeId): ReadonlySet<ShapeId> {
     const dim = new Set<ShapeId>();
     for (const s of this._scene.shapes.values()) {
@@ -4137,12 +4162,14 @@ export class Editor {
     const dimShapes = this._enteredGroup
       ? this.computeDimShapes(this._enteredGroup)
       : undefined;
+    const hideShapes = this.computeHiddenShapes();
     renderScene(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
       ...(dirtyWorld ? { dirtyWorld } : {}),
       boundsCache: this.boundsCache,
       lod: DEFAULT_LOD,
       ...(dimShapes ? { dimShapes, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
+      ...(hideShapes ? { hideShapes } : {}),
     });
     renderEdges(this._scene, this.mainTarget, {
       ...(viewportWorld ? { viewportWorld } : {}),

@@ -320,3 +320,6 @@
 
 ## 0.23.73
 - scene: treeLayout (Reingold-Tilford-style, no dagre dep)
+
+## 0.23.74
+- state+scene+renderer-core: per-shape lock/hide with group propagation

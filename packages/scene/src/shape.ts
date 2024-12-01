@@ -66,6 +66,29 @@ export interface ShapeBase {
    * parents.
    */
   readonly parentId?: ShapeId;
+
+  /**
+   * Per-shape lock flag. Locked shapes ignore all interactive gestures
+   * (hit-test pretends they're not there for clicks / drags / resize),
+   * but still render and remain serialisable. Propagates to
+   * descendants: if any ancestor in the `parentId` chain is locked,
+   * the shape is effectively locked. Use `isShapeLocked(scene, shape)`
+   * to consult the propagated state.
+   *
+   * Independent from `Layer.locked` — both gate interactions; either
+   * one being true is enough to lock.
+   */
+  readonly locked?: boolean;
+
+  /**
+   * Per-shape visibility flag. Hidden shapes do not render and do not
+   * receive interactions. Propagates to descendants like `locked`.
+   * Use `isShapeHidden(scene, shape)` to consult the propagated state.
+   *
+   * Independent from `Layer.visible` — either being false hides the
+   * shape.
+   */
+  readonly hidden?: boolean;
 }
 
 export interface RectangleShape extends ShapeBase {
