@@ -123,7 +123,14 @@ export const allShapesInLayer = (scene: Scene, layerId: Scene["layers"] extends 
  */
 export type AutoLayoutSpec =
   | { readonly kind: "grid"; readonly cols: number; readonly gap?: number }
-  | { readonly kind: "stack"; readonly direction: "horizontal" | "vertical"; readonly gap?: number };
+  | { readonly kind: "stack"; readonly direction: "horizontal" | "vertical"; readonly gap?: number }
+  | {
+      readonly kind: "tree";
+      /** Vertical distance between successive depth levels. Default 80. */
+      readonly ranksep?: number;
+      /** Horizontal distance between siblings. Default 24. */
+      readonly nodesep?: number;
+    };
 
 /**
  * Parse and validate the `metadata.autoLayout` field on a shape.
@@ -150,6 +157,14 @@ export const getAutoLayoutSpec = (shape: Shape): AutoLayoutSpec | null => {
       kind: "stack",
       direction: raw.direction,
       ...(typeof raw.gap === "number" ? { gap: raw.gap } : {}),
+    };
+  }
+  if (raw.kind === "tree") {
+    const treeRaw = m as { ranksep?: number; nodesep?: number };
+    return {
+      kind: "tree",
+      ...(typeof treeRaw.ranksep === "number" ? { ranksep: treeRaw.ranksep } : {}),
+      ...(typeof treeRaw.nodesep === "number" ? { nodesep: treeRaw.nodesep } : {}),
     };
   }
   return null;
@@ -181,10 +196,133 @@ export const runAutoLayout = (scene: Scene, parentId: ShapeId): Patch | null => 
       ...(spec.gap !== undefined ? { gap: spec.gap } : {}),
     });
   }
-  return stackLayout(scene, {
+  if (spec.kind === "stack") {
+    return stackLayout(scene, {
+      shapeIds: children,
+      origin,
+      direction: spec.direction,
+      ...(spec.gap !== undefined ? { gap: spec.gap } : {}),
+    });
+  }
+  return treeLayout(scene, {
     shapeIds: children,
     origin,
-    direction: spec.direction,
-    ...(spec.gap !== undefined ? { gap: spec.gap } : {}),
+    ...(spec.ranksep !== undefined ? { ranksep: spec.ranksep } : {}),
+    ...(spec.nodesep !== undefined ? { nodesep: spec.nodesep } : {}),
   });
+};
+
+// --- tree layout ---
+
+export interface TreeLayoutSpec extends LayoutSpec {
+  /** Vertical distance between successive depth levels. */
+  readonly ranksep?: number;
+  /** Horizontal distance between siblings. */
+  readonly nodesep?: number;
+}
+
+/**
+ * Reingold-Tilford-style top-down tree layout. Each id in
+ * `spec.shapeIds` is treated as a root; the algorithm walks
+ * `parentId` *downward* via `getChildrenOf` (so a deeper subtree
+ * lives entirely under one of the roots). Each level is stacked
+ * vertically by `ranksep`; siblings within a level are spaced by
+ * `nodesep`. Each subtree is centred above its children.
+ *
+ * Implementation: standard two-pass walk (bottom-up subtree-width
+ * computation, then top-down x-placement).
+ */
+export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
+  if (spec.shapeIds.length === 0) return null;
+  const ranksep = spec.ranksep ?? 80;
+  const nodesep = spec.nodesep ?? 24;
+  const origin = spec.origin ?? { x: 0, y: 0 };
+
+  // Build a child-of map filtered to shapes that exist.
+  const childrenOf = (id: ShapeId): Shape[] => {
+    const out: Shape[] = [];
+    for (const s of scene.shapes.values()) {
+      if (s.parentId === id) out.push(s);
+    }
+    out.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+    return out;
+  };
+
+  // Subtree-width / height memo.
+  const widthOf = new Map<ShapeId, number>();
+  const heightOf = new Map<ShapeId, number>();
+  const shapeWidth = (s: Shape): number =>
+    "width" in s && typeof s.width === "number" ? s.width : 0;
+  const shapeHeight = (s: Shape): number =>
+    "height" in s && typeof s.height === "number" ? s.height : 0;
+
+  const measure = (id: ShapeId): { w: number; h: number } => {
+    if (widthOf.has(id)) return { w: widthOf.get(id)!, h: heightOf.get(id)! };
+    const shape = getShape(scene, id);
+    if (!shape) {
+      widthOf.set(id, 0);
+      heightOf.set(id, 0);
+      return { w: 0, h: 0 };
+    }
+    const selfW = shapeWidth(shape);
+    const selfH = shapeHeight(shape);
+    const kids = childrenOf(id);
+    if (kids.length === 0) {
+      widthOf.set(id, selfW);
+      heightOf.set(id, selfH);
+      return { w: selfW, h: selfH };
+    }
+    let kidsW = 0;
+    let kidsH = 0;
+    for (let i = 0; i < kids.length; i++) {
+      const m = measure(kids[i]!.id);
+      kidsW += m.w;
+      if (i > 0) kidsW += nodesep;
+      if (m.h > kidsH) kidsH = m.h;
+    }
+    const w = Math.max(selfW, kidsW);
+    const h = selfH + ranksep + kidsH;
+    widthOf.set(id, w);
+    heightOf.set(id, h);
+    return { w, h };
+  };
+
+  // Pass 1: measure every requested root.
+  for (const id of spec.shapeIds) measure(id);
+
+  // Pass 2: place. Roots are laid out left-to-right under origin.y;
+  // each subtree centres its root above its children band.
+  const patches: Patch[] = [];
+  let working = scene;
+  const place = (id: ShapeId, leftX: number, topY: number): void => {
+    const shape = getShape(working, id);
+    if (!shape) return;
+    const m = measure(id);
+    const selfW = shapeWidth(shape);
+    const selfH = shapeHeight(shape);
+    const target = {
+      x: leftX + (m.w - selfW) / 2,
+      y: topY,
+    };
+    if (shape.position.x !== target.x || shape.position.y !== target.y) {
+      const r = updateShape(working, id, (s) => ({ ...s, position: target }));
+      working = r.scene;
+      patches.push(r.patch);
+    }
+    const kids = childrenOf(id);
+    if (kids.length === 0) return;
+    let cursorX = leftX;
+    const kidsY = topY + selfH + ranksep;
+    for (const kid of kids) {
+      place(kid.id, cursorX, kidsY);
+      cursorX += measure(kid.id).w + nodesep;
+    }
+  };
+  let rootsX = origin.x;
+  for (const id of spec.shapeIds) {
+    place(id, rootsX, origin.y);
+    rootsX += measure(id).w + nodesep;
+  }
+  if (patches.length === 0) return null;
+  return batch(patches);
 };

@@ -317,3 +317,6 @@
 
 ## 0.23.72
 - react-ui: context-menu "Auto-arrange children" for layout containers
+
+## 0.23.73
+- scene: treeLayout (Reingold-Tilford-style, no dagre dep)
