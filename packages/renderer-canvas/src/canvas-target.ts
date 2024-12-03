@@ -160,6 +160,10 @@ export class Canvas2DTarget implements RenderTarget {
   // --- Surface control ---
 
   clear(bounds?: Bounds): void {
+    // A `clear()` always opens a fresh dirty pass — the host took
+    // responsibility for the cleared region, anything we accumulate
+    // from here is the new frame's coverage.
+    this.dirtyRect = null;
     if (bounds) {
       this.ctx.clearRect(bounds.x, bounds.y, bounds.width, bounds.height);
     } else {
@@ -169,5 +173,38 @@ export class Canvas2DTarget implements RenderTarget {
       this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
       this.ctx.restore();
     }
+  }
+
+  // --- Per-pass dirty accumulator ---
+
+  /**
+   * Screen-space union of every `markDirty(bounds)` call since the
+   * last `clear()`. Hosts can read it via `getDirtyRect()` to size
+   * the next clear precisely — covers anti-aliased stroke fuzz and
+   * shape renderers that paint a few px beyond their geometric bbox.
+   */
+  private dirtyRect: Bounds | null = null;
+
+  markDirty(bounds: Bounds): void {
+    if (!this.dirtyRect) {
+      this.dirtyRect = bounds;
+      return;
+    }
+    const minX = Math.min(this.dirtyRect.x, bounds.x);
+    const minY = Math.min(this.dirtyRect.y, bounds.y);
+    const maxX = Math.max(
+      this.dirtyRect.x + this.dirtyRect.width,
+      bounds.x + bounds.width,
+    );
+    const maxY = Math.max(
+      this.dirtyRect.y + this.dirtyRect.height,
+      bounds.y + bounds.height,
+    );
+    this.dirtyRect = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+
+  /** Read the accumulated dirty rect for this pass. `null` when nothing painted. */
+  getDirtyRect(): Bounds | null {
+    return this.dirtyRect;
   }
 }

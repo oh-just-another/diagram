@@ -326,3 +326,6 @@
 
 ## 0.23.75
 - demo: auto-layout palette entries
+
+## 0.23.76
+- renderer: add markDirty(bounds) + Canvas2DTarget accumulator

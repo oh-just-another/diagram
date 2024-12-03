@@ -68,6 +68,20 @@ export interface RenderTarget {
   clear(bounds?: Bounds): void;
   /** Current intrinsic surface size in CSS pixels (pre-DPR). */
   readonly size: { readonly width: number; readonly height: number };
+
+  /**
+   * Mark a screen-space rectangle as dirty for the *current* frame.
+   * Optional hook — backends that don't need per-pass dirty tracking
+   * can implement it as a no-op. Renderers call this after a draw
+   * operation that paints outside the shape's intrinsic bbox (anti-
+   * aliased stroke fuzz, drop shadows, oversized arrowheads) so the
+   * host's next `clear()` can cover the actual painted area, not
+   * just the geometric bbox.
+   *
+   * The bounds are in *screen pixels* (post-projection), matching
+   * `clear(bounds)`.
+   */
+  markDirty?(bounds: Bounds): void;
 }
 
 /**
