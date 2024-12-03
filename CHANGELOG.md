@@ -323,3 +323,6 @@
 
 ## 0.23.74
 - state+scene+renderer-core: per-shape lock/hide with group propagation
+
+## 0.23.75
+- demo: auto-layout palette entries

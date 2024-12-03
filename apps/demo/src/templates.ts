@@ -272,5 +272,66 @@ export const setupTemplates = (): void => {
   },
   defaultRegistry,
  );
+
+ // demo: auto-layout containers. Plain rectangles tagged
+ // with `metadata.autoLayout` + `metadata.container` so dragging
+ // children in re-parents them (container drop) and the editor's
+ // autoLayout signature-check fires `runAutoLayout` in the next
+ // microtask. Picked rectangles (not rich templates) to keep the
+ // layout pipeline visible without the rich-template engine
+ // overlaying its own flex pass.
+ const autoLayoutIcon =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><rect x="6" y="6" width="5" height="5"/><rect x="13" y="6" width="5" height="5"/><rect x="6" y="13" width="5" height="5"/><rect x="13" y="13" width="5" height="5"/></svg>';
+ defaultRegistry.register({
+  id: "basic.auto-grid",
+  name: "Auto-grid (2×N)",
+  category: "basic",
+  icon: autoLayoutIcon,
+  factory: (ctx) => ({
+   id: ctx.id,
+   layerId: ctx.layerId,
+   type: "rectangle",
+   position: ctx.position,
+   rotation: 0,
+   scale: { x: 1, y: 1 },
+   order: ctx.order,
+   style: { fill: "#fafbff", stroke: "#8c9bb6", strokeWidth: 1.5, dashArray: [6, 4] },
+   width: 320,
+   height: 200,
+   metadata: {
+    autoLayout: { kind: "grid", cols: 2, gap: 12 },
+    container: {
+     dropZone: { x: 12, y: 12, width: 296, height: 176 },
+     padding: 12,
+    },
+   },
+  }),
+ });
+ defaultRegistry.register({
+  id: "basic.auto-stack",
+  name: "Auto-stack (H)",
+  category: "basic",
+  icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="1"/><rect x="6" y="9" width="4" height="6"/><rect x="11" y="9" width="4" height="6"/><rect x="16" y="9" width="3" height="6"/></svg>',
+  factory: (ctx) => ({
+   id: ctx.id,
+   layerId: ctx.layerId,
+   type: "rectangle",
+   position: ctx.position,
+   rotation: 0,
+   scale: { x: 1, y: 1 },
+   order: ctx.order,
+   style: { fill: "#f7fbf7", stroke: "#7aa07a", strokeWidth: 1.5, dashArray: [6, 4] },
+   width: 360,
+   height: 100,
+   metadata: {
+    autoLayout: { kind: "stack", direction: "horizontal", gap: 10 },
+    container: {
+     dropZone: { x: 10, y: 10, width: 340, height: 80 },
+     padding: 10,
+    },
+   },
+  }),
+ });
+
  installed = true;
 };
