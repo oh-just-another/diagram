@@ -332,3 +332,6 @@
 
 ## 0.23.77
 - demo: Clear button also wipes the localStorage autosave
+
+## 0.23.78
+- demo: Clear restores the default seed scene (not empty)

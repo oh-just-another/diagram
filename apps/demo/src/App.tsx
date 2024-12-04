@@ -349,21 +349,14 @@ const FloatingToolbar = () => {
 
   const onClear = useCallback(() => {
     if (!editor) return;
-    // Two responsibilities: drop the live scene to empty AND wipe the
-    // localStorage autosave so a reload doesn't restore yesterday's
-    // content. We keep snapshots (separate key) — those are explicit
-    // user-saved versions.
+    // Reset to the demo's default seed scene (same content the user
+    // sees on a fresh visit), AND wipe the autosave key so a reload
+    // doesn't restore a stale post-clear state. Snapshot store
+    // (separate key) is preserved — those are explicit versions.
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
     }
-    if (editor.scene.shapes.size === 0 && editor.scene.edges.size === 0) return;
-    editor.loadScene({
-      shapes: new Map(),
-      edges: new Map(),
-      layers: editor.scene.layers,
-      annotations: new Map(),
-      viewport: editor.scene.viewport,
-    });
+    editor.loadScene(seedScene());
   }, [editor]);
 
   const items: ToolbarItem[] = useMemo(
