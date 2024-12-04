@@ -349,8 +349,14 @@ const FloatingToolbar = () => {
 
   const onClear = useCallback(() => {
     if (!editor) return;
+    // Two responsibilities: drop the live scene to empty AND wipe the
+    // localStorage autosave so a reload doesn't restore yesterday's
+    // content. We keep snapshots (separate key) — those are explicit
+    // user-saved versions.
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
     if (editor.scene.shapes.size === 0 && editor.scene.edges.size === 0) return;
-    if (!window.confirm("Clear the whole scene? This also resets undo history.")) return;
     editor.loadScene({
       shapes: new Map(),
       edges: new Map(),

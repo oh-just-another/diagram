@@ -329,3 +329,6 @@
 
 ## 0.23.76
 - renderer: add markDirty(bounds) + Canvas2DTarget accumulator
+
+## 0.23.77
+- demo: Clear button also wipes the localStorage autosave
