@@ -1,15 +1,22 @@
 /**
  * Editor modes. The active mode dictates how a pointer-down is interpreted —
- * `select` starts a click-or-drag-or-handle gesture; `draw-rect` /
- * `draw-ellipse` start a rubber-band shape-creation gesture; `draw-edge`
- * starts an edge from the shape under the pointer (or from a free point on
- * empty canvas) and lands it on the shape (or free point) under the cursor
- * at release. `brush` records a pressure-sensitive freehand stroke from
- * pointer-down to pointer-up.
  *
- * Pan and zoom are not separate modes here — they are gestures (middle-mouse
- * drag, wheel) available in any mode.
+ * - `select` — click-or-drag-or-handle gesture; default interaction
+ *   model. Clicks select shapes; drag on empty starts a lasso; drag on
+ *   a selected shape moves it.
+ * - `hand` — dedicated pan mode (standard H tool). Pointer-down +
+ *   drag pans the viewport regardless of what was hit; cursor reads
+ *   as "grab" / "grabbing". Useful on touch or for users who don't
+ *   like Space-modifier panning.
+ * - `draw-rect` / `draw-ellipse` — rubber-band shape creation.
+ * - `draw-edge` — edge creation from press-down shape (or empty) to
+ *   release-shape (or empty).
+ * - `brush` — pressure-sensitive freehand stroke.
+ *
+ * Pan and zoom are STILL available as gestures (middle-mouse drag,
+ * Space+drag, mouse wheel zoom) regardless of mode — `hand` is the
+ * explicit single-button pan flow on top of that.
  */
-export type Mode = "select" | "draw-rect" | "draw-ellipse" | "draw-edge" | "brush";
+export type Mode = "select" | "hand" | "draw-rect" | "draw-ellipse" | "draw-edge" | "brush";
 
 export const DEFAULT_MODE: Mode = "select";

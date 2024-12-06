@@ -166,6 +166,7 @@ export const useHotkeys = (editor: Editor | null): void => {
       }
 
       if (ev.key === "v" || ev.key === "V") editor.setMode("select");
+      else if (ev.key === "h" || ev.key === "H") editor.setMode("hand");
       else if (ev.key === "r" || ev.key === "R") editor.setMode("draw-rect");
       else if (ev.key === "e" || ev.key === "E") editor.setMode("draw-ellipse");
       else if (ev.key === "l" || ev.key === "L") editor.setMode("draw-edge");

@@ -34,15 +34,28 @@ export type ToolbarItem =
   | { readonly kind: "zoom-out"; readonly label?: ReactNode }
   | { readonly kind: "zoom-reset"; readonly label?: ReactNode }
   | { readonly kind: "zoom-fit"; readonly label?: ReactNode }
-  | { readonly kind: "zoom-display" };
+  | { readonly kind: "zoom-display" }
+  | {
+      /**
+       * Tool-lock toggle. Renders a pressed-when-locked button; click flips
+       * `editor.toolLocked`. When locked, draw modes (rectangle / ellipse /
+       * edge / brush) persist after each create instead of reverting to
+       * select.
+       */
+      readonly kind: "tool-lock";
+      readonly label?: ReactNode;
+      readonly title?: string;
+    };
 
-/** Convenience default — modes + undo/redo + zoom widget. */
+/** Convenience default — modes + tool-lock + undo/redo + zoom widget. */
 export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
-  { kind: "mode", mode: "select", label: "Select" },
-  { kind: "mode", mode: "draw-rect", label: "Rectangle" },
-  { kind: "mode", mode: "draw-ellipse", label: "Ellipse" },
-  { kind: "mode", mode: "draw-edge", label: "Edge" },
-  { kind: "mode", mode: "brush", label: "Brush" },
+  { kind: "mode", mode: "select", label: "Select", title: "Select (V)" },
+  { kind: "mode", mode: "hand", label: "Hand", title: "Pan (H)" },
+  { kind: "mode", mode: "draw-rect", label: "Rectangle", title: "Rectangle (R)" },
+  { kind: "mode", mode: "draw-ellipse", label: "Ellipse", title: "Ellipse (E)" },
+  { kind: "mode", mode: "draw-edge", label: "Edge", title: "Edge (L)" },
+  { kind: "mode", mode: "brush", label: "Brush", title: "Brush (B)" },
+  { kind: "tool-lock", label: "🔒", title: "Lock current tool (stay in mode after each create)" },
   { kind: "divider" },
   { kind: "undo", label: "Undo" },
   { kind: "redo", label: "Redo" },
@@ -125,9 +138,43 @@ export const Toolbar = ({ items = DEFAULT_TOOLBAR, style, className }: ToolbarPr
             return <ZoomToFitButton key={i} label={item.label} />;
           case "zoom-display":
             return <ZoomDisplay key={i} />;
+          case "tool-lock":
+            return (
+              <ToolLockButton
+                key={i}
+                {...(item.label !== undefined ? { label: item.label } : {})}
+                {...(item.title !== undefined ? { title: item.title } : {})}
+              />
+            );
         }
       })}
     </div>
+  );
+};
+
+/**
+ * Pressable tool-lock affordance. Reads `editor.toolLocked` reactively so
+ * the active state stays in sync when the user toggles via hotkey or
+ * context menu.
+ */
+export const ToolLockButton = ({
+  label = "🔒",
+  title = "Lock current tool",
+}: {
+  readonly label?: ReactNode;
+  readonly title?: string;
+}) => {
+  const editor = useDiagramOptional();
+  const locked = useEditorSelector((e) => e.toolLocked, false);
+  return (
+    <ToolbarButton
+      disabled={!editor}
+      title={title}
+      active={locked}
+      onClick={() => editor?.setToolLocked(!locked)}
+    >
+      {label}
+    </ToolbarButton>
   );
 };
 

@@ -439,6 +439,18 @@ export class Editor {
   private spaceHeld = false;
 
   /**
+   * Tool-lock flag (standard model). When `false` (default), a
+   * draw-mode (`draw-rect` / `draw-ellipse` / `draw-edge` / `brush`)
+   * auto-reverts to `select` after a successful create. When `true`,
+   * the mode persists so the user can draw many shapes in a row
+   * without re-selecting the tool.
+   *
+   * Toggled via `Editor.setToolLocked(bool)` and surfaced in the
+   * toolbar as a lock affordance next to the active tool.
+   */
+  private _toolLocked = false;
+
+  /**
    * Active pan gesture (right-click drag or Space + left drag).
    * `pointerId` is captured by the host so move/up events keep
    * arriving even after the cursor leaves the host bounds.
@@ -811,6 +823,35 @@ export class Editor {
     this.render();
   }
 
+  /** Whether the active draw-mode sticks after a create (toolbar lock). */
+  get toolLocked(): boolean {
+    return this._toolLocked;
+  }
+
+  /**
+   * Toggle the tool-lock affordance. With `true`, draw-modes persist
+   * after each successful shape create — the user keeps drawing
+   * rectangles without re-pressing R. With `false` (default), the
+   * editor reverts to `select` after each create.
+   */
+  setToolLocked(locked: boolean): void {
+    if (this._toolLocked === locked) return;
+    this._toolLocked = locked;
+    this.notify();
+  }
+
+  /**
+   * Internal hook — called from `applyCreate` / `applyCreateEdge`
+   * after a successful shape / edge instantiation. Reverts the
+   * active mode to `select` unless `_toolLocked` is on. Centralises
+   * the rule so any new create path picks it up by calling through.
+   */
+  private maybeRevertModeAfterCreate(): void {
+    if (this._toolLocked) return;
+    if (this.mode === "select" || this.mode === "hand") return;
+    this.setMode("select");
+  }
+
   setMode(mode: Mode): void {
     // Cancel any in-progress drag gesture so the partial state is not recorded.
     if (this.gestureTx) {
@@ -820,6 +861,18 @@ export class Editor {
     // Hide the port overlay when leaving draw-edge.
     if (mode !== "draw-edge" && this.hoveredEdgeTarget !== null) {
       this.hoveredEdgeTarget = null;
+    }
+    // Cursor affordance for hand mode — grab when armed, grabbing
+    // takes over inside an active pan gesture. Restore the host's
+    // previous cursor when leaving the mode.
+    if (mode === "hand" && this.host?.style) {
+      if (this.previousHostCursor === null) {
+        this.previousHostCursor = this.host.style.cursor;
+      }
+      this.host.style.cursor = "grab";
+    } else if (this.previousHostCursor !== null && this.mode === "hand" && !this.panGesture) {
+      this.host.style.cursor = this.previousHostCursor;
+      this.previousHostCursor = null;
     }
     this.actor.send({ type: "SET_MODE", mode });
     this.notify();
@@ -1952,7 +2005,8 @@ export class Editor {
       // we cover it under the same trigger for parity.
       const isRightClick = ev.button === 2 || ev.button === 1;
       const isSpaceLeftDrag = ev.button === 0 && this.spaceHeld;
-      if (isRightClick || isSpaceLeftDrag) {
+      const isHandModeLeftDrag = ev.button === 0 && this.mode === "hand";
+      if (isRightClick || isSpaceLeftDrag || isHandModeLeftDrag) {
         // Suppress the next native contextmenu — we'll either pan
         // (if user drags) or manually fire the long-press callback
         // at pointerup (if it was a click-style right-click).
@@ -3568,6 +3622,7 @@ export class Editor {
     this._selection = Selection.single(id);
     // CREATE is a single-shot operation, not part of a multi-tick gesture.
     this._history.push(result.patch);
+    this.maybeRevertModeAfterCreate();
     this.notify();
   }
 
@@ -3602,6 +3657,7 @@ export class Editor {
     this._scene = result.scene;
     this._history.push(result.patch);
     this.edgePreview = null;
+    this.maybeRevertModeAfterCreate();
     this.notify();
   }
 
