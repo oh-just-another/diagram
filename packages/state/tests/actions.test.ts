@@ -1,0 +1,158 @@
+import { describe, expect, it, vi } from "vitest";
+import { shapeId } from "@oh-just-another/types";
+import {
+  addShape,
+  DEFAULT_LAYER_ID,
+  emptyScene,
+  orderBetween,
+  type Scene,
+  type Shape,
+} from "@oh-just-another/scene";
+import { ActionRegistry, defaultActionRegistry } from "../src/actions.js";
+import { Editor } from "../src/editor.js";
+
+const rect = (id: string): Shape => ({
+  id: shapeId(id),
+  layerId: DEFAULT_LAYER_ID,
+  type: "rectangle",
+  position: { x: 0, y: 0 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderBetween(null, null),
+  style: {},
+  width: 50,
+  height: 50,
+});
+
+const sceneWith = (...shapes: Shape[]): Scene => {
+  let s = emptyScene();
+  for (const sh of shapes) s = addShape(s, sh).scene;
+  return s;
+};
+
+const makeEditor = (): Editor => {
+  const noopTarget = {
+    save: () => {},
+    restore: () => {},
+    setTransform: () => {},
+    clear: () => {},
+    setFill: () => {},
+    setStroke: () => {},
+    setStrokeWidth: () => {},
+    setOpacity: () => {},
+    setLineCap: () => {},
+    setLineJoin: () => {},
+    setDashArray: () => {},
+    setFont: () => {},
+    setTextAlign: () => {},
+    setTextBaseline: () => {},
+    beginPath: () => {},
+    closePath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    bezierCurveTo: () => {},
+    rect: () => {},
+    ellipse: () => {},
+    fill: () => {},
+    stroke: () => {},
+    fillText: () => {},
+    measureText: () => ({ width: 0 }),
+    drawImage: () => {},
+  } as never;
+  const host = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }),
+    style: { cursor: "" },
+  } as never;
+  return new Editor({
+    host,
+    mainTarget: noopTarget,
+    overlayTarget: noopTarget,
+    initialScene: sceneWith(rect("a"), rect("b")),
+  });
+};
+
+describe("ActionRegistry", () => {
+  it("register + get + getAll preserve insertion order", () => {
+    const reg = new ActionRegistry();
+    const a = { id: "x", perform: vi.fn() };
+    const b = { id: "y", perform: vi.fn() };
+    reg.register(a);
+    reg.register(b);
+    expect(reg.get("x")).toBe(a);
+    expect(reg.getAll().map((act) => act.id)).toEqual(["x", "y"]);
+  });
+
+  it("register throws on duplicate id; replace updates in place", () => {
+    const reg = new ActionRegistry();
+    reg.register({ id: "x", perform: () => {} });
+    expect(() => reg.register({ id: "x", perform: () => {} })).toThrow();
+    const next = { id: "x", perform: vi.fn() };
+    reg.replace(next);
+    expect(reg.get("x")).toBe(next);
+  });
+
+  it("dispatch honours predicate and returns boolean", () => {
+    const reg = new ActionRegistry();
+    const perf = vi.fn();
+    reg.register({
+      id: "x",
+      predicate: () => false,
+      perform: perf,
+    });
+    const editor = makeEditor();
+    expect(reg.dispatch("x", { editor })).toBe(false);
+    expect(perf).not.toHaveBeenCalled();
+  });
+
+  it("dispatchHotkey matches and triggers", () => {
+    const reg = new ActionRegistry();
+    const perf = vi.fn();
+    reg.register({
+      id: "select-all",
+      hotkey: { key: "a", meta: true },
+      perform: perf,
+    });
+    const editor = makeEditor();
+    // The node test env has no KeyboardEvent; the matcher only reads
+    // .key / .code / .metaKey / .ctrlKey / .shiftKey / .altKey, so a
+    // plain object cast is enough to exercise dispatchHotkey.
+    const ev = {
+      key: "a",
+      ctrlKey: true,
+      metaKey: true,
+      shiftKey: false,
+      altKey: false,
+    } as unknown as KeyboardEvent;
+    expect(reg.dispatchHotkey(ev, { editor })).toBe(true);
+    expect(perf).toHaveBeenCalledOnce();
+  });
+});
+
+describe("defaultActionRegistry built-ins", () => {
+  it("undo / redo wired", () => {
+    const editor = makeEditor();
+    const undoSpy = vi.spyOn(editor, "undo");
+    defaultActionRegistry.dispatch("undo", { editor });
+    expect(undoSpy).toHaveBeenCalled();
+  });
+
+  it("group-selection predicate requires multi-selection", () => {
+    const editor = makeEditor();
+    // No selection → predicate false.
+    expect(defaultActionRegistry.dispatch("group-selection", { editor })).toBe(false);
+    // Two-shape selection → predicate true.
+    editor.selectAll();
+    expect(editor.selection.size).toBeGreaterThanOrEqual(2);
+    expect(defaultActionRegistry.dispatch("group-selection", { editor })).toBe(true);
+  });
+
+  it("mode-* actions switch editor mode", () => {
+    const editor = makeEditor();
+    defaultActionRegistry.dispatch("mode-hand", { editor });
+    expect(editor.mode).toBe("hand");
+    defaultActionRegistry.dispatch("mode-select", { editor });
+    expect(editor.mode).toBe("select");
+  });
+});

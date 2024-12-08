@@ -38,6 +38,14 @@ export { registerInteractiveHitTester, getInteractiveHitTester } from "./interac
 export type { EditorOptions, LoadSceneOptions } from "./editor.js";
 export { Editor } from "./editor.js";
 
+// Action architecture — command registry.
+export type { Action, ActionContext, HotkeyMatcher } from "./actions.js";
+export {
+  ActionRegistry,
+  defaultActionRegistry,
+  registerBuiltinActions,
+} from "./actions.js";
+
 // Re-export annotation types so hosts that wire `addAnnotation` /
 // `addComment` don't need a direct @scene dep just for the data shape.
 export type { Annotation, Comment } from "@oh-just-another/scene";

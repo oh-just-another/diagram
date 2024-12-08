@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { Editor } from "@oh-just-another/state";
+import { defaultActionRegistry, type Editor } from "@oh-just-another/state";
 
 /**
  * Wire global keyboard shortcuts to the editor:
@@ -35,84 +35,25 @@ export const useHotkeys = (editor: Editor | null): void => {
       const t = ev.target;
       if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
 
+      // First chance: registered actions. Covers everything in the
+      // built-in registry (undo/redo, clipboard, selection, z-order,
+      // grouping, zoom, mode switching). Hosts that add custom
+      // actions just need to register them on `defaultActionRegistry`
+      // (or pass a custom one) — no edit to hotkeys.ts.
+      if (defaultActionRegistry.dispatchHotkey(ev, { editor })) {
+        ev.preventDefault();
+        return;
+      }
+
+      // The remaining hotkeys are arrow nudging + Tab navigation +
+      // Enter (open text edit / create at cursor) — gestures with
+      // dynamic per-event payloads (nudge amount, shift modifier
+      // direction) that don't fit the static Action shape neatly.
+      // Keep them inline until the Action contract grows a "payload"
+      // slot.
       const meta = ev.metaKey || ev.ctrlKey;
-      if (meta && (ev.key === "z" || ev.key === "Z")) {
-        ev.preventDefault();
-        if (ev.shiftKey) editor.redo();
-        else editor.undo();
-        return;
-      }
-      if (meta && (ev.key === "y" || ev.key === "Y")) {
-        ev.preventDefault();
-        editor.redo();
-        return;
-      }
-      if (meta && (ev.key === "d" || ev.key === "D")) {
-        ev.preventDefault();
-        editor.duplicateSelected();
-        return;
-      }
-      if (meta && (ev.key === "a" || ev.key === "A")) {
-        ev.preventDefault();
-        editor.selectAll();
-        return;
-      }
-      if (meta && (ev.key === "c" || ev.key === "C")) {
-        ev.preventDefault();
-        editor.copySelected();
-        return;
-      }
-      if (meta && (ev.key === "x" || ev.key === "X")) {
-        ev.preventDefault();
-        editor.cutSelected();
-        return;
-      }
-      if (meta && (ev.key === "v" || ev.key === "V")) {
-        ev.preventDefault();
-        editor.paste();
-        return;
-      }
-      if (meta && (ev.key === "g" || ev.key === "G")) {
-        ev.preventDefault();
-        if (ev.shiftKey) editor.ungroup();
-        else editor.groupSelected();
-        return;
-      }
-      if (meta && ev.key === "]") {
-        ev.preventDefault();
-        editor.bringToFront();
-        return;
-      }
-      if (meta && ev.key === "[") {
-        ev.preventDefault();
-        editor.sendToBack();
-        return;
-      }
-      // Zoom: ⌘+ / ⌘= zoom in, ⌘− / ⌘_ zoom out, ⌘0 reset, ⌘1 fit.
-      // Note: `+` arrives as `=` without shift; `-` arrives as `-` itself.
-      if (meta && (ev.key === "=" || ev.key === "+")) {
-        ev.preventDefault();
-        editor.zoomIn();
-        return;
-      }
-      if (meta && (ev.key === "-" || ev.key === "_")) {
-        ev.preventDefault();
-        editor.zoomOut();
-        return;
-      }
-      if (meta && ev.key === "0") {
-        ev.preventDefault();
-        editor.resetZoom();
-        return;
-      }
-      if (meta && ev.key === "1") {
-        ev.preventDefault();
-        editor.zoomToFit();
-        return;
-      }
       if (meta || ev.altKey) return;
 
-      // Keyboard navigation — arrows / tab / escape.
       const nudge = ev.shiftKey ? 10 : 1;
       switch (ev.key) {
         case "ArrowLeft":
@@ -134,9 +75,6 @@ export const useHotkeys = (editor: Editor | null): void => {
         case "Tab":
           ev.preventDefault();
           editor.focusCycle(ev.shiftKey ? "prev" : "next");
-          return;
-        case "Escape":
-          editor.cancelInteraction();
           return;
       }
 
@@ -163,16 +101,6 @@ export const useHotkeys = (editor: Editor | null): void => {
         ev.preventDefault();
         editor.createShapeAtCursor();
         return;
-      }
-
-      if (ev.key === "v" || ev.key === "V") editor.setMode("select");
-      else if (ev.key === "h" || ev.key === "H") editor.setMode("hand");
-      else if (ev.key === "r" || ev.key === "R") editor.setMode("draw-rect");
-      else if (ev.key === "e" || ev.key === "E") editor.setMode("draw-ellipse");
-      else if (ev.key === "l" || ev.key === "L") editor.setMode("draw-edge");
-      else if (ev.key === "b" || ev.key === "B") editor.setMode("brush");
-      else if (ev.key === "Delete" || ev.key === "Backspace") {
-        editor.deleteSelected();
       }
     };
 

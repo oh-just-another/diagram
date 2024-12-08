@@ -338,3 +338,6 @@
 
 ## 0.23.79
 - state+react-ui+demo: hand mode + tool lock (standard )
+
+## 0.24.0
+- state+demo: modern-style Action registry
