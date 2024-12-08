@@ -347,3 +347,6 @@
 
 ## 0.24.2
 - scene+state: auto-layout anchors at drop-zone + grows container
+
+## 0.24.3
+- react-ui: toolbar + palette react to host CSS theme tokens

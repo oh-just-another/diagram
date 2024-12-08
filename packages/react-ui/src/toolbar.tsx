@@ -342,9 +342,12 @@ const ToolbarButton = ({
     aria-pressed={active}
     className={className}
     style={{
-      background: active ? "#1a3d6e" : "#2a2a2a",
-      color: "#ddd",
-      border: `1px solid ${active ? "#1a73e8" : "#3a3a3a"}`,
+      // Theme-driven colors — host wires CSS vars (--accent, --button-bg,
+      // --text, --border) via data-theme="light|dark" on <html>. Fallback
+      // values preserve the dark-mode look when no theme is wired.
+      background: active ? "var(--accent, #1a3d6e)" : "var(--button-bg, #2a2a2a)",
+      color: active ? "var(--surface, #fff)" : "var(--text, #ddd)",
+      border: `1px solid ${active ? "var(--accent, #1a73e8)" : "var(--border, #3a3a3a)"}`,
       borderRadius: 4,
       padding: "6px 12px",
       font: "inherit",
@@ -360,6 +363,11 @@ const ToolbarButton = ({
 
 const ToolbarDivider = () => (
   <span
-    style={{ width: 1, height: TOOLBAR_SEPARATOR_HEIGHT, background: "#333", margin: "0 4px" }}
+    style={{
+      width: 1,
+      height: TOOLBAR_SEPARATOR_HEIGHT,
+      background: "var(--divider, #333)",
+      margin: "0 4px",
+    }}
   />
 );

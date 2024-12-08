@@ -76,11 +76,11 @@ export const Palette = ({
       className={className}
       style={{
         width: PALETTE_WIDTH,
-        background: "#161616",
+        background: "var(--panel, #161616)",
         display: "flex",
         flexDirection: "column",
         minHeight: 0,
-        color: "#ddd",
+        color: "var(--text, #ddd)",
         ...style,
       }}
     >
@@ -91,8 +91,8 @@ export const Palette = ({
           fontSize: 11,
           textTransform: "uppercase",
           letterSpacing: 0.5,
-          color: "#777",
-          borderBottom: "1px solid #2a2a2a",
+          color: "var(--muted, #777)",
+          borderBottom: "1px solid var(--border, #2a2a2a)",
         }}
       >
         Palette
@@ -141,9 +141,9 @@ const CategorySection = ({
         style={{
           width: "100%",
           background: "transparent",
-          color: "#888",
+          color: "var(--muted, #888)",
           border: "none",
-          borderBottom: "1px solid #2a2a2a",
+          borderBottom: "1px solid var(--border, #2a2a2a)",
           padding: "8px 12px",
           fontSize: 11,
           textTransform: "uppercase",
@@ -258,8 +258,8 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       style={{
-        background: "#1f1f1f",
-        border: "1px solid #2f2f2f",
+        background: "var(--button-bg, #1f1f1f)",
+        border: "1px solid var(--border, #2f2f2f)",
         borderRadius: 4,
         aspectRatio: "1",
         display: "flex",
@@ -267,7 +267,7 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
         alignItems: "center",
         justifyContent: "center",
         gap: 4,
-        color: "#bbb",
+        color: "var(--text, #bbb)",
         cursor: "grab",
         padding: "6px 4px",
         textAlign: "center",
