@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-svg",
-  "version": "0.24.1",
+  "version": "0.24.2",
   "description": "renderer-svg package",
   "type": "module",
   "main": "./dist/index.js",

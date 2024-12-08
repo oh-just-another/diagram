@@ -4161,6 +4161,13 @@ export class Editor {
       } else {
         this._history.push(patch);
       }
+      // Grow container to fit children after they've been re-laid out.
+      // Per-child idempotent: maybeGrowContainer is a no-op when the
+      // child already fits the drop-zone, so the loop costs ~O(N)
+      // checks and at most one expand patch per outgrowing child.
+      for (const s of this._scene.shapes.values()) {
+        if (s.parentId === parent.id) this.maybeGrowContainer(parent.id, s.id);
+      }
       mutated = true;
     }
     if (mutated) {

@@ -1,4 +1,5 @@
 import type { ShapeId, Vec2 } from "@oh-just-another/types";
+import { getDropZoneWorld } from "./container.js";
 import type { Scene } from "./scene.js";
 import type { Shape } from "./shape.js";
 import { getShape, getShapesInLayer } from "./queries.js";
@@ -173,9 +174,14 @@ export const getAutoLayoutSpec = (shape: Shape): AutoLayoutSpec | null => {
 /**
  * Run the parent shape's declared auto-layout against its direct
  * children. Returns a batched patch (or `null` when nothing
- * changed). Children are anchored at the parent's `position` —
- * containers with a richer drop-zone can compose this with a
- * custom origin.
+ * changed). Anchoring rules:
+ *
+ *   1. If the parent has a container spec with a `dropZone`, the
+ *      layout origin is the top-left of that drop-zone in world
+ *      coords (parent.position + spec.dropZone.x/y). Children land
+ *      inside the visible drop area, not overlapping the parent's
+ *      title / chrome / border.
+ *   2. Otherwise the origin falls back to `parent.position`.
  */
 export const runAutoLayout = (scene: Scene, parentId: ShapeId): Patch | null => {
   const parent = getShape(scene, parentId);
@@ -187,7 +193,10 @@ export const runAutoLayout = (scene: Scene, parentId: ShapeId): Patch | null => 
     if (s.parentId === parentId) children.push(s.id);
   }
   if (children.length === 0) return null;
-  const origin = parent.position;
+  const dropZone = getDropZoneWorld(parent);
+  const origin = dropZone
+    ? { x: dropZone.x, y: dropZone.y }
+    : parent.position;
   if (spec.kind === "grid") {
     return gridLayout(scene, {
       shapeIds: children,

@@ -344,3 +344,6 @@
 
 ## 0.24.1
 - demo: add 🔒 tool-lock to the toolbar items list
+
+## 0.24.2
+- scene+state: auto-layout anchors at drop-zone + grows container
