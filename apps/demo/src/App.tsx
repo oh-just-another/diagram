@@ -361,11 +361,16 @@ const FloatingToolbar = () => {
 
   const items: ToolbarItem[] = useMemo(
     () => [
-      { kind: "mode", mode: "select", label: "Select" },
-      { kind: "mode", mode: "hand", label: "Hand" },
-      { kind: "mode", mode: "draw-rect", label: "Rectangle" },
-      { kind: "mode", mode: "draw-ellipse", label: "Ellipse" },
-      { kind: "mode", mode: "draw-edge", label: "Edge" },
+      { kind: "mode", mode: "select", label: "Select", title: "Select (V)" },
+      { kind: "mode", mode: "hand", label: "Hand", title: "Pan (H)" },
+      { kind: "mode", mode: "draw-rect", label: "Rectangle", title: "Rectangle (R)" },
+      { kind: "mode", mode: "draw-ellipse", label: "Ellipse", title: "Ellipse (E)" },
+      { kind: "mode", mode: "draw-edge", label: "Edge", title: "Edge (L)" },
+      {
+        kind: "tool-lock",
+        label: "🔒",
+        title: "Lock active tool — keep drawing the same shape after each create",
+      },
       { kind: "divider" },
       { kind: "undo" },
       { kind: "redo" },

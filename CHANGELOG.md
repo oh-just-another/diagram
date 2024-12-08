@@ -341,3 +341,6 @@
 
 ## 0.24.0
 - state+demo: modern-style Action registry
+
+## 0.24.1
+- demo: add 🔒 tool-lock to the toolbar items list
