@@ -8,7 +8,7 @@ import {
   type Scene,
   type Shape,
 } from "@oh-just-another/scene";
-import { ActionRegistry, defaultActionRegistry } from "../src/actions.js";
+import { ActionRegistry, defaultActionRegistry } from "../src/actions/index.js";
 import { Editor } from "../src/editor.js";
 
 const rect = (id: string): Shape => ({

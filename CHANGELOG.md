@@ -350,3 +350,6 @@
 
 ## 0.24.3
 - react-ui: toolbar + palette react to host CSS theme tokens
+
+## 0.25.0
+- state: split actions into per-category files + add platform helpers

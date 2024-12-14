@@ -39,12 +39,65 @@ export type { EditorOptions, LoadSceneOptions } from "./editor.js";
 export { Editor } from "./editor.js";
 
 // Action architecture — command registry.
-export type { Action, ActionContext, HotkeyMatcher } from "./actions.js";
+export type {
+  Action,
+  ActionCategory,
+  ActionContext,
+  HotkeyMatcher,
+} from "./actions/index.js";
 export {
   ActionRegistry,
   defaultActionRegistry,
   registerBuiltinActions,
-} from "./actions.js";
+  hasSelection,
+  // Re-export individual built-ins so hosts can replace / compose.
+  actionUndo,
+  actionRedo,
+  historyActions,
+  actionSelectAll,
+  actionDeleteSelection,
+  actionDuplicateSelection,
+  selectionActions,
+  actionCopy,
+  actionCut,
+  actionPaste,
+  clipboardActions,
+  actionBringToFront,
+  actionSendToBack,
+  zOrderActions,
+  actionGroupSelection,
+  actionUngroupSelection,
+  groupingActions,
+  actionZoomIn,
+  actionZoomOut,
+  actionZoomReset,
+  actionZoomToFit,
+  zoomActions,
+  actionModeSelect,
+  actionModeHand,
+  actionModeRect,
+  actionModeEllipse,
+  actionModeEdge,
+  actionModeBrush,
+  actionToggleToolLock,
+  actionCancel,
+  modeActions,
+} from "./actions/index.js";
+
+// Platform / device detection (+ hotkey pretty-printer).
+export type { PrettyHotkeyDesc } from "./platform.js";
+export {
+  isMac,
+  isWindows,
+  isAndroid,
+  isIOS,
+  isLinux,
+  isFirefox,
+  isSafari,
+  CTRL_OR_CMD_KEY,
+  getDevicePixelRatio,
+  formatHotkey,
+} from "./platform.js";
 
 // Re-export annotation types so hosts that wire `addAnnotation` /
 // `addComment` don't need a direct @scene dep just for the data shape.
