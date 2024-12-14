@@ -952,6 +952,28 @@ export class Editor {
         this.notify();
       },
       commit: () => {
+        // Container drop: if the placed shape lands inside an auto-
+        // layout / drop-zone container's zone, reparent it so the
+        // container's auto-layout fires on the next microtask. Pure
+        // pointer-drag uses applyContainerDrop for the same effect;
+        // palette placement bypasses that path, so we hook the check
+        // here directly on commit.
+        const center = {
+          x: current.position.x + (half.width / 2),
+          y: current.position.y + (half.height / 2),
+        };
+        const container = findContainerAt(this._scene, center, new Set([current.id]));
+        if (container) {
+          const withParent = { ...current, parentId: container.id } as Shape;
+          const reparentPatch: Patch = {
+            kind: "shape",
+            id: shape.id,
+            before: current,
+            after: withParent,
+          };
+          this._scene = apply(this._scene, reparentPatch);
+          current = withParent;
+        }
         tx.add({ kind: "shape", id: shape.id, before: null, after: current });
         tx.commit();
       },

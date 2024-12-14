@@ -353,3 +353,6 @@
 
 ## 0.25.0
 - state: split actions into per-category files + add platform helpers
+
+## 0.25.1
+- state: palette-drop reparents into auto-layout containers
