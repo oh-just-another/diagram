@@ -356,3 +356,6 @@
 
 ## 0.25.1
 - state: palette-drop reparents into auto-layout containers
+
+## 0.25.2
+- react-ui+demo: HelpDialog with platform-aware shortcut list ("?")

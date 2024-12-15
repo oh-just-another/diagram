@@ -23,7 +23,9 @@ import {
   Palette,
   PropertyPanel,
   TextEditorOverlay,
+  HelpDialog,
   Toolbar,
+  useHelpDialogHotkey,
   useDiagramOptional,
   usePalettePlacement,
   VersionPanel,
@@ -283,6 +285,8 @@ const canvasWrapperStyle: React.CSSProperties = {
 
 const CanvasArea = () => {
   const placement = usePalettePlacement();
+  const [helpOpen, setHelpOpen] = useState(false);
+  useHelpDialogHotkey(() => setHelpOpen(true));
   return (
     <section
       {...placement}
@@ -298,6 +302,7 @@ const CanvasArea = () => {
       <ContextMenu items={DEFAULT_CONTEXT_MENU} />
       <CommentsPopover />
       <TextEditorOverlay />
+      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
     </section>
   );
 };

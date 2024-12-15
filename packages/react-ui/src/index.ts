@@ -64,6 +64,13 @@ export {
   type ContextMenuContext,
   type ContextMenuProps,
 } from "./context-menu.js";
+export {
+  HelpDialog,
+  useHelpDialogHotkey,
+  type HelpDialogProps,
+  type HelpRow,
+  type HelpSection,
+} from "./help-dialog.js";
 
 // Tunable layout sizes for the built-in panels and toolbar.
 export {
