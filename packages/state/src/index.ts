@@ -38,6 +38,17 @@ export { registerInteractiveHitTester, getInteractiveHitTester } from "./interac
 export type { EditorOptions, LoadSceneOptions } from "./editor.js";
 export { Editor } from "./editor.js";
 
+// File-drop registry (host-extensible image / scene / custom).
+export type { FileDropHandler, FileDropContext } from "./file-drop.js";
+export {
+  FileDropRegistry,
+  IMAGE_MIME_TYPES,
+  isImageFile,
+  isSceneJsonFile,
+  readFileAsDataURL,
+  readFileAsText,
+} from "./file-drop.js";
+
 // Action architecture — command registry.
 export type {
   Action,

@@ -360,3 +360,5 @@
 ## 0.25.2
 - react-ui+demo: HelpDialog with platform-aware shortcut list ("?")
 
+## 0.25.4
+- state: FileDropRegistry — extensible canvas-drop dispatch

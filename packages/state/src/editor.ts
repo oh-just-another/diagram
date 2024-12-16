@@ -91,6 +91,11 @@ import {
 import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
 import { fromPointerEvent } from "./dom-events.js";
 import {
+  FileDropRegistry,
+  type FileDropContext,
+  type FileDropHandler,
+} from "./file-drop.js";
+import {
   ANNOTATION_PIN_HIT_SLOP,
   AUTO_COMPACT_THRESHOLD,
   DEFAULT_BRUSH_WIDTH,
@@ -449,6 +454,13 @@ export class Editor {
    * toolbar as a lock affordance next to the active tool.
    */
   private _toolLocked = false;
+
+  /**
+   * Host-extensible file-drop dispatch. Built-ins (image / scene
+   * JSON) register themselves at editor construction; hosts add
+   * more via `registerFileDropHandler`.
+   */
+  private readonly fileDropRegistry = new FileDropRegistry();
 
   /**
    * Active pan gesture (right-click drag or Space + left drag).
@@ -826,6 +838,34 @@ export class Editor {
   /** Whether the active draw-mode sticks after a create (toolbar lock). */
   get toolLocked(): boolean {
     return this._toolLocked;
+  }
+
+  /**
+   * Register a file-drop handler. Handlers are tried in registration
+   * order; the first whose `accept(file)` returns true takes the
+   * file. Repeated calls with the same `id` replace the previous
+   * handler (idempotent for module-load wiring).
+   */
+  registerFileDropHandler(handler: FileDropHandler): void {
+    this.fileDropRegistry.register(handler);
+  }
+
+  /** Drop a registered handler. */
+  unregisterFileDropHandler(id: string): void {
+    this.fileDropRegistry.unregister(id);
+  }
+
+  /**
+   * Dispatch a dropped file (or pasted file from clipboard) into
+   * the registered handlers. Returns `true` when a handler accepted
+   * the file, `false` otherwise — UI can show an "unsupported file"
+   * toast on `false`. `worldPoint` is where the file should land
+   * (drop-point projected to world coords; for paste, host can use
+   * cursor world point or viewport centre).
+   */
+  async dispatchFileDrop(file: File, worldPoint: Vec2): Promise<boolean> {
+    const ctx: FileDropContext = { editor: this, worldPoint };
+    return this.fileDropRegistry.dispatch(file, ctx);
   }
 
   /**
