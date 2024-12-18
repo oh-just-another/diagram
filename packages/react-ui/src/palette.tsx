@@ -388,11 +388,27 @@ export const usePalettePlacement = () => {
     },
     onDrop: (ev: DragEvent<HTMLElement>): void => {
       ev.preventDefault();
+      // Palette-template drop has priority — that's the active drag
+      // started by `<Palette>` items.
       if (placementRef.current) {
         const world = cursorWorld(ev);
         if (world) placementRef.current.update(world);
         placementRef.current.commit();
         placementRef.current = null;
+        return;
+      }
+      // Otherwise treat it as a file drop from the OS / browser.
+      const files = ev.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+      const world = cursorWorld(ev);
+      const target = world ?? { x: 0, y: 0 };
+      if (!editor) return;
+      // Dispatch each file independently — handlers decide if they
+      // care. We fire-and-forget; the registry's async handler
+      // resolution surfaces errors via uncaught promise rejection
+      // (host can wrap with a toast bridge).
+      for (const file of Array.from(files)) {
+        void editor.dispatchFileDrop(file, target);
       }
     },
   };

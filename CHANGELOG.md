@@ -362,3 +362,6 @@
 
 ## 0.25.4
 - state: FileDropRegistry — extensible canvas-drop dispatch
+
+## 0.25.5
+- state+react-ui+demo: image insertion via toolbar + drag-to-canvas

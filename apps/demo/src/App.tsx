@@ -310,6 +310,22 @@ const CanvasArea = () => {
 const FloatingToolbar = () => {
   const editor = useDiagramOptional();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const onImageFile: React.ChangeEventHandler<HTMLInputElement> = (ev) => {
+    const file = ev.target.files?.[0];
+    if (!file || !editor) return;
+    // Drop centered on the viewport — host uses viewportWorld() via
+    // editor.computeViewportWorld but that's private; instead grab
+    // the scene's current pan + half its viewport size.
+    const v = editor.scene.viewport;
+    const center = {
+      x: v.pan.x + v.size.width / (2 * v.zoom),
+      y: v.pan.y + v.size.height / (2 * v.zoom),
+    };
+    void editor.dispatchFileDrop(file, center);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
 
   const onSave = useCallback(() => {
     if (!editor) return;
@@ -371,6 +387,13 @@ const FloatingToolbar = () => {
       { kind: "mode", mode: "draw-rect", label: "Rectangle", title: "Rectangle (R)" },
       { kind: "mode", mode: "draw-ellipse", label: "Ellipse", title: "Ellipse (E)" },
       { kind: "mode", mode: "draw-edge", label: "Edge", title: "Edge (L)" },
+      {
+        kind: "action",
+        id: "insert-image",
+        label: "Image",
+        title: "Insert image — open file picker",
+        onClick: () => imageInputRef.current?.click(),
+      },
       {
         kind: "tool-lock",
         label: "🔒",
@@ -434,6 +457,13 @@ const FloatingToolbar = () => {
         accept="application/json"
         hidden
         onChange={onFileChange}
+      />
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={onImageFile}
       />
     </div>
   );

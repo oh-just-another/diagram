@@ -95,6 +95,7 @@ import {
   type FileDropContext,
   type FileDropHandler,
 } from "./file-drop.js";
+import { imageFileDropHandler } from "./built-in-handlers.js";
 import {
   ANNOTATION_PIN_HIT_SLOP,
   AUTO_COMPACT_THRESHOLD,
@@ -571,6 +572,11 @@ export class Editor {
     });
     this.actor.start();
 
+    // Built-in file-drop handlers — registered before any host-side
+    // wiring so subsequent host `registerFileDropHandler` calls land
+    // *after* and only fire for files we don't already handle.
+    this.fileDropRegistry.register(imageFileDropHandler);
+
     if (options.initialMode) {
       this.actor.send({ type: "SET_MODE", mode: options.initialMode });
     }
@@ -953,6 +959,46 @@ export class Editor {
     this._history.push(result.patch);
     this.notify();
     return result.patch;
+  }
+
+  /**
+   * Insert an image at the given world position. Wraps `addShape`
+   * with the image-shape boilerplate (id, layer, order, scale=1,
+   * rotation=0). Returns the new shape's id so callers can chain
+   * (e.g. immediately reparent into a container).
+   *
+   * `src` is anything the renderer accepts — a data-URL from the
+   * file-drop handler, a host CDN URL, an SVG string in
+   * `image/svg+xml;base64,...` form.
+   */
+  insertImage(input: {
+    src: string;
+    width: number;
+    height: number;
+    position: Vec2;
+  }): ShapeId {
+    const id = castShapeId(this.uniqueId("img"));
+    const layerId = this._activeLayerId;
+    const order = orderForTop(
+      Array.from(this._scene.shapes.values())
+        .filter((s) => s.layerId === layerId)
+        .map((s) => s.order),
+    );
+    const shape: Shape = {
+      id,
+      layerId,
+      type: "image",
+      position: input.position,
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order,
+      style: {},
+      width: input.width,
+      height: input.height,
+      src: input.src,
+    };
+    this.addShape(shape);
+    return id;
   }
 
   /**
