@@ -21,6 +21,7 @@ import {
   DiagramSurface,
   LayerPanel,
   Palette,
+  EdgeStylePanel,
   PropertyPanel,
   TextEditorOverlay,
   HelpDialog,
@@ -238,6 +239,7 @@ export const App = () => {
           </div>
           <div data-panel="property" style={panelWrapperStyle}>
             <PropertyPanel style={panelStyle} />
+            <EdgeStylePanel style={panelStyle} />
           </div>
           <div data-panel="layers" style={panelWrapperStyle}>
             <LayerPanel />

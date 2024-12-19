@@ -7,7 +7,12 @@ import {
   type Layer,
   type Scene,
 } from "@oh-just-another/scene";
-import { type AnnotationId, layerId as castLayerId, type LayerId } from "@oh-just-another/types";
+import {
+  type AnnotationId,
+  type EdgeId,
+  layerId as castLayerId,
+  type LayerId,
+} from "@oh-just-another/types";
 import { selection, type Editor, type Mode, type Selection } from "@oh-just-another/state";
 import { useDiagramContext, useDiagramContextOptional, useEditorSelector } from "./context.js";
 
@@ -89,3 +94,7 @@ export const useAnnotations = (): readonly Annotation[] =>
 /** Currently focused annotation id (or null when nothing is open). */
 export const useSelectedAnnotation = (): AnnotationId | null =>
   useEditorSelector<AnnotationId | null>((e) => e.selectedAnnotation, null);
+
+/** Currently selected edge id, or null when no edge is selected. */
+export const useSelectedEdge = (): EdgeId | null =>
+  useEditorSelector<EdgeId | null>((e) => e.selectedEdge, null);

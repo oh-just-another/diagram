@@ -22,6 +22,7 @@ export {
   useActiveLayerId,
   useAnnotations,
   useSelectedAnnotation,
+  useSelectedEdge,
 } from "./hooks.js";
 export { LayerPanel, type LayerPanelProps } from "./layer-panel.js";
 export {
@@ -57,6 +58,7 @@ export {
   type PaletteProps,
 } from "./palette.js";
 export { PropertyPanel, type PropertyPanelProps } from "./property-panel.js";
+export { EdgeStylePanel, type EdgeStylePanelProps } from "./edge-style-panel.js";
 export {
   ContextMenu,
   DEFAULT_CONTEXT_MENU,

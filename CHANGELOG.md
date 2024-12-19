@@ -365,3 +365,6 @@
 
 ## 0.25.5
 - state+react-ui+demo: image insertion via toolbar + drag-to-canvas
+
+## 0.25.6
+- state+react-ui+demo: EdgeStylePanel — arrowheads / dash / color / label

@@ -846,6 +846,26 @@ export class Editor {
     return this._toolLocked;
   }
 
+  /** Currently-selected edge id, if any. Null when no edge is selected. */
+  get selectedEdge(): EdgeId | null {
+    return this._selectedEdge;
+  }
+
+  /**
+   * Apply an in-place mutation to the currently-selected edge as a
+   * single history step. The `updater` receives a clone of the edge
+   * and returns the next version (callers should produce a new
+   * object — Edge is readonly). No-op when no edge is selected.
+   */
+  updateSelectedEdge(updater: (edge: Edge) => Edge): void {
+    const id = this._selectedEdge;
+    if (id === null) return;
+    const r = updateEdge(this._scene, id, updater);
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this.notify();
+  }
+
   /**
    * Register a file-drop handler. Handlers are tried in registration
    * order; the first whose `accept(file)` returns true takes the
