@@ -368,3 +368,6 @@
 
 ## 0.25.6
 - state+react-ui+demo: EdgeStylePanel — arrowheads / dash / color / label
+
+## 0.25.7
+- scene+renderer-core+state+demo: Frame element

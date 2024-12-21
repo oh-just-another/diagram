@@ -17,6 +17,13 @@
  * Space+drag, mouse wheel zoom) regardless of mode — `hand` is the
  * explicit single-button pan flow on top of that.
  */
-export type Mode = "select" | "hand" | "draw-rect" | "draw-ellipse" | "draw-edge" | "brush";
+export type Mode =
+  | "select"
+  | "hand"
+  | "draw-rect"
+  | "draw-ellipse"
+  | "draw-edge"
+  | "draw-frame"
+  | "brush";
 
 export const DEFAULT_MODE: Mode = "select";

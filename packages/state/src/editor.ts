@@ -2250,8 +2250,9 @@ export class Editor {
       if (target.kind === "shape") {
         const pressedShape = getShape(this._scene, target.id);
         const pressedIsGroup = pressedShape?.type === "group";
+        const pressedIsFrame = pressedShape?.type === "frame";
         const inSelection = this._selection.has(target.id);
-        if (inSelection || pressedIsGroup) {
+        if (inSelection || pressedIsGroup || pressedIsFrame) {
           const ids = new Set<ShapeId>();
           if (inSelection) {
             for (const id of this.expandSelectionWithDescendants()) ids.add(id);
@@ -2265,6 +2266,15 @@ export class Editor {
               }
             };
             visit(target.id);
+          }
+          if (pressedIsFrame) {
+            // Frame drag pulls every shape with matching frameId
+            // along (standard frame model). Frames are flat
+            // associations — no recursive descent needed.
+            ids.add(target.id);
+            for (const s of this._scene.shapes.values()) {
+              if (s.frameId === target.id) ids.add(s.id);
+            }
           }
           if (ids.size > 1) {
             const snap = new Map<ShapeId, Vec2>();
@@ -3721,14 +3731,16 @@ export class Editor {
     this.notify();
   }
 
-  private applyCreate(kind: "rect" | "ellipse", bounds: Bounds): void {
+  private applyCreate(kind: "rect" | "ellipse" | "frame", bounds: Bounds): void {
     const id = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
     const layerId = this._activeLayerId;
-    const order = orderForTop(
-      Array.from(this._scene.shapes.values())
-        .filter((s) => s.layerId === layerId)
-        .map((s) => s.order),
-    );
+    const orders = Array.from(this._scene.shapes.values())
+      .filter((s) => s.layerId === layerId)
+      .map((s) => s.order);
+    // Frames belong at the BOTTOM of their layer so the children
+    // they contain (drawn after = on top) still receive clicks.
+    // Other shapes go to the top of the stack as usual.
+    const order = kind === "frame" ? orderForBottom(orders) : orderForTop(orders);
     const common = {
       id,
       layerId,
@@ -3736,22 +3748,83 @@ export class Editor {
       rotation: 0,
       scale: { x: 1, y: 1 },
       order,
-      style:
-        kind === "rect"
-          ? { fill: "#cfe1ff", stroke: "#1a40b0", strokeWidth: 2 }
-          : { fill: "#ffd6d6", stroke: "#a01a1a", strokeWidth: 2 },
       width: bounds.width,
       height: bounds.height,
     };
-    const shape: Shape =
-      kind === "rect" ? { ...common, type: "rectangle" } : { ...common, type: "ellipse" };
+    let shape: Shape;
+    if (kind === "rect") {
+      shape = {
+        ...common,
+        type: "rectangle",
+        style: { fill: "#cfe1ff", stroke: "#1a40b0", strokeWidth: 2 },
+      };
+    } else if (kind === "ellipse") {
+      shape = {
+        ...common,
+        type: "ellipse",
+        style: { fill: "#ffd6d6", stroke: "#a01a1a", strokeWidth: 2 },
+      };
+    } else {
+      // Frame — empty style (renderer hard-codes the dashed look),
+      // auto-numbered name. Created at the bbox of the drag.
+      shape = {
+        ...common,
+        type: "frame",
+        style: {},
+        name: this.nextFrameName(),
+      };
+    }
     const result = addShape(this._scene, shape);
     this._scene = result.scene;
     this._selection = Selection.single(id);
     // CREATE is a single-shot operation, not part of a multi-tick gesture.
     this._history.push(result.patch);
+
+    // Frame-specific: scoop up every shape whose centre lies inside
+    // the new frame's bounds and tag them with `frameId`.
+    if (kind === "frame") {
+      this.assignFrameMembers(id, bounds);
+    }
+
     this.maybeRevertModeAfterCreate();
     this.notify();
+  }
+
+  /** Generate the next "Frame N" name based on existing frames. */
+  private nextFrameName(): string {
+    let max = 0;
+    for (const s of this._scene.shapes.values()) {
+      if (s.type !== "frame") continue;
+      const m = /^Frame (\d+)$/.exec((s as { name?: string }).name ?? "");
+      if (m) max = Math.max(max, Number(m[1]));
+    }
+    return `Frame ${max + 1}`;
+  }
+
+  /**
+   * Assign frameId to every shape (except the frame itself) whose
+   * centre falls inside the frame's world bounds. Runs as a single
+   * undo step in the same gesture transaction as the create.
+   */
+  private assignFrameMembers(frameId: ShapeId, frameBounds: Bounds): void {
+    const left = frameBounds.x;
+    const top = frameBounds.y;
+    const right = frameBounds.x + frameBounds.width;
+    const bottom = frameBounds.y + frameBounds.height;
+    for (const shape of this._scene.shapes.values()) {
+      if (shape.id === frameId) continue;
+      if (shape.type === "frame") continue;
+      // Skip shapes already in another frame; user explicitly drags
+      // in to reassign.
+      if (shape.frameId !== undefined) continue;
+      const b = getShapeWorldBounds(shape);
+      const cx = b.x + b.width / 2;
+      const cy = b.y + b.height / 2;
+      if (cx < left || cx > right || cy < top || cy > bottom) continue;
+      const r = updateShape(this._scene, shape.id, (s) => ({ ...s, frameId }));
+      this._scene = r.scene;
+      this._history.push(r.patch);
+    }
   }
 
   /**

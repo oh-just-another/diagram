@@ -41,7 +41,7 @@ export interface InteractionContext {
   readonly pressOrigin: Vec2 | null;
   readonly pressLast: Vec2 | null;
   readonly pressTarget: PressTarget | null;
-  readonly drawingType: "rect" | "ellipse" | null;
+  readonly drawingType: "rect" | "ellipse" | "frame" | null;
   /** Keyboard state captured at POINTER_DOWN. */
   readonly pressModifiers: Modifiers | null;
 }
@@ -160,7 +160,7 @@ export type InteractionEmit =
     }
   | {
       readonly type: "CREATE_SHAPE";
-      readonly shapeType: "rect" | "ellipse";
+      readonly shapeType: "rect" | "ellipse" | "frame";
       readonly bounds: Bounds;
     }
   | {
@@ -232,7 +232,7 @@ export const interactionMachine = setup({
       }),
     ),
     updateLast: assign((_, params: { point: Vec2 }) => ({ pressLast: params.point })),
-    setDrawingType: assign((_, params: { kind: "rect" | "ellipse" }) => ({
+    setDrawingType: assign((_, params: { kind: "rect" | "ellipse" | "frame" }) => ({
       drawingType: params.kind,
     })),
     resetGesture: assign(() => ({
@@ -407,7 +407,13 @@ export const interactionMachine = setup({
     },
     movedAndDrawing: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
-      if (context.mode !== "draw-rect" && context.mode !== "draw-ellipse") return false;
+      if (
+        context.mode !== "draw-rect" &&
+        context.mode !== "draw-ellipse" &&
+        context.mode !== "draw-frame"
+      ) {
+        return false;
+      }
       return dragExceeded(context.pressOrigin, event.point);
     },
     movedAndDrawingEdge: ({ context, event }) => {
@@ -492,7 +498,12 @@ export const interactionMachine = setup({
               {
                 type: "setDrawingType",
                 params: ({ context }) => ({
-                  kind: context.mode === "draw-rect" ? "rect" : "ellipse",
+                  kind:
+                    context.mode === "draw-rect"
+                      ? "rect"
+                      : context.mode === "draw-frame"
+                        ? "frame"
+                        : "ellipse",
                 }),
               },
               { type: "updateLast", params: ({ event }) => ({ point: event.point }) },

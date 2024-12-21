@@ -68,6 +68,16 @@ export interface ShapeBase {
   readonly parentId?: ShapeId;
 
   /**
+   * Frame membership — modern-style. Distinct from `parentId`
+   * (which is for groups and containers). Children of a frame are
+   * NOT nested in its `children` list; they're flat in the scene
+   * but share `frameId === frame.id`. Move-by-drag of the frame
+   * translates every shape with the matching frameId; export-by-
+   * frame uses the frame's bounds as the crop region.
+   */
+  readonly frameId?: ShapeId;
+
+  /**
    * Per-shape lock flag. Locked shapes ignore all interactive gestures
    * (hit-test pretends they're not there for clicks / drags / resize),
    * but still render and remain serialisable. Propagates to
@@ -185,6 +195,24 @@ export interface GroupShape extends ShapeBase {
   readonly type: "group";
 }
 
+/**
+ * Frame element — modern-style visual container that groups
+ * shapes via a separate `frameId` link (NOT `parentId`). Drawn as
+ * a dashed rectangle with a header title; clicks pass through to
+ * children. Move-by-drag translates every shape whose `frameId`
+ * matches; the export pipeline can crop to the frame's bounds.
+ *
+ * Auto-numbering: the editor picks the next free "Frame N" on
+ * create. Custom `name` overrides.
+ */
+export interface FrameShape extends ShapeBase {
+  readonly type: "frame";
+  readonly width: number;
+  readonly height: number;
+  /** Visible header label. */
+  readonly name?: string;
+}
+
 export type BuiltinShape =
   | RectangleShape
   | EllipseShape
@@ -194,6 +222,7 @@ export type BuiltinShape =
   | ImageShape
   | TemplateShape
   | GroupShape
+  | FrameShape
   | BrushShape;
 
 /**
@@ -213,6 +242,7 @@ export const isText = (s: ShapeBase): s is TextShape => s.type === "text";
 export const isImage = (s: ShapeBase): s is ImageShape => s.type === "image";
 export const isTemplate = (s: ShapeBase): s is TemplateShape => s.type === "template";
 export const isGroup = (s: ShapeBase): s is GroupShape => s.type === "group";
+export const isFrame = (s: ShapeBase): s is FrameShape => s.type === "frame";
 export const isBrush = (s: ShapeBase): s is BrushShape => s.type === "brush";
 
 // --- bounder registry ---
@@ -371,3 +401,10 @@ registerBounder<BrushShape>("brush", (s) => {
 // Callers that need the union of descendants must walk `parentId` via
 // `getChildrenOf` and union the children's world bounds instead.
 registerBounder<GroupShape>("group", () => ({ x: 0, y: 0, width: 0, height: 0 }));
+
+registerBounder<FrameShape>("frame", (s) => ({
+  x: 0,
+  y: 0,
+  width: s.width,
+  height: s.height,
+}));

@@ -1,6 +1,7 @@
 import {
  type BrushShape,
  type EllipseShape,
+ type FrameShape,
  type GroupShape,
  type ImageShape,
  type PathShape,
@@ -204,5 +205,41 @@ export const installBuiltinRenderers = (): void => {
  // Group shapes are invisible containers — the editor's overlay draws
  // a halo for selected groups, but the shape itself paints nothing.
  registerShapeRenderer<GroupShape>("group", () => {});
+ registerShapeRenderer<FrameShape>("frame", drawFrame);
  registerShapeRenderer<BrushShape>("brush", drawBrush);
+};
+
+/**
+ * Frame: dashed outline + header strip with the frame's name.
+ * Hit-testing intentionally passes through the body (handled
+ * editor-side) so clicks on children inside the frame still land on
+ * the child, not the frame chrome.
+ */
+const FRAME_STROKE = "#888";
+const FRAME_HEADER_HEIGHT = 24;
+
+const drawFrame: ShapeRenderer<FrameShape> = (shape, target) => {
+ // Body — dashed rectangle.
+ target.setFill(null);
+ target.setStroke(FRAME_STROKE);
+ target.setStrokeWidth(1);
+ target.setDashArray([6, 4]);
+ target.beginPath();
+ target.rect(0, 0, shape.width, shape.height);
+ target.stroke();
+ target.setDashArray(null);
+
+ // Header label background.
+ const name = shape.name ?? "Frame";
+ target.setFill("#222");
+ target.beginPath();
+ target.rect(0, -FRAME_HEADER_HEIGHT, Math.min(160, shape.width), FRAME_HEADER_HEIGHT);
+ target.fill();
+
+ // Header label text.
+ target.setFill("#ddd");
+ target.setFont("system-ui, sans-serif", 12);
+ target.setTextBaseline("middle");
+ target.setTextAlign("left");
+ target.fillText(name, 8, -FRAME_HEADER_HEIGHT / 2);
 };

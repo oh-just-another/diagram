@@ -90,6 +90,7 @@ export {
   actionModeEllipse,
   actionModeEdge,
   actionModeBrush,
+  actionModeFrame,
   actionToggleToolLock,
   actionCancel,
   modeActions,

@@ -48,6 +48,14 @@ export const actionModeBrush: Action = {
   perform: ({ editor }) => editor.setMode("brush"),
 };
 
+export const actionModeFrame: Action = {
+  id: "mode-frame",
+  label: "Frame tool",
+  category: "mode",
+  hotkey: { key: "f" },
+  perform: ({ editor }) => editor.setMode("draw-frame"),
+};
+
 export const actionToggleToolLock: Action = {
   id: "toggle-tool-lock",
   label: "Toggle tool lock",
@@ -73,6 +81,7 @@ export const modeActions: readonly Action[] = [
   actionModeEllipse,
   actionModeEdge,
   actionModeBrush,
+  actionModeFrame,
   actionToggleToolLock,
   actionCancel,
 ];

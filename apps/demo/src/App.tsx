@@ -389,6 +389,7 @@ const FloatingToolbar = () => {
       { kind: "mode", mode: "draw-rect", label: "Rectangle", title: "Rectangle (R)" },
       { kind: "mode", mode: "draw-ellipse", label: "Ellipse", title: "Ellipse (E)" },
       { kind: "mode", mode: "draw-edge", label: "Edge", title: "Edge (L)" },
+      { kind: "mode", mode: "draw-frame", label: "Frame", title: "Frame (F)" },
       {
         kind: "action",
         id: "insert-image",
