@@ -73,6 +73,23 @@ export {
   type HelpRow,
   type HelpSection,
 } from "./help-dialog.js";
+export {
+  ToastHost,
+  useToast,
+  useToastOptional,
+  useEphemeralToast,
+  type Toast,
+  type ToastApi,
+  type ToastKind,
+  type ToastHostProps,
+} from "./toast.js";
+export {
+  MainMenu,
+  type MainMenuProps,
+  type MainMenuItemProps,
+  type MainMenuItemLinkProps,
+} from "./main-menu.js";
+export { WelcomeScreen, type WelcomeScreenProps } from "./welcome-screen.js";
 
 // Tunable layout sizes for the built-in panels and toolbar.
 export {

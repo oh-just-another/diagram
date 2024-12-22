@@ -25,7 +25,10 @@ import {
   PropertyPanel,
   TextEditorOverlay,
   HelpDialog,
+  MainMenu,
+  ToastHost,
   Toolbar,
+  WelcomeScreen,
   useHelpDialogHotkey,
   useDiagramOptional,
   usePalettePlacement,
@@ -157,6 +160,7 @@ export const App = () => {
   const snapshotAuthor = useMemo(() => ({ id: "local", name: "You" }), []);
 
   return (
+    <ToastHost>
     <div className="root" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <header
         style={{
@@ -169,6 +173,15 @@ export const App = () => {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <MainMenu>
+            <MainMenu.Item onClick={toggle} shortcut={theme === "dark" ? "☀" : "🌙"}>
+              {theme === "dark" ? "Light theme" : "Dark theme"}
+            </MainMenu.Item>
+            <MainMenu.Separator />
+            <MainMenu.ItemLink href="https://github.com/standard/standard" external>
+              standard source ↗
+            </MainMenu.ItemLink>
+          </MainMenu>
           <h1
             style={{
               fontSize: 13,
@@ -256,6 +269,7 @@ export const App = () => {
         </main>
       </DiagramRoot>
     </div>
+    </ToastHost>
   );
 };
 
@@ -305,6 +319,7 @@ const CanvasArea = () => {
       <CommentsPopover />
       <TextEditorOverlay />
       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <WelcomeScreen />
     </section>
   );
 };

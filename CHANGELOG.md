@@ -371,3 +371,6 @@
 
 ## 0.25.7
 - scene+renderer-core+state+demo: Frame element
+
+## 0.26.0
+- react-ui+demo: MainMenu, ToastHost, WelcomeScreen
