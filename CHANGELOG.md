@@ -374,3 +374,6 @@
 
 ## 0.26.0
 - react-ui+demo: MainMenu, ToastHost, WelcomeScreen
+
+## 0.26.1
+- state: animated image support (GIF) + decoded <img> for any image type

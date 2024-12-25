@@ -996,6 +996,22 @@ export class Editor {
     width: number;
     height: number;
     position: Vec2;
+    /**
+     * Pre-decoded `<img>` element. Stored in metadata.image so the
+     * Canvas2D renderer can `drawImage(handle, …)` directly — the
+     * raw `src` string isn't a CanvasImageSource. Optional; hosts
+     * that pass only `src` should ensure their renderer accepts
+     * URLs.
+     */
+    image?: HTMLImageElement;
+    /**
+     * Mark this image as animated (e.g. GIF). The editor starts a
+     * requestAnimationFrame tick while any animated image is in the
+     * scene, forcing a redraw each frame so the browser's native
+     * GIF animation in the `<img>` element is picked up by
+     * subsequent drawImage calls.
+     */
+    animated?: boolean;
   }): ShapeId {
     const id = castShapeId(this.uniqueId("img"));
     const layerId = this._activeLayerId;
@@ -1004,6 +1020,9 @@ export class Editor {
         .filter((s) => s.layerId === layerId)
         .map((s) => s.order),
     );
+    const metadata: Record<string, unknown> = {};
+    if (input.image) metadata.image = input.image;
+    if (input.animated) metadata.animated = true;
     const shape: Shape = {
       id,
       layerId,
@@ -1016,9 +1035,49 @@ export class Editor {
       width: input.width,
       height: input.height,
       src: input.src,
+      ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
     };
     this.addShape(shape);
+    if (input.animated) this.startAnimationTick();
     return id;
+  }
+
+  /**
+   * Live set of shape ids that should re-render every animation
+   * frame (animated GIFs today; future video / lottie). Populated
+   * from `metadata.animated` markers.
+   */
+  private animationFrameId: number | null = null;
+
+  /** True while any shape in the scene carries `metadata.animated`. */
+  private hasAnimatedShape(): boolean {
+    for (const s of this._scene.shapes.values()) {
+      if (s.metadata?.animated === true) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Start (or no-op if already running) a requestAnimationFrame
+   * loop that re-renders the scene each frame while animated
+   * shapes are present. Stops automatically when none remain.
+   */
+  private startAnimationTick(): void {
+    if (this.animationFrameId !== null) return;
+    if (typeof requestAnimationFrame === "undefined") return;
+    const tick = (): void => {
+      if (!this.hasAnimatedShape()) {
+        this.animationFrameId = null;
+        return;
+      }
+      // Force a full re-render: the scene reference hasn't changed,
+      // but the browser's native GIF animation has advanced inside
+      // the `<img>` element. Re-painting picks up the current frame.
+      this.lastRenderedScene = null;
+      this.render();
+      this.animationFrameId = requestAnimationFrame(tick);
+    };
+    this.animationFrameId = requestAnimationFrame(tick);
   }
 
   /**
@@ -2103,6 +2162,12 @@ export class Editor {
       this._history.clear();
     }
     this.notify();
+    // Loaded scene may carry animated shapes (e.g. GIF re-imported
+    // from saved JSON). Re-arm the tick — the runtime <img>
+    // element won't survive serialisation, but `metadata.animated`
+    // does, so hosts that want animation back will need to re-supply
+    // the image element (or just have the renderer re-decode `src`).
+    if (this.hasAnimatedShape()) this.startAnimationTick();
   }
 
   /** Detach all DOM listeners and stop the actor. */
@@ -2114,6 +2179,10 @@ export class Editor {
     this.cursorListeners.clear();
     this.longPressListeners.clear();
     this.announceListeners.clear();
+    if (this.animationFrameId !== null && typeof cancelAnimationFrame !== "undefined") {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
   }
 
   // --- Internal ---

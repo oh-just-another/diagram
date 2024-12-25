@@ -59,6 +59,22 @@ export const imageFileDropHandler: FileDropHandler = {
       x: worldPoint.x - width / 2,
       y: worldPoint.y - height / 2,
     };
-    editor.insertImage({ src: dataUrl, width, height, position: topLeft });
+    // Pre-decoded `<img>` instance so the Canvas2D renderer can call
+    // drawImage() directly (canvas can't drawImage a raw string). GIFs
+    // animate natively in the element — the animation tick re-draws every
+    // frame.
+    const img =
+      typeof Image !== "undefined"
+        ? Object.assign(new Image(), { src: dataUrl })
+        : null;
+    const isGif = file.type === "image/gif" || /\.gif$/i.test(file.name);
+    editor.insertImage({
+      src: dataUrl,
+      width,
+      height,
+      position: topLeft,
+      ...(img ? { image: img } : {}),
+      animated: isGif,
+    });
   },
 };
