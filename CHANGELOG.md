@@ -377,3 +377,6 @@
 
 ## 0.26.1
 - state: animated image support (GIF) + decoded <img> for any image type
+
+## 0.26.2
+- state+scene: GIF actually animates + side-aware elbow routing

@@ -48,15 +48,83 @@ export const getEdgePath = (scene: Scene, edge: Edge): readonly Vec2[] | null =>
     return [from, ...explicitWaypoints, to];
   }
 
-  // Orthogonal default: single elbow midway between endpoints. Picks the
-  // larger axis (so an edge that's mostly horizontal goes horizontal-then-
-  // vertical, and vice-versa). Replaceable with A* / obstacle-aware
-  // routing later by setting `edge.waypoints` explicitly.
+  // Orthogonal — modern-style elbow with side-aware stubs.
+  // When either endpoint is anchored to a named side (top / right /
+  // bottom / left), we know which axis the edge should *exit* on,
+  // so we add a small stub in that direction before bending toward
+  // the other endpoint. Corner / center anchors and free `point`
+  // endpoints fall back to the longest-axis-first heuristic.
+  const fromDir = exitDirectionFor(edge.from);
+  const toDir = exitDirectionFor(edge.to);
+  const stub = Math.min(40, Math.max(8, Math.abs(to.x - from.x) / 4, Math.abs(to.y - from.y) / 4));
+
+  if (fromDir || toDir) {
+    const path: Vec2[] = [from];
+    let cursorFrom = from;
+    let cursorTo = to;
+    if (fromDir) {
+      cursorFrom = { x: from.x + fromDir.x * stub, y: from.y + fromDir.y * stub };
+      path.push(cursorFrom);
+    }
+    let toStubPoint: Vec2 | null = null;
+    if (toDir) {
+      toStubPoint = { x: to.x + toDir.x * stub, y: to.y + toDir.y * stub };
+    }
+    // Bend between cursorFrom and (toStubPoint ?? to).
+    const end = toStubPoint ?? cursorTo;
+    const dx = end.x - cursorFrom.x;
+    const dy = end.y - cursorFrom.y;
+    // Pick bend axis based on the originating stub direction when
+    // available — horizontal stub bends vertical first to align,
+    // and vice-versa.
+    const horizontalFirst = fromDir
+      ? Math.abs(fromDir.x) > Math.abs(fromDir.y)
+      : Math.abs(dx) >= Math.abs(dy);
+    if (Math.abs(dx) > 0.5 && Math.abs(dy) > 0.5) {
+      const bend: Vec2 = horizontalFirst
+        ? { x: end.x, y: cursorFrom.y }
+        : { x: cursorFrom.x, y: end.y };
+      path.push(bend);
+    }
+    if (toStubPoint) path.push(toStubPoint);
+    path.push(to);
+    return path;
+  }
+
+  // Free-floating fallback — single elbow midway. Picks the larger
+  // axis so an edge that's mostly horizontal goes horizontal-then-
+  // vertical, and vice-versa.
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const horizontalFirst = Math.abs(dx) >= Math.abs(dy);
   const mid: Vec2 = horizontalFirst ? { x: to.x, y: from.y } : { x: from.x, y: to.y };
   return [from, mid, to];
+};
+
+/**
+ * Outward direction (unit vector) for an edge endpoint anchored to
+ * a named side. Returns null when the endpoint has no clear
+ * directional hint (centre / corner / free point / non-anchor).
+ *
+ * Used by the orthogonal routing to add a side-aware stub before
+ * bending — matches the look of standard connectors.
+ */
+const exitDirectionFor = (endpoint: Edge["from"]): Vec2 | null => {
+  if (endpoint.kind !== "anchor") return null;
+  if (endpoint.anchor.kind !== "named") return null;
+  switch (endpoint.anchor.name) {
+    case "top":
+      return { x: 0, y: -1 };
+    case "right":
+      return { x: 1, y: 0 };
+    case "bottom":
+      return { x: 0, y: 1 };
+    case "left":
+      return { x: -1, y: 0 };
+    default:
+      // top-left / top-right / bottom-left / bottom-right / center / custom
+      return null;
+  }
 };
 
 /**

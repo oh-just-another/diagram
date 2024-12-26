@@ -63,11 +63,37 @@ export const imageFileDropHandler: FileDropHandler = {
     // drawImage() directly (canvas can't drawImage a raw string). GIFs
     // animate natively in the element — the animation tick re-draws every
     // frame.
-    const img =
-      typeof Image !== "undefined"
-        ? Object.assign(new Image(), { src: dataUrl })
-        : null;
+    //
+    // For animation the `<img>` must be attached to the DOM (Safari won't
+    // advance frames on a detached element, and Chrome/Firefox can also
+    // pause off-DOM elements). It is attached to a hidden container so the
+    // user never sees the raw image element.
     const isGif = file.type === "image/gif" || /\.gif$/i.test(file.name);
+    let img: HTMLImageElement | null = null;
+    if (typeof Image !== "undefined") {
+      img = new Image();
+      img.src = dataUrl;
+      if (typeof document !== "undefined") {
+        const sink = ensureAnimatedImageSink();
+        img.style.position = "absolute";
+        img.style.left = "-99999px";
+        img.style.top = "-99999px";
+        img.style.width = "1px";
+        img.style.height = "1px";
+        img.style.opacity = "0";
+        img.style.pointerEvents = "none";
+        sink.appendChild(img);
+      }
+      // Wait for the image to decode before handing it to the renderer; an
+      // undecoded element draws nothing and the user sees a flash of empty
+      // rectangle on first paint.
+      if (!img.complete) {
+        await new Promise<void>((resolve) => {
+          img!.onload = () => resolve();
+          img!.onerror = () => resolve();
+        });
+      }
+    }
     editor.insertImage({
       src: dataUrl,
       width,
@@ -77,4 +103,25 @@ export const imageFileDropHandler: FileDropHandler = {
       animated: isGif,
     });
   },
+};
+
+/**
+ * Singleton hidden container that holds animated `<img>` elements
+ * so the browser keeps decoding their frames. One container per
+ * document; created lazily.
+ */
+const SINK_ID = "oh-just-another-animated-image-sink";
+
+const ensureAnimatedImageSink = (): HTMLElement => {
+  const existing = document.getElementById(SINK_ID);
+  if (existing) return existing;
+  const div = document.createElement("div");
+  div.id = SINK_ID;
+  div.setAttribute("aria-hidden", "true");
+  div.style.position = "absolute";
+  div.style.left = "-99999px";
+  div.style.top = "-99999px";
+  div.style.pointerEvents = "none";
+  document.body.appendChild(div);
+  return div;
 };
