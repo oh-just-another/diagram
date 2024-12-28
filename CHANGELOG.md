@@ -383,3 +383,6 @@
 
 ## 0.26.3
 - scene+react-ui: side-by-side DiffPanel
+
+## 0.26.4
+- renderer-core: per-shape bitmap cache infrastructure

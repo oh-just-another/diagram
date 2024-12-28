@@ -27,6 +27,8 @@ export type { WrapOptions, WrappedLine } from "./text-layout.js";
 export { wrapText } from "./text-layout.js";
 
 export { ShapeCache, sharedBoundsCache, cachedWorldBounds } from "./shape-cache.js";
+export type { ShapeBitmapCache } from "./shape-cache-bitmap.js";
+export { InMemoryShapeBitmapCache, zoomBucket } from "./shape-cache-bitmap.js";
 export {
   EdgeBoundsCache,
   computeEdgeWorldBounds,
