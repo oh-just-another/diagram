@@ -175,6 +175,11 @@ export {
 // Tunable thresholds.
 export { SNAP_PROBE_CULL_RADIUS } from "./constants.js";
 
+// Scene-level shape diff (added / removed / modified) for diff
+// visualisation and merge.
+export type { SceneShapeDiff } from "./diff.js";
+export { diffSceneShapes } from "./diff.js";
+
 // Container / drop-zone protocol.
 export {
   isContainer,

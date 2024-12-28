@@ -59,6 +59,7 @@ export {
 } from "./palette.js";
 export { PropertyPanel, type PropertyPanelProps } from "./property-panel.js";
 export { EdgeStylePanel, type EdgeStylePanelProps } from "./edge-style-panel.js";
+export { DiffPanel, type DiffPanelProps } from "./diff-panel.js";
 export {
   ContextMenu,
   DEFAULT_CONTEXT_MENU,

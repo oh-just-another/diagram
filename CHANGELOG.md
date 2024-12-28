@@ -380,3 +380,6 @@
 
 ## 0.26.2
 - state+scene: GIF actually animates + side-aware elbow routing
+
+## 0.26.3
+- scene+react-ui: side-by-side DiffPanel

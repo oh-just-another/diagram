@@ -1,0 +1,36 @@
+import type { ShapeId } from "@oh-just-another/types";
+import type { Scene } from "./scene.js";
+
+/**
+ * Shape-level diff between two scenes. Categorises every shape id
+ * present in either scene as:
+ *
+ * - `added`: in `next` only.
+ * - `removed`: in `prev` only.
+ * - `modified`: in both, but the shape reference differs (immutable
+ *   patches replace the object).
+ *
+ * Reference equality is sufficient — scene mutations always go
+ * through `apply(scene, patch)` which produces fresh shape objects
+ * for every change. Pure read paths don't allocate.
+ */
+export interface SceneShapeDiff {
+  readonly added: readonly ShapeId[];
+  readonly removed: readonly ShapeId[];
+  readonly modified: readonly ShapeId[];
+}
+
+export const diffSceneShapes = (prev: Scene, next: Scene): SceneShapeDiff => {
+  const added: ShapeId[] = [];
+  const removed: ShapeId[] = [];
+  const modified: ShapeId[] = [];
+  for (const [id, shape] of next.shapes) {
+    const before = prev.shapes.get(id);
+    if (before === undefined) added.push(id);
+    else if (before !== shape) modified.push(id);
+  }
+  for (const id of prev.shapes.keys()) {
+    if (!next.shapes.has(id)) removed.push(id);
+  }
+  return { added, removed, modified };
+};
