@@ -66,6 +66,3 @@ const inferSceneSize = (scene: Scene): { width: number; height: number } => {
     height: Math.max(100, Math.ceil(maxY - Math.min(0, minY))),
   };
 };
-
-/** Inner-utility — keep `_` to avoid the unused-import noise in tests. */
-export const _bounds = (b: Bounds): Bounds => b;

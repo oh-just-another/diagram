@@ -35,8 +35,3 @@ export const getShapeRenderer = (type: string): ShapeRenderer | undefined => reg
 
 /** True if a renderer is registered for `type`. */
 export const hasShapeRenderer = (type: string): boolean => registry.has(type);
-
-/** Test helper: drop all registrations. Not exported from the package index. */
-export const __clearRegistry = (): void => {
-  registry.clear();
-};

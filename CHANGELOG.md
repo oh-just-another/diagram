@@ -392,3 +392,6 @@
 
 ## 0.26.6
 - constants: 3 inline magic numbers Right per-package constants.ts
+
+## 0.26.7
+- audit: drop 3 unused exports flagged by knip

@@ -26,7 +26,3 @@ export const registerInteractiveHitTester = (type: string, fn: InteractiveHitTes
 
 export const getInteractiveHitTester = (type: string): InteractiveHitTester | undefined =>
   registry.get(type);
-
-export const __clearInteractiveHitTesters = (): void => {
-  registry.clear();
-};
