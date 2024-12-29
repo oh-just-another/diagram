@@ -386,3 +386,6 @@
 
 ## 0.26.4
 - renderer-core: per-shape bitmap cache infrastructure
+
+## 0.26.5
+- renderer-core+collab: heavy scaffolding
