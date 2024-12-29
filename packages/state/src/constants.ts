@@ -250,3 +250,13 @@ export const MAX_BRUSH_WIDTH = 6;
  * Chromium) so a click-drag still produces a visible stroke.
  */
 export const DEFAULT_BRUSH_WIDTH = 2;
+
+/**
+ * Default upper bound on the longer edge of a freshly-inserted
+ * image (CSS pixels). Larger images get downscaled proportionally
+ * by the built-in image file-drop handler so a 4000×3000 phone
+ * snapshot doesn't blanket the viewport. Hosts that want a
+ * different cap can `unregisterFileDropHandler("image")` and
+ * register their own.
+ */
+export const DEFAULT_IMAGE_MAX_EDGE_PX = 480;

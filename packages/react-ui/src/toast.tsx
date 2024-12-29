@@ -9,6 +9,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { TOAST_DEFAULT_DURATION_MS } from "./constants.js";
 
 /**
  * In-process toast bus. Hosts mount `<ToastHost>` once at the root;
@@ -51,7 +52,7 @@ export interface ToastHostProps {
 
 export const ToastHost = ({
   children,
-  defaultDuration = 3000,
+  defaultDuration = TOAST_DEFAULT_DURATION_MS,
   style,
 }: ToastHostProps) => {
   const [items, setItems] = useState<Toast[]>([]);

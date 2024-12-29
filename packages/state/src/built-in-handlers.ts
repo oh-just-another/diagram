@@ -1,18 +1,11 @@
 import type { Vec2 } from "@oh-just-another/types";
+import { DEFAULT_IMAGE_MAX_EDGE_PX } from "./constants.js";
 import type { Editor } from "./editor.js";
 import {
   isImageFile,
   readFileAsDataURL,
   type FileDropHandler,
 } from "./file-drop.js";
-
-/**
- * Default max edge length for a freshly-inserted image. Larger
- * images are downscaled to fit inside this box on the longer axis;
- * aspect ratio is preserved. Keeps a 4000×3000 phone snapshot from
- * dropping in at viewport-eating size.
- */
-const DEFAULT_IMAGE_MAX_EDGE_PX = 480;
 
 /**
  * Read an image data URL and return its natural pixel dimensions

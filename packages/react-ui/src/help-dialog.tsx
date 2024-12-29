@@ -8,6 +8,7 @@ import {
   type ActionRegistry,
   type HotkeyMatcher,
 } from "@oh-just-another/state";
+import { HELP_DIALOG_MAX_WIDTH_PX } from "./constants.js";
 
 /**
  * Help dialog — a cheatsheet of every Action's hotkey. Opens on "?" by
@@ -164,7 +165,7 @@ export const HelpDialog = ({
     border: "1px solid var(--border, #2a2a2a)",
     borderRadius: 8,
     boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
-    maxWidth: 720,
+    maxWidth: HELP_DIALOG_MAX_WIDTH_PX,
     width: "calc(100vw - 64px)",
     maxHeight: "calc(100vh - 64px)",
     display: "flex",

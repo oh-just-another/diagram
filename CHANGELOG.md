@@ -389,3 +389,6 @@
 
 ## 0.26.5
 - renderer-core+collab: heavy scaffolding
+
+## 0.26.6
+- constants: 3 inline magic numbers Right per-package constants.ts

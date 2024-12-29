@@ -30,3 +30,15 @@ export const COMMENTS_PANEL_WIDTH = 280;
 
 /** Pixel height of the toolbar vertical separator. */
 export const TOOLBAR_SEPARATOR_HEIGHT = 20;
+
+/**
+ * Default auto-dismiss time for a toast (ms). 0 / Infinity keep it
+ * open until the user clicks the × — useful for sticky errors.
+ */
+export const TOAST_DEFAULT_DURATION_MS = 3_000;
+
+/**
+ * Maximum width of the `<HelpDialog>` modal in CSS pixels. The dialog
+ * still respects the viewport via `min(this, 100vw - 64px)`.
+ */
+export const HELP_DIALOG_MAX_WIDTH_PX = 720;
