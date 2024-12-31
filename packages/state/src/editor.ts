@@ -96,6 +96,7 @@ import {
   type FileDropHandler,
 } from "./file-drop.js";
 import { imageFileDropHandler } from "./built-in-handlers.js";
+import { AnimationTick } from "./animation-tick.js";
 import {
   ANNOTATION_PIN_HIT_SLOP,
   AUTO_COMPACT_THRESHOLD,
@@ -1038,16 +1039,31 @@ export class Editor {
       ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
     };
     this.addShape(shape);
-    if (input.animated) this.startAnimationTick();
+    if (input.animated) this.animationTick.start();
     return id;
   }
 
   /**
-   * Live set of shape ids that should re-render every animation
-   * frame (animated GIFs today; future video / lottie). Populated
-   * from `metadata.animated` markers.
+   * Animation tick — runs while any shape carries
+   * `metadata.animated` (GIFs today; future video / lottie).
+   * Forces a full re-render every frame so drawImage picks up the
+   * current frame of natively-animated elements. Self-terminates
+   * when no animated shapes remain.
+   *
+   * Lifecycle managed by the `AnimationTick` helper (see
+   * `./animation-tick.ts`). `insertImage({animated:true})` and
+   * `loadScene` start the tick; `dispose()` stops it.
    */
-  private animationFrameId: number | null = null;
+  private readonly animationTick = new AnimationTick({
+    isAnimated: () => this.hasAnimatedShape(),
+    onTick: () => {
+      // Force a full re-render: the scene reference hasn't changed,
+      // but the browser's native GIF animation has advanced inside
+      // the `<img>` element. Re-painting picks up the current frame.
+      this.lastRenderedScene = null;
+      this.render();
+    },
+  });
 
   /** True while any shape in the scene carries `metadata.animated`. */
   private hasAnimatedShape(): boolean {
@@ -1055,29 +1071,6 @@ export class Editor {
       if (s.metadata?.animated === true) return true;
     }
     return false;
-  }
-
-  /**
-   * Start (or no-op if already running) a requestAnimationFrame
-   * loop that re-renders the scene each frame while animated
-   * shapes are present. Stops automatically when none remain.
-   */
-  private startAnimationTick(): void {
-    if (this.animationFrameId !== null) return;
-    if (typeof requestAnimationFrame === "undefined") return;
-    const tick = (): void => {
-      if (!this.hasAnimatedShape()) {
-        this.animationFrameId = null;
-        return;
-      }
-      // Force a full re-render: the scene reference hasn't changed,
-      // but the browser's native GIF animation has advanced inside
-      // the `<img>` element. Re-painting picks up the current frame.
-      this.lastRenderedScene = null;
-      this.render();
-      this.animationFrameId = requestAnimationFrame(tick);
-    };
-    this.animationFrameId = requestAnimationFrame(tick);
   }
 
   /**
@@ -2167,7 +2160,7 @@ export class Editor {
     // element won't survive serialisation, but `metadata.animated`
     // does, so hosts that want animation back will need to re-supply
     // the image element (or just have the renderer re-decode `src`).
-    if (this.hasAnimatedShape()) this.startAnimationTick();
+    if (this.hasAnimatedShape()) this.animationTick.start();
   }
 
   /** Detach all DOM listeners and stop the actor. */
@@ -2179,10 +2172,7 @@ export class Editor {
     this.cursorListeners.clear();
     this.longPressListeners.clear();
     this.announceListeners.clear();
-    if (this.animationFrameId !== null && typeof cancelAnimationFrame !== "undefined") {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
+    this.animationTick.stop();
   }
 
   // --- Internal ---

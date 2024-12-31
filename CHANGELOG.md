@@ -395,3 +395,6 @@
 
 ## 0.26.7
 - audit: drop 3 unused exports flagged by knip
+
+## 0.26.8
+- state: extract AnimationTick from editor.ts
