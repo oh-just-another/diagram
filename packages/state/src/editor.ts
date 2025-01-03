@@ -97,9 +97,9 @@ import {
 } from "./file-drop.js";
 import { imageFileDropHandler } from "./built-in-handlers.js";
 import { AnimationTick } from "./animation-tick.js";
+import { AutoCompactScheduler } from "./auto-compact.js";
 import {
   ANNOTATION_PIN_HIT_SLOP,
-  AUTO_COMPACT_THRESHOLD,
   DEFAULT_BRUSH_WIDTH,
   DEFAULT_SNAP_THRESHOLD,
   EDGE_ENDPOINT_HANDLE_RADIUS,
@@ -377,8 +377,16 @@ export class Editor {
    */
   private lastRenderedEnteredGroup: ShapeId | null = null;
 
-  /** Set when an auto-compact check is queued for the current tick. */
-  private autoCompactScheduled = false;
+  /**
+   * Fractional-order compaction scheduler (microtask-coalesced).
+   * Triggered from every `notify()`; only does real work when at
+   * least one shape/edge order string crossed AUTO_COMPACT_THRESHOLD.
+   * See `./auto-compact.ts` for the extracted logic.
+   */
+  private readonly autoCompactScheduler = new AutoCompactScheduler({
+    getScene: () => this._scene,
+    compact: (layerId) => this.compactLayerZOrder(layerId, { recordHistory: false }),
+  });
 
   /** Set when an auto-layout check is queued for the current tick. */
   private autoLayoutScheduled = false;
@@ -4345,7 +4353,7 @@ export class Editor {
   private notify(): void {
     this.render();
     for (const fn of this.listeners) fn();
-    this.scheduleAutoCompact();
+    this.autoCompactScheduler.schedule();
     this.scheduleAutoLayoutCheck();
   }
 
@@ -4437,35 +4445,6 @@ export class Editor {
       // synchronous fix-up on top of the same external event.
       this.render();
       for (const fn of this.listeners) fn();
-    }
-  }
-
-  /**
-   * Auto-compact fractional `order` keys whenever they grow past
-   * `AUTO_COMPACT_THRESHOLD` (same trigger as x5/graph's
-   * `syncInvalidIndices`). Runs in a microtask so it fires once per
-   * mutation burst, does not block the current call stack, and does not end up in
-   * history (transparent to undo).
-   */
-  private scheduleAutoCompact(): void {
-    if (this.autoCompactScheduled) return;
-    this.autoCompactScheduled = true;
-    queueMicrotask(() => {
-      this.autoCompactScheduled = false;
-      this.runAutoCompactCheck();
-    });
-  }
-
-  private runAutoCompactCheck(): void {
-    const layersToCompact = new Set<LayerId>();
-    for (const s of this._scene.shapes.values()) {
-      if (s.order.length > AUTO_COMPACT_THRESHOLD) layersToCompact.add(s.layerId);
-    }
-    for (const e of this._scene.edges.values()) {
-      if (e.order.length > AUTO_COMPACT_THRESHOLD) layersToCompact.add(e.layerId);
-    }
-    for (const lid of layersToCompact) {
-      this.compactLayerZOrder(lid, { recordHistory: false });
     }
   }
 

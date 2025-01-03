@@ -398,3 +398,6 @@
 
 ## 0.26.8
 - state: extract AnimationTick from editor.ts
+
+## 0.26.9
+- state: extract AutoCompactScheduler from editor.ts (chunk 2)
