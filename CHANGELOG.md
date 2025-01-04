@@ -401,3 +401,6 @@
 
 ## 0.26.9
 - state: extract AutoCompactScheduler from editor.ts (chunk 2)
+
+## 0.26.10
+- state: extract AutoLayoutScheduler from editor.ts (chunk 3)

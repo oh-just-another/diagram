@@ -9,7 +9,6 @@ import {
   anchorSnapper,
   apply,
   buildSpatialIndex,
-  getAutoLayoutSpec,
   gridLayout,
   isShapeHidden,
   isShapeLocked,
@@ -98,6 +97,7 @@ import {
 import { imageFileDropHandler } from "./built-in-handlers.js";
 import { AnimationTick } from "./animation-tick.js";
 import { AutoCompactScheduler } from "./auto-compact.js";
+import { AutoLayoutScheduler } from "./auto-layout-scheduler.js";
 import {
   ANNOTATION_PIN_HIT_SLOP,
   DEFAULT_BRUSH_WIDTH,
@@ -388,17 +388,28 @@ export class Editor {
     compact: (layerId) => this.compactLayerZOrder(layerId, { recordHistory: false }),
   });
 
-  /** Set when an auto-layout check is queued for the current tick. */
-  private autoLayoutScheduled = false;
-
   /**
-   * Children-set signature per auto-layout parent recorded after the
-   * last successful auto-layout run. Re-run fires only when the set
-   * of children differs (add / remove / reparent). Pure position
-   * changes inside an existing children set are ignored so the user
-   * can still nudge a child without the layout snapping it back.
+   * Auto-layout scheduler — microtask-coalesced re-run of every
+   * shape carrying `metadata.autoLayout`. See
+   * `./auto-layout-scheduler.ts` for the extracted logic.
    */
-  private autoLayoutSignatures = new Map<ShapeId, string>();
+  private readonly autoLayoutScheduler = new AutoLayoutScheduler({
+    getScene: () => this._scene,
+    applyPatch: (patch) => {
+      this._scene = apply(this._scene, patch);
+      if (this.gestureTx) this.gestureTx.add(patch);
+      else this._history.push(patch);
+    },
+    growContainer: (parentId, childId) => this.maybeGrowContainer(parentId, childId),
+    onMutated: () => {
+      // Re-render only; do NOT call notify() — that would re-schedule
+      // the check and risk a microtask loop. Listeners already saw
+      // the previous notify; the auto-layout adjustment is a
+      // synchronous fix-up on top of the same external event.
+      this.render();
+      for (const fn of this.listeners) fn();
+    },
+  });
 
   /**
    * Shape id that the user started dragging on press-down. Tracked
@@ -4354,7 +4365,7 @@ export class Editor {
     this.render();
     for (const fn of this.listeners) fn();
     this.autoCompactScheduler.schedule();
-    this.scheduleAutoLayoutCheck();
+    this.autoLayoutScheduler.schedule();
   }
 
   /**
@@ -4373,7 +4384,7 @@ export class Editor {
     this._history.push(patch);
     // Refresh the recorded signature so the post-notify auto-check
     // doesn't fire a second redundant run.
-    this.autoLayoutSignatures.set(parentId, this.computeChildrenSignature(parentId));
+    this.autoLayoutScheduler.resetSignature(parentId);
     this.notify();
     return patch;
   }
@@ -4384,70 +4395,6 @@ export class Editor {
    * pure position edits (we want those), changes under add / remove /
    * reparent (we want to react to those).
    */
-  private computeChildrenSignature(parentId: ShapeId): string {
-    const ids: string[] = [];
-    for (const s of this._scene.shapes.values()) {
-      if (s.parentId === parentId) ids.push(s.id);
-    }
-    ids.sort();
-    return ids.join(",");
-  }
-
-  /**
-   * Auto-layout dirty check — runs in a microtask after notify,
-   * mirrors the auto-compact pattern. Walks every shape with an
-   * `autoLayout` metadata spec, compares its children-set signature
-   * against the last successful run, and re-runs the layout when
-   * the signature changed.
-   *
-   * The applied patches commit through the gesture transaction so
-   * dragging a child into a container collapses the reparent +
-   * relayout into one undo step. Outside a gesture, patches go
-   * straight to history as a separate step.
-   */
-  private scheduleAutoLayoutCheck(): void {
-    if (this.autoLayoutScheduled) return;
-    this.autoLayoutScheduled = true;
-    queueMicrotask(() => {
-      this.autoLayoutScheduled = false;
-      this.runAutoLayoutCheck();
-    });
-  }
-
-  private runAutoLayoutCheck(): void {
-    let mutated = false;
-    for (const parent of this._scene.shapes.values()) {
-      if (!getAutoLayoutSpec(parent)) continue;
-      const sig = this.computeChildrenSignature(parent.id);
-      if (this.autoLayoutSignatures.get(parent.id) === sig) continue;
-      this.autoLayoutSignatures.set(parent.id, sig);
-      const patch = runAutoLayout(this._scene, parent.id);
-      if (!patch) continue;
-      this._scene = apply(this._scene, patch);
-      if (this.gestureTx) {
-        this.gestureTx.add(patch);
-      } else {
-        this._history.push(patch);
-      }
-      // Grow container to fit children after they've been re-laid out.
-      // Per-child idempotent: maybeGrowContainer is a no-op when the
-      // child already fits the drop-zone, so the loop costs ~O(N)
-      // checks and at most one expand patch per outgrowing child.
-      for (const s of this._scene.shapes.values()) {
-        if (s.parentId === parent.id) this.maybeGrowContainer(parent.id, s.id);
-      }
-      mutated = true;
-    }
-    if (mutated) {
-      // Re-render only; do NOT call notify() — that would re-schedule
-      // the check and risk a microtask loop. Listeners already saw
-      // the previous notify; the auto-layout adjustment is a
-      // synchronous fix-up on top of the same external event.
-      this.render();
-      for (const fn of this.listeners) fn();
-    }
-  }
-
   private render(): void {
     // Background layer (grid) — when the host gave us a dedicated target.
     // Otherwise the grid lives on mainTarget *before* shapes are drawn,
