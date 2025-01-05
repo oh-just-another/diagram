@@ -213,6 +213,29 @@ export interface FrameShape extends ShapeBase {
   readonly name?: string;
 }
 
+/**
+ * Filled arrow drawn as a single shape (body rectangle + triangular
+ * head, optionally with a triangular tail). Distinct from an Edge:
+ * edges connect anchors and re-route on shape move; a BlockArrowShape
+ * is a free-standing element with a fixed silhouette like a block-arrow icon.
+ */
+export interface BlockArrowShape extends ShapeBase {
+  readonly type: "block-arrow";
+  readonly width: number;
+  readonly height: number;
+  /**
+   * Where the arrow points. Default `"right"`. Rotation is still
+   * applied on top via `ShapeBase.rotation` — this enum just picks
+   * the head side in local coords so the user can quickly toggle
+   * direction without typing a 90/180/270 deg angle.
+   */
+  readonly direction?: "right" | "left" | "up" | "down";
+  /** Ratio of the head length over the total length (0..0.9). Default 0.4. */
+  readonly headRatio?: number;
+  /** Ratio of the body thickness over the perpendicular dimension. Default 0.5. */
+  readonly bodyThickness?: number;
+}
+
 export type BuiltinShape =
   | RectangleShape
   | EllipseShape
@@ -223,6 +246,7 @@ export type BuiltinShape =
   | TemplateShape
   | GroupShape
   | FrameShape
+  | BlockArrowShape
   | BrushShape;
 
 /**
@@ -243,6 +267,8 @@ export const isImage = (s: ShapeBase): s is ImageShape => s.type === "image";
 export const isTemplate = (s: ShapeBase): s is TemplateShape => s.type === "template";
 export const isGroup = (s: ShapeBase): s is GroupShape => s.type === "group";
 export const isFrame = (s: ShapeBase): s is FrameShape => s.type === "frame";
+export const isBlockArrow = (s: ShapeBase): s is BlockArrowShape =>
+  s.type === "block-arrow";
 export const isBrush = (s: ShapeBase): s is BrushShape => s.type === "brush";
 
 // --- bounder registry ---
@@ -403,6 +429,13 @@ registerBounder<BrushShape>("brush", (s) => {
 registerBounder<GroupShape>("group", () => ({ x: 0, y: 0, width: 0, height: 0 }));
 
 registerBounder<FrameShape>("frame", (s) => ({
+  x: 0,
+  y: 0,
+  width: s.width,
+  height: s.height,
+}));
+
+registerBounder<BlockArrowShape>("block-arrow", (s) => ({
   x: 0,
   y: 0,
   width: s.width,

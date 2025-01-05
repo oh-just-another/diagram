@@ -308,6 +308,28 @@ export const setupTemplates = (): void => {
   }),
  });
  defaultRegistry.register({
+  id: "basic.block-arrow",
+  name: "Block arrow",
+  category: "basic",
+  icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 10v4h10v3l5-5-5-5v3z"/></svg>',
+  factory: (ctx) =>
+   ({
+    id: ctx.id,
+    layerId: ctx.layerId,
+    type: "block-arrow",
+    position: ctx.position,
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: ctx.order,
+    style: { fill: "#cfe1ff", stroke: "#1a40b0", strokeWidth: 1.5 },
+    width: 160,
+    height: 80,
+    direction: "right",
+    headRatio: 0.4,
+    bodyThickness: 0.55,
+   }) as never,
+ });
+ defaultRegistry.register({
   id: "basic.auto-stack",
   name: "Auto-stack (H)",
   category: "basic",

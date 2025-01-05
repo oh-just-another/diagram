@@ -404,3 +404,6 @@
 
 ## 0.26.10
 - state: extract AutoLayoutScheduler from editor.ts (chunk 3)
+
+## 0.26.11
+- scene+renderer-core+demo: BlockArrowShape

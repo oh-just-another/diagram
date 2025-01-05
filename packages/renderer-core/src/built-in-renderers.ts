@@ -1,4 +1,5 @@
 import {
+ type BlockArrowShape,
  type BrushShape,
  type EllipseShape,
  type FrameShape,
@@ -206,7 +207,78 @@ export const installBuiltinRenderers = (): void => {
  // a halo for selected groups, but the shape itself paints nothing.
  registerShapeRenderer<GroupShape>("group", () => {});
  registerShapeRenderer<FrameShape>("frame", drawFrame);
+ registerShapeRenderer<BlockArrowShape>("block-arrow", drawBlockArrow);
  registerShapeRenderer<BrushShape>("brush", drawBrush);
+};
+
+/**
+ * Block-arrow silhouette: a rectangle body whose tip is replaced
+ * by a triangle, oriented by `direction`. Path is closed and filled
+ * with `style.fill`; stroke applies to the outline.
+ *
+ *  right → ┌────┐▶
+ *       │ body │
+ *      └────┘
+ *
+ *  up  ↑  ▲
+ *      ┌──┐
+ *      │ │
+ *      └──┘
+ */
+const drawBlockArrow: ShapeRenderer<BlockArrowShape> = (shape, target) => {
+ const { fill, stroke } = applyStyle(shape.style, target);
+ const direction = shape.direction ?? "right";
+ const headRatio = Math.max(0.1, Math.min(0.9, shape.headRatio ?? 0.4));
+ const bodyT = Math.max(0.1, Math.min(0.9, shape.bodyThickness ?? 0.5));
+ const w = shape.width;
+ const h = shape.height;
+ // Compute the local path for a `right`-pointing arrow inside
+ // [0, w] × [0, h], then rotate the resulting points if the
+ // direction is different. Keeps the drawing primitives in one
+ // place.
+ const headW = w * headRatio;
+ const bodyW = w - headW;
+ const bodyHalfH = (h * bodyT) / 2;
+ const cy = h / 2;
+ let points: readonly [number, number][] = [
+  [0, cy - bodyHalfH],
+  [bodyW, cy - bodyHalfH],
+  [bodyW, 0],
+  [w, cy],
+  [bodyW, h],
+  [bodyW, cy + bodyHalfH],
+  [0, cy + bodyHalfH],
+ ];
+ if (direction !== "right") {
+  points = points.map(([x, y]) => rotateLocal([x, y], direction, w, h));
+ }
+ target.beginPath();
+ for (let i = 0; i < points.length; i++) {
+  const [x, y] = points[i]!;
+  if (i === 0) target.moveTo(x, y);
+  else target.lineTo(x, y);
+ }
+ target.closePath();
+ if (fill) target.fill();
+ if (stroke) target.stroke();
+};
+
+const rotateLocal = (
+ [x, y]: readonly [number, number],
+ direction: "left" | "up" | "down",
+ w: number,
+ h: number,
+): [number, number] => {
+ switch (direction) {
+  case "left":
+   return [w - x, y];
+  case "up":
+   // Rotate 90° CCW around the box centre, then translate so the
+   // result still fits inside [0, w] × [0, h].
+   return [y * (w / h), h - x * (h / w)];
+  case "down":
+   return [(h - y) * (w / h), x * (h / w)];
+ }
 };
 
 /**
