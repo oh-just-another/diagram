@@ -91,6 +91,8 @@ export {
   type MainMenuItemLinkProps,
 } from "./main-menu.js";
 export { WelcomeScreen, type WelcomeScreenProps } from "./welcome-screen.js";
+export { Modal, type ModalProps } from "./modal.js";
+export { Sidebar, type SidebarProps } from "./sidebar.js";
 
 // Tunable layout sizes for the built-in panels and toolbar.
 export {

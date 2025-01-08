@@ -407,3 +407,6 @@
 
 ## 0.26.11
 - scene+renderer-core+demo: BlockArrowShape
+
+## 0.26.12
+- react-ui: Modal + Sidebar primitives
