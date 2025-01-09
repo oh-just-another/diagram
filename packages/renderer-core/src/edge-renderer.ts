@@ -97,28 +97,160 @@ const drawEdge = (
   }
 
   target.save();
-  applyStrokeStyle(edge, target);
 
-  target.beginPath();
-  target.moveTo(path[0]!.x, path[0]!.y);
-
-  if ((edge.routing ?? "straight") === "bezier" && path.length === 2) {
-    const [from, to] = path as [Vec2, Vec2];
-    const c1 = controlPoint(from, to, 0.4);
-    const c2 = controlPoint(to, from, 0.4);
-    target.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, to.x, to.y);
+  if ((edge.lineKind ?? "line") === "block-arrow") {
+    drawBlockArrowEdge(edge, path, target);
   } else {
-    for (let i = 1; i < path.length; i++) target.lineTo(path[i]!.x, path[i]!.y);
-  }
-  target.stroke();
+    applyStrokeStyle(edge, target);
 
-  if (edge.arrowheads) {
-    drawArrowheads(path, edge.arrowheads, target);
+    target.beginPath();
+    target.moveTo(path[0]!.x, path[0]!.y);
+
+    if ((edge.routing ?? "straight") === "bezier" && path.length === 2) {
+      const [from, to] = path as [Vec2, Vec2];
+      const c1 = controlPoint(from, to, 0.4);
+      const c2 = controlPoint(to, from, 0.4);
+      target.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, to.x, to.y);
+    } else {
+      for (let i = 1; i < path.length; i++) target.lineTo(path[i]!.x, path[i]!.y);
+    }
+    target.stroke();
+
+    if (edge.arrowheads) {
+      drawArrowheads(path, edge.arrowheads, target);
+    }
   }
   if (edge.label) {
     drawLabel(path, edge.label, target);
   }
   target.restore();
+};
+
+/**
+ * Filled block-arrow edge: thickens the entire routed path into a
+ * polygon by offsetting each segment perpendicularly by `thickness/2`
+ * on both sides, then replaces the last `headLength` units with a
+ * triangle pointing at `to`.
+ *
+ * Designed for orthogonal / straight routing — bezier-routed edges
+ * still get block-arrow rendering but the head sits at the last
+ * segment endpoint regardless of curve direction.
+ */
+const drawBlockArrowEdge = (
+  edge: Edge,
+  path: readonly Vec2[],
+  target: RenderTarget,
+): void => {
+  const headLength = edge.blockArrow?.headLength ?? 18;
+  const thickness = edge.blockArrow?.bodyThickness ?? 12;
+  const fill = edge.style.fill ?? edge.style.stroke ?? "#444";
+  const stroke = edge.style.stroke ?? "#222";
+  const strokeWidth = edge.style.strokeWidth ?? 1;
+  if (edge.style.opacity !== undefined) target.setOpacity(edge.style.opacity);
+
+  // Shorten the path so the body terminates `headLength` units
+  // before `to`; the head triangle fills the gap with a sharper
+  // tip on the original endpoint.
+  const shortened = shortenPathFromEnd(path, headLength);
+  if (shortened.length < 2) return;
+
+  // Offset the shortened polyline on both sides by `thickness/2`
+  // to build the body polygon (manual one-segment offset — keeps
+  // the math simple; mitre joins on orthogonal routes look fine).
+  const left = offsetPolyline(shortened, thickness / 2);
+  const right = offsetPolyline(shortened, -thickness / 2);
+  const headBaseLeft = left[left.length - 1]!;
+  const headBaseRight = right[right.length - 1]!;
+  const tip = path[path.length - 1]!;
+
+  target.setFill(fill);
+  target.setStroke(stroke);
+  target.setStrokeWidth(strokeWidth);
+  target.beginPath();
+  // Body upper edge — left[0] → left[last] (head base).
+  target.moveTo(left[0]!.x, left[0]!.y);
+  for (let i = 1; i < left.length; i++) target.lineTo(left[i]!.x, left[i]!.y);
+  // Head triangle: head base (left) → tip → head base (right).
+  // Add the "barbs" — the head is wider than the body so the user
+  // reads it as a proper block-arrow head, not just a continuation.
+  const barbExtra = Math.max(0, thickness * 0.5);
+  const barbLeft = perpendicularOffset(headBaseLeft, tip, barbExtra);
+  const barbRight = perpendicularOffset(headBaseRight, tip, -barbExtra);
+  target.lineTo(barbLeft.x, barbLeft.y);
+  target.lineTo(tip.x, tip.y);
+  target.lineTo(barbRight.x, barbRight.y);
+  // Body lower edge back — right[last] → right[0].
+  for (let i = right.length - 1; i >= 0; i--) target.lineTo(right[i]!.x, right[i]!.y);
+  target.closePath();
+  target.fill();
+  if (strokeWidth > 0) target.stroke();
+};
+
+/**
+ * Walk the path from the start; drop the final `amount` world
+ * units so the head triangle can fill that section. Returns at
+ * least one segment (the original first segment) when the path
+ * is shorter than `amount`.
+ */
+const shortenPathFromEnd = (path: readonly Vec2[], amount: number): readonly Vec2[] => {
+  if (path.length < 2) return path;
+  let remaining = amount;
+  const reversed = [...path].reverse();
+  const out: Vec2[] = [reversed[0]!];
+  for (let i = 1; i < reversed.length; i++) {
+    const a = out[out.length - 1]!;
+    const b = reversed[i]!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len > remaining) {
+      const t = remaining / len;
+      const cut = { x: a.x + dx * t, y: a.y + dy * t };
+      out[out.length - 1] = cut;
+      // Push everything after the cut in original order.
+      out.push(...reversed.slice(i));
+      return out.reverse();
+    }
+    remaining -= len;
+    out[out.length - 1] = b;
+  }
+  // amount > path length — degenerate; return original.
+  return path;
+};
+
+/**
+ * Per-vertex perpendicular offset of a polyline. Simple — works
+ * well for orthogonal / straight routing; bezier-routed paths get
+ * piecewise approximations.
+ */
+const offsetPolyline = (path: readonly Vec2[], offset: number): readonly Vec2[] => {
+  if (path.length < 2) return path;
+  const out: Vec2[] = [];
+  for (let i = 0; i < path.length; i++) {
+    const prev = path[Math.max(0, i - 1)]!;
+    const next = path[Math.min(path.length - 1, i + 1)]!;
+    const dx = next.x - prev.x;
+    const dy = next.y - prev.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    out.push({ x: path[i]!.x + nx * offset, y: path[i]!.y + ny * offset });
+  }
+  return out;
+};
+
+/**
+ * Move `from` perpendicular to the `from→tip` direction by
+ * `amount` world units. Positive amount → left of the direction
+ * vector, negative → right.
+ */
+const perpendicularOffset = (from: Vec2, tip: Vec2, amount: number): Vec2 => {
+  const dx = tip.x - from.x;
+  const dy = tip.y - from.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len;
+  const ny = dx / len;
+  return { x: from.x + nx * amount, y: from.y + ny * amount };
 };
 
 const applyStrokeStyle = (edge: Edge, target: RenderTarget): void => {

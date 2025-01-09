@@ -128,6 +128,22 @@ export const EdgeStylePanel = ({ className, style }: EdgeStylePanelProps) => {
         Edge
       </h2>
 
+      <Row label="Kind">
+        <select
+          value={edge.lineKind ?? "line"}
+          onChange={(ev) =>
+            editor.updateSelectedEdge((e) => ({
+              ...e,
+              lineKind: ev.target.value === "block-arrow" ? "block-arrow" : "line",
+            }))
+          }
+          style={selectStyle}
+        >
+          <option value="line">Line</option>
+          <option value="block-arrow">Block arrow</option>
+        </select>
+      </Row>
+
       <Row label="Routing">
         <select
           value={edge.routing ?? "straight"}

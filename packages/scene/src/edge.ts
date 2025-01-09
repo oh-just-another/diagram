@@ -104,6 +104,28 @@ export interface Edge {
   readonly waypoints?: readonly Vec2[];
   /** Routing strategy. Default `straight`. */
   readonly routing?: EdgeRouting;
+  /**
+   * Visual flavour of the connector body.
+   *
+   * - `"line"` — thin stroked polyline (the default). Width =
+   *   `style.strokeWidth`.
+   * - `"block-arrow"` — filled polygon along the routed path: a
+   *   thick body with a triangular head at the `to` endpoint
+   *   (block-arrow connector style). Renderer
+   *   reads `blockArrow.headLength` / `blockArrow.bodyThickness`
+   *   for the silhouette.
+   */
+  readonly lineKind?: "line" | "block-arrow";
+  /** Block-arrow tuning. Only honored when `lineKind === "block-arrow"`. */
+  readonly blockArrow?: {
+    /** Triangle head length in world pixels. Default 18. */
+    readonly headLength?: number;
+    /**
+     * Thickness of the rectangular body in world pixels (also the
+     * base width of the head triangle). Default 12.
+     */
+    readonly bodyThickness?: number;
+  };
   /** Arrowhead decoration on each end. Default: no arrowheads. */
   readonly arrowheads?: EdgeArrowheads;
   /** Optional inline label. */

@@ -410,3 +410,6 @@
 
 ## 0.26.12
 - react-ui: Modal + Sidebar primitives
+
+## 0.26.13
+- edges: block-arrow as connector kind
