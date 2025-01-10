@@ -105,6 +105,37 @@ export const useHotkeys = (editor: Editor | null): void => {
     };
 
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    // Clipboard paste — when the user presses Cmd+V (or Ctrl+V)
+    // outside a text input AND the clipboard carries an image
+    // ClipboardItem, dispatch it through editor.dispatchFileDrop.
+    // Text-only clipboard paste goes through the action registry's
+    // `paste` action (shape clipboard).
+    const onPaste = (ev: ClipboardEvent): void => {
+      const t = ev.target;
+      if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+      const items = ev.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.kind !== "file") continue;
+        const file = item.getAsFile();
+        if (!file) continue;
+        if (!file.type.startsWith("image/")) continue;
+        ev.preventDefault();
+        const v = editor.scene.viewport;
+        const center = {
+          x: v.pan.x + v.size.width / (2 * v.zoom),
+          y: v.pan.y + v.size.height / (2 * v.zoom),
+        };
+        void editor.dispatchFileDrop(file, center);
+        return;
+      }
+    };
+    window.addEventListener("paste", onPaste);
+
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("paste", onPaste);
+    };
   }, [editor]);
 };

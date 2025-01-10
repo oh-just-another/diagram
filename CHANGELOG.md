@@ -416,3 +416,6 @@
 
 ## 0.26.14
 - react-ui+demo: FloatingZoomControls
+
+## 0.26.15
+- demo: paste image from clipboard
