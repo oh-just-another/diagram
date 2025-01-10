@@ -413,3 +413,6 @@
 
 ## 0.26.13
 - edges: block-arrow as connector kind
+
+## 0.26.14
+- react-ui+demo: FloatingZoomControls

@@ -44,6 +44,7 @@ export {
   ResetZoomButton,
   ZoomToFitButton,
   ZoomDisplay,
+  FloatingZoomControls,
   type ToolbarItem,
   type ToolbarProps,
   type ZoomButtonProps,

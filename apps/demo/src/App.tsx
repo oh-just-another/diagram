@@ -24,6 +24,7 @@ import {
   EdgeStylePanel,
   PropertyPanel,
   TextEditorOverlay,
+  FloatingZoomControls,
   HelpDialog,
   MainMenu,
   ToastHost,
@@ -319,6 +320,7 @@ const CanvasArea = () => {
       <CommentsPopover />
       <TextEditorOverlay />
       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <FloatingZoomControls />
       <WelcomeScreen />
     </section>
   );

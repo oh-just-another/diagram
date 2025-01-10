@@ -313,6 +313,43 @@ export const ZoomWidget = ({ className, style }: { readonly className?: string; 
   </span>
 );
 
+/**
+ * Floating zoom controls — bottom-right cluster with rounded shadow
+ * chrome. Drops the widget into a corner so the toolbar stays free for
+ * tools. Hosts that need a different position pass `style`.
+ */
+export const FloatingZoomControls = ({
+  className,
+  style,
+}: {
+  readonly className?: string;
+  readonly style?: CSSProperties;
+}) => (
+  <div
+    className={className}
+    style={{
+      position: "absolute",
+      bottom: 16,
+      right: 16,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 2,
+      padding: "4px 6px",
+      background: "var(--toolbar-bg, #1a1a1a)",
+      border: "1px solid var(--border, #2a2a2a)",
+      borderRadius: 6,
+      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.18)",
+      zIndex: 50,
+      ...style,
+    }}
+  >
+    <ZoomOutButton />
+    <ZoomDisplay />
+    <ZoomInButton />
+    <ZoomToFitButton />
+  </div>
+);
+
 // --- internal building blocks ---
 
 interface ToolbarButtonProps {
