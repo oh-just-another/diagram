@@ -481,7 +481,7 @@ const FloatingToolbar = () => {
       <input
         ref={imageInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         hidden
         onChange={onImageFile}
       />

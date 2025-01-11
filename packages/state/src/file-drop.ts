@@ -90,6 +90,25 @@ export const IMAGE_MIME_TYPES: readonly string[] = [
   "image/jfif",
 ];
 
+/**
+ * Accepted video MIME types — dropped inline videos render as animated shapes
+ * via `<video>`. Codec support depends on the host browser; we accept the
+ * wrappers and let the browser refuse on decode.
+ */
+export const VIDEO_MIME_TYPES: readonly string[] = [
+  "video/mp4",
+  "video/webm",
+  "video/ogg",
+  "video/quicktime",
+];
+
+/** True when the file MIME (or extension) indicates a video. */
+export const isVideoFile = (file: File): boolean => {
+  if (file.type && file.type.startsWith("video/")) return true;
+  const ext = file.name.toLowerCase().split(".").pop();
+  return ext === "mp4" || ext === "webm" || ext === "ogv" || ext === "mov";
+};
+
 /** True if the file's declared MIME (or extension fallback) is in IMAGE_MIME_TYPES. */
 export const isImageFile = (file: File): boolean => {
   if (file.type && IMAGE_MIME_TYPES.includes(file.type)) return true;

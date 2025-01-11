@@ -43,7 +43,9 @@ export type { FileDropHandler, FileDropContext } from "./file-drop.js";
 export {
   FileDropRegistry,
   IMAGE_MIME_TYPES,
+  VIDEO_MIME_TYPES,
   isImageFile,
+  isVideoFile,
   isSceneJsonFile,
   readFileAsDataURL,
   readFileAsText,

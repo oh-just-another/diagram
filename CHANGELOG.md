@@ -419,3 +419,6 @@
 
 ## 0.26.15
 - demo: paste image from clipboard
+
+## 0.26.16
+- state+demo: video file drop + playback

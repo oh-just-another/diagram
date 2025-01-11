@@ -3,6 +3,7 @@ import { DEFAULT_IMAGE_MAX_EDGE_PX } from "./constants.js";
 import type { Editor } from "./editor.js";
 import {
   isImageFile,
+  isVideoFile,
   readFileAsDataURL,
   type FileDropHandler,
 } from "./file-drop.js";
@@ -117,4 +118,62 @@ const ensureAnimatedImageSink = (): HTMLElement => {
   div.style.pointerEvents = "none";
   document.body.appendChild(div);
   return div;
+};
+
+/**
+ * Built-in video file-drop handler. Drops a `<video>` element into
+ * the hidden sink (autoplay + muted + loop so it advances frames
+ * without user-gesture limits), reads the natural dimensions, and
+ * inserts an image-shaped scene element pointing at the video
+ * element via `metadata.image`. The Canvas2D renderer accepts a
+ * video element through drawImage and reads its current frame.
+ * The editor's animation tick (`metadata.animated = true`) keeps
+ * the canvas in sync with the playing video.
+ */
+export const videoFileDropHandler: FileDropHandler = {
+  id: "video",
+  accept: (file) => isVideoFile(file),
+  handle: async (file, { editor, worldPoint }) => {
+    if (typeof document === "undefined") return;
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.src = url;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    const sink = ensureAnimatedImageSink();
+    video.style.position = "absolute";
+    video.style.left = "-99999px";
+    video.style.top = "-99999px";
+    video.style.width = "1px";
+    video.style.height = "1px";
+    sink.appendChild(video);
+    await new Promise<void>((resolve) => {
+      const done = (): void => resolve();
+      video.onloadedmetadata = done;
+      video.onerror = done;
+    });
+    const nW = video.videoWidth || 480;
+    const nH = video.videoHeight || 270;
+    const max = DEFAULT_IMAGE_MAX_EDGE_PX;
+    const scale = Math.max(nW, nH) > max ? max / Math.max(nW, nH) : 1;
+    const width = Math.round(nW * scale);
+    const height = Math.round(nH * scale);
+    const topLeft: Vec2 = {
+      x: worldPoint.x - width / 2,
+      y: worldPoint.y - height / 2,
+    };
+    // Best-effort play (some browsers require an interaction
+    // before allowing autoplay even when muted).
+    void video.play().catch(() => {});
+    editor.insertImage({
+      src: url,
+      width,
+      height,
+      position: topLeft,
+      image: video as unknown as HTMLImageElement,
+      animated: true,
+    });
+  },
 };

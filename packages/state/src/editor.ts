@@ -94,7 +94,7 @@ import {
   type FileDropContext,
   type FileDropHandler,
 } from "./file-drop.js";
-import { imageFileDropHandler } from "./built-in-handlers.js";
+import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
 import { AnimationTick } from "./animation-tick.js";
 import { AutoCompactScheduler } from "./auto-compact.js";
 import { AutoLayoutScheduler } from "./auto-layout-scheduler.js";
@@ -596,6 +596,7 @@ export class Editor {
     // wiring so subsequent host `registerFileDropHandler` calls land
     // *after* and only fire for files we don't already handle.
     this.fileDropRegistry.register(imageFileDropHandler);
+    this.fileDropRegistry.register(videoFileDropHandler);
 
     if (options.initialMode) {
       this.actor.send({ type: "SET_MODE", mode: options.initialMode });
