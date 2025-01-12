@@ -182,6 +182,15 @@ export { SNAP_PROBE_CULL_RADIUS } from "./constants.js";
 export type { SceneShapeDiff } from "./diff.js";
 export { diffSceneShapes } from "./diff.js";
 
+// Three-way merge (the Y.Doc subdoc runtime remains in @collab).
+export type {
+  ConflictResolutionInput,
+  ThreeWayMergeConflict,
+  ThreeWayMergeOptions,
+  ThreeWayMergeReport,
+} from "./three-way-merge.js";
+export { mergeScenesThreeWay, applyConflictResolutions } from "./three-way-merge.js";
+
 // Container / drop-zone protocol.
 export {
   isContainer,

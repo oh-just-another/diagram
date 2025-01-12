@@ -422,3 +422,6 @@
 
 ## 0.26.16
 - state+demo: video file drop + playback
+
+## 0.26.17
+- only target changed Right keep target's version same change in both branches Right accept either both removed Right delete added in source only Right take source's added in target only Right keep target's Anything else surfaces as a ThreeWayMergeConflict; the auto- merged scene defaults to target's version for those shapes so hosts can render-while-resolving. - `applyConflictResolutions(report, [{shapeId, choice}])` — choice is `"ours" | "theirs" | "both"`. `"both"` keeps target + clones source with a suffix id (default `"{id}-copy"`, overridable via `cloneWithNewId`).
