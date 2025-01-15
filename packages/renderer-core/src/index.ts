@@ -39,7 +39,12 @@ export type {
 } from "./worker-render.js";
 export { WORKER_AUTO_THRESHOLD } from "./worker-render.js";
 export type { TileKey, TileCache, TileCacheEntry } from "./tile-renderer.js";
-export { TILE_SIZE, MAX_TILE_CACHE_BYTES, LOD_THRESHOLD } from "./tile-renderer.js";
+export {
+  TILE_SIZE,
+  MAX_TILE_CACHE_BYTES,
+  LOD_THRESHOLD,
+  InMemoryTileCache,
+} from "./tile-renderer.js";
 export {
   EdgeBoundsCache,
   computeEdgeWorldBounds,
