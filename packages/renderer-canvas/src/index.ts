@@ -1,4 +1,5 @@
 export { Canvas2DTarget } from "./canvas-target.js";
+export { Canvas2DTextShaper } from "./canvas-text-shaper.js";
 export { setupHiDpi } from "./hi-dpi.js";
 export { LayeredCanvas, type LayeredCanvasOptions } from "./layered-canvas.js";
 export {

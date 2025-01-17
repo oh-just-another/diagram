@@ -428,3 +428,6 @@
 
 ## 0.26.18
 - renderer-core: InMemoryTileCache
+
+## 0.26.19
+- renderer-core+renderer-canvas: JS TextShaper + Rasterizer defaults

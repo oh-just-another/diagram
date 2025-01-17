@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/relay",
-  "version": "0.26.18",
+  "version": "0.26.19",
   "description": "Minimal WebSocket relay server for cross-machine collab in the demo.",
   "type": "module",
   "private": true,

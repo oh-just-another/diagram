@@ -33,6 +33,7 @@ export { InMemoryShapeBitmapCache, zoomBucket } from "./shape-cache-bitmap.js";
 // Pluggable text-shaper and rasterizer interfaces.
 export type { TextShaper, ShaperFont, ShapedGlyph } from "./text-shaper.js";
 export type { Rasterizer } from "./rasterizer.js";
+export { jsRasterizer } from "./js-rasterizer.js";
 export type {
   WorkerRenderMessage,
   WorkerRenderResponse,
