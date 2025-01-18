@@ -434,3 +434,6 @@
 
 ## 0.26.20
 - renderer-canvas+demo: WebGL2Target MVP + renderer-mode scripts
+
+## 0.26.21
+- state: drop sticky trackpad lock — mouse wheel always zooms again

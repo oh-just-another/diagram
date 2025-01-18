@@ -2775,7 +2775,17 @@ export class Editor {
     // so we negate the wheel delta — positive deltaX (page scrolls
     // right) → camera right → content shifts LEFT, matching native
     // browser scroll feel.
-    let trackpadDetected = false;
+    //
+    // Per-event classification (no sticky state — sticky kept biting
+    // when the user touched the trackpad / pinched once and then
+    // expected the mouse wheel to keep zooming):
+    //
+    //   • Cmd / Ctrl + wheel (also browser-synthesized for trackpad
+    //     pinch) → ZOOM around cursor.
+    //   • Shift + plain wheel → horizontal pan from vertical delta.
+    //   • Any deltaX ≠ 0 → trackpad 2D swipe → PAN both axes.
+    //   • Plain deltaY only → ZOOM (mouse wheel; rare pure-vertical
+    //     trackpad swipes also land here — acceptable tradeoff).
     const onWheel = (ev: WheelEvent): void => {
       ev.preventDefault();
       const rect = this.host.getBoundingClientRect();
@@ -2801,35 +2811,24 @@ export class Editor {
         this.panBy({ x: -dx * WHEEL_PAN_FACTOR, y: -dy * WHEEL_PAN_FACTOR });
       };
 
-      // Sticky trackpad-detection update. Run BEFORE modifier branch
-      // so a pinch flips the flag too.
-      // - deltaX !== 0: mouse wheels never report horizontal motion.
-      // - ctrlKey + deltaY without metaKey: macOS browsers synthesize
-      //   ctrlKey on trackpad pinch; a Cmd+wheel zoom on mouse uses
-      //   metaKey, not ctrlKey, so this doesn't false-positive on
-      //   Mac. On Linux/Windows Ctrl+wheel is a different intent
-      //   (Ctrl+wheel = zoom), but those platforms also rarely have
-      //   trackpads with pinch gestures, so the trade is acceptable.
-      if (!trackpadDetected) {
-        if (ev.deltaX !== 0 || (ev.ctrlKey && !ev.metaKey && ev.deltaY !== 0)) {
-          trackpadDetected = true;
-        }
-      }
-
-      // Modifier-driven zoom (Cmd/Ctrl+wheel + trackpad pinch).
+      // Modifier-driven zoom (Cmd/Ctrl+wheel + trackpad pinch via
+      // browser-synthesized ctrlKey).
       if (ev.ctrlKey || ev.metaKey) {
         applyZoom();
         return;
       }
 
-      // Once trackpad detected — all plain wheel = pan, including
-      // pure-vertical 2-finger swipes that followed.
-      if (trackpadDetected) {
+      // Trackpad 2-finger swipe with any horizontal component →
+      // pan both axes. Mouse wheels never set deltaX, so this
+      // branch never misroutes mouse input.
+      if (ev.deltaX !== 0) {
         applyPan();
         return;
       }
 
-      // Default: mouse wheel → zoom (standard behaviour).
+      // Plain vertical wheel — always ZOOM (standard behaviour).
+      // Pure-vertical trackpad swipes also hit this; users who want
+      // vertical-only trackpad pan use Space+drag or right-drag.
       applyZoom();
     };
     // `passive: false` because we preventDefault. Browsers default wheel
