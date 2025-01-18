@@ -431,3 +431,6 @@
 
 ## 0.26.19
 - renderer-core+renderer-canvas: JS TextShaper + Rasterizer defaults
+
+## 0.26.20
+- renderer-canvas+demo: WebGL2Target MVP + renderer-mode scripts
