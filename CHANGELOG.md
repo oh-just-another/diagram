@@ -437,3 +437,6 @@
 
 ## 0.26.21
 - state: drop sticky trackpad lock — mouse wheel always zooms again
+
+## 0.26.22
+- demo: `dev:fresh` + `clean:cache` scripts — no more rm -rf instructions
