@@ -8,6 +8,7 @@ import {
   type SnapshotStore,
   type VersionId,
 } from "@oh-just-another/versioning";
+import { Modal } from "./modal.js";
 
 /**
  * Modal that drives a three-way branch merge. The host supplies the
@@ -62,24 +63,15 @@ export const MergeDialog = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-label="Merge branches"
+    <Modal
+      open
+      onClose={onCancel}
+      title="Merge branches"
       style={{
-        position: "fixed",
-        top: "10vh",
-        left: "50%",
-        transform: "translateX(-50%)",
         width: 480,
         maxHeight: "80vh",
         display: "flex",
         flexDirection: "column",
-        background: "var(--panel, #1a1a1a)",
-        color: "var(--text, #ddd)",
-        border: "1px solid var(--border, #2a2a2a)",
-        borderRadius: 8,
-        boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
-        zIndex: 1000,
         ...style,
       }}
     >
@@ -121,7 +113,7 @@ export const MergeDialog = ({
           Apply
         </button>
       </footer>
-    </div>
+    </Modal>
   );
 };
 

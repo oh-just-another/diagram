@@ -440,3 +440,6 @@
 
 ## 0.26.22
 - demo: `dev:fresh` + `clean:cache` scripts — no more rm -rf instructions
+
+## 0.26.23
+- react-ui: HelpDialog + MergeDialog migrate to Modal

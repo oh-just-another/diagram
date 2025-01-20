@@ -9,6 +9,7 @@ import {
   type HotkeyMatcher,
 } from "@oh-just-another/state";
 import { HELP_DIALOG_MAX_WIDTH_PX } from "./constants.js";
+import { Modal } from "./modal.js";
 
 /**
  * Help dialog — a cheatsheet of every Action's hotkey. Opens on "?" by
@@ -116,19 +117,7 @@ export const HelpDialog = ({
   title = "Keyboard shortcuts",
   extraSections,
 }: HelpDialogProps): ReactElement | null => {
-  // Close on Escape.
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKey = (ev: KeyboardEvent): void => {
-      if (ev.key === "Escape") {
-        ev.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
+  // Esc / focus-trap / backdrop dismiss live on the base Modal.
   const sections = useMemo<HelpSection[]>(() => {
     const byCategory = new Map<ActionCategory, HelpRow[]>();
     for (const action of registry.getAll()) {
@@ -148,29 +137,11 @@ export const HelpDialog = ({
     return out;
   }, [registry, extraSections]);
 
-  if (!open) return null;
-
-  const overlayStyle: CSSProperties = {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0, 0, 0, 0.55)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-  };
-  const dialogStyle: CSSProperties = {
-    background: "var(--panel, #1a1a1a)",
-    color: "var(--text, #ddd)",
-    border: "1px solid var(--border, #2a2a2a)",
-    borderRadius: 8,
-    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
+  const modalStyle: CSSProperties = {
     maxWidth: HELP_DIALOG_MAX_WIDTH_PX,
     width: "calc(100vw - 64px)",
-    maxHeight: "calc(100vh - 64px)",
     display: "flex",
     flexDirection: "column",
-    overflow: "hidden",
   };
   const headerStyle: CSSProperties = {
     padding: "16px 20px",
@@ -194,16 +165,8 @@ export const HelpDialog = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      style={overlayStyle}
-      onClick={(ev) => {
-        if (ev.target === ev.currentTarget) onClose();
-      }}
-    >
-      <div style={dialogStyle}>
+    <Modal open={open} onClose={onClose} title={title} style={modalStyle}>
+      <div>
         <div style={headerStyle}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -273,6 +236,6 @@ export const HelpDialog = ({
           ))}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
