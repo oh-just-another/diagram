@@ -443,3 +443,6 @@
 
 ## 0.26.23
 - react-ui: HelpDialog + MergeDialog migrate to Modal
+
+## 0.26.24
+- renderer-canvas: tile compositor for very-large scenes
