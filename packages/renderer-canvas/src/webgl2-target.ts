@@ -28,8 +28,16 @@ export class WebGL2Target implements RenderTarget {
   private readonly _size: { width: number; height: number };
 
   private fillColor: [number, number, number] = [0, 0, 0];
+  private strokeColor: [number, number, number] = [0, 0, 0];
+  private strokeWidth = 1;
   private opacity = 1;
   private currentPath: Bounds | null = null;
+  /**
+   * Polyline path being assembled by moveTo / lineTo. Cleared on
+   * `beginPath()`; pushed to GPU on `stroke()`. Bezier curves still
+   * throw NotImplemented — see `notImpl()`.
+   */
+  private currentPolyline: Vec2[] = [];
   private transform: MutableTransform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
   private readonly stack: MutableTransform[] = [];
 
@@ -144,10 +152,25 @@ export class WebGL2Target implements RenderTarget {
 
   beginPath(): void {
     this.currentPath = null;
+    this.currentPolyline = [];
   }
 
   rect(x: number, y: number, width: number, height: number): void {
     this.currentPath = { x, y, width, height };
+  }
+
+  moveTo(x: number, y: number): void {
+    this.currentPolyline = [{ x, y }];
+  }
+
+  lineTo(x: number, y: number): void {
+    this.currentPolyline.push({ x, y });
+  }
+
+  closePath(): void {
+    if (this.currentPolyline.length > 1) {
+      this.currentPolyline.push({ ...this.currentPolyline[0]! });
+    }
   }
 
   fill(_rule?: FillRule): void {
@@ -178,14 +201,45 @@ export class WebGL2Target implements RenderTarget {
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
   }
 
-  // --- Stubs — out of MVP scope ---
+  // --- Stroke pipeline ---
 
-  setStroke(_color: Color | null): void {
-    void _color;
+  setStroke(color: Color | null): void {
+    this.strokeColor = parseColor(color);
   }
-  setStrokeWidth(_width: number): void {
-    void _width;
+
+  setStrokeWidth(width: number): void {
+    this.strokeWidth = Math.max(0, width);
   }
+
+  stroke(): void {
+    if (this.currentPath) {
+      // Rect outline → 4 corners as a closed polyline.
+      const r = this.currentPath;
+      this.currentPolyline = [
+        { x: r.x, y: r.y },
+        { x: r.x + r.width, y: r.y },
+        { x: r.x + r.width, y: r.y + r.height },
+        { x: r.x, y: r.y + r.height },
+        { x: r.x, y: r.y },
+      ];
+    }
+    if (this.currentPolyline.length < 2) return;
+    drawPolylineStroke(
+      this.gl,
+      this.currentPolyline,
+      this.strokeWidth,
+      this.strokeColor,
+      this.opacity,
+      this.transform,
+      this._size,
+      this.uTransformLoc,
+      this.uColorLoc,
+      this.uOpacityLoc,
+      this.vbo,
+    );
+  }
+
+  // --- Stubs — text / curves / images remain Canvas2D fallback ---
   setLineCap(_cap: LineCap): void {
     void _cap;
   }
@@ -206,17 +260,6 @@ export class WebGL2Target implements RenderTarget {
     void _baseline;
   }
 
-  closePath(): void {
-    /* no-op — rect closes implicitly */
-  }
-  moveTo(_x: number, _y: number): void {
-    void _x;
-    void _y;
-  }
-  lineTo(_x: number, _y: number): void {
-    void _x;
-    void _y;
-  }
   quadraticCurveTo(_cx: number, _cy: number, _x: number, _y: number): void {
     notImpl("quadraticCurveTo");
   }
@@ -225,9 +268,6 @@ export class WebGL2Target implements RenderTarget {
   }
   ellipse(): void {
     notImpl("ellipse");
-  }
-  stroke(): void {
-    notImpl("stroke");
   }
   fillText(): void {
     notImpl("fillText");
@@ -251,6 +291,68 @@ type MutableTransform = {
   e: number;
   f: number;
 };
+
+/**
+ * Triangulate `polyline` into a strip of two triangles per segment
+ * (offset by `width/2` along each segment's normal) and upload +
+ * draw via the existing solid-colour program. Square caps; no
+ * mitre fix-up at corners — produces minor gaps on sharp angles
+ * but is fast and sufficient for the connector / stroke use case
+ * we have. Round joins can come later.
+ */
+const drawPolylineStroke = (
+  gl: WebGL2RenderingContext,
+  polyline: readonly Vec2[],
+  width: number,
+  color: readonly [number, number, number],
+  opacity: number,
+  transform: MutableTransform,
+  size: { width: number; height: number },
+  uTransformLoc: WebGLUniformLocation,
+  uColorLoc: WebGLUniformLocation,
+  uOpacityLoc: WebGLUniformLocation,
+  vbo: WebGLBuffer,
+): void => {
+  if (width <= 0 || polyline.length < 2) return;
+  const half = width / 2;
+  // Build triangle-strip vertices: per segment two corners on
+  // each side. Vertex coords go in NDC after applying transform +
+  // pixel→clip.
+  const vertices: number[] = [];
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const a = polyline[i]!;
+    const b = polyline[i + 1]!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = (-dy / len) * half;
+    const ny = (dx / len) * half;
+    const project = (x: number, y: number): [number, number] => {
+      const wx = transform.a * x + transform.c * y + transform.e;
+      const wy = transform.b * x + transform.d * y + transform.f;
+      return [(wx / size.width) * 2 - 1, 1 - (wy / size.height) * 2];
+    };
+    vertices.push(...project(a.x + nx, a.y + ny));
+    vertices.push(...project(a.x - nx, a.y - ny));
+    vertices.push(...project(b.x + nx, b.y + ny));
+    vertices.push(...project(b.x - nx, b.y - ny));
+  }
+  // Upload + draw. Reuse the program's vbo for simplicity;
+  // bufferData fully replaces the previous content per call.
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
+  // Identity uTransform — vertices are already in clip space.
+  gl.uniformMatrix3fv(uTransformLoc, false, IDENTITY_MAT3);
+  gl.uniform3f(uColorLoc, color[0], color[1], color[2]);
+  gl.uniform1f(uOpacityLoc, opacity);
+  // Draw segment-by-segment so adjacent segments don't bleed into
+  // each other via the strip's shared corners.
+  for (let i = 0; i < polyline.length - 1; i++) {
+    gl.drawArrays(gl.TRIANGLE_STRIP, i * 4, 4);
+  }
+};
+
+const IDENTITY_MAT3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 
 const notImpl = (method: string): never => {
   throw new Error(

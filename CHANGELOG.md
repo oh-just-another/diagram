@@ -446,3 +446,6 @@
 
 ## 0.26.24
 - renderer-canvas: tile compositor for very-large scenes
+
+## 0.26.25
+- renderer-canvas: WebGL2Target — stroke + polyline pipeline
