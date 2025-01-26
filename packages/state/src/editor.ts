@@ -180,7 +180,45 @@ export interface EditorOptions {
    *   reports a coarse primary pointer, else `"mouse"`. Default.
    */
   readonly inputMode?: "mouse" | "touch" | "auto";
+
+  /**
+   * When `true`, the editor routes per-frame rendering through a
+   * tile compositor (`renderViaTiles` in renderer-canvas) backed
+   * by an InMemoryTileCache. Designed for very-large scenes
+   * (10 K+ shapes) where re-rasterising every visible shape per
+   * frame dominates frame budget. Below ~5 K shapes the plain
+   * scene-renderer is usually faster — leave this off.
+   *
+   * Host must supply a tile compositor function via
+   * `tileCompose`; the kernel doesn't import renderer-canvas
+   * directly. Pattern:
+   *
+   *   import { renderViaTiles } from "@oh-just-another/renderer-canvas";
+   *   new Editor({ ..., useTileCache: true, tileCompose: renderViaTiles });
+   */
+  readonly useTileCache?: boolean;
+  /**
+   * Compositor function called per frame when `useTileCache` is on.
+   * Receives the scene, main target, and dirty bookkeeping; should
+   * handle caching internally.
+   */
+  readonly tileCompose?: TileComposeFn;
 }
+
+/**
+ * Signature of the tile compositor injected via EditorOptions. Editor
+ * stays decoupled from renderer-canvas; hosts wire the concrete
+ * implementation (`renderViaTiles`).
+ */
+export type TileComposeFn = (
+  scene: Scene,
+  mainTarget: RenderTarget,
+  options: {
+    readonly viewport: Bounds;
+    readonly changedShapeIds: ReadonlySet<ShapeId>;
+    readonly zoomBucket: number;
+  },
+) => void;
 
 /**
  * Top-level interaction controller. Owns the scene + selection state, wires
@@ -465,6 +503,22 @@ export class Editor {
   private spaceHeld = false;
 
   /**
+   * Host-supplied tile compositor — when set (via
+   * `EditorOptions.useTileCache` + `tileCompose`), the per-frame
+   * render path delegates to it instead of `renderScene`. Stays
+   * `null` for the typical small-scene case.
+   */
+  private readonly tileComposeFn: TileComposeFn | null;
+
+  /**
+   * Set of shape ids whose scene reference changed since the last
+   * tile-cache invalidation pass. Populated from `computeDirtyWorld`'s
+   * diff loop when `tileComposeFn` is on; forwarded to the
+   * compositor each frame so it can invalidate matching tiles.
+   */
+  private tileDirtyShapeIds: Set<ShapeId> = new Set();
+
+  /**
    * Tool-lock flag (standard model). When `false` (default), a
    * draw-mode (`draw-rect` / `draw-ellipse` / `draw-edge` / `brush`)
    * auto-reverts to `select` after a successful create. When `true`,
@@ -556,6 +610,8 @@ export class Editor {
     this._scene = options.initialScene;
     this._history =
       options.history instanceof History ? options.history : new History(options.history ?? {});
+    this.tileComposeFn =
+      options.useTileCache === true && options.tileCompose ? options.tileCompose : null;
 
     // Resolve input mode + derived hit slops once. `auto` reads
     // `matchMedia('(pointer: coarse)')` when available; SSR falls
@@ -3606,6 +3662,11 @@ export class Editor {
         add(getShapeWorldBounds(shape));
       }
     }
+    // Stash for the tile-cache path — the compositor reads this set
+    // and invalidates touched tiles before this frame composites.
+    if (this.tileComposeFn !== null) {
+      for (const id of changedShapeIds) this.tileDirtyShapeIds.add(id);
+    }
     const edgeTouchesChangedShape = (edge: Edge): boolean => {
       for (const ep of [edge.from, edge.to]) {
         if (ep.kind === "anchor" || ep.kind === "outline") {
@@ -4412,18 +4473,40 @@ export class Editor {
       ? this.computeDimShapes(this._enteredGroup)
       : undefined;
     const hideShapes = this.computeHiddenShapes();
-    renderScene(this._scene, this.mainTarget, {
-      ...(viewportWorld ? { viewport: viewportWorld } : {}),
-      ...(dirtyWorld ? { dirtyWorld } : {}),
-      boundsCache: this.boundsCache,
-      lod: DEFAULT_LOD,
-      ...(dimShapes ? { dimShapes, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
-      ...(hideShapes ? { hideShapes } : {}),
-    });
-    renderEdges(this._scene, this.mainTarget, {
-      ...(viewportWorld ? { viewportWorld } : {}),
-      ...(dirtyWorld ? { dirtyWorld } : {}),
-    });
+
+    if (this.tileComposeFn && viewportWorld) {
+      // Tile-cache path: clear main once, then composite cached
+      // tiles. Dim / hide sets aren't honoured by the tile cache
+      // yet (would require a separate pass) — opt-in path is
+      // intended for very-large static scenes where neither
+      // typically applies.
+      this.mainTarget.clear();
+      this.tileComposeFn(this._scene, this.mainTarget, {
+        viewport: viewportWorld,
+        changedShapeIds: this.tileDirtyShapeIds,
+        zoomBucket:
+          this._scene.viewport.zoom > 0
+            ? 2 ** Math.round(Math.log2(this._scene.viewport.zoom))
+            : 1,
+      });
+      this.tileDirtyShapeIds = new Set();
+      renderEdges(this._scene, this.mainTarget, {
+        ...(viewportWorld ? { viewportWorld } : {}),
+      });
+    } else {
+      renderScene(this._scene, this.mainTarget, {
+        ...(viewportWorld ? { viewport: viewportWorld } : {}),
+        ...(dirtyWorld ? { dirtyWorld } : {}),
+        boundsCache: this.boundsCache,
+        lod: DEFAULT_LOD,
+        ...(dimShapes ? { dimShapes, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
+        ...(hideShapes ? { hideShapes } : {}),
+      });
+      renderEdges(this._scene, this.mainTarget, {
+        ...(viewportWorld ? { viewportWorld } : {}),
+        ...(dirtyWorld ? { dirtyWorld } : {}),
+      });
+    }
     this.lastRenderedScene = this._scene;
     this.lastRenderedEnteredGroup = this._enteredGroup;
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};

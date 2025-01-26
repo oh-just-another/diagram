@@ -449,3 +449,6 @@
 
 ## 0.26.25
 - renderer-canvas: WebGL2Target — stroke + polyline pipeline
+
+## 0.26.26
+- state: EditorOptions.useTileCache + tileCompose hook
