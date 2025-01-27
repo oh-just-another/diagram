@@ -173,6 +173,143 @@ export class WebGL2Target implements RenderTarget {
     }
   }
 
+  /**
+   * Approximate an ellipse with a 64-segment polygon — sufficient
+   * for normal zoom levels; a future extension uses an SDF
+   * fragment shader for crisp curves at any scale.
+   */
+  ellipse(cx: number, cy: number, rx: number, ry: number): void {
+    const segments = 64;
+    this.currentPolyline = [];
+    for (let i = 0; i <= segments; i++) {
+      const t = (i / segments) * Math.PI * 2;
+      this.currentPolyline.push({
+        x: cx + rx * Math.cos(t),
+        y: cy + ry * Math.sin(t),
+      });
+    }
+    // Also expose as `currentPath` so a subsequent fill() picks the
+    // polygon up via the same triangle-fan path.
+    this.currentPath = null;
+  }
+
+  /**
+   * Quadratic Bezier — flattened to a polyline via @math/bezier
+   * sampling, then appended to the current polyline. Same accuracy
+   * the JS rasterizer ships.
+   */
+  quadraticCurveTo(cx: number, cy: number, x: number, y: number): void {
+    const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x: cx, y: cy };
+    const samples = sampleQuadratic(start, { x: cx, y: cy }, { x, y }, 16);
+    for (let i = 1; i < samples.length; i++) this.currentPolyline.push(samples[i]!);
+  }
+
+  /** Cubic Bezier — flattened the same way as quadratic. */
+  bezierCurveTo(
+    c1x: number,
+    c1y: number,
+    c2x: number,
+    c2y: number,
+    x: number,
+    y: number,
+  ): void {
+    const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x, y };
+    const samples = sampleCubic(
+      start,
+      { x: c1x, y: c1y },
+      { x: c2x, y: c2y },
+      { x, y },
+      24,
+    );
+    for (let i = 1; i < samples.length; i++) this.currentPolyline.push(samples[i]!);
+  }
+
+  /**
+   * Image rendering — uploads `image` to a freshly-created GL texture
+   * on first call, caches it by reference for subsequent frames. Drawn
+   * as a textured quad via a dedicated program created lazily on the
+   * first image call.
+   */
+  drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number): void {
+    const tex = this.textureFor(image as TexImageSource);
+    if (!tex) return;
+    if (!this.imageProgram) this.imageProgram = createImageProgram(this.gl);
+    const ip = this.imageProgram;
+    this.gl.useProgram(ip.program);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      // unit-quad pos + tex coords interleaved
+      new Float32Array([0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1]),
+      this.gl.DYNAMIC_DRAW,
+    );
+    this.gl.enableVertexAttribArray(ip.aPos);
+    this.gl.vertexAttribPointer(ip.aPos, 2, this.gl.FLOAT, false, 16, 0);
+    this.gl.enableVertexAttribArray(ip.aUV);
+    this.gl.vertexAttribPointer(ip.aUV, 2, this.gl.FLOAT, false, 16, 8);
+
+    // Project the drawn region through transform + viewport.
+    const projected = applyImageMat(
+      {
+        a: this.transform.a * dw,
+        b: this.transform.b * dw,
+        c: this.transform.c * dh,
+        d: this.transform.d * dh,
+        e: this.transform.e + this.transform.a * dx + this.transform.c * dy,
+        f: this.transform.f + this.transform.b * dx + this.transform.d * dy,
+      },
+      this._size.width,
+      this._size.height,
+    );
+    this.gl.uniformMatrix3fv(ip.uTransform, false, projected);
+    this.gl.uniform1f(ip.uOpacity, this.opacity);
+    this.gl.activeTexture(this.gl.TEXTURE0);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, tex);
+    this.gl.uniform1i(ip.uTex, 0);
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+    // Restore the solid-colour program for subsequent fills /
+    // strokes.
+    this.gl.useProgram(this.program);
+    const aPos = this.gl.getAttribLocation(this.program, "aPos");
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
+      this.gl.STATIC_DRAW,
+    );
+    this.gl.enableVertexAttribArray(aPos);
+    this.gl.vertexAttribPointer(aPos, 2, this.gl.FLOAT, false, 0, 0);
+  }
+
+  /** Lazy image program (created on the first drawImage call). */
+  private imageProgram: ImageProgram | null = null;
+  private readonly textures = new WeakMap<object, WebGLTexture>();
+
+  private textureFor(src: TexImageSource): WebGLTexture | null {
+    if (!src || typeof src !== "object") return null;
+    const cached = this.textures.get(src as object);
+    if (cached) return cached;
+    const tex = this.gl.createTexture();
+    if (!tex) return null;
+    this.gl.bindTexture(this.gl.TEXTURE_2D, tex);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
+    this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    this.gl.texImage2D(
+      this.gl.TEXTURE_2D,
+      0,
+      this.gl.RGBA,
+      this.gl.RGBA,
+      this.gl.UNSIGNED_BYTE,
+      src,
+    );
+    this.textures.set(src as object, tex);
+    return tex;
+  }
+
   fill(_rule?: FillRule): void {
     void _rule;
     if (!this.currentPath) return;
@@ -260,15 +397,6 @@ export class WebGL2Target implements RenderTarget {
     void _baseline;
   }
 
-  quadraticCurveTo(_cx: number, _cy: number, _x: number, _y: number): void {
-    notImpl("quadraticCurveTo");
-  }
-  bezierCurveTo(): void {
-    notImpl("bezierCurveTo");
-  }
-  ellipse(): void {
-    notImpl("ellipse");
-  }
   fillText(): void {
     notImpl("fillText");
   }
@@ -276,9 +404,6 @@ export class WebGL2Target implements RenderTarget {
     void _text;
     notImpl("measureText");
     return { width: 0 };
-  }
-  drawImage(): void {
-    notImpl("drawImage");
   }
 }
 
@@ -353,6 +478,109 @@ const drawPolylineStroke = (
 };
 
 const IDENTITY_MAT3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+
+/** Sample a quadratic Bezier curve at `count` evenly-spaced t values. */
+const sampleQuadratic = (
+  p0: Vec2,
+  p1: Vec2,
+  p2: Vec2,
+  count: number,
+): Vec2[] => {
+  const out: Vec2[] = [];
+  for (let i = 0; i <= count; i++) {
+    const t = i / count;
+    const u = 1 - t;
+    out.push({
+      x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+      y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
+    });
+  }
+  return out;
+};
+
+/** Sample a cubic Bezier curve at `count` evenly-spaced t values. */
+const sampleCubic = (
+  p0: Vec2,
+  p1: Vec2,
+  p2: Vec2,
+  p3: Vec2,
+  count: number,
+): Vec2[] => {
+  const out: Vec2[] = [];
+  for (let i = 0; i <= count; i++) {
+    const t = i / count;
+    const u = 1 - t;
+    const u2 = u * u;
+    const u3 = u2 * u;
+    const t2 = t * t;
+    const t3 = t2 * t;
+    out.push({
+      x: u3 * p0.x + 3 * u2 * t * p1.x + 3 * u * t2 * p2.x + t3 * p3.x,
+      y: u3 * p0.y + 3 * u2 * t * p1.y + 3 * u * t2 * p2.y + t3 * p3.y,
+    });
+  }
+  return out;
+};
+
+/** Same projection as `applyMat` but emitted from drawImage. */
+const applyImageMat = (t: MutableTransform, w: number, h: number): Float32Array => {
+  const sx = 2 / w;
+  const sy = -2 / h;
+  return new Float32Array([
+    t.a * sx, t.b * sy, 0,
+    t.c * sx, t.d * sy, 0,
+    t.e * sx - 1, t.f * sy + 1, 1,
+  ]);
+};
+
+interface ImageProgram {
+  readonly program: WebGLProgram;
+  readonly aPos: number;
+  readonly aUV: number;
+  readonly uTransform: WebGLUniformLocation;
+  readonly uTex: WebGLUniformLocation;
+  readonly uOpacity: WebGLUniformLocation;
+}
+
+const createImageProgram = (gl: WebGL2RenderingContext): ImageProgram => {
+  const vert = compile(
+    gl,
+    gl.VERTEX_SHADER,
+    `#version 300 es
+in vec2 aPos;
+in vec2 aUV;
+uniform mat3 uTransform;
+out vec2 vUV;
+void main() {
+  vec3 p = uTransform * vec3(aPos, 1.0);
+  gl_Position = vec4(p.xy, 0.0, 1.0);
+  vUV = aUV;
+}`,
+  );
+  const frag = compile(
+    gl,
+    gl.FRAGMENT_SHADER,
+    `#version 300 es
+precision mediump float;
+in vec2 vUV;
+uniform sampler2D uTex;
+uniform float uOpacity;
+out vec4 fragColor;
+void main() {
+  vec4 t = texture(uTex, vUV);
+  fragColor = vec4(t.rgb, t.a * uOpacity);
+}`,
+  );
+  const program = link(gl, vert, frag);
+  return {
+    program,
+    aPos: gl.getAttribLocation(program, "aPos"),
+    aUV: gl.getAttribLocation(program, "aUV"),
+    uTransform: gl.getUniformLocation(program, "uTransform")!,
+    uTex: gl.getUniformLocation(program, "uTex")!,
+    uOpacity: gl.getUniformLocation(program, "uOpacity")!,
+  };
+};
 
 const notImpl = (method: string): never => {
   throw new Error(

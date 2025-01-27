@@ -452,3 +452,6 @@
 
 ## 0.26.26
 - state: EditorOptions.useTileCache + tileCompose hook
+
+## 0.26.27
+- renderer-canvas: WebGL2 ellipse + image + bezier curves
