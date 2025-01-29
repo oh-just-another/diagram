@@ -455,3 +455,6 @@
 
 ## 0.26.27
 - renderer-canvas: WebGL2 ellipse + image + bezier curves
+
+## 0.26.28
+- state: extract group/isolation helpers

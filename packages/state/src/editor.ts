@@ -96,6 +96,13 @@ import {
 } from "./file-drop.js";
 import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
 import { AnimationTick } from "./animation-tick.js";
+import {
+  computeDimShapes as computeDimShapesHelper,
+  isDescendantOfGroup as isDescendantOfGroupHelper,
+  pickDrillTarget as pickDrillTargetHelper,
+  promoteToGroupRoot as promoteToGroupRootHelper,
+  topGroupAncestor as topGroupAncestorHelper,
+} from "./group-helpers.js";
 import { AutoCompactScheduler } from "./auto-compact.js";
 import { AutoLayoutScheduler } from "./auto-layout-scheduler.js";
 import {
@@ -3169,37 +3176,18 @@ export class Editor {
    * directly.
    */
   private promoteToGroupRoot(shape: Shape): Shape {
-    let current: Shape = shape;
-    let depth = 0;
-    while (current.parentId && depth < 64) {
-      if (this._enteredGroup === current.parentId) break;
-      const parent = getShape(this._scene, current.parentId);
-      if (!parent) break;
-      if (parent.type !== "group") break;
-      current = parent;
-      depth++;
-    }
-    return current;
+    return promoteToGroupRootHelper(this._scene, shape, this._enteredGroup);
   }
 
   /**
-   * Topmost group ancestor of `shape` (i.e. walk parentId chain, stop
-   * at the highest `type === "group"` parent). `null` if `shape` has
-   * no group ancestor. Used by drill-down: a double-click on a shape
-   * with a group ancestor enters that group.
+   * Topmost group ancestor of `shape` (walks parentId chain, returns
+   * the highest `type === "group"` parent). `null` if `shape` has no
+   * group ancestor. Used by drill-down: a double-click on a shape
+   * with a group ancestor enters that group. Body extracted to
+   * `./group-helpers.ts`.
    */
   private topGroupAncestor(shape: Shape): Shape | null {
-    let topGroup: Shape | null = null;
-    let cursor: Shape | undefined = shape;
-    let depth = 0;
-    while (cursor?.parentId && depth < 64) {
-      const parent = getShape(this._scene, cursor.parentId);
-      if (!parent) break;
-      if (parent.type === "group") topGroup = parent;
-      cursor = parent;
-      depth++;
-    }
-    return topGroup;
+    return topGroupAncestorHelper(this._scene, shape);
   }
 
   /**
@@ -3209,15 +3197,7 @@ export class Editor {
    * group, which exits isolation.
    */
   private isDescendantOfGroup(shapeId: ShapeId, groupId: ShapeId): boolean {
-    let cursor = getShape(this._scene, shapeId);
-    let depth = 0;
-    while (cursor && depth < 64) {
-      if (cursor.id === groupId) return true;
-      if (!cursor.parentId) return false;
-      cursor = getShape(this._scene, cursor.parentId);
-      depth++;
-    }
-    return false;
+    return isDescendantOfGroupHelper(this._scene, shapeId, groupId);
   }
 
   /**
@@ -3239,14 +3219,7 @@ export class Editor {
   }
 
   private computeDimShapes(enteredGroupId: ShapeId): ReadonlySet<ShapeId> {
-    const dim = new Set<ShapeId>();
-    for (const s of this._scene.shapes.values()) {
-      if (this._selection.has(s.id)) continue;
-      if (!this.isDescendantOfGroup(s.id, enteredGroupId)) {
-        dim.add(s.id);
-      }
-    }
-    return dim;
+    return computeDimShapesHelper(this._scene, this._selection, enteredGroupId);
   }
 
   /**
@@ -3369,22 +3342,7 @@ export class Editor {
    *   next group inward (one level deeper).
    */
   private pickDrillTarget(raw: Shape, top: Shape | null): Shape | null {
-    if (!top) return null;
-    if (this._enteredGroup !== top.id) return top;
-    // Already inside `top` — find the next inner group between top
-    // and raw.
-    let cursor: Shape | undefined = raw;
-    let next: Shape | null = null;
-    let depth = 0;
-    while (cursor?.parentId && depth < 64) {
-      const parent = getShape(this._scene, cursor.parentId);
-      if (!parent) break;
-      if (parent.id === top.id) break; // reached entered group from below
-      if (parent.type === "group") next = parent;
-      cursor = parent;
-      depth++;
-    }
-    return next;
+    return pickDrillTargetHelper(this._scene, raw, top, this._enteredGroup);
   }
 
   private applyEmit(emit: InteractionEmit): void {
