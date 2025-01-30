@@ -103,6 +103,14 @@ import {
   promoteToGroupRoot as promoteToGroupRootHelper,
   topGroupAncestor as topGroupAncestorHelper,
 } from "./group-helpers.js";
+import {
+  assignFrameMembers as assignFrameMembersHelper,
+  nextFrameName as nextFrameNameHelper,
+} from "./frame-helpers.js";
+import {
+  copyShapes as copyShapesHelper,
+  pasteShapes as pasteShapesHelper,
+} from "./clipboard.js";
 import { AutoCompactScheduler } from "./auto-compact.js";
 import { AutoLayoutScheduler } from "./auto-layout-scheduler.js";
 import {
@@ -1776,11 +1784,7 @@ export class Editor {
 
   /** Copy current selection into the internal clipboard. */
   copySelected(): void {
-    const out: Shape[] = [];
-    for (const id of this._selection) {
-      const s = getShape(this._scene, id);
-      if (s) out.push(structuredClone(s));
-    }
+    const out = copyShapesHelper(this._scene, this._selection);
     if (out.length === 0) return;
     this.clipboard = out;
     this.announce(`Copied ${out.length} shapes`);
@@ -1804,48 +1808,19 @@ export class Editor {
   paste(targetWorld?: Vec2): void {
     if (this.clipboard.length === 0) return;
     const target = targetWorld ?? this.lastPointerWorld;
-
-    // Compute the centroid of the clipboard so we can translate the
-    // whole cluster as one unit. When there's no cursor target, fall
-    // back to the legacy +10 px nudge — never re-paste exactly on top.
-    let cx = 0;
-    let cy = 0;
-    for (const s of this.clipboard) {
-      cx += s.position.x;
-      cy += s.position.y;
-    }
-    cx /= this.clipboard.length;
-    cy /= this.clipboard.length;
-    const delta = target
-      ? { x: target.x - cx, y: target.y - cy }
-      : { x: 10, y: 10 };
-
-    const tx = this._history.transaction();
-    const newIds: ShapeId[] = [];
-    for (const tmpl of this.clipboard) {
-      const newId = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
-      const order = orderForTop(
-        [...this._scene.shapes.values()]
-          .filter((s) => s.layerId === tmpl.layerId)
-          .map((s) => s.order),
-      );
-      const clone = {
-        ...structuredClone(tmpl),
-        id: newId,
-        position: { x: tmpl.position.x + delta.x, y: tmpl.position.y + delta.y },
-        order,
-      } as Shape;
-      const r = addShape(this._scene, clone);
-      this._scene = r.scene;
-      tx.add(r.patch);
-      newIds.push(newId);
-    }
-    tx.commit();
+    const result = pasteShapesHelper(
+      this._scene,
+      this._history,
+      this.clipboard,
+      target ?? null,
+      () => castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`),
+    );
+    this._scene = result.scene;
     let next = Selection.EMPTY;
-    for (const id of newIds) next = Selection.add(next, id);
+    for (const id of result.newIds) next = Selection.add(next, id);
     this._selection = next;
     this.notify();
-    this.announce(`Pasted ${newIds.length} shapes`);
+    this.announce(`Pasted ${result.newIds.length} shapes`);
   }
 
   /** Move the selected shape (single-shape MVP) to the top of its layer. */
@@ -3889,13 +3864,7 @@ export class Editor {
 
   /** Generate the next "Frame N" name based on existing frames. */
   private nextFrameName(): string {
-    let max = 0;
-    for (const s of this._scene.shapes.values()) {
-      if (s.type !== "frame") continue;
-      const m = /^Frame (\d+)$/.exec((s as { name?: string }).name ?? "");
-      if (m) max = Math.max(max, Number(m[1]));
-    }
-    return `Frame ${max + 1}`;
+    return nextFrameNameHelper(this._scene);
   }
 
   /**
@@ -3904,24 +3873,12 @@ export class Editor {
    * undo step in the same gesture transaction as the create.
    */
   private assignFrameMembers(frameId: ShapeId, frameBounds: Bounds): void {
-    const left = frameBounds.x;
-    const top = frameBounds.y;
-    const right = frameBounds.x + frameBounds.width;
-    const bottom = frameBounds.y + frameBounds.height;
-    for (const shape of this._scene.shapes.values()) {
-      if (shape.id === frameId) continue;
-      if (shape.type === "frame") continue;
-      // Skip shapes already in another frame; user explicitly drags
-      // in to reassign.
-      if (shape.frameId !== undefined) continue;
-      const b = getShapeWorldBounds(shape);
-      const cx = b.x + b.width / 2;
-      const cy = b.y + b.height / 2;
-      if (cx < left || cx > right || cy < top || cy > bottom) continue;
-      const r = updateShape(this._scene, shape.id, (s) => ({ ...s, frameId }));
-      this._scene = r.scene;
-      this._history.push(r.patch);
-    }
+    this._scene = assignFrameMembersHelper(
+      this._scene,
+      this._history,
+      frameId,
+      frameBounds,
+    );
   }
 
   /**

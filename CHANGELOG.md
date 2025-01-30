@@ -458,3 +458,6 @@
 
 ## 0.26.28
 - state: extract group/isolation helpers
+
+## 0.26.29
+- state: extract frame + clipboard helpers
