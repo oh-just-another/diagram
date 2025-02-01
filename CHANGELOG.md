@@ -461,3 +461,6 @@
 
 ## 0.26.29
 - state: extract frame + clipboard helpers
+
+## 0.26.30
+- renderer-canvas: ship worker script + LayerWorkerPool

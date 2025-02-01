@@ -10,6 +10,7 @@ export {
   transferCanvasToWorker,
 } from "./offscreen.js";
 export { WorkerPool } from "./worker-pool.js";
+export { LayerWorkerPool } from "./layer-worker-pool.js";
 export { LARGE_SCENE_WORKER_THRESHOLD } from "./constants.js";
 
 // `installBuiltinRenderers` and `wrapText` live in
