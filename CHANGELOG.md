@@ -464,3 +464,6 @@
 
 ## 0.26.30
 - renderer-canvas: ship worker script + LayerWorkerPool
+
+## 0.26.31
+- collab: BranchDoc (Yjs subdoc branches + three-way merge)

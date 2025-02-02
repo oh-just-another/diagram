@@ -1,0 +1,162 @@
+import { describe, expect, it } from "vitest";
+import { shapeId } from "@oh-just-another/types";
+import {
+  DEFAULT_LAYER_ID,
+  addShape,
+  emptyScene,
+  orderBetween,
+  updateShape,
+  type Scene,
+  type Shape,
+} from "@oh-just-another/scene";
+import { BranchDoc } from "../src/branch-doc";
+
+const seed = (): Scene => {
+  let s = emptyScene();
+  const a: Shape = {
+    id: shapeId("a"),
+    layerId: DEFAULT_LAYER_ID,
+    type: "rectangle",
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: { fill: "#aaa" },
+    width: 40,
+    height: 40,
+  };
+  const b: Shape = { ...a, id: shapeId("b"), position: { x: 100, y: 0 }, style: { fill: "#bbb" } };
+  ({ scene: s } = addShape(s, a));
+  ({ scene: s } = addShape(s, b));
+  return s;
+};
+
+describe("BranchDoc", () => {
+  it("ensureRoot seeds the main branch with the initial scene", () => {
+    const bd = new BranchDoc();
+    bd.ensureRoot("main", "main", seed());
+    const snap = bd.sceneDocFor("main").snapshot();
+    expect(snap.shapes.size).toBe(2);
+  });
+
+  it("createBranch forks the parent's current scene", () => {
+    const bd = new BranchDoc();
+    bd.ensureRoot("main", "main", seed());
+    bd.createBranch("feat", "feat", "main");
+    const out = bd.sceneDocFor("feat").snapshot();
+    expect(out.shapes.size).toBe(2);
+    expect(out.shapes.get(shapeId("a"))?.position).toEqual({ x: 0, y: 0 });
+  });
+
+  it("auto-merges non-conflicting changes from source into target", async () => {
+    const bd = new BranchDoc();
+    bd.ensureRoot("main", "main", seed());
+    bd.createBranch("feat", "feat", "main");
+
+    // Source moves shape "a", target leaves it alone — should auto-merge.
+    const featDoc = bd.sceneDocFor("feat");
+    const featSnap = featDoc.snapshot();
+    const { scene: featMoved } = updateShape(featSnap, shapeId("a"), (s) => ({
+      ...s,
+      position: { x: 999, y: 999 },
+    }));
+    featDoc.replace(featMoved);
+
+    const report = await bd.mergeBranch(
+      { id: "feat", name: "feat", parentVersionId: "main" },
+      { id: "main", name: "main", parentVersionId: null },
+    );
+    expect(report.conflicts).toHaveLength(0);
+    expect(report.autoMerged.shapes.get(shapeId("a"))?.position).toEqual({ x: 999, y: 999 });
+  });
+
+  it("reports a conflict when both branches edit the same shape", async () => {
+    const bd = new BranchDoc();
+    bd.ensureRoot("main", "main", seed());
+    bd.createBranch("feat", "feat", "main");
+
+    const featDoc = bd.sceneDocFor("feat");
+    const { scene: featMoved } = updateShape(featDoc.snapshot(), shapeId("a"), (s) => ({
+      ...s,
+      position: { x: 100, y: 100 },
+    }));
+    featDoc.replace(featMoved);
+
+    const mainDoc = bd.sceneDocFor("main");
+    const { scene: mainMoved } = updateShape(mainDoc.snapshot(), shapeId("a"), (s) => ({
+      ...s,
+      position: { x: 50, y: 50 },
+    }));
+    mainDoc.replace(mainMoved);
+
+    const report = await bd.mergeBranch(
+      { id: "feat", name: "feat", parentVersionId: "main" },
+      { id: "main", name: "main", parentVersionId: null },
+    );
+    expect(report.conflicts).toHaveLength(1);
+    expect(report.conflicts[0]!.shapeId).toBe(shapeId("a"));
+  });
+
+  it("applyConflictResolution honours the chosen side", async () => {
+    const bd = new BranchDoc();
+    bd.ensureRoot("main", "main", seed());
+    bd.createBranch("feat", "feat", "main");
+
+    const featDoc = bd.sceneDocFor("feat");
+    const { scene: featMoved } = updateShape(featDoc.snapshot(), shapeId("a"), (s) => ({
+      ...s,
+      position: { x: 100, y: 100 },
+    }));
+    featDoc.replace(featMoved);
+
+    const mainDoc = bd.sceneDocFor("main");
+    const { scene: mainMoved } = updateShape(mainDoc.snapshot(), shapeId("a"), (s) => ({
+      ...s,
+      position: { x: 50, y: 50 },
+    }));
+    mainDoc.replace(mainMoved);
+
+    const report = await bd.mergeBranch(
+      { id: "feat", name: "feat", parentVersionId: "main" },
+      { id: "main", name: "main", parentVersionId: null },
+    );
+    const merged = await bd.applyConflictResolution(report, [
+      { shapeId: shapeId("a"), choice: "theirs" },
+    ]);
+    expect(merged.shapes.get(shapeId("a"))?.position).toEqual({ x: 100, y: 100 });
+  });
+
+  it("commitMerge writes back to target and re-baselines source ancestor", async () => {
+    const bd = new BranchDoc();
+    bd.ensureRoot("main", "main", seed());
+    bd.createBranch("feat", "feat", "main");
+
+    const featDoc = bd.sceneDocFor("feat");
+    const { scene: featMoved } = updateShape(featDoc.snapshot(), shapeId("a"), (s) => ({
+      ...s,
+      position: { x: 999, y: 999 },
+    }));
+    featDoc.replace(featMoved);
+
+    const report = await bd.mergeBranch(
+      { id: "feat", name: "feat", parentVersionId: "main" },
+      { id: "main", name: "main", parentVersionId: null },
+    );
+    bd.commitMerge("feat", "main", report.autoMerged);
+
+    // Target now has the merged scene.
+    expect(bd.sceneDocFor("main").snapshot().shapes.get(shapeId("a"))?.position).toEqual({
+      x: 999,
+      y: 999,
+    });
+
+    // Second merge from feat should now report zero conflicts /
+    // applied changes (ancestor caught up with the merged state).
+    const report2 = await bd.mergeBranch(
+      { id: "feat", name: "feat", parentVersionId: "main" },
+      { id: "main", name: "main", parentVersionId: null },
+    );
+    expect(report2.applied).toHaveLength(0);
+    expect(report2.conflicts).toHaveLength(0);
+  });
+});
