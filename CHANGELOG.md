@@ -467,3 +467,6 @@
 
 ## 0.26.31
 - collab: BranchDoc (Yjs subdoc branches + three-way merge)
+
+## 0.27.0
+- text-wasm + raster-wasm: new L5 WASM-backend packages

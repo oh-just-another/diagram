@@ -276,6 +276,21 @@ importers:
 
   packages/network: {}
 
+  packages/raster-wasm:
+    dependencies:
+      '@oh-just-another/math':
+        specifier: workspace:*
+        version: link:../math
+      '@oh-just-another/renderer-core':
+        specifier: workspace:*
+        version: link:../renderer-core
+      '@oh-just-another/scene':
+        specifier: workspace:*
+        version: link:../scene
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../types
+
   packages/react-ui:
     dependencies:
       '@oh-just-another/history':
@@ -438,6 +453,12 @@ importers:
       '@oh-just-another/templates':
         specifier: workspace:*
         version: link:../templates
+
+  packages/text-wasm:
+    dependencies:
+      '@oh-just-another/renderer-core':
+        specifier: workspace:*
+        version: link:../renderer-core
 
   packages/types: {}
 

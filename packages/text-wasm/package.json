@@ -1,7 +1,7 @@
 {
-  "name": "@oh-just-another/scene",
-  "version": "0.27.0",
-  "description": "scene package",
+  "name": "@oh-just-another/text-wasm",
+  "version": "0.0.0",
+  "description": "WASM text-shaping backend for the diagram renderer (Phase 46).",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -30,8 +30,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@oh-just-another/types": "workspace:*",
-    "@oh-just-another/math": "workspace:*",
-    "fractional-keys": "^0.1.1"
+    "@oh-just-another/renderer-core": "workspace:*"
   }
 }

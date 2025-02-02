@@ -1,7 +1,7 @@
 {
-  "name": "@oh-just-another/scene",
-  "version": "0.27.0",
-  "description": "scene package",
+  "name": "@oh-just-another/raster-wasm",
+  "version": "0.0.0",
+  "description": "WASM rasterisation helpers (flatten / strokeToFill) for the diagram renderer (Phase 47).",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -32,6 +32,7 @@
   "dependencies": {
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/math": "workspace:*",
-    "fractional-keys": "^0.1.1"
+    "@oh-just-another/scene": "workspace:*",
+    "@oh-just-another/renderer-core": "workspace:*"
   }
 }

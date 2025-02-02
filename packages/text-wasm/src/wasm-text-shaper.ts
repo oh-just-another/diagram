@@ -1,0 +1,179 @@
+import type {
+  ShapedGlyph,
+  ShaperFont,
+  TextShaper,
+} from "@oh-just-another/renderer-core";
+import { FALLBACK_ADVANCE_FACTOR, MEASURE_CACHE_SIZE } from "./constants.js";
+
+/**
+ * WASM-backed text shaper.
+ *
+ * The kernel ships an interface in `@oh-just-another/renderer-core` so
+ * hosts can swap measurement engines. This package provides the
+ * default WASM-aware implementation:
+ *
+ *   • Until a WASM module is loaded via `loadModule`, calls fall
+ *     back to a synchronous geometric estimate (proportional
+ *     monospace-style advance). Layout stays roughly correct so
+ *     the first paint isn't blank.
+ *   • `loadModule(bytes | url, exports)` plugs a real shaper in.
+ *     The expected `exports` shape is documented inline — any
+ *     HarfBuzz / harfbuzzjs / ICU4X build that exposes a
+ *     `measure(textPtr, len, fontPtr) → width` function and
+ *     conventional `memory` + `alloc`/`free` can be wired up.
+ *   • Cache: small LRU keyed on the (text, font) pair so repeated
+ *     measurements (re-renders of the same labels) are O(1).
+ *
+ * The JS fallback in `shape()` only fills `advance` for each
+ * character so decoration positioning lines up roughly even before
+ * the WASM module loads.
+ */
+
+export interface WasmShaperExports {
+  readonly memory: WebAssembly.Memory;
+  readonly alloc: (bytes: number) => number;
+  readonly free: (ptr: number, bytes: number) => void;
+  readonly setFont: (familyPtr: number, familyLen: number, size: number) => void;
+  readonly measure: (textPtr: number, textLen: number) => number;
+}
+
+export interface WasmTextShaperOptions {
+  /** Override the LRU cap. Defaults to `MEASURE_CACHE_SIZE`. */
+  readonly cacheSize?: number;
+  /** Override the fallback advance factor. */
+  readonly fallbackAdvanceFactor?: number;
+}
+
+export class WasmTextShaper implements TextShaper {
+  private readonly cacheSize: number;
+  private readonly fallbackFactor: number;
+  private readonly cache = new Map<string, { width: number }>();
+  private wasm: WasmShaperExports | null = null;
+  private currentFontKey: string | null = null;
+  private readonly textEncoder = new TextEncoder();
+
+  constructor(options: WasmTextShaperOptions = {}) {
+    this.cacheSize = options.cacheSize ?? MEASURE_CACHE_SIZE;
+    this.fallbackFactor = options.fallbackAdvanceFactor ?? FALLBACK_ADVANCE_FACTOR;
+  }
+
+  /** Returns `true` once a WASM module has been successfully loaded. */
+  get isReady(): boolean {
+    return this.wasm !== null;
+  }
+
+  /**
+   * Load a WASM module that exposes the `WasmShaperExports` interface.
+   * Accepts either a fetched URL (resolves a Response) or a raw
+   * ArrayBuffer / TypedArray of the module bytes.
+   *
+   * Resets the cache — fallback measurements are usually very
+   * different from the real ones, so reusing them would produce a
+   * layout pop on the next paint.
+   */
+  async loadModule(
+    source: string | URL | ArrayBuffer | Uint8Array | Response,
+  ): Promise<void> {
+    const bytes = await fetchModuleBytes(source);
+    const { instance } = await WebAssembly.instantiate(bytes, {});
+    this.wasm = instance.exports as unknown as WasmShaperExports;
+    this.cache.clear();
+    this.currentFontKey = null;
+  }
+
+  measure(text: string, font: ShaperFont): { width: number } {
+    const cacheKey = `${fontKey(font)}|${text}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached) {
+      // Promote — Map preserves insertion order, so re-set on hit.
+      this.cache.delete(cacheKey);
+      this.cache.set(cacheKey, cached);
+      return cached;
+    }
+    const result = this.wasm
+      ? this.measureViaWasm(text, font, this.wasm)
+      : this.measureFallback(text, font);
+    if (this.cache.size >= this.cacheSize) {
+      // Evict oldest entry (insertion order is LRU order).
+      const oldest = this.cache.keys().next().value;
+      if (oldest !== undefined) this.cache.delete(oldest);
+    }
+    this.cache.set(cacheKey, result);
+    return result;
+  }
+
+  shape(text: string, font: ShaperFont): readonly ShapedGlyph[] {
+    // No WASM glyph-id mapping — emit one synthetic glyph per code
+    // point so callers that decorate (underline, strikeout) have
+    // positions to work with.
+    const total = this.measure(text, font);
+    const perChar = text.length === 0 ? 0 : total.width / text.length;
+    const out: ShapedGlyph[] = [];
+    for (let i = 0; i < text.length; i++) {
+      out.push({
+        glyphId: text.charCodeAt(i),
+        advance: perChar,
+        x: i * perChar,
+        y: 0,
+      });
+    }
+    return out;
+  }
+
+  private measureFallback(text: string, font: ShaperFont): { width: number } {
+    return { width: text.length * font.size * this.fallbackFactor };
+  }
+
+  private measureViaWasm(
+    text: string,
+    font: ShaperFont,
+    wasm: WasmShaperExports,
+  ): { width: number } {
+    // Update the WASM-side font only when it changes — the setFont
+    // call is the expensive one (the host engine has to re-resolve
+    // the font on every flip).
+    const fkey = fontKey(font);
+    if (fkey !== this.currentFontKey) {
+      const familyBytes = this.textEncoder.encode(font.family);
+      const familyPtr = wasm.alloc(familyBytes.byteLength);
+      const familyView = new Uint8Array(
+        wasm.memory.buffer,
+        familyPtr,
+        familyBytes.byteLength,
+      );
+      familyView.set(familyBytes);
+      wasm.setFont(familyPtr, familyBytes.byteLength, font.size);
+      wasm.free(familyPtr, familyBytes.byteLength);
+      this.currentFontKey = fkey;
+    }
+
+    const textBytes = this.textEncoder.encode(text);
+    const textPtr = wasm.alloc(textBytes.byteLength);
+    const textView = new Uint8Array(wasm.memory.buffer, textPtr, textBytes.byteLength);
+    textView.set(textBytes);
+    const width = wasm.measure(textPtr, textBytes.byteLength);
+    wasm.free(textPtr, textBytes.byteLength);
+    return { width };
+  }
+}
+
+const fontKey = (font: ShaperFont): string =>
+  `${font.family}|${font.size}|${font.weight ?? "normal"}|${font.style ?? "normal"}`;
+
+const fetchModuleBytes = async (
+  source: string | URL | ArrayBuffer | Uint8Array | Response,
+): Promise<ArrayBuffer> => {
+  if (source instanceof ArrayBuffer) return source;
+  if (source instanceof Uint8Array) {
+    return source.buffer.slice(
+      source.byteOffset,
+      source.byteOffset + source.byteLength,
+    ) as ArrayBuffer;
+  }
+  if (source instanceof Response) return source.arrayBuffer();
+  const res = await fetch(source);
+  if (!res.ok) {
+    throw new Error(`WasmTextShaper.loadModule: fetch failed (${res.status})`);
+  }
+  return res.arrayBuffer();
+};
