@@ -6,6 +6,7 @@ import type {
   WorkerRenderResponse,
 } from "@oh-just-another/renderer-core";
 import { Canvas2DTarget } from "./canvas-target.js";
+import { replayCommands, type RenderCommand } from "./recording-target.js";
 
 /**
  * OffscreenCanvas render worker.
@@ -89,9 +90,26 @@ const snapshot = (scene: Scene): void => {
   post({ type: "frame-done", bitmap }, [bitmap as unknown as Transferable]);
 };
 
+/**
+ * Replay a serialised RecordingTarget command stream onto the owned
+ * OffscreenCanvas. Used by the LayeredSurface "offscreen" backend: the
+ * main thread captures every RenderTarget call into a buffer and ships
+ * it here per frame; the worker replays.
+ */
+const replay = (commands: readonly RenderCommand[]): void => {
+  if (!state.target) {
+    post({ type: "error", message: "Worker not initialised" });
+    return;
+  }
+  replayCommands(state.target, commands);
+};
+
+type ReplayMessage = { readonly type: "replay"; readonly commands: readonly RenderCommand[] };
+type InboundMessage = WorkerRenderMessage | ReplayMessage;
+
 (self as unknown as DedicatedWorkerGlobalScope).addEventListener(
   "message",
-  (ev: MessageEvent<WorkerRenderMessage>) => {
+  (ev: MessageEvent<InboundMessage>) => {
     const msg = ev.data;
     try {
       switch (msg.type) {
@@ -105,6 +123,9 @@ const snapshot = (scene: Scene): void => {
           // A dpr update only takes effect on the next resize; snapshot
           // honours whatever transform init established.
           snapshot(msg.scene);
+          break;
+        case "replay":
+          replay(msg.commands);
           break;
         case "frame":
           // Patch-stream frames are not implemented; the protocol is

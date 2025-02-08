@@ -9,7 +9,12 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { installBuiltinRenderers, LayeredCanvas } from "@oh-just-another/renderer-canvas";
+import {
+  createLayeredSurface,
+  installBuiltinRenderers,
+  type LayeredSurface,
+  type RendererBackend,
+} from "@oh-just-another/renderer-canvas";
 import { Editor, type EditorOptions, type Mode } from "@oh-just-another/state";
 import type { Scene } from "@oh-just-another/scene";
 import { DiagramEditorBridge } from "./context.js";
@@ -41,6 +46,24 @@ export interface DiagramRootProps {
   readonly onReady?: (editor: Editor) => void;
   /** Skip the implicit `installBuiltinRenderers()` call. */
   readonly skipInstallRenderers?: boolean;
+  /**
+   * Renderer backend. `"canvas2d"` (default) is the always-safe path;
+   * `"webgl2"` and `"offscreen"` are opt-in and require host support
+   * (the demo wires a switcher to try each at runtime).
+   *
+   * Changing this prop after mount **recreates** the editor and
+   * surface — the host should keep the value stable except when the
+   * user explicitly switches backend.
+   */
+  readonly renderer?: RendererBackend;
+  /**
+   * Worker factory for the `offscreen` backend. Hosts must provide
+   * a function that returns a fresh `Worker` instance pointing at
+   * `@oh-just-another/renderer-canvas`'s `render-worker.ts`. The factory
+   * is bundler-specific (Vite vs webpack vs Rollup all spell the
+   * URL differently), so the kernel never ships a default.
+   */
+  readonly workerFactory?: () => Worker;
 }
 
 export const DiagramRoot = ({
@@ -49,81 +72,110 @@ export const DiagramRoot = ({
   children,
   onReady,
   skipInstallRenderers,
+  renderer = "canvas2d",
+  workerFactory,
 }: DiagramRootProps) => {
   const [editor, setEditor] = useState<Editor | null>(null);
   const editorRef = useRef<Editor | null>(null);
-  const layeredRef = useRef<LayeredCanvas | null>(null);
+  const surfaceRef = useRef<LayeredSurface | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
+  const hostRef = useRef<HTMLElement | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  // The factory ref keeps `registerSurface`'s deps stable while
+  // still letting renderer/backend reactivity below see the latest
+  // values when it re-mounts the surface.
+  const rendererRef = useRef<RendererBackend>(renderer);
+  const workerFactoryRef = useRef<(() => Worker) | undefined>(workerFactory);
+  rendererRef.current = renderer;
+  workerFactoryRef.current = workerFactory;
 
-  const registerSurface = useCallback<RegisterSurface>((host) => {
-    // Tear down any existing editor first — handles dev-mode double effects
-    // and the host swapping for any reason. `LayeredCanvas.dispose()` is
-    // crucial: it removes the three <canvas> children it appended to the
-    // host, otherwise React's StrictMode double-mount in dev would leave
-    // a stale set of canvases behind and we'd see "ghost" shapes from the
-    // previous render pipeline.
-    observerRef.current?.disconnect();
-    observerRef.current = null;
-    editorRef.current?.dispose();
-    editorRef.current = null;
-    layeredRef.current?.dispose();
-    layeredRef.current = null;
-
-    if (!host) {
-      setEditor(null);
-      return;
-    }
-
+  const mountSurface = useCallback((host: HTMLElement) => {
     if (!skipInstallRenderers) installBuiltinRenderers();
 
     const { width, height } = host.getBoundingClientRect();
-    const layered = new LayeredCanvas(host, width, height);
+    const surface = createLayeredSurface(host, width, height, {
+      backend: rendererRef.current,
+      ...(workerFactoryRef.current ? { workerFactory: workerFactoryRef.current } : {}),
+    });
     const opts: EditorOptions = {
       host,
-      mainTarget: layered.get("main"),
-      overlayTarget: layered.get("overlay"),
-      backgroundTarget: layered.get("background"),
+      mainTarget: surface.get("main"),
+      overlayTarget: surface.get("overlay"),
+      backgroundTarget: surface.get("background"),
       initialScene,
       ...(initialMode !== undefined ? { initialMode } : {}),
     };
     const e = new Editor(opts);
-    // Sync viewport size to actual canvas dimensions — without this
-    // `Editor.computeViewportWorld()` uses a stale value from
-    // `initialScene.viewport.size` (host often seeds 0x0 or
-    // legacy hardcoded), which leads to under-coverage of the culling rect and
-    // shapes outside this rect are not rendered.
     e.setViewportSize(width, height);
 
-    layeredRef.current = layered;
+    surfaceRef.current = surface;
     editorRef.current = e;
     setEditor(e);
     onReady?.(e);
 
+    // Backends with deferred submission (offscreen) need a flush
+    // hook after every Editor frame. Subscribe to `onChange` and
+    // present at the next microtask so Editor's internal rAF has
+    // already painted into the RecordingTargets.
+    const subscribe = e.subscribe(() => {
+      queueMicrotask(() => surfaceRef.current?.present());
+    });
+    unsubscribeRef.current = subscribe;
+    surface.present();
+
     const ro = new ResizeObserver(() => {
       const next = host.getBoundingClientRect();
-      layered.resize(next.width, next.height);
+      surface.resize(next.width, next.height);
       e.setViewportSize(next.width, next.height);
       e.setMode(e.mode); // forces a re-render at the new size
     });
     ro.observe(host);
     observerRef.current = ro;
-    // Intentional empty deps — registerSurface is a stable callback for the
-    // whole DiagramRoot lifetime; initialScene/initialMode are read once on
-    // first mount and changed thereafter via the editor API.
   }, []);
+
+  const teardownSurface = useCallback(() => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = null;
+    editorRef.current?.dispose();
+    editorRef.current = null;
+    surfaceRef.current?.dispose();
+    surfaceRef.current = null;
+  }, []);
+
+  const registerSurface = useCallback<RegisterSurface>(
+    (host) => {
+      teardownSurface();
+      hostRef.current = host;
+      if (!host) {
+        setEditor(null);
+        return;
+      }
+      mountSurface(host);
+    },
+    [mountSurface, teardownSurface],
+  );
+
+  // Re-mount the surface when the host swaps backends at runtime.
+  // The first mount is driven by `registerSurface`; subsequent
+  // backend changes need an explicit tear-down + remount because
+  // `LayeredSurface` ownership is per-backend.
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    teardownSurface();
+    mountSurface(host);
+  }, [renderer, mountSurface, teardownSurface]);
 
   // Make sure the editor is disposed if `<DiagramRoot>` unmounts even if
   // no surface registered an unmount first (defensive).
   useLayoutEffect(() => {
     return () => {
-      observerRef.current?.disconnect();
-      editorRef.current?.dispose();
-      layeredRef.current?.dispose();
-      observerRef.current = null;
-      editorRef.current = null;
-      layeredRef.current = null;
+      teardownSurface();
+      hostRef.current = null;
     };
-  }, []);
+  }, [teardownSurface]);
 
   return (
     <DiagramEditorBridge.Provider value={editor}>

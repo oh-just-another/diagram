@@ -11,6 +11,17 @@ export {
 } from "./offscreen.js";
 export { WorkerPool } from "./worker-pool.js";
 export { LayerWorkerPool } from "./layer-worker-pool.js";
+export {
+  RecordingTarget,
+  replayCommands,
+  type RenderCommand,
+} from "./recording-target.js";
+export {
+  createLayeredSurface,
+  type LayeredSurface,
+  type RendererBackend,
+  type CreateLayeredSurfaceOptions,
+} from "./layered-surface.js";
 export { LARGE_SCENE_WORKER_THRESHOLD } from "./constants.js";
 
 // `installBuiltinRenderers` and `wrapText` live in

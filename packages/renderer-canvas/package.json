@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-canvas",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "description": "renderer-canvas package",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,7 +10,12 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./render-worker": {
+      "types": "./dist/render-worker.d.ts",
+      "import": "./dist/render-worker.js"
+    },
+    "./dist/render-worker.js": "./dist/render-worker.js"
   },
   "files": [
     "dist",

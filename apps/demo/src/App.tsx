@@ -40,7 +40,13 @@ import { importIntoStore, serializeStore, SnapshotStore } from "@oh-just-another
 import { setupTemplates } from "./templates";
 import { useTheme } from "./theme";
 import { useHotkeys } from "./hotkeys";
-import { RENDERER_LABEL, RENDERER_MODE } from "./renderer-mode";
+import {
+  persistRendererMode,
+  readInitialRendererMode,
+  type RendererMode,
+} from "./renderer-mode";
+import { RendererSwitcher } from "./renderer-switcher";
+import { createRenderWorker } from "./render-worker-factory";
 import { HistoryPanel } from "./HistoryPanel";
 import { useCollab } from "./collab";
 import { Peers } from "./Peers";
@@ -122,6 +128,11 @@ export const App = () => {
   const initialScene = useMemo(() => (isCollab ? seedScene() : restoreScene()), [isCollab]);
   const { theme, toggle } = useTheme();
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [rendererMode, setRendererMode] = useState<RendererMode>(() => readInitialRendererMode());
+  const handleRendererChange = useCallback((next: RendererMode) => {
+    setRendererMode(next);
+    persistRendererMode(next);
+  }, []);
   useHotkeys(editor);
   const { room, awareness, status } = useCollab(editor);
   // Snapshot store with localStorage persistence. Loaded once on
@@ -195,21 +206,7 @@ export const App = () => {
           >
             Diagram demo
           </h1>
-          <span
-            style={{
-              fontSize: 10,
-              padding: "2px 6px",
-              borderRadius: 3,
-              background: "var(--button-bg, #2a2a2a)",
-              color: "var(--muted, #aaa)",
-              border: "1px solid var(--border, #333)",
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-            }}
-            title={`Renderer backend chosen via VITE_RENDERER=${RENDERER_MODE}`}
-          >
-            {RENDERER_LABEL[RENDERER_MODE]}
-          </span>
+          <RendererSwitcher value={rendererMode} onChange={handleRendererChange} />
           {room ? (
             <span
               style={{
@@ -254,7 +251,14 @@ export const App = () => {
         </div>
       </header>
 
-      <DiagramRoot initialScene={initialScene} initialMode="select" onReady={setEditor}>
+      <DiagramRoot
+        key={rendererMode}
+        initialScene={initialScene}
+        initialMode="select"
+        onReady={setEditor}
+        renderer={rendererMode}
+        {...(rendererMode === "offscreen" ? { workerFactory: createRenderWorker } : {})}
+      >
         {isCollab ? null : <PersistSubscriber />}
         <TemplateActionListener />
         <main

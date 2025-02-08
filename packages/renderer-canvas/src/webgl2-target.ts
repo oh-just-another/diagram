@@ -88,6 +88,18 @@ export class WebGL2Target implements RenderTarget {
     return this._size;
   }
 
+  /**
+   * Update the recorded CSS-pixel size after the host resizes the
+   * underlying canvas. Callers handle `setupHiDpi` / `gl.viewport`
+   * updates on the actual canvas; this keeps the target's `size` getter
+   * in sync so downstream renderers see the new dimensions.
+   */
+  resize(width: number, height: number): void {
+    this._size.width = width;
+    this._size.height = height;
+    this.gl.viewport(0, 0, width, height);
+  }
+
   // --- Style ---
 
   setFill(color: Color | null): void {

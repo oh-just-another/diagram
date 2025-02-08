@@ -470,3 +470,6 @@
 
 ## 0.27.0
 - text-wasm + raster-wasm: new L5 WASM-backend packages
+
+## 0.28.0
+- demo: dropdown + URL/localStorage for on-the-fly switch renderer
