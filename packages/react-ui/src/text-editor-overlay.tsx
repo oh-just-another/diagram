@@ -28,9 +28,17 @@ export const TextEditorOverlay = () => {
     const t = setTimeout(() => {
       ref.current?.focus();
       ref.current?.select();
+      autoResize(ref.current);
     }, 0);
     return () => clearTimeout(t);
   }, [editingId, scene]);
+
+  // Re-fit on every keystroke. Auto-resize collapses to scrollHeight
+  // so the box grows as the user types instead of scrolling inside
+  // a fixed height.
+  useEffect(() => {
+    autoResize(ref.current);
+  }, [draft]);
 
   if (!editor || !editingId) return null;
 
@@ -89,4 +97,16 @@ export const TextEditorOverlay = () => {
       aria-label="Edit text"
     />
   );
+};
+
+/**
+ * Resize `<textarea>` to fit its content. Sets `height = auto`
+ * first so `scrollHeight` reports the natural content height
+ * instead of the previous over-allocated value, then bumps to
+ * `scrollHeight`. Skips when `el` is null (initial render).
+ */
+const autoResize = (el: HTMLTextAreaElement | null): void => {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
 };

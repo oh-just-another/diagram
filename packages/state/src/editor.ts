@@ -3283,12 +3283,19 @@ export class Editor {
       }
     }
 
-    // Double-click on a shape that has a group ancestor → drill into
-    // that group. Only matters when the click effect was a single-
-    // shape SELECT_REPLACE / SELECT_TOGGLE (lasso / edge ops are not
-    // group-promote candidates).
+    // Double-click handling for SELECT_REPLACE / SELECT_TOGGLE
+    // effects. Two outcomes, in priority order:
+    //   1) text shape → open inline text editor (highest priority —
+    //      double-clicking text in any editor means "edit the body");
+    //   2) shape with a group ancestor → drill into that group.
+    // Lasso / edge ops are not double-click candidates and fall
+    // through to the normal single-click handler.
     if (isDouble && (clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE")) {
       const raw = this.acceleratedShapeAt(worldPoint);
+      if (raw?.type === "text") {
+        this.beginTextEdit(raw.id);
+        return true;
+      }
       if (raw) {
         const top = this.topGroupAncestor(raw);
         // If the topmost group is the one we've already entered, drill
