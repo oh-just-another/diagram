@@ -6,8 +6,8 @@ import type { Patch } from "@oh-just-another/scene";
 const EMPTY_STACKS = { past: [] as readonly Patch[], future: [] as readonly Patch[] };
 
 const selectStacks = (e: Editor): { past: readonly Patch[]; future: readonly Patch[] } => ({
-  past: e.history.undoStack,
-  future: e.history.redoStack,
+  past: e.history.undoStack ?? [],
+  future: e.history.redoStack ?? [],
 });
 
 export const HistoryPanel = () => {

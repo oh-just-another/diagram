@@ -4,7 +4,7 @@ import {
   updateShape,
   type Scene,
 } from "@oh-just-another/scene";
-import type { History } from "@oh-just-another/history";
+import type { HistoryProvider } from "@oh-just-another/history";
 
 /**
  * Frame helpers. Two distinct concerns: choosing a free auto-name
@@ -41,7 +41,7 @@ export const nextFrameName = (scene: Scene): string => {
  */
 export const assignFrameMembers = (
   scene: Scene,
-  history: History,
+  history: HistoryProvider,
   frameId: ShapeId,
   frameBounds: Bounds,
 ): Scene => {

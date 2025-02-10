@@ -22,4 +22,14 @@ export interface HistoryProvider {
   transaction(): TransactionHandle;
   /** Number of past patches, exposed for UI counters. */
   readonly size: number;
+  /**
+   * Optional inspection hooks for UIs that visualise the undo timeline
+   * (`<HistoryPanel>`). The linear `History` exposes both as native arrays;
+   * `YjsHistory` leaves them `undefined` because `Y.UndoManager`'s `undoStack`
+   * items are opaque `StackItem`s, not `Patch`es. Hosts that depend on a
+   * specific stack representation should narrow to the implementation they
+   * instantiate.
+   */
+  readonly undoStack?: readonly Patch[];
+  readonly redoStack?: readonly Patch[];
 }

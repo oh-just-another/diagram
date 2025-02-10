@@ -15,3 +15,6 @@ export type {
   MergeReport,
 } from "./merge.js";
 export { BranchDoc } from "./branch-doc.js";
+
+// Y.UndoManager-based history backend.
+export { YjsHistory, type YjsHistoryOptions } from "./yjs-history.js";

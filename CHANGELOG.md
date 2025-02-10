@@ -475,3 +475,6 @@
 - demo: dropdown + URL/localStorage for on-the-fly switch renderer
 ## 0.28.1
 - state + react-ui: double-click text Right inline edit + auto-resize
+
+## 0.28.2
+- state + collab: pluggable HistoryProvider + YjsHistory

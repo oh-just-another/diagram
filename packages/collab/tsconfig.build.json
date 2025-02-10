@@ -10,6 +10,7 @@
   "references": [
     { "path": "../types/tsconfig.build.json" },
     { "path": "../scene/tsconfig.build.json" },
+    { "path": "../history/tsconfig.build.json" },
     { "path": "../state/tsconfig.build.json" },
     { "path": "../serialization/tsconfig.build.json" },
     { "path": "../network/tsconfig.build.json" }

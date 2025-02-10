@@ -87,7 +87,12 @@ import {
   ShapeCache,
   type RenderTarget,
 } from "@oh-just-another/renderer-core";
-import { History, type HistoryOptions, type TransactionHandle } from "@oh-just-another/history";
+import {
+  History,
+  type HistoryOptions,
+  type HistoryProvider,
+  type TransactionHandle,
+} from "@oh-just-another/history";
 import { fromPointerEvent } from "./dom-events.js";
 import {
   FileDropRegistry,
@@ -183,8 +188,13 @@ export interface EditorOptions {
   readonly backgroundTarget?: RenderTarget;
   readonly initialScene: Scene;
   readonly initialMode?: Mode;
-  /** Pre-existing history instance, or options for one. */
-  readonly history?: History | HistoryOptions;
+  /**
+   * Pre-existing history backend, or options for the default
+   * `History` (linear stack). Any `HistoryProvider` implementation
+   * works — `@oh-just-another/collab` ships `YjsHistory` that wraps
+   * `Y.UndoManager` for CRDT-aware undo in collaborative sessions.
+   */
+  readonly history?: HistoryProvider | HistoryOptions;
   /**
    * Primary input modality. Affects hit-test slop on handles and edges
    * so a finger can grab them without precision-pointing.
@@ -613,7 +623,7 @@ export class Editor {
   private readonly edgeHandleHitSlop: number;
   private readonly edgeHitThreshold: number;
 
-  private readonly _history: History;
+  private readonly _history: HistoryProvider;
   /** Open transaction during a single drag/resize gesture. */
   private gestureTx: TransactionHandle | null = null;
 
@@ -623,8 +633,9 @@ export class Editor {
     this.overlayTarget = options.overlayTarget;
     this.backgroundTarget = options.backgroundTarget ?? null;
     this._scene = options.initialScene;
-    this._history =
-      options.history instanceof History ? options.history : new History(options.history ?? {});
+    this._history = isHistoryProvider(options.history)
+      ? options.history
+      : new History(options.history ?? {});
     this.tileComposeFn =
       options.useTileCache === true && options.tileCompose ? options.tileCompose : null;
 
@@ -688,7 +699,7 @@ export class Editor {
   get mode(): Mode {
     return this.actor.getSnapshot().context.mode;
   }
-  get history(): History {
+  get history(): HistoryProvider {
     return this._history;
   }
   get canUndo(): boolean {
@@ -4542,6 +4553,25 @@ const hasWidthHeight = (s: Shape): s is Shape & { width: number; height: number 
 const pressureToWidth = (pressure: number): number => {
   if (pressure <= 0) return DEFAULT_BRUSH_WIDTH;
   return Math.max(0.5, pressure * MAX_BRUSH_WIDTH);
+};
+
+/**
+ * Type guard — `true` when the value already implements the
+ * `HistoryProvider` surface. Used to decide between "host supplied
+ * an existing backend (use it as-is)" and "host supplied options
+ * (build a default `History`)". Checks the methods that every
+ * provider must expose; missing methods → treat as options.
+ */
+const isHistoryProvider = (
+  value: HistoryProvider | HistoryOptions | undefined,
+): value is HistoryProvider => {
+  if (!value || typeof value !== "object") return false;
+  return (
+    typeof (value as HistoryProvider).push === "function" &&
+    typeof (value as HistoryProvider).undo === "function" &&
+    typeof (value as HistoryProvider).redo === "function" &&
+    typeof (value as HistoryProvider).transaction === "function"
+  );
 };
 
 const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));

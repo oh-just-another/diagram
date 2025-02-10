@@ -1,5 +1,6 @@
 import { batch, invert, isNoop, type Patch } from "@oh-just-another/scene";
 import { mergeByEntity } from "./merge.js";
+import type { HistoryProvider } from "./provider.js";
 
 export interface HistoryOptions {
   /**
@@ -23,7 +24,7 @@ export interface HistoryOptions {
  *
  * The redo stack is cleared on any non-undo `push`.
  */
-export class History {
+export class History implements HistoryProvider {
   private readonly past: Patch[] = [];
   private readonly future: Patch[] = [];
   private readonly limit: number;

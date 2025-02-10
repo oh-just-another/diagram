@@ -6,7 +6,7 @@ import {
   type Scene,
   type Shape,
 } from "@oh-just-another/scene";
-import type { History } from "@oh-just-another/history";
+import type { HistoryProvider } from "@oh-just-another/history";
 
 /**
  * Clipboard helpers.
@@ -55,7 +55,7 @@ export const copyShapes = (
  */
 export const pasteShapes = (
   scene: Scene,
-  history: History,
+  history: HistoryProvider,
   clipboard: readonly Shape[],
   target: Vec2 | null,
   genId: () => ShapeId,
