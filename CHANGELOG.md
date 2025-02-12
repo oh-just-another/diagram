@@ -478,3 +478,6 @@
 
 ## 0.28.2
 - state + collab: pluggable HistoryProvider + YjsHistory
+
+## 0.28.3
+- scene: pluggable layout kind registry

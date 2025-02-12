@@ -5,6 +5,7 @@ import type { Shape } from "./shape.js";
 import { getShape, getShapesInLayer } from "./queries.js";
 import { updateShape, type OperationResult } from "./operations.js";
 import { batch, type Patch } from "./patch.js";
+import { getLayoutKind } from "./layout-registry.js";
 
 /**
  * Pure layout function. Computes new positions for a subset of shapes
@@ -168,6 +169,17 @@ export const getAutoLayoutSpec = (shape: Shape): AutoLayoutSpec | null => {
       ...(typeof treeRaw.nodesep === "number" ? { nodesep: treeRaw.nodesep } : {}),
     };
   }
+  // Plugin kinds — consult the registry. Returns an opaque-typed
+  // spec; `runAutoLayout` re-resolves the entry and dispatches.
+  if (typeof raw.kind === "string") {
+    const entry = getLayoutKind(raw.kind);
+    if (entry) {
+      const parsed = entry.parse(m);
+      if (parsed !== null) {
+        return { ...(parsed as object), kind: raw.kind } as unknown as AutoLayoutSpec;
+      }
+    }
+  }
   return null;
 };
 
@@ -213,12 +225,24 @@ export const runAutoLayout = (scene: Scene, parentId: ShapeId): Patch | null => 
       ...(spec.gap !== undefined ? { gap: spec.gap } : {}),
     });
   }
-  return treeLayout(scene, {
-    shapeIds: children,
-    origin,
-    ...(spec.ranksep !== undefined ? { ranksep: spec.ranksep } : {}),
-    ...(spec.nodesep !== undefined ? { nodesep: spec.nodesep } : {}),
-  });
+  if (spec.kind === "tree") {
+    return treeLayout(scene, {
+      shapeIds: children,
+      origin,
+      ...(spec.ranksep !== undefined ? { ranksep: spec.ranksep } : {}),
+      ...(spec.nodesep !== undefined ? { nodesep: spec.nodesep } : {}),
+    });
+  }
+  // Plugin kinds — TS narrowed `spec` to `never` after exhausting
+  // the closed union, so cast back to `{ kind }` to ask the
+  // registry. Hosts can register layouts like "radial" without
+  // editing the closed `AutoLayoutSpec` union.
+  const pluginSpec = spec as { readonly kind: string };
+  const entry = getLayoutKind(pluginSpec.kind);
+  if (entry) {
+    return entry.run(scene, parentId, children, origin, pluginSpec);
+  }
+  return null;
 };
 
 // --- tree layout ---

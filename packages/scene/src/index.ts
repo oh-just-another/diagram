@@ -173,6 +173,13 @@ export {
   getAutoLayoutSpec,
   runAutoLayout,
 } from "./layout.js";
+export type { LayoutKindEntry } from "./layout-registry.js";
+export {
+  registerLayoutKind,
+  unregisterLayoutKind,
+  getLayoutKind,
+  listLayoutKinds,
+} from "./layout-registry.js";
 
 // Tunable thresholds.
 export { SNAP_PROBE_CULL_RADIUS } from "./constants.js";
