@@ -481,3 +481,6 @@
 
 ## 0.28.3
 - scene: pluggable layout kind registry
+
+## 0.28.4
+- state: share SpatialGrid between hit-test and renderScene

@@ -3233,13 +3233,25 @@ export class Editor {
     if (this._scene.shapes.size < LARGE_SCENE_HIT_THRESHOLD) {
       return getShapeAt(this._scene, worldPoint);
     }
+    return getShapeAtIndexed(this._scene, this.ensureSpatialIndex(), worldPoint);
+  }
+
+  /**
+   * Build (or return the cached) `SpatialGrid` for the current scene.
+   * Re-built only when `_scene` reference changes — scene operations
+   * always produce a fresh object, so reference equality is a
+   * sufficient invalidation signal.
+   *
+   * Shared between the hit-test path (`acceleratedShapeAt`) and the
+   * renderer pass (passed to `renderScene` as `spatialIndex`), so
+   * the grid build cost is amortised across both consumers.
+   */
+  private ensureSpatialIndex(): SpatialGrid {
     const cached = this.spatialIndexCache;
-    if (cached && cached.scene === this._scene) {
-      return getShapeAtIndexed(this._scene, cached.index, worldPoint);
-    }
+    if (cached && cached.scene === this._scene) return cached.index;
     const index = buildSpatialIndex(this._scene);
     this.spatialIndexCache = { scene: this._scene, index };
-    return getShapeAtIndexed(this._scene, index, worldPoint);
+    return index;
   }
 
   /**
@@ -4427,6 +4439,14 @@ export class Editor {
         ...(viewportWorld ? { viewportWorld } : {}),
       });
     } else {
+      // For very large scenes share the same SpatialGrid the hit-test
+      // path already maintains — `renderScene` uses it to skip the
+      // per-shape AABB cull on shapes outside the viewport. Free win
+      // because the grid is already built / cached for hit-tests.
+      const sharedIndex =
+        this._scene.shapes.size >= LARGE_SCENE_HIT_THRESHOLD
+          ? this.ensureSpatialIndex()
+          : null;
       renderScene(this._scene, this.mainTarget, {
         ...(viewportWorld ? { viewport: viewportWorld } : {}),
         ...(dirtyWorld ? { dirtyWorld } : {}),
@@ -4434,6 +4454,7 @@ export class Editor {
         lod: DEFAULT_LOD,
         ...(dimShapes ? { dimShapes, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
         ...(hideShapes ? { hideShapes } : {}),
+        ...(sharedIndex ? { spatialIndex: sharedIndex } : {}),
       });
       renderEdges(this._scene, this.mainTarget, {
         ...(viewportWorld ? { viewportWorld } : {}),
