@@ -83,6 +83,37 @@ export const createLayeredSurface = (
   }
 };
 
+/**
+ * Build the requested surface and fall back to `canvas2d` if the
+ * opt-in backend throws (no WebGL2 / no OffscreenCanvas / per-page
+ * WebGL context limit hit). On fallback, `onFallback` is invoked
+ * with the original error so the host can surface a toast / log.
+ *
+ * Use this when the backend is user-controlled (demo dropdown,
+ * URL param) so a misclick doesn't crash the React tree. Hosts
+ * that want hard failures should call `createLayeredSurface`
+ * directly and handle the throw themselves.
+ */
+export const createLayeredSurfaceWithFallback = (
+  host: HTMLElement,
+  width: number,
+  height: number,
+  options: CreateLayeredSurfaceOptions = {},
+  onFallback?: (backend: RendererBackend, error: unknown) => void,
+): { surface: LayeredSurface; effectiveBackend: RendererBackend } => {
+  const requested = options.backend ?? "canvas2d";
+  try {
+    return { surface: createLayeredSurface(host, width, height, options), effectiveBackend: requested };
+  } catch (err) {
+    if (requested === "canvas2d") throw err;
+    onFallback?.(requested, err);
+    return {
+      surface: createLayeredSurface(host, width, height, { ...options, backend: "canvas2d" }),
+      effectiveBackend: "canvas2d",
+    };
+  }
+};
+
 /** Canvas2D surface — wraps `LayeredCanvas` (3× Canvas2DTarget). */
 class Canvas2DLayeredSurface implements LayeredSurface {
   readonly backend = "canvas2d" as const;
@@ -131,18 +162,28 @@ class WebGL2LayeredSurface implements LayeredSurface {
     if (getComputedStyle(host).position === "static") {
       host.style.position = "relative";
     }
-    for (const name of LAYER_ORDER) {
-      const canvas = host.ownerDocument.createElement("canvas");
-      canvas.dataset.layer = name;
-      canvas.dataset.backend = "webgl2";
-      canvas.style.position = "absolute";
-      canvas.style.inset = "0";
-      canvas.style.pointerEvents = name === "overlay" ? "auto" : "none";
-      host.appendChild(canvas);
-      setupHiDpi(canvas, width, height);
-      const target = new WebGL2Target(canvas, width, height);
-      this.canvases.set(name, canvas);
-      this.targets.set(name, target);
+    try {
+      for (const name of LAYER_ORDER) {
+        const canvas = host.ownerDocument.createElement("canvas");
+        canvas.dataset.layer = name;
+        canvas.dataset.backend = "webgl2";
+        canvas.style.position = "absolute";
+        canvas.style.inset = "0";
+        canvas.style.pointerEvents = name === "overlay" ? "auto" : "none";
+        host.appendChild(canvas);
+        setupHiDpi(canvas, width, height);
+        const target = new WebGL2Target(canvas, width, height);
+        this.canvases.set(name, canvas);
+        this.targets.set(name, target);
+      }
+    } catch (err) {
+      // Partial init failure (most common: browser refused to give
+      // out another WebGL context, or no WebGL2 at all). Roll back
+      // every canvas we already appended so the host isn't left
+      // with orphan DOM, then re-throw — the host falls back to
+      // canvas2d via createLayeredSurface's catch.
+      this.dispose();
+      throw err;
     }
   }
 
@@ -173,6 +214,7 @@ class WebGL2LayeredSurface implements LayeredSurface {
     // commit immediately, so there's nothing left to flush per frame.
   }
   dispose(): void {
+    for (const target of this.targets.values()) target.dispose();
     for (const canvas of this.canvases.values()) canvas.remove();
     this.canvases.clear();
     this.targets.clear();
@@ -215,27 +257,32 @@ class OffscreenLayeredSurface implements LayeredSurface {
       host.style.position = "relative";
     }
 
-    for (const name of LAYER_ORDER) {
-      const canvas = host.ownerDocument.createElement("canvas");
-      canvas.dataset.layer = name;
-      canvas.dataset.backend = "offscreen";
-      canvas.style.position = "absolute";
-      canvas.style.inset = "0";
-      canvas.style.pointerEvents = name === "overlay" ? "auto" : "none";
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      host.appendChild(canvas);
+    try {
+      for (const name of LAYER_ORDER) {
+        const canvas = host.ownerDocument.createElement("canvas");
+        canvas.dataset.layer = name;
+        canvas.dataset.backend = "offscreen";
+        canvas.style.position = "absolute";
+        canvas.style.inset = "0";
+        canvas.style.pointerEvents = name === "overlay" ? "auto" : "none";
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        host.appendChild(canvas);
 
-      const worker = workerFactory();
-      const offscreen = canvas.transferControlToOffscreen();
-      worker.postMessage(
-        { type: "init", canvas: offscreen, width, height, dpr: this.dpr },
-        [offscreen],
-      );
+        const worker = workerFactory();
+        const offscreen = canvas.transferControlToOffscreen();
+        worker.postMessage(
+          { type: "init", canvas: offscreen, width, height, dpr: this.dpr },
+          [offscreen],
+        );
 
-      this.canvases.set(name, canvas);
-      this.workers.set(name, worker);
-      this.targets.set(name, new RecordingTarget(width, height));
+        this.canvases.set(name, canvas);
+        this.workers.set(name, worker);
+        this.targets.set(name, new RecordingTarget(width, height));
+      }
+    } catch (err) {
+      this.dispose();
+      throw err;
     }
   }
 

@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import {
-  createLayeredSurface,
+  createLayeredSurfaceWithFallback,
   installBuiltinRenderers,
   type LayeredSurface,
   type RendererBackend,
@@ -93,10 +93,26 @@ export const DiagramRoot = ({
     if (!skipInstallRenderers) installBuiltinRenderers();
 
     const { width, height } = host.getBoundingClientRect();
-    const surface = createLayeredSurface(host, width, height, {
-      backend: rendererRef.current,
-      ...(workerFactoryRef.current ? { workerFactory: workerFactoryRef.current } : {}),
-    });
+    const { surface, effectiveBackend } = createLayeredSurfaceWithFallback(
+      host,
+      width,
+      height,
+      {
+        backend: rendererRef.current,
+        ...(workerFactoryRef.current ? { workerFactory: workerFactoryRef.current } : {}),
+      },
+      (requested, err) => {
+        // Backend unavailable (no WebGL2 / OffscreenCanvas / context
+        // limit hit). The fallback already returned a canvas2d
+        // surface; log so dev tools surface the reason. Hosts that
+        // want a toast can read `editor.host.dataset.effectiveBackend`.
+        console.warn(
+          `[DiagramRoot] ${requested} renderer unavailable, falling back to canvas2d:`,
+          err,
+        );
+      },
+    );
+    host.dataset.effectiveBackend = effectiveBackend;
     const opts: EditorOptions = {
       host,
       mainTarget: surface.get("main"),

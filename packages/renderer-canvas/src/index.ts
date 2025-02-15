@@ -18,6 +18,7 @@ export {
 } from "./recording-target.js";
 export {
   createLayeredSurface,
+  createLayeredSurfaceWithFallback,
   type LayeredSurface,
   type RendererBackend,
   type CreateLayeredSurfaceOptions,

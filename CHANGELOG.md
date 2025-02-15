@@ -484,3 +484,6 @@
 
 ## 0.28.4
 - state: share SpatialGrid between hit-test and renderScene
+
+## 0.28.5
+- fix: graceful renderer-backend fallback + WebGL2 context cleanup

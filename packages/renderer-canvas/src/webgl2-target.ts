@@ -100,6 +100,17 @@ export class WebGL2Target implements RenderTarget {
     this.gl.viewport(0, 0, width, height);
   }
 
+  /**
+   * Free the underlying WebGL context immediately. Browsers cap the
+   * number of live WebGL contexts per page (~16 in Chrome); without
+   * `WEBGL_lose_context`, GC can take a while to collect old surfaces
+   * and runtime backend switches quickly hit the cap.
+   */
+  dispose(): void {
+    const lose = this.gl.getExtension("WEBGL_lose_context");
+    lose?.loseContext();
+  }
+
   // --- Style ---
 
   setFill(color: Color | null): void {
