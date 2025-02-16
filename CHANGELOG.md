@@ -487,3 +487,6 @@
 
 ## 0.28.5
 - fix: graceful renderer-backend fallback + WebGL2 context cleanup
+
+## 0.28.6
+- react-ui: axe-core a11y sweep + WCAG AA contrast tests
