@@ -490,3 +490,6 @@
 
 ## 0.28.6
 - react-ui: axe-core a11y sweep + WCAG AA contrast tests
+
+## 0.28.7
+- e2e: persistence + collab smoke specs
