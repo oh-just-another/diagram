@@ -493,3 +493,6 @@
 
 ## 0.28.7
 - e2e: persistence + collab smoke specs
+
+## 0.28.8
+- exporter + react-ui: frame export crop + <FramePanel>

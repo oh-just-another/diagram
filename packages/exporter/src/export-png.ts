@@ -1,6 +1,6 @@
 import type { Scene } from "@oh-just-another/scene";
 import { renderToPng } from "@oh-just-another/headless";
-import { resolveScene, sceneForRegion } from "./region.js";
+import { resolveScene, sceneForFrame, sceneForRegion } from "./region.js";
 import { setPngDpi } from "./png-dpi.js";
 import type { ExportPngOptions } from "./options.js";
 
@@ -18,7 +18,9 @@ export const exportPng = async (
   options: ExportPngOptions = {},
 ): Promise<Uint8Array> => {
   const resolved = resolveScene(scene);
-  const cropped = sceneForRegion(resolved, options.region);
+  const cropped = options.frameId
+    ? sceneForFrame(resolved, options.frameId) ?? sceneForRegion(resolved, options.region)
+    : sceneForRegion(resolved, options.region);
 
   const renderOpts: {
     width?: number;

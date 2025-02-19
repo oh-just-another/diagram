@@ -1,6 +1,6 @@
 import type { Scene } from "@oh-just-another/scene";
 import { renderToSvg } from "@oh-just-another/headless";
-import { resolveScene, sceneForRegion } from "./region.js";
+import { resolveScene, sceneForFrame, sceneForRegion } from "./region.js";
 import type { ExportPdfOptions, PdfPageSize } from "./options.js";
 
 // Both deps are loaded lazily so the SVG / PNG paths don't pull pdfkit's
@@ -39,7 +39,9 @@ export const exportPdf = async (
   const { PDFDocument, svgToPdfKit } = await loadPdfDeps();
 
   const resolved = resolveScene(scene);
-  const cropped = sceneForRegion(resolved, options.region);
+  const cropped = options.frameId
+    ? sceneForFrame(resolved, options.frameId) ?? sceneForRegion(resolved, options.region)
+    : sceneForRegion(resolved, options.region);
 
   const svgWidth = options.width ?? cropped.viewport.size.width;
   const svgHeight = options.height ?? cropped.viewport.size.height;

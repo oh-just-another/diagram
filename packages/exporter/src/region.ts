@@ -1,5 +1,5 @@
-import type { Bounds } from "@oh-just-another/types";
-import type { Scene } from "@oh-just-another/scene";
+import type { Bounds, ShapeId } from "@oh-just-another/types";
+import { getShape, getShapeWorldBounds, type Scene, type Shape } from "@oh-just-another/scene";
 import { parseScene } from "@oh-just-another/serialization";
 import type { ExportRegion } from "./options.js";
 
@@ -36,6 +36,39 @@ export const sceneForRegion = (scene: Scene, region: ExportRegion | undefined): 
       ...scene.viewport,
       pan: { x: -region.x, y: -region.y },
       size: { width: region.width, height: region.height },
+    },
+  };
+};
+
+/**
+ * Clip the scene to shapes whose `frameId` matches the given id, and shift
+ * the viewport so the frame's world bbox lands at the renderer's origin.
+ * Returns `null` when the frame doesn't exist or isn't a `"frame"` shape,
+ * letting callers fall back to `sceneForRegion`.
+ *
+ * Layers, edges and annotations are retained unchanged (edges with one
+ * endpoint outside the frame are still rendered; the render-time
+ * `viewportWorld` cull drops the off-screen parts). Only shapes are filtered.
+ */
+export const sceneForFrame = (scene: Scene, frameId: ShapeId): Scene | null => {
+  const frame = getShape(scene, frameId);
+  if (!frame || frame.type !== "frame") return null;
+  const bounds = getShapeWorldBounds(frame);
+
+  const shapes = new Map<ShapeId, Shape>();
+  for (const s of scene.shapes.values()) {
+    if (s.id === frameId) continue;
+    if (s.frameId !== frameId) continue;
+    shapes.set(s.id, s);
+  }
+
+  return {
+    ...scene,
+    shapes,
+    viewport: {
+      ...scene.viewport,
+      pan: { x: -bounds.x, y: -bounds.y },
+      size: { width: bounds.width, height: bounds.height },
     },
   };
 };
