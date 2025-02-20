@@ -14,3 +14,20 @@
  * to over-prune real candidates.
  */
 export const SNAP_PROBE_CULL_RADIUS = 1000;
+
+/**
+ * Padding (world units) the elbow router inflates obstacle bboxes
+ * by before searching. Larger values keep edges visibly clear of
+ * shapes; smaller values let the router squeeze through tight
+ * spaces. 20 px matches the gridSize default for diagrams that
+ * snap to a 20-unit grid.
+ */
+export const ELBOW_OBSTACLE_MARGIN = 20;
+
+/**
+ * Epsilon used to decide whether an axis-aligned segment runs
+ * *along* an obstacle boundary (allowed) or *through* it (blocked).
+ * A degenerate small value catches floating-point fuzz from
+ * `inflate` arithmetic without admitting real crossings.
+ */
+export const ELBOW_OBSTACLE_INTERIOR_EPSILON = 0.5;

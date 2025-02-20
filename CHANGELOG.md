@@ -496,3 +496,6 @@
 
 ## 0.28.8
 - exporter + react-ui: frame export crop + <FramePanel>
+
+## 0.28.9
+- scene: A*-based elbow router

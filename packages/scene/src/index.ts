@@ -182,7 +182,14 @@ export {
 } from "./layout-registry.js";
 
 // Tunable thresholds.
-export { SNAP_PROBE_CULL_RADIUS } from "./constants.js";
+export {
+  SNAP_PROBE_CULL_RADIUS,
+  ELBOW_OBSTACLE_MARGIN,
+  ELBOW_OBSTACLE_INTERIOR_EPSILON,
+} from "./constants.js";
+
+// Elbow router — A*-based obstacle-avoiding 90° routing.
+export { elbowRoute, type ElbowRouteOptions } from "./elbow-router.js";
 
 // Scene-level shape diff (added / removed / modified) for diff
 // visualisation and merge.
