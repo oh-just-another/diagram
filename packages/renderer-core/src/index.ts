@@ -29,6 +29,8 @@ export { wrapText } from "./text-layout.js";
 export { ShapeCache, sharedBoundsCache, cachedWorldBounds } from "./shape-cache.js";
 export type { ShapeBitmapCache } from "./shape-cache-bitmap.js";
 export { InMemoryShapeBitmapCache, zoomBucket } from "./shape-cache-bitmap.js";
+export type { EdgeBitmapCache } from "./edge-cache-bitmap.js";
+export { InMemoryEdgeBitmapCache } from "./edge-cache-bitmap.js";
 
 // Pluggable text-shaper and rasterizer interfaces.
 export type { TextShaper, ShaperFont, ShapedGlyph } from "./text-shaper.js";

@@ -48,8 +48,8 @@ const baseEdge: Edge = {
   id: edgeId("e1"),
   layerId: DEFAULT_LAYER_ID,
   order: orderBetween(null, null),
-  from: { kind: "shape", shapeId: shapeId("a") },
-  to: { kind: "shape", shapeId: shapeId("b") },
+  from: { kind: "anchor", shapeId: shapeId("a"), anchor: { kind: "named", name: "center" } },
+  to: { kind: "anchor", shapeId: shapeId("b"), anchor: { kind: "named", name: "center" } },
   style: {},
 };
 

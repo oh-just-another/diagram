@@ -499,3 +499,6 @@
 
 ## 0.28.9
 - scene: A*-based elbow router
+
+## 0.28.10
+- renderer-core: per-edge ImageBitmap cache
