@@ -50,6 +50,13 @@ export interface TileCache<B = unknown> {
    * by the editor when a shape's scene reference changes.
    */
   invalidateForShape(id: ShapeId): void;
+  /**
+   * Drop any cached tile whose `bounds` intersect the given world
+   * rectangle. Used by the editor's patch hook when a shape is
+   * added (no previous id in the reverse index) or moved (the
+   * before/after AABB union covers both old and new tiles).
+   */
+  invalidateRect(rect: Bounds): void;
   /** Total bytes currently held. */
   readonly bytesUsed: number;
   clear(): void;
@@ -127,10 +134,49 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
     this.tilesByShape.delete(shapeId);
   }
 
+  invalidateRect(rect: Bounds): void {
+    const rMaxX = rect.x + rect.width;
+    const rMaxY = rect.y + rect.height;
+    for (const [tileId, entry] of [...this.entries]) {
+      const b = entry.bounds;
+      const bMaxX = b.x + b.width;
+      const bMaxY = b.y + b.height;
+      const disjoint = bMaxX <= rect.x || b.x >= rMaxX || bMaxY <= rect.y || b.y >= rMaxY;
+      if (disjoint) continue;
+      this.entries.delete(tileId);
+      this.bytes -= entry.bytes;
+      for (const sid of entry.shapes) this.tilesByShape.get(sid)?.delete(tileId);
+    }
+  }
+
   clear(): void {
     this.entries.clear();
     this.tilesByShape.clear();
     this.bytes = 0;
+  }
+
+  /**
+   * Convenience hook for the editor's patch pipeline. Looks at a
+   * scene Patch and invalidates touched tiles via the right
+   * cheap path:
+   *   • shape removed → invalidateForShape (id still in reverse index)
+   *   • shape added   → invalidateRect (no id yet — drop tiles that
+   *                     touch the new shape's bounds)
+   *   • shape moved   → both: removeForShape (old tiles) + rect
+   *                     (new bounds)
+   * Caller computes the bounds via `getShapeWorldBounds(before|after)`
+   * since this package is pure and doesn't know about Shape geometry.
+   */
+  invalidateForPatch(
+    options: {
+      readonly removedShapeId?: ShapeId;
+      readonly beforeBounds?: Bounds;
+      readonly afterBounds?: Bounds;
+    },
+  ): void {
+    if (options.removedShapeId) this.invalidateForShape(options.removedShapeId);
+    if (options.beforeBounds) this.invalidateRect(options.beforeBounds);
+    if (options.afterBounds) this.invalidateRect(options.afterBounds);
   }
 
   private evictIfOverCap(): void {

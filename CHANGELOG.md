@@ -502,3 +502,6 @@
 
 ## 0.28.10
 - renderer-core: per-edge ImageBitmap cache
+
+## 0.28.11
+- renderer-core: TileCache.invalidateRect + invalidateForPatch
