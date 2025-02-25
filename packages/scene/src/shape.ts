@@ -148,6 +148,22 @@ export interface ImageShape extends ShapeBase {
   readonly src: string;
   readonly width: number;
   readonly height: number;
+  /**
+   * Animated-content hint (opt-in). When set, the
+   * renderer's image path consults `getAnimationAdapter(kind)`
+   * to fetch the current frame's image source instead of using
+   * `src` directly. Hosts that don't register an adapter for the
+   * kind get a static fallback (src as-is). The actual frame data
+   * lives in `animationData` — opaque to the kernel, decoded by
+   * the adapter.
+   *
+   * Built-in kinds: "gif" (host plugs `gifuct-js`), "lottie"
+   * (host plugs `lottie-web`), "video" (host plugs an
+   * `HTMLVideoElement`). No adapters ship in the kernel —
+   * registration is per-host.
+   */
+  readonly animationKind?: string;
+  readonly animationData?: unknown;
 }
 
 /**

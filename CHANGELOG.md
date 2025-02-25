@@ -505,3 +505,6 @@
 
 ## 0.28.11
 - renderer-core: TileCache.invalidateRect + invalidateForPatch
+
+## 0.28.12
+- scene + renderer-core: animation adapter scaffold

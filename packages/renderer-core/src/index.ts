@@ -32,6 +32,16 @@ export { InMemoryShapeBitmapCache, zoomBucket } from "./shape-cache-bitmap.js";
 export type { EdgeBitmapCache } from "./edge-cache-bitmap.js";
 export { InMemoryEdgeBitmapCache } from "./edge-cache-bitmap.js";
 
+// Animated content adapter registry.
+export type { AnimatedSourceAdapter } from "./animation-adapter.js";
+export {
+  registerAnimationAdapter,
+  unregisterAnimationAdapter,
+  getAnimationAdapter,
+  listAnimationKinds,
+  resolveImageSource,
+} from "./animation-adapter.js";
+
 // Pluggable text-shaper and rasterizer interfaces.
 export type { TextShaper, ShaperFont, ShapedGlyph } from "./text-shaper.js";
 export type { Rasterizer } from "./rasterizer.js";
