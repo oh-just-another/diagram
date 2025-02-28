@@ -1818,6 +1818,12 @@ export class Editor {
    */
   paste(targetWorld?: Vec2): void {
     if (this.clipboard.length === 0) return;
+    // Defensive: if a gesture is mid-flight (drag / resize) the
+    // gestureTx is still open and a fresh `transaction()` inside
+    // pasteShapes would throw. The reasonable behaviour for a
+    // user pressing Cmd+V mid-gesture is "commit what you have
+    // and paste on top", so close the gesture first.
+    this.finalizeOpenGestureTx();
     const target = targetWorld ?? this.lastPointerWorld;
     const result = pasteShapesHelper(
       this._scene,
@@ -4107,6 +4113,26 @@ export class Editor {
     }
     if (!this.gestureTx) return;
     this.gestureTx.commit();
+    this.gestureTx = null;
+  }
+
+  /**
+   * Defensive cleanup invoked by public commands (paste, etc.) that
+   * open their own history transaction. A real gesture-in-flight
+   * gets committed (preserving user work); a leaked stale tx — one
+   * that survived an earlier exception — gets cancelled. Either way
+   * the next `transaction()` call lands on a clean slot.
+   *
+   * Without this, pressing Cmd+V mid-drag throws "A transaction is
+   * already open" because the gestureTx hasn't been committed yet.
+   */
+  private finalizeOpenGestureTx(): void {
+    if (!this.gestureTx) return;
+    try {
+      this.gestureTx.commit();
+    } catch {
+      this.gestureTx.cancel();
+    }
     this.gestureTx = null;
   }
 

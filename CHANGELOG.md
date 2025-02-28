@@ -508,3 +508,6 @@
 
 ## 0.28.12
 - scene + renderer-core: animation adapter scaffold
+
+## 0.28.13
+- fix: paste mid-gesture no longer crashes with "transaction already open"

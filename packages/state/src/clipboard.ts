@@ -1,8 +1,10 @@
 import type { ShapeId, Vec2 } from "@oh-just-another/types";
 import {
   addShape,
+  batch,
   getShape,
   orderForTop,
+  type Patch,
   type Scene,
   type Shape,
 } from "@oh-just-another/scene";
@@ -74,7 +76,12 @@ export const pasteShapes = (
     ? { x: target.x - cx, y: target.y - cy }
     : { x: 10, y: 10 };
 
-  const tx = history.transaction();
+  // Build the patch list first, push as one batch. `history.transaction()`
+  // is intentionally avoided: an Editor with an open gesture-transaction
+  // (drag/resize in flight) would make `transaction()` throw "A transaction
+  // is already open". The batch-push path doesn't nest, so paste is always
+  // safe to call.
+  const patches: Patch[] = [];
   const newIds: ShapeId[] = [];
   let next = scene;
   for (const tmpl of clipboard) {
@@ -92,9 +99,11 @@ export const pasteShapes = (
     } as Shape;
     const r = addShape(next, clone);
     next = r.scene;
-    tx.add(r.patch);
+    patches.push(r.patch);
     newIds.push(newId);
   }
-  tx.commit();
+  if (patches.length > 0) {
+    history.push(patches.length === 1 ? patches[0]! : batch(patches));
+  }
   return { scene: next, newIds };
 };
