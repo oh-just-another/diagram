@@ -89,4 +89,20 @@ describe("paste resilience to leaked transactions", () => {
     // paste's internal transaction() throws "already open".
     expect(() => e.paste()).not.toThrow();
   });
+
+  it("paste of N shapes lands as one undo step", () => {
+    const history = new History();
+    const e = makeEditor(history);
+    e.setSelection([shapeId("a")]);
+    e.copySelected();
+    const before = history.undoStack.length;
+    e.paste();
+    const after = history.undoStack.length;
+    // Exactly one stack item appeared, not N: pasteShapes pushes a
+    // batched patch instead of N separate pushes.
+    expect(after - before).toBe(1);
+    // And undo returns the scene to its previous state in one step.
+    e.undo();
+    expect(e.scene.shapes.size).toBe(1);
+  });
 });

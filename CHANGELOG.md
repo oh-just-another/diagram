@@ -510,4 +510,7 @@
 - scene + renderer-core: animation adapter scaffold
 
 ## 0.28.13
-- fix: paste mid-gesture no longer crashes with "transaction already open"
+- fix: paste mid-gesture no longer throws "transaction already open"
+
+## 0.28.14
+- state: added test "paste = one undo step" (regression guard)
