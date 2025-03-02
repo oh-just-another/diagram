@@ -240,7 +240,12 @@ export type TileComposeFn = (
   mainTarget: RenderTarget,
   options: {
     readonly viewport: Bounds;
-    readonly changedShapeIds: ReadonlySet<ShapeId>;
+    /**
+     * Per-shape change record (before/after world bbox) since the
+     * last frame. Compositors route by case (add / remove / move).
+     * `null` on one side = added / removed.
+     */
+    readonly changedShapes: ReadonlyMap<ShapeId, { before: Bounds | null; after: Bounds | null }>;
     readonly zoomBucket: number;
   },
 ) => void;
@@ -536,12 +541,17 @@ export class Editor {
   private readonly tileComposeFn: TileComposeFn | null;
 
   /**
-   * Set of shape ids whose scene reference changed since the last
-   * tile-cache invalidation pass. Populated from `computeDirtyWorld`'s
-   * diff loop when `tileComposeFn` is on; forwarded to the
-   * compositor each frame so it can invalidate matching tiles.
+   * Per-shape change record (before/after world bbox) since the last
+   * tile-cache invalidation pass. Populated by `computeDirtyWorld`'s
+   * diff loop when `tileComposeFn` is on; forwarded to the compositor
+   * each frame so it can invalidate by add / remove / move correctly.
+   * (A plain id set lost adds — new id wasn't in the tile reverse
+   * index yet.)
    */
-  private tileDirtyShapeIds: Set<ShapeId> = new Set();
+  private tileDirtyShapes: Map<
+    ShapeId,
+    { before: Bounds | null; after: Bounds | null }
+  > = new Map();
 
   /**
    * Tool-lock flag (standard model). When `false` (default), a
@@ -3622,19 +3632,26 @@ export class Editor {
       const old = prev.shapes.get(id);
       if (old === shape) continue;
       changedShapeIds.add(id);
-      add(getShapeWorldBounds(shape));
-      if (old) add(getShapeWorldBounds(old));
+      const afterBounds = getShapeWorldBounds(shape);
+      const beforeBounds = old ? getShapeWorldBounds(old) : null;
+      add(afterBounds);
+      if (beforeBounds) add(beforeBounds);
+      // Stash for the tile-cache path — covers add + move via
+      // before/after pair; pure mutation re-uses the single
+      // afterBounds rect.
+      if (this.tileComposeFn !== null) {
+        this.tileDirtyShapes.set(id, { before: beforeBounds, after: afterBounds });
+      }
     }
     for (const [id, shape] of prev.shapes) {
       if (!next.shapes.has(id)) {
         changedShapeIds.add(id);
-        add(getShapeWorldBounds(shape));
+        const beforeBounds = getShapeWorldBounds(shape);
+        add(beforeBounds);
+        if (this.tileComposeFn !== null) {
+          this.tileDirtyShapes.set(id, { before: beforeBounds, after: null });
+        }
       }
-    }
-    // Stash for the tile-cache path — the compositor reads this set
-    // and invalidates touched tiles before this frame composites.
-    if (this.tileComposeFn !== null) {
-      for (const id of changedShapeIds) this.tileDirtyShapeIds.add(id);
     }
     const edgeTouchesChangedShape = (edge: Edge): boolean => {
       for (const ep of [edge.from, edge.to]) {
@@ -4454,13 +4471,13 @@ export class Editor {
       this.mainTarget.clear();
       this.tileComposeFn(this._scene, this.mainTarget, {
         viewport: viewportWorld,
-        changedShapeIds: this.tileDirtyShapeIds,
+        changedShapes: this.tileDirtyShapes,
         zoomBucket:
           this._scene.viewport.zoom > 0
             ? 2 ** Math.round(Math.log2(this._scene.viewport.zoom))
             : 1,
       });
-      this.tileDirtyShapeIds = new Set();
+      this.tileDirtyShapes = new Map();
       renderEdges(this._scene, this.mainTarget, {
         ...(viewportWorld ? { viewportWorld } : {}),
       });

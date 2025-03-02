@@ -31,6 +31,13 @@ import { getShapeRenderer } from "@oh-just-another/renderer-core";
  * cheaper than re-rasterising N shapes.
  */
 
+export interface ChangedShapeRecord {
+  /** World bbox of the shape in the previous frame, or null if it was just added. */
+  readonly before: Bounds | null;
+  /** World bbox of the shape in the current frame, or null if it was just removed. */
+  readonly after: Bounds | null;
+}
+
 export interface RenderViaTilesOptions {
   /** World-space rect currently visible. Tiles outside are skipped. */
   readonly viewport: Bounds;
@@ -38,11 +45,16 @@ export interface RenderViaTilesOptions {
   readonly cache: TileCache<OffscreenCanvas>;
   /**
    * Shape ids whose scene-reference changed since the previous
-   * frame. Callers compute this via Editor's existing dirty
-   * tracking. The compositor invalidates every tile that contains
-   * any of these shapes, then re-rasterises on demand.
+   * frame, each with the before/after world bbox. The compositor
+   * routes invalidation by case:
+   *   • removed   (after null)  → invalidateForShape (id present in
+   *     reverse index)
+   *   • added     (before null) → invalidateRect (no id yet)
+   *   • mutated/moved (both)    → both rects
+   * Drops the `changedShapeIds` shape-only set in favour of this
+   * fuller view, so add-tracking finally invalidates correctly.
    */
-  readonly changedShapeIds?: ReadonlySet<ShapeId>;
+  readonly changedShapes?: ReadonlyMap<ShapeId, ChangedShapeRecord>;
   /** Current zoom (used to pick the cache bucket). */
   readonly zoomBucket: number;
 }
@@ -52,11 +64,17 @@ export const renderViaTiles = (
   mainTarget: Canvas2DTarget,
   options: RenderViaTilesOptions,
 ): void => {
-  const { viewport, cache, changedShapeIds, zoomBucket } = options;
+  const { viewport, cache, changedShapes, zoomBucket } = options;
 
-  // 1) Invalidate cached tiles for any changed shape.
-  if (changedShapeIds) {
-    for (const id of changedShapeIds) cache.invalidateForShape(id);
+  // 1) Invalidate cached tiles per patch (covers add / remove / move).
+  if (changedShapes) {
+    for (const [id, record] of changedShapes) {
+      cache.invalidateForPatch({
+        ...(record.after === null ? { removedShapeId: id } : {}),
+        ...(record.before ? { beforeBounds: record.before } : {}),
+        ...(record.after ? { afterBounds: record.after } : {}),
+      });
+    }
   }
 
   // 2) Visible tile range.

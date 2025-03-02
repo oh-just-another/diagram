@@ -57,6 +57,17 @@ export interface TileCache<B = unknown> {
    * before/after AABB union covers both old and new tiles).
    */
   invalidateRect(rect: Bounds): void;
+  /**
+   * Convenience routing used by editor patch pipelines: dispatches
+   * to `invalidateForShape` (remove), `invalidateRect` (add), or
+   * both (move) based on which of `removedShapeId` / `beforeBounds`
+   * / `afterBounds` are present.
+   */
+  invalidateForPatch(options: {
+    readonly removedShapeId?: ShapeId;
+    readonly beforeBounds?: Bounds;
+    readonly afterBounds?: Bounds;
+  }): void;
   /** Total bytes currently held. */
   readonly bytesUsed: number;
   clear(): void;

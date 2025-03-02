@@ -514,3 +514,6 @@
 
 ## 0.28.14
 - state: added test "paste = one undo step" (regression guard)
+
+## 0.28.15
+- state + renderer-canvas: Editor wires invalidateForPatch + 1M bench
