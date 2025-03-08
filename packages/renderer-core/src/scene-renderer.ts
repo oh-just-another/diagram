@@ -6,12 +6,14 @@ import {
   type ShapeBase,
   type SpatialGrid,
 } from "@oh-just-another/scene";
-import type { Bounds, ShapeId } from "@oh-just-another/types";
+import type { Bounds, LayerId, ShapeId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "./render-target.js";
 import { getShapeRenderer } from "./shape-renderer.js";
 import { cachedWorldBounds, ShapeCache } from "./shape-cache.js";
 import { DEFAULT_PLACEHOLDER_FILL } from "./constants.js";
+import type { LayerCompositeCache } from "./layer-cache-composite.js";
+import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
 
 /**
  * Zoom-based level-of-detail thresholds. Each threshold turns on a
@@ -100,6 +102,29 @@ export interface RenderSceneOptions {
    * hit-test on the editor side, so they read as "absent" entirely.
    */
   readonly hideShapes?: ReadonlySet<ShapeId>;
+  /**
+   * Per-layer composite bitmap cache. When supplied along with
+   * `compositeLayerBitmap`, unchanged layers (i.e. not present in
+   * `dirtyLayerIds`) are drawn from a single cached `drawImage` call
+   * instead of walking every shape.
+   *
+   * Pass `dirtyLayerIds` so the renderer knows which layers to
+   * re-rasterise. Without it the cache is treated as cold every
+   * frame (defensive — better stale work than a stale visual).
+   */
+  readonly layerCompositeCache?: LayerCompositeCache<unknown>;
+  readonly dirtyLayerIds?: ReadonlySet<LayerId>;
+  /**
+   * Host-side layer rasteriser. Receives the layer id, the active
+   * zoom bucket, and the scene; returns the bitmap to cache or
+   * `null` to opt out. The kernel doesn't ship one — `Offscreen
+   * Canvas` import lives in `@renderer-canvas`.
+   */
+  readonly compositeLayerBitmap?: (
+    layerId: LayerId,
+    zoomBucket: number,
+    scene: Scene,
+  ) => unknown | null;
 }
 
 /**
@@ -160,8 +185,44 @@ export const renderScene = (
   const dropText = lod?.hideText !== undefined && zoom < lod.hideText;
   const placeholderFill = options.placeholderFill ?? DEFAULT_PLACEHOLDER_FILL;
 
+  const layerCache = options.layerCompositeCache;
+  const dirtyLayers = options.dirtyLayerIds;
+  const compositeLayerBitmap = options.compositeLayerBitmap;
+  const zoomBucket = bucketFor(zoom);
+  const layerBoundsFor = (layerId: LayerId): Bounds | null => {
+    let acc: Bounds | null = null;
+    for (const shape of getShapesInLayer(scene, layerId)) {
+      const bb = cachedWorldBounds(boundsCache, shape);
+      acc = acc ? B.union(acc, bb) : bb;
+    }
+    return acc;
+  };
+
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;
+
+    // Per-layer composite cache fast path. Only fires when the
+    // host plugged a cache + a layer rasteriser; the kernel
+    // doesn't ship a default rasteriser because OffscreenCanvas
+    // creation lives in renderer-canvas. Drop dirty layers + ones
+    // touched by a dirty rect from the cache so the bitmap isn't
+    // re-used after a mutation.
+    if (layerCache && compositeLayerBitmap) {
+      if (dirtyLayers?.has(layer.id)) layerCache.invalidateLayer(layer.id);
+      let bitmap = layerCache.get(layer.id, zoomBucket);
+      if (bitmap === undefined) {
+        const fresh = compositeLayerBitmap(layer.id, zoomBucket, scene);
+        if (fresh !== null) {
+          layerCache.set(layer.id, zoomBucket, fresh);
+          bitmap = fresh;
+        }
+      }
+      if (bitmap !== undefined) {
+        const bb = layerBoundsFor(layer.id);
+        if (bb) target.drawImage(bitmap, bb.x, bb.y, bb.width, bb.height);
+        continue;
+      }
+    }
 
     for (const shape of getShapesInLayer(scene, layer.id)) {
       if (options.hideShapes?.has(shape.id)) continue;

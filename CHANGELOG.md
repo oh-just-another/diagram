@@ -517,3 +517,6 @@
 
 ## 0.28.15
 - state + renderer-canvas: Editor wires invalidateForPatch + 1M bench
+
+## 0.28.16
+- renderer-core: edge bitmap + layer composite cache wired

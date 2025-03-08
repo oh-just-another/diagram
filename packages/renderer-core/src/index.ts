@@ -31,6 +31,8 @@ export type { ShapeBitmapCache } from "./shape-cache-bitmap.js";
 export { InMemoryShapeBitmapCache, zoomBucket } from "./shape-cache-bitmap.js";
 export type { EdgeBitmapCache } from "./edge-cache-bitmap.js";
 export { InMemoryEdgeBitmapCache } from "./edge-cache-bitmap.js";
+export type { LayerCompositeCache } from "./layer-cache-composite.js";
+export { InMemoryLayerCompositeCache } from "./layer-cache-composite.js";
 
 // Animated content adapter registry.
 export type { AnimatedSourceAdapter } from "./animation-adapter.js";
