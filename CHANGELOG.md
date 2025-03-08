@@ -520,3 +520,6 @@
 
 ## 0.28.16
 - renderer-core: edge bitmap + layer composite cache wired
+
+## 0.28.17
+- renderer-canvas: WebGL2 fillText + WebGPU feature-detect

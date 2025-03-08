@@ -23,6 +23,11 @@ export {
   type RendererBackend,
   type CreateLayeredSurfaceOptions,
 } from "./layered-surface.js";
+export {
+  isWebGPUAvailable,
+  isWebGL2Available,
+  pickAvailableBackend,
+} from "./webgpu-detect.js";
 export { LARGE_SCENE_WORKER_THRESHOLD } from "./constants.js";
 
 // `installBuiltinRenderers` and `wrapText` live in

@@ -29,9 +29,16 @@ export class WebGL2Target implements RenderTarget {
 
   private fillColor: [number, number, number] = [0, 0, 0];
   private strokeColor: [number, number, number] = [0, 0, 0];
+  private fillColorString: string = "#000";
   private strokeWidth = 1;
   private opacity = 1;
   private currentPath: Bounds | null = null;
+  // Text state — kept in sync with Canvas2D semantics and replayed into
+  // the hidden text bitmap canvas per fillText call.
+  private fontFamily = "sans-serif";
+  private fontSize = 14;
+  private textAlign: TextAlign = "left";
+  private textBaseline: TextBaseline = "top";
   /**
    * Polyline path being assembled by moveTo / lineTo. Cleared on
    * `beginPath()`; pushed to GPU on `stroke()`. Bezier curves still
@@ -115,6 +122,7 @@ export class WebGL2Target implements RenderTarget {
 
   setFill(color: Color | null): void {
     this.fillColor = parseColor(color);
+    this.fillColorString = color ?? "transparent";
   }
 
   setOpacity(alpha: number): void {
@@ -409,24 +417,103 @@ export class WebGL2Target implements RenderTarget {
   setDashArray(_dash: readonly number[] | null): void {
     void _dash;
   }
-  setFont(_family: string, _size: number): void {
-    void _family;
-    void _size;
+  setFont(family: string, size: number): void {
+    this.fontFamily = family;
+    this.fontSize = size;
   }
-  setTextAlign(_align: TextAlign): void {
-    void _align;
+  setTextAlign(align: TextAlign): void {
+    this.textAlign = align;
   }
-  setTextBaseline(_baseline: TextBaseline): void {
-    void _baseline;
+  setTextBaseline(baseline: TextBaseline): void {
+    this.textBaseline = baseline;
   }
 
-  fillText(): void {
-    notImpl("fillText");
+  /**
+   * Text rendering. Rasterises the string into a
+   * cached OffscreenCanvas via Canvas2D, uploads as a WebGL
+   * texture (reusing drawImage's pipeline), draws as a textured
+   * quad. Per-string cache (key = `text|font|fill`) so repeated
+   * labels don't re-rasterise.
+   *
+   * Trade-off: no glyph sharing, so 100 different labels = 100
+   * textures. For most diagrams that's fine; an SDF-based glyph
+   * atlas can replace this without API changes when needed.
+   */
+  fillText(text: string, x: number, y: number, maxWidth?: number): void {
+    if (text.length === 0) return;
+    void maxWidth; // Canvas2D's maxWidth scales horizontally — for the
+    // textured-quad path we'd need to bake the scale into the bitmap,
+    // skip for MVP and let callers wrap text upstream (wrapText helper).
+    const bitmap = this.rasteriseString(text);
+    if (!bitmap) return;
+    // Position adjustments — replay Canvas2D textAlign / Baseline
+    // against the rasterised bitmap's bounds. The bitmap was drawn
+    // with left/top alignment so its top-left is (x, y) at align=
+    // left, baseline=top; other combos shift by width/height.
+    const m = this.textMetrics(text);
+    let px = x;
+    if (this.textAlign === "center") px -= m.width / 2;
+    else if (this.textAlign === "right") px -= m.width;
+    let py = y;
+    if (this.textBaseline === "middle") py -= this.fontSize / 2;
+    else if (this.textBaseline === "bottom") py -= this.fontSize;
+    this.drawImage(bitmap, px, py, m.width, this.fontSize * 1.4);
   }
-  measureText(_text: string): { width: number } {
-    void _text;
-    notImpl("measureText");
-    return { width: 0 };
+  measureText(text: string): { width: number } {
+    return this.textMetrics(text);
+  }
+
+  // --- Glyph atlas (per-string fallback path) ---
+
+  /** Hidden Canvas2D context for measureText + bitmap rasterisation. */
+  private textCtx: CanvasRenderingContext2D | null = null;
+  /** Per-string cache; reused by `drawImage`'s texture WeakMap. */
+  private readonly textBitmaps = new Map<string, OffscreenCanvas>();
+
+  private ensureTextCtx(): CanvasRenderingContext2D | null {
+    if (this.textCtx) return this.textCtx;
+    if (typeof OffscreenCanvas === "undefined") return null;
+    const tmp = new OffscreenCanvas(1, 1);
+    const ctx = tmp.getContext("2d");
+    if (!ctx) return null;
+    // OffscreenCanvasRenderingContext2D is structurally compatible with
+    // the methods used here (font / measureText / fillText / textAlign /
+    // textBaseline).
+    this.textCtx = ctx as unknown as CanvasRenderingContext2D;
+    return this.textCtx;
+  }
+
+  private textFontSpec(): string {
+    return `${this.fontSize}px ${this.fontFamily}`;
+  }
+
+  private textMetrics(text: string): { width: number } {
+    const ctx = this.ensureTextCtx();
+    if (!ctx) return { width: text.length * this.fontSize * 0.55 };
+    ctx.font = this.textFontSpec();
+    return { width: ctx.measureText(text).width };
+  }
+
+  private rasteriseString(text: string): OffscreenCanvas | null {
+    if (typeof OffscreenCanvas === "undefined") return null;
+    const key = `${text}|${this.textFontSpec()}|${this.fillColorString}`;
+    const cached = this.textBitmaps.get(key);
+    if (cached) return cached;
+    const m = this.textMetrics(text);
+    // Pad height by 40% — covers font ascent/descent fuzz without
+    // requiring per-font TextMetrics support.
+    const w = Math.max(1, Math.ceil(m.width));
+    const h = Math.max(1, Math.ceil(this.fontSize * 1.4));
+    const canvas = new OffscreenCanvas(w, h);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.font = this.textFontSpec();
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = this.fillColorString;
+    ctx.fillText(text, 0, 0);
+    this.textBitmaps.set(key, canvas);
+    return canvas;
   }
 }
 
