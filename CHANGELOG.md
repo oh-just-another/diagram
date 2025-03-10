@@ -523,3 +523,6 @@
 
 ## 0.28.17
 - renderer-canvas: WebGL2 fillText + WebGPU feature-detect
+
+## 0.28.18
+- scene + serialization: Scene.files binary registry

@@ -1,4 +1,4 @@
-import type { Bounds, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, FileId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
 import type { FractionalIndex } from "fractional-keys";
 import { bounds as B } from "@oh-just-another/math";
 import type { AnchorRef } from "./edge.js";
@@ -144,8 +144,20 @@ export interface TextShape extends ShapeBase {
 
 export interface ImageShape extends ShapeBase {
   readonly type: "image";
-  /** URL or data-URI. The kernel does not load the resource. */
+  /**
+   * URL or data-URI. Kept as a fallback for legacy scenes and for
+   * remote-host / SVG images that don't need binary registration.
+   * Newer shapes set `fileId` to point at a `Scene.files` entry
+   * instead — keeps scene.json small for large bitmaps.
+   */
   readonly src: string;
+  /**
+   * Id of the `BinaryFile` in `Scene.files` that backs this image.
+   * When present, hosts should resolve through the file registry
+   * (creates an object-URL or ImageBitmap on demand); `src` stays
+   * around as a fallback for the static renderer path.
+   */
+  readonly fileId?: FileId;
   readonly width: number;
   readonly height: number;
   /**

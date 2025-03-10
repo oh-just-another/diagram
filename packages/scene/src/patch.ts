@@ -1,6 +1,7 @@
-import type { AnnotationId, EdgeId, LayerId, ShapeId } from "@oh-just-another/types";
+import type { AnnotationId, EdgeId, FileId, LayerId, ShapeId } from "@oh-just-another/types";
 import type { Annotation } from "./annotation.js";
 import type { Edge } from "./edge.js";
+import type { BinaryFile } from "./file.js";
 import type { Layer } from "./layer.js";
 import type { Shape } from "./shape.js";
 import type { Viewport } from "./viewport.js";
@@ -41,6 +42,12 @@ export type Patch =
       readonly after: Annotation | null;
     }
   | { readonly kind: "viewport"; readonly before: Viewport; readonly after: Viewport }
+  | {
+      readonly kind: "file";
+      readonly id: FileId;
+      readonly before: BinaryFile | null;
+      readonly after: BinaryFile | null;
+    }
   | { readonly kind: "batch"; readonly patches: readonly Patch[] };
 
 /** Swap `before` and `after` recursively. */
@@ -56,6 +63,8 @@ export const invert = (patch: Patch): Patch => {
       return { kind: "annotation", id: patch.id, before: patch.after, after: patch.before };
     case "viewport":
       return { kind: "viewport", before: patch.after, after: patch.before };
+    case "file":
+      return { kind: "file", id: patch.id, before: patch.after, after: patch.before };
     case "batch":
       // Reverse order so undoing a batch unwinds it in LIFO.
       return { kind: "batch", patches: patch.patches.map(invert).reverse() };
@@ -79,6 +88,7 @@ export const isNoop = (patch: Patch): boolean => {
     case "edge":
     case "layer":
     case "annotation":
+    case "file":
       return patch.before === patch.after;
     case "viewport":
       return patch.before === patch.after;

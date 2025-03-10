@@ -3,6 +3,7 @@ declare const edgeIdBrand: unique symbol;
 declare const layerIdBrand: unique symbol;
 declare const annotationIdBrand: unique symbol;
 declare const commentIdBrand: unique symbol;
+declare const fileIdBrand: unique symbol;
 
 /**
  * Opaque, stable identifier for a shape.
@@ -39,3 +40,15 @@ export type CommentId = string & { readonly [commentIdBrand]: true };
 
 /** Cast a raw string to CommentId. Caller owns uniqueness. */
 export const commentId = (raw: string): CommentId => raw as CommentId;
+
+/**
+ * Opaque identifier for a binary file in `Scene.files`. :
+ * `ImageShape.fileId` resolves through this registry instead of
+ * embedding `src` directly, so large bitmaps don't bloat the
+ * scene JSON. Files are serialised separately (blob-aware
+ * transport) and re-attached on load.
+ */
+export type FileId = string & { readonly [fileIdBrand]: true };
+
+/** Cast a raw string to FileId. Caller owns uniqueness. */
+export const fileId = (raw: string): FileId => raw as FileId;

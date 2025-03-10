@@ -35,6 +35,11 @@ export const describe = (patch: Patch): string => {
     }
     case "viewport":
       return "Camera change";
+    case "file": {
+      if (patch.before === null) return "Add file";
+      if (patch.after === null) return "Remove file";
+      return "Update file";
+    }
     case "batch": {
       if (patch.patches.length === 0) return "Empty batch";
       if (patch.patches.length === 1) return describe(patch.patches[0]!);

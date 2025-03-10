@@ -5,6 +5,7 @@ type EdgePatch = Extract<Patch, { kind: "edge" }>;
 type LayerPatch = Extract<Patch, { kind: "layer" }>;
 type AnnotationPatch = Extract<Patch, { kind: "annotation" }>;
 type ViewportPatch = Extract<Patch, { kind: "viewport" }>;
+type FilePatch = Extract<Patch, { kind: "file" }>;
 
 interface Slot<P> {
   first: P;
@@ -27,6 +28,7 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
   const edges = new Map<string, Slot<EdgePatch>>();
   const layers = new Map<string, Slot<LayerPatch>>();
   const annotations = new Map<string, Slot<AnnotationPatch>>();
+  const files = new Map<string, Slot<FilePatch>>();
   let viewport: Slot<ViewportPatch> | null = null;
 
   const order: Patch[] = [];
@@ -73,6 +75,16 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
         existing.latest = { ...existing.latest, after: p.after };
       } else {
         annotations.set(p.id, { first: p, latest: p });
+        order.push(p);
+      }
+      return;
+    }
+    if (p.kind === "file") {
+      const existing = files.get(p.id);
+      if (existing) {
+        existing.latest = { ...existing.latest, after: p.after };
+      } else {
+        files.set(p.id, { first: p, latest: p });
         order.push(p);
       }
       return;
@@ -124,6 +136,14 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
         before: slot.first.before,
         after: slot.latest.after,
       };
+    } else if (p.kind === "file") {
+      const slot = files.get(p.id)!;
+      merged = {
+        kind: "file",
+        id: slot.first.id,
+        before: slot.first.before,
+        after: slot.latest.after,
+      };
     } else if (i === viewportOrderIndex && viewport !== null) {
       const vp: Slot<ViewportPatch> = viewport;
       merged = { kind: "viewport", before: vp.first.before, after: vp.latest.after };
@@ -137,7 +157,13 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
 };
 
 const isMergedNoop = (p: Patch): boolean => {
-  if (p.kind === "shape" || p.kind === "edge" || p.kind === "layer" || p.kind === "annotation") {
+  if (
+    p.kind === "shape" ||
+    p.kind === "edge" ||
+    p.kind === "layer" ||
+    p.kind === "annotation" ||
+    p.kind === "file"
+  ) {
     return p.before === p.after;
   }
   if (p.kind === "viewport") return p.before === p.after;

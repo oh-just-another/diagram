@@ -131,7 +131,7 @@ const hydrate = (doc: SceneDocument): Scene => {
     }
   }
 
-  return { shapes, edges, layers, annotations, viewport };
+  return { shapes, edges, layers, annotations, files: new Map(), viewport };
 };
 
 const hydrateShape = (s: SceneDocument["shapes"][number], id: ShapeId): Shape => {

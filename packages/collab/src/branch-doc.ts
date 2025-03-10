@@ -255,5 +255,8 @@ const cloneScene = (scene: Scene): Scene => ({
   annotations: new Map(
     [...scene.annotations].map(([id, ann]) => [id, structuredClone(ann)]),
   ),
+  files: new Map(
+    [...scene.files].map(([id, file]) => [id, structuredClone(file)]),
+  ),
   viewport: structuredClone(scene.viewport),
 });

@@ -22,3 +22,11 @@ export {
   MissingMigrationError,
   type Migration,
 } from "./migrations.js";
+
+// Binary file sidecar serializer (Scene.files persistence).
+export {
+  serializeFiles,
+  stringifyFiles,
+  parseFiles,
+  type SerializedFilesDocument,
+} from "./files.js";

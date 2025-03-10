@@ -60,6 +60,10 @@ export class SceneDoc {
       edges: edgeMap,
       layers: layerMap,
       annotations: annotationMap,
+      // BinaryFile registry isn't CRDT-replicated (large bytes, awkward
+      // through Yjs); hosts that need collab on file uploads keep their
+      // own sidecar transport. Snapshot returns an empty map.
+      files: new Map(),
       viewport,
     };
   }

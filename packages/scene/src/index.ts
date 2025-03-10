@@ -100,8 +100,15 @@ export {
   orderForBottom,
   orderBetween,
   orderBetweenMany,
+  addBinaryFile,
+  removeBinaryFile,
+  getBinaryFile,
 } from "./scene.js";
 export type { FractionalIndex } from "fractional-keys";
+
+// Binary file registry.
+export type { BinaryFile } from "./file.js";
+export { createBinaryFile } from "./file.js";
 
 // Patch utilities
 export { invert, batch, isNoop } from "./patch.js";
