@@ -39,7 +39,7 @@ export type { EditorOptions, LoadSceneOptions } from "./editor.js";
 export { Editor } from "./editor.js";
 
 // File-drop registry (host-extensible image / scene / custom).
-export type { FileDropHandler, FileDropContext } from "./file-drop.js";
+export type { FileDropHandler, FileDropContext, WalkOptions } from "./file-drop.js";
 export {
   FileDropRegistry,
   IMAGE_MIME_TYPES,
@@ -49,6 +49,7 @@ export {
   isSceneJsonFile,
   readFileAsDataURL,
   readFileAsText,
+  walkDataTransfer,
 } from "./file-drop.js";
 
 // Action architecture — command registry.

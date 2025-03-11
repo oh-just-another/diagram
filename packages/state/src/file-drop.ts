@@ -163,3 +163,137 @@ export const readFileAsText = (file: File): Promise<string> =>
       reject(reader.error ?? new Error(`Failed to read ${file.name}`));
     reader.readAsText(file);
   });
+
+/**
+ * Recursive walker for `DataTransfer` that descends into directories via the
+ * non-standard but universally-supported `webkitGetAsEntry()` API. Yields
+ * every leaf `File` once. Hosts feed each yielded file into
+ * `editor.dispatchFileDrop(...)`.
+ *
+ * Two failure modes are handled:
+ *   • Browsers without `webkitGetAsEntry` (older Safari) — falls back to the
+ *     flat `dataTransfer.files` list.
+ *   • Async `entry.file()` / `reader.readEntries()` errors — caught and
+ *     reported via the `onError` callback so one bad sub-folder doesn't kill
+ *     the whole drop.
+ *
+ * Implemented as an `AsyncGenerator` so callers can `for await` and start
+ * processing the first file before the last is found — important for big
+ * folders where reading every file up-front would block for seconds.
+ */
+export interface WalkOptions {
+  /**
+   * Skip any directory whose name matches this predicate. Default: skips
+   * `.git`, `node_modules`, `__MACOSX`, `.DS_Store`, and any name starting
+   * with a dot (hidden).
+   */
+  readonly skipDirectory?: (name: string) => boolean;
+  /** Max recursion depth. Default 32 — guards against symlink loops. */
+  readonly maxDepth?: number;
+  /** Per-entry error callback. Without it, errors are swallowed. */
+  readonly onError?: (path: string, error: unknown) => void;
+}
+
+const DEFAULT_SKIP = (name: string): boolean =>
+  name === ".git" ||
+  name === "node_modules" ||
+  name === "__MACOSX" ||
+  name === ".DS_Store" ||
+  name.startsWith(".");
+
+interface FileSystemEntryLike {
+  readonly isFile: boolean;
+  readonly isDirectory: boolean;
+  readonly name: string;
+  file?(success: (file: File) => void, error: (err: unknown) => void): void;
+  createReader?(): FileSystemDirectoryReaderLike;
+}
+
+interface FileSystemDirectoryReaderLike {
+  readEntries(
+    success: (entries: FileSystemEntryLike[]) => void,
+    error: (err: unknown) => void,
+  ): void;
+}
+
+interface DataTransferItemLike {
+  kind: string;
+  webkitGetAsEntry?(): FileSystemEntryLike | null;
+}
+
+export const walkDataTransfer = async function* (
+  dt: DataTransfer,
+  options: WalkOptions = {},
+): AsyncGenerator<File, void, void> {
+  const skip = options.skipDirectory ?? DEFAULT_SKIP;
+  const maxDepth = options.maxDepth ?? 32;
+  const items = (dt.items as unknown as ArrayLike<DataTransferItemLike>) ?? null;
+
+  // Fast path: no items API or no webkitGetAsEntry — yield the flat files
+  // list and we're done.
+  const hasEntryApi =
+    items && items.length > 0 && typeof items[0]?.webkitGetAsEntry === "function";
+  if (!hasEntryApi) {
+    for (const file of Array.from(dt.files)) yield file;
+    return;
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]!;
+    if (item.kind !== "file") continue;
+    const entry = item.webkitGetAsEntry?.();
+    if (!entry) continue;
+    yield* walkEntry(entry, "", 0, skip, maxDepth, options.onError);
+  }
+};
+
+async function* walkEntry(
+  entry: FileSystemEntryLike,
+  prefix: string,
+  depth: number,
+  skip: (name: string) => boolean,
+  maxDepth: number,
+  onError: ((path: string, err: unknown) => void) | undefined,
+): AsyncGenerator<File, void, void> {
+  const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+
+  if (entry.isFile) {
+    try {
+      const file = await new Promise<File>((resolve, reject) => {
+        entry.file?.(resolve, reject);
+      });
+      yield file;
+    } catch (err) {
+      onError?.(path, err);
+    }
+    return;
+  }
+
+  if (!entry.isDirectory) return;
+  if (skip(entry.name)) return;
+  if (depth >= maxDepth) {
+    onError?.(path, new Error(`Folder depth exceeds ${maxDepth}`));
+    return;
+  }
+
+  const reader = entry.createReader?.();
+  if (!reader) return;
+
+  // `readEntries` returns at most ~100 at a time on Chrome; loop until an
+  // empty array signals "done".
+  for (;;) {
+    let batch: FileSystemEntryLike[];
+    try {
+      batch = await new Promise<FileSystemEntryLike[]>((resolve, reject) => {
+        reader.readEntries(resolve, reject);
+      });
+    } catch (err) {
+      onError?.(path, err);
+      return;
+    }
+    if (batch.length === 0) return;
+    for (const child of batch) {
+      yield* walkEntry(child, path, depth + 1, skip, maxDepth, onError);
+    }
+  }
+}

@@ -14,6 +14,7 @@ import {
   type Template,
   type TemplateRegistry,
 } from "@oh-just-another/templates";
+import { walkDataTransfer } from "@oh-just-another/state";
 import { useDiagramOptional } from "./hooks.js";
 import { PALETTE_ITEM_SIZE, PALETTE_WIDTH } from "./constants.js";
 
@@ -398,18 +399,23 @@ export const usePalettePlacement = () => {
         return;
       }
       // Otherwise treat it as a file drop from the OS / browser.
-      const files = ev.dataTransfer?.files;
-      if (!files || files.length === 0) return;
+      const dt = ev.dataTransfer;
+      if (!dt) return;
       const world = cursorWorld(ev);
       const target = world ?? { x: 0, y: 0 };
       if (!editor) return;
-      // Dispatch each file independently — handlers decide if they
-      // care. We fire-and-forget; the registry's async handler
-      // resolution surfaces errors via uncaught promise rejection
-      // (host can wrap with a toast bridge).
-      for (const file of Array.from(files)) {
-        void editor.dispatchFileDrop(file, target);
-      }
+      // Walk recursively — descends folders via `webkitGetAsEntry`
+      // when available, falls back to the flat `files` list otherwise.
+      // Each yielded leaf file is dispatched independently; one bad
+      // sub-folder doesn't stop the rest.
+      void (async () => {
+        for await (const file of walkDataTransfer(dt, {
+          onError: (path, err) =>
+            console.warn(`[file-drop] failed at ${path}:`, err),
+        })) {
+          void editor.dispatchFileDrop(file, target);
+        }
+      })();
     },
   };
 };
