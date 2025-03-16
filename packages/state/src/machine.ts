@@ -1,5 +1,5 @@
 import { assign, enqueueActions, setup } from "xstate";
-import type { Bounds, EdgeId, Modifiers, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { AnnotationId, Bounds, EdgeId, Modifiers, ShapeId, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "./handle.js";
 import { DEFAULT_MODE, type Mode } from "./modes.js";
 
@@ -33,6 +33,19 @@ export type PressTarget =
       readonly kind: "edge-endpoint";
       readonly edgeId: EdgeId;
       readonly side: "from" | "to";
+    }
+  | {
+      /**
+       * Annotation pin under the cursor. The gesture machine treats it
+       * like a one-axis-free shape drag: every POINTER_MOVE emits
+       * `MOVE_ANNOTATION` with the world-space delta from press-down;
+       * POINTER_UP closes the gesture. Anchored annotations
+       * (shape-relative) and free annotations both move via `position`;
+       * the editor's apply handler preserves the anchor semantics.
+       */
+      readonly kind: "annotation";
+      readonly id: AnnotationId;
+      readonly origin: Vec2;
     }
   | { readonly kind: "empty" };
 
@@ -138,6 +151,16 @@ export type InteractionEmit =
       readonly id: ShapeId;
       readonly delta: Vec2;
       readonly originalBounds: Bounds;
+    }
+  | {
+      readonly type: "MOVE_ANNOTATION";
+      readonly id: AnnotationId;
+      readonly delta: Vec2;
+      readonly originalPosition: Vec2;
+    }
+  | {
+      readonly type: "COMMIT_ANNOTATION_DRAG";
+      readonly id: AnnotationId;
     }
   | {
       readonly type: "RESIZE_SHAPE";
@@ -260,6 +283,28 @@ export const interactionMachine = setup({
         },
         originalBounds: context.pressTarget.bounds,
       });
+    }),
+    emitMoveAnnotation: enqueueActions(({ context, event, enqueue }) => {
+      if (
+        event.type !== "POINTER_MOVE" ||
+        !context.pressOrigin ||
+        context.pressTarget?.kind !== "annotation"
+      ) {
+        return;
+      }
+      enqueue.emit({
+        type: "MOVE_ANNOTATION",
+        id: context.pressTarget.id,
+        delta: {
+          x: event.point.x - context.pressOrigin.x,
+          y: event.point.y - context.pressOrigin.y,
+        },
+        originalPosition: context.pressTarget.origin,
+      });
+    }),
+    emitCommitAnnotationDrag: enqueueActions(({ context, enqueue }) => {
+      if (context.pressTarget?.kind !== "annotation") return;
+      enqueue.emit({ type: "COMMIT_ANNOTATION_DRAG", id: context.pressTarget.id });
     }),
     emitResizeShape: enqueueActions(({ context, event, enqueue }) => {
       if (
@@ -426,6 +471,15 @@ export const interactionMachine = setup({
       if (context.pressTarget?.kind !== "edge-endpoint") return false;
       return dragExceeded(context.pressOrigin, event.point);
     },
+    movedAndOnAnnotation: ({ context, event }) => {
+      if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
+      if (context.pressTarget?.kind !== "annotation") return false;
+      // Annotation pins live above shapes — drag works in select
+      // mode (default) and stays away from drawing modes so a user
+      // sketching a new shape doesn't accidentally grab a pin.
+      if (context.mode !== "select") return false;
+      return dragExceeded(context.pressOrigin, event.point);
+    },
     movedAndLasso: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
       if (context.mode !== "select") return false;
@@ -526,6 +580,14 @@ export const interactionMachine = setup({
             ],
           },
           {
+            guard: "movedAndOnAnnotation",
+            target: "draggingAnnotation",
+            actions: [
+              { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+              { type: "emitMoveAnnotation" },
+            ],
+          },
+          {
             guard: "movedAndLasso",
             target: "lassoing",
             actions: [
@@ -622,6 +684,21 @@ export const interactionMachine = setup({
         POINTER_UP: {
           target: "idle",
           actions: [{ type: "emitEdgeEndpointUpdate" }, { type: "resetGesture" }],
+        },
+        POINTER_CANCEL: { target: "idle", actions: [{ type: "resetGesture" }] },
+      },
+    },
+    draggingAnnotation: {
+      on: {
+        POINTER_MOVE: {
+          actions: [
+            { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+            { type: "emitMoveAnnotation" },
+          ],
+        },
+        POINTER_UP: {
+          target: "idle",
+          actions: [{ type: "emitCommitAnnotationDrag" }, { type: "resetGesture" }],
         },
         POINTER_CANCEL: { target: "idle", actions: [{ type: "resetGesture" }] },
       },

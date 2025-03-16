@@ -528,4 +528,7 @@
 - scene + serialization: Scene.files binary registry
 
 ## 0.28.19
-- state + react-ui: drag-and-drop folder via webkitGetAsEntry
+- state + react-ui: folder-drop via webkitGetAsEntry
+
+## 0.28.20
+- state: Annotation drag
