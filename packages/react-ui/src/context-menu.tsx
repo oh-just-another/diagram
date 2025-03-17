@@ -252,6 +252,40 @@ const collapseDividers = (items: readonly ContextMenuItem[]): readonly ContextMe
  * own custom items.
  */
 export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
+  // --- Annotation pin actions (only when right-click landed on a pin) ---
+  {
+    kind: "action",
+    id: "annotation-open",
+    label: "Open thread",
+    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
+    onClick: (e, ctx) => {
+      const id = e.hitAnnotation(ctx.worldPoint);
+      if (id) e.setSelectedAnnotation(id);
+    },
+  },
+  {
+    kind: "action",
+    id: "annotation-toggle-resolved",
+    label: "Toggle resolved",
+    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
+    onClick: (e, ctx) => {
+      const id = e.hitAnnotation(ctx.worldPoint);
+      if (id) e.toggleAnnotationResolved(id);
+    },
+  },
+  {
+    kind: "action",
+    id: "annotation-delete",
+    label: "Delete annotation",
+    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
+    onClick: (e, ctx) => {
+      const id = e.hitAnnotation(ctx.worldPoint);
+      if (id) e.removeAnnotation(id);
+    },
+  },
+  {
+    kind: "divider",
+  },
   // --- Selection ops (when there's a selection) ---
   {
     kind: "action",

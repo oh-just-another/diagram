@@ -532,3 +532,6 @@
 
 ## 0.28.20
 - state: Annotation drag
+
+## 0.28.21
+- react-ui: annotation pin right-click context menu
