@@ -535,3 +535,6 @@
 
 ## 0.28.21
 - react-ui: annotation pin right-click context menu
+
+## 0.28.22
+- react-ui: lightweight markdown in CommentsPopover

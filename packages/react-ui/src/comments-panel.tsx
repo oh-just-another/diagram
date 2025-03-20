@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { useAnnotations, useDiagramOptional, useSelectedAnnotation } from "./hooks.js";
 import { COMMENTS_PANEL_WIDTH } from "./constants.js";
+import { Markdown } from "./markdown.js";
 
 /**
  * Side-panel listing every annotation thread in the scene. Each row is
@@ -231,7 +232,9 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
                 <strong style={{ color: "var(--text, #ddd)" }}>{c.authorName}</strong>{" "}
                 {formatTime(c.createdAt)}
               </div>
-              <div style={{ whiteSpace: "pre-wrap", paddingRight: 16 }}>{c.body}</div>
+              <div style={{ whiteSpace: "pre-wrap", paddingRight: 16 }}>
+                <Markdown text={c.body} />
+              </div>
             </div>
           ))
         )}

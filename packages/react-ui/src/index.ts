@@ -35,6 +35,7 @@ export { VersionPanel, useSnapshotStore, type VersionPanelProps } from "./versio
 export { MergeDialog, type MergeDialogProps } from "./merge-dialog.js";
 export { BottomSheet, type BottomSheetProps } from "./bottom-sheet.js";
 export { FramePanel, type FramePanelProps } from "./frame-panel.js";
+export { Markdown, type MarkdownProps } from "./markdown.js";
 export { TextEditorOverlay } from "./text-editor-overlay.js";
 export {
   Toolbar,
