@@ -19,6 +19,7 @@
     { "path": "./packages/collab/tsconfig.build.json" },
     { "path": "./packages/text-wasm/tsconfig.build.json" },
     { "path": "./packages/raster-wasm/tsconfig.build.json" },
+    { "path": "./packages/renderer-workers/tsconfig.build.json" },
     { "path": "./packages/react-ui/tsconfig.build.json" },
     { "path": "./apps/cli/tsconfig.build.json" }
   ]

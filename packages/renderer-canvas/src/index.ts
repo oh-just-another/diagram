@@ -5,28 +5,31 @@ export { renderViaTiles, type RenderViaTilesOptions } from "./tile-compositor.js
 export { setupHiDpi } from "./hi-dpi.js";
 export { LayeredCanvas, type LayeredCanvasOptions } from "./layered-canvas.js";
 export {
-  supportsOffscreenCanvas,
-  createOffscreenCanvas2DTarget,
-  transferCanvasToWorker,
+ supportsOffscreenCanvas,
+ createOffscreenCanvas2DTarget,
+ transferCanvasToWorker,
 } from "./offscreen.js";
-export { WorkerPool } from "./worker-pool.js";
-export { LayerWorkerPool } from "./layer-worker-pool.js";
+// WorkerPool / LayerWorkerPool moved to @oh-just-another/renderer-workers
+// (cleanup — backend-neutral primitives don't belong in
+// the Canvas-specific package). Re-export to keep existing imports
+// working.
+export { WorkerPool, LayerWorkerPool } from "@oh-just-another/renderer-workers";
 export {
-  RecordingTarget,
-  replayCommands,
-  type RenderCommand,
+ RecordingTarget,
+ replayCommands,
+ type RenderCommand,
 } from "./recording-target.js";
 export {
-  createLayeredSurface,
-  createLayeredSurfaceWithFallback,
-  type LayeredSurface,
-  type RendererBackend,
-  type CreateLayeredSurfaceOptions,
+ createLayeredSurface,
+ createLayeredSurfaceWithFallback,
+ type LayeredSurface,
+ type RendererBackend,
+ type CreateLayeredSurfaceOptions,
 } from "./layered-surface.js";
 export {
-  isWebGPUAvailable,
-  isWebGL2Available,
-  pickAvailableBackend,
+ isWebGPUAvailable,
+ isWebGL2Available,
+ pickAvailableBackend,
 } from "./webgpu-detect.js";
 export { LARGE_SCENE_WORKER_THRESHOLD } from "./constants.js";
 

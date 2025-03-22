@@ -1,7 +1,7 @@
 {
-  "name": "@oh-just-another/renderer-canvas",
-  "version": "0.28.23",
-  "description": "renderer-canvas package",
+  "name": "@oh-just-another/renderer-workers",
+  "version": "0.0.0",
+  "description": "Worker-pool primitives for off-thread rendering. Layer-pinned dispatch + generic round-robin pool.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -10,12 +10,7 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./render-worker": {
-      "types": "./dist/render-worker.d.ts",
-      "import": "./dist/render-worker.js"
-    },
-    "./dist/render-worker.js": "./dist/render-worker.js"
+    }
   },
   "files": [
     "dist",
@@ -35,10 +30,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@oh-just-another/types": "workspace:*",
-    "@oh-just-another/math": "workspace:*",
-    "@oh-just-another/scene": "workspace:*",
-    "@oh-just-another/renderer-core": "workspace:*",
-    "@oh-just-another/renderer-workers": "workspace:*"
+    "@oh-just-another/types": "workspace:*"
   }
 }

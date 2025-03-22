@@ -357,6 +357,9 @@ importers:
       '@oh-just-another/renderer-core':
         specifier: workspace:*
         version: link:../renderer-core
+      '@oh-just-another/renderer-workers':
+        specifier: workspace:*
+        version: link:../renderer-workers
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
@@ -387,6 +390,12 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../types
+
+  packages/renderer-workers:
+    dependencies:
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../types

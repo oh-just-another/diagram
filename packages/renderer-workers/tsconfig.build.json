@@ -8,11 +8,5 @@
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
-  "references": [
-    { "path": "../types/tsconfig.build.json" },
-    { "path": "../math/tsconfig.build.json" },
-    { "path": "../scene/tsconfig.build.json" },
-    { "path": "../renderer-core/tsconfig.build.json" },
-    { "path": "../renderer-workers/tsconfig.build.json" }
-  ]
+  "references": [{ "path": "../types/tsconfig.build.json" }]
 }

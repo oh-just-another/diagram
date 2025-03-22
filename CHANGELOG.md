@@ -538,3 +538,6 @@
 
 ## 0.28.22
 - react-ui: lightweight markdown in CommentsPopover
+
+## 0.28.23
+- new package: @renderer-workers

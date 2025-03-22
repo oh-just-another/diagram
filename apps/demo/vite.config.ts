@@ -12,6 +12,7 @@ const workspacePackages = [
   "scene",
   "renderer-core",
   "renderer-canvas",
+  "renderer-workers",
   "renderer-svg",
   "state",
   "history",
