@@ -541,3 +541,6 @@
 
 ## 0.28.23
 - new package: @renderer-workers
+
+## 0.28.24
+- e2e: mobile UI screenshot baseline
