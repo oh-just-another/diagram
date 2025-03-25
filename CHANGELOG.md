@@ -544,3 +544,6 @@
 
 ## 0.28.24
 - e2e: mobile UI screenshot baseline
+
+## 0.28.25
+- e2e: removed test-results from repo + added .gitignore
