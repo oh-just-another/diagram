@@ -39,8 +39,21 @@ export const imageFileDropHandler: FileDropHandler = {
   id: "image",
   accept: (file) => isImageFile(file),
   handle: async (file, { editor, worldPoint }) => {
-    const dataUrl = await readFileAsDataURL(file);
-    const natural = await measureImage(dataUrl);
+    // Register the blob in Scene.files first, then create an object-URL
+    // for renderer convenience. Scene.json ends up with just a small
+    // `fileId` reference instead of the full base64 dataURL, keeping the
+    // payload small even for large PNGs.
+    //
+    // The dataURL fallback path produces a usable `src` for the renderer
+    // where `URL.createObjectURL(blob)` is unavailable (headless / SSR):
+    // the file is read as a dataURL so the shape still has something to
+    // draw if a host renders it before the file blob lands.
+    const useObjectUrl =
+      typeof URL !== "undefined" && typeof URL.createObjectURL === "function";
+    const fileId = await editor.addBinaryFile(file, file.name);
+    const src = useObjectUrl ? URL.createObjectURL(file) : await readFileAsDataURL(file);
+
+    const natural = await measureImage(src);
     const max = DEFAULT_IMAGE_MAX_EDGE_PX;
     const scale =
       Math.max(natural.width, natural.height) > max
@@ -66,7 +79,7 @@ export const imageFileDropHandler: FileDropHandler = {
     let img: HTMLImageElement | null = null;
     if (typeof Image !== "undefined") {
       img = new Image();
-      img.src = dataUrl;
+      img.src = src;
       if (typeof document !== "undefined") {
         const sink = ensureAnimatedImageSink();
         img.style.position = "absolute";
@@ -89,7 +102,8 @@ export const imageFileDropHandler: FileDropHandler = {
       }
     }
     editor.insertImage({
-      src: dataUrl,
+      src,
+      fileId,
       width,
       height,
       position: topLeft,

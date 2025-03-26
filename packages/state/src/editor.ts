@@ -1,6 +1,6 @@
 import { createActor, type Actor } from "xstate";
-import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
-import { shapeId as castShapeId } from "@oh-just-another/types";
+import type { Bounds, FileId, ShapeId, Vec2 } from "@oh-just-another/types";
+import { fileId as castFileId, shapeId as castShapeId } from "@oh-just-another/types";
 import {
  addAnnotation,
  addEdge,
@@ -66,6 +66,7 @@ import {
  type Scene,
  type Shape,
  type SnapCandidate,
+ createBinaryFile,
 } from "@oh-just-another/scene";
 import {
  annotationId as castAnnotationId,
@@ -1125,6 +1126,15 @@ export class Editor {
    * subsequent drawImage calls.
    */
   animated?: boolean;
+  /**
+   * link this image to a `Scene.files` entry instead
+   * of (or in addition to) embedding the bytes in `src`. Hosts
+   * call `editor.addBinaryFile(blob, name?)` first to register
+   * the bytes and pass the returned `FileId` here. Serialised
+   * scenes then carry only the small `fileId` reference; the
+   * blob round-trips through the files sidecar.
+   */
+  fileId?: import("@oh-just-another/types").FileId;
  }): ShapeId {
   const id = castShapeId(this.uniqueId("img"));
   const layerId = this._activeLayerId;
@@ -1148,11 +1158,37 @@ export class Editor {
    width: input.width,
    height: input.height,
    src: input.src,
+   ...(input.fileId ? { fileId: input.fileId } : {}),
    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
   };
   this.addShape(shape);
   if (input.animated) this.animationTick.start();
   return id;
+ }
+
+ /**
+  * register a binary file (typically a freshly-dropped
+  * image blob) into `Scene.files` and return its id. The returned
+  * id can immediately be passed to `insertImage({ fileId })` so
+  * the shape references the entry instead of embedding bytes as a
+  * dataURL.
+  *
+  * The patch is pushed to history as its own undo step. Callers
+  * who want the file + shape in one undo step should wrap both in
+  * `_history.transaction()` themselves (advanced).
+  */
+ addBinaryFile(blob: Blob, name?: string): Promise<FileId> {
+  return blob.arrayBuffer().then((data) => {
+   const id = castFileId(`file-${++this.nextId}-${Date.now().toString(36)}`);
+   const file = createBinaryFile(id, data, {
+    mime: blob.type || "application/octet-stream",
+    ...(name !== undefined ? { name } : {}),
+   });
+   const patch: Patch = { kind: "file", id, before: null, after: file };
+   this._scene = apply(this._scene, patch);
+   this._history.push(patch);
+   return id;
+  });
  }
 
  /**

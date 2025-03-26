@@ -547,3 +547,6 @@
 
 ## 0.28.25
 - e2e: removed test-results from repo + added .gitignore
+
+## 0.28.26
+- state: connect Scene.files to imageFileDropHandler
