@@ -549,4 +549,7 @@
 - e2e: removed test-results from repo + added .gitignore
 
 ## 0.28.26
-- state: connect Scene.files to imageFileDropHandler
+- state: wire Scene.files in imageFileDropHandler
+
+## 0.29.0
+- WASM text shaping + raster — full implementation

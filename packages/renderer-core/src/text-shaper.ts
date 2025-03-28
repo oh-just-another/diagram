@@ -46,3 +46,27 @@ export interface ShapedGlyph {
 
 // Re-export the RenderTarget alignment types under the shaper namespace.
 export type { TextAlign, TextBaseline };
+
+// --- Process-global active shaper ---
+//
+// `wrapText` accepts an optional `shaper` parameter — but the
+// built-in `drawText` renderer in `built-in-renderers.ts` is a
+// `ShapeRenderer<TextShape>` whose signature is `(shape, target)`,
+// no extra arg. Threading a shaper through every ShapeRenderer is
+// invasive; instead we expose a module-level registry that
+// `drawText` consults at call time. Editor sets it via
+// `setActiveTextShaper(options.textShaper)` on construction.
+
+let activeShaper: TextShaper | null = null;
+
+/**
+ * Install a process-global text shaper. Subsequent `getActiveTextShaper()`
+ * calls (used by the built-in `drawText` renderer) return it; passing `null`
+ * reverts to the Canvas2D `target.measureText` path. Idempotent — last write
+ * wins.
+ */
+export const setActiveTextShaper = (shaper: TextShaper | null): void => {
+  activeShaper = shaper;
+};
+
+export const getActiveTextShaper = (): TextShaper | null => activeShaper;

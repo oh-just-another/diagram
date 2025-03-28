@@ -81,6 +81,25 @@ export class WasmTextShaper implements TextShaper {
     this.currentFontKey = null;
   }
 
+  /**
+   * Load the bundled `text_shaper.wasm` shipped with this package.
+   * Equivalent to
+   *
+   *   shaper.loadModule(new URL("../wasm/text_shaper.wasm",
+   *                              import.meta.url))
+   *
+   * In a Vite-built host the URL resolves to a hashed bundle asset;
+   * in Node, `fetch` (Node 18+) reads it from disk through the
+   * `file://` URL. SSR-only hosts can pass the bytes directly to
+   * `loadModule(...)` to skip the fetch hop.
+   */
+  static async loadBundled(): Promise<WasmTextShaper> {
+    const shaper = new WasmTextShaper();
+    const url = new URL("../wasm/text_shaper.wasm", import.meta.url);
+    await shaper.loadModule(url);
+    return shaper;
+  }
+
   measure(text: string, font: ShaperFont): { width: number } {
     const cacheKey = `${fontKey(font)}|${text}`;
     const cached = this.cache.get(cacheKey);
@@ -171,6 +190,17 @@ const fetchModuleBytes = async (
     ) as ArrayBuffer;
   }
   if (source instanceof Response) return source.arrayBuffer();
+  // Node's WHATWG fetch refuses `file://` URLs (not implemented as
+  // of Node 22). Detect the protocol and read straight from disk
+  // so `loadBundled()` works in tests / SSR / CLI contexts.
+  const urlStr = typeof source === "string" ? source : source.href;
+  if (urlStr.startsWith("file:")) {
+    const { readFile } = await import("node:fs/promises");
+    const { fileURLToPath } = await import("node:url");
+    const path = fileURLToPath(urlStr);
+    const buf = await readFile(path);
+    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+  }
   const res = await fetch(source);
   if (!res.ok) {
     throw new Error(`WasmTextShaper.loadModule: fetch failed (${res.status})`);

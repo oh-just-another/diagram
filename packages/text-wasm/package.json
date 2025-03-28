@@ -14,6 +14,7 @@
   },
   "files": [
     "dist",
+    "wasm",
     "README.md",
     "CHANGELOG.md"
   ],

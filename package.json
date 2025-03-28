@@ -1,6 +1,6 @@
 {
   "name": "diagram",
-  "version": "0.28.26",
+  "version": "0.29.0",
   "private": true,
   "description": "Monorepo for the diagram library \u2014",
   "type": "module",
@@ -21,6 +21,7 @@
     "release": "pnpm build && changeset publish",
     "new-package": "node scripts/new-package.mjs",
     "render:svg": "vite-node scripts/render-svg.ts",
+    "build:wasm": "bash scripts/build-wasm.sh",
     "prepare": "lefthook install"
   },
   "devDependencies": {

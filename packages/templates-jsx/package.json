@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/templates-jsx",
-  "version": "0.28.26",
+  "version": "0.29.0",
   "description": "JSX sugar over @oh-just-another/templates rich-template node trees.",
   "type": "module",
   "main": "./dist/index.js",

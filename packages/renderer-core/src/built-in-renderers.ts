@@ -14,6 +14,7 @@ import {
 import { registerShapeRenderer, type ShapeRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "./render-target.js";
 import { wrapText } from "./text-layout.js";
+import { getActiveTextShaper } from "./text-shaper.js";
 import { resolveImageSource } from "./animation-adapter.js";
 
 /**
@@ -131,9 +132,12 @@ const drawText: ShapeRenderer<TextShape> = (shape, target) => {
     return;
   }
 
+  const shaper = getActiveTextShaper();
   const { lines, lineHeight } = wrapText(shape.text, target, {
     maxWidth: shape.maxWidth,
     fontSize: shape.fontSize,
+    fontFamily: shape.fontFamily,
+    ...(shaper ? { shaper } : {}),
   });
   for (let i = 0; i < lines.length; i++) {
     target.fillText(lines[i]!.text, xAnchor, i * lineHeight);

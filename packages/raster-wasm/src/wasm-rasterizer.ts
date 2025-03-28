@@ -92,6 +92,18 @@ export class WasmRasterizer implements Rasterizer {
     this.wasm = instance.exports as unknown as WasmRasterizerExports;
   }
 
+  /**
+   * Load the bundled `rasterizer.wasm` shipped with this package.
+   */
+  static async loadBundled(
+    options: WasmRasterizerOptions = {},
+  ): Promise<WasmRasterizer> {
+    const r = new WasmRasterizer(options);
+    const url = new URL("../wasm/rasterizer.wasm", import.meta.url);
+    await r.loadModule(url);
+    return r;
+  }
+
   flatten(commands: readonly PathCommand[], tolerance: number): readonly Vec2[] {
     const t = tolerance > 0 ? tolerance : this.defaultTolerance;
     if (!this.wasm) return jsRasterizer.flatten(commands, t);
@@ -170,6 +182,15 @@ const fetchModuleBytes = async (
     ) as ArrayBuffer;
   }
   if (source instanceof Response) return source.arrayBuffer();
+  // file:// path goes through fs — Node's fetch doesn't accept it.
+  const urlStr = typeof source === "string" ? source : source.href;
+  if (urlStr.startsWith("file:")) {
+    const { readFile } = await import("node:fs/promises");
+    const { fileURLToPath } = await import("node:url");
+    const path = fileURLToPath(urlStr);
+    const buf = await readFile(path);
+    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+  }
   const res = await fetch(source);
   if (!res.ok) {
     throw new Error(`WasmRasterizer.loadModule: fetch failed (${res.status})`);

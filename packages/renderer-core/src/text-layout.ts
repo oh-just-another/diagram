@@ -1,4 +1,5 @@
 import type { RenderTarget } from "./render-target.js";
+import type { TextShaper } from "./text-shaper.js";
 
 export interface WrapOptions {
   /** Max width in CSS pixels. */
@@ -7,6 +8,22 @@ export interface WrapOptions {
   readonly fontSize: number;
   /** Multiplier applied to font size to derive line height. Default: 1.2. */
   readonly lineHeightFactor?: number;
+  /**
+   * Optional font family name — paired with `fontSize` to call
+   * `shaper.measure(text, { family, size })` when a `shaper` is
+   * supplied. Defaults to `"sans-serif"`. Has no effect when no
+   * shaper is in play (Canvas2D's `measureText` already knows the
+   * font via the host's prior `ctx.font = …` call).
+   */
+  readonly fontFamily?: string;
+  /**
+   * Optional `TextShaper` (WASM / harfbuzz / canvaskit) that
+   * replaces the default `target.measureText` path. When set,
+   * the wrap algorithm queries `shaper.measure(line, font)` per
+   * candidate line, so layouts stay deterministic across
+   * environments (server / headless / browser).
+   */
+  readonly shaper?: TextShaper;
 }
 
 export interface WrappedLine {
@@ -32,7 +49,11 @@ export const wrapText = (
   const lineHeightFactor = options.lineHeightFactor ?? 1.2;
 
   const out: WrappedLine[] = [];
-  const measure = (s: string) => target.measureText(s).width;
+  const fontFamily = options.fontFamily ?? "sans-serif";
+  const shaper = options.shaper;
+  const measure = shaper
+    ? (s: string) => shaper.measure(s, { family: fontFamily, size: options.fontSize }).width
+    : (s: string) => target.measureText(s).width;
 
   for (const paragraph of text.split("\n")) {
     if (paragraph === "") {

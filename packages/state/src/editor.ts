@@ -85,6 +85,7 @@ import {
  renderEdges,
  renderGrid,
  renderScene,
+ setActiveTextShaper,
  ShapeCache,
  type RenderTarget,
 } from "@oh-just-another/renderer-core";
@@ -206,6 +207,24 @@ export interface EditorOptions {
   *  reports a coarse primary pointer, else `"mouse"`. Default.
   */
  readonly inputMode?: "mouse" | "touch" | "auto";
+
+ /**
+  * Optional text shaper. When supplied, replaces the renderer's
+  * default Canvas2D `measureText` path for wrap / layout. Plug
+  * `WasmTextShaper.loadBundled()` from `@oh-just-another/text-wasm`
+  * for deterministic browser-vs-Node parity (Roboto Regular
+  * embedded; advance widths match across environments).
+  */
+ readonly textShaper?: import("@oh-just-another/renderer-core").TextShaper;
+ /**
+  * Optional rasterizer. When supplied, hosts of `renderEdges` /
+  * future path-heavy code can opt in to WASM bezier / stroke-to-
+  * fill via `WasmRasterizer.loadBundled()` from
+  * `@oh-just-another/raster-wasm`. The kernel itself doesn't consume
+  * this directly today — exposed here so the field travels with
+  * `EditorOptions` and hosts have a single config surface.
+  */
+ readonly rasterizer?: import("@oh-just-another/renderer-core").Rasterizer;
 
  /**
   * When `true`, the editor routes per-frame rendering through a
@@ -649,6 +668,13 @@ export class Editor {
    : new History(options.history ?? {});
   this.tileComposeFn =
    options.useTileCache === true && options.tileCompose ? options.tileCompose : null;
+
+  // If the host plugged a TextShaper (e.g.
+  // WasmTextShaper.loadBundled()), install it process-globally
+  // so the built-in text renderer's wrap path uses it instead
+  // of Canvas2D.measureText. Hosts that don't care leave the
+  // field unset and the default behaviour is unchanged.
+  if (options.textShaper) setActiveTextShaper(options.textShaper);
 
   // Resolve input mode + derived hit slops once. `auto` reads
   // `matchMedia('(pointer: coarse)')` when available; SSR falls
