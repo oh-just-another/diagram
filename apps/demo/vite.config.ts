@@ -14,6 +14,8 @@ const workspacePackages = [
   "renderer-canvas",
   "renderer-workers",
   "renderer-svg",
+  "text-wasm",
+  "raster-wasm",
   "state",
   "history",
   "templates",

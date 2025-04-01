@@ -86,12 +86,18 @@ importers:
       '@oh-just-another/network':
         specifier: workspace:*
         version: link:../../packages/network
+      '@oh-just-another/raster-wasm':
+        specifier: workspace:*
+        version: link:../../packages/raster-wasm
       '@oh-just-another/react-ui':
         specifier: workspace:*
         version: link:../../packages/react-ui
       '@oh-just-another/renderer-canvas':
         specifier: workspace:*
         version: link:../../packages/renderer-canvas
+      '@oh-just-another/renderer-core':
+        specifier: workspace:*
+        version: link:../../packages/renderer-core
       '@oh-just-another/renderer-svg':
         specifier: workspace:*
         version: link:../../packages/renderer-svg
@@ -110,6 +116,9 @@ importers:
       '@oh-just-another/templates-jsx':
         specifier: workspace:*
         version: link:../../packages/templates-jsx
+      '@oh-just-another/text-wasm':
+        specifier: workspace:*
+        version: link:../../packages/text-wasm
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../../packages/types

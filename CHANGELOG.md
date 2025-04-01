@@ -553,3 +553,6 @@
 
 ## 0.29.0
 - WASM text shaping + raster — full implementation
+
+## 0.29.1
+- demo: WASM text shaping toggle in header

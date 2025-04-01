@@ -16,6 +16,7 @@ import {
   type RendererBackend,
 } from "@oh-just-another/renderer-canvas";
 import { Editor, type EditorOptions, type Mode } from "@oh-just-another/state";
+import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
 import type { Scene } from "@oh-just-another/scene";
 import { DiagramEditorBridge } from "./context.js";
 
@@ -64,6 +65,20 @@ export interface DiagramRootProps {
    * URL differently), so the kernel never ships a default.
    */
   readonly workerFactory?: () => Worker;
+  /**
+   * Pre-loaded WASM text shaper (or any `TextShaper` impl).
+   * Forwarded straight into `EditorOptions.textShaper` so the
+   * built-in `drawText` renderer uses it for wrap measurements.
+   * Pass `WasmTextShaper.loadBundled()` (await first!) from
+   * `@oh-just-another/text-wasm`.
+   */
+  readonly textShaper?: TextShaper;
+  /**
+   * Pre-loaded WASM rasterizer. Forwarded into the editor for
+   * hosts that want path-heavy code to go through WASM bezier
+   * flatten / stroke-to-fill.
+   */
+  readonly rasterizer?: Rasterizer;
 }
 
 export const DiagramRoot = ({
@@ -74,6 +89,8 @@ export const DiagramRoot = ({
   skipInstallRenderers,
   renderer = "canvas2d",
   workerFactory,
+  textShaper,
+  rasterizer,
 }: DiagramRootProps) => {
   const [editor, setEditor] = useState<Editor | null>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -86,8 +103,12 @@ export const DiagramRoot = ({
   // values when it re-mounts the surface.
   const rendererRef = useRef<RendererBackend>(renderer);
   const workerFactoryRef = useRef<(() => Worker) | undefined>(workerFactory);
+  const textShaperRef = useRef<TextShaper | undefined>(textShaper);
+  const rasterizerRef = useRef<Rasterizer | undefined>(rasterizer);
   rendererRef.current = renderer;
   workerFactoryRef.current = workerFactory;
+  textShaperRef.current = textShaper;
+  rasterizerRef.current = rasterizer;
 
   const mountSurface = useCallback((host: HTMLElement) => {
     if (!skipInstallRenderers) installBuiltinRenderers();
@@ -120,6 +141,8 @@ export const DiagramRoot = ({
       backgroundTarget: surface.get("background"),
       initialScene,
       ...(initialMode !== undefined ? { initialMode } : {}),
+      ...(textShaperRef.current ? { textShaper: textShaperRef.current } : {}),
+      ...(rasterizerRef.current ? { rasterizer: rasterizerRef.current } : {}),
     };
     const e = new Editor(opts);
     e.setViewportSize(width, height);
