@@ -559,3 +559,6 @@
 
 ## 0.30.0
 - apps/demo Right apps/diagram: library <Diagram> component
+
+## 0.30.1
+- WASM raster: end-to-end wire-up

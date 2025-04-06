@@ -85,6 +85,7 @@ import {
  renderEdges,
  renderGrid,
  renderScene,
+ setActiveRasterizer,
  setActiveTextShaper,
  ShapeCache,
  type RenderTarget,
@@ -675,6 +676,12 @@ export class Editor {
   // of Canvas2D.measureText. Hosts that don't care leave the
   // field unset and the default behaviour is unchanged.
   if (options.textShaper) setActiveTextShaper(options.textShaper);
+  // Same pattern for Rasterizer. The WebGL2
+  // backend reads `getActiveRasterizer()` from its curve methods
+  // and routes through WASM flatten / strokeToFill when set.
+  // Other backends (Canvas2D, SVG) leave the field alone —
+  // native ctx.bezierCurveTo beats any WASM round-trip there.
+  if (options.rasterizer) setActiveRasterizer(options.rasterizer);
 
   // Resolve input mode + derived hit slops once. `auto` reads
   // `matchMedia('(pointer: coarse)')` when available; SSR falls

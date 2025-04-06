@@ -12,6 +12,7 @@ import type {
   TextAlign,
   TextBaseline,
 } from "@oh-just-another/renderer-core";
+import { getActiveRasterizer } from "@oh-just-another/renderer-core";
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -225,17 +226,31 @@ export class WebGL2Target implements RenderTarget {
   }
 
   /**
-   * Quadratic Bezier — flattened to a polyline via @math/bezier
-   * sampling, then appended to the current polyline. Same accuracy
-   * the JS rasterizer ships.
+   * Quadratic Bezier — flattened to a polyline. When the host has
+   * installed an active `Rasterizer` (WASM flatten via
+   * `setActiveRasterizer`), uses adaptive subdivision through the
+   * registered rasterizer for tighter accuracy on long curves;
+   * otherwise falls back to the bundled fixed-16-sample JS path.
    */
   quadraticCurveTo(cx: number, cy: number, x: number, y: number): void {
     const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x: cx, y: cy };
+    const r = getActiveRasterizer();
+    if (r) {
+      const pts = r.flatten(
+        [
+          { kind: "M", to: start },
+          { kind: "Q", control: { x: cx, y: cy }, to: { x, y } },
+        ],
+        ADAPTIVE_TOLERANCE,
+      );
+      for (let i = 1; i < pts.length; i++) this.currentPolyline.push(pts[i]!);
+      return;
+    }
     const samples = sampleQuadratic(start, { x: cx, y: cy }, { x, y }, 16);
     for (let i = 1; i < samples.length; i++) this.currentPolyline.push(samples[i]!);
   }
 
-  /** Cubic Bezier — flattened the same way as quadratic. */
+  /** Cubic Bezier — same dual JS-or-WASM flatten path as quadratic. */
   bezierCurveTo(
     c1x: number,
     c1y: number,
@@ -245,6 +260,23 @@ export class WebGL2Target implements RenderTarget {
     y: number,
   ): void {
     const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x, y };
+    const r = getActiveRasterizer();
+    if (r) {
+      const pts = r.flatten(
+        [
+          { kind: "M", to: start },
+          {
+            kind: "C",
+            control1: { x: c1x, y: c1y },
+            control2: { x: c2x, y: c2y },
+            to: { x, y },
+          },
+        ],
+        ADAPTIVE_TOLERANCE,
+      );
+      for (let i = 1; i < pts.length; i++) this.currentPolyline.push(pts[i]!);
+      return;
+    }
     const samples = sampleCubic(
       start,
       { x: c1x, y: c1y },
@@ -588,6 +620,14 @@ const drawPolylineStroke = (
 };
 
 const IDENTITY_MAT3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+
+/**
+ * Flatten tolerance (world units) passed to the active rasterizer
+ * when one is installed. 0.5 px is "imperceptible at 1× zoom" on
+ * typical diagrams — the WASM rasterizer subdivides until each
+ * polyline chord is within this distance of the true curve.
+ */
+const ADAPTIVE_TOLERANCE = 0.5;
 
 /** Sample a quadratic Bezier curve at `count` evenly-spaced t values. */
 const sampleQuadratic = (

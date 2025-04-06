@@ -1,6 +1,23 @@
 import type { Vec2 } from "@oh-just-another/types";
 import type { PathCommand } from "@oh-just-another/scene";
 
+// Process-global active rasterizer. Mirrors `setActiveTextShaper` —
+// Editor installs once on mount; backend code (WebGL2Target's curve
+// flattening) reads at draw time. `null` falls back to the backend's
+// built-in JS sampler.
+
+let activeRasterizer: import("./rasterizer.js").Rasterizer | null = null;
+
+export const setActiveRasterizer = (
+ r: import("./rasterizer.js").Rasterizer | null,
+): void => {
+ activeRasterizer = r;
+};
+
+export const getActiveRasterizer = (): import("./rasterizer.js").Rasterizer | null =>
+ activeRasterizer;
+
+
 /**
  * 2D rasterisation helpers — abstraction. Lets a host
  * swap the pure-TS bezier flatten / stroke-to-fill / gradient ops

@@ -26,6 +26,14 @@ export interface CapabilityProfile {
   /** Use the bundled `WasmTextShaper` for wrap measurements. */
   readonly wasmText: boolean;
   /**
+   * Use the bundled `WasmRasterizer` for path flatten / stroke-to-
+   * fill. Currently only the WebGL2 backend calls into the
+   * rasterizer (Canvas2D has native `ctx.bezierCurveTo` which is
+   * faster than any WASM round-trip); detection still flips this
+   * field on for any backend so the host knows the wasm is loaded.
+   */
+  readonly wasmRaster: boolean;
+  /**
    * Spawn OffscreenCanvas workers per layer for the main render
    * pass. Independent from `renderer === "offscreen"` — even with
    * a Canvas2D main path the tile pre-rasterisation can be off-
@@ -54,6 +62,7 @@ export interface CapabilityProfile {
 export interface CapabilityOverrides {
   readonly renderer?: RendererBackend | "auto";
   readonly wasmText?: boolean | "auto";
+  readonly wasmRaster?: boolean | "auto";
   readonly workers?: boolean | "auto";
   readonly tiles?: boolean | "auto";
 }
@@ -110,6 +119,10 @@ export const detectCapabilities = async (
     overrides.wasmText !== undefined && overrides.wasmText !== "auto"
       ? overrides.wasmText
       : supportsWasm();
+  const wasmRaster =
+    overrides.wasmRaster !== undefined && overrides.wasmRaster !== "auto"
+      ? overrides.wasmRaster
+      : supportsWasm() && renderer === "webgl2";
   const workers =
     overrides.workers !== undefined && overrides.workers !== "auto"
       ? overrides.workers
@@ -118,7 +131,7 @@ export const detectCapabilities = async (
     overrides.tiles !== undefined && overrides.tiles !== "auto"
       ? overrides.tiles
       : true;
-  return { renderer, wasmText, workers, tiles, touch: isTouchPrimary() };
+  return { renderer, wasmText, wasmRaster, workers, tiles, touch: isTouchPrimary() };
 };
 
 /**
@@ -135,11 +148,12 @@ export const logCapabilities = (profile: CapabilityProfile): void => {
         : "Canvas2D";
   // eslint-disable-next-line no-console
   console.log(
-    "%c[diagram]%c renderer=%s, wasmText=%s, workers=%s, tiles=%s, touch=%s (%s)",
+    "%c[diagram]%c renderer=%s, wasmText=%s, wasmRaster=%s, workers=%s, tiles=%s, touch=%s (%s)",
     "color: #1a73e8; font-weight: 700",
     "color: inherit",
     profile.renderer,
     profile.wasmText,
+    profile.wasmRaster,
     profile.workers,
     profile.tiles,
     profile.touch,

@@ -33,6 +33,7 @@ import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
 import { emptyScene, type Scene } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
+import { WasmRasterizer } from "@oh-just-another/raster-wasm";
 import {
   registerAnimationAdapter,
   type AnimatedSourceAdapter,
@@ -210,6 +211,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   // --- Capabilities ------------------------------------------------
   const [profile, setProfile] = useState<CapabilityProfile | null>(null);
   const [wasmShaper, setWasmShaper] = useState<TextShaper | null>(null);
+  const [wasmRaster, setWasmRaster] = useState<Rasterizer | null>(null);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -217,15 +219,40 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
       if (cancelled) return;
       logCapabilities(detected);
       setProfile(detected);
+      const loads: Promise<unknown>[] = [];
       if (detected.wasmText) {
-        try {
-          const shaper = await WasmTextShaper.loadBundled();
-          if (!cancelled) setWasmShaper(shaper);
-        } catch (err) {
-          // eslint-disable-next-line no-console
-          console.warn("[diagram] WASM text shaper load failed, falling back to Canvas2D", err);
-        }
+        loads.push(
+          WasmTextShaper.loadBundled().then(
+            (shaper) => {
+              if (!cancelled) setWasmShaper(shaper);
+            },
+            (err) => {
+              // eslint-disable-next-line no-console
+              console.warn(
+                "[diagram] WASM text shaper load failed, falling back to Canvas2D",
+                err,
+              );
+            },
+          ),
+        );
       }
+      if (detected.wasmRaster) {
+        loads.push(
+          WasmRasterizer.loadBundled().then(
+            (r) => {
+              if (!cancelled) setWasmRaster(r);
+            },
+            (err) => {
+              // eslint-disable-next-line no-console
+              console.warn(
+                "[diagram] WASM rasterizer load failed, falling back to JS sampler",
+                err,
+              );
+            },
+          ),
+        );
+      }
+      await Promise.allSettled(loads);
     })();
     return () => {
       cancelled = true;
@@ -345,6 +372,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
             ? { workerFactory: createRenderWorker }
             : {})}
           {...(wasmShaper ? { textShaper: wasmShaper } : {})}
+          {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
         >
           <main
             data-diagram-main
