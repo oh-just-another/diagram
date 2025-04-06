@@ -75,7 +75,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/serialization
 
-  apps/demo:
+  apps/diagram:
     dependencies:
       '@oh-just-another/collab':
         specifier: workspace:*

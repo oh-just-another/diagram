@@ -17,7 +17,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "pnpm --filter @oh-just-another/demo dev --port 5173 --strictPort",
+      command: "pnpm --filter @oh-just-another/diagram dev --port 5173 --strictPort",
       url: "http://localhost:5173",
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,

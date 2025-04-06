@@ -13,11 +13,23 @@ pnpm typecheck   # tsc --noEmit
 pnpm format      # prettier --write .
 ```
 
-Run the demo in the browser:
+Run the editor in the browser:
 
 ```bash
-pnpm --filter @oh-just-another/demo dev   # http://localhost:5174
+pnpm --filter @oh-just-another/diagram dev   # http://localhost:5174
 ```
+
+Use as a component in your project:
+
+```tsx
+import { Diagram } from "@oh-just-another/diagram";
+
+function App() {
+  return <Diagram />;
+}
+```
+
+`<Diagram>` automatically selects the best renderer (WebGL2 / OffscreenCanvas / Canvas2D), loads WASM-shaper for text where supported, and logs the actual profile to console.log on mount.
 
 Create a new package:
 

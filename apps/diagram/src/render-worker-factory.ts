@@ -4,7 +4,7 @@
  * detects the constructor call, bundles the worker as its own
  * chunk, and rewrites the URL to the emitted asset at build time.
  *
- * We point at the workspace source directly (not the package's
+ * It points at the workspace source directly (not the package's
  * `dist/`) because the dev server aliases `@oh-just-another/*` to
  * `src/index.ts` for HMR; deep imports through the alias don't
  * resolve cleanly. A relative path bypasses the alias and works

@@ -1,9 +1,13 @@
 {
-  "name": "@oh-just-another/demo",
-  "version": "0.29.1",
-  "description": "Demo application \u2014 full-featured React editor built on top of @oh-just-another/react-ui.",
+  "name": "@oh-just-another/diagram",
+  "version": "0.0.0",
+  "description": "Drop-in diagram editor component. Auto-detects browser capabilities (renderer / WASM / workers) and exposes a single <Diagram> React component with plugin / slot / theme props.",
   "type": "module",
   "private": true,
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "dev": "vite",
     "dev:fresh": "vite --force",

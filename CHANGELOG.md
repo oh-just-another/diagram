@@ -556,3 +556,6 @@
 
 ## 0.29.1
 - demo: WASM text shaping toggle in header
+
+## 0.30.0
+- apps/demo Right apps/diagram: library <Diagram> component

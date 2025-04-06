@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 /**
  * Toggle between light / dark mode. Initial value follows the OS preference
- * (`prefers-color-scheme`) but persists across reloads in `localStorage`.
+ * (`prefers-color-scheme`) and persists across reloads in `localStorage`.
  *
  * Theme is applied as a `data-theme="light|dark"` attribute on the
  * `<html>` element — CSS in `index.html` reads it to flip colour vars.
