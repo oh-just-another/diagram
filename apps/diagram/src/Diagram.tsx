@@ -212,12 +212,25 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   const [profile, setProfile] = useState<CapabilityProfile | null>(null);
   const [wasmShaper, setWasmShaper] = useState<TextShaper | null>(null);
   const [wasmRaster, setWasmRaster] = useState<Rasterizer | null>(null);
+  // React StrictMode in dev double-mounts every effect. Capability
+  // detection probes a real WebGL2 context (among others); doing
+  // that twice can hit the browser's per-page GL context cap and
+  // make the actual editor mount fail with "WebGL2 unavailable".
+  // Cache the in-flight promise so the second mount reuses it.
+  const detectionRef = useRef<Promise<CapabilityProfile> | null>(null);
+  const loggedRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const detected = await detectCapabilities(capabilityOverrides);
+      if (!detectionRef.current) {
+        detectionRef.current = detectCapabilities(capabilityOverrides);
+      }
+      const detected = await detectionRef.current;
       if (cancelled) return;
-      logCapabilities(detected);
+      if (!loggedRef.current) {
+        loggedRef.current = true;
+        logCapabilities(detected);
+      }
       setProfile(detected);
       const loads: Promise<unknown>[] = [];
       if (detected.wasmText) {

@@ -50,11 +50,24 @@ export class WebGL2Target implements RenderTarget {
   private readonly stack: MutableTransform[] = [];
 
   constructor(canvas: HTMLCanvasElement | OffscreenCanvas, width: number, height: number) {
-    const gl = (canvas as HTMLCanvasElement).getContext("webgl2", {
+    // Try with antialiasing first; some integrated GPUs deny the
+    // context when MSAA isn't available. Retry plain on failure so
+    // WebGL2 isn't lost entirely for a stylistic preference.
+    let gl = (canvas as HTMLCanvasElement).getContext("webgl2", {
       antialias: true,
       premultipliedAlpha: true,
     });
-    if (!gl) throw new Error("WebGL2 unavailable in this environment");
+    if (!gl) {
+      gl = (canvas as HTMLCanvasElement).getContext("webgl2", {
+        premultipliedAlpha: true,
+      });
+    }
+    if (!gl) {
+      throw new Error(
+        "WebGL2 unavailable in this environment (probably hit the per-page GL context cap; " +
+          "Chrome allows ~16). LayeredSurface will fall back to canvas2d.",
+      );
+    }
     this.gl = gl as WebGL2RenderingContext;
     this._size = { width, height };
 

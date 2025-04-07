@@ -23,12 +23,24 @@ export const isWebGPUAvailable = async (): Promise<boolean> => {
   }
 };
 
+/**
+ * Probe WebGL2 support without leaking a GL context. Browsers cap the
+ * number of live WebGL contexts per page (~16 in Chrome); a probe that
+ * creates a context and relies on GC eats one of those slots until the
+ * next major GC, which can collide with the editor's own contexts (one
+ * per layer). The probe asks for `WEBGL_lose_context` and calls
+ * `loseContext()` right after.
+ */
 export const isWebGL2Available = (): boolean => {
   if (typeof document === "undefined") return false;
   try {
     const canvas = document.createElement("canvas");
     const gl = canvas.getContext("webgl2");
-    return gl !== null;
+    if (!gl) return false;
+    // Optional-chain both the method and the result — test stubs
+    // hand back a bare object with no `getExtension`.
+    gl.getExtension?.("WEBGL_lose_context")?.loseContext();
+    return true;
   } catch {
     return false;
   }

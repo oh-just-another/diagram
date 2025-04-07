@@ -562,3 +562,6 @@
 
 ## 0.30.1
 - WASM raster: end-to-end wire-up
+
+## 0.30.2
+- fix: WebGL2 unavailable false-positive in StrictMode
