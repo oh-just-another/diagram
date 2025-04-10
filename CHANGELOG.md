@@ -565,3 +565,6 @@
 
 ## 0.30.2
 - fix: WebGL2 unavailable false-positive in StrictMode
+
+## 0.30.3
+- fix: hybrid WebGL2 surface — main only, overlay/background on Canvas2D

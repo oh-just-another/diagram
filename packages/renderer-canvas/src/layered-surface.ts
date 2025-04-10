@@ -144,80 +144,81 @@ class Canvas2DLayeredSurface implements LayeredSurface {
 }
 
 /**
- * WebGL2 surface — per-layer `WebGL2Target` over independent stacked
- * canvases. Each layer's GL context is isolated; that doubles the
- * GPU memory cost vs Canvas2D but lets the main / overlay / background
- * compositing work the same way the host already wires for Canvas2D.
+ * WebGL2 surface — hybrid: GPU only for the heavy `main` layer;
+ * `overlay` / `background` stay on Canvas2D.
+ *
+ * Overlay paints handles / selection halo / port hints — a few dozen
+ * primitives per frame, trivially fast in Canvas2D. Background paints
+ * the grid — a repeating rect, also Canvas2D-cheap. Giving each its own
+ * WebGL2 context would triple GL state churn, triple GPU memory, and
+ * triple the chance of hitting the browser's per-page WebGL context cap
+ * (~16 in Chrome).
  */
 class WebGL2LayeredSurface implements LayeredSurface {
   readonly backend = "webgl2" as const;
-  private readonly canvases = new Map<LayerName, HTMLCanvasElement>();
-  private readonly targets = new Map<LayerName, WebGL2Target>();
+  /** Canvas2D layered for overlay + background. */
+  private readonly base: LayeredCanvas;
+  /** WebGL2 only for `main`. */
+  private readonly mainCanvas: HTMLCanvasElement;
+  private readonly mainTarget: WebGL2Target;
   private _width: number;
   private _height: number;
 
   constructor(host: HTMLElement, width: number, height: number) {
     this._width = width;
     this._height = height;
-    if (getComputedStyle(host).position === "static") {
-      host.style.position = "relative";
-    }
+    // Build the Canvas2D layers first; the WebGL2 main canvas is
+    // spliced into the same stack between background and overlay.
+    this.base = new LayeredCanvas(host, width, height, {
+      layers: LAYER_ORDER.filter((name): name is "overlay" | "background" => name !== "main"),
+    });
+
+    const overlay = this.base.getCanvas("overlay");
+    const canvas = host.ownerDocument.createElement("canvas");
+    canvas.dataset.layer = "main";
+    canvas.dataset.backend = "webgl2";
+    canvas.style.position = "absolute";
+    canvas.style.inset = "0";
+    canvas.style.pointerEvents = "none";
+    // Insert main before overlay so overlay sits on top in z-order.
+    host.insertBefore(canvas, overlay);
+    setupHiDpi(canvas, width, height);
     try {
-      for (const name of LAYER_ORDER) {
-        const canvas = host.ownerDocument.createElement("canvas");
-        canvas.dataset.layer = name;
-        canvas.dataset.backend = "webgl2";
-        canvas.style.position = "absolute";
-        canvas.style.inset = "0";
-        canvas.style.pointerEvents = name === "overlay" ? "auto" : "none";
-        host.appendChild(canvas);
-        setupHiDpi(canvas, width, height);
-        const target = new WebGL2Target(canvas, width, height);
-        this.canvases.set(name, canvas);
-        this.targets.set(name, target);
-      }
+      this.mainCanvas = canvas;
+      this.mainTarget = new WebGL2Target(canvas, width, height);
     } catch (err) {
-      // Partial init failure (most common: browser refused to give
-      // out another WebGL context, or no WebGL2 at all). Roll back
-      // every canvas we already appended so the host isn't left
-      // with orphan DOM, then re-throw — the host falls back to
-      // canvas2d via createLayeredSurface's catch.
-      this.dispose();
+      canvas.remove();
+      this.base.dispose();
       throw err;
     }
   }
 
   get(name: LayerName): RenderTarget {
-    const t = this.targets.get(name);
-    if (!t) throw new Error(`Layer not created: ${name}`);
-    return t;
+    if (name === "main") return this.mainTarget;
+    return this.base.get(name);
   }
   getCanvas(name: LayerName): HTMLCanvasElement {
-    const c = this.canvases.get(name);
-    if (!c) throw new Error(`Layer not created: ${name}`);
-    return c;
+    if (name === "main") return this.mainCanvas;
+    return this.base.getCanvas(name);
   }
   resize(width: number, height: number): void {
     if (this._width === width && this._height === height) return;
     this._width = width;
     this._height = height;
-    for (const [name, canvas] of this.canvases) {
-      setupHiDpi(canvas, width, height);
-      this.targets.get(name)!.resize(width, height);
-    }
+    this.base.resize(width, height);
+    setupHiDpi(this.mainCanvas, width, height);
+    this.mainTarget.resize(width, height);
   }
   get size(): { readonly width: number; readonly height: number } {
     return { width: this._width, height: this._height };
   }
   present(): void {
-    // WebGL2 paints synchronously — `stroke()` / `fill()` / `drawArrays`
-    // commit immediately, so there's nothing left to flush per frame.
+    // Canvas2D + WebGL2 both paint synchronously — nothing to flush.
   }
   dispose(): void {
-    for (const target of this.targets.values()) target.dispose();
-    for (const canvas of this.canvases.values()) canvas.remove();
-    this.canvases.clear();
-    this.targets.clear();
+    this.mainTarget.dispose();
+    this.mainCanvas.remove();
+    this.base.dispose();
   }
 }
 
