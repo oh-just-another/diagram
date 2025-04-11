@@ -38,3 +38,38 @@ export const setupHiDpi = (
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return dpr;
 };
+
+/**
+ * Hi-DPI sizing for canvases that will host a non-2D context (WebGL2,
+ * WebGPU). Same bitmap + CSS dimensions as `setupHiDpi`, but skips
+ * the `getContext("2d")` call — `HTMLCanvasElement` only ever yields
+ * one *kind* of context, so touching `2d` on a canvas destined for
+ * `webgl2` poisons the slot and every subsequent `getContext("webgl2")`
+ * returns null. Use this for the WebGL2 main canvas in
+ * `WebGL2LayeredSurface`; the WebGL2 viewport is set inside
+ * `WebGL2Target` after the GL context is obtained.
+ */
+export const setupHiDpiNoContext = (
+  canvas: HTMLCanvasElement,
+  width: number,
+  height: number,
+  dpr: number = window.devicePixelRatio || 1,
+): number => {
+  const targetW = Math.round(width * dpr);
+  const targetH = Math.round(height * dpr);
+  const cssW = `${width}px`;
+  const cssH = `${height}px`;
+  if (
+    canvas.width === targetW &&
+    canvas.height === targetH &&
+    canvas.style.width === cssW &&
+    canvas.style.height === cssH
+  ) {
+    return dpr;
+  }
+  canvas.width = targetW;
+  canvas.height = targetH;
+  canvas.style.width = cssW;
+  canvas.style.height = cssH;
+  return dpr;
+};

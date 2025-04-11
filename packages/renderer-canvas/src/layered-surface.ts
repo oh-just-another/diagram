@@ -2,7 +2,7 @@ import { LAYER_ORDER, type LayerName, type RenderTarget } from "@oh-just-another
 import { LayeredCanvas } from "./layered-canvas.js";
 import { WebGL2Target } from "./webgl2-target.js";
 import { RecordingTarget } from "./recording-target.js";
-import { setupHiDpi } from "./hi-dpi.js";
+import { setupHiDpi, setupHiDpiNoContext } from "./hi-dpi.js";
 
 /**
  * Backend selector for `createLayeredSurface`.
@@ -182,7 +182,11 @@ class WebGL2LayeredSurface implements LayeredSurface {
     canvas.style.pointerEvents = "none";
     // Insert main before overlay so overlay sits on top in z-order.
     host.insertBefore(canvas, overlay);
-    setupHiDpi(canvas, width, height);
+    // Never call `getContext("2d")` on this canvas: the WebGL2 slot is
+    // exclusive — one canvas, one context kind, for the life of the
+    // element. `setupHiDpiNoContext` sizes the bitmap without touching
+    // the context.
+    setupHiDpiNoContext(canvas, width, height);
     try {
       this.mainCanvas = canvas;
       this.mainTarget = new WebGL2Target(canvas, width, height);
@@ -206,7 +210,7 @@ class WebGL2LayeredSurface implements LayeredSurface {
     this._width = width;
     this._height = height;
     this.base.resize(width, height);
-    setupHiDpi(this.mainCanvas, width, height);
+    setupHiDpiNoContext(this.mainCanvas, width, height);
     this.mainTarget.resize(width, height);
   }
   get size(): { readonly width: number; readonly height: number } {

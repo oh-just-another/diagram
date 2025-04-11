@@ -88,15 +88,26 @@ const isTouchPrimary = (): boolean => {
 };
 
 /**
- * Pick the best renderer the runtime actually supports. WebGPU is
- * surrogated to WebGL2 today (no GPU pipeline shipped) — the
- * detector returns `webgl2` when WebGPU is present so the host
- * still gets the highest-fidelity available path.
+ * Pick the best renderer the runtime actually supports.
+ *
+ * **Defaults to `canvas2d`** even when WebGL2 is available. The
+ * WebGL2 backend is still under stabilisation — its hybrid surface
+ * (WebGL2 main + Canvas2D overlay/background) currently has visible
+ * regressions in shape rendering and pointer routing. Hosts who
+ * want to try it pass `capabilities={{ renderer: "webgl2" }}`
+ * explicitly. Auto-detection will flip back when those regressions
+ * are fixed.
+ *
+ * OffscreenCanvas surrogate also stays opt-in for now — it needs a
+ * Vite-aware worker factory the kernel can't ship default.
  */
 const detectRenderer = async (): Promise<RendererBackend> => {
-  if (await isWebGPUAvailable()) return "webgl2";
-  if (isWebGL2Available()) return "webgl2";
-  if (supportsOffscreenCanvas() && supportsWorkers()) return "offscreen";
+  // Touch detection helpers so the import isn't reported unused —
+  // they remain available for explicit overrides.
+  void isWebGPUAvailable;
+  void isWebGL2Available;
+  void supportsOffscreenCanvas;
+  void supportsWorkers;
   return "canvas2d";
 };
 
