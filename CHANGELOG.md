@@ -570,4 +570,7 @@
 - fix: hybrid WebGL2 surface — main only, overlay/background on Canvas2D
 
 ## 0.30.4
-- fix: regression on palette drop + shape render — revert webgl2 to auto
+- fix: regression on palette drop + shape render — roll back webgl2 to auto
+
+## 0.30.5
+- WebGL2: shapes visible — fix parseColor / preserveDrawingBuffer / scissor clear

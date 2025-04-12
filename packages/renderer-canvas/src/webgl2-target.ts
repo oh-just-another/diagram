@@ -13,6 +13,7 @@ import type {
   TextBaseline,
 } from "@oh-just-another/renderer-core";
 import { getActiveRasterizer } from "@oh-just-another/renderer-core";
+import { parseWebGL2Color } from "./webgl2-color.js";
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -29,7 +30,9 @@ export class WebGL2Target implements RenderTarget {
   private readonly _size: { width: number; height: number };
 
   private fillColor: [number, number, number] = [0, 0, 0];
+  private fillAlpha = 1;
   private strokeColor: [number, number, number] = [0, 0, 0];
+  private strokeAlpha = 1;
   private fillColorString: string = "#000";
   private strokeWidth = 1;
   private opacity = 1;
@@ -50,16 +53,24 @@ export class WebGL2Target implements RenderTarget {
   private readonly stack: MutableTransform[] = [];
 
   constructor(canvas: HTMLCanvasElement | OffscreenCanvas, width: number, height: number) {
+    // `preserveDrawingBuffer: true` is required for an editor surface:
+    // the spec permits the browser to clear the drawing buffer after
+    // each composite when this flag is false, which makes shapes
+    // disappear in the steady state. Trading a small copy at composite
+    // time for visual correctness is the right call.
+    //
     // Try with antialiasing first; some integrated GPUs deny the
     // context when MSAA isn't available. Retry plain on failure so
     // WebGL2 isn't lost entirely for a stylistic preference.
     let gl = (canvas as HTMLCanvasElement).getContext("webgl2", {
       antialias: true,
       premultipliedAlpha: true,
+      preserveDrawingBuffer: true,
     });
     if (!gl) {
       gl = (canvas as HTMLCanvasElement).getContext("webgl2", {
         premultipliedAlpha: true,
+        preserveDrawingBuffer: true,
       });
     }
     if (!gl) {
@@ -103,6 +114,12 @@ export class WebGL2Target implements RenderTarget {
 
     this.gl.enable(this.gl.BLEND);
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+
+    // Initial viewport — must match the canvas drawing buffer size. The
+    // WebGL spec defaults to the canvas's initial size, but if the
+    // canvas was resized via setupHiDpiNoContext after creation the
+    // viewport stays at the first size, so set it explicitly.
+    this.gl.viewport(0, 0, canvas.width, canvas.height);
   }
 
   get size(): { readonly width: number; readonly height: number } {
@@ -135,7 +152,9 @@ export class WebGL2Target implements RenderTarget {
   // --- Style ---
 
   setFill(color: Color | null): void {
-    this.fillColor = parseColor(color);
+    const parsed = parseWebGL2Color(color);
+    this.fillColor = [parsed[0], parsed[1], parsed[2]];
+    this.fillAlpha = parsed[3];
     this.fillColorString = color ?? "transparent";
   }
 
@@ -389,6 +408,8 @@ export class WebGL2Target implements RenderTarget {
   fill(_rule?: FillRule): void {
     void _rule;
     if (!this.currentPath) return;
+    const effectiveAlpha = this.opacity * this.fillAlpha;
+    if (effectiveAlpha <= 0) return; // transparent fill — nothing to draw
     const r = this.currentPath;
     // Pre-multiply path bounds by current transform; pack into
     // the uTransform mat3 the shader expects.
@@ -402,14 +423,47 @@ export class WebGL2Target implements RenderTarget {
     }, this._size.width, this._size.height);
     this.gl.uniformMatrix3fv(this.uTransformLoc, false, projected);
     this.gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
-    this.gl.uniform1f(this.uOpacityLoc, this.opacity);
+    this.gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
   }
 
+  /**
+   * Clear the canvas. With no `bounds` does a full backbuffer wipe; with
+   * `bounds` wipes only the rectangle the editor's dirty-rect pass
+   * identified. Honouring `bounds` is mandatory — when the scene
+   * reference doesn't change, the editor sends a zero-area dirty rect
+   * and expects the previous frame to survive untouched.
+   * `preserveDrawingBuffer: true` carries the persistent frame across
+   * composites.
+   *
+   * For bounded clears the implementation flips on a scissor box so the
+   * clear is confined to the dirty rect, mirroring Canvas2D's
+   * partial-clear semantics. The scissor box is in DPR-bitmap pixels
+   * with bottom-left origin (GL convention), translated from the
+   * caller's top-left CSS-pixel rect.
+   */
   clear(bounds?: Bounds): void {
-    void bounds; // WebGL doesn't have a partial clear; full clear is the
-    // expected use case for `renderScene` between frames.
-    this.gl.viewport(0, 0, this._size.width, this._size.height);
+    const bitmapW = (this.gl.canvas as HTMLCanvasElement).width;
+    const bitmapH = (this.gl.canvas as HTMLCanvasElement).height;
+    if (bounds) {
+      // Editor's "nothing changed" sentinel is a zero/negative-area rect.
+      if (bounds.width <= 0 || bounds.height <= 0) return;
+      const dprX = this._size.width > 0 ? bitmapW / this._size.width : 1;
+      const dprY = this._size.height > 0 ? bitmapH / this._size.height : 1;
+      const x = Math.floor(bounds.x * dprX);
+      const w = Math.ceil(bounds.width * dprX);
+      const h = Math.ceil(bounds.height * dprY);
+      // GL scissor origin is bottom-left; the editor speaks top-left.
+      const y = Math.floor(bitmapH - (bounds.y + bounds.height) * dprY);
+      this.gl.viewport(0, 0, bitmapW, bitmapH);
+      this.gl.enable(this.gl.SCISSOR_TEST);
+      this.gl.scissor(x, y, w, h);
+      this.gl.clearColor(0, 0, 0, 0);
+      this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+      this.gl.disable(this.gl.SCISSOR_TEST);
+      return;
+    }
+    this.gl.viewport(0, 0, bitmapW, bitmapH);
     this.gl.clearColor(0, 0, 0, 0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
   }
@@ -417,7 +471,9 @@ export class WebGL2Target implements RenderTarget {
   // --- Stroke pipeline ---
 
   setStroke(color: Color | null): void {
-    this.strokeColor = parseColor(color);
+    const parsed = parseWebGL2Color(color);
+    this.strokeColor = [parsed[0], parsed[1], parsed[2]];
+    this.strokeAlpha = parsed[3];
   }
 
   setStrokeWidth(width: number): void {
@@ -437,12 +493,14 @@ export class WebGL2Target implements RenderTarget {
       ];
     }
     if (this.currentPolyline.length < 2) return;
+    const effectiveAlpha = this.opacity * this.strokeAlpha;
+    if (effectiveAlpha <= 0) return; // transparent stroke — nothing to draw
     drawPolylineStroke(
       this.gl,
       this.currentPolyline,
       this.strokeWidth,
       this.strokeColor,
-      this.opacity,
+      effectiveAlpha,
       this.transform,
       this._size,
       this.uTransformLoc,
@@ -751,20 +809,6 @@ const notImpl = (method: string): never => {
   );
 };
 
-const parseColor = (color: Color | null): [number, number, number] => {
-  if (!color) return [0, 0, 0];
-  // Tiny #rrggbb parser — full CSS color parsing belongs in
-  // @math/color which the kernel already ships; this MVP only
-  // needs to recognise hex.
-  if (typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color)) {
-    return [
-      parseInt(color.slice(1, 3), 16) / 255,
-      parseInt(color.slice(3, 5), 16) / 255,
-      parseInt(color.slice(5, 7), 16) / 255,
-    ];
-  }
-  return [0, 0, 0];
-};
 
 /**
  * Build a 3×3 column-major matrix that maps a unit quad [0,0]–[1,1]
