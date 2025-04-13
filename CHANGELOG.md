@@ -574,3 +574,6 @@
 
 ## 0.30.5
 - WebGL2: shapes visible — fix parseColor / preserveDrawingBuffer / scissor clear
+
+## 0.30.6
+- text-wasm: add MSDF glyph rasterisation + per-glyph metrics

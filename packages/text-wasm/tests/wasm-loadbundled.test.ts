@@ -36,4 +36,58 @@ describe("WasmTextShaper.loadBundled (real .wasm)", () => {
     // M is much wider than i in proportional fonts.
     expect(wM).toBeGreaterThan(wi * 2);
   });
+
+  it("glyphMetrics('A') returns sensible font-unit values", async () => {
+    const s = await WasmTextShaper.loadBundled();
+    const m = s.glyphMetrics("A".charCodeAt(0));
+    expect(m).not.toBeNull();
+    expect(m!.unitsPerEm).toBe(2048); // Roboto's UPM
+    expect(m!.advance).toBeGreaterThan(0);
+    expect(m!.bboxW).toBeGreaterThan(0);
+    expect(m!.bboxH).toBeGreaterThan(0);
+  });
+
+  it("glyphMetrics returns zeros for missing glyph (private-use code point)", async () => {
+    const s = await WasmTextShaper.loadBundled();
+    const m = s.glyphMetrics(0xe000); // private use area — Roboto has no coverage
+    expect(m).not.toBeNull();
+    expect(m!.advance).toBe(0);
+    expect(m!.bboxW).toBe(0);
+  });
+
+  it("rasterizeGlyphMSDF('A', 32, 4) produces a 32×32×3 RGB tile with a plausible inside/outside split", async () => {
+    const s = await WasmTextShaper.loadBundled();
+    const tile = s.rasterizeGlyphMSDF("A".charCodeAt(0), 32, 4);
+    expect(tile).not.toBeNull();
+    expect(tile!.atlasSize).toBe(32);
+    expect(tile!.range).toBe(4);
+    expect(tile!.data.length).toBe(32 * 32 * 3);
+    // Count pixels whose median(r,g,b) > 128 (the shader's "inside"
+    // test). 'A' is a stroked letter, so the inside should be a
+    // meaningful but minority fraction — ~10-40% of the tile.
+    let insideCount = 0;
+    for (let i = 0; i < tile!.data.length; i += 3) {
+      const r = tile!.data[i]!;
+      const g = tile!.data[i + 1]!;
+      const b = tile!.data[i + 2]!;
+      const median = [r, g, b].sort((a, z) => a - z)[1]!;
+      if (median > 128) insideCount++;
+    }
+    const total = 32 * 32;
+    expect(insideCount).toBeGreaterThan(total * 0.05);
+    expect(insideCount).toBeLessThan(total * 0.6);
+    // Top-left corner sits in the `range`-pixel margin → guaranteed
+    // outside; median should be < 128.
+    const cornerMedian = [tile!.data[0]!, tile!.data[1]!, tile!.data[2]!]
+      .sort((a, z) => a - z)[1]!;
+    expect(cornerMedian).toBeLessThan(128);
+  });
+
+  it("rasterizeGlyphMSDF returns all-zero buffer for whitespace glyph", async () => {
+    const s = await WasmTextShaper.loadBundled();
+    // Space has no contours → fdsm returns None → all-zero tile.
+    const tile = s.rasterizeGlyphMSDF(0x20, 16, 2);
+    expect(tile).not.toBeNull();
+    expect(tile!.data.every((b) => b === 0)).toBe(true);
+  });
 });

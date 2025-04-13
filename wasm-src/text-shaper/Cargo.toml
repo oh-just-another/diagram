@@ -9,6 +9,21 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ttf-parser = { version = "0.25", default-features = false, features = ["std", "opentype-layout", "variable-fonts"] }
+# fdsm = pure-Rust multi-channel signed distance field generator. Used
+# by `rasterize_glyph_msdf` to bake a 3-channel SDF per glyph; the
+# WebGL2 backend samples that texture with the standard `median(r,g,b)
+# + smoothstep(fwidth)` pipeline so corners stay crisp at any zoom.
+fdsm = { version = "0.8", default-features = false }
+fdsm-ttf-parser = { version = "0.2", default-features = false }
+# image::RgbImage is the buffer type `fdsm::generate::generate_msdf`
+# writes into. Default features pull PNG/JPEG/etc codecs we don't
+# need — disabled here to keep wasm size down.
+image = { version = "0.25", default-features = false }
+# Direct nalgebra usage for the Similarity2 / Affine2 transform that
+# scales the glyph from font-units into the atlas cell. fdsm
+# re-exports nalgebra anyway; making it a direct dep keeps the
+# version aligned and avoids the "two majors" trap.
+nalgebra = { version = "0.34", default-features = false, features = ["std"] }
 
 [profile.release]
 opt-level = "z"

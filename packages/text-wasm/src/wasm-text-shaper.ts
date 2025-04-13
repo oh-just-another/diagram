@@ -35,6 +35,55 @@ export interface WasmShaperExports {
   readonly free: (ptr: number, bytes: number) => void;
   readonly setFont: (familyPtr: number, familyLen: number, size: number) => void;
   readonly measure: (textPtr: number, textLen: number) => number;
+  /**
+   * Optional — only present when the bundled MSDF-capable module is
+   * loaded. Returns a pointer to 24 bytes (6 × f32 little-endian) with
+   * the layout `[advance, bboxXMin, bboxYMin, bboxW, bboxH, unitsPerEm]`
+   * in font units. Pointer stays valid until the next `reset()`.
+   */
+  readonly glyphMetrics?: (codePoint: number) => number;
+  /**
+   * Optional — only present when the bundled MSDF-capable module is
+   * loaded. Returns a pointer to `atlasSize * atlasSize * 3` RGB
+   * bytes containing the multi-channel signed distance field for the
+   * supplied code point. `range` is the SDF range in atlas pixels
+   * (the host's shader uses `median(r,g,b)` + `smoothstep` to
+   * antialias). Empty / missing glyphs return an all-zero buffer.
+   */
+  readonly rasterizeGlyphMSDF?: (
+    codePoint: number,
+    atlasSize: number,
+    range: number,
+  ) => number;
+  readonly reset?: () => void;
+}
+
+/**
+ * Per-glyph metrics in font units. The host converts to pixels via
+ * `value * fontSize / unitsPerEm`. `bbox` is the glyph's tight
+ * bounding box (in font coords — y-up, origin at left of baseline);
+ * `advance` is the horizontal advance (how far the cursor moves to
+ * place the next glyph). All values are zero for missing glyphs.
+ */
+export interface GlyphMetrics {
+  readonly advance: number;
+  readonly bboxXMin: number;
+  readonly bboxYMin: number;
+  readonly bboxW: number;
+  readonly bboxH: number;
+  readonly unitsPerEm: number;
+}
+
+/**
+ * Raw MSDF tile for a single glyph. `data` is `atlasSize *
+ * atlasSize * 3` bytes in RGB order. `data` is a view into the WASM
+ * linear memory and must be copied before the next WASM call (which
+ * may grow / re-alloc the arena).
+ */
+export interface MsdfGlyphTile {
+  readonly atlasSize: number;
+  readonly range: number;
+  readonly data: Uint8Array;
 }
 
 export interface WasmTextShaperOptions {
@@ -137,6 +186,77 @@ export class WasmTextShaper implements TextShaper {
       });
     }
     return out;
+  }
+
+  /**
+   * Pull per-glyph metrics (advance + tight bbox + UPM) from the WASM
+   * shaper for a single code point. Returns `null` if the loaded
+   * module doesn't expose `glyphMetrics` (older builds) or before
+   * `loadModule()` has resolved. All values are in font units; the
+   * host scales via `fontSize / unitsPerEm` — same convention as
+   * `measure` uses internally.
+   *
+   * The returned object is detached (plain object, not a memory
+   * view), so callers can keep it past further WASM calls.
+   */
+  glyphMetrics(codePoint: number): GlyphMetrics | null {
+    const wasm = this.wasm;
+    if (!wasm || !wasm.glyphMetrics) return null;
+    const ptr = wasm.glyphMetrics(codePoint);
+    // The pointer points to 6 contiguous f32. Slice into a fresh
+    // Float32Array so the result is decoupled from the WASM arena.
+    const view = new Float32Array(wasm.memory.buffer, ptr, 6);
+    return {
+      advance: view[0]!,
+      bboxXMin: view[1]!,
+      bboxYMin: view[2]!,
+      bboxW: view[3]!,
+      bboxH: view[4]!,
+      unitsPerEm: view[5]!,
+    };
+  }
+
+  /**
+   * Rasterise a single glyph as an MSDF tile. The bundled wasm uses
+   * the `fdsm` crate (pure-Rust msdfgen-style implementation) — three
+   * channels, 3°-equivalent corner detection, sign-correction
+   * post-pass. `atlasSize` is the tile edge in pixels (typical 32 /
+   * 48 / 64); `range` is the SDF range in atlas pixels (typically
+   * `atlasSize / 8`, so the shader has ~`range`px to soften the edge
+   * with `smoothstep`).
+   *
+   * Returns `null` when the loaded module doesn't expose
+   * `rasterizeGlyphMSDF`. Returns a buffer of zeros for missing or
+   * empty (whitespace) glyphs — the host shader reads zero as "fully
+   * outside" which is the correct visual outcome.
+   *
+   * The returned `data` is a **copy** of the WASM-side buffer so the
+   * tile survives subsequent WASM calls that may grow the arena.
+   */
+  rasterizeGlyphMSDF(codePoint: number, atlasSize: number, range: number): MsdfGlyphTile | null {
+    const wasm = this.wasm;
+    if (!wasm || !wasm.rasterizeGlyphMSDF) return null;
+    const ptr = wasm.rasterizeGlyphMSDF(codePoint, atlasSize, range);
+    const len = atlasSize * atlasSize * 3;
+    // Copy out of WASM memory into a standalone Uint8Array. `slice()`
+    // allocates fresh storage so the caller is safe even after
+    // subsequent allocs grow / move the WASM arena.
+    const view = new Uint8Array(wasm.memory.buffer, ptr, len);
+    const data = new Uint8Array(view); // copy
+    return { atlasSize, range, data };
+  }
+
+  /**
+   * Reset the WASM bump arena to zero — frees all transient
+   * allocations (font-family copies, measure inputs, MSDF tiles).
+   * Safe to call between batches; no-op if the loaded module doesn't
+   * expose `reset`. Hosts that hammer the atlas (large strings,
+   * many glyphs) should call this after each frame to avoid
+   * unbounded arena growth.
+   */
+  resetArena(): void {
+    this.wasm?.reset?.();
+    this.currentFontKey = null;
   }
 
   private measureFallback(text: string, font: ShaperFont): { width: number } {
