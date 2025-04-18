@@ -200,6 +200,8 @@ importers:
         specifier: ^13.6.20
         version: 13.6.30
 
+  packages/curve-mesh: {}
+
   packages/exporter:
     dependencies:
       '@oh-just-another/headless':
@@ -233,6 +235,12 @@ importers:
       svg-to-pdfkit:
         specifier: ^0.1.8
         version: 0.1.8
+
+  packages/glyph-atlas:
+    dependencies:
+      '@oh-just-another/text-wasm':
+        specifier: workspace:*
+        version: link:../text-wasm
 
   packages/headless:
     dependencies:

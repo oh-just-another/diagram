@@ -1,0 +1,10 @@
+export {
+  GlyphAtlas,
+  type AtlasGlyph,
+  type GlyphAtlasOptions,
+} from "./glyph-atlas.js";
+export {
+  DEFAULT_ATLAS_SIZE,
+  DEFAULT_RANGE,
+  DEFAULT_TILE_SIZE,
+} from "./constants.js";

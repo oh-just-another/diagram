@@ -1,7 +1,7 @@
 {
-  "name": "@oh-just-another/templates",
-  "version": "0.31.0",
-  "description": "templates package",
+  "name": "@oh-just-another/curve-mesh",
+  "version": "0.0.0",
+  "description": "Loop-Blinn-style quadratic Bezier triangulation for resolution-independent WebGL2 curve rendering.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -29,11 +29,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@oh-just-another/types": "workspace:*",
-    "@oh-just-another/scene": "workspace:*",
-    "@oh-just-another/renderer-core": "workspace:*",
-    "fractional-keys": "^0.1.1",
-    "zod": "^3.24.1"
-  }
+  "dependencies": {}
 }

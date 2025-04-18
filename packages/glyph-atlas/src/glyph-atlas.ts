@@ -1,0 +1,278 @@
+import type { WasmTextShaper } from "@oh-just-another/text-wasm";
+import { DEFAULT_ATLAS_SIZE, DEFAULT_RANGE, DEFAULT_TILE_SIZE } from "./constants.js";
+
+/**
+ * A single glyph's placement inside the atlas, plus enough metric
+ * information to position its render quad in screen space.
+ *
+ * `atlasX` / `atlasY` are texel coordinates of the tile's top-left
+ * corner inside the atlas texture; `tileSize` is the full edge in
+ * texels (covers the SDF range margin too). `range` is the SDF
+ * range the tile was generated with — the shader needs it to scale
+ * the antialias band.
+ *
+ * Metrics are in font units; convert to pixels via
+ * `value * fontSize / unitsPerEm`. `bbox*` is the tight glyph
+ * bounding box (origin lower-left, y-up — standard font convention).
+ * `advance` is the horizontal cursor step.
+ */
+export interface AtlasGlyph {
+  readonly codePoint: number;
+  readonly atlasX: number;
+  readonly atlasY: number;
+  readonly tileSize: number;
+  readonly range: number;
+  readonly advance: number;
+  readonly bboxXMin: number;
+  readonly bboxYMin: number;
+  readonly bboxW: number;
+  readonly bboxH: number;
+  readonly unitsPerEm: number;
+  /**
+   * `true` when the glyph has no contours (whitespace, control chars,
+   * missing-cmap entries). The shader should skip the textured quad
+   * entirely; the host still uses `advance` to step the layout
+   * cursor.
+   */
+  readonly empty: boolean;
+}
+
+export interface GlyphAtlasOptions {
+  /** Edge length of the backing texture. Default {@link DEFAULT_ATLAS_SIZE}. */
+  readonly atlasSize?: number;
+  /** Per-glyph tile edge. Default {@link DEFAULT_TILE_SIZE}. */
+  readonly tileSize?: number;
+  /** SDF range in atlas pixels. Default {@link DEFAULT_RANGE}. */
+  readonly range?: number;
+}
+
+/**
+ * Pre-rasterised glyph cache backed by a single fixed-size RGB
+ * texture. Glyphs are baked on first request through the bundled
+ * MSDF generator in `@text-wasm` and packed into a uniform grid —
+ * every tile is the same `tileSize × tileSize`, so placement is
+ * O(1) (no shelf packing required).
+ *
+ * Why uniform grid over shelf packing:
+ *   • Lookup → integer division, no per-glyph dimension hash.
+ *   • Atlas churn is predictable — never fragments.
+ *   • The MSDF pipeline gives every glyph the same tile size by
+ *     construction (scale-to-fit), so heterogeneous packing wouldn't
+ *     save anything.
+ *
+ * Eviction policy: none yet. The default 2048×2048 atlas at 32-px
+ * tiles holds 4096 glyphs — the entire BMP basic + extended Latin
+ * + Cyrillic + most punctuation. Beyond that the atlas throws on
+ * overflow; LRU eviction lands in a follow-up when a host actually
+ * hits the cap.
+ *
+ * GPU coupling lives in {@link GlyphAtlas.uploadTo} so this module
+ * doesn't have to depend on a WebGL surface; the host calls it with
+ * its `WebGL2RenderingContext` and gets back the live texture.
+ */
+export class GlyphAtlas {
+  private readonly shaper: WasmTextShaper;
+  readonly atlasSize: number;
+  readonly tileSize: number;
+  readonly range: number;
+  readonly columns: number;
+  readonly capacity: number;
+
+  /** Per-glyph cache. Key = code point. */
+  private readonly glyphs = new Map<number, AtlasGlyph>();
+  /** CPU-side RGB buffer mirroring the GPU texture. */
+  private readonly buffer: Uint8Array;
+  /** Tile indices baked since the last upload (newly added). */
+  private readonly dirtyTiles = new Set<number>();
+  /** Set to true while `buffer` has never been pushed to the GPU. */
+  private needsFullUpload = true;
+  /** Next free tile slot in row-major order. */
+  private nextSlot = 0;
+  /** GPU texture; created lazily by `uploadTo`, kept across frames. */
+  private texture: WebGLTexture | null = null;
+
+  constructor(shaper: WasmTextShaper, options: GlyphAtlasOptions = {}) {
+    this.shaper = shaper;
+    this.atlasSize = options.atlasSize ?? DEFAULT_ATLAS_SIZE;
+    this.tileSize = options.tileSize ?? DEFAULT_TILE_SIZE;
+    this.range = options.range ?? DEFAULT_RANGE;
+    if (this.atlasSize % this.tileSize !== 0) {
+      throw new Error(
+        `GlyphAtlas: atlasSize (${this.atlasSize}) must be a multiple of tileSize (${this.tileSize})`,
+      );
+    }
+    this.columns = this.atlasSize / this.tileSize;
+    this.capacity = this.columns * this.columns;
+    this.buffer = new Uint8Array(this.atlasSize * this.atlasSize * 3);
+  }
+
+  /**
+   * Resolve a glyph slot, baking it on first request. Returns
+   * `null` only if the atlas is full (`capacity` slots used) and the
+   * requested code point isn't already cached.
+   *
+   * Empty / whitespace glyphs are cached too — their tile stays at
+   * zero so the GPU sample reads as "fully outside". The slot stays
+   * allocated so the metrics are still discoverable.
+   */
+  getOrRasterize(codePoint: number): AtlasGlyph | null {
+    const cached = this.glyphs.get(codePoint);
+    if (cached) return cached;
+    if (this.nextSlot >= this.capacity) return null;
+
+    const metrics = this.shaper.glyphMetrics(codePoint);
+    if (!metrics) return null; // shaper module pre-MSDF — caller should fall back
+
+    const slot = this.nextSlot++;
+    const col = slot % this.columns;
+    const row = Math.floor(slot / this.columns);
+    const atlasX = col * this.tileSize;
+    const atlasY = row * this.tileSize;
+
+    const isEmpty = metrics.bboxW <= 0 || metrics.bboxH <= 0;
+    if (!isEmpty) {
+      const tile = this.shaper.rasterizeGlyphMSDF(codePoint, this.tileSize, this.range);
+      if (tile) {
+        // Blit the per-tile MSDF into the right region of the
+        // atlas-wide buffer (texel-rows are non-contiguous in the
+        // big buffer, so we copy row by row).
+        for (let y = 0; y < this.tileSize; y++) {
+          const srcOffset = y * this.tileSize * 3;
+          const dstOffset = ((atlasY + y) * this.atlasSize + atlasX) * 3;
+          this.buffer.set(
+            tile.data.subarray(srcOffset, srcOffset + this.tileSize * 3),
+            dstOffset,
+          );
+        }
+        this.dirtyTiles.add(slot);
+      }
+    }
+
+    const entry: AtlasGlyph = {
+      codePoint,
+      atlasX,
+      atlasY,
+      tileSize: this.tileSize,
+      range: this.range,
+      advance: metrics.advance,
+      bboxXMin: metrics.bboxXMin,
+      bboxYMin: metrics.bboxYMin,
+      bboxW: metrics.bboxW,
+      bboxH: metrics.bboxH,
+      unitsPerEm: metrics.unitsPerEm,
+      empty: isEmpty,
+    };
+    this.glyphs.set(codePoint, entry);
+    return entry;
+  }
+
+  /**
+   * Number of glyphs currently cached. Useful for tests and for
+   * hosts that want to surface atlas pressure in dev tools.
+   */
+  get glyphCount(): number {
+    return this.glyphs.size;
+  }
+
+  /**
+   * Read-only access to the CPU-side mirror of the atlas texture.
+   * Tests use this to assert that a glyph landed where expected;
+   * the GPU upload uses it as the texImage2D source.
+   */
+  get cpuBuffer(): Uint8Array {
+    return this.buffer;
+  }
+
+  /**
+   * Upload any dirty regions to a WebGL2 texture, creating the
+   * texture on first call. The texture is reused across calls; the
+   * GPU only sees the bytes that changed since the last upload
+   * (incremental `texSubImage2D` per dirty tile), so steady-state
+   * cost is near-zero for hosts that touch a stable glyph set.
+   *
+   * The returned texture is owned by the atlas; callers must NOT
+   * delete it. Call {@link GlyphAtlas.dispose} when the atlas (or
+   * the owning surface) goes away.
+   */
+  uploadTo(gl: WebGL2RenderingContext): WebGLTexture {
+    if (!this.texture) {
+      const tex = gl.createTexture();
+      if (!tex) throw new Error("GlyphAtlas: gl.createTexture() returned null");
+      this.texture = tex;
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    } else {
+      gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    }
+
+    if (this.needsFullUpload) {
+      gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGB8,
+        this.atlasSize,
+        this.atlasSize,
+        0,
+        gl.RGB,
+        gl.UNSIGNED_BYTE,
+        this.buffer,
+      );
+      this.needsFullUpload = false;
+      this.dirtyTiles.clear();
+      return this.texture;
+    }
+
+    if (this.dirtyTiles.size === 0) return this.texture;
+
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    // `UNPACK_ROW_LENGTH` lets us push a sub-rectangle out of the
+    // big atlas buffer without copying it into a contiguous slab
+    // first. WebGL2 always supports this (WebGL1 didn't).
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, this.atlasSize);
+    for (const slot of this.dirtyTiles) {
+      const col = slot % this.columns;
+      const row = Math.floor(slot / this.columns);
+      const atlasX = col * this.tileSize;
+      const atlasY = row * this.tileSize;
+      const skipPixels = atlasX;
+      const skipRows = atlasY;
+      gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, skipPixels);
+      gl.pixelStorei(gl.UNPACK_SKIP_ROWS, skipRows);
+      gl.texSubImage2D(
+        gl.TEXTURE_2D,
+        0,
+        atlasX,
+        atlasY,
+        this.tileSize,
+        this.tileSize,
+        gl.RGB,
+        gl.UNSIGNED_BYTE,
+        this.buffer,
+      );
+    }
+    // Reset the pixel-store state we touched so unrelated uploads
+    // (e.g. images) further down the pipeline see the defaults.
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0);
+    gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0);
+    gl.pixelStorei(gl.UNPACK_SKIP_ROWS, 0);
+    this.dirtyTiles.clear();
+    return this.texture;
+  }
+
+  /**
+   * Release the GPU texture. The CPU mirror stays around — the
+   * atlas can be re-uploaded into a fresh context (e.g. after a
+   * backend swap) without re-baking any glyphs.
+   */
+  dispose(gl?: WebGL2RenderingContext): void {
+    if (this.texture && gl) {
+      gl.deleteTexture(this.texture);
+    }
+    this.texture = null;
+    this.needsFullUpload = true;
+  }
+}

@@ -577,3 +577,6 @@
 
 ## 0.30.6
 - text-wasm: add MSDF glyph rasterisation + per-glyph metrics
+
+## 0.31.0
+- glyph-atlas + curve-mesh: GPU-side primitives for sharp text & curves
