@@ -8,5 +8,5 @@
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.spec.ts"],
-  "references": [{ "path": "../text-wasm/tsconfig.build.json" }]
+  "references": []
 }

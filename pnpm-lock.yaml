@@ -236,11 +236,7 @@ importers:
         specifier: ^0.1.8
         version: 0.1.8
 
-  packages/glyph-atlas:
-    dependencies:
-      '@oh-just-another/text-wasm':
-        specifier: workspace:*
-        version: link:../text-wasm
+  packages/glyph-atlas: {}
 
   packages/headless:
     dependencies:
@@ -368,6 +364,9 @@ importers:
 
   packages/renderer-canvas:
     dependencies:
+      '@oh-just-another/glyph-atlas':
+        specifier: workspace:*
+        version: link:../glyph-atlas
       '@oh-just-another/math':
         specifier: workspace:*
         version: link:../math

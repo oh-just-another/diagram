@@ -580,3 +580,6 @@
 
 ## 0.31.0
 - glyph-atlas + curve-mesh: GPU-side primitives for sharp text & curves
+
+## 0.32.0
+- WebGL2: MSDF text + zoom-aware curve tolerance

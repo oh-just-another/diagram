@@ -1,5 +1,32 @@
-import type { WasmTextShaper } from "@oh-just-another/text-wasm";
 import { DEFAULT_ATLAS_SIZE, DEFAULT_RANGE, DEFAULT_TILE_SIZE } from "./constants.js";
+
+/**
+ * Minimum interface a shaper must satisfy to back a {@link GlyphAtlas}.
+ * Structurally compatible with `@text-wasm`'s `WasmTextShaper` (its
+ * `glyphMetrics` + `rasterizeGlyphMSDF` methods match exactly), but
+ * declared here so the atlas package doesn't depend on `@text-wasm` —
+ * hosts that ship a different MSDF backend (msdfgen via emscripten,
+ * native AOT, etc.) can plug in too.
+ */
+export interface MsdfShaper {
+  glyphMetrics(codePoint: number): {
+    readonly advance: number;
+    readonly bboxXMin: number;
+    readonly bboxYMin: number;
+    readonly bboxW: number;
+    readonly bboxH: number;
+    readonly unitsPerEm: number;
+  } | null;
+  rasterizeGlyphMSDF(
+    codePoint: number,
+    atlasSize: number,
+    range: number,
+  ): {
+    readonly atlasSize: number;
+    readonly range: number;
+    readonly data: Uint8Array;
+  } | null;
+}
 
 /**
  * A single glyph's placement inside the atlas, plus enough metric
@@ -71,7 +98,7 @@ export interface GlyphAtlasOptions {
  * its `WebGL2RenderingContext` and gets back the live texture.
  */
 export class GlyphAtlas {
-  private readonly shaper: WasmTextShaper;
+  private readonly shaper: MsdfShaper;
   readonly atlasSize: number;
   readonly tileSize: number;
   readonly range: number;
@@ -91,7 +118,7 @@ export class GlyphAtlas {
   /** GPU texture; created lazily by `uploadTo`, kept across frames. */
   private texture: WebGLTexture | null = null;
 
-  constructor(shaper: WasmTextShaper, options: GlyphAtlasOptions = {}) {
+  constructor(shaper: MsdfShaper, options: GlyphAtlasOptions = {}) {
     this.shaper = shaper;
     this.atlasSize = options.atlasSize ?? DEFAULT_ATLAS_SIZE;
     this.tileSize = options.tileSize ?? DEFAULT_TILE_SIZE;

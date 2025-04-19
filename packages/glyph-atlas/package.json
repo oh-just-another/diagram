@@ -29,7 +29,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@oh-just-another/text-wasm": "workspace:*"
-  }
+  "dependencies": {}
 }

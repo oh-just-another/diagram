@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import type { GlyphMetrics, MsdfGlyphTile, WasmTextShaper } from "@oh-just-another/text-wasm";
-import { GlyphAtlas } from "../src/glyph-atlas";
+import { GlyphAtlas, type MsdfShaper } from "../src/glyph-atlas";
+
+type GlyphMetrics = NonNullable<ReturnType<MsdfShaper["glyphMetrics"]>>;
+type MsdfGlyphTile = NonNullable<ReturnType<MsdfShaper["rasterizeGlyphMSDF"]>>;
 
 /**
  * Synthetic shaper that returns the same metrics plus a tile filled
@@ -11,7 +13,7 @@ import { GlyphAtlas } from "../src/glyph-atlas";
 const makeFakeShaper = (overrides: Partial<{
   metrics: (cp: number) => GlyphMetrics | null;
   tile: (cp: number, size: number) => MsdfGlyphTile | null;
-}> = {}): WasmTextShaper => {
+}> = {}): MsdfShaper => {
   const shaper = {
     glyphMetrics: vi.fn(
       overrides.metrics ?? ((cp: number) => ({
@@ -30,7 +32,7 @@ const makeFakeShaper = (overrides: Partial<{
         data: new Uint8Array(size * size * 3).fill(cp & 0xff),
       })),
     ),
-  } as unknown as WasmTextShaper;
+  } as unknown as MsdfShaper;
   return shaper;
 };
 
@@ -118,7 +120,7 @@ describe("GlyphAtlas", () => {
   });
 
   it("returns null when the shaper has no glyphMetrics", () => {
-    const stub = { glyphMetrics: () => null } as unknown as WasmTextShaper;
+    const stub = { glyphMetrics: () => null } as unknown as MsdfShaper;
     const atlas = new GlyphAtlas(stub);
     expect(atlas.getOrRasterize(0x41)).toBeNull();
   });

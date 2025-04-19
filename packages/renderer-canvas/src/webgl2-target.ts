@@ -12,8 +12,10 @@ import type {
   TextAlign,
   TextBaseline,
 } from "@oh-just-another/renderer-core";
-import { getActiveRasterizer } from "@oh-just-another/renderer-core";
+import { getActiveRasterizer, getActiveTextShaper } from "@oh-just-another/renderer-core";
+import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
 import { parseWebGL2Color } from "./webgl2-color.js";
+import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -145,6 +147,15 @@ export class WebGL2Target implements RenderTarget {
    * and runtime backend switches quickly hit the cap.
    */
   dispose(): void {
+    if (this.msdfPipeline) {
+      this.msdfPipeline.dispose();
+      this.msdfPipeline = null;
+    }
+    if (this.glyphAtlas) {
+      this.glyphAtlas.dispose(this.gl);
+      this.glyphAtlas = null;
+      this.glyphAtlasShaper = null;
+    }
     const lose = this.gl.getExtension("WEBGL_lose_context");
     lose?.loseContext();
   }
@@ -266,6 +277,7 @@ export class WebGL2Target implements RenderTarget {
    */
   quadraticCurveTo(cx: number, cy: number, x: number, y: number): void {
     const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x: cx, y: cy };
+    const tolerance = this.currentFlattenTolerance();
     const r = getActiveRasterizer();
     if (r) {
       const pts = r.flatten(
@@ -273,12 +285,16 @@ export class WebGL2Target implements RenderTarget {
           { kind: "M", to: start },
           { kind: "Q", control: { x: cx, y: cy }, to: { x, y } },
         ],
-        ADAPTIVE_TOLERANCE,
+        tolerance,
       );
       for (let i = 1; i < pts.length; i++) this.currentPolyline.push(pts[i]!);
       return;
     }
-    const samples = sampleQuadratic(start, { x: cx, y: cy }, { x, y }, 16);
+    // Fallback: pick a sample count so the chord-to-curve error is
+    // similar to the WASM path's tolerance. Scaled with the curve's
+    // bbox so short curves don't get an over-tessellated polygon.
+    const count = Math.max(8, Math.min(128, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)));
+    const samples = sampleQuadratic(start, { x: cx, y: cy }, { x, y }, count);
     for (let i = 1; i < samples.length; i++) this.currentPolyline.push(samples[i]!);
   }
 
@@ -292,6 +308,7 @@ export class WebGL2Target implements RenderTarget {
     y: number,
   ): void {
     const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x, y };
+    const tolerance = this.currentFlattenTolerance();
     const r = getActiveRasterizer();
     if (r) {
       const pts = r.flatten(
@@ -304,19 +321,29 @@ export class WebGL2Target implements RenderTarget {
             to: { x, y },
           },
         ],
-        ADAPTIVE_TOLERANCE,
+        tolerance,
       );
       for (let i = 1; i < pts.length; i++) this.currentPolyline.push(pts[i]!);
       return;
     }
-    const samples = sampleCubic(
-      start,
-      { x: c1x, y: c1y },
-      { x: c2x, y: c2y },
-      { x, y },
-      24,
-    );
+    const count = Math.max(12, Math.min(192, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)));
+    const samples = sampleCubic(start, { x: c1x, y: c1y }, { x: c2x, y: c2y }, { x, y }, count);
     for (let i = 1; i < samples.length; i++) this.currentPolyline.push(samples[i]!);
+  }
+
+  /**
+   * World-unit tolerance that maps to ~`SCREEN_TOLERANCE_PX` on screen
+   * at the current transform. Used by every curve-flatten call so the
+   * polyline density tracks the zoom.
+   */
+  private currentFlattenTolerance(): number {
+    // Linear scale factor of the affine (length of the transformed
+    // unit x-axis). `transform.a/b` are the matrix's first column;
+    // uniform scale (no shear) holds for every path Editor sends.
+    // Guard against zero / NaN.
+    const scale = Math.hypot(this.transform.a, this.transform.b);
+    if (!Number.isFinite(scale) || scale <= 0) return SCREEN_TOLERANCE_PX;
+    return SCREEN_TOLERANCE_PX / scale;
   }
 
   /**
@@ -532,27 +559,27 @@ export class WebGL2Target implements RenderTarget {
   }
 
   /**
-   * Text rendering. Rasterises the string into a
-   * cached OffscreenCanvas via Canvas2D, uploads as a WebGL
-   * texture (reusing drawImage's pipeline), draws as a textured
-   * quad. Per-string cache (key = `text|font|fill`) so repeated
-   * labels don't re-rasterise.
+   * Text rendering with two paths:
    *
-   * Trade-off: no glyph sharing, so 100 different labels = 100
-   * textures. For most diagrams that's fine; an SDF-based glyph
-   * atlas can replace this without API changes when needed.
+   *   1. MSDF (preferred) — when an `MsdfShaper`-compatible TextShaper
+   *      is registered. Builds per-glyph quads against a shared
+   *      `GlyphAtlas`, draws them with the bundled MSDF program so
+   *      letters stay crisp at any zoom (no bitmap re-rasterisation
+   *      when the user scales the view).
+   *
+   *   2. OffscreenCanvas fallback — used when no MSDF-capable shaper is
+   *      registered (older module, Safari without bundled wasm, etc.).
    */
   fillText(text: string, x: number, y: number, maxWidth?: number): void {
     if (text.length === 0) return;
-    void maxWidth; // Canvas2D's maxWidth scales horizontally — for the
-    // textured-quad path we'd need to bake the scale into the bitmap,
-    // skip for MVP and let callers wrap text upstream (wrapText helper).
+    void maxWidth;
+    const atlas = this.ensureGlyphAtlas();
+    if (atlas) {
+      this.fillTextMSDF(text, x, y, atlas);
+      return;
+    }
     const bitmap = this.rasteriseString(text);
     if (!bitmap) return;
-    // Position adjustments — replay Canvas2D textAlign / Baseline
-    // against the rasterised bitmap's bounds. The bitmap was drawn
-    // with left/top alignment so its top-left is (x, y) at align=
-    // left, baseline=top; other combos shift by width/height.
     const m = this.textMetrics(text);
     let px = x;
     if (this.textAlign === "center") px -= m.width / 2;
@@ -561,6 +588,92 @@ export class WebGL2Target implements RenderTarget {
     if (this.textBaseline === "middle") py -= this.fontSize / 2;
     else if (this.textBaseline === "bottom") py -= this.fontSize;
     this.drawImage(bitmap, px, py, m.width, this.fontSize * 1.4);
+  }
+
+  private msdfPipeline: MsdfTextPipeline | null = null;
+  private glyphAtlas: GlyphAtlas | null = null;
+  private glyphAtlasShaper: MsdfShaper | null = null;
+
+  /**
+   * Lazy-acquire the MSDF atlas — only when there's an
+   * `MsdfShaper`-compatible TextShaper registered via
+   * `setActiveTextShaper`. Held for the lifetime of the WebGL2Target;
+   * cleared on dispose.
+   *
+   * Re-creates the atlas if a different shaper instance gets registered
+   * later. Same shaper instance → reuses the existing cache, so
+   * steady-state cost is one map lookup.
+   */
+  private ensureGlyphAtlas(): GlyphAtlas | null {
+    const shaper = getActiveTextShaper();
+    if (!shaper) return null;
+    if (!isMsdfShaper(shaper)) return null;
+    if (this.glyphAtlas && this.glyphAtlasShaper === shaper) return this.glyphAtlas;
+    if (this.glyphAtlas) this.glyphAtlas.dispose(this.gl);
+    this.glyphAtlas = new GlyphAtlas(shaper);
+    this.glyphAtlasShaper = shaper;
+    return this.glyphAtlas;
+  }
+
+  /**
+   * MSDF path for `fillText`. Honours textAlign / textBaseline by
+   * measuring the string width upfront and shifting the cursor. Width
+   * measurement walks the atlas (advance from cached metrics), so it
+   * doesn't round-trip the WASM measure().
+   */
+  private fillTextMSDF(text: string, x: number, y: number, atlas: GlyphAtlas): void {
+    if (!this.msdfPipeline) this.msdfPipeline = new MsdfTextPipeline(this.gl);
+    // Compute width by walking the cached glyphs (avoids a measure
+    // round-trip; falls back to 0 if a glyph isn't bakeable so the
+    // text still positions at the cursor).
+    let widthPx = 0;
+    for (const ch of text) {
+      const cp = ch.codePointAt(0)!;
+      const glyph = atlas.getOrRasterize(cp);
+      if (!glyph) break;
+      widthPx += (glyph.advance * this.fontSize) / glyph.unitsPerEm;
+    }
+    let px = x;
+    if (this.textAlign === "center") px -= widthPx / 2;
+    else if (this.textAlign === "right") px -= widthPx;
+    let py = y;
+    // Editor convention: baseline=top means y is the top of the text
+    // box. The MSDF quad math places the glyph relative to its font
+    // baseline, so shift y down by one font size for the "top" baseline
+    // (gets the visible bbox into [y, y+fontSize]).
+    if (this.textBaseline === "top") py += this.fontSize;
+    else if (this.textBaseline === "middle") py += this.fontSize / 2;
+    // baseline=bottom uses py as-is (cursor sits on the baseline).
+    this.msdfPipeline.drawText(
+      text,
+      px,
+      py,
+      this.fontSize,
+      atlas,
+      {
+        opacity: this.opacity,
+        color: this.fillColor,
+        transform: this.transform,
+      },
+      this._size,
+    );
+    // The MSDF pipeline left its own program active; restore the
+    // solid-fill program + VBO state so the next rect / polyline draw
+    // uses the correct shader.
+    this.restoreSolidProgram();
+  }
+
+  private restoreSolidProgram(): void {
+    this.gl.useProgram(this.program);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
+      this.gl.STATIC_DRAW,
+    );
+    const aPos = this.gl.getAttribLocation(this.program, "aPos");
+    this.gl.enableVertexAttribArray(aPos);
+    this.gl.vertexAttribPointer(aPos, 2, this.gl.FLOAT, false, 0, 0);
   }
   measureText(text: string): { width: number } {
     return this.textMetrics(text);
@@ -693,12 +806,36 @@ const drawPolylineStroke = (
 const IDENTITY_MAT3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 
 /**
- * Flatten tolerance (world units) passed to the active rasterizer
- * when one is installed. 0.5 px is "imperceptible at 1× zoom" on
- * typical diagrams — the WASM rasterizer subdivides until each
- * polyline chord is within this distance of the true curve.
+ * Flatten tolerance, computed per-call: 0.5 / zoom in screen pixels.
+ * The active screen-space scale is read off the current transform and
+ * divided so the chord-to-curve error stays roughly half a pixel on
+ * screen regardless of zoom.
  */
-const ADAPTIVE_TOLERANCE = 0.5;
+const SCREEN_TOLERANCE_PX = 0.5;
+
+/**
+ * Duck-type check for whether a TextShaper exposes the two methods
+ * GlyphAtlas needs (`glyphMetrics` + `rasterizeGlyphMSDF`). The
+ * `MsdfShaper` interface is structural, so any shaper that implements
+ * them — including `WasmTextShaper` — qualifies. Shapers without these
+ * methods return false and the renderer falls back to the
+ * OffscreenCanvas bitmap path.
+ */
+const isMsdfShaper = (shaper: unknown): shaper is MsdfShaper => {
+  const candidate = shaper as Partial<MsdfShaper>;
+  return (
+    typeof candidate.glyphMetrics === "function" &&
+    typeof candidate.rasterizeGlyphMSDF === "function"
+  );
+};
+
+/**
+ * Cheap polyline-length stand-in for the curve length — an upper bound
+ * proportional to it, used to pick a JS-fallback sample count
+ * commensurate with the tolerance.
+ */
+const curveLengthEstimate = (a: Vec2, b: Vec2): number =>
+  Math.hypot(a.x - b.x, a.y - b.y);
 
 /** Sample a quadratic Bezier curve at `count` evenly-spaced t values. */
 const sampleQuadratic = (
