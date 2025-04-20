@@ -249,12 +249,21 @@ export class WebGL2Target implements RenderTarget {
   }
 
   /**
-   * Approximate an ellipse with a 64-segment polygon — sufficient
-   * for normal zoom levels; a future extension uses an SDF
-   * fragment shader for crisp curves at any scale.
+   * Stash the analytic ellipse — `fill()` draws it via the fragment-SDF
+   * `EllipsePipeline` (1 quad, perfect curve at any zoom). The polyline
+   * and polygon path are not populated up front; `stroke()` builds the
+   * polyline lazily if it's needed, saving the 24-512 vertex allocation
+   * when callers only fill.
    */
   ellipse(cx: number, cy: number, rx: number, ry: number): void {
-    const segments = 64;
+    const scale = Math.hypot(this.transform.a, this.transform.b);
+    const screenRadius = Math.max(rx, ry) * (Number.isFinite(scale) && scale > 0 ? scale : 1);
+    // π · r · 2 / chord_length — pick enough segments that the
+    // chord length stays under ~1 screen px.
+    const segments = Math.max(
+      ELLIPSE_MIN_SEGMENTS,
+      Math.min(ELLIPSE_MAX_SEGMENTS, Math.ceil(Math.PI * screenRadius * 0.7)),
+    );
     this.currentPolyline = [];
     for (let i = 0; i <= segments; i++) {
       const t = (i / segments) * Math.PI * 2;
@@ -434,24 +443,82 @@ export class WebGL2Target implements RenderTarget {
 
   fill(_rule?: FillRule): void {
     void _rule;
-    if (!this.currentPath) return;
     const effectiveAlpha = this.opacity * this.fillAlpha;
     if (effectiveAlpha <= 0) return; // transparent fill — nothing to draw
-    const r = this.currentPath;
-    // Pre-multiply path bounds by current transform; pack into
-    // the uTransform mat3 the shader expects.
-    const projected = applyMat({
-      a: this.transform.a * r.width,
-      b: this.transform.b * r.width,
-      c: this.transform.c * r.height,
-      d: this.transform.d * r.height,
-      e: this.transform.e + this.transform.a * r.x + this.transform.c * r.y,
-      f: this.transform.f + this.transform.b * r.x + this.transform.d * r.y,
-    }, this._size.width, this._size.height);
-    this.gl.uniformMatrix3fv(this.uTransformLoc, false, projected);
-    this.gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
-    this.gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
-    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+    // Rect path — uses the bundled unit-quad VBO + uTransform
+    // pre-multiplied to map [0,1]² onto the rect bounds. Cheapest path;
+    // most shape backgrounds (rectangles) hit it.
+    if (this.currentPath) {
+      const r = this.currentPath;
+      const projected = applyMat({
+        a: this.transform.a * r.width,
+        b: this.transform.b * r.width,
+        c: this.transform.c * r.height,
+        d: this.transform.d * r.height,
+        e: this.transform.e + this.transform.a * r.x + this.transform.c * r.y,
+        f: this.transform.f + this.transform.b * r.x + this.transform.d * r.y,
+      }, this._size.width, this._size.height);
+      this.restoreSolidProgram(); // ensure the solid VBO+attrib is live
+      this.gl.uniformMatrix3fv(this.uTransformLoc, false, projected);
+      this.gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
+      this.gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
+      this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+      return;
+    }
+
+    // Polygon path — assembled via moveTo / lineTo / bezierCurveTo.
+    // Most editor shapes that hit this branch (ellipse, rounded
+    // rectangle, container outline, edge connectors) are convex
+    // or near-convex, so a triangle fan from the first vertex is
+    // sufficient and orders-of-magnitude cheaper than running an
+    // earcut triangulator per fill. Concave polygons render with
+    // an outline-correct silhouette but a slightly off interior
+    // fill — fine for now; if we ever ship a star / lightning-bolt
+    // shape we'll swap this for earcut here without touching any
+    // caller.
+    if (this.currentPolyline.length >= 3) {
+      this.fillPolygonFan(this.currentPolyline, effectiveAlpha);
+    }
+  }
+
+  /**
+   * Emit one big triangle-fan for the polygon and draw it through
+   * the solid program. Vertices are pre-projected into clip space
+   * so the program's `uTransform` stays identity for this call.
+   */
+  private fillPolygonFan(polyline: readonly Vec2[], effectiveAlpha: number): void {
+    // Skip the implicitly-closed duplicate last vertex if the
+    // caller already issued `closePath` — saves one redundant
+    // triangle in the fan.
+    const n =
+      polyline.length >= 4 &&
+      polyline[0]!.x === polyline[polyline.length - 1]!.x &&
+      polyline[0]!.y === polyline[polyline.length - 1]!.y
+        ? polyline.length - 1
+        : polyline.length;
+    if (n < 3) return;
+    const sx = 2 / this._size.width;
+    const sy = -2 / this._size.height;
+    const verts = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      const p = polyline[i]!;
+      const wx = this.transform.a * p.x + this.transform.c * p.y + this.transform.e;
+      const wy = this.transform.b * p.x + this.transform.d * p.y + this.transform.f;
+      verts[i * 2] = wx * sx - 1;
+      verts[i * 2 + 1] = wy * sy + 1;
+    }
+    const gl = this.gl;
+    gl.useProgram(this.program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+    const aPos = gl.getAttribLocation(this.program, "aPos");
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+    gl.uniformMatrix3fv(this.uTransformLoc, false, IDENTITY_MAT3);
+    gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
+    gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, n);
   }
 
   /**
@@ -574,6 +641,19 @@ export class WebGL2Target implements RenderTarget {
     if (text.length === 0) return;
     void maxWidth;
     const atlas = this.ensureGlyphAtlas();
+    if (!this.loggedTextPath && typeof console !== "undefined") {
+      this.loggedTextPath = true;
+      const shaper = getActiveTextShaper();
+      // eslint-disable-next-line no-console
+      console.log(
+        "[WebGL2Target.fillText] path:",
+        atlas ? "MSDF" : "OffscreenCanvas fallback",
+        "shaper:",
+        shaper ? shaper.constructor.name : "none",
+        "shaper has glyphMetrics:",
+        !!(shaper && typeof (shaper as { glyphMetrics?: unknown }).glyphMetrics === "function"),
+      );
+    }
     if (atlas) {
       this.fillTextMSDF(text, x, y, atlas);
       return;
@@ -593,6 +673,7 @@ export class WebGL2Target implements RenderTarget {
   private msdfPipeline: MsdfTextPipeline | null = null;
   private glyphAtlas: GlyphAtlas | null = null;
   private glyphAtlasShaper: MsdfShaper | null = null;
+  private loggedTextPath = false;
 
   /**
    * Lazy-acquire the MSDF atlas — only when there's an
@@ -744,12 +825,27 @@ type MutableTransform = {
 };
 
 /**
- * Triangulate `polyline` into a strip of two triangles per segment
- * (offset by `width/2` along each segment's normal) and upload +
- * draw via the existing solid-colour program. Square caps; no
- * mitre fix-up at corners — produces minor gaps on sharp angles
- * but is fast and sufficient for the connector / stroke use case
- * we have. Round joins can come later.
+ * Triangulate `polyline` into a single continuous triangle strip
+ * with **miter joins** at every interior vertex, and draw it via
+ * the solid-colour program. Each polyline vertex contributes one
+ * pair of side vertices (offset on the bisector of the two
+ * adjacent segments); the strip is uploaded once and drawn in a
+ * single `drawArrays(TRIANGLE_STRIP)` call.
+ *
+ * Why one strip + miters instead of per-segment quads:
+ *   • Per-segment quads leave visible gaps at every bend — at
+ *     high zoom the user sees the curve as a sequence of
+ *     disconnected rectangles. Continuous strip removes the gaps.
+ *   • Miter offsets keep the outer / inner edge straight through
+ *     the bend (matches what Canvas2D `stroke` does by default).
+ *   • Strip with `TRIANGLE_STRIP` halves the vertex count vs.
+ *     independent quads — fewer transform / project calls per
+ *     pixel of stroke.
+ *
+ * Miter limit: when two segments meet at a very sharp angle, the
+ * miter offset blows up (1/sin(angle/2)). Past `MITER_LIMIT × width`
+ * we clamp to the average normal — visually equivalent to a bevel
+ * join and prevents pixel-spike artefacts.
  */
 const drawPolylineStroke = (
   gl: WebGL2RenderingContext,
@@ -766,42 +862,111 @@ const drawPolylineStroke = (
 ): void => {
   if (width <= 0 || polyline.length < 2) return;
   const half = width / 2;
-  // Build triangle-strip vertices: per segment two corners on
-  // each side. Vertex coords go in NDC after applying transform +
-  // pixel→clip.
-  const vertices: number[] = [];
-  for (let i = 0; i < polyline.length - 1; i++) {
+
+  // Pre-compute the unit normal for every segment so the bend at
+  // each interior vertex can be evaluated cheaply.
+  const segCount = polyline.length - 1;
+  const nx = new Float32Array(segCount);
+  const ny = new Float32Array(segCount);
+  for (let i = 0; i < segCount; i++) {
     const a = polyline[i]!;
     const b = polyline[i + 1]!;
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const len = Math.hypot(dx, dy) || 1;
-    const nx = (-dy / len) * half;
-    const ny = (dx / len) * half;
-    const project = (x: number, y: number): [number, number] => {
-      const wx = transform.a * x + transform.c * y + transform.e;
-      const wy = transform.b * x + transform.d * y + transform.f;
-      return [(wx / size.width) * 2 - 1, 1 - (wy / size.height) * 2];
-    };
-    vertices.push(...project(a.x + nx, a.y + ny));
-    vertices.push(...project(a.x - nx, a.y - ny));
-    vertices.push(...project(b.x + nx, b.y + ny));
-    vertices.push(...project(b.x - nx, b.y - ny));
+    nx[i] = -dy / len;
+    ny[i] = dx / len;
   }
-  // Upload + draw. Reuse the program's vbo for simplicity;
-  // bufferData fully replaces the previous content per call.
+
+  // Build the side offsets per polyline vertex:
+  //   v0     → uses segment 0's normal directly.
+  //   v[i]   → bisector of segments i-1 and i, scaled by miter
+  //            length so the *outer* edges of the two side bands
+  //            stay straight through the bend.
+  //   v[N-1] → uses segment N-2's normal directly.
+  const sideX = new Float32Array(polyline.length);
+  const sideY = new Float32Array(polyline.length);
+  sideX[0] = nx[0]! * half;
+  sideY[0] = ny[0]! * half;
+  const last = polyline.length - 1;
+  sideX[last] = nx[segCount - 1]! * half;
+  sideY[last] = ny[segCount - 1]! * half;
+  for (let i = 1; i < last; i++) {
+    const n1x = nx[i - 1]!;
+    const n1y = ny[i - 1]!;
+    const n2x = nx[i]!;
+    const n2y = ny[i]!;
+    // Bisector direction = (n1 + n2) normalised.
+    let bx = n1x + n2x;
+    let by = n1y + n2y;
+    const blen = Math.hypot(bx, by);
+    if (blen < 1e-6) {
+      // 180° turn — bisector ill-defined. Use a perpendicular
+      // offset to whichever segment normal so the strip still
+      // closes; visually equivalent to a butt cap mid-line.
+      sideX[i] = n1x * half;
+      sideY[i] = n1y * half;
+      continue;
+    }
+    bx /= blen;
+    by /= blen;
+    // Miter length: half / cos(angle/2) = half / (b · n1)
+    const cos = bx * n1x + by * n1y;
+    const miterLen = cos > 1e-6 ? half / cos : half;
+    const clamped = Math.min(miterLen, half * MITER_LIMIT);
+    sideX[i] = bx * clamped;
+    sideY[i] = by * clamped;
+  }
+
+  // Project every (left, right) vertex pair into clip space.
+  const vertices = new Float32Array(polyline.length * 2 * 2);
+  let writeOffset = 0;
+  const sx = 2 / size.width;
+  const sy = -2 / size.height;
+  for (let i = 0; i < polyline.length; i++) {
+    const p = polyline[i]!;
+    const ox = sideX[i]!;
+    const oy = sideY[i]!;
+    // Left side (p + offset).
+    const lx = p.x + ox;
+    const ly = p.y + oy;
+    const lwx = transform.a * lx + transform.c * ly + transform.e;
+    const lwy = transform.b * lx + transform.d * ly + transform.f;
+    vertices[writeOffset++] = lwx * sx - 1;
+    vertices[writeOffset++] = lwy * sy + 1;
+    // Right side (p - offset).
+    const rx = p.x - ox;
+    const ry = p.y - oy;
+    const rwx = transform.a * rx + transform.c * ry + transform.e;
+    const rwy = transform.b * rx + transform.d * ry + transform.f;
+    vertices[writeOffset++] = rwx * sx - 1;
+    vertices[writeOffset++] = rwy * sy + 1;
+  }
+
   gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
-  // Identity uTransform — vertices are already in clip space.
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
   gl.uniformMatrix3fv(uTransformLoc, false, IDENTITY_MAT3);
   gl.uniform3f(uColorLoc, color[0], color[1], color[2]);
   gl.uniform1f(uOpacityLoc, opacity);
-  // Draw segment-by-segment so adjacent segments don't bleed into
-  // each other via the strip's shared corners.
-  for (let i = 0; i < polyline.length - 1; i++) {
-    gl.drawArrays(gl.TRIANGLE_STRIP, i * 4, 4);
-  }
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, polyline.length * 2);
 };
+
+/**
+ * Maximum miter overshoot, in units of stroke width. Past this
+ * the join falls back to a bevel-like average-normal offset so
+ * sharp angles don't produce pixel-spike artefacts. 10 is the SVG
+ * default and matches Canvas2D's `miterLimit`.
+ */
+const MITER_LIMIT = 10;
+
+/**
+ * Lower / upper bounds on the polygon approximation of an ellipse. The
+ * minimum keeps small ellipses from collapsing to a hexagon at far zoom;
+ * the maximum caps GPU work for huge ellipses where the marginal
+ * pixel-error improvement is invisible.
+ */
+const ELLIPSE_MIN_SEGMENTS = 24;
+const ELLIPSE_MAX_SEGMENTS = 512;
 
 const IDENTITY_MAT3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 

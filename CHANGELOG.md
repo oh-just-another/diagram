@@ -583,3 +583,6 @@
 
 ## 0.32.0
 - WebGL2: MSDF text + zoom-aware curve tolerance
+
+## 0.32.1
+- WebGL2: polygon fill + zoom-aware ellipse + miter stroke joins
