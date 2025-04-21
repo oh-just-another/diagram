@@ -149,11 +149,18 @@ const writeGlyphQuad = (
   atlas: GlyphAtlas,
 ): void => {
   const unitToPx = fontSize / g.unitsPerEm;
-  // Bake the SDF range margin into the destination quad — the tile
-  // contains a `range`-pixel band around the glyph, so the render
-  // quad has to be enlarged by the same margin scaled to font size.
-  const tileGlyphPx = atlas.tileSize - 2 * atlas.range;
-  const marginPx = (g.bboxW > 0 ? (atlas.range * g.bboxW * unitToPx) / Math.max(1, tileGlyphPx * unitToPx) : 0);
+  // The atlas tile holds the glyph in a centred `(tileSize -
+  // 2*range)` square with a `range`-pixel SDF band on every side.
+  // The MSDF generator scales the glyph by max(bboxW, bboxH) →
+  // tileGlyphAtlasPx, so `fontUnitsPerAtlasPx` is the same conversion
+  // factor for both axes. Range margin in screen pixels is then
+  // `range * fontUnitsPerAtlasPx * unitToPx`. The previous formula
+  // had `unitToPx` in the *denominator* by mistake, which made the
+  // margin ≈ 24× too big at 14-px font / 32-px tiles and produced
+  // huge text quads.
+  const tileGlyphAtlasPx = Math.max(1, atlas.tileSize - 2 * atlas.range);
+  const fontUnitsPerAtlasPx = Math.max(g.bboxW, g.bboxH) / tileGlyphAtlasPx;
+  const marginPx = atlas.range * fontUnitsPerAtlasPx * unitToPx;
   const w = g.bboxW * unitToPx + 2 * marginPx;
   const h = g.bboxH * unitToPx + 2 * marginPx;
   // Glyph origin: top of bbox in screen coords = cursorY +

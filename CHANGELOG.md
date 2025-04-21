@@ -589,3 +589,6 @@
 
 ## 0.32.2
 - diagram: register WASM shaper / rasterizer with the active registry
+
+## 0.32.3
+- WebGL2 MSDF text: fix dimension mismatch in glyph quad margin

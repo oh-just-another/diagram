@@ -641,13 +641,14 @@ export class WebGL2Target implements RenderTarget {
     if (text.length === 0) return;
     void maxWidth;
     const atlas = this.ensureGlyphAtlas();
-    if (!this.loggedTextPath && typeof console !== "undefined") {
-      this.loggedTextPath = true;
+    const path = atlas ? "MSDF" : "OffscreenCanvas fallback";
+    if (this.lastTextPath !== path && typeof console !== "undefined") {
+      this.lastTextPath = path;
       const shaper = getActiveTextShaper();
       // eslint-disable-next-line no-console
       console.log(
         "[WebGL2Target.fillText] path:",
-        atlas ? "MSDF" : "OffscreenCanvas fallback",
+        path,
         "shaper:",
         shaper ? shaper.constructor.name : "none",
         "shaper has glyphMetrics:",
@@ -673,7 +674,7 @@ export class WebGL2Target implements RenderTarget {
   private msdfPipeline: MsdfTextPipeline | null = null;
   private glyphAtlas: GlyphAtlas | null = null;
   private glyphAtlasShaper: MsdfShaper | null = null;
-  private loggedTextPath = false;
+  private lastTextPath: string | null = null;
 
   /**
    * Lazy-acquire the MSDF atlas — only when there's an
