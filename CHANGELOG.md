@@ -586,3 +586,6 @@
 
 ## 0.32.1
 - WebGL2: polygon fill + zoom-aware ellipse + miter stroke joins
+
+## 0.32.2
+- diagram: register WASM shaper / rasterizer with the active registry

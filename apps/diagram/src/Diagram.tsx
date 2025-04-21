@@ -36,6 +36,8 @@ import { WasmTextShaper } from "@oh-just-another/text-wasm";
 import { WasmRasterizer } from "@oh-just-another/raster-wasm";
 import {
   registerAnimationAdapter,
+  setActiveRasterizer,
+  setActiveTextShaper,
   type AnimatedSourceAdapter,
 } from "@oh-just-another/renderer-core";
 import {
@@ -237,7 +239,16 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
         loads.push(
           WasmTextShaper.loadBundled().then(
             (shaper) => {
-              if (!cancelled) setWasmShaper(shaper);
+              if (cancelled) return;
+              // Register straight into the process-global text-
+              // shaper registry — that's where every backend reads
+              // the active shaper from (renderer-canvas's MSDF
+              // path, kernel's `wrapText`, etc.). Skipping this
+              // step means the WebGL2 backend never sees the
+              // newly-loaded shaper and stays on the OffscreenCanvas
+              // fallback even though the bundle finished loading.
+              setActiveTextShaper(shaper);
+              setWasmShaper(shaper);
             },
             (err) => {
               // eslint-disable-next-line no-console
@@ -253,7 +264,12 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
         loads.push(
           WasmRasterizer.loadBundled().then(
             (r) => {
-              if (!cancelled) setWasmRaster(r);
+              if (cancelled) return;
+              // Same as the text shaper: rasterizer goes into the
+              // global registry the WebGL2 backend reads on every
+              // bezierCurveTo / quadraticCurveTo call.
+              setActiveRasterizer(r);
+              setWasmRaster(r);
             },
             (err) => {
               // eslint-disable-next-line no-console
@@ -286,6 +302,20 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     },
     [fileDropHandlers, onReady],
   );
+
+  // Force a re-render once WASM shaper / rasterizer becomes
+  // available after the editor has already mounted. The render
+  // pipeline reads the active shaper through a process-global
+  // registry, so once we call `setActiveTextShaper` the next
+  // render picks up the MSDF path — but the editor only renders
+  // on its own state changes. Nudging via `setMode(editor.mode)`
+  // triggers a notify/render without mutating editor state.
+  useEffect(() => {
+    if (!editor) return undefined;
+    if (!wasmShaper && !wasmRaster) return undefined;
+    editor.setMode(editor.mode);
+    return undefined;
+  }, [editor, wasmShaper, wasmRaster]);
 
   // Subscribe to scene / selection changes.
   useEffect(() => {
