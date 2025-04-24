@@ -149,37 +149,40 @@ const writeGlyphQuad = (
   atlas: GlyphAtlas,
 ): void => {
   const unitToPx = fontSize / g.unitsPerEm;
-  // The atlas tile holds the glyph in a centred `(tileSize -
-  // 2*range)` square with a `range`-pixel SDF band on every side.
-  // The MSDF generator scales the glyph by max(bboxW, bboxH) →
-  // tileGlyphAtlasPx, so `fontUnitsPerAtlasPx` is the same conversion
-  // factor for both axes. Range margin in screen pixels is then
-  // `range * fontUnitsPerAtlasPx * unitToPx`. The previous formula
-  // had `unitToPx` in the *denominator* by mistake, which made the
-  // margin ≈ 24× too big at 14-px font / 32-px tiles and produced
-  // huge text quads.
+  // The MSDF tile is `tileSize × tileSize` but the glyph itself only
+  // occupies a `scaledW + 2*range` × `scaledH + 2*range` rectangle
+  // inside it — the rest of the tile is empty ("fully outside" SDF).
+  // The rasteriser scales by max(bboxW, bboxH) so the bigger axis fills
+  // `tileSize - 2*range` and the smaller axis is proportional. UVs must
+  // cover only that used rect, otherwise narrow letters ('i', 'l', 'I')
+  // get the empty atlas margin stretched into them and read as
+  // wide/skewed/distorted.
   const tileGlyphAtlasPx = Math.max(1, atlas.tileSize - 2 * atlas.range);
   const fontUnitsPerAtlasPx = Math.max(g.bboxW, g.bboxH) / tileGlyphAtlasPx;
+  // Atlas pixels occupied by the glyph + its SDF margin.
+  const usedW_atlas = g.bboxW / fontUnitsPerAtlasPx + 2 * atlas.range;
+  const usedH_atlas = g.bboxH / fontUnitsPerAtlasPx + 2 * atlas.range;
+  // Screen-pixel margin = the same `range` atlas pixels mapped through
+  // `fontUnitsPerAtlasPx × unitToPx`.
   const marginPx = atlas.range * fontUnitsPerAtlasPx * unitToPx;
   const w = g.bboxW * unitToPx + 2 * marginPx;
   const h = g.bboxH * unitToPx + 2 * marginPx;
-  // Glyph origin: top of bbox in screen coords = cursorY +
-  // (ascender - bboxYMax) * unitToPx. We approximate "top-of-line"
-  // = cursorY (caller already adjusted baseline). With y-down
-  // editor coords, glyph top is cursor + (ascent - bboxYMax)
-  // px from font; we feed a simple cursor + bbox transform below.
+  // Glyph quad position in screen coords (y-down). `cursorY` is the
+  // text baseline; the font bbox lives from baseline upward, so the
+  // glyph top sits at `cursor - bboxYMax * unitToPx`.
   const left = cursorX + g.bboxXMin * unitToPx - marginPx;
-  // y-down conversion: font bboxYMin is from baseline going up, but
-  // we want the top of the glyph; flip via (-bboxYMax).
   const top = cursorY + (-g.bboxYMin - g.bboxH) * unitToPx - marginPx;
   const right = left + w;
   const bottom = top + h;
 
-  // Atlas UVs (in normalised [0,1] texture space).
+  // Atlas UVs — *only* the used rect (top-left at (atlasX, atlasY),
+  // size = usedW_atlas × usedH_atlas). The rasteriser writes the
+  // glyph right-side-up (y-flip applied in the Rust transform), so
+  // UV v=0 maps to the top of the glyph as expected.
   const u0 = g.atlasX / atlas.atlasSize;
   const v0 = g.atlasY / atlas.atlasSize;
-  const u1 = (g.atlasX + g.tileSize) / atlas.atlasSize;
-  const v1 = (g.atlasY + g.tileSize) / atlas.atlasSize;
+  const u1 = (g.atlasX + usedW_atlas) / atlas.atlasSize;
+  const v1 = (g.atlasY + usedH_atlas) / atlas.atlasSize;
 
   // Two triangles, six vertices, (x, y, u, v) each.
   buf.set(

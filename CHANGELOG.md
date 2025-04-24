@@ -592,3 +592,6 @@
 
 ## 0.32.3
 - WebGL2 MSDF text: fix dimension mismatch in glyph quad margin
+
+## 0.32.4
+- WebGL2 MSDF text: y-flip the glyph + crop UVs to the used tile region

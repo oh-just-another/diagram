@@ -34,7 +34,7 @@ use fdsm::{
 };
 use fdsm_ttf_parser::load_shape_from_face;
 use image::RgbImage;
-use nalgebra::{Affine2, Similarity2, Vector2};
+use nalgebra::{Affine2, Matrix3};
 use ttf_parser::Face;
 
 /// Font embedded in the wasm bundle — Roboto Regular. ~500KB.
@@ -240,10 +240,17 @@ pub extern "C" fn rasterize_glyph_msdf(
     };
 
     // Scale + translate so the glyph fits inside the atlas cell with a
-    // `range`-pixel margin on every side. The font coord system is
-    // y-up; atlas / image coords are y-down. fdsm handles the flip
-    // internally as long as we feed it the standard "scale + offset"
-    // similarity.
+    // `range`-pixel margin on every side. Font coords are y-up,
+    // atlas/image coords y-down — we apply a negative y scale so the
+    // glyph reads right-side-up after rasterisation.
+    //
+    // Target mapping (font → atlas):
+    //   (bbox.x_min, bbox.y_max) → (range,            range)
+    //   (bbox.x_max, bbox.y_min) → (range + scaled_w, range + scaled_h)
+    //
+    // Solving:
+    //   new_x = scale * x + tx,  tx = range - scale * bbox.x_min
+    //   new_y = -scale * y + ty, ty = range + scale * bbox.y_max
     let bbox_w = (bbox.x_max - bbox.x_min) as f64;
     let bbox_h = (bbox.y_max - bbox.y_min) as f64;
     let target = (atlas_size as f64 - 2.0 * range as f64).max(1.0);
@@ -252,15 +259,14 @@ pub extern "C" fn rasterize_glyph_msdf(
     } else {
         1.0
     };
-    let shrinkage = 1.0 / scale;
-    let transformation: Affine2<f64> = nalgebra::convert(Similarity2::new(
-        Vector2::new(
-            range as f64 - bbox.x_min as f64 / shrinkage,
-            range as f64 - bbox.y_min as f64 / shrinkage,
-        ),
-        0.0,
-        scale,
-    ));
+    let tx = range as f64 - bbox.x_min as f64 * scale;
+    let ty = range as f64 + bbox.y_max as f64 * scale;
+    let m = Matrix3::new(
+        scale, 0.0,   tx,
+        0.0,   -scale, ty,
+        0.0,   0.0,   1.0,
+    );
+    let transformation = Affine2::from_matrix_unchecked(m);
     shape.transform(&transformation);
 
     // 3-channel edge colouring (Chlumsky). The angle parameter is the
