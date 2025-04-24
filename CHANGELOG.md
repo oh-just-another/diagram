@@ -595,3 +595,6 @@
 
 ## 0.32.4
 - WebGL2 MSDF text: y-flip the glyph + crop UVs to the used tile region
+
+## 0.32.5
+- diagram: wire usePalettePlacement onto the canvas wrapper
