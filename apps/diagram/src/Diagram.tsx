@@ -26,7 +26,6 @@ import {
   Toolbar,
   ToastHost,
   TextEditorOverlay,
-  WelcomeScreen,
   useHelpDialogHotkey,
   usePalettePlacement,
 } from "@oh-just-another/react-ui";
@@ -141,7 +140,6 @@ export interface DiagramProps {
   readonly hideContextMenu?: boolean;
   readonly hideMainMenu?: boolean;
   readonly hideZoomControls?: boolean;
-  readonly hideWelcomeScreen?: boolean;
 
   // --- Slots ---
   /** Rendered inside the header next to the title. */
@@ -150,8 +148,6 @@ export interface DiagramProps {
   readonly renderHeaderRight?: () => ReactNode;
   /** Custom main-menu items appended to the default. */
   readonly renderMainMenuExtras?: () => ReactNode;
-  /** Replace the welcome-screen content. */
-  readonly renderWelcomeScreen?: () => ReactNode;
 
   // --- Theme ---
   /** `"dark"` / `"light"` / `"system"`. Default `"system"`. */
@@ -185,11 +181,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     hideContextMenu,
     hideMainMenu,
     hideZoomControls,
-    hideWelcomeScreen,
     renderHeaderLeft,
     renderHeaderRight,
     renderMainMenuExtras,
-    renderWelcomeScreen,
     theme = "system",
     className,
     style,
@@ -447,8 +441,6 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
               <DiagramSurface style={{ flex: 1 }} />
               {!hideToolbar && <Toolbar items={DEFAULT_TOOLBAR} />}
               {!hideZoomControls && <FloatingZoomControls />}
-              {!hideWelcomeScreen &&
-                (renderWelcomeScreen ? renderWelcomeScreen() : <WelcomeScreen />)}
               <TextEditorOverlay />
               {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
               <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />

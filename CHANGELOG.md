@@ -598,3 +598,6 @@
 
 ## 0.32.5
 - diagram: wire usePalettePlacement onto the canvas wrapper
+
+## 0.32.6
+- react-ui: remove WelcomeScreen component

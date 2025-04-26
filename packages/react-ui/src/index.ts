@@ -93,7 +93,6 @@ export {
   type MainMenuItemProps,
   type MainMenuItemLinkProps,
 } from "./main-menu.js";
-export { WelcomeScreen, type WelcomeScreenProps } from "./welcome-screen.js";
 export { Modal, type ModalProps } from "./modal.js";
 export { Sidebar, type SidebarProps } from "./sidebar.js";
 
