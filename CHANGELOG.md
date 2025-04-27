@@ -601,3 +601,6 @@
 
 ## 0.32.6
 - react-ui: remove WelcomeScreen component
+
+## 0.32.7
+- diagram: move usePalettePlacement into a child of DiagramRoot

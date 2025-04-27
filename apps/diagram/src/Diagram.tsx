@@ -356,15 +356,6 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   const [helpOpen, setHelpOpen] = useState(false);
   useHelpDialogHotkey(() => setHelpOpen((v) => !v));
 
-  // --- Palette drop wiring ----------------------------------------
-  // Palette items expose an HTML5 drag with an `x-template-id` payload
-  // (see `palette.tsx`). Without a matching dragover/drop on the
-  // canvas wrapper the drop never lands — `<Diagram>` is a closed
-  // composite, so we wire this here once; hosts that go bare-metal
-  // with their own DiagramSurface call `usePalettePlacement()` the
-  // same way.
-  const paletteDropHandlers = usePalettePlacement();
-
   if (!profile) {
     // First frame — capabilities still resolving. Render an empty
     // shell to reserve layout space; the resolve is fast (sync
@@ -430,21 +421,13 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
                 <Palette style={paletteStyle} />
               </div>
             )}
-            <div
-              data-diagram-panel="canvas"
-              style={canvasWrapperStyle}
-              onDragEnter={paletteDropHandlers.onDragEnter}
-              onDragOver={paletteDropHandlers.onDragOver}
-              onDragLeave={paletteDropHandlers.onDragLeave}
-              onDrop={paletteDropHandlers.onDrop}
-            >
-              <DiagramSurface style={{ flex: 1 }} />
-              {!hideToolbar && <Toolbar items={DEFAULT_TOOLBAR} />}
-              {!hideZoomControls && <FloatingZoomControls />}
-              <TextEditorOverlay />
-              {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
-              <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-            </div>
+            <CanvasArea
+              hideToolbar={hideToolbar}
+              hideZoomControls={hideZoomControls}
+              hideContextMenu={hideContextMenu}
+              helpOpen={helpOpen}
+              onHelpClose={() => setHelpOpen(false)}
+            />
             {!hidePropertyPanel && (
               <div data-diagram-panel="property" style={panelWrapperStyle}>
                 <PropertyPanel style={panelStyle} />
@@ -490,4 +473,48 @@ const canvasWrapperStyle: CSSProperties = {
   minHeight: 0,
   minWidth: 0,
   position: "relative",
+};
+
+/**
+ * Canvas wrapper rendered *inside* `<DiagramRoot>` — that placement is
+ * mandatory because `usePalettePlacement()` reads the active editor
+ * from React context (`DiagramEditorBridge`), and the context is only
+ * provided by `<DiagramRoot>`'s subtree. The previous version called
+ * the hook in the top-level `<Diagram>` body which sat *above*
+ * DiagramRoot, so `editor` was always null and the drop handlers
+ * silently no-op'd (logs showed the events firing but nothing
+ * happened). Splitting this out is the smallest change that puts the
+ * hook in the right tree position.
+ */
+const CanvasArea = ({
+  hideToolbar,
+  hideZoomControls,
+  hideContextMenu,
+  helpOpen,
+  onHelpClose,
+}: {
+  readonly hideToolbar: boolean | undefined;
+  readonly hideZoomControls: boolean | undefined;
+  readonly hideContextMenu: boolean | undefined;
+  readonly helpOpen: boolean;
+  readonly onHelpClose: () => void;
+}) => {
+  const paletteDropHandlers = usePalettePlacement();
+  return (
+    <div
+      data-diagram-panel="canvas"
+      style={canvasWrapperStyle}
+      onDragEnter={paletteDropHandlers.onDragEnter}
+      onDragOver={paletteDropHandlers.onDragOver}
+      onDragLeave={paletteDropHandlers.onDragLeave}
+      onDrop={paletteDropHandlers.onDrop}
+    >
+      <DiagramSurface style={{ flex: 1 }} />
+      {!hideToolbar && <Toolbar items={DEFAULT_TOOLBAR} />}
+      {!hideZoomControls && <FloatingZoomControls />}
+      <TextEditorOverlay />
+      {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
+      <HelpDialog open={helpOpen} onClose={onHelpClose} />
+    </div>
+  );
 };
