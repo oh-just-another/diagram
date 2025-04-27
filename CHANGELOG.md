@@ -604,3 +604,6 @@
 
 ## 0.32.7
 - diagram: move usePalettePlacement into a child of DiagramRoot
+
+## 0.32.8
+- text-wasm MSDF: add correct_error_msdf pass to kill pin-hole artefacts

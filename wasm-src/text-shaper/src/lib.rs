@@ -27,13 +27,14 @@
 use core::cell::RefCell;
 use fdsm::{
     bezier::scanline::FillRule,
+    correct_error::{correct_error_msdf, ErrorCorrectionConfig},
     generate::generate_msdf,
     render::correct_sign_msdf,
     shape::Shape,
     transform::Transform as FdsmTransform,
 };
 use fdsm_ttf_parser::load_shape_from_face;
-use image::RgbImage;
+use image::{ImageBuffer, Rgb, Rgb32FImage, RgbImage};
 use nalgebra::{Affine2, Matrix3};
 use ttf_parser::Face;
 
@@ -275,13 +276,33 @@ pub extern "C" fn rasterize_glyph_msdf(
     let coloured = Shape::edge_coloring_simple(shape, 0.03, 0);
     let prepared = coloured.prepare();
 
+    // Generate the MSDF in f32 first — `correct_error_msdf`
+    // requires f32 precision to detect the sub-pixel artefacts that
+    // `correct_sign_msdf` alone can leave behind (visible as
+    // "pinholes" inside otherwise-solid glyph areas). The u8
+    // downcast happens once after both correction passes are done.
+    let mut img_f32: Rgb32FImage = ImageBuffer::new(atlas_size, atlas_size);
+    generate_msdf(&prepared, range as f64, &mut img_f32);
+    // First pass: fix sign disagreements where two contours with
+    // different channel masks meet at a corner.
+    correct_sign_msdf(&mut img_f32, &prepared, FillRule::Nonzero);
+    // Second pass: artifact-classifier-driven error correction.
+    // Catches residual pin-hole / wedge artefacts that `correct_sign_msdf`
+    // can't see.
+    let cfg = ErrorCorrectionConfig::default();
+    correct_error_msdf(&mut img_f32, &coloured, &prepared, range as f64, &cfg);
+
+    // Downcast f32 (canonically 0..1 with sign offset already baked
+    // by the generator → midpoint = 0.5) into u8. Clamp first so
+    // out-of-range distances saturate cleanly.
     let mut img = RgbImage::new(atlas_size, atlas_size);
-    generate_msdf(&prepared, range as f64, &mut img);
-    // The raw MSDF can have sign errors near corners where two
-    // contours with disagreeing channel masks meet; fdsm's
-    // `correct_sign_msdf` re-tests every pixel against the prepared
-    // shape and flips it if the channels disagree about inside / out.
-    correct_sign_msdf(&mut img, &prepared, FillRule::Nonzero);
+    for (px_dst, px_src) in img.pixels_mut().zip(img_f32.pixels()) {
+        *px_dst = Rgb([
+            (px_src[0].clamp(0.0, 1.0) * 255.0) as u8,
+            (px_src[1].clamp(0.0, 1.0) * 255.0) as u8,
+            (px_src[2].clamp(0.0, 1.0) * 255.0) as u8,
+        ]);
+    }
 
     // Copy raw bytes into the bump-allocated output buffer.
     let raw: &[u8] = img.as_raw();
