@@ -607,3 +607,6 @@
 
 ## 0.32.8
 - text-wasm MSDF: add correct_error_msdf pass to kill pin-hole artefacts
+
+## 0.32.9
+- WebGL2 polygon fill: earcut triangulation for concave shapes

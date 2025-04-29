@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-canvas",
-  "version": "0.32.8",
+  "version": "0.32.9",
   "description": "renderer-canvas package",
   "type": "module",
   "main": "./dist/index.js",
@@ -35,11 +35,15 @@
     "access": "public"
   },
   "dependencies": {
-    "@oh-just-another/types": "workspace:*",
+    "@oh-just-another/glyph-atlas": "workspace:*",
     "@oh-just-another/math": "workspace:*",
-    "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/renderer-core": "workspace:*",
     "@oh-just-another/renderer-workers": "workspace:*",
-    "@oh-just-another/glyph-atlas": "workspace:*"
+    "@oh-just-another/scene": "workspace:*",
+    "@oh-just-another/types": "workspace:*",
+    "earcut": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/earcut": "^3.0.0"
   }
 }

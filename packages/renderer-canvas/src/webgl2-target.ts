@@ -14,6 +14,7 @@ import type {
 } from "@oh-just-another/renderer-core";
 import { getActiveRasterizer, getActiveTextShaper } from "@oh-just-another/renderer-core";
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
+import earcut from "earcut";
 import { parseWebGL2Color } from "./webgl2-color.js";
 import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
 
@@ -155,6 +156,10 @@ export class WebGL2Target implements RenderTarget {
       this.glyphAtlas.dispose(this.gl);
       this.glyphAtlas = null;
       this.glyphAtlasShaper = null;
+    }
+    if (this.indexBuffer) {
+      this.gl.deleteBuffer(this.indexBuffer);
+      this.indexBuffer = null;
     }
     const lose = this.gl.getExtension("WEBGL_lose_context");
     lose?.loseContext();
@@ -468,29 +473,25 @@ export class WebGL2Target implements RenderTarget {
     }
 
     // Polygon path — assembled via moveTo / lineTo / bezierCurveTo.
-    // Most editor shapes that hit this branch (ellipse, rounded
-    // rectangle, container outline, edge connectors) are convex
-    // or near-convex, so a triangle fan from the first vertex is
-    // sufficient and orders-of-magnitude cheaper than running an
-    // earcut triangulator per fill. Concave polygons render with
-    // an outline-correct silhouette but a slightly off interior
-    // fill — fine for now; if we ever ship a star / lightning-bolt
-    // shape we'll swap this for earcut here without touching any
-    // caller.
+    // Triangulated through earcut so concave shapes (arrows, stars,
+    // lightning bolts) fill correctly. Earcut is dependency-free and
+    // handles holes too if ever needed.
     if (this.currentPolyline.length >= 3) {
-      this.fillPolygonFan(this.currentPolyline, effectiveAlpha);
+      this.fillPolygonEarcut(this.currentPolyline, effectiveAlpha);
     }
   }
 
   /**
-   * Emit one big triangle-fan for the polygon and draw it through
-   * the solid program. Vertices are pre-projected into clip space
-   * so the program's `uTransform` stays identity for this call.
+   * Triangulate the polygon via earcut and emit one TRIANGLES draw.
+   * Vertices are pre-projected into clip space so the program's
+   * `uTransform` stays identity. Falls back to a triangle-fan when
+   * earcut returns an empty index list (degenerate self-intersecting
+   * polygon).
    */
-  private fillPolygonFan(polyline: readonly Vec2[], effectiveAlpha: number): void {
-    // Skip the implicitly-closed duplicate last vertex if the
-    // caller already issued `closePath` — saves one redundant
-    // triangle in the fan.
+  private fillPolygonEarcut(polyline: readonly Vec2[], effectiveAlpha: number): void {
+    // Skip the implicitly-closed duplicate last vertex if the caller
+    // already issued `closePath` — earcut would treat it as a degenerate
+    // sliver.
     const n =
       polyline.length >= 4 &&
       polyline[0]!.x === polyline[polyline.length - 1]!.x &&
@@ -498,6 +499,58 @@ export class WebGL2Target implements RenderTarget {
         ? polyline.length - 1
         : polyline.length;
     if (n < 3) return;
+
+    // earcut wants a flat [x0, y0, x1, y1, ...] in world coords.
+    const flat = new Float64Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      const p = polyline[i]!;
+      flat[i * 2] = p.x;
+      flat[i * 2 + 1] = p.y;
+    }
+    const indices = earcut(flat as unknown as number[]);
+    if (indices.length === 0) {
+      // Pathological polygon — fall back to a fan so something renders.
+      this.drawTriangleFan(polyline, n, effectiveAlpha);
+      return;
+    }
+
+    // Project once into clip space, then index-draw.
+    const sx = 2 / this._size.width;
+    const sy = -2 / this._size.height;
+    const verts = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      const p = polyline[i]!;
+      const wx = this.transform.a * p.x + this.transform.c * p.y + this.transform.e;
+      const wy = this.transform.b * p.x + this.transform.d * p.y + this.transform.f;
+      verts[i * 2] = wx * sx - 1;
+      verts[i * 2 + 1] = wy * sy + 1;
+    }
+
+    const gl = this.gl;
+    gl.useProgram(this.program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+    const aPos = gl.getAttribLocation(this.program, "aPos");
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+    gl.uniformMatrix3fv(this.uTransformLoc, false, IDENTITY_MAT3);
+    gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
+    gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
+    // Lazy IBO — earcut returns 16-bit indices for ≤65535 verts (the
+    // realistic ceiling for any one polygon).
+    if (!this.indexBuffer) this.indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.DYNAMIC_DRAW);
+    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+  }
+  private indexBuffer: WebGLBuffer | null = null;
+
+  /**
+   * Convex / fallback path — triangle fan from polyline[0]. Renders
+   * convex polygons correctly; concave ones get a wrong silhouette (the
+   * earcut path handles those instead).
+   */
+  private drawTriangleFan(polyline: readonly Vec2[], n: number, effectiveAlpha: number): void {
     const sx = 2 / this._size.width;
     const sy = -2 / this._size.height;
     const verts = new Float32Array(n * 2);
