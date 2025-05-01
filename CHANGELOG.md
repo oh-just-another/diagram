@@ -610,3 +610,6 @@
 
 ## 0.32.9
 - WebGL2 polygon fill: earcut triangulation for concave shapes
+
+## 0.32.10
+- WebGL2 MSDF: pin glyph-quad geometry behaviour with unit tests

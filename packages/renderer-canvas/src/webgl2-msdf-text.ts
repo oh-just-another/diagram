@@ -130,24 +130,30 @@ export class MsdfTextPipeline {
 }
 
 /**
- * Bake one glyph's two triangles into the shared interleaved buffer.
- * Vertex order: (top-left, top-right, bottom-left, top-right,
- * bottom-right, bottom-left) — counter-clockwise pair of triangles.
+ * Pure-math helper: compute the screen-space rect + atlas UV rect for
+ * one glyph. Exported so tests can verify the geometry without booting
+ * a real WebGL2 context.
  *
- * Glyph metrics are in font units. We scale by `fontSize /
- * unitsPerEm` and place the glyph so its bbox lower-left sits at
- * the cursor + bearing. y in this method follows the editor's
- * top-down convention; we flip the font bbox accordingly.
+ * Returns `{ left, top, right, bottom, u0, v0, u1, v1 }` in screen
+ * pixels / normalised UVs. Caller packs the six vertices into a vertex
+ * buffer.
  */
-const writeGlyphQuad = (
-  buf: Float32Array,
-  offset: number,
+export const glyphQuadGeometry = (
   g: AtlasGlyph,
   cursorX: number,
   cursorY: number,
   fontSize: number,
-  atlas: GlyphAtlas,
-): void => {
+  atlas: { atlasSize: number; tileSize: number; range: number },
+): {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  u0: number;
+  v0: number;
+  u1: number;
+  v1: number;
+} => {
   const unitToPx = fontSize / g.unitsPerEm;
   // The MSDF tile is `tileSize × tileSize` but the glyph itself only
   // occupies a `scaledW + 2*range` × `scaledH + 2*range` rectangle
@@ -174,7 +180,6 @@ const writeGlyphQuad = (
   const top = cursorY + (-g.bboxYMin - g.bboxH) * unitToPx - marginPx;
   const right = left + w;
   const bottom = top + h;
-
   // Atlas UVs — *only* the used rect (top-left at (atlasX, atlasY),
   // size = usedW_atlas × usedH_atlas). The rasteriser writes the
   // glyph right-side-up (y-flip applied in the Rust transform), so
@@ -183,7 +188,25 @@ const writeGlyphQuad = (
   const v0 = g.atlasY / atlas.atlasSize;
   const u1 = (g.atlasX + usedW_atlas) / atlas.atlasSize;
   const v1 = (g.atlasY + usedH_atlas) / atlas.atlasSize;
+  return { left, top, right, bottom, u0, v0, u1, v1 };
+};
 
+const writeGlyphQuad = (
+  buf: Float32Array,
+  offset: number,
+  g: AtlasGlyph,
+  cursorX: number,
+  cursorY: number,
+  fontSize: number,
+  atlas: GlyphAtlas,
+): void => {
+  const { left, top, right, bottom, u0, v0, u1, v1 } = glyphQuadGeometry(
+    g,
+    cursorX,
+    cursorY,
+    fontSize,
+    atlas,
+  );
   // Two triangles, six vertices, (x, y, u, v) each.
   buf.set(
     [
