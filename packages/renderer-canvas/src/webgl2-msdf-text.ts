@@ -180,14 +180,20 @@ export const glyphQuadGeometry = (
   const top = cursorY + (-g.bboxYMin - g.bboxH) * unitToPx - marginPx;
   const right = left + w;
   const bottom = top + h;
-  // Atlas UVs — *only* the used rect (top-left at (atlasX, atlasY),
-  // size = usedW_atlas × usedH_atlas). The rasteriser writes the
-  // glyph right-side-up (y-flip applied in the Rust transform), so
-  // UV v=0 maps to the top of the glyph as expected.
-  const u0 = g.atlasX / atlas.atlasSize;
-  const v0 = g.atlasY / atlas.atlasSize;
-  const u1 = (g.atlasX + usedW_atlas) / atlas.atlasSize;
-  const v1 = (g.atlasY + usedH_atlas) / atlas.atlasSize;
+  // Atlas UVs — cover the used rect, inset by half a texel on every
+  // side so the LINEAR filter never pulls in pixels from the adjacent
+  // tile. Without this inset the LINEAR sampler at a tile boundary
+  // averages the current glyph's edge with the neighbouring tile, which
+  // shows up as faint vertical / horizontal stripes between adjacent
+  // letters at certain zooms.
+  //
+  // The rasteriser writes the glyph right-side-up (y-flip applied in
+  // the Rust transform), so UV v=0 maps to the top of the glyph.
+  const inset = 0.5;
+  const u0 = (g.atlasX + inset) / atlas.atlasSize;
+  const v0 = (g.atlasY + inset) / atlas.atlasSize;
+  const u1 = (g.atlasX + usedW_atlas - inset) / atlas.atlasSize;
+  const v1 = (g.atlasY + usedH_atlas - inset) / atlas.atlasSize;
   return { left, top, right, bottom, u0, v0, u1, v1 };
 };
 

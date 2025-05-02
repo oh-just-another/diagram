@@ -10,23 +10,23 @@ export const DEFAULT_ATLAS_SIZE = 2048;
 
 /**
  * Per-glyph tile edge in atlas pixels (a single tile holds one
- * glyph's MSDF). 32 px is the sweet spot found in the Mapbox /
- * Valve writeups: small enough to fit thousands of glyphs in one
- * 2048 atlas, large enough that the SDF range still has 4-pixel
- * headroom on every side for `smoothstep` antialiasing.
+ * glyph's MSDF). 64 px gives the glyph itself a 48×48 area (after
+ * subtracting two `range`-pixel margins), enough resolution that the
+ * bilinear texture filter doesn't round off sharp corners in serif /
+ * counter-shape glyphs even at extreme zoom.
  *
- * Tile size **does not** equal the rendered glyph size — the shader
- * samples the MSDF and scales freely. So 32 px tiles render crisply
- * at 8 px or 800 px alike.
+ * 2048-px atlas / 64-px tile = 32 columns × 32 rows = 1024 slots —
+ * enough for the BMP basic + extended Latin + Cyrillic + common
+ * punctuation a normal editor session touches.
  */
-export const DEFAULT_TILE_SIZE = 32;
+export const DEFAULT_TILE_SIZE = 64;
 
 /**
  * SDF range in atlas pixels. Controls how many pixels of the tile
  * sit outside the glyph's tight bbox as a "soft" band where the
- * shader's `smoothstep` can blend the edge. 4 px → 1/8th of a
- * 32-px tile is reserved for the band on every side, leaving a
- * 24×24 area for the glyph itself. Lower → sharper edges with
- * less AA freedom; higher → softer edges and more wasted texels.
+ * shader's `smoothstep` can blend the edge. 8 px → 1/8th of a
+ * 64-px tile is reserved on every side, leaving a 48×48 area for
+ * the glyph itself. Matches the tile size so the geometric ratio
+ * stays constant.
  */
-export const DEFAULT_RANGE = 4;
+export const DEFAULT_RANGE = 8;

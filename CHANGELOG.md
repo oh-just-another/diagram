@@ -613,3 +613,6 @@
 
 ## 0.32.10
 - WebGL2 MSDF: pin glyph-quad geometry behaviour with unit tests
+
+## 0.32.11
+- WebGL2 MSDF: fix corner rounding + inter-letter bleeding stripes

@@ -53,13 +53,14 @@ describe("glyphQuadGeometry — wide glyph", () => {
     expect(width).toBeLessThan(50);
   });
 
-  it("UV covers nearly the full tile for a square-aspect glyph", () => {
+  it("UV covers nearly the full tile for a square-aspect glyph (minus half-pixel inset on each edge)", () => {
     const g = glyphQuadGeometry(wideGlyph, 0, 0, 14, atlas);
     const uWidthAtlas = (g.u1 - g.u0) * atlas.atlasSize;
     const vHeightAtlas = (g.v1 - g.v0) * atlas.atlasSize;
-    // bboxW / fontUnitsPerAtlasPx + 2 * range = 24 + 8 = 32 (full tile)
-    expect(uWidthAtlas).toBeCloseTo(32, 1);
-    expect(vHeightAtlas).toBeCloseTo(32, 1);
+    // Used atlas rect = 32 px; inset of 0.5 px on each side → 31 px.
+    // Inset prevents LINEAR-filter bleeding between adjacent tiles.
+    expect(uWidthAtlas).toBeCloseTo(31, 1);
+    expect(vHeightAtlas).toBeCloseTo(31, 1);
   });
 
   it("v0 is the top of the glyph (no upside-down y-flip)", () => {
@@ -77,11 +78,10 @@ describe("glyphQuadGeometry — narrow glyph", () => {
     const uWidthAtlas = (g.u1 - g.u0) * atlas.atlasSize;
     const vHeightAtlas = (g.v1 - g.v0) * atlas.atlasSize;
     // fontUnitsPerAtlasPx = max(200, 1500) / 24 = 62.5
-    // Used atlas width = 200/62.5 + 8 = 11.2 (NOT the full 32)
-    // Used atlas height = 1500/62.5 + 8 = 32
-    expect(uWidthAtlas).toBeCloseTo(11.2, 1);
-    expect(vHeightAtlas).toBeCloseTo(32, 1);
-    // The full-tile bug would put uWidthAtlas at 32 — guard:
+    // Used atlas width = 200/62.5 + 8 = 11.2, minus 2*0.5 inset = 10.2
+    // Used atlas height = 1500/62.5 + 8 = 32, minus inset = 31
+    expect(uWidthAtlas).toBeCloseTo(10.2, 1);
+    expect(vHeightAtlas).toBeCloseTo(31, 1);
     expect(uWidthAtlas).toBeLessThan(20);
   });
 
