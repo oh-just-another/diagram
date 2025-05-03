@@ -932,44 +932,59 @@ const drawPolylineStroke = (
     ny[i] = dx / len;
   }
 
+  // Closed polyline = first vertex == last vertex (rect outline,
+  // ellipse, closed shape). For those, the first/last vertex needs
+  // a *miter join* with the wrap-around segment instead of a butt
+  // cap, otherwise the polyline shows a visible gap at the seam
+  // (a rect outline has its seam at the top-left corner — that's
+  // the artefact the user reported).
+  const closed =
+    polyline.length >= 3 &&
+    polyline[0]!.x === polyline[polyline.length - 1]!.x &&
+    polyline[0]!.y === polyline[polyline.length - 1]!.y;
+
   // Build the side offsets per polyline vertex:
-  //   v0     → uses segment 0's normal directly.
+  //   v0     → bisector with previous segment if closed, else
+  //            segment 0's normal directly (butt cap).
   //   v[i]   → bisector of segments i-1 and i, scaled by miter
   //            length so the *outer* edges of the two side bands
   //            stay straight through the bend.
-  //   v[N-1] → uses segment N-2's normal directly.
+  //   v[N-1] → mirrors v0 when closed (same miter), else uses
+  //            segment N-2's normal directly.
   const sideX = new Float32Array(polyline.length);
   const sideY = new Float32Array(polyline.length);
-  sideX[0] = nx[0]! * half;
-  sideY[0] = ny[0]! * half;
   const last = polyline.length - 1;
-  sideX[last] = nx[segCount - 1]! * half;
-  sideY[last] = ny[segCount - 1]! * half;
+  if (closed) {
+    // Treat v0 / vLast as interior vertices on the {segCount-1, 0}
+    // hinge. Compute the bisector once and reuse for both ends so
+    // the geometry is exactly seamless.
+    const { ox, oy } = miterOffset(
+      nx[segCount - 1]!,
+      ny[segCount - 1]!,
+      nx[0]!,
+      ny[0]!,
+      half,
+    );
+    sideX[0] = ox;
+    sideY[0] = oy;
+    sideX[last] = ox;
+    sideY[last] = oy;
+  } else {
+    sideX[0] = nx[0]! * half;
+    sideY[0] = ny[0]! * half;
+    sideX[last] = nx[segCount - 1]! * half;
+    sideY[last] = ny[segCount - 1]! * half;
+  }
   for (let i = 1; i < last; i++) {
-    const n1x = nx[i - 1]!;
-    const n1y = ny[i - 1]!;
-    const n2x = nx[i]!;
-    const n2y = ny[i]!;
-    // Bisector direction = (n1 + n2) normalised.
-    let bx = n1x + n2x;
-    let by = n1y + n2y;
-    const blen = Math.hypot(bx, by);
-    if (blen < 1e-6) {
-      // 180° turn — bisector ill-defined. Use a perpendicular
-      // offset to whichever segment normal so the strip still
-      // closes; visually equivalent to a butt cap mid-line.
-      sideX[i] = n1x * half;
-      sideY[i] = n1y * half;
-      continue;
-    }
-    bx /= blen;
-    by /= blen;
-    // Miter length: half / cos(angle/2) = half / (b · n1)
-    const cos = bx * n1x + by * n1y;
-    const miterLen = cos > 1e-6 ? half / cos : half;
-    const clamped = Math.min(miterLen, half * MITER_LIMIT);
-    sideX[i] = bx * clamped;
-    sideY[i] = by * clamped;
+    const { ox, oy } = miterOffset(
+      nx[i - 1]!,
+      ny[i - 1]!,
+      nx[i]!,
+      ny[i]!,
+      half,
+    );
+    sideX[i] = ox;
+    sideY[i] = oy;
   }
 
   // Project every (left, right) vertex pair into clip space.
@@ -1012,6 +1027,38 @@ const drawPolylineStroke = (
  * default and matches Canvas2D's `miterLimit`.
  */
 const MITER_LIMIT = 10;
+
+/**
+ * Compute the per-vertex miter offset for two adjacent segments
+ * with unit normals `n1` and `n2`. Returns `{ ox, oy }` — half the
+ * thickness along the bisector, clamped to MITER_LIMIT so sharp
+ * angles don't spike. Used for interior polyline vertices *and*
+ * for the seam vertex of closed polylines (rect outline, ellipse,
+ * closed shape) so they don't open up at the wrap-around.
+ */
+const miterOffset = (
+  n1x: number,
+  n1y: number,
+  n2x: number,
+  n2y: number,
+  half: number,
+): { ox: number; oy: number } => {
+  let bx = n1x + n2x;
+  let by = n1y + n2y;
+  const blen = Math.hypot(bx, by);
+  if (blen < 1e-6) {
+    // 180° reversal — bisector is degenerate. Fall back to one
+    // segment's normal; visually equivalent to a butt cap at the
+    // hinge.
+    return { ox: n1x * half, oy: n1y * half };
+  }
+  bx /= blen;
+  by /= blen;
+  const cos = bx * n1x + by * n1y;
+  const miterLen = cos > 1e-6 ? half / cos : half;
+  const clamped = Math.min(miterLen, half * MITER_LIMIT);
+  return { ox: bx * clamped, oy: by * clamped };
+};
 
 /**
  * Lower / upper bounds on the polygon approximation of an ellipse. The

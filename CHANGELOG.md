@@ -616,3 +616,6 @@
 
 ## 0.32.11
 - WebGL2 MSDF: fix corner rounding + inter-letter bleeding stripes
+
+## 0.32.12
+- WebGL2 stroke: seamless miter join on closed polylines (rect / ellipse)
