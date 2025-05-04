@@ -619,3 +619,6 @@
 
 ## 0.32.12
 - WebGL2 stroke: seamless miter join on closed polylines (rect / ellipse)
+
+## 0.33.0
+- shapes: adaptive corner radius + lineJoin/lineCap (modern-style)

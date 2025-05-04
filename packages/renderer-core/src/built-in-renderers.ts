@@ -1,4 +1,5 @@
 import {
+  getCornerRadius,
   type BlockArrowShape,
   type BrushShape,
   type EllipseShape,
@@ -43,10 +44,54 @@ const applyStyle = (style: Style, target: RenderTarget): { fill: boolean; stroke
 const drawRectangle: ShapeRenderer<RectangleShape> = (shape, target) => {
   const { fill, stroke } = applyStyle(shape.style, target);
   if (!fill && !stroke) return;
+  const r = getCornerRadius(shape.style.roundness, shape.width, shape.height);
   target.beginPath();
-  target.rect(0, 0, shape.width, shape.height);
+  if (r > 0) {
+    buildRoundedRectPath(target, 0, 0, shape.width, shape.height, r);
+  } else {
+    target.rect(0, 0, shape.width, shape.height);
+  }
   if (fill) target.fill();
   if (stroke) target.stroke();
+};
+
+/**
+ * Build a rounded-rect path via the standard "4 corners with
+ * quadratic Bezier arcs" pattern — same shape every backend
+ * understands without a special `roundRect()` API:
+ *
+ *     ┌───arc───┐
+ *     │         │
+ *     arc      arc
+ *     │         │
+ *     └───arc───┘
+ *
+ * Quadratic control points sit at each corner of the rect; the
+ * curve goes from `r` units along one side to `r` units along the
+ * adjacent side. WebGL2Target's zoom-aware flattener turns this
+ * into enough chord segments to stay sub-pixel smooth at any zoom.
+ *
+ * Radius `r` is pre-clamped by `getCornerRadius` to half the
+ * smaller side, so no overlap-handling is needed here.
+ */
+const buildRoundedRectPath = (
+  target: RenderTarget,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void => {
+  target.moveTo(x + r, y);
+  target.lineTo(x + w - r, y);
+  target.quadraticCurveTo(x + w, y, x + w, y + r);
+  target.lineTo(x + w, y + h - r);
+  target.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  target.lineTo(x + r, y + h);
+  target.quadraticCurveTo(x, y + h, x, y + h - r);
+  target.lineTo(x, y + r);
+  target.quadraticCurveTo(x, y, x + r, y);
+  target.closePath();
 };
 
 const drawEllipse: ShapeRenderer<EllipseShape> = (shape, target) => {

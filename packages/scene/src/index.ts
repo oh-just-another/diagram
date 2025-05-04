@@ -1,5 +1,19 @@
 // Types
-export type { Style, TextStyle, LineCap, LineJoin, TextAlign, TextBaseline } from "./style.js";
+export type {
+  Style,
+  TextStyle,
+  LineCap,
+  LineJoin,
+  TextAlign,
+  TextBaseline,
+  StrokeAlign,
+  Roundness,
+} from "./style.js";
+export { getCornerRadius } from "./style.js";
+export {
+  ADAPTIVE_CORNER_RADIUS,
+  PROPORTIONAL_CORNER_RADIUS,
+} from "./constants.js";
 export type {
   Shape,
   ShapeBase,

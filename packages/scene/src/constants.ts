@@ -31,3 +31,22 @@ export const ELBOW_OBSTACLE_MARGIN = 20;
  * `inflate` arithmetic without admitting real crossings.
  */
 export const ELBOW_OBSTACLE_INTERIOR_EPSILON = 0.5;
+
+/**
+ * --- Roundness (Style.roundness) ---
+ *
+ * Adaptive radius: pick a fixed radius for shapes bigger than the cutoff,
+ * scale proportionally for smaller ones so the corner doesn't dominate.
+ * 32 px / 0.25 looks rounded without becoming a capsule across the
+ * realistic shape-size range.
+ */
+
+/** Fixed pixel radius used by adaptive rounding for shapes ≥ cutoff. */
+export const ADAPTIVE_CORNER_RADIUS = 32;
+
+/**
+ * Proportional radius (0..1 of the smaller side) used by adaptive
+ * rounding for shapes below the cutoff, and the fall-through when
+ * `Roundness.value` is omitted but the type is `round`.
+ */
+export const PROPORTIONAL_CORNER_RADIUS = 0.25;

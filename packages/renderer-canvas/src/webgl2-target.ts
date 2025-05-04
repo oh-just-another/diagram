@@ -17,6 +17,7 @@ import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
 import earcut from "earcut";
 import { parseWebGL2Color } from "./webgl2-color.js";
 import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
+import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -38,6 +39,8 @@ export class WebGL2Target implements RenderTarget {
   private strokeAlpha = 1;
   private fillColorString: string = "#000";
   private strokeWidth = 1;
+  private lineCap: LineCap = "butt";
+  private lineJoin: LineJoin = "miter";
   private opacity = 1;
   private currentPath: Bounds | null = null;
   // Text state — kept in sync with Canvas2D semantics and replayed into
@@ -642,27 +645,32 @@ export class WebGL2Target implements RenderTarget {
     if (this.currentPolyline.length < 2) return;
     const effectiveAlpha = this.opacity * this.strokeAlpha;
     if (effectiveAlpha <= 0) return; // transparent stroke — nothing to draw
-    drawPolylineStroke(
+    drawPolylineStrokeImpl(
       this.gl,
       this.currentPolyline,
-      this.strokeWidth,
-      this.strokeColor,
-      effectiveAlpha,
+      {
+        width: this.strokeWidth,
+        color: this.strokeColor,
+        opacity: effectiveAlpha,
+        join: this.lineJoin,
+        cap: this.lineCap,
+      },
       this.transform,
       this._size,
       this.uTransformLoc,
       this.uColorLoc,
       this.uOpacityLoc,
       this.vbo,
+      IDENTITY_MAT3,
     );
   }
 
-  // --- Stubs — text / curves / images remain Canvas2D fallback ---
-  setLineCap(_cap: LineCap): void {
-    void _cap;
+  // --- Stroke style state (consumed by stroke()) ---
+  setLineCap(cap: LineCap): void {
+    this.lineCap = cap;
   }
-  setLineJoin(_join: LineJoin): void {
-    void _join;
+  setLineJoin(join: LineJoin): void {
+    this.lineJoin = join;
   }
   setDashArray(_dash: readonly number[] | null): void {
     void _dash;
@@ -876,188 +884,6 @@ type MutableTransform = {
   d: number;
   e: number;
   f: number;
-};
-
-/**
- * Triangulate `polyline` into a single continuous triangle strip
- * with **miter joins** at every interior vertex, and draw it via
- * the solid-colour program. Each polyline vertex contributes one
- * pair of side vertices (offset on the bisector of the two
- * adjacent segments); the strip is uploaded once and drawn in a
- * single `drawArrays(TRIANGLE_STRIP)` call.
- *
- * Why one strip + miters instead of per-segment quads:
- *   • Per-segment quads leave visible gaps at every bend — at
- *     high zoom the user sees the curve as a sequence of
- *     disconnected rectangles. Continuous strip removes the gaps.
- *   • Miter offsets keep the outer / inner edge straight through
- *     the bend (matches what Canvas2D `stroke` does by default).
- *   • Strip with `TRIANGLE_STRIP` halves the vertex count vs.
- *     independent quads — fewer transform / project calls per
- *     pixel of stroke.
- *
- * Miter limit: when two segments meet at a very sharp angle, the
- * miter offset blows up (1/sin(angle/2)). Past `MITER_LIMIT × width`
- * we clamp to the average normal — visually equivalent to a bevel
- * join and prevents pixel-spike artefacts.
- */
-const drawPolylineStroke = (
-  gl: WebGL2RenderingContext,
-  polyline: readonly Vec2[],
-  width: number,
-  color: readonly [number, number, number],
-  opacity: number,
-  transform: MutableTransform,
-  size: { width: number; height: number },
-  uTransformLoc: WebGLUniformLocation,
-  uColorLoc: WebGLUniformLocation,
-  uOpacityLoc: WebGLUniformLocation,
-  vbo: WebGLBuffer,
-): void => {
-  if (width <= 0 || polyline.length < 2) return;
-  const half = width / 2;
-
-  // Pre-compute the unit normal for every segment so the bend at
-  // each interior vertex can be evaluated cheaply.
-  const segCount = polyline.length - 1;
-  const nx = new Float32Array(segCount);
-  const ny = new Float32Array(segCount);
-  for (let i = 0; i < segCount; i++) {
-    const a = polyline[i]!;
-    const b = polyline[i + 1]!;
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const len = Math.hypot(dx, dy) || 1;
-    nx[i] = -dy / len;
-    ny[i] = dx / len;
-  }
-
-  // Closed polyline = first vertex == last vertex (rect outline,
-  // ellipse, closed shape). For those, the first/last vertex needs
-  // a *miter join* with the wrap-around segment instead of a butt
-  // cap, otherwise the polyline shows a visible gap at the seam
-  // (a rect outline has its seam at the top-left corner — that's
-  // the artefact the user reported).
-  const closed =
-    polyline.length >= 3 &&
-    polyline[0]!.x === polyline[polyline.length - 1]!.x &&
-    polyline[0]!.y === polyline[polyline.length - 1]!.y;
-
-  // Build the side offsets per polyline vertex:
-  //   v0     → bisector with previous segment if closed, else
-  //            segment 0's normal directly (butt cap).
-  //   v[i]   → bisector of segments i-1 and i, scaled by miter
-  //            length so the *outer* edges of the two side bands
-  //            stay straight through the bend.
-  //   v[N-1] → mirrors v0 when closed (same miter), else uses
-  //            segment N-2's normal directly.
-  const sideX = new Float32Array(polyline.length);
-  const sideY = new Float32Array(polyline.length);
-  const last = polyline.length - 1;
-  if (closed) {
-    // Treat v0 / vLast as interior vertices on the {segCount-1, 0}
-    // hinge. Compute the bisector once and reuse for both ends so
-    // the geometry is exactly seamless.
-    const { ox, oy } = miterOffset(
-      nx[segCount - 1]!,
-      ny[segCount - 1]!,
-      nx[0]!,
-      ny[0]!,
-      half,
-    );
-    sideX[0] = ox;
-    sideY[0] = oy;
-    sideX[last] = ox;
-    sideY[last] = oy;
-  } else {
-    sideX[0] = nx[0]! * half;
-    sideY[0] = ny[0]! * half;
-    sideX[last] = nx[segCount - 1]! * half;
-    sideY[last] = ny[segCount - 1]! * half;
-  }
-  for (let i = 1; i < last; i++) {
-    const { ox, oy } = miterOffset(
-      nx[i - 1]!,
-      ny[i - 1]!,
-      nx[i]!,
-      ny[i]!,
-      half,
-    );
-    sideX[i] = ox;
-    sideY[i] = oy;
-  }
-
-  // Project every (left, right) vertex pair into clip space.
-  const vertices = new Float32Array(polyline.length * 2 * 2);
-  let writeOffset = 0;
-  const sx = 2 / size.width;
-  const sy = -2 / size.height;
-  for (let i = 0; i < polyline.length; i++) {
-    const p = polyline[i]!;
-    const ox = sideX[i]!;
-    const oy = sideY[i]!;
-    // Left side (p + offset).
-    const lx = p.x + ox;
-    const ly = p.y + oy;
-    const lwx = transform.a * lx + transform.c * ly + transform.e;
-    const lwy = transform.b * lx + transform.d * ly + transform.f;
-    vertices[writeOffset++] = lwx * sx - 1;
-    vertices[writeOffset++] = lwy * sy + 1;
-    // Right side (p - offset).
-    const rx = p.x - ox;
-    const ry = p.y - oy;
-    const rwx = transform.a * rx + transform.c * ry + transform.e;
-    const rwy = transform.b * rx + transform.d * ry + transform.f;
-    vertices[writeOffset++] = rwx * sx - 1;
-    vertices[writeOffset++] = rwy * sy + 1;
-  }
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
-  gl.uniformMatrix3fv(uTransformLoc, false, IDENTITY_MAT3);
-  gl.uniform3f(uColorLoc, color[0], color[1], color[2]);
-  gl.uniform1f(uOpacityLoc, opacity);
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, polyline.length * 2);
-};
-
-/**
- * Maximum miter overshoot, in units of stroke width. Past this
- * the join falls back to a bevel-like average-normal offset so
- * sharp angles don't produce pixel-spike artefacts. 10 is the SVG
- * default and matches Canvas2D's `miterLimit`.
- */
-const MITER_LIMIT = 10;
-
-/**
- * Compute the per-vertex miter offset for two adjacent segments
- * with unit normals `n1` and `n2`. Returns `{ ox, oy }` — half the
- * thickness along the bisector, clamped to MITER_LIMIT so sharp
- * angles don't spike. Used for interior polyline vertices *and*
- * for the seam vertex of closed polylines (rect outline, ellipse,
- * closed shape) so they don't open up at the wrap-around.
- */
-const miterOffset = (
-  n1x: number,
-  n1y: number,
-  n2x: number,
-  n2y: number,
-  half: number,
-): { ox: number; oy: number } => {
-  let bx = n1x + n2x;
-  let by = n1y + n2y;
-  const blen = Math.hypot(bx, by);
-  if (blen < 1e-6) {
-    // 180° reversal — bisector is degenerate. Fall back to one
-    // segment's normal; visually equivalent to a butt cap at the
-    // hinge.
-    return { ox: n1x * half, oy: n1y * half };
-  }
-  bx /= blen;
-  by /= blen;
-  const cos = bx * n1x + by * n1y;
-  const miterLen = cos > 1e-6 ? half / cos : half;
-  const clamped = Math.min(miterLen, half * MITER_LIMIT);
-  return { ox: bx * clamped, oy: by * clamped };
 };
 
 /**
