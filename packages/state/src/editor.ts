@@ -66,6 +66,7 @@ import {
  type Scene,
  type Shape,
  type SnapCandidate,
+ type Style,
  createBinaryFile,
 } from "@oh-just-another/scene";
 import {
@@ -1917,6 +1918,35 @@ export class Editor {
   this._selection = next;
   this.notify();
   this.announce(`Pasted ${result.newIds.length} shapes`);
+ }
+
+ /**
+  * Merge `partial` into the `style` of every shape in `ids`. Useful
+  * for the inspector / PropertyPanel: flipping `roundness`, swapping
+  * `lineJoin`, changing `stroke` colour across a multi-selection,
+  * etc. All changes go through one history record (single undo).
+  *
+  * No-op when `ids` is empty or none of the targeted shapes exist.
+  */
+ updateStyle(ids: Iterable<ShapeId>, partial: Partial<Style>): void {
+  const targetIds: ShapeId[] = [];
+  for (const id of ids) {
+   if (this._scene.shapes.has(id)) targetIds.push(id);
+  }
+  if (targetIds.length === 0) return;
+  let scene = this._scene;
+  const patches: Patch[] = [];
+  for (const id of targetIds) {
+   const r = updateShape(scene, id, (s) => ({
+    ...s,
+    style: { ...s.style, ...partial },
+   }));
+   scene = r.scene;
+   patches.push(r.patch);
+  }
+  this._scene = scene;
+  this._history.push(patches.length === 1 ? patches[0]! : { kind: "batch", patches });
+  this.notify();
  }
 
  /** Move the selected shape (single-shape MVP) to the top of its layer. */

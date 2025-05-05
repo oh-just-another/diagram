@@ -622,3 +622,6 @@
 
 ## 0.33.0
 - shapes: adaptive corner radius + lineJoin/lineCap (modern-style)
+
+## 0.33.1
+- PropertyPanel: Join / Cap / Corners controls + Editor.updateStyle

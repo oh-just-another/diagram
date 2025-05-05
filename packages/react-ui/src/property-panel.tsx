@@ -1,6 +1,11 @@
 import type { CSSProperties } from "react";
-import type { ShapeBase } from "@oh-just-another/scene";
-import { useScene, useSelection } from "./hooks.js";
+import type {
+ LineCap,
+ LineJoin,
+ Roundness,
+ ShapeBase,
+} from "@oh-just-another/scene";
+import { useDiagramOptional, useScene, useSelection } from "./hooks.js";
 import { PROPERTY_PANEL_WIDTH, PROPERTY_SWATCH_SIZE } from "./constants.js";
 
 /**
@@ -124,9 +129,156 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
      {Number(shape.width).toFixed(0)} × {Number(shape.height).toFixed(0)}
     </Field>
    ) : null}
+   <StrokeControls shapes={[shape]} />
+   <RoundnessControls shapes={[shape]} />
   </aside>
  );
 };
+
+/**
+ * Stroke-join / stroke-cap selectors. Multi-selection collapses to
+ * `—` (mixed value) and writes the picked option to every shape.
+ * Joins / caps already work in both Canvas2D and WebGL2 backends;
+ * these controls just expose them to the user.
+ */
+const StrokeControls = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+ const editor = useDiagramOptional();
+ if (!editor || shapes.length === 0) return null;
+ const sharedJoin = sharedValue(shapes, (s) => s.style?.lineJoin);
+ const sharedCap = sharedValue(shapes, (s) => s.style?.lineCap);
+ const ids = shapes.map((s) => s.id);
+ return (
+  <>
+   <Field label="Join">
+    <Select<LineJoin | "—">
+     value={sharedJoin ?? "—"}
+     options={["miter", "round", "bevel"]}
+     onChange={(v) => editor.updateStyle(ids, { lineJoin: v as LineJoin })}
+    />
+   </Field>
+   <Field label="Cap">
+    <Select<LineCap | "—">
+     value={sharedCap ?? "—"}
+     options={["butt", "round", "square"]}
+     onChange={(v) => editor.updateStyle(ids, { lineCap: v as LineCap })}
+    />
+   </Field>
+  </>
+ );
+};
+
+/**
+ * Corner-roundness toggle + optional explicit radius input. standard-
+ * style adaptive default (omitting `value` lets the renderer pick a
+ * size-appropriate radius automatically).
+ */
+const RoundnessControls = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+ const editor = useDiagramOptional();
+ if (!editor || shapes.length === 0) return null;
+ // Only rectangle-shaped primitives consume `roundness` today —
+ // hide the row for shapes whose renderer ignores it (ellipse,
+ // text, image, …).
+ const supports = shapes.every((s) => s.type === "rectangle" || s.type === "container");
+ if (!supports) return null;
+ const sharedType = sharedValue(shapes, (s) => s.style?.roundness?.type);
+ const sharedValueNum = sharedValue(shapes, (s) => s.style?.roundness?.value);
+ const ids = shapes.map((s) => s.id);
+ return (
+  <>
+   <Field label="Corners">
+    <Select<Roundness["type"] | "—">
+     value={sharedType ?? "sharp"}
+     options={["sharp", "round"]}
+     onChange={(v) => {
+      const next: Roundness = { type: v as Roundness["type"] };
+      editor.updateStyle(ids, { roundness: next });
+     }}
+    />
+   </Field>
+   {sharedType === "round" ? (
+    <Field label="Radius">
+     <NumberInput
+      value={sharedValueNum}
+      placeholder="auto"
+      onChange={(v) =>
+       editor.updateStyle(ids, {
+        roundness: v !== null ? { type: "round", value: v } : { type: "round" },
+       })
+      }
+     />
+    </Field>
+   ) : null}
+  </>
+ );
+};
+
+const sharedValue = <T,>(shapes: readonly ShapeBase[], pick: (s: ShapeBase) => T | undefined): T | null => {
+ const set = new Set<T | undefined>();
+ for (const s of shapes) set.add(pick(s));
+ if (set.size !== 1) return null;
+ const v = set.values().next().value;
+ return v === undefined ? null : v;
+};
+
+const Select = <T extends string>({
+ value,
+ options,
+ onChange,
+}: {
+ readonly value: T;
+ readonly options: readonly T[];
+ readonly onChange: (v: T) => void;
+}) => (
+ <select
+  value={value}
+  onChange={(ev) => onChange(ev.target.value as T)}
+  style={{
+   background: "#222",
+   color: "#ddd",
+   border: "1px solid #444",
+   borderRadius: 3,
+   padding: "2px 4px",
+   fontSize: 11,
+  }}
+ >
+  {value === "—" ? <option value="—">—</option> : null}
+  {options.map((o) => (
+   <option key={o} value={o}>
+    {o}
+   </option>
+  ))}
+ </select>
+);
+
+const NumberInput = ({
+ value,
+ placeholder,
+ onChange,
+}: {
+ readonly value: number | null | undefined;
+ readonly placeholder?: string;
+ readonly onChange: (v: number | null) => void;
+}) => (
+ <input
+  type="number"
+  value={value ?? ""}
+  placeholder={placeholder ?? ""}
+  onChange={(ev) => {
+   const raw = ev.target.value.trim();
+   onChange(raw === "" ? null : Number(raw));
+  }}
+  min={0}
+  style={{
+   width: 64,
+   background: "#222",
+   color: "#ddd",
+   border: "1px solid #444",
+   borderRadius: 3,
+   padding: "2px 4px",
+   fontSize: 11,
+  }}
+ />
+);
 
 const Header = ({ children }: { readonly children: React.ReactNode }) => (
  <h2
