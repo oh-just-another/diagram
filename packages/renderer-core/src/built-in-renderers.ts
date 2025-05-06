@@ -45,14 +45,57 @@ const drawRectangle: ShapeRenderer<RectangleShape> = (shape, target) => {
   const { fill, stroke } = applyStyle(shape.style, target);
   if (!fill && !stroke) return;
   const r = getCornerRadius(shape.style.roundness, shape.width, shape.height);
-  target.beginPath();
-  if (r > 0) {
-    buildRoundedRectPath(target, 0, 0, shape.width, shape.height, r);
-  } else {
-    target.rect(0, 0, shape.width, shape.height);
+  // Fill path — always uses the original shape geometry.
+  if (fill) {
+    target.beginPath();
+    if (r > 0) {
+      buildRoundedRectPath(target, 0, 0, shape.width, shape.height, r);
+    } else {
+      target.rect(0, 0, shape.width, shape.height);
+    }
+    target.fill();
   }
-  if (fill) target.fill();
-  if (stroke) target.stroke();
+  // Stroke path — offset by `strokeAlign` so the stroke sits inside
+  // / centred-on / outside the fill region. The default (omitted /
+  // `center`) reuses the fill geometry. Implemented at this layer so
+  // every backend (Canvas2D, WebGL2, SVG) honours strokeAlign without
+  // backend-specific work — the math is purely on the rect bounds.
+  if (stroke) {
+    const offset = strokeAlignOffset(shape.style);
+    const sx = offset;
+    const sy = offset;
+    const sw = shape.width - 2 * offset;
+    const sh = shape.height - 2 * offset;
+    if (sw <= 0 || sh <= 0) return; // degenerate offset — skip
+    const sr = r > 0 ? Math.max(0, r - offset) : 0;
+    target.beginPath();
+    if (sr > 0) {
+      buildRoundedRectPath(target, sx, sy, sw, sh, sr);
+    } else {
+      target.rect(sx, sy, sw, sh);
+    }
+    target.stroke();
+  }
+};
+
+/**
+ * Translate `Style.strokeAlign` into a path-offset distance in world
+ * units. The rendered stroke geometry shifts by `±half-width` along
+ * the inward / outward normal:
+ *   center  → 0 (path centred — Canvas2D / SVG default).
+ *   inside  → +half-width (path moves inward so the stroke's outer
+ *             edge sits on the original fill boundary).
+ *   outside → -half-width (path moves outward so the stroke's inner
+ *             edge sits on the boundary).
+ *
+ * Only used by axis-aligned primitives (rectangle, container) where
+ * "inward" reduces to "subtract from bbox".
+ */
+const strokeAlignOffset = (style: Style): number => {
+  const align = style.strokeAlign ?? "center";
+  if (align === "center") return 0;
+  const half = (style.strokeWidth ?? 1) / 2;
+  return align === "inside" ? half : -half;
 };
 
 /**

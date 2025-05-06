@@ -4,6 +4,7 @@ import type {
  LineJoin,
  Roundness,
  ShapeBase,
+ StrokeAlign,
 } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene, useSelection } from "./hooks.js";
 import { PROPERTY_PANEL_WIDTH, PROPERTY_SWATCH_SIZE } from "./constants.js";
@@ -146,6 +147,7 @@ const StrokeControls = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) =
  if (!editor || shapes.length === 0) return null;
  const sharedJoin = sharedValue(shapes, (s) => s.style?.lineJoin);
  const sharedCap = sharedValue(shapes, (s) => s.style?.lineCap);
+ const sharedAlign = sharedValue(shapes, (s) => s.style?.strokeAlign);
  const ids = shapes.map((s) => s.id);
  return (
   <>
@@ -161,6 +163,13 @@ const StrokeControls = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) =
      value={sharedCap ?? "—"}
      options={["butt", "round", "square"]}
      onChange={(v) => editor.updateStyle(ids, { lineCap: v as LineCap })}
+    />
+   </Field>
+   <Field label="Align">
+    <Select<StrokeAlign | "—">
+     value={sharedAlign ?? "center"}
+     options={["center", "inside", "outside"]}
+     onChange={(v) => editor.updateStyle(ids, { strokeAlign: v as StrokeAlign })}
     />
    </Field>
   </>

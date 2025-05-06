@@ -625,3 +625,6 @@
 
 ## 0.33.1
 - PropertyPanel: Join / Cap / Corners controls + Editor.updateStyle
+
+## 0.33.2
+- strokeAlign: honour inside / outside (rectangle + UI)
