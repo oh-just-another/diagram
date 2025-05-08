@@ -7,7 +7,7 @@ import type {
  StrokeAlign,
 } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene, useSelection } from "./hooks.js";
-import { PROPERTY_PANEL_WIDTH, PROPERTY_SWATCH_SIZE } from "./constants.js";
+import { PROPERTY_PANEL_WIDTH } from "./constants.js";
 
 /**
  * Read-only inspector showing key properties of the currently selected
@@ -59,35 +59,15 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
    .map((id) => scene.shapes.get(id))
    .filter((s): s is ShapeBase => s !== undefined);
   const types = new Set(shapes.map((s) => s.type));
-  const fills = new Set(shapes.map((s) => (hasFill(s) ? String(s.style.fill) : "")));
-  const strokes = new Set(shapes.map((s) => (hasStroke(s) ? String(s.style.stroke) : "")));
-  const sharedFill = fills.size === 1 && [...fills][0] !== "" ? [...fills][0] : null;
-  const sharedStroke = strokes.size === 1 && [...strokes][0] !== "" ? [...strokes][0] : null;
   return (
    <aside className={className} style={containerStyle}>
     <Header>Inspector</Header>
     <Field label="Selected">{size} shapes</Field>
     <Field label="Types">{types.size === 1 ? [...types][0] : `${types.size} kinds`}</Field>
-    {sharedFill ? (
-     <Field label="Fill">
-      <Swatch color={sharedFill} />
-      <code>{sharedFill}</code>
-     </Field>
-    ) : fills.size > 1 ? (
-     <Field label="Fill">
-      <span style={{ color: "#666" }}>—</span>
-     </Field>
-    ) : null}
-    {sharedStroke ? (
-     <Field label="Stroke">
-      <Swatch color={sharedStroke} />
-      <code>{sharedStroke}</code>
-     </Field>
-    ) : strokes.size > 1 ? (
-     <Field label="Stroke">
-      <span style={{ color: "#666" }}>—</span>
-     </Field>
-    ) : null}
+    <FillControl shapes={shapes} />
+    <StrokeColorControl shapes={shapes} />
+    <StrokeControls shapes={shapes} />
+    <RoundnessControls shapes={shapes} />
    </aside>
   );
  }
@@ -113,18 +93,8 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
    <Field label="Position">
     ({shape.position.x.toFixed(1)}, {shape.position.y.toFixed(1)})
    </Field>
-   {hasFill(shape) ? (
-    <Field label="Fill">
-     <Swatch color={String(shape.style.fill)} />
-     <code>{String(shape.style.fill)}</code>
-    </Field>
-   ) : null}
-   {hasStroke(shape) ? (
-    <Field label="Stroke">
-     <Swatch color={String(shape.style.stroke)} />
-     <code>{String(shape.style.stroke)}</code>
-    </Field>
-   ) : null}
+   <FillControl shapes={[shape]} />
+   <StrokeColorControl shapes={[shape]} />
    {"width" in shape && "height" in shape ? (
     <Field label="Size">
      {Number(shape.width).toFixed(0)} × {Number(shape.height).toFixed(0)}
@@ -134,6 +104,144 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
    <RoundnessControls shapes={[shape]} />
   </aside>
  );
+};
+
+/**
+ * Fill colour control. Writes through `editor.updateStyle` so it
+ * routes through the normal history pipeline. Multi-selection
+ * collapses to the shared value or shows `—` (mixed). The "×"
+ * button clears the fill (`fill: "transparent"`) — separate from
+ * picking a colour because `<input type=color>` has no concept of
+ * "no value".
+ */
+const FillControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+ const editor = useDiagramOptional();
+ if (!editor || shapes.length === 0) return null;
+ // Only show the control when at least one selected shape supports
+ // a fill style — text glyphs / images don't.
+ if (!shapes.some(hasFill)) return null;
+ const shared = sharedValue<string | null>(shapes, (s) => {
+  const fill = s.style?.fill;
+  return typeof fill === "string" ? fill : null;
+ });
+ const ids = shapes.map((s) => s.id);
+ return (
+  <Field label="Fill">
+   <ColorPicker
+    value={shared}
+    onChange={(v) => editor.updateStyle(ids, { fill: v ?? "transparent" })}
+   />
+  </Field>
+ );
+};
+
+const StrokeColorControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+ const editor = useDiagramOptional();
+ if (!editor || shapes.length === 0) return null;
+ if (!shapes.some(hasStroke)) return null;
+ const shared = sharedValue<string | null>(shapes, (s) => {
+  const stroke = s.style?.stroke;
+  return typeof stroke === "string" ? stroke : null;
+ });
+ const ids = shapes.map((s) => s.id);
+ return (
+  <Field label="Stroke">
+   <ColorPicker
+    value={shared}
+    onChange={(v) => editor.updateStyle(ids, { stroke: v ?? "transparent" })}
+   />
+  </Field>
+ );
+};
+
+/**
+ * Native `<input type="color">` + a clear button. Returns `null` to
+ * the callback when the user clicks "×" (= make the colour
+ * transparent / unset). Mixed multi-selection renders a faint "—"
+ * inside the swatch; picking any colour collapses the group to that
+ * shared value.
+ *
+ * `<input type="color">` only understands `#rrggbb`, not the full
+ * CSS palette — anything else gets coerced to its hex equivalent
+ * for display. The underlying store still receives the picker's
+ * `value` verbatim, which is fine for the editor's normal use case.
+ */
+const ColorPicker = ({
+ value,
+ onChange,
+}: {
+ readonly value: string | null;
+ readonly onChange: (v: string | null) => void;
+}) => {
+ const hex = normaliseHex(value);
+ const mixed = value === null;
+ return (
+  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+   <input
+    type="color"
+    aria-label="Color"
+    value={hex}
+    onChange={(ev) => onChange(ev.target.value)}
+    style={{
+     width: 24,
+     height: 18,
+     padding: 0,
+     border: "1px solid #444",
+     borderRadius: 2,
+     background: mixed ? "repeating-linear-gradient(45deg, #2a2a2a 0 3px, #1a1a1a 3px 6px)" : undefined,
+     cursor: "pointer",
+    }}
+   />
+   <code style={{ color: mixed ? "#666" : "#ddd" }}>{mixed ? "—" : value}</code>
+   <button
+    type="button"
+    aria-label="Clear colour"
+    onClick={() => onChange(null)}
+    title="Clear colour (transparent)"
+    style={{
+     background: "transparent",
+     color: "#666",
+     border: "1px solid #444",
+     borderRadius: 2,
+     padding: "0 4px",
+     fontSize: 10,
+     cursor: "pointer",
+     lineHeight: "16px",
+    }}
+   >
+    ×
+   </button>
+  </span>
+ );
+};
+
+/**
+ * Coerce any CSS-form colour to `#rrggbb` for the native picker,
+ * which refuses everything else. Best-effort — falls back to black
+ * for unparseable input (the user will then see the wrong swatch
+ * in the picker but the stored colour string is untouched until
+ * they pick something new).
+ */
+const normaliseHex = (value: string | null): string => {
+ if (value === null) return "#000000";
+ if (/^#[0-9a-f]{6}$/i.test(value)) return value.toLowerCase();
+ if (/^#[0-9a-f]{3}$/i.test(value)) {
+  const v = value.slice(1);
+  return `#${v[0]}${v[0]}${v[1]}${v[1]}${v[2]}${v[2]}`.toLowerCase();
+ }
+ // Try DOM parsing for named / rgb() forms.
+ if (typeof document !== "undefined") {
+  const probe = document.createElement("canvas").getContext("2d");
+  if (probe) {
+   probe.fillStyle = "#000";
+   probe.fillStyle = value;
+   const computed = probe.fillStyle;
+   if (typeof computed === "string" && /^#[0-9a-f]{6}$/i.test(computed)) {
+    return computed.toLowerCase();
+   }
+  }
+ }
+ return "#000000";
 };
 
 /**
@@ -226,7 +334,7 @@ const sharedValue = <T,>(shapes: readonly ShapeBase[], pick: (s: ShapeBase) => T
  for (const s of shapes) set.add(pick(s));
  if (set.size !== 1) return null;
  const v = set.values().next().value;
- return v === undefined ? null : v;
+ return v ?? null;
 };
 
 const Select = <T extends string>({
@@ -318,20 +426,6 @@ const Field = ({
 
 const Empty = ({ children }: { readonly children: React.ReactNode }) => (
  <div style={{ color: "#666", fontStyle: "italic" }}>{children}</div>
-);
-
-const Swatch = ({ color }: { readonly color: string }) => (
- <span
-  aria-hidden
-  style={{
-   width: PROPERTY_SWATCH_SIZE,
-   height: PROPERTY_SWATCH_SIZE,
-   background: color,
-   border: "1px solid #444",
-   borderRadius: 2,
-   display: "inline-block",
-  }}
- />
 );
 
 const hasFill = (shape: ShapeBase): shape is ShapeBase & { style: { fill: unknown } } =>

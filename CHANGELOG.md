@@ -628,3 +628,6 @@
 
 ## 0.33.2
 - strokeAlign: honour inside / outside (rectangle + UI)
+
+## 0.33.3
+- PropertyPanel: editable Fill / Stroke colour pickers
