@@ -5,6 +5,7 @@ export * as hitTest from "./hit-test.js";
 export * as bezier from "./bezier.js";
 export * as intersect from "./intersect.js";
 export * as color from "./color.js";
+export * as polygon from "./polygon.js";
 
 export type { DecomposedTransform } from "./matrix.js";
 export type { RGBA } from "./color.js";

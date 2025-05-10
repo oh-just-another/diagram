@@ -631,3 +631,6 @@
 
 ## 0.33.3
 - PropertyPanel: editable Fill / Stroke colour pickers
+
+## 0.33.4
+- strokeAlign: honour inside / outside for ellipse / polygon / arrows

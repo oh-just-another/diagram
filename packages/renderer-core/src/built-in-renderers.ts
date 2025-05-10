@@ -1,3 +1,4 @@
+import { polygon as polygonMath } from "@oh-just-another/math";
 import {
   getCornerRadius,
   type BlockArrowShape,
@@ -142,26 +143,55 @@ const drawEllipse: ShapeRenderer<EllipseShape> = (shape, target) => {
   if (!fill && !stroke) return;
   const rx = shape.width / 2;
   const ry = shape.height / 2;
-  target.beginPath();
-  target.ellipse(rx, ry, rx, ry);
-  if (fill) target.fill();
-  if (stroke) target.stroke();
+  if (fill) {
+    target.beginPath();
+    target.ellipse(rx, ry, rx, ry);
+    target.fill();
+  }
+  if (stroke) {
+    // Inset / outset radii by `strokeAlignOffset` so the stroke
+    // sits inside / centred-on / outside the fill ellipse. Centre
+    // stays the same; radii shift uniformly. Degenerate (radius ≤ 0)
+    // skips the pass.
+    const offset = strokeAlignOffset(shape.style);
+    const srx = rx - offset;
+    const sry = ry - offset;
+    if (srx <= 0 || sry <= 0) return;
+    target.beginPath();
+    target.ellipse(rx, ry, srx, sry);
+    target.stroke();
+  }
 };
 
 const drawPolygon: ShapeRenderer<PolygonShape> = (shape, target) => {
   if (shape.points.length < 2) return;
   const { fill, stroke } = applyStyle(shape.style, target);
   if (!fill && !stroke) return;
-  target.beginPath();
-  const first = shape.points[0]!;
+  if (fill) {
+    target.beginPath();
+    polygonPath(target, shape.points);
+    target.fill();
+  }
+  if (stroke) {
+    const offset = strokeAlignOffset(shape.style);
+    const pts = offset !== 0
+      ? polygonMath.offsetClosedPath(shape.points, offset)
+      : shape.points;
+    target.beginPath();
+    polygonPath(target, pts);
+    target.stroke();
+  }
+};
+
+/** Emit a closed polygon outline as `moveTo` + `lineTo`s + `closePath`. */
+const polygonPath = (target: RenderTarget, pts: readonly { x: number; y: number }[]): void => {
+  const first = pts[0]!;
   target.moveTo(first.x, first.y);
-  for (let i = 1; i < shape.points.length; i++) {
-    const p = shape.points[i]!;
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i]!;
     target.lineTo(p.x, p.y);
   }
   target.closePath();
-  if (fill) target.fill();
-  if (stroke) target.stroke();
 };
 
 const drawPath: ShapeRenderer<PathShape> = (shape, target) => {
@@ -345,15 +375,19 @@ const drawBlockArrow: ShapeRenderer<BlockArrowShape> = (shape, target) => {
   if (direction !== "right") {
     points = points.map(([x, y]) => rotateLocal([x, y], direction, w, h));
   }
-  target.beginPath();
-  for (let i = 0; i < points.length; i++) {
-    const [x, y] = points[i]!;
-    if (i === 0) target.moveTo(x, y);
-    else target.lineTo(x, y);
+  const ptObjs = points.map(([x, y]) => ({ x, y }));
+  if (fill) {
+    target.beginPath();
+    polygonPath(target, ptObjs);
+    target.fill();
   }
-  target.closePath();
-  if (fill) target.fill();
-  if (stroke) target.stroke();
+  if (stroke) {
+    const offset = strokeAlignOffset(shape.style);
+    const sPts = offset !== 0 ? polygonMath.offsetClosedPath(ptObjs, offset) : ptObjs;
+    target.beginPath();
+    polygonPath(target, sPts);
+    target.stroke();
+  }
 };
 
 const rotateLocal = (
