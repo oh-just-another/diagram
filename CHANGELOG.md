@@ -637,3 +637,6 @@
 
 ## 0.33.5
 - WebGL2 curves: Loop-Blinn fill overlay on top of polygon hull
+
+## 0.33.6
+- docs: bug tracker viafolder
