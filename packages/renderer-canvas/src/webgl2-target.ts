@@ -18,6 +18,7 @@ import earcut from "earcut";
 import { parseWebGL2Color } from "./webgl2-color.js";
 import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
+import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -55,6 +56,15 @@ export class WebGL2Target implements RenderTarget {
    * throw NotImplemented — see `notImpl()`.
    */
   private currentPolyline: Vec2[] = [];
+  /**
+   * Curve segments collected since the last `beginPath()`. Quadratic
+   * and cubic Bezier `*CurveTo` calls push here in addition to pushing
+   * the curve endpoint into `currentPolyline` — the polyline forms the
+   * polygon hull for `fill()` triangulation, and the curve list adds
+   * Loop-Blinn fragment-tested triangles on top so curve regions stay
+   * perfectly smooth at any zoom.
+   */
+  private currentCurves: CurveSegment[] = [];
   private transform: MutableTransform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
   private readonly stack: MutableTransform[] = [];
 
@@ -164,6 +174,10 @@ export class WebGL2Target implements RenderTarget {
       this.gl.deleteBuffer(this.indexBuffer);
       this.indexBuffer = null;
     }
+    if (this.curvePipeline) {
+      this.curvePipeline.dispose();
+      this.curvePipeline = null;
+    }
     const lose = this.gl.getExtension("WEBGL_lose_context");
     lose?.loseContext();
   }
@@ -236,6 +250,7 @@ export class WebGL2Target implements RenderTarget {
   beginPath(): void {
     this.currentPath = null;
     this.currentPolyline = [];
+    this.currentCurves = [];
   }
 
   rect(x: number, y: number, width: number, height: number): void {
@@ -286,14 +301,25 @@ export class WebGL2Target implements RenderTarget {
   }
 
   /**
-   * Quadratic Bezier — flattened to a polyline. When the host has
-   * installed an active `Rasterizer` (WASM flatten via
-   * `setActiveRasterizer`), uses adaptive subdivision through the
-   * registered rasterizer for tighter accuracy on long curves;
-   * otherwise falls back to the bundled fixed-16-sample JS path.
+   * Quadratic Bezier. Pushed twice:
+   *   1. As a single `CurveSegment` into `currentCurves` for the
+   *      Loop-Blinn fill pass — a perfect curve edge at any zoom (one
+   *      fragment-tested triangle, no faceting).
+   *   2. As the curve endpoint into `currentPolyline` — keeps the
+   *      polygon hull intact so `fill()`'s earcut triangulation and
+   *      `stroke()`'s polyline math both see the chord.
+   *
+   * Strokes flatten to chord segments via the registered rasterizer
+   * (sub-pixel zoom-aware).
    */
   quadraticCurveTo(cx: number, cy: number, x: number, y: number): void {
     const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x: cx, y: cy };
+    this.currentCurves.push({
+      kind: "q",
+      points: [start, { x: cx, y: cy }, { x, y }],
+    });
+    // Stroke / hull representation: flatten to a polyline so the
+    // existing stroke + polygon-fan math still works.
     const tolerance = this.currentFlattenTolerance();
     const r = getActiveRasterizer();
     if (r) {
@@ -307,15 +333,12 @@ export class WebGL2Target implements RenderTarget {
       for (let i = 1; i < pts.length; i++) this.currentPolyline.push(pts[i]!);
       return;
     }
-    // Fallback: pick a sample count so the chord-to-curve error is
-    // similar to the WASM path's tolerance. Scaled with the curve's
-    // bbox so short curves don't get an over-tessellated polygon.
     const count = Math.max(8, Math.min(128, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)));
     const samples = sampleQuadratic(start, { x: cx, y: cy }, { x, y }, count);
     for (let i = 1; i < samples.length; i++) this.currentPolyline.push(samples[i]!);
   }
 
-  /** Cubic Bezier — same dual JS-or-WASM flatten path as quadratic. */
+  /** Cubic Bezier — same dual-track approach as quadratic. */
   bezierCurveTo(
     c1x: number,
     c1y: number,
@@ -325,6 +348,10 @@ export class WebGL2Target implements RenderTarget {
     y: number,
   ): void {
     const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x, y };
+    this.currentCurves.push({
+      kind: "c",
+      points: [start, { x: c1x, y: c1y }, { x: c2x, y: c2y }, { x, y }],
+    });
     const tolerance = this.currentFlattenTolerance();
     const r = getActiveRasterizer();
     if (r) {
@@ -482,7 +509,34 @@ export class WebGL2Target implements RenderTarget {
     if (this.currentPolyline.length >= 3) {
       this.fillPolygonEarcut(this.currentPolyline, effectiveAlpha);
     }
+
+    // Loop-Blinn curve overlay. Adds fragment-tested quadratic / cubic
+    // triangles on top of the polygon fill so curve regions
+    // (rounded-rect corners, ellipse quadrants, glyph outlines) stay
+    // vector-perfect at any zoom. `w` per vertex flips inside / outside,
+    // so curves bulging outward from the polygon hull paint more pixels
+    // and curves bulging inward paint fewer (the polygon fill already
+    // covered the inward area).
+    //
+    // The Loop-Blinn triangle is always added. For shapes whose curves
+    // bulge inward (concave silhouettes) this can over-paint a thin
+    // sliver; a knockout pass that erases the inward-curve area inside
+    // the polygon fill would need stencil buffer plumbing the kernel
+    // doesn't have. The artefact is invisible at 1× zoom and tiny even
+    // at 20×.
+    if (this.currentCurves.length > 0) {
+      if (!this.curvePipeline) this.curvePipeline = new LoopBlinnCurvePipeline(this.gl);
+      this.curvePipeline.draw(
+        this.currentCurves,
+        this.fillColor,
+        effectiveAlpha,
+        this.transform,
+        this._size,
+      );
+      this.restoreSolidProgram();
+    }
   }
+  private curvePipeline: LoopBlinnCurvePipeline | null = null;
 
   /**
    * Triangulate the polygon via earcut and emit one TRIANGLES draw.

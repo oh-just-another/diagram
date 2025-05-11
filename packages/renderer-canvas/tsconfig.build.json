@@ -14,6 +14,7 @@
     { "path": "../scene/tsconfig.build.json" },
     { "path": "../renderer-core/tsconfig.build.json" },
     { "path": "../renderer-workers/tsconfig.build.json" },
-    { "path": "../glyph-atlas/tsconfig.build.json" }
+    { "path": "../glyph-atlas/tsconfig.build.json" },
+    { "path": "../curve-mesh/tsconfig.build.json" }
   ]
 }

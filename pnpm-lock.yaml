@@ -364,6 +364,9 @@ importers:
 
   packages/renderer-canvas:
     dependencies:
+      '@oh-just-another/curve-mesh':
+        specifier: workspace:*
+        version: link:../curve-mesh
       '@oh-just-another/glyph-atlas':
         specifier: workspace:*
         version: link:../glyph-atlas

@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-canvas",
-  "version": "0.33.4",
+  "version": "0.33.5",
   "description": "renderer-canvas package",
   "type": "module",
   "main": "./dist/index.js",
@@ -35,6 +35,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@oh-just-another/curve-mesh": "workspace:*",
     "@oh-just-another/glyph-atlas": "workspace:*",
     "@oh-just-another/math": "workspace:*",
     "@oh-just-another/renderer-core": "workspace:*",

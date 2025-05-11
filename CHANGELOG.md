@@ -634,3 +634,6 @@
 
 ## 0.33.4
 - strokeAlign: honour inside / outside for ellipse / polygon / arrows
+
+## 0.33.5
+- WebGL2 curves: Loop-Blinn fill overlay on top of polygon hull
