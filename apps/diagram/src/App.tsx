@@ -197,8 +197,8 @@ export const App = () => {
       initialScene={initialScene}
       onReady={setEditor}
       onSceneChange={handleSceneChange}
-      renderHeaderLeft={renderHeaderLeft}
-      renderHeaderRight={renderHeaderRight}
+      renderTopBarLeft={renderHeaderLeft}
+      renderTopBarRight={renderHeaderRight}
       theme={theme}
     />
   );

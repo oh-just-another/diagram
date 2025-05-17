@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/react-ui",
-  "version": "0.33.6",
+  "version": "0.34.0",
   "description": "React components and hooks over the diagram editor \u2014 DiagramCanvas, Toolbar, Palette, PropertyPanel.",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,14 +10,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./styles.css": "./src/styles/diagram-ui.css"
   },
   "files": [
     "dist",
+    "src/styles",
     "README.md",
     "CHANGELOG.md"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
     "typecheck": "tsc --noEmit",

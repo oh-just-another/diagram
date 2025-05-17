@@ -640,3 +640,6 @@
 
 ## 0.33.6
 - docs: bug tracker viafolder
+
+## 0.34.0
+- apps/diagram: modern-style layout + CSS-system

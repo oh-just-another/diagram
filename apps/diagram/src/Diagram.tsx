@@ -10,22 +10,26 @@ import {
   type ReactNode,
 } from "react";
 import {
-  CommentsPanel,
+  BottomBar,
+  ButtonGroup,
   ContextMenu,
   DEFAULT_CONTEXT_MENU,
   DEFAULT_TOOLBAR,
   DiagramRoot,
   DiagramSurface,
-  EdgeStylePanel,
-  FloatingZoomControls,
+  HelpButton,
   HelpDialog,
-  LayerPanel,
+  IconButton,
+  LibraryPanel,
   MainMenu,
-  Palette,
-  PropertyPanel,
-  Toolbar,
-  ToastHost,
+  ResetToContentButton,
+  SelectedShapeActions,
   TextEditorOverlay,
+  ToastHost,
+  Toolbar,
+  TopBar,
+  UILayer,
+  useDiagramOptional,
   useHelpDialogHotkey,
   usePalettePlacement,
 } from "@oh-just-another/react-ui";
@@ -54,103 +58,79 @@ import {
 import { createRenderWorker } from "./render-worker-factory";
 
 /**
- * `<Diagram>` — the library-shaped entry point. Mount it inside any
- * React tree and you get a working diagram editor: renderer picked
- * automatically by browser capabilities, full chrome (toolbar, palette,
- * property panel, layer panel, comments) by default, WASM text shaper
- * loaded on browsers that support it.
+ * `<Diagram>` — library shell. Mount inside any
+ * React tree → working diagram editor with floating top + bottom
+ * bars over a full-bleed canvas. No fixed sidebars — Library and
+ * Properties panels are floating overlays that appear on demand.
  *
- * Host customisation:
+ * Layout breakdown:
  *
- *   • Plug **plugins** to extend behaviour without forking — custom
- *     templates, file-drop handlers, layout kinds, animation adapters.
- *   • Hide individual chrome pieces via boolean props.
- *   • Inject host UI via the slot props (`renderHeader`, etc.).
- *   • Reach into the editor imperatively via `apiRef`.
+ *   ┌──────────────────────────────────────────┐
+ *   │ [Menu] [Library]    [Toolbar]   [Theme]  │  ← TopBar (3 zones)
+ *   │  ┌──────┐                  ┌──────────┐  │
+ *   │  │ Lib  │                  │ Selected │  │  ← Side panels (conditional)
+ *   │  │ Panel│   <canvas>       │  Shape   │  │
+ *   │  │      │                  │  Actions │  │
+ *   │  └──────┘                  └──────────┘  │
+ *   │ [Zoom] [Fit] [Reset]            [Help]   │  ← BottomBar
+ *   └──────────────────────────────────────────┘
  *
- * All props are optional. Bare `<Diagram />` boots into an empty
- * scene with default chrome.
+ * Hosts hide individual bits via boolean props or replace whole
+ * slots through `renderTopBar*` / `renderBottomBar*` props.
  */
 export interface DiagramAPI {
-  /** Direct handle to the underlying `Editor`. */
   readonly editor: Editor | null;
-  /** Current scene snapshot — equivalent to `editor.scene`. */
   readonly getScene: () => Scene;
-  /**
-   * Replace the whole scene. Equivalent to `editor.loadScene(...)`.
-   * Resets history by default (matches `loadScene` defaults).
-   */
   readonly loadScene: (scene: Scene) => void;
-  /** Capability profile actually in use after detection + overrides. */
   readonly capabilities: CapabilityProfile | null;
 }
 
 export interface DiagramProps {
   // --- Data ---
-  /** Starting scene. Defaults to `emptyScene()`. */
   readonly initialScene?: Scene;
-  /** Initial mode (`select` / `draw-rect` / etc). Default `select`. */
   readonly initialMode?: Mode;
 
-  // --- Plugins (extend without forking) ---
-  /**
-   * Extra templates appended to the default palette. Hosts that want
-   * to *replace* the default registry should not use this — register
-   * with their own `TemplateRegistry` instead and pass that
-   * downstream via context.
-   */
+  // --- Plugins ---
   readonly templates?: readonly Template[];
-  /** Extra file-drop handlers, registered after the built-ins. */
   readonly fileDropHandlers?: readonly FileDropHandler[];
-  /** Custom layout kinds — `metadata.autoLayout = { kind: ... }`. */
   readonly layoutKinds?: readonly LayoutKindEntry<unknown>[];
-  /** Animation adapters (gif/lottie/video) for `ImageShape`. */
   readonly animationAdapters?: readonly AnimatedSourceAdapter<unknown>[];
 
   // --- Imperative API ---
-  /**
-   * Ref that receives a stable `DiagramAPI` handle every render —
-   * mutable `.editor` keeps a live reference, so callers can read
-   * the latest scene without forcing a re-render.
-   */
   readonly apiRef?: React.Ref<DiagramAPI>;
 
   // --- Callbacks ---
-  /** Called once when the editor is mounted and ready. */
   readonly onReady?: (editor: Editor) => void;
-  /** Fires after every scene mutation (uses `editor.subscribe`). */
   readonly onSceneChange?: (scene: Scene) => void;
-  /** Fires after every selection mutation. */
   readonly onSelectionChange?: (ids: ReadonlySet<string>) => void;
 
-  // --- Capabilities (auto by default) ---
-  /**
-   * Force-override the auto-detected capability profile. Any field
-   * not listed reverts to auto-detection. Useful to disable WASM
-   * for debugging or to lock a backend in a screenshot test.
-   */
+  // --- Capabilities ---
   readonly capabilities?: CapabilityOverrides;
 
   // --- Chrome on/off ---
+  readonly hideTopBar?: boolean;
+  readonly hideBottomBar?: boolean;
   readonly hideToolbar?: boolean;
-  readonly hidePalette?: boolean;
-  readonly hidePropertyPanel?: boolean;
-  readonly hideLayerPanel?: boolean;
-  readonly hideCommentsPanel?: boolean;
-  readonly hideContextMenu?: boolean;
+  readonly hideLibraryButton?: boolean;
   readonly hideMainMenu?: boolean;
   readonly hideZoomControls?: boolean;
+  readonly hideResetToContent?: boolean;
+  readonly hideHelpButton?: boolean;
+  readonly hideContextMenu?: boolean;
+  readonly hideSelectedShapeActions?: boolean;
 
   // --- Slots ---
-  /** Rendered inside the header next to the title. */
-  readonly renderHeaderLeft?: () => ReactNode;
-  /** Rendered inside the header on the right. */
-  readonly renderHeaderRight?: () => ReactNode;
-  /** Custom main-menu items appended to the default. */
+  readonly renderTopBarLeft?: () => ReactNode;
+  readonly renderTopBarCenter?: () => ReactNode;
+  readonly renderTopBarRight?: () => ReactNode;
+  readonly renderBottomBarLeft?: () => ReactNode;
+  readonly renderBottomBarCenter?: () => ReactNode;
+  readonly renderBottomBarRight?: () => ReactNode;
   readonly renderMainMenuExtras?: () => ReactNode;
+  /** Called when user clicks the "Import" button in the Library panel. */
+  readonly onImportTemplates?: () => void;
 
   // --- Theme ---
-  /** `"dark"` / `"light"` / `"system"`. Default `"system"`. */
   readonly theme?: "dark" | "light" | "system";
 
   // --- Layout ---
@@ -173,17 +153,24 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     onSceneChange,
     onSelectionChange,
     capabilities: capabilityOverrides,
+    hideTopBar,
+    hideBottomBar,
     hideToolbar,
-    hidePalette,
-    hidePropertyPanel,
-    hideLayerPanel,
-    hideCommentsPanel,
-    hideContextMenu,
+    hideLibraryButton,
     hideMainMenu,
     hideZoomControls,
-    renderHeaderLeft,
-    renderHeaderRight,
+    hideResetToContent,
+    hideHelpButton,
+    hideContextMenu,
+    hideSelectedShapeActions,
+    renderTopBarLeft,
+    renderTopBarCenter,
+    renderTopBarRight,
+    renderBottomBarLeft,
+    renderBottomBarCenter,
+    renderBottomBarRight,
     renderMainMenuExtras,
+    onImportTemplates,
     theme = "system",
     className,
     style,
@@ -191,29 +178,17 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
 
   const seed = useMemo<Scene>(() => initialScene ?? emptyScene(), [initialScene]);
 
-  // --- Plugin registration (process-global; safe to re-run because
-  // every registry is idempotent on key/id) -----------------------
+  // --- Plugin registration ---
   useEffect(() => {
-    if (templates) {
-      for (const t of templates) defaultRegistry.register(t);
-    }
-    if (layoutKinds) {
-      for (const k of layoutKinds) registerLayoutKind(k);
-    }
-    if (animationAdapters) {
-      for (const a of animationAdapters) registerAnimationAdapter(a);
-    }
+    if (templates) for (const t of templates) defaultRegistry.register(t);
+    if (layoutKinds) for (const k of layoutKinds) registerLayoutKind(k);
+    if (animationAdapters) for (const a of animationAdapters) registerAnimationAdapter(a);
   }, [templates, layoutKinds, animationAdapters]);
 
-  // --- Capabilities ------------------------------------------------
+  // --- Capabilities + WASM async load ---
   const [profile, setProfile] = useState<CapabilityProfile | null>(null);
   const [wasmShaper, setWasmShaper] = useState<TextShaper | null>(null);
   const [wasmRaster, setWasmRaster] = useState<Rasterizer | null>(null);
-  // React StrictMode in dev double-mounts every effect. Capability
-  // detection probes a real WebGL2 context (among others); doing
-  // that twice can hit the browser's per-page GL context cap and
-  // make the actual editor mount fail with "WebGL2 unavailable".
-  // Cache the in-flight promise so the second mount reuses it.
   const detectionRef = useRef<Promise<CapabilityProfile> | null>(null);
   const loggedRef = useRef(false);
   useEffect(() => {
@@ -235,22 +210,12 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
           WasmTextShaper.loadBundled().then(
             (shaper) => {
               if (cancelled) return;
-              // Register straight into the process-global text-
-              // shaper registry — that's where every backend reads
-              // the active shaper from (renderer-canvas's MSDF
-              // path, kernel's `wrapText`, etc.). Skipping this
-              // step means the WebGL2 backend never sees the
-              // newly-loaded shaper and stays on the OffscreenCanvas
-              // fallback even though the bundle finished loading.
               setActiveTextShaper(shaper);
               setWasmShaper(shaper);
             },
             (err) => {
               // eslint-disable-next-line no-console
-              console.warn(
-                "[diagram] WASM text shaper load failed, falling back to Canvas2D",
-                err,
-              );
+              console.warn("[diagram] WASM text shaper load failed", err);
             },
           ),
         );
@@ -260,18 +225,12 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
           WasmRasterizer.loadBundled().then(
             (r) => {
               if (cancelled) return;
-              // Same as the text shaper: rasterizer goes into the
-              // global registry the WebGL2 backend reads on every
-              // bezierCurveTo / quadraticCurveTo call.
               setActiveRasterizer(r);
               setWasmRaster(r);
             },
             (err) => {
               // eslint-disable-next-line no-console
-              console.warn(
-                "[diagram] WASM rasterizer load failed, falling back to JS sampler",
-                err,
-              );
+              console.warn("[diagram] WASM rasterizer load failed", err);
             },
           ),
         );
@@ -283,12 +242,10 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     };
   }, [capabilityOverrides]);
 
-  // --- Editor wiring -----------------------------------------------
+  // --- Editor wiring ---
   const [editor, setEditor] = useState<Editor | null>(null);
   const handleReady = useCallback(
     (e: Editor) => {
-      // Custom file-drop handlers (registered after the built-ins so
-      // image / scene-json win unless the host shadows them).
       if (fileDropHandlers) {
         for (const handler of fileDropHandlers) e.registerFileDropHandler(handler);
       }
@@ -298,13 +255,6 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     [fileDropHandlers, onReady],
   );
 
-  // Force a re-render once WASM shaper / rasterizer becomes
-  // available after the editor has already mounted. The render
-  // pipeline reads the active shaper through a process-global
-  // registry, so once we call `setActiveTextShaper` the next
-  // render picks up the MSDF path — but the editor only renders
-  // on its own state changes. Nudging via `setMode(editor.mode)`
-  // triggers a notify/render without mutating editor state.
   useEffect(() => {
     if (!editor) return undefined;
     if (!wasmShaper && !wasmRaster) return undefined;
@@ -312,7 +262,6 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     return undefined;
   }, [editor, wasmShaper, wasmRaster]);
 
-  // Subscribe to scene / selection changes.
   useEffect(() => {
     if (!editor || (!onSceneChange && !onSelectionChange)) return undefined;
     let lastScene = editor.scene;
@@ -329,7 +278,6 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     });
   }, [editor, onSceneChange, onSelectionChange]);
 
-  // --- Imperative API ----------------------------------------------
   useImperativeHandle<DiagramAPI, DiagramAPI>(
     ref,
     () => ({
@@ -341,7 +289,6 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     [editor, seed, profile],
   );
 
-  // --- Theme attribute --------------------------------------------
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
     if (theme === "system") {
@@ -352,14 +299,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     return () => document.documentElement.removeAttribute("data-theme");
   }, [theme]);
 
-  // --- HelpDialog state -------------------------------------------
-  const [helpOpen, setHelpOpen] = useState(false);
-  useHelpDialogHotkey(() => setHelpOpen((v) => !v));
-
   if (!profile) {
-    // First frame — capabilities still resolving. Render an empty
-    // shell to reserve layout space; the resolve is fast (sync
-    // matchMedia + sync getContext + ≤ one frame for WebGPU adapter).
     return <div className={className} style={style} />;
   }
 
@@ -369,38 +309,13 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
         className={className}
         data-diagram-root
         style={{
-          display: "flex",
-          flexDirection: "column",
+          position: "relative",
+          width: "100%",
           height: "100%",
+          background: "var(--du-canvas-bg)",
           ...style,
         }}
       >
-        {(renderHeaderLeft || renderHeaderRight || !hideMainMenu) && (
-          <header
-            data-diagram-header
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "10px 16px",
-              borderBottom: "1px solid var(--border)",
-              background: "var(--panel)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              {!hideMainMenu && (
-                <MainMenu>
-                  {renderMainMenuExtras ? renderMainMenuExtras() : null}
-                </MainMenu>
-              )}
-              {renderHeaderLeft?.()}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              {renderHeaderRight?.()}
-            </div>
-          </header>
-        )}
-
         <DiagramRoot
           initialScene={seed}
           initialMode={initialMode}
@@ -412,109 +327,222 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
           {...(wasmShaper ? { textShaper: wasmShaper } : {})}
           {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
         >
-          <main
-            data-diagram-main
-            style={{ display: "flex", flex: 1, minHeight: 0, background: "var(--bg)" }}
-          >
-            {!hidePalette && (
-              <div data-diagram-panel="palette" style={panelWrapperStyle}>
-                <Palette style={paletteStyle} />
-              </div>
-            )}
-            <CanvasArea
-              hideToolbar={hideToolbar}
-              hideZoomControls={hideZoomControls}
-              hideContextMenu={hideContextMenu}
-              helpOpen={helpOpen}
-              onHelpClose={() => setHelpOpen(false)}
-            />
-            {!hidePropertyPanel && (
-              <div data-diagram-panel="property" style={panelWrapperStyle}>
-                <PropertyPanel style={panelStyle} />
-                <EdgeStylePanel style={panelStyle} />
-              </div>
-            )}
-            {!hideLayerPanel && (
-              <div data-diagram-panel="layers" style={panelWrapperStyle}>
-                <LayerPanel />
-              </div>
-            )}
-            {!hideCommentsPanel && (
-              <div data-diagram-panel="comments" style={panelWrapperStyle}>
-                <CommentsPanel />
-              </div>
-            )}
-          </main>
+          <EditorShell
+            hideTopBar={hideTopBar}
+            hideBottomBar={hideBottomBar}
+            hideToolbar={hideToolbar}
+            hideLibraryButton={hideLibraryButton}
+            hideMainMenu={hideMainMenu}
+            hideZoomControls={hideZoomControls}
+            hideResetToContent={hideResetToContent}
+            hideHelpButton={hideHelpButton}
+            hideContextMenu={hideContextMenu}
+            hideSelectedShapeActions={hideSelectedShapeActions}
+            renderTopBarLeft={renderTopBarLeft}
+            renderTopBarCenter={renderTopBarCenter}
+            renderTopBarRight={renderTopBarRight}
+            renderBottomBarLeft={renderBottomBarLeft}
+            renderBottomBarCenter={renderBottomBarCenter}
+            renderBottomBarRight={renderBottomBarRight}
+            renderMainMenuExtras={renderMainMenuExtras}
+            onImportTemplates={onImportTemplates}
+          />
         </DiagramRoot>
       </div>
     </ToastHost>
   );
 });
 
-const paletteStyle: CSSProperties = {
-  flex: "0 0 200px",
-  background: "var(--panel)",
-  color: "var(--text)",
-  borderRight: "1px solid var(--border)",
-};
-
-const panelStyle: CSSProperties = {
-  flex: "0 0 240px",
-  background: "var(--panel)",
-  color: "var(--text)",
-  borderLeft: "1px solid var(--border)",
-};
-
-const panelWrapperStyle: CSSProperties = { display: "flex", minHeight: 0 };
-const canvasWrapperStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  flex: 1,
-  minHeight: 0,
-  minWidth: 0,
-  position: "relative",
-};
-
 /**
- * Canvas wrapper rendered *inside* `<DiagramRoot>` — that placement is
- * mandatory because `usePalettePlacement()` reads the active editor
- * from React context (`DiagramEditorBridge`), and the context is only
- * provided by `<DiagramRoot>`'s subtree. The previous version called
- * the hook in the top-level `<Diagram>` body which sat *above*
- * DiagramRoot, so `editor` was always null and the drop handlers
- * silently no-op'd (logs showed the events firing but nothing
- * happened). Splitting this out is the smallest change that puts the
- * hook in the right tree position.
+ * Inner shell — must render *inside* `<DiagramRoot>` so hooks that
+ * need the editor context (`usePalettePlacement`, `useDiagramOptional`,
+ * `useHelpDialogHotkey`) resolve correctly. Composes the
+ * canvas-surface + ui-layer overlay + side panels into one tree.
  */
-const CanvasArea = ({
+const EditorShell = ({
+  hideTopBar,
+  hideBottomBar,
   hideToolbar,
+  hideLibraryButton,
+  hideMainMenu,
   hideZoomControls,
+  hideResetToContent,
+  hideHelpButton,
   hideContextMenu,
-  helpOpen,
-  onHelpClose,
+  hideSelectedShapeActions,
+  renderTopBarLeft,
+  renderTopBarCenter,
+  renderTopBarRight,
+  renderBottomBarLeft,
+  renderBottomBarCenter,
+  renderBottomBarRight,
+  renderMainMenuExtras,
+  onImportTemplates,
 }: {
+  readonly hideTopBar: boolean | undefined;
+  readonly hideBottomBar: boolean | undefined;
   readonly hideToolbar: boolean | undefined;
+  readonly hideLibraryButton: boolean | undefined;
+  readonly hideMainMenu: boolean | undefined;
   readonly hideZoomControls: boolean | undefined;
+  readonly hideResetToContent: boolean | undefined;
+  readonly hideHelpButton: boolean | undefined;
   readonly hideContextMenu: boolean | undefined;
-  readonly helpOpen: boolean;
-  readonly onHelpClose: () => void;
+  readonly hideSelectedShapeActions: boolean | undefined;
+  readonly renderTopBarLeft: (() => ReactNode) | undefined;
+  readonly renderTopBarCenter: (() => ReactNode) | undefined;
+  readonly renderTopBarRight: (() => ReactNode) | undefined;
+  readonly renderBottomBarLeft: (() => ReactNode) | undefined;
+  readonly renderBottomBarCenter: (() => ReactNode) | undefined;
+  readonly renderBottomBarRight: (() => ReactNode) | undefined;
+  readonly renderMainMenuExtras: (() => ReactNode) | undefined;
+  readonly onImportTemplates: (() => void) | undefined;
 }) => {
+  const editor = useDiagramOptional();
   const paletteDropHandlers = usePalettePlacement();
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  useHelpDialogHotkey(() => setHelpOpen((v) => !v));
+
   return (
     <div
-      data-diagram-panel="canvas"
-      style={canvasWrapperStyle}
+      style={{ position: "absolute", inset: 0 }}
       onDragEnter={paletteDropHandlers.onDragEnter}
       onDragOver={paletteDropHandlers.onDragOver}
       onDragLeave={paletteDropHandlers.onDragLeave}
       onDrop={paletteDropHandlers.onDrop}
     >
-      <DiagramSurface style={{ flex: 1 }} />
-      {!hideToolbar && <Toolbar items={DEFAULT_TOOLBAR} />}
-      {!hideZoomControls && <FloatingZoomControls />}
+      {/* Full-bleed canvas underneath everything. */}
+      <DiagramSurface style={{ position: "absolute", inset: 0 }} />
+
+      {/* Per-shape overlays (text editor, context menu) sit between
+          canvas and UI layer — they're positioned in scene-space and
+          shouldn't be hidden by floating chrome. */}
       <TextEditorOverlay />
       {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
-      <HelpDialog open={helpOpen} onClose={onHelpClose} />
+
+      {/* UI layer — top/bottom bars + side panels. */}
+      <UILayer>
+        {!hideTopBar && (
+          <TopBar
+            left={
+              <>
+                {(!hideMainMenu || !hideLibraryButton) && (
+                  <ButtonGroup ariaLabel="Main menu">
+                    {!hideMainMenu && (
+                      <MainMenu>
+                        {renderMainMenuExtras ? renderMainMenuExtras() : null}
+                      </MainMenu>
+                    )}
+                    {!hideLibraryButton && (
+                      <IconButton
+                        label="Library"
+                        active={libraryOpen}
+                        onClick={() => setLibraryOpen((v) => !v)}
+                      >
+                        ☰
+                      </IconButton>
+                    )}
+                  </ButtonGroup>
+                )}
+                {renderTopBarLeft ? renderTopBarLeft() : null}
+              </>
+            }
+            center={
+              !hideToolbar
+                ? renderTopBarCenter
+                  ? renderTopBarCenter()
+                  : <Toolbar items={DEFAULT_TOOLBAR} />
+                : renderTopBarCenter?.()
+            }
+            right={renderTopBarRight ? renderTopBarRight() : null}
+          />
+        )}
+
+        {!hideBottomBar && (
+          <BottomBar
+            left={
+              renderBottomBarLeft
+                ? renderBottomBarLeft()
+                : !hideZoomControls
+                  ? <ZoomControls />
+                  : null
+            }
+            center={
+              renderBottomBarCenter
+                ? renderBottomBarCenter()
+                : !hideResetToContent
+                  ? <ResetToContentButton />
+                  : null
+            }
+            right={
+              renderBottomBarRight
+                ? renderBottomBarRight()
+                : !hideHelpButton
+                  ? <HelpButton />
+                  : null
+            }
+          />
+        )}
+
+        <LibraryPanel
+          open={libraryOpen}
+          onClose={() => setLibraryOpen(false)}
+          {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
+        />
+
+        {!hideSelectedShapeActions && <SelectedShapeActions />}
+      </UILayer>
+
+      {/* Standalone HelpDialog for hotkey activation — only renders
+          when the `?` hotkey opens it without going through the
+          button. HelpButton manages its own copy when clicked. */}
+      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+
+      {void editor}
     </div>
+  );
+};
+
+/**
+ * Bottom-left zoom controls — three pills (zoom-out / zoom level / zoom-in)
+ * + a fit-to-screen button. Wraps the editor's zoom API in the
+ * unified IconButton chrome so the visual style matches the rest of
+ * the bar.
+ */
+const ZoomControls = () => {
+  const editor = useDiagramOptional();
+  // Force re-render on viewport change.
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (!editor) return undefined;
+    return editor.subscribe(() => force((n) => n + 1));
+  }, [editor]);
+  if (!editor) return null;
+  const zoom = editor.scene.viewport.zoom;
+  return (
+    <ButtonGroup ariaLabel="Zoom">
+      <IconButton label="Zoom out" onClick={() => editor.zoomOut()}>
+        −
+      </IconButton>
+      <span
+        className="du-icon-button"
+        aria-label="Current zoom"
+        style={{
+          minWidth: 56,
+          padding: "0 8px",
+          borderRadius: 0,
+          cursor: "default",
+        }}
+      >
+        {Math.round(zoom * 100)}%
+      </span>
+      <IconButton label="Zoom in" onClick={() => editor.zoomIn()}>
+        +
+      </IconButton>
+      <IconButton label="Fit to screen" onClick={() => editor.zoomToFit()}>
+        ⤢
+      </IconButton>
+    </ButtonGroup>
   );
 };

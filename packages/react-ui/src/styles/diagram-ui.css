@@ -1,0 +1,271 @@
+/**
+ * Diagram UI stylesheet. Imported once by the host:
+ *
+ *   import "@oh-just-another/react-ui/styles.css";
+ *
+ * Provides:
+ *   • CSS variables for theme (`:root` + `[data-theme="dark"]`)
+ *   • Utility classes prefixed `du-` ("diagram ui") so they don't
+ *     collide with host's own styles.
+ *   • Per-component blocks (.du-icon-button, .du-top-bar, ...).
+ *
+ * Hosts can override any variable in their own stylesheet for
+ * theming — every component reads colours / sizes through these
+ * variables, never hard-coded.
+ */
+
+:root {
+  /* --- Surfaces --- */
+  --du-canvas-bg: #f5f5f5;
+  --du-ui-bg: rgba(255, 255, 255, 0.95);
+  --du-ui-bg-solid: #ffffff;
+  --du-ui-border: rgba(0, 0, 0, 0.08);
+  --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+
+  /* --- Text --- */
+  --du-text: #1a1a1a;
+  --du-text-muted: #6b6b6b;
+  --du-text-on-accent: #ffffff;
+
+  /* --- Accent --- */
+  --du-accent: #1a73e8;
+  --du-accent-hover: #1765c9;
+  --du-danger: #d93025;
+
+  /* --- Sizing --- */
+  --du-radius: 8px;
+  --du-radius-sm: 4px;
+  --du-radius-lg: 12px;
+  --du-button-size: 36px;
+  --du-button-size-sm: 28px;
+  --du-icon-size: 18px;
+  --du-gap: 8px;
+  --du-gap-sm: 4px;
+  --du-pad: 8px;
+  --du-bar-inset: 12px;
+  --du-z-canvas: 1;
+  --du-z-ui: 100;
+  --du-z-modal: 1000;
+}
+
+[data-theme="dark"] {
+  --du-canvas-bg: #121212;
+  --du-ui-bg: rgba(35, 35, 35, 0.95);
+  --du-ui-bg-solid: #252525;
+  --du-ui-border: rgba(255, 255, 255, 0.08);
+  --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --du-text: #e8e8e8;
+  --du-text-muted: #9a9a9a;
+  --du-accent: #4285f4;
+  --du-accent-hover: #5b96f5;
+}
+
+/* ------------------------------------------------------------------ */
+/* UI layer — absolute overlay above the canvas surface.              */
+/* pointer-events: none on the wrapper, auto on children, so the      */
+/* canvas keeps receiving pointer events anywhere the UI isn't drawn. */
+/* ------------------------------------------------------------------ */
+.du-ui-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--du-z-ui);
+}
+
+.du-ui-layer > * {
+  pointer-events: auto;
+}
+
+/* ------------------------------------------------------------------ */
+/* Bars — top / bottom 3-zone layout (left / center / right).         */
+/* ------------------------------------------------------------------ */
+.du-bar {
+  position: absolute;
+  left: var(--du-bar-inset);
+  right: var(--du-bar-inset);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--du-gap);
+  pointer-events: none;
+}
+
+.du-bar > * {
+  pointer-events: auto;
+}
+
+.du-bar-top {
+  top: var(--du-bar-inset);
+}
+
+.du-bar-bottom {
+  bottom: var(--du-bar-inset);
+}
+
+.du-bar-zone {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--du-gap);
+}
+
+.du-bar-zone-center {
+  margin: 0 auto;
+}
+
+/* ------------------------------------------------------------------ */
+/* Icon button — square clickable, used in bars + groups.             */
+/* ------------------------------------------------------------------ */
+.du-icon-button {
+  width: var(--du-button-size);
+  height: var(--du-button-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--du-ui-bg);
+  color: var(--du-text);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  box-shadow: var(--du-ui-shadow);
+  transition: background 0.15s ease, transform 0.05s ease;
+  padding: 0;
+  outline: none;
+}
+
+.du-icon-button:hover:not(:disabled) {
+  background: var(--du-ui-bg-solid);
+}
+
+.du-icon-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.du-icon-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.du-icon-button:focus-visible {
+  outline: 2px solid var(--du-accent);
+  outline-offset: 2px;
+}
+
+.du-icon-button[aria-pressed="true"],
+.du-icon-button.is-active {
+  background: var(--du-accent);
+  color: var(--du-text-on-accent);
+  border-color: transparent;
+}
+
+.du-icon-button-sm {
+  width: var(--du-button-size-sm);
+  height: var(--du-button-size-sm);
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Button group — multiple buttons sharing one pill background.       */
+/* ------------------------------------------------------------------ */
+.du-button-group {
+  display: inline-flex;
+  background: var(--du-ui-bg);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius);
+  box-shadow: var(--du-ui-shadow);
+  overflow: hidden;
+}
+
+.du-button-group > .du-icon-button {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.du-button-group > .du-icon-button + .du-icon-button {
+  border-left: 1px solid var(--du-ui-border);
+}
+
+.du-button-group > .du-icon-button[aria-pressed="true"],
+.du-button-group > .du-icon-button.is-active {
+  background: var(--du-accent);
+  color: var(--du-text-on-accent);
+}
+
+/* ------------------------------------------------------------------ */
+/* Floating side panel — used by Library / SelectedShapeActions.      */
+/* Fixed-width, fixed-height-with-scroll, sits flush against the      */
+/* corresponding side of the canvas with a `du-bar-inset` margin.     */
+/* ------------------------------------------------------------------ */
+.du-side-panel {
+  position: absolute;
+  top: calc(var(--du-bar-inset) + var(--du-button-size) + var(--du-gap));
+  bottom: calc(var(--du-bar-inset) + var(--du-button-size) + var(--du-gap));
+  width: 240px;
+  background: var(--du-ui-bg);
+  color: var(--du-text);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius);
+  box-shadow: var(--du-ui-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.du-side-panel-left {
+  left: var(--du-bar-inset);
+}
+
+.du-side-panel-right {
+  right: var(--du-bar-inset);
+}
+
+.du-side-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--du-pad);
+  border-bottom: 1px solid var(--du-ui-border);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--du-text-muted);
+}
+
+.du-side-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--du-pad);
+}
+
+/* ------------------------------------------------------------------ */
+/* Toast for reset-to-content visibility hint.                        */
+/* ------------------------------------------------------------------ */
+.du-pill-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--du-gap-sm);
+  padding: 0 12px;
+  height: var(--du-button-size);
+  background: var(--du-ui-bg);
+  color: var(--du-text);
+  border: 1px solid var(--du-ui-border);
+  border-radius: 999px;
+  box-shadow: var(--du-ui-shadow);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.du-pill-button:hover {
+  background: var(--du-ui-bg-solid);
+}
+
+.du-pill-button:active {
+  transform: scale(0.96);
+}
