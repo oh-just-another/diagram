@@ -30,13 +30,13 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: [
-      // Sub-path imports (CSS, etc.) MUST come before the package-name
-      // aliases — Vite matches strings in order and the broader entry
-      // would otherwise swallow `@oh-just-another/react-ui/styles.css`
-      // before it has a chance to resolve to the actual CSS file.
+      // Sub-path imports (`@oh-just-another/<pkg>/<file>` — typically CSS
+      // stylesheets) are mapped to `packages/<pkg>/src/<file>`. Must come
+      // before the bare package-name aliases so the broader entry doesn't
+      // swallow them. The generic regex covers any sub-path.
       {
-        find: "@oh-just-another/react-ui/styles.css",
-        replacement: path.join(packagesRoot, "react-ui/src/styles/diagram-ui.css"),
+        find: /^@oh-just-another\/([^/]+)\/(.+)$/,
+        replacement: path.join(packagesRoot, "$1/src/$2"),
       },
       ...workspacePackages.map((name) => ({
         find: `@oh-just-another/${name}`,

@@ -646,3 +646,6 @@
 
 ## 0.34.1
 - apps/diagram vite: alias for react-ui/styles.css sub-path
+
+## 0.34.2
+- vite alias: generic regex for workspace sub-paths
