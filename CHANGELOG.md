@@ -643,3 +643,6 @@
 
 ## 0.34.0
 - apps/diagram: modern-style layout + CSS-system
+
+## 0.34.1
+- apps/diagram vite: alias for react-ui/styles.css sub-path

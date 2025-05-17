@@ -29,10 +29,20 @@ const workspacePackages = [
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: workspacePackages.map((name) => ({
-      find: `@oh-just-another/${name}`,
-      replacement: path.join(packagesRoot, name, "src/index.ts"),
-    })),
+    alias: [
+      // Sub-path imports (CSS, etc.) MUST come before the package-name
+      // aliases — Vite matches strings in order and the broader entry
+      // would otherwise swallow `@oh-just-another/react-ui/styles.css`
+      // before it has a chance to resolve to the actual CSS file.
+      {
+        find: "@oh-just-another/react-ui/styles.css",
+        replacement: path.join(packagesRoot, "react-ui/src/styles/diagram-ui.css"),
+      },
+      ...workspacePackages.map((name) => ({
+        find: `@oh-just-another/${name}`,
+        replacement: path.join(packagesRoot, name, "src/index.ts"),
+      })),
+    ],
   },
   server: {
     port: 5174,
