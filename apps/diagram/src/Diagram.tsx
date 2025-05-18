@@ -427,23 +427,41 @@ const EditorShell = ({
           <TopBar
             left={
               <>
-                {(!hideMainMenu || !hideLibraryButton) && (
-                  <ButtonGroup ariaLabel="Main menu">
-                    {!hideMainMenu && (
-                      <MainMenu>
-                        {renderMainMenuExtras ? renderMainMenuExtras() : null}
-                      </MainMenu>
-                    )}
-                    {!hideLibraryButton && (
-                      <IconButton
-                        label="Library"
-                        active={libraryOpen}
-                        onClick={() => setLibraryOpen((v) => !v)}
-                      >
-                        ☰
-                      </IconButton>
-                    )}
-                  </ButtonGroup>
+                {!hideMainMenu && (
+                  <MainMenu>
+                    <MainMenu.Item
+                      shortcut="⇧F"
+                      onClick={() => editor?.zoomToFit()}
+                    >
+                      Fit to screen
+                    </MainMenu.Item>
+                    <MainMenu.Item
+                      onClick={() => {
+                        if (!editor) return;
+                        if (window.confirm("Reset canvas? This clears all shapes.")) {
+                          editor.loadScene(emptyScene());
+                        }
+                      }}
+                    >
+                      Reset canvas
+                    </MainMenu.Item>
+                    <MainMenu.Separator />
+                    <MainMenu.Item onClick={() => setHelpOpen(true)} shortcut="?">
+                      Help
+                    </MainMenu.Item>
+                    <MainMenu.ItemLink
+                      href="https://github.com/oh-just-another/diagram"
+                      external
+                    >
+                      GitHub
+                    </MainMenu.ItemLink>
+                    {renderMainMenuExtras ? (
+                      <>
+                        <MainMenu.Separator />
+                        {renderMainMenuExtras()}
+                      </>
+                    ) : null}
+                  </MainMenu>
                 )}
                 {renderTopBarLeft ? renderTopBarLeft() : null}
               </>
@@ -455,7 +473,20 @@ const EditorShell = ({
                   : <Toolbar items={DEFAULT_TOOLBAR} />
                 : renderTopBarCenter?.()
             }
-            right={renderTopBarRight ? renderTopBarRight() : null}
+            right={
+              <>
+                {renderTopBarRight ? renderTopBarRight() : null}
+                {!hideLibraryButton && (
+                  <IconButton
+                    label="Library"
+                    active={libraryOpen}
+                    onClick={() => setLibraryOpen((v) => !v)}
+                  >
+                    ☰
+                  </IconButton>
+                )}
+              </>
+            }
           />
         )}
 

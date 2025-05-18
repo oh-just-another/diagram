@@ -649,3 +649,6 @@
 
 ## 0.34.2
 - vite alias: generic regex for workspace sub-paths
+
+## 0.34.3
+- apps/diagram: match standard zone placement
