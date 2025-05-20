@@ -36,6 +36,8 @@ import {
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
 import { emptyScene, type Scene } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
+import { parseScene, stringifyScene } from "@oh-just-another/serialization";
+import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
 import { WasmRasterizer } from "@oh-just-another/raster-wasm";
 import {
@@ -429,32 +431,130 @@ const EditorShell = ({
               <>
                 {!hideMainMenu && (
                   <MainMenu>
-                    <MainMenu.Item
-                      shortcut="⇧F"
-                      onClick={() => editor?.zoomToFit()}
-                    >
-                      Fit to screen
-                    </MainMenu.Item>
-                    <MainMenu.Item
-                      onClick={() => {
-                        if (!editor) return;
-                        if (window.confirm("Reset canvas? This clears all shapes.")) {
-                          editor.loadScene(emptyScene());
-                        }
-                      }}
-                    >
-                      Reset canvas
-                    </MainMenu.Item>
+                    <MainMenu.Group title="File">
+                      <MainMenu.Item onClick={() => openSceneFile(editor)}>
+                        Open…
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        onClick={() => editor && downloadScene(editor.scene)}
+                        disabled={!editor}
+                      >
+                        Save as JSON
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        onClick={() => editor && downloadPng(editor)}
+                        disabled={!editor}
+                      >
+                        Export as PNG
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        onClick={() => editor && downloadSvg(editor.scene)}
+                        disabled={!editor}
+                      >
+                        Export as SVG
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        onClick={() => {
+                          if (!editor) return;
+                          if (
+                            window.confirm("Reset canvas? This clears all shapes.")
+                          ) {
+                            editor.loadScene(emptyScene());
+                          }
+                        }}
+                        disabled={!editor}
+                      >
+                        Reset canvas
+                      </MainMenu.Item>
+                    </MainMenu.Group>
                     <MainMenu.Separator />
-                    <MainMenu.Item onClick={() => setHelpOpen(true)} shortcut="?">
-                      Help
-                    </MainMenu.Item>
-                    <MainMenu.ItemLink
-                      href="https://github.com/oh-just-another/diagram"
-                      external
-                    >
-                      GitHub
-                    </MainMenu.ItemLink>
+                    <MainMenu.Group title="Edit">
+                      <MainMenu.Item
+                        shortcut="⌘Z"
+                        onClick={() => editor?.undo()}
+                        disabled={!editor}
+                      >
+                        Undo
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        shortcut="⇧⌘Z"
+                        onClick={() => editor?.redo()}
+                        disabled={!editor}
+                      >
+                        Redo
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        shortcut="⌘X"
+                        onClick={() => editor?.cutSelected()}
+                        disabled={!editor}
+                      >
+                        Cut
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        shortcut="⌘C"
+                        onClick={() => editor?.copySelected()}
+                        disabled={!editor}
+                      >
+                        Copy
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        shortcut="⌘V"
+                        onClick={() => editor?.paste()}
+                        disabled={!editor}
+                      >
+                        Paste
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        shortcut="⌘A"
+                        onClick={() => editor?.selectAll()}
+                        disabled={!editor}
+                      >
+                        Select all
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        shortcut="⌫"
+                        onClick={() => editor?.deleteSelected()}
+                        disabled={!editor}
+                      >
+                        Delete selected
+                      </MainMenu.Item>
+                    </MainMenu.Group>
+                    <MainMenu.Separator />
+                    <MainMenu.Group title="View">
+                      <MainMenu.Item
+                        shortcut="⇧F"
+                        onClick={() => editor?.zoomToFit()}
+                        disabled={!editor}
+                      >
+                        Fit to screen
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        shortcut="⌘+"
+                        onClick={() => editor?.zoomIn()}
+                        disabled={!editor}
+                      >
+                        Zoom in
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        shortcut="⌘−"
+                        onClick={() => editor?.zoomOut()}
+                        disabled={!editor}
+                      >
+                        Zoom out
+                      </MainMenu.Item>
+                    </MainMenu.Group>
+                    <MainMenu.Separator />
+                    <MainMenu.Group title="Help">
+                      <MainMenu.Item shortcut="?" onClick={() => setHelpOpen(true)}>
+                        Hotkeys
+                      </MainMenu.Item>
+                      <MainMenu.ItemLink
+                        href="https://github.com/oh-just-another/diagram"
+                        external
+                      >
+                        GitHub
+                      </MainMenu.ItemLink>
+                    </MainMenu.Group>
                     {renderMainMenuExtras ? (
                       <>
                         <MainMenu.Separator />
@@ -576,4 +676,91 @@ const ZoomControls = () => {
       </IconButton>
     </ButtonGroup>
   );
+};
+
+// --- MainMenu File-group helpers --------------------------------------------
+
+/**
+ * Trigger a browser download of arbitrary bytes. Used by the
+ * Save / Export menu items. Creates a temporary `<a>`, clicks it,
+ * cleans up the object URL on the next animation frame so the
+ * browser has time to start the download.
+ */
+const downloadBlob = (blob: Blob, filename: string): void => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  requestAnimationFrame(() => URL.revokeObjectURL(url));
+};
+
+/** "Save as JSON" — serialises the scene through @serialization. */
+const downloadScene = (scene: Scene): void => {
+  const json = stringifyScene(scene, 2);
+  downloadBlob(new Blob([json], { type: "application/json" }), "scene.diagram.json");
+};
+
+/**
+ * "Open…" — file picker that accepts `.diagram.json`, parses it,
+ * and replaces the editor's scene. Resets history (matches the
+ * default `loadScene` behaviour). User cancellation = no-op.
+ */
+const openSceneFile = (editor: Editor | null): void => {
+  if (!editor) return;
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "application/json,.json";
+  input.onchange = () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    void file.text().then((text) => {
+      try {
+        const scene = parseScene(text);
+        editor.loadScene(scene);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("[diagram] failed to parse scene file:", err);
+        window.alert(
+          "Failed to parse the file — make sure it was saved through this app's Save action.",
+        );
+      }
+    });
+  };
+  input.click();
+};
+
+/**
+ * "Export as PNG" — grabs the main canvas DOM element and calls
+ * `toBlob`. Works for both Canvas2D and WebGL2 backends since
+ * `preserveDrawingBuffer: true` is already set on the WebGL
+ * context. The overlay / background layers are NOT composited in
+ * — they're cheap UI decorations (selection halo, grid) rather
+ * than scene content, and most users want the bare shapes
+ * exported. Hosts who need a full composite roll their own.
+ */
+const downloadPng = (editor: Editor): void => {
+  void editor; // hooked off the DOM, not the Editor reference
+  // The main shape layer is the only canvas tagged with this dataset
+  // attribute. Both Canvas2D and WebGL2 layered surfaces emit it
+  // (LayeredCanvas / WebGL2LayeredSurface). preserveDrawingBuffer
+  // is on in WebGL2 so `toBlob` returns the latest frame.
+  const main = document.querySelector('canvas[data-layer="main"]');
+  if (!(main instanceof HTMLCanvasElement)) return;
+  main.toBlob((blob: Blob | null) => {
+    if (!blob) return;
+    downloadBlob(blob, "scene.png");
+  }, "image/png");
+};
+
+/**
+ * "Export as SVG" — uses `@renderer-svg.renderSceneToSvg` so the
+ * output is identical to the headless render path (vector, no
+ * bitmap fall-back, works in any browser). One file per scene.
+ */
+const downloadSvg = (scene: Scene): void => {
+  const svg = renderSceneToSvg(scene);
+  downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "scene.svg");
 };

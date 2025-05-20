@@ -652,3 +652,6 @@
 
 ## 0.34.3
 - apps/diagram: match standard zone placement
+
+## 0.34.4
+- apps/diagram MainMenu: full action set (File / Edit / View / Help)
