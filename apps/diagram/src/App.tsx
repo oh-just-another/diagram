@@ -12,7 +12,6 @@ import { shapeId } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type DiagramAPI } from "./index";
 import { setupTemplates } from "./templates";
-import { useTheme } from "./theme";
 import { useHotkeys } from "./hotkeys";
 import { useCollab } from "./collab";
 import { Peers } from "./Peers";
@@ -89,7 +88,9 @@ export const App = () => {
     () => (isCollab ? seedScene() : restoreScene()),
     [isCollab],
   );
-  const { theme, toggle } = useTheme();
+  // Theme is owned by <Diagram> now (Theme submenu in MainMenu);
+  // persistence is enabled via `persistTheme` prop below. The host
+  // no longer needs its own theme state.
   const [editor, setEditor] = useState<Editor | null>(null);
   const apiRef = useRef<DiagramAPI>(null);
   useHotkeys(editor);
@@ -171,24 +172,9 @@ export const App = () => {
       <>
         {status ? <ConnectionBadge status={status} /> : null}
         <Peers awareness={awareness} />
-        <button
-          type="button"
-          onClick={toggle}
-          style={{
-            background: "var(--button-bg)",
-            color: "var(--text)",
-            border: "1px solid var(--border)",
-            borderRadius: 4,
-            padding: "4px 10px",
-            fontSize: 12,
-            cursor: "pointer",
-          }}
-        >
-          {theme === "dark" ? "☀ Light" : "☾ Dark"}
-        </button>
       </>
     ),
-    [status, awareness, theme, toggle],
+    [status, awareness],
   );
 
   return (
@@ -199,7 +185,7 @@ export const App = () => {
       onSceneChange={handleSceneChange}
       renderTopBarLeft={renderHeaderLeft}
       renderTopBarRight={renderHeaderRight}
-      theme={theme}
+      persistTheme
     />
   );
 };

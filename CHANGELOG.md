@@ -655,3 +655,6 @@
 
 ## 0.34.4
 - apps/diagram MainMenu: full action set (File / Edit / View / Help)
+
+## 0.34.5
+- Theme switcher + MainMenu close-on-canvas fix

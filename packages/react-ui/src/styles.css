@@ -48,6 +48,44 @@
   --du-z-modal: 1000;
 }
 
+/**
+ * Theme resolution priority (highest wins):
+ *   [data-theme="light"]  — host forced light.
+ *   [data-theme="dark"]   — host forced dark.
+ *   @media prefers-color-scheme: dark → :root — OS-derived dark when
+ *                                       no data-theme is present.
+ *   :root                 — light defaults.
+ *
+ * Hosts set `data-theme` via the Diagram component's `theme` prop
+ * ("light" / "dark" / "system" — "system" omits the attribute so
+ * the media query takes over).
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --du-canvas-bg: #121212;
+    --du-ui-bg: rgba(35, 35, 35, 0.95);
+    --du-ui-bg-solid: #252525;
+    --du-ui-border: rgba(255, 255, 255, 0.08);
+    --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+    --du-text: #e8e8e8;
+    --du-text-muted: #9a9a9a;
+    --du-accent: #4285f4;
+    --du-accent-hover: #5b96f5;
+  }
+}
+
+[data-theme="light"] {
+  --du-canvas-bg: #f5f5f5;
+  --du-ui-bg: rgba(255, 255, 255, 0.95);
+  --du-ui-bg-solid: #ffffff;
+  --du-ui-border: rgba(0, 0, 0, 0.08);
+  --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --du-text: #1a1a1a;
+  --du-text-muted: #6b6b6b;
+  --du-accent: #1a73e8;
+  --du-accent-hover: #1765c9;
+}
+
 [data-theme="dark"] {
   --du-canvas-bg: #121212;
   --du-ui-bg: rgba(35, 35, 35, 0.95);

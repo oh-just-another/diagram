@@ -133,12 +133,40 @@ export interface DiagramProps {
   readonly onImportTemplates?: () => void;
 
   // --- Theme ---
+  /**
+   * Controlled theme. When provided, the menu's Theme submenu only
+   * displays the current selection (no state change unless the
+   * host wires `onThemeChange`). Omit to let `<Diagram>` manage
+   * its own theme via internal state (default behaviour).
+   */
   readonly theme?: "dark" | "light" | "system";
+  /**
+   * Initial theme when `theme` is uncontrolled. Default `"system"`
+   * — respects the user's OS preference until they pick something
+   * else from the menu.
+   */
+  readonly defaultTheme?: "dark" | "light" | "system";
+  /**
+   * Called whenever the user changes the theme via the menu. When
+   * `theme` is controlled (passed as a prop), this is the host's
+   * only way to receive the new value.
+   */
+  readonly onThemeChange?: (theme: "dark" | "light" | "system") => void;
+  /**
+   * Persist the user's theme choice in `localStorage` under the
+   * given key so it survives reloads. Pass `true` for the default
+   * key `"diagram-theme"`, or a string for a custom one. Omit to
+   * keep the menu non-persistent (theme resets to `defaultTheme`
+   * on reload).
+   */
+  readonly persistTheme?: boolean | string;
 
   // --- Layout ---
   readonly className?: string;
   readonly style?: CSSProperties;
 }
+
+export type DiagramTheme = "dark" | "light" | "system";
 
 export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   props,
@@ -173,10 +201,39 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     renderBottomBarRight,
     renderMainMenuExtras,
     onImportTemplates,
-    theme = "system",
+    theme: themeProp,
+    defaultTheme = "system",
+    onThemeChange,
+    persistTheme,
     className,
     style,
   } = props;
+
+  // Theme: controlled when `themeProp` is provided, otherwise
+  // self-managed via `internalTheme`. The lazy `useState` initializer
+  // reads from `localStorage` once when `persistTheme` is on.
+  const storageKey = useMemo(() => {
+    if (persistTheme === true) return "diagram-theme";
+    if (typeof persistTheme === "string") return persistTheme;
+    return null;
+  }, [persistTheme]);
+  const [internalTheme, setInternalTheme] = useState<DiagramTheme>(() => {
+    if (!storageKey || typeof window === "undefined") return defaultTheme;
+    const stored = window.localStorage.getItem(storageKey);
+    if (stored === "light" || stored === "dark" || stored === "system") return stored;
+    return defaultTheme;
+  });
+  const theme: DiagramTheme = themeProp ?? internalTheme;
+  const changeTheme = useCallback(
+    (next: DiagramTheme) => {
+      if (themeProp === undefined) setInternalTheme(next);
+      if (storageKey && typeof window !== "undefined") {
+        window.localStorage.setItem(storageKey, next);
+      }
+      onThemeChange?.(next);
+    },
+    [themeProp, onThemeChange, storageKey],
+  );
 
   const seed = useMemo<Scene>(() => initialScene ?? emptyScene(), [initialScene]);
 
@@ -348,6 +405,8 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
             renderBottomBarRight={renderBottomBarRight}
             renderMainMenuExtras={renderMainMenuExtras}
             onImportTemplates={onImportTemplates}
+            theme={theme}
+            changeTheme={changeTheme}
           />
         </DiagramRoot>
       </div>
@@ -380,6 +439,8 @@ const EditorShell = ({
   renderBottomBarRight,
   renderMainMenuExtras,
   onImportTemplates,
+  theme,
+  changeTheme,
 }: {
   readonly hideTopBar: boolean | undefined;
   readonly hideBottomBar: boolean | undefined;
@@ -399,6 +460,8 @@ const EditorShell = ({
   readonly renderBottomBarRight: (() => ReactNode) | undefined;
   readonly renderMainMenuExtras: (() => ReactNode) | undefined;
   readonly onImportTemplates: (() => void) | undefined;
+  readonly theme: DiagramTheme;
+  readonly changeTheme: (next: DiagramTheme) => void;
 }) => {
   const editor = useDiagramOptional();
   const paletteDropHandlers = usePalettePlacement();
@@ -541,6 +604,27 @@ const EditorShell = ({
                         disabled={!editor}
                       >
                         Zoom out
+                      </MainMenu.Item>
+                    </MainMenu.Group>
+                    <MainMenu.Separator />
+                    <MainMenu.Group title="Theme">
+                      <MainMenu.Item
+                        active={theme === "light"}
+                        onClick={() => changeTheme("light")}
+                      >
+                        Light
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        active={theme === "dark"}
+                        onClick={() => changeTheme("dark")}
+                      >
+                        Dark
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        active={theme === "system"}
+                        onClick={() => changeTheme("system")}
+                      >
+                        System
                       </MainMenu.Item>
                     </MainMenu.Group>
                     <MainMenu.Separator />

@@ -59,7 +59,7 @@ export const MainMenu = ({
 
   useEffect(() => {
     if (!open) return undefined;
-    const onDown = (ev: MouseEvent): void => {
+    const onDown = (ev: MouseEvent | PointerEvent): void => {
       if (!ref.current) return;
       if (ref.current.contains(ev.target as Node)) return;
       setOpen(false);
@@ -67,10 +67,16 @@ export const MainMenu = ({
     const onKey = (ev: KeyboardEvent): void => {
       if (ev.key === "Escape") setOpen(false);
     };
+    // Listen on both `mousedown` and `pointerdown`. The canvas surface
+    // captures pointer events; `mousedown` still fires on the document,
+    // but for some touch / pen interactions only `pointerdown` does.
+    // Subscribing to both closes the menu reliably for every input type.
     window.addEventListener("mousedown", onDown);
+    window.addEventListener("pointerdown", onDown);
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("pointerdown", onDown);
       window.removeEventListener("keydown", onKey);
     };
   }, [open]);
@@ -153,9 +159,15 @@ export interface MainMenuItemProps {
   readonly onClick?: () => void;
   readonly shortcut?: string;
   readonly disabled?: boolean;
+  /**
+   * Shows a leading checkmark — used by submenu items that act as a
+   * radio group (theme switcher, language switcher, etc.) to signal
+   * which option is currently active.
+   */
+  readonly active?: boolean;
 }
 
-const Item = ({ children, onClick, shortcut, disabled }: MainMenuItemProps) => {
+const Item = ({ children, onClick, shortcut, disabled, active }: MainMenuItemProps) => {
   const { close } = useMenuCtx();
   return (
     <button
@@ -177,7 +189,19 @@ const Item = ({ children, onClick, shortcut, disabled }: MainMenuItemProps) => {
         gap: 12,
       }}
     >
-      <span>{children}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <span
+          aria-hidden
+          style={{
+            width: 14,
+            display: "inline-block",
+            color: "var(--du-accent, #1a73e8)",
+          }}
+        >
+          {active ? "✓" : ""}
+        </span>
+        {children}
+      </span>
       {shortcut ? (
         <span style={{ color: "var(--muted, #888)", fontSize: 11 }}>{shortcut}</span>
       ) : null}
