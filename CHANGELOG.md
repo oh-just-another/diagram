@@ -658,3 +658,6 @@
 
 ## 0.34.5
 - Theme switcher + MainMenu close-on-canvas fix
+
+## 0.34.6
+- react-ui: ColorSwatchPicker + theme-aware palette constants

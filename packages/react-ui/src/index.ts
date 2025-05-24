@@ -16,6 +16,17 @@ export {
   type SelectedShapeActionsProps,
 } from "./selected-shape-actions.js";
 export {
+  ColorSwatchPicker,
+  type ColorSwatchPickerProps,
+} from "./color-swatch-picker.js";
+export {
+  ELEMENT_PALETTE_LIGHT,
+  ELEMENT_PALETTE_DARK,
+  CANVAS_PALETTE_LIGHT,
+  CANVAS_PALETTE_DARK,
+  resolvePaletteTheme,
+} from "./color-palette.js";
+export {
   DiagramRoot,
   DiagramSurface,
   type DiagramRootProps,
