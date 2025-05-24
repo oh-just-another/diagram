@@ -86,6 +86,31 @@
   --du-accent-hover: #1765c9;
 }
 
+/* ------------------------------------------------------------------ */
+/* Legacy variable aliases — kept so the older components (MainMenu,  */
+/* ContextMenu, Modal, HelpDialog) that read `var(--panel)` /         */
+/* `var(--text)` / `var(--button-bg)` etc. still pick up the active   */
+/* theme without being rewritten to the `--du-*` namespace.           */
+/*                                                                    */
+/* Hosts can still override the legacy names individually — these     */
+/* are defaults that *forward* to the unified theme variables.        */
+/* ------------------------------------------------------------------ */
+:root {
+  --bg: var(--du-canvas-bg);
+  --panel: var(--du-ui-bg-solid);
+  --surface: var(--du-ui-bg-solid);
+  --text: var(--du-text);
+  --muted: var(--du-text-muted);
+  --border: var(--du-ui-border);
+  --button-bg: var(--du-ui-bg-solid);
+  --button-hover-bg: var(--du-ui-bg);
+  --accent: var(--du-accent);
+  --menu-bg: var(--du-ui-bg-solid);
+  --menu-text: var(--du-text);
+  --menu-border: var(--du-ui-border);
+  --menu-divider: var(--du-ui-border);
+}
+
 [data-theme="dark"] {
   --du-canvas-bg: #121212;
   --du-ui-bg: rgba(35, 35, 35, 0.95);

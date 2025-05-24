@@ -661,3 +661,6 @@
 
 ## 0.34.6
 - react-ui: ColorSwatchPicker + theme-aware palette constants
+
+## 0.34.7
+- fix: Reset canvas keeps the grid + light theme for legacy menus

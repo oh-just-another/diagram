@@ -522,7 +522,12 @@ const EditorShell = ({
                           if (
                             window.confirm("Reset canvas? This clears all shapes.")
                           ) {
-                            editor.loadScene(emptyScene());
+                            // editor.clear() keeps viewport (zoom /
+                            // pan / gridSize) and layers — only
+                            // shapes / edges go. loadScene(emptyScene())
+                            // would also drop the grid because
+                            // DEFAULT_VIEWPORT has no gridSize.
+                            editor.clear();
                           }
                         }}
                         disabled={!editor}
