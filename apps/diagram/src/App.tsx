@@ -30,7 +30,7 @@ const STORAGE_KEY = "oh-just-another-diagram-scene-v2";
 
 const seedScene = (): Scene => {
   let s = emptyScene();
-  s = { ...s, viewport: { ...s.viewport, gridSize: 20 } };
+  s = { ...s, viewport: { ...s.viewport, gridSize: DEFAULT_GRID_SIZE } };
   const templates: readonly Template[] = defaultRegistry.list();
   if (templates.length === 0) return s;
 
@@ -61,11 +61,26 @@ const seedScene = (): Scene => {
   return s;
 };
 
+const DEFAULT_GRID_SIZE = 20;
+
 const restoreScene = (): Scene => {
   try {
     const saved =
       typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    if (saved) return parseScene(saved);
+    if (saved) {
+      const parsed = parseScene(saved);
+      // Saves can come back without `gridSize`, which makes the grid
+      // invisible after reload. Force the default on restoration so
+      // the canvas always has a visible grid unless the user
+      // explicitly turned it off.
+      if (!parsed.viewport.gridSize) {
+        return {
+          ...parsed,
+          viewport: { ...parsed.viewport, gridSize: DEFAULT_GRID_SIZE },
+        };
+      }
+      return parsed;
+    }
   } catch (err) {
     console.warn("[diagram] stored scene unparseable, starting fresh", err);
     try {

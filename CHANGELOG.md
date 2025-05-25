@@ -667,3 +667,6 @@
 
 ## 0.34.8
 - MainMenu: horizontal Toggle (segmented control) for theme picker
+
+## 0.34.9
+- fix: restored scenes get the grid back
