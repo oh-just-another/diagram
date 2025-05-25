@@ -261,7 +261,75 @@ const Group = ({ title, children }: { title: string; children: ReactNode }) => (
   </div>
 );
 
+/**
+ * Horizontal segmented control inside a menu — a theme / language
+ * toggle. Renders `options` as a pill, highlighting the active one with
+ * the accent colour. The menu stays open after a click so the user can
+ * try several values without re-opening the dropdown.
+ */
+export interface MainMenuToggleProps<T extends string> {
+  readonly value: T;
+  readonly onChange: (next: T) => void;
+  readonly options: readonly { value: T; label: string; icon?: ReactNode }[];
+}
+
+const Toggle = <T extends string>({
+  value,
+  onChange,
+  options,
+}: MainMenuToggleProps<T>) => {
+  return (
+    <div
+      role="radiogroup"
+      style={{
+        display: "flex",
+        margin: "4px 8px 6px",
+        background: "var(--menu-divider, #2a2a2a)",
+        borderRadius: 6,
+        padding: 2,
+        gap: 2,
+      }}
+    >
+      {options.map((opt) => {
+        const active = opt.value === value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            title={opt.label}
+            aria-label={opt.label}
+            onClick={() => onChange(opt.value)}
+            style={{
+              flex: 1,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+              minHeight: 26,
+              padding: "0 8px",
+              background: active ? "var(--menu-bg, #1a1a1a)" : "transparent",
+              color: active ? "var(--text, #ddd)" : "var(--muted, #888)",
+              border: "none",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: active ? 600 : 400,
+              boxShadow: active ? "0 1px 2px rgba(0, 0, 0, 0.15)" : "none",
+              transition: "background 0.12s ease, color 0.12s ease",
+            }}
+          >
+            {opt.icon ?? opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 MainMenu.Item = Item;
 MainMenu.ItemLink = ItemLink;
 MainMenu.Separator = Separator;
 MainMenu.Group = Group;
+MainMenu.Toggle = Toggle;

@@ -664,3 +664,6 @@
 
 ## 0.34.7
 - fix: Reset canvas keeps the grid + light theme for legacy menus
+
+## 0.34.8
+- MainMenu: horizontal Toggle (segmented control) for theme picker

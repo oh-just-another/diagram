@@ -613,24 +613,15 @@ const EditorShell = ({
                     </MainMenu.Group>
                     <MainMenu.Separator />
                     <MainMenu.Group title="Theme">
-                      <MainMenu.Item
-                        active={theme === "light"}
-                        onClick={() => changeTheme("light")}
-                      >
-                        Light
-                      </MainMenu.Item>
-                      <MainMenu.Item
-                        active={theme === "dark"}
-                        onClick={() => changeTheme("dark")}
-                      >
-                        Dark
-                      </MainMenu.Item>
-                      <MainMenu.Item
-                        active={theme === "system"}
-                        onClick={() => changeTheme("system")}
-                      >
-                        System
-                      </MainMenu.Item>
+                      <MainMenu.Toggle<DiagramTheme>
+                        value={theme}
+                        onChange={changeTheme}
+                        options={[
+                          { value: "light", label: "Light", icon: "☀" },
+                          { value: "dark", label: "Dark", icon: "☾" },
+                          { value: "system", label: "System", icon: "⚙" },
+                        ]}
+                      />
                     </MainMenu.Group>
                     <MainMenu.Separator />
                     <MainMenu.Group title="Help">
