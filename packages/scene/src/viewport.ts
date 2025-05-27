@@ -2,6 +2,17 @@ import type { Transform, Vec2 } from "@oh-just-another/types";
 import { matrix } from "@oh-just-another/math";
 
 /**
+ * Visual style of the background grid (when `gridSize > 0`).
+ *   `"lines"` — classic ruled grid (default; matches a standard grid).
+ *   `"dots"`  — a dot at every grid intersection. Looks calmer for
+ *              free-form diagramming (standard style).
+ *
+ * Snap behaviour is identical between styles — only the paint
+ * differs.
+ */
+export type GridStyle = "lines" | "dots";
+
+/**
  * Camera over the world. Stored as pan/zoom/rotation rather than a raw matrix
  * because every UI control (zoom-to-fit, hotkeys, pinch) wants these axes
  * directly; the matrix form is derivable.
@@ -20,6 +31,12 @@ export interface Viewport {
    * the same value.
    */
   readonly gridSize?: number;
+  /**
+   * How the grid is painted. Default `"lines"` for backwards-compat;
+   * snap math doesn't read this field. Renderers fall back to lines
+   * when the field is missing.
+   */
+  readonly gridStyle?: GridStyle;
 }
 
 export const DEFAULT_VIEWPORT: Viewport = Object.freeze({

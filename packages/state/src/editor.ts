@@ -2313,6 +2313,29 @@ export class Editor {
  }
 
  /**
+  * Update the background-grid settings. Partial — fields that are
+  * omitted from `patch` keep their current value. Pass
+  * `{ size: 0 }` to hide the grid (and disable snap-to-grid).
+  *
+  * No-op when the resulting viewport is unchanged. Doesn't touch
+  * history — grid settings are view preferences, not undoable
+  * document edits.
+  */
+ setGrid(patch: { size?: number; style?: import("@oh-just-another/scene").GridStyle }): void {
+  const vp = this._scene.viewport;
+  const nextSize = patch.size ?? vp.gridSize;
+  const nextStyle = patch.style ?? vp.gridStyle;
+  if (nextSize === vp.gridSize && nextStyle === vp.gridStyle) return;
+  const nextViewport: typeof vp = {
+   ...vp,
+   ...(nextSize === undefined ? {} : { gridSize: nextSize }),
+   ...(nextStyle === undefined ? {} : { gridStyle: nextStyle }),
+  };
+  this._scene = { ...this._scene, viewport: nextViewport };
+  this.notify();
+ }
+
+ /**
   * Replace the entire scene (e.g. after `parseScene`). Clears history,
   * selection and any open gesture. Use to load a saved document.
   */

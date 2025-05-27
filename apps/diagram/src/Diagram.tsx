@@ -32,9 +32,10 @@ import {
   useDiagramOptional,
   useHelpDialogHotkey,
   usePalettePlacement,
+  useScene,
 } from "@oh-just-another/react-ui";
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
-import { emptyScene, type Scene } from "@oh-just-another/scene";
+import { emptyScene, type GridStyle, type Scene } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
@@ -464,6 +465,10 @@ const EditorShell = ({
   readonly changeTheme: (next: DiagramTheme) => void;
 }) => {
   const editor = useDiagramOptional();
+  // Subscribe to scene changes so the Grid toggle in MainMenu reads
+  // the latest viewport.gridSize / gridStyle. `useScene` is a thin
+  // selector hook — re-renders only on scene identity flips.
+  void useScene();
   const paletteDropHandlers = usePalettePlacement();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -620,6 +625,17 @@ const EditorShell = ({
                           { value: "light", label: "Light", icon: "☀" },
                           { value: "dark", label: "Dark", icon: "☾" },
                           { value: "system", label: "System", icon: "⚙" },
+                        ]}
+                      />
+                    </MainMenu.Group>
+                    <MainMenu.Group title="Grid">
+                      <MainMenu.Toggle<"lines" | "dots" | "off">
+                        value={gridSelection(editor)}
+                        onChange={(next) => applyGridSelection(editor, next)}
+                        options={[
+                          { value: "lines", label: "Lines", icon: "▦" },
+                          { value: "dots", label: "Dots", icon: "⋮⋮" },
+                          { value: "off", label: "Off", icon: "—" },
                         ]}
                       />
                     </MainMenu.Group>
@@ -843,4 +859,40 @@ const downloadPng = (editor: Editor): void => {
 const downloadSvg = (scene: Scene): void => {
   const svg = renderSceneToSvg(scene);
   downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "scene.svg");
+};
+
+// --- Grid toggle helpers ----------------------------------------------------
+
+const DEFAULT_GRID_SIZE = 20;
+
+/**
+ * Map the current viewport state to the segmented Grid toggle's
+ * value. `"off"` when the user hid the grid (gridSize 0 / unset);
+ * otherwise the stored gridStyle (default `"lines"`).
+ */
+const gridSelection = (editor: Editor | null): "lines" | "dots" | "off" => {
+  if (!editor) return "lines";
+  const vp = editor.scene.viewport;
+  if (!vp.gridSize || vp.gridSize <= 0) return "off";
+  return (vp.gridStyle ?? "lines") as "lines" | "dots";
+};
+
+/**
+ * Inverse — translate the toggle's value back into a `setGrid`
+ * call. Switching from "off" to lines/dots restores the default
+ * grid size so the user doesn't have to also re-enter it
+ * separately.
+ */
+const applyGridSelection = (
+  editor: Editor | null,
+  next: "lines" | "dots" | "off",
+): void => {
+  if (!editor) return;
+  if (next === "off") {
+    editor.setGrid({ size: 0 });
+    return;
+  }
+  const vp = editor.scene.viewport;
+  const size = vp.gridSize && vp.gridSize > 0 ? vp.gridSize : DEFAULT_GRID_SIZE;
+  editor.setGrid({ size, style: next as GridStyle });
 };

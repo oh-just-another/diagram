@@ -670,3 +670,6 @@
 
 ## 0.34.9
 - fix: restored scenes get the grid back
+
+## 0.34.10
+- Grid: dots style + MainMenu toggle (Lines / Dots / Off)

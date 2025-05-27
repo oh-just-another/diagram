@@ -79,6 +79,32 @@ export const renderGrid = (
 
   target.save();
   target.setTransform(getWorldToScreen(scene.viewport));
+
+  const style = scene.viewport.gridStyle ?? "lines";
+  if (style === "dots") {
+    // Dot at every (gridSize × gridSize) intersection. Dots sit on
+    // the same lattice as the lines style would draw, so snapping
+    // and hit-test math are unchanged. Major-cell dots are slightly
+    // larger so the eye still gets the every-10th hint.
+    target.setStroke(null);
+    const minorRadius = GRID_DOT_RADIUS_PX / zoom;
+    const majorRadius = (GRID_DOT_RADIUS_PX * GRID_MAJOR_DOT_RATIO) / zoom;
+    for (let x = minX; x <= maxX; x += gridSize) {
+      for (let y = minY; y <= maxY; y += gridSize) {
+        const major =
+          isMajor(x, gridSize, majorEvery) || isMajor(y, gridSize, majorEvery);
+        target.setFill(major ? majorStroke : minorStroke);
+        const r = major ? majorRadius : minorRadius;
+        target.beginPath();
+        target.rect(x - r, y - r, r * 2, r * 2);
+        target.fill();
+      }
+    }
+    target.restore();
+    return;
+  }
+
+  // --- "lines" path (default) -------------------------------------
   // Lines are 1 screen pixel — scale down by zoom so the stroke width
   // stays constant on screen.
   const lineWidth = 1 / zoom;
@@ -123,3 +149,12 @@ const isMajor = (coord: number, gridSize: number, majorEvery: number): boolean =
   const cellIndex = Math.round(coord / gridSize);
   return cellIndex % majorEvery === 0;
 };
+
+/**
+ * Dot radius in screen pixels for `gridStyle === "dots"`. Small
+ * enough to stay calm, big enough to read on a Retina display.
+ */
+const GRID_DOT_RADIUS_PX = 1.0;
+
+/** Major-cell dot is this much bigger than the minor one. */
+const GRID_MAJOR_DOT_RATIO = 1.8;
