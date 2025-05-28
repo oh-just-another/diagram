@@ -673,3 +673,6 @@
 
 ## 0.34.10
 - Grid: dots style + MainMenu toggle (Lines / Dots / Off)
+
+## 0.34.11
+- Grid dots: uniform modern-style lattice

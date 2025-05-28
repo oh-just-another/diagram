@@ -82,21 +82,18 @@ export const renderGrid = (
 
   const style = scene.viewport.gridStyle ?? "lines";
   if (style === "dots") {
-    // Dot at every (gridSize × gridSize) intersection. Dots sit on
-    // the same lattice as the lines style would draw, so snapping
-    // and hit-test math are unchanged. Major-cell dots are slightly
-    // larger so the eye still gets the every-10th hint.
+    // modern-style dot grid: identical dot at every (gridSize ×
+    // gridSize) intersection — no major/minor distinction, just an
+    // infinite lattice. Snap math sits on the same coordinates as
+    // the lines variant.
     target.setStroke(null);
-    const minorRadius = GRID_DOT_RADIUS_PX / zoom;
-    const majorRadius = (GRID_DOT_RADIUS_PX * GRID_MAJOR_DOT_RATIO) / zoom;
+    target.setFill(majorStroke);
+    const r = GRID_DOT_RADIUS_PX / zoom;
+    const d = r * 2;
     for (let x = minX; x <= maxX; x += gridSize) {
       for (let y = minY; y <= maxY; y += gridSize) {
-        const major =
-          isMajor(x, gridSize, majorEvery) || isMajor(y, gridSize, majorEvery);
-        target.setFill(major ? majorStroke : minorStroke);
-        const r = major ? majorRadius : minorRadius;
         target.beginPath();
-        target.rect(x - r, y - r, r * 2, r * 2);
+        target.rect(x - r, y - r, d, d);
         target.fill();
       }
     }
@@ -151,10 +148,9 @@ const isMajor = (coord: number, gridSize: number, majorEvery: number): boolean =
 };
 
 /**
- * Dot radius in screen pixels for `gridStyle === "dots"`. Small
- * enough to stay calm, big enough to read on a Retina display.
+ * Dot radius in screen pixels for `gridStyle === "dots"`. Constant
+ * across zoom levels (divided by `zoom` at use site). All dots
+ * share this radius — modern-style uniform lattice rather than the
+ * major/minor distinction the lines variant uses.
  */
 const GRID_DOT_RADIUS_PX = 1.0;
-
-/** Major-cell dot is this much bigger than the minor one. */
-const GRID_MAJOR_DOT_RATIO = 1.8;
