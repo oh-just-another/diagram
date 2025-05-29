@@ -676,3 +676,6 @@
 
 ## 0.34.11
 - Grid dots: uniform modern-style lattice
+
+## 0.34.12
+- Grid: modern-style multi-level rendering with opacity modulation
