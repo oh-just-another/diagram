@@ -92,18 +92,21 @@ export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
  *   (trackpad two-finger swipe). 1 = native pixel; lower than 1
  *   makes the wheel feel sluggish on high-DPI mice.
  * - `WHEEL_ZOOM_STEP` — multiplicative zoom factor used by the
- *   programmatic button-style zoom (`Editor.zoomIn` / `zoomOut`) and
- *   as the calibration point for `WHEEL_ZOOM_SENSITIVITY` below.
+ *   programmatic button-style zoom (`Editor.zoomIn` / `zoomOut`).
  *   `1.6 = +60% per call` — punchy single-step zoom.
- * - `WHEEL_ZOOM_SENSITIVITY` — controls how aggressively a wheel /
- *   pinch event maps `|deltaY|` to a zoom factor. The handler
- *   applies `factor = exp(-deltaY * SENSITIVITY)`, so the factor
- *   scales with the magnitude of the wheel/pinch delta. Tuned so
- *   that ~20 px of accumulated `|deltaY|` matches `WHEEL_ZOOM_STEP`
- *   — one mouse notch (`|deltaY| ≈ 100`) ≈ `WHEEL_ZOOM_STEP^5`,
- *   and one pinch frame (`|deltaY| ≈ 2–5`) ≈ 5–13 %. Increase the
- *   divisor for a calmer pinch; decrease for a snappier one.
- *   Default = `ln(WHEEL_ZOOM_STEP) / 20`.
+ * - `WHEEL_ZOOM_MAX_STEP` / `WHEEL_ZOOM_SPEED` — wheel-zoom
+ *   normalisation (`packages/editor/.../normalizeWheel.ts`).
+ *   Per event:
+ *
+ *     delta  = clamp(|deltaY|, WHEEL_ZOOM_MAX_STEP) * sign(deltaY)
+ *     factor = 1 − (delta * WHEEL_ZOOM_SPEED) / 100
+ *
+ *   The clamp tames mouse-wheel ratchets (Firefox / Chrome emit
+ *   `|deltaY|` 53 / 100 per notch — uncapped that yields a near-10×
+ *   jump). Trackpad pinches come through with small `|deltaY|`
+ *   (2–5) and bypass the clamp, so they stay smooth and granular.
+ *   Defaults: clamp at 10, speed 1 → ~10 % per mouse notch,
+ *   ~2 % per pinch frame.
  * - `MIN_ZOOM` / `MAX_ZOOM` — hard caps. Below MIN_ZOOM (very far
  *   out) culling/LOD save the frame; above MAX_ZOOM pixel-snapping
  *   artefacts appear.
@@ -116,7 +119,8 @@ export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
  */
 export const WHEEL_PAN_FACTOR = 1;
 export const WHEEL_ZOOM_STEP = 1.6;
-export const WHEEL_ZOOM_SENSITIVITY = Math.log(WHEEL_ZOOM_STEP) / 20;
+export const WHEEL_ZOOM_MAX_STEP = 10;
+export const WHEEL_ZOOM_SPEED = 1;
 export const MIN_ZOOM = 0.05;
 export const MAX_ZOOM = 32;
 

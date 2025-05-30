@@ -679,3 +679,6 @@
 
 ## 0.34.12
 - Grid: modern-style multi-level rendering with opacity modulation
+
+## 0.34.13
+- wheel zoom: modern-style normalisation (clamp 10, speed 1)

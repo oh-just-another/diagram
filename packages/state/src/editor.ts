@@ -145,7 +145,8 @@ import {
  DOUBLE_CLICK_TOLERANCE_PX,
  ISOLATION_DIM_OPACITY,
  WHEEL_PAN_FACTOR,
- WHEEL_ZOOM_SENSITIVITY,
+ WHEEL_ZOOM_MAX_STEP,
+ WHEEL_ZOOM_SPEED,
  WHEEL_ZOOM_STEP,
 } from "./constants.js";
 import { ALL_HANDLES, CORNER_HANDLES, HANDLE_HIT_SLOP, hitHandle } from "./handle.js";
@@ -2980,7 +2981,19 @@ export class Editor {
 
    const applyZoom = (): void => {
     if (ev.deltaY === 0) return;
-    const factor = Math.exp(-ev.deltaY * WHEEL_ZOOM_SENSITIVITY);
+    // modern-style normalisation
+    // (packages/editor/.../utils/normalizeWheel.ts):
+    // clamp the raw wheel `deltaY` to MAX_STEP so the harsh
+    // ratchet of a mouse wheel turns into a calm ~10 % step
+    // per notch, while trackpad pinch events — which arrive
+    // with `|deltaY|` of 2–5 — bypass the clamp and stay
+    // granular for smooth multi-frame zooms.
+    const clampedDelta =
+     Math.abs(ev.deltaY) > WHEEL_ZOOM_MAX_STEP
+      ? WHEEL_ZOOM_MAX_STEP * Math.sign(ev.deltaY)
+      : ev.deltaY;
+    const factor = 1 - (clampedDelta * WHEEL_ZOOM_SPEED) / 100;
+    if (factor <= 0) return;
     const currentZoom = this._scene.viewport.zoom;
     const nextZoom = clampZoom(currentZoom * factor);
     if (nextZoom === currentZoom) return;
