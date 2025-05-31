@@ -33,15 +33,17 @@
   --du-danger: #d93025;
 
   /* --- Sizing --- */
-  --du-radius: 8px;
-  --du-radius-sm: 4px;
-  --du-radius-lg: 12px;
+  --du-radius: 10px;
+  --du-radius-sm: 6px;
+  --du-radius-lg: 14px;
   --du-button-size: 36px;
-  --du-button-size-sm: 28px;
+  --du-button-size-sm: 32px;
   --du-icon-size: 18px;
   --du-gap: 8px;
   --du-gap-sm: 4px;
   --du-pad: 8px;
+  --du-pad-sm: 4px;
+  --du-hover-overlay: rgba(0, 0, 0, 0.05);
   --du-bar-inset: 12px;
   --du-z-canvas: 1;
   --du-z-ui: 100;
@@ -71,6 +73,7 @@
     --du-text-muted: #9a9a9a;
     --du-accent: #4285f4;
     --du-accent-hover: #5b96f5;
+    --du-hover-overlay: rgba(255, 255, 255, 0.06);
   }
 }
 
@@ -84,6 +87,7 @@
   --du-text-muted: #6b6b6b;
   --du-accent: #1a73e8;
   --du-accent-hover: #1765c9;
+  --du-hover-overlay: rgba(0, 0, 0, 0.05);
 }
 
 /* ------------------------------------------------------------------ */
@@ -121,6 +125,7 @@
   --du-text-muted: #9a9a9a;
   --du-accent: #4285f4;
   --du-accent-hover: #5b96f5;
+  --du-hover-overlay: rgba(255, 255, 255, 0.06);
 }
 
 /* ------------------------------------------------------------------ */
@@ -176,7 +181,11 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Icon button — square clickable, used in bars + groups.             */
+/* Icon button — square clickable. Two visual modes:                  */
+/*   1. Standalone (outside `du-button-group`): full pill with        */
+/*      surface, border, shadow.                                      */
+/*   2. Inside `du-button-group`: transparent surface, subtle radius, */
+/*      lets the group's pill chrome carry the framing.               */
 /* ------------------------------------------------------------------ */
 .du-icon-button {
   width: var(--du-button-size);
@@ -192,9 +201,10 @@
   font-size: 14px;
   line-height: 1;
   box-shadow: var(--du-ui-shadow);
-  transition: background 0.15s ease, transform 0.05s ease;
+  transition: background 0.12s ease, color 0.12s ease, transform 0.05s ease;
   padding: 0;
   outline: none;
+  user-select: none;
 }
 
 .du-icon-button:hover:not(:disabled) {
@@ -229,26 +239,35 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Button group — multiple buttons sharing one pill background.       */
+/* Button group — pill that wraps one or more IconButtons. Group      */
+/* carries the surface, border, shadow; the buttons inside drop       */
+/* their own chrome so the row reads as one cohesive control.         */
+/* Padding + gap match standard's tool bar feel.                    */
 /* ------------------------------------------------------------------ */
 .du-button-group {
   display: inline-flex;
+  align-items: center;
+  gap: var(--du-gap-sm);
   background: var(--du-ui-bg);
   border: 1px solid var(--du-ui-border);
   border-radius: var(--du-radius);
   box-shadow: var(--du-ui-shadow);
-  overflow: hidden;
+  padding: var(--du-pad-sm);
+  /* No `overflow: hidden` — a child popup (MainMenu dropdown) must
+     be able to render outside the group's bounds. */
 }
 
 .du-button-group > .du-icon-button {
   border: none;
   box-shadow: none;
-  border-radius: 0;
+  border-radius: var(--du-radius-sm);
   background: transparent;
+  width: var(--du-button-size-sm);
+  height: var(--du-button-size-sm);
 }
 
-.du-button-group > .du-icon-button + .du-icon-button {
-  border-left: 1px solid var(--du-ui-border);
+.du-button-group > .du-icon-button:hover:not(:disabled) {
+  background: var(--du-hover-overlay);
 }
 
 .du-button-group > .du-icon-button[aria-pressed="true"],

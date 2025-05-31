@@ -685,3 +685,6 @@
 
 ## 0.34.14
 - TopBar: unify all 3 zones as pill button-groups
+
+## 0.34.15
+- top bar: fix MainMenu popup + modern-style pill polish
