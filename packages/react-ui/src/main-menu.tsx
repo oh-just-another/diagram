@@ -85,19 +85,8 @@ export const MainMenu = ({
 
   const containerStyle: CSSProperties = {
     position: "relative",
-    display: "inline-block",
+    display: "inline-flex",
     ...style,
-  };
-
-  const triggerStyle: CSSProperties = {
-    background: open ? "var(--accent, #1a73e8)" : "var(--button-bg, #2a2a2a)",
-    color: open ? "var(--surface, #fff)" : "var(--text, #ddd)",
-    border: `1px solid ${open ? "var(--accent, #1a73e8)" : "var(--border, #3a3a3a)"}`,
-    borderRadius: 4,
-    padding: "6px 12px",
-    cursor: "pointer",
-    font: "inherit",
-    fontSize: 14,
   };
 
   const panelStyle: CSSProperties = {
@@ -105,11 +94,11 @@ export const MainMenu = ({
     top: "calc(100% + 6px)",
     left: 0,
     minWidth: 200,
-    background: "var(--panel, #1a1a1a)",
-    color: "var(--text, #ddd)",
-    border: "1px solid var(--border, #2a2a2a)",
+    background: "var(--menu-bg)",
+    color: "var(--menu-text)",
+    border: "1px solid var(--menu-border)",
     borderRadius: 6,
-    boxShadow: "0 6px 18px rgba(0, 0, 0, 0.35)",
+    boxShadow: "var(--du-ui-shadow)",
     padding: 4,
     zIndex: 900,
   };
@@ -118,11 +107,13 @@ export const MainMenu = ({
     <div ref={ref} className={className} style={containerStyle}>
       <button
         type="button"
+        className={`du-icon-button${open ? " is-active" : ""}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
+        aria-label="Main menu"
+        title="Main menu"
         onClick={() => setOpen((p) => !p)}
-        style={triggerStyle}
       >
         {trigger}
       </button>

@@ -74,15 +74,12 @@ export const Toolbar = ({ items = DEFAULT_TOOLBAR, style, className }: ToolbarPr
   const mode = useMode();
   const { canUndo, canRedo, undo, redo } = useHistory();
 
-  const containerStyle: CSSProperties = {
-    display: "flex",
-    gap: 6,
-    alignItems: "center",
-    ...style,
-  };
-
   return (
-    <div role="toolbar" className={className} style={containerStyle}>
+    <div
+      role="toolbar"
+      className={`du-button-group ${className ?? ""}`.trim()}
+      style={style}
+    >
       {items.map((item, i) => {
         switch (item.kind) {
           case "divider":
@@ -376,21 +373,16 @@ const ToolbarButton = ({
     onClick={onClick}
     disabled={disabled}
     title={title}
+    aria-label={title}
     aria-pressed={active}
-    className={className}
+    className={`du-icon-button${active ? " is-active" : ""}${className ? ` ${className}` : ""}`}
     style={{
-      // Theme-driven colors — host wires CSS vars (--accent, --button-bg,
-      // --text, --border) via data-theme="light|dark" on <html>. Fallback
-      // values preserve the dark-mode look when no theme is wired.
-      background: active ? "var(--accent, #1a3d6e)" : "var(--button-bg, #2a2a2a)",
-      color: active ? "var(--surface, #fff)" : "var(--text, #ddd)",
-      border: `1px solid ${active ? "var(--accent, #1a73e8)" : "var(--border, #3a3a3a)"}`,
-      borderRadius: 4,
-      padding: "6px 12px",
-      font: "inherit",
-      fontSize: 13,
-      cursor: disabled ? "not-allowed" : "pointer",
-      opacity: disabled ? 0.4 : 1,
+      // Toolbar items are wider than square — labels can be 1-2
+      // characters or short words. Match the IconButton height but
+      // let the width grow with the content.
+      width: "auto",
+      minWidth: "var(--du-button-size, 36px)",
+      padding: "0 8px",
       ...style,
     }}
   >
@@ -403,7 +395,7 @@ const ToolbarDivider = () => (
     style={{
       width: 1,
       height: TOOLBAR_SEPARATOR_HEIGHT,
-      background: "var(--divider, #333)",
+      background: "var(--du-ui-border, #333)",
       margin: "0 4px",
     }}
   />

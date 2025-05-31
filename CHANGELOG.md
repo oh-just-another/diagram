@@ -682,3 +682,6 @@
 
 ## 0.34.13
 - wheel zoom: modern-style normalisation (clamp 10, speed 1)
+
+## 0.34.14
+- TopBar: unify all 3 zones as pill button-groups

@@ -496,7 +496,21 @@ const EditorShell = ({
         {!hideTopBar && (
           <TopBar
             left={
-              <>
+              <ButtonGroup ariaLabel="Logo and main menu">
+                <span
+                  aria-label="Diagram"
+                  title="Diagram"
+                  className="du-icon-button"
+                  style={{
+                    minWidth: 36,
+                    padding: "0 10px",
+                    cursor: "default",
+                    fontWeight: 600,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  ⌗
+                </span>
                 {!hideMainMenu && (
                   <MainMenu>
                     <MainMenu.Group title="File">
@@ -660,7 +674,7 @@ const EditorShell = ({
                   </MainMenu>
                 )}
                 {renderTopBarLeft ? renderTopBarLeft() : null}
-              </>
+              </ButtonGroup>
             }
             center={
               !hideToolbar
@@ -670,7 +684,7 @@ const EditorShell = ({
                 : renderTopBarCenter?.()
             }
             right={
-              <>
+              <ButtonGroup ariaLabel="Top bar actions">
                 {renderTopBarRight ? renderTopBarRight() : null}
                 {!hideLibraryButton && (
                   <IconButton
@@ -681,7 +695,7 @@ const EditorShell = ({
                     ☰
                   </IconButton>
                 )}
-              </>
+              </ButtonGroup>
             }
           />
         )}
