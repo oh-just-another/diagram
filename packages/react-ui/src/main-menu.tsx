@@ -107,7 +107,7 @@ export const MainMenu = ({
     <div ref={ref} className={className} style={containerStyle}>
       <button
         type="button"
-        className={`du-icon-button${open ? " is-active" : ""}`}
+        className={`du-icon-button du-icon-button-flat${open ? " is-active" : ""}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}

@@ -238,6 +238,27 @@
   font-size: 12px;
 }
 
+/**
+ * Flat modifier — strips the standalone pill chrome (background,
+ * border, shadow) and adopts the same look as an IconButton sitting
+ * inside a `du-button-group`. Use this when a button has to live
+ * inside a container that the descendant selector can't reach (e.g.
+ * the MainMenu trigger, which is wrapped in a positioning <div> so
+ * its dropdown can be `position: absolute`).
+ */
+.du-icon-button-flat {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: var(--du-radius-sm);
+  width: var(--du-button-size-sm);
+  height: var(--du-button-size-sm);
+}
+
+.du-icon-button-flat:hover:not(:disabled) {
+  background: var(--du-hover-overlay);
+}
+
 /* ------------------------------------------------------------------ */
 /* Button group — pill that wraps one or more IconButtons. Group      */
 /* carries the surface, border, shadow; the buttons inside drop       */

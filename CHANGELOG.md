@@ -688,3 +688,6 @@
 
 ## 0.34.15
 - top bar: fix MainMenu popup + modern-style pill polish
+
+## 0.34.16
+- MainMenu trigger: flat styling to match toolbar buttons
