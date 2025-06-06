@@ -7,11 +7,6 @@ interface StatusVisual {
 }
 
 const VISUALS: Record<ConnectionStatus, StatusVisual> = {
-  local: {
-    dot: "#9ca3af",
-    label: "local channel",
-    title: "BroadcastChannel — same-origin tabs only",
-  },
   connecting: {
     dot: "#f59e0b",
     label: "connecting…",

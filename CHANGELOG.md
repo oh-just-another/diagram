@@ -691,3 +691,6 @@
 
 ## 0.34.16
 - MainMenu trigger: flat styling to match toolbar buttons
+
+## 0.35.0
+- feat: modern-style collab sessions

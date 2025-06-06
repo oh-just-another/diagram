@@ -14,6 +14,7 @@ import { Diagram, type DiagramAPI } from "./index";
 import { setupTemplates } from "./templates";
 import { useHotkeys } from "./hotkeys";
 import { useCollab } from "./collab";
+import { SessionButton } from "./SessionButton";
 import { Peers } from "./Peers";
 import { ConnectionBadge } from "./ConnectionBadge";
 
@@ -92,13 +93,18 @@ const restoreScene = (): Scene => {
   return seedScene();
 };
 
-const readRoomFromUrl = (): string | null => {
+const readRoomFromHash = (): string | null => {
   if (typeof window === "undefined") return null;
-  return new URLSearchParams(window.location.search).get("room");
+  const hash = window.location.hash.replace(/^#/, "");
+  const params = new URLSearchParams(hash);
+  return params.get("room");
 };
 
 export const App = () => {
-  const isCollab = useMemo(() => readRoomFromUrl() !== null, []);
+  // Read the hash once at mount — decides whether to seed an empty
+  // collab scene (room snapshot is authoritative) or restore the
+  // local autosave. Ongoing hash changes are handled by `useCollab`.
+  const isCollab = useMemo(() => readRoomFromHash() !== null, []);
   const initialScene = useMemo<Scene>(
     () => (isCollab ? seedScene() : restoreScene()),
     [isCollab],
@@ -109,7 +115,8 @@ export const App = () => {
   const [editor, setEditor] = useState<Editor | null>(null);
   const apiRef = useRef<DiagramAPI>(null);
   useHotkeys(editor);
-  const { room, awareness, status } = useCollab(editor);
+  const collab = useCollab(editor);
+  const { awareness, status } = collab;
 
   // Autosave on every scene mutation, microtask-debounced so a
   // burst of moves doesn't slam localStorage.
@@ -139,47 +146,19 @@ export const App = () => {
 
   const renderHeaderLeft = useCallback(
     () => (
-      <>
-        <h1
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: "var(--muted)",
-            margin: 0,
-            letterSpacing: 0.5,
-          }}
-        >
-          Diagram
-        </h1>
-        {room ? (
-          <span
-            style={{
-              fontSize: 11,
-              color: "var(--muted)",
-              padding: "2px 8px",
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-            }}
-            title="Open this URL in another tab to test real-time collaboration"
-          >
-            room: <code>{room}</code>
-          </span>
-        ) : (
-          <a
-            href="?room=demo"
-            style={{
-              fontSize: 11,
-              color: "var(--muted)",
-              textDecoration: "none",
-            }}
-            title="Join the demo collab room"
-          >
-            + join collab room
-          </a>
-        )}
-      </>
+      <h1
+        style={{
+          fontSize: 13,
+          fontWeight: 500,
+          color: "var(--muted)",
+          margin: 0,
+          letterSpacing: 0.5,
+        }}
+      >
+        Diagram
+      </h1>
     ),
-    [room],
+    [],
   );
 
   const renderHeaderRight = useCallback(
@@ -187,9 +166,10 @@ export const App = () => {
       <>
         {status ? <ConnectionBadge status={status} /> : null}
         <Peers awareness={awareness} />
+        <SessionButton collab={collab} />
       </>
     ),
-    [status, awareness],
+    [status, awareness, collab],
   );
 
   return (

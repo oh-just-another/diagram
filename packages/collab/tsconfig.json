@@ -4,7 +4,11 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
-    "noEmit": true
+    "noEmit": true,
+    // WebCrypto types for `encryption.ts` (`crypto.subtle`, `CryptoKey`,
+    // `btoa`/`atob`). The same Web Crypto API ships in browsers and
+    // modern Node (20+); this just exposes the type bindings.
+    "lib": ["ES2022", "DOM"]
   },
   "include": ["src/**/*", "tests/**/*"],
   "exclude": ["dist", "node_modules"]

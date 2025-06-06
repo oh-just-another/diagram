@@ -1,6 +1,6 @@
 {
   "name": "diagram",
-  "version": "0.34.16",
+  "version": "0.35.0",
   "private": true,
   "description": "Monorepo for the diagram library \u2014",
   "type": "module",
@@ -22,6 +22,8 @@
     "new-package": "node scripts/new-package.mjs",
     "render:svg": "vite-node scripts/render-svg.ts",
     "build:wasm": "bash scripts/build-wasm.sh",
+    "dev": "pnpm --filter @oh-just-another/diagram dev",
+    "dev:collab": "concurrently -k -n diagram,relay -c blue,yellow \"pnpm --filter @oh-just-another/diagram dev\" \"pnpm --filter @oh-just-another/relay dev\"",
     "prepare": "lefthook install"
   },
   "devDependencies": {
@@ -31,6 +33,7 @@
     "@typescript-eslint/eslint-plugin": "^8.18.1",
     "@typescript-eslint/parser": "^8.18.1",
     "@vitest/coverage-v8": "^2.1.8",
+    "concurrently": "^9.2.1",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
     "globals": "^15.14.0",

@@ -46,7 +46,24 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    // `0.0.0.0` so the dev server is reachable from other devices on the
+    // local network: a peer opens `http://<host-local-ip>:5174` in their
+    // browser and lands on the same `<DiagramShell>`.
+    host: "0.0.0.0",
     fs: { allow: [path.resolve(here, "../..")] },
+    // Reverse-proxy `/relay` → local relay server. Keeps the WS connection
+    // same-origin so there is no CORS / mixed-content issue when the page is
+    // served over `http://` and the relay over `ws://`, and a remote peer
+    // opening `http://<host-ip>:5174` reaches the relay on the host machine
+    // without any setup of their own. Hosts that point at an external relay
+    // set `VITE_RELAY_URL=ws(s)://...` and the client bypasses the proxy.
+    proxy: {
+      "/relay": {
+        target: "ws://localhost:1234",
+        ws: true,
+        rewrite: (p) => p.replace(/^\/relay/, ""),
+      },
+    },
   },
   build: { outDir: "dist", sourcemap: true, emptyOutDir: true },
   optimizeDeps: {

@@ -18,3 +18,16 @@ export { BranchDoc } from "./branch-doc.js";
 
 // Y.UndoManager-based history backend.
 export { YjsHistory, type YjsHistoryOptions } from "./yjs-history.js";
+
+// Client-side AES-GCM for blind-relay collab.
+export {
+  generateRoomKey,
+  importRoomKey,
+  EncryptedTransport,
+  type RoomCredentials,
+} from "./encryption.js";
+export {
+  ROOM_ID_BYTES,
+  ENCRYPTION_KEY_BITS,
+  ENCRYPTION_IV_BYTES,
+} from "./constants.js";
