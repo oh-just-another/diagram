@@ -1,10 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Playwright config — boots the demo (`apps/demo`) and the optional
- * collab relay (`apps/relay`) as web servers, then runs the suite
- * against the demo URL. Chromium-only by default; CI matrix flips on
- * firefox / webkit via `--project=...`.
+ * Playwright config — boots the diagram app (`apps/diagram`) as the web
+ * server, then runs the suite against the dev URL. Chromium-only by
+ * default; the CI matrix enables firefox / webkit via `--project=...`.
  */
 export default defineConfig({
   testDir: "./tests",

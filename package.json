@@ -1,6 +1,6 @@
 {
   "name": "diagram",
-  "version": "0.35.0",
+  "version": "0.35.1",
   "private": true,
   "description": "Monorepo for the diagram library \u2014",
   "type": "module",
@@ -23,7 +23,7 @@
     "render:svg": "vite-node scripts/render-svg.ts",
     "build:wasm": "bash scripts/build-wasm.sh",
     "dev": "pnpm --filter @oh-just-another/diagram dev",
-    "dev:collab": "concurrently -k -n diagram,relay -c blue,yellow \"pnpm --filter @oh-just-another/diagram dev\" \"pnpm --filter @oh-just-another/relay dev\"",
+    "dev:collab": "concurrently -k -n diagram,relay -c blue,yellow \"pnpm --filter @oh-just-another/diagram dev\" \"bash scripts/start-diagram-collab.sh\"",
     "prepare": "lefthook install"
   },
   "devDependencies": {

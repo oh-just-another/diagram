@@ -694,3 +694,6 @@
 
 ## 0.35.0
 - feat: modern-style collab sessions
+
+## 0.35.1
+- remove apps/relay — collab server lives in diagram-collab now

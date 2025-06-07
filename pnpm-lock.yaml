@@ -160,22 +160,6 @@ importers:
         specifier: ^1.49.1
         version: 1.60.0
 
-  apps/relay:
-    dependencies:
-      ws:
-        specifier: ^8.18.0
-        version: 8.20.1
-    devDependencies:
-      '@types/node':
-        specifier: ^22.10.0
-        version: 22.19.19
-      '@types/ws':
-        specifier: ^8.5.13
-        version: 8.18.1
-      tsx:
-        specifier: ^4.19.2
-        version: 4.22.3
-
   packages/collab:
     dependencies:
       '@oh-just-another/history':
@@ -1658,9 +1642,6 @@ packages:
 
   '@types/svg-to-pdfkit@0.1.4':
     resolution: {integrity: sha512-l6rxgkz9ZYfTwOxdpln+xa7+Qlj5/h+FFP8r/G/Jyqg7LlgxH1mQrXADIN45orH9JBXzoUuWz0FusYHJLPKrbw==}
-
-  '@types/ws@8.18.1':
-    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@typescript-eslint/eslint-plugin@8.59.4':
     resolution: {integrity: sha512-PegsU+XfyJJNjd4+u/k6f9yTyp0lEXXiPopUNobZcIAUJFGICFLN+sP0Rb3JehVmiij1Ph0dFGYqODoRo/2+6A==}
@@ -4612,10 +4593,6 @@ snapshots:
     dependencies:
       '@types/pdfkit': 0.13.9
 
-  '@types/ws@8.18.1':
-    dependencies:
-      '@types/node': 22.19.19
-
   '@typescript-eslint/eslint-plugin@8.59.4(@typescript-eslint/parser@8.59.4(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)(typescript@5.9.3)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
@@ -5234,6 +5211,7 @@ snapshots:
       '@esbuild/win32-arm64': 0.28.0
       '@esbuild/win32-ia32': 0.28.0
       '@esbuild/win32-x64': 0.28.0
+    optional: true
 
   escalade@3.2.0: {}
 
@@ -6503,6 +6481,7 @@ snapshots:
       esbuild: 0.28.0
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   type-check@0.4.0:
     dependencies:
