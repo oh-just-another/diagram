@@ -1,6 +1,10 @@
 import type { CSSProperties } from "react";
+import { Upload, X } from "lucide-react";
 import { Palette } from "./palette.js";
 import { IconButton } from "./icon-button.js";
+
+const SIDE_PANEL_ICON_SIZE = 14;
+const SIDE_PANEL_ICON_STROKE = 1.75;
 
 /**
  * Slide-in side library panel — modern-style replacement for the
@@ -41,11 +45,11 @@ export const LibraryPanel = ({
         <div style={{ display: "inline-flex", gap: 4 }}>
           {onImport ? (
             <IconButton label="Import templates" size="sm" onClick={onImport}>
-              ↥
+              <Upload size={SIDE_PANEL_ICON_SIZE} strokeWidth={SIDE_PANEL_ICON_STROKE} />
             </IconButton>
           ) : null}
           <IconButton label="Close library" size="sm" onClick={onClose}>
-            ×
+            <X size={SIDE_PANEL_ICON_SIZE} strokeWidth={SIDE_PANEL_ICON_STROKE} />
           </IconButton>
         </div>
       </header>

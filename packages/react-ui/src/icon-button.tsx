@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { Tooltip } from "./tooltip.js";
 
 /**
  * Square clickable button — the base primitive for the top / bottom
@@ -8,10 +9,17 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
  * Active state is signalled through `aria-pressed` (the CSS hooks onto
  * `[aria-pressed="true"]`). For tools that toggle on/off pass
  * `active={true}`; for momentary actions omit it.
+ *
+ * The tooltip uses the shared `<TooltipProvider>` singleton so a second
+ * hover within the open-delay window skips the delay.
  */
 export interface IconButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
-  /** Accessible name + native tooltip. Required — every icon-only button needs it. */
+  /**
+   * Accessible name and tooltip text. Required. Renders through
+   * `<Tooltip>` (singleton) when a `<TooltipProvider>` is mounted; falls
+   * back to native `title=` otherwise.
+   */
   readonly label: string;
   /** Toggle state: maps to `aria-pressed` and a CSS `is-active` class. */
   readonly active?: boolean;
@@ -37,15 +45,16 @@ export const IconButton = ({
     .filter(Boolean)
     .join(" ");
   return (
-    <button
-      type="button"
-      className={cls}
-      aria-label={label}
-      title={label}
-      aria-pressed={active === undefined ? undefined : active}
-      {...rest}
-    >
-      {children}
-    </button>
+    <Tooltip content={label}>
+      <button
+        type="button"
+        className={cls}
+        aria-label={label}
+        aria-pressed={active === undefined ? undefined : active}
+        {...rest}
+      >
+        {children}
+      </button>
+    </Tooltip>
   );
 };

@@ -697,3 +697,6 @@
 
 ## 0.35.1
 - remove apps/relay — collab server lives in diagram-collab now
+
+## 0.36.0
+- UI polish: Lucide icons, tonal active state, singleton tooltip

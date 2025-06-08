@@ -1,8 +1,29 @@
 import type { CSSProperties, ReactNode } from "react";
+import {
+  Circle,
+  Hand,
+  Lock,
+  MousePointer2,
+  PenLine,
+  Redo2,
+  Slash,
+  Square,
+  Undo2,
+} from "lucide-react";
 import type { Editor, Mode } from "@oh-just-another/state";
 import { useEditorSelector } from "./context.js";
 import { useDiagramOptional, useHistory, useMode } from "./hooks.js";
 import { TOOLBAR_SEPARATOR_HEIGHT } from "./constants.js";
+import { Tooltip } from "./tooltip.js";
+
+/**
+ * Pixel size for icons rendered inside `du-icon-button` (32-px
+ * inside-group footprint). Lucide draws crisp at 16 px stroke-width
+ * 1.75.
+ */
+const TOOLBAR_ICON_SIZE = 16;
+const TOOLBAR_ICON_STROKE = 1.75;
+const iconProps = { size: TOOLBAR_ICON_SIZE, strokeWidth: TOOLBAR_ICON_STROKE } as const;
 
 /**
  * Single toolbar item. Builtin `mode` items wire to `editor.setMode`;
@@ -49,18 +70,17 @@ export type ToolbarItem =
 
 /** Convenience default — modes + tool-lock + undo/redo + zoom widget. */
 export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
-  { kind: "mode", mode: "select", label: "Select", title: "Select (V)" },
-  { kind: "mode", mode: "hand", label: "Hand", title: "Pan (H)" },
-  { kind: "mode", mode: "draw-rect", label: "Rectangle", title: "Rectangle (R)" },
-  { kind: "mode", mode: "draw-ellipse", label: "Ellipse", title: "Ellipse (E)" },
-  { kind: "mode", mode: "draw-edge", label: "Edge", title: "Edge (L)" },
-  { kind: "mode", mode: "brush", label: "Brush", title: "Brush (B)" },
-  { kind: "tool-lock", label: "🔒", title: "Lock current tool (stay in mode after each create)" },
+  { kind: "mode", mode: "select", label: <MousePointer2 {...iconProps} />, title: "Select (V)" },
+  { kind: "mode", mode: "hand", label: <Hand {...iconProps} />, title: "Pan (H)" },
+  { kind: "mode", mode: "draw-rect", label: <Square {...iconProps} />, title: "Rectangle (R)" },
+  { kind: "mode", mode: "draw-ellipse", label: <Circle {...iconProps} />, title: "Ellipse (E)" },
+  { kind: "mode", mode: "draw-edge", label: <Slash {...iconProps} />, title: "Edge (L)" },
+  { kind: "mode", mode: "brush", label: <PenLine {...iconProps} />, title: "Brush (B)" },
+  { kind: "tool-lock", label: <Lock {...iconProps} />, title: "Lock current tool (stay in mode after each create)" },
   { kind: "divider" },
-  { kind: "undo", label: "Undo" },
-  { kind: "redo", label: "Redo" },
+  { kind: "undo", label: <Undo2 {...iconProps} /> },
+  { kind: "redo", label: <Redo2 {...iconProps} /> },
   { kind: "divider" },
-  { kind: "zoom" },
 ];
 
 export interface ToolbarProps {
@@ -123,18 +143,6 @@ export const Toolbar = ({ items = DEFAULT_TOOLBAR, style, className }: ToolbarPr
                 {item.label ?? "Redo"}
               </ToolbarButton>
             );
-          case "zoom":
-            return <ZoomWidget key={i} />;
-          case "zoom-in":
-            return <ZoomInButton key={i} label={item.label} />;
-          case "zoom-out":
-            return <ZoomOutButton key={i} label={item.label} />;
-          case "zoom-reset":
-            return <ResetZoomButton key={i} label={item.label} />;
-          case "zoom-fit":
-            return <ZoomToFitButton key={i} label={item.label} />;
-          case "zoom-display":
-            return <ZoomDisplay key={i} />;
           case "tool-lock":
             return (
               <ToolLockButton
@@ -367,28 +375,32 @@ const ToolbarButton = ({
   title,
   className,
   style,
-}: ToolbarButtonProps) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    title={title}
-    aria-label={title}
-    aria-pressed={active}
-    className={`du-icon-button${active ? " is-active" : ""}${className ? ` ${className}` : ""}`}
-    style={{
-      // Toolbar items are wider than square — labels can be 1-2
-      // characters or short words. Match the IconButton height but
-      // let the width grow with the content.
-      width: "auto",
-      minWidth: "var(--du-button-size, 36px)",
-      padding: "0 8px",
-      ...style,
-    }}
-  >
-    {children}
-  </button>
-);
+}: ToolbarButtonProps) => {
+  const btn = (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={title}
+      aria-pressed={active}
+      className={`du-icon-button${active ? " is-active" : ""}${className ? ` ${className}` : ""}`}
+      style={{
+        // Toolbar items are wider than square — labels can be 1-2
+        // characters or short words. Match the IconButton height but
+        // let the width grow with the content.
+        width: "auto",
+        minWidth: "var(--du-button-size, 36px)",
+        padding: "0 8px",
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+  // Wrap in Tooltip when there's text to show. Disabled / empty labels go
+  // raw — the shared-state tooltip would otherwise flash an empty box.
+  return title ? <Tooltip content={title}>{btn}</Tooltip> : btn;
+};
 
 const ToolbarDivider = () => (
   <span

@@ -117,6 +117,12 @@ export {
 } from "./main-menu.js";
 export { Modal, type ModalProps } from "./modal.js";
 export { Sidebar, type SidebarProps } from "./sidebar.js";
+export {
+  Tooltip,
+  TooltipProvider,
+  type TooltipProps,
+  type TooltipSide,
+} from "./tooltip.js";
 
 // Tunable layout sizes for the built-in panels and toolbar.
 export {

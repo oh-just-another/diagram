@@ -184,7 +184,7 @@ const computeViewportWorldRect = (
  * Single grid colour used for every level. The level distinction is
  * carried by opacity, not hue — keeps the grid quiet at every zoom.
  */
-const DEFAULT_GRID_COLOR = "#888";
+const DEFAULT_GRID_COLOR = "#c8c8c8";
 
 /**
  * Below this on-screen spacing a level paints nothing — denser

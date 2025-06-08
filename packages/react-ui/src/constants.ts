@@ -42,3 +42,29 @@ export const TOAST_DEFAULT_DURATION_MS = 3_000;
  * still respects the viewport via `min(this, 100vw - 64px)`.
  */
 export const HELP_DIALOG_MAX_WIDTH_PX = 720;
+
+/**
+ * Delay before a `<Tooltip>` opens on first hover (ms). Short enough to
+ * feel responsive on an intentional pause, long enough not to flash on a
+ * pointer that's just passing through.
+ */
+export const TOOLTIP_OPEN_DELAY_MS = 600;
+
+/**
+ * Window after a tooltip closes during which the next hover opens the next
+ * tooltip instantly — lets users scan a toolbar without waiting for each hint.
+ */
+export const TOOLTIP_SKIP_DELAY_MS = 600;
+
+/**
+ * Grace period before a tooltip actually hides after pointerleave.
+ * Small value smooths over pointer jitter at the edge of the
+ * trigger without letting stale hints linger.
+ */
+export const TOOLTIP_HIDE_GRACE_MS = 80;
+
+/**
+ * Distance in CSS pixels between the trigger edge and the tooltip
+ * box on the side specified by the `side` prop.
+ */
+export const TOOLTIP_OFFSET_PX = 6;

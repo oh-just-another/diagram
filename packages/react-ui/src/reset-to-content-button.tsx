@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { LocateFixed } from "lucide-react";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import type { Bounds } from "@oh-just-another/types";
 import {
@@ -6,6 +7,10 @@ import {
   getShapeWorldBounds,
 } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene } from "./hooks.js";
+
+/** Pill-button icon footprint — matches BottomBar density. */
+const PILL_ICON_SIZE = 14;
+const PILL_ICON_STROKE = 1.75;
 
 /**
  * Pill button that runs `editor.zoomToFit()` — only renders when the
@@ -27,7 +32,7 @@ export const ResetToContentButton = () => {
       onClick={() => editor.zoomToFit()}
       title="Reset view to fit all content"
     >
-      <span aria-hidden>↺</span>
+      <LocateFixed size={PILL_ICON_SIZE} strokeWidth={PILL_ICON_STROKE} aria-hidden />
       <span>Back to content</span>
     </button>
   );

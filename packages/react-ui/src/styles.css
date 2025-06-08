@@ -32,6 +32,14 @@
   --du-accent-hover: #1765c9;
   --du-danger: #d93025;
 
+  /* --- Selected (tonal, modern-style) --- */
+  /* Active toolbar / icon buttons get a *muted* tonal fill so they
+     read as "this state is selected" without hijacking the eye like
+     a saturated accent fill would. The icon switches to the accent
+     hue, the background stays close to the surface. */
+  --du-selected-bg: #e0eaff;
+  --du-selected-fg: #1a4ccc;
+
   /* --- Sizing --- */
   --du-radius: 10px;
   --du-radius-sm: 6px;
@@ -74,6 +82,8 @@
     --du-accent: #4285f4;
     --du-accent-hover: #5b96f5;
     --du-hover-overlay: rgba(255, 255, 255, 0.06);
+    --du-selected-bg: rgba(66, 133, 244, 0.18);
+    --du-selected-fg: #8ab4ff;
   }
 }
 
@@ -88,6 +98,8 @@
   --du-accent: #1a73e8;
   --du-accent-hover: #1765c9;
   --du-hover-overlay: rgba(0, 0, 0, 0.05);
+  --du-selected-bg: #e0eaff;
+  --du-selected-fg: #1a4ccc;
 }
 
 /* ------------------------------------------------------------------ */
@@ -126,6 +138,8 @@
   --du-accent: #4285f4;
   --du-accent-hover: #5b96f5;
   --du-hover-overlay: rgba(255, 255, 255, 0.06);
+  --du-selected-bg: rgba(66, 133, 244, 0.18);
+  --du-selected-fg: #8ab4ff;
 }
 
 /* ------------------------------------------------------------------ */
@@ -227,9 +241,16 @@
 
 .du-icon-button[aria-pressed="true"],
 .du-icon-button.is-active {
-  background: var(--du-accent);
-  color: var(--du-text-on-accent);
-  border-color: transparent;
+  background: var(--du-selected-bg);
+  color: var(--du-selected-fg);
+  border-color: var(--du-selected-bg);
+}
+
+.du-icon-button[aria-pressed="true"]:hover:not(:disabled),
+.du-icon-button.is-active:hover:not(:disabled) {
+  /* Slight tint shift on hover — keeps the "selected" cue but
+     acknowledges the cursor. Same hue family, marginally darker. */
+  background: color-mix(in srgb, var(--du-selected-bg) 90%, var(--du-text) 10%);
 }
 
 .du-icon-button-sm {
@@ -293,8 +314,13 @@
 
 .du-button-group > .du-icon-button[aria-pressed="true"],
 .du-button-group > .du-icon-button.is-active {
-  background: var(--du-accent);
-  color: var(--du-text-on-accent);
+  background: var(--du-selected-bg);
+  color: var(--du-selected-fg);
+}
+
+.du-button-group > .du-icon-button[aria-pressed="true"]:hover:not(:disabled),
+.du-button-group > .du-icon-button.is-active:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--du-selected-bg) 90%, var(--du-text) 10%);
 }
 
 /* ------------------------------------------------------------------ */
@@ -371,4 +397,21 @@
 
 .du-pill-button:active {
   transform: scale(0.96);
+}
+
+/* ------------------------------------------------------------------ */
+/* Tooltip — singleton popup rendered via portal by <TooltipProvider>.*/
+/* Pointer-events-none so it never blocks hover on neighbour buttons. */
+/* ------------------------------------------------------------------ */
+.du-tooltip {
+  background: var(--du-text);
+  color: var(--du-ui-bg-solid);
+  padding: 4px 8px;
+  border-radius: var(--du-radius-sm);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: var(--du-ui-shadow);
+  font-family: inherit;
+  max-width: 260px;
 }

@@ -9,6 +9,11 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { Menu as MenuIcon } from "lucide-react";
+
+/** Pixel size for the trigger icon — matches the toolbar tool buttons. */
+const TRIGGER_ICON_SIZE = 16;
+const TRIGGER_ICON_STROKE = 1.75;
 
 /**
  * Composable top-left dropdown menu. The root `<MainMenu>` renders a
@@ -49,7 +54,7 @@ export interface MainMenuProps {
 
 export const MainMenu = ({
   children,
-  trigger = "≡",
+  trigger = <MenuIcon size={TRIGGER_ICON_SIZE} strokeWidth={TRIGGER_ICON_STROKE} />,
   className,
   style,
 }: MainMenuProps) => {
@@ -156,9 +161,15 @@ export interface MainMenuItemProps {
    * which option is currently active.
    */
   readonly active?: boolean;
+  /**
+   * Optional leading icon rendered before the label. Sized to the same
+   * 14×14 footprint as the active-check column so the columns stay
+   * aligned across mixed icon / no-icon items.
+   */
+  readonly icon?: ReactNode;
 }
 
-const Item = ({ children, onClick, shortcut, disabled, active }: MainMenuItemProps) => {
+const Item = ({ children, onClick, shortcut, disabled, active, icon }: MainMenuItemProps) => {
   const { close } = useMenuCtx();
   return (
     <button
@@ -180,16 +191,19 @@ const Item = ({ children, onClick, shortcut, disabled, active }: MainMenuItemPro
         gap: 12,
       }}
     >
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
         <span
           aria-hidden
           style={{
             width: 14,
-            display: "inline-block",
-            color: "var(--du-accent, #1a73e8)",
+            height: 14,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: active ? "var(--du-accent, #1a73e8)" : "var(--du-text-muted, #888)",
           }}
         >
-          {active ? "✓" : ""}
+          {active ? "✓" : icon ?? ""}
         </span>
         {children}
       </span>

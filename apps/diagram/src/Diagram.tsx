@@ -10,6 +10,32 @@ import {
   type ReactNode,
 } from "react";
 import {
+  Clipboard,
+  Copy,
+  Delete,
+  Download,
+  FileDown,
+  FileUp,
+  Grid3x3,
+  Grip,
+  HelpCircle,
+  ImageDown,
+  Library as LibraryIcon,
+  Maximize,
+  Minus,
+  Monitor,
+  Moon,
+  MousePointer,
+  Plus,
+  Redo2,
+  RotateCcw,
+  Scissors,
+  Sun,
+  Undo2,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
+import {
   BottomBar,
   ButtonGroup,
   ContextMenu,
@@ -27,6 +53,7 @@ import {
   TextEditorOverlay,
   ToastHost,
   Toolbar,
+  TooltipProvider,
   TopBar,
   UILayer,
   useDiagramOptional,
@@ -34,6 +61,21 @@ import {
   usePalettePlacement,
   useScene,
 } from "@oh-just-another/react-ui";
+
+/**
+ * Lucide icon sizing — `MENU_ICON_SIZE` is for in-row icons of
+ * `MainMenu.Item`, `TOGGLE_ICON_SIZE` is for the segmented Theme /
+ * Grid toggles, `BUTTON_ICON_SIZE` is for `IconButton` slot
+ * children (library, zoom, fit). All share `BUTTON_ICON_STROKE`
+ * for visual consistency with the toolbar.
+ */
+const MENU_ICON_SIZE = 14;
+const TOGGLE_ICON_SIZE = 14;
+const BUTTON_ICON_SIZE = 16;
+const BUTTON_ICON_STROKE = 1.75;
+const menuIcon = { size: MENU_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
+const toggleIcon = { size: TOGGLE_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
+const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
 import { emptyScene, type GridStyle, type Scene } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
@@ -365,6 +407,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
 
   return (
     <ToastHost>
+      <TooltipProvider>
       <div
         className={className}
         data-diagram-root
@@ -411,6 +454,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
           />
         </DiagramRoot>
       </div>
+      </TooltipProvider>
     </ToastHost>
   );
 });
@@ -514,28 +558,35 @@ const EditorShell = ({
                 {!hideMainMenu && (
                   <MainMenu>
                     <MainMenu.Group title="File">
-                      <MainMenu.Item onClick={() => openSceneFile(editor)}>
+                      <MainMenu.Item
+                        icon={<FileUp {...menuIcon} />}
+                        onClick={() => openSceneFile(editor)}
+                      >
                         Open…
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<FileDown {...menuIcon} />}
                         onClick={() => editor && downloadScene(editor.scene)}
                         disabled={!editor}
                       >
                         Save as JSON
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<ImageDown {...menuIcon} />}
                         onClick={() => editor && downloadPng(editor)}
                         disabled={!editor}
                       >
                         Export as PNG
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<Download {...menuIcon} />}
                         onClick={() => editor && downloadSvg(editor.scene)}
                         disabled={!editor}
                       >
                         Export as SVG
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<RotateCcw {...menuIcon} />}
                         onClick={() => {
                           if (!editor) return;
                           if (
@@ -557,6 +608,7 @@ const EditorShell = ({
                     <MainMenu.Separator />
                     <MainMenu.Group title="Edit">
                       <MainMenu.Item
+                        icon={<Undo2 {...menuIcon} />}
                         shortcut="⌘Z"
                         onClick={() => editor?.undo()}
                         disabled={!editor}
@@ -564,6 +616,7 @@ const EditorShell = ({
                         Undo
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<Redo2 {...menuIcon} />}
                         shortcut="⇧⌘Z"
                         onClick={() => editor?.redo()}
                         disabled={!editor}
@@ -571,6 +624,7 @@ const EditorShell = ({
                         Redo
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<Scissors {...menuIcon} />}
                         shortcut="⌘X"
                         onClick={() => editor?.cutSelected()}
                         disabled={!editor}
@@ -578,6 +632,7 @@ const EditorShell = ({
                         Cut
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<Copy {...menuIcon} />}
                         shortcut="⌘C"
                         onClick={() => editor?.copySelected()}
                         disabled={!editor}
@@ -585,6 +640,7 @@ const EditorShell = ({
                         Copy
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<Clipboard {...menuIcon} />}
                         shortcut="⌘V"
                         onClick={() => editor?.paste()}
                         disabled={!editor}
@@ -592,6 +648,7 @@ const EditorShell = ({
                         Paste
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<MousePointer {...menuIcon} />}
                         shortcut="⌘A"
                         onClick={() => editor?.selectAll()}
                         disabled={!editor}
@@ -599,6 +656,7 @@ const EditorShell = ({
                         Select all
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<Delete {...menuIcon} />}
                         shortcut="⌫"
                         onClick={() => editor?.deleteSelected()}
                         disabled={!editor}
@@ -609,6 +667,7 @@ const EditorShell = ({
                     <MainMenu.Separator />
                     <MainMenu.Group title="View">
                       <MainMenu.Item
+                        icon={<Maximize {...menuIcon} />}
                         shortcut="⇧F"
                         onClick={() => editor?.zoomToFit()}
                         disabled={!editor}
@@ -616,6 +675,7 @@ const EditorShell = ({
                         Fit to screen
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<ZoomIn {...menuIcon} />}
                         shortcut="⌘+"
                         onClick={() => editor?.zoomIn()}
                         disabled={!editor}
@@ -623,6 +683,7 @@ const EditorShell = ({
                         Zoom in
                       </MainMenu.Item>
                       <MainMenu.Item
+                        icon={<ZoomOut {...menuIcon} />}
                         shortcut="⌘−"
                         onClick={() => editor?.zoomOut()}
                         disabled={!editor}
@@ -636,9 +697,9 @@ const EditorShell = ({
                         value={theme}
                         onChange={changeTheme}
                         options={[
-                          { value: "light", label: "Light", icon: "☀" },
-                          { value: "dark", label: "Dark", icon: "☾" },
-                          { value: "system", label: "System", icon: "⚙" },
+                          { value: "light", label: "Light", icon: <Sun {...toggleIcon} /> },
+                          { value: "dark", label: "Dark", icon: <Moon {...toggleIcon} /> },
+                          { value: "system", label: "System", icon: <Monitor {...toggleIcon} /> },
                         ]}
                       />
                     </MainMenu.Group>
@@ -647,15 +708,19 @@ const EditorShell = ({
                         value={gridSelection(editor)}
                         onChange={(next) => applyGridSelection(editor, next)}
                         options={[
-                          { value: "lines", label: "Lines", icon: "▦" },
-                          { value: "dots", label: "Dots", icon: "⋮⋮" },
-                          { value: "off", label: "Off", icon: "—" },
+                          { value: "lines", label: "Lines", icon: <Grid3x3 {...toggleIcon} /> },
+                          { value: "dots", label: "Dots", icon: <Grip {...toggleIcon} /> },
+                          { value: "off", label: "Off", icon: <Minus {...toggleIcon} /> },
                         ]}
                       />
                     </MainMenu.Group>
                     <MainMenu.Separator />
                     <MainMenu.Group title="Help">
-                      <MainMenu.Item shortcut="?" onClick={() => setHelpOpen(true)}>
+                      <MainMenu.Item
+                        icon={<HelpCircle {...menuIcon} />}
+                        shortcut="?"
+                        onClick={() => setHelpOpen(true)}
+                      >
                         Hotkeys
                       </MainMenu.Item>
                       <MainMenu.ItemLink
@@ -692,7 +757,7 @@ const EditorShell = ({
                     active={libraryOpen}
                     onClick={() => setLibraryOpen((v) => !v)}
                   >
-                    ☰
+                    <LibraryIcon {...buttonIcon} />
                   </IconButton>
                 )}
               </ButtonGroup>
@@ -764,25 +829,27 @@ const ZoomControls = () => {
   return (
     <ButtonGroup ariaLabel="Zoom">
       <IconButton label="Zoom out" onClick={() => editor.zoomOut()}>
-        −
+        <Minus {...buttonIcon} />
       </IconButton>
-      <span
+      <button
+        type="button"
         className="du-icon-button"
-        aria-label="Current zoom"
+        aria-label="Reset zoom to 100%"
+        title="Reset zoom to 100%"
+        onClick={() => editor.resetZoom()}
         style={{
           minWidth: 56,
           padding: "0 8px",
           borderRadius: 0,
-          cursor: "default",
         }}
       >
         {Math.round(zoom * 100)}%
-      </span>
+      </button>
       <IconButton label="Zoom in" onClick={() => editor.zoomIn()}>
-        +
+        <Plus {...buttonIcon} />
       </IconButton>
       <IconButton label="Fit to screen" onClick={() => editor.zoomToFit()}>
-        ⤢
+        <Maximize {...buttonIcon} />
       </IconButton>
     </ButtonGroup>
   );

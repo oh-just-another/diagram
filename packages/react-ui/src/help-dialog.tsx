@@ -1,4 +1,5 @@
 import { useEffect, useMemo, type CSSProperties, type ReactElement } from "react";
+import { X } from "lucide-react";
 import {
   defaultActionRegistry,
   formatHotkey,
@@ -180,12 +181,13 @@ export const HelpDialog = ({
                 border: "none",
                 color: "var(--text, #ddd)",
                 cursor: "pointer",
-                fontSize: 20,
-                lineHeight: 1,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
                 padding: 4,
               }}
             >
-              ×
+              <X size={18} strokeWidth={1.75} />
             </button>
           </div>
         </div>
