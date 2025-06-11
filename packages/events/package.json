@@ -1,7 +1,7 @@
 {
-  "name": "@oh-just-another/state",
-  "version": "0.36.1",
-  "description": "state package",
+  "name": "@oh-just-another/events",
+  "version": "0.0.0",
+  "description": "Tiny typed event emitter. L0 — pure TS, no DOM, no React. Underpins Editor/History/Collab pub-sub.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -28,13 +28,5 @@
   },
   "publishConfig": {
     "access": "public"
-  },
-  "dependencies": {
-    "@oh-just-another/types": "workspace:*",
-    "@oh-just-another/math": "workspace:*",
-    "@oh-just-another/scene": "workspace:*",
-    "@oh-just-another/renderer-core": "workspace:*",
-    "@oh-just-another/history": "workspace:*",
-    "xstate": "^5.20.0"
   }
 }

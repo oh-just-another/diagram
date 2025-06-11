@@ -700,3 +700,6 @@
 
 ## 0.36.0
 - UI polish: Lucide icons, tonal active state, singleton tooltip
+
+## 0.36.1
+- feat(events): new L0 typed event-emitter package
