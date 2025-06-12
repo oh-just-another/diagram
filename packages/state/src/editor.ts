@@ -1,4 +1,5 @@
 import { createActor, type Actor } from "xstate";
+import { createEmitter, type Emitter } from "@oh-just-another/events";
 import type { Bounds, FileId, ShapeId, Vec2 } from "@oh-just-another/types";
 import { fileId as castFileId, shapeId as castShapeId } from "@oh-just-another/types";
 import {
@@ -161,6 +162,24 @@ import {
 } from "./machine.js";
 import type { HandleId } from "./handle.js";
 import type { Mode } from "./modes.js";
+import type { EditorEvents } from "./editor-events.js";
+import {
+ createEventCache,
+ fanOutEvents,
+ primeEventCache,
+ type EditorEventCache,
+} from "./editor/event-fanout.js";
+import { GestureController } from "./editor/gesture-tx.js";
+import {
+ combinedSelectionBounds as combinedSelectionBoundsPure,
+ computeViewportWorld as computeViewportWorldPure,
+ groupChildrenUnion as groupChildrenUnionPure,
+} from "./editor/viewport-helpers.js";
+import { computeHiddenShapes as computeHiddenShapesPure } from "./editor/shape-filters.js";
+import {
+ selectByBounds as selectByBoundsPure,
+ selectByBoundsLive as selectByBoundsLivePure,
+} from "./editor/applies/selection.js";
 import { isResizable, renderOverlay, type PeerCursor, type PeerSelection } from "./overlay.js";
 import * as Selection from "./selection.js";
 
@@ -296,6 +315,24 @@ export class Editor {
  private readonly backgroundTarget: RenderTarget | null;
  private readonly actor: Actor<typeof interactionMachine>;
  private readonly listeners = new Set<() => void>();
+ /**
+  * Typed event surface. Specific events (`mode`, `selection`,
+  * `scene`, `history`, `viewport`) fan out of `notify()` based on
+  * what actually changed since the last fire, so subscribers only
+  * wake up when their slice flips. `change` still fires once per
+  * `notify()` for legacy callers that don't care which slice.
+  *
+  * The `subscribe()` set is kept — both notification
+  * paths run in lockstep so external code can migrate incrementally.
+  */
+ private readonly events: Emitter<EditorEvents> = createEmitter<EditorEvents>();
+ /**
+  * Last-emitted snapshot of every observable slice. Used by
+  * `fanOutEvents` (in `editor/event-fanout.ts`) to decide which
+  * typed events to fire on each `notify()` — only the slices
+  * whose identity changed since the previous notify get an event.
+  */
+ private readonly eventCache: EditorEventCache = createEventCache();
  private readonly unbind: () => void;
 
  private _scene: Scene;
@@ -659,6 +696,14 @@ export class Editor {
  private readonly _history: HistoryProvider;
  /** Open transaction during a single drag/resize gesture. */
  private gestureTx: TransactionHandle | null = null;
+ /**
+  * Wraps gesture lifecycle (transaction open/commit/cancel +
+  * post-create mode revert) so editor.ts doesn't carry the bodies.
+  * Implementation lives in `./editor/gesture-tx.ts`; the
+  * controller calls back through the narrow `GestureRef` bridge
+  * built lazily below.
+  */
+ private readonly gestures: GestureController;
 
  constructor(options: EditorOptions) {
   this.host = options.host;
@@ -669,6 +714,59 @@ export class Editor {
   this._history = isHistoryProvider(options.history)
    ? options.history
    : new History(options.history ?? {});
+  // Build the gesture controller against a narrow getter/setter
+  // bridge to the editor's mutable state. The bridge is a thin
+  // adapter — keeps `gestureTx`/`dragShapeId` etc. as `private`
+  // fields on Editor (instead of forcing them public to satisfy
+  // structural implements), and lets the controller live in its
+  // own module without importing Editor.
+  const self = this;
+  this.gestures = new GestureController({
+   get history() {
+    return self._history;
+   },
+   get gestureTx() {
+    return self.gestureTx;
+   },
+   set gestureTx(v) {
+    self.gestureTx = v;
+   },
+   get groupMoveOrigin() {
+    return self.groupMoveOrigin;
+   },
+   set groupMoveOrigin(v) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    self.groupMoveOrigin = v as any;
+   },
+   get groupResizeOrigin() {
+    return self.groupResizeOrigin;
+   },
+   set groupResizeOrigin(v) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    self.groupResizeOrigin = v as any;
+   },
+   get dragShapeId() {
+    return self.dragShapeId;
+   },
+   set dragShapeId(v) {
+    self.dragShapeId = v;
+   },
+   get containerHover() {
+    return self.containerHover;
+   },
+   set containerHover(v) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    self.containerHover = v as any;
+   },
+   get toolLocked() {
+    return self._toolLocked;
+   },
+   get mode() {
+    return self.mode;
+   },
+   setMode: (m) => self.setMode(m),
+   notify: () => self.notify(),
+  });
   this.tileComposeFn =
    options.useTileCache === true && options.tileCompose ? options.tileCompose : null;
 
@@ -732,6 +830,23 @@ export class Editor {
 
   this.unbind = this.bindPointerEvents();
   this.render();
+  // Prime the typed-event cache with the editor's initial state so
+  // the *first* user-driven update only emits on a real flip.
+  // Without this, an `editor.on("mode", fn)` listener installed
+  // before any change would fire on the very next `setMode(current)`
+  // call because every cached slice would still be `null`.
+  primeEventCache(this.eventCache, this.observableSnapshot());
+ }
+
+ /** Snapshot used by event-fanout. Kept private — internal API. */
+ private observableSnapshot() {
+  return {
+   mode: this.mode,
+   selection: this._selection,
+   scene: this._scene,
+   canUndo: this.canUndo,
+   canRedo: this.canRedo,
+  };
  }
 
  // --- Public state ---
@@ -1055,16 +1170,9 @@ export class Editor {
   this.notify();
  }
 
- /**
-  * Internal hook — called from `applyCreate` / `applyCreateEdge`
-  * after a successful shape / edge instantiation. Reverts the
-  * active mode to `select` unless `_toolLocked` is on. Centralises
-  * the rule so any new create path picks it up by calling through.
-  */
+ // Body moved to `./editor/gesture-tx.ts`.
  private maybeRevertModeAfterCreate(): void {
-  if (this._toolLocked) return;
-  if (this.mode === "select" || this.mode === "hand") return;
-  this.setMode("select");
+  this.gestures.maybeRevertModeAfterCreate();
  }
 
  setMode(mode: Mode): void {
@@ -3352,21 +3460,21 @@ export class Editor {
  }
 
  /**
-  * Collect every shape that should be hidden this frame due to its
-  * own `hidden` flag or that of any ancestor via `parentId`.
-  * Returns `undefined` when nothing is hidden — keeps the
-  * RenderSceneOptions payload empty in the common case so the
-  * renderer's hot loop skips the `has()` check entirely.
+  * Compute the dim set for isolation rendering: every shape whose
+  * parent chain does NOT pass through `enteredGroupId`. The entered
+  * group itself is treated as "inside" (returns true from
+  * isDescendantOfGroup) so it stays at full alpha — but groups have
+  * no intrinsic geometry, so this only matters for the
+  * group-bounds-outline overlay path, not the shape render.
+  *
+  * Defensive: shapes in the current selection are never dimmed. The
+  * focus shape (drilled-into child) is always a group descendant in
+  * practice, but the guard keeps the contract simple — "what you've
+  * selected, you can see".
   */
+ // Body moved to `./editor/shape-filters.ts`.
  private computeHiddenShapes(): ReadonlySet<ShapeId> | undefined {
-  let out: Set<ShapeId> | null = null;
-  for (const s of this._scene.shapes.values()) {
-   if (isShapeHidden(this._scene, s)) {
-    if (!out) out = new Set();
-    out.add(s.id);
-   }
-  }
-  return out ?? undefined;
+  return computeHiddenShapesPure(this._scene);
  }
 
  private computeDimShapes(enteredGroupId: ShapeId): ReadonlySet<ShapeId> {
@@ -3752,25 +3860,9 @@ export class Editor {
   this.notify();
  }
 
- /**
-  * World-space AABB of the screen viewport, inflated by ~10% so a slow
-  * pan does not flicker shapes near the edge. Returns `null` until the
-  * host has resized the viewport at least once (size is 0×0).
-  */
+ // Body moved to `./editor/viewport-helpers.ts`.
  private computeViewportWorld(): Bounds | null {
-  const vp = this._scene.viewport;
-  const w = vp.size.width;
-  const h = vp.size.height;
-  if (w <= 0 || h <= 0) return null;
-  const s2w = getScreenToWorld(vp);
-  const corners = [
-   matrix.applyToPoint(s2w, { x: 0, y: 0 }),
-   matrix.applyToPoint(s2w, { x: w, y: 0 }),
-   matrix.applyToPoint(s2w, { x: 0, y: h }),
-   matrix.applyToPoint(s2w, { x: w, y: h }),
-  ];
-  const bb = B.fromPoints(corners);
-  return B.expand(bb, Math.max(bb.width, bb.height) * VIEWPORT_CULL_PADDING_RATIO);
+  return computeViewportWorldPure(this._scene);
  }
 
  /**
@@ -3883,36 +3975,12 @@ export class Editor {
   return acc ? B.expand(acc, 4) : { x: -1e9, y: -1e9, width: 0, height: 0 };
  }
 
+ // Bodies moved to `./editor/viewport-helpers.ts`.
  private combinedSelectionBounds(): Bounds | null {
-  let acc: Bounds | null = null;
-  for (const id of this._selection) {
-   const s = getShape(this._scene, id);
-   if (!s) continue;
-   // Group shapes carry no intrinsic geometry — substitute the
-   // union AABB of their descendants so the combined bbox actually
-   // reflects on-screen content.
-   const b = s.type === "group" ? this.groupChildrenUnion(s.id) : getShapeWorldBounds(s);
-   if (!b) continue;
-   acc = acc ? B.union(acc, b) : b;
-  }
-  return acc;
+  return combinedSelectionBoundsPure(this._scene, this._selection);
  }
-
- /**
-  * Union of every direct/indirect descendant's world AABB. `null`
-  * for empty groups (which is the only failure mode — every leaf
-  * has bounds). Mirrors the helper in overlay.ts kept private there;
-  * duplicated here so editor doesn't depend on overlay internals.
-  */
  private groupChildrenUnion(groupId: ShapeId): Bounds | null {
-  let acc: Bounds | null = null;
-  for (const s of this._scene.shapes.values()) {
-   if (s.parentId !== groupId) continue;
-   const inner = s.type === "group" ? this.groupChildrenUnion(s.id) : getShapeWorldBounds(s);
-   if (!inner) continue;
-   acc = acc ? B.union(acc, inner) : inner;
-  }
-  return acc;
+  return groupChildrenUnionPure(this._scene, groupId);
  }
 
  /**
@@ -4210,19 +4278,16 @@ export class Editor {
   return { kind: "anchor", shapeId: pressTargetShape, anchor: ref };
  }
 
- /**
-  * Select every shape whose world-bounds intersect the lasso rectangle.
-  * `mode: "replace"` swaps the selection wholesale; `"add"` extends it
-  * (Shift / Cmd lasso).
-  */
+ // Pure body in `./editor/applies/selection.ts`. The wrappers
+ // here own the side effects (`_selectedEdge` clearing, notify).
  private applySelectByBounds(bounds: Bounds, mode: "replace" | "add"): void {
-  const hits = getShapesCoveredByBounds(this._scene, bounds, LASSO_COVERAGE_THRESHOLD);
-  let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : this._selection;
-  for (const shape of hits) {
-   // Skip shapes on locked layers — lock prevents selection / drag.
-   if (this.isLayerLocked(shape.layerId)) continue;
-   next = Selection.add(next, shape.id);
-  }
+  const next = selectByBoundsPure(
+   this._scene,
+   this._selection,
+   (id) => this.isLayerLocked(id),
+   bounds,
+   mode,
+  );
   if (this._selectedEdge !== null) this._selectedEdge = null;
   if (Selection.equals(next, this._selection)) {
    this.notify();
@@ -4232,22 +4297,15 @@ export class Editor {
   this.notify();
  }
 
- /**
-  * Live-preview variant of `applySelectByBounds` for in-progress
-  * lassos. Same hit-test rule, but the starting set comes from the
-  * captured `lassoBaseSelection` snapshot — that way `replace` mode
-  * shrinks the selection to whatever the box currently covers
-  * (instead of accumulating since press-down), and `add` mode keeps
-  * the user's pre-existing picks intact.
-  */
  private applyLassoLiveSelection(bounds: Bounds, mode: "replace" | "add"): void {
   const base = this.lassoBaseSelection ?? Selection.EMPTY;
-  let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : base;
-  const hits = getShapesCoveredByBounds(this._scene, bounds, LASSO_COVERAGE_THRESHOLD);
-  for (const shape of hits) {
-   if (this.isLayerLocked(shape.layerId)) continue;
-   next = Selection.add(next, shape.id);
-  }
+  const next = selectByBoundsLivePure(
+   this._scene,
+   base,
+   (id) => this.isLayerLocked(id),
+   bounds,
+   mode,
+  );
   if (Selection.equals(next, this._selection)) return;
   if (this._selectedEdge !== null) this._selectedEdge = null;
   this._selection = next;
@@ -4310,46 +4368,19 @@ export class Editor {
   this.notify();
  }
 
- /**
-  * Open a gesture transaction on the first drag-emitted patch, then add
-  * subsequent patches to it. POINTER_UP commits it as one history record.
-  */
+ // Gesture lifecycle — recordGesturePatch / commitGesture /
+ // cancelGesture / finalizeOpenGestureTx / maybeRevertModeAfterCreate
+ // live in `./editor/gesture-tx.ts`. The thin instance methods
+ // below preserve the original call sites; the bodies (and their
+ // docstrings) moved out to the controller.
  private recordGesturePatch(patch: Patch): void {
-  this.gestureTx ??= this._history.transaction();
-  this.gestureTx.add(patch);
+  this.gestures.record(patch);
  }
-
  private commitGesture(): void {
-  this.groupMoveOrigin = null;
-  this.groupResizeOrigin = null;
-  this.dragShapeId = null;
-  if (this.containerHover !== null) {
-   this.containerHover = null;
-   this.notify();
-  }
-  if (!this.gestureTx) return;
-  this.gestureTx.commit();
-  this.gestureTx = null;
+  this.gestures.commit();
  }
-
- /**
-  * Defensive cleanup invoked by public commands (paste, etc.) that
-  * open their own history transaction. A real gesture-in-flight
-  * gets committed (preserving user work); a leaked stale tx — one
-  * that survived an earlier exception — gets cancelled. Either way
-  * the next `transaction()` call lands on a clean slot.
-  *
-  * Without this, pressing Cmd+V mid-drag throws "A transaction is
-  * already open" because the gestureTx hasn't been committed yet.
-  */
  private finalizeOpenGestureTx(): void {
-  if (!this.gestureTx) return;
-  try {
-   this.gestureTx.commit();
-  } catch {
-   this.gestureTx.cancel();
-  }
-  this.gestureTx = null;
+  this.gestures.finalize();
  }
 
  /**
@@ -4585,12 +4616,9 @@ export class Editor {
   return this.gestureTx;
  }
 
+ // Body moved to `./editor/gesture-tx.ts`.
  private cancelGesture(): void {
-  this.groupMoveOrigin = null;
-  this.groupResizeOrigin = null;
-  if (!this.gestureTx) return;
-  this.gestureTx.cancel();
-  this.gestureTx = null;
+  this.gestures.cancel();
  }
 
  /**
@@ -4611,9 +4639,35 @@ export class Editor {
 
  private notify(): void {
   this.render();
+  fanOutEvents(this.eventCache, this.events, this.observableSnapshot());
   for (const fn of this.listeners) fn();
   this.autoCompactScheduler.schedule();
   this.autoLayoutScheduler.schedule();
+ }
+
+ /**
+  * Typed event surface — subscribe to a specific slice (`mode`,
+  * `selection`, `scene`, `history`, `viewport`) or the umbrella
+  * `change`. Replaces ad-hoc selectors over the coarse `subscribe()`
+  * for callers that only care about one dimension. The legacy
+  * `subscribe()` still works and fires in lock-step.
+  */
+ on<K extends keyof EditorEvents>(
+  event: K,
+  fn: EditorEvents[K],
+ ): () => void {
+  // Cast through `never`: TS can't prove that EditorEvents[K]
+  // satisfies the emitter's `extends AnyListener ? T : never`
+  // conditional through a generic body. Every entry of
+  // EditorEvents is a function by construction so this is safe.
+  return this.events.on(event, fn as never);
+ }
+
+ off<K extends keyof EditorEvents>(
+  event: K,
+  fn: EditorEvents[K],
+ ): void {
+  this.events.off(event, fn as never);
  }
 
  /**

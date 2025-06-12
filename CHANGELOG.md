@@ -703,3 +703,6 @@
 
 ## 0.36.1
 - feat(events): new L0 typed event-emitter package
+
+## 0.37.0
+- feat: typed Editor emitter + commitGesture notify fix + carve start

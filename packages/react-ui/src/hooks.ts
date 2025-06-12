@@ -36,18 +36,22 @@ export const useDiagramOptional = (): Editor | null => useDiagramContextOptional
 const EMPTY_SCENE: Scene = emptyScene();
 
 /** Current `Scene`. Returns `emptyScene()` while the editor is being created. */
-export const useScene = (): Scene => useEditorSelector((e) => e.scene, EMPTY_SCENE);
+export const useScene = (): Scene => useEditorSelector((e) => e.scene, EMPTY_SCENE, "scene");
 
 /** Selected shape ids. Returns the canonical `EMPTY` set pre-mount. */
-export const useSelection = (): Selection => useEditorSelector((e) => e.selection, selection.EMPTY);
+export const useSelection = (): Selection =>
+  useEditorSelector((e) => e.selection, selection.EMPTY, "selection");
 
 /** Current interaction mode. Defaults to `"select"` pre-mount. */
-export const useMode = (): Mode => useEditorSelector<Mode>((e) => e.mode, "select");
+export const useMode = (): Mode => useEditorSelector<Mode>((e) => e.mode, "select", "mode");
 
 /**
  * History introspection and actions. Returns no-op callbacks (and `false`
  * flags) while the editor is being created so toolbar buttons can render
  * disabled without bespoke null-checking.
+ *
+ * Subscribes to the typed `history` event so undo/redo button updates
+ * skip pan / zoom / selection notifies entirely.
  */
 export const useHistory = (): {
   readonly canUndo: boolean;
@@ -56,8 +60,8 @@ export const useHistory = (): {
   readonly redo: () => void;
 } => {
   const editor = useDiagramOptional();
-  const canUndo = useEditorSelector((e) => e.canUndo, false);
-  const canRedo = useEditorSelector((e) => e.canRedo, false);
+  const canUndo = useEditorSelector((e) => e.canUndo, false, "history");
+  const canRedo = useEditorSelector((e) => e.canRedo, false, "history");
 
   const undo = useCallback(() => {
     editor?.undo();

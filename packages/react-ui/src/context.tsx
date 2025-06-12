@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import type { Editor } from "@oh-just-another/state";
+import type { Editor, EditorEvents } from "@oh-just-another/state";
 
 /**
  * Holds the live `Editor` instance. Components and hooks read from this
@@ -67,7 +67,18 @@ export const useDiagramContextOptional = (): Editor | null => useContext(Diagram
  * `<DiagramSurface>` registers with `<DiagramRoot>`). `defaultValue` is
  * returned during that window.
  */
-export const useEditorSelector = <T,>(select: (editor: Editor) => T, defaultValue: T): T => {
+export const useEditorSelector = <T,>(
+  select: (editor: Editor) => T,
+  defaultValue: T,
+  /**
+   * Optional typed event to subscribe to instead of the umbrella
+   * `change`. When omitted, falls back to `editor.subscribe(fn)`, which
+   * fires on every notify. Passing e.g. `"mode"` makes the hook re-run
+   * the selector only when the mode flipped, skipping selection /
+   * viewport / scene notifies entirely.
+   */
+  event?: keyof EditorEvents,
+): T => {
   const editor = useDiagramContextOptional();
   const [value, setValue] = useState<T>(() => (editor ? select(editor) : defaultValue));
   // Keep select / defaultValue in refs so the subscription effect runs only
@@ -88,8 +99,14 @@ export const useEditorSelector = <T,>(select: (editor: Editor) => T, defaultValu
       setValue((prev) => (Object.is(prev, next) ? prev : next));
     };
     update();
+    // Typed event when given; umbrella subscribe otherwise. Both paths
+    // fire in lock-step (typed events fan out of the same notify() that
+    // runs the umbrella subscribers), so the typed path is just narrower.
+    if (event !== undefined) {
+      return editor.on(event, update);
+    }
     return editor.subscribe(update);
-  }, [editor]);
+  }, [editor, event]);
 
   return value;
 };
