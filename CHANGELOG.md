@@ -706,3 +706,6 @@
 
 ## 0.37.0
 - feat: typed Editor emitter + commitGesture notify fix + carve start
+
+## 0.38.0
+- feat: carve editor.ts Right applies/{create,edge,move} + long-press

@@ -170,6 +170,7 @@ import {
  type EditorEventCache,
 } from "./editor/event-fanout.js";
 import { GestureController } from "./editor/gesture-tx.js";
+import { LongPressController } from "./editor/long-press.js";
 import {
  combinedSelectionBounds as combinedSelectionBoundsPure,
  computeViewportWorld as computeViewportWorldPure,
@@ -180,6 +181,21 @@ import {
  selectByBounds as selectByBoundsPure,
  selectByBoundsLive as selectByBoundsLivePure,
 } from "./editor/applies/selection.js";
+import {
+ computeEdgeEndpointUpdate,
+ computeEdgePreviewEndpoints,
+} from "./editor/applies/edge.js";
+import {
+ computeAnnotationMovePatch,
+ computeGroupMovePatches,
+ computeShapeMovePatch,
+} from "./editor/applies/move.js";
+import {
+ computeCreateEdge,
+ computeCreateShape,
+ newEdgeId,
+ newShapeId,
+} from "./editor/applies/create.js";
 import { isResizable, renderOverlay, type PeerCursor, type PeerSelection } from "./overlay.js";
 import * as Selection from "./selection.js";
 
@@ -670,8 +686,10 @@ export class Editor {
   * the timer fires. Hosts subscribe via `onLongPress` to surface a
   * context menu (mobile alternative to right-click).
   */
- private longPressTimer: ReturnType<typeof setTimeout> | null = null;
- private longPressOrigin: Vec2 | null = null;
+ // Long-press timer + origin live in LongPressController
+ // (./editor/long-press.ts). The Set of subscribers stays here
+ // because `onLongPress` is part of the public Editor API.
+ private longPress!: LongPressController;
  private readonly longPressListeners = new Set<
   (payload: { screenPoint: Vec2; worldPoint: Vec2 }) => void
  >();
@@ -827,6 +845,15 @@ export class Editor {
   if (options.initialMode) {
    this.actor.send({ type: "SET_MODE", mode: options.initialMode });
   }
+
+  // Long-press controller — fired on touch-hold; fans out to
+  // host-registered listeners (mobile alt to right-click).
+  this.longPress = new LongPressController(
+   (p) => this.screenToWorld(p),
+   (payload) => {
+    for (const fn of this.longPressListeners) fn(payload);
+   },
+  );
 
   this.unbind = this.bindPointerEvents();
   this.render();
@@ -2736,11 +2763,7 @@ export class Editor {
    }
 
    // Cancel long-press timer if the finger has moved beyond slop.
-   if (this.longPressOrigin) {
-    if (distanceTo(this.longPressOrigin, data.point) > LONG_PRESS_MAX_MOVEMENT_PX) {
-     this.cancelLongPress();
-    }
-   }
+   this.longPress.cancelIfMovedBeyond(data.point, LONG_PRESS_MAX_MOVEMENT_PX);
 
    const worldPoint = this.screenToWorld(data.point);
    // Track cursor for paste-at-cursor and other commands that want a
@@ -3219,29 +3242,13 @@ export class Editor {
   return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse" || ctx.mode === "draw-edge";
  }
 
- // --- Long-press ---
+ // --- Long-press --- (controller in `./editor/long-press.ts`)
 
  private startLongPress(screenPoint: Vec2): void {
-  this.cancelLongPress();
-  this.longPressOrigin = screenPoint;
-  this.longPressTimer = setTimeout(() => {
-   this.longPressTimer = null;
-   const origin = this.longPressOrigin;
-   this.longPressOrigin = null;
-   if (!origin) return;
-   const worldPoint = this.screenToWorld(origin);
-   // Fire AFTER we clear local state so listeners can call back
-   // into the editor (e.g. select shape under press) safely.
-   for (const fn of this.longPressListeners) fn({ screenPoint: origin, worldPoint });
-  }, LONG_PRESS_DELAY_MS);
+  this.longPress.start(screenPoint);
  }
-
  private cancelLongPress(): void {
-  if (this.longPressTimer !== null) {
-   clearTimeout(this.longPressTimer);
-   this.longPressTimer = null;
-  }
-  this.longPressOrigin = null;
+  this.longPress.cancel();
  }
 
  // --- Pinch gesture ---
@@ -3744,33 +3751,12 @@ export class Editor {
   * Wrapped in a single gestureTx so per-move updates collapse
   * into one undo step.
   */
+ // Pure body in `./editor/applies/move.ts`.
  private applyAnnotationMove(id: AnnotationId, delta: Vec2, origin: Vec2): void {
-  const ann = this._scene.annotations.get(id);
-  if (!ann) return;
-  // Compute target position relative to whatever coordinate space
-  // the annotation lives in. For shape-anchored, the stored
-  // position is shape-local; for free, it's world. The delta is
-  // always in world coords (the gesture machine emits world-space
-  // deltas), but a translation maps 1:1 across the two spaces (no
-  // rotation between shape-local and world here).
-  const next: Vec2 = {
-   x: origin.x + delta.x,
-   y: origin.y + delta.y,
-  };
-  // For shape-anchored annotations, the stored field is the
-  // *offset from the shape's world position*. Subtract the
-  // shape's world position to translate world → local space.
-  let storedPosition: Vec2 = next;
-  if (ann.shapeId) {
-   const shape = getShape(this._scene, ann.shapeId);
-   if (shape) {
-    storedPosition = { x: next.x - shape.position.x, y: next.y - shape.position.y };
-   }
-  }
-  if (storedPosition.x === ann.position.x && storedPosition.y === ann.position.y) return;
-  const r = updateAnnotation(this._scene, id, (a) => ({ ...a, position: storedPosition }));
-  this._scene = r.scene;
-  this.recordGesturePatch(r.patch);
+  const result = computeAnnotationMovePatch(this._scene, id, delta, origin);
+  if (!result) return;
+  this._scene = result.scene;
+  this.recordGesturePatch(result.patch);
   this.notify();
  }
 
@@ -3813,47 +3799,19 @@ export class Editor {
   this.applyEmit(emit);
  }
 
+ // Pure body in `./editor/applies/move.ts`.
  private applyMove(id: ShapeId, delta: Vec2, originalBounds: Bounds): void {
-  const shape = getShape(this._scene, id);
-  if (!shape) return;
-  // originalBounds gives us the world-space position at press-down time;
-  // we adjust the shape's `position` by the same delta.
-  const localBounds = getShapeWorldBounds(shape);
-  const offsetX = originalBounds.x - localBounds.x;
-  const offsetY = originalBounds.y - localBounds.y;
-  const next: Shape = {
-   ...shape,
-   position: {
-    x: shape.position.x + delta.x + offsetX,
-    y: shape.position.y + delta.y + offsetY,
-   },
-  };
-  const patch: Patch = { kind: "shape", id, before: shape, after: next };
+  const patch = computeShapeMovePatch(this._scene, id, delta, originalBounds);
+  if (!patch) return;
   this._scene = apply(this._scene, patch);
   this.recordGesturePatch(patch);
   this.notify();
  }
 
- /**
-  * Translate every shape in the active group-drag snapshot by `delta`.
-  * `delta` is the cumulative cursor displacement since press-down, so
-  * each shape lands at `originPosition + delta` every frame — no
-  * accumulator state inside the loop.
-  *
-  * All per-shape patches go through the gesture's open transaction so
-  * the entire move collapses into a single undo step.
-  */
  private applyGroupMove(delta: Vec2): void {
   if (!this.groupMoveOrigin) return;
-  for (const [id, origin] of this.groupMoveOrigin) {
-   const shape = getShape(this._scene, id);
-   if (!shape) continue;
-   const next: Shape = {
-    ...shape,
-    position: { x: origin.x + delta.x, y: origin.y + delta.y },
-   };
-   if (next.position.x === shape.position.x && next.position.y === shape.position.y) continue;
-   const patch: Patch = { kind: "shape", id, before: shape, after: next };
+  const patches = computeGroupMovePatches(this._scene, this.groupMoveOrigin, delta);
+  for (const patch of patches) {
    this._scene = apply(this._scene, patch);
    this.recordGesturePatch(patch);
   }
@@ -4123,61 +4081,21 @@ export class Editor {
   this.notify();
  }
 
+ // Pure body in `./editor/applies/create.ts`.
  private applyCreate(kind: "rect" | "ellipse" | "frame", bounds: Bounds): void {
-  const id = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
-  const layerId = this._activeLayerId;
-  const orders = Array.from(this._scene.shapes.values())
-   .filter((s) => s.layerId === layerId)
-   .map((s) => s.order);
-  // Frames belong at the BOTTOM of their layer so the children
-  // they contain (drawn after = on top) still receive clicks.
-  // Other shapes go to the top of the stack as usual.
-  const order = kind === "frame" ? orderForBottom(orders) : orderForTop(orders);
-  const common = {
-   id,
-   layerId,
-   position: { x: bounds.x, y: bounds.y },
-   rotation: 0,
-   scale: { x: 1, y: 1 },
-   order,
-   width: bounds.width,
-   height: bounds.height,
-  };
-  let shape: Shape;
-  if (kind === "rect") {
-   shape = {
-    ...common,
-    type: "rectangle",
-    style: { fill: "#cfe1ff", stroke: "#1a40b0", strokeWidth: 2 },
-   };
-  } else if (kind === "ellipse") {
-   shape = {
-    ...common,
-    type: "ellipse",
-    style: { fill: "#ffd6d6", stroke: "#a01a1a", strokeWidth: 2 },
-   };
-  } else {
-   // Frame — empty style (renderer hard-codes the dashed look),
-   // auto-numbered name. Created at the bbox of the drag.
-   shape = {
-    ...common,
-    type: "frame",
-    style: {},
-    name: this.nextFrameName(),
-   };
-  }
-  const result = addShape(this._scene, shape);
+  const id = newShapeId(++this.nextId);
+  const result = computeCreateShape(this._scene, kind, bounds, id, this._activeLayerId, () =>
+   this.nextFrameName(),
+  );
   this._scene = result.scene;
   this._selection = Selection.single(id);
   // CREATE is a single-shot operation, not part of a multi-tick gesture.
   this._history.push(result.patch);
-
   // Frame-specific: scoop up every shape whose centre lies inside
   // the new frame's bounds and tag them with `frameId`.
   if (kind === "frame") {
    this.assignFrameMembers(id, bounds);
   }
-
   this.maybeRevertModeAfterCreate();
   this.notify();
  }
@@ -4201,34 +4119,13 @@ export class Editor {
   );
  }
 
- /**
-  * Build an `Edge` from a draw-edge gesture and commit it as a single
-  * history record. Endpoints are landed on `center` of the source /
-  * target shape when present and fall back to free `point`
-  * endpoints otherwise.
-  */
+ // Pure body in `./editor/applies/create.ts`. Endpoint snapping
+ // stays here because it needs the snap engine.
  private applyCreateEdge(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
   const from = this.snapEdgeEndpoint(emit.fromShape, emit.fromPoint);
   const to = this.snapEdgeEndpoint(emit.toShape, emit.toPoint);
-
-  const layerId = this._activeLayerId;
-  const order = orderForTop(
-   Array.from(this._scene.edges.values())
-    .filter((e) => e.layerId === layerId)
-    .map((e) => e.order),
-  );
-
-  const id = castEdgeId(`edge-${++this.nextId}-${Date.now().toString(36)}`);
-  const edge: Edge = {
-   id,
-   layerId,
-   from,
-   to,
-   order,
-   style: { stroke: "#444", strokeWidth: 1.5 },
-   arrowheads: { to: "triangle" },
-  };
-  const result = addEdge(this._scene, edge);
+  const id = newEdgeId(++this.nextId);
+  const result = computeCreateEdge(this._scene, from, to, id, this._activeLayerId);
   this._scene = result.scene;
   this._history.push(result.patch);
   this.edgePreview = null;
@@ -4311,17 +4208,20 @@ export class Editor {
   this._selection = next;
  }
 
+ // Pure body in `./editor/applies/edge.ts`. The wrapper here
+ // owns the side effects (history push, drag-state clearing,
+ // notify).
  private applyEdgeEndpointUpdate(
   emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
  ): void {
-  const edge = getEdge(this._scene, emit.edgeId);
-  if (!edge) {
+  const result = computeEdgeEndpointUpdate(this._scene, emit, (toShape, toPoint) =>
+   this.snapEdgeEndpoint(toShape, toPoint),
+  );
+  if (result === null) {
    this.edgeEndpointDrag = null;
    this.notify();
    return;
   }
-  const newEndpoint = this.snapEdgeEndpoint(emit.toShape, emit.toPoint);
-  const result = updateEdge(this._scene, edge.id, (e) => ({ ...e, [emit.side]: newEndpoint }));
   this._scene = result.scene;
   this._history.push(result.patch);
   this.edgeEndpointDrag = null;
@@ -4345,26 +4245,9 @@ export class Editor {
   this.notify();
  }
 
+ // Pure body in `./editor/applies/edge.ts`.
  private applyEdgePreview(fromShape: ShapeId | null, fromPoint: Vec2, toPoint: Vec2): void {
-  // When the gesture started on a shape, snap the visible start to the
-  // shape's nearest port relative to the press-down point. The final
-  // edge will use the same snap target on the to-side, so the preview
-  // already shows the user where the connector will land.
-  let from = fromPoint;
-  if (fromShape) {
-   const shape = getShape(this._scene, fromShape);
-   if (shape) from = findNearestAnchor(shape, fromPoint, snapExcludedAnchors(shape)).world;
-  }
-  let to = toPoint;
-  // If the pointer is currently hovering a shape, snap the visible end
-  // to its nearest port too. The host has no way to know the hovered
-  // shape mid-drag (no PressTarget pushed in POINTER_MOVE) — but we can
-  // simply hit-test the scene here.
-  const hovered = getShapeAt(this._scene, toPoint);
-  if (hovered) {
-   to = findNearestAnchor(hovered, toPoint, snapExcludedAnchors(hovered)).world;
-  }
-  this.edgePreview = { from, to };
+  this.edgePreview = computeEdgePreviewEndpoints(this._scene, fromShape, fromPoint, toPoint);
   this.notify();
  }
 
