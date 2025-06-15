@@ -709,3 +709,6 @@
 
 ## 0.38.0
 - feat: carve editor.ts Right applies/{create,edge,move} + long-press
+
+## 0.39.0
+- feat: carve hit-test, pinch, container-ops, resize, traits

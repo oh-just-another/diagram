@@ -171,6 +171,19 @@ import {
 } from "./editor/event-fanout.js";
 import { GestureController } from "./editor/gesture-tx.js";
 import { LongPressController } from "./editor/long-press.js";
+import { pickPressTarget } from "./editor/hit-test.js";
+import { PinchController } from "./editor/pinch.js";
+import {
+ applyContainerDrop as applyContainerDropPure,
+ clampContainerToChildren as clampContainerToChildrenPure,
+ maybeGrowContainer as maybeGrowContainerPure,
+ type ContainerOpsRef,
+} from "./editor/container-ops.js";
+import { hasWidthHeight } from "./editor/shape-traits.js";
+import {
+ computeGroupResizePatches,
+ computeShapeResize,
+} from "./editor/applies/resize.js";
 import {
  combinedSelectionBounds as combinedSelectionBoundsPure,
  computeViewportWorld as computeViewportWorldPure,
@@ -594,11 +607,11 @@ export class Editor {
   * interaction machine — `pinchOrigin` holds the baseline.
   */
  private readonly activePointers = new Map<number, Vec2>();
- private pinchOrigin: {
-  readonly midpointWorld: Vec2;
-  readonly distance: number;
-  readonly midpointScreen: Vec2;
- } | null = null;
+ // Pinch gesture state lives in PinchController (./editor/pinch.ts)
+ // — `pinch.isActive()` replaces the old `pinchOrigin !== null` check.
+ private pinch!: PinchController;
+ /** Bridge for `editor/container-ops.ts`. Built lazily in constructor. */
+ private containerOpsRef!: ContainerOpsRef;
 
  /**
   * Space-bar held → next pointer drag pans the canvas instead of
@@ -854,6 +867,31 @@ export class Editor {
     for (const fn of this.longPressListeners) fn(payload);
    },
   );
+  // Pinch gesture controller — two-finger pan + zoom. Hooks into
+  // the editor's own zoomAt / panBy / screenToWorld.
+  this.pinch = new PinchController(
+   (p) => this.screenToWorld(p),
+   (factor, anchorWorld) => this.zoomAt(factor, anchorWorld),
+   (delta) => this.panBy(delta),
+  );
+  // Bridge for container-ops module — narrow surface that the
+  // pure functions in editor/container-ops.ts call back into.
+  const self2 = this;
+  this.containerOpsRef = {
+   get scene() {
+    return self2._scene;
+   },
+   get dragShapeId() {
+    return self2.dragShapeId;
+   },
+   get containerHover() {
+    return self2.containerHover;
+   },
+   applyPatch(patch, nextScene) {
+    self2._scene = nextScene;
+    self2.beginOrAttachGesture().add(patch);
+   },
+  };
 
   this.unbind = this.bindPointerEvents();
   this.render();
@@ -2757,7 +2795,7 @@ export class Editor {
    if (this.activePointers.has(ev.pointerId)) {
     this.activePointers.set(ev.pointerId, data.point);
    }
-   if (this.pinchOrigin) {
+   if (this.pinch.isActive()) {
     this.applyPinch();
     return;
    }
@@ -2877,10 +2915,8 @@ export class Editor {
    // Exit pinch when the second-to-last finger lifts — the surviving
    // touch (if any) does NOT resume as a single-finger drag, because
    // we already cancelled the machine on pinch entry.
-   if (this.pinchOrigin) {
-    if (this.activePointers.size < 2) {
-     this.pinchOrigin = null;
-    }
+   if (this.pinch.isActive()) {
+    if (this.activePointers.size < 2) this.pinch.end();
     return;
    }
 
@@ -2961,8 +2997,8 @@ export class Editor {
     this.endPanGesture();
     return;
    }
-   if (this.pinchOrigin) {
-    if (this.activePointers.size < 2) this.pinchOrigin = null;
+   if (this.pinch.isActive()) {
+    if (this.activePointers.size < 2) this.pinch.end();
     return;
    }
    this.cancelLongPress();
@@ -3251,57 +3287,12 @@ export class Editor {
   this.longPress.cancel();
  }
 
- // --- Pinch gesture ---
-
+ // --- Pinch gesture --- (controller in `./editor/pinch.ts`)
  private beginPinch(): void {
-  const pts = [...this.activePointers.values()];
-  if (pts.length < 2) return;
-  const [p1, p2] = pts as [Vec2, Vec2];
-  const midpointScreen = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-  this.pinchOrigin = {
-   midpointWorld: this.screenToWorld(midpointScreen),
-   distance: distanceTo(p1, p2),
-   midpointScreen,
-  };
+  this.pinch.begin([...this.activePointers.values()]);
  }
-
  private applyPinch(): void {
-  if (!this.pinchOrigin) return;
-  const pts = [...this.activePointers.values()];
-  if (pts.length < 2) return;
-  const [p1, p2] = pts as [Vec2, Vec2];
-
-  const distance = distanceTo(p1, p2);
-  const midScreen = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-  // Skip jitter frames so resting fingers don't drift the camera.
-  const moved =
-   distanceTo(midScreen, this.pinchOrigin.midpointScreen) +
-   Math.abs(distance - this.pinchOrigin.distance);
-  if (moved < PINCH_MIN_MOVEMENT_PX) return;
-
-  // Zoom: ratio of current finger distance over the start distance,
-  // centered on the *current* midpoint (so the gesture feels grounded
-  // even as the user's fingers rotate / drift).
-  const factor = distance / this.pinchOrigin.distance;
-  if (factor !== 1) {
-   const anchorWorld = this.screenToWorld(midScreen);
-   this.zoomAt(factor, anchorWorld);
-  }
-  // Pan: screen delta between the original and current midpoint. After
-  // the zoom-around-current-midpoint above this delta translates to
-  // pure translation in world space.
-  const dx = midScreen.x - this.pinchOrigin.midpointScreen.x;
-  const dy = midScreen.y - this.pinchOrigin.midpointScreen.y;
-  if (dx !== 0 || dy !== 0) {
-   this.panBy({ x: dx, y: dy });
-  }
-
-  // Re-baseline so the next frame is incremental, not cumulative.
-  this.pinchOrigin = {
-   midpointWorld: this.screenToWorld(midScreen),
-   distance,
-   midpointScreen: midScreen,
-  };
+  this.pinch.apply([...this.activePointers.values()]);
  }
 
  /**
@@ -3313,98 +3304,26 @@ export class Editor {
   return matrix.applyToPoint(getScreenToWorld(this._scene.viewport), point);
  }
 
+ // Pure body in `./editor/hit-test.ts`. Editor passes a narrow
+ // context bundle that closes over its private state + accel
+ // helpers (acceleratedShapeAt, isShapeInteractable, …).
  private hitTest(worldPoint: Vec2): PressTarget {
-  const zoom = this._scene.viewport.zoom;
-  // 0. Annotation pin first — pins sit visually above everything,
-  //  so a pointer-down that lands on a pin should drive the pin
-  //  drag gesture regardless of what's underneath ().
-  const annId = this.hitAnnotation(worldPoint);
-  if (annId !== null) {
-   const ann = this._scene.annotations.get(annId);
-   if (ann) {
-    return {
-     kind: "annotation",
-     id: annId,
-     origin: getAnnotationWorldPosition(this._scene, ann),
-    };
-   }
-  }
-  // 1a. Group resize handles win when several shapes are selected,
-  //   OR when a single group-typed shape is selected (which has
-  //   no intrinsic bounds — children's union AABB serves as the
-  //   resize frame). Aspect-locked groups restrict the hit set to
-  //   the four corner handles.
-  const useGroupHandles = this._selection.size > 1 || this.selectionIsAspectLocked();
-  if (useGroupHandles) {
-   const combined = this.combinedSelectionBounds();
-   if (combined) {
-    const aspectLocked = this.selectionIsAspectLocked();
-    const handleSet = aspectLocked ? CORNER_HANDLES : ALL_HANDLES;
-    const handle = hitHandle(
-     worldPoint,
-     combined,
-     zoom,
-     this.handleHitSlop,
-     handleSet,
-    );
-    if (handle) {
-     return { kind: "group-handle", handle, bounds: combined };
-    }
-   }
-  }
-  // 1b. Resize handles on a single selected shape — only when exactly
-  //   one shape is selected. Multi-selection drops per-shape handles
-  //   in favour of the group bbox handles above; otherwise users
-  //   could resize one child outside the combined frame, which is
-  //   surprising and inconsistent with the group outline.
-  if (this._selection.size === 1) {
-   for (const id of this._selection) {
-    const shape = getShape(this._scene, id);
-    if (!shape || !isResizable(shape)) continue;
-    const bounds = getShapeWorldBounds(shape);
-    const handle = hitHandle(worldPoint, bounds, zoom, this.handleHitSlop);
-    if (handle) {
-     return { kind: "handle", shapeId: id, handle, bounds };
-    }
-   }
-  }
-  // 2. Endpoint handles on a selected edge — only when an edge is
-  //  selected. Threshold in screen pixels, converted to world.
-  if (this._selectedEdge) {
-   const edge = getEdge(this._scene, this._selectedEdge);
-   if (edge) {
-    const path = getEdgePath(this._scene, edge);
-    if (path && path.length >= 2) {
-     const handleR = this.edgeHandleHitSlop / zoom;
-     const fromPoint = path[0]!;
-     const toPoint = path[path.length - 1]!;
-     if (distanceTo(worldPoint, fromPoint) <= handleR) {
-      return { kind: "edge-endpoint", edgeId: edge.id, side: "from" };
-     }
-     if (distanceTo(worldPoint, toPoint) <= handleR) {
-      return { kind: "edge-endpoint", edgeId: edge.id, side: "to" };
-     }
-    }
-   }
-  }
-  // 3. Topmost shape under cursor. Skip shapes whose layer is locked
-  //  OR whose own / ancestor `locked` flag is set (group lock
-  //  propagation). When the hit shape is a child of a group,
-  //  promote to the group root unless the user has "entered" that
-  //  group via double-click.
-  const shape = this.acceleratedShapeAt(worldPoint);
-  if (shape && !this.isShapeInteractable(shape)) {
-   // Hit landed on a non-interactable shape; treat as miss.
-  } else if (shape) {
-   const target = this.promoteToGroupRoot(shape);
-   return { kind: "shape", id: target.id, bounds: getShapeWorldBounds(target) };
-  }
-  // 4. Edge body under cursor.
-  const edge = findEdgeAt(this._scene, worldPoint, this.edgeHitThreshold / zoom);
-  if (edge && !this.isLayerLocked(edge.layerId)) {
-   return { kind: "edge", id: edge.id };
-  }
-  return { kind: "empty" };
+  return pickPressTarget(worldPoint, {
+   scene: this._scene,
+   selection: this._selection,
+   selectedEdge: this._selectedEdge,
+   enteredGroup: this._enteredGroup,
+   handleHitSlop: this.handleHitSlop,
+   edgeHandleHitSlop: this.edgeHandleHitSlop,
+   edgeHitThreshold: this.edgeHitThreshold,
+   hitAnnotation: (p) => this.hitAnnotation(p),
+   selectionIsAspectLocked: () => this.selectionIsAspectLocked(),
+   combinedSelectionBounds: () => this.combinedSelectionBounds(),
+   acceleratedShapeAt: (p) => this.acceleratedShapeAt(p),
+   isShapeInteractable: (s) => this.isShapeInteractable(s),
+   isLayerLocked: (id) => this.isLayerLocked(id),
+   promoteToGroupRoot: (s) => this.promoteToGroupRoot(s),
+  });
  }
 
  /** True when the given layer exists and is marked `locked`. */
@@ -3955,129 +3874,29 @@ export class Editor {
   return getShape(this._scene, only)?.type === "group";
  }
 
- /**
-  * Group resize — scale every snapshotted member proportionally based
-  * on how `originalBounds` morphs into the new combined bounds. Each
-  * member's *position offset* inside the original combined box scales
-  * by the same factor; each member's `scale.{x,y}` is multiplied so
-  * the visible size tracks the gesture. Mirroring (flip) is allowed
-  * when the user drags past the opposite edge.
-  *
-  * All per-shape patches collapse into the gesture transaction → one
-  * undo step.
-  */
+ // Pure body in `./editor/applies/resize.ts`.
  private applyGroupResize(handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
   if (!this.groupResizeOrigin) return;
-  const next = resizeFromHandle(originalBounds, handle, delta);
-  const minDim = 1;
-  let sx = originalBounds.width > 0 ? next.width / originalBounds.width : 1;
-  let sy = originalBounds.height > 0 ? next.height / originalBounds.height : 1;
-  // Aspect-lock: groups can only scale uniformly. Use the larger
-  // magnitude so the dragged corner moves along the diagonal toward
-  // the cursor (modern-style); sign is preserved per-axis so a drag
-  // past the anchor still mirrors the group uniformly.
-  if (this.selectionIsAspectLocked()) {
-   const locked = Math.max(Math.abs(sx), Math.abs(sy));
-   sx = locked * (sx >= 0 ? 1 : -1);
-   sy = locked * (sy >= 0 ? 1 : -1);
-  }
-  // Anchor for the scale = the unchanging corner / edge midpoint of the
-  // original bounds (opposite to the dragged handle).
-  const ax = handle.includes("w")
-   ? originalBounds.x + originalBounds.width
-   : handle.includes("e")
-    ? originalBounds.x
-    : originalBounds.x;
-  const ay = handle.includes("n")
-   ? originalBounds.y + originalBounds.height
-   : handle.includes("s")
-    ? originalBounds.y
-    : originalBounds.y;
-
-  for (const [id, origin] of this.groupResizeOrigin.shapes) {
-   const shape = getShape(this._scene, id);
-   if (!shape) continue;
-   // Translate origin position around the anchor, then scale, then
-   // translate back. Same math for x and y independently.
-   const newPx = ax + (origin.position.x - ax) * sx;
-   const newPy = ay + (origin.position.y - ay) * sy;
-
-   // Prefer changing the box's intrinsic width/height for shapes
-   // that have one — that way the stroke and other style fields
-   // stay at their authored thickness instead of being scaled by
-   // the matrix transform. Shapes without a width/height
-   // (polygons, paths, text, brush, group) still ride the scale
-   // multiplier — that's the only handle the renderer has on
-   // their size.
-   if (hasWidthHeight(shape)) {
-    const newWidth = origin.bounds.width * sx;
-    const newHeight = origin.bounds.height * sy;
-    if (Math.abs(newWidth) < minDim || Math.abs(newHeight) < minDim) continue;
-    const nextShape: Shape = {
-     ...shape,
-     position: { x: newPx, y: newPy },
-     // Pin scale at 1 / -1 so flipping past the anchor still
-     // mirrors the shape. The sign comes from the resize math —
-     // negative width / height means the user dragged past the
-     // opposite edge.
-     scale: {
-      x: newWidth >= 0 ? 1 : -1,
-      y: newHeight >= 0 ? 1 : -1,
-     },
-     width: Math.abs(newWidth),
-     height: Math.abs(newHeight),
-    } as Shape;
-    const patch: Patch = { kind: "shape", id, before: shape, after: nextShape };
-    this._scene = apply(this._scene, patch);
-    this.recordGesturePatch(patch);
-    continue;
-   }
-
-   const newScaleX = origin.scale.x * sx;
-   const newScaleY = origin.scale.y * sy;
-   if (Math.abs(newScaleX) < minDim / Math.max(1, origin.bounds.width)) continue;
-   if (Math.abs(newScaleY) < minDim / Math.max(1, origin.bounds.height)) continue;
-   const nextShape: Shape = {
-    ...shape,
-    position: { x: newPx, y: newPy },
-    scale: { x: newScaleX, y: newScaleY },
-   };
-   const patch: Patch = { kind: "shape", id, before: shape, after: nextShape };
-   this._scene = apply(this._scene, patch);
-   this.recordGesturePatch(patch);
-  }
+  const result = computeGroupResizePatches(
+   this._scene,
+   this.groupResizeOrigin,
+   handle,
+   delta,
+   originalBounds,
+   this.selectionIsAspectLocked(),
+  );
+  this._scene = result.scene;
+  for (const patch of result.patches) this.recordGesturePatch(patch);
   this.notify();
  }
 
  private applyResize(id: ShapeId, handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
-  const shape = getShape(this._scene, id);
-  if (!shape) return;
-  // Built-in shapes with a width/height box: rectangle, ellipse, image, template.
-  if (!hasWidthHeight(shape)) return;
-
-  const raw = resizeFromHandle(originalBounds, handle, delta);
-  const intermediate = applyResizeConstraints(originalBounds, raw, handle, shape);
-  // If the shape is a container, never let the drop-zone shrink past
-  // the union AABB of its children. Anchored to the opposite edge
-  // so the dragged handle still controls direction — the shape only
-  // refuses to go smaller than the children require.
-  const constrained = this.clampContainerToChildren(shape, intermediate, handle);
-
-  // `constrained` is in world units (originalBounds was world AABB).
-  // For shapes with a width/height field, persist that directly and
-  // pin `scale` to 1 — otherwise a non-1 scale carried over from a
-  // previous group resize would multiply the new width and the
-  // shape would jump out from under the cursor on the next gesture.
-  const next: Shape = {
-   ...shape,
-   position: { x: constrained.x, y: constrained.y },
-   scale: { x: 1, y: 1 },
-   width: constrained.width,
-   height: constrained.height,
-  } as Shape;
-  const patch: Patch = { kind: "shape", id, before: shape, after: next };
-  this._scene = apply(this._scene, patch);
-  this.recordGesturePatch(patch);
+  const result = computeShapeResize(this._scene, id, handle, delta, originalBounds, (s, raw, h) =>
+   this.clampContainerToChildren(s, raw, h),
+  );
+  if (!result) return;
+  this._scene = result.scene;
+  this.recordGesturePatch(result.patch);
   this.notify();
  }
 
@@ -4280,211 +4099,21 @@ export class Editor {
   * - Cycles (container into its own descendant) are prevented
   *  by the `containerHover` pipeline above — the exclude set blocks them.
   */
+ // Pure body in `./editor/container-ops.ts`. Editor exposes a
+ // small `ContainerOpsRef` bridge so the module can mutate scene
+ // + push patches into the running gesture transaction.
  private applyContainerDrop(worldPoint: Vec2): void {
-  void worldPoint;
-  const dragId = this.dragShapeId;
-  if (!dragId) return;
-  const shape = getShape(this._scene, dragId);
-  if (!shape) return;
-  // Containers themselves can also be dragged into other
-  // containers (nesting); cycle-check is already performed in the hover-pipeline.
-
-  const hover = this.containerHover;
-  if (hover && hover.id !== shape.parentId) {
-   // Reparent into hovered container. Bump the dropped shape to
-   // top z-order of its layer so it lands ABOVE the container's
-   // visual body (otherwise the container's fill obscures it).
-   const tx = this.beginOrAttachGesture();
-   const topOrder = orderForTop(
-    [...this._scene.shapes.values()]
-     .filter((s) => s.layerId === shape.layerId && s.id !== dragId)
-     .map((s) => s.order),
-   );
-   const r = updateShape(this._scene, dragId, (s) => ({
-    ...s,
-    parentId: hover.id,
-    order: topOrder,
-   }));
-   this._scene = r.scene;
-   tx.add(r.patch);
-   this.maybeGrowContainer(hover.id, dragId);
-   return;
-  }
-
-  if (hover && hover.id === shape.parentId) {
-   // Drag-within: cursor still over the same parent. If the child's
-   // bounds overflow the drop-zone, grow the parent to fit.
-   this.maybeGrowContainer(shape.parentId, dragId);
-   return;
-  }
-
-  if (shape.parentId) {
-   const parent = getShape(this._scene, shape.parentId);
-   // Group parents have no drop-zone — they're logical wrappers,
-   // not spatial containers. The drag-out / coverage logic is for
-   // proper containers (swimlane, frame, template); a group child
-   // must stay parented to its group regardless of its world bounds.
-   if (parent?.type === "group") return;
-   // hover = null: cursor left the parent's zone, but the child
-   // itself may still be mostly inside. Coverage check decides:
-   //  ≥ CONTAINER_KEEP_THRESHOLD → keep parent + grow zone to fit.
-   //  < threshold → un-parent (drag-out).
-   const parentZone = parent ? getDropZoneWorld(parent) : null;
-   const childBounds = getShapeWorldBounds(shape);
-   const coverage = parentZone ? coverageRatio(childBounds, parentZone) : 0;
-   if (parentZone && coverage >= CONTAINER_KEEP_THRESHOLD) {
-    this.maybeGrowContainer(shape.parentId, dragId);
-    return;
-   }
-   const tx = this.beginOrAttachGesture();
-   const r = updateShape(this._scene, dragId, (s) => {
-    const next: Shape = { ...s };
-    delete (next as { parentId?: ShapeId }).parentId;
-    return next;
-   });
-   this._scene = r.scene;
-   tx.add(r.patch);
-  }
+  applyContainerDropPure(this.containerOpsRef, worldPoint);
  }
 
- /**
-  * If `childId` no longer fits inside `containerId`'s drop-zone,
-  * expand the zone + the container's outer size. Single patch added
-  * to the running gesture. Skips no-op cases (already fits, container
-  * has no width/height field).
-  */
+ // Public-private hybrid — also called from AutoLayoutScheduler.
  private maybeGrowContainer(containerId: ShapeId, childId: ShapeId): void {
-  const container = getShape(this._scene, containerId);
-  const child = getShape(this._scene, childId);
-  if (!container || !child) return;
-  const spec = getContainerSpec(container);
-  if (!spec) return;
-  const childWorld = getShapeWorldBounds(child);
-  const expanded = expandDropZoneToFit(container, childWorld);
-  if (!expanded) return;
-
-  const containerHasBox =
-   container.type === "rectangle" ||
-   container.type === "ellipse" ||
-   container.type === "image" ||
-   container.type === "template";
-  const tx = this.beginOrAttachGesture();
-
-  if (containerHasBox) {
-   const widthHeight = container as Shape & { width: number; height: number };
-   const sized = containerSizeForZone(
-    { width: widthHeight.width, height: widthHeight.height, spec },
-    expanded,
-   );
-   const r = updateShape(this._scene, containerId, (s) => ({
-    ...s,
-    position: {
-     x: s.position.x + sized.positionOffset.x,
-     y: s.position.y + sized.positionOffset.y,
-    },
-    width: sized.width,
-    height: sized.height,
-    metadata: {
-     ...(s.metadata ?? {}),
-     container: { ...spec, dropZone: expanded },
-    },
-   }) as Shape);
-   this._scene = r.scene;
-   tx.add(r.patch);
-   // Children are stored in absolute world coords — translating the
-   // container's `position` does NOT visually move them, so no
-   // compensating patch is needed. (Earlier code shifted the child
-   // and pushed it off-screen.)
-  } else {
-   const r = updateShape(this._scene, containerId, (s) => ({
-    ...s,
-    metadata: {
-     ...(s.metadata ?? {}),
-     container: { ...spec, dropZone: expanded },
-    },
-   }));
-   this._scene = r.scene;
-   tx.add(r.patch);
-  }
+  maybeGrowContainerPure(this.containerOpsRef, containerId, childId);
  }
 
- /**
-  * Floor the proposed container bounds to whatever is required to keep
-  * every child fully inside the drop-zone. The expansion is applied at
-  * the edges touched by `handle`, so the dragged corner / side keeps
-  * controlling direction — the shape just refuses to go smaller than
-  * the children mandate.
-  *
-  * Works for any shape with a `ContainerSpec` (template-driven or
-  * static metadata). Returns `raw` unchanged when the shape has no
-  * children or isn't a container.
-  */
+ // Pure body in `./editor/container-ops.ts`.
  private clampContainerToChildren(shape: Shape, raw: Bounds, handle: HandleId): Bounds {
-  if (!isContainer(shape) || !hasWidthHeight(shape)) return raw;
-  const childrenBox = this.childrenWorldUnion(shape.id);
-  if (!childrenBox) return raw;
-  // Compose a hypothetical container with the proposed bounds, then
-  // ask the resolver where the drop-zone lands at that size. Chrome
-  // (header / margin / padding) stays constant across resize, so a
-  // single-pass expansion is sound for typical templates.
-  const hypothetical = {
-   ...shape,
-   position: { x: raw.x, y: raw.y },
-   width: raw.width,
-   height: raw.height,
-  } as Shape;
-  const dropZoneWorld = getDropZoneWorld(hypothetical);
-  if (!dropZoneWorld) return raw;
-
-  let { x, y, width, height } = raw;
-  const dx0 = dropZoneWorld.x;
-  const dy0 = dropZoneWorld.y;
-  const dx1 = dropZoneWorld.x + dropZoneWorld.width;
-  const dy1 = dropZoneWorld.y + dropZoneWorld.height;
-  const cx0 = childrenBox.x;
-  const cy0 = childrenBox.y;
-  const cx1 = childrenBox.x + childrenBox.width;
-  const cy1 = childrenBox.y + childrenBox.height;
-
-  // East side dragged: extend width rightward to cover children.
-  if (handle.includes("e") && dx1 < cx1) {
-   width += cx1 - dx1;
-  }
-  // South side dragged: extend height downward.
-  if (handle.includes("s") && dy1 < cy1) {
-   height += cy1 - dy1;
-  }
-  // West side dragged: position can't move past child's left edge.
-  // Shift x back and re-extend width to keep the right edge anchored.
-  if (handle.includes("w") && dx0 > cx0) {
-   const shift = dx0 - cx0;
-   x -= shift;
-   width += shift;
-  }
-  // North side dragged: same idea on the vertical axis.
-  if (handle.includes("n") && dy0 > cy0) {
-   const shift = dy0 - cy0;
-   y -= shift;
-   height += shift;
-  }
-  return { x, y, width, height };
- }
-
- /**
-  * Union of every direct child's world-space AABB. Returns `null` when
-  * the container has no children. Recursive descent isn't needed — we
-  * only constrain to direct children because container resize doesn't
-  * cascade into nested containers (the inner one self-constrains via
-  * its own `clampContainerToChildren` call).
-  */
- private childrenWorldUnion(containerId: ShapeId): Bounds | null {
-  let acc: Bounds | null = null;
-  for (const s of this._scene.shapes.values()) {
-   if (s.parentId !== containerId) continue;
-   const b = getShapeWorldBounds(s);
-   acc = acc ? B.union(acc, b) : b;
-  }
-  return acc;
+  return clampContainerToChildrenPure(this._scene, shape, raw, handle);
  }
 
  /**
@@ -4713,36 +4342,10 @@ export class Editor {
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
-/**
- * Fraction of `child`'s area that lies inside `zone`. Returns 0 when
- * either bbox is degenerate or they don't intersect. Used by the
- * container drop handler to decide between "child still belongs to
- * the lane" and "user dragged it out".
- */
-const coverageRatio = (child: Bounds, zone: Bounds): number => {
- const area = child.width * child.height;
- if (area <= 0) return 0;
- const ix = Math.max(child.x, zone.x);
- const iy = Math.max(child.y, zone.y);
- const ix2 = Math.min(child.x + child.width, zone.x + zone.width);
- const iy2 = Math.min(child.y + child.height, zone.y + zone.height);
- const iw = ix2 - ix;
- const ih = iy2 - iy;
- if (iw <= 0 || ih <= 0) return 0;
- return (iw * ih) / area;
-};
+// `coverageRatio` moved to `./editor/container-ops.ts`.
 
-/**
- * True when the shape's geometry is parametrised by `width` / `height`
- * fields the editor can rewrite directly during a resize. Anything
- * else (paths, polygons, brush strokes, text, groups) has to ride the
- * `scale` multiplier instead.
- */
-const hasWidthHeight = (s: Shape): s is Shape & { width: number; height: number } =>
- s.type === "rectangle" ||
- s.type === "ellipse" ||
- s.type === "image" ||
- s.type === "template";
+// `hasWidthHeight` moved to `./editor/shape-traits.ts` for shared
+// use by container-ops and the future applies/resize module.
 
 /**
  * Convert `PointerEvent.pressure` (0–1) to a brush half-width in local
@@ -4810,146 +4413,6 @@ const endpointFromSnap = (
 
 type AnchorRefLike = Extract<EdgeEndpoint, { kind: "anchor" }>["anchor"];
 
-// Local helper duplicated from `handle.ts` so this file does not introduce a
-// circular import. Equivalent to `handle.resizeBounds` for the case where the
-// shape's local AABB starts at (0, 0) — we apply the delta directly to the
-// world bounds we captured at press-down.
-const resizeFromHandle = (b: Bounds, handle: HandleId, delta: Vec2): Bounds => {
- let x = b.x;
- let y = b.y;
- let width = b.width;
- let height = b.height;
- switch (handle) {
-  case "nw":
-   x += delta.x;
-   y += delta.y;
-   width -= delta.x;
-   height -= delta.y;
-   break;
-  case "n":
-   y += delta.y;
-   height -= delta.y;
-   break;
-  case "ne":
-   y += delta.y;
-   width += delta.x;
-   height -= delta.y;
-   break;
-  case "e":
-   width += delta.x;
-   break;
-  case "se":
-   width += delta.x;
-   height += delta.y;
-   break;
-  case "s":
-   height += delta.y;
-   break;
-  case "sw":
-   x += delta.x;
-   width -= delta.x;
-   height += delta.y;
-   break;
-  case "w":
-   x += delta.x;
-   width -= delta.x;
-   break;
- }
- return { x, y, width, height };
-};
-
-interface ResizeConstraints {
- readonly minWidth?: number;
- readonly minHeight?: number;
- readonly maxWidth?: number;
- readonly maxHeight?: number;
- readonly noFlip?: boolean;
-}
-
-/**
- * Apply min/max + no-flip constraints to a freshly-computed `raw` bounds.
- *
- * The constraints anchor on the edge **opposite** the dragged handle —
- * dragging `se` keeps `(originalBounds.x, originalBounds.y)` fixed and
- * adjusts width/height; dragging `nw` keeps the bottom-right corner. This
- * matches the visual expectation that the opposite edge stays put.
- *
- * `noFlip` forces width/height to stay non-negative (or above `minWidth` /
- * `minHeight` if set). Without it, dragging past the opposite edge mirrors
- * the shape — restored by `bounds.normalize`.
- */
-const applyResizeConstraints = (
- original: Bounds,
- raw: Bounds,
- handle: HandleId,
- constraints: ResizeConstraints,
-): Bounds => {
- // Floor for width/height. `noFlip` clamps to the explicit min, or 0 if no
- // min is set; otherwise the floor is just `minWidth` / `minHeight` (which
- // may be undefined, meaning "no floor").
- const minW = constraints.noFlip ? (constraints.minWidth ?? 0) : constraints.minWidth;
- const minH = constraints.noFlip ? (constraints.minHeight ?? 0) : constraints.minHeight;
- const maxW = constraints.maxWidth;
- const maxH = constraints.maxHeight;
-
- const clamp = (v: number, lo: number | undefined, hi: number | undefined): number => {
-  let r = v;
-  if (lo !== undefined && r < lo) r = lo;
-  if (hi !== undefined && r > hi) r = hi;
-  return r;
- };
-
- // When `noFlip` is true, clamp width/height first (preserving sign by working
- // with non-negative values), then re-derive x/y so the anchor edge stays put.
- // When `noFlip` is false, raw width/height may go negative; we still apply
- // `maxWidth`/`maxHeight` by clamping the absolute value, then keep the raw
- // sign so `bounds.normalize` later flips correctly.
-
- const left = handleAffectsLeft(handle);
- const right = handleAffectsRight(handle);
- const top = handleAffectsTop(handle);
- const bottom = handleAffectsBottom(handle);
-
- // X / width
- let x = raw.x;
- let width = raw.width;
- if (constraints.noFlip) {
-  width = clamp(width, minW, maxW);
- } else if (maxW !== undefined && Math.abs(width) > maxW) {
-  width = width < 0 ? -maxW : maxW;
- } else if (minW !== undefined && Math.abs(width) < minW && width !== 0) {
-  width = width < 0 ? -minW : minW;
- }
- if (left && !right) {
-  // Anchor right edge: x = original.right - width
-  x = original.x + original.width - width;
- } else if (right && !left) {
-  x = original.x;
- }
-
- // Y / height
- let y = raw.y;
- let height = raw.height;
- if (constraints.noFlip) {
-  height = clamp(height, minH, maxH);
- } else if (maxH !== undefined && Math.abs(height) > maxH) {
-  height = height < 0 ? -maxH : maxH;
- } else if (minH !== undefined && Math.abs(height) < minH && height !== 0) {
-  height = height < 0 ? -minH : minH;
- }
- if (top && !bottom) {
-  y = original.y + original.height - height;
- } else if (bottom && !top) {
-  y = original.y;
- }
-
- const out = { x, y, width, height };
- return constraints.noFlip ? out : bounds_normalize(out);
-};
-
-const bounds_normalize = (b: Bounds): Bounds => B.normalize(b);
-
-const handleAffectsLeft = (h: HandleId): boolean => h === "nw" || h === "w" || h === "sw";
-const handleAffectsRight = (h: HandleId): boolean => h === "ne" || h === "e" || h === "se";
-const handleAffectsTop = (h: HandleId): boolean => h === "nw" || h === "n" || h === "ne";
-const handleAffectsBottom = (h: HandleId): boolean => h === "sw" || h === "s" || h === "se";
+// `resizeFromHandle`, `applyResizeConstraints`, the four handle-
+// quadrant predicates moved to `./editor/resize-helpers.ts` so
+// they're shared between applies/resize and the container clamp.
