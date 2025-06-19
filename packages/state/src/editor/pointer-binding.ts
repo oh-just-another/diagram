@@ -1,0 +1,663 @@
+import {
+  findContainerAt,
+  getDropZoneWorld,
+  getShape,
+  getShapeWorldBounds,
+  updateAnnotation,
+} from "@oh-just-another/scene";
+import { boundsFromPoints, interpretPressEnd } from "../machine.js";
+import { fromPointerEvent } from "../dom-events.js";
+import * as Selection from "../selection.js";
+import { getInteractiveHitTester } from "../interactive.js";
+import {
+  LONG_PRESS_MAX_MOVEMENT_PX,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  WHEEL_PAN_FACTOR,
+  WHEEL_ZOOM_MAX_STEP,
+  WHEEL_ZOOM_SPEED,
+} from "../constants.js";
+import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
+
+const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
+const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+
+/**
+ * Pointer + wheel event binding. Owns the branchy dispatch — pan /
+ * pinch / brush / annotation / interactive-hit / machine flow —
+ * kept in one file so reading any single handler does not require
+ * jumping across module boundaries.
+ *
+ * Returns an unsubscribe function that removes every listener it
+ * installed.
+ *
+ * Pragma note: `editor` is typed as `any` because this handler
+ * needs the wide Editor surface (host, private fields, private
+ * mutators). A narrow structural interface would be a maintenance
+ * burden bigger than the type loss — the two files are
+ * intentionally tightly coupled, an "internal partial" of Editor.
+ * Editor.ts is the only call site.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const bindPointerEvents = (editor: any): (() => void) => {
+  const onDown = (ev: PointerEvent) => {
+    ev.preventDefault();
+    editor.host.setPointerCapture(ev.pointerId);
+    const data = fromPointerEvent(ev, editor.host);
+
+    // Pan gesture detection — must come BEFORE the normal flow so a
+    // right-click or Space+left-click never starts a select/draw
+    // gesture. Two triggers:
+    //   • Right mouse button (button === 2).
+    //   • Left mouse button + Space currently held.
+    // Middle-click (button === 1) is covered under the same trigger.
+    const isRightClick = ev.button === 2 || ev.button === 1;
+    const isSpaceLeftDrag = ev.button === 0 && editor.spaceHeld;
+    const isHandModeLeftDrag = ev.button === 0 && editor.mode === "hand";
+    if (isRightClick || isSpaceLeftDrag || isHandModeLeftDrag) {
+      // Suppress the next native contextmenu — we'll either pan
+      // (if user drags) or manually fire the long-press callback
+      // at pointerup (if it was a click-style right-click).
+      if (isRightClick) editor.suppressNextContextMenu = true;
+      editor.beginPanGesture(ev.pointerId, ev.button, data.point);
+      return;
+    }
+
+    // Track every active pointer so we can detect a 2-finger pinch.
+    // On the *second* concurrent pointer, cancel whatever single-pointer
+    // gesture the machine started (it'd otherwise interpret the second
+    // touch as a one-finger drag) and enter pinch mode.
+    editor.activePointers.set(ev.pointerId, data.point);
+    if (editor.activePointers.size === 2) {
+      // First touch already kicked off a POINTER_DOWN — undo it so the
+      // shape under finger #1 doesn't get dragged when finger #2 lands.
+      editor.actor.send({ type: "POINTER_CANCEL" });
+      editor.cancelGesture();
+      editor.cancelLongPress();
+      editor.beginPinch();
+      return;
+    }
+    if (editor.activePointers.size > 2) {
+      // 3-finger and more: stay in pinch mode but ignore additional
+      // contacts — the gesture math uses the first two pointers only.
+      return;
+    }
+
+    // Schedule a long-press fire — cancelled by movement or release.
+    editor.startLongPress(data.point);
+
+    const worldPoint = editor.screenToWorld(data.point);
+
+    // Brush mode owns the gesture end-to-end — no machine, no
+    // interactive testers, no auto-select. Start a stroke at the
+    // press point with the device's pressure; onMove extends; onUp
+    // commits as a single BrushShape patch.
+    if (editor.mode === "brush") {
+      editor.beginBrushStroke(worldPoint, ev.pressure);
+      return;
+    }
+
+    // Annotation pin drag — when the press lands on a pin, take over
+    // the gesture entirely (skip machine, skip interactive testers).
+    // Pin position updates per pointermove; commits on pointerup.
+    const annHit = editor.hitAnnotation(worldPoint);
+    if (annHit) {
+      const ann = editor._scene.annotations.get(annHit);
+      if (ann) {
+        editor.annotationDrag = {
+          id: annHit,
+          originPosition: { ...ann.position },
+          originWorldPoint: worldPoint,
+          moved: false,
+        };
+        editor.setSelectedAnnotation(annHit);
+        return;
+      }
+    }
+
+    // Interactive sub-element check: when the press lands on a shape whose
+    // type has a registered hit-tester (rich templates, etc.) and the
+    // tester finds an interactive node, fire its emit and skip the normal
+    // press flow entirely. This is what makes a click on a template Button
+    // behave differently from a click on the template body.
+    const topShape = editor.acceleratedShapeAt(worldPoint);
+    if (topShape) {
+      const tester = getInteractiveHitTester(topShape.type);
+      if (tester) {
+        const local = {
+          x: worldPoint.x - topShape.position.x,
+          y: worldPoint.y - topShape.position.y,
+        };
+        const emit = tester(topShape, local);
+        if (emit) {
+          editor.applyEmit(emit);
+          return;
+        }
+      }
+    }
+
+    const target = editor.hitTest(worldPoint);
+    // Auto-select on press for shapes / edges that the user is about
+    // to act on (drag, resize handles): you can't manipulate an
+    // element that isn't selected, so pressing on an unselected one
+    // promotes it to the selection BEFORE the drag starts. Shift/Cmd
+    // extends instead of replacing. We don't promote inside the
+    // group-handle / edge-endpoint paths because those already act on
+    // the existing selection.
+    if (target.kind === "shape" && !editor._selection.has(target.id)) {
+      const additive = Boolean(data.modifiers?.shift || data.modifiers?.meta || data.modifiers?.ctrl);
+      editor._selection = additive ? Selection.add(editor._selection, target.id) : Selection.single(target.id);
+      if (editor._selectedEdge !== null) editor._selectedEdge = null;
+      // Notify happens at the end of the gesture path; selecting now
+      // ensures the live `_selection` reflects what subsequent
+      // MOVE_SHAPE emits will operate on.
+      editor.notify();
+    }
+    // Track the dragged shape id for container drop / drag-out logic
+    // on pointerup. Cleared in onUp / cancel.
+    editor.dragShapeId = target.kind === "shape" ? target.id : null;
+    editor.containerHover = null;
+
+    // Snapshot positions for the upcoming drag. Two paths populate the
+    // group-move snapshot:
+    //   1. Press lands on an already-selected shape → drag the whole
+    //      selection (with descendants of any selected group).
+    //   2. Press lands on a group shape (whether selected or not) →
+    //      drag that group and its descendants. Without this, a click-
+    //      drag on an unselected group would only move the wrapper
+    //      (zero-bounds, invisible) and leave its children behind —
+    //      looking exactly like the group had been ungrouped.
+    if (target.kind === "shape") {
+      const pressedShape = getShape(editor._scene, target.id);
+      const pressedIsGroup = pressedShape?.type === "group";
+      const pressedIsFrame = pressedShape?.type === "frame";
+      const inSelection = editor._selection.has(target.id);
+      if (inSelection || pressedIsGroup || pressedIsFrame) {
+        const ids = new Set<ShapeId>();
+        if (inSelection) {
+          for (const id of editor.expandSelectionWithDescendants()) ids.add(id);
+        }
+        if (pressedIsGroup) {
+          const visit = (parentId: ShapeId): void => {
+            if (ids.has(parentId)) return;
+            ids.add(parentId);
+            for (const child of editor._scene.shapes.values()) {
+              if (child.parentId === parentId) visit(child.id);
+            }
+          };
+          visit(target.id);
+        }
+        if (pressedIsFrame) {
+          // Frame drag pulls every shape with matching frameId along.
+          // Frames are flat associations — no recursive descent needed.
+          ids.add(target.id);
+          for (const s of editor._scene.shapes.values()) {
+            if (s.frameId === target.id) ids.add(s.id);
+          }
+        }
+        if (ids.size > 1) {
+          const snap = new Map<ShapeId, Vec2>();
+          for (const id of ids) {
+            const s = getShape(editor._scene, id);
+            if (s) snap.set(id, s.position);
+          }
+          editor.groupMoveOrigin = snap;
+        } else {
+          editor.groupMoveOrigin = null;
+        }
+      } else {
+        editor.groupMoveOrigin = null;
+      }
+    } else {
+      editor.groupMoveOrigin = null;
+    }
+    // Snapshot each member's world bounds + position + scale when the
+    // press lands on a group-handle so the per-frame resize math has
+    // a stable baseline to scale against.
+    //
+    // For single-group selection the selection itself is just the
+    // group wrapper (zero intrinsic bounds), so the snapshot would
+    // be useless. Expand to include every descendant — those are
+    // the leaves applyGroupResize actually scales. Same expansion
+    // is harmless for plain multi-selection (no descendants).
+    if (target.kind === "group-handle") {
+      const shapes = new Map<ShapeId, { position: Vec2; bounds: Bounds; scale: Vec2 }>();
+      for (const id of editor.expandSelectionWithDescendants()) {
+        const s = getShape(editor._scene, id);
+        if (!s) continue;
+        shapes.set(id, {
+          position: s.position,
+          bounds: getShapeWorldBounds(s),
+          scale: s.scale,
+        });
+      }
+      editor.groupResizeOrigin = { combined: target.bounds, shapes };
+    } else {
+      editor.groupResizeOrigin = null;
+    }
+    editor.actor.send({
+      type: "POINTER_DOWN",
+      point: worldPoint,
+      target,
+      modifiers: data.modifiers,
+    });
+  };
+
+  const onMove = (ev: PointerEvent) => {
+    const data = fromPointerEvent(ev, editor.host);
+
+    // Pan gesture in flight — translate cursor delta to a screen
+    // pan and short-circuit. Doesn't touch the machine.
+    if (editor.panGesture && editor.panGesture.pointerId === ev.pointerId) {
+      const dx = data.point.x - editor.panGesture.lastPoint.x;
+      const dy = data.point.y - editor.panGesture.lastPoint.y;
+      editor.panGesture.lastPoint = data.point;
+      // Mark as moved once total displacement crosses the slop
+      // threshold — used at pointerup to decide context-menu vs
+      // drag for right-click gestures.
+      if (
+        !editor.panGesture.moved &&
+        distanceTo(editor.panGesture.startPoint, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
+      ) {
+        editor.panGesture.moved = true;
+      }
+      // Natural-grab direction: cursor right → world moves right
+      // (shapes follow the finger). `viewportPanBy` already
+      // subtracts deltaScreen from pan, so we pass the raw cursor
+      // delta — no extra inversion.
+      editor.panBy({ x: dx, y: dy });
+      return;
+    }
+
+    // Update tracked pointer position. In pinch mode, recompute the
+    // gesture and short-circuit before sending to the machine.
+    if (editor.activePointers.has(ev.pointerId)) {
+      editor.activePointers.set(ev.pointerId, data.point);
+    }
+    if (editor.pinch.isActive()) {
+      editor.applyPinch();
+      return;
+    }
+
+    // Cancel long-press timer if the finger has moved beyond slop.
+    editor.longPress.cancelIfMovedBeyond(data.point, LONG_PRESS_MAX_MOVEMENT_PX);
+
+    const worldPoint = editor.screenToWorld(data.point);
+    // Track cursor for paste-at-cursor and other commands that want a
+    // sensible drop target.
+    editor.lastPointerWorld = worldPoint;
+
+    // Brush stroke in progress — append a vertex and skip everything
+    // else (machine, container hover, hovered-edge target).
+    if (editor.brushStroke) {
+      editor.extendBrushStroke(worldPoint, ev.pressure);
+      return;
+    }
+
+    // Container drop preview: while dragging a single shape, find the
+    // topmost container under cursor (excluding the dragged shape and
+    // its descendants) and stash the drop-zone for the overlay.
+    if (editor.dragShapeId) {
+      const dragged = editor.dragShapeId;
+      const exclude = new Set<ShapeId>([dragged]);
+      // Don't drop a container onto itself or into one of its own
+      // descendants (would create a cycle).
+      for (const s of editor._scene.shapes.values()) {
+        let cursor = s.parentId;
+        for (let i = 0; cursor && i < 64; i++) {
+          if (cursor === dragged) {
+            exclude.add(s.id);
+            break;
+          }
+          cursor = editor._scene.shapes.get(cursor)?.parentId;
+        }
+      }
+      const container = findContainerAt(editor._scene, worldPoint, exclude);
+      if (container) {
+        const zone = getDropZoneWorld(container);
+        if (zone) {
+          const next = { id: container.id, dropZone: zone };
+          if (
+            !editor.containerHover ||
+            editor.containerHover.id !== next.id ||
+            editor.containerHover.dropZone !== next.dropZone
+          ) {
+            editor.containerHover = next;
+            editor.notify();
+          }
+        }
+      } else if (editor.containerHover !== null) {
+        editor.containerHover = null;
+        editor.notify();
+      }
+    }
+
+    // Annotation drag — update annotation position from delta. No
+    // patches per-move; commit on pointerup so undo is one step.
+    if (editor.annotationDrag) {
+      const drag = editor.annotationDrag;
+      const dx = worldPoint.x - drag.originWorldPoint.x;
+      const dy = worldPoint.y - drag.originWorldPoint.y;
+      if (dx !== 0 || dy !== 0) drag.moved = true;
+      const ann = editor._scene.annotations.get(drag.id);
+      if (ann) {
+        // Mutate via apply to keep render in sync; final commit on
+        // up rewrites the patch from origin to final.
+        const newPos = { x: drag.originPosition.x + dx, y: drag.originPosition.y + dy };
+        const next = { ...ann, position: newPos };
+        const annotations = new Map(editor._scene.annotations);
+        annotations.set(drag.id, next);
+        editor._scene = { ...editor._scene, annotations };
+        editor.notify();
+      }
+      return;
+    }
+
+    // Fan out to anyone listening for the local cursor — `@collab`
+    // broadcasts it via awareness. Fires on every move; subscribers
+    // throttle if they care.
+    for (const fn of editor.cursorListeners) fn(worldPoint);
+    const ctx = editor.actor.getSnapshot().context;
+    if (
+      ctx.pressOrigin &&
+      ctx.mode !== "select" &&
+      ctx.mode !== "draw-edge" &&
+      editor.isDrawingPhase(ctx)
+    ) {
+      // Update rubber-band preview live for rect / ellipse drawing.
+      editor.drawingPreview = boundsFromPoints(ctx.pressOrigin, worldPoint);
+    }
+    // Port-overlay tracking in draw-edge mode — both when idle (showing
+    // where you can start an edge) and during the gesture (showing the
+    // snap target as the pointer crosses shapes).
+    if (ctx.mode === "draw-edge") {
+      editor.updateHoveredEdgeTarget(worldPoint);
+    } else if (editor.hoveredEdgeTarget !== null) {
+      editor.hoveredEdgeTarget = null;
+      editor.notify();
+    }
+    editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
+  };
+
+  const onUp = (ev: PointerEvent) => {
+    if (editor.host.hasPointerCapture(ev.pointerId)) {
+      editor.host.releasePointerCapture(ev.pointerId);
+    }
+    editor.activePointers.delete(ev.pointerId);
+
+    // Pan gesture ends — clean up cursor and state, skip the rest.
+    if (editor.panGesture && editor.panGesture.pointerId === ev.pointerId) {
+      editor.endPanGesture();
+      return;
+    }
+
+    // Exit pinch when the second-to-last finger lifts — the surviving
+    // touch (if any) does NOT resume as a single-finger drag, because
+    // we already cancelled the machine on pinch entry.
+    if (editor.pinch.isActive()) {
+      if (editor.activePointers.size < 2) editor.pinch.end();
+      return;
+    }
+
+    // Long-press loses its chance the moment the user releases.
+    editor.cancelLongPress();
+
+    // Commit brush stroke if one is in progress.
+    if (editor.brushStroke) {
+      editor.commitBrushStroke();
+      return;
+    }
+
+    // Annotation drag commit — issue a single patch that goes from
+    // origin position to final position so history has one undo step.
+    if (editor.annotationDrag) {
+      const drag = editor.annotationDrag;
+      editor.annotationDrag = null;
+      if (drag.moved) {
+        const final = editor._scene.annotations.get(drag.id);
+        if (final) {
+          // Reset to origin, then issue patch with proper before/after.
+          const origin = { ...final, position: drag.originPosition };
+          const annotations = new Map(editor._scene.annotations);
+          annotations.set(drag.id, origin);
+          editor._scene = { ...editor._scene, annotations };
+          const r = updateAnnotation(editor._scene, drag.id, () => final);
+          editor._scene = r.scene;
+          editor._history.push(r.patch);
+          editor.notify();
+        }
+      }
+      return;
+    }
+
+    const data = fromPointerEvent(ev, editor.host);
+    const worldPoint = editor.screenToWorld(data.point);
+
+    // First, fire any click-style effect derived from the press context.
+    const ctxBeforeUp = editor.actor.getSnapshot().context;
+    const clickEffect = interpretPressEnd(ctxBeforeUp, worldPoint);
+
+    // Group isolation routing:
+    //   - Double-click on a grouped shape → enter the topmost group
+    //     ancestor; select the inner shape directly (skipping the
+    //     promote-to-group logic that would otherwise re-select the
+    //     group root).
+    //   - Inside isolation, a click that lands outside the entered
+    //     group's descendants (empty space OR another shape) exits
+    //     isolation and lets the normal selection happen.
+    // Both branches override what `interpretPressEnd` produced.
+    const handledByIsolation = editor.routeIsolationClick(clickEffect, worldPoint);
+    if (!handledByIsolation && clickEffect) {
+      editor.applyEmit(clickEffect);
+    }
+
+    editor.drawingPreview = null;
+    // Provide the up-side hit-test when the gesture cares about where
+    // it lands: drawing a new edge, or re-binding an existing edge
+    // endpoint. The hit-test sees the *current* selection (edge or
+    // shape) and so resolves correctly to either kind.
+    const needsUpTarget =
+      ctxBeforeUp.mode === "draw-edge" || ctxBeforeUp.pressTarget?.kind === "edge-endpoint";
+    const upTarget = needsUpTarget ? editor.hitTest(worldPoint) : undefined;
+    editor.actor.send(
+      upTarget !== undefined
+        ? { type: "POINTER_UP", point: worldPoint, target: upTarget }
+        : { type: "POINTER_UP", point: worldPoint },
+    );
+    // Container reparent / drag-out — must run before commitGesture
+    // so the parentId / autoGrow patches land in the same undo step.
+    editor.applyContainerDrop(worldPoint);
+    editor.commitGesture();
+  };
+
+  const onCancel = (ev: PointerEvent) => {
+    editor.activePointers.delete(ev.pointerId);
+    if (editor.panGesture && editor.panGesture.pointerId === ev.pointerId) {
+      editor.endPanGesture();
+      return;
+    }
+    if (editor.pinch.isActive()) {
+      if (editor.activePointers.size < 2) editor.pinch.end();
+      return;
+    }
+    editor.cancelLongPress();
+    if (editor.brushStroke) {
+      editor.cancelBrushStroke();
+      return;
+    }
+    // Annotation drag — revert to origin on cancel.
+    if (editor.annotationDrag) {
+      const drag = editor.annotationDrag;
+      editor.annotationDrag = null;
+      const ann = editor._scene.annotations.get(drag.id);
+      if (ann) {
+        const annotations = new Map(editor._scene.annotations);
+        annotations.set(drag.id, { ...ann, position: drag.originPosition });
+        editor._scene = { ...editor._scene, annotations };
+        editor.notify();
+      }
+      return;
+    }
+    editor.drawingPreview = null;
+    editor.actor.send({ type: "POINTER_CANCEL" });
+    editor.cancelGesture();
+  };
+
+  editor.host.addEventListener("pointerdown", onDown);
+  editor.host.addEventListener("pointermove", onMove);
+  editor.host.addEventListener("pointerup", onUp);
+  editor.host.addEventListener("pointercancel", onCancel);
+
+  // Right-click handling: the contextmenu DOM event fires once per
+  // right mouse press, AFTER pointerup on most browsers. We use
+  // `suppressNextContextMenu` (set on right-click pointerdown) to:
+  //   • preventDefault the native browser menu;
+  //   • stopPropagation so window-level listeners (like
+  //     `@react-ui/ContextMenu` default) don't re-open a menu when
+  //     the user was actually panning.
+  // The "menu on click without drag" path lives in `endPanGesture`:
+  // it fires `longPressListeners` directly, which is what
+  // ContextMenu also subscribes to. So a clean right-click still
+  // produces a menu — through our event channel, not the native
+  // contextmenu DOM event.
+  const onContextMenu = (ev: MouseEvent): void => {
+    if (!editor.suppressNextContextMenu) return;
+    editor.suppressNextContextMenu = false;
+    ev.preventDefault();
+    ev.stopPropagation();
+  };
+  // Capture phase so we beat the window-level listener that
+  // ContextMenu attaches in its useEffect.
+  editor.host.addEventListener("contextmenu", onContextMenu, true);
+
+  // Window-level Space tracking so Space anywhere on the page
+  // arms the next mouse drag as a pan. Skip when focus is in a
+  // text input — Space should still type a space there.
+  const isEditableTarget = (target: EventTarget | null): boolean => {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName;
+    return (
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT" ||
+      target.isContentEditable
+    );
+  };
+  const onKeyDown = (ev: KeyboardEvent): void => {
+    if (ev.code !== "Space" && ev.key !== " ") return;
+    if (isEditableTarget(ev.target)) return;
+    if (editor.spaceHeld) return;
+    editor.spaceHeld = true;
+    // Visual affordance: "grab" cursor signals the user can drag-pan.
+    if (editor.previousHostCursor === null) {
+      editor.previousHostCursor = editor.host.style.cursor;
+      editor.host.style.cursor = "grab";
+    }
+    // Prevent page scroll on Space — common in browsers when no
+    // input is focused. We're holding it as a modifier, not as text.
+    ev.preventDefault();
+  };
+  const onKeyUp = (ev: KeyboardEvent): void => {
+    if (ev.code !== "Space" && ev.key !== " ") return;
+    if (!editor.spaceHeld) return;
+    editor.spaceHeld = false;
+    // Don't reset cursor if a pan gesture is still in flight — the
+    // gesture's own end-handler restores it. Otherwise restore now.
+    if (!editor.panGesture && editor.previousHostCursor !== null) {
+      editor.host.style.cursor = editor.previousHostCursor;
+      editor.previousHostCursor = null;
+    }
+  };
+  // window guard so node-env tests can still construct the editor.
+  if (typeof window !== "undefined") {
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+  }
+
+  // Wheel routing: mouse wheel → zoom, trackpad → pan / pinch.
+  // Browsers fire identical `wheel` events for both devices and no
+  // per-event signal reliably distinguishes them.
+  //
+  // Per-event classification:
+  //   • Cmd / Ctrl + wheel (also browser-synthesized for trackpad
+  //     pinch) → ZOOM around cursor.
+  //   • Shift + plain wheel → horizontal pan from vertical delta.
+  //   • Any deltaX ≠ 0 → trackpad 2D swipe → PAN both axes.
+  //   • Plain deltaY only → ZOOM (mouse wheel; rare pure-vertical
+  //     trackpad swipes also land here).
+  //
+  // Pan direction: `panBy` subtracts deltaScreen from `viewport.pan`,
+  // so we negate the wheel delta — positive deltaX (page scrolls
+  // right) → camera right → content shifts LEFT, matching native
+  // browser scroll feel.
+  const onWheel = (ev: WheelEvent): void => {
+    ev.preventDefault();
+    const rect = editor.host.getBoundingClientRect();
+    const screenPoint = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+
+    const applyZoom = (): void => {
+      if (ev.deltaY === 0) return;
+      // Clamp the raw wheel `deltaY` to MAX_STEP so the harsh ratchet
+      // of a mouse wheel turns into a calm ~10 % step per notch, while
+      // trackpad pinch events — which arrive with `|deltaY|` of 2–5 —
+      // bypass the clamp and stay granular for smooth multi-frame zooms.
+      const clampedDelta =
+        Math.abs(ev.deltaY) > WHEEL_ZOOM_MAX_STEP
+          ? WHEEL_ZOOM_MAX_STEP * Math.sign(ev.deltaY)
+          : ev.deltaY;
+      const factor = 1 - (clampedDelta * WHEEL_ZOOM_SPEED) / 100;
+      if (factor <= 0) return;
+      const currentZoom = editor._scene.viewport.zoom;
+      const nextZoom = clampZoom(currentZoom * factor);
+      if (nextZoom === currentZoom) return;
+      const anchor = editor.screenToWorld(screenPoint);
+      editor.zoomAt(nextZoom / currentZoom, anchor);
+    };
+
+    const applyPan = (): void => {
+      let dx = ev.deltaX;
+      let dy = ev.deltaY;
+      if (ev.shiftKey && dx === 0) {
+        dx = dy;
+        dy = 0;
+      }
+      editor.panBy({ x: -dx * WHEEL_PAN_FACTOR, y: -dy * WHEEL_PAN_FACTOR });
+    };
+
+    // Modifier-driven zoom (Cmd/Ctrl+wheel + trackpad pinch via
+    // browser-synthesized ctrlKey).
+    if (ev.ctrlKey || ev.metaKey) {
+      applyZoom();
+      return;
+    }
+
+    // Trackpad 2-finger swipe with any horizontal component →
+    // pan both axes. Mouse wheels never set deltaX, so this
+    // branch never misroutes mouse input.
+    if (ev.deltaX !== 0) {
+      applyPan();
+      return;
+    }
+
+    // Plain vertical wheel — always ZOOM. Pure-vertical trackpad swipes
+    // also hit this; users who want vertical-only trackpad pan use
+    // Space+drag or right-drag.
+    applyZoom();
+  };
+  // `passive: false` because we preventDefault. Browsers default wheel
+  // listeners to passive — must opt out explicitly.
+  editor.host.addEventListener("wheel", onWheel, { passive: false });
+
+  return () => {
+    editor.host.removeEventListener("pointerdown", onDown);
+    editor.host.removeEventListener("pointermove", onMove);
+    editor.host.removeEventListener("pointerup", onUp);
+    editor.host.removeEventListener("pointercancel", onCancel);
+    editor.host.removeEventListener("contextmenu", onContextMenu, true);
+    editor.host.removeEventListener("wheel", onWheel);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    }
+  };
+};

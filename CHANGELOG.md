@@ -712,3 +712,6 @@
 
 ## 0.39.0
 - feat: carve hit-test, pinch, container-ops, resize, traits
+
+## 0.40.0
+- feat: carve pointer-binding (last step, editor.ts 4439 Right 3789)
