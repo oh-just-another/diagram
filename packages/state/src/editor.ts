@@ -186,6 +186,43 @@ import {
 } from "./editor/applies/resize.js";
 import { bindPointerEvents as bindPointerEventsExternal } from "./editor/pointer-binding.js";
 import {
+ beginBrushStroke as beginBrushStrokePure,
+ commitBrushStroke as commitBrushStrokePure,
+ extendBrushStroke as extendBrushStrokePure,
+ newBrushId,
+ type BrushStrokeState,
+} from "./editor/public/brush.js";
+import {
+ copySelected as copySelectedPure,
+ pasteFromClipboard,
+ selectionFromPasted,
+} from "./editor/public/clipboard.js";
+import {
+ computeCreateLayer,
+ computeMoveSelectionToLayer,
+ computeRemoveLayer,
+ computeRenameLayer,
+ computeToggleLayerLock,
+ computeToggleLayerVisibility,
+ newLayerId,
+} from "./editor/public/layers.js";
+import {
+ computePan,
+ computeResetZoom,
+ computeSetGrid,
+ computeViewportResize,
+ computeZoomAt,
+ computeZoomToFit,
+} from "./editor/public/zoom-pan.js";
+import {
+ computeAddAnnotation,
+ computeAddComment,
+ computeRemoveAnnotation,
+ computeRemoveComment,
+ computeToggleAnnotationResolved,
+ hitAnnotation as hitAnnotationPure,
+} from "./editor/public/annotations.js";
+import {
  combinedSelectionBounds as combinedSelectionBoundsPure,
  computeViewportWorld as computeViewportWorldPure,
  groupChildrenUnion as groupChildrenUnionPure,
@@ -508,7 +545,7 @@ export class Editor {
   * `extendBrushStroke`; the overlay reads it through
   * `pendingBrushStroke` to draw a live preview.
   */
- private brushStroke: { origin: Vec2; points: BrushPoint[] } | null = null;
+ private brushStroke: BrushStrokeState | null = null;
 
  /**
   * Last world-space pointer position observed by the host's onMove
@@ -986,134 +1023,65 @@ export class Editor {
   this.notify();
  }
 
- /**
-  * Create a new annotation thread at `position`. When `shapeId` is
-  * passed, `position` is treated as an offset relative to that shape;
-  * the pin will follow shape moves. `firstComment` seeds the thread —
-  * pass an empty string to create an open pin without text.
-  *
-  * Returns the new annotation id; auto-selects it so the host UI
-  * opens the thread for the user to type in.
-  */
+ // Pure bodies in `./editor/public/annotations.ts`.
  addAnnotation(opts: {
   position: Vec2;
   shapeId?: ShapeId | null;
   firstComment?: string;
  }): AnnotationId {
-  const now = new Date().toISOString();
-  const newId = castAnnotationId(this.uniqueId("ann"));
-  const thread: Comment[] = [];
-  if (opts.firstComment?.trim()) {
-   thread.push({
-    id: castCommentId(this.uniqueId("cmt")),
-    authorId: this.commentAuthor.id,
-    authorName: this.commentAuthor.name,
-    body: opts.firstComment.trim(),
-    createdAt: now,
-   });
-  }
-  const annotation: Annotation = {
-   id: newId,
-   shapeId: opts.shapeId ?? null,
-   position: opts.position,
-   resolved: false,
-   thread,
-   createdAt: now,
-  };
-  const result = addAnnotation(this._scene, annotation);
+  const result = computeAddAnnotation(this._scene, opts, this.commentAuthor, (p) =>
+   this.uniqueId(p),
+  );
   this._scene = result.scene;
   this._history.push(result.patch);
-  this._selectedAnnotation = newId;
+  this._selectedAnnotation = result.id;
   this.notify();
   this.announce("Annotation added");
-  return newId;
+  return result.id;
  }
-
- /** Remove an annotation thread entirely. Single undo step. */
  removeAnnotation(id: AnnotationId): void {
-  if (!this._scene.annotations.has(id)) return;
-  const result = removeAnnotation(this._scene, id);
+  const result = computeRemoveAnnotation(this._scene, id);
+  if (!result) return;
   this._scene = result.scene;
   this._history.push(result.patch);
   if (this._selectedAnnotation === id) this._selectedAnnotation = null;
   this.notify();
   this.announce("Annotation removed");
  }
-
- /** Toggle the `resolved` flag on an annotation. */
  toggleAnnotationResolved(id: AnnotationId): void {
-  const before = this._scene.annotations.get(id);
-  if (!before) return;
-  const result = updateAnnotation(this._scene, id, (a) => ({ ...a, resolved: !a.resolved }));
+  const result = computeToggleAnnotationResolved(this._scene, id);
+  if (!result) return;
   this._scene = result.scene;
   this._history.push(result.patch);
   this.notify();
-  this.announce(before.resolved ? "Annotation reopened" : "Annotation resolved");
+  this.announce(result.wasResolved ? "Annotation reopened" : "Annotation resolved");
  }
-
- /**
-  * Append a reply to an annotation thread. Body is trimmed; empty
-  * input is a no-op. Author defaults to `commentAuthor`; pass an
-  * explicit one when the caller knows better (e.g. host has full
-  * user record beyond id+name).
-  */
  addComment(
   annotationId: AnnotationId,
   body: string,
   author?: { id: string; name: string },
  ): void {
-  const trimmed = body.trim();
-  if (!trimmed) return;
-  if (!this._scene.annotations.has(annotationId)) return;
-  const u = author ?? this.commentAuthor;
-  const comment: Comment = {
-   id: castCommentId(this.uniqueId("cmt")),
-   authorId: u.id,
-   authorName: u.name,
-   body: trimmed,
-   createdAt: new Date().toISOString(),
-  };
-  const result = updateAnnotation(this._scene, annotationId, (a) => ({
-   ...a,
-   thread: [...a.thread, comment],
-  }));
+  const result = computeAddComment(
+   this._scene,
+   annotationId,
+   body,
+   author ?? this.commentAuthor,
+   (p) => this.uniqueId(p),
+  );
+  if (!result) return;
   this._scene = result.scene;
   this._history.push(result.patch);
   this.notify();
  }
-
- /** Remove a single comment from a thread. No-op if not found. */
  removeComment(annotationId: AnnotationId, commentId: CommentId): void {
-  const before = this._scene.annotations.get(annotationId);
-  if (!before?.thread.some((c) => c.id === commentId)) return;
-  const result = updateAnnotation(this._scene, annotationId, (a) => ({
-   ...a,
-   thread: a.thread.filter((c) => c.id !== commentId),
-  }));
+  const result = computeRemoveComment(this._scene, annotationId, commentId);
+  if (!result) return;
   this._scene = result.scene;
   this._history.push(result.patch);
   this.notify();
  }
-
- /**
-  * Hit-test an annotation pin in world coordinates. Returns the
-  * topmost annotation whose pin contains the point (within
-  * `ANNOTATION_PIN_HIT_SLOP` screen pixels, scaled by zoom).
-  */
  hitAnnotation(worldPoint: Vec2): AnnotationId | null {
-  const zoom = this._scene.viewport.zoom;
-  const radius = ANNOTATION_PIN_HIT_SLOP / zoom;
-  // Last-added wins (matches z-order intuition: pins on top respond
-  // to clicks first).
-  const list = [...this._scene.annotations.values()];
-  for (let i = list.length - 1; i >= 0; i--) {
-   const ann = list[i]!;
-   const center = getAnnotationWorldPosition(this._scene, ann);
-   const dx = worldPoint.x - center.x;
-   const dy = worldPoint.y - center.y;
-   if (dx * dx + dy * dy <= radius * radius) return ann.id;
-  }
-  return null;
+  return hitAnnotationPure(this._scene, worldPoint);
  }
 
  /**
@@ -1676,56 +1644,34 @@ export class Editor {
   return id;
  }
 
+ // Pure bodies in `./editor/public/brush.ts`.
  beginBrushStroke(world: Vec2, pressure = 0.5): void {
-  this.brushStroke = {
-   points: [{ x: 0, y: 0, width: pressureToWidth(pressure) }],
-   origin: world,
-  };
+  this.brushStroke = beginBrushStrokePure(world, pressure);
   this.notify();
  }
-
  extendBrushStroke(world: Vec2, pressure = 0.5): void {
   if (!this.brushStroke) return;
-  const o = this.brushStroke.origin;
-  this.brushStroke.points.push({
-   x: world.x - o.x,
-   y: world.y - o.y,
-   width: pressureToWidth(pressure),
-  });
+  extendBrushStrokePure(this.brushStroke, world, pressure);
   this.notify();
  }
-
  commitBrushStroke(): ShapeId | null {
-  if (!this.brushStroke || this.brushStroke.points.length === 0) {
+  const result = commitBrushStrokePure(
+   this._scene,
+   this.brushStroke,
+   this._activeLayerId,
+   newBrushId(++this.nextId),
+  );
+  if (!result) {
    this.brushStroke = null;
    this.notify();
    return null;
   }
-  const id = castShapeId(`brush-${++this.nextId}-${Date.now().toString(36)}`);
-  const order = orderForTop(
-   [...this._scene.shapes.values()]
-    .filter((s) => s.layerId === this._activeLayerId)
-    .map((s) => s.order),
-  );
-  const shape: Shape = {
-   id,
-   layerId: this._activeLayerId,
-   type: "brush",
-   position: this.brushStroke.origin,
-   rotation: 0,
-   scale: { x: 1, y: 1 },
-   order,
-   style: { fill: "#222" },
-   points: this.brushStroke.points.slice(),
-  } as Shape;
-  const r = addShape(this._scene, shape);
-  this._scene = r.scene;
-  this._history.push(r.patch);
+  this._scene = result.scene;
+  this._history.push(result.patch);
   this.brushStroke = null;
   this.notify();
-  return id;
+  return result.shapeId;
  }
-
  cancelBrushStroke(): void {
   if (!this.brushStroke) return;
   this.brushStroke = null;
@@ -2048,15 +1994,14 @@ export class Editor {
   */
  private clipboard: Shape[] = [];
 
- /** Copy current selection into the internal clipboard. */
+ // Pure body in `./editor/public/clipboard.ts`.
  copySelected(): void {
-  const out = copyShapesHelper(this._scene, this._selection);
+  const out = copySelectedPure(this._scene, this._selection);
   if (out.length === 0) return;
-  this.clipboard = out;
+  this.clipboard = [...out];
   this.announce(`Copied ${out.length} shapes`);
  }
 
- /** Copy + delete in one transaction. */
  cutSelected(): void {
   this.copySelected();
   this.deleteSelected();
@@ -2071,26 +2016,25 @@ export class Editor {
   *
   * New shapes get fresh ids and end up selected. Single undo step.
   */
+ // Pure body in `./editor/public/clipboard.ts`.
  paste(targetWorld?: Vec2): void {
   if (this.clipboard.length === 0) return;
   // Defensive: if a gesture is mid-flight (drag / resize) the
   // gestureTx is still open and a fresh `transaction()` inside
-  // pasteShapes would throw. The reasonable behaviour for a
-  // user pressing Cmd+V mid-gesture is "commit what you have
-  // and paste on top", so close the gesture first.
+  // pasteShapes would throw. Reasonable behaviour for a user
+  // pressing Cmd+V mid-gesture is "commit what you have and
+  // paste on top", so close the gesture first.
   this.finalizeOpenGestureTx();
   const target = targetWorld ?? this.lastPointerWorld;
-  const result = pasteShapesHelper(
+  const result = pasteFromClipboard(
    this._scene,
    this._history,
    this.clipboard,
    target ?? null,
-   () => castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`),
+   () => ++this.nextId,
   );
   this._scene = result.scene;
-  let next = Selection.EMPTY;
-  for (const id of result.newIds) next = Selection.add(next, id);
-  this._selection = next;
+  this._selection = selectionFromPasted(result.newIds);
   this.notify();
   this.announce(`Pasted ${result.newIds.length} shapes`);
  }
@@ -2271,111 +2215,58 @@ export class Editor {
   this.notify();
  }
 
- /**
-  * Create a new top-of-stack layer with the given name and return its id.
-  * The new layer is made active. One undo step.
-  */
+ // Pure bodies in `./editor/public/layers.ts`.
  createLayer(name: string): LayerId {
-  const id = castLayerId(`layer-${++this.nextId}-${Date.now().toString(36)}`);
-  const topOrder = orderForTop([...this._scene.layers.values()].map((l) => l.order));
-  const layer: Layer = { id, name, visible: true, locked: false, order: topOrder };
-  const result = addLayer(this._scene, layer);
+  const result = computeCreateLayer(this._scene, name, newLayerId(++this.nextId));
   this._scene = result.scene;
   this._history.push(result.patch);
-  this._activeLayerId = id;
+  this._activeLayerId = result.layerId;
   this.notify();
-  return id;
+  return result.layerId;
  }
 
- /**
-  * Remove a layer + every shape and edge living on it. One undo step.
-  * No-op if the layer doesn't exist; throws if it's the only layer
-  * left (hosts get a clear signal that they need to keep at least one).
-  */
  removeLayer(id: LayerId): void {
-  if (!this._scene.layers.has(id)) return;
-  if (this._scene.layers.size <= 1) {
-   throw new Error("Cannot remove the only remaining layer.");
-  }
+  const result = computeRemoveLayer(this._scene, id, this._activeLayerId);
+  if (!result) return;
   const tx = this._history.transaction();
-  for (const shape of [...this._scene.shapes.values()]) {
-   if (shape.layerId !== id) continue;
-   const r = removeShape(this._scene, shape.id);
-   this._scene = r.scene;
-   tx.add(r.patch);
-  }
-  for (const edge of [...this._scene.edges.values()]) {
-   if (edge.layerId !== id) continue;
-   const r = removeEdge(this._scene, edge.id);
-   this._scene = r.scene;
-   tx.add(r.patch);
-  }
-  const r = removeLayer(this._scene, id);
-  this._scene = r.scene;
-  tx.add(r.patch);
+  this._scene = result.scene;
+  for (const patch of result.patches) tx.add(patch);
   tx.commit();
-  // If we just removed the active layer, fall back to the topmost remaining one.
-  if (this._activeLayerId === id) {
-   const top = [...this._scene.layers.values()].sort((a, b) =>
-    a.order > b.order ? -1 : a.order < b.order ? 1 : 0,
-   )[0];
-   if (top) this._activeLayerId = top.id;
-  }
+  this._activeLayerId = result.nextActiveLayerId;
   this._selection = Selection.EMPTY;
   this.notify();
  }
 
- /** Rename a layer. One undo step. */
  renameLayer(id: LayerId, name: string): void {
-  const layer = this._scene.layers.get(id);
-  if (!layer || layer.name === name) return;
-  const result = updateLayer(this._scene, id, (l) => ({ ...l, name }));
+  const result = computeRenameLayer(this._scene, id, name);
+  if (!result) return;
   this._scene = result.scene;
   this._history.push(result.patch);
   this.notify();
  }
 
- /** Flip a layer's `visible` flag. */
  toggleLayerVisibility(id: LayerId): void {
-  const layer = this._scene.layers.get(id);
-  if (!layer) return;
-  const result = updateLayer(this._scene, id, (l) => ({ ...l, visible: !l.visible }));
+  const result = computeToggleLayerVisibility(this._scene, id);
+  if (!result) return;
   this._scene = result.scene;
   this._history.push(result.patch);
   this.notify();
  }
 
- /** Flip a layer's `locked` flag. */
  toggleLayerLock(id: LayerId): void {
-  const layer = this._scene.layers.get(id);
-  if (!layer) return;
-  const result = updateLayer(this._scene, id, (l) => ({ ...l, locked: !l.locked }));
+  const result = computeToggleLayerLock(this._scene, id);
+  if (!result) return;
   this._scene = result.scene;
   this._history.push(result.patch);
   this.notify();
  }
 
- /**
-  * Move every currently-selected shape onto `targetLayer`. Edges follow
-  * automatically (they stay on whichever layer they were already on —
-  * cross-layer edges are valid). One undo step.
-  */
  moveSelectionToLayer(targetLayer: LayerId): void {
-  if (!this._scene.layers.has(targetLayer) || this._selection.size === 0) return;
+  const result = computeMoveSelectionToLayer(this._scene, this._selection, targetLayer);
+  if (!result) return;
   const tx = this._history.transaction();
-  let moved = 0;
-  for (const id of this._selection) {
-   const shape = getShape(this._scene, id);
-   if (!shape || shape.layerId === targetLayer) continue;
-   const result = updateShape(this._scene, id, (s) => ({ ...s, layerId: targetLayer }));
-   this._scene = result.scene;
-   tx.add(result.patch);
-   moved += 1;
-  }
-  if (moved === 0) {
-   tx.cancel();
-   return;
-  }
+  this._scene = result.scene;
+  for (const patch of result.patches) tx.add(patch);
   tx.commit();
   this.notify();
  }
@@ -2388,125 +2279,53 @@ export class Editor {
   * x → shapes move right relative to the user). Not recorded in
   * history — viewport state is editor-local.
   */
+ // Pure bodies in `./editor/public/zoom-pan.ts`.
  panBy(deltaScreen: Vec2): void {
-  if (deltaScreen.x === 0 && deltaScreen.y === 0) return;
-  this._scene = { ...this._scene, viewport: viewportPanBy(this._scene.viewport, deltaScreen) };
+  const next = computePan(this._scene, deltaScreen);
+  if (!next) return;
+  this._scene = next;
   this.notify();
  }
-
- /**
-  * Step zoom in / out by `WHEEL_ZOOM_STEP` around the viewport centre.
-  * Used by toolbar buttons / hotkeys. Use `zoomAt` for anchor-aware
-  * zoom (cursor / pinch).
-  */
  zoomIn(): void {
   this.zoomStep(WHEEL_ZOOM_STEP);
  }
  zoomOut(): void {
   this.zoomStep(1 / WHEEL_ZOOM_STEP);
  }
-
  private zoomStep(factor: number): void {
   const vp = this._scene.viewport;
-  const w = vp.size.width;
-  const h = vp.size.height;
-  if (w <= 0 || h <= 0) return;
-  const center = this.screenToWorld({ x: w / 2, y: h / 2 });
+  if (vp.size.width <= 0 || vp.size.height <= 0) return;
+  const center = this.screenToWorld({ x: vp.size.width / 2, y: vp.size.height / 2 });
   this.zoomAt(factor, center);
  }
-
- /** Reset zoom to 1.0 and pan to (0, 0). */
  resetZoom(): void {
-  if (this._scene.viewport.zoom === 1 && this._scene.viewport.pan.x === 0 && this._scene.viewport.pan.y === 0) return;
-  this._scene = {
-   ...this._scene,
-   viewport: { ...this._scene.viewport, zoom: 1, pan: { x: 0, y: 0 } },
-  };
+  const next = computeResetZoom(this._scene);
+  if (!next) return;
+  this._scene = next;
   this.notify();
  }
-
- /**
-  * Fit every shape into the viewport with optional padding (px).
-  * No-op when scene is empty or viewport size is 0. Centres content.
-  */
  zoomToFit(padding = 40): void {
-  if (this._scene.shapes.size === 0) return;
-  const vp = this._scene.viewport;
-  if (vp.size.width <= 0 || vp.size.height <= 0) return;
-  let combined: Bounds | null = null;
-  for (const s of this._scene.shapes.values()) {
-   const b = getShapeWorldBounds(s);
-   combined = combined ? B.union(combined, b) : b;
-  }
-  if (!combined || combined.width <= 0 || combined.height <= 0) return;
-  const availW = vp.size.width - padding * 2;
-  const availH = vp.size.height - padding * 2;
-  if (availW <= 0 || availH <= 0) return;
-  const zoom = clampZoom(Math.min(availW / combined.width, availH / combined.height));
-  // Centre the content: pick pan so that combined centre maps to
-  // viewport centre at the new zoom.
-  const centerWorld = {
-   x: combined.x + combined.width / 2,
-   y: combined.y + combined.height / 2,
-  };
-  const pan = {
-   x: centerWorld.x - vp.size.width / 2 / zoom,
-   y: centerWorld.y - vp.size.height / 2 / zoom,
-  };
-  this._scene = { ...this._scene, viewport: { ...vp, zoom, pan } };
+  const next = computeZoomToFit(this._scene, padding);
+  if (!next) return;
+  this._scene = next;
   this.notify();
  }
-
- /**
-  * Multiplicative zoom around a world-space anchor (the anchor stays
-  * under the same screen pixel). `anchorWorld` typically comes from
-  * the cursor or pinch midpoint. Result is clamped to `[MIN_ZOOM,
-  * MAX_ZOOM]`; a zero-effect call is a no-op.
-  */
  zoomAt(factor: number, anchorWorld: Vec2): void {
-  const currentZoom = this._scene.viewport.zoom;
-  const targetZoom = clampZoom(currentZoom * factor);
-  const effectiveFactor = targetZoom / currentZoom;
-  if (effectiveFactor === 1) return;
-  this._scene = {
-   ...this._scene,
-   viewport: viewportZoomAt(this._scene.viewport, effectiveFactor, anchorWorld),
-  };
+  const next = computeZoomAt(this._scene, factor, anchorWorld);
+  if (!next) return;
+  this._scene = next;
   this.notify();
  }
-
- /**
-  * Update the camera's screen-pixel size. Hosts call this from a
-  * `ResizeObserver` on the canvas element so culling rects and
-  * pinch-midpoint math stay in sync with the visible area.
-  */
  setViewportSize(width: number, height: number): void {
-  const vp = this._scene.viewport;
-  if (vp.size.width === width && vp.size.height === height) return;
-  this._scene = { ...this._scene, viewport: viewportResize(vp, width, height) };
+  const next = computeViewportResize(this._scene, width, height);
+  if (!next) return;
+  this._scene = next;
   this.notify();
  }
-
- /**
-  * Update the background-grid settings. Partial — fields that are
-  * omitted from `patch` keep their current value. Pass
-  * `{ size: 0 }` to hide the grid (and disable snap-to-grid).
-  *
-  * No-op when the resulting viewport is unchanged. Doesn't touch
-  * history — grid settings are view preferences, not undoable
-  * document edits.
-  */
  setGrid(patch: { size?: number; style?: import("@oh-just-another/scene").GridStyle }): void {
-  const vp = this._scene.viewport;
-  const nextSize = patch.size ?? vp.gridSize;
-  const nextStyle = patch.style ?? vp.gridStyle;
-  if (nextSize === vp.gridSize && nextStyle === vp.gridStyle) return;
-  const nextViewport: typeof vp = {
-   ...vp,
-   ...(nextSize === undefined ? {} : { gridSize: nextSize }),
-   ...(nextStyle === undefined ? {} : { gridStyle: nextStyle }),
-  };
-  this._scene = { ...this._scene, viewport: nextViewport };
+  const next = computeSetGrid(this._scene, patch);
+  if (!next) return;
+  this._scene = next;
   this.notify();
  }
 

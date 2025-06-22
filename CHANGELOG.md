@@ -715,3 +715,6 @@
 
 ## 0.40.0
 - feat: carve pointer-binding (last step, editor.ts 4439 Right 3789)
+
+## 0.41.0
+- feat: carve public API — brush, clipboard, layers, zoom-pan, annotations
