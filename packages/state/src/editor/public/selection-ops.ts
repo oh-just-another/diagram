@@ -1,0 +1,206 @@
+import {
+  addShape,
+  getShape,
+  orderForTop,
+  removeEdge,
+  removeShape,
+  updateShape,
+  type Scene,
+  type Shape,
+  type Patch,
+  type Style,
+} from "@oh-just-another/scene";
+import type { EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import { shapeId as castShapeId } from "@oh-just-another/types";
+import * as Selection from "../../selection.js";
+
+/**
+ * Nudge every selected shape (plus descendants) by `delta`, skipping
+ * shapes on locked layers. Returns the next scene + patches + count of
+ * actually-moved shapes; `null` when nothing qualifies.
+ */
+export const computeMoveSelectionBy = (
+  scene: Scene,
+  targets: ReadonlySet<ShapeId>,
+  delta: Vec2,
+  isLayerLocked: (id: LayerId) => boolean,
+): { readonly scene: Scene; readonly patches: Patch[]; readonly moved: number } | null => {
+  if (delta.x === 0 && delta.y === 0) return null;
+  let s = scene;
+  const patches: Patch[] = [];
+  let moved = 0;
+  for (const id of targets) {
+    const shape = getShape(s, id);
+    if (!shape) continue;
+    if (isLayerLocked(shape.layerId)) continue;
+    const r = updateShape(s, id, (sh) => ({
+      ...sh,
+      position: { x: sh.position.x + delta.x, y: sh.position.y + delta.y },
+    }));
+    s = r.scene;
+    patches.push(r.patch);
+    moved++;
+  }
+  if (moved === 0) return null;
+  return { scene: s, patches, moved };
+};
+
+/**
+ * Delete selected shapes + a selected edge, dropping any edges
+ * attached to selected shapes first so endpoint refs don't dangle.
+ * Returns the next scene + patches; `null` when nothing is selected.
+ */
+export const computeDeleteSelection = (
+  scene: Scene,
+  selection: Selection.Selection,
+  selectedEdge: EdgeId | null,
+): { readonly scene: Scene; readonly patches: Patch[] } | null => {
+  if (selection.size === 0 && !selectedEdge) return null;
+  let s = scene;
+  const patches: Patch[] = [];
+  for (const id of selection) {
+    for (const edge of [...s.edges.values()]) {
+      if (
+        (edge.from.kind !== "point" && edge.from.shapeId === id) ||
+        (edge.to.kind !== "point" && edge.to.shapeId === id)
+      ) {
+        const r = removeEdge(s, edge.id);
+        s = r.scene;
+        patches.push(r.patch);
+      }
+    }
+    const r = removeShape(s, id);
+    s = r.scene;
+    patches.push(r.patch);
+  }
+  if (selectedEdge) {
+    const r = removeEdge(s, selectedEdge);
+    s = r.scene;
+    patches.push(r.patch);
+  }
+  return { scene: s, patches };
+};
+
+/**
+ * Duplicate selected shapes 10 px down-right of the originals. Returns
+ * the next scene + patches + new ids; `null` for an empty selection.
+ * `nextIdSeed` is the editor's monotonic counter (bumped per new
+ * shape).
+ */
+export const computeDuplicateSelection = (
+  scene: Scene,
+  selection: Selection.Selection,
+  nextIdSeed: () => number,
+): {
+  readonly scene: Scene;
+  readonly patches: Patch[];
+  readonly newIds: readonly ShapeId[];
+} | null => {
+  const targets = [...selection];
+  if (targets.length === 0) return null;
+  let s = scene;
+  const patches: Patch[] = [];
+  const newIds: ShapeId[] = [];
+  for (const id of targets) {
+    const shape = getShape(s, id);
+    if (!shape) continue;
+    const newId = castShapeId(`shape-${nextIdSeed()}-${Date.now().toString(36)}`);
+    const order = orderForTop(
+      [...s.shapes.values()].filter((sh) => sh.layerId === shape.layerId).map((sh) => sh.order),
+    );
+    const clone = {
+      ...shape,
+      id: newId,
+      position: { x: shape.position.x + 10, y: shape.position.y + 10 },
+      order,
+    } as Shape;
+    const r = addShape(s, clone);
+    s = r.scene;
+    patches.push(r.patch);
+    newIds.push(newId);
+  }
+  return { scene: s, patches, newIds };
+};
+
+/**
+ * Replace the selection with `ids`, dropping any id that doesn't
+ * resolve. Returns the next selection, or `null` when it would equal
+ * `current`.
+ */
+export const computeSetSelection = (
+  scene: Scene,
+  ids: Iterable<ShapeId>,
+  current: Selection.Selection,
+): Selection.Selection | null => {
+  let next: Selection.Selection = Selection.EMPTY;
+  for (const id of ids) {
+    if (!scene.shapes.has(id)) continue;
+    next = Selection.add(next, id);
+  }
+  if (Selection.equals(next, current)) return null;
+  return next;
+};
+
+/**
+ * Select every shape on a visible / unlocked layer. Returns the next
+ * selection, or `null` when it would equal `current`.
+ */
+export const computeSelectAll = (
+  scene: Scene,
+  current: Selection.Selection,
+): Selection.Selection | null => {
+  let next: Selection.Selection = Selection.EMPTY;
+  for (const shape of scene.shapes.values()) {
+    const layer = scene.layers.get(shape.layerId);
+    if (!layer || !layer.visible || layer.locked) continue;
+    next = Selection.add(next, shape.id);
+  }
+  if (Selection.equals(next, current)) return null;
+  return next;
+};
+
+/**
+ * Merge `partial` into the `style` of every shape in `ids`. Returns
+ * the next scene + a single (or `batch`) patch ready to push as one
+ * undo step; `null` when nothing applies.
+ */
+export const computeUpdateStyle = (
+  scene: Scene,
+  ids: Iterable<ShapeId>,
+  partial: Partial<Style>,
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const targetIds: ShapeId[] = [];
+  for (const id of ids) {
+    if (scene.shapes.has(id)) targetIds.push(id);
+  }
+  if (targetIds.length === 0) return null;
+  let s = scene;
+  const patches: Patch[] = [];
+  for (const id of targetIds) {
+    const r = updateShape(s, id, (sh) => ({ ...sh, style: { ...sh.style, ...partial } }));
+    s = r.scene;
+    patches.push(r.patch);
+  }
+  return {
+    scene: s,
+    patch: patches.length === 1 ? patches[0]! : { kind: "batch", patches },
+  };
+};
+
+/** Human-readable description for the live-region announce after a nudge. */
+export const describeNudge = (delta: Vec2, count: number): string => {
+  const parts: string[] = [];
+  if (delta.x > 0) parts.push(`${delta.x} px right`);
+  else if (delta.x < 0) parts.push(`${-delta.x} px left`);
+  if (delta.y > 0) parts.push(`${delta.y} px down`);
+  else if (delta.y < 0) parts.push(`${-delta.y} px up`);
+  const subject = count === 1 ? "shape" : `${count} shapes`;
+  return `Moved ${subject} ${parts.join(" and ")}`;
+};
+
+/** Compose a selection from a freshly-created id list. */
+export const selectionFromNewIds = (ids: readonly ShapeId[]): Selection.Selection => {
+  let next: Selection.Selection = Selection.EMPTY;
+  for (const id of ids) next = Selection.add(next, id);
+  return next;
+};

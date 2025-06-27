@@ -718,3 +718,6 @@
 
 ## 0.41.0
 - feat: carve public API — brush, clipboard, layers, zoom-pan, annotations
+
+## 0.42.0
+- feat: carve text-edit, z-order, arrange-group, image-insert, selection-ops

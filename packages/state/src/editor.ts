@@ -3,340 +3,374 @@ import { createEmitter, type Emitter } from "@oh-just-another/events";
 import type { Bounds, FileId, ShapeId, Vec2 } from "@oh-just-another/types";
 import { fileId as castFileId, shapeId as castShapeId } from "@oh-just-another/types";
 import {
- addAnnotation,
- addEdge,
- addLayer,
- addShape,
- anchorSnapper,
- apply,
- buildSpatialIndex,
- gridLayout,
- isShapeHidden,
- isShapeLocked,
- runAutoLayout,
- stackLayout,
- DEFAULT_LAYER_ID,
- findEdgeAt,
- findNearestAnchor,
- getAnchorWorld,
- getAnnotationWorldPosition,
- getEdge,
- getEdgePath,
- getShape,
- getShapeAccessibleName,
- getShapeAt,
- getShapeAtIndexed,
- getShapesCoveredByBounds,
- getShapesInBounds,
- isContainer,
- getContainerSpec,
- getDropZoneWorld,
- findContainerAt,
- expandDropZoneToFit,
- containerSizeForZone,
- getShapeWorldBounds,
- getScreenToWorld,
- panBy as viewportPanBy,
- resize as viewportResize,
- zoomAt as viewportZoomAt,
- gridSnapper,
- listAnchorsLocal,
- snapExcludedAnchors,
- orderForBottom,
- orderBetweenMany,
- orderForTop,
- type FractionalIndex,
- outlineSnapper,
- removeAnnotation,
- removeEdge,
- removeLayer,
- removeShape,
- SnapEngine,
- SpatialGrid,
- type BrushPoint,
- updateAnnotation,
- updateEdge,
- updateLayer,
- updateShape,
- type Annotation,
- type Comment,
- type Edge,
- type EdgeEndpoint,
- type Layer,
- type Patch,
- type Scene,
- type Shape,
- type SnapCandidate,
- type Style,
- createBinaryFile,
+  addAnnotation,
+  addEdge,
+  addLayer,
+  addShape,
+  anchorSnapper,
+  apply,
+  buildSpatialIndex,
+  gridLayout,
+  isShapeHidden,
+  isShapeLocked,
+  runAutoLayout,
+  stackLayout,
+  DEFAULT_LAYER_ID,
+  findEdgeAt,
+  findNearestAnchor,
+  getAnchorWorld,
+  getAnnotationWorldPosition,
+  getEdge,
+  getEdgePath,
+  getShape,
+  getShapeAccessibleName,
+  getShapeAt,
+  getShapeAtIndexed,
+  getShapesCoveredByBounds,
+  getShapesInBounds,
+  isContainer,
+  getContainerSpec,
+  getDropZoneWorld,
+  findContainerAt,
+  expandDropZoneToFit,
+  containerSizeForZone,
+  getShapeWorldBounds,
+  getScreenToWorld,
+  panBy as viewportPanBy,
+  resize as viewportResize,
+  zoomAt as viewportZoomAt,
+  gridSnapper,
+  listAnchorsLocal,
+  snapExcludedAnchors,
+  orderForBottom,
+  orderBetweenMany,
+  orderForTop,
+  type FractionalIndex,
+  outlineSnapper,
+  removeAnnotation,
+  removeEdge,
+  removeLayer,
+  removeShape,
+  SnapEngine,
+  SpatialGrid,
+  type BrushPoint,
+  updateAnnotation,
+  updateEdge,
+  updateLayer,
+  updateShape,
+  type Annotation,
+  type Comment,
+  type Edge,
+  type EdgeEndpoint,
+  type Layer,
+  type Patch,
+  type Scene,
+  type Shape,
+  type SnapCandidate,
+  type Style,
+  createBinaryFile,
 } from "@oh-just-another/scene";
 import {
- annotationId as castAnnotationId,
- commentId as castCommentId,
- edgeId as castEdgeId,
- layerId as castLayerId,
- type AnnotationId,
- type CommentId,
- type EdgeId,
- type LayerId,
+  annotationId as castAnnotationId,
+  commentId as castCommentId,
+  edgeId as castEdgeId,
+  layerId as castLayerId,
+  type AnnotationId,
+  type CommentId,
+  type EdgeId,
+  type LayerId,
 } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import {
- computeEdgeWorldBounds,
- DEFAULT_LOD,
- renderEdges,
- renderGrid,
- renderScene,
- setActiveRasterizer,
- setActiveTextShaper,
- ShapeCache,
- type RenderTarget,
+  computeEdgeWorldBounds,
+  DEFAULT_LOD,
+  renderEdges,
+  renderGrid,
+  renderScene,
+  setActiveRasterizer,
+  setActiveTextShaper,
+  ShapeCache,
+  type RenderTarget,
 } from "@oh-just-another/renderer-core";
 import {
- History,
- type HistoryOptions,
- type HistoryProvider,
- type TransactionHandle,
+  History,
+  type HistoryOptions,
+  type HistoryProvider,
+  type TransactionHandle,
 } from "@oh-just-another/history";
 import { fromPointerEvent } from "./dom-events.js";
 import {
- FileDropRegistry,
- type FileDropContext,
- type FileDropHandler,
+  FileDropRegistry,
+  type FileDropContext,
+  type FileDropHandler,
 } from "./file-drop.js";
 import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
 import { AnimationTick } from "./animation-tick.js";
 import {
- computeDimShapes as computeDimShapesHelper,
- isDescendantOfGroup as isDescendantOfGroupHelper,
- pickDrillTarget as pickDrillTargetHelper,
- promoteToGroupRoot as promoteToGroupRootHelper,
- topGroupAncestor as topGroupAncestorHelper,
+  computeDimShapes as computeDimShapesHelper,
+  isDescendantOfGroup as isDescendantOfGroupHelper,
+  pickDrillTarget as pickDrillTargetHelper,
+  promoteToGroupRoot as promoteToGroupRootHelper,
+  topGroupAncestor as topGroupAncestorHelper,
 } from "./group-helpers.js";
 import {
- assignFrameMembers as assignFrameMembersHelper,
- nextFrameName as nextFrameNameHelper,
+  assignFrameMembers as assignFrameMembersHelper,
+  nextFrameName as nextFrameNameHelper,
 } from "./frame-helpers.js";
 import {
- copyShapes as copyShapesHelper,
- pasteShapes as pasteShapesHelper,
+  copyShapes as copyShapesHelper,
+  pasteShapes as pasteShapesHelper,
 } from "./clipboard.js";
 import { AutoCompactScheduler } from "./auto-compact.js";
 import { AutoLayoutScheduler } from "./auto-layout-scheduler.js";
 import {
- ANNOTATION_PIN_HIT_SLOP,
- DEFAULT_BRUSH_WIDTH,
- DEFAULT_SNAP_THRESHOLD,
- EDGE_ENDPOINT_HANDLE_RADIUS,
- CONTAINER_KEEP_THRESHOLD,
- EDGE_HIT_THRESHOLD,
- LARGE_SCENE_HIT_THRESHOLD,
- LASSO_COVERAGE_THRESHOLD,
- MAX_BRUSH_WIDTH,
- LONG_PRESS_DELAY_MS,
- LONG_PRESS_MAX_MOVEMENT_PX,
- MAX_ZOOM,
- MIN_ZOOM,
- PINCH_MIN_MOVEMENT_PX,
- TOUCH_EDGE_HANDLE_HIT_SLOP,
- TOUCH_EDGE_HIT_THRESHOLD,
- TOUCH_HANDLE_HIT_SLOP,
- VIEWPORT_CULL_PADDING_RATIO,
- DOUBLE_CLICK_MS,
- DOUBLE_CLICK_TOLERANCE_PX,
- ISOLATION_DIM_OPACITY,
- WHEEL_PAN_FACTOR,
- WHEEL_ZOOM_MAX_STEP,
- WHEEL_ZOOM_SPEED,
- WHEEL_ZOOM_STEP,
+  ANNOTATION_PIN_HIT_SLOP,
+  DEFAULT_BRUSH_WIDTH,
+  DEFAULT_SNAP_THRESHOLD,
+  EDGE_ENDPOINT_HANDLE_RADIUS,
+  CONTAINER_KEEP_THRESHOLD,
+  EDGE_HIT_THRESHOLD,
+  LARGE_SCENE_HIT_THRESHOLD,
+  LASSO_COVERAGE_THRESHOLD,
+  MAX_BRUSH_WIDTH,
+  LONG_PRESS_DELAY_MS,
+  LONG_PRESS_MAX_MOVEMENT_PX,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  PINCH_MIN_MOVEMENT_PX,
+  TOUCH_EDGE_HANDLE_HIT_SLOP,
+  TOUCH_EDGE_HIT_THRESHOLD,
+  TOUCH_HANDLE_HIT_SLOP,
+  VIEWPORT_CULL_PADDING_RATIO,
+  DOUBLE_CLICK_MS,
+  DOUBLE_CLICK_TOLERANCE_PX,
+  ISOLATION_DIM_OPACITY,
+  WHEEL_PAN_FACTOR,
+  WHEEL_ZOOM_MAX_STEP,
+  WHEEL_ZOOM_SPEED,
+  WHEEL_ZOOM_STEP,
 } from "./constants.js";
 import { ALL_HANDLES, CORNER_HANDLES, HANDLE_HIT_SLOP, hitHandle } from "./handle.js";
 import { getInteractiveHitTester } from "./interactive.js";
 import {
- boundsFromPoints,
- interactionMachine,
- interpretPressEnd,
- type InteractionContext,
- type InteractionEmit,
- type PressTarget,
+  boundsFromPoints,
+  interactionMachine,
+  interpretPressEnd,
+  type InteractionContext,
+  type InteractionEmit,
+  type PressTarget,
 } from "./machine.js";
 import type { HandleId } from "./handle.js";
 import type { Mode } from "./modes.js";
 import type { EditorEvents } from "./editor-events.js";
 import {
- createEventCache,
- fanOutEvents,
- primeEventCache,
- type EditorEventCache,
+  createEventCache,
+  fanOutEvents,
+  primeEventCache,
+  type EditorEventCache,
 } from "./editor/event-fanout.js";
 import { GestureController } from "./editor/gesture-tx.js";
 import { LongPressController } from "./editor/long-press.js";
 import { pickPressTarget } from "./editor/hit-test.js";
 import { PinchController } from "./editor/pinch.js";
 import {
- applyContainerDrop as applyContainerDropPure,
- clampContainerToChildren as clampContainerToChildrenPure,
- maybeGrowContainer as maybeGrowContainerPure,
- type ContainerOpsRef,
+  applyContainerDrop as applyContainerDropPure,
+  clampContainerToChildren as clampContainerToChildrenPure,
+  maybeGrowContainer as maybeGrowContainerPure,
+  type ContainerOpsRef,
 } from "./editor/container-ops.js";
 import { hasWidthHeight } from "./editor/shape-traits.js";
 import {
- computeGroupResizePatches,
- computeShapeResize,
+  computeGroupResizePatches,
+  computeShapeResize,
 } from "./editor/applies/resize.js";
 import { bindPointerEvents as bindPointerEventsExternal } from "./editor/pointer-binding.js";
 import {
- beginBrushStroke as beginBrushStrokePure,
- commitBrushStroke as commitBrushStrokePure,
- extendBrushStroke as extendBrushStrokePure,
- newBrushId,
- type BrushStrokeState,
+  beginBrushStroke as beginBrushStrokePure,
+  commitBrushStroke as commitBrushStrokePure,
+  extendBrushStroke as extendBrushStrokePure,
+  newBrushId,
+  type BrushStrokeState,
 } from "./editor/public/brush.js";
 import {
- copySelected as copySelectedPure,
- pasteFromClipboard,
- selectionFromPasted,
+  copySelected as copySelectedPure,
+  pasteFromClipboard,
+  selectionFromPasted,
 } from "./editor/public/clipboard.js";
 import {
- computeCreateLayer,
- computeMoveSelectionToLayer,
- computeRemoveLayer,
- computeRenameLayer,
- computeToggleLayerLock,
- computeToggleLayerVisibility,
- newLayerId,
+  computeCreateLayer,
+  computeMoveSelectionToLayer,
+  computeRemoveLayer,
+  computeRenameLayer,
+  computeToggleLayerLock,
+  computeToggleLayerVisibility,
+  newLayerId,
 } from "./editor/public/layers.js";
 import {
- computePan,
- computeResetZoom,
- computeSetGrid,
- computeViewportResize,
- computeZoomAt,
- computeZoomToFit,
+  computePan,
+  computeResetZoom,
+  computeSetGrid,
+  computeViewportResize,
+  computeZoomAt,
+  computeZoomToFit,
 } from "./editor/public/zoom-pan.js";
 import {
- computeAddAnnotation,
- computeAddComment,
- computeRemoveAnnotation,
- computeRemoveComment,
- computeToggleAnnotationResolved,
- hitAnnotation as hitAnnotationPure,
+  computeAddAnnotation,
+  computeAddComment,
+  computeRemoveAnnotation,
+  computeRemoveComment,
+  computeToggleAnnotationResolved,
+  hitAnnotation as hitAnnotationPure,
 } from "./editor/public/annotations.js";
 import {
- combinedSelectionBounds as combinedSelectionBoundsPure,
- computeViewportWorld as computeViewportWorldPure,
- groupChildrenUnion as groupChildrenUnionPure,
+  canBeginTextEdit,
+  computeCommitTextEdit,
+} from "./editor/public/text-edit.js";
+import {
+  compactLayerZOrderPatches,
+  computeBringToFront,
+  computeSendToBack,
+} from "./editor/public/z-order.js";
+import {
+  computeArrangeAsGrid,
+  computeArrangeAsStack,
+  computeGroupSelected,
+  computeUngroup,
+  expandSelectionWithDescendants,
+  newGroupShapeId,
+  pickFocusCycle,
+  selectionRoots,
+} from "./editor/public/arrange-group.js";
+import {
+  buildImageShape,
+  computeAddBinaryFile,
+  hasAnimatedShape,
+} from "./editor/public/image-insert.js";
+import {
+  computeDeleteSelection,
+  computeDuplicateSelection,
+  computeMoveSelectionBy,
+  computeSelectAll,
+  computeSetSelection,
+  computeUpdateStyle,
+  describeNudge as describeNudgePure,
+  selectionFromNewIds,
+} from "./editor/public/selection-ops.js";
+import {
+  combinedSelectionBounds as combinedSelectionBoundsPure,
+  computeViewportWorld as computeViewportWorldPure,
+  groupChildrenUnion as groupChildrenUnionPure,
 } from "./editor/viewport-helpers.js";
 import { computeHiddenShapes as computeHiddenShapesPure } from "./editor/shape-filters.js";
 import {
- selectByBounds as selectByBoundsPure,
- selectByBoundsLive as selectByBoundsLivePure,
+  selectByBounds as selectByBoundsPure,
+  selectByBoundsLive as selectByBoundsLivePure,
 } from "./editor/applies/selection.js";
 import {
- computeEdgeEndpointUpdate,
- computeEdgePreviewEndpoints,
+  computeEdgeEndpointUpdate,
+  computeEdgePreviewEndpoints,
 } from "./editor/applies/edge.js";
 import {
- computeAnnotationMovePatch,
- computeGroupMovePatches,
- computeShapeMovePatch,
+  computeAnnotationMovePatch,
+  computeGroupMovePatches,
+  computeShapeMovePatch,
 } from "./editor/applies/move.js";
 import {
- computeCreateEdge,
- computeCreateShape,
- newEdgeId,
- newShapeId,
+  computeCreateEdge,
+  computeCreateShape,
+  newEdgeId,
+  newShapeId,
 } from "./editor/applies/create.js";
 import { isResizable, renderOverlay, type PeerCursor, type PeerSelection } from "./overlay.js";
 import * as Selection from "./selection.js";
 
 export interface LoadSceneOptions {
- /**
-  * Keep the existing undo/redo stack when swapping scenes. Used by
-  * `@collab/bindEditor` when a peer update arrives — the user's
-  * local history must survive remote edits. Default `false`:
-  * top-level callers loading a saved scene get a clean slate.
-  *
-  * **Caveat**: when `true`, history patches that reference shapes
-  * removed by the remote peer become un-applicable. The local user
-  * will see an undo no-op or an exception on that step; future work
-  * (Y.UndoManager integration) will replace the linear stack with
-  * a CRDT-aware undo that survives concurrent edits cleanly.
-  */
- readonly preserveHistory?: boolean;
+  /**
+   * Keep the existing undo/redo stack when swapping scenes. Used by
+   * `@collab/bindEditor` when a peer update arrives — the user's
+   * local history must survive remote edits. Default `false`:
+   * top-level callers loading a saved scene get a clean slate.
+   *
+   * **Caveat**: when `true`, history patches that reference shapes
+   * removed by the remote peer become un-applicable. The local user
+   * will see an undo no-op or an exception on that step; future work
+   * (Y.UndoManager integration) will replace the linear stack with
+   * a CRDT-aware undo that survives concurrent edits cleanly.
+   */
+  readonly preserveHistory?: boolean;
 }
 
 export interface EditorOptions {
- readonly host: HTMLElement;
- readonly mainTarget: RenderTarget;
- readonly overlayTarget: RenderTarget;
- /**
-  * Optional dedicated background target — when provided, the editor
-  * paints the grid (`renderGrid`) onto it. Hosts without a background
-  * layer can omit this; in that case the grid is drawn on `mainTarget`
-  * before shapes.
-  */
- readonly backgroundTarget?: RenderTarget;
- readonly initialScene: Scene;
- readonly initialMode?: Mode;
- /**
-  * Pre-existing history backend, or options for the default
-  * `History` (linear stack). Any `HistoryProvider` implementation
-  * works — `@oh-just-another/collab` ships `YjsHistory` that wraps
-  * `Y.UndoManager` for CRDT-aware undo in collaborative sessions.
-  */
- readonly history?: HistoryProvider | HistoryOptions;
- /**
-  * Primary input modality. Affects hit-test slop on handles and edges
-  * so a finger can grab them without precision-pointing.
-  *
-  * - `"mouse"` — pixel-accurate hit zones (default for desktop).
-  * - `"touch"` — 44 px+ touch targets (Apple HIG, WCAG AAA).
-  * - `"auto"` — pick `"touch"` if `matchMedia('(pointer: coarse)')`
-  *  reports a coarse primary pointer, else `"mouse"`. Default.
-  */
- readonly inputMode?: "mouse" | "touch" | "auto";
+  readonly host: HTMLElement;
+  readonly mainTarget: RenderTarget;
+  readonly overlayTarget: RenderTarget;
+  /**
+   * Optional dedicated background target — when provided, the editor
+   * paints the grid (`renderGrid`) onto it. Hosts without a background
+   * layer can omit this; in that case the grid is drawn on `mainTarget`
+   * before shapes.
+   */
+  readonly backgroundTarget?: RenderTarget;
+  readonly initialScene: Scene;
+  readonly initialMode?: Mode;
+  /**
+   * Pre-existing history backend, or options for the default
+   * `History` (linear stack). Any `HistoryProvider` implementation
+   * works — `@oh-just-another/collab` ships `YjsHistory` that wraps
+   * `Y.UndoManager` for CRDT-aware undo in collaborative sessions.
+   */
+  readonly history?: HistoryProvider | HistoryOptions;
+  /**
+   * Primary input modality. Affects hit-test slop on handles and edges
+   * so a finger can grab them without precision-pointing.
+   *
+   * - `"mouse"` — pixel-accurate hit zones (default for desktop).
+   * - `"touch"` — 44 px+ touch targets (Apple HIG, WCAG AAA).
+   * - `"auto"` — pick `"touch"` if `matchMedia('(pointer: coarse)')`
+   *   reports a coarse primary pointer, else `"mouse"`. Default.
+   */
+  readonly inputMode?: "mouse" | "touch" | "auto";
 
- /**
-  * Optional text shaper. When supplied, replaces the renderer's
-  * default Canvas2D `measureText` path for wrap / layout. Plug
-  * `WasmTextShaper.loadBundled()` from `@oh-just-another/text-wasm`
-  * for deterministic browser-vs-Node parity (Roboto Regular
-  * embedded; advance widths match across environments).
-  */
- readonly textShaper?: import("@oh-just-another/renderer-core").TextShaper;
- /**
-  * Optional rasterizer. When supplied, hosts of `renderEdges` /
-  * future path-heavy code can opt in to WASM bezier / stroke-to-
-  * fill via `WasmRasterizer.loadBundled()` from
-  * `@oh-just-another/raster-wasm`. The kernel itself doesn't consume
-  * this directly today — exposed here so the field travels with
-  * `EditorOptions` and hosts have a single config surface.
-  */
- readonly rasterizer?: import("@oh-just-another/renderer-core").Rasterizer;
+  /**
+   * Optional text shaper. When supplied, replaces the renderer's
+   * default Canvas2D `measureText` path for wrap / layout. Plug
+   * `WasmTextShaper.loadBundled()` from `@oh-just-another/text-wasm`
+   * for deterministic browser-vs-Node parity (Roboto Regular
+   * embedded; advance widths match across environments).
+   */
+  readonly textShaper?: import("@oh-just-another/renderer-core").TextShaper;
+  /**
+   * Optional rasterizer. When supplied, hosts of `renderEdges` /
+   * future path-heavy code can opt in to WASM bezier / stroke-to-
+   * fill via `WasmRasterizer.loadBundled()` from
+   * `@oh-just-another/raster-wasm`. The kernel itself doesn't consume
+   * this directly today — exposed here so the field travels with
+   * `EditorOptions` and hosts have a single config surface.
+   */
+  readonly rasterizer?: import("@oh-just-another/renderer-core").Rasterizer;
 
- /**
-  * When `true`, the editor routes per-frame rendering through a
-  * tile compositor (`renderViaTiles` in renderer-canvas) backed
-  * by an InMemoryTileCache. Designed for very-large scenes
-  * (10 K+ shapes) where re-rasterising every visible shape per
-  * frame dominates frame budget. Below ~5 K shapes the plain
-  * scene-renderer is usually faster — leave this off.
-  *
-  * Host must supply a tile compositor function via
-  * `tileCompose`; the kernel doesn't import renderer-canvas
-  * directly. Pattern:
-  *
-  *  import { renderViaTiles } from "@oh-just-another/renderer-canvas";
-  *  new Editor({ ..., useTileCache: true, tileCompose: renderViaTiles });
-  */
- readonly useTileCache?: boolean;
- /**
-  * Compositor function called per frame when `useTileCache` is on.
-  * Receives the scene, main target, and dirty bookkeeping; should
-  * handle caching internally.
-  */
- readonly tileCompose?: TileComposeFn;
+  /**
+   * When `true`, the editor routes per-frame rendering through a
+   * tile compositor (`renderViaTiles` in renderer-canvas) backed
+   * by an InMemoryTileCache. Designed for very-large scenes
+   * (10 K+ shapes) where re-rasterising every visible shape per
+   * frame dominates frame budget. Below ~5 K shapes the plain
+   * scene-renderer is usually faster — leave this off.
+   *
+   * Host must supply a tile compositor function via
+   * `tileCompose`; the kernel doesn't import renderer-canvas
+   * directly. Pattern:
+   *
+   *   import { renderViaTiles } from "@oh-just-another/renderer-canvas";
+   *   new Editor({ ..., useTileCache: true, tileCompose: renderViaTiles });
+   */
+  readonly useTileCache?: boolean;
+  /**
+   * Compositor function called per frame when `useTileCache` is on.
+   * Receives the scene, main target, and dirty bookkeeping; should
+   * handle caching internally.
+   */
+  readonly tileCompose?: TileComposeFn;
 }
 
 /**
@@ -345,18 +379,18 @@ export interface EditorOptions {
  * implementation (`renderViaTiles`).
  */
 export type TileComposeFn = (
- scene: Scene,
- mainTarget: RenderTarget,
- options: {
-  readonly viewport: Bounds;
-  /**
-   * Per-shape change record (before/after world bbox) since the
-   * last frame. Compositors route by case (add / remove / move).
-   * `null` on one side = added / removed.
-   */
-  readonly changedShapes: ReadonlyMap<ShapeId, { before: Bounds | null; after: Bounds | null }>;
-  readonly zoomBucket: number;
- },
+  scene: Scene,
+  mainTarget: RenderTarget,
+  options: {
+    readonly viewport: Bounds;
+    /**
+     * Per-shape change record (before/after world bbox) since the
+     * last frame. Compositors route by case (add / remove / move).
+     * `null` on one side = added / removed.
+     */
+    readonly changedShapes: ReadonlyMap<ShapeId, { before: Bounds | null; after: Bounds | null }>;
+    readonly zoomBucket: number;
+  },
 ) => void;
 
 /**
@@ -372,3141 +406,2753 @@ export type TileComposeFn = (
 
 /** Outcome of `Editor.groupSelected`. `noop` when nothing was selected. */
 export type GroupSelectedResult =
- | { readonly kind: "noop" }
- | { readonly kind: "grouped"; readonly groupId: ShapeId };
+  | { readonly kind: "noop" }
+  | { readonly kind: "grouped"; readonly groupId: ShapeId };
 
 export class Editor {
- private readonly host: HTMLElement;
- private readonly mainTarget: RenderTarget;
- private readonly overlayTarget: RenderTarget;
- private readonly backgroundTarget: RenderTarget | null;
- private readonly actor: Actor<typeof interactionMachine>;
- private readonly listeners = new Set<() => void>();
- /**
-  * Typed event surface. Specific events (`mode`, `selection`,
-  * `scene`, `history`, `viewport`) fan out of `notify()` based on
-  * what actually changed since the last fire, so subscribers only
-  * wake up when their slice flips. `change` still fires once per
-  * `notify()` for legacy callers that don't care which slice.
-  *
-  * The `subscribe()` set is kept — both notification
-  * paths run in lockstep so external code can migrate incrementally.
-  */
- private readonly events: Emitter<EditorEvents> = createEmitter<EditorEvents>();
- /**
-  * Last-emitted snapshot of every observable slice. Used by
-  * `fanOutEvents` (in `editor/event-fanout.ts`) to decide which
-  * typed events to fire on each `notify()` — only the slices
-  * whose identity changed since the previous notify get an event.
-  */
- private readonly eventCache: EditorEventCache = createEventCache();
- private readonly unbind: () => void;
-
- private _scene: Scene;
- private _selection: Selection.Selection = Selection.EMPTY;
- /**
-  * Snapshot of an in-progress annotation drag (press on pin → move
-  * pointer → release). `originPosition` is the annotation's stored
-  * position at press time; per-move handler computes a delta from
-  * the current pointer in world space and writes it back.
-  */
- private annotationDrag: {
-  id: AnnotationId;
-  originPosition: Vec2;
-  originWorldPoint: Vec2;
-  moved: boolean;
- } | null = null;
- /** Live preview while drawing a new shape; null when not drawing. */
- private drawingPreview: Bounds | null = null;
- private edgePreview: { from: Vec2; to: Vec2 } | null = null;
- /**
-  * Shape being hovered while draw-edge mode is active. Drives the port-
-  * overlay render so the user sees attachment points. `null` outside
-  * draw-edge mode or when the pointer is over empty canvas.
-  */
- private hoveredEdgeTarget: { shapeId: ShapeId; activeAnchor: string | null } | null = null;
- /**
-  * Currently selected edge.
-  */
- private _selectedEdge: EdgeId | null = null;
- /**
-  * Currently focused annotation thread — overlay highlights its pin
-  * with an accent ring and hosts (e.g. `<CommentsPopover>`) render
-  * the thread for this id. Independent of shape / edge selection so
-  * users can edit shapes while a comment thread is open.
-  */
- private _selectedAnnotation: AnnotationId | null = null;
- /**
-  * Author identity used for comments posted via `addComment` /
-  * `addAnnotation` without an explicit author. Hosts set this once
-  * (typically from the same user object passed to `bindAwareness`).
-  * Defaults to a synthetic local user.
-  */
- private commentAuthor: { id: string; name: string } = { id: "local", name: "You" };
- /**
-  * Mid-drag preview state when the user is dragging an edge endpoint.
-  * Drawn as an overlay line + handle dot so the user sees the target.
-  */
- private edgeEndpointDrag: {
-  edgeId: EdgeId;
-  side: "from" | "to";
-  toPoint: Vec2;
- } | null = null;
- /** Live lasso bounds during a rubber-band select gesture. */
- private lassoPreview: Bounds | null = null;
-
- /**
-  * Selection captured at lasso-press time. Used to compute the live
-  * preview correctly: in `replace` mode the lasso starts from empty
-  * each frame; in `add` mode it starts from this snapshot so shapes
-  * the user already had selected don't blink out and back.
-  */
- private lassoBaseSelection: Selection.Selection | null = null;
- /**
-  * Snapshot of every selected shape's `position` at press-down. Used to
-  * translate the whole group additively during a multi-shape drag. The
-  * machine still emits per-shape MOVE_SHAPE — the editor intercepts and
-  * fans out when this map is populated.
-  */
- private groupMoveOrigin: ReadonlyMap<ShapeId, Vec2> | null = null;
- /**
-  * Per-shape snapshot for a group-resize gesture — `bounds` is the
-  * shape's world AABB at press-down. Editor scales the relative
-  * position / size against the combined bounds delta each frame.
-  */
- private groupResizeOrigin: {
-  readonly combined: Bounds;
-  readonly shapes: ReadonlyMap<
-   ShapeId,
-   { readonly position: Vec2; readonly bounds: Bounds; readonly scale: Vec2 }
-  >;
- } | null = null;
- /**
-  * Active layer — new shapes created via `addShape` / `applyCreate` land
-  * here when their input doesn't specify a `layerId`. Defaults to the
-  * scene's `DEFAULT_LAYER_ID`; hosts switch via `setActiveLayer`.
-  */
- private _activeLayerId: LayerId = castLayerId(DEFAULT_LAYER_ID);
- private nextId = 0;
-
- /** Generate a short unique id with a stable prefix. */
- private uniqueId(prefix: string): string {
-  return `${prefix}-${++this.nextId}-${Date.now().toString(36)}`;
- }
-
- /**
-  * Snap engine — defaults to grid + anchor + outline contributors. Hosts
-  * that want to tweak this can subclass or instantiate `Editor` with a
-  * custom `snapEngine` option.
-  */
- private readonly snapEngine: SnapEngine = new SnapEngine([
-  gridSnapper,
-  anchorSnapper,
-  outlineSnapper,
- ]);
- /** Snap threshold in world units. */
- private readonly snapThreshold = DEFAULT_SNAP_THRESHOLD;
-
- /**
-  * Persistent world-bounds cache shared with `renderScene` for viewport
-  * culling. Object-identity keyed — invalidates automatically whenever
-  * a scene op replaces the shape ref. Could be exposed for hit-test
-  * sharing in a follow-up.
-  */
- private readonly boundsCache: ShapeCache<Bounds> = new ShapeCache<Bounds>();
-
- /**
-  * Lazy SpatialGrid for hit-test acceleration in large scenes.
-  * Built on demand when `scene.shapes.size >= LARGE_SCENE_HIT_THRESHOLD`
-  * and the cached index's source-scene reference is stale (any scene
-  * op replaces the `_scene` field, invalidating identity).
-  */
- private spatialIndexCache: { scene: Scene; index: SpatialGrid } | null = null;
-
- /**
-  * The group the user has "entered" via double-click. While set, the
-  * hit-test stops promoting children of this group to the group root,
-  * letting the user directly manipulate inner shapes. Cleared on
-  * escape, click outside the group's descendants, or `cancelInteraction`.
-  */
- private _enteredGroup: ShapeId | null = null;
-
- /**
-  * Double-click detection state. Updated on every non-drag pointer
-  * up; the next pointer-up within `DOUBLE_CLICK_MS` and within
-  * `DOUBLE_CLICK_TOLERANCE_PX` of `lastClickWorldPoint` counts as a
-  * double-click. Used to trigger group drill-down (enter isolation).
-  */
- private lastClickAt = 0;
- private lastClickWorldPoint: Vec2 | null = null;
-
- /**
-  * In-progress brush stroke. Hosts push points via
-  * `extendBrushStroke`; the overlay reads it through
-  * `pendingBrushStroke` to draw a live preview.
-  */
- private brushStroke: BrushStrokeState | null = null;
-
- /**
-  * Last world-space pointer position observed by the host's onMove
-  * handler. `paste()` uses it as the default drop target so a fresh
-  * paste lands under the cursor instead of overlapping the originals.
-  * `null` until the pointer first enters the host.
-  */
- private lastPointerWorld: Vec2 | null = null;
-
- /**
-  * Scene rendered on the last frame. Used to compute a dirty rect by
-  * identity-diffing against the current scene — every shape / edge
-  * whose ref didn't change is also pixel-identical to its last paint
-  * and gets skipped together with the surrounding clear. `null` until
-  * the first render.
-  */
- private lastRenderedScene: Scene | null = null;
- /**
-  * Last-painted isolation root — paired with `lastRenderedScene` so
-  * the dirty-rect optimization invalidates when the user enters or
-  * exits a group, even when the scene reference is unchanged. Without
-  * this, drilling into a group never triggers a redraw → the dim
-  * pass would never visibly apply.
-  */
- private lastRenderedEnteredGroup: ShapeId | null = null;
-
- /**
-  * Fractional-order compaction scheduler (microtask-coalesced).
-  * Triggered from every `notify()`; only does real work when at
-  * least one shape/edge order string crossed AUTO_COMPACT_THRESHOLD.
-  * See `./auto-compact.ts` for the extracted logic.
-  */
- private readonly autoCompactScheduler = new AutoCompactScheduler({
-  getScene: () => this._scene,
-  compact: (layerId) => this.compactLayerZOrder(layerId, { recordHistory: false }),
- });
-
- /**
-  * Auto-layout scheduler — microtask-coalesced re-run of every
-  * shape carrying `metadata.autoLayout`. See
-  * `./auto-layout-scheduler.ts` for the extracted logic.
-  */
- private readonly autoLayoutScheduler = new AutoLayoutScheduler({
-  getScene: () => this._scene,
-  applyPatch: (patch) => {
-   this._scene = apply(this._scene, patch);
-   if (this.gestureTx) this.gestureTx.add(patch);
-   else this._history.push(patch);
-  },
-  growContainer: (parentId, childId) => this.maybeGrowContainer(parentId, childId),
-  onMutated: () => {
-   // Re-render only; do NOT call notify() — that would re-schedule
-   // the check and risk a microtask loop. Listeners already saw
-   // the previous notify; the auto-layout adjustment is a
-   // synchronous fix-up on top of the same external event.
-   this.render();
-   for (const fn of this.listeners) fn();
-  },
- });
-
- /**
-  * Shape id that the user started dragging on press-down. Tracked
-  * separately from the state machine so the editor knows what to
-  * (re)parent / drop into a container on pointerup. `null` between
-  * gestures, set in onDown when press lands on a shape and cleared
-  * in onUp / cancel.
-  */
- private dragShapeId: ShapeId | null = null;
-
- /**
-  * Live container highlight: the container shape the dragged item is
-  * currently hovering over. Drawn by the overlay as a dashed
-  * accent rect on the container's drop-zone so the user knows where
-  * the shape will land after release.
-  */
- private containerHover: { id: ShapeId; dropZone: Bounds } | null = null;
-
- /**
-  * Remote peer cursors / selections, pushed in by the host (typically
-  * a `bindAwareness(editor, awareness)` helper in `@collab`). The
-  * editor only renders them; it doesn't fetch or interpret. Each
-  * setter triggers `render()` so the overlay updates immediately.
-  */
- private _peerCursors: readonly PeerCursor[] = [];
- private _peerSelections: readonly PeerSelection[] = [];
-
- /**
-  * Subscribers notified on every host pointer move (world-space). Used
-  * by `@collab` to broadcast the local cursor into awareness.
-  */
- private readonly cursorListeners = new Set<(point: Vec2) => void>();
-
- /**
-  * Active screen-space pointer positions keyed by `pointerId`. With
-  * one entry the editor's normal single-pointer flow applies. With
-  * two or more entries we enter a pinch / pan gesture and bypass the
-  * interaction machine — `pinchOrigin` holds the baseline.
-  */
- private readonly activePointers = new Map<number, Vec2>();
- // Pinch gesture state lives in PinchController (./editor/pinch.ts)
- // — `pinch.isActive()` replaces the old `pinchOrigin !== null` check.
- private pinch!: PinchController;
- /** Bridge for `editor/container-ops.ts`. Built lazily in constructor. */
- private containerOpsRef!: ContainerOpsRef;
-
- /**
-  * Space-bar held → next pointer drag pans the canvas instead of
-  * doing whatever the current mode would do. Visual cursor goes to
-  * "grab" / "grabbing". Wires a window-level keydown/keyup listener
-  * in `bindPointerEvents`.
-  */
- private spaceHeld = false;
-
- /**
-  * Host-supplied tile compositor — when set (via
-  * `EditorOptions.useTileCache` + `tileCompose`), the per-frame
-  * render path delegates to it instead of `renderScene`. Stays
-  * `null` for the typical small-scene case.
-  */
- private readonly tileComposeFn: TileComposeFn | null;
-
- /**
-  * Per-shape change record (before/after world bbox) since the last
-  * tile-cache invalidation pass. Populated by `computeDirtyWorld`'s
-  * diff loop when `tileComposeFn` is on; forwarded to the compositor
-  * each frame so it can invalidate by add / remove / move correctly.
-  * (A plain id set lost adds — new id wasn't in the tile reverse
-  * index yet.)
-  */
- private tileDirtyShapes: Map<
-  ShapeId,
-  { before: Bounds | null; after: Bounds | null }
- > = new Map();
-
- /**
-  * Tool-lock flag (standard model). When `false` (default), a
-  * draw-mode (`draw-rect` / `draw-ellipse` / `draw-edge` / `brush`)
-  * auto-reverts to `select` after a successful create. When `true`,
-  * the mode persists so the user can draw many shapes in a row
-  * without re-selecting the tool.
-  *
-  * Toggled via `Editor.setToolLocked(bool)` and surfaced in the
-  * toolbar as a lock affordance next to the active tool.
-  */
- private _toolLocked = false;
-
- /**
-  * Host-extensible file-drop dispatch. Built-ins (image / scene
-  * JSON) register themselves at editor construction; hosts add
-  * more via `registerFileDropHandler`.
-  */
- private readonly fileDropRegistry = new FileDropRegistry();
-
- /**
-  * Active pan gesture (right-click drag or Space + left drag).
-  * `pointerId` is captured by the host so move/up events keep
-  * arriving even after the cursor leaves the host bounds.
-  * `startPoint` is the press position — used to decide "click vs
-  * drag" at pointerup (a near-zero displacement right-click is a
-  * context-menu request, not a pan). `lastPoint` tracks the
-  * previous move so per-frame delta is correct.
-  *
-  * `button` records which mouse button started the gesture so we
-  * only treat right-click releases as potential context-menu
-  * triggers (Space + left-drag never opens a menu).
-  */
- private panGesture: {
-  pointerId: number;
-  button: number;
-  startPoint: Vec2;
-  lastPoint: Vec2;
-  moved: boolean;
- } | null = null;
-
- /**
-  * Set on right-click pointerdown result so the upcoming native
-  * `contextmenu` event can be unconditionally preventDefault'ed
-  * (the gesture decides whether to fire the menu manually on
-  * pointerup based on whether the user dragged).
-  */
- private suppressNextContextMenu = false;
-
- /** Cursor style we set on the host while a pan gesture is in flight. */
- private previousHostCursor: string | null = null;
-
- /**
-  * Long-press tracking. Starts on `pointerdown`; cancelled on
-  * `pointermove > LONG_PRESS_MAX_MOVEMENT_PX` or `pointerup` before
-  * the timer fires. Hosts subscribe via `onLongPress` to surface a
-  * context menu (mobile alternative to right-click).
-  */
- // Long-press timer + origin live in LongPressController
- // (./editor/long-press.ts). The Set of subscribers stays here
- // because `onLongPress` is part of the public Editor API.
- private longPress!: LongPressController;
- private readonly longPressListeners = new Set<
-  (payload: { screenPoint: Vec2; worldPoint: Vec2 }) => void
- >();
-
- /**
-  * Live-region announcements for assistive tech. The editor pushes
-  * short, human-readable strings ("Selected Rectangle", "Moved 5 px
-  * right") that hosts pipe into an `aria-live=polite` region.
-  */
- private readonly announceListeners = new Set<(message: string) => void>();
-
- /**
-  * Resolved primary input modality + derived hit slops. Computed once
-  * in the constructor from `EditorOptions.inputMode` (default `"auto"`
-  * uses `matchMedia('(pointer: coarse)')`).
-  */
- private readonly inputMode: "mouse" | "touch";
- private readonly handleHitSlop: number;
- private readonly edgeHandleHitSlop: number;
- private readonly edgeHitThreshold: number;
-
- private readonly _history: HistoryProvider;
- /** Open transaction during a single drag/resize gesture. */
- private gestureTx: TransactionHandle | null = null;
- /**
-  * Wraps gesture lifecycle (transaction open/commit/cancel +
-  * post-create mode revert) so editor.ts doesn't carry the bodies.
-  * Implementation lives in `./editor/gesture-tx.ts`; the
-  * controller calls back through the narrow `GestureRef` bridge
-  * built lazily below.
-  */
- private readonly gestures: GestureController;
-
- constructor(options: EditorOptions) {
-  this.host = options.host;
-  this.mainTarget = options.mainTarget;
-  this.overlayTarget = options.overlayTarget;
-  this.backgroundTarget = options.backgroundTarget ?? null;
-  this._scene = options.initialScene;
-  this._history = isHistoryProvider(options.history)
-   ? options.history
-   : new History(options.history ?? {});
-  // Build the gesture controller against a narrow getter/setter
-  // bridge to the editor's mutable state. The bridge is a thin
-  // adapter — keeps `gestureTx`/`dragShapeId` etc. as `private`
-  // fields on Editor (instead of forcing them public to satisfy
-  // structural implements), and lets the controller live in its
-  // own module without importing Editor.
-  const self = this;
-  this.gestures = new GestureController({
-   get history() {
-    return self._history;
-   },
-   get gestureTx() {
-    return self.gestureTx;
-   },
-   set gestureTx(v) {
-    self.gestureTx = v;
-   },
-   get groupMoveOrigin() {
-    return self.groupMoveOrigin;
-   },
-   set groupMoveOrigin(v) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    self.groupMoveOrigin = v as any;
-   },
-   get groupResizeOrigin() {
-    return self.groupResizeOrigin;
-   },
-   set groupResizeOrigin(v) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    self.groupResizeOrigin = v as any;
-   },
-   get dragShapeId() {
-    return self.dragShapeId;
-   },
-   set dragShapeId(v) {
-    self.dragShapeId = v;
-   },
-   get containerHover() {
-    return self.containerHover;
-   },
-   set containerHover(v) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    self.containerHover = v as any;
-   },
-   get toolLocked() {
-    return self._toolLocked;
-   },
-   get mode() {
-    return self.mode;
-   },
-   setMode: (m) => self.setMode(m),
-   notify: () => self.notify(),
-  });
-  this.tileComposeFn =
-   options.useTileCache === true && options.tileCompose ? options.tileCompose : null;
-
-  // If the host plugged a TextShaper (e.g.
-  // WasmTextShaper.loadBundled()), install it process-globally
-  // so the built-in text renderer's wrap path uses it instead
-  // of Canvas2D.measureText. Hosts that don't care leave the
-  // field unset and the default behaviour is unchanged.
-  if (options.textShaper) setActiveTextShaper(options.textShaper);
-  // Same pattern for Rasterizer. The WebGL2
-  // backend reads `getActiveRasterizer()` from its curve methods
-  // and routes through WASM flatten / strokeToFill when set.
-  // Other backends (Canvas2D, SVG) leave the field alone —
-  // native ctx.bezierCurveTo beats any WASM round-trip there.
-  if (options.rasterizer) setActiveRasterizer(options.rasterizer);
-
-  // Resolve input mode + derived hit slops once. `auto` reads
-  // `matchMedia('(pointer: coarse)')` when available; SSR falls
-  // back to `mouse`.
-  const requested = options.inputMode ?? "auto";
-  if (requested === "touch") {
-   this.inputMode = "touch";
-  } else if (requested === "mouse") {
-   this.inputMode = "mouse";
-  } else if (
-   typeof window !== "undefined" &&
-   typeof window.matchMedia === "function" &&
-   window.matchMedia("(pointer: coarse)").matches
-  ) {
-   this.inputMode = "touch";
-  } else {
-   this.inputMode = "mouse";
-  }
-  this.handleHitSlop = this.inputMode === "touch" ? TOUCH_HANDLE_HIT_SLOP : HANDLE_HIT_SLOP;
-  this.edgeHandleHitSlop =
-   this.inputMode === "touch" ? TOUCH_EDGE_HANDLE_HIT_SLOP : EDGE_ENDPOINT_HANDLE_RADIUS;
-  this.edgeHitThreshold =
-   this.inputMode === "touch" ? TOUCH_EDGE_HIT_THRESHOLD : EDGE_HIT_THRESHOLD;
-
-  this.actor = createActor(interactionMachine);
-  this.actor.subscribe({
-   next: () => {
-    // Render on any state change so drawing rubber-band updates.
-    this.render();
-   },
-  });
-  this.actor.on("*", (event) => {
-   this.applyEmit(event);
-  });
-  this.actor.start();
-
-  // Built-in file-drop handlers — registered before any host-side
-  // wiring so subsequent host `registerFileDropHandler` calls land
-  // *after* and only fire for files we don't already handle.
-  this.fileDropRegistry.register(imageFileDropHandler);
-  this.fileDropRegistry.register(videoFileDropHandler);
-
-  if (options.initialMode) {
-   this.actor.send({ type: "SET_MODE", mode: options.initialMode });
-  }
-
-  // Long-press controller — fired on touch-hold; fans out to
-  // host-registered listeners (mobile alt to right-click).
-  this.longPress = new LongPressController(
-   (p) => this.screenToWorld(p),
-   (payload) => {
-    for (const fn of this.longPressListeners) fn(payload);
-   },
-  );
-  // Pinch gesture controller — two-finger pan + zoom. Hooks into
-  // the editor's own zoomAt / panBy / screenToWorld.
-  this.pinch = new PinchController(
-   (p) => this.screenToWorld(p),
-   (factor, anchorWorld) => this.zoomAt(factor, anchorWorld),
-   (delta) => this.panBy(delta),
-  );
-  // Bridge for container-ops module — narrow surface that the
-  // pure functions in editor/container-ops.ts call back into.
-  const self2 = this;
-  this.containerOpsRef = {
-   get scene() {
-    return self2._scene;
-   },
-   get dragShapeId() {
-    return self2.dragShapeId;
-   },
-   get containerHover() {
-    return self2.containerHover;
-   },
-   applyPatch(patch, nextScene) {
-    self2._scene = nextScene;
-    self2.beginOrAttachGesture().add(patch);
-   },
-  };
-
-  this.unbind = this.bindPointerEvents();
-  this.render();
-  // Prime the typed-event cache with the editor's initial state so
-  // the *first* user-driven update only emits on a real flip.
-  // Without this, an `editor.on("mode", fn)` listener installed
-  // before any change would fire on the very next `setMode(current)`
-  // call because every cached slice would still be `null`.
-  primeEventCache(this.eventCache, this.observableSnapshot());
- }
-
- /** Snapshot used by event-fanout. Kept private — internal API. */
- private observableSnapshot() {
-  return {
-   mode: this.mode,
-   selection: this._selection,
-   scene: this._scene,
-   canUndo: this.canUndo,
-   canRedo: this.canRedo,
-  };
- }
-
- // --- Public state ---
-
- get scene(): Scene {
-  return this._scene;
- }
- get selection(): Selection.Selection {
-  return this._selection;
- }
- get mode(): Mode {
-  return this.actor.getSnapshot().context.mode;
- }
- get history(): HistoryProvider {
-  return this._history;
- }
- get canUndo(): boolean {
-  return this._history.canUndo;
- }
- get canRedo(): boolean {
-  return this._history.canRedo;
- }
-
- /**
-  * The DOM element the editor was mounted onto. Read-only — external
-  * code reads it for screen-↔-world coordinate conversions on events
-  * whose coordinates are in client-space (e.g. global `contextmenu`).
-  */
- get hostElement(): HTMLElement {
-  return this.host;
- }
-
- /** Subscribe to scene/selection/mode/history changes. */
- subscribe(fn: () => void): () => void {
-  this.listeners.add(fn);
-  return () => this.listeners.delete(fn);
- }
-
- // --- Collab: remote presence push + local cursor push ---
-
- /**
-  * Subscribe to local world-space pointer movement. Fires on every
-  * `pointermove` over the host. `@collab` uses this to broadcast the
-  * local cursor into the awareness room.
-  */
- onCursorMove(fn: (point: Vec2) => void): () => void {
-  this.cursorListeners.add(fn);
-  return () => this.cursorListeners.delete(fn);
- }
-
- // --- Annotations ---
-
- /** Set the local user's identity for comments authored via this editor. */
- setCommentAuthor(author: { id: string; name: string }): void {
-  this.commentAuthor = author;
- }
-
- /** Currently focused annotation id (or null when nothing is open). */
- get selectedAnnotation(): AnnotationId | null {
-  return this._selectedAnnotation;
- }
-
- /**
-  * Open or close an annotation thread. `null` clears the focus. The
-  * overlay highlights the pin; `<CommentsPopover>` reads this and
-  * renders the thread.
-  */
- setSelectedAnnotation(id: AnnotationId | null): void {
-  if (this._selectedAnnotation === id) return;
-  this._selectedAnnotation = id;
-  this.notify();
- }
-
- // Pure bodies in `./editor/public/annotations.ts`.
- addAnnotation(opts: {
-  position: Vec2;
-  shapeId?: ShapeId | null;
-  firstComment?: string;
- }): AnnotationId {
-  const result = computeAddAnnotation(this._scene, opts, this.commentAuthor, (p) =>
-   this.uniqueId(p),
-  );
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this._selectedAnnotation = result.id;
-  this.notify();
-  this.announce("Annotation added");
-  return result.id;
- }
- removeAnnotation(id: AnnotationId): void {
-  const result = computeRemoveAnnotation(this._scene, id);
-  if (!result) return;
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  if (this._selectedAnnotation === id) this._selectedAnnotation = null;
-  this.notify();
-  this.announce("Annotation removed");
- }
- toggleAnnotationResolved(id: AnnotationId): void {
-  const result = computeToggleAnnotationResolved(this._scene, id);
-  if (!result) return;
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.notify();
-  this.announce(result.wasResolved ? "Annotation reopened" : "Annotation resolved");
- }
- addComment(
-  annotationId: AnnotationId,
-  body: string,
-  author?: { id: string; name: string },
- ): void {
-  const result = computeAddComment(
-   this._scene,
-   annotationId,
-   body,
-   author ?? this.commentAuthor,
-   (p) => this.uniqueId(p),
-  );
-  if (!result) return;
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.notify();
- }
- removeComment(annotationId: AnnotationId, commentId: CommentId): void {
-  const result = computeRemoveComment(this._scene, annotationId, commentId);
-  if (!result) return;
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.notify();
- }
- hitAnnotation(worldPoint: Vec2): AnnotationId | null {
-  return hitAnnotationPure(this._scene, worldPoint);
- }
-
- /**
-  * Subscribe to long-press events — a stationary touch / mouse-press
-  * held longer than `LONG_PRESS_DELAY_MS`. The mobile-equivalent of
-  * right-click; hosts open a context menu from this. The event
-  * carries both screen-space (for menu positioning) and world-space
-  * (for target hit-test) coordinates.
-  */
- onLongPress(fn: (payload: { screenPoint: Vec2; worldPoint: Vec2 }) => void): () => void {
-  this.longPressListeners.add(fn);
-  return () => this.longPressListeners.delete(fn);
- }
-
- /**
-  * Subscribe to accessibility live-region announcements. The host
-  * pipes these strings into an `aria-live="polite"` element so a
-  * screen-reader user hears the editor's status changes. Strings
-  * are short and pre-localised by the caller of `announce`.
-  */
- onAnnounce(fn: (message: string) => void): () => void {
-  this.announceListeners.add(fn);
-  return () => this.announceListeners.delete(fn);
- }
-
- /**
-  * Push a live-region message to all `onAnnounce` listeners. Hosts
-  * (and plugins) call this when something happened that an SR user
-  * should hear: selection changed, shape moved, mode switched, etc.
-  * The editor itself emits a small set of canonical messages from
-  * `focusCycle` / `moveSelectionBy` / `cancelInteraction`.
-  */
- announce(message: string): void {
-  if (!message) return;
-  for (const fn of this.announceListeners) fn(message);
- }
-
- /**
-  * Replace the remote peer cursors painted by the overlay. Pass an
-  * empty array to clear. The host is expected to filter out the
-  * local user's cursor before calling.
-  */
- setPeerCursors(cursors: readonly PeerCursor[]): void {
-  this._peerCursors = cursors;
-  this.render();
- }
-
- /**
-  * Replace the remote peer selections painted by the overlay. The
-  * host resolves a peer's `selection: ShapeId[]` into world bounds
-  * before passing them in.
-  */
- setPeerSelections(selections: readonly PeerSelection[]): void {
-  this._peerSelections = selections;
-  this.render();
- }
-
- /** Whether the active draw-mode sticks after a create (toolbar lock). */
- get toolLocked(): boolean {
-  return this._toolLocked;
- }
-
- /** Currently-selected edge id, if any. Null when no edge is selected. */
- get selectedEdge(): EdgeId | null {
-  return this._selectedEdge;
- }
-
- /**
-  * Apply an in-place mutation to the currently-selected edge as a
-  * single history step. The `updater` receives a clone of the edge
-  * and returns the next version (callers should produce a new
-  * object — Edge is readonly). No-op when no edge is selected.
-  */
- updateSelectedEdge(updater: (edge: Edge) => Edge): void {
-  const id = this._selectedEdge;
-  if (id === null) return;
-  const r = updateEdge(this._scene, id, updater);
-  this._scene = r.scene;
-  this._history.push(r.patch);
-  this.notify();
- }
-
- /**
-  * Register a file-drop handler. Handlers are tried in registration
-  * order; the first whose `accept(file)` returns true takes the
-  * file. Repeated calls with the same `id` replace the previous
-  * handler (idempotent for module-load wiring).
-  */
- registerFileDropHandler(handler: FileDropHandler): void {
-  this.fileDropRegistry.register(handler);
- }
-
- /** Drop a registered handler. */
- unregisterFileDropHandler(id: string): void {
-  this.fileDropRegistry.unregister(id);
- }
-
- /**
-  * Dispatch a dropped file (or pasted file from clipboard) into
-  * the registered handlers. Returns `true` when a handler accepted
-  * the file, `false` otherwise — UI can show an "unsupported file"
-  * toast on `false`. `worldPoint` is where the file should land
-  * (drop-point projected to world coords; for paste, host can use
-  * cursor world point or viewport centre).
-  */
- async dispatchFileDrop(file: File, worldPoint: Vec2): Promise<boolean> {
-  const ctx: FileDropContext = { editor: this, worldPoint };
-  return this.fileDropRegistry.dispatch(file, ctx);
- }
-
- /**
-  * Toggle the tool-lock affordance. With `true`, draw-modes persist
-  * after each successful shape create — the user keeps drawing
-  * rectangles without re-pressing R. With `false` (default), the
-  * editor reverts to `select` after each create.
-  */
- setToolLocked(locked: boolean): void {
-  if (this._toolLocked === locked) return;
-  this._toolLocked = locked;
-  this.notify();
- }
-
- // Body moved to `./editor/gesture-tx.ts`.
- private maybeRevertModeAfterCreate(): void {
-  this.gestures.maybeRevertModeAfterCreate();
- }
-
- setMode(mode: Mode): void {
-  // Cancel any in-progress drag gesture so the partial state is not recorded.
-  if (this.gestureTx) {
-   this.gestureTx.cancel();
-   this.gestureTx = null;
-  }
-  // Hide the port overlay when leaving draw-edge.
-  if (mode !== "draw-edge" && this.hoveredEdgeTarget !== null) {
-   this.hoveredEdgeTarget = null;
-  }
-  // Cursor affordance for hand mode — grab when armed, grabbing
-  // takes over inside an active pan gesture. Restore the host's
-  // previous cursor when leaving the mode.
-  if (mode === "hand" && this.host?.style) {
-   if (this.previousHostCursor === null) {
-    this.previousHostCursor = this.host.style.cursor;
-   }
-   this.host.style.cursor = "grab";
-  } else if (this.previousHostCursor !== null && this.mode === "hand" && !this.panGesture) {
-   this.host.style.cursor = this.previousHostCursor;
-   this.previousHostCursor = null;
-  }
-  this.actor.send({ type: "SET_MODE", mode });
-  this.notify();
- }
-
- /** Undo the latest record. No-op if there is nothing to undo. */
- undo(): boolean {
-  const inverse = this._history.undo();
-  if (!inverse) return false;
-  this._scene = apply(this._scene, inverse);
-  this.pruneSelection();
-  this.notify();
-  return true;
- }
-
- /** Redo the undone record. */
- redo(): boolean {
-  const patch = this._history.redo();
-  if (!patch) return false;
-  this._scene = apply(this._scene, patch);
-  this.pruneSelection();
-  this.notify();
-  return true;
- }
-
- /**
-  * Add a shape to the scene and push a single record onto the history stack.
-  * Returns the resulting patch (useful for tests). Intended for code paths
-  * that create shapes outside of a pointer gesture — drag-from-palette,
-  * paste, programmatic insert.
-  */
- addShape(shape: Shape, options?: { select?: boolean }): Patch {
-  const result = addShape(this._scene, shape);
-  this._scene = result.scene;
-  if (options?.select ?? true) {
-   this._selection = Selection.single(shape.id);
-  }
-  this._history.push(result.patch);
-  this.notify();
-  return result.patch;
- }
-
- /**
-  * Insert an image at the given world position. Wraps `addShape`
-  * with the image-shape boilerplate (id, layer, order, scale=1,
-  * rotation=0). Returns the new shape's id so callers can chain
-  * (e.g. immediately reparent into a container).
-  *
-  * `src` is anything the renderer accepts — a data-URL from the
-  * file-drop handler, a host CDN URL, an SVG string in
-  * `image/svg+xml;base64,...` form.
-  */
- insertImage(input: {
-  src: string;
-  width: number;
-  height: number;
-  position: Vec2;
+  private readonly host: HTMLElement;
+  private readonly mainTarget: RenderTarget;
+  private readonly overlayTarget: RenderTarget;
+  private readonly backgroundTarget: RenderTarget | null;
+  private readonly actor: Actor<typeof interactionMachine>;
+  private readonly listeners = new Set<() => void>();
   /**
-   * Pre-decoded `<img>` element. Stored in metadata.image so the
-   * Canvas2D renderer can `drawImage(handle, …)` directly — the
-   * raw `src` string isn't a CanvasImageSource. Optional; hosts
-   * that pass only `src` should ensure their renderer accepts
-   * URLs.
+   * Typed event surface. Specific events (`mode`, `selection`,
+   * `scene`, `history`, `viewport`) fan out of `notify()` based on
+   * what actually changed since the last fire, so subscribers only
+   * wake up when their slice flips. `change` still fires once per
+   * `notify()` for legacy callers that don't care which slice.
+   *
+   * The `subscribe()` set is kept — both notification
+   * paths run in lockstep so external code can migrate incrementally.
    */
-  image?: HTMLImageElement;
+  private readonly events: Emitter<EditorEvents> = createEmitter<EditorEvents>();
   /**
-   * Mark this image as animated (e.g. GIF). The editor starts a
-   * requestAnimationFrame tick while any animated image is in the
-   * scene, forcing a redraw each frame so the browser's native
-   * GIF animation in the `<img>` element is picked up by
-   * subsequent drawImage calls.
+   * Last-emitted snapshot of every observable slice. Used by
+   * `fanOutEvents` (in `editor/event-fanout.ts`) to decide which
+   * typed events to fire on each `notify()` — only the slices
+   * whose identity changed since the previous notify get an event.
    */
-  animated?: boolean;
+  private readonly eventCache: EditorEventCache = createEventCache();
+  private readonly unbind: () => void;
+
+  private _scene: Scene;
+  private _selection: Selection.Selection = Selection.EMPTY;
   /**
-   * link this image to a `Scene.files` entry instead
-   * of (or in addition to) embedding the bytes in `src`. Hosts
-   * call `editor.addBinaryFile(blob, name?)` first to register
-   * the bytes and pass the returned `FileId` here. Serialised
-   * scenes then carry only the small `fileId` reference; the
-   * blob round-trips through the files sidecar.
+   * Snapshot of an in-progress annotation drag (press on pin → move
+   * pointer → release). `originPosition` is the annotation's stored
+   * position at press time; per-move handler computes a delta from
+   * the current pointer in world space and writes it back.
    */
-  fileId?: import("@oh-just-another/types").FileId;
- }): ShapeId {
-  const id = castShapeId(this.uniqueId("img"));
-  const layerId = this._activeLayerId;
-  const order = orderForTop(
-   Array.from(this._scene.shapes.values())
-    .filter((s) => s.layerId === layerId)
-    .map((s) => s.order),
-  );
-  const metadata: Record<string, unknown> = {};
-  if (input.image) metadata.image = input.image;
-  if (input.animated) metadata.animated = true;
-  const shape: Shape = {
-   id,
-   layerId,
-   type: "image",
-   position: input.position,
-   rotation: 0,
-   scale: { x: 1, y: 1 },
-   order,
-   style: {},
-   width: input.width,
-   height: input.height,
-   src: input.src,
-   ...(input.fileId ? { fileId: input.fileId } : {}),
-   ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
-  };
-  this.addShape(shape);
-  if (input.animated) this.animationTick.start();
-  return id;
- }
+  private annotationDrag: {
+    id: AnnotationId;
+    originPosition: Vec2;
+    originWorldPoint: Vec2;
+    moved: boolean;
+  } | null = null;
+  /** Live preview while drawing a new shape; null when not drawing. */
+  private drawingPreview: Bounds | null = null;
+  private edgePreview: { from: Vec2; to: Vec2 } | null = null;
+  /**
+   * Shape being hovered while draw-edge mode is active. Drives the port-
+   * overlay render so the user sees attachment points. `null` outside
+   * draw-edge mode or when the pointer is over empty canvas.
+   */
+  private hoveredEdgeTarget: { shapeId: ShapeId; activeAnchor: string | null } | null = null;
+  /**
+   * Currently selected edge.
+   */
+  private _selectedEdge: EdgeId | null = null;
+  /**
+   * Currently focused annotation thread — overlay highlights its pin
+   * with an accent ring and hosts (e.g. `<CommentsPopover>`) render
+   * the thread for this id. Independent of shape / edge selection so
+   * users can edit shapes while a comment thread is open.
+   */
+  private _selectedAnnotation: AnnotationId | null = null;
+  /**
+   * Author identity used for comments posted via `addComment` /
+   * `addAnnotation` without an explicit author. Hosts set this once
+   * (typically from the same user object passed to `bindAwareness`).
+   * Defaults to a synthetic local user.
+   */
+  private commentAuthor: { id: string; name: string } = { id: "local", name: "You" };
+  /**
+   * Mid-drag preview state when the user is dragging an edge endpoint.
+   * Drawn as an overlay line + handle dot so the user sees the target.
+   */
+  private edgeEndpointDrag: {
+    edgeId: EdgeId;
+    side: "from" | "to";
+    toPoint: Vec2;
+  } | null = null;
+  /** Live lasso bounds during a rubber-band select gesture. */
+  private lassoPreview: Bounds | null = null;
 
- /**
-  * register a binary file (typically a freshly-dropped
-  * image blob) into `Scene.files` and return its id. The returned
-  * id can immediately be passed to `insertImage({ fileId })` so
-  * the shape references the entry instead of embedding bytes as a
-  * dataURL.
-  *
-  * The patch is pushed to history as its own undo step. Callers
-  * who want the file + shape in one undo step should wrap both in
-  * `_history.transaction()` themselves (advanced).
-  */
- addBinaryFile(blob: Blob, name?: string): Promise<FileId> {
-  return blob.arrayBuffer().then((data) => {
-   const id = castFileId(`file-${++this.nextId}-${Date.now().toString(36)}`);
-   const file = createBinaryFile(id, data, {
-    mime: blob.type || "application/octet-stream",
-    ...(name !== undefined ? { name } : {}),
-   });
-   const patch: Patch = { kind: "file", id, before: null, after: file };
-   this._scene = apply(this._scene, patch);
-   this._history.push(patch);
-   return id;
+  /**
+   * Selection captured at lasso-press time. Used to compute the live
+   * preview correctly: in `replace` mode the lasso starts from empty
+   * each frame; in `add` mode it starts from this snapshot so shapes
+   * the user already had selected don't blink out and back.
+   */
+  private lassoBaseSelection: Selection.Selection | null = null;
+  /**
+   * Snapshot of every selected shape's `position` at press-down. Used to
+   * translate the whole group additively during a multi-shape drag. The
+   * machine still emits per-shape MOVE_SHAPE — the editor intercepts and
+   * fans out when this map is populated.
+   */
+  private groupMoveOrigin: ReadonlyMap<ShapeId, Vec2> | null = null;
+  /**
+   * Per-shape snapshot for a group-resize gesture — `bounds` is the
+   * shape's world AABB at press-down. Editor scales the relative
+   * position / size against the combined bounds delta each frame.
+   */
+  private groupResizeOrigin: {
+    readonly combined: Bounds;
+    readonly shapes: ReadonlyMap<
+      ShapeId,
+      { readonly position: Vec2; readonly bounds: Bounds; readonly scale: Vec2 }
+    >;
+  } | null = null;
+  /**
+   * Active layer — new shapes created via `addShape` / `applyCreate` land
+   * here when their input doesn't specify a `layerId`. Defaults to the
+   * scene's `DEFAULT_LAYER_ID`; hosts switch via `setActiveLayer`.
+   */
+  private _activeLayerId: LayerId = castLayerId(DEFAULT_LAYER_ID);
+  private nextId = 0;
+
+  /** Generate a short unique id with a stable prefix. */
+  private uniqueId(prefix: string): string {
+    return `${prefix}-${++this.nextId}-${Date.now().toString(36)}`;
+  }
+
+  /**
+   * Snap engine — defaults to grid + anchor + outline contributors. Hosts
+   * that want to tweak this can subclass or instantiate `Editor` with a
+   * custom `snapEngine` option.
+   */
+  private readonly snapEngine: SnapEngine = new SnapEngine([
+    gridSnapper,
+    anchorSnapper,
+    outlineSnapper,
+  ]);
+  /** Snap threshold in world units. */
+  private readonly snapThreshold = DEFAULT_SNAP_THRESHOLD;
+
+  /**
+   * Persistent world-bounds cache shared with `renderScene` for viewport
+   * culling. Object-identity keyed — invalidates automatically whenever
+   * a scene op replaces the shape ref. Could be exposed for hit-test
+   * sharing in a follow-up.
+   */
+  private readonly boundsCache: ShapeCache<Bounds> = new ShapeCache<Bounds>();
+
+  /**
+   * Lazy SpatialGrid for hit-test acceleration in large scenes.
+   * Built on demand when `scene.shapes.size >= LARGE_SCENE_HIT_THRESHOLD`
+   * and the cached index's source-scene reference is stale (any scene
+   * op replaces the `_scene` field, invalidating identity).
+   */
+  private spatialIndexCache: { scene: Scene; index: SpatialGrid } | null = null;
+
+  /**
+   * The group the user has "entered" via double-click. While set, the
+   * hit-test stops promoting children of this group to the group root,
+   * letting the user directly manipulate inner shapes. Cleared on
+   * escape, click outside the group's descendants, or `cancelInteraction`.
+   */
+  private _enteredGroup: ShapeId | null = null;
+
+  /**
+   * Double-click detection state. Updated on every non-drag pointer
+   * up; the next pointer-up within `DOUBLE_CLICK_MS` and within
+   * `DOUBLE_CLICK_TOLERANCE_PX` of `lastClickWorldPoint` counts as a
+   * double-click. Used to trigger group drill-down (enter isolation).
+   */
+  private lastClickAt = 0;
+  private lastClickWorldPoint: Vec2 | null = null;
+
+  /**
+   * In-progress brush stroke. Hosts push points via
+   * `extendBrushStroke`; the overlay reads it through
+   * `pendingBrushStroke` to draw a live preview.
+   */
+  private brushStroke: BrushStrokeState | null = null;
+
+  /**
+   * Last world-space pointer position observed by the host's onMove
+   * handler. `paste()` uses it as the default drop target so a fresh
+   * paste lands under the cursor instead of overlapping the originals.
+   * `null` until the pointer first enters the host.
+   */
+  private lastPointerWorld: Vec2 | null = null;
+
+  /**
+   * Scene rendered on the last frame. Used to compute a dirty rect by
+   * identity-diffing against the current scene — every shape / edge
+   * whose ref didn't change is also pixel-identical to its last paint
+   * and gets skipped together with the surrounding clear. `null` until
+   * the first render.
+   */
+  private lastRenderedScene: Scene | null = null;
+  /**
+   * Last-painted isolation root — paired with `lastRenderedScene` so
+   * the dirty-rect optimization invalidates when the user enters or
+   * exits a group, even when the scene reference is unchanged. Without
+   * this, drilling into a group never triggers a redraw → the dim
+   * pass would never visibly apply.
+   */
+  private lastRenderedEnteredGroup: ShapeId | null = null;
+
+  /**
+   * Fractional-order compaction scheduler (microtask-coalesced).
+   * Triggered from every `notify()`; only does real work when at
+   * least one shape/edge order string crossed AUTO_COMPACT_THRESHOLD.
+   * See `./auto-compact.ts` for the extracted logic.
+   */
+  private readonly autoCompactScheduler = new AutoCompactScheduler({
+    getScene: () => this._scene,
+    compact: (layerId) => this.compactLayerZOrder(layerId, { recordHistory: false }),
   });
- }
 
- /**
-  * Animation tick — runs while any shape carries
-  * `metadata.animated` (GIFs today; future video / lottie).
-  * Forces a full re-render every frame so drawImage picks up the
-  * current frame of natively-animated elements. Self-terminates
-  * when no animated shapes remain.
-  *
-  * Lifecycle managed by the `AnimationTick` helper (see
-  * `./animation-tick.ts`). `insertImage({animated:true})` and
-  * `loadScene` start the tick; `dispose()` stops it.
-  */
- private readonly animationTick = new AnimationTick({
-  isAnimated: () => this.hasAnimatedShape(),
-  onTick: () => {
-   // Force a full re-render: the scene reference hasn't changed,
-   // but the browser's native GIF animation has advanced inside
-   // the `<img>` element. Re-painting picks up the current frame.
-   this.lastRenderedScene = null;
-   this.render();
-  },
- });
-
- /** True while any shape in the scene carries `metadata.animated`. */
- private hasAnimatedShape(): boolean {
-  for (const s of this._scene.shapes.values()) {
-   if (s.metadata?.animated === true) return true;
-  }
-  return false;
- }
-
- /**
-  * Drag-to-place flow for palette templates. Adds the shape to the
-  * scene immediately so the user sees it dragging under the cursor,
-  * but defers the history entry until `commit()` is called. `update`
-  * re-positions without writing per-move patches; `cancel` removes
-  * the shape entirely and leaves history intact (no undo entry).
-  *
-  * Typical wiring: HTML5 dragenter starts the placement, dragover
-  * updates, drop commits, dragleave / window keydown(Escape) cancel.
-  */
- beginPlacement(shape: Shape): {
-  update: (worldCenter: Vec2) => void;
-  commit: () => void;
-  cancel: () => void;
- } {
-  const tx = this._history.transaction();
-  const initialResult = addShape(this._scene, shape);
-  this._scene = initialResult.scene;
-  this._selection = Selection.single(shape.id);
-  this.notify();
-  let current = shape;
-  const half = getShapeWorldBounds(shape);
-  const offsetX = half.width / 2;
-  const offsetY = half.height / 2;
-  return {
-   update: (worldCenter) => {
-    const next = {
-     ...current,
-     position: { x: worldCenter.x - offsetX, y: worldCenter.y - offsetY },
-    } as Shape;
-    // Apply directly — we'll record a single add-patch on commit.
-    const patch: Patch = { kind: "shape", id: shape.id, before: current, after: next };
-    this._scene = apply(this._scene, patch);
-    current = next;
-    this.notify();
-   },
-   commit: () => {
-    // Container drop: if the placed shape lands inside an auto-
-    // layout / drop-zone container's zone, reparent it so the
-    // container's auto-layout fires on the next microtask. Pure
-    // pointer-drag uses applyContainerDrop for the same effect;
-    // palette placement bypasses that path, so we hook the check
-    // here directly on commit.
-    const center = {
-     x: current.position.x + (half.width / 2),
-     y: current.position.y + (half.height / 2),
-    };
-    const container = findContainerAt(this._scene, center, new Set([current.id]));
-    if (container) {
-     const withParent = { ...current, parentId: container.id } as Shape;
-     const reparentPatch: Patch = {
-      kind: "shape",
-      id: shape.id,
-      before: current,
-      after: withParent,
-     };
-     this._scene = apply(this._scene, reparentPatch);
-     current = withParent;
-    }
-    tx.add({ kind: "shape", id: shape.id, before: null, after: current });
-    tx.commit();
-   },
-   cancel: () => {
-    const removeRes = removeShape(this._scene, shape.id);
-    this._scene = removeRes.scene;
-    tx.cancel();
-    this._selection = Selection.EMPTY;
-    this.notify();
-   },
-  };
- }
-
- /**
-  * Delete every currently-selected shape (or the currently-selected
-  * edge). No-op when nothing is selected. Single undo step regardless
-  * of how many shapes were removed.
-  */
- deleteSelected(): void {
-  const targets = [...this._selection];
-  const selectedEdge = this._selectedEdge;
-  if (targets.length === 0 && !selectedEdge) return;
-
-  const tx = this._history.transaction();
-  for (const id of targets) {
-   // Drop edges first — removing a shape that still has edges attached
-   // would leave dangling endpoint references.
-   for (const edge of [...this._scene.edges.values()]) {
-    if (
-     (edge.from.kind !== "point" && edge.from.shapeId === id) ||
-     (edge.to.kind !== "point" && edge.to.shapeId === id)
-    ) {
-     const r = removeEdge(this._scene, edge.id);
-     this._scene = r.scene;
-     tx.add(r.patch);
-    }
-   }
-   const r = removeShape(this._scene, id);
-   this._scene = r.scene;
-   tx.add(r.patch);
-  }
-  if (selectedEdge) {
-   const r = removeEdge(this._scene, selectedEdge);
-   this._scene = r.scene;
-   tx.add(r.patch);
-   this._selectedEdge = null;
-  }
-  tx.commit();
-  this._selection = Selection.EMPTY;
-  this.notify();
- }
-
- // --- Inline text editing ---
-
- /**
-  * Currently edited text shape (or null). Set by `beginTextEdit`;
-  * cleared by `commitTextEdit` / `cancelTextEdit`. The host overlay
-  * (`<TextEditorOverlay>` in `@react-ui`) subscribes via `editor`
-  * and renders a `<textarea>` positioned over the shape.
-  */
- private _editingTextShape: ShapeId | null = null;
- get editingTextShape(): ShapeId | null {
-  return this._editingTextShape;
- }
-
- /**
-  * Begin editing a text shape's body. No-op when the shape doesn't
-  * exist or isn't a text shape. Concurrent edits cancel themselves
-  * (only one shape at a time).
-  */
- beginTextEdit(id: ShapeId): void {
-  const shape = getShape(this._scene, id);
-  if (shape?.type !== "text") return;
-  if (this.isLayerLocked(shape.layerId)) return;
-  this._editingTextShape = id;
-  this.notify();
- }
-
- /** Replace the edited shape's text with `next`. Single undo step. */
- commitTextEdit(next: string): void {
-  const id = this._editingTextShape;
-  if (!id) return;
-  const shape = getShape(this._scene, id);
-  if (shape?.type !== "text" || (shape as { text?: string }).text === next) {
-   this._editingTextShape = null;
-   this.notify();
-   return;
-  }
-  const r = updateShape(this._scene, id, (s) => ({ ...s, text: next }));
-  this._scene = r.scene;
-  this._history.push(r.patch);
-  this._editingTextShape = null;
-  this.notify();
- }
-
- /** Cancel without saving. */
- cancelTextEdit(): void {
-  if (this._editingTextShape === null) return;
-  this._editingTextShape = null;
-  this.notify();
- }
-
- /**
-  * Translate every selected shape by the given world-space delta.
-  * Single undo step. No-op when selection is empty. Used by arrow-key
-  * keyboard navigation; hosts pass `{ x: 1, y: 0 }` for fine nudge
-  * and `{ x: 10, y: 0 }` for shift-arrow.
-  */
- moveSelectionBy(delta: Vec2): void {
-  if (this._selection.size === 0 || (delta.x === 0 && delta.y === 0)) return;
-  const tx = this._history.transaction();
-  let moved = 0;
-  // Expand the selection set with every descendant so groups translate
-  // as one unit. Dedup so a shape that is both selected and a descendant
-  // of another selected shape only moves once.
-  const targets = this.expandSelectionWithDescendants();
-  for (const id of targets) {
-   const shape = getShape(this._scene, id);
-   if (!shape) continue;
-   // Skip shapes on locked layers — nudge has no effect.
-   if (this.isLayerLocked(shape.layerId)) continue;
-   const r = updateShape(this._scene, id, (s) => ({
-    ...s,
-    position: { x: s.position.x + delta.x, y: s.position.y + delta.y },
-   }));
-   this._scene = r.scene;
-   tx.add(r.patch);
-   moved++;
-  }
-  if (moved === 0) {
-   tx.cancel();
-   return;
-  }
-  tx.commit();
-  this.notify();
-  this.announce(describeNudge(delta, moved));
- }
-
- /**
-  * Keyboard-friendly creation flow. Picks the shape type from the
-  * current `mode` ("draw-rect" / "draw-ellipse" / fallback to
-  * rectangle) and inserts a sensible default-sized shape at the
-  * viewport center. Returns the new shape's id, or `null` when the
-  * scene has no active layer.
-  *
-  * Hosts can bind this to "Enter" while in a draw mode, providing a
-  * mouse-free alternative to drag-out creation.
-  */
- createShapeAtCursor(): ShapeId | null {
-  const vp = this._scene.viewport;
-  const cssCenter: Vec2 = {
-   x: (vp.size.width || 200) / 2,
-   y: (vp.size.height || 200) / 2,
-  };
-  const world = this.screenToWorld(cssCenter);
-  const id = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
-  const order = orderForTop(
-   [...this._scene.shapes.values()]
-    .filter((s) => s.layerId === this._activeLayerId)
-    .map((s) => s.order),
-  );
-  const currentMode = this.mode;
-  const type: Shape["type"] =
-   currentMode === "draw-ellipse" ? "ellipse" : "rectangle";
-  const width = 120;
-  const height = 80;
-  const shape: Shape = {
-   id,
-   layerId: this._activeLayerId,
-   type,
-   position: { x: world.x - width / 2, y: world.y - height / 2 },
-   rotation: 0,
-   scale: { x: 1, y: 1 },
-   order,
-   style: { fill: "#bbb", stroke: "#000", strokeWidth: 1 },
-   width,
-   height,
-  } as Shape;
-  const r = addShape(this._scene, shape);
-  this._scene = r.scene;
-  this._history.push(r.patch);
-  this._selection = Selection.single(id);
-  this.notify();
-  this.announce(`Created ${type} ${id}`);
-  return id;
- }
-
- // Pure bodies in `./editor/public/brush.ts`.
- beginBrushStroke(world: Vec2, pressure = 0.5): void {
-  this.brushStroke = beginBrushStrokePure(world, pressure);
-  this.notify();
- }
- extendBrushStroke(world: Vec2, pressure = 0.5): void {
-  if (!this.brushStroke) return;
-  extendBrushStrokePure(this.brushStroke, world, pressure);
-  this.notify();
- }
- commitBrushStroke(): ShapeId | null {
-  const result = commitBrushStrokePure(
-   this._scene,
-   this.brushStroke,
-   this._activeLayerId,
-   newBrushId(++this.nextId),
-  );
-  if (!result) {
-   this.brushStroke = null;
-   this.notify();
-   return null;
-  }
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.brushStroke = null;
-  this.notify();
-  return result.shapeId;
- }
- cancelBrushStroke(): void {
-  if (!this.brushStroke) return;
-  this.brushStroke = null;
-  this.notify();
- }
-
- /** Current in-progress brush stroke, exposed for the overlay preview. */
- get pendingBrushStroke(): { readonly origin: Vec2; readonly points: readonly BrushPoint[] } | null {
-  return this.brushStroke;
- }
-
- /**
-  * Re-position the current selection on a regular grid. `cols`
-  * controls column count; `gap` the world-unit spacing between cells.
-  * Anchored at the top-left corner of the existing selection bounds
-  * so the result lands roughly where the user already had the shapes.
-  * Single undo step. No-op when fewer than 2 shapes are selected.
-  */
- arrangeAsGrid(opts: { cols?: number; gap?: number } = {}): void {
-  const ids = [...this._selection];
-  if (ids.length < 2) return;
-  const origin = this.combinedSelectionBounds() ?? { x: 0, y: 0 };
-  const cols = Math.max(1, opts.cols ?? Math.ceil(Math.sqrt(ids.length)));
-  const gap = opts.gap ?? 16;
-  const patch = gridLayout(this._scene, { shapeIds: ids, origin, cols, gap });
-  if (!patch) return;
-  this._scene = apply(this._scene, patch);
-  this._history.push(patch);
-  this.notify();
-  this.announce(`Arranged ${ids.length} shapes on a ${cols}-column grid`);
- }
-
- /**
-  * Stack the current selection horizontally or vertically with `gap`
-  * world units between adjacent shapes. Anchored at the selection's
-  * top-left, like `arrangeAsGrid`. Single undo step.
-  */
- arrangeAsStack(opts: { direction?: "horizontal" | "vertical"; gap?: number } = {}): void {
-  const ids = [...this._selection];
-  if (ids.length < 2) return;
-  const origin = this.combinedSelectionBounds() ?? { x: 0, y: 0 };
-  const direction = opts.direction ?? "horizontal";
-  const gap = opts.gap ?? 16;
-  const patch = stackLayout(this._scene, {
-   shapeIds: ids,
-   origin,
-   direction,
-   gap,
+  /**
+   * Auto-layout scheduler — microtask-coalesced re-run of every
+   * shape carrying `metadata.autoLayout`. See
+   * `./auto-layout-scheduler.ts` for the extracted logic.
+   */
+  private readonly autoLayoutScheduler = new AutoLayoutScheduler({
+    getScene: () => this._scene,
+    applyPatch: (patch) => {
+      this._scene = apply(this._scene, patch);
+      if (this.gestureTx) this.gestureTx.add(patch);
+      else this._history.push(patch);
+    },
+    growContainer: (parentId, childId) => this.maybeGrowContainer(parentId, childId),
+    onMutated: () => {
+      // Re-render only; do NOT call notify() — that would re-schedule
+      // the check and risk a microtask loop. Listeners already saw
+      // the previous notify; the auto-layout adjustment is a
+      // synchronous fix-up on top of the same external event.
+      this.render();
+      for (const fn of this.listeners) fn();
+    },
   });
-  if (!patch) return;
-  this._scene = apply(this._scene, patch);
-  this._history.push(patch);
-  this.notify();
-  this.announce(`Stacked ${ids.length} shapes ${direction}`);
- }
 
- /**
-  * Wrap the currently selected shapes into a new group (zero-render
-  * container). The first selected shape's layer becomes the group's
-  * layer; existing `parentId` links are preserved (the new group
-  * becomes the parent of the *topmost* ancestors among selected, not
-  * already-nested children). Single undo step.
-  */
- groupSelected(): GroupSelectedResult {
-  const roots = this.selectionRoots();
-  if (roots.length < 2) return { kind: "noop" };
-  const layerId = roots[0]!.layerId;
-  const groupShapeId = castShapeId(`group-${++this.nextId}-${Date.now().toString(36)}`);
-  const order = orderForTop(
-   [...this._scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
-  );
-  const groupShape: Shape = {
-   id: groupShapeId,
-   layerId,
-   type: "group",
-   position: { x: 0, y: 0 },
-   rotation: 0,
-   scale: { x: 1, y: 1 },
-   order,
-   style: {},
-  };
-  const tx = this._history.transaction();
-  const addRes = addShape(this._scene, groupShape);
-  this._scene = addRes.scene;
-  tx.add(addRes.patch);
-  for (const child of roots) {
-   const r = updateShape(this._scene, child.id, (s) => ({ ...s, parentId: groupShapeId }));
-   this._scene = r.scene;
-   tx.add(r.patch);
-  }
-  tx.commit();
-  this._selection = Selection.single(groupShapeId);
-  this.notify();
-  return { kind: "grouped", groupId: groupShapeId };
- }
+  /**
+   * Shape id that the user started dragging on press-down. Tracked
+   * separately from the state machine so the editor knows what to
+   * (re)parent / drop into a container on pointerup. `null` between
+   * gestures, set in onDown when press lands on a shape and cleared
+   * in onUp / cancel.
+   */
+  private dragShapeId: ShapeId | null = null;
 
- /**
-  * Inverse of `groupSelected`. For each selected shape that is a group
-  * (type === "group"), drop the parent link on every direct child and
-  * remove the group shape itself. Children that were on locked layers
-  * stay put. Single undo step.
-  */
- ungroup(): void {
-  const targets = [...this._selection]
-   .map((id) => getShape(this._scene, id))
-   .filter((s): s is Shape => s?.type === "group");
-  if (targets.length === 0) return;
-  const tx = this._history.transaction();
-  const newSelection = new Set<ShapeId>();
-  for (const group of targets) {
-   const children = [...this._scene.shapes.values()].filter((s) => s.parentId === group.id);
-   for (const child of children) {
-    const r = updateShape(this._scene, child.id, (s) => {
-     const next: Shape = { ...s };
-     delete (next as { parentId?: ShapeId }).parentId;
-     return next;
+  /**
+   * Live container highlight: the container shape the dragged item is
+   * currently hovering over. Drawn by the overlay as a dashed
+   * accent rect on the container's drop-zone so the user knows where
+   * the shape will land after release.
+   */
+  private containerHover: { id: ShapeId; dropZone: Bounds } | null = null;
+
+  /**
+   * Remote peer cursors / selections, pushed in by the host (typically
+   * a `bindAwareness(editor, awareness)` helper in `@collab`). The
+   * editor only renders them; it doesn't fetch or interpret. Each
+   * setter triggers `render()` so the overlay updates immediately.
+   */
+  private _peerCursors: readonly PeerCursor[] = [];
+  private _peerSelections: readonly PeerSelection[] = [];
+
+  /**
+   * Subscribers notified on every host pointer move (world-space). Used
+   * by `@collab` to broadcast the local cursor into awareness.
+   */
+  private readonly cursorListeners = new Set<(point: Vec2) => void>();
+
+  /**
+   * Active screen-space pointer positions keyed by `pointerId`. With
+   * one entry the editor's normal single-pointer flow applies. With
+   * two or more entries we enter a pinch / pan gesture and bypass the
+   * interaction machine — `pinchOrigin` holds the baseline.
+   */
+  private readonly activePointers = new Map<number, Vec2>();
+  // Pinch gesture state lives in PinchController (./editor/pinch.ts)
+  // — `pinch.isActive()` replaces the old `pinchOrigin !== null` check.
+  private pinch!: PinchController;
+  /** Bridge for `editor/container-ops.ts`. Built lazily in constructor. */
+  private containerOpsRef!: ContainerOpsRef;
+
+  /**
+   * Space-bar held → next pointer drag pans the canvas instead of
+   * doing whatever the current mode would do. Visual cursor goes to
+   * "grab" / "grabbing". Wires a window-level keydown/keyup listener
+   * in `bindPointerEvents`.
+   */
+  private spaceHeld = false;
+
+  /**
+   * Host-supplied tile compositor — when set (via
+   * `EditorOptions.useTileCache` + `tileCompose`), the per-frame
+   * render path delegates to it instead of `renderScene`. Stays
+   * `null` for the typical small-scene case.
+   */
+  private readonly tileComposeFn: TileComposeFn | null;
+
+  /**
+   * Per-shape change record (before/after world bbox) since the last
+   * tile-cache invalidation pass. Populated by `computeDirtyWorld`'s
+   * diff loop when `tileComposeFn` is on; forwarded to the compositor
+   * each frame so it can invalidate by add / remove / move correctly.
+   * (A plain id set lost adds — new id wasn't in the tile reverse
+   * index yet.)
+   */
+  private tileDirtyShapes: Map<
+    ShapeId,
+    { before: Bounds | null; after: Bounds | null }
+  > = new Map();
+
+  /**
+   * Tool-lock flag (standard model). When `false` (default), a
+   * draw-mode (`draw-rect` / `draw-ellipse` / `draw-edge` / `brush`)
+   * auto-reverts to `select` after a successful create. When `true`,
+   * the mode persists so the user can draw many shapes in a row
+   * without re-selecting the tool.
+   *
+   * Toggled via `Editor.setToolLocked(bool)` and surfaced in the
+   * toolbar as a lock affordance next to the active tool.
+   */
+  private _toolLocked = false;
+
+  /**
+   * Host-extensible file-drop dispatch. Built-ins (image / scene
+   * JSON) register themselves at editor construction; hosts add
+   * more via `registerFileDropHandler`.
+   */
+  private readonly fileDropRegistry = new FileDropRegistry();
+
+  /**
+   * Active pan gesture (right-click drag or Space + left drag).
+   * `pointerId` is captured by the host so move/up events keep
+   * arriving even after the cursor leaves the host bounds.
+   * `startPoint` is the press position — used to decide "click vs
+   * drag" at pointerup (a near-zero displacement right-click is a
+   * context-menu request, not a pan). `lastPoint` tracks the
+   * previous move so per-frame delta is correct.
+   *
+   * `button` records which mouse button started the gesture so we
+   * only treat right-click releases as potential context-menu
+   * triggers (Space + left-drag never opens a menu).
+   */
+  private panGesture: {
+    pointerId: number;
+    button: number;
+    startPoint: Vec2;
+    lastPoint: Vec2;
+    moved: boolean;
+  } | null = null;
+
+  /**
+   * Set on right-click pointerdown result so the upcoming native
+   * `contextmenu` event can be unconditionally preventDefault'ed
+   * (the gesture decides whether to fire the menu manually on
+   * pointerup based on whether the user dragged).
+   */
+  private suppressNextContextMenu = false;
+
+  /** Cursor style we set on the host while a pan gesture is in flight. */
+  private previousHostCursor: string | null = null;
+
+  /**
+   * Long-press tracking. Starts on `pointerdown`; cancelled on
+   * `pointermove > LONG_PRESS_MAX_MOVEMENT_PX` or `pointerup` before
+   * the timer fires. Hosts subscribe via `onLongPress` to surface a
+   * context menu (mobile alternative to right-click).
+   */
+  // Long-press timer + origin live in LongPressController
+  // (./editor/long-press.ts). The Set of subscribers stays here
+  // because `onLongPress` is part of the public Editor API.
+  private longPress!: LongPressController;
+  private readonly longPressListeners = new Set<
+    (payload: { screenPoint: Vec2; worldPoint: Vec2 }) => void
+  >();
+
+  /**
+   * Live-region announcements for assistive tech. The editor pushes
+   * short, human-readable strings ("Selected Rectangle", "Moved 5 px
+   * right") that hosts pipe into an `aria-live=polite` region.
+   */
+  private readonly announceListeners = new Set<(message: string) => void>();
+
+  /**
+   * Resolved primary input modality + derived hit slops. Computed once
+   * in the constructor from `EditorOptions.inputMode` (default `"auto"`
+   * uses `matchMedia('(pointer: coarse)')`).
+   */
+  private readonly inputMode: "mouse" | "touch";
+  private readonly handleHitSlop: number;
+  private readonly edgeHandleHitSlop: number;
+  private readonly edgeHitThreshold: number;
+
+  private readonly _history: HistoryProvider;
+  /** Open transaction during a single drag/resize gesture. */
+  private gestureTx: TransactionHandle | null = null;
+  /**
+   * Wraps gesture lifecycle (transaction open/commit/cancel +
+   * post-create mode revert) so editor.ts doesn't carry the bodies.
+   * Implementation lives in `./editor/gesture-tx.ts`; the
+   * controller calls back through the narrow `GestureRef` bridge
+   * built lazily below.
+   */
+  private readonly gestures: GestureController;
+
+  constructor(options: EditorOptions) {
+    this.host = options.host;
+    this.mainTarget = options.mainTarget;
+    this.overlayTarget = options.overlayTarget;
+    this.backgroundTarget = options.backgroundTarget ?? null;
+    this._scene = options.initialScene;
+    this._history = isHistoryProvider(options.history)
+      ? options.history
+      : new History(options.history ?? {});
+    // Build the gesture controller against a narrow getter/setter
+    // bridge to the editor's mutable state. The bridge is a thin
+    // adapter — keeps `gestureTx`/`dragShapeId` etc. as `private`
+    // fields on Editor (instead of forcing them public to satisfy
+    // structural implements), and lets the controller live in its
+    // own module without importing Editor.
+    const self = this;
+    this.gestures = new GestureController({
+      get history() {
+        return self._history;
+      },
+      get gestureTx() {
+        return self.gestureTx;
+      },
+      set gestureTx(v) {
+        self.gestureTx = v;
+      },
+      get groupMoveOrigin() {
+        return self.groupMoveOrigin;
+      },
+      set groupMoveOrigin(v) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        self.groupMoveOrigin = v as any;
+      },
+      get groupResizeOrigin() {
+        return self.groupResizeOrigin;
+      },
+      set groupResizeOrigin(v) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        self.groupResizeOrigin = v as any;
+      },
+      get dragShapeId() {
+        return self.dragShapeId;
+      },
+      set dragShapeId(v) {
+        self.dragShapeId = v;
+      },
+      get containerHover() {
+        return self.containerHover;
+      },
+      set containerHover(v) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        self.containerHover = v as any;
+      },
+      get toolLocked() {
+        return self._toolLocked;
+      },
+      get mode() {
+        return self.mode;
+      },
+      setMode: (m) => self.setMode(m),
+      notify: () => self.notify(),
     });
-    this._scene = r.scene;
-    tx.add(r.patch);
-    newSelection.add(child.id);
-   }
-   const rm = removeShape(this._scene, group.id);
-   this._scene = rm.scene;
-   tx.add(rm.patch);
-  }
-  tx.commit();
-  this._selection = newSelection;
-  this.notify();
- }
+    this.tileComposeFn =
+      options.useTileCache === true && options.tileCompose ? options.tileCompose : null;
 
- /**
-  * Top-level shapes among the current selection — descends parents are
-  * elided when their group's root is also selected, so caller commands
-  * (group, move, copy) operate at the group level instead of double-
-  * processing children.
-  */
- private selectionRoots(): readonly Shape[] {
-  const out: Shape[] = [];
-  const seen = new Set<ShapeId>();
-  for (const id of this._selection) {
-   const shape = getShape(this._scene, id);
-   if (!shape) continue;
-   // Walk up the parent chain; if any ancestor is also selected, skip.
-   let cursor: Shape | undefined = shape;
-   let hidden = false;
-   for (let i = 0; cursor?.parentId && i < 64; i++) {
-    if (this._selection.has(cursor.parentId)) {
-     hidden = true;
-     break;
-    }
-    cursor = getShape(this._scene, cursor.parentId);
-   }
-   if (hidden) continue;
-   if (seen.has(shape.id)) continue;
-   seen.add(shape.id);
-   out.push(shape);
-  }
-  return out;
- }
+    // If the host plugged a TextShaper (e.g.
+    // WasmTextShaper.loadBundled()), install it process-globally
+    // so the built-in text renderer's wrap path uses it instead
+    // of Canvas2D.measureText. Hosts that don't care leave the
+    // field unset and the default behaviour is unchanged.
+    if (options.textShaper) setActiveTextShaper(options.textShaper);
+    // Same pattern for Rasterizer. The WebGL2
+    // backend reads `getActiveRasterizer()` from its curve methods
+    // and routes through WASM flatten / strokeToFill when set.
+    // Other backends (Canvas2D, SVG) leave the field alone —
+    // native ctx.bezierCurveTo beats any WASM round-trip there.
+    if (options.rasterizer) setActiveRasterizer(options.rasterizer);
 
- /**
-  * Expand the current selection into a flat set of shapes that should
-  * be translated together: every selected shape plus every descendant
-  * of it (groups carry their children). Used by `moveSelectionBy` and
-  * shared with the drag-shape gesture below.
-  */
- private expandSelectionWithDescendants(): ReadonlySet<ShapeId> {
-  const out = new Set<ShapeId>();
-  const visit = (id: ShapeId): void => {
-   if (out.has(id)) return;
-   const shape = getShape(this._scene, id);
-   if (!shape) return;
-   out.add(id);
-   for (const child of this._scene.shapes.values()) {
-    if (child.parentId === id) visit(child.id);
-   }
-  };
-  for (const id of this._selection) visit(id);
-  return out;
- }
-
- /**
-  * Cycle keyboard selection through the scene's shapes in z-order.
-  * `direction: "next"` advances forward; `"prev"` backward. With no
-  * current selection (or selection not in scene), starts at the first
-  * (or last) shape. Single-select — modifier-aware multi-select via
-  * keyboard is a follow-up.
-  */
- focusCycle(direction: "next" | "prev"): void {
-  const layers = [...this._scene.layers.values()]
-   // Skip hidden and locked layers — focus jumps over them.
-   .filter((l) => l.visible && !l.locked)
-   .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
-  const ordered: ShapeId[] = [];
-  for (const layer of layers) {
-   const inLayer = [...this._scene.shapes.values()]
-    .filter((s) => s.layerId === layer.id)
-    .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
-   for (const s of inLayer) ordered.push(s.id);
-  }
-  if (ordered.length === 0) return;
-  const current = [...this._selection][0];
-  let idx = current ? ordered.indexOf(current) : -1;
-  if (direction === "next") {
-   idx = idx === -1 ? 0 : (idx + 1) % ordered.length;
-  } else {
-   idx = idx === -1 ? ordered.length - 1 : (idx - 1 + ordered.length) % ordered.length;
-  }
-  const next = ordered[idx];
-  if (!next) return;
-  this._selection = Selection.single(next);
-  this.notify();
-  const shape = getShape(this._scene, next);
-  if (shape) this.announce(`Selected ${getShapeAccessibleName(shape)}`);
- }
-
- /**
-  * Clear selection + cancel any in-progress drag / draw gesture.
-  * Bound to Escape in default keyboard nav.
-  */
- cancelInteraction(): void {
-  if (this.gestureTx) {
-   this.gestureTx.cancel();
-   this.gestureTx = null;
-  }
-  this.actor.send({ type: "POINTER_CANCEL" });
-  this.drawingPreview = null;
-  this.edgePreview = null;
-  this.lassoPreview = null;
-  // Esc exits group-isolation if active. The selection that was
-  // active inside the group is dropped (Esc reads as a full
-  // "back out" — selecting the group is a separate gesture).
-  if (this._enteredGroup !== null) {
-   this._enteredGroup = null;
-  }
-  this._selection = Selection.EMPTY;
-  this._selectedEdge = null;
-  this.notify();
-  this.announce("Selection cleared");
- }
-
- /**
-  * Duplicate the selected shapes 10 px down-right of the originals.
-  * Links between selected shapes are NOT cloned. They break cleanly.
-  */
- duplicateSelected(): void {
-  const targets = [...this._selection];
-  if (targets.length === 0) return;
-
-  const tx = this._history.transaction();
-  const newIds: ShapeId[] = [];
-  for (const id of targets) {
-   const shape = getShape(this._scene, id);
-   if (!shape) continue;
-   const newId = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
-   const order = orderForTop(
-    [...this._scene.shapes.values()]
-     .filter((s) => s.layerId === shape.layerId)
-     .map((s) => s.order),
-   );
-   const clone = {
-    ...shape,
-    id: newId,
-    position: { x: shape.position.x + 10, y: shape.position.y + 10 },
-    order,
-   } as Shape;
-   const r = addShape(this._scene, clone);
-   this._scene = r.scene;
-   tx.add(r.patch);
-   newIds.push(newId);
-  }
-  tx.commit();
-  if (newIds.length > 0) {
-   let next = Selection.EMPTY;
-   for (const id of newIds) next = Selection.add(next, id);
-   this._selection = next;
-  }
-  this.notify();
- }
-
- /**
-  * Replace the current shape selection with the given ids. Skips ids
-  * that no longer resolve to a shape. Notifies subscribers when the
-  * resulting selection differs from the current one.
-  */
- setSelection(ids: Iterable<ShapeId>): void {
-  let next = Selection.EMPTY;
-  for (const id of ids) {
-   if (!this._scene.shapes.has(id)) continue;
-   next = Selection.add(next, id);
-  }
-  if (Selection.equals(next, this._selection)) return;
-  this._selection = next;
-  if (this._selectedEdge !== null) this._selectedEdge = null;
-  this.notify();
- }
-
- /**
-  * Select every shape in the scene. Skips shapes on hidden or
-  * locked layers (consistent with focusCycle).
-  */
- selectAll(): void {
-  let next = Selection.EMPTY;
-  for (const shape of this._scene.shapes.values()) {
-   const layer = this._scene.layers.get(shape.layerId);
-   if (!layer || !layer.visible || layer.locked) continue;
-   next = Selection.add(next, shape.id);
-  }
-  if (Selection.equals(next, this._selection)) return;
-  this._selection = next;
-  this.notify();
-  this.announce(`Selected ${next.size} shapes`);
- }
-
- /**
-  * Internal clipboard. Stored as deep-cloned snapshots so subsequent
-  * mutations don't affect the buffer. Survives across editor calls
-  * within the same session; cross-tab paste uses host-level
-  * `navigator.clipboard` (out of scope for the editor).
-  */
- private clipboard: Shape[] = [];
-
- // Pure body in `./editor/public/clipboard.ts`.
- copySelected(): void {
-  const out = copySelectedPure(this._scene, this._selection);
-  if (out.length === 0) return;
-  this.clipboard = [...out];
-  this.announce(`Copied ${out.length} shapes`);
- }
-
- cutSelected(): void {
-  this.copySelected();
-  this.deleteSelected();
- }
-
- /**
-  * Paste clipboard contents into the scene. The cluster lands so that
-  * its centroid sits at `targetWorld` (defaults to the last tracked
-  * cursor position; when even that is unavailable, falls back to a
-  * +10 px nudge so duplicates remain visible). Relative offsets
-  * between clipboard items are preserved.
-  *
-  * New shapes get fresh ids and end up selected. Single undo step.
-  */
- // Pure body in `./editor/public/clipboard.ts`.
- paste(targetWorld?: Vec2): void {
-  if (this.clipboard.length === 0) return;
-  // Defensive: if a gesture is mid-flight (drag / resize) the
-  // gestureTx is still open and a fresh `transaction()` inside
-  // pasteShapes would throw. Reasonable behaviour for a user
-  // pressing Cmd+V mid-gesture is "commit what you have and
-  // paste on top", so close the gesture first.
-  this.finalizeOpenGestureTx();
-  const target = targetWorld ?? this.lastPointerWorld;
-  const result = pasteFromClipboard(
-   this._scene,
-   this._history,
-   this.clipboard,
-   target ?? null,
-   () => ++this.nextId,
-  );
-  this._scene = result.scene;
-  this._selection = selectionFromPasted(result.newIds);
-  this.notify();
-  this.announce(`Pasted ${result.newIds.length} shapes`);
- }
-
- /**
-  * Merge `partial` into the `style` of every shape in `ids`. Useful
-  * for the inspector / PropertyPanel: flipping `roundness`, swapping
-  * `lineJoin`, changing `stroke` colour across a multi-selection,
-  * etc. All changes go through one history record (single undo).
-  *
-  * No-op when `ids` is empty or none of the targeted shapes exist.
-  */
- updateStyle(ids: Iterable<ShapeId>, partial: Partial<Style>): void {
-  const targetIds: ShapeId[] = [];
-  for (const id of ids) {
-   if (this._scene.shapes.has(id)) targetIds.push(id);
-  }
-  if (targetIds.length === 0) return;
-  let scene = this._scene;
-  const patches: Patch[] = [];
-  for (const id of targetIds) {
-   const r = updateShape(scene, id, (s) => ({
-    ...s,
-    style: { ...s.style, ...partial },
-   }));
-   scene = r.scene;
-   patches.push(r.patch);
-  }
-  this._scene = scene;
-  this._history.push(patches.length === 1 ? patches[0]! : { kind: "batch", patches });
-  this.notify();
- }
-
- /** Move the selected shape (single-shape MVP) to the top of its layer. */
- bringToFront(id?: ShapeId): void {
-  const target = id ?? (this._selection.size === 1 ? [...this._selection][0] : null);
-  if (!target) return;
-  const shape = getShape(this._scene, target);
-  if (!shape) return;
-  const order = orderForTop(
-   [...this._scene.shapes.values()]
-    .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
-    .map((s) => s.order),
-  );
-  if (order === shape.order) return;
-  const result = updateShape(this._scene, shape.id, (s) => ({ ...s, order }));
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.notify();
- }
-
- /** Move the selected shape (single-shape MVP) to the bottom of its layer. */
- sendToBack(id?: ShapeId): void {
-  const target = id ?? (this._selection.size === 1 ? [...this._selection][0] : null);
-  if (!target) return;
-  const shape = getShape(this._scene, target);
-  if (!shape) return;
-  const order = orderForBottom(
-   [...this._scene.shapes.values()]
-    .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
-    .map((s) => s.order),
-  );
-  if (order === shape.order) return;
-  const result = updateShape(this._scene, shape.id, (s) => ({ ...s, order }));
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.notify();
- }
-
- /**
-  * Rewrite z-order keys in `layerId` (or every layer when omitted) so
-  * they form a short, evenly-distributed sequence (`"a0"`, `"a1"`, …).
-  * Useful after a burst of `insert-in-the-middle` operations where
-  * fractional-index strings have grown long enough to bloat serialised
-  * scenes / patches.
-  *
-  * No-op when the layer is already compact (every key already short
-  * and monotonic). Skips when nothing changed — no history entry.
-  * Otherwise lands as a single undo step covering every touched shape
-  * + edge in the affected layer(s).
-  */
- compactLayerZOrder(
-  layerId?: LayerId,
-  options: { recordHistory?: boolean } = {},
- ): void {
-  const recordHistory = options.recordHistory ?? true;
-  const layerIds: readonly LayerId[] = layerId
-   ? [layerId]
-   : [...this._scene.layers.keys()];
-  const tx = recordHistory ? this._history.transaction() : null;
-  let touched = 0;
-  for (const lid of layerIds) {
-   // Shapes are rendered separately from edges — z-order is independent
-   // within each layer (renderScene makes two passes: shapes, then edges).
-   touched += this.rewriteOrders(
-    [...this._scene.shapes.values()].filter((s) => s.layerId === lid),
-    (shape, order) => {
-     const r = updateShape(this._scene, shape.id, (s) => ({ ...s, order }));
-     this._scene = r.scene;
-     tx?.add(r.patch);
-    },
-   );
-   touched += this.rewriteOrders(
-    [...this._scene.edges.values()].filter((e) => e.layerId === lid),
-    (edge, order) => {
-     const r = updateEdge(this._scene, edge.id, (e) => ({ ...e, order }));
-     this._scene = r.scene;
-     tx?.add(r.patch);
-    },
-   );
-  }
-  if (touched === 0) {
-   tx?.cancel();
-   return;
-  }
-  tx?.commit();
-  this.notify();
-  if (recordHistory) {
-   this.announce(`Compacted z-order across ${layerIds.length} layer(s)`);
-  }
- }
-
- /**
-  * Generic helper: replace each entity's `order` with the i-th key of
-  * `orderBetweenMany(null, null, n)`. Returns the count of entities
-  * whose order actually changed (so callers can skip the history
-  * entry on no-ops).
-  */
- private rewriteOrders<T extends { readonly order: FractionalIndex }>(
-  entities: readonly T[],
-  apply: (entity: T, order: FractionalIndex) => void,
- ): number {
-  if (entities.length === 0) return 0;
-  const sorted = [...entities].sort((a, b) =>
-   a.order < b.order ? -1 : a.order > b.order ? 1 : 0,
-  );
-  const fresh = orderBetweenMany(null, null, sorted.length);
-  let changed = 0;
-  sorted.forEach((entity, i) => {
-   const next = fresh[i]!;
-   if (next === entity.order) return;
-   apply(entity, next);
-   changed++;
-  });
-  return changed;
- }
-
- /**
-  * Wipe every shape + edge from the scene. Layers and viewport survive.
-  * Clears history — restoring an empty scene through undo would be
-  * surprising and the operation is rarely chained with other edits.
-  */
- clear(): void {
-  if (this._scene.shapes.size === 0 && this._scene.edges.size === 0) return;
-  this._scene = {
-   ...this._scene,
-   shapes: new Map(),
-   edges: new Map(),
-  };
-  this._selection = Selection.EMPTY;
-  this._selectedEdge = null;
-  this._history.clear();
-  this.notify();
- }
-
- // --- Layer commands ---
-
- /** Currently active layer — new shapes default into it. */
- get activeLayerId(): LayerId {
-  return this._activeLayerId;
- }
-
- /** Switch the active layer. Hosts call this from a layer panel click. */
- setActiveLayer(id: LayerId): void {
-  if (!this._scene.layers.has(id)) return;
-  if (this._activeLayerId === id) return;
-  this._activeLayerId = id;
-  this.notify();
- }
-
- // Pure bodies in `./editor/public/layers.ts`.
- createLayer(name: string): LayerId {
-  const result = computeCreateLayer(this._scene, name, newLayerId(++this.nextId));
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this._activeLayerId = result.layerId;
-  this.notify();
-  return result.layerId;
- }
-
- removeLayer(id: LayerId): void {
-  const result = computeRemoveLayer(this._scene, id, this._activeLayerId);
-  if (!result) return;
-  const tx = this._history.transaction();
-  this._scene = result.scene;
-  for (const patch of result.patches) tx.add(patch);
-  tx.commit();
-  this._activeLayerId = result.nextActiveLayerId;
-  this._selection = Selection.EMPTY;
-  this.notify();
- }
-
- renameLayer(id: LayerId, name: string): void {
-  const result = computeRenameLayer(this._scene, id, name);
-  if (!result) return;
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.notify();
- }
-
- toggleLayerVisibility(id: LayerId): void {
-  const result = computeToggleLayerVisibility(this._scene, id);
-  if (!result) return;
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.notify();
- }
-
- toggleLayerLock(id: LayerId): void {
-  const result = computeToggleLayerLock(this._scene, id);
-  if (!result) return;
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.notify();
- }
-
- moveSelectionToLayer(targetLayer: LayerId): void {
-  const result = computeMoveSelectionToLayer(this._scene, this._selection, targetLayer);
-  if (!result) return;
-  const tx = this._history.transaction();
-  this._scene = result.scene;
-  for (const patch of result.patches) tx.add(patch);
-  tx.commit();
-  this.notify();
- }
-
- // --- Viewport commands ---
-
- /**
-  * Pan the camera by a screen-space delta. Drives both wheel-pan and
-  * the two-finger pan gesture; deltas are in screen pixels (positive
-  * x → shapes move right relative to the user). Not recorded in
-  * history — viewport state is editor-local.
-  */
- // Pure bodies in `./editor/public/zoom-pan.ts`.
- panBy(deltaScreen: Vec2): void {
-  const next = computePan(this._scene, deltaScreen);
-  if (!next) return;
-  this._scene = next;
-  this.notify();
- }
- zoomIn(): void {
-  this.zoomStep(WHEEL_ZOOM_STEP);
- }
- zoomOut(): void {
-  this.zoomStep(1 / WHEEL_ZOOM_STEP);
- }
- private zoomStep(factor: number): void {
-  const vp = this._scene.viewport;
-  if (vp.size.width <= 0 || vp.size.height <= 0) return;
-  const center = this.screenToWorld({ x: vp.size.width / 2, y: vp.size.height / 2 });
-  this.zoomAt(factor, center);
- }
- resetZoom(): void {
-  const next = computeResetZoom(this._scene);
-  if (!next) return;
-  this._scene = next;
-  this.notify();
- }
- zoomToFit(padding = 40): void {
-  const next = computeZoomToFit(this._scene, padding);
-  if (!next) return;
-  this._scene = next;
-  this.notify();
- }
- zoomAt(factor: number, anchorWorld: Vec2): void {
-  const next = computeZoomAt(this._scene, factor, anchorWorld);
-  if (!next) return;
-  this._scene = next;
-  this.notify();
- }
- setViewportSize(width: number, height: number): void {
-  const next = computeViewportResize(this._scene, width, height);
-  if (!next) return;
-  this._scene = next;
-  this.notify();
- }
- setGrid(patch: { size?: number; style?: import("@oh-just-another/scene").GridStyle }): void {
-  const next = computeSetGrid(this._scene, patch);
-  if (!next) return;
-  this._scene = next;
-  this.notify();
- }
-
- /**
-  * Replace the entire scene (e.g. after `parseScene`). Clears history,
-  * selection and any open gesture. Use to load a saved document.
-  */
- loadScene(scene: Scene, options: LoadSceneOptions = {}): void {
-  if (this.gestureTx) {
-   this.gestureTx.cancel();
-   this.gestureTx = null;
-  }
-  this._scene = scene;
-  // Snap active layer back into the loaded scene's layer set.
-  if (!scene.layers.has(this._activeLayerId)) {
-   const first = scene.layers.keys().next().value;
-   this._activeLayerId = first ?? castLayerId(DEFAULT_LAYER_ID);
-  }
-  if (options.preserveHistory) {
-   // Used by collab when a peer update arrives — the local user's
-   // undo stack must survive remote edits. Drop selection entries
-   // that no longer point to existing shapes; the rest of the stack
-   // stays untouched (patches that reference removed shapes will
-   // throw on `apply` and need user-visible recovery later).
-   this.pruneSelection();
-  } else {
-   this._selection = Selection.EMPTY;
-   this._history.clear();
-  }
-  this.notify();
-  // Loaded scene may carry animated shapes (e.g. GIF re-imported
-  // from saved JSON). Re-arm the tick — the runtime <img>
-  // element won't survive serialisation, but `metadata.animated`
-  // does, so hosts that want animation back will need to re-supply
-  // the image element (or just have the renderer re-decode `src`).
-  if (this.hasAnimatedShape()) this.animationTick.start();
- }
-
- /** Detach all DOM listeners and stop the actor. */
- dispose(): void {
-  this.cancelLongPress();
-  this.unbind();
-  this.actor.stop();
-  this.listeners.clear();
-  this.cursorListeners.clear();
-  this.longPressListeners.clear();
-  this.announceListeners.clear();
-  this.animationTick.stop();
- }
-
- // --- Internal ---
-
- // Body moved to `./editor/pointer-binding.ts` (~700 lines of
- // pointer / wheel / keyboard dispatch). The thin wrapper here
- // preserves the original constructor call site.
- private bindPointerEvents(): () => void {
-  return bindPointerEventsExternal(this);
- }
-
- /**
-  * Open a pan gesture: capture the pointer so subsequent move / up
-  * events arrive even outside the host bounds, cancel anything the
-  * machine might have started this tick, and switch the cursor.
-  */
- private beginPanGesture(pointerId: number, button: number, point: Vec2): void {
-  this.actor.send({ type: "POINTER_CANCEL" });
-  this.cancelGesture();
-  this.cancelLongPress();
-  this.host.setPointerCapture(pointerId);
-  this.panGesture = {
-   pointerId,
-   button,
-   startPoint: point,
-   lastPoint: point,
-   moved: false,
-  };
-  if (this.previousHostCursor === null) {
-   this.previousHostCursor = this.host.style.cursor;
-  }
-  this.host.style.cursor = "grabbing";
- }
-
- /**
-  * End an in-progress pan gesture. Restores the cursor unless Space
-  * is still held (then we drop back to "grab" so the user knows
-  * another drag is armed). For right-click that didn't move past
-  * the slop threshold, fires the long-press callback so the context
-  * menu opens at the click position — that's the "right-click =
-  * menu, right-drag = pan" decision rule.
-  */
- private endPanGesture(): void {
-  const gesture = this.panGesture;
-  this.panGesture = null;
-  if (gesture && (gesture.button === 2 || gesture.button === 1) && !gesture.moved) {
-   // Right-click without drag → trigger the context-menu listeners.
-   // Same payload as touch long-press so existing UI (e.g.
-   // `@react-ui/ContextMenu`) works without changes.
-   const worldPoint = this.screenToWorld(gesture.startPoint);
-   for (const fn of this.longPressListeners) {
-    fn({ screenPoint: gesture.startPoint, worldPoint });
-   }
-  } else {
-   // Either it was a real drag, or Space + left drag. In both
-   // cases we DO want to keep the native context menu suppressed
-   // until the upcoming `contextmenu` event lands (Chrome fires
-   // it after pointerup on right button).
-  }
-  if (this.spaceHeld) {
-   this.host.style.cursor = "grab";
-   return;
-  }
-  if (this.previousHostCursor !== null) {
-   this.host.style.cursor = this.previousHostCursor;
-   this.previousHostCursor = null;
-  }
- }
-
- private isDrawingPhase(ctx: InteractionContext): boolean {
-  return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse" || ctx.mode === "draw-edge";
- }
-
- // --- Long-press --- (controller in `./editor/long-press.ts`)
-
- private startLongPress(screenPoint: Vec2): void {
-  this.longPress.start(screenPoint);
- }
- private cancelLongPress(): void {
-  this.longPress.cancel();
- }
-
- // --- Pinch gesture --- (controller in `./editor/pinch.ts`)
- private beginPinch(): void {
-  this.pinch.begin([...this.activePointers.values()]);
- }
- private applyPinch(): void {
-  this.pinch.apply([...this.activePointers.values()]);
- }
-
- /**
-  * Convert a point in the host element's CSS-pixel coordinate space into
-  * world coordinates. Public so drop handlers (drag-from-palette, paste)
-  * can map pointer positions back to scene space.
-  */
- screenToWorld(point: Vec2): Vec2 {
-  return matrix.applyToPoint(getScreenToWorld(this._scene.viewport), point);
- }
-
- // Pure body in `./editor/hit-test.ts`. Editor passes a narrow
- // context bundle that closes over its private state + accel
- // helpers (acceleratedShapeAt, isShapeInteractable, …).
- private hitTest(worldPoint: Vec2): PressTarget {
-  return pickPressTarget(worldPoint, {
-   scene: this._scene,
-   selection: this._selection,
-   selectedEdge: this._selectedEdge,
-   enteredGroup: this._enteredGroup,
-   handleHitSlop: this.handleHitSlop,
-   edgeHandleHitSlop: this.edgeHandleHitSlop,
-   edgeHitThreshold: this.edgeHitThreshold,
-   hitAnnotation: (p) => this.hitAnnotation(p),
-   selectionIsAspectLocked: () => this.selectionIsAspectLocked(),
-   combinedSelectionBounds: () => this.combinedSelectionBounds(),
-   acceleratedShapeAt: (p) => this.acceleratedShapeAt(p),
-   isShapeInteractable: (s) => this.isShapeInteractable(s),
-   isLayerLocked: (id) => this.isLayerLocked(id),
-   promoteToGroupRoot: (s) => this.promoteToGroupRoot(s),
-  });
- }
-
- /** True when the given layer exists and is marked `locked`. */
- private isLayerLocked(layerId: LayerId): boolean {
-  const layer = this._scene.layers.get(layerId);
-  return layer?.locked === true;
- }
-
- /**
-  * Combined interactivity check: false when the shape's layer is
-  * locked, or when the shape itself or any ancestor via `parentId`
-  * carries `locked: true` (group lock propagation). Hit-test treats
-  * non-interactable hits as misses; render still draws them so the
-  * user can see what's locked.
-  */
- private isShapeInteractable(shape: Shape): boolean {
-  if (this.isLayerLocked(shape.layerId)) return false;
-  if (isShapeLocked(this._scene, shape)) return false;
-  if (isShapeHidden(this._scene, shape)) return false;
-  return true;
- }
-
- /**
-  * Promote a hit shape to the topmost ancestor whose group we have NOT
-  * "entered" yet. Only **`group`**-typed parents promote — containers
-  * (swim-lane, frame) intentionally let click hits land on their
-  * children. Group is an abstract wrapper that has no visual identity,
-  * so promoting up to it is the only way to select it; a container has
-  * its own body, header, etc. and clicking inside it should let users
-  * pick the actual child shape (rectangle, sticky, …) — same affordance
-  * as standard.
-  *
-  * Stops at the first non-`group` parent. With `_enteredGroup` set,
-  * the walk also stops just below that group so children can be edited
-  * directly.
-  */
- private promoteToGroupRoot(shape: Shape): Shape {
-  return promoteToGroupRootHelper(this._scene, shape, this._enteredGroup);
- }
-
- /**
-  * Topmost group ancestor of `shape` (walks parentId chain, returns
-  * the highest `type === "group"` parent). `null` if `shape` has no
-  * group ancestor. Used by drill-down: a double-click on a shape
-  * with a group ancestor enters that group. Body extracted to
-  * `./group-helpers.ts`.
-  */
- private topGroupAncestor(shape: Shape): Shape | null {
-  return topGroupAncestorHelper(this._scene, shape);
- }
-
- /**
-  * True when `shapeId`'s parent chain contains `groupId`. Used by the
-  * isolation exit path: a click on a shape whose parent chain *does
-  * not* lead through the entered group is a click "outside" the
-  * group, which exits isolation.
-  */
- private isDescendantOfGroup(shapeId: ShapeId, groupId: ShapeId): boolean {
-  return isDescendantOfGroupHelper(this._scene, shapeId, groupId);
- }
-
- /**
-  * Compute the dim set for isolation rendering: every shape whose
-  * parent chain does NOT pass through `enteredGroupId`. The entered
-  * group itself is treated as "inside" (returns true from
-  * isDescendantOfGroup) so it stays at full alpha — but groups have
-  * no intrinsic geometry, so this only matters for the
-  * group-bounds-outline overlay path, not the shape render.
-  *
-  * Defensive: shapes in the current selection are never dimmed. The
-  * focus shape (drilled-into child) is always a group descendant in
-  * practice, but the guard keeps the contract simple — "what you've
-  * selected, you can see".
-  */
- // Body moved to `./editor/shape-filters.ts`.
- private computeHiddenShapes(): ReadonlySet<ShapeId> | undefined {
-  return computeHiddenShapesPure(this._scene);
- }
-
- private computeDimShapes(enteredGroupId: ShapeId): ReadonlySet<ShapeId> {
-  return computeDimShapesHelper(this._scene, this._selection, enteredGroupId);
- }
-
- /**
-  * Enter a group — subsequent hits inside this group return children
-  * directly instead of the group root. `null` exits group-edit mode.
-  * Bound to double-click on a group in the default handler.
-  */
- enterGroup(groupId: ShapeId | null): void {
-  this._enteredGroup = groupId;
-  this.notify();
- }
-
- /** Currently "entered" group, if any. */
- get enteredGroup(): ShapeId | null {
-  return this._enteredGroup;
- }
-
- /**
-  * SpatialGrid-accelerated topmost-shape lookup. Linear scan for small
-  * scenes; for larger scenes builds a grid lazily, keyed by current 
-  * scene-identity. Scene operations replace `_scene` (immutable patches), 
-  * so reference-equality is a sufficient invalidation signal.
-  */
- private acceleratedShapeAt(worldPoint: Vec2): Shape | undefined {
-  if (this._scene.shapes.size < LARGE_SCENE_HIT_THRESHOLD) {
-   return getShapeAt(this._scene, worldPoint);
-  }
-  return getShapeAtIndexed(this._scene, this.ensureSpatialIndex(), worldPoint);
- }
-
- /**
-  * Build (or return the cached) `SpatialGrid` for the current scene.
-  * Re-built only when `_scene` reference changes — scene operations
-  * always produce a fresh object, so reference equality is a
-  * sufficient invalidation signal.
-  *
-  * Shared between the hit-test path (`acceleratedShapeAt`) and the
-  * renderer pass (passed to `renderScene` as `spatialIndex`), so
-  * the grid build cost is amortised across both consumers.
-  */
- private ensureSpatialIndex(): SpatialGrid {
-  const cached = this.spatialIndexCache;
-  if (cached && cached.scene === this._scene) return cached.index;
-  const index = buildSpatialIndex(this._scene);
-  this.spatialIndexCache = { scene: this._scene, index };
-  return index;
- }
-
- /**
-  * Group-isolation click routing. Returns `true` if the click was
-  * handled (caller should skip the default applyEmit), `false` if the
-  * normal selection emit should still run.
-  *
-  * Three paths fire here:
-  *  1. **Double-click on a grouped shape (not yet in isolation):**
-  *   enter that group; select the raw inner shape (bypassing the
-  *   group-root promotion that ran in hitTest).
-  *  2. **Inside isolation, click on a non-descendant shape OR empty
-  *   space:** exit isolation. Let the normal click then run so the
-  *   newly clicked element / empty selection takes hold.
-  *  3. **Inside isolation, double-click on the entered group's own
-  *   child group:** drill another level deeper. (Implicit: same as
-  *   case 1 but topGroupAncestor here returns the inner child
-  *   group because the outer group is already entered.)
-  *
-  * Side-effect: updates `lastClickAt` / `lastClickWorldPoint`
-  * regardless of result, so subsequent calls can detect a double-
-  * click against this event.
-  */
- private routeIsolationClick(
-  clickEffect: InteractionEmit | null,
-  worldPoint: Vec2,
- ): boolean {
-  const now = performance.now();
-  const isDouble =
-   now - this.lastClickAt < DOUBLE_CLICK_MS &&
-   this.lastClickWorldPoint !== null &&
-   distanceTo(this.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX;
-  this.lastClickAt = now;
-  this.lastClickWorldPoint = worldPoint;
-
-  if (!clickEffect) return false;
-
-  // Click outside the entered group while in isolation → exit; let
-  // the normal click effect run after.
-  if (this._enteredGroup !== null) {
-   const targetId =
-    clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE"
-     ? clickEffect.id
-     : null;
-   const stillInside =
-    targetId !== null && this.isDescendantOfGroup(targetId, this._enteredGroup);
-   if (!stillInside) {
-    this._enteredGroup = null;
-    this.notify();
-    // Fall through — apply the normal click effect (caller).
-    return false;
-   }
-  }
-
-  // Double-click handling for SELECT_REPLACE / SELECT_TOGGLE
-  // effects. Two outcomes, in priority order:
-  //  1) text shape → open inline text editor (highest priority —
-  //   double-clicking text in any editor means "edit the body");
-  //  2) shape with a group ancestor → drill into that group.
-  // Lasso / edge ops are not double-click candidates and fall
-  // through to the normal single-click handler.
-  if (isDouble && (clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE")) {
-   const raw = this.acceleratedShapeAt(worldPoint);
-   if (raw?.type === "text") {
-    this.beginTextEdit(raw.id);
-    return true;
-   }
-   if (raw) {
-    const top = this.topGroupAncestor(raw);
-    // If the topmost group is the one we've already entered, drill
-    // one level deeper — pick the next-down group on the chain.
-    const target = this.pickDrillTarget(raw, top);
-    if (target) {
-     this._enteredGroup = target.id;
-     this._selection = Selection.single(raw.id);
-     if (this._selectedEdge !== null) this._selectedEdge = null;
-     this.notify();
-     return true;
-    }
-   }
-  }
-
-  return false;
- }
-
- /**
-  * Given the raw shape under the cursor and its topmost group
-  * ancestor, pick which group to "enter" on a drill-down.
-  *
-  * - No group ancestor → null (drill-down doesn't apply).
-  * - Top group not yet entered → enter top.
-  * - Top group already entered → walk down the chain to find the
-  *  next group inward (one level deeper).
-  */
- private pickDrillTarget(raw: Shape, top: Shape | null): Shape | null {
-  return pickDrillTargetHelper(this._scene, raw, top, this._enteredGroup);
- }
-
- private applyEmit(emit: InteractionEmit): void {
-  switch (emit.type) {
-   case "SELECT_REPLACE":
-    this._selection = Selection.single(emit.id);
-    if (this._selectedEdge !== null) this._selectedEdge = null;
-    this.notify();
-    return;
-   case "SELECT_TOGGLE":
-    this._selection = Selection.toggle(this._selection, emit.id);
-    if (this._selectedEdge !== null) this._selectedEdge = null;
-    this.notify();
-    return;
-   case "SELECT_CLEAR":
-    this._selection = Selection.EMPTY;
-    if (this._selectedEdge !== null) this._selectedEdge = null;
-    this.notify();
-    return;
-   case "SELECT_EDGE_REPLACE":
-    this._selectedEdge = emit.id;
-    this._selection = Selection.EMPTY;
-    this.notify();
-    return;
-   case "SELECT_EDGE_CLEAR":
-    if (this._selectedEdge !== null) {
-     this._selectedEdge = null;
-     this.notify();
-    }
-    return;
-   case "UPDATE_EDGE_ENDPOINT_PREVIEW":
-    this.edgeEndpointDrag = {
-     edgeId: emit.edgeId,
-     side: emit.side,
-     toPoint: emit.toPoint,
-    };
-    this.notify();
-    return;
-   case "UPDATE_EDGE_ENDPOINT":
-    this.applyEdgeEndpointUpdate(emit);
-    return;
-   case "LASSO_PROGRESS":
-    // Capture the pre-lasso selection on the first progress emit
-    // of a gesture; subsequent emits use it as the additive base.
-    if (this.lassoBaseSelection === null) {
-     this.lassoBaseSelection = this._selection;
-    }
-    this.lassoPreview = emit.bounds;
-    this.applyLassoLiveSelection(emit.bounds, emit.mode);
-    this.notify();
-    return;
-   case "LASSO_CLEAR":
-    if (this.lassoPreview !== null || this.lassoBaseSelection !== null) {
-     this.lassoPreview = null;
-     this.lassoBaseSelection = null;
-     this.notify();
-    }
-    return;
-   case "SELECT_BY_BOUNDS":
-    // Final commit — uses the same logic as the live preview so
-    // the visible selection matches what lands. Reset the base
-    // snapshot so the next gesture re-captures it.
-    this.lassoBaseSelection = null;
-    this.applySelectByBounds(emit.bounds, emit.mode);
-    return;
-   case "MOVE_SHAPE":
-    if (this.groupMoveOrigin) {
-     this.applyGroupMove(emit.delta);
+    // Resolve input mode + derived hit slops once. `auto` reads
+    // `matchMedia('(pointer: coarse)')` when available; SSR falls
+    // back to `mouse`.
+    const requested = options.inputMode ?? "auto";
+    if (requested === "touch") {
+      this.inputMode = "touch";
+    } else if (requested === "mouse") {
+      this.inputMode = "mouse";
+    } else if (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(pointer: coarse)").matches
+    ) {
+      this.inputMode = "touch";
     } else {
-     this.applyMove(emit.id, emit.delta, emit.originalBounds);
+      this.inputMode = "mouse";
     }
-    return;
-   case "RESIZE_GROUP":
-    this.applyGroupResize(emit.handle, emit.delta, emit.originalBounds);
-    return;
-   case "RESIZE_SHAPE":
-    this.applyResize(emit.id, emit.handle, emit.delta, emit.originalBounds);
-    return;
-   case "CREATE_SHAPE":
-    this.applyCreate(emit.shapeType, emit.bounds);
-    return;
-   case "CREATE_EDGE":
-    this.applyCreateEdge(emit);
-    return;
-   case "DRAW_EDGE_PREVIEW":
-    this.applyEdgePreview(emit.fromShape, emit.fromPoint, emit.toPoint);
-    return;
-   case "DRAW_EDGE_PREVIEW_CLEAR":
-    if (this.edgePreview) {
-     this.edgePreview = null;
-     this.notify();
+    this.handleHitSlop = this.inputMode === "touch" ? TOUCH_HANDLE_HIT_SLOP : HANDLE_HIT_SLOP;
+    this.edgeHandleHitSlop =
+      this.inputMode === "touch" ? TOUCH_EDGE_HANDLE_HIT_SLOP : EDGE_ENDPOINT_HANDLE_RADIUS;
+    this.edgeHitThreshold =
+      this.inputMode === "touch" ? TOUCH_EDGE_HIT_THRESHOLD : EDGE_HIT_THRESHOLD;
+
+    this.actor = createActor(interactionMachine);
+    this.actor.subscribe({
+      next: () => {
+        // Render on any state change so drawing rubber-band updates.
+        this.render();
+      },
+    });
+    this.actor.on("*", (event) => {
+      this.applyEmit(event);
+    });
+    this.actor.start();
+
+    // Built-in file-drop handlers — registered before any host-side
+    // wiring so subsequent host `registerFileDropHandler` calls land
+    // *after* and only fire for files we don't already handle.
+    this.fileDropRegistry.register(imageFileDropHandler);
+    this.fileDropRegistry.register(videoFileDropHandler);
+
+    if (options.initialMode) {
+      this.actor.send({ type: "SET_MODE", mode: options.initialMode });
     }
-    return;
-   case "TEMPLATE_TAP":
-    // Forward to subscribers via a custom listener path.
-    for (const fn of this.templateTapListeners) fn(emit);
-    return;
-   case "TEMPLATE_DROP":
-    for (const fn of this.templateDropListeners) fn(emit);
-    return;
-   case "MOVE_ANNOTATION":
-    this.applyAnnotationMove(emit.id, emit.delta, emit.originalPosition);
-    return;
-   case "COMMIT_ANNOTATION_DRAG":
-    this.finalizeOpenGestureTx();
-    return;
+
+    // Long-press controller — fired on touch-hold; fans out to
+    // host-registered listeners (mobile alt to right-click).
+    this.longPress = new LongPressController(
+      (p) => this.screenToWorld(p),
+      (payload) => {
+        for (const fn of this.longPressListeners) fn(payload);
+      },
+    );
+    // Pinch gesture controller — two-finger pan + zoom. Hooks into
+    // the editor's own zoomAt / panBy / screenToWorld.
+    this.pinch = new PinchController(
+      (p) => this.screenToWorld(p),
+      (factor, anchorWorld) => this.zoomAt(factor, anchorWorld),
+      (delta) => this.panBy(delta),
+    );
+    // Bridge for container-ops module — narrow surface that the
+    // pure functions in editor/container-ops.ts call back into.
+    const self2 = this;
+    this.containerOpsRef = {
+      get scene() {
+        return self2._scene;
+      },
+      get dragShapeId() {
+        return self2.dragShapeId;
+      },
+      get containerHover() {
+        return self2.containerHover;
+      },
+      applyPatch(patch, nextScene) {
+        self2._scene = nextScene;
+        self2.beginOrAttachGesture().add(patch);
+      },
+    };
+
+    this.unbind = this.bindPointerEvents();
+    this.render();
+    // Prime the typed-event cache with the editor's initial state so
+    // the *first* user-driven update only emits on a real flip.
+    // Without this, an `editor.on("mode", fn)` listener installed
+    // before any change would fire on the very next `setMode(current)`
+    // call because every cached slice would still be `null`.
+    primeEventCache(this.eventCache, this.observableSnapshot());
   }
- }
 
- /**
-  * Drag handler for annotation pins. Moves the pin to
-  * `origin + delta`. Anchor semantics: for shape-anchored
-  * annotations the `position` field is shape-local, so dragging
-  * still updates the same field — the editor doesn't try to
-  * reparent the anchor mid-drag; user wants the pin under the
-  * cursor and that's exactly what `position + (delta in world)`
-  * gives, regardless of which space the position is interpreted
-  * in (`getAnnotationWorldPosition` already adds the shape's
-  * world position when anchored).
-  *
-  * Wrapped in a single gestureTx so per-move updates collapse
-  * into one undo step.
-  */
- // Pure body in `./editor/applies/move.ts`.
- private applyAnnotationMove(id: AnnotationId, delta: Vec2, origin: Vec2): void {
-  const result = computeAnnotationMovePatch(this._scene, id, delta, origin);
-  if (!result) return;
-  this._scene = result.scene;
-  this.recordGesturePatch(result.patch);
-  this.notify();
- }
-
- private readonly templateTapListeners = new Set<
-  (emit: Extract<InteractionEmit, { type: "TEMPLATE_TAP" }>) => void
- >();
- private readonly templateDropListeners = new Set<
-  (emit: Extract<InteractionEmit, { type: "TEMPLATE_DROP" }>) => void
- >();
-
- /**
-  * Subscribe to template button taps. Returns an unsubscribe function.
-  * Hosts use this to route template button clicks to their own actions.
-  */
- onTemplateTap(
-  fn: (emit: Extract<InteractionEmit, { type: "TEMPLATE_TAP" }>) => void,
- ): () => void {
-  this.templateTapListeners.add(fn);
-  return () => this.templateTapListeners.delete(fn);
- }
-
- /**
-  * Subscribe to drops onto template drop-zones. Returns an unsubscribe fn.
-  * Hosts decide what to do with the drop (e.g. add a child shape, link
-  * templates together).
-  */
- onTemplateDrop(
-  fn: (emit: Extract<InteractionEmit, { type: "TEMPLATE_DROP" }>) => void,
- ): () => void {
-  this.templateDropListeners.add(fn);
-  return () => this.templateDropListeners.delete(fn);
- }
-
- /**
-  * Dispatch a TEMPLATE_DROP emit programmatically. Hosts call this from their
-  * own DOM `drop` listener after looking up which drop-zone (if any) is
-  * under the pointer via `findDropZoneAt`.
-  */
- dispatchTemplateDrop(emit: Extract<InteractionEmit, { type: "TEMPLATE_DROP" }>): void {
-  this.applyEmit(emit);
- }
-
- // Pure body in `./editor/applies/move.ts`.
- private applyMove(id: ShapeId, delta: Vec2, originalBounds: Bounds): void {
-  const patch = computeShapeMovePatch(this._scene, id, delta, originalBounds);
-  if (!patch) return;
-  this._scene = apply(this._scene, patch);
-  this.recordGesturePatch(patch);
-  this.notify();
- }
-
- private applyGroupMove(delta: Vec2): void {
-  if (!this.groupMoveOrigin) return;
-  const patches = computeGroupMovePatches(this._scene, this.groupMoveOrigin, delta);
-  for (const patch of patches) {
-   this._scene = apply(this._scene, patch);
-   this.recordGesturePatch(patch);
+  /** Snapshot used by event-fanout. Kept private — internal API. */
+  private observableSnapshot() {
+    return {
+      mode: this.mode,
+      selection: this._selection,
+      scene: this._scene,
+      canUndo: this.canUndo,
+      canRedo: this.canRedo,
+    };
   }
-  this.notify();
- }
 
- // Body moved to `./editor/viewport-helpers.ts`.
- private computeViewportWorld(): Bounds | null {
-  return computeViewportWorldPure(this._scene);
- }
+  // --- Public state ---
 
- /**
-  * Identity-diff the current scene against the last rendered one and
-  * return the union AABB of every shape/edge that changed reference
-  * (added, removed, or replaced). Returns `null` to force a full
-  * clear when something that affects the entire surface changes —
-  * viewport pan/zoom/resize, layer visibility, or the first frame.
-  *
-  * Empty union (returned as a zero-area bbox far off-screen) means
-  * nothing changed; renderScene will cull every shape via its
-  * `dirtyWorld` filter — effectively a no-op main pass.
-  */
- private computeDirtyWorld(): Bounds | null {
-  const prev = this.lastRenderedScene;
-  const next = this._scene;
-  if (!prev) return null;
-  // Skip dirty-rect optimization until the canvas has been sized at
-  // least once — the first paint to a 0×0 viewport doesn't actually
-  // hit pixels, so we have to force a full repaint as soon as the
-  // host's ResizeObserver fires (even when the diff finds zero
-  // changed shapes, e.g. when only viewport.size changed but the
-  // viewport ref happened to equal — which can't happen, but defence
-  // in depth).
-  if (
-   prev.viewport.size.width <= 0 ||
-   prev.viewport.size.height <= 0 ||
-   next.viewport.size.width <= 0 ||
-   next.viewport.size.height <= 0
-  ) {
-   return null;
+  get scene(): Scene {
+    return this._scene;
   }
-  // Anything that affects the global render — viewport (pan / zoom /
-  // size) or layer ordering / visibility — forces a full clear.
-  if (prev.viewport !== next.viewport) return null;
-  if (prev.layers !== next.layers) return null;
-  // Isolation transition (enter / exit a group) re-dims a wide swath
-  // of shapes without touching the scene reference, so force a full
-  // repaint when the entered-group identity changes between frames.
-  if (this.lastRenderedEnteredGroup !== this._enteredGroup) return null;
-  // Scene ref unchanged → nothing changed on main canvas → skip the
-  // whole pass via an empty off-screen rect that the dirty filter
-  // culls every shape against.
-  if (prev === next) {
-   return { x: -1e9, y: -1e9, width: 0, height: 0 };
+  get selection(): Selection.Selection {
+    return this._selection;
   }
-  let acc: Bounds | null = null;
-  const add = (b: Bounds): void => {
-   acc = acc ? B.union(acc, b) : b;
-  };
-  // Track shapes that changed (added / removed / mutated). Edges
-  // attached to any of these have stale rendered paths even when
-  // the edge object itself is reference-equal — the path resolves
-  // through the shape's new position, but the old path stays on
-  // screen as a "ghost" trail unless we explicitly invalidate it.
-  const changedShapeIds = new Set<ShapeId>();
-  for (const [id, shape] of next.shapes) {
-   const old = prev.shapes.get(id);
-   if (old === shape) continue;
-   changedShapeIds.add(id);
-   const afterBounds = getShapeWorldBounds(shape);
-   const beforeBounds = old ? getShapeWorldBounds(old) : null;
-   add(afterBounds);
-   if (beforeBounds) add(beforeBounds);
-   // Stash for the tile-cache path — covers add + move via
-   // before/after pair; pure mutation re-uses the single
-   // afterBounds rect.
-   if (this.tileComposeFn !== null) {
-    this.tileDirtyShapes.set(id, { before: beforeBounds, after: afterBounds });
-   }
+  get mode(): Mode {
+    return this.actor.getSnapshot().context.mode;
   }
-  for (const [id, shape] of prev.shapes) {
-   if (!next.shapes.has(id)) {
-    changedShapeIds.add(id);
-    const beforeBounds = getShapeWorldBounds(shape);
-    add(beforeBounds);
-    if (this.tileComposeFn !== null) {
-     this.tileDirtyShapes.set(id, { before: beforeBounds, after: null });
+  get history(): HistoryProvider {
+    return this._history;
+  }
+  get canUndo(): boolean {
+    return this._history.canUndo;
+  }
+  get canRedo(): boolean {
+    return this._history.canRedo;
+  }
+
+  /**
+   * The DOM element the editor was mounted onto. Read-only — external
+   * code reads it for screen-↔-world coordinate conversions on events
+   * whose coordinates are in client-space (e.g. global `contextmenu`).
+   */
+  get hostElement(): HTMLElement {
+    return this.host;
+  }
+
+  /** Subscribe to scene/selection/mode/history changes. */
+  subscribe(fn: () => void): () => void {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  // --- Collab: remote presence push + local cursor push ---
+
+  /**
+   * Subscribe to local world-space pointer movement. Fires on every
+   * `pointermove` over the host. `@collab` uses this to broadcast the
+   * local cursor into the awareness room.
+   */
+  onCursorMove(fn: (point: Vec2) => void): () => void {
+    this.cursorListeners.add(fn);
+    return () => this.cursorListeners.delete(fn);
+  }
+
+  // --- Annotations ---
+
+  /** Set the local user's identity for comments authored via this editor. */
+  setCommentAuthor(author: { id: string; name: string }): void {
+    this.commentAuthor = author;
+  }
+
+  /** Currently focused annotation id (or null when nothing is open). */
+  get selectedAnnotation(): AnnotationId | null {
+    return this._selectedAnnotation;
+  }
+
+  /**
+   * Open or close an annotation thread. `null` clears the focus. The
+   * overlay highlights the pin; `<CommentsPopover>` reads this and
+   * renders the thread.
+   */
+  setSelectedAnnotation(id: AnnotationId | null): void {
+    if (this._selectedAnnotation === id) return;
+    this._selectedAnnotation = id;
+    this.notify();
+  }
+
+  // Pure bodies in `./editor/public/annotations.ts`.
+  addAnnotation(opts: {
+    position: Vec2;
+    shapeId?: ShapeId | null;
+    firstComment?: string;
+  }): AnnotationId {
+    const result = computeAddAnnotation(this._scene, opts, this.commentAuthor, (p) =>
+      this.uniqueId(p),
+    );
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this._selectedAnnotation = result.id;
+    this.notify();
+    this.announce("Annotation added");
+    return result.id;
+  }
+  removeAnnotation(id: AnnotationId): void {
+    const result = computeRemoveAnnotation(this._scene, id);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    if (this._selectedAnnotation === id) this._selectedAnnotation = null;
+    this.notify();
+    this.announce("Annotation removed");
+  }
+  toggleAnnotationResolved(id: AnnotationId): void {
+    const result = computeToggleAnnotationResolved(this._scene, id);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+    this.announce(result.wasResolved ? "Annotation reopened" : "Annotation resolved");
+  }
+  addComment(
+    annotationId: AnnotationId,
+    body: string,
+    author?: { id: string; name: string },
+  ): void {
+    const result = computeAddComment(
+      this._scene,
+      annotationId,
+      body,
+      author ?? this.commentAuthor,
+      (p) => this.uniqueId(p),
+    );
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+  removeComment(annotationId: AnnotationId, commentId: CommentId): void {
+    const result = computeRemoveComment(this._scene, annotationId, commentId);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+  hitAnnotation(worldPoint: Vec2): AnnotationId | null {
+    return hitAnnotationPure(this._scene, worldPoint);
+  }
+
+  /**
+   * Subscribe to long-press events — a stationary touch / mouse-press
+   * held longer than `LONG_PRESS_DELAY_MS`. The mobile-equivalent of
+   * right-click; hosts open a context menu from this. The event
+   * carries both screen-space (for menu positioning) and world-space
+   * (for target hit-test) coordinates.
+   */
+  onLongPress(fn: (payload: { screenPoint: Vec2; worldPoint: Vec2 }) => void): () => void {
+    this.longPressListeners.add(fn);
+    return () => this.longPressListeners.delete(fn);
+  }
+
+  /**
+   * Subscribe to accessibility live-region announcements. The host
+   * pipes these strings into an `aria-live="polite"` element so a
+   * screen-reader user hears the editor's status changes. Strings
+   * are short and pre-localised by the caller of `announce`.
+   */
+  onAnnounce(fn: (message: string) => void): () => void {
+    this.announceListeners.add(fn);
+    return () => this.announceListeners.delete(fn);
+  }
+
+  /**
+   * Push a live-region message to all `onAnnounce` listeners. Hosts
+   * (and plugins) call this when something happened that an SR user
+   * should hear: selection changed, shape moved, mode switched, etc.
+   * The editor itself emits a small set of canonical messages from
+   * `focusCycle` / `moveSelectionBy` / `cancelInteraction`.
+   */
+  announce(message: string): void {
+    if (!message) return;
+    for (const fn of this.announceListeners) fn(message);
+  }
+
+  /**
+   * Replace the remote peer cursors painted by the overlay. Pass an
+   * empty array to clear. The host is expected to filter out the
+   * local user's cursor before calling.
+   */
+  setPeerCursors(cursors: readonly PeerCursor[]): void {
+    this._peerCursors = cursors;
+    this.render();
+  }
+
+  /**
+   * Replace the remote peer selections painted by the overlay. The
+   * host resolves a peer's `selection: ShapeId[]` into world bounds
+   * before passing them in.
+   */
+  setPeerSelections(selections: readonly PeerSelection[]): void {
+    this._peerSelections = selections;
+    this.render();
+  }
+
+  /** Whether the active draw-mode sticks after a create (toolbar lock). */
+  get toolLocked(): boolean {
+    return this._toolLocked;
+  }
+
+  /** Currently-selected edge id, if any. Null when no edge is selected. */
+  get selectedEdge(): EdgeId | null {
+    return this._selectedEdge;
+  }
+
+  /**
+   * Apply an in-place mutation to the currently-selected edge as a
+   * single history step. The `updater` receives a clone of the edge
+   * and returns the next version (callers should produce a new
+   * object — Edge is readonly). No-op when no edge is selected.
+   */
+  updateSelectedEdge(updater: (edge: Edge) => Edge): void {
+    const id = this._selectedEdge;
+    if (id === null) return;
+    const r = updateEdge(this._scene, id, updater);
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this.notify();
+  }
+
+  /**
+   * Register a file-drop handler. Handlers are tried in registration
+   * order; the first whose `accept(file)` returns true takes the
+   * file. Repeated calls with the same `id` replace the previous
+   * handler (idempotent for module-load wiring).
+   */
+  registerFileDropHandler(handler: FileDropHandler): void {
+    this.fileDropRegistry.register(handler);
+  }
+
+  /** Drop a registered handler. */
+  unregisterFileDropHandler(id: string): void {
+    this.fileDropRegistry.unregister(id);
+  }
+
+  /**
+   * Dispatch a dropped file (or pasted file from clipboard) into
+   * the registered handlers. Returns `true` when a handler accepted
+   * the file, `false` otherwise — UI can show an "unsupported file"
+   * toast on `false`. `worldPoint` is where the file should land
+   * (drop-point projected to world coords; for paste, host can use
+   * cursor world point or viewport centre).
+   */
+  async dispatchFileDrop(file: File, worldPoint: Vec2): Promise<boolean> {
+    const ctx: FileDropContext = { editor: this, worldPoint };
+    return this.fileDropRegistry.dispatch(file, ctx);
+  }
+
+  /**
+   * Toggle the tool-lock affordance. With `true`, draw-modes persist
+   * after each successful shape create — the user keeps drawing
+   * rectangles without re-pressing R. With `false` (default), the
+   * editor reverts to `select` after each create.
+   */
+  setToolLocked(locked: boolean): void {
+    if (this._toolLocked === locked) return;
+    this._toolLocked = locked;
+    this.notify();
+  }
+
+  // Body moved to `./editor/gesture-tx.ts`.
+  private maybeRevertModeAfterCreate(): void {
+    this.gestures.maybeRevertModeAfterCreate();
+  }
+
+  setMode(mode: Mode): void {
+    // Cancel any in-progress drag gesture so the partial state is not recorded.
+    if (this.gestureTx) {
+      this.gestureTx.cancel();
+      this.gestureTx = null;
     }
-   }
-  }
-  const edgeTouchesChangedShape = (edge: Edge): boolean => {
-   for (const ep of [edge.from, edge.to]) {
-    if (ep.kind === "anchor" || ep.kind === "outline") {
-     if (changedShapeIds.has(ep.shapeId)) return true;
+    // Hide the port overlay when leaving draw-edge.
+    if (mode !== "draw-edge" && this.hoveredEdgeTarget !== null) {
+      this.hoveredEdgeTarget = null;
     }
-   }
-   return false;
-  };
-  for (const [id, edge] of next.edges) {
-   const old = prev.edges.get(id);
-   // Refresh edge dirty-rect when: edge object changed, OR an
-   // endpoint references a shape that moved this frame (path is
-   // re-resolved every render but the old screen pixels persist).
-   if (old === edge && !edgeTouchesChangedShape(edge)) continue;
-   const b = computeEdgeWorldBounds(next, edge);
-   if (b) add(b);
-   const oldEdge = old ?? edge; // prev scene resolves with prev shapes for ghost-clear
-   const ob = computeEdgeWorldBounds(prev, oldEdge);
-   if (ob) add(ob);
+    // Cursor affordance for hand mode — grab when armed, grabbing
+    // takes over inside an active pan gesture. Restore the host's
+    // previous cursor when leaving the mode.
+    if (mode === "hand" && this.host?.style) {
+      if (this.previousHostCursor === null) {
+        this.previousHostCursor = this.host.style.cursor;
+      }
+      this.host.style.cursor = "grab";
+    } else if (this.previousHostCursor !== null && this.mode === "hand" && !this.panGesture) {
+      this.host.style.cursor = this.previousHostCursor;
+      this.previousHostCursor = null;
+    }
+    this.actor.send({ type: "SET_MODE", mode });
+    this.notify();
   }
-  for (const [id, edge] of prev.edges) {
-   if (!next.edges.has(id)) {
-    const b = computeEdgeWorldBounds(prev, edge);
-    if (b) add(b);
-   }
+
+  /** Undo the latest record. No-op if there is nothing to undo. */
+  undo(): boolean {
+    const inverse = this._history.undo();
+    if (!inverse) return false;
+    this._scene = apply(this._scene, inverse);
+    this.pruneSelection();
+    this.notify();
+    return true;
   }
-  // Inflate by a couple pixels to cover anti-aliased stroke fuzz
-  // around the geometry edges.
-  return acc ? B.expand(acc, 4) : { x: -1e9, y: -1e9, width: 0, height: 0 };
- }
 
- // Bodies moved to `./editor/viewport-helpers.ts`.
- private combinedSelectionBounds(): Bounds | null {
-  return combinedSelectionBoundsPure(this._scene, this._selection);
- }
- private groupChildrenUnion(groupId: ShapeId): Bounds | null {
-  return groupChildrenUnionPure(this._scene, groupId);
- }
-
- /**
-  * True when the current selection should be treated as aspect-
-  * locked for group-handle resize. Currently: a single `group`-typed
-  * shape selected. Multi-selection of free shapes keeps the default
-  * 8-handle / free-aspect behaviour (matches user expectation:
-  * grouping is the explicit "lock the ratio" gesture).
-  */
- private selectionIsAspectLocked(): boolean {
-  if (this._selection.size !== 1) return false;
-  const [only] = [...this._selection];
-  if (!only) return false;
-  return getShape(this._scene, only)?.type === "group";
- }
-
- // Pure body in `./editor/applies/resize.ts`.
- private applyGroupResize(handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
-  if (!this.groupResizeOrigin) return;
-  const result = computeGroupResizePatches(
-   this._scene,
-   this.groupResizeOrigin,
-   handle,
-   delta,
-   originalBounds,
-   this.selectionIsAspectLocked(),
-  );
-  this._scene = result.scene;
-  for (const patch of result.patches) this.recordGesturePatch(patch);
-  this.notify();
- }
-
- private applyResize(id: ShapeId, handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
-  const result = computeShapeResize(this._scene, id, handle, delta, originalBounds, (s, raw, h) =>
-   this.clampContainerToChildren(s, raw, h),
-  );
-  if (!result) return;
-  this._scene = result.scene;
-  this.recordGesturePatch(result.patch);
-  this.notify();
- }
-
- // Pure body in `./editor/applies/create.ts`.
- private applyCreate(kind: "rect" | "ellipse" | "frame", bounds: Bounds): void {
-  const id = newShapeId(++this.nextId);
-  const result = computeCreateShape(this._scene, kind, bounds, id, this._activeLayerId, () =>
-   this.nextFrameName(),
-  );
-  this._scene = result.scene;
-  this._selection = Selection.single(id);
-  // CREATE is a single-shot operation, not part of a multi-tick gesture.
-  this._history.push(result.patch);
-  // Frame-specific: scoop up every shape whose centre lies inside
-  // the new frame's bounds and tag them with `frameId`.
-  if (kind === "frame") {
-   this.assignFrameMembers(id, bounds);
+  /** Redo the undone record. */
+  redo(): boolean {
+    const patch = this._history.redo();
+    if (!patch) return false;
+    this._scene = apply(this._scene, patch);
+    this.pruneSelection();
+    this.notify();
+    return true;
   }
-  this.maybeRevertModeAfterCreate();
-  this.notify();
- }
 
- /** Generate the next "Frame N" name based on existing frames. */
- private nextFrameName(): string {
-  return nextFrameNameHelper(this._scene);
- }
-
- /**
-  * Assign frameId to every shape (except the frame itself) whose
-  * centre falls inside the frame's world bounds. Runs as a single
-  * undo step in the same gesture transaction as the create.
-  */
- private assignFrameMembers(frameId: ShapeId, frameBounds: Bounds): void {
-  this._scene = assignFrameMembersHelper(
-   this._scene,
-   this._history,
-   frameId,
-   frameBounds,
-  );
- }
-
- // Pure body in `./editor/applies/create.ts`. Endpoint snapping
- // stays here because it needs the snap engine.
- private applyCreateEdge(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
-  const from = this.snapEdgeEndpoint(emit.fromShape, emit.fromPoint);
-  const to = this.snapEdgeEndpoint(emit.toShape, emit.toPoint);
-  const id = newEdgeId(++this.nextId);
-  const result = computeCreateEdge(this._scene, from, to, id, this._activeLayerId);
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.edgePreview = null;
-  this.maybeRevertModeAfterCreate();
-  this.notify();
- }
-
- /**
-  * Build an `EdgeEndpoint` for a draw-edge / re-bind gesture. Runs the
-  * scene's snap engine for the probe point, prefers anchor snap when
-  * close enough, falls back to outline snap (so the user can attach
-  * "anywhere on the right edge"), then `point` for the free-floating
-  * case.
-  *
-  * `pressTargetShape` is the shape the gesture originated from or
-  * landed on (used as a strong hint — we don't snap onto unrelated
-  * shapes when the user clearly aimed for this one).
-  */
- private snapEdgeEndpoint(pressTargetShape: ShapeId | null, worldPoint: Vec2): EdgeEndpoint {
-  if (!pressTargetShape) {
-   return { kind: "point", position: worldPoint };
+  /**
+   * Add a shape to the scene and push a single record onto the history stack.
+   * Returns the resulting patch (useful for tests). Intended for code paths
+   * that create shapes outside of a pointer gesture — drag-from-palette,
+   * paste, programmatic insert.
+   */
+  addShape(shape: Shape, options?: { select?: boolean }): Patch {
+    const result = addShape(this._scene, shape);
+    this._scene = result.scene;
+    if (options?.select ?? true) {
+      this._selection = Selection.single(shape.id);
+    }
+    this._history.push(result.patch);
+    this.notify();
+    return result.patch;
   }
-  const shape = getShape(this._scene, pressTargetShape);
-  if (!shape) return { kind: "point", position: worldPoint };
 
-  const result = this.snapEngine.snap({
-   scene: this._scene,
-   probe: worldPoint,
-   threshold: this.snapThreshold,
-   gesture: "draw-edge",
+  /**
+   * Insert an image at the given world position. Wraps `addShape`
+   * with the image-shape boilerplate (id, layer, order, scale=1,
+   * rotation=0). Returns the new shape's id so callers can chain
+   * (e.g. immediately reparent into a container).
+   *
+   * `src` is anything the renderer accepts — a data-URL from the
+   * file-drop handler, a host CDN URL, an SVG string in
+   * `image/svg+xml;base64,...` form.
+   */
+  // Pure body in `./editor/public/image-insert.ts`.
+  insertImage(input: {
+    src: string;
+    width: number;
+    height: number;
+    position: Vec2;
+    image?: HTMLImageElement;
+    animated?: boolean;
+    fileId?: import("@oh-just-another/types").FileId;
+  }): ShapeId {
+    const id = castShapeId(this.uniqueId("img"));
+    const shape = buildImageShape(this._scene, input, id, this._activeLayerId);
+    this.addShape(shape);
+    if (input.animated) this.animationTick.start();
+    return id;
+  }
+  async addBinaryFile(blob: Blob, name?: string): Promise<FileId> {
+    const result = await computeAddBinaryFile(this._scene, blob, name, () => ++this.nextId);
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    return result.id;
+  }
+
+  /**
+   * Animation tick — runs while any shape carries
+   * `metadata.animated` (GIFs today; future video / lottie).
+   * Forces a full re-render every frame so drawImage picks up the
+   * current frame of natively-animated elements. Self-terminates
+   * when no animated shapes remain.
+   *
+   * Lifecycle managed by the `AnimationTick` helper (see
+   * `./animation-tick.ts`). `insertImage({animated:true})` and
+   * `loadScene` start the tick; `dispose()` stops it.
+   */
+  private readonly animationTick = new AnimationTick({
+    isAnimated: () => this.hasAnimatedShape(),
+    onTick: () => {
+      // Force a full re-render: the scene reference hasn't changed,
+      // but the browser's native GIF animation has advanced inside
+      // the `<img>` element. Re-painting picks up the current frame.
+      this.lastRenderedScene = null;
+      this.render();
+    },
   });
 
-  // Prefer a snap candidate that belongs to the press-target shape —
-  // avoids attaching to a neighbouring shape that happens to be even
-  // closer to the release point.
-  const onTarget = result.all.filter((c) => c.metadata?.shapeId === pressTargetShape);
-  const winner =
-   onTarget.find((c) => c.kind === "anchor") ??
-   onTarget.find((c) => c.kind === "outline") ??
-   null;
-  if (winner) return endpointFromSnap(pressTargetShape, winner, shape);
-
-  // No snap fired (release outside threshold of any port / outline) —
-  // fall back to nearest anchor on the target shape so the edge still
-  // sticks to it.
-  const { ref } = findNearestAnchor(shape, worldPoint, snapExcludedAnchors(shape));
-  return { kind: "anchor", shapeId: pressTargetShape, anchor: ref };
- }
-
- // Pure body in `./editor/applies/selection.ts`. The wrappers
- // here own the side effects (`_selectedEdge` clearing, notify).
- private applySelectByBounds(bounds: Bounds, mode: "replace" | "add"): void {
-  const next = selectByBoundsPure(
-   this._scene,
-   this._selection,
-   (id) => this.isLayerLocked(id),
-   bounds,
-   mode,
-  );
-  if (this._selectedEdge !== null) this._selectedEdge = null;
-  if (Selection.equals(next, this._selection)) {
-   this.notify();
-   return;
+  // Pure body in `./editor/public/image-insert.ts`.
+  private hasAnimatedShape(): boolean {
+    return hasAnimatedShape(this._scene);
   }
-  this._selection = next;
-  this.notify();
- }
 
- private applyLassoLiveSelection(bounds: Bounds, mode: "replace" | "add"): void {
-  const base = this.lassoBaseSelection ?? Selection.EMPTY;
-  const next = selectByBoundsLivePure(
-   this._scene,
-   base,
-   (id) => this.isLayerLocked(id),
-   bounds,
-   mode,
-  );
-  if (Selection.equals(next, this._selection)) return;
-  if (this._selectedEdge !== null) this._selectedEdge = null;
-  this._selection = next;
- }
-
- // Pure body in `./editor/applies/edge.ts`. The wrapper here
- // owns the side effects (history push, drag-state clearing,
- // notify).
- private applyEdgeEndpointUpdate(
-  emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
- ): void {
-  const result = computeEdgeEndpointUpdate(this._scene, emit, (toShape, toPoint) =>
-   this.snapEdgeEndpoint(toShape, toPoint),
-  );
-  if (result === null) {
-   this.edgeEndpointDrag = null;
-   this.notify();
-   return;
-  }
-  this._scene = result.scene;
-  this._history.push(result.patch);
-  this.edgeEndpointDrag = null;
-  this.notify();
- }
-
- private updateHoveredEdgeTarget(worldPoint: Vec2): void {
-  const shape = this.acceleratedShapeAt(worldPoint);
-  if (!shape) {
-   if (this.hoveredEdgeTarget !== null) {
-    this.hoveredEdgeTarget = null;
+  /**
+   * Drag-to-place flow for palette templates. Adds the shape to the
+   * scene immediately so the user sees it dragging under the cursor,
+   * but defers the history entry until `commit()` is called. `update`
+   * re-positions without writing per-move patches; `cancel` removes
+   * the shape entirely and leaves history intact (no undo entry).
+   *
+   * Typical wiring: HTML5 dragenter starts the placement, dragover
+   * updates, drop commits, dragleave / window keydown(Escape) cancel.
+   */
+  beginPlacement(shape: Shape): {
+    update: (worldCenter: Vec2) => void;
+    commit: () => void;
+    cancel: () => void;
+  } {
+    const tx = this._history.transaction();
+    const initialResult = addShape(this._scene, shape);
+    this._scene = initialResult.scene;
+    this._selection = Selection.single(shape.id);
     this.notify();
-   }
-   return;
-  }
-  const nearest = findNearestAnchor(shape, worldPoint, snapExcludedAnchors(shape));
-  const activeName = nearest.ref.kind === "named" ? nearest.ref.name : null;
-  const prev = this.hoveredEdgeTarget;
-  if (prev?.shapeId === shape.id && prev.activeAnchor === activeName) return;
-  this.hoveredEdgeTarget = { shapeId: shape.id, activeAnchor: activeName };
-  this.notify();
- }
-
- // Pure body in `./editor/applies/edge.ts`.
- private applyEdgePreview(fromShape: ShapeId | null, fromPoint: Vec2, toPoint: Vec2): void {
-  this.edgePreview = computeEdgePreviewEndpoints(this._scene, fromShape, fromPoint, toPoint);
-  this.notify();
- }
-
- // Gesture lifecycle — recordGesturePatch / commitGesture /
- // cancelGesture / finalizeOpenGestureTx / maybeRevertModeAfterCreate
- // live in `./editor/gesture-tx.ts`. The thin instance methods
- // below preserve the original call sites; the bodies (and their
- // docstrings) moved out to the controller.
- private recordGesturePatch(patch: Patch): void {
-  this.gestures.record(patch);
- }
- private commitGesture(): void {
-  this.gestures.commit();
- }
- private finalizeOpenGestureTx(): void {
-  this.gestures.finalize();
- }
-
- /**
-  * End-of-drag container hookup. Runs after the state machine has
-  * received POINTER_UP but before the gesture transaction commits,
-  * so reparent + auto-grow land in a single undo step with the drag.
-  *
-  * Rules:
-  * - If the shape hovered over a container and is not yet its child →
-  *  set `parentId`. If the shape exceeds the dropZone bounds,
-  *  grow the zone (expand container size).
-  * - If the shape was a child of something but the final world bounds
-  *  no longer intersect the parent's drop-zone — clear `parentId` (drag-out).
-  * - Cycles (container into its own descendant) are prevented
-  *  by the `containerHover` pipeline above — the exclude set blocks them.
-  */
- // Pure body in `./editor/container-ops.ts`. Editor exposes a
- // small `ContainerOpsRef` bridge so the module can mutate scene
- // + push patches into the running gesture transaction.
- private applyContainerDrop(worldPoint: Vec2): void {
-  applyContainerDropPure(this.containerOpsRef, worldPoint);
- }
-
- // Public-private hybrid — also called from AutoLayoutScheduler.
- private maybeGrowContainer(containerId: ShapeId, childId: ShapeId): void {
-  maybeGrowContainerPure(this.containerOpsRef, containerId, childId);
- }
-
- // Pure body in `./editor/container-ops.ts`.
- private clampContainerToChildren(shape: Shape, raw: Bounds, handle: HandleId): Bounds {
-  return clampContainerToChildrenPure(this._scene, shape, raw, handle);
- }
-
- /**
-  * Return the running gesture tx or open a new one if the drag ended
-  * with an empty transaction (move-by-zero pixels can still carry
-  * container reparent).
-  */
- private beginOrAttachGesture(): TransactionHandle {
-  if (!this.gestureTx) {
-   this.gestureTx = this._history.transaction();
-  }
-  return this.gestureTx;
- }
-
- // Body moved to `./editor/gesture-tx.ts`.
- private cancelGesture(): void {
-  this.gestures.cancel();
- }
-
- /**
-  * Drop ids from the selection that no longer exist in the scene. Needed
-  * after undoing a CREATE — the shape goes away and the selection becomes
-  * stale.
-  */
- private pruneSelection(): void {
-  let next: Set<ShapeId> | null = null;
-  for (const id of this._selection) {
-   if (!this._scene.shapes.has(id)) {
-    next ??= new Set(this._selection);
-    next.delete(id);
-   }
-  }
-  if (next !== null) this._selection = next;
- }
-
- private notify(): void {
-  this.render();
-  fanOutEvents(this.eventCache, this.events, this.observableSnapshot());
-  for (const fn of this.listeners) fn();
-  this.autoCompactScheduler.schedule();
-  this.autoLayoutScheduler.schedule();
- }
-
- /**
-  * Typed event surface — subscribe to a specific slice (`mode`,
-  * `selection`, `scene`, `history`, `viewport`) or the umbrella
-  * `change`. Replaces ad-hoc selectors over the coarse `subscribe()`
-  * for callers that only care about one dimension. The legacy
-  * `subscribe()` still works and fires in lock-step.
-  */
- on<K extends keyof EditorEvents>(
-  event: K,
-  fn: EditorEvents[K],
- ): () => void {
-  // Cast through `never`: TS can't prove that EditorEvents[K]
-  // satisfies the emitter's `extends AnyListener ? T : never`
-  // conditional through a generic body. Every entry of
-  // EditorEvents is a function by construction so this is safe.
-  return this.events.on(event, fn as never);
- }
-
- off<K extends keyof EditorEvents>(
-  event: K,
-  fn: EditorEvents[K],
- ): void {
-  this.events.off(event, fn as never);
- }
-
- /**
-  * Public command — re-run the auto-layout spec on the given
-  * container shape, regardless of whether the children set actually
-  * changed. Useful as an "auto-arrange" toolbar action or for hosts
-  * adopting auto-layout after creating shapes programmatically.
-  * Returns the patch that was applied, or `null` when nothing
-  * changed (no spec, no children, or children already in position).
-  * Single undo step.
-  */
- runLayout(parentId: ShapeId): Patch | null {
-  const patch = runAutoLayout(this._scene, parentId);
-  if (!patch) return null;
-  this._scene = apply(this._scene, patch);
-  this._history.push(patch);
-  // Refresh the recorded signature so the post-notify auto-check
-  // doesn't fire a second redundant run.
-  this.autoLayoutScheduler.resetSignature(parentId);
-  this.notify();
-  return patch;
- }
-
- /**
-  * Children-set fingerprint used for auto-layout dirty detection.
-  * Sorted ids joined by comma — cheap to compute, stable under
-  * pure position edits (we want those), changes under add / remove /
-  * reparent (we want to react to those).
-  */
- private render(): void {
-  // Background layer (grid) — when the host gave us a dedicated target.
-  // Otherwise the grid lives on mainTarget *before* shapes are drawn,
-  // so renderScene's clear takes care of it.
-  if (this.backgroundTarget) {
-   renderGrid(this._scene, this.backgroundTarget);
-  }
-  // World-space viewport rect — used by `renderScene` to skip off-screen
-  // shapes. Computed by mapping the screen viewport corners through the
-  // inverse projection. Slightly inflated so geometry near the edge
-  // does not flicker during pan.
-  const viewportWorld = this.computeViewportWorld();
-  const dirtyWorld = this.computeDirtyWorld();
-  const dimShapes = this._enteredGroup
-   ? this.computeDimShapes(this._enteredGroup)
-   : undefined;
-  const hideShapes = this.computeHiddenShapes();
-
-  if (this.tileComposeFn && viewportWorld) {
-   // Tile-cache path: clear main once, then composite cached
-   // tiles. Dim / hide sets aren't honoured by the tile cache
-   // yet (would require a separate pass) — opt-in path is
-   // intended for very-large static scenes where neither
-   // typically applies.
-   this.mainTarget.clear();
-   this.tileComposeFn(this._scene, this.mainTarget, {
-    viewport: viewportWorld,
-    changedShapes: this.tileDirtyShapes,
-    zoomBucket:
-     this._scene.viewport.zoom > 0
-      ? 2 ** Math.round(Math.log2(this._scene.viewport.zoom))
-      : 1,
-   });
-   this.tileDirtyShapes = new Map();
-   renderEdges(this._scene, this.mainTarget, {
-    ...(viewportWorld ? { viewportWorld } : {}),
-   });
-  } else {
-   // For very large scenes share the same SpatialGrid the hit-test
-   // path already maintains — `renderScene` uses it to skip the
-   // per-shape AABB cull on shapes outside the viewport. Free win
-   // because the grid is already built / cached for hit-tests.
-   const sharedIndex =
-    this._scene.shapes.size >= LARGE_SCENE_HIT_THRESHOLD
-     ? this.ensureSpatialIndex()
-     : null;
-   renderScene(this._scene, this.mainTarget, {
-    ...(viewportWorld ? { viewport: viewportWorld } : {}),
-    ...(dirtyWorld ? { dirtyWorld } : {}),
-    boundsCache: this.boundsCache,
-    lod: DEFAULT_LOD,
-    ...(dimShapes ? { dimShapes, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
-    ...(hideShapes ? { hideShapes } : {}),
-    ...(sharedIndex ? { spatialIndex: sharedIndex } : {}),
-   });
-   renderEdges(this._scene, this.mainTarget, {
-    ...(viewportWorld ? { viewportWorld } : {}),
-    ...(dirtyWorld ? { dirtyWorld } : {}),
-   });
-  }
-  this.lastRenderedScene = this._scene;
-  this.lastRenderedEnteredGroup = this._enteredGroup;
-  const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
-  // Lasso and rect-draw share the same dashed-rect visual. Both can't
-  // run simultaneously (different gestures), so a single `drawingPreview`
-  // slot covers both.
-  if (this.lassoPreview) overlayOpts.drawingPreview = this.lassoPreview;
-  else if (this.drawingPreview) overlayOpts.drawingPreview = this.drawingPreview;
-  if (this.edgePreview) overlayOpts.edgePreview = this.edgePreview;
-  if (this.hoveredEdgeTarget) {
-   const shape = getShape(this._scene, this.hoveredEdgeTarget.shapeId);
-   if (shape) {
-    const excluded = snapExcludedAnchors(shape);
-    const names = [...listAnchorsLocal(shape).keys()].filter((n) => !excluded.has(n));
-    const worldPoints = names.map((name) => getAnchorWorld(shape, { kind: "named", name }));
-    const activeIndex =
-     this.hoveredEdgeTarget.activeAnchor !== null
-      ? names.indexOf(this.hoveredEdgeTarget.activeAnchor)
-      : -1;
-    overlayOpts.ports = {
-     worldPoints,
-     ...(activeIndex >= 0 ? { activeIndex } : {}),
+    let current = shape;
+    const half = getShapeWorldBounds(shape);
+    const offsetX = half.width / 2;
+    const offsetY = half.height / 2;
+    return {
+      update: (worldCenter) => {
+        const next = {
+          ...current,
+          position: { x: worldCenter.x - offsetX, y: worldCenter.y - offsetY },
+        } as Shape;
+        // Apply directly — we'll record a single add-patch on commit.
+        const patch: Patch = { kind: "shape", id: shape.id, before: current, after: next };
+        this._scene = apply(this._scene, patch);
+        current = next;
+        this.notify();
+      },
+      commit: () => {
+        // Container drop: if the placed shape lands inside an auto-
+        // layout / drop-zone container's zone, reparent it so the
+        // container's auto-layout fires on the next microtask. Pure
+        // pointer-drag uses applyContainerDrop for the same effect;
+        // palette placement bypasses that path, so we hook the check
+        // here directly on commit.
+        const center = {
+          x: current.position.x + (half.width / 2),
+          y: current.position.y + (half.height / 2),
+        };
+        const container = findContainerAt(this._scene, center, new Set([current.id]));
+        if (container) {
+          const withParent = { ...current, parentId: container.id } as Shape;
+          const reparentPatch: Patch = {
+            kind: "shape",
+            id: shape.id,
+            before: current,
+            after: withParent,
+          };
+          this._scene = apply(this._scene, reparentPatch);
+          current = withParent;
+        }
+        tx.add({ kind: "shape", id: shape.id, before: null, after: current });
+        tx.commit();
+      },
+      cancel: () => {
+        const removeRes = removeShape(this._scene, shape.id);
+        this._scene = removeRes.scene;
+        tx.cancel();
+        this._selection = Selection.EMPTY;
+        this.notify();
+      },
     };
-   }
   }
-  // Group-handle overlay: multi-selection OR a single group-typed
-  // shape. Aspect-locked groups also flag the overlay so it draws
-  // only the four corner handles.
-  if (this._selection.size > 1 || this.selectionIsAspectLocked()) {
-   const combined = this.combinedSelectionBounds();
-   if (combined) overlayOpts.groupBounds = combined;
-   if (this.selectionIsAspectLocked()) overlayOpts.groupAspectLocked = true;
+
+  // Pure body in `./editor/public/selection-ops.ts`.
+  deleteSelected(): void {
+    const result = computeDeleteSelection(this._scene, this._selection, this._selectedEdge);
+    if (!result) return;
+    const tx = this._history.transaction();
+    this._scene = result.scene;
+    for (const patch of result.patches) tx.add(patch);
+    tx.commit();
+    this._selection = Selection.EMPTY;
+    this._selectedEdge = null;
+    this.notify();
   }
-  if (this.containerHover) {
-   overlayOpts.containerDropZone = this.containerHover.dropZone;
+
+  // --- Inline text editing ---
+
+  /**
+   * Currently edited text shape (or null). Set by `beginTextEdit`;
+   * cleared by `commitTextEdit` / `cancelTextEdit`. The host overlay
+   * (`<TextEditorOverlay>` in `@react-ui`) subscribes via `editor`
+   * and renders a `<textarea>` positioned over the shape.
+   */
+  private _editingTextShape: ShapeId | null = null;
+  get editingTextShape(): ShapeId | null {
+    return this._editingTextShape;
   }
-  if (this.brushStroke) {
-   overlayOpts.brushPreview = {
-    origin: this.brushStroke.origin,
-    points: this.brushStroke.points,
-    fill: "#222",
-   };
+
+  /**
+   * Begin editing a text shape's body. No-op when the shape doesn't
+   * exist or isn't a text shape. Concurrent edits cancel themselves
+   * (only one shape at a time).
+   */
+  // Pure bodies in `./editor/public/text-edit.ts`.
+  beginTextEdit(id: ShapeId): void {
+    if (!canBeginTextEdit(this._scene, id, (lid) => this.isLayerLocked(lid))) return;
+    this._editingTextShape = id;
+    this.notify();
   }
-  if (this._selectedEdge) {
-   const edge = getEdge(this._scene, this._selectedEdge);
-   if (edge) {
-    const path = getEdgePath(this._scene, edge);
-    if (path && path.length >= 2) {
-     // Endpoints in their stored positions; the dragged side jumps to
-     // the cursor so the user sees where the rebind will land. The
-     // edge itself stays on its old path until release.
-     let from = path[0]!;
-     let to = path[path.length - 1]!;
-     if (this.edgeEndpointDrag?.edgeId === this._selectedEdge) {
-      if (this.edgeEndpointDrag.side === "from") from = this.edgeEndpointDrag.toPoint;
-      else to = this.edgeEndpointDrag.toPoint;
-     }
-     overlayOpts.edgeSelection = { from, to };
+  commitTextEdit(next: string): void {
+    const id = this._editingTextShape;
+    if (!id) return;
+    const result = computeCommitTextEdit(this._scene, id, next);
+    if (!result) {
+      this._editingTextShape = null;
+      this.notify();
+      return;
     }
-   }
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this._editingTextShape = null;
+    this.notify();
   }
-  if (this._peerCursors.length > 0) overlayOpts.peerCursors = this._peerCursors;
-  if (this._peerSelections.length > 0) overlayOpts.peerSelections = this._peerSelections;
-  if (this._scene.annotations.size > 0) {
-   overlayOpts.annotations = [...this._scene.annotations.values()];
-   overlayOpts.selectedAnnotation = this._selectedAnnotation;
+  cancelTextEdit(): void {
+    if (this._editingTextShape === null) return;
+    this._editingTextShape = null;
+    this.notify();
   }
-  renderOverlay(this._scene, this._selection, this.overlayTarget, overlayOpts);
- }
+
+  /**
+   * Translate every selected shape by the given world-space delta.
+   * Single undo step. No-op when selection is empty. Used by arrow-key
+   * keyboard navigation; hosts pass `{ x: 1, y: 0 }` for fine nudge
+   * and `{ x: 10, y: 0 }` for shift-arrow.
+   */
+  // Pure body in `./editor/public/selection-ops.ts`.
+  moveSelectionBy(delta: Vec2): void {
+    if (this._selection.size === 0) return;
+    const targets = this.expandSelectionWithDescendants();
+    const result = computeMoveSelectionBy(this._scene, targets, delta, (lid) =>
+      this.isLayerLocked(lid),
+    );
+    if (!result) return;
+    const tx = this._history.transaction();
+    this._scene = result.scene;
+    for (const patch of result.patches) tx.add(patch);
+    tx.commit();
+    this.notify();
+    this.announce(describeNudgePure(delta, result.moved));
+  }
+
+  /**
+   * Keyboard-friendly creation flow. Picks the shape type from the
+   * current `mode` ("draw-rect" / "draw-ellipse" / fallback to
+   * rectangle) and inserts a sensible default-sized shape at the
+   * viewport center. Returns the new shape's id, or `null` when the
+   * scene has no active layer.
+   *
+   * Hosts can bind this to "Enter" while in a draw mode, providing a
+   * mouse-free alternative to drag-out creation.
+   */
+  createShapeAtCursor(): ShapeId | null {
+    const vp = this._scene.viewport;
+    const cssCenter: Vec2 = {
+      x: (vp.size.width || 200) / 2,
+      y: (vp.size.height || 200) / 2,
+    };
+    const world = this.screenToWorld(cssCenter);
+    const id = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
+    const order = orderForTop(
+      [...this._scene.shapes.values()]
+        .filter((s) => s.layerId === this._activeLayerId)
+        .map((s) => s.order),
+    );
+    const currentMode = this.mode;
+    const type: Shape["type"] =
+      currentMode === "draw-ellipse" ? "ellipse" : "rectangle";
+    const width = 120;
+    const height = 80;
+    const shape: Shape = {
+      id,
+      layerId: this._activeLayerId,
+      type,
+      position: { x: world.x - width / 2, y: world.y - height / 2 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order,
+      style: { fill: "#bbb", stroke: "#000", strokeWidth: 1 },
+      width,
+      height,
+    } as Shape;
+    const r = addShape(this._scene, shape);
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this._selection = Selection.single(id);
+    this.notify();
+    this.announce(`Created ${type} ${id}`);
+    return id;
+  }
+
+  // Pure bodies in `./editor/public/brush.ts`.
+  beginBrushStroke(world: Vec2, pressure = 0.5): void {
+    this.brushStroke = beginBrushStrokePure(world, pressure);
+    this.notify();
+  }
+  extendBrushStroke(world: Vec2, pressure = 0.5): void {
+    if (!this.brushStroke) return;
+    extendBrushStrokePure(this.brushStroke, world, pressure);
+    this.notify();
+  }
+  commitBrushStroke(): ShapeId | null {
+    const result = commitBrushStrokePure(
+      this._scene,
+      this.brushStroke,
+      this._activeLayerId,
+      newBrushId(++this.nextId),
+    );
+    if (!result) {
+      this.brushStroke = null;
+      this.notify();
+      return null;
+    }
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.brushStroke = null;
+    this.notify();
+    return result.shapeId;
+  }
+  cancelBrushStroke(): void {
+    if (!this.brushStroke) return;
+    this.brushStroke = null;
+    this.notify();
+  }
+
+  /** Current in-progress brush stroke, exposed for the overlay preview. */
+  get pendingBrushStroke(): { readonly origin: Vec2; readonly points: readonly BrushPoint[] } | null {
+    return this.brushStroke;
+  }
+
+  // Pure bodies in `./editor/public/arrange-group.ts`.
+  arrangeAsGrid(opts: { cols?: number; gap?: number } = {}): void {
+    const origin = this.combinedSelectionBounds() ?? { x: 0, y: 0 };
+    const result = computeArrangeAsGrid(this._scene, this._selection, opts, origin);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+    this.announce(`Arranged ${result.count} shapes on a ${result.cols}-column grid`);
+  }
+  arrangeAsStack(opts: { direction?: "horizontal" | "vertical"; gap?: number } = {}): void {
+    const origin = this.combinedSelectionBounds() ?? { x: 0, y: 0 };
+    const result = computeArrangeAsStack(this._scene, this._selection, opts, origin);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+    this.announce(`Stacked ${result.count} shapes ${result.direction}`);
+  }
+  groupSelected(): GroupSelectedResult {
+    const result = computeGroupSelected(
+      this._scene,
+      this._selection,
+      newGroupShapeId(++this.nextId),
+    );
+    if (!result) return { kind: "noop" };
+    const tx = this._history.transaction();
+    this._scene = result.scene;
+    for (const patch of result.patches) tx.add(patch);
+    tx.commit();
+    this._selection = Selection.single(result.groupId);
+    this.notify();
+    return { kind: "grouped", groupId: result.groupId };
+  }
+  ungroup(): void {
+    const result = computeUngroup(this._scene, this._selection);
+    if (!result) return;
+    const tx = this._history.transaction();
+    this._scene = result.scene;
+    for (const patch of result.patches) tx.add(patch);
+    tx.commit();
+    this._selection = new Set(result.nextSelection);
+    this.notify();
+  }
+  private selectionRoots(): readonly Shape[] {
+    return selectionRoots(this._scene, this._selection);
+  }
+  private expandSelectionWithDescendants(): ReadonlySet<ShapeId> {
+    return expandSelectionWithDescendants(this._scene, this._selection);
+  }
+  focusCycle(direction: "next" | "prev"): void {
+    const current = [...this._selection][0];
+    const result = pickFocusCycle(this._scene, current, direction);
+    if (!result) return;
+    this._selection = Selection.single(result.id);
+    this.notify();
+    this.announce(`Selected ${result.name}`);
+  }
+
+  /**
+   * Clear selection + cancel any in-progress drag / draw gesture.
+   * Bound to Escape in default keyboard nav.
+   */
+  cancelInteraction(): void {
+    if (this.gestureTx) {
+      this.gestureTx.cancel();
+      this.gestureTx = null;
+    }
+    this.actor.send({ type: "POINTER_CANCEL" });
+    this.drawingPreview = null;
+    this.edgePreview = null;
+    this.lassoPreview = null;
+    // Esc exits group-isolation if active. The selection that was
+    // active inside the group is dropped (Esc reads as a full
+    // "back out" — selecting the group is a separate gesture).
+    if (this._enteredGroup !== null) {
+      this._enteredGroup = null;
+    }
+    this._selection = Selection.EMPTY;
+    this._selectedEdge = null;
+    this.notify();
+    this.announce("Selection cleared");
+  }
+
+  /**
+   * Duplicate the selected shapes 10 px down-right of the originals.
+   * Links between selected shapes are NOT cloned. They break cleanly.
+   */
+  // Pure body in `./editor/public/selection-ops.ts`.
+  duplicateSelected(): void {
+    const result = computeDuplicateSelection(this._scene, this._selection, () => ++this.nextId);
+    if (!result) return;
+    const tx = this._history.transaction();
+    this._scene = result.scene;
+    for (const patch of result.patches) tx.add(patch);
+    tx.commit();
+    if (result.newIds.length > 0) {
+      this._selection = selectionFromNewIds(result.newIds);
+    }
+    this.notify();
+  }
+  setSelection(ids: Iterable<ShapeId>): void {
+    const next = computeSetSelection(this._scene, ids, this._selection);
+    if (!next) return;
+    this._selection = next;
+    if (this._selectedEdge !== null) this._selectedEdge = null;
+    this.notify();
+  }
+  selectAll(): void {
+    const next = computeSelectAll(this._scene, this._selection);
+    if (!next) return;
+    this._selection = next;
+    this.notify();
+    this.announce(`Selected ${next.size} shapes`);
+  }
+
+  /**
+   * Internal clipboard. Stored as deep-cloned snapshots so subsequent
+   * mutations don't affect the buffer. Survives across editor calls
+   * within the same session; cross-tab paste uses host-level
+   * `navigator.clipboard` (out of scope for the editor).
+   */
+  private clipboard: Shape[] = [];
+
+  // Pure body in `./editor/public/clipboard.ts`.
+  copySelected(): void {
+    const out = copySelectedPure(this._scene, this._selection);
+    if (out.length === 0) return;
+    this.clipboard = [...out];
+    this.announce(`Copied ${out.length} shapes`);
+  }
+
+  cutSelected(): void {
+    this.copySelected();
+    this.deleteSelected();
+  }
+
+  /**
+   * Paste clipboard contents into the scene. The cluster lands so that
+   * its centroid sits at `targetWorld` (defaults to the last tracked
+   * cursor position; when even that is unavailable, falls back to a
+   * +10 px nudge so duplicates remain visible). Relative offsets
+   * between clipboard items are preserved.
+   *
+   * New shapes get fresh ids and end up selected. Single undo step.
+   */
+  // Pure body in `./editor/public/clipboard.ts`.
+  paste(targetWorld?: Vec2): void {
+    if (this.clipboard.length === 0) return;
+    // Defensive: if a gesture is mid-flight (drag / resize) the
+    // gestureTx is still open and a fresh `transaction()` inside
+    // pasteShapes would throw. Reasonable behaviour for a user
+    // pressing Cmd+V mid-gesture is "commit what you have and
+    // paste on top", so close the gesture first.
+    this.finalizeOpenGestureTx();
+    const target = targetWorld ?? this.lastPointerWorld;
+    const result = pasteFromClipboard(
+      this._scene,
+      this._history,
+      this.clipboard,
+      target ?? null,
+      () => ++this.nextId,
+    );
+    this._scene = result.scene;
+    this._selection = selectionFromPasted(result.newIds);
+    this.notify();
+    this.announce(`Pasted ${result.newIds.length} shapes`);
+  }
+
+  /**
+   * Merge `partial` into the `style` of every shape in `ids`. Useful
+   * for the inspector / PropertyPanel: flipping `roundness`, swapping
+   * `lineJoin`, changing `stroke` colour across a multi-selection,
+   * etc. All changes go through one history record (single undo).
+   *
+   * No-op when `ids` is empty or none of the targeted shapes exist.
+   */
+  // Pure body in `./editor/public/selection-ops.ts`.
+  updateStyle(ids: Iterable<ShapeId>, partial: Partial<Style>): void {
+    const result = computeUpdateStyle(this._scene, ids, partial);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  // Pure bodies in `./editor/public/z-order.ts`.
+  bringToFront(id?: ShapeId): void {
+    const result = computeBringToFront(this._scene, id, this._selection);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+  sendToBack(id?: ShapeId): void {
+    const result = computeSendToBack(this._scene, id, this._selection);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+  compactLayerZOrder(
+    layerId?: LayerId,
+    options: { recordHistory?: boolean } = {},
+  ): void {
+    const recordHistory = options.recordHistory ?? true;
+    const layerIds: readonly LayerId[] = layerId ? [layerId] : [...this._scene.layers.keys()];
+    const tx = recordHistory ? this._history.transaction() : null;
+    const touched = compactLayerZOrderPatches(this._scene, layerIds, (nextScene, patch) => {
+      this._scene = nextScene;
+      tx?.add(patch);
+    });
+    if (touched === 0) {
+      tx?.cancel();
+      return;
+    }
+    tx?.commit();
+    this.notify();
+    if (recordHistory) {
+      this.announce(`Compacted z-order across ${layerIds.length} layer(s)`);
+    }
+  }
+
+  /**
+   * Wipe every shape + edge from the scene. Layers and viewport survive.
+   * Clears history — restoring an empty scene through undo would be
+   * surprising and the operation is rarely chained with other edits.
+   */
+  clear(): void {
+    if (this._scene.shapes.size === 0 && this._scene.edges.size === 0) return;
+    this._scene = {
+      ...this._scene,
+      shapes: new Map(),
+      edges: new Map(),
+    };
+    this._selection = Selection.EMPTY;
+    this._selectedEdge = null;
+    this._history.clear();
+    this.notify();
+  }
+
+  // --- Layer commands ---
+
+  /** Currently active layer — new shapes default into it. */
+  get activeLayerId(): LayerId {
+    return this._activeLayerId;
+  }
+
+  /** Switch the active layer. Hosts call this from a layer panel click. */
+  setActiveLayer(id: LayerId): void {
+    if (!this._scene.layers.has(id)) return;
+    if (this._activeLayerId === id) return;
+    this._activeLayerId = id;
+    this.notify();
+  }
+
+  // Pure bodies in `./editor/public/layers.ts`.
+  createLayer(name: string): LayerId {
+    const result = computeCreateLayer(this._scene, name, newLayerId(++this.nextId));
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this._activeLayerId = result.layerId;
+    this.notify();
+    return result.layerId;
+  }
+
+  removeLayer(id: LayerId): void {
+    const result = computeRemoveLayer(this._scene, id, this._activeLayerId);
+    if (!result) return;
+    const tx = this._history.transaction();
+    this._scene = result.scene;
+    for (const patch of result.patches) tx.add(patch);
+    tx.commit();
+    this._activeLayerId = result.nextActiveLayerId;
+    this._selection = Selection.EMPTY;
+    this.notify();
+  }
+
+  renameLayer(id: LayerId, name: string): void {
+    const result = computeRenameLayer(this._scene, id, name);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  toggleLayerVisibility(id: LayerId): void {
+    const result = computeToggleLayerVisibility(this._scene, id);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  toggleLayerLock(id: LayerId): void {
+    const result = computeToggleLayerLock(this._scene, id);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  moveSelectionToLayer(targetLayer: LayerId): void {
+    const result = computeMoveSelectionToLayer(this._scene, this._selection, targetLayer);
+    if (!result) return;
+    const tx = this._history.transaction();
+    this._scene = result.scene;
+    for (const patch of result.patches) tx.add(patch);
+    tx.commit();
+    this.notify();
+  }
+
+  // --- Viewport commands ---
+
+  /**
+   * Pan the camera by a screen-space delta. Drives both wheel-pan and
+   * the two-finger pan gesture; deltas are in screen pixels (positive
+   * x → shapes move right relative to the user). Not recorded in
+   * history — viewport state is editor-local.
+   */
+  // Pure bodies in `./editor/public/zoom-pan.ts`.
+  panBy(deltaScreen: Vec2): void {
+    const next = computePan(this._scene, deltaScreen);
+    if (!next) return;
+    this._scene = next;
+    this.notify();
+  }
+  zoomIn(): void {
+    this.zoomStep(WHEEL_ZOOM_STEP);
+  }
+  zoomOut(): void {
+    this.zoomStep(1 / WHEEL_ZOOM_STEP);
+  }
+  private zoomStep(factor: number): void {
+    const vp = this._scene.viewport;
+    if (vp.size.width <= 0 || vp.size.height <= 0) return;
+    const center = this.screenToWorld({ x: vp.size.width / 2, y: vp.size.height / 2 });
+    this.zoomAt(factor, center);
+  }
+  resetZoom(): void {
+    const next = computeResetZoom(this._scene);
+    if (!next) return;
+    this._scene = next;
+    this.notify();
+  }
+  zoomToFit(padding = 40): void {
+    const next = computeZoomToFit(this._scene, padding);
+    if (!next) return;
+    this._scene = next;
+    this.notify();
+  }
+  zoomAt(factor: number, anchorWorld: Vec2): void {
+    const next = computeZoomAt(this._scene, factor, anchorWorld);
+    if (!next) return;
+    this._scene = next;
+    this.notify();
+  }
+  setViewportSize(width: number, height: number): void {
+    const next = computeViewportResize(this._scene, width, height);
+    if (!next) return;
+    this._scene = next;
+    this.notify();
+  }
+  setGrid(patch: { size?: number; style?: import("@oh-just-another/scene").GridStyle }): void {
+    const next = computeSetGrid(this._scene, patch);
+    if (!next) return;
+    this._scene = next;
+    this.notify();
+  }
+
+  /**
+   * Replace the entire scene (e.g. after `parseScene`). Clears history,
+   * selection and any open gesture. Use to load a saved document.
+   */
+  loadScene(scene: Scene, options: LoadSceneOptions = {}): void {
+    if (this.gestureTx) {
+      this.gestureTx.cancel();
+      this.gestureTx = null;
+    }
+    this._scene = scene;
+    // Snap active layer back into the loaded scene's layer set.
+    if (!scene.layers.has(this._activeLayerId)) {
+      const first = scene.layers.keys().next().value;
+      this._activeLayerId = first ?? castLayerId(DEFAULT_LAYER_ID);
+    }
+    if (options.preserveHistory) {
+      // Used by collab when a peer update arrives — the local user's
+      // undo stack must survive remote edits. Drop selection entries
+      // that no longer point to existing shapes; the rest of the stack
+      // stays untouched (patches that reference removed shapes will
+      // throw on `apply` and need user-visible recovery later).
+      this.pruneSelection();
+    } else {
+      this._selection = Selection.EMPTY;
+      this._history.clear();
+    }
+    this.notify();
+    // Loaded scene may carry animated shapes (e.g. GIF re-imported
+    // from saved JSON). Re-arm the tick — the runtime <img>
+    // element won't survive serialisation, but `metadata.animated`
+    // does, so hosts that want animation back will need to re-supply
+    // the image element (or just have the renderer re-decode `src`).
+    if (this.hasAnimatedShape()) this.animationTick.start();
+  }
+
+  /** Detach all DOM listeners and stop the actor. */
+  dispose(): void {
+    this.cancelLongPress();
+    this.unbind();
+    this.actor.stop();
+    this.listeners.clear();
+    this.cursorListeners.clear();
+    this.longPressListeners.clear();
+    this.announceListeners.clear();
+    this.animationTick.stop();
+  }
+
+  // --- Internal ---
+
+  // Body moved to `./editor/pointer-binding.ts` (~700 lines of
+  // pointer / wheel / keyboard dispatch). The thin wrapper here
+  // preserves the original constructor call site.
+  private bindPointerEvents(): () => void {
+    return bindPointerEventsExternal(this);
+  }
+
+  /**
+   * Open a pan gesture: capture the pointer so subsequent move / up
+   * events arrive even outside the host bounds, cancel anything the
+   * machine might have started this tick, and switch the cursor.
+   */
+  private beginPanGesture(pointerId: number, button: number, point: Vec2): void {
+    this.actor.send({ type: "POINTER_CANCEL" });
+    this.cancelGesture();
+    this.cancelLongPress();
+    this.host.setPointerCapture(pointerId);
+    this.panGesture = {
+      pointerId,
+      button,
+      startPoint: point,
+      lastPoint: point,
+      moved: false,
+    };
+    if (this.previousHostCursor === null) {
+      this.previousHostCursor = this.host.style.cursor;
+    }
+    this.host.style.cursor = "grabbing";
+  }
+
+  /**
+   * End an in-progress pan gesture. Restores the cursor unless Space
+   * is still held (then we drop back to "grab" so the user knows
+   * another drag is armed). For right-click that didn't move past
+   * the slop threshold, fires the long-press callback so the context
+   * menu opens at the click position — that's the "right-click =
+   * menu, right-drag = pan" decision rule.
+   */
+  private endPanGesture(): void {
+    const gesture = this.panGesture;
+    this.panGesture = null;
+    if (gesture && (gesture.button === 2 || gesture.button === 1) && !gesture.moved) {
+      // Right-click without drag → trigger the context-menu listeners.
+      // Same payload as touch long-press so existing UI (e.g.
+      // `@react-ui/ContextMenu`) works without changes.
+      const worldPoint = this.screenToWorld(gesture.startPoint);
+      for (const fn of this.longPressListeners) {
+        fn({ screenPoint: gesture.startPoint, worldPoint });
+      }
+    } else {
+      // Either it was a real drag, or Space + left drag. In both
+      // cases we DO want to keep the native context menu suppressed
+      // until the upcoming `contextmenu` event lands (Chrome fires
+      // it after pointerup on right button).
+    }
+    if (this.spaceHeld) {
+      this.host.style.cursor = "grab";
+      return;
+    }
+    if (this.previousHostCursor !== null) {
+      this.host.style.cursor = this.previousHostCursor;
+      this.previousHostCursor = null;
+    }
+  }
+
+  private isDrawingPhase(ctx: InteractionContext): boolean {
+    return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse" || ctx.mode === "draw-edge";
+  }
+
+  // --- Long-press --- (controller in `./editor/long-press.ts`)
+
+  private startLongPress(screenPoint: Vec2): void {
+    this.longPress.start(screenPoint);
+  }
+  private cancelLongPress(): void {
+    this.longPress.cancel();
+  }
+
+  // --- Pinch gesture --- (controller in `./editor/pinch.ts`)
+  private beginPinch(): void {
+    this.pinch.begin([...this.activePointers.values()]);
+  }
+  private applyPinch(): void {
+    this.pinch.apply([...this.activePointers.values()]);
+  }
+
+  /**
+   * Convert a point in the host element's CSS-pixel coordinate space into
+   * world coordinates. Public so drop handlers (drag-from-palette, paste)
+   * can map pointer positions back to scene space.
+   */
+  screenToWorld(point: Vec2): Vec2 {
+    return matrix.applyToPoint(getScreenToWorld(this._scene.viewport), point);
+  }
+
+  // Pure body in `./editor/hit-test.ts`. Editor passes a narrow
+  // context bundle that closes over its private state + accel
+  // helpers (acceleratedShapeAt, isShapeInteractable, …).
+  private hitTest(worldPoint: Vec2): PressTarget {
+    return pickPressTarget(worldPoint, {
+      scene: this._scene,
+      selection: this._selection,
+      selectedEdge: this._selectedEdge,
+      enteredGroup: this._enteredGroup,
+      handleHitSlop: this.handleHitSlop,
+      edgeHandleHitSlop: this.edgeHandleHitSlop,
+      edgeHitThreshold: this.edgeHitThreshold,
+      hitAnnotation: (p) => this.hitAnnotation(p),
+      selectionIsAspectLocked: () => this.selectionIsAspectLocked(),
+      combinedSelectionBounds: () => this.combinedSelectionBounds(),
+      acceleratedShapeAt: (p) => this.acceleratedShapeAt(p),
+      isShapeInteractable: (s) => this.isShapeInteractable(s),
+      isLayerLocked: (id) => this.isLayerLocked(id),
+      promoteToGroupRoot: (s) => this.promoteToGroupRoot(s),
+    });
+  }
+
+  /** True when the given layer exists and is marked `locked`. */
+  private isLayerLocked(layerId: LayerId): boolean {
+    const layer = this._scene.layers.get(layerId);
+    return layer?.locked === true;
+  }
+
+  /**
+   * Combined interactivity check: false when the shape's layer is
+   * locked, or when the shape itself or any ancestor via `parentId`
+   * carries `locked: true` (group lock propagation). Hit-test treats
+   * non-interactable hits as misses; render still draws them so the
+   * user can see what's locked.
+   */
+  private isShapeInteractable(shape: Shape): boolean {
+    if (this.isLayerLocked(shape.layerId)) return false;
+    if (isShapeLocked(this._scene, shape)) return false;
+    if (isShapeHidden(this._scene, shape)) return false;
+    return true;
+  }
+
+  /**
+   * Promote a hit shape to the topmost ancestor whose group we have NOT
+   * "entered" yet. Only **`group`**-typed parents promote — containers
+   * (swim-lane, frame) intentionally let click hits land on their
+   * children. Group is an abstract wrapper that has no visual identity,
+   * so promoting up to it is the only way to select it; a container has
+   * its own body, header, etc. and clicking inside it should let users
+   * pick the actual child shape (rectangle, sticky, …) — same affordance
+   * as standard.
+   *
+   * Stops at the first non-`group` parent. With `_enteredGroup` set,
+   * the walk also stops just below that group so children can be edited
+   * directly.
+   */
+  private promoteToGroupRoot(shape: Shape): Shape {
+    return promoteToGroupRootHelper(this._scene, shape, this._enteredGroup);
+  }
+
+  /**
+   * Topmost group ancestor of `shape` (walks parentId chain, returns
+   * the highest `type === "group"` parent). `null` if `shape` has no
+   * group ancestor. Used by drill-down: a double-click on a shape
+   * with a group ancestor enters that group. Body extracted to
+   * `./group-helpers.ts`.
+   */
+  private topGroupAncestor(shape: Shape): Shape | null {
+    return topGroupAncestorHelper(this._scene, shape);
+  }
+
+  /**
+   * True when `shapeId`'s parent chain contains `groupId`. Used by the
+   * isolation exit path: a click on a shape whose parent chain *does
+   * not* lead through the entered group is a click "outside" the
+   * group, which exits isolation.
+   */
+  private isDescendantOfGroup(shapeId: ShapeId, groupId: ShapeId): boolean {
+    return isDescendantOfGroupHelper(this._scene, shapeId, groupId);
+  }
+
+  /**
+   * Compute the dim set for isolation rendering: every shape whose
+   * parent chain does NOT pass through `enteredGroupId`. The entered
+   * group itself is treated as "inside" (returns true from
+   * isDescendantOfGroup) so it stays at full alpha — but groups have
+   * no intrinsic geometry, so this only matters for the
+   * group-bounds-outline overlay path, not the shape render.
+   *
+   * Defensive: shapes in the current selection are never dimmed. The
+   * focus shape (drilled-into child) is always a group descendant in
+   * practice, but the guard keeps the contract simple — "what you've
+   * selected, you can see".
+   */
+  // Body moved to `./editor/shape-filters.ts`.
+  private computeHiddenShapes(): ReadonlySet<ShapeId> | undefined {
+    return computeHiddenShapesPure(this._scene);
+  }
+
+  private computeDimShapes(enteredGroupId: ShapeId): ReadonlySet<ShapeId> {
+    return computeDimShapesHelper(this._scene, this._selection, enteredGroupId);
+  }
+
+  /**
+   * Enter a group — subsequent hits inside this group return children
+   * directly instead of the group root. `null` exits group-edit mode.
+   * Bound to double-click on a group in the default handler.
+   */
+  enterGroup(groupId: ShapeId | null): void {
+    this._enteredGroup = groupId;
+    this.notify();
+  }
+
+  /** Currently "entered" group, if any. */
+  get enteredGroup(): ShapeId | null {
+    return this._enteredGroup;
+  }
+
+  /**
+   * SpatialGrid-accelerated topmost-shape lookup. Linear scan for small
+   * scenes; for larger scenes builds a grid lazily, keyed by current 
+   * scene-identity. Scene operations replace `_scene` (immutable patches), 
+   * so reference-equality is a sufficient invalidation signal.
+   */
+  private acceleratedShapeAt(worldPoint: Vec2): Shape | undefined {
+    if (this._scene.shapes.size < LARGE_SCENE_HIT_THRESHOLD) {
+      return getShapeAt(this._scene, worldPoint);
+    }
+    return getShapeAtIndexed(this._scene, this.ensureSpatialIndex(), worldPoint);
+  }
+
+  /**
+   * Build (or return the cached) `SpatialGrid` for the current scene.
+   * Re-built only when `_scene` reference changes — scene operations
+   * always produce a fresh object, so reference equality is a
+   * sufficient invalidation signal.
+   *
+   * Shared between the hit-test path (`acceleratedShapeAt`) and the
+   * renderer pass (passed to `renderScene` as `spatialIndex`), so
+   * the grid build cost is amortised across both consumers.
+   */
+  private ensureSpatialIndex(): SpatialGrid {
+    const cached = this.spatialIndexCache;
+    if (cached && cached.scene === this._scene) return cached.index;
+    const index = buildSpatialIndex(this._scene);
+    this.spatialIndexCache = { scene: this._scene, index };
+    return index;
+  }
+
+  /**
+   * Group-isolation click routing. Returns `true` if the click was
+   * handled (caller should skip the default applyEmit), `false` if the
+   * normal selection emit should still run.
+   *
+   * Three paths fire here:
+   *   1. **Double-click on a grouped shape (not yet in isolation):**
+   *      enter that group; select the raw inner shape (bypassing the
+   *      group-root promotion that ran in hitTest).
+   *   2. **Inside isolation, click on a non-descendant shape OR empty
+   *      space:** exit isolation. Let the normal click then run so the
+   *      newly clicked element / empty selection takes hold.
+   *   3. **Inside isolation, double-click on the entered group's own
+   *      child group:** drill another level deeper. (Implicit: same as
+   *      case 1 but topGroupAncestor here returns the inner child
+   *      group because the outer group is already entered.)
+   *
+   * Side-effect: updates `lastClickAt` / `lastClickWorldPoint`
+   * regardless of result, so subsequent calls can detect a double-
+   * click against this event.
+   */
+  private routeIsolationClick(
+    clickEffect: InteractionEmit | null,
+    worldPoint: Vec2,
+  ): boolean {
+    const now = performance.now();
+    const isDouble =
+      now - this.lastClickAt < DOUBLE_CLICK_MS &&
+      this.lastClickWorldPoint !== null &&
+      distanceTo(this.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX;
+    this.lastClickAt = now;
+    this.lastClickWorldPoint = worldPoint;
+
+    if (!clickEffect) return false;
+
+    // Click outside the entered group while in isolation → exit; let
+    // the normal click effect run after.
+    if (this._enteredGroup !== null) {
+      const targetId =
+        clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE"
+          ? clickEffect.id
+          : null;
+      const stillInside =
+        targetId !== null && this.isDescendantOfGroup(targetId, this._enteredGroup);
+      if (!stillInside) {
+        this._enteredGroup = null;
+        this.notify();
+        // Fall through — apply the normal click effect (caller).
+        return false;
+      }
+    }
+
+    // Double-click handling for SELECT_REPLACE / SELECT_TOGGLE
+    // effects. Two outcomes, in priority order:
+    //   1) text shape → open inline text editor (highest priority —
+    //      double-clicking text in any editor means "edit the body");
+    //   2) shape with a group ancestor → drill into that group.
+    // Lasso / edge ops are not double-click candidates and fall
+    // through to the normal single-click handler.
+    if (isDouble && (clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE")) {
+      const raw = this.acceleratedShapeAt(worldPoint);
+      if (raw?.type === "text") {
+        this.beginTextEdit(raw.id);
+        return true;
+      }
+      if (raw) {
+        const top = this.topGroupAncestor(raw);
+        // If the topmost group is the one we've already entered, drill
+        // one level deeper — pick the next-down group on the chain.
+        const target = this.pickDrillTarget(raw, top);
+        if (target) {
+          this._enteredGroup = target.id;
+          this._selection = Selection.single(raw.id);
+          if (this._selectedEdge !== null) this._selectedEdge = null;
+          this.notify();
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Given the raw shape under the cursor and its topmost group
+   * ancestor, pick which group to "enter" on a drill-down.
+   *
+   * - No group ancestor → null (drill-down doesn't apply).
+   * - Top group not yet entered → enter top.
+   * - Top group already entered → walk down the chain to find the
+   *   next group inward (one level deeper).
+   */
+  private pickDrillTarget(raw: Shape, top: Shape | null): Shape | null {
+    return pickDrillTargetHelper(this._scene, raw, top, this._enteredGroup);
+  }
+
+  private applyEmit(emit: InteractionEmit): void {
+    switch (emit.type) {
+      case "SELECT_REPLACE":
+        this._selection = Selection.single(emit.id);
+        if (this._selectedEdge !== null) this._selectedEdge = null;
+        this.notify();
+        return;
+      case "SELECT_TOGGLE":
+        this._selection = Selection.toggle(this._selection, emit.id);
+        if (this._selectedEdge !== null) this._selectedEdge = null;
+        this.notify();
+        return;
+      case "SELECT_CLEAR":
+        this._selection = Selection.EMPTY;
+        if (this._selectedEdge !== null) this._selectedEdge = null;
+        this.notify();
+        return;
+      case "SELECT_EDGE_REPLACE":
+        this._selectedEdge = emit.id;
+        this._selection = Selection.EMPTY;
+        this.notify();
+        return;
+      case "SELECT_EDGE_CLEAR":
+        if (this._selectedEdge !== null) {
+          this._selectedEdge = null;
+          this.notify();
+        }
+        return;
+      case "UPDATE_EDGE_ENDPOINT_PREVIEW":
+        this.edgeEndpointDrag = {
+          edgeId: emit.edgeId,
+          side: emit.side,
+          toPoint: emit.toPoint,
+        };
+        this.notify();
+        return;
+      case "UPDATE_EDGE_ENDPOINT":
+        this.applyEdgeEndpointUpdate(emit);
+        return;
+      case "LASSO_PROGRESS":
+        // Capture the pre-lasso selection on the first progress emit
+        // of a gesture; subsequent emits use it as the additive base.
+        if (this.lassoBaseSelection === null) {
+          this.lassoBaseSelection = this._selection;
+        }
+        this.lassoPreview = emit.bounds;
+        this.applyLassoLiveSelection(emit.bounds, emit.mode);
+        this.notify();
+        return;
+      case "LASSO_CLEAR":
+        if (this.lassoPreview !== null || this.lassoBaseSelection !== null) {
+          this.lassoPreview = null;
+          this.lassoBaseSelection = null;
+          this.notify();
+        }
+        return;
+      case "SELECT_BY_BOUNDS":
+        // Final commit — uses the same logic as the live preview so
+        // the visible selection matches what lands. Reset the base
+        // snapshot so the next gesture re-captures it.
+        this.lassoBaseSelection = null;
+        this.applySelectByBounds(emit.bounds, emit.mode);
+        return;
+      case "MOVE_SHAPE":
+        if (this.groupMoveOrigin) {
+          this.applyGroupMove(emit.delta);
+        } else {
+          this.applyMove(emit.id, emit.delta, emit.originalBounds);
+        }
+        return;
+      case "RESIZE_GROUP":
+        this.applyGroupResize(emit.handle, emit.delta, emit.originalBounds);
+        return;
+      case "RESIZE_SHAPE":
+        this.applyResize(emit.id, emit.handle, emit.delta, emit.originalBounds);
+        return;
+      case "CREATE_SHAPE":
+        this.applyCreate(emit.shapeType, emit.bounds);
+        return;
+      case "CREATE_EDGE":
+        this.applyCreateEdge(emit);
+        return;
+      case "DRAW_EDGE_PREVIEW":
+        this.applyEdgePreview(emit.fromShape, emit.fromPoint, emit.toPoint);
+        return;
+      case "DRAW_EDGE_PREVIEW_CLEAR":
+        if (this.edgePreview) {
+          this.edgePreview = null;
+          this.notify();
+        }
+        return;
+      case "TEMPLATE_TAP":
+        // Forward to subscribers via a custom listener path.
+        for (const fn of this.templateTapListeners) fn(emit);
+        return;
+      case "TEMPLATE_DROP":
+        for (const fn of this.templateDropListeners) fn(emit);
+        return;
+      case "MOVE_ANNOTATION":
+        this.applyAnnotationMove(emit.id, emit.delta, emit.originalPosition);
+        return;
+      case "COMMIT_ANNOTATION_DRAG":
+        this.finalizeOpenGestureTx();
+        return;
+    }
+  }
+
+  /**
+   * Drag handler for annotation pins. Moves the pin to
+   * `origin + delta`. Anchor semantics: for shape-anchored
+   * annotations the `position` field is shape-local, so dragging
+   * still updates the same field — the editor doesn't try to
+   * reparent the anchor mid-drag; user wants the pin under the
+   * cursor and that's exactly what `position + (delta in world)`
+   * gives, regardless of which space the position is interpreted
+   * in (`getAnnotationWorldPosition` already adds the shape's
+   * world position when anchored).
+   *
+   * Wrapped in a single gestureTx so per-move updates collapse
+   * into one undo step.
+   */
+  // Pure body in `./editor/applies/move.ts`.
+  private applyAnnotationMove(id: AnnotationId, delta: Vec2, origin: Vec2): void {
+    const result = computeAnnotationMovePatch(this._scene, id, delta, origin);
+    if (!result) return;
+    this._scene = result.scene;
+    this.recordGesturePatch(result.patch);
+    this.notify();
+  }
+
+  private readonly templateTapListeners = new Set<
+    (emit: Extract<InteractionEmit, { type: "TEMPLATE_TAP" }>) => void
+  >();
+  private readonly templateDropListeners = new Set<
+    (emit: Extract<InteractionEmit, { type: "TEMPLATE_DROP" }>) => void
+  >();
+
+  /**
+   * Subscribe to template button taps. Returns an unsubscribe function.
+   * Hosts use this to route template button clicks to their own actions.
+   */
+  onTemplateTap(
+    fn: (emit: Extract<InteractionEmit, { type: "TEMPLATE_TAP" }>) => void,
+  ): () => void {
+    this.templateTapListeners.add(fn);
+    return () => this.templateTapListeners.delete(fn);
+  }
+
+  /**
+   * Subscribe to drops onto template drop-zones. Returns an unsubscribe fn.
+   * Hosts decide what to do with the drop (e.g. add a child shape, link
+   * templates together).
+   */
+  onTemplateDrop(
+    fn: (emit: Extract<InteractionEmit, { type: "TEMPLATE_DROP" }>) => void,
+  ): () => void {
+    this.templateDropListeners.add(fn);
+    return () => this.templateDropListeners.delete(fn);
+  }
+
+  /**
+   * Dispatch a TEMPLATE_DROP emit programmatically. Hosts call this from their
+   * own DOM `drop` listener after looking up which drop-zone (if any) is
+   * under the pointer via `findDropZoneAt`.
+   */
+  dispatchTemplateDrop(emit: Extract<InteractionEmit, { type: "TEMPLATE_DROP" }>): void {
+    this.applyEmit(emit);
+  }
+
+  // Pure body in `./editor/applies/move.ts`.
+  private applyMove(id: ShapeId, delta: Vec2, originalBounds: Bounds): void {
+    const patch = computeShapeMovePatch(this._scene, id, delta, originalBounds);
+    if (!patch) return;
+    this._scene = apply(this._scene, patch);
+    this.recordGesturePatch(patch);
+    this.notify();
+  }
+
+  private applyGroupMove(delta: Vec2): void {
+    if (!this.groupMoveOrigin) return;
+    const patches = computeGroupMovePatches(this._scene, this.groupMoveOrigin, delta);
+    for (const patch of patches) {
+      this._scene = apply(this._scene, patch);
+      this.recordGesturePatch(patch);
+    }
+    this.notify();
+  }
+
+  // Body moved to `./editor/viewport-helpers.ts`.
+  private computeViewportWorld(): Bounds | null {
+    return computeViewportWorldPure(this._scene);
+  }
+
+  /**
+   * Identity-diff the current scene against the last rendered one and
+   * return the union AABB of every shape/edge that changed reference
+   * (added, removed, or replaced). Returns `null` to force a full
+   * clear when something that affects the entire surface changes —
+   * viewport pan/zoom/resize, layer visibility, or the first frame.
+   *
+   * Empty union (returned as a zero-area bbox far off-screen) means
+   * nothing changed; renderScene will cull every shape via its
+   * `dirtyWorld` filter — effectively a no-op main pass.
+   */
+  private computeDirtyWorld(): Bounds | null {
+    const prev = this.lastRenderedScene;
+    const next = this._scene;
+    if (!prev) return null;
+    // Skip dirty-rect optimization until the canvas has been sized at
+    // least once — the first paint to a 0×0 viewport doesn't actually
+    // hit pixels, so we have to force a full repaint as soon as the
+    // host's ResizeObserver fires (even when the diff finds zero
+    // changed shapes, e.g. when only viewport.size changed but the
+    // viewport ref happened to equal — which can't happen, but defence
+    // in depth).
+    if (
+      prev.viewport.size.width <= 0 ||
+      prev.viewport.size.height <= 0 ||
+      next.viewport.size.width <= 0 ||
+      next.viewport.size.height <= 0
+    ) {
+      return null;
+    }
+    // Anything that affects the global render — viewport (pan / zoom /
+    // size) or layer ordering / visibility — forces a full clear.
+    if (prev.viewport !== next.viewport) return null;
+    if (prev.layers !== next.layers) return null;
+    // Isolation transition (enter / exit a group) re-dims a wide swath
+    // of shapes without touching the scene reference, so force a full
+    // repaint when the entered-group identity changes between frames.
+    if (this.lastRenderedEnteredGroup !== this._enteredGroup) return null;
+    // Scene ref unchanged → nothing changed on main canvas → skip the
+    // whole pass via an empty off-screen rect that the dirty filter
+    // culls every shape against.
+    if (prev === next) {
+      return { x: -1e9, y: -1e9, width: 0, height: 0 };
+    }
+    let acc: Bounds | null = null;
+    const add = (b: Bounds): void => {
+      acc = acc ? B.union(acc, b) : b;
+    };
+    // Track shapes that changed (added / removed / mutated). Edges
+    // attached to any of these have stale rendered paths even when
+    // the edge object itself is reference-equal — the path resolves
+    // through the shape's new position, but the old path stays on
+    // screen as a "ghost" trail unless we explicitly invalidate it.
+    const changedShapeIds = new Set<ShapeId>();
+    for (const [id, shape] of next.shapes) {
+      const old = prev.shapes.get(id);
+      if (old === shape) continue;
+      changedShapeIds.add(id);
+      const afterBounds = getShapeWorldBounds(shape);
+      const beforeBounds = old ? getShapeWorldBounds(old) : null;
+      add(afterBounds);
+      if (beforeBounds) add(beforeBounds);
+      // Stash for the tile-cache path — covers add + move via
+      // before/after pair; pure mutation re-uses the single
+      // afterBounds rect.
+      if (this.tileComposeFn !== null) {
+        this.tileDirtyShapes.set(id, { before: beforeBounds, after: afterBounds });
+      }
+    }
+    for (const [id, shape] of prev.shapes) {
+      if (!next.shapes.has(id)) {
+        changedShapeIds.add(id);
+        const beforeBounds = getShapeWorldBounds(shape);
+        add(beforeBounds);
+        if (this.tileComposeFn !== null) {
+          this.tileDirtyShapes.set(id, { before: beforeBounds, after: null });
+        }
+      }
+    }
+    const edgeTouchesChangedShape = (edge: Edge): boolean => {
+      for (const ep of [edge.from, edge.to]) {
+        if (ep.kind === "anchor" || ep.kind === "outline") {
+          if (changedShapeIds.has(ep.shapeId)) return true;
+        }
+      }
+      return false;
+    };
+    for (const [id, edge] of next.edges) {
+      const old = prev.edges.get(id);
+      // Refresh edge dirty-rect when: edge object changed, OR an
+      // endpoint references a shape that moved this frame (path is
+      // re-resolved every render but the old screen pixels persist).
+      if (old === edge && !edgeTouchesChangedShape(edge)) continue;
+      const b = computeEdgeWorldBounds(next, edge);
+      if (b) add(b);
+      const oldEdge = old ?? edge; // prev scene resolves with prev shapes for ghost-clear
+      const ob = computeEdgeWorldBounds(prev, oldEdge);
+      if (ob) add(ob);
+    }
+    for (const [id, edge] of prev.edges) {
+      if (!next.edges.has(id)) {
+        const b = computeEdgeWorldBounds(prev, edge);
+        if (b) add(b);
+      }
+    }
+    // Inflate by a couple pixels to cover anti-aliased stroke fuzz
+    // around the geometry edges.
+    return acc ? B.expand(acc, 4) : { x: -1e9, y: -1e9, width: 0, height: 0 };
+  }
+
+  // Bodies moved to `./editor/viewport-helpers.ts`.
+  private combinedSelectionBounds(): Bounds | null {
+    return combinedSelectionBoundsPure(this._scene, this._selection);
+  }
+  private groupChildrenUnion(groupId: ShapeId): Bounds | null {
+    return groupChildrenUnionPure(this._scene, groupId);
+  }
+
+  /**
+   * True when the current selection should be treated as aspect-
+   * locked for group-handle resize. Currently: a single `group`-typed
+   * shape selected. Multi-selection of free shapes keeps the default
+   * 8-handle / free-aspect behaviour (matches user expectation:
+   * grouping is the explicit "lock the ratio" gesture).
+   */
+  private selectionIsAspectLocked(): boolean {
+    if (this._selection.size !== 1) return false;
+    const [only] = [...this._selection];
+    if (!only) return false;
+    return getShape(this._scene, only)?.type === "group";
+  }
+
+  // Pure body in `./editor/applies/resize.ts`.
+  private applyGroupResize(handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
+    if (!this.groupResizeOrigin) return;
+    const result = computeGroupResizePatches(
+      this._scene,
+      this.groupResizeOrigin,
+      handle,
+      delta,
+      originalBounds,
+      this.selectionIsAspectLocked(),
+    );
+    this._scene = result.scene;
+    for (const patch of result.patches) this.recordGesturePatch(patch);
+    this.notify();
+  }
+
+  private applyResize(id: ShapeId, handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
+    const result = computeShapeResize(this._scene, id, handle, delta, originalBounds, (s, raw, h) =>
+      this.clampContainerToChildren(s, raw, h),
+    );
+    if (!result) return;
+    this._scene = result.scene;
+    this.recordGesturePatch(result.patch);
+    this.notify();
+  }
+
+  // Pure body in `./editor/applies/create.ts`.
+  private applyCreate(kind: "rect" | "ellipse" | "frame", bounds: Bounds): void {
+    const id = newShapeId(++this.nextId);
+    const result = computeCreateShape(this._scene, kind, bounds, id, this._activeLayerId, () =>
+      this.nextFrameName(),
+    );
+    this._scene = result.scene;
+    this._selection = Selection.single(id);
+    // CREATE is a single-shot operation, not part of a multi-tick gesture.
+    this._history.push(result.patch);
+    // Frame-specific: scoop up every shape whose centre lies inside
+    // the new frame's bounds and tag them with `frameId`.
+    if (kind === "frame") {
+      this.assignFrameMembers(id, bounds);
+    }
+    this.maybeRevertModeAfterCreate();
+    this.notify();
+  }
+
+  /** Generate the next "Frame N" name based on existing frames. */
+  private nextFrameName(): string {
+    return nextFrameNameHelper(this._scene);
+  }
+
+  /**
+   * Assign frameId to every shape (except the frame itself) whose
+   * centre falls inside the frame's world bounds. Runs as a single
+   * undo step in the same gesture transaction as the create.
+   */
+  private assignFrameMembers(frameId: ShapeId, frameBounds: Bounds): void {
+    this._scene = assignFrameMembersHelper(
+      this._scene,
+      this._history,
+      frameId,
+      frameBounds,
+    );
+  }
+
+  // Pure body in `./editor/applies/create.ts`. Endpoint snapping
+  // stays here because it needs the snap engine.
+  private applyCreateEdge(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
+    const from = this.snapEdgeEndpoint(emit.fromShape, emit.fromPoint);
+    const to = this.snapEdgeEndpoint(emit.toShape, emit.toPoint);
+    const id = newEdgeId(++this.nextId);
+    const result = computeCreateEdge(this._scene, from, to, id, this._activeLayerId);
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.edgePreview = null;
+    this.maybeRevertModeAfterCreate();
+    this.notify();
+  }
+
+  /**
+   * Build an `EdgeEndpoint` for a draw-edge / re-bind gesture. Runs the
+   * scene's snap engine for the probe point, prefers anchor snap when
+   * close enough, falls back to outline snap (so the user can attach
+   * "anywhere on the right edge"), then `point` for the free-floating
+   * case.
+   *
+   * `pressTargetShape` is the shape the gesture originated from or
+   * landed on (used as a strong hint — we don't snap onto unrelated
+   * shapes when the user clearly aimed for this one).
+   */
+  private snapEdgeEndpoint(pressTargetShape: ShapeId | null, worldPoint: Vec2): EdgeEndpoint {
+    if (!pressTargetShape) {
+      return { kind: "point", position: worldPoint };
+    }
+    const shape = getShape(this._scene, pressTargetShape);
+    if (!shape) return { kind: "point", position: worldPoint };
+
+    const result = this.snapEngine.snap({
+      scene: this._scene,
+      probe: worldPoint,
+      threshold: this.snapThreshold,
+      gesture: "draw-edge",
+    });
+
+    // Prefer a snap candidate that belongs to the press-target shape —
+    // avoids attaching to a neighbouring shape that happens to be even
+    // closer to the release point.
+    const onTarget = result.all.filter((c) => c.metadata?.shapeId === pressTargetShape);
+    const winner =
+      onTarget.find((c) => c.kind === "anchor") ??
+      onTarget.find((c) => c.kind === "outline") ??
+      null;
+    if (winner) return endpointFromSnap(pressTargetShape, winner, shape);
+
+    // No snap fired (release outside threshold of any port / outline) —
+    // fall back to nearest anchor on the target shape so the edge still
+    // sticks to it.
+    const { ref } = findNearestAnchor(shape, worldPoint, snapExcludedAnchors(shape));
+    return { kind: "anchor", shapeId: pressTargetShape, anchor: ref };
+  }
+
+  // Pure body in `./editor/applies/selection.ts`. The wrappers
+  // here own the side effects (`_selectedEdge` clearing, notify).
+  private applySelectByBounds(bounds: Bounds, mode: "replace" | "add"): void {
+    const next = selectByBoundsPure(
+      this._scene,
+      this._selection,
+      (id) => this.isLayerLocked(id),
+      bounds,
+      mode,
+    );
+    if (this._selectedEdge !== null) this._selectedEdge = null;
+    if (Selection.equals(next, this._selection)) {
+      this.notify();
+      return;
+    }
+    this._selection = next;
+    this.notify();
+  }
+
+  private applyLassoLiveSelection(bounds: Bounds, mode: "replace" | "add"): void {
+    const base = this.lassoBaseSelection ?? Selection.EMPTY;
+    const next = selectByBoundsLivePure(
+      this._scene,
+      base,
+      (id) => this.isLayerLocked(id),
+      bounds,
+      mode,
+    );
+    if (Selection.equals(next, this._selection)) return;
+    if (this._selectedEdge !== null) this._selectedEdge = null;
+    this._selection = next;
+  }
+
+  // Pure body in `./editor/applies/edge.ts`. The wrapper here
+  // owns the side effects (history push, drag-state clearing,
+  // notify).
+  private applyEdgeEndpointUpdate(
+    emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
+  ): void {
+    const result = computeEdgeEndpointUpdate(this._scene, emit, (toShape, toPoint) =>
+      this.snapEdgeEndpoint(toShape, toPoint),
+    );
+    if (result === null) {
+      this.edgeEndpointDrag = null;
+      this.notify();
+      return;
+    }
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.edgeEndpointDrag = null;
+    this.notify();
+  }
+
+  private updateHoveredEdgeTarget(worldPoint: Vec2): void {
+    const shape = this.acceleratedShapeAt(worldPoint);
+    if (!shape) {
+      if (this.hoveredEdgeTarget !== null) {
+        this.hoveredEdgeTarget = null;
+        this.notify();
+      }
+      return;
+    }
+    const nearest = findNearestAnchor(shape, worldPoint, snapExcludedAnchors(shape));
+    const activeName = nearest.ref.kind === "named" ? nearest.ref.name : null;
+    const prev = this.hoveredEdgeTarget;
+    if (prev?.shapeId === shape.id && prev.activeAnchor === activeName) return;
+    this.hoveredEdgeTarget = { shapeId: shape.id, activeAnchor: activeName };
+    this.notify();
+  }
+
+  // Pure body in `./editor/applies/edge.ts`.
+  private applyEdgePreview(fromShape: ShapeId | null, fromPoint: Vec2, toPoint: Vec2): void {
+    this.edgePreview = computeEdgePreviewEndpoints(this._scene, fromShape, fromPoint, toPoint);
+    this.notify();
+  }
+
+  // Gesture lifecycle — recordGesturePatch / commitGesture /
+  // cancelGesture / finalizeOpenGestureTx / maybeRevertModeAfterCreate
+  // live in `./editor/gesture-tx.ts`. The thin instance methods
+  // below preserve the original call sites; the bodies (and their
+  // docstrings) moved out to the controller.
+  private recordGesturePatch(patch: Patch): void {
+    this.gestures.record(patch);
+  }
+  private commitGesture(): void {
+    this.gestures.commit();
+  }
+  private finalizeOpenGestureTx(): void {
+    this.gestures.finalize();
+  }
+
+  /**
+   * End-of-drag container hookup. Runs after the state machine has
+   * received POINTER_UP but before the gesture transaction commits,
+   * so reparent + auto-grow land in a single undo step with the drag.
+   *
+   * Rules:
+   * - If the shape hovered over a container and is not yet its child →
+   *   set `parentId`. If the shape exceeds the dropZone bounds,
+   *   grow the zone (expand container size).
+   * - If the shape was a child of something but the final world bounds
+   *   no longer intersect the parent's drop-zone — clear `parentId` (drag-out).
+   * - Cycles (container into its own descendant) are prevented
+   *   by the `containerHover` pipeline above — the exclude set blocks them.
+   */
+  // Pure body in `./editor/container-ops.ts`. Editor exposes a
+  // small `ContainerOpsRef` bridge so the module can mutate scene
+  // + push patches into the running gesture transaction.
+  private applyContainerDrop(worldPoint: Vec2): void {
+    applyContainerDropPure(this.containerOpsRef, worldPoint);
+  }
+
+  // Public-private hybrid — also called from AutoLayoutScheduler.
+  private maybeGrowContainer(containerId: ShapeId, childId: ShapeId): void {
+    maybeGrowContainerPure(this.containerOpsRef, containerId, childId);
+  }
+
+  // Pure body in `./editor/container-ops.ts`.
+  private clampContainerToChildren(shape: Shape, raw: Bounds, handle: HandleId): Bounds {
+    return clampContainerToChildrenPure(this._scene, shape, raw, handle);
+  }
+
+  /**
+   * Return the running gesture tx or open a new one if the drag ended
+   * with an empty transaction (move-by-zero pixels can still carry
+   * container reparent).
+   */
+  private beginOrAttachGesture(): TransactionHandle {
+    if (!this.gestureTx) {
+      this.gestureTx = this._history.transaction();
+    }
+    return this.gestureTx;
+  }
+
+  // Body moved to `./editor/gesture-tx.ts`.
+  private cancelGesture(): void {
+    this.gestures.cancel();
+  }
+
+  /**
+   * Drop ids from the selection that no longer exist in the scene. Needed
+   * after undoing a CREATE — the shape goes away and the selection becomes
+   * stale.
+   */
+  private pruneSelection(): void {
+    let next: Set<ShapeId> | null = null;
+    for (const id of this._selection) {
+      if (!this._scene.shapes.has(id)) {
+        next ??= new Set(this._selection);
+        next.delete(id);
+      }
+    }
+    if (next !== null) this._selection = next;
+  }
+
+  private notify(): void {
+    this.render();
+    fanOutEvents(this.eventCache, this.events, this.observableSnapshot());
+    for (const fn of this.listeners) fn();
+    this.autoCompactScheduler.schedule();
+    this.autoLayoutScheduler.schedule();
+  }
+
+  /**
+   * Typed event surface — subscribe to a specific slice (`mode`,
+   * `selection`, `scene`, `history`, `viewport`) or the umbrella
+   * `change`. Replaces ad-hoc selectors over the coarse `subscribe()`
+   * for callers that only care about one dimension. The legacy
+   * `subscribe()` still works and fires in lock-step.
+   */
+  on<K extends keyof EditorEvents>(
+    event: K,
+    fn: EditorEvents[K],
+  ): () => void {
+    // Cast through `never`: TS can't prove that EditorEvents[K]
+    // satisfies the emitter's `extends AnyListener ? T : never`
+    // conditional through a generic body. Every entry of
+    // EditorEvents is a function by construction so this is safe.
+    return this.events.on(event, fn as never);
+  }
+
+  off<K extends keyof EditorEvents>(
+    event: K,
+    fn: EditorEvents[K],
+  ): void {
+    this.events.off(event, fn as never);
+  }
+
+  /**
+   * Public command — re-run the auto-layout spec on the given
+   * container shape, regardless of whether the children set actually
+   * changed. Useful as an "auto-arrange" toolbar action or for hosts
+   * adopting auto-layout after creating shapes programmatically.
+   * Returns the patch that was applied, or `null` when nothing
+   * changed (no spec, no children, or children already in position).
+   * Single undo step.
+   */
+  runLayout(parentId: ShapeId): Patch | null {
+    const patch = runAutoLayout(this._scene, parentId);
+    if (!patch) return null;
+    this._scene = apply(this._scene, patch);
+    this._history.push(patch);
+    // Refresh the recorded signature so the post-notify auto-check
+    // doesn't fire a second redundant run.
+    this.autoLayoutScheduler.resetSignature(parentId);
+    this.notify();
+    return patch;
+  }
+
+  /**
+   * Children-set fingerprint used for auto-layout dirty detection.
+   * Sorted ids joined by comma — cheap to compute, stable under
+   * pure position edits (we want those), changes under add / remove /
+   * reparent (we want to react to those).
+   */
+  private render(): void {
+    // Background layer (grid) — when the host gave us a dedicated target.
+    // Otherwise the grid lives on mainTarget *before* shapes are drawn,
+    // so renderScene's clear takes care of it.
+    if (this.backgroundTarget) {
+      renderGrid(this._scene, this.backgroundTarget);
+    }
+    // World-space viewport rect — used by `renderScene` to skip off-screen
+    // shapes. Computed by mapping the screen viewport corners through the
+    // inverse projection. Slightly inflated so geometry near the edge
+    // does not flicker during pan.
+    const viewportWorld = this.computeViewportWorld();
+    const dirtyWorld = this.computeDirtyWorld();
+    const dimShapes = this._enteredGroup
+      ? this.computeDimShapes(this._enteredGroup)
+      : undefined;
+    const hideShapes = this.computeHiddenShapes();
+
+    if (this.tileComposeFn && viewportWorld) {
+      // Tile-cache path: clear main once, then composite cached
+      // tiles. Dim / hide sets aren't honoured by the tile cache
+      // yet (would require a separate pass) — opt-in path is
+      // intended for very-large static scenes where neither
+      // typically applies.
+      this.mainTarget.clear();
+      this.tileComposeFn(this._scene, this.mainTarget, {
+        viewport: viewportWorld,
+        changedShapes: this.tileDirtyShapes,
+        zoomBucket:
+          this._scene.viewport.zoom > 0
+            ? 2 ** Math.round(Math.log2(this._scene.viewport.zoom))
+            : 1,
+      });
+      this.tileDirtyShapes = new Map();
+      renderEdges(this._scene, this.mainTarget, {
+        ...(viewportWorld ? { viewportWorld } : {}),
+      });
+    } else {
+      // For very large scenes share the same SpatialGrid the hit-test
+      // path already maintains — `renderScene` uses it to skip the
+      // per-shape AABB cull on shapes outside the viewport. Free win
+      // because the grid is already built / cached for hit-tests.
+      const sharedIndex =
+        this._scene.shapes.size >= LARGE_SCENE_HIT_THRESHOLD
+          ? this.ensureSpatialIndex()
+          : null;
+      renderScene(this._scene, this.mainTarget, {
+        ...(viewportWorld ? { viewport: viewportWorld } : {}),
+        ...(dirtyWorld ? { dirtyWorld } : {}),
+        boundsCache: this.boundsCache,
+        lod: DEFAULT_LOD,
+        ...(dimShapes ? { dimShapes, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
+        ...(hideShapes ? { hideShapes } : {}),
+        ...(sharedIndex ? { spatialIndex: sharedIndex } : {}),
+      });
+      renderEdges(this._scene, this.mainTarget, {
+        ...(viewportWorld ? { viewportWorld } : {}),
+        ...(dirtyWorld ? { dirtyWorld } : {}),
+      });
+    }
+    this.lastRenderedScene = this._scene;
+    this.lastRenderedEnteredGroup = this._enteredGroup;
+    const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
+    // Lasso and rect-draw share the same dashed-rect visual. Both can't
+    // run simultaneously (different gestures), so a single `drawingPreview`
+    // slot covers both.
+    if (this.lassoPreview) overlayOpts.drawingPreview = this.lassoPreview;
+    else if (this.drawingPreview) overlayOpts.drawingPreview = this.drawingPreview;
+    if (this.edgePreview) overlayOpts.edgePreview = this.edgePreview;
+    if (this.hoveredEdgeTarget) {
+      const shape = getShape(this._scene, this.hoveredEdgeTarget.shapeId);
+      if (shape) {
+        const excluded = snapExcludedAnchors(shape);
+        const names = [...listAnchorsLocal(shape).keys()].filter((n) => !excluded.has(n));
+        const worldPoints = names.map((name) => getAnchorWorld(shape, { kind: "named", name }));
+        const activeIndex =
+          this.hoveredEdgeTarget.activeAnchor !== null
+            ? names.indexOf(this.hoveredEdgeTarget.activeAnchor)
+            : -1;
+        overlayOpts.ports = {
+          worldPoints,
+          ...(activeIndex >= 0 ? { activeIndex } : {}),
+        };
+      }
+    }
+    // Group-handle overlay: multi-selection OR a single group-typed
+    // shape. Aspect-locked groups also flag the overlay so it draws
+    // only the four corner handles.
+    if (this._selection.size > 1 || this.selectionIsAspectLocked()) {
+      const combined = this.combinedSelectionBounds();
+      if (combined) overlayOpts.groupBounds = combined;
+      if (this.selectionIsAspectLocked()) overlayOpts.groupAspectLocked = true;
+    }
+    if (this.containerHover) {
+      overlayOpts.containerDropZone = this.containerHover.dropZone;
+    }
+    if (this.brushStroke) {
+      overlayOpts.brushPreview = {
+        origin: this.brushStroke.origin,
+        points: this.brushStroke.points,
+        fill: "#222",
+      };
+    }
+    if (this._selectedEdge) {
+      const edge = getEdge(this._scene, this._selectedEdge);
+      if (edge) {
+        const path = getEdgePath(this._scene, edge);
+        if (path && path.length >= 2) {
+          // Endpoints in their stored positions; the dragged side jumps to
+          // the cursor so the user sees where the rebind will land. The
+          // edge itself stays on its old path until release.
+          let from = path[0]!;
+          let to = path[path.length - 1]!;
+          if (this.edgeEndpointDrag?.edgeId === this._selectedEdge) {
+            if (this.edgeEndpointDrag.side === "from") from = this.edgeEndpointDrag.toPoint;
+            else to = this.edgeEndpointDrag.toPoint;
+          }
+          overlayOpts.edgeSelection = { from, to };
+        }
+      }
+    }
+    if (this._peerCursors.length > 0) overlayOpts.peerCursors = this._peerCursors;
+    if (this._peerSelections.length > 0) overlayOpts.peerSelections = this._peerSelections;
+    if (this._scene.annotations.size > 0) {
+      overlayOpts.annotations = [...this._scene.annotations.values()];
+      overlayOpts.selectedAnnotation = this._selectedAnnotation;
+    }
+    renderOverlay(this._scene, this._selection, this.overlayTarget, overlayOpts);
+  }
 }
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
@@ -3523,8 +3169,8 @@ const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y
  * minimum so a stroke is still visible.
  */
 const pressureToWidth = (pressure: number): number => {
- if (pressure <= 0) return DEFAULT_BRUSH_WIDTH;
- return Math.max(0.5, pressure * MAX_BRUSH_WIDTH);
+  if (pressure <= 0) return DEFAULT_BRUSH_WIDTH;
+  return Math.max(0.5, pressure * MAX_BRUSH_WIDTH);
 };
 
 /**
@@ -3535,28 +3181,20 @@ const pressureToWidth = (pressure: number): number => {
  * provider must expose; missing methods → treat as options.
  */
 const isHistoryProvider = (
- value: HistoryProvider | HistoryOptions | undefined,
+  value: HistoryProvider | HistoryOptions | undefined,
 ): value is HistoryProvider => {
- if (!value || typeof value !== "object") return false;
- return (
-  typeof (value as HistoryProvider).push === "function" &&
-  typeof (value as HistoryProvider).undo === "function" &&
-  typeof (value as HistoryProvider).redo === "function" &&
-  typeof (value as HistoryProvider).transaction === "function"
- );
+  if (!value || typeof value !== "object") return false;
+  return (
+    typeof (value as HistoryProvider).push === "function" &&
+    typeof (value as HistoryProvider).undo === "function" &&
+    typeof (value as HistoryProvider).redo === "function" &&
+    typeof (value as HistoryProvider).transaction === "function"
+  );
 };
 
 const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
-const describeNudge = (delta: Vec2, count: number): string => {
- const parts: string[] = [];
- if (delta.x > 0) parts.push(`${delta.x} px right`);
- else if (delta.x < 0) parts.push(`${-delta.x} px left`);
- if (delta.y > 0) parts.push(`${delta.y} px down`);
- else if (delta.y < 0) parts.push(`${-delta.y} px up`);
- const subject = count === 1 ? "shape" : `${count} shapes`;
- return `Moved ${subject} ${parts.join(" and ")}`;
-};
+// `describeNudge` moved to `./editor/public/selection-ops.ts`.
 
 /**
  * Convert a snap candidate into an `EdgeEndpoint`. Anchor snap → named
@@ -3564,20 +3202,20 @@ const describeNudge = (delta: Vec2, count: number): string => {
  * back to a free point if the metadata isn't recognised.
  */
 const endpointFromSnap = (
- shapeId: ShapeId,
- candidate: SnapCandidate,
- shape: Shape,
+  shapeId: ShapeId,
+  candidate: SnapCandidate,
+  shape: Shape,
 ): EdgeEndpoint => {
- if (candidate.kind === "anchor") {
-  const ref = candidate.metadata?.ref as AnchorRefLike | undefined;
-  if (ref) return { kind: "anchor", shapeId, anchor: ref };
- }
- if (candidate.kind === "outline" && typeof candidate.metadata?.ratio === "number") {
-  return { kind: "outline", shapeId, ratio: candidate.metadata.ratio };
- }
- // Defensive fallback — should not happen with built-in contributors.
- void shape;
- return { kind: "point", position: candidate.snapped };
+  if (candidate.kind === "anchor") {
+    const ref = candidate.metadata?.ref as AnchorRefLike | undefined;
+    if (ref) return { kind: "anchor", shapeId, anchor: ref };
+  }
+  if (candidate.kind === "outline" && typeof candidate.metadata?.ratio === "number") {
+    return { kind: "outline", shapeId, ratio: candidate.metadata.ratio };
+  }
+  // Defensive fallback — should not happen with built-in contributors.
+  void shape;
+  return { kind: "point", position: candidate.snapped };
 };
 
 type AnchorRefLike = Extract<EdgeEndpoint, { kind: "anchor" }>["anchor"];
