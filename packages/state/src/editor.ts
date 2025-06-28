@@ -257,6 +257,16 @@ import {
   selectionFromNewIds,
 } from "./editor/public/selection-ops.js";
 import {
+  beginPlacementState,
+  buildShapeAtCursor,
+  computePlacementCancel,
+  computePlacementContainerDrop,
+  computePlacementUpdate,
+  newShapeIdAtCursor,
+  type PlacementState,
+} from "./editor/public/placement.js";
+import { renderEditor } from "./editor/render-orchestrator.js";
+import {
   combinedSelectionBounds as combinedSelectionBoundsPure,
   computeViewportWorld as computeViewportWorldPure,
   groupChildrenUnion as groupChildrenUnionPure,
@@ -1376,61 +1386,40 @@ export class Editor {
    * Typical wiring: HTML5 dragenter starts the placement, dragover
    * updates, drop commits, dragleave / window keydown(Escape) cancel.
    */
+  // Placement helpers live in `./editor/public/placement.ts`.
+  // Editor owns the transaction lifecycle and selection mutate;
+  // the closure threads scene mutations through the pure helpers.
   beginPlacement(shape: Shape): {
     update: (worldCenter: Vec2) => void;
     commit: () => void;
     cancel: () => void;
   } {
     const tx = this._history.transaction();
-    const initialResult = addShape(this._scene, shape);
-    this._scene = initialResult.scene;
+    const { scene: add, state: initialState } = beginPlacementState(shape);
+    const initial = add(this._scene);
+    this._scene = initial.scene;
     this._selection = Selection.single(shape.id);
     this.notify();
-    let current = shape;
-    const half = getShapeWorldBounds(shape);
-    const offsetX = half.width / 2;
-    const offsetY = half.height / 2;
+    const state: PlacementState = { ...initialState };
     return {
       update: (worldCenter) => {
-        const next = {
-          ...current,
-          position: { x: worldCenter.x - offsetX, y: worldCenter.y - offsetY },
-        } as Shape;
-        // Apply directly — we'll record a single add-patch on commit.
-        const patch: Patch = { kind: "shape", id: shape.id, before: current, after: next };
-        this._scene = apply(this._scene, patch);
-        current = next;
+        const r = computePlacementUpdate(this._scene, state, worldCenter);
+        this._scene = r.scene;
+        state.current = r.next;
         this.notify();
       },
       commit: () => {
-        // Container drop: if the placed shape lands inside an auto-
-        // layout / drop-zone container's zone, reparent it so the
-        // container's auto-layout fires on the next microtask. Pure
-        // pointer-drag uses applyContainerDrop for the same effect;
-        // palette placement bypasses that path, so we hook the check
-        // here directly on commit.
-        const center = {
-          x: current.position.x + (half.width / 2),
-          y: current.position.y + (half.height / 2),
-        };
-        const container = findContainerAt(this._scene, center, new Set([current.id]));
-        if (container) {
-          const withParent = { ...current, parentId: container.id } as Shape;
-          const reparentPatch: Patch = {
-            kind: "shape",
-            id: shape.id,
-            before: current,
-            after: withParent,
-          };
-          this._scene = apply(this._scene, reparentPatch);
-          current = withParent;
+        const drop = computePlacementContainerDrop(this._scene, state);
+        if (drop) {
+          this._scene = drop.scene;
+          state.current = drop.next;
         }
-        tx.add({ kind: "shape", id: shape.id, before: null, after: current });
+        tx.add({ kind: "shape", id: shape.id, before: null, after: state.current });
         tx.commit();
       },
       cancel: () => {
-        const removeRes = removeShape(this._scene, shape.id);
-        this._scene = removeRes.scene;
+        const { scene } = computePlacementCancel(this._scene, shape.id);
+        this._scene = scene;
         tx.cancel();
         this._selection = Selection.EMPTY;
         this.notify();
@@ -1527,42 +1516,21 @@ export class Editor {
    * Hosts can bind this to "Enter" while in a draw mode, providing a
    * mouse-free alternative to drag-out creation.
    */
+  // Pure body in `./editor/public/placement.ts`.
   createShapeAtCursor(): ShapeId | null {
     const vp = this._scene.viewport;
-    const cssCenter: Vec2 = {
+    const world = this.screenToWorld({
       x: (vp.size.width || 200) / 2,
       y: (vp.size.height || 200) / 2,
-    };
-    const world = this.screenToWorld(cssCenter);
-    const id = castShapeId(`shape-${++this.nextId}-${Date.now().toString(36)}`);
-    const order = orderForTop(
-      [...this._scene.shapes.values()]
-        .filter((s) => s.layerId === this._activeLayerId)
-        .map((s) => s.order),
-    );
-    const currentMode = this.mode;
-    const type: Shape["type"] =
-      currentMode === "draw-ellipse" ? "ellipse" : "rectangle";
-    const width = 120;
-    const height = 80;
-    const shape: Shape = {
-      id,
-      layerId: this._activeLayerId,
-      type,
-      position: { x: world.x - width / 2, y: world.y - height / 2 },
-      rotation: 0,
-      scale: { x: 1, y: 1 },
-      order,
-      style: { fill: "#bbb", stroke: "#000", strokeWidth: 1 },
-      width,
-      height,
-    } as Shape;
+    });
+    const id = newShapeIdAtCursor(++this.nextId);
+    const shape = buildShapeAtCursor(this._scene, this.mode, world, this._activeLayerId, id);
     const r = addShape(this._scene, shape);
     this._scene = r.scene;
     this._history.push(r.patch);
     this._selection = Selection.single(id);
     this.notify();
-    this.announce(`Created ${type} ${id}`);
+    this.announce(`Created ${shape.type} ${id}`);
     return id;
   }
 
@@ -3018,140 +2986,9 @@ export class Editor {
     return patch;
   }
 
-  /**
-   * Children-set fingerprint used for auto-layout dirty detection.
-   * Sorted ids joined by comma — cheap to compute, stable under
-   * pure position edits (we want those), changes under add / remove /
-   * reparent (we want to react to those).
-   */
+  // Pure body in `./editor/render-orchestrator.ts` (~130 lines).
   private render(): void {
-    // Background layer (grid) — when the host gave us a dedicated target.
-    // Otherwise the grid lives on mainTarget *before* shapes are drawn,
-    // so renderScene's clear takes care of it.
-    if (this.backgroundTarget) {
-      renderGrid(this._scene, this.backgroundTarget);
-    }
-    // World-space viewport rect — used by `renderScene` to skip off-screen
-    // shapes. Computed by mapping the screen viewport corners through the
-    // inverse projection. Slightly inflated so geometry near the edge
-    // does not flicker during pan.
-    const viewportWorld = this.computeViewportWorld();
-    const dirtyWorld = this.computeDirtyWorld();
-    const dimShapes = this._enteredGroup
-      ? this.computeDimShapes(this._enteredGroup)
-      : undefined;
-    const hideShapes = this.computeHiddenShapes();
-
-    if (this.tileComposeFn && viewportWorld) {
-      // Tile-cache path: clear main once, then composite cached
-      // tiles. Dim / hide sets aren't honoured by the tile cache
-      // yet (would require a separate pass) — opt-in path is
-      // intended for very-large static scenes where neither
-      // typically applies.
-      this.mainTarget.clear();
-      this.tileComposeFn(this._scene, this.mainTarget, {
-        viewport: viewportWorld,
-        changedShapes: this.tileDirtyShapes,
-        zoomBucket:
-          this._scene.viewport.zoom > 0
-            ? 2 ** Math.round(Math.log2(this._scene.viewport.zoom))
-            : 1,
-      });
-      this.tileDirtyShapes = new Map();
-      renderEdges(this._scene, this.mainTarget, {
-        ...(viewportWorld ? { viewportWorld } : {}),
-      });
-    } else {
-      // For very large scenes share the same SpatialGrid the hit-test
-      // path already maintains — `renderScene` uses it to skip the
-      // per-shape AABB cull on shapes outside the viewport. Free win
-      // because the grid is already built / cached for hit-tests.
-      const sharedIndex =
-        this._scene.shapes.size >= LARGE_SCENE_HIT_THRESHOLD
-          ? this.ensureSpatialIndex()
-          : null;
-      renderScene(this._scene, this.mainTarget, {
-        ...(viewportWorld ? { viewport: viewportWorld } : {}),
-        ...(dirtyWorld ? { dirtyWorld } : {}),
-        boundsCache: this.boundsCache,
-        lod: DEFAULT_LOD,
-        ...(dimShapes ? { dimShapes, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
-        ...(hideShapes ? { hideShapes } : {}),
-        ...(sharedIndex ? { spatialIndex: sharedIndex } : {}),
-      });
-      renderEdges(this._scene, this.mainTarget, {
-        ...(viewportWorld ? { viewportWorld } : {}),
-        ...(dirtyWorld ? { dirtyWorld } : {}),
-      });
-    }
-    this.lastRenderedScene = this._scene;
-    this.lastRenderedEnteredGroup = this._enteredGroup;
-    const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
-    // Lasso and rect-draw share the same dashed-rect visual. Both can't
-    // run simultaneously (different gestures), so a single `drawingPreview`
-    // slot covers both.
-    if (this.lassoPreview) overlayOpts.drawingPreview = this.lassoPreview;
-    else if (this.drawingPreview) overlayOpts.drawingPreview = this.drawingPreview;
-    if (this.edgePreview) overlayOpts.edgePreview = this.edgePreview;
-    if (this.hoveredEdgeTarget) {
-      const shape = getShape(this._scene, this.hoveredEdgeTarget.shapeId);
-      if (shape) {
-        const excluded = snapExcludedAnchors(shape);
-        const names = [...listAnchorsLocal(shape).keys()].filter((n) => !excluded.has(n));
-        const worldPoints = names.map((name) => getAnchorWorld(shape, { kind: "named", name }));
-        const activeIndex =
-          this.hoveredEdgeTarget.activeAnchor !== null
-            ? names.indexOf(this.hoveredEdgeTarget.activeAnchor)
-            : -1;
-        overlayOpts.ports = {
-          worldPoints,
-          ...(activeIndex >= 0 ? { activeIndex } : {}),
-        };
-      }
-    }
-    // Group-handle overlay: multi-selection OR a single group-typed
-    // shape. Aspect-locked groups also flag the overlay so it draws
-    // only the four corner handles.
-    if (this._selection.size > 1 || this.selectionIsAspectLocked()) {
-      const combined = this.combinedSelectionBounds();
-      if (combined) overlayOpts.groupBounds = combined;
-      if (this.selectionIsAspectLocked()) overlayOpts.groupAspectLocked = true;
-    }
-    if (this.containerHover) {
-      overlayOpts.containerDropZone = this.containerHover.dropZone;
-    }
-    if (this.brushStroke) {
-      overlayOpts.brushPreview = {
-        origin: this.brushStroke.origin,
-        points: this.brushStroke.points,
-        fill: "#222",
-      };
-    }
-    if (this._selectedEdge) {
-      const edge = getEdge(this._scene, this._selectedEdge);
-      if (edge) {
-        const path = getEdgePath(this._scene, edge);
-        if (path && path.length >= 2) {
-          // Endpoints in their stored positions; the dragged side jumps to
-          // the cursor so the user sees where the rebind will land. The
-          // edge itself stays on its old path until release.
-          let from = path[0]!;
-          let to = path[path.length - 1]!;
-          if (this.edgeEndpointDrag?.edgeId === this._selectedEdge) {
-            if (this.edgeEndpointDrag.side === "from") from = this.edgeEndpointDrag.toPoint;
-            else to = this.edgeEndpointDrag.toPoint;
-          }
-          overlayOpts.edgeSelection = { from, to };
-        }
-      }
-    }
-    if (this._peerCursors.length > 0) overlayOpts.peerCursors = this._peerCursors;
-    if (this._peerSelections.length > 0) overlayOpts.peerSelections = this._peerSelections;
-    if (this._scene.annotations.size > 0) {
-      overlayOpts.annotations = [...this._scene.annotations.values()];
-      overlayOpts.selectedAnnotation = this._selectedAnnotation;
-    }
-    renderOverlay(this._scene, this._selection, this.overlayTarget, overlayOpts);
+    renderEditor(this);
   }
 }
 

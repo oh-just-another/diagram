@@ -1,0 +1,136 @@
+import {
+  addShape,
+  apply,
+  findContainerAt,
+  getShapeWorldBounds,
+  orderForTop,
+  removeShape,
+  type Scene,
+  type Shape,
+  type Patch,
+} from "@oh-just-another/scene";
+import type { LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import { shapeId as castShapeId } from "@oh-just-another/types";
+import type { Mode } from "../../modes.js";
+
+/**
+ * Build a shape for keyboard-friendly creation centred on
+ * `worldCenter`. Picks `rectangle` / `ellipse` based on `mode` (falls
+ * back to rectangle for non-draw modes), with a 120×80 default size.
+ */
+export const buildShapeAtCursor = (
+  scene: Scene,
+  mode: Mode,
+  worldCenter: Vec2,
+  layerId: LayerId,
+  id: ShapeId,
+): Shape => {
+  const order = orderForTop(
+    [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
+  );
+  const type: Shape["type"] = mode === "draw-ellipse" ? "ellipse" : "rectangle";
+  const width = 120;
+  const height = 80;
+  return {
+    id,
+    layerId,
+    type,
+    position: { x: worldCenter.x - width / 2, y: worldCenter.y - height / 2 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order,
+    style: { fill: "#bbb", stroke: "#000", strokeWidth: 1 },
+    width,
+    height,
+  } as Shape;
+};
+
+/** Generate a fresh shape id with the editor's nextId counter. */
+export const newShapeIdAtCursor = (next: number): ShapeId =>
+  castShapeId(`shape-${next}-${Date.now().toString(36)}`);
+
+/**
+ * Mutable state for an in-progress palette / drag-to-place gesture.
+ * Owned by the `beginPlacement` closure.
+ */
+export interface PlacementState {
+  current: Shape;
+  readonly halfWidth: number;
+  readonly halfHeight: number;
+}
+
+/** Compute the patch that moves the placed shape to `worldCenter`. */
+export const computePlacementUpdate = (
+  scene: Scene,
+  state: PlacementState,
+  worldCenter: Vec2,
+): { readonly scene: Scene; readonly patch: Patch; readonly next: Shape } => {
+  const next = {
+    ...state.current,
+    position: {
+      x: worldCenter.x - state.halfWidth,
+      y: worldCenter.y - state.halfHeight,
+    },
+  } as Shape;
+  const patch: Patch = {
+    kind: "shape",
+    id: state.current.id,
+    before: state.current,
+    after: next,
+  };
+  return { scene: apply(scene, patch), patch, next };
+};
+
+/**
+ * Post-process the placed shape on commit — if it lands inside an
+ * auto-layout container's drop zone, reparent it. The caller passes a
+ * callback that excludes the placed shape itself from the container
+ * hit-test (otherwise a container template could parent itself).
+ *
+ * Returns the reparented shape + the corresponding patch, or `null`
+ * when no container hit applies.
+ */
+export const computePlacementContainerDrop = (
+  scene: Scene,
+  state: PlacementState,
+): { readonly scene: Scene; readonly patch: Patch; readonly next: Shape } | null => {
+  const center = {
+    x: state.current.position.x + state.halfWidth,
+    y: state.current.position.y + state.halfHeight,
+  };
+  const container = findContainerAt(scene, center, new Set([state.current.id]));
+  if (!container) return null;
+  const withParent = { ...state.current, parentId: container.id } as Shape;
+  const patch: Patch = {
+    kind: "shape",
+    id: state.current.id,
+    before: state.current,
+    after: withParent,
+  };
+  return { scene: apply(scene, patch), patch, next: withParent };
+};
+
+/** Build the initial placement state for `beginPlacement`. */
+export const beginPlacementState = (shape: Shape): {
+  readonly scene: (s: Scene) => { readonly scene: Scene; readonly patch: Patch };
+  readonly state: PlacementState;
+} => {
+  const half = getShapeWorldBounds(shape);
+  return {
+    scene: (s) => {
+      const r = addShape(s, shape);
+      return { scene: r.scene, patch: r.patch };
+    },
+    state: {
+      current: shape,
+      halfWidth: half.width / 2,
+      halfHeight: half.height / 2,
+    },
+  };
+};
+
+/** Undo of `beginPlacement` — remove the placed shape. */
+export const computePlacementCancel = (
+  scene: Scene,
+  shapeId: ShapeId,
+): { readonly scene: Scene } => ({ scene: removeShape(scene, shapeId).scene });

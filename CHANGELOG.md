@@ -721,3 +721,6 @@
 
 ## 0.42.0
 - feat: carve text-edit, z-order, arrange-group, image-insert, selection-ops
+
+## 0.42.1
+- feat: carve placement + render-orchestrator (editor.ts 3246 Right 3083)
