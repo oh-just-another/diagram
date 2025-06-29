@@ -724,3 +724,6 @@
 
 ## 0.42.1
 - feat: carve placement + render-orchestrator (editor.ts 3246 Right 3083)
+
+## 0.42.2
+- HelpDialog: modern-style key chips + platform-aware layout

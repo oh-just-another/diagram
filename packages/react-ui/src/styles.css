@@ -415,3 +415,92 @@
   font-family: inherit;
   max-width: 260px;
 }
+
+/* ------------------------------------------------------------------ */
+/* Help dialog — modern-style hotkey cheatsheet.                  */
+/* Each section is an "island" with bordered rows; each key is its    */
+/* own pill `<kbd>` rendered with the same tonal selected fill as     */
+/* active toolbar buttons so the visual language stays consistent.    */
+/* ------------------------------------------------------------------ */
+.du-help-islands {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.du-help-island {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.du-help-island-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--du-text);
+  letter-spacing: 0.2px;
+}
+
+.du-help-island-rows {
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius);
+  overflow: hidden;
+}
+
+.du-help-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--du-text);
+  border-bottom: 1px solid var(--du-ui-border);
+}
+
+.du-help-row:last-child {
+  border-bottom: none;
+}
+
+.du-help-row-label {
+  /* Label may wrap on narrow viewports; keys stay on a single line. */
+  min-width: 0;
+}
+
+.du-help-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.du-help-keys-separator {
+  font-size: 11px;
+  color: var(--du-text-muted);
+  padding: 0 2px;
+}
+
+.du-help-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  background: var(--du-selected-bg);
+  color: var(--du-selected-fg);
+  border-radius: var(--du-radius-sm);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.du-help-platform-badge {
+  font-size: 11px;
+  color: var(--du-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

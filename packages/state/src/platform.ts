@@ -100,7 +100,19 @@ const KEY_LABEL_OTHER: Record<string, string> = {
   " ": "Space",
 };
 
-export const formatHotkey = (desc: PrettyHotkeyDesc): string => {
+/**
+ * Same as `formatHotkey` but returns the labels as a separate
+ * array so the caller can render each key as its own UI chip
+ * (modern-style "kbd-as-button" cells in the help dialog).
+ * Order matches `formatHotkey`'s join order: modifiers first
+ * (platform-correct sequence), then the key itself last.
+ *
+ * Example:
+ *   formatHotkeyParts({ meta: true, shift: true, key: "z" })
+ *     → ["⌃", "⇧", "Z"]  on macOS
+ *     → ["Ctrl", "Shift", "Z"]  elsewhere
+ */
+export const formatHotkeyParts = (desc: PrettyHotkeyDesc): string[] => {
   const parts: string[] = [];
   if (isMac) {
     if (desc.ctrl) parts.push("⌃");
@@ -117,5 +129,10 @@ export const formatHotkey = (desc: PrettyHotkeyDesc): string => {
   const k = desc.key ?? desc.code ?? "";
   const labelled = keyLabels[k] ?? (k.length === 1 ? k.toUpperCase() : k);
   parts.push(labelled);
+  return parts;
+};
+
+export const formatHotkey = (desc: PrettyHotkeyDesc): string => {
+  const parts = formatHotkeyParts(desc);
   return isMac ? parts.join("") : parts.join("+");
 };

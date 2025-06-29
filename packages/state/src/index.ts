@@ -113,6 +113,7 @@ export {
   CTRL_OR_CMD_KEY,
   getDevicePixelRatio,
   formatHotkey,
+  formatHotkeyParts,
 } from "./platform.js";
 
 // Re-export annotation types so hosts that wire `addAnnotation` /

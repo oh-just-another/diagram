@@ -1,8 +1,8 @@
-import { useEffect, useMemo, type CSSProperties, type ReactElement } from "react";
+import { Fragment, useEffect, useMemo, type CSSProperties, type ReactElement } from "react";
 import { X } from "lucide-react";
 import {
   defaultActionRegistry,
-  formatHotkey,
+  formatHotkeyParts,
   isMac,
   type Action,
   type ActionCategory,
@@ -16,10 +16,15 @@ import { Modal } from "./modal.js";
  * Help dialog — a cheatsheet of every Action's hotkey. Opens on "?" by
  * default; hosts can also drive `open` via state.
  *
- * Pulls Actions from `defaultActionRegistry` (or a host-supplied
- * registry), groups them by `category`, formats the hotkey labels
- * for the current platform (⌘⇧Z on macOS, Ctrl+Shift+Z elsewhere)
- * via `formatHotkey` from @state/platform.
+ * Shortcuts are grouped into bordered "islands"; every key is rendered
+ * as its own pill `<kbd>` chip. Multiple alternative shortcuts on one
+ * row are joined with "or".
+ *
+ * Platform-aware key labels come from `formatHotkeyParts` in
+ * `@oh-just-another/state/platform`: macOS gets glyphs (⌘ ⌥ ⇧ ⌃ ⏎ ⌫),
+ * other platforms get spelled-out names (Ctrl, Alt, Shift, Enter,
+ * Delete). The platform badge in the header reminds the user
+ * which set they're looking at.
  *
  * Reference: https://github.com/standard/standard/blob/master/packages/standard/components/HelpDialog.tsx
  */
@@ -42,9 +47,14 @@ export interface HelpSection {
   readonly rows: readonly HelpRow[];
 }
 
+/**
+ * Row payload. `keys` is an array of alternative shortcut combinations;
+ * each combination is a list of platform-formatted key labels (e.g.
+ * `[["⌘", "Z"], ["⌃", "Z"]]`). Empty `keys` renders an "—" placeholder.
+ */
 export interface HelpRow {
   readonly label: string;
-  readonly shortcut: string;
+  readonly keys: readonly (readonly string[])[];
 }
 
 const CATEGORY_TITLES: Record<ActionCategory, string> = {
@@ -102,13 +112,15 @@ export const useHelpDialogHotkey = (open: () => void): void => {
 };
 
 /**
- * Format the first hotkey on the action for display. Returns "—" when
- * the action has no hotkey assigned (toolbar-only actions).
+ * Resolve the action's hotkey(s) into the per-chip parts the dialog
+ * renders. Single-hotkey actions return one combination; actions with
+ * an array hotkey return one combination per entry. Toolbar-only
+ * actions (no hotkey) return an empty array.
  */
-const actionShortcut = (action: Action): string => {
-  if (!action.hotkey) return "—";
-  const first = Array.isArray(action.hotkey) ? action.hotkey[0] : action.hotkey;
-  return first ? formatHotkey(first as HotkeyMatcher) : "—";
+const actionKeys = (action: Action): (readonly string[])[] => {
+  if (!action.hotkey) return [];
+  const raw = Array.isArray(action.hotkey) ? action.hotkey : [action.hotkey];
+  return raw.map((h) => formatHotkeyParts(h as HotkeyMatcher));
 };
 
 export const HelpDialog = ({
@@ -125,7 +137,7 @@ export const HelpDialog = ({
       if (!action.label) continue;
       const cat = action.category ?? "other";
       const list = byCategory.get(cat) ?? [];
-      list.push({ label: action.label, shortcut: actionShortcut(action) });
+      list.push({ label: action.label, keys: actionKeys(action) });
       byCategory.set(cat, list);
     }
     const out: HelpSection[] = [];
@@ -146,23 +158,14 @@ export const HelpDialog = ({
   };
   const headerStyle: CSSProperties = {
     padding: "16px 20px",
-    borderBottom: "1px solid var(--border, #2a2a2a)",
+    borderBottom: "1px solid var(--du-ui-border)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
   };
   const bodyStyle: CSSProperties = {
-    padding: "12px 20px 20px",
+    padding: "16px 20px 20px",
     overflowY: "auto",
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "16px 32px",
-  };
-  const platformBadge: CSSProperties = {
-    fontSize: 11,
-    color: "var(--muted, #888)",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
   };
 
   return (
@@ -171,7 +174,9 @@ export const HelpDialog = ({
         <div style={headerStyle}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={platformBadge}>{isMac ? "macOS" : "Win / Linux"}</span>
+            <span className="du-help-platform-badge">
+              {isMac ? "macOS" : "Win / Linux"}
+            </span>
             <button
               type="button"
               aria-label="Close help"
@@ -179,7 +184,7 @@ export const HelpDialog = ({
               style={{
                 background: "transparent",
                 border: "none",
-                color: "var(--text, #ddd)",
+                color: "var(--du-text)",
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
@@ -192,52 +197,47 @@ export const HelpDialog = ({
           </div>
         </div>
         <div style={bodyStyle}>
-          {sections.map((section) => (
-            <section key={section.title}>
-              <h3
-                style={{
-                  margin: "0 0 8px",
-                  fontSize: 12,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                  color: "var(--muted, #888)",
-                }}
-              >
-                {section.title}
-              </h3>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
+          <div className="du-help-islands">
+            {sections.map((section) => (
+              <section key={section.title} className="du-help-island">
+                <h3 className="du-help-island-title">{section.title}</h3>
+                <div className="du-help-island-rows">
                   {section.rows.map((row) => (
-                    <tr key={row.label}>
-                      <td
-                        style={{
-                          padding: "4px 0",
-                          color: "var(--text, #ddd)",
-                          fontSize: 13,
-                        }}
-                      >
-                        {row.label}
-                      </td>
-                      <td
-                        style={{
-                          padding: "4px 0",
-                          textAlign: "right",
-                          fontFamily:
-                            'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
-                          fontSize: 12,
-                          color: "var(--text-strong, #fff)",
-                        }}
-                      >
-                        {row.shortcut}
-                      </td>
-                    </tr>
+                    <div key={row.label} className="du-help-row">
+                      <span className="du-help-row-label">{row.label}</span>
+                      <ShortcutKeys combos={row.keys} />
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </section>
-          ))}
+                </div>
+              </section>
+            ))}
+          </div>
         </div>
       </div>
     </Modal>
+  );
+};
+
+/**
+ * Render N alternative key combinations joined with "or". Each key
+ * renders as its own pill `<kbd>` chip.
+ */
+const ShortcutKeys = ({ combos }: { readonly combos: readonly (readonly string[])[] }) => {
+  if (combos.length === 0) {
+    return <span className="du-help-keys-separator">—</span>;
+  }
+  return (
+    <span className="du-help-keys">
+      {combos.map((combo, i) => (
+        <Fragment key={i}>
+          {i > 0 ? <span className="du-help-keys-separator">or</span> : null}
+          {combo.map((part, j) => (
+            <kbd key={j} className="du-help-key">
+              {part}
+            </kbd>
+          ))}
+        </Fragment>
+      ))}
+    </span>
   );
 };
