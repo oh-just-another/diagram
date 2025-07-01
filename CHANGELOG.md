@@ -727,3 +727,6 @@
 
 ## 0.42.2
 - HelpDialog: modern-style key chips + platform-aware layout
+
+## 0.42.3
+- Library panel: search, tags, pin (no-auto-close), dock (canvas split)

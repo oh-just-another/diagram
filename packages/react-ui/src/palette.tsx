@@ -10,6 +10,7 @@ import { DEFAULT_LAYER_ID, orderForTop } from "@oh-just-another/scene";
 import { shapeId } from "@oh-just-another/types";
 import {
   defaultRegistry,
+  matchesTemplateSearch,
   type Category,
   type Template,
   type TemplateRegistry,
@@ -37,6 +38,13 @@ export interface PaletteProps {
   readonly categories?: readonly Category[];
   /** Categories that start collapsed. Defaults to none. */
   readonly collapsedByDefault?: readonly Category[];
+  /**
+   * Live search query — when set, the palette flattens (no category
+   * sections) and shows every template whose `name` / `category` /
+   * `tags` matches. Owned by the host so the input lives in the
+   * panel header above the palette body.
+   */
+  readonly searchQuery?: string;
   readonly style?: CSSProperties;
   readonly className?: string;
 }
@@ -47,6 +55,7 @@ export const Palette = ({
   registry = defaultRegistry,
   categories = DEFAULT_CATEGORIES,
   collapsedByDefault = [],
+  searchQuery,
   style,
   className,
 }: PaletteProps) => {
@@ -72,6 +81,21 @@ export const Palette = ({
     });
   };
 
+  // Flat-search mode: when a query is active, dissolve category
+  // sections and show every match in one grid. Empty query → normal
+  // sectioned view.
+  const trimmedQuery = searchQuery?.trim() ?? "";
+  const flatMatches = useMemo<readonly Template[]>(() => {
+    if (!trimmedQuery) return [];
+    const out: Template[] = [];
+    for (const { items } of sections) {
+      for (const t of items) {
+        if (matchesTemplateSearch(t, trimmedQuery)) out.push(t);
+      }
+    }
+    return out;
+  }, [sections, trimmedQuery]);
+
   return (
     <aside
       className={className}
@@ -85,20 +109,6 @@ export const Palette = ({
         ...style,
       }}
     >
-      <h2
-        style={{
-          margin: 0,
-          padding: "10px 12px",
-          fontSize: 11,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          color: "var(--muted, #777)",
-          borderBottom: "1px solid var(--border, #2a2a2a)",
-        }}
-      >
-        Palette
-      </h2>
-
       <div
         style={{
           flex: "1 1 auto",
@@ -107,15 +117,44 @@ export const Palette = ({
           flexDirection: "column",
         }}
       >
-        {sections.map(({ category, items }) => (
-          <CategorySection
-            key={category}
-            category={category}
-            items={items}
-            collapsed={collapsed.has(category)}
-            onToggle={() => toggle(category)}
-          />
-        ))}
+        {trimmedQuery ? (
+          flatMatches.length === 0 ? (
+            <div
+              style={{
+                padding: "24px 12px",
+                textAlign: "center",
+                fontSize: 12,
+                color: "var(--du-text-muted, #888)",
+              }}
+            >
+              No templates match “{trimmedQuery}”
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: 8,
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: 6,
+                alignContent: "start",
+              }}
+            >
+              {flatMatches.map((template) => (
+                <PaletteItem key={template.id} template={template} />
+              ))}
+            </div>
+          )
+        ) : (
+          sections.map(({ category, items }) => (
+            <CategorySection
+              key={category}
+              category={category}
+              items={items}
+              collapsed={collapsed.has(category)}
+              onToggle={() => toggle(category)}
+            />
+          ))
+        )}
       </div>
     </aside>
   );

@@ -129,6 +129,7 @@ export const TemplateSpecZ = z
     category: z.string().min(1),
     icon: z.string(),
     blueprint: ShapeBlueprintZ,
+    tags: z.array(z.string().min(1)).optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .strict();
@@ -190,6 +191,7 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
       name: spec.name,
       category: spec.category,
       icon: spec.icon,
+      ...(spec.tags !== undefined ? { tags: spec.tags } : {}),
       ...(spec.metadata !== undefined ? { metadata: spec.metadata } : {}),
       factory: (ctx: TemplateContext): Shape => {
         // Lay the template out once at its declared natural size to
@@ -241,6 +243,7 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
     name: spec.name,
     category: spec.category,
     icon: spec.icon,
+    ...(spec.tags !== undefined ? { tags: spec.tags } : {}),
     ...(spec.metadata !== undefined ? { metadata: spec.metadata } : {}),
     factory: (ctx: TemplateContext): Shape =>
       ({

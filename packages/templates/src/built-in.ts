@@ -77,6 +77,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Rectangle",
     category: "basic",
     icon: RECT_ICON,
+    tags: ["rectangle", "rect", "square", "box", "block"],
     factory: (c) => filledRect(c, 140, 80, BASIC_STYLE),
   },
   {
@@ -84,6 +85,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Ellipse",
     category: "basic",
     icon: ELLIPSE_ICON,
+    tags: ["ellipse", "circle", "oval", "round", "disc"],
     factory: (c) => filledEllipse(c, 140, 80, BASIC_STYLE),
   },
   {
@@ -91,6 +93,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Triangle",
     category: "basic",
     icon: TRIANGLE_ICON,
+    tags: ["triangle", "play", "arrow"],
     factory: (c) =>
       polygonFromPoints(
         c,
@@ -107,6 +110,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Diamond",
     category: "basic",
     icon: DIAMOND_ICON,
+    tags: ["diamond", "rhombus", "kite"],
     factory: (c) =>
       polygonFromPoints(
         c,
@@ -124,6 +128,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Hexagon",
     category: "basic",
     icon: HEXAGON_ICON,
+    tags: ["hexagon", "hex", "polygon", "honeycomb"],
     factory: (c) =>
       polygonFromPoints(
         c,
@@ -143,6 +148,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Arrow",
     category: "basic",
     icon: ARROW_ICON,
+    tags: ["arrow", "pointer", "direction", "next"],
     factory: (c) =>
       polygonFromPoints(
         c,
@@ -163,6 +169,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Sticky note",
     category: "basic",
     icon: STICKY_ICON,
+    tags: ["sticky", "note", "postit", "post-it", "memo", "card"],
     factory: (c) => filledRect(c, 120, 100, STICKY_STYLE),
   },
 
@@ -172,6 +179,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Process",
     category: "flowchart",
     icon: PROCESS_ICON,
+    tags: ["process", "action", "step", "task", "rectangle"],
     factory: (c) => filledRect(c, 160, 70, FLOW_STYLE),
   },
   {
@@ -179,6 +187,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Decision",
     category: "flowchart",
     icon: DECISION_ICON,
+    tags: ["decision", "branch", "if", "condition", "diamond", "choice"],
     factory: (c) =>
       polygonFromPoints(
         c,
@@ -196,6 +205,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Terminator",
     category: "flowchart",
     icon: TERMINATOR_ICON,
+    tags: ["terminator", "start", "end", "stop", "begin", "finish", "pill"],
     factory: (c) => filledEllipse(c, 140, 60, FLOW_STYLE),
   },
   {
@@ -203,6 +213,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Document",
     category: "flowchart",
     icon: DOCUMENT_ICON,
+    tags: ["document", "file", "report", "paper", "doc"],
     factory: (c) => {
       const w = 160;
       const h = 90;
@@ -231,6 +242,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     name: "Data",
     category: "flowchart",
     icon: DATA_ICON,
+    tags: ["data", "input", "output", "io", "parallelogram"],
     factory: (c) =>
       polygonFromPoints(
         c,
@@ -244,6 +256,25 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
       ),
   },
 ];
+
+/**
+ * Match a template against a search query: case-insensitive substring
+ * over `name`, `category`, and `tags`. Returns `true` when the query
+ * is empty (no filter) or any matchable field contains it.
+ */
+export const matchesTemplateSearch = (template: Template, query: string): boolean => {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (template.name.toLowerCase().includes(q)) return true;
+  if (typeof template.category === "string" && template.category.toLowerCase().includes(q))
+    return true;
+  if (template.tags) {
+    for (const tag of template.tags) {
+      if (tag.toLowerCase().includes(q)) return true;
+    }
+  }
+  return false;
+};
 
 /**
  * Register the full built-in set into a registry (defaults to the singleton).

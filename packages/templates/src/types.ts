@@ -46,6 +46,14 @@ export interface Template {
    * Synchronous factory. Returns the shape the host should add to the scene.
    */
   factory(context: TemplateContext): Shape;
-  /** Free-form metadata (tags, descriptions, etc). */
+  /**
+   * Free-form keywords for the palette search filter. Match is case-
+   * insensitive substring across `name`, `category`, and these tags.
+   * Use synonyms the user might actually type (e.g. `["rectangle",
+   * "square", "rect", "box"]` for the rectangle template). Optional —
+   * a template with no tags still matches by name / category.
+   */
+  readonly tags?: readonly string[];
+  /** Free-form metadata (descriptions, etc). */
   readonly metadata?: Readonly<Record<string, unknown>>;
 }

@@ -515,8 +515,27 @@ const EditorShell = ({
   void useScene();
   const paletteDropHandlers = usePalettePlacement();
   const [libraryOpen, setLibraryOpen] = useState(false);
+  // Library dock state lives in the host so the shell can reflow
+  // canvas + bars when the panel becomes a sibling column instead
+  // of a floating overlay. Seeded from localStorage by LibraryPanel
+  // itself; the callback below keeps the host's copy in sync.
+  const [libraryDocked, setLibraryDocked] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return window.localStorage.getItem("du:library:docked") === "1";
+    } catch {
+      return false;
+    }
+  });
   const [helpOpen, setHelpOpen] = useState(false);
   useHelpDialogHotkey(() => setHelpOpen((v) => !v));
+
+  // While the library is docked + open, the canvas area shrinks
+  // by the panel's width so the surface doesn't get covered. The
+  // bars (TopBar / BottomBar) inherit the same inset so they stop
+  // before the panel's edge.
+  const DOCKED_PANEL_WIDTH = 240;
+  const dockedInset = libraryOpen && libraryDocked ? DOCKED_PANEL_WIDTH : 0;
 
   return (
     <div
@@ -526,17 +545,56 @@ const EditorShell = ({
       onDragLeave={paletteDropHandlers.onDragLeave}
       onDrop={paletteDropHandlers.onDrop}
     >
-      {/* Full-bleed canvas underneath everything. */}
-      <DiagramSurface style={{ position: "absolute", inset: 0 }} />
+      {/* Canvas area — shrinks horizontally when the library
+          panel is docked so the surface + bars stop before its
+          edge. `right` inset is used because LibraryPanel
+          defaults to side="right". */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: dockedInset,
+        }}
+      >
+        <DiagramSurface style={{ position: "absolute", inset: 0 }} />
+        <TextEditorOverlay />
+        {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
+      </div>
 
-      {/* Per-shape overlays (text editor, context menu) sit between
-          canvas and UI layer — they're positioned in scene-space and
-          shouldn't be hidden by floating chrome. */}
-      <TextEditorOverlay />
-      {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
+      {/* Docked library — static column on the right of the
+          canvas area. Hidden when the panel is not docked OR
+          not open; in that case the standard overlay copy below
+          renders inside the UI layer. */}
+      {libraryOpen && libraryDocked ? (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: DOCKED_PANEL_WIDTH,
+            borderLeft: "1px solid var(--du-ui-border)",
+            background: "var(--du-ui-bg-solid)",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          <LibraryPanel
+            open
+            docked
+            onDockedChange={(d) => setLibraryDocked(d)}
+            onClose={() => setLibraryOpen(false)}
+            {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
+          />
+        </div>
+      ) : null}
 
-      {/* UI layer — top/bottom bars + side panels. */}
-      <UILayer>
+      {/* UI layer — top/bottom bars + overlay panels. Stops at
+          the docked-panel edge so floating chrome doesn't slide
+          underneath the dock. */}
+      <UILayer style={{ right: dockedInset }}>
         {!hideTopBar && (
           <TopBar
             left={
@@ -791,11 +849,18 @@ const EditorShell = ({
           />
         )}
 
-        <LibraryPanel
-          open={libraryOpen}
-          onClose={() => setLibraryOpen(false)}
-          {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
-        />
+        {/* Overlay copy — rendered only when NOT docked. The
+            docked instance is hoisted out of the UI layer above
+            so it can split the canvas column. */}
+        {!libraryDocked ? (
+          <LibraryPanel
+            open={libraryOpen}
+            docked={false}
+            onDockedChange={(d) => setLibraryDocked(d)}
+            onClose={() => setLibraryOpen(false)}
+            {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
+          />
+        ) : null}
 
         {!hideSelectedShapeActions && <SelectedShapeActions />}
       </UILayer>

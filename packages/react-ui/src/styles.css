@@ -370,6 +370,69 @@
   padding: var(--du-pad);
 }
 
+/* Search input row — sits between the header and the body. */
+.du-side-panel-search {
+  position: relative;
+  padding: var(--du-pad-sm) var(--du-pad);
+  border-bottom: 1px solid var(--du-ui-border);
+}
+
+.du-side-panel-search input[type="search"] {
+  width: 100%;
+  height: 28px;
+  box-sizing: border-box;
+  background: var(--du-ui-bg-solid);
+  color: var(--du-text);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius-sm);
+  padding: 0 8px 0 26px;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.du-side-panel-search input[type="search"]::placeholder {
+  color: var(--du-text-muted);
+}
+
+.du-side-panel-search input[type="search"]:focus {
+  border-color: var(--du-accent);
+}
+
+.du-side-panel-search-icon {
+  position: absolute;
+  left: calc(var(--du-pad) + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--du-text-muted);
+  pointer-events: none;
+}
+
+/* Docked variant — the panel becomes a static sibling of the canvas
+   instead of a floating overlay. Host owns the actual layout flip;
+   these rules just drop the floating-pill chrome. */
+.du-side-panel.du-side-panel-docked {
+  position: static;
+  top: auto;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  height: 100%;
+  width: 240px;
+  border-radius: 0;
+  box-shadow: none;
+  border-top: none;
+  border-bottom: none;
+}
+
+.du-side-panel.du-side-panel-docked.du-side-panel-left {
+  border-left: none;
+}
+
+.du-side-panel.du-side-panel-docked.du-side-panel-right {
+  border-right: none;
+}
+
 /* ------------------------------------------------------------------ */
 /* Toast for reset-to-content visibility hint.                        */
 /* ------------------------------------------------------------------ */
