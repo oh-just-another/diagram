@@ -1,6 +1,10 @@
 import { useState, type CSSProperties } from "react";
+import { Eye, EyeOff, Lock, Trash2, Unlock } from "lucide-react";
 import type { Layer } from "@oh-just-another/scene";
 import type { LayerId } from "@oh-just-another/types";
+
+const LAYER_GLYPH_SIZE = 14;
+const LAYER_GLYPH_STROKE = 1.75;
 import { useActiveLayerId, useDiagramOptional, useLayers } from "./hooks.js";
 import {
   LAYER_PANEL_WIDTH,
@@ -144,7 +148,11 @@ const LayerRow = ({
         }}
         muted={!layer.visible}
       >
-        {layer.visible ? "👁" : "—"}
+        {layer.visible ? (
+          <Eye size={LAYER_GLYPH_SIZE} strokeWidth={LAYER_GLYPH_STROKE} />
+        ) : (
+          <EyeOff size={LAYER_GLYPH_SIZE} strokeWidth={LAYER_GLYPH_STROKE} />
+        )}
       </IconBtn>
       <IconBtn
         title={layer.locked ? "Unlock layer" : "Lock layer"}
@@ -154,7 +162,11 @@ const LayerRow = ({
         }}
         muted={!layer.locked}
       >
-        {layer.locked ? "🔒" : "🔓"}
+        {layer.locked ? (
+          <Lock size={LAYER_GLYPH_SIZE} strokeWidth={LAYER_GLYPH_STROKE} />
+        ) : (
+          <Unlock size={LAYER_GLYPH_SIZE} strokeWidth={LAYER_GLYPH_STROKE} />
+        )}
       </IconBtn>
       {renaming ? (
         <input
@@ -203,7 +215,7 @@ const LayerRow = ({
             onDelete();
           }}
         >
-          ×
+          <Trash2 size={LAYER_GLYPH_SIZE} strokeWidth={LAYER_GLYPH_STROKE} />
         </IconBtn>
       ) : null}
     </div>

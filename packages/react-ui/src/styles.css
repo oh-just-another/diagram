@@ -370,6 +370,133 @@
   padding: var(--du-pad);
 }
 
+/* Variant for hosts that lay out their own grid / list inside the
+   panel body (e.g. <Palette>) and would otherwise have to subtract
+   the body's padding from their own paddings. Keeps overflow + flex
+   behaviour. */
+.du-side-panel-body-flush {
+  padding: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Palette (template library content) — sectioned grid of icon tiles. */
+/* No per-tile borders, no per-section dividers — visual structure    */
+/* comes from spacing alone so the panel reads as one calm surface.   */
+/* ------------------------------------------------------------------ */
+.du-palette {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: var(--du-text);
+  width: 100%;
+}
+
+.du-palette-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.du-palette-section {
+  padding: 0 var(--du-pad) var(--du-pad-sm);
+}
+
+.du-palette-category {
+  width: 100%;
+  background: transparent;
+  color: var(--du-text-muted);
+  border: none;
+  padding: 10px 0 6px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--du-gap-sm);
+}
+
+.du-palette-category-caret {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.6;
+}
+
+.du-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--du-gap-sm);
+  align-content: start;
+  padding: 0 var(--du-pad) var(--du-pad-sm);
+}
+
+/* `.du-palette-section > .du-palette-grid` already gets padding via
+   .du-palette-section; remove the duplicate to avoid double margin. */
+.du-palette-section > .du-palette-grid {
+  padding: 0;
+}
+
+.du-palette-empty {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--du-text-muted);
+}
+
+.du-palette-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  aspect-ratio: 1;
+  padding: 6px 4px;
+  background: transparent;
+  color: var(--du-text);
+  border: none;
+  border-radius: var(--du-radius-sm);
+  cursor: grab;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.1;
+  transition: background 0.12s ease;
+}
+
+.du-palette-item:hover {
+  background: var(--du-hover-overlay);
+}
+
+.du-palette-item:active {
+  cursor: grabbing;
+}
+
+.du-palette-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--du-text);
+}
+
+.du-palette-item-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.du-palette-item-label {
+  /* Two-line clamp so long names don't push the tile out of square. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Search input row — sits between the header and the body. */
 .du-side-panel-search {
   position: relative;

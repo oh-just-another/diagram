@@ -9,7 +9,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { Menu as MenuIcon } from "lucide-react";
+import { Check, Menu as MenuIcon } from "lucide-react";
 
 /** Pixel size for the trigger icon — matches the toolbar tool buttons. */
 const TRIGGER_ICON_SIZE = 16;
@@ -203,7 +203,7 @@ const Item = ({ children, onClick, shortcut, disabled, active, icon }: MainMenuI
             color: active ? "var(--du-accent, #1a73e8)" : "var(--du-text-muted, #888)",
           }}
         >
-          {active ? "✓" : icon ?? ""}
+          {active ? <Check size={12} strokeWidth={2.25} /> : icon ?? ""}
         </span>
         {children}
       </span>

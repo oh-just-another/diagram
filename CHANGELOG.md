@@ -730,3 +730,6 @@
 
 ## 0.42.3
 - Library panel: search, tags, pin (no-auto-close), dock (canvas split)
+
+## 0.42.4
+- Library panel: drop visual artefacts + Lucide everywhere

@@ -216,11 +216,8 @@ export const LibraryPanel = ({
           }}
         />
       </div>
-      <div className="du-side-panel-body">
-        <Palette
-          searchQuery={search}
-          style={{ background: "transparent", border: "none", padding: 0 }}
-        />
+      <div className="du-side-panel-body du-side-panel-body-flush">
+        <Palette searchQuery={search} />
       </div>
     </aside>
   );

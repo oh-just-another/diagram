@@ -6,6 +6,7 @@ import {
   type CSSProperties,
   type DragEvent,
 } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { DEFAULT_LAYER_ID, orderForTop } from "@oh-just-another/scene";
 import { shapeId } from "@oh-just-another/types";
 import {
@@ -17,7 +18,7 @@ import {
 } from "@oh-just-another/templates";
 import { walkDataTransfer } from "@oh-just-another/state";
 import { useDiagramOptional } from "./hooks.js";
-import { PALETTE_ITEM_SIZE, PALETTE_WIDTH } from "./constants.js";
+import { PALETTE_ITEM_SIZE } from "./constants.js";
 
 /**
  * Draggable shape palette. Defaults to the global `defaultRegistry`; pass a
@@ -98,47 +99,17 @@ export const Palette = ({
 
   return (
     <aside
-      className={className}
-      style={{
-        width: PALETTE_WIDTH,
-        background: "var(--panel, #161616)",
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        color: "var(--text, #ddd)",
-        ...style,
-      }}
+      className={`du-palette ${className ?? ""}`.trim()}
+      style={style}
     >
-      <div
-        style={{
-          flex: "1 1 auto",
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
+      <div className="du-palette-body">
         {trimmedQuery ? (
           flatMatches.length === 0 ? (
-            <div
-              style={{
-                padding: "24px 12px",
-                textAlign: "center",
-                fontSize: 12,
-                color: "var(--du-text-muted, #888)",
-              }}
-            >
+            <div className="du-palette-empty">
               No templates match “{trimmedQuery}”
             </div>
           ) : (
-            <div
-              style={{
-                padding: 8,
-                display: "grid",
-                gridTemplateColumns: "repeat(2, 1fr)",
-                gap: 6,
-                alignContent: "start",
-              }}
-            >
+            <div className="du-palette-grid">
               {flatMatches.map((template) => (
                 <PaletteItem key={template.id} template={template} />
               ))}
@@ -173,45 +144,24 @@ const CategorySection = ({
 }) => {
   if (items.length === 0) return null;
   return (
-    <section>
+    <section className="du-palette-section">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={!collapsed}
-        style={{
-          width: "100%",
-          background: "transparent",
-          color: "var(--muted, #888)",
-          border: "none",
-          borderBottom: "1px solid var(--border, #2a2a2a)",
-          padding: "8px 12px",
-          fontSize: 11,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          textAlign: "left",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          font: "inherit",
-          fontWeight: 600,
-        }}
+        className="du-palette-category"
       >
         <span>{category}</span>
-        <span style={{ fontSize: 9, opacity: 0.6 }}>{collapsed ? "▶" : "▼"}</span>
+        <span className="du-palette-category-caret" aria-hidden>
+          {collapsed ? (
+            <ChevronRight size={12} strokeWidth={1.75} />
+          ) : (
+            <ChevronDown size={12} strokeWidth={1.75} />
+          )}
+        </span>
       </button>
       {collapsed ? null : (
-        <div
-          style={{
-            padding: 8,
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 6,
-            alignContent: "start",
-            borderBottom: "1px solid #2a2a2a",
-          }}
-        >
+        <div className="du-palette-grid">
           {items.map((template) => (
             <PaletteItem key={template.id} template={template} />
           ))}
@@ -297,31 +247,16 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
       title={template.name}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      style={{
-        background: "var(--button-bg, #1f1f1f)",
-        border: "1px solid var(--border, #2f2f2f)",
-        borderRadius: 4,
-        aspectRatio: "1",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 4,
-        color: "var(--text, #bbb)",
-        cursor: "grab",
-        padding: "6px 4px",
-        textAlign: "center",
-        fontSize: 10,
-        lineHeight: 1.1,
-      }}
+      className="du-palette-item"
     >
       <span
+        className="du-palette-item-icon"
         style={{ width: PALETTE_ITEM_SIZE, height: PALETTE_ITEM_SIZE }}
         // Icons are trusted SVG markup defined in the registry by template
         // authors — same source of truth as the canvas renderer uses.
         dangerouslySetInnerHTML={{ __html: template.icon }}
       />
-      <span>{template.name}</span>
+      <span className="du-palette-item-label">{template.name}</span>
     </div>
   );
 };
