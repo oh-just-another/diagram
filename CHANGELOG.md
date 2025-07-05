@@ -733,3 +733,6 @@
 
 ## 0.42.4
 - Library panel: drop visual artefacts + Lucide everywhere
+
+## 0.43.0
+- PropertyPanel: modern-style sectioned inspector

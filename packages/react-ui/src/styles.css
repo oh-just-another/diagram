@@ -497,6 +497,151 @@
   text-overflow: ellipsis;
 }
 
+/* ------------------------------------------------------------------ */
+/* Property panel — modern-style sectioned inspector.             */
+/* Sections are stacked top-to-bottom; each one has a tiny uppercase  */
+/* label, then a row of controls (color swatches, segmented buttons,  */
+/* slider). No card chrome — visual structure comes from spacing.     */
+/* ------------------------------------------------------------------ */
+.du-prop-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+  color: var(--du-text);
+  font-size: 12px;
+}
+
+.du-prop-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.du-prop-section-label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--du-text-muted);
+}
+
+.du-prop-row {
+  display: flex;
+  align-items: center;
+  gap: var(--du-gap-sm);
+  flex-wrap: wrap;
+}
+
+.du-prop-row-label {
+  font-size: 11px;
+  color: var(--du-text-muted);
+  min-width: 48px;
+}
+
+.du-prop-empty {
+  font-style: italic;
+  color: var(--du-text-muted);
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Slider — themed native <input type=range> + value badge.           */
+/* ------------------------------------------------------------------ */
+.du-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.du-slider-track {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.du-slider-track::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--du-selected-bg);
+  border-radius: 2px;
+}
+
+.du-slider-track::-moz-range-track {
+  height: 4px;
+  background: var(--du-selected-bg);
+  border-radius: 2px;
+  border: none;
+}
+
+.du-slider-track::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--du-selected-fg);
+  border-radius: 50%;
+  border: 2px solid var(--du-ui-bg-solid);
+  margin-top: -5px;
+  cursor: grab;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.du-slider-track::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--du-selected-fg);
+  border-radius: 50%;
+  border: 2px solid var(--du-ui-bg-solid);
+  cursor: grab;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.du-slider-track:focus {
+  outline: none;
+}
+
+.du-slider-track:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--du-accent);
+  outline-offset: 2px;
+}
+
+.du-slider-value {
+  min-width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--du-text-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Number input — small themed `<input type=number>`.                 */
+/* ------------------------------------------------------------------ */
+.du-number-input {
+  width: 64px;
+  height: 24px;
+  box-sizing: border-box;
+  background: var(--du-ui-bg-solid);
+  color: var(--du-text);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius-sm);
+  padding: 0 6px;
+  font: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.du-number-input:focus {
+  border-color: var(--du-accent);
+}
+
 /* Search input row — sits between the header and the body. */
 .du-side-panel-search {
   position: relative;

@@ -6,6 +6,12 @@ export {
 } from "./context.js";
 export { IconButton, type IconButtonProps } from "./icon-button.js";
 export { ButtonGroup, type ButtonGroupProps } from "./button-group.js";
+export {
+  SegmentedControl,
+  type SegmentedControlOption,
+  type SegmentedControlProps,
+} from "./segmented-control.js";
+export { Slider, type SliderProps } from "./slider.js";
 export { UILayer, type UILayerProps } from "./ui-layer.js";
 export { TopBar, BottomBar, type DiagramBarProps } from "./diagram-bars.js";
 export { HelpButton, type HelpButtonProps } from "./help-button.js";

@@ -35,15 +35,7 @@ export const SelectedShapeActions = ({
         <span>{selection.size === 1 ? "Properties" : `${selection.size} selected`}</span>
       </header>
       <div className="du-side-panel-body">
-        <PropertyPanel
-          style={{
-            width: "100%",
-            background: "transparent",
-            border: "none",
-            padding: 0,
-            overflow: "visible",
-          }}
-        />
+        <PropertyPanel />
         {extras}
       </div>
     </aside>
