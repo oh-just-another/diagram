@@ -4,8 +4,6 @@ import {
   ChevronsUp,
   Copy as CopyIcon,
   Group as GroupIcon,
-  Layers,
-  Minus,
   MoveDown,
   MoveUp,
   Square,
@@ -14,13 +12,7 @@ import {
   Trash2,
   Ungroup as UngroupIcon,
 } from "lucide-react";
-import type {
-  LineCap,
-  LineJoin,
-  Roundness,
-  ShapeBase,
-  StrokeAlign,
-} from "@oh-just-another/scene";
+import type { Roundness, ShapeBase } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene, useSelection } from "./hooks.js";
 import { ColorSwatchPicker } from "./color-swatch-picker.js";
 import { SegmentedControl } from "./segmented-control.js";
@@ -66,7 +58,6 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
       <FillSection shapes={shapes} />
       <StrokeWidthSection shapes={shapes} />
       <StrokeStyleSection shapes={shapes} />
-      <StrokeJoinCapSection shapes={shapes} />
       <RoundnessSection shapes={shapes} />
       <OpacitySection shapes={shapes} />
       <LayersSection />
@@ -162,13 +153,10 @@ const StrokeStyleSection = ({ shapes }: { readonly shapes: readonly ShapeBase[] 
           { value: "dotted", label: "Dotted", icon: <SquareDot size={14} strokeWidth={1.75} /> },
         ]}
         onChange={(v) => {
-          // `dashArray: undefined` would conflict with exact-optional-
-          // types; pass it only when we want to set a real pattern.
-          if (v === "solid") {
-            editor.updateStyle(ids, {});
-            return;
-          }
-          const dashArray = v === "dashed" ? [8, 4] : [2, 4];
+          // `[]` reads as solid in setDashArray (canvas2D treats it
+          // as "no dash"). `undefined` would skip the write under
+          // exact-optional-types, so we always pass an array.
+          const dashArray = v === "solid" ? [] : v === "dashed" ? [8, 4] : [2, 4];
           editor.updateStyle(ids, { dashArray });
         }}
       />
@@ -177,62 +165,11 @@ const StrokeStyleSection = ({ shapes }: { readonly shapes: readonly ShapeBase[] 
 };
 
 /**
- * Stroke join / cap / alignment. Three short rows packed into one
- * section so the panel doesn't sprawl. Each control mirrors the
- * `lineJoin` / `lineCap` / `strokeAlign` enum exactly.
- */
-const StrokeJoinCapSection = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
-  const editor = useDiagramOptional();
-  if (!editor || !shapes.some(hasStroke)) return null;
-  const join = sharedValue<LineJoin>(shapes, (s) => s.style?.lineJoin ?? null);
-  const cap = sharedValue<LineCap>(shapes, (s) => s.style?.lineCap ?? null);
-  const align = sharedValue<StrokeAlign>(shapes, (s) => s.style?.strokeAlign ?? null);
-  const ids = shapes.map((s) => s.id);
-  return (
-    <Section label="Stroke detail">
-      <Row label="Join">
-        <SegmentedControl<LineJoin>
-          ariaLabel="Line join"
-          value={join}
-          options={[
-            { value: "miter", label: "Miter", icon: <JoinIcon kind="miter" /> },
-            { value: "round", label: "Round", icon: <JoinIcon kind="round" /> },
-            { value: "bevel", label: "Bevel", icon: <JoinIcon kind="bevel" /> },
-          ]}
-          onChange={(v) => editor.updateStyle(ids, { lineJoin: v })}
-        />
-      </Row>
-      <Row label="Cap">
-        <SegmentedControl<LineCap>
-          ariaLabel="Line cap"
-          value={cap}
-          options={[
-            { value: "butt", label: "Butt", icon: <CapIcon kind="butt" /> },
-            { value: "round", label: "Round", icon: <CapIcon kind="round" /> },
-            { value: "square", label: "Square", icon: <CapIcon kind="square" /> },
-          ]}
-          onChange={(v) => editor.updateStyle(ids, { lineCap: v })}
-        />
-      </Row>
-      <Row label="Align">
-        <SegmentedControl<StrokeAlign>
-          ariaLabel="Stroke alignment"
-          value={align}
-          options={[
-            { value: "inside", label: "Inside", icon: <AlignIcon kind="inside" /> },
-            { value: "center", label: "Center", icon: <AlignIcon kind="center" /> },
-            { value: "outside", label: "Outside", icon: <AlignIcon kind="outside" /> },
-          ]}
-          onChange={(v) => editor.updateStyle(ids, { strokeAlign: v })}
-        />
-      </Row>
-    </Section>
-  );
-};
-
-/**
- * Corner roundness — sharp / round segmented control with an
- * optional explicit radius input when `round` is active.
+ * Corner roundness — sharp / round segmented control. In `round`
+ * mode the section reveals an "Auto radius" checkbox: when
+ * checked, the renderer picks an adaptive radius; when unchecked,
+ * a slider sets the explicit value (matches standard's
+ * round-corners + adaptive radius model).
  */
 const RoundnessSection = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
   const editor = useDiagramOptional();
@@ -242,34 +179,61 @@ const RoundnessSection = ({ shapes }: { readonly shapes: readonly ShapeBase[] })
   const type = sharedValue<Roundness["type"]>(shapes, (s) => s.style?.roundness?.type ?? "sharp");
   const radius = sharedValue<number>(shapes, (s) => s.style?.roundness?.value ?? null);
   const ids = shapes.map((s) => s.id);
+  // Auto = `roundness.value` not set (renderer falls back to its
+  // adaptive default). User explicitly OFF auto = numeric value.
+  const isAuto = radius === null;
   return (
     <Section label="Corners">
-      <SegmentedControl<Roundness["type"]>
-        ariaLabel="Corner roundness"
-        value={type}
-        options={[
-          { value: "sharp", label: "Sharp", icon: <CornerIcon kind="sharp" /> },
-          { value: "round", label: "Round", icon: <CornerIcon kind="round" /> },
-        ]}
-        onChange={(v) => editor.updateStyle(ids, { roundness: { type: v } })}
-      />
+      <Row>
+        <SegmentedControl<Roundness["type"]>
+          ariaLabel="Corner roundness"
+          value={type}
+          options={[
+            { value: "sharp", label: "Sharp", icon: <CornerIcon kind="sharp" /> },
+            { value: "round", label: "Round", icon: <CornerIcon kind="round" /> },
+          ]}
+          onChange={(v) => editor.updateStyle(ids, { roundness: { type: v } })}
+        />
+      </Row>
       {type === "round" ? (
-        <Row label="Radius">
-          <input
-            type="number"
-            className="du-number-input"
-            min={0}
-            placeholder="auto"
-            value={radius ?? ""}
-            onChange={(ev) => {
-              const raw = ev.target.value.trim();
-              const v = raw === "" ? undefined : Number(raw);
-              editor.updateStyle(ids, {
-                roundness: v !== undefined ? { type: "round", value: v } : { type: "round" },
-              });
-            }}
-          />
-        </Row>
+        <>
+          <Row>
+            <label className="du-prop-checkbox">
+              <input
+                type="checkbox"
+                checked={isAuto}
+                onChange={(ev) => {
+                  if (ev.target.checked) {
+                    editor.updateStyle(ids, { roundness: { type: "round" } });
+                  } else {
+                    // Seed the explicit value with the current
+                    // (or a sensible default 8 px) so the slider
+                    // has a starting position.
+                    editor.updateStyle(ids, {
+                      roundness: { type: "round", value: radius ?? 8 },
+                    });
+                  }
+                }}
+              />
+              <span>Auto radius</span>
+            </label>
+          </Row>
+          {!isAuto ? (
+            <Row>
+              <Slider
+                value={radius ?? 8}
+                min={0}
+                max={64}
+                step={1}
+                ariaLabel="Corner radius"
+                valueLabel={`${radius ?? 8}px`}
+                onChange={(v) =>
+                  editor.updateStyle(ids, { roundness: { type: "round", value: v } })
+                }
+              />
+            </Row>
+          ) : null}
+        </>
       ) : null}
     </Section>
   );
@@ -360,9 +324,15 @@ const Section = ({ label, children }: { readonly label: string; readonly childre
   </section>
 );
 
-const Row = ({ label, children }: { readonly label: string; readonly children: ReactNode }) => (
+const Row = ({
+  label,
+  children,
+}: {
+  readonly label?: string;
+  readonly children: ReactNode;
+}) => (
   <div className="du-prop-row">
-    <span className="du-prop-row-label">{label}</span>
+    {label !== undefined ? <span className="du-prop-row-label">{label}</span> : null}
     {children}
   </div>
 );
@@ -386,55 +356,6 @@ const StrokeWidthIcon = ({ thickness }: { readonly thickness: number }) => (
   </svg>
 );
 
-const JoinIcon = ({ kind }: { readonly kind: LineJoin }) => {
-  // L-shaped path with the relevant join style applied.
-  return (
-    <svg width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden>
-      <polyline
-        points="3,11 3,3 11,3"
-        stroke="currentColor"
-        strokeWidth={2.5}
-        strokeLinejoin={kind}
-        fill="none"
-      />
-    </svg>
-  );
-};
-
-const CapIcon = ({ kind }: { readonly kind: LineCap }) => (
-  <svg width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden>
-    <line
-      x1={3}
-      y1={7}
-      x2={11}
-      y2={7}
-      stroke="currentColor"
-      strokeWidth={3}
-      strokeLinecap={kind}
-    />
-  </svg>
-);
-
-const AlignIcon = ({ kind }: { readonly kind: StrokeAlign }) => {
-  // Rect with a stroke positioned per alignment so the user sees
-  // where the stroke sits relative to the path.
-  const inset = kind === "inside" ? 3 : kind === "outside" ? 1 : 2;
-  return (
-    <svg width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden>
-      <rect
-        x={inset}
-        y={inset}
-        width={14 - inset * 2}
-        height={14 - inset * 2}
-        stroke="currentColor"
-        strokeWidth={1.5}
-        fill={kind === "inside" ? "currentColor" : "none"}
-        fillOpacity={kind === "inside" ? 0.2 : 1}
-      />
-    </svg>
-  );
-};
-
 const CornerIcon = ({ kind }: { readonly kind: Roundness["type"] }) => {
   if (kind === "sharp") {
     return <Square size={14} strokeWidth={1.75} aria-hidden />;
@@ -445,11 +366,6 @@ const CornerIcon = ({ kind }: { readonly kind: Roundness["type"] }) => {
     </svg>
   );
 };
-
-// silence unused-import warnings on icons used only conditionally;
-// tree-shaker drops them when sections short-circuit.
-const _keepAlive: ReadonlyArray<unknown> = [Layers, Minus];
-void _keepAlive;
 
 // ---------------------------------------------------------------------------
 // Helpers

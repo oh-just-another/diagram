@@ -736,3 +736,6 @@
 
 ## 0.43.0
 - PropertyPanel: modern-style sectioned inspector
+
+## 0.43.1
+- PropertyPanel: stroke-style fix, drop join/cap/align, flat groups, auto radius

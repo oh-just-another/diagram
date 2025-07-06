@@ -546,6 +546,44 @@
   font-size: 12px;
 }
 
+/* modern-style flat segmented control inside the panel:
+   no card chrome on the ButtonGroup wrapper. The buttons still
+   read as a row through their tonal `is-active` fill + hover. */
+.du-prop-panel .du-button-group {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  gap: 2px;
+}
+
+/* Tighter active state inside the panel (smaller buttons, same
+   tonal pair). Keeps the rest of the toolbar unaffected. */
+.du-prop-panel .du-button-group > .du-icon-button {
+  width: var(--du-button-size-sm);
+  height: var(--du-button-size-sm);
+}
+
+/* Checkbox row — small native input + label. Used by Corners
+   "Auto radius" toggle. */
+.du-prop-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--du-text);
+  user-select: none;
+}
+
+.du-prop-checkbox input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--du-selected-fg);
+  cursor: pointer;
+}
+
 /* ------------------------------------------------------------------ */
 /* Slider — themed native <input type=range> + value badge.           */
 /* ------------------------------------------------------------------ */
