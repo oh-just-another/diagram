@@ -739,3 +739,6 @@
 
 ## 0.43.1
 - PropertyPanel: stroke-style fix, drop join/cap/align, flat groups, auto radius
+
+## 0.43.2
+- ColorSwatchPicker: 26-px cells, selected ring, hover-grow fill

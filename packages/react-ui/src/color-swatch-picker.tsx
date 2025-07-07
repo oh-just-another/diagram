@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Plus, X } from "lucide-react";
 import {
   ELEMENT_PALETTE_LIGHT,
   ELEMENT_PALETTE_DARK,
@@ -6,16 +7,21 @@ import {
 } from "./color-palette.js";
 
 /**
- * Swatch grid + custom-colour picker. standard-style:
- * shows a row of pinned palette colours; users click a swatch to
- * pick, or click the `+` button to open a native colour picker
- * for anything outside the palette. The "transparent" swatch is
- * rendered as a checkerboard pattern and reports `null` upstream.
+ * Swatch grid + custom-colour picker. A row of pinned palette colours;
+ * users click a swatch to pick, or click the `+` button to open a
+ * native colour picker for anything outside the palette. The
+ * "transparent" swatch shows a checkerboard pattern and reports `null`
+ * upstream.
  *
- * Default palette is theme-aware — when `palette` prop is omitted,
- * the picker reads from the OS theme (via `prefers-color-scheme`)
- * and picks the appropriate `ELEMENT_PALETTE_LIGHT` or `_DARK`.
- * Hosts that want a fixed palette pass their own array.
+ * Each cell is a fixed 26 × 26 box: a 24 × 24 colour fill sits
+ * centred inside, with 1 px of breathing room. On hover the fill
+ * grows to the full 26 × 26 (no layout shift — the cell itself
+ * stays at 26). Selected cells get a 2-px tonal ring on the cell
+ * border so the ring sits outside the fill, not over it.
+ *
+ * Default palette is theme-aware — when `palette` is omitted, the
+ * picker reads from the OS theme (via `prefers-color-scheme`) and
+ * picks the appropriate light / dark palette.
  */
 export interface ColorSwatchPickerProps {
   readonly value: string | null;
@@ -38,17 +44,7 @@ export const ColorSwatchPicker = ({
   const resolved = palette ?? defaultPaletteForCurrentTheme();
   const [customOpen, setCustomOpen] = useState(false);
   return (
-    <div
-      className="du-swatch-grid"
-      role="radiogroup"
-      aria-label="Colour"
-      style={{
-        display: "inline-flex",
-        flexWrap: "wrap",
-        gap: 4,
-        maxWidth: 200,
-      }}
-    >
+    <div className="du-swatch-grid" role="radiogroup" aria-label="Colour">
       {resolved.map((c) => (
         <Swatch
           key={c}
@@ -71,20 +67,11 @@ export const ColorSwatchPicker = ({
           aria-label="Clear colour"
           title="Clear colour"
           onClick={() => onChange(null)}
-          style={{
-            width: 18,
-            height: 18,
-            border: "1px solid var(--du-ui-border, #aaa)",
-            borderRadius: 3,
-            background: "var(--du-ui-bg-solid, #fff)",
-            color: "var(--du-text-muted, #666)",
-            fontSize: 11,
-            lineHeight: "16px",
-            cursor: "pointer",
-            padding: 0,
-          }}
+          className="du-swatch du-swatch-clear"
         >
-          ×
+          <span className="du-swatch-fill du-swatch-fill-blank">
+            <X size={12} strokeWidth={2} />
+          </span>
         </button>
       ) : null}
     </div>
@@ -109,20 +96,17 @@ const Swatch = ({
       aria-label={color}
       title={color}
       onClick={onClick}
-      style={{
-        width: 18,
-        height: 18,
-        borderRadius: 3,
-        border: selected
-          ? "2px solid var(--du-accent, #1a73e8)"
-          : "1px solid var(--du-ui-border, #aaa)",
-        background: isTransparent
-          ? "repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 6px 6px"
-          : color,
-        cursor: "pointer",
-        padding: 0,
-      }}
-    />
+      className="du-swatch"
+    >
+      <span
+        className="du-swatch-fill"
+        style={{
+          background: isTransparent
+            ? "repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 6px 6px"
+            : color,
+        }}
+      />
+    </button>
   );
 };
 
@@ -142,26 +126,15 @@ const CustomSwatch = ({
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) => {
+  const hasColour = !!value && value !== "transparent";
   return (
-    <label
-      title="Pick custom colour"
-      style={{
-        position: "relative",
-        width: 18,
-        height: 18,
-        borderRadius: 3,
-        border: "1px solid var(--du-ui-border, #aaa)",
-        background: value && value !== "transparent" ? value : undefined,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        color: "var(--du-text-muted, #666)",
-        fontSize: 12,
-        lineHeight: 1,
-      }}
-    >
-      {!value || value === "transparent" ? <span aria-hidden>+</span> : null}
+    <label className="du-swatch du-swatch-custom" title="Pick custom colour">
+      <span
+        className="du-swatch-fill"
+        style={hasColour ? { background: value } : undefined}
+      >
+        {hasColour ? null : <Plus size={12} strokeWidth={2} />}
+      </span>
       <input
         type="color"
         aria-label="Custom colour"
@@ -171,12 +144,7 @@ const CustomSwatch = ({
           onOpenChange(false);
         }}
         onClick={() => onOpenChange(!open)}
-        style={{
-          position: "absolute",
-          inset: 0,
-          opacity: 0,
-          cursor: "pointer",
-        }}
+        className="du-swatch-color-input"
       />
     </label>
   );

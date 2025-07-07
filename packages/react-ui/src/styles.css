@@ -585,6 +585,87 @@
 }
 
 /* ------------------------------------------------------------------ */
+/* Colour swatch grid — modern-style fixed 26 × 26 cell with a    */
+/* 24 × 24 fill that grows on hover to fill the cell. Selected cells  */
+/* get a 2 px tonal ring on the OUTER cell so the ring lands beside   */
+/* the colour, not over it.                                           */
+/* ------------------------------------------------------------------ */
+.du-swatch-grid {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 232px; /* 8 cells (26 × 8 = 208) + 7 gaps × 4 = ~232 */
+}
+
+.du-swatch {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--du-radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Reserve the ring space so width never changes on selection. */
+  box-shadow: inset 0 0 0 0 transparent;
+  transition: box-shadow 0.12s ease;
+  /* Suppress the UA tap-highlight on iOS so the cell looks clean
+     while the user drags through swatches. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.du-swatch:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--du-accent);
+}
+
+.du-swatch[aria-checked="true"] {
+  box-shadow: inset 0 0 0 2px var(--du-selected-fg);
+}
+
+.du-swatch-fill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--du-radius-sm);
+  border: 1px solid var(--du-ui-border);
+  box-sizing: border-box;
+  transition: width 0.12s ease, height 0.12s ease, border-color 0.12s ease;
+}
+
+.du-swatch:hover .du-swatch-fill,
+.du-swatch:focus-visible .du-swatch-fill {
+  width: 26px;
+  height: 26px;
+}
+
+/* Clear (×) + custom-picker (+) cells use the same chrome as a
+   regular swatch but with a neutral fill + glyph slot. */
+.du-swatch-fill-blank {
+  background: var(--du-ui-bg-solid);
+  color: var(--du-text-muted);
+}
+
+.du-swatch-custom .du-swatch-fill {
+  background: var(--du-ui-bg-solid);
+  color: var(--du-text-muted);
+}
+
+.du-swatch-color-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+/* ------------------------------------------------------------------ */
 /* Slider — themed native <input type=range> + value badge.           */
 /* ------------------------------------------------------------------ */
 .du-slider {
