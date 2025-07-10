@@ -228,7 +228,9 @@ import {
 } from "./editor/public/text-edit.js";
 import {
   compactLayerZOrderPatches,
+  computeBringForward,
   computeBringToFront,
+  computeSendBackward,
   computeSendToBack,
 } from "./editor/public/z-order.js";
 import {
@@ -1769,6 +1771,24 @@ export class Editor {
   }
   sendToBack(id?: ShapeId): void {
     const result = computeSendToBack(this._scene, id, this._selection);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /** Move the target shape one step toward the top of its layer. */
+  bringForward(id?: ShapeId): void {
+    const result = computeBringForward(this._scene, id, this._selection);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /** Move the target shape one step toward the bottom of its layer. */
+  sendBackward(id?: ShapeId): void {
+    const result = computeSendBackward(this._scene, id, this._selection);
     if (!result) return;
     this._scene = result.scene;
     this._history.push(result.patch);

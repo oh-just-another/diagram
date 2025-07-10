@@ -1,5 +1,6 @@
 import {
   getShape,
+  orderBetween,
   orderBetweenMany,
   orderForBottom,
   orderForTop,
@@ -61,6 +62,71 @@ export const computeSendToBack = (
       .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
       .map((s) => s.order),
   );
+  if (order === shape.order) return null;
+  const r = updateShape(scene, shape.id, (s) => ({ ...s, order }));
+  return { scene: r.scene, patch: r.patch };
+};
+
+/**
+ * Swap the shape with its next neighbour up the z-stack (one step
+ * toward the top). Returns `null` when the shape is already on top or
+ * doesn't exist. Only same-layer shapes are considered neighbours.
+ */
+export const computeBringForward = (
+  scene: Scene,
+  id: ShapeId | undefined,
+  selection: ReadonlySet<ShapeId>,
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const targetId = resolveTarget(scene, id, selection);
+  if (!targetId) return null;
+  const shape = getShape(scene, targetId);
+  if (!shape) return null;
+  // Siblings on the same layer, sorted bottom → top.
+  const siblings = [...scene.shapes.values()]
+    .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
+    .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  // Neighbour directly above = smallest order strictly greater than
+  // the shape's own. Anything above the neighbour follows.
+  const above = siblings.find((s) => s.order > shape.order) ?? null;
+  if (!above) return null; // already topmost
+  const aboveAbove =
+    siblings.find((s) => above && s.order > above.order) ?? null;
+  // Place the shape strictly between `above` and the one after it. If
+  // `above` is the topmost sibling, jump to top-of-stack via
+  // `orderForTop` to avoid colliding with existing keys.
+  const order: FractionalIndex = aboveAbove
+    ? orderBetween(above.order, aboveAbove.order)
+    : orderForTop(siblings.map((s) => s.order));
+  if (order === shape.order) return null;
+  const r = updateShape(scene, shape.id, (s) => ({ ...s, order }));
+  return { scene: r.scene, patch: r.patch };
+};
+
+/**
+ * Swap the shape with its next neighbour down the z-stack (one step
+ * toward the bottom). Mirror of `computeBringForward`.
+ */
+export const computeSendBackward = (
+  scene: Scene,
+  id: ShapeId | undefined,
+  selection: ReadonlySet<ShapeId>,
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const targetId = resolveTarget(scene, id, selection);
+  if (!targetId) return null;
+  const shape = getShape(scene, targetId);
+  if (!shape) return null;
+  // Sorted top → bottom so `find` picks the immediate neighbour below
+  // (largest order strictly less than the shape's own).
+  const siblings = [...scene.shapes.values()]
+    .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
+    .sort((a, b) => (a.order > b.order ? -1 : a.order < b.order ? 1 : 0));
+  const below = siblings.find((s) => s.order < shape.order) ?? null;
+  if (!below) return null; // already bottom-most
+  const belowBelow =
+    siblings.find((s) => below && s.order < below.order) ?? null;
+  const order: FractionalIndex = belowBelow
+    ? orderBetween(belowBelow.order, below.order)
+    : orderForBottom(siblings.map((s) => s.order));
   if (order === shape.order) return null;
   const r = updateShape(scene, shape.id, (s) => ({ ...s, order }));
   return { scene: r.scene, patch: r.patch };

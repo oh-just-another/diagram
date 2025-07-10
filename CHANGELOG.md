@@ -742,3 +742,6 @@
 
 ## 0.43.2
 - ColorSwatchPicker: 26-px cells, selected ring, hover-grow fill
+
+## 0.43.3
+- Editor: bringForward / sendBackward — one-step z-order ops

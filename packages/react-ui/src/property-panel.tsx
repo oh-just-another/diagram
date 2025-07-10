@@ -277,8 +277,9 @@ const LayersSection = () => {
           ]}
           onChange={(v) => {
             if (v === "back") editor.sendToBack();
+            else if (v === "backward") editor.sendBackward();
+            else if (v === "forward") editor.bringForward();
             else if (v === "front") editor.bringToFront();
-            // sendBackward / bringForward have no per-step API, only end-of-stack.
           }}
         />
       </div>
