@@ -106,24 +106,44 @@ const matchesHotkey = (event: KeyboardEvent, m: HotkeyMatcher): boolean => {
 /**
  * Hotkey-key match that survives non-Latin keyboard layouts.
  *
- * Direct `event.key` comparison fails when the user types on
- * a Cyrillic / Greek / etc layout: pressing the physical `Z`
- * yields a Cyrillic `event.key` (e.g. U+044F), not `"z"`, so a matcher with
- * `key: "z"` never fires. To make hotkeys layout-independent we
- * fall back to `event.code` (a layout-invariant physical-key
- * identifier — "KeyZ", "BracketRight", "Digit1", …) when the
- * `.key` comparison misses.
+ *   1. First try direct `event.key.toLowerCase()` comparison.
+ *      Latin-letter layouts (US, UK, German, French, Czech, Turkish,
+ *      Pinyin IME, …) provide the matcher's expected letter through
+ *      `event.key` even when the underlying physical key is somewhere
+ *      else, so this is the right comparison for them.
  *
- * Special keys like "Escape", "ArrowLeft", "Enter" don't have an
- * issue because their `event.key` is stable across layouts —
- * those still match through the first branch.
+ *   2. If `event.key` IS itself a Latin letter (a-z) and didn't
+ *      match — bail. The user pressed a *different* Latin letter
+ *      from the one the matcher wants — e.g. Czech layout swaps
+ *      physical Y / Z, so pressing Y yields `key:'y'` even though
+ *      `code:'KeyZ'`; we must NOT silently rewrite that to the Z
+ *      hotkey.
+ *
+ *   3. Otherwise (`event.key` is Cyrillic, Greek, Hebrew, Arabic,
+ *      a CJK glyph, etc) fall back to `event.code` — the
+ *      physical-key identifier that is layout-invariant. `KeyZ` is
+ *      always the key in the Latin-Z position no matter what label
+ *      the OS prints on it.
+ *
+ * Special keys (Escape, ArrowLeft, Enter, F1, …) match through
+ * step 1 because their `event.key` is stable across layouts.
+ *
+ * Pinyin / Cangjie / Japanese IMEs: Cmd-modified key presses
+ * usually deliver the underlying Latin letter through `event.key`
+ * (because the IME is bypassed), so they hit step 1. The few that
+ * deliver an IME glyph instead are caught by step 3.
  */
 const matchKeyOrCode = (event: KeyboardEvent, want: string): boolean => {
   if (event.key.toLowerCase() === want.toLowerCase()) return true;
+  // Bail when the user pressed a *different* Latin letter — we'd
+  // otherwise hijack layouts that swap physical key positions
+  // (Czech Y/Z, French QWERTY-AZERTY, etc).
+  if (isLatinChar(event.key)) return false;
   const expectedCode = codeForKey(want);
-  if (expectedCode !== null && event.code === expectedCode) return true;
-  return false;
+  return expectedCode !== null && event.code === expectedCode;
 };
+
+const isLatinChar = (s: string): boolean => /^[a-z]$/i.test(s);
 
 /**
  * Map a host-declared `key` literal to the `event.code` we'd see

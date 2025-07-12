@@ -131,10 +131,8 @@ describe("ActionRegistry", () => {
   });
 
   it("dispatchHotkey matches by physical code on non-Latin layouts", () => {
-    // Russian layout: physical Z (key: ']' / Cmd+]) yields key U+044A,
-    // but event.code === 'BracketRight' is layout-independent.
-    // Same problem with letters: Cmd+Z on Russian layout has
-    // key U+044F but code='KeyZ'.
+    // Russian layout: physical Z (Cmd+Z) yields key U+044F, physical
+    // ']' yields key U+044A. event.code is layout-invariant.
     const reg = new ActionRegistry();
     const undo = vi.fn();
     const front = vi.fn();
@@ -166,6 +164,57 @@ describe("ActionRegistry", () => {
     } as unknown as KeyboardEvent;
     expect(reg.dispatchHotkey(cyrillicBracket, { editor })).toBe(true);
     expect(front).toHaveBeenCalledOnce();
+  });
+
+  it("dispatchHotkey does NOT hijack swapped-position Latin layouts", () => {
+    // Czech layout swaps physical Y / Z. Pressing physical Y
+    // produces key='y' but code='KeyZ'. The Z-hotkey must NOT
+    // fire — the user pressed Y, and `event.key === 'y'` is the
+    // ground truth on Latin layouts. Same idea for French AZERTY
+    // (Q/A swap), Dvorak, etc.
+    const reg = new ActionRegistry();
+    const undo = vi.fn();
+    reg.register({ id: "undo", hotkey: { key: "z", meta: true }, perform: undo });
+    const editor = makeEditor();
+    const czechY = {
+      key: "y",
+      code: "KeyZ",
+      ctrlKey: true,
+      metaKey: true,
+      shiftKey: false,
+      altKey: false,
+    } as unknown as KeyboardEvent;
+    expect(reg.dispatchHotkey(czechY, { editor })).toBe(false);
+    expect(undo).not.toHaveBeenCalled();
+  });
+
+  it("dispatchHotkey matches code on CJK / Arabic / Hebrew", () => {
+    // Layouts whose `event.key` is never a Latin char: physical Z
+    // → some non-Latin glyph; layout-invariant fallback fires.
+    const reg = new ActionRegistry();
+    const undo = vi.fn();
+    reg.register({ id: "undo", hotkey: { key: "z", meta: true }, perform: undo });
+    const editor = makeEditor();
+    const cases = [
+      { key: "重", code: "KeyZ" }, // Cangjie (Traditional Chinese)
+      { key: "つ", code: "KeyZ" }, // Japanese
+      { key: "ㅋ", code: "KeyZ" }, // 2-Set Korean
+      { key: "ז", code: "KeyZ" }, // Hebrew
+      { key: "ζ", code: "KeyZ" }, // Greek
+    ];
+    for (const { key, code } of cases) {
+      undo.mockClear();
+      const ev = {
+        key,
+        code,
+        ctrlKey: true,
+        metaKey: true,
+        shiftKey: false,
+        altKey: false,
+      } as unknown as KeyboardEvent;
+      expect(reg.dispatchHotkey(ev, { editor })).toBe(true);
+      expect(undo).toHaveBeenCalledOnce();
+    }
   });
 });
 

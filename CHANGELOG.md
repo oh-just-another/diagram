@@ -748,3 +748,6 @@
 
 ## 0.43.4
 - fix: hotkeys now work on non-Latin keyboard layouts
+
+## 0.43.5
+- hotkeys: guard layout-fallback so swapped-Latin layouts aren't hijacked
