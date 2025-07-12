@@ -91,7 +91,7 @@ export class ActionRegistry {
 }
 
 const matchesHotkey = (event: KeyboardEvent, m: HotkeyMatcher): boolean => {
-  if (m.key !== undefined && event.key.toLowerCase() !== m.key.toLowerCase()) return false;
+  if (m.key !== undefined && !matchKeyOrCode(event, m.key)) return false;
   if (m.code !== undefined && event.code !== m.code) return false;
   const want = (flag: boolean | undefined): boolean => flag === true;
   // Cross-platform meta: macOS uses metaKey, others use ctrlKey.
@@ -101,6 +101,69 @@ const matchesHotkey = (event: KeyboardEvent, m: HotkeyMatcher): boolean => {
   if (want(m.alt) !== event.altKey) return false;
   if (m.ctrl !== undefined && want(m.ctrl) !== event.ctrlKey) return false;
   return true;
+};
+
+/**
+ * Hotkey-key match that survives non-Latin keyboard layouts.
+ *
+ * Direct `event.key` comparison fails when the user types on
+ * a Cyrillic / Greek / etc layout: pressing the physical `Z`
+ * yields a Cyrillic `event.key` (e.g. U+044F), not `"z"`, so a matcher with
+ * `key: "z"` never fires. To make hotkeys layout-independent we
+ * fall back to `event.code` (a layout-invariant physical-key
+ * identifier — "KeyZ", "BracketRight", "Digit1", …) when the
+ * `.key` comparison misses.
+ *
+ * Special keys like "Escape", "ArrowLeft", "Enter" don't have an
+ * issue because their `event.key` is stable across layouts —
+ * those still match through the first branch.
+ */
+const matchKeyOrCode = (event: KeyboardEvent, want: string): boolean => {
+  if (event.key.toLowerCase() === want.toLowerCase()) return true;
+  const expectedCode = codeForKey(want);
+  if (expectedCode !== null && event.code === expectedCode) return true;
+  return false;
+};
+
+/**
+ * Map a host-declared `key` literal to the `event.code` we'd see
+ * when the same physical key is pressed on any layout. Returns
+ * `null` for keys whose `code` we don't (or shouldn't) try to
+ * derive — those are matched through `event.key` only.
+ */
+const codeForKey = (key: string): string | null => {
+  if (key.length !== 1) return null;
+  const c = key.toLowerCase();
+  if (c >= "a" && c <= "z") return `Key${c.toUpperCase()}`;
+  if (c >= "0" && c <= "9") return `Digit${c}`;
+  // Punctuation that commonly carries a host-declared hotkey
+  // (Cmd+[, Cmd+], Cmd+/, Cmd+., Cmd+, Cmd+- Cmd+= Cmd+;).
+  switch (c) {
+    case "[":
+      return "BracketLeft";
+    case "]":
+      return "BracketRight";
+    case ",":
+      return "Comma";
+    case ".":
+      return "Period";
+    case "/":
+      return "Slash";
+    case ";":
+      return "Semicolon";
+    case "'":
+      return "Quote";
+    case "`":
+      return "Backquote";
+    case "-":
+      return "Minus";
+    case "=":
+      return "Equal";
+    case "\\":
+      return "Backslash";
+    default:
+      return null;
+  }
 };
 
 /**

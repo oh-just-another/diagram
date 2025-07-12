@@ -120,6 +120,7 @@ describe("ActionRegistry", () => {
     // plain object cast is enough to exercise dispatchHotkey.
     const ev = {
       key: "a",
+      code: "KeyA",
       ctrlKey: true,
       metaKey: true,
       shiftKey: false,
@@ -127,6 +128,44 @@ describe("ActionRegistry", () => {
     } as unknown as KeyboardEvent;
     expect(reg.dispatchHotkey(ev, { editor })).toBe(true);
     expect(perf).toHaveBeenCalledOnce();
+  });
+
+  it("dispatchHotkey matches by physical code on non-Latin layouts", () => {
+    // Russian layout: physical Z (key: ']' / Cmd+]) yields key U+044A,
+    // but event.code === 'BracketRight' is layout-independent.
+    // Same problem with letters: Cmd+Z on Russian layout has
+    // key U+044F but code='KeyZ'.
+    const reg = new ActionRegistry();
+    const undo = vi.fn();
+    const front = vi.fn();
+    reg.register({ id: "undo", hotkey: { key: "z", meta: true }, perform: undo });
+    reg.register({
+      id: "to-front",
+      hotkey: { key: "]", meta: true, shift: true },
+      perform: front,
+    });
+    const editor = makeEditor();
+    const cyrillicZ = {
+      key: "\u044f",
+      code: "KeyZ",
+      ctrlKey: true,
+      metaKey: true,
+      shiftKey: false,
+      altKey: false,
+    } as unknown as KeyboardEvent;
+    expect(reg.dispatchHotkey(cyrillicZ, { editor })).toBe(true);
+    expect(undo).toHaveBeenCalledOnce();
+
+    const cyrillicBracket = {
+      key: "\u044a",
+      code: "BracketRight",
+      ctrlKey: true,
+      metaKey: true,
+      shiftKey: true,
+      altKey: false,
+    } as unknown as KeyboardEvent;
+    expect(reg.dispatchHotkey(cyrillicBracket, { editor })).toBe(true);
+    expect(front).toHaveBeenCalledOnce();
   });
 });
 

@@ -745,3 +745,6 @@
 
 ## 0.43.3
 - Editor: bringForward / sendBackward — one-step z-order ops
+
+## 0.43.4
+- fix: hotkeys now work on non-Latin keyboard layouts
