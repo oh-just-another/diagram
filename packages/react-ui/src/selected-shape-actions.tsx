@@ -29,11 +29,11 @@ export const SelectedShapeActions = ({
   const selection = useSelection();
   if (selection.size === 0) return null;
   const sideClass = side === "right" ? "du-side-panel-right" : "du-side-panel-left";
+  // `du-side-panel-auto-height` lets the panel hug its content
+  // instead of stretching top-to-bottom. The library panel keeps
+  // the default full-height so its long grid can scroll.
   return (
-    <aside className={`du-side-panel ${sideClass}`} style={style}>
-      <header className="du-side-panel-header">
-        <span>{selection.size === 1 ? "Properties" : `${selection.size} selected`}</span>
-      </header>
+    <aside className={`du-side-panel du-side-panel-auto-height ${sideClass}`} style={style}>
       <div className="du-side-panel-body">
         <PropertyPanel />
         {extras}

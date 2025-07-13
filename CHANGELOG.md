@@ -751,3 +751,6 @@
 
 ## 0.43.5
 - hotkeys: guard layout-fallback so swapped-Latin layouts aren't hijacked
+
+## 0.43.6
+- Side panels: drop titles; Properties hugs its content height

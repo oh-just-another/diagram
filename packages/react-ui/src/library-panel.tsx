@@ -160,7 +160,6 @@ export const LibraryPanel = ({
       data-pinned={pinned}
     >
       <header className="du-side-panel-header">
-        <span>Library</span>
         <div style={{ display: "inline-flex", gap: 4 }}>
           <IconButton
             label={pinned ? "Unpin library" : "Pin library (stay open)"}

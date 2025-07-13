@@ -354,14 +354,31 @@
 .du-side-panel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--du-pad);
-  border-bottom: 1px solid var(--du-ui-border);
+  justify-content: flex-end;
+  gap: var(--du-gap-sm);
+  padding: var(--du-pad-sm) var(--du-pad-sm) var(--du-pad-sm) var(--du-pad);
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--du-text-muted);
+}
+
+/* Hide the header when it's empty (no action buttons configured). */
+.du-side-panel-header:empty {
+  display: none;
+}
+
+/* Auto-height variant — content hugs its natural height instead
+   of stretching from top to bottom of the canvas area. Used by
+   the Properties panel so it shrinks to whatever the inspector
+   sections need. The Library panel keeps the default full-height
+   so its long grid can scroll. */
+.du-side-panel-auto-height {
+  bottom: auto;
+  max-height: calc(
+    100% - 2 * var(--du-bar-inset) - 2 * var(--du-button-size) - 2 * var(--du-gap)
+  );
 }
 
 .du-side-panel-body {
