@@ -2575,6 +2575,33 @@ export class Editor {
     ) {
       return null;
     }
+    // Active gesture (drag / resize / brush / placement) → full
+    // repaint. Dirty-rect optimisation skipped on purpose:
+    //
+    //   • transitive-overlap expansion catches the common case but
+    //     misses corner cases (edges attached to moving shapes,
+    //     group descendants that aren't all siblings, hovered
+    //     ports that decorate a different layer);
+    //   • during a drag we already repaint the largest dirty area
+    //     in the scene (the moving shape's swept bbox), so the
+    //     dirty optimisation buys almost no perf — the only thing
+    //     it does is occasionally drop a frame for a sibling that
+    //     should have been redrawn underneath / above the mover;
+    //   • once the gesture commits, the next render falls back to
+    //     normal dirty-rect behaviour again.
+    //
+    // Net: trade ~1 frame's worth of work during the drag for
+    // guaranteed correct z-order.
+    if (
+      this.gestureTx !== null ||
+      this.dragShapeId !== null ||
+      this.drawingPreview !== null ||
+      this.edgePreview !== null ||
+      this.brushStroke !== null ||
+      this.lassoPreview !== null
+    ) {
+      return null;
+    }
     // Anything that affects the global render — viewport (pan / zoom /
     // size) or layer ordering / visibility — forces a full clear.
     if (prev.viewport !== next.viewport) return null;
