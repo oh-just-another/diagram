@@ -2650,9 +2650,44 @@ export class Editor {
         if (b) add(b);
       }
     }
+    if (acc === null) return { x: -1e9, y: -1e9, width: 0, height: 0 };
+    // Transitive expansion: any shape whose bounds intersect the
+    // current dirty rect must be repainted, AND its bounds added
+    // to the dirty rect so any shape ABOVE it that overlaps gets
+    // included too. Repeat until the set stabilises.
+    //
+    // Without this, dragging A through a B/C stack produces
+    // visual jitter: B intersects the dirty rect and gets
+    // repainted, but C — sitting above B and partially overlapping
+    // it — doesn't intersect the original dirty, so B re-emerges
+    // on top of where C should still be drawn. Z-order is correct
+    // in `getShapesInLayer`; the bug is missed shapes, not
+    // wrong order.
+    const visited = new Set<ShapeId>();
+    let expanded: Bounds = acc;
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const shape of next.shapes.values()) {
+        if (visited.has(shape.id)) continue;
+        const bb = getShapeWorldBounds(shape);
+        if (!B.intersects(bb, expanded)) continue;
+        visited.add(shape.id);
+        const merged = B.union(expanded, bb);
+        if (
+          merged.x !== expanded.x ||
+          merged.y !== expanded.y ||
+          merged.width !== expanded.width ||
+          merged.height !== expanded.height
+        ) {
+          expanded = merged;
+          grew = true;
+        }
+      }
+    }
     // Inflate by a couple pixels to cover anti-aliased stroke fuzz
     // around the geometry edges.
-    return acc ? B.expand(acc, 4) : { x: -1e9, y: -1e9, width: 0, height: 0 };
+    return B.expand(expanded, 4);
   }
 
   // Bodies moved to `./editor/viewport-helpers.ts`.

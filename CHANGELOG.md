@@ -754,3 +754,6 @@
 
 ## 0.43.6
 - Side panels: drop titles; Properties hugs its content height
+
+## 0.43.7
+- fix: dirty-rect skipped overlapping siblings on shape drag
