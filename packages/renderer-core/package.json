@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-core",
-  "version": "0.43.8",
+  "version": "0.43.9",
   "description": "renderer-core package",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,6 +33,7 @@
   "dependencies": {
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/math": "workspace:*",
-    "@oh-just-another/scene": "workspace:*"
+    "@oh-just-another/scene": "workspace:*",
+    "@oh-just-another/tokens": "workspace:*"
   }
 }

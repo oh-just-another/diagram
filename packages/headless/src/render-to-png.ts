@@ -1,5 +1,6 @@
 import type { Scene } from "@oh-just-another/scene";
 import type { RenderSceneToSvgOptions } from "@oh-just-another/renderer-svg";
+import { UI_SURFACE } from "@oh-just-another/tokens";
 import { renderToSvg } from "./render-to-svg.js";
 
 /**
@@ -58,7 +59,7 @@ export const renderToPng = async (
 
   const resvgOptions: Record<string, unknown> = {
     fitTo: fitTo ?? { mode: "zoom", value: options.scale ?? 1 },
-    background: options.background ?? "#ffffff",
+    background: options.background ?? UI_SURFACE.light.bgSolid,
   };
 
   const rendered = new resvg.Resvg(svg, resvgOptions).render();

@@ -8,6 +8,11 @@ import {
   type Scene,
   type Shape,
 } from "@oh-just-another/scene";
+import {
+  DEFAULT_EDGE_STYLE,
+  DEFAULT_SHAPE_STYLES,
+  HUE_TONES,
+} from "@oh-just-another/tokens";
 import { edgeId, shapeId } from "@oh-just-another/types";
 import type { GraphDocument } from "./graph.js";
 import { layoutGraph } from "./layout.js";
@@ -34,7 +39,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
     idMap.set(n.id, id);
 
     const fill = n.fill ?? defaultFill(n.shape);
-    const stroke = n.stroke ?? "#333";
+    const stroke = n.stroke ?? HUE_TONES.light.gray.textHigh;
     // Identity / placement / order — fields every shape variant accepts.
     const base = {
       id,
@@ -82,7 +87,11 @@ export const graphToScene = (graph: GraphDocument): Scene => {
         rotation: 0,
         scale: { x: 1, y: 1 },
         order,
-        style: { fill: "#222", textAlign: "center", textBaseline: "middle" },
+        style: {
+          fill: HUE_TONES.light.gray.textHigh,
+          textAlign: "center",
+          textBaseline: "middle",
+        },
         text: n.label,
         fontFamily: "system-ui, sans-serif",
         fontSize: 13,
@@ -110,7 +119,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
       layerId: DEFAULT_LAYER_ID,
       from: { kind: "anchor", shapeId: sourceId, anchor: { kind: "named", name: "center" } },
       to: { kind: "anchor", shapeId: targetId, anchor: { kind: "named", name: "center" } },
-      style: { stroke: "#444", strokeWidth: 1 },
+      style: { ...DEFAULT_EDGE_STYLE, strokeWidth: 1 },
       order: edgeOrder,
       ...(e.label !== undefined ? { metadata: { label: e.label } } : {}),
     };
@@ -148,11 +157,11 @@ const defaultFill = (shape: GraphDocument["nodes"][number]["shape"]): string => 
   switch (shape) {
     case "ellipse":
     case "round":
-      return "#fff2a8";
+      return DEFAULT_SHAPE_STYLES.sticky.fill;
     case "diamond":
-      return "#e6ffe6";
+      return DEFAULT_SHAPE_STYLES.flowchart.fill;
     case "rectangle":
     default:
-      return "#cfe1ff";
+      return DEFAULT_SHAPE_STYLES.rectangle.fill;
   }
 };

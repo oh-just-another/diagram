@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "./packages/types/tsconfig.build.json" },
+    { "path": "./packages/tokens/tsconfig.build.json" },
     { "path": "./packages/math/tsconfig.build.json" },
     { "path": "./packages/scene/tsconfig.build.json" },
     { "path": "./packages/renderer-core/tsconfig.build.json" },

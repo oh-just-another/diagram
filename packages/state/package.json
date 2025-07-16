@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/state",
-  "version": "0.43.8",
+  "version": "0.43.9",
   "description": "state package",
   "type": "module",
   "main": "./dist/index.js",
@@ -36,6 +36,7 @@
     "@oh-just-another/renderer-core": "workspace:*",
     "@oh-just-another/history": "workspace:*",
     "@oh-just-another/events": "workspace:*",
+    "@oh-just-another/tokens": "workspace:*",
     "xstate": "^5.20.0"
   }
 }

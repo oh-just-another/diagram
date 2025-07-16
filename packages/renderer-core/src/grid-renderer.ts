@@ -1,10 +1,11 @@
 import { getScreenToWorld, getWorldToScreen, type Scene } from "@oh-just-another/scene";
 import { matrix } from "@oh-just-another/math";
+import { GRID_COLOR } from "@oh-just-another/tokens";
 import type { Bounds } from "@oh-just-another/types";
 import type { RenderTarget } from "./render-target.js";
 
 export interface RenderGridOptions {
-  /** Stroke / fill colour for the grid primitives. Default `#888`. */
+  /** Stroke / fill colour for the grid primitives. Defaults to `GRID_COLOR` from `@oh-just-another/tokens`. */
   readonly color?: string;
   /** Skip the implicit `target.clear()` before drawing. Default `false`. */
   readonly skipClear?: boolean;
@@ -183,8 +184,9 @@ const computeViewportWorldRect = (
 /**
  * Single grid colour used for every level. The level distinction is
  * carried by opacity, not hue — keeps the grid quiet at every zoom.
+ * Sourced from `@oh-just-another/tokens` (gray.gray6).
  */
-const DEFAULT_GRID_COLOR = "#c8c8c8";
+const DEFAULT_GRID_COLOR = GRID_COLOR;
 
 /**
  * Below this on-screen spacing a level paints nothing — denser

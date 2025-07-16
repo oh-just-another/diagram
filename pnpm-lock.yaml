@@ -244,6 +244,9 @@ importers:
       '@oh-just-another/serialization':
         specifier: workspace:*
         version: link:../serialization
+      '@oh-just-another/tokens':
+        specifier: workspace:*
+        version: link:../tokens
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../types
@@ -269,6 +272,9 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
+      '@oh-just-another/tokens':
+        specifier: workspace:*
+        version: link:../tokens
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../types
@@ -325,6 +331,9 @@ importers:
       '@oh-just-another/templates':
         specifier: workspace:*
         version: link:../templates
+      '@oh-just-another/tokens':
+        specifier: workspace:*
+        version: link:../tokens
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../types
@@ -396,6 +405,9 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
+      '@oh-just-another/tokens':
+        specifier: workspace:*
+        version: link:../tokens
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../types
@@ -465,6 +477,9 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
+      '@oh-just-another/tokens':
+        specifier: workspace:*
+        version: link:../tokens
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../types
@@ -480,6 +495,9 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
+      '@oh-just-another/tokens':
+        specifier: workspace:*
+        version: link:../tokens
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../types
@@ -501,6 +519,12 @@ importers:
       '@oh-just-another/renderer-core':
         specifier: workspace:*
         version: link:../renderer-core
+
+  packages/tokens:
+    dependencies:
+      '@radix-ui/colors':
+        specifier: ^3.0.0
+        version: 3.0.0
 
   packages/types: {}
 
@@ -1357,6 +1381,9 @@ packages:
     resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
     engines: {node: '>=18'}
     hasBin: true
+
+  '@radix-ui/colors@3.0.0':
+    resolution: {integrity: sha512-FUOsGBkHrYJwCSEtWRCIfQbZG7q1e6DgxCIOe1SUQzDe/7rXXeA47s8yCn6fuTNQAj1Zq4oTFi9Yjp3wzElcxg==}
 
   '@resvg/resvg-js-android-arm-eabi@2.6.2':
     resolution: {integrity: sha512-FrJibrAk6v29eabIPgcTUMPXiEz8ssrAk7TXxsiZzww9UTQ1Z5KAbFJs+Z0Ez+VZTYgnE5IQJqBcoSiMebtPHA==}
@@ -4396,6 +4423,8 @@ snapshots:
   '@playwright/test@1.60.0':
     dependencies:
       playwright: 1.60.0
+
+  '@radix-ui/colors@3.0.0': {}
 
   '@resvg/resvg-js-android-arm-eabi@2.6.2':
     optional: true

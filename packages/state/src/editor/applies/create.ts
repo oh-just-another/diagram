@@ -9,6 +9,7 @@ import {
  type Shape,
  type Patch,
 } from "@oh-just-another/scene";
+import { DEFAULT_EDGE_STYLE, DEFAULT_SHAPE_STYLES } from "@oh-just-another/tokens";
 import type {
  Bounds,
  EdgeId,
@@ -17,13 +18,14 @@ import type {
 } from "@oh-just-another/types";
 
 /**
- * Defaults used by `buildShapeForCreate` — pulled to module top so
- * a host wanting to recolour newly-drawn shapes can fork the
- * builder rather than monkey-patching style fields. Hardcoded
- * intentionally; making them runtime-configurable is a * concern (theme-aware shape palette).
+ * Defaults used by `buildShapeForCreate` — sourced from
+ * `@oh-just-another/tokens` so the editor and the templates package
+ * agree on a fresh shape's look. A host wanting to recolour can
+ * either patch the tokens package or fork `buildShapeForCreate`;
+ * theme-aware overrides are a concern.
  */
-const DEFAULT_RECT_STYLE = { fill: "#cfe1ff", stroke: "#1a40b0", strokeWidth: 2 } as const;
-const DEFAULT_ELLIPSE_STYLE = { fill: "#ffd6d6", stroke: "#a01a1a", strokeWidth: 2 } as const;
+const DEFAULT_RECT_STYLE = DEFAULT_SHAPE_STYLES.rectangle;
+const DEFAULT_ELLIPSE_STYLE = DEFAULT_SHAPE_STYLES.ellipse;
 
 /**
  * Pure: build the `Shape` object for a CREATE_SHAPE emit. Doesn't
@@ -88,7 +90,7 @@ export const buildEdgeForCreate = (
   from,
   to,
   order,
-  style: { stroke: "#444", strokeWidth: 1.5 },
+  style: { ...DEFAULT_EDGE_STYLE },
   arrowheads: { to: "triangle" },
  };
 };

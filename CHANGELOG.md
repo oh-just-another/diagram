@@ -760,3 +760,6 @@
 
 ## 0.43.8
 - fix: disable dirty-rect during active gesture (z-order jitter)
+
+## 0.43.9
+- feat(tokens): add @oh-just-another/tokens L0 package and wire across project

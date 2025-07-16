@@ -6,6 +6,7 @@ import {
   type SceneShapeDiff,
 } from "@oh-just-another/scene";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
+import { DIFF_COLORS } from "@oh-just-another/tokens";
 
 /**
  * Side-by-side scene comparison. Renders two snapshots to SVG via the
@@ -90,7 +91,7 @@ const SideView = ({
   //     of a moved shape.
   const overlays = useMemo(() => {
     const out: { id: string; color: string; bounds: ReturnType<typeof getShapeWorldBounds> }[] = [];
-    const palette = { added: "#3aa45a", removed: "#c83232", modified: "#d8a82b" };
+    const palette = DIFF_COLORS;
     if (side === "left") {
       for (const id of diff.removed) {
         const s = scene.shapes.get(id);

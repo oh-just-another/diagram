@@ -1,4 +1,5 @@
 import type { Shape, Style } from "@oh-just-another/scene";
+import { DEFAULT_SHAPE_STYLES } from "@oh-just-another/tokens";
 import type { Vec2 } from "@oh-just-another/types";
 import {
   ARROW_ICON,
@@ -51,22 +52,12 @@ const polygonFromPoints = (ctx: TemplateContext, points: Vec2[], style: Style): 
 });
 
 // --- Default styles ---
+// Sourced from `@oh-just-another/tokens` so palette changes propagate
+// across every built-in template in one place.
 
-const BASIC_STYLE: Style = {
-  fill: "#cfe1ff",
-  stroke: "#1a40b0",
-  strokeWidth: 2,
-};
-const STICKY_STYLE: Style = {
-  fill: "#fff2a8",
-  stroke: "#b18a00",
-  strokeWidth: 1,
-};
-const FLOW_STYLE: Style = {
-  fill: "#e6ffe6",
-  stroke: "#2f7a2f",
-  strokeWidth: 2,
-};
+const BASIC_STYLE: Style = { ...DEFAULT_SHAPE_STYLES.rectangle };
+const STICKY_STYLE: Style = { ...DEFAULT_SHAPE_STYLES.sticky };
+const FLOW_STYLE: Style = { ...DEFAULT_SHAPE_STYLES.flowchart };
 
 // --- Built-in templates ---
 

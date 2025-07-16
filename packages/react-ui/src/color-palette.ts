@@ -4,85 +4,67 @@
  * these constants and concat their own; the picker accepts any
  * `readonly string[]`.
  *
- * The "element" palettes target shape fill / stroke; they're
- * standard-inspired, tuned for legibility on the matching
- * canvas background. The "canvas" palettes target the editor's own
- * surface (paper colour + grid lines) — fewer entries because the
- * canvas needs a calm backdrop, not a graphic-design palette.
+ * Palette is sourced from `@oh-just-another/tokens` — see that package
+ * for the underlying Radix mapping. Each hue carries two pinned
+ * tones — step-4 ("subtle") for fills and step-9 ("solid") for
+ * strokes / marks. Step-9 stays the same hex on both themes per
+ * Radix spec, so the picker reads as the same "brand" colour
+ * regardless of the active theme.
  *
  * `"transparent"` is the canonical "no colour" sentinel — the picker
  * renders it as a checkerboard swatch and writes the string
- * `"transparent"` into the underlying style. Same value the
- * `WebGL2Target.parseColor` and Canvas2D both treat as zero-alpha.
+ * `"transparent"` into the underlying style.
  */
+import { CANVAS_TONES, HUES, HUE_TONES } from "@oh-just-another/tokens";
+
+const fillsLight = HUES.map((hue) => HUE_TONES.light[hue].fill);
+const solidsLight = HUES.map((hue) => HUE_TONES.light[hue].solid);
+const fillsDark = HUES.map((hue) => HUE_TONES.dark[hue].fill);
+const solidsDark = HUES.map((hue) => HUE_TONES.dark[hue].solid);
+
+const canvasLight = HUES.map((hue) => CANVAS_TONES.light[hue]);
+const canvasDark = HUES.map((hue) => CANVAS_TONES.dark[hue]);
 
 /**
- * Light-theme element palette — colours that look right on a
- * paper-white canvas. Pinned hues taken from Mantine's open-source
- * palette so they read as a coherent family.
+ * Light-theme element palette: step-4 subtle tints first row,
+ * step-9 solids second row, neutrals + transparent last row.
  */
 export const ELEMENT_PALETTE_LIGHT: readonly string[] = [
-  "transparent",
-  "#1e1e1e",
-  "#e03131",
-  "#2f9e44",
-  "#1971c2",
-  "#f08c00",
-  "#9c36b5",
-  "#0c8599",
-  "#fab005",
-  "#868e96",
+  ...fillsLight,
+  ...solidsLight,
   "#ffffff",
+  "#1e1e1e",
+  "transparent",
 ];
 
 /**
- * Dark-theme element palette — same hue family as
- * `ELEMENT_PALETTE_LIGHT` but lightened so they retain contrast
- * against a near-black surface.
+ * Dark-theme element palette — step-4 dark tints for fills,
+ * step-9 dark for solids. Per Radix spec, the step-9 hex matches
+ * the light variant so brand colour stays anchored across themes;
+ * only the tint row swaps to deep-tinted backgrounds.
  */
 export const ELEMENT_PALETTE_DARK: readonly string[] = [
-  "transparent",
-  "#ffffff",
-  "#ff6b6b",
-  "#51cf66",
-  "#4dabf7",
-  "#ffa94d",
-  "#cc5de8",
-  "#3bc9db",
-  "#ffd43b",
-  "#adb5bd",
+  ...fillsDark,
+  ...solidsDark,
   "#1e1e1e",
+  "#ffffff",
+  "transparent",
 ];
 
 /**
  * Light-theme canvas palette — paper-like backgrounds for the
- * editor surface. Pure white sits first; the rest are off-white
- * tints commonly used in note-taking / whiteboard apps.
+ * editor surface. Pure white sits first; the rest are step-2 hues
+ * (almost-pure tints with a hint of colour). Meant for the canvas
+ * itself, not for shapes.
  */
-export const CANVAS_PALETTE_LIGHT: readonly string[] = [
-  "#ffffff",
-  "#f8f9fa",
-  "#fff9db",
-  "#fff5f5",
-  "#f3f0ff",
-  "#ebfbee",
-  "#e7f5ff",
-];
+export const CANVAS_PALETTE_LIGHT: readonly string[] = ["#ffffff", ...canvasLight];
 
 /**
- * Dark-theme canvas palette — near-black backgrounds. The first
- * entry matches `--du-canvas-bg` in the bundled stylesheet so
- * picking it visually keeps the canvas the default tone.
+ * Dark-theme canvas palette — near-black backgrounds. Step-2 dark
+ * from each Radix hue: deep, almost-neutral tints that read as
+ * "themed background" rather than "filled colour".
  */
-export const CANVAS_PALETTE_DARK: readonly string[] = [
-  "#121212",
-  "#1a1a1a",
-  "#1f1d36",
-  "#1a1f1d",
-  "#1f1a1d",
-  "#1a1d22",
-  "#212529",
-];
+export const CANVAS_PALETTE_DARK: readonly string[] = ["#121113", ...canvasDark];
 
 /**
  * Resolve which palette flavour to use given a `theme` setting
