@@ -289,7 +289,10 @@ void main() {
   float dx = fwidth(sd) * 0.5;
   float alpha = smoothstep(0.5 - dx, 0.5 + dx, sd);
   if (alpha < 0.001) discard;
-  fragColor = vec4(uColor, alpha * uOpacity);
+  // Premultiplied output to match the context's premultipliedAlpha
+  // contract + blendFunc(ONE, 1-SRC_ALPHA).
+  float a = alpha * uOpacity;
+  fragColor = vec4(uColor * a, a);
 }`;
 
 const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {

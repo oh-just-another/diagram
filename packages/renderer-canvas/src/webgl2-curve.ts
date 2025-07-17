@@ -159,7 +159,10 @@ void main() {
   // procedural-space.
   float coverage = smoothstep(dp, -dp, p * w);
   if (coverage <= 0.0) discard;
-  fragColor = vec4(uColor, coverage * uOpacity);
+  // Premultiplied output to match the context's premultipliedAlpha
+  // contract + blendFunc(ONE, 1-SRC_ALPHA).
+  float a = coverage * uOpacity;
+  fragColor = vec4(uColor * a, a);
 }`;
 
 const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {

@@ -129,7 +129,13 @@ export class WebGL2Target implements RenderTarget {
     this.uOpacityLoc = this.gl.getUniformLocation(this.program, "uOpacity")!;
 
     this.gl.enable(this.gl.BLEND);
-    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+    // Premultiplied-alpha blending. The context was created with
+    // `premultipliedAlpha: true` — that's the contract with the browser
+    // compositor, which treats the framebuffer RGB as
+    // already-multiplied-by-A. So both the blend func and every
+    // fragment shader speak premul: shader writes `(rgb*a, a)`, blend
+    // func uses `(ONE, ONE_MINUS_SRC_ALPHA)`.
+    this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA);
 
     // Initial viewport — must match the canvas drawing buffer size. The
     // WebGL spec defaults to the canvas's initial size, but if the
@@ -1071,8 +1077,12 @@ uniform sampler2D uTex;
 uniform float uOpacity;
 out vec4 fragColor;
 void main() {
+  // The texture is uploaded with UNPACK_PREMULTIPLY_ALPHA_WEBGL=true,
+  // so t.rgb is already premultiplied by t.a. Output stays
+  // premultiplied for blendFunc(ONE, 1-SRC_ALPHA) — scale both
+  // channels by the per-call opacity.
   vec4 t = texture(uTex, vUV);
-  fragColor = vec4(t.rgb, t.a * uOpacity);
+  fragColor = vec4(t.rgb * uOpacity, t.a * uOpacity);
 }`,
   );
   const program = link(gl, vert, frag);
@@ -1123,7 +1133,9 @@ uniform vec3 uColor;
 uniform float uOpacity;
 out vec4 fragColor;
 void main() {
-  fragColor = vec4(uColor, uOpacity);
+  // Output premultiplied (rgb*a, a) — matches the context's
+  // premultipliedAlpha:true contract + blendFunc(ONE, 1-SRC_ALPHA).
+  fragColor = vec4(uColor * uOpacity, uOpacity);
 }`;
 
 const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {

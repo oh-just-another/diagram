@@ -763,3 +763,6 @@
 
 ## 0.43.9
 - feat(tokens): add @oh-just-another/tokens L0 package and wire across project
+
+## 0.43.10
+- fix: WebGL2 bright halo around semi-transparent shapes
