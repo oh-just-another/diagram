@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/react-ui",
-  "version": "0.43.10",
+  "version": "0.44.0",
   "description": "React components and hooks over the diagram editor \u2014 DiagramCanvas, Toolbar, Palette, PropertyPanel.",
   "type": "module",
   "main": "./dist/index.js",
@@ -45,6 +45,7 @@
     "@oh-just-another/tokens": "workspace:*",
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/versioning": "workspace:*",
+    "@floating-ui/dom": "^1.6.0",
     "lucide-react": "^1.16.0"
   },
   "peerDependencies": {

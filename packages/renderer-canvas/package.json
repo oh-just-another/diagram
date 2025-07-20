@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-canvas",
-  "version": "0.43.10",
+  "version": "0.44.0",
   "description": "renderer-canvas package",
   "type": "module",
   "main": "./dist/index.js",

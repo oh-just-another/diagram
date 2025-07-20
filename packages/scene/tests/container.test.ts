@@ -97,4 +97,80 @@ describe("container protocol", () => {
     expect(Object.is(next.positionOffset.x, -0) ? 0 : next.positionOffset.x).toBe(0);
     expect(Object.is(next.positionOffset.y, -0) ? 0 : next.positionOffset.y).toBe(0);
   });
+
+  // The per-edge guard makes `expandDropZoneToFit` a true no-op for a
+  // child resting exactly on the zone's top-left corner: `padding` is
+  // not subtracted from an edge the child does not cross.
+  it("expandDropZoneToFit is a no-op when child rests on the zone's top-left edge", () => {
+    // Container at world origin, dropZone (10, 40, 380, 150), padding 8.
+    const c = container("c", 0, 0);
+    // Child at the zone's exact corner — same x, same y, well within
+    // width/height.
+    const childOnEdge = { x: 10, y: 40, width: 80, height: 60 };
+    expect(expandDropZoneToFit(c, childOnEdge)).toBeNull();
+  });
+
+  it("expandDropZoneToFit grows only on the side the child crossed", () => {
+    const c = container("c", 0, 0);
+    // Child past the right edge, but vertically fully inside.
+    const childRight = { x: 500, y: 60, width: 100, height: 50 };
+    const next = expandDropZoneToFit(c, childRight)!;
+    // Right grows by (crossed-amount + padding); left untouched.
+    expect(next.x).toBe(10);
+    expect(next.y).toBe(40);
+    expect(next.x + next.width).toBe(500 + 100 + 8);
+    expect(next.height).toBe(150);
+  });
+
+  // ---------------------------------------------------------------
+  // Auto-layout shapes (basic.auto-grid / basic.auto-stack) carry
+  // both `metadata.autoLayout` AND a static `metadata.container`
+  // baseline. The live synthesiser must derive the drop-zone from
+  // the current width/height so the area tracks user resize — the
+  // stored `dropZone` is allowed to drift out of date and is
+  // ignored when autoLayout is present.
+  // ---------------------------------------------------------------
+  const autoGrid = (id: string, w: number, h: number): Shape => ({
+    id: shapeId(id),
+    layerId: DEFAULT_LAYER_ID,
+    type: "rectangle",
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: {},
+    width: w,
+    height: h,
+    metadata: {
+      autoLayout: { kind: "grid", cols: 2, gap: 12 },
+      container: {
+        // Stored zone is intentionally stale (matches a smaller
+        // size). The live synthesiser should ignore it.
+        dropZone: { x: 12, y: 12, width: 100, height: 100 },
+        padding: 12,
+      },
+    },
+  });
+
+  it("getContainerSpec synthesises a live drop-zone for autoLayout shapes (sized to current width/height)", () => {
+    const shape = autoGrid("g", 320, 200);
+    const spec = getContainerSpec(shape)!;
+    // padding 12, shape 320×200 → zone 296×176, NOT the stale 100×100.
+    expect(spec.dropZone).toEqual({ x: 12, y: 12, width: 296, height: 176 });
+    expect(spec.padding).toBe(12);
+  });
+
+  it("getContainerSpec re-derives the drop-zone after the shape's width changes", () => {
+    const before = autoGrid("g", 320, 200);
+    const after = { ...before, width: 500, height: 280 };
+    const spec = getContainerSpec(after)!;
+    expect(spec.dropZone).toEqual({ x: 12, y: 12, width: 476, height: 256 });
+  });
+
+  it("getContainerSpec clamps the synthesised drop-zone width/height to ≥0", () => {
+    const tiny = { ...autoGrid("g", 320, 200), width: 8, height: 8 };
+    const spec = getContainerSpec(tiny)!;
+    expect(spec.dropZone.width).toBe(0);
+    expect(spec.dropZone.height).toBe(0);
+  });
 });

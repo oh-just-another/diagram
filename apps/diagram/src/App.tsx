@@ -14,6 +14,7 @@ import { Diagram, type DiagramAPI } from "./index";
 import { setupTemplates } from "./templates";
 import { useHotkeys } from "./hotkeys";
 import { useCollab } from "./collab";
+import { DebugPanel } from "./debug-panel";
 import { SessionButton } from "./SessionButton";
 import { Peers } from "./Peers";
 import { ConnectionBadge } from "./ConnectionBadge";
@@ -173,14 +174,17 @@ export const App = () => {
   );
 
   return (
-    <Diagram
-      ref={apiRef}
-      initialScene={initialScene}
-      onReady={setEditor}
-      onSceneChange={handleSceneChange}
-      renderTopBarLeft={renderHeaderLeft}
-      renderTopBarRight={renderHeaderRight}
-      persistTheme
-    />
+    <>
+      <Diagram
+        ref={apiRef}
+        initialScene={initialScene}
+        onReady={setEditor}
+        onSceneChange={handleSceneChange}
+        renderTopBarLeft={renderHeaderLeft}
+        renderTopBarRight={renderHeaderRight}
+        persistTheme
+      />
+      <DebugPanel editor={editor} />
+    </>
   );
 };

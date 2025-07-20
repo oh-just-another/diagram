@@ -766,3 +766,6 @@
 
 ## 0.43.10
 - fix: WebGL2 bright halo around semi-transparent shapes
+
+## 0.44.0
+- feat: floating selection panel + DebugPanel + auto-grid drop-zone fix

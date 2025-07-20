@@ -987,3 +987,177 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* ------------------------------------------------------------------ */
+/* Selection floating panel — modern-style horizontal toolbar that      */
+/* hovers above the selection bbox. Position is set inline via        */
+/* `transform:translate(...)` by floating-ui — these rules cover only */
+/* the visual chrome (pill background, shadow, animation, layout of   */
+/* inline controls + their popover triggers).                         */
+/* ------------------------------------------------------------------ */
+/* Fade-in is handled inline via the `positioned` state in
+   <SelectionFloatingPanel> — a CSS animation here would override the
+   inline `transform: translate(...)` floating-ui writes, causing
+   the panel to flash at the (0, 0) origin before snapping into
+   place. */
+
+.du-sel-panel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--du-gap-sm);
+  background: var(--du-ui-bg-solid);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius);
+  box-shadow: var(--du-ui-shadow);
+  padding: var(--du-pad-sm);
+  font-size: 12px;
+  color: var(--du-text);
+  max-width: calc(100vw - 32px);
+  /* Allow horizontal scroll within the pill when too many controls
+     are visible; `shift` middleware clamps the outer position but
+     a panel wider than viewport still needs internal overflow. */
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+}
+
+/* Flat segmented controls inside the floating panel — no group
+   pill chrome (the outer panel already provides it). Reuses the
+   button-group rules from PropertyPanel but with tighter gaps. */
+.du-sel-panel .du-button-group {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  gap: 2px;
+}
+
+.du-sel-panel .du-button-group > .du-icon-button {
+  width: var(--du-button-size-sm);
+  height: var(--du-button-size-sm);
+}
+
+/* Color swatch trigger — 28×28 with 20×20 colored square inside. */
+.du-sel-color-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--du-button-size-sm);
+  height: var(--du-button-size-sm);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--du-radius-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.du-sel-color-trigger:hover:not(:disabled) {
+  background: var(--du-hover-overlay);
+}
+
+.du-sel-color-trigger:focus-visible {
+  outline: 2px solid var(--du-accent);
+  outline-offset: 1px;
+}
+
+.du-sel-color-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid var(--du-ui-border);
+  box-sizing: border-box;
+}
+
+/* Plain icon button used for corners / etc. Same chrome as
+   color-trigger but icon inside. */
+.du-sel-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--du-button-size-sm);
+  height: var(--du-button-size-sm);
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--du-radius-sm);
+  cursor: pointer;
+  color: var(--du-text);
+}
+
+.du-sel-icon-button:hover:not(:disabled) {
+  background: var(--du-hover-overlay);
+}
+
+.du-sel-icon-button:focus-visible {
+  outline: 2px solid var(--du-accent);
+  outline-offset: 1px;
+}
+
+/* Text-label button (opacity badge "75%"). */
+.du-sel-text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--du-button-size-sm);
+  min-width: var(--du-button-size-sm);
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--du-radius-sm);
+  cursor: pointer;
+  color: var(--du-text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.du-sel-text-button:hover:not(:disabled) {
+  background: var(--du-hover-overlay);
+}
+
+.du-sel-text-button:focus-visible {
+  outline: 2px solid var(--du-accent);
+  outline-offset: 1px;
+}
+
+/* Visual divider between inline groups (z-order, actions). */
+.du-sel-divider {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: var(--du-ui-border);
+  margin: 0 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Popover — generic floating panel used by color picker / corners /  */
+/* opacity slider inside the selection floating panel.                */
+/* ------------------------------------------------------------------ */
+.du-popover {
+  background: var(--du-ui-bg-solid);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius);
+  box-shadow: var(--du-ui-shadow);
+  padding: var(--du-pad);
+  font-size: 12px;
+  color: var(--du-text);
+  min-width: 120px;
+  max-width: 320px;
+}
+
+.du-sel-popover-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.du-sel-popover-label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--du-text-muted);
+}

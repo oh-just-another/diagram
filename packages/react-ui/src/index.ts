@@ -18,9 +18,10 @@ export { HelpButton, type HelpButtonProps } from "./help-button.js";
 export { ResetToContentButton } from "./reset-to-content-button.js";
 export { LibraryPanel, type LibraryPanelProps } from "./library-panel.js";
 export {
-  SelectedShapeActions,
-  type SelectedShapeActionsProps,
-} from "./selected-shape-actions.js";
+  SelectionFloatingPanel,
+  type SelectionFloatingPanelProps,
+} from "./selection-floating-panel.js";
+export { Popover, type PopoverProps } from "./popover.js";
 export {
   ColorSwatchPicker,
   type ColorSwatchPickerProps,

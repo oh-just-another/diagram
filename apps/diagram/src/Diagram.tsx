@@ -49,7 +49,7 @@ import {
   LibraryPanel,
   MainMenu,
   ResetToContentButton,
-  SelectedShapeActions,
+  SelectionFloatingPanel,
   TextEditorOverlay,
   ToastHost,
   Toolbar,
@@ -162,7 +162,7 @@ export interface DiagramProps {
   readonly hideResetToContent?: boolean;
   readonly hideHelpButton?: boolean;
   readonly hideContextMenu?: boolean;
-  readonly hideSelectedShapeActions?: boolean;
+  readonly hideSelectionPanel?: boolean;
 
   // --- Slots ---
   readonly renderTopBarLeft?: () => ReactNode;
@@ -235,7 +235,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     hideResetToContent,
     hideHelpButton,
     hideContextMenu,
-    hideSelectedShapeActions,
+    hideSelectionPanel,
     renderTopBarLeft,
     renderTopBarCenter,
     renderTopBarRight,
@@ -440,7 +440,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
             hideResetToContent={hideResetToContent}
             hideHelpButton={hideHelpButton}
             hideContextMenu={hideContextMenu}
-            hideSelectedShapeActions={hideSelectedShapeActions}
+            hideSelectionPanel={hideSelectionPanel}
             renderTopBarLeft={renderTopBarLeft}
             renderTopBarCenter={renderTopBarCenter}
             renderTopBarRight={renderTopBarRight}
@@ -475,7 +475,7 @@ const EditorShell = ({
   hideResetToContent,
   hideHelpButton,
   hideContextMenu,
-  hideSelectedShapeActions,
+  hideSelectionPanel,
   renderTopBarLeft,
   renderTopBarCenter,
   renderTopBarRight,
@@ -496,7 +496,7 @@ const EditorShell = ({
   readonly hideResetToContent: boolean | undefined;
   readonly hideHelpButton: boolean | undefined;
   readonly hideContextMenu: boolean | undefined;
-  readonly hideSelectedShapeActions: boolean | undefined;
+  readonly hideSelectionPanel: boolean | undefined;
   readonly renderTopBarLeft: (() => ReactNode) | undefined;
   readonly renderTopBarCenter: (() => ReactNode) | undefined;
   readonly renderTopBarRight: (() => ReactNode) | undefined;
@@ -862,8 +862,14 @@ const EditorShell = ({
           />
         ) : null}
 
-        {!hideSelectedShapeActions && <SelectedShapeActions />}
       </UILayer>
+
+      {/* Floating selection panel — portal to body, positions itself
+          above the selection bbox via @floating-ui. Rendered OUTSIDE
+          UILayer because it portals to document.body anyway and
+          UILayer's pointer-events:none on the wrapper would
+          interfere with its children's auto handling. */}
+      {!hideSelectionPanel && <SelectionFloatingPanel />}
 
       {/* Standalone HelpDialog for hotkey activation — only renders
           when the `?` hotkey opens it without going through the

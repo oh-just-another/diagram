@@ -9,7 +9,7 @@ import {
   type Scene,
   type Shape,
 } from "../src/index.js";
-import { treeLayout } from "../src/layout.js";
+import { gridLayout, stackLayout, treeLayout } from "../src/layout.js";
 
 const rect = (id: string, parentId: string | null, w = 40, h = 30): Shape => ({
   id: shapeId(id),
@@ -86,5 +86,79 @@ describe("treeLayout", () => {
     const next = apply(scene, patch!);
     expect(next.shapes.get(a1.id)!.position.x).toBe(0);
     expect(next.shapes.get(a1.id)!.position.y).toBe(100); // root (30h) + ranksep + a (30h) + ranksep = 30+20+30+20 = 100
+  });
+});
+
+// Layout of non-rectangle shapes. `gridLayout` / `stackLayout` route the stride
+// through the shape bounder registry rather than reading `shape.width` /
+// `shape.height` directly, which are undefined on polygon / path / freedraw
+// shapes.
+describe("layout with polygon shapes", () => {
+  const polygon = (
+    id: string,
+    parentId: string | null,
+    points: { x: number; y: number }[],
+  ): Shape =>
+    ({
+      id: shapeId(id),
+      layerId: DEFAULT_LAYER_ID,
+      type: "polygon",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      points,
+      ...(parentId ? { parentId: shapeId(parentId) } : {}),
+    }) as Shape;
+
+  // Diamond AABB = 100×60.
+  const diamondPoints = [
+    { x: 50, y: 0 },
+    { x: 100, y: 30 },
+    { x: 50, y: 60 },
+    { x: 0, y: 30 },
+  ];
+  // Triangle AABB = 80×80.
+  const trianglePoints = [
+    { x: 40, y: 0 },
+    { x: 80, y: 80 },
+    { x: 0, y: 80 },
+  ];
+
+  it("stackLayout horizontal advances by each polygon's AABB width, not 0", () => {
+    const d = polygon("d", null, diamondPoints);
+    const t = polygon("t", null, trianglePoints);
+    const scene = sceneWith(d, t);
+    const patch = stackLayout(scene, {
+      shapeIds: [d.id, t.id],
+      direction: "horizontal",
+      gap: 10,
+      origin: { x: 0, y: 0 },
+    });
+    expect(patch).not.toBeNull();
+    const next = apply(scene, patch!);
+    expect(next.shapes.get(d.id)!.position).toEqual({ x: 0, y: 0 });
+    // Diamond width (100) + gap (10) = 110.
+    expect(next.shapes.get(t.id)!.position).toEqual({ x: 110, y: 0 });
+  });
+
+  it("gridLayout cell size respects polygon AABB (no zero-stride overlap)", () => {
+    const d1 = polygon("d1", null, diamondPoints);
+    const d2 = polygon("d2", null, diamondPoints);
+    const d3 = polygon("d3", null, diamondPoints);
+    const scene = sceneWith(d1, d2, d3);
+    const patch = gridLayout(scene, {
+      shapeIds: [d1.id, d2.id, d3.id],
+      cols: 2,
+      gap: 10,
+      origin: { x: 0, y: 0 },
+    });
+    expect(patch).not.toBeNull();
+    const next = apply(scene, patch!);
+    // Cell stride: width 100 + 10 = 110; height 60 + 10 = 70.
+    expect(next.shapes.get(d1.id)!.position).toEqual({ x: 0, y: 0 });
+    expect(next.shapes.get(d2.id)!.position).toEqual({ x: 110, y: 0 });
+    expect(next.shapes.get(d3.id)!.position).toEqual({ x: 0, y: 70 });
   });
 });

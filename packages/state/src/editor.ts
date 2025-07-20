@@ -1418,6 +1418,18 @@ export class Editor {
         }
         tx.add({ kind: "shape", id: shape.id, before: null, after: state.current });
         tx.commit();
+        // Notify is mandatory here, not optional. `update()` was firing
+        // notifications during the dragover, but those snapshots had
+        // the placement preview WITHOUT `parentId` — so the
+        // AutoLayoutScheduler's `signatureFor(parent)` did not include
+        // the new child, and no `runAutoLayout` was scheduled. The
+        // reparent above just set `parentId`; without this final
+        // `notify()` the scheduler never sees the change and the child
+        // sits at its cursor-drop position until the NEXT unrelated
+        // notification picks up the lag. Visible to the user as
+        // "elements overlap on add, then snap to grid only after the
+        // next add".
+        this.notify();
       },
       cancel: () => {
         const { scene } = computePlacementCancel(this._scene, shape.id);

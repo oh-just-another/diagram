@@ -453,6 +453,115 @@ describe("auto-layout containers", () => {
     const after2 = editor.scene.shapes.get(c1.id)!.position;
     expect(after2).toEqual({ x: 100, y: 50 });
   });
+
+  // ---------------------------------------------------------------
+  // Fixed: drop-zone was offset on each element addition and full page reload.
+  // on each element addition and full page reload.
+  //
+  // The flow is: addShape → notify → AutoLayoutScheduler →
+  // runAutoLayout (places child at dropZone.top-left) → per-child
+  // maybeGrowContainer (computes whether to expand). Before the fix
+  // `expandDropZoneToFit` shifted the zone by `(padding, padding)`
+  // even for a child placed exactly at the existing top-left edge,
+  // moving the container itself by `-padding` on every add.
+  //
+  // Pin: a container with explicit padding receives a child, runs
+  // auto-layout, and its `position` stays put.
+  // ---------------------------------------------------------------
+  it("does not shift the container on add/runLayout when a child fits cleanly", async () => {
+    const parent: Shape = {
+      ...containerWithAutoLayout("grid"),
+      metadata: {
+        autoLayout: { kind: "grid", cols: 2, gap: 10 },
+        // padding=12 mirrors the basic.auto-grid template — the
+        // exact configuration where the original shift was reported.
+        container: { padding: 12 },
+      },
+    };
+    const editor = makeEditor(sceneWith(parent));
+    const before = editor.scene.shapes.get(parent.id)!.position;
+
+    editor.addShape(childOf("c1", parent.id, 999, 999));
+    await Promise.resolve();
+    expect(editor.scene.shapes.get(parent.id)!.position).toEqual(before);
+
+    editor.addShape(childOf("c2", parent.id, 999, 999));
+    await Promise.resolve();
+    expect(editor.scene.shapes.get(parent.id)!.position).toEqual(before);
+
+    editor.addShape(childOf("c3", parent.id, 999, 999));
+    await Promise.resolve();
+    expect(editor.scene.shapes.get(parent.id)!.position).toEqual(before);
+
+    // Children landed inside the drop-zone (offset by padding).
+    expect(editor.scene.shapes.get(shapeId("c1"))!.position).toEqual({ x: 12, y: 12 });
+    expect(editor.scene.shapes.get(shapeId("c2"))!.position).toEqual({ x: 72, y: 12 });
+    expect(editor.scene.shapes.get(shapeId("c3"))!.position).toEqual({ x: 12, y: 72 });
+  });
+
+  // The live drop-zone synthesiser for auto-layout shapes is unit-tested in
+  // packages/scene/tests/container.test.ts. The tests here pin the
+  // editor-side flow (no shift on add / runLayout).
+
+  // Simulate the library-drop sequence (beginPlacement → update over
+  // container → commit) and assert that the dropped child snaps to the grid
+  // slot in the microtask after commit.
+  it("library drop into auto-grid snaps to the grid slot after commit (notify pairing)", async () => {
+    const parent = {
+      ...containerWithAutoLayout("grid"),
+      // padding=12 mirrors basic.auto-grid template.
+      metadata: {
+        autoLayout: { kind: "grid", cols: 2, gap: 10 },
+        container: { padding: 12 },
+      },
+      position: { x: 50, y: 60 },
+      width: 400,
+      height: 400,
+    } as Shape;
+    const editor = makeEditor(sceneWith(parent));
+
+    // First library drop. `beginPlacement` adds the shape; its
+    // `parentId` is assigned on commit via
+    // `computePlacementContainerDrop`, so the input must arrive
+    // un-parented.
+    const first = { ...childOf("c1", parent.id, 0, 0) };
+    delete (first as { parentId?: ReturnType<typeof shapeId> }).parentId;
+
+    const placement1 = editor.beginPlacement(first);
+    placement1.update({ x: 300, y: 250 });
+    placement1.commit();
+    await Promise.resolve();
+
+    // c1 must have landed at the grid origin (parent.position +
+    // padding), NOT at the cursor drop point.
+    expect(editor.scene.shapes.get(first.id)!.position).toEqual({
+      x: 50 + 12,
+      y: 60 + 12,
+    });
+    // And it must be parented to the container.
+    expect(editor.scene.shapes.get(first.id)!.parentId).toBe(parent.id);
+
+    // Second drop at a different cursor position — must land at
+    // (cellW+gap, 0) relative to drop zone, regardless of cursor.
+    const second = { ...childOf("c2", parent.id, 0, 0) };
+    delete (second as { parentId?: ReturnType<typeof shapeId> }).parentId;
+    const placement2 = editor.beginPlacement(second);
+    placement2.update({ x: 350, y: 270 });
+    placement2.commit();
+    await Promise.resolve();
+
+    // 50px width + 10px gap → second cell starts at x = parent.x +
+    // padding + 60 = 50 + 12 + 60 = 122.
+    expect(editor.scene.shapes.get(second.id)!.position).toEqual({
+      x: 50 + 12 + 60,
+      y: 60 + 12,
+    });
+    // No overlap with c1.
+    expect(editor.scene.shapes.get(first.id)!.position).toEqual({
+      x: 50 + 12,
+      y: 60 + 12,
+    });
+  });
 });
 
 describe("arrange layouts", () => {

@@ -51,14 +51,50 @@ export const isContainer = (s: ShapeBase): boolean => getContainerSpec(s) !== nu
 
 /**
  * Resolve the current `ContainerSpec` for `s`. Tries every registered
- * resolver first (live, layout-aware path for templates), then falls
- * back to a static `metadata.container` spec. Returns `null` if
- * shape is not a container.
+ * resolver first (live, layout-aware path for rich templates); then
+ * synthesises a live drop-zone for any shape carrying
+ * `metadata.autoLayout` + a `width`/`height` field — its zone is
+ * always `(padding, padding, width - 2*padding, height - 2*padding)`,
+ * which keeps the area in sync with the shape after a manual resize
+ * (no stale stored offsets); finally falls back to a fully static
+ * `metadata.container` spec for hand-authored containers. Returns
+ * `null` when the shape is not a container.
  */
 export const getContainerSpec = (s: ShapeBase): ContainerSpec | null => {
   for (const resolver of resolvers) {
     const spec = resolver(s);
     if (spec) return spec;
+  }
+  // Synthesise a live drop-zone for auto-layout shapes (basic.auto-grid,
+  // basic.auto-stack, etc.). Source of truth is shape.width/height +
+  // padding — `metadata.container.dropZone`, if present, is treated as
+  // initial/serialised fallback only. Otherwise a resize of the frame
+  // wouldn't grow the drop-area (stored zone stays e.g. 296×176 even
+  // after the rectangle becomes 500×300).
+  const meta = s.metadata as
+    | { autoLayout?: unknown; container?: { padding?: number } }
+    | undefined;
+  // ShapeBase doesn't carry width/height (text / path / freedraw
+  // shapes lack them); detect through a type-erased probe rather
+  // than narrowing through TS overloads.
+  const sized = s as unknown as { width?: unknown; height?: unknown };
+  if (
+    meta?.autoLayout != null &&
+    typeof sized.width === "number" &&
+    typeof sized.height === "number"
+  ) {
+    const padding = meta.container?.padding ?? AUTO_LAYOUT_DEFAULT_PADDING;
+    const w = sized.width;
+    const h = sized.height;
+    return {
+      dropZone: {
+        x: padding,
+        y: padding,
+        width: Math.max(0, w - 2 * padding),
+        height: Math.max(0, h - 2 * padding),
+      },
+      padding,
+    };
   }
   const m = s.metadata?.container;
   if (!m || typeof m !== "object") return null;
@@ -69,6 +105,16 @@ export const getContainerSpec = (s: ShapeBase): ContainerSpec | null => {
     : { dropZone: obj.dropZone };
   return spec;
 };
+
+/**
+ * Default symmetric inset (in world units) used by the auto-layout
+ * drop-zone synthesiser when the shape doesn't carry an explicit
+ * `metadata.container.padding`. Zero by default — a "raw" auto-layout
+ * shape places its first child at its own top-left corner. Templates
+ * (basic.auto-grid / basic.auto-stack) opt into a visible inset via
+ * `metadata.container.padding`.
+ */
+const AUTO_LAYOUT_DEFAULT_PADDING = 0;
 
 /**
  * World-coord drop-zone rect for the given container shape. Returns
@@ -139,19 +185,33 @@ export const expandDropZoneToFit = (
     height: childWorld.height,
   };
   const z = spec.dropZone;
-  const minX = Math.min(z.x, childLocal.x - padding);
-  const minY = Math.min(z.y, childLocal.y - padding);
-  const maxX = Math.max(z.x + z.width, childLocal.x + childLocal.width + padding);
-  const maxY = Math.max(z.y + z.height, childLocal.y + childLocal.height + padding);
-  if (
-    minX === z.x &&
-    minY === z.y &&
-    maxX === z.x + z.width &&
-    maxY === z.y + z.height
-  ) {
+  const cl = childLocal.x;
+  const ct = childLocal.y;
+  const cr = childLocal.x + childLocal.width;
+  const cb = childLocal.y + childLocal.height;
+  const zl = z.x;
+  const zt = z.y;
+  const zr = z.x + z.width;
+  const zb = z.y + z.height;
+  // Padding inflates ONLY the edge that the child crossed. A child
+  // resting exactly on an existing edge (`cl === zl`, common because
+  // `runAutoLayout` places the first child at the drop-zone's
+  // top-left corner) doesn't trigger expansion — without this guard
+  // every layout pass would shift the zone outward by `padding`,
+  // moving the container on every add and on every page reload.
+  const newMinX = cl < zl ? cl - padding : zl;
+  const newMinY = ct < zt ? ct - padding : zt;
+  const newMaxX = cr > zr ? cr + padding : zr;
+  const newMaxY = cb > zb ? cb + padding : zb;
+  if (newMinX === zl && newMinY === zt && newMaxX === zr && newMaxY === zb) {
     return null;
   }
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  return {
+    x: newMinX,
+    y: newMinY,
+    width: newMaxX - newMinX,
+    height: newMaxY - newMinY,
+  };
 };
 
 /**

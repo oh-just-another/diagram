@@ -1,11 +1,34 @@
 import type { ShapeId, Vec2 } from "@oh-just-another/types";
 import { getDropZoneWorld } from "./container.js";
 import type { Scene } from "./scene.js";
-import type { Shape } from "./shape.js";
+import { getShapeLocalBounds, type Shape } from "./shape.js";
 import { getShape, getShapesInLayer } from "./queries.js";
 import { updateShape, type OperationResult } from "./operations.js";
 import { batch, type Patch } from "./patch.js";
 import { getLayoutKind } from "./layout-registry.js";
+
+/**
+ * Visual width / height of a shape in its OWN frame (no `position`,
+ * yes `scale`). Uses the registered bounder so polygon / path /
+ * freedraw shapes report their actual AABB — `shape.width` /
+ * `shape.height` only exist on rectangle / ellipse / image / text
+ * and reading them directly would return `undefined` for the
+ * others, collapsing the layout stride to `0` and stacking every
+ * polygon at the same point. Returns `(0, 0)` if no bounder is
+ * registered for the type (kept defensive — the layout falls back
+ * to gap-only spacing rather than throwing).
+ */
+const shapeAdvanceSize = (shape: Shape): { width: number; height: number } => {
+  try {
+    const local = getShapeLocalBounds(shape);
+    return {
+      width: local.width * Math.abs(shape.scale.x),
+      height: local.height * Math.abs(shape.scale.y),
+    };
+  } catch {
+    return { width: 0, height: 0 };
+  }
+};
 
 /**
  * Pure layout function. Computes new positions for a subset of shapes
@@ -43,14 +66,9 @@ export const gridLayout: LayoutFn<GridLayoutSpec> = (scene, spec) => {
   }
   shapes.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
 
-  const cellW = shapes.reduce(
-    (m, s) => Math.max(m, "width" in s && typeof s.width === "number" ? s.width : 0),
-    0,
-  );
-  const cellH = shapes.reduce(
-    (m, s) => Math.max(m, "height" in s && typeof s.height === "number" ? s.height : 0),
-    0,
-  );
+  const sizes = shapes.map(shapeAdvanceSize);
+  const cellW = sizes.reduce((m, s) => Math.max(m, s.width), 0);
+  const cellH = sizes.reduce((m, s) => Math.max(m, s.height), 0);
   const stride = { x: cellW + gap, y: cellH + gap };
 
   const patches: Patch[] = [];
@@ -89,8 +107,7 @@ export const stackLayout: LayoutFn<StackLayoutSpec> = (scene, spec) => {
   let working = scene;
   let cursor = { x: origin.x, y: origin.y };
   for (const shape of shapes) {
-    const w = "width" in shape && typeof shape.width === "number" ? shape.width : 0;
-    const h = "height" in shape && typeof shape.height === "number" ? shape.height : 0;
+    const { width: w, height: h } = shapeAdvanceSize(shape);
     if (shape.position.x !== cursor.x || shape.position.y !== cursor.y) {
       const target = cursor;
       const r = updateShape(working, shape.id, (s) => ({ ...s, position: target }));
@@ -284,10 +301,12 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   // Subtree-width / height memo.
   const widthOf = new Map<ShapeId, number>();
   const heightOf = new Map<ShapeId, number>();
-  const shapeWidth = (s: Shape): number =>
-    "width" in s && typeof s.width === "number" ? s.width : 0;
-  const shapeHeight = (s: Shape): number =>
-    "height" in s && typeof s.height === "number" ? s.height : 0;
+  // Use the registered bounder (via shapeAdvanceSize) so polygon /
+  // path / freedraw shapes report their real AABB; reading
+  // `shape.width` directly returns `undefined` for them and would
+  // collapse every non-rectangle/ellipse node to a zero-sized box.
+  const shapeWidth = (s: Shape): number => shapeAdvanceSize(s).width;
+  const shapeHeight = (s: Shape): number => shapeAdvanceSize(s).height;
 
   const measure = (id: ShapeId): { w: number; h: number } => {
     if (widthOf.has(id)) return { w: widthOf.get(id)!, h: heightOf.get(id)! };
