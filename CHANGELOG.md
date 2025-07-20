@@ -769,3 +769,6 @@
 
 ## 0.44.0
 - feat: floating selection panel + DebugPanel + auto-grid drop-zone fix
+
+## 0.44.1
+- docs: rule 10 — commit after each meaningful unit of work
