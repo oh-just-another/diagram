@@ -28,10 +28,29 @@ import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
 export class WebGL2Target implements RenderTarget {
   private readonly gl: WebGL2RenderingContext;
   private readonly program: WebGLProgram;
+  /**
+   * Static unit-quad VBO ([0,0]–[1,1]) — used by every solid-fill rect
+   * draw. Filled once in the constructor with `STATIC_DRAW` and never
+   * re-written; the rect's world-space placement is done entirely via
+   * `uTransform`.
+   */
   private readonly vbo: WebGLBuffer;
+  /**
+   * Per-frame scratch VBO for polygon / triangle-fan / stroke vertex
+   * streams. Re-uploaded each draw with `DYNAMIC_DRAW`. Kept separate
+   * from `vbo` so the static unit quad never gets stomped.
+   */
+  private readonly dynamicVbo: WebGLBuffer;
   private readonly uTransformLoc: WebGLUniformLocation;
   private readonly uColorLoc: WebGLUniformLocation;
   private readonly uOpacityLoc: WebGLUniformLocation;
+  /**
+   * Cached attribute location for the solid program. `getAttribLocation`
+   * is a string-keyed driver lookup; repeating it per draw is a real
+   * per-frame cost on integrated GPUs. Locations are stable once the
+   * program is linked, so they're read once in the constructor.
+   */
+  private readonly aPosLoc: number;
   private readonly _size: { width: number; height: number };
 
   private fillColor: [number, number, number] = [0, 0, 0];
@@ -111,8 +130,9 @@ export class WebGL2Target implements RenderTarget {
     this.program = link(this.gl, vert, frag);
     this.gl.useProgram(this.program);
 
-    // Single quad shared across every fill — vertex shader applies
-    // the per-call transform to scale + translate it into place.
+    // Single quad shared across every solid-fill rect — the vertex
+    // shader applies the per-call transform to scale + translate it
+    // into place.
     this.vbo = this.gl.createBuffer()!;
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
     this.gl.bufferData(
@@ -120,9 +140,13 @@ export class WebGL2Target implements RenderTarget {
       new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
       this.gl.STATIC_DRAW,
     );
-    const aPos = this.gl.getAttribLocation(this.program, "aPos");
-    this.gl.enableVertexAttribArray(aPos);
-    this.gl.vertexAttribPointer(aPos, 2, this.gl.FLOAT, false, 0, 0);
+    // Dynamic buffer for polygon / stroke / fan vertex streams. Created
+    // empty — each draw bind + bufferData fills it.
+    this.dynamicVbo = this.gl.createBuffer()!;
+
+    this.aPosLoc = this.gl.getAttribLocation(this.program, "aPos");
+    this.gl.enableVertexAttribArray(this.aPosLoc);
+    this.gl.vertexAttribPointer(this.aPosLoc, 2, this.gl.FLOAT, false, 0, 0);
 
     this.uTransformLoc = this.gl.getUniformLocation(this.program, "uTransform")!;
     this.uColorLoc = this.gl.getUniformLocation(this.program, "uColor")!;
@@ -183,6 +207,11 @@ export class WebGL2Target implements RenderTarget {
     if (this.curvePipeline) {
       this.curvePipeline.dispose();
       this.curvePipeline = null;
+    }
+    this.gl.deleteBuffer(this.dynamicVbo);
+    if (this.imageQuadVbo) {
+      this.gl.deleteBuffer(this.imageQuadVbo);
+      this.imageQuadVbo = null;
     }
     const lose = this.gl.getExtension("WEBGL_lose_context");
     lose?.loseContext();
@@ -405,16 +434,22 @@ export class WebGL2Target implements RenderTarget {
   drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number): void {
     const tex = this.textureFor(image as TexImageSource);
     if (!tex) return;
-    if (!this.imageProgram) this.imageProgram = createImageProgram(this.gl);
+    if (!this.imageProgram) {
+      this.imageProgram = createImageProgram(this.gl);
+      // Lazily create the image quad VBO too — interleaved
+      // (pos.xy, uv.xy) for a TRIANGLE_STRIP unit quad. Static — never
+      // re-uploaded; the per-call placement goes through `uTransform`.
+      this.imageQuadVbo = this.gl.createBuffer();
+      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.imageQuadVbo);
+      this.gl.bufferData(
+        this.gl.ARRAY_BUFFER,
+        new Float32Array([0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1]),
+        this.gl.STATIC_DRAW,
+      );
+    }
     const ip = this.imageProgram;
     this.gl.useProgram(ip.program);
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      // unit-quad pos + tex coords interleaved
-      new Float32Array([0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1]),
-      this.gl.DYNAMIC_DRAW,
-    );
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.imageQuadVbo);
     this.gl.enableVertexAttribArray(ip.aPos);
     this.gl.vertexAttribPointer(ip.aPos, 2, this.gl.FLOAT, false, 16, 0);
     this.gl.enableVertexAttribArray(ip.aUV);
@@ -440,22 +475,13 @@ export class WebGL2Target implements RenderTarget {
     this.gl.uniform1i(ip.uTex, 0);
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 
-    // Restore the solid-colour program for subsequent fills /
-    // strokes.
-    this.gl.useProgram(this.program);
-    const aPos = this.gl.getAttribLocation(this.program, "aPos");
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
-      this.gl.STATIC_DRAW,
-    );
-    this.gl.enableVertexAttribArray(aPos);
-    this.gl.vertexAttribPointer(aPos, 2, this.gl.FLOAT, false, 0, 0);
+    // Restore the solid-colour program for subsequent fills / strokes.
+    this.restoreSolidProgram();
   }
 
-  /** Lazy image program (created on the first drawImage call). */
+  /** Lazy image program + its static unit quad+UV VBO. */
   private imageProgram: ImageProgram | null = null;
+  private imageQuadVbo: WebGLBuffer | null = null;
   private readonly textures = new WeakMap<object, WebGLTexture>();
 
   private textureFor(src: TexImageSource): WebGLTexture | null {
@@ -591,11 +617,12 @@ export class WebGL2Target implements RenderTarget {
 
     const gl = this.gl;
     gl.useProgram(this.program);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+    // Use the dynamic VBO — leaves the static unit-quad VBO untouched so
+    // subsequent rect fills don't pay for a re-upload.
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.dynamicVbo);
     gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
-    const aPos = gl.getAttribLocation(this.program, "aPos");
-    gl.enableVertexAttribArray(aPos);
-    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.aPosLoc);
+    gl.vertexAttribPointer(this.aPosLoc, 2, gl.FLOAT, false, 0, 0);
     gl.uniformMatrix3fv(this.uTransformLoc, false, IDENTITY_MAT3);
     gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
     gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
@@ -605,6 +632,9 @@ export class WebGL2Target implements RenderTarget {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.DYNAMIC_DRAW);
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+    // Restore solid program's attribute binding to the static unit-quad
+    // VBO so the next rect fill picks up the right vertex stream.
+    this.restoreSolidProgram();
   }
   private indexBuffer: WebGLBuffer | null = null;
 
@@ -626,15 +656,15 @@ export class WebGL2Target implements RenderTarget {
     }
     const gl = this.gl;
     gl.useProgram(this.program);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.dynamicVbo);
     gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
-    const aPos = gl.getAttribLocation(this.program, "aPos");
-    gl.enableVertexAttribArray(aPos);
-    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(this.aPosLoc);
+    gl.vertexAttribPointer(this.aPosLoc, 2, gl.FLOAT, false, 0, 0);
     gl.uniformMatrix3fv(this.uTransformLoc, false, IDENTITY_MAT3);
     gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
     gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
     gl.drawArrays(gl.TRIANGLE_FAN, 0, n);
+    this.restoreSolidProgram();
   }
 
   /**
@@ -717,12 +747,17 @@ export class WebGL2Target implements RenderTarget {
       },
       this.transform,
       this._size,
+      this.program,
       this.uTransformLoc,
       this.uColorLoc,
       this.uOpacityLoc,
-      this.vbo,
+      this.dynamicVbo,
+      this.aPosLoc,
       IDENTITY_MAT3,
     );
+    // Stroke wrote into the dynamic VBO; rebind the static unit-quad VBO
+    // so the next solid rect fill picks up the right vertex stream.
+    this.restoreSolidProgram();
   }
 
   // --- Stroke style state (consumed by stroke()) ---
@@ -866,17 +901,18 @@ export class WebGL2Target implements RenderTarget {
     this.restoreSolidProgram();
   }
 
+  /**
+   * Rebind the solid program + static unit-quad VBO + cached aPos
+   * pointer. Three GL calls, no allocation, no upload, no string-keyed
+   * driver lookup. Called after any draw that switched program or
+   * rebound the buffer (image, MSDF text, curves, polygon fill, triangle
+   * fan).
+   */
   private restoreSolidProgram(): void {
     this.gl.useProgram(this.program);
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]),
-      this.gl.STATIC_DRAW,
-    );
-    const aPos = this.gl.getAttribLocation(this.program, "aPos");
-    this.gl.enableVertexAttribArray(aPos);
-    this.gl.vertexAttribPointer(aPos, 2, this.gl.FLOAT, false, 0, 0);
+    this.gl.enableVertexAttribArray(this.aPosLoc);
+    this.gl.vertexAttribPointer(this.aPosLoc, 2, this.gl.FLOAT, false, 0, 0);
   }
   measureText(text: string): { width: number } {
     return this.textMetrics(text);

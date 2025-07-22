@@ -70,8 +70,13 @@ export const miterOffset = (
 
 /**
  * Build the stroke geometry for a polyline + style, upload to the
- * shared VBO, and draw. Identity uTransform — vertices are pre-
- * projected into clip space here.
+ * caller's dynamic VBO, and draw. Identity uTransform — vertices are
+ * pre-projected into clip space here.
+ *
+ * The caller passes its solid program + cached `aPos` attribute
+ * location + its dynamic VBO. We bind & set up the attribute
+ * ourselves so the function is self-contained — no implicit
+ * dependency on the previous draw's GL state.
  */
 export const drawPolylineStroke = (
   gl: WebGL2RenderingContext,
@@ -79,10 +84,12 @@ export const drawPolylineStroke = (
   style: StrokeStyle,
   transform: Transform,
   size: { width: number; height: number },
+  program: WebGLProgram,
   uTransformLoc: WebGLUniformLocation,
   uColorLoc: WebGLUniformLocation,
   uOpacityLoc: WebGLUniformLocation,
-  vbo: WebGLBuffer,
+  dynamicVbo: WebGLBuffer,
+  aPosLoc: number,
   identityMat3: Float32Array,
 ): void => {
   if (style.width <= 0 || polyline.length < 2) return;
@@ -245,8 +252,11 @@ export const drawPolylineStroke = (
     verts[i + 1] = wy * sy + 1;
   }
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.useProgram(program);
+  gl.bindBuffer(gl.ARRAY_BUFFER, dynamicVbo);
   gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(aPosLoc);
+  gl.vertexAttribPointer(aPosLoc, 2, gl.FLOAT, false, 0, 0);
   gl.uniformMatrix3fv(uTransformLoc, false, identityMat3);
   gl.uniform3f(uColorLoc, style.color[0], style.color[1], style.color[2]);
   gl.uniform1f(uOpacityLoc, style.opacity);

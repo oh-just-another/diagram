@@ -772,3 +772,6 @@
 
 ## 0.44.1
 - docs: rule 10 — commit after each meaningful unit of work
+
+## 0.44.2
+- fix: WebGL2 GL state hot-path cleanup (B1 + B2)
