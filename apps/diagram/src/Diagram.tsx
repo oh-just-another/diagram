@@ -990,7 +990,11 @@ const openSceneFile = (editor: Editor | null): void => {
  * exported. Hosts who need a full composite roll their own.
  */
 const downloadPng = (editor: Editor): void => {
-  void editor; // hooked off the DOM, not the Editor reference
+  // Flush any rAF-coalesced pending render so `toBlob` reads the
+  // up-to-date backbuffer. Without this, a mutation made in the same
+  // tick as the export (e.g. an action that ended a selection then
+  // exported) could capture the previous frame.
+  editor.forceRender();
   // The main shape layer is the only canvas tagged with this dataset
   // attribute. Both Canvas2D and WebGL2 layered surfaces emit it
   // (LayeredCanvas / WebGL2LayeredSurface). preserveDrawingBuffer

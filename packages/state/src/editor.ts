@@ -647,7 +647,7 @@ export class Editor {
       // the check and risk a microtask loop. Listeners already saw
       // the previous notify; the auto-layout adjustment is a
       // synchronous fix-up on top of the same external event.
-      this.render();
+      this.scheduleRender();
       for (const fn of this.listeners) fn();
     },
   });
@@ -925,7 +925,7 @@ export class Editor {
     this.actor.subscribe({
       next: () => {
         // Render on any state change so drawing rubber-band updates.
-        this.render();
+        this.scheduleRender();
       },
     });
     this.actor.on("*", (event) => {
@@ -978,7 +978,10 @@ export class Editor {
     };
 
     this.unbind = this.bindPointerEvents();
-    this.render();
+    // First paint — synchronous so the canvas isn't blank for one
+    // frame on mount. Hosts that mount + immediately read the
+    // bitmap also get a consistent first frame.
+    this.forceRender();
     // Prime the typed-event cache with the editor's initial state so
     // the *first* user-driven update only emits on a real flip.
     // Without this, an `editor.on("mode", fn)` listener installed
@@ -1172,7 +1175,7 @@ export class Editor {
    */
   setPeerCursors(cursors: readonly PeerCursor[]): void {
     this._peerCursors = cursors;
-    this.render();
+    this.scheduleRender();
   }
 
   /**
@@ -1182,7 +1185,7 @@ export class Editor {
    */
   setPeerSelections(selections: readonly PeerSelection[]): void {
     this._peerSelections = selections;
-    this.render();
+    this.scheduleRender();
   }
 
   /** Whether the active draw-mode sticks after a create (toolbar lock). */
@@ -2020,6 +2023,10 @@ export class Editor {
     this.longPressListeners.clear();
     this.announceListeners.clear();
     this.animationTick.stop();
+    if (this.renderRafId !== null && typeof cancelAnimationFrame !== "undefined") {
+      cancelAnimationFrame(this.renderRafId);
+      this.renderRafId = null;
+    }
   }
 
   // --- Internal ---
@@ -3027,11 +3034,66 @@ export class Editor {
   }
 
   private notify(): void {
-    this.render();
+    this.scheduleRender();
     fanOutEvents(this.eventCache, this.events, this.observableSnapshot());
     for (const fn of this.listeners) fn();
     this.autoCompactScheduler.schedule();
     this.autoLayoutScheduler.schedule();
+  }
+
+  /**
+   * Pending `requestAnimationFrame` id for the next render, or null
+   * when no render is scheduled. Used to coalesce bursts of `notify()`
+   * calls (drag-pan, drag shape, multi-key, scripted batch mutations)
+   * into a single render per frame — the previous synchronous render
+   * inside notify() turned 240Hz pointer rate on modern trackpads
+   * into 4×renders per browser frame, of which 3 were never composited.
+   */
+  private renderRafId: number | null = null;
+
+  /**
+   * Schedule a render on the next animation frame. Idempotent —
+   * multiple calls within the same frame collapse to one render.
+   *
+   * Falls back to a synchronous render when `requestAnimationFrame`
+   * is unavailable (Node without jsdom, SSR). Browser / test environments
+   * with rAF get the coalesced path.
+   *
+   * Use {@link forceRender} when you need the render to happen
+   * immediately (PNG export, screenshot, visual-regression tests that
+   * compare bitmap output after a mutation).
+   */
+  private scheduleRender(): void {
+    if (this.renderRafId !== null) return;
+    if (typeof requestAnimationFrame === "undefined") {
+      // SSR / Node fallback. Keep behaviour synchronous so headless
+      // renderers and tests that don't poll rAFs still see the
+      // updated frame.
+      this.render();
+      return;
+    }
+    this.renderRafId = requestAnimationFrame(() => {
+      this.renderRafId = null;
+      this.render();
+    });
+  }
+
+  /**
+   * Synchronously render the current state. Cancels any pending
+   * rAF-scheduled render so the next browser frame doesn't paint
+   * a stale state on top.
+   *
+   * Hosts only need this when they read back the rendered bitmap
+   * immediately after a mutation — `editor.toPng()`, custom
+   * `canvas.toDataURL()` flows, visual-regression test asserts.
+   * Normal interactive flows should let `scheduleRender` do its job.
+   */
+  forceRender(): void {
+    if (this.renderRafId !== null && typeof cancelAnimationFrame !== "undefined") {
+      cancelAnimationFrame(this.renderRafId);
+      this.renderRafId = null;
+    }
+    this.render();
   }
 
   /**

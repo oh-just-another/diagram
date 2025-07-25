@@ -775,3 +775,6 @@
 
 ## 0.44.2
 - fix: WebGL2 GL state hot-path cleanup (B1 + B2)
+
+## 0.44.3
+- fix: rAF-coalesce Editor.notify Right render (B8)
