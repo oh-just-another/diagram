@@ -781,3 +781,6 @@
 
 ## 0.44.4
 - fix: PNG export captures full scene + MainMenu.Submenu
+
+## 0.44.5
+- refactor(react-ui): drop "Clear scene" from DEFAULT_CONTEXT_MENU

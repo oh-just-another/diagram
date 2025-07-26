@@ -526,16 +526,5 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     shortcut: "⌘1",
     visible: (e) => e.scene.shapes.size > 0,
     onClick: (e) => e.zoomToFit(),
-  },
-  { kind: "divider" },
-  // --- Scene-wide ---
-  {
-    kind: "action",
-    id: "clear",
-    label: "Clear scene",
-    visible: (e) => e.scene.shapes.size > 0,
-    onClick: (e) => {
-      if (typeof window === "undefined" || window.confirm("Clear the whole scene?")) e.clear();
-    },
-  },
+  }
 ];
