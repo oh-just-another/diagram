@@ -9,7 +9,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { Check, Menu as MenuIcon } from "lucide-react";
+import { Check, ChevronRight, Menu as MenuIcon } from "lucide-react";
 
 /** Pixel size for the trigger icon — matches the toolbar tool buttons. */
 const TRIGGER_ICON_SIZE = 16;
@@ -333,8 +333,134 @@ const Toggle = <T extends string>({
   );
 };
 
+/**
+ * Nested submenu — opens a child panel to the right of the parent item
+ * on hover (with a small close-delay so a mouse moving diagonally toward
+ * the child doesn't accidentally collapse the panel). Also opens on
+ * click for touch / keyboard activation.
+ *
+ * Children are typically `MainMenu.Item`s. The submenu inherits the
+ * parent menu's `close()` context, so child item clicks collapse the
+ * whole menu chain.
+ *
+ *   <MainMenu.Submenu icon={<Download/>} label="Export…">
+ *     <MainMenu.Item onClick={exportPng}>PNG</MainMenu.Item>
+ *     <MainMenu.Item onClick={exportSvg}>SVG</MainMenu.Item>
+ *   </MainMenu.Submenu>
+ *
+ * Positioning is fixed to "right of trigger, top-aligned with the
+ * trigger row".
+ */
+const SUBMENU_CLOSE_DELAY_MS = 120;
+
+export interface MainMenuSubmenuProps {
+  readonly children: ReactNode;
+  /** Trigger row label. Same render style as `MainMenu.Item`. */
+  readonly label: ReactNode;
+  /** Optional leading icon — same sizing rules as `MainMenu.Item`. */
+  readonly icon?: ReactNode;
+  readonly disabled?: boolean;
+}
+
+const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
+  const [open, setOpen] = useState(false);
+  const closeTimerRef = useRef<number | null>(null);
+
+  const cancelClose = useCallback((): void => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleClose = useCallback((): void => {
+    cancelClose();
+    closeTimerRef.current = window.setTimeout(() => {
+      setOpen(false);
+      closeTimerRef.current = null;
+    }, SUBMENU_CLOSE_DELAY_MS);
+  }, [cancelClose]);
+
+  // Clear a pending close-timer on unmount so it doesn't fire on a
+  // detached component.
+  useEffect(() => cancelClose, [cancelClose]);
+
+  const panelStyle: CSSProperties = {
+    position: "absolute",
+    top: -4,
+    left: "100%",
+    marginLeft: 4,
+    minWidth: 220,
+    background: "var(--menu-bg)",
+    color: "var(--menu-text)",
+    border: "1px solid var(--menu-border)",
+    borderRadius: 6,
+    boxShadow: "var(--du-ui-shadow)",
+    padding: 4,
+    zIndex: 1000,
+  };
+
+  return (
+    <div
+      style={{ position: "relative" }}
+      onMouseEnter={() => {
+        if (disabled) return;
+        cancelClose();
+        setOpen(true);
+      }}
+      onMouseLeave={scheduleClose}
+    >
+      <button
+        type="button"
+        role="menuitem"
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => {
+          if (disabled) return;
+          cancelClose();
+          setOpen((p) => !p);
+        }}
+        style={{
+          ...itemHoverable(),
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.4 : 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span
+            aria-hidden
+            style={{
+              width: 14,
+              height: 14,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--du-text-muted, #888)",
+            }}
+          >
+            {icon ?? ""}
+          </span>
+          {label}
+        </span>
+        <ChevronRight size={12} strokeWidth={2.25} aria-hidden />
+      </button>
+      {open ? (
+        <div role="menu" style={panelStyle}>
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 MainMenu.Item = Item;
 MainMenu.ItemLink = ItemLink;
 MainMenu.Separator = Separator;
 MainMenu.Group = Group;
 MainMenu.Toggle = Toggle;
+MainMenu.Submenu = Submenu;

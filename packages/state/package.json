@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/state",
-  "version": "0.44.3",
+  "version": "0.44.4",
   "description": "state package",
   "type": "module",
   "main": "./dist/index.js",

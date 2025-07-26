@@ -778,3 +778,6 @@
 
 ## 0.44.3
 - fix: rAF-coalesce Editor.notify Right render (B8)
+
+## 0.44.4
+- fix: PNG export captures full scene + MainMenu.Submenu

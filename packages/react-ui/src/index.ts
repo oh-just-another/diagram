@@ -121,6 +121,7 @@ export {
   type MainMenuProps,
   type MainMenuItemProps,
   type MainMenuItemLinkProps,
+  type MainMenuSubmenuProps,
 } from "./main-menu.js";
 export { Modal, type ModalProps } from "./modal.js";
 export { Sidebar, type SidebarProps } from "./sidebar.js";

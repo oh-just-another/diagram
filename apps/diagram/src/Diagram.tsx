@@ -101,6 +101,7 @@ import {
   type CapabilityProfile,
 } from "./capabilities";
 import { createRenderWorker } from "./render-worker-factory";
+import { exportSceneToPng, type PngExportBackground } from "./png-export";
 
 /**
  * `<Diagram>` — library shell. Mount inside any
@@ -629,20 +630,41 @@ const EditorShell = ({
                       >
                         Save as JSON
                       </MainMenu.Item>
-                      <MainMenu.Item
-                        icon={<ImageDown {...menuIcon} />}
-                        onClick={() => editor && downloadPng(editor)}
-                        disabled={!editor}
-                      >
-                        Export as PNG
-                      </MainMenu.Item>
-                      <MainMenu.Item
+                      <MainMenu.Submenu
                         icon={<Download {...menuIcon} />}
-                        onClick={() => editor && downloadSvg(editor.scene)}
+                        label="Export…"
                         disabled={!editor}
                       >
-                        Export as SVG
-                      </MainMenu.Item>
+                        <MainMenu.Item
+                          icon={<ImageDown {...menuIcon} />}
+                          onClick={() => editor && void downloadPng(editor, "transparent")}
+                          disabled={!editor}
+                        >
+                          PNG (transparent)
+                        </MainMenu.Item>
+                        <MainMenu.Item
+                          icon={<ImageDown {...menuIcon} />}
+                          onClick={() => editor && void downloadPng(editor, "color")}
+                          disabled={!editor}
+                        >
+                          PNG (with background)
+                        </MainMenu.Item>
+                        <MainMenu.Item
+                          icon={<ImageDown {...menuIcon} />}
+                          onClick={() => editor && void downloadPng(editor, "color-and-grid")}
+                          disabled={!editor}
+                        >
+                          PNG (with background + grid)
+                        </MainMenu.Item>
+                        <MainMenu.Separator />
+                        <MainMenu.Item
+                          icon={<Download {...menuIcon} />}
+                          onClick={() => editor && downloadSvg(editor.scene)}
+                          disabled={!editor}
+                        >
+                          SVG
+                        </MainMenu.Item>
+                      </MainMenu.Submenu>
                       <MainMenu.Item
                         icon={<RotateCcw {...menuIcon} />}
                         onClick={() => {
@@ -981,30 +1003,52 @@ const openSceneFile = (editor: Editor | null): void => {
 };
 
 /**
- * "Export as PNG" — grabs the main canvas DOM element and calls
- * `toBlob`. Works for both Canvas2D and WebGL2 backends since
- * `preserveDrawingBuffer: true` is already set on the WebGL
- * context. The overlay / background layers are NOT composited in
- * — they're cheap UI decorations (selection halo, grid) rather
- * than scene content, and most users want the bare shapes
- * exported. Hosts who need a full composite roll their own.
+ * "Export as PNG" — renders the **full scene** (not just the visible
+ * viewport) into an OffscreenCanvas via the standard `renderScene` +
+ * `renderEdges` pipeline and downloads the result. Three variants
+ * exposed in the menu:
+ *
+ *   • transparent      — PNG with alpha channel preserved
+ *   • color            — solid background fill (host canvas colour)
+ *   • color-and-grid   — solid fill + same grid the user sees
+ *
+ * Scale fixed at 2× for retina-quality output (matches the standard /
+ * standard default). The full-scene contract makes this symmetric with
+ * SVG export, which always emits the whole scene.
+ *
+ * Implementation lives in `./png-export.ts` so this file stays
+ * focused on UI wiring.
  */
-const downloadPng = (editor: Editor): void => {
-  // Flush any rAF-coalesced pending render so `toBlob` reads the
-  // up-to-date backbuffer. Without this, a mutation made in the same
-  // tick as the export (e.g. an action that ended a selection then
-  // exported) could capture the previous frame.
-  editor.forceRender();
-  // The main shape layer is the only canvas tagged with this dataset
-  // attribute. Both Canvas2D and WebGL2 layered surfaces emit it
-  // (LayeredCanvas / WebGL2LayeredSurface). preserveDrawingBuffer
-  // is on in WebGL2 so `toBlob` returns the latest frame.
-  const main = document.querySelector('canvas[data-layer="main"]');
-  if (!(main instanceof HTMLCanvasElement)) return;
-  main.toBlob((blob: Blob | null) => {
-    if (!blob) return;
-    downloadBlob(blob, "scene.png");
-  }, "image/png");
+const PNG_EXPORT_SCALE = 2;
+
+const downloadPng = async (
+  editor: Editor,
+  background: PngExportBackground,
+): Promise<void> => {
+  const backgroundColor = readCanvasBackgroundColor();
+  const blob = await exportSceneToPng(editor.scene, {
+    background,
+    scale: PNG_EXPORT_SCALE,
+    backgroundColor,
+  });
+  if (!blob) {
+    // Empty scene — convertToBlob unavailable or no shapes to export.
+    window.alert("Nothing to export — the canvas is empty.");
+    return;
+  }
+  downloadBlob(blob, "scene.png");
+};
+
+/**
+ * Read the host's current `--du-canvas-bg` CSS variable. Falls back
+ * to white if the variable isn't set (e.g. host hasn't loaded the
+ * react-ui stylesheet). Matches what the user sees behind the
+ * shapes on the live canvas.
+ */
+const readCanvasBackgroundColor = (): string => {
+  const probe = document.querySelector('canvas[data-layer="main"]') ?? document.body;
+  const value = getComputedStyle(probe as Element).getPropertyValue("--du-canvas-bg").trim();
+  return value || "#ffffff";
 };
 
 /**
