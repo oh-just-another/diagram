@@ -16,6 +16,7 @@ import { getActiveRasterizer, getActiveTextShaper } from "@oh-just-another/rende
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
 import earcut from "earcut";
 import { parseWebGL2Color } from "./webgl2-color.js";
+import { WEBGL2_TEXT_BITMAP_CACHE_CAP } from "./constants.js";
 import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
@@ -922,7 +923,15 @@ export class WebGL2Target implements RenderTarget {
 
   /** Hidden Canvas2D context for measureText + bitmap rasterisation. */
   private textCtx: CanvasRenderingContext2D | null = null;
-  /** Per-string cache; reused by `drawImage`'s texture WeakMap. */
+  /**
+   * Per-string OffscreenCanvas cache for the fallback text path (no MSDF
+   * shaper registered). Keyed by `text|font|color`. Capped via
+   * `WEBGL2_TEXT_BITMAP_CACHE_CAP` LRU eviction.
+   *
+   * `Map` preserves insertion order, so the oldest entry is the iterator
+   * head. `rasteriseString` "touches" a hit by delete + set, which moves
+   * it to the tail.
+   */
   private readonly textBitmaps = new Map<string, OffscreenCanvas>();
 
   private ensureTextCtx(): CanvasRenderingContext2D | null {
@@ -953,7 +962,13 @@ export class WebGL2Target implements RenderTarget {
     if (typeof OffscreenCanvas === "undefined") return null;
     const key = `${text}|${this.textFontSpec()}|${this.fillColorString}`;
     const cached = this.textBitmaps.get(key);
-    if (cached) return cached;
+    if (cached) {
+      // Touch — re-insert at the tail so the LRU eviction below picks
+      // colder entries first.
+      this.textBitmaps.delete(key);
+      this.textBitmaps.set(key, cached);
+      return cached;
+    }
     const m = this.textMetrics(text);
     // Pad height by 40% — covers font ascent/descent fuzz without
     // requiring per-font TextMetrics support.
@@ -968,7 +983,31 @@ export class WebGL2Target implements RenderTarget {
     ctx.fillStyle = this.fillColorString;
     ctx.fillText(text, 0, 0);
     this.textBitmaps.set(key, canvas);
+    this.evictTextBitmapsIfOverCap();
     return canvas;
+  }
+
+  /**
+   * Trim `textBitmaps` down to `WEBGL2_TEXT_BITMAP_CACHE_CAP` entries by
+   * dropping least-recently-used keys. For each evicted OffscreenCanvas
+   * the associated GPU texture (uploaded lazily via `drawImage` →
+   * `textureFor`) is also deleted, otherwise the VRAM stays held until
+   * JS GC collects the canvas.
+   */
+  private evictTextBitmapsIfOverCap(): void {
+    while (this.textBitmaps.size > WEBGL2_TEXT_BITMAP_CACHE_CAP) {
+      const oldestKey = this.textBitmaps.keys().next().value;
+      if (oldestKey === undefined) break;
+      const oldCanvas = this.textBitmaps.get(oldestKey);
+      this.textBitmaps.delete(oldestKey);
+      if (oldCanvas) {
+        const tex = this.textures.get(oldCanvas);
+        if (tex) {
+          this.gl.deleteTexture(tex);
+          this.textures.delete(oldCanvas);
+        }
+      }
+    }
   }
 }
 

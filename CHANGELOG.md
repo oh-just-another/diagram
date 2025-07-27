@@ -784,3 +784,6 @@
 
 ## 0.44.5
 - refactor(react-ui): drop "Clear scene" from DEFAULT_CONTEXT_MENU
+
+## 0.44.6
+- fix: LRU cap on WebGL2Target.textBitmaps (B5)
