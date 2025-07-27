@@ -787,3 +787,6 @@
 
 ## 0.44.6
 - fix: LRU cap on WebGL2Target.textBitmaps (B5)
+
+## 0.44.7
+- fix: adaptive MAX_TILE_CACHE_BYTES per device memory (B10)

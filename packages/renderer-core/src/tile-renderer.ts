@@ -13,8 +13,59 @@ import type { Bounds, ShapeId } from "@oh-just-another/types";
 /** Side length of one tile in world units. */
 export const TILE_SIZE = 2048;
 
-/** Memory cap for cached tile bitmaps (bytes). */
-export const MAX_TILE_CACHE_BYTES = 256 * 1024 * 1024;
+/**
+ * Hard upper bound on the tile cache footprint (256 MB) — the
+ * practical ceiling on desktop browsers. Used as the clamp ceiling of
+ * {@link MAX_TILE_CACHE_BYTES}; the actual cap can be lower on
+ * low-memory devices.
+ */
+const TILE_CACHE_HARD_CEILING = 256 * 1024 * 1024;
+
+/** Bytes per GB of host RAM that the tile cache is allowed to claim. */
+const TILE_CACHE_BYTES_PER_GB = 64 * 1024 * 1024;
+
+/**
+ * Guess how many GiB of RAM the host has. Reads `navigator.deviceMemory`
+ * when exposed (Chrome / Edge — rounded to {0.25, 0.5, 1, 2, 4, 8}).
+ * Falls back to a `navigator.hardwareConcurrency` proxy on Safari /
+ * Firefox where deviceMemory is unavailable: 8+ cores → desktop class
+ * (4 GiB), 4-7 → mid-range phone / laptop (2 GiB), <4 → low-end (1 GiB).
+ *
+ * SSR / Node (no `navigator`) returns 4 for headless / test environments.
+ */
+const guessDeviceMemoryGB = (): number => {
+  if (typeof navigator === "undefined") return 4;
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  if (typeof nav.deviceMemory === "number" && nav.deviceMemory > 0) {
+    return nav.deviceMemory;
+  }
+  const cores = typeof nav.hardwareConcurrency === "number" ? nav.hardwareConcurrency : 4;
+  if (cores >= 8) return 4;
+  if (cores >= 4) return 2;
+  return 1;
+};
+
+/**
+ * Memory cap for cached tile bitmaps (bytes), adaptive per device.
+ *
+ * Formula: `min(256 MB, deviceMemoryGB × 64 MB)`.
+ *   • iPhone Safari (no deviceMemory; A15 = 6 cores)  → 2 GiB → 128 MB
+ *   • Android low-RAM (deviceMemory=2)                → 128 MB
+ *   • Android mid-range (deviceMemory=4)              → 256 MB
+ *   • Desktop (deviceMemory=8 / hardwareConcurrency=8+) → 256 MB (cap)
+ *   • Very low-end (deviceMemory=0.5)                  → 32 MB
+ *
+ * The adaptive cap caps the upper bound proportionally to device
+ * memory, leaving headroom for the rest of the JS heap.
+ *
+ * Evaluated once at module load — navigator state doesn't change during
+ * a session. Hosts that need a different cap can pass
+ * `new InMemoryTileCache(<custom bytes>)` directly.
+ */
+export const MAX_TILE_CACHE_BYTES = Math.min(
+  TILE_CACHE_HARD_CEILING,
+  guessDeviceMemoryGB() * TILE_CACHE_BYTES_PER_GB,
+);
 
 /**
  * Below this zoom we drop to LOD: cache tiles render only AABBs
