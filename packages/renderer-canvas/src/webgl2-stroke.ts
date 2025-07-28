@@ -33,6 +33,55 @@ const MITER_LIMIT = 10;
  * to look smooth at any sensible zoom (each segment ≈ 15°). */
 const ROUND_SEGMENTS_PER_PI = 12;
 
+/**
+ * Module-level scratch buffers — reused across every
+ * `drawPolylineStroke` invocation so the hot path allocates **zero**
+ * `Float32Array`s per frame after the first warmup. Previously each
+ * call paid for three new TypedArray's (nx, ny, and the projected
+ * vertex stream), plus a plain `number[]` that grew via push — on
+ * scenes with hundreds of strokes that was 1-2 MB/frame of GC
+ * pressure visible as regular saw-tooth in DevTools memory chart.
+ *
+ * Safe because WebGL is single-threaded and `drawPolylineStroke` is
+ * called serially from `WebGL2Target.stroke()` — multiple canvases
+ * on the same page still share these buffers, which is fine.
+ *
+ * Initial caps cover a typical small stroke (≤32 segments) without
+ * a single grow. `ensureNCapacity` / `ensureTrisCapacity` upsize to
+ * the next power of 2 on demand; capacity only ratchets up (never
+ * shrinks) so steady-state cost is zero allocations.
+ */
+let scratchNx = new Float32Array(64);
+let scratchNy = new Float32Array(64);
+let scratchTris = new Float32Array(1024);
+let scratchTrisLen = 0;
+
+const ensureNCapacity = (n: number): void => {
+  if (scratchNx.length >= n) return;
+  let cap = scratchNx.length;
+  while (cap < n) cap *= 2;
+  scratchNx = new Float32Array(cap);
+  scratchNy = new Float32Array(cap);
+};
+
+const ensureTrisCapacity = (n: number): void => {
+  if (scratchTris.length >= n) return;
+  let cap = scratchTris.length;
+  while (cap < n) cap *= 2;
+  const next = new Float32Array(cap);
+  // Carry over any values already pushed before the grow.
+  next.set(scratchTris.subarray(0, scratchTrisLen));
+  scratchTris = next;
+};
+
+const trisPush = (x: number, y: number): void => {
+  if (scratchTrisLen + 2 > scratchTris.length) {
+    ensureTrisCapacity(scratchTrisLen + 2);
+  }
+  scratchTris[scratchTrisLen++] = x;
+  scratchTris[scratchTrisLen++] = y;
+};
+
 export interface StrokeStyle {
   readonly width: number;
   readonly color: readonly [number, number, number];
@@ -96,8 +145,11 @@ export const drawPolylineStroke = (
   const half = style.width / 2;
 
   const segCount = polyline.length - 1;
-  const nx = new Float32Array(segCount);
-  const ny = new Float32Array(segCount);
+  // Reuse the module-level scratch nx/ny buffers — grow on demand.
+  // Reads inside this function use plain Float32Array indexing.
+  ensureNCapacity(segCount);
+  const nx = scratchNx;
+  const ny = scratchNy;
   for (let i = 0; i < segCount; i++) {
     const a = polyline[i]!;
     const b = polyline[i + 1]!;
@@ -113,13 +165,11 @@ export const drawPolylineStroke = (
     polyline[0]!.x === polyline[polyline.length - 1]!.x &&
     polyline[0]!.y === polyline[polyline.length - 1]!.y;
 
-  // We emit triangles into this scratch list in world-coord space,
-  // then project once at the end. Saves bookkeeping vs projecting
-  // every push.
-  const tris: number[] = []; // x, y, x, y, ... (each vertex)
-  const push = (x: number, y: number): void => {
-    tris.push(x, y);
-  };
+  // Reset the scratch vertex stream length — we'll push world-space
+  // (x, y) pairs into `scratchTris` via `trisPush`, then project
+  // in-place to clip space at the end before the bufferData call.
+  scratchTrisLen = 0;
+  const push = trisPush;
 
   // Render the segment band between vertex i and i+1 as two
   // triangles. Both endpoints use the SAME side-offset for now;
@@ -237,30 +287,33 @@ export const drawPolylineStroke = (
     emitCap(push, lastVx.x, lastVx.y, prevVx.x, prevVx.y, nx[segCount - 1]!, ny[segCount - 1]!, half, style.cap, false);
   }
 
-  if (tris.length === 0) return;
+  if (scratchTrisLen === 0) return;
 
-  // Project all triangle vertices into clip space.
-  const verts = new Float32Array(tris.length);
+  // Project all triangle vertices into clip space — in-place: we read
+  // world (x, y) into wx/wy first, then overwrite the same indices
+  // with clip-space values. Saves a second Float32Array allocation.
   const sx = 2 / size.width;
   const sy = -2 / size.height;
-  for (let i = 0; i < tris.length; i += 2) {
-    const x = tris[i]!;
-    const y = tris[i + 1]!;
+  for (let i = 0; i < scratchTrisLen; i += 2) {
+    const x = scratchTris[i]!;
+    const y = scratchTris[i + 1]!;
     const wx = transform.a * x + transform.c * y + transform.e;
     const wy = transform.b * x + transform.d * y + transform.f;
-    verts[i] = wx * sx - 1;
-    verts[i + 1] = wy * sy + 1;
+    scratchTris[i] = wx * sx - 1;
+    scratchTris[i + 1] = wy * sy + 1;
   }
 
   gl.useProgram(program);
   gl.bindBuffer(gl.ARRAY_BUFFER, dynamicVbo);
-  gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+  // subarray gives a view into the live scratch buffer — no copy.
+  // gl.bufferData uploads exactly `byteLength` bytes from it.
+  gl.bufferData(gl.ARRAY_BUFFER, scratchTris.subarray(0, scratchTrisLen), gl.DYNAMIC_DRAW);
   gl.enableVertexAttribArray(aPosLoc);
   gl.vertexAttribPointer(aPosLoc, 2, gl.FLOAT, false, 0, 0);
   gl.uniformMatrix3fv(uTransformLoc, false, identityMat3);
   gl.uniform3f(uColorLoc, style.color[0], style.color[1], style.color[2]);
   gl.uniform1f(uOpacityLoc, style.opacity);
-  gl.drawArrays(gl.TRIANGLES, 0, tris.length / 2);
+  gl.drawArrays(gl.TRIANGLES, 0, scratchTrisLen / 2);
 };
 
 /**

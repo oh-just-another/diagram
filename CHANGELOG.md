@@ -790,3 +790,6 @@
 
 ## 0.44.7
 - fix: adaptive MAX_TILE_CACHE_BYTES per device memory (B10)
+
+## 0.44.8
+- fix: scratch buffer pool in webgl2-stroke — zero alloc hot path (B13)
