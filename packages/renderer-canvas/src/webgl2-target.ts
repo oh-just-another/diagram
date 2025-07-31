@@ -590,24 +590,30 @@ export class WebGL2Target implements RenderTarget {
         : polyline.length;
     if (n < 3) return;
 
-    // earcut wants a flat [x0, y0, x1, y1, ...] in world coords.
-    const flat = new Float64Array(n * 2);
+    // earcut wants a flat [x0, y0, x1, y1, ...] in world coords. Reuse
+    // the module-level scratch buffers — earcut accepts any array-like
+    // with [i] + length, so a Float64Array view works.
+    ensureEarcutVertexCapacity(n);
+    const flat = scratchEarcutFlat;
     for (let i = 0; i < n; i++) {
       const p = polyline[i]!;
       flat[i * 2] = p.x;
       flat[i * 2 + 1] = p.y;
     }
-    const indices = earcut(flat as unknown as number[]);
+    // Pass only the populated prefix — `subarray` is a view, no copy.
+    const indices = earcut(flat.subarray(0, n * 2) as unknown as number[]);
     if (indices.length === 0) {
       // Pathological polygon — fall back to a fan so something renders.
       this.drawTriangleFan(polyline, n, effectiveAlpha);
       return;
     }
 
-    // Project once into clip space, then index-draw.
+    // Project once into clip space, then index-draw. Shares the earcut
+    // vertex-count budget — `ensureEarcutVertexCapacity` above already
+    // grew `scratchEarcutVerts` if needed.
     const sx = 2 / this._size.width;
     const sy = -2 / this._size.height;
-    const verts = new Float32Array(n * 2);
+    const verts = scratchEarcutVerts;
     for (let i = 0; i < n; i++) {
       const p = polyline[i]!;
       const wx = this.transform.a * p.x + this.transform.c * p.y + this.transform.e;
@@ -616,12 +622,20 @@ export class WebGL2Target implements RenderTarget {
       verts[i * 2 + 1] = wy * sy + 1;
     }
 
+    // Copy earcut's `number[]` indices into the scratch Uint16Array.
+    // earcut returns its own JS array; the copy lets us pass a sized
+    // TypedArray view to bufferData with no further allocation.
+    ensureEarcutIndexCapacity(indices.length);
+    for (let i = 0; i < indices.length; i++) {
+      scratchEarcutIndices[i] = indices[i]!;
+    }
+
     const gl = this.gl;
     gl.useProgram(this.program);
     // Use the dynamic VBO — leaves the static unit-quad VBO untouched so
     // subsequent rect fills don't pay for a re-upload.
     gl.bindBuffer(gl.ARRAY_BUFFER, this.dynamicVbo);
-    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, verts.subarray(0, n * 2), gl.DYNAMIC_DRAW);
     gl.enableVertexAttribArray(this.aPosLoc);
     gl.vertexAttribPointer(this.aPosLoc, 2, gl.FLOAT, false, 0, 0);
     gl.uniformMatrix3fv(this.uTransformLoc, false, IDENTITY_MAT3);
@@ -631,7 +645,11 @@ export class WebGL2Target implements RenderTarget {
     // realistic ceiling for any one polygon).
     if (!this.indexBuffer) this.indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.DYNAMIC_DRAW);
+    gl.bufferData(
+      gl.ELEMENT_ARRAY_BUFFER,
+      scratchEarcutIndices.subarray(0, indices.length),
+      gl.DYNAMIC_DRAW,
+    );
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
     // Restore solid program's attribute binding to the static unit-quad
     // VBO so the next rect fill picks up the right vertex stream.
@@ -647,7 +665,9 @@ export class WebGL2Target implements RenderTarget {
   private drawTriangleFan(polyline: readonly Vec2[], n: number, effectiveAlpha: number): void {
     const sx = 2 / this._size.width;
     const sy = -2 / this._size.height;
-    const verts = new Float32Array(n * 2);
+    // Share the module-level scratch verts with `fillPolygonEarcut`.
+    ensureEarcutVertexCapacity(n);
+    const verts = scratchEarcutVerts;
     for (let i = 0; i < n; i++) {
       const p = polyline[i]!;
       const wx = this.transform.a * p.x + this.transform.c * p.y + this.transform.e;
@@ -658,7 +678,7 @@ export class WebGL2Target implements RenderTarget {
     const gl = this.gl;
     gl.useProgram(this.program);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.dynamicVbo);
-    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, verts.subarray(0, n * 2), gl.DYNAMIC_DRAW);
     gl.enableVertexAttribArray(this.aPosLoc);
     gl.vertexAttribPointer(this.aPosLoc, 2, gl.FLOAT, false, 0, 0);
     gl.uniformMatrix3fv(this.uTransformLoc, false, IDENTITY_MAT3);
@@ -1019,6 +1039,37 @@ type MutableTransform = {
   d: number;
   e: number;
   f: number;
+};
+
+/**
+ * Module-level scratch buffers for the polygon-fill path
+ * (`fillPolygonEarcut` + `drawTriangleFan`). Reused across every fill so
+ * steady-state cost is zero `Float64Array` / `Float32Array` /
+ * `Uint16Array` allocations.
+ *
+ * Initial caps cover a typical polygon (≤64 vertices, ≤128 indices)
+ * without a grow. Capacity ratchets up to the next power of 2 on demand
+ * and never shrinks; safe for single-threaded WebGL (fill calls are
+ * serialised through the editor's render path).
+ */
+let scratchEarcutFlat = new Float64Array(128);
+let scratchEarcutVerts = new Float32Array(128);
+let scratchEarcutIndices = new Uint16Array(256);
+
+const ensureEarcutVertexCapacity = (vertexCount: number): void => {
+  const needed = vertexCount * 2;
+  if (scratchEarcutFlat.length >= needed) return;
+  let cap = scratchEarcutFlat.length;
+  while (cap < needed) cap *= 2;
+  scratchEarcutFlat = new Float64Array(cap);
+  scratchEarcutVerts = new Float32Array(cap);
+};
+
+const ensureEarcutIndexCapacity = (n: number): void => {
+  if (scratchEarcutIndices.length >= n) return;
+  let cap = scratchEarcutIndices.length;
+  while (cap < n) cap *= 2;
+  scratchEarcutIndices = new Uint16Array(cap);
 };
 
 /**

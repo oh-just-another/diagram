@@ -793,3 +793,6 @@
 
 ## 0.44.8
 - fix: scratch buffer pool in webgl2-stroke — zero alloc hot path (B13)
+
+## 0.44.9
+- fix: earcut + triangle-fan scratch buffer pool (B16)
