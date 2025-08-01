@@ -515,7 +515,21 @@ const EditorShell = ({
   // selector hook — re-renders only on scene identity flips.
   void useScene();
   const paletteDropHandlers = usePalettePlacement();
-  const [libraryOpen, setLibraryOpen] = useState(false);
+  // Auto-open on mount if the user previously pinned OR docked the
+  // panel — both flags semantically mean "I want this panel visible
+  // permanently". `open` itself isn't persisted; it's derived from
+  // pin/dock storage so a session that ended with the panel closed
+  // (regular floating overlay) doesn't keep popping back open.
+  const [libraryOpen, setLibraryOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const pinned = window.localStorage.getItem("du:library:pinned") === "1";
+      const docked = window.localStorage.getItem("du:library:docked") === "1";
+      return pinned || docked;
+    } catch {
+      return false;
+    }
+  });
   // Library dock state lives in the host so the shell can reflow
   // canvas + bars when the panel becomes a sibling column instead
   // of a floating overlay. Seeded from localStorage by LibraryPanel

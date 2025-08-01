@@ -799,3 +799,6 @@
 
 ## 0.44.10
 - fix: fragment-SDF ellipse pipeline (skip polygon tesselation)
+
+## 0.44.11
+- fix: auto-open library panel on mount when pinned or docked
