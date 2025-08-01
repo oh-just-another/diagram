@@ -20,6 +20,7 @@ import { WEBGL2_TEXT_BITMAP_CACHE_CAP } from "./constants.js";
 import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
+import { EllipsePipeline } from "./webgl2-ellipse.js";
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -85,6 +86,14 @@ export class WebGL2Target implements RenderTarget {
    * perfectly smooth at any zoom.
    */
   private currentCurves: CurveSegment[] = [];
+  /**
+   * Ellipse parameters set by `ellipse()` — drives the fragment-SDF
+   * `EllipsePipeline` on `fill()`. Separate from the polygon path so
+   * `fill()` can skip the earcut pipeline entirely for ellipses (1 quad
+   * vs 24-512 segments). `stroke()` falls back to building a polyline
+   * lazily.
+   */
+  private currentEllipse: { cx: number; cy: number; rx: number; ry: number } | null = null;
   private transform: MutableTransform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
   private readonly stack: MutableTransform[] = [];
 
@@ -209,6 +218,10 @@ export class WebGL2Target implements RenderTarget {
       this.curvePipeline.dispose();
       this.curvePipeline = null;
     }
+    if (this.ellipsePipeline) {
+      this.ellipsePipeline.dispose();
+      this.ellipsePipeline = null;
+    }
     this.gl.deleteBuffer(this.dynamicVbo);
     if (this.imageQuadVbo) {
       this.gl.deleteBuffer(this.imageQuadVbo);
@@ -287,6 +300,7 @@ export class WebGL2Target implements RenderTarget {
     this.currentPath = null;
     this.currentPolyline = [];
     this.currentCurves = [];
+    this.currentEllipse = null;
   }
 
   rect(x: number, y: number, width: number, height: number): void {
@@ -315,10 +329,19 @@ export class WebGL2Target implements RenderTarget {
    * when callers only fill.
    */
   ellipse(cx: number, cy: number, rx: number, ry: number): void {
+    this.currentEllipse = { cx, cy, rx, ry };
+    this.currentPolyline = [];
+    this.currentPath = null;
+  }
+
+  /**
+   * Build a polyline approximation of `currentEllipse` for the stroke
+   * pipeline. Zoom-adaptive segment count keeps chord-to-arc error
+   * sub-pixel at any scale.
+   */
+  private buildEllipseStrokePolyline(e: { cx: number; cy: number; rx: number; ry: number }): void {
     const scale = Math.hypot(this.transform.a, this.transform.b);
-    const screenRadius = Math.max(rx, ry) * (Number.isFinite(scale) && scale > 0 ? scale : 1);
-    // π · r · 2 / chord_length — pick enough segments that the
-    // chord length stays under ~1 screen px.
+    const screenRadius = Math.max(e.rx, e.ry) * (Number.isFinite(scale) && scale > 0 ? scale : 1);
     const segments = Math.max(
       ELLIPSE_MIN_SEGMENTS,
       Math.min(ELLIPSE_MAX_SEGMENTS, Math.ceil(Math.PI * screenRadius * 0.7)),
@@ -327,13 +350,10 @@ export class WebGL2Target implements RenderTarget {
     for (let i = 0; i <= segments; i++) {
       const t = (i / segments) * Math.PI * 2;
       this.currentPolyline.push({
-        x: cx + rx * Math.cos(t),
-        y: cy + ry * Math.sin(t),
+        x: e.cx + e.rx * Math.cos(t),
+        y: e.cy + e.ry * Math.sin(t),
       });
     }
-    // Also expose as `currentPath` so a subsequent fill() picks the
-    // polygon up via the same triangle-fan path.
-    this.currentPath = null;
   }
 
   /**
@@ -514,6 +534,22 @@ export class WebGL2Target implements RenderTarget {
     const effectiveAlpha = this.opacity * this.fillAlpha;
     if (effectiveAlpha <= 0) return; // transparent fill — nothing to draw
 
+    // Ellipse path — single fragment-SDF quad regardless of radius.
+    // Vector-perfect at any zoom; 4 vertices instead of 24-512.
+    if (this.currentEllipse) {
+      if (!this.ellipsePipeline) this.ellipsePipeline = new EllipsePipeline(this.gl);
+      const e = this.currentEllipse;
+      this.ellipsePipeline.draw(
+        e.cx, e.cy, e.rx, e.ry,
+        this.fillColor,
+        effectiveAlpha,
+        this.transform,
+        this._size,
+      );
+      this.restoreSolidProgram();
+      return;
+    }
+
     // Rect path — uses the bundled unit-quad VBO + uTransform
     // pre-multiplied to map [0,1]² onto the rect bounds. Cheapest path;
     // most shape backgrounds (rectangles) hit it.
@@ -570,6 +606,7 @@ export class WebGL2Target implements RenderTarget {
     }
   }
   private curvePipeline: LoopBlinnCurvePipeline | null = null;
+  private ellipsePipeline: EllipsePipeline | null = null;
 
   /**
    * Triangulate the polygon via earcut and emit one TRIANGLES draw.
@@ -752,6 +789,13 @@ export class WebGL2Target implements RenderTarget {
         { x: r.x, y: r.y + r.height },
         { x: r.x, y: r.y },
       ];
+    }
+    // Ellipse outline — lazily generate the polyline approximation here
+    // so callers that only fill don't pay for the 24-512 vertex
+    // allocation. EllipsePipeline owns the fill path; stroke still goes
+    // through the polygon stroke pipeline.
+    if (this.currentEllipse && this.currentPolyline.length < 2) {
+      this.buildEllipseStrokePolyline(this.currentEllipse);
     }
     if (this.currentPolyline.length < 2) return;
     const effectiveAlpha = this.opacity * this.strokeAlpha;

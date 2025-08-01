@@ -796,3 +796,6 @@
 
 ## 0.44.9
 - fix: earcut + triangle-fan scratch buffer pool (B16)
+
+## 0.44.10
+- fix: fragment-SDF ellipse pipeline (skip polygon tesselation)
