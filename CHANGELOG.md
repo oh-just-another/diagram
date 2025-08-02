@@ -802,3 +802,6 @@
 
 ## 0.44.11
 - fix: auto-open library panel on mount when pinned or docked
+
+## 0.44.12
+- fix: MSDF text scratch buffer pool — zero alloc hot path (B15)

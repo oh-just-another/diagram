@@ -75,7 +75,10 @@ export class MsdfTextPipeline {
     // (x, y, u, v) = 24 floats.
     const verticesPerGlyph = 6;
     const floatsPerVertex = 4;
-    const buf = new Float32Array(text.length * verticesPerGlyph * floatsPerVertex);
+    const needed = text.length * verticesPerGlyph * floatsPerVertex;
+    // Reuse the module-level scratch buffer — grow on demand.
+    ensureGlyphBufCapacity(needed);
+    const buf = scratchGlyphBuf;
     let writeOffset = 0;
     let cursor = x;
     for (const ch of text) {
@@ -102,11 +105,8 @@ export class MsdfTextPipeline {
     gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 16, 0);
     gl.enableVertexAttribArray(this.aUV);
     gl.vertexAttribPointer(this.aUV, 2, gl.FLOAT, false, 16, 8);
-    gl.uniformMatrix3fv(
-      this.uTransform,
-      false,
-      affineToClipMat3(style.transform, surfaceSize.width, surfaceSize.height),
-    );
+    writeAffineToClipMat3(scratchMat3, style.transform, surfaceSize.width, surfaceSize.height);
+    gl.uniformMatrix3fv(this.uTransform, false, scratchMat3);
     gl.uniform3f(this.uColor, style.color[0], style.color[1], style.color[2]);
     gl.uniform1f(this.uOpacity, style.opacity);
     gl.uniform1f(this.uAtlasSize, atlas.atlasSize);
@@ -228,21 +228,51 @@ const writeGlyphQuad = (
 };
 
 /**
- * Build the column-major mat3 the shader expects. Mirrors the
- * solid-fill program's transform pipeline: editor affine maps
- * (worldX, worldY) → screen pixels, then we scale pixels into
- * clip space (-1..1) with a y flip so positive y goes down on the
- * screen — same convention every other 2D backend in this kernel
- * uses.
+ * Module-level scratch buffers — reused across every `drawText`
+ * invocation so the text hot path allocates zero `Float32Array`s after
+ * warmup.
+ *
+ * `scratchGlyphBuf` starts at 512 floats (21 chars worth of glyph
+ * quads); longer strings grow to the next power of 2. `scratchMat3` is
+ * a fixed mat3 (column-major), no grow needed.
+ *
+ * Safe for single-threaded WebGL — `drawText` is not reentrant, calls
+ * are serialised through the editor render loop. Multiple WebGL2Target
+ * instances share the buffer, which is fine.
  */
-const affineToClipMat3 = (t: Transform, w: number, h: number): Float32Array => {
+let scratchGlyphBuf = new Float32Array(512);
+const scratchMat3 = new Float32Array(9);
+
+const ensureGlyphBufCapacity = (n: number): void => {
+  if (scratchGlyphBuf.length >= n) return;
+  let cap = scratchGlyphBuf.length;
+  while (cap < n) cap *= 2;
+  scratchGlyphBuf = new Float32Array(cap);
+};
+
+/**
+ * Write the column-major mat3 the shader expects into a caller-owned
+ * scratch buffer. The editor affine maps (worldX, worldY) → screen
+ * pixels, then we scale pixels into clip space (-1..1) with a y flip so
+ * positive y goes down on the screen.
+ */
+const writeAffineToClipMat3 = (
+  out: Float32Array,
+  t: Transform,
+  w: number,
+  h: number,
+): void => {
   const sx = 2 / w;
   const sy = -2 / h;
-  return new Float32Array([
-    t.a * sx, t.b * sy, 0,
-    t.c * sx, t.d * sy, 0,
-    t.e * sx - 1, t.f * sy + 1, 1,
-  ]);
+  out[0] = t.a * sx;
+  out[1] = t.b * sy;
+  out[2] = 0;
+  out[3] = t.c * sx;
+  out[4] = t.d * sy;
+  out[5] = 0;
+  out[6] = t.e * sx - 1;
+  out[7] = t.f * sy + 1;
+  out[8] = 1;
 };
 
 const VERTEX_SRC = `#version 300 es
