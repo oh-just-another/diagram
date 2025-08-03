@@ -16,7 +16,10 @@ import { getActiveRasterizer, getActiveTextShaper } from "@oh-just-another/rende
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
 import earcut from "earcut";
 import { parseWebGL2Color } from "./webgl2-color.js";
-import { WEBGL2_TEXT_BITMAP_CACHE_CAP } from "./constants.js";
+import {
+  WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
+  WEBGL2_TEXT_BITMAP_CACHE_CAP,
+} from "./constants.js";
 import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
@@ -227,6 +230,13 @@ export class WebGL2Target implements RenderTarget {
       this.gl.deleteBuffer(this.imageQuadVbo);
       this.imageQuadVbo = null;
     }
+    // Release every uploaded image texture. `loseContext` below would
+    // also drop them, but explicit deletes make the resource lifecycle
+    // obvious.
+    for (const tex of this.textures.values()) {
+      this.gl.deleteTexture(tex);
+    }
+    this.textures.clear();
     const lose = this.gl.getExtension("WEBGL_lose_context");
     lose?.loseContext();
   }
@@ -503,12 +513,28 @@ export class WebGL2Target implements RenderTarget {
   /** Lazy image program + its static unit quad+UV VBO. */
   private imageProgram: ImageProgram | null = null;
   private imageQuadVbo: WebGLBuffer | null = null;
-  private readonly textures = new WeakMap<object, WebGLTexture>();
+  /**
+   * `TexImageSource` → uploaded `WebGLTexture` cache. A plain `Map`
+   * with LRU eviction + explicit `gl.deleteTexture` (see
+   * `evictImageTexturesIfOverCap`) so the GPU texture is released
+   * deterministically rather than waiting for GC.
+   *
+   * `Map` preserves insertion order, so the head is least-recently
+   * used. `textureFor` touches a hit by delete + set (moves to tail).
+   */
+  private readonly textures = new Map<object, WebGLTexture>();
 
   private textureFor(src: TexImageSource): WebGLTexture | null {
     if (!src || typeof src !== "object") return null;
-    const cached = this.textures.get(src as object);
-    if (cached) return cached;
+    const key = src as object;
+    const cached = this.textures.get(key);
+    if (cached) {
+      // Touch — re-insert at the tail so LRU eviction below picks colder
+      // entries first.
+      this.textures.delete(key);
+      this.textures.set(key, cached);
+      return cached;
+    }
     const tex = this.gl.createTexture();
     if (!tex) return null;
     this.gl.bindTexture(this.gl.TEXTURE_2D, tex);
@@ -525,8 +551,39 @@ export class WebGL2Target implements RenderTarget {
       this.gl.UNSIGNED_BYTE,
       src,
     );
-    this.textures.set(src as object, tex);
+    this.textures.set(key, tex);
+    this.evictImageTexturesIfOverCap();
     return tex;
+  }
+
+  /**
+   * Trim `textures` down to `WEBGL2_IMAGE_TEXTURE_CACHE_CAP` entries by
+   * dropping least-recently-used keys and explicitly releasing the GPU
+   * texture for each evicted entry.
+   *
+   * Skips entries also held by `textBitmaps` — those are evicted through
+   * `evictTextBitmapsIfOverCap` instead, which already deletes the
+   * texture. Skipping here keeps the two cache layers from
+   * double-`gl.deleteTexture`'ing the same handle.
+   */
+  private evictImageTexturesIfOverCap(): void {
+    while (this.textures.size > WEBGL2_IMAGE_TEXTURE_CACHE_CAP) {
+      const oldestKey = this.textures.keys().next().value;
+      if (oldestKey === undefined) break;
+      // Don't evict a texture that's currently backing a live
+      // text-bitmap cache entry — `evictTextBitmapsIfOverCap` owns those
+      // handles. Move it to the tail so the LRU pointer advances and the
+      // next-oldest entry is tried.
+      if (isTextBitmapBacked(this.textBitmaps, oldestKey)) {
+        const tex = this.textures.get(oldestKey)!;
+        this.textures.delete(oldestKey);
+        this.textures.set(oldestKey, tex);
+        continue;
+      }
+      const tex = this.textures.get(oldestKey);
+      this.textures.delete(oldestKey);
+      if (tex) this.gl.deleteTexture(tex);
+    }
   }
 
   fill(_rule?: FillRule): void {
@@ -1074,6 +1131,25 @@ export class WebGL2Target implements RenderTarget {
     }
   }
 }
+
+/**
+ * Scan the text-bitmap LRU for an OffscreenCanvas reference matching the
+ * given object. Used by `evictImageTexturesIfOverCap` to avoid
+ * double-evicting a texture that's still held by the text-bitmap cache —
+ * `evictTextBitmapsIfOverCap` owns those `gl.deleteTexture` calls.
+ *
+ * Linear scan is fine: text bitmap cache size ≤ 256, called only on
+ * texture LRU eviction (rare).
+ */
+const isTextBitmapBacked = (
+  textBitmaps: Map<string, OffscreenCanvas>,
+  candidate: object,
+): boolean => {
+  for (const canvas of textBitmaps.values()) {
+    if (canvas === candidate) return true;
+  }
+  return false;
+};
 
 /** Mutable mirror of `Transform` for the internal matrix book-keeping. */
 type MutableTransform = {

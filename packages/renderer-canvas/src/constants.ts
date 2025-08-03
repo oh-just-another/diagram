@@ -37,3 +37,19 @@ export const LARGE_SCENE_WORKER_THRESHOLD = 50_000;
  * text renders through an atlas, without an OffscreenCanvas round-trip.
  */
 export const WEBGL2_TEXT_BITMAP_CACHE_CAP = 256;
+
+/**
+ * LRU cap on `WebGL2Target.textures` — image-source to WebGLTexture
+ * cache used by `drawImage`. Each entry holds a GPU texture
+ * (`width × height × 4` bytes VRAM).
+ *
+ * A cap plus an explicit `gl.deleteTexture` on evict makes the release
+ * deterministic.
+ *
+ * 64 — a typical scene rarely has more than 10-20 unique images at
+ * once; a 3-6x margin covers intensive editing without thrashing. On
+ * overflow the coldest image textures are unloaded; the next drawImage
+ * of the same image source re-uploads via `gl.texImage2D` (extra frame
+ * cost).
+ */
+export const WEBGL2_IMAGE_TEXTURE_CACHE_CAP = 64;
