@@ -808,3 +808,6 @@
 
 ## 0.44.13
 - fix: LRU cap on WebGL2Target.textures with deterministic gl.deleteTexture (B6)
+
+## 0.44.14
+- refactor(templates): drop duplicated basic.arrow polygon template

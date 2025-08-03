@@ -2,7 +2,6 @@ import type { Shape, Style } from "@oh-just-another/scene";
 import { DEFAULT_SHAPE_STYLES } from "@oh-just-another/tokens";
 import type { Vec2 } from "@oh-just-another/types";
 import {
-  ARROW_ICON,
   DATA_ICON,
   DECISION_ICON,
   DIAMOND_ICON,
@@ -130,27 +129,6 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
           { x: 105, y: 100 },
           { x: 35, y: 100 },
           { x: 0, y: 50 },
-        ],
-        BASIC_STYLE,
-      ),
-  },
-  {
-    id: "basic.arrow",
-    name: "Arrow",
-    category: "basic",
-    icon: ARROW_ICON,
-    tags: ["arrow", "pointer", "direction", "next"],
-    factory: (c) =>
-      polygonFromPoints(
-        c,
-        [
-          { x: 0, y: 30 },
-          { x: 90, y: 30 },
-          { x: 90, y: 15 },
-          { x: 140, y: 50 },
-          { x: 90, y: 85 },
-          { x: 90, y: 70 },
-          { x: 0, y: 70 },
         ],
         BASIC_STYLE,
       ),

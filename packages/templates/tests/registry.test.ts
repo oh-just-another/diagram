@@ -91,10 +91,10 @@ describe("TemplateRegistry", () => {
 });
 
 describe("BUILTIN_TEMPLATES + installBuiltinTemplates", () => {
-  it("ships at least 7 basic + 5 flowchart templates", () => {
+  it("ships at least 6 basic + 5 flowchart templates", () => {
     const basic = BUILTIN_TEMPLATES.filter((t) => t.category === "basic");
     const flow = BUILTIN_TEMPLATES.filter((t) => t.category === "flowchart");
-    expect(basic.length).toBeGreaterThanOrEqual(7);
+    expect(basic.length).toBeGreaterThanOrEqual(6);
     expect(flow.length).toBeGreaterThanOrEqual(5);
   });
 
