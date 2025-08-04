@@ -811,3 +811,6 @@
 
 ## 0.44.14
 - refactor(templates): drop duplicated basic.arrow polygon template
+
+## 0.44.15
+- fix: accept OS file drops on canvas (preventDefault for Files)

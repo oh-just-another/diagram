@@ -338,19 +338,32 @@ export const usePalettePlacement = () => {
 
   return {
     onDragEnter: (ev: DragEvent<HTMLElement>): void => {
-      if (!ev.dataTransfer.types.includes("application/x-template-id")) return;
+      const types = ev.dataTransfer.types;
+      const isTemplate = types.includes("application/x-template-id");
+      const isFile = types.includes("Files");
+      // Accept both palette template drags and OS file drops. Without
+      // preventDefault'ing for file drops the browser falls back to its
+      // default behaviour (open the file in the current tab, losing the scene).
+      if (!isTemplate && !isFile) return;
       ev.preventDefault();
-      ensurePlacement(ev);
+      // Drag-preview overlay only applies to template drags — files
+      // get inserted at drop time, not previewed.
+      if (isTemplate) ensurePlacement(ev);
     },
     onDragOver: (ev: DragEvent<HTMLElement>): void => {
-      if (!ev.dataTransfer.types.includes("application/x-template-id")) return;
+      const types = ev.dataTransfer.types;
+      const isTemplate = types.includes("application/x-template-id");
+      const isFile = types.includes("Files");
+      if (!isTemplate && !isFile) return;
       ev.preventDefault();
       ev.dataTransfer.dropEffect = "copy";
-      if (!placementRef.current) {
-        ensurePlacement(ev);
+      if (isTemplate) {
+        if (!placementRef.current) {
+          ensurePlacement(ev);
+        }
+        const world = cursorWorld(ev);
+        if (world && placementRef.current) placementRef.current.update(world);
       }
-      const world = cursorWorld(ev);
-      if (world && placementRef.current) placementRef.current.update(world);
     },
     onDragLeave: (ev: DragEvent<HTMLElement>): void => {
       // dragleave fires for every child element too — only act when the
