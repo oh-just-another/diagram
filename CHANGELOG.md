@@ -814,3 +814,6 @@
 
 ## 0.44.15
 - fix: accept OS file drops on canvas (preventDefault for Files)
+
+## 0.44.16
+- feat: Frame + Insert image toolbar buttons (hotkeys F / I)

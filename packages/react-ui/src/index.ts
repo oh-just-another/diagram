@@ -69,6 +69,7 @@ export { TextEditorOverlay } from "./text-editor-overlay.js";
 export {
   Toolbar,
   DEFAULT_TOOLBAR,
+  openImageFilePicker,
   ZoomWidget,
   ZoomInButton,
   ZoomOutButton,

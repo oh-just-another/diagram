@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { defaultActionRegistry, type Editor } from "@oh-just-another/state";
+import { openImageFilePicker } from "@oh-just-another/react-ui";
 
 /**
  * Wire global keyboard shortcuts to the editor:
@@ -75,6 +76,15 @@ export const useHotkeys = (editor: Editor | null): void => {
         case "Tab":
           ev.preventDefault();
           editor.focusCycle(ev.shiftKey ? "prev" : "next");
+          return;
+        case "i":
+        case "I":
+          // Insert image — open the OS file picker. Not an Action
+          // (the picker touches the DOM, which the L2 state package
+          // can't), so it's wired inline here alongside the other
+          // host-level shortcuts.
+          ev.preventDefault();
+          openImageFilePicker(editor);
           return;
       }
 

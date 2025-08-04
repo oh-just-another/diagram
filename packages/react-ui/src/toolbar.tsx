@@ -1,7 +1,9 @@
 import type { CSSProperties, ReactNode } from "react";
 import {
   Circle,
+  Frame,
   Hand,
+  Image as ImageIcon,
   Lock,
   MousePointer2,
   PenLine,
@@ -68,6 +70,39 @@ export type ToolbarItem =
       readonly title?: string;
     };
 
+/**
+ * Open an OS file picker for image(s) and insert them at the viewport
+ * centre via the editor's file-drop pipeline (same path as drag-and-drop,
+ * so sizing / GIF animation / Scene.files registration all apply).
+ * Multi-select supported — each file dispatched independently.
+ *
+ * Lives in the UI layer rather than the L2 `state` package because it
+ * touches the DOM (`<input type=file>`). Exported so hosts can wire it to
+ * a hotkey or a custom button.
+ */
+export const openImageFilePicker = (editor: Editor): void => {
+  if (typeof document === "undefined") return;
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.multiple = true;
+  input.addEventListener("change", () => {
+    const files = input.files;
+    if (!files || files.length === 0) return;
+    // Toolbar / hotkey invocation has no cursor position — land the
+    // image(s) at the viewport centre in world coords.
+    const vp = editor.scene.viewport;
+    const world = editor.screenToWorld({
+      x: vp.size.width / 2,
+      y: vp.size.height / 2,
+    });
+    for (const file of Array.from(files)) {
+      void editor.dispatchFileDrop(file, world);
+    }
+  });
+  input.click();
+};
+
 /** Convenience default — modes + tool-lock + undo/redo + zoom widget. */
 export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "mode", mode: "select", label: <MousePointer2 {...iconProps} />, title: "Select (V)" },
@@ -76,6 +111,14 @@ export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "mode", mode: "draw-ellipse", label: <Circle {...iconProps} />, title: "Ellipse (E)" },
   { kind: "mode", mode: "draw-edge", label: <Slash {...iconProps} />, title: "Edge (L)" },
   { kind: "mode", mode: "brush", label: <PenLine {...iconProps} />, title: "Brush (B)" },
+  { kind: "mode", mode: "draw-frame", label: <Frame {...iconProps} />, title: "Frame (F)" },
+  {
+    kind: "action",
+    id: "insert-image",
+    label: <ImageIcon {...iconProps} />,
+    title: "Insert image (I)",
+    onClick: (editor) => openImageFilePicker(editor),
+  },
   { kind: "tool-lock", label: <Lock {...iconProps} />, title: "Lock current tool (stay in mode after each create)" },
   { kind: "divider" },
   { kind: "undo", label: <Undo2 {...iconProps} /> },
