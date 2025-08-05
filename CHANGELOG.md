@@ -817,3 +817,6 @@
 
 ## 0.44.16
 - feat: Frame + Insert image toolbar buttons (hotkeys F / I)
+
+## 0.44.17
+- fix: honor ?renderer= URL override in apps/diagram

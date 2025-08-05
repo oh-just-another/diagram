@@ -10,7 +10,7 @@ import { defaultRegistry, type Template } from "@oh-just-another/templates";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { shapeId } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
-import { Diagram, type DiagramAPI } from "./index";
+import { Diagram, type CapabilityOverrides, type DiagramAPI } from "./index";
 import { setupTemplates } from "./templates";
 import { useHotkeys } from "./hotkeys";
 import { useCollab } from "./collab";
@@ -101,11 +101,32 @@ const readRoomFromHash = (): string | null => {
   return params.get("room");
 };
 
+/**
+ * Read a `renderer` override from the URL — supports both
+ * `?renderer=canvas2d` (search) and `#renderer=canvas2d` (hash) so
+ * either form works regardless of how the host routes. Forces the
+ * backend for debugging / comparison; invalid or absent value falls
+ * back to auto-detect.
+ */
+const readCapabilityOverrides = (): CapabilityOverrides | undefined => {
+  if (typeof window === "undefined") return undefined;
+  const search = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const renderer = search.get("renderer") ?? hashParams.get("renderer");
+  if (renderer === "webgl2" || renderer === "canvas2d" || renderer === "offscreen") {
+    return { renderer };
+  }
+  return undefined;
+};
+
 export const App = () => {
   // Read the hash once at mount — decides whether to seed an empty
   // collab scene (room snapshot is authoritative) or restore the
   // local autosave. Ongoing hash changes are handled by `useCollab`.
   const isCollab = useMemo(() => readRoomFromHash() !== null, []);
+  // Renderer backend override from the URL (`?renderer=canvas2d`).
+  // Read once at mount — switching backend needs a reload anyway.
+  const capabilityOverrides = useMemo(() => readCapabilityOverrides(), []);
   const initialScene = useMemo<Scene>(
     () => (isCollab ? seedScene() : restoreScene()),
     [isCollab],
@@ -183,6 +204,7 @@ export const App = () => {
         renderTopBarLeft={renderHeaderLeft}
         renderTopBarRight={renderHeaderRight}
         persistTheme
+        {...(capabilityOverrides ? { capabilities: capabilityOverrides } : {})}
       />
       <DebugPanel editor={editor} />
     </>
