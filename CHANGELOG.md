@@ -820,3 +820,6 @@
 
 ## 0.44.17
 - fix: honor ?renderer= URL override in apps/diagram
+
+## 0.44.18
+- fix: serialize image fileId + animation fields (data-loss blocker)

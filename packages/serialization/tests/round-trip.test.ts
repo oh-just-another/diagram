@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { annotationId, commentId, shapeId } from "@oh-just-another/types";
+import { annotationId, commentId, fileId, shapeId } from "@oh-just-another/types";
 import {
   addAnnotation,
   addShape,
@@ -118,6 +118,33 @@ describe("round-trip", () => {
     for (const id of ids) {
       expect(restored.shapes.get(shapeId(id))?.type).toBe(scene.shapes.get(shapeId(id))?.type);
     }
+  });
+
+  it("preserves image fileId + animation fields", () => {
+    let scene = emptyScene();
+    const img: Shape = {
+      id: shapeId("img-1"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "image",
+      position: { x: 5, y: 5 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      src: "blob:fake",
+      width: 120,
+      height: 80,
+      fileId: fileId("file-42-abc"),
+      animationKind: "gif",
+      metadata: { animated: true },
+    };
+    ({ scene } = addShape(scene, img));
+    const restored = deserializeScene(serializeScene(scene));
+    const r = restored.shapes.get(shapeId("img-1"));
+    expect(r?.type).toBe("image");
+    expect((r as { fileId?: string }).fileId).toBe("file-42-abc");
+    expect((r as { animationKind?: string }).animationKind).toBe("gif");
+    expect(r?.metadata?.animated).toBe(true);
   });
 
   it("undo patches keep working after round-trip", () => {
