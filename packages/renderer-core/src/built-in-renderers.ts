@@ -312,7 +312,10 @@ const drawImage: ShapeRenderer<ImageShape> = (shape, target) => {
   // registered) → static `src` fallback.
   const handle =
     shape.metadata?.image ?? resolveImageSource(shape);
-  target.drawImage(handle, 0, 0, shape.width, shape.height);
+  // `dynamic` → backends that cache the upload (WebGL2) re-upload the
+  // current frame. GIF / video sources flag `metadata.animated`.
+  const dynamic = shape.metadata?.animated === true;
+  target.drawImage(handle, 0, 0, shape.width, shape.height, dynamic);
 };
 
 /**

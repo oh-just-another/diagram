@@ -7,6 +7,7 @@ import type {
   TextAlign,
   TextBaseline,
 } from "@oh-just-another/renderer-core";
+import { isDrawableImageSource, warnSkippedImage } from "./image-source.js";
 
 /**
  * Wraps a `CanvasRenderingContext2D` (or compatible OffscreenCanvas context)
@@ -153,8 +154,22 @@ export class Canvas2DTarget implements RenderTarget {
 
   // --- Images ---
 
-  drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number): void {
-    this.ctx.drawImage(image as CanvasImageSource, dx, dy, dw, dh);
+  drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number, _dynamic?: boolean): void {
+    // `_dynamic` ignored — Canvas2D reads the source element live on
+    // every drawImage, so animated GIF / video frames are picked up
+    // automatically as long as the host re-renders (AnimationTick).
+    void _dynamic;
+    // Guard against non-drawable handles. A restored scene carries
+    // either a string `src` (dead blob: URL) OR a `metadata.image`
+    // that serialised to `{}` (a live `<img>` becomes an empty object
+    // through JSON). Both throw inside `ctx.drawImage`. Skip rather
+    // than crash the whole render pass, and surface it once so hosts
+    // know an image didn't render (and why).
+    if (!isDrawableImageSource(image)) {
+      warnSkippedImage(image);
+      return;
+    }
+    this.ctx.drawImage(image, dx, dy, dw, dh);
   }
 
   // --- Surface control ---

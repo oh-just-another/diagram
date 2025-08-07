@@ -82,12 +82,21 @@ export const imageFileDropHandler: FileDropHandler = {
       img.src = src;
       if (typeof document !== "undefined") {
         const sink = ensureAnimatedImageSink();
-        img.style.position = "absolute";
-        img.style.left = "-99999px";
-        img.style.top = "-99999px";
+        // Keep the element inside the viewport — browsers pause GIF frame
+        // advancement for images scrolled out of view as a power-saving
+        // measure, so an off-screen element would freeze on its first
+        // frame. It is pinned to the top-left corner and hidden via
+        // near-zero opacity + 1px size + z-index behind everything.
+        // Throttling keys off viewport-intersection, not opacity, so a
+        // 0.01-alpha 1px element keeps decoding frames while staying
+        // imperceptible to the user.
+        img.style.position = "fixed";
+        img.style.left = "0";
+        img.style.top = "0";
         img.style.width = "1px";
         img.style.height = "1px";
-        img.style.opacity = "0";
+        img.style.opacity = "0.01";
+        img.style.zIndex = "-1";
         img.style.pointerEvents = "none";
         sink.appendChild(img);
       }
@@ -114,9 +123,15 @@ export const imageFileDropHandler: FileDropHandler = {
 };
 
 /**
- * Singleton hidden container that holds animated `<img>` elements
- * so the browser keeps decoding their frames. One container per
+ * Singleton hidden container that holds animated `<img>` elements so
+ * the browser keeps decoding their frames. One container per
  * document; created lazily.
+ *
+ * Pinned to the viewport's top-left (`position:fixed; 0,0`) — not
+ * off-screen — because browsers pause GIF animation for elements
+ * outside the viewport. A 0×0 container with `overflow:visible`
+ * lets the 1px children sit at the corner; `pointer-events:none`
+ * and `z-index:-1` keep it from intercepting clicks or covering UI.
  */
 const SINK_ID = "oh-just-another-animated-image-sink";
 
@@ -126,10 +141,14 @@ const ensureAnimatedImageSink = (): HTMLElement => {
   const div = document.createElement("div");
   div.id = SINK_ID;
   div.setAttribute("aria-hidden", "true");
-  div.style.position = "absolute";
-  div.style.left = "-99999px";
-  div.style.top = "-99999px";
+  div.style.position = "fixed";
+  div.style.left = "0";
+  div.style.top = "0";
+  div.style.width = "0";
+  div.style.height = "0";
+  div.style.overflow = "visible";
   div.style.pointerEvents = "none";
+  div.style.zIndex = "-1";
   document.body.appendChild(div);
   return div;
 };

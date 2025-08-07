@@ -24,6 +24,7 @@ import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
 import { EllipsePipeline } from "./webgl2-ellipse.js";
+import { isDrawableImageSource, warnSkippedImage } from "./image-source.js";
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -462,8 +463,8 @@ export class WebGL2Target implements RenderTarget {
    * as a textured quad via a dedicated program created lazily on the
    * first image call.
    */
-  drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number): void {
-    const tex = this.textureFor(image as TexImageSource);
+  drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number, dynamic?: boolean): void {
+    const tex = this.textureFor(image as TexImageSource, dynamic ?? false);
     if (!tex) return;
     if (!this.imageProgram) {
       this.imageProgram = createImageProgram(this.gl);
@@ -524,8 +525,16 @@ export class WebGL2Target implements RenderTarget {
    */
   private readonly textures = new Map<object, WebGLTexture>();
 
-  private textureFor(src: TexImageSource): WebGLTexture | null {
-    if (!src || typeof src !== "object") return null;
+  private textureFor(src: TexImageSource, dynamic: boolean): WebGLTexture | null {
+    // Reject non-drawable handles: a restored scene's `metadata.image`
+    // is `{}` (a live `<img>` serialises to an empty object), which
+    // passes a bare `typeof object` check but throws "overload
+    // resolution failed" inside `texImage2D`. `isDrawableImageSource`
+    // verifies it's an actual HTMLImageElement / canvas / bitmap / etc.
+    if (!isDrawableImageSource(src)) {
+      warnSkippedImage(src);
+      return null;
+    }
     const key = src as object;
     const cached = this.textures.get(key);
     if (cached) {
@@ -533,6 +542,22 @@ export class WebGL2Target implements RenderTarget {
       // entries first.
       this.textures.delete(key);
       this.textures.set(key, cached);
+      // Animated source (GIF `<img>`, `<video>`) — the source's pixels
+      // advanced since last frame, so re-upload them onto the existing
+      // texture handle. Static images skip this. Re-using the handle
+      // avoids leaking a fresh texture per frame.
+      if (dynamic) {
+        this.gl.bindTexture(this.gl.TEXTURE_2D, cached);
+        this.gl.pixelStorei(this.gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+        this.gl.texImage2D(
+          this.gl.TEXTURE_2D,
+          0,
+          this.gl.RGBA,
+          this.gl.RGBA,
+          this.gl.UNSIGNED_BYTE,
+          src,
+        );
+      }
       return cached;
     }
     const tex = this.gl.createTexture();

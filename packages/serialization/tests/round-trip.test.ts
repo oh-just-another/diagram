@@ -147,6 +147,56 @@ describe("round-trip", () => {
     expect(r?.metadata?.animated).toBe(true);
   });
 
+  it("strips transient metadata.image but keeps metadata.animated", () => {
+    let scene = emptyScene();
+    const img: Shape = {
+      id: shapeId("img-1"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "image",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      src: "data:,",
+      width: 10,
+      height: 10,
+      // The live DOM handle the file-drop handler attaches.
+      metadata: { image: { fake: "dom-element" }, animated: true },
+    };
+    ({ scene } = addShape(scene, img));
+    const doc = serializeScene(scene);
+    const serialized = doc.shapes.find((s) => s.id === "img-1");
+    expect(serialized?.metadata).toBeDefined();
+    expect((serialized?.metadata as Record<string, unknown>).image).toBeUndefined();
+    expect((serialized?.metadata as Record<string, unknown>).animated).toBe(true);
+    const restored = deserializeScene(doc);
+    expect(restored.shapes.get(shapeId("img-1"))?.metadata?.animated).toBe(true);
+    expect(restored.shapes.get(shapeId("img-1"))?.metadata?.image).toBeUndefined();
+  });
+
+  it("drops metadata entirely when only transient image was present", () => {
+    let scene = emptyScene();
+    const img: Shape = {
+      id: shapeId("img-2"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "image",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      src: "data:,",
+      width: 10,
+      height: 10,
+      metadata: { image: { fake: "dom" } },
+    };
+    ({ scene } = addShape(scene, img));
+    const doc = serializeScene(scene);
+    const serialized = doc.shapes.find((s) => s.id === "img-2");
+    expect(serialized?.metadata).toBeUndefined();
+  });
+
   it("undo patches keep working after round-trip", () => {
     let scene = emptyScene();
     const r = rect("a");

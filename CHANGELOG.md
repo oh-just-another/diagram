@@ -823,3 +823,6 @@
 
 ## 0.44.18
 - fix: serialize image fileId + animation fields (data-loss blocker)
+
+## 0.44.19
+- fix: image rendering hardening — crash guards, dynamic re-upload, serialize strip

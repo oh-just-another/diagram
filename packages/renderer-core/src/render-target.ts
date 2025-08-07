@@ -60,8 +60,21 @@ export interface RenderTarget {
    * Canvas2D expects a `CanvasImageSource`; SVG accepts a URL string;
    * Node-side targets can accept any backend-specific image handle.
    * The kernel does not load images — it just hands the source through.
+   *
+   * `dynamic` signals an animated source (GIF `<img>`, `<video>`)
+   * whose pixels change between frames. Backends that cache an
+   * uploaded copy (WebGL2 textures) MUST re-upload the current frame
+   * when `dynamic` is true; backends that read the source live every
+   * draw (Canvas2D) ignore it. Default `false` — static image.
    */
-  drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number): void;
+  drawImage(
+    image: unknown,
+    dx: number,
+    dy: number,
+    dw: number,
+    dh: number,
+    dynamic?: boolean,
+  ): void;
 
   // --- Surface control ---
   /** Erase a region. Without bounds, erases everything. */
