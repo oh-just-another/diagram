@@ -25,6 +25,8 @@ export const buildImageShape = (
     image?: HTMLImageElement;
     animated?: boolean;
     fileId?: FileId;
+    animationKind?: string;
+    animationData?: unknown;
   },
   id: ShapeId,
   layerId: LayerId,
@@ -50,6 +52,8 @@ export const buildImageShape = (
     height: input.height,
     src: input.src,
     ...(input.fileId ? { fileId: input.fileId } : {}),
+    ...(input.animationKind ? { animationKind: input.animationKind } : {}),
+    ...(input.animationData !== undefined ? { animationData: input.animationData } : {}),
     ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
   } as Shape;
 };

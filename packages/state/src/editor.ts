@@ -10,6 +10,7 @@ import {
   anchorSnapper,
   apply,
   buildSpatialIndex,
+  getBinaryFile,
   gridLayout,
   isShapeHidden,
   isShapeLocked,
@@ -62,6 +63,7 @@ import {
   type Comment,
   type Edge,
   type EdgeEndpoint,
+  type ImageShape,
   type Layer,
   type Patch,
   type Scene,
@@ -978,6 +980,11 @@ export class Editor {
     };
 
     this.unbind = this.bindPointerEvents();
+    // Restore GIF/video bytes onto animated image shapes loaded from
+    // an initial scene (e.g. localStorage), then arm the tick so the
+    // animation plays from first paint.
+    this.rehydrateAnimatedImages();
+    if (this.hasAnimatedShape()) this.animationTick.start();
     // First paint — synchronous so the canvas isn't blank for one
     // frame on mount. Hosts that mount + immediately read the
     // bitmap also get a consistent first frame.
@@ -1340,6 +1347,8 @@ export class Editor {
     image?: HTMLImageElement;
     animated?: boolean;
     fileId?: import("@oh-just-another/types").FileId;
+    animationKind?: string;
+    animationData?: unknown;
   }): ShapeId {
     const id = castShapeId(this.uniqueId("img"));
     const shape = buildImageShape(this._scene, input, id, this._activeLayerId);
@@ -1379,6 +1388,35 @@ export class Editor {
   // Pure body in `./editor/public/image-insert.ts`.
   private hasAnimatedShape(): boolean {
     return hasAnimatedShape(this._scene);
+  }
+
+  /**
+   * Restore transient `animationData` for animated image shapes after
+   * a scene load. The raw GIF bytes don't survive serialisation
+   * (`serializeScene` strips the ArrayBuffer), but they're persisted
+   * in `Scene.files` via the shape's `fileId`. Here we copy the bytes
+   * back onto `shape.animationData` so the registered animation
+   * adapter (host-side, e.g. the gifuct decoder) can produce frames.
+   *
+   * Applied directly to `_scene` (no history entry — this is an
+   * internal rehydration, not a user edit). No-op for shapes that
+   * already carry live `animationData` or lack a resolvable file.
+   */
+  private rehydrateAnimatedImages(): void {
+    for (const shape of this._scene.shapes.values()) {
+      if (shape.type !== "image") continue;
+      const img = shape as ImageShape;
+      if (!img.animationKind || !img.fileId) continue;
+      if (img.animationData instanceof ArrayBuffer) continue; // already live
+      const file = getBinaryFile(this._scene, img.fileId);
+      if (!file) continue;
+      this._scene = apply(this._scene, {
+        kind: "shape",
+        id: img.id,
+        before: img,
+        after: { ...img, animationData: file.data },
+      });
+    }
   }
 
   /**
@@ -2004,12 +2042,14 @@ export class Editor {
       this._selection = Selection.EMPTY;
       this._history.clear();
     }
+    // Restore transient animationData (GIF bytes) from Scene.files
+    // before the tick so the animation adapter can decode frames.
+    this.rehydrateAnimatedImages();
     this.notify();
     // Loaded scene may carry animated shapes (e.g. GIF re-imported
-    // from saved JSON). Re-arm the tick — the runtime <img>
-    // element won't survive serialisation, but `metadata.animated`
-    // does, so hosts that want animation back will need to re-supply
-    // the image element (or just have the renderer re-decode `src`).
+    // from saved JSON). Re-arm the tick — `metadata.animated` survives
+    // serialisation and `rehydrateAnimatedImages` re-attached the
+    // bytes, so the registered adapter can produce frames again.
     if (this.hasAnimatedShape()) this.animationTick.start();
   }
 

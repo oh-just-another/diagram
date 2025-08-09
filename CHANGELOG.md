@@ -826,3 +826,6 @@
 
 ## 0.44.19
 - fix: image rendering hardening — crash guards, dynamic re-upload, serialize strip
+
+## 0.44.20
+- feat: GIF animation via frame decoder (Canvas2D + WebGL2, reload-safe)

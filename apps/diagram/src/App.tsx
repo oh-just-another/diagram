@@ -7,11 +7,12 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import { defaultRegistry, type Template } from "@oh-just-another/templates";
-import { parseScene, stringifyScene } from "@oh-just-another/serialization";
+import { parseScene, parseFiles, stringifyScene, stringifyFiles } from "@oh-just-another/serialization";
 import { shapeId } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "./index";
 import { setupTemplates } from "./templates";
+import { installGifAnimationAdapter } from "./gif-animation";
 import { useHotkeys } from "./hotkeys";
 import { useCollab } from "./collab";
 import { DebugPanel } from "./debug-panel";
@@ -27,8 +28,18 @@ import { ConnectionBadge } from "./ConnectionBadge";
  */
 
 setupTemplates();
+// Register the GIF frame decoder (gifuct-js) so animated GIFs play
+// in both Canvas2D and WebGL2 — the kernel's image renderer asks
+// this adapter for the current frame.
+installGifAnimationAdapter();
 
 const STORAGE_KEY = "oh-just-another-diagram-scene-v2";
+// Binary files (image / GIF bytes) live in a separate localStorage
+// entry — `stringifyScene` deliberately omits `Scene.files` to keep
+// scene.json small, so we persist the sidecar ourselves. Without it
+// images (and GIF frames decoded from these bytes) can't be
+// rehydrated after reload.
+const FILES_KEY = "oh-just-another-diagram-files-v1";
 
 const seedScene = (): Scene => {
   let s = emptyScene();
@@ -70,7 +81,20 @@ const restoreScene = (): Scene => {
     const saved =
       typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
     if (saved) {
-      const parsed = parseScene(saved);
+      let parsed = parseScene(saved);
+      // Re-attach the binary-file sidecar so image / GIF shapes can
+      // resolve their `fileId` again (and the editor can rehydrate
+      // animationData for GIFs). Missing / unparseable sidecar just
+      // leaves `files` empty — images won't render but nothing crashes.
+      const filesRaw =
+        typeof window !== "undefined" ? localStorage.getItem(FILES_KEY) : null;
+      if (filesRaw) {
+        try {
+          parsed = { ...parsed, files: parseFiles(filesRaw) };
+        } catch (err) {
+          console.warn("[diagram] stored files sidecar unparseable", err);
+        }
+      }
       // Saves can come back without `gridSize`, which makes the grid
       // invisible after reload. Force the default on restoration so
       // the canvas always has a visible grid unless the user
@@ -153,6 +177,13 @@ export const App = () => {
         pendingScene.current = null;
         try {
           window.localStorage.setItem(STORAGE_KEY, stringifyScene(s));
+          // Persist the binary-file sidecar alongside. Only write when
+          // there are files so empty scenes don't leave a stale entry.
+          if (s.files.size > 0) {
+            window.localStorage.setItem(FILES_KEY, stringifyFiles(s));
+          } else {
+            window.localStorage.removeItem(FILES_KEY);
+          }
         } catch {
           /* quota / private mode — ignore */
         }

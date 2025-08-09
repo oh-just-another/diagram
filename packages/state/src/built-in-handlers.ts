@@ -110,6 +110,13 @@ export const imageFileDropHandler: FileDropHandler = {
         });
       }
     }
+    // GIF animation goes through the adapter path: the raw bytes become
+    // `animationData`, and the renderer asks the registered "gif" adapter
+    // for the current frame (relying on the hidden `<img>` to advance
+    // frames is unreliable since browsers pause near-invisible elements).
+    // `animationData` is transient (an ArrayBuffer doesn't survive JSON) —
+    // on reload the editor rehydrates it from `Scene.files`.
+    const animationBytes = isGif ? await file.arrayBuffer() : undefined;
     editor.insertImage({
       src,
       fileId,
@@ -118,6 +125,8 @@ export const imageFileDropHandler: FileDropHandler = {
       position: topLeft,
       ...(img ? { image: img } : {}),
       animated: isGif,
+      ...(isGif ? { animationKind: "gif" } : {}),
+      ...(animationBytes ? { animationData: animationBytes } : {}),
     });
   },
 };

@@ -34,6 +34,7 @@
     "@oh-just-another/text-wasm": "workspace:*",
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/versioning": "workspace:*",
+    "gifuct-js": "^2.1.2",
     "lucide-react": "^1.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -310,11 +310,19 @@ const drawImage: ShapeRenderer<ImageShape> = (shape, target) => {
   // Priority: preloaded handle in metadata.image → animation-adapter
   // frame (when `animationKind` is set and a matching adapter is
   // registered) → static `src` fallback.
-  const handle =
-    shape.metadata?.image ?? resolveImageSource(shape);
+  // For an animated source (GIF) prefer the per-frame image the
+  // registered adapter returns over `metadata.image` (a static
+  // first-frame `<img>`). `resolveImageSource` consults the adapter
+  // with `performance.now()`; it returns `null` while the async
+  // decode is still in flight — the backend's drawImage guard skips
+  // a null handle and the next AnimationTick frame picks it up.
+  const handle = shape.animationKind
+    ? resolveImageSource(shape)
+    : (shape.metadata?.image ?? resolveImageSource(shape));
   // `dynamic` → backends that cache the upload (WebGL2) re-upload the
-  // current frame. GIF / video sources flag `metadata.animated`.
-  const dynamic = shape.metadata?.animated === true;
+  // current frame. GIF / video sources flag `metadata.animated`, and
+  // any adapter-driven source is dynamic by definition.
+  const dynamic = shape.metadata?.animated === true || shape.animationKind !== undefined;
   target.drawImage(handle, 0, 0, shape.width, shape.height, dynamic);
 };
 

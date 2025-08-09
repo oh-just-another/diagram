@@ -41,14 +41,27 @@ export const serializeScene = (scene: Scene): SceneDocument => {
  * Returns the shape unchanged when there's nothing transient to drop, so
  * non-image shapes pay no allocation.
  */
-const stripTransientMetadata = <T extends { metadata?: Record<string, unknown> }>(shape: T): T => {
+const stripTransientMetadata = <
+  T extends { metadata?: Record<string, unknown>; animationData?: unknown },
+>(
+  shape: T,
+): T => {
   const md = shape.metadata;
-  if (!md || !("image" in md)) return shape;
-  const { image: _image, ...rest } = md;
-  void _image;
-  const next = { ...shape } as T & { metadata?: Record<string, unknown> };
-  if (Object.keys(rest).length > 0) next.metadata = rest;
-  else delete next.metadata;
+  const hasTransientMeta = md && "image" in md;
+  const hasTransientAnim = shape.animationData !== undefined;
+  if (!hasTransientMeta && !hasTransientAnim) return shape;
+
+  const next = { ...shape } as T & {
+    metadata?: Record<string, unknown>;
+    animationData?: unknown;
+  };
+  if (hasTransientMeta) {
+    const { image: _image, ...rest } = md!;
+    void _image;
+    if (Object.keys(rest).length > 0) next.metadata = rest;
+    else delete next.metadata;
+  }
+  if (hasTransientAnim) delete next.animationData;
   return next;
 };
 
