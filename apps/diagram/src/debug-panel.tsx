@@ -480,6 +480,7 @@ const GeneratorsTab = ({ editor }: { editor: Editor }) => {
         <SingleAddSection editor={editor} template={template} />
         <GridSection editor={editor} template={template} />
         <StackSection editor={editor} template={template} />
+        <FractalSection editor={editor} template={template} />
         <TimerSection editor={editor} template={template} />
       </Card>
       <Card>
@@ -622,6 +623,164 @@ const StackSection = ({
         style={primaryButtonStyle}
       >
         Generate stack
+      </button>
+    </Section>
+  );
+};
+
+const FRACTAL_TYPES: readonly { id: FractalType; label: string }[] = [
+  { id: "tree", label: "Recursive tree" },
+  { id: "mandelbrot", label: "Mandelbrot set" },
+  { id: "julia", label: "Julia set" },
+  { id: "dejong", label: "De Jong attractor" },
+  { id: "clifford", label: "Clifford attractor" },
+];
+
+// Per-type meaning of the two numeric knobs + how to estimate the
+// resulting shape count (for the cap guard).
+const FRACTAL_CONFIG: Record<
+  FractalType,
+  {
+    readonly aLabel: string; // "depth" knob
+    readonly aMin: number;
+    readonly aMax: number;
+    readonly bLabel: string; // "detail" knob
+    readonly bMin: number;
+    readonly bMax: number;
+    readonly estimate: (a: number, b: number) => number;
+  }
+> = {
+  tree: {
+    aLabel: "Depth",
+    aMin: 1,
+    aMax: 9,
+    bLabel: "Branches / node",
+    bMin: 1,
+    bMax: 5,
+    estimate: (a, b) => (b <= 1 ? a + 1 : Math.round((b ** (a + 1) - 1) / (b - 1))),
+  },
+  mandelbrot: {
+    aLabel: "Max iterations",
+    aMin: 10,
+    aMax: 500,
+    bLabel: "Boundary detail (subdiv depth)",
+    bMin: 4,
+    bMax: 11,
+    // Adaptive quadtree: rough upper bound (8×8 base grid, boundary
+    // cells double per level). Real count is far lower — the runtime
+    // cap is authoritative; this just gates the obviously-too-big.
+    estimate: (_a, b) => 64 * 2 ** b,
+  },
+  julia: {
+    aLabel: "Max iterations",
+    aMin: 10,
+    aMax: 500,
+    bLabel: "Boundary detail (subdiv depth)",
+    bMin: 4,
+    bMax: 11,
+    estimate: (_a, b) => 64 * 2 ** b,
+  },
+  dejong: {
+    aLabel: "Points (×1000)",
+    aMin: 1,
+    aMax: 50,
+    bLabel: "Point scale %",
+    bMin: 2,
+    bMax: 40,
+    estimate: (a) => a * 1000,
+  },
+  clifford: {
+    aLabel: "Points (×1000)",
+    aMin: 1,
+    aMax: 50,
+    bLabel: "Point scale %",
+    bMin: 2,
+    bMax: 40,
+    estimate: (a) => a * 1000,
+  },
+};
+
+const FractalSection = ({
+  editor,
+  template,
+}: {
+  editor: Editor;
+  template: Template | undefined;
+}) => {
+  const [type, setType] = useState<FractalType>("mandelbrot");
+  const [a, setA] = useState(120); // mandelbrot maxIter default
+  const [b, setB] = useState(8); // mandelbrot subdivision-depth default
+  const [colorful, setColorful] = useState(true);
+  const [skipOutside, setSkipOutside] = useState(true);
+  if (!template) return null;
+  const isEscape = type === "mandelbrot" || type === "julia";
+  const cfg = FRACTAL_CONFIG[type];
+  const estimate = cfg.estimate(a, b);
+  const tooBig = estimate > FRACTAL_MAX_SHAPES;
+  return (
+    <Section title="Fractal">
+      <Field label="Type">
+        <select
+          value={type}
+          onChange={(e) => {
+            const next = e.target.value as FractalType;
+            setType(next);
+            // Re-seed knobs to the new type's sensible defaults so the
+            // ranges (iterations vs depth) don't carry over nonsensically.
+            const c = FRACTAL_CONFIG[next];
+            setA(Math.min(Math.max(a, c.aMin), c.aMax));
+            setB(Math.min(Math.max(b, c.bMin), c.bMax));
+          }}
+          style={selectStyle}
+        >
+          {FRACTAL_TYPES.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label={cfg.aLabel}>
+        <NumberInput value={a} onChange={setA} min={cfg.aMin} max={cfg.aMax} />
+      </Field>
+      <Field label={cfg.bLabel}>
+        <NumberInput value={b} onChange={setB} min={cfg.bMin} max={cfg.bMax} />
+      </Field>
+      <CheckboxRow checked={colorful} onChange={setColorful} label="Colorful" />
+      {isEscape ? (
+        <CheckboxRow
+          checked={skipOutside}
+          onChange={setSkipOutside}
+          label="Skip far exterior (fewer shapes)"
+        />
+      ) : null}
+      <Hint compact>
+        ≈ {estimate.toLocaleString()} shapes
+        {tooBig ? ` — over ${FRACTAL_MAX_SHAPES.toLocaleString()} cap, lower the knobs` : ""}
+      </Hint>
+      <button
+        type="button"
+        disabled={tooBig}
+        onClick={() => {
+          runBatch(editor, () =>
+            buildFractal(editor, template, {
+              type,
+              a,
+              b,
+              colorful,
+              skipOutside,
+              origin: viewportCenter(editor),
+            }),
+          );
+          // Frame the whole fractal — zooms out to show the macro
+          // structure (≈5% for a large set) while the fine elements
+          // hold detail down to deep zoom (up to 3200%). "Depth" here
+          // = the scale range you can explore, not just recursion.
+          editor.zoomToFit();
+        }}
+        style={tooBig ? disabledButtonStyle : primaryButtonStyle}
+      >
+        Generate fractal
       </button>
     </Section>
   );
@@ -981,6 +1140,302 @@ const buildStack = (
     const b = safeBounds(shape);
     if (opts.direction === "horizontal") cursorX += b.width + opts.gap;
     else cursorY += b.height + opts.gap;
+    order = orderBetween(order, null);
+  }
+  return { shapes };
+};
+
+// Hard cap on generated shapes — keeps an accidental huge-resolution
+// generate from locking the tab.
+const FRACTAL_MAX_SHAPES = 50_000;
+
+type FractalType = "tree" | "mandelbrot" | "julia" | "dejong" | "clifford";
+
+interface FractalOptions {
+  readonly type: FractalType;
+  /** Knob A — depth (tree) / max iterations (mandel/julia) / points×1000 (attractor). */
+  readonly a: number;
+  /** Knob B — branches (tree) / subdiv depth (mandel/julia) / point scale % (attractor). */
+  readonly b: number;
+  readonly colorful: boolean;
+  /** Mandelbrot/Julia: drop the far-exterior fill (fast-escaping flat cells). */
+  readonly skipOutside?: boolean;
+  readonly origin: { x: number; y: number };
+}
+
+/**
+ * World-space size the fractals are laid out over. Deliberately large
+ * (~14k px): at the editor's MIN_ZOOM (5%) a 14k fractal fills the
+ * viewport, and the fine elements still hold detail when you zoom all
+ * the way to MAX_ZOOM (3200%). That scale range — not recursion alone
+ * — is the "depth" you explore by zooming.
+ */
+const FRACTAL_WORLD_SPAN = 14000;
+
+const buildFractal = (
+  editor: Editor,
+  template: Template,
+  opts: FractalOptions,
+): BuildResult => {
+  switch (opts.type) {
+    case "tree":
+      return buildTreeFractal(editor, template, opts);
+    case "mandelbrot":
+    case "julia":
+      return buildEscapeFractal(editor, template, opts);
+    case "dejong":
+    case "clifford":
+      return buildAttractorFractal(editor, template, opts);
+  }
+};
+
+// A small shape placed at a world point, scaled to `scale`, optionally
+// recoloured. Shared by the point/grid fractals.
+const placePoint = (
+  template: Template,
+  layerId: LayerId,
+  x: number,
+  y: number,
+  scale: number,
+  order: Shape["order"],
+  fill: string | null,
+): Shape => {
+  const base = template.factory({
+    id: nextDebugId(template.id),
+    layerId,
+    position: { x, y },
+    order,
+  });
+  const shape = { ...base, scale: { x: scale, y: scale } } as Shape;
+  return fill ? withFill(shape, fill) : shape;
+};
+
+// ── Recursive tree (IFS-style) ──────────────────────────────────────
+const FRACTAL_ANGLE_SPREAD = Math.PI / 4.5; // ~40° fan
+const FRACTAL_SCALE_RATIO = 0.7;
+
+const buildTreeFractal = (
+  editor: Editor,
+  template: Template,
+  opts: FractalOptions,
+): BuildResult => {
+  const depth = opts.a;
+  const branches = opts.b;
+  const shapes: Shape[] = [];
+  const layerId = activeLayerId(editor);
+  const probe = template.factory({
+    id: nextDebugId(`${template.id}-probe`),
+    layerId,
+    position: { x: 0, y: 0 },
+    order: orderBetween(null, null),
+  });
+  const segLen = safeBounds(probe).height || 80;
+  let order: Shape["order"] = orderBetween(lastOrder(editor), null);
+
+  const place = (x: number, y: number, angle: number, scale: number, level: number): void => {
+    if (shapes.length >= FRACTAL_MAX_SHAPES) return;
+    const base = template.factory({
+      id: nextDebugId(template.id),
+      layerId,
+      position: { x, y },
+      order,
+    });
+    order = orderBetween(order, null);
+    let shape: Shape = { ...base, rotation: angle, scale: { x: scale, y: scale } } as Shape;
+    if (opts.colorful) shape = withFill(shape, hslToHex((level / Math.max(depth, 1)) * 300, 70, 62));
+    shapes.push(shape);
+    if (level >= depth) return;
+    const tipX = x + Math.sin(angle) * segLen * scale;
+    const tipY = y - Math.cos(angle) * segLen * scale;
+    const n = Math.max(1, branches);
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0 : i / (n - 1) - 0.5;
+      place(tipX, tipY, angle + t * FRACTAL_ANGLE_SPREAD * 2, scale * FRACTAL_SCALE_RATIO, level + 1);
+    }
+  };
+  // Root scale sized so the tree spans ≈ FRACTAL_WORLD_SPAN: total
+  // height ≈ segLen × rootScale × Σ ratioⁿ. Σ ≈ 1/(1-0.7) ≈ 3.3.
+  const rootScale = FRACTAL_WORLD_SPAN / (segLen * 3.3);
+  place(opts.origin.x, opts.origin.y, 0, rootScale, 0);
+  return { shapes };
+};
+
+// ── Mandelbrot / Julia (escape-time, grid of points) ────────────────
+const JULIA_C = { re: -0.7, im: 0.27015 }; // classic dendrite Julia constant
+
+// Force at least this much subdivision before merging kicks in, so a
+// top-down quadtree from the whole plane can't collapse the set into a
+// single cell by sampling-luck. 2 → a 4×4 base before adaptive merge.
+const ESCAPE_MIN_DEPTH = 2;
+
+const buildEscapeFractal = (
+  editor: Editor,
+  template: Template,
+  opts: FractalOptions,
+): BuildResult => {
+  const maxIter = opts.a;
+  const maxDepth = opts.b; // quadtree subdivision depth
+  const isJulia = opts.type === "julia";
+  // Complex-plane window. Mandelbrot centred on the cardioid; Julia on origin.
+  const [re0, re1, im0, im1] = isJulia ? [-1.6, 1.6, -1.6, 1.6] : [-2.2, 0.8, -1.4, 1.4];
+  const shapes: Shape[] = [];
+  const layerId = activeLayerId(editor);
+  const probe = template.factory({
+    id: nextDebugId(`${template.id}-probe`),
+    layerId,
+    position: { x: 0, y: 0 },
+    order: orderBetween(null, null),
+  });
+  const baseW = safeBounds(probe).width || 80;
+  let order: Shape["order"] = orderBetween(lastOrder(editor), null);
+  // Below this escape-time a flat cell counts as "far exterior" — the
+  // fast-escaping background. With `skipOutside` we drop those fills
+  // entirely, keeping only the set interior + coloured near-boundary
+  // bands. Relative to maxIter so it tracks the colour ramp.
+  const outsideThreshold = Math.max(2, Math.floor(maxIter * 0.03));
+
+  const escape = (cRe: number, cIm: number): number => {
+    let zRe = isJulia ? cRe : 0;
+    let zIm = isJulia ? cIm : 0;
+    const kRe = isJulia ? JULIA_C.re : cRe;
+    const kIm = isJulia ? JULIA_C.im : cIm;
+    let iter = 0;
+    while (iter < maxIter && zRe * zRe + zIm * zIm <= 4) {
+      const nRe = zRe * zRe - zIm * zIm + kRe;
+      zIm = 2 * zRe * zIm + kIm;
+      zRe = nRe;
+      iter++;
+    }
+    return iter;
+  };
+
+  // Place one element for a complex-plane cell, sized to the cell —
+  // deep-subdivided boundary cells are tiny, flat regions stay large.
+  // That size spread is the fractal "depth": zoom into an edge and the
+  // recursively-smaller elements reveal more structure.
+  const emit = (rx0: number, rx1: number, ry0: number, ry1: number, iterCenter: number): void => {
+    const cReN = ((rx0 + rx1) / 2 - re0) / (re1 - re0); // 0..1
+    const cImN = ((ry0 + ry1) / 2 - im0) / (im1 - im0);
+    const cellW = ((rx1 - rx0) / (re1 - re0)) * FRACTAL_WORLD_SPAN;
+    const px = opts.origin.x + (cReN - 0.5) * FRACTAL_WORLD_SPAN;
+    const py = opts.origin.y + (cImN - 0.5) * FRACTAL_WORLD_SPAN;
+    const inSet = iterCenter >= maxIter;
+    const fill = !opts.colorful
+      ? null
+      : inSet
+        ? "#111111"
+        : hslToHex((iterCenter / maxIter) * 360, 80, 55);
+    shapes.push(placePoint(template, layerId, px, py, cellW / baseW, order, fill));
+    order = orderBetween(order, null);
+  };
+
+  // Top-down quadtree over the whole plane. A cell whose nine samples
+  // (corners + edge midpoints + centre) all share the same escape-time
+  // is "flat" — emit one big element covering it (the fill). A cell
+  // that straddles a boundary subdivides until it's flat or hits
+  // `maxDepth`. Large constant-escape-time bands (interior, exterior
+  // iso-bands) become single large elements → far fewer shapes than a
+  // uniform grid, with detail still concentrated on the boundary.
+  const subdivide = (rx0: number, rx1: number, ry0: number, ry1: number, level: number): void => {
+    if (shapes.length >= FRACTAL_MAX_SHAPES) return;
+    const mx = (rx0 + rx1) / 2;
+    const my = (ry0 + ry1) / 2;
+    const cc = escape(mx, my);
+    // Nine-point flatness probe.
+    const samples = [
+      escape(rx0, ry0),
+      escape(rx1, ry0),
+      escape(rx0, ry1),
+      escape(rx1, ry1),
+      escape(mx, ry0),
+      escape(mx, ry1),
+      escape(rx0, my),
+      escape(rx1, my),
+      cc,
+    ];
+    let flat = true;
+    for (const s of samples) {
+      if (s !== samples[0]) {
+        flat = false;
+        break;
+      }
+    }
+    const forced = level < ESCAPE_MIN_DEPTH;
+    if ((forced || !flat) && level < maxDepth) {
+      subdivide(rx0, mx, ry0, my, level + 1);
+      subdivide(mx, rx1, ry0, my, level + 1);
+      subdivide(rx0, mx, my, ry1, level + 1);
+      subdivide(mx, rx1, my, ry1, level + 1);
+      return;
+    }
+    // Flat far-exterior fill — skip when requested. A boundary leaf
+    // (reached maxDepth, not flat) is always emitted so the edge keeps
+    // its detail; only large flat low-escape background cells are
+    // dropped.
+    if (opts.skipOutside && flat && cc <= outsideThreshold) return;
+    emit(rx0, rx1, ry0, ry1, cc);
+  };
+
+  subdivide(re0, re1, im0, im1, 0);
+  return { shapes };
+};
+
+// ── 2D strange attractors (de Jong / Clifford) ──────────────────────
+const DEJONG_PARAMS = { a: 1.4, b: -2.3, c: 2.4, d: -2.1 };
+const CLIFFORD_PARAMS = { a: -1.4, b: 1.6, c: 1.0, d: 0.7 };
+const ATTRACTOR_WARMUP = 20; // discard transient iterations
+
+const buildAttractorFractal = (
+  editor: Editor,
+  template: Template,
+  opts: FractalOptions,
+): BuildResult => {
+  const points = Math.min(opts.a * 1000, FRACTAL_MAX_SHAPES);
+  const isClifford = opts.type === "clifford";
+  const p = isClifford ? CLIFFORD_PARAMS : DEJONG_PARAMS;
+  // Attractor coordinate range: de Jong ⊂ [-2, 2]; Clifford a bit wider.
+  const span = isClifford ? 3 : 2;
+  const shapes: Shape[] = [];
+  const layerId = activeLayerId(editor);
+  // Base point size scales with the world span so points stay
+  // visible across the 5%→3200% zoom range. `b` (Point scale %)
+  // tunes it: at 100% a point ≈ 1.5% of the fractal extent.
+  const probe = template.factory({
+    id: nextDebugId(`${template.id}-probe`),
+    layerId,
+    position: { x: 0, y: 0 },
+    order: orderBetween(null, null),
+  });
+  const baseW = safeBounds(probe).width || 80;
+  const scale = ((opts.b / 100) * FRACTAL_WORLD_SPAN * 0.015) / baseW;
+  let order: Shape["order"] = orderBetween(lastOrder(editor), null);
+  let x = 0.1;
+  let y = 0.1;
+  const total = points + ATTRACTOR_WARMUP;
+  // Size by trajectory speed: the attractor lingers (small steps) in
+  // its dense folds and races across sparse regions. Drawing slow
+  // points larger and fast points smaller emphasises the structure —
+  // the dense "spine" reads bold, the thin sweeps stay fine. `span`
+  // bounds the coordinate range, so a step of ~`span` is "fast".
+  const maxStep = span;
+  for (let i = 0; i < total; i++) {
+    const nx = isClifford
+      ? Math.sin(p.a * y) + p.c * Math.cos(p.a * x)
+      : Math.sin(p.a * y) - Math.cos(p.b * x);
+    const ny = isClifford
+      ? Math.sin(p.b * x) + p.d * Math.cos(p.b * y)
+      : Math.sin(p.c * x) - Math.cos(p.d * y);
+    const step = Math.hypot(nx - x, ny - y);
+    x = nx;
+    y = ny;
+    if (i < ATTRACTOR_WARMUP) continue; // skip transient
+    const px = opts.origin.x + (x / span) * (FRACTAL_WORLD_SPAN / 2);
+    const py = opts.origin.y + (y / span) * (FRACTAL_WORLD_SPAN / 2);
+    // slow (step→0) → full scale; fast (step→maxStep) → 0.35×.
+    const slowness = 1 - Math.min(step / maxStep, 1);
+    const ptScale = scale * (0.35 + 0.65 * slowness);
+    const fill = opts.colorful ? hslToHex(((i / total) * 300 + 200) % 360, 75, 60) : null;
+    shapes.push(placePoint(template, layerId, px, py, ptScale, order, fill));
     order = orderBetween(order, null);
   }
   return { shapes };
@@ -1368,6 +1823,12 @@ const dangerButtonStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 500,
   cursor: "pointer",
+};
+
+const disabledButtonStyle: React.CSSProperties = {
+  ...primaryButtonStyle,
+  opacity: 0.45,
+  cursor: "not-allowed",
 };
 
 const fmt = (n: number): string =>

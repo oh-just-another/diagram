@@ -832,3 +832,6 @@
 
 ## 0.44.21
 - perf: animation-tick viewport-cull + pause-on-hidden + adaptive fps (G1-G3)
+
+## 0.44.22
+- feat(debug): fractal generator — tree / Mandelbrot / Julia / attractors
