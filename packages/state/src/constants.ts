@@ -264,3 +264,21 @@ export const DEFAULT_BRUSH_WIDTH = 2;
  * register their own.
  */
 export const DEFAULT_IMAGE_MAX_EDGE_PX = 480;
+
+/**
+ * Adaptive animation-tick throttling (GIF / video playback). The tick
+ * drives a full re-render every frame while an animated shape is
+ * visible; under load it is throttled so playback doesn't starve the
+ * interaction frame budget.
+ *
+ * - `ANIMATION_MIN_INTERVAL_MS` — fastest tick (≈60fps). Healthy
+ *   scenes hit this.
+ * - `ANIMATION_MAX_INTERVAL_MS` — slowest tick under heavy load
+ *   (≈12fps). GIFs still read as animated; frames are dropped.
+ * - `ANIMATION_COST_FACTOR` — target interval = clamp(emaRenderCost ×
+ *   factor, min, max). Factor > 1 leaves headroom for the rest of the
+ *   frame (input, layout) so the render cost doesn't fill the budget.
+ */
+export const ANIMATION_MIN_INTERVAL_MS = 1000 / 60;
+export const ANIMATION_MAX_INTERVAL_MS = 1000 / 12;
+export const ANIMATION_COST_FACTOR = 2;

@@ -829,3 +829,6 @@
 
 ## 0.44.20
 - feat: GIF animation via frame decoder (Canvas2D + WebGL2, reload-safe)
+
+## 0.44.21
+- perf: animation-tick viewport-cull + pause-on-hidden + adaptive fps (G1-G3)

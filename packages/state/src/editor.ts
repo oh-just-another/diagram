@@ -151,6 +151,9 @@ import {
   WHEEL_ZOOM_MAX_STEP,
   WHEEL_ZOOM_SPEED,
   WHEEL_ZOOM_STEP,
+  ANIMATION_MIN_INTERVAL_MS,
+  ANIMATION_MAX_INTERVAL_MS,
+  ANIMATION_COST_FACTOR,
 } from "./constants.js";
 import { ALL_HANDLES, CORNER_HANDLES, HANDLE_HIT_SLOP, hitHandle } from "./handle.js";
 import { getInteractiveHitTester } from "./interactive.js";
@@ -980,11 +983,18 @@ export class Editor {
     };
 
     this.unbind = this.bindPointerEvents();
+    // G2: pause animation playback when the tab / window is hidden
+    // (browsers throttle rAF to ~1fps in background but don't stop
+    // it; explicit stop saves the decode + render entirely). Resume
+    // when visible again, viewport permitting.
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", this.onVisibilityChange);
+    }
     // Restore GIF/video bytes onto animated image shapes loaded from
     // an initial scene (e.g. localStorage), then arm the tick so the
     // animation plays from first paint.
     this.rehydrateAnimatedImages();
-    if (this.hasAnimatedShape()) this.animationTick.start();
+    this.maybeAnimate();
     // First paint — synchronous so the canvas isn't blank for one
     // frame on mount. Hosts that mount + immediately read the
     // bitmap also get a consistent first frame.
@@ -1353,7 +1363,7 @@ export class Editor {
     const id = castShapeId(this.uniqueId("img"));
     const shape = buildImageShape(this._scene, input, id, this._activeLayerId);
     this.addShape(shape);
-    if (input.animated) this.animationTick.start();
+    if (input.animated) this.maybeAnimate();
     return id;
   }
   async addBinaryFile(blob: Blob, name?: string): Promise<FileId> {
@@ -1374,14 +1384,39 @@ export class Editor {
    * `./animation-tick.ts`). `insertImage({animated:true})` and
    * `loadScene` start the tick; `dispose()` stops it.
    */
+  /** EMA of animation-tick render cost (ms) — drives adaptive throttle (G3). */
+  private gifRenderCostEma = 0;
+  /** Wall-clock of the last animation-tick render — for interval throttle (G3). */
+  private lastGifTickMs = 0;
+
   private readonly animationTick = new AnimationTick({
-    isAnimated: () => this.hasAnimatedShape(),
+    // G1: keep ticking only while an animated shape is actually
+    // on-screen. Frame selection is wall-clock-based, so when the
+    // GIF scrolls back into view the tick resumes on the correct
+    // frame (logical playback never "froze"). Tick is re-armed on
+    // viewport changes via `maybeAnimate()` in `notify()`.
+    isAnimated: () => this.hasVisibleAnimatedShape(),
     onTick: () => {
+      // G3: adaptive throttle — skip this rAF if we rendered an
+      // animation frame too recently. Target interval grows with the
+      // measured render cost so a heavy scene drops GIF fps instead
+      // of blowing the frame budget.
+      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+      const target = Math.min(
+        ANIMATION_MAX_INTERVAL_MS,
+        Math.max(ANIMATION_MIN_INTERVAL_MS, this.gifRenderCostEma * ANIMATION_COST_FACTOR),
+      );
+      if (now - this.lastGifTickMs < target) return;
+      this.lastGifTickMs = now;
       // Force a full re-render: the scene reference hasn't changed,
-      // but the browser's native GIF animation has advanced inside
-      // the `<img>` element. Re-painting picks up the current frame.
+      // but the animation adapter advanced the GIF frame. Re-painting
+      // picks up the current frame.
       this.lastRenderedScene = null;
       this.render();
+      const cost =
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) - now;
+      // EMA so a single spike doesn't overreact; decays back when load drops.
+      this.gifRenderCostEma = this.gifRenderCostEma * 0.8 + cost * 0.2;
     },
   });
 
@@ -1389,6 +1424,44 @@ export class Editor {
   private hasAnimatedShape(): boolean {
     return hasAnimatedShape(this._scene);
   }
+
+  /**
+   * True when at least one animated shape's world AABB intersects the
+   * current viewport. Drives G1 viewport-culling of the animation
+   * tick — off-screen GIFs don't burn decode / render cost, and the
+   * wall-clock frame selection means they show the right frame the
+   * moment they scroll back in.
+   */
+  private hasVisibleAnimatedShape(): boolean {
+    if (!hasAnimatedShape(this._scene)) return false;
+    const viewport = this.computeViewportWorld();
+    if (!viewport) return true; // no viewport yet — don't suppress
+    for (const shape of this._scene.shapes.values()) {
+      if (shape.metadata?.animated !== true) continue;
+      if (B.intersects(getShapeWorldBounds(shape), viewport)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Re-arm the animation tick after a change that may have brought an
+   * animated shape into (or out of) view — pan / zoom / scene edit.
+   * `AnimationTick.start()` no-ops when already running or when
+   * `isAnimated()` is false, so this is cheap to call from `notify()`.
+   */
+  private maybeAnimate(): void {
+    if (this.hasVisibleAnimatedShape()) this.animationTick.start();
+  }
+
+  /** G2: bound `visibilitychange` handler — pause/resume the tick. */
+  private readonly onVisibilityChange = (): void => {
+    if (typeof document === "undefined") return;
+    if (document.hidden) {
+      this.animationTick.stop();
+    } else {
+      this.maybeAnimate();
+    }
+  };
 
   /**
    * Restore transient `animationData` for animated image shapes after
@@ -2050,7 +2123,8 @@ export class Editor {
     // from saved JSON). Re-arm the tick — `metadata.animated` survives
     // serialisation and `rehydrateAnimatedImages` re-attached the
     // bytes, so the registered adapter can produce frames again.
-    if (this.hasAnimatedShape()) this.animationTick.start();
+    // `maybeAnimate` honours the G1 viewport cull.
+    this.maybeAnimate();
   }
 
   /** Detach all DOM listeners and stop the actor. */
@@ -2063,6 +2137,9 @@ export class Editor {
     this.longPressListeners.clear();
     this.announceListeners.clear();
     this.animationTick.stop();
+    if (typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", this.onVisibilityChange);
+    }
     if (this.renderRafId !== null && typeof cancelAnimationFrame !== "undefined") {
       cancelAnimationFrame(this.renderRafId);
       this.renderRafId = null;
@@ -3079,6 +3156,9 @@ export class Editor {
     for (const fn of this.listeners) fn();
     this.autoCompactScheduler.schedule();
     this.autoLayoutScheduler.schedule();
+    // G1: a pan / zoom / scene edit may have scrolled an animated
+    // shape into view — re-arm the (viewport-culled) animation tick.
+    this.maybeAnimate();
   }
 
   /**
