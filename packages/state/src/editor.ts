@@ -91,6 +91,7 @@ import {
   renderScene,
   setActiveRasterizer,
   setActiveTextShaper,
+  setAnimationClock,
   ShapeCache,
   type RenderTarget,
 } from "@oh-just-another/renderer-core";
@@ -154,6 +155,8 @@ import {
   ANIMATION_MIN_INTERVAL_MS,
   ANIMATION_MAX_INTERVAL_MS,
   ANIMATION_COST_FACTOR,
+  HEAVY_GIF_BYTES,
+  GIF_AUTOSTOP_MS,
 } from "./constants.js";
 import { ALL_HANDLES, CORNER_HANDLES, HANDLE_HIT_SLOP, hitHandle } from "./handle.js";
 import { getInteractiveHitTester } from "./interactive.js";
@@ -1363,7 +1366,10 @@ export class Editor {
     const id = castShapeId(this.uniqueId("img"));
     const shape = buildImageShape(this._scene, input, id, this._activeLayerId);
     this.addShape(shape);
-    if (input.animated) this.maybeAnimate();
+    if (input.animated) {
+      this.initPlayback(id);
+      this.maybeAnimate();
+    }
     return id;
   }
   async addBinaryFile(blob: Blob, name?: string): Promise<FileId> {
@@ -1408,6 +1414,8 @@ export class Editor {
       );
       if (now - this.lastGifTickMs < target) return;
       this.lastGifTickMs = now;
+      // G4: freeze heavy GIFs that have played long enough.
+      this.autoStopHeavyGifs();
       // Force a full re-render: the scene reference hasn't changed,
       // but the animation adapter advanced the GIF frame. Re-painting
       // picks up the current frame.
@@ -1463,6 +1471,152 @@ export class Editor {
     }
   };
 
+  // ── Per-shape GIF playback (G4 auto-stop + G5 reduced-motion) ──────
+  /**
+   * Transient per-shape playback state for animated images. `originMs`
+   * is the wall-clock the current play run started; `frozenMs` is the
+   * playback offset a paused shape is held at. Not serialised — purely
+   * a runtime view, rebuilt on insert / rehydrate.
+   */
+  private readonly playbackState = new Map<
+    ShapeId,
+    {
+      playing: boolean;
+      /** Wall-clock origin for playback position (now − originMs = frame time). */
+      originMs: number;
+      /** Wall-clock the current play run began — drives the auto-stop timer
+       *  independently of `originMs` so resuming doesn't instantly re-trip it. */
+      playStartMs: number;
+      /** Playback offset a paused shape is frozen at. */
+      frozenMs: number;
+    }
+  >();
+
+  /** Shape id currently hovered — a hovered heavy GIF keeps playing
+   *  (its auto-stop timer is held off). Set by the pointer hover path. */
+  private hoveredAnimatedId: ShapeId | null = null;
+
+  private static nowMs(): number {
+    return typeof performance !== "undefined" ? performance.now() : Date.now();
+  }
+
+  private static prefersReducedMotion(): boolean {
+    if (typeof matchMedia !== "function") return false;
+    try {
+      return matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Seed playback for a freshly-animated shape. G5: start paused (frozen
+   * on frame 0) when the user prefers reduced motion; playing otherwise.
+   */
+  private initPlayback(id: ShapeId): void {
+    if (this.playbackState.has(id)) return;
+    const now = Editor.nowMs();
+    this.playbackState.set(id, {
+      playing: !Editor.prefersReducedMotion(),
+      originMs: now,
+      playStartMs: now,
+      frozenMs: 0,
+    });
+  }
+
+  /** Playback timestamp fed to the renderer's animation clock for a
+   *  shape: wall-clock when unmanaged, play offset when playing, the
+   *  frozen frame when paused. */
+  private playbackClock(shapeId: ShapeId): number {
+    const st = this.playbackState.get(shapeId);
+    const now = Editor.nowMs();
+    if (!st) return now;
+    return st.playing ? now - st.originMs : st.frozenMs;
+  }
+
+  /**
+   * Toggle GIF playback for a shape — wired to a click on an animated
+   * image (G4 resume after auto-stop, G5 play after reduced-motion).
+   * Resuming continues from the frozen frame.
+   */
+  togglePlayback(id: ShapeId): void {
+    const now = Editor.nowMs();
+    const st = this.playbackState.get(id);
+    if (!st) {
+      this.playbackState.set(id, { playing: true, originMs: now, playStartMs: now, frozenMs: 0 });
+    } else if (st.playing) {
+      st.frozenMs = now - st.originMs;
+      st.playing = false;
+    } else {
+      // Resume from the frozen frame AND restart the auto-stop timer,
+      // otherwise a heavy GIF (frozen past GIF_AUTOSTOP_MS) would
+      // re-trip auto-stop on the very next tick — playing one frame
+      // then freezing again.
+      st.originMs = now - st.frozenMs;
+      st.playStartMs = now;
+      st.playing = true;
+    }
+    this.maybeAnimate();
+    this.scheduleRender();
+  }
+
+  /**
+   * Hover entered an animated shape: resume it if paused and hold off
+   * its auto-stop timer while the pointer stays over it (the auto-stop
+   * pass keeps pushing `playStartMs` forward for the hovered shape).
+   * Pass `null` when the pointer leaves all shapes.
+   */
+  hoverAnimatedShape(id: ShapeId | null): void {
+    if (this.hoveredAnimatedId === id) return;
+    this.hoveredAnimatedId = id;
+    if (id !== null) {
+      const st = this.playbackState.get(id);
+      const now = Editor.nowMs();
+      if (st && !st.playing) {
+        st.originMs = now - st.frozenMs;
+        st.playStartMs = now;
+        st.playing = true;
+        this.maybeAnimate();
+        this.scheduleRender();
+      }
+    }
+  }
+
+  /** True when the shape's GIF is paused (drives the overlay badge). */
+  isPlaybackPaused(id: ShapeId): boolean {
+    return this.playbackState.get(id)?.playing === false;
+  }
+
+  /**
+   * G4: freeze heavy GIFs after `GIF_AUTOSTOP_MS` of continuous play.
+   * Light GIFs (small byte payload) loop forever. Called from the tick
+   * before each animation render.
+   */
+  private autoStopHeavyGifs(): void {
+    const now = Editor.nowMs();
+    for (const shape of this._scene.shapes.values()) {
+      if (shape.type !== "image") continue;
+      const img = shape as ImageShape;
+      if (!img.animationKind) continue;
+      const st = this.playbackState.get(img.id);
+      if (!st || !st.playing) continue;
+      const heavy =
+        img.animationData instanceof ArrayBuffer &&
+        img.animationData.byteLength > HEAVY_GIF_BYTES;
+      if (!heavy) continue;
+      // Hovered heavy GIF keeps playing — push its timer forward so it
+      // never auto-stops while the pointer is over it.
+      if (img.id === this.hoveredAnimatedId) {
+        st.playStartMs = now;
+        continue;
+      }
+      if (now - st.playStartMs > GIF_AUTOSTOP_MS) {
+        st.frozenMs = now - st.originMs;
+        st.playing = false;
+      }
+    }
+  }
+
   /**
    * Restore transient `animationData` for animated image shapes after
    * a scene load. The raw GIF bytes don't survive serialisation
@@ -1479,7 +1633,11 @@ export class Editor {
     for (const shape of this._scene.shapes.values()) {
       if (shape.type !== "image") continue;
       const img = shape as ImageShape;
-      if (!img.animationKind || !img.fileId) continue;
+      if (!img.animationKind) continue;
+      // Seed playback for every animated shape loaded from the scene
+      // (G5 honours reduced-motion at this point too).
+      this.initPlayback(img.id);
+      if (!img.fileId) continue;
       if (img.animationData instanceof ArrayBuffer) continue; // already live
       const file = getBinaryFile(this._scene, img.fileId);
       if (!file) continue;
@@ -3264,6 +3422,11 @@ export class Editor {
 
   // Pure body in `./editor/render-orchestrator.ts` (~130 lines).
   private render(): void {
+    // Feed the renderer's animation clock our per-shape playback state
+    // so paused / reduced-motion GIFs freeze and resumed ones continue
+    // from the right frame. Set immediately before the synchronous
+    // render pass (the shape-renderer has no options channel).
+    setAnimationClock((shape: { readonly id?: unknown }) => this.playbackClock(shape.id as ShapeId));
     renderEditor(this);
   }
 }

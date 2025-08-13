@@ -282,3 +282,15 @@ export const DEFAULT_IMAGE_MAX_EDGE_PX = 480;
 export const ANIMATION_MIN_INTERVAL_MS = 1000 / 60;
 export const ANIMATION_MAX_INTERVAL_MS = 1000 / 12;
 export const ANIMATION_COST_FACTOR = 2;
+
+/**
+ * Per-shape GIF playback policy.
+ *
+ * - `HEAVY_GIF_BYTES` — animationData (raw GIF bytes) above this counts
+ *   as "heavy". Light GIFs loop forever; heavy ones auto-stop to save
+ *   CPU/GPU. 2 MB ≈ a large multi-frame GIF.
+ * - `GIF_AUTOSTOP_MS` — a heavy GIF freezes after this much continuous
+ *   playback. A click resumes it (and restarts the timer).
+ */
+export const HEAVY_GIF_BYTES = 2 * 1024 * 1024;
+export const GIF_AUTOSTOP_MS = 30_000;

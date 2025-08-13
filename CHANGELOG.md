@@ -835,3 +835,6 @@
 
 ## 0.44.22
 - feat(debug): fractal generator — tree / Mandelbrot / Julia / attractors
+
+## 0.44.23
+- feat: per-shape GIF playback — heavy auto-stop, reduced-motion, hover (G4+G5)

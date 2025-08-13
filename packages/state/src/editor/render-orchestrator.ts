@@ -3,6 +3,7 @@ import {
   getEdge,
   getEdgePath,
   getShape,
+  getShapeWorldBounds,
   listAnchorsLocal,
   snapExcludedAnchors,
 } from "@oh-just-another/scene";
@@ -158,5 +159,14 @@ export const renderEditor = (editor: any): void => {
     overlayOpts.annotations = [...editor._scene.annotations.values()];
     overlayOpts.selectedAnnotation = editor._selectedAnnotation;
   }
+  // "Play" badge on paused animated (GIF) shapes — auto-stopped or held under
+  // prefers-reduced-motion. Signals a click resumes them.
+  const gifBadges = [];
+  for (const shape of editor._scene.shapes.values()) {
+    if (shape.type === "image" && shape.animationKind && editor.isPlaybackPaused(shape.id)) {
+      gifBadges.push(getShapeWorldBounds(shape));
+    }
+  }
+  if (gifBadges.length > 0) overlayOpts.gifBadges = gifBadges;
   renderOverlay(editor._scene, editor._selection, editor.overlayTarget, overlayOpts);
 };

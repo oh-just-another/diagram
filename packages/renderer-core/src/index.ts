@@ -42,6 +42,8 @@ export {
   getAnimationAdapter,
   listAnimationKinds,
   resolveImageSource,
+  setAnimationClock,
+  resetAnimationClock,
 } from "./animation-adapter.js";
 
 // Pluggable text-shaper and rasterizer interfaces.

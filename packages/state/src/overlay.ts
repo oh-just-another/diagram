@@ -187,6 +187,12 @@ export const renderOverlay = (
      */
     annotations?: readonly Annotation[];
     selectedAnnotation?: AnnotationId | null;
+    /**
+     * World bboxes of animated (GIF) shapes whose playback is paused
+     * (auto-stopped or held under prefers-reduced-motion). Each draws a
+     * small "play" chip so the user knows a click resumes it.
+     */
+    gifBadges?: readonly Bounds[];
     style?: Partial<OverlayStyle>;
   } = {},
 ): void => {
@@ -365,7 +371,51 @@ export const renderOverlay = (
     }
   }
 
+  // 9. GIF "play" badges on paused animated shapes — drawn last
+  //    so they sit above selection chrome.
+  if (options.gifBadges) {
+    for (const b of options.gifBadges) {
+      drawGifBadge(target, projectBounds(b, w2s));
+    }
+  }
+
   target.restore();
+};
+
+/** Rounded "gif" chip in a shape's top-left corner — signals a paused
+ *  GIF the user can click (or hover) to resume. */
+const GIF_BADGE_W = 30;
+const GIF_BADGE_H = 16;
+const GIF_BADGE_PAD = 4;
+const GIF_BADGE_RADIUS = 4;
+
+const drawGifBadge = (target: RenderTarget, screen: Bounds): void => {
+  const x = screen.x + GIF_BADGE_PAD;
+  const y = screen.y + GIF_BADGE_PAD;
+  const w = GIF_BADGE_W;
+  const h = GIF_BADGE_H;
+  const r = GIF_BADGE_RADIUS;
+  // Rounded-rect background.
+  target.setStroke(null);
+  target.setFill("rgba(0,0,0,0.65)");
+  target.beginPath();
+  target.moveTo(x + r, y);
+  target.lineTo(x + w - r, y);
+  target.quadraticCurveTo(x + w, y, x + w, y + r);
+  target.lineTo(x + w, y + h - r);
+  target.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  target.lineTo(x + r, y + h);
+  target.quadraticCurveTo(x, y + h, x, y + h - r);
+  target.lineTo(x, y + r);
+  target.quadraticCurveTo(x, y, x + r, y);
+  target.closePath();
+  target.fill();
+  // "gif" label.
+  target.setFill("#ffffff");
+  target.setFont("system-ui, sans-serif", 10);
+  target.setTextAlign("center");
+  target.setTextBaseline("middle");
+  target.fillText("gif", x + w / 2, y + h / 2);
 };
 
 const projectBounds = (b: Bounds, w2s: Transform): Bounds => {

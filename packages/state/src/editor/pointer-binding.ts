@@ -376,6 +376,14 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       editor.hoveredEdgeTarget = null;
       editor.notify();
     }
+    // Hover-to-play: while idle (no active press) over an animated
+    // image, keep it playing — a heavy GIF resumes on hover and its
+    // auto-stop timer is held off while the pointer stays over it.
+    if (!ctx.pressOrigin) {
+      const hov = editor.hitTest(worldPoint);
+      const hs = hov?.kind === "shape" ? editor._scene.shapes.get(hov.id) : undefined;
+      editor.hoverAnimatedShape(hs?.type === "image" && hs.animationKind ? hs.id : null);
+    }
     editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
   };
 
@@ -468,6 +476,23 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // so the parentId / autoGrow patches land in the same undo step.
     editor.applyContainerDrop(worldPoint);
     editor.commitGesture();
+
+    // A tap (not a drag) on an animated image toggles its GIF playback —
+    // the way to resume a heavy GIF that auto-stopped or a GIF held paused
+    // under prefers-reduced-motion. Gated on near-zero displacement so it
+    // never fires at the end of a drag.
+    const origin = ctxBeforeUp.pressOrigin;
+    if (origin) {
+      const zoom = editor._scene.viewport.zoom || 1;
+      const movedPx = Math.hypot(worldPoint.x - origin.x, worldPoint.y - origin.y) * zoom;
+      if (movedPx < LONG_PRESS_MAX_MOVEMENT_PX) {
+        const hit = editor.hitTest(worldPoint);
+        if (hit?.kind === "shape") {
+          const s = editor._scene.shapes.get(hit.id);
+          if (s?.type === "image" && s.animationKind) editor.togglePlayback(s.id);
+        }
+      }
+    }
   };
 
   const onCancel = (ev: PointerEvent) => {

@@ -62,16 +62,52 @@ export const getAnimationAdapter = (kind: string): AnimatedSourceAdapter<unknown
 export const listAnimationKinds = (): readonly string[] => [...registry.keys()];
 
 /**
+ * Pluggable playback clock. Returns the playback position (ms) the
+ * animation adapter should be sampled at for a given shape — letting
+ * a host pause / freeze / offset individual animated shapes without
+ * the renderer knowing about playback state.
+ *
+ * Default: wall-clock `performance.now()` for every shape (every GIF
+ * plays, in lock-step with real time). A host (the editor) overrides
+ * this via {@link setAnimationClock} to consult its per-shape
+ * playback map — returning a frozen value for paused shapes, an
+ * offset for shapes started later, etc.
+ *
+ * Module-global by design: the shape-renderer signature is
+ * `(shape, target)` with no options channel, so the host sets the
+ * clock immediately before each synchronous render pass.
+ */
+type AnimationClock = (shape: { readonly id?: unknown }) => number;
+
+let animationClock: AnimationClock = () =>
+  typeof performance !== "undefined" ? performance.now() : 0;
+
+export const setAnimationClock = (clock: AnimationClock): void => {
+  animationClock = clock;
+};
+
+/** Restore the default wall-clock playback (used in tests / teardown). */
+export const resetAnimationClock = (): void => {
+  animationClock = () => (typeof performance !== "undefined" ? performance.now() : 0);
+};
+
+/**
  * Resolve an image source for an `ImageShape`. When the shape has
  * an `animationKind` and a matching adapter is registered, the
- * adapter's `getFrameAt(animationData, now)` result is returned.
- * Otherwise — and as a fallback when the adapter throws — falls
- * back to the static `src`. The renderer hands the result to
+ * adapter's `getFrameAt(animationData, t)` result is returned, where
+ * `t` comes from the pluggable {@link setAnimationClock} (default
+ * wall-clock). Otherwise — and as a fallback when the adapter throws —
+ * falls back to the static `src`. The renderer hands the result to
  * `target.drawImage` without further interpretation.
  */
 export const resolveImageSource = (
-  shape: { readonly src: string; readonly animationKind?: string; readonly animationData?: unknown },
-  timestampMs: number = typeof performance !== "undefined" ? performance.now() : 0,
+  shape: {
+    readonly id?: unknown;
+    readonly src: string;
+    readonly animationKind?: string;
+    readonly animationData?: unknown;
+  },
+  timestampMs: number = animationClock(shape),
 ): unknown => {
   if (!shape.animationKind) return shape.src;
   const adapter = registry.get(shape.animationKind);
