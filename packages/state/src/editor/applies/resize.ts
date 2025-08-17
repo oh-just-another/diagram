@@ -4,11 +4,13 @@ import {
   type Scene,
   type Shape,
   type Patch,
+  type TextShape,
 } from "@oh-just-another/scene";
 import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "../../handle.js";
 import { applyResizeConstraints, resizeFromHandle } from "../resize-helpers.js";
 import { hasWidthHeight } from "../shape-traits.js";
+import { TEXT_RESIZE_MIN_FONT_SIZE } from "../../constants.js";
 
 /**
  * Pure: compute the patch + new scene for a single-shape resize.
@@ -51,6 +53,74 @@ export const computeShapeResize = (
     height: constrained.height,
   } as Shape;
   const patch: Patch = { kind: "shape", id, before: shape, after: next };
+  return { scene: apply(scene, patch), patch };
+};
+
+/**
+ * Pure: resize a single text shape.
+ *
+ * `original` is the pristine shape snapshotted at the start of the
+ * gesture (so font scaling is computed from a stable base, never
+ * compounding tick-to-tick).
+ *
+ * - **Corners** (`nw/ne/se/sw`) and **top/bottom edges** (`n/s`) scale
+ *   `fontSize` (and `maxWidth`, if set) uniformly — the box never
+ *   distorts. There's no arbitrary height; a vertical drag scales the
+ *   whole element.
+ * - **Left/right edges** (`e/w`) change only the wrap width: the text
+ *   reflows onto new lines (sets `maxWidth`, no font change).
+ */
+export const computeTextResize = (
+  scene: Scene,
+  original: TextShape,
+  handle: HandleId,
+  delta: Vec2,
+  originalBounds: Bounds,
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const current = getShape(scene, original.id);
+  if (!current) return null;
+  const raw = resizeFromHandle(originalBounds, handle, delta);
+
+  // Left / right edges → wrap-width only (no scale).
+  if (handle === "e" || handle === "w") {
+    const newMaxWidth = Math.max(original.fontSize, Math.abs(raw.width));
+    const anchorX = handle === "w" ? originalBounds.x + originalBounds.width : originalBounds.x;
+    const nx = handle === "w" ? anchorX - newMaxWidth : anchorX;
+    const next: Shape = {
+      ...original,
+      position: { x: nx, y: originalBounds.y },
+      scale: { x: 1, y: 1 },
+      maxWidth: newMaxWidth,
+    };
+    const patch: Patch = { kind: "shape", id: original.id, before: current, after: next };
+    return { scene: apply(scene, patch), patch };
+  }
+
+  // Corners + top/bottom edges → uniform font scale. Top/bottom take the
+  // vertical ratio (only height changed); corners take the larger axis
+  // so the dragged corner tracks the cursor along the diagonal.
+  const horizontalEdge = handle === "n" || handle === "s";
+  const sx = originalBounds.width > 0 ? Math.abs(raw.width / originalBounds.width) : 1;
+  const sy = originalBounds.height > 0 ? Math.abs(raw.height / originalBounds.height) : 1;
+  const s = horizontalEdge ? sy : Math.max(sx, sy);
+  const newFont = Math.max(TEXT_RESIZE_MIN_FONT_SIZE, original.fontSize * s);
+  const factor = newFont / original.fontSize; // applied scale (post-clamp)
+  const newW = originalBounds.width * factor;
+  const newH = originalBounds.height * factor;
+  // Anchor = the edge/corner opposite the dragged handle stays put. For
+  // n/s the horizontal position pins to the left edge.
+  const ax = handle.includes("w") ? originalBounds.x + originalBounds.width : originalBounds.x;
+  const ay = handle.includes("n") ? originalBounds.y + originalBounds.height : originalBounds.y;
+  const nx = handle.includes("w") ? ax - newW : ax;
+  const ny = handle.includes("n") ? ay - newH : ay;
+  const next: Shape = {
+    ...original,
+    position: { x: nx, y: ny },
+    scale: { x: 1, y: 1 },
+    fontSize: newFont,
+    ...(original.maxWidth !== undefined ? { maxWidth: original.maxWidth * factor } : {}),
+  };
+  const patch: Patch = { kind: "shape", id: original.id, before: current, after: next };
   return { scene: apply(scene, patch), patch };
 };
 

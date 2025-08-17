@@ -838,3 +838,6 @@
 
 ## 0.44.23
 - feat: per-shape GIF playback — heavy auto-stop, reduced-motion, hover (G4+G5)
+
+## 0.45.0
+- feat: text tool + in-canvas editing + typography panel

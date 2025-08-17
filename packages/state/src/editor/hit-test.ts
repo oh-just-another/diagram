@@ -9,7 +9,7 @@ import {
 } from "@oh-just-another/scene";
 import type { AnnotationId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
 import { ALL_HANDLES, CORNER_HANDLES, hitHandle } from "../handle.js";
-import { isResizable } from "../overlay.js";
+import { isResizable, resizeHandlesFor } from "../overlay.js";
 import type { PressTarget } from "../machine.js";
 import * as Selection from "../selection.js";
 import { getShape } from "@oh-just-another/scene";
@@ -101,7 +101,7 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
       const shape = getShape(ctx.scene, id);
       if (!shape || !isResizable(shape)) continue;
       const bounds = getShapeWorldBounds(shape);
-      const handle = hitHandle(worldPoint, bounds, zoom, ctx.handleHitSlop);
+      const handle = hitHandle(worldPoint, bounds, zoom, ctx.handleHitSlop, resizeHandlesFor(shape));
       if (handle) {
         return { kind: "handle", shapeId: id, handle, bounds };
       }

@@ -10,6 +10,7 @@ import {
   Redo2,
   Slash,
   Square,
+  Type,
   Undo2,
 } from "lucide-react";
 import type { Editor, Mode } from "@oh-just-another/state";
@@ -109,6 +110,7 @@ export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "mode", mode: "hand", label: <Hand {...iconProps} />, title: "Pan (H)" },
   { kind: "mode", mode: "draw-rect", label: <Square {...iconProps} />, title: "Rectangle (R)" },
   { kind: "mode", mode: "draw-ellipse", label: <Circle {...iconProps} />, title: "Ellipse (E)" },
+  { kind: "mode", mode: "draw-text", label: <Type {...iconProps} />, title: "Text (T)" },
   { kind: "mode", mode: "draw-edge", label: <Slash {...iconProps} />, title: "Edge (L)" },
   { kind: "mode", mode: "brush", label: <PenLine {...iconProps} />, title: "Brush (B)" },
   { kind: "mode", mode: "draw-frame", label: <Frame {...iconProps} />, title: "Frame (F)" },

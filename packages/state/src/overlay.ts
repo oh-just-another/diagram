@@ -26,8 +26,11 @@ import {
   PEER_SELECTION_STROKE_WIDTH,
   PORT_DOT_ACTIVE_RADIUS,
   PORT_DOT_RADIUS,
+  TEXT_CARET_WIDTH_PX,
+  TEXT_SELECTION_FILL,
+  TEXT_SELECTION_OPACITY,
 } from "./constants.js";
-import { ALL_HANDLES, CORNER_HANDLES, HANDLE_SIZE, handlePosition } from "./handle.js";
+import { ALL_HANDLES, CORNER_HANDLES, HANDLE_SIZE, handlePosition, type HandleId } from "./handle.js";
 import type { Selection } from "./selection.js";
 
 /**
@@ -35,9 +38,24 @@ import type { Selection } from "./selection.js";
  * shapes (polygon, path, text — they have free-form geometry) get only a
  * selection outline.
  */
-const RESIZABLE_TYPES: ReadonlySet<string> = new Set(["rectangle", "ellipse", "image", "template"]);
+const RESIZABLE_TYPES: ReadonlySet<string> = new Set([
+  "rectangle",
+  "ellipse",
+  "image",
+  "template",
+  "text",
+]);
 
 export const isResizable = (shape: ShapeBase): boolean => RESIZABLE_TYPES.has(shape.type);
+
+/**
+ * Resize-handle set for a single selected shape. Text uses all 8
+ * handles but with standard semantics (see `computeTextResize`): corners
+ * and the top/bottom (n/s) handles scale the font uniformly, while the
+ * left/right (e/w) handles change only the wrap width — narrowing the
+ * box reflows the text onto new lines. Other shapes resize normally.
+ */
+export const resizeHandlesFor = (_shape: ShapeBase): readonly HandleId[] => ALL_HANDLES;
 
 /**
  * Union AABB of every direct child of `groupId` (recursive). Returns
@@ -193,6 +211,17 @@ export const renderOverlay = (
      * small "play" chip so the user knows a click resumes it.
      */
     gifBadges?: readonly Bounds[];
+    /**
+     * In-canvas text editing chrome for the shape under edit. All rects
+     * are WORLD-space; the overlay projects them to screen. `caret` is
+     * `null` while blinked off. Selection rects render as a translucent
+     * highlight under the caret.
+     */
+    editingText?: {
+      readonly caret: { readonly x: number; readonly y: number; readonly height: number } | null;
+      readonly caretColor: string;
+      readonly selectionRects: readonly Bounds[];
+    };
     style?: Partial<OverlayStyle>;
   } = {},
 ): void => {
@@ -227,7 +256,7 @@ export const renderOverlay = (
 
     if (multiSelect || !isResizable(shape)) continue;
 
-    for (const handle of ALL_HANDLES) {
+    for (const handle of resizeHandlesFor(shape)) {
       const worldPoint = handlePosition(handle, worldBounds, zoom);
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);
       drawHandle(target, screenPoint, style);
@@ -376,6 +405,33 @@ export const renderOverlay = (
   if (options.gifBadges) {
     for (const b of options.gifBadges) {
       drawGifBadge(target, projectBounds(b, w2s));
+    }
+  }
+
+  // 10. In-canvas text editing: translucent selection highlight, then
+  //     the caret bar on top. Both backends draw this via the shared
+  //     RenderTarget primitives (rect + fill), so it's identical on
+  //     Canvas2D and WebGL2.
+  if (options.editingText) {
+    const et = options.editingText;
+    if (et.selectionRects.length > 0) {
+      target.setFill(TEXT_SELECTION_FILL);
+      target.setOpacity(TEXT_SELECTION_OPACITY);
+      for (const r of et.selectionRects) {
+        const s = projectBounds(r, w2s);
+        target.beginPath();
+        target.rect(s.x, s.y, s.width, s.height);
+        target.fill();
+      }
+      target.setOpacity(1);
+    }
+    if (et.caret) {
+      const p = matrix.applyToPoint(w2s, { x: et.caret.x, y: et.caret.y });
+      target.setFill(et.caretColor);
+      target.setOpacity(1);
+      target.beginPath();
+      target.rect(p.x, p.y, TEXT_CARET_WIDTH_PX, et.caret.height * zoom);
+      target.fill();
     }
   }
 

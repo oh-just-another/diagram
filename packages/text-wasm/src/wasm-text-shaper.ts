@@ -203,16 +203,22 @@ export class WasmTextShaper implements TextShaper {
     const wasm = this.wasm;
     if (!wasm || !wasm.glyphMetrics) return null;
     const ptr = wasm.glyphMetrics(codePoint);
-    // The pointer points to 6 contiguous f32. Slice into a fresh
-    // Float32Array so the result is decoupled from the WASM arena.
-    const view = new Float32Array(wasm.memory.buffer, ptr, 6);
+    const buffer = wasm.memory.buffer;
+    // 6 contiguous little-endian f32 (24 bytes). Read via DataView, not
+    // `new Float32Array(buffer, ptr, 6)`: the WASM ABI does not
+    // guarantee `ptr` is 4-byte aligned, and a typed-array view throws
+    // `RangeError: start offset … should be a multiple of 4` on an
+    // unaligned pointer. DataView has no alignment constraint. Guard the
+    // bounds so a stray pointer returns null instead of throwing.
+    if (ptr <= 0 || ptr + 24 > buffer.byteLength) return null;
+    const dv = new DataView(buffer, ptr, 24);
     return {
-      advance: view[0]!,
-      bboxXMin: view[1]!,
-      bboxYMin: view[2]!,
-      bboxW: view[3]!,
-      bboxH: view[4]!,
-      unitsPerEm: view[5]!,
+      advance: dv.getFloat32(0, true),
+      bboxXMin: dv.getFloat32(4, true),
+      bboxYMin: dv.getFloat32(8, true),
+      bboxW: dv.getFloat32(12, true),
+      bboxH: dv.getFloat32(16, true),
+      unitsPerEm: dv.getFloat32(20, true),
     };
   }
 

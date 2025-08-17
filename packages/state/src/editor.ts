@@ -36,6 +36,7 @@ import {
   expandDropZoneToFit,
   containerSizeForZone,
   getShapeWorldBounds,
+  setTextMeasurer,
   getScreenToWorld,
   panBy as viewportPanBy,
   resize as viewportResize,
@@ -69,7 +70,8 @@ import {
   type Scene,
   type Shape,
   type SnapCandidate,
-  type Style,
+  type TextShape,
+  type TextStyle,
   createBinaryFile,
 } from "@oh-just-another/scene";
 import {
@@ -84,8 +86,12 @@ import {
 } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import {
+  caretGeometry,
   computeEdgeWorldBounds,
   DEFAULT_LOD,
+  layoutText,
+  pointToCaretIndex,
+  selectionRects as textSelectionRects,
   renderEdges,
   renderGrid,
   renderScene,
@@ -93,6 +99,7 @@ import {
   setActiveTextShaper,
   setAnimationClock,
   ShapeCache,
+  type EditableTextLayout,
   type RenderTarget,
 } from "@oh-just-another/renderer-core";
 import {
@@ -157,6 +164,7 @@ import {
   ANIMATION_COST_FACTOR,
   HEAVY_GIF_BYTES,
   GIF_AUTOSTOP_MS,
+  CARET_BLINK_INTERVAL_MS,
 } from "./constants.js";
 import { ALL_HANDLES, CORNER_HANDLES, HANDLE_HIT_SLOP, hitHandle } from "./handle.js";
 import { getInteractiveHitTester } from "./interactive.js";
@@ -191,6 +199,7 @@ import { hasWidthHeight } from "./editor/shape-traits.js";
 import {
   computeGroupResizePatches,
   computeShapeResize,
+  computeTextResize,
 } from "./editor/applies/resize.js";
 import { bindPointerEvents as bindPointerEventsExternal } from "./editor/pointer-binding.js";
 import {
@@ -230,10 +239,7 @@ import {
   computeToggleAnnotationResolved,
   hitAnnotation as hitAnnotationPure,
 } from "./editor/public/annotations.js";
-import {
-  canBeginTextEdit,
-  computeCommitTextEdit,
-} from "./editor/public/text-edit.js";
+import { canBeginTextEdit } from "./editor/public/text-edit.js";
 import {
   compactLayerZOrderPatches,
   computeBringForward,
@@ -263,12 +269,14 @@ import {
   computeSelectAll,
   computeSetSelection,
   computeUpdateStyle,
+  computeUpdateTextProps,
   describeNudge as describeNudgePure,
   selectionFromNewIds,
 } from "./editor/public/selection-ops.js";
 import {
   beginPlacementState,
   buildShapeAtCursor,
+  buildTextShapeAt,
   computePlacementCancel,
   computePlacementContainerDrop,
   computePlacementUpdate,
@@ -535,6 +543,13 @@ export class Editor {
       { readonly position: Vec2; readonly bounds: Bounds; readonly scale: Vec2 }
     >;
   } | null = null;
+  /**
+   * Pristine shape snapshot for a single-shape text resize, captured on
+   * the gesture's first tick. Font scaling is computed against this base
+   * so it never compounds across pointermove ticks. Cleared on gesture
+   * end (commit / cancel).
+   */
+  private _resizeOriginShape: Shape | null = null;
   /**
    * Active layer — new shapes created via `addShape` / `applyCreate` land
    * here when their input doesn't specify a `layerId`. Defaults to the
@@ -905,6 +920,15 @@ export class Editor {
     // Other backends (Canvas2D, SVG) leave the field alone —
     // native ctx.bezierCurveTo beats any WASM round-trip there.
     if (options.rasterizer) setActiveRasterizer(options.rasterizer);
+
+    // Drive the scene text bounder from the renderer's own metrics so
+    // the selection box hugs the rendered text (the WebGL2 MSDF font's
+    // advances differ from any geometric estimate). Measuring sets the
+    // font on the main target — harmless, every draw re-sets its own.
+    setTextMeasurer((text, family, size) => {
+      this.mainTarget.setFont(family, size);
+      return this.mainTarget.measureText(text).width;
+    });
 
     // Resolve input mode + derived hit slops once. `auto` reads
     // `matchMedia('(pointer: coarse)')` when available; SSR falls
@@ -1279,6 +1303,9 @@ export class Editor {
   }
 
   setMode(mode: Mode): void {
+    // Switching tools commits any in-flight text edit (standard: leaving the
+    // editing context ends it, keeping the typed text).
+    if (this._editingTextShape !== null) this.commitTextEdit();
     // Cancel any in-progress drag gesture so the partial state is not recorded.
     if (this.gestureTx) {
       this.gestureTx.cancel();
@@ -1738,35 +1765,305 @@ export class Editor {
   get editingTextShape(): ShapeId | null {
     return this._editingTextShape;
   }
+  /**
+   * When the `draw-text` tool just placed a shape and opened its
+   * editor, this holds that shape's id until the first commit. A
+   * pending creation isn't in history yet: committing non-empty text
+   * records a single add patch (whole shape = one undo); committing
+   * empty / cancelling removes it with no history entry at all.
+   */
+  private _pendingTextCreate: ShapeId | null = null;
+  /**
+   * Snapshot of the shape at edit start. Used to revert on cancel and
+   * as the `before` of the single commit patch. `null` for a pending
+   * creation (the shape didn't exist yet).
+   */
+  private _textEditOrigin: Shape | null = null;
+  /**
+   * Live selection inside the edited text, mirrored from the hidden
+   * `<textarea>` (`start`/`end` are source offsets, `dir` is the
+   * anchored end). The caret is `dir === "backward" ? start : end`.
+   */
+  private _textSel: { start: number; end: number; dir: "forward" | "backward" } | null = null;
+  /** Anchor offset for a canvas drag-select inside the edited text. */
+  private _textDragAnchor: number | null = null;
+  private _caretBlinkOn = true;
+  private _caretBlinkTimer: ReturnType<typeof setInterval> | null = null;
+
+  get editingTextSelection(): { start: number; end: number; dir: "forward" | "backward" } | null {
+    return this._textSel;
+  }
+  /** Caret offset = the moving end of the selection. */
+  get editingTextCaret(): number | null {
+    if (!this._textSel) return null;
+    return this._textSel.dir === "backward" ? this._textSel.start : this._textSel.end;
+  }
+  get caretBlinkOn(): boolean {
+    return this._caretBlinkOn;
+  }
+  /** `true` while a canvas drag-select inside the edited text is active. */
+  get isTextDragging(): boolean {
+    return this._textDragAnchor !== null;
+  }
+
+  private startCaretBlink(): void {
+    this._caretBlinkOn = true;
+    this.stopCaretBlink();
+    // Only run the blink when a DOM clock exists (browser host). Node
+    // test envs construct the editor without a window — skip so a
+    // dangling interval can't keep the process alive.
+    if (typeof window === "undefined") return;
+    this._caretBlinkTimer = setInterval(() => {
+      this._caretBlinkOn = !this._caretBlinkOn;
+      this.notify();
+    }, CARET_BLINK_INTERVAL_MS);
+  }
+  private stopCaretBlink(): void {
+    if (this._caretBlinkTimer !== null) {
+      clearInterval(this._caretBlinkTimer);
+      this._caretBlinkTimer = null;
+    }
+  }
+  /** Reset the caret to solid (called on type / move so it never blinks off mid-action). */
+  private wakeCaret(): void {
+    this._caretBlinkOn = true;
+  }
 
   /**
    * Begin editing a text shape's body. No-op when the shape doesn't
-   * exist or isn't a text shape. Concurrent edits cancel themselves
-   * (only one shape at a time).
+   * exist or isn't a text shape. Concurrent edits commit themselves
+   * (only one shape at a time). Caret defaults to the end of the text.
    */
   // Pure bodies in `./editor/public/text-edit.ts`.
   beginTextEdit(id: ShapeId): void {
     if (!canBeginTextEdit(this._scene, id, (lid) => this.isLayerLocked(lid))) return;
+    // Commit any in-flight edit on a different shape first.
+    if (this._editingTextShape !== null && this._editingTextShape !== id) this.commitTextEdit();
     this._editingTextShape = id;
+    this._textEditOrigin = this._pendingTextCreate === id ? null : (getShape(this._scene, id) ?? null);
+    const shape = getShape(this._scene, id) as TextShape | undefined;
+    const len = shape?.text.length ?? 0;
+    this._textSel = { start: len, end: len, dir: "forward" };
+    this.startCaretBlink();
     this.notify();
   }
-  commitTextEdit(next: string): void {
+
+  /**
+   * Live edit transport from the hidden `<textarea>`: replace the
+   * shape's text + selection as the user types / pastes / composes.
+   * Mutates the scene WITHOUT a history entry — history is recorded
+   * once on commit. No-op when not editing.
+   */
+  setEditingText(value: string, selStart: number, selEnd: number, dir: "forward" | "backward" = "forward"): void {
     const id = this._editingTextShape;
     if (!id) return;
-    const result = computeCommitTextEdit(this._scene, id, next);
-    if (!result) {
-      this._editingTextShape = null;
+    const r = updateShape(this._scene, id, (s) => ({ ...s, text: value }));
+    this._scene = r.scene;
+    this._textSel = { start: selStart, end: selEnd, dir };
+    this.wakeCaret();
+    this.notify();
+  }
+
+  /** Selection-only update (arrows / shift-select / click) — no text change. */
+  setEditingSelection(selStart: number, selEnd: number, dir: "forward" | "backward" = "forward"): void {
+    if (!this._editingTextShape) return;
+    this._textSel = { start: selStart, end: selEnd, dir };
+    this.wakeCaret();
+    this.notify();
+  }
+
+  /**
+   * Map a world-space point to a caret offset in the edited text. Used
+   * to place / extend the caret from canvas clicks. Returns `null` when
+   * not editing or the shape is gone.
+   */
+  caretIndexAtWorldPoint(worldPoint: Vec2): number | null {
+    const id = this._editingTextShape;
+    if (!id) return null;
+    const shape = getShape(this._scene, id) as TextShape | undefined;
+    if (shape?.type !== "text") return null;
+    const layout = this.editingTextLayout(shape);
+    if (!layout) return null;
+    // World → shape-local (translate by position; rotation/scale on text
+    // edit is uncommon — ignore for hit purposes).
+    const local = { x: worldPoint.x - shape.position.x, y: worldPoint.y - shape.position.y };
+    const align = shape.style.textAlign ?? "left";
+    return pointToCaretIndex(layout, local, this.measureFor(shape), align);
+  }
+
+  /**
+   * `true` when a point is inside the currently-edited text shape's
+   * world bounds. Used by the pointer binding to decide between
+   * repositioning the caret (inside) and committing (outside).
+   */
+  editedShapeContainsPoint(worldPoint: Vec2): boolean {
+    const id = this._editingTextShape;
+    if (!id) return false;
+    const shape = getShape(this._scene, id);
+    if (!shape) return false;
+    const b = getShapeWorldBounds(shape);
+    return (
+      worldPoint.x >= b.x &&
+      worldPoint.x <= b.x + b.width &&
+      worldPoint.y >= b.y &&
+      worldPoint.y <= b.y + b.height
+    );
+  }
+
+  /** Place a collapsed caret at the clicked point and start a drag-select. */
+  setTextCaretFromPoint(worldPoint: Vec2): void {
+    const idx = this.caretIndexAtWorldPoint(worldPoint);
+    if (idx === null) return;
+    this._textDragAnchor = idx;
+    this.setEditingSelection(idx, idx, "forward");
+  }
+
+  /** Extend the selection from the drag anchor to the current point. */
+  extendTextSelectionToPoint(worldPoint: Vec2): void {
+    if (this._textDragAnchor === null) return;
+    const idx = this.caretIndexAtWorldPoint(worldPoint);
+    if (idx === null) return;
+    const anchor = this._textDragAnchor;
+    if (idx >= anchor) this.setEditingSelection(anchor, idx, "forward");
+    else this.setEditingSelection(idx, anchor, "backward");
+  }
+
+  /** End a canvas drag-select (clears the drag anchor). */
+  endTextDragSelect(): void {
+    this._textDragAnchor = null;
+  }
+
+  /** Build the editable layout for a text shape using the main target's metrics. */
+  private editingTextLayout(shape: TextShape): EditableTextLayout | null {
+    return layoutText(shape.text, this.measureFor(shape), {
+      fontSize: shape.fontSize,
+      ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
+    });
+  }
+
+  /**
+   * A measure callback bound to a shape's font, using the main target's
+   * `measureText` — the SAME source the renderer draws with (WebGL2
+   * reports MSDF advances) and the bounder measures with. Caret /
+   * selection geometry therefore lines up exactly with the glyphs.
+   */
+  private measureFor(shape: TextShape): (s: string) => number {
+    const target = this.mainTarget;
+    target.setFont(shape.fontFamily, shape.fontSize);
+    return (s: string) => target.measureText(s).width;
+  }
+
+  /**
+   * World-space caret + selection geometry for the overlay pass.
+   * Returns `null` when not editing. The caret is `null` while blinked
+   * off so the overlay can simply skip drawing it.
+   */
+  editingTextOverlay(): {
+    caret: { x: number; y: number; height: number } | null;
+    caretColor: string;
+    selectionRects: readonly Bounds[];
+  } | null {
+    const id = this._editingTextShape;
+    if (!id || !this._textSel) return null;
+    const shape = getShape(this._scene, id) as TextShape | undefined;
+    if (shape?.type !== "text") return null;
+    const layout = this.editingTextLayout(shape);
+    if (!layout) return null;
+    const align = shape.style.textAlign ?? "left";
+    const measure = this.measureFor(shape);
+    const { x: px, y: py } = shape.position;
+
+    const local = textSelectionRects(layout, this._textSel.start, this._textSel.end, measure, align);
+    const selectionRects: Bounds[] = local.map((r) => ({
+      x: px + r.x,
+      y: py + r.y,
+      width: r.width,
+      height: r.height,
+    }));
+
+    let caret: { x: number; y: number; height: number } | null = null;
+    if (this._caretBlinkOn) {
+      const cIdx = this._textSel.dir === "backward" ? this._textSel.start : this._textSel.end;
+      const g = caretGeometry(layout, cIdx, measure, shape.fontSize, align);
+      caret = { x: px + g.x, y: py + g.y, height: g.height };
+    }
+    return { caret, caretColor: shape.style.fill ?? "#1a1a1a", selectionRects };
+  }
+
+  commitTextEdit(next?: string): void {
+    const id = this._editingTextShape;
+    if (!id) return;
+    const pending = this._pendingTextCreate === id;
+    const origin = this._textEditOrigin;
+    // Optional explicit text (keyboard / test callers); the live path
+    // passes nothing because the scene already holds the typed text.
+    if (next !== undefined) {
+      this._scene = updateShape(this._scene, id, (s) => ({ ...s, text: next })).scene;
+    }
+    this._editingTextShape = null;
+    this._pendingTextCreate = null;
+    this._textEditOrigin = null;
+    this._textSel = null;
+    this.stopCaretBlink();
+
+    const finalShape = getShape(this._scene, id) as TextShape | undefined;
+    const text = finalShape?.text ?? "";
+
+    // Empty (whitespace-only) text removes the shape. Pending = silent
+    // (never recorded); existing = recorded so undo restores the origin.
+    if (text.trim() === "") {
+      if (finalShape) {
+        this._scene = removeShape(this._scene, id).scene;
+        if (!pending && origin) {
+          this._history.push({ kind: "shape", id, before: origin, after: null });
+        }
+        if (this._selection.has(id)) this._selection = Selection.EMPTY;
+      }
       this.notify();
       return;
     }
-    this._scene = result.scene;
-    this._history.push(result.patch);
-    this._editingTextShape = null;
+
+    if (pending) {
+      // Record the whole creation as one add patch.
+      if (finalShape) this._history.push({ kind: "shape", id, before: null, after: finalShape });
+    } else if (origin && finalShape) {
+      // Existing edit: record ONLY the text delta. Other fields (font
+      // size etc.) changed via the panel push their own history during
+      // the edit, so the commit's `before` keeps the final non-text
+      // state and rewinds just the text.
+      const originText = (origin as TextShape).text;
+      if (originText !== finalShape.text) {
+        const before = { ...finalShape, text: originText } as Shape;
+        this._history.push({ kind: "shape", id, before, after: finalShape });
+      }
+    }
     this.notify();
   }
+
   cancelTextEdit(): void {
-    if (this._editingTextShape === null) return;
+    const id = this._editingTextShape;
+    if (id === null) return;
+    const pending = this._pendingTextCreate === id;
+    const origin = this._textEditOrigin;
     this._editingTextShape = null;
+    this._pendingTextCreate = null;
+    this._textEditOrigin = null;
+    this._textSel = null;
+    this.stopCaretBlink();
+
+    // Revert live edits with no history entry. Pending creations are
+    // removed entirely; existing shapes have only their TEXT restored
+    // (panel-driven field changes during the edit keep their own
+    // committed history and must survive the cancel).
+    if (pending) {
+      if (getShape(this._scene, id)) {
+        this._scene = removeShape(this._scene, id).scene;
+        if (this._selection.has(id)) this._selection = Selection.EMPTY;
+      }
+    } else if (origin) {
+      const originText = (origin as TextShape).text;
+      this._scene = updateShape(this._scene, id, (s) => ({ ...s, text: originText })).scene;
+    }
     this.notify();
   }
 
@@ -1817,6 +2114,30 @@ export class Editor {
     this._selection = Selection.single(id);
     this.notify();
     this.announce(`Created ${shape.type} ${id}`);
+    return id;
+  }
+
+  /**
+   * `draw-text` tool: drop an empty text shape at `worldPoint`, select
+   * it and open its inline editor immediately. The add is a single undo
+   * step; the subsequent text typed in is committed (or the empty shape
+   * removed) by `commitTextEdit`. Reverts to `select` afterwards unless
+   * the tool is locked.
+   */
+  createTextAt(worldPoint: Vec2): ShapeId {
+    const id = newShapeIdAtCursor(++this.nextId);
+    const shape = buildTextShapeAt(this._scene, worldPoint, this._activeLayerId, id);
+    // No history push here — the placeholder is "pending" until the
+    // first commit (see `_pendingTextCreate`). This way an abandoned
+    // text never pollutes the undo stack.
+    const r = addShape(this._scene, shape);
+    this._scene = r.scene;
+    this._pendingTextCreate = id;
+    this._selection = Selection.single(id);
+    this.maybeRevertModeAfterCreate();
+    this.notify();
+    this.announce(`Created text ${id}`);
+    this.beginTextEdit(id);
     return id;
   }
 
@@ -2037,8 +2358,24 @@ export class Editor {
    * No-op when `ids` is empty or none of the targeted shapes exist.
    */
   // Pure body in `./editor/public/selection-ops.ts`.
-  updateStyle(ids: Iterable<ShapeId>, partial: Partial<Style>): void {
+  updateStyle(ids: Iterable<ShapeId>, partial: Partial<TextStyle>): void {
     const result = computeUpdateStyle(this._scene, ids, partial);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Update non-style text properties (`fontSize`, `fontFamily`,
+   * `maxWidth`) on every selected text shape. Non-text shapes are
+   * skipped. Single undo step. Used by the text contextual panel.
+   */
+  updateTextProps(
+    ids: Iterable<ShapeId>,
+    partial: { fontSize?: number; fontFamily?: string; maxWidth?: number },
+  ): void {
+    const result = computeUpdateTextProps(this._scene, ids, partial);
     if (!result) return;
     this._scene = result.scene;
     this._history.push(result.patch);
@@ -3050,6 +3387,26 @@ export class Editor {
   }
 
   private applyResize(id: ShapeId, handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
+    const shape = getShape(this._scene, id);
+    // Text: aspect-locked font scaling. Snapshot the pristine shape on
+    // the gesture's first tick so the scale base never compounds.
+    if (shape?.type === "text") {
+      if (!this._resizeOriginShape || this._resizeOriginShape.id !== id) {
+        this._resizeOriginShape = shape;
+      }
+      const result = computeTextResize(
+        this._scene,
+        this._resizeOriginShape as TextShape,
+        handle,
+        delta,
+        originalBounds,
+      );
+      if (!result) return;
+      this._scene = result.scene;
+      this.recordGesturePatch(result.patch);
+      this.notify();
+      return;
+    }
     const result = computeShapeResize(this._scene, id, handle, delta, originalBounds, (s, raw, h) =>
       this.clampContainerToChildren(s, raw, h),
     );
@@ -3238,6 +3595,7 @@ export class Editor {
     this.gestures.record(patch);
   }
   private commitGesture(): void {
+    this._resizeOriginShape = null;
     this.gestures.commit();
   }
   private finalizeOpenGestureTx(): void {
@@ -3289,6 +3647,7 @@ export class Editor {
 
   // Body moved to `./editor/gesture-tx.ts`.
   private cancelGesture(): void {
+    this._resizeOriginShape = null;
     this.gestures.cancel();
   }
 

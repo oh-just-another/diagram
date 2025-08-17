@@ -10,6 +10,7 @@ import {
 import { getAutoLayoutSpec } from "@oh-just-another/scene";
 import type { Editor } from "@oh-just-another/state";
 import { useDiagramOptional } from "./hooks.js";
+import { useContextMenuController } from "./context-menu-controller.js";
 
 /**
  * Declarative menu entry. `divider` paints a separator; everything else
@@ -63,8 +64,19 @@ export interface ContextMenuProps {
 
 export const ContextMenu = ({ items, target, style, className }: ContextMenuProps) => {
   const editor = useDiagramOptional();
+  const controller = useContextMenuController();
   const [open, setOpen] = useState<OpenState | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Register an imperative opener so UI outside the canvas (e.g. the
+  // "⋯" button in the selection floating panel) can open this same
+  // menu at a chosen point.
+  useEffect(() => {
+    if (!controller) return undefined;
+    return controller.register(({ screenPoint, worldPoint }) =>
+      setOpen({ screenPoint, worldPoint }),
+    );
+  }, [controller]);
 
   // Wire the contextmenu listener (mouse right-click) AND long-press
   // (touch). Both end up calling `setOpen` with viewport-relative

@@ -8,7 +8,7 @@ import {
   type Scene,
   type Shape,
   type Patch,
-  type Style,
+  type TextStyle,
 } from "@oh-just-another/scene";
 import type { EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
 import { shapeId as castShapeId } from "@oh-just-another/types";
@@ -167,7 +167,7 @@ export const computeSelectAll = (
 export const computeUpdateStyle = (
   scene: Scene,
   ids: Iterable<ShapeId>,
-  partial: Partial<Style>,
+  partial: Partial<TextStyle>,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetIds: ShapeId[] = [];
   for (const id of ids) {
@@ -178,6 +178,35 @@ export const computeUpdateStyle = (
   const patches: Patch[] = [];
   for (const id of targetIds) {
     const r = updateShape(s, id, (sh) => ({ ...sh, style: { ...sh.style, ...partial } }));
+    s = r.scene;
+    patches.push(r.patch);
+  }
+  return {
+    scene: s,
+    patch: patches.length === 1 ? patches[0]! : { kind: "batch", patches },
+  };
+};
+
+/**
+ * Merge non-style text properties (`fontSize`, `fontFamily`,
+ * `maxWidth`) into every selected text shape. Non-text shapes in `ids`
+ * are skipped. Returns the next scene + a single (or batched) patch,
+ * or `null` when no text shape applied.
+ */
+export const computeUpdateTextProps = (
+  scene: Scene,
+  ids: Iterable<ShapeId>,
+  partial: { readonly fontSize?: number; readonly fontFamily?: string; readonly maxWidth?: number },
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const targetIds: ShapeId[] = [];
+  for (const id of ids) {
+    if (getShape(scene, id)?.type === "text") targetIds.push(id);
+  }
+  if (targetIds.length === 0) return null;
+  let s = scene;
+  const patches: Patch[] = [];
+  for (const id of targetIds) {
+    const r = updateShape(s, id, (sh) => ({ ...sh, ...partial }));
     s = r.scene;
     patches.push(r.patch);
   }

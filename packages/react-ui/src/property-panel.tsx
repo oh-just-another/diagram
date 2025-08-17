@@ -1,9 +1,13 @@
 import { type CSSProperties, type ReactNode } from "react";
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   ChevronsDown,
   ChevronsUp,
   Copy as CopyIcon,
   Group as GroupIcon,
+  MoreHorizontal,
   MoveDown,
   MoveUp,
   Spline,
@@ -20,12 +24,21 @@ import {
   type EdgeRouting,
   type Roundness,
   type ShapeBase,
+  type TextAlign,
+  type TextShape,
 } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene, useSelectedEdge, useSelection } from "./hooks.js";
+import { useContextMenuController } from "./context-menu-controller.js";
 import { ColorSwatchPicker } from "./color-swatch-picker.js";
 import { Popover } from "./popover.js";
 import { SegmentedControl } from "./segmented-control.js";
 import { Slider } from "./slider.js";
+import {
+  TEXT_FONT_SIZE_MAX,
+  TEXT_FONT_SIZE_MIN,
+  TEXT_FONT_SIZE_PRESETS,
+  TEXT_FONT_STACKS,
+} from "./constants.js";
 
 /**
  * Compact selection toolbar. A single horizontal row of controls that
@@ -57,18 +70,36 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
       .map((id) => scene.shapes.get(id))
       .filter((s): s is ShapeBase => s !== undefined);
     if (shapes.length === 0) return null;
+    // Text-only selection gets a typography-focused row (font size /
+    // family / alignment + colour). Stroke / roundness controls don't
+    // apply to text fill, so they're dropped for that branch.
+    const allText = shapes.every((s) => s.type === "text");
     return (
       <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style}>
-        <FillControl shapes={shapes} />
-        <StrokeControl shapes={shapes} />
-        <StrokeWidthControl shapes={shapes} />
-        <StrokeStyleControl shapes={shapes} />
-        <RoundnessControl shapes={shapes} />
-        <OpacityControl shapes={shapes} />
+        {allText ? (
+          <>
+            <FontSizeControl shapes={shapes} />
+            <FontFamilyControl shapes={shapes} />
+            <TextAlignControl shapes={shapes} />
+            <Divider />
+            <FillControl shapes={shapes} />
+            <OpacityControl shapes={shapes} />
+          </>
+        ) : (
+          <>
+            <FillControl shapes={shapes} />
+            <StrokeControl shapes={shapes} />
+            <StrokeWidthControl shapes={shapes} />
+            <StrokeStyleControl shapes={shapes} />
+            <RoundnessControl shapes={shapes} />
+            <OpacityControl shapes={shapes} />
+          </>
+        )}
         <Divider />
         <ZOrderControl />
         <Divider />
         <ActionsControl shapes={shapes} />
+        <MoreButton />
       </div>
     );
   }
@@ -87,10 +118,46 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
         <EdgeArrowheadControl edge={edge} side="to" />
         <Divider />
         <EdgeDeleteControl />
+        <MoreButton />
       </div>
     );
   }
   return null;
+};
+
+/**
+ * «⋯» trailing button — opens the same context menu a right-click
+ * does, anchored just below the button. Present in every panel branch
+ * so the full command set is always one click away. Renders nothing
+ * when there's no controller (no `<ContextMenu>` mounted) or no editor.
+ */
+const MoreButton = () => {
+  const editor = useDiagramOptional();
+  const controller = useContextMenuController();
+  if (!editor || !controller) return null;
+  return (
+    <button
+      type="button"
+      className="du-sel-icon-button"
+      title="More actions"
+      aria-label="More actions"
+      onClick={(ev) => {
+        const rect = ev.currentTarget.getBoundingClientRect();
+        const screenPoint = { x: rect.left, y: rect.bottom + 4 };
+        const host = editor.hostElement;
+        const hostRect = host?.getBoundingClientRect();
+        const worldPoint = hostRect
+          ? editor.screenToWorld({
+              x: screenPoint.x - hostRect.left,
+              y: screenPoint.y - hostRect.top,
+            })
+          : { x: 0, y: 0 };
+        controller.open({ screenPoint, worldPoint });
+      }}
+    >
+      <MoreHorizontal size={14} strokeWidth={1.75} aria-hidden />
+    </button>
+  );
 };
 
 // ---------------------------------------------------------------------------
@@ -151,6 +218,122 @@ const FillControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
       ariaLabel="Fill color"
       color={value}
       onChange={(v) => editor.updateStyle(ids, { fill: v ?? "transparent" })}
+    />
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Text controls — rendered only for a text-only selection (see the
+// dispatcher in `PropertyPanel`). `fontSize` / `fontFamily` are
+// top-level `TextShape` fields written via `editor.updateTextProps`;
+// `textAlign` / `textBaseline` are `TextStyle` fields written via
+// `editor.updateStyle`.
+// ---------------------------------------------------------------------------
+
+const FontSizeControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const value = sharedValue<number>(shapes, (s) => (s as TextShape).fontSize ?? null);
+  const presetValue =
+    value !== null && TEXT_FONT_SIZE_PRESETS.some((p) => p.value === value) ? value : null;
+  return (
+    <Popover
+      ariaLabel="Font size"
+      trigger={
+        <button
+          type="button"
+          className="du-sel-text-button"
+          title="Font size"
+          aria-label={`Font size ${value === null ? "mixed" : value}`}
+        >
+          {value === null ? "—" : `${Math.round(value)}`}
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Font size</header>
+        <SegmentedControl<number>
+          ariaLabel="Font size preset"
+          value={presetValue}
+          options={TEXT_FONT_SIZE_PRESETS.map((p) => ({
+            value: p.value,
+            label: p.label,
+            icon: <span style={{ fontSize: 11, fontWeight: 600 }}>{p.label}</span>,
+          }))}
+          onChange={(v) => editor.updateTextProps(ids, { fontSize: v })}
+        />
+        <Slider
+          value={value}
+          min={TEXT_FONT_SIZE_MIN}
+          max={TEXT_FONT_SIZE_MAX}
+          step={1}
+          ariaLabel="Font size"
+          valueLabel={value === null ? "—" : `${value}px`}
+          onChange={(v) => editor.updateTextProps(ids, { fontSize: v })}
+        />
+      </div>
+    </Popover>
+  );
+};
+
+const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const value = sharedString(shapes, (s) => (s as TextShape).fontFamily);
+  const current = TEXT_FONT_STACKS.find((f) => f.value === value);
+  const label = value === null ? "Mixed" : (current?.label ?? "Custom");
+  return (
+    <Popover
+      ariaLabel="Font family"
+      trigger={
+        <button
+          type="button"
+          className="du-sel-text-button"
+          title="Font family"
+          aria-label={`Font family ${label}`}
+          style={value ? { fontFamily: value } : undefined}
+        >
+          {label}
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Font family</header>
+        {TEXT_FONT_STACKS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            role="menuitemradio"
+            aria-checked={f.value === value}
+            className={`du-sel-menu-row${f.value === value ? " is-active" : ""}`}
+            style={{ fontFamily: f.value }}
+            onClick={() => editor.updateTextProps(ids, { fontFamily: f.value })}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+    </Popover>
+  );
+};
+
+const TextAlignControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const value = sharedValue<TextAlign>(shapes, (s) => (s as TextShape).style?.textAlign ?? "left");
+  return (
+    <SegmentedControl<TextAlign>
+      ariaLabel="Text alignment"
+      value={value}
+      options={[
+        { value: "left", label: "Left", icon: <AlignLeft size={14} strokeWidth={1.75} /> },
+        { value: "center", label: "Center", icon: <AlignCenter size={14} strokeWidth={1.75} /> },
+        { value: "right", label: "Right", icon: <AlignRight size={14} strokeWidth={1.75} /> },
+      ]}
+      onChange={(v) => editor.updateStyle(ids, { textAlign: v })}
     />
   );
 };

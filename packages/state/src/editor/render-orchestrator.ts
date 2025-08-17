@@ -168,5 +168,9 @@ export const renderEditor = (editor: any): void => {
     }
   }
   if (gifBadges.length > 0) overlayOpts.gifBadges = gifBadges;
+  // In-canvas text editing: caret + selection highlight for the shape
+  // under edit (null when not editing).
+  const editingText = editor.editingTextOverlay();
+  if (editingText) overlayOpts.editingText = editingText;
   renderOverlay(editor._scene, editor._selection, editor.overlayTarget, overlayOpts);
 };

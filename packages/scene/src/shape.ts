@@ -3,6 +3,8 @@ import type { FractionalIndex } from "fractional-keys";
 import { bounds as B } from "@oh-just-another/math";
 import type { AnchorRef } from "./edge.js";
 import type { Style, TextStyle } from "./style.js";
+import { TEXT_APPROX_CHAR_WIDTH_FACTOR, TEXT_LINE_HEIGHT_FACTOR } from "./constants.js";
+import { getTextMeasurer } from "./text-measure.js";
 
 /**
  * Fields shared by every shape variant. `order` is a fractional-index string
@@ -409,14 +411,35 @@ registerBounder<PathShape>("path", (s) => {
 });
 
 registerBounder<TextShape>("text", (s) => {
-  // Rough estimate without a layout engine: width = max chars × font width, height
-  // = lines × line-height. Renderers provide a precise box during layout.
-  const approxCharWidth = s.fontSize * 0.6;
-  const width = s.maxWidth ?? s.text.length * approxCharWidth;
-  const lines = s.maxWidth
-    ? Math.max(1, Math.ceil((s.text.length * approxCharWidth) / s.maxWidth))
-    : 1;
-  return { x: 0, y: 0, width, height: lines * s.fontSize * 1.2 };
+  // Width comes from the host measurer when installed (matches the
+  // actually-rendered glyph advances), falling back to a geometric
+  // estimate (`chars × fontSize × factor`) headless / in tests. Height
+  // is line count × line-height; hard newlines honoured in both modes.
+  const lineHeight = s.fontSize * TEXT_LINE_HEIGHT_FACTOR;
+  const paragraphs = s.text.split("\n");
+  const measurer = getTextMeasurer();
+  const measureLine = (line: string): number => {
+    if (measurer) {
+      const w = measurer(line, s.fontFamily, s.fontSize);
+      if (w !== null) return w;
+    }
+    return line.length * s.fontSize * TEXT_APPROX_CHAR_WIDTH_FACTOR;
+  };
+  if (s.maxWidth === undefined) {
+    // Auto-width: widest paragraph drives width, one visual line per
+    // paragraph. Empty text keeps a caret-sized box so it stays
+    // selectable / editable.
+    let width = 0;
+    for (const p of paragraphs) width = Math.max(width, measureLine(p));
+    width = Math.max(width, s.fontSize * 0.5);
+    return { x: 0, y: 0, width, height: Math.max(1, paragraphs.length) * lineHeight };
+  }
+  // Fixed-width: width is the budget; height ≈ wrapped line count.
+  let lines = 0;
+  for (const p of paragraphs) {
+    lines += Math.max(1, Math.ceil(measureLine(p) / s.maxWidth));
+  }
+  return { x: 0, y: 0, width: s.maxWidth, height: Math.max(1, lines) * lineHeight };
 });
 
 registerBounder<ImageShape>("image", (s) => ({

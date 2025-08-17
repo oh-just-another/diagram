@@ -19,6 +19,7 @@ import { Editor, type EditorOptions, type Mode } from "@oh-just-another/state";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
 import type { Scene } from "@oh-just-another/scene";
 import { DiagramEditorBridge } from "./context.js";
+import { ContextMenuControllerProvider } from "./context-menu-controller.js";
 
 /**
  * Recommended composition: `<DiagramRoot>` owns the editor and provides it
@@ -219,8 +220,10 @@ export const DiagramRoot = ({
   return (
     <DiagramEditorBridge.Provider value={editor}>
       <RegisterSurfaceContext.Provider value={registerSurface}>
-        {children}
-        <LiveRegion editor={editor} />
+        <ContextMenuControllerProvider>
+          {children}
+          <LiveRegion editor={editor} />
+        </ContextMenuControllerProvider>
       </RegisterSurfaceContext.Provider>
     </DiagramEditorBridge.Provider>
   );

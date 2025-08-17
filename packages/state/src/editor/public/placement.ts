@@ -12,6 +12,11 @@ import {
 import type { LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
 import { shapeId as castShapeId } from "@oh-just-another/types";
 import type { Mode } from "../../modes.js";
+import {
+  TEXT_DEFAULT_FILL,
+  TEXT_DEFAULT_FONT_FAMILY,
+  TEXT_DEFAULT_FONT_SIZE,
+} from "../../constants.js";
 
 /**
  * Build a shape for keyboard-friendly creation centred on
@@ -42,6 +47,36 @@ export const buildShapeAtCursor = (
     style: { fill: "#bbb", stroke: "#000", strokeWidth: 1 },
     width,
     height,
+  } as Shape;
+};
+
+/**
+ * Build an empty text shape anchored at `worldPoint` (top-left). The
+ * `draw-text` tool drops this and opens the inline editor straight
+ * away, so the shape starts with no text — the renderer skips empty
+ * strings, and an untouched shape is cleaned up on commit.
+ */
+export const buildTextShapeAt = (
+  scene: Scene,
+  worldPoint: Vec2,
+  layerId: LayerId,
+  id: ShapeId,
+): Shape => {
+  const order = orderForTop(
+    [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
+  );
+  return {
+    id,
+    layerId,
+    type: "text",
+    position: { x: worldPoint.x, y: worldPoint.y },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order,
+    text: "",
+    fontFamily: TEXT_DEFAULT_FONT_FAMILY,
+    fontSize: TEXT_DEFAULT_FONT_SIZE,
+    style: { fill: TEXT_DEFAULT_FILL, textAlign: "left", textBaseline: "top" },
   } as Shape;
 };
 

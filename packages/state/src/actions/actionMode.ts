@@ -32,6 +32,14 @@ export const actionModeEllipse: Action = {
   perform: ({ editor }) => editor.setMode("draw-ellipse"),
 };
 
+export const actionModeText: Action = {
+  id: "mode-text",
+  label: "Text tool",
+  category: "mode",
+  hotkey: { key: "t" },
+  perform: ({ editor }) => editor.setMode("draw-text"),
+};
+
 export const actionModeEdge: Action = {
   id: "mode-edge",
   label: "Edge tool",
@@ -79,6 +87,7 @@ export const modeActions: readonly Action[] = [
   actionModeHand,
   actionModeRect,
   actionModeEllipse,
+  actionModeText,
   actionModeEdge,
   actionModeBrush,
   actionModeFrame,

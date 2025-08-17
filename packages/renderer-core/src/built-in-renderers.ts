@@ -15,8 +15,7 @@ import {
 } from "@oh-just-another/scene";
 import { registerShapeRenderer, type ShapeRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "./render-target.js";
-import { wrapText } from "./text-layout.js";
-import { getActiveTextShaper } from "./text-shaper.js";
+import { layoutText } from "./text-editing.js";
 import { resolveImageSource } from "./animation-adapter.js";
 
 /**
@@ -232,33 +231,42 @@ const drawPath: ShapeRenderer<PathShape> = (shape, target) => {
 const drawText: ShapeRenderer<TextShape> = (shape, target) => {
   target.setFont(shape.fontFamily, shape.fontSize);
   const align = shape.style.textAlign ?? "left";
-  const baseline = shape.style.textBaseline ?? "top";
-  target.setTextAlign(align);
-  target.setTextBaseline(baseline);
+  // Lines are positioned manually (see `lineLeftX` below) so the caret
+  // geometry computed from the same `layoutText` lines up exactly, so
+  // the target always draws left-anchored.
+  target.setTextAlign("left");
+  target.setTextBaseline(shape.style.textBaseline ?? "top");
 
   // Color: use fill if specified, otherwise default to black.
   const color = shape.style.fill ?? "#000";
   target.setFill(color);
   if (shape.style.opacity !== undefined) target.setOpacity(shape.style.opacity);
 
-  const xAnchor =
-    align === "center" ? (shape.maxWidth ?? 0) / 2 : align === "right" ? (shape.maxWidth ?? 0) : 0;
-
-  if (shape.maxWidth === undefined) {
-    // Single line, no wrapping.
-    target.fillText(shape.text, xAnchor, 0);
+  // Fast path: one line, no wrap budget, no hard breaks.
+  if (shape.maxWidth === undefined && !shape.text.includes("\n")) {
+    target.fillText(shape.text, 0, 0);
     return;
   }
 
-  const shaper = getActiveTextShaper();
-  const { lines, lineHeight } = wrapText(shape.text, target, {
-    maxWidth: shape.maxWidth,
+  // Measure with the target's own `measureText` so wrapping matches
+  // exactly what this backend draws (WebGL2 reports MSDF advances; the
+  // selection-box bounder + caret use the same source). Using the WASM
+  // shaper's `measure()` here instead would diverge from the rendered
+  // advances and the box, so wrap thresholds wouldn't line up.
+  const measure = (s: string) => target.measureText(s).width;
+  const layout = layoutText(shape.text, measure, {
     fontSize: shape.fontSize,
-    fontFamily: shape.fontFamily,
-    ...(shaper ? { shaper } : {}),
+    ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
   });
-  for (let i = 0; i < lines.length; i++) {
-    target.fillText(lines[i]!.text, xAnchor, i * lineHeight);
+  for (let i = 0; i < layout.lines.length; i++) {
+    const line = layout.lines[i]!;
+    const x =
+      align === "center"
+        ? layout.blockWidth / 2 - line.width / 2
+        : align === "right"
+          ? layout.blockWidth - line.width
+          : 0;
+    target.fillText(line.text, x, i * layout.lineHeight);
   }
 };
 

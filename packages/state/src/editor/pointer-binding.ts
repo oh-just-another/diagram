@@ -88,12 +88,45 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
     const worldPoint = editor.screenToWorld(data.point);
 
+    // Active in-canvas text edit owns the pointer. A press inside the
+    // edited shape repositions the caret (and starts a drag-select);
+    // a press outside commits the edit, then falls through so the same
+    // click does its normal thing (select / create elsewhere).
+    if (editor.editingTextShape !== null) {
+      if (editor.editedShapeContainsPoint(worldPoint)) {
+        editor.cancelLongPress();
+        editor.setTextCaretFromPoint(worldPoint);
+        return;
+      }
+      editor.commitTextEdit();
+      // fall through to normal press handling for this click
+    }
+
     // Brush mode owns the gesture end-to-end — no machine, no
     // interactive testers, no auto-select. Start a stroke at the
     // press point with the device's pressure; onMove extends; onUp
     // commits as a single BrushShape patch.
     if (editor.mode === "brush") {
       editor.beginBrushStroke(worldPoint, ev.pressure);
+      return;
+    }
+
+    // Text tool — a click places a new empty text shape (or, when it
+    // lands on an existing text shape, edits that one) and opens the
+    // inline editor straight away. Click-based, no rubber-band; we
+    // intercept before the machine flow like brush. Cancel the
+    // long-press so its context menu can't pop over the editor.
+    if (editor.mode === "draw-text") {
+      editor.cancelLongPress();
+      const hit = editor.hitTest(worldPoint);
+      const existing = hit?.kind === "shape" ? getShape(editor._scene, hit.id) : null;
+      if (existing?.type === "text") {
+        editor._selection = Selection.single(existing.id);
+        editor.beginTextEdit(existing.id);
+        editor.notify();
+      } else {
+        editor.createTextAt(worldPoint);
+      }
       return;
     }
 
@@ -287,6 +320,12 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // sensible drop target.
     editor.lastPointerWorld = worldPoint;
 
+    // Drag-select inside the edited text shape.
+    if (editor.editingTextShape !== null && editor.isTextDragging) {
+      editor.extendTextSelectionToPoint(worldPoint);
+      return;
+    }
+
     // Brush stroke in progress — append a vertex and skip everything
     // else (machine, container hover, hovered-edge target).
     if (editor.brushStroke) {
@@ -409,6 +448,12 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
     // Long-press loses its chance the moment the user releases.
     editor.cancelLongPress();
+
+    // End an in-canvas text drag-select.
+    if (editor.editingTextShape !== null && editor.isTextDragging) {
+      editor.endTextDragSelect();
+      return;
+    }
 
     // Commit brush stroke if one is in progress.
     if (editor.brushStroke) {

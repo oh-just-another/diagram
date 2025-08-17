@@ -1161,3 +1161,31 @@
   letter-spacing: 0.5px;
   color: var(--du-text-muted);
 }
+
+/* Vertical list row inside a selection popover (e.g. font-family
+   picker). One full-width clickable row; `is-active` marks the
+   current value. */
+.du-sel-menu-row {
+  all: unset;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--du-text, #ddd);
+  cursor: pointer;
+}
+
+.du-sel-menu-row:hover {
+  background: var(--du-ui-hover, #2a2a2a);
+}
+
+.du-sel-menu-row.is-active {
+  background: var(--du-accent-soft, rgba(80, 130, 255, 0.2));
+}
+
+.du-sel-menu-row:focus-visible {
+  outline: 2px solid var(--du-accent, #5082ff);
+  outline-offset: -2px;
+}

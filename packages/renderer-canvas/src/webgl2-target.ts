@@ -315,8 +315,16 @@ export class WebGL2Target implements RenderTarget {
   }
 
   rect(x: number, y: number, width: number, height: number): void {
-    this.currentPath = { x, y, width, height };
+    // Reuse one mutable rect — `fill()` / `stroke()` read it
+    // synchronously right after and never retain the reference, so a
+    // fresh object per rect would be waste.
+    this._pathRect.x = x;
+    this._pathRect.y = y;
+    this._pathRect.width = width;
+    this._pathRect.height = height;
+    this.currentPath = this._pathRect;
   }
+  private readonly _pathRect = { x: 0, y: 0, width: 0, height: 0 };
 
   moveTo(x: number, y: number): void {
     this.currentPolyline = [{ x, y }];
@@ -944,20 +952,6 @@ export class WebGL2Target implements RenderTarget {
     if (text.length === 0) return;
     void maxWidth;
     const atlas = this.ensureGlyphAtlas();
-    const path = atlas ? "MSDF" : "OffscreenCanvas fallback";
-    if (this.lastTextPath !== path && typeof console !== "undefined") {
-      this.lastTextPath = path;
-      const shaper = getActiveTextShaper();
-      // eslint-disable-next-line no-console
-      console.log(
-        "[WebGL2Target.fillText] path:",
-        path,
-        "shaper:",
-        shaper ? shaper.constructor.name : "none",
-        "shaper has glyphMetrics:",
-        !!(shaper && typeof (shaper as { glyphMetrics?: unknown }).glyphMetrics === "function"),
-      );
-    }
     if (atlas) {
       this.fillTextMSDF(text, x, y, atlas);
       return;
@@ -977,7 +971,6 @@ export class WebGL2Target implements RenderTarget {
   private msdfPipeline: MsdfTextPipeline | null = null;
   private glyphAtlas: GlyphAtlas | null = null;
   private glyphAtlasShaper: MsdfShaper | null = null;
-  private lastTextPath: string | null = null;
 
   /**
    * Lazy-acquire the MSDF atlas — only when there's an
@@ -1008,19 +1001,10 @@ export class WebGL2Target implements RenderTarget {
    */
   private fillTextMSDF(text: string, x: number, y: number, atlas: GlyphAtlas): void {
     if (!this.msdfPipeline) this.msdfPipeline = new MsdfTextPipeline(this.gl);
-    // Compute width by walking the cached glyphs (avoids a measure
-    // round-trip; falls back to 0 if a glyph isn't bakeable so the
-    // text still positions at the cursor).
-    let widthPx = 0;
-    for (const ch of text) {
-      const cp = ch.codePointAt(0)!;
-      const glyph = atlas.getOrRasterize(cp);
-      if (!glyph) break;
-      widthPx += (glyph.advance * this.fontSize) / glyph.unitsPerEm;
-    }
-    let px = x;
-    if (this.textAlign === "center") px -= widthPx / 2;
-    else if (this.textAlign === "right") px -= widthPx;
+    // Horizontal alignment is handled inside `drawText` (single walk —
+    // it measures the run and shifts via the transform), so no separate
+    // width-measuring pass here.
+    const alignFactor = this.textAlign === "center" ? 0.5 : this.textAlign === "right" ? 1 : 0;
     let py = y;
     // Editor convention: baseline=top means y is the top of the text
     // box. The MSDF quad math places the glyph relative to its font
@@ -1031,7 +1015,7 @@ export class WebGL2Target implements RenderTarget {
     // baseline=bottom uses py as-is (cursor sits on the baseline).
     this.msdfPipeline.drawText(
       text,
-      px,
+      x,
       py,
       this.fontSize,
       atlas,
@@ -1041,6 +1025,7 @@ export class WebGL2Target implements RenderTarget {
         transform: this.transform,
       },
       this._size,
+      alignFactor,
     );
     // The MSDF pipeline left its own program active; restore the
     // solid-fill program + VBO state so the next rect / polyline draw
@@ -1098,6 +1083,24 @@ export class WebGL2Target implements RenderTarget {
   }
 
   private textMetrics(text: string): { width: number } {
+    // When the MSDF path is active, measure with the same atlas glyph
+    // advances the renderer uses (`fillTextMSDF` walks `glyph.advance *
+    // fontSize / unitsPerEm`). Otherwise `measureText` would report the
+    // system-font width (a different, usually wider font) and callers —
+    // caret geometry, selection bounds — would drift from what's drawn.
+    const atlas = this.ensureGlyphAtlas();
+    if (atlas) {
+      let w = 0;
+      for (const ch of text) {
+        const cp = ch.codePointAt(0)!;
+        const glyph = atlas.getOrRasterize(cp);
+        if (!glyph) continue;
+        w += (glyph.advance * this.fontSize) / glyph.unitsPerEm;
+      }
+      return { width: w };
+    }
+    // Fallback (no MSDF shaper): Canvas2D system-font measurement, which
+    // matches the Canvas2D bitmap text path used in that case.
     const ctx = this.ensureTextCtx();
     if (!ctx) return { width: text.length * this.fontSize * 0.55 };
     ctx.font = this.textFontSpec();

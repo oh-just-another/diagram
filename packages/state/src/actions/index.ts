@@ -42,6 +42,7 @@ export {
   actionModeHand,
   actionModeRect,
   actionModeEllipse,
+  actionModeText,
   actionModeEdge,
   actionModeBrush,
   actionModeFrame,

@@ -67,6 +67,13 @@ export class MsdfTextPipeline {
     atlas: GlyphAtlas,
     style: Msdf2DTextStyle,
     surfaceSize: { width: number; height: number },
+    /**
+     * Horizontal alignment factor: 0 = left (cursor at `x`), 0.5 =
+     * centre, 1 = right. Applied as a single world-space x shift after
+     * measuring the run, so there's no separate width-measuring walk
+     * over the atlas.
+     */
+    alignFactor = 0,
   ): number {
     if (text.length === 0) return 0;
 
@@ -105,7 +112,17 @@ export class MsdfTextPipeline {
     gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 16, 0);
     gl.enableVertexAttribArray(this.aUV);
     gl.vertexAttribPointer(this.aUV, 2, gl.FLOAT, false, 16, 8);
-    writeAffineToClipMat3(scratchMat3, style.transform, surfaceSize.width, surfaceSize.height);
+    // Alignment: shift the whole run left by `width × alignFactor` in
+    // world space, folded into the transform's translation (screen
+    // shift = column-0 × worldDx). One walk total — no separate width
+    // measurement pass.
+    const t = style.transform;
+    let mat = t;
+    if (alignFactor !== 0) {
+      const dx = -(cursor - x) * alignFactor;
+      mat = { ...t, e: t.e + t.a * dx, f: t.f + t.b * dx };
+    }
+    writeAffineToClipMat3(scratchMat3, mat, surfaceSize.width, surfaceSize.height);
     gl.uniformMatrix3fv(this.uTransform, false, scratchMat3);
     gl.uniform3f(this.uColor, style.color[0], style.color[1], style.color[2]);
     gl.uniform1f(this.uOpacity, style.opacity);

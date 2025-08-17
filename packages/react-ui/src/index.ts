@@ -101,6 +101,12 @@ export {
   type ContextMenuProps,
 } from "./context-menu.js";
 export {
+  ContextMenuControllerProvider,
+  useContextMenuController,
+  type ContextMenuController,
+  type ContextMenuOpenRequest,
+} from "./context-menu-controller.js";
+export {
   HelpDialog,
   useHelpDialogHotkey,
   type HelpDialogProps,

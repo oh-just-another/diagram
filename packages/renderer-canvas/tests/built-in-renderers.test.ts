@@ -186,6 +186,7 @@ describe("built-in renderers", () => {
     const { target, calls } = recorder();
     getShapeRenderer("image")!(i, target);
     const di = calls.find((c) => c.method === "drawImage");
-    expect(di?.args.slice(1)).toEqual([0, 0, 100, 50]);
+    // args: (image, dx, dy, dw, dh, dynamic). Static image → dynamic=false.
+    expect(di?.args.slice(1)).toEqual([0, 0, 100, 50, false]);
   });
 });

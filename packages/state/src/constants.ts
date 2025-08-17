@@ -294,3 +294,39 @@ export const ANIMATION_COST_FACTOR = 2;
  */
 export const HEAVY_GIF_BYTES = 2 * 1024 * 1024;
 export const GIF_AUTOSTOP_MS = 30_000;
+
+/**
+ * Defaults for a text shape created via the `draw-text` tool (click on
+ * the canvas). Tweak to change the look of freshly-placed text before
+ * the user has touched the contextual panel.
+ *
+ * - `TEXT_DEFAULT_FONT_SIZE` — initial font size in world units.
+ * - `TEXT_DEFAULT_FONT_FAMILY` — initial font stack.
+ * - `TEXT_DEFAULT_FILL` — initial text colour (near-black).
+ * - `TEXT_FONT_SIZE_MIN` / `TEXT_FONT_SIZE_MAX` — clamp range for the
+ *   font-size control in the contextual panel.
+ */
+export const TEXT_DEFAULT_FONT_SIZE = 24;
+export const TEXT_DEFAULT_FONT_FAMILY = "system-ui, sans-serif";
+export const TEXT_DEFAULT_FILL = "#1a1a1a";
+export const TEXT_FONT_SIZE_MIN = 8;
+export const TEXT_FONT_SIZE_MAX = 256;
+
+/**
+ * In-canvas text editing.
+ *
+ * - `CARET_BLINK_INTERVAL_MS` — half-period of the caret blink (the
+ *   caret toggles visible/hidden every interval). 530 ms matches the
+ *   platform default most editors use. Typing/moving resets it to
+ *   visible so the caret never blinks off mid-interaction.
+ * - `TEXT_SELECTION_FILL` / `TEXT_SELECTION_OPACITY` — selection
+ *   highlight colour + alpha (~0.17 over the text).
+ * - `TEXT_CARET_WIDTH_PX` — caret bar width in screen px.
+ * - `TEXT_RESIZE_MIN_FONT_SIZE` — clamp so corner-resize can't shrink
+ *   text below a usable size.
+ */
+export const CARET_BLINK_INTERVAL_MS = 530;
+export const TEXT_SELECTION_FILL = "#1a73e8";
+export const TEXT_SELECTION_OPACITY = 0.25;
+export const TEXT_CARET_WIDTH_PX = 1.5;
+export const TEXT_RESIZE_MIN_FONT_SIZE = 4;

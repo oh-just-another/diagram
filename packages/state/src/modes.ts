@@ -9,6 +9,8 @@
  *   as "grab" / "grabbing". Useful on touch or for users who don't
  *   like Space-modifier panning.
  * - `draw-rect` / `draw-ellipse` — rubber-band shape creation.
+ * - `draw-text` — click places an empty text shape and opens its inline
+ *   editor immediately (standard text tool).
  * - `draw-edge` — edge creation from press-down shape (or empty) to
  *   release-shape (or empty).
  * - `brush` — pressure-sensitive freehand stroke.
@@ -22,6 +24,7 @@ export type Mode =
   | "hand"
   | "draw-rect"
   | "draw-ellipse"
+  | "draw-text"
   | "draw-edge"
   | "draw-frame"
   | "brush";

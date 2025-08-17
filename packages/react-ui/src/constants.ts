@@ -68,3 +68,29 @@ export const TOOLTIP_HIDE_GRACE_MS = 80;
  * box on the side specified by the `side` prop.
  */
 export const TOOLTIP_OFFSET_PX = 6;
+
+/**
+ * Text contextual-panel controls.
+ *
+ * - `TEXT_FONT_SIZE_PRESETS` — the S/M/L/XL quick buckets in the font
+ *   size segmented control (world-unit px). The popover slider covers
+ *   the full {@link TEXT_FONT_SIZE_MIN}–{@link TEXT_FONT_SIZE_MAX} range.
+ * - `TEXT_FONT_SIZE_MIN` / `TEXT_FONT_SIZE_MAX` — slider clamp range.
+ * - `TEXT_FONT_STACKS` — font-family choices offered in the family
+ *   dropdown. `value` is written verbatim to `TextShape.fontFamily`;
+ *   `label` is the human name shown in the menu.
+ */
+export const TEXT_FONT_SIZE_PRESETS: readonly { readonly label: string; readonly value: number }[] = [
+  { label: "S", value: 16 },
+  { label: "M", value: 24 },
+  { label: "L", value: 36 },
+  { label: "XL", value: 64 },
+];
+export const TEXT_FONT_SIZE_MIN = 8;
+export const TEXT_FONT_SIZE_MAX = 256;
+export const TEXT_FONT_STACKS: readonly { readonly label: string; readonly value: string }[] = [
+  { label: "Sans", value: "system-ui, sans-serif" },
+  { label: "Serif", value: "Georgia, 'Times New Roman', serif" },
+  { label: "Mono", value: "ui-monospace, 'SF Mono', Menlo, monospace" },
+  { label: "Rounded", value: "'Comic Sans MS', 'Segoe Print', cursive" },
+];

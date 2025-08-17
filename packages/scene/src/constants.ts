@@ -50,3 +50,19 @@ export const ADAPTIVE_CORNER_RADIUS = 32;
  * `Roundness.value` is omitted but the type is `round`.
  */
 export const PROPORTIONAL_CORNER_RADIUS = 0.25;
+
+/**
+ * --- Text bounds estimation ---
+ *
+ * The text bounder has no layout engine, so it approximates the box.
+ * Renderers compute the precise layout (via `measureText`) during
+ * draw / caret positioning; these factors only drive selection bbox
+ * and resize-handle placement, where a rough estimate is fine.
+ *
+ * - `TEXT_APPROX_CHAR_WIDTH_FACTOR` — average glyph advance as a
+ *   fraction of font size (~0.6 for proportional Latin text).
+ * - `TEXT_LINE_HEIGHT_FACTOR` — line height as a multiple of font
+ *   size. Must match the renderer's `DEFAULT_LINE_HEIGHT_FACTOR`.
+ */
+export const TEXT_APPROX_CHAR_WIDTH_FACTOR = 0.6;
+export const TEXT_LINE_HEIGHT_FACTOR = 1.2;

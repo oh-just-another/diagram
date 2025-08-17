@@ -25,6 +25,21 @@ export { renderGrid } from "./grid-renderer.js";
 export { installBuiltinRenderers } from "./built-in-renderers.js";
 export type { WrapOptions, WrappedLine } from "./text-layout.js";
 export { wrapText } from "./text-layout.js";
+export type {
+  LaidOutLine,
+  EditableTextLayout,
+  MeasureText,
+  LayoutTextOptions,
+  CaretGeometry,
+  SelectionRect,
+} from "./text-editing.js";
+export {
+  layoutText,
+  caretGeometry,
+  pointToCaretIndex,
+  selectionRects,
+  DEFAULT_LINE_HEIGHT_FACTOR,
+} from "./text-editing.js";
 
 export { ShapeCache, sharedBoundsCache, cachedWorldBounds } from "./shape-cache.js";
 export type { ShapeBitmapCache } from "./shape-cache-bitmap.js";
