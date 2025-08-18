@@ -41,6 +41,12 @@ const STORAGE_KEY = "oh-just-another-diagram-scene-v2";
 // rehydrated after reload.
 const FILES_KEY = "oh-just-another-diagram-files-v1";
 
+// Autosave debounce. A pan / drag mutates the scene (viewport or shape
+// positions) every animation frame; without a real delay the autosave
+// would `stringifyScene` + write localStorage on each one. Coalesce to
+// one write after the user pauses.
+const AUTOSAVE_DEBOUNCE_MS = 600;
+
 const seedScene = (): Scene => {
   let s = emptyScene();
   s = { ...s, viewport: { ...s.viewport, gridSize: DEFAULT_GRID_SIZE } };
@@ -164,30 +170,47 @@ export const App = () => {
   const collab = useCollab(editor);
   const { awareness, status } = collab;
 
-  // Autosave on every scene mutation, microtask-debounced so a
-  // burst of moves doesn't slam localStorage.
+  // Autosave on scene mutation, debounced so a pan / drag (which
+  // mutates the scene every frame) doesn't write localStorage on each
+  // frame. The binary-file sidecar is re-serialised ONLY when the
+  // `files` map actually changes — base64-encoding large GIF / image
+  // bytes is expensive, and pan / move / typing never touch `files`,
+  // so re-encoding them every save tanked FPS (arrayBufferToBase64 hot
+  // path).
   const pendingScene = useRef<Scene | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFilesRef = useRef<Scene["files"] | null>(null);
+  const lastFilesStr = useRef<string | null>(null);
   const handleSceneChange = useCallback(
     (scene: Scene) => {
       if (isCollab || typeof window === "undefined") return;
       pendingScene.current = scene;
-      queueMicrotask(() => {
+      if (saveTimer.current !== null) return; // a flush is already scheduled
+      saveTimer.current = setTimeout(() => {
+        saveTimer.current = null;
         const s = pendingScene.current;
         if (!s) return;
         pendingScene.current = null;
         try {
           window.localStorage.setItem(STORAGE_KEY, stringifyScene(s));
-          // Persist the binary-file sidecar alongside. Only write when
-          // there are files so empty scenes don't leave a stale entry.
           if (s.files.size > 0) {
-            window.localStorage.setItem(FILES_KEY, stringifyFiles(s));
+            // Cache the serialised sidecar by `files` identity — only
+            // re-encode when the binary map changed (add / remove file),
+            // never on a viewport / position change.
+            if (s.files !== lastFilesRef.current || lastFilesStr.current === null) {
+              lastFilesStr.current = stringifyFiles(s);
+              lastFilesRef.current = s.files;
+            }
+            window.localStorage.setItem(FILES_KEY, lastFilesStr.current);
           } else {
             window.localStorage.removeItem(FILES_KEY);
+            lastFilesRef.current = null;
+            lastFilesStr.current = null;
           }
         } catch {
           /* quota / private mode — ignore */
         }
-      });
+      }, AUTOSAVE_DEBOUNCE_MS);
     },
     [isCollab],
   );

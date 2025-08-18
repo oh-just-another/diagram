@@ -841,3 +841,6 @@
 
 ## 0.45.0
 - feat: text tool + in-canvas editing + typography panel
+
+## 0.45.1
+- fix: pan FPS drop from per-frame file base64 re-encode
