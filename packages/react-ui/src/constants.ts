@@ -89,8 +89,11 @@ export const TEXT_FONT_SIZE_PRESETS: readonly { readonly label: string; readonly
 export const TEXT_FONT_SIZE_MIN = 8;
 export const TEXT_FONT_SIZE_MAX = 256;
 export const TEXT_FONT_STACKS: readonly { readonly label: string; readonly value: string }[] = [
+  // Labels map to the three fonts embedded in the WASM MSDF shaper
+  // (sans / serif / mono). Canvas2D resolves the same stacks against
+  // real system fonts. Keep the family keywords ("serif", "mono") in
+  // each value so the shaper's resolver picks the right embedded font.
   { label: "Sans", value: "system-ui, sans-serif" },
   { label: "Serif", value: "Georgia, 'Times New Roman', serif" },
   { label: "Mono", value: "ui-monospace, 'SF Mono', Menlo, monospace" },
-  { label: "Rounded", value: "'Comic Sans MS', 'Segoe Print', cursive" },
 ];

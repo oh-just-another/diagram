@@ -1,0 +1,18 @@
+Embedded fonts — licensing
+===========================
+
+All three fonts embedded into text_shaper.wasm are licensed under the
+Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0):
+
+- Roboto-Regular.ttf       — Roboto, © Google (Christian Robertson)
+- RobotoSlab-Regular.ttf   — Roboto Slab, © The Roboto Slab Project Authors
+- RobotoMono-Regular.ttf   — Roboto Mono, © The Roboto Mono Project Authors
+
+The Apache-2.0 license permits embedding and redistribution (including
+inside a compiled WebAssembly binary) provided the license and
+attribution are retained — which this file does.
+
+Sources:
+- https://github.com/googlefonts/roboto
+- https://github.com/googlefonts/robotoslab
+- https://github.com/googlefonts/RobotoMono

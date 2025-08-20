@@ -5,12 +5,18 @@
 //!   memory          — wasm linear memory exported automatically
 //!   alloc(n)        — bump allocator, returns ptr
 //!   free(ptr, n)    — no-op (see below)
-//!   setFont(family_ptr, family_len, size_px) — sets the current font
-//!                     (the bundle contains exactly one font, Roboto Regular,
-//!                     so the arguments are used only for the size; family is
-//!                     ignored)
-//!   measure(text_ptr, text_len) — returns advance width in CSS pixels for a
-//!                     UTF-8 string.
+//!   resolveFont(family_ptr, family_len) — UTF-8 CSS font-family →
+//!                     font id (0=sans, 1=serif, 2=mono). Host calls it
+//!                     once per family to pick which embedded font to
+//!                     measure / rasterise with.
+//!   setFont(family_ptr, family_len, size_px) — sets the current font size
+//!                     and the current font (by family, via resolveFont).
+//!                     Used by the measure() path.
+//!   glyphMetrics(font_id, code_point) — glyph metrics from font font_id.
+//!   rasterizeGlyphMSDF(font_id, code_point, atlas_size, range) — MSDF
+//!                     glyph tile from font font_id.
+//!   measure(text_ptr, text_len) — returns advance width in CSS pixels
+//!                     for a UTF-8 string (in the current font from setFont).
 //!
 //! Implementation is pure ttf-parser. No complex shaping passes (GSUB /
 //! GPOS / kerning lookups). For each code point we look up the glyph id via
@@ -36,14 +42,59 @@ use fdsm::{
 use fdsm_ttf_parser::load_shape_from_face;
 use image::{ImageBuffer, Rgb, Rgb32FImage, RgbImage};
 use nalgebra::{Affine2, Matrix3};
-use ttf_parser::Face;
+use ttf_parser::{Face, Tag};
 
-/// Font embedded in the wasm bundle — Roboto Regular. ~500KB.
-const FONT_BYTES: &[u8] = include_bytes!("../font/Roboto-Regular.ttf");
+/// Fonts embedded in the wasm. Index = font id, which the JS side gets
+/// via `resolveFont` and passes to `glyphMetrics` / `rasterizeGlyphMSDF`.
+/// All three are Apache-2.0 (see font/LICENSE).
+///   0 = sans  (Roboto Regular)
+///   1 = serif (Roboto Slab — variable, instantiated at wght=400)
+///   2 = mono  (Roboto Mono Regular)
+const FONT_SANS: &[u8] = include_bytes!("../font/Roboto-Regular.ttf");
+const FONT_SERIF: &[u8] = include_bytes!("../font/RobotoSlab-Regular.ttf");
+const FONT_MONO: &[u8] = include_bytes!("../font/RobotoMono-Regular.ttf");
+const FONTS: [&[u8]; 3] = [FONT_SANS, FONT_SERIF, FONT_MONO];
+
+/// Bytes for a font id, falling back to sans for an out-of-range id.
+fn font_bytes(font_id: u32) -> &'static [u8] {
+    *FONTS.get(font_id as usize).unwrap_or(&FONT_SANS)
+}
+
+/// Parse a face for `font_id` and pin variable fonts to a sane upright
+/// regular weight (`wght = 400`). Static fonts ignore `set_variation`
+/// (returns `None`), so this is a harmless no-op for sans / mono and
+/// instantiates the serif VF's default master at Regular.
+fn face_for(font_id: u32) -> Option<Face<'static>> {
+    let mut face = Face::parse(font_bytes(font_id), 0).ok()?;
+    let _ = face.set_variation(Tag::from_bytes(b"wght"), 400.0);
+    Some(face)
+}
+
+/// Resolve a lowercased CSS font-family stack into a font id. Order
+/// matters: `mono` wins; `sans` (incl. `sans-serif`) maps to sans
+/// before the bare `serif` test can claim it.
+fn resolve_font_id(family_lower: &str) -> u32 {
+    if family_lower.contains("mono") {
+        2
+    } else if family_lower.contains("sans") {
+        0
+    } else if family_lower.contains("serif")
+        || family_lower.contains("slab")
+        || family_lower.contains("georgia")
+        || family_lower.contains("times")
+    {
+        1
+    } else {
+        0
+    }
+}
 
 thread_local! {
     /// Current font size in CSS pixels. Changed via setFont(...).
     static FONT_SIZE: RefCell<f32> = const { RefCell::new(14.0) };
+
+    /// Current font id for the measure() path. Changed via setFont(...).
+    static CURRENT_FONT: RefCell<u32> = const { RefCell::new(0) };
 
     /// Bump allocator: cursor + buffer. The JS side allocates short chunks
     /// (font family, measured strings); no freelist, just advance the pointer.
@@ -96,11 +147,28 @@ pub extern "C" fn reset() {
     ARENA_TOP.with(|top| *top.borrow_mut() = 0);
 }
 
-/// setFont — sets the font size. `family_ptr` / `family_len` are accepted for
-/// ABI compatibility but ignored: this wasm bundle has only Roboto Regular.
+/// Resolve a UTF-8 CSS font-family string into a font id (see
+/// [`resolve_font_id`]). Null / empty / invalid → 0 (sans).
+#[export_name = "resolveFont"]
+pub extern "C" fn resolve_font(family_ptr: *const u8, family_len: usize) -> u32 {
+    if family_ptr.is_null() || family_len == 0 {
+        return 0;
+    }
+    let bytes = unsafe { core::slice::from_raw_parts(family_ptr, family_len) };
+    match core::str::from_utf8(bytes) {
+        Ok(s) => resolve_font_id(&s.to_ascii_lowercase()),
+        Err(_) => 0,
+    }
+}
+
+/// setFont — sets the current font size AND the current font (resolved by
+/// family). Affects `measure()`; glyph paths take the font id as an explicit
+/// parameter. Safe with a null family (stays sans).
 #[export_name = "setFont"]
-pub extern "C" fn set_font(_family_ptr: *const u8, _family_len: usize, size_px: f32) {
+pub extern "C" fn set_font(family_ptr: *const u8, family_len: usize, size_px: f32) {
     FONT_SIZE.with(|cell| *cell.borrow_mut() = size_px);
+    let id = resolve_font(family_ptr, family_len);
+    CURRENT_FONT.with(|cell| *cell.borrow_mut() = id);
 }
 
 /// Measures a UTF-8 string via ttf-parser. Returns the total horizontal
@@ -112,9 +180,10 @@ pub extern "C" fn measure(text_ptr: *const u8, text_len: usize) -> f32 {
         Ok(s) => s,
         Err(_) => return 0.0,
     };
-    let face = match Face::parse(FONT_BYTES, 0) {
-        Ok(f) => f,
-        Err(_) => return 0.0,
+    let font_id = CURRENT_FONT.with(|cell| *cell.borrow());
+    let face = match face_for(font_id) {
+        Some(f) => f,
+        None => return 0.0,
     };
     let upem = face.units_per_em() as f32;
     let size = FONT_SIZE.with(|cell| *cell.borrow());
@@ -146,16 +215,16 @@ pub extern "C" fn measure(text_ptr: *const u8, text_len: usize) -> f32 {
 /// Missing glyph: zeros across the board (host should treat as
 /// non-renderable and skip).
 #[export_name = "glyphMetrics"]
-pub extern "C" fn glyph_metrics(code_point: u32) -> *const f32 {
+pub extern "C" fn glyph_metrics(font_id: u32, code_point: u32) -> *const f32 {
     let ptr = alloc(24) as *mut f32;
     unsafe {
         for i in 0..6 {
             ptr.add(i).write(0.0);
         }
     }
-    let face = match Face::parse(FONT_BYTES, 0) {
-        Ok(f) => f,
-        Err(_) => return ptr,
+    let face = match face_for(font_id) {
+        Some(f) => f,
+        None => return ptr,
     };
     let upem = face.units_per_em() as f32;
     let ch = match char::from_u32(code_point) {
@@ -203,6 +272,7 @@ pub extern "C" fn glyph_metrics(code_point: u32) -> *const f32 {
 /// shader, so the host gets a transparent quad).
 #[export_name = "rasterizeGlyphMSDF"]
 pub extern "C" fn rasterize_glyph_msdf(
+    font_id: u32,
     code_point: u32,
     atlas_size: u32,
     range: f32,
@@ -214,9 +284,9 @@ pub extern "C" fn rasterize_glyph_msdf(
         core::ptr::write_bytes(ptr, 0, n);
     }
 
-    let face = match Face::parse(FONT_BYTES, 0) {
-        Ok(f) => f,
-        Err(_) => return ptr,
+    let face = match face_for(font_id) {
+        Some(f) => f,
+        None => return ptr,
     };
     let ch = match char::from_u32(code_point) {
         Some(c) => c,

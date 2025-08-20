@@ -7,9 +7,18 @@ Rust source for the two WebAssembly modules consumed by the
 
 ### `text-shaper/`
 
-Text shaping via `ttf-parser`. Embeds **Roboto Regular** (~500 KB)
-inside the wasm so a single fetch / read gives both the engine and
-the font. Exports:
+Text shaping via `ttf-parser` + MSDF glyph rasterisation via `fdsm`.
+Embeds **three fonts** (all Apache-2.0, see `text-shaper/font/LICENSE`)
+inside the wasm so a single fetch / read gives both the engine and the
+fonts:
+
+| font id | family | file |
+|---|---|---|
+| 0 | sans (default) | `Roboto-Regular.ttf` |
+| 1 | serif | `RobotoSlab-Regular.ttf` (variable, pinned to `wght=400`) |
+| 2 | mono | `RobotoMono-Regular.ttf` |
+
+Exports:
 
 | Name | Signature | Notes |
 |---|---|---|
@@ -17,10 +26,23 @@ the font. Exports:
 | `alloc(n)` | `(usize) → *mut u8` | bump allocator |
 | `free(ptr, n)` | `(*mut u8, usize) → ()` | no-op (bump = no reclaim) |
 | `reset()` | `() → ()` | bump cursor back to 0 |
-| `setFont(family_ptr, family_len, size_px)` | `(*const u8, usize, f32)` | `family` ignored — only Roboto |
-| `measure(text_ptr, text_len)` | `(*const u8, usize) → f32` | advance width in CSS-px |
+| `resolveFont(family_ptr, family_len)` | `(*const u8, usize) → u32` | CSS family stack → font id (0/1/2) |
+| `setFont(family_ptr, family_len, size_px)` | `(*const u8, usize, f32)` | sets size + current font (for `measure`) |
+| `measure(text_ptr, text_len)` | `(*const u8, usize) → f32` | advance width in CSS-px (current font) |
+| `glyphMetrics(font_id, code_point)` | `(u32, u32) → *const f32` | 6×f32: advance, bbox, UPM (font units) |
+| `rasterizeGlyphMSDF(font_id, code_point, atlas_size, range)` | `(u32, u32, u32, f32) → *const u8` | `atlas_size²×3` RGB MSDF tile |
 
-Footprint: ~590 KB `.wasm` after `opt-level = "z"` + strip.
+The MSDF tiles are generated **lazily at runtime** per glyph (inside
+the wasm, by `fdsm`) and cached in a GPU atlas on the host — there's no
+offline per-font generation step. Font family selection is the host's
+job: it calls `resolveFont(family)` → `fontId`, then passes `fontId`
+into `glyphMetrics` / `rasterizeGlyphMSDF`. The host atlas keys glyphs
+by `(fontId, codePoint)` so the same letter in two families gets two
+tiles in the shared texture.
+
+Footprint: ~1.1 MB `.wasm` (three fonts) after `opt-level = "z"` + strip.
+
+architecture (Canvas2D vs WebGL2) and how to add a font.
 
 ### `rasterizer/`
 

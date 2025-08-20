@@ -90,4 +90,39 @@ describe("WasmTextShaper.loadBundled (real .wasm)", () => {
     expect(tile).not.toBeNull();
     expect(tile!.data.every((b) => b === 0)).toBe(true);
   });
+
+  // --- Multi-font (sans / serif / mono) ---
+
+  it("resolveFontId maps CSS family stacks to embedded font ids", async () => {
+    const s = await WasmTextShaper.loadBundled();
+    expect(s.resolveFontId("system-ui, sans-serif")).toBe(0);
+    expect(s.resolveFontId("Georgia, 'Times New Roman', serif")).toBe(1);
+    expect(s.resolveFontId("ui-monospace, 'SF Mono', Menlo, monospace")).toBe(2);
+    expect(s.resolveFontId("")).toBe(0);
+  });
+
+  it("mono font has equal advances for i and M (the proportional fonts don't)", async () => {
+    const s = await WasmTextShaper.loadBundled();
+    const monoI = s.glyphMetrics("i".charCodeAt(0), 2)!;
+    const monoM = s.glyphMetrics("M".charCodeAt(0), 2)!;
+    // Roboto Mono is monospaced → identical advances.
+    expect(monoM.advance).toBe(monoI.advance);
+    // Sans (id 0) is proportional → M much wider than i.
+    const sansI = s.glyphMetrics("i".charCodeAt(0), 0)!;
+    const sansM = s.glyphMetrics("M".charCodeAt(0), 0)!;
+    expect(sansM.advance).toBeGreaterThan(sansI.advance * 1.5);
+  });
+
+  it("serif and sans produce different glyph metrics for the same letter", async () => {
+    const s = await WasmTextShaper.loadBundled();
+    const sansA = s.glyphMetrics("A".charCodeAt(0), 0)!;
+    const serifA = s.glyphMetrics("A".charCodeAt(0), 1)!;
+    // Different fonts → different outlines → metrics shouldn't match
+    // exactly (advance and/or bbox differ).
+    const differs =
+      sansA.advance !== serifA.advance ||
+      sansA.bboxW !== serifA.bboxW ||
+      sansA.unitsPerEm !== serifA.unitsPerEm;
+    expect(differs).toBe(true);
+  });
 });

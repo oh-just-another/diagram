@@ -74,6 +74,8 @@ export class MsdfTextPipeline {
      * over the atlas.
      */
     alignFactor = 0,
+    /** Embedded font id (0=sans, 1=serif, 2=mono); selects atlas glyphs. */
+    fontId = 0,
   ): number {
     if (text.length === 0) return 0;
 
@@ -90,7 +92,7 @@ export class MsdfTextPipeline {
     let cursor = x;
     for (const ch of text) {
       const cp = ch.codePointAt(0)!;
-      const glyph = atlas.getOrRasterize(cp);
+      const glyph = atlas.getOrRasterize(cp, fontId);
       if (!glyph) break; // atlas full or shaper unavailable
       const advancePx = (glyph.advance * fontSize) / glyph.unitsPerEm;
       if (glyph.empty) {

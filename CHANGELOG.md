@@ -844,3 +844,6 @@
 
 ## 0.45.1
 - fix: pan FPS drop from per-frame file base64 re-encode
+
+## 0.45.2
+- feat: multi-font WebGL2 text (sans/serif/mono) + fonts dev doc

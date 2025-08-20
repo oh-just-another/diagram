@@ -36,12 +36,19 @@ export interface WasmShaperExports {
   readonly setFont: (familyPtr: number, familyLen: number, size: number) => void;
   readonly measure: (textPtr: number, textLen: number) => number;
   /**
+   * Optional — resolve a UTF-8 CSS font-family string to a font id
+   * (0=sans, 1=serif, 2=mono). Present in multi-font modules. Older
+   * single-font modules omit it (host treats everything as id 0).
+   */
+  readonly resolveFont?: (familyPtr: number, familyLen: number) => number;
+  /**
    * Optional — only present when the bundled MSDF-capable module is
    * loaded. Returns a pointer to 24 bytes (6 × f32 little-endian) with
    * the layout `[advance, bboxXMin, bboxYMin, bboxW, bboxH, unitsPerEm]`
    * in font units. Pointer stays valid until the next `reset()`.
+   * `fontId` selects the embedded font.
    */
-  readonly glyphMetrics?: (codePoint: number) => number;
+  readonly glyphMetrics?: (fontId: number, codePoint: number) => number;
   /**
    * Optional — only present when the bundled MSDF-capable module is
    * loaded. Returns a pointer to `atlasSize * atlasSize * 3` RGB
@@ -49,8 +56,10 @@ export interface WasmShaperExports {
    * supplied code point. `range` is the SDF range in atlas pixels
    * (the host's shader uses `median(r,g,b)` + `smoothstep` to
    * antialias). Empty / missing glyphs return an all-zero buffer.
+   * `fontId` selects the embedded font.
    */
   readonly rasterizeGlyphMSDF?: (
+    fontId: number,
     codePoint: number,
     atlasSize: number,
     range: number,
@@ -189,20 +198,38 @@ export class WasmTextShaper implements TextShaper {
   }
 
   /**
+   * Resolve a CSS font-family stack to an embedded font id (0=sans,
+   * 1=serif, 2=mono). Returns 0 when the module is single-font (no
+   * `resolveFont` export) or not yet loaded, so callers degrade to the
+   * default font transparently. The atlas keys glyphs by this id, so
+   * the same code point in two families gets two tiles.
+   */
+  resolveFontId(family: string): number {
+    const wasm = this.wasm;
+    if (!wasm || !wasm.resolveFont) return 0;
+    const bytes = this.textEncoder.encode(family);
+    const ptr = wasm.alloc(bytes.byteLength);
+    new Uint8Array(wasm.memory.buffer, ptr, bytes.byteLength).set(bytes);
+    const id = wasm.resolveFont(ptr, bytes.byteLength);
+    wasm.free(ptr, bytes.byteLength);
+    return id;
+  }
+
+  /**
    * Pull per-glyph metrics (advance + tight bbox + UPM) from the WASM
    * shaper for a single code point. Returns `null` if the loaded
-   * module doesn't expose `glyphMetrics` (older builds) or before
-   * `loadModule()` has resolved. All values are in font units; the
-   * host scales via `fontSize / unitsPerEm` — same convention as
-   * `measure` uses internally.
+   * module doesn't expose `glyphMetrics` or before `loadModule()` has
+   * resolved. All values are in font units; the host scales via
+   * `fontSize / unitsPerEm` — same convention as `measure` uses
+   * internally. `fontId` selects the embedded font.
    *
    * The returned object is detached (plain object, not a memory
    * view), so callers can keep it past further WASM calls.
    */
-  glyphMetrics(codePoint: number): GlyphMetrics | null {
+  glyphMetrics(codePoint: number, fontId = 0): GlyphMetrics | null {
     const wasm = this.wasm;
     if (!wasm || !wasm.glyphMetrics) return null;
-    const ptr = wasm.glyphMetrics(codePoint);
+    const ptr = wasm.glyphMetrics(fontId, codePoint);
     const buffer = wasm.memory.buffer;
     // 6 contiguous little-endian f32 (24 bytes). Read via DataView, not
     // `new Float32Array(buffer, ptr, 6)`: the WASM ABI does not
@@ -239,10 +266,15 @@ export class WasmTextShaper implements TextShaper {
    * The returned `data` is a **copy** of the WASM-side buffer so the
    * tile survives subsequent WASM calls that may grow the arena.
    */
-  rasterizeGlyphMSDF(codePoint: number, atlasSize: number, range: number): MsdfGlyphTile | null {
+  rasterizeGlyphMSDF(
+    codePoint: number,
+    atlasSize: number,
+    range: number,
+    fontId = 0,
+  ): MsdfGlyphTile | null {
     const wasm = this.wasm;
     if (!wasm || !wasm.rasterizeGlyphMSDF) return null;
-    const ptr = wasm.rasterizeGlyphMSDF(codePoint, atlasSize, range);
+    const ptr = wasm.rasterizeGlyphMSDF(fontId, codePoint, atlasSize, range);
     const len = atlasSize * atlasSize * 3;
     // Copy out of WASM memory into a standalone Uint8Array. `slice()`
     // allocates fresh storage so the caller is safe even after

@@ -9,7 +9,10 @@ import { DEFAULT_ATLAS_SIZE, DEFAULT_RANGE, DEFAULT_TILE_SIZE } from "./constant
  * native AOT, etc.) can plug in too.
  */
 export interface MsdfShaper {
-  glyphMetrics(codePoint: number): {
+  glyphMetrics(
+    codePoint: number,
+    fontId?: number,
+  ): {
     readonly advance: number;
     readonly bboxXMin: number;
     readonly bboxYMin: number;
@@ -21,11 +24,17 @@ export interface MsdfShaper {
     codePoint: number,
     atlasSize: number,
     range: number,
+    fontId?: number,
   ): {
     readonly atlasSize: number;
     readonly range: number;
     readonly data: Uint8Array;
   } | null;
+  /**
+   * Resolve a CSS font-family stack to the shaper's font id. Optional —
+   * single-font shapers omit it and everything stays font id 0.
+   */
+  resolveFontId?(family: string): number;
 }
 
 /**
@@ -105,7 +114,7 @@ export class GlyphAtlas {
   readonly columns: number;
   readonly capacity: number;
 
-  /** Per-glyph cache. Key = code point. */
+  /** Per-glyph cache. Key = `fontId * 0x110000 + codePoint` (see `glyphKey`). */
   private readonly glyphs = new Map<number, AtlasGlyph>();
   /** CPU-side RGB buffer mirroring the GPU texture. */
   private readonly buffer: Uint8Array;
@@ -142,12 +151,21 @@ export class GlyphAtlas {
    * zero so the GPU sample reads as "fully outside". The slot stays
    * allocated so the metrics are still discoverable.
    */
-  getOrRasterize(codePoint: number): AtlasGlyph | null {
-    const cached = this.glyphs.get(codePoint);
+  /** Resolve a CSS font-family to the shaper's font id (0 when single-font). */
+  resolveFontId(family: string): number {
+    return this.shaper.resolveFontId?.(family) ?? 0;
+  }
+
+  getOrRasterize(codePoint: number, fontId = 0): AtlasGlyph | null {
+    // Glyphs from different fonts share one atlas texture but must not
+    // collide in the cache — key by (fontId, codePoint). codePoint is
+    // ≤ 0x10FFFF, so the multiply leaves no overlap.
+    const key = fontId * 0x110000 + codePoint;
+    const cached = this.glyphs.get(key);
     if (cached) return cached;
     if (this.nextSlot >= this.capacity) return null;
 
-    const metrics = this.shaper.glyphMetrics(codePoint);
+    const metrics = this.shaper.glyphMetrics(codePoint, fontId);
     if (!metrics) return null; // shaper module pre-MSDF — caller should fall back
 
     const slot = this.nextSlot++;
@@ -158,7 +176,7 @@ export class GlyphAtlas {
 
     const isEmpty = metrics.bboxW <= 0 || metrics.bboxH <= 0;
     if (!isEmpty) {
-      const tile = this.shaper.rasterizeGlyphMSDF(codePoint, this.tileSize, this.range);
+      const tile = this.shaper.rasterizeGlyphMSDF(codePoint, this.tileSize, this.range, fontId);
       if (tile) {
         // Blit the per-tile MSDF into the right region of the
         // atlas-wide buffer (texel-rows are non-contiguous in the
@@ -189,7 +207,7 @@ export class GlyphAtlas {
       unitsPerEm: metrics.unitsPerEm,
       empty: isEmpty,
     };
-    this.glyphs.set(codePoint, entry);
+    this.glyphs.set(key, entry);
     return entry;
   }
 
