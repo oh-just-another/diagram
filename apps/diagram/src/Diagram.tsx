@@ -280,6 +280,12 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   );
 
   const seed = useMemo<Scene>(() => initialScene ?? emptyScene(), [initialScene]);
+  // Does the initial scene contain any text? Drives whether first paint
+  // waits for the MSDF shaper (see the mount gate below).
+  const sceneHasText = useMemo(() => {
+    for (const s of seed.shapes.values()) if (s.type === "text") return true;
+    return false;
+  }, [seed]);
 
   // --- Plugin registration ---
   useEffect(() => {
@@ -292,6 +298,11 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   const [profile, setProfile] = useState<CapabilityProfile | null>(null);
   const [wasmShaper, setWasmShaper] = useState<TextShaper | null>(null);
   const [wasmRaster, setWasmRaster] = useState<Rasterizer | null>(null);
+  // True once the MSDF text-shaper load has SETTLED (loaded or failed).
+  // Used to hold the first paint of a text-bearing scene until the real
+  // font is ready, so text doesn't render in a fallback font and then
+  // snap to the WASM font ("jump" on load — a FOUT).
+  const [wasmTextSettled, setWasmTextSettled] = useState(false);
   const detectionRef = useRef<Promise<CapabilityProfile> | null>(null);
   const loggedRef = useRef(false);
   useEffect(() => {
@@ -315,8 +326,13 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
               if (cancelled) return;
               setActiveTextShaper(shaper);
               setWasmShaper(shaper);
+              setWasmTextSettled(true);
             },
             (err) => {
+              if (cancelled) return;
+              // Settle even on failure so a text-bearing scene still
+              // mounts (with the fallback font) instead of hanging.
+              setWasmTextSettled(true);
               // eslint-disable-next-line no-console
               console.warn("[diagram] WASM text shaper load failed", err);
             },
@@ -403,6 +419,20 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   }, [theme]);
 
   if (!profile) {
+    return <div className={className} style={style} />;
+  }
+  // Hold the first paint of a text-bearing scene until the MSDF shaper
+  // has settled, so text renders in its final font from frame one (no
+  // fallback-font → WASM-font jump). Only the WebGL2 MSDF path swaps
+  // fonts like this; Canvas2D always draws system fonts (no jump), and
+  // text-free scenes have nothing to jump — both mount immediately, so
+  // we don't pay shaper-load latency on first paint.
+  if (
+    profile.renderer === "webgl2" &&
+    profile.wasmText &&
+    !wasmTextSettled &&
+    sceneHasText
+  ) {
     return <div className={className} style={style} />;
   }
 

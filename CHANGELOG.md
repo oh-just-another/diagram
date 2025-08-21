@@ -847,3 +847,6 @@
 
 ## 0.45.2
 - feat: multi-font WebGL2 text (sans/serif/mono) + fonts dev doc
+
+## 0.45.3
+- fix: text "jump" on page load — hold first paint until MSDF shaper settles
