@@ -850,3 +850,6 @@
 
 ## 0.45.3
 - fix: text "jump" on page load — hold first paint until MSDF shaper settles
+
+## 0.45.4
+- fix: copy/paste of image & GIF shapes

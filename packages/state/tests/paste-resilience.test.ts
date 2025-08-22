@@ -24,6 +24,30 @@ const rect = (id: string): Shape => ({
   height: 50,
 });
 
+/**
+ * Image shape carrying a non-cloneable live handle in `metadata.image`.
+ * In the browser this is a decoded `HTMLImageElement`; here we use a
+ * stand-in object with a method, which `structuredClone` also rejects
+ * (`DataCloneError`).
+ */
+const imageWithLiveHandle = (id: string): Shape =>
+  ({
+    id: shapeId(id),
+    layerId: DEFAULT_LAYER_ID,
+    type: "image",
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: {},
+    src: "",
+    fileId: "file-1",
+    width: 40,
+    height: 30,
+    // Functions are not structured-cloneable → mimics a DOM <img>.
+    metadata: { image: { draw() {} } },
+  }) as unknown as Shape;
+
 const sceneWith = (...shapes: Shape[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) s = addShape(s, sh).scene;
@@ -104,5 +128,25 @@ describe("paste resilience to leaked transactions", () => {
     // And undo returns the scene to its previous state in one step.
     e.undo();
     expect(e.scene.shapes.size).toBe(1);
+  });
+
+  it("copy+paste of an image with a live metadata.image handle does not throw and pastes", () => {
+    const e = new Editor({
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: sceneWith(imageWithLiveHandle("img")),
+    });
+    e.setSelection([shapeId("img")]);
+    expect(() => e.copySelected()).not.toThrow();
+    expect(() => e.paste()).not.toThrow();
+    // A second image shape now exists in the scene.
+    const images = [...e.scene.shapes.values()].filter((s) => s.type === "image");
+    expect(images).toHaveLength(2);
+    // The pasted copy keeps the fileId (so its bytes resolve) and the
+    // live image handle (shared by reference, like Duplicate).
+    const pasted = images.find((s) => s.id !== shapeId("img"))!;
+    expect((pasted as { fileId?: string }).fileId).toBe("file-1");
+    expect((pasted as { metadata?: { image?: unknown } }).metadata?.image).toBeDefined();
   });
 });

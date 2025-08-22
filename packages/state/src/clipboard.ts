@@ -28,10 +28,44 @@ export interface PasteResult {
 }
 
 /**
- * Snapshot every selected shape into a fresh array (deep clones via
- * `structuredClone`, so subsequent edits don't bleed into the
- * buffer). Returns the new buffer; caller assigns it to the
- * editor's internal field.
+ * Clone a shape for the clipboard buffer / paste output. Deep-clones the
+ * plain data (so later edits don't bleed into the buffer) but carries
+ * live runtime handles by reference instead of cloning them:
+ *
+ *   - `metadata.image` — a decoded `HTMLImageElement`; `structuredClone`
+ *     throws `DataCloneError` on DOM nodes.
+ *   - `animationData` — the raw GIF/video buffer; large and re-derivable
+ *     from `fileId`, so sharing the reference avoids copying megabytes.
+ *
+ * The live `<img>` / buffer is shared, so the pasted shape draws
+ * immediately (same as the original) and still references its `fileId`.
+ */
+export const cloneShapeForClipboard = (shape: Shape): Shape => {
+  const meta = (shape as { metadata?: Record<string, unknown> }).metadata;
+  const liveImage = meta && "image" in meta ? meta.image : undefined;
+  const liveAnim = (shape as { animationData?: unknown }).animationData;
+
+  // Strip the live handles, deep-clone the rest, then re-attach by ref.
+  const stripped: Record<string, unknown> = { ...(shape as unknown as Record<string, unknown>) };
+  if (liveAnim !== undefined) delete stripped.animationData;
+  if (meta) {
+    const m = { ...meta };
+    delete m.image;
+    stripped.metadata = m;
+  }
+  const cloned = structuredClone(stripped) as Record<string, unknown>;
+  if (liveImage !== undefined) {
+    cloned.metadata = { ...(cloned.metadata as Record<string, unknown> | undefined), image: liveImage };
+  }
+  if (liveAnim !== undefined) cloned.animationData = liveAnim;
+  return cloned as unknown as Shape;
+};
+
+/**
+ * Snapshot every selected shape into a fresh array. Uses
+ * {@link cloneShapeForClipboard} so live runtime handles (decoded
+ * image element, animation buffer) survive — a plain `structuredClone`
+ * throws on the DOM `<img>` an image shape carries in `metadata.image`.
  */
 export const copyShapes = (
   scene: Scene,
@@ -40,7 +74,7 @@ export const copyShapes = (
   const out: Shape[] = [];
   for (const id of selection) {
     const s = getShape(scene, id);
-    if (s) out.push(structuredClone(s));
+    if (s) out.push(cloneShapeForClipboard(s));
   }
   return out;
 };
@@ -92,7 +126,7 @@ export const pasteShapes = (
         .map((s) => s.order),
     );
     const clone = {
-      ...structuredClone(tmpl),
+      ...cloneShapeForClipboard(tmpl),
       id: newId,
       position: { x: tmpl.position.x + delta.x, y: tmpl.position.y + delta.y },
       order,
