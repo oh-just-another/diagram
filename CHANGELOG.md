@@ -853,3 +853,6 @@
 
 ## 0.45.4
 - fix: copy/paste of image & GIF shapes
+
+## 0.45.5
+- fix: shift-click multi-select extends selection

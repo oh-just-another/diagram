@@ -70,10 +70,14 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
       .map((id) => scene.shapes.get(id))
       .filter((s): s is ShapeBase => s !== undefined);
     if (shapes.length === 0) return null;
-    // Text-only selection gets a typography-focused row (font size /
-    // family / alignment + colour). Stroke / roundness controls don't
-    // apply to text fill, so they're dropped for that branch.
+    // Per-type control sets:
+    //  - text  → typography (font size / family / alignment + colour);
+    //  - image → opacity only (an image's pixels are the content — a
+    //    fill/background or stroke/border makes no sense, so those
+    //    controls are dropped);
+    //  - else  → the generic fill / stroke / roundness row.
     const allText = shapes.every((s) => s.type === "text");
+    const allImage = shapes.every((s) => s.type === "image");
     return (
       <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style}>
         {allText ? (
@@ -85,6 +89,8 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
             <FillControl shapes={shapes} />
             <OpacityControl shapes={shapes} />
           </>
+        ) : allImage ? (
+          <OpacityControl shapes={shapes} />
         ) : (
           <>
             <FillControl shapes={shapes} />

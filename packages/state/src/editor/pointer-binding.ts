@@ -44,6 +44,8 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     ev.preventDefault();
     editor.host.setPointerCapture(ev.pointerId);
     const data = fromPointerEvent(ev, editor.host);
+    // Fresh press — forget any additive promotion from the last gesture.
+    editor.additivePressAdded = null;
 
     // Pan gesture detection — must come BEFORE the normal flow so a
     // right-click or Space+left-click never starts a select/draw
@@ -180,6 +182,9 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     if (target.kind === "shape" && !editor._selection.has(target.id)) {
       const additive = Boolean(data.modifiers?.shift || data.modifiers?.meta || data.modifiers?.ctrl);
       editor._selection = additive ? Selection.add(editor._selection, target.id) : Selection.single(target.id);
+      // Remember an additive promotion so a tap's up-handler doesn't
+      // SELECT_TOGGLE it back off.
+      if (additive) editor.additivePressAdded = target.id;
       if (editor._selectedEdge !== null) editor._selectedEdge = null;
       // Notify happens at the end of the gesture path; selecting now
       // ensures the live `_selection` reflects what subsequent
@@ -488,7 +493,19 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
     // First, fire any click-style effect derived from the press context.
     const ctxBeforeUp = editor.actor.getSnapshot().context;
-    const clickEffect = interpretPressEnd(ctxBeforeUp, worldPoint);
+    let clickEffect = interpretPressEnd(ctxBeforeUp, worldPoint);
+    // A shift/meta TAP on a shape the press already added additively must
+    // NOT toggle it back off — the press handled the add, this would undo
+    // it (net zero). Drop the redundant toggle. (shift-tap on a shape that
+    // was already selected → additivePressAdded is null → toggle still
+    // fires and removes it, as expected.)
+    if (
+      clickEffect?.type === "SELECT_TOGGLE" &&
+      editor.additivePressAdded === clickEffect.id
+    ) {
+      clickEffect = null;
+    }
+    editor.additivePressAdded = null;
 
     // Group isolation routing:
     //   - Double-click on a grouped shape → enter the topmost group

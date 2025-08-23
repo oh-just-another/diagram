@@ -685,6 +685,15 @@ export class Editor {
   private dragShapeId: ShapeId | null = null;
 
   /**
+   * Shape that the current press added to the selection additively
+   * (shift / meta click on an unselected shape). The press promotes it
+   * so a subsequent drag moves it; on a *tap* the up-handler would
+   * otherwise `SELECT_TOGGLE` it straight back off, so it consults this
+   * to skip that redundant toggle. Reset at every press-down.
+   */
+  private additivePressAdded: ShapeId | null = null;
+
+  /**
    * Live container highlight: the container shape the dragged item is
    * currently hovering over. Drawn by the overlay as a dashed
    * accent rect on the container's drop-zone so the user knows where
