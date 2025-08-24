@@ -856,3 +856,6 @@
 
 ## 0.45.5
 - fix: shift-click multi-select extends selection
+
+## 0.45.6
+- fix: hide Fill/Stroke controls for image shapes in property panel

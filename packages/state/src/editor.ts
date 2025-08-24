@@ -3373,10 +3373,21 @@ export class Editor {
    * grouping is the explicit "lock the ratio" gesture).
    */
   private selectionIsAspectLocked(): boolean {
-    if (this._selection.size !== 1) return false;
-    const [only] = [...this._selection];
-    if (!only) return false;
-    return getShape(this._scene, only)?.type === "group";
+    if (this._selection.size === 0) return false;
+    if (this._selection.size === 1) {
+      const [only] = [...this._selection];
+      if (!only) return false;
+      // A single group (grouping IS the explicit "lock ratio" gesture)
+      // or a single image (images may only be scaled, never distorted).
+      const type = getShape(this._scene, only)?.type;
+      return type === "group" || type === "image";
+    }
+    // Multi-selection: lock when every selected shape is an image — they
+    // must never be stretched out of ratio, only scaled together.
+    for (const id of this._selection) {
+      if (getShape(this._scene, id)?.type !== "image") return false;
+    }
+    return true;
   }
 
   // Pure body in `./editor/applies/resize.ts`.

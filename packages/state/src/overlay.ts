@@ -34,14 +34,16 @@ import { ALL_HANDLES, CORNER_HANDLES, HANDLE_SIZE, handlePosition, type HandleId
 import type { Selection } from "./selection.js";
 
 /**
- * Shape types the editor can resize via the 8 corner/edge handles. Other
- * shapes (polygon, path, text — they have free-form geometry) get only a
- * selection outline.
+ * Shape types that resize via per-shape handles (free width/height).
+ * Other shapes (polygon, path — free-form geometry) get only a selection
+ * outline. NB: `image` is intentionally NOT here — images resize
+ * aspect-locked through the group-handle path (corner handles, uniform
+ * scale, no distortion), exactly like a single group; see
+ * `Editor.selectionIsAspectLocked`.
  */
 const RESIZABLE_TYPES: ReadonlySet<string> = new Set([
   "rectangle",
   "ellipse",
-  "image",
   "template",
   "text",
 ]);
