@@ -168,6 +168,16 @@ export const computeGroupResizePatches = (
     sx = locked * (sx >= 0 ? 1 : -1);
     sy = locked * (sy >= 0 ? 1 : -1);
   }
+  // Uniform factor for aspect-locked members (images) inside a mixed
+  // selection: an image must only *scale*, never distort, even while
+  // its neighbours follow the box's independent sx/sy (images are
+  // SCALE-only). Use the dominant drag axis (larger relative change) so
+  // dragging the width edge scales the image by the width ratio, the
+  // height edge by the height ratio, and a corner by the dominant of the
+  // two. Position still tracks the box via (sx, sy) below, so the image
+  // stays put in the group's layout — only its size stays proportional.
+  const imgScale = Math.abs(sx - 1) >= Math.abs(sy - 1) ? sx : sy;
+
   // Anchor for the scale = the unchanging corner / edge midpoint
   // of the original bounds (opposite to the dragged handle).
   const ax = handle.includes("w") ? originalBounds.x + originalBounds.width : originalBounds.x;
@@ -183,8 +193,13 @@ export const computeGroupResizePatches = (
     const newPy = ay + (snap.position.y - ay) * sy;
 
     if (hasWidthHeight(shape)) {
-      const newWidth = snap.bounds.width * sx;
-      const newHeight = snap.bounds.height * sy;
+      // Images scale uniformly (aspect-locked); everything else follows
+      // the box's per-axis scale.
+      const isImage = shape.type === "image";
+      const wScale = isImage ? imgScale : sx;
+      const hScale = isImage ? imgScale : sy;
+      const newWidth = snap.bounds.width * wScale;
+      const newHeight = snap.bounds.height * hScale;
       if (Math.abs(newWidth) < minDim || Math.abs(newHeight) < minDim) continue;
       const nextShape: Shape = {
         ...shape,

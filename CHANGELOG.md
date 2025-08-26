@@ -859,3 +859,6 @@
 
 ## 0.45.6
 - fix: hide Fill/Stroke controls for image shapes in property panel
+
+## 0.45.7
+- fix: image/GIF resize is aspect-locked, not free-distort
