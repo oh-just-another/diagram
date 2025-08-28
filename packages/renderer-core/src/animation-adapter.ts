@@ -62,6 +62,35 @@ export const getAnimationAdapter = (kind: string): AnimatedSourceAdapter<unknown
 export const listAnimationKinds = (): readonly string[] => [...registry.keys()];
 
 /**
+ * Content-ready notification. Adapters decode lazily and often
+ * asynchronously (e.g. the GIF adapter's `createImageBitmap`): the
+ * first `getFrameAt` returns `null` while the decode is in flight. For
+ * a *playing* shape the host's animation tick re-renders on the next
+ * rAF and picks up the frames — but a **paused** shape (reduced-motion,
+ * auto-stopped, frozen) has no tick, so without a nudge it would stay
+ * blank forever once decoded. Adapters call
+ * {@link notifyAnimationContentReady} when a decode completes; the host
+ * (editor) subscribes via {@link onAnimationContentReady} and schedules
+ * one more render so the now-decoded (possibly paused) frame paints.
+ */
+const contentListeners = new Set<() => void>();
+
+export const onAnimationContentReady = (fn: () => void): (() => void) => {
+  contentListeners.add(fn);
+  return () => contentListeners.delete(fn);
+};
+
+export const notifyAnimationContentReady = (): void => {
+  for (const fn of contentListeners) {
+    try {
+      fn();
+    } catch {
+      /* a listener throwing must not break sibling listeners / decode */
+    }
+  }
+};
+
+/**
  * Pluggable playback clock. Returns the playback position (ms) the
  * animation adapter should be sampled at for a given shape — letting
  * a host pause / freeze / offset individual animated shapes without

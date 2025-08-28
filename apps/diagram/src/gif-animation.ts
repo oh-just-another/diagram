@@ -1,5 +1,9 @@
 import { parseGIF, decompressFrames, type ParsedFrame } from "gifuct-js";
-import { registerAnimationAdapter, type AnimatedSourceAdapter } from "@oh-just-another/renderer-core";
+import {
+  registerAnimationAdapter,
+  notifyAnimationContentReady,
+  type AnimatedSourceAdapter,
+} from "@oh-just-another/renderer-core";
 
 /**
  * GIF animation adapter for the host. The kernel ships only the
@@ -96,7 +100,14 @@ const gifAdapter: AnimatedSourceAdapter<ArrayBuffer> = {
       if (!decoding.has(data)) {
         decoding.add(data);
         compositeGifFrames(data)
-          .then((d) => decodeCache.set(data, d))
+          .then((d) => {
+            decodeCache.set(data, d);
+            // Nudge the host to render once more so a paused shape
+            // (reduced-motion / auto-stopped / frozen) — which has no
+            // animation tick to pick the frames up — paints its
+            // now-decoded frame.
+            notifyAnimationContentReady();
+          })
           .catch(() => {
             /* leave uncached — getFrameAt keeps returning null */
           })

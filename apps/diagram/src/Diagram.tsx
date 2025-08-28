@@ -381,6 +381,20 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
     return undefined;
   }, [editor, wasmShaper, wasmRaster]);
 
+  // Animation adapters (GIF decoder) are registered in the plugin
+  // effect above, which runs AFTER the editor's first paint (child
+  // effects fire before parent ones). Force one render once both the
+  // editor and the adapters are in place so each animated shape's first
+  // `getFrameAt` runs — that kicks off the async decode, after which the
+  // decode→re-render nudge (`onAnimationContentReady`) paints the frame.
+  // Without this, a paused GIF restored from storage never even starts
+  // decoding and stays blank.
+  useEffect(() => {
+    if (editor && animationAdapters && animationAdapters.length > 0) {
+      editor.forceRender();
+    }
+  }, [editor, animationAdapters]);
+
   useEffect(() => {
     if (!editor || (!onSceneChange && !onSelectionChange)) return undefined;
     let lastScene = editor.scene;

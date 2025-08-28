@@ -3,6 +3,8 @@ import {
   registerAnimationAdapter,
   resolveImageSource,
   unregisterAnimationAdapter,
+  onAnimationContentReady,
+  notifyAnimationContentReady,
 } from "../src/animation-adapter";
 
 describe("animation adapter registry", () => {
@@ -59,5 +61,31 @@ describe("animation adapter registry", () => {
       animationData: null,
     });
     expect(out).toBe("fallback");
+  });
+
+  it("notifyAnimationContentReady calls subscribed listeners; unsubscribe stops them", () => {
+    const a = vi.fn();
+    const b = vi.fn();
+    const offA = onAnimationContentReady(a);
+    onAnimationContentReady(b);
+    notifyAnimationContentReady();
+    expect(a).toHaveBeenCalledTimes(1);
+    expect(b).toHaveBeenCalledTimes(1);
+    offA();
+    notifyAnimationContentReady();
+    expect(a).toHaveBeenCalledTimes(1); // unsubscribed
+    expect(b).toHaveBeenCalledTimes(2);
+  });
+
+  it("a throwing listener doesn't block siblings", () => {
+    const good = vi.fn();
+    const offBad = onAnimationContentReady(() => {
+      throw new Error("boom");
+    });
+    const offGood = onAnimationContentReady(good);
+    expect(() => notifyAnimationContentReady()).not.toThrow();
+    expect(good).toHaveBeenCalledTimes(1);
+    offBad();
+    offGood();
   });
 });

@@ -90,6 +90,7 @@ import {
   computeEdgeWorldBounds,
   DEFAULT_LOD,
   layoutText,
+  onAnimationContentReady,
   pointToCaretIndex,
   selectionRects as textSelectionRects,
   renderEdges,
@@ -1031,6 +1032,11 @@ export class Editor {
     // animation plays from first paint.
     this.rehydrateAnimatedImages();
     this.maybeAnimate();
+    // An animated adapter (GIF) decodes asynchronously; when a decode
+    // completes it nudges us here. Re-render so a PAUSED animated shape
+    // (reduced-motion / auto-stopped / frozen) — which has no tick to
+    // pick the frames up — paints its decoded frame after reload.
+    this.animationContentOff = onAnimationContentReady(() => this.scheduleRender());
     // First paint — synchronous so the canvas isn't blank for one
     // frame on mount. Hosts that mount + immediately read the
     // bitmap also get a consistent first frame.
@@ -2641,6 +2647,7 @@ export class Editor {
     this.longPressListeners.clear();
     this.announceListeners.clear();
     this.animationTick.stop();
+    this.animationContentOff?.();
     if (typeof document !== "undefined") {
       document.removeEventListener("visibilitychange", this.onVisibilityChange);
     }
@@ -3707,6 +3714,8 @@ export class Editor {
    * into 4×renders per browser frame, of which 3 were never composited.
    */
   private renderRafId: number | null = null;
+  /** Unsubscribe for the animation-content-ready listener (decode → re-render). */
+  private animationContentOff: (() => void) | null = null;
 
   /**
    * Schedule a render on the next animation frame. Idempotent —

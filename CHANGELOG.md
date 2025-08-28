@@ -862,3 +862,6 @@
 
 ## 0.45.7
 - fix: image/GIF resize is aspect-locked, not free-distort
+
+## 0.45.8
+- fix: mixed group resize keeps images proportional
