@@ -86,8 +86,7 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
             <FontFamilyControl shapes={shapes} />
             <TextAlignControl shapes={shapes} />
             <Divider />
-            <FillControl shapes={shapes} />
-            <OpacityControl shapes={shapes} />
+            <ColorOpacityControl shapes={shapes} />
           </>
         ) : allImage ? (
           <OpacityControl shapes={shapes} />
@@ -212,6 +211,58 @@ const ColorTrigger = ({
     </div>
   </Popover>
 );
+
+/**
+ * Combined color & opacity control — a single swatch trigger whose
+ * popover has both the palette and an opacity slider. Used for the text
+ * panel in place of separate Fill + Opacity triggers. Writes `fill` and
+ * `opacity` through `editor.updateStyle`.
+ */
+const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const color = sharedString(shapes, (s) => s.style?.fill);
+  const opacity = sharedValue<number>(shapes, (s) => s.style?.opacity ?? 1);
+  const pct = opacity === null ? null : Math.round(opacity * 100);
+  const swatchBg =
+    !color || color === "transparent"
+      ? "repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 6px 6px"
+      : color;
+  return (
+    <Popover
+      ariaLabel="Text color and opacity"
+      trigger={
+        <button
+          type="button"
+          className="du-sel-color-trigger"
+          title="Color & opacity"
+          aria-label="Text color and opacity"
+        >
+          <span className="du-sel-color-swatch" style={{ background: swatchBg, opacity: opacity ?? 1 }} />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Color</header>
+        <ColorSwatchPicker
+          value={color}
+          onChange={(v) => editor.updateStyle(ids, { fill: v ?? "transparent" })}
+        />
+        <header className="du-sel-popover-label">Opacity</header>
+        <Slider
+          value={pct}
+          min={0}
+          max={100}
+          step={5}
+          ariaLabel="Opacity"
+          valueLabel={pct === null ? "—" : `${pct}%`}
+          onChange={(v) => editor.updateStyle(ids, { opacity: v / 100 })}
+        />
+      </div>
+    </Popover>
+  );
+};
 
 const FillControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
   const editor = useDiagramOptional();

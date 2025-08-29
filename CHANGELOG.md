@@ -865,3 +865,6 @@
 
 ## 0.45.8
 - fix: mixed group resize keeps images proportional
+
+## 0.45.9
+- fix: GIFs sometimes blank after reload — re-render on async decode
