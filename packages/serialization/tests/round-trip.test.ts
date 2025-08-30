@@ -120,6 +120,36 @@ describe("round-trip", () => {
     }
   });
 
+  it("preserves text decoration style (weight / italic / underline / strike)", () => {
+    let scene = emptyScene();
+    const t: Shape = {
+      id: shapeId("td"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "text",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {
+        fill: "#000",
+        textAlign: "center",
+        fontWeight: "bold",
+        fontStyle: "italic",
+        textDecoration: { underline: true, strikethrough: true },
+      },
+      text: "Hi",
+      fontFamily: "system-ui",
+      fontSize: 18,
+    } as unknown as Shape;
+    ({ scene } = addShape(scene, t));
+    const restored = deserializeScene(serializeScene(scene));
+    const st = (restored.shapes.get(shapeId("td")) as unknown as { style: Record<string, unknown> }).style;
+    expect(st.fontWeight).toBe("bold");
+    expect(st.fontStyle).toBe("italic");
+    expect(st.textDecoration).toEqual({ underline: true, strikethrough: true });
+    expect(st.textAlign).toBe("center");
+  });
+
   it("preserves image fileId + animation fields", () => {
     let scene = emptyScene();
     const img: Shape = {

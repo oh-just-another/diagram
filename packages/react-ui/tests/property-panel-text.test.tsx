@@ -3,8 +3,8 @@
  * "color & opacity" control (T4), not the separate Fill / Stroke
  * triggers of the generic shape panel.
  */
-import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { shapeId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
@@ -52,6 +52,10 @@ const mountEditor = (): Editor => {
 };
 
 describe("PropertyPanel for text shapes", () => {
+  // Popover content portals to document.body — unmount between tests so
+  // a query for the trigger doesn't pick up a previous test's stale DOM.
+  afterEach(() => cleanup());
+
   it("shows the combined color & opacity control, not separate Fill/Stroke", () => {
     const editor = mountEditor();
     editor.setSelection([text.id]);
@@ -66,6 +70,29 @@ describe("PropertyPanel for text shapes", () => {
     // The generic separate Fill / Stroke triggers are gone for text.
     expect(container.querySelector('button[aria-label="Fill color"]')).toBeNull();
     expect(container.querySelector('button[aria-label="Stroke color"]')).toBeNull();
+    editor.dispose();
+  });
+
+  it("Bold toggle in the style popover sets fontWeight to bold", () => {
+    const editor = mountEditor();
+    editor.setSelection([text.id]);
+    render(
+      <TooltipProvider>
+        <DiagramProvider editor={editor}>
+          <PropertyPanel />
+        </DiagramProvider>
+      </TooltipProvider>,
+    );
+    // Open the "Text style" popover, then toggle Bold (it portals to body).
+    const trigger = document.body.querySelector('button[aria-label="Text style"]') as HTMLElement;
+    expect(trigger).not.toBeNull();
+    act(() => fireEvent.click(trigger));
+    const bold = document.body.querySelector('button[aria-label="Bold"]') as HTMLElement;
+    expect(bold).not.toBeNull();
+    act(() => fireEvent.click(bold));
+    expect((editor.scene.shapes.get(text.id) as { style: { fontWeight?: string } }).style.fontWeight).toBe(
+      "bold",
+    );
     editor.dispose();
   });
 });

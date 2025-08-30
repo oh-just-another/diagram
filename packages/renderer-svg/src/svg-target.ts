@@ -39,6 +39,8 @@ export class SvgTarget implements RenderTarget {
   private dashArray: readonly number[] | null = null;
   private fontFamily = "system-ui, sans-serif";
   private fontSize = 14;
+  private fontWeight: "normal" | "bold" = "normal";
+  private fontStyle: "normal" | "italic" = "normal";
   private textAlign: TextAlign = "left";
   private textBaseline: TextBaseline = "top";
 
@@ -101,9 +103,15 @@ export class SvgTarget implements RenderTarget {
   setDashArray(dash: readonly number[] | null): void {
     this.dashArray = dash;
   }
-  setFont(fontFamily: string, fontSize: number): void {
+  setFont(
+    fontFamily: string,
+    fontSize: number,
+    options?: { weight?: "normal" | "bold"; style?: "normal" | "italic" },
+  ): void {
     this.fontFamily = fontFamily;
     this.fontSize = fontSize;
+    this.fontWeight = options?.weight ?? "normal";
+    this.fontStyle = options?.style ?? "normal";
   }
   setTextAlign(align: TextAlign): void {
     this.textAlign = align;
@@ -125,6 +133,8 @@ export class SvgTarget implements RenderTarget {
       dashArray: this.dashArray,
       fontFamily: this.fontFamily,
       fontSize: this.fontSize,
+      fontWeight: this.fontWeight,
+      fontStyle: this.fontStyle,
       textAlign: this.textAlign,
       textBaseline: this.textBaseline,
       transform: this.currentTransform,
@@ -143,6 +153,8 @@ export class SvgTarget implements RenderTarget {
     this.dashArray = prev.dashArray;
     this.fontFamily = prev.fontFamily;
     this.fontSize = prev.fontSize;
+    this.fontWeight = prev.fontWeight;
+    this.fontStyle = prev.fontStyle;
     this.textAlign = prev.textAlign;
     this.textBaseline = prev.textBaseline;
     this.currentTransform = prev.transform;
@@ -288,6 +300,8 @@ export class SvgTarget implements RenderTarget {
       `y="${fmt(p.y)}"`,
       `font-family="${escapeAttr(this.fontFamily)}"`,
       `font-size="${this.fontSize}"`,
+      this.fontWeight === "bold" ? `font-weight="bold"` : "",
+      this.fontStyle === "italic" ? `font-style="italic"` : "",
       `fill="${this.fillColor ?? "#000"}"`,
       `text-anchor="${anchor}"`,
       `dominant-baseline="${baseline}"`,
@@ -353,6 +367,8 @@ interface SavedState {
   dashArray: readonly number[] | null;
   fontFamily: string;
   fontSize: number;
+  fontWeight: "normal" | "bold";
+  fontStyle: "normal" | "italic";
   textAlign: TextAlign;
   textBaseline: TextBaseline;
   transform: Transform;

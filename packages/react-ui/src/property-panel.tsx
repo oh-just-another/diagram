@@ -3,10 +3,13 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  Bold,
+  CaseSensitive,
   ChevronsDown,
   ChevronsUp,
   Copy as CopyIcon,
   Group as GroupIcon,
+  Italic,
   MoreHorizontal,
   MoveDown,
   MoveUp,
@@ -14,7 +17,9 @@ import {
   Square,
   SquareDashed,
   SquareDot,
+  Strikethrough,
   Trash2,
+  Underline,
   Ungroup as UngroupIcon,
 } from "lucide-react";
 import {
@@ -26,6 +31,7 @@ import {
   type ShapeBase,
   type TextAlign,
   type TextShape,
+  type TextStyle,
 } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene, useSelectedEdge, useSelection } from "./hooks.js";
 import { useContextMenuController } from "./context-menu-controller.js";
@@ -84,6 +90,7 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
           <>
             <FontSizeControl shapes={shapes} />
             <FontFamilyControl shapes={shapes} />
+            <TextDecorationControl shapes={shapes} />
             <TextAlignControl shapes={shapes} />
             <Divider />
             <ColorOpacityControl shapes={shapes} />
@@ -392,6 +399,97 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] })
       ]}
       onChange={(v) => editor.updateStyle(ids, { textAlign: v })}
     />
+  );
+};
+
+/**
+ * Bold / Italic / Underline / Strikethrough. One trigger (Aa) opens a
+ * popover with four independent toggles. Each writes through
+ * `editor.updateStyle`: bold→`fontWeight`, italic→`fontStyle`,
+ * underline/strikethrough→merged `textDecoration`. Active = every
+ * selected shape already has that decoration on.
+ */
+const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const allBold = shapes.every((s) => (s.style as TextStyle | undefined)?.fontWeight === "bold");
+  const allItalic = shapes.every((s) => (s.style as TextStyle | undefined)?.fontStyle === "italic");
+  const allUnderline = shapes.every(
+    (s) => (s.style as TextStyle | undefined)?.textDecoration?.underline === true,
+  );
+  const allStrike = shapes.every(
+    (s) => (s.style as TextStyle | undefined)?.textDecoration?.strikethrough === true,
+  );
+  // Toggling underline/strikethrough must preserve the other flag per
+  // shape, so merge into each shape's current decoration individually.
+  const setDecoration = (key: "underline" | "strikethrough", on: boolean): void => {
+    for (const s of shapes) {
+      const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
+      editor.updateStyle([s.id], { textDecoration: { ...cur, [key]: on } });
+    }
+  };
+  const Toggle = ({
+    active,
+    label,
+    icon,
+    onClick,
+  }: {
+    active: boolean;
+    label: string;
+    icon: ReactNode;
+    onClick: () => void;
+  }) => (
+    <button
+      type="button"
+      className={`du-sel-icon-button${active ? " is-active" : ""}`}
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      onClick={onClick}
+    >
+      {icon}
+    </button>
+  );
+  return (
+    <Popover
+      ariaLabel="Text style"
+      trigger={
+        <button type="button" className="du-sel-icon-button" title="Text style (bold / italic / …)" aria-label="Text style">
+          <CaseSensitive size={16} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Style</header>
+        <div style={{ display: "flex", gap: 2 }}>
+          <Toggle
+            active={allBold}
+            label="Bold"
+            icon={<Bold size={14} strokeWidth={1.75} />}
+            onClick={() => editor.updateStyle(ids, { fontWeight: allBold ? "normal" : "bold" })}
+          />
+          <Toggle
+            active={allItalic}
+            label="Italic"
+            icon={<Italic size={14} strokeWidth={1.75} />}
+            onClick={() => editor.updateStyle(ids, { fontStyle: allItalic ? "normal" : "italic" })}
+          />
+          <Toggle
+            active={allUnderline}
+            label="Underline"
+            icon={<Underline size={14} strokeWidth={1.75} />}
+            onClick={() => setDecoration("underline", !allUnderline)}
+          />
+          <Toggle
+            active={allStrike}
+            label="Strikethrough"
+            icon={<Strikethrough size={14} strokeWidth={1.75} />}
+            onClick={() => setDecoration("strikethrough", !allStrike)}
+          />
+        </div>
+      </div>
+    </Popover>
   );
 };
 

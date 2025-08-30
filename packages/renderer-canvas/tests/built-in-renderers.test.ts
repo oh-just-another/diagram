@@ -173,6 +173,39 @@ describe("built-in renderers", () => {
     expect(calls.filter((c) => c.method === "fillText").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("text passes bold/italic to setFont", () => {
+    const t: TextShape = {
+      ...baseProps,
+      id: shapeId("tb"),
+      type: "text",
+      text: "hi",
+      fontFamily: "sans",
+      fontSize: 16,
+      style: { fill: "#000", fontWeight: "bold", fontStyle: "italic" },
+    };
+    const { target, calls } = recorder();
+    getShapeRenderer("text")!(t, target);
+    const sf = calls.find((c) => c.method === "setFont");
+    expect(sf?.args[2]).toEqual({ weight: "bold", style: "italic" });
+  });
+
+  it("underlined / struck text draws decoration rects (rect + fill)", () => {
+    const t: TextShape = {
+      ...baseProps,
+      id: shapeId("td"),
+      type: "text",
+      text: "hi",
+      fontFamily: "sans",
+      fontSize: 20,
+      style: { fill: "#000", textDecoration: { underline: true, strikethrough: true } },
+    };
+    const { target, calls } = recorder();
+    getShapeRenderer("text")!(t, target);
+    // One line × two decorations → 2 rect + 2 fill (beyond the glyph fillText).
+    expect(calls.filter((c) => c.method === "rect").length).toBe(2);
+    expect(calls.filter((c) => c.method === "fill").length).toBe(2);
+  });
+
   it("image calls drawImage with shape width/height", () => {
     const i: ImageShape = {
       ...baseProps,

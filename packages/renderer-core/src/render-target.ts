@@ -7,6 +7,17 @@ export type TextBaseline = "top" | "middle" | "bottom";
 export type FillRule = "nonzero" | "evenodd";
 
 /**
+ * Optional bold / italic for {@link RenderTarget.setFont}. Omitted →
+ * normal weight & upright. Backends realise these differently: Canvas2D
+ * folds them into the `ctx.font` shorthand; WebGL2 selects the matching
+ * MSDF atlas font (faux-shear / weight where a variant is unavailable).
+ */
+export interface FontStyleOptions {
+  readonly weight?: "normal" | "bold";
+  readonly style?: "normal" | "italic";
+}
+
+/**
  * Backend-agnostic drawing surface. Both `renderer-canvas` (Canvas2D) and
  * `renderer-svg` (SVG string-builder) implement this interface. Keeping the
  * surface low-level lets shape renderers stay backend-agnostic without losing
@@ -21,7 +32,7 @@ export interface RenderTarget {
   setLineCap(cap: LineCap): void;
   setLineJoin(join: LineJoin): void;
   setDashArray(dash: readonly number[] | null): void;
-  setFont(fontFamily: string, fontSize: number): void;
+  setFont(fontFamily: string, fontSize: number, options?: FontStyleOptions): void;
   setTextAlign(align: TextAlign): void;
   setTextBaseline(baseline: TextBaseline): void;
 

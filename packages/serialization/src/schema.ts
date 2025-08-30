@@ -27,6 +27,15 @@ const StyleZ = z
 const TextStyleZ = StyleZ.extend({
  textAlign: z.enum(["left", "center", "right"]).optional(),
  textBaseline: z.enum(["top", "middle", "bottom"]).optional(),
+ fontWeight: z.enum(["normal", "bold"]).optional(),
+ fontStyle: z.enum(["normal", "italic"]).optional(),
+ textDecoration: z
+  .object({
+   underline: z.boolean().optional(),
+   strikethrough: z.boolean().optional(),
+  })
+  .strict()
+  .optional(),
 }).strict();
 
 const MetadataZ = z.record(z.string(), z.unknown()).optional();

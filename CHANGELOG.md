@@ -868,3 +868,6 @@
 
 ## 0.45.9
 - fix: GIFs sometimes blank after reload — re-render on async decode
+
+## 0.45.10
+- feat: text panel combined color & opacity control (T4)

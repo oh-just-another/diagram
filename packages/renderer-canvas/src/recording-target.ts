@@ -29,7 +29,12 @@ export type RenderCommand =
   | { readonly k: "setLineCap"; readonly cap: LineCap }
   | { readonly k: "setLineJoin"; readonly join: LineJoin }
   | { readonly k: "setDashArray"; readonly dash: readonly number[] | null }
-  | { readonly k: "setFont"; readonly family: string; readonly size: number }
+  | {
+      readonly k: "setFont";
+      readonly family: string;
+      readonly size: number;
+      readonly options?: { readonly weight?: "normal" | "bold"; readonly style?: "normal" | "italic" };
+    }
   | { readonly k: "setTextAlign"; readonly align: TextAlign }
   | { readonly k: "setTextBaseline"; readonly baseline: TextBaseline }
   | { readonly k: "save" }
@@ -142,8 +147,12 @@ export class RecordingTarget implements RenderTarget {
   setDashArray(dash: readonly number[] | null): void {
     this.commands.push({ k: "setDashArray", dash });
   }
-  setFont(family: string, size: number): void {
-    this.commands.push({ k: "setFont", family, size });
+  setFont(
+    family: string,
+    size: number,
+    options?: { weight?: "normal" | "bold"; style?: "normal" | "italic" },
+  ): void {
+    this.commands.push({ k: "setFont", family, size, ...(options ? { options } : {}) });
   }
   setTextAlign(align: TextAlign): void {
     this.commands.push({ k: "setTextAlign", align });
@@ -268,7 +277,7 @@ export const replayCommands = (
         target.setDashArray(cmd.dash);
         break;
       case "setFont":
-        target.setFont(cmd.family, cmd.size);
+        target.setFont(cmd.family, cmd.size, cmd.options);
         break;
       case "setTextAlign":
         target.setTextAlign(cmd.align);

@@ -67,8 +67,15 @@ export class Canvas2DTarget implements RenderTarget {
   setDashArray(dash: readonly number[] | null): void {
     this.ctx.setLineDash(dash ? [...dash] : []);
   }
-  setFont(fontFamily: string, fontSize: number): void {
-    this.ctx.font = `${fontSize}px ${fontFamily}`;
+  setFont(
+    fontFamily: string,
+    fontSize: number,
+    options?: { weight?: "normal" | "bold"; style?: "normal" | "italic" },
+  ): void {
+    // CSS font shorthand order: `<style> <weight> <size> <family>`.
+    const style = options?.style === "italic" ? "italic " : "";
+    const weight = options?.weight === "bold" ? "bold " : "";
+    this.ctx.font = `${style}${weight}${fontSize}px ${fontFamily}`;
   }
   setTextAlign(align: TextAlign): void {
     this.ctx.textAlign = align === "center" ? "center" : align;

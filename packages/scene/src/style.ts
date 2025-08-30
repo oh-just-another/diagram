@@ -59,6 +59,18 @@ export interface Style {
 
 export type TextAlign = "left" | "center" | "right";
 export type TextBaseline = "top" | "middle" | "bottom";
+export type FontWeight = "normal" | "bold";
+export type FontStyle = "normal" | "italic";
+
+/**
+ * Text decorations (underline / strikethrough). Both can be on at once.
+ * Rendered as thin line-rects under / through the text by the renderer,
+ * so they work identically on Canvas2D and WebGL2.
+ */
+export interface TextDecoration {
+  readonly underline?: boolean;
+  readonly strikethrough?: boolean;
+}
 
 /**
  * Text-specific style overlay. Inherits all `Style` fields (fill = text color,
@@ -67,6 +79,12 @@ export type TextBaseline = "top" | "middle" | "bottom";
 export interface TextStyle extends Style {
   readonly textAlign?: TextAlign;
   readonly textBaseline?: TextBaseline;
+  /** Bold toggle. Default `"normal"`. */
+  readonly fontWeight?: FontWeight;
+  /** Italic toggle. Default `"normal"`. */
+  readonly fontStyle?: FontStyle;
+  /** Underline / strikethrough. Omitted = neither. */
+  readonly textDecoration?: TextDecoration;
 }
 
 /**

@@ -38,3 +38,18 @@ export const DEFAULT_PLACEHOLDER_FILL = "#bbb";
  * off-screen geometry alive in the renderer.
  */
 export const VIEWPORT_CULL_PADDING_RATIO = 0.05;
+
+/**
+ * Text-decoration geometry (underline / strikethrough), as fractions of
+ * font size, measured from the line's top (the renderer draws text with
+ * a top baseline).
+ *
+ * - `TEXT_DECORATION_THICKNESS` — line thickness ≈ 6% of font size
+ *   (clamped to ≥1 px in the renderer).
+ * - `TEXT_UNDERLINE_OFFSET` — underline top, ~92% down (just below the
+ *   glyph baseline).
+ * - `TEXT_STRIKETHROUGH_OFFSET` — strikethrough centre, ~50% (x-height).
+ */
+export const TEXT_DECORATION_THICKNESS = 0.06;
+export const TEXT_UNDERLINE_OFFSET = 0.92;
+export const TEXT_STRIKETHROUGH_OFFSET = 0.5;

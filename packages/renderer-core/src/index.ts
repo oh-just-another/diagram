@@ -5,6 +5,7 @@ export type {
   TextAlign,
   TextBaseline,
   FillRule,
+  FontStyleOptions,
   DrawPoint,
 } from "./render-target.js";
 export type { ShapeRenderer } from "./shape-renderer.js";

@@ -73,6 +73,8 @@ export class WebGL2Target implements RenderTarget {
   // the hidden text bitmap canvas per fillText call.
   private fontFamily = "sans-serif";
   private fontSize = 14;
+  private fontWeight: "normal" | "bold" = "normal";
+  private fontStyle: "normal" | "italic" = "normal";
   private textAlign: TextAlign = "left";
   private textBaseline: TextBaseline = "top";
   /**
@@ -925,9 +927,15 @@ export class WebGL2Target implements RenderTarget {
   setDashArray(_dash: readonly number[] | null): void {
     void _dash;
   }
-  setFont(family: string, size: number): void {
+  setFont(
+    family: string,
+    size: number,
+    options?: { weight?: "normal" | "bold"; style?: "normal" | "italic" },
+  ): void {
     this.fontFamily = family;
     this.fontSize = size;
+    this.fontWeight = options?.weight ?? "normal";
+    this.fontStyle = options?.style ?? "normal";
   }
   setTextAlign(align: TextAlign): void {
     this.textAlign = align;

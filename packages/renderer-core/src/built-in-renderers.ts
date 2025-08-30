@@ -17,6 +17,11 @@ import { registerShapeRenderer, type ShapeRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "./render-target.js";
 import { layoutText } from "./text-editing.js";
 import { resolveImageSource } from "./animation-adapter.js";
+import {
+  TEXT_DECORATION_THICKNESS,
+  TEXT_UNDERLINE_OFFSET,
+  TEXT_STRIKETHROUGH_OFFSET,
+} from "./constants.js";
 
 /**
  * Applies common style fields to a target. Returns whether any fill or stroke
@@ -229,9 +234,14 @@ const drawPath: ShapeRenderer<PathShape> = (shape, target) => {
 };
 
 const drawText: ShapeRenderer<TextShape> = (shape, target) => {
-  target.setFont(shape.fontFamily, shape.fontSize);
   const align = shape.style.textAlign ?? "left";
-  // Lines are positioned manually (see `lineLeftX` below) so the caret
+  const weight = shape.style.fontWeight;
+  const fontStyle = shape.style.fontStyle;
+  target.setFont(shape.fontFamily, shape.fontSize, {
+    ...(weight ? { weight } : {}),
+    ...(fontStyle ? { style: fontStyle } : {}),
+  });
+  // Lines are positioned manually (per-line x below) so the caret
   // geometry computed from the same `layoutText` lines up exactly, so
   // the target always draws left-anchored.
   target.setTextAlign("left");
@@ -242,31 +252,54 @@ const drawText: ShapeRenderer<TextShape> = (shape, target) => {
   target.setFill(color);
   if (shape.style.opacity !== undefined) target.setOpacity(shape.style.opacity);
 
-  // Fast path: one line, no wrap budget, no hard breaks.
+  // Resolve per-line geometry once (x = align offset, top = i ×
+  // lineHeight). Single-line text skips the wrap engine.
+  const fontSize = shape.fontSize;
+  let lines: { text: string; x: number; width: number; top: number }[];
   if (shape.maxWidth === undefined && !shape.text.includes("\n")) {
-    target.fillText(shape.text, 0, 0);
-    return;
+    lines = [{ text: shape.text, x: 0, width: target.measureText(shape.text).width, top: 0 }];
+  } else {
+    // Measure with the target's own `measureText` so wrapping matches
+    // exactly what this backend draws (WebGL2 reports MSDF advances; the
+    // selection-box bounder + caret use the same source).
+    const measure = (s: string) => target.measureText(s).width;
+    const layout = layoutText(shape.text, measure, {
+      fontSize,
+      ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
+    });
+    lines = layout.lines.map((line, i) => ({
+      text: line.text,
+      x:
+        align === "center"
+          ? layout.blockWidth / 2 - line.width / 2
+          : align === "right"
+            ? layout.blockWidth - line.width
+            : 0,
+      width: line.width,
+      top: i * layout.lineHeight,
+    }));
   }
 
-  // Measure with the target's own `measureText` so wrapping matches
-  // exactly what this backend draws (WebGL2 reports MSDF advances; the
-  // selection-box bounder + caret use the same source). Using the WASM
-  // shaper's `measure()` here instead would diverge from the rendered
-  // advances and the box, so wrap thresholds wouldn't line up.
-  const measure = (s: string) => target.measureText(s).width;
-  const layout = layoutText(shape.text, measure, {
-    fontSize: shape.fontSize,
-    ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
-  });
-  for (let i = 0; i < layout.lines.length; i++) {
-    const line = layout.lines[i]!;
-    const x =
-      align === "center"
-        ? layout.blockWidth / 2 - line.width / 2
-        : align === "right"
-          ? layout.blockWidth - line.width
-          : 0;
-    target.fillText(line.text, x, i * layout.lineHeight);
+  for (const l of lines) target.fillText(l.text, l.x, l.top);
+
+  // Underline / strikethrough — thin filled rects per line, same on
+  // Canvas2D and WebGL2 (uses the current text fill colour).
+  const deco = shape.style.textDecoration;
+  if (deco?.underline || deco?.strikethrough) {
+    const thickness = Math.max(1, fontSize * TEXT_DECORATION_THICKNESS);
+    for (const l of lines) {
+      if (l.width <= 0) continue;
+      if (deco.underline) {
+        target.beginPath();
+        target.rect(l.x, l.top + fontSize * TEXT_UNDERLINE_OFFSET, l.width, thickness);
+        target.fill();
+      }
+      if (deco.strikethrough) {
+        target.beginPath();
+        target.rect(l.x, l.top + fontSize * TEXT_STRIKETHROUGH_OFFSET - thickness / 2, l.width, thickness);
+        target.fill();
+      }
+    }
   }
 };
 

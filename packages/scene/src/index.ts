@@ -6,6 +6,9 @@ export type {
   LineJoin,
   TextAlign,
   TextBaseline,
+  FontWeight,
+  FontStyle,
+  TextDecoration,
   StrokeAlign,
   Roundness,
 } from "./style.js";
