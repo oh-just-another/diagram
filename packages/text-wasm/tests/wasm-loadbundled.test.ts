@@ -91,34 +91,45 @@ describe("WasmTextShaper.loadBundled (real .wasm)", () => {
     expect(tile!.data.every((b) => b === 0)).toBe(true);
   });
 
-  // --- Multi-font (sans / serif / mono) ---
+  // --- Multi-font matrix: 3 families × 4 styles, id = base + bold + 2·italic ---
 
-  it("resolveFontId maps CSS family stacks to embedded font ids", async () => {
+  it("resolveFontId maps family + bold/italic to the matrix id", async () => {
     const s = await WasmTextShaper.loadBundled();
+    // family base: sans=0, serif=4, mono=8
     expect(s.resolveFontId("system-ui, sans-serif")).toBe(0);
-    expect(s.resolveFontId("Georgia, 'Times New Roman', serif")).toBe(1);
-    expect(s.resolveFontId("ui-monospace, 'SF Mono', Menlo, monospace")).toBe(2);
+    expect(s.resolveFontId("Georgia, 'Times New Roman', serif")).toBe(4);
+    expect(s.resolveFontId("ui-monospace, Menlo, monospace")).toBe(8);
     expect(s.resolveFontId("")).toBe(0);
+    // style offsets: bold +1, italic +2, bold-italic +3
+    expect(s.resolveFontId("system-ui, sans-serif", true)).toBe(1);
+    expect(s.resolveFontId("system-ui, sans-serif", false, true)).toBe(2);
+    expect(s.resolveFontId("system-ui, sans-serif", true, true)).toBe(3);
+    expect(s.resolveFontId("Georgia, serif", true, true)).toBe(7);
+    expect(s.resolveFontId("monospace", true)).toBe(9);
   });
 
-  it("mono font has equal advances for i and M (the proportional fonts don't)", async () => {
+  it("mono font (id 8) has equal advances for i and M; sans (0) doesn't", async () => {
     const s = await WasmTextShaper.loadBundled();
-    const monoI = s.glyphMetrics("i".charCodeAt(0), 2)!;
-    const monoM = s.glyphMetrics("M".charCodeAt(0), 2)!;
-    // Roboto Mono is monospaced → identical advances.
+    const monoI = s.glyphMetrics("i".charCodeAt(0), 8)!;
+    const monoM = s.glyphMetrics("M".charCodeAt(0), 8)!;
     expect(monoM.advance).toBe(monoI.advance);
-    // Sans (id 0) is proportional → M much wider than i.
     const sansI = s.glyphMetrics("i".charCodeAt(0), 0)!;
     const sansM = s.glyphMetrics("M".charCodeAt(0), 0)!;
     expect(sansM.advance).toBeGreaterThan(sansI.advance * 1.5);
   });
 
-  it("serif and sans produce different glyph metrics for the same letter", async () => {
+  it("bold glyph is wider/heavier than regular for the same family", async () => {
+    const s = await WasmTextShaper.loadBundled();
+    const reg = s.glyphMetrics("B".charCodeAt(0), 0)!; // sans regular
+    const bold = s.glyphMetrics("B".charCodeAt(0), 1)!; // sans bold
+    // Bold 'B' has a larger ink bbox than regular (heavier strokes).
+    expect(bold.bboxW).toBeGreaterThan(reg.bboxW);
+  });
+
+  it("serif (id 4) and sans (id 0) differ for the same letter", async () => {
     const s = await WasmTextShaper.loadBundled();
     const sansA = s.glyphMetrics("A".charCodeAt(0), 0)!;
-    const serifA = s.glyphMetrics("A".charCodeAt(0), 1)!;
-    // Different fonts → different outlines → metrics shouldn't match
-    // exactly (advance and/or bbox differ).
+    const serifA = s.glyphMetrics("A".charCodeAt(0), 4)!;
     const differs =
       sansA.advance !== serifA.advance ||
       sansA.bboxW !== serifA.bboxW ||

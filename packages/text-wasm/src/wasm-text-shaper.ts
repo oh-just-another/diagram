@@ -33,14 +33,26 @@ export interface WasmShaperExports {
   readonly memory: WebAssembly.Memory;
   readonly alloc: (bytes: number) => number;
   readonly free: (ptr: number, bytes: number) => void;
-  readonly setFont: (familyPtr: number, familyLen: number, size: number) => void;
+  readonly setFont: (
+    familyPtr: number,
+    familyLen: number,
+    size: number,
+    bold: number,
+    italic: number,
+  ) => void;
   readonly measure: (textPtr: number, textLen: number) => number;
   /**
-   * Optional — resolve a UTF-8 CSS font-family string to a font id
-   * (0=sans, 1=serif, 2=mono). Present in multi-font modules. Older
-   * single-font modules omit it (host treats everything as id 0).
+   * Optional — resolve a UTF-8 CSS font-family + bold/italic flags to a
+   * font id `familyBase + (bold?1:0) + (italic?2:0)` where familyBase is
+   * 0/4/8 (sans/serif/mono). Present in multi-font modules. Single-font
+   * modules omit it (host treats everything as id 0).
    */
-  readonly resolveFont?: (familyPtr: number, familyLen: number) => number;
+  readonly resolveFont?: (
+    familyPtr: number,
+    familyLen: number,
+    bold: number,
+    italic: number,
+  ) => number;
   /**
    * Optional — only present when the bundled MSDF-capable module is
    * loaded. Returns a pointer to 24 bytes (6 × f32 little-endian) with
@@ -204,13 +216,13 @@ export class WasmTextShaper implements TextShaper {
    * default font transparently. The atlas keys glyphs by this id, so
    * the same code point in two families gets two tiles.
    */
-  resolveFontId(family: string): number {
+  resolveFontId(family: string, bold = false, italic = false): number {
     const wasm = this.wasm;
     if (!wasm || !wasm.resolveFont) return 0;
     const bytes = this.textEncoder.encode(family);
     const ptr = wasm.alloc(bytes.byteLength);
     new Uint8Array(wasm.memory.buffer, ptr, bytes.byteLength).set(bytes);
-    const id = wasm.resolveFont(ptr, bytes.byteLength);
+    const id = wasm.resolveFont(ptr, bytes.byteLength, bold ? 1 : 0, italic ? 1 : 0);
     wasm.free(ptr, bytes.byteLength);
     return id;
   }
@@ -319,7 +331,11 @@ export class WasmTextShaper implements TextShaper {
         familyBytes.byteLength,
       );
       familyView.set(familyBytes);
-      wasm.setFont(familyPtr, familyBytes.byteLength, font.size);
+      // The `measure()` path has no weight/style channel (ShaperFont is
+      // family+size only) — measure the regular face. The bold/italic
+      // glyph advances reach callers via the atlas path (`glyphMetrics`
+      // with an explicit fontId), which is what the WebGL2 backend uses.
+      wasm.setFont(familyPtr, familyBytes.byteLength, font.size, 0, 0);
       wasm.free(familyPtr, familyBytes.byteLength);
       this.currentFontKey = fkey;
     }

@@ -871,3 +871,6 @@
 
 ## 0.45.10
 - feat: text panel combined color & opacity control (T4)
+
+## 0.45.11
+- feat: text decorations bold/italic/underline/strikethrough (T3 pt1)

@@ -42,40 +42,49 @@ use fdsm::{
 use fdsm_ttf_parser::load_shape_from_face;
 use image::{ImageBuffer, Rgb, Rgb32FImage, RgbImage};
 use nalgebra::{Affine2, Matrix3};
-use ttf_parser::{Face, Tag};
+use ttf_parser::Face;
 
-/// Fonts embedded in the wasm. Index = font id, which the JS side gets
-/// via `resolveFont` and passes to `glyphMetrics` / `rasterizeGlyphMSDF`.
-/// All three are Apache-2.0 (see font/LICENSE).
-///   0 = sans  (Roboto Regular)
-///   1 = serif (Roboto Slab — variable, instantiated at wght=400)
-///   2 = mono  (Roboto Mono Regular)
-const FONT_SANS: &[u8] = include_bytes!("../font/Roboto-Regular.ttf");
-const FONT_SERIF: &[u8] = include_bytes!("../font/RobotoSlab-Regular.ttf");
-const FONT_MONO: &[u8] = include_bytes!("../font/RobotoMono-Regular.ttf");
-const FONTS: [&[u8]; 3] = [FONT_SANS, FONT_SERIF, FONT_MONO];
+/// Fonts embedded into the wasm — a matrix of 3 families × 4 styles.
+/// Font id = `family_base + style`, where `family_base` = 0/4/8 (sans /
+/// serif / mono) and `style` = `+1` bold, `+2` italic (so BoldItalic = 3).
+/// JS gets the id via `resolveFont(family, bold, italic)` and passes it into
+/// `glyphMetrics` / `rasterizeGlyphMSDF`.
+///   0..3   sans  = Roboto (Regular/Bold/Italic/BoldItalic) — Apache-2.0
+///   4..7   serif = PT Serif (R/B/I/BI) — OFL
+///   8..11  mono  = Roboto Mono (R/B/I/BI) — Apache-2.0
+/// Licenses — see font/LICENSE.
+const FONTS: [&[u8]; 12] = [
+    include_bytes!("../font/Roboto-Regular.ttf"),
+    include_bytes!("../font/Roboto-Bold.ttf"),
+    include_bytes!("../font/Roboto-Italic.ttf"),
+    include_bytes!("../font/Roboto-BoldItalic.ttf"),
+    include_bytes!("../font/PTSerif-Regular.ttf"),
+    include_bytes!("../font/PTSerif-Bold.ttf"),
+    include_bytes!("../font/PTSerif-Italic.ttf"),
+    include_bytes!("../font/PTSerif-BoldItalic.ttf"),
+    include_bytes!("../font/RobotoMono-Regular.ttf"),
+    include_bytes!("../font/RobotoMono-Bold.ttf"),
+    include_bytes!("../font/RobotoMono-Italic.ttf"),
+    include_bytes!("../font/RobotoMono-BoldItalic.ttf"),
+];
 
-/// Bytes for a font id, falling back to sans for an out-of-range id.
+/// Bytes for a font id, falling back to sans-regular for an out-of-range id.
 fn font_bytes(font_id: u32) -> &'static [u8] {
-    *FONTS.get(font_id as usize).unwrap_or(&FONT_SANS)
+    *FONTS.get(font_id as usize).unwrap_or(&FONTS[0])
 }
 
-/// Parse a face for `font_id` and pin variable fonts to a sane upright
-/// regular weight (`wght = 400`). Static fonts ignore `set_variation`
-/// (returns `None`), so this is a harmless no-op for sans / mono and
-/// instantiates the serif VF's default master at Regular.
+/// Parse a face for `font_id`. All embedded fonts are static (a dedicated
+/// file per weight/style), so no variation instancing is needed.
 fn face_for(font_id: u32) -> Option<Face<'static>> {
-    let mut face = Face::parse(font_bytes(font_id), 0).ok()?;
-    let _ = face.set_variation(Tag::from_bytes(b"wght"), 400.0);
-    Some(face)
+    Face::parse(font_bytes(font_id), 0).ok()
 }
 
-/// Resolve a lowercased CSS font-family stack into a font id. Order
-/// matters: `mono` wins; `sans` (incl. `sans-serif`) maps to sans
-/// before the bare `serif` test can claim it.
-fn resolve_font_id(family_lower: &str) -> u32 {
+/// Resolve a lowercased CSS font-family stack into a family base index
+/// (0 sans / 4 serif / 8 mono). Order matters: `mono` wins; `sans`
+/// (incl. `sans-serif`) maps to sans before the bare `serif` test.
+fn resolve_family_base(family_lower: &str) -> u32 {
     if family_lower.contains("mono") {
-        2
+        8
     } else if family_lower.contains("sans") {
         0
     } else if family_lower.contains("serif")
@@ -83,7 +92,7 @@ fn resolve_font_id(family_lower: &str) -> u32 {
         || family_lower.contains("georgia")
         || family_lower.contains("times")
     {
-        1
+        4
     } else {
         0
     }
@@ -147,27 +156,42 @@ pub extern "C" fn reset() {
     ARENA_TOP.with(|top| *top.borrow_mut() = 0);
 }
 
-/// Resolve a UTF-8 CSS font-family string into a font id (see
-/// [`resolve_font_id`]). Null / empty / invalid → 0 (sans).
+/// Resolve a UTF-8 CSS font-family + bold/italic flags into a font id
+/// `family_base + (bold?1:0) + (italic?2:0)`. Null / empty / invalid
+/// family → sans base. `bold` / `italic` are treated as booleans
+/// (non-zero = true).
 #[export_name = "resolveFont"]
-pub extern "C" fn resolve_font(family_ptr: *const u8, family_len: usize) -> u32 {
-    if family_ptr.is_null() || family_len == 0 {
-        return 0;
-    }
-    let bytes = unsafe { core::slice::from_raw_parts(family_ptr, family_len) };
-    match core::str::from_utf8(bytes) {
-        Ok(s) => resolve_font_id(&s.to_ascii_lowercase()),
-        Err(_) => 0,
-    }
+pub extern "C" fn resolve_font(
+    family_ptr: *const u8,
+    family_len: usize,
+    bold: u32,
+    italic: u32,
+) -> u32 {
+    let base = if family_ptr.is_null() || family_len == 0 {
+        0
+    } else {
+        let bytes = unsafe { core::slice::from_raw_parts(family_ptr, family_len) };
+        match core::str::from_utf8(bytes) {
+            Ok(s) => resolve_family_base(&s.to_ascii_lowercase()),
+            Err(_) => 0,
+        }
+    };
+    base + if bold != 0 { 1 } else { 0 } + if italic != 0 { 2 } else { 0 }
 }
 
-/// setFont — sets the current font size AND the current font (resolved by
-/// family). Affects `measure()`; glyph paths take the font id as an explicit
-/// parameter. Safe with a null family (stays sans).
+/// setFont — sets the current font size and the current font (resolved by
+/// family + bold/italic). Affects `measure()`; glyph paths take the font id as
+/// an explicit parameter. Safe with a null family (stays sans).
 #[export_name = "setFont"]
-pub extern "C" fn set_font(family_ptr: *const u8, family_len: usize, size_px: f32) {
+pub extern "C" fn set_font(
+    family_ptr: *const u8,
+    family_len: usize,
+    size_px: f32,
+    bold: u32,
+    italic: u32,
+) {
     FONT_SIZE.with(|cell| *cell.borrow_mut() = size_px);
-    let id = resolve_font(family_ptr, family_len);
+    let id = resolve_font(family_ptr, family_len, bold, italic);
     CURRENT_FONT.with(|cell| *cell.borrow_mut() = id);
 }
 

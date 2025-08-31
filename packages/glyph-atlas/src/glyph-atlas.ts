@@ -31,10 +31,11 @@ export interface MsdfShaper {
     readonly data: Uint8Array;
   } | null;
   /**
-   * Resolve a CSS font-family stack to the shaper's font id. Optional —
-   * single-font shapers omit it and everything stays font id 0.
+   * Resolve a CSS font-family stack (+ bold/italic) to the shaper's font
+   * id. Optional — single-font shapers omit it and everything stays
+   * font id 0.
    */
-  resolveFontId?(family: string): number;
+  resolveFontId?(family: string, bold?: boolean, italic?: boolean): number;
 }
 
 /**
@@ -151,9 +152,9 @@ export class GlyphAtlas {
    * zero so the GPU sample reads as "fully outside". The slot stays
    * allocated so the metrics are still discoverable.
    */
-  /** Resolve a CSS font-family to the shaper's font id (0 when single-font). */
-  resolveFontId(family: string): number {
-    return this.shaper.resolveFontId?.(family) ?? 0;
+  /** Resolve a CSS font-family (+ bold/italic) to the shaper's font id (0 when single-font). */
+  resolveFontId(family: string, bold = false, italic = false): number {
+    return this.shaper.resolveFontId?.(family, bold, italic) ?? 0;
   }
 
   getOrRasterize(codePoint: number, fontId = 0): AtlasGlyph | null {

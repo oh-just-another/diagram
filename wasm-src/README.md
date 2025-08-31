@@ -8,15 +8,20 @@ Rust source for the two WebAssembly modules consumed by the
 ### `text-shaper/`
 
 Text shaping via `ttf-parser` + MSDF glyph rasterisation via `fdsm`.
-Embeds **three fonts** (all Apache-2.0, see `text-shaper/font/LICENSE`)
-inside the wasm so a single fetch / read gives both the engine and the
-fonts:
+Embeds a **3-family × 4-style font matrix** (12 faces; Roboto + Roboto
+Mono are Apache-2.0, PT Serif is OFL — see `text-shaper/font/LICENSE`)
+so a single fetch / read gives both the engine and the fonts.
 
-| font id | family | file |
+Font id = `family_base + (bold?1:0) + (italic?2:0)`:
+
+| family | base | files (R / B / I / BI) |
 |---|---|---|
-| 0 | sans (default) | `Roboto-Regular.ttf` |
-| 1 | serif | `RobotoSlab-Regular.ttf` (variable, pinned to `wght=400`) |
-| 2 | mono | `RobotoMono-Regular.ttf` |
+| sans (default) | 0 | `Roboto-{Regular,Bold,Italic,BoldItalic}.ttf` |
+| serif | 4 | `PTSerif-{Regular,Bold,Italic,BoldItalic}.ttf` |
+| mono | 8 | `RobotoMono-{Regular,Bold,Italic,BoldItalic}.ttf` |
+
+So e.g. bold-italic serif = `4 + 1 + 2 = 7`. All faces are static
+(a dedicated file per style — no variable-font instancing).
 
 Exports:
 
@@ -26,21 +31,23 @@ Exports:
 | `alloc(n)` | `(usize) → *mut u8` | bump allocator |
 | `free(ptr, n)` | `(*mut u8, usize) → ()` | no-op (bump = no reclaim) |
 | `reset()` | `() → ()` | bump cursor back to 0 |
-| `resolveFont(family_ptr, family_len)` | `(*const u8, usize) → u32` | CSS family stack → font id (0/1/2) |
-| `setFont(family_ptr, family_len, size_px)` | `(*const u8, usize, f32)` | sets size + current font (for `measure`) |
+| `resolveFont(family_ptr, family_len, bold, italic)` | `(*const u8, usize, u32, u32) → u32` | CSS family + bold/italic → font id |
+| `setFont(family_ptr, family_len, size_px, bold, italic)` | `(*const u8, usize, f32, u32, u32)` | sets size + current font (for `measure`) |
 | `measure(text_ptr, text_len)` | `(*const u8, usize) → f32` | advance width in CSS-px (current font) |
 | `glyphMetrics(font_id, code_point)` | `(u32, u32) → *const f32` | 6×f32: advance, bbox, UPM (font units) |
 | `rasterizeGlyphMSDF(font_id, code_point, atlas_size, range)` | `(u32, u32, u32, f32) → *const u8` | `atlas_size²×3` RGB MSDF tile |
 
 The MSDF tiles are generated **lazily at runtime** per glyph (inside
 the wasm, by `fdsm`) and cached in a GPU atlas on the host — there's no
-offline per-font generation step. Font family selection is the host's
-job: it calls `resolveFont(family)` → `fontId`, then passes `fontId`
-into `glyphMetrics` / `rasterizeGlyphMSDF`. The host atlas keys glyphs
-by `(fontId, codePoint)` so the same letter in two families gets two
+offline per-font generation step. Font selection is the host's job: it
+calls `resolveFont(family, bold, italic)` → `fontId`, then passes
+`fontId` into `glyphMetrics` / `rasterizeGlyphMSDF`. The host atlas keys
+glyphs by `(fontId, codePoint)` so the same letter in two faces gets two
 tiles in the shared texture.
 
-Footprint: ~1.1 MB `.wasm` (three fonts) after `opt-level = "z"` + strip.
+Footprint: ~4 MB `.wasm` (12 embedded faces) after `opt-level = "z"` +
+strip. Subset the `.ttf`s (Latin only, via `fonttools subset`) before
+embedding if the size matters for low-end / mobile.
 
 architecture (Canvas2D vs WebGL2) and how to add a font.
 

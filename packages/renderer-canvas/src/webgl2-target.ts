@@ -1009,8 +1009,12 @@ export class WebGL2Target implements RenderTarget {
    */
   private fillTextMSDF(text: string, x: number, y: number, atlas: GlyphAtlas): void {
     if (!this.msdfPipeline) this.msdfPipeline = new MsdfTextPipeline(this.gl);
-    // Pick the embedded font for the current family (0 when single-font).
-    const fontId = atlas.resolveFontId(this.fontFamily);
+    // Pick the embedded font for the current family + weight/style.
+    const fontId = atlas.resolveFontId(
+      this.fontFamily,
+      this.fontWeight === "bold",
+      this.fontStyle === "italic",
+    );
     // Horizontal alignment is handled inside `drawText` (single walk —
     // it measures the run and shifts via the transform), so no separate
     // width-measuring pass here.
@@ -1101,7 +1105,11 @@ export class WebGL2Target implements RenderTarget {
     // caret geometry, selection bounds — would drift from what's drawn.
     const atlas = this.ensureGlyphAtlas();
     if (atlas) {
-      const fontId = atlas.resolveFontId(this.fontFamily);
+      const fontId = atlas.resolveFontId(
+        this.fontFamily,
+        this.fontWeight === "bold",
+        this.fontStyle === "italic",
+      );
       let w = 0;
       for (const ch of text) {
         const cp = ch.codePointAt(0)!;
