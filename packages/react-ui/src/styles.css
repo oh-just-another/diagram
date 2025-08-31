@@ -1090,6 +1090,15 @@
   background: var(--du-hover-overlay);
 }
 
+/* Pressed / on state for toggle buttons (Bold / Italic / Underline /
+   Strikethrough in the text style popover). Without this the computed
+   `is-active` class had no visual, so toggles never reflected the
+   selection's current style. */
+.du-sel-icon-button.is-active {
+  background: var(--du-accent-soft, rgba(80, 130, 255, 0.22));
+  color: var(--du-accent, #5082ff);
+}
+
 .du-sel-icon-button:focus-visible {
   outline: 2px solid var(--du-accent);
   outline-offset: 1px;

@@ -874,3 +874,6 @@
 
 ## 0.45.11
 - feat: text decorations bold/italic/underline/strikethrough (T3 pt1)
+
+## 0.45.12
+- feat: WebGL2 real bold/italic via 12-face WASM font matrix (T3 pt2)
