@@ -274,6 +274,7 @@ import {
   describeNudge as describeNudgePure,
   selectionFromNewIds,
 } from "./editor/public/selection-ops.js";
+import { computeSetLink, normalizeHref, safeHref } from "./editor/public/link.js";
 import {
   beginPlacementState,
   buildShapeAtCursor,
@@ -2395,6 +2396,40 @@ export class Editor {
     this._scene = result.scene;
     this._history.push(result.patch);
     this.notify();
+  }
+
+  /**
+   * Set (or clear, with `null`) the element-level hyperlink (`href`) on
+   * every shape in `ids`. Single undo step. Pass a raw user string — it
+   * is normalised here (`normalizeHref`: adds `https://`, `mailto:`,
+   * rejects `javascript:`/`data:`); a string that normalises to nothing
+   * clears the link. The host opens it on Cmd/Ctrl-click or the
+   * hover link-popup.
+   */
+  setLink(ids: Iterable<ShapeId>, href: string | null): void {
+    const normalized = href === null ? null : normalizeHref(href);
+    const result = computeSetLink(this._scene, ids, normalized);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Open an element hyperlink in a new tab. Re-validates the scheme
+   * (`safeHref`) before navigating — only `http`/`https`/`mailto`, never
+   * `javascript:` / `data:` — and uses `noopener,noreferrer`. No-op for
+   * an unsafe / empty href or outside a browser.
+   */
+  openLink(href: string | undefined | null): void {
+    const url = safeHref(href);
+    if (!url || typeof window === "undefined") return;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  /** The element-level href of a shape, if safe to open; else `null`. */
+  shapeLink(id: ShapeId): string | null {
+    return safeHref(getShape(this._scene, id)?.href);
   }
 
   // Pure bodies in `./editor/public/z-order.ts`.

@@ -38,6 +38,7 @@ export { registerInteractiveHitTester, getInteractiveHitTester } from "./interac
 export type { EditorOptions, LoadSceneOptions } from "./editor.js";
 export { Editor } from "./editor.js";
 export type { EditorEvents } from "./editor-events.js";
+export { normalizeHref, safeHref } from "./editor/public/link.js";
 
 // File-drop registry (host-extensible image / scene / custom).
 export type { FileDropHandler, FileDropContext, WalkOptions } from "./file-drop.js";

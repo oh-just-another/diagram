@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 import {
   AlignCenter,
   AlignLeft,
@@ -10,6 +10,7 @@ import {
   Copy as CopyIcon,
   Group as GroupIcon,
   Italic,
+  Link as LinkIcon,
   MoreHorizontal,
   MoveDown,
   MoveUp,
@@ -110,6 +111,7 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
         <Divider />
         <ZOrderControl />
         <Divider />
+        <LinkControl shapes={shapes} />
         <ActionsControl shapes={shapes} />
         <MoreButton />
       </div>
@@ -143,6 +145,75 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
  * so the full command set is always one click away. Renders nothing
  * when there's no controller (no `<ContextMenu>` mounted) or no editor.
  */
+/**
+ * Element link control (T6). One trigger (chain icon, active when a link
+ * is set) opens a popover with a URL field + Save / Open / Remove. Works
+ * for any shape (text, image, …) — the href lives on `ShapeBase`. The
+ * URL is normalised (`normalizeHref`: adds `https://`, `mailto:`, rejects
+ * `javascript:`) before storing. Multi-select applies to all.
+ */
+const LinkControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+  const editor = useDiagramOptional();
+  const inputRef = useRef<HTMLInputElement>(null);
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const current = sharedString(shapes, (s) => (s as { href?: string }).href);
+  const hasLink = shapes.some((s) => Boolean((s as { href?: string }).href));
+  const save = (raw: string): void => editor.setLink(ids, raw);
+  return (
+    <Popover
+      ariaLabel="Link"
+      trigger={
+        <button
+          type="button"
+          className={`du-sel-icon-button${hasLink ? " is-active" : ""}`}
+          title="Link"
+          aria-label="Link"
+        >
+          <LinkIcon size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Link</header>
+        <input
+          ref={inputRef}
+          className="du-sel-link-input"
+          type="text"
+          placeholder="https://…  ·  name@mail"
+          defaultValue={current ?? ""}
+          aria-label="Link URL"
+          onKeyDown={(ev) => {
+            if (ev.key === "Enter") {
+              ev.preventDefault();
+              save(ev.currentTarget.value);
+            }
+          }}
+        />
+        <div style={{ display: "flex", gap: 2 }}>
+          <button
+            type="button"
+            className="du-sel-text-button"
+            onClick={() => save(inputRef.current?.value ?? "")}
+          >
+            Save
+          </button>
+          {hasLink ? (
+            <button type="button" className="du-sel-text-button" onClick={() => editor.openLink(current)}>
+              Open
+            </button>
+          ) : null}
+          {hasLink ? (
+            <button type="button" className="du-sel-text-button" onClick={() => editor.setLink(ids, null)}>
+              Remove
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </Popover>
+  );
+};
+
 const MoreButton = () => {
   const editor = useDiagramOptional();
   const controller = useContextMenuController();

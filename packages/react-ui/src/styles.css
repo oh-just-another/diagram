@@ -1194,6 +1194,25 @@
   background: var(--du-accent-soft, rgba(80, 130, 255, 0.2));
 }
 
+/* URL field inside the element-link popover. */
+.du-sel-link-input {
+  width: 220px;
+  max-width: 60vw;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--du-text, #ddd);
+  background: var(--du-ui-bg, #1a1a1a);
+  border: 1px solid var(--du-ui-border, #333);
+  border-radius: 4px;
+  outline: none;
+}
+
+.du-sel-link-input:focus-visible {
+  outline: 2px solid var(--du-accent, #5082ff);
+  outline-offset: -1px;
+}
+
 .du-sel-menu-row:focus-visible {
   outline: 2px solid var(--du-accent, #5082ff);
   outline-offset: -2px;

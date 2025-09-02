@@ -179,7 +179,13 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // extends instead of replacing. We don't promote inside the
     // group-handle / edge-endpoint paths because those already act on
     // the existing selection.
-    if (target.kind === "shape" && !editor._selection.has(target.id)) {
+    // Cmd/Ctrl-click on a shape that carries a (safe) link is a
+    // link-open gesture, NOT additive selection — don't mutate the
+    // selection on press; `onUp` opens the URL on a tap.
+    const linkModifier = Boolean(data.modifiers?.meta || data.modifiers?.ctrl);
+    const isLinkOpen =
+      linkModifier && target.kind === "shape" && editor.shapeLink(target.id) !== null;
+    if (!isLinkOpen && target.kind === "shape" && !editor._selection.has(target.id)) {
       const additive = Boolean(data.modifiers?.shift || data.modifiers?.meta || data.modifiers?.ctrl);
       editor._selection = additive ? Selection.add(editor._selection, target.id) : Selection.single(target.id);
       // Remember an additive promotion so a tap's up-handler doesn't
@@ -490,6 +496,30 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
     const data = fromPointerEvent(ev, editor.host);
     const worldPoint = editor.screenToWorld(data.point);
+
+    // Cmd/Ctrl-click on a linked element (a tap, not a drag) opens its
+    // href — onDown already skipped the additive-select promote for this
+    // case, so selection is untouched.
+    {
+      const origin = editor.actor.getSnapshot().context.pressOrigin;
+      const linkMod = Boolean(data.modifiers?.meta || data.modifiers?.ctrl);
+      if (origin && linkMod) {
+        const zoom = editor._scene.viewport.zoom || 1;
+        const movedPx = Math.hypot(worldPoint.x - origin.x, worldPoint.y - origin.y) * zoom;
+        if (movedPx < LONG_PRESS_MAX_MOVEMENT_PX) {
+          const hit = editor.hitTest(worldPoint);
+          if (hit?.kind === "shape") {
+            const href = editor.shapeLink(hit.id);
+            if (href) {
+              editor.openLink(href);
+              editor.actor.send({ type: "POINTER_UP", point: worldPoint });
+              editor.commitGesture();
+              return;
+            }
+          }
+        }
+      }
+    }
 
     // First, fire any click-style effect derived from the press context.
     const ctxBeforeUp = editor.actor.getSnapshot().context;

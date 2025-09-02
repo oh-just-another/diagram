@@ -150,6 +150,28 @@ describe("round-trip", () => {
     expect(st.textAlign).toBe("center");
   });
 
+  it("preserves element href", () => {
+    let scene = emptyScene();
+    const r: Shape = {
+      id: shapeId("lk"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "rectangle",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      width: 10,
+      height: 10,
+      href: "https://example.com/x",
+    } as unknown as Shape;
+    ({ scene } = addShape(scene, r));
+    const restored = deserializeScene(serializeScene(scene));
+    expect((restored.shapes.get(shapeId("lk")) as { href?: string }).href).toBe(
+      "https://example.com/x",
+    );
+  });
+
   it("preserves image fileId + animation fields", () => {
     let scene = emptyScene();
     const img: Shape = {

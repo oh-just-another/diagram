@@ -877,3 +877,6 @@
 
 ## 0.45.12
 - feat: WebGL2 real bold/italic via 12-face WASM font matrix (T3 pt2)
+
+## 0.45.13
+- fix: text style toggles (B/I/U/S) now show active state

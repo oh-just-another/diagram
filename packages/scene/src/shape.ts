@@ -101,6 +101,16 @@ export interface ShapeBase {
    * shape.
    */
   readonly hidden?: boolean;
+
+  /**
+   * Element-level hyperlink (standard model). Any shape — text, image,
+   * rectangle — can carry one. The host opens it on Cmd/Ctrl-click or via
+   * the hover link-popup. Stored verbatim; the host MUST validate the
+   * scheme before navigating (only `http`/`https`/`mailto` — never
+   * `javascript:`). Per-fragment links inside text are a separate
+   * rich-text feature.
+   */
+  readonly href?: string;
 }
 
 export interface RectangleShape extends ShapeBase {
