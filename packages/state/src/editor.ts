@@ -2432,6 +2432,18 @@ export class Editor {
     return safeHref(getShape(this._scene, id)?.href);
   }
 
+  /**
+   * Topmost interactable shape at `worldPoint` that carries a safe link,
+   * with its world bounds — for the hover link-popup. `null` when none.
+   */
+  linkAt(worldPoint: Vec2): { id: ShapeId; href: string; bounds: Bounds } | null {
+    const shape = this.acceleratedShapeAt(worldPoint);
+    if (!shape || !this.isShapeInteractable(shape)) return null;
+    const href = safeHref(shape.href);
+    if (!href) return null;
+    return { id: shape.id, href, bounds: getShapeWorldBounds(shape) };
+  }
+
   // Pure bodies in `./editor/public/z-order.ts`.
   bringToFront(id?: ShapeId): void {
     const result = computeBringToFront(this._scene, id, this._selection);

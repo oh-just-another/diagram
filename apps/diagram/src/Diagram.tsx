@@ -49,6 +49,7 @@ import {
   LibraryPanel,
   MainMenu,
   ResetToContentButton,
+  LinkHoverPopup,
   SelectionFloatingPanel,
   TextEditorOverlay,
   ToastHost,
@@ -619,6 +620,7 @@ const EditorShell = ({
       >
         <DiagramSurface style={{ position: "absolute", inset: 0 }} />
         <TextEditorOverlay />
+        <LinkHoverPopup />
         {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
       </div>
 

@@ -880,3 +880,6 @@
 
 ## 0.45.13
 - fix: text style toggles (B/I/U/S) now show active state
+
+## 0.45.14
+- feat: element hyperlinks (T6 pt1) — href on any shape + Cmd-click open
