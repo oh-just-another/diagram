@@ -428,9 +428,15 @@ registerBounder<TextShape>("text", (s) => {
   const lineHeight = s.fontSize * TEXT_LINE_HEIGHT_FACTOR;
   const paragraphs = s.text.split("\n");
   const measurer = getTextMeasurer();
+  // Pass weight/style so the measured width matches the rendered (bold /
+  // italic) glyphs — otherwise the box wouldn't grow when text is bolded.
+  const opts = {
+    bold: s.style.fontWeight === "bold",
+    italic: s.style.fontStyle === "italic",
+  };
   const measureLine = (line: string): number => {
     if (measurer) {
-      const w = measurer(line, s.fontFamily, s.fontSize);
+      const w = measurer(line, s.fontFamily, s.fontSize, opts);
       if (w !== null) return w;
     }
     return line.length * s.fontSize * TEXT_APPROX_CHAR_WIDTH_FACTOR;

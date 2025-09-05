@@ -936,8 +936,11 @@ export class Editor {
     // the selection box hugs the rendered text (the WebGL2 MSDF font's
     // advances differ from any geometric estimate). Measuring sets the
     // font on the main target — harmless, every draw re-sets its own.
-    setTextMeasurer((text, family, size) => {
-      this.mainTarget.setFont(family, size);
+    setTextMeasurer((text, family, size, opts) => {
+      this.mainTarget.setFont(family, size, {
+        ...(opts?.bold ? { weight: "bold" as const } : {}),
+        ...(opts?.italic ? { style: "italic" as const } : {}),
+      });
       return this.mainTarget.measureText(text).width;
     });
 
@@ -1965,7 +1968,12 @@ export class Editor {
    */
   private measureFor(shape: TextShape): (s: string) => number {
     const target = this.mainTarget;
-    target.setFont(shape.fontFamily, shape.fontSize);
+    // Match the rendered weight/style so caret / selection geometry lines
+    // up with bold / italic glyphs (which have different advances).
+    target.setFont(shape.fontFamily, shape.fontSize, {
+      ...(shape.style.fontWeight === "bold" ? { weight: "bold" as const } : {}),
+      ...(shape.style.fontStyle === "italic" ? { style: "italic" as const } : {}),
+    });
     return (s: string) => target.measureText(s).width;
   }
 

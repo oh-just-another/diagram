@@ -883,3 +883,6 @@
 
 ## 0.45.14
 - feat: element hyperlinks (T6 pt1) — href on any shape + Cmd-click open
+
+## 0.45.15
+- feat: hover link popup (T6 pt2)

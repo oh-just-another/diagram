@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { layerId, shapeId } from "@oh-just-another/types";
 import {
   getShapeLocalBounds,
@@ -10,6 +10,7 @@ import {
   isRectangle,
   isText,
   registerBounder,
+  setTextMeasurer,
   type RectangleShape,
   type ShapeBase,
 } from "../src/index";
@@ -81,6 +82,34 @@ describe("shape", () => {
       expect(() => getShapeLocalBounds(shape)).toThrow(/no bounder/i);
       registerBounder("diamond", () => ({ x: 0, y: 0, width: 100, height: 50 }));
       expect(getShapeLocalBounds(shape)).toEqual({ x: 0, y: 0, width: 100, height: 50 });
+    });
+  });
+
+  describe("text bounder + measurer opts (bold/italic width)", () => {
+    afterEach(() => setTextMeasurer(null));
+
+    it("bold text yields a wider box than regular via the measurer opts", () => {
+      // Measurer: 10px/char, bold +50%. Mirrors how the editor injects a
+      // renderer-backed measurer that honours weight/style.
+      setTextMeasurer((text, _family, _size, opts) =>
+        text.length * 10 * (opts?.bold ? 1.5 : 1),
+      );
+      const base = {
+        ...baseProps,
+        id: shapeId("t"),
+        type: "text" as const,
+        text: "hello",
+        fontFamily: "sans",
+        fontSize: 16,
+      };
+      const regular = getShapeLocalBounds(base);
+      const bold = getShapeLocalBounds({
+        ...base,
+        style: { fontWeight: "bold" } as unknown as ShapeBase["style"],
+      });
+      expect(regular.width).toBeCloseTo(50);
+      expect(bold.width).toBeCloseTo(75);
+      expect(bold.width).toBeGreaterThan(regular.width);
     });
   });
 

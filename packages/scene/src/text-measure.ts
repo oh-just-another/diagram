@@ -12,12 +12,21 @@
  * absent (headless / tests), it falls back to the geometric estimate.
  *
  * Returns the measured width in world px, or `null` to defer to the
- * geometric estimate for that call.
+ * geometric estimate for that call. `opts` carries weight/style so the
+ * measurer matches the *rendered* width — bold/italic change glyph
+ * advances, so without it the bounds lag behind a bolded text and the
+ * glyphs overflow the element box.
  */
+export interface TextMeasureOpts {
+  readonly bold?: boolean;
+  readonly italic?: boolean;
+}
+
 export type TextMeasurer = (
   text: string,
   fontFamily: string,
   fontSize: number,
+  opts?: TextMeasureOpts,
 ) => number | null;
 
 let activeMeasurer: TextMeasurer | null = null;

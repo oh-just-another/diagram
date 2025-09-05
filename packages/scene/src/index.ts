@@ -72,7 +72,12 @@ export {
   getShapeLocalBounds,
   getShapeWorldBounds,
 } from "./shape.js";
-export { setTextMeasurer, getTextMeasurer, type TextMeasurer } from "./text-measure.js";
+export {
+  setTextMeasurer,
+  getTextMeasurer,
+  type TextMeasurer,
+  type TextMeasureOpts,
+} from "./text-measure.js";
 
 // Anchor helpers
 export {
