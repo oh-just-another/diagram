@@ -886,3 +886,6 @@
 
 ## 0.45.15
 - feat: hover link popup (T6 pt2)
+
+## 0.45.16
+- fix: text bounds account for bold/italic — no overflow
