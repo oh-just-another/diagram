@@ -24,11 +24,11 @@ import { createOffscreenCanvas2DTarget } from "@oh-just-another/renderer-canvas"
  *   • "color-and-grid"  — solid fill + the same grid the user sees on
  *                         the canvas (same gridSize / gridStyle).
  *
- * Why a host-side helper instead of `@oh-just-another/exporter.exportPng`:
- * exporter's path goes through `@headless.renderToPng`, which pulls
- * `@resvg/resvg-js` (~3 MB WASM peer dep). For a browser host we
- * already have the kernel's `Canvas2DTarget` + `renderScene` on hand —
- * no extra dependency, no SVG round-trip, identical visual output.
+ * This host-side helper is used instead of `@oh-just-another/exporter.exportPng`
+ * because exporter's path goes through `@headless.renderToPng`, which pulls
+ * `@resvg/resvg-js` (~3 MB WASM peer dep). For a browser host the kernel's
+ * `Canvas2DTarget` + `renderScene` are already on hand — no extra
+ * dependency, no SVG round-trip, identical visual output.
  *
  * Returns `null` when the scene has no shapes (host shows an alert).
  */

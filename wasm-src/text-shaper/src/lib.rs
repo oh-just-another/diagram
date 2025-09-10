@@ -1,4 +1,4 @@
-//! WASM text shaper for @0x0d15ea5e/text-shaper.
+//! WASM text shaper for @oh-just-another/text-shaper.
 //!
 //! ABI mirrors the `WasmShaperExports` interface:
 //!

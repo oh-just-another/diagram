@@ -20,13 +20,10 @@ import { Modal } from "./modal.js";
  * as its own pill `<kbd>` chip. Multiple alternative shortcuts on one
  * row are joined with "or".
  *
- * Platform-aware key labels come from `formatHotkeyParts` in
- * `@oh-just-another/state/platform`: macOS gets glyphs (⌘ ⌥ ⇧ ⌃ ⏎ ⌫),
- * other platforms get spelled-out names (Ctrl, Alt, Shift, Enter,
- * Delete). The platform badge in the header reminds the user
- * which set they're looking at.
- *
- * Reference: https://github.com/standard/standard/blob/master/packages/standard/components/HelpDialog.tsx
+ * Platform-aware key labels come from `formatHotkeyParts`: macOS gets
+ * glyphs (⌘ ⌥ ⇧ ⌃ ⏎ ⌫), other platforms get spelled-out names (Ctrl,
+ * Alt, Shift, Enter, Delete). The platform badge in the header shows
+ * which set is in use.
  */
 
 export interface HelpDialogProps {

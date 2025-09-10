@@ -7,9 +7,9 @@ import type { TextAlign, TextBaseline } from "./render-target.js";
  * browser layout matters or when batching many measurements is the
  * hot path.
  *
- * The kernel ships a `Canvas2DTextShaper` implementation (just
- * delegates to `ctx.measureText`). Hosts that need it can implement this interface and pass
- * via `EditorOptions.textShaper`.
+ * The kernel ships a `Canvas2DTextShaper` implementation that delegates to
+ * `ctx.measureText`. Hosts that need deterministic cross-environment layout
+ * can implement this interface and pass it via `EditorOptions.textShaper`.
  */
 export interface TextShaper {
   /**

@@ -7,11 +7,8 @@ import { useDiagramOptional, useScene } from "./hooks.js";
  * Sidebar panel listing every `FrameShape` in the scene. Each row
  * shows the frame's name and size and exposes two actions:
  *
- *   • Select — sets the editor's selection to the frame (host can
- *     then trigger zoom-to-fit, double-click to drill in, etc.).
- *   • Export — fires `onExport(frameId)`; the host decides what to
- *     do (call `exportPng`/`exportPdf` from `@oh-just-another/exporter`
- *     with `{ frameId }`, then save / share / download).
+ *   • Select — sets the editor's selection to the frame.
+ *   • Export — fires `onExport(frameId)`; the host decides what to do.
  *
  * Renders nothing when there are no frames.
  */

@@ -1,4 +1,4 @@
-//! WASM rasterization helpers for @0x0d15ea5e/raster-wasm.
+//! WASM rasterization helpers for @oh-just-another/raster-wasm.
 //!
 //! ABI mirrors `WasmRasterizerExports` from
 //! `packages/raster-wasm/src/wasm-rasterizer.ts`:

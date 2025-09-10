@@ -56,8 +56,7 @@ export interface ConflictResolution {
 /**
  * Implementation hook. The kernel does NOT ship one — collab
  * authors plug their Yjs-backed implementation into a host
- * editor instance. See `@oh-just-another/collab` future
- * `mergeBranch(source, target)` helper for the runtime.
+ * editor instance.
  */
 export interface BranchMergeAPI {
   branchToDoc(branchId: BranchId): unknown; // Y.Doc — kept loose to avoid Yjs as a peer dep here.

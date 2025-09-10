@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@oh-just-another/demo", "@oh-just-another/cli"]
+  "ignore": ["@oh-just-another/diagram", "@oh-just-another/cli", "@oh-just-another/e2e"]
 }

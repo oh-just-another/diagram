@@ -889,3 +889,4 @@
 
 ## 0.45.16
 - fix: text bounds account for bold/italic — no overflow
+

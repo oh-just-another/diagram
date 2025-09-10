@@ -4,10 +4,9 @@
  * these constants and concat their own; the picker accepts any
  * `readonly string[]`.
  *
- * Palette is sourced from `@oh-just-another/tokens` — see that package
- * for the underlying Radix mapping. Each hue carries two pinned
- * tones — step-4 ("subtle") for fills and step-9 ("solid") for
- * strokes / marks. Step-9 stays the same hex on both themes per
+ * Palette is sourced from `@oh-just-another/tokens`. Each hue carries
+ * two pinned tones — step-4 ("subtle") for fills and step-9 ("solid")
+ * for strokes / marks. Step-9 stays the same hex on both themes per
  * Radix spec, so the picker reads as the same "brand" colour
  * regardless of the active theme.
  *

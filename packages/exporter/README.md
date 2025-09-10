@@ -1,6 +1,6 @@
 # @oh-just-another/exporter
 
-Document-grade export of `@oh-just-another/scene` documents — hi-res PNG with DPI metadata, vector PDF, world-coordinate cropping. Builds on top of `@headless` (which itself uses `@renderer-svg`).
+Document-grade export of `@oh-just-another/scene` documents — high-resolution PNG with DPI metadata, vector PDF, world-coordinate cropping. Builds on top of `@headless` (which itself uses `@renderer-svg`).
 
 ## Install
 

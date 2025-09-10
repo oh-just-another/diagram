@@ -7,9 +7,9 @@ import { color } from "@oh-just-another/math";
  * the package that prescribes the fallback values (`var(--text, #ddd)`
  * etc.) for its own components; if a fallback drifts, this test catches it.
  *
- * Manual sync: when you edit a theme colour in the demo HTML,
- * update the corresponding constant below. Pure unit-check via
- * `@oh-just-another/math/color` — no browser needed.
+ * When a theme colour in the demo HTML changes, update the corresponding
+ * constant below. Pure unit-check via `@oh-just-another/math/color` — no
+ * browser needed.
  *
  * Thresholds: regular text = 4.5:1, large text (decoration,
  * non-critical) = 3:1.
