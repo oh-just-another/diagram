@@ -890,3 +890,5 @@
 ## 0.45.16
 - fix: text bounds account for bold/italic — no overflow
 
+## 0.46.0
+- refactor: migrate npm scope @oh-just-another Right @oh-just-another (org move)
