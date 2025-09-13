@@ -892,3 +892,6 @@
 
 ## 0.46.0
 - refactor: migrate npm scope @oh-just-another Right @oh-just-another (org move)
+
+## 0.46.1
+- refactor: rebrand bare token oh-just-another Right oh-just-another (BREAKING format)

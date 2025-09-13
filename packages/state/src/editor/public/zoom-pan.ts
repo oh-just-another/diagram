@@ -43,13 +43,18 @@ export const computeZoomAt = (
 };
 
 /**
- * Pure: reset zoom to 1.0 and pan to (0, 0). Returns `null` when
- * already there.
+ * Reset zoom to 1.0 around the viewport center — the world point
+ * currently under the screen center stays centered, only the scale
+ * changes. Returns `null` when already at zoom 1.
  */
 export const computeResetZoom = (scene: Scene): Scene | null => {
   const vp = scene.viewport;
-  if (vp.zoom === 1 && vp.pan.x === 0 && vp.pan.y === 0) return null;
-  return { ...scene, viewport: { ...vp, zoom: 1, pan: { x: 0, y: 0 } } };
+  if (vp.zoom === 1) return null;
+  const centerWorld = {
+    x: vp.pan.x + vp.size.width / 2 / vp.zoom,
+    y: vp.pan.y + vp.size.height / 2 / vp.zoom,
+  };
+  return { ...scene, viewport: viewportZoomAt(vp, 1 / vp.zoom, centerWorld) };
 };
 
 /**
