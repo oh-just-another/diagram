@@ -65,8 +65,8 @@ export const getContainerSpec = (s: ShapeBase): ContainerSpec | null => {
     const spec = resolver(s);
     if (spec) return spec;
   }
-  // Synthesise a live drop-zone for auto-layout shapes (basic.auto-grid,
-  // basic.auto-stack, etc.). Source of truth is shape.width/height +
+  // Synthesise a live drop-zone for auto-layout shapes (layout.auto-grid,
+  // layout.auto-stack, etc.). Source of truth is shape.width/height +
   // padding — `metadata.container.dropZone`, if present, is treated as
   // initial/serialised fallback only. Otherwise a resize of the frame
   // wouldn't grow the drop-area (stored zone stays e.g. 296×176 even
@@ -111,7 +111,7 @@ export const getContainerSpec = (s: ShapeBase): ContainerSpec | null => {
  * drop-zone synthesiser when the shape doesn't carry an explicit
  * `metadata.container.padding`. Zero by default — a "raw" auto-layout
  * shape places its first child at its own top-left corner. Templates
- * (basic.auto-grid / basic.auto-stack) opt into a visible inset via
+ * (layout.auto-grid / layout.auto-stack) opt into a visible inset via
  * `metadata.container.padding`.
  */
 const AUTO_LAYOUT_DEFAULT_PADDING = 0;

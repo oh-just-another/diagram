@@ -122,14 +122,10 @@ describe("container protocol", () => {
     expect(next.height).toBe(150);
   });
 
-  // ---------------------------------------------------------------
-  // Auto-layout shapes (basic.auto-grid / basic.auto-stack) carry
-  // both `metadata.autoLayout` AND a static `metadata.container`
-  // baseline. The live synthesiser must derive the drop-zone from
-  // the current width/height so the area tracks user resize — the
-  // stored `dropZone` is allowed to drift out of date and is
-  // ignored when autoLayout is present.
-  // ---------------------------------------------------------------
+  // Auto-layout shapes carry both `metadata.autoLayout` and a static
+  // `metadata.container` baseline. When autoLayout is present the live
+  // synthesiser derives the drop-zone from the current width/height and
+  // ignores the stored `dropZone`, so the area tracks user resize.
   const autoGrid = (id: string, w: number, h: number): Shape => ({
     id: shapeId(id),
     layerId: DEFAULT_LAYER_ID,

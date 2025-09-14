@@ -50,7 +50,7 @@ export interface PaletteProps {
   readonly className?: string;
 }
 
-const DEFAULT_CATEGORIES: readonly Category[] = ["basic", "flowchart", "custom", "rich"];
+const DEFAULT_CATEGORIES: readonly Category[] = ["basic", "layout", "flowchart", "custom", "rich"];
 
 export const Palette = ({
   registry = defaultRegistry,

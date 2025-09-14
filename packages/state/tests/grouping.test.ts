@@ -473,8 +473,6 @@ describe("auto-layout containers", () => {
       ...containerWithAutoLayout("grid"),
       metadata: {
         autoLayout: { kind: "grid", cols: 2, gap: 10 },
-        // padding=12 mirrors the basic.auto-grid template — the
-        // exact configuration where the original shift was reported.
         container: { padding: 12 },
       },
     };
@@ -509,7 +507,7 @@ describe("auto-layout containers", () => {
   it("library drop into auto-grid snaps to the grid slot after commit (notify pairing)", async () => {
     const parent = {
       ...containerWithAutoLayout("grid"),
-      // padding=12 mirrors basic.auto-grid template.
+      // padding=12 mirrors layout.auto-grid template.
       metadata: {
         autoLayout: { kind: "grid", cols: 2, gap: 10 },
         container: { padding: 12 },

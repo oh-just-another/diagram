@@ -282,9 +282,9 @@ export const setupTemplates = (): void => {
   const autoLayoutIcon =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="1"/><rect x="6" y="6" width="5" height="5"/><rect x="13" y="6" width="5" height="5"/><rect x="6" y="13" width="5" height="5"/><rect x="13" y="13" width="5" height="5"/></svg>';
   defaultRegistry.register({
-    id: "basic.auto-grid",
+    id: "layout.auto-grid",
     name: "Auto-grid (2×N)",
-    category: "basic",
+    category: "layout",
     icon: autoLayoutIcon,
     factory: (ctx) => ({
       id: ctx.id,
@@ -329,9 +329,9 @@ export const setupTemplates = (): void => {
       }) as never,
   });
   defaultRegistry.register({
-    id: "basic.auto-stack",
+    id: "layout.auto-stack",
     name: "Auto-stack (H)",
-    category: "basic",
+    category: "layout",
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="1"/><rect x="6" y="9" width="4" height="6"/><rect x="11" y="9" width="4" height="6"/><rect x="16" y="9" width="3" height="6"/></svg>',
     factory: (ctx) => ({
       id: ctx.id,

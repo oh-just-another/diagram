@@ -898,3 +898,6 @@
 
 ## 0.46.2
 - fix: reset zoom keeps camera focal point, not jump to origin
+
+## 0.46.3
+- feat: platform-correct hotkeys in zoom-toolbar tooltips
