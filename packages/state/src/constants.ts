@@ -24,11 +24,38 @@ export const DEFAULT_SNAP_THRESHOLD = 12;
 export const VIEWPORT_CULL_PADDING_RATIO = 0.05;
 
 /**
+ * Screen-pixel half-size of the visible resize-handle square. Handles
+ * are drawn `HANDLE_SIZE * 2` wide (5 → 10×10 px). Purely visual — the
+ * grab area is `HANDLE_HIT_SLOP`, decoupled from this. Reasonable
+ * range: 4–6 (smaller looks lighter; larger reads heavy).
+ */
+export const HANDLE_SIZE = 5;
+
+/**
+ * Screen-pixel offset between the handle's centre and the shape's bbox
+ * edge — pushes the handle just outside the body so its hit area never
+ * overlaps the shape interior, making corners grabbable without
+ * precision-pointing. Range: 2–4.
+ */
+export const HANDLE_OUTSET = 3;
+
+/**
+ * Screen-pixel hit-test half-size (mouse) for a resize handle —
+ * decoupled from the visual `HANDLE_SIZE`/`HANDLE_OUTSET` so the
+ * grab target can grow without enlarging the drawn square. 11 → a
+ * ~22 px clickable target around each handle centre. Touch hosts use
+ * the larger `TOUCH_HANDLE_HIT_SLOP`. Range: 8–14 (too large starts
+ * eating the body-move target on small shapes).
+ */
+export const HANDLE_HIT_SLOP = 11;
+
+/**
  * Screen-pixel hit-test slop for grabbing an edge endpoint handle.
  * Larger than `EDGE_ENDPOINT_HANDLE_DRAW_RADIUS` so the handle is
- * easier to grab on touch without enlarging the visual.
+ * easier to grab on touch without enlarging the visual. Mouse default
+ * (touch uses `TOUCH_EDGE_HANDLE_HIT_SLOP`). Range: 9–13.
  */
-export const EDGE_ENDPOINT_HANDLE_RADIUS = 8;
+export const EDGE_ENDPOINT_HANDLE_RADIUS = 11;
 
 /**
  * Screen-pixel visual radius of the edge endpoint handle. Kept
@@ -41,9 +68,10 @@ export const EDGE_ENDPOINT_HANDLE_DRAW_RADIUS = 6;
  * Screen-pixel tolerance for edge hit-testing. Cursors within this
  * distance of an edge polyline segment register a hit. Should stay
  * larger than the typical stroke width but small enough that two
- * close edges don't both register the same click.
+ * close edges don't both register the same click. Mouse default
+ * (touch uses `TOUCH_EDGE_HIT_THRESHOLD`). Range: 7–11.
  */
-export const EDGE_HIT_THRESHOLD = 6;
+export const EDGE_HIT_THRESHOLD = 9;
 
 /**
  * Screen-pixel radius of the inactive port dot rendered on a hovered

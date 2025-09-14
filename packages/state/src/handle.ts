@@ -1,4 +1,5 @@
 import type { Bounds, Vec2 } from "@oh-just-another/types";
+import { HANDLE_HIT_SLOP, HANDLE_OUTSET, HANDLE_SIZE } from "./constants.js";
 
 /**
  * Eight resize-handle positions arranged around the shape's AABB. `nw` is
@@ -16,27 +17,12 @@ export const ALL_HANDLES: readonly HandleId[] = ["nw", "n", "ne", "e", "se", "s"
 export const CORNER_HANDLES: readonly HandleId[] = ["nw", "ne", "se", "sw"];
 
 /**
- * Pixel half-size of the visible handle square. Handles are drawn
- * `HANDLE_SIZE * 2` wide. Bumped from 4 (8×8) to 5 (10×10) so the
- * mouse target reads clearly without looking heavy.
+ * Re-exports handle geometry/hit-target constants from `constants.ts`.
+ * `HANDLE_HIT_SLOP` is decoupled from `HANDLE_SIZE`/`HANDLE_OUTSET` — the grab
+ * area grows independently of the drawn square. Re-exported so consumers
+ * (`overlay`, `editor`, `index`, tests) keep importing from `./handle.js`.
  */
-export const HANDLE_SIZE = 5;
-
-/**
- * Screen-pixel offset between the handle's centre and the shape's
- * bbox edge. Pushes the handle just outside the shape body so a
- * click in the handle area never overlaps with the shape's
- * interior hit-test — easier to grab without precision-pointing.
- */
-export const HANDLE_OUTSET = 3;
-
-/**
- * Default hit-test half-size for the mouse. Larger than `HANDLE_SIZE`
- * so the click area extends past the visual square (matches the
- * standard / x5-graph affordance). Touch hosts override with
- * `TOUCH_HANDLE_HIT_SLOP` for ≥ 44 pt finger targets.
- */
-export const HANDLE_HIT_SLOP = HANDLE_SIZE + HANDLE_OUTSET;
+export { HANDLE_HIT_SLOP, HANDLE_OUTSET, HANDLE_SIZE };
 
 /**
  * Position (in world coordinates) of a handle on the given bounds. The

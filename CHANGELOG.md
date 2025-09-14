@@ -901,3 +901,6 @@
 
 ## 0.46.3
 - feat: platform-correct hotkeys in zoom-toolbar tooltips
+
+## 0.46.4
+- refactor: move auto-grid/auto-stack to a "layout" palette category
