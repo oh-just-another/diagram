@@ -895,3 +895,6 @@
 
 ## 0.46.1
 - refactor: rebrand bare token oh-just-another Right oh-just-another (BREAKING format)
+
+## 0.46.2
+- fix: reset zoom keeps camera focal point, not jump to origin

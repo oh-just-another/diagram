@@ -54,6 +54,7 @@ import {
   TextEditorOverlay,
   ToastHost,
   Toolbar,
+  Tooltip,
   TooltipProvider,
   TopBar,
   UILayer,
@@ -78,6 +79,7 @@ const menuIcon = { size: MENU_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as co
 const toggleIcon = { size: TOGGLE_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
+import { formatHotkey } from "@oh-just-another/state";
 import { emptyScene, type GridStyle, type Scene } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
@@ -964,6 +966,17 @@ const EditorShell = ({
 };
 
 /**
+ * Platform-correct hotkey labels for the zoom-control tooltips — ⌘
+ * glyphs on macOS, "Ctrl+…" elsewhere, mirroring the top toolbar's
+ * tool tooltips. Descriptors mirror the bound zoom hotkeys in
+ * `actionZoom.ts` (display uses the minus/plus glyphs).
+ */
+const ZOOM_OUT_HOTKEY = formatHotkey({ meta: true, key: "−" });
+const ZOOM_IN_HOTKEY = formatHotkey({ meta: true, key: "+" });
+const ZOOM_RESET_HOTKEY = formatHotkey({ meta: true, key: "0" });
+const ZOOM_FIT_HOTKEY = formatHotkey({ meta: true, key: "1" });
+
+/**
  * Bottom-left zoom controls — three pills (zoom-out / zoom level / zoom-in)
  * + a fit-to-screen button. Wraps the editor's zoom API in the
  * unified IconButton chrome so the visual style matches the rest of
@@ -981,27 +994,28 @@ const ZoomControls = () => {
   const zoom = editor.scene.viewport.zoom;
   return (
     <ButtonGroup ariaLabel="Zoom">
-      <IconButton label="Zoom out" onClick={() => editor.zoomOut()}>
+      <IconButton label={`Zoom out (${ZOOM_OUT_HOTKEY})`} onClick={() => editor.zoomOut()}>
         <Minus {...buttonIcon} />
       </IconButton>
-      <button
-        type="button"
-        className="du-icon-button"
-        aria-label="Reset zoom to 100%"
-        title="Reset zoom to 100%"
-        onClick={() => editor.resetZoom()}
-        style={{
-          minWidth: 56,
-          padding: "0 8px",
-          borderRadius: 0,
-        }}
-      >
-        {Math.round(zoom * 100)}%
-      </button>
-      <IconButton label="Zoom in" onClick={() => editor.zoomIn()}>
+      <Tooltip content={`Reset zoom to 100% (${ZOOM_RESET_HOTKEY})`}>
+        <button
+          type="button"
+          className="du-icon-button"
+          aria-label="Reset zoom to 100%"
+          onClick={() => editor.resetZoom()}
+          style={{
+            minWidth: 56,
+            padding: "0 8px",
+            borderRadius: 0,
+          }}
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+      </Tooltip>
+      <IconButton label={`Zoom in (${ZOOM_IN_HOTKEY})`} onClick={() => editor.zoomIn()}>
         <Plus {...buttonIcon} />
       </IconButton>
-      <IconButton label="Fit to screen" onClick={() => editor.zoomToFit()}>
+      <IconButton label={`Fit to screen (${ZOOM_FIT_HOTKEY})`} onClick={() => editor.zoomToFit()}>
         <Maximize {...buttonIcon} />
       </IconButton>
     </ButtonGroup>

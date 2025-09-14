@@ -14,6 +14,7 @@ import {
   Undo2,
 } from "lucide-react";
 import type { Editor, Mode } from "@oh-just-another/state";
+import { formatHotkey } from "@oh-just-another/state";
 import { useEditorSelector } from "./context.js";
 import { useDiagramOptional, useHistory, useMode } from "./hooks.js";
 import { TOOLBAR_SEPARATOR_HEIGHT } from "./constants.js";
@@ -27,6 +28,16 @@ import { Tooltip } from "./tooltip.js";
 const TOOLBAR_ICON_SIZE = 16;
 const TOOLBAR_ICON_STROKE = 1.75;
 const iconProps = { size: TOOLBAR_ICON_SIZE, strokeWidth: TOOLBAR_ICON_STROKE } as const;
+
+/**
+ * Platform-correct zoom hotkey labels — ⌘ glyphs on macOS, "Ctrl+…"
+ * elsewhere. Descriptors mirror the bound zoom hotkeys; display uses the
+ * minus/plus glyphs.
+ */
+const HK_ZOOM_OUT = formatHotkey({ meta: true, key: "−" });
+const HK_ZOOM_IN = formatHotkey({ meta: true, key: "+" });
+const HK_ZOOM_RESET = formatHotkey({ meta: true, key: "0" });
+const HK_ZOOM_FIT = formatHotkey({ meta: true, key: "1" });
 
 /**
  * Single toolbar item. Builtin `mode` items wire to `editor.setMode`;
@@ -248,7 +259,7 @@ export interface ZoomButtonProps {
 /** "−" — calls `editor.zoomOut()`. */
 export const ZoomOutButton = ({
   label = "−",
-  title = "Zoom out (⌘−)",
+  title = `Zoom out (${HK_ZOOM_OUT})`,
   className,
   style,
 }: ZoomButtonProps) => {
@@ -269,7 +280,7 @@ export const ZoomOutButton = ({
 /** "+" — calls `editor.zoomIn()`. */
 export const ZoomInButton = ({
   label = "+",
-  title = "Zoom in (⌘+)",
+  title = `Zoom in (${HK_ZOOM_IN})`,
   className,
   style,
 }: ZoomButtonProps) => {
@@ -290,7 +301,7 @@ export const ZoomInButton = ({
 /** "100%" / "Reset" — calls `editor.resetZoom()`. */
 export const ResetZoomButton = ({
   label = "100%",
-  title = "Reset zoom to 100% (⌘0)",
+  title = `Reset zoom to 100% (${HK_ZOOM_RESET})`,
   className,
   style,
 }: ZoomButtonProps) => {
@@ -311,7 +322,7 @@ export const ResetZoomButton = ({
 /** "Fit" — calls `editor.zoomToFit()`. */
 export const ZoomToFitButton = ({
   label = "Fit",
-  title = "Fit content to viewport (⌘1)",
+  title = `Fit content to viewport (${HK_ZOOM_FIT})`,
   className,
   style,
 }: ZoomButtonProps) => {
@@ -340,7 +351,7 @@ export const ZoomDisplay = ({ className, style }: { readonly className?: string;
   return (
     <ToolbarButton
       disabled={!editor}
-      title="Reset zoom to 100% (⌘0)"
+      title={`Reset zoom to 100% (${HK_ZOOM_RESET})`}
       className={className}
       style={style}
       onClick={() => editor?.resetZoom()}
