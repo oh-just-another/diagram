@@ -15,6 +15,46 @@ import { defaultRegistry, type Template, type TemplateContext } from "@oh-just-a
 import { edgeId, shapeId, type EdgeId, type LayerId, type ShapeId } from "@oh-just-another/types";
 
 /**
+ * Window (ms) within which the "g d" debug-toggle sequence must
+ * complete — press `g`, then `d` faster than this to toggle the panel.
+ */
+const DEBUG_TOGGLE_SEQUENCE_WINDOW_MS = 600;
+
+/** Renderer backend choices surfaced in the Display tab. */
+const RENDERERS = ["auto", "canvas2d", "webgl2", "offscreen"] as const;
+type RendererChoice = (typeof RENDERERS)[number];
+
+/** Current renderer override from the URL (search or hash); "auto" when absent. */
+const readRendererParam = (): RendererChoice => {
+  if (typeof window === "undefined") return "auto";
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const r = search.get("renderer") ?? hash.get("renderer");
+  return r === "canvas2d" || r === "webgl2" || r === "offscreen" ? r : "auto";
+};
+
+/**
+ * Write the renderer override to the URL search param and navigate (full
+ * reload) — the backend is decided once at startup, so a switch needs a
+ * reload. Strips any `renderer` left in the hash so it can't shadow the
+ * search param; preserves other hash keys (e.g. the collab `room`).
+ */
+const applyRendererParam = (choice: RendererChoice): void => {
+  const url = new URL(window.location.href);
+  if (choice === "auto") url.searchParams.delete("renderer");
+  else url.searchParams.set("renderer", choice);
+  if (url.hash) {
+    const h = new URLSearchParams(url.hash.replace(/^#/, ""));
+    if (h.has("renderer")) {
+      h.delete("renderer");
+      const s = h.toString();
+      url.hash = s ? `#${s}` : "";
+    }
+  }
+  window.location.href = url.toString();
+};
+
+/**
  * Bottom-drawer debug panel. Mounted by `apps/diagram` only — not
  * part of the shipped library. Four tabs:
  *
@@ -28,32 +68,43 @@ import { edgeId, shapeId, type EdgeId, type LayerId, type ShapeId } from "@oh-ju
  *                  mosaic from an image. Intended for stress
  *                  testing and exploring layouts.
  *
- * Hotkey: Cmd/Ctrl + Shift + D toggles visibility. Hidden by
- * default. Doesn't block canvas interaction when open — non-modal.
+ * Hotkey: press `d` then `d` (a key sequence, no modifiers) toggles
+ * visibility. Hidden by default. Doesn't block canvas interaction when
+ * open — non-modal.
  *
- * Hotkey detection uses `event.code === "KeyD"` so it works on
- * non-Latin keyboard layouts (Cyrillic / Greek / CJK), matching
- * the project's matchKey convention for action hotkeys.
+ * Detection uses `event.code` (KeyD) so it works on non-Latin keyboard
+ * layouts (Cyrillic / Greek / CJK), matching the project's matchKey
+ * convention. The listener is on `window`, so it fires regardless of
+ * focus (unless a text field is focused).
  */
 export const DebugPanel = ({ editor }: { editor: Editor | null }) => {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<TabId>("inspector");
 
-  // Toggle hotkey — Cmd/Ctrl+Shift+D. Layout-independent via
-  // `event.code` (works on Cyrillic etc.). Suppressed while a
-  // text input has focus so the user can type "D" freely.
+  // Toggle hotkey — the "g d" key sequence (no modifiers), global on
+  // `window`. Layout-independent via `event.code`. Suppressed while a
+  // text field is focused so typing isn't hijacked.
   useEffect(() => {
+    let lastGAt = 0;
     const onKey = (ev: KeyboardEvent) => {
       const inText =
         ev.target instanceof HTMLInputElement ||
         ev.target instanceof HTMLTextAreaElement ||
         (ev.target as HTMLElement | null)?.isContentEditable;
       if (inText) return;
-      const meta = ev.metaKey || ev.ctrlKey;
-      if (!meta || !ev.shiftKey) return;
-      if (ev.code !== "KeyD") return;
-      ev.preventDefault();
-      setOpen((v) => !v);
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      if (ev.code === "KeyG") {
+        lastGAt = ev.timeStamp;
+        return;
+      }
+      if (ev.code === "KeyD" && ev.timeStamp - lastGAt <= DEBUG_TOGGLE_SEQUENCE_WINDOW_MS) {
+        lastGAt = 0;
+        ev.preventDefault();
+        setOpen((v) => !v);
+        return;
+      }
+      // Any other key breaks a pending sequence.
+      lastGAt = 0;
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -84,18 +135,75 @@ export const DebugPanel = ({ editor }: { editor: Editor | null }) => {
       {tab === "state" && <StateTab editor={editor} />}
       {tab === "history" && <HistoryTab editor={editor} />}
       {tab === "generators" && <GeneratorsTab editor={editor} />}
+      {tab === "display" && <DisplayTab editor={editor} />}
     </Drawer>
   );
 };
 
-type TabId = "inspector" | "state" | "history" | "generators";
+type TabId = "inspector" | "state" | "history" | "generators" | "display";
 
 const TABS: readonly { id: TabId; label: string }[] = [
   { id: "inspector", label: "Inspector" },
   { id: "state", label: "State" },
   { id: "history", label: "History" },
   { id: "generators", label: "Generators" },
+  { id: "display", label: "Display" },
 ];
+
+/**
+ * Display tab — runtime view settings: a renderer-backend switch (reloads,
+ * since the backend is chosen at startup) and a debug hit-zone overlay
+ * toggle (visualises the tuned mouse hit-targets for every element).
+ */
+const DisplayTab = ({ editor }: { editor: Editor }) => {
+  const [renderer, setRenderer] = useState<RendererChoice>(() => readRendererParam());
+  const [hitZones, setHitZones] = useState<boolean>(() => editor.debugHitZones);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 13 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <label htmlFor="dbg-renderer" style={{ fontWeight: 600 }}>
+          Renderer backend
+        </label>
+        <select
+          id="dbg-renderer"
+          value={renderer}
+          onChange={(ev) => {
+            const v = ev.target.value as RendererChoice;
+            setRenderer(v);
+            applyRendererParam(v);
+          }}
+          style={{ padding: "4px 6px" }}
+        >
+          {RENDERERS.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        <span style={{ color: "var(--du-text-muted, #6b6b6b)", fontSize: 11 }}>
+          Switching reloads the page — the backend is chosen once at startup.
+        </span>
+      </div>
+      <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+        <input
+          type="checkbox"
+          checked={hitZones}
+          onChange={(ev) => {
+            setHitZones(ev.target.checked);
+            editor.setDebugHitZones(ev.target.checked);
+          }}
+        />
+        <span>
+          Show hit-zones
+          <br />
+          <span style={{ color: "var(--du-text-muted, #6b6b6b)", fontSize: 11 }}>
+            Mouse hit-targets for every element: resize handles, edge endpoints, edge bodies.
+          </span>
+        </span>
+      </label>
+    </div>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────
 // Drawer chrome

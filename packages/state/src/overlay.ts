@@ -1,6 +1,7 @@
 import type { AnnotationId, Bounds, ShapeId, Transform, Vec2 } from "@oh-just-another/types";
 import {
   getAnnotationWorldPosition,
+  getEdgePath,
   getShapeWorldBounds,
   getWorldToScreen,
   type Annotation,
@@ -20,7 +21,13 @@ import {
   CURSOR_NAME_CHIP_PADDING_X,
   CURSOR_NAME_CHIP_PADDING_Y,
   CURSOR_NAME_FONT_SIZE,
+  DEBUG_HIT_ZONE_FILL,
+  DEBUG_HIT_ZONE_FILL_OPACITY,
+  DEBUG_HIT_ZONE_STROKE,
+  DEBUG_HIT_ZONE_STROKE_OPACITY,
   EDGE_ENDPOINT_HANDLE_DRAW_RADIUS,
+  EDGE_ENDPOINT_HANDLE_RADIUS,
+  EDGE_HIT_THRESHOLD,
   PEER_SELECTION_DASH,
   PEER_SELECTION_PADDING,
   PEER_SELECTION_STROKE_WIDTH,
@@ -30,7 +37,14 @@ import {
   TEXT_SELECTION_FILL,
   TEXT_SELECTION_OPACITY,
 } from "./constants.js";
-import { ALL_HANDLES, CORNER_HANDLES, HANDLE_SIZE, handlePosition, type HandleId } from "./handle.js";
+import {
+  ALL_HANDLES,
+  CORNER_HANDLES,
+  HANDLE_HIT_SLOP,
+  HANDLE_SIZE,
+  handlePosition,
+  type HandleId,
+} from "./handle.js";
 import type { Selection } from "./selection.js";
 
 /**
@@ -224,6 +238,13 @@ export const renderOverlay = (
       readonly caretColor: string;
       readonly selectionRects: readonly Bounds[];
     };
+    /**
+     * Debug: paint the mouse hit-zones (resize-handle slop, edge-
+     * endpoint radius, edge-body threshold) for **every** element, so
+     * the tuned values can be eyeballed. Off by default; toggled via
+     * the debug panel. Drawn first, under the real selection chrome.
+     */
+    debugHitZones?: boolean;
     style?: Partial<OverlayStyle>;
   } = {},
 ): void => {
@@ -236,6 +257,10 @@ export const renderOverlay = (
 
   target.save();
   target.setTransform(matrix.IDENTITY);
+
+  // 0. Debug hit-zones — drawn first so the real selection chrome sits
+  //    on top. Visualises every element's mouse hit-targets.
+  if (options.debugHitZones) drawHitZones(target, scene, w2s, zoom);
 
   // 1. Selection outlines (+ handles only when a single shape is
   //    selected). Multi-selection skips per-shape handles in favour of
@@ -474,6 +499,101 @@ const drawGifBadge = (target: RenderTarget, screen: Bounds): void => {
   target.setTextAlign("center");
   target.setTextBaseline("middle");
   target.fillText("gif", x + w / 2, y + h / 2);
+};
+
+/**
+ * Debug overlay: paint the mouse hit-zones for every element so the
+ * tuned slop/threshold values can be eyeballed in the browser. Handle
+ * slop squares for resizable shapes; endpoint circles + a body band
+ * for edges. All sizes are screen-pixel (the hit-test works in screen
+ * space). Isolated in its own save/restore so the translucent paint
+ * state never leaks into the real selection chrome.
+ */
+const drawHitZones = (target: RenderTarget, scene: Scene, w2s: Transform, zoom: number): void => {
+  target.save();
+  // Resize-handle slop squares — resizable shapes only (matches the
+  // hit-test, which only offers handles on resizable selections).
+  for (const shape of scene.shapes.values()) {
+    if (!isResizable(shape)) continue;
+    const wb = getShapeWorldBounds(shape);
+    if (!wb) continue;
+    for (const handle of resizeHandlesFor(shape)) {
+      const c = matrix.applyToPoint(w2s, handlePosition(handle, wb, zoom));
+      fillZoneRect(
+        target,
+        c.x - HANDLE_HIT_SLOP,
+        c.y - HANDLE_HIT_SLOP,
+        HANDLE_HIT_SLOP * 2,
+        HANDLE_HIT_SLOP * 2,
+      );
+    }
+  }
+  // Edge body bands (polyline stroked at 2× the hit threshold) +
+  // endpoint circles.
+  for (const edge of scene.edges.values()) {
+    const path = getEdgePath(scene, edge);
+    if (!path || path.length < 2) continue;
+    target.setFill(null);
+    target.setStroke(DEBUG_HIT_ZONE_STROKE);
+    target.setStrokeWidth(EDGE_HIT_THRESHOLD * 2);
+    target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
+    target.setLineCap("round");
+    target.setLineJoin("round");
+    target.beginPath();
+    const start = matrix.applyToPoint(w2s, path[0]!);
+    target.moveTo(start.x, start.y);
+    for (let i = 1; i < path.length; i++) {
+      const p = matrix.applyToPoint(w2s, path[i]!);
+      target.lineTo(p.x, p.y);
+    }
+    target.stroke();
+    const from = matrix.applyToPoint(w2s, path[0]!);
+    const to = matrix.applyToPoint(w2s, path[path.length - 1]!);
+    fillZoneCircle(target, from.x, from.y, EDGE_ENDPOINT_HANDLE_RADIUS);
+    fillZoneCircle(target, to.x, to.y, EDGE_ENDPOINT_HANDLE_RADIUS);
+  }
+  target.setOpacity(1);
+  target.restore();
+};
+
+/** Translucent debug rect: filled zone + faint outline. */
+const fillZoneRect = (
+  target: RenderTarget,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void => {
+  target.setStroke(null);
+  target.setFill(DEBUG_HIT_ZONE_FILL);
+  target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
+  target.beginPath();
+  target.rect(x, y, w, h);
+  target.fill();
+  target.setFill(null);
+  target.setStroke(DEBUG_HIT_ZONE_STROKE);
+  target.setStrokeWidth(1);
+  target.setOpacity(DEBUG_HIT_ZONE_STROKE_OPACITY);
+  target.beginPath();
+  target.rect(x, y, w, h);
+  target.stroke();
+};
+
+/** Translucent debug circle: filled zone + faint outline. */
+const fillZoneCircle = (target: RenderTarget, cx: number, cy: number, r: number): void => {
+  target.setStroke(null);
+  target.setFill(DEBUG_HIT_ZONE_FILL);
+  target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
+  target.beginPath();
+  target.ellipse(cx, cy, r, r);
+  target.fill();
+  target.setFill(null);
+  target.setStroke(DEBUG_HIT_ZONE_STROKE);
+  target.setStrokeWidth(1);
+  target.setOpacity(DEBUG_HIT_ZONE_STROKE_OPACITY);
+  target.beginPath();
+  target.ellipse(cx, cy, r, r);
+  target.stroke();
 };
 
 const projectBounds = (b: Bounds, w2s: Transform): Bounds => {

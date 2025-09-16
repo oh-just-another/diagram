@@ -444,6 +444,13 @@ export class Editor {
   private readonly mainTarget: RenderTarget;
   private readonly overlayTarget: RenderTarget;
   private readonly backgroundTarget: RenderTarget | null;
+  /**
+   * Debug: when true the overlay paints every element's mouse hit-zones
+   * (handle slop / edge endpoint / edge body). Toggled by the host
+   * debug panel via `setDebugHitZones`; read by the render orchestrator.
+   * View-only — never persisted or recorded in history.
+   */
+  debugHitZones = false;
   private readonly actor: Actor<typeof interactionMachine>;
   private readonly listeners = new Set<() => void>();
   /**
@@ -1248,6 +1255,17 @@ export class Editor {
    */
   setPeerSelections(selections: readonly PeerSelection[]): void {
     this._peerSelections = selections;
+    this.scheduleRender();
+  }
+
+  /**
+   * Toggle the debug hit-zone overlay (host debug panel). When on, the
+   * overlay paints every element's mouse hit-targets so the tuned slop
+   * values can be eyeballed. View-only — not recorded in history.
+   */
+  setDebugHitZones(on: boolean): void {
+    if (this.debugHitZones === on) return;
+    this.debugHitZones = on;
     this.scheduleRender();
   }
 

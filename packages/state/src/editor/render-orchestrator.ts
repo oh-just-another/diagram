@@ -172,5 +172,6 @@ export const renderEditor = (editor: any): void => {
   // under edit (null when not editing).
   const editingText = editor.editingTextOverlay();
   if (editingText) overlayOpts.editingText = editingText;
+  if (editor.debugHitZones) overlayOpts.debugHitZones = true;
   renderOverlay(editor._scene, editor._selection, editor.overlayTarget, overlayOpts);
 };

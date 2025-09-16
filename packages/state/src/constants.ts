@@ -82,6 +82,19 @@ export const PORT_DOT_RADIUS = 3.5;
 export const PORT_DOT_ACTIVE_RADIUS = 5;
 
 /**
+ * Debug hit-zone overlay (debug panel → Display → "Show hit-zones").
+ * Visualises the mouse hit-targets (handle slop, edge-endpoint radius,
+ * edge-body threshold) so the values tuned in this layer can be
+ * eyeballed in the browser. `_FILL_OPACITY` keeps the translucent fill
+ * from hiding the geometry underneath; `_STROKE_OPACITY` outlines each
+ * zone. Pure debug — never drawn unless the flag is on.
+ */
+export const DEBUG_HIT_ZONE_FILL = "#e8118c";
+export const DEBUG_HIT_ZONE_STROKE = "#e8118c";
+export const DEBUG_HIT_ZONE_FILL_OPACITY = 0.16;
+export const DEBUG_HIT_ZONE_STROKE_OPACITY = 0.7;
+
+/**
  * Visual sizes for the remote-peer cursor overlay.
  *
  * - `CURSOR_ARROW_SIZE` — pixel side length of the arrow glyph.

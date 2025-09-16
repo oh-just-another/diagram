@@ -904,3 +904,6 @@
 
 ## 0.46.4
 - refactor: move auto-grid/auto-stack to a "layout" palette category
+
+## 0.46.5
+- feat: larger decoupled mouse hit-zones for handles/edges
