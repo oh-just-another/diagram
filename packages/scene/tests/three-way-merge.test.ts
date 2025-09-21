@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -14,7 +14,7 @@ import {
 } from "../src/three-way-merge.js";
 
 const rect = (id: string, x: number, y: number): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -40,9 +40,9 @@ describe("mergeScenesThreeWay", () => {
     const target = sceneOf(a, rect("c", 200, 0));
     const report = mergeScenesThreeWay(ancestor, source, target);
     expect(report.conflicts).toEqual([]);
-    expect(report.autoMerged.shapes.has(shapeId("a"))).toBe(true);
-    expect(report.autoMerged.shapes.has(shapeId("b"))).toBe(true);
-    expect(report.autoMerged.shapes.has(shapeId("c"))).toBe(true);
+    expect(report.autoMerged.shapes.has(elementId("a"))).toBe(true);
+    expect(report.autoMerged.shapes.has(elementId("b"))).toBe(true);
+    expect(report.autoMerged.shapes.has(elementId("c"))).toBe(true);
   });
 
   it("source-only modification auto-applies", () => {
@@ -53,7 +53,7 @@ describe("mergeScenesThreeWay", () => {
     const target = sceneOf(a);
     const report = mergeScenesThreeWay(ancestor, source, target);
     expect(report.conflicts).toEqual([]);
-    expect(report.autoMerged.shapes.get(shapeId("a"))?.position).toEqual({
+    expect(report.autoMerged.shapes.get(elementId("a"))?.position).toEqual({
       x: 50,
       y: 0,
     });
@@ -68,9 +68,9 @@ describe("mergeScenesThreeWay", () => {
     const target = sceneOf(targetVersion);
     const report = mergeScenesThreeWay(ancestor, source, target);
     expect(report.conflicts.length).toBe(1);
-    expect(report.conflicts[0]!.shapeId).toBe(shapeId("a"));
+    expect(report.conflicts[0]!.elementId).toBe(elementId("a"));
     // Default conflict resolution → target wins.
-    expect(report.autoMerged.shapes.get(shapeId("a"))?.position).toEqual({
+    expect(report.autoMerged.shapes.get(elementId("a"))?.position).toEqual({
       x: 0,
       y: 50,
     });
@@ -85,9 +85,9 @@ describe("mergeScenesThreeWay", () => {
     const target = sceneOf(targetVersion);
     const report = mergeScenesThreeWay(ancestor, source, target);
     const final = applyConflictResolutions(report, [
-      { shapeId: shapeId("a"), choice: "theirs" },
+      { elementId: elementId("a"), choice: "theirs" },
     ]);
-    expect(final.shapes.get(shapeId("a"))?.position).toEqual({ x: 50, y: 0 });
+    expect(final.shapes.get(elementId("a"))?.position).toEqual({ x: 50, y: 0 });
   });
 
   it("`both` keeps target original and duplicates source with -copy suffix", () => {
@@ -99,10 +99,10 @@ describe("mergeScenesThreeWay", () => {
     const target = sceneOf(targetVersion);
     const report = mergeScenesThreeWay(ancestor, source, target);
     const final = applyConflictResolutions(report, [
-      { shapeId: shapeId("a"), choice: "both" },
+      { elementId: elementId("a"), choice: "both" },
     ]);
-    expect(final.shapes.get(shapeId("a"))?.position).toEqual({ x: 0, y: 50 });
-    expect(final.shapes.get(shapeId("a-copy"))?.position).toEqual({ x: 50, y: 0 });
+    expect(final.shapes.get(elementId("a"))?.position).toEqual({ x: 0, y: 50 });
+    expect(final.shapes.get(elementId("a-copy"))?.position).toEqual({ x: 50, y: 0 });
   });
 
   it("source-only deletion auto-applies when target untouched", () => {
@@ -113,6 +113,6 @@ describe("mergeScenesThreeWay", () => {
     const target = sceneOf(a, b);
     const report = mergeScenesThreeWay(ancestor, source, target);
     expect(report.conflicts).toEqual([]);
-    expect(report.autoMerged.shapes.has(shapeId("b"))).toBe(false);
+    expect(report.autoMerged.shapes.has(elementId("b"))).toBe(false);
   });
 });

@@ -214,9 +214,9 @@ const computeSelectionWorldBbox = (
   }
   if (shapes.length === 0) {
     // Edge-only selection: take the edge's bbox.
-    const edgeId = editor.selectedEdge;
-    if (edgeId) {
-      const edge = editor.scene.edges.get(edgeId);
+    const linkId = editor.selectedEdge;
+    if (linkId) {
+      const edge = editor.scene.edges.get(linkId);
       if (edge) {
         // Edge endpoints might be free points or anchor-bound; for
         // bound endpoints, resolve via the bound shape's bounds.
@@ -226,7 +226,7 @@ const computeSelectionWorldBbox = (
         for (const ep of [edge.from, edge.to]) {
           if (ep.kind === "point") points.push(ep.position);
           else if (ep.kind === "anchor") {
-            const s = editor.scene.shapes.get(ep.shapeId);
+            const s = editor.scene.shapes.get(ep.elementId);
             if (s) {
               try {
                 const b = getShapeWorldBounds(s);

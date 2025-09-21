@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layerId, shapeId } from "@oh-just-another/types";
+import { layerId, elementId } from "@oh-just-another/types";
 import { isRectangle, orderBetween } from "@oh-just-another/scene";
 import {
   TemplateRegistry,
@@ -32,7 +32,7 @@ const validLibrary = (...templates: TemplateSpec[]): TemplateLibrarySpec => ({
 });
 
 const ctx = () => ({
-  id: shapeId("x"),
+  id: elementId("x"),
   layerId: layerId("L"),
   position: { x: 5, y: 7 },
   order: orderBetween(null, null),

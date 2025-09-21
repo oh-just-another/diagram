@@ -5,7 +5,7 @@ import {
   mergeScenesThreeWay,
 } from "@oh-just-another/scene";
 import { SceneDoc } from "./scene-doc.js";
-import type { ShapeId } from "@oh-just-another/types";
+import type { ElementId } from "@oh-just-another/types";
 import type {
   BranchId,
   BranchMergeAPI,
@@ -146,13 +146,13 @@ export class BranchDoc implements BranchMergeAPI {
     const report = mergeScenesThreeWay(sMeta.ancestorScene, sourceScene, targetScene, {
       compareShapes: (a, b) => JSON.stringify(a) === JSON.stringify(b),
     });
-    const applied: ShapeId[] = [];
+    const applied: ElementId[] = [];
     for (const [id, shape] of report.autoMerged.shapes) {
       const prev = targetScene.shapes.get(id);
       if (prev !== shape) applied.push(id);
     }
     const conflicts: MergeConflict[] = report.conflicts.map((c) => ({
-      shapeId: c.shapeId,
+      elementId: c.elementId,
       base: c.base,
       source: c.source,
       target: c.target,
@@ -178,14 +178,14 @@ export class BranchDoc implements BranchMergeAPI {
       {
         autoMerged: report.autoMerged,
         conflicts: report.conflicts.map((c) => ({
-          shapeId: c.shapeId,
+          elementId: c.elementId,
           base: c.base as never,
           source: c.source as never,
           target: c.target as never,
         })),
       },
       resolutions.map((r) => ({
-        shapeId: r.shapeId,
+        elementId: r.elementId,
         choice: r.choice === "ours" ? "ours" : r.choice === "theirs" ? "theirs" : "both",
       })),
     );

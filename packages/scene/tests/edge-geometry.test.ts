@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { edgeId, layerId, shapeId } from "@oh-just-another/types";
+import { linkId, layerId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addEdge,
@@ -13,7 +13,7 @@ import {
 } from "../src/index";
 
 const rect = (id: string, x: number, y: number, w = 100, h = 60): RectangleShape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: layerId(DEFAULT_LAYER_ID),
   type: "rectangle",
   position: { x, y },
@@ -26,7 +26,7 @@ const rect = (id: string, x: number, y: number, w = 100, h = 60): RectangleShape
 });
 
 const edge = (overrides: Partial<Edge>): Edge => ({
-  id: edgeId("e1"),
+  id: linkId("e1"),
   layerId: layerId(DEFAULT_LAYER_ID),
   from: { kind: "point", position: { x: 0, y: 0 } },
   to: { kind: "point", position: { x: 100, y: 100 } },
@@ -57,7 +57,7 @@ describe("getEdgeEndpointWorld", () => {
     expect(
       getEdgeEndpointWorld(s, {
         kind: "anchor",
-        shapeId: r.id,
+        elementId: r.id,
         anchor: { kind: "named", name: "center" },
       }),
     ).toEqual({ x: 150, y: 230 });
@@ -68,7 +68,7 @@ describe("getEdgeEndpointWorld", () => {
     expect(
       getEdgeEndpointWorld(s, {
         kind: "anchor",
-        shapeId: shapeId("ghost"),
+        elementId: elementId("ghost"),
         anchor: { kind: "named", name: "center" },
       }),
     ).toBeNull();
@@ -131,7 +131,7 @@ describe("getEdgePath", () => {
     const e: Edge = edge({
       from: {
         kind: "anchor",
-        shapeId: shapeId("missing"),
+        elementId: elementId("missing"),
         anchor: { kind: "named", name: "center" },
       },
     });
@@ -141,7 +141,7 @@ describe("getEdgePath", () => {
   it("anchor-resolved endpoints react to shape movement", () => {
     const r = rect("x", 0, 0);
     const e: Edge = edge({
-      from: { kind: "anchor", shapeId: r.id, anchor: { kind: "named", name: "right" } },
+      from: { kind: "anchor", elementId: r.id, anchor: { kind: "named", name: "right" } },
       to: { kind: "point", position: { x: 500, y: 0 } },
     });
     const s = sceneWith([r], [e]);

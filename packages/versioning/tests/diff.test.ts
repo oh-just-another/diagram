@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -12,7 +12,7 @@ import {
 import { diffScenes, isEmptyDiff } from "../src/index";
 
 const rect = (id: string, x = 0, y = 0): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -38,12 +38,12 @@ describe("diffScenes", () => {
 
     let next = base;
     next = addShape(next, rect("c", 20, 20)).scene;
-    next = removeShape(next, shapeId("a")).scene;
-    next = updateShape(next, shapeId("b"), (s) => ({ ...s, position: { x: 99, y: 99 } })).scene;
+    next = removeShape(next, elementId("a")).scene;
+    next = updateShape(next, elementId("b"), (s) => ({ ...s, position: { x: 99, y: 99 } })).scene;
 
     const d = diffScenes(base, next);
-    expect(d.shapes.added).toEqual([shapeId("c")]);
-    expect(d.shapes.removed).toEqual([shapeId("a")]);
-    expect(d.shapes.modified).toEqual([shapeId("b")]);
+    expect(d.shapes.added).toEqual([elementId("c")]);
+    expect(d.shapes.removed).toEqual([elementId("a")]);
+    expect(d.shapes.modified).toEqual([elementId("b")]);
   });
 });

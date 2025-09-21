@@ -1,4 +1,4 @@
-import type { EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import type { FractionalIndex } from "fractional-keys";
 import type { Style } from "./style.js";
 
@@ -42,7 +42,7 @@ export type AnchorRef =
 
 export type EdgeEndpoint =
   | { readonly kind: "point"; readonly position: Vec2 }
-  | { readonly kind: "anchor"; readonly shapeId: ShapeId; readonly anchor: AnchorRef }
+  | { readonly kind: "anchor"; readonly elementId: ElementId; readonly anchor: AnchorRef }
   /**
    * Pin the endpoint to a fraction along the shape's outline (0..1
    * clockwise from the bounds' top-left). Survives move / resize /
@@ -50,7 +50,7 @@ export type EdgeEndpoint =
    * when "near a specific edge but not on a port" is what the user
    * actually meant.
    */
-  | { readonly kind: "outline"; readonly shapeId: ShapeId; readonly ratio: number };
+  | { readonly kind: "outline"; readonly elementId: ElementId; readonly ratio: number };
 
 /**
  * How to draw the line between an edge's two endpoints.
@@ -96,7 +96,7 @@ export interface EdgeLabel {
  * follows them or computes new ones.
  */
 export interface Edge {
-  readonly id: EdgeId;
+  readonly id: LinkId;
   readonly layerId: LayerId;
   readonly from: EdgeEndpoint;
   readonly to: EdgeEndpoint;

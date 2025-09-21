@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { layerId, shapeId } from "@oh-just-another/types";
+import { layerId, elementId } from "@oh-just-another/types";
 import {
   getShapeLocalBounds,
   getShapeWorldBounds,
@@ -27,7 +27,7 @@ const baseProps = {
 
 const rect: RectangleShape = {
   ...baseProps,
-  id: shapeId("r"),
+  id: elementId("r"),
   type: "rectangle",
   width: 10,
   height: 20,
@@ -78,7 +78,7 @@ describe("shape", () => {
 
   describe("registerBounder (plugin extensibility)", () => {
     it("unknown type throws, then works after registration", () => {
-      const shape: ShapeBase = { ...baseProps, id: shapeId("custom"), type: "diamond" };
+      const shape: ShapeBase = { ...baseProps, id: elementId("custom"), type: "diamond" };
       expect(() => getShapeLocalBounds(shape)).toThrow(/no bounder/i);
       registerBounder("diamond", () => ({ x: 0, y: 0, width: 100, height: 50 }));
       expect(getShapeLocalBounds(shape)).toEqual({ x: 0, y: 0, width: 100, height: 50 });
@@ -96,7 +96,7 @@ describe("shape", () => {
       );
       const base = {
         ...baseProps,
-        id: shapeId("t"),
+        id: elementId("t"),
         type: "text" as const,
         text: "hello",
         fontFamily: "sans",
@@ -115,13 +115,13 @@ describe("shape", () => {
 
   describe("built-in bounders for other shape types", () => {
     it("ellipse local bounds use w/h", () => {
-      const e = { ...baseProps, id: shapeId("e"), type: "ellipse" as const, width: 40, height: 20 };
+      const e = { ...baseProps, id: elementId("e"), type: "ellipse" as const, width: 40, height: 20 };
       expect(getShapeLocalBounds(e)).toEqual({ x: 0, y: 0, width: 40, height: 20 });
     });
     it("polygon local bounds = AABB of points", () => {
       const p = {
         ...baseProps,
-        id: shapeId("p"),
+        id: elementId("p"),
         type: "polygon" as const,
         points: [
           { x: 0, y: 0 },
@@ -134,7 +134,7 @@ describe("shape", () => {
     it("path local bounds cover M/L/Q/C/Z commands", () => {
       const p = {
         ...baseProps,
-        id: shapeId("pa"),
+        id: elementId("pa"),
         type: "path" as const,
         commands: [
           { kind: "M" as const, to: { x: 0, y: 0 } },
@@ -158,7 +158,7 @@ describe("shape", () => {
     it("text local bounds approximate from font size and length", () => {
       const t = {
         ...baseProps,
-        id: shapeId("t"),
+        id: elementId("t"),
         type: "text" as const,
         text: "hello",
         fontFamily: "sans-serif",
@@ -172,7 +172,7 @@ describe("shape", () => {
     it("text with maxWidth wraps into multiple line heights", () => {
       const t = {
         ...baseProps,
-        id: shapeId("t2"),
+        id: elementId("t2"),
         type: "text" as const,
         text: "long text that wraps",
         fontFamily: "sans-serif",
@@ -187,7 +187,7 @@ describe("shape", () => {
     it("image local bounds use w/h", () => {
       const i = {
         ...baseProps,
-        id: shapeId("i"),
+        id: elementId("i"),
         type: "image" as const,
         src: "data:,",
         width: 50,

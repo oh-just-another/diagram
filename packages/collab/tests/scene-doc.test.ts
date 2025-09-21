@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { annotationId, commentId, shapeId } from "@oh-just-another/types";
+import { annotationId, commentId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addAnnotation,
@@ -16,7 +16,7 @@ import { SceneDoc } from "../src/scene-doc";
 const seed = (): Scene => {
   let s = emptyScene();
   const rect: Shape = {
-    id: shapeId("r1"),
+    id: elementId("r1"),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",
     position: { x: 10, y: 20 },
@@ -38,7 +38,7 @@ describe("SceneDoc", () => {
     doc.replace(scene);
     const out = doc.snapshot();
     expect(out.shapes.size).toBe(1);
-    expect(out.shapes.get(shapeId("r1"))?.position).toEqual({ x: 10, y: 20 });
+    expect(out.shapes.get(elementId("r1"))?.position).toEqual({ x: 10, y: 20 });
   });
 
   it("applyDelta only ships diff", () => {
@@ -61,10 +61,10 @@ describe("SceneDoc", () => {
       shapes: new Map([
         ...scene.shapes,
         [
-          shapeId("r2"),
+          elementId("r2"),
           {
-            ...scene.shapes.get(shapeId("r1"))!,
-            id: shapeId("r2"),
+            ...scene.shapes.get(elementId("r1"))!,
+            id: elementId("r2"),
             position: { x: 50, y: 50 },
           },
         ],
@@ -84,7 +84,7 @@ describe("SceneDoc", () => {
 
     a.replace(seed());
     expect(b.snapshot().shapes.size).toBe(1);
-    expect(b.snapshot().shapes.get(shapeId("r1"))?.position).toEqual({ x: 10, y: 20 });
+    expect(b.snapshot().shapes.get(elementId("r1"))?.position).toEqual({ x: 10, y: 20 });
   });
 
   it("annotations round-trip across two SceneDoc peers", () => {
@@ -96,7 +96,7 @@ describe("SceneDoc", () => {
     let scene = seed();
     const ann: Annotation = {
       id: annotationId("a1"),
-      shapeId: shapeId("r1"),
+      elementId: elementId("r1"),
       position: { x: 5, y: 5 },
       resolved: false,
       thread: [

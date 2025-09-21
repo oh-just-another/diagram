@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { layerId as castLayerId, shapeId } from "@oh-just-another/types";
+import { layerId as castLayerId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -17,7 +17,7 @@ import {
 installBuiltinRenderers();
 
 const rect = (id: string, x = 0): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y: 0 },

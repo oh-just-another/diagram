@@ -4,7 +4,7 @@ import {
   type TileCacheEntry,
   type TileKey,
 } from "@oh-just-another/renderer-core";
-import type { Bounds, ShapeId } from "@oh-just-another/types";
+import type { Bounds, ElementId } from "@oh-just-another/types";
 import {
   getShapesInLayer,
   getShapeWorldBounds,
@@ -54,7 +54,7 @@ export interface RenderViaTilesOptions {
    * Drops the `changedShapeIds` shape-only set in favour of this
    * fuller view, so add-tracking finally invalidates correctly.
    */
-  readonly changedShapes?: ReadonlyMap<ShapeId, ChangedShapeRecord>;
+  readonly changedShapes?: ReadonlyMap<ElementId, ChangedShapeRecord>;
   /** Current zoom (used to pick the cache bucket). */
   readonly zoomBucket: number;
 }

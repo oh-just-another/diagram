@@ -10,8 +10,8 @@ import {
   type Patch,
   type TextStyle,
 } from "@oh-just-another/scene";
-import type { EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
-import { shapeId as castShapeId } from "@oh-just-another/types";
+import type { LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
+import { elementId as castShapeId } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
 
 /**
@@ -21,7 +21,7 @@ import * as Selection from "../../selection.js";
  */
 export const computeMoveSelectionBy = (
   scene: Scene,
-  targets: ReadonlySet<ShapeId>,
+  targets: ReadonlySet<ElementId>,
   delta: Vec2,
   isLayerLocked: (id: LayerId) => boolean,
 ): { readonly scene: Scene; readonly patches: Patch[]; readonly moved: number } | null => {
@@ -53,7 +53,7 @@ export const computeMoveSelectionBy = (
 export const computeDeleteSelection = (
   scene: Scene,
   selection: Selection.Selection,
-  selectedEdge: EdgeId | null,
+  selectedEdge: LinkId | null,
 ): { readonly scene: Scene; readonly patches: Patch[] } | null => {
   if (selection.size === 0 && !selectedEdge) return null;
   let s = scene;
@@ -61,8 +61,8 @@ export const computeDeleteSelection = (
   for (const id of selection) {
     for (const edge of [...s.edges.values()]) {
       if (
-        (edge.from.kind !== "point" && edge.from.shapeId === id) ||
-        (edge.to.kind !== "point" && edge.to.shapeId === id)
+        (edge.from.kind !== "point" && edge.from.elementId === id) ||
+        (edge.to.kind !== "point" && edge.to.elementId === id)
       ) {
         const r = removeEdge(s, edge.id);
         s = r.scene;
@@ -94,13 +94,13 @@ export const computeDuplicateSelection = (
 ): {
   readonly scene: Scene;
   readonly patches: Patch[];
-  readonly newIds: readonly ShapeId[];
+  readonly newIds: readonly ElementId[];
 } | null => {
   const targets = [...selection];
   if (targets.length === 0) return null;
   let s = scene;
   const patches: Patch[] = [];
-  const newIds: ShapeId[] = [];
+  const newIds: ElementId[] = [];
   for (const id of targets) {
     const shape = getShape(s, id);
     if (!shape) continue;
@@ -129,7 +129,7 @@ export const computeDuplicateSelection = (
  */
 export const computeSetSelection = (
   scene: Scene,
-  ids: Iterable<ShapeId>,
+  ids: Iterable<ElementId>,
   current: Selection.Selection,
 ): Selection.Selection | null => {
   let next: Selection.Selection = Selection.EMPTY;
@@ -166,10 +166,10 @@ export const computeSelectAll = (
  */
 export const computeUpdateStyle = (
   scene: Scene,
-  ids: Iterable<ShapeId>,
+  ids: Iterable<ElementId>,
   partial: Partial<TextStyle>,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
-  const targetIds: ShapeId[] = [];
+  const targetIds: ElementId[] = [];
   for (const id of ids) {
     if (scene.shapes.has(id)) targetIds.push(id);
   }
@@ -195,10 +195,10 @@ export const computeUpdateStyle = (
  */
 export const computeUpdateTextProps = (
   scene: Scene,
-  ids: Iterable<ShapeId>,
+  ids: Iterable<ElementId>,
   partial: { readonly fontSize?: number; readonly fontFamily?: string; readonly maxWidth?: number },
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
-  const targetIds: ShapeId[] = [];
+  const targetIds: ElementId[] = [];
   for (const id of ids) {
     if (getShape(scene, id)?.type === "text") targetIds.push(id);
   }
@@ -228,7 +228,7 @@ export const describeNudge = (delta: Vec2, count: number): string => {
 };
 
 /** Compose a selection from a freshly-created id list. */
-export const selectionFromNewIds = (ids: readonly ShapeId[]): Selection.Selection => {
+export const selectionFromNewIds = (ids: readonly ElementId[]): Selection.Selection => {
   let next: Selection.Selection = Selection.EMPTY;
   for (const id of ids) next = Selection.add(next, id);
   return next;

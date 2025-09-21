@@ -9,7 +9,7 @@ import {
 } from "@oh-just-another/scene";
 import {
   type AnnotationId,
-  type EdgeId,
+  type LinkId,
   layerId as castLayerId,
   type LayerId,
 } from "@oh-just-another/types";
@@ -100,5 +100,5 @@ export const useSelectedAnnotation = (): AnnotationId | null =>
   useEditorSelector<AnnotationId | null>((e) => e.selectedAnnotation, null);
 
 /** Currently selected edge id, or null when no edge is selected. */
-export const useSelectedEdge = (): EdgeId | null =>
-  useEditorSelector<EdgeId | null>((e) => e.selectedEdge, null);
+export const useSelectedEdge = (): LinkId | null =>
+  useEditorSelector<LinkId | null>((e) => e.selectedEdge, null);

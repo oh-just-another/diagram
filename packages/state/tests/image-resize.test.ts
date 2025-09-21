@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -14,7 +14,7 @@ import {
 
 const image = (): Shape =>
   ({
-    id: shapeId("img"),
+    id: elementId("img"),
     layerId: DEFAULT_LAYER_ID,
     type: "image",
     position: { x: 0, y: 0 },
@@ -66,7 +66,7 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
     // Sanity: the free path distorts ordinary shapes — that's the
     // contrast the mixed-selection test below relies on.
     const rect = {
-      id: shapeId("r"),
+      id: elementId("r"),
       layerId: DEFAULT_LAYER_ID,
       type: "rectangle",
       position: { x: 0, y: 0 },
@@ -86,7 +86,7 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
 
   it("mixed selection: rectangle follows the box, image keeps its aspect", () => {
     const rect = {
-      id: shapeId("r"),
+      id: elementId("r"),
       layerId: DEFAULT_LAYER_ID,
       type: "rectangle",
       position: { x: 0, y: 0 },
@@ -98,7 +98,7 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
       height: 50,
     } as unknown as Shape;
     const img = {
-      id: shapeId("img"),
+      id: elementId("img"),
       layerId: DEFAULT_LAYER_ID,
       type: "image",
       position: { x: 100, y: 0 },

@@ -1,5 +1,5 @@
 import { useMemo, type CSSProperties } from "react";
-import type { ShapeId } from "@oh-just-another/types";
+import type { ElementId } from "@oh-just-another/types";
 import { type FrameShape } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene } from "./hooks.js";
 
@@ -14,7 +14,7 @@ import { useDiagramOptional, useScene } from "./hooks.js";
  */
 export interface FramePanelProps {
   /** Host-side export callback. Invoked per-frame on the action click. */
-  readonly onExport?: (frameId: ShapeId, frame: FrameShape) => void;
+  readonly onExport?: (frameId: ElementId, frame: FrameShape) => void;
   readonly style?: CSSProperties;
 }
 

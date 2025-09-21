@@ -8,7 +8,7 @@ import {
 } from "@oh-just-another/scene";
 import { defaultRegistry, type Template } from "@oh-just-another/templates";
 import { parseScene, parseFiles, stringifyScene, stringifyFiles } from "@oh-just-another/serialization";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "./index";
 import { setupTemplates } from "./templates";
@@ -61,7 +61,7 @@ const seedScene = (): Scene => {
   templates.forEach((tmpl, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
-    const id = shapeId(`seed-${tmpl.id}-${i}`);
+    const id = elementId(`seed-${tmpl.id}-${i}`);
     const ctx = {
       id,
       layerId: DEFAULT_LAYER_ID,

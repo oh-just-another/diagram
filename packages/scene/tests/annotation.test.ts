@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { annotationId, commentId, shapeId } from "@oh-just-another/types";
+import { annotationId, commentId, elementId } from "@oh-just-another/types";
 import {
   addAnnotation,
   emptyScene,
@@ -12,7 +12,7 @@ import {
 
 const sample = (overrides: Partial<Annotation> = {}): Annotation => ({
   id: annotationId("a1"),
-  shapeId: null,
+  elementId: null,
   position: { x: 10, y: 20 },
   resolved: false,
   thread: [
@@ -64,9 +64,9 @@ describe("annotation operations", () => {
     expect(restored.annotations.get(ann.id)).toEqual(ann);
   });
 
-  it("update with shapeId anchors to shape", () => {
-    const ann = sample({ shapeId: shapeId("rect-1") });
+  it("update with elementId anchors to shape", () => {
+    const ann = sample({ elementId: elementId("rect-1") });
     const { scene } = addAnnotation(emptyScene(), ann);
-    expect(scene.annotations.get(ann.id)?.shapeId).toBe("rect-1");
+    expect(scene.annotations.get(ann.id)?.elementId).toBe("rect-1");
   });
 });

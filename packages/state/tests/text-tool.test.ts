@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -11,7 +11,7 @@ import {
 import { Editor } from "../src/editor.js";
 
 const textShape = (id: string, text = "hi"): TextShape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "text",
   position: { x: 0, y: 0 },
@@ -124,9 +124,9 @@ describe("draw-text tool", () => {
     let s = e.scene;
     s = addShape(s, textShape("t1", "keep")).scene;
     const e2 = makeEditor(s);
-    e2.beginTextEdit(shapeId("t1"));
+    e2.beginTextEdit(elementId("t1"));
     e2.cancelTextEdit();
-    expect((e2.scene.shapes.get(shapeId("t1")) as TextShape).text).toBe("keep");
+    expect((e2.scene.shapes.get(elementId("t1")) as TextShape).text).toBe("keep");
   });
 
   it("updateTextProps changes fontSize on text shapes only", () => {

@@ -12,8 +12,8 @@ import {
   type Shape,
   type Patch,
 } from "@oh-just-another/scene";
-import type { Bounds, ShapeId } from "@oh-just-another/types";
-import { shapeId as castShapeId } from "@oh-just-another/types";
+import type { Bounds, ElementId } from "@oh-just-another/types";
+import { elementId as castShapeId } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
 
 /**
@@ -77,7 +77,7 @@ export const selectionRoots = (
   selection: Selection.Selection,
 ): readonly Shape[] => {
   const out: Shape[] = [];
-  const seen = new Set<ShapeId>();
+  const seen = new Set<ElementId>();
   for (const id of selection) {
     const shape = getShape(scene, id);
     if (!shape) continue;
@@ -106,9 +106,9 @@ export const selectionRoots = (
 export const expandSelectionWithDescendants = (
   scene: Scene,
   selection: Selection.Selection,
-): ReadonlySet<ShapeId> => {
-  const out = new Set<ShapeId>();
-  const visit = (id: ShapeId): void => {
+): ReadonlySet<ElementId> => {
+  const out = new Set<ElementId>();
+  const visit = (id: ElementId): void => {
     if (out.has(id)) return;
     const shape = getShape(scene, id);
     if (!shape) return;
@@ -132,11 +132,11 @@ export const expandSelectionWithDescendants = (
 export const computeGroupSelected = (
   scene: Scene,
   selection: Selection.Selection,
-  newGroupId: ShapeId,
+  newGroupId: ElementId,
 ): {
   readonly scene: Scene;
   readonly patches: Patch[];
-  readonly groupId: ShapeId;
+  readonly groupId: ElementId;
 } | null => {
   const roots = selectionRoots(scene, selection);
   if (roots.length < 2) return null;
@@ -179,7 +179,7 @@ export const computeUngroup = (
 ): {
   readonly scene: Scene;
   readonly patches: Patch[];
-  readonly nextSelection: ReadonlySet<ShapeId>;
+  readonly nextSelection: ReadonlySet<ElementId>;
 } | null => {
   const targets = [...selection]
     .map((id) => getShape(scene, id))
@@ -187,13 +187,13 @@ export const computeUngroup = (
   if (targets.length === 0) return null;
   let s = scene;
   const patches: Patch[] = [];
-  const nextSelection = new Set<ShapeId>();
+  const nextSelection = new Set<ElementId>();
   for (const group of targets) {
     const children = [...s.shapes.values()].filter((sh) => sh.parentId === group.id);
     for (const child of children) {
       const r = updateShape(s, child.id, (sh) => {
         const next: Shape = { ...sh };
-        delete (next as { parentId?: ShapeId }).parentId;
+        delete (next as { parentId?: ElementId }).parentId;
         return next;
       });
       s = r.scene;
@@ -214,13 +214,13 @@ export const computeUngroup = (
  */
 export const pickFocusCycle = (
   scene: Scene,
-  current: ShapeId | undefined,
+  current: ElementId | undefined,
   direction: "next" | "prev",
-): { readonly id: ShapeId; readonly name: string } | null => {
+): { readonly id: ElementId; readonly name: string } | null => {
   const layers = [...scene.layers.values()]
     .filter((l) => l.visible && !l.locked)
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
-  const ordered: ShapeId[] = [];
+  const ordered: ElementId[] = [];
   for (const layer of layers) {
     const inLayer = [...scene.shapes.values()]
       .filter((s) => s.layerId === layer.id)
@@ -241,5 +241,5 @@ export const pickFocusCycle = (
 };
 
 /** Generate a fresh group shape id with the editor's nextId counter. */
-export const newGroupShapeId = (next: number): ShapeId =>
+export const newGroupShapeId = (next: number): ElementId =>
   castShapeId(`group-${next}-${Date.now().toString(36)}`);

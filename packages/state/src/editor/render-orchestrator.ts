@@ -102,7 +102,7 @@ export const renderEditor = (editor: any): void => {
   else if (editor.drawingPreview) overlayOpts.drawingPreview = editor.drawingPreview;
   if (editor.edgePreview) overlayOpts.edgePreview = editor.edgePreview;
   if (editor.hoveredEdgeTarget) {
-    const shape = getShape(editor._scene, editor.hoveredEdgeTarget.shapeId);
+    const shape = getShape(editor._scene, editor.hoveredEdgeTarget.elementId);
     if (shape) {
       const excluded = snapExcludedAnchors(shape);
       const names = [...listAnchorsLocal(shape).keys()].filter((n) => !excluded.has(n));
@@ -145,7 +145,7 @@ export const renderEditor = (editor: any): void => {
         // edge itself stays on its old path until release.
         let from = path[0]!;
         let to = path[path.length - 1]!;
-        if (editor.edgeEndpointDrag?.edgeId === editor._selectedEdge) {
+        if (editor.edgeEndpointDrag?.linkId === editor._selectedEdge) {
           if (editor.edgeEndpointDrag.side === "from") from = editor.edgeEndpointDrag.toPoint;
           else to = editor.edgeEndpointDrag.toPoint;
         }

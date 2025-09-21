@@ -1,16 +1,16 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
-  edgeId,
+  linkId,
   layerId,
-  shapeId,
+  elementId,
   type Bounds,
   type Color,
-  type EdgeId,
+  type LinkId,
   type KeyboardEventData,
   type LayerId,
   type Modifiers,
   type PointerEventData,
-  type ShapeId,
+  type ElementId,
   type Transform,
   type Vec2,
   type WheelEventData,
@@ -18,19 +18,19 @@ import {
 
 describe("id casts", () => {
   it("preserve the underlying string", () => {
-    expect(shapeId("shape-1")).toBe("shape-1");
-    expect(edgeId("edge-1")).toBe("edge-1");
+    expect(elementId("shape-1")).toBe("shape-1");
+    expect(linkId("edge-1")).toBe("edge-1");
     expect(layerId("layer-1")).toBe("layer-1");
   });
 
   it("produce distinct branded types that don't mix", () => {
-    expectTypeOf(shapeId("x")).toEqualTypeOf<ShapeId>();
-    expectTypeOf(edgeId("x")).toEqualTypeOf<EdgeId>();
+    expectTypeOf(elementId("x")).toEqualTypeOf<ElementId>();
+    expectTypeOf(linkId("x")).toEqualTypeOf<LinkId>();
     expectTypeOf(layerId("x")).toEqualTypeOf<LayerId>();
-    expectTypeOf<ShapeId>().not.toEqualTypeOf<EdgeId>();
-    expectTypeOf<ShapeId>().not.toEqualTypeOf<LayerId>();
-    expectTypeOf<EdgeId>().not.toEqualTypeOf<LayerId>();
-    expectTypeOf<string>().not.toEqualTypeOf<ShapeId>();
+    expectTypeOf<ElementId>().not.toEqualTypeOf<LinkId>();
+    expectTypeOf<ElementId>().not.toEqualTypeOf<LayerId>();
+    expectTypeOf<LinkId>().not.toEqualTypeOf<LayerId>();
+    expectTypeOf<string>().not.toEqualTypeOf<ElementId>();
   });
 });
 

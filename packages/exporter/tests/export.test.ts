@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -16,7 +16,7 @@ const sceneOf = (width: number, height: number): Scene => {
 };
 
 const rect = (id: string, x = 0, y = 0, w = 100, h = 60, fill = "#abc"): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },

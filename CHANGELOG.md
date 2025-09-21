@@ -907,3 +907,6 @@
 
 ## 0.46.5
 - feat: larger decoupled mouse hit-zones for handles/edges
+
+## 0.46.6
+- feat: debug-panel Display tab — render switch + hit-zone overlay; "g d" toggle

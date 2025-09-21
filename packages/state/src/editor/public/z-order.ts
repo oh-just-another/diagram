@@ -10,7 +10,7 @@ import {
   type Scene,
   type Patch,
 } from "@oh-just-another/scene";
-import type { LayerId, ShapeId } from "@oh-just-another/types";
+import type { LayerId, ElementId } from "@oh-just-another/types";
 
 /**
  * Pick the target shape for a single-shape z-order command. Defaults
@@ -19,9 +19,9 @@ import type { LayerId, ShapeId } from "@oh-just-another/types";
  */
 const resolveTarget = (
   scene: Scene,
-  id: ShapeId | undefined,
-  selection: ReadonlySet<ShapeId>,
-): ShapeId | null => {
+  id: ElementId | undefined,
+  selection: ReadonlySet<ElementId>,
+): ElementId | null => {
   const target = id ?? (selection.size === 1 ? [...selection][0] ?? null : null);
   if (!target) return null;
   return scene.shapes.has(target) ? target : null;
@@ -30,8 +30,8 @@ const resolveTarget = (
 /** Move a shape to the top of its layer. */
 export const computeBringToFront = (
   scene: Scene,
-  id: ShapeId | undefined,
-  selection: ReadonlySet<ShapeId>,
+  id: ElementId | undefined,
+  selection: ReadonlySet<ElementId>,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetId = resolveTarget(scene, id, selection);
   if (!targetId) return null;
@@ -50,8 +50,8 @@ export const computeBringToFront = (
 /** Move a shape to the bottom of its layer. */
 export const computeSendToBack = (
   scene: Scene,
-  id: ShapeId | undefined,
-  selection: ReadonlySet<ShapeId>,
+  id: ElementId | undefined,
+  selection: ReadonlySet<ElementId>,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetId = resolveTarget(scene, id, selection);
   if (!targetId) return null;
@@ -74,8 +74,8 @@ export const computeSendToBack = (
  */
 export const computeBringForward = (
   scene: Scene,
-  id: ShapeId | undefined,
-  selection: ReadonlySet<ShapeId>,
+  id: ElementId | undefined,
+  selection: ReadonlySet<ElementId>,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetId = resolveTarget(scene, id, selection);
   if (!targetId) return null;
@@ -108,8 +108,8 @@ export const computeBringForward = (
  */
 export const computeSendBackward = (
   scene: Scene,
-  id: ShapeId | undefined,
-  selection: ReadonlySet<ShapeId>,
+  id: ElementId | undefined,
+  selection: ReadonlySet<ElementId>,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetId = resolveTarget(scene, id, selection);
   if (!targetId) return null;

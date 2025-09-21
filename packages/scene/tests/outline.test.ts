@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layerId, shapeId } from "@oh-just-another/types";
+import { layerId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   findNearestOutlinePoint,
@@ -9,7 +9,7 @@ import {
 } from "../src/index";
 
 const rect = (overrides: Partial<RectangleShape> = {}): RectangleShape => ({
-  id: shapeId("r1"),
+  id: elementId("r1"),
   layerId: layerId(DEFAULT_LAYER_ID),
   type: "rectangle",
   position: { x: 0, y: 0 },

@@ -1,4 +1,4 @@
-import type { Bounds, ShapeId } from "@oh-just-another/types";
+import type { Bounds, ElementId } from "@oh-just-another/types";
 import { getShape, getShapeWorldBounds, type Scene, type Shape } from "@oh-just-another/scene";
 import { parseScene } from "@oh-just-another/serialization";
 import type { ExportRegion } from "./options.js";
@@ -50,12 +50,12 @@ export const sceneForRegion = (scene: Scene, region: ExportRegion | undefined): 
  * endpoint outside the frame are still rendered; the render-time
  * `viewportWorld` cull drops the off-screen parts). Only shapes are filtered.
  */
-export const sceneForFrame = (scene: Scene, frameId: ShapeId): Scene | null => {
+export const sceneForFrame = (scene: Scene, frameId: ElementId): Scene | null => {
   const frame = getShape(scene, frameId);
   if (!frame || frame.type !== "frame") return null;
   const bounds = getShapeWorldBounds(frame);
 
-  const shapes = new Map<ShapeId, Shape>();
+  const shapes = new Map<ElementId, Shape>();
   for (const s of scene.shapes.values()) {
     if (s.id === frameId) continue;
     if (s.frameId !== frameId) continue;

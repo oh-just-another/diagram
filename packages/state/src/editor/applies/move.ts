@@ -9,7 +9,7 @@ import {
 import type {
   AnnotationId,
   Bounds,
-  ShapeId,
+  ElementId,
   Vec2,
 } from "@oh-just-another/types";
 
@@ -29,7 +29,7 @@ import type {
  */
 export const computeShapeMovePatch = (
   scene: Scene,
-  id: ShapeId,
+  id: ElementId,
   delta: Vec2,
   originalBounds: Bounds,
 ): Patch | null => {
@@ -57,7 +57,7 @@ export const computeShapeMovePatch = (
  */
 export const computeGroupMovePatches = (
   scene: Scene,
-  groupMoveOrigin: ReadonlyMap<ShapeId, Vec2>,
+  groupMoveOrigin: ReadonlyMap<ElementId, Vec2>,
   delta: Vec2,
 ): Patch[] => {
   const out: Patch[] = [];
@@ -92,8 +92,8 @@ export const computeAnnotationMovePatch = (
   if (!ann) return null;
   const targetWorld: Vec2 = { x: origin.x + delta.x, y: origin.y + delta.y };
   let storedPosition: Vec2 = targetWorld;
-  if (ann.shapeId) {
-    const shape = getShape(scene, ann.shapeId);
+  if (ann.elementId) {
+    const shape = getShape(scene, ann.elementId);
     if (shape) {
       storedPosition = {
         x: targetWorld.x - shape.position.x,

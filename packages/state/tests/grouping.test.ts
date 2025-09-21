@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   apply,
@@ -13,7 +13,7 @@ import {
 import { Editor } from "../src/editor.js";
 
 const rect = (id: string, x: number, y: number, w = 20, h = 20): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -370,7 +370,7 @@ describe("group lock / hide propagation", () => {
 
 describe("auto-layout containers", () => {
   const containerWithAutoLayout = (kind: "grid" | "stack"): Shape => ({
-    id: shapeId("parent"),
+    id: elementId("parent"),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",
     position: { x: 0, y: 0 },
@@ -388,8 +388,8 @@ describe("auto-layout containers", () => {
     },
   });
 
-  const childOf = (id: string, parentId: ReturnType<typeof shapeId>, x: number, y: number): Shape => ({
-    id: shapeId(id),
+  const childOf = (id: string, parentId: ReturnType<typeof elementId>, x: number, y: number): Shape => ({
+    id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",
     position: { x, y },
@@ -428,8 +428,8 @@ describe("auto-layout containers", () => {
     // Auto-layout fires in a microtask after notify; await it.
     await Promise.resolve();
 
-    const p1 = editor.scene.shapes.get(shapeId("c1"))!.position;
-    const p2 = editor.scene.shapes.get(shapeId("c2"))!.position;
+    const p1 = editor.scene.shapes.get(elementId("c1"))!.position;
+    const p2 = editor.scene.shapes.get(elementId("c2"))!.position;
     expect(p1).toEqual({ x: 0, y: 0 });
     expect(p2).toEqual({ x: 60, y: 0 }); // 50 width + 10 gap
   });
@@ -492,9 +492,9 @@ describe("auto-layout containers", () => {
     expect(editor.scene.shapes.get(parent.id)!.position).toEqual(before);
 
     // Children landed inside the drop-zone (offset by padding).
-    expect(editor.scene.shapes.get(shapeId("c1"))!.position).toEqual({ x: 12, y: 12 });
-    expect(editor.scene.shapes.get(shapeId("c2"))!.position).toEqual({ x: 72, y: 12 });
-    expect(editor.scene.shapes.get(shapeId("c3"))!.position).toEqual({ x: 12, y: 72 });
+    expect(editor.scene.shapes.get(elementId("c1"))!.position).toEqual({ x: 12, y: 12 });
+    expect(editor.scene.shapes.get(elementId("c2"))!.position).toEqual({ x: 72, y: 12 });
+    expect(editor.scene.shapes.get(elementId("c3"))!.position).toEqual({ x: 12, y: 72 });
   });
 
   // The live drop-zone synthesiser for auto-layout shapes is unit-tested in
@@ -523,7 +523,7 @@ describe("auto-layout containers", () => {
     // `computePlacementContainerDrop`, so the input must arrive
     // un-parented.
     const first = { ...childOf("c1", parent.id, 0, 0) };
-    delete (first as { parentId?: ReturnType<typeof shapeId> }).parentId;
+    delete (first as { parentId?: ReturnType<typeof elementId> }).parentId;
 
     const placement1 = editor.beginPlacement(first);
     placement1.update({ x: 300, y: 250 });
@@ -542,7 +542,7 @@ describe("auto-layout containers", () => {
     // Second drop at a different cursor position — must land at
     // (cellW+gap, 0) relative to drop zone, regardless of cursor.
     const second = { ...childOf("c2", parent.id, 0, 0) };
-    delete (second as { parentId?: ReturnType<typeof shapeId> }).parentId;
+    delete (second as { parentId?: ReturnType<typeof elementId> }).parentId;
     const placement2 = editor.beginPlacement(second);
     placement2.update({ x: 350, y: 270 });
     placement2.commit();

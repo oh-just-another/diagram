@@ -505,7 +505,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
             y: ctx.worldPoint.y - shapeUnder.position.y,
           }
         : ctx.worldPoint;
-      e.addAnnotation({ position, shapeId: shapeUnder?.id ?? null });
+      e.addAnnotation({ position, elementId: shapeUnder?.id ?? null });
     },
   },
   { kind: "divider" },

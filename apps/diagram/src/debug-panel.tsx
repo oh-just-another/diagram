@@ -12,7 +12,7 @@ import {
 } from "@oh-just-another/scene";
 import type { Editor } from "@oh-just-another/state";
 import { defaultRegistry, type Template, type TemplateContext } from "@oh-just-another/templates";
-import { edgeId, shapeId, type EdgeId, type LayerId, type ShapeId } from "@oh-just-another/types";
+import { linkId, elementId, type LinkId, type LayerId, type ElementId } from "@oh-just-another/types";
 
 /**
  * Window (ms) within which the "g d" debug-toggle sequence must
@@ -302,9 +302,9 @@ const Drawer = ({
 
 const InspectorTab = ({ editor }: { editor: Editor }) => {
   const ids = [...editor.selection];
-  const edgeId = editor.selectedEdge;
+  const linkId = editor.selectedEdge;
 
-  if (ids.length === 0 && !edgeId) {
+  if (ids.length === 0 && !linkId) {
     return <Hint>Select one or more shapes (or an edge) to see details.</Hint>;
   }
 
@@ -315,10 +315,10 @@ const InspectorTab = ({ editor }: { editor: Editor }) => {
         if (!shape) return null;
         return <ShapeCard key={id} shape={shape} />;
       })}
-      {edgeId
+      {linkId
         ? (() => {
-            const edge = editor.scene.edges.get(edgeId);
-            return edge ? <EdgeCard key={edgeId} edge={edge} /> : null;
+            const edge = editor.scene.edges.get(linkId);
+            return edge ? <EdgeCard key={linkId} edge={edge} /> : null;
           })()
         : null}
     </div>
@@ -1066,8 +1066,8 @@ const MosaicSection = ({ editor }: { editor: Editor }) => {
 // ─────────────────────────────────────────────────────────────────
 
 let debugIdCounter = 0;
-const nextDebugId = (prefix: string): ShapeId =>
-  shapeId(`debug-${prefix}-${++debugIdCounter}-${Date.now().toString(36)}`);
+const nextDebugId = (prefix: string): ElementId =>
+  elementId(`debug-${prefix}-${++debugIdCounter}-${Date.now().toString(36)}`);
 
 const activeLayerId = (editor: Editor): LayerId =>
   ([...editor.scene.layers.keys()][0] ?? ("default" as LayerId)) as LayerId;
@@ -1199,12 +1199,12 @@ const buildGrid = (
       layerId,
       from: {
         kind: "anchor",
-        shapeId: head.id,
+        elementId: head.id,
         anchor: { kind: "named", name: "center" },
       },
       to: {
         kind: "anchor",
-        shapeId: target.id,
+        elementId: target.id,
         anchor: { kind: "named", name: "center" },
       },
       order: edgeOrder,
@@ -1217,8 +1217,8 @@ const buildGrid = (
 };
 
 let debugEdgeCounter = 0;
-const nextDebugEdgeId = (prefix: string): EdgeId =>
-  edgeId(`debug-edge-${prefix}-${++debugEdgeCounter}-${Date.now().toString(36)}`);
+const nextDebugEdgeId = (prefix: string): LinkId =>
+  linkId(`debug-edge-${prefix}-${++debugEdgeCounter}-${Date.now().toString(36)}`);
 
 interface StackOptions {
   readonly count: number;

@@ -1,4 +1,4 @@
-import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import { bounds as B } from "@oh-just-another/math";
 import type { Scene } from "./scene.js";
 import type { Shape, ShapeBase } from "./shape.js";
@@ -143,7 +143,7 @@ export const getDropZoneWorld = (s: ShapeBase): Bounds | null => {
 export const findContainerAt = (
   scene: Scene,
   worldPoint: Vec2,
-  exclude: ReadonlySet<ShapeId> = new Set(),
+  exclude: ReadonlySet<ElementId> = new Set(),
 ): Shape | null => {
   const layers = getLayersInOrder(scene);
   for (let i = layers.length - 1; i >= 0; i--) {

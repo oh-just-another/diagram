@@ -10,8 +10,8 @@ import { getShape } from "./queries.js";
  * gone — or the annotation is a free-floater — `position` is used as-is.
  */
 export const getAnnotationWorldPosition = (scene: Scene, annotation: Annotation): Vec2 => {
-  if (annotation.shapeId === null) return annotation.position;
-  const shape = getShape(scene, annotation.shapeId);
+  if (annotation.elementId === null) return annotation.position;
+  const shape = getShape(scene, annotation.elementId);
   if (!shape) return annotation.position;
   return {
     x: shape.position.x + annotation.position.x,

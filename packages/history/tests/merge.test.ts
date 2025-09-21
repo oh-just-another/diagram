@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   DEFAULT_VIEWPORT,
@@ -11,7 +11,7 @@ import {
 import { mergeByEntity } from "../src/index";
 
 const rect = (id: string, x = 0): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y: 0 },

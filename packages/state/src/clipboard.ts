@@ -1,4 +1,4 @@
-import type { ShapeId, Vec2 } from "@oh-just-another/types";
+import type { ElementId, Vec2 } from "@oh-just-another/types";
 import {
   addShape,
   batch,
@@ -24,7 +24,7 @@ import type { HistoryProvider } from "@oh-just-another/history";
 
 export interface PasteResult {
   readonly scene: Scene;
-  readonly newIds: readonly ShapeId[];
+  readonly newIds: readonly ElementId[];
 }
 
 /**
@@ -69,7 +69,7 @@ export const cloneShapeForClipboard = (shape: Shape): Shape => {
  */
 export const copyShapes = (
   scene: Scene,
-  selection: Iterable<ShapeId>,
+  selection: Iterable<ElementId>,
 ): Shape[] => {
   const out: Shape[] = [];
   for (const id of selection) {
@@ -94,7 +94,7 @@ export const pasteShapes = (
   history: HistoryProvider,
   clipboard: readonly Shape[],
   target: Vec2 | null,
-  genId: () => ShapeId,
+  genId: () => ElementId,
 ): PasteResult => {
   if (clipboard.length === 0) return { scene, newIds: [] };
 
@@ -116,7 +116,7 @@ export const pasteShapes = (
   // is already open". The batch-push path doesn't nest, so paste is always
   // safe to call.
   const patches: Patch[] = [];
-  const newIds: ShapeId[] = [];
+  const newIds: ElementId[] = [];
   let next = scene;
   for (const tmpl of clipboard) {
     const newId = genId();

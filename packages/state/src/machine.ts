@@ -1,5 +1,5 @@
 import { assign, enqueueActions, setup } from "xstate";
-import type { AnnotationId, Bounds, EdgeId, Modifiers, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { AnnotationId, Bounds, LinkId, Modifiers, ElementId, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "./handle.js";
 import { DEFAULT_MODE, type Mode } from "./modes.js";
 
@@ -10,10 +10,10 @@ import { DEFAULT_MODE, type Mode } from "./modes.js";
  * that point on.
  */
 export type PressTarget =
-  | { readonly kind: "shape"; readonly id: ShapeId; readonly bounds: Bounds }
+  | { readonly kind: "shape"; readonly id: ElementId; readonly bounds: Bounds }
   | {
       readonly kind: "handle";
-      readonly shapeId: ShapeId;
+      readonly elementId: ElementId;
       readonly handle: HandleId;
       readonly bounds: Bounds;
     }
@@ -28,10 +28,10 @@ export type PressTarget =
       readonly handle: HandleId;
       readonly bounds: Bounds;
     }
-  | { readonly kind: "edge"; readonly id: EdgeId }
+  | { readonly kind: "edge"; readonly id: LinkId }
   | {
       readonly kind: "edge-endpoint";
-      readonly edgeId: EdgeId;
+      readonly linkId: LinkId;
       readonly side: "from" | "to";
     }
   | {
@@ -113,8 +113,8 @@ export type InteractionEvent =
  * it only describes what should happen.
  */
 export type InteractionEmit =
-  | { readonly type: "SELECT_REPLACE"; readonly id: ShapeId }
-  | { readonly type: "SELECT_TOGGLE"; readonly id: ShapeId }
+  | { readonly type: "SELECT_REPLACE"; readonly id: ElementId }
+  | { readonly type: "SELECT_TOGGLE"; readonly id: ElementId }
   | { readonly type: "SELECT_CLEAR" }
   | {
       readonly type: "LASSO_PROGRESS";
@@ -131,24 +131,24 @@ export type InteractionEmit =
       /** Add to existing selection (Shift/Cmd lasso) or replace. */
       readonly mode: "replace" | "add";
     }
-  | { readonly type: "SELECT_EDGE_REPLACE"; readonly id: EdgeId }
+  | { readonly type: "SELECT_EDGE_REPLACE"; readonly id: LinkId }
   | { readonly type: "SELECT_EDGE_CLEAR" }
   | {
       readonly type: "UPDATE_EDGE_ENDPOINT_PREVIEW";
-      readonly edgeId: EdgeId;
+      readonly linkId: LinkId;
       readonly side: "from" | "to";
       readonly toPoint: Vec2;
     }
   | {
       readonly type: "UPDATE_EDGE_ENDPOINT";
-      readonly edgeId: EdgeId;
+      readonly linkId: LinkId;
       readonly side: "from" | "to";
       readonly toPoint: Vec2;
-      readonly toShape: ShapeId | null;
+      readonly toShape: ElementId | null;
     }
   | {
       readonly type: "MOVE_SHAPE";
-      readonly id: ShapeId;
+      readonly id: ElementId;
       readonly delta: Vec2;
       readonly originalBounds: Bounds;
     }
@@ -164,7 +164,7 @@ export type InteractionEmit =
     }
   | {
       readonly type: "RESIZE_SHAPE";
-      readonly id: ShapeId;
+      readonly id: ElementId;
       readonly handle: HandleId;
       readonly delta: Vec2;
       readonly originalBounds: Bounds;
@@ -189,9 +189,9 @@ export type InteractionEmit =
   | {
       readonly type: "CREATE_EDGE";
       /** Shape the edge starts on, or `null` for a free-floating point. */
-      readonly fromShape: ShapeId | null;
+      readonly fromShape: ElementId | null;
       /** Shape the edge lands on, or `null` for a free-floating point. */
-      readonly toShape: ShapeId | null;
+      readonly toShape: ElementId | null;
       /** Press-down world point — used as the fallback when `fromShape` is null. */
       readonly fromPoint: Vec2;
       /** Pointer-up world point — used as the fallback when `toShape` is null. */
@@ -199,14 +199,14 @@ export type InteractionEmit =
     }
   | {
       readonly type: "DRAW_EDGE_PREVIEW";
-      readonly fromShape: ShapeId | null;
+      readonly fromShape: ElementId | null;
       readonly fromPoint: Vec2;
       readonly toPoint: Vec2;
     }
   | { readonly type: "DRAW_EDGE_PREVIEW_CLEAR" }
   | {
       readonly type: "TEMPLATE_TAP";
-      readonly shapeId: ShapeId;
+      readonly elementId: ElementId;
       /** Action identifier from the tapped node (e.g. button `action`). */
       readonly action: string;
       /** Optional node id from the template tree. */
@@ -215,7 +215,7 @@ export type InteractionEmit =
   | {
       readonly type: "TEMPLATE_DROP";
       /** Template shape that owns the drop-zone. */
-      readonly shapeId: ShapeId;
+      readonly elementId: ElementId;
       /** Id of the drop-zone node within the template tree. */
       readonly nodeId?: string;
       /** Template-id from the DOM `application/x-template-id` payload, if any. */
@@ -316,7 +316,7 @@ export const interactionMachine = setup({
       }
       enqueue.emit({
         type: "RESIZE_SHAPE",
-        id: context.pressTarget.shapeId,
+        id: context.pressTarget.elementId,
         handle: context.pressTarget.handle,
         delta: {
           x: event.point.x - context.pressOrigin.x,
@@ -368,7 +368,7 @@ export const interactionMachine = setup({
       if (context.pressTarget?.kind !== "edge-endpoint") return;
       enqueue.emit({
         type: "UPDATE_EDGE_ENDPOINT_PREVIEW",
-        edgeId: context.pressTarget.edgeId,
+        linkId: context.pressTarget.linkId,
         side: context.pressTarget.side,
         toPoint: event.point,
       });
@@ -380,7 +380,7 @@ export const interactionMachine = setup({
       const toShape = upTarget?.kind === "shape" ? upTarget.id : null;
       enqueue.emit({
         type: "UPDATE_EDGE_ENDPOINT",
-        edgeId: context.pressTarget.edgeId,
+        linkId: context.pressTarget.linkId,
         side: context.pressTarget.side,
         toPoint: event.point,
         toShape,

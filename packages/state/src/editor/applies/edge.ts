@@ -9,8 +9,8 @@ import {
   type Scene,
   type Patch,
 } from "@oh-just-another/scene";
-import type { ShapeId, Vec2 } from "@oh-just-another/types";
-import type { EdgeId } from "@oh-just-another/types";
+import type { ElementId, Vec2 } from "@oh-just-another/types";
+import type { LinkId } from "@oh-just-another/types";
 import type { InteractionEmit } from "../../machine.js";
 
 /**
@@ -24,7 +24,7 @@ import type { InteractionEmit } from "../../machine.js";
  */
 export const computeEdgePreviewEndpoints = (
   scene: Scene,
-  fromShape: ShapeId | null,
+  fromShape: ElementId | null,
   fromPoint: Vec2,
   toPoint: Vec2,
 ): { readonly from: Vec2; readonly to: Vec2 } => {
@@ -53,14 +53,14 @@ export const computeEdgePreviewEndpoints = (
 export const computeEdgeEndpointUpdate = (
   scene: Scene,
   emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
-  snap: (toShape: ShapeId | null, toPoint: Vec2) => EdgeEndpoint,
-): { readonly scene: Scene; readonly patch: Patch; readonly edgeId: EdgeId } | null => {
-  const edge = getEdge(scene, emit.edgeId);
+  snap: (toShape: ElementId | null, toPoint: Vec2) => EdgeEndpoint,
+): { readonly scene: Scene; readonly patch: Patch; readonly linkId: LinkId } | null => {
+  const edge = getEdge(scene, emit.linkId);
   if (!edge) return null;
   const newEndpoint = snap(emit.toShape, emit.toPoint);
   const result = updateEdge(scene, edge.id, (e) => ({
     ...e,
     [emit.side]: newEndpoint,
   }));
-  return { scene: result.scene, patch: result.patch, edgeId: edge.id };
+  return { scene: result.scene, patch: result.patch, linkId: edge.id };
 };

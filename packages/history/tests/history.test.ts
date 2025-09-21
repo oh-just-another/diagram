@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layerId, shapeId } from "@oh-just-another/types";
+import { layerId, elementId } from "@oh-just-another/types";
 import {
   apply,
   DEFAULT_LAYER_ID,
@@ -11,7 +11,7 @@ import {
 import { History } from "../src/index";
 
 const rect = (id: string, x = 0): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y: 0 },

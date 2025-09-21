@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { annotationId, commentId, shapeId } from "@oh-just-another/types";
+import { annotationId, commentId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addAnnotation,
@@ -13,7 +13,7 @@ import {
 import { Editor } from "../src/editor.js";
 
 const rect = (id: string, x = 0, y = 0): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -27,7 +27,7 @@ const rect = (id: string, x = 0, y = 0): Shape => ({
 
 const freeAnnotation = (id: string, x: number, y: number): Annotation => ({
   id: annotationId(id),
-  shapeId: null,
+  elementId: null,
   position: { x, y },
   resolved: false,
   thread: [
@@ -44,7 +44,7 @@ const freeAnnotation = (id: string, x: number, y: number): Annotation => ({
 
 const anchoredAnnotation = (id: string, anchor: string, x: number, y: number): Annotation => ({
   id: annotationId(id),
-  shapeId: shapeId(anchor),
+  elementId: elementId(anchor),
   position: { x, y },
   resolved: false,
   thread: [],

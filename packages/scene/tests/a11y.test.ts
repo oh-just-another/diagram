@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   getShapeAccessibleName,
@@ -21,7 +21,7 @@ describe("getShapeAccessibleName", () => {
   it("titleises built-in types as fallback", () => {
     const rect: Shape = {
       ...baseFields,
-      id: shapeId("a"),
+      id: elementId("a"),
       type: "rectangle",
       width: 10,
       height: 10,
@@ -32,7 +32,7 @@ describe("getShapeAccessibleName", () => {
   it("uses text body for text shapes", () => {
     const text: Shape = {
       ...baseFields,
-      id: shapeId("t"),
+      id: elementId("t"),
       type: "text",
       text: "Hello world",
       fontFamily: "sans",
@@ -44,7 +44,7 @@ describe("getShapeAccessibleName", () => {
   it("collapses whitespace in text shapes", () => {
     const text: Shape = {
       ...baseFields,
-      id: shapeId("t"),
+      id: elementId("t"),
       type: "text",
       text: "Hello\n   world",
       fontFamily: "sans",
@@ -57,7 +57,7 @@ describe("getShapeAccessibleName", () => {
     const longText = "a".repeat(200);
     const text: Shape = {
       ...baseFields,
-      id: shapeId("t"),
+      id: elementId("t"),
       type: "text",
       text: longText,
       fontFamily: "sans",
@@ -71,7 +71,7 @@ describe("getShapeAccessibleName", () => {
   it("uses metadata.label for templates", () => {
     const template: Shape = {
       ...baseFields,
-      id: shapeId("tpl"),
+      id: elementId("tpl"),
       type: "template",
       templateId: "task-card",
       data: {},
@@ -85,7 +85,7 @@ describe("getShapeAccessibleName", () => {
   it("falls back to templateId when no label metadata", () => {
     const template: Shape = {
       ...baseFields,
-      id: shapeId("tpl"),
+      id: elementId("tpl"),
       type: "template",
       templateId: "task-card",
       data: {},
@@ -99,7 +99,7 @@ describe("getShapeAccessibleName", () => {
     registerAccessibleName("custom-widget", () => "Custom widget");
     const custom: Shape = {
       ...baseFields,
-      id: shapeId("c"),
+      id: elementId("c"),
       type: "custom-widget",
     };
     expect(getShapeAccessibleName(custom)).toBe("Custom widget");

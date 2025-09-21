@@ -1,4 +1,4 @@
-import type { Bounds, EdgeId } from "@oh-just-another/types";
+import type { Bounds, LinkId } from "@oh-just-another/types";
 import { getEdgePath, type Edge, type Scene } from "@oh-just-another/scene";
 
 /**
@@ -10,7 +10,7 @@ import { getEdgePath, type Edge, type Scene } from "@oh-just-another/scene";
  */
 export class EdgeBoundsCache {
   private readonly entries = new Map<
-    EdgeId,
+    LinkId,
     { readonly edge: Edge; readonly scene: Scene; readonly value: Bounds | null }
   >();
 
@@ -35,7 +35,7 @@ export class EdgeBoundsCache {
     return this.set(scene, edge, computeEdgeWorldBounds(scene, edge));
   }
 
-  invalidate(id: EdgeId): void {
+  invalidate(id: LinkId): void {
     this.entries.delete(id);
   }
 

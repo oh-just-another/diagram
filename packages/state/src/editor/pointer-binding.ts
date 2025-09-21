@@ -17,7 +17,7 @@ import {
   WHEEL_ZOOM_MAX_STEP,
   WHEEL_ZOOM_SPEED,
 } from "../constants.js";
-import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
@@ -217,12 +217,12 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       const pressedIsFrame = pressedShape?.type === "frame";
       const inSelection = editor._selection.has(target.id);
       if (inSelection || pressedIsGroup || pressedIsFrame) {
-        const ids = new Set<ShapeId>();
+        const ids = new Set<ElementId>();
         if (inSelection) {
           for (const id of editor.expandSelectionWithDescendants()) ids.add(id);
         }
         if (pressedIsGroup) {
-          const visit = (parentId: ShapeId): void => {
+          const visit = (parentId: ElementId): void => {
             if (ids.has(parentId)) return;
             ids.add(parentId);
             for (const child of editor._scene.shapes.values()) {
@@ -240,7 +240,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
           }
         }
         if (ids.size > 1) {
-          const snap = new Map<ShapeId, Vec2>();
+          const snap = new Map<ElementId, Vec2>();
           for (const id of ids) {
             const s = getShape(editor._scene, id);
             if (s) snap.set(id, s.position);
@@ -265,7 +265,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // the leaves applyGroupResize actually scales. Same expansion
     // is harmless for plain multi-selection (no descendants).
     if (target.kind === "group-handle") {
-      const shapes = new Map<ShapeId, { position: Vec2; bounds: Bounds; scale: Vec2 }>();
+      const shapes = new Map<ElementId, { position: Vec2; bounds: Bounds; scale: Vec2 }>();
       for (const id of editor.expandSelectionWithDescendants()) {
         const s = getShape(editor._scene, id);
         if (!s) continue;
@@ -349,7 +349,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // its descendants) and stash the drop-zone for the overlay.
     if (editor.dragShapeId) {
       const dragged = editor.dragShapeId;
-      const exclude = new Set<ShapeId>([dragged]);
+      const exclude = new Set<ElementId>([dragged]);
       // Don't drop a container onto itself or into one of its own
       // descendants (would create a cycle).
       for (const s of editor._scene.shapes.values()) {

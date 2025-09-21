@@ -1,4 +1,4 @@
-import type { Bounds, EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { bounds as B } from "@oh-just-another/math";
 import type { Edge } from "./edge.js";
 import type { Layer } from "./layer.js";
@@ -8,9 +8,9 @@ import { SpatialGrid } from "./spatial.js";
 
 // --- direct lookups ---
 
-export const getShape = (scene: Scene, id: ShapeId): Shape | undefined => scene.shapes.get(id);
+export const getShape = (scene: Scene, id: ElementId): Shape | undefined => scene.shapes.get(id);
 
-export const getEdge = (scene: Scene, id: EdgeId): Edge | undefined => scene.edges.get(id);
+export const getEdge = (scene: Scene, id: LinkId): Edge | undefined => scene.edges.get(id);
 
 export const getLayer = (scene: Scene, id: LayerId): Layer | undefined => scene.layers.get(id);
 
@@ -41,7 +41,7 @@ export const getEdgesInLayer = (scene: Scene, layerId: LayerId): readonly Edge[]
  * the argument, in z-order. Linear in scene size; for groups inside the
  * editor's hot path, cache the result by `(scene, parentId)`.
  */
-export const getChildrenOf = (scene: Scene, parentId: ShapeId): readonly Shape[] => {
+export const getChildrenOf = (scene: Scene, parentId: ElementId): readonly Shape[] => {
   const out: Shape[] = [];
   for (const s of scene.shapes.values()) {
     if (s.parentId === parentId) out.push(s);
@@ -82,13 +82,13 @@ export const isShapeHidden = (scene: Scene, shape: Shape): boolean => {
 };
 
 /**
- * Walks the `parentId` chain starting from `shapeId` and returns the
+ * Walks the `parentId` chain starting from `elementId` and returns the
  * topmost ancestor (the root). Returns the shape itself when it has no
  * parent, or `undefined` when the shape (or any ancestor) is missing.
  * Cycle-safe — bails after `MAX_PARENT_DEPTH` hops.
  */
-export const getRootSelf = (scene: Scene, shapeId: ShapeId): Shape | undefined => {
-  let current = scene.shapes.get(shapeId);
+export const getRootSelf = (scene: Scene, elementId: ElementId): Shape | undefined => {
+  let current = scene.shapes.get(elementId);
   for (let i = 0; current && current.parentId && i < MAX_PARENT_DEPTH; i++) {
     const parent = scene.shapes.get(current.parentId);
     if (!parent) break;
@@ -102,12 +102,12 @@ export const getRootSelf = (scene: Scene, shapeId: ShapeId): Shape | undefined =
  * Order: parent first, then a depth-first walk. Cycle-safe via the
  * `visited` set.
  */
-export const getDescendantsOf = (scene: Scene, parentId: ShapeId): readonly Shape[] => {
+export const getDescendantsOf = (scene: Scene, parentId: ElementId): readonly Shape[] => {
   const root = scene.shapes.get(parentId);
   if (!root) return [];
-  const visited = new Set<ShapeId>([parentId]);
+  const visited = new Set<ElementId>([parentId]);
   const out: Shape[] = [root];
-  const stack: ShapeId[] = [parentId];
+  const stack: ElementId[] = [parentId];
   while (stack.length > 0) {
     const cur = stack.pop()!;
     for (const child of getChildrenOf(scene, cur)) {

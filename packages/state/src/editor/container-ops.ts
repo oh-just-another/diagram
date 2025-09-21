@@ -13,7 +13,7 @@ import {
   type Patch,
 } from "@oh-just-another/scene";
 import { bounds as B } from "@oh-just-another/math";
-import type { Bounds, ShapeId } from "@oh-just-another/types";
+import type { Bounds, ElementId } from "@oh-just-another/types";
 import { CONTAINER_KEEP_THRESHOLD } from "../constants.js";
 import type { HandleId } from "../handle.js";
 import { hasWidthHeight } from "./shape-traits.js";
@@ -44,7 +44,7 @@ export const coverageRatio = (child: Bounds, zone: Bounds): number => {
  * nested containers (the inner one self-constrains via its own
  * clamp call).
  */
-export const childrenWorldUnion = (scene: Scene, containerId: ShapeId): Bounds | null => {
+export const childrenWorldUnion = (scene: Scene, containerId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
   for (const s of scene.shapes.values()) {
     if (s.parentId !== containerId) continue;
@@ -125,8 +125,8 @@ export const clampContainerToChildren = (
  */
 export interface ContainerOpsRef {
   readonly scene: Scene;
-  readonly dragShapeId: ShapeId | null;
-  readonly containerHover: { readonly id: ShapeId } | null;
+  readonly dragShapeId: ElementId | null;
+  readonly containerHover: { readonly id: ElementId } | null;
   /** Apply the patch to the editor's scene + record into the open gesture tx. */
   applyPatch(patch: Patch, nextScene: Scene): void;
 }
@@ -205,7 +205,7 @@ export const applyContainerDrop = (
     }
     const r = updateShape(ref.scene, dragId, (s) => {
       const next: Shape = { ...s };
-      delete (next as { parentId?: ShapeId }).parentId;
+      delete (next as { parentId?: ElementId }).parentId;
       return next;
     });
     ref.applyPatch(r.patch, r.scene);
@@ -221,8 +221,8 @@ export const applyContainerDrop = (
  */
 export const maybeGrowContainer = (
   ref: ContainerOpsRef,
-  containerId: ShapeId,
-  childId: ShapeId,
+  containerId: ElementId,
+  childId: ElementId,
 ): void => {
   const container = getShape(ref.scene, containerId);
   const child = getShape(ref.scene, childId);

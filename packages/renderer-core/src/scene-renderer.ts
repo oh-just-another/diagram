@@ -6,7 +6,7 @@ import {
   type ShapeBase,
   type SpatialGrid,
 } from "@oh-just-another/scene";
-import type { Bounds, LayerId, ShapeId } from "@oh-just-another/types";
+import type { Bounds, LayerId, ElementId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "./render-target.js";
 import { getShapeRenderer } from "./shape-renderer.js";
@@ -87,7 +87,7 @@ export interface RenderSceneOptions {
    * carry an explicit opacity. Acceptable for the isolation UX
    * because outsiders are usually plain opaque shapes.
    */
-  readonly dimShapes?: ReadonlySet<ShapeId>;
+  readonly dimShapes?: ReadonlySet<ElementId>;
   /**
    * Alpha to use for `dimShapes`. Default 1 (no-op). Hosts using the
    * isolation feature should pass their `ISOLATION_DIM_OPACITY`
@@ -101,7 +101,7 @@ export interface RenderSceneOptions {
    * and forwards the set here. Hidden shapes are also skipped in
    * hit-test on the editor side, so they read as "absent" entirely.
    */
-  readonly hideShapes?: ReadonlySet<ShapeId>;
+  readonly hideShapes?: ReadonlySet<ElementId>;
   /**
    * Per-layer composite bitmap cache. When supplied along with
    * `compositeLayerBitmap`, unchanged layers (i.e. not present in
@@ -174,7 +174,7 @@ export const renderScene = (
   // walk to shapes the index considers possibly-visible. Without it the
   // per-shape AABB check on a cached bounds is still cheap (~50ns), so
   // the index is only worth the build cost for very large scenes.
-  let candidates: ReadonlySet<ShapeId> | null = null;
+  let candidates: ReadonlySet<ElementId> | null = null;
   if (viewport && options.spatialIndex) {
     candidates = options.spatialIndex.query(viewport);
   }

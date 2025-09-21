@@ -1,4 +1,4 @@
-import type { AnnotationId, EdgeId, LayerId, ShapeId } from "@oh-just-another/types";
+import type { AnnotationId, LinkId, LayerId, ElementId } from "@oh-just-another/types";
 import type { Scene } from "@oh-just-another/scene";
 
 /**
@@ -13,8 +13,8 @@ import type { Scene } from "@oh-just-another/scene";
  * shapes will appear as "modified" until a smarter equality is wired.
  */
 export interface SceneDiff {
-  readonly shapes: DiffCategory<ShapeId>;
-  readonly edges: DiffCategory<EdgeId>;
+  readonly shapes: DiffCategory<ElementId>;
+  readonly edges: DiffCategory<LinkId>;
   readonly layers: DiffCategory<LayerId>;
   readonly annotations: DiffCategory<AnnotationId>;
 }

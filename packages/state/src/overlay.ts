@@ -1,4 +1,4 @@
-import type { AnnotationId, Bounds, ShapeId, Transform, Vec2 } from "@oh-just-another/types";
+import type { AnnotationId, Bounds, ElementId, Transform, Vec2 } from "@oh-just-another/types";
 import {
   getAnnotationWorldPosition,
   getEdgePath,
@@ -78,7 +78,7 @@ export const resizeHandlesFor = (_shape: ShapeBase): readonly HandleId[] => ALL_
  * `null` for empty groups so callers can skip the outline pass. Used
  * by the selection overlay to draw a halo around grouped shapes.
  */
-const groupWorldBounds = (scene: Scene, groupId: ShapeId): Bounds | null => {
+const groupWorldBounds = (scene: Scene, groupId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
   for (const shape of scene.shapes.values()) {
     if (shape.parentId !== groupId) continue;
@@ -155,7 +155,7 @@ export interface PeerCursor {
 /**
  * Remote peer's selection — world-space bounding boxes that draw a
  * dashed outline in the peer's colour. Computed by the host from the
- * peer's `selection: ShapeId[]` and the current scene shapes.
+ * peer's `selection: ElementId[]` and the current scene shapes.
  */
 export interface PeerSelection {
   readonly color: string;

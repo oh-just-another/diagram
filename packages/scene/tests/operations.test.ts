@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { edgeId, layerId, shapeId } from "@oh-just-another/types";
+import { linkId, layerId, elementId } from "@oh-just-another/types";
 import {
   addEdge,
   addLayer,
@@ -23,7 +23,7 @@ import {
 } from "../src/index";
 
 const rect = (id: string, x = 0, y = 0): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -52,40 +52,40 @@ describe("operations", () => {
   describe("removeShape", () => {
     it("removes existing shape", () => {
       const { scene } = addShape(emptyScene(), rect("a"));
-      const { scene: removed, patch } = removeShape(scene, shapeId("a"));
-      expect(removed.shapes.has(shapeId("a"))).toBe(false);
+      const { scene: removed, patch } = removeShape(scene, elementId("a"));
+      expect(removed.shapes.has(elementId("a"))).toBe(false);
       const restored = apply(removed, invert(patch));
-      expect(restored.shapes.has(shapeId("a"))).toBe(true);
+      expect(restored.shapes.has(elementId("a"))).toBe(true);
     });
     it("throws on missing id", () => {
-      expect(() => removeShape(emptyScene(), shapeId("missing"))).toThrow(/not found/i);
+      expect(() => removeShape(emptyScene(), elementId("missing"))).toThrow(/not found/i);
     });
   });
 
   describe("updateShape", () => {
     it("applies the update function and produces invertible patch", () => {
       const { scene } = addShape(emptyScene(), rect("a"));
-      const { scene: moved, patch } = updateShape(scene, shapeId("a"), (s) => ({
+      const { scene: moved, patch } = updateShape(scene, elementId("a"), (s) => ({
         ...s,
         position: { x: 5, y: 7 },
       }));
-      expect(moved.shapes.get(shapeId("a"))?.position).toEqual({ x: 5, y: 7 });
+      expect(moved.shapes.get(elementId("a"))?.position).toEqual({ x: 5, y: 7 });
       const back = apply(moved, invert(patch));
-      expect(back.shapes.get(shapeId("a"))?.position).toEqual({ x: 0, y: 0 });
+      expect(back.shapes.get(elementId("a"))?.position).toEqual({ x: 0, y: 0 });
     });
   });
 
   describe("moveShape", () => {
     it("shortcut for updating position", () => {
       const { scene } = addShape(emptyScene(), rect("a"));
-      const { scene: moved } = moveShape(scene, shapeId("a"), { x: 3, y: 4 });
-      expect(moved.shapes.get(shapeId("a"))?.position).toEqual({ x: 3, y: 4 });
+      const { scene: moved } = moveShape(scene, elementId("a"), { x: 3, y: 4 });
+      expect(moved.shapes.get(elementId("a"))?.position).toEqual({ x: 3, y: 4 });
     });
   });
 
   describe("edges", () => {
     const edge: Edge = {
-      id: edgeId("e1"),
+      id: linkId("e1"),
       layerId: DEFAULT_LAYER_ID,
       from: { kind: "point", position: { x: 0, y: 0 } },
       to: { kind: "point", position: { x: 10, y: 0 } },

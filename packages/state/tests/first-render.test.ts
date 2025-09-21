@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -72,7 +72,7 @@ const host = {
 } as never;
 
 const rect = (id: string, x: number, y: number, w = 50, h = 50): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },

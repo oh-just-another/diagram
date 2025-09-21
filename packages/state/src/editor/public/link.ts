@@ -1,5 +1,5 @@
 import { getShape, updateShape, type Scene, type Patch, type Shape } from "@oh-just-another/scene";
-import type { ShapeId } from "@oh-just-another/types";
+import type { ElementId } from "@oh-just-another/types";
 
 /**
  * Schemes allowed to be stored / opened. Everything else (notably
@@ -42,10 +42,10 @@ export const safeHref = (href: string | undefined | null): string | null => {
  */
 export const computeSetLink = (
   scene: Scene,
-  ids: Iterable<ShapeId>,
+  ids: Iterable<ElementId>,
   href: string | null,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
-  const targetIds: ShapeId[] = [];
+  const targetIds: ElementId[] = [];
   for (const id of ids) {
     const s = getShape(scene, id);
     if (s && (s.href ?? null) !== href) targetIds.push(id);

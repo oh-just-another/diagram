@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -12,7 +12,7 @@ import { ActionRegistry, defaultActionRegistry } from "../src/actions/index.js";
 import { Editor } from "../src/editor.js";
 
 const rect = (id: string): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },

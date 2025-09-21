@@ -1,4 +1,4 @@
-import type { AnnotationId, EdgeId, FileId, LayerId, ShapeId } from "@oh-just-another/types";
+import type { AnnotationId, LinkId, FileId, LayerId, ElementId } from "@oh-just-another/types";
 import type { Annotation } from "./annotation.js";
 import type { Edge } from "./edge.js";
 import type { BinaryFile } from "./file.js";
@@ -19,13 +19,13 @@ import type { Viewport } from "./viewport.js";
 export type Patch =
   | {
       readonly kind: "shape";
-      readonly id: ShapeId;
+      readonly id: ElementId;
       readonly before: Shape | null;
       readonly after: Shape | null;
     }
   | {
       readonly kind: "edge";
-      readonly id: EdgeId;
+      readonly id: LinkId;
       readonly before: Edge | null;
       readonly after: Edge | null;
     }

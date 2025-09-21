@@ -1,5 +1,5 @@
 import { bounds as B, matrix } from "@oh-just-another/math";
-import type { Bounds, ShapeId } from "@oh-just-another/types";
+import type { Bounds, ElementId } from "@oh-just-another/types";
 import {
   getScreenToWorld,
   getShape,
@@ -36,7 +36,7 @@ export const computeViewportWorld = (scene: Scene): Bounds | null => {
  * has bounds). Used to derive an effective bbox for a group shape
  * since `getShapeWorldBounds(group)` returns nothing intrinsic.
  */
-export const groupChildrenUnion = (scene: Scene, groupId: ShapeId): Bounds | null => {
+export const groupChildrenUnion = (scene: Scene, groupId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
   for (const s of scene.shapes.values()) {
     if (s.parentId !== groupId) continue;
@@ -56,7 +56,7 @@ export const groupChildrenUnion = (scene: Scene, groupId: ShapeId): Bounds | nul
  */
 export const combinedSelectionBounds = (
   scene: Scene,
-  selection: Iterable<ShapeId>,
+  selection: Iterable<ElementId>,
 ): Bounds | null => {
   let acc: Bounds | null = null;
   for (const id of selection) {

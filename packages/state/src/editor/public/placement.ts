@@ -9,8 +9,8 @@ import {
   type Shape,
   type Patch,
 } from "@oh-just-another/scene";
-import type { LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
-import { shapeId as castShapeId } from "@oh-just-another/types";
+import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
+import { elementId as castShapeId } from "@oh-just-another/types";
 import type { Mode } from "../../modes.js";
 import {
   TEXT_DEFAULT_FILL,
@@ -28,7 +28,7 @@ export const buildShapeAtCursor = (
   mode: Mode,
   worldCenter: Vec2,
   layerId: LayerId,
-  id: ShapeId,
+  id: ElementId,
 ): Shape => {
   const order = orderForTop(
     [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
@@ -60,7 +60,7 @@ export const buildTextShapeAt = (
   scene: Scene,
   worldPoint: Vec2,
   layerId: LayerId,
-  id: ShapeId,
+  id: ElementId,
 ): Shape => {
   const order = orderForTop(
     [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
@@ -81,7 +81,7 @@ export const buildTextShapeAt = (
 };
 
 /** Generate a fresh shape id with the editor's nextId counter. */
-export const newShapeIdAtCursor = (next: number): ShapeId =>
+export const newShapeIdAtCursor = (next: number): ElementId =>
   castShapeId(`shape-${next}-${Date.now().toString(36)}`);
 
 /**
@@ -167,5 +167,5 @@ export const beginPlacementState = (shape: Shape): {
 /** Undo of `beginPlacement` — remove the placed shape. */
 export const computePlacementCancel = (
   scene: Scene,
-  shapeId: ShapeId,
-): { readonly scene: Scene } => ({ scene: removeShape(scene, shapeId).scene });
+  elementId: ElementId,
+): { readonly scene: Scene } => ({ scene: removeShape(scene, elementId).scene });

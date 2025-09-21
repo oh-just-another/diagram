@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { act, fireEvent, render } from "@testing-library/react";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -21,7 +21,7 @@ import { DiagramProvider, PropertyPanel, TooltipProvider } from "../src/index";
 installBuiltinRenderers();
 
 const rect: Shape = {
-  id: shapeId("r1"),
+  id: elementId("r1"),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },

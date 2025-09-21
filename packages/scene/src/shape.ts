@@ -1,4 +1,4 @@
-import type { Bounds, FileId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, FileId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import type { FractionalIndex } from "fractional-keys";
 import { bounds as B } from "@oh-just-another/math";
 import type { AnchorRef } from "./edge.js";
@@ -13,7 +13,7 @@ import { getTextMeasurer } from "./text-measure.js";
  * under concurrent edits.
  */
 export interface ShapeBase {
-  readonly id: ShapeId;
+  readonly id: ElementId;
   readonly layerId: LayerId;
   /** Discriminator. Built-in shapes use the literal types declared below. */
   readonly type: string;
@@ -67,7 +67,7 @@ export interface ShapeBase {
    * default zero-render container; custom shape types can also act as
    * parents.
    */
-  readonly parentId?: ShapeId;
+  readonly parentId?: ElementId;
 
   /**
    * Frame membership — modern-style. Distinct from `parentId`
@@ -77,7 +77,7 @@ export interface ShapeBase {
    * translates every shape with the matching frameId; export-by-
    * frame uses the frame's bounds as the crop region.
    */
-  readonly frameId?: ShapeId;
+  readonly frameId?: ElementId;
 
   /**
    * Per-shape lock flag. Locked shapes ignore all interactive gestures

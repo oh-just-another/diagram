@@ -1,4 +1,4 @@
-import type { Bounds, ShapeId } from "@oh-just-another/types";
+import type { Bounds, ElementId } from "@oh-just-another/types";
 
 /**
  * Uniform-cell spatial index over shape world-AABBs.
@@ -17,10 +17,10 @@ export class SpatialGrid {
   readonly cellSize: number;
 
   /** `cellKey(cellX, cellY)` → set of shape ids overlapping the cell. */
-  private readonly cells = new Map<string, Set<ShapeId>>();
+  private readonly cells = new Map<string, Set<ElementId>>();
 
   /** Reverse index: shape id → cached AABB, used on remove/update. */
-  private readonly bounds = new Map<ShapeId, Bounds>();
+  private readonly bounds = new Map<ElementId, Bounds>();
 
   constructor(cellSize = 256) {
     if (cellSize <= 0) throw new Error("cellSize must be positive");
@@ -32,7 +32,7 @@ export class SpatialGrid {
     return this.bounds.size;
   }
 
-  insert(id: ShapeId, b: Bounds): void {
+  insert(id: ElementId, b: Bounds): void {
     if (this.bounds.has(id)) {
       throw new Error(`Shape already indexed: ${id}`);
     }
@@ -47,7 +47,7 @@ export class SpatialGrid {
     });
   }
 
-  remove(id: ShapeId): void {
+  remove(id: ElementId): void {
     const b = this.bounds.get(id);
     if (!b) return;
     this.bounds.delete(id);
@@ -59,7 +59,7 @@ export class SpatialGrid {
     });
   }
 
-  update(id: ShapeId, b: Bounds): void {
+  update(id: ElementId, b: Bounds): void {
     this.remove(id);
     this.insert(id, b);
   }
@@ -69,8 +69,8 @@ export class SpatialGrid {
    * true answer — the caller must filter against precise bounds. Order is
    * arbitrary.
    */
-  query(range: Bounds): ReadonlySet<ShapeId> {
-    const out = new Set<ShapeId>();
+  query(range: Bounds): ReadonlySet<ElementId> {
+    const out = new Set<ElementId>();
     this.eachCell(range, (key) => {
       const cell = this.cells.get(key);
       if (!cell) return;

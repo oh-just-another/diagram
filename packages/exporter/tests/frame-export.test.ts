@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -12,7 +12,7 @@ import { sceneForFrame } from "../src/region";
 
 const frame = (id: string, x: number, y: number, w: number, h: number, name = "Frame 1"): Shape =>
   ({
-    id: shapeId(id),
+    id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
     type: "frame",
     position: { x, y },
@@ -27,7 +27,7 @@ const frame = (id: string, x: number, y: number, w: number, h: number, name = "F
 
 const rect = (id: string, parent?: string, x = 0, y = 0): Shape =>
   ({
-    id: shapeId(id),
+    id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",
     position: { x, y },
@@ -37,7 +37,7 @@ const rect = (id: string, parent?: string, x = 0, y = 0): Shape =>
     style: {},
     width: 40,
     height: 40,
-    ...(parent ? { frameId: shapeId(parent) } : {}),
+    ...(parent ? { frameId: elementId(parent) } : {}),
   } as Shape);
 
 const sceneWith = (...shapes: Shape[]): Scene => {
@@ -48,12 +48,12 @@ const sceneWith = (...shapes: Shape[]): Scene => {
 
 describe("sceneForFrame", () => {
   it("returns null for unknown frame id", () => {
-    const out = sceneForFrame(sceneWith(rect("a")), shapeId("missing"));
+    const out = sceneForFrame(sceneWith(rect("a")), elementId("missing"));
     expect(out).toBeNull();
   });
 
   it("returns null when the id resolves to a non-frame shape", () => {
-    const out = sceneForFrame(sceneWith(rect("a")), shapeId("a"));
+    const out = sceneForFrame(sceneWith(rect("a")), elementId("a"));
     expect(out).toBeNull();
   });
 
@@ -65,20 +65,20 @@ describe("sceneForFrame", () => {
       rect("orphan"),
       rect("c", "other-frame"),
     );
-    const out = sceneForFrame(s, shapeId("f1"))!;
+    const out = sceneForFrame(s, elementId("f1"))!;
     expect([...out.shapes.keys()].sort()).toEqual(["a", "b"]);
   });
 
   it("shifts the viewport so the frame's top-left lands at (0,0)", () => {
     const s = sceneWith(frame("f1", 100, 50, 200, 150));
-    const out = sceneForFrame(s, shapeId("f1"))!;
+    const out = sceneForFrame(s, elementId("f1"))!;
     expect(out.viewport.pan).toEqual({ x: -100, y: -50 });
     expect(out.viewport.size).toEqual({ width: 200, height: 150 });
   });
 
   it("never includes the frame shape itself in the clipped scene", () => {
     const s = sceneWith(frame("f1", 0, 0, 100, 100), rect("a", "f1"));
-    const out = sceneForFrame(s, shapeId("f1"))!;
-    expect(out.shapes.has(shapeId("f1"))).toBe(false);
+    const out = sceneForFrame(s, elementId("f1"))!;
+    expect(out.shapes.has(elementId("f1"))).toBe(false);
   });
 });

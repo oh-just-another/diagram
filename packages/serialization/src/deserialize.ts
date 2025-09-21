@@ -2,12 +2,12 @@ import {
   annotationId,
   type AnnotationId,
   commentId,
-  type EdgeId,
-  edgeId,
+  type LinkId,
+  linkId,
   type LayerId,
   layerId,
-  shapeId,
-  type ShapeId,
+  elementId,
+  type ElementId,
 } from "@oh-just-another/types";
 import type { Annotation, Edge, Layer, Scene, Shape, Viewport } from "@oh-just-another/scene";
 import { type FractionalIndex } from "fractional-keys";
@@ -81,15 +81,15 @@ export const parseScene = (json: string, options?: DeserializeOptions): Scene =>
 // --- Internal ---
 
 const hydrate = (doc: SceneDocument): Scene => {
-  const shapes = new Map<ShapeId, Shape>();
+  const shapes = new Map<ElementId, Shape>();
   for (const s of doc.shapes) {
-    const id = shapeId(s.id);
+    const id = elementId(s.id);
     shapes.set(id, hydrateShape(s, id));
   }
 
-  const edges = new Map<EdgeId, Edge>();
+  const edges = new Map<LinkId, Edge>();
   for (const e of doc.edges) {
-    const id = edgeId(e.id);
+    const id = linkId(e.id);
     edges.set(id, hydrateEdge(e, id));
   }
 
@@ -116,7 +116,7 @@ const hydrate = (doc: SceneDocument): Scene => {
       const id = annotationId(a.id);
       annotations.set(id, {
         id,
-        shapeId: a.shapeId === null ? null : shapeId(a.shapeId),
+        elementId: a.elementId === null ? null : elementId(a.elementId),
         position: a.position,
         resolved: a.resolved,
         thread: a.thread.map((c) => ({
@@ -134,7 +134,7 @@ const hydrate = (doc: SceneDocument): Scene => {
   return { shapes, edges, layers, annotations, files: new Map(), viewport };
 };
 
-const hydrateShape = (s: SceneDocument["shapes"][number], id: ShapeId): Shape => {
+const hydrateShape = (s: SceneDocument["shapes"][number], id: ElementId): Shape => {
   // zod's parsed shape carries explicit `undefined`s on optional fields, which
   // `exactOptionalPropertyTypes` rejects. Strip them so the resulting object
   // matches the kernel's strict types.
@@ -147,10 +147,10 @@ const hydrateShape = (s: SceneDocument["shapes"][number], id: ShapeId): Shape =>
   } as Shape;
 };
 
-const hydrateEdge = (e: SceneDocument["edges"][number], id: EdgeId): Edge => {
+const hydrateEdge = (e: SceneDocument["edges"][number], id: LinkId): Edge => {
   const hydrateEndpoint = (ep: SceneDocument["edges"][number]["from"]): Edge["from"] => {
     if (ep.kind === "anchor" || ep.kind === "outline") {
-      return { ...ep, shapeId: shapeId(ep.shapeId) };
+      return { ...ep, elementId: elementId(ep.elementId) };
     }
     return ep;
   };

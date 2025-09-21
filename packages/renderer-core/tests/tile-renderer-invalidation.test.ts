@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import { InMemoryTileCache, type TileCacheEntry } from "../src/tile-renderer";
 
 const entry = (
@@ -13,7 +13,7 @@ const entry = (
   bitmap: `tile-${col},${row}@${zoom}`,
   bounds: { x: col * 100, y: row * 100, width: 100, height: 100 },
   bytes,
-  shapes: shapes.map((s) => shapeId(s)),
+  shapes: shapes.map((s) => elementId(s)),
 });
 
 describe("InMemoryTileCache invalidation", () => {
@@ -43,7 +43,7 @@ describe("InMemoryTileCache invalidation", () => {
     const c = new InMemoryTileCache<string>();
     c.set(entry(0, 0, 1, ["a"]));
     c.set(entry(1, 0, 1, ["b"]));
-    c.invalidateForPatch({ removedShapeId: shapeId("a") });
+    c.invalidateForPatch({ removedShapeId: elementId("a") });
     expect(c.get({ col: 0, row: 0, zoom: 1 })).toBeUndefined();
     expect(c.get({ col: 1, row: 0, zoom: 1 })).toBeDefined();
   });

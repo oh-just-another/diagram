@@ -194,8 +194,8 @@ const ShapeZ = z.union([
 
 const EdgeEndpointZ = z.discriminatedUnion("kind", [
  z.object({ kind: z.literal("point"), position: Vec2Z }).strict(),
- z.object({ kind: z.literal("anchor"), shapeId: z.string(), anchor: AnchorRefZ }).strict(),
- z.object({ kind: z.literal("outline"), shapeId: z.string(), ratio: z.number() }).strict(),
+ z.object({ kind: z.literal("anchor"), elementId: z.string(), anchor: AnchorRefZ }).strict(),
+ z.object({ kind: z.literal("outline"), elementId: z.string(), ratio: z.number() }).strict(),
 ]);
 
 const EdgeRoutingZ = z.enum(["straight", "orthogonal", "bezier"]);
@@ -272,7 +272,7 @@ const CommentZ = z
 const AnnotationZ = z
  .object({
   id: z.string(),
-  shapeId: z.string().nullable(),
+  elementId: z.string().nullable(),
   position: Vec2Z,
   resolved: z.boolean(),
   thread: z.array(CommentZ),

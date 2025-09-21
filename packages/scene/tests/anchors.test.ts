@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layerId, shapeId } from "@oh-just-another/types";
+import { layerId, elementId } from "@oh-just-another/types";
 import {
   STANDARD_ANCHORS,
   STANDARD_ANCHOR_RATIOS,
@@ -12,7 +12,7 @@ import {
 } from "../src/index";
 
 const baseRect = (overrides: Partial<RectangleShape> = {}): RectangleShape => ({
-  id: shapeId("r1"),
+  id: elementId("r1"),
   layerId: layerId("default"),
   type: "rectangle",
   position: { x: 100, y: 200 },

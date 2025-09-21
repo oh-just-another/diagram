@@ -1,4 +1,4 @@
-import type { ShapeId, Vec2 } from "@oh-just-another/types";
+import type { ElementId, Vec2 } from "@oh-just-another/types";
 import type { Patch } from "./patch.js";
 import type { Scene } from "./scene.js";
 
@@ -29,8 +29,8 @@ export interface LayoutKindEntry<Spec = unknown> {
   parse(metadata: unknown): Spec | null;
   run(
     scene: Scene,
-    parentId: ShapeId,
-    children: readonly ShapeId[],
+    parentId: ElementId,
+    children: readonly ElementId[],
     origin: Vec2,
     spec: Spec,
   ): Patch | null;

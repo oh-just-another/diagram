@@ -1,4 +1,4 @@
-import type { ShapeId } from "@oh-just-another/types";
+import type { ElementId } from "@oh-just-another/types";
 import type { Scene } from "./scene.js";
 
 /**
@@ -15,15 +15,15 @@ import type { Scene } from "./scene.js";
  * for every change. Pure read paths don't allocate.
  */
 export interface SceneShapeDiff {
-  readonly added: readonly ShapeId[];
-  readonly removed: readonly ShapeId[];
-  readonly modified: readonly ShapeId[];
+  readonly added: readonly ElementId[];
+  readonly removed: readonly ElementId[];
+  readonly modified: readonly ElementId[];
 }
 
 export const diffSceneShapes = (prev: Scene, next: Scene): SceneShapeDiff => {
-  const added: ShapeId[] = [];
-  const removed: ShapeId[] = [];
-  const modified: ShapeId[] = [];
+  const added: ElementId[] = [];
+  const removed: ElementId[] = [];
+  const modified: ElementId[] = [];
   for (const [id, shape] of next.shapes) {
     const before = prev.shapes.get(id);
     if (before === undefined) added.push(id);

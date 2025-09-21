@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   apply,
@@ -13,7 +13,7 @@ import {
 import { Editor } from "../src/editor.js";
 
 const rect = (id: string, x = 0, order = orderBetween(null, null)): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y: 0 },
@@ -104,8 +104,8 @@ describe("compactLayerZOrder", () => {
     const sortedAfter = [...editor.scene.shapes.values()].sort((x, y) =>
       x.order < y.order ? -1 : 1,
     );
-    expect(sortedAfter[0]!.id).toBe(shapeId("a"));
-    expect(sortedAfter[sortedAfter.length - 1]!.id).toBe(shapeId("b"));
+    expect(sortedAfter[0]!.id).toBe(elementId("a"));
+    expect(sortedAfter[sortedAfter.length - 1]!.id).toBe(elementId("b"));
   });
 
   it("preserves the original visual order", () => {

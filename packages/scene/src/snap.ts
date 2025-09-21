@@ -126,7 +126,7 @@ export const anchorSnapper: SnapContributor = {
         snapped: nearest.world,
         distance: dx * dx + dy * dy,
         kind: "anchor",
-        metadata: { shapeId: shape.id, ref: nearest.ref satisfies AnchorRef },
+        metadata: { elementId: shape.id, ref: nearest.ref satisfies AnchorRef },
       });
     }
     return out;
@@ -157,7 +157,7 @@ export const outlineSnapper: SnapContributor = {
         snapped: nearest.world,
         distance: dx * dx + dy * dy,
         kind: "outline",
-        metadata: { shapeId: shape.id, ratio: nearest.ratio },
+        metadata: { elementId: shape.id, ratio: nearest.ratio },
       });
     }
     return out;

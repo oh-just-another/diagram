@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -41,7 +41,7 @@ describe("safeHref", () => {
 });
 
 const rect = (id: string): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },
@@ -70,20 +70,20 @@ describe("editor.setLink / shapeLink", () => {
     let s = emptyScene();
     ({ scene: s } = addShape(s, rect("r")));
     const e = makeEditor(s);
-    e.setLink([shapeId("r")], "example.com"); // normalised inside setLink
-    expect((e.scene.shapes.get(shapeId("r")) as { href?: string }).href).toBe("https://example.com");
-    expect(e.shapeLink(shapeId("r"))).toBe("https://example.com");
+    e.setLink([elementId("r")], "example.com"); // normalised inside setLink
+    expect((e.scene.shapes.get(elementId("r")) as { href?: string }).href).toBe("https://example.com");
+    expect(e.shapeLink(elementId("r"))).toBe("https://example.com");
     e.undo();
-    expect((e.scene.shapes.get(shapeId("r")) as { href?: string }).href).toBeUndefined();
-    e.setLink([shapeId("r")], "https://y.com");
-    e.setLink([shapeId("r")], null);
-    expect((e.scene.shapes.get(shapeId("r")) as { href?: string }).href).toBeUndefined();
+    expect((e.scene.shapes.get(elementId("r")) as { href?: string }).href).toBeUndefined();
+    e.setLink([elementId("r")], "https://y.com");
+    e.setLink([elementId("r")], null);
+    expect((e.scene.shapes.get(elementId("r")) as { href?: string }).href).toBeUndefined();
   });
 
   it("shapeLink returns null for an unsafe stored href", () => {
     let s = emptyScene();
     ({ scene: s } = addShape(s, { ...rect("r"), href: "javascript:alert(1)" } as Shape));
     const e = makeEditor(s);
-    expect(e.shapeLink(shapeId("r"))).toBeNull();
+    expect(e.shapeLink(elementId("r"))).toBeNull();
   });
 });

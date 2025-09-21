@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { edgeId, shapeId } from "@oh-just-another/types";
+import { linkId, elementId } from "@oh-just-another/types";
 import {
   addEdge,
   apply,
@@ -13,7 +13,7 @@ import {
 import { renderEdges, InMemoryEdgeBitmapCache } from "../src/index";
 
 const rect = (id: string, x = 0, y = 0, w = 10, h = 10): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -39,11 +39,11 @@ const sceneWithEdge = () => {
     after: rect("b", 100, 100),
   } satisfies Patch);
   const edge: Edge = {
-    id: edgeId("e1"),
+    id: linkId("e1"),
     layerId: DEFAULT_LAYER_ID,
     order: orderBetween(null, null),
-    from: { kind: "anchor", shapeId: shapeId("a"), anchor: { kind: "named", name: "center" } },
-    to: { kind: "anchor", shapeId: shapeId("b"), anchor: { kind: "named", name: "center" } },
+    from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "center" } },
+    to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "center" } },
     style: { stroke: "#000" },
   };
   const r = addEdge(scene, edge);

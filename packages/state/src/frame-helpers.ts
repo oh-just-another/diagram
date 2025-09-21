@@ -1,4 +1,4 @@
-import type { Bounds, ShapeId } from "@oh-just-another/types";
+import type { Bounds, ElementId } from "@oh-just-another/types";
 import {
   getShapeWorldBounds,
   updateShape,
@@ -42,7 +42,7 @@ export const nextFrameName = (scene: Scene): string => {
 export const assignFrameMembers = (
   scene: Scene,
   history: HistoryProvider,
-  frameId: ShapeId,
+  frameId: ElementId,
   frameBounds: Bounds,
 ): Scene => {
   const left = frameBounds.x;

@@ -1,4 +1,4 @@
-import type { ShapeId } from "@oh-just-another/types";
+import type { ElementId } from "@oh-just-another/types";
 import {
   apply,
   getAutoLayoutSpec,
@@ -20,7 +20,7 @@ import {
  */
 export class AutoLayoutScheduler {
   private pending = false;
-  private readonly signatures = new Map<ShapeId, string>();
+  private readonly signatures = new Map<ElementId, string>();
 
   constructor(private readonly opts: AutoLayoutSchedulerOptions) {}
 
@@ -39,7 +39,7 @@ export class AutoLayoutScheduler {
    * editor's public `runLayout(parentId)` to prevent the next
    * scheduled check from firing a redundant second run.
    */
-  resetSignature(parentId: ShapeId): void {
+  resetSignature(parentId: ElementId): void {
     this.signatures.set(parentId, this.signatureFor(parentId));
   }
 
@@ -67,7 +67,7 @@ export class AutoLayoutScheduler {
     if (mutated) this.opts.onMutated();
   }
 
-  private signatureFor(parentId: ShapeId): string {
+  private signatureFor(parentId: ElementId): string {
     const scene = this.opts.getScene();
     const ids: string[] = [];
     for (const s of scene.shapes.values()) {
@@ -86,7 +86,7 @@ export interface AutoLayoutSchedulerOptions {
    */
   readonly applyPatch: (patch: Patch) => void;
   /** Editor-side hook to grow the container after the relayout. */
-  readonly growContainer: (parentId: ShapeId, childId: ShapeId) => void;
+  readonly growContainer: (parentId: ElementId, childId: ElementId) => void;
   /**
    * Called once at the end of a check that produced at least one
    * mutation — editor renders + fires listeners (intentionally NOT

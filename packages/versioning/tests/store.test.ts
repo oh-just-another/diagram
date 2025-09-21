@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -12,7 +12,7 @@ import { DEFAULT_BRANCH_ID, SnapshotStore } from "../src/index";
 const author = { id: "u1", name: "Alice" };
 
 const rect = (id: string, x = 0, y = 0): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },

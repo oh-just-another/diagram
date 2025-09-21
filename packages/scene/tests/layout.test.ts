@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   apply,
@@ -12,7 +12,7 @@ import {
 import { gridLayout, stackLayout, treeLayout } from "../src/layout.js";
 
 const rect = (id: string, parentId: string | null, w = 40, h = 30): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },
@@ -22,7 +22,7 @@ const rect = (id: string, parentId: string | null, w = 40, h = 30): Shape => ({
   style: {},
   width: w,
   height: h,
-  ...(parentId ? { parentId: shapeId(parentId) } : {}),
+  ...(parentId ? { parentId: elementId(parentId) } : {}),
 });
 
 const sceneWith = (...shapes: Shape[]): Scene => {
@@ -100,7 +100,7 @@ describe("layout with polygon shapes", () => {
     points: { x: number; y: number }[],
   ): Shape =>
     ({
-      id: shapeId(id),
+      id: elementId(id),
       layerId: DEFAULT_LAYER_ID,
       type: "polygon",
       position: { x: 0, y: 0 },
@@ -109,7 +109,7 @@ describe("layout with polygon shapes", () => {
       order: orderBetween(null, null),
       style: {},
       points,
-      ...(parentId ? { parentId: shapeId(parentId) } : {}),
+      ...(parentId ? { parentId: elementId(parentId) } : {}),
     }) as Shape;
 
   // Diamond AABB = 100×60.

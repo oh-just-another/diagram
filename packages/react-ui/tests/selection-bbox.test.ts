@@ -4,7 +4,7 @@
  * for floating-ui. Pure scene-coords math, no React, no DOM.
  */
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -19,7 +19,7 @@ import { _computeSelectionWorldBboxForTesting as computeBbox } from "../src/sele
 installBuiltinRenderers();
 
 const rect = (id: string, x: number, y: number, w = 50, h = 30): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -63,7 +63,7 @@ describe("computeSelectionWorldBbox", () => {
 
   it("returns the bbox of a single selected shape", () => {
     const editor = mkEditor(rect("a", 10, 20, 50, 30));
-    editor.setSelection([shapeId("a")]);
+    editor.setSelection([elementId("a")]);
     expect(computeBbox(editor)).toEqual({ x: 10, y: 20, width: 50, height: 30 });
     editor.dispose();
   });
@@ -71,14 +71,14 @@ describe("computeSelectionWorldBbox", () => {
   it("returns the union when multiple shapes are selected", () => {
     // a at (0,0) 50×30, b at (100,100) 40×20 → union (0,0,140,120).
     const editor = mkEditor(rect("a", 0, 0, 50, 30), rect("b", 100, 100, 40, 20));
-    editor.setSelection([shapeId("a"), shapeId("b")]);
+    editor.setSelection([elementId("a"), elementId("b")]);
     expect(computeBbox(editor)).toEqual({ x: 0, y: 0, width: 140, height: 120 });
     editor.dispose();
   });
 
   it("ignores selected ids that no longer exist in the scene", () => {
     const editor = mkEditor(rect("a", 5, 5, 10, 10));
-    editor.setSelection([shapeId("a"), shapeId("ghost")]);
+    editor.setSelection([elementId("a"), elementId("ghost")]);
     expect(computeBbox(editor)).toEqual({ x: 5, y: 5, width: 10, height: 10 });
     editor.dispose();
   });
@@ -93,7 +93,7 @@ describe("computeSelectionWorldBbox", () => {
       rect("c1", 0, 0, 80, 40),
       rect("c2", 200, 100, 60, 30),
       {
-        id: shapeId("g"),
+        id: elementId("g"),
         layerId: DEFAULT_LAYER_ID,
         type: "group",
         position: { x: 50, y: 50 },
@@ -105,8 +105,8 @@ describe("computeSelectionWorldBbox", () => {
     );
     // Reparent children to the group.
     const apply = (id: string) => {
-      const s = editor.scene.shapes.get(shapeId(id))!;
-      const next = { ...s, parentId: shapeId("g") } as Shape;
+      const s = editor.scene.shapes.get(elementId(id))!;
+      const next = { ...s, parentId: elementId("g") } as Shape;
       editor["_scene"] = (editor as unknown as {
         _scene: typeof editor.scene;
       })._scene = ((scene) => {
@@ -117,7 +117,7 @@ describe("computeSelectionWorldBbox", () => {
     };
     apply("c1");
     apply("c2");
-    editor.setSelection([shapeId("g")]);
+    editor.setSelection([elementId("g")]);
     // Union of c1 (0,0,80,40) and c2 (200,100,60,30) → (0, 0, 260, 130).
     expect(computeBbox(editor)).toEqual({ x: 0, y: 0, width: 260, height: 130 });
     editor.dispose();

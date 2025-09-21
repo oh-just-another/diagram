@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -15,7 +15,7 @@ import {
 
 const rect = (id: string, parentId?: string): Shape =>
   ({
-    id: shapeId(id),
+    id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",
     position: { x: 0, y: 0 },
@@ -25,7 +25,7 @@ const rect = (id: string, parentId?: string): Shape =>
     style: {},
     width: 40,
     height: 40,
-    ...(parentId ? { parentId: shapeId(parentId) } : {}),
+    ...(parentId ? { parentId: elementId(parentId) } : {}),
   } as Shape);
 
 const container = (id: string, autoLayout: Record<string, unknown>): Shape =>
@@ -76,7 +76,7 @@ describe("pluggable layout registry", () => {
     ({ scene } = addShape(scene, rect("c1", "p")));
     ({ scene } = addShape(scene, rect("c2", "p")));
 
-    runAutoLayout(scene, shapeId("p"));
+    runAutoLayout(scene, elementId("p"));
     expect(captured).not.toBeNull();
     expect(captured!.childrenCount).toBe(2);
     expect(captured!.origin).toEqual({ x: 7, y: 9 });
@@ -91,7 +91,7 @@ describe("pluggable layout registry", () => {
   it("plugin run() result is the patch returned by runAutoLayout", () => {
     const fakePatch: Patch = {
       kind: "shape",
-      id: shapeId("c1"),
+      id: elementId("c1"),
       before: rect("c1", "p"),
       after: { ...rect("c1", "p"), position: { x: 100, y: 100 } },
     };
@@ -105,7 +105,7 @@ describe("pluggable layout registry", () => {
     ({ scene } = addShape(scene, container("p", { kind: "radial" })));
     ({ scene } = addShape(scene, rect("c1", "p")));
 
-    const out = runAutoLayout(scene, shapeId("p"));
+    const out = runAutoLayout(scene, elementId("p"));
     expect(out).toBe(fakePatch);
   });
 });

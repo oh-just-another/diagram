@@ -1,6 +1,6 @@
 import { createActor } from "xstate";
 import { describe, expect, it, vi } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import { interactionMachine, interpretPressEnd, type InteractionEmit } from "../src/machine";
 
 const start = () => {
@@ -13,13 +13,13 @@ const start = () => {
 
 const rectTarget = (id = "a") => ({
   kind: "shape" as const,
-  id: shapeId(id),
+  id: elementId(id),
   bounds: { x: 0, y: 0, width: 100, height: 50 },
 });
 
 const handleTarget = (id = "a") => ({
   kind: "handle" as const,
-  shapeId: shapeId(id),
+  elementId: elementId(id),
   handle: "se" as const,
   bounds: { x: 0, y: 0, width: 100, height: 50 },
 });
@@ -64,7 +64,7 @@ describe("interactionMachine", () => {
       expect(move).toBeDefined();
       if (move?.type === "MOVE_SHAPE") {
         expect(move.delta).toEqual({ x: 10, y: 10 });
-        expect(move.id).toBe(shapeId("a"));
+        expect(move.id).toBe(elementId("a"));
       }
     });
 
@@ -136,7 +136,7 @@ describe("interactionMachine", () => {
       const preview = emits.find((e) => e.type === "DRAW_EDGE_PREVIEW");
       expect(preview).toBeDefined();
       if (preview?.type === "DRAW_EDGE_PREVIEW") {
-        expect(preview.fromShape).toBe(shapeId("a"));
+        expect(preview.fromShape).toBe(elementId("a"));
         expect(preview.toPoint).toEqual({ x: 80, y: 50 });
       }
     });
@@ -154,8 +154,8 @@ describe("interactionMachine", () => {
       const create = emits.find((e) => e.type === "CREATE_EDGE");
       expect(create).toBeDefined();
       if (create?.type === "CREATE_EDGE") {
-        expect(create.fromShape).toBe(shapeId("a"));
-        expect(create.toShape).toBe(shapeId("b"));
+        expect(create.fromShape).toBe(elementId("a"));
+        expect(create.toShape).toBe(elementId("b"));
         expect(create.fromPoint).toEqual({ x: 10, y: 10 });
         expect(create.toPoint).toEqual({ x: 200, y: 200 });
       }
@@ -174,7 +174,7 @@ describe("interactionMachine", () => {
       const create = emits.find((e) => e.type === "CREATE_EDGE");
       expect(create).toBeDefined();
       if (create?.type === "CREATE_EDGE") {
-        expect(create.fromShape).toBe(shapeId("a"));
+        expect(create.fromShape).toBe(elementId("a"));
         expect(create.toShape).toBeNull();
       }
     });
@@ -222,7 +222,7 @@ describe("interactionMachine", () => {
       };
       expect(interpretPressEnd(ctx, { x: 0, y: 0 })).toEqual({
         type: "SELECT_REPLACE",
-        id: shapeId("a"),
+        id: elementId("a"),
       });
     });
     it("SELECT_CLEAR for a click on empty in select mode", () => {
@@ -259,7 +259,7 @@ describe("interactionMachine", () => {
       };
       expect(interpretPressEnd(ctx, { x: 0, y: 0 })).toEqual({
         type: "SELECT_TOGGLE",
-        id: shapeId("a"),
+        id: elementId("a"),
       });
     });
 
@@ -274,7 +274,7 @@ describe("interactionMachine", () => {
       };
       expect(interpretPressEnd(ctx, { x: 0, y: 0 })).toEqual({
         type: "SELECT_TOGGLE",
-        id: shapeId("a"),
+        id: elementId("a"),
       });
     });
   });

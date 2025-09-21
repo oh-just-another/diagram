@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -20,7 +20,7 @@ import { DiagramProvider, PropertyPanel, TooltipProvider } from "../src/index";
 installBuiltinRenderers();
 
 const image: Shape = {
-  id: shapeId("img1"),
+  id: elementId("img1"),
   layerId: DEFAULT_LAYER_ID,
   type: "image",
   position: { x: 0, y: 0 },
@@ -36,7 +36,7 @@ const image: Shape = {
 } as unknown as Shape;
 
 const rect: Shape = {
-  id: shapeId("r1"),
+  id: elementId("r1"),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },

@@ -1,5 +1,5 @@
 import type { ShapeBase, TemplateShape as SceneTemplateShape } from "@oh-just-another/scene";
-import type { ShapeId, Vec2 } from "@oh-just-another/types";
+import type { ElementId, Vec2 } from "@oh-just-another/types";
 import { resolveBindings } from "./binding.js";
 import { fallbackMeasureText, layoutTree } from "./layout.js";
 import { defaultRichRegistry } from "./registry.js";
@@ -12,7 +12,7 @@ import { interactiveNodeAtPoint } from "./hit-test.js";
  */
 export interface TemplateTapPayload {
   readonly type: "TEMPLATE_TAP";
-  readonly shapeId: ShapeId;
+  readonly elementId: ElementId;
   readonly action: string;
   readonly nodeId?: string;
 }
@@ -55,14 +55,14 @@ export const templateInteractiveHitTester = (
   if (hit?.node.type !== "button") return null;
   return {
     type: "TEMPLATE_TAP",
-    shapeId: ts.id,
+    elementId: ts.id,
     action: hit.node.action,
     ...(hit.node.id !== undefined ? { nodeId: hit.node.id } : {}),
   };
 };
 
 export interface DropZoneHit {
-  readonly shapeId: ShapeId;
+  readonly elementId: ElementId;
   readonly nodeId: string | undefined;
   /** Whitelist from the drop-zone node. `undefined` = accept anything. */
   readonly accepts: readonly string[] | undefined;
@@ -92,7 +92,7 @@ export const findDropZoneAt = (shape: ShapeBase, localPoint: Vec2): DropZoneHit 
   const hit = interactiveNodeAtPoint(layouted, localPoint);
   if (hit?.node.type !== "drop-zone") return null;
   return {
-    shapeId: ts.id,
+    elementId: ts.id,
     nodeId: hit.node.id,
     accepts: hit.node.accepts,
   };

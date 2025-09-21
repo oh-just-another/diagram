@@ -1,4 +1,4 @@
-import type { AnnotationId, CommentId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { AnnotationId, CommentId, ElementId, Vec2 } from "@oh-just-another/types";
 
 /**
  * Threaded comment inside an annotation. `body` is plain text — host can
@@ -15,17 +15,17 @@ export interface Comment {
 
 /**
  * Pin + comment thread anchored either to a free world-space position
- * or to a specific shape. When `shapeId` is set, the position is
+ * or to a specific shape. When `elementId` is set, the position is
  * resolved as `shape.position + offset`; if the shape moves, the pin
  * follows it. `position` is the world-space (or local-to-shape when
- * `shapeId` is set) offset.
+ * `elementId` is set) offset.
  *
  * `resolved` is a UI-only flag: marks the thread as closed. Doesn't
  * delete history.
  */
 export interface Annotation {
   readonly id: AnnotationId;
-  readonly shapeId: ShapeId | null;
+  readonly elementId: ElementId | null;
   readonly position: Vec2;
   readonly resolved: boolean;
   readonly thread: readonly Comment[];

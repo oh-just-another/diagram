@@ -11,7 +11,7 @@ import {
 import type {
   AnnotationId,
   CommentId,
-  ShapeId,
+  ElementId,
   Vec2,
 } from "@oh-just-another/types";
 import {
@@ -33,7 +33,7 @@ export const computeAddAnnotation = (
   scene: Scene,
   opts: {
     position: Vec2;
-    shapeId?: ShapeId | null;
+    elementId?: ElementId | null;
     firstComment?: string;
   },
   author: CommentAuthor,
@@ -53,7 +53,7 @@ export const computeAddAnnotation = (
   }
   const annotation: Annotation = {
     id: newId,
-    shapeId: opts.shapeId ?? null,
+    elementId: opts.elementId ?? null,
     position: opts.position,
     resolved: false,
     thread,

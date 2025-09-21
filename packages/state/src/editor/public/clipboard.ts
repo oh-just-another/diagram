@@ -4,8 +4,8 @@ import {
   pasteShapes as pasteShapesHelper,
 } from "../../clipboard.js";
 import type { HistoryProvider } from "@oh-just-another/history";
-import type { ShapeId, Vec2 } from "@oh-just-another/types";
-import { shapeId as castShapeId } from "@oh-just-another/types";
+import type { ElementId, Vec2 } from "@oh-just-another/types";
+import { elementId as castShapeId } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
 
 /**
@@ -42,7 +42,7 @@ export const pasteFromClipboard = (
   nextIdSeed: () => number,
 ): {
   readonly scene: Scene;
-  readonly newIds: readonly ShapeId[];
+  readonly newIds: readonly ElementId[];
 } => {
   const result = pasteShapesHelper(scene, history, clipboard, target, () =>
     castShapeId(`shape-${nextIdSeed()}-${Date.now().toString(36)}`),
@@ -51,7 +51,7 @@ export const pasteFromClipboard = (
 };
 
 /** Compose the next selection from a freshly-pasted id list. */
-export const selectionFromPasted = (newIds: readonly ShapeId[]): Selection.Selection => {
+export const selectionFromPasted = (newIds: readonly ElementId[]): Selection.Selection => {
   let next: Selection.Selection = Selection.EMPTY;
   for (const id of newIds) next = Selection.add(next, id);
   return next;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   apply,
@@ -18,7 +18,7 @@ import {
 } from "../src/index";
 
 const rect = (id: string, x = 0, y = 0, w = 20, h = 20): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -47,10 +47,10 @@ const addRect = (scene: Scene, id: string, x: number, y: number): Scene => {
 };
 
 const updateRect = (scene: Scene, id: string, x: number, y: number): Scene => {
-  const before = scene.shapes.get(shapeId(id));
+  const before = scene.shapes.get(elementId(id));
   if (!before) throw new Error(`missing shape ${id}`);
   const after = { ...before, position: { x, y } } as Shape;
-  return apply(scene, { kind: "shape", id: shapeId(id), before, after } satisfies Patch);
+  return apply(scene, { kind: "shape", id: elementId(id), before, after } satisfies Patch);
 };
 
 describe("merge", () => {
@@ -80,9 +80,9 @@ describe("merge", () => {
     const target = addRect(base, "c", 20, 0);
     const report = threeWayMerge(base, source, target);
     expect(report.conflicts).toHaveLength(0);
-    expect(report.mergedScene.shapes.has(shapeId("a"))).toBe(true);
-    expect(report.mergedScene.shapes.has(shapeId("b"))).toBe(true);
-    expect(report.mergedScene.shapes.has(shapeId("c"))).toBe(true);
+    expect(report.mergedScene.shapes.has(elementId("a"))).toBe(true);
+    expect(report.mergedScene.shapes.has(elementId("b"))).toBe(true);
+    expect(report.mergedScene.shapes.has(elementId("c"))).toBe(true);
   });
 
   it("threeWayMerge reports both-modified as conflict", () => {
@@ -93,9 +93,9 @@ describe("merge", () => {
     expect(report.conflicts).toHaveLength(1);
     const c = report.conflicts[0]!;
     expect(c.kind).toBe("shape");
-    expect(c.id).toBe(shapeId("a"));
+    expect(c.id).toBe(elementId("a"));
     // Auto-merged value stays at the target value.
-    expect((report.mergedScene.shapes.get(shapeId("a")) as Shape).position.x).toBe(20);
+    expect((report.mergedScene.shapes.get(elementId("a")) as Shape).position.x).toBe(20);
   });
 
   it("mergeBranchHeads runs three-way merge between branch tips", () => {

@@ -7,7 +7,7 @@ import {
   type Patch,
   type BinaryFile,
 } from "@oh-just-another/scene";
-import type { FileId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { FileId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { fileId as castFileId } from "@oh-just-another/types";
 
 /**
@@ -28,7 +28,7 @@ export const buildImageShape = (
     animationKind?: string;
     animationData?: unknown;
   },
-  id: ShapeId,
+  id: ElementId,
   layerId: LayerId,
 ): Shape => {
   const order = orderForTop(

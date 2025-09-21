@@ -1,10 +1,10 @@
 import {
  layerId as castLayerId,
  type AnnotationId,
- type EdgeId,
+ type LinkId,
  type FileId,
  type LayerId,
- type ShapeId,
+ type ElementId,
 } from "@oh-just-another/types";
 import { generateKeyBetween, generateNKeysBetween, type FractionalIndex } from "fractional-keys";
 import type { Annotation } from "./annotation.js";
@@ -22,8 +22,8 @@ import { DEFAULT_VIEWPORT, type Viewport } from "./viewport.js";
  * actually reallocated (structural sharing).
  */
 export interface Scene {
- readonly shapes: ReadonlyMap<ShapeId, Shape>;
- readonly edges: ReadonlyMap<EdgeId, Edge>;
+ readonly shapes: ReadonlyMap<ElementId, Shape>;
+ readonly edges: ReadonlyMap<LinkId, Edge>;
  readonly layers: ReadonlyMap<LayerId, Layer>;
  /**
   * Threaded comments anchored to either a shape (id) or a free

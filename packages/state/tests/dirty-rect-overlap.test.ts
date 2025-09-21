@@ -15,7 +15,7 @@
  * skipped by viewport-cull, never silently dropped.
  */
 import { describe, expect, it, vi } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   apply,
   DEFAULT_LAYER_ID,
@@ -33,7 +33,7 @@ import { Editor } from "../src/editor.js";
 installBuiltinRenderers();
 
 const rect = (id: string, x: number, y: number, w = 50, h = 50): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -122,7 +122,7 @@ describe("computeDirtyWorld transitive overlap", () => {
     // select just A, then nudge — exercises the normal
     // recordGesturePatch → notify → render path without pointer
     // events.
-    editor.setSelection([shapeId("a")]);
+    editor.setSelection([elementId("a")]);
     drawn.length = 0; // selection notify may re-render
     editor.moveSelectionBy({ x: 60, y: 60 });
 

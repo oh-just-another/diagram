@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/versioning",
-  "version": "0.46.6",
+  "version": "0.47.0",
   "description": "Snapshot history + branch tree + diff utilities for diagram scenes.",
   "type": "module",
   "main": "./dist/index.js",

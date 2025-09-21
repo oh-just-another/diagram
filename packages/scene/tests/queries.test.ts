@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layerId, shapeId } from "@oh-just-another/types";
+import { layerId, elementId } from "@oh-just-another/types";
 import {
   addLayer,
   addShape,
@@ -30,7 +30,7 @@ const rect = (
   w = 10,
   h = 10,
 ): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: layer,
   type: "rectangle",
   position,
@@ -46,7 +46,7 @@ describe("queries", () => {
   describe("direct lookups", () => {
     it("getShape / getLayer return undefined for missing ids", () => {
       const s = emptyScene();
-      expect(getShape(s, shapeId("missing"))).toBeUndefined();
+      expect(getShape(s, elementId("missing"))).toBeUndefined();
       expect(getLayer(s, layerId("missing"))).toBeUndefined();
       expect(getLayer(s, DEFAULT_LAYER_ID)?.id).toBe(DEFAULT_LAYER_ID);
     });
@@ -86,7 +86,7 @@ describe("queries", () => {
       );
       ({ scene } = addShape(scene, { ...rect("b"), order: order2 }));
       const shapes = getShapesInLayer(scene, DEFAULT_LAYER_ID);
-      expect(shapes.map((s) => s.id)).toEqual([shapeId("a"), shapeId("b")]);
+      expect(shapes.map((s) => s.id)).toEqual([elementId("a"), elementId("b")]);
     });
   });
 
@@ -102,7 +102,7 @@ describe("queries", () => {
     it("includes overlapping, excludes outside", () => {
       const scene = buildSpread();
       const hits = getShapesInBounds(scene, { x: -5, y: -5, width: 150, height: 50 });
-      expect(hits.map((s) => s.id).sort()).toEqual([shapeId("s0"), shapeId("s1")]);
+      expect(hits.map((s) => s.id).sort()).toEqual([elementId("s0"), elementId("s1")]);
     });
   });
 

@@ -1,4 +1,4 @@
-import type { LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import type { FractionalIndex } from "fractional-keys";
 import type { Shape } from "@oh-just-another/scene";
 
@@ -17,7 +17,7 @@ export type Category = StandardCategory | (string & {});
  * from the spec and these context fields.
  */
 export interface TemplateContext {
-  readonly id: ShapeId;
+  readonly id: ElementId;
   readonly layerId: LayerId;
   /** Top-left in world coordinates where the shape should be placed. */
   readonly position: Vec2;

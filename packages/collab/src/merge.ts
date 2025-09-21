@@ -1,4 +1,4 @@
-import type { ShapeId } from "@oh-just-another/types";
+import type { ElementId } from "@oh-just-another/types";
 import type { Scene } from "@oh-just-another/scene";
 
 /**
@@ -20,14 +20,14 @@ export interface BranchId {
 }
 
 export interface MergeConflict {
-  readonly shapeId: ShapeId;
+  readonly elementId: ElementId;
   readonly base: unknown | null;
   readonly source: unknown;
   readonly target: unknown;
 }
 
 export interface MergeReport {
-  readonly applied: readonly ShapeId[];
+  readonly applied: readonly ElementId[];
   readonly conflicts: readonly MergeConflict[];
   /**
    * The resulting scene after auto-applying non-conflicting
@@ -49,7 +49,7 @@ export interface MergeReport {
 export type ConflictChoice = "ours" | "theirs" | "both";
 
 export interface ConflictResolution {
-  readonly shapeId: ShapeId;
+  readonly elementId: ElementId;
   readonly choice: ConflictChoice;
 }
 

@@ -1,4 +1,4 @@
-import type { AnnotationId, EdgeId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { AnnotationId, LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import type { Annotation } from "./annotation.js";
 import type { Edge } from "./edge.js";
 import type { Layer } from "./layer.js";
@@ -27,7 +27,7 @@ export const addShape = (scene: Scene, shape: Shape): OperationResult => {
   return { scene: apply(scene, patch), patch };
 };
 
-export const removeShape = (scene: Scene, id: ShapeId): OperationResult => {
+export const removeShape = (scene: Scene, id: ElementId): OperationResult => {
   const before = scene.shapes.get(id);
   if (!before) throw new Error(`Shape not found: ${id}`);
   const patch: Patch = { kind: "shape", id, before, after: null };
@@ -36,7 +36,7 @@ export const removeShape = (scene: Scene, id: ShapeId): OperationResult => {
 
 export const updateShape = (
   scene: Scene,
-  id: ShapeId,
+  id: ElementId,
   update: (shape: Shape) => Shape,
 ): OperationResult => {
   const before = scene.shapes.get(id);
@@ -46,7 +46,7 @@ export const updateShape = (
   return { scene: apply(scene, patch), patch };
 };
 
-export const moveShape = (scene: Scene, id: ShapeId, to: Vec2): OperationResult =>
+export const moveShape = (scene: Scene, id: ElementId, to: Vec2): OperationResult =>
   updateShape(scene, id, (s) => ({ ...s, position: to }));
 
 // --- Edges ---
@@ -59,7 +59,7 @@ export const addEdge = (scene: Scene, edge: Edge): OperationResult => {
   return { scene: apply(scene, patch), patch };
 };
 
-export const removeEdge = (scene: Scene, id: EdgeId): OperationResult => {
+export const removeEdge = (scene: Scene, id: LinkId): OperationResult => {
   const before = scene.edges.get(id);
   if (!before) throw new Error(`Edge not found: ${id}`);
   const patch: Patch = { kind: "edge", id, before, after: null };
@@ -68,7 +68,7 @@ export const removeEdge = (scene: Scene, id: EdgeId): OperationResult => {
 
 export const updateEdge = (
   scene: Scene,
-  id: EdgeId,
+  id: LinkId,
   update: (edge: Edge) => Edge,
 ): OperationResult => {
   const before = scene.edges.get(id);

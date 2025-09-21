@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layerId, shapeId } from "@oh-just-another/types";
+import { layerId, elementId } from "@oh-just-another/types";
 import { orderBetween } from "@oh-just-another/scene";
 import {
   BUILTIN_TEMPLATES,
@@ -28,7 +28,7 @@ const dummy: Template = {
 };
 
 const ctx = () => ({
-  id: shapeId("x"),
+  id: elementId("x"),
   layerId: layerId("L"),
   position: { x: 0, y: 0 },
   order: orderBetween(null, null),
@@ -78,7 +78,7 @@ describe("TemplateRegistry", () => {
     r.register(dummy);
     const shape = r.get(dummy.id)!.factory(ctx());
     expect(shape.type).toBe("rectangle");
-    expect(shape.id).toBe(shapeId("x"));
+    expect(shape.id).toBe(elementId("x"));
     expect(shape.position).toEqual({ x: 0, y: 0 });
   });
 

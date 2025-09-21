@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layerId, shapeId } from "@oh-just-another/types";
+import { layerId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   SnapEngine,
@@ -14,7 +14,7 @@ import {
 } from "../src/index";
 
 const rect = (id: string, x: number, y: number, w = 100, h = 60): RectangleShape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: layerId(DEFAULT_LAYER_ID),
   type: "rectangle",
   position: { x, y },
@@ -65,7 +65,7 @@ describe("anchorSnapper", () => {
     expect(out[0]?.kind).toBe("anchor");
     expect(out[0]?.snapped).toEqual({ x: 200, y: 130 });
     expect(out[0]?.metadata).toMatchObject({
-      shapeId: r.id,
+      elementId: r.id,
       ref: { kind: "named", name: "right" },
     });
   });

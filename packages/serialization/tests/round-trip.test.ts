@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { annotationId, commentId, fileId, shapeId } from "@oh-just-another/types";
+import { annotationId, commentId, fileId, elementId } from "@oh-just-another/types";
 import {
   addAnnotation,
   addShape,
@@ -14,7 +14,7 @@ import {
 import { deserializeScene, parseScene, serializeScene, stringifyScene } from "../src/index";
 
 const rect = (id: string, x = 0, y = 0): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -34,8 +34,8 @@ describe("round-trip", () => {
     const doc = serializeScene(scene);
     const restored = deserializeScene(doc);
     expect(restored.shapes.size).toBe(2);
-    expect(restored.shapes.get(shapeId("a"))?.position).toEqual({ x: 10, y: 20 });
-    expect(restored.shapes.get(shapeId("b"))?.position).toEqual({ x: 30, y: 40 });
+    expect(restored.shapes.get(elementId("a"))?.position).toEqual({ x: 10, y: 20 });
+    expect(restored.shapes.get(elementId("b"))?.position).toEqual({ x: 30, y: 40 });
   });
 
   it("preserves layers (including the default one)", () => {
@@ -68,9 +68,9 @@ describe("round-trip", () => {
     let scene = emptyScene();
     const variants: Shape[] = [
       rect("r"),
-      { ...rect("e"), type: "ellipse" as const, id: shapeId("e") },
+      { ...rect("e"), type: "ellipse" as const, id: elementId("e") },
       {
-        id: shapeId("p"),
+        id: elementId("p"),
         layerId: DEFAULT_LAYER_ID,
         type: "polygon",
         position: { x: 0, y: 0 },
@@ -84,7 +84,7 @@ describe("round-trip", () => {
         ],
       },
       {
-        id: shapeId("t"),
+        id: elementId("t"),
         layerId: DEFAULT_LAYER_ID,
         type: "text",
         position: { x: 0, y: 0 },
@@ -97,7 +97,7 @@ describe("round-trip", () => {
         fontSize: 14,
       },
       {
-        id: shapeId("i"),
+        id: elementId("i"),
         layerId: DEFAULT_LAYER_ID,
         type: "image",
         position: { x: 0, y: 0 },
@@ -116,14 +116,14 @@ describe("round-trip", () => {
     }
     const restored = deserializeScene(serializeScene(scene));
     for (const id of ids) {
-      expect(restored.shapes.get(shapeId(id))?.type).toBe(scene.shapes.get(shapeId(id))?.type);
+      expect(restored.shapes.get(elementId(id))?.type).toBe(scene.shapes.get(elementId(id))?.type);
     }
   });
 
   it("preserves text decoration style (weight / italic / underline / strike)", () => {
     let scene = emptyScene();
     const t: Shape = {
-      id: shapeId("td"),
+      id: elementId("td"),
       layerId: DEFAULT_LAYER_ID,
       type: "text",
       position: { x: 0, y: 0 },
@@ -143,7 +143,7 @@ describe("round-trip", () => {
     } as unknown as Shape;
     ({ scene } = addShape(scene, t));
     const restored = deserializeScene(serializeScene(scene));
-    const st = (restored.shapes.get(shapeId("td")) as unknown as { style: Record<string, unknown> }).style;
+    const st = (restored.shapes.get(elementId("td")) as unknown as { style: Record<string, unknown> }).style;
     expect(st.fontWeight).toBe("bold");
     expect(st.fontStyle).toBe("italic");
     expect(st.textDecoration).toEqual({ underline: true, strikethrough: true });
@@ -153,7 +153,7 @@ describe("round-trip", () => {
   it("preserves element href", () => {
     let scene = emptyScene();
     const r: Shape = {
-      id: shapeId("lk"),
+      id: elementId("lk"),
       layerId: DEFAULT_LAYER_ID,
       type: "rectangle",
       position: { x: 0, y: 0 },
@@ -167,7 +167,7 @@ describe("round-trip", () => {
     } as unknown as Shape;
     ({ scene } = addShape(scene, r));
     const restored = deserializeScene(serializeScene(scene));
-    expect((restored.shapes.get(shapeId("lk")) as { href?: string }).href).toBe(
+    expect((restored.shapes.get(elementId("lk")) as { href?: string }).href).toBe(
       "https://example.com/x",
     );
   });
@@ -175,7 +175,7 @@ describe("round-trip", () => {
   it("preserves image fileId + animation fields", () => {
     let scene = emptyScene();
     const img: Shape = {
-      id: shapeId("img-1"),
+      id: elementId("img-1"),
       layerId: DEFAULT_LAYER_ID,
       type: "image",
       position: { x: 5, y: 5 },
@@ -192,7 +192,7 @@ describe("round-trip", () => {
     };
     ({ scene } = addShape(scene, img));
     const restored = deserializeScene(serializeScene(scene));
-    const r = restored.shapes.get(shapeId("img-1"));
+    const r = restored.shapes.get(elementId("img-1"));
     expect(r?.type).toBe("image");
     expect((r as { fileId?: string }).fileId).toBe("file-42-abc");
     expect((r as { animationKind?: string }).animationKind).toBe("gif");
@@ -202,7 +202,7 @@ describe("round-trip", () => {
   it("strips transient metadata.image but keeps metadata.animated", () => {
     let scene = emptyScene();
     const img: Shape = {
-      id: shapeId("img-1"),
+      id: elementId("img-1"),
       layerId: DEFAULT_LAYER_ID,
       type: "image",
       position: { x: 0, y: 0 },
@@ -223,14 +223,14 @@ describe("round-trip", () => {
     expect((serialized?.metadata as Record<string, unknown>).image).toBeUndefined();
     expect((serialized?.metadata as Record<string, unknown>).animated).toBe(true);
     const restored = deserializeScene(doc);
-    expect(restored.shapes.get(shapeId("img-1"))?.metadata?.animated).toBe(true);
-    expect(restored.shapes.get(shapeId("img-1"))?.metadata?.image).toBeUndefined();
+    expect(restored.shapes.get(elementId("img-1"))?.metadata?.animated).toBe(true);
+    expect(restored.shapes.get(elementId("img-1"))?.metadata?.image).toBeUndefined();
   });
 
   it("drops metadata entirely when only transient image was present", () => {
     let scene = emptyScene();
     const img: Shape = {
-      id: shapeId("img-2"),
+      id: elementId("img-2"),
       layerId: DEFAULT_LAYER_ID,
       type: "image",
       position: { x: 0, y: 0 },
@@ -270,7 +270,7 @@ describe("round-trip", () => {
     let scene = emptyScene();
     const ann: Annotation = {
       id: annotationId("a1"),
-      shapeId: shapeId("rect-1"),
+      elementId: elementId("rect-1"),
       position: { x: 10, y: 20 },
       resolved: false,
       thread: [

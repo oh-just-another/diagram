@@ -5,7 +5,7 @@
  * with the `compact-z-order` suite.
  */
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   apply,
   DEFAULT_LAYER_ID,
@@ -38,7 +38,7 @@ const host = {
 } as never;
 
 const rect = (id: string, order: string): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },
@@ -80,41 +80,41 @@ const makeStack = () => {
 describe("Editor z-order (one step)", () => {
   it("bringForward moves the middle shape past the top neighbour", () => {
     const editor = makeStack();
-    editor.bringForward(shapeId("b"));
+    editor.bringForward(elementId("b"));
     expect(stack(editor)).toEqual(["a", "c", "b"]);
   });
 
   it("bringForward on the topmost shape is a no-op", () => {
     const editor = makeStack();
     const before = stack(editor);
-    editor.bringForward(shapeId("c"));
+    editor.bringForward(elementId("c"));
     expect(stack(editor)).toEqual(before);
   });
 
   it("sendBackward moves the middle shape past the bottom neighbour", () => {
     const editor = makeStack();
-    editor.sendBackward(shapeId("b"));
+    editor.sendBackward(elementId("b"));
     expect(stack(editor)).toEqual(["b", "a", "c"]);
   });
 
   it("sendBackward on the bottommost shape is a no-op", () => {
     const editor = makeStack();
     const before = stack(editor);
-    editor.sendBackward(shapeId("a"));
+    editor.sendBackward(elementId("a"));
     expect(stack(editor)).toEqual(before);
   });
 
   it("bringForward + sendBackward returns to the original stack", () => {
     const editor = makeStack();
     const before = stack(editor);
-    editor.bringForward(shapeId("b"));
-    editor.sendBackward(shapeId("b"));
+    editor.bringForward(elementId("b"));
+    editor.sendBackward(elementId("b"));
     expect(stack(editor)).toEqual(before);
   });
 
   it("defaults the target to the lone selected shape", () => {
     const editor = makeStack();
-    editor.setSelection([shapeId("b")]);
+    editor.setSelection([elementId("b")]);
     editor.bringForward();
     expect(stack(editor)).toEqual(["a", "c", "b"]);
   });

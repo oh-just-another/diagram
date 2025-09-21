@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { act, render } from "@testing-library/react";
 import { useEffect } from "react";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -14,7 +14,7 @@ import type { Editor } from "@oh-just-another/state";
 import { DiagramRoot, DiagramSurface, useDiagramOptional } from "../src/index";
 
 const rect: Shape = {
-  id: shapeId("a"),
+  id: elementId("a"),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 100, y: 100 },

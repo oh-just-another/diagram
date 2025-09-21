@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -12,7 +12,7 @@ import { importIntoStore, serializeStore, SnapshotStore, stringifyStore } from "
 const author = { id: "u1", name: "Alice" };
 
 const rect = (id: string): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 1, y: 2 },
@@ -43,7 +43,7 @@ describe("snapshot store serialization", () => {
     expect(b.list()).toHaveLength(2);
     expect(b.branches().map((br) => br.name)).toEqual(["main", "feature"]);
     // Embedded scenes round-trip too.
-    expect(b.get(v1.id)?.scene.shapes.get(shapeId("r1"))?.position).toEqual({ x: 1, y: 2 });
+    expect(b.get(v1.id)?.scene.shapes.get(elementId("r1"))?.position).toEqual({ x: 1, y: 2 });
   });
 
   it("stringifyStore produces JSON parseable by importIntoStore (via JSON.parse)", () => {

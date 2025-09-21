@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   apply,
   batch,
@@ -13,7 +13,7 @@ import {
 } from "../src/index";
 
 const shape: Shape = {
-  id: shapeId("s1"),
+  id: elementId("s1"),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },
@@ -93,7 +93,7 @@ describe("patch", () => {
       }
     });
     it("apply runs patches in order", () => {
-      const s2 = { ...shape, id: shapeId("s2") };
+      const s2 = { ...shape, id: elementId("s2") };
       const p1: Patch = { kind: "shape", id: shape.id, before: null, after: shape };
       const p2: Patch = { kind: "shape", id: s2.id, before: null, after: s2 };
       const final = apply(emptyScene(), batch([p1, p2]));

@@ -8,7 +8,7 @@ import {
 } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { DEFAULT_LAYER_ID, orderForTop } from "@oh-just-another/scene";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   defaultRegistry,
   matchesTemplateSearch,
@@ -312,7 +312,7 @@ export const usePalettePlacement = () => {
     const rect = ev.currentTarget.getBoundingClientRect();
     const screenPoint = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
     const worldPoint = editor.screenToWorld(screenPoint);
-    const id = shapeId(
+    const id = elementId(
       `shape-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     );
     const shape = template.factory({
@@ -426,7 +426,7 @@ export const usePaletteDropHandler = () => {
     const rect = ev.currentTarget.getBoundingClientRect();
     const screenPoint = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
     const worldPoint = editor.screenToWorld(screenPoint);
-    const id = shapeId(
+    const id = elementId(
       `shape-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     );
     const shape = template.factory({

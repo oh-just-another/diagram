@@ -1,4 +1,4 @@
-import type { ShapeId, Vec2 } from "@oh-just-another/types";
+import type { ElementId, Vec2 } from "@oh-just-another/types";
 import { getDropZoneWorld } from "./container.js";
 import type { Scene } from "./scene.js";
 import { getShapeLocalBounds, type Shape } from "./shape.js";
@@ -39,7 +39,7 @@ const shapeAdvanceSize = (shape: Shape): { width: number; height: number } => {
  * a custom command.
  */
 export interface LayoutSpec {
-  readonly shapeIds: readonly ShapeId[];
+  readonly shapeIds: readonly ElementId[];
   readonly origin?: Vec2;
 }
 
@@ -125,7 +125,7 @@ export const stackLayout: LayoutFn<StackLayoutSpec> = (scene, spec) => {
  * Convenience: list all shape ids in a layer in z-order, suitable
  * as `LayoutSpec.shapeIds`.
  */
-export const allShapesInLayer = (scene: Scene, layerId: Scene["layers"] extends ReadonlyMap<infer K, unknown> ? K : never): readonly ShapeId[] =>
+export const allShapesInLayer = (scene: Scene, layerId: Scene["layers"] extends ReadonlyMap<infer K, unknown> ? K : never): readonly ElementId[] =>
   getShapesInLayer(scene, layerId).map((s) => s.id);
 
 // --- auto-layout container ---
@@ -212,12 +212,12 @@ export const getAutoLayoutSpec = (shape: Shape): AutoLayoutSpec | null => {
  *      title / chrome / border.
  *   2. Otherwise the origin falls back to `parent.position`.
  */
-export const runAutoLayout = (scene: Scene, parentId: ShapeId): Patch | null => {
+export const runAutoLayout = (scene: Scene, parentId: ElementId): Patch | null => {
   const parent = getShape(scene, parentId);
   if (!parent) return null;
   const spec = getAutoLayoutSpec(parent);
   if (!spec) return null;
-  const children: ShapeId[] = [];
+  const children: ElementId[] = [];
   for (const s of scene.shapes.values()) {
     if (s.parentId === parentId) children.push(s.id);
   }
@@ -289,7 +289,7 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   const origin = spec.origin ?? { x: 0, y: 0 };
 
   // Build a child-of map filtered to shapes that exist.
-  const childrenOf = (id: ShapeId): Shape[] => {
+  const childrenOf = (id: ElementId): Shape[] => {
     const out: Shape[] = [];
     for (const s of scene.shapes.values()) {
       if (s.parentId === id) out.push(s);
@@ -299,8 +299,8 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   };
 
   // Subtree-width / height memo.
-  const widthOf = new Map<ShapeId, number>();
-  const heightOf = new Map<ShapeId, number>();
+  const widthOf = new Map<ElementId, number>();
+  const heightOf = new Map<ElementId, number>();
   // Use the registered bounder (via shapeAdvanceSize) so polygon /
   // path / freedraw shapes report their real AABB; reading
   // `shape.width` directly returns `undefined` for them and would
@@ -308,7 +308,7 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   const shapeWidth = (s: Shape): number => shapeAdvanceSize(s).width;
   const shapeHeight = (s: Shape): number => shapeAdvanceSize(s).height;
 
-  const measure = (id: ShapeId): { w: number; h: number } => {
+  const measure = (id: ElementId): { w: number; h: number } => {
     if (widthOf.has(id)) return { w: widthOf.get(id)!, h: heightOf.get(id)! };
     const shape = getShape(scene, id);
     if (!shape) {
@@ -346,7 +346,7 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   // each subtree centres its root above its children band.
   const patches: Patch[] = [];
   let working = scene;
-  const place = (id: ShapeId, leftX: number, topY: number): void => {
+  const place = (id: ElementId, leftX: number, topY: number): void => {
     const shape = getShape(working, id);
     if (!shape) return;
     const m = measure(id);

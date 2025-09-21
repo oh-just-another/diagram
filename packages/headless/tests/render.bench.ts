@@ -1,5 +1,5 @@
 import { bench, describe } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -20,7 +20,7 @@ const makeScene = (count: number): Scene => {
   const cols = Math.ceil(Math.sqrt(count));
   for (let i = 0; i < count; i++) {
     const shape: Shape = {
-      id: shapeId(`s-${i}`),
+      id: elementId(`s-${i}`),
       layerId: DEFAULT_LAYER_ID,
       type: i % 2 === 0 ? "rectangle" : "ellipse",
       position: { x: (i % cols) * 60, y: Math.floor(i / cols) * 50 },

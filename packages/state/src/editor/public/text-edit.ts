@@ -4,7 +4,7 @@ import {
   type Scene,
   type Patch,
 } from "@oh-just-another/scene";
-import type { LayerId, ShapeId } from "@oh-just-another/types";
+import type { LayerId, ElementId } from "@oh-just-another/types";
 
 /**
  * Pure: precondition check for `beginTextEdit`. Returns `true`
@@ -13,7 +13,7 @@ import type { LayerId, ShapeId } from "@oh-just-another/types";
  */
 export const canBeginTextEdit = (
   scene: Scene,
-  id: ShapeId,
+  id: ElementId,
   isLayerLocked: (id: LayerId) => boolean,
 ): boolean => {
   const shape = getShape(scene, id);
@@ -31,7 +31,7 @@ export const canBeginTextEdit = (
  */
 export const computeCommitTextEdit = (
   scene: Scene,
-  id: ShapeId,
+  id: ElementId,
   next: string,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const shape = getShape(scene, id);

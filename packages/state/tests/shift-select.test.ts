@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -11,7 +11,7 @@ import {
 import { Editor } from "../src/editor.js";
 
 const rect = (id: string, x: number): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y: 0 },
@@ -96,9 +96,9 @@ describe("shift-click multi-select", () => {
   it("shift-click adds a second shape to the selection", () => {
     const { editor, tap } = setup();
     tap(20, 20); // plain click A
-    expect([...editor.selection]).toEqual([shapeId("a")]);
+    expect([...editor.selection]).toEqual([elementId("a")]);
     tap(120, 20, true); // shift-click B
-    expect(new Set(editor.selection)).toEqual(new Set([shapeId("a"), shapeId("b")]));
+    expect(new Set(editor.selection)).toEqual(new Set([elementId("a"), elementId("b")]));
   });
 
   it("shift-click an already-selected shape removes it (toggle off)", () => {
@@ -106,7 +106,7 @@ describe("shift-click multi-select", () => {
     tap(20, 20); // A
     tap(120, 20, true); // +B → {A,B}
     tap(20, 20, true); // shift-click A again → remove A
-    expect([...editor.selection]).toEqual([shapeId("b")]);
+    expect([...editor.selection]).toEqual([elementId("b")]);
   });
 
   it("plain click replaces the selection", () => {
@@ -114,6 +114,6 @@ describe("shift-click multi-select", () => {
     tap(20, 20); // A
     tap(120, 20, true); // {A,B}
     tap(120, 20); // plain click B → replace → {B}
-    expect([...editor.selection]).toEqual([shapeId("b")]);
+    expect([...editor.selection]).toEqual([elementId("b")]);
   });
 });

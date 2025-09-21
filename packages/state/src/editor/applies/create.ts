@@ -12,9 +12,9 @@ import {
 import { DEFAULT_EDGE_STYLE, DEFAULT_SHAPE_STYLES } from "@oh-just-another/tokens";
 import type {
  Bounds,
- EdgeId,
+ LinkId,
  LayerId,
- ShapeId,
+ ElementId,
 } from "@oh-just-another/types";
 
 /**
@@ -39,7 +39,7 @@ export const buildShapeForCreate = (
  scene: Scene,
  kind: "rect" | "ellipse" | "frame",
  bounds: Bounds,
- id: ShapeId,
+ id: ElementId,
  layerId: LayerId,
  nextFrameName: () => string,
 ): Shape => {
@@ -76,7 +76,7 @@ export const buildEdgeForCreate = (
  scene: Scene,
  from: EdgeEndpoint,
  to: EdgeEndpoint,
- id: EdgeId,
+ id: LinkId,
  layerId: LayerId,
 ): Edge => {
  const order = orderForTop(
@@ -108,13 +108,13 @@ export const computeCreateShape = (
  scene: Scene,
  kind: "rect" | "ellipse" | "frame",
  bounds: Bounds,
- id: ShapeId,
+ id: ElementId,
  layerId: LayerId,
  nextFrameName: () => string,
-): { readonly scene: Scene; readonly patch: Patch; readonly shapeId: ShapeId } => {
+): { readonly scene: Scene; readonly patch: Patch; readonly elementId: ElementId } => {
  const shape = buildShapeForCreate(scene, kind, bounds, id, layerId, nextFrameName);
  const result = addShape(scene, shape);
- return { scene: result.scene, patch: result.patch, shapeId: id };
+ return { scene: result.scene, patch: result.patch, elementId: id };
 };
 
 /**
@@ -127,18 +127,18 @@ export const computeCreateEdge = (
  scene: Scene,
  from: EdgeEndpoint,
  to: EdgeEndpoint,
- id: EdgeId,
+ id: LinkId,
  layerId: LayerId,
-): { readonly scene: Scene; readonly patch: Patch; readonly edgeId: EdgeId } => {
+): { readonly scene: Scene; readonly patch: Patch; readonly linkId: LinkId } => {
  const edge = buildEdgeForCreate(scene, from, to, id, layerId);
  const result = addEdge(scene, edge);
- return { scene: result.scene, patch: result.patch, edgeId: id };
+ return { scene: result.scene, patch: result.patch, linkId: id };
 };
 
 /** Generate a unique shape id with the per-editor `nextId` counter. */
-export const newShapeId = (next: number): ShapeId =>
- `shape-${next}-${Date.now().toString(36)}` as ShapeId;
+export const newShapeId = (next: number): ElementId =>
+ `shape-${next}-${Date.now().toString(36)}` as ElementId;
 
 /** Generate a unique edge id with the per-editor `nextId` counter. */
-export const newEdgeId = (next: number): EdgeId =>
- `edge-${next}-${Date.now().toString(36)}` as EdgeId;
+export const newEdgeId = (next: number): LinkId =>
+ `edge-${next}-${Date.now().toString(36)}` as LinkId;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layerId, shapeId } from "@oh-just-another/types";
+import { layerId, elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -12,7 +12,7 @@ import {
 import { cachedWorldBounds, ShapeCache, sharedBoundsCache } from "../src/index";
 
 const rect = (id: string, x = 0, y = 0, w = 10, h = 10): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -85,7 +85,7 @@ describe("cachedWorldBounds", () => {
 
   it("recomputes after updateShape changes the ref", () => {
     let scene = emptyScene();
-    const id = shapeId("a");
+    const id = elementId("a");
     scene = addShape(scene, {
       ...rect("a", 0, 0),
       id,

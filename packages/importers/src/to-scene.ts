@@ -13,7 +13,7 @@ import {
   DEFAULT_SHAPE_STYLES,
   HUE_TONES,
 } from "@oh-just-another/tokens";
-import { edgeId, shapeId } from "@oh-just-another/types";
+import { linkId, elementId } from "@oh-just-another/types";
 import type { GraphDocument } from "./graph.js";
 import { layoutGraph } from "./layout.js";
 
@@ -32,10 +32,10 @@ export const graphToScene = (graph: GraphDocument): Scene => {
   let order = orderBetween(null, null);
 
   // Track shape ids so edge endpoints can reference them later.
-  const idMap = new Map<string, ReturnType<typeof shapeId>>();
+  const idMap = new Map<string, ReturnType<typeof elementId>>();
 
   for (const n of nodes) {
-    const id = shapeId(`node-${n.id}`);
+    const id = elementId(`node-${n.id}`);
     idMap.set(n.id, id);
 
     const fill = n.fill ?? defaultFill(n.shape);
@@ -78,7 +78,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
     ({ scene } = addShape(scene, shape));
 
     if (n.label) {
-      const textId = shapeId(`node-${n.id}-label`);
+      const textId = elementId(`node-${n.id}-label`);
       const textShape: Shape = {
         id: textId,
         layerId: DEFAULT_LAYER_ID,
@@ -113,12 +113,12 @@ export const graphToScene = (graph: GraphDocument): Scene => {
     const sourceId = idMap.get(e.source);
     const targetId = idMap.get(e.target);
     if (!sourceId || !targetId) continue;
-    const id = edgeId(`edge-${e.source}-${e.target}`);
+    const id = linkId(`edge-${e.source}-${e.target}`);
     const edgeShape: Edge = {
       id,
       layerId: DEFAULT_LAYER_ID,
-      from: { kind: "anchor", shapeId: sourceId, anchor: { kind: "named", name: "center" } },
-      to: { kind: "anchor", shapeId: targetId, anchor: { kind: "named", name: "center" } },
+      from: { kind: "anchor", elementId: sourceId, anchor: { kind: "named", name: "center" } },
+      to: { kind: "anchor", elementId: targetId, anchor: { kind: "named", name: "center" } },
       style: { ...DEFAULT_EDGE_STYLE, strokeWidth: 1 },
       order: edgeOrder,
       ...(e.label !== undefined ? { metadata: { label: e.label } } : {}),

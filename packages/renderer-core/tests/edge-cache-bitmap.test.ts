@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { edgeId, layerId } from "@oh-just-another/types";
+import { linkId, layerId } from "@oh-just-another/types";
 import { orderBetween, type Edge } from "@oh-just-another/scene";
 import { InMemoryEdgeBitmapCache } from "../src/edge-cache-bitmap";
 
 const edge = (id: string): Edge =>
   ({
-    id: edgeId(id),
+    id: linkId(id),
     layerId: layerId("default"),
     order: orderBetween(null, null),
-    from: { kind: "anchor", shapeId: { __brand: "shape" } as never, anchor: { kind: "named", name: "center" } },
-    to: { kind: "anchor", shapeId: { __brand: "shape" } as never, anchor: { kind: "named", name: "center" } },
+    from: { kind: "anchor", elementId: { __brand: "shape" } as never, anchor: { kind: "named", name: "center" } },
+    to: { kind: "anchor", elementId: { __brand: "shape" } as never, anchor: { kind: "named", name: "center" } },
     style: {},
   }) as Edge;
 

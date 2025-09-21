@@ -19,7 +19,7 @@ import { getShape } from "./queries.js";
  */
 export const getEdgeEndpointWorld = (scene: Scene, endpoint: EdgeEndpoint): Vec2 | null => {
   if (endpoint.kind === "point") return endpoint.position;
-  const shape = getShape(scene, endpoint.shapeId);
+  const shape = getShape(scene, endpoint.elementId);
   if (!shape) return null;
   if (endpoint.kind === "anchor") return getAnchorWorld(shape, endpoint.anchor);
   return getOutlinePoint(shape, endpoint.ratio);

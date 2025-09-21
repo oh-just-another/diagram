@@ -1,4 +1,4 @@
-import type { Bounds, ShapeId } from "@oh-just-another/types";
+import type { Bounds, ElementId } from "@oh-just-another/types";
 import { getShapeWorldBounds, type Scene, type ShapeBase } from "@oh-just-another/scene";
 
 /**
@@ -13,7 +13,7 @@ import { getShapeWorldBounds, type Scene, type ShapeBase } from "@oh-just-anothe
  * a fresh `ShapeCache` instance (cheap to construct).
  */
 export class ShapeCache<T> {
-  private readonly entries = new Map<ShapeId, { readonly ref: ShapeBase; value: T }>();
+  private readonly entries = new Map<ElementId, { readonly ref: ShapeBase; value: T }>();
 
   get(shape: ShapeBase): T | undefined {
     const entry = this.entries.get(shape.id);
@@ -41,7 +41,7 @@ export class ShapeCache<T> {
     return this.set(shape, compute(shape));
   }
 
-  invalidate(id: ShapeId): void {
+  invalidate(id: ElementId): void {
     this.entries.delete(id);
   }
 

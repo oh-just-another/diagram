@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -12,7 +12,7 @@ import { History } from "@oh-just-another/history";
 import { Editor } from "../src/editor.js";
 
 const rect = (id: string): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },
@@ -32,7 +32,7 @@ const rect = (id: string): Shape => ({
  */
 const imageWithLiveHandle = (id: string): Shape =>
   ({
-    id: shapeId(id),
+    id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
     type: "image",
     position: { x: 0, y: 0 },
@@ -86,7 +86,7 @@ const makeEditor = (history?: History): Editor =>
 describe("paste resilience to leaked transactions", () => {
   it("paste called twice in a row does not throw on the second call", () => {
     const e = makeEditor();
-    e.setSelection([shapeId("a")]);
+    e.setSelection([elementId("a")]);
     e.copySelected();
     expect(() => e.paste()).not.toThrow();
     // Second paste must not see a leaked transaction.
@@ -96,7 +96,7 @@ describe("paste resilience to leaked transactions", () => {
   it("paste commits a leaked gestureTx instead of throwing", () => {
     const history = new History();
     const e = makeEditor(history);
-    e.setSelection([shapeId("a")]);
+    e.setSelection([elementId("a")]);
     e.copySelected();
 
     // Simulate a gesture that opened a transaction but never committed, by
@@ -105,7 +105,7 @@ describe("paste resilience to leaked transactions", () => {
     const leaked = history.transaction();
     leaked.add({
       kind: "shape",
-      id: shapeId("a"),
+      id: elementId("a"),
       before: rect("a"),
       after: { ...rect("a"), position: { x: 100, y: 100 } },
     });
@@ -117,7 +117,7 @@ describe("paste resilience to leaked transactions", () => {
   it("paste of N shapes lands as one undo step", () => {
     const history = new History();
     const e = makeEditor(history);
-    e.setSelection([shapeId("a")]);
+    e.setSelection([elementId("a")]);
     e.copySelected();
     const before = history.undoStack.length;
     e.paste();
@@ -137,7 +137,7 @@ describe("paste resilience to leaked transactions", () => {
       overlayTarget: noopTarget,
       initialScene: sceneWith(imageWithLiveHandle("img")),
     });
-    e.setSelection([shapeId("img")]);
+    e.setSelection([elementId("img")]);
     expect(() => e.copySelected()).not.toThrow();
     expect(() => e.paste()).not.toThrow();
     // A second image shape now exists in the scene.
@@ -145,7 +145,7 @@ describe("paste resilience to leaked transactions", () => {
     expect(images).toHaveLength(2);
     // The pasted copy keeps the fileId (so its bytes resolve) and the
     // live image handle (shared by reference, like Duplicate).
-    const pasted = images.find((s) => s.id !== shapeId("img"))!;
+    const pasted = images.find((s) => s.id !== elementId("img"))!;
     expect((pasted as { fileId?: string }).fileId).toBe("file-1");
     expect((pasted as { metadata?: { image?: unknown } }).metadata?.image).toBeDefined();
   });

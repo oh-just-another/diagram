@@ -5,7 +5,7 @@
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape,
@@ -20,7 +20,7 @@ import { DiagramProvider, PropertyPanel, TooltipProvider } from "../src/index";
 installBuiltinRenderers();
 
 const text: Shape = {
-  id: shapeId("t1"),
+  id: elementId("t1"),
   layerId: DEFAULT_LAYER_ID,
   type: "text",
   position: { x: 0, y: 0 },

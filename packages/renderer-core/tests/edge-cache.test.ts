@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { edgeId, shapeId } from "@oh-just-another/types";
+import { linkId, elementId } from "@oh-just-another/types";
 import {
   addEdge,
   addShape,
@@ -15,7 +15,7 @@ import {
 import { computeEdgeWorldBounds, EdgeBoundsCache } from "../src/index";
 
 const rect = (id: string, x = 0, y = 0, w = 10, h = 10): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -45,11 +45,11 @@ const sceneWithEdge = (edge: Edge): { scene: ReturnType<typeof emptyScene>; edge
 };
 
 const baseEdge: Edge = {
-  id: edgeId("e1"),
+  id: linkId("e1"),
   layerId: DEFAULT_LAYER_ID,
   order: orderBetween(null, null),
-  from: { kind: "anchor", shapeId: shapeId("a"), anchor: { kind: "named", name: "center" } },
-  to: { kind: "anchor", shapeId: shapeId("b"), anchor: { kind: "named", name: "center" } },
+  from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "center" } },
+  to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "center" } },
   style: {},
 };
 
@@ -76,7 +76,7 @@ describe("EdgeBoundsCache", () => {
     const { scene, edge } = sceneWithEdge(baseEdge);
     const cache = new EdgeBoundsCache();
     const first = cache.getOrCompute(scene, edge);
-    const moved = updateShape(scene, shapeId("b"), (s) => ({
+    const moved = updateShape(scene, elementId("b"), (s) => ({
       ...s,
       position: { x: 500, y: 500 },
     })).scene;

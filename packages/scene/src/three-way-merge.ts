@@ -1,4 +1,4 @@
-import type { ShapeId } from "@oh-just-another/types";
+import type { ElementId } from "@oh-just-another/types";
 import type { Scene } from "./scene.js";
 import type { Shape } from "./shape.js";
 
@@ -32,7 +32,7 @@ export interface ThreeWayMergeReport {
 }
 
 export interface ThreeWayMergeConflict {
-  readonly shapeId: ShapeId;
+  readonly elementId: ElementId;
   /** Shape as it stood in the common ancestor (or null when added in both branches). */
   readonly base: Shape | null;
   readonly source: Shape | null;
@@ -59,7 +59,7 @@ export const mergeScenesThreeWay = (
   // the host resolves them.
   const merged = new Map(target.shapes);
 
-  const allIds = new Set<ShapeId>();
+  const allIds = new Set<ElementId>();
   for (const id of ancestor.shapes.keys()) allIds.add(id);
   for (const id of source.shapes.keys()) allIds.add(id);
   for (const id of target.shapes.keys()) allIds.add(id);
@@ -109,7 +109,7 @@ export const mergeScenesThreeWay = (
     if (a === null && s === null && t !== null) continue;
 
     // Anything else is a genuine conflict.
-    conflicts.push({ shapeId: id, base: a, source: s, target: t });
+    conflicts.push({ elementId: id, base: a, source: s, target: t });
   }
 
   // Scene wrapper: keep target's edges / layers / viewport /
@@ -126,7 +126,7 @@ export const mergeScenesThreeWay = (
  * caller — defaults to a "{id}-copy" suffix).
  */
 export interface ConflictResolutionInput {
-  readonly shapeId: ShapeId;
+  readonly elementId: ElementId;
   readonly choice: "ours" | "theirs" | "both";
 }
 
@@ -136,24 +136,24 @@ export const applyConflictResolutions = (
   cloneWithNewId: (shape: Shape) => Shape = defaultClone,
 ): Scene => {
   const merged = new Map(report.autoMerged.shapes);
-  const byId = new Map<ShapeId, ThreeWayMergeConflict>();
-  for (const c of report.conflicts) byId.set(c.shapeId, c);
+  const byId = new Map<ElementId, ThreeWayMergeConflict>();
+  for (const c of report.conflicts) byId.set(c.elementId, c);
 
   for (const res of resolutions) {
-    const c = byId.get(res.shapeId);
+    const c = byId.get(res.elementId);
     if (!c) continue;
     switch (res.choice) {
       case "ours":
-        if (c.target !== null) merged.set(c.shapeId, c.target);
-        else merged.delete(c.shapeId);
+        if (c.target !== null) merged.set(c.elementId, c.target);
+        else merged.delete(c.elementId);
         break;
       case "theirs":
-        if (c.source !== null) merged.set(c.shapeId, c.source);
-        else merged.delete(c.shapeId);
+        if (c.source !== null) merged.set(c.elementId, c.source);
+        else merged.delete(c.elementId);
         break;
       case "both":
-        if (c.target !== null) merged.set(c.shapeId, c.target);
-        else merged.delete(c.shapeId);
+        if (c.target !== null) merged.set(c.elementId, c.target);
+        else merged.delete(c.elementId);
         if (c.source !== null) {
           const dup = cloneWithNewId(c.source);
           merged.set(dup.id, dup);
@@ -165,6 +165,6 @@ export const applyConflictResolutions = (
 };
 
 const defaultClone = (shape: Shape): Shape => {
-  const nextId = `${shape.id}-copy` as ShapeId;
+  const nextId = `${shape.id}-copy` as ElementId;
   return { ...shape, id: nextId };
 };

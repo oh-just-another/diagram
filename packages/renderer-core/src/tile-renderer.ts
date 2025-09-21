@@ -1,4 +1,4 @@
-import type { Bounds, ShapeId } from "@oh-just-another/types";
+import type { Bounds, ElementId } from "@oh-just-another/types";
 
 /**
  * Tile-based rendering scaffold. The scene is split into a fixed-size
@@ -90,7 +90,7 @@ export interface TileCacheEntry<B = unknown> {
   /** Bytes used by this bitmap (for LRU eviction accounting). */
   readonly bytes: number;
   /** Shape ids currently visible in this tile (for invalidation). */
-  readonly shapes: readonly ShapeId[];
+  readonly shapes: readonly ElementId[];
 }
 
 export interface TileCache<B = unknown> {
@@ -100,7 +100,7 @@ export interface TileCache<B = unknown> {
    * Drop any cached tile that contains the given shape id. Called
    * by the editor when a shape's scene reference changes.
    */
-  invalidateForShape(id: ShapeId): void;
+  invalidateForShape(id: ElementId): void;
   /**
    * Drop any cached tile whose `bounds` intersect the given world
    * rectangle. Used by the editor's patch hook when a shape is
@@ -115,7 +115,7 @@ export interface TileCache<B = unknown> {
    * / `afterBounds` are present.
    */
   invalidateForPatch(options: {
-    readonly removedShapeId?: ShapeId;
+    readonly removedShapeId?: ElementId;
     readonly beforeBounds?: Bounds;
     readonly afterBounds?: Bounds;
   }): void;
@@ -133,13 +133,13 @@ const keyOf = (k: TileKey): string => `${k.col},${k.row}@${k.zoom}`;
  * OffscreenCanvas / SharedArrayBuffer is the host's call.
  *
  * Invalidation is shape-id-indexed: every `set` also updates a
- * reverse index `Map<ShapeId, Set<tileKey>>` so the editor's
+ * reverse index `Map<ElementId, Set<tileKey>>` so the editor's
  * patch hook can call `invalidateForShape(id)` in O(touched tiles)
  * instead of scanning every tile.
  */
 export class InMemoryTileCache<B = unknown> implements TileCache<B> {
   private readonly entries = new Map<string, TileCacheEntry<B>>();
-  private readonly tilesByShape = new Map<ShapeId, Set<string>>();
+  private readonly tilesByShape = new Map<ElementId, Set<string>>();
   private bytes = 0;
   private readonly cap: number;
 
@@ -181,8 +181,8 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
     this.evictIfOverCap();
   }
 
-  invalidateForShape(shapeId: ShapeId): void {
-    const bucket = this.tilesByShape.get(shapeId);
+  invalidateForShape(elementId: ElementId): void {
+    const bucket = this.tilesByShape.get(elementId);
     if (!bucket) return;
     for (const tileId of bucket) {
       const e = this.entries.get(tileId);
@@ -190,10 +190,10 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
       this.entries.delete(tileId);
       this.bytes -= e.bytes;
       for (const sid of e.shapes) {
-        if (sid !== shapeId) this.tilesByShape.get(sid)?.delete(tileId);
+        if (sid !== elementId) this.tilesByShape.get(sid)?.delete(tileId);
       }
     }
-    this.tilesByShape.delete(shapeId);
+    this.tilesByShape.delete(elementId);
   }
 
   invalidateRect(rect: Bounds): void {
@@ -231,7 +231,7 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
    */
   invalidateForPatch(
     options: {
-      readonly removedShapeId?: ShapeId;
+      readonly removedShapeId?: ElementId;
       readonly beforeBounds?: Bounds;
       readonly afterBounds?: Bounds;
     },

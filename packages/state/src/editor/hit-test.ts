@@ -7,7 +7,7 @@ import {
   type Scene,
   type Shape,
 } from "@oh-just-another/scene";
-import type { AnnotationId, LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { AnnotationId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { ALL_HANDLES, CORNER_HANDLES, hitHandle } from "../handle.js";
 import { isResizable, resizeHandlesFor } from "../overlay.js";
 import type { PressTarget } from "../machine.js";
@@ -27,8 +27,8 @@ const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y
 export interface HitTestContext {
   readonly scene: Scene;
   readonly selection: Selection.Selection;
-  readonly selectedEdge: import("@oh-just-another/types").EdgeId | null;
-  readonly enteredGroup: ShapeId | null;
+  readonly selectedEdge: import("@oh-just-another/types").LinkId | null;
+  readonly enteredGroup: ElementId | null;
   readonly handleHitSlop: number;
   readonly edgeHandleHitSlop: number;
   readonly edgeHitThreshold: number;
@@ -103,7 +103,7 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
       const bounds = getShapeWorldBounds(shape);
       const handle = hitHandle(worldPoint, bounds, zoom, ctx.handleHitSlop, resizeHandlesFor(shape));
       if (handle) {
-        return { kind: "handle", shapeId: id, handle, bounds };
+        return { kind: "handle", elementId: id, handle, bounds };
       }
     }
   }
@@ -119,10 +119,10 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
         const fromPoint = path[0]!;
         const toPoint = path[path.length - 1]!;
         if (distanceTo(worldPoint, fromPoint) <= handleR) {
-          return { kind: "edge-endpoint", edgeId: edge.id, side: "from" };
+          return { kind: "edge-endpoint", linkId: edge.id, side: "from" };
         }
         if (distanceTo(worldPoint, toPoint) <= handleR) {
-          return { kind: "edge-endpoint", edgeId: edge.id, side: "to" };
+          return { kind: "edge-endpoint", linkId: edge.id, side: "to" };
         }
       }
     }

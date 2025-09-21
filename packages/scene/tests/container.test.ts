@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   containerSizeForZone,
@@ -15,7 +15,7 @@ import {
 } from "../src/index";
 
 const container = (id: string, x: number, y: number): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x, y },
@@ -60,13 +60,13 @@ describe("container protocol", () => {
     // c2 is on top — it should win.
     ({ scene } = addShape(scene, container("c2", 50, 50)));
     const hit = findContainerAt(scene, { x: 200, y: 150 });
-    expect(hit?.id).toBe(shapeId("c2"));
+    expect(hit?.id).toBe(elementId("c2"));
   });
 
   it("findContainerAt respects exclude set", () => {
     let scene = emptyScene();
     ({ scene } = addShape(scene, container("c1", 0, 0)));
-    const exclude = new Set([shapeId("c1")]);
+    const exclude = new Set([elementId("c1")]);
     expect(findContainerAt(scene, { x: 200, y: 100 }, exclude)).toBeNull();
   });
 
@@ -127,7 +127,7 @@ describe("container protocol", () => {
   // synthesiser derives the drop-zone from the current width/height and
   // ignores the stored `dropZone`, so the area tracks user resize.
   const autoGrid = (id: string, w: number, h: number): Shape => ({
-    id: shapeId(id),
+    id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",
     position: { x: 0, y: 0 },

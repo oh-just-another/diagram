@@ -1,4 +1,4 @@
-import type { ShapeId } from "@oh-just-another/types";
+import type { ElementId } from "@oh-just-another/types";
 import { isShapeHidden, type Scene } from "@oh-just-another/scene";
 
 /**
@@ -13,8 +13,8 @@ import { isShapeHidden, type Scene } from "@oh-just-another/scene";
  * helpers; here we only cover the visibility filter that any
  * render pass needs.
  */
-export const computeHiddenShapes = (scene: Scene): ReadonlySet<ShapeId> | undefined => {
-  let out: Set<ShapeId> | null = null;
+export const computeHiddenShapes = (scene: Scene): ReadonlySet<ElementId> | undefined => {
+  let out: Set<ElementId> | null = null;
   for (const s of scene.shapes.values()) {
     if (isShapeHidden(scene, s)) {
       if (!out) out = new Set();

@@ -7,7 +7,7 @@ import {
   type Scene,
   type Shape,
 } from "@oh-just-another/scene";
-import { annotationId, layerId, edgeId, shapeId } from "@oh-just-another/types";
+import { annotationId, layerId, linkId, elementId } from "@oh-just-another/types";
 
 /**
  * CRDT-backed mirror of a `Scene`. Wraps a `Y.Doc` whose top-level maps
@@ -43,9 +43,9 @@ export class SceneDoc {
   /** Build an in-memory `Scene` snapshot from the current CRDT state. */
   snapshot(): Scene {
     const shapeMap = new Map<Shape["id"], Shape>();
-    for (const [id, shape] of this.shapes) shapeMap.set(shapeId(id), shape);
+    for (const [id, shape] of this.shapes) shapeMap.set(elementId(id), shape);
     const edgeMap = new Map<Edge["id"], Edge>();
-    for (const [id, edge] of this.edges) edgeMap.set(edgeId(id), edge);
+    for (const [id, edge] of this.edges) edgeMap.set(linkId(id), edge);
     const layerMap = new Map<Layer["id"], Layer>();
     for (const [id, layer] of this.layers) layerMap.set(layerId(id), layer);
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { shapeId, layerId } from "@oh-just-another/types";
+import { elementId, layerId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addShape as sceneAddShape,
@@ -18,7 +18,7 @@ void layerId; // imported for type tests below
 installBuiltinRenderers();
 
 const rect: Shape = {
-  id: shapeId("r1"),
+  id: elementId("r1"),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   buildSpatialIndex,
@@ -28,7 +28,7 @@ const buildHugeScene = () => {
   let scene = emptyScene();
   for (let i = 0; i < SHAPE_COUNT; i++) {
     const s: Shape = {
-      id: shapeId(`s${i}`),
+      id: elementId(`s${i}`),
       layerId: DEFAULT_LAYER_ID,
       type: "rectangle",
       position: {

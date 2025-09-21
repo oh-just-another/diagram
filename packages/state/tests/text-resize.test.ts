@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -11,7 +11,7 @@ import {
 import { computeTextResize } from "../src/editor/applies/resize.js";
 
 const text = (over: Partial<TextShape> = {}): TextShape => ({
-  id: shapeId("t1"),
+  id: elementId("t1"),
   layerId: DEFAULT_LAYER_ID,
   type: "text",
   position: { x: 0, y: 0 },

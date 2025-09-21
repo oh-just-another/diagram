@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shapeId } from "@oh-just-another/types";
+import { elementId } from "@oh-just-another/types";
 import {
   addShape,
   DEFAULT_LAYER_ID,
@@ -12,7 +12,7 @@ import {
 import { Editor } from "../src/editor.js";
 
 const textShape = (id: string, text = "hello"): TextShape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "text",
   position: { x: 0, y: 0 },
@@ -26,7 +26,7 @@ const textShape = (id: string, text = "hello"): TextShape => ({
 });
 
 const rect = (id: string): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },
@@ -92,24 +92,24 @@ const makeEditor = (scene: Scene): Editor =>
 describe("inline text edit", () => {
   it("beginTextEdit sets editingTextShape only for text shapes", () => {
     const e = makeEditor(sceneWith(textShape("t1"), rect("r1")));
-    e.beginTextEdit(shapeId("r1"));
+    e.beginTextEdit(elementId("r1"));
     expect(e.editingTextShape).toBeNull();
-    e.beginTextEdit(shapeId("t1"));
-    expect(e.editingTextShape).toBe(shapeId("t1"));
+    e.beginTextEdit(elementId("t1"));
+    expect(e.editingTextShape).toBe(elementId("t1"));
   });
 
   it("commitTextEdit replaces text and clears the edit slot", () => {
     const e = makeEditor(sceneWith(textShape("t1", "old")));
-    e.beginTextEdit(shapeId("t1"));
+    e.beginTextEdit(elementId("t1"));
     e.commitTextEdit("new");
     expect(e.editingTextShape).toBeNull();
-    expect((e.scene.shapes.get(shapeId("t1")) as TextShape).text).toBe("new");
+    expect((e.scene.shapes.get(elementId("t1")) as TextShape).text).toBe("new");
   });
 
   it("commitTextEdit with identical text does not push a history step", () => {
     const e = makeEditor(sceneWith(textShape("t1", "same")));
     const before = e.canUndo;
-    e.beginTextEdit(shapeId("t1"));
+    e.beginTextEdit(elementId("t1"));
     e.commitTextEdit("same");
     expect(e.editingTextShape).toBeNull();
     // canUndo unchanged — no patch was pushed for a no-op commit.
@@ -118,18 +118,18 @@ describe("inline text edit", () => {
 
   it("cancelTextEdit clears the slot without mutating the scene", () => {
     const e = makeEditor(sceneWith(textShape("t1", "keep")));
-    e.beginTextEdit(shapeId("t1"));
+    e.beginTextEdit(elementId("t1"));
     e.cancelTextEdit();
     expect(e.editingTextShape).toBeNull();
-    expect((e.scene.shapes.get(shapeId("t1")) as TextShape).text).toBe("keep");
+    expect((e.scene.shapes.get(elementId("t1")) as TextShape).text).toBe("keep");
   });
 
   it("commit creates a single undo step", () => {
     const e = makeEditor(sceneWith(textShape("t1", "before")));
-    e.beginTextEdit(shapeId("t1"));
+    e.beginTextEdit(elementId("t1"));
     e.commitTextEdit("after");
     expect(e.canUndo).toBe(true);
     e.undo();
-    expect((e.scene.shapes.get(shapeId("t1")) as TextShape).text).toBe("before");
+    expect((e.scene.shapes.get(elementId("t1")) as TextShape).text).toBe("before");
   });
 });

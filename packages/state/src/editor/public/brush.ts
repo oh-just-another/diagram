@@ -6,8 +6,8 @@ import {
   type Shape,
   type Patch,
 } from "@oh-just-another/scene";
-import type { LayerId, ShapeId, Vec2 } from "@oh-just-another/types";
-import { shapeId as castShapeId } from "@oh-just-another/types";
+import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
+import { elementId as castShapeId } from "@oh-just-another/types";
 import { DEFAULT_BRUSH_WIDTH, MAX_BRUSH_WIDTH } from "../../constants.js";
 
 /**
@@ -58,8 +58,8 @@ export const commitBrushStroke = (
   scene: Scene,
   stroke: BrushStrokeState | null,
   activeLayerId: LayerId,
-  newShapeId: ShapeId,
-): { readonly scene: Scene; readonly patch: Patch; readonly shapeId: ShapeId } | null => {
+  newShapeId: ElementId,
+): { readonly scene: Scene; readonly patch: Patch; readonly elementId: ElementId } | null => {
   if (!stroke || stroke.points.length === 0) return null;
   const order = orderForTop(
     [...scene.shapes.values()]
@@ -78,9 +78,9 @@ export const commitBrushStroke = (
     points: stroke.points.slice(),
   } as Shape;
   const r = addShape(scene, shape);
-  return { scene: r.scene, patch: r.patch, shapeId: newShapeId };
+  return { scene: r.scene, patch: r.patch, elementId: newShapeId };
 };
 
 /** Generate a fresh brush shape id with the editor's nextId counter. */
-export const newBrushId = (next: number): ShapeId =>
+export const newBrushId = (next: number): ElementId =>
   castShapeId(`brush-${next}-${Date.now().toString(36)}`);

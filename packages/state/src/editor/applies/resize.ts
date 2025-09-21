@@ -6,7 +6,7 @@ import {
   type Patch,
   type TextShape,
 } from "@oh-just-another/scene";
-import type { Bounds, ShapeId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "../../handle.js";
 import { applyResizeConstraints, resizeFromHandle } from "../resize-helpers.js";
 import { hasWidthHeight } from "../shape-traits.js";
@@ -26,7 +26,7 @@ import { TEXT_RESIZE_MIN_FONT_SIZE } from "../../constants.js";
  */
 export const computeShapeResize = (
   scene: Scene,
-  id: ShapeId,
+  id: ElementId,
   handle: HandleId,
   delta: Vec2,
   originalBounds: Bounds,
@@ -138,7 +138,7 @@ export const computeTextResize = (
  */
 export interface GroupResizeOrigin {
   readonly shapes: ReadonlyMap<
-    ShapeId,
+    ElementId,
     {
       readonly position: Vec2;
       readonly scale: Vec2;

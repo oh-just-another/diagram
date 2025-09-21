@@ -1,5 +1,5 @@
 import type { Patch } from "@oh-just-another/scene";
-import type { ShapeId } from "@oh-just-another/types";
+import type { ElementId } from "@oh-just-another/types";
 import type { HistoryProvider, TransactionHandle } from "@oh-just-another/history";
 import type { Mode } from "../modes.js";
 
@@ -19,8 +19,8 @@ export interface GestureRef {
   gestureTx: TransactionHandle | null;
   groupMoveOrigin: unknown;
   groupResizeOrigin: unknown;
-  dragShapeId: ShapeId | null;
-  containerHover: { readonly id: ShapeId } | null;
+  dragShapeId: ElementId | null;
+  containerHover: { readonly id: ElementId } | null;
   readonly toolLocked: boolean;
   readonly mode: Mode;
   setMode(mode: Mode): void;

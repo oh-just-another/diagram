@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { layerId, shapeId } from "@oh-just-another/types";
+import { layerId, elementId } from "@oh-just-another/types";
 import {
   addLayer,
   addShape,
@@ -43,7 +43,7 @@ const makeRecorder = (): {
 };
 
 const rect = (id: string, layer = DEFAULT_LAYER_ID): Shape => ({
-  id: shapeId(id),
+  id: elementId(id),
   layerId: layer,
   type: "rectangle",
   position: { x: 0, y: 0 },
@@ -211,7 +211,7 @@ describe("renderScene", () => {
       const scene = sceneWithZoom(0.2, [
         placeRect("r1", 0, 0),
         {
-          id: shapeId("t1"),
+          id: elementId("t1"),
           layerId: DEFAULT_LAYER_ID,
           type: "text",
           position: { x: 0, y: 0 },

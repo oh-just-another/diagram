@@ -1,4 +1,4 @@
-import type { Bounds, ShapeId } from "@oh-just-another/types";
+import type { Bounds, ElementId } from "@oh-just-another/types";
 
 /**
  * Rectangle in scene-world coordinates to clip the exported image to.
@@ -23,7 +23,7 @@ export interface BaseExportOptions {
    * the frame by id, uses its world bounds as the crop region, and
    * renders only shapes whose `frameId` matches.
    */
-  readonly frameId?: ShapeId;
+  readonly frameId?: ElementId;
   /**
    * Output width override in CSS pixels. Defaults to `region.width` (or the
    * scene viewport width).
