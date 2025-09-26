@@ -6,7 +6,7 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { renderToSvg } from "../src/index";
 
@@ -19,7 +19,7 @@ const makeScene = (count: number): Scene => {
   let scene = sceneOf(2000, 1500);
   const cols = Math.ceil(Math.sqrt(count));
   for (let i = 0; i < count; i++) {
-    const shape: Shape = {
+    const shape: Element = {
       id: elementId(`s-${i}`),
       layerId: DEFAULT_LAYER_ID,
       type: i % 2 === 0 ? "rectangle" : "ellipse",

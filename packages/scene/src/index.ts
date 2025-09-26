@@ -18,21 +18,21 @@ export {
   PROPORTIONAL_CORNER_RADIUS,
 } from "./constants.js";
 export type {
-  Shape,
-  ShapeBase,
+  Element,
+  ElementBase,
   BuiltinShape,
-  RectangleShape,
-  EllipseShape,
-  PolygonShape,
-  PathShape,
+  RectangleElement,
+  EllipseElement,
+  PolygonElement,
+  PathElement,
   PathCommand,
-  TextShape,
-  ImageShape,
-  TemplateShape,
-  GroupShape,
-  FrameShape,
-  BlockArrowShape,
-  BrushShape,
+  TextElement,
+  ImageElement,
+  TemplateElement,
+  GroupElement,
+  FrameElement,
+  BlockArrowElement,
+  BrushElement,
   BrushPoint,
   ShapeBounder,
 } from "./shape.js";
@@ -54,7 +54,7 @@ export type { Scene } from "./scene.js";
 export type { Patch } from "./patch.js";
 export type { OperationResult } from "./operations.js";
 
-// Shape helpers + bounder registry
+// Element helpers + bounder registry
 export {
   isRectangle,
   isEllipse,

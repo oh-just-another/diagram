@@ -3,7 +3,7 @@ import {
   createBinaryFile,
   orderForTop,
   type Scene,
-  type Shape,
+  type Element,
   type Patch,
   type BinaryFile,
 } from "@oh-just-another/scene";
@@ -30,7 +30,7 @@ export const buildImageShape = (
   },
   id: ElementId,
   layerId: LayerId,
-): Shape => {
+): Element => {
   const order = orderForTop(
     Array.from(scene.shapes.values())
       .filter((s) => s.layerId === layerId)
@@ -55,7 +55,7 @@ export const buildImageShape = (
     ...(input.animationKind ? { animationKind: input.animationKind } : {}),
     ...(input.animationData !== undefined ? { animationData: input.animationData } : {}),
     ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
-  } as Shape;
+  } as Element;
 };
 
 /**

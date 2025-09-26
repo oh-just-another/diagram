@@ -118,7 +118,7 @@ import { exportSceneToPng, type PngExportBackground } from "./png-export";
  *   │ [Menu] [Library]    [Toolbar]   [Theme]  │  ← TopBar (3 zones)
  *   │  ┌──────┐                  ┌──────────┐  │
  *   │  │ Lib  │                  │ Selected │  │  ← Side panels (conditional)
- *   │  │ Panel│   <canvas>       │  Shape   │  │
+ *   │  │ Panel│   <canvas>       │  Element   │  │
  *   │  │      │                  │  Actions │  │
  *   │  └──────┘                  └──────────┘  │
  *   │ [Zoom] [Fit] [Reset]            [Help]   │  ← BottomBar

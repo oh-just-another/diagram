@@ -77,7 +77,7 @@ export const TOOLTIP_OFFSET_PX = 6;
  *   the full {@link TEXT_FONT_SIZE_MIN}–{@link TEXT_FONT_SIZE_MAX} range.
  * - `TEXT_FONT_SIZE_MIN` / `TEXT_FONT_SIZE_MAX` — slider clamp range.
  * - `TEXT_FONT_STACKS` — font-family choices offered in the family
- *   dropdown. `value` is written verbatim to `TextShape.fontFamily`;
+ *   dropdown. `value` is written verbatim to `TextElement.fontFamily`;
  *   `label` is the human name shown in the menu.
  */
 export const TEXT_FONT_SIZE_PRESETS: readonly { readonly label: string; readonly value: number }[] = [

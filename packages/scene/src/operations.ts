@@ -4,7 +4,7 @@ import type { Edge } from "./edge.js";
 import type { Layer } from "./layer.js";
 import type { Patch } from "./patch.js";
 import { apply, type Scene } from "./scene.js";
-import type { Shape } from "./shape.js";
+import type { Element } from "./shape.js";
 import type { Viewport } from "./viewport.js";
 
 /**
@@ -19,9 +19,9 @@ export interface OperationResult {
 
 // --- Shapes ---
 
-export const addShape = (scene: Scene, shape: Shape): OperationResult => {
+export const addShape = (scene: Scene, shape: Element): OperationResult => {
   if (scene.shapes.has(shape.id)) {
-    throw new Error(`Shape already exists: ${shape.id}`);
+    throw new Error(`Element already exists: ${shape.id}`);
   }
   const patch: Patch = { kind: "shape", id: shape.id, before: null, after: shape };
   return { scene: apply(scene, patch), patch };
@@ -29,7 +29,7 @@ export const addShape = (scene: Scene, shape: Shape): OperationResult => {
 
 export const removeShape = (scene: Scene, id: ElementId): OperationResult => {
   const before = scene.shapes.get(id);
-  if (!before) throw new Error(`Shape not found: ${id}`);
+  if (!before) throw new Error(`Element not found: ${id}`);
   const patch: Patch = { kind: "shape", id, before, after: null };
   return { scene: apply(scene, patch), patch };
 };
@@ -37,10 +37,10 @@ export const removeShape = (scene: Scene, id: ElementId): OperationResult => {
 export const updateShape = (
   scene: Scene,
   id: ElementId,
-  update: (shape: Shape) => Shape,
+  update: (shape: Element) => Element,
 ): OperationResult => {
   const before = scene.shapes.get(id);
-  if (!before) throw new Error(`Shape not found: ${id}`);
+  if (!before) throw new Error(`Element not found: ${id}`);
   const after = update(before);
   const patch: Patch = { kind: "shape", id, before, after };
   return { scene: apply(scene, patch), patch };

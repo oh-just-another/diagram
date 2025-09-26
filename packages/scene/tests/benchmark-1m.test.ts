@@ -7,7 +7,7 @@ import {
   emptyScene,
   orderBetween,
   queryByIndex,
-  type Shape,
+  type Element,
 } from "../src/index";
 
 /**
@@ -27,7 +27,7 @@ const WORLD = 1_000_000;
 const buildHugeScene = () => {
   let scene = emptyScene();
   for (let i = 0; i < SHAPE_COUNT; i++) {
-    const s: Shape = {
+    const s: Element = {
       id: elementId(`s${i}`),
       layerId: DEFAULT_LAYER_ID,
       type: "rectangle",

@@ -6,7 +6,7 @@ import {
   getWorldToScreen,
   type Annotation,
   type Scene,
-  type ShapeBase,
+  type ElementBase,
 } from "@oh-just-another/scene";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
@@ -47,14 +47,6 @@ import {
 } from "./handle.js";
 import type { Selection } from "./selection.js";
 
-/**
- * Shape types that resize via per-shape handles (free width/height).
- * Other shapes (polygon, path — free-form geometry) get only a selection
- * outline. NB: `image` is intentionally NOT here — images resize
- * aspect-locked through the group-handle path (corner handles, uniform
- * scale, no distortion), exactly like a single group; see
- * `Editor.selectionIsAspectLocked`.
- */
 const RESIZABLE_TYPES: ReadonlySet<string> = new Set([
   "rectangle",
   "ellipse",
@@ -62,7 +54,7 @@ const RESIZABLE_TYPES: ReadonlySet<string> = new Set([
   "text",
 ]);
 
-export const isResizable = (shape: ShapeBase): boolean => RESIZABLE_TYPES.has(shape.type);
+export const isResizable = (shape: ElementBase): boolean => RESIZABLE_TYPES.has(shape.type);
 
 /**
  * Resize-handle set for a single selected shape. Text uses all 8
@@ -71,7 +63,7 @@ export const isResizable = (shape: ShapeBase): boolean => RESIZABLE_TYPES.has(sh
  * left/right (e/w) handles change only the wrap width — narrowing the
  * box reflows the text onto new lines. Other shapes resize normally.
  */
-export const resizeHandlesFor = (_shape: ShapeBase): readonly HandleId[] => ALL_HANDLES;
+export const resizeHandlesFor = (_shape: ElementBase): readonly HandleId[] => ALL_HANDLES;
 
 /**
  * Union AABB of every direct child of `groupId` (recursive). Returns
@@ -195,7 +187,7 @@ export const renderOverlay = (
      * Live brush stroke preview during a `brush`-mode drag. Drawn as a
      * variable-width fill so the user sees pressure modulation as they
      * stroke. `origin` is in world coords; `points` are local-to-origin
-     * (matches the BrushShape memory layout).
+     * (matches the BrushElement memory layout).
      */
     brushPreview?: {
       readonly origin: { readonly x: number; readonly y: number };
@@ -333,7 +325,7 @@ export const renderOverlay = (
   }
 
   // 6.5. Live brush stroke preview — quad-strip with interpolated
-  //      widths, same render path as the committed BrushShape. Runs
+  //      widths, same render path as the committed BrushElement. Runs
   //      in world coords so the stroke stays anchored to the cursor
   //      as the user zooms / pans mid-stroke.
   if (options.brushPreview && options.brushPreview.points.length > 0) {

@@ -7,11 +7,11 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "../src/index.js";
 import { gridLayout, stackLayout, treeLayout } from "../src/layout.js";
 
-const rect = (id: string, parentId: string | null, w = 40, h = 30): Shape => ({
+const rect = (id: string, parentId: string | null, w = 40, h = 30): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -25,7 +25,7 @@ const rect = (id: string, parentId: string | null, w = 40, h = 30): Shape => ({
   ...(parentId ? { parentId: elementId(parentId) } : {}),
 });
 
-const sceneWith = (...shapes: Shape[]): Scene => {
+const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const shape of shapes) {
     const r = addShape(s, shape);
@@ -98,7 +98,7 @@ describe("layout with polygon shapes", () => {
     id: string,
     parentId: string | null,
     points: { x: number; y: number }[],
-  ): Shape =>
+  ): Element =>
     ({
       id: elementId(id),
       layerId: DEFAULT_LAYER_ID,
@@ -110,7 +110,7 @@ describe("layout with polygon shapes", () => {
       style: {},
       points,
       ...(parentId ? { parentId: elementId(parentId) } : {}),
-    }) as Shape;
+    }) as Element;
 
   // Diamond AABB = 100×60.
   const diamondPoints = [

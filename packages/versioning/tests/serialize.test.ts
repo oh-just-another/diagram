@@ -5,13 +5,13 @@ import {
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { importIntoStore, serializeStore, SnapshotStore, stringifyStore } from "../src/index";
 
 const author = { id: "u1", name: "Alice" };
 
-const rect = (id: string): Shape => ({
+const rect = (id: string): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

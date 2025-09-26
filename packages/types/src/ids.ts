@@ -42,11 +42,10 @@ export type CommentId = string & { readonly [commentIdBrand]: true };
 export const commentId = (raw: string): CommentId => raw as CommentId;
 
 /**
- * Opaque identifier for a binary file in `Scene.files`. :
- * `ImageShape.fileId` resolves through this registry instead of
- * embedding `src` directly, so large bitmaps don't bloat the
- * scene JSON. Files are serialised separately (blob-aware
- * transport) and re-attached on load.
+ * Opaque identifier for a binary file in `Scene.files`.
+ * `ImageElement.fileId` resolves through this registry instead of embedding
+ * `src` directly, so large bitmaps don't bloat the scene JSON. Files are
+ * serialised separately (blob-aware transport) and re-attached on load.
  */
 export type FileId = string & { readonly [fileIdBrand]: true };
 

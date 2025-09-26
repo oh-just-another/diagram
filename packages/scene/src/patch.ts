@@ -3,7 +3,7 @@ import type { Annotation } from "./annotation.js";
 import type { Edge } from "./edge.js";
 import type { BinaryFile } from "./file.js";
 import type { Layer } from "./layer.js";
-import type { Shape } from "./shape.js";
+import type { Element } from "./shape.js";
 import type { Viewport } from "./viewport.js";
 
 /**
@@ -20,8 +20,8 @@ export type Patch =
   | {
       readonly kind: "shape";
       readonly id: ElementId;
-      readonly before: Shape | null;
-      readonly after: Shape | null;
+      readonly before: Element | null;
+      readonly after: Element | null;
     }
   | {
       readonly kind: "edge";

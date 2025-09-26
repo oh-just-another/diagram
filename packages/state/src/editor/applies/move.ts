@@ -3,7 +3,7 @@ import {
   getShapeWorldBounds,
   updateAnnotation,
   type Scene,
-  type Shape,
+  type Element,
   type Patch,
 } from "@oh-just-another/scene";
 import type {
@@ -38,7 +38,7 @@ export const computeShapeMovePatch = (
   const localBounds = getShapeWorldBounds(shape);
   const offsetX = originalBounds.x - localBounds.x;
   const offsetY = originalBounds.y - localBounds.y;
-  const next: Shape = {
+  const next: Element = {
     ...shape,
     position: {
       x: shape.position.x + delta.x + offsetX,
@@ -64,7 +64,7 @@ export const computeGroupMovePatches = (
   for (const [id, origin] of groupMoveOrigin) {
     const shape = getShape(scene, id);
     if (!shape) continue;
-    const next: Shape = {
+    const next: Element = {
       ...shape,
       position: { x: origin.x + delta.x, y: origin.y + delta.y },
     };

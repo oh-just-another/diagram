@@ -10,7 +10,7 @@ import {
   addShape,
   emptyScene,
   orderBetween,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "@oh-just-another/state";
 import { installBuiltinRenderers } from "@oh-just-another/renderer-canvas";
@@ -18,7 +18,7 @@ import { _computeSelectionWorldBboxForTesting as computeBbox } from "../src/sele
 
 installBuiltinRenderers();
 
-const rect = (id: string, x: number, y: number, w = 50, h = 30): Shape => ({
+const rect = (id: string, x: number, y: number, w = 50, h = 30): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -31,7 +31,7 @@ const rect = (id: string, x: number, y: number, w = 50, h = 30): Shape => ({
   height: h,
 });
 
-const mkEditor = (...shapes: Shape[]): Editor => {
+const mkEditor = (...shapes: Element[]): Editor => {
   let scene = emptyScene();
   for (const s of shapes) ({ scene } = addShape(scene, s));
   const host = document.createElement("div");
@@ -101,12 +101,12 @@ describe("computeSelectionWorldBbox", () => {
         scale: { x: 1, y: 1 },
         order: orderBetween(null, null),
         style: {},
-      } as Shape,
+      } as Element,
     );
     // Reparent children to the group.
     const apply = (id: string) => {
       const s = editor.scene.shapes.get(elementId(id))!;
-      const next = { ...s, parentId: elementId("g") } as Shape;
+      const next = { ...s, parentId: elementId("g") } as Element;
       editor["_scene"] = (editor as unknown as {
         _scene: typeof editor.scene;
       })._scene = ((scene) => {

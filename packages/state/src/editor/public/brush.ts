@@ -3,7 +3,7 @@ import {
   orderForTop,
   type BrushPoint,
   type Scene,
-  type Shape,
+  type Element,
   type Patch,
 } from "@oh-just-another/scene";
 import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
@@ -66,7 +66,7 @@ export const commitBrushStroke = (
       .filter((s) => s.layerId === activeLayerId)
       .map((s) => s.order),
   );
-  const shape: Shape = {
+  const shape: Element = {
     id: newShapeId,
     layerId: activeLayerId,
     type: "brush",
@@ -76,7 +76,7 @@ export const commitBrushStroke = (
     order,
     style: { fill: "#222" },
     points: stroke.points.slice(),
-  } as Shape;
+  } as Element;
   const r = addShape(scene, shape);
   return { scene: r.scene, patch: r.patch, elementId: newShapeId };
 };

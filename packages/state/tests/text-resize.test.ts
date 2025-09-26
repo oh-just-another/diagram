@@ -6,11 +6,11 @@ import {
   emptyScene,
   getShapeWorldBounds,
   orderBetween,
-  type TextShape,
+  type TextElement,
 } from "@oh-just-another/scene";
 import { computeTextResize } from "../src/editor/applies/resize.js";
 
-const text = (over: Partial<TextShape> = {}): TextShape => ({
+const text = (over: Partial<TextElement> = {}): TextElement => ({
   id: elementId("t1"),
   layerId: DEFAULT_LAYER_ID,
   type: "text",
@@ -25,7 +25,7 @@ const text = (over: Partial<TextShape> = {}): TextShape => ({
   ...over,
 });
 
-const sceneWith = (shape: TextShape) => addShape(emptyScene(), shape).scene;
+const sceneWith = (shape: TextElement) => addShape(emptyScene(), shape).scene;
 
 describe("computeTextResize (aspect-locked)", () => {
   it("corner drag scales fontSize proportionally", () => {
@@ -35,7 +35,7 @@ describe("computeTextResize (aspect-locked)", () => {
     // Drag SE corner out by one full box → 2× scale.
     const r = computeTextResize(scene, t, "se", { x: b.width, y: b.height }, b);
     expect(r).not.toBeNull();
-    const after = (r!.patch as { after: TextShape }).after;
+    const after = (r!.patch as { after: TextElement }).after;
     expect(after.fontSize).toBe(40);
     // SE anchor keeps the top-left corner fixed.
     expect(after.position).toEqual({ x: 0, y: 0 });
@@ -46,7 +46,7 @@ describe("computeTextResize (aspect-locked)", () => {
     const scene = sceneWith(t);
     const b = getShapeWorldBounds(t);
     const r = computeTextResize(scene, t, "nw", { x: -b.width, y: -b.height }, b);
-    const after = (r!.patch as { after: TextShape }).after;
+    const after = (r!.patch as { after: TextElement }).after;
     expect(after.fontSize).toBe(40);
     // SE corner (b.width, b.height) stays put → new TL is shifted by -box.
     expect(after.position.x).toBeCloseTo(b.x + b.width - b.width * 2);
@@ -58,7 +58,7 @@ describe("computeTextResize (aspect-locked)", () => {
     const scene = sceneWith(t);
     const b = getShapeWorldBounds(t);
     const r = computeTextResize(scene, t, "se", { x: b.width, y: b.height }, b);
-    const after = (r!.patch as { after: TextShape }).after;
+    const after = (r!.patch as { after: TextElement }).after;
     expect(after.fontSize).toBe(40);
     expect(after.maxWidth).toBeCloseTo(200);
   });
@@ -69,7 +69,7 @@ describe("computeTextResize (aspect-locked)", () => {
     const b = getShapeWorldBounds(t);
     // Drag bottom edge down by one box height → 2× scale.
     const r = computeTextResize(scene, t, "s", { x: 0, y: b.height }, b);
-    const after = (r!.patch as { after: TextShape }).after;
+    const after = (r!.patch as { after: TextElement }).after;
     expect(after.fontSize).toBe(40);
     expect(after.maxWidth).toBeUndefined();
   });
@@ -80,7 +80,7 @@ describe("computeTextResize (aspect-locked)", () => {
     const b = getShapeWorldBounds(t);
     // Drag right edge inward → narrower wrap width, font unchanged.
     const r = computeTextResize(scene, t, "e", { x: -b.width / 2, y: 0 }, b);
-    const after = (r!.patch as { after: TextShape }).after;
+    const after = (r!.patch as { after: TextElement }).after;
     expect(after.fontSize).toBe(20); // unchanged
     expect(after.maxWidth).toBeGreaterThan(0);
     expect(after.maxWidth).toBeLessThan(b.width);
@@ -92,7 +92,7 @@ describe("computeTextResize (aspect-locked)", () => {
     const b = getShapeWorldBounds(t);
     // Drag far past the anchor → tiny / negative box; font clamps, not crashes.
     const r = computeTextResize(scene, t, "se", { x: -b.width * 0.99, y: -b.height * 0.99 }, b);
-    const after = (r!.patch as { after: TextShape }).after;
+    const after = (r!.patch as { after: TextElement }).after;
     expect(after.fontSize).toBeGreaterThanOrEqual(4);
   });
 });

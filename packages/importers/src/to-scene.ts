@@ -6,7 +6,7 @@ import {
   orderBetween,
   type Edge,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import {
   DEFAULT_EDGE_STYLE,
@@ -52,7 +52,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
     } as const;
     order = orderBetween(order, null);
 
-    let shape: Shape;
+    let shape: Element;
     switch (n.shape ?? "rectangle") {
       case "ellipse":
       case "round":
@@ -79,7 +79,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
 
     if (n.label) {
       const textId = elementId(`node-${n.id}-label`);
-      const textShape: Shape = {
+      const textShape: Element = {
         id: textId,
         layerId: DEFAULT_LAYER_ID,
         type: "text",
@@ -99,7 +99,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
       };
       order = orderBetween(order, null);
       // Center inside the node by writing position to the box centre.
-      const centeredLabel: Shape = {
+      const centeredLabel: Element = {
         ...textShape,
         position: { x: n.position.x + n.width / 2, y: n.position.y + n.height / 2 },
       };

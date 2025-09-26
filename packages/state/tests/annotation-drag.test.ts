@@ -8,11 +8,11 @@ import {
   orderBetween,
   type Annotation,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
-const rect = (id: string, x = 0, y = 0): Shape => ({
+const rect = (id: string, x = 0, y = 0): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -51,7 +51,7 @@ const anchoredAnnotation = (id: string, anchor: string, x: number, y: number): A
   createdAt: "2024-01-01T00:00:00Z",
 });
 
-const sceneWith = (shapes: Shape[], annotations: Annotation[]): Scene => {
+const sceneWith = (shapes: Element[], annotations: Annotation[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) s = addShape(s, sh).scene;
   for (const a of annotations) s = addAnnotation(s, a).scene;
@@ -112,7 +112,7 @@ describe("annotation drag", () => {
     const e = makeEditor(
       sceneWith([rect("s1", 100, 100)], [anchoredAnnotation("a1", "s1", 10, 10)]),
     );
-    // Shape is at (100, 100); annotation offset is (10, 10) so its
+    // Element is at (100, 100); annotation offset is (10, 10) so its
     // world position is (110, 110). Drag by world-space (+20, +20).
     // The stored offset becomes (10+20, 10+20) = (30, 30) — local
     // because the editor subtracts the shape's world position.

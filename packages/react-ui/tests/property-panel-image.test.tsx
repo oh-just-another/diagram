@@ -11,7 +11,7 @@ import {
   addShape,
   emptyScene,
   orderBetween,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "@oh-just-another/state";
 import { installBuiltinRenderers } from "@oh-just-another/renderer-canvas";
@@ -19,7 +19,7 @@ import { DiagramProvider, PropertyPanel, TooltipProvider } from "../src/index";
 
 installBuiltinRenderers();
 
-const image: Shape = {
+const image: Element = {
   id: elementId("img1"),
   layerId: DEFAULT_LAYER_ID,
   type: "image",
@@ -33,9 +33,9 @@ const image: Shape = {
   src: "data:,",
   width: 50,
   height: 50,
-} as unknown as Shape;
+} as unknown as Element;
 
-const rect: Shape = {
+const rect: Element = {
   id: elementId("r1"),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -48,7 +48,7 @@ const rect: Shape = {
   height: 50,
 };
 
-const mountEditor = (...shapes: Shape[]): Editor => {
+const mountEditor = (...shapes: Element[]): Editor => {
   let scene = emptyScene();
   for (const s of shapes) ({ scene } = addShape(scene, s));
   const host = document.createElement("div");

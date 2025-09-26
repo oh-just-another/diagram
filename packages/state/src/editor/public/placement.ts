@@ -6,7 +6,7 @@ import {
   orderForTop,
   removeShape,
   type Scene,
-  type Shape,
+  type Element,
   type Patch,
 } from "@oh-just-another/scene";
 import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
@@ -29,11 +29,11 @@ export const buildShapeAtCursor = (
   worldCenter: Vec2,
   layerId: LayerId,
   id: ElementId,
-): Shape => {
+): Element => {
   const order = orderForTop(
     [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
   );
-  const type: Shape["type"] = mode === "draw-ellipse" ? "ellipse" : "rectangle";
+  const type: Element["type"] = mode === "draw-ellipse" ? "ellipse" : "rectangle";
   const width = 120;
   const height = 80;
   return {
@@ -47,7 +47,7 @@ export const buildShapeAtCursor = (
     style: { fill: "#bbb", stroke: "#000", strokeWidth: 1 },
     width,
     height,
-  } as Shape;
+  } as Element;
 };
 
 /**
@@ -61,7 +61,7 @@ export const buildTextShapeAt = (
   worldPoint: Vec2,
   layerId: LayerId,
   id: ElementId,
-): Shape => {
+): Element => {
   const order = orderForTop(
     [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
   );
@@ -77,7 +77,7 @@ export const buildTextShapeAt = (
     fontFamily: TEXT_DEFAULT_FONT_FAMILY,
     fontSize: TEXT_DEFAULT_FONT_SIZE,
     style: { fill: TEXT_DEFAULT_FILL, textAlign: "left", textBaseline: "top" },
-  } as Shape;
+  } as Element;
 };
 
 /** Generate a fresh shape id with the editor's nextId counter. */
@@ -89,7 +89,7 @@ export const newShapeIdAtCursor = (next: number): ElementId =>
  * Owned by the `beginPlacement` closure.
  */
 export interface PlacementState {
-  current: Shape;
+  current: Element;
   readonly halfWidth: number;
   readonly halfHeight: number;
 }
@@ -99,14 +99,14 @@ export const computePlacementUpdate = (
   scene: Scene,
   state: PlacementState,
   worldCenter: Vec2,
-): { readonly scene: Scene; readonly patch: Patch; readonly next: Shape } => {
+): { readonly scene: Scene; readonly patch: Patch; readonly next: Element } => {
   const next = {
     ...state.current,
     position: {
       x: worldCenter.x - state.halfWidth,
       y: worldCenter.y - state.halfHeight,
     },
-  } as Shape;
+  } as Element;
   const patch: Patch = {
     kind: "shape",
     id: state.current.id,
@@ -128,14 +128,14 @@ export const computePlacementUpdate = (
 export const computePlacementContainerDrop = (
   scene: Scene,
   state: PlacementState,
-): { readonly scene: Scene; readonly patch: Patch; readonly next: Shape } | null => {
+): { readonly scene: Scene; readonly patch: Patch; readonly next: Element } | null => {
   const center = {
     x: state.current.position.x + state.halfWidth,
     y: state.current.position.y + state.halfHeight,
   };
   const container = findContainerAt(scene, center, new Set([state.current.id]));
   if (!container) return null;
-  const withParent = { ...state.current, parentId: container.id } as Shape;
+  const withParent = { ...state.current, parentId: container.id } as Element;
   const patch: Patch = {
     kind: "shape",
     id: state.current.id,
@@ -146,7 +146,7 @@ export const computePlacementContainerDrop = (
 };
 
 /** Build the initial placement state for `beginPlacement`. */
-export const beginPlacementState = (shape: Shape): {
+export const beginPlacementState = (shape: Element): {
   readonly scene: (s: Scene) => { readonly scene: Scene; readonly patch: Patch };
   readonly state: PlacementState;
 } => {

@@ -3,7 +3,7 @@
  */
 
 /**
- * Shape count above which a host that has wired up `WorkerPool` and
+ * Element count above which a host that has wired up `WorkerPool` and
  * `transferCanvasToWorker` should prefer the worker-rendering path.
  * Below this number the per-postMessage overhead dominates and a
  * main-thread render is faster.

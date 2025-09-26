@@ -1,4 +1,4 @@
-import type { ShapeBase } from "@oh-just-another/scene";
+import type { ElementBase } from "@oh-just-another/scene";
 
 /**
  * Per-shape rasterised cache. Keyed by the shape's identity reference —
@@ -13,18 +13,18 @@ import type { ShapeBase } from "@oh-just-another/scene";
  */
 
 export interface ShapeBitmapCache<V = unknown> {
-  get(shape: ShapeBase, zoomBucket: number): V | undefined;
-  set(shape: ShapeBase, zoomBucket: number, value: V): void;
-  delete(shape: ShapeBase, zoomBucket: number): void;
+  get(shape: ElementBase, zoomBucket: number): V | undefined;
+  set(shape: ElementBase, zoomBucket: number, value: V): void;
+  delete(shape: ElementBase, zoomBucket: number): void;
   clear(): void;
   readonly size: number;
 }
 
-const keyFor = (shape: ShapeBase, zoomBucket: number): string =>
+const keyFor = (shape: ElementBase, zoomBucket: number): string =>
   `${shape.id}@${zoomBucket}`;
 
 interface Entry<V> {
-  readonly shapeRef: ShapeBase;
+  readonly shapeRef: ElementBase;
   readonly value: V;
 }
 
@@ -46,7 +46,7 @@ export class InMemoryShapeBitmapCache<V> implements ShapeBitmapCache<V> {
     return this.entries.size;
   }
 
-  get(shape: ShapeBase, zoomBucket: number): V | undefined {
+  get(shape: ElementBase, zoomBucket: number): V | undefined {
     const key = keyFor(shape, zoomBucket);
     const e = this.entries.get(key);
     if (!e) return undefined;
@@ -61,7 +61,7 @@ export class InMemoryShapeBitmapCache<V> implements ShapeBitmapCache<V> {
     return e.value;
   }
 
-  set(shape: ShapeBase, zoomBucket: number, value: V): void {
+  set(shape: ElementBase, zoomBucket: number, value: V): void {
     const key = keyFor(shape, zoomBucket);
     if (this.entries.has(key)) this.entries.delete(key);
     this.entries.set(key, { shapeRef: shape, value });
@@ -72,7 +72,7 @@ export class InMemoryShapeBitmapCache<V> implements ShapeBitmapCache<V> {
     }
   }
 
-  delete(shape: ShapeBase, zoomBucket: number): void {
+  delete(shape: ElementBase, zoomBucket: number): void {
     this.entries.delete(keyFor(shape, zoomBucket));
   }
 

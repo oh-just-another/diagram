@@ -5,14 +5,14 @@ import {
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import {
   computeGroupResizePatches,
   type GroupResizeOrigin,
 } from "../src/editor/applies/resize.js";
 
-const image = (): Shape =>
+const image = (): Element =>
   ({
     id: elementId("img"),
     layerId: DEFAULT_LAYER_ID,
@@ -25,11 +25,11 @@ const image = (): Shape =>
     src: "data:,",
     width: 100,
     height: 50, // 2:1 aspect
-  }) as unknown as Shape;
+  }) as unknown as Element;
 
-const sceneWith = (s: Shape) => addShape(emptyScene(), s).scene;
+const sceneWith = (s: Element) => addShape(emptyScene(), s).scene;
 
-const originFor = (s: Shape): GroupResizeOrigin => ({
+const originFor = (s: Element): GroupResizeOrigin => ({
   shapes: new Map([
     [s.id, { position: s.position, bounds: { x: 0, y: 0, width: 100, height: 50 }, scale: { x: 1, y: 1 } }],
   ]),
@@ -50,7 +50,7 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
       bounds,
       true, // isAspectLocked
     );
-    const after = r.patches.map((p) => (p as { after: Shape }).after)[0]! as Shape & {
+    const after = r.patches.map((p) => (p as { after: Element }).after)[0]! as Element & {
       width: number;
       height: number;
     };
@@ -76,11 +76,11 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
       style: {},
       width: 100,
       height: 50,
-    } as unknown as Shape;
+    } as unknown as Element;
     const scene = sceneWith(rect);
     const bounds = { x: 0, y: 0, width: 100, height: 50 };
     const r = computeGroupResizePatches(scene, originFor(rect), "se", { x: 100, y: 10 }, bounds, false);
-    const after = (r.patches[0] as { after: Shape & { width: number; height: number } }).after;
+    const after = (r.patches[0] as { after: Element & { width: number; height: number } }).after;
     expect(after.width / after.height).not.toBeCloseTo(100 / 50);
   });
 
@@ -96,7 +96,7 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
       style: {},
       width: 100,
       height: 50,
-    } as unknown as Shape;
+    } as unknown as Element;
     const img = {
       id: elementId("img"),
       layerId: DEFAULT_LAYER_ID,
@@ -109,7 +109,7 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
       src: "data:,",
       width: 80,
       height: 40, // 2:1
-    } as unknown as Shape;
+    } as unknown as Element;
     let scene = emptyScene();
     ({ scene } = addShape(scene, rect));
     ({ scene } = addShape(scene, img));
@@ -124,7 +124,7 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
     const r = computeGroupResizePatches(scene, origin, "se", { x: 180, y: 10 }, bounds, false);
     const byId = new Map(
       r.patches.map((p) => {
-        const a = (p as { after: Shape & { width: number; height: number } }).after;
+        const a = (p as { after: Element & { width: number; height: number } }).after;
         return [a.id, a] as const;
       }),
     );

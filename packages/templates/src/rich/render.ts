@@ -2,7 +2,7 @@ import type { Bounds, Color, Vec2 } from "@oh-just-another/types";
 import {
   registerBounder,
   registerContainerResolver,
-  type TemplateShape as SceneTemplateShape,
+  type TemplateElement as SceneTemplateElement,
 } from "@oh-just-another/scene";
 import { extractDropZone } from "./drop-zones.js";
 import {
@@ -26,7 +26,7 @@ import type { NodeStyle } from "./style.js";
 import { paintSvgIcon, parseSvg } from "./svg.js";
 
 /**
- * Render a `TemplateShape` onto a `RenderTarget`. The renderer:
+ * Render a `TemplateElement` onto a `RenderTarget`:
  *   1. looks up the template in the rich registry by `shape.templateId`,
  *   2. resolves data bindings against `shape.data`,
  *   3. runs the layout engine with a measurer backed by `target.measureText`,
@@ -35,7 +35,7 @@ import { paintSvgIcon, parseSvg } from "./svg.js";
  * The caller is expected to have already translated `target` to the shape's
  * `position` (via `renderScene`'s per-shape TRS push).
  */
-export const renderTemplateShape: ShapeRenderer<SceneTemplateShape> = (shape, target) => {
+export const renderTemplateShape: ShapeRenderer<SceneTemplateElement> = (shape, target) => {
   const template = defaultRichRegistry.get(shape.templateId);
   if (!template) {
     paintMissing(target, shape.width, shape.height, shape.templateId);
@@ -269,8 +269,8 @@ void (null as unknown as ContainerNode | Color | Vec2 | NodeStyle); // appease u
  * once at app startup, alongside `installBuiltinRenderers()`.
  */
 export const installTemplateShapeRenderer = (): void => {
-  registerShapeRenderer<SceneTemplateShape>("template", renderTemplateShape);
-  registerBounder<SceneTemplateShape>("template", (shape) => {
+  registerShapeRenderer<SceneTemplateElement>("template", renderTemplateShape);
+  registerBounder<SceneTemplateElement>("template", (shape) => {
     // The shape's width/height drives both the bounder and the renderer so
     // the user's resize gesture changes both the AABB and the painted layout.
     return { x: 0, y: 0, width: shape.width, height: shape.height };
@@ -282,7 +282,7 @@ export const installTemplateShapeRenderer = (): void => {
   // the template (e.g. growing a swim-lane).
   registerContainerResolver((shape) => {
     if (shape.type !== "template") return null;
-    const tmpl = shape as SceneTemplateShape;
+    const tmpl = shape as SceneTemplateElement;
     const template = defaultRichRegistry.get(tmpl.templateId);
     if (!template) return null;
     // IMPORTANT: same trick as renderTemplateShape — inject the shape's

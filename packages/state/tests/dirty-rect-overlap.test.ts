@@ -22,7 +22,7 @@ import {
   emptyScene,
   type Patch,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { installBuiltinRenderers } from "@oh-just-another/renderer-core";
 import { Editor } from "../src/editor.js";
@@ -32,7 +32,7 @@ import { Editor } from "../src/editor.js";
 // shape via `if (!renderer) continue`.
 installBuiltinRenderers();
 
-const rect = (id: string, x: number, y: number, w = 50, h = 50): Shape => ({
+const rect = (id: string, x: number, y: number, w = 50, h = 50): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -42,13 +42,13 @@ const rect = (id: string, x: number, y: number, w = 50, h = 50): Shape => ({
   // Successive calls produce naturally-ordered fractional keys
   // ("a0", "a1", "a2", ...) — enough for the dirty-rect math
   // which only consults bbox.
-  order: `a${id}` as Shape["order"],
+  order: `a${id}` as Element["order"],
   style: { fill: "#000" },
   width: w,
   height: h,
 });
 
-const sceneOf = (shapes: Shape[]): Scene => {
+const sceneOf = (shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) {
     s = apply(s, { kind: "shape", id: sh.id, before: null, after: sh } satisfies Patch);
@@ -126,7 +126,7 @@ describe("computeDirtyWorld transitive overlap", () => {
     drawn.length = 0; // selection notify may re-render
     editor.moveSelectionBy({ x: 60, y: 60 });
 
-    // Shape renderers call `target.rect(0, 0, w, h)` under a
+    // Element renderers call `target.rect(0, 0, w, h)` under a
     // position transform — so the dimensions are the per-shape
     // signature. Every 100×100 box (B and C) must have been
     // redrawn, not just B.

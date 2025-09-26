@@ -1,4 +1,4 @@
-import type { ShapeBase, TemplateShape, TextShape } from "./shape.js";
+import type { ElementBase, TemplateElement, TextElement } from "./shape.js";
 
 /**
  * Resolver from a shape to an accessible name (screen-reader label).
@@ -9,11 +9,11 @@ import type { ShapeBase, TemplateShape, TextShape } from "./shape.js";
  * The resolver is intentionally synchronous + pure so it can run in
  * a `getShapeAccessibleName` query without side effects.
  */
-export type AccessibleNameResolver<S extends ShapeBase = ShapeBase> = (shape: S) => string;
+export type AccessibleNameResolver<S extends ElementBase = ElementBase> = (shape: S) => string;
 
 const registry = new Map<string, AccessibleNameResolver>();
 
-export const registerAccessibleName = <S extends ShapeBase>(
+export const registerAccessibleName = <S extends ElementBase>(
   type: string,
   resolver: AccessibleNameResolver<S>,
 ): void => {
@@ -29,7 +29,7 @@ export const registerAccessibleName = <S extends ShapeBase>(
  *   template "task-card" with metadata.label "Buy milk" → "Buy milk"
  *   rectangle → "Rectangle"
  */
-export const getShapeAccessibleName = (shape: ShapeBase): string => {
+export const getShapeAccessibleName = (shape: ElementBase): string => {
   const resolver = registry.get(shape.type);
   if (resolver) {
     const name = resolver(shape).trim();
@@ -43,14 +43,14 @@ const titleise = (s: string): string =>
 
 // --- Built-in resolvers ---
 
-registerAccessibleName<TextShape>("text", (s) => {
+registerAccessibleName<TextElement>("text", (s) => {
   // Collapse whitespace and truncate long bodies so screen-reader
   // announcements stay actionable.
   const body = s.text.replace(/\s+/g, " ").trim();
   return body.length > 80 ? `${body.slice(0, 77)}…` : body;
 });
 
-registerAccessibleName<TemplateShape>("template", (s) => {
+registerAccessibleName<TemplateElement>("template", (s) => {
   const label = s.metadata?.label;
   if (typeof label === "string" && label.trim()) return label.trim();
   return titleise(s.templateId);

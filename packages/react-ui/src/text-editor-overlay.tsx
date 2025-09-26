@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useReducer, useRef } from "react";
-import { getShape, type TextShape } from "@oh-just-another/scene";
+import { getShape, type TextElement } from "@oh-just-another/scene";
 import { useDiagramOptional } from "./hooks.js";
 
 /**
@@ -41,7 +41,7 @@ export const TextEditorOverlay = () => {
   useLayoutEffect(() => {
     const ta = ref.current;
     if (!editor || !editingId || !ta) return;
-    const shape = getShape(editor.scene, editingId) as TextShape | undefined;
+    const shape = getShape(editor.scene, editingId) as TextElement | undefined;
     const text = shape?.type === "text" ? shape.text : "";
     if (ta.value !== text) ta.value = text;
     const sel = editor.editingTextSelection;
@@ -51,7 +51,7 @@ export const TextEditorOverlay = () => {
   });
 
   if (!editor || !editingId) return null;
-  const shape = getShape(editor.scene, editingId) as TextShape | undefined;
+  const shape = getShape(editor.scene, editingId) as TextElement | undefined;
   if (shape?.type !== "text") return null;
 
   // Park the sink at the text's screen position so the IME candidate

@@ -28,7 +28,7 @@ export type StandardAnchor =
 /**
  * Named connection point on a shape. Either one of the well-known
  * `StandardAnchor` values or any custom label declared on the shape via
- * `ShapeBase.anchors`. The `string & {}` form keeps autocomplete for the
+ * `ElementBase.anchors`. The `string & {}` form keeps autocomplete for the
  * standard names while still accepting arbitrary strings.
  */
 export type NamedAnchor = StandardAnchor | (string & {});

@@ -6,11 +6,11 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
-const rect = (id: string, x: number): Shape => ({
+const rect = (id: string, x: number): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -23,7 +23,7 @@ const rect = (id: string, x: number): Shape => ({
   height: 40,
 });
 
-const sceneWith = (...shapes: Shape[]): Scene => {
+const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) s = addShape(s, sh).scene;
   return s;

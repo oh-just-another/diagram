@@ -9,13 +9,13 @@ import {
   orderBetween,
   type Annotation,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { SceneDoc } from "../src/scene-doc";
 
 const seed = (): Scene => {
   let s = emptyScene();
-  const rect: Shape = {
+  const rect: Element = {
     id: elementId("r1"),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",

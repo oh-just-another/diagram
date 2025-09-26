@@ -1,4 +1,4 @@
-import type { Shape } from "@oh-just-another/scene";
+import type { Element } from "@oh-just-another/scene";
 
 /**
  * True when the shape's geometry is parametrised by `width` / `height` fields
@@ -6,7 +6,7 @@ import type { Shape } from "@oh-just-another/scene";
  * polygons, brush strokes, text, groups) has to ride the `scale` multiplier
  * instead.
  */
-export const hasWidthHeight = (s: Shape): s is Shape & { width: number; height: number } =>
+export const hasWidthHeight = (s: Element): s is Element & { width: number; height: number } =>
   s.type === "rectangle" ||
   s.type === "ellipse" ||
   s.type === "image" ||

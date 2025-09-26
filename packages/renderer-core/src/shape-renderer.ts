@@ -1,4 +1,4 @@
-import type { ShapeBase } from "@oh-just-another/scene";
+import type { ElementBase } from "@oh-just-another/scene";
 import type { RenderTarget } from "./render-target.js";
 
 /**
@@ -10,7 +10,7 @@ import type { RenderTarget } from "./render-target.js";
  * the renderer-core does not push styles globally because some shapes (e.g.
  * `text`) extend the base `Style` with overlays.
  */
-export type ShapeRenderer<S extends ShapeBase = ShapeBase> = (
+export type ShapeRenderer<S extends ElementBase = ElementBase> = (
   shape: S,
   target: RenderTarget,
 ) => void;
@@ -23,7 +23,7 @@ const registry = new Map<string, ShapeRenderer>();
  * — they are installed by `@oh-just-another/renderer-canvas` (and any other
  * backend) on import.
  */
-export const registerShapeRenderer = <S extends ShapeBase>(
+export const registerShapeRenderer = <S extends ElementBase>(
   type: S["type"],
   renderer: ShapeRenderer<S>,
 ): void => {

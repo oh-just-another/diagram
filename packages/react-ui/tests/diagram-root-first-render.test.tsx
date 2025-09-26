@@ -8,12 +8,12 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import type { Editor } from "@oh-just-another/state";
 import { DiagramRoot, DiagramSurface, useDiagramOptional } from "../src/index";
 
-const rect: Shape = {
+const rect: Element = {
   id: elementId("a"),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

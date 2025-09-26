@@ -8,7 +8,7 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import type { PeerCursor, PeerSelection } from "@oh-just-another/state";
 import { CollabAwareness } from "../src/awareness";
@@ -57,7 +57,7 @@ const makeStubEditor = (scene: Scene) => {
   };
 };
 
-const rect = (id: string, x: number, y: number): Shape => ({
+const rect = (id: string, x: number, y: number): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

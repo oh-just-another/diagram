@@ -10,10 +10,10 @@ import {
   runAutoLayout,
   unregisterLayoutKind,
   type Patch,
-  type Shape,
+  type Element,
 } from "../src/index.js";
 
-const rect = (id: string, parentId?: string): Shape =>
+const rect = (id: string, parentId?: string): Element =>
   ({
     id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
@@ -26,13 +26,13 @@ const rect = (id: string, parentId?: string): Shape =>
     width: 40,
     height: 40,
     ...(parentId ? { parentId: elementId(parentId) } : {}),
-  } as Shape);
+  } as Element);
 
-const container = (id: string, autoLayout: Record<string, unknown>): Shape =>
+const container = (id: string, autoLayout: Record<string, unknown>): Element =>
   ({
     ...rect(id),
     metadata: { autoLayout },
-  } as Shape);
+  } as Element);
 
 describe("pluggable layout registry", () => {
   afterEach(() => {

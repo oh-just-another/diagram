@@ -910,3 +910,6 @@
 
 ## 0.46.6
 - feat: debug-panel Display tab — render switch + hit-zone overlay; "g d" toggle
+
+## 0.47.0
+- refactor(rename 1/N): ShapeIdRightElementId, EdgeIdRightLinkId brands

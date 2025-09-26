@@ -3,7 +3,7 @@ import {
   getShapesInLayer,
   getWorldToScreen,
   type Scene,
-  type ShapeBase,
+  type ElementBase,
   type SpatialGrid,
 } from "@oh-just-another/scene";
 import type { Bounds, LayerId, ElementId } from "@oh-just-another/types";
@@ -36,7 +36,7 @@ export interface RenderSceneOptions {
   /** Skip clearing the target before drawing. Default: false. */
   readonly skipClear?: boolean;
   /** Called for shapes whose `type` has no registered renderer. Default: ignore. */
-  readonly onUnknownShape?: (shape: ShapeBase) => void;
+  readonly onUnknownShape?: (shape: ElementBase) => void;
   /**
    * World-space viewport bounds. When provided, shapes whose AABB does
    * not intersect this rectangle are skipped (viewport culling). Pass
@@ -95,7 +95,7 @@ export interface RenderSceneOptions {
    */
   readonly dimOpacity?: number;
   /**
-   * Shape ids that should NOT render this pass. Used by hosts that
+   * Element ids that should NOT render this pass. Used by hosts that
    * implement per-shape / group hide propagation: the editor walks
    * the parent chain to compute which shapes are effectively hidden
    * and forwards the set here. Hidden shapes are also skipped in

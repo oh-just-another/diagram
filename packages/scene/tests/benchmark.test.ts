@@ -8,7 +8,7 @@ import {
   getShapesInBounds,
   orderBetween,
   queryByIndex,
-  type Shape,
+  type Element,
 } from "../src/index";
 
 const SHAPE_COUNT = 1000;
@@ -18,7 +18,7 @@ const SHAPE_SIZE = 40;
 const buildScene = () => {
   let scene = emptyScene();
   for (let i = 0; i < SHAPE_COUNT; i++) {
-    const s: Shape = {
+    const s: Element = {
       id: elementId(`s${i}`),
       layerId: DEFAULT_LAYER_ID,
       type: "rectangle",

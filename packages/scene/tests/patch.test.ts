@@ -9,10 +9,10 @@ import {
   isNoop,
   orderBetween,
   type Patch,
-  type Shape,
+  type Element,
 } from "../src/index";
 
-const shape: Shape = {
+const shape: Element = {
   id: elementId("s1"),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

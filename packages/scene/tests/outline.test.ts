@@ -5,10 +5,10 @@ import {
   findNearestOutlinePoint,
   getOutlinePoint,
   orderBetween,
-  type RectangleShape,
+  type RectangleElement,
 } from "../src/index";
 
-const rect = (overrides: Partial<RectangleShape> = {}): RectangleShape => ({
+const rect = (overrides: Partial<RectangleElement> = {}): RectangleElement => ({
   id: elementId("r1"),
   layerId: layerId(DEFAULT_LAYER_ID),
   type: "rectangle",
@@ -86,7 +86,7 @@ describe("findNearestOutlinePoint", () => {
   it("tracks shape movement — outline point follows when the shape moves", () => {
     const r = rect({ position: { x: 0, y: 0 } });
     const found = findNearestOutlinePoint(r, { x: 100, y: 40 })!; // right edge mid
-    const moved: RectangleShape = { ...r, position: { x: 500, y: 500 } };
+    const moved: RectangleElement = { ...r, position: { x: 500, y: 500 } };
     const after = getOutlinePoint(moved, found.ratio);
     // Same discretization tolerance as above — point follows the move
     // within sampling error.

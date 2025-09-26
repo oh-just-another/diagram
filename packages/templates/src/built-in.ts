@@ -1,4 +1,4 @@
-import type { Shape, Style } from "@oh-just-another/scene";
+import type { Element, Style } from "@oh-just-another/scene";
 import { DEFAULT_SHAPE_STYLES } from "@oh-just-another/tokens";
 import type { Vec2 } from "@oh-just-another/types";
 import {
@@ -28,7 +28,7 @@ const baseShape = (ctx: TemplateContext) => ({
   order: ctx.order,
 });
 
-const filledRect = (ctx: TemplateContext, width: number, height: number, style: Style): Shape => ({
+const filledRect = (ctx: TemplateContext, width: number, height: number, style: Style): Element => ({
   ...baseShape(ctx),
   type: "rectangle",
   style,
@@ -41,9 +41,9 @@ const filledEllipse = (
   width: number,
   height: number,
   style: Style,
-): Shape => ({ ...baseShape(ctx), type: "ellipse", style, width, height });
+): Element => ({ ...baseShape(ctx), type: "ellipse", style, width, height });
 
-const polygonFromPoints = (ctx: TemplateContext, points: Vec2[], style: Style): Shape => ({
+const polygonFromPoints = (ctx: TemplateContext, points: Vec2[], style: Style): Element => ({
   ...baseShape(ctx),
   type: "polygon",
   style,

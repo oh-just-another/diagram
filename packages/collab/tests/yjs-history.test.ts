@@ -8,12 +8,12 @@ import {
   orderBetween,
   type Patch,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { SceneDoc } from "../src/scene-doc";
 import { YjsHistory } from "../src/yjs-history";
 
-const rect = (id: string, x = 0): Shape => ({
+const rect = (id: string, x = 0): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

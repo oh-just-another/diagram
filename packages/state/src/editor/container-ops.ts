@@ -9,7 +9,7 @@ import {
   orderForTop,
   updateShape,
   type Scene,
-  type Shape,
+  type Element,
   type Patch,
 } from "@oh-just-another/scene";
 import { bounds as B } from "@oh-just-another/math";
@@ -67,7 +67,7 @@ export const childrenWorldUnion = (scene: Scene, containerId: ElementId): Bounds
  */
 export const clampContainerToChildren = (
   scene: Scene,
-  shape: Shape,
+  shape: Element,
   raw: Bounds,
   handle: HandleId,
 ): Bounds => {
@@ -83,7 +83,7 @@ export const clampContainerToChildren = (
     position: { x: raw.x, y: raw.y },
     width: raw.width,
     height: raw.height,
-  } as Shape;
+  } as Element;
   const dropZoneWorld = getDropZoneWorld(hypothetical);
   if (!dropZoneWorld) return raw;
 
@@ -204,7 +204,7 @@ export const applyContainerDrop = (
       return;
     }
     const r = updateShape(ref.scene, dragId, (s) => {
-      const next: Shape = { ...s };
+      const next: Element = { ...s };
       delete (next as { parentId?: ElementId }).parentId;
       return next;
     });
@@ -250,7 +250,7 @@ export const maybeGrowContainer = (
         ...(s.metadata ?? {}),
         container: { ...spec, dropZone: expanded },
       },
-    }) as Shape);
+    }) as Element);
     ref.applyPatch(r.patch, r.scene);
     // Children are stored in absolute world coords — translating
     // the container's `position` does NOT visually move them, so

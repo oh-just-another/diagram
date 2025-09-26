@@ -6,13 +6,13 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { captureFromEditor, restoreSnapshot, SnapshotStore, versionId } from "../src/index";
 
 const author = { id: "u1", name: "Alice" };
 
-const rect = (id: string): Shape => ({
+const rect = (id: string): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

@@ -12,7 +12,7 @@
  *   });
  *
  * The image renderer in `renderer-core` consults the registry
- * when an `ImageShape` carries `animationKind` + `animationData`
+ * when an `ImageElement` carries `animationKind` + `animationData`
  * fields. Renderers that don't care about animation ignore the
  * registry entirely — the shape's static `src` remains the fallback
  * path.
@@ -121,7 +121,7 @@ export const resetAnimationClock = (): void => {
 };
 
 /**
- * Resolve an image source for an `ImageShape`. When the shape has
+ * Resolve an image source for an `ImageElement`. When the shape has
  * an `animationKind` and a matching adapter is registered, the
  * adapter's `getFrameAt(animationData, t)` result is returned, where
  * `t` comes from the pluggable {@link setAnimationClock} (default

@@ -34,7 +34,7 @@ export class SpatialGrid {
 
   insert(id: ElementId, b: Bounds): void {
     if (this.bounds.has(id)) {
-      throw new Error(`Shape already indexed: ${id}`);
+      throw new Error(`Element already indexed: ${id}`);
     }
     this.bounds.set(id, b);
     this.eachCell(b, (key) => {

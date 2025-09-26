@@ -11,8 +11,8 @@ import {
   isText,
   registerBounder,
   setTextMeasurer,
-  type RectangleShape,
-  type ShapeBase,
+  type RectangleElement,
+  type ElementBase,
 } from "../src/index";
 import { orderBetween } from "../src/index";
 
@@ -25,7 +25,7 @@ const baseProps = {
   style: {},
 };
 
-const rect: RectangleShape = {
+const rect: RectangleElement = {
   ...baseProps,
   id: elementId("r"),
   type: "rectangle",
@@ -61,7 +61,7 @@ describe("shape", () => {
       expect(b.height).toBeCloseTo(60, 5);
     });
     it("rotated unit square has bounds √2 wide", () => {
-      const sq: RectangleShape = { ...rect, width: 2, height: 2, position: { x: 0, y: 0 } };
+      const sq: RectangleElement = { ...rect, width: 2, height: 2, position: { x: 0, y: 0 } };
       const rotated = {
         ...sq,
         position: { x: 0, y: 0 },
@@ -78,7 +78,7 @@ describe("shape", () => {
 
   describe("registerBounder (plugin extensibility)", () => {
     it("unknown type throws, then works after registration", () => {
-      const shape: ShapeBase = { ...baseProps, id: elementId("custom"), type: "diamond" };
+      const shape: ElementBase = { ...baseProps, id: elementId("custom"), type: "diamond" };
       expect(() => getShapeLocalBounds(shape)).toThrow(/no bounder/i);
       registerBounder("diamond", () => ({ x: 0, y: 0, width: 100, height: 50 }));
       expect(getShapeLocalBounds(shape)).toEqual({ x: 0, y: 0, width: 100, height: 50 });
@@ -105,7 +105,7 @@ describe("shape", () => {
       const regular = getShapeLocalBounds(base);
       const bold = getShapeLocalBounds({
         ...base,
-        style: { fontWeight: "bold" } as unknown as ShapeBase["style"],
+        style: { fontWeight: "bold" } as unknown as ElementBase["style"],
       });
       expect(regular.width).toBeCloseTo(50);
       expect(bold.width).toBeCloseTo(75);

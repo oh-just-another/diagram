@@ -3,12 +3,12 @@ import { bounds as B } from "@oh-just-another/math";
 import type { Edge } from "./edge.js";
 import type { Layer } from "./layer.js";
 import type { Scene } from "./scene.js";
-import { getShapeWorldBounds, type Shape } from "./shape.js";
+import { getShapeWorldBounds, type Element } from "./shape.js";
 import { SpatialGrid } from "./spatial.js";
 
 // --- direct lookups ---
 
-export const getShape = (scene: Scene, id: ElementId): Shape | undefined => scene.shapes.get(id);
+export const getShape = (scene: Scene, id: ElementId): Element | undefined => scene.shapes.get(id);
 
 export const getEdge = (scene: Scene, id: LinkId): Edge | undefined => scene.edges.get(id);
 
@@ -24,7 +24,7 @@ export const getLayersInOrder = (scene: Scene): readonly Layer[] =>
   [...scene.layers.values()].sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
 
 /** Shapes in `layerId`, sorted bottom-to-top by `order`. */
-export const getShapesInLayer = (scene: Scene, layerId: LayerId): readonly Shape[] =>
+export const getShapesInLayer = (scene: Scene, layerId: LayerId): readonly Element[] =>
   [...scene.shapes.values()]
     .filter((s) => s.layerId === layerId)
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
@@ -41,8 +41,8 @@ export const getEdgesInLayer = (scene: Scene, layerId: LayerId): readonly Edge[]
  * the argument, in z-order. Linear in scene size; for groups inside the
  * editor's hot path, cache the result by `(scene, parentId)`.
  */
-export const getChildrenOf = (scene: Scene, parentId: ElementId): readonly Shape[] => {
-  const out: Shape[] = [];
+export const getChildrenOf = (scene: Scene, parentId: ElementId): readonly Element[] => {
+  const out: Element[] = [];
   for (const s of scene.shapes.values()) {
     if (s.parentId === parentId) out.push(s);
   }
@@ -57,8 +57,8 @@ export const getChildrenOf = (scene: Scene, parentId: ElementId): readonly Shape
  * grouped scene. Independent from `Layer.locked` — callers that need
  * the combined interactivity gate should `||` both flags.
  */
-export const isShapeLocked = (scene: Scene, shape: Shape): boolean => {
-  let current: Shape | undefined = shape;
+export const isShapeLocked = (scene: Scene, shape: Element): boolean => {
+  let current: Element | undefined = shape;
   for (let i = 0; current && i < MAX_PARENT_DEPTH; i++) {
     if (current.locked === true) return true;
     if (!current.parentId) return false;
@@ -71,8 +71,8 @@ export const isShapeLocked = (scene: Scene, shape: Shape): boolean => {
  * `true` when the shape (or any of its ancestors via `parentId`) has
  * `hidden: true`. Same propagation semantics as `isShapeLocked`.
  */
-export const isShapeHidden = (scene: Scene, shape: Shape): boolean => {
-  let current: Shape | undefined = shape;
+export const isShapeHidden = (scene: Scene, shape: Element): boolean => {
+  let current: Element | undefined = shape;
   for (let i = 0; current && i < MAX_PARENT_DEPTH; i++) {
     if (current.hidden === true) return true;
     if (!current.parentId) return false;
@@ -87,7 +87,7 @@ export const isShapeHidden = (scene: Scene, shape: Shape): boolean => {
  * parent, or `undefined` when the shape (or any ancestor) is missing.
  * Cycle-safe — bails after `MAX_PARENT_DEPTH` hops.
  */
-export const getRootSelf = (scene: Scene, elementId: ElementId): Shape | undefined => {
+export const getRootSelf = (scene: Scene, elementId: ElementId): Element | undefined => {
   let current = scene.shapes.get(elementId);
   for (let i = 0; current && current.parentId && i < MAX_PARENT_DEPTH; i++) {
     const parent = scene.shapes.get(current.parentId);
@@ -102,11 +102,11 @@ export const getRootSelf = (scene: Scene, elementId: ElementId): Shape | undefin
  * Order: parent first, then a depth-first walk. Cycle-safe via the
  * `visited` set.
  */
-export const getDescendantsOf = (scene: Scene, parentId: ElementId): readonly Shape[] => {
+export const getDescendantsOf = (scene: Scene, parentId: ElementId): readonly Element[] => {
   const root = scene.shapes.get(parentId);
   if (!root) return [];
   const visited = new Set<ElementId>([parentId]);
-  const out: Shape[] = [root];
+  const out: Element[] = [root];
   const stack: ElementId[] = [parentId];
   while (stack.length > 0) {
     const cur = stack.pop()!;
@@ -128,8 +128,8 @@ const MAX_PARENT_DEPTH = 64;
  * Shapes whose world AABB intersects `range`. Linear in the number of shapes.
  * For large scenes use `buildSpatialIndex` once and query the index.
  */
-export const getShapesInBounds = (scene: Scene, range: Bounds): readonly Shape[] => {
-  const out: Shape[] = [];
+export const getShapesInBounds = (scene: Scene, range: Bounds): readonly Element[] => {
+  const out: Element[] = [];
   for (const s of scene.shapes.values()) {
     if (B.intersects(getShapeWorldBounds(s), range)) out.push(s);
   }
@@ -152,8 +152,8 @@ export const getShapesCoveredByBounds = (
   scene: Scene,
   range: Bounds,
   minCoverageRatio = 0.5,
-): readonly Shape[] => {
-  const out: Shape[] = [];
+): readonly Element[] => {
+  const out: Element[] = [];
   for (const s of scene.shapes.values()) {
     const b = getShapeWorldBounds(s);
     if (!B.intersects(b, range)) continue;
@@ -189,7 +189,7 @@ export const getShapesCoveredByBounds = (
  * conservative AABB test; renderer-specific shape-precise hit-tests belong
  * with the renderer.
  */
-export const getShapeAt = (scene: Scene, point: Vec2): Shape | undefined => {
+export const getShapeAt = (scene: Scene, point: Vec2): Element | undefined => {
   const layers = getLayersInOrder(scene);
   for (let i = layers.length - 1; i >= 0; i--) {
     const layer = layers[i]!;
@@ -224,9 +224,9 @@ export const buildSpatialIndex = (scene: Scene, cellSize?: number): SpatialGrid 
  * actually intersects `range`. The grid pre-filters by cell overlap; this
  * function does the precise AABB filter.
  */
-export const queryByIndex = (scene: Scene, grid: SpatialGrid, range: Bounds): readonly Shape[] => {
+export const queryByIndex = (scene: Scene, grid: SpatialGrid, range: Bounds): readonly Element[] => {
   const candidates = grid.query(range);
-  const out: Shape[] = [];
+  const out: Element[] = [];
   for (const id of candidates) {
     const shape = scene.shapes.get(id);
     if (!shape) continue;
@@ -246,11 +246,11 @@ export const getShapeAtIndexed = (
   scene: Scene,
   grid: SpatialGrid,
   point: Vec2,
-): Shape | undefined => {
+): Element | undefined => {
   const pointRange: Bounds = { x: point.x, y: point.y, width: 0, height: 0 };
   const candidates = grid.query(pointRange);
   if (candidates.size === 0) return undefined;
-  let best: Shape | undefined;
+  let best: Element | undefined;
   let bestLayerOrder = "";
   let bestShapeOrder = "";
   let bestSet = false;

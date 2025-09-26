@@ -1,6 +1,6 @@
 import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import type { FractionalIndex } from "fractional-keys";
-import type { Shape } from "@oh-just-another/scene";
+import type { Element } from "@oh-just-another/scene";
 
 /**
  * Built-in template categories. Hosts can pass any string as a custom
@@ -27,7 +27,7 @@ export interface TemplateContext {
 
 /**
  * A template is a *factory for a shape*. Given a `TemplateContext` it returns
- * a fully-typed `Shape` — no scene mutation, no async work.
+ * a fully-typed `Element` — no scene mutation, no async work.
  *
  * Plugins extend the system by registering their own `Template`s. Built-ins
  * cover `basic` (rectangle, ellipse, …) and `flowchart` (process, decision,
@@ -45,7 +45,7 @@ export interface Template {
   /**
    * Synchronous factory. Returns the shape the host should add to the scene.
    */
-  factory(context: TemplateContext): Shape;
+  factory(context: TemplateContext): Element;
   /**
    * Free-form keywords for the palette search filter. Match is case-
    * insensitive substring across `name`, `category`, and these tags.

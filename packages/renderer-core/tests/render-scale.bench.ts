@@ -7,7 +7,7 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
   type SpatialGrid,
 } from "@oh-just-another/scene";
 import { installBuiltinRenderers, renderScene, ShapeCache, type RenderTarget } from "../src/index";
@@ -34,7 +34,7 @@ const makeScene = (count: number, gridStep = 60): Scene => {
   };
   const cols = Math.ceil(Math.sqrt(count));
   for (let i = 0; i < count; i++) {
-    const shape: Shape = {
+    const shape: Element = {
       id: elementId(`s-${i}`),
       layerId: DEFAULT_LAYER_ID,
       type: i % 2 === 0 ? "rectangle" : "ellipse",

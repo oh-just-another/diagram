@@ -1,5 +1,5 @@
 import type { ElementId } from "@oh-just-another/types";
-import { getShape, type Scene, type Shape } from "@oh-just-another/scene";
+import { getShape, type Scene, type Element } from "@oh-just-another/scene";
 
 /**
  * Group / isolation helpers — pure functions over Scene + ElementId with no
@@ -14,9 +14,9 @@ const MAX_PARENT_DEPTH = 64;
  * remembers the last parent typed `"group"`. Returns `null` when no ancestor
  * is a group.
  */
-export const topGroupAncestor = (scene: Scene, shape: Shape): Shape | null => {
-  let topGroup: Shape | null = null;
-  let cursor: Shape | undefined = shape;
+export const topGroupAncestor = (scene: Scene, shape: Element): Element | null => {
+  let topGroup: Element | null = null;
+  let cursor: Element | undefined = shape;
   let depth = 0;
   while (cursor?.parentId && depth < MAX_PARENT_DEPTH) {
     const parent = getShape(scene, cursor.parentId);
@@ -59,10 +59,10 @@ export const isDescendantOfGroup = (
  */
 export const promoteToGroupRoot = (
   scene: Scene,
-  shape: Shape,
+  shape: Element,
   enteredGroup: ElementId | null,
-): Shape => {
-  let current: Shape = shape;
+): Element => {
+  let current: Element = shape;
   let depth = 0;
   while (current.parentId && depth < MAX_PARENT_DEPTH) {
     if (enteredGroup === current.parentId) break;
@@ -106,14 +106,14 @@ export const computeDimShapes = (
  */
 export const pickDrillTarget = (
   scene: Scene,
-  raw: Shape,
-  top: Shape | null,
+  raw: Element,
+  top: Element | null,
   enteredGroup: ElementId | null,
-): Shape | null => {
+): Element | null => {
   if (!top) return null;
   if (enteredGroup !== top.id) return top;
-  let cursor: Shape | undefined = raw;
-  let next: Shape | null = null;
+  let cursor: Element | undefined = raw;
+  let next: Element | null = null;
   let depth = 0;
   while (cursor?.parentId && depth < MAX_PARENT_DEPTH) {
     const parent = getShape(scene, cursor.parentId);

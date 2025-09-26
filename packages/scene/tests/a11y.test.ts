@@ -5,7 +5,7 @@ import {
   getShapeAccessibleName,
   orderBetween,
   registerAccessibleName,
-  type Shape,
+  type Element,
 } from "../src/index";
 
 const baseFields = {
@@ -19,7 +19,7 @@ const baseFields = {
 
 describe("getShapeAccessibleName", () => {
   it("titleises built-in types as fallback", () => {
-    const rect: Shape = {
+    const rect: Element = {
       ...baseFields,
       id: elementId("a"),
       type: "rectangle",
@@ -30,7 +30,7 @@ describe("getShapeAccessibleName", () => {
   });
 
   it("uses text body for text shapes", () => {
-    const text: Shape = {
+    const text: Element = {
       ...baseFields,
       id: elementId("t"),
       type: "text",
@@ -42,7 +42,7 @@ describe("getShapeAccessibleName", () => {
   });
 
   it("collapses whitespace in text shapes", () => {
-    const text: Shape = {
+    const text: Element = {
       ...baseFields,
       id: elementId("t"),
       type: "text",
@@ -55,7 +55,7 @@ describe("getShapeAccessibleName", () => {
 
   it("truncates long text bodies", () => {
     const longText = "a".repeat(200);
-    const text: Shape = {
+    const text: Element = {
       ...baseFields,
       id: elementId("t"),
       type: "text",
@@ -69,7 +69,7 @@ describe("getShapeAccessibleName", () => {
   });
 
   it("uses metadata.label for templates", () => {
-    const template: Shape = {
+    const template: Element = {
       ...baseFields,
       id: elementId("tpl"),
       type: "template",
@@ -83,7 +83,7 @@ describe("getShapeAccessibleName", () => {
   });
 
   it("falls back to templateId when no label metadata", () => {
-    const template: Shape = {
+    const template: Element = {
       ...baseFields,
       id: elementId("tpl"),
       type: "template",
@@ -97,7 +97,7 @@ describe("getShapeAccessibleName", () => {
 
   it("registerAccessibleName overrides for custom types", () => {
     registerAccessibleName("custom-widget", () => "Custom widget");
-    const custom: Shape = {
+    const custom: Element = {
       ...baseFields,
       id: elementId("c"),
       type: "custom-widget",

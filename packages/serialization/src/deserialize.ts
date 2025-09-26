@@ -9,7 +9,7 @@ import {
   elementId,
   type ElementId,
 } from "@oh-just-another/types";
-import type { Annotation, Edge, Layer, Scene, Shape, Viewport } from "@oh-just-another/scene";
+import type { Annotation, Edge, Layer, Scene, Element, Viewport } from "@oh-just-another/scene";
 import { type FractionalIndex } from "fractional-keys";
 import { z } from "zod";
 import { CURRENT_VERSION, type SceneDocument, SceneDocumentZ } from "./schema.js";
@@ -81,7 +81,7 @@ export const parseScene = (json: string, options?: DeserializeOptions): Scene =>
 // --- Internal ---
 
 const hydrate = (doc: SceneDocument): Scene => {
-  const shapes = new Map<ElementId, Shape>();
+  const shapes = new Map<ElementId, Element>();
   for (const s of doc.shapes) {
     const id = elementId(s.id);
     shapes.set(id, hydrateShape(s, id));
@@ -134,7 +134,7 @@ const hydrate = (doc: SceneDocument): Scene => {
   return { shapes, edges, layers, annotations, files: new Map(), viewport };
 };
 
-const hydrateShape = (s: SceneDocument["shapes"][number], id: ElementId): Shape => {
+const hydrateShape = (s: SceneDocument["shapes"][number], id: ElementId): Element => {
   // zod's parsed shape carries explicit `undefined`s on optional fields, which
   // `exactOptionalPropertyTypes` rejects. Strip them so the resulting object
   // matches the kernel's strict types.
@@ -144,7 +144,7 @@ const hydrateShape = (s: SceneDocument["shapes"][number], id: ElementId): Shape 
     id,
     layerId: layerId(s.layerId),
     order: s.order as FractionalIndex,
-  } as Shape;
+  } as Element;
 };
 
 const hydrateEdge = (e: SceneDocument["edges"][number], id: LinkId): Edge => {

@@ -5,7 +5,7 @@ import {
   getEdgePath,
   getShapeWorldBounds,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import type { AnnotationId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { ALL_HANDLES, CORNER_HANDLES, hitHandle } from "../handle.js";
@@ -35,10 +35,10 @@ export interface HitTestContext {
   readonly hitAnnotation: (worldPoint: Vec2) => AnnotationId | null;
   readonly selectionIsAspectLocked: () => boolean;
   readonly combinedSelectionBounds: () => import("@oh-just-another/types").Bounds | null;
-  readonly acceleratedShapeAt: (worldPoint: Vec2) => Shape | undefined;
-  readonly isShapeInteractable: (shape: Shape) => boolean;
+  readonly acceleratedShapeAt: (worldPoint: Vec2) => Element | undefined;
+  readonly isShapeInteractable: (shape: Element) => boolean;
   readonly isLayerLocked: (layerId: LayerId) => boolean;
-  readonly promoteToGroupRoot: (shape: Shape) => Shape;
+  readonly promoteToGroupRoot: (shape: Element) => Element;
 }
 
 /**

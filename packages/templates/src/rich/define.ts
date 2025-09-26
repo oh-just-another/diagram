@@ -31,7 +31,7 @@ export interface RichTemplate {
   readonly defaults?: Readonly<Record<string, unknown>>;
 
   /**
-   * Interactive-resize constraints. Copied onto the spawned `TemplateShape`'s
+   * Interactive-resize constraints. Copied onto the spawned `TemplateElement`'s
    * `minWidth` / `minHeight` / `maxWidth` / `maxHeight` / `noFlip` fields so
    * the editor enforces them. Omitted = no constraint on that axis.
    */

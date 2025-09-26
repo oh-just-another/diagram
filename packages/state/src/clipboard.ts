@@ -6,7 +6,7 @@ import {
   orderForTop,
   type Patch,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import type { HistoryProvider } from "@oh-just-another/history";
 
@@ -40,7 +40,7 @@ export interface PasteResult {
  * The live `<img>` / buffer is shared, so the pasted shape draws
  * immediately (same as the original) and still references its `fileId`.
  */
-export const cloneShapeForClipboard = (shape: Shape): Shape => {
+export const cloneShapeForClipboard = (shape: Element): Element => {
   const meta = (shape as { metadata?: Record<string, unknown> }).metadata;
   const liveImage = meta && "image" in meta ? meta.image : undefined;
   const liveAnim = (shape as { animationData?: unknown }).animationData;
@@ -58,7 +58,7 @@ export const cloneShapeForClipboard = (shape: Shape): Shape => {
     cloned.metadata = { ...(cloned.metadata as Record<string, unknown> | undefined), image: liveImage };
   }
   if (liveAnim !== undefined) cloned.animationData = liveAnim;
-  return cloned as unknown as Shape;
+  return cloned as unknown as Element;
 };
 
 /**
@@ -70,8 +70,8 @@ export const cloneShapeForClipboard = (shape: Shape): Shape => {
 export const copyShapes = (
   scene: Scene,
   selection: Iterable<ElementId>,
-): Shape[] => {
-  const out: Shape[] = [];
+): Element[] => {
+  const out: Element[] = [];
   for (const id of selection) {
     const s = getShape(scene, id);
     if (s) out.push(cloneShapeForClipboard(s));
@@ -92,7 +92,7 @@ export const copyShapes = (
 export const pasteShapes = (
   scene: Scene,
   history: HistoryProvider,
-  clipboard: readonly Shape[],
+  clipboard: readonly Element[],
   target: Vec2 | null,
   genId: () => ElementId,
 ): PasteResult => {
@@ -130,7 +130,7 @@ export const pasteShapes = (
       id: newId,
       position: { x: tmpl.position.x + delta.x, y: tmpl.position.y + delta.y },
       order,
-    } as Shape;
+    } as Element;
     const r = addShape(next, clone);
     next = r.scene;
     patches.push(r.patch);

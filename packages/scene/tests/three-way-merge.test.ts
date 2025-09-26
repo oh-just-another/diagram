@@ -6,14 +6,14 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "../src/index.js";
 import {
   applyConflictResolutions,
   mergeScenesThreeWay,
 } from "../src/three-way-merge.js";
 
-const rect = (id: string, x: number, y: number): Shape => ({
+const rect = (id: string, x: number, y: number): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -26,7 +26,7 @@ const rect = (id: string, x: number, y: number): Shape => ({
   height: 50,
 });
 
-const sceneOf = (...shapes: Shape[]): Scene => {
+const sceneOf = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) s = addShape(s, sh).scene;
   return s;
@@ -48,7 +48,7 @@ describe("mergeScenesThreeWay", () => {
   it("source-only modification auto-applies", () => {
     const a = rect("a", 0, 0);
     const ancestor = sceneOf(a);
-    const moved: Shape = { ...a, position: { x: 50, y: 0 } };
+    const moved: Element = { ...a, position: { x: 50, y: 0 } };
     const source = sceneOf(moved);
     const target = sceneOf(a);
     const report = mergeScenesThreeWay(ancestor, source, target);
@@ -62,8 +62,8 @@ describe("mergeScenesThreeWay", () => {
   it("flags both-modified-differently as a conflict and defaults to target", () => {
     const a = rect("a", 0, 0);
     const ancestor = sceneOf(a);
-    const sourceVersion: Shape = { ...a, position: { x: 50, y: 0 } };
-    const targetVersion: Shape = { ...a, position: { x: 0, y: 50 } };
+    const sourceVersion: Element = { ...a, position: { x: 50, y: 0 } };
+    const targetVersion: Element = { ...a, position: { x: 0, y: 50 } };
     const source = sceneOf(sourceVersion);
     const target = sceneOf(targetVersion);
     const report = mergeScenesThreeWay(ancestor, source, target);
@@ -79,8 +79,8 @@ describe("mergeScenesThreeWay", () => {
   it("applyConflictResolutions can pick `theirs` to override the default", () => {
     const a = rect("a", 0, 0);
     const ancestor = sceneOf(a);
-    const sourceVersion: Shape = { ...a, position: { x: 50, y: 0 } };
-    const targetVersion: Shape = { ...a, position: { x: 0, y: 50 } };
+    const sourceVersion: Element = { ...a, position: { x: 50, y: 0 } };
+    const targetVersion: Element = { ...a, position: { x: 0, y: 50 } };
     const source = sceneOf(sourceVersion);
     const target = sceneOf(targetVersion);
     const report = mergeScenesThreeWay(ancestor, source, target);
@@ -93,8 +93,8 @@ describe("mergeScenesThreeWay", () => {
   it("`both` keeps target original and duplicates source with -copy suffix", () => {
     const a = rect("a", 0, 0);
     const ancestor = sceneOf(a);
-    const sourceVersion: Shape = { ...a, position: { x: 50, y: 0 } };
-    const targetVersion: Shape = { ...a, position: { x: 0, y: 50 } };
+    const sourceVersion: Element = { ...a, position: { x: 50, y: 0 } };
+    const targetVersion: Element = { ...a, position: { x: 0, y: 50 } };
     const source = sceneOf(sourceVersion);
     const target = sceneOf(targetVersion);
     const report = mergeScenesThreeWay(ancestor, source, target);

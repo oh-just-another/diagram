@@ -11,7 +11,7 @@ import {
   addShape,
   emptyScene,
   orderBetween,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "@oh-just-another/state";
 import { installBuiltinRenderers } from "@oh-just-another/renderer-canvas";
@@ -19,7 +19,7 @@ import { DiagramProvider, PropertyPanel, TooltipProvider } from "../src/index";
 
 installBuiltinRenderers();
 
-const text: Shape = {
+const text: Element = {
   id: elementId("t1"),
   layerId: DEFAULT_LAYER_ID,
   type: "text",
@@ -31,7 +31,7 @@ const text: Shape = {
   text: "hi",
   fontFamily: "system-ui, sans-serif",
   fontSize: 24,
-} as unknown as Shape;
+} as unknown as Element;
 
 const mountEditor = (): Editor => {
   let scene = emptyScene();

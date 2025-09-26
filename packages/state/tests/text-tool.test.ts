@@ -6,11 +6,11 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type TextShape,
+  type TextElement,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
-const textShape = (id: string, text = "hi"): TextShape => ({
+const textShape = (id: string, text = "hi"): TextElement => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "text",
@@ -73,7 +73,7 @@ describe("draw-text tool", () => {
   it("createTextAt places an empty text shape, selects it and opens the editor", () => {
     const e = makeEditor();
     const id = e.createTextAt({ x: 40, y: 60 });
-    const shape = e.scene.shapes.get(id) as TextShape | undefined;
+    const shape = e.scene.shapes.get(id) as TextElement | undefined;
     expect(shape?.type).toBe("text");
     expect(shape?.text).toBe("");
     expect(shape?.position).toEqual({ x: 40, y: 60 });
@@ -93,7 +93,7 @@ describe("draw-text tool", () => {
     const e = makeEditor();
     const id = e.createTextAt({ x: 0, y: 0 });
     e.commitTextEdit("hello world");
-    expect((e.scene.shapes.get(id) as TextShape).text).toBe("hello world");
+    expect((e.scene.shapes.get(id) as TextElement).text).toBe("hello world");
     expect(e.editingTextShape).toBeNull();
     expect(e.canUndo).toBe(true);
     // One undo removes the whole shape, not just the text.
@@ -126,7 +126,7 @@ describe("draw-text tool", () => {
     const e2 = makeEditor(s);
     e2.beginTextEdit(elementId("t1"));
     e2.cancelTextEdit();
-    expect((e2.scene.shapes.get(elementId("t1")) as TextShape).text).toBe("keep");
+    expect((e2.scene.shapes.get(elementId("t1")) as TextElement).text).toBe("keep");
   });
 
   it("updateTextProps changes fontSize on text shapes only", () => {
@@ -134,7 +134,7 @@ describe("draw-text tool", () => {
     const id = e.createTextAt({ x: 0, y: 0 });
     e.commitTextEdit("x");
     e.updateTextProps([id], { fontSize: 48 });
-    expect((e.scene.shapes.get(id) as TextShape).fontSize).toBe(48);
+    expect((e.scene.shapes.get(id) as TextElement).fontSize).toBe(48);
   });
 
   it("updateStyle writes textAlign through to a text shape", () => {
@@ -142,6 +142,6 @@ describe("draw-text tool", () => {
     const id = e.createTextAt({ x: 0, y: 0 });
     e.commitTextEdit("x");
     e.updateStyle([id], { textAlign: "center" });
-    expect((e.scene.shapes.get(id) as TextShape).style.textAlign).toBe("center");
+    expect((e.scene.shapes.get(id) as TextElement).style.textAlign).toBe("center");
   });
 });

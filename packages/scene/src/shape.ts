@@ -12,7 +12,7 @@ import { getTextMeasurer } from "./text-measure.js";
  * require renumbering neighbors, which keeps history small and is conflict-free
  * under concurrent edits.
  */
-export interface ShapeBase {
+export interface ElementBase {
   readonly id: ElementId;
   readonly layerId: LayerId;
   /** Discriminator. Built-in shapes use the literal types declared below. */
@@ -63,7 +63,7 @@ export interface ShapeBase {
    * the parent's group: hit-test and drag operations promote selection
    * to the parent (grouped), and `moveSelectionBy` translates every
    * descendant in lockstep. The kernel does not enforce a particular
-   * shape type for parents — `GroupShape` (type `"group"`) is just the
+   * shape type for parents — `GroupElement` (type `"group"`) is just the
    * default zero-render container; custom shape types can also act as
    * parents.
    */
@@ -113,19 +113,19 @@ export interface ShapeBase {
   readonly href?: string;
 }
 
-export interface RectangleShape extends ShapeBase {
+export interface RectangleElement extends ElementBase {
   readonly type: "rectangle";
   readonly width: number;
   readonly height: number;
 }
 
-export interface EllipseShape extends ShapeBase {
+export interface EllipseElement extends ElementBase {
   readonly type: "ellipse";
   readonly width: number;
   readonly height: number;
 }
 
-export interface PolygonShape extends ShapeBase {
+export interface PolygonElement extends ElementBase {
   readonly type: "polygon";
   /** Closed polygon in local coordinates (origin = `position`). */
   readonly points: readonly Vec2[];
@@ -138,13 +138,13 @@ export type PathCommand =
   | { readonly kind: "C"; readonly control1: Vec2; readonly control2: Vec2; readonly to: Vec2 }
   | { readonly kind: "Z" };
 
-export interface PathShape extends ShapeBase {
+export interface PathElement extends ElementBase {
   readonly type: "path";
   /** Commands in local coordinates. */
   readonly commands: readonly PathCommand[];
 }
 
-export interface TextShape extends ShapeBase {
+export interface TextElement extends ElementBase {
   readonly type: "text";
   readonly text: string;
   readonly fontFamily: string;
@@ -154,7 +154,7 @@ export interface TextShape extends ShapeBase {
   readonly style: TextStyle;
 }
 
-export interface ImageShape extends ShapeBase {
+export interface ImageElement extends ElementBase {
   readonly type: "image";
   /**
    * URL or data-URI. Kept as a fallback for legacy scenes and for
@@ -198,7 +198,7 @@ export interface ImageShape extends ShapeBase {
  * The kernel ships a basic bounder (uses `width` × `height`); the templates
  * package can re-register a tighter bounder that respects the layout engine.
  */
-export interface TemplateShape extends ShapeBase {
+export interface TemplateElement extends ElementBase {
   readonly type: "template";
   readonly templateId: string;
   readonly data: Readonly<Record<string, unknown>>;
@@ -221,7 +221,7 @@ export interface BrushPoint {
   readonly width: number;
 }
 
-export interface BrushShape extends ShapeBase {
+export interface BrushElement extends ElementBase {
   readonly type: "brush";
   readonly points: readonly BrushPoint[];
 }
@@ -231,7 +231,7 @@ export interface BrushShape extends ShapeBase {
  * Rendered as a no-op (the group itself has no visual); the editor's
  * overlay highlights the union AABB of the children when selected.
  */
-export interface GroupShape extends ShapeBase {
+export interface GroupElement extends ElementBase {
   readonly type: "group";
 }
 
@@ -245,7 +245,7 @@ export interface GroupShape extends ShapeBase {
  * Auto-numbering: the editor picks the next free "Frame N" on
  * create. Custom `name` overrides.
  */
-export interface FrameShape extends ShapeBase {
+export interface FrameElement extends ElementBase {
   readonly type: "frame";
   readonly width: number;
   readonly height: number;
@@ -256,16 +256,16 @@ export interface FrameShape extends ShapeBase {
 /**
  * Filled arrow drawn as a single shape (body rectangle + triangular
  * head, optionally with a triangular tail). Distinct from an Edge:
- * edges connect anchors and re-route on shape move; a BlockArrowShape
+ * edges connect anchors and re-route on shape move; a BlockArrowElement
  * is a free-standing element with a fixed silhouette like a block-arrow icon.
  */
-export interface BlockArrowShape extends ShapeBase {
+export interface BlockArrowElement extends ElementBase {
   readonly type: "block-arrow";
   readonly width: number;
   readonly height: number;
   /**
    * Where the arrow points. Default `"right"`. Rotation is still
-   * applied on top via `ShapeBase.rotation` — this enum just picks
+   * applied on top via `ElementBase.rotation` — this enum just picks
    * the head side in local coords so the user can quickly toggle
    * direction without typing a 90/180/270 deg angle.
    */
@@ -277,39 +277,39 @@ export interface BlockArrowShape extends ShapeBase {
 }
 
 export type BuiltinShape =
-  | RectangleShape
-  | EllipseShape
-  | PolygonShape
-  | PathShape
-  | TextShape
-  | ImageShape
-  | TemplateShape
-  | GroupShape
-  | FrameShape
-  | BlockArrowShape
-  | BrushShape;
+  | RectangleElement
+  | EllipseElement
+  | PolygonElement
+  | PathElement
+  | TextElement
+  | ImageElement
+  | TemplateElement
+  | GroupElement
+  | FrameElement
+  | BlockArrowElement
+  | BrushElement;
 
 /**
- * Open shape type. `Shape` accepts any `ShapeBase` extension, which lets plugins
+ * Open shape type. `Element` accepts any `ElementBase` extension, which lets plugins
  * register their own types without amending this union. The kernel treats
  * unknown shape types via the bounder registry — see `registerBounder`.
  */
-export type Shape = BuiltinShape | ShapeBase;
+export type Element = BuiltinShape | ElementBase;
 
 // --- type guards ---
 
-export const isRectangle = (s: ShapeBase): s is RectangleShape => s.type === "rectangle";
-export const isEllipse = (s: ShapeBase): s is EllipseShape => s.type === "ellipse";
-export const isPolygon = (s: ShapeBase): s is PolygonShape => s.type === "polygon";
-export const isPath = (s: ShapeBase): s is PathShape => s.type === "path";
-export const isText = (s: ShapeBase): s is TextShape => s.type === "text";
-export const isImage = (s: ShapeBase): s is ImageShape => s.type === "image";
-export const isTemplate = (s: ShapeBase): s is TemplateShape => s.type === "template";
-export const isGroup = (s: ShapeBase): s is GroupShape => s.type === "group";
-export const isFrame = (s: ShapeBase): s is FrameShape => s.type === "frame";
-export const isBlockArrow = (s: ShapeBase): s is BlockArrowShape =>
+export const isRectangle = (s: ElementBase): s is RectangleElement => s.type === "rectangle";
+export const isEllipse = (s: ElementBase): s is EllipseElement => s.type === "ellipse";
+export const isPolygon = (s: ElementBase): s is PolygonElement => s.type === "polygon";
+export const isPath = (s: ElementBase): s is PathElement => s.type === "path";
+export const isText = (s: ElementBase): s is TextElement => s.type === "text";
+export const isImage = (s: ElementBase): s is ImageElement => s.type === "image";
+export const isTemplate = (s: ElementBase): s is TemplateElement => s.type === "template";
+export const isGroup = (s: ElementBase): s is GroupElement => s.type === "group";
+export const isFrame = (s: ElementBase): s is FrameElement => s.type === "frame";
+export const isBlockArrow = (s: ElementBase): s is BlockArrowElement =>
   s.type === "block-arrow";
-export const isBrush = (s: ShapeBase): s is BrushShape => s.type === "brush";
+export const isBrush = (s: ElementBase): s is BrushElement => s.type === "brush";
 
 // --- bounder registry ---
 
@@ -318,7 +318,7 @@ export const isBrush = (s: ShapeBase): s is BrushShape => s.type === "brush";
  * before `position`/`rotation`/`scale` are applied. The world AABB lives in
  * `getShapeWorldBounds`.
  */
-export type ShapeBounder<S extends ShapeBase = ShapeBase> = (shape: S) => Bounds;
+export type ShapeBounder<S extends ElementBase = ElementBase> = (shape: S) => Bounds;
 
 const bounderRegistry = new Map<string, ShapeBounder>();
 
@@ -326,7 +326,7 @@ const bounderRegistry = new Map<string, ShapeBounder>();
  * Register a bounder for a custom shape type. Plugins call this once at module
  * load. The kernel ships bounders for every `BuiltinShape`.
  */
-export const registerBounder = <S extends ShapeBase>(
+export const registerBounder = <S extends ElementBase>(
   type: S["type"],
   bounder: ShapeBounder<S>,
 ): void => {
@@ -340,7 +340,7 @@ export const getBounder = (type: string): ShapeBounder | undefined => bounderReg
  * Local AABB for any shape with a registered bounder. Throws on unknown types
  * — callers should either register a bounder or filter unknown shapes out.
  */
-export const getShapeLocalBounds = (shape: ShapeBase): Bounds => {
+export const getShapeLocalBounds = (shape: ElementBase): Bounds => {
   const bounder = bounderRegistry.get(shape.type);
   if (!bounder) {
     throw new Error(`No bounder registered for shape type: ${shape.type}`);
@@ -352,7 +352,7 @@ export const getShapeLocalBounds = (shape: ShapeBase): Bounds => {
  * World-space AABB after `position`/`rotation`/`scale`. This is the conservative
  * AABB of the rotated/scaled local box, suitable for spatial-index keys.
  */
-export const getShapeWorldBounds = (shape: ShapeBase): Bounds => {
+export const getShapeWorldBounds = (shape: ElementBase): Bounds => {
   const local = getShapeLocalBounds(shape);
   // Transform 4 corners then re-AABB.
   const corners: readonly Vec2[] = [
@@ -376,23 +376,23 @@ export const getShapeWorldBounds = (shape: ShapeBase): Bounds => {
 
 // --- built-in bounders ---
 
-registerBounder<RectangleShape>("rectangle", (s) => ({
+registerBounder<RectangleElement>("rectangle", (s) => ({
   x: 0,
   y: 0,
   width: s.width,
   height: s.height,
 }));
 
-registerBounder<EllipseShape>("ellipse", (s) => ({
+registerBounder<EllipseElement>("ellipse", (s) => ({
   x: 0,
   y: 0,
   width: s.width,
   height: s.height,
 }));
 
-registerBounder<PolygonShape>("polygon", (s) => B.fromPoints(s.points));
+registerBounder<PolygonElement>("polygon", (s) => B.fromPoints(s.points));
 
-registerBounder<PathShape>("path", (s) => {
+registerBounder<PathElement>("path", (s) => {
   const points: Vec2[] = [];
   let cursor: Vec2 = { x: 0, y: 0 };
   for (const cmd of s.commands) {
@@ -420,7 +420,7 @@ registerBounder<PathShape>("path", (s) => {
   return B.fromPoints(points);
 });
 
-registerBounder<TextShape>("text", (s) => {
+registerBounder<TextElement>("text", (s) => {
   // Width comes from the host measurer when installed (matches the
   // actually-rendered glyph advances), falling back to a geometric
   // estimate (`chars × fontSize × factor`) headless / in tests. Height
@@ -458,7 +458,7 @@ registerBounder<TextShape>("text", (s) => {
   return { x: 0, y: 0, width: s.maxWidth, height: Math.max(1, lines) * lineHeight };
 });
 
-registerBounder<ImageShape>("image", (s) => ({
+registerBounder<ImageElement>("image", (s) => ({
   x: 0,
   y: 0,
   width: s.width,
@@ -468,14 +468,14 @@ registerBounder<ImageShape>("image", (s) => ({
 // Built-in template bounder: uses the explicit `width` × `height` box. The
 // templates package can re-register a tighter bounder driven by the layout
 // engine when an instance is auto-sized.
-registerBounder<TemplateShape>("template", (s) => ({
+registerBounder<TemplateElement>("template", (s) => ({
   x: 0,
   y: 0,
   width: s.width,
   height: s.height,
 }));
 
-registerBounder<BrushShape>("brush", (s) => {
+registerBounder<BrushElement>("brush", (s) => {
   if (s.points.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
   let minX = Infinity;
   let minY = Infinity;
@@ -493,16 +493,16 @@ registerBounder<BrushShape>("brush", (s) => {
 // Group shapes have no intrinsic geometry — their world AABB is empty.
 // Callers that need the union of descendants must walk `parentId` via
 // `getChildrenOf` and union the children's world bounds instead.
-registerBounder<GroupShape>("group", () => ({ x: 0, y: 0, width: 0, height: 0 }));
+registerBounder<GroupElement>("group", () => ({ x: 0, y: 0, width: 0, height: 0 }));
 
-registerBounder<FrameShape>("frame", (s) => ({
+registerBounder<FrameElement>("frame", (s) => ({
   x: 0,
   y: 0,
   width: s.width,
   height: s.height,
 }));
 
-registerBounder<BlockArrowShape>("block-arrow", (s) => ({
+registerBounder<BlockArrowElement>("block-arrow", (s) => ({
   x: 0,
   y: 0,
   width: s.width,

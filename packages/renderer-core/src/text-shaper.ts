@@ -51,7 +51,7 @@ export type { TextAlign, TextBaseline };
 //
 // `wrapText` accepts an optional `shaper` parameter — but the
 // built-in `drawText` renderer in `built-in-renderers.ts` is a
-// `ShapeRenderer<TextShape>` whose signature is `(shape, target)`,
+// `ShapeRenderer<TextElement>` whose signature is `(shape, target)`,
 // no extra arg. Threading a shaper through every ShapeRenderer is
 // invasive; instead we expose a module-level registry that
 // `drawText` consults at call time. Editor sets it via

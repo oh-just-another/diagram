@@ -64,13 +64,13 @@ import {
   type Comment,
   type Edge,
   type EdgeEndpoint,
-  type ImageShape,
+  type ImageElement,
   type Layer,
   type Patch,
   type Scene,
-  type Shape,
+  type Element,
   type SnapCandidate,
-  type TextShape,
+  type TextElement,
   type TextStyle,
   createBinaryFile,
 } from "@oh-just-another/scene";
@@ -491,7 +491,7 @@ export class Editor {
   private drawingPreview: Bounds | null = null;
   private edgePreview: { from: Vec2; to: Vec2 } | null = null;
   /**
-   * Shape being hovered while draw-edge mode is active. Drives the port-
+   * Element being hovered while draw-edge mode is active. Drives the port-
    * overlay render so the user sees attachment points. `null` outside
    * draw-edge mode or when the pointer is over empty canvas.
    */
@@ -558,7 +558,7 @@ export class Editor {
    * so it never compounds across pointermove ticks. Cleared on gesture
    * end (commit / cancel).
    */
-  private _resizeOriginShape: Shape | null = null;
+  private _resizeOriginShape: Element | null = null;
   /**
    * Active layer — new shapes created via `addShape` / `applyCreate` land
    * here when their input doesn't specify a `layerId`. Defaults to the
@@ -685,7 +685,7 @@ export class Editor {
   });
 
   /**
-   * Shape id that the user started dragging on press-down. Tracked
+   * Element id that the user started dragging on press-down. Tracked
    * separately from the state machine so the editor knows what to
    * (re)parent / drop into a container on pointerup. `null` between
    * gestures, set in onDown when press lands on a shape and cleared
@@ -694,7 +694,7 @@ export class Editor {
   private dragShapeId: ElementId | null = null;
 
   /**
-   * Shape that the current press added to the selection additively
+   * Element that the current press added to the selection additively
    * (shift / meta click on an unselected shape). The press promotes it
    * so a subsequent drag moves it; on a *tap* the up-handler would
    * otherwise `SELECT_TOGGLE` it straight back off, so it consults this
@@ -1394,7 +1394,7 @@ export class Editor {
    * that create shapes outside of a pointer gesture — drag-from-palette,
    * paste, programmatic insert.
    */
-  addShape(shape: Shape, options?: { select?: boolean }): Patch {
+  addShape(shape: Element, options?: { select?: boolean }): Patch {
     const result = addShape(this._scene, shape);
     this._scene = result.scene;
     if (options?.select ?? true) {
@@ -1556,7 +1556,7 @@ export class Editor {
     }
   >();
 
-  /** Shape id currently hovered — a hovered heavy GIF keeps playing
+  /** Element id currently hovered — a hovered heavy GIF keeps playing
    *  (its auto-stop timer is held off). Set by the pointer hover path. */
   private hoveredAnimatedId: ElementId | null = null;
 
@@ -1660,7 +1660,7 @@ export class Editor {
     const now = Editor.nowMs();
     for (const shape of this._scene.shapes.values()) {
       if (shape.type !== "image") continue;
-      const img = shape as ImageShape;
+      const img = shape as ImageElement;
       if (!img.animationKind) continue;
       const st = this.playbackState.get(img.id);
       if (!st || !st.playing) continue;
@@ -1696,7 +1696,7 @@ export class Editor {
   private rehydrateAnimatedImages(): void {
     for (const shape of this._scene.shapes.values()) {
       if (shape.type !== "image") continue;
-      const img = shape as ImageShape;
+      const img = shape as ImageElement;
       if (!img.animationKind) continue;
       // Seed playback for every animated shape loaded from the scene
       // (G5 honours reduced-motion at this point too).
@@ -1727,7 +1727,7 @@ export class Editor {
   // Placement helpers live in `./editor/public/placement.ts`.
   // Editor owns the transaction lifecycle and selection mutate;
   // the closure threads scene mutations through the pure helpers.
-  beginPlacement(shape: Shape): {
+  beginPlacement(shape: Element): {
     update: (worldCenter: Vec2) => void;
     commit: () => void;
     cancel: () => void;
@@ -1815,7 +1815,7 @@ export class Editor {
    * as the `before` of the single commit patch. `null` for a pending
    * creation (the shape didn't exist yet).
    */
-  private _textEditOrigin: Shape | null = null;
+  private _textEditOrigin: Element | null = null;
   /**
    * Live selection inside the edited text, mirrored from the hidden
    * `<textarea>` (`start`/`end` are source offsets, `dir` is the
@@ -1878,7 +1878,7 @@ export class Editor {
     if (this._editingTextShape !== null && this._editingTextShape !== id) this.commitTextEdit();
     this._editingTextShape = id;
     this._textEditOrigin = this._pendingTextCreate === id ? null : (getShape(this._scene, id) ?? null);
-    const shape = getShape(this._scene, id) as TextShape | undefined;
+    const shape = getShape(this._scene, id) as TextElement | undefined;
     const len = shape?.text.length ?? 0;
     this._textSel = { start: len, end: len, dir: "forward" };
     this.startCaretBlink();
@@ -1917,7 +1917,7 @@ export class Editor {
   caretIndexAtWorldPoint(worldPoint: Vec2): number | null {
     const id = this._editingTextShape;
     if (!id) return null;
-    const shape = getShape(this._scene, id) as TextShape | undefined;
+    const shape = getShape(this._scene, id) as TextElement | undefined;
     if (shape?.type !== "text") return null;
     const layout = this.editingTextLayout(shape);
     if (!layout) return null;
@@ -1971,7 +1971,7 @@ export class Editor {
   }
 
   /** Build the editable layout for a text shape using the main target's metrics. */
-  private editingTextLayout(shape: TextShape): EditableTextLayout | null {
+  private editingTextLayout(shape: TextElement): EditableTextLayout | null {
     return layoutText(shape.text, this.measureFor(shape), {
       fontSize: shape.fontSize,
       ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
@@ -1984,7 +1984,7 @@ export class Editor {
    * reports MSDF advances) and the bounder measures with. Caret /
    * selection geometry therefore lines up exactly with the glyphs.
    */
-  private measureFor(shape: TextShape): (s: string) => number {
+  private measureFor(shape: TextElement): (s: string) => number {
     const target = this.mainTarget;
     // Match the rendered weight/style so caret / selection geometry lines
     // up with bold / italic glyphs (which have different advances).
@@ -2007,7 +2007,7 @@ export class Editor {
   } | null {
     const id = this._editingTextShape;
     if (!id || !this._textSel) return null;
-    const shape = getShape(this._scene, id) as TextShape | undefined;
+    const shape = getShape(this._scene, id) as TextElement | undefined;
     if (shape?.type !== "text") return null;
     const layout = this.editingTextLayout(shape);
     if (!layout) return null;
@@ -2048,7 +2048,7 @@ export class Editor {
     this._textSel = null;
     this.stopCaretBlink();
 
-    const finalShape = getShape(this._scene, id) as TextShape | undefined;
+    const finalShape = getShape(this._scene, id) as TextElement | undefined;
     const text = finalShape?.text ?? "";
 
     // Empty (whitespace-only) text removes the shape. Pending = silent
@@ -2073,9 +2073,9 @@ export class Editor {
       // size etc.) changed via the panel push their own history during
       // the edit, so the commit's `before` keeps the final non-text
       // state and rewinds just the text.
-      const originText = (origin as TextShape).text;
+      const originText = (origin as TextElement).text;
       if (originText !== finalShape.text) {
-        const before = { ...finalShape, text: originText } as Shape;
+        const before = { ...finalShape, text: originText } as Element;
         this._history.push({ kind: "shape", id, before, after: finalShape });
       }
     }
@@ -2103,7 +2103,7 @@ export class Editor {
         if (this._selection.has(id)) this._selection = Selection.EMPTY;
       }
     } else if (origin) {
-      const originText = (origin as TextShape).text;
+      const originText = (origin as TextElement).text;
       this._scene = updateShape(this._scene, id, (s) => ({ ...s, text: originText })).scene;
     }
     this.notify();
@@ -2266,7 +2266,7 @@ export class Editor {
     this._selection = new Set(result.nextSelection);
     this.notify();
   }
-  private selectionRoots(): readonly Shape[] {
+  private selectionRoots(): readonly Element[] {
     return selectionRoots(this._scene, this._selection);
   }
   private expandSelectionWithDescendants(): ReadonlySet<ElementId> {
@@ -2344,7 +2344,7 @@ export class Editor {
    * within the same session; cross-tab paste uses host-level
    * `navigator.clipboard` (out of scope for the editor).
    */
-  private clipboard: Shape[] = [];
+  private clipboard: Element[] = [];
 
   // Pure body in `./editor/public/clipboard.ts`.
   copySelected(): void {
@@ -2862,7 +2862,7 @@ export class Editor {
    * non-interactable hits as misses; render still draws them so the
    * user can see what's locked.
    */
-  private isShapeInteractable(shape: Shape): boolean {
+  private isShapeInteractable(shape: Element): boolean {
     if (this.isLayerLocked(shape.layerId)) return false;
     if (isShapeLocked(this._scene, shape)) return false;
     if (isShapeHidden(this._scene, shape)) return false;
@@ -2883,7 +2883,7 @@ export class Editor {
    * the walk also stops just below that group so children can be edited
    * directly.
    */
-  private promoteToGroupRoot(shape: Shape): Shape {
+  private promoteToGroupRoot(shape: Element): Element {
     return promoteToGroupRootHelper(this._scene, shape, this._enteredGroup);
   }
 
@@ -2894,7 +2894,7 @@ export class Editor {
    * with a group ancestor enters that group. Body extracted to
    * `./group-helpers.ts`.
    */
-  private topGroupAncestor(shape: Shape): Shape | null {
+  private topGroupAncestor(shape: Element): Element | null {
     return topGroupAncestorHelper(this._scene, shape);
   }
 
@@ -2951,7 +2951,7 @@ export class Editor {
    * scene-identity. Scene operations replace `_scene` (immutable patches), 
    * so reference-equality is a sufficient invalidation signal.
    */
-  private acceleratedShapeAt(worldPoint: Vec2): Shape | undefined {
+  private acceleratedShapeAt(worldPoint: Vec2): Element | undefined {
     if (this._scene.shapes.size < LARGE_SCENE_HIT_THRESHOLD) {
       return getShapeAt(this._scene, worldPoint);
     }
@@ -3068,7 +3068,7 @@ export class Editor {
    * - Top group already entered → walk down the chain to find the
    *   next group inward (one level deeper).
    */
-  private pickDrillTarget(raw: Shape, top: Shape | null): Shape | null {
+  private pickDrillTarget(raw: Element, top: Element | null): Element | null {
     return pickDrillTargetHelper(this._scene, raw, top, this._enteredGroup);
   }
 
@@ -3496,7 +3496,7 @@ export class Editor {
       }
       const result = computeTextResize(
         this._scene,
-        this._resizeOriginShape as TextShape,
+        this._resizeOriginShape as TextElement,
         handle,
         delta,
         originalBounds,
@@ -3729,7 +3729,7 @@ export class Editor {
   }
 
   // Pure body in `./editor/container-ops.ts`.
-  private clampContainerToChildren(shape: Shape, raw: Bounds, handle: HandleId): Bounds {
+  private clampContainerToChildren(shape: Element, raw: Bounds, handle: HandleId): Bounds {
     return clampContainerToChildrenPure(this._scene, shape, raw, handle);
   }
 
@@ -3941,7 +3941,7 @@ const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z
 const endpointFromSnap = (
   elementId: ElementId,
   candidate: SnapCandidate,
-  shape: Shape,
+  shape: Element,
 ): EdgeEndpoint => {
   if (candidate.kind === "anchor") {
     const ref = candidate.metadata?.ref as AnchorRefLike | undefined;

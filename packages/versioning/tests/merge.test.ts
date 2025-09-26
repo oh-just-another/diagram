@@ -8,7 +8,7 @@ import {
   orderBetween,
   type Patch,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import {
   findCommonAncestor,
@@ -17,7 +17,7 @@ import {
   threeWayMerge,
 } from "../src/index";
 
-const rect = (id: string, x = 0, y = 0, w = 20, h = 20): Shape => ({
+const rect = (id: string, x = 0, y = 0, w = 20, h = 20): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -32,7 +32,7 @@ const rect = (id: string, x = 0, y = 0, w = 20, h = 20): Shape => ({
 
 const author = { id: "u1", name: "tester" };
 
-const sceneWith = (...shapes: Shape[]): Scene => {
+const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) {
     s = apply(s, { kind: "shape", id: sh.id, before: null, after: sh } satisfies Patch);
@@ -49,7 +49,7 @@ const addRect = (scene: Scene, id: string, x: number, y: number): Scene => {
 const updateRect = (scene: Scene, id: string, x: number, y: number): Scene => {
   const before = scene.shapes.get(elementId(id));
   if (!before) throw new Error(`missing shape ${id}`);
-  const after = { ...before, position: { x, y } } as Shape;
+  const after = { ...before, position: { x, y } } as Element;
   return apply(scene, { kind: "shape", id: elementId(id), before, after } satisfies Patch);
 };
 
@@ -95,7 +95,7 @@ describe("merge", () => {
     expect(c.kind).toBe("shape");
     expect(c.id).toBe(elementId("a"));
     // Auto-merged value stays at the target value.
-    expect((report.mergedScene.shapes.get(elementId("a")) as Shape).position.x).toBe(20);
+    expect((report.mergedScene.shapes.get(elementId("a")) as Element).position.x).toBe(20);
   });
 
   it("mergeBranchHeads runs three-way merge between branch tips", () => {

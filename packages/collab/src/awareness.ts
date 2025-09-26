@@ -7,7 +7,7 @@ import type { Vec2 } from "@oh-just-another/types";
  * Hosts read the live peer list via `getPeers()` / `onPeers()` and render
  * cursors / selection halos / "Alice is editing" badges from it.
  *
- * Shape is open — hosts can stash whatever extra fields they want via
+ * Element is open — hosts can stash whatever extra fields they want via
  * `updateLocal({ avatarUrl: ..., currentTool: ... })`. The kernel only
  * reads the typed fields below.
  */

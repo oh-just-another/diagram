@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Shape, TemplateShape as SceneTemplateShape } from "@oh-just-another/scene";
+import type { Element, TemplateElement as SceneTemplateElement } from "@oh-just-another/scene";
 import { layoutTree } from "./rich/layout.js";
 import { extractPorts } from "./rich/ports.js";
 import { extractDropZone } from "./rich/drop-zones.js";
@@ -45,7 +45,7 @@ const PathCommandZ = z.discriminatedUnion("kind", [
 ]);
 
 /**
- * Shape blueprint — all the shape's fields *except* identity / placement,
+ * Element blueprint — all the shape's fields *except* identity / placement,
  * which come from the runtime `TemplateContext`. Plugin authors describe
  * their shapes here.
  */
@@ -193,7 +193,7 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
       icon: spec.icon,
       ...(spec.tags !== undefined ? { tags: spec.tags } : {}),
       ...(spec.metadata !== undefined ? { metadata: spec.metadata } : {}),
-      factory: (ctx: TemplateContext): Shape => {
+      factory: (ctx: TemplateContext): Element => {
         // Lay the template out once at its declared natural size to
         // extract every `port` node into a ratio-anchor map. The ratios
         // survive resize — the editor's anchor-resolve always reads
@@ -211,7 +211,7 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
         // template.
         const dropZone = extractDropZone(layouted);
 
-        const shape: SceneTemplateShape = {
+        const shape: SceneTemplateElement = {
           id: ctx.id,
           layerId: ctx.layerId,
           type: "template",
@@ -245,7 +245,7 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
     icon: spec.icon,
     ...(spec.tags !== undefined ? { tags: spec.tags } : {}),
     ...(spec.metadata !== undefined ? { metadata: spec.metadata } : {}),
-    factory: (ctx: TemplateContext): Shape =>
+    factory: (ctx: TemplateContext): Element =>
       ({
         ...stripUndefined(blueprint),
         id: ctx.id,
@@ -254,7 +254,7 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
         rotation: 0,
         scale: { x: 1, y: 1 },
         order: ctx.order,
-      }) as Shape,
+      }) as Element,
   };
 };
 

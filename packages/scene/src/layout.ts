@@ -1,7 +1,7 @@
 import type { ElementId, Vec2 } from "@oh-just-another/types";
 import { getDropZoneWorld } from "./container.js";
 import type { Scene } from "./scene.js";
-import { getShapeLocalBounds, type Shape } from "./shape.js";
+import { getShapeLocalBounds, type Element } from "./shape.js";
 import { getShape, getShapesInLayer } from "./queries.js";
 import { updateShape, type OperationResult } from "./operations.js";
 import { batch, type Patch } from "./patch.js";
@@ -18,7 +18,7 @@ import { getLayoutKind } from "./layout-registry.js";
  * registered for the type (kept defensive — the layout falls back
  * to gap-only spacing rather than throwing).
  */
-const shapeAdvanceSize = (shape: Shape): { width: number; height: number } => {
+const shapeAdvanceSize = (shape: Element): { width: number; height: number } => {
   try {
     const local = getShapeLocalBounds(shape);
     return {
@@ -59,7 +59,7 @@ export const gridLayout: LayoutFn<GridLayoutSpec> = (scene, spec) => {
   if (spec.shapeIds.length === 0 || spec.cols < 1) return null;
   const gap = spec.gap ?? 16;
   const origin = spec.origin ?? { x: 0, y: 0 };
-  const shapes: Shape[] = [];
+  const shapes: Element[] = [];
   for (const id of spec.shapeIds) {
     const s = getShape(scene, id);
     if (s) shapes.push(s);
@@ -96,7 +96,7 @@ export const stackLayout: LayoutFn<StackLayoutSpec> = (scene, spec) => {
   if (spec.shapeIds.length === 0) return null;
   const gap = spec.gap ?? 16;
   const origin = spec.origin ?? { x: 0, y: 0 };
-  const shapes: Shape[] = [];
+  const shapes: Element[] = [];
   for (const id of spec.shapeIds) {
     const s = getShape(scene, id);
     if (s) shapes.push(s);
@@ -158,7 +158,7 @@ export type AutoLayoutSpec =
  * missing. Callers should treat `null` as "not an auto-layout
  * container — leave its children alone".
  */
-export const getAutoLayoutSpec = (shape: Shape): AutoLayoutSpec | null => {
+export const getAutoLayoutSpec = (shape: Element): AutoLayoutSpec | null => {
   const m = shape.metadata?.autoLayout;
   if (!m || typeof m !== "object") return null;
   const raw = m as { kind?: string; cols?: number; gap?: number; direction?: string };
@@ -289,8 +289,8 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   const origin = spec.origin ?? { x: 0, y: 0 };
 
   // Build a child-of map filtered to shapes that exist.
-  const childrenOf = (id: ElementId): Shape[] => {
-    const out: Shape[] = [];
+  const childrenOf = (id: ElementId): Element[] => {
+    const out: Element[] = [];
     for (const s of scene.shapes.values()) {
       if (s.parentId === id) out.push(s);
     }
@@ -305,8 +305,8 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   // path / freedraw shapes report their real AABB; reading
   // `shape.width` directly returns `undefined` for them and would
   // collapse every non-rectangle/ellipse node to a zero-sized box.
-  const shapeWidth = (s: Shape): number => shapeAdvanceSize(s).width;
-  const shapeHeight = (s: Shape): number => shapeAdvanceSize(s).height;
+  const shapeWidth = (s: Element): number => shapeAdvanceSize(s).width;
+  const shapeHeight = (s: Element): number => shapeAdvanceSize(s).height;
 
   const measure = (id: ElementId): { w: number; h: number } => {
     if (widthOf.has(id)) return { w: widthOf.get(id)!, h: heightOf.get(id)! };

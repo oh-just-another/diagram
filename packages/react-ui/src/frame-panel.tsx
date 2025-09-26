@@ -1,10 +1,10 @@
 import { useMemo, type CSSProperties } from "react";
 import type { ElementId } from "@oh-just-another/types";
-import { type FrameShape } from "@oh-just-another/scene";
+import { type FrameElement } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene } from "./hooks.js";
 
 /**
- * Sidebar panel listing every `FrameShape` in the scene. Each row
+ * Sidebar panel listing every `FrameElement` in the scene. Each row
  * shows the frame's name and size and exposes two actions:
  *
  *   • Select — sets the editor's selection to the frame.
@@ -14,7 +14,7 @@ import { useDiagramOptional, useScene } from "./hooks.js";
  */
 export interface FramePanelProps {
   /** Host-side export callback. Invoked per-frame on the action click. */
-  readonly onExport?: (frameId: ElementId, frame: FrameShape) => void;
+  readonly onExport?: (frameId: ElementId, frame: FrameElement) => void;
   readonly style?: CSSProperties;
 }
 
@@ -22,10 +22,10 @@ export const FramePanel = ({ onExport, style }: FramePanelProps) => {
   const editor = useDiagramOptional();
   const scene = useScene();
 
-  const frames = useMemo<readonly FrameShape[]>(() => {
-    const out: FrameShape[] = [];
+  const frames = useMemo<readonly FrameElement[]>(() => {
+    const out: FrameElement[] = [];
     for (const s of scene.shapes.values()) {
-      if (s.type === "frame") out.push(s as FrameShape);
+      if (s.type === "frame") out.push(s as FrameElement);
     }
     out.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
     return out;

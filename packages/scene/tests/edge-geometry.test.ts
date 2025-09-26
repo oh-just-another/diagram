@@ -9,10 +9,10 @@ import {
   getEdgePath,
   orderBetween,
   type Edge,
-  type RectangleShape,
+  type RectangleElement,
 } from "../src/index";
 
-const rect = (id: string, x: number, y: number, w = 100, h = 60): RectangleShape => ({
+const rect = (id: string, x: number, y: number, w = 100, h = 60): RectangleElement => ({
   id: elementId(id),
   layerId: layerId(DEFAULT_LAYER_ID),
   type: "rectangle",
@@ -35,7 +35,7 @@ const edge = (overrides: Partial<Edge>): Edge => ({
   ...overrides,
 });
 
-const sceneWith = (shapes: RectangleShape[], edges: Edge[] = []) => {
+const sceneWith = (shapes: RectangleElement[], edges: Edge[] = []) => {
   let s = emptyScene();
   for (const sh of shapes) ({ scene: s } = addShape(s, sh));
   for (const e of edges) ({ scene: s } = addEdge(s, e));

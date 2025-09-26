@@ -8,11 +8,11 @@ import {
   orderBetween,
   type Patch,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
-const rect = (id: string, x: number, y: number, w = 20, h = 20): Shape => ({
+const rect = (id: string, x: number, y: number, w = 20, h = 20): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -25,7 +25,7 @@ const rect = (id: string, x: number, y: number, w = 20, h = 20): Shape => ({
   height: h,
 });
 
-const sceneWith = (...shapes: Shape[]): Scene => {
+const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const shape of shapes) {
     s = apply(s, {
@@ -330,7 +330,7 @@ describe("group lock / hide propagation", () => {
 
     // Mark the group locked directly on the scene.
     const before = editor.scene.shapes.get(groupId)!;
-    const locked: Shape = { ...before, locked: true };
+    const locked: Element = { ...before, locked: true };
     (editor as unknown as { _scene: Scene })._scene = {
       ...editor.scene,
       shapes: new Map(editor.scene.shapes).set(groupId, locked),
@@ -354,7 +354,7 @@ describe("group lock / hide propagation", () => {
     const groupId = r.groupId;
 
     const before = editor.scene.shapes.get(groupId)!;
-    const hidden: Shape = { ...before, hidden: true };
+    const hidden: Element = { ...before, hidden: true };
     (editor as unknown as { _scene: Scene })._scene = {
       ...editor.scene,
       shapes: new Map(editor.scene.shapes).set(groupId, hidden),
@@ -369,7 +369,7 @@ describe("group lock / hide propagation", () => {
 });
 
 describe("auto-layout containers", () => {
-  const containerWithAutoLayout = (kind: "grid" | "stack"): Shape => ({
+  const containerWithAutoLayout = (kind: "grid" | "stack"): Element => ({
     id: elementId("parent"),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",
@@ -388,7 +388,7 @@ describe("auto-layout containers", () => {
     },
   });
 
-  const childOf = (id: string, parentId: ReturnType<typeof elementId>, x: number, y: number): Shape => ({
+  const childOf = (id: string, parentId: ReturnType<typeof elementId>, x: number, y: number): Element => ({
     id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",
@@ -469,7 +469,7 @@ describe("auto-layout containers", () => {
   // auto-layout, and its `position` stays put.
   // ---------------------------------------------------------------
   it("does not shift the container on add/runLayout when a child fits cleanly", async () => {
-    const parent: Shape = {
+    const parent: Element = {
       ...containerWithAutoLayout("grid"),
       metadata: {
         autoLayout: { kind: "grid", cols: 2, gap: 10 },
@@ -515,7 +515,7 @@ describe("auto-layout containers", () => {
       position: { x: 50, y: 60 },
       width: 400,
       height: 400,
-    } as Shape;
+    } as Element;
     const editor = makeEditor(sceneWith(parent));
 
     // First library drop. `beginPlacement` adds the shape; its

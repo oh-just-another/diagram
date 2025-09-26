@@ -1,6 +1,6 @@
 /**
  * Optional host-provided text measurer. The text bounder
- * (`getShapeLocalBounds` for `TextShape`) is otherwise purely
+ * (`getShapeLocalBounds` for `TextElement`) is otherwise purely
  * geometric (`chars × fontSize × factor`), which can diverge a lot
  * from the actually-rendered width — the WebGL2 MSDF path draws with a
  * WASM-baked font whose glyph advances differ from any geometric

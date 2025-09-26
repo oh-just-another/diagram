@@ -12,7 +12,7 @@ import {
   addShape,
   emptyScene,
   orderBetween,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "@oh-just-another/state";
 import { installBuiltinRenderers } from "@oh-just-another/renderer-canvas";
@@ -20,7 +20,7 @@ import { DiagramProvider, PropertyPanel, TooltipProvider } from "../src/index";
 
 installBuiltinRenderers();
 
-const rect: Shape = {
+const rect: Element = {
   id: elementId("r1"),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

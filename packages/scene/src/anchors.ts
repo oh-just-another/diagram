@@ -1,7 +1,7 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { isContainer } from "./container.js";
 import type { AnchorRef, NamedAnchor, StandardAnchor } from "./edge.js";
-import type { ShapeBase } from "./shape.js";
+import type { ElementBase } from "./shape.js";
 import { getShapeLocalBounds } from "./shape.js";
 
 const EMPTY_ANCHOR_EXCLUDE: ReadonlySet<string> = new Set<string>();
@@ -19,7 +19,7 @@ const EMPTY_ANCHOR_EXCLUDE: ReadonlySet<string> = new Set<string>();
  *
  * `top` / `right` / `bottom` / `left` are the edge centres; `top-left` etc.
  * are the corners. Hosts may add custom anchors per shape via the
- * `anchors` field on `ShapeBase`.
+ * `anchors` field on `ElementBase`.
  */
 export const STANDARD_ANCHOR_RATIOS: Readonly<Record<StandardAnchor, Vec2>> = {
   "top-left": { x: 0, y: 0 },
@@ -54,7 +54,7 @@ export const STANDARD_ANCHORS: readonly StandardAnchor[] = [
  * Hosts looking up an `AnchorRef` should call `getAnchorLocal` /
  * `getAnchorWorld` instead — those handle every `AnchorRef` kind.
  */
-export const getNamedAnchorLocal = (shape: ShapeBase, name: NamedAnchor): Vec2 | undefined => {
+export const getNamedAnchorLocal = (shape: ElementBase, name: NamedAnchor): Vec2 | undefined => {
   const custom = shape.anchors?.[name];
   if (custom !== undefined) return resolveAnchorRefLocal(shape, custom);
   const standard = STANDARD_ANCHOR_RATIOS[name as StandardAnchor];
@@ -69,7 +69,7 @@ export const getNamedAnchorLocal = (shape: ShapeBase, name: NamedAnchor): Vec2 |
  * named anchor — callers either pass a `ratio` / `absolute` ref or use a
  * registered standard / custom name.
  */
-export const getAnchorLocal = (shape: ShapeBase, anchor: AnchorRef): Vec2 => {
+export const getAnchorLocal = (shape: ElementBase, anchor: AnchorRef): Vec2 => {
   return resolveAnchorRefLocal(shape, anchor);
 };
 
@@ -78,7 +78,7 @@ export const getAnchorLocal = (shape: ShapeBase, anchor: AnchorRef): Vec2 => {
  * `position` + `rotation` + `scale` to the local resolution from
  * `getAnchorLocal`.
  */
-export const getAnchorWorld = (shape: ShapeBase, anchor: AnchorRef): Vec2 => {
+export const getAnchorWorld = (shape: ElementBase, anchor: AnchorRef): Vec2 => {
   const local = getAnchorLocal(shape, anchor);
   const sx = local.x * shape.scale.x;
   const sy = local.y * shape.scale.y;
@@ -100,7 +100,7 @@ export const getAnchorWorld = (shape: ShapeBase, anchor: AnchorRef): Vec2 => {
  * custom ones) so the edge tracks the shape on subsequent edits.
  */
 export const findNearestAnchor = (
-  shape: ShapeBase,
+  shape: ElementBase,
   worldPoint: Vec2,
   excludeNames: ReadonlySet<string> = EMPTY_ANCHOR_EXCLUDE,
 ): { ref: AnchorRef; world: Vec2; distance: number } => {
@@ -147,14 +147,14 @@ export const findNearestAnchor = (
  * explicitly via `kind: "anchor", anchor: { kind: "named", name:
  * "center" }` — only the auto snap is filtered.
  */
-export const snapExcludedAnchors = (shape: ShapeBase): ReadonlySet<string> => {
+export const snapExcludedAnchors = (shape: ElementBase): ReadonlySet<string> => {
   if (isContainer(shape)) return CONTAINER_SNAP_EXCLUDED;
   return EMPTY_ANCHOR_EXCLUDE;
 };
 
 const CONTAINER_SNAP_EXCLUDED: ReadonlySet<string> = new Set(["center"]);
 
-export const listAnchorsLocal = (shape: ShapeBase): ReadonlyMap<string, Vec2> => {
+export const listAnchorsLocal = (shape: ElementBase): ReadonlyMap<string, Vec2> => {
   const out = new Map<string, Vec2>();
   const b = getShapeLocalBounds(shape);
   for (const name of STANDARD_ANCHORS) {
@@ -171,7 +171,7 @@ export const listAnchorsLocal = (shape: ShapeBase): ReadonlyMap<string, Vec2> =>
 
 // --- internal ---
 
-const resolveAnchorRefLocal = (shape: ShapeBase, anchor: AnchorRef): Vec2 => {
+const resolveAnchorRefLocal = (shape: ElementBase, anchor: AnchorRef): Vec2 => {
   switch (anchor.kind) {
     case "named": {
       const point = lookupNamed(shape, anchor.name);
@@ -194,7 +194,7 @@ const resolveAnchorRefLocal = (shape: ShapeBase, anchor: AnchorRef): Vec2 => {
   }
 };
 
-const lookupNamed = (shape: ShapeBase, name: NamedAnchor): Vec2 | undefined => {
+const lookupNamed = (shape: ElementBase, name: NamedAnchor): Vec2 | undefined => {
   const custom = shape.anchors?.[name];
   if (custom !== undefined) {
     // Custom entry — resolve recursively (custom may itself be a ratio /

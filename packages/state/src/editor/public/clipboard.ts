@@ -1,4 +1,4 @@
-import type { Scene, Shape } from "@oh-just-another/scene";
+import type { Scene, Element } from "@oh-just-another/scene";
 import {
   copyShapes as copyShapesHelper,
   pasteShapes as pasteShapesHelper,
@@ -19,7 +19,7 @@ import * as Selection from "../../selection.js";
 export const copySelected = (
   scene: Scene,
   selection: Selection.Selection,
-): readonly Shape[] => copyShapesHelper(scene, selection);
+): readonly Element[] => copyShapesHelper(scene, selection);
 
 /**
  * Paste: produce the new scene + freshly-generated shape ids for
@@ -37,7 +37,7 @@ export const copySelected = (
 export const pasteFromClipboard = (
   scene: Scene,
   history: HistoryProvider,
-  clipboard: readonly Shape[],
+  clipboard: readonly Element[],
   target: Vec2 | null,
   nextIdSeed: () => number,
 ): {

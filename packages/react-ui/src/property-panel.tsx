@@ -29,9 +29,9 @@ import {
   type Edge,
   type EdgeRouting,
   type Roundness,
-  type ShapeBase,
+  type ElementBase,
   type TextAlign,
-  type TextShape,
+  type TextElement,
   type TextStyle,
 } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene, useSelectedEdge, useSelection } from "./hooks.js";
@@ -75,7 +75,7 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
   if (selection.size > 0) {
     const shapes = [...selection]
       .map((id) => scene.shapes.get(id))
-      .filter((s): s is ShapeBase => s !== undefined);
+      .filter((s): s is ElementBase => s !== undefined);
     if (shapes.length === 0) return null;
     // Per-type control sets:
     //  - text  → typography (font size / family / alignment + colour);
@@ -140,19 +140,13 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
 };
 
 /**
- * «⋯» trailing button — opens the same context menu a right-click
- * does, anchored just below the button. Present in every panel branch
- * so the full command set is always one click away. Renders nothing
- * when there's no controller (no `<ContextMenu>` mounted) or no editor.
+ * Element link control. One trigger (chain icon, active when a link is
+ * set) opens a popover with a URL field plus Save / Open / Remove. Works
+ * for any shape — the href lives on `ElementBase`. The URL is normalised
+ * (`normalizeHref`: adds `https://`, `mailto:`, rejects `javascript:`)
+ * before storing. Multi-select applies to all.
  */
-/**
- * Element link control (T6). One trigger (chain icon, active when a link
- * is set) opens a popover with a URL field + Save / Open / Remove. Works
- * for any shape (text, image, …) — the href lives on `ShapeBase`. The
- * URL is normalised (`normalizeHref`: adds `https://`, `mailto:`, rejects
- * `javascript:`) before storing. Multi-select applies to all.
- */
-const LinkControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const LinkControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   const inputRef = useRef<HTMLInputElement>(null);
   if (!editor) return null;
@@ -296,7 +290,7 @@ const ColorTrigger = ({
  * panel in place of separate Fill + Opacity triggers. Writes `fill` and
  * `opacity` through `editor.updateStyle`.
  */
-const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
@@ -342,7 +336,7 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ShapeBase[]
   );
 };
 
-const FillControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const FillControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor || !shapes.some(hasFill)) return null;
   const value = sharedString(shapes, (s) => s.style?.fill);
@@ -360,16 +354,16 @@ const FillControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
 // ---------------------------------------------------------------------------
 // Text controls — rendered only for a text-only selection (see the
 // dispatcher in `PropertyPanel`). `fontSize` / `fontFamily` are
-// top-level `TextShape` fields written via `editor.updateTextProps`;
+// top-level `TextElement` fields written via `editor.updateTextProps`;
 // `textAlign` / `textBaseline` are `TextStyle` fields written via
 // `editor.updateStyle`.
 // ---------------------------------------------------------------------------
 
-const FontSizeControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
-  const value = sharedValue<number>(shapes, (s) => (s as TextShape).fontSize ?? null);
+  const value = sharedValue<number>(shapes, (s) => (s as TextElement).fontSize ?? null);
   const presetValue =
     value !== null && TEXT_FONT_SIZE_PRESETS.some((p) => p.value === value) ? value : null;
   return (
@@ -412,11 +406,11 @@ const FontSizeControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) 
   );
 };
 
-const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
-  const value = sharedString(shapes, (s) => (s as TextShape).fontFamily);
+  const value = sharedString(shapes, (s) => (s as TextElement).fontFamily);
   const current = TEXT_FONT_STACKS.find((f) => f.value === value);
   const label = value === null ? "Mixed" : (current?.label ?? "Custom");
   return (
@@ -454,11 +448,11 @@ const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }
   );
 };
 
-const TextAlignControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
-  const value = sharedValue<TextAlign>(shapes, (s) => (s as TextShape).style?.textAlign ?? "left");
+  const value = sharedValue<TextAlign>(shapes, (s) => (s as TextElement).style?.textAlign ?? "left");
   return (
     <SegmentedControl<TextAlign>
       ariaLabel="Text alignment"
@@ -480,7 +474,7 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] })
  * underline/strikethrough→merged `textDecoration`. Active = every
  * selected shape already has that decoration on.
  */
-const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
@@ -564,7 +558,7 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ShapeBase
   );
 };
 
-const StrokeControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const StrokeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor || !shapes.some(hasStroke)) return null;
   const value = sharedString(shapes, (s) => s.style?.stroke);
@@ -579,7 +573,7 @@ const StrokeControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) =>
   );
 };
 
-const StrokeWidthControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const StrokeWidthControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor || !shapes.some((s) => s.style?.stroke !== undefined)) return null;
   const value = sharedValue<number>(shapes, (s) => s.style?.strokeWidth ?? null);
@@ -598,7 +592,7 @@ const StrokeWidthControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] 
   );
 };
 
-const StrokeStyleControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const StrokeStyleControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor || !shapes.some(hasStroke)) return null;
   // Tolerant detection: any 2-element array with first ≤ 3 → dotted;
@@ -637,7 +631,7 @@ const StrokeStyleControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] 
  * the round-radius slider plus an auto checkbox. Renders nothing when no
  * corner-capable shapes are selected.
  */
-const RoundnessControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const supports = shapes.every((s) => s.type === "rectangle" || s.type === "container");
@@ -714,7 +708,7 @@ const RoundnessControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] })
  * slider. The trigger is always rendered (even at implicit opacity 1) so
  * the user can jump to 50% without a multi-step interaction.
  */
-const OpacityControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const OpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const value = sharedValue<number>(shapes, (s) => s.style?.opacity ?? 1);
@@ -786,7 +780,7 @@ const ZOrderControl = () => {
  */
 type ActionId = "duplicate" | "delete" | "group" | "ungroup";
 
-const ActionsControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) => {
+const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const canGroup = shapes.length >= 2;
@@ -803,7 +797,7 @@ const ActionsControl = ({ shapes }: { readonly shapes: readonly ShapeBase[] }) =
   }
   return (
     <SegmentedControl<ActionId>
-      ariaLabel="Shape actions"
+      ariaLabel="Element actions"
       value={null}
       options={options}
       onChange={(v) => {
@@ -1102,8 +1096,8 @@ const CornerIcon = ({ kind }: { readonly kind: Roundness["type"] }) => {
 // ---------------------------------------------------------------------------
 
 const sharedValue = <T,>(
-  shapes: readonly ShapeBase[],
-  pick: (s: ShapeBase) => T | null | undefined,
+  shapes: readonly ElementBase[],
+  pick: (s: ElementBase) => T | null | undefined,
 ): T | null => {
   const set = new Set<T | null | undefined>();
   for (const s of shapes) set.add(pick(s));
@@ -1113,12 +1107,12 @@ const sharedValue = <T,>(
 };
 
 const sharedString = (
-  shapes: readonly ShapeBase[],
-  pick: (s: ShapeBase) => unknown,
+  shapes: readonly ElementBase[],
+  pick: (s: ElementBase) => unknown,
 ): string | null => {
   const value = sharedValue<unknown>(shapes, (s) => pick(s));
   return typeof value === "string" ? value : null;
 };
 
-const hasFill = (shape: ShapeBase): boolean => shape.style?.fill !== undefined;
-const hasStroke = (shape: ShapeBase): boolean => shape.style?.stroke !== undefined;
+const hasFill = (shape: ElementBase): boolean => shape.style?.fill !== undefined;
+const hasStroke = (shape: ElementBase): boolean => shape.style?.stroke !== undefined;

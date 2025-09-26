@@ -1,4 +1,4 @@
-import type { ShapeBase } from "@oh-just-another/scene";
+import type { ElementBase } from "@oh-just-another/scene";
 import type { Vec2 } from "@oh-just-another/types";
 import type { InteractionEmit } from "./machine.js";
 
@@ -11,7 +11,7 @@ import type { InteractionEmit } from "./machine.js";
  * shape's `position` / `rotation` / `scale` are removed). Returning `null`
  * means "no interactive element here — fall back to default press".
  */
-export type InteractiveHitTester = (shape: ShapeBase, localPoint: Vec2) => InteractionEmit | null;
+export type InteractiveHitTester = (shape: ElementBase, localPoint: Vec2) => InteractionEmit | null;
 
 const registry = new Map<string, InteractiveHitTester>();
 

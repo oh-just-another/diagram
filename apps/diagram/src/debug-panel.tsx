@@ -8,7 +8,7 @@ import {
   type Edge,
   type Patch,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import type { Editor } from "@oh-just-another/state";
 import { defaultRegistry, type Template, type TemplateContext } from "@oh-just-another/templates";
@@ -325,7 +325,7 @@ const InspectorTab = ({ editor }: { editor: Editor }) => {
   );
 };
 
-const ShapeCard = ({ shape }: { shape: Shape }) => {
+const ShapeCard = ({ shape }: { shape: Element }) => {
   let aabb: ReturnType<typeof getShapeWorldBounds> | null = null;
   try {
     aabb = getShapeWorldBounds(shape);
@@ -571,7 +571,7 @@ const GeneratorsTab = ({ editor }: { editor: Editor }) => {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
       <Card>
-        <Section title="Shape template">
+        <Section title="Element template">
           <select
             value={templateId}
             onChange={(e) => setTemplateId(e.target.value)}
@@ -1076,7 +1076,7 @@ const buildOne = (
   editor: Editor,
   template: Template,
   position: { x: number; y: number },
-): Shape => {
+): Element => {
   const ctx: TemplateContext = {
     id: nextDebugId(template.id),
     layerId: activeLayerId(editor),
@@ -1086,8 +1086,8 @@ const buildOne = (
   return template.factory(ctx);
 };
 
-const lastOrder = (editor: Editor): Shape["order"] | null => {
-  let max: Shape["order"] | null = null;
+const lastOrder = (editor: Editor): Element["order"] | null => {
+  let max: Element["order"] | null = null;
   for (const s of editor.scene.shapes.values()) {
     if (max === null || s.order > max) max = s.order;
   }
@@ -1095,7 +1095,7 @@ const lastOrder = (editor: Editor): Shape["order"] | null => {
 };
 
 interface BuildResult {
-  readonly shapes: readonly Shape[];
+  readonly shapes: readonly Element[];
   readonly edges?: readonly Edge[];
 }
 
@@ -1148,7 +1148,7 @@ const buildGrid = (
   template: Template,
   opts: GridOptions,
 ): BuildResult => {
-  const shapes: Shape[] = [];
+  const shapes: Element[] = [];
   const layerId = activeLayerId(editor);
   // Build first instance to measure the cell size (templates have
   // different intrinsic sizes — rectangle is 140×80, sticky is
@@ -1165,7 +1165,7 @@ const buildGrid = (
   const strideX = cellW + opts.gap;
   const strideY = cellH + opts.gap;
 
-  let order: Shape["order"] = orderBetween(lastOrder(editor), null);
+  let order: Element["order"] = orderBetween(lastOrder(editor), null);
   for (let i = 0; i < opts.count; i++) {
     const col = i % opts.cols;
     const row = Math.floor(i / opts.cols);
@@ -1232,11 +1232,11 @@ const buildStack = (
   template: Template,
   opts: StackOptions,
 ): BuildResult => {
-  const shapes: Shape[] = [];
+  const shapes: Element[] = [];
   const layerId = activeLayerId(editor);
   let cursorX = opts.origin.x;
   let cursorY = opts.origin.y;
-  let order: Shape["order"] = orderBetween(lastOrder(editor), null);
+  let order: Element["order"] = orderBetween(lastOrder(editor), null);
   for (let i = 0; i < opts.count; i++) {
     const shape = template.factory({
       id: nextDebugId(template.id),
@@ -1305,16 +1305,16 @@ const placePoint = (
   x: number,
   y: number,
   scale: number,
-  order: Shape["order"],
+  order: Element["order"],
   fill: string | null,
-): Shape => {
+): Element => {
   const base = template.factory({
     id: nextDebugId(template.id),
     layerId,
     position: { x, y },
     order,
   });
-  const shape = { ...base, scale: { x: scale, y: scale } } as Shape;
+  const shape = { ...base, scale: { x: scale, y: scale } } as Element;
   return fill ? withFill(shape, fill) : shape;
 };
 
@@ -1329,7 +1329,7 @@ const buildTreeFractal = (
 ): BuildResult => {
   const depth = opts.a;
   const branches = opts.b;
-  const shapes: Shape[] = [];
+  const shapes: Element[] = [];
   const layerId = activeLayerId(editor);
   const probe = template.factory({
     id: nextDebugId(`${template.id}-probe`),
@@ -1338,7 +1338,7 @@ const buildTreeFractal = (
     order: orderBetween(null, null),
   });
   const segLen = safeBounds(probe).height || 80;
-  let order: Shape["order"] = orderBetween(lastOrder(editor), null);
+  let order: Element["order"] = orderBetween(lastOrder(editor), null);
 
   const place = (x: number, y: number, angle: number, scale: number, level: number): void => {
     if (shapes.length >= FRACTAL_MAX_SHAPES) return;
@@ -1349,7 +1349,7 @@ const buildTreeFractal = (
       order,
     });
     order = orderBetween(order, null);
-    let shape: Shape = { ...base, rotation: angle, scale: { x: scale, y: scale } } as Shape;
+    let shape: Element = { ...base, rotation: angle, scale: { x: scale, y: scale } } as Element;
     if (opts.colorful) shape = withFill(shape, hslToHex((level / Math.max(depth, 1)) * 300, 70, 62));
     shapes.push(shape);
     if (level >= depth) return;
@@ -1386,7 +1386,7 @@ const buildEscapeFractal = (
   const isJulia = opts.type === "julia";
   // Complex-plane window. Mandelbrot centred on the cardioid; Julia on origin.
   const [re0, re1, im0, im1] = isJulia ? [-1.6, 1.6, -1.6, 1.6] : [-2.2, 0.8, -1.4, 1.4];
-  const shapes: Shape[] = [];
+  const shapes: Element[] = [];
   const layerId = activeLayerId(editor);
   const probe = template.factory({
     id: nextDebugId(`${template.id}-probe`),
@@ -1395,7 +1395,7 @@ const buildEscapeFractal = (
     order: orderBetween(null, null),
   });
   const baseW = safeBounds(probe).width || 80;
-  let order: Shape["order"] = orderBetween(lastOrder(editor), null);
+  let order: Element["order"] = orderBetween(lastOrder(editor), null);
   // Below this escape-time a flat cell counts as "far exterior" — the
   // fast-escaping background. With `skipOutside` we drop those fills
   // entirely, keeping only the set interior + coloured near-boundary
@@ -1503,7 +1503,7 @@ const buildAttractorFractal = (
   const p = isClifford ? CLIFFORD_PARAMS : DEJONG_PARAMS;
   // Attractor coordinate range: de Jong ⊂ [-2, 2]; Clifford a bit wider.
   const span = isClifford ? 3 : 2;
-  const shapes: Shape[] = [];
+  const shapes: Element[] = [];
   const layerId = activeLayerId(editor);
   // Base point size scales with the world span so points stay
   // visible across the 5%→3200% zoom range. `b` (Point scale %)
@@ -1516,7 +1516,7 @@ const buildAttractorFractal = (
   });
   const baseW = safeBounds(probe).width || 80;
   const scale = ((opts.b / 100) * FRACTAL_WORLD_SPAN * 0.015) / baseW;
-  let order: Shape["order"] = orderBetween(lastOrder(editor), null);
+  let order: Element["order"] = orderBetween(lastOrder(editor), null);
   let x = 0.1;
   let y = 0.1;
   const total = points + ATTRACTOR_WARMUP;
@@ -1549,7 +1549,7 @@ const buildAttractorFractal = (
   return { shapes };
 };
 
-const safeBounds = (shape: Shape) => {
+const safeBounds = (shape: Element) => {
   try {
     return getShapeWorldBounds(shape);
   } catch {
@@ -1557,8 +1557,8 @@ const safeBounds = (shape: Shape) => {
   }
 };
 
-const withFill = (shape: Shape, fill: string): Shape =>
-  ({ ...shape, style: { ...shape.style, fill } }) as Shape;
+const withFill = (shape: Element, fill: string): Element =>
+  ({ ...shape, style: { ...shape.style, fill } }) as Element;
 
 // The project's color parser (packages/math/src/color.ts) accepts only
 // hex / rgb / rgba / a small named set — `hsl()` falls back to opaque
@@ -1638,7 +1638,7 @@ const runMosaicChunks = async (
 
   const layerId = activeLayerId(editor);
   let scene = editor.scene;
-  let order: Shape["order"] = orderBetween(null, null);
+  let order: Element["order"] = orderBetween(null, null);
   const origin = viewportTopLeftWithMargin(editor);
 
   const total = cols * rows;
@@ -1665,7 +1665,7 @@ const runMosaicChunks = async (
         Math.max(1, Math.floor(sampleH)),
         image.width,
       );
-      const shape: Shape = {
+      const shape: Element = {
         id: nextDebugId(`mosaic-${i}`),
         layerId,
         type: "rectangle",

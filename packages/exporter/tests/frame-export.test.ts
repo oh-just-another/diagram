@@ -6,11 +6,11 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { sceneForFrame } from "../src/region";
 
-const frame = (id: string, x: number, y: number, w: number, h: number, name = "Frame 1"): Shape =>
+const frame = (id: string, x: number, y: number, w: number, h: number, name = "Frame 1"): Element =>
   ({
     id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
@@ -23,9 +23,9 @@ const frame = (id: string, x: number, y: number, w: number, h: number, name = "F
     width: w,
     height: h,
     name,
-  } as Shape);
+  } as Element);
 
-const rect = (id: string, parent?: string, x = 0, y = 0): Shape =>
+const rect = (id: string, parent?: string, x = 0, y = 0): Element =>
   ({
     id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
@@ -38,9 +38,9 @@ const rect = (id: string, parent?: string, x = 0, y = 0): Shape =>
     width: 40,
     height: 40,
     ...(parent ? { frameId: elementId(parent) } : {}),
-  } as Shape);
+  } as Element);
 
-const sceneWith = (...shapes: Shape[]): Scene => {
+const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) s = addShape(s, sh).scene;
   return s;

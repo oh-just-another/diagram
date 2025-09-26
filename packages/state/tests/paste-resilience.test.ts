@@ -6,12 +6,12 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { History } from "@oh-just-another/history";
 import { Editor } from "../src/editor.js";
 
-const rect = (id: string): Shape => ({
+const rect = (id: string): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -30,7 +30,7 @@ const rect = (id: string): Shape => ({
  * stand-in object with a method, which `structuredClone` also rejects
  * (`DataCloneError`).
  */
-const imageWithLiveHandle = (id: string): Shape =>
+const imageWithLiveHandle = (id: string): Element =>
   ({
     id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
@@ -46,9 +46,9 @@ const imageWithLiveHandle = (id: string): Shape =>
     height: 30,
     // Functions are not structured-cloneable → mimics a DOM <img>.
     metadata: { image: { draw() {} } },
-  }) as unknown as Shape;
+  }) as unknown as Element;
 
-const sceneWith = (...shapes: Shape[]): Scene => {
+const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) s = addShape(s, sh).scene;
   return s;

@@ -27,7 +27,7 @@ const measureImage = (dataUrl: string): Promise<{ width: number; height: number 
 
 /**
  * Built-in handler: any file matching IMAGE_MIME_TYPES becomes an
- * ImageShape at the drop point. Measured size is downscaled to
+ * ImageElement at the drop point. Measured size is downscaled to
  * `DEFAULT_IMAGE_MAX_EDGE_PX` on the longer axis so huge phone
  * snapshots arrive at a reasonable on-canvas size.
  *

@@ -1,7 +1,7 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import { bounds as B } from "@oh-just-another/math";
 import type { Scene } from "./scene.js";
-import type { Shape, ShapeBase } from "./shape.js";
+import type { Element, ElementBase } from "./shape.js";
 import { getLayersInOrder, getShapesInLayer } from "./queries.js";
 import { getShapeWorldBounds } from "./shape.js";
 
@@ -33,7 +33,7 @@ export interface ContainerSpec {
  *
  * Registered by `@templates` so kernel packages stay UI-agnostic.
  */
-export type ContainerResolver = (shape: ShapeBase) => ContainerSpec | null;
+export type ContainerResolver = (shape: ElementBase) => ContainerSpec | null;
 
 const resolvers: ContainerResolver[] = [];
 
@@ -47,7 +47,7 @@ export const registerContainerResolver = (resolver: ContainerResolver): void => 
 };
 
 /** True when a shape is declared a container — via resolver or metadata. */
-export const isContainer = (s: ShapeBase): boolean => getContainerSpec(s) !== null;
+export const isContainer = (s: ElementBase): boolean => getContainerSpec(s) !== null;
 
 /**
  * Resolve the current `ContainerSpec` for `s`. Tries every registered
@@ -60,7 +60,7 @@ export const isContainer = (s: ShapeBase): boolean => getContainerSpec(s) !== nu
  * `metadata.container` spec for hand-authored containers. Returns
  * `null` when the shape is not a container.
  */
-export const getContainerSpec = (s: ShapeBase): ContainerSpec | null => {
+export const getContainerSpec = (s: ElementBase): ContainerSpec | null => {
   for (const resolver of resolvers) {
     const spec = resolver(s);
     if (spec) return spec;
@@ -74,7 +74,7 @@ export const getContainerSpec = (s: ShapeBase): ContainerSpec | null => {
   const meta = s.metadata as
     | { autoLayout?: unknown; container?: { padding?: number } }
     | undefined;
-  // ShapeBase doesn't carry width/height (text / path / freedraw
+  // ElementBase doesn't carry width/height (text / path / freedraw
   // shapes lack them); detect through a type-erased probe rather
   // than narrowing through TS overloads.
   const sized = s as unknown as { width?: unknown; height?: unknown };
@@ -120,7 +120,7 @@ const AUTO_LAYOUT_DEFAULT_PADDING = 0;
  * World-coord drop-zone rect for the given container shape. Returns
  * `null` when the shape is not a container.
  */
-export const getDropZoneWorld = (s: ShapeBase): Bounds | null => {
+export const getDropZoneWorld = (s: ElementBase): Bounds | null => {
   const spec = getContainerSpec(s);
   if (!spec) return null;
   return {
@@ -144,7 +144,7 @@ export const findContainerAt = (
   scene: Scene,
   worldPoint: Vec2,
   exclude: ReadonlySet<ElementId> = new Set(),
-): Shape | null => {
+): Element | null => {
   const layers = getLayersInOrder(scene);
   for (let i = layers.length - 1; i >= 0; i--) {
     const layer = layers[i]!;
@@ -171,7 +171,7 @@ export const findContainerAt = (
  * edges — the zone only grows, never shrinks.
  */
 export const expandDropZoneToFit = (
-  container: ShapeBase,
+  container: ElementBase,
   childWorld: Bounds,
 ): Bounds | null => {
   const spec = getContainerSpec(container);

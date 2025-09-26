@@ -2,9 +2,9 @@ import {
   apply,
   getShape,
   type Scene,
-  type Shape,
+  type Element,
   type Patch,
-  type TextShape,
+  type TextElement,
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "../../handle.js";
@@ -30,7 +30,7 @@ export const computeShapeResize = (
   handle: HandleId,
   delta: Vec2,
   originalBounds: Bounds,
-  clampContainer: (shape: Shape, raw: Bounds, handle: HandleId) => Bounds,
+  clampContainer: (shape: Element, raw: Bounds, handle: HandleId) => Bounds,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const shape = getShape(scene, id);
   if (!shape) return null;
@@ -45,13 +45,13 @@ export const computeShapeResize = (
   // pin `scale` to 1 — otherwise a non-1 scale carried over from a
   // previous group resize would multiply the new width and the
   // shape would jump out from under the cursor on the next gesture.
-  const next: Shape = {
+  const next: Element = {
     ...shape,
     position: { x: constrained.x, y: constrained.y },
     scale: { x: 1, y: 1 },
     width: constrained.width,
     height: constrained.height,
-  } as Shape;
+  } as Element;
   const patch: Patch = { kind: "shape", id, before: shape, after: next };
   return { scene: apply(scene, patch), patch };
 };
@@ -72,7 +72,7 @@ export const computeShapeResize = (
  */
 export const computeTextResize = (
   scene: Scene,
-  original: TextShape,
+  original: TextElement,
   handle: HandleId,
   delta: Vec2,
   originalBounds: Bounds,
@@ -86,7 +86,7 @@ export const computeTextResize = (
     const newMaxWidth = Math.max(original.fontSize, Math.abs(raw.width));
     const anchorX = handle === "w" ? originalBounds.x + originalBounds.width : originalBounds.x;
     const nx = handle === "w" ? anchorX - newMaxWidth : anchorX;
-    const next: Shape = {
+    const next: Element = {
       ...original,
       position: { x: nx, y: originalBounds.y },
       scale: { x: 1, y: 1 },
@@ -113,7 +113,7 @@ export const computeTextResize = (
   const ay = handle.includes("n") ? originalBounds.y + originalBounds.height : originalBounds.y;
   const nx = handle.includes("w") ? ax - newW : ax;
   const ny = handle.includes("n") ? ay - newH : ay;
-  const next: Shape = {
+  const next: Element = {
     ...original,
     position: { x: nx, y: ny },
     scale: { x: 1, y: 1 },
@@ -201,7 +201,7 @@ export const computeGroupResizePatches = (
       const newWidth = snap.bounds.width * wScale;
       const newHeight = snap.bounds.height * hScale;
       if (Math.abs(newWidth) < minDim || Math.abs(newHeight) < minDim) continue;
-      const nextShape: Shape = {
+      const nextShape: Element = {
         ...shape,
         position: { x: newPx, y: newPy },
         scale: {
@@ -210,7 +210,7 @@ export const computeGroupResizePatches = (
         },
         width: Math.abs(newWidth),
         height: Math.abs(newHeight),
-      } as Shape;
+      } as Element;
       const patch: Patch = { kind: "shape", id, before: shape, after: nextShape };
       runningScene = apply(runningScene, patch);
       patches.push(patch);
@@ -221,7 +221,7 @@ export const computeGroupResizePatches = (
     const newScaleY = snap.scale.y * sy;
     if (Math.abs(newScaleX) < minDim / Math.max(1, snap.bounds.width)) continue;
     if (Math.abs(newScaleY) < minDim / Math.max(1, snap.bounds.height)) continue;
-    const nextShape: Shape = {
+    const nextShape: Element = {
       ...shape,
       position: { x: newPx, y: newPy },
       scale: { x: newScaleX, y: newScaleY },

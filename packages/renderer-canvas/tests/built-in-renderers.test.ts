@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { layerId, elementId } from "@oh-just-another/types";
 import {
-  type EllipseShape,
-  type ImageShape,
-  type PathShape,
-  type PolygonShape,
-  type RectangleShape,
-  type TextShape,
+  type EllipseElement,
+  type ImageElement,
+  type PathElement,
+  type PolygonElement,
+  type RectangleElement,
+  type TextElement,
   orderBetween,
 } from "@oh-just-another/scene";
 import { getShapeRenderer, type RenderTarget } from "@oh-just-another/renderer-core";
@@ -46,7 +46,7 @@ beforeAll(() => {
 
 describe("built-in renderers", () => {
   it("rectangle calls rect → fill (when fill set)", () => {
-    const r: RectangleShape = {
+    const r: RectangleElement = {
       ...baseProps,
       id: elementId("r"),
       type: "rectangle",
@@ -62,7 +62,7 @@ describe("built-in renderers", () => {
   });
 
   it("rectangle without fill or stroke draws nothing", () => {
-    const r: RectangleShape = {
+    const r: RectangleElement = {
       ...baseProps,
       id: elementId("r"),
       type: "rectangle",
@@ -76,7 +76,7 @@ describe("built-in renderers", () => {
   });
 
   it("ellipse calls ellipse with semi-axes", () => {
-    const e: EllipseShape = {
+    const e: EllipseElement = {
       ...baseProps,
       id: elementId("e"),
       type: "ellipse",
@@ -92,7 +92,7 @@ describe("built-in renderers", () => {
   });
 
   it("polygon issues moveTo then lineTo for every vertex then closePath", () => {
-    const p: PolygonShape = {
+    const p: PolygonElement = {
       ...baseProps,
       id: elementId("p"),
       type: "polygon",
@@ -112,7 +112,7 @@ describe("built-in renderers", () => {
   });
 
   it("path dispatches M/L/Q/C/Z", () => {
-    const p: PathShape = {
+    const p: PathElement = {
       ...baseProps,
       id: elementId("pa"),
       type: "path",
@@ -141,7 +141,7 @@ describe("built-in renderers", () => {
   });
 
   it("text without maxWidth issues a single fillText", () => {
-    const t: TextShape = {
+    const t: TextElement = {
       ...baseProps,
       id: elementId("t"),
       type: "text",
@@ -158,7 +158,7 @@ describe("built-in renderers", () => {
   });
 
   it("text with maxWidth wraps into multiple fillText calls", () => {
-    const t: TextShape = {
+    const t: TextElement = {
       ...baseProps,
       id: elementId("t2"),
       type: "text",
@@ -174,7 +174,7 @@ describe("built-in renderers", () => {
   });
 
   it("text passes bold/italic to setFont", () => {
-    const t: TextShape = {
+    const t: TextElement = {
       ...baseProps,
       id: elementId("tb"),
       type: "text",
@@ -190,7 +190,7 @@ describe("built-in renderers", () => {
   });
 
   it("underlined / struck text draws decoration rects (rect + fill)", () => {
-    const t: TextShape = {
+    const t: TextElement = {
       ...baseProps,
       id: elementId("td"),
       type: "text",
@@ -207,7 +207,7 @@ describe("built-in renderers", () => {
   });
 
   it("image calls drawImage with shape width/height", () => {
-    const i: ImageShape = {
+    const i: ImageElement = {
       ...baseProps,
       id: elementId("i"),
       type: "image",

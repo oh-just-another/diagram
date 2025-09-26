@@ -74,7 +74,7 @@ export interface TextDecoration {
 
 /**
  * Text-specific style overlay. Inherits all `Style` fields (fill = text color,
- * stroke = outline). Layout metrics live on the `TextShape` itself, not here.
+ * stroke = outline). Layout metrics live on the `TextElement` itself, not here.
  */
 export interface TextStyle extends Style {
   readonly textAlign?: TextAlign;

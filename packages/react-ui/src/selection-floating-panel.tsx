@@ -13,7 +13,7 @@ import {
   getDescendantsOf,
   getShapeWorldBounds,
   isGroup,
-  type ShapeBase,
+  type ElementBase,
 } from "@oh-just-another/scene";
 import type { Editor } from "@oh-just-another/state";
 import { useDiagramOptional } from "./hooks.js";
@@ -207,7 +207,7 @@ const makeSelectionVirtualEl = (editor: Editor): VirtualElement | null => {
 const computeSelectionWorldBbox = (
   editor: Editor,
 ): { x: number; y: number; width: number; height: number } | null => {
-  const shapes: ShapeBase[] = [];
+  const shapes: ElementBase[] = [];
   for (const id of editor.selection) {
     const s = editor.scene.shapes.get(id);
     if (s) shapes.push(s);

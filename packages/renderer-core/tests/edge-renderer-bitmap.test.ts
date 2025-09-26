@@ -8,11 +8,11 @@ import {
   orderBetween,
   type Edge,
   type Patch,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { renderEdges, InMemoryEdgeBitmapCache } from "../src/index";
 
-const rect = (id: string, x = 0, y = 0, w = 10, h = 10): Shape => ({
+const rect = (id: string, x = 0, y = 0, w = 10, h = 10): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

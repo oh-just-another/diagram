@@ -8,11 +8,11 @@ import {
   orderBetween,
   type Patch,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
-const rect = (id: string, x = 0, order = orderBetween(null, null)): Shape => ({
+const rect = (id: string, x = 0, order = orderBetween(null, null)): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -25,7 +25,7 @@ const rect = (id: string, x = 0, order = orderBetween(null, null)): Shape => ({
   height: 20,
 });
 
-const sceneWith = (...shapes: Shape[]): Scene => {
+const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) {
     s = apply(s, { kind: "shape", id: sh.id, before: null, after: sh } satisfies Patch);
@@ -81,7 +81,7 @@ describe("compactLayerZOrder", () => {
     const b = rect("b", 10, prev);
     // 10 inserts BETWEEN the existing pair → strings lengthen.
     let middle = prev;
-    const between: Shape[] = [];
+    const between: Element[] = [];
     for (let i = 0; i < 10; i++) {
       middle = orderBetween(a.order, middle);
       between.push(rect(`m${i}`, 20 + i, middle));

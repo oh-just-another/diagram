@@ -18,11 +18,11 @@ import {
   updateShape,
   type Edge,
   type Layer,
-  type Shape,
+  type Element,
   type Viewport,
 } from "../src/index";
 
-const rect = (id: string, x = 0, y = 0): Shape => ({
+const rect = (id: string, x = 0, y = 0): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

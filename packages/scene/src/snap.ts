@@ -2,7 +2,7 @@ import type { Vec2 } from "@oh-just-another/types";
 import type { AnchorRef } from "./edge.js";
 import { findNearestOutlinePoint } from "./outline.js";
 import type { Scene } from "./scene.js";
-import type { ShapeBase } from "./shape.js";
+import type { ElementBase } from "./shape.js";
 import { findNearestAnchor, snapExcludedAnchors } from "./anchors.js";
 import { SNAP_PROBE_CULL_RADIUS } from "./constants.js";
 
@@ -164,7 +164,7 @@ export const outlineSnapper: SnapContributor = {
   },
 };
 
-const isProbeNearShape = (shape: ShapeBase, probe: Vec2, threshold: number): boolean => {
+const isProbeNearShape = (shape: ElementBase, probe: Vec2, threshold: number): boolean => {
   // Cheap AABB-around-position test. Hosts can register more precise
   // contributors if their shape types deserve it.
   const cushion = threshold;

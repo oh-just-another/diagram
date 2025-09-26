@@ -6,11 +6,11 @@ import {
   emptyScene,
   orderBetween,
   type Patch,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { History } from "../src/index";
 
-const rect = (id: string, x = 0): Shape => ({
+const rect = (id: string, x = 0): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -23,7 +23,7 @@ const rect = (id: string, x = 0): Shape => ({
   height: 10,
 });
 
-const addShapePatch = (s: Shape): Patch => ({ kind: "shape", id: s.id, before: null, after: s });
+const addShapePatch = (s: Element): Patch => ({ kind: "shape", id: s.id, before: null, after: s });
 
 describe("History — basic stack", () => {
   it("push adds to undo stack", () => {

@@ -12,7 +12,7 @@ import type { GraphDocument, GraphEdge, GraphNode, NodeShape } from "./graph.js"
  *   - `<mxCell edge="1" source="..." target="..." value="..." />`
  *     → `GraphEdge`.
  *
- * Shape is inferred from the `style="..."` attribute (`ellipse`,
+ * Element is inferred from the `style="..."` attribute (`ellipse`,
  * `rhombus`/`diamond`, otherwise rectangle). Drawio-style colour stops,
  * groups, swimlanes, etc. are ignored.
  */

@@ -60,7 +60,7 @@ const labelForCreate = (shape: { type: string } | null): string =>
 const labelForRemove = (shape: { type: string } | null): string =>
   shape ? `Delete ${titleCase(shape.type)}` : "Delete shape";
 
-interface MaybeShape {
+interface MaybeElement {
   type?: unknown;
   position?: { x: number; y: number };
   rotation?: number;
@@ -70,7 +70,7 @@ interface MaybeShape {
   text?: string;
 }
 
-const labelForUpdate = (before: MaybeShape, after: MaybeShape): string => {
+const labelForUpdate = (before: MaybeElement, after: MaybeElement): string => {
   const type = typeof after.type === "string" ? titleCase(after.type) : "shape";
   const positionChanged =
     before.position &&

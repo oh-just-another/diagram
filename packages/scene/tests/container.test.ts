@@ -11,10 +11,10 @@ import {
   isContainer,
   orderBetween,
   DEFAULT_LAYER_ID,
-  type Shape,
+  type Element,
 } from "../src/index";
 
-const container = (id: string, x: number, y: number): Shape => ({
+const container = (id: string, x: number, y: number): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -44,7 +44,7 @@ describe("container protocol", () => {
   });
 
   it("isContainer is false for plain shapes", () => {
-    const r: Shape = { ...container("r", 0, 0), metadata: {} };
+    const r: Element = { ...container("r", 0, 0), metadata: {} };
     expect(isContainer(r)).toBe(false);
     expect(getContainerSpec(r)).toBeNull();
   });
@@ -126,7 +126,7 @@ describe("container protocol", () => {
   // `metadata.container` baseline. When autoLayout is present the live
   // synthesiser derives the drop-zone from the current width/height and
   // ignores the stored `dropZone`, so the area tracks user resize.
-  const autoGrid = (id: string, w: number, h: number): Shape => ({
+  const autoGrid = (id: string, w: number, h: number): Element => ({
     id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",

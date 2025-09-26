@@ -7,11 +7,11 @@ import {
   orderBetween,
   removeShape,
   updateShape,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { diffScenes, isEmptyDiff } from "../src/index";
 
-const rect = (id: string, x = 0, y = 0): Shape => ({
+const rect = (id: string, x = 0, y = 0): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

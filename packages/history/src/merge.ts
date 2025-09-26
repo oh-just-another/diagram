@@ -1,6 +1,6 @@
 import type { Patch } from "@oh-just-another/scene";
 
-type ShapePatch = Extract<Patch, { kind: "shape" }>;
+type ElementPatch = Extract<Patch, { kind: "shape" }>;
 type EdgePatch = Extract<Patch, { kind: "edge" }>;
 type LayerPatch = Extract<Patch, { kind: "layer" }>;
 type AnnotationPatch = Extract<Patch, { kind: "annotation" }>;
@@ -24,7 +24,7 @@ interface Slot<P> {
  * after the merge) are dropped. First-appearance order is preserved.
  */
 export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
-  const shapes = new Map<string, Slot<ShapePatch>>();
+  const shapes = new Map<string, Slot<ElementPatch>>();
   const edges = new Map<string, Slot<EdgePatch>>();
   const layers = new Map<string, Slot<LayerPatch>>();
   const annotations = new Map<string, Slot<AnnotationPatch>>();

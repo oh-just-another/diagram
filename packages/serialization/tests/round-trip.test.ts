@@ -9,11 +9,11 @@ import {
   orderBetween,
   type Annotation,
   type Patch,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { deserializeScene, parseScene, serializeScene, stringifyScene } from "../src/index";
 
-const rect = (id: string, x = 0, y = 0): Shape => ({
+const rect = (id: string, x = 0, y = 0): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -66,7 +66,7 @@ describe("round-trip", () => {
   it("preserves all built-in shape kinds", () => {
     const ids = ["r", "e", "p", "t", "i"];
     let scene = emptyScene();
-    const variants: Shape[] = [
+    const variants: Element[] = [
       rect("r"),
       { ...rect("e"), type: "ellipse" as const, id: elementId("e") },
       {
@@ -122,7 +122,7 @@ describe("round-trip", () => {
 
   it("preserves text decoration style (weight / italic / underline / strike)", () => {
     let scene = emptyScene();
-    const t: Shape = {
+    const t: Element = {
       id: elementId("td"),
       layerId: DEFAULT_LAYER_ID,
       type: "text",
@@ -140,7 +140,7 @@ describe("round-trip", () => {
       text: "Hi",
       fontFamily: "system-ui",
       fontSize: 18,
-    } as unknown as Shape;
+    } as unknown as Element;
     ({ scene } = addShape(scene, t));
     const restored = deserializeScene(serializeScene(scene));
     const st = (restored.shapes.get(elementId("td")) as unknown as { style: Record<string, unknown> }).style;
@@ -152,7 +152,7 @@ describe("round-trip", () => {
 
   it("preserves element href", () => {
     let scene = emptyScene();
-    const r: Shape = {
+    const r: Element = {
       id: elementId("lk"),
       layerId: DEFAULT_LAYER_ID,
       type: "rectangle",
@@ -164,7 +164,7 @@ describe("round-trip", () => {
       width: 10,
       height: 10,
       href: "https://example.com/x",
-    } as unknown as Shape;
+    } as unknown as Element;
     ({ scene } = addShape(scene, r));
     const restored = deserializeScene(serializeScene(scene));
     expect((restored.shapes.get(elementId("lk")) as { href?: string }).href).toBe(
@@ -174,7 +174,7 @@ describe("round-trip", () => {
 
   it("preserves image fileId + animation fields", () => {
     let scene = emptyScene();
-    const img: Shape = {
+    const img: Element = {
       id: elementId("img-1"),
       layerId: DEFAULT_LAYER_ID,
       type: "image",
@@ -201,7 +201,7 @@ describe("round-trip", () => {
 
   it("strips transient metadata.image but keeps metadata.animated", () => {
     let scene = emptyScene();
-    const img: Shape = {
+    const img: Element = {
       id: elementId("img-1"),
       layerId: DEFAULT_LAYER_ID,
       type: "image",
@@ -229,7 +229,7 @@ describe("round-trip", () => {
 
   it("drops metadata entirely when only transient image was present", () => {
     let scene = emptyScene();
-    const img: Shape = {
+    const img: Element = {
       id: elementId("img-2"),
       layerId: DEFAULT_LAYER_ID,
       type: "image",

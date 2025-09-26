@@ -1,4 +1,4 @@
-import { getShape, updateShape, type Scene, type Patch, type Shape } from "@oh-just-another/scene";
+import { getShape, updateShape, type Scene, type Patch, type Element } from "@oh-just-another/scene";
 import type { ElementId } from "@oh-just-another/types";
 
 /**
@@ -55,7 +55,7 @@ export const computeSetLink = (
   const patches: Patch[] = [];
   for (const id of targetIds) {
     const r = updateShape(s, id, (sh) => {
-      const next = { ...sh } as Shape & { href?: string };
+      const next = { ...sh } as Element & { href?: string };
       if (href === null) delete next.href;
       else next.href = href;
       return next;

@@ -6,7 +6,7 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { renderSceneToSvg } from "../src/render-scene-to-svg";
 
@@ -15,7 +15,7 @@ const sceneOf = (width: number, height: number): Scene => {
   return { ...s, viewport: { ...s.viewport, size: { width, height } } };
 };
 
-const rect = (id: string, x = 0, y = 0, w = 50, h = 30, fill = "#abc"): Shape => ({
+const rect = (id: string, x = 0, y = 0, w = 50, h = 30, fill = "#abc"): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

@@ -5,12 +5,12 @@ import {
   DEFAULT_VIEWPORT,
   orderBetween,
   type Patch,
-  type Shape,
+  type Element,
   type Viewport,
 } from "@oh-just-another/scene";
 import { mergeByEntity } from "../src/index";
 
-const rect = (id: string, x = 0): Shape => ({
+const rect = (id: string, x = 0): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

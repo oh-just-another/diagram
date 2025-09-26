@@ -1,6 +1,6 @@
 import type { ElementId } from "@oh-just-another/types";
 import type { Scene } from "./scene.js";
-import type { Shape } from "./shape.js";
+import type { Element } from "./shape.js";
 
 /**
  * Pure three-way merge for scene shapes. Takes the common ancestor of two
@@ -33,10 +33,10 @@ export interface ThreeWayMergeReport {
 
 export interface ThreeWayMergeConflict {
   readonly elementId: ElementId;
-  /** Shape as it stood in the common ancestor (or null when added in both branches). */
-  readonly base: Shape | null;
-  readonly source: Shape | null;
-  readonly target: Shape | null;
+  /** Element as it stood in the common ancestor (or null when added in both branches). */
+  readonly base: Element | null;
+  readonly source: Element | null;
+  readonly target: Element | null;
 }
 
 export interface ThreeWayMergeOptions {
@@ -44,7 +44,7 @@ export interface ThreeWayMergeOptions {
    * Custom equality predicate. Default = reference equality (the
    * intended use; scene mutations always allocate new shape objects).
    */
-  readonly compareShapes?: (a: Shape, b: Shape) => boolean;
+  readonly compareShapes?: (a: Element, b: Element) => boolean;
 }
 
 export const mergeScenesThreeWay = (
@@ -133,7 +133,7 @@ export interface ConflictResolutionInput {
 export const applyConflictResolutions = (
   report: ThreeWayMergeReport,
   resolutions: readonly ConflictResolutionInput[],
-  cloneWithNewId: (shape: Shape) => Shape = defaultClone,
+  cloneWithNewId: (shape: Element) => Element = defaultClone,
 ): Scene => {
   const merged = new Map(report.autoMerged.shapes);
   const byId = new Map<ElementId, ThreeWayMergeConflict>();
@@ -164,7 +164,7 @@ export const applyConflictResolutions = (
   return { ...report.autoMerged, shapes: merged };
 };
 
-const defaultClone = (shape: Shape): Shape => {
+const defaultClone = (shape: Element): Element => {
   const nextId = `${shape.id}-copy` as ElementId;
   return { ...shape, id: nextId };
 };

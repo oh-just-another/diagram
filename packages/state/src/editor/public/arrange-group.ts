@@ -9,7 +9,7 @@ import {
   stackLayout,
   updateShape,
   type Scene,
-  type Shape,
+  type Element,
   type Patch,
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId } from "@oh-just-another/types";
@@ -75,13 +75,13 @@ export const computeArrangeAsStack = (
 export const selectionRoots = (
   scene: Scene,
   selection: Selection.Selection,
-): readonly Shape[] => {
-  const out: Shape[] = [];
+): readonly Element[] => {
+  const out: Element[] = [];
   const seen = new Set<ElementId>();
   for (const id of selection) {
     const shape = getShape(scene, id);
     if (!shape) continue;
-    let cursor: Shape | undefined = shape;
+    let cursor: Element | undefined = shape;
     let hidden = false;
     for (let i = 0; cursor?.parentId && i < 64; i++) {
       if (selection.has(cursor.parentId)) {
@@ -144,7 +144,7 @@ export const computeGroupSelected = (
   const order = orderForTop(
     [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
   );
-  const groupShape: Shape = {
+  const groupShape: Element = {
     id: newGroupId,
     layerId,
     type: "group",
@@ -183,7 +183,7 @@ export const computeUngroup = (
 } | null => {
   const targets = [...selection]
     .map((id) => getShape(scene, id))
-    .filter((s): s is Shape => s?.type === "group");
+    .filter((s): s is Element => s?.type === "group");
   if (targets.length === 0) return null;
   let s = scene;
   const patches: Patch[] = [];
@@ -192,7 +192,7 @@ export const computeUngroup = (
     const children = [...s.shapes.values()].filter((sh) => sh.parentId === group.id);
     for (const child of children) {
       const r = updateShape(s, child.id, (sh) => {
-        const next: Shape = { ...sh };
+        const next: Element = { ...sh };
         delete (next as { parentId?: ElementId }).parentId;
         return next;
       });

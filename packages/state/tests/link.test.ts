@@ -6,7 +6,7 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 import { normalizeHref, safeHref } from "../src/editor/public/link.js";
@@ -40,7 +40,7 @@ describe("safeHref", () => {
   });
 });
 
-const rect = (id: string): Shape => ({
+const rect = (id: string): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -82,7 +82,7 @@ describe("editor.setLink / shapeLink", () => {
 
   it("shapeLink returns null for an unsafe stored href", () => {
     let s = emptyScene();
-    ({ scene: s } = addShape(s, { ...rect("r"), href: "javascript:alert(1)" } as Shape));
+    ({ scene: s } = addShape(s, { ...rect("r"), href: "javascript:alert(1)" } as Element));
     const e = makeEditor(s);
     expect(e.shapeLink(elementId("r"))).toBeNull();
   });

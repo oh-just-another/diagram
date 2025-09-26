@@ -6,7 +6,7 @@ import {
  type Edge,
  type EdgeEndpoint,
  type Scene,
- type Shape,
+ type Element,
  type Patch,
 } from "@oh-just-another/scene";
 import { DEFAULT_EDGE_STYLE, DEFAULT_SHAPE_STYLES } from "@oh-just-another/tokens";
@@ -28,7 +28,7 @@ const DEFAULT_RECT_STYLE = DEFAULT_SHAPE_STYLES.rectangle;
 const DEFAULT_ELLIPSE_STYLE = DEFAULT_SHAPE_STYLES.ellipse;
 
 /**
- * Pure: build the `Shape` object for a CREATE_SHAPE emit. Doesn't
+ * Pure: build the `Element` object for a CREATE_SHAPE emit. Doesn't
  * touch the scene — caller threads it through `addShape`.
  *
  * Frames go to the bottom of their layer so the children inside
@@ -42,7 +42,7 @@ export const buildShapeForCreate = (
  id: ElementId,
  layerId: LayerId,
  nextFrameName: () => string,
-): Shape => {
+): Element => {
  const orders = Array.from(scene.shapes.values())
   .filter((s) => s.layerId === layerId)
   .map((s) => s.order);

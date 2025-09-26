@@ -8,12 +8,12 @@ import {
   emptyScene,
   gridSnapper,
   orderBetween,
-  type RectangleShape,
+  type RectangleElement,
   type Scene,
   type SnapContext,
 } from "../src/index";
 
-const rect = (id: string, x: number, y: number, w = 100, h = 60): RectangleShape => ({
+const rect = (id: string, x: number, y: number, w = 100, h = 60): RectangleElement => ({
   id: elementId(id),
   layerId: layerId(DEFAULT_LAYER_ID),
   type: "rectangle",
@@ -26,7 +26,7 @@ const rect = (id: string, x: number, y: number, w = 100, h = 60): RectangleShape
   height: h,
 });
 
-const withGrid = (size: number, shapes: RectangleShape[] = []): Scene => {
+const withGrid = (size: number, shapes: RectangleElement[] = []): Scene => {
   let s = emptyScene();
   s = { ...s, viewport: { ...s.viewport, gridSize: size } };
   for (const sh of shapes) ({ scene: s } = addShape(s, sh));

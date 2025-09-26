@@ -6,7 +6,7 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { exportPng, exportPdf } from "../src/index";
 
@@ -15,7 +15,7 @@ const sceneOf = (width: number, height: number): Scene => {
   return { ...s, viewport: { ...s.viewport, size: { width, height } } };
 };
 
-const rect = (id: string, x = 0, y = 0, w = 100, h = 60, fill = "#abc"): Shape => ({
+const rect = (id: string, x = 0, y = 0, w = 100, h = 60, fill = "#abc"): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

@@ -20,7 +20,7 @@ import {
   updateLayer,
   type Layer,
   type Patch,
-  type Shape,
+  type Element,
 } from "../src/index";
 
 const rect = (
@@ -29,7 +29,7 @@ const rect = (
   position = { x: 0, y: 0 },
   w = 10,
   h = 10,
-): Shape => ({
+): Element => ({
   id: elementId(id),
   layerId: layer,
   type: "rectangle",
@@ -109,7 +109,7 @@ describe("queries", () => {
   describe("getShapeAt", () => {
     it("returns the topmost visible shape at a point", () => {
       const a = rect("a", DEFAULT_LAYER_ID, { x: 0, y: 0 });
-      const b: Shape = {
+      const b: Element = {
         ...rect("b", DEFAULT_LAYER_ID, { x: 0, y: 0 }),
         order: orderBetween(a.order, null),
       };
@@ -172,7 +172,7 @@ describe("queries", () => {
 
     it("getShapeAtIndexed respects layer visibility and z-order", () => {
       const a = rect("a", DEFAULT_LAYER_ID, { x: 0, y: 0 });
-      const b: Shape = {
+      const b: Element = {
         ...rect("b", DEFAULT_LAYER_ID, { x: 0, y: 0 }),
         order: orderBetween(a.order, null),
       };

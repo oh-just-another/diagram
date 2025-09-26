@@ -1,5 +1,5 @@
 import type { Vec2 } from "@oh-just-another/types";
-import { getShapeLocalBounds, type ShapeBase, type PolygonShape } from "./shape.js";
+import { getShapeLocalBounds, type ElementBase, type PolygonElement } from "./shape.js";
 
 /**
  * Built-in outline samplers — one per shape `type` that the kernel ships.
@@ -9,11 +9,11 @@ import { getShapeLocalBounds, type ShapeBase, type PolygonShape } from "./shape.
  * The samplers return points in *local* coordinates; world transform is
  * applied by `getOutlinePoint` / `findNearestOutlinePoint` below.
  */
-export type OutlineSampler<S extends ShapeBase = ShapeBase> = (shape: S, ratio: number) => Vec2;
+export type OutlineSampler<S extends ElementBase = ElementBase> = (shape: S, ratio: number) => Vec2;
 
 const outlineSamplers = new Map<string, OutlineSampler>();
 
-export const registerOutlineSampler = <S extends ShapeBase>(
+export const registerOutlineSampler = <S extends ElementBase>(
   type: S["type"],
   sampler: OutlineSampler<S>,
 ): void => {
@@ -29,7 +29,7 @@ export const getOutlineSampler = (type: string): OutlineSampler | undefined =>
  *
  * Throws when the shape's type has no registered outline sampler.
  */
-export const getOutlinePoint = (shape: ShapeBase, ratio: number): Vec2 => {
+export const getOutlinePoint = (shape: ElementBase, ratio: number): Vec2 => {
   const sampler = outlineSamplers.get(shape.type);
   if (!sampler) {
     throw new Error(`No outline sampler registered for shape type: ${shape.type}`);
@@ -49,7 +49,7 @@ export const getOutlinePoint = (shape: ShapeBase, ratio: number): Vec2 => {
  * sub-pixel accuracy at high zoom.
  */
 export const findNearestOutlinePoint = (
-  shape: ShapeBase,
+  shape: ElementBase,
   worldPoint: Vec2,
   samples = 64,
 ): { ratio: number; world: Vec2; distance: number } | null => {
@@ -77,7 +77,7 @@ const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
 
 const distance = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
-const localToWorld = (shape: ShapeBase, local: Vec2): Vec2 => {
+const localToWorld = (shape: ElementBase, local: Vec2): Vec2 => {
   const sx = local.x * shape.scale.x;
   const sy = local.y * shape.scale.y;
   const cos = Math.cos(shape.rotation);
@@ -147,6 +147,6 @@ registerOutlineSampler("ellipse", (shape, ratio) => {
   return { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
 });
 
-registerOutlineSampler<PolygonShape>("polygon", (shape, ratio) => {
+registerOutlineSampler<PolygonElement>("polygon", (shape, ratio) => {
   return samplePolyline(shape.points, ratio);
 });

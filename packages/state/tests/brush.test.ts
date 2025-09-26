@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyScene, type Scene, type Shape } from "@oh-just-another/scene";
+import { emptyScene, type Scene, type Element } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
 const makeEditor = (scene: Scene): Editor => {
@@ -54,7 +54,7 @@ describe("brush stroke", () => {
     editor.extendBrushStroke({ x: 30, y: 14 }, 0.3);
     const id = editor.commitBrushStroke();
     expect(id).not.toBeNull();
-    const shape = editor.scene.shapes.get(id!) as Extract<Shape, { type: "brush" }>;
+    const shape = editor.scene.shapes.get(id!) as Extract<Element, { type: "brush" }>;
     expect(shape.type).toBe("brush");
     expect(shape.position).toEqual({ x: 10, y: 10 });
     expect(shape.points.length).toBe(3);

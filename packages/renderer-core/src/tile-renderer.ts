@@ -89,7 +89,7 @@ export interface TileCacheEntry<B = unknown> {
   readonly bounds: Bounds;
   /** Bytes used by this bitmap (for LRU eviction accounting). */
   readonly bytes: number;
-  /** Shape ids currently visible in this tile (for invalidation). */
+  /** Element ids currently visible in this tile (for invalidation). */
   readonly shapes: readonly ElementId[];
 }
 
@@ -227,7 +227,7 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
    *   • shape moved   → both: removeForShape (old tiles) + rect
    *                     (new bounds)
    * Caller computes the bounds via `getShapeWorldBounds(before|after)`
-   * since this package is pure and doesn't know about Shape geometry.
+   * since this package is pure and doesn't know about Element geometry.
    */
   invalidateForPatch(
     options: {

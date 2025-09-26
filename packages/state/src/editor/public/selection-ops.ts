@@ -6,7 +6,7 @@ import {
   removeShape,
   updateShape,
   type Scene,
-  type Shape,
+  type Element,
   type Patch,
   type TextStyle,
 } from "@oh-just-another/scene";
@@ -113,7 +113,7 @@ export const computeDuplicateSelection = (
       id: newId,
       position: { x: shape.position.x + 10, y: shape.position.y + 10 },
       order,
-    } as Shape;
+    } as Element;
     const r = addShape(s, clone);
     s = r.scene;
     patches.push(r.patch);

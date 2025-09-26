@@ -6,12 +6,12 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
-  type TextShape,
+  type Element,
+  type TextElement,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
-const textShape = (id: string, text = "hello"): TextShape => ({
+const textShape = (id: string, text = "hello"): TextElement => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "text",
@@ -25,7 +25,7 @@ const textShape = (id: string, text = "hello"): TextShape => ({
   fontSize: 14,
 });
 
-const rect = (id: string): Shape => ({
+const rect = (id: string): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -38,7 +38,7 @@ const rect = (id: string): Shape => ({
   height: 50,
 });
 
-const sceneWith = (...shapes: Shape[]): Scene => {
+const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) s = addShape(s, sh).scene;
   return s;
@@ -103,7 +103,7 @@ describe("inline text edit", () => {
     e.beginTextEdit(elementId("t1"));
     e.commitTextEdit("new");
     expect(e.editingTextShape).toBeNull();
-    expect((e.scene.shapes.get(elementId("t1")) as TextShape).text).toBe("new");
+    expect((e.scene.shapes.get(elementId("t1")) as TextElement).text).toBe("new");
   });
 
   it("commitTextEdit with identical text does not push a history step", () => {
@@ -121,7 +121,7 @@ describe("inline text edit", () => {
     e.beginTextEdit(elementId("t1"));
     e.cancelTextEdit();
     expect(e.editingTextShape).toBeNull();
-    expect((e.scene.shapes.get(elementId("t1")) as TextShape).text).toBe("keep");
+    expect((e.scene.shapes.get(elementId("t1")) as TextElement).text).toBe("keep");
   });
 
   it("commit creates a single undo step", () => {
@@ -130,6 +130,6 @@ describe("inline text edit", () => {
     e.commitTextEdit("after");
     expect(e.canUndo).toBe(true);
     e.undo();
-    expect((e.scene.shapes.get(elementId("t1")) as TextShape).text).toBe("before");
+    expect((e.scene.shapes.get(elementId("t1")) as TextElement).text).toBe("before");
   });
 });

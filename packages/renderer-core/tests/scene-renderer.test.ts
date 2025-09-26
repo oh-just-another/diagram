@@ -7,7 +7,7 @@ import {
   emptyScene,
   orderBetween,
   type Layer,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { buildSpatialIndex } from "@oh-just-another/scene";
 import {
@@ -42,7 +42,7 @@ const makeRecorder = (): {
   return { target, calls };
 };
 
-const rect = (id: string, layer = DEFAULT_LAYER_ID): Shape => ({
+const rect = (id: string, layer = DEFAULT_LAYER_ID): Element => ({
   id: elementId(id),
   layerId: layer,
   type: "rectangle",
@@ -123,7 +123,7 @@ describe("renderScene", () => {
 
   describe("viewport culling", () => {
     // Use built-in `rectangle` so the bounder registry resolves.
-    const placeRect = (id: string, x: number, y: number): Shape => ({
+    const placeRect = (id: string, x: number, y: number): Element => ({
       ...rect(id),
       position: { x, y },
     });
@@ -189,12 +189,12 @@ describe("renderScene", () => {
   });
 
   describe("LOD", () => {
-    const placeRect = (id: string, x: number, y: number): Shape => ({
+    const placeRect = (id: string, x: number, y: number): Element => ({
       ...rect(id),
       position: { x, y },
     });
 
-    const sceneWithZoom = (zoom: number, shapes: Shape[]) => {
+    const sceneWithZoom = (zoom: number, shapes: Element[]) => {
       let scene = emptyScene();
       scene = { ...scene, viewport: { ...scene.viewport, zoom } };
       for (const s of shapes) {
@@ -255,7 +255,7 @@ describe("renderScene", () => {
     const renderer = vi.fn<ShapeRenderer>();
     registerShapeRenderer("trs-test", renderer);
     let scene = emptyScene();
-    const r: Shape = {
+    const r: Element = {
       ...rect("a"),
       type: "trs-test",
       position: { x: 5, y: 7 },

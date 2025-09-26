@@ -7,7 +7,7 @@ import {
   addShape as sceneAddShape,
   emptyScene,
   orderBetween,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "@oh-just-another/state";
 import { installBuiltinRenderers, LayeredCanvas } from "@oh-just-another/renderer-canvas";
@@ -17,7 +17,7 @@ void layerId; // imported for type tests below
 
 installBuiltinRenderers();
 
-const rect: Shape = {
+const rect: Element = {
   id: elementId("r1"),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

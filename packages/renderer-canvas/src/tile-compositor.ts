@@ -10,7 +10,7 @@ import {
   getShapeWorldBounds,
   getLayersInOrder,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { createOffscreenCanvas2DTarget } from "./offscreen.js";
 import { Canvas2DTarget } from "./canvas-target.js";
@@ -44,9 +44,9 @@ export interface RenderViaTilesOptions {
   /** Persistent tile cache — same instance across frames. */
   readonly cache: TileCache<OffscreenCanvas>;
   /**
-   * Shape ids whose scene-reference changed since the previous
-   * frame, each with the before/after world bbox. The compositor
-   * routes invalidation by case:
+   * Element ids whose scene-reference changed since the previous frame,
+   * each with the before/after world bbox. The compositor routes
+   * invalidation by case:
    *   • removed   (after null)  → invalidateForShape (id present in
    *     reverse index)
    *   • added     (before null) → invalidateRect (no id yet)
@@ -165,8 +165,8 @@ const rasteriseTile = (
   };
 };
 
-const shapesIntersectingTile = (scene: Scene, tileBounds: Bounds): readonly Shape[] => {
-  const out: Shape[] = [];
+const shapesIntersectingTile = (scene: Scene, tileBounds: Bounds): readonly Element[] => {
+  const out: Element[] = [];
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;
     for (const shape of getShapesInLayer(scene, layer.id)) {

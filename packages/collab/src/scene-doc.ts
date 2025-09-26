@@ -5,7 +5,7 @@ import {
   type Edge,
   type Layer,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { annotationId, layerId, linkId, elementId } from "@oh-just-another/types";
 
@@ -13,7 +13,7 @@ import { annotationId, layerId, linkId, elementId } from "@oh-just-another/types
  * CRDT-backed mirror of a `Scene`. Wraps a `Y.Doc` whose top-level maps
  * are the canonical source of truth for collaborative editing:
  *
- *   - `shapes`   — `Y.Map<string, Shape>`
+ *   - `shapes`   — `Y.Map<string, Element>`
  *   - `edges`    — `Y.Map<string, Edge>`
  *   - `layers`   — `Y.Map<string, Layer>`
  *   - `viewport` — `Y.Map<string, unknown>` (single "current" key)
@@ -25,7 +25,7 @@ import { annotationId, layerId, linkId, elementId } from "@oh-just-another/types
  */
 export class SceneDoc {
   readonly doc: Y.Doc;
-  readonly shapes: Y.Map<Shape>;
+  readonly shapes: Y.Map<Element>;
   readonly edges: Y.Map<Edge>;
   readonly layers: Y.Map<Layer>;
   readonly annotations: Y.Map<Annotation>;
@@ -33,7 +33,7 @@ export class SceneDoc {
 
   constructor(doc: Y.Doc = new Y.Doc()) {
     this.doc = doc;
-    this.shapes = doc.getMap<Shape>("shapes");
+    this.shapes = doc.getMap<Element>("shapes");
     this.edges = doc.getMap<Edge>("edges");
     this.layers = doc.getMap<Layer>("layers");
     this.annotations = doc.getMap<Annotation>("annotations");
@@ -42,7 +42,7 @@ export class SceneDoc {
 
   /** Build an in-memory `Scene` snapshot from the current CRDT state. */
   snapshot(): Scene {
-    const shapeMap = new Map<Shape["id"], Shape>();
+    const shapeMap = new Map<Element["id"], Element>();
     for (const [id, shape] of this.shapes) shapeMap.set(elementId(id), shape);
     const edgeMap = new Map<Edge["id"], Edge>();
     for (const [id, edge] of this.edges) edgeMap.set(linkId(id), edge);

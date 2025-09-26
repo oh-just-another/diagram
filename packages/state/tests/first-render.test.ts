@@ -6,7 +6,7 @@ import {
   emptyScene,
   orderBetween,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { installBuiltinRenderers } from "@oh-just-another/renderer-core";
 import { Editor } from "../src/editor.js";
@@ -71,7 +71,7 @@ const host = {
   style: {},
 } as never;
 
-const rect = (id: string, x: number, y: number, w = 50, h = 50): Shape => ({
+const rect = (id: string, x: number, y: number, w = 50, h = 50): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",

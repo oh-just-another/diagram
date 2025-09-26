@@ -13,7 +13,7 @@ import {
   orderBetween,
   type Patch,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
@@ -37,20 +37,20 @@ const host = {
   style: { cursor: "" },
 } as never;
 
-const rect = (id: string, order: string): Shape => ({
+const rect = (id: string, order: string): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
   position: { x: 0, y: 0 },
   rotation: 0,
   scale: { x: 1, y: 1 },
-  order: order as Shape["order"],
+  order: order as Element["order"],
   style: { fill: "#000" },
   width: 10,
   height: 10,
 });
 
-const sceneOf = (shapes: Shape[]): Scene => {
+const sceneOf = (shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) {
     s = apply(s, { kind: "shape", id: sh.id, before: null, after: sh } satisfies Patch);

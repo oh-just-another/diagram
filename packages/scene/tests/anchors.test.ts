@@ -8,10 +8,10 @@ import {
   getNamedAnchorLocal,
   listAnchorsLocal,
   orderBetween,
-  type RectangleShape,
+  type RectangleElement,
 } from "../src/index";
 
-const baseRect = (overrides: Partial<RectangleShape> = {}): RectangleShape => ({
+const baseRect = (overrides: Partial<RectangleElement> = {}): RectangleElement => ({
   id: elementId("r1"),
   layerId: layerId("default"),
   type: "rectangle",

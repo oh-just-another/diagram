@@ -1,5 +1,5 @@
 import type { Bounds, ElementId } from "@oh-just-another/types";
-import { getShapeWorldBounds, type Scene, type ShapeBase } from "@oh-just-another/scene";
+import { getShapeWorldBounds, type Scene, type ElementBase } from "@oh-just-another/scene";
 
 /**
  * Per-shape memo with object-identity invalidation. Cached value sticks
@@ -13,9 +13,9 @@ import { getShapeWorldBounds, type Scene, type ShapeBase } from "@oh-just-anothe
  * a fresh `ShapeCache` instance (cheap to construct).
  */
 export class ShapeCache<T> {
-  private readonly entries = new Map<ElementId, { readonly ref: ShapeBase; value: T }>();
+  private readonly entries = new Map<ElementId, { readonly ref: ElementBase; value: T }>();
 
-  get(shape: ShapeBase): T | undefined {
+  get(shape: ElementBase): T | undefined {
     const entry = this.entries.get(shape.id);
     if (!entry) return undefined;
     if (entry.ref !== shape) {
@@ -25,7 +25,7 @@ export class ShapeCache<T> {
     return entry.value;
   }
 
-  set(shape: ShapeBase, value: T): T {
+  set(shape: ElementBase, value: T): T {
     this.entries.set(shape.id, { ref: shape, value });
     return value;
   }
@@ -35,7 +35,7 @@ export class ShapeCache<T> {
    * as the one we cached against; otherwise runs `compute`, stores the
    * result, and returns it.
    */
-  getOrCompute(shape: ShapeBase, compute: (s: ShapeBase) => T): T {
+  getOrCompute(shape: ElementBase, compute: (s: ElementBase) => T): T {
     const cached = this.get(shape);
     if (cached !== undefined) return cached;
     return this.set(shape, compute(shape));
@@ -71,5 +71,5 @@ export class ShapeCache<T> {
  */
 export const sharedBoundsCache: ShapeCache<Bounds> = new ShapeCache<Bounds>();
 
-export const cachedWorldBounds = (cache: ShapeCache<Bounds>, shape: ShapeBase): Bounds =>
+export const cachedWorldBounds = (cache: ShapeCache<Bounds>, shape: ElementBase): Bounds =>
   cache.getOrCompute(shape, getShapeWorldBounds);

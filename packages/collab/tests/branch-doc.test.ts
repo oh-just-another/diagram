@@ -7,13 +7,13 @@ import {
   orderBetween,
   updateShape,
   type Scene,
-  type Shape,
+  type Element,
 } from "@oh-just-another/scene";
 import { BranchDoc } from "../src/branch-doc";
 
 const seed = (): Scene => {
   let s = emptyScene();
-  const a: Shape = {
+  const a: Element = {
     id: elementId("a"),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",
@@ -25,7 +25,7 @@ const seed = (): Scene => {
     width: 40,
     height: 40,
   };
-  const b: Shape = { ...a, id: elementId("b"), position: { x: 100, y: 0 }, style: { fill: "#bbb" } };
+  const b: Element = { ...a, id: elementId("b"), position: { x: 100, y: 0 }, style: { fill: "#bbb" } };
   ({ scene: s } = addShape(s, a));
   ({ scene: s } = addShape(s, b));
   return s;

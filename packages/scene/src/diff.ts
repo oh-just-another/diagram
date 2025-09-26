@@ -2,7 +2,7 @@ import type { ElementId } from "@oh-just-another/types";
 import type { Scene } from "./scene.js";
 
 /**
- * Shape-level diff between two scenes. Categorises every shape id
+ * Element-level diff between two scenes. Categorises every shape id
  * present in either scene as:
  *
  * - `added`: in `next` only.

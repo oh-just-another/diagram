@@ -5,7 +5,7 @@ import type {
   Layer,
   Patch,
   Scene,
-  Shape,
+  Element,
 } from "@oh-just-another/scene";
 import { apply } from "@oh-just-another/scene";
 import type { Snapshot, VersionId } from "./types.js";
@@ -28,7 +28,7 @@ export interface Conflict<Id, V> {
 }
 
 export type SceneConflict =
-  | Conflict<ElementId, Shape>
+  | Conflict<ElementId, Element>
   | Conflict<LinkId, Edge>
   | Conflict<LayerId, Layer>
   | Conflict<AnnotationId, Annotation>;

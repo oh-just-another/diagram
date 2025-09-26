@@ -107,7 +107,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // Brush mode owns the gesture end-to-end — no machine, no
     // interactive testers, no auto-select. Start a stroke at the
     // press point with the device's pressure; onMove extends; onUp
-    // commits as a single BrushShape patch.
+    // commits as a single BrushElement patch.
     if (editor.mode === "brush") {
       editor.beginBrushStroke(worldPoint, ev.pressure);
       return;

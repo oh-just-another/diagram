@@ -51,7 +51,7 @@ const AnchorRefZ = z.discriminatedUnion("kind", [
 
 // --- Shapes ---
 
-const ShapeBaseZ = z.object({
+const ElementBaseZ = z.object({
  id: z.string(),
  layerId: z.string(),
  position: Vec2Z,
@@ -69,21 +69,21 @@ const ShapeBaseZ = z.object({
  href: z.string().optional(),
 });
 
-const RectangleZ = ShapeBaseZ.extend({
+const RectangleZ = ElementBaseZ.extend({
  type: z.literal("rectangle"),
  style: StyleZ,
  width: z.number(),
  height: z.number(),
 }).strict();
 
-const EllipseZ = ShapeBaseZ.extend({
+const EllipseZ = ElementBaseZ.extend({
  type: z.literal("ellipse"),
  style: StyleZ,
  width: z.number(),
  height: z.number(),
 }).strict();
 
-const PolygonZ = ShapeBaseZ.extend({
+const PolygonZ = ElementBaseZ.extend({
  type: z.literal("polygon"),
  style: StyleZ,
  points: z.array(Vec2Z),
@@ -97,13 +97,13 @@ const PathCommandZ = z.discriminatedUnion("kind", [
  z.object({ kind: z.literal("Z") }).strict(),
 ]);
 
-const PathZ = ShapeBaseZ.extend({
+const PathZ = ElementBaseZ.extend({
  type: z.literal("path"),
  style: StyleZ,
  commands: z.array(PathCommandZ),
 }).strict();
 
-const TextZ = ShapeBaseZ.extend({
+const TextZ = ElementBaseZ.extend({
  type: z.literal("text"),
  style: TextStyleZ,
  text: z.string(),
@@ -112,7 +112,7 @@ const TextZ = ShapeBaseZ.extend({
  maxWidth: z.number().optional(),
 }).strict();
 
-const ImageZ = ShapeBaseZ.extend({
+const ImageZ = ElementBaseZ.extend({
  type: z.literal("image"),
  style: StyleZ,
  src: z.string(),
@@ -127,7 +127,7 @@ const ImageZ = ShapeBaseZ.extend({
  animationData: z.unknown().optional(),
 }).strict();
 
-const TemplateInstanceZ = ShapeBaseZ.extend({
+const TemplateInstanceZ = ElementBaseZ.extend({
  type: z.literal("template"),
  style: StyleZ.optional(),
  templateId: z.string(),
@@ -136,14 +136,14 @@ const TemplateInstanceZ = ShapeBaseZ.extend({
  height: z.number(),
 }).strict();
 
-const GroupZ = ShapeBaseZ.extend({
+const GroupZ = ElementBaseZ.extend({
  type: z.literal("group"),
  style: StyleZ.optional(),
 }).strict();
 
 const BrushPointZ = z.object({ x: z.number(), y: z.number(), width: z.number() }).strict();
 
-const BrushZ = ShapeBaseZ.extend({
+const BrushZ = ElementBaseZ.extend({
  type: z.literal("brush"),
  style: StyleZ,
  points: z.array(BrushPointZ),
@@ -154,7 +154,7 @@ const BrushZ = ShapeBaseZ.extend({
  * persist them. Accepts any object with the standard base fields plus a
  * non-builtin `type`, and lets the bounder registry handle them at load time.
  */
-const CustomShapeZ = ShapeBaseZ.extend({
+const CustomShapeZ = ElementBaseZ.extend({
  type: z.string(),
  style: StyleZ.optional(),
 })
@@ -177,7 +177,7 @@ const CustomShapeZ = ShapeBaseZ.extend({
   },
  );
 
-const ShapeZ = z.union([
+const ElementZ = z.union([
  RectangleZ,
  EllipseZ,
  PolygonZ,
@@ -287,7 +287,7 @@ export const SceneDocumentZ = z
   /** Magic to make a `.json` file recognisable without sniffing. */
   format: z.literal("oh-just-another/scene"),
   version: z.number().int().nonnegative(),
-  shapes: z.array(ShapeZ),
+  shapes: z.array(ElementZ),
   edges: z.array(EdgeZ),
   layers: z.array(LayerZ),
   /**
@@ -301,7 +301,7 @@ export const SceneDocumentZ = z
 
 export type SceneDocument = z.infer<typeof SceneDocumentZ>;
 
-export type SerializedShape = z.infer<typeof ShapeZ>;
+export type SerializedElement = z.infer<typeof ElementZ>;
 export type SerializedEdge = z.infer<typeof EdgeZ>;
 export type SerializedLayer = z.infer<typeof LayerZ>;
 export type SerializedViewport = z.infer<typeof ViewportZ>;

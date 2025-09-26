@@ -188,9 +188,9 @@ export type InteractionEmit =
     }
   | {
       readonly type: "CREATE_EDGE";
-      /** Shape the edge starts on, or `null` for a free-floating point. */
+      /** Element the edge starts on, or `null` for a free-floating point. */
       readonly fromShape: ElementId | null;
-      /** Shape the edge lands on, or `null` for a free-floating point. */
+      /** Element the edge lands on, or `null` for a free-floating point. */
       readonly toShape: ElementId | null;
       /** Press-down world point — used as the fallback when `fromShape` is null. */
       readonly fromPoint: Vec2;
