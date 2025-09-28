@@ -9,7 +9,7 @@ export type {
   GraphNode,
   GraphEdge,
   NodeShape,
-  EdgeDirection,
+  LinkDirection,
   GraphLayoutDirection,
 } from "./graph.js";
 export type { LayoutedNode } from "./layout.js";

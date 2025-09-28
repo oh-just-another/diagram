@@ -1,8 +1,8 @@
-import type { Edge } from "@oh-just-another/scene";
+import type { Link } from "@oh-just-another/scene";
 
 /**
  * Per-edge rasterised bitmap cache (). Mirror of
- * `ShapeBitmapCache` but keyed on `Edge` identity. Long-path
+ * `ShapeBitmapCache` but keyed on `Link` identity. Long-path
  * edges (orthogonal routes around obstacles, beziers with many
  * waypoints) cost real CPU per frame; caching the rasterised
  * stroke as an `ImageBitmap` lets pan / camera moves draw with
@@ -12,26 +12,26 @@ import type { Edge } from "@oh-just-another/scene";
  * `apply(scene, patch)`, so reference inequality on the cached
  * `edgeRef` signals "stale". No version field needed.
  *
- * Hosts that don't want bitmaps in memory just don't instantiate
- * one — `renderEdges` ignores the cache when absent.
+ * Hosts that don't want bitmaps in memory just don't instantiate one —
+ * `renderLinks` ignores the cache when absent.
  */
 
-export interface EdgeBitmapCache<V = unknown> {
- get(edge: Edge, zoomBucket: number): V | undefined;
- set(edge: Edge, zoomBucket: number, value: V): void;
- delete(edge: Edge, zoomBucket: number): void;
+export interface LinkBitmapCache<V = unknown> {
+ get(edge: Link, zoomBucket: number): V | undefined;
+ set(edge: Link, zoomBucket: number, value: V): void;
+ delete(edge: Link, zoomBucket: number): void;
  clear(): void;
  readonly size: number;
 }
 
 interface Entry<V> {
- readonly edgeRef: Edge;
+ readonly edgeRef: Link;
  readonly value: V;
 }
 
-const keyFor = (edge: Edge, zoomBucket: number): string => `${edge.id}@${zoomBucket}`;
+const keyFor = (edge: Link, zoomBucket: number): string => `${edge.id}@${zoomBucket}`;
 
-export class InMemoryEdgeBitmapCache<V> implements EdgeBitmapCache<V> {
+export class InMemoryLinkBitmapCache<V> implements LinkBitmapCache<V> {
  private readonly entries = new Map<string, Entry<V>>();
  private readonly cap: number;
 
@@ -43,7 +43,7 @@ export class InMemoryEdgeBitmapCache<V> implements EdgeBitmapCache<V> {
   return this.entries.size;
  }
 
- get(edge: Edge, zoomBucket: number): V | undefined {
+ get(edge: Link, zoomBucket: number): V | undefined {
   const key = keyFor(edge, zoomBucket);
   const e = this.entries.get(key);
   if (!e) return undefined;
@@ -56,7 +56,7 @@ export class InMemoryEdgeBitmapCache<V> implements EdgeBitmapCache<V> {
   return e.value;
  }
 
- set(edge: Edge, zoomBucket: number, value: V): void {
+ set(edge: Link, zoomBucket: number, value: V): void {
   const key = keyFor(edge, zoomBucket);
   if (this.entries.has(key)) this.entries.delete(key);
   this.entries.set(key, { edgeRef: edge, value });
@@ -66,7 +66,7 @@ export class InMemoryEdgeBitmapCache<V> implements EdgeBitmapCache<V> {
   }
  }
 
- delete(edge: Edge, zoomBucket: number): void {
+ delete(edge: Link, zoomBucket: number): void {
   this.entries.delete(keyFor(edge, zoomBucket));
  }
 

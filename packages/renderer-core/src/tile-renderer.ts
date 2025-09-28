@@ -26,7 +26,7 @@ const TILE_CACHE_BYTES_PER_GB = 64 * 1024 * 1024;
 
 /**
  * Guess how many GiB of RAM the host has. Reads `navigator.deviceMemory`
- * when exposed (Chrome / Edge — rounded to {0.25, 0.5, 1, 2, 4, 8}).
+ * when exposed (Chrome — rounded to {0.25, 0.5, 1, 2, 4, 8}).
  * Falls back to a `navigator.hardwareConcurrency` proxy on Safari /
  * Firefox where deviceMemory is unavailable: 8+ cores → desktop class
  * (4 GiB), 4-7 → mid-range phone / laptop (2 GiB), <4 → low-end (1 GiB).

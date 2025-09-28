@@ -1,10 +1,10 @@
 import {
- addEdge,
+ addLink,
  addShape,
  orderForBottom,
  orderForTop,
- type Edge,
- type EdgeEndpoint,
+ type Link,
+ type LinkEndpoint,
  type Scene,
  type Element,
  type Patch,
@@ -68,17 +68,17 @@ export const buildShapeForCreate = (
 };
 
 /**
- * Pure: build the `Edge` object for a CREATE_EDGE emit. Endpoints
- * are pre-resolved (snapped) by the caller — we just compose them
- * with the layer / order / style boilerplate.
+ * Build the `Link` object for a CREATE_EDGE emit. Endpoints are
+ * pre-resolved (snapped) by the caller — we just compose them with the
+ * layer / order / style boilerplate.
  */
-export const buildEdgeForCreate = (
+export const buildLinkForCreate = (
  scene: Scene,
- from: EdgeEndpoint,
- to: EdgeEndpoint,
+ from: LinkEndpoint,
+ to: LinkEndpoint,
  id: LinkId,
  layerId: LayerId,
-): Edge => {
+): Link => {
  const order = orderForTop(
   Array.from(scene.edges.values())
    .filter((e) => e.layerId === layerId)
@@ -118,20 +118,20 @@ export const computeCreateShape = (
 };
 
 /**
- * Composite helper for `applyCreateEdge` — combines `buildEdge` and
- * `addEdge`. Endpoint snapping is caller responsibility (delegated
+ * Composite helper for `applyCreateLink` — combines `buildLink` and
+ * `addLink`. Endpoint snapping is caller responsibility (delegated
  * to the snap engine in Editor); pre-resolved `from`/`to` are
  * threaded in as parameters.
  */
-export const computeCreateEdge = (
+export const computeCreateLink = (
  scene: Scene,
- from: EdgeEndpoint,
- to: EdgeEndpoint,
+ from: LinkEndpoint,
+ to: LinkEndpoint,
  id: LinkId,
  layerId: LayerId,
 ): { readonly scene: Scene; readonly patch: Patch; readonly linkId: LinkId } => {
- const edge = buildEdgeForCreate(scene, from, to, id, layerId);
- const result = addEdge(scene, edge);
+ const edge = buildLinkForCreate(scene, from, to, id, layerId);
+ const result = addLink(scene, edge);
  return { scene: result.scene, patch: result.patch, linkId: id };
 };
 
@@ -140,5 +140,5 @@ export const newShapeId = (next: number): ElementId =>
  `shape-${next}-${Date.now().toString(36)}` as ElementId;
 
 /** Generate a unique edge id with the per-editor `nextId` counter. */
-export const newEdgeId = (next: number): LinkId =>
+export const newLinkId = (next: number): LinkId =>
  `edge-${next}-${Date.now().toString(36)}` as LinkId;

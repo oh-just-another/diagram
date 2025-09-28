@@ -1,27 +1,27 @@
 import {
- getEdgePath,
- getEdgesInLayer,
+ getLinkPath,
+ getLinksInLayer,
  getLayersInOrder,
  getWorldToScreen,
- type Edge,
- type EdgeArrowheads,
- type EdgeLabel,
+ type Link,
+ type LinkArrowheads,
+ type LinkLabel,
  type Scene,
 } from "@oh-just-another/scene";
 import { bounds as B } from "@oh-just-another/math";
 import type { Bounds, Vec2 } from "@oh-just-another/types";
 import type { RenderTarget } from "./render-target.js";
-import { sharedEdgeBoundsCache, type EdgeBoundsCache } from "./edge-cache.js";
-import type { EdgeBitmapCache } from "./edge-cache-bitmap.js";
+import { sharedLinkBoundsCache, type LinkBoundsCache } from "./edge-cache.js";
+import type { LinkBitmapCache } from "./edge-cache-bitmap.js";
 import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
 
-export interface RenderEdgesOptions {
+export interface RenderLinksOptions {
  /**
   * Called for edges whose endpoints can't be resolved (e.g. anchor
   * endpoint references a missing shape). The default is to silently
   * skip them.
   */
- readonly onMissingEndpoint?: (edge: Edge) => void;
+ readonly onMissingEndpoint?: (edge: Link) => void;
  /**
   * World-space rect — only edges whose AABB intersects it are drawn.
   * Omit to draw every edge. Match `RenderSceneOptions.viewportWorld`
@@ -33,9 +33,9 @@ export interface RenderEdgesOptions {
   * module-level cache so per-frame edge-bounds work is amortized across
   * paint passes.
   */
- readonly edgeBoundsCache?: EdgeBoundsCache;
+ readonly edgeBoundsCache?: LinkBoundsCache;
  /**
-  * Optional dirty rectangle (world coords). Edges whose AABB does
+  * Optional dirty rectangle (world coords). Links whose AABB does
   * not intersect this rect are skipped — mirrors the same dirty-rect
   * filter `renderScene` applies to shapes. Caller is responsible for
   * having cleared the corresponding screen region.
@@ -43,12 +43,12 @@ export interface RenderEdgesOptions {
  readonly dirtyWorld?: Bounds;
  /**
   * Per-edge bitmap cache (). When supplied along with
-  * `rasteriseEdge`, edges whose object reference hasn't changed
+  * `rasteriseLink`, edges whose object reference hasn't changed
   * AND whose zoom bucket matches are drawn from the cache via
   * `drawImage` instead of re-stroking the path. Pass `undefined`
-  * to opt out — the rest of renderEdges works unchanged.
+  * to opt out — the rest of renderLinks works unchanged.
   */
- readonly edgeBitmapCache?: EdgeBitmapCache<unknown>;
+ readonly edgeBitmapCache?: LinkBitmapCache<unknown>;
  /**
   * Host-side rasteriser: receives the edge, its world bbox, the
   * scene reference, and the active zoom bucket; returns the
@@ -57,8 +57,8 @@ export interface RenderEdgesOptions {
   * Image` accepts). Returning `null` skips the cache for that
   * edge (e.g. an edge so small the bitmap isn't worth it).
   */
- readonly rasteriseEdge?: (
-  edge: Edge,
+ readonly rasteriseLink?: (
+  edge: Link,
   bounds: Bounds,
   scene: Scene,
   zoomBucket: number,
@@ -73,37 +73,37 @@ export interface RenderEdgesOptions {
 
 /**
  * Draws every edge in the scene, in layer-then-z order. Resolves endpoints
- * through `getEdgePath` (which honours anchor refs and explicit waypoints)
+ * through `getLinkPath` (which honours anchor refs and explicit waypoints)
  * and emits the appropriate primitive sequence for the edge's routing.
  *
  * Call this *after* `renderScene` so edges sit on top of shapes. Both
  * functions write to the same `RenderTarget` under the same scene-level
  * viewport transform, so coordinates align.
  */
-export const renderEdges = (
+export const renderLinks = (
  scene: Scene,
  target: RenderTarget,
- options: RenderEdgesOptions = {},
+ options: RenderLinksOptions = {},
 ): void => {
  // Self-contained transform setup so callers can do `renderScene(...);
- // renderEdges(...)` without repeating the world-to-screen step. We
+ // renderLinks(...)` without repeating the world-to-screen step. We
  // never clear here — edges should land on top of an already-rendered
  // shape pass.
  target.save();
  target.setTransform(getWorldToScreen(scene.viewport));
 
- const cache = options.edgeBoundsCache ?? sharedEdgeBoundsCache;
+ const cache = options.edgeBoundsCache ?? sharedLinkBoundsCache;
  const cull = options.viewportWorld;
  const dirty = options.dirtyWorld;
  const bitmapCache = options.edgeBitmapCache;
- const rasteriseEdge = options.rasteriseEdge;
+ const rasteriseLink = options.rasteriseLink;
  const zoomBucket = bucketFor(options.zoom ?? scene.viewport.zoom);
 
  for (const layer of getLayersInOrder(scene)) {
   if (!layer.visible) continue;
-  for (const edge of getEdgesInLayer(scene, layer.id)) {
+  for (const edge of getLinksInLayer(scene, layer.id)) {
    let bounds: Bounds | null = null;
-   if (cull || dirty || (bitmapCache && rasteriseEdge)) {
+   if (cull || dirty || (bitmapCache && rasteriseLink)) {
     bounds = cache.getOrCompute(scene, edge);
     if (bounds === null) {
      options.onMissingEndpoint?.(edge);
@@ -115,12 +115,12 @@ export const renderEdges = (
    // Bitmap-cache fast path. Only fires when the host plugged
    // both a cache and a rasteriser — the kernel doesn't know how
    // to make ImageBitmaps without OffscreenCanvas import. Falls
-   // through to the regular drawEdge on cache miss + null
+   // through to the regular drawLink on cache miss + null
    // rasteriser result (e.g. host opted out for tiny edges).
-   if (bitmapCache && rasteriseEdge && bounds) {
+   if (bitmapCache && rasteriseLink && bounds) {
     let bitmap = bitmapCache.get(edge, zoomBucket);
     if (bitmap === undefined) {
-     const fresh = rasteriseEdge(edge, bounds, scene, zoomBucket);
+     const fresh = rasteriseLink(edge, bounds, scene, zoomBucket);
      if (fresh !== null) {
       bitmapCache.set(edge, zoomBucket, fresh);
       bitmap = fresh;
@@ -131,19 +131,19 @@ export const renderEdges = (
      continue;
     }
    }
-   drawEdge(scene, edge, target, options);
+   drawLink(scene, edge, target, options);
   }
  }
  target.restore();
 };
 
-const drawEdge = (
+const drawLink = (
  scene: Scene,
- edge: Edge,
+ edge: Link,
  target: RenderTarget,
- options: RenderEdgesOptions,
+ options: RenderLinksOptions,
 ): void => {
- const path = getEdgePath(scene, edge);
+ const path = getLinkPath(scene, edge);
  if (!path || path.length < 2) {
   options.onMissingEndpoint?.(edge);
   return;
@@ -152,7 +152,7 @@ const drawEdge = (
  target.save();
 
  if ((edge.lineKind ?? "line") === "block-arrow") {
-  drawBlockArrowEdge(edge, path, target);
+  drawBlockArrowLink(edge, path, target);
  } else {
   applyStrokeStyle(edge, target);
 
@@ -189,8 +189,8 @@ const drawEdge = (
  * still get block-arrow rendering but the head sits at the last
  * segment endpoint regardless of curve direction.
  */
-const drawBlockArrowEdge = (
- edge: Edge,
+const drawBlockArrowLink = (
+ edge: Link,
  path: readonly Vec2[],
  target: RenderTarget,
 ): void => {
@@ -306,7 +306,7 @@ const perpendicularOffset = (from: Vec2, tip: Vec2, amount: number): Vec2 => {
  return { x: from.x + nx * amount, y: from.y + ny * amount };
 };
 
-const applyStrokeStyle = (edge: Edge, target: RenderTarget): void => {
+const applyStrokeStyle = (edge: Link, target: RenderTarget): void => {
  const stroke = edge.style.stroke ?? "#000";
  target.setStroke(stroke);
  target.setFill(null);
@@ -334,7 +334,7 @@ const controlPoint = (from: Vec2, to: Vec2, t: number): Vec2 => {
 
 const drawArrowheads = (
  path: readonly Vec2[],
- heads: EdgeArrowheads,
+ heads: LinkArrowheads,
  target: RenderTarget,
 ): void => {
  const size = heads.size ?? 10;
@@ -353,7 +353,7 @@ const drawArrowheads = (
 const drawArrowhead = (
  tip: Vec2,
  fromPoint: Vec2,
- style: Exclude<EdgeArrowheads["from"], "none" | undefined>,
+ style: Exclude<LinkArrowheads["from"], "none" | undefined>,
  size: number,
  target: RenderTarget,
 ): void => {
@@ -414,7 +414,7 @@ const drawArrowhead = (
  }
 };
 
-const drawLabel = (path: readonly Vec2[], label: EdgeLabel, target: RenderTarget): void => {
+const drawLabel = (path: readonly Vec2[], label: LinkLabel, target: RenderTarget): void => {
  const t = label.position ?? 0.5;
  const fontSize = label.fontSize ?? 12;
  const fill = label.fill ?? "#222";

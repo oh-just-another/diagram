@@ -18,7 +18,7 @@ export interface LayoutedNode extends GraphNode {
  * direction hinted by `graph.layout`.
  *
  * Returns a new graph where every node has explicit `position`, `width`,
- * and `height`. Edges are unchanged.
+ * and `height`. Links are unchanged.
  */
 export const layoutGraph = (
   graph: GraphDocument,

@@ -1,7 +1,7 @@
 import type { Patch } from "@oh-just-another/scene";
 
 type ElementPatch = Extract<Patch, { kind: "shape" }>;
-type EdgePatch = Extract<Patch, { kind: "edge" }>;
+type LinkPatch = Extract<Patch, { kind: "edge" }>;
 type LayerPatch = Extract<Patch, { kind: "layer" }>;
 type AnnotationPatch = Extract<Patch, { kind: "annotation" }>;
 type ViewportPatch = Extract<Patch, { kind: "viewport" }>;
@@ -25,7 +25,7 @@ interface Slot<P> {
  */
 export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
   const shapes = new Map<string, Slot<ElementPatch>>();
-  const edges = new Map<string, Slot<EdgePatch>>();
+  const edges = new Map<string, Slot<LinkPatch>>();
   const layers = new Map<string, Slot<LayerPatch>>();
   const annotations = new Map<string, Slot<AnnotationPatch>>();
   const files = new Map<string, Slot<FilePatch>>();

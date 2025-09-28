@@ -75,7 +75,7 @@ export interface AtlasGlyph {
 }
 
 export interface GlyphAtlasOptions {
-  /** Edge length of the backing texture. Default {@link DEFAULT_ATLAS_SIZE}. */
+  /** Link length of the backing texture. Default {@link DEFAULT_ATLAS_SIZE}. */
   readonly atlasSize?: number;
   /** Per-glyph tile edge. Default {@link DEFAULT_TILE_SIZE}. */
   readonly tileSize?: number;

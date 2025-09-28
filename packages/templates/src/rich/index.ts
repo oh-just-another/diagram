@@ -1,7 +1,7 @@
 export type {
   NodeStyle,
   Spacing,
-  EdgeSpacing,
+  LinkSpacing,
   FlexDirection,
   JustifyContent,
   AlignItems,

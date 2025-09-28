@@ -93,7 +93,7 @@ export const getAnchorWorld = (shape: ElementBase, anchor: AnchorRef): Vec2 => {
 /**
  * Find the anchor on `shape` whose world position is closest to
  * `worldPoint`. Returns the canonical `AnchorRef` you can persist on an
- * `EdgeEndpoint` so future renders stay locked to that port.
+ * `LinkEndpoint` so future renders stay locked to that port.
  *
  * Useful when committing an edge whose endpoint dropped near a shape:
  * snap the drop position to the nearest of the 9 standard anchors (plus

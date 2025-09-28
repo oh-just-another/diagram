@@ -5,7 +5,7 @@ import {
   emptyScene,
   getShapeWorldBounds,
   orderBetween,
-  type Edge,
+  type Link,
   type Patch,
   type Scene,
   type Element,
@@ -302,7 +302,7 @@ const Drawer = ({
 
 const InspectorTab = ({ editor }: { editor: Editor }) => {
   const ids = [...editor.selection];
-  const linkId = editor.selectedEdge;
+  const linkId = editor.selectedLink;
 
   if (ids.length === 0 && !linkId) {
     return <Hint>Select one or more shapes (or an edge) to see details.</Hint>;
@@ -318,7 +318,7 @@ const InspectorTab = ({ editor }: { editor: Editor }) => {
       {linkId
         ? (() => {
             const edge = editor.scene.edges.get(linkId);
-            return edge ? <EdgeCard key={linkId} edge={edge} /> : null;
+            return edge ? <LinkCard key={linkId} edge={edge} /> : null;
           })()
         : null}
     </div>
@@ -386,7 +386,7 @@ const ShapeCard = ({ shape }: { shape: Element }) => {
   );
 };
 
-const EdgeCard = ({ edge }: { edge: import("@oh-just-another/scene").Edge }) => (
+const LinkCard = ({ edge }: { edge: import("@oh-just-another/scene").Link }) => (
   <Card>
     <Row label="id">
       <Code>{edge.id}</Code>
@@ -435,7 +435,7 @@ const StateTab = ({ editor }: { editor: Editor }) => {
           <Code>{editor.selection.size}</Code>
         </Row>
         <Row label="edge">
-          <Code>{editor.selectedEdge ?? "—"}</Code>
+          <Code>{editor.selectedLink ?? "—"}</Code>
         </Row>
       </Section>
       <Section title="Viewport">
@@ -1096,7 +1096,7 @@ const lastOrder = (editor: Editor): Element["order"] | null => {
 
 interface BuildResult {
   readonly shapes: readonly Element[];
-  readonly edges?: readonly Edge[];
+  readonly edges?: readonly Link[];
 }
 
 // Build a batch of shapes (and optional edges) in-scene without
@@ -1184,18 +1184,18 @@ const buildGrid = (
   if (!opts.connect || shapes.length < 2) {
     return { shapes };
   }
-  // Edges from the first shape to every other, bound by named
+  // Links from the first shape to every other, bound by named
   // "center" anchor on both ends — so moving any shape later still
   // keeps the edge attached (the renderer re-resolves the anchor
   // each frame). Good for stress-testing edge routing under
   // movement.
-  const edges: Edge[] = [];
+  const edges: Link[] = [];
   const head = shapes[0]!;
-  let edgeOrder: Edge["order"] = orderBetween(null, null);
+  let edgeOrder: Link["order"] = orderBetween(null, null);
   for (let i = 1; i < shapes.length; i++) {
     const target = shapes[i]!;
     edges.push({
-      id: nextDebugEdgeId(`grid-${i}`),
+      id: nextDebugLinkId(`grid-${i}`),
       layerId,
       from: {
         kind: "anchor",
@@ -1216,9 +1216,9 @@ const buildGrid = (
   return { shapes, edges };
 };
 
-let debugEdgeCounter = 0;
-const nextDebugEdgeId = (prefix: string): LinkId =>
-  linkId(`debug-edge-${prefix}-${++debugEdgeCounter}-${Date.now().toString(36)}`);
+let debugLinkCounter = 0;
+const nextDebugLinkId = (prefix: string): LinkId =>
+  linkId(`debug-edge-${prefix}-${++debugLinkCounter}-${Date.now().toString(36)}`);
 
 interface StackOptions {
   readonly count: number;

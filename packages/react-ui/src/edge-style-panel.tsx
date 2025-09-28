@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
-import type { ArrowheadStyle, Edge, EdgeRouting } from "@oh-just-another/scene";
-import { useDiagramOptional, useScene, useSelectedEdge } from "./hooks.js";
+import type { ArrowheadStyle, Link, LinkRouting } from "@oh-just-another/scene";
+import { useDiagramOptional, useScene, useSelectedLink } from "./hooks.js";
 
 /**
  * Mini-panel that surfaces the most-edited properties of the
@@ -9,13 +9,13 @@ import { useDiagramOptional, useScene, useSelectedEdge } from "./hooks.js";
  * when no edge is selected — host can put it inside a sidebar slot
  * unconditionally.
  *
- * Field semantics map 1:1 to the scene `Edge` shape (routing,
+ * Field semantics map 1:1 to the scene `Link` shape (routing,
  * arrowheads.{from,to}, style.{stroke,strokeWidth,dashArray},
- * label.text). Edits go through `Editor.updateSelectedEdge`, which
+ * label.text). Edits go through `Editor.updateSelectedLink`, which
  * commits one history step per change.
  */
 
-export interface EdgeStylePanelProps {
+export interface LinkStylePanelProps {
   readonly className?: string;
   readonly style?: CSSProperties;
 }
@@ -28,7 +28,7 @@ const ARROW_OPTIONS: { readonly value: ArrowheadStyle; readonly label: string }[
   { value: "circle", label: "Circle" },
 ];
 
-const ROUTING_OPTIONS: { readonly value: EdgeRouting; readonly label: string }[] = [
+const ROUTING_OPTIONS: { readonly value: LinkRouting; readonly label: string }[] = [
   { value: "straight", label: "Straight" },
   { value: "orthogonal", label: "Elbow" },
   { value: "bezier", label: "Curved" },
@@ -47,11 +47,11 @@ const dashKey = (arr: readonly number[] | undefined): string => {
   return "custom";
 };
 
-export const EdgeStylePanel = ({ className, style }: EdgeStylePanelProps) => {
+export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
   const editor = useDiagramOptional();
   const scene = useScene();
-  const selectedEdgeId = useSelectedEdge();
-  const edge = selectedEdgeId !== null ? scene.edges.get(selectedEdgeId) : undefined;
+  const selectedLinkId = useSelectedLink();
+  const edge = selectedLinkId !== null ? scene.edges.get(selectedLinkId) : undefined;
   if (!editor || !edge) return null;
 
   const containerStyle: CSSProperties = {
@@ -67,27 +67,27 @@ export const EdgeStylePanel = ({ className, style }: EdgeStylePanelProps) => {
   };
 
   const setArrowhead = (side: "from" | "to", value: ArrowheadStyle): void => {
-    editor.updateSelectedEdge((e) => ({
+    editor.updateSelectedLink((e) => ({
       ...e,
       arrowheads: { ...(e.arrowheads ?? {}), [side]: value === "none" ? undefined : value },
     }));
   };
 
-  const setRouting = (routing: EdgeRouting): void => {
-    editor.updateSelectedEdge((e) => ({ ...e, routing }));
+  const setRouting = (routing: LinkRouting): void => {
+    editor.updateSelectedLink((e) => ({ ...e, routing }));
   };
 
   const setStroke = (stroke: string): void => {
-    editor.updateSelectedEdge((e) => ({ ...e, style: { ...e.style, stroke } }));
+    editor.updateSelectedLink((e) => ({ ...e, style: { ...e.style, stroke } }));
   };
 
   const setStrokeWidth = (w: number): void => {
-    editor.updateSelectedEdge((e) => ({ ...e, style: { ...e.style, strokeWidth: w } }));
+    editor.updateSelectedLink((e) => ({ ...e, style: { ...e.style, strokeWidth: w } }));
   };
 
   const setDash = (kind: string): void => {
     const opt = DASH_OPTIONS.find((o) => o.value === kind);
-    editor.updateSelectedEdge((e) => {
+    editor.updateSelectedLink((e) => {
       if (!opt?.array) {
         // "Solid" — strip the field entirely so the renderer treats
         // the stroke as continuous instead of falling through with
@@ -103,12 +103,12 @@ export const EdgeStylePanel = ({ className, style }: EdgeStylePanelProps) => {
   };
 
   const setLabel = (text: string): void => {
-    editor.updateSelectedEdge((e) => {
+    editor.updateSelectedLink((e) => {
       if (text === "") {
         // Empty string removes the label entirely.
-        const { label: _l, ...rest } = e as Edge & { label?: unknown };
+        const { label: _l, ...rest } = e as Link & { label?: unknown };
         void _l;
-        return rest as Edge;
+        return rest as Link;
       }
       return { ...e, label: { ...(e.label ?? {}), text } };
     });
@@ -125,14 +125,14 @@ export const EdgeStylePanel = ({ className, style }: EdgeStylePanelProps) => {
           color: "var(--muted, #888)",
         }}
       >
-        Edge
+        Link
       </h2>
 
       <Row label="Kind">
         <select
           value={edge.lineKind ?? "line"}
           onChange={(ev) =>
-            editor.updateSelectedEdge((e) => ({
+            editor.updateSelectedLink((e) => ({
               ...e,
               lineKind: ev.target.value === "block-arrow" ? "block-arrow" : "line",
             }))
@@ -147,7 +147,7 @@ export const EdgeStylePanel = ({ className, style }: EdgeStylePanelProps) => {
       <Row label="Routing">
         <select
           value={edge.routing ?? "straight"}
-          onChange={(ev) => setRouting(ev.target.value as EdgeRouting)}
+          onChange={(ev) => setRouting(ev.target.value as LinkRouting)}
           style={selectStyle}
         >
           {ROUTING_OPTIONS.map((o) => (

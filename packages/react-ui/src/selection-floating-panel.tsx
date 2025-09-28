@@ -74,20 +74,19 @@ export const SelectionFloatingPanel = ({
 
   // Subscribe to editor events via the umbrella `"change"` event:
   //
-  // 1. `editor.selectedEdge` is NOT included in the editor's
-  //    observable snapshot (see `editor.ts` `observableSnapshot`),
-  //    so the `"selection"` event doesn't fire on edge select /
-  //    deselect — leaving an edge-only selection invisible to a
-  //    panel that only subscribes to `"selection"`.
-  // 2. We need to react to scene, viewport, AND selection — and
-  //    `"change"` covers all three plus history changes, with the
-  //    same per-notify granularity. Position re-compute is cheap.
+  // 1. `editor.selectedLink` is NOT included in the editor's observable
+  //    snapshot, so the `"selection"` event doesn't fire on edge select /
+  //    deselect — leaving an edge-only selection invisible to a panel
+  //    that only subscribes to `"selection"`.
+  // 2. The panel needs to react to scene, viewport, AND selection, and
+  //    `"change"` covers all three plus history changes. Position
+  //    re-compute is cheap.
   useEffect(() => {
     if (!editor) return;
     const refresh = () => {
       const prev = editor.selection;
       void prev;
-      const next = editor.selection.size > 0 || editor.selectedEdge !== null;
+      const next = editor.selection.size > 0 || editor.selectedLink !== null;
       setHasSelection((had) => {
         // Reset the "positioned" flag whenever the panel transitions
         // from hidden → visible so the new selection's first paint waits
@@ -175,7 +174,7 @@ export const SelectionFloatingPanel = ({
  * bounding box. Returns `null` when nothing is selected.
  *
  * Hot path — called whenever floating-ui recomputes. Reads
- * `editor.selection`, `editor.selectedEdge`, `editor.scene`, and
+ * `editor.selection`, `editor.selectedLink`, `editor.scene`, and
  * `editor.hostElement` directly each call so freshness is guaranteed
  * without React state plumbing.
  */
@@ -213,12 +212,12 @@ const computeSelectionWorldBbox = (
     if (s) shapes.push(s);
   }
   if (shapes.length === 0) {
-    // Edge-only selection: take the edge's bbox.
-    const linkId = editor.selectedEdge;
+    // Link-only selection: take the edge's bbox.
+    const linkId = editor.selectedLink;
     if (linkId) {
       const edge = editor.scene.edges.get(linkId);
       if (edge) {
-        // Edge endpoints might be free points or anchor-bound; for
+        // Link endpoints might be free points or anchor-bound; for
         // bound endpoints, resolve via the bound shape's bounds.
         // Cheap approximation: rect over both endpoints if `point`
         // kind, else the bound shape's center.

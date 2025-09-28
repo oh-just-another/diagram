@@ -255,7 +255,7 @@ export interface FrameElement extends ElementBase {
 
 /**
  * Filled arrow drawn as a single shape (body rectangle + triangular
- * head, optionally with a triangular tail). Distinct from an Edge:
+ * head, optionally with a triangular tail). Distinct from an Link:
  * edges connect anchors and re-route on shape move; a BlockArrowElement
  * is a free-standing element with a fixed silhouette like a block-arrow icon.
  */

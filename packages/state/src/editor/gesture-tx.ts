@@ -104,7 +104,7 @@ export class GestureController {
   }
 
   /**
-   * Internal hook — called from `applyCreate` / `applyCreateEdge`
+   * Internal hook — called from `applyCreate` / `applyCreateLink`
    * after a successful shape / edge instantiation. Reverts the
    * active mode to `select` unless `toolLocked` is on.
    */

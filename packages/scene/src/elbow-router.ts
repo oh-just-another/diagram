@@ -12,7 +12,7 @@ import type { Bounds, Vec2 } from "@oh-just-another/types";
  * Algorithm:
  *   1. Build a candidate-point set: from, to, and the four
  *      corners of each obstacle bbox inflated by `MARGIN` so
- *      the path runs *around* the box, not on its edge. Edges
+ *      the path runs *around* the box, not on its edge. Links
  *      whose two endpoints lie on the same axis (same x or same
  *      y) and don't cross any obstacle's interior become graph
  *      edges with cost = Manhattan distance.
@@ -149,7 +149,7 @@ const neighbours = (
 
 /**
  * Returns `true` when the axis-aligned segment `from → to` passes
- * through the *interior* of any obstacle. Edge-on contact (the
+ * through the *interior* of any obstacle. Link-on contact (the
  * segment runs along the bbox boundary) is allowed — that's the
  * whole point of the margin inflate.
  */

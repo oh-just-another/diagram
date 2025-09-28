@@ -1079,7 +1079,7 @@ const openSceneFile = (editor: Editor | null): void => {
 /**
  * "Export as PNG" — renders the **full scene** (not just the visible
  * viewport) into an OffscreenCanvas via the standard `renderScene` +
- * `renderEdges` pipeline and downloads the result. Three variants
+ * `renderLinks` pipeline and downloads the result. Three variants
  * exposed in the menu:
  *
  *   • transparent      — PNG with alpha channel preserved

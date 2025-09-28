@@ -51,7 +51,7 @@ export {
   useActiveLayerId,
   useAnnotations,
   useSelectedAnnotation,
-  useSelectedEdge,
+  useSelectedLink,
 } from "./hooks.js";
 export { LayerPanel, type LayerPanelProps } from "./layer-panel.js";
 export {
@@ -92,7 +92,7 @@ export {
   type PaletteProps,
 } from "./palette.js";
 export { PropertyPanel, type PropertyPanelProps } from "./property-panel.js";
-export { EdgeStylePanel, type EdgeStylePanelProps } from "./edge-style-panel.js";
+export { LinkStylePanel, type LinkStylePanelProps } from "./edge-style-panel.js";
 export { DiffPanel, type DiffPanelProps } from "./diff-panel.js";
 export {
   ContextMenu,

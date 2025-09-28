@@ -8,7 +8,7 @@ import type { LayoutedNode } from "./layout.js";
  * and stay correct under resize.
  *
  * Called once by the template-instance factory to populate
- * `shape.anchors` on the resulting scene shape. Edge endpoints can then
+ * `shape.anchors` on the resulting scene shape. Link endpoints can then
  * reference ports by id (via `{ kind: "anchor", anchor: { kind: "named",
  * name: <port.id> } }`); the snap engine + nearest-anchor lookup picks
  * them up automatically.

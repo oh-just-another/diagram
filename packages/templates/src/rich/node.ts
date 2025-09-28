@@ -63,7 +63,7 @@ export interface DropZoneNode extends NodeBase {
 }
 
 /**
- * Connection port — a named anchor on the rendered template shape. Edges
+ * Connection port — a named anchor on the rendered template shape. Links
  * snap to ports during draw / re-bind. Visible-on-hover is up to the host.
  *
  * Position the port the same way as any other node: typically with

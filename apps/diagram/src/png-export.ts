@@ -6,7 +6,7 @@ import {
 } from "@oh-just-another/scene";
 import type { Bounds } from "@oh-just-another/types";
 import {
-  renderEdges,
+  renderLinks,
   renderGrid,
   renderScene,
 } from "@oh-just-another/renderer-core";
@@ -15,7 +15,7 @@ import { createOffscreenCanvas2DTarget } from "@oh-just-another/renderer-canvas"
 /**
  * Browser-side PNG export — renders the **full scene** (not just the
  * current viewport) into an OffscreenCanvas via the standard
- * `renderScene` + `renderEdges` pipeline, then converts to a PNG blob.
+ * `renderScene` + `renderLinks` pipeline, then converts to a PNG blob.
  *
  * Three variants, exposed as separate menu items:
  *
@@ -121,7 +121,7 @@ export const exportSceneToPng = async (
 
   // Shapes (skipClear: true so background / grid survive).
   renderScene(exportScene, target, { skipClear: true });
-  renderEdges(exportScene, target);
+  renderLinks(exportScene, target);
 
   return canvas.convertToBlob({ type: "image/png" });
 };

@@ -40,9 +40,9 @@ export const actionModeText: Action = {
   perform: ({ editor }) => editor.setMode("draw-text"),
 };
 
-export const actionModeEdge: Action = {
+export const actionModeLink: Action = {
   id: "mode-edge",
-  label: "Edge tool",
+  label: "Link tool",
   category: "mode",
   hotkey: { key: "l" },
   perform: ({ editor }) => editor.setMode("draw-edge"),
@@ -88,7 +88,7 @@ export const modeActions: readonly Action[] = [
   actionModeRect,
   actionModeEllipse,
   actionModeText,
-  actionModeEdge,
+  actionModeLink,
   actionModeBrush,
   actionModeFrame,
   actionToggleToolLock,

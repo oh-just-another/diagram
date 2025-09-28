@@ -79,7 +79,7 @@ export const parseDot = (source: string): GraphDocument => {
       continue;
     }
 
-    // Edge: -> or -- to next node, possibly chained.
+    // Link: -> or -- to next node, possibly chained.
     let prev = sourceId;
     while (tokens[i] === "->" || tokens[i] === "--") {
       const op = tokens[i]!;

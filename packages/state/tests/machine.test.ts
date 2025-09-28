@@ -127,12 +127,12 @@ describe("interactionMachine", () => {
   });
 
   describe("drawing edge", () => {
-    it("draw-edge mode + drag → drawingEdge state + DRAW_EDGE_PREVIEW emit", () => {
+    it("draw-edge mode + drag → drawingLink state + DRAW_EDGE_PREVIEW emit", () => {
       const { actor, emits } = start();
       actor.send({ type: "SET_MODE", mode: "draw-edge" });
       actor.send({ type: "POINTER_DOWN", point: { x: 10, y: 10 }, target: rectTarget("a") });
       actor.send({ type: "POINTER_MOVE", point: { x: 80, y: 50 } });
-      expect(actor.getSnapshot().value).toBe("drawingEdge");
+      expect(actor.getSnapshot().value).toBe("drawingLink");
       const preview = emits.find((e) => e.type === "DRAW_EDGE_PREVIEW");
       expect(preview).toBeDefined();
       if (preview?.type === "DRAW_EDGE_PREVIEW") {

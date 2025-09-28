@@ -191,10 +191,10 @@ export class YjsHistory implements HistoryProvider {
  * scenes. Used after Y.UndoManager rewinds the CRDT so the Editor
  * can apply the corresponding patch to its local scene mirror.
  *
- * The implementation is structural: every shape/edge/layer/annot
- * present-or-absent on each side gets a single add/remove/update
- * op. Edge cases (no-op when the rewind landed on the same state)
- * resolve to a `null` return — the caller skips applying.
+ * Structural: every shape/edge/layer/annotation present-or-absent
+ * on each side gets a single add/remove/update op. A rewind that
+ * landed on the same state resolves to a `null` return — the caller
+ * skips applying.
  */
 const diffAsPatch = (before: Scene, after: Scene): Patch | null => {
   const ops: Patch[] = [];

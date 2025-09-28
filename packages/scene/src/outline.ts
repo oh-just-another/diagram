@@ -40,7 +40,7 @@ export const getOutlinePoint = (shape: ElementBase, ratio: number): Vec2 => {
 
 /**
  * Find the point on the shape's outline closest to `worldPoint`. Returns
- * the ratio (for persistence as an `EdgeEndpoint.outline`), the resolved
+ * the ratio (for persistence as an `LinkEndpoint.outline`), the resolved
  * world position, and the distance — so callers can decide whether to use
  * the snap (e.g. only if it's within their threshold).
  *

@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { linkId, layerId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addEdge,
+  addLink,
   addShape,
   emptyScene,
-  getEdgeEndpointWorld,
-  getEdgePath,
+  getLinkEndpointWorld,
+  getLinkPath,
   orderBetween,
-  type Edge,
+  type Link,
   type RectangleElement,
 } from "../src/index";
 
@@ -25,7 +25,7 @@ const rect = (id: string, x: number, y: number, w = 100, h = 60): RectangleEleme
   height: h,
 });
 
-const edge = (overrides: Partial<Edge>): Edge => ({
+const edge = (overrides: Partial<Link>): Link => ({
   id: linkId("e1"),
   layerId: layerId(DEFAULT_LAYER_ID),
   from: { kind: "point", position: { x: 0, y: 0 } },
@@ -35,17 +35,17 @@ const edge = (overrides: Partial<Edge>): Edge => ({
   ...overrides,
 });
 
-const sceneWith = (shapes: RectangleElement[], edges: Edge[] = []) => {
+const sceneWith = (shapes: RectangleElement[], edges: Link[] = []) => {
   let s = emptyScene();
   for (const sh of shapes) ({ scene: s } = addShape(s, sh));
-  for (const e of edges) ({ scene: s } = addEdge(s, e));
+  for (const e of edges) ({ scene: s } = addLink(s, e));
   return s;
 };
 
-describe("getEdgeEndpointWorld", () => {
+describe("getLinkEndpointWorld", () => {
   it("returns the stored position for point endpoints", () => {
     const s = emptyScene();
-    expect(getEdgeEndpointWorld(s, { kind: "point", position: { x: 42, y: 17 } })).toEqual({
+    expect(getLinkEndpointWorld(s, { kind: "point", position: { x: 42, y: 17 } })).toEqual({
       x: 42,
       y: 17,
     });
@@ -55,7 +55,7 @@ describe("getEdgeEndpointWorld", () => {
     const r = rect("a", 100, 200);
     const s = sceneWith([r]);
     expect(
-      getEdgeEndpointWorld(s, {
+      getLinkEndpointWorld(s, {
         kind: "anchor",
         elementId: r.id,
         anchor: { kind: "named", name: "center" },
@@ -66,7 +66,7 @@ describe("getEdgeEndpointWorld", () => {
   it("returns null when the referenced shape is missing", () => {
     const s = emptyScene();
     expect(
-      getEdgeEndpointWorld(s, {
+      getLinkEndpointWorld(s, {
         kind: "anchor",
         elementId: elementId("ghost"),
         anchor: { kind: "named", name: "center" },
@@ -75,10 +75,10 @@ describe("getEdgeEndpointWorld", () => {
   });
 });
 
-describe("getEdgePath", () => {
+describe("getLinkPath", () => {
   it("straight routing — [from, to]", () => {
     const e = edge({});
-    expect(getEdgePath(emptyScene(), e)).toEqual([
+    expect(getLinkPath(emptyScene(), e)).toEqual([
       { x: 0, y: 0 },
       { x: 100, y: 100 },
     ]);
@@ -86,7 +86,7 @@ describe("getEdgePath", () => {
 
   it("explicit waypoints are inserted between from and to regardless of routing", () => {
     const e = edge({ waypoints: [{ x: 50, y: 50 }] });
-    const path = getEdgePath(emptyScene(), e);
+    const path = getLinkPath(emptyScene(), e);
     expect(path).toEqual([
       { x: 0, y: 0 },
       { x: 50, y: 50 },
@@ -99,7 +99,7 @@ describe("getEdgePath", () => {
       routing: "orthogonal",
       to: { kind: "point", position: { x: 200, y: 50 } },
     });
-    expect(getEdgePath(emptyScene(), e)).toEqual([
+    expect(getLinkPath(emptyScene(), e)).toEqual([
       { x: 0, y: 0 },
       { x: 200, y: 0 },
       { x: 200, y: 50 },
@@ -111,7 +111,7 @@ describe("getEdgePath", () => {
       routing: "orthogonal",
       to: { kind: "point", position: { x: 50, y: 200 } },
     });
-    expect(getEdgePath(emptyScene(), e)).toEqual([
+    expect(getLinkPath(emptyScene(), e)).toEqual([
       { x: 0, y: 0 },
       { x: 0, y: 200 },
       { x: 50, y: 200 },
@@ -120,7 +120,7 @@ describe("getEdgePath", () => {
 
   it("bezier — same endpoints as straight, control points are renderer's job", () => {
     const e = edge({ routing: "bezier" });
-    expect(getEdgePath(emptyScene(), e)).toEqual([
+    expect(getLinkPath(emptyScene(), e)).toEqual([
       { x: 0, y: 0 },
       { x: 100, y: 100 },
     ]);
@@ -128,24 +128,24 @@ describe("getEdgePath", () => {
 
   it("returns null if either endpoint is missing", () => {
     const s = emptyScene();
-    const e: Edge = edge({
+    const e: Link = edge({
       from: {
         kind: "anchor",
         elementId: elementId("missing"),
         anchor: { kind: "named", name: "center" },
       },
     });
-    expect(getEdgePath(s, e)).toBeNull();
+    expect(getLinkPath(s, e)).toBeNull();
   });
 
   it("anchor-resolved endpoints react to shape movement", () => {
     const r = rect("x", 0, 0);
-    const e: Edge = edge({
+    const e: Link = edge({
       from: { kind: "anchor", elementId: r.id, anchor: { kind: "named", name: "right" } },
       to: { kind: "point", position: { x: 500, y: 0 } },
     });
     const s = sceneWith([r], [e]);
-    expect(getEdgePath(s, e)).toEqual([
+    expect(getLinkPath(s, e)).toEqual([
       { x: 100, y: 30 },
       { x: 500, y: 0 },
     ]);

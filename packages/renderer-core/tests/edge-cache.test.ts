@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { linkId, elementId } from "@oh-just-another/types";
 import {
-  addEdge,
+  addLink,
   addShape,
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
   updateShape,
-  type Edge,
+  type Link,
   type Patch,
   type Element,
 } from "@oh-just-another/scene";
-import { computeEdgeWorldBounds, EdgeBoundsCache } from "../src/index";
+import { computeLinkWorldBounds, LinkBoundsCache } from "../src/index";
 
 const rect = (id: string, x = 0, y = 0, w = 10, h = 10): Element => ({
   id: elementId(id),
@@ -27,7 +27,7 @@ const rect = (id: string, x = 0, y = 0, w = 10, h = 10): Element => ({
   height: h,
 });
 
-const sceneWithEdge = (edge: Edge): { scene: ReturnType<typeof emptyScene>; edge: Edge } => {
+const sceneWithLink = (edge: Link): { scene: ReturnType<typeof emptyScene>; edge: Link } => {
   let scene = apply(emptyScene(), {
     kind: "shape",
     id: rect("a").id,
@@ -40,11 +40,11 @@ const sceneWithEdge = (edge: Edge): { scene: ReturnType<typeof emptyScene>; edge
     before: null,
     after: rect("b", 100, 100),
   } satisfies Patch);
-  const r = addEdge(scene, edge);
+  const r = addLink(scene, edge);
   return { scene: r.scene, edge };
 };
 
-const baseEdge: Edge = {
+const baseLink: Link = {
   id: linkId("e1"),
   layerId: DEFAULT_LAYER_ID,
   order: orderBetween(null, null),
@@ -53,10 +53,10 @@ const baseEdge: Edge = {
   style: {},
 };
 
-describe("EdgeBoundsCache", () => {
-  it("computeEdgeWorldBounds returns the polyline AABB", () => {
-    const { scene, edge } = sceneWithEdge(baseEdge);
-    const b = computeEdgeWorldBounds(scene, edge);
+describe("LinkBoundsCache", () => {
+  it("computeLinkWorldBounds returns the polyline AABB", () => {
+    const { scene, edge } = sceneWithLink(baseLink);
+    const b = computeLinkWorldBounds(scene, edge);
     expect(b).not.toBeNull();
     expect(b!.x).toBeLessThanOrEqual(5);
     expect(b!.y).toBeLessThanOrEqual(5);
@@ -65,30 +65,30 @@ describe("EdgeBoundsCache", () => {
   });
 
   it("memoizes by (scene, edge) identity", () => {
-    const { scene, edge } = sceneWithEdge(baseEdge);
-    const cache = new EdgeBoundsCache();
+    const { scene, edge } = sceneWithLink(baseLink);
+    const cache = new LinkBoundsCache();
     const first = cache.getOrCompute(scene, edge);
     const second = cache.getOrCompute(scene, edge);
     expect(second).toBe(first);
   });
 
   it("invalidates when the scene ref changes (shape move)", () => {
-    const { scene, edge } = sceneWithEdge(baseEdge);
-    const cache = new EdgeBoundsCache();
+    const { scene, edge } = sceneWithLink(baseLink);
+    const cache = new LinkBoundsCache();
     const first = cache.getOrCompute(scene, edge);
     const moved = updateShape(scene, elementId("b"), (s) => ({
       ...s,
       position: { x: 500, y: 500 },
     })).scene;
-    // Edge ref unchanged, but scene ref differs — must recompute.
+    // Link ref unchanged, but scene ref differs — must recompute.
     const second = cache.getOrCompute(moved, edge);
     expect(second).not.toBe(first);
     expect(second!.x + second!.width).toBeGreaterThan(first!.x + first!.width);
   });
 
   it("prune drops entries whose edge is gone from the scene", () => {
-    const { scene, edge } = sceneWithEdge(baseEdge);
-    const cache = new EdgeBoundsCache();
+    const { scene, edge } = sceneWithLink(baseLink);
+    const cache = new LinkBoundsCache();
     cache.getOrCompute(scene, edge);
     expect(cache.size).toBe(1);
     const removed = apply(scene, {

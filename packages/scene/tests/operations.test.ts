@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { linkId, layerId, elementId } from "@oh-just-another/types";
 import {
-  addEdge,
+  addLink,
   addLayer,
   addShape,
   apply,
@@ -10,13 +10,13 @@ import {
   invert,
   moveShape,
   orderBetween,
-  removeEdge,
+  removeLink,
   removeLayer,
   removeShape,
   setViewport,
   updateLayer,
   updateShape,
-  type Edge,
+  type Link,
   type Layer,
   type Element,
   type Viewport,
@@ -84,7 +84,7 @@ describe("operations", () => {
   });
 
   describe("edges", () => {
-    const edge: Edge = {
+    const edge: Link = {
       id: linkId("e1"),
       layerId: DEFAULT_LAYER_ID,
       from: { kind: "point", position: { x: 0, y: 0 } },
@@ -94,12 +94,12 @@ describe("operations", () => {
     };
 
     it("add and remove are inverses", () => {
-      const { scene, patch } = addEdge(emptyScene(), edge);
+      const { scene, patch } = addLink(emptyScene(), edge);
       expect(scene.edges.size).toBe(1);
       const back = apply(scene, invert(patch));
       expect(back.edges.size).toBe(0);
 
-      const { scene: removed, patch: rp } = removeEdge(scene, edge.id);
+      const { scene: removed, patch: rp } = removeLink(scene, edge.id);
       expect(removed.edges.size).toBe(0);
       expect(apply(removed, invert(rp)).edges.size).toBe(1);
     });

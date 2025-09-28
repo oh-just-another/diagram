@@ -1,20 +1,20 @@
 import type { Bounds, LinkId } from "@oh-just-another/types";
-import { getEdgePath, type Edge, type Scene } from "@oh-just-another/scene";
+import { getLinkPath, type Link, type Scene } from "@oh-just-another/scene";
 
 /**
- * Per-edge memo invalidated by identity of either the `Edge` ref or the
- * `Scene` ref. Edges' world AABB depends on endpoint shapes' positions —
+ * Per-edge memo invalidated by identity of either the `Link` ref or the
+ * `Scene` ref. Links' world AABB depends on endpoint shapes' positions —
  * a shape move replaces the shape ref but leaves the edge ref intact, so
  * a plain by-edge cache would go stale. Patches always replace the
  * `Scene` ref, so `(edge, scene)` together form a sound key.
  */
-export class EdgeBoundsCache {
+export class LinkBoundsCache {
   private readonly entries = new Map<
     LinkId,
-    { readonly edge: Edge; readonly scene: Scene; readonly value: Bounds | null }
+    { readonly edge: Link; readonly scene: Scene; readonly value: Bounds | null }
   >();
 
-  get(scene: Scene, edge: Edge): Bounds | null | undefined {
+  get(scene: Scene, edge: Link): Bounds | null | undefined {
     const entry = this.entries.get(edge.id);
     if (!entry) return undefined;
     if (entry.edge !== edge || entry.scene !== scene) {
@@ -24,15 +24,15 @@ export class EdgeBoundsCache {
     return entry.value;
   }
 
-  set(scene: Scene, edge: Edge, value: Bounds | null): Bounds | null {
+  set(scene: Scene, edge: Link, value: Bounds | null): Bounds | null {
     this.entries.set(edge.id, { edge, scene, value });
     return value;
   }
 
-  getOrCompute(scene: Scene, edge: Edge): Bounds | null {
+  getOrCompute(scene: Scene, edge: Link): Bounds | null {
     const cached = this.get(scene, edge);
     if (cached !== undefined) return cached;
-    return this.set(scene, edge, computeEdgeWorldBounds(scene, edge));
+    return this.set(scene, edge, computeLinkWorldBounds(scene, edge));
   }
 
   invalidate(id: LinkId): void {
@@ -59,8 +59,8 @@ export class EdgeBoundsCache {
  * path is unresolvable (missing endpoint shape). Pure with respect to
  * the `(scene, edge)` pair.
  */
-export const computeEdgeWorldBounds = (scene: Scene, edge: Edge): Bounds | null => {
-  const path = getEdgePath(scene, edge);
+export const computeLinkWorldBounds = (scene: Scene, edge: Link): Bounds | null => {
+  const path = getLinkPath(scene, edge);
   if (!path || path.length === 0) return null;
   let minX = Infinity;
   let minY = Infinity;
@@ -76,8 +76,8 @@ export const computeEdgeWorldBounds = (scene: Scene, edge: Edge): Bounds | null 
 };
 
 /**
- * Shared module-level cache. Survives across `renderEdges` calls — the
+ * Shared module-level cache. Survives across `renderLinks` calls — the
  * `(edge, scene)` identity key ensures stale entries fall out automatically
  * once a patch produces a new scene reference.
  */
-export const sharedEdgeBoundsCache: EdgeBoundsCache = new EdgeBoundsCache();
+export const sharedLinkBoundsCache: LinkBoundsCache = new LinkBoundsCache();

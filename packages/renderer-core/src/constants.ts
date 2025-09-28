@@ -1,7 +1,7 @@
 /**
  * Tunable constants for the renderer core. All "magic numbers" used by
- * `renderScene` / `renderEdges` / `renderGrid` live here so hosts and
- * future-us have one place to tweak performance / visual behaviour.
+ * `renderScene` / `renderLinks` / `renderGrid` live here so there is one
+ * place to tweak performance / visual behaviour.
  */
 
 import type { LodOptions } from "./scene-renderer.js";

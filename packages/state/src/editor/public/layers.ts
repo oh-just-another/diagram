@@ -2,7 +2,7 @@ import {
   addLayer,
   getShape,
   orderForTop,
-  removeEdge,
+  removeLink,
   removeLayer,
   removeShape,
   updateLayer,
@@ -62,7 +62,7 @@ export const computeRemoveLayer = (
   }
   for (const edge of [...s.edges.values()]) {
     if (edge.layerId !== id) continue;
-    const r = removeEdge(s, edge.id);
+    const r = removeLink(s, edge.id);
     s = r.scene;
     patches.push(r.patch);
   }
@@ -113,9 +113,9 @@ export const computeToggleLayerLock = (
 };
 
 /**
- * Pure: move every shape in the selection to `targetLayer`. Edges
- * are intentionally left alone — they stay on whichever layer they
- * were already on; cross-layer edges are valid.
+ * Move every shape in the selection to `targetLayer`. Links are left
+ * alone — they stay on whichever layer they were already on;
+ * cross-layer edges are valid.
  *
  * Returns `null` when the layer doesn't exist, the selection is empty,
  * or all selected shapes are already on the target layer.

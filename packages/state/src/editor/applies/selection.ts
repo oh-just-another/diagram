@@ -11,7 +11,7 @@ import { LASSO_COVERAGE_THRESHOLD } from "../../constants.js";
  * via the host-supplied `isLayerLocked` predicate.
  *
  * Pure — returns the new selection without touching anything. The
- * caller (Editor) writes it back, clears `_selectedEdge`, and
+ * caller (Editor) writes it back, clears `_selectedLink`, and
  * fires `notify()`.
  */
 export const selectByBounds = (
@@ -36,7 +36,7 @@ export const selectByBounds = (
  * whatever the box currently covers (instead of accumulating
  * since press-down), and `"add"` mode keeps the user's pre-existing
  * picks intact. Caller still owns the equality short-circuit and
- * the `_selectedEdge` clearing.
+ * the `_selectedLink` clearing.
  */
 export const selectByBoundsLive = (
   scene: Scene,

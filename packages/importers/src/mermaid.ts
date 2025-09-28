@@ -64,7 +64,7 @@ const EDGE_RE = /^(<?[-=.]+>?)(?:\|([^|]*)\|)?/;
 const parseStatement = (text: string, nodes: Map<string, GraphNode>, edges: GraphEdge[]): void => {
   let i = 0;
   let prev: string | null = null;
-  let pendingEdge: { direction: "directed" | "undirected"; label?: string } | null = null;
+  let pendingLink: { direction: "directed" | "undirected"; label?: string } | null = null;
 
   while (i < text.length) {
     while (i < text.length && /\s/.test(text[i]!)) i++;
@@ -80,17 +80,17 @@ const parseStatement = (text: string, nodes: Map<string, GraphNode>, edges: Grap
       } else {
         nodes.set(nodeMatch.node.id, nodeMatch.node);
       }
-      if (prev && pendingEdge) {
+      if (prev && pendingLink) {
         const edge: GraphEdge = {
           source: prev,
           target: nodeMatch.node.id,
-          direction: pendingEdge.direction,
-          ...(pendingEdge.label !== undefined ? { label: pendingEdge.label } : {}),
+          direction: pendingLink.direction,
+          ...(pendingLink.label !== undefined ? { label: pendingLink.label } : {}),
         };
         edges.push(edge);
       }
       prev = nodeMatch.node.id;
-      pendingEdge = null;
+      pendingLink = null;
       i += nodeMatch.length;
       continue;
     }
@@ -101,7 +101,7 @@ const parseStatement = (text: string, nodes: Map<string, GraphNode>, edges: Grap
       const label = edgeMatch[2];
       const direction: "directed" | "undirected" =
         arrow.includes(">") || arrow.includes("<") ? "directed" : "undirected";
-      pendingEdge = label !== undefined ? { direction, label } : { direction };
+      pendingLink = label !== undefined ? { direction, label } : { direction };
       i += edgeMatch[0].length;
       continue;
     }

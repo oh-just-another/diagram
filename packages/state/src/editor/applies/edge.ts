@@ -1,11 +1,11 @@
 import {
   findNearestAnchor,
-  getEdge,
+  getLink,
   getShape,
   getShapeAt,
   snapExcludedAnchors,
-  updateEdge,
-  type EdgeEndpoint,
+  updateLink,
+  type LinkEndpoint,
   type Scene,
   type Patch,
 } from "@oh-just-another/scene";
@@ -22,7 +22,7 @@ import type { InteractionEmit } from "../../machine.js";
  * Pure — caller (Editor) writes the result to `edgePreview` and
  * fires notify.
  */
-export const computeEdgePreviewEndpoints = (
+export const computeLinkPreviewEndpoints = (
   scene: Scene,
   fromShape: ElementId | null,
   fromPoint: Vec2,
@@ -50,15 +50,15 @@ export const computeEdgePreviewEndpoints = (
  * clear the drag state". Endpoint snapping is delegated to a
  * callback so this module doesn't pull in the snap engine.
  */
-export const computeEdgeEndpointUpdate = (
+export const computeLinkEndpointUpdate = (
   scene: Scene,
   emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
-  snap: (toShape: ElementId | null, toPoint: Vec2) => EdgeEndpoint,
+  snap: (toShape: ElementId | null, toPoint: Vec2) => LinkEndpoint,
 ): { readonly scene: Scene; readonly patch: Patch; readonly linkId: LinkId } | null => {
-  const edge = getEdge(scene, emit.linkId);
+  const edge = getLink(scene, emit.linkId);
   if (!edge) return null;
   const newEndpoint = snap(emit.toShape, emit.toPoint);
-  const result = updateEdge(scene, edge.id, (e) => ({
+  const result = updateLink(scene, edge.id, (e) => ({
     ...e,
     [emit.side]: newEndpoint,
   }));

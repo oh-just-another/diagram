@@ -1,7 +1,7 @@
 import {
   getAnchorWorld,
-  getEdge,
-  getEdgePath,
+  getLink,
+  getLinkPath,
   getShape,
   getShapeWorldBounds,
   listAnchorsLocal,
@@ -9,7 +9,7 @@ import {
 } from "@oh-just-another/scene";
 import {
   DEFAULT_LOD,
-  renderEdges,
+  renderLinks,
   renderGrid,
   renderScene,
 } from "@oh-just-another/renderer-core";
@@ -67,7 +67,7 @@ export const renderEditor = (editor: any): void => {
           : 1,
     });
     editor.tileDirtyShapes = new Map();
-    renderEdges(editor._scene, editor.mainTarget, {
+    renderLinks(editor._scene, editor.mainTarget, {
       ...(viewportWorld ? { viewportWorld } : {}),
     });
   } else {
@@ -87,7 +87,7 @@ export const renderEditor = (editor: any): void => {
       ...(hideShapes ? { hideShapes } : {}),
       ...(sharedIndex ? { spatialIndex: sharedIndex } : {}),
     });
-    renderEdges(editor._scene, editor.mainTarget, {
+    renderLinks(editor._scene, editor.mainTarget, {
       ...(viewportWorld ? { viewportWorld } : {}),
       ...(dirtyWorld ? { dirtyWorld } : {}),
     });
@@ -101,15 +101,15 @@ export const renderEditor = (editor: any): void => {
   if (editor.lassoPreview) overlayOpts.drawingPreview = editor.lassoPreview;
   else if (editor.drawingPreview) overlayOpts.drawingPreview = editor.drawingPreview;
   if (editor.edgePreview) overlayOpts.edgePreview = editor.edgePreview;
-  if (editor.hoveredEdgeTarget) {
-    const shape = getShape(editor._scene, editor.hoveredEdgeTarget.elementId);
+  if (editor.hoveredLinkTarget) {
+    const shape = getShape(editor._scene, editor.hoveredLinkTarget.elementId);
     if (shape) {
       const excluded = snapExcludedAnchors(shape);
       const names = [...listAnchorsLocal(shape).keys()].filter((n) => !excluded.has(n));
       const worldPoints = names.map((name) => getAnchorWorld(shape, { kind: "named", name }));
       const activeIndex =
-        editor.hoveredEdgeTarget.activeAnchor !== null
-          ? names.indexOf(editor.hoveredEdgeTarget.activeAnchor)
+        editor.hoveredLinkTarget.activeAnchor !== null
+          ? names.indexOf(editor.hoveredLinkTarget.activeAnchor)
           : -1;
       overlayOpts.ports = {
         worldPoints,
@@ -135,19 +135,19 @@ export const renderEditor = (editor: any): void => {
       fill: "#222",
     };
   }
-  if (editor._selectedEdge) {
-    const edge = getEdge(editor._scene, editor._selectedEdge);
+  if (editor._selectedLink) {
+    const edge = getLink(editor._scene, editor._selectedLink);
     if (edge) {
-      const path = getEdgePath(editor._scene, edge);
+      const path = getLinkPath(editor._scene, edge);
       if (path && path.length >= 2) {
         // Endpoints in their stored positions; the dragged side jumps to
         // the cursor so the user sees where the rebind will land. The
         // edge itself stays on its old path until release.
         let from = path[0]!;
         let to = path[path.length - 1]!;
-        if (editor.edgeEndpointDrag?.linkId === editor._selectedEdge) {
-          if (editor.edgeEndpointDrag.side === "from") from = editor.edgeEndpointDrag.toPoint;
-          else to = editor.edgeEndpointDrag.toPoint;
+        if (editor.linkEndpointDrag?.linkId === editor._selectedLink) {
+          if (editor.linkEndpointDrag.side === "from") from = editor.linkEndpointDrag.toPoint;
+          else to = editor.linkEndpointDrag.toPoint;
         }
         overlayOpts.edgeSelection = { from, to };
       }

@@ -51,27 +51,27 @@ export const HANDLE_HIT_SLOP = 11;
 
 /**
  * Screen-pixel hit-test slop for grabbing an edge endpoint handle.
- * Larger than `EDGE_ENDPOINT_HANDLE_DRAW_RADIUS` so the handle is
+ * Larger than `LINK_ENDPOINT_HANDLE_DRAW_RADIUS` so the handle is
  * easier to grab on touch without enlarging the visual. Mouse default
- * (touch uses `TOUCH_EDGE_HANDLE_HIT_SLOP`). Range: 9–13.
+ * (touch uses `TOUCH_LINK_HANDLE_HIT_SLOP`). Range: 9–13.
  */
-export const EDGE_ENDPOINT_HANDLE_RADIUS = 11;
+export const LINK_ENDPOINT_HANDLE_RADIUS = 11;
 
 /**
  * Screen-pixel visual radius of the edge endpoint handle. Kept
  * smaller than the hit radius so the dot does not obscure the path
  * tangent it sits on.
  */
-export const EDGE_ENDPOINT_HANDLE_DRAW_RADIUS = 6;
+export const LINK_ENDPOINT_HANDLE_DRAW_RADIUS = 6;
 
 /**
  * Screen-pixel tolerance for edge hit-testing. Cursors within this
  * distance of an edge polyline segment register a hit. Should stay
  * larger than the typical stroke width but small enough that two
  * close edges don't both register the same click. Mouse default
- * (touch uses `TOUCH_EDGE_HIT_THRESHOLD`). Range: 7–11.
+ * (touch uses `TOUCH_LINK_HIT_THRESHOLD`). Range: 7–11.
  */
-export const EDGE_HIT_THRESHOLD = 9;
+export const LINK_HIT_THRESHOLD = 9;
 
 /**
  * Screen-pixel radius of the inactive port dot rendered on a hovered
@@ -210,13 +210,13 @@ export const ISOLATION_DIM_OPACITY = 0.6;
  *
  * - `TOUCH_HANDLE_HIT_SLOP` — half-size of the resize-handle hit
  *   rectangle in screen pixels (44 pt ≈ 22 px half = 44 px target).
- * - `TOUCH_EDGE_HANDLE_HIT_SLOP` — same for edge-endpoint dots.
- * - `TOUCH_EDGE_HIT_THRESHOLD` — line-tolerance for tapping on an
+ * - `TOUCH_LINK_HANDLE_HIT_SLOP` — same for edge-endpoint dots.
+ * - `TOUCH_LINK_HIT_THRESHOLD` — line-tolerance for tapping on an
  *   edge body.
  */
 export const TOUCH_HANDLE_HIT_SLOP = 22;
-export const TOUCH_EDGE_HANDLE_HIT_SLOP = 22;
-export const TOUCH_EDGE_HIT_THRESHOLD = 18;
+export const TOUCH_LINK_HANDLE_HIT_SLOP = 22;
+export const TOUCH_LINK_HIT_THRESHOLD = 18;
 
 /**
  * Annotation pin visuals on the overlay.

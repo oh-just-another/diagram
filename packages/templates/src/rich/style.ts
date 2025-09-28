@@ -24,9 +24,9 @@ export interface NodeStyle {
  * Spacing for `padding` / `margin`. Accepts a number (uniform) or a
  * `{ top, right, bottom, left }` object.
  */
-export type Spacing = number | EdgeSpacing;
+export type Spacing = number | LinkSpacing;
 
-export interface EdgeSpacing {
+export interface LinkSpacing {
   readonly top?: number;
   readonly right?: number;
   readonly bottom?: number;

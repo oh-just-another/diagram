@@ -2,7 +2,7 @@ export { CURRENT_VERSION, SceneDocumentZ } from "./schema.js";
 export type {
   SceneDocument,
   SerializedElement,
-  SerializedEdge,
+  SerializedLink,
   SerializedLayer,
   SerializedViewport,
 } from "./schema.js";

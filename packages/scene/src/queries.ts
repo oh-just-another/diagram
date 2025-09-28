@@ -1,6 +1,6 @@
 import type { Bounds, LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { bounds as B } from "@oh-just-another/math";
-import type { Edge } from "./edge.js";
+import type { Link } from "./edge.js";
 import type { Layer } from "./layer.js";
 import type { Scene } from "./scene.js";
 import { getShapeWorldBounds, type Element } from "./shape.js";
@@ -10,7 +10,7 @@ import { SpatialGrid } from "./spatial.js";
 
 export const getShape = (scene: Scene, id: ElementId): Element | undefined => scene.shapes.get(id);
 
-export const getEdge = (scene: Scene, id: LinkId): Edge | undefined => scene.edges.get(id);
+export const getLink = (scene: Scene, id: LinkId): Link | undefined => scene.edges.get(id);
 
 export const getLayer = (scene: Scene, id: LayerId): Layer | undefined => scene.layers.get(id);
 
@@ -29,7 +29,7 @@ export const getShapesInLayer = (scene: Scene, layerId: LayerId): readonly Eleme
     .filter((s) => s.layerId === layerId)
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
 
-export const getEdgesInLayer = (scene: Scene, layerId: LayerId): readonly Edge[] =>
+export const getLinksInLayer = (scene: Scene, layerId: LayerId): readonly Link[] =>
   [...scene.edges.values()]
     .filter((e) => e.layerId === layerId)
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));

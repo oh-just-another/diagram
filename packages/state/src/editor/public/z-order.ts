@@ -4,7 +4,7 @@ import {
   orderBetweenMany,
   orderForBottom,
   orderForTop,
-  updateEdge,
+  updateLink,
   updateShape,
   type FractionalIndex,
   type Scene,
@@ -186,7 +186,7 @@ export const compactLayerZOrderPatches = (
     touched += rewriteOrders(
       [...s.edges.values()].filter((e) => e.layerId === lid),
       (edge, order) => {
-        const r = updateEdge(s, edge.id, (e) => ({ ...e, order }));
+        const r = updateLink(s, edge.id, (e) => ({ ...e, order }));
         s = r.scene;
         mutate(s, r.patch);
       },

@@ -191,7 +191,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       // Remember an additive promotion so a tap's up-handler doesn't
       // SELECT_TOGGLE it back off.
       if (additive) editor.additivePressAdded = target.id;
-      if (editor._selectedEdge !== null) editor._selectedEdge = null;
+      if (editor._selectedLink !== null) editor._selectedLink = null;
       // Notify happens at the end of the gesture path; selecting now
       // ensures the live `_selection` reflects what subsequent
       // MOVE_SHAPE emits will operate on.
@@ -421,9 +421,9 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // where you can start an edge) and during the gesture (showing the
     // snap target as the pointer crosses shapes).
     if (ctx.mode === "draw-edge") {
-      editor.updateHoveredEdgeTarget(worldPoint);
-    } else if (editor.hoveredEdgeTarget !== null) {
-      editor.hoveredEdgeTarget = null;
+      editor.updateHoveredLinkTarget(worldPoint);
+    } else if (editor.hoveredLinkTarget !== null) {
+      editor.hoveredLinkTarget = null;
       editor.notify();
     }
     // Hover-to-play: while idle (no active press) over an animated

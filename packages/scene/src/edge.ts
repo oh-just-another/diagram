@@ -40,7 +40,7 @@ export type AnchorRef =
   /** Absolute pixel offset from the shape's local-bounds origin. */
   | { readonly kind: "absolute"; readonly offset: Vec2 };
 
-export type EdgeEndpoint =
+export type LinkEndpoint =
   | { readonly kind: "point"; readonly position: Vec2 }
   | { readonly kind: "anchor"; readonly elementId: ElementId; readonly anchor: AnchorRef }
   /**
@@ -61,7 +61,7 @@ export type EdgeEndpoint =
  *   - `bezier` — cubic curve. Renderer derives sensible control points
  *     from the endpoint directions.
  */
-export type EdgeRouting = "straight" | "orthogonal" | "bezier";
+export type LinkRouting = "straight" | "orthogonal" | "bezier";
 
 /**
  * Decoration drawn at the end of an edge segment. Renderers map the
@@ -69,7 +69,7 @@ export type EdgeRouting = "straight" | "orthogonal" | "bezier";
  */
 export type ArrowheadStyle = "none" | "arrow" | "triangle" | "diamond" | "circle";
 
-export interface EdgeArrowheads {
+export interface LinkArrowheads {
   readonly from?: ArrowheadStyle;
   readonly to?: ArrowheadStyle;
   /** Length of the arrowhead in local pixels. Default 10. */
@@ -81,7 +81,7 @@ export interface EdgeArrowheads {
  * along the visible path (`0` = at `from`, `1` = at `to`, `0.5` = mid).
  * Renderers handle background pill / alignment.
  */
-export interface EdgeLabel {
+export interface LinkLabel {
   readonly text: string;
   readonly position?: number; // 0..1, default 0.5
   readonly fontSize?: number; // default 12
@@ -95,15 +95,15 @@ export interface EdgeLabel {
  * the renderer/layout pass, which reads `routing` + `waypoints` and either
  * follows them or computes new ones.
  */
-export interface Edge {
+export interface Link {
   readonly id: LinkId;
   readonly layerId: LayerId;
-  readonly from: EdgeEndpoint;
-  readonly to: EdgeEndpoint;
+  readonly from: LinkEndpoint;
+  readonly to: LinkEndpoint;
   /** Intermediate waypoints in world coordinates. */
   readonly waypoints?: readonly Vec2[];
   /** Routing strategy. Default `straight`. */
-  readonly routing?: EdgeRouting;
+  readonly routing?: LinkRouting;
   /**
    * Visual flavour of the connector body.
    *
@@ -127,9 +127,9 @@ export interface Edge {
     readonly bodyThickness?: number;
   };
   /** Arrowhead decoration on each end. Default: no arrowheads. */
-  readonly arrowheads?: EdgeArrowheads;
+  readonly arrowheads?: LinkArrowheads;
   /** Optional inline label. */
-  readonly label?: EdgeLabel;
+  readonly label?: LinkLabel;
   /** Z-order key within `layerId`. */
   readonly order: FractionalIndex;
   readonly style: Style;

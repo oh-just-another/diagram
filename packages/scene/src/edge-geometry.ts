@@ -1,12 +1,12 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { getAnchorWorld } from "./anchors.js";
-import type { Edge, EdgeEndpoint } from "./edge.js";
+import type { Link, LinkEndpoint } from "./edge.js";
 import { getOutlinePoint } from "./outline.js";
 import type { Scene } from "./scene.js";
 import { getShape } from "./queries.js";
 
 /**
- * Resolve a single `EdgeEndpoint` to a world-space point.
+ * Resolve a single `LinkEndpoint` to a world-space point.
  *
  * `kind: "point"` returns the stored position as-is. `kind: "anchor"`
  * looks up the referenced shape and resolves the anchor through
@@ -17,7 +17,7 @@ import { getShape } from "./queries.js";
  * isn't (or no longer is) in the scene. Callers usually drop the edge
  * from the render pass in that case.
  */
-export const getEdgeEndpointWorld = (scene: Scene, endpoint: EdgeEndpoint): Vec2 | null => {
+export const getLinkEndpointWorld = (scene: Scene, endpoint: LinkEndpoint): Vec2 | null => {
   if (endpoint.kind === "point") return endpoint.position;
   const shape = getShape(scene, endpoint.elementId);
   if (!shape) return null;
@@ -35,10 +35,10 @@ export const getEdgeEndpointWorld = (scene: Scene, endpoint: EdgeEndpoint): Vec2
  * explicit `edge.waypoints` array on every routing — hosts can pre-route
  * an edge with custom bends.
  */
-export const getEdgePath = (scene: Scene, edge: Edge): readonly Vec2[] | null => {
-  const from = getEdgeEndpointWorld(scene, edge.from);
+export const getLinkPath = (scene: Scene, edge: Link): readonly Vec2[] | null => {
+  const from = getLinkEndpointWorld(scene, edge.from);
   if (!from) return null;
-  const to = getEdgeEndpointWorld(scene, edge.to);
+  const to = getLinkEndpointWorld(scene, edge.to);
   if (!to) return null;
 
   const explicitWaypoints = edge.waypoints ?? [];
@@ -109,7 +109,7 @@ export const getEdgePath = (scene: Scene, edge: Edge): readonly Vec2[] | null =>
  * Used by the orthogonal routing to add a side-aware stub before
  * bending — matches the look of standard connectors.
  */
-const exitDirectionFor = (endpoint: Edge["from"]): Vec2 | null => {
+const exitDirectionFor = (endpoint: Link["from"]): Vec2 | null => {
   if (endpoint.kind !== "anchor") return null;
   if (endpoint.anchor.kind !== "named") return null;
   switch (endpoint.anchor.name) {
@@ -129,7 +129,7 @@ const exitDirectionFor = (endpoint: Edge["from"]): Vec2 | null => {
 
 /**
  * Distance from a point to a finite line segment in world coordinates.
- * Used by `findEdgeAt` for hit-testing.
+ * Used by `findLinkAt` for hit-testing.
  */
 const distanceToSegment = (point: Vec2, a: Vec2, b: Vec2): number => {
   const dx = b.x - a.x;
@@ -157,10 +157,10 @@ const distanceToSegment = (point: Vec2, a: Vec2, b: Vec2): number => {
  * curve repeatedly. Acceptable since the curvature is mild for typical
  * flowchart-style connectors.
  */
-export const findEdgeAt = (scene: Scene, worldPoint: Vec2, threshold = 5): Edge | null => {
-  let best: { edge: Edge; distance: number } | null = null;
+export const findLinkAt = (scene: Scene, worldPoint: Vec2, threshold = 5): Link | null => {
+  let best: { edge: Link; distance: number } | null = null;
   for (const edge of scene.edges.values()) {
-    const path = getEdgePath(scene, edge);
+    const path = getLinkPath(scene, edge);
     if (!path) continue;
     let minDistance = Infinity;
     for (let i = 1; i < path.length; i++) {

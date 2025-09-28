@@ -234,7 +234,7 @@ export const setupTemplates = (): void => {
                   text: { bind: "title" },
                   style: { fontSize: 14, fontWeight: "bold", color: "#1f1f4a" },
                 },
-                // Declared connection ports — Edge mode snaps to them
+                // Declared connection ports — Link mode snaps to them
                 // by name via the anchor + outline pipeline.
                 {
                   type: "port",

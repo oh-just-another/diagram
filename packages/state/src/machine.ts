@@ -351,7 +351,7 @@ export const interactionMachine = setup({
       if (bounds.width < 1 || bounds.height < 1) return;
       enqueue.emit({ type: "CREATE_SHAPE", shapeType: context.drawingType, bounds });
     }),
-    emitEdgePreview: enqueueActions(({ context, event, enqueue }) => {
+    emitLinkPreview: enqueueActions(({ context, event, enqueue }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return;
       enqueue.emit({
         type: "DRAW_EDGE_PREVIEW",
@@ -360,10 +360,10 @@ export const interactionMachine = setup({
         toPoint: event.point,
       });
     }),
-    emitEdgePreviewClear: enqueueActions(({ enqueue }) => {
+    emitLinkPreviewClear: enqueueActions(({ enqueue }) => {
       enqueue.emit({ type: "DRAW_EDGE_PREVIEW_CLEAR" });
     }),
-    emitEdgeEndpointPreview: enqueueActions(({ context, event, enqueue }) => {
+    emitLinkEndpointPreview: enqueueActions(({ context, event, enqueue }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return;
       if (context.pressTarget?.kind !== "edge-endpoint") return;
       enqueue.emit({
@@ -373,7 +373,7 @@ export const interactionMachine = setup({
         toPoint: event.point,
       });
     }),
-    emitEdgeEndpointUpdate: enqueueActions(({ context, event, enqueue }) => {
+    emitLinkEndpointUpdate: enqueueActions(({ context, event, enqueue }) => {
       if (event.type !== "POINTER_UP" || !context.pressOrigin) return;
       if (context.pressTarget?.kind !== "edge-endpoint") return;
       const upTarget = event.target;
@@ -409,7 +409,7 @@ export const interactionMachine = setup({
       enqueue.emit({ type: "SELECT_BY_BOUNDS", bounds, mode: additive ? "add" : "replace" });
       enqueue.emit({ type: "LASSO_CLEAR" });
     }),
-    emitCreateEdge: enqueueActions(({ context, event, enqueue }) => {
+    emitCreateLink: enqueueActions(({ context, event, enqueue }) => {
       if (event.type !== "POINTER_UP" || !context.pressOrigin) return;
       // `event.target` carries the *up*-side hit-test (host computed it
       // the same way as POINTER_DOWN). Use it to land on a shape if the
@@ -461,12 +461,12 @@ export const interactionMachine = setup({
       }
       return dragExceeded(context.pressOrigin, event.point);
     },
-    movedAndDrawingEdge: ({ context, event }) => {
+    movedAndDrawingLink: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
       if (context.mode !== "draw-edge") return false;
       return dragExceeded(context.pressOrigin, event.point);
     },
-    movedAndOnEdgeEndpoint: ({ context, event }) => {
+    movedAndOnLinkEndpoint: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
       if (context.pressTarget?.kind !== "edge-endpoint") return false;
       return dragExceeded(context.pressOrigin, event.point);
@@ -564,19 +564,19 @@ export const interactionMachine = setup({
             ],
           },
           {
-            guard: "movedAndDrawingEdge",
-            target: "drawingEdge",
+            guard: "movedAndDrawingLink",
+            target: "drawingLink",
             actions: [
               { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
-              { type: "emitEdgePreview" },
+              { type: "emitLinkPreview" },
             ],
           },
           {
-            guard: "movedAndOnEdgeEndpoint",
-            target: "draggingEdgeEndpoint",
+            guard: "movedAndOnLinkEndpoint",
+            target: "draggingLinkEndpoint",
             actions: [
               { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
-              { type: "emitEdgeEndpointPreview" },
+              { type: "emitLinkEndpointPreview" },
             ],
           },
           {
@@ -651,39 +651,39 @@ export const interactionMachine = setup({
         POINTER_CANCEL: { target: "idle", actions: [{ type: "resetGesture" }] },
       },
     },
-    drawingEdge: {
+    drawingLink: {
       on: {
         POINTER_MOVE: {
           actions: [
             { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
-            { type: "emitEdgePreview" },
+            { type: "emitLinkPreview" },
           ],
         },
         POINTER_UP: {
           target: "idle",
           actions: [
-            { type: "emitCreateEdge" },
-            { type: "emitEdgePreviewClear" },
+            { type: "emitCreateLink" },
+            { type: "emitLinkPreviewClear" },
             { type: "resetGesture" },
           ],
         },
         POINTER_CANCEL: {
           target: "idle",
-          actions: [{ type: "emitEdgePreviewClear" }, { type: "resetGesture" }],
+          actions: [{ type: "emitLinkPreviewClear" }, { type: "resetGesture" }],
         },
       },
     },
-    draggingEdgeEndpoint: {
+    draggingLinkEndpoint: {
       on: {
         POINTER_MOVE: {
           actions: [
             { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
-            { type: "emitEdgeEndpointPreview" },
+            { type: "emitLinkEndpointPreview" },
           ],
         },
         POINTER_UP: {
           target: "idle",
-          actions: [{ type: "emitEdgeEndpointUpdate" }, { type: "resetGesture" }],
+          actions: [{ type: "emitLinkEndpointUpdate" }, { type: "resetGesture" }],
         },
         POINTER_CANCEL: { target: "idle", actions: [{ type: "resetGesture" }] },
       },

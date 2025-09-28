@@ -1,7 +1,7 @@
 import type { AnnotationId, Bounds, ElementId, Transform, Vec2 } from "@oh-just-another/types";
 import {
   getAnnotationWorldPosition,
-  getEdgePath,
+  getLinkPath,
   getShapeWorldBounds,
   getWorldToScreen,
   type Annotation,
@@ -25,9 +25,9 @@ import {
   DEBUG_HIT_ZONE_FILL_OPACITY,
   DEBUG_HIT_ZONE_STROKE,
   DEBUG_HIT_ZONE_STROKE_OPACITY,
-  EDGE_ENDPOINT_HANDLE_DRAW_RADIUS,
-  EDGE_ENDPOINT_HANDLE_RADIUS,
-  EDGE_HIT_THRESHOLD,
+  LINK_ENDPOINT_HANDLE_DRAW_RADIUS,
+  LINK_ENDPOINT_HANDLE_RADIUS,
+  LINK_HIT_THRESHOLD,
   PEER_SELECTION_DASH,
   PEER_SELECTION_PADDING,
   PEER_SELECTION_STROKE_WIDTH,
@@ -106,7 +106,7 @@ export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
  * Handles are sized in *screen* pixels regardless of zoom (4 × 4 CSS px) — the
  * caller passes the viewport so this function can compensate.
  */
-export interface EdgePreview {
+export interface LinkPreview {
   /** World-space anchor on the source shape, or null for a free point. */
   readonly from: Vec2;
   readonly to: Vec2;
@@ -127,7 +127,7 @@ export interface PortOverlay {
  * Selected edge with endpoint world positions. Renderer paints small
  * handles on each end so the user can grab and re-bind them.
  */
-export interface EdgeSelection {
+export interface LinkSelection {
   readonly from: Vec2;
   readonly to: Vec2;
 }
@@ -160,9 +160,9 @@ export const renderOverlay = (
   target: RenderTarget,
   options: {
     drawingPreview?: Bounds;
-    edgePreview?: EdgePreview;
+    edgePreview?: LinkPreview;
     ports?: PortOverlay;
-    edgeSelection?: EdgeSelection;
+    edgeSelection?: LinkSelection;
     /**
      * Combined world-space bounding box of a multi-selection (or a
      * single group-typed shape's children union). When set the overlay
@@ -288,11 +288,11 @@ export const renderOverlay = (
     drawDrawingPreview(target, screenBounds, style);
   }
 
-  // 3. Edge-drawing preview — straight dashed line in screen space.
+  // 3. Link-drawing preview — straight dashed line in screen space.
   if (options.edgePreview) {
     const from = matrix.applyToPoint(w2s, options.edgePreview.from);
     const to = matrix.applyToPoint(w2s, options.edgePreview.to);
-    drawEdgePreview(target, from, to, style);
+    drawLinkPreview(target, from, to, style);
   }
 
   // 4. Port dots — hover affordance in draw-edge mode.
@@ -308,8 +308,8 @@ export const renderOverlay = (
   if (options.edgeSelection) {
     const from = matrix.applyToPoint(w2s, options.edgeSelection.from);
     const to = matrix.applyToPoint(w2s, options.edgeSelection.to);
-    drawEdgeEndpointHandle(target, from, style);
-    drawEdgeEndpointHandle(target, to, style);
+    drawLinkEndpointHandle(target, from, style);
+    drawLinkEndpointHandle(target, to, style);
   }
 
   // 6. Peer selection halos — dashed outline around shapes selected
@@ -520,14 +520,14 @@ const drawHitZones = (target: RenderTarget, scene: Scene, w2s: Transform, zoom: 
       );
     }
   }
-  // Edge body bands (polyline stroked at 2× the hit threshold) +
+  // Link body bands (polyline stroked at 2× the hit threshold) +
   // endpoint circles.
   for (const edge of scene.edges.values()) {
-    const path = getEdgePath(scene, edge);
+    const path = getLinkPath(scene, edge);
     if (!path || path.length < 2) continue;
     target.setFill(null);
     target.setStroke(DEBUG_HIT_ZONE_STROKE);
-    target.setStrokeWidth(EDGE_HIT_THRESHOLD * 2);
+    target.setStrokeWidth(LINK_HIT_THRESHOLD * 2);
     target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
     target.setLineCap("round");
     target.setLineJoin("round");
@@ -541,8 +541,8 @@ const drawHitZones = (target: RenderTarget, scene: Scene, w2s: Transform, zoom: 
     target.stroke();
     const from = matrix.applyToPoint(w2s, path[0]!);
     const to = matrix.applyToPoint(w2s, path[path.length - 1]!);
-    fillZoneCircle(target, from.x, from.y, EDGE_ENDPOINT_HANDLE_RADIUS);
-    fillZoneCircle(target, to.x, to.y, EDGE_ENDPOINT_HANDLE_RADIUS);
+    fillZoneCircle(target, from.x, from.y, LINK_ENDPOINT_HANDLE_RADIUS);
+    fillZoneCircle(target, to.x, to.y, LINK_ENDPOINT_HANDLE_RADIUS);
   }
   target.setOpacity(1);
   target.restore();
@@ -629,7 +629,7 @@ const drawDrawingPreview = (target: RenderTarget, b: Bounds, style: OverlayStyle
   target.stroke();
 };
 
-const drawEdgePreview = (target: RenderTarget, from: Vec2, to: Vec2, style: OverlayStyle): void => {
+const drawLinkPreview = (target: RenderTarget, from: Vec2, to: Vec2, style: OverlayStyle): void => {
   target.setStroke(style.drawingStroke);
   target.setStrokeWidth(1.5);
   target.setDashArray(style.drawingDash);
@@ -656,8 +656,8 @@ const drawPortDot = (
   target.stroke();
 };
 
-const drawEdgeEndpointHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
-  const radius = EDGE_ENDPOINT_HANDLE_DRAW_RADIUS;
+const drawLinkEndpointHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
+  const radius = LINK_ENDPOINT_HANDLE_DRAW_RADIUS;
   target.setStroke(style.selectionStroke);
   target.setStrokeWidth(2);
   target.setDashArray(null);

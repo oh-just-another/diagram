@@ -1,6 +1,6 @@
 import type { AnnotationId, LinkId, FileId, LayerId, ElementId } from "@oh-just-another/types";
 import type { Annotation } from "./annotation.js";
-import type { Edge } from "./edge.js";
+import type { Link } from "./edge.js";
 import type { BinaryFile } from "./file.js";
 import type { Layer } from "./layer.js";
 import type { Element } from "./shape.js";
@@ -26,8 +26,8 @@ export type Patch =
   | {
       readonly kind: "edge";
       readonly id: LinkId;
-      readonly before: Edge | null;
-      readonly after: Edge | null;
+      readonly before: Link | null;
+      readonly after: Link | null;
     }
   | {
       readonly kind: "layer";

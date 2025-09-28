@@ -8,7 +8,7 @@ import {
 } from "@oh-just-another/types";
 import { generateKeyBetween, generateNKeysBetween, type FractionalIndex } from "fractional-keys";
 import type { Annotation } from "./annotation.js";
-import type { Edge } from "./edge.js";
+import type { Link } from "./edge.js";
 import type { BinaryFile } from "./file.js";
 import { type Layer } from "./layer.js";
 import type { Patch } from "./patch.js";
@@ -23,7 +23,7 @@ import { DEFAULT_VIEWPORT, type Viewport } from "./viewport.js";
  */
 export interface Scene {
   readonly shapes: ReadonlyMap<ElementId, Element>;
-  readonly edges: ReadonlyMap<LinkId, Edge>;
+  readonly edges: ReadonlyMap<LinkId, Link>;
   readonly layers: ReadonlyMap<LayerId, Layer>;
   /**
    * Threaded comments anchored to either a shape (id) or a free
@@ -92,7 +92,7 @@ export const removeBinaryFile = (scene: Scene, id: FileId): Scene => {
   return { ...scene, files };
 };
 
-/** Lookup helper — mirrors `getShape` / `getEdge` style. */
+/** Lookup helper — mirrors `getShape` / `getLink` style. */
 export const getBinaryFile = (scene: Scene, id: FileId): BinaryFile | undefined =>
   scene.files.get(id);
 

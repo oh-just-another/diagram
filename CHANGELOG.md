@@ -913,3 +913,6 @@
 
 ## 0.47.0
 - refactor(rename 1/N): ShapeIdRightElementId, EdgeIdRightLinkId brands
+
+## 0.48.0
+- refactor(rename 2/N): element entity type-layer ShapeRightElement

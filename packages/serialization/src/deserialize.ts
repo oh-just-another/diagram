@@ -9,7 +9,7 @@ import {
   elementId,
   type ElementId,
 } from "@oh-just-another/types";
-import type { Annotation, Edge, Layer, Scene, Element, Viewport } from "@oh-just-another/scene";
+import type { Annotation, Link, Layer, Scene, Element, Viewport } from "@oh-just-another/scene";
 import { type FractionalIndex } from "fractional-keys";
 import { z } from "zod";
 import { CURRENT_VERSION, type SceneDocument, SceneDocumentZ } from "./schema.js";
@@ -87,10 +87,10 @@ const hydrate = (doc: SceneDocument): Scene => {
     shapes.set(id, hydrateShape(s, id));
   }
 
-  const edges = new Map<LinkId, Edge>();
+  const edges = new Map<LinkId, Link>();
   for (const e of doc.edges) {
     const id = linkId(e.id);
-    edges.set(id, hydrateEdge(e, id));
+    edges.set(id, hydrateLink(e, id));
   }
 
   const layers = new Map<LayerId, Layer>();
@@ -147,8 +147,8 @@ const hydrateShape = (s: SceneDocument["shapes"][number], id: ElementId): Elemen
   } as Element;
 };
 
-const hydrateEdge = (e: SceneDocument["edges"][number], id: LinkId): Edge => {
-  const hydrateEndpoint = (ep: SceneDocument["edges"][number]["from"]): Edge["from"] => {
+const hydrateLink = (e: SceneDocument["edges"][number], id: LinkId): Link => {
+  const hydrateEndpoint = (ep: SceneDocument["edges"][number]["from"]): Link["from"] => {
     if (ep.kind === "anchor" || ep.kind === "outline") {
       return { ...ep, elementId: elementId(ep.elementId) };
     }
@@ -164,7 +164,7 @@ const hydrateEdge = (e: SceneDocument["edges"][number], id: LinkId): Edge => {
     order: e.order as FractionalIndex,
     from,
     to,
-  } as Edge;
+  } as Link;
 };
 
 /** Return a shallow copy of `obj` with all `undefined`-valued keys removed. */

@@ -2,7 +2,7 @@ import {
   addShape,
   getShape,
   orderForTop,
-  removeEdge,
+  removeLink,
   removeShape,
   updateShape,
   type Scene,
@@ -53,9 +53,9 @@ export const computeMoveSelectionBy = (
 export const computeDeleteSelection = (
   scene: Scene,
   selection: Selection.Selection,
-  selectedEdge: LinkId | null,
+  selectedLink: LinkId | null,
 ): { readonly scene: Scene; readonly patches: Patch[] } | null => {
-  if (selection.size === 0 && !selectedEdge) return null;
+  if (selection.size === 0 && !selectedLink) return null;
   let s = scene;
   const patches: Patch[] = [];
   for (const id of selection) {
@@ -64,7 +64,7 @@ export const computeDeleteSelection = (
         (edge.from.kind !== "point" && edge.from.elementId === id) ||
         (edge.to.kind !== "point" && edge.to.elementId === id)
       ) {
-        const r = removeEdge(s, edge.id);
+        const r = removeLink(s, edge.id);
         s = r.scene;
         patches.push(r.patch);
       }
@@ -73,8 +73,8 @@ export const computeDeleteSelection = (
     s = r.scene;
     patches.push(r.patch);
   }
-  if (selectedEdge) {
-    const r = removeEdge(s, selectedEdge);
+  if (selectedLink) {
+    const r = removeLink(s, selectedLink);
     s = r.scene;
     patches.push(r.patch);
   }

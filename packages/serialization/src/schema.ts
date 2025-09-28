@@ -190,24 +190,24 @@ const ElementZ = z.union([
  CustomShapeZ,
 ]);
 
-// --- Edges ---
+// --- Links ---
 
-const EdgeEndpointZ = z.discriminatedUnion("kind", [
+const LinkEndpointZ = z.discriminatedUnion("kind", [
  z.object({ kind: z.literal("point"), position: Vec2Z }).strict(),
  z.object({ kind: z.literal("anchor"), elementId: z.string(), anchor: AnchorRefZ }).strict(),
  z.object({ kind: z.literal("outline"), elementId: z.string(), ratio: z.number() }).strict(),
 ]);
 
-const EdgeRoutingZ = z.enum(["straight", "orthogonal", "bezier"]);
+const LinkRoutingZ = z.enum(["straight", "orthogonal", "bezier"]);
 const ArrowheadStyleZ = z.enum(["none", "arrow", "triangle", "diamond", "circle"]);
-const EdgeArrowheadsZ = z
+const LinkArrowheadsZ = z
  .object({
   from: ArrowheadStyleZ.optional(),
   to: ArrowheadStyleZ.optional(),
   size: z.number().optional(),
  })
  .strict();
-const EdgeLabelZ = z
+const LinkLabelZ = z
  .object({
   text: z.string(),
   position: z.number().optional(),
@@ -217,16 +217,16 @@ const EdgeLabelZ = z
  })
  .strict();
 
-const EdgeZ = z
+const LinkZ = z
  .object({
   id: z.string(),
   layerId: z.string(),
-  from: EdgeEndpointZ,
-  to: EdgeEndpointZ,
+  from: LinkEndpointZ,
+  to: LinkEndpointZ,
   waypoints: z.array(Vec2Z).readonly().optional(),
-  routing: EdgeRoutingZ.optional(),
-  arrowheads: EdgeArrowheadsZ.optional(),
-  label: EdgeLabelZ.optional(),
+  routing: LinkRoutingZ.optional(),
+  arrowheads: LinkArrowheadsZ.optional(),
+  label: LinkLabelZ.optional(),
   order: z.string(),
   style: StyleZ,
   metadata: MetadataZ,
@@ -288,7 +288,7 @@ export const SceneDocumentZ = z
   format: z.literal("oh-just-another/scene"),
   version: z.number().int().nonnegative(),
   shapes: z.array(ElementZ),
-  edges: z.array(EdgeZ),
+  edges: z.array(LinkZ),
   layers: z.array(LayerZ),
   /**
    * Threaded comments. Optional for backwards compatibility — documents
@@ -302,7 +302,7 @@ export const SceneDocumentZ = z
 export type SceneDocument = z.infer<typeof SceneDocumentZ>;
 
 export type SerializedElement = z.infer<typeof ElementZ>;
-export type SerializedEdge = z.infer<typeof EdgeZ>;
+export type SerializedLink = z.infer<typeof LinkZ>;
 export type SerializedLayer = z.infer<typeof LayerZ>;
 export type SerializedViewport = z.infer<typeof ViewportZ>;
 export type SerializedAnnotation = z.infer<typeof AnnotationZ>;

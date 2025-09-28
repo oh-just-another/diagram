@@ -26,15 +26,15 @@ import {
 import {
   isGroup,
   type ArrowheadStyle,
-  type Edge,
-  type EdgeRouting,
+  type Link,
+  type LinkRouting,
   type Roundness,
   type ElementBase,
   type TextAlign,
   type TextElement,
   type TextStyle,
 } from "@oh-just-another/scene";
-import { useDiagramOptional, useScene, useSelectedEdge, useSelection } from "./hooks.js";
+import { useDiagramOptional, useScene, useSelectedLink, useSelection } from "./hooks.js";
 import { useContextMenuController } from "./context-menu-controller.js";
 import { ColorSwatchPicker } from "./color-swatch-picker.js";
 import { Popover } from "./popover.js";
@@ -67,7 +67,7 @@ export interface PropertyPanelProps {
 
 export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
   const selection = useSelection();
-  const selectedEdgeId = useSelectedEdge();
+  const selectedLinkId = useSelectedLink();
   const scene = useScene();
 
   // Dispatcher: edge wins only when no shape is selected — if both
@@ -118,20 +118,20 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
     );
   }
 
-  if (selectedEdgeId !== null) {
-    const edge = scene.edges.get(selectedEdgeId);
+  if (selectedLinkId !== null) {
+    const edge = scene.edges.get(selectedLinkId);
     if (!edge) return null;
     return (
       <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style}>
-        <EdgeStrokeColorControl edge={edge} />
-        <EdgeStrokeWidthControl edge={edge} />
-        <EdgeStrokeStyleControl edge={edge} />
-        <EdgeRoutingControl edge={edge} />
+        <LinkStrokeColorControl edge={edge} />
+        <LinkStrokeWidthControl edge={edge} />
+        <LinkStrokeStyleControl edge={edge} />
+        <LinkRoutingControl edge={edge} />
         <Divider />
-        <EdgeArrowheadControl edge={edge} side="from" />
-        <EdgeArrowheadControl edge={edge} side="to" />
+        <LinkArrowheadControl edge={edge} side="from" />
+        <LinkArrowheadControl edge={edge} side="to" />
         <Divider />
-        <EdgeDeleteControl />
+        <LinkDeleteControl />
         <MoreButton />
       </div>
     );
@@ -811,23 +811,23 @@ const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
 };
 
 // ---------------------------------------------------------------------------
-// Edge controls — horizontal compact set used when an edge (not a
+// Link controls — horizontal compact set used when an edge (not a
 // shape) is the active selection. Mirrors the shape control surface
 // (color triggers + segmented row controls) so the floating panel
 // reads consistently regardless of selection type.
 // ---------------------------------------------------------------------------
 
-const EdgeStrokeColorControl = ({ edge }: { readonly edge: Edge }) => {
+const LinkStrokeColorControl = ({ edge }: { readonly edge: Link }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const color = typeof edge.style?.stroke === "string" ? edge.style.stroke : null;
   return (
     <ColorTrigger
       label="Stroke"
-      ariaLabel="Edge stroke color"
+      ariaLabel="Link stroke color"
       color={color}
       onChange={(v) =>
-        editor.updateSelectedEdge((e) => ({
+        editor.updateSelectedLink((e) => ({
           ...e,
           style: { ...e.style, stroke: v ?? "transparent" },
         }))
@@ -836,13 +836,13 @@ const EdgeStrokeColorControl = ({ edge }: { readonly edge: Edge }) => {
   );
 };
 
-const EdgeStrokeWidthControl = ({ edge }: { readonly edge: Edge }) => {
+const LinkStrokeWidthControl = ({ edge }: { readonly edge: Link }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const value = typeof edge.style?.strokeWidth === "number" ? edge.style.strokeWidth : null;
   return (
     <SegmentedControl<number>
-      ariaLabel="Edge stroke width"
+      ariaLabel="Link stroke width"
       value={value}
       options={[
         { value: 1, label: "Thin", icon: <StrokeWidthIcon thickness={1} /> },
@@ -850,7 +850,7 @@ const EdgeStrokeWidthControl = ({ edge }: { readonly edge: Edge }) => {
         { value: 4, label: "Thick", icon: <StrokeWidthIcon thickness={4} /> },
       ]}
       onChange={(v) =>
-        editor.updateSelectedEdge((e) => ({
+        editor.updateSelectedLink((e) => ({
           ...e,
           style: { ...e.style, strokeWidth: v },
         }))
@@ -859,7 +859,7 @@ const EdgeStrokeWidthControl = ({ edge }: { readonly edge: Edge }) => {
   );
 };
 
-const EdgeStrokeStyleControl = ({ edge }: { readonly edge: Edge }) => {
+const LinkStrokeStyleControl = ({ edge }: { readonly edge: Link }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const da = edge.style?.dashArray;
@@ -870,7 +870,7 @@ const EdgeStrokeStyleControl = ({ edge }: { readonly edge: Edge }) => {
   })();
   return (
     <SegmentedControl<"solid" | "dashed" | "dotted">
-      ariaLabel="Edge stroke style"
+      ariaLabel="Link stroke style"
       value={value}
       options={[
         { value: "solid", label: "Solid", icon: <Square size={14} strokeWidth={1.75} /> },
@@ -879,7 +879,7 @@ const EdgeStrokeStyleControl = ({ edge }: { readonly edge: Edge }) => {
       ]}
       onChange={(v) => {
         const dashArray = v === "solid" ? [] : v === "dashed" ? [8, 4] : [2, 4];
-        editor.updateSelectedEdge((e) => ({
+        editor.updateSelectedLink((e) => ({
           ...e,
           style: { ...e.style, dashArray },
         }));
@@ -888,13 +888,13 @@ const EdgeStrokeStyleControl = ({ edge }: { readonly edge: Edge }) => {
   );
 };
 
-const EdgeRoutingControl = ({ edge }: { readonly edge: Edge }) => {
+const LinkRoutingControl = ({ edge }: { readonly edge: Link }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
-  const value: EdgeRouting = edge.routing ?? "straight";
+  const value: LinkRouting = edge.routing ?? "straight";
   return (
-    <SegmentedControl<EdgeRouting>
-      ariaLabel="Edge routing"
+    <SegmentedControl<LinkRouting>
+      ariaLabel="Link routing"
       value={value}
       options={[
         { value: "straight", label: "Straight", icon: <RoutingIcon kind="straight" /> },
@@ -902,17 +902,17 @@ const EdgeRoutingControl = ({ edge }: { readonly edge: Edge }) => {
         { value: "bezier", label: "Curved", icon: <Spline size={14} strokeWidth={1.75} /> },
       ]}
       onChange={(v) =>
-        editor.updateSelectedEdge((e) => ({ ...e, routing: v }))
+        editor.updateSelectedLink((e) => ({ ...e, routing: v }))
       }
     />
   );
 };
 
-const EdgeArrowheadControl = ({
+const LinkArrowheadControl = ({
   edge,
   side,
 }: {
-  readonly edge: Edge;
+  readonly edge: Link;
   readonly side: "from" | "to";
 }) => {
   const editor = useDiagramOptional();
@@ -932,7 +932,7 @@ const EdgeArrowheadControl = ({
       title={`Arrow ${side}: ${current}`}
       aria-label={`Cycle arrow ${side}`}
       onClick={() =>
-        editor.updateSelectedEdge((e) => ({
+        editor.updateSelectedLink((e) => ({
           ...e,
           arrowheads: { ...(e.arrowheads ?? {}), [side]: next(current) },
         }))
@@ -943,7 +943,7 @@ const EdgeArrowheadControl = ({
   );
 };
 
-const EdgeDeleteControl = () => {
+const LinkDeleteControl = () => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   return (

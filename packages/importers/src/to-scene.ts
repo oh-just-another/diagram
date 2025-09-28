@@ -1,10 +1,10 @@
 import {
   DEFAULT_LAYER_ID,
-  addEdge,
+  addLink,
   addShape,
   emptyScene,
   orderBetween,
-  type Edge,
+  type Link,
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
@@ -107,14 +107,14 @@ export const graphToScene = (graph: GraphDocument): Scene => {
     }
   }
 
-  // Edges → straight-line connectors between node anchors.
+  // Links → straight-line connectors between node anchors.
   let edgeOrder = orderBetween(null, null);
   for (const e of edges) {
     const sourceId = idMap.get(e.source);
     const targetId = idMap.get(e.target);
     if (!sourceId || !targetId) continue;
     const id = linkId(`edge-${e.source}-${e.target}`);
-    const edgeShape: Edge = {
+    const edgeShape: Link = {
       id,
       layerId: DEFAULT_LAYER_ID,
       from: { kind: "anchor", elementId: sourceId, anchor: { kind: "named", name: "center" } },
@@ -124,7 +124,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
       ...(e.label !== undefined ? { metadata: { label: e.label } } : {}),
     };
     edgeOrder = orderBetween(edgeOrder, null);
-    ({ scene } = addEdge(scene, edgeShape));
+    ({ scene } = addLink(scene, edgeShape));
   }
 
   // Fit the viewport around the laid-out nodes plus a margin so callers

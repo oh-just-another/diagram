@@ -1,8 +1,8 @@
 import {
-  findEdgeAt,
+  findLinkAt,
   getAnnotationWorldPosition,
-  getEdge,
-  getEdgePath,
+  getLink,
+  getLinkPath,
   getShapeWorldBounds,
   type Scene,
   type Element,
@@ -27,7 +27,7 @@ const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y
 export interface HitTestContext {
   readonly scene: Scene;
   readonly selection: Selection.Selection;
-  readonly selectedEdge: import("@oh-just-another/types").LinkId | null;
+  readonly selectedLink: import("@oh-just-another/types").LinkId | null;
   readonly enteredGroup: ElementId | null;
   readonly handleHitSlop: number;
   readonly edgeHandleHitSlop: number;
@@ -49,7 +49,7 @@ export interface HitTestContext {
  * Order matters: annotation pins sit visually above everything, so
  * a click on one always wins. Resize handles win over the body of
  * the shape they belong to so a click on the corner is treated as
- * resize, not move. Edge body comes after shapes because shapes
+ * resize, not move. Link body comes after shapes because shapes
  * have richer hit targets.
  *
  * Pure — every dependency on Editor goes through `ctx`. Editor's
@@ -110,10 +110,10 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
 
   // 2. Endpoint handles on a selected edge — only when an edge is
   //    selected. Threshold in screen pixels, converted to world.
-  if (ctx.selectedEdge) {
-    const edge = getEdge(ctx.scene, ctx.selectedEdge);
+  if (ctx.selectedLink) {
+    const edge = getLink(ctx.scene, ctx.selectedLink);
     if (edge) {
-      const path = getEdgePath(ctx.scene, edge);
+      const path = getLinkPath(ctx.scene, edge);
       if (path && path.length >= 2) {
         const handleR = ctx.edgeHandleHitSlop / zoom;
         const fromPoint = path[0]!;
@@ -139,8 +139,8 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
     return { kind: "shape", id: target.id, bounds: getShapeWorldBounds(target) };
   }
 
-  // 4. Edge body under cursor.
-  const edge = findEdgeAt(ctx.scene, worldPoint, ctx.edgeHitThreshold / zoom);
+  // 4. Link body under cursor.
+  const edge = findLinkAt(ctx.scene, worldPoint, ctx.edgeHitThreshold / zoom);
   if (edge && !ctx.isLayerLocked(edge.layerId)) {
     return { kind: "edge", id: edge.id };
   }

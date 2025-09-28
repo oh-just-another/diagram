@@ -100,5 +100,5 @@ export const useSelectedAnnotation = (): AnnotationId | null =>
   useEditorSelector<AnnotationId | null>((e) => e.selectedAnnotation, null);
 
 /** Currently selected edge id, or null when no edge is selected. */
-export const useSelectedEdge = (): LinkId | null =>
-  useEditorSelector<LinkId | null>((e) => e.selectedEdge, null);
+export const useSelectedLink = (): LinkId | null =>
+  useEditorSelector<LinkId | null>((e) => e.selectedLink, null);

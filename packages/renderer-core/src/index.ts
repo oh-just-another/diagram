@@ -11,13 +11,13 @@ export type {
 export type { ShapeRenderer } from "./shape-renderer.js";
 export type { LayerName } from "./layers.js";
 export type { RenderSceneOptions, LodOptions } from "./scene-renderer.js";
-export type { RenderEdgesOptions } from "./edge-renderer.js";
+export type { RenderLinksOptions } from "./edge-renderer.js";
 export type { RenderGridOptions } from "./grid-renderer.js";
 
 export { registerShapeRenderer, getShapeRenderer, hasShapeRenderer } from "./shape-renderer.js";
 export { LAYER_ORDER } from "./layers.js";
 export { renderScene } from "./scene-renderer.js";
-export { renderEdges } from "./edge-renderer.js";
+export { renderLinks } from "./edge-renderer.js";
 export { renderGrid } from "./grid-renderer.js";
 
 // Backend-agnostic shape renderers for the 6 built-in `BuiltinShape` types.
@@ -45,8 +45,8 @@ export {
 export { ShapeCache, sharedBoundsCache, cachedWorldBounds } from "./shape-cache.js";
 export type { ShapeBitmapCache } from "./shape-cache-bitmap.js";
 export { InMemoryShapeBitmapCache, zoomBucket } from "./shape-cache-bitmap.js";
-export type { EdgeBitmapCache } from "./edge-cache-bitmap.js";
-export { InMemoryEdgeBitmapCache } from "./edge-cache-bitmap.js";
+export type { LinkBitmapCache } from "./edge-cache-bitmap.js";
+export { InMemoryLinkBitmapCache } from "./edge-cache-bitmap.js";
 export type { LayerCompositeCache } from "./layer-cache-composite.js";
 export { InMemoryLayerCompositeCache } from "./layer-cache-composite.js";
 
@@ -83,9 +83,9 @@ export {
   InMemoryTileCache,
 } from "./tile-renderer.js";
 export {
-  EdgeBoundsCache,
-  computeEdgeWorldBounds,
-  sharedEdgeBoundsCache,
+  LinkBoundsCache,
+  computeLinkWorldBounds,
+  sharedLinkBoundsCache,
 } from "./edge-cache.js";
 
 export { DEFAULT_LOD, DEFAULT_PLACEHOLDER_FILL, VIEWPORT_CULL_PADDING_RATIO } from "./constants.js";

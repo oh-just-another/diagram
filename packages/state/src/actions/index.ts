@@ -43,7 +43,7 @@ export {
   actionModeRect,
   actionModeEllipse,
   actionModeText,
-  actionModeEdge,
+  actionModeLink,
   actionModeBrush,
   actionModeFrame,
   actionToggleToolLock,

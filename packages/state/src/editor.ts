@@ -4,7 +4,7 @@ import type { Bounds, FileId, ElementId, Vec2 } from "@oh-just-another/types";
 import { fileId as castFileId, elementId as castShapeId } from "@oh-just-another/types";
 import {
   addAnnotation,
-  addEdge,
+  addLink,
   addLayer,
   addShape,
   anchorSnapper,
@@ -17,12 +17,12 @@ import {
   runAutoLayout,
   stackLayout,
   DEFAULT_LAYER_ID,
-  findEdgeAt,
+  findLinkAt,
   findNearestAnchor,
   getAnchorWorld,
   getAnnotationWorldPosition,
-  getEdge,
-  getEdgePath,
+  getLink,
+  getLinkPath,
   getShape,
   getShapeAccessibleName,
   getShapeAt,
@@ -50,20 +50,20 @@ import {
   type FractionalIndex,
   outlineSnapper,
   removeAnnotation,
-  removeEdge,
+  removeLink,
   removeLayer,
   removeShape,
   SnapEngine,
   SpatialGrid,
   type BrushPoint,
   updateAnnotation,
-  updateEdge,
+  updateLink,
   updateLayer,
   updateShape,
   type Annotation,
   type Comment,
-  type Edge,
-  type EdgeEndpoint,
+  type Link,
+  type LinkEndpoint,
   type ImageElement,
   type Layer,
   type Patch,
@@ -77,7 +77,7 @@ import {
 import {
   annotationId as castAnnotationId,
   commentId as castCommentId,
-  linkId as castEdgeId,
+  linkId as castLinkId,
   layerId as castLayerId,
   type AnnotationId,
   type CommentId,
@@ -87,13 +87,13 @@ import {
 import { bounds as B, matrix } from "@oh-just-another/math";
 import {
   caretGeometry,
-  computeEdgeWorldBounds,
+  computeLinkWorldBounds,
   DEFAULT_LOD,
   layoutText,
   onAnimationContentReady,
   pointToCaretIndex,
   selectionRects as textSelectionRects,
-  renderEdges,
+  renderLinks,
   renderGrid,
   renderScene,
   setActiveRasterizer,
@@ -138,9 +138,9 @@ import {
   ANNOTATION_PIN_HIT_SLOP,
   DEFAULT_BRUSH_WIDTH,
   DEFAULT_SNAP_THRESHOLD,
-  EDGE_ENDPOINT_HANDLE_RADIUS,
+  LINK_ENDPOINT_HANDLE_RADIUS,
   CONTAINER_KEEP_THRESHOLD,
-  EDGE_HIT_THRESHOLD,
+  LINK_HIT_THRESHOLD,
   LARGE_SCENE_HIT_THRESHOLD,
   LASSO_COVERAGE_THRESHOLD,
   MAX_BRUSH_WIDTH,
@@ -149,8 +149,8 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   PINCH_MIN_MOVEMENT_PX,
-  TOUCH_EDGE_HANDLE_HIT_SLOP,
-  TOUCH_EDGE_HIT_THRESHOLD,
+  TOUCH_LINK_HANDLE_HIT_SLOP,
+  TOUCH_LINK_HIT_THRESHOLD,
   TOUCH_HANDLE_HIT_SLOP,
   VIEWPORT_CULL_PADDING_RATIO,
   DOUBLE_CLICK_MS,
@@ -297,8 +297,8 @@ import {
   selectByBoundsLive as selectByBoundsLivePure,
 } from "./editor/applies/selection.js";
 import {
-  computeEdgeEndpointUpdate,
-  computeEdgePreviewEndpoints,
+  computeLinkEndpointUpdate,
+  computeLinkPreviewEndpoints,
 } from "./editor/applies/edge.js";
 import {
   computeAnnotationMovePatch,
@@ -306,9 +306,9 @@ import {
   computeShapeMovePatch,
 } from "./editor/applies/move.js";
 import {
-  computeCreateEdge,
+  computeCreateLink,
   computeCreateShape,
-  newEdgeId,
+  newLinkId,
   newShapeId,
 } from "./editor/applies/create.js";
 import { isResizable, renderOverlay, type PeerCursor, type PeerSelection } from "./overlay.js";
@@ -370,7 +370,7 @@ export interface EditorOptions {
    */
   readonly textShaper?: import("@oh-just-another/renderer-core").TextShaper;
   /**
-   * Optional rasterizer. When supplied, hosts of `renderEdges` /
+   * Optional rasterizer. When supplied, hosts of `renderLinks` /
    * future path-heavy code can opt in to WASM bezier / stroke-to-
    * fill via `WasmRasterizer.loadBundled()` from
    * `@oh-just-another/raster-wasm`. The kernel itself doesn't consume
@@ -495,11 +495,11 @@ export class Editor {
    * overlay render so the user sees attachment points. `null` outside
    * draw-edge mode or when the pointer is over empty canvas.
    */
-  private hoveredEdgeTarget: { elementId: ElementId; activeAnchor: string | null } | null = null;
+  private hoveredLinkTarget: { elementId: ElementId; activeAnchor: string | null } | null = null;
   /**
    * Currently selected edge.
    */
-  private _selectedEdge: LinkId | null = null;
+  private _selectedLink: LinkId | null = null;
   /**
    * Currently focused annotation thread — overlay highlights its pin
    * with an accent ring and hosts (e.g. `<CommentsPopover>`) render
@@ -518,7 +518,7 @@ export class Editor {
    * Mid-drag preview state when the user is dragging an edge endpoint.
    * Drawn as an overlay line + handle dot so the user sees the target.
    */
-  private edgeEndpointDrag: {
+  private linkEndpointDrag: {
     linkId: LinkId;
     side: "from" | "to";
     toPoint: Vec2;
@@ -970,9 +970,9 @@ export class Editor {
     }
     this.handleHitSlop = this.inputMode === "touch" ? TOUCH_HANDLE_HIT_SLOP : HANDLE_HIT_SLOP;
     this.edgeHandleHitSlop =
-      this.inputMode === "touch" ? TOUCH_EDGE_HANDLE_HIT_SLOP : EDGE_ENDPOINT_HANDLE_RADIUS;
+      this.inputMode === "touch" ? TOUCH_LINK_HANDLE_HIT_SLOP : LINK_ENDPOINT_HANDLE_RADIUS;
     this.edgeHitThreshold =
-      this.inputMode === "touch" ? TOUCH_EDGE_HIT_THRESHOLD : EDGE_HIT_THRESHOLD;
+      this.inputMode === "touch" ? TOUCH_LINK_HIT_THRESHOLD : LINK_HIT_THRESHOLD;
 
     this.actor = createActor(interactionMachine);
     this.actor.subscribe({
@@ -1275,20 +1275,20 @@ export class Editor {
   }
 
   /** Currently-selected edge id, if any. Null when no edge is selected. */
-  get selectedEdge(): LinkId | null {
-    return this._selectedEdge;
+  get selectedLink(): LinkId | null {
+    return this._selectedLink;
   }
 
   /**
    * Apply an in-place mutation to the currently-selected edge as a
    * single history step. The `updater` receives a clone of the edge
    * and returns the next version (callers should produce a new
-   * object — Edge is readonly). No-op when no edge is selected.
+   * object — Link is readonly). No-op when no edge is selected.
    */
-  updateSelectedEdge(updater: (edge: Edge) => Edge): void {
-    const id = this._selectedEdge;
+  updateSelectedLink(updater: (edge: Link) => Link): void {
+    const id = this._selectedLink;
     if (id === null) return;
-    const r = updateEdge(this._scene, id, updater);
+    const r = updateLink(this._scene, id, updater);
     this._scene = r.scene;
     this._history.push(r.patch);
     this.notify();
@@ -1349,8 +1349,8 @@ export class Editor {
       this.gestureTx = null;
     }
     // Hide the port overlay when leaving draw-edge.
-    if (mode !== "draw-edge" && this.hoveredEdgeTarget !== null) {
-      this.hoveredEdgeTarget = null;
+    if (mode !== "draw-edge" && this.hoveredLinkTarget !== null) {
+      this.hoveredLinkTarget = null;
     }
     // Cursor affordance for hand mode — grab when armed, grabbing
     // takes over inside an active pan gesture. Restore the host's
@@ -1779,14 +1779,14 @@ export class Editor {
 
   // Pure body in `./editor/public/selection-ops.ts`.
   deleteSelected(): void {
-    const result = computeDeleteSelection(this._scene, this._selection, this._selectedEdge);
+    const result = computeDeleteSelection(this._scene, this._selection, this._selectedLink);
     if (!result) return;
     const tx = this._history.transaction();
     this._scene = result.scene;
     for (const patch of result.patches) tx.add(patch);
     tx.commit();
     this._selection = Selection.EMPTY;
-    this._selectedEdge = null;
+    this._selectedLink = null;
     this.notify();
   }
 
@@ -2301,7 +2301,7 @@ export class Editor {
       this._enteredGroup = null;
     }
     this._selection = Selection.EMPTY;
-    this._selectedEdge = null;
+    this._selectedLink = null;
     this.notify();
     this.announce("Selection cleared");
   }
@@ -2327,7 +2327,7 @@ export class Editor {
     const next = computeSetSelection(this._scene, ids, this._selection);
     if (!next) return;
     this._selection = next;
-    if (this._selectedEdge !== null) this._selectedEdge = null;
+    if (this._selectedLink !== null) this._selectedLink = null;
     this.notify();
   }
   selectAll(): void {
@@ -2538,7 +2538,7 @@ export class Editor {
       edges: new Map(),
     };
     this._selection = Selection.EMPTY;
-    this._selectedEdge = null;
+    this._selectedLink = null;
     this._history.clear();
     this.notify();
   }
@@ -2834,7 +2834,7 @@ export class Editor {
     return pickPressTarget(worldPoint, {
       scene: this._scene,
       selection: this._selection,
-      selectedEdge: this._selectedEdge,
+      selectedLink: this._selectedLink,
       enteredGroup: this._enteredGroup,
       handleHitSlop: this.handleHitSlop,
       edgeHandleHitSlop: this.edgeHandleHitSlop,
@@ -3049,7 +3049,7 @@ export class Editor {
         if (target) {
           this._enteredGroup = target.id;
           this._selection = Selection.single(raw.id);
-          if (this._selectedEdge !== null) this._selectedEdge = null;
+          if (this._selectedLink !== null) this._selectedLink = null;
           this.notify();
           return true;
         }
@@ -3076,32 +3076,32 @@ export class Editor {
     switch (emit.type) {
       case "SELECT_REPLACE":
         this._selection = Selection.single(emit.id);
-        if (this._selectedEdge !== null) this._selectedEdge = null;
+        if (this._selectedLink !== null) this._selectedLink = null;
         this.notify();
         return;
       case "SELECT_TOGGLE":
         this._selection = Selection.toggle(this._selection, emit.id);
-        if (this._selectedEdge !== null) this._selectedEdge = null;
+        if (this._selectedLink !== null) this._selectedLink = null;
         this.notify();
         return;
       case "SELECT_CLEAR":
         this._selection = Selection.EMPTY;
-        if (this._selectedEdge !== null) this._selectedEdge = null;
+        if (this._selectedLink !== null) this._selectedLink = null;
         this.notify();
         return;
       case "SELECT_EDGE_REPLACE":
-        this._selectedEdge = emit.id;
+        this._selectedLink = emit.id;
         this._selection = Selection.EMPTY;
         this.notify();
         return;
       case "SELECT_EDGE_CLEAR":
-        if (this._selectedEdge !== null) {
-          this._selectedEdge = null;
+        if (this._selectedLink !== null) {
+          this._selectedLink = null;
           this.notify();
         }
         return;
       case "UPDATE_EDGE_ENDPOINT_PREVIEW":
-        this.edgeEndpointDrag = {
+        this.linkEndpointDrag = {
           linkId: emit.linkId,
           side: emit.side,
           toPoint: emit.toPoint,
@@ -3109,7 +3109,7 @@ export class Editor {
         this.notify();
         return;
       case "UPDATE_EDGE_ENDPOINT":
-        this.applyEdgeEndpointUpdate(emit);
+        this.applyLinkEndpointUpdate(emit);
         return;
       case "LASSO_PROGRESS":
         // Capture the pre-lasso selection on the first progress emit
@@ -3152,10 +3152,10 @@ export class Editor {
         this.applyCreate(emit.shapeType, emit.bounds);
         return;
       case "CREATE_EDGE":
-        this.applyCreateEdge(emit);
+        this.applyCreateLink(emit);
         return;
       case "DRAW_EDGE_PREVIEW":
-        this.applyEdgePreview(emit.fromShape, emit.fromPoint, emit.toPoint);
+        this.applyLinkPreview(emit.fromShape, emit.fromPoint, emit.toPoint);
         return;
       case "DRAW_EDGE_PREVIEW_CLEAR":
         if (this.edgePreview) {
@@ -3340,7 +3340,7 @@ export class Editor {
     const add = (b: Bounds): void => {
       acc = acc ? B.union(acc, b) : b;
     };
-    // Track shapes that changed (added / removed / mutated). Edges
+    // Track shapes that changed (added / removed / mutated). Links
     // attached to any of these have stale rendered paths even when
     // the edge object itself is reference-equal — the path resolves
     // through the shape's new position, but the old path stays on
@@ -3371,7 +3371,7 @@ export class Editor {
         }
       }
     }
-    const edgeTouchesChangedShape = (edge: Edge): boolean => {
+    const edgeTouchesChangedShape = (edge: Link): boolean => {
       for (const ep of [edge.from, edge.to]) {
         if (ep.kind === "anchor" || ep.kind === "outline") {
           if (changedShapeIds.has(ep.elementId)) return true;
@@ -3385,15 +3385,15 @@ export class Editor {
       // endpoint references a shape that moved this frame (path is
       // re-resolved every render but the old screen pixels persist).
       if (old === edge && !edgeTouchesChangedShape(edge)) continue;
-      const b = computeEdgeWorldBounds(next, edge);
+      const b = computeLinkWorldBounds(next, edge);
       if (b) add(b);
-      const oldEdge = old ?? edge; // prev scene resolves with prev shapes for ghost-clear
-      const ob = computeEdgeWorldBounds(prev, oldEdge);
+      const oldLink = old ?? edge; // prev scene resolves with prev shapes for ghost-clear
+      const ob = computeLinkWorldBounds(prev, oldLink);
       if (ob) add(ob);
     }
     for (const [id, edge] of prev.edges) {
       if (!next.edges.has(id)) {
-        const b = computeEdgeWorldBounds(prev, edge);
+        const b = computeLinkWorldBounds(prev, edge);
         if (b) add(b);
       }
     }
@@ -3556,11 +3556,11 @@ export class Editor {
 
   // Pure body in `./editor/applies/create.ts`. Endpoint snapping
   // stays here because it needs the snap engine.
-  private applyCreateEdge(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
-    const from = this.snapEdgeEndpoint(emit.fromShape, emit.fromPoint);
-    const to = this.snapEdgeEndpoint(emit.toShape, emit.toPoint);
-    const id = newEdgeId(++this.nextId);
-    const result = computeCreateEdge(this._scene, from, to, id, this._activeLayerId);
+  private applyCreateLink(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
+    const from = this.snapLinkEndpoint(emit.fromShape, emit.fromPoint);
+    const to = this.snapLinkEndpoint(emit.toShape, emit.toPoint);
+    const id = newLinkId(++this.nextId);
+    const result = computeCreateLink(this._scene, from, to, id, this._activeLayerId);
     this._scene = result.scene;
     this._history.push(result.patch);
     this.edgePreview = null;
@@ -3569,7 +3569,7 @@ export class Editor {
   }
 
   /**
-   * Build an `EdgeEndpoint` for a draw-edge / re-bind gesture. Runs the
+   * Build an `LinkEndpoint` for a draw-edge / re-bind gesture. Runs the
    * scene's snap engine for the probe point, prefers anchor snap when
    * close enough, falls back to outline snap (so the user can attach
    * "anywhere on the right edge"), then `point` for the free-floating
@@ -3579,7 +3579,7 @@ export class Editor {
    * landed on (used as a strong hint — we don't snap onto unrelated
    * shapes when the user clearly aimed for this one).
    */
-  private snapEdgeEndpoint(pressTargetShape: ElementId | null, worldPoint: Vec2): EdgeEndpoint {
+  private snapLinkEndpoint(pressTargetShape: ElementId | null, worldPoint: Vec2): LinkEndpoint {
     if (!pressTargetShape) {
       return { kind: "point", position: worldPoint };
     }
@@ -3611,7 +3611,7 @@ export class Editor {
   }
 
   // Pure body in `./editor/applies/selection.ts`. The wrappers
-  // here own the side effects (`_selectedEdge` clearing, notify).
+  // here own the side effects (`_selectedLink` clearing, notify).
   private applySelectByBounds(bounds: Bounds, mode: "replace" | "add"): void {
     const next = selectByBoundsPure(
       this._scene,
@@ -3620,7 +3620,7 @@ export class Editor {
       bounds,
       mode,
     );
-    if (this._selectedEdge !== null) this._selectedEdge = null;
+    if (this._selectedLink !== null) this._selectedLink = null;
     if (Selection.equals(next, this._selection)) {
       this.notify();
       return;
@@ -3639,50 +3639,50 @@ export class Editor {
       mode,
     );
     if (Selection.equals(next, this._selection)) return;
-    if (this._selectedEdge !== null) this._selectedEdge = null;
+    if (this._selectedLink !== null) this._selectedLink = null;
     this._selection = next;
   }
 
   // Pure body in `./editor/applies/edge.ts`. The wrapper here
   // owns the side effects (history push, drag-state clearing,
   // notify).
-  private applyEdgeEndpointUpdate(
+  private applyLinkEndpointUpdate(
     emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
   ): void {
-    const result = computeEdgeEndpointUpdate(this._scene, emit, (toShape, toPoint) =>
-      this.snapEdgeEndpoint(toShape, toPoint),
+    const result = computeLinkEndpointUpdate(this._scene, emit, (toShape, toPoint) =>
+      this.snapLinkEndpoint(toShape, toPoint),
     );
     if (result === null) {
-      this.edgeEndpointDrag = null;
+      this.linkEndpointDrag = null;
       this.notify();
       return;
     }
     this._scene = result.scene;
     this._history.push(result.patch);
-    this.edgeEndpointDrag = null;
+    this.linkEndpointDrag = null;
     this.notify();
   }
 
-  private updateHoveredEdgeTarget(worldPoint: Vec2): void {
+  private updateHoveredLinkTarget(worldPoint: Vec2): void {
     const shape = this.acceleratedShapeAt(worldPoint);
     if (!shape) {
-      if (this.hoveredEdgeTarget !== null) {
-        this.hoveredEdgeTarget = null;
+      if (this.hoveredLinkTarget !== null) {
+        this.hoveredLinkTarget = null;
         this.notify();
       }
       return;
     }
     const nearest = findNearestAnchor(shape, worldPoint, snapExcludedAnchors(shape));
     const activeName = nearest.ref.kind === "named" ? nearest.ref.name : null;
-    const prev = this.hoveredEdgeTarget;
+    const prev = this.hoveredLinkTarget;
     if (prev?.elementId === shape.id && prev.activeAnchor === activeName) return;
-    this.hoveredEdgeTarget = { elementId: shape.id, activeAnchor: activeName };
+    this.hoveredLinkTarget = { elementId: shape.id, activeAnchor: activeName };
     this.notify();
   }
 
   // Pure body in `./editor/applies/edge.ts`.
-  private applyEdgePreview(fromShape: ElementId | null, fromPoint: Vec2, toPoint: Vec2): void {
-    this.edgePreview = computeEdgePreviewEndpoints(this._scene, fromShape, fromPoint, toPoint);
+  private applyLinkPreview(fromShape: ElementId | null, fromPoint: Vec2, toPoint: Vec2): void {
+    this.edgePreview = computeLinkPreviewEndpoints(this._scene, fromShape, fromPoint, toPoint);
     this.notify();
   }
 
@@ -3934,7 +3934,7 @@ const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z
 // `describeNudge` moved to `./editor/public/selection-ops.ts`.
 
 /**
- * Convert a snap candidate into an `EdgeEndpoint`. Anchor snap → named
+ * Convert a snap candidate into an `LinkEndpoint`. Anchor snap → named
  * anchor ref; outline snap → outline ref with the sampled ratio. Falls
  * back to a free point if the metadata isn't recognised.
  */
@@ -3942,7 +3942,7 @@ const endpointFromSnap = (
   elementId: ElementId,
   candidate: SnapCandidate,
   shape: Element,
-): EdgeEndpoint => {
+): LinkEndpoint => {
   if (candidate.kind === "anchor") {
     const ref = candidate.metadata?.ref as AnchorRefLike | undefined;
     if (ref) return { kind: "anchor", elementId, anchor: ref };
@@ -3955,7 +3955,7 @@ const endpointFromSnap = (
   return { kind: "point", position: candidate.snapped };
 };
 
-type AnchorRefLike = Extract<EdgeEndpoint, { kind: "anchor" }>["anchor"];
+type AnchorRefLike = Extract<LinkEndpoint, { kind: "anchor" }>["anchor"];
 
 // `resizeFromHandle`, `applyResizeConstraints`, the four handle-
 // quadrant predicates moved to `./editor/resize-helpers.ts` so

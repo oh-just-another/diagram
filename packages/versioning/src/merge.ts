@@ -1,7 +1,7 @@
 import type { AnnotationId, LinkId, LayerId, ElementId } from "@oh-just-another/types";
 import type {
   Annotation,
-  Edge,
+  Link,
   Layer,
   Patch,
   Scene,
@@ -29,7 +29,7 @@ export interface Conflict<Id, V> {
 
 export type SceneConflict =
   | Conflict<ElementId, Element>
-  | Conflict<LinkId, Edge>
+  | Conflict<LinkId, Link>
   | Conflict<LayerId, Layer>
   | Conflict<AnnotationId, Annotation>;
 

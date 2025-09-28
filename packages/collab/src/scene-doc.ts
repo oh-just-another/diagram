@@ -2,7 +2,7 @@ import * as Y from "yjs";
 import {
   DEFAULT_VIEWPORT,
   type Annotation,
-  type Edge,
+  type Link,
   type Layer,
   type Scene,
   type Element,
@@ -14,7 +14,7 @@ import { annotationId, layerId, linkId, elementId } from "@oh-just-another/types
  * are the canonical source of truth for collaborative editing:
  *
  *   - `shapes`   — `Y.Map<string, Element>`
- *   - `edges`    — `Y.Map<string, Edge>`
+ *   - `edges`    — `Y.Map<string, Link>`
  *   - `layers`   — `Y.Map<string, Layer>`
  *   - `viewport` — `Y.Map<string, unknown>` (single "current" key)
  *
@@ -26,7 +26,7 @@ import { annotationId, layerId, linkId, elementId } from "@oh-just-another/types
 export class SceneDoc {
   readonly doc: Y.Doc;
   readonly shapes: Y.Map<Element>;
-  readonly edges: Y.Map<Edge>;
+  readonly edges: Y.Map<Link>;
   readonly layers: Y.Map<Layer>;
   readonly annotations: Y.Map<Annotation>;
   readonly viewport: Y.Map<unknown>;
@@ -34,7 +34,7 @@ export class SceneDoc {
   constructor(doc: Y.Doc = new Y.Doc()) {
     this.doc = doc;
     this.shapes = doc.getMap<Element>("shapes");
-    this.edges = doc.getMap<Edge>("edges");
+    this.edges = doc.getMap<Link>("edges");
     this.layers = doc.getMap<Layer>("layers");
     this.annotations = doc.getMap<Annotation>("annotations");
     this.viewport = doc.getMap<unknown>("viewport");
@@ -44,7 +44,7 @@ export class SceneDoc {
   snapshot(): Scene {
     const shapeMap = new Map<Element["id"], Element>();
     for (const [id, shape] of this.shapes) shapeMap.set(elementId(id), shape);
-    const edgeMap = new Map<Edge["id"], Edge>();
+    const edgeMap = new Map<Link["id"], Link>();
     for (const [id, edge] of this.edges) edgeMap.set(linkId(id), edge);
     const layerMap = new Map<Layer["id"], Layer>();
     for (const [id, layer] of this.layers) layerMap.set(layerId(id), layer);

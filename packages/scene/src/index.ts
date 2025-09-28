@@ -37,17 +37,17 @@ export type {
   ShapeBounder,
 } from "./shape.js";
 export type {
-  Edge,
-  EdgeEndpoint,
-  EdgeRouting,
-  EdgeArrowheads,
-  EdgeLabel,
+  Link,
+  LinkEndpoint,
+  LinkRouting,
+  LinkArrowheads,
+  LinkLabel,
   ArrowheadStyle,
   AnchorRef,
   NamedAnchor,
   StandardAnchor,
 } from "./edge.js";
-export { getEdgeEndpointWorld, getEdgePath, findEdgeAt } from "./edge-geometry.js";
+export { getLinkEndpointWorld, getLinkPath, findLinkAt } from "./edge-geometry.js";
 export type { Layer } from "./layer.js";
 export type { Viewport, GridStyle } from "./viewport.js";
 export type { Scene } from "./scene.js";
@@ -142,9 +142,9 @@ export {
   removeShape,
   updateShape,
   moveShape,
-  addEdge,
-  removeEdge,
-  updateEdge,
+  addLink,
+  removeLink,
+  updateLink,
   addLayer,
   removeLayer,
   updateLayer,
@@ -161,11 +161,11 @@ export { getAnnotationWorldPosition } from "./annotation-geometry.js";
 // Queries
 export {
   getShape,
-  getEdge,
+  getLink,
   getLayer,
   getLayersInOrder,
   getShapesInLayer,
-  getEdgesInLayer,
+  getLinksInLayer,
   getShapesInBounds,
   getShapesCoveredByBounds,
   getShapeAt,

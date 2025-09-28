@@ -1,6 +1,6 @@
 import type { AnnotationId, LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import type { Annotation } from "./annotation.js";
-import type { Edge } from "./edge.js";
+import type { Link } from "./edge.js";
 import type { Layer } from "./layer.js";
 import type { Patch } from "./patch.js";
 import { apply, type Scene } from "./scene.js";
@@ -49,30 +49,30 @@ export const updateShape = (
 export const moveShape = (scene: Scene, id: ElementId, to: Vec2): OperationResult =>
   updateShape(scene, id, (s) => ({ ...s, position: to }));
 
-// --- Edges ---
+// --- Links ---
 
-export const addEdge = (scene: Scene, edge: Edge): OperationResult => {
+export const addLink = (scene: Scene, edge: Link): OperationResult => {
   if (scene.edges.has(edge.id)) {
-    throw new Error(`Edge already exists: ${edge.id}`);
+    throw new Error(`Link already exists: ${edge.id}`);
   }
   const patch: Patch = { kind: "edge", id: edge.id, before: null, after: edge };
   return { scene: apply(scene, patch), patch };
 };
 
-export const removeEdge = (scene: Scene, id: LinkId): OperationResult => {
+export const removeLink = (scene: Scene, id: LinkId): OperationResult => {
   const before = scene.edges.get(id);
-  if (!before) throw new Error(`Edge not found: ${id}`);
+  if (!before) throw new Error(`Link not found: ${id}`);
   const patch: Patch = { kind: "edge", id, before, after: null };
   return { scene: apply(scene, patch), patch };
 };
 
-export const updateEdge = (
+export const updateLink = (
   scene: Scene,
   id: LinkId,
-  update: (edge: Edge) => Edge,
+  update: (edge: Link) => Link,
 ): OperationResult => {
   const before = scene.edges.get(id);
-  if (!before) throw new Error(`Edge not found: ${id}`);
+  if (!before) throw new Error(`Link not found: ${id}`);
   const after = update(before);
   const patch: Patch = { kind: "edge", id, before, after };
   return { scene: apply(scene, patch), patch };
