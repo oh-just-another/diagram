@@ -8,7 +8,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Element,
@@ -35,7 +35,7 @@ const text: Element = {
 
 const mountEditor = (): Editor => {
   let scene = emptyScene();
-  ({ scene } = addShape(scene, text));
+  ({ scene } = addElement(scene, text));
   const host = document.createElement("div");
   Object.defineProperty(host, "getBoundingClientRect", {
     value: () => ({ x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600 }),

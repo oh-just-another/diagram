@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   apply,
   emptyScene,
   orderBetween,
@@ -28,7 +28,7 @@ const rect = (id: string, x = 0): Element => ({
 
 const seed = (): Scene => {
   let s = emptyScene();
-  ({ scene: s } = addShape(s, rect("a")));
+  ({ scene: s } = addElement(s, rect("a")));
   return s;
 };
 

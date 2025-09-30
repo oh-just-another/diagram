@@ -4,7 +4,7 @@ import { annotationId, commentId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addAnnotation,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Annotation,
@@ -27,7 +27,7 @@ const seed = (): Scene => {
     width: 100,
     height: 60,
   };
-  ({ scene: s } = addShape(s, rect));
+  ({ scene: s } = addElement(s, rect));
   return s;
 };
 

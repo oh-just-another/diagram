@@ -35,7 +35,7 @@ import { paintSvgIcon, parseSvg } from "./svg.js";
  * The caller is expected to have already translated `target` to the shape's
  * `position` (via `renderScene`'s per-shape TRS push).
  */
-export const renderTemplateShape: ShapeRenderer<SceneTemplateElement> = (shape, target) => {
+export const renderTemplateElement: ShapeRenderer<SceneTemplateElement> = (shape, target) => {
   const template = defaultRichRegistry.get(shape.templateId);
   if (!template) {
     paintMissing(target, shape.width, shape.height, shape.templateId);
@@ -269,7 +269,7 @@ void (null as unknown as ContainerNode | Color | Vec2 | NodeStyle); // appease u
  * once at app startup, alongside `installBuiltinRenderers()`.
  */
 export const installTemplateShapeRenderer = (): void => {
-  registerShapeRenderer<SceneTemplateElement>("template", renderTemplateShape);
+  registerShapeRenderer<SceneTemplateElement>("template", renderTemplateElement);
   registerBounder<SceneTemplateElement>("template", (shape) => {
     // The shape's width/height drives both the bounder and the renderer so
     // the user's resize gesture changes both the AABB and the painted layout.
@@ -285,7 +285,7 @@ export const installTemplateShapeRenderer = (): void => {
     const tmpl = shape as SceneTemplateElement;
     const template = defaultRichRegistry.get(tmpl.templateId);
     if (!template) return null;
-    // IMPORTANT: same trick as renderTemplateShape — inject the shape's
+    // IMPORTANT: same trick as renderTemplateElement — inject the shape's
     // current width/height into the root layout, otherwise the root
     // container collapses to its intrinsic size (~80×60 driven by the
     // drop-zone's intrinsic) and the resolver returns a tiny box.

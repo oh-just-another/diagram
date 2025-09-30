@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   getAutoLayoutSpec,
   orderBetween,
@@ -72,9 +72,9 @@ describe("pluggable layout registry", () => {
 
     let scene = emptyScene();
     const parent = { ...container("p", { kind: "radial", radius: 50 }), position: { x: 7, y: 9 } };
-    ({ scene } = addShape(scene, parent));
-    ({ scene } = addShape(scene, rect("c1", "p")));
-    ({ scene } = addShape(scene, rect("c2", "p")));
+    ({ scene } = addElement(scene, parent));
+    ({ scene } = addElement(scene, rect("c1", "p")));
+    ({ scene } = addElement(scene, rect("c2", "p")));
 
     runAutoLayout(scene, elementId("p"));
     expect(captured).not.toBeNull();
@@ -102,8 +102,8 @@ describe("pluggable layout registry", () => {
     });
 
     let scene = emptyScene();
-    ({ scene } = addShape(scene, container("p", { kind: "radial" })));
-    ({ scene } = addShape(scene, rect("c1", "p")));
+    ({ scene } = addElement(scene, container("p", { kind: "radial" })));
+    ({ scene } = addElement(scene, rect("c1", "p")));
 
     const out = runAutoLayout(scene, elementId("p"));
     expect(out).toBe(fakePatch);

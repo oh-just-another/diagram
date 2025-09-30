@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { layerId, elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
-  removeShape,
-  updateShape,
+  removeElement,
+  updateElement,
   type Element,
 } from "@oh-just-another/scene";
 import { cachedWorldBounds, ShapeCache, sharedBoundsCache } from "../src/index";
@@ -64,9 +64,9 @@ describe("ShapeCache", () => {
     cache.set(s1, 1);
     cache.set(s2, 2);
     let scene = emptyScene();
-    scene = addShape(scene, s1).scene;
-    scene = addShape(scene, s2).scene;
-    scene = removeShape(scene, s2.id).scene;
+    scene = addElement(scene, s1).scene;
+    scene = addElement(scene, s2).scene;
+    scene = removeElement(scene, s2.id).scene;
     cache.prune(scene);
     expect(cache.size).toBe(1);
     expect(cache.get(s1)).toBe(1);
@@ -83,10 +83,10 @@ describe("cachedWorldBounds", () => {
     expect(a).toEqual({ x: 5, y: 5, width: 10, height: 10 });
   });
 
-  it("recomputes after updateShape changes the ref", () => {
+  it("recomputes after updateElement changes the ref", () => {
     let scene = emptyScene();
     const id = elementId("a");
-    scene = addShape(scene, {
+    scene = addElement(scene, {
       ...rect("a", 0, 0),
       id,
       layerId: layerId(DEFAULT_LAYER_ID),
@@ -95,7 +95,7 @@ describe("cachedWorldBounds", () => {
     const cache = new ShapeCache<ReturnType<typeof cachedWorldBounds>>();
     const b1 = cachedWorldBounds(cache, before);
     expect(b1.x).toBe(0);
-    scene = updateShape(scene, id, (s) => ({ ...s, position: { x: 50, y: 50 } })).scene;
+    scene = updateElement(scene, id, (s) => ({ ...s, position: { x: 50, y: 50 } })).scene;
     const after = scene.shapes.get(id)!;
     expect(after).not.toBe(before);
     const b2 = cachedWorldBounds(cache, after);

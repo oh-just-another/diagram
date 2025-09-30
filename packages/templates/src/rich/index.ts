@@ -45,7 +45,7 @@ export { resolveRichTemplateChain } from "./extends.js";
 
 export { RichTemplateRegistry, defaultRichRegistry } from "./registry.js";
 
-export { renderTemplateShape, installTemplateShapeRenderer } from "./render.js";
+export { renderTemplateElement, installTemplateShapeRenderer } from "./render.js";
 
 export { nodeAtPoint, interactiveNodeAtPoint } from "./hit-test.js";
 

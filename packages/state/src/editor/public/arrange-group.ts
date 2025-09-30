@@ -1,19 +1,19 @@
 import {
-  addShape,
+  addElement,
   apply,
-  getShape,
-  getShapeAccessibleName,
+  getElement,
+  getElementAccessibleName,
   gridLayout,
   orderForTop,
-  removeShape,
+  removeElement,
   stackLayout,
-  updateShape,
+  updateElement,
   type Scene,
   type Element,
   type Patch,
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId } from "@oh-just-another/types";
-import { elementId as castShapeId } from "@oh-just-another/types";
+import { elementId as castElementId } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
 
 /**
@@ -79,7 +79,7 @@ export const selectionRoots = (
   const out: Element[] = [];
   const seen = new Set<ElementId>();
   for (const id of selection) {
-    const shape = getShape(scene, id);
+    const shape = getElement(scene, id);
     if (!shape) continue;
     let cursor: Element | undefined = shape;
     let hidden = false;
@@ -88,7 +88,7 @@ export const selectionRoots = (
         hidden = true;
         break;
       }
-      cursor = getShape(scene, cursor.parentId);
+      cursor = getElement(scene, cursor.parentId);
     }
     if (hidden) continue;
     if (seen.has(shape.id)) continue;
@@ -110,7 +110,7 @@ export const expandSelectionWithDescendants = (
   const out = new Set<ElementId>();
   const visit = (id: ElementId): void => {
     if (out.has(id)) return;
-    const shape = getShape(scene, id);
+    const shape = getElement(scene, id);
     if (!shape) return;
     out.add(id);
     for (const child of scene.shapes.values()) {
@@ -144,7 +144,7 @@ export const computeGroupSelected = (
   const order = orderForTop(
     [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
   );
-  const groupShape: Element = {
+  const groupElement: Element = {
     id: newGroupId,
     layerId,
     type: "group",
@@ -156,11 +156,11 @@ export const computeGroupSelected = (
   };
   let s = scene;
   const patches: Patch[] = [];
-  const addRes = addShape(s, groupShape);
+  const addRes = addElement(s, groupElement);
   s = addRes.scene;
   patches.push(addRes.patch);
   for (const child of roots) {
-    const r = updateShape(s, child.id, (sh) => ({ ...sh, parentId: newGroupId }));
+    const r = updateElement(s, child.id, (sh) => ({ ...sh, parentId: newGroupId }));
     s = r.scene;
     patches.push(r.patch);
   }
@@ -182,7 +182,7 @@ export const computeUngroup = (
   readonly nextSelection: ReadonlySet<ElementId>;
 } | null => {
   const targets = [...selection]
-    .map((id) => getShape(scene, id))
+    .map((id) => getElement(scene, id))
     .filter((s): s is Element => s?.type === "group");
   if (targets.length === 0) return null;
   let s = scene;
@@ -191,7 +191,7 @@ export const computeUngroup = (
   for (const group of targets) {
     const children = [...s.shapes.values()].filter((sh) => sh.parentId === group.id);
     for (const child of children) {
-      const r = updateShape(s, child.id, (sh) => {
+      const r = updateElement(s, child.id, (sh) => {
         const next: Element = { ...sh };
         delete (next as { parentId?: ElementId }).parentId;
         return next;
@@ -200,7 +200,7 @@ export const computeUngroup = (
       patches.push(r.patch);
       nextSelection.add(child.id);
     }
-    const rm = removeShape(s, group.id);
+    const rm = removeElement(s, group.id);
     s = rm.scene;
     patches.push(rm.patch);
   }
@@ -236,10 +236,10 @@ export const pickFocusCycle = (
   }
   const nextId = ordered[idx];
   if (!nextId) return null;
-  const shape = getShape(scene, nextId);
-  return { id: nextId, name: shape ? getShapeAccessibleName(shape) : nextId };
+  const shape = getElement(scene, nextId);
+  return { id: nextId, name: shape ? getElementAccessibleName(shape) : nextId };
 };
 
 /** Generate a fresh group shape id with the editor's nextId counter. */
-export const newGroupShapeId = (next: number): ElementId =>
-  castShapeId(`group-${next}-${Date.now().toString(36)}`);
+export const newGroupElementId = (next: number): ElementId =>
+  castElementId(`group-${next}-${Date.now().toString(36)}`);

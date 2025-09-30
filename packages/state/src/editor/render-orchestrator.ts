@@ -2,8 +2,8 @@ import {
   getAnchorWorld,
   getLink,
   getLinkPath,
-  getShape,
-  getShapeWorldBounds,
+  getElement,
+  getElementWorldBounds,
   listAnchorsLocal,
   snapExcludedAnchors,
 } from "@oh-just-another/scene";
@@ -47,10 +47,10 @@ export const renderEditor = (editor: any): void => {
   // does not flicker during pan.
   const viewportWorld = editor.computeViewportWorld();
   const dirtyWorld = editor.computeDirtyWorld();
-  const dimShapes = editor._enteredGroup
-    ? editor.computeDimShapes(editor._enteredGroup)
+  const dimElements = editor._enteredGroup
+    ? editor.computeDimElements(editor._enteredGroup)
     : undefined;
-  const hideShapes = editor.computeHiddenShapes();
+  const hideElements = editor.computeHiddenElements();
 
   if (editor.tileComposeFn && viewportWorld) {
     // Tile-cache path: clear main once, then composite cached tiles. Dim /
@@ -60,13 +60,13 @@ export const renderEditor = (editor: any): void => {
     editor.mainTarget.clear();
     editor.tileComposeFn(editor._scene, editor.mainTarget, {
       viewport: viewportWorld,
-      changedShapes: editor.tileDirtyShapes,
+      changedElements: editor.tileDirtyElements,
       zoomBucket:
         editor._scene.viewport.zoom > 0
           ? 2 ** Math.round(Math.log2(editor._scene.viewport.zoom))
           : 1,
     });
-    editor.tileDirtyShapes = new Map();
+    editor.tileDirtyElements = new Map();
     renderLinks(editor._scene, editor.mainTarget, {
       ...(viewportWorld ? { viewportWorld } : {}),
     });
@@ -83,8 +83,8 @@ export const renderEditor = (editor: any): void => {
       ...(dirtyWorld ? { dirtyWorld } : {}),
       boundsCache: editor.boundsCache,
       lod: DEFAULT_LOD,
-      ...(dimShapes ? { dimShapes, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
-      ...(hideShapes ? { hideShapes } : {}),
+      ...(dimElements ? { dimElements, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
+      ...(hideElements ? { hideElements } : {}),
       ...(sharedIndex ? { spatialIndex: sharedIndex } : {}),
     });
     renderLinks(editor._scene, editor.mainTarget, {
@@ -102,7 +102,7 @@ export const renderEditor = (editor: any): void => {
   else if (editor.drawingPreview) overlayOpts.drawingPreview = editor.drawingPreview;
   if (editor.edgePreview) overlayOpts.edgePreview = editor.edgePreview;
   if (editor.hoveredLinkTarget) {
-    const shape = getShape(editor._scene, editor.hoveredLinkTarget.elementId);
+    const shape = getElement(editor._scene, editor.hoveredLinkTarget.elementId);
     if (shape) {
       const excluded = snapExcludedAnchors(shape);
       const names = [...listAnchorsLocal(shape).keys()].filter((n) => !excluded.has(n));
@@ -164,7 +164,7 @@ export const renderEditor = (editor: any): void => {
   const gifBadges = [];
   for (const shape of editor._scene.shapes.values()) {
     if (shape.type === "image" && shape.animationKind && editor.isPlaybackPaused(shape.id)) {
-      gifBadges.push(getShapeWorldBounds(shape));
+      gifBadges.push(getElementWorldBounds(shape));
     }
   }
   if (gifBadges.length > 0) overlayOpts.gifBadges = gifBadges;

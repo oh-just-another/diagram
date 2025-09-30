@@ -2,7 +2,7 @@ import { bench, describe } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Scene,
@@ -35,7 +35,7 @@ const makeScene = (count: number): Scene => {
       width: 40,
       height: 30,
     };
-    ({ scene } = addShape(scene, shape));
+    ({ scene } = addElement(scene, shape));
   }
   return scene;
 };

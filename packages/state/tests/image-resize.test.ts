@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
@@ -27,7 +27,7 @@ const image = (): Element =>
     height: 50, // 2:1 aspect
   }) as unknown as Element;
 
-const sceneWith = (s: Element) => addShape(emptyScene(), s).scene;
+const sceneWith = (s: Element) => addElement(emptyScene(), s).scene;
 
 const originFor = (s: Element): GroupResizeOrigin => ({
   shapes: new Map([
@@ -111,8 +111,8 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
       height: 40, // 2:1
     } as unknown as Element;
     let scene = emptyScene();
-    ({ scene } = addShape(scene, rect));
-    ({ scene } = addShape(scene, img));
+    ({ scene } = addElement(scene, rect));
+    ({ scene } = addElement(scene, img));
     const origin: GroupResizeOrigin = {
       shapes: new Map([
         [rect.id, { position: { x: 0, y: 0 }, bounds: { x: 0, y: 0, width: 100, height: 50 }, scale: { x: 1, y: 1 } }],

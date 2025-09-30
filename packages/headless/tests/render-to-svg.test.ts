@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Scene,
@@ -32,7 +32,7 @@ const rect = (id: string, x = 0, y = 0, w = 50, h = 30, fill = "#abc"): Element 
 describe("renderToSvg", () => {
   it("renders an in-memory scene", () => {
     let scene = sceneOf(200, 100);
-    ({ scene } = addShape(scene, rect("a", 10, 10)));
+    ({ scene } = addElement(scene, rect("a", 10, 10)));
     const svg = renderToSvg(scene);
     expect(svg).toContain("<svg");
     expect(svg).toContain('viewBox="0 0 200 100"');
@@ -41,7 +41,7 @@ describe("renderToSvg", () => {
 
   it("accepts a serialized scene as JSON string", () => {
     let scene = sceneOf(150, 75);
-    ({ scene } = addShape(scene, rect("a")));
+    ({ scene } = addElement(scene, rect("a")));
     const json = stringifyScene(scene);
     const svg = renderToSvg(json);
     expect(svg).toContain('viewBox="0 0 150 75"');

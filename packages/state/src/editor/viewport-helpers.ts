@@ -2,8 +2,8 @@ import { bounds as B, matrix } from "@oh-just-another/math";
 import type { Bounds, ElementId } from "@oh-just-another/types";
 import {
   getScreenToWorld,
-  getShape,
-  getShapeWorldBounds,
+  getElement,
+  getElementWorldBounds,
   type Scene,
 } from "@oh-just-another/scene";
 import { VIEWPORT_CULL_PADDING_RATIO } from "../constants.js";
@@ -31,17 +31,17 @@ export const computeViewportWorld = (scene: Scene): Bounds | null => {
 };
 
 /**
- * Union of every direct/indirect descendant's world AABB. `null`
- * for empty groups (which is the only failure mode — every leaf
- * has bounds). Used to derive an effective bbox for a group shape
- * since `getShapeWorldBounds(group)` returns nothing intrinsic.
+ * Union of every direct/indirect descendant's world AABB. `null` for empty
+ * groups (the only failure mode — every leaf has bounds). Used to derive an
+ * effective bbox for a group shape since `getElementWorldBounds(group)`
+ * returns nothing intrinsic.
  */
 export const groupChildrenUnion = (scene: Scene, groupId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
   for (const s of scene.shapes.values()) {
     if (s.parentId !== groupId) continue;
     const inner =
-      s.type === "group" ? groupChildrenUnion(scene, s.id) : getShapeWorldBounds(s);
+      s.type === "group" ? groupChildrenUnion(scene, s.id) : getElementWorldBounds(s);
     if (!inner) continue;
     acc = acc ? B.union(acc, inner) : inner;
   }
@@ -60,9 +60,9 @@ export const combinedSelectionBounds = (
 ): Bounds | null => {
   let acc: Bounds | null = null;
   for (const id of selection) {
-    const s = getShape(scene, id);
+    const s = getElement(scene, id);
     if (!s) continue;
-    const b = s.type === "group" ? groupChildrenUnion(scene, s.id) : getShapeWorldBounds(s);
+    const b = s.type === "group" ? groupChildrenUnion(scene, s.id) : getElementWorldBounds(s);
     if (!b) continue;
     acc = acc ? B.union(acc, b) : b;
   }

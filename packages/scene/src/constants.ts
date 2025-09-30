@@ -5,7 +5,7 @@
  */
 
 /**
- * Half-side of the bounding box used by `isProbeNearShape` to cheap-cull
+ * Half-side of the bounding box used by `isProbeNearElement` to cheap-cull
  * snap candidates. Shapes farther than this from the probe (plus the
  * snap threshold cushion) are skipped without the full anchor walk.
  *

@@ -45,7 +45,7 @@ export const LinkHoverPopup = () => {
     };
 
     const onMove = (ev: PointerEvent) => {
-      if (editor.editingTextShape !== null) {
+      if (editor.editingTextElement !== null) {
         setHover(null);
         return;
       }

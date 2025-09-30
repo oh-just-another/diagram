@@ -3,7 +3,7 @@ import {
   getAnnotationWorldPosition,
   getLink,
   getLinkPath,
-  getShapeWorldBounds,
+  getElementWorldBounds,
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
@@ -12,7 +12,7 @@ import { ALL_HANDLES, CORNER_HANDLES, hitHandle } from "../handle.js";
 import { isResizable, resizeHandlesFor } from "../overlay.js";
 import type { PressTarget } from "../machine.js";
 import * as Selection from "../selection.js";
-import { getShape } from "@oh-just-another/scene";
+import { getElement } from "@oh-just-another/scene";
 
 /** Local helper — keeps this module dependency-free of `@math`. */
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
@@ -35,8 +35,8 @@ export interface HitTestContext {
   readonly hitAnnotation: (worldPoint: Vec2) => AnnotationId | null;
   readonly selectionIsAspectLocked: () => boolean;
   readonly combinedSelectionBounds: () => import("@oh-just-another/types").Bounds | null;
-  readonly acceleratedShapeAt: (worldPoint: Vec2) => Element | undefined;
-  readonly isShapeInteractable: (shape: Element) => boolean;
+  readonly acceleratedElementAt: (worldPoint: Vec2) => Element | undefined;
+  readonly isElementInteractable: (shape: Element) => boolean;
   readonly isLayerLocked: (layerId: LayerId) => boolean;
   readonly promoteToGroupRoot: (shape: Element) => Element;
 }
@@ -98,9 +98,9 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
   //     inconsistent with the group outline.
   if (ctx.selection.size === 1) {
     for (const id of ctx.selection) {
-      const shape = getShape(ctx.scene, id);
+      const shape = getElement(ctx.scene, id);
       if (!shape || !isResizable(shape)) continue;
-      const bounds = getShapeWorldBounds(shape);
+      const bounds = getElementWorldBounds(shape);
       const handle = hitHandle(worldPoint, bounds, zoom, ctx.handleHitSlop, resizeHandlesFor(shape));
       if (handle) {
         return { kind: "handle", elementId: id, handle, bounds };
@@ -133,10 +133,10 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
   //    propagation). When the hit shape is a child of a group,
   //    promote to the group root unless the user has "entered" that
   //    group via double-click.
-  const shape = ctx.acceleratedShapeAt(worldPoint);
-  if (shape && ctx.isShapeInteractable(shape)) {
+  const shape = ctx.acceleratedElementAt(worldPoint);
+  if (shape && ctx.isElementInteractable(shape)) {
     const target = ctx.promoteToGroupRoot(shape);
-    return { kind: "shape", id: target.id, bounds: getShapeWorldBounds(target) };
+    return { kind: "shape", id: target.id, bounds: getElementWorldBounds(target) };
   }
 
   // 4. Link body under cursor.

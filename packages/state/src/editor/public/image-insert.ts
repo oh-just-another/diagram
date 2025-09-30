@@ -11,11 +11,10 @@ import type { FileId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { fileId as castFileId } from "@oh-just-another/types";
 
 /**
- * Pure: build the image-shape object for `insertImage`. Caller
- * threads it through `addShape` (which itself goes through
- * `Editor.addShape` to pick up selection + history wiring).
+ * Build the image-shape object for `insertImage`. Caller threads it
+ * through `addElement` to pick up selection + history wiring.
  */
-export const buildImageShape = (
+export const buildImageElement = (
   scene: Scene,
   input: {
     src: string;
@@ -80,7 +79,7 @@ export const computeAddBinaryFile = async (
 };
 
 /** True if any shape in the scene carries `metadata.animated`. */
-export const hasAnimatedShape = (scene: Scene): boolean => {
+export const hasAnimatedElement = (scene: Scene): boolean => {
   for (const s of scene.shapes.values()) {
     if (s.metadata?.animated === true) return true;
   }

@@ -3,7 +3,7 @@ import { describe as describePatch } from "@oh-just-another/history";
 import {
   apply,
   emptyScene,
-  getShapeWorldBounds,
+  getElementWorldBounds,
   orderBetween,
   type Link,
   type Patch,
@@ -326,9 +326,9 @@ const InspectorTab = ({ editor }: { editor: Editor }) => {
 };
 
 const ShapeCard = ({ shape }: { shape: Element }) => {
-  let aabb: ReturnType<typeof getShapeWorldBounds> | null = null;
+  let aabb: ReturnType<typeof getElementWorldBounds> | null = null;
   try {
-    aabb = getShapeWorldBounds(shape);
+    aabb = getElementWorldBounds(shape);
   } catch {
     aabb = null;
   }
@@ -625,7 +625,7 @@ const SingleAddSection = ({
         type="button"
         onClick={() => {
           const shape = buildOne(editor, template, viewportCenter(editor));
-          editor.addShape(shape);
+          editor.addElement(shape);
         }}
         style={primaryButtonStyle}
       >
@@ -932,7 +932,7 @@ const TimerSection = ({
         return;
       }
       const shape = buildOne(editor, template, randomInViewport(editor));
-      editor.addShape(shape);
+      editor.addElement(shape);
       addedRef.current += 1;
       setAdded(addedRef.current);
     }, interval);
@@ -1551,7 +1551,7 @@ const buildAttractorFractal = (
 
 const safeBounds = (shape: Element) => {
   try {
-    return getShapeWorldBounds(shape);
+    return getElementWorldBounds(shape);
   } catch {
     return { x: 0, y: 0, width: 80, height: 60 };
   }

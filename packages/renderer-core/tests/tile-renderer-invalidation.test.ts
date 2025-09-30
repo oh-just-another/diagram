@@ -39,11 +39,11 @@ describe("InMemoryTileCache invalidation", () => {
     expect(c.bytesUsed).toBe(3_000);
   });
 
-  it("invalidateForPatch with removedShapeId calls invalidateForShape", () => {
+  it("invalidateForPatch with removedElementId calls invalidateForElement", () => {
     const c = new InMemoryTileCache<string>();
     c.set(entry(0, 0, 1, ["a"]));
     c.set(entry(1, 0, 1, ["b"]));
-    c.invalidateForPatch({ removedShapeId: elementId("a") });
+    c.invalidateForPatch({ removedElementId: elementId("a") });
     expect(c.get({ col: 0, row: 0, zoom: 1 })).toBeUndefined();
     expect(c.get({ col: 1, row: 0, zoom: 1 })).toBeDefined();
   });

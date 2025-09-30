@@ -1,5 +1,5 @@
 import type { Vec2 } from "@oh-just-another/types";
-import { getShapeLocalBounds, type ElementBase, type PolygonElement } from "./shape.js";
+import { getElementLocalBounds, type ElementBase, type PolygonElement } from "./shape.js";
 
 /**
  * Built-in outline samplers — one per shape `type` that the kernel ships.
@@ -124,7 +124,7 @@ const samplePolyline = (points: readonly Vec2[], ratio: number): Vec2 => {
 // --- built-in samplers ---
 
 registerOutlineSampler("rectangle", (shape, ratio) => {
-  const b = getShapeLocalBounds(shape);
+  const b = getElementLocalBounds(shape);
   const corners: readonly Vec2[] = [
     { x: b.x, y: b.y },
     { x: b.x + b.width, y: b.y },
@@ -138,7 +138,7 @@ registerOutlineSampler("ellipse", (shape, ratio) => {
   // Parameterised by angle from positive-x (3 o'clock), but visually the
   // user expects ratio 0 at the top-left "corner" of the bounding box —
   // i.e. ratio 0 == top of the ellipse (12 o'clock). Offset accordingly.
-  const b = getShapeLocalBounds(shape);
+  const b = getElementLocalBounds(shape);
   const cx = b.x + b.width / 2;
   const cy = b.y + b.height / 2;
   const rx = b.width / 2;

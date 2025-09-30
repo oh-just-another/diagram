@@ -1,5 +1,5 @@
 import type { Bounds, ElementId } from "@oh-just-another/types";
-import { getShape, getShapeWorldBounds, type Scene, type Element } from "@oh-just-another/scene";
+import { getElement, getElementWorldBounds, type Scene, type Element } from "@oh-just-another/scene";
 import { parseScene } from "@oh-just-another/serialization";
 import type { ExportRegion } from "./options.js";
 
@@ -51,9 +51,9 @@ export const sceneForRegion = (scene: Scene, region: ExportRegion | undefined): 
  * `viewportWorld` cull drops the off-screen parts). Only shapes are filtered.
  */
 export const sceneForFrame = (scene: Scene, frameId: ElementId): Scene | null => {
-  const frame = getShape(scene, frameId);
+  const frame = getElement(scene, frameId);
   if (!frame || frame.type !== "frame") return null;
-  const bounds = getShapeWorldBounds(frame);
+  const bounds = getElementWorldBounds(frame);
 
   const shapes = new Map<ElementId, Element>();
   for (const s of scene.shapes.values()) {

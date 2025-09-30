@@ -2,18 +2,18 @@ import { describe, expect, it } from "vitest";
 import { layerId, elementId } from "@oh-just-another/types";
 import {
   addLayer,
-  addShape,
+  addElement,
   apply,
   buildSpatialIndex,
   DEFAULT_LAYER_ID,
   emptyScene,
   getLayer,
   getLayersInOrder,
-  getShape,
-  getShapeAt,
-  getShapeAtIndexed,
-  getShapesInBounds,
-  getShapesInLayer,
+  getElement,
+  getElementAt,
+  getElementAtIndexed,
+  getElementsInBounds,
+  getElementsInLayer,
   orderBetween,
   orderForTop,
   queryByIndex,
@@ -44,9 +44,9 @@ const rect = (
 
 describe("queries", () => {
   describe("direct lookups", () => {
-    it("getShape / getLayer return undefined for missing ids", () => {
+    it("getElement / getLayer return undefined for missing ids", () => {
       const s = emptyScene();
-      expect(getShape(s, elementId("missing"))).toBeUndefined();
+      expect(getElement(s, elementId("missing"))).toBeUndefined();
       expect(getLayer(s, layerId("missing"))).toBeUndefined();
       expect(getLayer(s, DEFAULT_LAYER_ID)?.id).toBe(DEFAULT_LAYER_ID);
     });
@@ -77,36 +77,36 @@ describe("queries", () => {
       expect(ordered.map((l) => l.id)).toEqual([below.id, DEFAULT_LAYER_ID, above.id]);
     });
 
-    it("getShapesInLayer is sorted bottom-to-top by `order`", () => {
-      let { scene } = addShape(emptyScene(), { ...rect("a"), order: orderBetween(null, null) });
+    it("getElementsInLayer is sorted bottom-to-top by `order`", () => {
+      let { scene } = addElement(emptyScene(), { ...rect("a"), order: orderBetween(null, null) });
       const order2 = orderForTop(
         [...scene.shapes.values()]
           .filter((s) => s.layerId === DEFAULT_LAYER_ID)
           .map((s) => s.order),
       );
-      ({ scene } = addShape(scene, { ...rect("b"), order: order2 }));
-      const shapes = getShapesInLayer(scene, DEFAULT_LAYER_ID);
+      ({ scene } = addElement(scene, { ...rect("b"), order: order2 }));
+      const shapes = getElementsInLayer(scene, DEFAULT_LAYER_ID);
       expect(shapes.map((s) => s.id)).toEqual([elementId("a"), elementId("b")]);
     });
   });
 
-  describe("getShapesInBounds (linear)", () => {
+  describe("getElementsInBounds (linear)", () => {
     const buildSpread = () => {
       let scene = emptyScene();
       for (let i = 0; i < 5; i++) {
-        ({ scene } = addShape(scene, rect(`s${i}`, DEFAULT_LAYER_ID, { x: i * 100, y: 0 })));
+        ({ scene } = addElement(scene, rect(`s${i}`, DEFAULT_LAYER_ID, { x: i * 100, y: 0 })));
       }
       return scene;
     };
 
     it("includes overlapping, excludes outside", () => {
       const scene = buildSpread();
-      const hits = getShapesInBounds(scene, { x: -5, y: -5, width: 150, height: 50 });
+      const hits = getElementsInBounds(scene, { x: -5, y: -5, width: 150, height: 50 });
       expect(hits.map((s) => s.id).sort()).toEqual([elementId("s0"), elementId("s1")]);
     });
   });
 
-  describe("getShapeAt", () => {
+  describe("getElementAt", () => {
     it("returns the topmost visible shape at a point", () => {
       const a = rect("a", DEFAULT_LAYER_ID, { x: 0, y: 0 });
       const b: Element = {
@@ -116,7 +116,7 @@ describe("queries", () => {
       const start = emptyScene();
       const s1 = apply(start, { kind: "shape", id: a.id, before: null, after: a } satisfies Patch);
       const s2 = apply(s1, { kind: "shape", id: b.id, before: null, after: b } satisfies Patch);
-      const hit = getShapeAt(s2, { x: 5, y: 5 });
+      const hit = getElementAt(s2, { x: 5, y: 5 });
       // Both cover (5,5); `b` has higher order so it should win.
       expect(hit?.id).toBe(b.id);
     });
@@ -129,11 +129,11 @@ describe("queries", () => {
         after: a,
       } satisfies Patch);
       const { scene: s2 } = updateLayer(s1, DEFAULT_LAYER_ID, (l) => ({ ...l, visible: false }));
-      expect(getShapeAt(s2, { x: 5, y: 5 })).toBeUndefined();
+      expect(getElementAt(s2, { x: 5, y: 5 })).toBeUndefined();
     });
     it("returns undefined for empty hit", () => {
       const scene = emptyScene();
-      expect(getShapeAt(scene, { x: 9999, y: 9999 })).toBeUndefined();
+      expect(getElementAt(scene, { x: 9999, y: 9999 })).toBeUndefined();
     });
   });
 
@@ -141,19 +141,19 @@ describe("queries", () => {
     it("query matches linear scan", () => {
       let scene = emptyScene();
       for (let i = 0; i < 50; i++) {
-        ({ scene } = addShape(scene, rect(`s${i}`, DEFAULT_LAYER_ID, { x: i * 20, y: 0 })));
+        ({ scene } = addElement(scene, rect(`s${i}`, DEFAULT_LAYER_ID, { x: i * 20, y: 0 })));
       }
       const range = { x: 100, y: -5, width: 100, height: 50 };
       const grid = buildSpatialIndex(scene, 50);
       const indexHits = new Set(queryByIndex(scene, grid, range).map((s) => s.id));
-      const linearHits = new Set(getShapesInBounds(scene, range).map((s) => s.id));
+      const linearHits = new Set(getElementsInBounds(scene, range).map((s) => s.id));
       expect(indexHits).toEqual(linearHits);
     });
 
-    it("getShapeAtIndexed matches getShapeAt for every probe", () => {
+    it("getElementAtIndexed matches getElementAt for every probe", () => {
       let scene = emptyScene();
       for (let i = 0; i < 40; i++) {
-        ({ scene } = addShape(
+        ({ scene } = addElement(
           scene,
           rect(`s${i}`, DEFAULT_LAYER_ID, { x: i * 25, y: (i % 3) * 25 }),
         ));
@@ -166,11 +166,11 @@ describe("queries", () => {
         { x: 100, y: 0 },
         { x: 175, y: 50 },
       ]) {
-        expect(getShapeAtIndexed(scene, grid, probe)?.id).toEqual(getShapeAt(scene, probe)?.id);
+        expect(getElementAtIndexed(scene, grid, probe)?.id).toEqual(getElementAt(scene, probe)?.id);
       }
     });
 
-    it("getShapeAtIndexed respects layer visibility and z-order", () => {
+    it("getElementAtIndexed respects layer visibility and z-order", () => {
       const a = rect("a", DEFAULT_LAYER_ID, { x: 0, y: 0 });
       const b: Element = {
         ...rect("b", DEFAULT_LAYER_ID, { x: 0, y: 0 }),
@@ -189,7 +189,7 @@ describe("queries", () => {
         after: b,
       } satisfies Patch);
       const grid = buildSpatialIndex(scene);
-      expect(getShapeAtIndexed(scene, grid, { x: 5, y: 5 })?.id).toBe(b.id);
+      expect(getElementAtIndexed(scene, grid, { x: 5, y: 5 })?.id).toBe(b.id);
     });
   });
 });

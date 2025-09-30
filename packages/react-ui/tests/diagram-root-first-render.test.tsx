@@ -3,7 +3,7 @@ import { act, render } from "@testing-library/react";
 import { useEffect } from "react";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
@@ -27,7 +27,7 @@ const rect: Element = {
 };
 
 const seedScene = (): Scene => {
-  const { scene } = addShape(emptyScene(), rect);
+  const { scene } = addElement(emptyScene(), rect);
   return scene;
 };
 

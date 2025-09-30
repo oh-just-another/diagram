@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   buildSpatialIndex,
   DEFAULT_LAYER_ID,
   emptyScene,
-  getShapesInBounds,
+  getElementsInBounds,
   orderBetween,
   queryByIndex,
   type Element,
@@ -34,7 +34,7 @@ const buildScene = () => {
       width: SHAPE_SIZE,
       height: SHAPE_SIZE,
     };
-    ({ scene } = addShape(scene, s));
+    ({ scene } = addElement(scene, s));
   }
   return scene;
 };
@@ -82,7 +82,7 @@ describe("benchmark (1000 shapes)", () => {
     const linearSamples: number[] = [];
     for (let i = 0; i < 20; i++) {
       const t0 = performance.now();
-      getShapesInBounds(scene, range);
+      getElementsInBounds(scene, range);
       linearSamples.push(performance.now() - t0);
     }
     const linMed = median(linearSamples);

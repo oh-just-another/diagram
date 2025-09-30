@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Scene,
@@ -71,7 +71,7 @@ const seedScene = (): Scene => {
     try {
       const shape = tmpl.factory(ctx);
       const next = { ...shape, order: prevOrder };
-      ({ scene: s } = addShape(s, next));
+      ({ scene: s } = addElement(s, next));
       prevOrder = orderBetween(prevOrder, null);
     } catch (err) {
       console.warn(`[diagram] template ${tmpl.id} factory failed`, err);

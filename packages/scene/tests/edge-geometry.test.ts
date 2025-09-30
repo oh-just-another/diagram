@@ -3,7 +3,7 @@ import { linkId, layerId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addLink,
-  addShape,
+  addElement,
   emptyScene,
   getLinkEndpointWorld,
   getLinkPath,
@@ -37,7 +37,7 @@ const edge = (overrides: Partial<Link>): Link => ({
 
 const sceneWith = (shapes: RectangleElement[], edges: Link[] = []) => {
   let s = emptyScene();
-  for (const sh of shapes) ({ scene: s } = addShape(s, sh));
+  for (const sh of shapes) ({ scene: s } = addElement(s, sh));
   for (const e of edges) ({ scene: s } = addLink(s, e));
   return s;
 };

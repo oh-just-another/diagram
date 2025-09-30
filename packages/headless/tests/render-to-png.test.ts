@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Scene,
@@ -36,7 +36,7 @@ const isPng = (buf: Uint8Array): boolean => PNG_SIGNATURE.every((byte, i) => buf
 describe("renderToPng", () => {
   it("produces a valid PNG buffer", async () => {
     let scene = sceneOf(120, 80);
-    ({ scene } = addShape(scene, rect("a", 10, 10, 100, 60)));
+    ({ scene } = addElement(scene, rect("a", 10, 10, 100, 60)));
     const png = await renderToPng(scene);
     expect(png).toBeInstanceOf(Uint8Array);
     expect(png.length).toBeGreaterThan(64);
@@ -45,7 +45,7 @@ describe("renderToPng", () => {
 
   it("scale option produces a larger buffer (more pixels = more bytes)", async () => {
     let scene = sceneOf(120, 80);
-    ({ scene } = addShape(scene, rect("a", 10, 10, 100, 60)));
+    ({ scene } = addElement(scene, rect("a", 10, 10, 100, 60)));
     const png1x = await renderToPng(scene, { scale: 1 });
     const png2x = await renderToPng(scene, { scale: 2 });
     expect(png2x.length).toBeGreaterThan(png1x.length);

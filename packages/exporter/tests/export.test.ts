@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Scene,
@@ -43,14 +43,14 @@ const findPhys = (buf: Uint8Array): number => {
 describe("exportPng", () => {
   it("produces a valid PNG with the right signature", async () => {
     let scene = sceneOf(120, 80);
-    ({ scene } = addShape(scene, rect("a", 10, 10)));
+    ({ scene } = addElement(scene, rect("a", 10, 10)));
     const png = await exportPng(scene);
     expect(PNG_SIG.every((b, i) => png[i] === b)).toBe(true);
   });
 
   it("scale option produces a larger image", async () => {
     let scene = sceneOf(120, 80);
-    ({ scene } = addShape(scene, rect("a", 10, 10)));
+    ({ scene } = addElement(scene, rect("a", 10, 10)));
     const a = await exportPng(scene, { scale: 1 });
     const b = await exportPng(scene, { scale: 2 });
     expect(b.length).toBeGreaterThan(a.length);
@@ -58,7 +58,7 @@ describe("exportPng", () => {
 
   it("dpi option embeds a pHYs chunk", async () => {
     let scene = sceneOf(120, 80);
-    ({ scene } = addShape(scene, rect("a", 10, 10)));
+    ({ scene } = addElement(scene, rect("a", 10, 10)));
     const withDpi = await exportPng(scene, { dpi: 300 });
     const withoutDpi = await exportPng(scene);
     expect(findPhys(withDpi)).toBeGreaterThan(0);
@@ -67,7 +67,7 @@ describe("exportPng", () => {
 
   it("region option crops the output (smaller bytes for smaller crop)", async () => {
     let scene = sceneOf(400, 300);
-    ({ scene } = addShape(scene, rect("a", 10, 10, 380, 280)));
+    ({ scene } = addElement(scene, rect("a", 10, 10, 380, 280)));
     const full = await exportPng(scene);
     const cropped = await exportPng(scene, {
       region: { x: 0, y: 0, width: 100, height: 100 },
@@ -79,7 +79,7 @@ describe("exportPng", () => {
 describe("exportPdf", () => {
   it("produces a valid PDF starting with %PDF", async () => {
     let scene = sceneOf(120, 80);
-    ({ scene } = addShape(scene, rect("a", 10, 10)));
+    ({ scene } = addElement(scene, rect("a", 10, 10)));
     const pdf = await exportPdf(scene);
     expect(PDF_SIG.every((b, i) => pdf[i] === b)).toBe(true);
   });

@@ -3,11 +3,11 @@ import {
   expandDropZoneToFit,
   getContainerSpec,
   getDropZoneWorld,
-  getShape,
-  getShapeWorldBounds,
+  getElement,
+  getElementWorldBounds,
   isContainer,
   orderForTop,
-  updateShape,
+  updateElement,
   type Scene,
   type Element,
   type Patch,
@@ -48,7 +48,7 @@ export const childrenWorldUnion = (scene: Scene, containerId: ElementId): Bounds
   let acc: Bounds | null = null;
   for (const s of scene.shapes.values()) {
     if (s.parentId !== containerId) continue;
-    const b = getShapeWorldBounds(s);
+    const b = getElementWorldBounds(s);
     acc = acc ? B.union(acc, b) : b;
   }
   return acc;
@@ -125,7 +125,7 @@ export const clampContainerToChildren = (
  */
 export interface ContainerOpsRef {
   readonly scene: Scene;
-  readonly dragShapeId: ElementId | null;
+  readonly dragElementId: ElementId | null;
   readonly containerHover: { readonly id: ElementId } | null;
   /** Apply the patch to the editor's scene + record into the open gesture tx. */
   applyPatch(patch: Patch, nextScene: Scene): void;
@@ -153,9 +153,9 @@ export const applyContainerDrop = (
   ref: ContainerOpsRef,
   _worldPoint: unknown,
 ): void => {
-  const dragId = ref.dragShapeId;
+  const dragId = ref.dragElementId;
   if (!dragId) return;
-  const shape = getShape(ref.scene, dragId);
+  const shape = getElement(ref.scene, dragId);
   if (!shape) return;
 
   const hover = ref.containerHover;
@@ -168,7 +168,7 @@ export const applyContainerDrop = (
         .filter((s) => s.layerId === shape.layerId && s.id !== dragId)
         .map((s) => s.order),
     );
-    const r = updateShape(ref.scene, dragId, (s) => ({
+    const r = updateElement(ref.scene, dragId, (s) => ({
       ...s,
       parentId: hover.id,
       order: topOrder,
@@ -186,7 +186,7 @@ export const applyContainerDrop = (
   }
 
   if (shape.parentId) {
-    const parent = getShape(ref.scene, shape.parentId);
+    const parent = getElement(ref.scene, shape.parentId);
     // Group parents have no drop-zone — they're logical wrappers,
     // not spatial containers. The drag-out / coverage logic is for
     // proper containers (swimlane, frame, template); a group child
@@ -197,13 +197,13 @@ export const applyContainerDrop = (
     //   ≥ CONTAINER_KEEP_THRESHOLD → keep parent + grow zone to fit.
     //   < threshold → un-parent (drag-out).
     const parentZone = parent ? getDropZoneWorld(parent) : null;
-    const childBounds = getShapeWorldBounds(shape);
+    const childBounds = getElementWorldBounds(shape);
     const coverage = parentZone ? coverageRatio(childBounds, parentZone) : 0;
     if (parentZone && coverage >= CONTAINER_KEEP_THRESHOLD) {
       maybeGrowContainer(ref, shape.parentId, dragId);
       return;
     }
-    const r = updateShape(ref.scene, dragId, (s) => {
+    const r = updateElement(ref.scene, dragId, (s) => {
       const next: Element = { ...s };
       delete (next as { parentId?: ElementId }).parentId;
       return next;
@@ -224,12 +224,12 @@ export const maybeGrowContainer = (
   containerId: ElementId,
   childId: ElementId,
 ): void => {
-  const container = getShape(ref.scene, containerId);
-  const child = getShape(ref.scene, childId);
+  const container = getElement(ref.scene, containerId);
+  const child = getElement(ref.scene, childId);
   if (!container || !child) return;
   const spec = getContainerSpec(container);
   if (!spec) return;
-  const childWorld = getShapeWorldBounds(child);
+  const childWorld = getElementWorldBounds(child);
   const expanded = expandDropZoneToFit(container, childWorld);
   if (!expanded) return;
 
@@ -238,7 +238,7 @@ export const maybeGrowContainer = (
       { width: container.width, height: container.height, spec },
       expanded,
     );
-    const r = updateShape(ref.scene, containerId, (s) => ({
+    const r = updateElement(ref.scene, containerId, (s) => ({
       ...s,
       position: {
         x: s.position.x + sized.positionOffset.x,
@@ -257,7 +257,7 @@ export const maybeGrowContainer = (
     // no compensating patch is needed.
     return;
   }
-  const r = updateShape(ref.scene, containerId, (s) => ({
+  const r = updateElement(ref.scene, containerId, (s) => ({
     ...s,
     metadata: {
       ...(s.metadata ?? {}),

@@ -3,7 +3,7 @@ import { layerId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   SnapEngine,
-  addShape,
+  addElement,
   anchorSnapper,
   emptyScene,
   gridSnapper,
@@ -29,7 +29,7 @@ const rect = (id: string, x: number, y: number, w = 100, h = 60): RectangleEleme
 const withGrid = (size: number, shapes: RectangleElement[] = []): Scene => {
   let s = emptyScene();
   s = { ...s, viewport: { ...s.viewport, gridSize: size } };
-  for (const sh of shapes) ({ scene: s } = addShape(s, sh));
+  for (const sh of shapes) ({ scene: s } = addElement(s, sh));
   return s;
 };
 
@@ -74,7 +74,7 @@ describe("anchorSnapper", () => {
     const r = rect("a", 100, 100);
     const out = anchorSnapper.contribute({
       ...ctx(withGrid(0, [r]), { x: 200, y: 130 }),
-      excludeShapeIds: new Set([r.id]),
+      excludeElementIds: new Set([r.id]),
     });
     expect(out).toEqual([]);
   });

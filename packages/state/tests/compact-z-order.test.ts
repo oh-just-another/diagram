@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,

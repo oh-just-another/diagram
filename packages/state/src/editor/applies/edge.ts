@@ -1,8 +1,8 @@
 import {
   findNearestAnchor,
   getLink,
-  getShape,
-  getShapeAt,
+  getElement,
+  getElementAt,
   snapExcludedAnchors,
   updateLink,
   type LinkEndpoint,
@@ -24,19 +24,19 @@ import type { InteractionEmit } from "../../machine.js";
  */
 export const computeLinkPreviewEndpoints = (
   scene: Scene,
-  fromShape: ElementId | null,
+  fromElement: ElementId | null,
   fromPoint: Vec2,
   toPoint: Vec2,
 ): { readonly from: Vec2; readonly to: Vec2 } => {
   let from = fromPoint;
-  if (fromShape) {
-    const shape = getShape(scene, fromShape);
+  if (fromElement) {
+    const shape = getElement(scene, fromElement);
     if (shape) {
       from = findNearestAnchor(shape, fromPoint, snapExcludedAnchors(shape)).world;
     }
   }
   let to = toPoint;
-  const hovered = getShapeAt(scene, toPoint);
+  const hovered = getElementAt(scene, toPoint);
   if (hovered) {
     to = findNearestAnchor(hovered, toPoint, snapExcludedAnchors(hovered)).world;
   }
@@ -53,11 +53,11 @@ export const computeLinkPreviewEndpoints = (
 export const computeLinkEndpointUpdate = (
   scene: Scene,
   emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
-  snap: (toShape: ElementId | null, toPoint: Vec2) => LinkEndpoint,
+  snap: (toElement: ElementId | null, toPoint: Vec2) => LinkEndpoint,
 ): { readonly scene: Scene; readonly patch: Patch; readonly linkId: LinkId } | null => {
   const edge = getLink(scene, emit.linkId);
   if (!edge) return null;
-  const newEndpoint = snap(emit.toShape, emit.toPoint);
+  const newEndpoint = snap(emit.toElement, emit.toPoint);
   const result = updateLink(scene, edge.id, (e) => ({
     ...e,
     [emit.side]: newEndpoint,

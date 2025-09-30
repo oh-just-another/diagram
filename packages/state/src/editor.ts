@@ -1,19 +1,19 @@
 import { createActor, type Actor } from "xstate";
 import { createEmitter, type Emitter } from "@oh-just-another/events";
 import type { Bounds, FileId, ElementId, Vec2 } from "@oh-just-another/types";
-import { fileId as castFileId, elementId as castShapeId } from "@oh-just-another/types";
+import { fileId as castFileId, elementId as castElementId } from "@oh-just-another/types";
 import {
   addAnnotation,
   addLink,
   addLayer,
-  addShape,
+  addElement,
   anchorSnapper,
   apply,
   buildSpatialIndex,
   getBinaryFile,
   gridLayout,
-  isShapeHidden,
-  isShapeLocked,
+  isElementHidden,
+  isElementLocked,
   runAutoLayout,
   stackLayout,
   DEFAULT_LAYER_ID,
@@ -23,19 +23,19 @@ import {
   getAnnotationWorldPosition,
   getLink,
   getLinkPath,
-  getShape,
-  getShapeAccessibleName,
-  getShapeAt,
-  getShapeAtIndexed,
-  getShapesCoveredByBounds,
-  getShapesInBounds,
+  getElement,
+  getElementAccessibleName,
+  getElementAt,
+  getElementAtIndexed,
+  getElementsCoveredByBounds,
+  getElementsInBounds,
   isContainer,
   getContainerSpec,
   getDropZoneWorld,
   findContainerAt,
   expandDropZoneToFit,
   containerSizeForZone,
-  getShapeWorldBounds,
+  getElementWorldBounds,
   setTextMeasurer,
   getScreenToWorld,
   panBy as viewportPanBy,
@@ -52,14 +52,14 @@ import {
   removeAnnotation,
   removeLink,
   removeLayer,
-  removeShape,
+  removeElement,
   SnapEngine,
   SpatialGrid,
   type BrushPoint,
   updateAnnotation,
   updateLink,
   updateLayer,
-  updateShape,
+  updateElement,
   type Annotation,
   type Comment,
   type Link,
@@ -118,7 +118,7 @@ import {
 import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
 import { AnimationTick } from "./animation-tick.js";
 import {
-  computeDimShapes as computeDimShapesHelper,
+  computeDimElements as computeDimElementsHelper,
   isDescendantOfGroup as isDescendantOfGroupHelper,
   pickDrillTarget as pickDrillTargetHelper,
   promoteToGroupRoot as promoteToGroupRootHelper,
@@ -129,8 +129,8 @@ import {
   nextFrameName as nextFrameNameHelper,
 } from "./frame-helpers.js";
 import {
-  copyShapes as copyShapesHelper,
-  pasteShapes as pasteShapesHelper,
+  copyElements as copyElementsHelper,
+  pasteElements as pasteElementsHelper,
 } from "./clipboard.js";
 import { AutoCompactScheduler } from "./auto-compact.js";
 import { AutoLayoutScheduler } from "./auto-layout-scheduler.js";
@@ -199,7 +199,7 @@ import {
 import { hasWidthHeight } from "./editor/shape-traits.js";
 import {
   computeGroupResizePatches,
-  computeShapeResize,
+  computeElementResize,
   computeTextResize,
 } from "./editor/applies/resize.js";
 import { bindPointerEvents as bindPointerEventsExternal } from "./editor/pointer-binding.js";
@@ -254,14 +254,14 @@ import {
   computeGroupSelected,
   computeUngroup,
   expandSelectionWithDescendants,
-  newGroupShapeId,
+  newGroupElementId,
   pickFocusCycle,
   selectionRoots,
 } from "./editor/public/arrange-group.js";
 import {
-  buildImageShape,
+  buildImageElement,
   computeAddBinaryFile,
-  hasAnimatedShape,
+  hasAnimatedElement,
 } from "./editor/public/image-insert.js";
 import {
   computeDeleteSelection,
@@ -277,12 +277,12 @@ import {
 import { computeSetLink, normalizeHref, safeHref } from "./editor/public/link.js";
 import {
   beginPlacementState,
-  buildShapeAtCursor,
-  buildTextShapeAt,
+  buildElementAtCursor,
+  buildTextElementAt,
   computePlacementCancel,
   computePlacementContainerDrop,
   computePlacementUpdate,
-  newShapeIdAtCursor,
+  newElementIdAtCursor,
   type PlacementState,
 } from "./editor/public/placement.js";
 import { renderEditor } from "./editor/render-orchestrator.js";
@@ -291,7 +291,7 @@ import {
   computeViewportWorld as computeViewportWorldPure,
   groupChildrenUnion as groupChildrenUnionPure,
 } from "./editor/viewport-helpers.js";
-import { computeHiddenShapes as computeHiddenShapesPure } from "./editor/shape-filters.js";
+import { computeHiddenElements as computeHiddenElementsPure } from "./editor/shape-filters.js";
 import {
   selectByBounds as selectByBoundsPure,
   selectByBoundsLive as selectByBoundsLivePure,
@@ -303,13 +303,13 @@ import {
 import {
   computeAnnotationMovePatch,
   computeGroupMovePatches,
-  computeShapeMovePatch,
+  computeElementMovePatch,
 } from "./editor/applies/move.js";
 import {
   computeCreateLink,
-  computeCreateShape,
+  computeCreateElement,
   newLinkId,
-  newShapeId,
+  newElementId,
 } from "./editor/applies/create.js";
 import { isResizable, renderOverlay, type PeerCursor, type PeerSelection } from "./overlay.js";
 import * as Selection from "./selection.js";
@@ -418,7 +418,7 @@ export type TileComposeFn = (
      * last frame. Compositors route by case (add / remove / move).
      * `null` on one side = added / removed.
      */
-    readonly changedShapes: ReadonlyMap<ElementId, { before: Bounds | null; after: Bounds | null }>;
+    readonly changedElements: ReadonlyMap<ElementId, { before: Bounds | null; after: Bounds | null }>;
     readonly zoomBucket: number;
   },
 ) => void;
@@ -558,9 +558,9 @@ export class Editor {
    * so it never compounds across pointermove ticks. Cleared on gesture
    * end (commit / cancel).
    */
-  private _resizeOriginShape: Element | null = null;
+  private _resizeOriginElement: Element | null = null;
   /**
-   * Active layer — new shapes created via `addShape` / `applyCreate` land
+   * Active layer — new shapes created via `addElement` / `applyCreate` land
    * here when their input doesn't specify a `layerId`. Defaults to the
    * scene's `DEFAULT_LAYER_ID`; hosts switch via `setActiveLayer`.
    */
@@ -691,7 +691,7 @@ export class Editor {
    * gestures, set in onDown when press lands on a shape and cleared
    * in onUp / cancel.
    */
-  private dragShapeId: ElementId | null = null;
+  private dragElementId: ElementId | null = null;
 
   /**
    * Element that the current press added to the selection additively
@@ -762,7 +762,7 @@ export class Editor {
    * (A plain id set lost adds — new id wasn't in the tile reverse
    * index yet.)
    */
-  private tileDirtyShapes: Map<
+  private tileDirtyElements: Map<
     ElementId,
     { before: Bounds | null; after: Bounds | null }
   > = new Map();
@@ -872,7 +872,7 @@ export class Editor {
       : new History(options.history ?? {});
     // Build the gesture controller against a narrow getter/setter
     // bridge to the editor's mutable state. The bridge is a thin
-    // adapter — keeps `gestureTx`/`dragShapeId` etc. as `private`
+    // adapter — keeps `gestureTx`/`dragElementId` etc. as `private`
     // fields on Editor (instead of forcing them public to satisfy
     // structural implements), and lets the controller live in its
     // own module without importing Editor.
@@ -901,11 +901,11 @@ export class Editor {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         self.groupResizeOrigin = v as any;
       },
-      get dragShapeId() {
-        return self.dragShapeId;
+      get dragElementId() {
+        return self.dragElementId;
       },
-      set dragShapeId(v) {
-        self.dragShapeId = v;
+      set dragElementId(v) {
+        self.dragElementId = v;
       },
       get containerHover() {
         return self.containerHover;
@@ -1018,8 +1018,8 @@ export class Editor {
       get scene() {
         return self2._scene;
       },
-      get dragShapeId() {
-        return self2.dragShapeId;
+      get dragElementId() {
+        return self2.dragElementId;
       },
       get containerHover() {
         return self2.containerHover;
@@ -1342,7 +1342,7 @@ export class Editor {
   setMode(mode: Mode): void {
     // Switching tools commits any in-flight text edit (standard: leaving the
     // editing context ends it, keeping the typed text).
-    if (this._editingTextShape !== null) this.commitTextEdit();
+    if (this._editingTextElement !== null) this.commitTextEdit();
     // Cancel any in-progress drag gesture so the partial state is not recorded.
     if (this.gestureTx) {
       this.gestureTx.cancel();
@@ -1394,8 +1394,8 @@ export class Editor {
    * that create shapes outside of a pointer gesture — drag-from-palette,
    * paste, programmatic insert.
    */
-  addShape(shape: Element, options?: { select?: boolean }): Patch {
-    const result = addShape(this._scene, shape);
+  addElement(shape: Element, options?: { select?: boolean }): Patch {
+    const result = addElement(this._scene, shape);
     this._scene = result.scene;
     if (options?.select ?? true) {
       this._selection = Selection.single(shape.id);
@@ -1406,7 +1406,7 @@ export class Editor {
   }
 
   /**
-   * Insert an image at the given world position. Wraps `addShape`
+   * Insert an image at the given world position. Wraps `addElement`
    * with the image-shape boilerplate (id, layer, order, scale=1,
    * rotation=0). Returns the new shape's id so callers can chain
    * (e.g. immediately reparent into a container).
@@ -1427,9 +1427,9 @@ export class Editor {
     animationKind?: string;
     animationData?: unknown;
   }): ElementId {
-    const id = castShapeId(this.uniqueId("img"));
-    const shape = buildImageShape(this._scene, input, id, this._activeLayerId);
-    this.addShape(shape);
+    const id = castElementId(this.uniqueId("img"));
+    const shape = buildImageElement(this._scene, input, id, this._activeLayerId);
+    this.addElement(shape);
     if (input.animated) {
       this.initPlayback(id);
       this.maybeAnimate();
@@ -1465,7 +1465,7 @@ export class Editor {
     // GIF scrolls back into view the tick resumes on the correct
     // frame (logical playback never "froze"). Tick is re-armed on
     // viewport changes via `maybeAnimate()` in `notify()`.
-    isAnimated: () => this.hasVisibleAnimatedShape(),
+    isAnimated: () => this.hasVisibleAnimatedElement(),
     onTick: () => {
       // G3: adaptive throttle — skip this rAF if we rendered an
       // animation frame too recently. Target interval grows with the
@@ -1493,8 +1493,8 @@ export class Editor {
   });
 
   // Pure body in `./editor/public/image-insert.ts`.
-  private hasAnimatedShape(): boolean {
-    return hasAnimatedShape(this._scene);
+  private hasAnimatedElement(): boolean {
+    return hasAnimatedElement(this._scene);
   }
 
   /**
@@ -1504,13 +1504,13 @@ export class Editor {
    * wall-clock frame selection means they show the right frame the
    * moment they scroll back in.
    */
-  private hasVisibleAnimatedShape(): boolean {
-    if (!hasAnimatedShape(this._scene)) return false;
+  private hasVisibleAnimatedElement(): boolean {
+    if (!hasAnimatedElement(this._scene)) return false;
     const viewport = this.computeViewportWorld();
     if (!viewport) return true; // no viewport yet — don't suppress
     for (const shape of this._scene.shapes.values()) {
       if (shape.metadata?.animated !== true) continue;
-      if (B.intersects(getShapeWorldBounds(shape), viewport)) return true;
+      if (B.intersects(getElementWorldBounds(shape), viewport)) return true;
     }
     return false;
   }
@@ -1522,7 +1522,7 @@ export class Editor {
    * `isAnimated()` is false, so this is cheap to call from `notify()`.
    */
   private maybeAnimate(): void {
-    if (this.hasVisibleAnimatedShape()) this.animationTick.start();
+    if (this.hasVisibleAnimatedElement()) this.animationTick.start();
   }
 
   /** G2: bound `visibilitychange` handler — pause/resume the tick. */
@@ -1630,7 +1630,7 @@ export class Editor {
    * pass keeps pushing `playStartMs` forward for the hovered shape).
    * Pass `null` when the pointer leaves all shapes.
    */
-  hoverAnimatedShape(id: ElementId | null): void {
+  hoverAnimatedElement(id: ElementId | null): void {
     if (this.hoveredAnimatedId === id) return;
     this.hoveredAnimatedId = id;
     if (id !== null) {
@@ -1798,9 +1798,9 @@ export class Editor {
    * (`<TextEditorOverlay>` in `@react-ui`) subscribes via `editor`
    * and renders a `<textarea>` positioned over the shape.
    */
-  private _editingTextShape: ElementId | null = null;
-  get editingTextShape(): ElementId | null {
-    return this._editingTextShape;
+  private _editingTextElement: ElementId | null = null;
+  get editingTextElement(): ElementId | null {
+    return this._editingTextElement;
   }
   /**
    * When the `draw-text` tool just placed a shape and opened its
@@ -1875,10 +1875,10 @@ export class Editor {
   beginTextEdit(id: ElementId): void {
     if (!canBeginTextEdit(this._scene, id, (lid) => this.isLayerLocked(lid))) return;
     // Commit any in-flight edit on a different shape first.
-    if (this._editingTextShape !== null && this._editingTextShape !== id) this.commitTextEdit();
-    this._editingTextShape = id;
-    this._textEditOrigin = this._pendingTextCreate === id ? null : (getShape(this._scene, id) ?? null);
-    const shape = getShape(this._scene, id) as TextElement | undefined;
+    if (this._editingTextElement !== null && this._editingTextElement !== id) this.commitTextEdit();
+    this._editingTextElement = id;
+    this._textEditOrigin = this._pendingTextCreate === id ? null : (getElement(this._scene, id) ?? null);
+    const shape = getElement(this._scene, id) as TextElement | undefined;
     const len = shape?.text.length ?? 0;
     this._textSel = { start: len, end: len, dir: "forward" };
     this.startCaretBlink();
@@ -1892,9 +1892,9 @@ export class Editor {
    * once on commit. No-op when not editing.
    */
   setEditingText(value: string, selStart: number, selEnd: number, dir: "forward" | "backward" = "forward"): void {
-    const id = this._editingTextShape;
+    const id = this._editingTextElement;
     if (!id) return;
-    const r = updateShape(this._scene, id, (s) => ({ ...s, text: value }));
+    const r = updateElement(this._scene, id, (s) => ({ ...s, text: value }));
     this._scene = r.scene;
     this._textSel = { start: selStart, end: selEnd, dir };
     this.wakeCaret();
@@ -1903,7 +1903,7 @@ export class Editor {
 
   /** Selection-only update (arrows / shift-select / click) — no text change. */
   setEditingSelection(selStart: number, selEnd: number, dir: "forward" | "backward" = "forward"): void {
-    if (!this._editingTextShape) return;
+    if (!this._editingTextElement) return;
     this._textSel = { start: selStart, end: selEnd, dir };
     this.wakeCaret();
     this.notify();
@@ -1915,9 +1915,9 @@ export class Editor {
    * not editing or the shape is gone.
    */
   caretIndexAtWorldPoint(worldPoint: Vec2): number | null {
-    const id = this._editingTextShape;
+    const id = this._editingTextElement;
     if (!id) return null;
-    const shape = getShape(this._scene, id) as TextElement | undefined;
+    const shape = getElement(this._scene, id) as TextElement | undefined;
     if (shape?.type !== "text") return null;
     const layout = this.editingTextLayout(shape);
     if (!layout) return null;
@@ -1933,12 +1933,12 @@ export class Editor {
    * world bounds. Used by the pointer binding to decide between
    * repositioning the caret (inside) and committing (outside).
    */
-  editedShapeContainsPoint(worldPoint: Vec2): boolean {
-    const id = this._editingTextShape;
+  editedElementContainsPoint(worldPoint: Vec2): boolean {
+    const id = this._editingTextElement;
     if (!id) return false;
-    const shape = getShape(this._scene, id);
+    const shape = getElement(this._scene, id);
     if (!shape) return false;
-    const b = getShapeWorldBounds(shape);
+    const b = getElementWorldBounds(shape);
     return (
       worldPoint.x >= b.x &&
       worldPoint.x <= b.x + b.width &&
@@ -2005,9 +2005,9 @@ export class Editor {
     caretColor: string;
     selectionRects: readonly Bounds[];
   } | null {
-    const id = this._editingTextShape;
+    const id = this._editingTextElement;
     if (!id || !this._textSel) return null;
-    const shape = getShape(this._scene, id) as TextElement | undefined;
+    const shape = getElement(this._scene, id) as TextElement | undefined;
     if (shape?.type !== "text") return null;
     const layout = this.editingTextLayout(shape);
     if (!layout) return null;
@@ -2033,29 +2033,29 @@ export class Editor {
   }
 
   commitTextEdit(next?: string): void {
-    const id = this._editingTextShape;
+    const id = this._editingTextElement;
     if (!id) return;
     const pending = this._pendingTextCreate === id;
     const origin = this._textEditOrigin;
     // Optional explicit text (keyboard / test callers); the live path
     // passes nothing because the scene already holds the typed text.
     if (next !== undefined) {
-      this._scene = updateShape(this._scene, id, (s) => ({ ...s, text: next })).scene;
+      this._scene = updateElement(this._scene, id, (s) => ({ ...s, text: next })).scene;
     }
-    this._editingTextShape = null;
+    this._editingTextElement = null;
     this._pendingTextCreate = null;
     this._textEditOrigin = null;
     this._textSel = null;
     this.stopCaretBlink();
 
-    const finalShape = getShape(this._scene, id) as TextElement | undefined;
-    const text = finalShape?.text ?? "";
+    const finalElement = getElement(this._scene, id) as TextElement | undefined;
+    const text = finalElement?.text ?? "";
 
     // Empty (whitespace-only) text removes the shape. Pending = silent
     // (never recorded); existing = recorded so undo restores the origin.
     if (text.trim() === "") {
-      if (finalShape) {
-        this._scene = removeShape(this._scene, id).scene;
+      if (finalElement) {
+        this._scene = removeElement(this._scene, id).scene;
         if (!pending && origin) {
           this._history.push({ kind: "shape", id, before: origin, after: null });
         }
@@ -2067,27 +2067,27 @@ export class Editor {
 
     if (pending) {
       // Record the whole creation as one add patch.
-      if (finalShape) this._history.push({ kind: "shape", id, before: null, after: finalShape });
-    } else if (origin && finalShape) {
+      if (finalElement) this._history.push({ kind: "shape", id, before: null, after: finalElement });
+    } else if (origin && finalElement) {
       // Existing edit: record ONLY the text delta. Other fields (font
       // size etc.) changed via the panel push their own history during
       // the edit, so the commit's `before` keeps the final non-text
       // state and rewinds just the text.
       const originText = (origin as TextElement).text;
-      if (originText !== finalShape.text) {
-        const before = { ...finalShape, text: originText } as Element;
-        this._history.push({ kind: "shape", id, before, after: finalShape });
+      if (originText !== finalElement.text) {
+        const before = { ...finalElement, text: originText } as Element;
+        this._history.push({ kind: "shape", id, before, after: finalElement });
       }
     }
     this.notify();
   }
 
   cancelTextEdit(): void {
-    const id = this._editingTextShape;
+    const id = this._editingTextElement;
     if (id === null) return;
     const pending = this._pendingTextCreate === id;
     const origin = this._textEditOrigin;
-    this._editingTextShape = null;
+    this._editingTextElement = null;
     this._pendingTextCreate = null;
     this._textEditOrigin = null;
     this._textSel = null;
@@ -2098,13 +2098,13 @@ export class Editor {
     // (panel-driven field changes during the edit keep their own
     // committed history and must survive the cancel).
     if (pending) {
-      if (getShape(this._scene, id)) {
-        this._scene = removeShape(this._scene, id).scene;
+      if (getElement(this._scene, id)) {
+        this._scene = removeElement(this._scene, id).scene;
         if (this._selection.has(id)) this._selection = Selection.EMPTY;
       }
     } else if (origin) {
       const originText = (origin as TextElement).text;
-      this._scene = updateShape(this._scene, id, (s) => ({ ...s, text: originText })).scene;
+      this._scene = updateElement(this._scene, id, (s) => ({ ...s, text: originText })).scene;
     }
     this.notify();
   }
@@ -2142,15 +2142,15 @@ export class Editor {
    * mouse-free alternative to drag-out creation.
    */
   // Pure body in `./editor/public/placement.ts`.
-  createShapeAtCursor(): ElementId | null {
+  createElementAtCursor(): ElementId | null {
     const vp = this._scene.viewport;
     const world = this.screenToWorld({
       x: (vp.size.width || 200) / 2,
       y: (vp.size.height || 200) / 2,
     });
-    const id = newShapeIdAtCursor(++this.nextId);
-    const shape = buildShapeAtCursor(this._scene, this.mode, world, this._activeLayerId, id);
-    const r = addShape(this._scene, shape);
+    const id = newElementIdAtCursor(++this.nextId);
+    const shape = buildElementAtCursor(this._scene, this.mode, world, this._activeLayerId, id);
+    const r = addElement(this._scene, shape);
     this._scene = r.scene;
     this._history.push(r.patch);
     this._selection = Selection.single(id);
@@ -2167,12 +2167,12 @@ export class Editor {
    * the tool is locked.
    */
   createTextAt(worldPoint: Vec2): ElementId {
-    const id = newShapeIdAtCursor(++this.nextId);
-    const shape = buildTextShapeAt(this._scene, worldPoint, this._activeLayerId, id);
+    const id = newElementIdAtCursor(++this.nextId);
+    const shape = buildTextElementAt(this._scene, worldPoint, this._activeLayerId, id);
     // No history push here — the placeholder is "pending" until the
     // first commit (see `_pendingTextCreate`). This way an abandoned
     // text never pollutes the undo stack.
-    const r = addShape(this._scene, shape);
+    const r = addElement(this._scene, shape);
     this._scene = r.scene;
     this._pendingTextCreate = id;
     this._selection = Selection.single(id);
@@ -2245,7 +2245,7 @@ export class Editor {
     const result = computeGroupSelected(
       this._scene,
       this._selection,
-      newGroupShapeId(++this.nextId),
+      newGroupElementId(++this.nextId),
     );
     if (!result) return { kind: "noop" };
     const tx = this._history.transaction();
@@ -2373,7 +2373,7 @@ export class Editor {
     if (this.clipboard.length === 0) return;
     // Defensive: if a gesture is mid-flight (drag / resize) the
     // gestureTx is still open and a fresh `transaction()` inside
-    // pasteShapes would throw. Reasonable behaviour for a user
+    // pasteElements would throw. Reasonable behaviour for a user
     // pressing Cmd+V mid-gesture is "commit what you have and
     // paste on top", so close the gesture first.
     this.finalizeOpenGestureTx();
@@ -2455,7 +2455,7 @@ export class Editor {
 
   /** The element-level href of a shape, if safe to open; else `null`. */
   shapeLink(id: ElementId): string | null {
-    return safeHref(getShape(this._scene, id)?.href);
+    return safeHref(getElement(this._scene, id)?.href);
   }
 
   /**
@@ -2463,11 +2463,11 @@ export class Editor {
    * with its world bounds — for the hover link-popup. `null` when none.
    */
   linkAt(worldPoint: Vec2): { id: ElementId; href: string; bounds: Bounds } | null {
-    const shape = this.acceleratedShapeAt(worldPoint);
-    if (!shape || !this.isShapeInteractable(shape)) return null;
+    const shape = this.acceleratedElementAt(worldPoint);
+    if (!shape || !this.isElementInteractable(shape)) return null;
     const href = safeHref(shape.href);
     if (!href) return null;
-    return { id: shape.id, href, bounds: getShapeWorldBounds(shape) };
+    return { id: shape.id, href, bounds: getElementWorldBounds(shape) };
   }
 
   // Pure bodies in `./editor/public/z-order.ts`.
@@ -2829,7 +2829,7 @@ export class Editor {
 
   // Pure body in `./editor/hit-test.ts`. Editor passes a narrow
   // context bundle that closes over its private state + accel
-  // helpers (acceleratedShapeAt, isShapeInteractable, …).
+  // helpers (acceleratedElementAt, isElementInteractable, …).
   private hitTest(worldPoint: Vec2): PressTarget {
     return pickPressTarget(worldPoint, {
       scene: this._scene,
@@ -2842,8 +2842,8 @@ export class Editor {
       hitAnnotation: (p) => this.hitAnnotation(p),
       selectionIsAspectLocked: () => this.selectionIsAspectLocked(),
       combinedSelectionBounds: () => this.combinedSelectionBounds(),
-      acceleratedShapeAt: (p) => this.acceleratedShapeAt(p),
-      isShapeInteractable: (s) => this.isShapeInteractable(s),
+      acceleratedElementAt: (p) => this.acceleratedElementAt(p),
+      isElementInteractable: (s) => this.isElementInteractable(s),
       isLayerLocked: (id) => this.isLayerLocked(id),
       promoteToGroupRoot: (s) => this.promoteToGroupRoot(s),
     });
@@ -2862,10 +2862,10 @@ export class Editor {
    * non-interactable hits as misses; render still draws them so the
    * user can see what's locked.
    */
-  private isShapeInteractable(shape: Element): boolean {
+  private isElementInteractable(shape: Element): boolean {
     if (this.isLayerLocked(shape.layerId)) return false;
-    if (isShapeLocked(this._scene, shape)) return false;
-    if (isShapeHidden(this._scene, shape)) return false;
+    if (isElementLocked(this._scene, shape)) return false;
+    if (isElementHidden(this._scene, shape)) return false;
     return true;
   }
 
@@ -2922,12 +2922,12 @@ export class Editor {
    * selected, you can see".
    */
   // Body moved to `./editor/shape-filters.ts`.
-  private computeHiddenShapes(): ReadonlySet<ElementId> | undefined {
-    return computeHiddenShapesPure(this._scene);
+  private computeHiddenElements(): ReadonlySet<ElementId> | undefined {
+    return computeHiddenElementsPure(this._scene);
   }
 
-  private computeDimShapes(enteredGroupId: ElementId): ReadonlySet<ElementId> {
-    return computeDimShapesHelper(this._scene, this._selection, enteredGroupId);
+  private computeDimElements(enteredGroupId: ElementId): ReadonlySet<ElementId> {
+    return computeDimElementsHelper(this._scene, this._selection, enteredGroupId);
   }
 
   /**
@@ -2951,11 +2951,11 @@ export class Editor {
    * scene-identity. Scene operations replace `_scene` (immutable patches), 
    * so reference-equality is a sufficient invalidation signal.
    */
-  private acceleratedShapeAt(worldPoint: Vec2): Element | undefined {
+  private acceleratedElementAt(worldPoint: Vec2): Element | undefined {
     if (this._scene.shapes.size < LARGE_SCENE_HIT_THRESHOLD) {
-      return getShapeAt(this._scene, worldPoint);
+      return getElementAt(this._scene, worldPoint);
     }
-    return getShapeAtIndexed(this._scene, this.ensureSpatialIndex(), worldPoint);
+    return getElementAtIndexed(this._scene, this.ensureSpatialIndex(), worldPoint);
   }
 
   /**
@@ -2964,7 +2964,7 @@ export class Editor {
    * always produce a fresh object, so reference equality is a
    * sufficient invalidation signal.
    *
-   * Shared between the hit-test path (`acceleratedShapeAt`) and the
+   * Shared between the hit-test path (`acceleratedElementAt`) and the
    * renderer pass (passed to `renderScene` as `spatialIndex`), so
    * the grid build cost is amortised across both consumers.
    */
@@ -3036,7 +3036,7 @@ export class Editor {
     // Lasso / edge ops are not double-click candidates and fall
     // through to the normal single-click handler.
     if (isDouble && (clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE")) {
-      const raw = this.acceleratedShapeAt(worldPoint);
+      const raw = this.acceleratedElementAt(worldPoint);
       if (raw?.type === "text") {
         this.beginTextEdit(raw.id);
         return true;
@@ -3155,7 +3155,7 @@ export class Editor {
         this.applyCreateLink(emit);
         return;
       case "DRAW_EDGE_PREVIEW":
-        this.applyLinkPreview(emit.fromShape, emit.fromPoint, emit.toPoint);
+        this.applyLinkPreview(emit.fromElement, emit.fromPoint, emit.toPoint);
         return;
       case "DRAW_EDGE_PREVIEW_CLEAR":
         if (this.edgePreview) {
@@ -3243,7 +3243,7 @@ export class Editor {
 
   // Pure body in `./editor/applies/move.ts`.
   private applyMove(id: ElementId, delta: Vec2, originalBounds: Bounds): void {
-    const patch = computeShapeMovePatch(this._scene, id, delta, originalBounds);
+    const patch = computeElementMovePatch(this._scene, id, delta, originalBounds);
     if (!patch) return;
     this._scene = apply(this._scene, patch);
     this.recordGesturePatch(patch);
@@ -3314,7 +3314,7 @@ export class Editor {
     // guaranteed correct z-order.
     if (
       this.gestureTx !== null ||
-      this.dragShapeId !== null ||
+      this.dragElementId !== null ||
       this.drawingPreview !== null ||
       this.edgePreview !== null ||
       this.brushStroke !== null ||
@@ -3345,36 +3345,36 @@ export class Editor {
     // the edge object itself is reference-equal — the path resolves
     // through the shape's new position, but the old path stays on
     // screen as a "ghost" trail unless we explicitly invalidate it.
-    const changedShapeIds = new Set<ElementId>();
+    const changedElementIds = new Set<ElementId>();
     for (const [id, shape] of next.shapes) {
       const old = prev.shapes.get(id);
       if (old === shape) continue;
-      changedShapeIds.add(id);
-      const afterBounds = getShapeWorldBounds(shape);
-      const beforeBounds = old ? getShapeWorldBounds(old) : null;
+      changedElementIds.add(id);
+      const afterBounds = getElementWorldBounds(shape);
+      const beforeBounds = old ? getElementWorldBounds(old) : null;
       add(afterBounds);
       if (beforeBounds) add(beforeBounds);
       // Stash for the tile-cache path — covers add + move via
       // before/after pair; pure mutation re-uses the single
       // afterBounds rect.
       if (this.tileComposeFn !== null) {
-        this.tileDirtyShapes.set(id, { before: beforeBounds, after: afterBounds });
+        this.tileDirtyElements.set(id, { before: beforeBounds, after: afterBounds });
       }
     }
     for (const [id, shape] of prev.shapes) {
       if (!next.shapes.has(id)) {
-        changedShapeIds.add(id);
-        const beforeBounds = getShapeWorldBounds(shape);
+        changedElementIds.add(id);
+        const beforeBounds = getElementWorldBounds(shape);
         add(beforeBounds);
         if (this.tileComposeFn !== null) {
-          this.tileDirtyShapes.set(id, { before: beforeBounds, after: null });
+          this.tileDirtyElements.set(id, { before: beforeBounds, after: null });
         }
       }
     }
-    const edgeTouchesChangedShape = (edge: Link): boolean => {
+    const linkTouchesChangedElement = (edge: Link): boolean => {
       for (const ep of [edge.from, edge.to]) {
         if (ep.kind === "anchor" || ep.kind === "outline") {
-          if (changedShapeIds.has(ep.elementId)) return true;
+          if (changedElementIds.has(ep.elementId)) return true;
         }
       }
       return false;
@@ -3384,7 +3384,7 @@ export class Editor {
       // Refresh edge dirty-rect when: edge object changed, OR an
       // endpoint references a shape that moved this frame (path is
       // re-resolved every render but the old screen pixels persist).
-      if (old === edge && !edgeTouchesChangedShape(edge)) continue;
+      if (old === edge && !linkTouchesChangedElement(edge)) continue;
       const b = computeLinkWorldBounds(next, edge);
       if (b) add(b);
       const oldLink = old ?? edge; // prev scene resolves with prev shapes for ghost-clear
@@ -3408,7 +3408,7 @@ export class Editor {
     // repainted, but C — sitting above B and partially overlapping
     // it — doesn't intersect the original dirty, so B re-emerges
     // on top of where C should still be drawn. Z-order is correct
-    // in `getShapesInLayer`; the bug is missed shapes, not
+    // in `getElementsInLayer`; the issue is missed shapes, not
     // wrong order.
     const visited = new Set<ElementId>();
     let expanded: Bounds = acc;
@@ -3417,7 +3417,7 @@ export class Editor {
       grew = false;
       for (const shape of next.shapes.values()) {
         if (visited.has(shape.id)) continue;
-        const bb = getShapeWorldBounds(shape);
+        const bb = getElementWorldBounds(shape);
         if (!B.intersects(bb, expanded)) continue;
         visited.add(shape.id);
         const merged = B.union(expanded, bb);
@@ -3459,13 +3459,13 @@ export class Editor {
       if (!only) return false;
       // A single group (grouping IS the explicit "lock ratio" gesture)
       // or a single image (images may only be scaled, never distorted).
-      const type = getShape(this._scene, only)?.type;
+      const type = getElement(this._scene, only)?.type;
       return type === "group" || type === "image";
     }
     // Multi-selection: lock when every selected shape is an image — they
     // must never be stretched out of ratio, only scaled together.
     for (const id of this._selection) {
-      if (getShape(this._scene, id)?.type !== "image") return false;
+      if (getElement(this._scene, id)?.type !== "image") return false;
     }
     return true;
   }
@@ -3487,16 +3487,16 @@ export class Editor {
   }
 
   private applyResize(id: ElementId, handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
-    const shape = getShape(this._scene, id);
+    const shape = getElement(this._scene, id);
     // Text: aspect-locked font scaling. Snapshot the pristine shape on
     // the gesture's first tick so the scale base never compounds.
     if (shape?.type === "text") {
-      if (!this._resizeOriginShape || this._resizeOriginShape.id !== id) {
-        this._resizeOriginShape = shape;
+      if (!this._resizeOriginElement || this._resizeOriginElement.id !== id) {
+        this._resizeOriginElement = shape;
       }
       const result = computeTextResize(
         this._scene,
-        this._resizeOriginShape as TextElement,
+        this._resizeOriginElement as TextElement,
         handle,
         delta,
         originalBounds,
@@ -3507,7 +3507,7 @@ export class Editor {
       this.notify();
       return;
     }
-    const result = computeShapeResize(this._scene, id, handle, delta, originalBounds, (s, raw, h) =>
+    const result = computeElementResize(this._scene, id, handle, delta, originalBounds, (s, raw, h) =>
       this.clampContainerToChildren(s, raw, h),
     );
     if (!result) return;
@@ -3518,8 +3518,8 @@ export class Editor {
 
   // Pure body in `./editor/applies/create.ts`.
   private applyCreate(kind: "rect" | "ellipse" | "frame", bounds: Bounds): void {
-    const id = newShapeId(++this.nextId);
-    const result = computeCreateShape(this._scene, kind, bounds, id, this._activeLayerId, () =>
+    const id = newElementId(++this.nextId);
+    const result = computeCreateElement(this._scene, kind, bounds, id, this._activeLayerId, () =>
       this.nextFrameName(),
     );
     this._scene = result.scene;
@@ -3557,8 +3557,8 @@ export class Editor {
   // Pure body in `./editor/applies/create.ts`. Endpoint snapping
   // stays here because it needs the snap engine.
   private applyCreateLink(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
-    const from = this.snapLinkEndpoint(emit.fromShape, emit.fromPoint);
-    const to = this.snapLinkEndpoint(emit.toShape, emit.toPoint);
+    const from = this.snapLinkEndpoint(emit.fromElement, emit.fromPoint);
+    const to = this.snapLinkEndpoint(emit.toElement, emit.toPoint);
     const id = newLinkId(++this.nextId);
     const result = computeCreateLink(this._scene, from, to, id, this._activeLayerId);
     this._scene = result.scene;
@@ -3575,15 +3575,15 @@ export class Editor {
    * "anywhere on the right edge"), then `point` for the free-floating
    * case.
    *
-   * `pressTargetShape` is the shape the gesture originated from or
+   * `pressTargetElement` is the shape the gesture originated from or
    * landed on (used as a strong hint — we don't snap onto unrelated
    * shapes when the user clearly aimed for this one).
    */
-  private snapLinkEndpoint(pressTargetShape: ElementId | null, worldPoint: Vec2): LinkEndpoint {
-    if (!pressTargetShape) {
+  private snapLinkEndpoint(pressTargetElement: ElementId | null, worldPoint: Vec2): LinkEndpoint {
+    if (!pressTargetElement) {
       return { kind: "point", position: worldPoint };
     }
-    const shape = getShape(this._scene, pressTargetShape);
+    const shape = getElement(this._scene, pressTargetElement);
     if (!shape) return { kind: "point", position: worldPoint };
 
     const result = this.snapEngine.snap({
@@ -3596,18 +3596,18 @@ export class Editor {
     // Prefer a snap candidate that belongs to the press-target shape —
     // avoids attaching to a neighbouring shape that happens to be even
     // closer to the release point.
-    const onTarget = result.all.filter((c) => c.metadata?.elementId === pressTargetShape);
+    const onTarget = result.all.filter((c) => c.metadata?.elementId === pressTargetElement);
     const winner =
       onTarget.find((c) => c.kind === "anchor") ??
       onTarget.find((c) => c.kind === "outline") ??
       null;
-    if (winner) return endpointFromSnap(pressTargetShape, winner, shape);
+    if (winner) return endpointFromSnap(pressTargetElement, winner, shape);
 
     // No snap fired (release outside threshold of any port / outline) —
     // fall back to nearest anchor on the target shape so the edge still
     // sticks to it.
     const { ref } = findNearestAnchor(shape, worldPoint, snapExcludedAnchors(shape));
-    return { kind: "anchor", elementId: pressTargetShape, anchor: ref };
+    return { kind: "anchor", elementId: pressTargetElement, anchor: ref };
   }
 
   // Pure body in `./editor/applies/selection.ts`. The wrappers
@@ -3649,8 +3649,8 @@ export class Editor {
   private applyLinkEndpointUpdate(
     emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
   ): void {
-    const result = computeLinkEndpointUpdate(this._scene, emit, (toShape, toPoint) =>
-      this.snapLinkEndpoint(toShape, toPoint),
+    const result = computeLinkEndpointUpdate(this._scene, emit, (toElement, toPoint) =>
+      this.snapLinkEndpoint(toElement, toPoint),
     );
     if (result === null) {
       this.linkEndpointDrag = null;
@@ -3664,7 +3664,7 @@ export class Editor {
   }
 
   private updateHoveredLinkTarget(worldPoint: Vec2): void {
-    const shape = this.acceleratedShapeAt(worldPoint);
+    const shape = this.acceleratedElementAt(worldPoint);
     if (!shape) {
       if (this.hoveredLinkTarget !== null) {
         this.hoveredLinkTarget = null;
@@ -3681,8 +3681,8 @@ export class Editor {
   }
 
   // Pure body in `./editor/applies/edge.ts`.
-  private applyLinkPreview(fromShape: ElementId | null, fromPoint: Vec2, toPoint: Vec2): void {
-    this.edgePreview = computeLinkPreviewEndpoints(this._scene, fromShape, fromPoint, toPoint);
+  private applyLinkPreview(fromElement: ElementId | null, fromPoint: Vec2, toPoint: Vec2): void {
+    this.edgePreview = computeLinkPreviewEndpoints(this._scene, fromElement, fromPoint, toPoint);
     this.notify();
   }
 
@@ -3695,7 +3695,7 @@ export class Editor {
     this.gestures.record(patch);
   }
   private commitGesture(): void {
-    this._resizeOriginShape = null;
+    this._resizeOriginElement = null;
     this.gestures.commit();
   }
   private finalizeOpenGestureTx(): void {
@@ -3747,7 +3747,7 @@ export class Editor {
 
   // Body moved to `./editor/gesture-tx.ts`.
   private cancelGesture(): void {
-    this._resizeOriginShape = null;
+    this._resizeOriginElement = null;
     this.gestures.cancel();
   }
 

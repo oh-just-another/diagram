@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
@@ -89,8 +89,8 @@ describe("first render after ResizeObserver", () => {
     // Shapes already present, viewport.size left at the empty default {0, 0} —
     // the initial state the editor sees on mount before the ResizeObserver fires.
     let scene: Scene = emptyScene();
-    ({ scene } = addShape(scene, rect("a", 100, 100)));
-    ({ scene } = addShape(scene, rect("b", 300, 200)));
+    ({ scene } = addElement(scene, rect("a", 100, 100)));
+    ({ scene } = addElement(scene, rect("b", 300, 200)));
 
     const mainLog: DrawLog = { rectCalls: [], clearCalls: [], fillCalls: 0 };
     const overlayLog: DrawLog = { rectCalls: [], clearCalls: [], fillCalls: 0 };
@@ -125,7 +125,7 @@ describe("first render after ResizeObserver", () => {
 
   it("paints shape AABBs at the correct world coords after setViewportSize", () => {
     let scene: Scene = emptyScene();
-    ({ scene } = addShape(scene, rect("a", 100, 100, 50, 50)));
+    ({ scene } = addElement(scene, rect("a", 100, 100, 50, 50)));
     const mainLog: DrawLog = { rectCalls: [], clearCalls: [], fillCalls: 0 };
     const overlayLog: DrawLog = { rectCalls: [], clearCalls: [], fillCalls: 0 };
     const editor = new Editor({
@@ -151,7 +151,7 @@ describe("first render after ResizeObserver", () => {
 
   it("issues full clear (no bounds arg) on first real-size paint", () => {
     let scene: Scene = emptyScene();
-    ({ scene } = addShape(scene, rect("a", 100, 100)));
+    ({ scene } = addElement(scene, rect("a", 100, 100)));
     const mainLog: DrawLog = { rectCalls: [], clearCalls: [], fillCalls: 0 };
     const overlayLog: DrawLog = { rectCalls: [], clearCalls: [], fillCalls: 0 };
     const editor = new Editor({
@@ -182,7 +182,7 @@ describe("first render after ResizeObserver", () => {
     // path produces an empty rect, which guarantees the canvas content
     // survives.
     let scene: Scene = emptyScene();
-    ({ scene } = addShape(scene, rect("a", 100, 100)));
+    ({ scene } = addElement(scene, rect("a", 100, 100)));
     scene = {
       ...scene,
       viewport: { ...scene.viewport, size: { width: 800, height: 600 } },
@@ -222,7 +222,7 @@ describe("first render after ResizeObserver", () => {
     });
     editor.setViewportSize(800, 600);
     const fillsBeforeAdd = mainLog.fillCalls;
-    editor.addShape(rect("a", 100, 100));
+    editor.addElement(rect("a", 100, 100));
     expect(mainLog.fillCalls - fillsBeforeAdd).toBeGreaterThanOrEqual(1);
     editor.dispose();
   });

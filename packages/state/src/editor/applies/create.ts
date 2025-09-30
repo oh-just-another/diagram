@@ -1,70 +1,68 @@
 import {
- addLink,
- addShape,
- orderForBottom,
- orderForTop,
- type Link,
- type LinkEndpoint,
- type Scene,
- type Element,
- type Patch,
+  addLink,
+  addElement,
+  orderForBottom,
+  orderForTop,
+  type Link,
+  type LinkEndpoint,
+  type Scene,
+  type Element,
+  type Patch,
 } from "@oh-just-another/scene";
 import { DEFAULT_EDGE_STYLE, DEFAULT_SHAPE_STYLES } from "@oh-just-another/tokens";
 import type {
- Bounds,
- LinkId,
- LayerId,
- ElementId,
+  Bounds,
+  LinkId,
+  LayerId,
+  ElementId,
 } from "@oh-just-another/types";
 
 /**
- * Defaults used by `buildShapeForCreate` — sourced from
+ * Defaults used by `buildElementForCreate` — sourced from
  * `@oh-just-another/tokens` so the editor and the templates package
- * agree on a fresh shape's look. A host wanting to recolour can
- * either patch the tokens package or fork `buildShapeForCreate`;
- * theme-aware overrides are a concern.
+ * agree on a fresh shape's look.
  */
 const DEFAULT_RECT_STYLE = DEFAULT_SHAPE_STYLES.rectangle;
 const DEFAULT_ELLIPSE_STYLE = DEFAULT_SHAPE_STYLES.ellipse;
 
 /**
- * Pure: build the `Element` object for a CREATE_SHAPE emit. Doesn't
- * touch the scene — caller threads it through `addShape`.
+ * Build the `Element` object for a CREATE_SHAPE emit. Doesn't touch the
+ * scene — caller threads it through `addElement`.
  *
  * Frames go to the bottom of their layer so the children inside
  * them still receive clicks; rect / ellipse go to the top of the
  * stack as usual.
  */
-export const buildShapeForCreate = (
- scene: Scene,
- kind: "rect" | "ellipse" | "frame",
- bounds: Bounds,
- id: ElementId,
- layerId: LayerId,
- nextFrameName: () => string,
+export const buildElementForCreate = (
+  scene: Scene,
+  kind: "rect" | "ellipse" | "frame",
+  bounds: Bounds,
+  id: ElementId,
+  layerId: LayerId,
+  nextFrameName: () => string,
 ): Element => {
- const orders = Array.from(scene.shapes.values())
-  .filter((s) => s.layerId === layerId)
-  .map((s) => s.order);
- const order = kind === "frame" ? orderForBottom(orders) : orderForTop(orders);
- const common = {
-  id,
-  layerId,
-  position: { x: bounds.x, y: bounds.y },
-  rotation: 0,
-  scale: { x: 1, y: 1 },
-  order,
-  width: bounds.width,
-  height: bounds.height,
- };
- if (kind === "rect") {
-  return { ...common, type: "rectangle", style: { ...DEFAULT_RECT_STYLE } };
- }
- if (kind === "ellipse") {
-  return { ...common, type: "ellipse", style: { ...DEFAULT_ELLIPSE_STYLE } };
- }
- // Frame: empty style (renderer hard-codes the dashed look), auto-numbered name.
- return { ...common, type: "frame", style: {}, name: nextFrameName() };
+  const orders = Array.from(scene.shapes.values())
+    .filter((s) => s.layerId === layerId)
+    .map((s) => s.order);
+  const order = kind === "frame" ? orderForBottom(orders) : orderForTop(orders);
+  const common = {
+    id,
+    layerId,
+    position: { x: bounds.x, y: bounds.y },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order,
+    width: bounds.width,
+    height: bounds.height,
+  };
+  if (kind === "rect") {
+    return { ...common, type: "rectangle", style: { ...DEFAULT_RECT_STYLE } };
+  }
+  if (kind === "ellipse") {
+    return { ...common, type: "ellipse", style: { ...DEFAULT_ELLIPSE_STYLE } };
+  }
+  // Frame: empty style (renderer hard-codes the dashed look), auto-numbered name.
+  return { ...common, type: "frame", style: {}, name: nextFrameName() };
 };
 
 /**
@@ -73,48 +71,48 @@ export const buildShapeForCreate = (
  * layer / order / style boilerplate.
  */
 export const buildLinkForCreate = (
- scene: Scene,
- from: LinkEndpoint,
- to: LinkEndpoint,
- id: LinkId,
- layerId: LayerId,
+  scene: Scene,
+  from: LinkEndpoint,
+  to: LinkEndpoint,
+  id: LinkId,
+  layerId: LayerId,
 ): Link => {
- const order = orderForTop(
-  Array.from(scene.edges.values())
-   .filter((e) => e.layerId === layerId)
-   .map((e) => e.order),
- );
- return {
-  id,
-  layerId,
-  from,
-  to,
-  order,
-  style: { ...DEFAULT_EDGE_STYLE },
-  arrowheads: { to: "triangle" },
- };
+  const order = orderForTop(
+    Array.from(scene.edges.values())
+      .filter((e) => e.layerId === layerId)
+      .map((e) => e.order),
+  );
+  return {
+    id,
+    layerId,
+    from,
+    to,
+    order,
+    style: { ...DEFAULT_EDGE_STYLE },
+    arrowheads: { to: "triangle" },
+  };
 };
 
 /**
  * Composite helper for `applyCreate` — builds the shape and runs
- * `addShape` against the scene. Returns the scene + patch so the
+ * `addElement` against the scene. Returns the scene + patch so the
  * Editor can `_history.push(patch)` and clear/notify.
  *
  * `void bounds` — the bounds is part of the shape via `position` +
  * `width` / `height`; the parameter is kept on the signature only
  * to document intent at the call site.
  */
-export const computeCreateShape = (
- scene: Scene,
- kind: "rect" | "ellipse" | "frame",
- bounds: Bounds,
- id: ElementId,
- layerId: LayerId,
- nextFrameName: () => string,
+export const computeCreateElement = (
+  scene: Scene,
+  kind: "rect" | "ellipse" | "frame",
+  bounds: Bounds,
+  id: ElementId,
+  layerId: LayerId,
+  nextFrameName: () => string,
 ): { readonly scene: Scene; readonly patch: Patch; readonly elementId: ElementId } => {
- const shape = buildShapeForCreate(scene, kind, bounds, id, layerId, nextFrameName);
- const result = addShape(scene, shape);
- return { scene: result.scene, patch: result.patch, elementId: id };
+  const shape = buildElementForCreate(scene, kind, bounds, id, layerId, nextFrameName);
+  const result = addElement(scene, shape);
+  return { scene: result.scene, patch: result.patch, elementId: id };
 };
 
 /**
@@ -124,21 +122,21 @@ export const computeCreateShape = (
  * threaded in as parameters.
  */
 export const computeCreateLink = (
- scene: Scene,
- from: LinkEndpoint,
- to: LinkEndpoint,
- id: LinkId,
- layerId: LayerId,
+  scene: Scene,
+  from: LinkEndpoint,
+  to: LinkEndpoint,
+  id: LinkId,
+  layerId: LayerId,
 ): { readonly scene: Scene; readonly patch: Patch; readonly linkId: LinkId } => {
- const edge = buildLinkForCreate(scene, from, to, id, layerId);
- const result = addLink(scene, edge);
- return { scene: result.scene, patch: result.patch, linkId: id };
+  const edge = buildLinkForCreate(scene, from, to, id, layerId);
+  const result = addLink(scene, edge);
+  return { scene: result.scene, patch: result.patch, linkId: id };
 };
 
 /** Generate a unique shape id with the per-editor `nextId` counter. */
-export const newShapeId = (next: number): ElementId =>
- `shape-${next}-${Date.now().toString(36)}` as ElementId;
+export const newElementId = (next: number): ElementId =>
+  `shape-${next}-${Date.now().toString(36)}` as ElementId;
 
 /** Generate a unique edge id with the per-editor `nextId` counter. */
 export const newLinkId = (next: number): LinkId =>
- `edge-${next}-${Date.now().toString(36)}` as LinkId;
+  `edge-${next}-${Date.now().toString(36)}` as LinkId;

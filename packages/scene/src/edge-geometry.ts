@@ -3,7 +3,7 @@ import { getAnchorWorld } from "./anchors.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getOutlinePoint } from "./outline.js";
 import type { Scene } from "./scene.js";
-import { getShape } from "./queries.js";
+import { getElement } from "./queries.js";
 
 /**
  * Resolve a single `LinkEndpoint` to a world-space point.
@@ -19,7 +19,7 @@ import { getShape } from "./queries.js";
  */
 export const getLinkEndpointWorld = (scene: Scene, endpoint: LinkEndpoint): Vec2 | null => {
   if (endpoint.kind === "point") return endpoint.position;
-  const shape = getShape(scene, endpoint.elementId);
+  const shape = getElement(scene, endpoint.elementId);
   if (!shape) return null;
   if (endpoint.kind === "anchor") return getAnchorWorld(shape, endpoint.anchor);
   return getOutlinePoint(shape, endpoint.ratio);

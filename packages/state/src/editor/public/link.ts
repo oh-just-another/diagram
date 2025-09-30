@@ -1,4 +1,4 @@
-import { getShape, updateShape, type Scene, type Patch, type Element } from "@oh-just-another/scene";
+import { getElement, updateElement, type Scene, type Patch, type Element } from "@oh-just-another/scene";
 import type { ElementId } from "@oh-just-another/types";
 
 /**
@@ -47,14 +47,14 @@ export const computeSetLink = (
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetIds: ElementId[] = [];
   for (const id of ids) {
-    const s = getShape(scene, id);
+    const s = getElement(scene, id);
     if (s && (s.href ?? null) !== href) targetIds.push(id);
   }
   if (targetIds.length === 0) return null;
   let s = scene;
   const patches: Patch[] = [];
   for (const id of targetIds) {
-    const r = updateShape(s, id, (sh) => {
+    const r = updateElement(s, id, (sh) => {
       const next = { ...sh } as Element & { href?: string };
       if (href === null) delete next.href;
       else next.href = href;

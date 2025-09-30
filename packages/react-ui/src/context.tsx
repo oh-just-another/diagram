@@ -37,7 +37,7 @@ export const DiagramEditorBridge = DiagramContext;
 
 /**
  * Strict accessor — throws when called outside any provider. Use for
- * imperative paths that *require* the editor right now (`editor.addShape`,
+ * imperative paths that *require* the editor right now (`editor.addElement`,
  * `editor.screenToWorld`, etc).
  */
 export const useDiagramContext = (): Editor => {

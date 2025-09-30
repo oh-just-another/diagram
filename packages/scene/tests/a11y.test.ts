@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  getShapeAccessibleName,
+  getElementAccessibleName,
   orderBetween,
   registerAccessibleName,
   type Element,
@@ -17,7 +17,7 @@ const baseFields = {
   style: {},
 } as const;
 
-describe("getShapeAccessibleName", () => {
+describe("getElementAccessibleName", () => {
   it("titleises built-in types as fallback", () => {
     const rect: Element = {
       ...baseFields,
@@ -26,7 +26,7 @@ describe("getShapeAccessibleName", () => {
       width: 10,
       height: 10,
     };
-    expect(getShapeAccessibleName(rect)).toBe("Rectangle");
+    expect(getElementAccessibleName(rect)).toBe("Rectangle");
   });
 
   it("uses text body for text shapes", () => {
@@ -38,7 +38,7 @@ describe("getShapeAccessibleName", () => {
       fontFamily: "sans",
       fontSize: 12,
     };
-    expect(getShapeAccessibleName(text)).toBe("Hello world");
+    expect(getElementAccessibleName(text)).toBe("Hello world");
   });
 
   it("collapses whitespace in text shapes", () => {
@@ -50,7 +50,7 @@ describe("getShapeAccessibleName", () => {
       fontFamily: "sans",
       fontSize: 12,
     };
-    expect(getShapeAccessibleName(text)).toBe("Hello world");
+    expect(getElementAccessibleName(text)).toBe("Hello world");
   });
 
   it("truncates long text bodies", () => {
@@ -63,7 +63,7 @@ describe("getShapeAccessibleName", () => {
       fontFamily: "sans",
       fontSize: 12,
     };
-    const result = getShapeAccessibleName(text);
+    const result = getElementAccessibleName(text);
     expect(result.length).toBeLessThanOrEqual(80);
     expect(result.endsWith("…")).toBe(true);
   });
@@ -79,7 +79,7 @@ describe("getShapeAccessibleName", () => {
       height: 60,
       metadata: { label: "Buy milk" },
     };
-    expect(getShapeAccessibleName(template)).toBe("Buy milk");
+    expect(getElementAccessibleName(template)).toBe("Buy milk");
   });
 
   it("falls back to templateId when no label metadata", () => {
@@ -92,7 +92,7 @@ describe("getShapeAccessibleName", () => {
       width: 100,
       height: 60,
     };
-    expect(getShapeAccessibleName(template)).toBe("Task card");
+    expect(getElementAccessibleName(template)).toBe("Task card");
   });
 
   it("registerAccessibleName overrides for custom types", () => {
@@ -102,6 +102,6 @@ describe("getShapeAccessibleName", () => {
       id: elementId("c"),
       type: "custom-widget",
     };
-    expect(getShapeAccessibleName(custom)).toBe("Custom widget");
+    expect(getElementAccessibleName(custom)).toBe("Custom widget");
   });
 });

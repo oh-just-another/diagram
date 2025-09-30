@@ -84,7 +84,7 @@ const hydrate = (doc: SceneDocument): Scene => {
   const shapes = new Map<ElementId, Element>();
   for (const s of doc.shapes) {
     const id = elementId(s.id);
-    shapes.set(id, hydrateShape(s, id));
+    shapes.set(id, hydrateElement(s, id));
   }
 
   const edges = new Map<LinkId, Link>();
@@ -134,7 +134,7 @@ const hydrate = (doc: SceneDocument): Scene => {
   return { shapes, edges, layers, annotations, files: new Map(), viewport };
 };
 
-const hydrateShape = (s: SceneDocument["shapes"][number], id: ElementId): Element => {
+const hydrateElement = (s: SceneDocument["shapes"][number], id: ElementId): Element => {
   // zod's parsed shape carries explicit `undefined`s on optional fields, which
   // `exactOptionalPropertyTypes` rejects. Strip them so the resulting object
   // matches the kernel's strict types.

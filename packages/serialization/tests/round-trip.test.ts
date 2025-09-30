@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { annotationId, commentId, fileId, elementId } from "@oh-just-another/types";
 import {
   addAnnotation,
-  addShape,
+  addElement,
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,
@@ -29,8 +29,8 @@ const rect = (id: string, x = 0, y = 0): Element => ({
 describe("round-trip", () => {
   it("serialize → deserialize preserves shapes", () => {
     let scene = emptyScene();
-    ({ scene } = addShape(scene, rect("a", 10, 20)));
-    ({ scene } = addShape(scene, rect("b", 30, 40)));
+    ({ scene } = addElement(scene, rect("a", 10, 20)));
+    ({ scene } = addElement(scene, rect("b", 30, 40)));
     const doc = serializeScene(scene);
     const restored = deserializeScene(doc);
     expect(restored.shapes.size).toBe(2);
@@ -56,7 +56,7 @@ describe("round-trip", () => {
 
   it("stringify → parseScene round-trip", () => {
     let scene = emptyScene();
-    ({ scene } = addShape(scene, rect("a")));
+    ({ scene } = addElement(scene, rect("a")));
     const json = stringifyScene(scene, 2);
     expect(json).toContain('"format": "oh-just-another/scene"');
     const restored = parseScene(json);
@@ -111,7 +111,7 @@ describe("round-trip", () => {
       },
     ];
     for (const s of variants) {
-      const result = addShape(scene, s);
+      const result = addElement(scene, s);
       scene = result.scene;
     }
     const restored = deserializeScene(serializeScene(scene));
@@ -141,7 +141,7 @@ describe("round-trip", () => {
       fontFamily: "system-ui",
       fontSize: 18,
     } as unknown as Element;
-    ({ scene } = addShape(scene, t));
+    ({ scene } = addElement(scene, t));
     const restored = deserializeScene(serializeScene(scene));
     const st = (restored.shapes.get(elementId("td")) as unknown as { style: Record<string, unknown> }).style;
     expect(st.fontWeight).toBe("bold");
@@ -165,7 +165,7 @@ describe("round-trip", () => {
       height: 10,
       href: "https://example.com/x",
     } as unknown as Element;
-    ({ scene } = addShape(scene, r));
+    ({ scene } = addElement(scene, r));
     const restored = deserializeScene(serializeScene(scene));
     expect((restored.shapes.get(elementId("lk")) as { href?: string }).href).toBe(
       "https://example.com/x",
@@ -190,7 +190,7 @@ describe("round-trip", () => {
       animationKind: "gif",
       metadata: { animated: true },
     };
-    ({ scene } = addShape(scene, img));
+    ({ scene } = addElement(scene, img));
     const restored = deserializeScene(serializeScene(scene));
     const r = restored.shapes.get(elementId("img-1"));
     expect(r?.type).toBe("image");
@@ -216,7 +216,7 @@ describe("round-trip", () => {
       // The live DOM handle the file-drop handler attaches.
       metadata: { image: { fake: "dom-element" }, animated: true },
     };
-    ({ scene } = addShape(scene, img));
+    ({ scene } = addElement(scene, img));
     const doc = serializeScene(scene);
     const serialized = doc.shapes.find((s) => s.id === "img-1");
     expect(serialized?.metadata).toBeDefined();
@@ -243,7 +243,7 @@ describe("round-trip", () => {
       height: 10,
       metadata: { image: { fake: "dom" } },
     };
-    ({ scene } = addShape(scene, img));
+    ({ scene } = addElement(scene, img));
     const doc = serializeScene(scene);
     const serialized = doc.shapes.find((s) => s.id === "img-2");
     expect(serialized?.metadata).toBeUndefined();
@@ -252,7 +252,7 @@ describe("round-trip", () => {
   it("undo patches keep working after round-trip", () => {
     let scene = emptyScene();
     const r = rect("a");
-    const result = addShape(scene, r);
+    const result = addElement(scene, r);
     scene = result.scene;
     const restored = deserializeScene(serializeScene(scene));
     // Apply an undo-style patch built from the restored shape.

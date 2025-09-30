@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { layerId, elementId } from "@oh-just-another/types";
 import {
-  getShapeLocalBounds,
-  getShapeWorldBounds,
+  getElementLocalBounds,
+  getElementWorldBounds,
   isEllipse,
   isImage,
   isPath,
@@ -48,15 +48,15 @@ describe("shape", () => {
 
   describe("built-in bounders", () => {
     it("rectangle local bounds = (0, 0, w, h)", () => {
-      expect(getShapeLocalBounds(rect)).toEqual({ x: 0, y: 0, width: 10, height: 20 });
+      expect(getElementLocalBounds(rect)).toEqual({ x: 0, y: 0, width: 10, height: 20 });
     });
     it("translated rectangle world bounds = shifted local bounds", () => {
       const moved = { ...rect, position: { x: 5, y: 7 } };
-      expect(getShapeWorldBounds(moved)).toEqual({ x: 5, y: 7, width: 10, height: 20 });
+      expect(getElementWorldBounds(moved)).toEqual({ x: 5, y: 7, width: 10, height: 20 });
     });
     it("scaled rectangle world bounds", () => {
       const scaled = { ...rect, scale: { x: 2, y: 3 } };
-      const b = getShapeWorldBounds(scaled);
+      const b = getElementWorldBounds(scaled);
       expect(b.width).toBeCloseTo(20, 5);
       expect(b.height).toBeCloseTo(60, 5);
     });
@@ -70,7 +70,7 @@ describe("shape", () => {
       };
       // Local AABB after rotation should be conservative √2 × √2 of the side,
       // since corner (0,0) stays at (0,0) and (2,2) rotates around origin.
-      const b = getShapeWorldBounds(rotated);
+      const b = getElementWorldBounds(rotated);
       expect(b.width).toBeCloseTo(2 * Math.sqrt(2), 5);
       expect(b.height).toBeCloseTo(2 * Math.sqrt(2), 5);
     });
@@ -79,9 +79,9 @@ describe("shape", () => {
   describe("registerBounder (plugin extensibility)", () => {
     it("unknown type throws, then works after registration", () => {
       const shape: ElementBase = { ...baseProps, id: elementId("custom"), type: "diamond" };
-      expect(() => getShapeLocalBounds(shape)).toThrow(/no bounder/i);
+      expect(() => getElementLocalBounds(shape)).toThrow(/no bounder/i);
       registerBounder("diamond", () => ({ x: 0, y: 0, width: 100, height: 50 }));
-      expect(getShapeLocalBounds(shape)).toEqual({ x: 0, y: 0, width: 100, height: 50 });
+      expect(getElementLocalBounds(shape)).toEqual({ x: 0, y: 0, width: 100, height: 50 });
     });
   });
 
@@ -102,8 +102,8 @@ describe("shape", () => {
         fontFamily: "sans",
         fontSize: 16,
       };
-      const regular = getShapeLocalBounds(base);
-      const bold = getShapeLocalBounds({
+      const regular = getElementLocalBounds(base);
+      const bold = getElementLocalBounds({
         ...base,
         style: { fontWeight: "bold" } as unknown as ElementBase["style"],
       });
@@ -116,7 +116,7 @@ describe("shape", () => {
   describe("built-in bounders for other shape types", () => {
     it("ellipse local bounds use w/h", () => {
       const e = { ...baseProps, id: elementId("e"), type: "ellipse" as const, width: 40, height: 20 };
-      expect(getShapeLocalBounds(e)).toEqual({ x: 0, y: 0, width: 40, height: 20 });
+      expect(getElementLocalBounds(e)).toEqual({ x: 0, y: 0, width: 40, height: 20 });
     });
     it("polygon local bounds = AABB of points", () => {
       const p = {
@@ -129,7 +129,7 @@ describe("shape", () => {
           { x: 5, y: 8 },
         ],
       };
-      expect(getShapeLocalBounds(p)).toEqual({ x: 0, y: 0, width: 10, height: 8 });
+      expect(getElementLocalBounds(p)).toEqual({ x: 0, y: 0, width: 10, height: 8 });
     });
     it("path local bounds cover M/L/Q/C/Z commands", () => {
       const p = {
@@ -149,7 +149,7 @@ describe("shape", () => {
           { kind: "Z" as const },
         ],
       };
-      const b = getShapeLocalBounds(p);
+      const b = getElementLocalBounds(p);
       expect(b.x).toBe(0);
       expect(b.y).toBe(0);
       expect(b.width).toBe(15);
@@ -165,7 +165,7 @@ describe("shape", () => {
         fontSize: 10,
         style: {},
       };
-      const b = getShapeLocalBounds(t);
+      const b = getElementLocalBounds(t);
       expect(b.width).toBeGreaterThan(0);
       expect(b.height).toBeGreaterThan(0);
     });
@@ -180,7 +180,7 @@ describe("shape", () => {
         maxWidth: 30,
         style: {},
       };
-      const b = getShapeLocalBounds(t);
+      const b = getElementLocalBounds(t);
       expect(b.width).toBe(30);
       expect(b.height).toBeGreaterThan(10);
     });
@@ -193,7 +193,7 @@ describe("shape", () => {
         width: 50,
         height: 30,
       };
-      expect(getShapeLocalBounds(i)).toEqual({ x: 0, y: 0, width: 50, height: 30 });
+      expect(getElementLocalBounds(i)).toEqual({ x: 0, y: 0, width: 50, height: 30 });
     });
   });
 });

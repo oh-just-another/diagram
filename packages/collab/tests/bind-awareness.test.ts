@@ -3,7 +3,7 @@ import * as Y from "yjs";
 import { applyAwarenessUpdate, encodeAwarenessUpdate } from "y-protocols/awareness";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
@@ -105,7 +105,7 @@ describe("bindAwareness", () => {
     const awB = new CollabAwareness(docB);
     wireAwareness(awA, awB);
 
-    const { scene } = addShape(emptyScene(), rect("a", 0, 0));
+    const { scene } = addElement(emptyScene(), rect("a", 0, 0));
     const editor = makeStubEditor(scene);
     const unbind = bindAwareness(editor as never, awA, {
       user: { id: "u1", name: "Alice", color: "#f00" },
@@ -131,7 +131,7 @@ describe("bindAwareness", () => {
     const awB = new CollabAwareness(docB);
     wireAwareness(awA, awB);
 
-    const { scene } = addShape(emptyScene(), rect("a", 10, 20));
+    const { scene } = addElement(emptyScene(), rect("a", 10, 20));
     const editor = makeStubEditor(scene);
     const unbind = bindAwareness(editor as never, awA, {
       user: { id: "u1", name: "Alice", color: "#f00" },
@@ -165,7 +165,7 @@ describe("bindAwareness", () => {
     const awB = new CollabAwareness(docB);
     wireAwareness(awA, awB);
 
-    const { scene } = addShape(emptyScene(), rect("a", 0, 0));
+    const { scene } = addElement(emptyScene(), rect("a", 0, 0));
     const editor = makeStubEditor(scene);
     const unbind = bindAwareness(editor as never, awA, {
       user: { id: "u1", name: "Alice", color: "#f00" },
@@ -193,7 +193,7 @@ describe("bindAwareness", () => {
     const awB = new CollabAwareness(docB);
     wireAwareness(awA, awB);
 
-    const { scene } = addShape(emptyScene(), rect("a", 0, 0));
+    const { scene } = addElement(emptyScene(), rect("a", 0, 0));
     const editor = makeStubEditor(scene);
     const unbind = bindAwareness(editor as never, awA, {
       user: { id: "u1", name: "Alice", color: "#f00" },

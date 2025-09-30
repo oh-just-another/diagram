@@ -144,7 +144,7 @@ export type InteractionEmit =
       readonly linkId: LinkId;
       readonly side: "from" | "to";
       readonly toPoint: Vec2;
-      readonly toShape: ElementId | null;
+      readonly toElement: ElementId | null;
     }
   | {
       readonly type: "MOVE_SHAPE";
@@ -189,17 +189,17 @@ export type InteractionEmit =
   | {
       readonly type: "CREATE_EDGE";
       /** Element the edge starts on, or `null` for a free-floating point. */
-      readonly fromShape: ElementId | null;
+      readonly fromElement: ElementId | null;
       /** Element the edge lands on, or `null` for a free-floating point. */
-      readonly toShape: ElementId | null;
-      /** Press-down world point — used as the fallback when `fromShape` is null. */
+      readonly toElement: ElementId | null;
+      /** Press-down world point — used as the fallback when `fromElement` is null. */
       readonly fromPoint: Vec2;
-      /** Pointer-up world point — used as the fallback when `toShape` is null. */
+      /** Pointer-up world point — used as the fallback when `toElement` is null. */
       readonly toPoint: Vec2;
     }
   | {
       readonly type: "DRAW_EDGE_PREVIEW";
-      readonly fromShape: ElementId | null;
+      readonly fromElement: ElementId | null;
       readonly fromPoint: Vec2;
       readonly toPoint: Vec2;
     }
@@ -266,7 +266,7 @@ export const interactionMachine = setup({
       pressModifiers: null,
     })),
     setMode: assign((_, params: { mode: Mode }) => ({ mode: params.mode })),
-    emitMoveShape: enqueueActions(({ context, event, enqueue }) => {
+    emitMoveElement: enqueueActions(({ context, event, enqueue }) => {
       if (
         event.type !== "POINTER_MOVE" ||
         !context.pressOrigin ||
@@ -306,7 +306,7 @@ export const interactionMachine = setup({
       if (context.pressTarget?.kind !== "annotation") return;
       enqueue.emit({ type: "COMMIT_ANNOTATION_DRAG", id: context.pressTarget.id });
     }),
-    emitResizeShape: enqueueActions(({ context, event, enqueue }) => {
+    emitResizeElement: enqueueActions(({ context, event, enqueue }) => {
       if (
         event.type !== "POINTER_MOVE" ||
         !context.pressOrigin ||
@@ -355,7 +355,7 @@ export const interactionMachine = setup({
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return;
       enqueue.emit({
         type: "DRAW_EDGE_PREVIEW",
-        fromShape: context.pressTarget?.kind === "shape" ? context.pressTarget.id : null,
+        fromElement: context.pressTarget?.kind === "shape" ? context.pressTarget.id : null,
         fromPoint: context.pressOrigin,
         toPoint: event.point,
       });
@@ -377,13 +377,13 @@ export const interactionMachine = setup({
       if (event.type !== "POINTER_UP" || !context.pressOrigin) return;
       if (context.pressTarget?.kind !== "edge-endpoint") return;
       const upTarget = event.target;
-      const toShape = upTarget?.kind === "shape" ? upTarget.id : null;
+      const toElement = upTarget?.kind === "shape" ? upTarget.id : null;
       enqueue.emit({
         type: "UPDATE_EDGE_ENDPOINT",
         linkId: context.pressTarget.linkId,
         side: context.pressTarget.side,
         toPoint: event.point,
-        toShape,
+        toElement,
       });
     }),
     emitLassoProgress: enqueueActions(({ context, event, enqueue }) => {
@@ -415,8 +415,8 @@ export const interactionMachine = setup({
       // the same way as POINTER_DOWN). Use it to land on a shape if the
       // pointer is still over one.
       const upTarget = event.target;
-      const toShape = upTarget?.kind === "shape" ? upTarget.id : null;
-      const fromShape = context.pressTarget?.kind === "shape" ? context.pressTarget.id : null;
+      const toElement = upTarget?.kind === "shape" ? upTarget.id : null;
+      const fromElement = context.pressTarget?.kind === "shape" ? context.pressTarget.id : null;
       // Reject degenerate (released right back on the source shape without
       // moving — clearly an accidental click).
       const dx = event.point.x - context.pressOrigin.x;
@@ -424,15 +424,15 @@ export const interactionMachine = setup({
       if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return;
       enqueue.emit({
         type: "CREATE_EDGE",
-        fromShape,
-        toShape,
+        fromElement,
+        toElement,
         fromPoint: context.pressOrigin,
         toPoint: event.point,
       });
     }),
   },
   guards: {
-    movedAndOnShape: ({ context, event }) => {
+    movedAndOnElement: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
       if (context.pressTarget?.kind !== "shape") return false;
       // Dragging-on-shape moves the shape — only valid in `select` mode.
@@ -526,7 +526,7 @@ export const interactionMachine = setup({
             target: "draggingHandle",
             actions: [
               { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
-              { type: "emitResizeShape" },
+              { type: "emitResizeElement" },
             ],
           },
           {
@@ -538,11 +538,11 @@ export const interactionMachine = setup({
             ],
           },
           {
-            guard: "movedAndOnShape",
-            target: "draggingShape",
+            guard: "movedAndOnElement",
+            target: "draggingElement",
             actions: [
               { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
-              { type: "emitMoveShape" },
+              { type: "emitMoveElement" },
             ],
           },
           {
@@ -603,12 +603,12 @@ export const interactionMachine = setup({
         POINTER_CANCEL: { target: "idle", actions: [{ type: "resetGesture" }] },
       },
     },
-    draggingShape: {
+    draggingElement: {
       on: {
         POINTER_MOVE: {
           actions: [
             { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
-            { type: "emitMoveShape" },
+            { type: "emitMoveElement" },
           ],
         },
         POINTER_UP: { target: "idle", actions: [{ type: "resetGesture" }] },
@@ -620,7 +620,7 @@ export const interactionMachine = setup({
         POINTER_MOVE: {
           actions: [
             { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
-            { type: "emitResizeShape" },
+            { type: "emitResizeElement" },
           ],
         },
         POINTER_UP: { target: "idle", actions: [{ type: "resetGesture" }] },

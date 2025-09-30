@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   containerSizeForZone,
   emptyScene,
   expandDropZoneToFit,
@@ -56,16 +56,16 @@ describe("container protocol", () => {
 
   it("findContainerAt picks the topmost container under cursor", () => {
     let scene = emptyScene();
-    ({ scene } = addShape(scene, container("c1", 0, 0)));
+    ({ scene } = addElement(scene, container("c1", 0, 0)));
     // c2 is on top — it should win.
-    ({ scene } = addShape(scene, container("c2", 50, 50)));
+    ({ scene } = addElement(scene, container("c2", 50, 50)));
     const hit = findContainerAt(scene, { x: 200, y: 150 });
     expect(hit?.id).toBe(elementId("c2"));
   });
 
   it("findContainerAt respects exclude set", () => {
     let scene = emptyScene();
-    ({ scene } = addShape(scene, container("c1", 0, 0)));
+    ({ scene } = addElement(scene, container("c1", 0, 0)));
     const exclude = new Set([elementId("c1")]);
     expect(findContainerAt(scene, { x: 200, y: 100 }, exclude)).toBeNull();
   });

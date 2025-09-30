@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { layerId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Scene,
@@ -39,7 +39,7 @@ describe("renderSceneToSvg", () => {
 
   it("renders a single rectangle in its world position", () => {
     let scene = sceneOf(200, 100);
-    ({ scene } = addShape(scene, rect("a", 30, 40)));
+    ({ scene } = addElement(scene, rect("a", 30, 40)));
     const svg = renderSceneToSvg(scene);
     expect(svg).toContain('fill="#abc"');
     // Rect translated by shape.position = (30, 40), drawn from (0,0,50,30).
@@ -48,8 +48,8 @@ describe("renderSceneToSvg", () => {
 
   it("renders multiple shapes in z-order", () => {
     let scene = sceneOf(200, 100);
-    ({ scene } = addShape(scene, rect("bg", 0, 0, 200, 100, "#000")));
-    ({ scene } = addShape(scene, rect("fg", 20, 20, 50, 50, "#fff")));
+    ({ scene } = addElement(scene, rect("bg", 0, 0, 200, 100, "#000")));
+    ({ scene } = addElement(scene, rect("fg", 20, 20, 50, 50, "#fff")));
     const svg = renderSceneToSvg(scene);
     // Both rects present; bg painted first (lower z), fg painted after.
     const bgIndex = svg.indexOf('fill="#000"');
@@ -80,7 +80,7 @@ describe("renderSceneToSvg", () => {
         ],
       ]),
     };
-    ({ scene } = addShape(scene, { ...rect("a", 0, 0), layerId: hidden, style: { fill: "#f00" } }));
+    ({ scene } = addElement(scene, { ...rect("a", 0, 0), layerId: hidden, style: { fill: "#f00" } }));
     const svg = renderSceneToSvg(scene);
     expect(svg).not.toContain('fill="#f00"');
   });

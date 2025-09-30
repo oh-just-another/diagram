@@ -11,7 +11,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { createPortal } from "react-dom";
 import {
   getDescendantsOf,
-  getShapeWorldBounds,
+  getElementWorldBounds,
   isGroup,
   type ElementBase,
 } from "@oh-just-another/scene";
@@ -20,11 +20,11 @@ import { useDiagramOptional } from "./hooks.js";
 import { PropertyPanel } from "./property-panel.js";
 
 /**
- * modern-style floating selection panel. Anchors above the bounding
- * box of the current selection (`union(getShapeWorldBounds(s))`),
- * flips to `bottom`/`right`/`left` if there's no room above. Re-
- * positions live on selection, scene, and viewport events, plus
- * floating-ui's `autoUpdate` (window resize / ancestor scroll).
+ * Floating selection panel. Anchors above the bounding box of the
+ * current selection (`union(getElementWorldBounds(s))`), flips to
+ * `bottom`/`right`/`left` if there's no room above. Repositions live on
+ * selection, scene, and viewport events, plus floating-ui's `autoUpdate`
+ * (window resize / ancestor scroll).
  *
  * Rendered to `document.body` via `createPortal` so the panel survives
  * any overflow:hidden on the canvas container. Default z-index sits
@@ -228,7 +228,7 @@ const computeSelectionWorldBbox = (
             const s = editor.scene.shapes.get(ep.elementId);
             if (s) {
               try {
-                const b = getShapeWorldBounds(s);
+                const b = getElementWorldBounds(s);
                 points.push({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
               } catch {
                 /* skip */
@@ -259,7 +259,7 @@ const computeSelectionWorldBbox = (
         if (isGroup(d)) continue; // skip nested 0×0 groups
         let b: { x: number; y: number; width: number; height: number };
         try {
-          b = getShapeWorldBounds(d);
+          b = getElementWorldBounds(d);
         } catch {
           continue;
         }
@@ -270,7 +270,7 @@ const computeSelectionWorldBbox = (
     }
     let b: { x: number; y: number; width: number; height: number };
     try {
-      b = getShapeWorldBounds(s);
+      b = getElementWorldBounds(s);
     } catch {
       continue;
     }

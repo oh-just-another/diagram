@@ -1,5 +1,5 @@
 import type { Bounds, ElementId } from "@oh-just-another/types";
-import { getShape, getShapeWorldBounds } from "@oh-just-another/scene";
+import { getElement, getElementWorldBounds } from "@oh-just-another/scene";
 import {
   PEER_CURSOR_BROADCAST_INTERVAL_MS,
   type Editor,
@@ -142,9 +142,9 @@ export const bindAwareness = (
 const resolveSelectionBounds = (editor: Editor, ids: readonly string[]): Bounds[] => {
   const out: Bounds[] = [];
   for (const id of ids) {
-    const shape = getShape(editor.scene, id as ElementId);
+    const shape = getElement(editor.scene, id as ElementId);
     if (!shape) continue;
-    out.push(getShapeWorldBounds(shape));
+    out.push(getElementWorldBounds(shape));
   }
   return out;
 };

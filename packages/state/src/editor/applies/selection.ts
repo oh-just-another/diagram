@@ -1,4 +1,4 @@
-import { getShapesCoveredByBounds, type Scene } from "@oh-just-another/scene";
+import { getElementsCoveredByBounds, type Scene } from "@oh-just-another/scene";
 import type { Bounds, LayerId } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
 import { LASSO_COVERAGE_THRESHOLD } from "../../constants.js";
@@ -21,7 +21,7 @@ export const selectByBounds = (
   bounds: Bounds,
   mode: "replace" | "add",
 ): Selection.Selection => {
-  const hits = getShapesCoveredByBounds(scene, bounds, LASSO_COVERAGE_THRESHOLD);
+  const hits = getElementsCoveredByBounds(scene, bounds, LASSO_COVERAGE_THRESHOLD);
   let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : current;
   for (const shape of hits) {
     if (isLayerLocked(shape.layerId)) continue;
@@ -46,7 +46,7 @@ export const selectByBoundsLive = (
   mode: "replace" | "add",
 ): Selection.Selection => {
   let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : base;
-  const hits = getShapesCoveredByBounds(scene, bounds, LASSO_COVERAGE_THRESHOLD);
+  const hits = getElementsCoveredByBounds(scene, bounds, LASSO_COVERAGE_THRESHOLD);
   for (const shape of hits) {
     if (isLayerLocked(shape.layerId)) continue;
     next = Selection.add(next, shape.id);

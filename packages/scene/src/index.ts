@@ -69,8 +69,8 @@ export {
   isBrush,
   registerBounder,
   getBounder,
-  getShapeLocalBounds,
-  getShapeWorldBounds,
+  getElementLocalBounds,
+  getElementWorldBounds,
 } from "./shape.js";
 export {
   setTextMeasurer,
@@ -138,10 +138,10 @@ export { invert, batch, isNoop } from "./patch.js";
 
 // Operations (return { scene, patch })
 export {
-  addShape,
-  removeShape,
-  updateShape,
-  moveShape,
+  addElement,
+  removeElement,
+  updateElement,
+  moveElement,
   addLink,
   removeLink,
   updateLink,
@@ -160,23 +160,23 @@ export { getAnnotationWorldPosition } from "./annotation-geometry.js";
 
 // Queries
 export {
-  getShape,
+  getElement,
   getLink,
   getLayer,
   getLayersInOrder,
-  getShapesInLayer,
+  getElementsInLayer,
   getLinksInLayer,
-  getShapesInBounds,
-  getShapesCoveredByBounds,
-  getShapeAt,
+  getElementsInBounds,
+  getElementsCoveredByBounds,
+  getElementAt,
   buildSpatialIndex,
   queryByIndex,
-  getShapeAtIndexed,
+  getElementAtIndexed,
   getChildrenOf,
   getRootSelf,
   getDescendantsOf,
-  isShapeLocked,
-  isShapeHidden,
+  isElementLocked,
+  isElementHidden,
 } from "./queries.js";
 
 // Spatial index (the class itself, for advanced uses)
@@ -184,7 +184,7 @@ export { SpatialGrid } from "./spatial.js";
 
 // Accessibility helpers
 export type { AccessibleNameResolver } from "./a11y.js";
-export { getShapeAccessibleName, registerAccessibleName } from "./a11y.js";
+export { getElementAccessibleName, registerAccessibleName } from "./a11y.js";
 
 // Layout helpers (pure functions returning patches)
 export type {
@@ -199,7 +199,7 @@ export {
   gridLayout,
   stackLayout,
   treeLayout,
-  allShapesInLayer,
+  allElementsInLayer,
   getAutoLayoutSpec,
   runAutoLayout,
 } from "./layout.js";
@@ -224,7 +224,7 @@ export { elbowRoute, type ElbowRouteOptions } from "./elbow-router.js";
 // Scene-level shape diff (added / removed / modified) for diff
 // visualisation and merge.
 export type { SceneShapeDiff } from "./diff.js";
-export { diffSceneShapes } from "./diff.js";
+export { diffSceneElements } from "./diff.js";
 
 // Three-way merge (the Y.Doc subdoc runtime remains in @collab).
 export type {

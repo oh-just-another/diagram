@@ -1,17 +1,17 @@
 import {
-  addShape,
-  getShape,
+  addElement,
+  getElement,
   orderForTop,
   removeLink,
-  removeShape,
-  updateShape,
+  removeElement,
+  updateElement,
   type Scene,
   type Element,
   type Patch,
   type TextStyle,
 } from "@oh-just-another/scene";
 import type { LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
-import { elementId as castShapeId } from "@oh-just-another/types";
+import { elementId as castElementId } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
 
 /**
@@ -30,10 +30,10 @@ export const computeMoveSelectionBy = (
   const patches: Patch[] = [];
   let moved = 0;
   for (const id of targets) {
-    const shape = getShape(s, id);
+    const shape = getElement(s, id);
     if (!shape) continue;
     if (isLayerLocked(shape.layerId)) continue;
-    const r = updateShape(s, id, (sh) => ({
+    const r = updateElement(s, id, (sh) => ({
       ...sh,
       position: { x: sh.position.x + delta.x, y: sh.position.y + delta.y },
     }));
@@ -69,7 +69,7 @@ export const computeDeleteSelection = (
         patches.push(r.patch);
       }
     }
-    const r = removeShape(s, id);
+    const r = removeElement(s, id);
     s = r.scene;
     patches.push(r.patch);
   }
@@ -102,9 +102,9 @@ export const computeDuplicateSelection = (
   const patches: Patch[] = [];
   const newIds: ElementId[] = [];
   for (const id of targets) {
-    const shape = getShape(s, id);
+    const shape = getElement(s, id);
     if (!shape) continue;
-    const newId = castShapeId(`shape-${nextIdSeed()}-${Date.now().toString(36)}`);
+    const newId = castElementId(`shape-${nextIdSeed()}-${Date.now().toString(36)}`);
     const order = orderForTop(
       [...s.shapes.values()].filter((sh) => sh.layerId === shape.layerId).map((sh) => sh.order),
     );
@@ -114,7 +114,7 @@ export const computeDuplicateSelection = (
       position: { x: shape.position.x + 10, y: shape.position.y + 10 },
       order,
     } as Element;
-    const r = addShape(s, clone);
+    const r = addElement(s, clone);
     s = r.scene;
     patches.push(r.patch);
     newIds.push(newId);
@@ -177,7 +177,7 @@ export const computeUpdateStyle = (
   let s = scene;
   const patches: Patch[] = [];
   for (const id of targetIds) {
-    const r = updateShape(s, id, (sh) => ({ ...sh, style: { ...sh.style, ...partial } }));
+    const r = updateElement(s, id, (sh) => ({ ...sh, style: { ...sh.style, ...partial } }));
     s = r.scene;
     patches.push(r.patch);
   }
@@ -200,13 +200,13 @@ export const computeUpdateTextProps = (
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetIds: ElementId[] = [];
   for (const id of ids) {
-    if (getShape(scene, id)?.type === "text") targetIds.push(id);
+    if (getElement(scene, id)?.type === "text") targetIds.push(id);
   }
   if (targetIds.length === 0) return null;
   let s = scene;
   const patches: Patch[] = [];
   for (const id of targetIds) {
-    const r = updateShape(s, id, (sh) => ({ ...sh, ...partial }));
+    const r = updateElement(s, id, (sh) => ({ ...sh, ...partial }));
     s = r.scene;
     patches.push(r.patch);
   }

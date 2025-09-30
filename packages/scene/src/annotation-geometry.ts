@@ -1,7 +1,7 @@
 import type { Vec2 } from "@oh-just-another/types";
 import type { Annotation } from "./annotation.js";
 import type { Scene } from "./scene.js";
-import { getShape } from "./queries.js";
+import { getElement } from "./queries.js";
 
 /**
  * World-space position where the pin should render. When the annotation
@@ -11,7 +11,7 @@ import { getShape } from "./queries.js";
  */
 export const getAnnotationWorldPosition = (scene: Scene, annotation: Annotation): Vec2 => {
   if (annotation.elementId === null) return annotation.position;
-  const shape = getShape(scene, annotation.elementId);
+  const shape = getElement(scene, annotation.elementId);
   if (!shape) return annotation.position;
   return {
     x: shape.position.x + annotation.position.x,

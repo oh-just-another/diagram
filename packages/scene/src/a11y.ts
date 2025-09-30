@@ -6,8 +6,8 @@ import type { ElementBase, TemplateElement, TextElement } from "./shape.js";
  * cover the built-ins: text → text content, template → `metadata.label`
  * or `type`, others → titleised `type`.
  *
- * The resolver is intentionally synchronous + pure so it can run in
- * a `getShapeAccessibleName` query without side effects.
+ * The resolver is synchronous and pure so it can run in a
+ * `getElementAccessibleName` query without side effects.
  */
 export type AccessibleNameResolver<S extends ElementBase = ElementBase> = (shape: S) => string;
 
@@ -29,7 +29,7 @@ export const registerAccessibleName = <S extends ElementBase>(
  *   template "task-card" with metadata.label "Buy milk" → "Buy milk"
  *   rectangle → "Rectangle"
  */
-export const getShapeAccessibleName = (shape: ElementBase): string => {
+export const getElementAccessibleName = (shape: ElementBase): string => {
   const resolver = registry.get(shape.type);
   if (resolver) {
     const name = resolver(shape).trim();

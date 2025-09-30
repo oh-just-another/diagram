@@ -4,7 +4,7 @@ import { bounds as B, matrix } from "@oh-just-another/math";
 import type { Bounds } from "@oh-just-another/types";
 import {
   getScreenToWorld,
-  getShapeWorldBounds,
+  getElementWorldBounds,
 } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene } from "./hooks.js";
 
@@ -50,7 +50,7 @@ const isContentOffscreen = (scene: ReturnType<typeof useScene>): boolean => {
   if (vp.size.width <= 0 || vp.size.height <= 0) return false;
   let combined: Bounds | null = null;
   for (const s of scene.shapes.values()) {
-    const b = getShapeWorldBounds(s);
+    const b = getElementWorldBounds(s);
     combined = combined ? B.union(combined, b) : b;
   }
   if (!combined) return false;

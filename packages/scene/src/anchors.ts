@@ -2,7 +2,7 @@ import type { Vec2 } from "@oh-just-another/types";
 import { isContainer } from "./container.js";
 import type { AnchorRef, NamedAnchor, StandardAnchor } from "./edge.js";
 import type { ElementBase } from "./shape.js";
-import { getShapeLocalBounds } from "./shape.js";
+import { getElementLocalBounds } from "./shape.js";
 
 const EMPTY_ANCHOR_EXCLUDE: ReadonlySet<string> = new Set<string>();
 
@@ -59,7 +59,7 @@ export const getNamedAnchorLocal = (shape: ElementBase, name: NamedAnchor): Vec2
   if (custom !== undefined) return resolveAnchorRefLocal(shape, custom);
   const standard = STANDARD_ANCHOR_RATIOS[name as StandardAnchor];
   if (!standard) return undefined;
-  const b = getShapeLocalBounds(shape);
+  const b = getElementLocalBounds(shape);
   return { x: b.x + b.width * standard.x, y: b.y + b.height * standard.y };
 };
 
@@ -156,7 +156,7 @@ const CONTAINER_SNAP_EXCLUDED: ReadonlySet<string> = new Set(["center"]);
 
 export const listAnchorsLocal = (shape: ElementBase): ReadonlyMap<string, Vec2> => {
   const out = new Map<string, Vec2>();
-  const b = getShapeLocalBounds(shape);
+  const b = getElementLocalBounds(shape);
   for (const name of STANDARD_ANCHORS) {
     const ratio = STANDARD_ANCHOR_RATIOS[name];
     out.set(name, { x: b.x + b.width * ratio.x, y: b.y + b.height * ratio.y });
@@ -184,11 +184,11 @@ const resolveAnchorRefLocal = (shape: ElementBase, anchor: AnchorRef): Vec2 => {
       return point;
     }
     case "ratio": {
-      const b = getShapeLocalBounds(shape);
+      const b = getElementLocalBounds(shape);
       return { x: b.x + b.width * anchor.position.x, y: b.y + b.height * anchor.position.y };
     }
     case "absolute": {
-      const b = getShapeLocalBounds(shape);
+      const b = getElementLocalBounds(shape);
       return { x: b.x + anchor.offset.x, y: b.y + anchor.offset.y };
     }
   }
@@ -205,6 +205,6 @@ const lookupNamed = (shape: ElementBase, name: NamedAnchor): Vec2 | undefined =>
   }
   const standard = STANDARD_ANCHOR_RATIOS[name as StandardAnchor];
   if (!standard) return undefined;
-  const b = getShapeLocalBounds(shape);
+  const b = getElementLocalBounds(shape);
   return { x: b.x + b.width * standard.x, y: b.y + b.height * standard.y };
 };

@@ -3,19 +3,19 @@ import { linkId, layerId, elementId } from "@oh-just-another/types";
 import {
   addLink,
   addLayer,
-  addShape,
+  addElement,
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,
   invert,
-  moveShape,
+  moveElement,
   orderBetween,
   removeLink,
   removeLayer,
-  removeShape,
+  removeElement,
   setViewport,
   updateLayer,
-  updateShape,
+  updateElement,
   type Link,
   type Layer,
   type Element,
@@ -36,36 +36,36 @@ const rect = (id: string, x = 0, y = 0): Element => ({
 });
 
 describe("operations", () => {
-  describe("addShape", () => {
+  describe("addElement", () => {
     it("adds and returns inverse-able patch", () => {
-      const { scene, patch } = addShape(emptyScene(), rect("a"));
+      const { scene, patch } = addElement(emptyScene(), rect("a"));
       expect(scene.shapes.size).toBe(1);
       const back = apply(scene, invert(patch));
       expect(back.shapes.size).toBe(0);
     });
     it("throws on duplicate id", () => {
-      const { scene } = addShape(emptyScene(), rect("a"));
-      expect(() => addShape(scene, rect("a"))).toThrow(/already exists/i);
+      const { scene } = addElement(emptyScene(), rect("a"));
+      expect(() => addElement(scene, rect("a"))).toThrow(/already exists/i);
     });
   });
 
-  describe("removeShape", () => {
+  describe("removeElement", () => {
     it("removes existing shape", () => {
-      const { scene } = addShape(emptyScene(), rect("a"));
-      const { scene: removed, patch } = removeShape(scene, elementId("a"));
+      const { scene } = addElement(emptyScene(), rect("a"));
+      const { scene: removed, patch } = removeElement(scene, elementId("a"));
       expect(removed.shapes.has(elementId("a"))).toBe(false);
       const restored = apply(removed, invert(patch));
       expect(restored.shapes.has(elementId("a"))).toBe(true);
     });
     it("throws on missing id", () => {
-      expect(() => removeShape(emptyScene(), elementId("missing"))).toThrow(/not found/i);
+      expect(() => removeElement(emptyScene(), elementId("missing"))).toThrow(/not found/i);
     });
   });
 
-  describe("updateShape", () => {
+  describe("updateElement", () => {
     it("applies the update function and produces invertible patch", () => {
-      const { scene } = addShape(emptyScene(), rect("a"));
-      const { scene: moved, patch } = updateShape(scene, elementId("a"), (s) => ({
+      const { scene } = addElement(emptyScene(), rect("a"));
+      const { scene: moved, patch } = updateElement(scene, elementId("a"), (s) => ({
         ...s,
         position: { x: 5, y: 7 },
       }));
@@ -75,10 +75,10 @@ describe("operations", () => {
     });
   });
 
-  describe("moveShape", () => {
+  describe("moveElement", () => {
     it("shortcut for updating position", () => {
-      const { scene } = addShape(emptyScene(), rect("a"));
-      const { scene: moved } = moveShape(scene, elementId("a"), { x: 3, y: 4 });
+      const { scene } = addElement(emptyScene(), rect("a"));
+      const { scene: moved } = moveElement(scene, elementId("a"), { x: 3, y: 4 });
       expect(moved.shapes.get(elementId("a"))?.position).toEqual({ x: 3, y: 4 });
     });
   });

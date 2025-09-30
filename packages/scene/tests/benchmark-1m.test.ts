@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   buildSpatialIndex,
   DEFAULT_LAYER_ID,
   emptyScene,
@@ -42,7 +42,7 @@ const buildHugeScene = () => {
       width: 40,
       height: 40,
     };
-    ({ scene } = addShape(scene, s));
+    ({ scene } = addElement(scene, s));
   }
   return scene;
 };

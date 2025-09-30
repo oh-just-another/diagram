@@ -17,13 +17,13 @@ import type { Element } from "./shape.js";
  *
  * No history / patch generation here — caller composes the
  * resolved Scene and pushes it through `Editor.loadScene` (or
- * derives a patch via `diffSceneShapes`).
+ * derives a patch via `diffSceneElements`).
  *
  * Equality semantics: scene mutations always produce fresh shape
  * references via `apply(scene, patch)`. Reference equality is
  * sufficient to detect "did this branch touch the shape?". For
  * cross-process / cross-document scenarios where references differ
- * naturally, callers can pass a custom `compareShapes` predicate.
+ * naturally, callers can pass a custom `compareElements` predicate.
  */
 export interface ThreeWayMergeReport {
   /** Best-effort merged scene; conflicts retain the `target` version. */
@@ -44,7 +44,7 @@ export interface ThreeWayMergeOptions {
    * Custom equality predicate. Default = reference equality (the
    * intended use; scene mutations always allocate new shape objects).
    */
-  readonly compareShapes?: (a: Element, b: Element) => boolean;
+  readonly compareElements?: (a: Element, b: Element) => boolean;
 }
 
 export const mergeScenesThreeWay = (
@@ -53,7 +53,7 @@ export const mergeScenesThreeWay = (
   target: Scene,
   options: ThreeWayMergeOptions = {},
 ): ThreeWayMergeReport => {
-  const eq = options.compareShapes ?? ((a, b) => a === b);
+  const eq = options.compareElements ?? ((a, b) => a === b);
   const conflicts: ThreeWayMergeConflict[] = [];
   // Start from target — conflicts default to keeping target until
   // the host resolves them.

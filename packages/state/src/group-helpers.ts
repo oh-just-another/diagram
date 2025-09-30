@@ -1,5 +1,5 @@
 import type { ElementId } from "@oh-just-another/types";
-import { getShape, type Scene, type Element } from "@oh-just-another/scene";
+import { getElement, type Scene, type Element } from "@oh-just-another/scene";
 
 /**
  * Group / isolation helpers — pure functions over Scene + ElementId with no
@@ -19,7 +19,7 @@ export const topGroupAncestor = (scene: Scene, shape: Element): Element | null =
   let cursor: Element | undefined = shape;
   let depth = 0;
   while (cursor?.parentId && depth < MAX_PARENT_DEPTH) {
-    const parent = getShape(scene, cursor.parentId);
+    const parent = getElement(scene, cursor.parentId);
     if (!parent) break;
     if (parent.type === "group") topGroup = parent;
     cursor = parent;
@@ -38,12 +38,12 @@ export const isDescendantOfGroup = (
   elementId: ElementId,
   groupId: ElementId,
 ): boolean => {
-  let cursor = getShape(scene, elementId);
+  let cursor = getElement(scene, elementId);
   let depth = 0;
   while (cursor && depth < MAX_PARENT_DEPTH) {
     if (cursor.id === groupId) return true;
     if (!cursor.parentId) return false;
-    cursor = getShape(scene, cursor.parentId);
+    cursor = getElement(scene, cursor.parentId);
     depth++;
   }
   return false;
@@ -66,7 +66,7 @@ export const promoteToGroupRoot = (
   let depth = 0;
   while (current.parentId && depth < MAX_PARENT_DEPTH) {
     if (enteredGroup === current.parentId) break;
-    const parent = getShape(scene, current.parentId);
+    const parent = getElement(scene, current.parentId);
     if (!parent) break;
     if (parent.type !== "group") break;
     current = parent;
@@ -80,7 +80,7 @@ export const promoteToGroupRoot = (
  * does NOT pass through `enteredGroupId`. Selection always stays opaque even
  * when somehow not in the descendant set.
  */
-export const computeDimShapes = (
+export const computeDimElements = (
   scene: Scene,
   selection: Iterable<ElementId>,
   enteredGroupId: ElementId,
@@ -116,7 +116,7 @@ export const pickDrillTarget = (
   let next: Element | null = null;
   let depth = 0;
   while (cursor?.parentId && depth < MAX_PARENT_DEPTH) {
-    const parent = getShape(scene, cursor.parentId);
+    const parent = getElement(scene, cursor.parentId);
     if (!parent) break;
     if (parent.id === top.id) break;
     if (parent.type === "group") next = parent;

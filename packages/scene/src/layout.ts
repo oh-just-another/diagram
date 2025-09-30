@@ -1,9 +1,9 @@
 import type { ElementId, Vec2 } from "@oh-just-another/types";
 import { getDropZoneWorld } from "./container.js";
 import type { Scene } from "./scene.js";
-import { getShapeLocalBounds, type Element } from "./shape.js";
-import { getShape, getShapesInLayer } from "./queries.js";
-import { updateShape, type OperationResult } from "./operations.js";
+import { getElementLocalBounds, type Element } from "./shape.js";
+import { getElement, getElementsInLayer } from "./queries.js";
+import { updateElement, type OperationResult } from "./operations.js";
 import { batch, type Patch } from "./patch.js";
 import { getLayoutKind } from "./layout-registry.js";
 
@@ -20,7 +20,7 @@ import { getLayoutKind } from "./layout-registry.js";
  */
 const shapeAdvanceSize = (shape: Element): { width: number; height: number } => {
   try {
-    const local = getShapeLocalBounds(shape);
+    const local = getElementLocalBounds(shape);
     return {
       width: local.width * Math.abs(shape.scale.x),
       height: local.height * Math.abs(shape.scale.y),
@@ -61,7 +61,7 @@ export const gridLayout: LayoutFn<GridLayoutSpec> = (scene, spec) => {
   const origin = spec.origin ?? { x: 0, y: 0 };
   const shapes: Element[] = [];
   for (const id of spec.shapeIds) {
-    const s = getShape(scene, id);
+    const s = getElement(scene, id);
     if (s) shapes.push(s);
   }
   shapes.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
@@ -78,7 +78,7 @@ export const gridLayout: LayoutFn<GridLayoutSpec> = (scene, spec) => {
     const row = Math.floor(i / spec.cols);
     const target = { x: origin.x + col * stride.x, y: origin.y + row * stride.y };
     if (shape.position.x === target.x && shape.position.y === target.y) return;
-    const r: OperationResult = updateShape(working, shape.id, (s) => ({ ...s, position: target }));
+    const r: OperationResult = updateElement(working, shape.id, (s) => ({ ...s, position: target }));
     working = r.scene;
     patches.push(r.patch);
   });
@@ -98,7 +98,7 @@ export const stackLayout: LayoutFn<StackLayoutSpec> = (scene, spec) => {
   const origin = spec.origin ?? { x: 0, y: 0 };
   const shapes: Element[] = [];
   for (const id of spec.shapeIds) {
-    const s = getShape(scene, id);
+    const s = getElement(scene, id);
     if (s) shapes.push(s);
   }
   shapes.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
@@ -110,7 +110,7 @@ export const stackLayout: LayoutFn<StackLayoutSpec> = (scene, spec) => {
     const { width: w, height: h } = shapeAdvanceSize(shape);
     if (shape.position.x !== cursor.x || shape.position.y !== cursor.y) {
       const target = cursor;
-      const r = updateShape(working, shape.id, (s) => ({ ...s, position: target }));
+      const r = updateElement(working, shape.id, (s) => ({ ...s, position: target }));
       working = r.scene;
       patches.push(r.patch);
     }
@@ -125,8 +125,8 @@ export const stackLayout: LayoutFn<StackLayoutSpec> = (scene, spec) => {
  * Convenience: list all shape ids in a layer in z-order, suitable
  * as `LayoutSpec.shapeIds`.
  */
-export const allShapesInLayer = (scene: Scene, layerId: Scene["layers"] extends ReadonlyMap<infer K, unknown> ? K : never): readonly ElementId[] =>
-  getShapesInLayer(scene, layerId).map((s) => s.id);
+export const allElementsInLayer = (scene: Scene, layerId: Scene["layers"] extends ReadonlyMap<infer K, unknown> ? K : never): readonly ElementId[] =>
+  getElementsInLayer(scene, layerId).map((s) => s.id);
 
 // --- auto-layout container ---
 
@@ -213,7 +213,7 @@ export const getAutoLayoutSpec = (shape: Element): AutoLayoutSpec | null => {
  *   2. Otherwise the origin falls back to `parent.position`.
  */
 export const runAutoLayout = (scene: Scene, parentId: ElementId): Patch | null => {
-  const parent = getShape(scene, parentId);
+  const parent = getElement(scene, parentId);
   if (!parent) return null;
   const spec = getAutoLayoutSpec(parent);
   if (!spec) return null;
@@ -310,7 +310,7 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
 
   const measure = (id: ElementId): { w: number; h: number } => {
     if (widthOf.has(id)) return { w: widthOf.get(id)!, h: heightOf.get(id)! };
-    const shape = getShape(scene, id);
+    const shape = getElement(scene, id);
     if (!shape) {
       widthOf.set(id, 0);
       heightOf.set(id, 0);
@@ -347,7 +347,7 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   const patches: Patch[] = [];
   let working = scene;
   const place = (id: ElementId, leftX: number, topY: number): void => {
-    const shape = getShape(working, id);
+    const shape = getElement(working, id);
     if (!shape) return;
     const m = measure(id);
     const selfW = shapeWidth(shape);
@@ -357,7 +357,7 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
       y: topY,
     };
     if (shape.position.x !== target.x || shape.position.y !== target.y) {
-      const r = updateShape(working, id, (s) => ({ ...s, position: target }));
+      const r = updateElement(working, id, (s) => ({ ...s, position: target }));
       working = r.scene;
       patches.push(r.patch);
     }

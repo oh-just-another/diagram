@@ -3,7 +3,7 @@ import { annotationId, commentId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addAnnotation,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Annotation,
@@ -53,7 +53,7 @@ const anchoredAnnotation = (id: string, anchor: string, x: number, y: number): A
 
 const sceneWith = (shapes: Element[], annotations: Annotation[]): Scene => {
   let s = emptyScene();
-  for (const sh of shapes) s = addShape(s, sh).scene;
+  for (const sh of shapes) s = addElement(s, sh).scene;
   for (const a of annotations) s = addAnnotation(s, a).scene;
   return s;
 };

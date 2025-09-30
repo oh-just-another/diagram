@@ -1,7 +1,7 @@
 import {
   getLayersInOrder,
-  getShapeWorldBounds,
-  getShapesInLayer,
+  getElementWorldBounds,
+  getElementsInLayer,
   type Scene,
 } from "@oh-just-another/scene";
 import type { Bounds } from "@oh-just-another/types";
@@ -130,8 +130,8 @@ const computeSceneBbox = (scene: Scene): Bounds | null => {
   let acc: Bounds | null = null;
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;
-    for (const shape of getShapesInLayer(scene, layer.id)) {
-      const b = getShapeWorldBounds(shape);
+    for (const shape of getElementsInLayer(scene, layer.id)) {
+      const b = getElementWorldBounds(shape);
       acc = acc ? unionBounds(acc, b) : b;
     }
   }

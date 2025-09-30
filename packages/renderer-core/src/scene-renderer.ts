@@ -1,6 +1,6 @@
 import {
   getLayersInOrder,
-  getShapesInLayer,
+  getElementsInLayer,
   getWorldToScreen,
   type Scene,
   type ElementBase,
@@ -36,7 +36,7 @@ export interface RenderSceneOptions {
   /** Skip clearing the target before drawing. Default: false. */
   readonly skipClear?: boolean;
   /** Called for shapes whose `type` has no registered renderer. Default: ignore. */
-  readonly onUnknownShape?: (shape: ElementBase) => void;
+  readonly onUnknownElement?: (shape: ElementBase) => void;
   /**
    * World-space viewport bounds. When provided, shapes whose AABB does
    * not intersect this rectangle are skipped (viewport culling). Pass
@@ -87,9 +87,9 @@ export interface RenderSceneOptions {
    * carry an explicit opacity. Acceptable for the isolation UX
    * because outsiders are usually plain opaque shapes.
    */
-  readonly dimShapes?: ReadonlySet<ElementId>;
+  readonly dimElements?: ReadonlySet<ElementId>;
   /**
-   * Alpha to use for `dimShapes`. Default 1 (no-op). Hosts using the
+   * Alpha to use for `dimElements`. Default 1 (no-op). Hosts using the
    * isolation feature should pass their `ISOLATION_DIM_OPACITY`
    * constant.
    */
@@ -101,7 +101,7 @@ export interface RenderSceneOptions {
    * and forwards the set here. Hidden shapes are also skipped in
    * hit-test on the editor side, so they read as "absent" entirely.
    */
-  readonly hideShapes?: ReadonlySet<ElementId>;
+  readonly hideElements?: ReadonlySet<ElementId>;
   /**
    * Per-layer composite bitmap cache. When supplied along with
    * `compositeLayerBitmap`, unchanged layers (i.e. not present in
@@ -191,7 +191,7 @@ export const renderScene = (
   const zoomBucket = bucketFor(zoom);
   const layerBoundsFor = (layerId: LayerId): Bounds | null => {
     let acc: Bounds | null = null;
-    for (const shape of getShapesInLayer(scene, layerId)) {
+    for (const shape of getElementsInLayer(scene, layerId)) {
       const bb = cachedWorldBounds(boundsCache, shape);
       acc = acc ? B.union(acc, bb) : bb;
     }
@@ -224,8 +224,8 @@ export const renderScene = (
       }
     }
 
-    for (const shape of getShapesInLayer(scene, layer.id)) {
-      if (options.hideShapes?.has(shape.id)) continue;
+    for (const shape of getElementsInLayer(scene, layer.id)) {
+      if (options.hideElements?.has(shape.id)) continue;
       if (candidates && !candidates.has(shape.id)) continue;
       if (viewport) {
         const bb = cachedWorldBounds(boundsCache, shape);
@@ -252,15 +252,15 @@ export const renderScene = (
 
       const renderer = getShapeRenderer(shape.type);
       if (!renderer) {
-        options.onUnknownShape?.(shape);
+        options.onUnknownElement?.(shape);
         continue;
       }
 
       target.save();
       // Isolation dim — set BEFORE the renderer runs so any
       // shape-style-specific setOpacity inside the renderer can
-      // override (acceptable trade — see RenderSceneOptions.dimShapes).
-      if (options.dimShapes?.has(shape.id) && options.dimOpacity !== undefined) {
+      // override (see RenderSceneOptions.dimElements).
+      if (options.dimElements?.has(shape.id) && options.dimOpacity !== undefined) {
         target.setOpacity(options.dimOpacity);
       }
       target.translate(shape.position.x, shape.position.y);

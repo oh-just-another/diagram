@@ -2,7 +2,7 @@ import type { AnnotationId, Bounds, ElementId, Transform, Vec2 } from "@oh-just-
 import {
   getAnnotationWorldPosition,
   getLinkPath,
-  getShapeWorldBounds,
+  getElementWorldBounds,
   getWorldToScreen,
   type Annotation,
   type Scene,
@@ -74,7 +74,7 @@ const groupWorldBounds = (scene: Scene, groupId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
   for (const shape of scene.shapes.values()) {
     if (shape.parentId !== groupId) continue;
-    const inner = shape.type === "group" ? groupWorldBounds(scene, shape.id) : getShapeWorldBounds(shape);
+    const inner = shape.type === "group" ? groupWorldBounds(scene, shape.id) : getElementWorldBounds(shape);
     if (!inner) continue;
     acc = acc ? B.union(acc, inner) : inner;
   }
@@ -267,7 +267,7 @@ export const renderOverlay = (
     // descendants instead. Otherwise the selection chrome would collapse
     // to a zero-size point at the group's origin.
     const worldBounds =
-      shape.type === "group" ? groupWorldBounds(scene, id) : getShapeWorldBounds(shape);
+      shape.type === "group" ? groupWorldBounds(scene, id) : getElementWorldBounds(shape);
     if (!worldBounds) continue;
     const screenBounds = projectBounds(worldBounds, w2s);
 
@@ -507,7 +507,7 @@ const drawHitZones = (target: RenderTarget, scene: Scene, w2s: Transform, zoom: 
   // hit-test, which only offers handles on resizable selections).
   for (const shape of scene.shapes.values()) {
     if (!isResizable(shape)) continue;
-    const wb = getShapeWorldBounds(shape);
+    const wb = getElementWorldBounds(shape);
     if (!wb) continue;
     for (const handle of resizeHandlesFor(shape)) {
       const c = matrix.applyToPoint(w2s, handlePosition(handle, wb, zoom));

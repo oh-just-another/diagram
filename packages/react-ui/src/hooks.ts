@@ -17,7 +17,7 @@ import { selection, type Editor, type Mode, type Selection } from "@oh-just-anot
 import { useDiagramContext, useDiagramContextOptional, useEditorSelector } from "./context.js";
 
 /**
- * Live `Editor` instance. Use for imperative actions (`addShape`,
+ * Live `Editor` instance. Use for imperative actions (`addElement`,
  * `loadScene`, `screenToWorld`). Throws if not inside a provider.
  *
  * The reactive hooks below (`useScene`, etc.) accept the brief pre-mount

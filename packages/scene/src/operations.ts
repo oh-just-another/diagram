@@ -19,7 +19,7 @@ export interface OperationResult {
 
 // --- Shapes ---
 
-export const addShape = (scene: Scene, shape: Element): OperationResult => {
+export const addElement = (scene: Scene, shape: Element): OperationResult => {
   if (scene.shapes.has(shape.id)) {
     throw new Error(`Element already exists: ${shape.id}`);
   }
@@ -27,14 +27,14 @@ export const addShape = (scene: Scene, shape: Element): OperationResult => {
   return { scene: apply(scene, patch), patch };
 };
 
-export const removeShape = (scene: Scene, id: ElementId): OperationResult => {
+export const removeElement = (scene: Scene, id: ElementId): OperationResult => {
   const before = scene.shapes.get(id);
   if (!before) throw new Error(`Element not found: ${id}`);
   const patch: Patch = { kind: "shape", id, before, after: null };
   return { scene: apply(scene, patch), patch };
 };
 
-export const updateShape = (
+export const updateElement = (
   scene: Scene,
   id: ElementId,
   update: (shape: Element) => Element,
@@ -46,8 +46,8 @@ export const updateShape = (
   return { scene: apply(scene, patch), patch };
 };
 
-export const moveShape = (scene: Scene, id: ElementId, to: Vec2): OperationResult =>
-  updateShape(scene, id, (s) => ({ ...s, position: to }));
+export const moveElement = (scene: Scene, id: ElementId, to: Vec2): OperationResult =>
+  updateElement(scene, id, (s) => ({ ...s, position: to }));
 
 // --- Links ---
 

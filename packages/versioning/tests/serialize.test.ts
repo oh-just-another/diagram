@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
@@ -28,7 +28,7 @@ describe("snapshot store serialization", () => {
   it("round-trips snapshots + branches through serializeStore / importIntoStore", () => {
     const a = new SnapshotStore();
     let scene = emptyScene();
-    ({ scene } = addShape(scene, rect("r1")));
+    ({ scene } = addElement(scene, rect("r1")));
     const v1 = a.capture({ scene, author, message: "init" });
     const feat = a.branch({ name: "feature", fromVersion: v1.id });
     a.setCurrentBranch(feat.id);

@@ -19,7 +19,7 @@ import type { Template, TemplateContext } from "./types.js";
 
 // --- Local helpers ---
 
-const baseShape = (ctx: TemplateContext) => ({
+const baseElement = (ctx: TemplateContext) => ({
   id: ctx.id,
   layerId: ctx.layerId,
   position: ctx.position,
@@ -29,7 +29,7 @@ const baseShape = (ctx: TemplateContext) => ({
 });
 
 const filledRect = (ctx: TemplateContext, width: number, height: number, style: Style): Element => ({
-  ...baseShape(ctx),
+  ...baseElement(ctx),
   type: "rectangle",
   style,
   width,
@@ -41,10 +41,10 @@ const filledEllipse = (
   width: number,
   height: number,
   style: Style,
-): Element => ({ ...baseShape(ctx), type: "ellipse", style, width, height });
+): Element => ({ ...baseElement(ctx), type: "ellipse", style, width, height });
 
 const polygonFromPoints = (ctx: TemplateContext, points: Vec2[], style: Style): Element => ({
-  ...baseShape(ctx),
+  ...baseElement(ctx),
   type: "polygon",
   style,
   points,
@@ -188,7 +188,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
       const h = 90;
       const wave = 18;
       return {
-        ...baseShape(c),
+        ...baseElement(c),
         type: "path",
         style: FLOW_STYLE,
         commands: [

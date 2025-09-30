@@ -31,7 +31,7 @@ export interface SnapContext {
   readonly scene: Scene;
   readonly probe: Vec2;
   readonly threshold: number;
-  readonly excludeShapeIds?: ReadonlySet<string>;
+  readonly excludeElementIds?: ReadonlySet<string>;
   /**
    * What kind of gesture is asking for snap. Contributors can filter
    * themselves out by gesture (e.g. anchor snap only applies during edge
@@ -116,9 +116,9 @@ export const anchorSnapper: SnapContributor = {
     if (ctx.gesture !== "draw-edge" && ctx.gesture !== "edit-edge-endpoint") return [];
     const out: SnapCandidate[] = [];
     for (const shape of ctx.scene.shapes.values()) {
-      if (ctx.excludeShapeIds?.has(shape.id)) continue;
+      if (ctx.excludeElementIds?.has(shape.id)) continue;
       // Cheap reject: skip shapes whose AABB is far from the probe.
-      if (!isProbeNearShape(shape, ctx.probe, ctx.threshold)) continue;
+      if (!isProbeNearElement(shape, ctx.probe, ctx.threshold)) continue;
       const nearest = findNearestAnchor(shape, ctx.probe, snapExcludedAnchors(shape));
       const dx = nearest.world.x - ctx.probe.x;
       const dy = nearest.world.y - ctx.probe.y;
@@ -147,8 +147,8 @@ export const outlineSnapper: SnapContributor = {
     if (ctx.gesture !== "draw-edge" && ctx.gesture !== "edit-edge-endpoint") return [];
     const out: SnapCandidate[] = [];
     for (const shape of ctx.scene.shapes.values()) {
-      if (ctx.excludeShapeIds?.has(shape.id)) continue;
-      if (!isProbeNearShape(shape, ctx.probe, ctx.threshold)) continue;
+      if (ctx.excludeElementIds?.has(shape.id)) continue;
+      if (!isProbeNearElement(shape, ctx.probe, ctx.threshold)) continue;
       const nearest = findNearestOutlinePoint(shape, ctx.probe);
       if (!nearest) continue;
       const dx = nearest.world.x - ctx.probe.x;
@@ -164,7 +164,7 @@ export const outlineSnapper: SnapContributor = {
   },
 };
 
-const isProbeNearShape = (shape: ElementBase, probe: Vec2, threshold: number): boolean => {
+const isProbeNearElement = (shape: ElementBase, probe: Vec2, threshold: number): boolean => {
   // Cheap AABB-around-position test. Hosts can register more precise
   // contributors if their shape types deserve it.
   const cushion = threshold;

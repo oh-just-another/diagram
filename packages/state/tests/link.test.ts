@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Scene,
@@ -68,7 +68,7 @@ const makeEditor = (scene: Scene) =>
 describe("editor.setLink / shapeLink", () => {
   it("sets and clears the element href as one undo step", () => {
     let s = emptyScene();
-    ({ scene: s } = addShape(s, rect("r")));
+    ({ scene: s } = addElement(s, rect("r")));
     const e = makeEditor(s);
     e.setLink([elementId("r")], "example.com"); // normalised inside setLink
     expect((e.scene.shapes.get(elementId("r")) as { href?: string }).href).toBe("https://example.com");
@@ -82,7 +82,7 @@ describe("editor.setLink / shapeLink", () => {
 
   it("shapeLink returns null for an unsafe stored href", () => {
     let s = emptyScene();
-    ({ scene: s } = addShape(s, { ...rect("r"), href: "javascript:alert(1)" } as Element));
+    ({ scene: s } = addElement(s, { ...rect("r"), href: "javascript:alert(1)" } as Element));
     const e = makeEditor(s);
     expect(e.shapeLink(elementId("r"))).toBeNull();
   });

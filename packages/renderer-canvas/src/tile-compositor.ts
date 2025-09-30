@@ -6,8 +6,8 @@ import {
 } from "@oh-just-another/renderer-core";
 import type { Bounds, ElementId } from "@oh-just-another/types";
 import {
-  getShapesInLayer,
-  getShapeWorldBounds,
+  getElementsInLayer,
+  getElementWorldBounds,
   getLayersInOrder,
   type Scene,
   type Element,
@@ -47,14 +47,12 @@ export interface RenderViaTilesOptions {
    * Element ids whose scene-reference changed since the previous frame,
    * each with the before/after world bbox. The compositor routes
    * invalidation by case:
-   *   • removed   (after null)  → invalidateForShape (id present in
+   *   • removed   (after null)  → invalidateForElement (id present in
    *     reverse index)
    *   • added     (before null) → invalidateRect (no id yet)
    *   • mutated/moved (both)    → both rects
-   * Drops the `changedShapeIds` shape-only set in favour of this
-   * fuller view, so add-tracking finally invalidates correctly.
    */
-  readonly changedShapes?: ReadonlyMap<ElementId, ChangedShapeRecord>;
+  readonly changedElements?: ReadonlyMap<ElementId, ChangedShapeRecord>;
   /** Current zoom (used to pick the cache bucket). */
   readonly zoomBucket: number;
 }
@@ -64,13 +62,13 @@ export const renderViaTiles = (
   mainTarget: Canvas2DTarget,
   options: RenderViaTilesOptions,
 ): void => {
-  const { viewport, cache, changedShapes, zoomBucket } = options;
+  const { viewport, cache, changedElements, zoomBucket } = options;
 
   // 1) Invalidate cached tiles per patch (covers add / remove / move).
-  if (changedShapes) {
-    for (const [id, record] of changedShapes) {
+  if (changedElements) {
+    for (const [id, record] of changedElements) {
       cache.invalidateForPatch({
-        ...(record.after === null ? { removedShapeId: id } : {}),
+        ...(record.after === null ? { removedElementId: id } : {}),
         ...(record.before ? { beforeBounds: record.before } : {}),
         ...(record.after ? { afterBounds: record.after } : {}),
       });
@@ -169,8 +167,8 @@ const shapesIntersectingTile = (scene: Scene, tileBounds: Bounds): readonly Elem
   const out: Element[] = [];
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;
-    for (const shape of getShapesInLayer(scene, layer.id)) {
-      const b = getShapeWorldBounds(shape);
+    for (const shape of getElementsInLayer(scene, layer.id)) {
+      const b = getElementWorldBounds(shape);
       if (intersects(b, tileBounds)) out.push(shape);
     }
   }

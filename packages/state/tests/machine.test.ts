@@ -49,11 +49,11 @@ describe("interactionMachine", () => {
   });
 
   describe("dragging shape", () => {
-    it("crossing drag threshold on a shape enters draggingShape", () => {
+    it("crossing drag threshold on a shape enters draggingElement", () => {
       const { actor } = start();
       actor.send({ type: "POINTER_DOWN", point: { x: 5, y: 5 }, target: rectTarget() });
       actor.send({ type: "POINTER_MOVE", point: { x: 100, y: 100 } });
-      expect(actor.getSnapshot().value).toBe("draggingShape");
+      expect(actor.getSnapshot().value).toBe("draggingElement");
     });
 
     it("subsequent POINTER_MOVE emits MOVE_SHAPE with delta", () => {
@@ -136,7 +136,7 @@ describe("interactionMachine", () => {
       const preview = emits.find((e) => e.type === "DRAW_EDGE_PREVIEW");
       expect(preview).toBeDefined();
       if (preview?.type === "DRAW_EDGE_PREVIEW") {
-        expect(preview.fromShape).toBe(elementId("a"));
+        expect(preview.fromElement).toBe(elementId("a"));
         expect(preview.toPoint).toEqual({ x: 80, y: 50 });
       }
     });
@@ -154,14 +154,14 @@ describe("interactionMachine", () => {
       const create = emits.find((e) => e.type === "CREATE_EDGE");
       expect(create).toBeDefined();
       if (create?.type === "CREATE_EDGE") {
-        expect(create.fromShape).toBe(elementId("a"));
-        expect(create.toShape).toBe(elementId("b"));
+        expect(create.fromElement).toBe(elementId("a"));
+        expect(create.toElement).toBe(elementId("b"));
         expect(create.fromPoint).toEqual({ x: 10, y: 10 });
         expect(create.toPoint).toEqual({ x: 200, y: 200 });
       }
     });
 
-    it("POINTER_UP on empty emits CREATE_EDGE with toShape=null", () => {
+    it("POINTER_UP on empty emits CREATE_EDGE with toElement=null", () => {
       const { actor, emits } = start();
       actor.send({ type: "SET_MODE", mode: "draw-edge" });
       actor.send({ type: "POINTER_DOWN", point: { x: 10, y: 10 }, target: rectTarget("a") });
@@ -174,8 +174,8 @@ describe("interactionMachine", () => {
       const create = emits.find((e) => e.type === "CREATE_EDGE");
       expect(create).toBeDefined();
       if (create?.type === "CREATE_EDGE") {
-        expect(create.fromShape).toBe(elementId("a"));
-        expect(create.toShape).toBeNull();
+        expect(create.fromElement).toBe(elementId("a"));
+        expect(create.toElement).toBeNull();
       }
     });
 

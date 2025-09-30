@@ -19,7 +19,7 @@ export interface GestureRef {
   gestureTx: TransactionHandle | null;
   groupMoveOrigin: unknown;
   groupResizeOrigin: unknown;
-  dragShapeId: ElementId | null;
+  dragElementId: ElementId | null;
   containerHover: { readonly id: ElementId } | null;
   readonly toolLocked: boolean;
   readonly mode: Mode;
@@ -53,7 +53,7 @@ export class GestureController {
   commit(): void {
     this.ref.groupMoveOrigin = null;
     this.ref.groupResizeOrigin = null;
-    this.ref.dragShapeId = null;
+    this.ref.dragElementId = null;
     if (this.ref.containerHover !== null) {
       this.ref.containerHover = null;
     }

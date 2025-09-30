@@ -1,6 +1,6 @@
 import {
   apply,
-  getShape,
+  getElement,
   type Scene,
   type Element,
   type Patch,
@@ -24,7 +24,7 @@ import { TEXT_RESIZE_MIN_FONT_SIZE } from "../../constants.js";
  * Returns `null` when the shape no longer exists or doesn't
  * qualify for in-place resize.
  */
-export const computeShapeResize = (
+export const computeElementResize = (
   scene: Scene,
   id: ElementId,
   handle: HandleId,
@@ -32,7 +32,7 @@ export const computeShapeResize = (
   originalBounds: Bounds,
   clampContainer: (shape: Element, raw: Bounds, handle: HandleId) => Bounds,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
-  const shape = getShape(scene, id);
+  const shape = getElement(scene, id);
   if (!shape) return null;
   if (!hasWidthHeight(shape)) return null;
 
@@ -77,7 +77,7 @@ export const computeTextResize = (
   delta: Vec2,
   originalBounds: Bounds,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
-  const current = getShape(scene, original.id);
+  const current = getElement(scene, original.id);
   if (!current) return null;
   const raw = resizeFromHandle(originalBounds, handle, delta);
 
@@ -187,7 +187,7 @@ export const computeGroupResizePatches = (
   const patches: Patch[] = [];
 
   for (const [id, snap] of origin.shapes) {
-    const shape = getShape(runningScene, id);
+    const shape = getElement(runningScene, id);
     if (!shape) continue;
     const newPx = ax + (snap.position.x - ax) * sx;
     const newPy = ay + (snap.position.y - ay) * sy;
@@ -201,7 +201,7 @@ export const computeGroupResizePatches = (
       const newWidth = snap.bounds.width * wScale;
       const newHeight = snap.bounds.height * hScale;
       if (Math.abs(newWidth) < minDim || Math.abs(newHeight) < minDim) continue;
-      const nextShape: Element = {
+      const nextElement: Element = {
         ...shape,
         position: { x: newPx, y: newPy },
         scale: {
@@ -211,7 +211,7 @@ export const computeGroupResizePatches = (
         width: Math.abs(newWidth),
         height: Math.abs(newHeight),
       } as Element;
-      const patch: Patch = { kind: "shape", id, before: shape, after: nextShape };
+      const patch: Patch = { kind: "shape", id, before: shape, after: nextElement };
       runningScene = apply(runningScene, patch);
       patches.push(patch);
       continue;
@@ -221,12 +221,12 @@ export const computeGroupResizePatches = (
     const newScaleY = snap.scale.y * sy;
     if (Math.abs(newScaleX) < minDim / Math.max(1, snap.bounds.width)) continue;
     if (Math.abs(newScaleY) < minDim / Math.max(1, snap.bounds.height)) continue;
-    const nextShape: Element = {
+    const nextElement: Element = {
       ...shape,
       position: { x: newPx, y: newPy },
       scale: { x: newScaleX, y: newScaleY },
     };
-    const patch: Patch = { kind: "shape", id, before: shape, after: nextShape };
+    const patch: Patch = { kind: "shape", id, before: shape, after: nextElement };
     runningScene = apply(runningScene, patch);
     patches.push(patch);
   }

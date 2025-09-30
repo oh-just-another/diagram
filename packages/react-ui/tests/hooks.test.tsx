@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { elementId, layerId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape as sceneAddShape,
+  addElement as sceneAddElement,
   emptyScene,
   orderBetween,
   type Element,
@@ -98,9 +98,9 @@ describe("react-ui hooks", () => {
     expect(screen.getByTestId("size").textContent).toBe("0");
 
     act(() => {
-      ctx.editor.addShape(rect);
+      ctx.editor.addElement(rect);
     });
-    // addShape selects the new shape by default.
+    // addElement selects the new shape by default.
     expect(screen.getByTestId("size").textContent).toBe("1");
   });
 
@@ -133,7 +133,7 @@ describe("react-ui hooks", () => {
     expect(screen.getByTestId("canUndo").textContent).toBe("false");
 
     act(() => {
-      ctx.editor.addShape(rect);
+      ctx.editor.addElement(rect);
     });
     expect(screen.getByTestId("canUndo").textContent).toBe("true");
     expect(screen.getByTestId("canRedo").textContent).toBe("false");
@@ -154,4 +154,4 @@ describe("react-ui hooks", () => {
   });
 });
 
-void sceneAddShape; // imported to keep parity with how hosts use the package
+void sceneAddElement; // imported to keep parity with how hosts use the package

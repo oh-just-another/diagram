@@ -1,6 +1,6 @@
 import {
-  getShape,
-  getShapeWorldBounds,
+  getElement,
+  getElementWorldBounds,
   updateAnnotation,
   type Scene,
   type Element,
@@ -27,15 +27,15 @@ import type {
  * Editor's wrapper applies the patch, runs `recordGesturePatch`,
  * and fires notify.
  */
-export const computeShapeMovePatch = (
+export const computeElementMovePatch = (
   scene: Scene,
   id: ElementId,
   delta: Vec2,
   originalBounds: Bounds,
 ): Patch | null => {
-  const shape = getShape(scene, id);
+  const shape = getElement(scene, id);
   if (!shape) return null;
-  const localBounds = getShapeWorldBounds(shape);
+  const localBounds = getElementWorldBounds(shape);
   const offsetX = originalBounds.x - localBounds.x;
   const offsetY = originalBounds.y - localBounds.y;
   const next: Element = {
@@ -62,7 +62,7 @@ export const computeGroupMovePatches = (
 ): Patch[] => {
   const out: Patch[] = [];
   for (const [id, origin] of groupMoveOrigin) {
-    const shape = getShape(scene, id);
+    const shape = getElement(scene, id);
     if (!shape) continue;
     const next: Element = {
       ...shape,
@@ -93,7 +93,7 @@ export const computeAnnotationMovePatch = (
   const targetWorld: Vec2 = { x: origin.x + delta.x, y: origin.y + delta.y };
   let storedPosition: Vec2 = targetWorld;
   if (ann.elementId) {
-    const shape = getShape(scene, ann.elementId);
+    const shape = getElement(scene, ann.elementId);
     if (shape) {
       storedPosition = {
         x: targetWorld.x - shape.position.x,

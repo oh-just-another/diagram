@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { layerId, elementId } from "@oh-just-another/types";
 import {
   addLayer,
-  addShape,
+  addElement,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
@@ -73,19 +73,19 @@ describe("renderScene", () => {
     registerShapeRenderer("test-rect", renderer);
     let scene = emptyScene();
     const r = rect("a");
-    ({ scene } = addShape(scene, { ...r, type: "test-rect" }));
-    ({ scene } = addShape(scene, { ...rect("b"), type: "test-rect" }));
+    ({ scene } = addElement(scene, { ...r, type: "test-rect" }));
+    ({ scene } = addElement(scene, { ...rect("b"), type: "test-rect" }));
     const { target } = makeRecorder();
     renderScene(scene, target);
     expect(renderer).toHaveBeenCalledTimes(2);
   });
 
-  it("calls onUnknownShape for unregistered types", () => {
+  it("calls onUnknownElement for unregistered types", () => {
     const onUnknown = vi.fn();
     let scene = emptyScene();
-    ({ scene } = addShape(scene, { ...rect("a"), type: "no-such-type" }));
+    ({ scene } = addElement(scene, { ...rect("a"), type: "no-such-type" }));
     const { target } = makeRecorder();
-    renderScene(scene, target, { onUnknownShape: onUnknown });
+    renderScene(scene, target, { onUnknownElement: onUnknown });
     expect(onUnknown).toHaveBeenCalledOnce();
   });
 
@@ -101,7 +101,7 @@ describe("renderScene", () => {
       order: orderBetween(null, null),
     };
     ({ scene } = addLayer(scene, hidden));
-    ({ scene } = addShape(scene, { ...rect("a", hidden.id), type: "hidden-test" }));
+    ({ scene } = addElement(scene, { ...rect("a", hidden.id), type: "hidden-test" }));
     const { target } = makeRecorder();
     renderScene(scene, target);
     expect(renderer).not.toHaveBeenCalled();
@@ -111,7 +111,7 @@ describe("renderScene", () => {
     const renderer = vi.fn<ShapeRenderer>();
     registerShapeRenderer("ss-test", renderer);
     let scene = emptyScene();
-    ({ scene } = addShape(scene, { ...rect("a"), type: "ss-test" }));
+    ({ scene } = addElement(scene, { ...rect("a"), type: "ss-test" }));
     const { target, calls } = makeRecorder();
     renderScene(scene, target);
     // Outer save (for setTransform) + inner save (per shape).
@@ -132,8 +132,8 @@ describe("renderScene", () => {
       const renderer = vi.fn<ShapeRenderer>();
       registerShapeRenderer("rectangle", renderer);
       let scene = emptyScene();
-      ({ scene } = addShape(scene, placeRect("inside", 0, 0)));
-      ({ scene } = addShape(scene, placeRect("outside", 1000, 1000)));
+      ({ scene } = addElement(scene, placeRect("inside", 0, 0)));
+      ({ scene } = addElement(scene, placeRect("outside", 1000, 1000)));
       const { target } = makeRecorder();
       renderScene(scene, target, {
         viewport: { x: -50, y: -50, width: 200, height: 200 },
@@ -145,8 +145,8 @@ describe("renderScene", () => {
       const renderer = vi.fn<ShapeRenderer>();
       registerShapeRenderer("rectangle", renderer);
       let scene = emptyScene();
-      ({ scene } = addShape(scene, placeRect("a", 0, 0)));
-      ({ scene } = addShape(scene, placeRect("b", 10000, 10000)));
+      ({ scene } = addElement(scene, placeRect("a", 0, 0)));
+      ({ scene } = addElement(scene, placeRect("b", 10000, 10000)));
       const { target } = makeRecorder();
       renderScene(scene, target);
       expect(renderer).toHaveBeenCalledTimes(2);
@@ -156,8 +156,8 @@ describe("renderScene", () => {
       const renderer = vi.fn<ShapeRenderer>();
       registerShapeRenderer("rectangle", renderer);
       let scene = emptyScene();
-      ({ scene } = addShape(scene, placeRect("inside", 0, 0)));
-      ({ scene } = addShape(scene, placeRect("outside", 5000, 5000)));
+      ({ scene } = addElement(scene, placeRect("inside", 0, 0)));
+      ({ scene } = addElement(scene, placeRect("outside", 5000, 5000)));
       const grid = buildSpatialIndex(scene);
       const { target } = makeRecorder();
       renderScene(scene, target, {
@@ -171,7 +171,7 @@ describe("renderScene", () => {
       const renderer = vi.fn<ShapeRenderer>();
       registerShapeRenderer("rectangle", renderer);
       let scene = emptyScene();
-      ({ scene } = addShape(scene, placeRect("a", 0, 0)));
+      ({ scene } = addElement(scene, placeRect("a", 0, 0)));
       const cache = new ShapeCache<{ x: number; y: number; width: number; height: number }>();
       const { target } = makeRecorder();
       renderScene(scene, target, {
@@ -198,7 +198,7 @@ describe("renderScene", () => {
       let scene = emptyScene();
       scene = { ...scene, viewport: { ...scene.viewport, zoom } };
       for (const s of shapes) {
-        ({ scene } = addShape(scene, s));
+        ({ scene } = addElement(scene, s));
       }
       return scene;
     };
@@ -262,7 +262,7 @@ describe("renderScene", () => {
       rotation: Math.PI / 4,
       scale: { x: 2, y: 3 },
     };
-    ({ scene } = addShape(scene, r));
+    ({ scene } = addElement(scene, r));
     const { target, calls } = makeRecorder();
     renderScene(scene, target);
     expect(calls.some((c) => c.method === "translate" && c.args[0] === 5 && c.args[1] === 7)).toBe(

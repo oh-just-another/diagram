@@ -30,7 +30,7 @@ import { PALETTE_ITEM_SIZE } from "./constants.js";
  *
  * Drop semantics: an HTML5 drag is started with a `templateId` payload; the
  * canvas (or any other drop-target) reads it and calls
- * `editor.addShape(template.factory(...))`. Most hosts wire that in
+ * `editor.addElement(template.factory(...))`. Most hosts wire that in
  * `<DiagramCanvas>` itself.
  */
 export interface PaletteProps {
@@ -439,6 +439,6 @@ export const usePaletteDropHandler = () => {
           .map((s) => s.order),
       ),
     });
-    editor.addShape(shape);
+    editor.addElement(shape);
   };
 };

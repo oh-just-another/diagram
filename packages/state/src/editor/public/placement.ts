@@ -1,16 +1,16 @@
 import {
-  addShape,
+  addElement,
   apply,
   findContainerAt,
-  getShapeWorldBounds,
+  getElementWorldBounds,
   orderForTop,
-  removeShape,
+  removeElement,
   type Scene,
   type Element,
   type Patch,
 } from "@oh-just-another/scene";
 import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
-import { elementId as castShapeId } from "@oh-just-another/types";
+import { elementId as castElementId } from "@oh-just-another/types";
 import type { Mode } from "../../modes.js";
 import {
   TEXT_DEFAULT_FILL,
@@ -23,7 +23,7 @@ import {
  * `worldCenter`. Picks `rectangle` / `ellipse` based on `mode` (falls
  * back to rectangle for non-draw modes), with a 120×80 default size.
  */
-export const buildShapeAtCursor = (
+export const buildElementAtCursor = (
   scene: Scene,
   mode: Mode,
   worldCenter: Vec2,
@@ -56,7 +56,7 @@ export const buildShapeAtCursor = (
  * away, so the shape starts with no text — the renderer skips empty
  * strings, and an untouched shape is cleaned up on commit.
  */
-export const buildTextShapeAt = (
+export const buildTextElementAt = (
   scene: Scene,
   worldPoint: Vec2,
   layerId: LayerId,
@@ -81,8 +81,8 @@ export const buildTextShapeAt = (
 };
 
 /** Generate a fresh shape id with the editor's nextId counter. */
-export const newShapeIdAtCursor = (next: number): ElementId =>
-  castShapeId(`shape-${next}-${Date.now().toString(36)}`);
+export const newElementIdAtCursor = (next: number): ElementId =>
+  castElementId(`shape-${next}-${Date.now().toString(36)}`);
 
 /**
  * Mutable state for an in-progress palette / drag-to-place gesture.
@@ -150,10 +150,10 @@ export const beginPlacementState = (shape: Element): {
   readonly scene: (s: Scene) => { readonly scene: Scene; readonly patch: Patch };
   readonly state: PlacementState;
 } => {
-  const half = getShapeWorldBounds(shape);
+  const half = getElementWorldBounds(shape);
   return {
     scene: (s) => {
-      const r = addShape(s, shape);
+      const r = addElement(s, shape);
       return { scene: r.scene, patch: r.patch };
     },
     state: {
@@ -168,4 +168,4 @@ export const beginPlacementState = (shape: Element): {
 export const computePlacementCancel = (
   scene: Scene,
   elementId: ElementId,
-): { readonly scene: Scene } => ({ scene: removeShape(scene, elementId).scene });
+): { readonly scene: Scene } => ({ scene: removeElement(scene, elementId).scene });

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { layerId as castLayerId, elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Scene,
@@ -31,7 +31,7 @@ const rect = (id: string, x = 0): Element => ({
 
 const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
-  for (const sh of shapes) s = addShape(s, sh).scene;
+  for (const sh of shapes) s = addElement(s, sh).scene;
   return {
     ...s,
     viewport: { ...s.viewport, size: { width: 400, height: 400 } },

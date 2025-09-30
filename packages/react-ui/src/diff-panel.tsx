@@ -1,7 +1,7 @@
 import { useMemo, type CSSProperties } from "react";
 import {
-  diffSceneShapes,
-  getShapeWorldBounds,
+  diffSceneElements,
+  getElementWorldBounds,
   type Scene,
   type SceneShapeDiff,
 } from "@oh-just-another/scene";
@@ -42,7 +42,7 @@ export const DiffPanel = ({
   className,
   style,
 }: DiffPanelProps) => {
-  const diff = useMemo(() => diffSceneShapes(left, right), [left, right]);
+  const diff = useMemo(() => diffSceneElements(left, right), [left, right]);
   const leftSvg = useMemo(
     () => renderSceneToSvg(left, { width: PANEL_WIDTH, height: PANEL_HEIGHT }),
     [left],
@@ -90,22 +90,22 @@ const SideView = ({
   //     own bounds — so the user sees the before AND after position
   //     of a moved shape.
   const overlays = useMemo(() => {
-    const out: { id: string; color: string; bounds: ReturnType<typeof getShapeWorldBounds> }[] = [];
+    const out: { id: string; color: string; bounds: ReturnType<typeof getElementWorldBounds> }[] = [];
     const palette = DIFF_COLORS;
     if (side === "left") {
       for (const id of diff.removed) {
         const s = scene.shapes.get(id);
-        if (s) out.push({ id, color: palette.removed, bounds: getShapeWorldBounds(s) });
+        if (s) out.push({ id, color: palette.removed, bounds: getElementWorldBounds(s) });
       }
     } else {
       for (const id of diff.added) {
         const s = scene.shapes.get(id);
-        if (s) out.push({ id, color: palette.added, bounds: getShapeWorldBounds(s) });
+        if (s) out.push({ id, color: palette.added, bounds: getElementWorldBounds(s) });
       }
     }
     for (const id of diff.modified) {
       const s = scene.shapes.get(id);
-      if (s) out.push({ id, color: palette.modified, bounds: getShapeWorldBounds(s) });
+      if (s) out.push({ id, color: palette.modified, bounds: getElementWorldBounds(s) });
     }
     return out;
   }, [scene, diff, side]);

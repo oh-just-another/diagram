@@ -1,10 +1,10 @@
 import type { Bounds, ElementId } from "@oh-just-another/types";
-import { getShapeWorldBounds, type Scene, type ElementBase } from "@oh-just-another/scene";
+import { getElementWorldBounds, type Scene, type ElementBase } from "@oh-just-another/scene";
 
 /**
  * Per-shape memo with object-identity invalidation. Cached value sticks
  * until the underlying shape reference changes — and because every scene
- * op (`updateShape` / `moveShape` / ...) returns a new shape object, the
+ * op (`updateElement` / `moveElement` / ...) returns a new shape object, the
  * cache invalidates automatically without the caller threading versions
  * through.
  *
@@ -66,10 +66,10 @@ export class ShapeCache<T> {
  * for viewport culling and reusable from outside (hit-test, overlay) so
  * a single computation amortizes across passes.
  *
- * `getShapeWorldBounds` is pure — same shape ref → same bounds — so a
+ * `getElementWorldBounds` is pure — same shape ref → same bounds — so a
  * by-identity cache is sound.
  */
 export const sharedBoundsCache: ShapeCache<Bounds> = new ShapeCache<Bounds>();
 
 export const cachedWorldBounds = (cache: ShapeCache<Bounds>, shape: ElementBase): Bounds =>
-  cache.getOrCompute(shape, getShapeWorldBounds);
+  cache.getOrCompute(shape, getElementWorldBounds);

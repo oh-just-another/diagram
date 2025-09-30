@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Scene,
@@ -50,7 +50,7 @@ const imageWithLiveHandle = (id: string): Element =>
 
 const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
-  for (const sh of shapes) s = addShape(s, sh).scene;
+  for (const sh of shapes) s = addElement(s, sh).scene;
   return s;
 };
 
@@ -122,7 +122,7 @@ describe("paste resilience to leaked transactions", () => {
     const before = history.undoStack.length;
     e.paste();
     const after = history.undoStack.length;
-    // Exactly one stack item appeared, not N: pasteShapes pushes a
+    // Exactly one stack item is added, not N: pasteElements pushes a
     // batched patch instead of N separate pushes.
     expect(after - before).toBe(1);
     // And undo returns the scene to its previous state in one step.

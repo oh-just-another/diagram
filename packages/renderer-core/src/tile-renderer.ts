@@ -100,7 +100,7 @@ export interface TileCache<B = unknown> {
    * Drop any cached tile that contains the given shape id. Called
    * by the editor when a shape's scene reference changes.
    */
-  invalidateForShape(id: ElementId): void;
+  invalidateForElement(id: ElementId): void;
   /**
    * Drop any cached tile whose `bounds` intersect the given world
    * rectangle. Used by the editor's patch hook when a shape is
@@ -110,12 +110,12 @@ export interface TileCache<B = unknown> {
   invalidateRect(rect: Bounds): void;
   /**
    * Convenience routing used by editor patch pipelines: dispatches
-   * to `invalidateForShape` (remove), `invalidateRect` (add), or
-   * both (move) based on which of `removedShapeId` / `beforeBounds`
+   * to `invalidateForElement` (remove), `invalidateRect` (add), or
+   * both (move) based on which of `removedElementId` / `beforeBounds`
    * / `afterBounds` are present.
    */
   invalidateForPatch(options: {
-    readonly removedShapeId?: ElementId;
+    readonly removedElementId?: ElementId;
     readonly beforeBounds?: Bounds;
     readonly afterBounds?: Bounds;
   }): void;
@@ -134,12 +134,12 @@ const keyOf = (k: TileKey): string => `${k.col},${k.row}@${k.zoom}`;
  *
  * Invalidation is shape-id-indexed: every `set` also updates a
  * reverse index `Map<ElementId, Set<tileKey>>` so the editor's
- * patch hook can call `invalidateForShape(id)` in O(touched tiles)
+ * patch hook can call `invalidateForElement(id)` in O(touched tiles)
  * instead of scanning every tile.
  */
 export class InMemoryTileCache<B = unknown> implements TileCache<B> {
   private readonly entries = new Map<string, TileCacheEntry<B>>();
-  private readonly tilesByShape = new Map<ElementId, Set<string>>();
+  private readonly tilesByElement = new Map<ElementId, Set<string>>();
   private bytes = 0;
   private readonly cap: number;
 
@@ -166,23 +166,23 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
     const prior = this.entries.get(id);
     if (prior) {
       this.bytes -= prior.bytes;
-      for (const sid of prior.shapes) this.tilesByShape.get(sid)?.delete(id);
+      for (const sid of prior.shapes) this.tilesByElement.get(sid)?.delete(id);
     }
     this.entries.set(id, entry);
     this.bytes += entry.bytes;
     for (const sid of entry.shapes) {
-      let bucket = this.tilesByShape.get(sid);
+      let bucket = this.tilesByElement.get(sid);
       if (!bucket) {
         bucket = new Set();
-        this.tilesByShape.set(sid, bucket);
+        this.tilesByElement.set(sid, bucket);
       }
       bucket.add(id);
     }
     this.evictIfOverCap();
   }
 
-  invalidateForShape(elementId: ElementId): void {
-    const bucket = this.tilesByShape.get(elementId);
+  invalidateForElement(elementId: ElementId): void {
+    const bucket = this.tilesByElement.get(elementId);
     if (!bucket) return;
     for (const tileId of bucket) {
       const e = this.entries.get(tileId);
@@ -190,10 +190,10 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
       this.entries.delete(tileId);
       this.bytes -= e.bytes;
       for (const sid of e.shapes) {
-        if (sid !== elementId) this.tilesByShape.get(sid)?.delete(tileId);
+        if (sid !== elementId) this.tilesByElement.get(sid)?.delete(tileId);
       }
     }
-    this.tilesByShape.delete(elementId);
+    this.tilesByElement.delete(elementId);
   }
 
   invalidateRect(rect: Bounds): void {
@@ -207,13 +207,13 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
       if (disjoint) continue;
       this.entries.delete(tileId);
       this.bytes -= entry.bytes;
-      for (const sid of entry.shapes) this.tilesByShape.get(sid)?.delete(tileId);
+      for (const sid of entry.shapes) this.tilesByElement.get(sid)?.delete(tileId);
     }
   }
 
   clear(): void {
     this.entries.clear();
-    this.tilesByShape.clear();
+    this.tilesByElement.clear();
     this.bytes = 0;
   }
 
@@ -221,22 +221,22 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
    * Convenience hook for the editor's patch pipeline. Looks at a
    * scene Patch and invalidates touched tiles via the right
    * cheap path:
-   *   • shape removed → invalidateForShape (id still in reverse index)
+   *   • shape removed → invalidateForElement (id still in reverse index)
    *   • shape added   → invalidateRect (no id yet — drop tiles that
    *                     touch the new shape's bounds)
-   *   • shape moved   → both: removeForShape (old tiles) + rect
+   *   • shape moved   → both: removeForElement (old tiles) + rect
    *                     (new bounds)
-   * Caller computes the bounds via `getShapeWorldBounds(before|after)`
+   * Caller computes the bounds via `getElementWorldBounds(before|after)`
    * since this package is pure and doesn't know about Element geometry.
    */
   invalidateForPatch(
     options: {
-      readonly removedShapeId?: ElementId;
+      readonly removedElementId?: ElementId;
       readonly beforeBounds?: Bounds;
       readonly afterBounds?: Bounds;
     },
   ): void {
-    if (options.removedShapeId) this.invalidateForShape(options.removedShapeId);
+    if (options.removedElementId) this.invalidateForElement(options.removedElementId);
     if (options.beforeBounds) this.invalidateRect(options.beforeBounds);
     if (options.afterBounds) this.invalidateRect(options.afterBounds);
   }
@@ -248,7 +248,7 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
       if (this.bytes <= this.cap) break;
       this.entries.delete(id);
       this.bytes -= entry.bytes;
-      for (const sid of entry.shapes) this.tilesByShape.get(sid)?.delete(id);
+      for (const sid of entry.shapes) this.tilesByElement.get(sid)?.delete(id);
     }
   }
 }

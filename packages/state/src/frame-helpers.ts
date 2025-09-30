@@ -1,7 +1,7 @@
 import type { Bounds, ElementId } from "@oh-just-another/types";
 import {
-  getShapeWorldBounds,
-  updateShape,
+  getElementWorldBounds,
+  updateElement,
   type Scene,
 } from "@oh-just-another/scene";
 import type { HistoryProvider } from "@oh-just-another/history";
@@ -54,11 +54,11 @@ export const assignFrameMembers = (
     if (shape.id === frameId) continue;
     if (shape.type === "frame") continue;
     if (shape.frameId !== undefined) continue;
-    const b = getShapeWorldBounds(shape);
+    const b = getElementWorldBounds(shape);
     const cx = b.x + b.width / 2;
     const cy = b.y + b.height / 2;
     if (cx < left || cx > right || cy < top || cy > bottom) continue;
-    const r = updateShape(next, shape.id, (s) => ({ ...s, frameId }));
+    const r = updateElement(next, shape.id, (s) => ({ ...s, frameId }));
     next = r.scene;
     history.push(r.patch);
   }

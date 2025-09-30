@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,
@@ -274,8 +274,8 @@ describe("grouping", () => {
     // The method is private; its contract is the source of truth for what
     // the renderer dims.
     const dim = (editor as unknown as {
-      computeDimShapes(id: typeof groupId): ReadonlySet<typeof a.id>;
-    }).computeDimShapes(groupId);
+      computeDimElements(id: typeof groupId): ReadonlySet<typeof a.id>;
+    }).computeDimElements(groupId);
 
     expect(dim.has(a.id)).toBe(false);
     expect(dim.has(b.id)).toBe(false);
@@ -294,7 +294,7 @@ describe("grouping", () => {
     const groupId = r.groupId;
 
     // Simulate the editor's drag pipeline at the moment applyContainerDrop fires.
-    (editor as unknown as { dragShapeId: typeof a.id | null }).dragShapeId = a.id;
+    (editor as unknown as { dragElementId: typeof a.id | null }).dragElementId = a.id;
     (editor as unknown as { applyContainerDrop(p: { x: number; y: number }): void }).applyContainerDrop({
       x: a.position.x,
       y: a.position.y,
@@ -313,8 +313,8 @@ describe("grouping", () => {
     editor.undo();
     expect(editor.scene.shapes.get(a.id)?.parentId).toBeUndefined();
     expect(editor.scene.shapes.get(b.id)?.parentId).toBeUndefined();
-    const groupShapes = [...editor.scene.shapes.values()].filter((s) => s.type === "group");
-    expect(groupShapes.length).toBe(0);
+    const groupElements = [...editor.scene.shapes.values()].filter((s) => s.type === "group");
+    expect(groupElements.length).toBe(0);
   });
 });
 
@@ -360,7 +360,7 @@ describe("group lock / hide propagation", () => {
       shapes: new Map(editor.scene.shapes).set(groupId, hidden),
     };
 
-    const hideSet = (editor as unknown as { computeHiddenShapes(): ReadonlySet<typeof a.id> | undefined }).computeHiddenShapes();
+    const hideSet = (editor as unknown as { computeHiddenElements(): ReadonlySet<typeof a.id> | undefined }).computeHiddenElements();
     expect(hideSet).toBeDefined();
     expect(hideSet!.has(groupId)).toBe(true);
     expect(hideSet!.has(a.id)).toBe(true);
@@ -420,11 +420,11 @@ describe("auto-layout containers", () => {
     expect(positions[2]).toEqual({ x: 0, y: 60 });
   });
 
-  it("auto-runs layout when a child is added (microtask after addShape)", async () => {
+  it("auto-runs layout when a child is added (microtask after addElement)", async () => {
     const parent = containerWithAutoLayout("stack");
     const editor = makeEditor(sceneWith(parent));
-    editor.addShape(childOf("c1", parent.id, 999, 999));
-    editor.addShape(childOf("c2", parent.id, 999, 999));
+    editor.addElement(childOf("c1", parent.id, 999, 999));
+    editor.addElement(childOf("c2", parent.id, 999, 999));
     // Auto-layout fires in a microtask after notify; await it.
     await Promise.resolve();
 
@@ -454,20 +454,10 @@ describe("auto-layout containers", () => {
     expect(after2).toEqual({ x: 100, y: 50 });
   });
 
-  // ---------------------------------------------------------------
-  // Fixed: drop-zone was offset on each element addition and full page reload.
-  // on each element addition and full page reload.
-  //
-  // The flow is: addShape → notify → AutoLayoutScheduler →
-  // runAutoLayout (places child at dropZone.top-left) → per-child
-  // maybeGrowContainer (computes whether to expand). Before the fix
-  // `expandDropZoneToFit` shifted the zone by `(padding, padding)`
-  // even for a child placed exactly at the existing top-left edge,
-  // moving the container itself by `-padding` on every add.
-  //
-  // Pin: a container with explicit padding receives a child, runs
-  // auto-layout, and its `position` stays put.
-  // ---------------------------------------------------------------
+  // The flow is: addElement → notify → AutoLayoutScheduler → runAutoLayout
+  // (places child at dropZone.top-left) → per-child maybeGrowContainer
+  // (computes whether to expand). A container with explicit padding receives
+  // a child, runs auto-layout, and its `position` stays put.
   it("does not shift the container on add/runLayout when a child fits cleanly", async () => {
     const parent: Element = {
       ...containerWithAutoLayout("grid"),
@@ -479,15 +469,15 @@ describe("auto-layout containers", () => {
     const editor = makeEditor(sceneWith(parent));
     const before = editor.scene.shapes.get(parent.id)!.position;
 
-    editor.addShape(childOf("c1", parent.id, 999, 999));
+    editor.addElement(childOf("c1", parent.id, 999, 999));
     await Promise.resolve();
     expect(editor.scene.shapes.get(parent.id)!.position).toEqual(before);
 
-    editor.addShape(childOf("c2", parent.id, 999, 999));
+    editor.addElement(childOf("c2", parent.id, 999, 999));
     await Promise.resolve();
     expect(editor.scene.shapes.get(parent.id)!.position).toEqual(before);
 
-    editor.addShape(childOf("c3", parent.id, 999, 999));
+    editor.addElement(childOf("c3", parent.id, 999, 999));
     await Promise.resolve();
     expect(editor.scene.shapes.get(parent.id)!.position).toEqual(before);
 

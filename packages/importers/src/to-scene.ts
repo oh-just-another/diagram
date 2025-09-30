@@ -1,7 +1,7 @@
 import {
   DEFAULT_LAYER_ID,
   addLink,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
   type Link,
@@ -75,11 +75,11 @@ export const graphToScene = (graph: GraphDocument): Scene => {
         shape = { ...base, type: "rectangle", width: n.width, height: n.height };
         break;
     }
-    ({ scene } = addShape(scene, shape));
+    ({ scene } = addElement(scene, shape));
 
     if (n.label) {
       const textId = elementId(`node-${n.id}-label`);
-      const textShape: Element = {
+      const textElement: Element = {
         id: textId,
         layerId: DEFAULT_LAYER_ID,
         type: "text",
@@ -100,10 +100,10 @@ export const graphToScene = (graph: GraphDocument): Scene => {
       order = orderBetween(order, null);
       // Center inside the node by writing position to the box centre.
       const centeredLabel: Element = {
-        ...textShape,
+        ...textElement,
         position: { x: n.position.x + n.width / 2, y: n.position.y + n.height / 2 },
       };
-      ({ scene } = addShape(scene, centeredLabel));
+      ({ scene } = addElement(scene, centeredLabel));
     }
   }
 

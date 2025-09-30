@@ -84,7 +84,7 @@ export interface ElementBase {
    * (hit-test pretends they're not there for clicks / drags / resize),
    * but still render and remain serialisable. Propagates to
    * descendants: if any ancestor in the `parentId` chain is locked,
-   * the shape is effectively locked. Use `isShapeLocked(scene, shape)`
+   * the shape is effectively locked. Use `isElementLocked(scene, shape)`
    * to consult the propagated state.
    *
    * Independent from `Layer.locked` — both gate interactions; either
@@ -95,7 +95,7 @@ export interface ElementBase {
   /**
    * Per-shape visibility flag. Hidden shapes do not render and do not
    * receive interactions. Propagates to descendants like `locked`.
-   * Use `isShapeHidden(scene, shape)` to consult the propagated state.
+   * Use `isElementHidden(scene, shape)` to consult the propagated state.
    *
    * Independent from `Layer.visible` — either being false hides the
    * shape.
@@ -316,7 +316,7 @@ export const isBrush = (s: ElementBase): s is BrushElement => s.type === "brush"
 /**
  * Computes the *local* bounds of a shape — its AABB in local coordinates,
  * before `position`/`rotation`/`scale` are applied. The world AABB lives in
- * `getShapeWorldBounds`.
+ * `getElementWorldBounds`.
  */
 export type ShapeBounder<S extends ElementBase = ElementBase> = (shape: S) => Bounds;
 
@@ -340,7 +340,7 @@ export const getBounder = (type: string): ShapeBounder | undefined => bounderReg
  * Local AABB for any shape with a registered bounder. Throws on unknown types
  * — callers should either register a bounder or filter unknown shapes out.
  */
-export const getShapeLocalBounds = (shape: ElementBase): Bounds => {
+export const getElementLocalBounds = (shape: ElementBase): Bounds => {
   const bounder = bounderRegistry.get(shape.type);
   if (!bounder) {
     throw new Error(`No bounder registered for shape type: ${shape.type}`);
@@ -352,8 +352,8 @@ export const getShapeLocalBounds = (shape: ElementBase): Bounds => {
  * World-space AABB after `position`/`rotation`/`scale`. This is the conservative
  * AABB of the rotated/scaled local box, suitable for spatial-index keys.
  */
-export const getShapeWorldBounds = (shape: ElementBase): Bounds => {
-  const local = getShapeLocalBounds(shape);
+export const getElementWorldBounds = (shape: ElementBase): Bounds => {
+  const local = getElementLocalBounds(shape);
   // Transform 4 corners then re-AABB.
   const corners: readonly Vec2[] = [
     { x: local.x, y: local.y },

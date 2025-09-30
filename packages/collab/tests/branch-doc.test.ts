@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
-  addShape,
+  addElement,
   emptyScene,
   orderBetween,
-  updateShape,
+  updateElement,
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
@@ -26,8 +26,8 @@ const seed = (): Scene => {
     height: 40,
   };
   const b: Element = { ...a, id: elementId("b"), position: { x: 100, y: 0 }, style: { fill: "#bbb" } };
-  ({ scene: s } = addShape(s, a));
-  ({ scene: s } = addShape(s, b));
+  ({ scene: s } = addElement(s, a));
+  ({ scene: s } = addElement(s, b));
   return s;
 };
 
@@ -56,7 +56,7 @@ describe("BranchDoc", () => {
     // Source moves shape "a", target leaves it alone — should auto-merge.
     const featDoc = bd.sceneDocFor("feat");
     const featSnap = featDoc.snapshot();
-    const { scene: featMoved } = updateShape(featSnap, elementId("a"), (s) => ({
+    const { scene: featMoved } = updateElement(featSnap, elementId("a"), (s) => ({
       ...s,
       position: { x: 999, y: 999 },
     }));
@@ -76,14 +76,14 @@ describe("BranchDoc", () => {
     bd.createBranch("feat", "feat", "main");
 
     const featDoc = bd.sceneDocFor("feat");
-    const { scene: featMoved } = updateShape(featDoc.snapshot(), elementId("a"), (s) => ({
+    const { scene: featMoved } = updateElement(featDoc.snapshot(), elementId("a"), (s) => ({
       ...s,
       position: { x: 100, y: 100 },
     }));
     featDoc.replace(featMoved);
 
     const mainDoc = bd.sceneDocFor("main");
-    const { scene: mainMoved } = updateShape(mainDoc.snapshot(), elementId("a"), (s) => ({
+    const { scene: mainMoved } = updateElement(mainDoc.snapshot(), elementId("a"), (s) => ({
       ...s,
       position: { x: 50, y: 50 },
     }));
@@ -103,14 +103,14 @@ describe("BranchDoc", () => {
     bd.createBranch("feat", "feat", "main");
 
     const featDoc = bd.sceneDocFor("feat");
-    const { scene: featMoved } = updateShape(featDoc.snapshot(), elementId("a"), (s) => ({
+    const { scene: featMoved } = updateElement(featDoc.snapshot(), elementId("a"), (s) => ({
       ...s,
       position: { x: 100, y: 100 },
     }));
     featDoc.replace(featMoved);
 
     const mainDoc = bd.sceneDocFor("main");
-    const { scene: mainMoved } = updateShape(mainDoc.snapshot(), elementId("a"), (s) => ({
+    const { scene: mainMoved } = updateElement(mainDoc.snapshot(), elementId("a"), (s) => ({
       ...s,
       position: { x: 50, y: 50 },
     }));
@@ -132,7 +132,7 @@ describe("BranchDoc", () => {
     bd.createBranch("feat", "feat", "main");
 
     const featDoc = bd.sceneDocFor("feat");
-    const { scene: featMoved } = updateShape(featDoc.snapshot(), elementId("a"), (s) => ({
+    const { scene: featMoved } = updateElement(featDoc.snapshot(), elementId("a"), (s) => ({
       ...s,
       position: { x: 999, y: 999 },
     }));

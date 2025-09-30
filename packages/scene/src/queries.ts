@@ -3,12 +3,12 @@ import { bounds as B } from "@oh-just-another/math";
 import type { Link } from "./edge.js";
 import type { Layer } from "./layer.js";
 import type { Scene } from "./scene.js";
-import { getShapeWorldBounds, type Element } from "./shape.js";
+import { getElementWorldBounds, type Element } from "./shape.js";
 import { SpatialGrid } from "./spatial.js";
 
 // --- direct lookups ---
 
-export const getShape = (scene: Scene, id: ElementId): Element | undefined => scene.shapes.get(id);
+export const getElement = (scene: Scene, id: ElementId): Element | undefined => scene.shapes.get(id);
 
 export const getLink = (scene: Scene, id: LinkId): Link | undefined => scene.edges.get(id);
 
@@ -24,7 +24,7 @@ export const getLayersInOrder = (scene: Scene): readonly Layer[] =>
   [...scene.layers.values()].sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
 
 /** Shapes in `layerId`, sorted bottom-to-top by `order`. */
-export const getShapesInLayer = (scene: Scene, layerId: LayerId): readonly Element[] =>
+export const getElementsInLayer = (scene: Scene, layerId: LayerId): readonly Element[] =>
   [...scene.shapes.values()]
     .filter((s) => s.layerId === layerId)
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
@@ -57,7 +57,7 @@ export const getChildrenOf = (scene: Scene, parentId: ElementId): readonly Eleme
  * grouped scene. Independent from `Layer.locked` — callers that need
  * the combined interactivity gate should `||` both flags.
  */
-export const isShapeLocked = (scene: Scene, shape: Element): boolean => {
+export const isElementLocked = (scene: Scene, shape: Element): boolean => {
   let current: Element | undefined = shape;
   for (let i = 0; current && i < MAX_PARENT_DEPTH; i++) {
     if (current.locked === true) return true;
@@ -69,9 +69,9 @@ export const isShapeLocked = (scene: Scene, shape: Element): boolean => {
 
 /**
  * `true` when the shape (or any of its ancestors via `parentId`) has
- * `hidden: true`. Same propagation semantics as `isShapeLocked`.
+ * `hidden: true`. Same propagation semantics as `isElementLocked`.
  */
-export const isShapeHidden = (scene: Scene, shape: Element): boolean => {
+export const isElementHidden = (scene: Scene, shape: Element): boolean => {
   let current: Element | undefined = shape;
   for (let i = 0; current && i < MAX_PARENT_DEPTH; i++) {
     if (current.hidden === true) return true;
@@ -128,10 +128,10 @@ const MAX_PARENT_DEPTH = 64;
  * Shapes whose world AABB intersects `range`. Linear in the number of shapes.
  * For large scenes use `buildSpatialIndex` once and query the index.
  */
-export const getShapesInBounds = (scene: Scene, range: Bounds): readonly Element[] => {
+export const getElementsInBounds = (scene: Scene, range: Bounds): readonly Element[] => {
   const out: Element[] = [];
   for (const s of scene.shapes.values()) {
-    if (B.intersects(getShapeWorldBounds(s), range)) out.push(s);
+    if (B.intersects(getElementWorldBounds(s), range)) out.push(s);
   }
   return out;
 };
@@ -148,14 +148,14 @@ export const getShapesInBounds = (scene: Scene, range: Bounds): readonly Element
  * Zero-area shapes (groups, brushes-with-one-vertex) fall back to a
  * plain intersection test.
  */
-export const getShapesCoveredByBounds = (
+export const getElementsCoveredByBounds = (
   scene: Scene,
   range: Bounds,
   minCoverageRatio = 0.5,
 ): readonly Element[] => {
   const out: Element[] = [];
   for (const s of scene.shapes.values()) {
-    const b = getShapeWorldBounds(s);
+    const b = getElementWorldBounds(s);
     if (!B.intersects(b, range)) continue;
     const area = b.width * b.height;
     if (area <= 0) {
@@ -189,15 +189,15 @@ export const getShapesCoveredByBounds = (
  * conservative AABB test; renderer-specific shape-precise hit-tests belong
  * with the renderer.
  */
-export const getShapeAt = (scene: Scene, point: Vec2): Element | undefined => {
+export const getElementAt = (scene: Scene, point: Vec2): Element | undefined => {
   const layers = getLayersInOrder(scene);
   for (let i = layers.length - 1; i >= 0; i--) {
     const layer = layers[i]!;
     if (!layer.visible) continue;
-    const shapes = getShapesInLayer(scene, layer.id);
+    const shapes = getElementsInLayer(scene, layer.id);
     for (let j = shapes.length - 1; j >= 0; j--) {
       const s = shapes[j]!;
-      if (B.contains(getShapeWorldBounds(s), point)) return s;
+      if (B.contains(getElementWorldBounds(s), point)) return s;
     }
   }
   return undefined;
@@ -214,7 +214,7 @@ export const getShapeAt = (scene: Scene, point: Vec2): Element | undefined => {
 export const buildSpatialIndex = (scene: Scene, cellSize?: number): SpatialGrid => {
   const grid = new SpatialGrid(cellSize);
   for (const shape of scene.shapes.values()) {
-    grid.insert(shape.id, getShapeWorldBounds(shape));
+    grid.insert(shape.id, getElementWorldBounds(shape));
   }
   return grid;
 };
@@ -230,19 +230,19 @@ export const queryByIndex = (scene: Scene, grid: SpatialGrid, range: Bounds): re
   for (const id of candidates) {
     const shape = scene.shapes.get(id);
     if (!shape) continue;
-    if (B.intersects(getShapeWorldBounds(shape), range)) out.push(shape);
+    if (B.intersects(getElementWorldBounds(shape), range)) out.push(shape);
   }
   return out;
 };
 
 /**
- * Point hit-test backed by a SpatialGrid. Equivalent to `getShapeAt` but
+ * Point hit-test backed by a SpatialGrid. Equivalent to `getElementAt` but
  * pre-filters candidates through `grid.query` — O(k) where k is the
  * shapes overlapping the point's cell. Walks layers top-to-bottom for
  * stable z-order; within a layer picks the highest-`order` shape that
  * actually contains the point.
  */
-export const getShapeAtIndexed = (
+export const getElementAtIndexed = (
   scene: Scene,
   grid: SpatialGrid,
   point: Vec2,
@@ -252,23 +252,23 @@ export const getShapeAtIndexed = (
   if (candidates.size === 0) return undefined;
   let best: Element | undefined;
   let bestLayerOrder = "";
-  let bestShapeOrder = "";
+  let bestElementOrder = "";
   let bestSet = false;
   for (const id of candidates) {
     const shape = scene.shapes.get(id);
     if (!shape) continue;
-    if (!B.contains(getShapeWorldBounds(shape), point)) continue;
+    if (!B.contains(getElementWorldBounds(shape), point)) continue;
     const layer = scene.layers.get(shape.layerId);
     if (!layer || !layer.visible) continue;
     const layerOrder = layer.order as string;
     if (
       !bestSet ||
       layerOrder > bestLayerOrder ||
-      (layerOrder === bestLayerOrder && shape.order > bestShapeOrder)
+      (layerOrder === bestLayerOrder && shape.order > bestElementOrder)
     ) {
       best = shape;
       bestLayerOrder = layerOrder;
-      bestShapeOrder = shape.order as string;
+      bestElementOrder = shape.order as string;
       bestSet = true;
     }
   }

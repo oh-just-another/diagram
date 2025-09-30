@@ -1,12 +1,12 @@
 import {
   addLayer,
-  getShape,
+  getElement,
   orderForTop,
   removeLink,
   removeLayer,
-  removeShape,
+  removeElement,
   updateLayer,
-  updateShape,
+  updateElement,
   type Layer,
   type Scene,
   type Patch,
@@ -56,7 +56,7 @@ export const computeRemoveLayer = (
   let s = scene;
   for (const shape of [...s.shapes.values()]) {
     if (shape.layerId !== id) continue;
-    const r = removeShape(s, shape.id);
+    const r = removeElement(s, shape.id);
     s = r.scene;
     patches.push(r.patch);
   }
@@ -129,9 +129,9 @@ export const computeMoveSelectionToLayer = (
   let s = scene;
   const patches: Patch[] = [];
   for (const id of selection) {
-    const shape = getShape(s, id);
+    const shape = getElement(s, id);
     if (!shape || shape.layerId === targetLayer) continue;
-    const r = updateShape(s, id, (sh) => ({ ...sh, layerId: targetLayer }));
+    const r = updateElement(s, id, (sh) => ({ ...sh, layerId: targetLayer }));
     s = r.scene;
     patches.push(r.patch);
   }

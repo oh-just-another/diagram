@@ -1,8 +1,8 @@
 import {
   findContainerAt,
   getDropZoneWorld,
-  getShape,
-  getShapeWorldBounds,
+  getElement,
+  getElementWorldBounds,
   updateAnnotation,
 } from "@oh-just-another/scene";
 import { boundsFromPoints, interpretPressEnd } from "../machine.js";
@@ -94,8 +94,8 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // edited shape repositions the caret (and starts a drag-select);
     // a press outside commits the edit, then falls through so the same
     // click does its normal thing (select / create elsewhere).
-    if (editor.editingTextShape !== null) {
-      if (editor.editedShapeContainsPoint(worldPoint)) {
+    if (editor.editingTextElement !== null) {
+      if (editor.editedElementContainsPoint(worldPoint)) {
         editor.cancelLongPress();
         editor.setTextCaretFromPoint(worldPoint);
         return;
@@ -121,7 +121,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     if (editor.mode === "draw-text") {
       editor.cancelLongPress();
       const hit = editor.hitTest(worldPoint);
-      const existing = hit?.kind === "shape" ? getShape(editor._scene, hit.id) : null;
+      const existing = hit?.kind === "shape" ? getElement(editor._scene, hit.id) : null;
       if (existing?.type === "text") {
         editor._selection = Selection.single(existing.id);
         editor.beginTextEdit(existing.id);
@@ -155,15 +155,15 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // tester finds an interactive node, fire its emit and skip the normal
     // press flow entirely. This is what makes a click on a template Button
     // behave differently from a click on the template body.
-    const topShape = editor.acceleratedShapeAt(worldPoint);
-    if (topShape) {
-      const tester = getInteractiveHitTester(topShape.type);
+    const topElement = editor.acceleratedElementAt(worldPoint);
+    if (topElement) {
+      const tester = getInteractiveHitTester(topElement.type);
       if (tester) {
         const local = {
-          x: worldPoint.x - topShape.position.x,
-          y: worldPoint.y - topShape.position.y,
+          x: worldPoint.x - topElement.position.x,
+          y: worldPoint.y - topElement.position.y,
         };
-        const emit = tester(topShape, local);
+        const emit = tester(topElement, local);
         if (emit) {
           editor.applyEmit(emit);
           return;
@@ -199,7 +199,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     }
     // Track the dragged shape id for container drop / drag-out logic
     // on pointerup. Cleared in onUp / cancel.
-    editor.dragShapeId = target.kind === "shape" ? target.id : null;
+    editor.dragElementId = target.kind === "shape" ? target.id : null;
     editor.containerHover = null;
 
     // Snapshot positions for the upcoming drag. Two paths populate the
@@ -212,9 +212,9 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     //      (zero-bounds, invisible) and leave its children behind —
     //      looking exactly like the group had been ungrouped.
     if (target.kind === "shape") {
-      const pressedShape = getShape(editor._scene, target.id);
-      const pressedIsGroup = pressedShape?.type === "group";
-      const pressedIsFrame = pressedShape?.type === "frame";
+      const pressedElement = getElement(editor._scene, target.id);
+      const pressedIsGroup = pressedElement?.type === "group";
+      const pressedIsFrame = pressedElement?.type === "frame";
       const inSelection = editor._selection.has(target.id);
       if (inSelection || pressedIsGroup || pressedIsFrame) {
         const ids = new Set<ElementId>();
@@ -242,7 +242,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         if (ids.size > 1) {
           const snap = new Map<ElementId, Vec2>();
           for (const id of ids) {
-            const s = getShape(editor._scene, id);
+            const s = getElement(editor._scene, id);
             if (s) snap.set(id, s.position);
           }
           editor.groupMoveOrigin = snap;
@@ -267,11 +267,11 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     if (target.kind === "group-handle") {
       const shapes = new Map<ElementId, { position: Vec2; bounds: Bounds; scale: Vec2 }>();
       for (const id of editor.expandSelectionWithDescendants()) {
-        const s = getShape(editor._scene, id);
+        const s = getElement(editor._scene, id);
         if (!s) continue;
         shapes.set(id, {
           position: s.position,
-          bounds: getShapeWorldBounds(s),
+          bounds: getElementWorldBounds(s),
           scale: s.scale,
         });
       }
@@ -332,7 +332,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     editor.lastPointerWorld = worldPoint;
 
     // Drag-select inside the edited text shape.
-    if (editor.editingTextShape !== null && editor.isTextDragging) {
+    if (editor.editingTextElement !== null && editor.isTextDragging) {
       editor.extendTextSelectionToPoint(worldPoint);
       return;
     }
@@ -347,8 +347,8 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // Container drop preview: while dragging a single shape, find the
     // topmost container under cursor (excluding the dragged shape and
     // its descendants) and stash the drop-zone for the overlay.
-    if (editor.dragShapeId) {
-      const dragged = editor.dragShapeId;
+    if (editor.dragElementId) {
+      const dragged = editor.dragElementId;
       const exclude = new Set<ElementId>([dragged]);
       // Don't drop a container onto itself or into one of its own
       // descendants (would create a cycle).
@@ -432,7 +432,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     if (!ctx.pressOrigin) {
       const hov = editor.hitTest(worldPoint);
       const hs = hov?.kind === "shape" ? editor._scene.shapes.get(hov.id) : undefined;
-      editor.hoverAnimatedShape(hs?.type === "image" && hs.animationKind ? hs.id : null);
+      editor.hoverAnimatedElement(hs?.type === "image" && hs.animationKind ? hs.id : null);
     }
     editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
   };
@@ -461,7 +461,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     editor.cancelLongPress();
 
     // End an in-canvas text drag-select.
-    if (editor.editingTextShape !== null && editor.isTextDragging) {
+    if (editor.editingTextElement !== null && editor.isTextDragging) {
       editor.endTextDragSelect();
       return;
     }

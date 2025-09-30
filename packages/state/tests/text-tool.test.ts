@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
@@ -10,7 +10,7 @@ import {
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
-const textShape = (id: string, text = "hi"): TextElement => ({
+const textElement = (id: string, text = "hi"): TextElement => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "text",
@@ -78,7 +78,7 @@ describe("draw-text tool", () => {
     expect(shape?.text).toBe("");
     expect(shape?.position).toEqual({ x: 40, y: 60 });
     expect(e.selection.has(id)).toBe(true);
-    expect(e.editingTextShape).toBe(id);
+    expect(e.editingTextElement).toBe(id);
   });
 
   it("a pending creation is not on the undo stack until committed", () => {
@@ -94,7 +94,7 @@ describe("draw-text tool", () => {
     const id = e.createTextAt({ x: 0, y: 0 });
     e.commitTextEdit("hello world");
     expect((e.scene.shapes.get(id) as TextElement).text).toBe("hello world");
-    expect(e.editingTextShape).toBeNull();
+    expect(e.editingTextElement).toBeNull();
     expect(e.canUndo).toBe(true);
     // One undo removes the whole shape, not just the text.
     e.undo();
@@ -106,7 +106,7 @@ describe("draw-text tool", () => {
     e.createTextAt({ x: 0, y: 0 });
     e.commitTextEdit("   ");
     expect(e.scene.shapes.size).toBe(0);
-    expect(e.editingTextShape).toBeNull();
+    expect(e.editingTextElement).toBeNull();
     expect(e.canUndo).toBe(false);
   });
 
@@ -115,14 +115,14 @@ describe("draw-text tool", () => {
     e.createTextAt({ x: 0, y: 0 });
     e.cancelTextEdit();
     expect(e.scene.shapes.size).toBe(0);
-    expect(e.editingTextShape).toBeNull();
+    expect(e.editingTextElement).toBeNull();
     expect(e.canUndo).toBe(false);
   });
 
   it("cancelling an existing text edit keeps the shape intact", () => {
     const e = makeEditor();
     let s = e.scene;
-    s = addShape(s, textShape("t1", "keep")).scene;
+    s = addElement(s, textElement("t1", "keep")).scene;
     const e2 = makeEditor(s);
     e2.beginTextEdit(elementId("t1"));
     e2.cancelTextEdit();

@@ -916,3 +916,6 @@
 
 ## 0.48.0
 - refactor(rename 2/N): element entity type-layer ShapeRightElement
+
+## 0.49.0
+- refactor(rename 3/N): EdgeRightLink types, functions, constants

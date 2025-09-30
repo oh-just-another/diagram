@@ -92,7 +92,7 @@ export const removeBinaryFile = (scene: Scene, id: FileId): Scene => {
   return { ...scene, files };
 };
 
-/** Lookup helper — mirrors `getShape` / `getLink` style. */
+/** Lookup helper — mirrors `getElement` / `getLink` style. */
 export const getBinaryFile = (scene: Scene, id: FileId): BinaryFile | undefined =>
   scene.files.get(id);
 

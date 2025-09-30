@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useReducer, useRef } from "react";
-import { getShape, type TextElement } from "@oh-just-another/scene";
+import { getElement, type TextElement } from "@oh-just-another/scene";
 import { useDiagramOptional } from "./hooks.js";
 
 /**
@@ -27,7 +27,7 @@ export const TextEditorOverlay = () => {
     return editor.on("change", force);
   }, [editor]);
 
-  const editingId = editor?.editingTextShape ?? null;
+  const editingId = editor?.editingTextElement ?? null;
 
   // Focus the sink whenever an edit starts.
   useEffect(() => {
@@ -41,7 +41,7 @@ export const TextEditorOverlay = () => {
   useLayoutEffect(() => {
     const ta = ref.current;
     if (!editor || !editingId || !ta) return;
-    const shape = getShape(editor.scene, editingId) as TextElement | undefined;
+    const shape = getElement(editor.scene, editingId) as TextElement | undefined;
     const text = shape?.type === "text" ? shape.text : "";
     if (ta.value !== text) ta.value = text;
     const sel = editor.editingTextSelection;
@@ -51,7 +51,7 @@ export const TextEditorOverlay = () => {
   });
 
   if (!editor || !editingId) return null;
-  const shape = getShape(editor.scene, editingId) as TextElement | undefined;
+  const shape = getElement(editor.scene, editingId) as TextElement | undefined;
   if (shape?.type !== "text") return null;
 
   // Park the sink at the text's screen position so the IME candidate
@@ -88,13 +88,13 @@ export const TextEditorOverlay = () => {
       }}
       onBlur={() => {
         // A click inside the text repositions the caret (canvas handles
-        // it) and must NOT end editing — keep focus if we're still in an
-        // edit after the click resolves. A real exit (commit) clears
-        // `editingTextShape`, so we won't refocus then.
+        // it) and must NOT end editing — keep focus if still in an edit
+        // after the click resolves. A real exit (commit) clears
+        // `editingTextElement`, so it won't refocus then.
         const id = editingId;
         setTimeout(() => {
           const ta = ref.current;
-          if (ta && editor.editingTextShape === id && document.activeElement !== ta) {
+          if (ta && editor.editingTextElement === id && document.activeElement !== ta) {
             ta.focus();
           }
         }, 0);

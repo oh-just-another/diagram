@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
@@ -26,7 +26,7 @@ const rect = (id: string): Element => ({
 
 const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
-  for (const sh of shapes) s = addShape(s, sh).scene;
+  for (const sh of shapes) s = addElement(s, sh).scene;
   return s;
 };
 

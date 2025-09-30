@@ -109,7 +109,7 @@ export const useHotkeys = (editor: Editor | null): void => {
         (editor.mode === "draw-rect" || editor.mode === "draw-ellipse")
       ) {
         ev.preventDefault();
-        editor.createShapeAtCursor();
+        editor.createElementAtCursor();
         return;
       }
     };

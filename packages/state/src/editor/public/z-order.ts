@@ -1,11 +1,11 @@
 import {
-  getShape,
+  getElement,
   orderBetween,
   orderBetweenMany,
   orderForBottom,
   orderForTop,
   updateLink,
-  updateShape,
+  updateElement,
   type FractionalIndex,
   type Scene,
   type Patch,
@@ -35,7 +35,7 @@ export const computeBringToFront = (
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetId = resolveTarget(scene, id, selection);
   if (!targetId) return null;
-  const shape = getShape(scene, targetId);
+  const shape = getElement(scene, targetId);
   if (!shape) return null;
   const order = orderForTop(
     [...scene.shapes.values()]
@@ -43,7 +43,7 @@ export const computeBringToFront = (
       .map((s) => s.order),
   );
   if (order === shape.order) return null;
-  const r = updateShape(scene, shape.id, (s) => ({ ...s, order }));
+  const r = updateElement(scene, shape.id, (s) => ({ ...s, order }));
   return { scene: r.scene, patch: r.patch };
 };
 
@@ -55,7 +55,7 @@ export const computeSendToBack = (
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetId = resolveTarget(scene, id, selection);
   if (!targetId) return null;
-  const shape = getShape(scene, targetId);
+  const shape = getElement(scene, targetId);
   if (!shape) return null;
   const order = orderForBottom(
     [...scene.shapes.values()]
@@ -63,7 +63,7 @@ export const computeSendToBack = (
       .map((s) => s.order),
   );
   if (order === shape.order) return null;
-  const r = updateShape(scene, shape.id, (s) => ({ ...s, order }));
+  const r = updateElement(scene, shape.id, (s) => ({ ...s, order }));
   return { scene: r.scene, patch: r.patch };
 };
 
@@ -79,7 +79,7 @@ export const computeBringForward = (
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetId = resolveTarget(scene, id, selection);
   if (!targetId) return null;
-  const shape = getShape(scene, targetId);
+  const shape = getElement(scene, targetId);
   if (!shape) return null;
   // Siblings on the same layer, sorted bottom → top.
   const siblings = [...scene.shapes.values()]
@@ -98,7 +98,7 @@ export const computeBringForward = (
     ? orderBetween(above.order, aboveAbove.order)
     : orderForTop(siblings.map((s) => s.order));
   if (order === shape.order) return null;
-  const r = updateShape(scene, shape.id, (s) => ({ ...s, order }));
+  const r = updateElement(scene, shape.id, (s) => ({ ...s, order }));
   return { scene: r.scene, patch: r.patch };
 };
 
@@ -113,7 +113,7 @@ export const computeSendBackward = (
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetId = resolveTarget(scene, id, selection);
   if (!targetId) return null;
-  const shape = getShape(scene, targetId);
+  const shape = getElement(scene, targetId);
   if (!shape) return null;
   // Sorted top → bottom so `find` picks the immediate neighbour below
   // (largest order strictly less than the shape's own).
@@ -128,7 +128,7 @@ export const computeSendBackward = (
     ? orderBetween(belowBelow.order, below.order)
     : orderForBottom(siblings.map((s) => s.order));
   if (order === shape.order) return null;
-  const r = updateShape(scene, shape.id, (s) => ({ ...s, order }));
+  const r = updateElement(scene, shape.id, (s) => ({ ...s, order }));
   return { scene: r.scene, patch: r.patch };
 };
 
@@ -178,7 +178,7 @@ export const compactLayerZOrderPatches = (
     touched += rewriteOrders(
       [...s.shapes.values()].filter((sh) => sh.layerId === lid),
       (shape, order) => {
-        const r = updateShape(s, shape.id, (sh) => ({ ...sh, order }));
+        const r = updateElement(s, shape.id, (sh) => ({ ...sh, order }));
         s = r.scene;
         mutate(s, r.patch);
       },

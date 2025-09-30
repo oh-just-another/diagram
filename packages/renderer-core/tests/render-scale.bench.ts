@@ -1,7 +1,7 @@
 import { bench, describe } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   buildSpatialIndex,
   DEFAULT_LAYER_ID,
   emptyScene,
@@ -46,7 +46,7 @@ const makeScene = (count: number, gridStep = 60): Scene => {
       width: 40,
       height: 30,
     };
-    ({ scene } = addShape(scene, shape));
+    ({ scene } = addElement(scene, shape));
   }
   return scene;
 };

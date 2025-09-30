@@ -1,8 +1,8 @@
 import type { ElementId, Vec2 } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   batch,
-  getShape,
+  getElement,
   orderForTop,
   type Patch,
   type Scene,
@@ -17,8 +17,8 @@ import type { HistoryProvider } from "@oh-just-another/history";
  * shapes — it survives across calls within one editor session;
  * cross-tab paste is a host concern (`navigator.clipboard`).
  *
- *   • `copyShapes` — collect selection into a fresh buffer.
- *   • `pasteShapes` — paste a buffer into the scene at a target
+ *   • `copyElements` — collect selection into a fresh buffer.
+ *   • `pasteElements` — paste a buffer into the scene at a target
  *     centroid, returning the new selection.
  */
 
@@ -40,7 +40,7 @@ export interface PasteResult {
  * The live `<img>` / buffer is shared, so the pasted shape draws
  * immediately (same as the original) and still references its `fileId`.
  */
-export const cloneShapeForClipboard = (shape: Element): Element => {
+export const cloneElementForClipboard = (shape: Element): Element => {
   const meta = (shape as { metadata?: Record<string, unknown> }).metadata;
   const liveImage = meta && "image" in meta ? meta.image : undefined;
   const liveAnim = (shape as { animationData?: unknown }).animationData;
@@ -63,18 +63,18 @@ export const cloneShapeForClipboard = (shape: Element): Element => {
 
 /**
  * Snapshot every selected shape into a fresh array. Uses
- * {@link cloneShapeForClipboard} so live runtime handles (decoded
+ * {@link cloneElementForClipboard} so live runtime handles (decoded
  * image element, animation buffer) survive — a plain `structuredClone`
  * throws on the DOM `<img>` an image shape carries in `metadata.image`.
  */
-export const copyShapes = (
+export const copyElements = (
   scene: Scene,
   selection: Iterable<ElementId>,
 ): Element[] => {
   const out: Element[] = [];
   for (const id of selection) {
-    const s = getShape(scene, id);
-    if (s) out.push(cloneShapeForClipboard(s));
+    const s = getElement(scene, id);
+    if (s) out.push(cloneElementForClipboard(s));
   }
   return out;
 };
@@ -89,7 +89,7 @@ export const copyShapes = (
  * keeps owning the counter) and pushes patches into `history`.
  * Returns the new scene + ids the caller should select.
  */
-export const pasteShapes = (
+export const pasteElements = (
   scene: Scene,
   history: HistoryProvider,
   clipboard: readonly Element[],
@@ -126,12 +126,12 @@ export const pasteShapes = (
         .map((s) => s.order),
     );
     const clone = {
-      ...cloneShapeForClipboard(tmpl),
+      ...cloneElementForClipboard(tmpl),
       id: newId,
       position: { x: tmpl.position.x + delta.x, y: tmpl.position.y + delta.y },
       order,
     } as Element;
-    const r = addShape(next, clone);
+    const r = addElement(next, clone);
     next = r.scene;
     patches.push(r.patch);
     newIds.push(newId);

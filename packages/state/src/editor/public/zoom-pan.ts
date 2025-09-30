@@ -1,6 +1,6 @@
 import { bounds as B } from "@oh-just-another/math";
 import {
-  getShapeWorldBounds,
+  getElementWorldBounds,
   panBy as viewportPanBy,
   resize as viewportResize,
   zoomAt as viewportZoomAt,
@@ -68,7 +68,7 @@ export const computeZoomToFit = (scene: Scene, padding: number): Scene | null =>
   if (vp.size.width <= 0 || vp.size.height <= 0) return null;
   let combined: Bounds | null = null;
   for (const s of scene.shapes.values()) {
-    const b = getShapeWorldBounds(s);
+    const b = getElementWorldBounds(s);
     combined = combined ? B.union(combined, b) : b;
   }
   if (!combined || combined.width <= 0 || combined.height <= 0) return null;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
@@ -40,7 +40,7 @@ const makeStubEditor = (initial: Scene) => {
 describe("editor bridge", () => {
   it("captureFromEditor stores the editor's scene", () => {
     let scene = emptyScene();
-    ({ scene } = addShape(scene, rect("a")));
+    ({ scene } = addElement(scene, rect("a")));
     const editor = makeStubEditor(scene);
     const store = new SnapshotStore();
     const snap = captureFromEditor(store, editor, { message: "first", author });
@@ -50,7 +50,7 @@ describe("editor bridge", () => {
 
   it("restoreSnapshot replaces editor scene", () => {
     let original = emptyScene();
-    ({ scene: original } = addShape(original, rect("a")));
+    ({ scene: original } = addElement(original, rect("a")));
     const editor = makeStubEditor(original);
     const store = new SnapshotStore();
     const snap = captureFromEditor(store, editor, { message: "v1", author });

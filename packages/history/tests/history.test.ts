@@ -23,12 +23,12 @@ const rect = (id: string, x = 0): Element => ({
   height: 10,
 });
 
-const addShapePatch = (s: Element): Patch => ({ kind: "shape", id: s.id, before: null, after: s });
+const addElementPatch = (s: Element): Patch => ({ kind: "shape", id: s.id, before: null, after: s });
 
 describe("History — basic stack", () => {
   it("push adds to undo stack", () => {
     const h = new History();
-    h.push(addShapePatch(rect("a")));
+    h.push(addElementPatch(rect("a")));
     expect(h.size).toBe(1);
     expect(h.canUndo).toBe(true);
     expect(h.canRedo).toBe(false);
@@ -37,7 +37,7 @@ describe("History — basic stack", () => {
   it("undo pops the latest patch and returns its inverse", () => {
     const h = new History();
     const a = rect("a");
-    h.push(addShapePatch(a));
+    h.push(addElementPatch(a));
     const inverse = h.undo();
     expect(inverse).toEqual({ kind: "shape", id: a.id, before: a, after: null });
     expect(h.canUndo).toBe(false);
@@ -47,7 +47,7 @@ describe("History — basic stack", () => {
   it("redo returns the original patch", () => {
     const h = new History();
     const a = rect("a");
-    const p = addShapePatch(a);
+    const p = addElementPatch(a);
     h.push(p);
     h.undo();
     const replayed = h.redo();
@@ -59,7 +59,7 @@ describe("History — basic stack", () => {
   it("undo→redo→undo applied to scene returns to the original", () => {
     const h = new History();
     const a = rect("a");
-    const p = addShapePatch(a);
+    const p = addElementPatch(a);
     let scene = apply(emptyScene(), p);
     h.push(p);
     scene = apply(scene, h.undo()!);
@@ -72,11 +72,11 @@ describe("History — basic stack", () => {
 
   it("new push clears the redo stack", () => {
     const h = new History();
-    h.push(addShapePatch(rect("a")));
-    h.push(addShapePatch(rect("b")));
+    h.push(addElementPatch(rect("a")));
+    h.push(addElementPatch(rect("b")));
     h.undo();
     expect(h.canRedo).toBe(true);
-    h.push(addShapePatch(rect("c")));
+    h.push(addElementPatch(rect("c")));
     expect(h.canRedo).toBe(false);
   });
 
@@ -95,9 +95,9 @@ describe("History — basic stack", () => {
 
   it("limit drops oldest entries", () => {
     const h = new History({ limit: 2 });
-    h.push(addShapePatch(rect("a")));
-    h.push(addShapePatch(rect("b")));
-    h.push(addShapePatch(rect("c")));
+    h.push(addElementPatch(rect("a")));
+    h.push(addElementPatch(rect("b")));
+    h.push(addElementPatch(rect("c")));
     expect(h.size).toBe(2);
     // The oldest 'a' should be gone; undoing twice leaves us at 'a' state.
     expect(h.undo()).not.toBeNull();
@@ -107,7 +107,7 @@ describe("History — basic stack", () => {
 
   it("clear empties both stacks", () => {
     const h = new History();
-    h.push(addShapePatch(rect("a")));
+    h.push(addElementPatch(rect("a")));
     h.undo();
     h.clear();
     expect(h.size).toBe(0);
@@ -119,7 +119,7 @@ describe("History — transactions", () => {
   it("commit with one patch pushes a single record", () => {
     const h = new History();
     const tx = h.transaction();
-    tx.add(addShapePatch(rect("a")));
+    tx.add(addElementPatch(rect("a")));
     tx.commit();
     expect(h.size).toBe(1);
   });
@@ -142,8 +142,8 @@ describe("History — transactions", () => {
   it("commit with patches across entities pushes a batch", () => {
     const h = new History();
     const tx = h.transaction();
-    tx.add(addShapePatch(rect("a")));
-    tx.add(addShapePatch(rect("b")));
+    tx.add(addElementPatch(rect("a")));
+    tx.add(addElementPatch(rect("b")));
     tx.commit();
     expect(h.size).toBe(1);
     const inverse = h.undo();
@@ -153,7 +153,7 @@ describe("History — transactions", () => {
   it("cancel discards everything without pushing", () => {
     const h = new History();
     const tx = h.transaction();
-    tx.add(addShapePatch(rect("a")));
+    tx.add(addElementPatch(rect("a")));
     tx.cancel();
     expect(h.size).toBe(0);
   });
@@ -174,7 +174,7 @@ describe("History — transactions", () => {
     const h = new History();
     const tx = h.transaction();
     tx.commit();
-    expect(() => tx.add(addShapePatch(rect("a")))).toThrow();
+    expect(() => tx.add(addElementPatch(rect("a")))).toThrow();
   });
 
   it("hasOpenTransaction reflects the state", () => {
@@ -189,10 +189,10 @@ describe("History — transactions", () => {
   it("record routes through open transaction or pushes directly", () => {
     const h = new History();
     const tx = h.transaction();
-    h.record(addShapePatch(rect("a")), { transaction: tx });
+    h.record(addElementPatch(rect("a")), { transaction: tx });
     tx.commit();
     expect(h.size).toBe(1);
-    h.record(addShapePatch(rect("b")));
+    h.record(addElementPatch(rect("b")));
     expect(h.size).toBe(2);
   });
 });

@@ -20,7 +20,7 @@ export interface SceneShapeDiff {
   readonly modified: readonly ElementId[];
 }
 
-export const diffSceneShapes = (prev: Scene, next: Scene): SceneShapeDiff => {
+export const diffSceneElements = (prev: Scene, next: Scene): SceneShapeDiff => {
   const added: ElementId[] = [];
   const removed: ElementId[] = [];
   const modified: ElementId[] = [];

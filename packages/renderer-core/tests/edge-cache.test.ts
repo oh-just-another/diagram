@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { linkId, elementId } from "@oh-just-another/types";
 import {
   addLink,
-  addShape,
+  addElement,
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
-  updateShape,
+  updateElement,
   type Link,
   type Patch,
   type Element,
@@ -76,7 +76,7 @@ describe("LinkBoundsCache", () => {
     const { scene, edge } = sceneWithLink(baseLink);
     const cache = new LinkBoundsCache();
     const first = cache.getOrCompute(scene, edge);
-    const moved = updateShape(scene, elementId("b"), (s) => ({
+    const moved = updateElement(scene, elementId("b"), (s) => ({
       ...s,
       position: { x: 500, y: 500 },
     })).scene;

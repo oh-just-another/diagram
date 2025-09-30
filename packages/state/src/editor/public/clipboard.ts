@@ -1,11 +1,11 @@
 import type { Scene, Element } from "@oh-just-another/scene";
 import {
-  copyShapes as copyShapesHelper,
-  pasteShapes as pasteShapesHelper,
+  copyElements as copyElementsHelper,
+  pasteElements as pasteElementsHelper,
 } from "../../clipboard.js";
 import type { HistoryProvider } from "@oh-just-another/history";
 import type { ElementId, Vec2 } from "@oh-just-another/types";
-import { elementId as castShapeId } from "@oh-just-another/types";
+import { elementId as castElementId } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
 
 /**
@@ -19,13 +19,12 @@ import * as Selection from "../../selection.js";
 export const copySelected = (
   scene: Scene,
   selection: Selection.Selection,
-): readonly Element[] => copyShapesHelper(scene, selection);
+): readonly Element[] => copyElementsHelper(scene, selection);
 
 /**
- * Paste: produce the new scene + freshly-generated shape ids for
- * the newly-pasted cluster. Editor owns side effects (history
- * push happens inside pasteShapes helper which receives `history`,
- * then updates `_selection`, fires notify + announce).
+ * Paste: produce the new scene + freshly-generated shape ids for the
+ * newly-pasted cluster. Editor owns side effects (history push happens
+ * inside the pasteElements helper, then `_selection` is updated).
  *
  * `targetWorld` lands the cluster's centroid; caller defaults to the
  * last tracked cursor world position, with a +10 px nudge fallback in
@@ -44,8 +43,8 @@ export const pasteFromClipboard = (
   readonly scene: Scene;
   readonly newIds: readonly ElementId[];
 } => {
-  const result = pasteShapesHelper(scene, history, clipboard, target, () =>
-    castShapeId(`shape-${nextIdSeed()}-${Date.now().toString(36)}`),
+  const result = pasteElementsHelper(scene, history, clipboard, target, () =>
+    castElementId(`shape-${nextIdSeed()}-${Date.now().toString(36)}`),
   );
   return { scene: result.scene, newIds: result.newIds };
 };

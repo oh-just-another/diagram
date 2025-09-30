@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
-  addShape,
+  addElement,
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,
@@ -28,7 +28,7 @@ const rect = (id: string, parentId: string | null, w = 40, h = 30): Element => (
 const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const shape of shapes) {
-    const r = addShape(s, shape);
+    const r = addElement(s, shape);
     s = r.scene;
   }
   return s;

@@ -144,7 +144,7 @@ export class BranchDoc implements BranchMergeAPI {
     // "edited" across two snapshots. JSON.stringify is good enough for
     // plain-object shapes, which is what the kernel ships.
     const report = mergeScenesThreeWay(sMeta.ancestorScene, sourceScene, targetScene, {
-      compareShapes: (a, b) => JSON.stringify(a) === JSON.stringify(b),
+      compareElements: (a, b) => JSON.stringify(a) === JSON.stringify(b),
     });
     const applied: ElementId[] = [];
     for (const [id, shape] of report.autoMerged.shapes) {
