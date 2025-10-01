@@ -35,7 +35,7 @@ const author = { id: "u1", name: "tester" };
 const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) {
-    s = apply(s, { kind: "shape", id: sh.id, before: null, after: sh } satisfies Patch);
+    s = apply(s, { kind: "element", id: sh.id, before: null, after: sh } satisfies Patch);
   }
   return s;
 };
@@ -43,14 +43,14 @@ const sceneWith = (...shapes: Element[]): Scene => {
 /** Derive a new scene by adding one shape. Preserves identity of existing shapes. */
 const addRect = (scene: Scene, id: string, x: number, y: number): Scene => {
   const r = rect(id, x, y);
-  return apply(scene, { kind: "shape", id: r.id, before: null, after: r } satisfies Patch);
+  return apply(scene, { kind: "element", id: r.id, before: null, after: r } satisfies Patch);
 };
 
 const updateRect = (scene: Scene, id: string, x: number, y: number): Scene => {
   const before = scene.shapes.get(elementId(id));
   if (!before) throw new Error(`missing shape ${id}`);
   const after = { ...before, position: { x, y } } as Element;
-  return apply(scene, { kind: "shape", id: elementId(id), before, after } satisfies Patch);
+  return apply(scene, { kind: "element", id: elementId(id), before, after } satisfies Patch);
 };
 
 describe("merge", () => {
@@ -92,7 +92,7 @@ describe("merge", () => {
     const report = threeWayMerge(base, source, target);
     expect(report.conflicts).toHaveLength(1);
     const c = report.conflicts[0]!;
-    expect(c.kind).toBe("shape");
+    expect(c.kind).toBe("element");
     expect(c.id).toBe(elementId("a"));
     // Auto-merged value stays at the target value.
     expect((report.mergedScene.shapes.get(elementId("a")) as Element).position.x).toBe(20);

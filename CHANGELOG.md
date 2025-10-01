@@ -922,3 +922,6 @@
 
 ## 0.50.0
 - refactor(rename 4/N): element entity functions/vars ShapeRightElement
+
+## 0.50.1
+- refactor(rename 5a/N): Patch + PressTarget kind literals shapeRightelement, edgeRightlink
