@@ -919,3 +919,6 @@
 
 ## 0.49.0
 - refactor(rename 3/N): EdgeRightLink types, functions, constants
+
+## 0.50.0
+- refactor(rename 4/N): element entity functions/vars ShapeRightElement

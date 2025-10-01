@@ -20,7 +20,7 @@ import type { SnapshotStore } from "./store.js";
 export type ConflictResolution = "source" | "target" | "both";
 
 export interface Conflict<Id, V> {
-  readonly kind: "shape" | "edge" | "layer" | "annotation";
+  readonly kind: "element" | "link" | "layer" | "annotation";
   readonly id: Id;
   readonly base: V | null;
   readonly source: V | null;
@@ -142,8 +142,8 @@ export const threeWayMerge = (base: Scene, source: Scene, target: Scene): MergeR
   const conflicts: SceneConflict[] = [];
   const out = { conflicts };
 
-  const shapes = mergeMap("shape", base.shapes, source.shapes, target.shapes, out);
-  const edges = mergeMap("edge", base.edges, source.edges, target.edges, out);
+  const shapes = mergeMap("element", base.shapes, source.shapes, target.shapes, out);
+  const edges = mergeMap("link", base.edges, source.edges, target.edges, out);
   const layers = mergeMap("layer", base.layers, source.layers, target.layers, out);
   const annotations = mergeMap(
     "annotation",
@@ -162,8 +162,8 @@ export const threeWayMerge = (base: Scene, source: Scene, target: Scene): MergeR
   };
 
   const applied: Patch[] = [];
-  pushPatches(applied, "shape", target.shapes, shapes);
-  pushPatches(applied, "edge", target.edges, edges);
+  pushPatches(applied, "element", target.shapes, shapes);
+  pushPatches(applied, "link", target.edges, edges);
   pushPatches(applied, "layer", target.layers, layers);
   pushPatches(applied, "annotation", target.annotations, annotations);
 
@@ -172,7 +172,7 @@ export const threeWayMerge = (base: Scene, source: Scene, target: Scene): MergeR
 
 const pushPatches = <K, V>(
   out: Patch[],
-  kind: "shape" | "edge" | "layer" | "annotation",
+  kind: "element" | "link" | "layer" | "annotation",
   before: ReadonlyMap<K, V>,
   after: ReadonlyMap<K, V>,
 ): void => {
@@ -214,9 +214,9 @@ export const resolveConflict = (
 
 const mapName = (kind: SceneConflict["kind"]): "shapes" | "edges" | "layers" | "annotations" => {
   switch (kind) {
-    case "shape":
+    case "element":
       return "shapes";
-    case "edge":
+    case "link":
       return "edges";
     case "layer":
       return "layers";
