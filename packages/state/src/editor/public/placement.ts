@@ -108,7 +108,7 @@ export const computePlacementUpdate = (
     },
   } as Element;
   const patch: Patch = {
-    kind: "shape",
+    kind: "element",
     id: state.current.id,
     before: state.current,
     after: next,
@@ -137,7 +137,7 @@ export const computePlacementContainerDrop = (
   if (!container) return null;
   const withParent = { ...state.current, parentId: container.id } as Element;
   const patch: Patch = {
-    kind: "shape",
+    kind: "element",
     id: state.current.id,
     before: state.current,
     after: withParent,

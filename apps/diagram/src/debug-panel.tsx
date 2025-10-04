@@ -1109,7 +1109,7 @@ const runBatch = (editor: Editor, build: () => BuildResult) => {
   let scene = editor.scene;
   for (const sh of shapes) {
     scene = apply(scene, {
-      kind: "shape",
+      kind: "element",
       id: sh.id,
       before: null,
       after: sh,
@@ -1117,7 +1117,7 @@ const runBatch = (editor: Editor, build: () => BuildResult) => {
   }
   for (const e of edges) {
     scene = apply(scene, {
-      kind: "edge",
+      kind: "link",
       id: e.id,
       before: null,
       after: e,
@@ -1681,7 +1681,7 @@ const runMosaicChunks = async (
         height: pixelSize,
       };
       scene = apply(scene, {
-        kind: "shape",
+        kind: "element",
         id: shape.id,
         before: null,
         after: shape,

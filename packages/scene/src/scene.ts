@@ -99,13 +99,13 @@ export const getBinaryFile = (scene: Scene, id: FileId): BinaryFile | undefined 
 /** Apply a patch to a scene, returning a new scene. Pure. */
 export const apply = (scene: Scene, patch: Patch): Scene => {
   switch (patch.kind) {
-    case "shape": {
+    case "element": {
       const shapes = new Map(scene.shapes);
       if (patch.after === null) shapes.delete(patch.id);
       else shapes.set(patch.id, patch.after);
       return { ...scene, shapes };
     }
-    case "edge": {
+    case "link": {
       const edges = new Map(scene.edges);
       if (patch.after === null) edges.delete(patch.id);
       else edges.set(patch.id, patch.after);

@@ -136,13 +136,13 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
   const shape = ctx.acceleratedElementAt(worldPoint);
   if (shape && ctx.isElementInteractable(shape)) {
     const target = ctx.promoteToGroupRoot(shape);
-    return { kind: "shape", id: target.id, bounds: getElementWorldBounds(target) };
+    return { kind: "element", id: target.id, bounds: getElementWorldBounds(target) };
   }
 
   // 4. Link body under cursor.
   const edge = findLinkAt(ctx.scene, worldPoint, ctx.edgeHitThreshold / zoom);
   if (edge && !ctx.isLayerLocked(edge.layerId)) {
-    return { kind: "edge", id: edge.id };
+    return { kind: "link", id: edge.id };
   }
   return { kind: "empty" };
 };

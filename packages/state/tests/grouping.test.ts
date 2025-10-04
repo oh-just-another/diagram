@@ -29,7 +29,7 @@ const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const shape of shapes) {
     s = apply(s, {
-      kind: "shape",
+      kind: "element",
       id: shape.id,
       before: null,
       after: shape,

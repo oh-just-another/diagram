@@ -10,7 +10,7 @@ import { DEFAULT_MODE, type Mode } from "./modes.js";
  * that point on.
  */
 export type PressTarget =
-  | { readonly kind: "shape"; readonly id: ElementId; readonly bounds: Bounds }
+  | { readonly kind: "element"; readonly id: ElementId; readonly bounds: Bounds }
   | {
       readonly kind: "handle";
       readonly elementId: ElementId;
@@ -28,7 +28,7 @@ export type PressTarget =
       readonly handle: HandleId;
       readonly bounds: Bounds;
     }
-  | { readonly kind: "edge"; readonly id: LinkId }
+  | { readonly kind: "link"; readonly id: LinkId }
   | {
       readonly kind: "edge-endpoint";
       readonly linkId: LinkId;
@@ -270,7 +270,7 @@ export const interactionMachine = setup({
       if (
         event.type !== "POINTER_MOVE" ||
         !context.pressOrigin ||
-        context.pressTarget?.kind !== "shape"
+        context.pressTarget?.kind !== "element"
       ) {
         return;
       }
@@ -355,7 +355,7 @@ export const interactionMachine = setup({
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return;
       enqueue.emit({
         type: "DRAW_EDGE_PREVIEW",
-        fromElement: context.pressTarget?.kind === "shape" ? context.pressTarget.id : null,
+        fromElement: context.pressTarget?.kind === "element" ? context.pressTarget.id : null,
         fromPoint: context.pressOrigin,
         toPoint: event.point,
       });
@@ -377,7 +377,7 @@ export const interactionMachine = setup({
       if (event.type !== "POINTER_UP" || !context.pressOrigin) return;
       if (context.pressTarget?.kind !== "edge-endpoint") return;
       const upTarget = event.target;
-      const toElement = upTarget?.kind === "shape" ? upTarget.id : null;
+      const toElement = upTarget?.kind === "element" ? upTarget.id : null;
       enqueue.emit({
         type: "UPDATE_EDGE_ENDPOINT",
         linkId: context.pressTarget.linkId,
@@ -415,8 +415,8 @@ export const interactionMachine = setup({
       // the same way as POINTER_DOWN). Use it to land on a shape if the
       // pointer is still over one.
       const upTarget = event.target;
-      const toElement = upTarget?.kind === "shape" ? upTarget.id : null;
-      const fromElement = context.pressTarget?.kind === "shape" ? context.pressTarget.id : null;
+      const toElement = upTarget?.kind === "element" ? upTarget.id : null;
+      const fromElement = context.pressTarget?.kind === "element" ? context.pressTarget.id : null;
       // Reject degenerate (released right back on the source shape without
       // moving — clearly an accidental click).
       const dx = event.point.x - context.pressOrigin.x;
@@ -434,7 +434,7 @@ export const interactionMachine = setup({
   guards: {
     movedAndOnElement: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
-      if (context.pressTarget?.kind !== "shape") return false;
+      if (context.pressTarget?.kind !== "element") return false;
       // Dragging-on-shape moves the shape — only valid in `select` mode.
       // In `draw-edge` mode the same gesture starts an edge from the shape.
       if (context.mode !== "select") return false;
@@ -745,7 +745,7 @@ export const interpretPressEnd = (
   // In draw-edge mode a click without movement shouldn't toggle selection —
   // the user is mid-mode and meant to start an edge.
   if (ctx.mode === "draw-edge") return null;
-  if (ctx.pressTarget.kind === "shape") {
+  if (ctx.pressTarget.kind === "element") {
     // Shift / meta click toggles the shape's membership in the current
     // selection — every other modifier combination replaces.
     const m = ctx.pressModifiers;
@@ -754,7 +754,7 @@ export const interpretPressEnd = (
     }
     return { type: "SELECT_REPLACE", id: ctx.pressTarget.id };
   }
-  if (ctx.pressTarget.kind === "edge") {
+  if (ctx.pressTarget.kind === "link") {
     return { type: "SELECT_EDGE_REPLACE", id: ctx.pressTarget.id };
   }
   if (ctx.pressTarget.kind === "empty" && ctx.mode === "select") {

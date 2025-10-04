@@ -23,7 +23,7 @@ const rect = (id: string, x = 0): Element => ({
   height: 10,
 });
 
-const addElementPatch = (s: Element): Patch => ({ kind: "shape", id: s.id, before: null, after: s });
+const addElementPatch = (s: Element): Patch => ({ kind: "element", id: s.id, before: null, after: s });
 
 describe("History — basic stack", () => {
   it("push adds to undo stack", () => {
@@ -39,7 +39,7 @@ describe("History — basic stack", () => {
     const a = rect("a");
     h.push(addElementPatch(a));
     const inverse = h.undo();
-    expect(inverse).toEqual({ kind: "shape", id: a.id, before: a, after: null });
+    expect(inverse).toEqual({ kind: "element", id: a.id, before: a, after: null });
     expect(h.canUndo).toBe(false);
     expect(h.canRedo).toBe(true);
   });
@@ -83,7 +83,7 @@ describe("History — basic stack", () => {
   it("noop patches are skipped on push", () => {
     const h = new History();
     const a = rect("a");
-    h.push({ kind: "shape", id: a.id, before: a, after: a });
+    h.push({ kind: "element", id: a.id, before: a, after: a });
     expect(h.size).toBe(0);
   });
 
@@ -130,13 +130,13 @@ describe("History — transactions", () => {
     const a0 = rect("a", 0);
     const a1 = rect("a", 10);
     const a2 = rect("a", 20);
-    tx.add({ kind: "shape", id: a0.id, before: a0, after: a1 });
-    tx.add({ kind: "shape", id: a0.id, before: a1, after: a2 });
+    tx.add({ kind: "element", id: a0.id, before: a0, after: a1 });
+    tx.add({ kind: "element", id: a0.id, before: a1, after: a2 });
     tx.commit();
     // After merge: a single shape patch with before=a0, after=a2.
     expect(h.size).toBe(1);
     const inverse = h.undo();
-    expect(inverse).toEqual({ kind: "shape", id: a0.id, before: a2, after: a0 });
+    expect(inverse).toEqual({ kind: "element", id: a0.id, before: a2, after: a0 });
   });
 
   it("commit with patches across entities pushes a batch", () => {
@@ -203,8 +203,8 @@ describe("History — mergeTransactions: false", () => {
     const tx = h.transaction();
     const a0 = rect("a", 0);
     const a1 = rect("a", 10);
-    tx.add({ kind: "shape", id: a0.id, before: a0, after: a1 });
-    tx.add({ kind: "shape", id: a0.id, before: a1, after: rect("a", 20) });
+    tx.add({ kind: "element", id: a0.id, before: a0, after: a1 });
+    tx.add({ kind: "element", id: a0.id, before: a1, after: rect("a", 20) });
     tx.commit();
     const inverse = h.undo();
     expect(inverse?.kind).toBe("batch");

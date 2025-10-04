@@ -1,7 +1,7 @@
 import type { Patch } from "@oh-just-another/scene";
 
-type ElementPatch = Extract<Patch, { kind: "shape" }>;
-type LinkPatch = Extract<Patch, { kind: "edge" }>;
+type ElementPatch = Extract<Patch, { kind: "element" }>;
+type LinkPatch = Extract<Patch, { kind: "link" }>;
 type LayerPatch = Extract<Patch, { kind: "layer" }>;
 type AnnotationPatch = Extract<Patch, { kind: "annotation" }>;
 type ViewportPatch = Extract<Patch, { kind: "viewport" }>;
@@ -39,7 +39,7 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
       for (const inner of p.patches) visit(inner);
       return;
     }
-    if (p.kind === "shape") {
+    if (p.kind === "element") {
       const existing = shapes.get(p.id);
       if (existing) {
         existing.latest = { ...existing.latest, after: p.after };
@@ -49,7 +49,7 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
       }
       return;
     }
-    if (p.kind === "edge") {
+    if (p.kind === "link") {
       const existing = edges.get(p.id);
       if (existing) {
         existing.latest = { ...existing.latest, after: p.after };
@@ -104,18 +104,18 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
   for (let i = 0; i < order.length; i++) {
     const p = order[i]!;
     let merged: Patch;
-    if (p.kind === "shape") {
+    if (p.kind === "element") {
       const slot = shapes.get(p.id)!;
       merged = {
-        kind: "shape",
+        kind: "element",
         id: slot.first.id,
         before: slot.first.before,
         after: slot.latest.after,
       };
-    } else if (p.kind === "edge") {
+    } else if (p.kind === "link") {
       const slot = edges.get(p.id)!;
       merged = {
-        kind: "edge",
+        kind: "link",
         id: slot.first.id,
         before: slot.first.before,
         after: slot.latest.after,
@@ -158,8 +158,8 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
 
 const isMergedNoop = (p: Patch): boolean => {
   if (
-    p.kind === "shape" ||
-    p.kind === "edge" ||
+    p.kind === "element" ||
+    p.kind === "link" ||
     p.kind === "layer" ||
     p.kind === "annotation" ||
     p.kind === "file"

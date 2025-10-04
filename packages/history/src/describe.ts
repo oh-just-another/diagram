@@ -9,7 +9,7 @@ import type { Patch } from "@oh-just-another/scene";
  */
 export const describe = (patch: Patch): string => {
   switch (patch.kind) {
-    case "shape": {
+    case "element": {
       if (patch.before === null) {
         return labelForCreate(patch.after);
       }
@@ -18,7 +18,7 @@ export const describe = (patch: Patch): string => {
       }
       return labelForUpdate(patch.before, patch.after);
     }
-    case "edge": {
+    case "link": {
       if (patch.before === null) return "Create edge";
       if (patch.after === null) return "Delete edge";
       return "Update edge";

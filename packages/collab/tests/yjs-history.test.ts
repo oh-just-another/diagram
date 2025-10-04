@@ -40,7 +40,7 @@ describe("YjsHistory", () => {
     expect(h.canUndo).toBe(false);
     expect(h.canRedo).toBe(false);
 
-    h.push({ kind: "shape", id: elementId("b"), before: null, after: rect("b") });
+    h.push({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
     expect(h.canUndo).toBe(true);
     expect(h.canRedo).toBe(false);
   });
@@ -50,7 +50,7 @@ describe("YjsHistory", () => {
     sceneDoc.replace(seed());
     const h = new YjsHistory(sceneDoc);
 
-    const addB: Patch = { kind: "shape", id: elementId("b"), before: null, after: rect("b") };
+    const addB: Patch = { kind: "element", id: elementId("b"), before: null, after: rect("b") };
     h.push(addB);
     expect(sceneDoc.shapes.has("b")).toBe(true);
 
@@ -66,7 +66,7 @@ describe("YjsHistory", () => {
     const sceneDoc = new SceneDoc();
     sceneDoc.replace(seed());
     const h = new YjsHistory(sceneDoc);
-    h.push({ kind: "shape", id: elementId("b"), before: null, after: rect("b") });
+    h.push({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
     h.undo();
     expect(sceneDoc.shapes.has("b")).toBe(false);
     const replay = h.redo();
@@ -78,7 +78,7 @@ describe("YjsHistory", () => {
     const sceneDoc = new SceneDoc();
     sceneDoc.replace(seed());
     const h = new YjsHistory(sceneDoc);
-    h.push({ kind: "shape", id: elementId("b"), before: null, after: rect("b") });
+    h.push({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
     h.clear();
     expect(h.canUndo).toBe(false);
   });
@@ -89,8 +89,8 @@ describe("YjsHistory", () => {
     const h = new YjsHistory(sceneDoc);
 
     const tx = h.transaction();
-    tx.add({ kind: "shape", id: elementId("b"), before: null, after: rect("b") });
-    tx.add({ kind: "shape", id: elementId("c"), before: null, after: rect("c", 100) });
+    tx.add({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
+    tx.add({ kind: "element", id: elementId("c"), before: null, after: rect("c", 100) });
     tx.commit();
 
     expect(h.size).toBe(1);
@@ -105,7 +105,7 @@ describe("YjsHistory", () => {
     sceneDoc.replace(seed());
     const h = new YjsHistory(sceneDoc);
     const tx = h.transaction();
-    tx.add({ kind: "shape", id: elementId("b"), before: null, after: rect("b") });
+    tx.add({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
     tx.cancel();
     expect(h.size).toBe(0);
     expect(sceneDoc.shapes.has("b")).toBe(false);

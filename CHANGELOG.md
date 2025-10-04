@@ -925,3 +925,6 @@
 
 ## 0.50.1
 - refactor(rename 5a/N): Patch + PressTarget kind literals shapeRightelement, edgeRightlink
+
+## 0.50.2
+- fix(rename 5a): convert Patch-kind literals in test files (missed in 9d1cbe3)

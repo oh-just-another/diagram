@@ -29,18 +29,18 @@ describe("mergeByEntity", () => {
     const a1 = rect("a", 5);
     const a2 = rect("a", 12);
     const out = mergeByEntity([
-      { kind: "shape", id: a0.id, before: a0, after: a1 },
-      { kind: "shape", id: a0.id, before: a1, after: a2 },
+      { kind: "element", id: a0.id, before: a0, after: a1 },
+      { kind: "element", id: a0.id, before: a1, after: a2 },
     ]);
-    expect(out).toEqual([{ kind: "shape", id: a0.id, before: a0, after: a2 }]);
+    expect(out).toEqual([{ kind: "element", id: a0.id, before: a0, after: a2 }]);
   });
 
   it("keeps separate entries for different shape ids", () => {
     const a = rect("a");
     const b = rect("b");
     const out = mergeByEntity([
-      { kind: "shape", id: a.id, before: null, after: a },
-      { kind: "shape", id: b.id, before: null, after: b },
+      { kind: "element", id: a.id, before: null, after: a },
+      { kind: "element", id: b.id, before: null, after: b },
     ]);
     expect(out).toHaveLength(2);
   });
@@ -49,21 +49,21 @@ describe("mergeByEntity", () => {
     const a = rect("a");
     const b = rect("b");
     const out = mergeByEntity([
-      { kind: "shape", id: b.id, before: null, after: b },
-      { kind: "shape", id: a.id, before: null, after: a },
-      { kind: "shape", id: b.id, before: b, after: rect("b", 9) },
+      { kind: "element", id: b.id, before: null, after: b },
+      { kind: "element", id: a.id, before: null, after: a },
+      { kind: "element", id: b.id, before: b, after: rect("b", 9) },
     ]);
-    expect(out.map((p) => (p.kind === "shape" ? p.id : "?"))).toEqual([b.id, a.id]);
+    expect(out.map((p) => (p.kind === "element" ? p.id : "?"))).toEqual([b.id, a.id]);
   });
 
   it("flattens nested batches", () => {
     const a = rect("a", 0);
     const a1 = rect("a", 7);
     const patches: Patch[] = [
-      { kind: "batch", patches: [{ kind: "shape", id: a.id, before: a, after: a1 }] },
+      { kind: "batch", patches: [{ kind: "element", id: a.id, before: a, after: a1 }] },
     ];
     const out = mergeByEntity(patches);
-    expect(out).toEqual([{ kind: "shape", id: a.id, before: a, after: a1 }]);
+    expect(out).toEqual([{ kind: "element", id: a.id, before: a, after: a1 }]);
   });
 
   it("merges multiple viewport patches into one", () => {
@@ -80,8 +80,8 @@ describe("mergeByEntity", () => {
   it("drops patches that collapse to a no-op", () => {
     const a = rect("a");
     const out = mergeByEntity([
-      { kind: "shape", id: a.id, before: a, after: rect("a", 5) },
-      { kind: "shape", id: a.id, before: rect("a", 5), after: a },
+      { kind: "element", id: a.id, before: a, after: rect("a", 5) },
+      { kind: "element", id: a.id, before: rect("a", 5), after: a },
     ]);
     expect(out).toEqual([]);
   });

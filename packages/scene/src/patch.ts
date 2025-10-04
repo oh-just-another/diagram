@@ -18,13 +18,13 @@ import type { Viewport } from "./viewport.js";
  */
 export type Patch =
   | {
-      readonly kind: "shape";
+      readonly kind: "element";
       readonly id: ElementId;
       readonly before: Element | null;
       readonly after: Element | null;
     }
   | {
-      readonly kind: "edge";
+      readonly kind: "link";
       readonly id: LinkId;
       readonly before: Link | null;
       readonly after: Link | null;
@@ -53,10 +53,10 @@ export type Patch =
 /** Swap `before` and `after` recursively. */
 export const invert = (patch: Patch): Patch => {
   switch (patch.kind) {
-    case "shape":
-      return { kind: "shape", id: patch.id, before: patch.after, after: patch.before };
-    case "edge":
-      return { kind: "edge", id: patch.id, before: patch.after, after: patch.before };
+    case "element":
+      return { kind: "element", id: patch.id, before: patch.after, after: patch.before };
+    case "link":
+      return { kind: "link", id: patch.id, before: patch.after, after: patch.before };
     case "layer":
       return { kind: "layer", id: patch.id, before: patch.after, after: patch.before };
     case "annotation":
@@ -84,8 +84,8 @@ export const batch = (patches: readonly Patch[]): Patch => {
 /** True when applying the patch would not change the scene. */
 export const isNoop = (patch: Patch): boolean => {
   switch (patch.kind) {
-    case "shape":
-    case "edge":
+    case "element":
+    case "link":
     case "layer":
     case "annotation":
     case "file":

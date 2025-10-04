@@ -12,7 +12,7 @@ const start = () => {
 };
 
 const rectTarget = (id = "a") => ({
-  kind: "shape" as const,
+  kind: "element" as const,
   id: elementId(id),
   bounds: { x: 0, y: 0, width: 100, height: 50 },
 });

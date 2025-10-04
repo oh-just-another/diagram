@@ -28,7 +28,7 @@ const rect = (id: string, x = 0, order = orderBetween(null, null)): Element => (
 const sceneWith = (...shapes: Element[]): Scene => {
   let s = emptyScene();
   for (const sh of shapes) {
-    s = apply(s, { kind: "shape", id: sh.id, before: null, after: sh } satisfies Patch);
+    s = apply(s, { kind: "element", id: sh.id, before: null, after: sh } satisfies Patch);
   }
   return s;
 };

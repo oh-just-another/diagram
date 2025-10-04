@@ -121,7 +121,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     if (editor.mode === "draw-text") {
       editor.cancelLongPress();
       const hit = editor.hitTest(worldPoint);
-      const existing = hit?.kind === "shape" ? getElement(editor._scene, hit.id) : null;
+      const existing = hit?.kind === "element" ? getElement(editor._scene, hit.id) : null;
       if (existing?.type === "text") {
         editor._selection = Selection.single(existing.id);
         editor.beginTextEdit(existing.id);
@@ -184,8 +184,8 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // selection on press; `onUp` opens the URL on a tap.
     const linkModifier = Boolean(data.modifiers?.meta || data.modifiers?.ctrl);
     const isLinkOpen =
-      linkModifier && target.kind === "shape" && editor.shapeLink(target.id) !== null;
-    if (!isLinkOpen && target.kind === "shape" && !editor._selection.has(target.id)) {
+      linkModifier && target.kind === "element" && editor.shapeLink(target.id) !== null;
+    if (!isLinkOpen && target.kind === "element" && !editor._selection.has(target.id)) {
       const additive = Boolean(data.modifiers?.shift || data.modifiers?.meta || data.modifiers?.ctrl);
       editor._selection = additive ? Selection.add(editor._selection, target.id) : Selection.single(target.id);
       // Remember an additive promotion so a tap's up-handler doesn't
@@ -199,7 +199,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     }
     // Track the dragged shape id for container drop / drag-out logic
     // on pointerup. Cleared in onUp / cancel.
-    editor.dragElementId = target.kind === "shape" ? target.id : null;
+    editor.dragElementId = target.kind === "element" ? target.id : null;
     editor.containerHover = null;
 
     // Snapshot positions for the upcoming drag. Two paths populate the
@@ -211,7 +211,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     //      drag on an unselected group would only move the wrapper
     //      (zero-bounds, invisible) and leave its children behind —
     //      looking exactly like the group had been ungrouped.
-    if (target.kind === "shape") {
+    if (target.kind === "element") {
       const pressedElement = getElement(editor._scene, target.id);
       const pressedIsGroup = pressedElement?.type === "group";
       const pressedIsFrame = pressedElement?.type === "frame";
@@ -431,7 +431,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // auto-stop timer is held off while the pointer stays over it.
     if (!ctx.pressOrigin) {
       const hov = editor.hitTest(worldPoint);
-      const hs = hov?.kind === "shape" ? editor._scene.shapes.get(hov.id) : undefined;
+      const hs = hov?.kind === "element" ? editor._scene.shapes.get(hov.id) : undefined;
       editor.hoverAnimatedElement(hs?.type === "image" && hs.animationKind ? hs.id : null);
     }
     editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
@@ -508,7 +508,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         const movedPx = Math.hypot(worldPoint.x - origin.x, worldPoint.y - origin.y) * zoom;
         if (movedPx < LONG_PRESS_MAX_MOVEMENT_PX) {
           const hit = editor.hitTest(worldPoint);
-          if (hit?.kind === "shape") {
+          if (hit?.kind === "element") {
             const href = editor.shapeLink(hit.id);
             if (href) {
               editor.openLink(href);
@@ -579,7 +579,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       const movedPx = Math.hypot(worldPoint.x - origin.x, worldPoint.y - origin.y) * zoom;
       if (movedPx < LONG_PRESS_MAX_MOVEMENT_PX) {
         const hit = editor.hitTest(worldPoint);
-        if (hit?.kind === "shape") {
+        if (hit?.kind === "element") {
           const s = editor._scene.shapes.get(hit.id);
           if (s?.type === "image" && s.animationKind) editor.togglePlayback(s.id);
         }

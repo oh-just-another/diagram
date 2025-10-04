@@ -45,7 +45,7 @@ export const computeElementMovePatch = (
       y: shape.position.y + delta.y + offsetY,
     },
   };
-  return { kind: "shape", id, before: shape, after: next };
+  return { kind: "element", id, before: shape, after: next };
 };
 
 /**
@@ -69,7 +69,7 @@ export const computeGroupMovePatches = (
       position: { x: origin.x + delta.x, y: origin.y + delta.y },
     };
     if (next.position.x === shape.position.x && next.position.y === shape.position.y) continue;
-    out.push({ kind: "shape", id, before: shape, after: next });
+    out.push({ kind: "element", id, before: shape, after: next });
   }
   return out;
 };

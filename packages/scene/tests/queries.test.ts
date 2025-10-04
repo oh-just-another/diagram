@@ -114,8 +114,8 @@ describe("queries", () => {
         order: orderBetween(a.order, null),
       };
       const start = emptyScene();
-      const s1 = apply(start, { kind: "shape", id: a.id, before: null, after: a } satisfies Patch);
-      const s2 = apply(s1, { kind: "shape", id: b.id, before: null, after: b } satisfies Patch);
+      const s1 = apply(start, { kind: "element", id: a.id, before: null, after: a } satisfies Patch);
+      const s2 = apply(s1, { kind: "element", id: b.id, before: null, after: b } satisfies Patch);
       const hit = getElementAt(s2, { x: 5, y: 5 });
       // Both cover (5,5); `b` has higher order so it should win.
       expect(hit?.id).toBe(b.id);
@@ -123,7 +123,7 @@ describe("queries", () => {
     it("ignores invisible layers", () => {
       const a = rect("a", DEFAULT_LAYER_ID, { x: 0, y: 0 });
       const s1 = apply(emptyScene(), {
-        kind: "shape",
+        kind: "element",
         id: a.id,
         before: null,
         after: a,
@@ -177,13 +177,13 @@ describe("queries", () => {
         order: orderBetween(a.order, null),
       };
       let scene = apply(emptyScene(), {
-        kind: "shape",
+        kind: "element",
         id: a.id,
         before: null,
         after: a,
       } satisfies Patch);
       scene = apply(scene, {
-        kind: "shape",
+        kind: "element",
         id: b.id,
         before: null,
         after: b,

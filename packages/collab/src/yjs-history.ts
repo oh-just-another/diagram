@@ -201,20 +201,20 @@ const diffAsPatch = (before: Scene, after: Scene): Patch | null => {
 
   for (const [id, prev] of before.shapes) {
     const next = after.shapes.get(id);
-    if (next === undefined) ops.push({ kind: "shape", id, before: prev, after: null });
-    else if (next !== prev) ops.push({ kind: "shape", id, before: prev, after: next });
+    if (next === undefined) ops.push({ kind: "element", id, before: prev, after: null });
+    else if (next !== prev) ops.push({ kind: "element", id, before: prev, after: next });
   }
   for (const [id, next] of after.shapes) {
-    if (!before.shapes.has(id)) ops.push({ kind: "shape", id, before: null, after: next });
+    if (!before.shapes.has(id)) ops.push({ kind: "element", id, before: null, after: next });
   }
 
   for (const [id, prev] of before.edges) {
     const next = after.edges.get(id);
-    if (next === undefined) ops.push({ kind: "edge", id, before: prev, after: null });
-    else if (next !== prev) ops.push({ kind: "edge", id, before: prev, after: next });
+    if (next === undefined) ops.push({ kind: "link", id, before: prev, after: null });
+    else if (next !== prev) ops.push({ kind: "link", id, before: prev, after: next });
   }
   for (const [id, next] of after.edges) {
-    if (!before.edges.has(id)) ops.push({ kind: "edge", id, before: null, after: next });
+    if (!before.edges.has(id)) ops.push({ kind: "link", id, before: null, after: next });
   }
 
   for (const [id, prev] of before.layers) {

@@ -104,7 +104,7 @@ describe("paste resilience to leaked transactions", () => {
     // continue without throwing.
     const leaked = history.transaction();
     leaked.add({
-      kind: "shape",
+      kind: "element",
       id: elementId("a"),
       before: rect("a"),
       after: { ...rect("a"), position: { x: 100, y: 100 } },

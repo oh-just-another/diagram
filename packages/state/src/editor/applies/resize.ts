@@ -52,7 +52,7 @@ export const computeElementResize = (
     width: constrained.width,
     height: constrained.height,
   } as Element;
-  const patch: Patch = { kind: "shape", id, before: shape, after: next };
+  const patch: Patch = { kind: "element", id, before: shape, after: next };
   return { scene: apply(scene, patch), patch };
 };
 
@@ -92,7 +92,7 @@ export const computeTextResize = (
       scale: { x: 1, y: 1 },
       maxWidth: newMaxWidth,
     };
-    const patch: Patch = { kind: "shape", id: original.id, before: current, after: next };
+    const patch: Patch = { kind: "element", id: original.id, before: current, after: next };
     return { scene: apply(scene, patch), patch };
   }
 
@@ -120,7 +120,7 @@ export const computeTextResize = (
     fontSize: newFont,
     ...(original.maxWidth !== undefined ? { maxWidth: original.maxWidth * factor } : {}),
   };
-  const patch: Patch = { kind: "shape", id: original.id, before: current, after: next };
+  const patch: Patch = { kind: "element", id: original.id, before: current, after: next };
   return { scene: apply(scene, patch), patch };
 };
 
@@ -211,7 +211,7 @@ export const computeGroupResizePatches = (
         width: Math.abs(newWidth),
         height: Math.abs(newHeight),
       } as Element;
-      const patch: Patch = { kind: "shape", id, before: shape, after: nextElement };
+      const patch: Patch = { kind: "element", id, before: shape, after: nextElement };
       runningScene = apply(runningScene, patch);
       patches.push(patch);
       continue;
@@ -226,7 +226,7 @@ export const computeGroupResizePatches = (
       position: { x: newPx, y: newPy },
       scale: { x: newScaleX, y: newScaleY },
     };
-    const patch: Patch = { kind: "shape", id, before: shape, after: nextElement };
+    const patch: Patch = { kind: "element", id, before: shape, after: nextElement };
     runningScene = apply(runningScene, patch);
     patches.push(patch);
   }

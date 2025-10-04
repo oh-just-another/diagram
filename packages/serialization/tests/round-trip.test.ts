@@ -257,7 +257,7 @@ describe("round-trip", () => {
     const restored = deserializeScene(serializeScene(scene));
     // Apply an undo-style patch built from the restored shape.
     const undo: Patch = {
-      kind: "shape",
+      kind: "element",
       id: r.id,
       before: restored.shapes.get(r.id)!,
       after: null,

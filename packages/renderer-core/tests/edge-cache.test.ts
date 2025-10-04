@@ -29,13 +29,13 @@ const rect = (id: string, x = 0, y = 0, w = 10, h = 10): Element => ({
 
 const sceneWithLink = (edge: Link): { scene: ReturnType<typeof emptyScene>; edge: Link } => {
   let scene = apply(emptyScene(), {
-    kind: "shape",
+    kind: "element",
     id: rect("a").id,
     before: null,
     after: rect("a", 0, 0),
   } satisfies Patch);
   scene = apply(scene, {
-    kind: "shape",
+    kind: "element",
     id: rect("b").id,
     before: null,
     after: rect("b", 100, 100),
@@ -92,7 +92,7 @@ describe("LinkBoundsCache", () => {
     cache.getOrCompute(scene, edge);
     expect(cache.size).toBe(1);
     const removed = apply(scene, {
-      kind: "edge",
+      kind: "link",
       id: edge.id,
       before: edge,
       after: null,

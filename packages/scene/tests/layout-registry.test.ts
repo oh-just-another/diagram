@@ -90,7 +90,7 @@ describe("pluggable layout registry", () => {
 
   it("plugin run() result is the patch returned by runAutoLayout", () => {
     const fakePatch: Patch = {
-      kind: "shape",
+      kind: "element",
       id: elementId("c1"),
       before: rect("c1", "p"),
       after: { ...rect("c1", "p"), position: { x: 100, y: 100 } },

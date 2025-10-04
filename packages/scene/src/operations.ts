@@ -23,14 +23,14 @@ export const addElement = (scene: Scene, shape: Element): OperationResult => {
   if (scene.shapes.has(shape.id)) {
     throw new Error(`Element already exists: ${shape.id}`);
   }
-  const patch: Patch = { kind: "shape", id: shape.id, before: null, after: shape };
+  const patch: Patch = { kind: "element", id: shape.id, before: null, after: shape };
   return { scene: apply(scene, patch), patch };
 };
 
 export const removeElement = (scene: Scene, id: ElementId): OperationResult => {
   const before = scene.shapes.get(id);
   if (!before) throw new Error(`Element not found: ${id}`);
-  const patch: Patch = { kind: "shape", id, before, after: null };
+  const patch: Patch = { kind: "element", id, before, after: null };
   return { scene: apply(scene, patch), patch };
 };
 
@@ -42,7 +42,7 @@ export const updateElement = (
   const before = scene.shapes.get(id);
   if (!before) throw new Error(`Element not found: ${id}`);
   const after = update(before);
-  const patch: Patch = { kind: "shape", id, before, after };
+  const patch: Patch = { kind: "element", id, before, after };
   return { scene: apply(scene, patch), patch };
 };
 
@@ -55,14 +55,14 @@ export const addLink = (scene: Scene, edge: Link): OperationResult => {
   if (scene.edges.has(edge.id)) {
     throw new Error(`Link already exists: ${edge.id}`);
   }
-  const patch: Patch = { kind: "edge", id: edge.id, before: null, after: edge };
+  const patch: Patch = { kind: "link", id: edge.id, before: null, after: edge };
   return { scene: apply(scene, patch), patch };
 };
 
 export const removeLink = (scene: Scene, id: LinkId): OperationResult => {
   const before = scene.edges.get(id);
   if (!before) throw new Error(`Link not found: ${id}`);
-  const patch: Patch = { kind: "edge", id, before, after: null };
+  const patch: Patch = { kind: "link", id, before, after: null };
   return { scene: apply(scene, patch), patch };
 };
 
@@ -74,7 +74,7 @@ export const updateLink = (
   const before = scene.edges.get(id);
   if (!before) throw new Error(`Link not found: ${id}`);
   const after = update(before);
-  const patch: Patch = { kind: "edge", id, before, after };
+  const patch: Patch = { kind: "link", id, before, after };
   return { scene: apply(scene, patch), patch };
 };
 

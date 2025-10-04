@@ -1706,7 +1706,7 @@ export class Editor {
       const file = getBinaryFile(this._scene, img.fileId);
       if (!file) continue;
       this._scene = apply(this._scene, {
-        kind: "shape",
+        kind: "element",
         id: img.id,
         before: img,
         after: { ...img, animationData: file.data },
@@ -1752,7 +1752,7 @@ export class Editor {
           this._scene = drop.scene;
           state.current = drop.next;
         }
-        tx.add({ kind: "shape", id: shape.id, before: null, after: state.current });
+        tx.add({ kind: "element", id: shape.id, before: null, after: state.current });
         tx.commit();
         // Notify is mandatory here, not optional. `update()` was firing
         // notifications during the dragover, but those snapshots had
@@ -2057,7 +2057,7 @@ export class Editor {
       if (finalElement) {
         this._scene = removeElement(this._scene, id).scene;
         if (!pending && origin) {
-          this._history.push({ kind: "shape", id, before: origin, after: null });
+          this._history.push({ kind: "element", id, before: origin, after: null });
         }
         if (this._selection.has(id)) this._selection = Selection.EMPTY;
       }
@@ -2067,7 +2067,7 @@ export class Editor {
 
     if (pending) {
       // Record the whole creation as one add patch.
-      if (finalElement) this._history.push({ kind: "shape", id, before: null, after: finalElement });
+      if (finalElement) this._history.push({ kind: "element", id, before: null, after: finalElement });
     } else if (origin && finalElement) {
       // Existing edit: record ONLY the text delta. Other fields (font
       // size etc.) changed via the panel push their own history during
@@ -2076,7 +2076,7 @@ export class Editor {
       const originText = (origin as TextElement).text;
       if (originText !== finalElement.text) {
         const before = { ...finalElement, text: originText } as Element;
-        this._history.push({ kind: "shape", id, before, after: finalElement });
+        this._history.push({ kind: "element", id, before, after: finalElement });
       }
     }
     this.notify();
