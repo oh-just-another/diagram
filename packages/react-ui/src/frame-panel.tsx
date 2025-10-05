@@ -24,7 +24,7 @@ export const FramePanel = ({ onExport, style }: FramePanelProps) => {
 
   const frames = useMemo<readonly FrameElement[]>(() => {
     const out: FrameElement[] = [];
-    for (const s of scene.shapes.values()) {
+    for (const s of scene.elements.values()) {
       if (s.type === "frame") out.push(s as FrameElement);
     }
     out.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));

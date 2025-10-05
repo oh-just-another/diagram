@@ -71,13 +71,13 @@ describe("editor.setLink / shapeLink", () => {
     ({ scene: s } = addElement(s, rect("r")));
     const e = makeEditor(s);
     e.setLink([elementId("r")], "example.com"); // normalised inside setLink
-    expect((e.scene.shapes.get(elementId("r")) as { href?: string }).href).toBe("https://example.com");
+    expect((e.scene.elements.get(elementId("r")) as { href?: string }).href).toBe("https://example.com");
     expect(e.shapeLink(elementId("r"))).toBe("https://example.com");
     e.undo();
-    expect((e.scene.shapes.get(elementId("r")) as { href?: string }).href).toBeUndefined();
+    expect((e.scene.elements.get(elementId("r")) as { href?: string }).href).toBeUndefined();
     e.setLink([elementId("r")], "https://y.com");
     e.setLink([elementId("r")], null);
-    expect((e.scene.shapes.get(elementId("r")) as { href?: string }).href).toBeUndefined();
+    expect((e.scene.elements.get(elementId("r")) as { href?: string }).href).toBeUndefined();
   });
 
   it("shapeLink returns null for an unsafe stored href", () => {

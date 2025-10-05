@@ -18,7 +18,7 @@ export const actionUngroupSelection: Action = {
   hotkey: { key: "g", meta: true, shift: true },
   predicate: (ctx) => {
     for (const id of ctx.editor.selection) {
-      if (ctx.editor.scene.shapes.get(id)?.type === "group") return true;
+      if (ctx.editor.scene.elements.get(id)?.type === "group") return true;
     }
     return false;
   },

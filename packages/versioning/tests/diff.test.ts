@@ -42,8 +42,8 @@ describe("diffScenes", () => {
     next = updateElement(next, elementId("b"), (s) => ({ ...s, position: { x: 99, y: 99 } })).scene;
 
     const d = diffScenes(base, next);
-    expect(d.shapes.added).toEqual([elementId("c")]);
-    expect(d.shapes.removed).toEqual([elementId("a")]);
-    expect(d.shapes.modified).toEqual([elementId("b")]);
+    expect(d.elements.added).toEqual([elementId("c")]);
+    expect(d.elements.removed).toEqual([elementId("a")]);
+    expect(d.elements.modified).toEqual([elementId("b")]);
   });
 });

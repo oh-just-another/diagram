@@ -52,7 +52,7 @@ describe.skipIf(!SHOULD_RUN)("benchmark (1M shapes, opt-in)", () => {
     const t0 = performance.now();
     const scene = buildHugeScene();
     const elapsed = performance.now() - t0;
-    expect(scene.shapes.size).toBe(SHAPE_COUNT);
+    expect(scene.elements.size).toBe(SHAPE_COUNT);
     // Generous ceiling — the concern is whether it completes at all.
     expect(elapsed).toBeLessThan(30_000);
   });

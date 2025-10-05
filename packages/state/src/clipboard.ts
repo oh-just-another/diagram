@@ -121,7 +121,7 @@ export const pasteElements = (
   for (const tmpl of clipboard) {
     const newId = genId();
     const order = orderForTop(
-      [...next.shapes.values()]
+      [...next.elements.values()]
         .filter((s) => s.layerId === tmpl.layerId)
         .map((s) => s.order),
     );

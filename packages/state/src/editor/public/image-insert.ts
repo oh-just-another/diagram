@@ -31,7 +31,7 @@ export const buildImageElement = (
   layerId: LayerId,
 ): Element => {
   const order = orderForTop(
-    Array.from(scene.shapes.values())
+    Array.from(scene.elements.values())
       .filter((s) => s.layerId === layerId)
       .map((s) => s.order),
   );
@@ -80,7 +80,7 @@ export const computeAddBinaryFile = async (
 
 /** True if any shape in the scene carries `metadata.animated`. */
 export const hasAnimatedElement = (scene: Scene): boolean => {
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     if (s.metadata?.animated === true) return true;
   }
   return false;

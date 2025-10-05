@@ -13,28 +13,28 @@ import { annotationId, layerId, linkId, elementId } from "@oh-just-another/types
  * CRDT-backed mirror of a `Scene`. Wraps a `Y.Doc` whose top-level maps
  * are the canonical source of truth for collaborative editing:
  *
- *   - `shapes`   — `Y.Map<string, Element>`
- *   - `edges`    — `Y.Map<string, Link>`
+ *   - `elements` — `Y.Map<string, Element>`
+ *   - `links`    — `Y.Map<string, Link>`
  *   - `layers`   — `Y.Map<string, Layer>`
  *   - `viewport` — `Y.Map<string, unknown>` (single "current" key)
  *
- * Shapes / edges / layers are stored as deep-cloned JSON snapshots — Yjs
+ * Elements / links / layers are stored as deep-cloned JSON snapshots — Yjs
  * happily ships any structured-cloneable object. Concurrent edits to
  * different ids merge automatically (last-writer-wins per id, classic
  * Yjs `Y.Map` semantics).
  */
 export class SceneDoc {
   readonly doc: Y.Doc;
-  readonly shapes: Y.Map<Element>;
-  readonly edges: Y.Map<Link>;
+  readonly elements: Y.Map<Element>;
+  readonly links: Y.Map<Link>;
   readonly layers: Y.Map<Layer>;
   readonly annotations: Y.Map<Annotation>;
   readonly viewport: Y.Map<unknown>;
 
   constructor(doc: Y.Doc = new Y.Doc()) {
     this.doc = doc;
-    this.shapes = doc.getMap<Element>("shapes");
-    this.edges = doc.getMap<Link>("edges");
+    this.elements = doc.getMap<Element>("elements");
+    this.links = doc.getMap<Link>("links");
     this.layers = doc.getMap<Layer>("layers");
     this.annotations = doc.getMap<Annotation>("annotations");
     this.viewport = doc.getMap<unknown>("viewport");
@@ -43,9 +43,9 @@ export class SceneDoc {
   /** Build an in-memory `Scene` snapshot from the current CRDT state. */
   snapshot(): Scene {
     const shapeMap = new Map<Element["id"], Element>();
-    for (const [id, shape] of this.shapes) shapeMap.set(elementId(id), shape);
+    for (const [id, shape] of this.elements) shapeMap.set(elementId(id), shape);
     const edgeMap = new Map<Link["id"], Link>();
-    for (const [id, edge] of this.edges) edgeMap.set(linkId(id), edge);
+    for (const [id, edge] of this.links) edgeMap.set(linkId(id), edge);
     const layerMap = new Map<Layer["id"], Layer>();
     for (const [id, layer] of this.layers) layerMap.set(layerId(id), layer);
 
@@ -56,8 +56,8 @@ export class SceneDoc {
     for (const [id, ann] of this.annotations) annotationMap.set(annotationId(id), ann);
 
     return {
-      shapes: shapeMap,
-      edges: edgeMap,
+      elements: shapeMap,
+      links: edgeMap,
       layers: layerMap,
       annotations: annotationMap,
       // BinaryFile registry isn't CRDT-replicated (large bytes, awkward
@@ -76,10 +76,10 @@ export class SceneDoc {
    */
   replace(scene: Scene, origin?: unknown): void {
     this.doc.transact(() => {
-      this.shapes.clear();
-      for (const [id, shape] of scene.shapes) this.shapes.set(id, shape);
-      this.edges.clear();
-      for (const [id, edge] of scene.edges) this.edges.set(id, edge);
+      this.elements.clear();
+      for (const [id, shape] of scene.elements) this.elements.set(id, shape);
+      this.links.clear();
+      for (const [id, edge] of scene.links) this.links.set(id, edge);
       this.layers.clear();
       for (const [id, layer] of scene.layers) this.layers.set(id, layer);
       this.annotations.clear();
@@ -95,8 +95,8 @@ export class SceneDoc {
    */
   applyDelta(prev: Scene, next: Scene, origin?: unknown): void {
     this.doc.transact(() => {
-      diffMap(prev.shapes, next.shapes, this.shapes);
-      diffMap(prev.edges, next.edges, this.edges);
+      diffMap(prev.elements, next.elements, this.elements);
+      diffMap(prev.links, next.links, this.links);
       diffMap(prev.layers, next.layers, this.layers);
       diffMap(prev.annotations, next.annotations, this.annotations);
       if (prev.viewport !== next.viewport) {

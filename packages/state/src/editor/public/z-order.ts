@@ -24,7 +24,7 @@ const resolveTarget = (
 ): ElementId | null => {
   const target = id ?? (selection.size === 1 ? [...selection][0] ?? null : null);
   if (!target) return null;
-  return scene.shapes.has(target) ? target : null;
+  return scene.elements.has(target) ? target : null;
 };
 
 /** Move a shape to the top of its layer. */
@@ -38,7 +38,7 @@ export const computeBringToFront = (
   const shape = getElement(scene, targetId);
   if (!shape) return null;
   const order = orderForTop(
-    [...scene.shapes.values()]
+    [...scene.elements.values()]
       .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
       .map((s) => s.order),
   );
@@ -58,7 +58,7 @@ export const computeSendToBack = (
   const shape = getElement(scene, targetId);
   if (!shape) return null;
   const order = orderForBottom(
-    [...scene.shapes.values()]
+    [...scene.elements.values()]
       .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
       .map((s) => s.order),
   );
@@ -82,7 +82,7 @@ export const computeBringForward = (
   const shape = getElement(scene, targetId);
   if (!shape) return null;
   // Siblings on the same layer, sorted bottom → top.
-  const siblings = [...scene.shapes.values()]
+  const siblings = [...scene.elements.values()]
     .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
   // Neighbour directly above = smallest order strictly greater than
@@ -117,7 +117,7 @@ export const computeSendBackward = (
   if (!shape) return null;
   // Sorted top → bottom so `find` picks the immediate neighbour below
   // (largest order strictly less than the shape's own).
-  const siblings = [...scene.shapes.values()]
+  const siblings = [...scene.elements.values()]
     .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
     .sort((a, b) => (a.order > b.order ? -1 : a.order < b.order ? 1 : 0));
   const below = siblings.find((s) => s.order < shape.order) ?? null;
@@ -176,7 +176,7 @@ export const compactLayerZOrderPatches = (
   let touched = 0;
   for (const lid of layerIds) {
     touched += rewriteOrders(
-      [...s.shapes.values()].filter((sh) => sh.layerId === lid),
+      [...s.elements.values()].filter((sh) => sh.layerId === lid),
       (shape, order) => {
         const r = updateElement(s, shape.id, (sh) => ({ ...sh, order }));
         s = r.scene;
@@ -184,7 +184,7 @@ export const compactLayerZOrderPatches = (
       },
     );
     touched += rewriteOrders(
-      [...s.edges.values()].filter((e) => e.layerId === lid),
+      [...s.links.values()].filter((e) => e.layerId === lid),
       (edge, order) => {
         const r = updateLink(s, edge.id, (e) => ({ ...e, order }));
         s = r.scene;

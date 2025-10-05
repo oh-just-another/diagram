@@ -24,7 +24,7 @@ export const ResetToContentButton = () => {
   const editor = useDiagramOptional();
   const scene = useScene();
   const isOff = useMemo(() => isContentOffscreen(scene), [scene]);
-  if (!editor || scene.shapes.size === 0 || !isOff) return null;
+  if (!editor || scene.elements.size === 0 || !isOff) return null;
   return (
     <button
       type="button"
@@ -45,11 +45,11 @@ export const ResetToContentButton = () => {
  * prompt. Empty scene → `false`.
  */
 const isContentOffscreen = (scene: ReturnType<typeof useScene>): boolean => {
-  if (scene.shapes.size === 0) return false;
+  if (scene.elements.size === 0) return false;
   const vp = scene.viewport;
   if (vp.size.width <= 0 || vp.size.height <= 0) return false;
   let combined: Bounds | null = null;
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     const b = getElementWorldBounds(s);
     combined = combined ? B.union(combined, b) : b;
   }

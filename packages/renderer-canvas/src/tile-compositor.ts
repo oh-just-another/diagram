@@ -159,7 +159,7 @@ const rasteriseTile = (
     bitmap: canvas,
     bounds: worldBounds,
     bytes,
-    shapes: shapes.map((s) => s.id),
+    elements: shapes.map((s) => s.id),
   };
 };
 

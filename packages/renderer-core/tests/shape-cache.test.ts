@@ -91,12 +91,12 @@ describe("cachedWorldBounds", () => {
       id,
       layerId: layerId(DEFAULT_LAYER_ID),
     }).scene;
-    const before = scene.shapes.get(id)!;
+    const before = scene.elements.get(id)!;
     const cache = new ShapeCache<ReturnType<typeof cachedWorldBounds>>();
     const b1 = cachedWorldBounds(cache, before);
     expect(b1.x).toBe(0);
     scene = updateElement(scene, id, (s) => ({ ...s, position: { x: 50, y: 50 } })).scene;
-    const after = scene.shapes.get(id)!;
+    const after = scene.elements.get(id)!;
     expect(after).not.toBe(before);
     const b2 = cachedWorldBounds(cache, after);
     expect(b2.x).toBe(50);

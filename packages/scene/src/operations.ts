@@ -20,7 +20,7 @@ export interface OperationResult {
 // --- Shapes ---
 
 export const addElement = (scene: Scene, shape: Element): OperationResult => {
-  if (scene.shapes.has(shape.id)) {
+  if (scene.elements.has(shape.id)) {
     throw new Error(`Element already exists: ${shape.id}`);
   }
   const patch: Patch = { kind: "element", id: shape.id, before: null, after: shape };
@@ -28,7 +28,7 @@ export const addElement = (scene: Scene, shape: Element): OperationResult => {
 };
 
 export const removeElement = (scene: Scene, id: ElementId): OperationResult => {
-  const before = scene.shapes.get(id);
+  const before = scene.elements.get(id);
   if (!before) throw new Error(`Element not found: ${id}`);
   const patch: Patch = { kind: "element", id, before, after: null };
   return { scene: apply(scene, patch), patch };
@@ -39,7 +39,7 @@ export const updateElement = (
   id: ElementId,
   update: (shape: Element) => Element,
 ): OperationResult => {
-  const before = scene.shapes.get(id);
+  const before = scene.elements.get(id);
   if (!before) throw new Error(`Element not found: ${id}`);
   const after = update(before);
   const patch: Patch = { kind: "element", id, before, after };
@@ -52,7 +52,7 @@ export const moveElement = (scene: Scene, id: ElementId, to: Vec2): OperationRes
 // --- Links ---
 
 export const addLink = (scene: Scene, edge: Link): OperationResult => {
-  if (scene.edges.has(edge.id)) {
+  if (scene.links.has(edge.id)) {
     throw new Error(`Link already exists: ${edge.id}`);
   }
   const patch: Patch = { kind: "link", id: edge.id, before: null, after: edge };
@@ -60,7 +60,7 @@ export const addLink = (scene: Scene, edge: Link): OperationResult => {
 };
 
 export const removeLink = (scene: Scene, id: LinkId): OperationResult => {
-  const before = scene.edges.get(id);
+  const before = scene.links.get(id);
   if (!before) throw new Error(`Link not found: ${id}`);
   const patch: Patch = { kind: "link", id, before, after: null };
   return { scene: apply(scene, patch), patch };
@@ -71,7 +71,7 @@ export const updateLink = (
   id: LinkId,
   update: (edge: Link) => Link,
 ): OperationResult => {
-  const before = scene.edges.get(id);
+  const before = scene.links.get(id);
   if (!before) throw new Error(`Link not found: ${id}`);
   const after = update(before);
   const patch: Patch = { kind: "link", id, before, after };

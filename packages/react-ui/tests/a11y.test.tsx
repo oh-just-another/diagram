@@ -72,7 +72,7 @@ describe("react-ui accessibility", () => {
           id: stub,
           branchId: branchId("main"),
           parentId: null,
-          scene: { shapes: new Map(), edges: new Map(), layers: new Map(), annotations: new Map(), viewport: { offset: { x: 0, y: 0 }, zoom: 1, size: { width: 0, height: 0 } } },
+          scene: { elements: new Map(), links: new Map(), layers: new Map(), annotations: new Map(), viewport: { offset: { x: 0, y: 0 }, zoom: 1, size: { width: 0, height: 0 } } },
           author: { id: "u", name: "u" },
           message: "stub",
           timestamp: "0",

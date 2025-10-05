@@ -239,7 +239,7 @@ export const ANNOTATION_PIN_RESOLVED_FILL = "#888";
 export const ANNOTATION_PIN_BADGE_FONT_SIZE = 10;
 
 /**
- * Hit-test acceleration threshold. When `scene.shapes.size` reaches
+ * Hit-test acceleration threshold. When `scene.elements.size` reaches
  * this value, `Editor.hitTest` switches from the linear `getElementAt`
  * scan to a lazy SpatialGrid keyed by scene-identity. The grid pays
  * for itself only on large scenes; below the threshold the rebuild

@@ -73,7 +73,7 @@ describe("draw-text tool", () => {
   it("createTextAt places an empty text shape, selects it and opens the editor", () => {
     const e = makeEditor();
     const id = e.createTextAt({ x: 40, y: 60 });
-    const shape = e.scene.shapes.get(id) as TextElement | undefined;
+    const shape = e.scene.elements.get(id) as TextElement | undefined;
     expect(shape?.type).toBe("text");
     expect(shape?.text).toBe("");
     expect(shape?.position).toEqual({ x: 40, y: 60 });
@@ -85,7 +85,7 @@ describe("draw-text tool", () => {
     const e = makeEditor();
     e.createTextAt({ x: 0, y: 0 });
     // Placeholder exists in the scene but nothing is undoable yet.
-    expect(e.scene.shapes.size).toBe(1);
+    expect(e.scene.elements.size).toBe(1);
     expect(e.canUndo).toBe(false);
   });
 
@@ -93,19 +93,19 @@ describe("draw-text tool", () => {
     const e = makeEditor();
     const id = e.createTextAt({ x: 0, y: 0 });
     e.commitTextEdit("hello world");
-    expect((e.scene.shapes.get(id) as TextElement).text).toBe("hello world");
+    expect((e.scene.elements.get(id) as TextElement).text).toBe("hello world");
     expect(e.editingTextElement).toBeNull();
     expect(e.canUndo).toBe(true);
     // One undo removes the whole shape, not just the text.
     e.undo();
-    expect(e.scene.shapes.size).toBe(0);
+    expect(e.scene.elements.size).toBe(0);
   });
 
   it("committing empty text removes the pending shape with no history entry", () => {
     const e = makeEditor();
     e.createTextAt({ x: 0, y: 0 });
     e.commitTextEdit("   ");
-    expect(e.scene.shapes.size).toBe(0);
+    expect(e.scene.elements.size).toBe(0);
     expect(e.editingTextElement).toBeNull();
     expect(e.canUndo).toBe(false);
   });
@@ -114,7 +114,7 @@ describe("draw-text tool", () => {
     const e = makeEditor();
     e.createTextAt({ x: 0, y: 0 });
     e.cancelTextEdit();
-    expect(e.scene.shapes.size).toBe(0);
+    expect(e.scene.elements.size).toBe(0);
     expect(e.editingTextElement).toBeNull();
     expect(e.canUndo).toBe(false);
   });
@@ -126,7 +126,7 @@ describe("draw-text tool", () => {
     const e2 = makeEditor(s);
     e2.beginTextEdit(elementId("t1"));
     e2.cancelTextEdit();
-    expect((e2.scene.shapes.get(elementId("t1")) as TextElement).text).toBe("keep");
+    expect((e2.scene.elements.get(elementId("t1")) as TextElement).text).toBe("keep");
   });
 
   it("updateTextProps changes fontSize on text shapes only", () => {
@@ -134,7 +134,7 @@ describe("draw-text tool", () => {
     const id = e.createTextAt({ x: 0, y: 0 });
     e.commitTextEdit("x");
     e.updateTextProps([id], { fontSize: 48 });
-    expect((e.scene.shapes.get(id) as TextElement).fontSize).toBe(48);
+    expect((e.scene.elements.get(id) as TextElement).fontSize).toBe(48);
   });
 
   it("updateStyle writes textAlign through to a text shape", () => {
@@ -142,6 +142,6 @@ describe("draw-text tool", () => {
     const id = e.createTextAt({ x: 0, y: 0 });
     e.commitTextEdit("x");
     e.updateStyle([id], { textAlign: "center" });
-    expect((e.scene.shapes.get(id) as TextElement).style.textAlign).toBe("center");
+    expect((e.scene.elements.get(id) as TextElement).style.textAlign).toBe("center");
   });
 });

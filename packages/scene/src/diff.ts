@@ -24,13 +24,13 @@ export const diffSceneElements = (prev: Scene, next: Scene): SceneShapeDiff => {
   const added: ElementId[] = [];
   const removed: ElementId[] = [];
   const modified: ElementId[] = [];
-  for (const [id, shape] of next.shapes) {
-    const before = prev.shapes.get(id);
+  for (const [id, shape] of next.elements) {
+    const before = prev.elements.get(id);
     if (before === undefined) added.push(id);
     else if (before !== shape) modified.push(id);
   }
-  for (const id of prev.shapes.keys()) {
-    if (!next.shapes.has(id)) removed.push(id);
+  for (const id of prev.elements.keys()) {
+    if (!next.elements.has(id)) removed.push(id);
   }
   return { added, removed, modified };
 };

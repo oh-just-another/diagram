@@ -25,9 +25,9 @@ const rect = (id: string, parentId: string | null, w = 40, h = 30): Element => (
   ...(parentId ? { parentId: elementId(parentId) } : {}),
 });
 
-const sceneWith = (...shapes: Element[]): Scene => {
+const sceneWith = (...elements: Element[]): Scene => {
   let s = emptyScene();
-  for (const shape of shapes) {
+  for (const shape of elements) {
     const r = addElement(s, shape);
     s = r.scene;
   }
@@ -59,9 +59,9 @@ describe("treeLayout", () => {
     });
     expect(patch).not.toBeNull();
     const next = apply(scene, patch!);
-    expect(next.shapes.get(root.id)!.position).toEqual({ x: 25, y: 0 });
-    expect(next.shapes.get(c1.id)!.position).toEqual({ x: 0, y: 50 });
-    expect(next.shapes.get(c2.id)!.position).toEqual({ x: 50, y: 50 });
+    expect(next.elements.get(root.id)!.position).toEqual({ x: 25, y: 0 });
+    expect(next.elements.get(c1.id)!.position).toEqual({ x: 0, y: 50 });
+    expect(next.elements.get(c2.id)!.position).toEqual({ x: 50, y: 50 });
   });
 
   it("recursively lays out deeper subtrees", () => {
@@ -84,8 +84,8 @@ describe("treeLayout", () => {
     });
     expect(patch).not.toBeNull();
     const next = apply(scene, patch!);
-    expect(next.shapes.get(a1.id)!.position.x).toBe(0);
-    expect(next.shapes.get(a1.id)!.position.y).toBe(100); // root (30h) + ranksep + a (30h) + ranksep = 30+20+30+20 = 100
+    expect(next.elements.get(a1.id)!.position.x).toBe(0);
+    expect(next.elements.get(a1.id)!.position.y).toBe(100); // root (30h) + ranksep + a (30h) + ranksep = 30+20+30+20 = 100
   });
 });
 
@@ -138,9 +138,9 @@ describe("layout with polygon shapes", () => {
     });
     expect(patch).not.toBeNull();
     const next = apply(scene, patch!);
-    expect(next.shapes.get(d.id)!.position).toEqual({ x: 0, y: 0 });
+    expect(next.elements.get(d.id)!.position).toEqual({ x: 0, y: 0 });
     // Diamond width (100) + gap (10) = 110.
-    expect(next.shapes.get(t.id)!.position).toEqual({ x: 110, y: 0 });
+    expect(next.elements.get(t.id)!.position).toEqual({ x: 110, y: 0 });
   });
 
   it("gridLayout cell size respects polygon AABB (no zero-stride overlap)", () => {
@@ -157,8 +157,8 @@ describe("layout with polygon shapes", () => {
     expect(patch).not.toBeNull();
     const next = apply(scene, patch!);
     // Cell stride: width 100 + 10 = 110; height 60 + 10 = 70.
-    expect(next.shapes.get(d1.id)!.position).toEqual({ x: 0, y: 0 });
-    expect(next.shapes.get(d2.id)!.position).toEqual({ x: 110, y: 0 });
-    expect(next.shapes.get(d3.id)!.position).toEqual({ x: 0, y: 70 });
+    expect(next.elements.get(d1.id)!.position).toEqual({ x: 0, y: 0 });
+    expect(next.elements.get(d2.id)!.position).toEqual({ x: 110, y: 0 });
+    expect(next.elements.get(d3.id)!.position).toEqual({ x: 0, y: 70 });
   });
 });

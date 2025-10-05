@@ -25,9 +25,9 @@ const rect = (id: string, x = 0, order = orderBetween(null, null)): Element => (
   height: 20,
 });
 
-const sceneWith = (...shapes: Element[]): Scene => {
+const sceneWith = (...elements: Element[]): Scene => {
   let s = emptyScene();
-  for (const sh of shapes) {
+  for (const sh of elements) {
     s = apply(s, { kind: "element", id: sh.id, before: null, after: sh } satisfies Patch);
   }
   return s;
@@ -89,19 +89,19 @@ describe("compactLayerZOrder", () => {
     const editor = makeEditor(sceneWith(a, b, ...between));
 
     const maxLenBefore = Math.max(
-      ...[...editor.scene.shapes.values()].map((s) => s.order.length),
+      ...[...editor.scene.elements.values()].map((s) => s.order.length),
     );
     expect(maxLenBefore).toBeGreaterThanOrEqual(3);
 
     editor.compactLayerZOrder(DEFAULT_LAYER_ID);
 
     const maxLenAfter = Math.max(
-      ...[...editor.scene.shapes.values()].map((s) => s.order.length),
+      ...[...editor.scene.elements.values()].map((s) => s.order.length),
     );
     expect(maxLenAfter).toBeLessThanOrEqual(maxLenBefore);
     // Sequence is monotonic — sorted shape ids match the pre-compact
     // visual order.
-    const sortedAfter = [...editor.scene.shapes.values()].sort((x, y) =>
+    const sortedAfter = [...editor.scene.elements.values()].sort((x, y) =>
       x.order < y.order ? -1 : 1,
     );
     expect(sortedAfter[0]!.id).toBe(elementId("a"));
@@ -113,11 +113,11 @@ describe("compactLayerZOrder", () => {
     const c = rect("c", 100, orderBetween(a.order, null));
     const b = rect("b", 50, orderBetween(a.order, c.order));
     const editor = makeEditor(sceneWith(a, b, c));
-    const orderBefore = [...editor.scene.shapes.values()]
+    const orderBefore = [...editor.scene.elements.values()]
       .sort((x, y) => (x.order < y.order ? -1 : 1))
       .map((s) => s.id);
     editor.compactLayerZOrder(DEFAULT_LAYER_ID);
-    const orderAfter = [...editor.scene.shapes.values()]
+    const orderAfter = [...editor.scene.elements.values()]
       .sort((x, y) => (x.order < y.order ? -1 : 1))
       .map((s) => s.id);
     expect(orderAfter).toEqual(orderBefore);
@@ -127,16 +127,16 @@ describe("compactLayerZOrder", () => {
     const a = rect("a", 0, orderBetween(null, null));
     const b = rect("b", 10, orderBetween(a.order, null));
     const editor = makeEditor(sceneWith(a, b));
-    const oldA = editor.scene.shapes.get(a.id)!.order;
-    const oldB = editor.scene.shapes.get(b.id)!.order;
+    const oldA = editor.scene.elements.get(a.id)!.order;
+    const oldB = editor.scene.elements.get(b.id)!.order;
     editor.compactLayerZOrder(DEFAULT_LAYER_ID);
     // Compaction here may be a no-op (orders already short, monotonic
     // and equal to what generateNKeysBetween would produce). If
     // anything changed, undo restores it.
     if (editor.canUndo) {
       editor.undo();
-      expect(editor.scene.shapes.get(a.id)!.order).toBe(oldA);
-      expect(editor.scene.shapes.get(b.id)!.order).toBe(oldB);
+      expect(editor.scene.elements.get(a.id)!.order).toBe(oldA);
+      expect(editor.scene.elements.get(b.id)!.order).toBe(oldB);
     }
   });
 });

@@ -50,7 +50,7 @@ describe("benchmark (1000 shapes)", () => {
     const t0 = performance.now();
     const scene = buildScene();
     const elapsed = performance.now() - t0;
-    expect(scene.shapes.size).toBe(SHAPE_COUNT);
+    expect(scene.elements.size).toBe(SHAPE_COUNT);
     // No hard SLA; just guard against catastrophic regressions.
     expect(elapsed).toBeLessThan(1000);
   });

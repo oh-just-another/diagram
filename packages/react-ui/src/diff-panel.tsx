@@ -94,17 +94,17 @@ const SideView = ({
     const palette = DIFF_COLORS;
     if (side === "left") {
       for (const id of diff.removed) {
-        const s = scene.shapes.get(id);
+        const s = scene.elements.get(id);
         if (s) out.push({ id, color: palette.removed, bounds: getElementWorldBounds(s) });
       }
     } else {
       for (const id of diff.added) {
-        const s = scene.shapes.get(id);
+        const s = scene.elements.get(id);
         if (s) out.push({ id, color: palette.added, bounds: getElementWorldBounds(s) });
       }
     }
     for (const id of diff.modified) {
-      const s = scene.shapes.get(id);
+      const s = scene.elements.get(id);
       if (s) out.push({ id, color: palette.modified, bounds: getElementWorldBounds(s) });
     }
     return out;

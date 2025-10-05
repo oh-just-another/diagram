@@ -39,9 +39,9 @@ describe("operations", () => {
   describe("addElement", () => {
     it("adds and returns inverse-able patch", () => {
       const { scene, patch } = addElement(emptyScene(), rect("a"));
-      expect(scene.shapes.size).toBe(1);
+      expect(scene.elements.size).toBe(1);
       const back = apply(scene, invert(patch));
-      expect(back.shapes.size).toBe(0);
+      expect(back.elements.size).toBe(0);
     });
     it("throws on duplicate id", () => {
       const { scene } = addElement(emptyScene(), rect("a"));
@@ -53,9 +53,9 @@ describe("operations", () => {
     it("removes existing shape", () => {
       const { scene } = addElement(emptyScene(), rect("a"));
       const { scene: removed, patch } = removeElement(scene, elementId("a"));
-      expect(removed.shapes.has(elementId("a"))).toBe(false);
+      expect(removed.elements.has(elementId("a"))).toBe(false);
       const restored = apply(removed, invert(patch));
-      expect(restored.shapes.has(elementId("a"))).toBe(true);
+      expect(restored.elements.has(elementId("a"))).toBe(true);
     });
     it("throws on missing id", () => {
       expect(() => removeElement(emptyScene(), elementId("missing"))).toThrow(/not found/i);
@@ -69,9 +69,9 @@ describe("operations", () => {
         ...s,
         position: { x: 5, y: 7 },
       }));
-      expect(moved.shapes.get(elementId("a"))?.position).toEqual({ x: 5, y: 7 });
+      expect(moved.elements.get(elementId("a"))?.position).toEqual({ x: 5, y: 7 });
       const back = apply(moved, invert(patch));
-      expect(back.shapes.get(elementId("a"))?.position).toEqual({ x: 0, y: 0 });
+      expect(back.elements.get(elementId("a"))?.position).toEqual({ x: 0, y: 0 });
     });
   });
 
@@ -79,7 +79,7 @@ describe("operations", () => {
     it("shortcut for updating position", () => {
       const { scene } = addElement(emptyScene(), rect("a"));
       const { scene: moved } = moveElement(scene, elementId("a"), { x: 3, y: 4 });
-      expect(moved.shapes.get(elementId("a"))?.position).toEqual({ x: 3, y: 4 });
+      expect(moved.elements.get(elementId("a"))?.position).toEqual({ x: 3, y: 4 });
     });
   });
 
@@ -95,13 +95,13 @@ describe("operations", () => {
 
     it("add and remove are inverses", () => {
       const { scene, patch } = addLink(emptyScene(), edge);
-      expect(scene.edges.size).toBe(1);
+      expect(scene.links.size).toBe(1);
       const back = apply(scene, invert(patch));
-      expect(back.edges.size).toBe(0);
+      expect(back.links.size).toBe(0);
 
       const { scene: removed, patch: rp } = removeLink(scene, edge.id);
-      expect(removed.edges.size).toBe(0);
-      expect(apply(removed, invert(rp)).edges.size).toBe(1);
+      expect(removed.links.size).toBe(0);
+      expect(apply(removed, invert(rp)).links.size).toBe(1);
     });
   });
 

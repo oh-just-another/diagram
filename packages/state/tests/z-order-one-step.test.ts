@@ -60,7 +60,7 @@ const sceneOf = (shapes: Element[]): Scene => {
 
 /** Sorted shape ids bottom → top. */
 const stack = (editor: Editor): string[] =>
-  [...editor.scene.shapes.values()]
+  [...editor.scene.elements.values()]
     .sort((x, y) => (x.order < y.order ? -1 : x.order > y.order ? 1 : 0))
     .map((sh) => sh.id);
 

@@ -81,16 +81,16 @@ export const parseScene = (json: string, options?: DeserializeOptions): Scene =>
 // --- Internal ---
 
 const hydrate = (doc: SceneDocument): Scene => {
-  const shapes = new Map<ElementId, Element>();
-  for (const s of doc.shapes) {
+  const elements = new Map<ElementId, Element>();
+  for (const s of doc.elements) {
     const id = elementId(s.id);
-    shapes.set(id, hydrateElement(s, id));
+    elements.set(id, hydrateElement(s, id));
   }
 
-  const edges = new Map<LinkId, Link>();
-  for (const e of doc.edges) {
+  const links = new Map<LinkId, Link>();
+  for (const e of doc.links) {
     const id = linkId(e.id);
-    edges.set(id, hydrateLink(e, id));
+    links.set(id, hydrateLink(e, id));
   }
 
   const layers = new Map<LayerId, Layer>();
@@ -131,10 +131,10 @@ const hydrate = (doc: SceneDocument): Scene => {
     }
   }
 
-  return { shapes, edges, layers, annotations, files: new Map(), viewport };
+  return { elements, links, layers, annotations, files: new Map(), viewport };
 };
 
-const hydrateElement = (s: SceneDocument["shapes"][number], id: ElementId): Element => {
+const hydrateElement = (s: SceneDocument["elements"][number], id: ElementId): Element => {
   // zod's parsed shape carries explicit `undefined`s on optional fields, which
   // `exactOptionalPropertyTypes` rejects. Strip them so the resulting object
   // matches the kernel's strict types.
@@ -147,8 +147,8 @@ const hydrateElement = (s: SceneDocument["shapes"][number], id: ElementId): Elem
   } as Element;
 };
 
-const hydrateLink = (e: SceneDocument["edges"][number], id: LinkId): Link => {
-  const hydrateEndpoint = (ep: SceneDocument["edges"][number]["from"]): Link["from"] => {
+const hydrateLink = (e: SceneDocument["links"][number], id: LinkId): Link => {
+  const hydrateEndpoint = (ep: SceneDocument["links"][number]["from"]): Link["from"] => {
     if (ep.kind === "anchor" || ep.kind === "outline") {
       return { ...ep, elementId: elementId(ep.elementId) };
     }

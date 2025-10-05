@@ -63,11 +63,11 @@ export const computeResetZoom = (scene: Scene): Scene | null => {
  * viewport is degenerate, or the combined AABB is zero-area.
  */
 export const computeZoomToFit = (scene: Scene, padding: number): Scene | null => {
-  if (scene.shapes.size === 0) return null;
+  if (scene.elements.size === 0) return null;
   const vp = scene.viewport;
   if (vp.size.width <= 0 || vp.size.height <= 0) return null;
   let combined: Bounds | null = null;
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     const b = getElementWorldBounds(s);
     combined = combined ? B.union(combined, b) : b;
   }

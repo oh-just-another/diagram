@@ -10,7 +10,7 @@ import { isElementHidden, type Scene } from "@oh-just-another/scene";
  */
 export const computeHiddenElements = (scene: Scene): ReadonlySet<ElementId> | undefined => {
   let out: Set<ElementId> | null = null;
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     if (isElementHidden(scene, s)) {
       if (!out) out = new Set();
       out.add(s.id);

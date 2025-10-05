@@ -57,12 +57,12 @@ describe("editor bridge", () => {
 
     // Mutate editor: drop the shape locally.
     editor.loadScene(emptyScene());
-    expect(editor.scene.shapes.size).toBe(0);
+    expect(editor.scene.elements.size).toBe(0);
 
     // Restore.
     const ok = restoreSnapshot(store, editor, snap.id);
     expect(ok).toBe(true);
-    expect(editor.scene.shapes.size).toBe(1);
+    expect(editor.scene.elements.size).toBe(1);
   });
 
   it("restoreSnapshot returns false for unknown id", () => {

@@ -22,7 +22,7 @@ const FRAME_NAME_PATTERN = /^Frame (\d+)$/;
  */
 export const nextFrameName = (scene: Scene): string => {
   let max = 0;
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     if (s.type !== "frame") continue;
     const m = FRAME_NAME_PATTERN.exec((s as { name?: string }).name ?? "");
     if (m) max = Math.max(max, Number(m[1]));
@@ -50,7 +50,7 @@ export const assignFrameMembers = (
   const right = frameBounds.x + frameBounds.width;
   const bottom = frameBounds.y + frameBounds.height;
   let next = scene;
-  for (const shape of scene.shapes.values()) {
+  for (const shape of scene.elements.values()) {
     if (shape.id === frameId) continue;
     if (shape.type === "frame") continue;
     if (shape.frameId !== undefined) continue;

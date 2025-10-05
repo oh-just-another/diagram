@@ -36,7 +36,7 @@ describe("BranchDoc", () => {
     const bd = new BranchDoc();
     bd.ensureRoot("main", "main", seed());
     const snap = bd.sceneDocFor("main").snapshot();
-    expect(snap.shapes.size).toBe(2);
+    expect(snap.elements.size).toBe(2);
   });
 
   it("createBranch forks the parent's current scene", () => {
@@ -44,8 +44,8 @@ describe("BranchDoc", () => {
     bd.ensureRoot("main", "main", seed());
     bd.createBranch("feat", "feat", "main");
     const out = bd.sceneDocFor("feat").snapshot();
-    expect(out.shapes.size).toBe(2);
-    expect(out.shapes.get(elementId("a"))?.position).toEqual({ x: 0, y: 0 });
+    expect(out.elements.size).toBe(2);
+    expect(out.elements.get(elementId("a"))?.position).toEqual({ x: 0, y: 0 });
   });
 
   it("auto-merges non-conflicting changes from source into target", async () => {
@@ -67,7 +67,7 @@ describe("BranchDoc", () => {
       { id: "main", name: "main", parentVersionId: null },
     );
     expect(report.conflicts).toHaveLength(0);
-    expect(report.autoMerged.shapes.get(elementId("a"))?.position).toEqual({ x: 999, y: 999 });
+    expect(report.autoMerged.elements.get(elementId("a"))?.position).toEqual({ x: 999, y: 999 });
   });
 
   it("reports a conflict when both branches edit the same shape", async () => {
@@ -123,7 +123,7 @@ describe("BranchDoc", () => {
     const merged = await bd.applyConflictResolution(report, [
       { elementId: elementId("a"), choice: "theirs" },
     ]);
-    expect(merged.shapes.get(elementId("a"))?.position).toEqual({ x: 100, y: 100 });
+    expect(merged.elements.get(elementId("a"))?.position).toEqual({ x: 100, y: 100 });
   });
 
   it("commitMerge writes back to target and re-baselines source ancestor", async () => {
@@ -145,7 +145,7 @@ describe("BranchDoc", () => {
     bd.commitMerge("feat", "main", report.autoMerged);
 
     // Target now has the merged scene.
-    expect(bd.sceneDocFor("main").snapshot().shapes.get(elementId("a"))?.position).toEqual({
+    expect(bd.sceneDocFor("main").snapshot().elements.get(elementId("a"))?.position).toEqual({
       x: 999,
       y: 999,
     });

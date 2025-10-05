@@ -113,7 +113,7 @@ export const expandSelectionWithDescendants = (
     const shape = getElement(scene, id);
     if (!shape) return;
     out.add(id);
-    for (const child of scene.shapes.values()) {
+    for (const child of scene.elements.values()) {
       if (child.parentId === id) visit(child.id);
     }
   };
@@ -142,7 +142,7 @@ export const computeGroupSelected = (
   if (roots.length < 2) return null;
   const layerId = roots[0]!.layerId;
   const order = orderForTop(
-    [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
+    [...scene.elements.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
   );
   const groupElement: Element = {
     id: newGroupId,
@@ -189,7 +189,7 @@ export const computeUngroup = (
   const patches: Patch[] = [];
   const nextSelection = new Set<ElementId>();
   for (const group of targets) {
-    const children = [...s.shapes.values()].filter((sh) => sh.parentId === group.id);
+    const children = [...s.elements.values()].filter((sh) => sh.parentId === group.id);
     for (const child of children) {
       const r = updateElement(s, child.id, (sh) => {
         const next: Element = { ...sh };
@@ -222,7 +222,7 @@ export const pickFocusCycle = (
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
   const ordered: ElementId[] = [];
   for (const layer of layers) {
-    const inLayer = [...scene.shapes.values()]
+    const inLayer = [...scene.elements.values()]
       .filter((s) => s.layerId === layer.id)
       .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
     for (const s of inLayer) ordered.push(s.id);

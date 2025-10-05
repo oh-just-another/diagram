@@ -41,7 +41,7 @@ export const buildElementForCreate = (
   layerId: LayerId,
   nextFrameName: () => string,
 ): Element => {
-  const orders = Array.from(scene.shapes.values())
+  const orders = Array.from(scene.elements.values())
     .filter((s) => s.layerId === layerId)
     .map((s) => s.order);
   const order = kind === "frame" ? orderForBottom(orders) : orderForTop(orders);
@@ -78,7 +78,7 @@ export const buildLinkForCreate = (
   layerId: LayerId,
 ): Link => {
   const order = orderForTop(
-    Array.from(scene.edges.values())
+    Array.from(scene.links.values())
       .filter((e) => e.layerId === layerId)
       .map((e) => e.order),
   );

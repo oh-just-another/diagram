@@ -32,9 +32,9 @@ const rect = (id: string, x = 0, y = 0, w = 20, h = 20): Element => ({
 
 const author = { id: "u1", name: "tester" };
 
-const sceneWith = (...shapes: Element[]): Scene => {
+const sceneWith = (...elements: Element[]): Scene => {
   let s = emptyScene();
-  for (const sh of shapes) {
+  for (const sh of elements) {
     s = apply(s, { kind: "element", id: sh.id, before: null, after: sh } satisfies Patch);
   }
   return s;
@@ -47,7 +47,7 @@ const addRect = (scene: Scene, id: string, x: number, y: number): Scene => {
 };
 
 const updateRect = (scene: Scene, id: string, x: number, y: number): Scene => {
-  const before = scene.shapes.get(elementId(id));
+  const before = scene.elements.get(elementId(id));
   if (!before) throw new Error(`missing shape ${id}`);
   const after = { ...before, position: { x, y } } as Element;
   return apply(scene, { kind: "element", id: elementId(id), before, after } satisfies Patch);
@@ -80,9 +80,9 @@ describe("merge", () => {
     const target = addRect(base, "c", 20, 0);
     const report = threeWayMerge(base, source, target);
     expect(report.conflicts).toHaveLength(0);
-    expect(report.mergedScene.shapes.has(elementId("a"))).toBe(true);
-    expect(report.mergedScene.shapes.has(elementId("b"))).toBe(true);
-    expect(report.mergedScene.shapes.has(elementId("c"))).toBe(true);
+    expect(report.mergedScene.elements.has(elementId("a"))).toBe(true);
+    expect(report.mergedScene.elements.has(elementId("b"))).toBe(true);
+    expect(report.mergedScene.elements.has(elementId("c"))).toBe(true);
   });
 
   it("threeWayMerge reports both-modified as conflict", () => {
@@ -95,7 +95,7 @@ describe("merge", () => {
     expect(c.kind).toBe("element");
     expect(c.id).toBe(elementId("a"));
     // Auto-merged value stays at the target value.
-    expect((report.mergedScene.shapes.get(elementId("a")) as Element).position.x).toBe(20);
+    expect((report.mergedScene.elements.get(elementId("a")) as Element).position.x).toBe(20);
   });
 
   it("mergeBranchHeads runs three-way merge between branch tips", () => {
@@ -117,6 +117,6 @@ describe("merge", () => {
     });
     const report = mergeBranchHeads(store, v2.id, v3.id);
     expect(report.conflicts).toHaveLength(0);
-    expect(report.mergedScene.shapes.size).toBe(3);
+    expect(report.mergedScene.elements.size).toBe(3);
   });
 });

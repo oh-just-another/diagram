@@ -38,7 +38,7 @@ export const computeViewportWorld = (scene: Scene): Bounds | null => {
  */
 export const groupChildrenUnion = (scene: Scene, groupId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     if (s.parentId !== groupId) continue;
     const inner =
       s.type === "group" ? groupChildrenUnion(scene, s.id) : getElementWorldBounds(s);

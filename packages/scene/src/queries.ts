@@ -8,9 +8,9 @@ import { SpatialGrid } from "./spatial.js";
 
 // --- direct lookups ---
 
-export const getElement = (scene: Scene, id: ElementId): Element | undefined => scene.shapes.get(id);
+export const getElement = (scene: Scene, id: ElementId): Element | undefined => scene.elements.get(id);
 
-export const getLink = (scene: Scene, id: LinkId): Link | undefined => scene.edges.get(id);
+export const getLink = (scene: Scene, id: LinkId): Link | undefined => scene.links.get(id);
 
 export const getLayer = (scene: Scene, id: LayerId): Layer | undefined => scene.layers.get(id);
 
@@ -25,12 +25,12 @@ export const getLayersInOrder = (scene: Scene): readonly Layer[] =>
 
 /** Shapes in `layerId`, sorted bottom-to-top by `order`. */
 export const getElementsInLayer = (scene: Scene, layerId: LayerId): readonly Element[] =>
-  [...scene.shapes.values()]
+  [...scene.elements.values()]
     .filter((s) => s.layerId === layerId)
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
 
 export const getLinksInLayer = (scene: Scene, layerId: LayerId): readonly Link[] =>
-  [...scene.edges.values()]
+  [...scene.links.values()]
     .filter((e) => e.layerId === layerId)
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
 
@@ -43,7 +43,7 @@ export const getLinksInLayer = (scene: Scene, layerId: LayerId): readonly Link[]
  */
 export const getChildrenOf = (scene: Scene, parentId: ElementId): readonly Element[] => {
   const out: Element[] = [];
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     if (s.parentId === parentId) out.push(s);
   }
   out.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
@@ -62,7 +62,7 @@ export const isElementLocked = (scene: Scene, shape: Element): boolean => {
   for (let i = 0; current && i < MAX_PARENT_DEPTH; i++) {
     if (current.locked === true) return true;
     if (!current.parentId) return false;
-    current = scene.shapes.get(current.parentId);
+    current = scene.elements.get(current.parentId);
   }
   return false;
 };
@@ -76,7 +76,7 @@ export const isElementHidden = (scene: Scene, shape: Element): boolean => {
   for (let i = 0; current && i < MAX_PARENT_DEPTH; i++) {
     if (current.hidden === true) return true;
     if (!current.parentId) return false;
-    current = scene.shapes.get(current.parentId);
+    current = scene.elements.get(current.parentId);
   }
   return false;
 };
@@ -88,9 +88,9 @@ export const isElementHidden = (scene: Scene, shape: Element): boolean => {
  * Cycle-safe — bails after `MAX_PARENT_DEPTH` hops.
  */
 export const getRootSelf = (scene: Scene, elementId: ElementId): Element | undefined => {
-  let current = scene.shapes.get(elementId);
+  let current = scene.elements.get(elementId);
   for (let i = 0; current && current.parentId && i < MAX_PARENT_DEPTH; i++) {
-    const parent = scene.shapes.get(current.parentId);
+    const parent = scene.elements.get(current.parentId);
     if (!parent) break;
     current = parent;
   }
@@ -103,7 +103,7 @@ export const getRootSelf = (scene: Scene, elementId: ElementId): Element | undef
  * `visited` set.
  */
 export const getDescendantsOf = (scene: Scene, parentId: ElementId): readonly Element[] => {
-  const root = scene.shapes.get(parentId);
+  const root = scene.elements.get(parentId);
   if (!root) return [];
   const visited = new Set<ElementId>([parentId]);
   const out: Element[] = [root];
@@ -130,7 +130,7 @@ const MAX_PARENT_DEPTH = 64;
  */
 export const getElementsInBounds = (scene: Scene, range: Bounds): readonly Element[] => {
   const out: Element[] = [];
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     if (B.intersects(getElementWorldBounds(s), range)) out.push(s);
   }
   return out;
@@ -154,7 +154,7 @@ export const getElementsCoveredByBounds = (
   minCoverageRatio = 0.5,
 ): readonly Element[] => {
   const out: Element[] = [];
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     const b = getElementWorldBounds(s);
     if (!B.intersects(b, range)) continue;
     const area = b.width * b.height;
@@ -213,7 +213,7 @@ export const getElementAt = (scene: Scene, point: Vec2): Element | undefined => 
  */
 export const buildSpatialIndex = (scene: Scene, cellSize?: number): SpatialGrid => {
   const grid = new SpatialGrid(cellSize);
-  for (const shape of scene.shapes.values()) {
+  for (const shape of scene.elements.values()) {
     grid.insert(shape.id, getElementWorldBounds(shape));
   }
   return grid;
@@ -228,7 +228,7 @@ export const queryByIndex = (scene: Scene, grid: SpatialGrid, range: Bounds): re
   const candidates = grid.query(range);
   const out: Element[] = [];
   for (const id of candidates) {
-    const shape = scene.shapes.get(id);
+    const shape = scene.elements.get(id);
     if (!shape) continue;
     if (B.intersects(getElementWorldBounds(shape), range)) out.push(shape);
   }
@@ -255,7 +255,7 @@ export const getElementAtIndexed = (
   let bestElementOrder = "";
   let bestSet = false;
   for (const id of candidates) {
-    const shape = scene.shapes.get(id);
+    const shape = scene.elements.get(id);
     if (!shape) continue;
     if (!B.contains(getElementWorldBounds(shape), point)) continue;
     const layer = scene.layers.get(shape.layerId);

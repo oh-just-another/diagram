@@ -139,8 +139,8 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
       if (!snap) return;
       const diff = diffScenes(snap.scene, editor.scene);
       const summary = [
-        `Shapes:      +${diff.shapes.added.length} / -${diff.shapes.removed.length} / ~${diff.shapes.modified.length}`,
-        `Links:       +${diff.edges.added.length} / -${diff.edges.removed.length} / ~${diff.edges.modified.length}`,
+        `Shapes:      +${diff.elements.added.length} / -${diff.elements.removed.length} / ~${diff.elements.modified.length}`,
+        `Links:       +${diff.links.added.length} / -${diff.links.removed.length} / ~${diff.links.modified.length}`,
         `Layers:      +${diff.layers.added.length} / -${diff.layers.removed.length} / ~${diff.layers.modified.length}`,
         `Annotations: +${diff.annotations.added.length} / -${diff.annotations.removed.length} / ~${diff.annotations.modified.length}`,
       ].join("\n");

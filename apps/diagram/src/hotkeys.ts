@@ -92,7 +92,7 @@ export const useHotkeys = (editor: Editor | null): void => {
       if (ev.key === "Enter" && editor.selection.size === 1) {
         const [id] = [...editor.selection];
         if (id) {
-          const shape = editor.scene.shapes.get(id);
+          const shape = editor.scene.elements.get(id);
           if (shape?.type === "text") {
             ev.preventDefault();
             editor.beginTextEdit(id);

@@ -311,13 +311,13 @@ const InspectorTab = ({ editor }: { editor: Editor }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {ids.map((id) => {
-        const shape = editor.scene.shapes.get(id);
+        const shape = editor.scene.elements.get(id);
         if (!shape) return null;
         return <ShapeCard key={id} shape={shape} />;
       })}
       {linkId
         ? (() => {
-            const edge = editor.scene.edges.get(linkId);
+            const edge = editor.scene.links.get(linkId);
             return edge ? <LinkCard key={linkId} edge={edge} /> : null;
           })()
         : null}
@@ -460,10 +460,10 @@ const StateTab = ({ editor }: { editor: Editor }) => {
       </Section>
       <Section title="Scene">
         <Row label="shapes">
-          <Code>{scene.shapes.size}</Code>
+          <Code>{scene.elements.size}</Code>
         </Row>
         <Row label="edges">
-          <Code>{scene.edges.size}</Code>
+          <Code>{scene.links.size}</Code>
         </Row>
         <Row label="layers">
           <Code>{layers.length}</Code>
@@ -1081,14 +1081,14 @@ const buildOne = (
     id: nextDebugId(template.id),
     layerId: activeLayerId(editor),
     position,
-    order: orderBetween(editor.scene.shapes.size > 0 ? lastOrder(editor) : null, null),
+    order: orderBetween(editor.scene.elements.size > 0 ? lastOrder(editor) : null, null),
   };
   return template.factory(ctx);
 };
 
 const lastOrder = (editor: Editor): Element["order"] | null => {
   let max: Element["order"] | null = null;
-  for (const s of editor.scene.shapes.values()) {
+  for (const s of editor.scene.elements.values()) {
     if (max === null || s.order > max) max = s.order;
   }
   return max;

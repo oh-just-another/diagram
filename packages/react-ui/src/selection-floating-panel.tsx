@@ -208,14 +208,14 @@ const computeSelectionWorldBbox = (
 ): { x: number; y: number; width: number; height: number } | null => {
   const shapes: ElementBase[] = [];
   for (const id of editor.selection) {
-    const s = editor.scene.shapes.get(id);
+    const s = editor.scene.elements.get(id);
     if (s) shapes.push(s);
   }
   if (shapes.length === 0) {
     // Link-only selection: take the edge's bbox.
     const linkId = editor.selectedLink;
     if (linkId) {
-      const edge = editor.scene.edges.get(linkId);
+      const edge = editor.scene.links.get(linkId);
       if (edge) {
         // Link endpoints might be free points or anchor-bound; for
         // bound endpoints, resolve via the bound shape's bounds.
@@ -225,7 +225,7 @@ const computeSelectionWorldBbox = (
         for (const ep of [edge.from, edge.to]) {
           if (ep.kind === "point") points.push(ep.position);
           else if (ep.kind === "anchor") {
-            const s = editor.scene.shapes.get(ep.elementId);
+            const s = editor.scene.elements.get(ep.elementId);
             if (s) {
               try {
                 const b = getElementWorldBounds(s);
@@ -253,7 +253,7 @@ const computeSelectionWorldBbox = (
     // to the bbox of every descendant; without this, the floating panel
     // anchors over a zero-pixel point at the group origin and visually
     // disappears.
-    if (isGroup(s) && editor.scene.shapes.has(s.id)) {
+    if (isGroup(s) && editor.scene.elements.has(s.id)) {
       const descendants = getDescendantsOf(editor.scene, s.id);
       for (const d of descendants) {
         if (isGroup(d)) continue; // skip nested 0×0 groups

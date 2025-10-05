@@ -54,13 +54,13 @@ export const computeRemoveLayer = (
   }
   const patches: Patch[] = [];
   let s = scene;
-  for (const shape of [...s.shapes.values()]) {
+  for (const shape of [...s.elements.values()]) {
     if (shape.layerId !== id) continue;
     const r = removeElement(s, shape.id);
     s = r.scene;
     patches.push(r.patch);
   }
-  for (const edge of [...s.edges.values()]) {
+  for (const edge of [...s.links.values()]) {
     if (edge.layerId !== id) continue;
     const r = removeLink(s, edge.id);
     s = r.scene;

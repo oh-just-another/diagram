@@ -52,14 +52,14 @@ describe("YjsHistory", () => {
 
     const addB: Patch = { kind: "element", id: elementId("b"), before: null, after: rect("b") };
     h.push(addB);
-    expect(sceneDoc.shapes.has("b")).toBe(true);
+    expect(sceneDoc.elements.has("b")).toBe(true);
 
     const inverse = h.undo();
     expect(inverse).not.toBeNull();
     // Applying the inverse to the post-push scene must yield a
     // scene without "b".
     const after = apply(sceneDoc.snapshot(), inverse!);
-    expect(after.shapes.has(elementId("b"))).toBe(false);
+    expect(after.elements.has(elementId("b"))).toBe(false);
   });
 
   it("redo replays the previously-undone change", () => {
@@ -68,10 +68,10 @@ describe("YjsHistory", () => {
     const h = new YjsHistory(sceneDoc);
     h.push({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
     h.undo();
-    expect(sceneDoc.shapes.has("b")).toBe(false);
+    expect(sceneDoc.elements.has("b")).toBe(false);
     const replay = h.redo();
     expect(replay).not.toBeNull();
-    expect(sceneDoc.shapes.has("b")).toBe(true);
+    expect(sceneDoc.elements.has("b")).toBe(true);
   });
 
   it("clear empties the undo stack", () => {
@@ -96,8 +96,8 @@ describe("YjsHistory", () => {
     expect(h.size).toBe(1);
     h.undo();
     // Both b and c rolled back together.
-    expect(sceneDoc.shapes.has("b")).toBe(false);
-    expect(sceneDoc.shapes.has("c")).toBe(false);
+    expect(sceneDoc.elements.has("b")).toBe(false);
+    expect(sceneDoc.elements.has("c")).toBe(false);
   });
 
   it("transaction.cancel discards buffered patches", () => {
@@ -108,6 +108,6 @@ describe("YjsHistory", () => {
     tx.add({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
     tx.cancel();
     expect(h.size).toBe(0);
-    expect(sceneDoc.shapes.has("b")).toBe(false);
+    expect(sceneDoc.elements.has("b")).toBe(false);
   });
 });

@@ -64,7 +64,7 @@ export const bindEditor = (
 
   // Initial seed vs adopt.
   const isCurrentlyEmpty = (): boolean =>
-    sceneDoc.shapes.size === 0 && sceneDoc.edges.size === 0 && sceneDoc.layers.size === 0;
+    sceneDoc.elements.size === 0 && sceneDoc.links.size === 0 && sceneDoc.layers.size === 0;
 
   const seedFromEditor = (): void => {
     if (disposed) return;

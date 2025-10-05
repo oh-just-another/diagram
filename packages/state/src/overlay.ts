@@ -72,7 +72,7 @@ export const resizeHandlesFor = (_shape: ElementBase): readonly HandleId[] => AL
  */
 const groupWorldBounds = (scene: Scene, groupId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
-  for (const shape of scene.shapes.values()) {
+  for (const shape of scene.elements.values()) {
     if (shape.parentId !== groupId) continue;
     const inner = shape.type === "group" ? groupWorldBounds(scene, shape.id) : getElementWorldBounds(shape);
     if (!inner) continue;
@@ -261,7 +261,7 @@ export const renderOverlay = (
   //    could grab a child handle, which `hitTest` also blocks.
   const multiSelect = selection.size > 1;
   for (const id of selection) {
-    const shape = scene.shapes.get(id);
+    const shape = scene.elements.get(id);
     if (!shape) continue;
     // Groups have no intrinsic geometry — outline the union of their
     // descendants instead. Otherwise the selection chrome would collapse
@@ -505,7 +505,7 @@ const drawHitZones = (target: RenderTarget, scene: Scene, w2s: Transform, zoom: 
   target.save();
   // Resize-handle slop squares — resizable shapes only (matches the
   // hit-test, which only offers handles on resizable selections).
-  for (const shape of scene.shapes.values()) {
+  for (const shape of scene.elements.values()) {
     if (!isResizable(shape)) continue;
     const wb = getElementWorldBounds(shape);
     if (!wb) continue;
@@ -522,7 +522,7 @@ const drawHitZones = (target: RenderTarget, scene: Scene, w2s: Transform, zoom: 
   }
   // Link body bands (polyline stroked at 2× the hit threshold) +
   // endpoint circles.
-  for (const edge of scene.edges.values()) {
+  for (const edge of scene.links.values()) {
     const path = getLinkPath(scene, edge);
     if (!path || path.length < 2) continue;
     target.setFill(null);

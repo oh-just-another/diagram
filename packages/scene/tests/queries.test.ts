@@ -80,7 +80,7 @@ describe("queries", () => {
     it("getElementsInLayer is sorted bottom-to-top by `order`", () => {
       let { scene } = addElement(emptyScene(), { ...rect("a"), order: orderBetween(null, null) });
       const order2 = orderForTop(
-        [...scene.shapes.values()]
+        [...scene.elements.values()]
           .filter((s) => s.layerId === DEFAULT_LAYER_ID)
           .map((s) => s.order),
       );

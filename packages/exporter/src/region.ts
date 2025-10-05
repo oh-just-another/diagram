@@ -55,16 +55,16 @@ export const sceneForFrame = (scene: Scene, frameId: ElementId): Scene | null =>
   if (!frame || frame.type !== "frame") return null;
   const bounds = getElementWorldBounds(frame);
 
-  const shapes = new Map<ElementId, Element>();
-  for (const s of scene.shapes.values()) {
+  const elements = new Map<ElementId, Element>();
+  for (const s of scene.elements.values()) {
     if (s.id === frameId) continue;
     if (s.frameId !== frameId) continue;
-    shapes.set(s.id, s);
+    elements.set(s.id, s);
   }
 
   return {
     ...scene,
-    shapes,
+    elements,
     viewport: {
       ...scene.viewport,
       pan: { x: -bounds.x, y: -bounds.y },
@@ -79,12 +79,12 @@ export const sceneForFrame = (scene: Scene, frameId: ElementId): Scene | null =>
  * 800 × 600 so callers always get a non-degenerate image.
  */
 const inferSceneSize = (scene: Scene): { width: number; height: number } => {
-  if (scene.shapes.size === 0) return { width: 800, height: 600 };
+  if (scene.elements.size === 0) return { width: 800, height: 600 };
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  for (const shape of scene.shapes.values()) {
+  for (const shape of scene.elements.values()) {
     const x = shape.position.x;
     const y = shape.position.y;
     if (x < minX) minX = x;

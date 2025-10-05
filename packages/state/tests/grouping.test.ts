@@ -25,9 +25,9 @@ const rect = (id: string, x: number, y: number, w = 20, h = 20): Element => ({
   height: h,
 });
 
-const sceneWith = (...shapes: Element[]): Scene => {
+const sceneWith = (...elements: Element[]): Scene => {
   let s = emptyScene();
-  for (const shape of shapes) {
+  for (const shape of elements) {
     s = apply(s, {
       kind: "element",
       id: shape.id,
@@ -93,9 +93,9 @@ describe("grouping", () => {
     expect(result.kind).toBe("grouped");
     if (result.kind !== "grouped") throw new Error("unreachable");
     const groupId = result.groupId;
-    expect(editor.scene.shapes.get(groupId)?.type).toBe("group");
-    expect(editor.scene.shapes.get(a.id)?.parentId).toBe(groupId);
-    expect(editor.scene.shapes.get(b.id)?.parentId).toBe(groupId);
+    expect(editor.scene.elements.get(groupId)?.type).toBe("group");
+    expect(editor.scene.elements.get(a.id)?.parentId).toBe(groupId);
+    expect(editor.scene.elements.get(b.id)?.parentId).toBe(groupId);
     // Selection is moved onto the group itself.
     expect([...editor.selection]).toEqual([groupId]);
   });
@@ -106,7 +106,7 @@ describe("grouping", () => {
     editor.setSelection(new Set([a.id]));
     const result = editor.groupSelected();
     expect(result.kind).toBe("noop");
-    expect(editor.scene.shapes.get(a.id)?.parentId).toBeUndefined();
+    expect(editor.scene.elements.get(a.id)?.parentId).toBeUndefined();
   });
 
   it("ungroup drops parent links and removes the group shape", () => {
@@ -119,9 +119,9 @@ describe("grouping", () => {
     const { groupId } = rest as { groupId: typeof a.id };
     editor.setSelection(new Set([groupId]));
     editor.ungroup();
-    expect(editor.scene.shapes.has(groupId)).toBe(false);
-    expect(editor.scene.shapes.get(a.id)?.parentId).toBeUndefined();
-    expect(editor.scene.shapes.get(b.id)?.parentId).toBeUndefined();
+    expect(editor.scene.elements.has(groupId)).toBe(false);
+    expect(editor.scene.elements.get(a.id)?.parentId).toBeUndefined();
+    expect(editor.scene.elements.get(b.id)?.parentId).toBeUndefined();
     expect(editor.selection.has(a.id)).toBe(true);
     expect(editor.selection.has(b.id)).toBe(true);
   });
@@ -136,8 +136,8 @@ describe("grouping", () => {
     const { groupId } = rest as { groupId: typeof a.id };
     editor.setSelection(new Set([groupId]));
     editor.moveSelectionBy({ x: 50, y: 10 });
-    expect(editor.scene.shapes.get(a.id)?.position).toEqual({ x: 50, y: 10 });
-    expect(editor.scene.shapes.get(b.id)?.position).toEqual({ x: 150, y: 10 });
+    expect(editor.scene.elements.get(a.id)?.position).toEqual({ x: 50, y: 10 });
+    expect(editor.scene.elements.get(b.id)?.position).toEqual({ x: 150, y: 10 });
   });
 
   it("nested groups: ungroup of outer (G2 = (G1 + C)) restores inner G1 = (A + B)", () => {
@@ -159,24 +159,24 @@ describe("grouping", () => {
     const g2Id = r2.groupId;
 
     // Pre-ungroup state: nested.
-    expect(editor.scene.shapes.get(g1Id)?.parentId).toBe(g2Id);
-    expect(editor.scene.shapes.get(c.id)?.parentId).toBe(g2Id);
-    expect(editor.scene.shapes.get(a.id)?.parentId).toBe(g1Id);
-    expect(editor.scene.shapes.get(b.id)?.parentId).toBe(g1Id);
+    expect(editor.scene.elements.get(g1Id)?.parentId).toBe(g2Id);
+    expect(editor.scene.elements.get(c.id)?.parentId).toBe(g2Id);
+    expect(editor.scene.elements.get(a.id)?.parentId).toBe(g1Id);
+    expect(editor.scene.elements.get(b.id)?.parentId).toBe(g1Id);
 
     editor.setSelection(new Set([g2Id]));
     editor.ungroup();
 
     // G2 removed.
-    expect(editor.scene.shapes.has(g2Id)).toBe(false);
+    expect(editor.scene.elements.has(g2Id)).toBe(false);
     // G1 survives, no longer parented to G2.
-    expect(editor.scene.shapes.has(g1Id)).toBe(true);
-    expect(editor.scene.shapes.get(g1Id)?.parentId).toBeUndefined();
+    expect(editor.scene.elements.has(g1Id)).toBe(true);
+    expect(editor.scene.elements.get(g1Id)?.parentId).toBeUndefined();
     // A, B still children of G1.
-    expect(editor.scene.shapes.get(a.id)?.parentId).toBe(g1Id);
-    expect(editor.scene.shapes.get(b.id)?.parentId).toBe(g1Id);
+    expect(editor.scene.elements.get(a.id)?.parentId).toBe(g1Id);
+    expect(editor.scene.elements.get(b.id)?.parentId).toBe(g1Id);
     // C un-parented.
-    expect(editor.scene.shapes.get(c.id)?.parentId).toBeUndefined();
+    expect(editor.scene.elements.get(c.id)?.parentId).toBeUndefined();
     // Selection picked up the direct ex-children of G2.
     expect(editor.selection.has(g1Id)).toBe(true);
     expect(editor.selection.has(c.id)).toBe(true);
@@ -201,11 +201,11 @@ describe("grouping", () => {
     const g2Id = r2.groupId;
 
     // A and B must still be parented to G1, NOT to G2 directly.
-    expect(editor.scene.shapes.get(a.id)?.parentId).toBe(g1Id);
-    expect(editor.scene.shapes.get(b.id)?.parentId).toBe(g1Id);
+    expect(editor.scene.elements.get(a.id)?.parentId).toBe(g1Id);
+    expect(editor.scene.elements.get(b.id)?.parentId).toBe(g1Id);
     // G1 itself parented to G2; same for C.
-    expect(editor.scene.shapes.get(g1Id)?.parentId).toBe(g2Id);
-    expect(editor.scene.shapes.get(c.id)?.parentId).toBe(g2Id);
+    expect(editor.scene.elements.get(g1Id)?.parentId).toBe(g2Id);
+    expect(editor.scene.elements.get(c.id)?.parentId).toBe(g2Id);
   });
 
   it("enterGroup + child click selects the inner shape (bypasses promote-to-root)", () => {
@@ -301,7 +301,7 @@ describe("grouping", () => {
     });
 
     // parentId must still point at the group.
-    expect(editor.scene.shapes.get(a.id)?.parentId).toBe(groupId);
+    expect(editor.scene.elements.get(a.id)?.parentId).toBe(groupId);
   });
 
   it("undo restores pre-group state", () => {
@@ -311,9 +311,9 @@ describe("grouping", () => {
     editor.setSelection(new Set([a.id, b.id]));
     editor.groupSelected();
     editor.undo();
-    expect(editor.scene.shapes.get(a.id)?.parentId).toBeUndefined();
-    expect(editor.scene.shapes.get(b.id)?.parentId).toBeUndefined();
-    const groupElements = [...editor.scene.shapes.values()].filter((s) => s.type === "group");
+    expect(editor.scene.elements.get(a.id)?.parentId).toBeUndefined();
+    expect(editor.scene.elements.get(b.id)?.parentId).toBeUndefined();
+    const groupElements = [...editor.scene.elements.values()].filter((s) => s.type === "group");
     expect(groupElements.length).toBe(0);
   });
 });
@@ -329,11 +329,11 @@ describe("group lock / hide propagation", () => {
     const groupId = r.groupId;
 
     // Mark the group locked directly on the scene.
-    const before = editor.scene.shapes.get(groupId)!;
+    const before = editor.scene.elements.get(groupId)!;
     const locked: Element = { ...before, locked: true };
     (editor as unknown as { _scene: Scene })._scene = {
       ...editor.scene,
-      shapes: new Map(editor.scene.shapes).set(groupId, locked),
+      elements: new Map(editor.scene.elements).set(groupId, locked),
     };
 
     // Click on A should miss now (descendant of locked group).
@@ -353,11 +353,11 @@ describe("group lock / hide propagation", () => {
     if (r.kind !== "grouped") throw new Error("expected group");
     const groupId = r.groupId;
 
-    const before = editor.scene.shapes.get(groupId)!;
+    const before = editor.scene.elements.get(groupId)!;
     const hidden: Element = { ...before, hidden: true };
     (editor as unknown as { _scene: Scene })._scene = {
       ...editor.scene,
-      shapes: new Map(editor.scene.shapes).set(groupId, hidden),
+      elements: new Map(editor.scene.elements).set(groupId, hidden),
     };
 
     const hideSet = (editor as unknown as { computeHiddenElements(): ReadonlySet<typeof a.id> | undefined }).computeHiddenElements();
@@ -414,7 +414,7 @@ describe("auto-layout containers", () => {
     // Cells are 50 + 10 = 60 wide/tall, parent origin 0,0.
     // Children are sorted by `order`; c1/c2/c3 all share orderBetween(null,null)
     // so the natural insertion order persists. Verify they landed on a 2×2 lattice.
-    const positions = [c1, c2, c3].map((s) => editor.scene.shapes.get(s.id)!.position);
+    const positions = [c1, c2, c3].map((s) => editor.scene.elements.get(s.id)!.position);
     expect(positions[0]).toEqual({ x: 0, y: 0 });
     expect(positions[1]).toEqual({ x: 60, y: 0 });
     expect(positions[2]).toEqual({ x: 0, y: 60 });
@@ -428,8 +428,8 @@ describe("auto-layout containers", () => {
     // Auto-layout fires in a microtask after notify; await it.
     await Promise.resolve();
 
-    const p1 = editor.scene.shapes.get(elementId("c1"))!.position;
-    const p2 = editor.scene.shapes.get(elementId("c2"))!.position;
+    const p1 = editor.scene.elements.get(elementId("c1"))!.position;
+    const p2 = editor.scene.elements.get(elementId("c2"))!.position;
     expect(p1).toEqual({ x: 0, y: 0 });
     expect(p2).toEqual({ x: 60, y: 0 }); // 50 width + 10 gap
   });
@@ -442,7 +442,7 @@ describe("auto-layout containers", () => {
     const editor = makeEditor(sceneWith(parent, c1));
     editor.runLayout(parent.id);
     await Promise.resolve();
-    const after1 = editor.scene.shapes.get(c1.id)!.position;
+    const after1 = editor.scene.elements.get(c1.id)!.position;
     expect(after1).toEqual({ x: 0, y: 0 });
 
     // Move the child manually.
@@ -450,7 +450,7 @@ describe("auto-layout containers", () => {
     editor.moveSelectionBy({ x: 100, y: 50 });
     await Promise.resolve();
     // Position survived — auto-layout didn't snap it back.
-    const after2 = editor.scene.shapes.get(c1.id)!.position;
+    const after2 = editor.scene.elements.get(c1.id)!.position;
     expect(after2).toEqual({ x: 100, y: 50 });
   });
 
@@ -467,24 +467,24 @@ describe("auto-layout containers", () => {
       },
     };
     const editor = makeEditor(sceneWith(parent));
-    const before = editor.scene.shapes.get(parent.id)!.position;
+    const before = editor.scene.elements.get(parent.id)!.position;
 
     editor.addElement(childOf("c1", parent.id, 999, 999));
     await Promise.resolve();
-    expect(editor.scene.shapes.get(parent.id)!.position).toEqual(before);
+    expect(editor.scene.elements.get(parent.id)!.position).toEqual(before);
 
     editor.addElement(childOf("c2", parent.id, 999, 999));
     await Promise.resolve();
-    expect(editor.scene.shapes.get(parent.id)!.position).toEqual(before);
+    expect(editor.scene.elements.get(parent.id)!.position).toEqual(before);
 
     editor.addElement(childOf("c3", parent.id, 999, 999));
     await Promise.resolve();
-    expect(editor.scene.shapes.get(parent.id)!.position).toEqual(before);
+    expect(editor.scene.elements.get(parent.id)!.position).toEqual(before);
 
     // Children landed inside the drop-zone (offset by padding).
-    expect(editor.scene.shapes.get(elementId("c1"))!.position).toEqual({ x: 12, y: 12 });
-    expect(editor.scene.shapes.get(elementId("c2"))!.position).toEqual({ x: 72, y: 12 });
-    expect(editor.scene.shapes.get(elementId("c3"))!.position).toEqual({ x: 12, y: 72 });
+    expect(editor.scene.elements.get(elementId("c1"))!.position).toEqual({ x: 12, y: 12 });
+    expect(editor.scene.elements.get(elementId("c2"))!.position).toEqual({ x: 72, y: 12 });
+    expect(editor.scene.elements.get(elementId("c3"))!.position).toEqual({ x: 12, y: 72 });
   });
 
   // The live drop-zone synthesiser for auto-layout shapes is unit-tested in
@@ -522,12 +522,12 @@ describe("auto-layout containers", () => {
 
     // c1 must have landed at the grid origin (parent.position +
     // padding), NOT at the cursor drop point.
-    expect(editor.scene.shapes.get(first.id)!.position).toEqual({
+    expect(editor.scene.elements.get(first.id)!.position).toEqual({
       x: 50 + 12,
       y: 60 + 12,
     });
     // And it must be parented to the container.
-    expect(editor.scene.shapes.get(first.id)!.parentId).toBe(parent.id);
+    expect(editor.scene.elements.get(first.id)!.parentId).toBe(parent.id);
 
     // Second drop at a different cursor position — must land at
     // (cellW+gap, 0) relative to drop zone, regardless of cursor.
@@ -540,12 +540,12 @@ describe("auto-layout containers", () => {
 
     // 50px width + 10px gap → second cell starts at x = parent.x +
     // padding + 60 = 50 + 12 + 60 = 122.
-    expect(editor.scene.shapes.get(second.id)!.position).toEqual({
+    expect(editor.scene.elements.get(second.id)!.position).toEqual({
       x: 50 + 12 + 60,
       y: 60 + 12,
     });
     // No overlap with c1.
-    expect(editor.scene.shapes.get(first.id)!.position).toEqual({
+    expect(editor.scene.elements.get(first.id)!.position).toEqual({
       x: 50 + 12,
       y: 60 + 12,
     });
@@ -564,7 +564,7 @@ describe("arrange layouts", () => {
     editor.setSelection(new Set(shapes.map((s) => s.id)));
     editor.arrangeAsGrid({ cols: 2, gap: 4 });
     // 4 shapes → 2x2; cell = 20+4 = 24.
-    const positions = shapes.map((s) => editor.scene.shapes.get(s.id)!.position);
+    const positions = shapes.map((s) => editor.scene.elements.get(s.id)!.position);
     const xs = new Set(positions.map((p) => p.x));
     const ys = new Set(positions.map((p) => p.y));
     expect(xs.size).toBe(2);
@@ -577,8 +577,8 @@ describe("arrange layouts", () => {
     const editor = makeEditor(sceneWith(a, b));
     editor.setSelection(new Set([a.id, b.id]));
     editor.arrangeAsStack({ direction: "horizontal", gap: 10 });
-    const pa = editor.scene.shapes.get(a.id)!.position;
-    const pb = editor.scene.shapes.get(b.id)!.position;
+    const pa = editor.scene.elements.get(a.id)!.position;
+    const pb = editor.scene.elements.get(b.id)!.position;
     expect(pb.y).toBe(pa.y);
     expect(pb.x - pa.x).toBe(20 + 10); // shape width + gap
   });
@@ -588,6 +588,6 @@ describe("arrange layouts", () => {
     const editor = makeEditor(sceneWith(a));
     editor.setSelection(new Set([a.id]));
     editor.arrangeAsGrid({ cols: 2 });
-    expect(editor.scene.shapes.get(a.id)!.position).toEqual({ x: 100, y: 100 });
+    expect(editor.scene.elements.get(a.id)!.position).toEqual({ x: 100, y: 100 });
   });
 });

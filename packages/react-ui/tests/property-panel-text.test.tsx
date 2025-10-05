@@ -90,7 +90,7 @@ describe("PropertyPanel for text shapes", () => {
     const bold = document.body.querySelector('button[aria-label="Bold"]') as HTMLElement;
     expect(bold).not.toBeNull();
     act(() => fireEvent.click(bold));
-    expect((editor.scene.shapes.get(text.id) as { style: { fontWeight?: string } }).style.fontWeight).toBe(
+    expect((editor.scene.elements.get(text.id) as { style: { fontWeight?: string } }).style.fontWeight).toBe(
       "bold",
     );
     editor.dispose();

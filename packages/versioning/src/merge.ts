@@ -142,8 +142,8 @@ export const threeWayMerge = (base: Scene, source: Scene, target: Scene): MergeR
   const conflicts: SceneConflict[] = [];
   const out = { conflicts };
 
-  const shapes = mergeMap("element", base.shapes, source.shapes, target.shapes, out);
-  const edges = mergeMap("link", base.edges, source.edges, target.edges, out);
+  const elements = mergeMap("element", base.elements, source.elements, target.elements, out);
+  const links = mergeMap("link", base.links, source.links, target.links, out);
   const layers = mergeMap("layer", base.layers, source.layers, target.layers, out);
   const annotations = mergeMap(
     "annotation",
@@ -155,15 +155,15 @@ export const threeWayMerge = (base: Scene, source: Scene, target: Scene): MergeR
 
   const mergedScene: Scene = {
     ...target,
-    shapes,
-    edges,
+    elements,
+    links,
     layers,
     annotations,
   };
 
   const applied: Patch[] = [];
-  pushPatches(applied, "element", target.shapes, shapes);
-  pushPatches(applied, "link", target.edges, edges);
+  pushPatches(applied, "element", target.elements, elements);
+  pushPatches(applied, "link", target.links, links);
   pushPatches(applied, "layer", target.layers, layers);
   pushPatches(applied, "annotation", target.annotations, annotations);
 
@@ -212,12 +212,12 @@ export const resolveConflict = (
   return apply(mergedScene, patch);
 };
 
-const mapName = (kind: SceneConflict["kind"]): "shapes" | "edges" | "layers" | "annotations" => {
+const mapName = (kind: SceneConflict["kind"]): "elements" | "links" | "layers" | "annotations" => {
   switch (kind) {
     case "element":
-      return "shapes";
+      return "elements";
     case "link":
-      return "edges";
+      return "links";
     case "layer":
       return "layers";
     case "annotation":

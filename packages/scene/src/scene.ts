@@ -22,8 +22,8 @@ import { DEFAULT_VIEWPORT, type Viewport } from "./viewport.js";
  * actually reallocated (structural sharing).
  */
 export interface Scene {
-  readonly shapes: ReadonlyMap<ElementId, Element>;
-  readonly edges: ReadonlyMap<LinkId, Link>;
+  readonly elements: ReadonlyMap<ElementId, Element>;
+  readonly links: ReadonlyMap<LinkId, Link>;
   readonly layers: ReadonlyMap<LayerId, Layer>;
   /**
    * Threaded comments anchored to either a shape (id) or a free
@@ -60,8 +60,8 @@ const defaultLayer = (): Layer => ({
 
 /** Empty scene with a single default layer and a zero-size viewport. */
 export const emptyScene = (): Scene => ({
-  shapes: new Map(),
-  edges: new Map(),
+  elements: new Map(),
+  links: new Map(),
   layers: new Map([[DEFAULT_LAYER_ID, defaultLayer()]]),
   annotations: new Map(),
   files: new Map(),
@@ -100,16 +100,16 @@ export const getBinaryFile = (scene: Scene, id: FileId): BinaryFile | undefined 
 export const apply = (scene: Scene, patch: Patch): Scene => {
   switch (patch.kind) {
     case "element": {
-      const shapes = new Map(scene.shapes);
-      if (patch.after === null) shapes.delete(patch.id);
-      else shapes.set(patch.id, patch.after);
-      return { ...scene, shapes };
+      const elements = new Map(scene.elements);
+      if (patch.after === null) elements.delete(patch.id);
+      else elements.set(patch.id, patch.after);
+      return { ...scene, elements };
     }
     case "link": {
-      const edges = new Map(scene.edges);
-      if (patch.after === null) edges.delete(patch.id);
-      else edges.set(patch.id, patch.after);
-      return { ...scene, edges };
+      const links = new Map(scene.links);
+      if (patch.after === null) links.delete(patch.id);
+      else links.set(patch.id, patch.after);
+      return { ...scene, links };
     }
     case "layer": {
       const layers = new Map(scene.layers);

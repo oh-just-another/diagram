@@ -165,7 +165,7 @@ const runImport = async (args: Args): Promise<void> => {
   const json = stringifyScene(scene, 2);
   await writeFile(resolvePath(process.cwd(), args.output), json);
   process.stderr.write(
-    `Imported ${scene.shapes.size} shapes / ${scene.edges.size} edges to ${args.output}\n`,
+    `Imported ${scene.elements.size} elements / ${scene.links.size} links to ${args.output}\n`,
   );
 };
 

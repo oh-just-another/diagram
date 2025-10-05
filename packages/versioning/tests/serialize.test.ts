@@ -43,7 +43,7 @@ describe("snapshot store serialization", () => {
     expect(b.list()).toHaveLength(2);
     expect(b.branches().map((br) => br.name)).toEqual(["main", "feature"]);
     // Embedded scenes round-trip too.
-    expect(b.get(v1.id)?.scene.shapes.get(elementId("r1"))?.position).toEqual({ x: 1, y: 2 });
+    expect(b.get(v1.id)?.scene.elements.get(elementId("r1"))?.position).toEqual({ x: 1, y: 2 });
   });
 
   it("stringifyStore produces JSON parseable by importIntoStore (via JSON.parse)", () => {

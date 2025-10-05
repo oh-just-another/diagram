@@ -31,7 +31,7 @@ export const buildElementAtCursor = (
   id: ElementId,
 ): Element => {
   const order = orderForTop(
-    [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
+    [...scene.elements.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
   );
   const type: Element["type"] = mode === "draw-ellipse" ? "ellipse" : "rectangle";
   const width = 120;
@@ -63,7 +63,7 @@ export const buildTextElementAt = (
   id: ElementId,
 ): Element => {
   const order = orderForTop(
-    [...scene.shapes.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
+    [...scene.elements.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
   );
   return {
     id,

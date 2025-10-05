@@ -225,7 +225,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
           const visit = (parentId: ElementId): void => {
             if (ids.has(parentId)) return;
             ids.add(parentId);
-            for (const child of editor._scene.shapes.values()) {
+            for (const child of editor._scene.elements.values()) {
               if (child.parentId === parentId) visit(child.id);
             }
           };
@@ -235,7 +235,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
           // Frame drag pulls every shape with matching frameId along.
           // Frames are flat associations — no recursive descent needed.
           ids.add(target.id);
-          for (const s of editor._scene.shapes.values()) {
+          for (const s of editor._scene.elements.values()) {
             if (s.frameId === target.id) ids.add(s.id);
           }
         }
@@ -352,14 +352,14 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       const exclude = new Set<ElementId>([dragged]);
       // Don't drop a container onto itself or into one of its own
       // descendants (would create a cycle).
-      for (const s of editor._scene.shapes.values()) {
+      for (const s of editor._scene.elements.values()) {
         let cursor = s.parentId;
         for (let i = 0; cursor && i < 64; i++) {
           if (cursor === dragged) {
             exclude.add(s.id);
             break;
           }
-          cursor = editor._scene.shapes.get(cursor)?.parentId;
+          cursor = editor._scene.elements.get(cursor)?.parentId;
         }
       }
       const container = findContainerAt(editor._scene, worldPoint, exclude);
@@ -431,7 +431,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // auto-stop timer is held off while the pointer stays over it.
     if (!ctx.pressOrigin) {
       const hov = editor.hitTest(worldPoint);
-      const hs = hov?.kind === "element" ? editor._scene.shapes.get(hov.id) : undefined;
+      const hs = hov?.kind === "element" ? editor._scene.elements.get(hov.id) : undefined;
       editor.hoverAnimatedElement(hs?.type === "image" && hs.animationKind ? hs.id : null);
     }
     editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
@@ -580,7 +580,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       if (movedPx < LONG_PRESS_MAX_MOVEMENT_PX) {
         const hit = editor.hitTest(worldPoint);
         if (hit?.kind === "element") {
-          const s = editor._scene.shapes.get(hit.id);
+          const s = editor._scene.elements.get(hit.id);
           if (s?.type === "image" && s.animationKind) editor.togglePlayback(s.id);
         }
       }

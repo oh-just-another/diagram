@@ -81,7 +81,7 @@ describe("PropertyPanel stroke-style click", () => {
       fireEvent.click(dashedBtn!);
     });
 
-    const updated = editor.scene.shapes.get(rect.id);
+    const updated = editor.scene.elements.get(rect.id);
     expect(updated?.style?.dashArray).toEqual([8, 4]);
 
     editor.dispose();
@@ -102,7 +102,7 @@ describe("PropertyPanel stroke-style click", () => {
     act(() => {
       fireEvent.click(btn!);
     });
-    expect(editor.scene.shapes.get(rect.id)?.style?.dashArray).toEqual([2, 4]);
+    expect(editor.scene.elements.get(rect.id)?.style?.dashArray).toEqual([2, 4]);
     editor.dispose();
   });
 
@@ -123,7 +123,7 @@ describe("PropertyPanel stroke-style click", () => {
     act(() => {
       fireEvent.click(btn!);
     });
-    expect(editor.scene.shapes.get(rect.id)?.style?.dashArray).toEqual([]);
+    expect(editor.scene.elements.get(rect.id)?.style?.dashArray).toEqual([]);
     editor.dispose();
   });
 });

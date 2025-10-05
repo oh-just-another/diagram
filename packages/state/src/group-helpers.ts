@@ -87,7 +87,7 @@ export const computeDimElements = (
 ): ReadonlySet<ElementId> => {
   const dim = new Set<ElementId>();
   const selectionSet = new Set(selection);
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     if (selectionSet.has(s.id)) continue;
     if (!isDescendantOfGroup(scene, s.id, enteredGroupId)) {
       dim.add(s.id);

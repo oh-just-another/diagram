@@ -40,9 +40,9 @@ const rect = (id: string, parent?: string, x = 0, y = 0): Element =>
     ...(parent ? { frameId: elementId(parent) } : {}),
   } as Element);
 
-const sceneWith = (...shapes: Element[]): Scene => {
+const sceneWith = (...elements: Element[]): Scene => {
   let s = emptyScene();
-  for (const sh of shapes) s = addElement(s, sh).scene;
+  for (const sh of elements) s = addElement(s, sh).scene;
   return s;
 };
 
@@ -66,7 +66,7 @@ describe("sceneForFrame", () => {
       rect("c", "other-frame"),
     );
     const out = sceneForFrame(s, elementId("f1"))!;
-    expect([...out.shapes.keys()].sort()).toEqual(["a", "b"]);
+    expect([...out.elements.keys()].sort()).toEqual(["a", "b"]);
   });
 
   it("shifts the viewport so the frame's top-left lands at (0,0)", () => {
@@ -79,6 +79,6 @@ describe("sceneForFrame", () => {
   it("never includes the frame shape itself in the clipped scene", () => {
     const s = sceneWith(frame("f1", 0, 0, 100, 100), rect("a", "f1"));
     const out = sceneForFrame(s, elementId("f1"))!;
-    expect(out.shapes.has(elementId("f1"))).toBe(false);
+    expect(out.elements.has(elementId("f1"))).toBe(false);
   });
 });

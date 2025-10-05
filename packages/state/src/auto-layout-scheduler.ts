@@ -47,7 +47,7 @@ export class AutoLayoutScheduler {
   runCheck(): void {
     const scene = this.opts.getScene();
     let mutated = false;
-    for (const parent of scene.shapes.values()) {
+    for (const parent of scene.elements.values()) {
       if (!getAutoLayoutSpec(parent)) continue;
       const sig = this.signatureFor(parent.id);
       if (this.signatures.get(parent.id) === sig) continue;
@@ -59,7 +59,7 @@ export class AutoLayoutScheduler {
       // Per-child idempotent: `growContainer` is a no-op when the child
       // already fits the drop-zone.
       const post = this.opts.getScene();
-      for (const s of post.shapes.values()) {
+      for (const s of post.elements.values()) {
         if (s.parentId === parent.id) this.opts.growContainer(parent.id, s.id);
       }
       mutated = true;
@@ -70,7 +70,7 @@ export class AutoLayoutScheduler {
   private signatureFor(parentId: ElementId): string {
     const scene = this.opts.getScene();
     const ids: string[] = [];
-    for (const s of scene.shapes.values()) {
+    for (const s of scene.elements.values()) {
       if (s.parentId === parentId) ids.push(s.id);
     }
     ids.sort();

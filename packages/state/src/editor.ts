@@ -547,7 +547,7 @@ export class Editor {
    */
   private groupResizeOrigin: {
     readonly combined: Bounds;
-    readonly shapes: ReadonlyMap<
+    readonly elements: ReadonlyMap<
       ElementId,
       { readonly position: Vec2; readonly bounds: Bounds; readonly scale: Vec2 }
     >;
@@ -595,7 +595,7 @@ export class Editor {
 
   /**
    * Lazy SpatialGrid for hit-test acceleration in large scenes.
-   * Built on demand when `scene.shapes.size >= LARGE_SCENE_HIT_THRESHOLD`
+   * Built on demand when `scene.elements.size >= LARGE_SCENE_HIT_THRESHOLD`
    * and the cached index's source-scene reference is stale (any scene
    * op replaces the `_scene` field, invalidating identity).
    */
@@ -1508,7 +1508,7 @@ export class Editor {
     if (!hasAnimatedElement(this._scene)) return false;
     const viewport = this.computeViewportWorld();
     if (!viewport) return true; // no viewport yet — don't suppress
-    for (const shape of this._scene.shapes.values()) {
+    for (const shape of this._scene.elements.values()) {
       if (shape.metadata?.animated !== true) continue;
       if (B.intersects(getElementWorldBounds(shape), viewport)) return true;
     }
@@ -1658,7 +1658,7 @@ export class Editor {
    */
   private autoStopHeavyGifs(): void {
     const now = Editor.nowMs();
-    for (const shape of this._scene.shapes.values()) {
+    for (const shape of this._scene.elements.values()) {
       if (shape.type !== "image") continue;
       const img = shape as ImageElement;
       if (!img.animationKind) continue;
@@ -1694,7 +1694,7 @@ export class Editor {
    * already carry live `animationData` or lack a resolvable file.
    */
   private rehydrateAnimatedImages(): void {
-    for (const shape of this._scene.shapes.values()) {
+    for (const shape of this._scene.elements.values()) {
       if (shape.type !== "image") continue;
       const img = shape as ImageElement;
       if (!img.animationKind) continue;
@@ -2531,11 +2531,11 @@ export class Editor {
    * surprising and the operation is rarely chained with other edits.
    */
   clear(): void {
-    if (this._scene.shapes.size === 0 && this._scene.edges.size === 0) return;
+    if (this._scene.elements.size === 0 && this._scene.links.size === 0) return;
     this._scene = {
       ...this._scene,
-      shapes: new Map(),
-      edges: new Map(),
+      elements: new Map(),
+      links: new Map(),
     };
     this._selection = Selection.EMPTY;
     this._selectedLink = null;
@@ -2952,7 +2952,7 @@ export class Editor {
    * so reference-equality is a sufficient invalidation signal.
    */
   private acceleratedElementAt(worldPoint: Vec2): Element | undefined {
-    if (this._scene.shapes.size < LARGE_SCENE_HIT_THRESHOLD) {
+    if (this._scene.elements.size < LARGE_SCENE_HIT_THRESHOLD) {
       return getElementAt(this._scene, worldPoint);
     }
     return getElementAtIndexed(this._scene, this.ensureSpatialIndex(), worldPoint);
@@ -3346,8 +3346,8 @@ export class Editor {
     // through the shape's new position, but the old path stays on
     // screen as a "ghost" trail unless we explicitly invalidate it.
     const changedElementIds = new Set<ElementId>();
-    for (const [id, shape] of next.shapes) {
-      const old = prev.shapes.get(id);
+    for (const [id, shape] of next.elements) {
+      const old = prev.elements.get(id);
       if (old === shape) continue;
       changedElementIds.add(id);
       const afterBounds = getElementWorldBounds(shape);
@@ -3361,8 +3361,8 @@ export class Editor {
         this.tileDirtyElements.set(id, { before: beforeBounds, after: afterBounds });
       }
     }
-    for (const [id, shape] of prev.shapes) {
-      if (!next.shapes.has(id)) {
+    for (const [id, shape] of prev.elements) {
+      if (!next.elements.has(id)) {
         changedElementIds.add(id);
         const beforeBounds = getElementWorldBounds(shape);
         add(beforeBounds);
@@ -3379,8 +3379,8 @@ export class Editor {
       }
       return false;
     };
-    for (const [id, edge] of next.edges) {
-      const old = prev.edges.get(id);
+    for (const [id, edge] of next.links) {
+      const old = prev.links.get(id);
       // Refresh edge dirty-rect when: edge object changed, OR an
       // endpoint references a shape that moved this frame (path is
       // re-resolved every render but the old screen pixels persist).
@@ -3391,8 +3391,8 @@ export class Editor {
       const ob = computeLinkWorldBounds(prev, oldLink);
       if (ob) add(ob);
     }
-    for (const [id, edge] of prev.edges) {
-      if (!next.edges.has(id)) {
+    for (const [id, edge] of prev.links) {
+      if (!next.links.has(id)) {
         const b = computeLinkWorldBounds(prev, edge);
         if (b) add(b);
       }
@@ -3415,7 +3415,7 @@ export class Editor {
     let grew = true;
     while (grew) {
       grew = false;
-      for (const shape of next.shapes.values()) {
+      for (const shape of next.elements.values()) {
         if (visited.has(shape.id)) continue;
         const bb = getElementWorldBounds(shape);
         if (!B.intersects(bb, expanded)) continue;
@@ -3759,7 +3759,7 @@ export class Editor {
   private pruneSelection(): void {
     let next: Set<ElementId> | null = null;
     for (const id of this._selection) {
-      if (!this._scene.shapes.has(id)) {
+      if (!this._scene.elements.has(id)) {
         next ??= new Set(this._selection);
         next.delete(id);
       }

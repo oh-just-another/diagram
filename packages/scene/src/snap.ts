@@ -115,7 +115,7 @@ export const anchorSnapper: SnapContributor = {
   contribute(ctx) {
     if (ctx.gesture !== "draw-edge" && ctx.gesture !== "edit-edge-endpoint") return [];
     const out: SnapCandidate[] = [];
-    for (const shape of ctx.scene.shapes.values()) {
+    for (const shape of ctx.scene.elements.values()) {
       if (ctx.excludeElementIds?.has(shape.id)) continue;
       // Cheap reject: skip shapes whose AABB is far from the probe.
       if (!isProbeNearElement(shape, ctx.probe, ctx.threshold)) continue;
@@ -146,7 +146,7 @@ export const outlineSnapper: SnapContributor = {
   contribute(ctx) {
     if (ctx.gesture !== "draw-edge" && ctx.gesture !== "edit-edge-endpoint") return [];
     const out: SnapCandidate[] = [];
-    for (const shape of ctx.scene.shapes.values()) {
+    for (const shape of ctx.scene.elements.values()) {
       if (ctx.excludeElementIds?.has(shape.id)) continue;
       if (!isProbeNearElement(shape, ctx.probe, ctx.threshold)) continue;
       const nearest = findNearestOutlinePoint(shape, ctx.probe);

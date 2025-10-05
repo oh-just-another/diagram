@@ -6,7 +6,7 @@ import type { Element } from "./shape.js";
  * Pure three-way merge for scene shapes. Takes the common ancestor of two
  * branches + the two heads, returns a merge report:
  *
- *   - `autoMerged.shapes` — every shape that could be auto-resolved.
+ *   - `autoMerged.elements` — every shape that could be auto-resolved.
  *     A change is auto-applied when at most one branch touched it
  *     vs the ancestor; both-touched-identically is also auto-applied
  *     (degenerate "no conflict").
@@ -57,17 +57,17 @@ export const mergeScenesThreeWay = (
   const conflicts: ThreeWayMergeConflict[] = [];
   // Start from target — conflicts default to keeping target until
   // the host resolves them.
-  const merged = new Map(target.shapes);
+  const merged = new Map(target.elements);
 
   const allIds = new Set<ElementId>();
-  for (const id of ancestor.shapes.keys()) allIds.add(id);
-  for (const id of source.shapes.keys()) allIds.add(id);
-  for (const id of target.shapes.keys()) allIds.add(id);
+  for (const id of ancestor.elements.keys()) allIds.add(id);
+  for (const id of source.elements.keys()) allIds.add(id);
+  for (const id of target.elements.keys()) allIds.add(id);
 
   for (const id of allIds) {
-    const a = ancestor.shapes.get(id) ?? null;
-    const s = source.shapes.get(id) ?? null;
-    const t = target.shapes.get(id) ?? null;
+    const a = ancestor.elements.get(id) ?? null;
+    const s = source.elements.get(id) ?? null;
+    const t = target.elements.get(id) ?? null;
 
     // Case 1: no change in either branch — keep target's version.
     if (a !== null && s !== null && t !== null && eq(s, a) && eq(t, a)) continue;
@@ -114,7 +114,7 @@ export const mergeScenesThreeWay = (
 
   // Scene wrapper: keep target's edges / layers / viewport /
   // annotations — only the shapes pass through three-way merge.
-  const autoMerged: Scene = { ...target, shapes: merged };
+  const autoMerged: Scene = { ...target, elements: merged };
   return { autoMerged, conflicts };
 };
 
@@ -135,7 +135,7 @@ export const applyConflictResolutions = (
   resolutions: readonly ConflictResolutionInput[],
   cloneWithNewId: (shape: Element) => Element = defaultClone,
 ): Scene => {
-  const merged = new Map(report.autoMerged.shapes);
+  const merged = new Map(report.autoMerged.elements);
   const byId = new Map<ElementId, ThreeWayMergeConflict>();
   for (const c of report.conflicts) byId.set(c.elementId, c);
 
@@ -161,7 +161,7 @@ export const applyConflictResolutions = (
         break;
     }
   }
-  return { ...report.autoMerged, shapes: merged };
+  return { ...report.autoMerged, elements: merged };
 };
 
 const defaultClone = (shape: Element): Element => {

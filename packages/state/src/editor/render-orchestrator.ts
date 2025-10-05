@@ -75,7 +75,7 @@ export const renderEditor = (editor: any): void => {
     // already maintains — `renderScene` uses it to skip the per-shape AABB
     // cull on shapes outside the viewport.
     const sharedIndex =
-      editor._scene.shapes.size >= LARGE_SCENE_HIT_THRESHOLD
+      editor._scene.elements.size >= LARGE_SCENE_HIT_THRESHOLD
         ? editor.ensureSpatialIndex()
         : null;
     renderScene(editor._scene, editor.mainTarget, {
@@ -162,7 +162,7 @@ export const renderEditor = (editor: any): void => {
   // "Play" badge on paused animated (GIF) shapes — auto-stopped or held under
   // prefers-reduced-motion. Signals a click resumes them.
   const gifBadges = [];
-  for (const shape of editor._scene.shapes.values()) {
+  for (const shape of editor._scene.elements.values()) {
     if (shape.type === "image" && shape.animationKind && editor.isPlaybackPaused(shape.id)) {
       gifBadges.push(getElementWorldBounds(shape));
     }

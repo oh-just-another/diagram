@@ -928,3 +928,6 @@
 
 ## 0.50.2
 - fix(rename 5a): convert Patch-kind literals in test files (missed in 9d1cbe3)
+
+## 0.50.3
+- fix(rename 5a): apply Patch/PressTarget kind rename to SOURCE (was only in tests)

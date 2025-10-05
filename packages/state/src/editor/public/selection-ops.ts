@@ -59,7 +59,7 @@ export const computeDeleteSelection = (
   let s = scene;
   const patches: Patch[] = [];
   for (const id of selection) {
-    for (const edge of [...s.edges.values()]) {
+    for (const edge of [...s.links.values()]) {
       if (
         (edge.from.kind !== "point" && edge.from.elementId === id) ||
         (edge.to.kind !== "point" && edge.to.elementId === id)
@@ -106,7 +106,7 @@ export const computeDuplicateSelection = (
     if (!shape) continue;
     const newId = castElementId(`shape-${nextIdSeed()}-${Date.now().toString(36)}`);
     const order = orderForTop(
-      [...s.shapes.values()].filter((sh) => sh.layerId === shape.layerId).map((sh) => sh.order),
+      [...s.elements.values()].filter((sh) => sh.layerId === shape.layerId).map((sh) => sh.order),
     );
     const clone = {
       ...shape,
@@ -134,7 +134,7 @@ export const computeSetSelection = (
 ): Selection.Selection | null => {
   let next: Selection.Selection = Selection.EMPTY;
   for (const id of ids) {
-    if (!scene.shapes.has(id)) continue;
+    if (!scene.elements.has(id)) continue;
     next = Selection.add(next, id);
   }
   if (Selection.equals(next, current)) return null;
@@ -150,7 +150,7 @@ export const computeSelectAll = (
   current: Selection.Selection,
 ): Selection.Selection | null => {
   let next: Selection.Selection = Selection.EMPTY;
-  for (const shape of scene.shapes.values()) {
+  for (const shape of scene.elements.values()) {
     const layer = scene.layers.get(shape.layerId);
     if (!layer || !layer.visible || layer.locked) continue;
     next = Selection.add(next, shape.id);
@@ -171,7 +171,7 @@ export const computeUpdateStyle = (
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetIds: ElementId[] = [];
   for (const id of ids) {
-    if (scene.shapes.has(id)) targetIds.push(id);
+    if (scene.elements.has(id)) targetIds.push(id);
   }
   if (targetIds.length === 0) return null;
   let s = scene;

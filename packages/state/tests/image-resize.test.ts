@@ -30,7 +30,7 @@ const image = (): Element =>
 const sceneWith = (s: Element) => addElement(emptyScene(), s).scene;
 
 const originFor = (s: Element): GroupResizeOrigin => ({
-  shapes: new Map([
+  elements: new Map([
     [s.id, { position: s.position, bounds: { x: 0, y: 0, width: 100, height: 50 }, scale: { x: 1, y: 1 } }],
   ]),
 });
@@ -114,7 +114,7 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
     ({ scene } = addElement(scene, rect));
     ({ scene } = addElement(scene, img));
     const origin: GroupResizeOrigin = {
-      shapes: new Map([
+      elements: new Map([
         [rect.id, { position: { x: 0, y: 0 }, bounds: { x: 0, y: 0, width: 100, height: 50 }, scale: { x: 1, y: 1 } }],
         [img.id, { position: { x: 100, y: 0 }, bounds: { x: 100, y: 0, width: 80, height: 40 }, scale: { x: 1, y: 1 } }],
       ]),

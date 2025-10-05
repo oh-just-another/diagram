@@ -37,8 +37,8 @@ describe("SceneDoc", () => {
     const scene = seed();
     doc.replace(scene);
     const out = doc.snapshot();
-    expect(out.shapes.size).toBe(1);
-    expect(out.shapes.get(elementId("r1"))?.position).toEqual({ x: 10, y: 20 });
+    expect(out.elements.size).toBe(1);
+    expect(out.elements.get(elementId("r1"))?.position).toEqual({ x: 10, y: 20 });
   });
 
   it("applyDelta only ships diff", () => {
@@ -58,12 +58,12 @@ describe("SceneDoc", () => {
     // Mutate one shape.
     const next: Scene = {
       ...scene,
-      shapes: new Map([
-        ...scene.shapes,
+      elements: new Map([
+        ...scene.elements,
         [
           elementId("r2"),
           {
-            ...scene.shapes.get(elementId("r1"))!,
+            ...scene.elements.get(elementId("r1"))!,
             id: elementId("r2"),
             position: { x: 50, y: 50 },
           },
@@ -72,7 +72,7 @@ describe("SceneDoc", () => {
     };
     doc.applyDelta(scene, next);
     expect(updates).toBe(1);
-    expect(doc.snapshot().shapes.size).toBe(2);
+    expect(doc.snapshot().elements.size).toBe(2);
   });
 
   it("two SceneDocs sync via Yjs update messages", () => {
@@ -83,8 +83,8 @@ describe("SceneDoc", () => {
     b.doc.on("updateV2", (u) => Y.applyUpdateV2(a.doc, u));
 
     a.replace(seed());
-    expect(b.snapshot().shapes.size).toBe(1);
-    expect(b.snapshot().shapes.get(elementId("r1"))?.position).toEqual({ x: 10, y: 20 });
+    expect(b.snapshot().elements.size).toBe(1);
+    expect(b.snapshot().elements.get(elementId("r1"))?.position).toEqual({ x: 10, y: 20 });
   });
 
   it("annotations round-trip across two SceneDoc peers", () => {

@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 const fixture = JSON.stringify({
   format: "oh-just-another/scene",
   version: 1,
-  shapes: [
+  elements: [
     {
       id: "a",
       layerId: "default",
@@ -21,7 +21,7 @@ const fixture = JSON.stringify({
       height: 40,
     },
   ],
-  edges: [],
+  links: [],
   layers: [{ id: "default", name: "Default", visible: true, locked: false, order: "a0" }],
   viewport: { pan: { x: 0, y: 0 }, zoom: 1, rotation: 0, size: { width: 120, height: 80 } },
 });

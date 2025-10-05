@@ -40,10 +40,10 @@ export class AutoCompactScheduler {
   runCheck(): void {
     const scene = this.getScene();
     const layersToCompact = new Set<LayerId>();
-    for (const s of scene.shapes.values()) {
+    for (const s of scene.elements.values()) {
       if (s.order.length > AUTO_COMPACT_THRESHOLD) layersToCompact.add(s.layerId);
     }
-    for (const e of scene.edges.values()) {
+    for (const e of scene.links.values()) {
       if (e.order.length > AUTO_COMPACT_THRESHOLD) layersToCompact.add(e.layerId);
     }
     for (const lid of layersToCompact) this.compact(lid);

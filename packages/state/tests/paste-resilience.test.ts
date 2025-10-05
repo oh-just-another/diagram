@@ -48,9 +48,9 @@ const imageWithLiveHandle = (id: string): Element =>
     metadata: { image: { draw() {} } },
   }) as unknown as Element;
 
-const sceneWith = (...shapes: Element[]): Scene => {
+const sceneWith = (...elements: Element[]): Scene => {
   let s = emptyScene();
-  for (const sh of shapes) s = addElement(s, sh).scene;
+  for (const sh of elements) s = addElement(s, sh).scene;
   return s;
 };
 
@@ -127,7 +127,7 @@ describe("paste resilience to leaked transactions", () => {
     expect(after - before).toBe(1);
     // And undo returns the scene to its previous state in one step.
     e.undo();
-    expect(e.scene.shapes.size).toBe(1);
+    expect(e.scene.elements.size).toBe(1);
   });
 
   it("copy+paste of an image with a live metadata.image handle does not throw and pastes", () => {
@@ -141,7 +141,7 @@ describe("paste resilience to leaked transactions", () => {
     expect(() => e.copySelected()).not.toThrow();
     expect(() => e.paste()).not.toThrow();
     // A second image shape now exists in the scene.
-    const images = [...e.scene.shapes.values()].filter((s) => s.type === "image");
+    const images = [...e.scene.elements.values()].filter((s) => s.type === "image");
     expect(images).toHaveLength(2);
     // The pasted copy keeps the fileId (so its bytes resolve) and the
     // live image handle (shared by reference, like Duplicate).

@@ -286,7 +286,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   // Does the initial scene contain any text? Drives whether first paint
   // waits for the MSDF shaper (see the mount gate below).
   const sceneHasText = useMemo(() => {
-    for (const s of seed.shapes.values()) if (s.type === "text") return true;
+    for (const s of seed.elements.values()) if (s.type === "text") return true;
     return false;
   }, [seed]);
 

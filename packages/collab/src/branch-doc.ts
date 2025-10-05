@@ -147,8 +147,8 @@ export class BranchDoc implements BranchMergeAPI {
       compareElements: (a, b) => JSON.stringify(a) === JSON.stringify(b),
     });
     const applied: ElementId[] = [];
-    for (const [id, shape] of report.autoMerged.shapes) {
-      const prev = targetScene.shapes.get(id);
+    for (const [id, shape] of report.autoMerged.elements) {
+      const prev = targetScene.elements.get(id);
       if (prev !== shape) applied.push(id);
     }
     const conflicts: MergeConflict[] = report.conflicts.map((c) => ({
@@ -243,11 +243,11 @@ export class BranchDoc implements BranchMergeAPI {
  * "no changes" on the source side.
  */
 const cloneScene = (scene: Scene): Scene => ({
-  shapes: new Map(
-    [...scene.shapes].map(([id, shape]) => [id, structuredClone(shape)]),
+  elements: new Map(
+    [...scene.elements].map(([id, shape]) => [id, structuredClone(shape)]),
   ),
-  edges: new Map(
-    [...scene.edges].map(([id, edge]) => [id, structuredClone(edge)]),
+  links: new Map(
+    [...scene.links].map(([id, edge]) => [id, structuredClone(edge)]),
   ),
   layers: new Map(
     [...scene.layers].map(([id, layer]) => [id, structuredClone(layer)]),

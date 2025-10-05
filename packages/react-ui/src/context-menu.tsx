@@ -362,7 +362,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     shortcut: "⌘⇧G",
     visible: (e) => {
       for (const id of e.selection) {
-        const s = e.scene.shapes.get(id);
+        const s = e.scene.elements.get(id);
         if (s?.type === "group") return true;
       }
       return false;
@@ -402,7 +402,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
       if (e.selection.size !== 1) return false;
       const [id] = [...e.selection];
       if (!id) return false;
-      const shape = e.scene.shapes.get(id);
+      const shape = e.scene.elements.get(id);
       return shape ? getAutoLayoutSpec(shape) !== null : false;
     },
     onClick: (e) => {
@@ -488,7 +488,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Add comment",
     visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) === null,
     onClick: (e, ctx) => {
-      const shapeUnder = [...e.scene.shapes.values()].reverse().find((s) => {
+      const shapeUnder = [...e.scene.elements.values()].reverse().find((s) => {
         const pos = s.position;
         const w = "width" in s && typeof s.width === "number" ? s.width : 0;
         const h = "height" in s && typeof s.height === "number" ? s.height : 0;
@@ -536,7 +536,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     id: "fit-zoom",
     label: "Fit to screen",
     shortcut: "⌘1",
-    visible: (e) => e.scene.shapes.size > 0,
+    visible: (e) => e.scene.elements.size > 0,
     onClick: (e) => e.zoomToFit(),
   }
 ];

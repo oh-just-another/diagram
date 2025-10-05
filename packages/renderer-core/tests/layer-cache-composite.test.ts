@@ -29,9 +29,9 @@ const rect = (id: string, x = 0): Element => ({
   height: 50,
 });
 
-const sceneWith = (...shapes: Element[]): Scene => {
+const sceneWith = (...elements: Element[]): Scene => {
   let s = emptyScene();
-  for (const sh of shapes) s = addElement(s, sh).scene;
+  for (const sh of elements) s = addElement(s, sh).scene;
   return {
     ...s,
     viewport: { ...s.viewport, size: { width: 400, height: 400 } },

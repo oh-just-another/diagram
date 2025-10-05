@@ -54,7 +54,7 @@ describe("brush stroke", () => {
     editor.extendBrushStroke({ x: 30, y: 14 }, 0.3);
     const id = editor.commitBrushStroke();
     expect(id).not.toBeNull();
-    const shape = editor.scene.shapes.get(id!) as Extract<Element, { type: "brush" }>;
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
     expect(shape.type).toBe("brush");
     expect(shape.position).toEqual({ x: 10, y: 10 });
     expect(shape.points.length).toBe(3);
@@ -68,6 +68,6 @@ describe("brush stroke", () => {
     editor.extendBrushStroke({ x: 5, y: 5 });
     editor.cancelBrushStroke();
     expect(editor.pendingBrushStroke).toBeNull();
-    expect(editor.scene.shapes.size).toBe(0);
+    expect(editor.scene.elements.size).toBe(0);
   });
 });

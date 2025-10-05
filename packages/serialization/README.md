@@ -21,8 +21,8 @@ editor.loadScene(scene);
 {
   "format": "oh-just-another/scene",
   "version": 1,
-  "shapes": [...],
-  "edges": [...],
+  "elements": [...],
+  "links": [...],
   "layers": [...],
   "viewport": { "pan": {...}, "zoom": 1, "rotation": 0, "size": {...} }
 }

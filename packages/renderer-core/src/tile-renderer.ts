@@ -90,7 +90,7 @@ export interface TileCacheEntry<B = unknown> {
   /** Bytes used by this bitmap (for LRU eviction accounting). */
   readonly bytes: number;
   /** Element ids currently visible in this tile (for invalidation). */
-  readonly shapes: readonly ElementId[];
+  readonly elements: readonly ElementId[];
 }
 
 export interface TileCache<B = unknown> {
@@ -166,11 +166,11 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
     const prior = this.entries.get(id);
     if (prior) {
       this.bytes -= prior.bytes;
-      for (const sid of prior.shapes) this.tilesByElement.get(sid)?.delete(id);
+      for (const sid of prior.elements) this.tilesByElement.get(sid)?.delete(id);
     }
     this.entries.set(id, entry);
     this.bytes += entry.bytes;
-    for (const sid of entry.shapes) {
+    for (const sid of entry.elements) {
       let bucket = this.tilesByElement.get(sid);
       if (!bucket) {
         bucket = new Set();
@@ -189,7 +189,7 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
       if (!e) continue;
       this.entries.delete(tileId);
       this.bytes -= e.bytes;
-      for (const sid of e.shapes) {
+      for (const sid of e.elements) {
         if (sid !== elementId) this.tilesByElement.get(sid)?.delete(tileId);
       }
     }
@@ -207,7 +207,7 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
       if (disjoint) continue;
       this.entries.delete(tileId);
       this.bytes -= entry.bytes;
-      for (const sid of entry.shapes) this.tilesByElement.get(sid)?.delete(tileId);
+      for (const sid of entry.elements) this.tilesByElement.get(sid)?.delete(tileId);
     }
   }
 
@@ -248,7 +248,7 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
       if (this.bytes <= this.cap) break;
       this.entries.delete(id);
       this.bytes -= entry.bytes;
-      for (const sid of entry.shapes) this.tilesByElement.get(sid)?.delete(id);
+      for (const sid of entry.elements) this.tilesByElement.get(sid)?.delete(id);
     }
   }
 }

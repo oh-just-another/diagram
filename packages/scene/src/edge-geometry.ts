@@ -159,7 +159,7 @@ const distanceToSegment = (point: Vec2, a: Vec2, b: Vec2): number => {
  */
 export const findLinkAt = (scene: Scene, worldPoint: Vec2, threshold = 5): Link | null => {
   let best: { edge: Link; distance: number } | null = null;
-  for (const edge of scene.edges.values()) {
+  for (const edge of scene.links.values()) {
     const path = getLinkPath(scene, edge);
     if (!path) continue;
     let minDistance = Infinity;

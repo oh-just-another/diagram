@@ -26,9 +26,9 @@ const rect = (id: string, x: number, y: number): Element => ({
   height: 50,
 });
 
-const sceneOf = (...shapes: Element[]): Scene => {
+const sceneOf = (...elements: Element[]): Scene => {
   let s = emptyScene();
-  for (const sh of shapes) s = addElement(s, sh).scene;
+  for (const sh of elements) s = addElement(s, sh).scene;
   return s;
 };
 
@@ -40,9 +40,9 @@ describe("mergeScenesThreeWay", () => {
     const target = sceneOf(a, rect("c", 200, 0));
     const report = mergeScenesThreeWay(ancestor, source, target);
     expect(report.conflicts).toEqual([]);
-    expect(report.autoMerged.shapes.has(elementId("a"))).toBe(true);
-    expect(report.autoMerged.shapes.has(elementId("b"))).toBe(true);
-    expect(report.autoMerged.shapes.has(elementId("c"))).toBe(true);
+    expect(report.autoMerged.elements.has(elementId("a"))).toBe(true);
+    expect(report.autoMerged.elements.has(elementId("b"))).toBe(true);
+    expect(report.autoMerged.elements.has(elementId("c"))).toBe(true);
   });
 
   it("source-only modification auto-applies", () => {
@@ -53,7 +53,7 @@ describe("mergeScenesThreeWay", () => {
     const target = sceneOf(a);
     const report = mergeScenesThreeWay(ancestor, source, target);
     expect(report.conflicts).toEqual([]);
-    expect(report.autoMerged.shapes.get(elementId("a"))?.position).toEqual({
+    expect(report.autoMerged.elements.get(elementId("a"))?.position).toEqual({
       x: 50,
       y: 0,
     });
@@ -70,7 +70,7 @@ describe("mergeScenesThreeWay", () => {
     expect(report.conflicts.length).toBe(1);
     expect(report.conflicts[0]!.elementId).toBe(elementId("a"));
     // Default conflict resolution → target wins.
-    expect(report.autoMerged.shapes.get(elementId("a"))?.position).toEqual({
+    expect(report.autoMerged.elements.get(elementId("a"))?.position).toEqual({
       x: 0,
       y: 50,
     });
@@ -87,7 +87,7 @@ describe("mergeScenesThreeWay", () => {
     const final = applyConflictResolutions(report, [
       { elementId: elementId("a"), choice: "theirs" },
     ]);
-    expect(final.shapes.get(elementId("a"))?.position).toEqual({ x: 50, y: 0 });
+    expect(final.elements.get(elementId("a"))?.position).toEqual({ x: 50, y: 0 });
   });
 
   it("`both` keeps target original and duplicates source with -copy suffix", () => {
@@ -101,8 +101,8 @@ describe("mergeScenesThreeWay", () => {
     const final = applyConflictResolutions(report, [
       { elementId: elementId("a"), choice: "both" },
     ]);
-    expect(final.shapes.get(elementId("a"))?.position).toEqual({ x: 0, y: 50 });
-    expect(final.shapes.get(elementId("a-copy"))?.position).toEqual({ x: 50, y: 0 });
+    expect(final.elements.get(elementId("a"))?.position).toEqual({ x: 0, y: 50 });
+    expect(final.elements.get(elementId("a-copy"))?.position).toEqual({ x: 50, y: 0 });
   });
 
   it("source-only deletion auto-applies when target untouched", () => {
@@ -113,6 +113,6 @@ describe("mergeScenesThreeWay", () => {
     const target = sceneOf(a, b);
     const report = mergeScenesThreeWay(ancestor, source, target);
     expect(report.conflicts).toEqual([]);
-    expect(report.autoMerged.shapes.has(elementId("b"))).toBe(false);
+    expect(report.autoMerged.elements.has(elementId("b"))).toBe(false);
   });
 });

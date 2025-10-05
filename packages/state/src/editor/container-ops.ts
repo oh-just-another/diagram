@@ -46,7 +46,7 @@ export const coverageRatio = (child: Bounds, zone: Bounds): number => {
  */
 export const childrenWorldUnion = (scene: Scene, containerId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     if (s.parentId !== containerId) continue;
     const b = getElementWorldBounds(s);
     acc = acc ? B.union(acc, b) : b;
@@ -164,7 +164,7 @@ export const applyContainerDrop = (
     // top z-order of its layer so it lands ABOVE the container's
     // visual body (otherwise the container's fill obscures it).
     const topOrder = orderForTop(
-      [...ref.scene.shapes.values()]
+      [...ref.scene.elements.values()]
         .filter((s) => s.layerId === shape.layerId && s.id !== dragId)
         .map((s) => s.order),
     );

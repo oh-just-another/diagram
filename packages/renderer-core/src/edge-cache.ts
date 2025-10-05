@@ -45,7 +45,7 @@ export class LinkBoundsCache {
 
   prune(scene: Scene): void {
     for (const id of this.entries.keys()) {
-      if (!scene.edges.has(id)) this.entries.delete(id);
+      if (!scene.links.has(id)) this.entries.delete(id);
     }
   }
 

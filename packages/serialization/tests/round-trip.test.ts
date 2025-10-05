@@ -33,9 +33,9 @@ describe("round-trip", () => {
     ({ scene } = addElement(scene, rect("b", 30, 40)));
     const doc = serializeScene(scene);
     const restored = deserializeScene(doc);
-    expect(restored.shapes.size).toBe(2);
-    expect(restored.shapes.get(elementId("a"))?.position).toEqual({ x: 10, y: 20 });
-    expect(restored.shapes.get(elementId("b"))?.position).toEqual({ x: 30, y: 40 });
+    expect(restored.elements.size).toBe(2);
+    expect(restored.elements.get(elementId("a"))?.position).toEqual({ x: 10, y: 20 });
+    expect(restored.elements.get(elementId("b"))?.position).toEqual({ x: 30, y: 40 });
   });
 
   it("preserves layers (including the default one)", () => {
@@ -60,7 +60,7 @@ describe("round-trip", () => {
     const json = stringifyScene(scene, 2);
     expect(json).toContain('"format": "oh-just-another/scene"');
     const restored = parseScene(json);
-    expect(restored.shapes.size).toBe(1);
+    expect(restored.elements.size).toBe(1);
   });
 
   it("preserves all built-in shape kinds", () => {
@@ -116,7 +116,7 @@ describe("round-trip", () => {
     }
     const restored = deserializeScene(serializeScene(scene));
     for (const id of ids) {
-      expect(restored.shapes.get(elementId(id))?.type).toBe(scene.shapes.get(elementId(id))?.type);
+      expect(restored.elements.get(elementId(id))?.type).toBe(scene.elements.get(elementId(id))?.type);
     }
   });
 
@@ -143,7 +143,7 @@ describe("round-trip", () => {
     } as unknown as Element;
     ({ scene } = addElement(scene, t));
     const restored = deserializeScene(serializeScene(scene));
-    const st = (restored.shapes.get(elementId("td")) as unknown as { style: Record<string, unknown> }).style;
+    const st = (restored.elements.get(elementId("td")) as unknown as { style: Record<string, unknown> }).style;
     expect(st.fontWeight).toBe("bold");
     expect(st.fontStyle).toBe("italic");
     expect(st.textDecoration).toEqual({ underline: true, strikethrough: true });
@@ -167,7 +167,7 @@ describe("round-trip", () => {
     } as unknown as Element;
     ({ scene } = addElement(scene, r));
     const restored = deserializeScene(serializeScene(scene));
-    expect((restored.shapes.get(elementId("lk")) as { href?: string }).href).toBe(
+    expect((restored.elements.get(elementId("lk")) as { href?: string }).href).toBe(
       "https://example.com/x",
     );
   });
@@ -192,7 +192,7 @@ describe("round-trip", () => {
     };
     ({ scene } = addElement(scene, img));
     const restored = deserializeScene(serializeScene(scene));
-    const r = restored.shapes.get(elementId("img-1"));
+    const r = restored.elements.get(elementId("img-1"));
     expect(r?.type).toBe("image");
     expect((r as { fileId?: string }).fileId).toBe("file-42-abc");
     expect((r as { animationKind?: string }).animationKind).toBe("gif");
@@ -218,13 +218,13 @@ describe("round-trip", () => {
     };
     ({ scene } = addElement(scene, img));
     const doc = serializeScene(scene);
-    const serialized = doc.shapes.find((s) => s.id === "img-1");
+    const serialized = doc.elements.find((s) => s.id === "img-1");
     expect(serialized?.metadata).toBeDefined();
     expect((serialized?.metadata as Record<string, unknown>).image).toBeUndefined();
     expect((serialized?.metadata as Record<string, unknown>).animated).toBe(true);
     const restored = deserializeScene(doc);
-    expect(restored.shapes.get(elementId("img-1"))?.metadata?.animated).toBe(true);
-    expect(restored.shapes.get(elementId("img-1"))?.metadata?.image).toBeUndefined();
+    expect(restored.elements.get(elementId("img-1"))?.metadata?.animated).toBe(true);
+    expect(restored.elements.get(elementId("img-1"))?.metadata?.image).toBeUndefined();
   });
 
   it("drops metadata entirely when only transient image was present", () => {
@@ -245,7 +245,7 @@ describe("round-trip", () => {
     };
     ({ scene } = addElement(scene, img));
     const doc = serializeScene(scene);
-    const serialized = doc.shapes.find((s) => s.id === "img-2");
+    const serialized = doc.elements.find((s) => s.id === "img-2");
     expect(serialized?.metadata).toBeUndefined();
   });
 
@@ -259,11 +259,11 @@ describe("round-trip", () => {
     const undo: Patch = {
       kind: "element",
       id: r.id,
-      before: restored.shapes.get(r.id)!,
+      before: restored.elements.get(r.id)!,
       after: null,
     };
     const after = apply(restored, undo);
-    expect(after.shapes.size).toBe(0);
+    expect(after.elements.size).toBe(0);
   });
 
   it("serialize → deserialize preserves annotations", () => {

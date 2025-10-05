@@ -218,7 +218,7 @@ export const runAutoLayout = (scene: Scene, parentId: ElementId): Patch | null =
   const spec = getAutoLayoutSpec(parent);
   if (!spec) return null;
   const children: ElementId[] = [];
-  for (const s of scene.shapes.values()) {
+  for (const s of scene.elements.values()) {
     if (s.parentId === parentId) children.push(s.id);
   }
   if (children.length === 0) return null;
@@ -291,7 +291,7 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   // Build a child-of map filtered to shapes that exist.
   const childrenOf = (id: ElementId): Element[] => {
     const out: Element[] = [];
-    for (const s of scene.shapes.values()) {
+    for (const s of scene.elements.values()) {
       if (s.parentId === id) out.push(s);
     }
     out.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));

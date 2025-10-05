@@ -320,7 +320,7 @@ export const usePalettePlacement = () => {
       layerId: DEFAULT_LAYER_ID,
       position: worldPoint, // temporary; placement.update will recenter
       order: orderForTop(
-        [...editor.scene.shapes.values()]
+        [...editor.scene.elements.values()]
           .filter((s) => s.layerId === DEFAULT_LAYER_ID)
           .map((s) => s.order),
       ),
@@ -434,7 +434,7 @@ export const usePaletteDropHandler = () => {
       layerId: DEFAULT_LAYER_ID,
       position: worldPoint,
       order: orderForTop(
-        [...editor.scene.shapes.values()]
+        [...editor.scene.elements.values()]
           .filter((s) => s.layerId === DEFAULT_LAYER_ID)
           .map((s) => s.order),
       ),

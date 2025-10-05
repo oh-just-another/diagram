@@ -31,9 +31,9 @@ const rect = (id: string, x: number, y: number, w = 50, h = 30): Element => ({
   height: h,
 });
 
-const mkEditor = (...shapes: Element[]): Editor => {
+const mkEditor = (...elements: Element[]): Editor => {
   let scene = emptyScene();
-  for (const s of shapes) ({ scene } = addElement(scene, s));
+  for (const s of elements) ({ scene } = addElement(scene, s));
   const host = document.createElement("div");
   Object.defineProperty(host, "getBoundingClientRect", {
     value: () => ({ x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600 }),
@@ -105,14 +105,14 @@ describe("computeSelectionWorldBbox", () => {
     );
     // Reparent children to the group.
     const apply = (id: string) => {
-      const s = editor.scene.shapes.get(elementId(id))!;
+      const s = editor.scene.elements.get(elementId(id))!;
       const next = { ...s, parentId: elementId("g") } as Element;
       editor["_scene"] = (editor as unknown as {
         _scene: typeof editor.scene;
       })._scene = ((scene) => {
-        const map = new Map(scene.shapes);
+        const map = new Map(scene.elements);
         map.set(next.id, next);
-        return { ...scene, shapes: map };
+        return { ...scene, elements: map };
       })(editor.scene);
     };
     apply("c1");

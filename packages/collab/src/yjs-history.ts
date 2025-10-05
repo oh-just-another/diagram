@@ -65,8 +65,8 @@ export class YjsHistory implements HistoryProvider {
     this.doc = sceneDoc.doc;
     this.origin = Symbol("yjs-history");
     this.maps = [
-      sceneDoc.shapes as unknown as Y.Map<unknown>,
-      sceneDoc.edges as unknown as Y.Map<unknown>,
+      sceneDoc.elements as unknown as Y.Map<unknown>,
+      sceneDoc.links as unknown as Y.Map<unknown>,
       sceneDoc.layers as unknown as Y.Map<unknown>,
       sceneDoc.annotations as unknown as Y.Map<unknown>,
     ];
@@ -175,8 +175,8 @@ export class YjsHistory implements HistoryProvider {
   private applyToCrdt(p: Patch): void {
     const before = this.current;
     const after = apply(before, p);
-    diffMapInto(before.shapes, after.shapes, this.maps[0]!);
-    diffMapInto(before.edges, after.edges, this.maps[1]!);
+    diffMapInto(before.elements, after.elements, this.maps[0]!);
+    diffMapInto(before.links, after.links, this.maps[1]!);
     diffMapInto(before.layers, after.layers, this.maps[2]!);
     diffMapInto(before.annotations, after.annotations, this.maps[3]!);
     if (before.viewport !== after.viewport) {
@@ -199,22 +199,22 @@ export class YjsHistory implements HistoryProvider {
 const diffAsPatch = (before: Scene, after: Scene): Patch | null => {
   const ops: Patch[] = [];
 
-  for (const [id, prev] of before.shapes) {
-    const next = after.shapes.get(id);
+  for (const [id, prev] of before.elements) {
+    const next = after.elements.get(id);
     if (next === undefined) ops.push({ kind: "element", id, before: prev, after: null });
     else if (next !== prev) ops.push({ kind: "element", id, before: prev, after: next });
   }
-  for (const [id, next] of after.shapes) {
-    if (!before.shapes.has(id)) ops.push({ kind: "element", id, before: null, after: next });
+  for (const [id, next] of after.elements) {
+    if (!before.elements.has(id)) ops.push({ kind: "element", id, before: null, after: next });
   }
 
-  for (const [id, prev] of before.edges) {
-    const next = after.edges.get(id);
+  for (const [id, prev] of before.links) {
+    const next = after.links.get(id);
     if (next === undefined) ops.push({ kind: "link", id, before: prev, after: null });
     else if (next !== prev) ops.push({ kind: "link", id, before: prev, after: next });
   }
-  for (const [id, next] of after.edges) {
-    if (!before.edges.has(id)) ops.push({ kind: "link", id, before: null, after: next });
+  for (const [id, next] of after.links) {
+    if (!before.links.has(id)) ops.push({ kind: "link", id, before: null, after: next });
   }
 
   for (const [id, prev] of before.layers) {

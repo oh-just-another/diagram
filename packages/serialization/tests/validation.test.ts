@@ -4,8 +4,8 @@ import { DeserializationError, deserializeScene, parseScene } from "../src/index
 const validBaseDoc = {
   format: "oh-just-another/scene",
   version: 1,
-  shapes: [],
-  edges: [],
+  elements: [],
+  links: [],
   layers: [
     {
       id: "default",
@@ -43,7 +43,7 @@ describe("validation", () => {
     expect(() =>
       deserializeScene({
         ...validBaseDoc,
-        shapes: [{ id: "a" /* missing everything else */ }],
+        elements: [{ id: "a" /* missing everything else */ }],
       }),
     ).toThrow(DeserializationError);
   });

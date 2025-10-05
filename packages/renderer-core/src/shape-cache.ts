@@ -52,7 +52,7 @@ export class ShapeCache<T> {
   /** Drop entries whose shape is no longer in the scene. */
   prune(scene: Scene): void {
     for (const id of this.entries.keys()) {
-      if (!scene.shapes.has(id)) this.entries.delete(id);
+      if (!scene.elements.has(id)) this.entries.delete(id);
     }
   }
 

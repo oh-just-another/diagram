@@ -74,7 +74,7 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
   // happen to be set (rare), shape panel is more useful.
   if (selection.size > 0) {
     const shapes = [...selection]
-      .map((id) => scene.shapes.get(id))
+      .map((id) => scene.elements.get(id))
       .filter((s): s is ElementBase => s !== undefined);
     if (shapes.length === 0) return null;
     // Per-type control sets:
@@ -119,7 +119,7 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
   }
 
   if (selectedLinkId !== null) {
-    const edge = scene.edges.get(selectedLinkId);
+    const edge = scene.links.get(selectedLinkId);
     if (!edge) return null;
     return (
       <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style}>
@@ -1096,21 +1096,21 @@ const CornerIcon = ({ kind }: { readonly kind: Roundness["type"] }) => {
 // ---------------------------------------------------------------------------
 
 const sharedValue = <T,>(
-  shapes: readonly ElementBase[],
+  elements: readonly ElementBase[],
   pick: (s: ElementBase) => T | null | undefined,
 ): T | null => {
   const set = new Set<T | null | undefined>();
-  for (const s of shapes) set.add(pick(s));
+  for (const s of elements) set.add(pick(s));
   if (set.size !== 1) return null;
   const v = set.values().next().value;
   return v == null ? null : (v as T);
 };
 
 const sharedString = (
-  shapes: readonly ElementBase[],
+  elements: readonly ElementBase[],
   pick: (s: ElementBase) => unknown,
 ): string | null => {
-  const value = sharedValue<unknown>(shapes, (s) => pick(s));
+  const value = sharedValue<unknown>(elements, (s) => pick(s));
   return typeof value === "string" ? value : null;
 };
 

@@ -63,11 +63,11 @@ describe("History — basic stack", () => {
     let scene = apply(emptyScene(), p);
     h.push(p);
     scene = apply(scene, h.undo()!);
-    expect(scene.shapes.size).toBe(0);
+    expect(scene.elements.size).toBe(0);
     scene = apply(scene, h.redo()!);
-    expect(scene.shapes.size).toBe(1);
+    expect(scene.elements.size).toBe(1);
     scene = apply(scene, h.undo()!);
-    expect(scene.shapes.size).toBe(0);
+    expect(scene.elements.size).toBe(0);
   });
 
   it("new push clears the redo stack", () => {

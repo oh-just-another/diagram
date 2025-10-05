@@ -51,7 +51,7 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
   const editor = useDiagramOptional();
   const scene = useScene();
   const selectedLinkId = useSelectedLink();
-  const edge = selectedLinkId !== null ? scene.edges.get(selectedLinkId) : undefined;
+  const edge = selectedLinkId !== null ? scene.links.get(selectedLinkId) : undefined;
   if (!editor || !edge) return null;
 
   const containerStyle: CSSProperties = {

@@ -137,7 +137,7 @@ export const computeTextResize = (
  * threads it back every frame.
  */
 export interface GroupResizeOrigin {
-  readonly shapes: ReadonlyMap<
+  readonly elements: ReadonlyMap<
     ElementId,
     {
       readonly position: Vec2;
@@ -186,7 +186,7 @@ export const computeGroupResizePatches = (
   let runningScene = scene;
   const patches: Patch[] = [];
 
-  for (const [id, snap] of origin.shapes) {
+  for (const [id, snap] of origin.elements) {
     const shape = getElement(runningScene, id);
     if (!shape) continue;
     const newPx = ax + (snap.position.x - ax) * sx;

@@ -286,8 +286,8 @@ export const SceneDocumentZ = z
     /** Magic to make a `.json` file recognisable without sniffing. */
     format: z.literal("oh-just-another/scene"),
     version: z.number().int().nonnegative(),
-    shapes: z.array(ElementZ),
-    edges: z.array(LinkZ),
+    elements: z.array(ElementZ),
+    links: z.array(LinkZ),
     layers: z.array(LayerZ),
     /**
      * Threaded comments. Optional for backwards compatibility — documents

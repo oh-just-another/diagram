@@ -13,8 +13,8 @@ import type { Scene } from "@oh-just-another/scene";
  * shapes will appear as "modified" until a smarter equality is wired.
  */
 export interface SceneDiff {
-  readonly shapes: DiffCategory<ElementId>;
-  readonly edges: DiffCategory<LinkId>;
+  readonly elements: DiffCategory<ElementId>;
+  readonly links: DiffCategory<LinkId>;
   readonly layers: DiffCategory<LayerId>;
   readonly annotations: DiffCategory<AnnotationId>;
 }
@@ -26,8 +26,8 @@ export interface DiffCategory<Id> {
 }
 
 export const diffScenes = (before: Scene, after: Scene): SceneDiff => ({
-  shapes: diffMap(before.shapes, after.shapes),
-  edges: diffMap(before.edges, after.edges),
+  elements: diffMap(before.elements, after.elements),
+  links: diffMap(before.links, after.links),
   layers: diffMap(before.layers, after.layers),
   annotations: diffMap(before.annotations, after.annotations),
 });
@@ -49,12 +49,12 @@ const diffMap = <K, V>(before: ReadonlyMap<K, V>, after: ReadonlyMap<K, V>): Dif
 
 /** True when the diff has zero changes across every category. */
 export const isEmptyDiff = (d: SceneDiff): boolean =>
-  d.shapes.added.length === 0 &&
-  d.shapes.removed.length === 0 &&
-  d.shapes.modified.length === 0 &&
-  d.edges.added.length === 0 &&
-  d.edges.removed.length === 0 &&
-  d.edges.modified.length === 0 &&
+  d.elements.added.length === 0 &&
+  d.elements.removed.length === 0 &&
+  d.elements.modified.length === 0 &&
+  d.links.added.length === 0 &&
+  d.links.removed.length === 0 &&
+  d.links.modified.length === 0 &&
   d.layers.added.length === 0 &&
   d.layers.removed.length === 0 &&
   d.layers.modified.length === 0 &&

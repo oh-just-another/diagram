@@ -6,14 +6,14 @@ const entry = (
   col: number,
   row: number,
   zoom: number,
-  shapes: readonly string[] = [],
+  elements: readonly string[] = [],
   bytes = 1024,
 ): TileCacheEntry<string> => ({
   key: { col, row, zoom },
   bitmap: `tile-${col},${row}@${zoom}`,
   bounds: { x: col * 100, y: row * 100, width: 100, height: 100 },
   bytes,
-  shapes: shapes.map((s) => elementId(s)),
+  elements: elements.map((s) => elementId(s)),
 });
 
 describe("InMemoryTileCache invalidation", () => {
