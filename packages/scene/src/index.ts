@@ -20,7 +20,7 @@ export {
 export type {
   Element,
   ElementBase,
-  BuiltinShape,
+  BuiltinElement,
   RectangleElement,
   EllipseElement,
   PolygonElement,

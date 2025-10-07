@@ -10,7 +10,7 @@ import {
 } from "@oh-just-another/scene";
 import {
   DEFAULT_EDGE_STYLE,
-  DEFAULT_SHAPE_STYLES,
+  DEFAULT_ELEMENT_STYLES,
   HUE_TONES,
 } from "@oh-just-another/tokens";
 import { linkId, elementId } from "@oh-just-another/types";
@@ -157,11 +157,11 @@ const defaultFill = (shape: GraphDocument["nodes"][number]["shape"]): string => 
   switch (shape) {
     case "ellipse":
     case "round":
-      return DEFAULT_SHAPE_STYLES.sticky.fill;
+      return DEFAULT_ELEMENT_STYLES.sticky.fill;
     case "diamond":
-      return DEFAULT_SHAPE_STYLES.flowchart.fill;
+      return DEFAULT_ELEMENT_STYLES.flowchart.fill;
     case "rectangle":
     default:
-      return DEFAULT_SHAPE_STYLES.rectangle.fill;
+      return DEFAULT_ELEMENT_STYLES.rectangle.fill;
   }
 };

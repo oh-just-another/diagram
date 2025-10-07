@@ -226,13 +226,13 @@ export const GRID_COLOR = gray.gray6;
  * brand colour). Sticky note uses amber for that classic
  * yellow paper feel.
  */
-export interface DefaultShapeStyle {
+export interface DefaultElementStyle {
   readonly fill: string;
   readonly stroke: string;
   readonly strokeWidth: number;
 }
 
-export const DEFAULT_SHAPE_STYLES = {
+export const DEFAULT_ELEMENT_STYLES = {
   rectangle: {
     fill: iris.iris3,
     stroke: iris.iris9,
@@ -253,7 +253,7 @@ export const DEFAULT_SHAPE_STYLES = {
     stroke: amber.amber9,
     strokeWidth: 1,
   },
-} as const satisfies Record<string, DefaultShapeStyle>;
+} as const satisfies Record<string, DefaultElementStyle>;
 
 /**
  * Default style for a freshly-created edge — neutral dark gray

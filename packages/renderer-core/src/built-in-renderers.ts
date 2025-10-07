@@ -368,7 +368,7 @@ const drawImage: ElementRenderer<ImageElement> = (shape, target) => {
 };
 
 /**
- * Registers renderers for every `BuiltinShape` type. Called by side-effect
+ * Registers renderers for every `BuiltinElement` type. Called by side-effect
  * import of `@oh-just-another/renderer-canvas/setup` (see index).
  */
 export const installBuiltinRenderers = (): void => {

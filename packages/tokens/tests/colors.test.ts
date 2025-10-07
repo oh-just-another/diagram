@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   CANVAS_TONES,
   DEFAULT_EDGE_STYLE,
-  DEFAULT_SHAPE_STYLES,
+  DEFAULT_ELEMENT_STYLES,
   DIFF_COLORS,
   GRID_COLOR,
   HUES,
@@ -60,7 +60,7 @@ describe("token shape", () => {
     expect(DEFAULT_EDGE_STYLE.stroke).toMatch(HEX_RE);
     expect(DEFAULT_EDGE_STYLE.strokeWidth).toBeGreaterThan(0);
     for (const key of ["rectangle", "ellipse", "flowchart", "sticky"] as const) {
-      const s = DEFAULT_SHAPE_STYLES[key];
+      const s = DEFAULT_ELEMENT_STYLES[key];
       expect(s.fill).toMatch(HEX_RE);
       expect(s.stroke).toMatch(HEX_RE);
       expect(s.strokeWidth).toBeGreaterThan(0);

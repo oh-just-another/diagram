@@ -20,7 +20,7 @@ export { renderScene } from "./scene-renderer.js";
 export { renderLinks } from "./edge-renderer.js";
 export { renderGrid } from "./grid-renderer.js";
 
-// Backend-agnostic shape renderers for the 6 built-in `BuiltinShape` types.
+// Backend-agnostic shape renderers for the built-in `BuiltinElement` types.
 // `installBuiltinRenderers()` registers them via `registerElementRenderer` and
 // is safe to call multiple times.
 export { installBuiltinRenderers } from "./built-in-renderers.js";

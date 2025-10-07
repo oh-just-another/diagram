@@ -1,5 +1,5 @@
 import type { Element, Style } from "@oh-just-another/scene";
-import { DEFAULT_SHAPE_STYLES } from "@oh-just-another/tokens";
+import { DEFAULT_ELEMENT_STYLES } from "@oh-just-another/tokens";
 import type { Vec2 } from "@oh-just-another/types";
 import {
   DATA_ICON,
@@ -54,9 +54,9 @@ const polygonFromPoints = (ctx: TemplateContext, points: Vec2[], style: Style): 
 // Sourced from `@oh-just-another/tokens` so palette changes propagate
 // across every built-in template in one place.
 
-const BASIC_STYLE: Style = { ...DEFAULT_SHAPE_STYLES.rectangle };
-const STICKY_STYLE: Style = { ...DEFAULT_SHAPE_STYLES.sticky };
-const FLOW_STYLE: Style = { ...DEFAULT_SHAPE_STYLES.flowchart };
+const BASIC_STYLE: Style = { ...DEFAULT_ELEMENT_STYLES.rectangle };
+const STICKY_STYLE: Style = { ...DEFAULT_ELEMENT_STYLES.sticky };
+const FLOW_STYLE: Style = { ...DEFAULT_ELEMENT_STYLES.flowchart };
 
 // --- Built-in templates ---
 

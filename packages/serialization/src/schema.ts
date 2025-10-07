@@ -153,7 +153,7 @@ const BrushZ = ElementBaseZ.extend({
  * persist them. Accepts any object with the standard base fields plus a
  * non-builtin `type`, and lets the bounder registry handle them at load time.
  */
-const CustomShapeZ = ElementBaseZ.extend({
+const CustomElementZ = ElementBaseZ.extend({
   type: z.string(),
   style: StyleZ.optional(),
 })
@@ -186,7 +186,7 @@ const ElementZ = z.union([
   TemplateInstanceZ,
   GroupZ,
   BrushZ,
-  CustomShapeZ,
+  CustomElementZ,
 ]);
 
 // --- Links ---

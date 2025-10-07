@@ -9,7 +9,7 @@ import {
   type Element,
   type Patch,
 } from "@oh-just-another/scene";
-import { DEFAULT_EDGE_STYLE, DEFAULT_SHAPE_STYLES } from "@oh-just-another/tokens";
+import { DEFAULT_EDGE_STYLE, DEFAULT_ELEMENT_STYLES } from "@oh-just-another/tokens";
 import type {
   Bounds,
   LinkId,
@@ -22,8 +22,8 @@ import type {
  * `@oh-just-another/tokens` so the editor and the templates package
  * agree on a fresh shape's look.
  */
-const DEFAULT_RECT_STYLE = DEFAULT_SHAPE_STYLES.rectangle;
-const DEFAULT_ELLIPSE_STYLE = DEFAULT_SHAPE_STYLES.ellipse;
+const DEFAULT_RECT_STYLE = DEFAULT_ELEMENT_STYLES.rectangle;
+const DEFAULT_ELLIPSE_STYLE = DEFAULT_ELEMENT_STYLES.ellipse;
 
 /**
  * Build the `Element` object for a CREATE_SHAPE emit. Doesn't touch the

@@ -276,7 +276,7 @@ export interface BlockArrowElement extends ElementBase {
   readonly bodyThickness?: number;
 }
 
-export type BuiltinShape =
+export type BuiltinElement =
   | RectangleElement
   | EllipseElement
   | PolygonElement
@@ -294,7 +294,7 @@ export type BuiltinShape =
  * register their own types without amending this union. The kernel treats
  * unknown shape types via the bounder registry — see `registerBounder`.
  */
-export type Element = BuiltinShape | ElementBase;
+export type Element = BuiltinElement | ElementBase;
 
 // --- type guards ---
 
@@ -324,7 +324,7 @@ const bounderRegistry = new Map<string, ElementBounder>();
 
 /**
  * Register a bounder for a custom shape type. Plugins call this once at module
- * load. The kernel ships bounders for every `BuiltinShape`.
+ * load. The kernel ships bounders for every `BuiltinElement`.
  */
 export const registerBounder = <S extends ElementBase>(
   type: S["type"],

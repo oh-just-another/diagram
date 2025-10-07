@@ -937,3 +937,6 @@
 
 ## 0.51.1
 - refactor(RN batch 6a): rename renderer-core Shape* machinery Right Element* (BREAKING)
+
+## 0.51.2
+- refactor(RN batch 6b): rename editor.shapeLink Right elementLink (BREAKING)
