@@ -3,7 +3,7 @@ import {
   diffSceneElements,
   getElementWorldBounds,
   type Scene,
-  type SceneShapeDiff,
+  type SceneElementDiff,
 } from "@oh-just-another/scene";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
 import { DIFF_COLORS } from "@oh-just-another/tokens";
@@ -79,7 +79,7 @@ const SideView = ({
   label: string;
   svg: string;
   scene: Scene;
-  diff: SceneShapeDiff;
+  diff: SceneElementDiff;
   side: "left" | "right";
 }) => {
   // Which markers to draw on this side:

@@ -931,3 +931,6 @@
 
 ## 0.50.3
 - fix(rename 5a): apply Patch/PressTarget kind rename to SOURCE (was only in tests)
+
+## 0.51.0
+- refactor(RN 5b): rename Scene.shapes/edges Right elements/links + serialization format (BREAKING)

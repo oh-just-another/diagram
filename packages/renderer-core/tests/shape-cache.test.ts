@@ -9,7 +9,7 @@ import {
   updateElement,
   type Element,
 } from "@oh-just-another/scene";
-import { cachedWorldBounds, ShapeCache, sharedBoundsCache } from "../src/index";
+import { cachedWorldBounds, ElementCache, sharedBoundsCache } from "../src/index";
 
 const rect = (id: string, x = 0, y = 0, w = 10, h = 10): Element => ({
   id: elementId(id),
@@ -24,9 +24,9 @@ const rect = (id: string, x = 0, y = 0, w = 10, h = 10): Element => ({
   height: h,
 });
 
-describe("ShapeCache", () => {
+describe("ElementCache", () => {
   it("memoizes by shape identity", () => {
-    const cache = new ShapeCache<number>();
+    const cache = new ElementCache<number>();
     const s = rect("a");
     let calls = 0;
     const compute = (): number => {
@@ -39,7 +39,7 @@ describe("ShapeCache", () => {
   });
 
   it("invalidates when the shape ref changes", () => {
-    const cache = new ShapeCache<number>();
+    const cache = new ElementCache<number>();
     const s1 = rect("a");
     cache.set(s1, 1);
     const s2 = { ...s1, position: { x: 5, y: 5 } };
@@ -47,7 +47,7 @@ describe("ShapeCache", () => {
   });
 
   it("explicit invalidate / clear", () => {
-    const cache = new ShapeCache<number>();
+    const cache = new ElementCache<number>();
     const s = rect("a");
     cache.set(s, 1);
     cache.invalidate(s.id);
@@ -58,7 +58,7 @@ describe("ShapeCache", () => {
   });
 
   it("prune drops entries not in scene", () => {
-    const cache = new ShapeCache<number>();
+    const cache = new ElementCache<number>();
     const s1 = rect("a");
     const s2 = rect("b");
     cache.set(s1, 1);
@@ -75,7 +75,7 @@ describe("ShapeCache", () => {
 
 describe("cachedWorldBounds", () => {
   it("returns same bounds for stable shape", () => {
-    const cache = new ShapeCache<ReturnType<typeof cachedWorldBounds>>();
+    const cache = new ElementCache<ReturnType<typeof cachedWorldBounds>>();
     const s = rect("a", 5, 5, 10, 10);
     const a = cachedWorldBounds(cache, s);
     const b = cachedWorldBounds(cache, s);
@@ -92,7 +92,7 @@ describe("cachedWorldBounds", () => {
       layerId: layerId(DEFAULT_LAYER_ID),
     }).scene;
     const before = scene.elements.get(id)!;
-    const cache = new ShapeCache<ReturnType<typeof cachedWorldBounds>>();
+    const cache = new ElementCache<ReturnType<typeof cachedWorldBounds>>();
     const b1 = cachedWorldBounds(cache, before);
     expect(b1.x).toBe(0);
     scene = updateElement(scene, id, (s) => ({ ...s, position: { x: 50, y: 50 } })).scene;
@@ -105,6 +105,6 @@ describe("cachedWorldBounds", () => {
 
 describe("sharedBoundsCache", () => {
   it("is a module-level singleton", () => {
-    expect(sharedBoundsCache).toBeInstanceOf(ShapeCache);
+    expect(sharedBoundsCache).toBeInstanceOf(ElementCache);
   });
 });

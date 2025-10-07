@@ -11,11 +11,11 @@ import {
 } from "@oh-just-another/scene";
 import { buildSpatialIndex } from "@oh-just-another/scene";
 import {
-  registerShapeRenderer,
+  registerElementRenderer,
   renderScene,
-  ShapeCache,
+  ElementCache,
   type RenderTarget,
-  type ShapeRenderer,
+  type ElementRenderer,
 } from "../src/index";
 
 /**
@@ -69,8 +69,8 @@ describe("renderScene", () => {
   });
 
   it("invokes the registered renderer for each shape", () => {
-    const renderer = vi.fn<ShapeRenderer>();
-    registerShapeRenderer("test-rect", renderer);
+    const renderer = vi.fn<ElementRenderer>();
+    registerElementRenderer("test-rect", renderer);
     let scene = emptyScene();
     const r = rect("a");
     ({ scene } = addElement(scene, { ...r, type: "test-rect" }));
@@ -90,8 +90,8 @@ describe("renderScene", () => {
   });
 
   it("skips hidden layers", () => {
-    const renderer = vi.fn<ShapeRenderer>();
-    registerShapeRenderer("hidden-test", renderer);
+    const renderer = vi.fn<ElementRenderer>();
+    registerElementRenderer("hidden-test", renderer);
     let scene = emptyScene();
     const hidden: Layer = {
       id: layerId("hidden"),
@@ -108,8 +108,8 @@ describe("renderScene", () => {
   });
 
   it("wraps each shape draw in save/restore", () => {
-    const renderer = vi.fn<ShapeRenderer>();
-    registerShapeRenderer("ss-test", renderer);
+    const renderer = vi.fn<ElementRenderer>();
+    registerElementRenderer("ss-test", renderer);
     let scene = emptyScene();
     ({ scene } = addElement(scene, { ...rect("a"), type: "ss-test" }));
     const { target, calls } = makeRecorder();
@@ -129,8 +129,8 @@ describe("renderScene", () => {
     });
 
     it("skips shapes whose AABB does not intersect the viewport", () => {
-      const renderer = vi.fn<ShapeRenderer>();
-      registerShapeRenderer("rectangle", renderer);
+      const renderer = vi.fn<ElementRenderer>();
+      registerElementRenderer("rectangle", renderer);
       let scene = emptyScene();
       ({ scene } = addElement(scene, placeRect("inside", 0, 0)));
       ({ scene } = addElement(scene, placeRect("outside", 1000, 1000)));
@@ -142,8 +142,8 @@ describe("renderScene", () => {
     });
 
     it("renders all shapes when viewport is omitted", () => {
-      const renderer = vi.fn<ShapeRenderer>();
-      registerShapeRenderer("rectangle", renderer);
+      const renderer = vi.fn<ElementRenderer>();
+      registerElementRenderer("rectangle", renderer);
       let scene = emptyScene();
       ({ scene } = addElement(scene, placeRect("a", 0, 0)));
       ({ scene } = addElement(scene, placeRect("b", 10000, 10000)));
@@ -153,8 +153,8 @@ describe("renderScene", () => {
     });
 
     it("spatialIndex pre-filters candidates", () => {
-      const renderer = vi.fn<ShapeRenderer>();
-      registerShapeRenderer("rectangle", renderer);
+      const renderer = vi.fn<ElementRenderer>();
+      registerElementRenderer("rectangle", renderer);
       let scene = emptyScene();
       ({ scene } = addElement(scene, placeRect("inside", 0, 0)));
       ({ scene } = addElement(scene, placeRect("outside", 5000, 5000)));
@@ -168,11 +168,11 @@ describe("renderScene", () => {
     });
 
     it("reuses bounds cache across calls", () => {
-      const renderer = vi.fn<ShapeRenderer>();
-      registerShapeRenderer("rectangle", renderer);
+      const renderer = vi.fn<ElementRenderer>();
+      registerElementRenderer("rectangle", renderer);
       let scene = emptyScene();
       ({ scene } = addElement(scene, placeRect("a", 0, 0)));
-      const cache = new ShapeCache<{ x: number; y: number; width: number; height: number }>();
+      const cache = new ElementCache<{ x: number; y: number; width: number; height: number }>();
       const { target } = makeRecorder();
       renderScene(scene, target, {
         viewport: { x: -10, y: -10, width: 100, height: 100 },
@@ -204,10 +204,10 @@ describe("renderScene", () => {
     };
 
     it("hideText drops text shapes when zoom is below threshold", () => {
-      const rectRenderer = vi.fn<ShapeRenderer>();
-      const textRenderer = vi.fn<ShapeRenderer>();
-      registerShapeRenderer("rectangle", rectRenderer);
-      registerShapeRenderer("text", textRenderer);
+      const rectRenderer = vi.fn<ElementRenderer>();
+      const textRenderer = vi.fn<ElementRenderer>();
+      registerElementRenderer("rectangle", rectRenderer);
+      registerElementRenderer("text", textRenderer);
       const scene = sceneWithZoom(0.2, [
         placeRect("r1", 0, 0),
         {
@@ -231,8 +231,8 @@ describe("renderScene", () => {
     });
 
     it("placeholder skips renderers and emits world-bounds rect", () => {
-      const rectRenderer = vi.fn<ShapeRenderer>();
-      registerShapeRenderer("rectangle", rectRenderer);
+      const rectRenderer = vi.fn<ElementRenderer>();
+      registerElementRenderer("rectangle", rectRenderer);
       const scene = sceneWithZoom(0.1, [placeRect("a", 0, 0), placeRect("b", 100, 100)]);
       const { target, calls } = makeRecorder();
       renderScene(scene, target, { lod: { placeholder: 0.2 } });
@@ -242,8 +242,8 @@ describe("renderScene", () => {
     });
 
     it("LOD inactive at high zoom — full render", () => {
-      const rectRenderer = vi.fn<ShapeRenderer>();
-      registerShapeRenderer("rectangle", rectRenderer);
+      const rectRenderer = vi.fn<ElementRenderer>();
+      registerElementRenderer("rectangle", rectRenderer);
       const scene = sceneWithZoom(1.5, [placeRect("a", 0, 0)]);
       const { target } = makeRecorder();
       renderScene(scene, target, { lod: { placeholder: 0.2, hideText: 0.5 } });
@@ -252,8 +252,8 @@ describe("renderScene", () => {
   });
 
   it("applies TRS transforms for each shape", () => {
-    const renderer = vi.fn<ShapeRenderer>();
-    registerShapeRenderer("trs-test", renderer);
+    const renderer = vi.fn<ElementRenderer>();
+    registerElementRenderer("trs-test", renderer);
     let scene = emptyScene();
     const r: Element = {
       ...rect("a"),

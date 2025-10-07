@@ -10,9 +10,9 @@ import { getElementWorldBounds, type Scene, type ElementBase } from "@oh-just-an
  *
  * Caches survive across frames; pair with `prune(scene)` after large
  * deletions if memory matters. For ephemeral, single-render memos use
- * a fresh `ShapeCache` instance (cheap to construct).
+ * a fresh `ElementCache` instance (cheap to construct).
  */
-export class ShapeCache<T> {
+export class ElementCache<T> {
   private readonly entries = new Map<ElementId, { readonly ref: ElementBase; value: T }>();
 
   get(shape: ElementBase): T | undefined {
@@ -69,7 +69,7 @@ export class ShapeCache<T> {
  * `getElementWorldBounds` is pure — same shape ref → same bounds — so a
  * by-identity cache is sound.
  */
-export const sharedBoundsCache: ShapeCache<Bounds> = new ShapeCache<Bounds>();
+export const sharedBoundsCache: ElementCache<Bounds> = new ElementCache<Bounds>();
 
-export const cachedWorldBounds = (cache: ShapeCache<Bounds>, shape: ElementBase): Bounds =>
+export const cachedWorldBounds = (cache: ElementCache<Bounds>, shape: ElementBase): Bounds =>
   cache.getOrCompute(shape, getElementWorldBounds);

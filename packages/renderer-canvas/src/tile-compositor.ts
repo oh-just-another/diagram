@@ -31,7 +31,7 @@ import { getShapeRenderer } from "@oh-just-another/renderer-core";
  * cheaper than re-rasterising N shapes.
  */
 
-export interface ChangedShapeRecord {
+export interface ChangedElementRecord {
   /** World bbox of the shape in the previous frame, or null if it was just added. */
   readonly before: Bounds | null;
   /** World bbox of the shape in the current frame, or null if it was just removed. */
@@ -52,7 +52,7 @@ export interface RenderViaTilesOptions {
    *   • added     (before null) → invalidateRect (no id yet)
    *   • mutated/moved (both)    → both rects
    */
-  readonly changedElements?: ReadonlyMap<ElementId, ChangedShapeRecord>;
+  readonly changedElements?: ReadonlyMap<ElementId, ChangedElementRecord>;
   /** Current zoom (used to pick the cache bucket). */
   readonly zoomBucket: number;
 }

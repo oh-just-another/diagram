@@ -10,7 +10,7 @@ import type { Bounds, LayerId, ElementId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "./render-target.js";
 import { getShapeRenderer } from "./shape-renderer.js";
-import { cachedWorldBounds, ShapeCache } from "./shape-cache.js";
+import { cachedWorldBounds, ElementCache } from "./shape-cache.js";
 import { DEFAULT_PLACEHOLDER_FILL } from "./constants.js";
 import type { LayerCompositeCache } from "./layer-cache-composite.js";
 import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
@@ -49,7 +49,7 @@ export interface RenderSceneOptions {
    * amortize. Pass a long-lived cache from `Editor` to share work across
    * frames, hit-test, and overlay.
    */
-  readonly boundsCache?: ShapeCache<Bounds>;
+  readonly boundsCache?: ElementCache<Bounds>;
   /**
    * Pre-built spatial index. When provided together with `viewport`, the
    * renderer picks candidate shapes from the index and skips full layer
@@ -168,7 +168,7 @@ export const renderScene = (
   target.save();
   target.setTransform(w2s);
 
-  const boundsCache = options.boundsCache ?? new ShapeCache<Bounds>();
+  const boundsCache = options.boundsCache ?? new ElementCache<Bounds>();
   const viewport = options.viewport;
   // Spatial-index candidate set: when present, restricts the per-layer
   // walk to shapes the index considers possibly-visible. Without it the

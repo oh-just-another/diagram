@@ -5,7 +5,7 @@ import { resolveBindings } from "./binding.js";
 
 /**
  * Local AABB of a rich-template instance — the bounds of the root after
- * layout. Use this from a `ShapeBounder` registered on `"template"` to feed
+ * layout. Use this from a `ElementBounder` registered on `"template"` to feed
  * the scene's spatial index.
  */
 export const getTemplateLocalBounds = (

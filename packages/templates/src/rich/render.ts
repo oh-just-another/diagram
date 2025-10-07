@@ -6,9 +6,9 @@ import {
 } from "@oh-just-another/scene";
 import { extractDropZone } from "./drop-zones.js";
 import {
-  registerShapeRenderer,
+  registerElementRenderer,
   type RenderTarget,
-  type ShapeRenderer,
+  type ElementRenderer,
 } from "@oh-just-another/renderer-core";
 import { resolveBindings } from "./binding.js";
 import { layoutTree, type LayoutedNode, type MeasureText } from "./layout.js";
@@ -35,7 +35,7 @@ import { paintSvgIcon, parseSvg } from "./svg.js";
  * The caller is expected to have already translated `target` to the shape's
  * `position` (via `renderScene`'s per-shape TRS push).
  */
-export const renderTemplateElement: ShapeRenderer<SceneTemplateElement> = (shape, target) => {
+export const renderTemplateElement: ElementRenderer<SceneTemplateElement> = (shape, target) => {
   const template = defaultRichRegistry.get(shape.templateId);
   if (!template) {
     paintMissing(target, shape.width, shape.height, shape.templateId);
@@ -269,7 +269,7 @@ void (null as unknown as ContainerNode | Color | Vec2 | NodeStyle); // appease u
  * once at app startup, alongside `installBuiltinRenderers()`.
  */
 export const installTemplateShapeRenderer = (): void => {
-  registerShapeRenderer<SceneTemplateElement>("template", renderTemplateElement);
+  registerElementRenderer<SceneTemplateElement>("template", renderTemplateElement);
   registerBounder<SceneTemplateElement>("template", (shape) => {
     // The shape's width/height drives both the bounder and the renderer so
     // the user's resize gesture changes both the AABB and the painted layout.

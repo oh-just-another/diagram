@@ -8,10 +8,9 @@
  * Below this number the per-postMessage overhead dominates and a
  * main-thread render is faster.
  *
- * Default 50_000 — picked from benchmarks: at 50k shapes
- * the main-thread render starts to drop frames at low zoom (full
- * scene in viewport); below 50k the main-thread path fits within 16 ms
- * via viewport culling + ShapeCache.
+ * At 50k shapes a full-scene main-thread render at low zoom starts to
+ * drop frames; below 50k the main-thread path stays within 16 ms via
+ * viewport culling and ElementCache.
  */
 export const LARGE_SCENE_WORKER_THRESHOLD = 50_000;
 

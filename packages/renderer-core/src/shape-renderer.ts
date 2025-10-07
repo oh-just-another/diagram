@@ -10,12 +10,12 @@ import type { RenderTarget } from "./render-target.js";
  * the renderer-core does not push styles globally because some shapes (e.g.
  * `text`) extend the base `Style` with overlays.
  */
-export type ShapeRenderer<S extends ElementBase = ElementBase> = (
+export type ElementRenderer<S extends ElementBase = ElementBase> = (
   shape: S,
   target: RenderTarget,
 ) => void;
 
-const registry = new Map<string, ShapeRenderer>();
+const registry = new Map<string, ElementRenderer>();
 
 /**
  * Register a renderer for a shape type. Plugins call this at module load.
@@ -23,15 +23,15 @@ const registry = new Map<string, ShapeRenderer>();
  * — they are installed by `@oh-just-another/renderer-canvas` (and any other
  * backend) on import.
  */
-export const registerShapeRenderer = <S extends ElementBase>(
+export const registerElementRenderer = <S extends ElementBase>(
   type: S["type"],
-  renderer: ShapeRenderer<S>,
+  renderer: ElementRenderer<S>,
 ): void => {
-  registry.set(type, renderer as ShapeRenderer);
+  registry.set(type, renderer as ElementRenderer);
 };
 
 /** Look up a registered renderer. Returns `undefined` for unknown types. */
-export const getShapeRenderer = (type: string): ShapeRenderer | undefined => registry.get(type);
+export const getShapeRenderer = (type: string): ElementRenderer | undefined => registry.get(type);
 
 /** True if a renderer is registered for `type`. */
 export const hasShapeRenderer = (type: string): boolean => registry.has(type);

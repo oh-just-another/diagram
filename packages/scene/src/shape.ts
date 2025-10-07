@@ -318,9 +318,9 @@ export const isBrush = (s: ElementBase): s is BrushElement => s.type === "brush"
  * before `position`/`rotation`/`scale` are applied. The world AABB lives in
  * `getElementWorldBounds`.
  */
-export type ShapeBounder<S extends ElementBase = ElementBase> = (shape: S) => Bounds;
+export type ElementBounder<S extends ElementBase = ElementBase> = (shape: S) => Bounds;
 
-const bounderRegistry = new Map<string, ShapeBounder>();
+const bounderRegistry = new Map<string, ElementBounder>();
 
 /**
  * Register a bounder for a custom shape type. Plugins call this once at module
@@ -328,13 +328,13 @@ const bounderRegistry = new Map<string, ShapeBounder>();
  */
 export const registerBounder = <S extends ElementBase>(
   type: S["type"],
-  bounder: ShapeBounder<S>,
+  bounder: ElementBounder<S>,
 ): void => {
-  bounderRegistry.set(type, bounder as ShapeBounder);
+  bounderRegistry.set(type, bounder as ElementBounder);
 };
 
 /** Look up a registered bounder. Returns `undefined` for unknown shape types. */
-export const getBounder = (type: string): ShapeBounder | undefined => bounderRegistry.get(type);
+export const getBounder = (type: string): ElementBounder | undefined => bounderRegistry.get(type);
 
 /**
  * Local AABB for any shape with a registered bounder. Throws on unknown types

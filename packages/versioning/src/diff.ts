@@ -6,11 +6,9 @@ import type { Scene } from "@oh-just-another/scene";
  * (shapes / edges / layers / annotations) split into `added`, `removed`,
  * and `modified` (same id, different value).
  *
- * Identity comparison (`!==`) is enough because our scene ops always
- * return new objects on change — same as the rationale behind
- * `ShapeCache`. Skips deep structural comparison; if two snapshots
- * have identical content but the host re-built shape objects, those
- * shapes will appear as "modified" until a smarter equality is wired.
+ * Identity comparison (`!==`) is enough because scene ops always return new
+ * objects on change. If two snapshots have identical content but the host
+ * re-built shape objects, those shapes appear as "modified".
  */
 export interface SceneDiff {
   readonly elements: DiffCategory<ElementId>;

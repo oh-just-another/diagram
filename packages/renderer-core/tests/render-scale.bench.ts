@@ -10,7 +10,7 @@ import {
   type Element,
   type SpatialGrid,
 } from "@oh-just-another/scene";
-import { installBuiltinRenderers, renderScene, ShapeCache, type RenderTarget } from "../src/index";
+import { installBuiltinRenderers, renderScene, ElementCache, type RenderTarget } from "../src/index";
 
 installBuiltinRenderers();
 
@@ -54,7 +54,7 @@ const makeScene = (count: number, gridStep = 60): Scene => {
 interface Setup {
   scene: Scene;
   index: SpatialGrid;
-  cache: ShapeCache<{ x: number; y: number; width: number; height: number }>;
+  cache: ElementCache<{ x: number; y: number; width: number; height: number }>;
 }
 
 const setupFor = (count: number): Setup => {
@@ -62,7 +62,7 @@ const setupFor = (count: number): Setup => {
   return {
     scene,
     index: buildSpatialIndex(scene),
-    cache: new ShapeCache(),
+    cache: new ElementCache(),
   };
 };
 

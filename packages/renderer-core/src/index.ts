@@ -8,20 +8,20 @@ export type {
   FontStyleOptions,
   DrawPoint,
 } from "./render-target.js";
-export type { ShapeRenderer } from "./shape-renderer.js";
+export type { ElementRenderer } from "./shape-renderer.js";
 export type { LayerName } from "./layers.js";
 export type { RenderSceneOptions, LodOptions } from "./scene-renderer.js";
 export type { RenderLinksOptions } from "./edge-renderer.js";
 export type { RenderGridOptions } from "./grid-renderer.js";
 
-export { registerShapeRenderer, getShapeRenderer, hasShapeRenderer } from "./shape-renderer.js";
+export { registerElementRenderer, getShapeRenderer, hasShapeRenderer } from "./shape-renderer.js";
 export { LAYER_ORDER } from "./layers.js";
 export { renderScene } from "./scene-renderer.js";
 export { renderLinks } from "./edge-renderer.js";
 export { renderGrid } from "./grid-renderer.js";
 
 // Backend-agnostic shape renderers for the 6 built-in `BuiltinShape` types.
-// `installBuiltinRenderers()` registers them via `registerShapeRenderer` and
+// `installBuiltinRenderers()` registers them via `registerElementRenderer` and
 // is safe to call multiple times.
 export { installBuiltinRenderers } from "./built-in-renderers.js";
 export type { WrapOptions, WrappedLine } from "./text-layout.js";
@@ -42,9 +42,9 @@ export {
   DEFAULT_LINE_HEIGHT_FACTOR,
 } from "./text-editing.js";
 
-export { ShapeCache, sharedBoundsCache, cachedWorldBounds } from "./shape-cache.js";
-export type { ShapeBitmapCache } from "./shape-cache-bitmap.js";
-export { InMemoryShapeBitmapCache, zoomBucket } from "./shape-cache-bitmap.js";
+export { ElementCache, sharedBoundsCache, cachedWorldBounds } from "./shape-cache.js";
+export type { ElementBitmapCache } from "./shape-cache-bitmap.js";
+export { InMemoryElementBitmapCache, zoomBucket } from "./shape-cache-bitmap.js";
 export type { LinkBitmapCache } from "./edge-cache-bitmap.js";
 export { InMemoryLinkBitmapCache } from "./edge-cache-bitmap.js";
 export type { LayerCompositeCache } from "./layer-cache-composite.js";

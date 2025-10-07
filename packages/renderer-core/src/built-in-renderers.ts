@@ -13,7 +13,7 @@ import {
   type Style,
   type TextElement,
 } from "@oh-just-another/scene";
-import { registerShapeRenderer, type ShapeRenderer } from "./shape-renderer.js";
+import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "./render-target.js";
 import { layoutText } from "./text-editing.js";
 import { resolveImageSource } from "./animation-adapter.js";
@@ -46,7 +46,7 @@ const applyStyle = (style: Style, target: RenderTarget): { fill: boolean; stroke
   return { fill: hasFill, stroke: hasStroke };
 };
 
-const drawRectangle: ShapeRenderer<RectangleElement> = (shape, target) => {
+const drawRectangle: ElementRenderer<RectangleElement> = (shape, target) => {
   const { fill, stroke } = applyStyle(shape.style, target);
   if (!fill && !stroke) return;
   const r = getCornerRadius(shape.style.roundness, shape.width, shape.height);
@@ -142,7 +142,7 @@ const buildRoundedRectPath = (
   target.closePath();
 };
 
-const drawEllipse: ShapeRenderer<EllipseElement> = (shape, target) => {
+const drawEllipse: ElementRenderer<EllipseElement> = (shape, target) => {
   const { fill, stroke } = applyStyle(shape.style, target);
   if (!fill && !stroke) return;
   const rx = shape.width / 2;
@@ -167,7 +167,7 @@ const drawEllipse: ShapeRenderer<EllipseElement> = (shape, target) => {
   }
 };
 
-const drawPolygon: ShapeRenderer<PolygonElement> = (shape, target) => {
+const drawPolygon: ElementRenderer<PolygonElement> = (shape, target) => {
   if (shape.points.length < 2) return;
   const { fill, stroke } = applyStyle(shape.style, target);
   if (!fill && !stroke) return;
@@ -198,7 +198,7 @@ const polygonPath = (target: RenderTarget, pts: readonly { x: number; y: number 
   target.closePath();
 };
 
-const drawPath: ShapeRenderer<PathElement> = (shape, target) => {
+const drawPath: ElementRenderer<PathElement> = (shape, target) => {
   if (shape.commands.length === 0) return;
   const { fill, stroke } = applyStyle(shape.style, target);
   if (!fill && !stroke) return;
@@ -233,7 +233,7 @@ const drawPath: ShapeRenderer<PathElement> = (shape, target) => {
   if (stroke) target.stroke();
 };
 
-const drawText: ShapeRenderer<TextElement> = (shape, target) => {
+const drawText: ElementRenderer<TextElement> = (shape, target) => {
   const align = shape.style.textAlign ?? "left";
   const weight = shape.style.fontWeight;
   const fontStyle = shape.style.fontStyle;
@@ -311,7 +311,7 @@ const drawText: ShapeRenderer<TextElement> = (shape, target) => {
  * without needing per-segment `setStrokeWidth` calls (which most 2D
  * APIs treat as a single line width).
  */
-const drawBrush: ShapeRenderer<BrushElement> = (shape, target) => {
+const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
   const pts = shape.points;
   if (pts.length === 0) return;
   const fill = shape.style.fill ?? shape.style.stroke ?? "#000";
@@ -347,7 +347,7 @@ const drawBrush: ShapeRenderer<BrushElement> = (shape, target) => {
   }
 };
 
-const drawImage: ShapeRenderer<ImageElement> = (shape, target) => {
+const drawImage: ElementRenderer<ImageElement> = (shape, target) => {
   // Priority: preloaded handle in metadata.image → animation-adapter
   // frame (when `animationKind` is set and a matching adapter is
   // registered) → static `src` fallback.
@@ -372,18 +372,18 @@ const drawImage: ShapeRenderer<ImageElement> = (shape, target) => {
  * import of `@oh-just-another/renderer-canvas/setup` (see index).
  */
 export const installBuiltinRenderers = (): void => {
-  registerShapeRenderer<RectangleElement>("rectangle", drawRectangle);
-  registerShapeRenderer<EllipseElement>("ellipse", drawEllipse);
-  registerShapeRenderer<PolygonElement>("polygon", drawPolygon);
-  registerShapeRenderer<PathElement>("path", drawPath);
-  registerShapeRenderer<TextElement>("text", drawText);
-  registerShapeRenderer<ImageElement>("image", drawImage);
+  registerElementRenderer<RectangleElement>("rectangle", drawRectangle);
+  registerElementRenderer<EllipseElement>("ellipse", drawEllipse);
+  registerElementRenderer<PolygonElement>("polygon", drawPolygon);
+  registerElementRenderer<PathElement>("path", drawPath);
+  registerElementRenderer<TextElement>("text", drawText);
+  registerElementRenderer<ImageElement>("image", drawImage);
   // Group shapes are invisible containers — the editor's overlay draws
   // a halo for selected groups, but the shape itself paints nothing.
-  registerShapeRenderer<GroupElement>("group", () => {});
-  registerShapeRenderer<FrameElement>("frame", drawFrame);
-  registerShapeRenderer<BlockArrowElement>("block-arrow", drawBlockArrow);
-  registerShapeRenderer<BrushElement>("brush", drawBrush);
+  registerElementRenderer<GroupElement>("group", () => {});
+  registerElementRenderer<FrameElement>("frame", drawFrame);
+  registerElementRenderer<BlockArrowElement>("block-arrow", drawBlockArrow);
+  registerElementRenderer<BrushElement>("brush", drawBrush);
 };
 
 /**
@@ -400,7 +400,7 @@ export const installBuiltinRenderers = (): void => {
  *           │  │
  *           └──┘
  */
-const drawBlockArrow: ShapeRenderer<BlockArrowElement> = (shape, target) => {
+const drawBlockArrow: ElementRenderer<BlockArrowElement> = (shape, target) => {
   const { fill, stroke } = applyStyle(shape.style, target);
   const direction = shape.direction ?? "right";
   const headRatio = Math.max(0.1, Math.min(0.9, shape.headRatio ?? 0.4));
@@ -469,7 +469,7 @@ const rotateLocal = (
 const FRAME_STROKE = "#888";
 const FRAME_HEADER_HEIGHT = 24;
 
-const drawFrame: ShapeRenderer<FrameElement> = (shape, target) => {
+const drawFrame: ElementRenderer<FrameElement> = (shape, target) => {
   // Body — dashed rectangle.
   target.setFill(null);
   target.setStroke(FRAME_STROKE);

@@ -99,7 +99,7 @@ import {
   setActiveRasterizer,
   setActiveTextShaper,
   setAnimationClock,
-  ShapeCache,
+  ElementCache,
   type EditableTextLayout,
   type RenderTarget,
 } from "@oh-just-another/renderer-core";
@@ -591,7 +591,7 @@ export class Editor {
    * a scene op replaces the shape ref. Could be exposed for hit-test
    * sharing in a follow-up.
    */
-  private readonly boundsCache: ShapeCache<Bounds> = new ShapeCache<Bounds>();
+  private readonly boundsCache: ElementCache<Bounds> = new ElementCache<Bounds>();
 
   /**
    * Lazy SpatialGrid for hit-test acceleration in large scenes.

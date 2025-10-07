@@ -34,7 +34,7 @@ export type {
   BlockArrowElement,
   BrushElement,
   BrushPoint,
-  ShapeBounder,
+  ElementBounder,
 } from "./shape.js";
 export type {
   Link,
@@ -223,7 +223,7 @@ export { elbowRoute, type ElbowRouteOptions } from "./elbow-router.js";
 
 // Scene-level shape diff (added / removed / modified) for diff
 // visualisation and merge.
-export type { SceneShapeDiff } from "./diff.js";
+export type { SceneElementDiff } from "./diff.js";
 export { diffSceneElements } from "./diff.js";
 
 // Three-way merge (the Y.Doc subdoc runtime remains in @collab).

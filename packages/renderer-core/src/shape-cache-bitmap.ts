@@ -12,7 +12,7 @@ import type { ElementBase } from "@oh-just-another/scene";
  * cache by implementing the same `get` / `set` / `delete` surface.
  */
 
-export interface ShapeBitmapCache<V = unknown> {
+export interface ElementBitmapCache<V = unknown> {
   get(shape: ElementBase, zoomBucket: number): V | undefined;
   set(shape: ElementBase, zoomBucket: number, value: V): void;
   delete(shape: ElementBase, zoomBucket: number): void;
@@ -34,7 +34,7 @@ interface Entry<V> {
  * cached entry's `shapeRef !== shape`. That is the invalidation
  * mechanism — no version field needed.
  */
-export class InMemoryShapeBitmapCache<V> implements ShapeBitmapCache<V> {
+export class InMemoryElementBitmapCache<V> implements ElementBitmapCache<V> {
   private readonly entries = new Map<string, Entry<V>>();
   private readonly cap: number;
 

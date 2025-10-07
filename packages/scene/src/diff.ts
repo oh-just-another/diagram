@@ -14,13 +14,13 @@ import type { Scene } from "./scene.js";
  * through `apply(scene, patch)` which produces fresh shape objects
  * for every change. Pure read paths don't allocate.
  */
-export interface SceneShapeDiff {
+export interface SceneElementDiff {
   readonly added: readonly ElementId[];
   readonly removed: readonly ElementId[];
   readonly modified: readonly ElementId[];
 }
 
-export const diffSceneElements = (prev: Scene, next: Scene): SceneShapeDiff => {
+export const diffSceneElements = (prev: Scene, next: Scene): SceneElementDiff => {
   const added: ElementId[] = [];
   const removed: ElementId[] = [];
   const modified: ElementId[] = [];
