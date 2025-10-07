@@ -65,14 +65,14 @@ const host = {
 const makeEditor = (scene: Scene) =>
   new Editor({ host, mainTarget: noop, overlayTarget: noop, initialScene: scene });
 
-describe("editor.setLink / shapeLink", () => {
+describe("editor.setLink / elementLink", () => {
   it("sets and clears the element href as one undo step", () => {
     let s = emptyScene();
     ({ scene: s } = addElement(s, rect("r")));
     const e = makeEditor(s);
     e.setLink([elementId("r")], "example.com"); // normalised inside setLink
     expect((e.scene.elements.get(elementId("r")) as { href?: string }).href).toBe("https://example.com");
-    expect(e.shapeLink(elementId("r"))).toBe("https://example.com");
+    expect(e.elementLink(elementId("r"))).toBe("https://example.com");
     e.undo();
     expect((e.scene.elements.get(elementId("r")) as { href?: string }).href).toBeUndefined();
     e.setLink([elementId("r")], "https://y.com");
@@ -80,10 +80,10 @@ describe("editor.setLink / shapeLink", () => {
     expect((e.scene.elements.get(elementId("r")) as { href?: string }).href).toBeUndefined();
   });
 
-  it("shapeLink returns null for an unsafe stored href", () => {
+  it("elementLink returns null for an unsafe stored href", () => {
     let s = emptyScene();
     ({ scene: s } = addElement(s, { ...rect("r"), href: "javascript:alert(1)" } as Element));
     const e = makeEditor(s);
-    expect(e.shapeLink(elementId("r"))).toBeNull();
+    expect(e.elementLink(elementId("r"))).toBeNull();
   });
 });

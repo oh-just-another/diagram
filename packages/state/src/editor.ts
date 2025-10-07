@@ -2454,7 +2454,7 @@ export class Editor {
   }
 
   /** The element-level href of a shape, if safe to open; else `null`. */
-  shapeLink(id: ElementId): string | null {
+  elementLink(id: ElementId): string | null {
     return safeHref(getElement(this._scene, id)?.href);
   }
 

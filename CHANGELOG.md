@@ -934,3 +934,6 @@
 
 ## 0.51.0
 - refactor(RN 5b): rename Scene.shapes/edges Right elements/links + serialization format (BREAKING)
+
+## 0.51.1
+- refactor(RN batch 6a): rename renderer-core Shape* machinery Right Element* (BREAKING)

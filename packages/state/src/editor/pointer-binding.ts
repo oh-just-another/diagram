@@ -184,7 +184,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // selection on press; `onUp` opens the URL on a tap.
     const linkModifier = Boolean(data.modifiers?.meta || data.modifiers?.ctrl);
     const isLinkOpen =
-      linkModifier && target.kind === "element" && editor.shapeLink(target.id) !== null;
+      linkModifier && target.kind === "element" && editor.elementLink(target.id) !== null;
     if (!isLinkOpen && target.kind === "element" && !editor._selection.has(target.id)) {
       const additive = Boolean(data.modifiers?.shift || data.modifiers?.meta || data.modifiers?.ctrl);
       editor._selection = additive ? Selection.add(editor._selection, target.id) : Selection.single(target.id);
@@ -509,7 +509,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         if (movedPx < LONG_PRESS_MAX_MOVEMENT_PX) {
           const hit = editor.hitTest(worldPoint);
           if (hit?.kind === "element") {
-            const href = editor.shapeLink(hit.id);
+            const href = editor.elementLink(hit.id);
             if (href) {
               editor.openLink(href);
               editor.actor.send({ type: "POINTER_UP", point: worldPoint });
