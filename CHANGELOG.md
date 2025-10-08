@@ -940,3 +940,6 @@
 
 ## 0.51.2
 - refactor(RN batch 6b): rename editor.shapeLink Right elementLink (BREAKING)
+
+## 0.51.3
+- refactor(RN batch 6c): rename element-type vocabulary BuiltinShape/CustomShapeZ/DefaultShapeStyle Right Element* (BREAKING)

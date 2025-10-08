@@ -9,7 +9,7 @@ import {
 import type { Bounds, LayerId, ElementId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "./render-target.js";
-import { getShapeRenderer } from "./shape-renderer.js";
+import { getElementRenderer } from "./shape-renderer.js";
 import { cachedWorldBounds, ElementCache } from "./shape-cache.js";
 import { DEFAULT_PLACEHOLDER_FILL } from "./constants.js";
 import type { LayerCompositeCache } from "./layer-cache-composite.js";
@@ -250,7 +250,7 @@ export const renderScene = (
         continue;
       }
 
-      const renderer = getShapeRenderer(shape.type);
+      const renderer = getElementRenderer(shape.type);
       if (!renderer) {
         options.onUnknownElement?.(shape);
         continue;

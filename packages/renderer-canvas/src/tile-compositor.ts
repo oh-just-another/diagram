@@ -14,7 +14,7 @@ import {
 } from "@oh-just-another/scene";
 import { createOffscreenCanvas2DTarget } from "./offscreen.js";
 import { Canvas2DTarget } from "./canvas-target.js";
-import { getShapeRenderer } from "@oh-just-another/renderer-core";
+import { getElementRenderer } from "@oh-just-another/renderer-core";
 
 /**
  * Main-thread Canvas2D tile compositor.
@@ -139,7 +139,7 @@ const rasteriseTile = (
   target.scale(zoomBucket, zoomBucket);
   target.translate(-worldX, -worldY);
   for (const shape of shapes) {
-    const renderer = getShapeRenderer(shape.type);
+    const renderer = getElementRenderer(shape.type);
     if (!renderer) continue;
     target.save();
     target.translate(shape.position.x, shape.position.y);

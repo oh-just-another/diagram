@@ -31,7 +31,7 @@ export const registerElementRenderer = <S extends ElementBase>(
 };
 
 /** Look up a registered renderer. Returns `undefined` for unknown types. */
-export const getShapeRenderer = (type: string): ElementRenderer | undefined => registry.get(type);
+export const getElementRenderer = (type: string): ElementRenderer | undefined => registry.get(type);
 
 /** True if a renderer is registered for `type`. */
-export const hasShapeRenderer = (type: string): boolean => registry.has(type);
+export const hasElementRenderer = (type: string): boolean => registry.has(type);

@@ -14,7 +14,7 @@ export type { RenderSceneOptions, LodOptions } from "./scene-renderer.js";
 export type { RenderLinksOptions } from "./edge-renderer.js";
 export type { RenderGridOptions } from "./grid-renderer.js";
 
-export { registerElementRenderer, getShapeRenderer, hasShapeRenderer } from "./shape-renderer.js";
+export { registerElementRenderer, getElementRenderer, hasElementRenderer } from "./shape-renderer.js";
 export { LAYER_ORDER } from "./layers.js";
 export { renderScene } from "./scene-renderer.js";
 export { renderLinks } from "./edge-renderer.js";

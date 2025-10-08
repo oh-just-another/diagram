@@ -9,7 +9,7 @@ import {
   type TextElement,
   orderBetween,
 } from "@oh-just-another/scene";
-import { getShapeRenderer, type RenderTarget } from "@oh-just-another/renderer-core";
+import { getElementRenderer, type RenderTarget } from "@oh-just-another/renderer-core";
 import { installBuiltinRenderers } from "../src/index";
 
 const baseProps = {
@@ -55,7 +55,7 @@ describe("built-in renderers", () => {
       height: 20,
     };
     const { target, calls } = recorder();
-    getShapeRenderer("rectangle")!(r, target);
+    getElementRenderer("rectangle")!(r, target);
     const methods = calls.map((c) => c.method);
     expect(methods).toContain("rect");
     expect(methods).toContain("fill");
@@ -71,7 +71,7 @@ describe("built-in renderers", () => {
       height: 10,
     };
     const { target, calls } = recorder();
-    getShapeRenderer("rectangle")!(r, target);
+    getElementRenderer("rectangle")!(r, target);
     expect(calls.find((c) => c.method === "rect")).toBeUndefined();
   });
 
@@ -85,7 +85,7 @@ describe("built-in renderers", () => {
       height: 20,
     };
     const { target, calls } = recorder();
-    getShapeRenderer("ellipse")!(e, target);
+    getElementRenderer("ellipse")!(e, target);
     const ell = calls.find((c) => c.method === "ellipse");
     expect(ell?.args).toEqual([20, 10, 20, 10]);
     expect(calls.find((c) => c.method === "stroke")).toBeDefined();
@@ -104,7 +104,7 @@ describe("built-in renderers", () => {
       ],
     };
     const { target, calls } = recorder();
-    getShapeRenderer("polygon")!(p, target);
+    getElementRenderer("polygon")!(p, target);
     expect(calls.filter((c) => c.method === "moveTo")).toHaveLength(1);
     expect(calls.filter((c) => c.method === "lineTo")).toHaveLength(2);
     expect(calls.find((c) => c.method === "closePath")).toBeDefined();
@@ -126,7 +126,7 @@ describe("built-in renderers", () => {
       ],
     };
     const { target, calls } = recorder();
-    getShapeRenderer("path")!(p, target);
+    getElementRenderer("path")!(p, target);
     const seen = calls.map((c) => c.method);
     for (const name of [
       "moveTo",
@@ -151,7 +151,7 @@ describe("built-in renderers", () => {
       style: { fill: "#000" },
     };
     const { target, calls } = recorder();
-    getShapeRenderer("text")!(t, target);
+    getElementRenderer("text")!(t, target);
     const fillCalls = calls.filter((c) => c.method === "fillText");
     expect(fillCalls).toHaveLength(1);
     expect(fillCalls[0]?.args[0]).toBe("hi");
@@ -169,7 +169,7 @@ describe("built-in renderers", () => {
       style: { fill: "#000" },
     };
     const { target, calls } = recorder();
-    getShapeRenderer("text")!(t, target);
+    getElementRenderer("text")!(t, target);
     expect(calls.filter((c) => c.method === "fillText").length).toBeGreaterThanOrEqual(1);
   });
 
@@ -184,7 +184,7 @@ describe("built-in renderers", () => {
       style: { fill: "#000", fontWeight: "bold", fontStyle: "italic" },
     };
     const { target, calls } = recorder();
-    getShapeRenderer("text")!(t, target);
+    getElementRenderer("text")!(t, target);
     const sf = calls.find((c) => c.method === "setFont");
     expect(sf?.args[2]).toEqual({ weight: "bold", style: "italic" });
   });
@@ -200,7 +200,7 @@ describe("built-in renderers", () => {
       style: { fill: "#000", textDecoration: { underline: true, strikethrough: true } },
     };
     const { target, calls } = recorder();
-    getShapeRenderer("text")!(t, target);
+    getElementRenderer("text")!(t, target);
     // One line × two decorations → 2 rect + 2 fill (beyond the glyph fillText).
     expect(calls.filter((c) => c.method === "rect").length).toBe(2);
     expect(calls.filter((c) => c.method === "fill").length).toBe(2);
@@ -217,7 +217,7 @@ describe("built-in renderers", () => {
       height: 50,
     };
     const { target, calls } = recorder();
-    getShapeRenderer("image")!(i, target);
+    getElementRenderer("image")!(i, target);
     const di = calls.find((c) => c.method === "drawImage");
     // args: (image, dx, dy, dw, dh, dynamic). Static image → dynamic=false.
     expect(di?.args.slice(1)).toEqual([0, 0, 100, 50, false]);
