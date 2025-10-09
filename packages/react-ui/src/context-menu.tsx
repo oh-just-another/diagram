@@ -488,7 +488,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Add comment",
     visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) === null,
     onClick: (e, ctx) => {
-      const shapeUnder = [...e.scene.elements.values()].reverse().find((s) => {
+      const elementUnder = [...e.scene.elements.values()].reverse().find((s) => {
         const pos = s.position;
         const w = "width" in s && typeof s.width === "number" ? s.width : 0;
         const h = "height" in s && typeof s.height === "number" ? s.height : 0;
@@ -499,13 +499,13 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
           ctx.worldPoint.y <= pos.y + h
         );
       });
-      const position = shapeUnder
+      const position = elementUnder
         ? {
-            x: ctx.worldPoint.x - shapeUnder.position.x,
-            y: ctx.worldPoint.y - shapeUnder.position.y,
+            x: ctx.worldPoint.x - elementUnder.position.x,
+            y: ctx.worldPoint.y - elementUnder.position.y,
           }
         : ctx.worldPoint;
-      e.addAnnotation({ position, elementId: shapeUnder?.id ?? null });
+      e.addAnnotation({ position, elementId: elementUnder?.id ?? null });
     },
   },
   { kind: "divider" },

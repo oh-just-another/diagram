@@ -125,7 +125,7 @@ const rasteriseTile = (
     width: TILE_SIZE,
     height: TILE_SIZE,
   };
-  const shapes = shapesIntersectingTile(scene, worldBounds);
+  const shapes = elementsIntersectingTile(scene, worldBounds);
   if (shapes.length === 0) return null;
 
   // Bitmap size — `TILE_SIZE * zoomBucket` device pixels so the tile
@@ -163,7 +163,7 @@ const rasteriseTile = (
   };
 };
 
-const shapesIntersectingTile = (scene: Scene, tileBounds: Bounds): readonly Element[] => {
+const elementsIntersectingTile = (scene: Scene, tileBounds: Bounds): readonly Element[] => {
   const out: Element[] = [];
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;

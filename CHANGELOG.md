@@ -943,3 +943,6 @@
 
 ## 0.51.3
 - refactor(RN batch 6c): rename element-type vocabulary BuiltinShape/CustomShapeZ/DefaultShapeStyle Right Element* (BREAKING)
+
+## 0.51.4
+- refactor(RN batch 6a follow-up): rename getShapeRenderer/hasShapeRenderer Right Element (BREAKING)
