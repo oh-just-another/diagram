@@ -30,7 +30,7 @@ editor.loadScene(scene);
 
 - **`format`** — magic constant, lets a file be recognized without sniffing.
 - **`version`** — incremented on any breaking schema change. Migrations live in `migrations.ts`.
-- The shape sub-schema is a `z.discriminatedUnion` over every built-in `type`, plus a `passthrough` arm for plugin-registered types.
+- The element sub-schema is a `z.discriminatedUnion` over every built-in `type`, plus a `passthrough` arm for plugin-registered types.
 
 ## API
 
@@ -47,6 +47,6 @@ editor.loadScene(scene);
 
 - **One `version` field, forward-only migrations.** No back-migrations — exporting always lands at `CURRENT_VERSION`. Loading an older version walks through every migration in order.
 - **Strict schemas with a `passthrough` arm for unknown shape `type`s.** Plugins that register a custom shape can persist it without modifying the wire schema; the kernel just hands the raw object to the bounder/renderer registry on load.
-- **Deserialise re-brands ids.** `ShapeId` / `EdgeId` / `LayerId` are branded strings in the kernel but plain strings in JSON; `hydrate` casts them back through `shapeId()` / `edgeId()` / `layerId()`.
+- **Deserialise re-brands ids.** `ElementId` / `LinkId` / `LayerId` are branded strings in the kernel but plain strings in JSON; `hydrate` casts them back through `elementId()` / `linkId()` / `layerId()`.
 - **`exactOptionalPropertyTypes` workaround.** Zod's parsed output exposes optional fields as `T | undefined`, which the kernel rejects. The hydrate path strips `undefined`-valued keys before constructing the typed shape.
 

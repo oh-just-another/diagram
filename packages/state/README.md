@@ -45,7 +45,7 @@ This division keeps the state machine completely pure and easy to test, and allo
 | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `Editor` / `EditorOptions`                                                                                                              | Top-level controller. Attaches to a host element with two render targets and an initial scene. |
 | `Mode` (`select` / `draw-rect` / `draw-ellipse`), `DEFAULT_MODE`                                                                        | Modes of the editor.                                                                         |
-| `Selection`, `selection.*`                                                                                                              | Immutable `ReadonlySet<ShapeId>` + helpers (`single`, `add`, `remove`, `toggle`, `equals`).  |
+| `Selection`, `selection.*`                                                                                                              | Immutable `ReadonlySet<ElementId>` + helpers (`single`, `add`, `remove`, `toggle`, `equals`). |
 | `HandleId`, `handlePosition`, `hitHandle`, `resizeBounds`, `HANDLE_SIZE`                                                                | Geometry of resize-handles (8 corner/edge handles, zoom-aware hit-test).                         |
 | `interactionMachine`, `InteractionContext`, `InteractionEvent`, `InteractionEmit`, `PressTarget`, `DRAG_THRESHOLD`, `interpretPressEnd` | Pure xstate machine + types + helpers.                                                       |
 | `renderOverlay(scene, selection, target, options?)`, `OverlayStyle`                                                                     | Draws selection outlines, handles, and drawing previews on the overlay layer.                |
@@ -53,9 +53,9 @@ This division keeps the state machine completely pure and easy to test, and allo
 
 ## Design notes
 
-- **The machine manages gesture state, not scene state.** Selection and shapes reside in `Editor` (or your equivalent). Emit events describe intent; the host applies it. This makes the machine snapshot-testable and replayable.
-- **Clicks vs drags via threshold.** A press turns into a drag once the pointer moves `DRAG_THRESHOLD` (4 px) from the press origin. Below the threshold, `POINTER_UP` results in a click effect determined by `interpretPressEnd` (SELECT_REPLACE / SELECT_CLEAR).
-- **Hit-test order:** handles of currently-selected shapes take precedence over shape body hits. This aligns with how every editor behaves — once a shape is selected, clicking its handle resizes rather than re-selects.
-- **Handles are screen-sized.** `hitHandle` divides the tolerance by viewport zoom so handles remain 8 × 8 CSS px regardless of zoom level.
-- **DOM listeners are pointer-events** (`pointerdown` / `move` / `up` / `cancel`) with `setPointerCapture`. Touch and mouse use a single path; no separate touch handlers.
+- **The machine owns gesture state, not scene state.** Selection and elements live in `Editor` (or your own equivalent). Emit events describe intent; the host applies it. This makes the machine snapshot-testable and replayable.
+- **Clicks vs drags via threshold.** A press becomes a drag once the pointer travels `DRAG_THRESHOLD` (4 px) from the press origin. Below the threshold, `POINTER_UP` yields a click effect derived via `interpretPressEnd` (SELECT_REPLACE / SELECT_CLEAR).
+- **Hit-test order:** handles of currently-selected elements win over element body hits. This matches how every editor feels — once an element is selected, clicking its handle resizes rather than re-selects.
+- **Handles are screen-sized.** `hitHandle` divides the tolerance by viewport zoom so handles stay 8 × 8 CSS px regardless of zoom level.
+- **DOM listeners are pointer-events** (`pointerdown` / `move` / `up` / `cancel`) with `setPointerCapture`. Touch and mouse share a single path; no separate touch handlers.
 

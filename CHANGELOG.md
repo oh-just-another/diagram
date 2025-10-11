@@ -946,3 +946,6 @@
 
 ## 0.51.4
 - refactor(RN batch 6a follow-up): rename getShapeRenderer/hasShapeRenderer Right Element (BREAKING)
+
+## 0.51.5
+- refactor(RN batch 6d): rename private shapeUnder/shapesIntersectingTile Right element*
