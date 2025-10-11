@@ -949,3 +949,6 @@
 
 ## 0.51.5
 - refactor(RN batch 6d): rename private shapeUnder/shapesIntersectingTile Right element*
+
+## 0.51.6
+- docs(RN batch 6e): sync all READMEs to element/link vocabulary; add naming rule
