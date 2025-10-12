@@ -3,12 +3,16 @@ import { layerId, elementId } from "@oh-just-another/types";
 import {
   STANDARD_ANCHORS,
   STANDARD_ANCHOR_RATIOS,
+  CARDINAL_ANCHORS,
   getAnchorLocal,
   getAnchorWorld,
   getNamedAnchorLocal,
   listAnchorsLocal,
+  geometryDefaultAnchorsLocal,
   orderBetween,
   type RectangleElement,
+  type PolygonElement,
+  type EllipseElement,
 } from "../src/index";
 
 const baseRect = (overrides: Partial<RectangleElement> = {}): RectangleElement => ({
@@ -150,5 +154,103 @@ describe("listAnchorsLocal", () => {
     expect(out.size).toBe(STANDARD_ANCHORS.length + 1);
     expect(out.get("center")).toEqual({ x: 0, y: 0 });
     expect(out.get("label-slot")).toEqual({ x: 10, y: 10 });
+  });
+});
+
+const baseEllipse = (overrides: Partial<EllipseElement> = {}): EllipseElement => ({
+  id: elementId("e1"),
+  layerId: layerId("default"),
+  type: "ellipse",
+  position: { x: 0, y: 0 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderBetween(null, null),
+  style: { fill: "#abc" },
+  width: 200,
+  height: 100,
+  ...overrides,
+});
+
+// A right triangle whose hypotenuse is a sloped edge — the case the
+// AABB-relative `left`/`right` anchors get wrong (they sit on the bbox,
+// not on the sloped edge). Local coords, origin at `position`.
+const baseTriangle = (overrides: Partial<PolygonElement> = {}): PolygonElement => ({
+  id: elementId("t1"),
+  layerId: layerId("default"),
+  type: "polygon",
+  position: { x: 0, y: 0 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderBetween(null, null),
+  style: { fill: "#abc" },
+  points: [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 0, y: 100 },
+  ],
+  ...overrides,
+});
+
+describe("CARDINAL_ANCHORS", () => {
+  it("is the four edge centres, no corners or center", () => {
+    expect(CARDINAL_ANCHORS).toEqual(["top", "right", "bottom", "left"]);
+  });
+});
+
+describe("geometryDefaultAnchorsLocal", () => {
+  it("returns the 4 edge centres for a rectangle — no corners, no center", () => {
+    const out = geometryDefaultAnchorsLocal(baseRect());
+    expect([...out.keys()].sort()).toEqual(["bottom", "left", "right", "top"]);
+    expect(out.get("top")).toEqual({ x: 100, y: 0 });
+    expect(out.get("right")).toEqual({ x: 200, y: 50 });
+    expect(out.get("bottom")).toEqual({ x: 100, y: 100 });
+    expect(out.get("left")).toEqual({ x: 0, y: 50 });
+    expect(out.has("center")).toBe(false);
+    expect(out.has("top-left")).toBe(false);
+  });
+
+  it("returns the 4 cardinal points for an ellipse (on the bbox edge centres)", () => {
+    const out = geometryDefaultAnchorsLocal(baseEllipse());
+    expect([...out.keys()].sort()).toEqual(["bottom", "left", "right", "top"]);
+    expect(out.get("top")).toEqual({ x: 100, y: 0 });
+    expect(out.get("right")).toEqual({ x: 200, y: 50 });
+  });
+
+  it("returns the midpoint of every edge for a polygon (on the real edges)", () => {
+    const out = geometryDefaultAnchorsLocal(baseTriangle());
+    // 3 edges → 3 midpoints, keyed edge-0..edge-2 in vertex order.
+    expect([...out.keys()].sort()).toEqual(["edge-0", "edge-1", "edge-2"]);
+    // edge-0: (0,0)->(100,0) midpoint = (50,0) — top edge
+    expect(out.get("edge-0")).toEqual({ x: 50, y: 0 });
+    // edge-1: (100,0)->(0,100) midpoint = (50,50) — ON the hypotenuse,
+    // NOT on the bbox right edge (which would be x=100).
+    expect(out.get("edge-1")).toEqual({ x: 50, y: 50 });
+    // edge-2: (0,100)->(0,0) midpoint = (0,50) — left edge
+    expect(out.get("edge-2")).toEqual({ x: 0, y: 50 });
+    expect(out.has("center")).toBe(false);
+  });
+
+  it("merges custom shape.anchors on top of the geometry defaults", () => {
+    const out = geometryDefaultAnchorsLocal(
+      baseRect({
+        anchors: {
+          top: { kind: "ratio", position: { x: 0, y: 0 } }, // override default `top`
+          "label-slot": { kind: "absolute", offset: { x: 12, y: 12 } }, // addition
+        },
+      }),
+    );
+    expect(out.get("top")).toEqual({ x: 0, y: 0 }); // overridden
+    expect(out.get("label-slot")).toEqual({ x: 12, y: 12 }); // added
+    expect(out.get("right")).toEqual({ x: 200, y: 50 }); // default kept
+  });
+
+  it("ignores a degenerate polygon with fewer than 2 points (only customs)", () => {
+    const out = geometryDefaultAnchorsLocal(baseTriangle({ points: [{ x: 0, y: 0 }] }));
+    expect(out.size).toBe(0);
+  });
+
+  it("does not change listAnchorsLocal (still the 9 standard anchors)", () => {
+    expect(listAnchorsLocal(baseRect()).size).toBe(STANDARD_ANCHORS.length);
+    expect(STANDARD_ANCHOR_RATIOS.top).toEqual({ x: 0.5, y: 0 });
   });
 });

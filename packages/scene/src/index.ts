@@ -83,10 +83,12 @@ export {
 export {
   STANDARD_ANCHORS,
   STANDARD_ANCHOR_RATIOS,
+  CARDINAL_ANCHORS,
   getNamedAnchorLocal,
   getAnchorLocal,
   getAnchorWorld,
   listAnchorsLocal,
+  geometryDefaultAnchorsLocal,
   findNearestAnchor,
   snapExcludedAnchors,
 } from "./anchors.js";

@@ -1,8 +1,8 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { isContainer } from "./container.js";
 import type { AnchorRef, NamedAnchor, StandardAnchor } from "./edge.js";
-import type { ElementBase } from "./shape.js";
-import { getElementLocalBounds } from "./shape.js";
+import type { ElementBase, PolygonElement } from "./shape.js";
+import { getElementLocalBounds, isPolygon } from "./shape.js";
 
 const EMPTY_ANCHOR_EXCLUDE: ReadonlySet<string> = new Set<string>();
 
@@ -169,7 +169,71 @@ export const listAnchorsLocal = (shape: ElementBase): ReadonlyMap<string, Vec2> 
   return out;
 };
 
+/**
+ * Geometry-aware default connection points for a shape, in *local* space.
+ *
+ * Unlike `listAnchorsLocal` (which always returns the 9 AABB-relative
+ * standard anchors), this returns the points the editor offers as the
+ * default snap/draw targets, derived from the shape's *real* geometry:
+ *
+ *   - **polygon** — the midpoint of every edge (works for triangle,
+ *     hexagon, …; points sit on the actual sloped edges, not the bbox).
+ *   - **rectangle / ellipse / everything else** — the four bbox edge
+ *     centres (`top` / `right` / `bottom` / `left`). For an axis-aligned
+ *     rectangle these are the real edge midpoints; for an ellipse the
+ *     cardinal points already lie on the curve.
+ *
+ * Corners and the centre are excluded — the centre is never a magnet
+ * target, and corner ports are visual noise for the default set
+ * (templates can still declare custom anchors there via `shape.anchors`).
+ *
+ * A shape's own `shape.anchors` entries are merged on top (and override a
+ * default with the same name), so a template can fully customise the port
+ * layout while non-templated shapes get sensible geometry-aware defaults.
+ *
+ * Returns a name→local-point map. Default names are the polygon edge
+ * indices (`edge-0`, `edge-1`, …) or the cardinal names (`top` / `right` /
+ * `bottom` / `left`).
+ */
+export const geometryDefaultAnchorsLocal = (shape: ElementBase): ReadonlyMap<string, Vec2> => {
+  const out = new Map<string, Vec2>();
+  if (isPolygon(shape)) {
+    addPolygonEdgeMidpoints(shape, out);
+  } else {
+    const b = getElementLocalBounds(shape);
+    for (const name of CARDINAL_ANCHORS) {
+      const ratio = STANDARD_ANCHOR_RATIOS[name];
+      out.set(name, { x: b.x + b.width * ratio.x, y: b.y + b.height * ratio.y });
+    }
+  }
+  if (shape.anchors) {
+    for (const [name, ref] of Object.entries(shape.anchors)) {
+      out.set(name, resolveAnchorRefLocal(shape, ref));
+    }
+  }
+  return out;
+};
+
+/** The four bbox edge centres — the default port set for non-polygon shapes. */
+export const CARDINAL_ANCHORS: readonly StandardAnchor[] = ["top", "right", "bottom", "left"];
+
 // --- internal ---
+
+/**
+ * Insert the midpoint of every polygon edge into `out`, keyed `edge-0`,
+ * `edge-1`, … in vertex order. A polygon with N vertices has N edges
+ * (the last wraps back to the first). Degenerate polygons (<2 points)
+ * contribute nothing.
+ */
+const addPolygonEdgeMidpoints = (shape: PolygonElement, out: Map<string, Vec2>): void => {
+  const pts = shape.points;
+  if (pts.length < 2) return;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i]!;
+    const b = pts[(i + 1) % pts.length]!;
+    out.set(`edge-${i}`, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  }
+};
 
 const resolveAnchorRefLocal = (shape: ElementBase, anchor: AnchorRef): Vec2 => {
   switch (anchor.kind) {

@@ -952,3 +952,6 @@
 
 ## 0.51.6
 - docs(RN batch 6e): sync all READMEs to element/link vocabulary; add naming rule
+
+## 0.51.7
+- chore(RN batch 6f): add cumulative breaking changeset for shapeRightelement / edgeRightlink rename
