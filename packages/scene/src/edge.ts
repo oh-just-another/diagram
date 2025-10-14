@@ -38,7 +38,16 @@ export type AnchorRef =
   /** Local-space offset inside the shape's bounding box (0..1 each axis). */
   | { readonly kind: "ratio"; readonly position: Vec2 }
   /** Absolute pixel offset from the shape's local-bounds origin. */
-  | { readonly kind: "absolute"; readonly offset: Vec2 };
+  | { readonly kind: "absolute"; readonly offset: Vec2 }
+  /**
+   * A point on a specific polygon edge: edge `index` (0-based, in vertex
+   * order, wrapping) at parameter `t` (0..1 from the edge's start vertex
+   * to its end vertex). Unlike `ratio` (which sits on the bounding box),
+   * this stays on the shape's *real* sloped edge through resize / non-
+   * uniform scale. Only meaningful for polygon shapes; resolving it on a
+   * non-polygon falls back to the shape's geometric centre.
+   */
+  | { readonly kind: "edge"; readonly index: number; readonly t: number };
 
 export type LinkEndpoint =
   | { readonly kind: "point"; readonly position: Vec2 }

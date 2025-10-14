@@ -254,3 +254,40 @@ describe("geometryDefaultAnchorsLocal", () => {
     expect(STANDARD_ANCHOR_RATIOS.top).toEqual({ x: 0.5, y: 0 });
   });
 });
+
+describe("getAnchorLocal — edge kind", () => {
+  it("resolves a point along a polygon edge at parameter t", () => {
+    const t = baseTriangle(); // (0,0)->(100,0)->(0,100)
+    // edge 0 start vertex, t=0 → first point
+    expect(getAnchorLocal(t, { kind: "edge", index: 0, t: 0 })).toEqual({ x: 0, y: 0 });
+    // edge 0 midpoint
+    expect(getAnchorLocal(t, { kind: "edge", index: 0, t: 0.5 })).toEqual({ x: 50, y: 0 });
+    // edge 1 is the hypotenuse (100,0)->(0,100); midpoint sits ON the slope
+    expect(getAnchorLocal(t, { kind: "edge", index: 1, t: 0.5 })).toEqual({ x: 50, y: 50 });
+  });
+
+  it("wraps an out-of-range edge index", () => {
+    const t = baseTriangle(); // 3 edges
+    // index 3 wraps to 0
+    expect(getAnchorLocal(t, { kind: "edge", index: 3, t: 0 })).toEqual({ x: 0, y: 0 });
+  });
+
+  it("clamps t to [0,1]", () => {
+    const t = baseTriangle();
+    expect(getAnchorLocal(t, { kind: "edge", index: 0, t: 2 })).toEqual({ x: 100, y: 0 });
+    expect(getAnchorLocal(t, { kind: "edge", index: 0, t: -1 })).toEqual({ x: 0, y: 0 });
+  });
+
+  it("falls back to the geometric centre for a non-polygon shape", () => {
+    // rectangle has no real edges in the polygon sense → centre fallback
+    expect(getAnchorLocal(baseRect(), { kind: "edge", index: 0, t: 0.5 })).toEqual({
+      x: 100,
+      y: 50,
+    });
+  });
+
+  it("getAnchorWorld applies the shape transform to an edge ref", () => {
+    const t = baseTriangle({ position: { x: 10, y: 20 } });
+    expect(getAnchorWorld(t, { kind: "edge", index: 1, t: 0.5 })).toEqual({ x: 60, y: 70 });
+  });
+});

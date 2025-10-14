@@ -255,7 +255,31 @@ const resolveAnchorRefLocal = (shape: ElementBase, anchor: AnchorRef): Vec2 => {
       const b = getElementLocalBounds(shape);
       return { x: b.x + anchor.offset.x, y: b.y + anchor.offset.y };
     }
+    case "edge": {
+      return resolveEdgeRefLocal(shape, anchor.index, anchor.t);
+    }
   }
+};
+
+/**
+ * Resolve an `edge` AnchorRef to local space: the point at parameter `t`
+ * along polygon edge `index` (wrapping). For a non-polygon shape (or a
+ * degenerate polygon) there are no real edges, so fall back to the
+ * geometric centre — keeps the resolver total without throwing.
+ */
+const resolveEdgeRefLocal = (shape: ElementBase, index: number, t: number): Vec2 => {
+  if (isPolygon(shape) && shape.points.length >= 2) {
+    const pts = shape.points;
+    const n = pts.length;
+    // Wrap a possibly out-of-range / negative index into [0, n).
+    const i = ((index % n) + n) % n;
+    const a = pts[i]!;
+    const b = pts[(i + 1) % n]!;
+    const tc = t < 0 ? 0 : t > 1 ? 1 : t;
+    return { x: a.x + (b.x - a.x) * tc, y: a.y + (b.y - a.y) * tc };
+  }
+  const bounds = getElementLocalBounds(shape);
+  return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
 };
 
 const lookupNamed = (shape: ElementBase, name: NamedAnchor): Vec2 | undefined => {

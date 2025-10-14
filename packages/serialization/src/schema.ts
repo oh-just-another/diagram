@@ -47,6 +47,7 @@ const AnchorRefZ = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("named"), name: NamedAnchorZ }).strict(),
   z.object({ kind: z.literal("ratio"), position: Vec2Z }).strict(),
   z.object({ kind: z.literal("absolute"), offset: Vec2Z }).strict(),
+  z.object({ kind: z.literal("edge"), index: z.number().int().nonnegative(), t: z.number() }).strict(),
 ]);
 
 // --- Shapes ---

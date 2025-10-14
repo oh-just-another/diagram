@@ -955,3 +955,6 @@
 
 ## 0.51.7
 - chore(RN batch 6f): add cumulative breaking changeset for shapeRightelement / edgeRightlink rename
+
+## 0.51.8
+- feat(scene): geometry-aware default anchors (A1 — pure , additive)
