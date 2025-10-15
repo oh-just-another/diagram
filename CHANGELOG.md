@@ -958,3 +958,6 @@
 
 ## 0.51.8
 - feat(scene): geometry-aware default anchors (A1 — pure , additive)
+
+## 0.51.9
+- feat(scene): add `edge` AnchorRef kind for on-edge polygon anchors (A2a — additive)

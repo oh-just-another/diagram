@@ -9,6 +9,7 @@ import {
   getNamedAnchorLocal,
   listAnchorsLocal,
   geometryDefaultAnchorsLocal,
+  findNearestAnchor,
   orderBetween,
   type RectangleElement,
   type PolygonElement,
@@ -289,5 +290,32 @@ describe("getAnchorLocal — edge kind", () => {
   it("getAnchorWorld applies the shape transform to an edge ref", () => {
     const t = baseTriangle({ position: { x: 10, y: 20 } });
     expect(getAnchorWorld(t, { kind: "edge", index: 1, t: 0.5 })).toEqual({ x: 60, y: 70 });
+  });
+});
+
+describe("findNearestAnchor — geometry-default snap source", () => {
+  it("snaps a rectangle to its cardinal ports, never corners or center", () => {
+    const r = baseRect(); // 200x100 at (100,200)
+    // probe near the right edge centre (world 300,250)
+    const near = findNearestAnchor(r, { x: 305, y: 252 });
+    expect(near.ref).toEqual({ kind: "named", name: "right" });
+    // probe at the top-left CORNER must NOT snap to a corner (excluded
+    // from the default set) — nearest cardinal is `top` or `left`.
+    const corner = findNearestAnchor(r, { x: 100, y: 200 });
+    expect(["top", "left"]).toContain(
+      corner.ref.kind === "named" ? corner.ref.name : "<non-named>",
+    );
+    // center is never returned by the default snap source
+    const mid = findNearestAnchor(r, { x: 200, y: 250 });
+    expect(mid.ref).not.toEqual({ kind: "named", name: "center" });
+  });
+
+  it("snaps a polygon to an `edge` ref on the real edge midpoint", () => {
+    // triangle at (10,20): edges 0 top, 1 hypotenuse, 2 left
+    const t = baseTriangle({ position: { x: 10, y: 20 } });
+    // edge-1 (hypotenuse) world midpoint = (10+50, 20+50) = (60,70)
+    const near = findNearestAnchor(t, { x: 62, y: 71 });
+    expect(near.ref).toEqual({ kind: "edge", index: 1, t: 0.5 });
+    expect(near.world).toEqual({ x: 60, y: 70 });
   });
 });

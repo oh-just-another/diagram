@@ -105,10 +105,10 @@ export const findNearestAnchor = (
   excludeNames: ReadonlySet<string> = EMPTY_ANCHOR_EXCLUDE,
 ): { ref: AnchorRef; world: Vec2; distance: number } => {
   let best: { ref: AnchorRef; world: Vec2; distance: number } | null = null;
-  for (const [name, _local] of listAnchorsLocal(shape)) {
+  for (const [name, _local] of geometryDefaultAnchorsLocal(shape)) {
     void _local;
     if (excludeNames.has(name)) continue;
-    const ref: AnchorRef = { kind: "named", name };
+    const ref = defaultAnchorRef(name);
     const world = getAnchorWorld(shape, ref);
     const dx = world.x - worldPoint.x;
     const dy = world.y - worldPoint.y;
@@ -117,8 +117,11 @@ export const findNearestAnchor = (
       best = { ref, world, distance };
     }
   }
-  // `listAnchorsLocal` always returns at least the 9 standard anchors,
-  // so `best` is never null in practice — but keep the fallback typed.
+  // `geometryDefaultAnchorsLocal` normally yields the 4 cardinal ports
+  // (or a polygon's edge midpoints), so `best` is set in practice. The
+  // only empty case is a degenerate polygon (<2 points) with no custom
+  // anchors — fall back to the geometric centre so the caller always
+  // gets a usable ref.
   if (!best) {
     return {
       ref: { kind: "named", name: "center" },
@@ -127,6 +130,19 @@ export const findNearestAnchor = (
     };
   }
   return best;
+};
+
+/**
+ * Map a default-anchor key (from `geometryDefaultAnchorsLocal`) to the
+ * canonical `AnchorRef` to persist on a link endpoint. Polygon edge
+ * midpoints (`edge-<n>`) become an `edge` ref pinned to the edge midpoint
+ * (`t = 0.5`) so the endpoint tracks the real sloped edge; everything
+ * else (cardinal names, custom names) is a `named` ref.
+ */
+const defaultAnchorRef = (key: string): AnchorRef => {
+  const m = /^edge-(\d+)$/.exec(key);
+  if (m) return { kind: "edge", index: Number(m[1]), t: 0.5 };
+  return { kind: "named", name: key };
 };
 
 /**
