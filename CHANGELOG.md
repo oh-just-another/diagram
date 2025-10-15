@@ -961,3 +961,6 @@
 
 ## 0.51.9
 - feat(scene): add `edge` AnchorRef kind for on-edge polygon anchors (A2a — additive)
+
+## 0.51.10
+- feat(scene): snap to geometry-default anchors w/ edge refs (A2b — snap cut-over)

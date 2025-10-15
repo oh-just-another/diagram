@@ -82,6 +82,46 @@ export const PORT_DOT_RADIUS = 3.5;
 export const PORT_DOT_ACTIVE_RADIUS = 5;
 
 /**
+ * Connection anchors.
+ *
+ * Two visual roles, shown at different times:
+ *
+ *   - **link-start** anchors — shown when an element is SELECTED. The user
+ *     drags from one to begin a link. Filled brand centre + neutral ring.
+ *   - **link-attach** anchors — shown when the cursor HOVERS / nears an
+ *     element (including while dragging a link). Where a link can land.
+ *     The inverse fill/ring of link-start, so the two roles read
+ *     differently at a glance.
+ *
+ * Radii are screen px (zoom-independent). Colours reuse the selection
+ * brand blue / handle white so anchors share the resize-handle visual
+ * language (they equal `DEFAULT_OVERLAY_STYLE.selectionStroke` / `.handleFill`).
+ */
+export const ANCHOR_BRAND_COLOR = "#1a73e8";
+export const ANCHOR_NEUTRAL_COLOR = "#fff";
+
+/** Resting anchor-dot radius (screen px). */
+export const ANCHOR_DOT_RADIUS = 3.5;
+/** Highlighted radius for the hovered / snap-target anchor (screen px). */
+export const ANCHOR_DOT_ACTIVE_RADIUS = 5;
+/** Ring stroke width for anchor dots (screen px). Range: 1–2.5. */
+export const ANCHOR_DOT_STROKE_WIDTH = 1.5;
+
+/** link-start dot: filled brand centre, neutral (white) ring. */
+export const LINK_START_ANCHOR_FILL = ANCHOR_BRAND_COLOR;
+export const LINK_START_ANCHOR_STROKE = ANCHOR_NEUTRAL_COLOR;
+/** link-attach dot: neutral (white) centre, brand ring — inverse of start. */
+export const LINK_ATTACH_ANCHOR_FILL = ANCHOR_NEUTRAL_COLOR;
+export const LINK_ATTACH_ANCHOR_STROKE = ANCHOR_BRAND_COLOR;
+
+/**
+ * Screen-px proximity: link-attach anchors reveal once the cursor is
+ * within this distance of an element's bounds (modern-style "near the
+ * shape" reveal), not only when directly over it. Range: 16–40.
+ */
+export const ANCHOR_ATTACH_SHOW_DISTANCE = 24;
+
+/**
  * Debug hit-zone overlay (debug panel → Display → "Show hit-zones").
  * Visualises the mouse hit-targets (handle slop, edge-endpoint radius,
  * edge-body threshold) so the values tuned in this layer can be
