@@ -11,6 +11,9 @@ import {
 import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
 import {
+  ANCHOR_DOT_ACTIVE_RADIUS,
+  ANCHOR_DOT_RADIUS,
+  ANCHOR_DOT_STROKE_WIDTH,
   ANNOTATION_PIN_BADGE_FONT_SIZE,
   ANNOTATION_PIN_FILL,
   ANNOTATION_PIN_RADIUS,
@@ -25,14 +28,16 @@ import {
   DEBUG_HIT_ZONE_FILL_OPACITY,
   DEBUG_HIT_ZONE_STROKE,
   DEBUG_HIT_ZONE_STROKE_OPACITY,
+  LINK_ATTACH_ANCHOR_FILL,
+  LINK_ATTACH_ANCHOR_STROKE,
   LINK_ENDPOINT_HANDLE_DRAW_RADIUS,
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_HIT_THRESHOLD,
+  LINK_START_ANCHOR_FILL,
+  LINK_START_ANCHOR_STROKE,
   PEER_SELECTION_DASH,
   PEER_SELECTION_PADDING,
   PEER_SELECTION_STROKE_WIDTH,
-  PORT_DOT_ACTIVE_RADIUS,
-  PORT_DOT_RADIUS,
   TEXT_CARET_WIDTH_PX,
   TEXT_SELECTION_FILL,
   TEXT_SELECTION_OPACITY,
@@ -121,6 +126,12 @@ export interface PortOverlay {
   readonly worldPoints: readonly Vec2[];
   /** Highlight one of the points (the snap target). Optional. */
   readonly activeIndex?: number;
+  /**
+   * Visual role (standard model).
+   *   - link-start: shown on selection (where to drag from).
+   *   - link-attach: shown on hover / proximity (where to land).
+   */
+  readonly role?: "link-start" | "link-attach";
 }
 
 /**
@@ -300,7 +311,7 @@ export const renderOverlay = (
     for (let i = 0; i < options.ports.worldPoints.length; i++) {
       const screen = matrix.applyToPoint(w2s, options.ports.worldPoints[i]!);
       const active = options.ports.activeIndex === i;
-      drawPortDot(target, screen, style, active);
+      drawPortDot(target, screen, style, active, options.ports.role);
     }
   }
 
@@ -644,12 +655,22 @@ const drawPortDot = (
   center: Vec2,
   style: OverlayStyle,
   active: boolean,
+  role: "link-start" | "link-attach" = "link-start",
 ): void => {
-  const radius = active ? PORT_DOT_ACTIVE_RADIUS : PORT_DOT_RADIUS;
-  target.setStroke(style.selectionStroke);
-  target.setStrokeWidth(active ? 2 : 1);
+  const radius = active ? ANCHOR_DOT_ACTIVE_RADIUS : ANCHOR_DOT_RADIUS;
+  const isStart = role === "link-start";
+
+  // When active (snapped), use the inverse fill of the resting state
+  // to highlight the dot.
+  const fill = active
+    ? (isStart ? LINK_START_ANCHOR_STROKE : LINK_ATTACH_ANCHOR_STROKE)
+    : (isStart ? LINK_START_ANCHOR_FILL : LINK_ATTACH_ANCHOR_FILL);
+  const stroke = isStart ? LINK_START_ANCHOR_STROKE : LINK_ATTACH_ANCHOR_STROKE;
+
+  target.setStroke(stroke);
+  target.setStrokeWidth(ANCHOR_DOT_STROKE_WIDTH);
   target.setDashArray(null);
-  target.setFill(active ? style.selectionStroke : style.handleFill);
+  target.setFill(fill);
   target.beginPath();
   target.ellipse(center.x, center.y, radius, radius);
   target.fill();

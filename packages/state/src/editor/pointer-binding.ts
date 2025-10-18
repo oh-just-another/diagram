@@ -5,11 +5,13 @@ import {
   getElementWorldBounds,
   updateAnnotation,
 } from "@oh-just-another/scene";
+import { bounds as B } from "@oh-just-another/math";
 import { boundsFromPoints, interpretPressEnd } from "../machine.js";
 import { fromPointerEvent } from "../dom-events.js";
 import * as Selection from "../selection.js";
 import { getInteractiveHitTester } from "../interactive.js";
 import {
+  ANCHOR_ATTACH_SHOW_DISTANCE,
   LONG_PRESS_MAX_MOVEMENT_PX,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -426,13 +428,31 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       editor.hoveredLinkTarget = null;
       editor.notify();
     }
-    // Hover-to-play: while idle (no active press) over an animated
-    // image, keep it playing — a heavy GIF resumes on hover and its
-    // auto-stop timer is held off while the pointer stays over it.
+    // modern-style anchor proximity tracking: while idle (no active
+    // press), find the topmost element near the cursor to reveal
+    // its link-attach anchors.
     if (!ctx.pressOrigin) {
       const hov = editor.hitTest(worldPoint);
-      const hs = hov?.kind === "element" ? editor._scene.elements.get(hov.id) : undefined;
-      editor.hoverAnimatedElement(hs?.type === "image" && hs.animationKind ? hs.id : null);
+      let nextHoverId: ElementId | null = null;
+      if (hov?.kind === "element") {
+        nextHoverId = hov.id;
+      } else {
+        // Not directly over an element — check proximity to reveal
+        // anchors as the cursor nears the shape (Phase C).
+        const zoom = editor._scene.viewport.zoom;
+        const proximity = ANCHOR_ATTACH_SHOW_DISTANCE / zoom;
+        const hit = editor.acceleratedElementNear(worldPoint, proximity);
+        if (hit) nextHoverId = hit.id;
+      }
+
+      if (editor.hoveredElementId !== nextHoverId) {
+        editor.hoveredElementId = nextHoverId;
+        editor.notify();
+      }
+
+      // Hover-to-play only when directly over the element (not proximity).
+      const directHs = hov?.kind === "element" ? editor._scene.elements.get(hov.id) : undefined;
+      editor.hoverAnimatedElement(directHs?.type === "image" && directHs.animationKind ? directHs.id : null);
     }
     editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
   };

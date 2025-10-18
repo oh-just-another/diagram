@@ -964,3 +964,6 @@
 
 ## 0.51.10
 - feat(scene): snap to geometry-default anchors w/ edge refs (A2b — snap cut-over)
+
+## 0.51.11
+- feat(state): anchor visual constants for the two link-roles (geometry-aware-anchors B)

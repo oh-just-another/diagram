@@ -87,6 +87,30 @@ describe("getNamedAnchorLocal", () => {
     });
     expect(getNamedAnchorLocal(r, "label-slot")).toEqual({ x: 12, y: 12 });
   });
+
+  it("resolves edge-i names for polygons", () => {
+    const p: PolygonElement = {
+      id: elementId("p1"),
+      layerId: layerId("default"),
+      type: "polygon",
+      position: { x: 100, y: 100 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: { fill: "#abc" },
+      points: [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 100 },
+        { x: 0, y: 100 },
+      ],
+    };
+    // Edge midpoints
+    expect(getNamedAnchorLocal(p, "edge-0")).toEqual({ x: 50, y: 0 });
+    expect(getNamedAnchorLocal(p, "edge-1")).toEqual({ x: 100, y: 50 });
+    expect(getNamedAnchorLocal(p, "edge-2")).toEqual({ x: 50, y: 100 });
+    expect(getNamedAnchorLocal(p, "edge-3")).toEqual({ x: 0, y: 50 });
+  });
 });
 
 describe("getAnchorLocal", () => {

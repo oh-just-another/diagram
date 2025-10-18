@@ -4,8 +4,10 @@ import {
   getLinkPath,
   getElement,
   getElementWorldBounds,
-  listAnchorsLocal,
+  geometryDefaultAnchorsLocal,
   snapExcludedAnchors,
+  type AnchorRef,
+  type SnapCandidate,
 } from "@oh-just-another/scene";
 import {
   DEFAULT_LOD,
@@ -18,6 +20,7 @@ import {
   ISOLATION_DIM_OPACITY,
   LARGE_SCENE_HIT_THRESHOLD,
 } from "../constants.js";
+import type { ElementId } from "@oh-just-another/types";
 
 /**
  * Render orchestrator. ~130 lines of branching across:
@@ -101,20 +104,86 @@ export const renderEditor = (editor: any): void => {
   if (editor.lassoPreview) overlayOpts.drawingPreview = editor.lassoPreview;
   else if (editor.drawingPreview) overlayOpts.drawingPreview = editor.drawingPreview;
   if (editor.edgePreview) overlayOpts.edgePreview = editor.edgePreview;
-  if (editor.hoveredLinkTarget) {
-    const shape = getElement(editor._scene, editor.hoveredLinkTarget.elementId);
-    if (shape) {
-      const excluded = snapExcludedAnchors(shape);
-      const names = [...listAnchorsLocal(shape).keys()].filter((n) => !excluded.has(n));
-      const worldPoints = names.map((name) => getAnchorWorld(shape, { kind: "named", name }));
-      const activeIndex =
-        editor.hoveredLinkTarget.activeAnchor !== null
-          ? names.indexOf(editor.hoveredLinkTarget.activeAnchor)
-          : -1;
-      overlayOpts.ports = {
-        worldPoints,
-        ...(activeIndex >= 0 ? { activeIndex } : {}),
-      };
+  // 4. Connection anchors (Phase C).
+  //    Two roles: link-start (on selection) and link-attach (on hover/proximity).
+  if (editor.mode !== "brush" && editor.mode !== "hand") {
+    let anchorShapeId: ElementId | null = null;
+    let role: "link-start" | "link-attach" = "link-start";
+    let activeAnchorName: string | null = null;
+
+    if (editor.hoveredLinkTarget) {
+      // Proximity snap during edge drawing.
+      anchorShapeId = editor.hoveredLinkTarget.elementId;
+      role = "link-attach";
+      activeAnchorName = editor.hoveredLinkTarget.activeAnchor;
+    } else if (
+      editor._selection.size === 1 &&
+      !editor.panGesture &&
+      !editor.pinch.isActive() &&
+      !editor.dragElementId &&
+      !editor.edgePreview && // Don't show start-anchors if we are already drawing a link
+      !editor.linkEndpointDrag // or dragging an existing endpoint
+    ) {
+      // Idle selection — show link-start anchors.
+      anchorShapeId = [...editor._selection][0]!;
+      role = "link-start";
+    } else if (editor.hoveredElementId) {
+      // Idle hover / proximity — show link-attach anchors.
+      const hoverId: ElementId = editor.hoveredElementId;
+      anchorShapeId = hoverId;
+      role = "link-attach";
+
+      // Detect snapping to individual anchors during idle hover for visual highlight.
+      const worldPoint = editor.lastPointerWorld;
+      if (worldPoint) {
+        const shape = getElement(editor._scene, hoverId);
+        if (shape) {
+          const result = editor.snapEngine.snap({
+            scene: editor._scene,
+            probe: worldPoint,
+            threshold: editor.snapThreshold,
+            gesture: "draw-edge",
+          });
+          const anchor = result.all.find(
+            (c: SnapCandidate) => c.kind === "anchor" && c.metadata?.elementId === hoverId,
+          );
+          if (anchor) {
+            const ref = anchor.metadata?.ref as AnchorRef | undefined;
+            if (ref?.kind === "named") activeAnchorName = ref.name;
+            else if (ref?.kind === "edge" && ref.t === 0.5) activeAnchorName = `edge-${ref.index}`;
+          }
+        }
+      }
+    }
+
+    if (anchorShapeId) {
+      const shape = getElement(editor._scene, anchorShapeId);
+      if (shape) {
+        const excluded = snapExcludedAnchors(shape);
+        const allLocal = geometryDefaultAnchorsLocal(shape);
+        const names = [...allLocal.keys()].filter((n) => !excluded.has(n));
+        const worldPoints = names.map((name) => getAnchorWorld(shape, { kind: "named", name }));
+        const activeIndex = activeAnchorName !== null ? names.indexOf(activeAnchorName) : -1;
+
+        // If we are snapping to the outline (and not a specific named anchor),
+        // add that point to the overlay.
+        if (role === "link-attach" && editor.hoveredLinkTarget?.outlinePoint) {
+          worldPoints.push(editor.hoveredLinkTarget.outlinePoint);
+        }
+
+        const finalActiveIndex =
+          activeIndex >= 0
+            ? activeIndex
+            : role === "link-attach" && editor.hoveredLinkTarget?.outlinePoint
+              ? worldPoints.length - 1
+              : -1;
+
+        overlayOpts.ports = {
+          worldPoints,
+          ...(finalActiveIndex >= 0 ? { activeIndex: finalActiveIndex } : {}),
+          role,
+        };
+      }
     }
   }
   // Group-handle overlay: multi-selection OR a single group-typed

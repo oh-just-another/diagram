@@ -29,6 +29,8 @@ import {
   getElementAtIndexed,
   getElementsCoveredByBounds,
   getElementsInBounds,
+  getElementsInLayer,
+  getLayersInOrder,
   isContainer,
   getContainerSpec,
   getDropZoneWorld,
@@ -43,6 +45,7 @@ import {
   zoomAt as viewportZoomAt,
   gridSnapper,
   listAnchorsLocal,
+  queryByIndex,
   snapExcludedAnchors,
   orderForBottom,
   orderBetweenMany,
@@ -60,6 +63,7 @@ import {
   updateLink,
   updateLayer,
   updateElement,
+  type AnchorRef,
   type Annotation,
   type Comment,
   type Link,
@@ -495,7 +499,11 @@ export class Editor {
    * overlay render so the user sees attachment points. `null` outside
    * draw-edge mode or when the pointer is over empty canvas.
    */
-  private hoveredLinkTarget: { elementId: ElementId; activeAnchor: string | null } | null = null;
+  private hoveredLinkTarget: {
+    elementId: ElementId;
+    activeAnchor: string | null;
+    outlinePoint?: Vec2 | undefined;
+  } | null = null;
   /**
    * Currently selected edge.
    */
@@ -701,6 +709,12 @@ export class Editor {
    * to skip that redundant toggle. Reset at every press-down.
    */
   private additivePressAdded: ElementId | null = null;
+
+  /**
+   * Element that the cursor is currently hovering over (or near).
+   * Used to reveal link-attach anchors (modern-style proximity).
+   */
+  private hoveredElementId: ElementId | null = null;
 
   /**
    * Live container highlight: the container shape the dragged item is
@@ -2959,6 +2973,57 @@ export class Editor {
   }
 
   /**
+   * Topmost element near the world point (within screen-space slop).
+   * Used for proximity-based anchor reveal.
+   */
+  private acceleratedElementNear(worldPoint: Vec2, slop: number): Element | undefined {
+    if (slop <= 0) return this.acceleratedElementAt(worldPoint);
+    const range: Bounds = {
+      x: worldPoint.x - slop,
+      y: worldPoint.y - slop,
+      width: slop * 2,
+      height: slop * 2,
+    };
+    if (this._scene.elements.size < LARGE_SCENE_HIT_THRESHOLD) {
+      const layers = getLayersInOrder(this._scene);
+      for (let i = layers.length - 1; i >= 0; i--) {
+        const layer = layers[i]!;
+        if (!layer.visible) continue;
+        const shapes = getElementsInLayer(this._scene, layer.id);
+        for (let j = shapes.length - 1; j >= 0; j--) {
+          const s = shapes[j]!;
+          if (B.intersects(getElementWorldBounds(s), range)) return s;
+        }
+      }
+      return undefined;
+    }
+    const candidates = queryByIndex(this._scene, this.ensureSpatialIndex(), range);
+    if (candidates.length === 0) return undefined;
+
+    let best: Element | undefined;
+    let bestLayerOrder = "";
+    let bestElementOrder = "";
+    let bestSet = false;
+
+    for (const shape of candidates) {
+      const layer = this._scene.layers.get(shape.layerId);
+      if (!layer || !layer.visible) continue;
+      const layerOrder = layer.order as string;
+      if (
+        !bestSet ||
+        layerOrder > bestLayerOrder ||
+        (layerOrder === bestLayerOrder && shape.order > bestElementOrder)
+      ) {
+        best = shape;
+        bestLayerOrder = layerOrder;
+        bestElementOrder = shape.order as string;
+        bestSet = true;
+      }
+    }
+    return best;
+  }
+
+  /**
    * Build (or return the cached) `SpatialGrid` for the current scene.
    * Re-built only when `_scene` reference changes — scene operations
    * always produce a fresh object, so reference equality is a
@@ -3672,11 +3737,40 @@ export class Editor {
       }
       return;
     }
-    const nearest = findNearestAnchor(shape, worldPoint, snapExcludedAnchors(shape));
-    const activeName = nearest.ref.kind === "named" ? nearest.ref.name : null;
+
+    const result = this.snapEngine.snap({
+      scene: this._scene,
+      probe: worldPoint,
+      threshold: this.snapThreshold,
+      gesture: "draw-edge",
+    });
+
+    // Prefer a snap candidate that belongs to the current shape —
+    // ensures the "ghost" points don't jump to a nearby shape.
+    const onTarget = result.all.filter((c) => c.metadata?.elementId === shape.id);
+    const anchor = onTarget.find((c) => c.kind === "anchor");
+    const outline = onTarget.find((c) => c.kind === "outline");
+
+    const ref = anchor?.metadata?.ref as AnchorRef | undefined;
+    let activeName: string | null = null;
+    if (ref?.kind === "named") {
+      activeName = ref.name;
+    } else if (ref?.kind === "edge" && ref.t === 0.5) {
+      activeName = `edge-${ref.index}`;
+    }
+    const outlinePoint = !activeName && outline ? outline.snapped : undefined;
+
     const prev = this.hoveredLinkTarget;
-    if (prev?.elementId === shape.id && prev.activeAnchor === activeName) return;
-    this.hoveredLinkTarget = { elementId: shape.id, activeAnchor: activeName };
+    if (
+      prev?.elementId === shape.id &&
+      prev.activeAnchor === activeName &&
+      prev.outlinePoint?.x === outlinePoint?.x &&
+      prev.outlinePoint?.y === outlinePoint?.y
+    ) {
+      return;
+    }
+
+    this.hoveredLinkTarget = { elementId: shape.id, activeAnchor: activeName, outlinePoint };
     this.notify();
   }
 
@@ -3944,7 +4038,7 @@ const endpointFromSnap = (
   shape: Element,
 ): LinkEndpoint => {
   if (candidate.kind === "anchor") {
-    const ref = candidate.metadata?.ref as AnchorRefLike | undefined;
+    const ref = candidate.metadata?.ref as AnchorRef | undefined;
     if (ref) return { kind: "anchor", elementId, anchor: ref };
   }
   if (candidate.kind === "outline" && typeof candidate.metadata?.ratio === "number") {
@@ -3954,8 +4048,6 @@ const endpointFromSnap = (
   void shape;
   return { kind: "point", position: candidate.snapped };
 };
-
-type AnchorRefLike = Extract<LinkEndpoint, { kind: "anchor" }>["anchor"];
 
 // `resizeFromHandle`, `applyResizeConstraints`, the four handle-
 // quadrant predicates moved to `./editor/resize-helpers.ts` so

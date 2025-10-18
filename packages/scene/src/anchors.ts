@@ -55,12 +55,7 @@ export const STANDARD_ANCHORS: readonly StandardAnchor[] = [
  * `getAnchorWorld` instead — those handle every `AnchorRef` kind.
  */
 export const getNamedAnchorLocal = (shape: ElementBase, name: NamedAnchor): Vec2 | undefined => {
-  const custom = shape.anchors?.[name];
-  if (custom !== undefined) return resolveAnchorRefLocal(shape, custom);
-  const standard = STANDARD_ANCHOR_RATIOS[name as StandardAnchor];
-  if (!standard) return undefined;
-  const b = getElementLocalBounds(shape);
-  return { x: b.x + b.width * standard.x, y: b.y + b.height * standard.y };
+  return lookupNamed(shape, name);
 };
 
 /**
@@ -306,6 +301,10 @@ const lookupNamed = (shape: ElementBase, name: NamedAnchor): Vec2 | undefined =>
     // other by name (`kind: "named"` chains are not followed here).
     if (custom.kind === "named") return lookupNamed(shape, custom.name);
     return resolveAnchorRefLocal(shape, custom);
+  }
+  if (isPolygon(shape) && name.startsWith("edge-")) {
+    const index = parseInt(name.slice(5), 10);
+    if (!isNaN(index)) return resolveEdgeRefLocal(shape, index, 0.5);
   }
   const standard = STANDARD_ANCHOR_RATIOS[name as StandardAnchor];
   if (!standard) return undefined;
