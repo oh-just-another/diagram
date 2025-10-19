@@ -115,6 +115,25 @@ export const LINK_ATTACH_ANCHOR_FILL = ANCHOR_NEUTRAL_COLOR;
 export const LINK_ATTACH_ANCHOR_STROKE = ANCHOR_BRAND_COLOR;
 
 /**
+ * Screen-px distance each anchor dot is pushed OUTWARD from the element
+ * edge along its outward normal ("floating" ports). Two independent knobs
+ * because the roles want different offsets:
+ *
+ *   - **link-start** sits a few px off the edge so it reads as a separate
+ *     grab affordance ("drag from here"), clear of the element's own
+ *     border and resize handles. Range: 0–16.
+ *   - **link-attach** stays ON (or barely off) the edge because it marks
+ *     where the link will actually land — a large offset re-introduces the
+ *     dot-vs-landing-point mismatch. Default 0 (exactly on the edge); bump
+ *     only if dots are hard to see. Range: 0–8.
+ *
+ * Applied only to the discrete named / edge anchor dots; the free
+ * outline-attach point is never offset (it is the real landing point).
+ */
+export const LINK_START_ANCHOR_OUTSET = 8;
+export const LINK_ATTACH_ANCHOR_OUTSET = 0;
+
+/**
  * Screen-px proximity: link-attach anchors reveal once the cursor is
  * within this distance of an element's bounds (modern-style "near the
  * shape" reveal), not only when directly over it. Range: 16–40.

@@ -970,3 +970,6 @@
 
 ## 0.51.12
 - feat(state): two-role connection anchors overlay (geometry-aware-anchors C)
+
+## 0.51.13
+- feat(scene): getAnchorOutwardNormal for off-edge anchor outset (geometry-aware-anchors C2a)

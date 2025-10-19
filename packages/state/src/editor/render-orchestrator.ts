@@ -5,6 +5,7 @@ import {
   getElement,
   getElementWorldBounds,
   geometryDefaultAnchorsLocal,
+  getAnchorOutwardNormal,
   snapExcludedAnchors,
   type AnchorRef,
   type SnapCandidate,
@@ -19,8 +20,10 @@ import { renderOverlay } from "../overlay.js";
 import {
   ISOLATION_DIM_OPACITY,
   LARGE_SCENE_HIT_THRESHOLD,
+  LINK_START_ANCHOR_OUTSET,
+  LINK_ATTACH_ANCHOR_OUTSET,
 } from "../constants.js";
-import type { ElementId } from "@oh-just-another/types";
+import type { ElementId, Vec2 } from "@oh-just-another/types";
 
 /**
  * Render orchestrator. ~130 lines of branching across:
@@ -162,7 +165,18 @@ export const renderEditor = (editor: any): void => {
         const excluded = snapExcludedAnchors(shape);
         const allLocal = geometryDefaultAnchorsLocal(shape);
         const names = [...allLocal.keys()].filter((n) => !excluded.has(n));
-        const worldPoints = names.map((name) => getAnchorWorld(shape, { kind: "named", name }));
+        // Push each dot a few screen-px off the edge along its outward
+        // normal (modern-style). Screen-px → world by dividing by zoom.
+        // The free outline point (added below) is NOT offset.
+        const outsetPx = role === "link-start" ? LINK_START_ANCHOR_OUTSET : LINK_ATTACH_ANCHOR_OUTSET;
+        const outsetWorld = outsetPx / (editor._scene.viewport.zoom || 1);
+        const worldPoints: Vec2[] = names.map((name) => {
+          const ref = { kind: "named", name } as const;
+          const p = getAnchorWorld(shape, ref);
+          if (outsetWorld === 0) return p;
+          const n = getAnchorOutwardNormal(shape, ref);
+          return { x: p.x + n.x * outsetWorld, y: p.y + n.y * outsetWorld };
+        });
         const activeIndex = activeAnchorName !== null ? names.indexOf(activeAnchorName) : -1;
 
         // If we are snapping to the outline (and not a specific named anchor),
