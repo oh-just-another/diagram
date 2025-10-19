@@ -87,6 +87,7 @@ export {
   getNamedAnchorLocal,
   getAnchorLocal,
   getAnchorWorld,
+  getAnchorOutwardNormal,
   listAnchorsLocal,
   geometryDefaultAnchorsLocal,
   findNearestAnchor,

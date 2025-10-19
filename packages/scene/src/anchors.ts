@@ -86,6 +86,28 @@ export const getAnchorWorld = (shape: ElementBase, anchor: AnchorRef): Vec2 => {
 };
 
 /**
+ * World-space outward unit normal at an anchor — the direction "away from
+ * the shape" used to push port dots a few pixels off the edge and to seed
+ * a link's exit stub.
+ *
+ * Computed as the direction from the shape's geometric centre to the
+ * anchor's world point, so it automatically respects rotation / non-
+ * uniform scale and works for cardinal ports, polygon edge midpoints, and
+ * corners alike. Returns `{ x: 0, y: -1 }` (up) as a stable fallback when
+ * the anchor coincides with the centre (e.g. a custom centre anchor),
+ * where "outward" is undefined.
+ */
+export const getAnchorOutwardNormal = (shape: ElementBase, anchor: AnchorRef): Vec2 => {
+  const point = getAnchorWorld(shape, anchor);
+  const centre = getAnchorWorld(shape, { kind: "named", name: "center" });
+  const dx = point.x - centre.x;
+  const dy = point.y - centre.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return { x: 0, y: -1 };
+  return { x: dx / len, y: dy / len };
+};
+
+/**
  * Find the anchor on `shape` whose world position is closest to
  * `worldPoint`. Returns the canonical `AnchorRef` you can persist on an
  * `LinkEndpoint` so future renders stay locked to that port.

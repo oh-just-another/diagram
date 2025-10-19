@@ -6,6 +6,7 @@ import {
   CARDINAL_ANCHORS,
   getAnchorLocal,
   getAnchorWorld,
+  getAnchorOutwardNormal,
   getNamedAnchorLocal,
   listAnchorsLocal,
   geometryDefaultAnchorsLocal,
@@ -341,5 +342,48 @@ describe("findNearestAnchor — geometry-default snap source", () => {
     const near = findNearestAnchor(t, { x: 62, y: 71 });
     expect(near.ref).toEqual({ kind: "edge", index: 1, t: 0.5 });
     expect(near.world).toEqual({ x: 60, y: 70 });
+  });
+});
+
+describe("getAnchorOutwardNormal", () => {
+  it("points straight out for the four cardinal anchors of a rectangle", () => {
+    const r = baseRect(); // 200x100 at (100,200), unrotated
+    expect(getAnchorOutwardNormal(r, { kind: "named", name: "top" })).toEqual({ x: 0, y: -1 });
+    expect(getAnchorOutwardNormal(r, { kind: "named", name: "bottom" })).toEqual({ x: 0, y: 1 });
+    expect(getAnchorOutwardNormal(r, { kind: "named", name: "left" })).toEqual({ x: -1, y: 0 });
+    expect(getAnchorOutwardNormal(r, { kind: "named", name: "right" })).toEqual({ x: 1, y: 0 });
+  });
+
+  it("returns a unit vector toward a corner", () => {
+    const r = baseRect();
+    const n = getAnchorOutwardNormal(r, { kind: "named", name: "top-right" });
+    expect(Math.hypot(n.x, n.y)).toBeCloseTo(1, 6);
+    expect(n.x).toBeGreaterThan(0); // rightward
+    expect(n.y).toBeLessThan(0); // upward
+  });
+
+  it("rotates with the shape", () => {
+    // 90deg CCW: the `right` port's outward normal (world +x) rotates to +y.
+    const r = baseRect({ rotation: Math.PI / 2 });
+    const n = getAnchorOutwardNormal(r, { kind: "named", name: "right" });
+    expect(n.x).toBeCloseTo(0, 6);
+    expect(n.y).toBeCloseTo(1, 6);
+  });
+
+  it("points out along the real edge for a polygon edge anchor", () => {
+    // Right triangle (0,0)->(100,0)->(0,100); edge-1 is the hypotenuse.
+    // Its midpoint (50,50) lies away from the centroid-ish bbox centre
+    // (50,50 is the bbox centre too) — use a clearly-off case instead:
+    const t = baseTriangle();
+    // edge-0 (top, y=0) midpoint (50,0); centre of bbox is (50,50) →
+    // outward normal points up.
+    const n = getAnchorOutwardNormal(t, { kind: "edge", index: 0, t: 0.5 });
+    expect(n.x).toBeCloseTo(0, 6);
+    expect(n.y).toBeCloseTo(-1, 6);
+  });
+
+  it("falls back to up when the anchor coincides with the centre", () => {
+    const r = baseRect();
+    expect(getAnchorOutwardNormal(r, { kind: "named", name: "center" })).toEqual({ x: 0, y: -1 });
   });
 });

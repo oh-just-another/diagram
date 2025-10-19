@@ -967,3 +967,6 @@
 
 ## 0.51.11
 - feat(state): anchor visual constants for the two link-roles (geometry-aware-anchors B)
+
+## 0.51.12
+- feat(state): two-role connection anchors overlay (geometry-aware-anchors C)
