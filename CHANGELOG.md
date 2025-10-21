@@ -973,3 +973,6 @@
 
 ## 0.51.13
 - feat(scene): getAnchorOutwardNormal for off-edge anchor outset (geometry-aware-anchors C2a)
+
+## 0.51.14
+- feat(state): off-edge anchor outset, separate per role (geometry-aware-anchors C2b)

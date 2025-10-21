@@ -69,11 +69,26 @@ export interface DropZoneNode extends NodeBase {
  * Position the port the same way as any other node: typically with
  * `layout.position = "spot"` + `anchor` / `anchorFocus` / `offset`.
  * The port's `id` becomes the key in `shape.anchors`.
+ *
+ * `system` picks which coordinate system the port resolves to in
+ * `shape.anchors` (see `extractPorts`):
+ *   - `"ratio"` (default) — bounds-relative `{x,y}` in 0..1; scales with
+ *     the template under resize. Ports without `system` use this.
+ *   - `"absolute"` — fixed local-px offset from the template's origin;
+ *     stays put (does not scale) when the template is resized.
+ *   - `"edge"` — pinned to polygon edge `index` at parameter `t` (0..1);
+ *     stays on the real sloped edge. Requires `edge`; meaningful only
+ *     when the instantiated shape is a polygon (falls back to centre on
+ *     non-polygons, per the scene anchor resolver).
  */
 export interface PortNode extends NodeBase {
   readonly type: "port";
   /** Required for ports — used as `shape.anchors[id]` lookup key. */
   readonly id: string;
+  /** Coordinate system for the resulting anchor. Default `"ratio"`. */
+  readonly system?: "ratio" | "absolute" | "edge";
+  /** Edge index + parameter — required when `system` is `"edge"`. */
+  readonly edge?: { readonly index: number; readonly t: number };
 }
 
 export type TemplateNode =

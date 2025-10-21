@@ -108,6 +108,91 @@ describe("port nodes", () => {
     });
   });
 
+  it("system 'absolute' emits a fixed local-px offset anchor", () => {
+    const root = {
+      type: "container" as const,
+      layout: { width: 200, height: 100 },
+      children: [
+        {
+          type: "port" as const,
+          id: "out",
+          system: "absolute" as const,
+          layout: {
+            position: "spot" as const,
+            anchor: "right" as const,
+            anchorFocus: "center" as const,
+          },
+        },
+      ],
+    };
+    const tree = layoutTree(root);
+    const ports = extractPorts(tree);
+    // right-centre of 200×100 → local px (200, 50), not divided by size.
+    expect(ports.out).toEqual({ kind: "absolute", offset: { x: 200, y: 50 } });
+  });
+
+  it("system 'edge' passes through index + t from port.edge", () => {
+    const root = {
+      type: "container" as const,
+      layout: { width: 200, height: 100 },
+      children: [
+        {
+          type: "port" as const,
+          id: "side",
+          system: "edge" as const,
+          edge: { index: 2, t: 0.25 },
+          layout: { position: "spot" as const, anchor: "left" as const },
+        },
+      ],
+    };
+    const tree = layoutTree(root);
+    const ports = extractPorts(tree);
+    expect(ports.side).toEqual({ kind: "edge", index: 2, t: 0.25 });
+  });
+
+  it("system 'edge' without port.edge falls back to a ratio anchor", () => {
+    const root = {
+      type: "container" as const,
+      layout: { width: 200, height: 100 },
+      children: [
+        {
+          type: "port" as const,
+          id: "broken",
+          system: "edge" as const,
+          layout: {
+            position: "spot" as const,
+            anchor: "right" as const,
+            anchorFocus: "center" as const,
+          },
+        },
+      ],
+    };
+    const tree = layoutTree(root);
+    const ports = extractPorts(tree);
+    expect(ports.broken).toEqual({ kind: "ratio", position: { x: 1, y: 0.5 } });
+  });
+
+  it("omitting system defaults to ratio (back-compat)", () => {
+    const root = {
+      type: "container" as const,
+      layout: { width: 200, height: 100 },
+      children: [
+        {
+          type: "port" as const,
+          id: "out",
+          layout: {
+            position: "spot" as const,
+            anchor: "right" as const,
+            anchorFocus: "center" as const,
+          },
+        },
+      ],
+    };
+    const tree = layoutTree(root);
+    const ports = extractPorts(tree);
+    expect(ports.out).toEqual({ kind: "ratio", position: { x: 1, y: 0.5 } });
+  });
+
   it("multiple ports become separate entries", () => {
     const root = {
       type: "container" as const,
