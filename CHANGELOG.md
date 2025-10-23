@@ -976,3 +976,6 @@
 
 ## 0.51.14
 - feat(state): off-edge anchor outset, separate per role (geometry-aware-anchors C2b)
+
+## 0.51.15
+- feat(templates): port coordinate systems via PortNode.system (geometry-aware-anchors E)

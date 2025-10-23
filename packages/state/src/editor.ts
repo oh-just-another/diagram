@@ -29,8 +29,6 @@ import {
   getElementAtIndexed,
   getElementsCoveredByBounds,
   getElementsInBounds,
-  getElementsInLayer,
-  getLayersInOrder,
   isContainer,
   getContainerSpec,
   getDropZoneWorld,
@@ -45,7 +43,6 @@ import {
   zoomAt as viewportZoomAt,
   gridSnapper,
   listAnchorsLocal,
-  queryByIndex,
   snapExcludedAnchors,
   orderForBottom,
   orderBetweenMany,
@@ -709,12 +706,6 @@ export class Editor {
    * to skip that redundant toggle. Reset at every press-down.
    */
   private additivePressAdded: ElementId | null = null;
-
-  /**
-   * Element that the cursor is currently hovering over (or near).
-   * Used to reveal link-attach anchors (modern-style proximity).
-   */
-  private hoveredElementId: ElementId | null = null;
 
   /**
    * Live container highlight: the container shape the dragged item is
@@ -2970,57 +2961,6 @@ export class Editor {
       return getElementAt(this._scene, worldPoint);
     }
     return getElementAtIndexed(this._scene, this.ensureSpatialIndex(), worldPoint);
-  }
-
-  /**
-   * Topmost element near the world point (within screen-space slop).
-   * Used for proximity-based anchor reveal.
-   */
-  private acceleratedElementNear(worldPoint: Vec2, slop: number): Element | undefined {
-    if (slop <= 0) return this.acceleratedElementAt(worldPoint);
-    const range: Bounds = {
-      x: worldPoint.x - slop,
-      y: worldPoint.y - slop,
-      width: slop * 2,
-      height: slop * 2,
-    };
-    if (this._scene.elements.size < LARGE_SCENE_HIT_THRESHOLD) {
-      const layers = getLayersInOrder(this._scene);
-      for (let i = layers.length - 1; i >= 0; i--) {
-        const layer = layers[i]!;
-        if (!layer.visible) continue;
-        const shapes = getElementsInLayer(this._scene, layer.id);
-        for (let j = shapes.length - 1; j >= 0; j--) {
-          const s = shapes[j]!;
-          if (B.intersects(getElementWorldBounds(s), range)) return s;
-        }
-      }
-      return undefined;
-    }
-    const candidates = queryByIndex(this._scene, this.ensureSpatialIndex(), range);
-    if (candidates.length === 0) return undefined;
-
-    let best: Element | undefined;
-    let bestLayerOrder = "";
-    let bestElementOrder = "";
-    let bestSet = false;
-
-    for (const shape of candidates) {
-      const layer = this._scene.layers.get(shape.layerId);
-      if (!layer || !layer.visible) continue;
-      const layerOrder = layer.order as string;
-      if (
-        !bestSet ||
-        layerOrder > bestLayerOrder ||
-        (layerOrder === bestLayerOrder && shape.order > bestElementOrder)
-      ) {
-        best = shape;
-        bestLayerOrder = layerOrder;
-        bestElementOrder = shape.order as string;
-        bestSet = true;
-      }
-    }
-    return best;
   }
 
   /**

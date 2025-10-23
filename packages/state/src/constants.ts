@@ -134,13 +134,6 @@ export const LINK_START_ANCHOR_OUTSET = 8;
 export const LINK_ATTACH_ANCHOR_OUTSET = 0;
 
 /**
- * Screen-px proximity: link-attach anchors reveal once the cursor is
- * within this distance of an element's bounds (modern-style "near the
- * shape" reveal), not only when directly over it. Range: 16–40.
- */
-export const ANCHOR_ATTACH_SHOW_DISTANCE = 24;
-
-/**
  * Debug hit-zone overlay (debug panel → Display → "Show hit-zones").
  * Visualises the mouse hit-targets (handle slop, edge-endpoint radius,
  * edge-body threshold) so the values tuned in this layer can be

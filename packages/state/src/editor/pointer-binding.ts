@@ -11,7 +11,6 @@ import { fromPointerEvent } from "../dom-events.js";
 import * as Selection from "../selection.js";
 import { getInteractiveHitTester } from "../interactive.js";
 import {
-  ANCHOR_ATTACH_SHOW_DISTANCE,
   LONG_PRESS_MAX_MOVEMENT_PX,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -428,29 +427,13 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       editor.hoveredLinkTarget = null;
       editor.notify();
     }
-    // modern-style anchor proximity tracking: while idle (no active
-    // press), find the topmost element near the cursor to reveal
-    // its link-attach anchors.
+    // Hover-to-play: while idle (no active press) and directly over an
+    // animated image, signal hover so a paused GIF can resume. (No
+    // link-attach anchor reveal on idle hover — those appear only while
+    // a link is actually being drawn; see the draw-edge / drag-from-
+    // anchor paths.)
     if (!ctx.pressOrigin) {
       const hov = editor.hitTest(worldPoint);
-      let nextHoverId: ElementId | null = null;
-      if (hov?.kind === "element") {
-        nextHoverId = hov.id;
-      } else {
-        // Not directly over an element — check proximity to reveal
-        // anchors as the cursor nears the shape (Phase C).
-        const zoom = editor._scene.viewport.zoom;
-        const proximity = ANCHOR_ATTACH_SHOW_DISTANCE / zoom;
-        const hit = editor.acceleratedElementNear(worldPoint, proximity);
-        if (hit) nextHoverId = hit.id;
-      }
-
-      if (editor.hoveredElementId !== nextHoverId) {
-        editor.hoveredElementId = nextHoverId;
-        editor.notify();
-      }
-
-      // Hover-to-play only when directly over the element (not proximity).
       const directHs = hov?.kind === "element" ? editor._scene.elements.get(hov.id) : undefined;
       editor.hoverAnimatedElement(directHs?.type === "image" && directHs.animationKind ? directHs.id : null);
     }

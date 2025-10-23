@@ -7,8 +7,6 @@ import {
   geometryDefaultAnchorsLocal,
   getAnchorOutwardNormal,
   snapExcludedAnchors,
-  type AnchorRef,
-  type SnapCandidate,
 } from "@oh-just-another/scene";
 import {
   DEFAULT_LOD,
@@ -115,7 +113,9 @@ export const renderEditor = (editor: any): void => {
     let activeAnchorName: string | null = null;
 
     if (editor.hoveredLinkTarget) {
-      // Proximity snap during edge drawing.
+      // Proximity snap while a link is being drawn (draw-edge tool OR a
+      // drag started from a link-start anchor). Show the target's
+      // link-attach anchors / outline point.
       anchorShapeId = editor.hoveredLinkTarget.elementId;
       role = "link-attach";
       activeAnchorName = editor.hoveredLinkTarget.activeAnchor;
@@ -127,36 +127,11 @@ export const renderEditor = (editor: any): void => {
       !editor.edgePreview && // Don't show start-anchors if we are already drawing a link
       !editor.linkEndpointDrag // or dragging an existing endpoint
     ) {
-      // Idle selection — show link-start anchors.
+      // Idle selection — show link-start anchors. (link-attach anchors
+      // are intentionally NOT shown on plain idle hover — only while a
+      // link is actually being drawn; see hoveredLinkTarget above.)
       anchorShapeId = [...editor._selection][0]!;
       role = "link-start";
-    } else if (editor.hoveredElementId) {
-      // Idle hover / proximity — show link-attach anchors.
-      const hoverId: ElementId = editor.hoveredElementId;
-      anchorShapeId = hoverId;
-      role = "link-attach";
-
-      // Detect snapping to individual anchors during idle hover for visual highlight.
-      const worldPoint = editor.lastPointerWorld;
-      if (worldPoint) {
-        const shape = getElement(editor._scene, hoverId);
-        if (shape) {
-          const result = editor.snapEngine.snap({
-            scene: editor._scene,
-            probe: worldPoint,
-            threshold: editor.snapThreshold,
-            gesture: "draw-edge",
-          });
-          const anchor = result.all.find(
-            (c: SnapCandidate) => c.kind === "anchor" && c.metadata?.elementId === hoverId,
-          );
-          if (anchor) {
-            const ref = anchor.metadata?.ref as AnchorRef | undefined;
-            if (ref?.kind === "named") activeAnchorName = ref.name;
-            else if (ref?.kind === "edge" && ref.t === 0.5) activeAnchorName = `edge-${ref.index}`;
-          }
-        }
-      }
     }
 
     if (anchorShapeId) {
