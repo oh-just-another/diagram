@@ -134,6 +134,17 @@ export const LINK_START_ANCHOR_OUTSET = 8;
 export const LINK_ATTACH_ANCHOR_OUTSET = 0;
 
 /**
+ * Screen-px slop ADDED to `ANCHOR_DOT_ACTIVE_RADIUS` when hit-testing a
+ * press against a link-start anchor dot — the "drag a link straight from
+ * the dot" gesture (no draw-edge tool needed). Mirrors `HANDLE_HIT_SLOP`
+ * for resize handles: lets the user grab the small dot without pixel-
+ * precision pointing. Grab radius = `ANCHOR_DOT_ACTIVE_RADIUS + this`,
+ * divided by zoom. Range: 3–10 (too large starts stealing the body-drag
+ * target near the element edge).
+ */
+export const ANCHOR_START_HIT_SLOP = 6;
+
+/**
  * Debug hit-zone overlay (debug panel → Display → "Show hit-zones").
  * Visualises the mouse hit-targets (handle slop, edge-endpoint radius,
  * edge-body threshold) so the values tuned in this layer can be

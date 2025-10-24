@@ -492,6 +492,21 @@ export class Editor {
   private drawingPreview: Bounds | null = null;
   private edgePreview: { from: Vec2; to: Vec2 } | null = null;
   /**
+   * Active "drag a link from a start-anchor" gesture (standard). Set when a
+   * press lands on one of the selected element's link-start dots; lets
+   * the user draw a link straight from the dot WITHOUT switching to the
+   * draw-edge tool. `fromWorld` is the true anchor world point (the link
+   * origin, un-offset); `origin` is the press point (for the drag
+   * threshold). Read by the pointer handlers (drive preview / commit on
+   * up) and the render orchestrator (keep the source's start dots visible
+   * during the drag). Null when no such drag is in flight. */
+  private linkDragFromAnchor: {
+    fromElement: ElementId;
+    fromWorld: Vec2;
+    origin: Vec2;
+    moved: boolean;
+  } | null = null;
+  /**
    * Element being hovered while draw-edge mode is active. Drives the port-
    * overlay render so the user sees attachment points. `null` outside
    * draw-edge mode or when the pointer is over empty canvas.

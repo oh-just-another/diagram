@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/network",
-  "version": "0.51.16",
+  "version": "0.51.17",
   "description": "Transport abstractions for collaborative editing \u2014 WebSocket, BroadcastChannel.",
   "type": "module",
   "main": "./dist/index.js",

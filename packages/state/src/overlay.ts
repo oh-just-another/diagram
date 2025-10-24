@@ -172,7 +172,13 @@ export const renderOverlay = (
   options: {
     drawingPreview?: Bounds;
     edgePreview?: LinkPreview;
-    ports?: PortOverlay;
+    /**
+     * Port-dot affordances to paint. A single set (one shape's anchors)
+     * or several sets at once — e.g. the source's link-start dots AND the
+     * target's link-attach dots simultaneously while a link is dragged
+     * from a start anchor.
+     */
+    ports?: PortOverlay | readonly PortOverlay[];
     edgeSelection?: LinkSelection;
     /**
      * Combined world-space bounding box of a multi-selection (or a
@@ -306,12 +312,16 @@ export const renderOverlay = (
     drawLinkPreview(target, from, to, style);
   }
 
-  // 4. Port dots — hover affordance in draw-edge mode.
-  if (options.ports && options.ports.worldPoints.length > 0) {
-    for (let i = 0; i < options.ports.worldPoints.length; i++) {
-      const screen = matrix.applyToPoint(w2s, options.ports.worldPoints[i]!);
-      const active = options.ports.activeIndex === i;
-      drawPortDot(target, screen, style, active, options.ports.role);
+  // 4. Port dots — hover affordance in draw-edge mode. May be one set or
+  //    several (source start-anchors + target attach-anchors at once).
+  if (options.ports) {
+    const portSets = Array.isArray(options.ports) ? options.ports : [options.ports];
+    for (const set of portSets) {
+      for (let i = 0; i < set.worldPoints.length; i++) {
+        const screen = matrix.applyToPoint(w2s, set.worldPoints[i]!);
+        const active = set.activeIndex === i;
+        drawPortDot(target, screen, style, active, set.role);
+      }
     }
   }
 

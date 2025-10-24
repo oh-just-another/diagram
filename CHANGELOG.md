@@ -979,3 +979,6 @@
 
 ## 0.51.15
 - feat(templates): port coordinate systems via PortNode.system (geometry-aware-anchors E)
+
+## 0.51.16
+- fix: don't show link-attach anchors on idle hover in select mode

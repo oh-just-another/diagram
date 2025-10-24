@@ -1,12 +1,8 @@
 import {
-  getAnchorWorld,
   getLink,
   getLinkPath,
   getElement,
   getElementWorldBounds,
-  geometryDefaultAnchorsLocal,
-  getAnchorOutwardNormal,
-  snapExcludedAnchors,
 } from "@oh-just-another/scene";
 import {
   DEFAULT_LOD,
@@ -14,7 +10,8 @@ import {
   renderGrid,
   renderScene,
 } from "@oh-just-another/renderer-core";
-import { renderOverlay } from "../overlay.js";
+import { renderOverlay, type PortOverlay } from "../overlay.js";
+import { anchorOverlayPoints } from "./anchor-points.js";
 import {
   ISOLATION_DIM_OPACITY,
   LARGE_SCENE_HIT_THRESHOLD,
@@ -105,20 +102,58 @@ export const renderEditor = (editor: any): void => {
   if (editor.lassoPreview) overlayOpts.drawingPreview = editor.lassoPreview;
   else if (editor.drawingPreview) overlayOpts.drawingPreview = editor.drawingPreview;
   if (editor.edgePreview) overlayOpts.edgePreview = editor.edgePreview;
-  // 4. Connection anchors (Phase C).
-  //    Two roles: link-start (on selection) and link-attach (on hover/proximity).
+  // Connection anchors. Two roles: link-start (on selection) and link-attach
+  // (on hover/proximity). During a drag started FROM a start-anchor (select
+  // mode, no tool switch) BOTH are shown: the source keeps its start dots
+  // while the target shows its attach dots under the cursor.
   if (editor.mode !== "brush" && editor.mode !== "hand") {
-    let anchorShapeId: ElementId | null = null;
-    let role: "link-start" | "link-attach" = "link-start";
-    let activeAnchorName: string | null = null;
+    const zoom = editor._scene.viewport.zoom || 1;
+    // Build one overlay port-set for a shape. The free outline-attach point
+    // (`outlinePoint`, link-attach only) is appended un-offset — it is the
+    // real landing point. `activeAnchorName` highlights the snap target if it
+    // is one of the named dots.
+    const buildPortSet = (
+      shapeId: ElementId,
+      role: "link-start" | "link-attach",
+      activeAnchorName: string | null,
+      outlinePoint?: Vec2,
+    ): PortOverlay | null => {
+      const shape = getElement(editor._scene, shapeId);
+      if (!shape) return null;
+      const outsetPx = role === "link-start" ? LINK_START_ANCHOR_OUTSET : LINK_ATTACH_ANCHOR_OUTSET;
+      const { names, worldPoints: anchorPts } = anchorOverlayPoints(shape, outsetPx / zoom);
+      const worldPoints: Vec2[] = [...anchorPts];
+      const namedActive = activeAnchorName !== null ? names.indexOf(activeAnchorName) : -1;
+      if (role === "link-attach" && outlinePoint) worldPoints.push(outlinePoint);
+      const activeIndex =
+        namedActive >= 0
+          ? namedActive
+          : role === "link-attach" && outlinePoint
+            ? worldPoints.length - 1
+            : -1;
+      return {
+        worldPoints,
+        ...(activeIndex >= 0 ? { activeIndex } : {}),
+        role,
+      };
+    };
 
-    if (editor.hoveredLinkTarget) {
-      // Proximity snap while a link is being drawn (draw-edge tool OR a
-      // drag started from a link-start anchor). Show the target's
-      // link-attach anchors / outline point.
-      anchorShapeId = editor.hoveredLinkTarget.elementId;
-      role = "link-attach";
-      activeAnchorName = editor.hoveredLinkTarget.activeAnchor;
+    const portSets: PortOverlay[] = [];
+    if (editor.linkDragFromAnchor) {
+      // Drag from a start-anchor: keep the source's start dots visible…
+      const startSet = buildPortSet(editor.linkDragFromAnchor.fromElement, "link-start", null);
+      if (startSet) portSets.push(startSet);
+      // …and show the target's attach dots under the cursor.
+      if (editor.hoveredLinkTarget) {
+        const t = editor.hoveredLinkTarget;
+        const attachSet = buildPortSet(t.elementId, "link-attach", t.activeAnchor, t.outlinePoint);
+        if (attachSet) portSets.push(attachSet);
+      }
+    } else if (editor.hoveredLinkTarget) {
+      // Proximity snap while a link is drawn with the draw-edge tool.
+      const t = editor.hoveredLinkTarget;
+      const attachSet = buildPortSet(t.elementId, "link-attach", t.activeAnchor, t.outlinePoint);
+      if (attachSet) portSets.push(attachSet);
     } else if (
       editor._selection.size === 1 &&
       !editor.panGesture &&
@@ -129,51 +164,13 @@ export const renderEditor = (editor: any): void => {
     ) {
       // Idle selection — show link-start anchors. (link-attach anchors
       // are intentionally NOT shown on plain idle hover — only while a
-      // link is actually being drawn; see hoveredLinkTarget above.)
-      anchorShapeId = [...editor._selection][0]!;
-      role = "link-start";
+      // link is actually being drawn; see the branches above.)
+      const startSet = buildPortSet([...editor._selection][0]!, "link-start", null);
+      if (startSet) portSets.push(startSet);
     }
 
-    if (anchorShapeId) {
-      const shape = getElement(editor._scene, anchorShapeId);
-      if (shape) {
-        const excluded = snapExcludedAnchors(shape);
-        const allLocal = geometryDefaultAnchorsLocal(shape);
-        const names = [...allLocal.keys()].filter((n) => !excluded.has(n));
-        // Push each dot a few screen-px off the edge along its outward
-        // normal (modern-style). Screen-px → world by dividing by zoom.
-        // The free outline point (added below) is NOT offset.
-        const outsetPx = role === "link-start" ? LINK_START_ANCHOR_OUTSET : LINK_ATTACH_ANCHOR_OUTSET;
-        const outsetWorld = outsetPx / (editor._scene.viewport.zoom || 1);
-        const worldPoints: Vec2[] = names.map((name) => {
-          const ref = { kind: "named", name } as const;
-          const p = getAnchorWorld(shape, ref);
-          if (outsetWorld === 0) return p;
-          const n = getAnchorOutwardNormal(shape, ref);
-          return { x: p.x + n.x * outsetWorld, y: p.y + n.y * outsetWorld };
-        });
-        const activeIndex = activeAnchorName !== null ? names.indexOf(activeAnchorName) : -1;
-
-        // If we are snapping to the outline (and not a specific named anchor),
-        // add that point to the overlay.
-        if (role === "link-attach" && editor.hoveredLinkTarget?.outlinePoint) {
-          worldPoints.push(editor.hoveredLinkTarget.outlinePoint);
-        }
-
-        const finalActiveIndex =
-          activeIndex >= 0
-            ? activeIndex
-            : role === "link-attach" && editor.hoveredLinkTarget?.outlinePoint
-              ? worldPoints.length - 1
-              : -1;
-
-        overlayOpts.ports = {
-          worldPoints,
-          ...(finalActiveIndex >= 0 ? { activeIndex: finalActiveIndex } : {}),
-          role,
-        };
-      }
-    }
+    if (portSets.length === 1) overlayOpts.ports = portSets[0]!;
+    else if (portSets.length > 1) overlayOpts.ports = portSets;
   }
   // Group-handle overlay: multi-selection OR a single group-typed
   // shape. Aspect-locked groups also flag the overlay so it draws

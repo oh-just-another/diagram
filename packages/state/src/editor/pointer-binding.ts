@@ -1,16 +1,21 @@
 import {
   findContainerAt,
+  getAnchorWorld,
   getDropZoneWorld,
   getElement,
   getElementWorldBounds,
   updateAnnotation,
 } from "@oh-just-another/scene";
 import { bounds as B } from "@oh-just-another/math";
-import { boundsFromPoints, interpretPressEnd } from "../machine.js";
+import { boundsFromPoints, interpretPressEnd, DRAG_THRESHOLD } from "../machine.js";
 import { fromPointerEvent } from "../dom-events.js";
 import * as Selection from "../selection.js";
 import { getInteractiveHitTester } from "../interactive.js";
+import { anchorOverlayPoints } from "./anchor-points.js";
 import {
+  ANCHOR_DOT_ACTIVE_RADIUS,
+  ANCHOR_START_HIT_SLOP,
+  LINK_START_ANCHOR_OUTSET,
   LONG_PRESS_MAX_MOVEMENT_PX,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -167,6 +172,51 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         const emit = tester(topElement, local);
         if (emit) {
           editor.applyEmit(emit);
+          return;
+        }
+      }
+    }
+
+    // Link-start anchor drag: a press on one of the single selected
+    // element's link-start dots begins an edge FROM that anchor without
+    // switching to the draw-edge tool. Checked before the normal hit-test
+    // / auto-select so the press isn't read as a body drag or lasso. The
+    // dots are the same world points the overlay draws (shared
+    // `anchorOverlayPoints`), so they're grabbable exactly where they
+    // appear. Modifier-clicks fall through to normal (additive) select.
+    if (
+      editor._selection.size === 1 &&
+      editor.mode === "select" &&
+      !data.modifiers?.shift &&
+      !data.modifiers?.meta &&
+      !data.modifiers?.ctrl
+    ) {
+      const selId = [...editor._selection][0];
+      const selShape = getElement(editor._scene, selId);
+      if (selShape) {
+        const zoom = editor._scene.viewport.zoom || 1;
+        const { names, worldPoints } = anchorOverlayPoints(selShape, LINK_START_ANCHOR_OUTSET / zoom);
+        const grab = (ANCHOR_DOT_ACTIVE_RADIUS + ANCHOR_START_HIT_SLOP) / zoom;
+        let bestName: string | null = null;
+        let bestD2 = grab * grab;
+        for (let i = 0; i < worldPoints.length; i++) {
+          const p = worldPoints[i]!;
+          const dx = p.x - worldPoint.x;
+          const dy = p.y - worldPoint.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 <= bestD2) {
+            bestD2 = d2;
+            bestName = names[i]!;
+          }
+        }
+        if (bestName !== null) {
+          editor.cancelLongPress();
+          editor.linkDragFromAnchor = {
+            fromElement: selId,
+            fromWorld: getAnchorWorld(selShape, { kind: "named", name: bestName }),
+            origin: worldPoint,
+            moved: false,
+          };
           return;
         }
       }
@@ -332,6 +382,24 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // sensible drop target.
     editor.lastPointerWorld = worldPoint;
 
+    // Link drag started from a start-anchor (select mode, no tool switch).
+    // Host-managed end-to-end — the machine never saw a POINTER_DOWN for
+    // it. Mirror the draw-edge tool: live link preview from the anchor +
+    // snap-target highlight on the shape under the cursor. Gated on the
+    // same drag threshold so a click that barely moves is not a draw.
+    if (editor.linkDragFromAnchor) {
+      const drag = editor.linkDragFromAnchor;
+      if (!drag.moved) {
+        const dx = worldPoint.x - drag.origin.x;
+        const dy = worldPoint.y - drag.origin.y;
+        if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return;
+        drag.moved = true;
+      }
+      editor.applyLinkPreview(drag.fromElement, drag.fromWorld, worldPoint);
+      editor.updateHoveredLinkTarget(worldPoint);
+      return;
+    }
+
     // Drag-select inside the edited text shape.
     if (editor.editingTextElement !== null && editor.isTextDragging) {
       editor.extendTextSelectionToPoint(worldPoint);
@@ -462,6 +530,32 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
     // Long-press loses its chance the moment the user releases.
     editor.cancelLongPress();
+
+    // Commit a link drag that began from a start-anchor. If it moved past
+    // the threshold, create the edge (landing on the shape under the
+    // cursor, if any); otherwise it was a click on the dot — do nothing
+    // and leave the selection intact. Either way clear the preview/hover.
+    if (editor.linkDragFromAnchor) {
+      const drag = editor.linkDragFromAnchor;
+      editor.linkDragFromAnchor = null;
+      const upData = fromPointerEvent(ev, editor.host);
+      const upWorld = editor.screenToWorld(upData.point);
+      if (drag.moved) {
+        const upHit = editor.hitTest(upWorld);
+        const toElement = upHit?.kind === "element" ? upHit.id : null;
+        editor.applyEmit({
+          type: "CREATE_EDGE",
+          fromElement: drag.fromElement,
+          toElement,
+          fromPoint: drag.fromWorld,
+          toPoint: upWorld,
+        });
+      }
+      editor.edgePreview = null;
+      editor.hoveredLinkTarget = null;
+      editor.notify();
+      return;
+    }
 
     // End an in-canvas text drag-select.
     if (editor.editingTextElement !== null && editor.isTextDragging) {
@@ -601,6 +695,15 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       return;
     }
     editor.cancelLongPress();
+    // Abort a link-from-anchor drag — drop the preview/hover, create
+    // nothing.
+    if (editor.linkDragFromAnchor) {
+      editor.linkDragFromAnchor = null;
+      editor.edgePreview = null;
+      editor.hoveredLinkTarget = null;
+      editor.notify();
+      return;
+    }
     if (editor.brushStroke) {
       editor.cancelBrushStroke();
       return;
