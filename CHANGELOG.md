@@ -982,3 +982,6 @@
 
 ## 0.51.16
 - fix: don't show link-attach anchors on idle hover in select mode
+
+## 0.51.17
+- feat(state): draw a link from a start-anchor without the draw-edge tool

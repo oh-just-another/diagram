@@ -158,13 +158,20 @@ export const renderEditor = (editor: any): void => {
       editor._selection.size === 1 &&
       !editor.panGesture &&
       !editor.pinch.isActive() &&
-      !editor.dragElementId &&
-      !editor.edgePreview && // Don't show start-anchors if we are already drawing a link
+      !editor.gestureTx && // hide only during a real drag (tx opens on first move-patch), not on a bare press
+      !editor.edgePreview && // don't show start-anchors if we are already drawing a link
       !editor.linkEndpointDrag // or dragging an existing endpoint
     ) {
-      // Idle selection — show link-start anchors. (link-attach anchors
-      // are intentionally NOT shown on plain idle hover — only while a
-      // link is actually being drawn; see the branches above.)
+      // Selection at rest — show link-start anchors. A plain press that
+      // hasn't moved past the drag threshold keeps them visible (standard):
+      // `dragElementId` is set on pointerdown as a *potential* drag, so
+      // gating on it hid the dots the instant the element was selected
+      // and they only reappeared on the next interaction. The gesture
+      // transaction (`gestureTx`) opens only on the first move-emitted
+      // patch — i.e. an actual drag — so it is the correct "is the user
+      // really dragging?" signal. (link-attach anchors are intentionally
+      // NOT shown on plain idle hover — only while a link is actually
+      // being drawn; see the branches above.)
       const startSet = buildPortSet([...editor._selection][0]!, "link-start", null);
       if (startSet) portSets.push(startSet);
     }
