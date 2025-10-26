@@ -985,3 +985,6 @@
 
 ## 0.51.17
 - feat(state): draw a link from a start-anchor without the draw-edge tool
+
+## 0.51.18
+- fix: show link-start anchors immediately on select
