@@ -533,8 +533,14 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
     // Commit a link drag that began from a start-anchor. If it moved past
     // the threshold, create the edge (landing on the shape under the
-    // cursor, if any); otherwise it was a click on the dot — do nothing
-    // and leave the selection intact. Either way clear the preview/hover.
+    // cursor, if any). If it did NOT move it was a plain click that merely
+    // landed in the anchor grab halo — fall back to normal click semantics
+    // so the gesture still selects / deselects. Either way clear the
+    // preview/hover.
+    //
+    // A click *exactly on a dot* (narrow radius) spawns a new element + link
+    // in that dot's direction; a click in the wider grab halo hit-tests as
+    // empty canvas → deselect.
     if (editor.linkDragFromAnchor) {
       const drag = editor.linkDragFromAnchor;
       editor.linkDragFromAnchor = null;
@@ -550,6 +556,11 @@ export const bindPointerEvents = (editor: any): (() => void) => {
           fromPoint: drag.fromWorld,
           toPoint: upWorld,
         });
+      } else {
+        const upHit = editor.hitTest(upWorld);
+        if (upHit.kind === "empty") editor.applyEmit({ type: "SELECT_CLEAR" });
+        else if (upHit.kind === "element") editor.applyEmit({ type: "SELECT_REPLACE", id: upHit.id });
+        else if (upHit.kind === "link") editor.applyEmit({ type: "SELECT_EDGE_REPLACE", id: upHit.id });
       }
       editor.edgePreview = null;
       editor.hoveredLinkTarget = null;

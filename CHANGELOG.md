@@ -988,3 +988,6 @@
 
 ## 0.51.18
 - fix: show link-start anchors immediately on select
+
+## 0.51.19
+- fix(test): make start-anchor regression robust + correct fix-commit hash
