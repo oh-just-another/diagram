@@ -2314,6 +2314,11 @@ export class Editor {
     this.drawingPreview = null;
     this.edgePreview = null;
     this.lassoPreview = null;
+    // Abort a host-managed link-from-anchor gesture too — it lives outside
+    // the machine, so POINTER_CANCEL above doesn't touch it. Without this a
+    // gesture left mid-flight would keep its preview after Escape.
+    this.linkDragFromAnchor = null;
+    this.hoveredLinkTarget = null;
     // Esc exits group-isolation if active. The selection that was
     // active inside the group is dropped (Esc reads as a full
     // "back out" — selecting the group is a separate gesture).

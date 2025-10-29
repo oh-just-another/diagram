@@ -991,3 +991,6 @@
 
 ## 0.51.19
 - fix(test): make start-anchor regression robust + correct fix-commit hash
+
+## 0.51.20
+- fix: deselect on first click near a selected element
