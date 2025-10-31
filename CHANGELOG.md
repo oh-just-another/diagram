@@ -994,3 +994,6 @@
 
 ## 0.51.20
 - fix: deselect on first click near a selected element
+
+## 0.51.21
+- fix: Escape clears selection even when the library search box has focus
