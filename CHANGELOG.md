@@ -997,3 +997,6 @@
 
 ## 0.51.21
 - fix: Escape clears selection even when the library search box has focus
+
+## 0.51.22
+- fix(test): correct deselect-near-anchor coordinates (was red in ae9bc29)

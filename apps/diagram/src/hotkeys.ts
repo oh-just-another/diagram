@@ -34,7 +34,18 @@ export const useHotkeys = (editor: Editor | null): void => {
 
     const onKey = (ev: KeyboardEvent): void => {
       const t = ev.target;
-      if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+      const inTextField = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
+      // Text fields own their keystrokes — but Escape is special. It must
+      // still cancel / deselect even when a field (e.g. the library search
+      // box) has focus, otherwise opening the library panel "swallows" the
+      // global Escape and the user can't clear the selection. The library
+      // search handler stops propagation only while its query is non-empty
+      // (first Escape clears the search); once empty the event bubbles here.
+      // Blur the field first so the deselect doesn't leave a stuck caret.
+      if (inTextField) {
+        if (ev.key !== "Escape") return;
+        (t as HTMLElement).blur();
+      }
 
       // First chance: registered actions. Covers everything in the
       // built-in registry (undo/redo, clipboard, selection, z-order,
