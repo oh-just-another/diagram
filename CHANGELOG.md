@@ -1000,3 +1000,6 @@
 
 ## 0.51.22
 - fix(test): correct deselect-near-anchor coordinates (was red in ae9bc29)
+
+## 0.51.23
+- fix: apply the actual Escape-passthrough in hotkeys.ts (was missing from cff0a89)

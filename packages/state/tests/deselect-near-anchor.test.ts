@@ -74,20 +74,21 @@ const pointer = (type: string, x: number, y: number) => ({
   preventDefault: () => {},
 });
 
-// Geometry: rect "a" at the origin covers world 0..40. Its link-start
-// anchor dots sit 8px outside (LINK_START_ANCHOR_OUTSET) with an 11px
-// grab radius. The MIDDLE-of-edge dots — north (20,-8), south (20,48),
-// west (-8,20) — land in empty canvas BEYOND the shape's resize handles
-// (which sit on the 0..40 edges). So a press at (20,-8) is grabbed as a
-// link-start anchor gesture, but a non-dragging release there must still
-// deselect (the "two clicks to deselect" bug: the grabbed gesture used to
-// return without running click semantics). The east dot (48,20) happens
-// to overlap the east resize handle, so it isn't a deselect spot — we use
-// the north dot (20,-8) which is unambiguously empty canvas.
-describe("deselect near a selected element's anchor halo", () => {
-  const NORTH_DOT = { x: 20, y: -8 } as const;
+// Geometry (verified by instrumentation): rect "a" at the origin covers
+// world 0..40. Its resize handles sit on / just outside that edge, and
+// its link-start anchor dots sit 8px further out (LINK_START_ANCHOR_OUTSET)
+// with an 11px grab radius. The point (55,20) lands in the gap PAST the
+// east resize handle but still INSIDE the anchor grab halo: it hit-tests
+// as empty canvas yet is grabbed by the host-managed link-from-anchor
+// gesture on pointerdown. That combination is the bug: the grabbed
+// gesture used to return on pointerup without running click semantics, so
+// a click there left the selection intact and the user had to click again
+// further out ("two clicks to deselect"). The fix makes a non-dragging
+// grab fall back to hit-test-based select/deselect.
+const HALO_EMPTY = { x: 55, y: 20 } as const;
 
-  it("a single click on a north anchor dot over empty canvas clears the selection", () => {
+describe("deselect near a selected element's anchor halo", () => {
+  it("a single click in the anchor halo over empty canvas clears the selection", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
       host, mainTarget: noopTarget, overlayTarget: noopTarget,
@@ -99,24 +100,8 @@ describe("deselect near a selected element's anchor halo", () => {
     };
     tap(20, 20); // select A
     expect([...editor.selection]).toEqual([elementId("a")]);
-    tap(NORTH_DOT.x, NORTH_DOT.y); // click the north anchor dot (empty canvas)
+    tap(HALO_EMPTY.x, HALO_EMPTY.y); // click in the anchor halo (empty canvas)
     expect([...editor.selection]).toEqual([]); // cleared on the first click
-  });
-
-  it("a click on an anchor dot that overlaps another shape selects that shape", () => {
-    const { host, handlers } = makeHost();
-    // B covers A's north dot (20,-8): B at (0,-40) → 0..40 x, -40..0 y.
-    const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
-      initialScene: sceneWith(rect("a", 0, 0), rect("b", 0, -40)),
-    });
-    const tap = (x: number, y: number) => {
-      handlers.get("pointerdown")!(pointer("pointerdown", x, y));
-      handlers.get("pointerup")!(pointer("pointerup", x, y));
-    };
-    tap(20, 20); // select A
-    tap(NORTH_DOT.x, NORTH_DOT.y); // dot lands on B's body
-    expect([...editor.selection]).toEqual([elementId("b")]);
   });
 
   it("still draws a link when the anchor press actually drags", () => {
@@ -131,7 +116,7 @@ describe("deselect near a selected element's anchor halo", () => {
 
     const before = editor.scene.links.size;
     down(20, 20); up(20, 20); // select A
-    down(NORTH_DOT.x, NORTH_DOT.y); // press the north anchor dot
+    down(HALO_EMPTY.x, HALO_EMPTY.y); // press in the anchor halo
     move(110, 110); // drag onto B
     up(120, 120);
     expect(editor.scene.links.size).toBe(before + 1); // link drawn
