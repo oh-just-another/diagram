@@ -143,6 +143,21 @@ export const LINK_ATTACH_ANCHOR_OUTSET = 0;
  * target near the element edge).
  */
 export const ANCHOR_START_HIT_SLOP = 6;
+/**
+ * Narrow hit radius (screen px) for "clicked exactly ON a link-start dot"
+ * — distinct from the wider grab halo (`ANCHOR_DOT_ACTIVE_RADIUS +
+ * ANCHOR_START_HIT_SLOP`) that begins a drag/deselect. A non-dragging
+ * release within this radius of a dot means "create a new element + link";
+ * a release in the surrounding halo but outside this radius deselects. Kept
+ * ≤ the grab radius so the create zone sits inside it.
+ */
+export const ANCHOR_DOT_CLICK_RADIUS = 7;
+/**
+ * World-px gap between a selected element and the new element created by
+ * clicking one of its link-start dots (click a dot → spawn a copy in that
+ * dot's direction, linked). Fixed, independent of element size.
+ */
+export const ANCHOR_CLICK_NEW_ELEMENT_GAP = 40;
 
 /**
  * Debug hit-zone overlay (debug panel → Display → "Show hit-zones").

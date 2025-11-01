@@ -1003,3 +1003,6 @@
 
 ## 0.51.23
 - fix: apply the actual Escape-passthrough in hotkeys.ts (was missing from cff0a89)
+
+## 0.51.24
+- fix(test): use the real grab+empty halo coordinate (55,20); green now
