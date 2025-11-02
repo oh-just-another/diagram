@@ -85,7 +85,7 @@ const pointer = (type: string, x: number, y: number) => ({
 // a click there left the selection intact and the user had to click again
 // further out ("two clicks to deselect"). The fix makes a non-dragging
 // grab fall back to hit-test-based select/deselect.
-const HALO_EMPTY = { x: 55, y: 20 } as const;
+const HALO_EMPTY = { x: 58, y: 20 } as const;
 
 describe("deselect near a selected element's anchor halo", () => {
   it("a single click in the anchor halo over empty canvas clears the selection", () => {

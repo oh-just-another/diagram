@@ -1009,3 +1009,6 @@
 
 ## 0.51.25
 - feat(state): constants for click-anchor-creates-element (step 1/3)
+
+## 0.51.26
+- feat(state): click a link-start dot to create a linked element (standard)
