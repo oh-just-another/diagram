@@ -1006,3 +1006,6 @@
 
 ## 0.51.24
 - fix(test): use the real grab+empty halo coordinate (55,20); green now
+
+## 0.51.25
+- feat(state): constants for click-anchor-creates-element (step 1/3)

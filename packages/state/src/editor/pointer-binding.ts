@@ -14,6 +14,7 @@ import { getInteractiveHitTester } from "../interactive.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
+  ANCHOR_DOT_CLICK_RADIUS,
   ANCHOR_START_HIT_SLOP,
   LINK_START_ANCHOR_OUTSET,
   LONG_PRESS_MAX_MOVEMENT_PX,
@@ -214,6 +215,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
           editor.linkDragFromAnchor = {
             fromElement: selId,
             fromWorld: getAnchorWorld(selShape, { kind: "named", name: bestName }),
+            anchorName: bestName,
             origin: worldPoint,
             moved: false,
           };
@@ -557,10 +559,32 @@ export const bindPointerEvents = (editor: any): (() => void) => {
           toPoint: upWorld,
         });
       } else {
-        const upHit = editor.hitTest(upWorld);
-        if (upHit.kind === "empty") editor.applyEmit({ type: "SELECT_CLEAR" });
-        else if (upHit.kind === "element") editor.applyEmit({ type: "SELECT_REPLACE", id: upHit.id });
-        else if (upHit.kind === "link") editor.applyEmit({ type: "SELECT_EDGE_REPLACE", id: upHit.id });
+        // A click, not a draw. If it landed exactly ON the dot (narrow
+        // radius), spawn a new element + link in that dot's direction.
+        // Otherwise it was a click in the wider grab halo → normal
+        // select / deselect by hit-test.
+        const selShape = getElement(editor._scene, drag.fromElement);
+        const zoom = editor._scene.viewport.zoom || 1;
+        let onDot = false;
+        if (selShape) {
+          const { names, worldPoints } = anchorOverlayPoints(selShape, LINK_START_ANCHOR_OUTSET / zoom);
+          const idx = names.indexOf(drag.anchorName);
+          if (idx >= 0) {
+            const dp = worldPoints[idx]!;
+            const r = ANCHOR_DOT_CLICK_RADIUS / zoom;
+            const dx = dp.x - drag.origin.x;
+            const dy = dp.y - drag.origin.y;
+            onDot = dx * dx + dy * dy <= r * r;
+          }
+        }
+        if (onDot) {
+          editor.createLinkedElementFromAnchor(drag.fromElement, drag.anchorName);
+        } else {
+          const upHit = editor.hitTest(upWorld);
+          if (upHit.kind === "empty") editor.applyEmit({ type: "SELECT_CLEAR" });
+          else if (upHit.kind === "element") editor.applyEmit({ type: "SELECT_REPLACE", id: upHit.id });
+          else if (upHit.kind === "link") editor.applyEmit({ type: "SELECT_EDGE_REPLACE", id: upHit.id });
+        }
       }
       editor.edgePreview = null;
       editor.hoveredLinkTarget = null;
