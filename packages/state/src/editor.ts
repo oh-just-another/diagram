@@ -3403,7 +3403,7 @@ export class Editor {
     }
     const linkTouchesChangedElement = (edge: Link): boolean => {
       for (const ep of [edge.from, edge.to]) {
-        if (ep.kind === "anchor" || ep.kind === "outline") {
+        if (ep.kind !== "point") {
           if (changedElementIds.has(ep.elementId)) return true;
         }
       }
@@ -3690,21 +3690,19 @@ export class Editor {
       gesture: "draw-edge",
     });
 
-    // Prefer a snap candidate that belongs to the press-target shape —
-    // avoids attaching to a neighbouring shape that happens to be even
-    // closer to the release point.
+    // standard contract: dropping on a specific port dot → *fixed* anchor;
+    // dropping anywhere else on the shape (body, or near the edge but not
+    // on a dot) → *floating* against the whole shape, so the connection
+    // re-aims at the partner as either shape moves.
+    // Prefer a candidate that belongs to the press-target shape — avoids
+    // attaching to a neighbouring shape closer to the release point.
     const onTarget = result.all.filter((c) => c.metadata?.elementId === pressTargetElement);
-    const winner =
-      onTarget.find((c) => c.kind === "anchor") ??
-      onTarget.find((c) => c.kind === "outline") ??
-      null;
-    if (winner) return endpointFromSnap(pressTargetElement, winner, shape);
-
-    // No snap fired (release outside threshold of any port / outline) —
-    // fall back to nearest anchor on the target shape so the edge still
-    // sticks to it.
-    const { ref } = findNearestAnchor(shape, worldPoint, snapExcludedAnchors(shape));
-    return { kind: "anchor", elementId: pressTargetElement, anchor: ref };
+    const anchorHit = onTarget.find((c) => c.kind === "anchor");
+    if (anchorHit) {
+      const ep = endpointFromSnap(pressTargetElement, anchorHit, shape);
+      if (ep.kind === "anchor") return ep;
+    }
+    return { kind: "floating", elementId: pressTargetElement };
   }
 
   // Pure body in `./editor/applies/selection.ts`. The wrappers

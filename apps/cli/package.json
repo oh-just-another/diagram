@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/cli",
-  "version": "0.51.27",
+  "version": "0.51.28",
   "description": "Command-line interface for headless diagram rendering.",
   "type": "module",
   "main": "./dist/index.js",

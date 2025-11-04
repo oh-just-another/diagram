@@ -196,6 +196,7 @@ const LinkEndpointZ = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("point"), position: Vec2Z }).strict(),
   z.object({ kind: z.literal("anchor"), elementId: z.string(), anchor: AnchorRefZ }).strict(),
   z.object({ kind: z.literal("outline"), elementId: z.string(), ratio: z.number() }).strict(),
+  z.object({ kind: z.literal("floating"), elementId: z.string() }).strict(),
 ]);
 
 const LinkRoutingZ = z.enum(["straight", "orthogonal", "bezier"]);

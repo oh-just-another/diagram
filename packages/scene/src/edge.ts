@@ -59,7 +59,18 @@ export type LinkEndpoint =
    * when "near a specific edge but not on a port" is what the user
    * actually meant.
    */
-  | { readonly kind: "outline"; readonly elementId: ElementId; readonly ratio: number };
+  | { readonly kind: "outline"; readonly elementId: ElementId; readonly ratio: number }
+  /**
+   * Float against the whole shape (modern-style "connect to object"). No
+   * fixed anchor or ratio is stored — the endpoint's world point is
+   * recomputed every frame as the intersection of the shape's outline
+   * with the ray from the shape's centre toward the *other* endpoint. So
+   * the connection always enters from the side facing its partner and
+   * slides along the perimeter as either shape moves. Set when the user
+   * drops a link on a shape's body (not on a specific port dot); dropping
+   * on a dot yields `anchor` (fixed) instead.
+   */
+  | { readonly kind: "floating"; readonly elementId: ElementId };
 
 /**
  * How to draw the line between an edge's two endpoints.

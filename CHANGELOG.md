@@ -1012,3 +1012,6 @@
 
 ## 0.51.26
 - feat(state): click a link-start dot to create a linked element (standard)
+
+## 0.51.27
+- fix(test): move deselect halo point 55Right58 (was committed red in 2700531)

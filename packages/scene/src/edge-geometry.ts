@@ -1,9 +1,69 @@
 import type { Vec2 } from "@oh-just-another/types";
+import { intersect } from "@oh-just-another/math";
 import { getAnchorWorld } from "./anchors.js";
 import type { Link, LinkEndpoint } from "./edge.js";
-import { getOutlinePoint } from "./outline.js";
+import { getOutlinePoint, getOutlineSampler } from "./outline.js";
+import { getElementWorldBounds, type ElementBase } from "./shape.js";
 import type { Scene } from "./scene.js";
 import { getElement } from "./queries.js";
+
+/**
+ * World-space centre of a shape's bounding box. Origin of the ray used to
+ * resolve a `floating` endpoint.
+ */
+const shapeCentre = (shape: ElementBase): Vec2 => {
+  const b = getElementWorldBounds(shape);
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+};
+
+/**
+ * Number of segments the outline is sampled into when intersecting it with
+ * the floating-endpoint ray. 96 is smooth enough for ellipses at high zoom
+ * without being a hot-loop cost (resolved once per edge per frame).
+ */
+const FLOATING_OUTLINE_SAMPLES = 96;
+
+/**
+ * Resolve a `floating` endpoint: the point where the shape's outline is
+ * crossed by the ray from the shape's centre toward `toward` (the other
+ * endpoint). Slides along the perimeter as either shape moves, always
+ * entering from the side facing the partner.
+ *
+ * Falls back to the centre when the ray is degenerate (partner at the
+ * centre) or the shape has no outline sampler. Picks the crossing nearest
+ * to `toward` so a convex shape connects on its outward-facing side.
+ */
+const floatingOutlineWorld = (shape: ElementBase, toward: Vec2): Vec2 => {
+  const centre = shapeCentre(shape);
+  const dx = toward.x - centre.x;
+  const dy = toward.y - centre.y;
+  if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) return centre;
+
+  const sampler = getOutlineSampler(shape.type);
+  if (!sampler) return centre;
+
+  // Extend the ray well past `toward` so the crossing is always inside the
+  // tested segment even when `toward` sits on or inside the outline.
+  const len = Math.hypot(dx, dy);
+  const far: Vec2 = { x: centre.x + (dx / len) * 1e6, y: centre.y + (dy / len) * 1e6 };
+
+  let best: Vec2 | null = null;
+  let bestDist = Infinity;
+  let prev = getOutlinePoint(shape, 0);
+  for (let i = 1; i <= FLOATING_OUTLINE_SAMPLES; i++) {
+    const cur = getOutlinePoint(shape, i / FLOATING_OUTLINE_SAMPLES);
+    const hit = intersect.segmentSegment(centre, far, prev, cur);
+    if (hit) {
+      const d = Math.hypot(hit.x - toward.x, hit.y - toward.y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = hit;
+      }
+    }
+    prev = cur;
+  }
+  return best ?? centre;
+};
 
 /**
  * Resolve a single `LinkEndpoint` to a world-space point.
@@ -16,12 +76,22 @@ import { getElement } from "./queries.js";
  * Returns `null` when an `anchor` endpoint references a shape id that
  * isn't (or no longer is) in the scene. Callers usually drop the edge
  * from the render pass in that case.
+ *
+ * `toward` is only consulted for `floating` endpoints — it's the world
+ * point of the *other* endpoint, which the floating side aims at. When
+ * omitted, a floating endpoint resolves to the shape's centre (used as a
+ * provisional value before the partner is known; see `getLinkPath`).
  */
-export const getLinkEndpointWorld = (scene: Scene, endpoint: LinkEndpoint): Vec2 | null => {
+export const getLinkEndpointWorld = (
+  scene: Scene,
+  endpoint: LinkEndpoint,
+  toward?: Vec2,
+): Vec2 | null => {
   if (endpoint.kind === "point") return endpoint.position;
   const shape = getElement(scene, endpoint.elementId);
   if (!shape) return null;
   if (endpoint.kind === "anchor") return getAnchorWorld(shape, endpoint.anchor);
+  if (endpoint.kind === "floating") return floatingOutlineWorld(shape, toward ?? shapeCentre(shape));
   return getOutlinePoint(shape, endpoint.ratio);
 };
 
@@ -36,10 +106,22 @@ export const getLinkEndpointWorld = (scene: Scene, endpoint: LinkEndpoint): Vec2
  * an edge with custom bends.
  */
 export const getLinkPath = (scene: Scene, edge: Link): readonly Vec2[] | null => {
-  const from = getLinkEndpointWorld(scene, edge.from);
-  if (!from) return null;
-  const to = getLinkEndpointWorld(scene, edge.to);
-  if (!to) return null;
+  // Two-pass resolve so a `floating` endpoint can aim at its partner.
+  // Pass 1: provisional points (floating → its own centre). Pass 2:
+  // re-resolve floating ends toward the partner's provisional point. When
+  // both ends float, each aims at the other shape's centre — stable.
+  const fromProvisional = getLinkEndpointWorld(scene, edge.from);
+  if (!fromProvisional) return null;
+  const toProvisional = getLinkEndpointWorld(scene, edge.to);
+  if (!toProvisional) return null;
+  const from =
+    edge.from.kind === "floating"
+      ? getLinkEndpointWorld(scene, edge.from, toProvisional) ?? fromProvisional
+      : fromProvisional;
+  const to =
+    edge.to.kind === "floating"
+      ? getLinkEndpointWorld(scene, edge.to, fromProvisional) ?? toProvisional
+      : toProvisional;
 
   const explicitWaypoints = edge.waypoints ?? [];
   const routing = edge.routing ?? "straight";
