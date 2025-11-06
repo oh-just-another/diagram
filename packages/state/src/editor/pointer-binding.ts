@@ -186,17 +186,21 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // `anchorOverlayPoints`), so they're grabbable exactly where they
     // appear. Modifier-clicks fall through to normal (additive) select.
     if (
-      editor._selection.size === 1 &&
       editor.mode === "select" &&
       !data.modifiers?.shift &&
       !data.modifiers?.meta &&
       !data.modifiers?.ctrl
     ) {
-      const selId = [...editor._selection][0];
-      const selShape = getElement(editor._scene, selId);
-      if (selShape) {
+      // Begin a link FROM a start dot of either the single selected element
+      // OR the element the cursor is hovering (standard hover-to-connect) — the
+      // overlay shows dots for both, so both are grabbable. The dots sit
+      // OUTSIDE the shape, so the hovered id comes from the move-tracked
+      // `hoverLinkStartElement`, not a hit-test at the (outside) press point.
+      const tryAnchorDrag = (shapeId: ElementId): boolean => {
+        const shape = getElement(editor._scene, shapeId);
+        if (!shape) return false;
         const zoom = editor._scene.viewport.zoom || 1;
-        const { names, worldPoints } = anchorOverlayPoints(selShape, LINK_START_ANCHOR_OUTSET / zoom);
+        const { names, worldPoints } = anchorOverlayPoints(shape, LINK_START_ANCHOR_OUTSET / zoom);
         const grab = (ANCHOR_DOT_ACTIVE_RADIUS + ANCHOR_START_HIT_SLOP) / zoom;
         let bestName: string | null = null;
         let bestD2 = grab * grab;
@@ -210,18 +214,22 @@ export const bindPointerEvents = (editor: any): (() => void) => {
             bestName = names[i]!;
           }
         }
-        if (bestName !== null) {
-          editor.cancelLongPress();
-          editor.linkDragFromAnchor = {
-            fromElement: selId,
-            fromWorld: getAnchorWorld(selShape, { kind: "named", name: bestName }),
-            anchorName: bestName,
-            origin: worldPoint,
-            moved: false,
-          };
-          return;
-        }
-      }
+        if (bestName === null) return false;
+        editor.cancelLongPress();
+        editor.linkDragFromAnchor = {
+          fromElement: shapeId,
+          fromWorld: getAnchorWorld(shape, { kind: "named", name: bestName }),
+          anchorName: bestName,
+          origin: worldPoint,
+          moved: false,
+        };
+        return true;
+      };
+
+      const selId = editor._selection.size === 1 ? [...editor._selection][0] : null;
+      if (selId && tryAnchorDrag(selId)) return;
+      const hovId = editor.hoverLinkStartElement as ElementId | null;
+      if (hovId && hovId !== selId && tryAnchorDrag(hovId)) return;
     }
 
     const target = editor.hitTest(worldPoint);
@@ -506,6 +514,13 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       const hov = editor.hitTest(worldPoint);
       const directHs = hov?.kind === "element" ? editor._scene.elements.get(hov.id) : undefined;
       editor.hoverAnimatedElement(directHs?.type === "image" && directHs.animationKind ? directHs.id : null);
+      // Hover-to-connect (standard): reveal the hovered shape's link-start dots
+      // in select mode so a link can be dragged from it even unselected.
+      // `worldPoint` drives the proximity-grow of the nearest dot.
+      editor.setHoverLinkStart(
+        editor.mode === "select" && hov?.kind === "element" ? hov.id : null,
+        editor.mode === "select" ? worldPoint : null,
+      );
     }
     editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
   };

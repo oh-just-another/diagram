@@ -153,6 +153,15 @@ export const ANCHOR_START_HIT_SLOP = 6;
  */
 export const ANCHOR_DOT_CLICK_RADIUS = 7;
 /**
+ * Screen-px proximity at which the nearest link-start dot is "grown"
+ * (rendered at `ANCHOR_DOT_ACTIVE_RADIUS` instead of the resting radius)
+ * as the cursor approaches it — the dot's affordance hint, in lieu of
+ * standard's directional arrows. Kept ≥
+ * the grab radius so the dot visibly grows slightly before it becomes
+ * grabbable. Range: 12–28.
+ */
+export const ANCHOR_DOT_HOVER_GROW_RADIUS = 18;
+/**
  * World-px gap between a selected element and the new element created by
  * clicking one of its link-start dots (click a dot → spawn a copy in that
  * dot's direction, linked). Fixed, independent of element size.

@@ -522,6 +522,15 @@ export class Editor {
     outlinePoint?: Vec2 | undefined;
   } | null = null;
   /**
+   * Hover-to-connect (standard): the shape the cursor is idly over in select
+   * mode, whose link-start dots the overlay reveals even when it is not
+   * selected. `hoverCursorWorld` is the last cursor position — the overlay
+   * grows the dot nearest it (`ANCHOR_DOT_HOVER_GROW_RADIUS`). Both reset
+   * to null on press / gesture / leaving the shape.
+   */
+  private hoverLinkStartElement: ElementId | null = null;
+  private hoverCursorWorld: Vec2 | null = null;
+  /**
    * Currently selected edge.
    */
   private _selectedLink: LinkId | null = null;
@@ -1677,6 +1686,20 @@ export class Editor {
   }
 
   /**
+   * Hover-to-connect (standard): record the shape under the idle cursor and
+   * the cursor position so the overlay can reveal that shape's link-start
+   * dots (even unselected) and grow the dot nearest the cursor. Re-renders
+   * when the hovered shape changes, or on every move while one is hovered
+   * (the proximity grow tracks the cursor). Pass `(null, null)` to clear.
+   */
+  setHoverLinkStart(id: ElementId | null, cursor: Vec2 | null): void {
+    const changed = this.hoverLinkStartElement !== id;
+    this.hoverLinkStartElement = id;
+    this.hoverCursorWorld = cursor;
+    if (changed || id !== null) this.notify();
+  }
+
+  /**
    * G4: freeze heavy GIFs after `GIF_AUTOSTOP_MS` of continuous play.
    * Light GIFs (small byte payload) loop forever. Called from the tick
    * before each animation render.
@@ -2324,6 +2347,8 @@ export class Editor {
     // gesture left mid-flight would keep its preview after Escape.
     this.linkDragFromAnchor = null;
     this.hoveredLinkTarget = null;
+    this.hoverLinkStartElement = null;
+    this.hoverCursorWorld = null;
     // Esc exits group-isolation if active. The selection that was
     // active inside the group is dropped (Esc reads as a full
     // "back out" — selecting the group is a separate gesture).

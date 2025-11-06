@@ -13,6 +13,7 @@ import {
 import { renderOverlay, type PortOverlay } from "../overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import {
+  ANCHOR_DOT_HOVER_GROW_RADIUS,
   ISOLATION_DIM_OPACITY,
   LARGE_SCENE_HIT_THRESHOLD,
   LINK_START_ANCHOR_OUTSET,
@@ -155,25 +156,52 @@ export const renderEditor = (editor: any): void => {
       const attachSet = buildPortSet(t.elementId, "link-attach", t.activeAnchor, t.outlinePoint);
       if (attachSet) portSets.push(attachSet);
     } else if (
-      editor._selection.size === 1 &&
       !editor.panGesture &&
-      !editor.pinch.isActive() &&
+      !editor.pinch?.isActive() && // `pinch` may be unset during the constructor's first render
       !editor.gestureTx && // hide only during a real drag (tx opens on first move-patch), not on a bare press
       !editor.edgePreview && // don't show start-anchors if we are already drawing a link
       !editor.linkEndpointDrag // or dragging an existing endpoint
     ) {
-      // Selection at rest — show link-start anchors. A plain press that
-      // hasn't moved past the drag threshold keeps them visible (standard):
-      // `dragElementId` is set on pointerdown as a *potential* drag, so
-      // gating on it hid the dots the instant the element was selected
-      // and they only reappeared on the next interaction. The gesture
-      // transaction (`gestureTx`) opens only on the first move-emitted
-      // patch — i.e. an actual drag — so it is the correct "is the user
-      // really dragging?" signal. (link-attach anchors are intentionally
-      // NOT shown on plain idle hover — only while a link is actually
-      // being drawn; see the branches above.)
-      const startSet = buildPortSet([...editor._selection][0]!, "link-start", null);
-      if (startSet) portSets.push(startSet);
+      // At rest — show link-start anchors for the single selected element
+      // AND for the element the cursor is hovering (standard hover-to-connect),
+      // so a link can be dragged from either. A plain press that hasn't
+      // moved past the drag threshold keeps them visible: `gestureTx`
+      // opens only on the first move-emitted patch — i.e. an actual drag —
+      // so it is the correct "is the user really dragging?" signal.
+      //
+      // Each set grows the dot nearest the cursor
+      // (`ANCHOR_DOT_HOVER_GROW_RADIUS`) by marking it active — the dot's
+      // affordance hint in lieu of standard's directional arrows.
+      const cursor = editor.hoverCursorWorld as Vec2 | null;
+      const startSetFor = (id: ElementId): PortOverlay | null => {
+        const set = buildPortSet(id, "link-start", null);
+        if (!set) return null;
+        if (cursor) {
+          const r = ANCHOR_DOT_HOVER_GROW_RADIUS / zoom;
+          let bestI = -1;
+          let bestD2 = r * r;
+          set.worldPoints.forEach((p, i) => {
+            const dx = p.x - cursor.x;
+            const dy = p.y - cursor.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 <= bestD2) {
+              bestD2 = d2;
+              bestI = i;
+            }
+          });
+          if (bestI >= 0) return { ...set, activeIndex: bestI };
+        }
+        return set;
+      };
+
+      const startIds = new Set<ElementId>();
+      if (editor._selection.size === 1) startIds.add([...editor._selection][0]!);
+      const hovId = editor.hoverLinkStartElement as ElementId | null;
+      if (hovId) startIds.add(hovId);
+      for (const id of startIds) {
+        const set = startSetFor(id);
+        if (set) portSets.push(set);
+      }
     }
 
     if (portSets.length === 1) overlayOpts.ports = portSets[0]!;
