@@ -1247,6 +1247,37 @@
   max-width: 240px;
 }
 
+/* Mini shape-picker shown after a link is dropped on empty canvas. */
+.du-link-drop-menu {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  background: var(--du-panel-bg, #fff);
+  border: 1px solid var(--du-border, #e3e3e6);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+.du-link-drop-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--du-fg, #1c1c1e);
+}
+.du-link-drop-item:hover {
+  background: var(--du-hover, #f0f0f3);
+}
+.du-link-drop-item svg {
+  width: 100%;
+  height: 100%;
+}
+
 .du-sel-menu-row:focus-visible {
   outline: 2px solid var(--du-accent, #5082ff);
   outline-offset: -2px;

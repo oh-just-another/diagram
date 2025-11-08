@@ -1018,3 +1018,6 @@
 
 ## 0.51.28
 - feat(state): floating (whole-shape) link endpoints (standard)
+
+## 0.51.29
+- feat(state): hover-to-connect link dots (standard)

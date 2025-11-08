@@ -531,6 +531,18 @@ export class Editor {
   private hoverLinkStartElement: ElementId | null = null;
   private hoverCursorWorld: Vec2 | null = null;
   /**
+   * When a link is dropped on empty canvas, the edge is created with a
+   * free `point` end and this records where, so the host can pop a
+   * mini shape-picker at that spot (standard). Picking a shape re-points the
+   * end to the new element; dismissing (Esc / click-away) leaves the free
+   * end on the canvas. `null` when no menu is pending.
+   */
+  private pendingLinkDropMenu: {
+    linkId: LinkId;
+    side: "from" | "to";
+    world: Vec2;
+  } | null = null;
+  /**
    * Currently selected edge.
    */
   private _selectedLink: LinkId | null = null;
@@ -2349,6 +2361,7 @@ export class Editor {
     this.hoveredLinkTarget = null;
     this.hoverLinkStartElement = null;
     this.hoverCursorWorld = null;
+    this.pendingLinkDropMenu = null;
     // Esc exits group-isolation if active. The selection that was
     // active inside the group is dropped (Esc reads as a full
     // "back out" — selecting the group is a separate gesture).
@@ -3620,6 +3633,80 @@ export class Editor {
     this._history.push(result.patch);
     this.edgePreview = null;
     this.maybeRevertModeAfterCreate();
+    // Dropped on empty canvas (free `point` end) → offer a shape-picker at
+    // the drop point (standard). The free-ended link stays; picking re-points
+    // it, dismissing keeps it. Only the `to` end is user-dragged here.
+    if (to.kind === "point") {
+      this.pendingLinkDropMenu = { linkId: id, side: "to", world: to.position };
+    }
+    this.notify();
+  }
+
+  /** Pending shape-picker after a link was dropped on empty canvas. */
+  get linkDropMenu(): { linkId: LinkId; side: "from" | "to"; world: Vec2 } | null {
+    return this.pendingLinkDropMenu;
+  }
+
+  /**
+   * Resolve a pending link-drop shape-picker by creating an element from
+   * `factory` centred at the drop point and re-pointing the dropped link
+   * end to float against it. Element + re-point land in one undo step; the
+   * new element becomes the selection. No-op when no menu is pending.
+   */
+  placeShapeAtLinkDrop(factory: (ctx: {
+    id: ElementId;
+    layerId: LayerId;
+    position: Vec2;
+    order: FractionalIndex;
+  }) => Element): void {
+    const pending = this.pendingLinkDropMenu;
+    if (!pending) return;
+    const link = getLink(this._scene, pending.linkId);
+    if (!link) {
+      this.pendingLinkDropMenu = null;
+      this.notify();
+      return;
+    }
+    const newId = newElementId(++this.nextId);
+    const order = orderForTop(
+      [...this._scene.elements.values()]
+        .filter((sh) => sh.layerId === this._activeLayerId)
+        .map((sh) => sh.order),
+    );
+    const built = factory({ id: newId, layerId: this._activeLayerId, position: pending.world, order });
+    // Centre the element on the drop point regardless of how the factory
+    // anchored it at `position`.
+    const wb = getElementWorldBounds(built);
+    const shape = {
+      ...built,
+      position: {
+        x: built.position.x + (pending.world.x - (wb.x + wb.width / 2)),
+        y: built.position.y + (pending.world.y - (wb.y + wb.height / 2)),
+      },
+    } as Element;
+
+    const tx = this._history.transaction();
+    const added = addElement(this._scene, shape);
+    this._scene = added.scene;
+    tx.add(added.patch);
+    const upd = updateLink(this._scene, pending.linkId, (e) => ({
+      ...e,
+      [pending.side]: { kind: "floating", elementId: newId },
+    }));
+    this._scene = upd.scene;
+    tx.add(upd.patch);
+    tx.commit();
+
+    this.pendingLinkDropMenu = null;
+    this._selection = Selection.single(newId);
+    this._selectedLink = null;
+    this.notify();
+  }
+
+  /** Dismiss the link-drop shape-picker, leaving the free-ended link. */
+  dismissLinkDropMenu(): void {
+    if (!this.pendingLinkDropMenu) return;
+    this.pendingLinkDropMenu = null;
     this.notify();
   }
 

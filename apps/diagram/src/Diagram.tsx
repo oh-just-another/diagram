@@ -50,6 +50,7 @@ import {
   MainMenu,
   ResetToContentButton,
   LinkHoverPopup,
+  LinkDropShapeMenu,
   SelectionFloatingPanel,
   TextEditorOverlay,
   ToastHost,
@@ -623,6 +624,7 @@ const EditorShell = ({
         <DiagramSurface style={{ position: "absolute", inset: 0 }} />
         <TextEditorOverlay />
         <LinkHoverPopup />
+        <LinkDropShapeMenu />
         {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
       </div>
 
