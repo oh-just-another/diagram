@@ -31,6 +31,7 @@ import {
   LINK_ATTACH_ANCHOR_FILL,
   LINK_ATTACH_ANCHOR_STROKE,
   LINK_ENDPOINT_HANDLE_DRAW_RADIUS,
+  LINK_MIDPOINT_HANDLE_DRAW_RADIUS,
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_HIT_THRESHOLD,
   LINK_START_ANCHOR_FILL,
@@ -141,6 +142,10 @@ export interface PortOverlay {
 export interface LinkSelection {
   readonly from: Vec2;
   readonly to: Vec2;
+  /** Existing bend points (world) — solid grab handles. */
+  readonly waypoints?: readonly Vec2[];
+  /** Segment midpoints (world) — smaller "add waypoint" handles. */
+  readonly midpoints?: readonly Vec2[];
 }
 
 /**
@@ -325,12 +330,19 @@ export const renderOverlay = (
     }
   }
 
-  // 5. Selected-edge endpoint handles.
+  // 5. Selected-edge endpoint handles + bend-point (waypoint) handles.
   if (options.edgeSelection) {
     const from = matrix.applyToPoint(w2s, options.edgeSelection.from);
     const to = matrix.applyToPoint(w2s, options.edgeSelection.to);
+    // Segment-midpoint "add waypoint" handles (drawn first, under the rest).
+    for (const m of options.edgeSelection.midpoints ?? []) {
+      drawLinkMidpointHandle(target, matrix.applyToPoint(w2s, m), style);
+    }
     drawLinkEndpointHandle(target, from, style);
     drawLinkEndpointHandle(target, to, style);
+    for (const w of options.edgeSelection.waypoints ?? []) {
+      drawLinkEndpointHandle(target, matrix.applyToPoint(w2s, w), style);
+    }
   }
 
   // 6. Peer selection halos — dashed outline around shapes selected
@@ -697,6 +709,23 @@ const drawLinkEndpointHandle = (target: RenderTarget, center: Vec2, style: Overl
   target.ellipse(center.x, center.y, radius, radius);
   target.fill();
   target.stroke();
+};
+
+// Smaller, semi-transparent dot on a segment midpoint — the "drag to add a
+// bend point" affordance. Lighter than a real waypoint handle so it reads
+// as secondary.
+const drawLinkMidpointHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
+  const radius = LINK_MIDPOINT_HANDLE_DRAW_RADIUS;
+  target.setOpacity(0.55);
+  target.setStroke(style.selectionStroke);
+  target.setStrokeWidth(1.5);
+  target.setDashArray(null);
+  target.setFill(style.handleFill);
+  target.beginPath();
+  target.ellipse(center.x, center.y, radius, radius);
+  target.fill();
+  target.stroke();
+  target.setOpacity(1);
 };
 
 const drawPeerSelection = (target: RenderTarget, b: Bounds, color: string): void => {

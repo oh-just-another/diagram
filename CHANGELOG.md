@@ -1021,3 +1021,6 @@
 
 ## 0.51.29
 - feat(state): hover-to-connect link dots (standard)
+
+## 0.51.30
+- feat(state,react-ui): link drop-on-empty Right shape picker (standard)

@@ -65,6 +65,20 @@ export const LINK_ENDPOINT_HANDLE_RADIUS = 11;
 export const LINK_ENDPOINT_HANDLE_DRAW_RADIUS = 6;
 
 /**
+ * Screen-pixel visual radius of a segment-midpoint "add waypoint" handle
+ * on the selected link. Smaller than an endpoint/waypoint handle so the
+ * insert affordance reads as secondary. Range: 3–5.
+ */
+export const LINK_MIDPOINT_HANDLE_DRAW_RADIUS = 4;
+
+/**
+ * Screen-pixel radius within which releasing a dragged waypoint next to an
+ * adjacent path point collapses (removes) it — "drag onto the line to
+ * delete". Kept near the handle hit radius. Range: 8–16.
+ */
+export const WAYPOINT_COLLAPSE_RADIUS = 12;
+
+/**
  * Screen-pixel tolerance for edge hit-testing. Cursors within this
  * distance of an edge polyline segment register a hit. Should stay
  * larger than the typical stroke width but small enough that two

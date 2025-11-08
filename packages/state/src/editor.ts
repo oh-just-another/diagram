@@ -111,7 +111,7 @@ import {
   type HistoryProvider,
   type TransactionHandle,
 } from "@oh-just-another/history";
-import { ANCHOR_CLICK_NEW_ELEMENT_GAP } from "./constants.js";
+import { ANCHOR_CLICK_NEW_ELEMENT_GAP, WAYPOINT_COLLAPSE_RADIUS } from "./constants.js";
 import { fromPointerEvent } from "./dom-events.js";
 import {
   FileDropRegistry,
@@ -568,6 +568,18 @@ export class Editor {
     linkId: LinkId;
     side: "from" | "to";
     toPoint: Vec2;
+  } | null = null;
+  /**
+   * Host-managed waypoint (bend-point) drag of the selected link. `index`
+   * is the position in `edge.waypoints`. `pendingInsert` means the gesture
+   * began on a segment midpoint and will splice a new waypoint on the
+   * first move (so a no-move click adds nothing). Live-mutated through the
+   * gesture transaction → one undo step per drag.
+   */
+  private linkWaypointDrag: {
+    linkId: LinkId;
+    index: number;
+    pendingInsert: boolean;
   } | null = null;
   /** Live lasso bounds during a rubber-band select gesture. */
   private lassoPreview: Bounds | null = null;
@@ -2362,6 +2374,7 @@ export class Editor {
     this.hoverLinkStartElement = null;
     this.hoverCursorWorld = null;
     this.pendingLinkDropMenu = null;
+    this.linkWaypointDrag = null;
     // Esc exits group-isolation if active. The selection that was
     // active inside the group is dropped (Esc reads as a full
     // "back out" — selecting the group is a separate gesture).
@@ -3870,6 +3883,77 @@ export class Editor {
     this.notify();
   }
 
+  /** True while a waypoint of the selected link is being dragged. */
+  get isDraggingWaypoint(): boolean {
+    return this.linkWaypointDrag !== null;
+  }
+
+  /**
+   * Begin a host-managed waypoint drag. `insert` splices a new waypoint at
+   * `index` on the first move (segment-midpoint "add" handle); otherwise an
+   * existing waypoint at `index` is moved. Live-mutated through the gesture
+   * transaction so the whole drag is one undo step.
+   */
+  beginWaypointDrag(linkId: LinkId, index: number, insert: boolean): void {
+    if (!getLink(this._scene, linkId)) return;
+    this.linkWaypointDrag = { linkId, index, pendingInsert: insert };
+  }
+
+  /** Live update of the dragged waypoint to `world`. */
+  updateWaypointDrag(world: Vec2): void {
+    const drag = this.linkWaypointDrag;
+    if (!drag) return;
+    const edge = getLink(this._scene, drag.linkId);
+    if (!edge) return;
+    const wps = [...(edge.waypoints ?? [])];
+    if (drag.pendingInsert) {
+      wps.splice(drag.index, 0, world);
+      drag.pendingInsert = false;
+    } else {
+      if (drag.index < 0 || drag.index >= wps.length) return;
+      wps[drag.index] = world;
+    }
+    const r = updateLink(this._scene, drag.linkId, (e) => ({ ...e, waypoints: wps }));
+    this._scene = r.scene;
+    this.recordGesturePatch(r.patch);
+    this.notify();
+  }
+
+  /**
+   * Finish the waypoint drag. If the dragged waypoint landed within
+   * `WAYPOINT_COLLAPSE_RADIUS` of an adjacent path point, it is removed
+   * (drag-onto-the-line to delete). A no-move insert adds nothing.
+   */
+  endWaypointDrag(): void {
+    const drag = this.linkWaypointDrag;
+    this.linkWaypointDrag = null;
+    if (!drag) return;
+    if (drag.pendingInsert) {
+      // Never moved → it was a click on a midpoint; nothing inserted.
+      this.commitGesture();
+      return;
+    }
+    const edge = getLink(this._scene, drag.linkId);
+    if (edge && edge.waypoints && drag.index >= 0 && drag.index < edge.waypoints.length) {
+      const path = getLinkPath(this._scene, edge);
+      const wp = edge.waypoints[drag.index]!;
+      // Neighbours in the [from, ...waypoints, to] chain: path[index] and
+      // path[index + 2] (path[0] = from, so waypoint i sits at path[i + 1]).
+      // Dropping the waypoint back onto the straight segment between its
+      // neighbours removes the bend ("drag onto the line to delete").
+      const collapse = WAYPOINT_COLLAPSE_RADIUS / (this._scene.viewport.zoom || 1);
+      const a = path?.[drag.index];
+      const b = path?.[drag.index + 2];
+      if (a && b && distanceToSegmentPt(wp, a, b) <= collapse) {
+        const wps = edge.waypoints.filter((_, i) => i !== drag.index);
+        const r = updateLink(this._scene, drag.linkId, (e) => ({ ...e, waypoints: wps }));
+        this._scene = r.scene;
+        this.recordGesturePatch(r.patch);
+      }
+    }
+    this.commitGesture();
+  }
+
   private updateHoveredLinkTarget(worldPoint: Vec2): void {
     const shape = this.acceleratedElementAt(worldPoint);
     if (!shape) {
@@ -4174,6 +4258,17 @@ const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z
  * anchor ref; outline snap → outline ref with the sampled ratio. Falls
  * back to a free point if the metadata isn't recognised.
  */
+/** Distance from point `p` to the finite segment `a`–`b` (world space). */
+function distanceToSegmentPt(p: Vec2, a: Vec2, b: Vec2): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
+}
+
 const endpointFromSnap = (
   elementId: ElementId,
   candidate: SnapCandidate,

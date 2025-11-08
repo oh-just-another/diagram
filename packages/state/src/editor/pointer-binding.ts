@@ -4,6 +4,8 @@ import {
   getDropZoneWorld,
   getElement,
   getElementWorldBounds,
+  getLink,
+  getLinkPath,
   updateAnnotation,
 } from "@oh-just-another/scene";
 import { bounds as B } from "@oh-just-another/math";
@@ -16,6 +18,7 @@ import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   ANCHOR_DOT_CLICK_RADIUS,
   ANCHOR_START_HIT_SLOP,
+  LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_START_ANCHOR_OUTSET,
   LONG_PRESS_MAX_MOVEMENT_PX,
   MAX_ZOOM,
@@ -173,6 +176,52 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         const emit = tester(topElement, local);
         if (emit) {
           editor.applyEmit(emit);
+          return;
+        }
+      }
+    }
+
+    // Bend-point (waypoint) drag on the selected link. A press on an
+    // existing waypoint handle moves it; a press on a segment-midpoint
+    // handle inserts a new waypoint there (on first move). Checked before
+    // the normal hit-test so it isn't read as deselect / new gesture.
+    if (editor.mode === "select" && editor._selectedLink) {
+      const edge = getLink(editor._scene, editor._selectedLink);
+      const path = edge ? getLinkPath(editor._scene, edge) : null;
+      if (edge && path && path.length >= 2) {
+        const zoom = editor._scene.viewport.zoom || 1;
+        const r = LINK_ENDPOINT_HANDLE_RADIUS / zoom;
+        const r2 = r * r;
+        const waypoints: Vec2[] = [...(edge.waypoints ?? [])];
+        const chain: Vec2[] = [path[0]!, ...waypoints, path[path.length - 1]!];
+        const within = (p: Vec2): boolean => {
+          const dx = p.x - worldPoint.x;
+          const dy = p.y - worldPoint.y;
+          return dx * dx + dy * dy <= r2;
+        };
+        // Existing waypoints take priority over the midpoint "add" handles.
+        let grabbed = false;
+        for (let i = 0; i < waypoints.length; i++) {
+          if (within(waypoints[i]!)) {
+            editor.beginWaypointDrag(editor._selectedLink, i, false);
+            grabbed = true;
+            break;
+          }
+        }
+        if (!grabbed) {
+          for (let i = 0; i < chain.length - 1; i++) {
+            const a = chain[i]!;
+            const b = chain[i + 1]!;
+            const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+            if (within(mid)) {
+              editor.beginWaypointDrag(editor._selectedLink, i, true);
+              grabbed = true;
+              break;
+            }
+          }
+        }
+        if (grabbed) {
+          editor.cancelLongPress();
           return;
         }
       }
@@ -392,6 +441,12 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // sensible drop target.
     editor.lastPointerWorld = worldPoint;
 
+    // Host-managed waypoint (bend-point) drag of the selected link.
+    if (editor.isDraggingWaypoint) {
+      editor.updateWaypointDrag(worldPoint);
+      return;
+    }
+
     // Link drag started from a start-anchor (select mode, no tool switch).
     // Host-managed end-to-end — the machine never saw a POINTER_DOWN for
     // it. Mirror the draw-edge tool: live link preview from the anchor +
@@ -547,6 +602,13 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
     // Long-press loses its chance the moment the user releases.
     editor.cancelLongPress();
+
+    // Commit a host-managed waypoint drag (one undo step; collapses if
+    // dropped onto the line).
+    if (editor.isDraggingWaypoint) {
+      editor.endWaypointDrag();
+      return;
+    }
 
     // Commit a link drag that began from a start-anchor. If it moved past
     // the threshold, create the edge (landing on the shape under the
