@@ -1024,3 +1024,6 @@
 
 ## 0.51.30
 - feat(state,react-ui): link drop-on-empty Right shape picker (standard)
+
+## 0.51.31
+- feat(state): link bend points / waypoints editing (standard)

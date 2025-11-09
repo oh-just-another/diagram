@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlignCenter,
   AlignLeft,
@@ -916,30 +916,69 @@ const LinkArrowheadControl = ({
   readonly side: "from" | "to";
 }) => {
   const editor = useDiagramOptional();
+  const [showErd, setShowErd] = useState(false);
   if (!editor) return null;
   const current: ArrowheadStyle = edge.arrowheads?.[side] ?? "none";
-  // Click rotates through the 5 styles. Popover would feel heavy
-  // for a quick toggle — most users want "none" or "triangle".
-  const cycle: ArrowheadStyle[] = ["none", "arrow", "triangle", "diamond", "circle"];
-  const next = (s: ArrowheadStyle): ArrowheadStyle => {
-    const i = cycle.indexOf(s);
-    return cycle[(i + 1) % cycle.length] ?? "none";
-  };
-  return (
+  const pick = (style: ArrowheadStyle) =>
+    editor.updateSelectedLink((e) => ({
+      ...e,
+      arrowheads: { ...(e.arrowheads ?? {}), [side]: style },
+    }));
+  const Option = ({ style }: { readonly style: ArrowheadStyle }) => (
     <button
       type="button"
-      className="du-sel-icon-button"
-      title={`Arrow ${side}: ${current}`}
-      aria-label={`Cycle arrow ${side}`}
-      onClick={() =>
-        editor.updateSelectedLink((e) => ({
-          ...e,
-          arrowheads: { ...(e.arrowheads ?? {}), [side]: next(current) },
-        }))
+      className={`du-arrowhead-option${style === current ? " du-arrowhead-option--active" : ""}`}
+      title={ARROWHEAD_LABELS[style]}
+      aria-label={ARROWHEAD_LABELS[style]}
+      aria-pressed={style === current}
+      onClick={() => pick(style)}
+    >
+      {style === "none" ? (
+        <span className="du-arrowhead-none">∅</span>
+      ) : arrowheadGlyphFamily(style) === "none" ? (
+        <span className="du-arrowhead-erd-label">{ARROWHEAD_LABELS[style].replace(/^ERD /, "")}</span>
+      ) : (
+        <ArrowheadGlyph kind={style} side={side} />
+      )}
+    </button>
+  );
+  return (
+    <Popover
+      trigger={
+        <button
+          type="button"
+          className="du-sel-icon-button"
+          title={`Arrow ${side}: ${ARROWHEAD_LABELS[current]}`}
+          aria-label={`Arrow ${side}`}
+        >
+          <ArrowheadGlyph kind={current} side={side} />
+        </button>
       }
     >
-      <ArrowheadGlyph kind={current} side={side} />
-    </button>
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Arrow {side}</header>
+        <div className="du-arrowhead-grid">
+          {BASIC_ARROWHEADS.map((s) => (
+            <Option key={s} style={s} />
+          ))}
+        </div>
+        <button
+          type="button"
+          className="du-arrowhead-erd-toggle"
+          aria-expanded={showErd}
+          onClick={() => setShowErd((v) => !v)}
+        >
+          {showErd ? "▾" : "▸"} ER diagram
+        </button>
+        {showErd && (
+          <div className="du-arrowhead-grid">
+            {ERD_ARROWHEADS.map((s) => (
+              <Option key={s} style={s} />
+            ))}
+          </div>
+        )}
+      </div>
+    </Popover>
   );
 };
 
@@ -977,6 +1016,74 @@ const RoutingIcon = ({ kind }: { readonly kind: "straight" | "orthogonal" }) => 
   );
 };
 
+// Which compact glyph family renders a given arrowhead style.
+const arrowheadGlyphFamily = (
+  kind: ArrowheadStyle,
+): "open" | "triangle" | "diamond" | "circle" | "none" => {
+  switch (kind) {
+    case "arrow":
+    case "openArrow":
+    case "roundedArrow":
+    case "arcArrow":
+      return "open";
+    case "triangle":
+    case "filledArrow":
+      return "triangle";
+    case "diamond":
+    case "rhombus":
+    case "filledRhombus":
+      return "diamond";
+    case "circle":
+    case "filledCircle":
+      return "circle";
+    default:
+      return "none"; // none + ERD caps (labelled by name in the picker)
+  }
+};
+
+// Picker option sets. ERD caps are gated behind a toggle.
+const BASIC_ARROWHEADS: readonly ArrowheadStyle[] = [
+  "none",
+  "arrow",
+  "openArrow",
+  "roundedArrow",
+  "arcArrow",
+  "filledArrow",
+  "triangle",
+  "circle",
+  "filledCircle",
+  "rhombus",
+  "filledRhombus",
+];
+const ERD_ARROWHEADS: readonly ArrowheadStyle[] = [
+  "erdOne",
+  "erdOnlyOne",
+  "erdMany",
+  "erdOneOrMany",
+  "erdZeroOrOne",
+  "erdZeroOrMany",
+];
+const ARROWHEAD_LABELS: Record<ArrowheadStyle, string> = {
+  none: "None",
+  arrow: "Arrow",
+  openArrow: "Open arrow",
+  roundedArrow: "Rounded arrow",
+  arcArrow: "Arc arrow",
+  triangle: "Triangle",
+  filledArrow: "Filled arrow",
+  circle: "Circle",
+  filledCircle: "Filled circle",
+  diamond: "Diamond",
+  rhombus: "Rhombus",
+  filledRhombus: "Filled rhombus",
+  erdOne: "ERD one",
+  erdOnlyOne: "ERD only one",
+  erdMany: "ERD many",
+  erdOneOrMany: "ERD one or many",
+  erdZeroOrOne: "ERD zero or one",
+  erdZeroOrMany: "ERD zero or many",
+};
+
 const ArrowheadGlyph = ({
   kind,
   side,
@@ -1002,8 +1109,12 @@ const ArrowheadGlyph = ({
       strokeLinecap="round"
     />
   );
+  // Map the full vocabulary onto the four drawable glyph families. ERD caps
+  // have no compact glyph — they fall through to a bare line; the picker
+  // labels them by name so they stay distinguishable.
+  const fam = arrowheadGlyphFamily(kind);
   let head: ReactNode = null;
-  if (kind === "arrow") {
+  if (fam === "open") {
     head = (
       <polyline
         points={
@@ -1018,7 +1129,7 @@ const ArrowheadGlyph = ({
         strokeLinejoin="round"
       />
     );
-  } else if (kind === "triangle") {
+  } else if (fam === "triangle") {
     head = (
       <polygon
         points={
@@ -1029,15 +1140,26 @@ const ArrowheadGlyph = ({
         fill="currentColor"
       />
     );
-  } else if (kind === "diamond") {
+  } else if (fam === "diamond") {
     head = (
       <polygon
         points={`${headCx},${4} ${headCx + (flipped ? -3 : 3)},${7} ${headCx},${10} ${headCx + (flipped ? 3 : -3)},${7}`}
-        fill="currentColor"
+        fill={kind === "filledRhombus" ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth={1.2}
       />
     );
-  } else if (kind === "circle") {
-    head = <circle cx={headCx} cy={7} r={2.2} fill="currentColor" />;
+  } else if (fam === "circle") {
+    head = (
+      <circle
+        cx={headCx}
+        cy={7}
+        r={2.2}
+        fill={kind === "filledCircle" ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth={1.2}
+      />
+    );
   }
   return (
     <svg width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden>

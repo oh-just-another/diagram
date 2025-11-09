@@ -170,7 +170,7 @@ const drawLink = (
   target.stroke();
 
   if (edge.arrowheads) {
-   drawArrowheads(path, edge.arrowheads, target);
+   drawArrowheads(path, edge.arrowheads, target, edge.style.stroke ?? "#000");
   }
  }
  if (edge.label) {
@@ -336,17 +336,18 @@ const drawArrowheads = (
  path: readonly Vec2[],
  heads: LinkArrowheads,
  target: RenderTarget,
+ color: string,
 ): void => {
  const size = heads.size ?? 10;
  if (heads.from && heads.from !== "none") {
   const tip = path[0]!;
   const next = path[1]!;
-  drawArrowhead(tip, next, heads.from, size, target);
+  drawArrowhead(tip, next, heads.from, size, target, color);
  }
  if (heads.to && heads.to !== "none") {
   const tip = path[path.length - 1]!;
   const prev = path[path.length - 2]!;
-  drawArrowhead(tip, prev, heads.to, size, target);
+  drawArrowhead(tip, prev, heads.to, size, target, color);
  }
 };
 
@@ -356,6 +357,7 @@ const drawArrowhead = (
  style: Exclude<LinkArrowheads["from"], "none" | undefined>,
  size: number,
  target: RenderTarget,
+ color: string,
 ): void => {
  // Unit vector pointing away from the tip toward the previous point.
  const dx = fromPoint.x - tip.x;
@@ -366,53 +368,151 @@ const drawArrowhead = (
  // Perpendicular.
  const px = -uy;
  const py = ux;
+ const half = size * 0.5;
 
- target.beginPath();
+ // Point `d` along the line from the tip; `o` adds a perpendicular offset.
+ const along = (d: number): Vec2 => ({ x: tip.x + ux * d, y: tip.y + uy * d });
+ const at = (d: number, o: number): Vec2 => ({
+  x: tip.x + ux * d + px * o,
+  y: tip.y + uy * d + py * o,
+ });
+ const fillShape = () => {
+  target.setFill(color);
+  target.fill();
+  target.setFill(null);
+  target.stroke();
+ };
+
  switch (style) {
-  case "arrow": {
-   // Open arrowhead — two strokes back from the tip.
-   const baseX = tip.x + ux * size;
-   const baseY = tip.y + uy * size;
+  // --- open line heads ---
+  case "arrow":
+  case "openArrow":
+  case "roundedArrow": {
+   const wing = style === "openArrow" ? size * 0.65 : half;
+   const back = style === "openArrow" ? size * 1.1 : size;
+   if (style === "roundedArrow") target.setLineCap("round");
+   target.beginPath();
    target.moveTo(tip.x, tip.y);
-   target.lineTo(baseX + px * size * 0.5, baseY + py * size * 0.5);
+   target.lineTo(tip.x + ux * back + px * wing, tip.y + uy * back + py * wing);
    target.moveTo(tip.x, tip.y);
-   target.lineTo(baseX - px * size * 0.5, baseY - py * size * 0.5);
+   target.lineTo(tip.x + ux * back - px * wing, tip.y + uy * back - py * wing);
+   target.stroke();
+   if (style === "roundedArrow") target.setLineCap("butt");
+   break;
+  }
+  case "arcArrow": {
+   // Open V with a concave back (quadratic curve between the wings).
+   const w1 = at(size, half);
+   const w2 = at(size, -half);
+   const ctrl = along(size * 0.45);
+   target.beginPath();
+   target.moveTo(w1.x, w1.y);
+   target.lineTo(tip.x, tip.y);
+   target.lineTo(w2.x, w2.y);
+   target.quadraticCurveTo(ctrl.x, ctrl.y, w1.x, w1.y);
    target.stroke();
    break;
   }
+
+  // --- triangles ---
   case "triangle": {
-   const baseX = tip.x + ux * size;
-   const baseY = tip.y + uy * size;
+   // Outlined triangle (back-compat).
+   target.beginPath();
    target.moveTo(tip.x, tip.y);
-   target.lineTo(baseX + px * size * 0.5, baseY + py * size * 0.5);
-   target.lineTo(baseX - px * size * 0.5, baseY - py * size * 0.5);
-   target.closePath();
-   // Filled with the stroke colour for visibility on any background.
-   target.setFill(null);
-   target.stroke();
-   break;
-  }
-  case "diamond": {
-   const half = size / 2;
-   const back = { x: tip.x + ux * size, y: tip.y + uy * size };
-   target.moveTo(tip.x, tip.y);
-   target.lineTo(back.x + px * half, back.y + py * half);
-   target.lineTo(tip.x + ux * size * 2, tip.y + uy * size * 2);
-   target.lineTo(back.x - px * half, back.y - py * half);
+   target.lineTo(...xy(at(size, half)));
+   target.lineTo(...xy(at(size, -half)));
    target.closePath();
    target.stroke();
    break;
   }
-  case "circle": {
-   const r = size / 2;
-   const cx = tip.x + ux * r;
-   const cy = tip.y + uy * r;
-   target.ellipse(cx, cy, r, r);
-   target.stroke();
+  case "filledArrow": {
+   target.beginPath();
+   target.moveTo(tip.x, tip.y);
+   target.lineTo(...xy(at(size, half)));
+   target.lineTo(...xy(at(size, -half)));
+   target.closePath();
+   fillShape();
+   break;
+  }
+
+  // --- circles ---
+  case "circle":
+  case "filledCircle": {
+   const r = half;
+   const c = along(r);
+   target.beginPath();
+   target.ellipse(c.x, c.y, r, r);
+   if (style === "filledCircle") fillShape();
+   else target.stroke();
+   break;
+  }
+
+  // --- rhombus / diamond ---
+  case "diamond":
+  case "rhombus":
+  case "filledRhombus": {
+   target.beginPath();
+   target.moveTo(tip.x, tip.y);
+   target.lineTo(...xy(at(size, half)));
+   target.lineTo(...xy(along(size * 2)));
+   target.lineTo(...xy(at(size, -half)));
+   target.closePath();
+   if (style === "filledRhombus") fillShape();
+   else target.stroke();
+   break;
+  }
+
+  // --- ERD crow's-foot notation ---
+  // A "bar" is a perpendicular tick; "many" is the three-pronged foot;
+  // "zero" prefixes a small circle. Distances are measured back from the
+  // tip so the foot opens toward the connected entity.
+  case "erdOne":
+  case "erdOnlyOne":
+  case "erdMany":
+  case "erdOneOrMany":
+  case "erdZeroOrOne":
+  case "erdZeroOrMany": {
+   const wantsMany = style === "erdMany" || style === "erdOneOrMany" || style === "erdZeroOrMany";
+   const wantsZero = style === "erdZeroOrOne" || style === "erdZeroOrMany";
+   const twoBars = style === "erdOnlyOne";
+   const oneBar =
+    style === "erdOne" || style === "erdOnlyOne" || style === "erdOneOrMany" || style === "erdZeroOrOne";
+   // Crow's foot: three lines from a base point back to the tip's spread.
+   if (wantsMany) {
+    const base = along(size);
+    target.beginPath();
+    target.moveTo(base.x, base.y);
+    target.lineTo(tip.x, tip.y);
+    target.moveTo(base.x, base.y);
+    target.lineTo(...xy(at(0, half)));
+    target.moveTo(base.x, base.y);
+    target.lineTo(...xy(at(0, -half)));
+    target.stroke();
+   }
+   // Bars sit just behind the foot (or at the tip for pure one/only-one).
+   const barBase = wantsMany ? size * 1.15 : size * 0.55;
+   const drawBar = (d: number) => {
+    target.beginPath();
+    target.moveTo(...xy(at(d, half)));
+    target.lineTo(...xy(at(d, -half)));
+    target.stroke();
+   };
+   if (oneBar) drawBar(barBase);
+   if (twoBars) drawBar(barBase + size * 0.4);
+   if (wantsZero) {
+    const r = half * 0.6;
+    const c = along(size * (wantsMany ? 1.6 : 1.0) + r);
+    target.beginPath();
+    target.ellipse(c.x, c.y, r, r);
+    target.stroke();
+   }
    break;
   }
  }
 };
+
+// Tuple helper so `target.lineTo(...xy(p))` reads cleanly.
+const xy = (p: Vec2): [number, number] => [p.x, p.y];
 
 const drawLabel = (path: readonly Vec2[], label: LinkLabel, target: RenderTarget): void => {
  const t = label.position ?? 0.5;

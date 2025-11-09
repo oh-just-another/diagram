@@ -87,7 +87,35 @@ export type LinkRouting = "straight" | "orthogonal" | "bezier";
  * Decoration drawn at the end of an edge segment. Renderers map the
  * style to its own primitives (Canvas2D / SVG marker / pdfkit shape).
  */
-export type ArrowheadStyle = "none" | "arrow" | "triangle" | "diamond" | "circle";
+/**
+ * Endpoint cap vocabulary, aligned with standard's connector ends. Grouped:
+ *   - lines:    none, arrow (open V), openArrow (wider open V), roundedArrow
+ *               (open V, round joins), arcArrow (concave back)
+ *   - filled:   filledArrow (solid triangle), triangle (outlined — kept for
+ *               back-compat), circle / filledCircle, rhombus / filledRhombus,
+ *               diamond (outlined rhombus — back-compat alias)
+ *   - ERD:      erdOne, erdOnlyOne, erdMany, erdOneOrMany, erdZeroOrOne,
+ *               erdZeroOrMany (entity-relationship crow's-foot notation)
+ */
+export type ArrowheadStyle =
+  | "none"
+  | "arrow"
+  | "openArrow"
+  | "roundedArrow"
+  | "arcArrow"
+  | "triangle"
+  | "filledArrow"
+  | "circle"
+  | "filledCircle"
+  | "diamond"
+  | "rhombus"
+  | "filledRhombus"
+  | "erdOne"
+  | "erdOnlyOne"
+  | "erdMany"
+  | "erdOneOrMany"
+  | "erdZeroOrOne"
+  | "erdZeroOrMany";
 
 export interface LinkArrowheads {
   readonly from?: ArrowheadStyle;

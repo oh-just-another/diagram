@@ -1247,6 +1247,56 @@
   max-width: 240px;
 }
 
+/* Arrowhead picker popover (per-end). */
+.du-arrowhead-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  margin-top: 4px;
+}
+.du-arrowhead-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 26px;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--du-fg, #1c1c1e);
+}
+.du-arrowhead-option:hover {
+  background: var(--du-hover, #f0f0f3);
+}
+.du-arrowhead-option--active {
+  border-color: var(--du-accent, #5082ff);
+}
+.du-arrowhead-none {
+  font-size: 13px;
+  opacity: 0.6;
+}
+.du-arrowhead-erd-label {
+  font-size: 9px;
+  line-height: 1.05;
+  text-align: center;
+}
+.du-arrowhead-erd-toggle {
+  margin-top: 6px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--du-muted, #6b6b70);
+  padding: 2px 0;
+}
+.du-arrowhead-erd-toggle:hover {
+  color: var(--du-fg, #1c1c1e);
+}
+
 /* Mini shape-picker shown after a link is dropped on empty canvas. */
 .du-link-drop-menu {
   display: flex;

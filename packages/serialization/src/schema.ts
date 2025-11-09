@@ -200,7 +200,26 @@ const LinkEndpointZ = z.discriminatedUnion("kind", [
 ]);
 
 const LinkRoutingZ = z.enum(["straight", "orthogonal", "bezier"]);
-const ArrowheadStyleZ = z.enum(["none", "arrow", "triangle", "diamond", "circle"]);
+const ArrowheadStyleZ = z.enum([
+  "none",
+  "arrow",
+  "openArrow",
+  "roundedArrow",
+  "arcArrow",
+  "triangle",
+  "filledArrow",
+  "circle",
+  "filledCircle",
+  "diamond",
+  "rhombus",
+  "filledRhombus",
+  "erdOne",
+  "erdOnlyOne",
+  "erdMany",
+  "erdOneOrMany",
+  "erdZeroOrOne",
+  "erdZeroOrMany",
+]);
 const LinkArrowheadsZ = z
   .object({
     from: ArrowheadStyleZ.optional(),
