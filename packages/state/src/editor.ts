@@ -530,6 +530,8 @@ export class Editor {
    */
   private hoverLinkStartElement: ElementId | null = null;
   private hoverCursorWorld: Vec2 | null = null;
+  /** Link under the idle cursor (overlay paints a soft hover highlight). */
+  private hoveredLinkId: LinkId | null = null;
   /**
    * When a link is dropped on empty canvas, the edge is created with a
    * free `point` end and this records where, so the host can pop a
@@ -1723,6 +1725,18 @@ export class Editor {
     if (changed || id !== null) this.notify();
   }
 
+  /** Record the link under the idle cursor for the overlay hover highlight. */
+  setHoveredLink(id: LinkId | null): void {
+    if (this.hoveredLinkId === id) return;
+    this.hoveredLinkId = id;
+    this.notify();
+  }
+
+  /** Link currently under the cursor (hover highlight), or null. */
+  get hoveredLink(): LinkId | null {
+    return this.hoveredLinkId;
+  }
+
   /**
    * G4: freeze heavy GIFs after `GIF_AUTOSTOP_MS` of continuous play.
    * Light GIFs (small byte payload) loop forever. Called from the tick
@@ -2373,6 +2387,7 @@ export class Editor {
     this.hoveredLinkTarget = null;
     this.hoverLinkStartElement = null;
     this.hoverCursorWorld = null;
+    this.hoveredLinkId = null;
     this.pendingLinkDropMenu = null;
     this.linkWaypointDrag = null;
     // Esc exits group-isolation if active. The selection that was

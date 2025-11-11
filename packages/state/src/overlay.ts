@@ -186,6 +186,11 @@ export const renderOverlay = (
     ports?: PortOverlay | readonly PortOverlay[];
     edgeSelection?: LinkSelection;
     /**
+     * World-space polyline of the link under the cursor (not selected) —
+     * painted as a soft thick highlight so the user sees it is clickable.
+     */
+    hoveredLinkPath?: readonly Vec2[];
+    /**
      * Combined world-space bounding box of a multi-selection (or a
      * single group-typed shape's children union). When set the overlay
      * paints a 1-px outline and resize handles on top of the per-shape
@@ -328,6 +333,24 @@ export const renderOverlay = (
         drawPortDot(target, screen, style, active, set.role);
       }
     }
+  }
+
+  // 4.5 Hover highlight for the link under the cursor (when not selected).
+  if (options.hoveredLinkPath && options.hoveredLinkPath.length >= 2) {
+    const pts = options.hoveredLinkPath;
+    target.setStroke(style.selectionStroke);
+    target.setStrokeWidth(6);
+    target.setOpacity(0.22);
+    target.setDashArray(null);
+    target.beginPath();
+    const p0 = matrix.applyToPoint(w2s, pts[0]!);
+    target.moveTo(p0.x, p0.y);
+    for (let i = 1; i < pts.length; i++) {
+      const p = matrix.applyToPoint(w2s, pts[i]!);
+      target.lineTo(p.x, p.y);
+    }
+    target.stroke();
+    target.setOpacity(1);
   }
 
   // 5. Selected-edge endpoint handles + bend-point (waypoint) handles.

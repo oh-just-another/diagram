@@ -225,6 +225,15 @@ export const renderEditor = (editor: any): void => {
       fill: "#222",
     };
   }
+  // Hover highlight for the link under the cursor (skip the selected one —
+  // it already shows handles).
+  if (editor.hoveredLinkId && editor.hoveredLinkId !== editor._selectedLink) {
+    const hovEdge = getLink(editor._scene, editor.hoveredLinkId);
+    if (hovEdge) {
+      const hovPath = getLinkPath(editor._scene, hovEdge);
+      if (hovPath && hovPath.length >= 2) overlayOpts.hoveredLinkPath = hovPath;
+    }
+  }
   if (editor._selectedLink) {
     const edge = getLink(editor._scene, editor._selectedLink);
     if (edge) {

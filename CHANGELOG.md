@@ -1027,3 +1027,6 @@
 
 ## 0.51.31
 - feat(state): link bend points / waypoints editing (standard)
+
+## 0.51.32
+- feat: full standard arrowhead vocabulary + ERD caps
