@@ -1030,3 +1030,6 @@
 
 ## 0.51.32
 - feat: full standard arrowhead vocabulary + ERD caps
+
+## 0.51.33
+- feat(state): link body hover highlight (standard)

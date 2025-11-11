@@ -11,8 +11,10 @@ import {
   Group as GroupIcon,
   Italic,
   Link as LinkIcon,
+  Minus,
   MoreHorizontal,
   MoveDown,
+  MoveRight,
   MoveUp,
   Spline,
   Square,
@@ -127,6 +129,7 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
         <LinkStrokeWidthControl edge={edge} />
         <LinkStrokeStyleControl edge={edge} />
         <LinkRoutingControl edge={edge} />
+        <LinkLineKindControl edge={edge} />
         <Divider />
         <LinkArrowheadControl edge={edge} side="from" />
         <LinkArrowheadControl edge={edge} side="to" />
@@ -884,6 +887,23 @@ const LinkStrokeStyleControl = ({ edge }: { readonly edge: Link }) => {
           style: { ...e.style, dashArray },
         }));
       }}
+    />
+  );
+};
+
+const LinkLineKindControl = ({ edge }: { readonly edge: Link }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const value: "line" | "block-arrow" = edge.lineKind ?? "line";
+  return (
+    <SegmentedControl<"line" | "block-arrow">
+      ariaLabel="Link body"
+      value={value}
+      options={[
+        { value: "line", label: "Line", icon: <Minus size={14} strokeWidth={1.75} /> },
+        { value: "block-arrow", label: "Block arrow", icon: <MoveRight size={14} strokeWidth={2.5} /> },
+      ]}
+      onChange={(v) => editor.updateSelectedLink((e) => ({ ...e, lineKind: v }))}
     />
   );
 };
