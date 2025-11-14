@@ -24,6 +24,7 @@ import {
   Trash2,
   Underline,
   Ungroup as UngroupIcon,
+  Waypoints,
 } from "lucide-react";
 import {
   isGroup,
@@ -134,6 +135,7 @@ export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
         <LinkArrowheadControl edge={edge} side="from" />
         <LinkArrowheadControl edge={edge} side="to" />
         <Divider />
+        <LinkAutoRouteControl />
         <LinkDeleteControl />
         <MoreButton />
       </div>
@@ -999,6 +1001,22 @@ const LinkArrowheadControl = ({
         )}
       </div>
     </Popover>
+  );
+};
+
+const LinkAutoRouteControl = () => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  return (
+    <button
+      type="button"
+      className="du-sel-icon-button"
+      title="Route around shapes"
+      aria-label="Route around shapes"
+      onClick={() => editor.autoRouteSelectedLink()}
+    >
+      <Waypoints size={14} strokeWidth={1.75} aria-hidden />
+    </button>
   );
 };
 

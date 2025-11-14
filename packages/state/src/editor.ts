@@ -22,6 +22,7 @@ import {
   getAnchorWorld,
   getAnchorOutwardNormal,
   getAnnotationWorldPosition,
+  elbowRoute,
   getLink,
   getLinkPath,
   getElement,
@@ -111,7 +112,11 @@ import {
   type HistoryProvider,
   type TransactionHandle,
 } from "@oh-just-another/history";
-import { ANCHOR_CLICK_NEW_ELEMENT_GAP, WAYPOINT_COLLAPSE_RADIUS } from "./constants.js";
+import {
+  ANCHOR_CLICK_NEW_ELEMENT_GAP,
+  AUTO_ROUTE_MAX_OBSTACLES,
+  WAYPOINT_COLLAPSE_RADIUS,
+} from "./constants.js";
 import { fromPointerEvent } from "./dom-events.js";
 import {
   FileDropRegistry,
@@ -3967,6 +3972,43 @@ export class Editor {
       }
     }
     this.commitGesture();
+  }
+
+  /**
+   * Route the selected link around other shapes (A* elbow router). Stores
+   * the obstacle-avoiding bends in `waypoints` and switches the link to
+   * orthogonal routing — one undo step. No-op when nothing is selected, the
+   * route can't be found, or the scene has more than
+   * `AUTO_ROUTE_MAX_OBSTACLES` shapes (perf gate, à la standard's snap gate).
+   */
+  autoRouteSelectedLink(): void {
+    const id = this._selectedLink;
+    if (id === null) return;
+    const edge = getLink(this._scene, id);
+    if (!edge) return;
+    const path = getLinkPath(this._scene, edge);
+    if (!path || path.length < 2) return;
+    const from = path[0]!;
+    const to = path[path.length - 1]!;
+
+    // Don't treat the link's own endpoint shapes as obstacles.
+    const exclude = new Set<ElementId>();
+    for (const ep of [edge.from, edge.to]) if (ep.kind !== "point") exclude.add(ep.elementId);
+
+    const obstacles: Bounds[] = [];
+    for (const shape of this._scene.elements.values()) {
+      if (exclude.has(shape.id)) continue;
+      obstacles.push(getElementWorldBounds(shape));
+      if (obstacles.length > AUTO_ROUTE_MAX_OBSTACLES) return; // perf gate
+    }
+
+    const route = elbowRoute(from, to, obstacles);
+    if (!route || route.length < 2) return;
+    const waypoints = route.slice(1, -1); // drop the resolved from / to
+    const r = updateLink(this._scene, id, (e) => ({ ...e, routing: "orthogonal", waypoints }));
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this.notify();
   }
 
   private updateHoveredLinkTarget(worldPoint: Vec2): void {

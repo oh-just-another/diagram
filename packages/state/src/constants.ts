@@ -79,6 +79,13 @@ export const LINK_MIDPOINT_HANDLE_DRAW_RADIUS = 4;
 export const WAYPOINT_COLLAPSE_RADIUS = 12;
 
 /**
+ * Upper bound on how many candidate obstacles the A*-based "route around
+ * shapes" command will consider. Above this the command bails (returns the
+ * link unchanged) rather than spending the A* cost. Range: 100–1000.
+ */
+export const AUTO_ROUTE_MAX_OBSTACLES = 400;
+
+/**
  * Screen-pixel tolerance for edge hit-testing. Cursors within this
  * distance of an edge polyline segment register a hit. Should stay
  * larger than the typical stroke width but small enough that two

@@ -1033,3 +1033,6 @@
 
 ## 0.51.33
 - feat(state): link body hover highlight (standard)
+
+## 0.51.34
+- feat(react-ui): link Line/Block-arrow toggle in toolbar
