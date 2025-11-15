@@ -1036,3 +1036,6 @@
 
 ## 0.51.34
 - feat(react-ui): link Line/Block-arrow toggle in toolbar
+
+## 0.51.35
+- feat(state,react-ui): "route around shapes" command

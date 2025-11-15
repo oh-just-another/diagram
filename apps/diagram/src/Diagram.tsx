@@ -51,6 +51,7 @@ import {
   ResetToContentButton,
   LinkHoverPopup,
   LinkDropShapeMenu,
+  LinkCaptionEditor,
   SelectionFloatingPanel,
   TextEditorOverlay,
   ToastHost,
@@ -625,6 +626,7 @@ const EditorShell = ({
         <TextEditorOverlay />
         <LinkHoverPopup />
         <LinkDropShapeMenu />
+        <LinkCaptionEditor />
         {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
       </div>
 

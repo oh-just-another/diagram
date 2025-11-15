@@ -1893,6 +1893,11 @@ export class Editor {
   get editingTextElement(): ElementId | null {
     return this._editingTextElement;
   }
+  /** Link whose caption is being edited inline (double-click), or null. */
+  private _editingLinkCaption: LinkId | null = null;
+  get editingLinkCaption(): LinkId | null {
+    return this._editingLinkCaption;
+  }
   /**
    * When the `draw-text` tool just placed a shape and opened its
    * editor, this holds that shape's id until the first commit. A
@@ -1963,6 +1968,75 @@ export class Editor {
    * (only one shape at a time). Caret defaults to the end of the text.
    */
   // Pure bodies in `./editor/public/text-edit.ts`.
+  /** Open inline caption editing for a link (double-click). */
+  beginLinkCaptionEdit(id: LinkId): void {
+    if (!getLink(this._scene, id)) return;
+    if (this._editingTextElement !== null) this.commitTextEdit();
+    this._editingLinkCaption = id;
+    this.notify();
+  }
+
+  /**
+   * Commit the link caption. Empty / whitespace text removes the label;
+   * otherwise the label text is set, preserving any existing position /
+   * styling. One undo step. Clears caption-edit mode.
+   */
+  commitLinkCaptionEdit(text: string): void {
+    const id = this._editingLinkCaption;
+    this._editingLinkCaption = null;
+    if (id === null) {
+      this.notify();
+      return;
+    }
+    const edge = getLink(this._scene, id);
+    if (edge) {
+      const trimmed = text.trim();
+      const nextLabel = trimmed === "" ? undefined : { ...(edge.label ?? {}), text: trimmed };
+      const same = (edge.label?.text ?? "") === (nextLabel?.text ?? "");
+      if (!same) {
+        const r = updateLink(this._scene, id, (e) => {
+          const next = { ...e } as typeof e & { label?: unknown };
+          if (nextLabel) next.label = nextLabel;
+          else delete next.label;
+          return next as typeof e;
+        });
+        this._scene = r.scene;
+        this._history.push(r.patch);
+      }
+    }
+    this.notify();
+  }
+
+  /** Cancel link caption editing without changing the label. */
+  cancelLinkCaptionEdit(): void {
+    if (this._editingLinkCaption === null) return;
+    this._editingLinkCaption = null;
+    this.notify();
+  }
+
+  /** World-space anchor point for a link's caption (midpoint of its path). */
+  linkLabelWorld(id: LinkId): Vec2 | null {
+    const edge = getLink(this._scene, id);
+    if (!edge) return null;
+    const path = getLinkPath(this._scene, edge);
+    if (!path || path.length < 2) return null;
+    const t = edge.label?.position ?? 0.5;
+    let total = 0;
+    for (let i = 1; i < path.length; i++) total += distanceTo(path[i - 1]!, path[i]!);
+    let remaining = total * t;
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1]!;
+      const b = path[i]!;
+      const seg = distanceTo(a, b);
+      if (remaining <= seg) {
+        const r = seg === 0 ? 0 : remaining / seg;
+        return { x: a.x + (b.x - a.x) * r, y: a.y + (b.y - a.y) * r };
+      }
+      remaining -= seg;
+    }
+    return path[path.length - 1]!;
+  }
+
   beginTextEdit(id: ElementId): void {
     if (!canBeginTextEdit(this._scene, id, (lid) => this.isLayerLocked(lid))) return;
     // Commit any in-flight edit on a different shape first.
@@ -2393,6 +2467,7 @@ export class Editor {
     this.hoverLinkStartElement = null;
     this.hoverCursorWorld = null;
     this.hoveredLinkId = null;
+    this._editingLinkCaption = null;
     this.pendingLinkDropMenu = null;
     this.linkWaypointDrag = null;
     // Esc exits group-isolation if active. The selection that was
@@ -3136,6 +3211,12 @@ export class Editor {
     //   2) shape with a group ancestor → drill into that group.
     // Lasso / edge ops are not double-click candidates and fall
     // through to the normal single-click handler.
+    // Double-click on a link → edit its caption inline (standard).
+    if (isDouble && clickEffect.type === "SELECT_EDGE_REPLACE") {
+      this._selectedLink = clickEffect.id;
+      this.beginLinkCaptionEdit(clickEffect.id);
+      return true;
+    }
     if (isDouble && (clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE")) {
       const raw = this.acceleratedElementAt(worldPoint);
       if (raw?.type === "text") {

@@ -1297,6 +1297,21 @@
   color: var(--du-fg, #1c1c1e);
 }
 
+/* Inline link caption editor. */
+.du-link-caption-input {
+  min-width: 60px;
+  max-width: 220px;
+  padding: 2px 6px;
+  font: 12px system-ui, sans-serif;
+  text-align: center;
+  color: var(--du-fg, #222);
+  background: var(--du-panel-bg, #fff);
+  border: 1px solid var(--du-accent, #5082ff);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  outline: none;
+}
+
 /* Mini shape-picker shown after a link is dropped on empty canvas. */
 .du-link-drop-menu {
   display: flex;
