@@ -15,6 +15,7 @@ import {
   isGroup,
   type ElementBase,
 } from "@oh-just-another/scene";
+import { computeLinkWorldBounds } from "@oh-just-another/renderer-core";
 import type { Editor } from "@oh-just-another/state";
 import { useDiagramOptional } from "./hooks.js";
 import { PropertyPanel } from "./property-panel.js";
@@ -212,37 +213,14 @@ const computeSelectionWorldBbox = (
     if (s) shapes.push(s);
   }
   if (shapes.length === 0) {
-    // Link-only selection: take the edge's bbox.
+    // Link-only selection: take the edge's resolved world bbox. Uses the
+    // same path-based bounds as the renderer (`computeLinkWorldBounds` →
+    // `getLinkPath`), so every endpoint kind — point / anchor / outline /
+    // floating — and the elbow / curve bends are covered.
     const linkId = editor.selectedLink;
     if (linkId) {
       const edge = editor.scene.links.get(linkId);
-      if (edge) {
-        // Link endpoints might be free points or anchor-bound; for
-        // bound endpoints, resolve via the bound shape's bounds.
-        // Cheap approximation: rect over both endpoints if `point`
-        // kind, else the bound shape's center.
-        const points: { x: number; y: number }[] = [];
-        for (const ep of [edge.from, edge.to]) {
-          if (ep.kind === "point") points.push(ep.position);
-          else if (ep.kind === "anchor") {
-            const s = editor.scene.elements.get(ep.elementId);
-            if (s) {
-              try {
-                const b = getElementWorldBounds(s);
-                points.push({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
-              } catch {
-                /* skip */
-              }
-            }
-          }
-        }
-        if (points.length === 0) return null;
-        const minX = Math.min(...points.map((p) => p.x));
-        const minY = Math.min(...points.map((p) => p.y));
-        const maxX = Math.max(...points.map((p) => p.x));
-        const maxY = Math.max(...points.map((p) => p.y));
-        return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-      }
+      if (edge) return computeLinkWorldBounds(editor.scene, edge);
     }
     return null;
   }

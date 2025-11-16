@@ -1045,3 +1045,6 @@
 
 ## 0.51.37
 - fix(render): present deferred surfaces after paint, not before
+
+## 0.51.38
+- feat(state): default new links to elbow (orthogonal) routing
