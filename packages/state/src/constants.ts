@@ -15,6 +15,17 @@
 export const DEFAULT_SNAP_THRESHOLD = 12;
 
 /**
+ * Routing of a newly created link. `"orthogonal"` (elbow) is the default —
+ * matches the flowchart-style connectors users expect. Set to `"straight"` or
+ * `"bezier"` to change the default for new links; the per-link toolbar can
+ * still switch any individual link afterwards.
+ */
+export const DEFAULT_LINK_ROUTING: import("@oh-just-another/scene").LinkRouting = "orthogonal";
+
+/** Arrowhead on the `to` end of a newly created link. */
+export const DEFAULT_LINK_ARROWHEAD: import("@oh-just-another/scene").ArrowheadStyle = "triangle";
+
+/**
  * Padding ratio added to the world-space viewport rect before passing
  * it to `renderScene` for culling. 0.05 = 5% padding on each side —
  * masks a one-frame pan so shapes near the edge do not flicker.

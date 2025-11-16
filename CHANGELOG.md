@@ -1042,3 +1042,6 @@
 
 ## 0.51.36
 - feat(state,react-ui): inline link caption editing (standard)
+
+## 0.51.37
+- fix(render): present deferred surfaces after paint, not before

@@ -16,6 +16,7 @@ import type {
   LayerId,
   ElementId,
 } from "@oh-just-another/types";
+import { DEFAULT_LINK_ARROWHEAD, DEFAULT_LINK_ROUTING } from "../../constants.js";
 
 /**
  * Defaults used by `buildElementForCreate` — sourced from
@@ -88,8 +89,9 @@ export const buildLinkForCreate = (
     from,
     to,
     order,
+    routing: DEFAULT_LINK_ROUTING,
     style: { ...DEFAULT_EDGE_STYLE },
-    arrowheads: { to: "triangle" },
+    arrowheads: { to: DEFAULT_LINK_ARROWHEAD },
   };
 };
 
