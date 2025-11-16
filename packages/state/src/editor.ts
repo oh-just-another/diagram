@@ -349,6 +349,15 @@ export interface EditorOptions {
    * before shapes.
    */
   readonly backgroundTarget?: RenderTarget;
+  /**
+   * Called synchronously at the END of every render pass, right after the
+   * targets have been painted. Hosts whose surface defers submission
+   * (WebGL2 flush, OffscreenCanvas worker replay) MUST present here — not
+   * on `subscribe()`, which fires on `notify()` BEFORE the rAF-scheduled
+   * paint, leaving the surface one frame behind (shape appears only after
+   * the next mutation, e.g. a pan). No-op surfaces (Canvas2D) can omit it.
+   */
+  readonly onAfterRender?: () => void;
   readonly initialScene: Scene;
   readonly initialMode?: Mode;
   /**
@@ -452,6 +461,7 @@ export class Editor {
   private readonly mainTarget: RenderTarget;
   private readonly overlayTarget: RenderTarget;
   private readonly backgroundTarget: RenderTarget | null;
+  private readonly onAfterRender: (() => void) | null;
   /**
    * Debug: when true the overlay paints every element's mouse hit-zones
    * (handle slop / edge endpoint / edge body). Toggled by the host
@@ -931,6 +941,7 @@ export class Editor {
     this.mainTarget = options.mainTarget;
     this.overlayTarget = options.overlayTarget;
     this.backgroundTarget = options.backgroundTarget ?? null;
+    this.onAfterRender = options.onAfterRender ?? null;
     this._scene = options.initialScene;
     this._history = isHistoryProvider(options.history)
       ? options.history
@@ -4347,6 +4358,9 @@ export class Editor {
     // render pass (the shape-renderer has no options channel).
     setAnimationClock((shape: { readonly id?: unknown }) => this.playbackClock(shape.id as ElementId));
     renderEditor(this);
+    // Present AFTER the paint, on the same tick — deferred-submission
+    // surfaces (WebGL2 / OffscreenCanvas) would otherwise lag one frame.
+    this.onAfterRender?.();
   }
 }
 

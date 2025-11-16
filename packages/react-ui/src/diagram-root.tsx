@@ -140,6 +140,11 @@ export const DiagramRoot = ({
       mainTarget: surface.get("main"),
       overlayTarget: surface.get("overlay"),
       backgroundTarget: surface.get("background"),
+      // Flush deferred backends (WebGL2 / OffscreenCanvas) right after each
+      // paint, on the same rAF tick. Must NOT be a notify-microtask: notify
+      // fires before the rAF render, which would leave the surface one frame
+      // behind.
+      onAfterRender: () => surfaceRef.current?.present(),
       initialScene,
       ...(initialMode !== undefined ? { initialMode } : {}),
       ...(textShaperRef.current ? { textShaper: textShaperRef.current } : {}),
@@ -153,14 +158,9 @@ export const DiagramRoot = ({
     setEditor(e);
     onReady?.(e);
 
-    // Backends with deferred submission (offscreen) need a flush
-    // hook after every Editor frame. Subscribe to `onChange` and
-    // present at the next microtask so Editor's internal rAF has
-    // already painted into the RecordingTargets.
-    const subscribe = e.subscribe(() => {
-      queueMicrotask(() => surfaceRef.current?.present());
-    });
-    unsubscribeRef.current = subscribe;
+    // Deferred backends are flushed via the editor's `onAfterRender` hook
+    // (set in EditorOptions above) so present() runs right after the paint
+    // on the same rAF tick. Present once now for the initial frame.
     surface.present();
 
     const ro = new ResizeObserver(() => {

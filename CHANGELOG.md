@@ -1039,3 +1039,6 @@
 
 ## 0.51.35
 - feat(state,react-ui): "route around shapes" command
+
+## 0.51.36
+- feat(state,react-ui): inline link caption editing (standard)
