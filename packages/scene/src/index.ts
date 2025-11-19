@@ -223,6 +223,19 @@ export {
 
 // Elbow router — A*-based obstacle-avoiding 90° routing.
 export { elbowRoute, type ElbowRouteOptions } from "./elbow-router.js";
+export {
+  type Heading,
+  HEADING_RIGHT,
+  HEADING_DOWN,
+  HEADING_LEFT,
+  HEADING_UP,
+  headingIsHorizontal,
+  headingsEqual,
+  flipHeading,
+  vectorToHeading,
+  headingForPoint,
+  headingForPointFromElement,
+} from "./heading.js";
 
 // Scene-level shape diff (added / removed / modified) for diff
 // visualisation and merge.

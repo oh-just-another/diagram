@@ -1048,3 +1048,6 @@
 
 ## 0.51.38
 - feat(state): default new links to elbow (orthogonal) routing
+
+## 0.51.39
+- fix(react-ui): position link property panel via computeLinkWorldBounds
