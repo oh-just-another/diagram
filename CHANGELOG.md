@@ -1051,3 +1051,6 @@
 
 ## 0.51.39
 - fix(react-ui): position link property panel via computeLinkWorldBounds
+
+## 0.51.40
+- feat(scene): heading module for elbow routing

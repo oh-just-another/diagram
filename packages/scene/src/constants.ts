@@ -33,6 +33,14 @@ export const ELBOW_OBSTACLE_MARGIN = 20;
 export const ELBOW_OBSTACLE_INTERIOR_EPSILON = 0.5;
 
 /**
+ * World-unit "dongle" gap an elbow connector leaves a shape before it is
+ * free to turn — the endpoint is pushed out this far along its heading
+ * (exit side) so the connector always departs perpendicular to the edge
+ * (standard model). Larger → more breathing room before the first bend.
+ */
+export const ELBOW_DONGLE_GAP = 20;
+
+/**
  * --- Roundness (Style.roundness) ---
  *
  * Adaptive radius: pick a fixed radius for shapes bigger than the cutoff,

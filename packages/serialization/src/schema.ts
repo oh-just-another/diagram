@@ -244,6 +244,7 @@ const LinkZ = z
     from: LinkEndpointZ,
     to: LinkEndpointZ,
     waypoints: z.array(Vec2Z).readonly().optional(),
+    routedPoints: z.array(Vec2Z).readonly().optional(),
     routing: LinkRoutingZ.optional(),
     arrowheads: LinkArrowheadsZ.optional(),
     label: LinkLabelZ.optional(),

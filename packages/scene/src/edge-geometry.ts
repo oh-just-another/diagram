@@ -123,14 +123,24 @@ export const getLinkPath = (scene: Scene, edge: Link): readonly Vec2[] | null =>
       ? getLinkEndpointWorld(scene, edge.to, fromProvisional) ?? toProvisional
       : toProvisional;
 
-  const explicitWaypoints = edge.waypoints ?? [];
   const routing = edge.routing ?? "straight";
 
-  if (explicitWaypoints.length > 0 || routing === "straight" || routing === "bezier") {
-    return [from, ...explicitWaypoints, to];
+  if (routing !== "orthogonal") {
+    // straight / bezier: honour user-placed waypoints (free bend points).
+    return [from, ...(edge.waypoints ?? []), to];
   }
 
-  // Orthogonal — modern-style elbow with side-aware stubs.
+  // Orthogonal (elbow): the path is the router's output, stored on the edge
+  // as `routedPoints` (corner points between from and to). Elbow points are
+  // NOT user-placed — segments must stay axis-aligned — so `waypoints` are
+  // ignored here. When no stored route exists yet (freshly created, before
+  // the first reroute pass), fall back to the side-aware heuristic below.
+  if (edge.routedPoints && edge.routedPoints.length > 0) {
+    return [from, ...edge.routedPoints, to];
+  }
+
+  // Orthogonal heuristic fallback — modern-style elbow with side-aware
+  // stubs.
   // When either endpoint is anchored to a named side (top / right /
   // bottom / left), we know which axis the edge should *exit* on,
   // so we add a small stub in that direction before bending toward

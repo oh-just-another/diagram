@@ -148,8 +148,19 @@ export interface Link {
   readonly layerId: LayerId;
   readonly from: LinkEndpoint;
   readonly to: LinkEndpoint;
-  /** Intermediate waypoints in world coordinates. */
+  /**
+   * Free user-placed bend points (world coords), honoured by `straight` /
+   * `bezier` routing. NOT used by `orthogonal` (elbow) — there the path is
+   * the router's output (`routedPoints`); points can't be placed freely.
+   */
   readonly waypoints?: readonly Vec2[];
+  /**
+   * Orthogonal-routing output: the corner points (world coords) between
+   * `from` and `to` produced by the elbow router. Derived state — recomputed
+   * on mutation (move / resize / endpoint / fixedSegments change), not
+   * hand-authored. Empty / absent → renderer falls back to a heuristic elbow.
+   */
+  readonly routedPoints?: readonly Vec2[];
   /** Routing strategy. Default `straight`. */
   readonly routing?: LinkRouting;
   /**
