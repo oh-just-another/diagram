@@ -1057,3 +1057,6 @@
 
 ## 0.51.41
 - feat(scene): orthogonal elbow router + routedPoints (elbow rework 2a/N)
+
+## 0.51.42
+- feat(state): elbow reroute pass + gate free waypoints on elbow (elbow rework 2b/N)
