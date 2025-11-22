@@ -187,7 +187,8 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // the normal hit-test so it isn't read as deselect / new gesture.
     if (editor.mode === "select" && editor._selectedLink) {
       const edge = getLink(editor._scene, editor._selectedLink);
-      const path = edge ? getLinkPath(editor._scene, edge) : null;
+      // Elbow links use segment-drag (separate mechanic), not free waypoints.
+      const path = edge && (edge.routing ?? "straight") !== "orthogonal" ? getLinkPath(editor._scene, edge) : null;
       if (edge && path && path.length >= 2) {
         const zoom = editor._scene.viewport.zoom || 1;
         const r = LINK_ENDPOINT_HANDLE_RADIUS / zoom;

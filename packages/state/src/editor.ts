@@ -23,6 +23,7 @@ import {
   getAnchorOutwardNormal,
   getAnnotationWorldPosition,
   elbowRoute,
+  routeElbowLink,
   getLink,
   getLinkPath,
   getElement,
@@ -4350,8 +4351,52 @@ export class Editor {
     return patch;
   }
 
+  /**
+   * Per-link signature of the inputs that determine an elbow route
+   * (endpoint refs + bound-shape bounds + fixedSegments). When unchanged
+   * between frames the A* route is reused — see `rerouteElbows`.
+   */
+  private readonly elbowRouteSig = new Map<LinkId, string>();
+
+  private elbowSignature(edge: Link): string {
+    const part = (ep: LinkEndpoint): string => {
+      if (ep.kind === "point") return `p:${ep.position.x},${ep.position.y}`;
+      const s = getElement(this._scene, ep.elementId);
+      const b = s ? getElementWorldBounds(s) : null;
+      const ref =
+        ep.kind === "anchor"
+          ? JSON.stringify(ep.anchor)
+          : ep.kind === "outline"
+            ? `o:${ep.ratio}`
+            : "f";
+      return `${ep.kind}:${ep.elementId}:${ref}:${b ? `${b.x},${b.y},${b.width},${b.height}` : "x"}`;
+    };
+    return `${part(edge.from)}|${part(edge.to)}`;
+  }
+
+  /**
+   * Choke-point reroute (standard model): recompute `routedPoints` for
+   * every orthogonal link whose inputs changed since the last pass, and
+   * bake the result into `_scene`. Runs once per frame before paint —
+   * derived state, so no history push / notify (would loop). Cheap when
+   * nothing moved (signature short-circuit).
+   */
+  private rerouteElbows(): void {
+    let next = this._scene;
+    for (const [id, edge] of this._scene.links) {
+      if ((edge.routing ?? "straight") !== "orthogonal") continue;
+      const sig = this.elbowSignature(edge);
+      if (this.elbowRouteSig.get(id) === sig) continue;
+      this.elbowRouteSig.set(id, sig);
+      const routedPoints = routeElbowLink(next, edge);
+      next = updateLink(next, id, (e) => ({ ...e, routedPoints })).scene;
+    }
+    this._scene = next;
+  }
+
   // Pure body in `./editor/render-orchestrator.ts` (~130 lines).
   private render(): void {
+    this.rerouteElbows();
     // Feed the renderer's animation clock our per-shape playback state
     // so paused / reduced-motion GIFs freeze and resumed ones continue
     // from the right frame. Set immediately before the synchronous

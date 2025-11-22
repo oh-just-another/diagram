@@ -1054,3 +1054,6 @@
 
 ## 0.51.40
 - feat(scene): heading module for elbow routing
+
+## 0.51.41
+- feat(scene): orthogonal elbow router + routedPoints (elbow rework 2a/N)

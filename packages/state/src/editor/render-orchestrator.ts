@@ -251,17 +251,25 @@ export const renderEditor = (editor: any): void => {
         // Bend-point handles: existing waypoints (solid) + segment-midpoint
         // "add" handles along the logical [from, ...waypoints, to] chain.
         // Midpoints are hidden during an active waypoint drag to declutter.
-        const waypoints = [...(edge.waypoints ?? [])];
-        const chain: Vec2[] = [from, ...waypoints, to];
-        const midpoints: Vec2[] = [];
-        if (!editor.linkWaypointDrag) {
-          for (let i = 0; i < chain.length - 1; i++) {
-            const a = chain[i]!;
-            const b = chain[i + 1]!;
-            midpoints.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+        // ELBOW (orthogonal) links don't expose free bend handles — their
+        // points are router output, not user-placed (segment-drag editing is
+        // a separate mechanic). Only straight / bezier show free waypoints.
+        const isElbow = (edge.routing ?? "straight") === "orthogonal";
+        if (isElbow) {
+          overlayOpts.edgeSelection = { from, to };
+        } else {
+          const waypoints = [...(edge.waypoints ?? [])];
+          const chain: Vec2[] = [from, ...waypoints, to];
+          const midpoints: Vec2[] = [];
+          if (!editor.linkWaypointDrag) {
+            for (let i = 0; i < chain.length - 1; i++) {
+              const a = chain[i]!;
+              const b = chain[i + 1]!;
+              midpoints.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+            }
           }
+          overlayOpts.edgeSelection = { from, to, waypoints, midpoints };
         }
-        overlayOpts.edgeSelection = { from, to, waypoints, midpoints };
       }
     }
   }
