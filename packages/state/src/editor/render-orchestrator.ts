@@ -256,7 +256,18 @@ export const renderEditor = (editor: any): void => {
         // a separate mechanic). Only straight / bezier show free waypoints.
         const isElbow = (edge.routing ?? "straight") === "orthogonal";
         if (isElbow) {
-          overlayOpts.edgeSelection = { from, to };
+          // Segment handles on interior segments of the routed chain
+          // (k in 1..len-3; the two terminal segments touch from/to and
+          // can't be slid). Hidden during an active segment / endpoint drag.
+          const midpoints: Vec2[] = [];
+          if (!editor.linkSegmentDrag && !editor.linkEndpointDrag) {
+            for (let k = 1; k <= path.length - 3; k++) {
+              const a = path[k]!;
+              const b = path[k + 1]!;
+              midpoints.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+            }
+          }
+          overlayOpts.edgeSelection = { from, to, midpoints };
         } else {
           const waypoints = [...(edge.waypoints ?? [])];
           const chain: Vec2[] = [from, ...waypoints, to];

@@ -51,8 +51,38 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
   const mid =
     routed && routed.length >= 2 ? routed : [dongleA, fallbackCorner(dongleA, dongleB, a.heading), dongleB];
 
-  const full = collapseColinear([from, ...mid, to]);
+  let full = collapseColinear([from, ...mid, to]);
+  full = applyFixedSegments(full, edge.fixedSegments);
   return full.slice(1, -1);
+};
+
+/**
+ * Pin user-dragged interior segments to their stored perpendicular
+ * coordinate. Moving a segment along its perpendicular only stretches the
+ * (perpendicular) neighbour segments — orientation is preserved — so this is
+ * a direct coordinate override, no propagation needed. Terminal segments
+ * (touching `from`/`to`) are skipped: their endpoint can't move.
+ */
+const applyFixedSegments = (
+  full: Vec2[],
+  fixed: Link["fixedSegments"],
+): Vec2[] => {
+  if (!fixed || fixed.length === 0) return full;
+  const out = full.map((p) => ({ ...p }));
+  const lastSeg = out.length - 2; // segment index of the final segment
+  for (const { index, pos } of fixed) {
+    if (index <= 0 || index >= lastSeg) continue; // interior segments only
+    const a = out[index]!;
+    const b = out[index + 1]!;
+    if (Math.abs(a.y - b.y) < 1e-6) {
+      a.y = pos; // horizontal segment → pin its y
+      b.y = pos;
+    } else {
+      a.x = pos; // vertical segment → pin its x
+      b.x = pos;
+    }
+  }
+  return collapseColinear(out);
 };
 
 interface EndInfo {

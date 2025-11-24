@@ -599,6 +599,13 @@ export class Editor {
     index: number;
     pendingInsert: boolean;
   } | null = null;
+  /**
+   * Host-managed elbow segment drag. `index` is the segment in the routed
+   * chain `[from, ...routedPoints, to]`; `axis` is its orientation. Dragging
+   * pins the segment's perpendicular coordinate into `Link.fixedSegments`;
+   * the reroute pass re-flows the rest. One undo step via the gesture tx.
+   */
+  private linkSegmentDrag: { linkId: LinkId; index: number; axis: "h" | "v" } | null = null;
   /** Live lasso bounds during a rubber-band select gesture. */
   private lassoPreview: Bounds | null = null;
 
@@ -2482,6 +2489,7 @@ export class Editor {
     this._editingLinkCaption = null;
     this.pendingLinkDropMenu = null;
     this.linkWaypointDrag = null;
+    this.linkSegmentDrag = null;
     // Esc exits group-isolation if active. The selection that was
     // active inside the group is dropped (Esc reads as a full
     // "back out" — selecting the group is a separate gesture).
@@ -4067,6 +4075,45 @@ export class Editor {
     this.commitGesture();
   }
 
+  /** True while an elbow segment is being dragged. */
+  get isDraggingSegment(): boolean {
+    return this.linkSegmentDrag !== null;
+  }
+
+  /** Begin a host-managed elbow segment drag (interior segment `index`). */
+  beginSegmentDrag(linkId: LinkId, index: number, axis: "h" | "v"): void {
+    if (!getLink(this._scene, linkId)) return;
+    this.linkSegmentDrag = { linkId, index, axis };
+  }
+
+  /**
+   * Move the dragged elbow segment perpendicular to its axis: pin its
+   * perpendicular coordinate to the cursor. The reroute pass re-flows the
+   * rest around the pin (one undo step via the gesture transaction).
+   */
+  updateSegmentDrag(world: Vec2): void {
+    const drag = this.linkSegmentDrag;
+    if (!drag) return;
+    const edge = getLink(this._scene, drag.linkId);
+    if (!edge) return;
+    const pos = drag.axis === "h" ? world.y : world.x;
+    const fixed = [...(edge.fixedSegments ?? [])];
+    const at = fixed.findIndex((f) => f.index === drag.index);
+    if (at >= 0) fixed[at] = { index: drag.index, pos };
+    else fixed.push({ index: drag.index, pos });
+    const r = updateLink(this._scene, drag.linkId, (e) => ({ ...e, fixedSegments: fixed }));
+    this._scene = r.scene;
+    this.recordGesturePatch(r.patch);
+    this.notify();
+  }
+
+  /** Finish the elbow segment drag (commit the gesture as one undo step). */
+  endSegmentDrag(): void {
+    if (!this.linkSegmentDrag) return;
+    this.linkSegmentDrag = null;
+    this.commitGesture();
+  }
+
   /**
    * Route the selected link around other shapes (A* elbow router). Stores
    * the obstacle-avoiding bends in `waypoints` and switches the link to
@@ -4371,7 +4418,7 @@ export class Editor {
             : "f";
       return `${ep.kind}:${ep.elementId}:${ref}:${b ? `${b.x},${b.y},${b.width},${b.height}` : "x"}`;
     };
-    return `${part(edge.from)}|${part(edge.to)}`;
+    return `${part(edge.from)}|${part(edge.to)}|${JSON.stringify(edge.fixedSegments ?? null)}`;
   }
 
   /**

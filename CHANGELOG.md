@@ -1060,3 +1060,6 @@
 
 ## 0.51.42
 - feat(state): elbow reroute pass + gate free waypoints on elbow (elbow rework 2b/N)
+
+## 0.51.43
+- docs(links): changeset + checklist for elbow orthogonal routing (2a/2b)

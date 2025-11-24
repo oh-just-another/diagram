@@ -161,6 +161,14 @@ export interface Link {
    * hand-authored. Empty / absent → renderer falls back to a heuristic elbow.
    */
   readonly routedPoints?: readonly Vec2[];
+  /**
+   * User-pinned elbow segments (standard model). Each entry pins the
+   * perpendicular coordinate (`pos`) of the segment at `index` in the routed
+   * chain `[from, ...routedPoints, to]` (segment `k` connects chain point `k`
+   * and `k+1`). The router re-flows the rest around the pin. Only meaningful
+   * for `orthogonal` routing; `index` refers to interior segments.
+   */
+  readonly fixedSegments?: readonly { readonly index: number; readonly pos: number }[];
   /** Routing strategy. Default `straight`. */
   readonly routing?: LinkRouting;
   /**

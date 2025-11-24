@@ -245,6 +245,10 @@ const LinkZ = z
     to: LinkEndpointZ,
     waypoints: z.array(Vec2Z).readonly().optional(),
     routedPoints: z.array(Vec2Z).readonly().optional(),
+    fixedSegments: z
+      .array(z.object({ index: z.number(), pos: z.number() }).strict())
+      .readonly()
+      .optional(),
     routing: LinkRoutingZ.optional(),
     arrowheads: LinkArrowheadsZ.optional(),
     label: LinkLabelZ.optional(),

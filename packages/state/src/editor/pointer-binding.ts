@@ -181,6 +181,37 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       }
     }
 
+    // Elbow segment drag: a press on an interior segment's midpoint handle
+    // moves the whole segment perpendicular. Checked before the hit-test so
+    // it isn't read as deselect.
+    if (editor.mode === "select" && editor._selectedLink) {
+      const edge = getLink(editor._scene, editor._selectedLink);
+      if (edge && (edge.routing ?? "straight") === "orthogonal") {
+        const path = getLinkPath(editor._scene, edge);
+        if (path && path.length >= 4) {
+          const zoom = editor._scene.viewport.zoom || 1;
+          const r = LINK_ENDPOINT_HANDLE_RADIUS / zoom;
+          const r2 = r * r;
+          // Interior segments: k in 1 .. path.length - 3 (exclude the two
+          // terminal segments touching from / to).
+          for (let k = 1; k <= path.length - 3; k++) {
+            const a = path[k]!;
+            const b = path[k + 1]!;
+            const mx = (a.x + b.x) / 2;
+            const my = (a.y + b.y) / 2;
+            const dx = mx - worldPoint.x;
+            const dy = my - worldPoint.y;
+            if (dx * dx + dy * dy <= r2) {
+              const axis = Math.abs(a.y - b.y) < 1e-6 ? "h" : "v";
+              editor.beginSegmentDrag(editor._selectedLink, k, axis);
+              editor.cancelLongPress();
+              return;
+            }
+          }
+        }
+      }
+    }
+
     // Bend-point (waypoint) drag on the selected link. A press on an
     // existing waypoint handle moves it; a press on a segment-midpoint
     // handle inserts a new waypoint there (on first move). Checked before
@@ -442,6 +473,12 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // sensible drop target.
     editor.lastPointerWorld = worldPoint;
 
+    // Host-managed elbow segment drag of the selected link.
+    if (editor.isDraggingSegment) {
+      editor.updateSegmentDrag(worldPoint);
+      return;
+    }
+
     // Host-managed waypoint (bend-point) drag of the selected link.
     if (editor.isDraggingWaypoint) {
       editor.updateWaypointDrag(worldPoint);
@@ -609,6 +646,12 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
     // Long-press loses its chance the moment the user releases.
     editor.cancelLongPress();
+
+    // Commit a host-managed elbow segment drag (one undo step).
+    if (editor.isDraggingSegment) {
+      editor.endSegmentDrag();
+      return;
+    }
 
     // Commit a host-managed waypoint drag (one undo step; collapses if
     // dropped onto the line).
