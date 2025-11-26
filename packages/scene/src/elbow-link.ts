@@ -63,23 +63,38 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
  * a direct coordinate override, no propagation needed. Terminal segments
  * (touching `from`/`to`) are skipped: their endpoint can't move.
  */
-const applyFixedSegments = (
-  full: Vec2[],
-  fixed: Link["fixedSegments"],
-): Vec2[] => {
+const applyFixedSegments = (full: Vec2[], fixed: Link["fixedSegments"]): Vec2[] => {
   if (!fixed || fixed.length === 0) return full;
   const out = full.map((p) => ({ ...p }));
-  const lastSeg = out.length - 2; // segment index of the final segment
-  for (const { index, pos } of fixed) {
-    if (index <= 0 || index >= lastSeg) continue; // interior segments only
-    const a = out[index]!;
-    const b = out[index + 1]!;
-    if (Math.abs(a.y - b.y) < 1e-6) {
-      a.y = pos; // horizontal segment → pin its y
-      b.y = pos;
+  const lastSeg = out.length - 2; // index of the last segment's start point
+  for (const pin of fixed) {
+    // Re-identify the pinned segment in the fresh route: the interior segment
+    // with the same axis whose centre is closest to the stored `at`. Robust to
+    // index / topology changes that a raw index can't survive.
+    let bestK = -1;
+    let bestD = Infinity;
+    for (let k = 1; k < lastSeg; k++) {
+      const a = out[k]!;
+      const b = out[k + 1]!;
+      const isH = Math.abs(a.y - b.y) < 1e-6;
+      const isV = Math.abs(a.x - b.x) < 1e-6;
+      if ((pin.axis === "h") !== isH || (pin.axis === "v") !== isV) continue;
+      const centre = pin.axis === "h" ? (a.x + b.x) / 2 : (a.y + b.y) / 2;
+      const d = Math.abs(centre - pin.at);
+      if (d < bestD) {
+        bestD = d;
+        bestK = k;
+      }
+    }
+    if (bestK < 0) continue; // no matching segment this route → pin lapses
+    const a = out[bestK]!;
+    const b = out[bestK + 1]!;
+    if (pin.axis === "h") {
+      a.y = pin.pos;
+      b.y = pin.pos;
     } else {
-      a.x = pos; // vertical segment → pin its x
-      b.x = pos;
+      a.x = pin.pos;
+      b.x = pin.pos;
     }
   }
   return collapseColinear(out);

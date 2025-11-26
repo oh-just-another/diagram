@@ -33,6 +33,14 @@ export const ELBOW_OBSTACLE_MARGIN = 20;
 export const ELBOW_OBSTACLE_INTERIOR_EPSILON = 0.5;
 
 /**
+ * Per-turn cost added in the elbow A* so the router minimises BENDS first,
+ * distance second (lexicographic — far larger than any plausible canvas
+ * distance). Keeps routes stable: small shape moves no longer flip between
+ * equal-distance alternatives, and the path takes the fewest corners.
+ */
+export const ELBOW_BEND_PENALTY = 100000;
+
+/**
  * World-unit "dongle" gap an elbow connector leaves a shape before it is
  * free to turn — the endpoint is pushed out this far along its heading
  * (exit side) so the connector always departs perpendicular to the edge

@@ -28,10 +28,12 @@ import type { Bounds, Vec2 } from "@oh-just-another/types";
 import {
   ELBOW_OBSTACLE_MARGIN,
   ELBOW_OBSTACLE_INTERIOR_EPSILON,
+  ELBOW_BEND_PENALTY,
 } from "./constants.js";
 
 const MARGIN = ELBOW_OBSTACLE_MARGIN;
 const INTERIOR_EPS = ELBOW_OBSTACLE_INTERIOR_EPSILON;
+const BEND_PENALTY = ELBOW_BEND_PENALTY;
 
 export interface ElbowRouteOptions {
   /** Pad obstacles by this many world units. Defaults to package constant. */
@@ -77,39 +79,55 @@ export const elbowRoute = (
     Math.abs(xOfIdx(xi) - xOfIdx(endXi)) + Math.abs(yOfIdx(yi) - yOfIdx(endYi));
 
   interface NodeState {
-    readonly key: string;
+    readonly key: string; // "xi,yi" (node identity)
+    readonly skey: string; // "xi,yi,axis" (state identity incl. arrival axis)
     readonly xi: number;
     readonly yi: number;
+    readonly axis: 0 | 1 | 2; // 0 = start (no incoming), 1 = horizontal, 2 = vertical
     readonly g: number; // cost from start
     readonly f: number; // g + h
   }
 
+  const startNode = nodeKey(startXi, startYi);
   const open: NodeState[] = [
-    { key: nodeKey(startXi, startYi), xi: startXi, yi: startYi, g: 0, f: h(startXi, startYi) },
+    { key: startNode, skey: `${startNode},0`, xi: startXi, yi: startYi, axis: 0, g: 0, f: h(startXi, startYi) },
   ];
+  // cameFrom / gScore keyed by *state* (node + arrival axis) so a node can be
+  // reached from both axes with different bend costs.
   const cameFrom = new Map<string, string>();
-  const gScore = new Map<string, number>([[nodeKey(startXi, startYi), 0]]);
+  const gScore = new Map<string, number>([[`${startNode},0`, 0]]);
 
   while (open.length > 0) {
-    // Linear-scan extract-min — fine for the small grids we get
-    // (≤ 12 nodes for one source + one target).
-    open.sort((a, b) => a.f - b.f);
+    // Extract-min with a deterministic tie-break (f, then g, then key) so the
+    // same inputs always yield the same route — no flicker on small moves.
+    open.sort((a, b) => a.f - b.f || a.g - b.g || (a.skey < b.skey ? -1 : 1));
     const cur = open.shift()!;
     if (cur.xi === endXi && cur.yi === endYi) {
-      return reconstructPath(cameFrom, cur.key, xOfIdx, yOfIdx);
+      return reconstructPath(cameFrom, cur.skey, xOfIdx, yOfIdx);
     }
     for (const next of neighbours(cur.xi, cur.yi, xList.length, yList.length)) {
       const fromPt: Vec2 = { x: xOfIdx(cur.xi), y: yOfIdx(cur.yi) };
       const toPt: Vec2 = { x: xOfIdx(next.xi), y: yOfIdx(next.yi) };
       if (segmentCrossesObstacle(fromPt, toPt, inflated)) continue;
+      const stepAxis: 1 | 2 = next.xi !== cur.xi ? 1 : 2;
       const stepCost = Math.abs(fromPt.x - toPt.x) + Math.abs(fromPt.y - toPt.y);
-      const tentative = cur.g + stepCost;
-      const k = nodeKey(next.xi, next.yi);
-      const prev = gScore.get(k);
+      const turn = cur.axis !== 0 && cur.axis !== stepAxis ? BEND_PENALTY : 0;
+      const tentative = cur.g + stepCost + turn;
+      const nodeK = nodeKey(next.xi, next.yi);
+      const stateK = `${nodeK},${stepAxis}`;
+      const prev = gScore.get(stateK);
       if (prev !== undefined && tentative >= prev) continue;
-      gScore.set(k, tentative);
-      cameFrom.set(k, cur.key);
-      open.push({ key: k, xi: next.xi, yi: next.yi, g: tentative, f: tentative + h(next.xi, next.yi) });
+      gScore.set(stateK, tentative);
+      cameFrom.set(stateK, cur.skey);
+      open.push({
+        key: nodeK,
+        skey: stateK,
+        xi: next.xi,
+        yi: next.yi,
+        axis: stepAxis,
+        g: tentative,
+        f: tentative + h(next.xi, next.yi),
+      });
     }
   }
 

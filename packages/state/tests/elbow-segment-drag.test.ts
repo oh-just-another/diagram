@@ -129,4 +129,41 @@ describe("elbow segment drag", () => {
         : newPath.some((p, i) => i > 0 && Math.abs(p.x - wanted) < 1 && Math.abs(newPath[i - 1]!.x - wanted) < 1);
     expect(found).toBe(true);
   });
+
+  it("a pinned segment survives a shape move (matched by axis + position)", () => {
+    const { host, handlers } = makeHost();
+    const editor = new Editor({
+      host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: buildScene(),
+    });
+    editor.forceRender();
+    const path = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
+    const k = 1;
+    const a = path[k]!;
+    const b = path[k + 1]!;
+    const axis: "h" | "v" = Math.abs(a.y - b.y) < 1e-6 ? "h" : "v";
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
+    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
+    const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
+    down(mid.x, mid.y); up(mid.x, mid.y);
+    const target = axis === "h" ? { x: mid.x, y: mid.y + 40 } : { x: mid.x + 40, y: mid.y };
+    down(mid.x, mid.y); move(target.x, target.y); up(target.x, target.y);
+    editor.forceRender();
+    const wanted = axis === "h" ? mid.y + 40 : mid.x + 40;
+
+    // Move shape "a" a little; the pinned segment must stay at `wanted`.
+    editor.setSelection([elementId("a")]);
+    editor.moveSelectionBy({ x: 0, y: -30 });
+    editor.forceRender();
+
+    const link = [...editor.scene.links.values()][0]!;
+    expect(link.fixedSegments && link.fixedSegments.length).toBeGreaterThan(0);
+    const p2 = getLinkPath(editor.scene, link)!;
+    const stillPinned =
+      axis === "h"
+        ? p2.some((p, i) => i > 0 && Math.abs(p.y - wanted) < 1 && Math.abs(p2[i - 1]!.y - wanted) < 1)
+        : p2.some((p, i) => i > 0 && Math.abs(p.x - wanted) < 1 && Math.abs(p2[i - 1]!.x - wanted) < 1);
+    expect(stillPinned).toBe(true);
+    expect(orthogonal(p2)).toBe(true);
+  });
 });

@@ -246,7 +246,7 @@ const LinkZ = z
     waypoints: z.array(Vec2Z).readonly().optional(),
     routedPoints: z.array(Vec2Z).readonly().optional(),
     fixedSegments: z
-      .array(z.object({ index: z.number(), pos: z.number() }).strict())
+      .array(z.object({ axis: z.enum(["h", "v"]), pos: z.number(), at: z.number() }).strict())
       .readonly()
       .optional(),
     routing: LinkRoutingZ.optional(),

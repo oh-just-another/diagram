@@ -162,13 +162,18 @@ export interface Link {
    */
   readonly routedPoints?: readonly Vec2[];
   /**
-   * User-pinned elbow segments (standard model). Each entry pins the
-   * perpendicular coordinate (`pos`) of the segment at `index` in the routed
-   * chain `[from, ...routedPoints, to]` (segment `k` connects chain point `k`
-   * and `k+1`). The router re-flows the rest around the pin. Only meaningful
-   * for `orthogonal` routing; `index` refers to interior segments.
+   * User-pinned elbow segments (standard model). Each entry pins one
+   * interior segment's perpendicular coordinate (`pos`); `axis` is the
+   * segment's orientation and `at` is its centre along its own axis — used to
+   * re-identify the segment after the route re-flows (matching by position
+   * rather than a fragile index survives topology changes on shape move).
+   * Only meaningful for `orthogonal` routing.
    */
-  readonly fixedSegments?: readonly { readonly index: number; readonly pos: number }[];
+  readonly fixedSegments?: readonly {
+    readonly axis: "h" | "v";
+    readonly pos: number;
+    readonly at: number;
+  }[];
   /** Routing strategy. Default `straight`. */
   readonly routing?: LinkRouting;
   /**

@@ -605,7 +605,7 @@ export class Editor {
    * pins the segment's perpendicular coordinate into `Link.fixedSegments`;
    * the reroute pass re-flows the rest. One undo step via the gesture tx.
    */
-  private linkSegmentDrag: { linkId: LinkId; index: number; axis: "h" | "v" } | null = null;
+  private linkSegmentDrag: { linkId: LinkId; axis: "h" | "v"; at: number } | null = null;
   /** Live lasso bounds during a rubber-band select gesture. */
   private lassoPreview: Bounds | null = null;
 
@@ -4080,10 +4080,14 @@ export class Editor {
     return this.linkSegmentDrag !== null;
   }
 
-  /** Begin a host-managed elbow segment drag (interior segment `index`). */
-  beginSegmentDrag(linkId: LinkId, index: number, axis: "h" | "v"): void {
+  /**
+   * Begin a host-managed elbow segment drag. `axis` is the segment's
+   * orientation; `at` is its centre along its own axis (used to re-identify it
+   * across re-routes).
+   */
+  beginSegmentDrag(linkId: LinkId, axis: "h" | "v", at: number): void {
     if (!getLink(this._scene, linkId)) return;
-    this.linkSegmentDrag = { linkId, index, axis };
+    this.linkSegmentDrag = { linkId, axis, at };
   }
 
   /**
@@ -4098,9 +4102,10 @@ export class Editor {
     if (!edge) return;
     const pos = drag.axis === "h" ? world.y : world.x;
     const fixed = [...(edge.fixedSegments ?? [])];
-    const at = fixed.findIndex((f) => f.index === drag.index);
-    if (at >= 0) fixed[at] = { index: drag.index, pos };
-    else fixed.push({ index: drag.index, pos });
+    const entry = { axis: drag.axis, pos, at: drag.at };
+    const at = fixed.findIndex((f) => f.axis === drag.axis && Math.abs(f.at - drag.at) < 0.5);
+    if (at >= 0) fixed[at] = entry;
+    else fixed.push(entry);
     const r = updateLink(this._scene, drag.linkId, (e) => ({ ...e, fixedSegments: fixed }));
     this._scene = r.scene;
     this.recordGesturePatch(r.patch);

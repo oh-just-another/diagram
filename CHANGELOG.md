@@ -1063,3 +1063,6 @@
 
 ## 0.51.43
 - docs(links): changeset + checklist for elbow orthogonal routing (2a/2b)
+
+## 0.51.44
+- feat(state): elbow segment drag (fixedSegments) — elbow rework 3/N

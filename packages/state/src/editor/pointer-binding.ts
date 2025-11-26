@@ -203,7 +203,8 @@ export const bindPointerEvents = (editor: any): (() => void) => {
             const dy = my - worldPoint.y;
             if (dx * dx + dy * dy <= r2) {
               const axis = Math.abs(a.y - b.y) < 1e-6 ? "h" : "v";
-              editor.beginSegmentDrag(editor._selectedLink, k, axis);
+              const at = axis === "h" ? (a.x + b.x) / 2 : (a.y + b.y) / 2;
+              editor.beginSegmentDrag(editor._selectedLink, axis, at);
               editor.cancelLongPress();
               return;
             }
