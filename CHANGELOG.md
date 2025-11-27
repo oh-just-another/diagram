@@ -1066,3 +1066,6 @@
 
 ## 0.51.44
 - feat(state): elbow segment drag (fixedSegments) — elbow rework 3/N
+
+## 0.51.45
+- fix(scene,state): stable elbow routing + pins survive shape moves

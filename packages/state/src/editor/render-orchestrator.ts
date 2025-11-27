@@ -261,7 +261,13 @@ export const renderEditor = (editor: any): void => {
           // can't be slid). Hidden during an active segment / endpoint drag.
           const midpoints: Vec2[] = [];
           if (!editor.linkSegmentDrag && !editor.linkEndpointDrag) {
-            for (let k = 1; k <= path.length - 3; k++) {
+            // Straight elbow → one handle on its single segment (grab to
+            // bend). Routed elbow → handles on interior segments.
+            const segs =
+              path.length === 2
+                ? [0]
+                : Array.from({ length: Math.max(0, path.length - 3) }, (_, i) => i + 1);
+            for (const k of segs) {
               const a = path[k]!;
               const b = path[k + 1]!;
               midpoints.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });

@@ -166,4 +166,48 @@ describe("elbow segment drag", () => {
     expect(stillPinned).toBe(true);
     expect(orthogonal(p2)).toBe(true);
   });
+
+  it("dragging a straight elbow bends it (terminal insert)", () => {
+    // Aligned shapes → the elbow collapses to a single straight segment.
+    let s = emptyScene();
+    s = addElement(s, rect("a", 0, 0)).scene;
+    s = addElement(s, rect("b", 300, 0)).scene; // same y → straight line
+    const e: Link = {
+      id: linkId("L"),
+      layerId: DEFAULT_LAYER_ID,
+      from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "right" } },
+      to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "left" } },
+      routing: "orthogonal",
+      order: orderBetween(null, null),
+      style: { stroke: "#000" },
+    };
+    s = addLink(s, e).scene;
+
+    const { host, handlers } = makeHost();
+    const editor = new Editor({ host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: s });
+    editor.forceRender();
+    const path = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
+    expect(path.length).toBe(2); // straight: [from, to]
+    const a = path[0]!;
+    const b = path[1]!;
+    expect(Math.abs(a.y - b.y) < 1e-6).toBe(true); // horizontal
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+
+    const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
+    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
+    const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
+    down(mid.x, mid.y); up(mid.x, mid.y); // select
+    down(mid.x, mid.y); move(mid.x, mid.y + 60); up(mid.x, mid.y + 60); // bend down
+    editor.forceRender();
+
+    const p2 = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
+    expect(orthogonal(p2)).toBe(true);
+    expect(p2.length).toBeGreaterThan(2); // it bent
+    // A horizontal segment now sits at the dragged y.
+    const wanted = mid.y + 60;
+    const bent = p2.some(
+      (p, i) => i > 0 && Math.abs(p.y - wanted) < 1 && Math.abs(p2[i - 1]!.y - wanted) < 1,
+    );
+    expect(bent).toBe(true);
+  });
 });

@@ -29,6 +29,13 @@ import {
 } from "../constants.js";
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 
+/** Inclusive integer range `[a..b]`; empty when `b < a`. */
+const range = (a: number, b: number): number[] => {
+  const out: number[] = [];
+  for (let i = a; i <= b; i++) out.push(i);
+  return out;
+};
+
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
@@ -188,13 +195,15 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       const edge = getLink(editor._scene, editor._selectedLink);
       if (edge && (edge.routing ?? "straight") === "orthogonal") {
         const path = getLinkPath(editor._scene, edge);
-        if (path && path.length >= 4) {
+        if (path && path.length >= 2) {
           const zoom = editor._scene.viewport.zoom || 1;
           const r = LINK_ENDPOINT_HANDLE_RADIUS / zoom;
           const r2 = r * r;
-          // Interior segments: k in 1 .. path.length - 3 (exclude the two
-          // terminal segments touching from / to).
-          for (let k = 1; k <= path.length - 3; k++) {
+          // Draggable segments: the single segment of a straight elbow (grab
+          // to bend it → insert), or interior segments k in 1..len-3 of a
+          // routed elbow (terminal stubs touch from/to and aren't slid).
+          const segs = path.length === 2 ? [0] : range(1, path.length - 3);
+          for (const k of segs) {
             const a = path[k]!;
             const b = path[k + 1]!;
             const mx = (a.x + b.x) / 2;

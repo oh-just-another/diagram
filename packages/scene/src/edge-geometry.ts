@@ -133,9 +133,11 @@ export const getLinkPath = (scene: Scene, edge: Link): readonly Vec2[] | null =>
   // Orthogonal (elbow): the path is the router's output, stored on the edge
   // as `routedPoints` (corner points between from and to). Elbow points are
   // NOT user-placed — segments must stay axis-aligned — so `waypoints` are
-  // ignored here. When no stored route exists yet (freshly created, before
-  // the first reroute pass), fall back to the side-aware heuristic below.
-  if (edge.routedPoints && edge.routedPoints.length > 0) {
+  // ignored here. A *defined* `routedPoints` means the editor has routed this
+  // edge — use it verbatim (empty = a straight run). Only fall back to the
+  // side-aware heuristic when the edge has never been routed (undefined),
+  // e.g. headless `getLinkPath` outside the editor's reroute pass.
+  if (edge.routedPoints !== undefined) {
     return [from, ...edge.routedPoints, to];
   }
 

@@ -65,9 +65,9 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
  */
 const applyFixedSegments = (full: Vec2[], fixed: Link["fixedSegments"]): Vec2[] => {
   if (!fixed || fixed.length === 0) return full;
-  const out = full.map((p) => ({ ...p }));
-  const lastSeg = out.length - 2; // index of the last segment's start point
+  let out = full.map((p) => ({ ...p }));
   for (const pin of fixed) {
+    const lastSeg = out.length - 2; // index of the last segment's start point
     // Re-identify the pinned segment in the fresh route: the interior segment
     // with the same axis whose centre is closest to the stored `at`. Robust to
     // index / topology changes that a raw index can't survive.
@@ -86,16 +86,32 @@ const applyFixedSegments = (full: Vec2[], fixed: Link["fixedSegments"]): Vec2[] 
         bestK = k;
       }
     }
-    if (bestK < 0) continue; // no matching segment this route → pin lapses
-    const a = out[bestK]!;
-    const b = out[bestK + 1]!;
-    if (pin.axis === "h") {
-      a.y = pin.pos;
-      b.y = pin.pos;
-    } else {
-      a.x = pin.pos;
-      b.x = pin.pos;
+    if (bestK >= 0) {
+      // Slide an existing interior segment to its pinned coordinate.
+      const a = out[bestK]!;
+      const b = out[bestK + 1]!;
+      if (pin.axis === "h") {
+        a.y = pin.pos;
+        b.y = pin.pos;
+      } else {
+        a.x = pin.pos;
+        b.x = pin.pos;
+      }
+      continue;
     }
+    // No matching interior segment. On a straight (2-point) route, the user
+    // grabbed the whole connector to bend it → insert a "staple" jog so a
+    // segment of the pinned axis sits at `pos` (terminal-drag, modern-style).
+    if (out.length === 2) {
+      const p0 = out[0]!;
+      const p1 = out[1]!;
+      out =
+        pin.axis === "h"
+          ? [p0, { x: p0.x, y: pin.pos }, { x: p1.x, y: pin.pos }, p1]
+          : [p0, { x: pin.pos, y: p0.y }, { x: pin.pos, y: p1.y }, p1];
+    }
+    // Multi-segment route with no interior match → pin lapses (interior
+    // segments remain the editable handles).
   }
   return collapseColinear(out);
 };
