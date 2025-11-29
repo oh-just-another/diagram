@@ -1072,3 +1072,6 @@
 
 ## 0.51.46
 - feat(scene,state): bend straight elbow via terminal drag (elbow rework 4/N)
+
+## 0.51.47
+- feat(scene,state): elbow live preview while drawing a connector

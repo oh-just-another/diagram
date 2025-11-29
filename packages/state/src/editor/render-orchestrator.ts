@@ -13,7 +13,9 @@ import {
 import { renderOverlay, type PortOverlay } from "../overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import {
+  ANCHOR_DOT_ACTIVE_RADIUS,
   ANCHOR_DOT_HOVER_GROW_RADIUS,
+  ANCHOR_START_HIT_SLOP,
   ISOLATION_DIM_OPACITY,
   LARGE_SCENE_HIT_THRESHOLD,
   LINK_START_ANCHOR_OUTSET,
@@ -162,45 +164,45 @@ export const renderEditor = (editor: any): void => {
       !editor.edgePreview && // don't show start-anchors if we are already drawing a link
       !editor.linkEndpointDrag // or dragging an existing endpoint
     ) {
-      // At rest — show link-start anchors for the single selected element
-      // AND for the element the cursor is hovering (standard hover-to-connect),
-      // so a link can be dragged from either. A plain press that hasn't
-      // moved past the drag threshold keeps them visible: `gestureTx`
-      // opens only on the first move-emitted patch — i.e. an actual drag —
-      // so it is the correct "is the user really dragging?" signal.
-      //
-      // Each set grows the dot nearest the cursor
-      // (`ANCHOR_DOT_HOVER_GROW_RADIUS`) by marking it active — the dot's
-      // affordance hint in lieu of standard's directional arrows.
+      // At rest — show link-start anchors for the single selected element, and
+      // only while the cursor is over it or within reach of its dots: dots sit
+      // just OUTSIDE the edges, so the hover zone is the element bounds
+      // expanded by the outset + dot grab radius. Keeps them visible as the
+      // cursor travels out to a dot. Dots are NOT shown on unselected
+      // elements — select first, then connect. The dot nearest the cursor
+      // grows (`ANCHOR_DOT_HOVER_GROW_RADIUS`).
       const cursor = editor.hoverCursorWorld as Vec2 | null;
-      const startSetFor = (id: ElementId): PortOverlay | null => {
-        const set = buildPortSet(id, "link-start", null);
-        if (!set) return null;
-        if (cursor) {
-          const r = ANCHOR_DOT_HOVER_GROW_RADIUS / zoom;
-          let bestI = -1;
-          let bestD2 = r * r;
-          set.worldPoints.forEach((p, i) => {
-            const dx = p.x - cursor.x;
-            const dy = p.y - cursor.y;
-            const d2 = dx * dx + dy * dy;
-            if (d2 <= bestD2) {
-              bestD2 = d2;
-              bestI = i;
+      if (editor._selection.size === 1 && cursor) {
+        const id = [...editor._selection][0]!;
+        const shape = getElement(editor._scene, id);
+        if (shape) {
+          const b = getElementWorldBounds(shape);
+          const pad =
+            (LINK_START_ANCHOR_OUTSET + ANCHOR_DOT_ACTIVE_RADIUS + ANCHOR_START_HIT_SLOP) / zoom;
+          const near =
+            cursor.x >= b.x - pad &&
+            cursor.x <= b.x + b.width + pad &&
+            cursor.y >= b.y - pad &&
+            cursor.y <= b.y + b.height + pad;
+          if (near) {
+            const set = buildPortSet(id, "link-start", null);
+            if (set) {
+              const r = ANCHOR_DOT_HOVER_GROW_RADIUS / zoom;
+              let bestI = -1;
+              let bestD2 = r * r;
+              set.worldPoints.forEach((p, i) => {
+                const dx = p.x - cursor.x;
+                const dy = p.y - cursor.y;
+                const d2 = dx * dx + dy * dy;
+                if (d2 <= bestD2) {
+                  bestD2 = d2;
+                  bestI = i;
+                }
+              });
+              portSets.push(bestI >= 0 ? { ...set, activeIndex: bestI } : set);
             }
-          });
-          if (bestI >= 0) return { ...set, activeIndex: bestI };
+          }
         }
-        return set;
-      };
-
-      const startIds = new Set<ElementId>();
-      if (editor._selection.size === 1) startIds.add([...editor._selection][0]!);
-      const hovId = editor.hoverLinkStartElement as ElementId | null;
-      if (hovId) startIds.add(hovId);
-      for (const id of startIds) {
-        const set = startSetFor(id);
-        if (set) portSets.push(set);
       }
     }
 

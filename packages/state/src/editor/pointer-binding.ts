@@ -282,11 +282,10 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       !data.modifiers?.meta &&
       !data.modifiers?.ctrl
     ) {
-      // Begin a link FROM a start dot of either the single selected element
-      // OR the element the cursor is hovering (standard hover-to-connect) — the
-      // overlay shows dots for both, so both are grabbable. The dots sit
-      // OUTSIDE the shape, so the hovered id comes from the move-tracked
-      // `hoverLinkStartElement`, not a hit-test at the (outside) press point.
+      // Begin a link FROM a start dot of the single SELECTED element
+      // (connection dots only on the selected shape, so only its dots
+      // start a link). The dots sit OUTSIDE the shape; they're grabbable
+      // exactly where the overlay draws them (shared `anchorOverlayPoints`).
       const tryAnchorDrag = (shapeId: ElementId): boolean => {
         const shape = getElement(editor._scene, shapeId);
         if (!shape) return false;
@@ -319,8 +318,6 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
       const selId = editor._selection.size === 1 ? [...editor._selection][0] : null;
       if (selId && tryAnchorDrag(selId)) return;
-      const hovId = editor.hoverLinkStartElement as ElementId | null;
-      if (hovId && hovId !== selId && tryAnchorDrag(hovId)) return;
     }
 
     const target = editor.hitTest(worldPoint);

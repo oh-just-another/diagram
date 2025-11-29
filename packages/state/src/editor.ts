@@ -1748,7 +1748,9 @@ export class Editor {
     const changed = this.hoverLinkStartElement !== id;
     this.hoverLinkStartElement = id;
     this.hoverCursorWorld = cursor;
-    if (changed || id !== null) this.notify();
+    // Re-render on hovered-element change, or on any cursor move while a single
+    // element is selected — its start dots appear/grow by cursor proximity.
+    if (changed || id !== null || this._selection.size === 1) this.notify();
   }
 
   /** Record the link under the idle cursor for the overlay hover highlight. */

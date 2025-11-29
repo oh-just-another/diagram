@@ -101,6 +101,7 @@ describe("link-start anchor visibility on selection", () => {
     });
     editor.setViewportSize(800, 600);
     editor.setSelection([elementId("a")]);
+    editor.setHoverLinkStart(elementId("a"), { x: 125, y: 125 }); // hover over the selected element so start dots show
 
     const atRest = renderEllipses(editor, overlay);
 
@@ -127,6 +128,7 @@ describe("link-start anchor visibility on selection", () => {
     });
     editor.setViewportSize(800, 600);
     editor.setSelection([elementId("a")]);
+    editor.setHoverLinkStart(elementId("a"), { x: 125, y: 125 }); // hover over the selected element so start dots show
 
     const atRest = renderEllipses(editor, overlay);
 
@@ -151,6 +153,7 @@ describe("link-start anchor visibility on selection", () => {
     });
     editor.setViewportSize(800, 600);
     editor.setSelection([elementId("a")]);
+    editor.setHoverLinkStart(elementId("a"), { x: 125, y: 125 }); // hover over the selected element so start dots show
 
     const atRest = renderEllipses(editor, overlay);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

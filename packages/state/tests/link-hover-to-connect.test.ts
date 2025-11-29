@@ -63,29 +63,27 @@ const pointer = (type: string, x: number, y: number) => ({
   timeStamp: 0, preventDefault: () => {},
 });
 
-describe("hover-to-connect: link starts from an unselected hovered shape", () => {
-  it("hovering an unselected shape lets a drag from its dot draw a link", () => {
+describe("connect from a selected element's start dot", () => {
+  it("dragging from a SELECTED element's dot draws a link", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
       host, mainTarget: noopTarget, overlayTarget: noopTarget,
       initialScene: sceneWith(rect("a", 0, 0, 40, 40), rect("b", 200, 0, 80, 80)),
     });
-    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
     const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
+    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
     const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
 
-    expect([...editor.selection]).toEqual([]); // nothing selected
     const before = editor.scene.links.size;
-
-    move(20, 20); // hover over A (unselected) → reveals A's start dots
+    down(20, 20); up(20, 20); // select A
     down(48, 20); // press A's right dot (8 px outside x=40)
     move(220, 20); // drag onto B's body
     up(220, 20);
 
-    expect(editor.scene.links.size).toBe(before + 1); // a link was drawn from the hovered shape
+    expect(editor.scene.links.size).toBe(before + 1); // link drawn from the selected shape
   });
 
-  it("without hovering first, a press outside an unselected shape does not draw a link", () => {
+  it("a press on an UNSELECTED element's dot does not draw a link", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
       host, mainTarget: noopTarget, overlayTarget: noopTarget,
@@ -96,10 +94,11 @@ describe("hover-to-connect: link starts from an unselected hovered shape", () =>
     const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
 
     const before = editor.scene.links.size;
-    // Press at A's would-be dot position without a prior hover move over A.
+    // A is NOT selected → its dots aren't active; pressing outside it (48,20)
+    // starts nothing.
     down(48, 20);
     move(220, 20);
     up(220, 20);
-    expect(editor.scene.links.size).toBe(before); // nothing started from empty canvas
+    expect(editor.scene.links.size).toBe(before);
   });
 });
