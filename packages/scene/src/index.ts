@@ -223,7 +223,7 @@ export {
 
 // Elbow router — A*-based obstacle-avoiding 90° routing.
 export { elbowRoute, type ElbowRouteOptions } from "./elbow-router.js";
-export { routeElbowLink } from "./elbow-link.js";
+export { routeElbowLink, routeElbowPreview } from "./elbow-link.js";
 export {
   type Heading,
   HEADING_RIGHT,

@@ -116,6 +116,12 @@ export interface LinkPreview {
   /** World-space anchor on the source shape, or null for a free point. */
   readonly from: Vec2;
   readonly to: Vec2;
+  /**
+   * Optional full polyline (world) for an elbow preview — `[from, ...corners,
+   * to]`. When present it is drawn instead of the straight `from→to` line so
+   * the preview matches the orthogonal connector that will be committed.
+   */
+  readonly points?: readonly Vec2[];
 }
 
 /**
@@ -315,11 +321,22 @@ export const renderOverlay = (
     drawDrawingPreview(target, screenBounds, style);
   }
 
-  // 3. Link-drawing preview — straight dashed line in screen space.
+  // 3. Link-drawing preview — dashed line in screen space. An elbow preview
+  //    carries the full orthogonal polyline (`points`); otherwise a straight
+  //    from→to segment.
   if (options.edgePreview) {
-    const from = matrix.applyToPoint(w2s, options.edgePreview.from);
-    const to = matrix.applyToPoint(w2s, options.edgePreview.to);
-    drawLinkPreview(target, from, to, style);
+    const pts = options.edgePreview.points;
+    if (pts && pts.length >= 2) {
+      drawLinkPreviewPath(
+        target,
+        pts.map((p) => matrix.applyToPoint(w2s, p)),
+        style,
+      );
+    } else {
+      const from = matrix.applyToPoint(w2s, options.edgePreview.from);
+      const to = matrix.applyToPoint(w2s, options.edgePreview.to);
+      drawLinkPreview(target, from, to, style);
+    }
   }
 
   // 4. Port dots — hover affordance in draw-edge mode. May be one set or
@@ -692,6 +709,17 @@ const drawLinkPreview = (target: RenderTarget, from: Vec2, to: Vec2, style: Over
   target.beginPath();
   target.moveTo(from.x, from.y);
   target.lineTo(to.x, to.y);
+  target.stroke();
+};
+
+/** Dashed polyline preview (elbow) in screen space. */
+const drawLinkPreviewPath = (target: RenderTarget, pts: readonly Vec2[], style: OverlayStyle): void => {
+  target.setStroke(style.drawingStroke);
+  target.setStrokeWidth(1.5);
+  target.setDashArray(style.drawingDash);
+  target.beginPath();
+  target.moveTo(pts[0]!.x, pts[0]!.y);
+  for (let i = 1; i < pts.length; i++) target.lineTo(pts[i]!.x, pts[i]!.y);
   target.stroke();
 };
 

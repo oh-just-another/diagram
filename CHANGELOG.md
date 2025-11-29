@@ -1069,3 +1069,6 @@
 
 ## 0.51.45
 - fix(scene,state): stable elbow routing + pins survive shape moves
+
+## 0.51.46
+- feat(scene,state): bend straight elbow via terminal drag (elbow rework 4/N)

@@ -1,4 +1,4 @@
-import type { Bounds, Vec2 } from "@oh-just-another/types";
+import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import { ELBOW_DONGLE_GAP } from "./constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
@@ -39,21 +39,56 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
 
   const a = endInfo(scene, edge.from, from, to);
   const b = endInfo(scene, edge.to, to, from);
+  let full = routeBetween(from, to, a, b);
+  full = applyFixedSegments(full, edge.fixedSegments);
+  return full.slice(1, -1);
+};
 
-  const dongleA: Vec2 = { x: from.x + a.heading.x * ELBOW_DONGLE_GAP, y: from.y + a.heading.y * ELBOW_DONGLE_GAP };
-  const dongleB: Vec2 = { x: to.x + b.heading.x * ELBOW_DONGLE_GAP, y: to.y + b.heading.y * ELBOW_DONGLE_GAP };
+/**
+ * Live elbow path for a connector being drawn (preview): full
+ * `[from, ...corners, to]`. `fromElementId` / `toElementId` give each end
+ * its exit heading + obstacle (null for a free end — heading then points at
+ * the other end). Mirrors {@link routeElbowLink} so the dashed preview
+ * matches the committed elbow.
+ */
+export const routeElbowPreview = (
+  scene: Scene,
+  fromElementId: ElementId | null,
+  from: Vec2,
+  toElementId: ElementId | null,
+  to: Vec2,
+): readonly Vec2[] => {
+  if (from.x === to.x && from.y === to.y) return [from, to];
+  const a = pointEndInfo(scene, fromElementId, from, to);
+  const b = pointEndInfo(scene, toElementId, to, from);
+  return routeBetween(from, to, a, b);
+};
 
+/** Core router shared by link + preview: dongles → A* → collapsed full path. */
+const routeBetween = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
+  const dongleA: Vec2 = {
+    x: from.x + a.heading.x * ELBOW_DONGLE_GAP,
+    y: from.y + a.heading.y * ELBOW_DONGLE_GAP,
+  };
+  const dongleB: Vec2 = {
+    x: to.x + b.heading.x * ELBOW_DONGLE_GAP,
+    y: to.y + b.heading.y * ELBOW_DONGLE_GAP,
+  };
   const obstacles: Bounds[] = [];
   if (a.obstacle) obstacles.push(a.obstacle);
   if (b.obstacle) obstacles.push(b.obstacle);
-
   const routed = elbowRoute(dongleA, dongleB, obstacles);
   const mid =
     routed && routed.length >= 2 ? routed : [dongleA, fallbackCorner(dongleA, dongleB, a.heading), dongleB];
+  return collapseColinear([from, ...mid, to]);
+};
 
-  let full = collapseColinear([from, ...mid, to]);
-  full = applyFixedSegments(full, edge.fixedSegments);
-  return full.slice(1, -1);
+/** EndInfo for a raw point that may sit on a shape (preview). */
+const pointEndInfo = (scene: Scene, elId: ElementId | null, self: Vec2, other: Vec2): EndInfo => {
+  if (!elId) return { heading: headingForPoint(other, self), obstacle: null };
+  const shape = getElement(scene, elId);
+  if (!shape) return { heading: headingForPoint(other, self), obstacle: null };
+  return { heading: headingForPointFromElement(shape, self), obstacle: getElementWorldBounds(shape) };
 };
 
 /**

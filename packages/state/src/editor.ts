@@ -24,6 +24,7 @@ import {
   getAnnotationWorldPosition,
   elbowRoute,
   routeElbowLink,
+  routeElbowPreview,
   getLink,
   getLinkPath,
   getElement,
@@ -116,6 +117,7 @@ import {
 import {
   ANCHOR_CLICK_NEW_ELEMENT_GAP,
   AUTO_ROUTE_MAX_OBSTACLES,
+  DEFAULT_LINK_ROUTING,
   WAYPOINT_COLLAPSE_RADIUS,
 } from "./constants.js";
 import { fromPointerEvent } from "./dom-events.js";
@@ -508,7 +510,7 @@ export class Editor {
   } | null = null;
   /** Live preview while drawing a new shape; null when not drawing. */
   private drawingPreview: Bounds | null = null;
-  private edgePreview: { from: Vec2; to: Vec2 } | null = null;
+  private edgePreview: { from: Vec2; to: Vec2; points?: readonly Vec2[] } | null = null;
   /**
    * Active "drag a link from a start-anchor" gesture (standard). Set when a
    * press lands on one of the selected element's link-start dots; lets
@@ -1759,6 +1761,11 @@ export class Editor {
   /** Link currently under the cursor (hover highlight), or null. */
   get hoveredLink(): LinkId | null {
     return this.hoveredLinkId;
+  }
+
+  /** Live link-draw preview polyline (elbow), or null when not drawing. */
+  get linkPreviewPath(): readonly Vec2[] | null {
+    return this.edgePreview?.points ?? null;
   }
 
   /**
@@ -4204,7 +4211,17 @@ export class Editor {
 
   // Pure body in `./editor/applies/edge.ts`.
   private applyLinkPreview(fromElement: ElementId | null, fromPoint: Vec2, toPoint: Vec2): void {
-    this.edgePreview = computeLinkPreviewEndpoints(this._scene, fromElement, fromPoint, toPoint);
+    const ep = computeLinkPreviewEndpoints(this._scene, fromElement, fromPoint, toPoint);
+    // Match the preview to the connector that will be committed: when new
+    // links default to elbow, draw the orthogonal route, not a straight line.
+    if (ep && DEFAULT_LINK_ROUTING === "orthogonal") {
+      const hit = this.hitTest(ep.to);
+      const toElement = hit?.kind === "element" ? hit.id : null;
+      const points = routeElbowPreview(this._scene, fromElement, ep.from, toElement, ep.to);
+      this.edgePreview = { ...ep, points };
+    } else {
+      this.edgePreview = ep;
+    }
     this.notify();
   }
 
