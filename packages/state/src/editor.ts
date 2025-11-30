@@ -538,6 +538,14 @@ export class Editor {
     elementId: ElementId;
     activeAnchor: string | null;
     outlinePoint?: Vec2 | undefined;
+    /**
+     * What the drop will produce, for clear pre-drop feedback (standard):
+     *   - `"point"` → fixed attach to a specific dot (highlight the dot);
+     *   - `"element"` → floating attach to the whole shape (highlight the
+     *     element). Mirrors `snapLinkEndpoint`: an anchor within threshold →
+     *     point, otherwise floating.
+     */
+    mode: "point" | "element";
   } | null = null;
   /**
    * Hover-to-connect (standard): the shape the cursor is idly over in select
@@ -1768,6 +1776,12 @@ export class Editor {
   /** Live link-draw preview polyline (elbow), or null when not drawing. */
   get linkPreviewPath(): readonly Vec2[] | null {
     return this.edgePreview?.points ?? null;
+  }
+
+  /** Current connector attach target + mode (point=fixed / element=floating). */
+  get linkAttachTarget(): { elementId: ElementId; mode: "point" | "element" } | null {
+    const t = this.hoveredLinkTarget;
+    return t ? { elementId: t.elementId, mode: t.mode } : null;
   }
 
   /**
@@ -4207,7 +4221,10 @@ export class Editor {
       return;
     }
 
-    this.hoveredLinkTarget = { elementId: shape.id, activeAnchor: activeName, outlinePoint };
+    // Mode mirrors snapLinkEndpoint: a named-anchor hit → fixed point;
+    // anything else over the shape → floating (attach to the whole element).
+    const mode: "point" | "element" = activeName !== null ? "point" : "element";
+    this.hoveredLinkTarget = { elementId: shape.id, activeAnchor: activeName, outlinePoint, mode };
     this.notify();
   }
 

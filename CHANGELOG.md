@@ -1075,3 +1075,6 @@
 
 ## 0.51.47
 - feat(scene,state): elbow live preview while drawing a connector
+
+## 0.51.48
+- feat(state): connector start dots only on selected+hovered element (standard)

@@ -197,6 +197,12 @@ export const renderOverlay = (
      */
     hoveredLinkPath?: readonly Vec2[];
     /**
+     * World-space bounds of the element a connector endpoint will FLOAT-attach
+     * to (drop on the body, not a dot). Painted as a brand outline so the user
+     * sees "this whole object" vs a specific point.
+     */
+    linkAttachHighlight?: Bounds;
+    /**
      * Combined world-space bounding box of a multi-selection (or a
      * single group-typed shape's children union). When set the overlay
      * paints a 1-px outline and resize handles on top of the per-shape
@@ -337,6 +343,20 @@ export const renderOverlay = (
       const to = matrix.applyToPoint(w2s, options.edgePreview.to);
       drawLinkPreview(target, from, to, style);
     }
+  }
+
+  // 3.5 Float-attach target highlight — the whole element a connector will
+  //     attach to (drop on body, not a dot). Brand outline, under the dots.
+  if (options.linkAttachHighlight) {
+    const b = projectBounds(options.linkAttachHighlight, w2s);
+    const pad = 2;
+    target.setStroke(style.selectionStroke);
+    target.setStrokeWidth(2);
+    target.setDashArray(null);
+    target.setFill(null);
+    target.beginPath();
+    target.rect(b.x - pad, b.y - pad, b.width + pad * 2, b.height + pad * 2);
+    target.stroke();
   }
 
   // 4. Port dots — hover affordance in draw-edge mode. May be one set or

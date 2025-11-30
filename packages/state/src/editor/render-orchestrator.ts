@@ -208,6 +208,15 @@ export const renderEditor = (editor: any): void => {
 
     if (portSets.length === 1) overlayOpts.ports = portSets[0]!;
     else if (portSets.length > 1) overlayOpts.ports = portSets;
+
+    // Float-attach feedback: when the endpoint will attach to the whole
+    // element (not a specific dot), highlight that element so the user knows
+    // it'll float vs fix to a point.
+    const hov = editor.hoveredLinkTarget;
+    if (hov && hov.mode === "element") {
+      const tshape = getElement(editor._scene, hov.elementId);
+      if (tshape) overlayOpts.linkAttachHighlight = getElementWorldBounds(tshape);
+    }
   }
   // Group-handle overlay: multi-selection OR a single group-typed
   // shape. Aspect-locked groups also flag the overlay so it draws
