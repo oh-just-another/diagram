@@ -14,6 +14,7 @@ import { renderOverlay, type PortOverlay } from "../overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
+  ANCHOR_DOT_CLICK_RADIUS,
   ANCHOR_DOT_HOVER_GROW_RADIUS,
   ANCHOR_START_HIT_SLOP,
   ISOLATION_DIM_OPACITY,
@@ -200,6 +201,25 @@ export const renderEditor = (editor: any): void => {
                 }
               });
               portSets.push(bestI >= 0 ? { ...set, activeIndex: bestI } : set);
+            }
+            // Hovering ON a dot (within the click radius) → ghost preview of
+            // what a click would create (copy element + connector).
+            const { names, worldPoints } = anchorOverlayPoints(shape, LINK_START_ANCHOR_OUTSET / zoom);
+            const clickR2 = (ANCHOR_DOT_CLICK_RADIUS / zoom) ** 2;
+            let hoveredName: string | null = null;
+            for (let i = 0; i < worldPoints.length; i++) {
+              const p = worldPoints[i]!;
+              if ((p.x - cursor.x) ** 2 + (p.y - cursor.y) ** 2 <= clickR2) {
+                hoveredName = names[i]!;
+                break;
+              }
+            }
+            if (hoveredName) {
+              const preview = editor.previewClickCreate(id, hoveredName);
+              if (preview) {
+                overlayOpts.ghostElement = preview.bounds;
+                overlayOpts.ghostLinkPath = preview.path;
+              }
             }
           }
         }

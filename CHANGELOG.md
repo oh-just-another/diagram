@@ -1078,3 +1078,6 @@
 
 ## 0.51.48
 - feat(state): connector start dots only on selected+hovered element (standard)
+
+## 0.51.49
+- feat(state): explicit attach-target feedback while drawing a connector (standard)

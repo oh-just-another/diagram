@@ -203,6 +203,13 @@ export const renderOverlay = (
      */
     linkAttachHighlight?: Bounds;
     /**
+     * Ghost preview shown while hovering a start dot (standard): the would-be new
+     * element's world bounds + connector path. Painted faded — a click makes
+     * it real.
+     */
+    ghostElement?: Bounds;
+    ghostLinkPath?: readonly Vec2[];
+    /**
      * Combined world-space bounding box of a multi-selection (or a
      * single group-typed shape's children union). When set the overlay
      * paints a 1-px outline and resize handles on top of the per-shape
@@ -343,6 +350,29 @@ export const renderOverlay = (
       const to = matrix.applyToPoint(w2s, options.edgePreview.to);
       drawLinkPreview(target, from, to, style);
     }
+  }
+
+  // 3.4 Ghost preview for "click a start dot → create element + link".
+  if (options.ghostElement || options.ghostLinkPath) {
+    target.setOpacity(0.4);
+    if (options.ghostLinkPath && options.ghostLinkPath.length >= 2) {
+      drawLinkPreviewPath(
+        target,
+        options.ghostLinkPath.map((p) => matrix.applyToPoint(w2s, p)),
+        style,
+      );
+    }
+    if (options.ghostElement) {
+      const g = projectBounds(options.ghostElement, w2s);
+      target.setStroke(style.selectionStroke);
+      target.setStrokeWidth(1.5);
+      target.setDashArray(null);
+      target.setFill(null);
+      target.beginPath();
+      target.rect(g.x, g.y, g.width, g.height);
+      target.stroke();
+    }
+    target.setOpacity(1);
   }
 
   // 3.5 Float-attach target highlight — the whole element a connector will

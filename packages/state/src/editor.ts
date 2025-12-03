@@ -3935,6 +3935,37 @@ export class Editor {
   }
 
   /**
+   * Ghost geometry for what clicking a start dot would create (standard hover
+   * preview): the would-be new element's world bounds + the connector path
+   * from the dot to it. Pure — no mutation. Mirrors the placement in
+   * `createLinkedElementFromAnchor`.
+   */
+  previewClickCreate(
+    fromElement: ElementId,
+    anchorName: string,
+  ): { bounds: Bounds; path: readonly Vec2[] } | null {
+    const src = getElement(this._scene, fromElement);
+    if (!src) return null;
+    const anchor: AnchorRef = { kind: "named", name: anchorName };
+    const normal = getAnchorOutwardNormal(src, anchor);
+    const b = getElementWorldBounds(src);
+    const extentAlong = Math.abs(normal.x) * b.width + Math.abs(normal.y) * b.height;
+    const dist = extentAlong + ANCHOR_CLICK_NEW_ELEMENT_GAP;
+    const delta = { x: normal.x * dist, y: normal.y * dist };
+    const bounds: Bounds = { x: b.x + delta.x, y: b.y + delta.y, width: b.width, height: b.height };
+    const fromWorld = getAnchorWorld(src, anchor);
+    // Facing edge of the ghost (toward the source) = its centre pulled back
+    // along the normal by half its extent.
+    const ghostCx = bounds.x + bounds.width / 2;
+    const ghostCy = bounds.y + bounds.height / 2;
+    const nearEdge = {
+      x: ghostCx - normal.x * (extentAlong / 2),
+      y: ghostCy - normal.y * (extentAlong / 2),
+    };
+    return { bounds, path: [fromWorld, nearEdge] };
+  }
+
+  /**
    * Build an `LinkEndpoint` for a draw-edge / re-bind gesture. Runs the
    * scene's snap engine for the probe point, prefers anchor snap when
    * close enough, falls back to outline snap (so the user can attach
