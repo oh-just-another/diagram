@@ -72,7 +72,16 @@ export const computeLinkWorldBounds = (scene: Scene, edge: Link): Bounds | null 
     if (p.x > maxX) maxX = p.x;
     if (p.y > maxY) maxY = p.y;
   }
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  // Inflate by stroke half-width + arrowhead reach. This keeps an
+  // axis-aligned link (a horizontal/vertical line, otherwise a zero-area AABB)
+  // non-degenerate, so dirty-rect union / viewport culling don't drop it. Also
+  // covers arrowhead / thick-stroke overhang past the path.
+  const heads = edge.arrowheads;
+  const hasHead =
+    (heads?.from !== undefined && heads.from !== "none") ||
+    (heads?.to !== undefined && heads.to !== "none");
+  const pad = Math.max(2, (edge.style.strokeWidth ?? 1) / 2 + (hasHead ? (heads?.size ?? 10) : 0));
+  return { x: minX - pad, y: minY - pad, width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 };
 };
 
 /**

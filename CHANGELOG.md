@@ -1081,3 +1081,6 @@
 
 ## 0.51.49
 - feat(state): explicit attach-target feedback while drawing a connector (standard)
+
+## 0.51.50
+- feat(state): ghost preview on hovering a start dot (standard)
