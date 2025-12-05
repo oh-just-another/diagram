@@ -1084,3 +1084,6 @@
 
 ## 0.51.50
 - feat(state): ghost preview on hovering a start dot (standard)
+
+## 0.51.51
+- fix(renderer-core): inflate link bounds so axis-aligned connectors paint

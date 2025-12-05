@@ -44,10 +44,16 @@ const rect = (id: string, x: number, y: number): Element => ({
 // applies the transform via setTransform, so the args are world here).
 const recordingTarget = () => {
   const segs: { x0: number; y0: number; x1: number; y1: number }[] = [];
+  // Shapes draw in LOCAL coords after a per-shape translate, so a rect is
+  // recorded with the world origin its translate established. Track the
+  // current translate so a drawn shape's world position is recoverable.
+  const rects: { x: number; y: number; w: number; h: number }[] = [];
   let cx = 0;
   let cy = 0;
+  let tx = 0;
+  let ty = 0;
   const t = {
-    save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
+    save: () => {}, restore: () => {}, setTransform: () => { tx = 0; ty = 0; }, clear: () => {},
     setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
     setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
     setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
@@ -61,13 +67,15 @@ const recordingTarget = () => {
       cx = x;
       cy = y;
     },
-    quadraticCurveTo: () => {}, bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
+    quadraticCurveTo: () => {}, bezierCurveTo: () => {},
+    rect: (x: number, y: number, w: number, h: number) => rects.push({ x: x + tx, y: y + ty, w, h }),
+    ellipse: () => {},
     fill: () => {}, stroke: () => {}, fillText: () => {},
     measureText: () => ({ width: 0 }), drawImage: () => {},
-    translate: () => {}, rotate: () => {}, scale: () => {},
-    resetTransform: () => {}, size: { width: 800, height: 600 },
+    translate: (x: number, y: number) => { tx += x; ty += y; }, rotate: () => {}, scale: () => {},
+    resetTransform: () => { tx = 0; ty = 0; }, size: { width: 800, height: 600 },
   };
-  return { target: t as never, segs };
+  return { target: t as never, segs, rects };
 };
 
 const host = (handlers: Map<string, (e: unknown) => void>) =>
@@ -122,5 +130,8 @@ describe("click a start dot to create a copy — connector renders immediately",
 
     expect([...editor.scene.links.values()].length).toBe(1); // link created
     expect(hasConnector(main.segs)).toBe(true); // …and drawn this frame
+    // …and the created copy element itself paints this frame (not only the
+    // connector + selection rect). The copy sits to the right of A (x≈80).
+    expect(main.rects.some((r) => Math.abs(r.w - 40) < 2 && r.x > 60)).toBe(true);
   });
 });
