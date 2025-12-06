@@ -12,6 +12,7 @@ import {
 } from "@oh-just-another/renderer-core";
 import { renderOverlay, type PortOverlay } from "../overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
+import { buildElementForCreate } from "./applies/create.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   ANCHOR_DOT_CLICK_RADIUS,
@@ -23,6 +24,13 @@ import {
   LINK_ATTACH_ANCHOR_OUTSET,
 } from "../constants.js";
 import type { ElementId, Vec2 } from "@oh-just-another/types";
+
+/**
+ * Stable throwaway id for the transient shape-draw preview element. Never
+ * enters the scene / history — it exists only for the duration of a single
+ * overlay paint, so any constant id is fine.
+ */
+const DRAW_PREVIEW_ELEMENT_ID = "__draw-preview__" as ElementId;
 
 /**
  * Render orchestrator. ~130 lines of branching across:
@@ -100,11 +108,29 @@ export const renderEditor = (editor: any): void => {
   editor.lastRenderedScene = editor._scene;
   editor.lastRenderedEnteredGroup = editor._enteredGroup;
   const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
-  // Lasso and rect-draw share the same dashed-rect visual. Both can't
-  // run simultaneously (different gestures), so a single `drawingPreview`
-  // slot covers both.
-  if (editor.lassoPreview) overlayOpts.drawingPreview = editor.lassoPreview;
-  else if (editor.drawingPreview) overlayOpts.drawingPreview = editor.drawingPreview;
+  // The lasso (select-mode rubber-band) keeps the plain dashed rect. A shape
+  // draw (draw-rect / draw-ellipse) shows a preview of the would-be element
+  // rendered through its real renderer — the user sees the actual shape +
+  // default style they'll get on release, not just a dashed box. Both
+  // gestures can't run at once, so one slot is set.
+  if (editor.lassoPreview) {
+    overlayOpts.drawingPreview = editor.lassoPreview;
+  } else if (editor.drawingPreview) {
+    const kind =
+      editor.mode === "draw-rect" ? "rect" : editor.mode === "draw-ellipse" ? "ellipse" : null;
+    if (kind) {
+      overlayOpts.drawingPreviewElement = buildElementForCreate(
+        editor._scene,
+        kind,
+        editor.drawingPreview,
+        DRAW_PREVIEW_ELEMENT_ID,
+        editor._activeLayerId,
+        () => "",
+      );
+    } else {
+      overlayOpts.drawingPreview = editor.drawingPreview;
+    }
+  }
   if (editor.edgePreview) overlayOpts.edgePreview = editor.edgePreview;
   // Connection anchors. Two roles: link-start (on selection) and link-attach
   // (on hover/proximity). During a drag started FROM a start-anchor (select

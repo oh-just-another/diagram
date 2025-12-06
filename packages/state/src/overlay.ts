@@ -5,11 +5,12 @@ import {
   getElementWorldBounds,
   getWorldToScreen,
   type Annotation,
+  type Element,
   type Scene,
   type ElementBase,
 } from "@oh-just-another/scene";
 import { bounds as B, matrix } from "@oh-just-another/math";
-import type { RenderTarget } from "@oh-just-another/renderer-core";
+import { getElementRenderer, type RenderTarget } from "@oh-just-another/renderer-core";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   ANCHOR_DOT_RADIUS,
@@ -28,6 +29,7 @@ import {
   DEBUG_HIT_ZONE_FILL_OPACITY,
   DEBUG_HIT_ZONE_STROKE,
   DEBUG_HIT_ZONE_STROKE_OPACITY,
+  DRAW_PREVIEW_OPACITY,
   LINK_ATTACH_ANCHOR_FILL,
   LINK_ATTACH_ANCHOR_STROKE,
   LINK_ENDPOINT_HANDLE_DRAW_RADIUS,
@@ -182,6 +184,15 @@ export const renderOverlay = (
   target: RenderTarget,
   options: {
     drawingPreview?: Bounds;
+    /**
+     * WYSIWYG preview of the shape being drawn by drag (rect / ellipse):
+     * the would-be `Element` rendered through its real renderer so the
+     * user sees exactly the shape + default style they'll get on release
+     * (modern-style), instead of only a dashed rubber-band rect. Mutually
+     * exclusive with `drawingPreview` — the orchestrator sets one or the
+     * other (dashed only for the lasso / select rubber-band).
+     */
+    drawingPreviewElement?: Element;
     edgePreview?: LinkPreview;
     /**
      * Port-dot affordances to paint. A single set (one shape's anchors)
@@ -332,6 +343,25 @@ export const renderOverlay = (
   if (options.drawingPreview) {
     const screenBounds = projectBounds(options.drawingPreview, w2s);
     drawDrawingPreview(target, screenBounds, style);
+  }
+
+  // 2.5 WYSIWYG shape-draw preview — render the would-be element through
+  //     its real renderer (in the world→screen transform, like renderScene)
+  //     so a drag shows the actual rect / ellipse + default style, not just
+  //     a dashed box. Drawn faded so it reads as "not committed yet".
+  if (options.drawingPreviewElement) {
+    const el = options.drawingPreviewElement;
+    const renderer = getElementRenderer(el.type);
+    if (renderer) {
+      target.save();
+      target.setTransform(w2s);
+      target.setOpacity(DRAW_PREVIEW_OPACITY);
+      target.translate(el.position.x, el.position.y);
+      if (el.rotation !== 0) target.rotate(el.rotation);
+      if (el.scale.x !== 1 || el.scale.y !== 1) target.scale(el.scale.x, el.scale.y);
+      renderer(el, target);
+      target.restore();
+    }
   }
 
   // 3. Link-drawing preview — dashed line in screen space. An elbow preview

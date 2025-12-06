@@ -1087,3 +1087,6 @@
 
 ## 0.51.51
 - fix(renderer-core): inflate link bounds so axis-aligned connectors paint
+
+## 0.51.52
+- test(state): assert click-create copy element paints, not just connector

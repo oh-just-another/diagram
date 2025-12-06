@@ -323,6 +323,15 @@ export const DOUBLE_CLICK_TOLERANCE_PX = 8;
 export const ISOLATION_DIM_OPACITY = 0.6;
 
 /**
+ * Opacity of the WYSIWYG shape-draw preview (the live rect / ellipse drawn
+ * through its real renderer while dragging out a new shape). Slightly below
+ * 1 so the in-progress shape reads as "not committed yet" while still
+ * showing its true fill / stroke. Range: 0.7 (clearly tentative) – 1.0
+ * (indistinguishable from a committed shape).
+ */
+export const DRAW_PREVIEW_OPACITY = 0.85;
+
+/**
  * Touch hit-test slop. WCAG and Apple HIG ask for ≥ 44 pt touch
  * targets; with `HANDLE_SIZE = 4` (8 px visual square) the visual
  * stays small but the *hit area* enlarges so a finger can grab it.
