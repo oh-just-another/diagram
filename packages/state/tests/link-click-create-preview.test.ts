@@ -69,6 +69,12 @@ describe("previewClickCreate (ghost of click-creates-element)", () => {
     expect(p.path[0]!.y).toBeCloseTo(20, 0);
     expect(p.path[1]!.x).toBeCloseTo(p.bounds.x, 0); // ghost left edge
     expect(p.path[1]!.y).toBeCloseTo(20, 0);
+    // The would-be element is a same-kind clone shifted to the ghost bounds —
+    // the overlay renders THIS through the real renderer so the ghost matches
+    // the source shape (an ellipse ghosts as an ellipse), not a bounding rect.
+    expect(p.element.type).toBe("rectangle");
+    expect(p.element.position.x).toBeCloseTo(p.bounds.x, 0);
+    expect(p.element.position.y).toBeCloseTo(p.bounds.y, 0);
   });
 
   it("returns null for a missing element", () => {

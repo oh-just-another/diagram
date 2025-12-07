@@ -3943,7 +3943,7 @@ export class Editor {
   previewClickCreate(
     fromElement: ElementId,
     anchorName: string,
-  ): { bounds: Bounds; path: readonly Vec2[] } | null {
+  ): { bounds: Bounds; path: readonly Vec2[]; element: Element } | null {
     const src = getElement(this._scene, fromElement);
     if (!src) return null;
     const anchor: AnchorRef = { kind: "named", name: anchorName };
@@ -3962,7 +3962,20 @@ export class Editor {
       x: ghostCx - normal.x * (extentAlong / 2),
       y: ghostCy - normal.y * (extentAlong / 2),
     };
-    return { bounds, path: [fromWorld, nearEdge] };
+    // The would-be element itself — a same-kind clone of the source shifted
+    // to the ghost bounds, with blank user text (mirrors
+    // `createLinkedElementFromAnchor`). The overlay renders THIS through the
+    // real renderer so the ghost looks like the actual shape (an ellipse
+    // ghosts as an ellipse), not a bounding rect. Throwaway id — never enters
+    // the scene.
+    let element = {
+      ...src,
+      id: PREVIEW_GHOST_ELEMENT_ID,
+      position: { x: src.position.x + delta.x, y: src.position.y + delta.y },
+    } as Element;
+    if (element.type === "text") element = { ...element, text: "" } as Element;
+    else if (element.type === "frame") element = { ...element, name: "" } as Element;
+    return { bounds, path: [fromWorld, nearEdge], element };
   }
 
   /**
@@ -4527,6 +4540,13 @@ export class Editor {
     this.onAfterRender?.();
   }
 }
+
+/**
+ * Throwaway id for the transient click-create ghost preview element built by
+ * `previewClickCreate`. Never enters the scene / history — it lives only for
+ * the duration of one overlay paint, so any stable constant is fine.
+ */
+const PREVIEW_GHOST_ELEMENT_ID = "__ghost-preview__" as ElementId;
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 

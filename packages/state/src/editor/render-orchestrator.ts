@@ -244,6 +244,7 @@ export const renderEditor = (editor: any): void => {
               const preview = editor.previewClickCreate(id, hoveredName);
               if (preview) {
                 overlayOpts.ghostElement = preview.bounds;
+                overlayOpts.ghostElementShape = preview.element;
                 overlayOpts.ghostLinkPath = preview.path;
               }
             }

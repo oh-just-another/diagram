@@ -219,6 +219,14 @@ export const renderOverlay = (
      * it real.
      */
     ghostElement?: Bounds;
+    /**
+     * The would-be element itself (same-kind clone of the source) for the
+     * click-create ghost. When set it is rendered through its real renderer
+     * so the ghost looks like the actual shape (an ellipse ghosts as an
+     * ellipse), not a bounding rect. Falls back to a rect outline of
+     * `ghostElement` when absent.
+     */
+    ghostElementShape?: Element;
     ghostLinkPath?: readonly Vec2[];
     /**
      * Combined world-space bounding box of a multi-selection (or a
@@ -392,7 +400,21 @@ export const renderOverlay = (
         style,
       );
     }
-    if (options.ghostElement) {
+    const ghostShape = options.ghostElementShape;
+    const ghostRenderer = ghostShape ? getElementRenderer(ghostShape.type) : undefined;
+    if (ghostShape && ghostRenderer) {
+      // Render the actual shape through its renderer (in the world→screen
+      // transform, like renderScene) so the ghost matches the real element.
+      target.save();
+      target.setTransform(w2s);
+      target.translate(ghostShape.position.x, ghostShape.position.y);
+      if (ghostShape.rotation !== 0) target.rotate(ghostShape.rotation);
+      if (ghostShape.scale.x !== 1 || ghostShape.scale.y !== 1) {
+        target.scale(ghostShape.scale.x, ghostShape.scale.y);
+      }
+      ghostRenderer(ghostShape, target);
+      target.restore();
+    } else if (options.ghostElement) {
       const g = projectBounds(options.ghostElement, w2s);
       target.setStroke(style.selectionStroke);
       target.setStrokeWidth(1.5);

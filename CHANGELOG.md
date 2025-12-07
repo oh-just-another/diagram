@@ -1090,3 +1090,6 @@
 
 ## 0.51.52
 - test(state): assert click-create copy element paints, not just connector
+
+## 0.51.53
+- feat(state): WYSIWYG preview of the shape being drawn by drag
