@@ -364,6 +364,7 @@ export const renderOverlay = (
       target.save();
       target.setTransform(w2s);
       target.setOpacity(DRAW_PREVIEW_OPACITY);
+      target.setDashArray(null);
       target.translate(el.position.x, el.position.y);
       if (el.rotation !== 0) target.rotate(el.rotation);
       if (el.scale.x !== 1 || el.scale.y !== 1) target.scale(el.scale.x, el.scale.y);
@@ -407,6 +408,9 @@ export const renderOverlay = (
       // transform, like renderScene) so the ghost matches the real element.
       target.save();
       target.setTransform(w2s);
+      // Clear the dash left over from the ghost connector above — the shape
+      // itself is solid (just faded); only the connector is dashed.
+      target.setDashArray(null);
       target.translate(ghostShape.position.x, ghostShape.position.y);
       if (ghostShape.rotation !== 0) target.rotate(ghostShape.rotation);
       if (ghostShape.scale.x !== 1 || ghostShape.scale.y !== 1) {

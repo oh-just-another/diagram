@@ -1093,3 +1093,6 @@
 
 ## 0.51.53
 - feat(state): WYSIWYG preview of the shape being drawn by drag
+
+## 0.51.54
+- fix(state): click-create ghost renders the actual shape, not a rect
