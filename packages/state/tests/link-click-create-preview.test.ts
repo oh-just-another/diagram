@@ -75,6 +75,15 @@ describe("previewClickCreate (ghost of click-creates-element)", () => {
     expect(p.element.type).toBe("rectangle");
     expect(p.element.position.x).toBeCloseTo(p.bounds.x, 0);
     expect(p.element.position.y).toBeCloseTo(p.bounds.y, 0);
+    // The ghost scene carries the would-be connector as a REAL link (so the
+    // overlay renders it through the actual link renderer — same routing /
+    // arrowhead it'll get on create — instead of a dashed preview line).
+    const ghostLink = p.ghostScene.links.get(p.ghostLinkId)!;
+    expect(ghostLink).toBeDefined();
+    expect(ghostLink.arrowheads?.to).toBeDefined(); // has the default arrowhead
+    expect(p.ghostScene.links.size).toBe(1); // only the ghost link is rendered
+    // Both endpoints resolve (source + ghost element present in the scene).
+    expect(p.ghostScene.elements.size).toBeGreaterThanOrEqual(2);
   });
 
   it("returns null for a missing element", () => {

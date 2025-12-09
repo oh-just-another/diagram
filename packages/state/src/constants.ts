@@ -332,6 +332,14 @@ export const ISOLATION_DIM_OPACITY = 0.6;
 export const DRAW_PREVIEW_OPACITY = 0.85;
 
 /**
+ * Opacity of the click-create ghost preview (hovering a start dot): the
+ * faded would-be element + its connector, rendered through their real
+ * renderers. Lower than DRAW_PREVIEW_OPACITY because the ghost is purely
+ * speculative (a click away), not an in-progress gesture. Range: 0.3–0.5.
+ */
+export const GHOST_PREVIEW_OPACITY = 0.4;
+
+/**
  * Touch hit-test slop. WCAG and Apple HIG ask for ≥ 44 pt touch
  * targets; with `HANDLE_SIZE = 4` (8 px visual square) the visual
  * stays small but the *hit area* enlarges so a finger can grab it.

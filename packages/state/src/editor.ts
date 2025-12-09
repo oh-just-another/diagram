@@ -3943,7 +3943,13 @@ export class Editor {
   previewClickCreate(
     fromElement: ElementId,
     anchorName: string,
-  ): { bounds: Bounds; path: readonly Vec2[]; element: Element } | null {
+  ): {
+    bounds: Bounds;
+    path: readonly Vec2[];
+    element: Element;
+    ghostScene: Scene;
+    ghostLinkId: LinkId;
+  } | null {
     const src = getElement(this._scene, fromElement);
     if (!src) return null;
     const anchor: AnchorRef = { kind: "named", name: anchorName };
@@ -3967,7 +3973,7 @@ export class Editor {
     // `createLinkedElementFromAnchor`). The overlay renders THIS through the
     // real renderer so the ghost looks like the actual shape (an ellipse
     // ghosts as an ellipse), not a bounding rect. Throwaway id — never enters
-    // the scene.
+    // the real scene.
     let element = {
       ...src,
       id: PREVIEW_GHOST_ELEMENT_ID,
@@ -3975,7 +3981,36 @@ export class Editor {
     } as Element;
     if (element.type === "text") element = { ...element, text: "" } as Element;
     else if (element.type === "frame") element = { ...element, name: "" } as Element;
-    return { bounds, path: [fromWorld, nearEdge], element };
+
+    // Build a throwaway scene holding the ghost element + the would-be link so
+    // the connector can be drawn through the REAL link renderer (same routing,
+    // arrowhead and style it'll have once created) — faded — instead of a
+    // dashed preview line. Mirrors the link build in
+    // `createLinkedElementFromAnchor` exactly. The `path` field stays for
+    // callers that just want the straight from→to segment.
+    const srcCenter = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    const withGhost = addElement(this._scene, element).scene;
+    const placed = getElement(withGhost, PREVIEW_GHOST_ELEMENT_ID)!;
+    const { ref: toRef } = findNearestAnchor(placed, srcCenter, snapExcludedAnchors(placed));
+    const linkResult = computeCreateLink(
+      withGhost,
+      { kind: "anchor", elementId: fromElement, anchor },
+      { kind: "anchor", elementId: PREVIEW_GHOST_ELEMENT_ID, anchor: toRef },
+      PREVIEW_GHOST_LINK_ID,
+      this._activeLayerId,
+    );
+    let ghostScene = linkResult.scene;
+    const edge = getLink(ghostScene, PREVIEW_GHOST_LINK_ID)!;
+    if ((edge.routing ?? "straight") === "orthogonal") {
+      const routedPoints = routeElbowLink(ghostScene, edge);
+      ghostScene = updateLink(ghostScene, PREVIEW_GHOST_LINK_ID, (e) => ({ ...e, routedPoints })).scene;
+    }
+    // Render only the ghost link (the shapes stay for endpoint resolution).
+    ghostScene = {
+      ...ghostScene,
+      links: new Map([[PREVIEW_GHOST_LINK_ID, getLink(ghostScene, PREVIEW_GHOST_LINK_ID)!]]),
+    };
+    return { bounds, path: [fromWorld, nearEdge], element, ghostScene, ghostLinkId: PREVIEW_GHOST_LINK_ID };
   }
 
   /**
@@ -4547,6 +4582,9 @@ export class Editor {
  * the duration of one overlay paint, so any stable constant is fine.
  */
 const PREVIEW_GHOST_ELEMENT_ID = "__ghost-preview__" as ElementId;
+
+/** Throwaway link id for the click-create ghost preview. See above. */
+const PREVIEW_GHOST_LINK_ID = "__ghost-preview-link__" as LinkId;
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 

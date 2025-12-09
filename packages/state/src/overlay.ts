@@ -30,6 +30,7 @@ import {
   DEBUG_HIT_ZONE_STROKE,
   DEBUG_HIT_ZONE_STROKE_OPACITY,
   DRAW_PREVIEW_OPACITY,
+  GHOST_PREVIEW_OPACITY,
   LINK_ATTACH_ANCHOR_FILL,
   LINK_ATTACH_ANCHOR_STROKE,
   LINK_ENDPOINT_HANDLE_DRAW_RADIUS,
@@ -214,9 +215,10 @@ export const renderOverlay = (
      */
     linkAttachHighlight?: Bounds;
     /**
-     * Ghost preview shown while hovering a start dot (standard): the would-be new
-     * element's world bounds + connector path. Painted faded — a click makes
-     * it real.
+     * Fallback bounds for the click-create ghost when no `ghostElementShape`
+     * is available — painted as a faded brand rect outline. Prefer
+     * `ghostElementShape` (the real shape). The connector is drawn separately
+     * by the orchestrator through the real link renderer.
      */
     ghostElement?: Bounds;
     /**
@@ -227,7 +229,6 @@ export const renderOverlay = (
      * `ghostElement` when absent.
      */
     ghostElementShape?: Element;
-    ghostLinkPath?: readonly Vec2[];
     /**
      * Combined world-space bounding box of a multi-selection (or a
      * single group-typed shape's children union). When set the overlay
@@ -391,16 +392,12 @@ export const renderOverlay = (
     }
   }
 
-  // 3.4 Ghost preview for "click a start dot → create element + link".
-  if (options.ghostElement || options.ghostLinkPath) {
-    target.setOpacity(0.4);
-    if (options.ghostLinkPath && options.ghostLinkPath.length >= 2) {
-      drawLinkPreviewPath(
-        target,
-        options.ghostLinkPath.map((p) => matrix.applyToPoint(w2s, p)),
-        style,
-      );
-    }
+  // 3.4 Ghost preview for "click a start dot → create element". Just the
+  //     would-be ELEMENT here (faded); its connector is drawn separately
+  //     through the real link renderer by the orchestrator (so it matches
+  //     the link that'll be created, not a dashed line).
+  if (options.ghostElement || options.ghostElementShape) {
+    target.setOpacity(GHOST_PREVIEW_OPACITY);
     const ghostShape = options.ghostElementShape;
     const ghostRenderer = ghostShape ? getElementRenderer(ghostShape.type) : undefined;
     if (ghostShape && ghostRenderer) {
@@ -408,9 +405,7 @@ export const renderOverlay = (
       // transform, like renderScene) so the ghost matches the real element.
       target.save();
       target.setTransform(w2s);
-      // Clear the dash left over from the ghost connector above — the shape
-      // itself is solid (just faded); only the connector is dashed.
-      target.setDashArray(null);
+      target.setDashArray(null); // shape is solid; don't inherit any dash state
       target.translate(ghostShape.position.x, ghostShape.position.y);
       if (ghostShape.rotation !== 0) target.rotate(ghostShape.rotation);
       if (ghostShape.scale.x !== 1 || ghostShape.scale.y !== 1) {

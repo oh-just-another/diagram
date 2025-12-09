@@ -1096,3 +1096,6 @@
 
 ## 0.51.54
 - fix(state): click-create ghost renders the actual shape, not a rect
+
+## 0.51.55
+- fix(state): ghost/draw preview shape is solid, not dashed

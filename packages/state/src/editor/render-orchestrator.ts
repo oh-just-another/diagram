@@ -3,6 +3,7 @@ import {
   getLinkPath,
   getElement,
   getElementWorldBounds,
+  type Scene,
 } from "@oh-just-another/scene";
 import {
   DEFAULT_LOD,
@@ -18,6 +19,7 @@ import {
   ANCHOR_DOT_CLICK_RADIUS,
   ANCHOR_DOT_HOVER_GROW_RADIUS,
   ANCHOR_START_HIT_SLOP,
+  GHOST_PREVIEW_OPACITY,
   ISOLATION_DIM_OPACITY,
   LARGE_SCENE_HIT_THRESHOLD,
   LINK_START_ANCHOR_OUTSET,
@@ -108,6 +110,11 @@ export const renderEditor = (editor: any): void => {
   editor.lastRenderedScene = editor._scene;
   editor.lastRenderedEnteredGroup = editor._enteredGroup;
   const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
+  // Throwaway scene holding the click-create ghost connector — rendered
+  // through the real link renderer (faded) AFTER the overlay, so the ghost
+  // connector matches the link that will be created (routing / arrowhead /
+  // style), not a dashed preview line. Set in the start-dot hover branch.
+  let ghostScene: Scene | null = null;
   // The lasso (select-mode rubber-band) keeps the plain dashed rect. A shape
   // draw (draw-rect / draw-ellipse) shows a preview of the would-be element
   // rendered through its real renderer — the user sees the actual shape +
@@ -245,7 +252,7 @@ export const renderEditor = (editor: any): void => {
               if (preview) {
                 overlayOpts.ghostElement = preview.bounds;
                 overlayOpts.ghostElementShape = preview.element;
-                overlayOpts.ghostLinkPath = preview.path;
+                ghostScene = preview.ghostScene;
               }
             }
           }
@@ -369,4 +376,15 @@ export const renderEditor = (editor: any): void => {
   if (editingText) overlayOpts.editingText = editingText;
   if (editor.debugHitZones) overlayOpts.debugHitZones = true;
   renderOverlay(editor._scene, editor._selection, editor.overlayTarget, overlayOpts);
+
+  // Ghost connector (click-create hover) — drawn through the REAL link
+  // renderer onto the overlay, faded, AFTER the overlay chrome so it sits on
+  // top of the ghost element (matches scene z-order: links over shapes). Uses
+  // the would-be link's actual routing / arrowhead / style, not a dashed line.
+  if (ghostScene) {
+    editor.overlayTarget.save();
+    editor.overlayTarget.setOpacity(GHOST_PREVIEW_OPACITY);
+    renderLinks(ghostScene, editor.overlayTarget, {});
+    editor.overlayTarget.restore();
+  }
 };
