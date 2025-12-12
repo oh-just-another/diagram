@@ -1099,3 +1099,6 @@
 
 ## 0.51.55
 - fix(state): ghost/draw preview shape is solid, not dashed
+
+## 0.51.56
+- fix(state): click-create ghost connector is the real link, not a dashed line
