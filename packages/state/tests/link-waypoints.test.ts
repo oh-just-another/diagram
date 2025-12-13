@@ -105,4 +105,14 @@ describe("link waypoints (bend points)", () => {
     down(100, 160); move(100, 104); up(100, 104); // drag onto the chord → collapse
     expect(waypointsOf(editor).length).toBe(0);
   });
+
+  it("double-clicking a waypoint handle deletes it", () => {
+    const { editor, down, move, up } = setup();
+    down(100, 100); move(100, 160); up(100, 160); // add waypoint at (100,160)
+    expect(waypointsOf(editor).length).toBe(1);
+    // Two quick clicks on the waypoint handle → double-click → delete.
+    down(100, 160); up(100, 160);
+    down(100, 160); up(100, 160);
+    expect(waypointsOf(editor).length).toBe(0);
+  });
 });

@@ -1105,3 +1105,6 @@
 
 ## 0.51.57
 - fix: curved (bezier) link draws a real smooth spline
+
+## 0.51.58
+- test(state): pin real-flow waypoint delete on an anchored straight link

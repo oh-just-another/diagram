@@ -712,6 +712,16 @@ export class Editor {
   private lastClickWorldPoint: Vec2 | null = null;
 
   /**
+   * Separate double-click tracker for link edit handles (waypoint /
+   * segment). Kept apart from `lastClickAt` because a handle press
+   * returns early in `onDown` (begin-drag) and never reaches the up-side
+   * double-click path that updates `lastClickAt`. Updated by
+   * `isHandleDoubleClick` on each handle press.
+   */
+  private lastHandleClickAt = 0;
+  private lastHandleClickWorld: Vec2 | null = null;
+
+  /**
    * In-progress brush stroke. Hosts push points via
    * `extendBrushStroke`; the overlay reads it through
    * `pendingBrushStroke` to draw a live preview.
@@ -4126,6 +4136,8 @@ export class Editor {
   updateWaypointDrag(world: Vec2): void {
     const drag = this.linkWaypointDrag;
     if (!drag) return;
+    // A real drag breaks the handle double-click chain (see updateSegmentDrag).
+    this.lastHandleClickAt = 0;
     const edge = getLink(this._scene, drag.linkId);
     if (!edge) return;
     const wps = [...(edge.waypoints ?? [])];
@@ -4200,6 +4212,9 @@ export class Editor {
   updateSegmentDrag(world: Vec2): void {
     const drag = this.linkSegmentDrag;
     if (!drag) return;
+    // A real drag breaks the handle double-click chain, so a single click
+    // right after pinning can't be misread as a double-click (= delete).
+    this.lastHandleClickAt = 0;
     const edge = getLink(this._scene, drag.linkId);
     if (!edge) return;
     const pos = drag.axis === "h" ? world.y : world.x;
@@ -4219,6 +4234,68 @@ export class Editor {
     if (!this.linkSegmentDrag) return;
     this.linkSegmentDrag = null;
     this.commitGesture();
+  }
+
+  /**
+   * Double-click detector for link edit handles (waypoint / segment).
+   * Returns true when this press follows the previous handle press within
+   * the double-click window + tolerance. Updates state every call. Kept
+   * separate from the up-side double-click path (handles return early in
+   * `onDown`, so that path never sees them).
+   */
+  isHandleDoubleClick(world: Vec2): boolean {
+    const now = performance.now();
+    const isDouble =
+      now - this.lastHandleClickAt < DOUBLE_CLICK_MS &&
+      this.lastHandleClickWorld !== null &&
+      distanceTo(this.lastHandleClickWorld, world) <= DOUBLE_CLICK_TOLERANCE_PX;
+    this.lastHandleClickAt = now;
+    this.lastHandleClickWorld = world;
+    return isDouble;
+  }
+
+  /**
+   * Delete a free bend point (waypoint) from a straight / bezier link by
+   * index — double-click a waypoint handle to remove it. One undo step.
+   */
+  deleteWaypoint(linkId: LinkId, index: number): void {
+    const edge = getLink(this._scene, linkId);
+    if (!edge || !edge.waypoints || index < 0 || index >= edge.waypoints.length) return;
+    const wps = edge.waypoints.filter((_, i) => i !== index);
+    const r = updateLink(this._scene, linkId, (e) => ({ ...e, waypoints: wps }));
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this.notify();
+  }
+
+  /**
+   * Remove the pinned (fixed) elbow segment that matches the given
+   * geometry — double-click a segment handle to return it to the auto
+   * route. Matches by axis + nearest pinned perpendicular `pos` (exact for
+   * a pinned segment), `at` as tiebreak. The reroute pass re-flows on the
+   * next render (fixedSegments is part of the elbow signature). One undo
+   * step.
+   */
+  resetSegmentPin(linkId: LinkId, axis: "h" | "v", pos: number, at: number): void {
+    const edge = getLink(this._scene, linkId);
+    if (!edge || !edge.fixedSegments || edge.fixedSegments.length === 0) return;
+    let bestIdx = -1;
+    let bestD = Infinity;
+    for (let i = 0; i < edge.fixedSegments.length; i++) {
+      const f = edge.fixedSegments[i]!;
+      if (f.axis !== axis) continue;
+      const d = Math.abs(f.pos - pos) + Math.abs(f.at - at) * 0.001;
+      if (d < bestD) {
+        bestD = d;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx < 0) return;
+    const fixed = edge.fixedSegments.filter((_, i) => i !== bestIdx);
+    const r = updateLink(this._scene, linkId, (e) => ({ ...e, fixedSegments: fixed }));
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this.notify();
   }
 
   /**

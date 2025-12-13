@@ -213,7 +213,13 @@ export const bindPointerEvents = (editor: any): (() => void) => {
             if (dx * dx + dy * dy <= r2) {
               const axis = Math.abs(a.y - b.y) < 1e-6 ? "h" : "v";
               const at = axis === "h" ? (a.x + b.x) / 2 : (a.y + b.y) / 2;
-              editor.beginSegmentDrag(editor._selectedLink, axis, at);
+              const pos = axis === "h" ? a.y : a.x; // pinned perpendicular coord
+              // Double-click a segment handle → drop its pin (back to auto route).
+              if (editor.isHandleDoubleClick(worldPoint)) {
+                editor.resetSegmentPin(editor._selectedLink, axis, pos, at);
+              } else {
+                editor.beginSegmentDrag(editor._selectedLink, axis, at);
+              }
               editor.cancelLongPress();
               return;
             }
@@ -245,7 +251,12 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         let grabbed = false;
         for (let i = 0; i < waypoints.length; i++) {
           if (within(waypoints[i]!)) {
-            editor.beginWaypointDrag(editor._selectedLink, i, false);
+            // Double-click a waypoint handle → delete the bend point.
+            if (editor.isHandleDoubleClick(worldPoint)) {
+              editor.deleteWaypoint(editor._selectedLink, i);
+            } else {
+              editor.beginWaypointDrag(editor._selectedLink, i, false);
+            }
             grabbed = true;
             break;
           }

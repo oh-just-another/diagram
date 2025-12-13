@@ -210,4 +210,54 @@ describe("elbow segment drag", () => {
     );
     expect(bent).toBe(true);
   });
+
+  it("double-clicking a pinned segment handle drops the pin (back to auto route)", () => {
+    const { host, handlers } = makeHost();
+    const editor = new Editor({
+      host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: buildScene(),
+    });
+    editor.forceRender();
+
+    const path = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
+    const k = 1; // first interior segment
+    const a = path[k]!;
+    const b = path[k + 1]!;
+    const axis: "h" | "v" = Math.abs(a.y - b.y) < 1e-6 ? "h" : "v";
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+
+    const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
+    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
+    const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
+
+    down(mid.x, mid.y); up(mid.x, mid.y); // select
+    // Pin the interior segment by dragging it +40 perpendicular.
+    const tgt = axis === "h" ? { x: mid.x, y: mid.y + 40 } : { x: mid.x + 40, y: mid.y };
+    down(mid.x, mid.y); move(tgt.x, tgt.y); up(tgt.x, tgt.y);
+    editor.forceRender();
+    expect([...editor.scene.links.values()][0]!.fixedSegments!.length).toBeGreaterThan(0);
+
+    // The pinned segment now sits at the dragged coord — find its handle.
+    const pinned = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
+    const wanted = axis === "h" ? mid.y + 40 : mid.x + 40;
+    let hx = 0;
+    let hy = 0;
+    for (let i = 1; i < pinned.length; i++) {
+      const p = pinned[i - 1]!;
+      const q = pinned[i]!;
+      const perp = axis === "h" ? p.y : p.x;
+      const perp2 = axis === "h" ? q.y : q.x;
+      if (Math.abs(perp - wanted) < 1 && Math.abs(perp2 - wanted) < 1) {
+        hx = (p.x + q.x) / 2;
+        hy = (p.y + q.y) / 2;
+        break;
+      }
+    }
+
+    // Double-click that handle → pin removed.
+    down(hx, hy); up(hx, hy);
+    down(hx, hy); up(hx, hy);
+    editor.forceRender();
+    const fixed = [...editor.scene.links.values()][0]!.fixedSegments ?? [];
+    expect(fixed.length).toBe(0);
+  });
 });
