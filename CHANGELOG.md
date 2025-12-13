@@ -1102,3 +1102,6 @@
 
 ## 0.51.56
 - fix(state): click-create ghost connector is the real link, not a dashed line
+
+## 0.51.57
+- fix: curved (bezier) link draws a real smooth spline
