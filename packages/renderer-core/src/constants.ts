@@ -53,24 +53,3 @@ export const VIEWPORT_CULL_PADDING_RATIO = 0.05;
 export const TEXT_DECORATION_THICKNESS = 0.06;
 export const TEXT_UNDERLINE_OFFSET = 0.92;
 export const TEXT_STRIKETHROUGH_OFFSET = 0.5;
-
-/**
- * Curved (bezier) link rendering. The path is drawn as a Catmull-Rom
- * spline converted to cubic beziers so the line flows smoothly through
- * every point (endpoints + user waypoints) without corners.
- *
- * - `CURVE_CATMULL_TENSION` — divisor for the Catmull-Rom tangents in the
- *   spline→bezier conversion. 6 is the canonical uniform Catmull-Rom
- *   value (control point = P + (Pnext − Pprev) / 6). Larger → tighter
- *   (straighter) curve; smaller → looser / more rounded. Range: 4–8.
- * - `CURVE_BULGE_RATIO` — for a straight 2-point span (no waypoints) a
- *   synthetic mid-point is offset perpendicular to the chord by this
- *   fraction of the chord length, so "Curved" reads as a visible arc even
- *   between axis-aligned shapes (otherwise the spline degenerates to the
- *   straight line). Range: 0.1–0.3.
- * - `CURVE_BULGE_MAX_PX` — caps that perpendicular offset (world px) so a
- *   very long link doesn't balloon into a huge arc. Range: 40–120.
- */
-export const CURVE_CATMULL_TENSION = 6;
-export const CURVE_BULGE_RATIO = 0.18;
-export const CURVE_BULGE_MAX_PX = 80;

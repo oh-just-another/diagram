@@ -49,6 +49,33 @@ export const ELBOW_BEND_PENALTY = 100000;
 export const ELBOW_DONGLE_GAP = 20;
 
 /**
+ * --- Curved (bezier) link geometry ---
+ *
+ * Shared by the renderer (draws cubic beziers), hit-testing and bounds
+ * (flatten the same curve) so the visible curve and the clickable curve
+ * agree. Lives in scene so lower layers own the geometry; renderer-core
+ * imports it.
+ *
+ * - `CURVE_CATMULL_TENSION` — divisor for the Catmull-Rom tangents in the
+ *   spline→bezier conversion. 6 is canonical uniform Catmull-Rom (control
+ *   point = P + (Pnext − Pprev) / 6). Larger → tighter; smaller → looser.
+ *   Range: 4–8.
+ * - `CURVE_BULGE_RATIO` — for a straight 2-point span (no waypoints) the
+ *   synthetic mid-point is offset perpendicular to the chord by this
+ *   fraction of the chord length, so "Curved" reads as a visible arc even
+ *   between axis-aligned shapes. Range: 0.1–0.3.
+ * - `CURVE_BULGE_MAX_PX` — caps that perpendicular offset (world px) so a
+ *   long link doesn't balloon. Range: 40–120.
+ * - `CURVE_FLATTEN_SEGMENTS` — samples per cubic when flattening the curve
+ *   for hit-testing / bounds. Higher = closer to the drawn curve. Range:
+ *   8–24.
+ */
+export const CURVE_CATMULL_TENSION = 6;
+export const CURVE_BULGE_RATIO = 0.18;
+export const CURVE_BULGE_MAX_PX = 80;
+export const CURVE_FLATTEN_SEGMENTS = 16;
+
+/**
  * --- Roundness (Style.roundness) ---
  *
  * Adaptive radius: pick a fixed radius for shapes bigger than the cutoff,

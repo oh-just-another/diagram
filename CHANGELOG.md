@@ -1108,3 +1108,6 @@
 
 ## 0.51.58
 - test(state): pin real-flow waypoint delete on an anchored straight link
+
+## 0.51.59
+- fix: double-click a link handle to delete it — waypoint + elbow segment pin

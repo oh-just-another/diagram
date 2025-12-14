@@ -5,6 +5,7 @@ import {
   addLink,
   addElement,
   emptyScene,
+  findLinkAt,
   getLinkEndpointWorld,
   getLinkPath,
   orderBetween,
@@ -235,5 +236,35 @@ describe("floating endpoints", () => {
     ({ scene: s } = addElement(s, el));
     ({ scene: s } = addLink(s, e));
     closeTo(getLinkPath(s, e)![0]!, 100, 30); // rightmost point of the ellipse
+  });
+});
+
+describe("findLinkAt — curved (bezier) links are hit along the arc", () => {
+  it("clicking the bowed arc hits; the straight chord midpoint (now off the curve) misses", () => {
+    // Horizontal span (same y) → bezier bulges perpendicular (+y, fixed
+    // normal). Endpoints (0,0)→(200,0): offset = min(200*0.18, 80) = 36, so
+    // the spline passes through the apex (100, 36).
+    const e: Link = edge({
+      from: { kind: "point", position: { x: 0, y: 0 } },
+      to: { kind: "point", position: { x: 200, y: 0 } },
+      routing: "bezier",
+    });
+    const s = sceneWith([], [e]);
+    // Click near the apex → hit.
+    expect(findLinkAt(s, { x: 100, y: 34 }, 6)).not.toBeNull();
+    // The straight chord midpoint (100,0) is now ~36px from the curve → with a
+    // tight threshold it MISSES (proves hit-testing follows the arc, not the
+    // chord).
+    expect(findLinkAt(s, { x: 100, y: 0 }, 6)).toBeNull();
+  });
+
+  it("a straight link is still hit on its chord", () => {
+    const e: Link = edge({
+      from: { kind: "point", position: { x: 0, y: 0 } },
+      to: { kind: "point", position: { x: 200, y: 0 } },
+      routing: "straight",
+    });
+    const s = sceneWith([], [e]);
+    expect(findLinkAt(s, { x: 100, y: 0 }, 6)).not.toBeNull();
   });
 });

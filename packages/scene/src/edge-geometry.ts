@@ -1,6 +1,7 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { intersect } from "@oh-just-another/math";
 import { getAnchorWorld } from "./anchors.js";
+import { curveControlPolyline, flattenCurve } from "./edge-curve.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getOutlinePoint, getOutlineSampler } from "./outline.js";
 import { getElementWorldBounds, type ElementBase } from "./shape.js";
@@ -242,19 +243,30 @@ const distanceToSegment = (point: Vec2, a: Vec2, b: Vec2): number => {
 };
 
 /**
+ * Hit-test / bounds polyline for an edge: the routed path, except a curved
+ * (bezier) edge is flattened to follow the drawn arc (so clicking the
+ * visible curve — which bows away from the straight chord — actually hits).
+ * Returns `null` when the path is unresolvable.
+ */
+export const getLinkCurvePoints = (scene: Scene, edge: Link): readonly Vec2[] | null => {
+  const path = getLinkPath(scene, edge);
+  if (!path) return null;
+  if ((edge.routing ?? "straight") !== "bezier") return path;
+  return flattenCurve(curveControlPolyline(path));
+};
+
+/**
  * Topmost edge under `worldPoint`, or `null` if none is within
  * `threshold` world-pixels of any segment. Iterates edges in layer
  * order; later layers (rendered on top) win when paths overlap.
  *
- * Bezier-routed edges are tested as if they were straight — the
- * approximation is conservative for selection and avoids sampling the
- * curve repeatedly. Acceptable since the curvature is mild for typical
- * flowchart-style connectors.
+ * Curved (bezier) edges are tested against the flattened curve (via
+ * `getLinkCurvePoints`) so the clickable line matches the drawn arc.
  */
 export const findLinkAt = (scene: Scene, worldPoint: Vec2, threshold = 5): Link | null => {
   let best: { edge: Link; distance: number } | null = null;
   for (const edge of scene.links.values()) {
-    const path = getLinkPath(scene, edge);
+    const path = getLinkCurvePoints(scene, edge);
     if (!path) continue;
     let minDistance = Infinity;
     for (let i = 1; i < path.length; i++) {

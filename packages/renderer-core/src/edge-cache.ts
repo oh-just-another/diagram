@@ -1,6 +1,5 @@
-import type { Bounds, LinkId, Vec2 } from "@oh-just-another/types";
-import { getLinkPath, type Link, type Scene } from "@oh-just-another/scene";
-import { CURVE_BULGE_MAX_PX, CURVE_BULGE_RATIO } from "./constants.js";
+import type { Bounds, LinkId } from "@oh-just-another/types";
+import { getLinkCurvePoints, type Link, type Scene } from "@oh-just-another/scene";
 
 /**
  * Per-edge memo invalidated by identity of either the `Link` ref or the
@@ -61,30 +60,17 @@ export class LinkBoundsCache {
  * the `(scene, edge)` pair.
  */
 export const computeLinkWorldBounds = (scene: Scene, edge: Link): Bounds | null => {
-  const path = getLinkPath(scene, edge);
+  // Curved (bezier) links bow out from the straight chord, so the AABB is
+  // taken over the FLATTENED curve (same geometry the renderer draws and
+  // hit-testing uses) — otherwise the arc paints outside the dirty rect /
+  // viewport cull and gets clipped. Non-curved edges return their polyline.
+  const path = getLinkCurvePoints(scene, edge);
   if (!path || path.length === 0) return null;
-  // Curved (bezier) links bow out: a straight 2-point span gets a
-  // perpendicular mid-bulge, so include that point in the AABB (otherwise
-  // the arc paints outside the dirty rect and gets clipped). For waypointed
-  // curves the Catmull-Rom can overshoot the polyline slightly — covered by
-  // the stroke/arrowhead pad below plus a small curve margin.
-  let bulge: Vec2 | null = null;
-  if ((edge.routing ?? "straight") === "bezier" && path.length === 2) {
-    const a = path[0]!;
-    const b = path[1]!;
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const len = Math.hypot(dx, dy);
-    if (len > 0) {
-      const off = Math.min(len * CURVE_BULGE_RATIO, CURVE_BULGE_MAX_PX);
-      bulge = { x: (a.x + b.x) / 2 + (-dy / len) * off, y: (a.y + b.y) / 2 + (dx / len) * off };
-    }
-  }
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  for (const p of bulge ? [...path, bulge] : path) {
+  for (const p of path) {
     if (p.x < minX) minX = p.x;
     if (p.y < minY) minY = p.y;
     if (p.x > maxX) maxX = p.x;

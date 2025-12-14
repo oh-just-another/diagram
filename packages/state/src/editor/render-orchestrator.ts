@@ -1,6 +1,7 @@
 import {
   getLink,
   getLinkPath,
+  getLinkCurvePoints,
   getElement,
   getElementWorldBounds,
   type Scene,
@@ -295,7 +296,9 @@ export const renderEditor = (editor: any): void => {
   if (editor.hoveredLinkId && editor.hoveredLinkId !== editor._selectedLink) {
     const hovEdge = getLink(editor._scene, editor.hoveredLinkId);
     if (hovEdge) {
-      const hovPath = getLinkPath(editor._scene, hovEdge);
+      // Curve-aware so the soft hover highlight follows the drawn arc, not the
+      // straight chord (matches the curve-aware hit-test).
+      const hovPath = getLinkCurvePoints(editor._scene, hovEdge);
       if (hovPath && hovPath.length >= 2) overlayOpts.hoveredLinkPath = hovPath;
     }
   }

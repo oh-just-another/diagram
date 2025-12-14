@@ -1,4 +1,6 @@
 import {
+ bulgedChord,
+ catmullRomBeziers,
  getLinkPath,
  getLinksInLayer,
  getLayersInOrder,
@@ -14,7 +16,6 @@ import type { RenderTarget } from "./render-target.js";
 import { sharedLinkBoundsCache, type LinkBoundsCache } from "./edge-cache.js";
 import type { LinkBitmapCache } from "./edge-cache-bitmap.js";
 import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
-import { CURVE_BULGE_MAX_PX, CURVE_BULGE_RATIO, CURVE_CATMULL_TENSION } from "./constants.js";
 
 export interface RenderLinksOptions {
  /**
@@ -169,7 +170,9 @@ const drawLink = (
   target.moveTo(curvePts[0]!.x, curvePts[0]!.y);
 
   if (isBezier) {
-   strokeCatmullRom(target, curvePts);
+   for (const s of catmullRomBeziers(curvePts)) {
+    target.bezierCurveTo(s.c1.x, s.c1.y, s.c2.x, s.c2.y, s.to.x, s.to.y);
+   }
   } else {
    for (let i = 1; i < path.length; i++) target.lineTo(path[i]!.x, path[i]!.y);
   }
@@ -321,46 +324,6 @@ const applyStrokeStyle = (edge: Link, target: RenderTarget): void => {
  if (edge.style.lineCap !== undefined) target.setLineCap(edge.style.lineCap);
  if (edge.style.lineJoin !== undefined) target.setLineJoin(edge.style.lineJoin);
  target.setDashArray(edge.style.dashArray ?? null);
-};
-
-// A straight 2-point span has no intermediate geometry, so a spline
-// through it is just the chord. Insert a mid-point offset perpendicular to
-// the chord (capped) so "Curved" shows a visible arc even between
-// axis-aligned shapes. Returns the 3-point control polyline.
-const bulgedChord = (from: Vec2, to: Vec2): readonly Vec2[] => {
- const dx = to.x - from.x;
- const dy = to.y - from.y;
- const len = Math.hypot(dx, dy);
- if (len === 0) return [from, to];
- const offset = Math.min(len * CURVE_BULGE_RATIO, CURVE_BULGE_MAX_PX);
- // Unit normal (rotate the chord direction +90°). Fixed side keeps the
- // bulge deterministic.
- const nx = -dy / len;
- const ny = dx / len;
- const mid = { x: (from.x + to.x) / 2 + nx * offset, y: (from.y + to.y) / 2 + ny * offset };
- return [from, mid, to];
-};
-
-// Stroke a Catmull-Rom spline through `pts` as cubic beziers (caller has
-// already `moveTo(pts[0])`). Each segment Pi→Pi+1 uses tangents derived
-// from the neighbouring points; endpoints duplicate themselves. The line
-// passes through every point with no corners.
-const strokeCatmullRom = (target: RenderTarget, pts: readonly Vec2[]): void => {
- if (pts.length < 2) return;
- if (pts.length === 2) {
-  target.lineTo(pts[1]!.x, pts[1]!.y);
-  return;
- }
- const k = CURVE_CATMULL_TENSION;
- for (let i = 0; i < pts.length - 1; i++) {
-  const p0 = pts[i - 1] ?? pts[i]!;
-  const p1 = pts[i]!;
-  const p2 = pts[i + 1]!;
-  const p3 = pts[i + 2] ?? p2;
-  const c1 = { x: p1.x + (p2.x - p0.x) / k, y: p1.y + (p2.y - p0.y) / k };
-  const c2 = { x: p2.x - (p3.x - p1.x) / k, y: p2.y - (p3.y - p1.y) / k };
-  target.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, p2.x, p2.y);
- }
 };
 
 const drawArrowheads = (

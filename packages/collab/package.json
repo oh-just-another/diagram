@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/collab",
-  "version": "0.51.59",
+  "version": "0.51.60",
   "description": "Real-time collaboration: Yjs binding for scenes + awareness for presence.",
   "type": "module",
   "main": "./dist/index.js",
