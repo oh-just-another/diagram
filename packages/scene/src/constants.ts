@@ -72,8 +72,8 @@ export const ELBOW_DONGLE_GAP = 20;
  *   8–24.
  */
 export const CURVE_CATMULL_TENSION = 6;
-export const CURVE_END_TANGENT_RATIO = 0.4;
-export const CURVE_END_TANGENT_MAX_PX = 120;
+export const CURVE_END_TANGENT_RATIO = 0.8;
+export const CURVE_END_TANGENT_MAX_PX = 240;
 export const CURVE_FLATTEN_SEGMENTS = 16;
 
 /**

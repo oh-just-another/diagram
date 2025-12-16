@@ -243,7 +243,8 @@ describe("findLinkAt — curved (bezier) links are hit along the arc", () => {
   it("clicking the bowed arc hits; the straight chord midpoint (now off the curve) misses", () => {
     // A above B, both linked from their RIGHT anchors → the curve exits +x
     // from each end and bows out to the right (C-curve). a right edge =
-    // (100,30), b right edge = (100,230); chord is x=100, apex ≈ (160,130).
+    // (100,30), b right edge = (100,230); chord is x=100. With control arms
+    // d = min(200*0.8, 240) = 160 the apex sits at ≈ (220,130).
     const a = rect("a", 0, 0); // 100×60 → right edge (100,30)
     const b = rect("b", 0, 200); // right edge (100,230)
     const e: Link = edge({
@@ -253,8 +254,8 @@ describe("findLinkAt — curved (bezier) links are hit along the arc", () => {
     });
     const s = sceneWith([a, b], [e]);
     // Click near the apex of the bow → hit.
-    expect(findLinkAt(s, { x: 160, y: 130 }, 6)).not.toBeNull();
-    // The straight chord midpoint (100,130) is ~60px from the curve → MISS
+    expect(findLinkAt(s, { x: 220, y: 130 }, 6)).not.toBeNull();
+    // The straight chord midpoint (100,130) is far from the curve → MISS
     // (hit-testing follows the arc, not the chord).
     expect(findLinkAt(s, { x: 100, y: 130 }, 6)).toBeNull();
   });

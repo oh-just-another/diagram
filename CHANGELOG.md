@@ -1114,3 +1114,6 @@
 
 ## 0.51.60
 - fix: curved link hit-test + hover follow the drawn arc
+
+## 0.51.61
+- fix: curved link exits/enters perpendicular to the element edge
