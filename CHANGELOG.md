@@ -1111,3 +1111,6 @@
 
 ## 0.51.59
 - fix: double-click a link handle to delete it — waypoint + elbow segment pin
+
+## 0.51.60
+- fix: curved link hit-test + hover follow the drawn arc

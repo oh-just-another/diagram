@@ -26,16 +26,20 @@ const rect = (id: string, x: number, y: number): Element => ({
   height: 20,
 });
 
+// A above B (stacked); both linked from their RIGHT anchors → a curved link
+// exits +x from each end and bows out to the right (a C-curve), so the curve
+// clearly leaves the straight chord. (A right→left same-row pair would now be
+// straight, which is the whole point of the edge-normal exit.)
 const sceneWith = (routing: LinkRouting, waypoints?: Vec2[]) => {
   let s = emptyScene();
   s = addElement(s, rect("a", 0, 0)).scene; // right edge at (20,10)
-  s = addElement(s, rect("b", 200, 0)).scene; // left edge at (200,10) — same y
+  s = addElement(s, rect("b", 0, 200)).scene; // right edge at (20,210)
   const edge: Link = {
     id: linkId("e1"),
     layerId: DEFAULT_LAYER_ID,
     order: orderBetween(null, null),
     from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "right" } },
-    to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "left" } },
+    to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "right" } },
     style: { stroke: "#000" },
     routing,
     ...(waypoints ? { waypoints } : {}),
@@ -55,16 +59,15 @@ const stubTarget = () => ({
 });
 
 describe("curved (bezier) link rendering", () => {
-  it("a straight 2-point bezier span draws a visible arc (bezierCurveTo, not a straight lineTo)", () => {
+  it("a no-waypoint bezier exits along the edge normal and bows off the chord", () => {
     const target = stubTarget();
     renderLinks(sceneWith("bezier"), target as never);
-    // The arc is emitted as cubic beziers, not flat line segments.
+    // The curve is emitted as a cubic bezier, not flat line segments.
     expect(target.bezierCurveTo).toHaveBeenCalled();
-    // Pull the mid control geometry: for an axis-aligned (same-y) span the
-    // curve must leave the chord — at least one bezier control / end point
-    // has a y clearly off the chord's y (=10).
+    // Both ends exit +x (right anchors), so the control points sit clearly to
+    // the right of the chord (x = 20) — proves the edge-normal exit / bow.
     const offChord = target.bezierCurveTo.mock.calls.some((c) =>
-      [c[1], c[3], c[5]].some((y) => Math.abs((y as number) - 10) > 2),
+      [c[0], c[2]].some((x) => (x as number) > 30),
     );
     expect(offChord).toBe(true);
   });
@@ -78,8 +81,8 @@ describe("curved (bezier) link rendering", () => {
 
   it("a waypointed bezier flows through the waypoint as a spline (multiple beziers, no polyline lineTo)", () => {
     const target = stubTarget();
-    // Waypoint bows the path up; the spline should pass smoothly through it.
-    renderLinks(sceneWith("bezier", [{ x: 110, y: 80 }]), target as never);
+    // Waypoint to the right; the spline should pass smoothly through it.
+    renderLinks(sceneWith("bezier", [{ x: 140, y: 110 }]), target as never);
     // [from, wp, to] → 2 spline segments → ≥2 bezierCurveTo, and the curve
     // body is NOT drawn as straight lineTo segments.
     expect(target.bezierCurveTo.mock.calls.length).toBeGreaterThanOrEqual(2);

@@ -1,15 +1,15 @@
 import type { Vec2 } from "@oh-just-another/types";
 import {
-  CURVE_BULGE_MAX_PX,
-  CURVE_BULGE_RATIO,
   CURVE_CATMULL_TENSION,
+  CURVE_END_TANGENT_MAX_PX,
+  CURVE_END_TANGENT_RATIO,
   CURVE_FLATTEN_SEGMENTS,
 } from "./constants.js";
 
 /**
  * Curved (bezier) link geometry — the single source of truth for the curve
  * shape so the renderer (draws cubic beziers) and hit-testing / bounds
- * (flatten the same curve) never disagree. A curved link bows out from the
+ * (flatten the same curve) never disagree. A curved link bows away from the
  * straight polyline; testing clicks against the polyline would miss the
  * visible arc, so callers flatten the curve here instead.
  */
@@ -22,35 +22,32 @@ export interface BezierSegment {
 }
 
 /**
- * A straight 2-point span has no intermediate geometry, so a spline through
- * it is just the chord. Insert a mid-point offset perpendicular to the chord
- * (capped) so "Curved" shows a visible arc even between axis-aligned shapes.
- * Returns the control polyline.
+ * Cubic bezier from `from` to `to` that LEAVES `from` along `dirFrom` and
+ * ENTERS `to` along `-dirTo` (both unit outward directions). This makes a
+ * connector exit/enter perpendicular to an element's edge (flowchart look),
+ * instead of always bowing to one fixed side. Control-arm length scales with
+ * the endpoint distance (capped).
  */
-export const bulgedChord = (from: Vec2, to: Vec2): readonly Vec2[] => {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const len = Math.hypot(dx, dy);
-  if (len === 0) return [from, to];
-  const offset = Math.min(len * CURVE_BULGE_RATIO, CURVE_BULGE_MAX_PX);
-  const nx = -dy / len; // unit normal (chord direction rotated +90°)
-  const ny = dx / len;
-  const mid = { x: (from.x + to.x) / 2 + nx * offset, y: (from.y + to.y) / 2 + ny * offset };
-  return [from, mid, to];
+export const cubicWithEndTangents = (
+  from: Vec2,
+  to: Vec2,
+  dirFrom: Vec2,
+  dirTo: Vec2,
+): BezierSegment => {
+  const dist = Math.hypot(to.x - from.x, to.y - from.y);
+  const d = Math.min(dist * CURVE_END_TANGENT_RATIO, CURVE_END_TANGENT_MAX_PX);
+  return {
+    c1: { x: from.x + dirFrom.x * d, y: from.y + dirFrom.y * d },
+    c2: { x: to.x + dirTo.x * d, y: to.y + dirTo.y * d },
+    to,
+  };
 };
-
-/**
- * The control polyline a curved link's path resolves to: the path itself,
- * except a 2-point (no-waypoint) span gets the perpendicular bulge so it
- * isn't a straight line.
- */
-export const curveControlPolyline = (path: readonly Vec2[]): readonly Vec2[] =>
-  path.length === 2 ? bulgedChord(path[0]!, path[1]!) : path;
 
 /**
  * Catmull-Rom spline through `pts` as cubic bezier segments. Each segment
  * Pi→Pi+1 uses tangents from the neighbouring points; endpoints duplicate
- * themselves. The curve passes through every point with no corners.
+ * themselves. The curve passes through every point with no corners. Used for
+ * a waypointed curve (the bends define the shape).
  */
 export const catmullRomBeziers = (pts: readonly Vec2[]): BezierSegment[] => {
   const segs: BezierSegment[] = [];
@@ -82,18 +79,17 @@ const cubicAt = (p0: Vec2, c1: Vec2, c2: Vec2, p1: Vec2, t: number): Vec2 => {
 };
 
 /**
- * Flatten the curve through the control polyline `pts` into a dense point
- * list (for hit-testing / bounds). For < 3 points returns the points as-is.
+ * Flatten a `start` + cubic-segment list into a dense point list (for
+ * hit-testing / bounds). Includes `start` then `perSegment` samples per cubic.
  */
-export const flattenCurve = (
-  pts: readonly Vec2[],
+export const flattenSegments = (
+  start: Vec2,
+  segments: readonly BezierSegment[],
   perSegment = CURVE_FLATTEN_SEGMENTS,
 ): Vec2[] => {
-  if (pts.length < 3) return [...pts];
-  const segs = catmullRomBeziers(pts);
-  const out: Vec2[] = [pts[0]!];
-  let prev = pts[0]!;
-  for (const s of segs) {
+  const out: Vec2[] = [start];
+  let prev = start;
+  for (const s of segments) {
     for (let i = 1; i <= perSegment; i++) {
       out.push(cubicAt(prev, s.c1, s.c2, s.to, i / perSegment));
     }

@@ -47,12 +47,17 @@ export type {
   NamedAnchor,
   StandardAnchor,
 } from "./edge.js";
-export { getLinkEndpointWorld, getLinkPath, findLinkAt, getLinkCurvePoints } from "./edge-geometry.js";
 export {
-  bulgedChord,
+  getLinkEndpointWorld,
+  getLinkPath,
+  findLinkAt,
+  getLinkCurvePoints,
+  getLinkCurveSegments,
+} from "./edge-geometry.js";
+export {
   catmullRomBeziers,
-  curveControlPolyline,
-  flattenCurve,
+  cubicWithEndTangents,
+  flattenSegments,
   type BezierSegment,
 } from "./edge-curve.js";
 export type { Layer } from "./layer.js";

@@ -57,22 +57,23 @@ export const ELBOW_DONGLE_GAP = 20;
  * imports it.
  *
  * - `CURVE_CATMULL_TENSION` — divisor for the Catmull-Rom tangents in the
- *   spline→bezier conversion. 6 is canonical uniform Catmull-Rom (control
- *   point = P + (Pnext − Pprev) / 6). Larger → tighter; smaller → looser.
- *   Range: 4–8.
- * - `CURVE_BULGE_RATIO` — for a straight 2-point span (no waypoints) the
- *   synthetic mid-point is offset perpendicular to the chord by this
- *   fraction of the chord length, so "Curved" reads as a visible arc even
- *   between axis-aligned shapes. Range: 0.1–0.3.
- * - `CURVE_BULGE_MAX_PX` — caps that perpendicular offset (world px) so a
- *   long link doesn't balloon. Range: 40–120.
+ *   spline→bezier conversion (waypointed curves). 6 is canonical uniform
+ *   Catmull-Rom (control point = P + (Pnext − Pprev) / 6). Larger → tighter;
+ *   smaller → looser. Range: 4–8.
+ * - `CURVE_END_TANGENT_RATIO` — for a no-waypoint span the cubic's control
+ *   arms leave/enter the endpoints along their edge normals with length =
+ *   this fraction of the endpoint distance, so the connector exits/enters
+ *   perpendicular to the element edge (flowchart look). Larger → rounder /
+ *   more pronounced. Range: 0.25–0.6.
+ * - `CURVE_END_TANGENT_MAX_PX` — caps that control-arm length (world px) so a
+ *   long link doesn't over-bow. Range: 60–160.
  * - `CURVE_FLATTEN_SEGMENTS` — samples per cubic when flattening the curve
  *   for hit-testing / bounds. Higher = closer to the drawn curve. Range:
  *   8–24.
  */
 export const CURVE_CATMULL_TENSION = 6;
-export const CURVE_BULGE_RATIO = 0.18;
-export const CURVE_BULGE_MAX_PX = 80;
+export const CURVE_END_TANGENT_RATIO = 0.4;
+export const CURVE_END_TANGENT_MAX_PX = 120;
 export const CURVE_FLATTEN_SEGMENTS = 16;
 
 /**

@@ -1,7 +1,12 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { intersect } from "@oh-just-another/math";
 import { getAnchorWorld } from "./anchors.js";
-import { curveControlPolyline, flattenCurve } from "./edge-curve.js";
+import {
+  catmullRomBeziers,
+  cubicWithEndTangents,
+  flattenSegments,
+  type BezierSegment,
+} from "./edge-curve.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getOutlinePoint, getOutlineSampler } from "./outline.js";
 import { getElementWorldBounds, type ElementBase } from "./shape.js";
@@ -243,16 +248,55 @@ const distanceToSegment = (point: Vec2, a: Vec2, b: Vec2): number => {
 };
 
 /**
+ * Unit direction a curved link should leave/enter an endpoint along: the
+ * edge's outward normal for a named-side anchor, else a fallback along the
+ * dominant axis toward `toward` (so a free point / corner / floating end
+ * gives a sensible flat-ish curve instead of a fixed one-sided bow).
+ */
+const curveEndDir = (endpoint: Link["from"], at: Vec2, toward: Vec2): Vec2 => {
+  const named = exitDirectionFor(endpoint);
+  if (named) return named;
+  const dx = toward.x - at.x;
+  const dy = toward.y - at.y;
+  if (Math.abs(dx) >= Math.abs(dy)) return { x: Math.sign(dx) || 1, y: 0 };
+  return { x: 0, y: Math.sign(dy) || 1 };
+};
+
+/**
+ * Cubic-bezier representation of a curved (bezier) edge: the start point and
+ * the list of cubic segments. A no-waypoint span is a single cubic whose
+ * control arms follow the endpoints' edge normals (exits/enters perpendicular
+ * to the element edge — flowchart look); a waypointed span is a Catmull-Rom
+ * spline through the bends. Returns `null` for non-bezier / unresolvable.
+ */
+export const getLinkCurveSegments = (
+  scene: Scene,
+  edge: Link,
+): { start: Vec2; segments: BezierSegment[] } | null => {
+  if ((edge.routing ?? "straight") !== "bezier") return null;
+  const path = getLinkPath(scene, edge);
+  if (!path || path.length < 2) return null;
+  const start = path[0]!;
+  const end = path[path.length - 1]!;
+  if (path.length === 2) {
+    const dirFrom = curveEndDir(edge.from, start, end);
+    const dirTo = curveEndDir(edge.to, end, start);
+    return { start, segments: [cubicWithEndTangents(start, end, dirFrom, dirTo)] };
+  }
+  return { start, segments: catmullRomBeziers(path) };
+};
+
+/**
  * Hit-test / bounds polyline for an edge: the routed path, except a curved
  * (bezier) edge is flattened to follow the drawn arc (so clicking the
  * visible curve — which bows away from the straight chord — actually hits).
  * Returns `null` when the path is unresolvable.
  */
 export const getLinkCurvePoints = (scene: Scene, edge: Link): readonly Vec2[] | null => {
-  const path = getLinkPath(scene, edge);
-  if (!path) return null;
-  if ((edge.routing ?? "straight") !== "bezier") return path;
-  return flattenCurve(curveControlPolyline(path));
+  if ((edge.routing ?? "straight") !== "bezier") return getLinkPath(scene, edge);
+  const curve = getLinkCurveSegments(scene, edge);
+  if (!curve) return null;
+  return flattenSegments(curve.start, curve.segments);
 };
 
 /**

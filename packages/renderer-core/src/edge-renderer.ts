@@ -1,6 +1,6 @@
 import {
- bulgedChord,
- catmullRomBeziers,
+ flattenSegments,
+ getLinkCurveSegments,
  getLinkPath,
  getLinksInLayer,
  getLayersInOrder,
@@ -158,28 +158,27 @@ const drawLink = (
  } else {
   applyStrokeStyle(edge, target);
 
-  // Curved (bezier): draw a Catmull-Rom spline through ALL path points
-  // (endpoints + waypoints) so the line flows smoothly without corners. A
-  // straight 2-point span gets a synthetic perpendicular bulge so "Curved"
-  // reads as a visible arc even between axis-aligned shapes. `curvePts`
-  // also feeds the arrowhead so its tangent matches the curve.
-  const isBezier = (edge.routing ?? "straight") === "bezier";
-  const curvePts = isBezier && path.length === 2 ? bulgedChord(path[0]!, path[1]!) : path;
+  // Curved (bezier): draw the cubic-bezier curve resolved by scene — a
+  // no-waypoint span exits/enters perpendicular to the element edges
+  // (flowchart look); a waypointed span splines through the bends. The
+  // flattened curve feeds the arrowhead so its tangent matches.
+  const curve = (edge.routing ?? "straight") === "bezier" ? getLinkCurveSegments(scene, edge) : null;
 
   target.beginPath();
-  target.moveTo(curvePts[0]!.x, curvePts[0]!.y);
-
-  if (isBezier) {
-   for (const s of catmullRomBeziers(curvePts)) {
+  if (curve) {
+   target.moveTo(curve.start.x, curve.start.y);
+   for (const s of curve.segments) {
     target.bezierCurveTo(s.c1.x, s.c1.y, s.c2.x, s.c2.y, s.to.x, s.to.y);
    }
   } else {
+   target.moveTo(path[0]!.x, path[0]!.y);
    for (let i = 1; i < path.length; i++) target.lineTo(path[i]!.x, path[i]!.y);
   }
   target.stroke();
 
   if (edge.arrowheads) {
-   drawArrowheads(isBezier ? curvePts : path, edge.arrowheads, target, edge.style.stroke ?? "#000");
+   const headPath = curve ? flattenSegments(curve.start, curve.segments) : path;
+   drawArrowheads(headPath, edge.arrowheads, target, edge.style.stroke ?? "#000");
   }
  }
  if (edge.label) {
