@@ -1117,3 +1117,6 @@
 
 ## 0.51.61
 - fix: curved link exits/enters perpendicular to the element edge
+
+## 0.51.62
+- fix: double curved link control-arm length

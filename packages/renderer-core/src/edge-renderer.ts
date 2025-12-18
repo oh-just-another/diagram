@@ -16,6 +16,7 @@ import type { RenderTarget } from "./render-target.js";
 import { sharedLinkBoundsCache, type LinkBoundsCache } from "./edge-cache.js";
 import type { LinkBitmapCache } from "./edge-cache-bitmap.js";
 import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
+import { LINK_CORNER_RADIUS } from "./constants.js";
 
 export interface RenderLinksOptions {
  /**
@@ -170,6 +171,9 @@ const drawLink = (
    for (const s of curve.segments) {
     target.bezierCurveTo(s.c1.x, s.c1.y, s.c2.x, s.c2.y, s.to.x, s.to.y);
    }
+  } else if (path.length >= 3 && LINK_CORNER_RADIUS > 0) {
+   // Rounded bends for elbow / waypointed-straight connectors.
+   strokeRoundedPolyline(target, path, LINK_CORNER_RADIUS);
   } else {
    target.moveTo(path[0]!.x, path[0]!.y);
    for (let i = 1; i < path.length; i++) target.lineTo(path[i]!.x, path[i]!.y);
@@ -312,6 +316,37 @@ const perpendicularOffset = (from: Vec2, tip: Vec2, amount: number): Vec2 => {
  const nx = -dy / len;
  const ny = dx / len;
  return { x: from.x + nx * amount, y: from.y + ny * amount };
+};
+
+/**
+ * Stroke a polyline with rounded corners: each interior vertex is replaced
+ * by a quadratic arc of `radius` (clamped to half the shorter adjacent
+ * segment). Works for 90° elbow bends and arbitrary-angle waypoint bends.
+ * Caller has already `beginPath()`.
+ */
+const strokeRoundedPolyline = (
+ target: RenderTarget,
+ pts: readonly Vec2[],
+ radius: number,
+): void => {
+ target.moveTo(pts[0]!.x, pts[0]!.y);
+ for (let i = 1; i < pts.length - 1; i++) {
+  const prev = pts[i - 1]!;
+  const cur = pts[i]!;
+  const next = pts[i + 1]!;
+  const l1 = Math.hypot(prev.x - cur.x, prev.y - cur.y);
+  const l2 = Math.hypot(next.x - cur.x, next.y - cur.y);
+  if (l1 === 0 || l2 === 0) {
+   target.lineTo(cur.x, cur.y);
+   continue;
+  }
+  const r = Math.min(radius, l1 / 2, l2 / 2);
+  const a = { x: cur.x + ((prev.x - cur.x) / l1) * r, y: cur.y + ((prev.y - cur.y) / l1) * r };
+  const b = { x: cur.x + ((next.x - cur.x) / l2) * r, y: cur.y + ((next.y - cur.y) / l2) * r };
+  target.lineTo(a.x, a.y);
+  target.quadraticCurveTo(cur.x, cur.y, b.x, b.y);
+ }
+ target.lineTo(pts[pts.length - 1]!.x, pts[pts.length - 1]!.y);
 };
 
 const applyStrokeStyle = (edge: Link, target: RenderTarget): void => {

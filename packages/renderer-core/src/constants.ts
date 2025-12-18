@@ -53,3 +53,12 @@ export const VIEWPORT_CULL_PADDING_RATIO = 0.05;
 export const TEXT_DECORATION_THICKNESS = 0.06;
 export const TEXT_UNDERLINE_OFFSET = 0.92;
 export const TEXT_STRIKETHROUGH_OFFSET = 0.5;
+
+/**
+ * Corner radius (world px) for the rounded bends of an elbow (orthogonal)
+ * connector and of a straight connector broken by user waypoints. Each
+ * corner is replaced by a quadratic arc of this radius, clamped to half the
+ * shorter adjacent segment so short segments don't overshoot. 0 disables
+ * rounding (sharp corners). Range: 0–16.
+ */
+export const LINK_CORNER_RADIUS = 10;
