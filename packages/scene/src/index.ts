@@ -248,6 +248,7 @@ export {
   vectorToHeading,
   headingForPoint,
   headingForPointFromElement,
+  headingForEdgePoint,
 } from "./heading.js";
 
 // Scene-level shape diff (added / removed / modified) for diff

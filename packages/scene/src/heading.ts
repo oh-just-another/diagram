@@ -41,11 +41,30 @@ export const headingForPoint = (p: Vec2, origin: Vec2): Heading =>
   vectorToHeading({ x: p.x - origin.x, y: p.y - origin.y });
 
 /**
+ * Outward normal of the AABB edge nearest to `p` — the correct exit heading
+ * for a point that sits ON the shape outline (floating / outline / ratio
+ * anchors). More accurate near corners than {@link headingForPointFromElement}
+ * (the cone test there can pick an adjacent side). For a point on the right
+ * edge → RIGHT, etc.
+ */
+export const headingForEdgePoint = (shape: ElementBase, p: Vec2): Heading => {
+  const b = getElementWorldBounds(shape);
+  const dl = Math.abs(p.x - b.x); // distance to left edge
+  const dr = Math.abs(b.x + b.width - p.x); // right
+  const dt = Math.abs(p.y - b.y); // top
+  const db = Math.abs(b.y + b.height - p.y); // bottom
+  const min = Math.min(dl, dr, dt, db);
+  if (min === dl) return HEADING_LEFT;
+  if (min === dr) return HEADING_RIGHT;
+  if (min === dt) return HEADING_UP;
+  return HEADING_DOWN;
+};
+
+/**
  * Which side of `shape` the world point `p` exits on. Splits the shape's
  * (world-AABB) into four triangular cones from the centre to each corner;
  * the cone `p` falls in decides the heading. A point dead-centre resolves
- * via the centre→p vector. Diamonds/rotated shapes use the AABB — good
- * enough for routing; the dongle gap absorbs the small error.
+ * via the centre→p vector. Diamonds/rotated shapes use the AABB.
  */
 export const headingForPointFromElement = (shape: ElementBase, p: Vec2): Heading => {
   const b = getElementWorldBounds(shape);

@@ -1120,3 +1120,6 @@
 
 ## 0.51.62
 - fix: double curved link control-arm length
+
+## 0.51.63
+- feat(renderer-core): rounded corners for elbow + waypointed-straight links

@@ -1,5 +1,5 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
-import { ELBOW_DONGLE_GAP } from "./constants.js";
+import { ELBOW_TERMINAL_BUFFER } from "./constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
 import { elbowRoute } from "./elbow-router.js";
@@ -8,6 +8,7 @@ import {
   HEADING_LEFT,
   HEADING_RIGHT,
   HEADING_UP,
+  headingForEdgePoint,
   headingForPoint,
   headingForPointFromElement,
   headingIsHorizontal,
@@ -23,7 +24,7 @@ import { getElementWorldBounds } from "./shape.js";
  * `Link.routedPoints` and `getLinkPath` renders as `[from, ...points, to]`.
  *
  * standard model: each end exits perpendicular to its shape (a "dongle"
- * pushed out by `ELBOW_DONGLE_GAP` along the end's heading), the A* router
+ * pushed out by `ELBOW_TERMINAL_BUFFER` along the end's heading), the A* router
  * routes between the dongles around the two bound shapes, and the whole
  * chain is collapsed to corner points. The result is always axis-aligned.
  */
@@ -67,12 +68,12 @@ export const routeElbowPreview = (
 /** Core router shared by link + preview: dongles → A* → collapsed full path. */
 const routeBetween = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   const dongleA: Vec2 = {
-    x: from.x + a.heading.x * ELBOW_DONGLE_GAP,
-    y: from.y + a.heading.y * ELBOW_DONGLE_GAP,
+    x: from.x + a.heading.x * ELBOW_TERMINAL_BUFFER,
+    y: from.y + a.heading.y * ELBOW_TERMINAL_BUFFER,
   };
   const dongleB: Vec2 = {
-    x: to.x + b.heading.x * ELBOW_DONGLE_GAP,
-    y: to.y + b.heading.y * ELBOW_DONGLE_GAP,
+    x: to.x + b.heading.x * ELBOW_TERMINAL_BUFFER,
+    y: to.y + b.heading.y * ELBOW_TERMINAL_BUFFER,
   };
   const obstacles: Bounds[] = [];
   if (a.obstacle) obstacles.push(a.obstacle);
@@ -181,10 +182,10 @@ const endInfo = (scene: Scene, ep: LinkEndpoint, self: Vec2, other: Vec2): EndIn
     const h = namedHeading(ep.anchor.name);
     if (h) return { heading: h, obstacle };
   }
-  // floating aims at the partner; anchor(ratio/edge/absolute)/outline use the
-  // side the resolved point sits on.
-  const probe = ep.kind === "floating" ? other : self;
-  return { heading: headingForPointFromElement(shape, probe), obstacle };
+  // floating / outline / ratio anchors: `self` is already the resolved point
+  // ON the outline, so exit perpendicular to the edge it sits on. Nearest-edge
+  // (not the centre cone test) keeps the exit outward even near corners.
+  return { heading: headingForEdgePoint(shape, self), obstacle };
 };
 
 /** Single-bend L corner between two dongles (router-failure fallback). */

@@ -41,12 +41,15 @@ export const ELBOW_OBSTACLE_INTERIOR_EPSILON = 0.5;
 export const ELBOW_BEND_PENALTY = 100000;
 
 /**
- * World-unit "dongle" gap an elbow connector leaves a shape before it is
- * free to turn — the endpoint is pushed out this far along its heading
- * (exit side) so the connector always departs perpendicular to the edge
- * (standard model). Larger → more breathing room before the first bend.
+ * Length (world px) of the fixed, non-movable terminal segment an elbow
+ * connector always leaves at each end before its first bend — the endpoint
+ * is pushed out this far along its exit heading so the connector departs/
+ * arrives perpendicular to the edge and there's buffer room to draw the
+ * arrowhead. Must stay ≥ ELBOW_OBSTACLE_MARGIN so the pushed-out point
+ * sits outside the inflated obstacle the A* router avoids. Larger → more
+ * breathing room before the first bend. Range: 16–40.
  */
-export const ELBOW_DONGLE_GAP = 20;
+export const ELBOW_TERMINAL_BUFFER = 20;
 
 /**
  * --- Curved (bezier) link geometry ---

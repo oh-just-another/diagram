@@ -81,6 +81,34 @@ describe("routeElbowLink", () => {
     assertOrthogonal([{ x: 40, y: 60 }, ...points, { x: 60, y: 300 }]);
   });
 
+  it("the first/last segment always exits OUTSIDE the shape (never turns inward)", () => {
+    const a = rect("a", 0, 0, 80, 60); // bbox x∈[0,80], y∈[0,60]
+    // Partners all around A, including near-diagonal (corner) cases.
+    const partners = [
+      { x: 200, y: -120 },
+      { x: 200, y: 6 },
+      { x: -200, y: 120 },
+      { x: 40, y: 300 },
+      { x: 200, y: 54 },
+      { x: -150, y: -150 },
+    ];
+    const insideA = (p: { x: number; y: number }) =>
+      p.x > 1e-6 && p.x < 80 - 1e-6 && p.y > 1e-6 && p.y < 60 - 1e-6;
+    for (const pos of partners) {
+      const b = rect("b", pos.x, pos.y, 40, 40);
+      const e = link(
+        { kind: "floating", elementId: elementId("a") },
+        { kind: "floating", elementId: elementId("b") },
+      );
+      const s = build(a, b, e);
+      const points = routeElbowLink(s, e);
+      if (points.length === 0) continue; // straight run — can't turn inward
+      // The first routed point (end of A's terminal buffer segment) must be
+      // outside A's bbox: the connector left perpendicular to A's edge.
+      expect(insideA(points[0]!)).toBe(false);
+    }
+  });
+
   it("orthogonal even with floating endpoints", () => {
     const a = rect("a", 0, 0);
     const b = rect("b", 300, 200);
