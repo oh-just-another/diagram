@@ -94,16 +94,16 @@ const ev = (type: string, x: number, y: number) => ({
   timeStamp: 0, preventDefault: () => {},
 });
 
-// Is there a horizontal segment at y≈20 spanning x in [40,80] — i.e. the
-// connector between A (right edge x=40) and the created copy (left edge x≈80)?
-const hasConnector = (segs: { x0: number; y0: number; x1: number; y1: number }[]) =>
-  segs.some(
-    (s) =>
-      Math.abs(s.y0 - 20) < 2 &&
-      Math.abs(s.y1 - 20) < 2 &&
-      Math.min(s.x0, s.x1) <= 45 &&
-      Math.max(s.x0, s.x1) >= 75,
-  );
+// Is the connector between A (right edge x=40) and the copy (left edge x≈80)
+// drawn at y≈20? The elbow splits into buffer + middle + buffer (3 colinear
+// horizontal segments), so check that the horizontal segments at y≈20
+// COLLECTIVELY span [45,75], not a single segment.
+const hasConnector = (segs: { x0: number; y0: number; x1: number; y1: number }[]) => {
+  const hz = segs.filter((s) => Math.abs(s.y0 - 20) < 2 && Math.abs(s.y1 - 20) < 2);
+  const reachesLeft = hz.some((s) => Math.min(s.x0, s.x1) <= 45);
+  const reachesRight = hz.some((s) => Math.max(s.x0, s.x1) >= 75);
+  return reachesLeft && reachesRight;
+};
 
 describe("click a start dot to create a copy — connector renders immediately", () => {
   it("draws the connector on the same frame (no element move needed)", () => {

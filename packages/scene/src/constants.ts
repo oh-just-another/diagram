@@ -49,7 +49,7 @@ export const ELBOW_BEND_PENALTY = 100000;
  * sits outside the inflated obstacle the A* router avoids. Larger → more
  * breathing room before the first bend. Range: 16–40.
  */
-export const ELBOW_TERMINAL_BUFFER = 20;
+export const ELBOW_TERMINAL_BUFFER = 30;
 
 /**
  * --- Curved (bezier) link geometry ---

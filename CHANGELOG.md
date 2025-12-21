@@ -1123,3 +1123,6 @@
 
 ## 0.51.63
 - feat(renderer-core): rounded corners for elbow + waypointed-straight links
+
+## 0.51.64
+- fix(scene): elbow connector always exits outward + named terminal buffer

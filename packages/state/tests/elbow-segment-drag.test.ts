@@ -167,8 +167,9 @@ describe("elbow segment drag", () => {
     expect(orthogonal(p2)).toBe(true);
   });
 
-  it("dragging a straight elbow bends it (terminal insert)", () => {
-    // Aligned shapes → the elbow collapses to a single straight segment.
+  it("dragging the middle of an aligned (straight-looking) elbow bends it", () => {
+    // Aligned shapes → buffer + movable middle + buffer, all colinear, so the
+    // elbow looks like one horizontal line but has a draggable middle segment.
     let s = emptyScene();
     s = addElement(s, rect("a", 0, 0)).scene;
     s = addElement(s, rect("b", 300, 0)).scene; // same y → straight line
@@ -187,22 +188,24 @@ describe("elbow segment drag", () => {
     const editor = new Editor({ host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: s });
     editor.forceRender();
     const path = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
-    expect(path.length).toBe(2); // straight: [from, to]
-    const a = path[0]!;
-    const b = path[1]!;
-    expect(Math.abs(a.y - b.y) < 1e-6).toBe(true); // horizontal
-    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    expect(path.length).toBe(4); // buffered straight: [from, bufA, bufB, to]
+    // All colinear → visually one horizontal line.
+    expect(path.every((p) => Math.abs(p.y - path[0]!.y) < 1e-6)).toBe(true);
+    // The movable middle segment is bufA→bufB (path[1]→path[2]).
+    const segA = path[1]!;
+    const segB = path[2]!;
+    const mid = { x: (segA.x + segB.x) / 2, y: segA.y };
 
     const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
     const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
     const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
     down(mid.x, mid.y); up(mid.x, mid.y); // select
-    down(mid.x, mid.y); move(mid.x, mid.y + 60); up(mid.x, mid.y + 60); // bend down
+    down(mid.x, mid.y); move(mid.x, mid.y + 60); up(mid.x, mid.y + 60); // bend middle down
     editor.forceRender();
 
     const p2 = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
     expect(orthogonal(p2)).toBe(true);
-    expect(p2.length).toBeGreaterThan(2); // it bent
+    expect(p2.length).toBeGreaterThan(4); // it bent (staple inserted)
     // A horizontal segment now sits at the dragged y.
     const wanted = mid.y + 60;
     const bent = p2.some(

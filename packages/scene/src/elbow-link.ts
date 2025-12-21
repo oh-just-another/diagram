@@ -40,9 +40,15 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
 
   const a = endInfo(scene, edge.from, from, to);
   const b = endInfo(scene, edge.to, to, from);
-  let full = routeBetween(from, to, a, b);
-  full = applyFixedSegments(full, edge.fixedSegments);
-  return full.slice(1, -1);
+  // The route is structured as a fixed outward BUFFER stub at each end plus a
+  // movable middle between the two stub joints (bufA / bufB). `routeMiddle`
+  // returns [bufA, ...corners..., bufB]; the buffers themselves are the
+  // from→bufA / bufB→to segments that `getLinkPath` adds when it wraps
+  // routedPoints with from/to — they're never collapsed, so an aligned elbow
+  // still has 3 segments (buffer + movable + buffer) and reads as one line.
+  let middle = routeMiddle(from, to, a, b);
+  middle = applyFixedSegments(middle, edge.fixedSegments);
+  return middle;
 };
 
 /**
@@ -62,26 +68,31 @@ export const routeElbowPreview = (
   if (from.x === to.x && from.y === to.y) return [from, to];
   const a = pointEndInfo(scene, fromElementId, from, to);
   const b = pointEndInfo(scene, toElementId, to, from);
-  return routeBetween(from, to, a, b);
+  return [from, ...routeMiddle(from, to, a, b), to];
 };
 
-/** Core router shared by link + preview: dongles → A* → collapsed full path. */
-const routeBetween = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
-  const dongleA: Vec2 = {
-    x: from.x + a.heading.x * ELBOW_TERMINAL_BUFFER,
-    y: from.y + a.heading.y * ELBOW_TERMINAL_BUFFER,
-  };
-  const dongleB: Vec2 = {
-    x: to.x + b.heading.x * ELBOW_TERMINAL_BUFFER,
-    y: to.y + b.heading.y * ELBOW_TERMINAL_BUFFER,
-  };
+/**
+ * Movable middle of an elbow: the path between the two outward BUFFER stub
+ * joints (`bufA` = from pushed out along its heading, `bufB` = to pushed out
+ * along its). Returns `[bufA, ...corners..., bufB]`. The from→bufA / bufB→to
+ * stubs are added by the caller (getLinkPath / preview) and are the fixed,
+ * non-movable terminal segments. On very short links the buffer is clamped so
+ * the two stubs don't overrun each other.
+ */
+const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
+  const dist = Math.hypot(to.x - from.x, to.y - from.y);
+  const buf = Math.min(ELBOW_TERMINAL_BUFFER, dist * 0.45); // clamp on short links
+  const bufA: Vec2 = { x: from.x + a.heading.x * buf, y: from.y + a.heading.y * buf };
+  const bufB: Vec2 = { x: to.x + b.heading.x * buf, y: to.y + b.heading.y * buf };
   const obstacles: Bounds[] = [];
   if (a.obstacle) obstacles.push(a.obstacle);
   if (b.obstacle) obstacles.push(b.obstacle);
-  const routed = elbowRoute(dongleA, dongleB, obstacles);
+  const routed = elbowRoute(bufA, bufB, obstacles);
   const mid =
-    routed && routed.length >= 2 ? routed : [dongleA, fallbackCorner(dongleA, dongleB, a.heading), dongleB];
-  return collapseColinear([from, ...mid, to]);
+    routed && routed.length >= 2 ? routed : [bufA, fallbackCorner(bufA, bufB, a.heading), bufB];
+  // Collapse only the interior corners — collapseColinear keeps the bufA / bufB
+  // endpoints, so the stub joints survive even when colinear with the middle.
+  return collapseColinear(mid);
 };
 
 /** EndInfo for a raw point that may sit on a shape (preview). */
@@ -135,19 +146,17 @@ const applyFixedSegments = (full: Vec2[], fixed: Link["fixedSegments"]): Vec2[] 
       }
       continue;
     }
-    // No matching interior segment. On a straight (2-point) route, the user
-    // grabbed the whole connector to bend it → insert a "staple" jog so a
-    // segment of the pinned axis sits at `pos` (terminal-drag, modern-style).
-    if (out.length === 2) {
-      const p0 = out[0]!;
-      const p1 = out[1]!;
-      out =
-        pin.axis === "h"
-          ? [p0, { x: p0.x, y: pin.pos }, { x: p1.x, y: pin.pos }, p1]
-          : [p0, { x: pin.pos, y: p0.y }, { x: pin.pos, y: p1.y }, p1];
-    }
-    // Multi-segment route with no interior match → pin lapses (interior
-    // segments remain the editable handles).
+    // No strict-interior match — the user dragged a segment adjacent to a
+    // buffer joint (or the single middle segment of an aligned elbow).
+    // Reconstruct the middle as a "staple" between the FIXED buffer joints
+    // (out[0] = bufA, out[last] = bufB) so a segment of the pinned axis sits at
+    // `pos` while the terminal buffers stay put (standard terminal-drag).
+    const j0 = out[0]!;
+    const j1 = out[out.length - 1]!;
+    out =
+      pin.axis === "h"
+        ? [j0, { x: j0.x, y: pin.pos }, { x: j1.x, y: pin.pos }, j1]
+        : [j0, { x: pin.pos, y: j0.y }, { x: pin.pos, y: j1.y }, j1];
   }
   return collapseColinear(out);
 };
