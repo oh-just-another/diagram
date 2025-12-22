@@ -1126,3 +1126,6 @@
 
 ## 0.51.64
 - fix(scene): elbow connector always exits outward + named terminal buffer
+
+## 0.51.65
+- feat(scene): elbow = fixed outward buffer + movable middle + buffer (always ≥3 segments)

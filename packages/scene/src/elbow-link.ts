@@ -1,5 +1,5 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
-import { ELBOW_TERMINAL_BUFFER } from "./constants.js";
+import { ELBOW_SELF_OVERLAP_GAP, ELBOW_TERMINAL_BUFFER } from "./constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
 import { elbowRoute } from "./elbow-router.js";
@@ -48,7 +48,69 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
   // still has 3 segments (buffer + movable + buffer) and reads as one line.
   let middle = routeMiddle(from, to, a, b);
   middle = applyFixedSegments(middle, edge.fixedSegments);
-  return middle;
+  // The buffer stub can point AWAY from the partner (endpoint bound to the
+  // far side), forcing the route to reverse — without help it retraces the
+  // stub along the same line. Offset such 180° folds sideways into a small U.
+  const full = avoidSelfOverlap([from, ...middle, to], ELBOW_SELF_OVERLAP_GAP);
+  return full.slice(1, -1);
+};
+
+/**
+ * Remove 180° self-overlaps from an axis-aligned path: where two consecutive
+ * segments run along the same axis in OPPOSITE directions (a fold that
+ * retraces the previous segment), shift the return arm perpendicular by `gap`
+ * so the connector makes a small U instead of drawing over itself. The side is
+ * chosen toward the path's far end so the detour heads the right way.
+ */
+export const avoidSelfOverlap = (pts: readonly Vec2[], gap: number): Vec2[] => {
+  if (pts.length < 3) return [...pts];
+  const last = pts[pts.length - 1]!;
+  const out: Vec2[] = [pts[0]!];
+  let i = 1;
+  while (i < pts.length - 1) {
+    const a = out[out.length - 1]!;
+    const b = pts[i]!;
+    const c = pts[i + 1]!;
+    const abH = Math.abs(a.y - b.y) < 1e-6 && Math.abs(a.x - b.x) > 1e-6;
+    const abV = Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) > 1e-6;
+    const bcH = Math.abs(b.y - c.y) < 1e-6 && Math.abs(b.x - c.x) > 1e-6;
+    const bcV = Math.abs(b.x - c.x) < 1e-6 && Math.abs(b.y - c.y) > 1e-6;
+    const foldH = abH && bcH && Math.sign(b.x - a.x) === -Math.sign(c.x - b.x);
+    const foldV = abV && bcV && Math.sign(b.y - a.y) === -Math.sign(c.y - b.y);
+    // C is the turn point of the fold (where the route bends off the reversed
+    // axis). When it's interior we DROP it and continue from the offset corner
+    // straight to the next point (c→next is perpendicular, so the offset corner
+    // → next stays orthogonal) — rejoining to C would just re-create the fold.
+    // When C is the endpoint we must rejoin to it (it's the bound point).
+    const cIsLast = i + 1 === pts.length - 1;
+    if (foldH) {
+      const side = Math.sign(last.y - b.y) || 1;
+      const oy = b.y + gap * side;
+      out.push(b, { x: b.x, y: oy }, { x: c.x, y: oy });
+      if (cIsLast) {
+        out.push(c);
+        break;
+      }
+      i += 2; // drop C, resume from the point after it
+    } else if (foldV) {
+      const side = Math.sign(last.x - b.x) || 1;
+      const ox = b.x + gap * side;
+      out.push(b, { x: ox, y: b.y }, { x: ox, y: c.y });
+      if (cIsLast) {
+        out.push(c);
+        break;
+      }
+      i += 2; // drop C
+    } else {
+      out.push(b);
+      i += 1;
+    }
+  }
+  const tail = out[out.length - 1]!;
+  if (Math.abs(tail.x - last.x) > 1e-6 || Math.abs(tail.y - last.y) > 1e-6) out.push(last);
+  // No collapseColinear: it would merge the (colinear) terminal buffer joints
+  // back into a straight line, destroying the buffer structure.
+  return out;
 };
 
 /**

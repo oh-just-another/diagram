@@ -52,6 +52,15 @@ export const ELBOW_BEND_PENALTY = 100000;
 export const ELBOW_TERMINAL_BUFFER = 30;
 
 /**
+ * Lateral gap (world px) used to offset a 180° reversal in an elbow route so
+ * the connector doesn't retrace itself along the same line. When the route
+ * folds back on itself (e.g. an endpoint bound to the side facing AWAY from
+ * its partner), the return arm is shifted perpendicular by this much, forming
+ * a small U instead of an overlap. Range: 10–24.
+ */
+export const ELBOW_SELF_OVERLAP_GAP = 16;
+
+/**
  * --- Curved (bezier) link geometry ---
  *
  * Shared by the renderer (draws cubic beziers), hit-testing and bounds
