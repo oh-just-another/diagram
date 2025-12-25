@@ -66,3 +66,49 @@ describe("rounded link corners", () => {
     expect(target.quadraticCurveTo).not.toHaveBeenCalled();
   });
 });
+
+describe("uniform corner radius", () => {
+  it("all corners use the same radius even with segments of different lengths", () => {
+    // routedPoints with a SHORT (>=2px) middle segment and longer ones.
+    // [from,(40,0),(40,40),(60,40),(60,200),to] — segment (40,40)→(60,40) is
+    // 20px (short), others longer; corners must all share one radius.
+    let s = emptyScene();
+    s = addElement(s, rect("a", 0, -20)).scene; // right edge ~ (40,0)
+    s = addElement(s, rect("b", 40, 200)).scene;
+    const e: Link = {
+      id: linkId("u1"), layerId: DEFAULT_LAYER_ID, order: orderBetween(null, null),
+      from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "right" } },
+      to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
+      routing: "orthogonal",
+      routedPoints: [{ x: 40, y: 0 }, { x: 40, y: 40 }, { x: 60, y: 40 }, { x: 60, y: 200 }],
+      style: { stroke: "#000" },
+    };
+    s = addLink(s, e).scene;
+
+    // Ordered call log so we can pair each quadratic corner with its approach.
+    const calls: { op: string; args: number[] }[] = [];
+    const t = new Proxy(
+      { size: { width: 800, height: 600 }, measureText: () => ({ width: 0 }) },
+      {
+        get: (o: Record<string, unknown>, k: string) =>
+          k in o
+            ? o[k]
+            : (...args: number[]) => calls.push({ op: k, args }),
+      },
+    ) as never;
+    renderLinks(s, t);
+
+    // r at each corner = distance from the lineTo approach point to the
+    // quadratic control point (the corner vertex).
+    const radii: number[] = [];
+    for (let i = 1; i < calls.length; i++) {
+      if (calls[i]!.op === "quadraticCurveTo" && calls[i - 1]!.op === "lineTo") {
+        const [cx, cy] = calls[i]!.args;
+        const [ax, ay] = calls[i - 1]!.args;
+        radii.push(Math.hypot(cx! - ax!, cy! - ay!));
+      }
+    }
+    expect(radii.length).toBeGreaterThanOrEqual(2);
+    for (const r of radii) expect(Math.abs(r - radii[0]!)).toBeLessThan(0.5);
+  });
+});

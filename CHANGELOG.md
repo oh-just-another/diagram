@@ -1129,3 +1129,6 @@
 
 ## 0.51.65
 - feat(scene): elbow = fixed outward buffer + movable middle + buffer (always ≥3 segments)
+
+## 0.51.66
+- feat(scene): offset 180° elbow reversals into a U instead of retracing
