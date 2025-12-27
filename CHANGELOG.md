@@ -1132,3 +1132,6 @@
 
 ## 0.51.66
 - feat(scene): offset 180° elbow reversals into a U instead of retracing
+
+## 0.51.67
+- fix(renderer-core): uniform link corner radius
