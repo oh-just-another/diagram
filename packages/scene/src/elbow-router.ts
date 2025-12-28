@@ -38,6 +38,19 @@ const BEND_PENALTY = ELBOW_BEND_PENALTY;
 export interface ElbowRouteOptions {
   /** Pad obstacles by this many world units. Defaults to package constant. */
   readonly margin?: number;
+  /**
+   * Outward exit heading at `from` (the buffer direction). When set, the
+   * router's FIRST move may not go in the opposite direction — so the route
+   * never immediately reverses (retraces) the terminal buffer stub.
+   */
+  readonly startHeading?: Vec2;
+  /**
+   * Outward heading at `to` (the buffer direction). When set, the route may
+   * not ARRIVE at the goal travelling in this direction — which would force
+   * `bufB → to` to reverse it. Keeps the connector from doubling back at the
+   * arrival end.
+   */
+  readonly endHeading?: Vec2;
 }
 
 export const elbowRoute = (
@@ -50,6 +63,8 @@ export const elbowRoute = (
 
   const margin = options.margin ?? MARGIN;
   const inflated = obstacles.map((b) => inflate(b, margin));
+  const startHeading = options.startHeading;
+  const endHeading = options.endHeading;
 
   // Candidate axes — every unique x and y value from endpoints + bbox
   // corners. The router walks the implicit grid those axes form.
@@ -109,6 +124,29 @@ export const elbowRoute = (
       const fromPt: Vec2 = { x: xOfIdx(cur.xi), y: yOfIdx(cur.yi) };
       const toPt: Vec2 = { x: xOfIdx(next.xi), y: yOfIdx(next.yi) };
       if (segmentCrossesObstacle(fromPt, toPt, inflated)) continue;
+      const stepX = Math.sign(toPt.x - fromPt.x);
+      const stepY = Math.sign(toPt.y - fromPt.y);
+      // Don't let the very first move reverse the start buffer (would retrace
+      // the terminal stub) …
+      if (
+        cur.axis === 0 &&
+        startHeading &&
+        stepX === -Math.sign(startHeading.x) &&
+        stepY === -Math.sign(startHeading.y)
+      ) {
+        continue;
+      }
+      // … and don't arrive at the goal travelling along the end-buffer heading
+      // (would make bufB→to double back).
+      if (
+        next.xi === endXi &&
+        next.yi === endYi &&
+        endHeading &&
+        stepX === Math.sign(endHeading.x) &&
+        stepY === Math.sign(endHeading.y)
+      ) {
+        continue;
+      }
       const stepAxis: 1 | 2 = next.xi !== cur.xi ? 1 : 2;
       const stepCost = Math.abs(fromPt.x - toPt.x) + Math.abs(fromPt.y - toPt.y);
       const turn = cur.axis !== 0 && cur.axis !== stepAxis ? BEND_PENALTY : 0;

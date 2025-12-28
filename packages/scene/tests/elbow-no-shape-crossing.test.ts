@@ -69,4 +69,44 @@ describe("elbow route never crosses a bound shape", () => {
       }
     }
   });
+
+  // The startHeading/endHeading router constraint stops the route from
+  // retracing its terminal buffer. For a well-separated bottom→top connector
+  // (target clearly below) no 180° buffer reversal should appear.
+  it("a.bottom → b.top (separated) has no 180° buffer retrace", () => {
+    const hasFold = (p: Vec2[]): boolean => {
+      for (let i = 1; i < p.length - 1; i++) {
+        const a = p[i - 1]!;
+        const b = p[i]!;
+        const c = p[i + 1]!;
+        const abH = Math.abs(a.y - b.y) < 1 && Math.abs(a.x - b.x) > 1;
+        const bcH = Math.abs(b.y - c.y) < 1 && Math.abs(b.x - c.x) > 1;
+        const abV = Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) > 1;
+        const bcV = Math.abs(b.x - c.x) < 1 && Math.abs(b.y - c.y) > 1;
+        if (abH && bcH && Math.sign(b.x - a.x) === -Math.sign(c.x - b.x)) return true;
+        if (abV && bcV && Math.sign(b.y - a.y) === -Math.sign(c.y - b.y)) return true;
+      }
+      return false;
+    };
+    for (let bx = 300; bx <= 900; bx += 50) {
+      let s = emptyScene();
+      const a = rect("a", 150, 0, 440, 170); // bottom edge y=170
+      const b = rect("b", bx, 260, 435, 165); // top edge y=260, clearly below a
+      ({ scene: s } = addElement(s, a));
+      ({ scene: s } = addElement(s, b));
+      const e: Link = {
+        id: linkId("e"),
+        layerId: layerId(DEFAULT_LAYER_ID),
+        from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+        to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
+        routing: "orthogonal",
+        order: orderBetween(null, null),
+        style: { stroke: "#000" },
+      };
+      ({ scene: s } = addLink(s, e));
+      ({ scene: s } = updateLink(s, e.id, (x) => ({ ...x, routedPoints: routeElbowLink(s, e) })));
+      const path = getLinkPath(s, [...s.links.values()][0]!)!;
+      expect(hasFold(path), `fold at bx=${bx}: ${JSON.stringify(path)}`).toBe(false);
+    }
+  });
 });

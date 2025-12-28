@@ -1135,3 +1135,6 @@
 
 ## 0.51.67
 - fix(renderer-core): uniform link corner radius
+
+## 0.51.68
+- fix(scene): drop obstacle-unaware self-overlap U; A* routes around shapes

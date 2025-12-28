@@ -87,7 +87,10 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   const obstacles: Bounds[] = [];
   if (a.obstacle) obstacles.push(a.obstacle);
   if (b.obstacle) obstacles.push(b.obstacle);
-  const routed = elbowRoute(bufA, bufB, obstacles);
+  const routed = elbowRoute(bufA, bufB, obstacles, {
+    startHeading: a.heading,
+    endHeading: b.heading,
+  });
   const mid =
     routed && routed.length >= 2 ? routed : [bufA, fallbackCorner(bufA, bufB, a.heading), bufB];
   // Collapse only the interior corners — collapseColinear keeps the bufA / bufB
