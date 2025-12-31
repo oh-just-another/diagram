@@ -324,11 +324,38 @@ const perpendicularOffset = (from: Vec2, tip: Vec2, amount: number): Vec2 => {
  * segment). Works for 90° elbow bends and arbitrary-angle waypoint bends.
  * Caller has already `beginPath()`.
  */
+/** Drop colinear / near-coincident interior points so only real corners
+ * remain — keeps the uniform radius from being tanked by a redundant tiny
+ * straight segment (e.g. a buffer joint colinear with the run). Render-only;
+ * the stored geometry keeps its points. */
+const cornersOnly = (pts: readonly Vec2[]): readonly Vec2[] => {
+ if (pts.length <= 2) return pts;
+ const out: Vec2[] = [pts[0]!];
+ for (let i = 1; i < pts.length - 1; i++) {
+  const prev = out[out.length - 1]!;
+  const cur = pts[i]!;
+  const next = pts[i + 1]!;
+  const horiz = Math.abs(prev.y - cur.y) < 1e-6 && Math.abs(cur.y - next.y) < 1e-6;
+  const vert = Math.abs(prev.x - cur.x) < 1e-6 && Math.abs(cur.x - next.x) < 1e-6;
+  const coincident = Math.abs(prev.x - cur.x) < 1e-6 && Math.abs(prev.y - cur.y) < 1e-6;
+  if (horiz || vert || coincident) continue;
+  out.push(cur);
+ }
+ out.push(pts[pts.length - 1]!);
+ return out;
+};
+
 const strokeRoundedPolyline = (
  target: RenderTarget,
- pts: readonly Vec2[],
+ raw: readonly Vec2[],
  radius: number,
 ): void => {
+ const pts = cornersOnly(raw);
+ if (pts.length < 3) {
+  target.moveTo(pts[0]!.x, pts[0]!.y);
+  for (let i = 1; i < pts.length; i++) target.lineTo(pts[i]!.x, pts[i]!.y);
+  return;
+ }
  // One uniform radius for every corner so they all look identical: clamp the
  // requested radius to half the SHORTEST segment in the whole path (a corner
  // can use at most half of each adjacent segment; using the global min keeps

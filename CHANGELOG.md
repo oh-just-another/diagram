@@ -1138,3 +1138,6 @@
 
 ## 0.51.68
 - fix(scene): drop obstacle-unaware self-overlap U; A* routes around shapes
+
+## 0.51.69
+- fix(scene): elbow router won't retrace its terminal buffer (no 180° tail)

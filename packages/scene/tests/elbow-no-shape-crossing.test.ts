@@ -108,5 +108,29 @@ describe("elbow route never crosses a bound shape", () => {
       const path = getLinkPath(s, [...s.links.values()][0]!)!;
       expect(hasFold(path), `fold at bx=${bx}: ${JSON.stringify(path)}`).toBe(false);
     }
+
+    // Near-level: when the vertical gap is < 2×buffer the two buffer levels
+    // don't meet; trimBufferOvershoot must clamp the buffer so there's no tiny
+    // reverse kink. Sweep gaps straddling 2×buffer (60).
+    for (let gap = 40; gap <= 80; gap += 3) {
+      let s = emptyScene();
+      const a = rect("a", 0, 0, 300, 100); // bottom edge y=100
+      const b = rect("b", 420, 100 + gap, 370, 150); // top edge y=100+gap
+      ({ scene: s } = addElement(s, a));
+      ({ scene: s } = addElement(s, b));
+      const e: Link = {
+        id: linkId("e2"),
+        layerId: layerId(DEFAULT_LAYER_ID),
+        from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+        to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
+        routing: "orthogonal",
+        order: orderBetween(null, null),
+        style: { stroke: "#000" },
+      };
+      ({ scene: s } = addLink(s, e));
+      ({ scene: s } = updateLink(s, e.id, (x) => ({ ...x, routedPoints: routeElbowLink(s, e) })));
+      const path = getLinkPath(s, [...s.links.values()][0]!)!;
+      expect(hasFold(path), `near-level fold at gap=${gap}: ${JSON.stringify(path)}`).toBe(false);
+    }
   });
 });

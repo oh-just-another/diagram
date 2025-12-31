@@ -48,7 +48,58 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
   // still has 3 segments (buffer + movable + buffer) and reads as one line.
   let middle = routeMiddle(from, to, a, b);
   middle = applyFixedSegments(middle, edge.fixedSegments);
-  return middle;
+  // When the two shapes are closer than 2×buffer along the exit axis, the two
+  // buffer levels don't meet and the route makes a tiny reverse "kink" right
+  // after a buffer. Trim that overshoot (shorten the buffer to the turn) so
+  // the connector stays clean instead of leaving an un-roundable jog.
+  return trimBufferOvershoot([from, ...middle, to]).slice(1, -1);
+};
+
+/**
+ * Remove a tiny reverse "kink" at a terminal buffer: when the first move after
+ * the from-buffer (or last move before the to-buffer) reverses it by a small
+ * amount that still stays OUTWARD of the endpoint, the buffer simply
+ * overshot the turn — drop the buffer joint so the buffer shortens to the turn
+ * level. Large reversals that cross back PAST the endpoint (inherent
+ * opposite-anchor folds) are left untouched.
+ */
+const trimBufferOvershoot = (full: readonly Vec2[]): Vec2[] => {
+  let out = [...full];
+  // Start end: [f, bufJoint, next, ...]
+  if (out.length >= 3) {
+    const f = out[0]!;
+    const j = out[1]!;
+    const n = out[2]!;
+    if (overshoots(f, j, n)) out = [f, n, ...out.slice(3)];
+  }
+  // End end: [..., prev, bufJoint, t]
+  if (out.length >= 3) {
+    const t = out[out.length - 1]!;
+    const j = out[out.length - 2]!;
+    const p = out[out.length - 3]!;
+    if (overshoots(t, j, p)) out = [...out.slice(0, -3), p, t];
+  }
+  return out;
+};
+
+/**
+ * True when `end → joint` (a buffer) is reversed by `joint → next` along the
+ * same axis, but `next` still sits on the OUTWARD side of `end` — i.e. the
+ * buffer merely overshot the turn and the joint can be dropped (buffer →
+ * `end → next`, same direction, just shorter).
+ */
+const overshoots = (end: Vec2, joint: Vec2, next: Vec2): boolean => {
+  const vert = Math.abs(end.x - joint.x) < 1e-6 && Math.abs(end.y - joint.y) > 1e-6;
+  const horz = Math.abs(end.y - joint.y) < 1e-6 && Math.abs(end.x - joint.x) > 1e-6;
+  if (vert && Math.abs(joint.x - next.x) < 1e-6) {
+    const dir = Math.sign(joint.y - end.y); // buffer direction
+    return Math.sign(next.y - joint.y) === -dir && Math.sign(next.y - end.y) === dir;
+  }
+  if (horz && Math.abs(joint.y - next.y) < 1e-6) {
+    const dir = Math.sign(joint.x - end.x);
+    return Math.sign(next.x - joint.x) === -dir && Math.sign(next.x - end.x) === dir;
+  }
+  return false;
 };
 
 /**
