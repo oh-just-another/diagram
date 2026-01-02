@@ -1,5 +1,5 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
-import { ELBOW_TERMINAL_BUFFER } from "./constants.js";
+import { ELBOW_MIN_SEGMENT, ELBOW_TERMINAL_BUFFER } from "./constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
 import { elbowRoute } from "./elbow-router.js";
@@ -52,7 +52,70 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
   // buffer levels don't meet and the route makes a tiny reverse "kink" right
   // after a buffer. Trim that overshoot (shorten the buffer to the turn) so
   // the connector stays clean instead of leaving an un-roundable jog.
-  return trimBufferOvershoot([from, ...middle, to]).slice(1, -1);
+  let full = trimBufferOvershoot([from, ...middle, to]);
+  full = straightenShortJogs(full, ELBOW_MIN_SEGMENT);
+  return full.slice(1, -1);
+};
+
+/**
+ * Straighten short zigzag "jogs": a step segment shorter than `minStep` that
+ * sits between two parallel runs (an S) can't be rounded and reads as a sharp
+ * zigzag. Snap the second run onto the first run's level (dropping the step) so
+ * the two runs merge into one straight segment — but only when that keeps the
+ * segment AFTER the jog pointing the same way (so we never flip a terminal
+ * buffer inward). Loops until no collapsible jog remains.
+ */
+const straightenShortJogs = (path: readonly Vec2[], minStep: number): Vec2[] => {
+  let pts = [...path];
+  let guard = 0;
+  for (;;) {
+    if (guard++ > 64) break;
+    let collapsed = false;
+    for (let i = 1; i + 2 < pts.length; i++) {
+      const A = pts[i - 1]!;
+      const B = pts[i]!;
+      const C = pts[i + 1]!;
+      const D = pts[i + 2]!;
+      const stepLen = Math.hypot(C.x - B.x, C.y - B.y);
+      if (stepLen < 1e-6 || stepLen >= minStep) continue;
+      const stepVert = Math.abs(B.x - C.x) < 1e-6 && Math.abs(B.y - C.y) > 1e-6;
+      const stepHorz = Math.abs(B.y - C.y) < 1e-6 && Math.abs(B.x - C.x) > 1e-6;
+      if (!stepVert && !stepHorz) continue;
+      // Flanking runs must be perpendicular to the step (i.e. parallel).
+      const abPerp = stepVert
+        ? Math.abs(A.y - B.y) < 1e-6 && Math.abs(A.x - B.x) > 1e-6
+        : Math.abs(A.x - B.x) < 1e-6 && Math.abs(A.y - B.y) > 1e-6;
+      const cdPerp = stepVert
+        ? Math.abs(C.y - D.y) < 1e-6 && Math.abs(C.x - D.x) > 1e-6
+        : Math.abs(C.x - D.x) < 1e-6 && Math.abs(C.y - D.y) > 1e-6;
+      if (!abPerp || !cdPerp) continue;
+      // Snap run2 (C,D) onto run1's level (B). D' keeps D's free coordinate
+      // (x for a vertical step, y for a horizontal one).
+      const dPrime = stepVert ? { x: D.x, y: B.y } : { x: B.x, y: D.y };
+      // Only collapse a jog that's a SPURIOUS zigzag — one where moving D keeps
+      // the whole path orthogonal. The point after D must share D's preserved
+      // coordinate (so D'→after stays axis-aligned); and D must not be the
+      // terminal endpoint (we can't move a bound point). This rejects a REAL
+      // offset step needed to reach an offset shape (which would become a
+      // diagonal), keeping only the buffer-mismatch zigzags.
+      const after = pts[i + 3];
+      if (!after) continue;
+      const stillAligned = stepVert
+        ? Math.abs(after.x - D.x) < 1e-6
+        : Math.abs(after.y - D.y) < 1e-6;
+      if (!stillAligned) continue;
+      // Also don't flip the segment after D.
+      const oldDir = stepVert ? Math.sign(after.y - D.y) : Math.sign(after.x - D.x);
+      const newDir = stepVert ? Math.sign(after.y - dPrime.y) : Math.sign(after.x - dPrime.x);
+      if (oldDir !== 0 && newDir !== 0 && oldDir !== newDir) continue;
+      pts[i + 2] = dPrime;
+      pts.splice(i, 2); // drop B and C; A→D' is now one straight run
+      collapsed = true;
+      break;
+    }
+    if (!collapsed) break;
+  }
+  return pts;
 };
 
 /**

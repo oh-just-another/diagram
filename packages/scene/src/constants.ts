@@ -52,6 +52,15 @@ export const ELBOW_BEND_PENALTY = 100000;
 export const ELBOW_TERMINAL_BUFFER = 30;
 
 /**
+ * Minimum length (world px) of a connecting "jog" segment between two parallel
+ * elbow segments. A jog shorter than this can't be rounded cleanly (its corner
+ * radius would exceed the segment), so it reads as a sharp zigzag — such jogs
+ * are straightened away (the two parallel runs are snapped to one level). Set
+ * to ~2× the corner radius. Range: 16–32.
+ */
+export const ELBOW_MIN_SEGMENT = 24;
+
+/**
  * --- Curved (bezier) link geometry ---
  *
  * Shared by the renderer (draws cubic beziers), hit-testing and bounds

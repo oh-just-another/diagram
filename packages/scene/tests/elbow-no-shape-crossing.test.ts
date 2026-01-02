@@ -133,4 +133,77 @@ describe("elbow route never crosses a bound shape", () => {
       expect(hasFold(path), `near-level fold at gap=${gap}: ${JSON.stringify(path)}`).toBe(false);
     }
   });
+
+  // A short mid-route jog (an S between two near-equal parallel runs) reads as
+  // a sharp zigzag — straightenShortJogs must collapse it to one straight run,
+  // while keeping the path orthogonal. Real offset steps (to reach an offset
+  // shape) must stay. Counts short interior jogs (< ELBOW_MIN_SEGMENT) flanked
+  // by parallel runs.
+  it("collapses spurious short zigzag jogs but keeps real offset steps orthogonal", () => {
+    const isOrthogonal = (p: Vec2[]): boolean => {
+      for (let i = 1; i < p.length; i++) {
+        if (!(Math.abs(p[i]!.x - p[i - 1]!.x) < 1e-6 || Math.abs(p[i]!.y - p[i - 1]!.y) < 1e-6)) {
+          return false;
+        }
+      }
+      return true;
+    };
+    const shortMidJogs = (p: Vec2[]): number => {
+      let n = 0;
+      for (let i = 2; i < p.length - 1; i++) {
+        const stepLen = Math.hypot(p[i]!.x - p[i - 1]!.x, p[i]!.y - p[i - 1]!.y);
+        if (stepLen >= 24 || stepLen < 1e-6) continue;
+        const h1 = Math.abs(p[i - 2]!.y - p[i - 1]!.y) < 1e-6;
+        const h2 = Math.abs(p[i]!.y - p[i + 1]!.y) < 1e-6;
+        const v1 = Math.abs(p[i - 2]!.x - p[i - 1]!.x) < 1e-6;
+        const v2 = Math.abs(p[i]!.x - p[i + 1]!.x) < 1e-6;
+        const stepV = Math.abs(p[i - 1]!.x - p[i]!.x) < 1e-6;
+        if (stepV && h1 && h2) n++; // vertical step between two horizontals
+        if (!stepV && v1 && v2) n++; // horizontal step between two verticals
+      }
+      return n;
+    };
+    // Zigzag case from the captured log: from above-left, to below-right, the
+    // two buffer levels differ by ~10px → a mid S.
+    let s = emptyScene();
+    const a = rect("a", 1091, -765, 300, 100); // bottom-center ≈ (1241,-665)
+    const b = rect("b", 1403, -625, 300, 150); // top-center ≈ (1553,-625)
+    ({ scene: s } = addElement(s, a));
+    ({ scene: s } = addElement(s, b));
+    const e: Link = {
+      id: linkId("z"),
+      layerId: layerId(DEFAULT_LAYER_ID),
+      from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+      to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
+      routing: "orthogonal",
+      order: orderBetween(null, null),
+      style: { stroke: "#000" },
+    };
+    ({ scene: s } = addLink(s, e));
+    ({ scene: s } = updateLink(s, e.id, (x) => ({ ...x, routedPoints: routeElbowLink(s, e) })));
+    const zpath = getLinkPath(s, [...s.links.values()][0]!)!;
+    expect(isOrthogonal(zpath), `not orthogonal: ${JSON.stringify(zpath)}`).toBe(true);
+    expect(shortMidJogs(zpath), `zigzag remains: ${JSON.stringify(zpath)}`).toBe(0);
+
+    // Vertical stack with a real x-offset must KEEP its (necessary) step and
+    // stay orthogonal.
+    let s2 = emptyScene();
+    const a2 = rect("a", 0, 0, 80, 60);
+    const b2 = rect("b", 20, 300, 80, 60);
+    ({ scene: s2 } = addElement(s2, a2));
+    ({ scene: s2 } = addElement(s2, b2));
+    const e2: Link = {
+      id: linkId("vs"),
+      layerId: layerId(DEFAULT_LAYER_ID),
+      from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+      to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
+      routing: "orthogonal",
+      order: orderBetween(null, null),
+      style: { stroke: "#000" },
+    };
+    ({ scene: s2 } = addLink(s2, e2));
+    ({ scene: s2 } = updateLink(s2, e2.id, (x) => ({ ...x, routedPoints: routeElbowLink(s2, e2) })));
+    const vpath = getLinkPath(s2, [...s2.links.values()][0]!)!;
+    expect(isOrthogonal(vpath), `vstack not orthogonal: ${JSON.stringify(vpath)}`).toBe(true);
+  });
 });

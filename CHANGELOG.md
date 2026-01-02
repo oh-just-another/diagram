@@ -1141,3 +1141,6 @@
 
 ## 0.51.69
 - fix(scene): elbow router won't retrace its terminal buffer (no 180° tail)
+
+## 0.51.70
+- fix: kill the elbow mid-kink — trim buffer overshoot + round only real corners
