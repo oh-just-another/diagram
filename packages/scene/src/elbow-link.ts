@@ -195,7 +195,20 @@ export const routeElbowPreview = (
  */
 const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   const dist = Math.hypot(to.x - from.x, to.y - from.y);
-  const buf = Math.min(ELBOW_TERMINAL_BUFFER, dist * 0.45); // clamp on short links
+  let buf = Math.min(ELBOW_TERMINAL_BUFFER, dist * 0.45); // clamp on short links
+  // When both buffers run along the SAME axis pointing TOWARD each other (e.g.
+  // a bottom anchor above a top anchor), they share the gap between the shapes.
+  // Clamp to half that gap so the two stubs meet symmetrically at the midpoint
+  // instead of one staying full while the other shrinks to near-zero (which
+  // also removes the tiny mid-kink). Keeps both buffers equal.
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  if (a.heading.y !== 0 && b.heading.y === -a.heading.y && Math.sign(a.heading.y) === Math.sign(dy)) {
+    buf = Math.min(buf, Math.abs(dy) / 2);
+  }
+  if (a.heading.x !== 0 && b.heading.x === -a.heading.x && Math.sign(a.heading.x) === Math.sign(dx)) {
+    buf = Math.min(buf, Math.abs(dx) / 2);
+  }
   const bufA: Vec2 = { x: from.x + a.heading.x * buf, y: from.y + a.heading.y * buf };
   const bufB: Vec2 = { x: to.x + b.heading.x * buf, y: to.y + b.heading.y * buf };
   const obstacles: Bounds[] = [];

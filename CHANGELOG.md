@@ -1144,3 +1144,6 @@
 
 ## 0.51.70
 - fix: kill the elbow mid-kink — trim buffer overshoot + round only real corners
+
+## 0.51.71
+- fix(scene): straighten short mid-route zigzag jogs in elbow links

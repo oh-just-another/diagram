@@ -206,4 +206,34 @@ describe("elbow route never crosses a bound shape", () => {
     const vpath = getLinkPath(s2, [...s2.links.values()][0]!)!;
     expect(isOrthogonal(vpath), `vstack not orthogonal: ${JSON.stringify(vpath)}`).toBe(true);
   });
+
+  // When the vertical gap is < 2×buffer the two stubs share it: they must
+  // shrink SYMMETRICALLY (both = gap/2) and meet at the midpoint, never one
+  // staying full while the other collapses to near-zero.
+  it("near-level bottom→top buffers shrink symmetrically (no tiny stub)", () => {
+    for (let gap = 36; gap <= 70; gap += 2) {
+      let s = emptyScene();
+      const a = rect("a", 225, 0, 300, 150); // bottom edge y=150, center x=375
+      const b = rect("b", 720, 150 + gap, 400, 200); // top edge y=150+gap, center x=920
+      ({ scene: s } = addElement(s, a));
+      ({ scene: s } = addElement(s, b));
+      const e: Link = {
+        id: linkId("e3"),
+        layerId: layerId(DEFAULT_LAYER_ID),
+        from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+        to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
+        routing: "orthogonal",
+        order: orderBetween(null, null),
+        style: { stroke: "#000" },
+      };
+      ({ scene: s } = addLink(s, e));
+      ({ scene: s } = updateLink(s, e.id, (x) => ({ ...x, routedPoints: routeElbowLink(s, e) })));
+      const path = getLinkPath(s, [...s.links.values()][0]!)!;
+      const fromBuf = path[1]!.y - 150; // first stub length
+      const toBuf = 150 + gap - path[path.length - 2]!.y; // last stub length
+      const expected = Math.min(30, gap / 2);
+      expect(Math.abs(fromBuf - toBuf), `asymmetric stubs at gap=${gap}: ${JSON.stringify(path)}`).toBeLessThan(0.6);
+      expect(Math.abs(fromBuf - expected), `stub not gap/2 at gap=${gap}: ${fromBuf}`).toBeLessThan(0.6);
+    }
+  });
 });
