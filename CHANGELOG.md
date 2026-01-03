@@ -1147,3 +1147,6 @@
 
 ## 0.51.71
 - fix(scene): straighten short mid-route zigzag jogs in elbow links
+
+## 0.51.72
+- fix(scene): elbow buffers shrink symmetrically on tight gaps (no tiny stub)

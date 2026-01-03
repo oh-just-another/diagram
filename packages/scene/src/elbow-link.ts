@@ -1,5 +1,5 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
-import { ELBOW_MIN_SEGMENT, ELBOW_TERMINAL_BUFFER } from "./constants.js";
+import { ELBOW_MIN_BUFFER, ELBOW_TERMINAL_BUFFER } from "./constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
 import { elbowRoute } from "./elbow-router.js";
@@ -48,121 +48,7 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
   // still has 3 segments (buffer + movable + buffer) and reads as one line.
   let middle = routeMiddle(from, to, a, b);
   middle = applyFixedSegments(middle, edge.fixedSegments);
-  // When the two shapes are closer than 2×buffer along the exit axis, the two
-  // buffer levels don't meet and the route makes a tiny reverse "kink" right
-  // after a buffer. Trim that overshoot (shorten the buffer to the turn) so
-  // the connector stays clean instead of leaving an un-roundable jog.
-  let full = trimBufferOvershoot([from, ...middle, to]);
-  full = straightenShortJogs(full, ELBOW_MIN_SEGMENT);
-  return full.slice(1, -1);
-};
-
-/**
- * Straighten short zigzag "jogs": a step segment shorter than `minStep` that
- * sits between two parallel runs (an S) can't be rounded and reads as a sharp
- * zigzag. Snap the second run onto the first run's level (dropping the step) so
- * the two runs merge into one straight segment — but only when that keeps the
- * segment AFTER the jog pointing the same way (so we never flip a terminal
- * buffer inward). Loops until no collapsible jog remains.
- */
-const straightenShortJogs = (path: readonly Vec2[], minStep: number): Vec2[] => {
-  let pts = [...path];
-  let guard = 0;
-  for (;;) {
-    if (guard++ > 64) break;
-    let collapsed = false;
-    for (let i = 1; i + 2 < pts.length; i++) {
-      const A = pts[i - 1]!;
-      const B = pts[i]!;
-      const C = pts[i + 1]!;
-      const D = pts[i + 2]!;
-      const stepLen = Math.hypot(C.x - B.x, C.y - B.y);
-      if (stepLen < 1e-6 || stepLen >= minStep) continue;
-      const stepVert = Math.abs(B.x - C.x) < 1e-6 && Math.abs(B.y - C.y) > 1e-6;
-      const stepHorz = Math.abs(B.y - C.y) < 1e-6 && Math.abs(B.x - C.x) > 1e-6;
-      if (!stepVert && !stepHorz) continue;
-      // Flanking runs must be perpendicular to the step (i.e. parallel).
-      const abPerp = stepVert
-        ? Math.abs(A.y - B.y) < 1e-6 && Math.abs(A.x - B.x) > 1e-6
-        : Math.abs(A.x - B.x) < 1e-6 && Math.abs(A.y - B.y) > 1e-6;
-      const cdPerp = stepVert
-        ? Math.abs(C.y - D.y) < 1e-6 && Math.abs(C.x - D.x) > 1e-6
-        : Math.abs(C.x - D.x) < 1e-6 && Math.abs(C.y - D.y) > 1e-6;
-      if (!abPerp || !cdPerp) continue;
-      // Snap run2 (C,D) onto run1's level (B). D' keeps D's free coordinate
-      // (x for a vertical step, y for a horizontal one).
-      const dPrime = stepVert ? { x: D.x, y: B.y } : { x: B.x, y: D.y };
-      // Only collapse a jog that's a SPURIOUS zigzag — one where moving D keeps
-      // the whole path orthogonal. The point after D must share D's preserved
-      // coordinate (so D'→after stays axis-aligned); and D must not be the
-      // terminal endpoint (we can't move a bound point). This rejects a REAL
-      // offset step needed to reach an offset shape (which would become a
-      // diagonal), keeping only the buffer-mismatch zigzags.
-      const after = pts[i + 3];
-      if (!after) continue;
-      const stillAligned = stepVert
-        ? Math.abs(after.x - D.x) < 1e-6
-        : Math.abs(after.y - D.y) < 1e-6;
-      if (!stillAligned) continue;
-      // Also don't flip the segment after D.
-      const oldDir = stepVert ? Math.sign(after.y - D.y) : Math.sign(after.x - D.x);
-      const newDir = stepVert ? Math.sign(after.y - dPrime.y) : Math.sign(after.x - dPrime.x);
-      if (oldDir !== 0 && newDir !== 0 && oldDir !== newDir) continue;
-      pts[i + 2] = dPrime;
-      pts.splice(i, 2); // drop B and C; A→D' is now one straight run
-      collapsed = true;
-      break;
-    }
-    if (!collapsed) break;
-  }
-  return pts;
-};
-
-/**
- * Remove a tiny reverse "kink" at a terminal buffer: when the first move after
- * the from-buffer (or last move before the to-buffer) reverses it by a small
- * amount that still stays OUTWARD of the endpoint, the buffer simply
- * overshot the turn — drop the buffer joint so the buffer shortens to the turn
- * level. Large reversals that cross back PAST the endpoint (inherent
- * opposite-anchor folds) are left untouched.
- */
-const trimBufferOvershoot = (full: readonly Vec2[]): Vec2[] => {
-  let out = [...full];
-  // Start end: [f, bufJoint, next, ...]
-  if (out.length >= 3) {
-    const f = out[0]!;
-    const j = out[1]!;
-    const n = out[2]!;
-    if (overshoots(f, j, n)) out = [f, n, ...out.slice(3)];
-  }
-  // End end: [..., prev, bufJoint, t]
-  if (out.length >= 3) {
-    const t = out[out.length - 1]!;
-    const j = out[out.length - 2]!;
-    const p = out[out.length - 3]!;
-    if (overshoots(t, j, p)) out = [...out.slice(0, -3), p, t];
-  }
-  return out;
-};
-
-/**
- * True when `end → joint` (a buffer) is reversed by `joint → next` along the
- * same axis, but `next` still sits on the OUTWARD side of `end` — i.e. the
- * buffer merely overshot the turn and the joint can be dropped (buffer →
- * `end → next`, same direction, just shorter).
- */
-const overshoots = (end: Vec2, joint: Vec2, next: Vec2): boolean => {
-  const vert = Math.abs(end.x - joint.x) < 1e-6 && Math.abs(end.y - joint.y) > 1e-6;
-  const horz = Math.abs(end.y - joint.y) < 1e-6 && Math.abs(end.x - joint.x) > 1e-6;
-  if (vert && Math.abs(joint.x - next.x) < 1e-6) {
-    const dir = Math.sign(joint.y - end.y); // buffer direction
-    return Math.sign(next.y - joint.y) === -dir && Math.sign(next.y - end.y) === dir;
-  }
-  if (horz && Math.abs(joint.y - next.y) < 1e-6) {
-    const dir = Math.sign(joint.x - end.x);
-    return Math.sign(next.x - joint.x) === -dir && Math.sign(next.x - end.x) === dir;
-  }
-  return false;
+  return middle;
 };
 
 /**
@@ -194,13 +80,14 @@ export const routeElbowPreview = (
  * the two stubs don't overrun each other.
  */
 const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
-  const dist = Math.hypot(to.x - from.x, to.y - from.y);
-  let buf = Math.min(ELBOW_TERMINAL_BUFFER, dist * 0.45); // clamp on short links
+  let buf = ELBOW_TERMINAL_BUFFER;
   // When both buffers run along the SAME axis pointing TOWARD each other (e.g.
   // a bottom anchor above a top anchor), they share the gap between the shapes.
-  // Clamp to half that gap so the two stubs meet symmetrically at the midpoint
-  // instead of one staying full while the other shrinks to near-zero (which
-  // also removes the tiny mid-kink). Keeps both buffers equal.
+  // Shrink them SYMMETRICALLY to half that gap so the two stubs meet at the
+  // midpoint (clean Z, equal stubs) — but never below ELBOW_MIN_BUFFER: a stub
+  // always keeps its minimum length (arrowhead room). When the gap is tighter
+  // than 2×min, the floored stubs overlap and the middle takes a small bend,
+  // but the stubs are NOT shrunk further.
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   if (a.heading.y !== 0 && b.heading.y === -a.heading.y && Math.sign(a.heading.y) === Math.sign(dy)) {
@@ -209,6 +96,7 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   if (a.heading.x !== 0 && b.heading.x === -a.heading.x && Math.sign(a.heading.x) === Math.sign(dx)) {
     buf = Math.min(buf, Math.abs(dx) / 2);
   }
+  buf = Math.max(buf, ELBOW_MIN_BUFFER);
   const bufA: Vec2 = { x: from.x + a.heading.x * buf, y: from.y + a.heading.y * buf };
   const bufB: Vec2 = { x: to.x + b.heading.x * buf, y: to.y + b.heading.y * buf };
   const obstacles: Bounds[] = [];

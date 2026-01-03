@@ -52,13 +52,13 @@ export const ELBOW_BEND_PENALTY = 100000;
 export const ELBOW_TERMINAL_BUFFER = 30;
 
 /**
- * Minimum length (world px) of a connecting "jog" segment between two parallel
- * elbow segments. A jog shorter than this can't be rounded cleanly (its corner
- * radius would exceed the segment), so it reads as a sharp zigzag — such jogs
- * are straightened away (the two parallel runs are snapped to one level). Set
- * to ~2× the corner radius. Range: 16–32.
+ * Hard floor (world px) for a terminal buffer. When two opposite-anchor shapes
+ * are closer than 2×ELBOW_TERMINAL_BUFFER, the buffers shrink symmetrically to
+ * share the gap — but never below this floor (enough room for the arrowhead).
+ * Below 2×this gap the two floored buffers overlap and the middle takes a small
+ * bend; the buffers themselves stay at the floor. Range: 12–24.
  */
-export const ELBOW_MIN_SEGMENT = 24;
+export const ELBOW_MIN_BUFFER = 20;
 
 /**
  * --- Curved (bezier) link geometry ---
