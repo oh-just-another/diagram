@@ -52,6 +52,15 @@ export const ELBOW_BEND_PENALTY = 100000;
 export const ELBOW_TERMINAL_BUFFER = 30;
 
 /**
+ * Hard floor (world px) for a terminal buffer — it never shrinks below this
+ * (arrowhead room). On tight gaps the two floored stubs overlap and the middle
+ * takes a small step; that step is rounded smoothly (per-corner radius) so the
+ * two segments flow into each other (standard model) rather than forming a sharp
+ * zigzag. Range: 12–24.
+ */
+export const ELBOW_MIN_BUFFER = 20;
+
+/**
  * --- Curved (bezier) link geometry ---
  *
  * Shared by the renderer (draws cubic beziers), hit-testing and bounds

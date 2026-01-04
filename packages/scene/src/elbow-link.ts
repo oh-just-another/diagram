@@ -1,5 +1,5 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
-import { ELBOW_TERMINAL_BUFFER } from "./constants.js";
+import { ELBOW_MIN_BUFFER, ELBOW_TERMINAL_BUFFER } from "./constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
 import { elbowRoute } from "./elbow-router.js";
@@ -85,10 +85,11 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   // When both buffers run along the SAME axis pointing TOWARD each other (e.g.
   // a bottom anchor above a top anchor), they share the gap between the shapes.
   // Shrink them SYMMETRICALLY to half that gap so the two stubs stay EQUAL and
-  // meet at the midpoint — a clean Z with no mid-zigzag, for any gap (standard
-  // model). On tight gaps the stubs get small but remain equal and clean; we
-  // deliberately don't floor them (a hard floor would force the stubs to
-  // overlap and create the zigzag standard avoids).
+  // meet at the midpoint — a clean Z. But never below ELBOW_MIN_BUFFER: a stub
+  // always keeps its minimum length (arrowhead room). On gaps tighter than
+  // 2×min the floored stubs overlap and the middle takes a small step, which
+  // the per-corner rounding smooths into an S (standard model) — the stubs are NOT
+  // shrunk further.
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   if (a.heading.y !== 0 && b.heading.y === -a.heading.y && Math.sign(a.heading.y) === Math.sign(dy)) {
@@ -97,6 +98,7 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   if (a.heading.x !== 0 && b.heading.x === -a.heading.x && Math.sign(a.heading.x) === Math.sign(dx)) {
     buf = Math.min(buf, Math.abs(dx) / 2);
   }
+  buf = Math.max(buf, ELBOW_MIN_BUFFER);
   const bufA: Vec2 = { x: from.x + a.heading.x * buf, y: from.y + a.heading.y * buf };
   const bufB: Vec2 = { x: to.x + b.heading.x * buf, y: to.y + b.heading.y * buf };
   const obstacles: Bounds[] = [];

@@ -1153,3 +1153,6 @@
 
 ## 0.51.73
 - fix(scene): terminal buffers have a hard floor — never shrink to nothing
+
+## 0.51.74
+- fix: match standard elbow — symmetric stubs (gap/2), per-corner radius
