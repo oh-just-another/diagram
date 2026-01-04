@@ -1150,3 +1150,6 @@
 
 ## 0.51.72
 - fix(scene): elbow buffers shrink symmetrically on tight gaps (no tiny stub)
+
+## 0.51.73
+- fix(scene): terminal buffers have a hard floor — never shrink to nothing

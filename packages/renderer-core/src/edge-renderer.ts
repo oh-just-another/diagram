@@ -356,18 +356,12 @@ const strokeRoundedPolyline = (
   for (let i = 1; i < pts.length; i++) target.lineTo(pts[i]!.x, pts[i]!.y);
   return;
  }
- // One uniform radius for every corner so they all look identical: clamp the
- // requested radius to half the SHORTEST segment in the whole path (a corner
- // can use at most half of each adjacent segment; using the global min keeps
- // every corner equal AND avoids two corners of a short segment overlapping).
- let minSeg = Infinity;
- for (let i = 1; i < pts.length; i++) {
-  const d = Math.hypot(pts[i]!.x - pts[i - 1]!.x, pts[i]!.y - pts[i - 1]!.y);
-  // Ignore sub-pixel junk segments (e.g. floating two-pass rounding) so one
-  // degenerate edge doesn't collapse every corner's radius to ~0.
-  if (d >= 2 && d < minSeg) minSeg = d;
- }
- const r = minSeg === Infinity ? radius : Math.min(radius, minSeg / 2);
+ // Per-corner radius: each corner rounds to the requested radius, clamped to
+ // half of EACH adjacent segment (so two corners sharing a short segment meet
+ // without overlapping). With spurious tiny segments already removed
+ // (cornersOnly + the router's symmetric buffer clamp), every normal corner
+ // gets the full radius — stable, no global "jump" — while a deliberately
+ // short jog (tight-gap overlap step) rounds smoothly to its own size.
  target.moveTo(pts[0]!.x, pts[0]!.y);
  for (let i = 1; i < pts.length - 1; i++) {
   const prev = pts[i - 1]!;
@@ -379,6 +373,7 @@ const strokeRoundedPolyline = (
    target.lineTo(cur.x, cur.y);
    continue;
   }
+  const r = Math.min(radius, l1 / 2, l2 / 2);
   const a = { x: cur.x + ((prev.x - cur.x) / l1) * r, y: cur.y + ((prev.y - cur.y) / l1) * r };
   const b = { x: cur.x + ((next.x - cur.x) / l2) * r, y: cur.y + ((next.y - cur.y) / l2) * r };
   target.lineTo(a.x, a.y);

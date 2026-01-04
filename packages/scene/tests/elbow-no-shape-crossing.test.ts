@@ -231,10 +231,11 @@ describe("elbow route never crosses a bound shape", () => {
       const path = getLinkPath(s, [...s.links.values()][0]!)!;
       const fromBuf = path[1]!.y - 150; // first stub length
       const toBuf = 150 + gap - path[path.length - 2]!.y; // last stub length
-      // Symmetric: both = clamp(gap/2) but never below the floor (min buffer).
-      const expected = Math.max(20, Math.min(30, gap / 2));
+      // Symmetric: both stubs equal and = min(30, gap/2) — they meet at the
+      // midpoint (clean Z, standard model), no asymmetric near-zero stub.
+      const expected = Math.min(30, gap / 2);
       expect(Math.abs(fromBuf - toBuf), `asymmetric stubs at gap=${gap}: ${JSON.stringify(path)}`).toBeLessThan(0.6);
-      expect(Math.abs(fromBuf - expected), `stub != clamp at gap=${gap}: ${fromBuf}`).toBeLessThan(0.6);
+      expect(Math.abs(fromBuf - expected), `stub != gap/2 at gap=${gap}: ${fromBuf}`).toBeLessThan(0.6);
     }
   });
 });

@@ -52,15 +52,6 @@ export const ELBOW_BEND_PENALTY = 100000;
 export const ELBOW_TERMINAL_BUFFER = 30;
 
 /**
- * Hard floor (world px) for a terminal buffer. When two opposite-anchor shapes
- * are closer than 2×ELBOW_TERMINAL_BUFFER, the buffers shrink symmetrically to
- * share the gap — but never below this floor (enough room for the arrowhead).
- * Below 2×this gap the two floored buffers overlap and the middle takes a small
- * bend; the buffers themselves stay at the floor. Range: 12–24.
- */
-export const ELBOW_MIN_BUFFER = 20;
-
-/**
  * --- Curved (bezier) link geometry ---
  *
  * Shared by the renderer (draws cubic beziers), hit-testing and bounds
