@@ -1,5 +1,5 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
-import { ELBOW_MIN_BUFFER, ELBOW_TERMINAL_BUFFER } from "./constants.js";
+import { ELBOW_TERMINAL_BUFFER } from "./constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
 import { elbowRoute } from "./elbow-router.js";
@@ -80,16 +80,12 @@ export const routeElbowPreview = (
  * the two stubs don't overrun each other.
  */
 const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
-  const dist = Math.hypot(to.x - from.x, to.y - from.y);
-  let buf = Math.min(ELBOW_TERMINAL_BUFFER, dist * 0.45);
-  // When both buffers run along the SAME axis pointing TOWARD each other (e.g.
-  // a bottom anchor above a top anchor), they share the gap between the shapes.
-  // Shrink them SYMMETRICALLY to half that gap so the two stubs stay EQUAL and
-  // meet at the midpoint — a clean Z. But never below ELBOW_MIN_BUFFER: a stub
-  // always keeps its minimum length (arrowhead room). On gaps tighter than
-  // 2×min the floored stubs overlap and the middle takes a small step, which
-  // the per-corner rounding smooths into an S (standard model) — the stubs are NOT
-  // shrunk further.
+  // Single rule: each stub is ELBOW_TERMINAL_BUFFER, but when two opposite-axis
+  // anchors are closer than 2×buffer the stubs share the gap symmetrically
+  // (both = gap/2) and meet at the midpoint — one clean Z, no kink, no spike.
+  // (A truly fixed length would overshoot the entry level on tight gaps and
+  // force a sharp reversal.)
+  let buf = ELBOW_TERMINAL_BUFFER;
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   if (a.heading.y !== 0 && b.heading.y === -a.heading.y && Math.sign(a.heading.y) === Math.sign(dy)) {
@@ -98,7 +94,6 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   if (a.heading.x !== 0 && b.heading.x === -a.heading.x && Math.sign(a.heading.x) === Math.sign(dx)) {
     buf = Math.min(buf, Math.abs(dx) / 2);
   }
-  buf = Math.max(buf, ELBOW_MIN_BUFFER);
   const bufA: Vec2 = { x: from.x + a.heading.x * buf, y: from.y + a.heading.y * buf };
   const bufB: Vec2 = { x: to.x + b.heading.x * buf, y: to.y + b.heading.y * buf };
   const obstacles: Bounds[] = [];

@@ -1156,3 +1156,6 @@
 
 ## 0.51.74
 - fix: match standard elbow — symmetric stubs (gap/2), per-corner radius
+
+## 0.51.75
+- fix(scene): restore terminal buffer floor; smooth mid-step via per-corner radius
