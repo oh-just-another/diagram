@@ -1159,3 +1159,6 @@
 
 ## 0.51.75
 - fix(scene): restore terminal buffer floor; smooth mid-step via per-corner radius
+
+## 0.51.76
+- fix(scene): stop tab hang; symmetric elbow stubs (no buffer floor)

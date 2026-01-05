@@ -134,12 +134,10 @@ describe("elbow route never crosses a bound shape", () => {
     }
   });
 
-  // A short mid-route jog (an S between two near-equal parallel runs) reads as
-  // a sharp zigzag — straightenShortJogs must collapse it to one straight run,
-  // while keeping the path orthogonal. Real offset steps (to reach an offset
-  // shape) must stay. Counts short interior jogs (< ELBOW_MIN_SEGMENT) flanked
-  // by parallel runs.
-  it("collapses spurious short zigzag jogs but keeps real offset steps orthogonal", () => {
+  // The tight-gap overlap renders as a smooth S whose step sits in the MIDDLE
+  // (not a sharp reversal at a stub). The route must stay orthogonal, keep its
+  // fixed stubs, and place any short reverse step away from the stub joints.
+  it("tight-gap overlap is a mid-step S, not a buffer-side spike; stays orthogonal", () => {
     const isOrthogonal = (p: Vec2[]): boolean => {
       for (let i = 1; i < p.length; i++) {
         if (!(Math.abs(p[i]!.x - p[i - 1]!.x) < 1e-6 || Math.abs(p[i]!.y - p[i - 1]!.y) < 1e-6)) {
@@ -148,23 +146,25 @@ describe("elbow route never crosses a bound shape", () => {
       }
       return true;
     };
-    const shortMidJogs = (p: Vec2[]): number => {
-      let n = 0;
-      for (let i = 2; i < p.length - 1; i++) {
-        const stepLen = Math.hypot(p[i]!.x - p[i - 1]!.x, p[i]!.y - p[i - 1]!.y);
-        if (stepLen >= 24 || stepLen < 1e-6) continue;
-        const h1 = Math.abs(p[i - 2]!.y - p[i - 1]!.y) < 1e-6;
-        const h2 = Math.abs(p[i]!.y - p[i + 1]!.y) < 1e-6;
-        const v1 = Math.abs(p[i - 2]!.x - p[i - 1]!.x) < 1e-6;
-        const v2 = Math.abs(p[i]!.x - p[i + 1]!.x) < 1e-6;
-        const stepV = Math.abs(p[i - 1]!.x - p[i]!.x) < 1e-6;
-        if (stepV && h1 && h2) n++; // vertical step between two horizontals
-        if (!stepV && v1 && v2) n++; // horizontal step between two verticals
-      }
-      return n;
+    // No antiparallel reversal directly at a stub joint: the first two segments
+    // after `from` must not reverse, nor the last two before `to`.
+    const reversesAtStub = (p: Vec2[]): boolean => {
+      const rev = (a: Vec2, b: Vec2, c: Vec2): boolean => {
+        const abH = Math.abs(a.y - b.y) < 1e-6 && Math.abs(a.x - b.x) > 1e-6;
+        const bcH = Math.abs(b.y - c.y) < 1e-6 && Math.abs(b.x - c.x) > 1e-6;
+        const abV = Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) > 1e-6;
+        const bcV = Math.abs(b.x - c.x) < 1e-6 && Math.abs(b.y - c.y) > 1e-6;
+        return (
+          (abH && bcH && Math.sign(b.x - a.x) === -Math.sign(c.x - b.x)) ||
+          (abV && bcV && Math.sign(b.y - a.y) === -Math.sign(c.y - b.y))
+        );
+      };
+      return (
+        (p.length >= 3 && rev(p[0]!, p[1]!, p[2]!)) ||
+        (p.length >= 3 && rev(p[p.length - 3]!, p[p.length - 2]!, p[p.length - 1]!))
+      );
     };
-    // Zigzag case from the captured log: from above-left, to below-right, the
-    // two buffer levels differ by ~10px → a mid S.
+    // From above-left, to below-right.
     let s = emptyScene();
     const a = rect("a", 1091, -765, 300, 100); // bottom-center ≈ (1241,-665)
     const b = rect("b", 1403, -625, 300, 150); // top-center ≈ (1553,-625)
@@ -183,7 +183,7 @@ describe("elbow route never crosses a bound shape", () => {
     ({ scene: s } = updateLink(s, e.id, (x) => ({ ...x, routedPoints: routeElbowLink(s, e) })));
     const zpath = getLinkPath(s, [...s.links.values()][0]!)!;
     expect(isOrthogonal(zpath), `not orthogonal: ${JSON.stringify(zpath)}`).toBe(true);
-    expect(shortMidJogs(zpath), `zigzag remains: ${JSON.stringify(zpath)}`).toBe(0);
+    expect(reversesAtStub(zpath), `reverses at a stub: ${JSON.stringify(zpath)}`).toBe(false);
 
     // Vertical stack with a real x-offset must KEEP its (necessary) step and
     // stay orthogonal.
@@ -207,10 +207,9 @@ describe("elbow route never crosses a bound shape", () => {
     expect(isOrthogonal(vpath), `vstack not orthogonal: ${JSON.stringify(vpath)}`).toBe(true);
   });
 
-  // When the vertical gap is < 2×buffer the two stubs share it: they must
-  // shrink SYMMETRICALLY (both = gap/2) and meet at the midpoint, never one
-  // staying full while the other collapses to near-zero.
-  it("near-level bottom→top buffers shrink symmetrically (no tiny stub)", () => {
+  // The terminal stub is a FIXED length (never shrinks). On tight gaps the two
+  // fixed stubs overlap and the middle takes a smooth S; the stubs stay = 30.
+  it("near-level bottom→top stubs stay fixed (never shrink)", () => {
     for (let gap = 36; gap <= 70; gap += 2) {
       let s = emptyScene();
       const a = rect("a", 225, 0, 300, 150); // bottom edge y=150, center x=375
@@ -231,11 +230,9 @@ describe("elbow route never crosses a bound shape", () => {
       const path = getLinkPath(s, [...s.links.values()][0]!)!;
       const fromBuf = path[1]!.y - 150; // first stub length
       const toBuf = 150 + gap - path[path.length - 2]!.y; // last stub length
-      // Symmetric: both stubs equal = min(30, gap/2) — they meet at the
-      // midpoint (clean Z), no asymmetric near-zero stub.
-      const expected = Math.min(30, gap / 2);
-      expect(Math.abs(fromBuf - toBuf), `asymmetric stubs at gap=${gap}: ${JSON.stringify(path)}`).toBeLessThan(0.6);
-      expect(Math.abs(fromBuf - expected), `stub != gap/2 at gap=${gap}: ${fromBuf}`).toBeLessThan(0.6);
+      // Both stubs are exactly the buffer length (30), never shrunk.
+      expect(Math.abs(fromBuf - 30), `from stub != 30 at gap=${gap}: ${fromBuf}`).toBeLessThan(0.6);
+      expect(Math.abs(toBuf - 30), `to stub != 30 at gap=${gap}: ${toBuf}`).toBeLessThan(0.6);
     }
   });
 });

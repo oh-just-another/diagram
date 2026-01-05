@@ -80,25 +80,20 @@ export const routeElbowPreview = (
  * the two stubs don't overrun each other.
  */
 const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
-  // Single rule: each stub is ELBOW_TERMINAL_BUFFER, but when two opposite-axis
-  // anchors are closer than 2×buffer the stubs share the gap symmetrically
-  // (both = gap/2) and meet at the midpoint — one clean Z, no kink, no spike.
-  // (A truly fixed length would overshoot the entry level on tight gaps and
-  // force a sharp reversal.)
-  let buf = ELBOW_TERMINAL_BUFFER;
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  if (a.heading.y !== 0 && b.heading.y === -a.heading.y && Math.sign(a.heading.y) === Math.sign(dy)) {
-    buf = Math.min(buf, Math.abs(dy) / 2);
-  }
-  if (a.heading.x !== 0 && b.heading.x === -a.heading.x && Math.sign(a.heading.x) === Math.sign(dx)) {
-    buf = Math.min(buf, Math.abs(dx) / 2);
-  }
+  // FIXED buffer: every terminal stub is exactly ELBOW_TERMINAL_BUFFER — one
+  // constant length, never shrunk. bufA / bufB are the stub joints.
+  const buf = ELBOW_TERMINAL_BUFFER;
   const bufA: Vec2 = { x: from.x + a.heading.x * buf, y: from.y + a.heading.y * buf };
   const bufB: Vec2 = { x: to.x + b.heading.x * buf, y: to.y + b.heading.y * buf };
   const obstacles: Bounds[] = [];
   if (a.obstacle) obstacles.push(a.obstacle);
   if (b.obstacle) obstacles.push(b.obstacle);
+  // Opposite-axis stubs that overlap (gap < 2×buffer): build a clean S whose
+  // step sits in the MIDDLE between the two stub joints (rounded smoothly by
+  // the renderer) instead of a sharp reversal at a stub. Fall back to A* if
+  // that S would clip a bound shape.
+  const midS = overlapMidS(from, to, a, b, bufA, bufB);
+  if (midS && !pathCrossesObstacle(midS, obstacles)) return collapseColinear(midS);
   const routed = elbowRoute(bufA, bufB, obstacles, {
     startHeading: a.heading,
     endHeading: b.heading,
@@ -108,6 +103,50 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   // Collapse only the interior corners — collapseColinear keeps the bufA / bufB
   // endpoints, so the stub joints survive even when colinear with the middle.
   return collapseColinear(mid);
+};
+
+/**
+ * For two opposite-axis stubs that OVERLAP (the shapes are closer than
+ * 2×buffer), return a 4-point S `[bufA, c1, c2, bufB]` whose connecting step
+ * sits at the midpoint between the joints — a smooth mid-bend rather than a
+ * sharp reversal at a stub. Returns null when the stubs don't overlap (the
+ * normal A* route is fine).
+ */
+const overlapMidS = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo, bufA: Vec2, bufB: Vec2): Vec2[] | null => {
+  const dy = to.y - from.y;
+  const dx = to.x - from.x;
+  // Vertical pair (e.g. bottom→top): stubs along Y, overlapping when bufA has
+  // passed bufB along the exit heading.
+  if (a.heading.y !== 0 && b.heading.y === -a.heading.y && Math.sign(a.heading.y) === Math.sign(dy)) {
+    if (Math.sign(bufA.y - bufB.y) !== Math.sign(a.heading.y)) return null; // no overlap
+    const mx = (from.x + to.x) / 2;
+    return [bufA, { x: mx, y: bufA.y }, { x: mx, y: bufB.y }, bufB];
+  }
+  // Horizontal pair (e.g. right→left): stubs along X.
+  if (a.heading.x !== 0 && b.heading.x === -a.heading.x && Math.sign(a.heading.x) === Math.sign(dx)) {
+    if (Math.sign(bufA.x - bufB.x) !== Math.sign(a.heading.x)) return null;
+    const my = (from.y + to.y) / 2;
+    return [bufA, { x: bufA.x, y: my }, { x: bufB.x, y: my }, bufB];
+  }
+  return null;
+};
+
+/** True if any axis-aligned segment of `path` passes through an obstacle's
+ * interior (sampled; a margin keeps the line off the very edge). */
+const pathCrossesObstacle = (path: readonly Vec2[], obstacles: readonly Bounds[]): boolean => {
+  const m = 1; // tiny inset so edge-touching isn't a "cross"
+  for (let i = 1; i < path.length; i++) {
+    const p = path[i - 1]!;
+    const q = path[i]!;
+    for (let t = 0; t <= 1; t += 0.1) {
+      const x = p.x + (q.x - p.x) * t;
+      const y = p.y + (q.y - p.y) * t;
+      for (const o of obstacles) {
+        if (x > o.x + m && x < o.x + o.width - m && y > o.y + m && y < o.y + o.height - m) return true;
+      }
+    }
+  }
+  return false;
 };
 
 /** EndInfo for a raw point that may sit on a shape (preview). */
