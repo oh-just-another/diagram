@@ -46,7 +46,7 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
   // from→bufA / bufB→to segments that `getLinkPath` adds when it wraps
   // routedPoints with from/to — they're never collapsed, so an aligned elbow
   // still has 3 segments (buffer + movable + buffer) and reads as one line.
-  let middle = routeMiddle(from, to, a, b);
+  let middle = routeMiddle(from, to, a, b, edge.routedPoints);
   middle = applyFixedSegments(middle, edge.fixedSegments);
   return middle;
 };
@@ -79,7 +79,13 @@ export const routeElbowPreview = (
  * non-movable terminal segments. On very short links the buffer is clamped so
  * the two stubs don't overrun each other.
  */
-const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
+const routeMiddle = (
+  from: Vec2,
+  to: Vec2,
+  a: EndInfo,
+  b: EndInfo,
+  prefer?: readonly Vec2[],
+): Vec2[] => {
   // FIXED buffer: every terminal stub is exactly ELBOW_TERMINAL_BUFFER — one
   // constant length, never shrunk. bufA / bufB are the stub joints.
   const buf = ELBOW_TERMINAL_BUFFER;
@@ -97,6 +103,7 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   const routed = elbowRoute(bufA, bufB, obstacles, {
     startHeading: a.heading,
     endHeading: b.heading,
+    ...(prefer && prefer.length >= 2 ? { prefer } : {}),
   });
   const mid =
     routed && routed.length >= 2 ? routed : [bufA, fallbackCorner(bufA, bufB, a.heading), bufB];

@@ -51,7 +51,41 @@ export interface ElbowRouteOptions {
    * arrival end.
    */
   readonly endHeading?: Vec2;
+  /**
+   * The previous route's points (world). Used purely as a SECONDARY objective:
+   * among paths of EQUAL cost, the one overlapping the previous route the most
+   * wins, so the connector stays put across small drags (hysteresis — stops it
+   * flickering between two equally-good topologies). Never changes edge cost
+   * (so no negative edges / no infinite loop) and never beats a cheaper route.
+   */
+  readonly prefer?: readonly Vec2[];
 }
+
+/**
+ * True when the axis-aligned step `a → b` lies on a segment of the previous
+ * route `prefer` (same axis, same line, within extent). Drives the hysteresis
+ * tie-break only — not the cost.
+ */
+const onPreferPath = (a: Vec2, b: Vec2, prefer: readonly Vec2[]): boolean => {
+  if (prefer.length < 2) return false;
+  const abH = Math.abs(a.y - b.y) < 1e-6;
+  const abV = Math.abs(a.x - b.x) < 1e-6;
+  for (let i = 1; i < prefer.length; i++) {
+    const p = prefer[i - 1]!;
+    const q = prefer[i]!;
+    if (abH && Math.abs(p.y - q.y) < 1e-6 && Math.abs(a.y - p.y) < 1e-6) {
+      if (Math.min(a.x, b.x) >= Math.min(p.x, q.x) - 1e-6 && Math.max(a.x, b.x) <= Math.max(p.x, q.x) + 1e-6) {
+        return true;
+      }
+    }
+    if (abV && Math.abs(p.x - q.x) < 1e-6 && Math.abs(a.x - p.x) < 1e-6) {
+      if (Math.min(a.y, b.y) >= Math.min(p.y, q.y) - 1e-6 && Math.max(a.y, b.y) <= Math.max(p.y, q.y) + 1e-6) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
 
 export const elbowRoute = (
   from: Vec2,
@@ -65,6 +99,7 @@ export const elbowRoute = (
   const inflated = obstacles.map((b) => inflate(b, margin));
   const startHeading = options.startHeading;
   const endHeading = options.endHeading;
+  const prefer = options.prefer ?? [];
 
   // Candidate axes — every unique x and y value from endpoints + bbox
   // corners. The router walks the implicit grid those axes form.
@@ -101,21 +136,26 @@ export const elbowRoute = (
     readonly axis: 0 | 1 | 2; // 0 = start (no incoming), 1 = horizontal, 2 = vertical
     readonly g: number; // cost from start
     readonly f: number; // g + h
+    readonly stick: number; // # of steps overlapping the previous route (secondary, maximised)
   }
 
   const startNode = nodeKey(startXi, startYi);
   const open: NodeState[] = [
-    { key: startNode, skey: `${startNode},0`, xi: startXi, yi: startYi, axis: 0, g: 0, f: h(startXi, startYi) },
+    { key: startNode, skey: `${startNode},0`, xi: startXi, yi: startYi, axis: 0, g: 0, f: h(startXi, startYi), stick: 0 },
   ];
   // cameFrom / gScore keyed by *state* (node + arrival axis) so a node can be
-  // reached from both axes with different bend costs.
+  // reached from both axes with different bend costs. stickScore is the
+  // secondary objective (maximised only among equal-cost paths).
   const cameFrom = new Map<string, string>();
   const gScore = new Map<string, number>([[`${startNode},0`, 0]]);
+  const stickScore = new Map<string, number>([[`${startNode},0`, 0]]);
 
   while (open.length > 0) {
-    // Extract-min with a deterministic tie-break (f, then g, then key) so the
-    // same inputs always yield the same route — no flicker on small moves.
-    open.sort((a, b) => a.f - b.f || a.g - b.g || (a.skey < b.skey ? -1 : 1));
+    // Extract-min: cost first (f, then g), then prefer MORE overlap with the
+    // previous route (hysteresis — sticky), then key for determinism.
+    open.sort(
+      (a, b) => a.f - b.f || a.g - b.g || b.stick - a.stick || (a.skey < b.skey ? -1 : 1),
+    );
     const cur = open.shift()!;
     if (cur.xi === endXi && cur.yi === endYi) {
       return reconstructPath(cameFrom, cur.skey, xOfIdx, yOfIdx);
@@ -150,12 +190,21 @@ export const elbowRoute = (
       const stepAxis: 1 | 2 = next.xi !== cur.xi ? 1 : 2;
       const stepCost = Math.abs(fromPt.x - toPt.x) + Math.abs(fromPt.y - toPt.y);
       const turn = cur.axis !== 0 && cur.axis !== stepAxis ? BEND_PENALTY : 0;
-      const tentative = cur.g + stepCost + turn;
+      const tentative = cur.g + stepCost + turn; // cost — never discounted
+      const tentativeStick = cur.stick + (onPreferPath(fromPt, toPt, prefer) ? 1 : 0);
       const nodeK = nodeKey(next.xi, next.yi);
       const stateK = `${nodeK},${stepAxis}`;
       const prev = gScore.get(stateK);
-      if (prev !== undefined && tentative >= prev) continue;
+      // Accept a strictly cheaper path, OR an equal-cost path that overlaps the
+      // previous route more (secondary objective). Equal-cost+more-stick
+      // re-expansions are finite (stick strictly increases, bounded by path
+      // length), so this can't loop.
+      if (prev !== undefined) {
+        if (tentative > prev) continue;
+        if (tentative === prev && tentativeStick <= (stickScore.get(stateK) ?? 0)) continue;
+      }
       gScore.set(stateK, tentative);
+      stickScore.set(stateK, tentativeStick);
       cameFrom.set(stateK, cur.skey);
       open.push({
         key: nodeK,
@@ -165,6 +214,7 @@ export const elbowRoute = (
         axis: stepAxis,
         g: tentative,
         f: tentative + h(next.xi, next.yi),
+        stick: tentativeStick,
       });
     }
   }

@@ -1162,3 +1162,6 @@
 
 ## 0.51.76
 - fix(scene): stop tab hang; symmetric elbow stubs (no buffer floor)
+
+## 0.51.77
+- feat(scene): fixed elbow buffer + smooth mid-step S on tight gaps
