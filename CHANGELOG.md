@@ -1165,3 +1165,6 @@
 
 ## 0.51.77
 - feat(scene): fixed elbow buffer + smooth mid-step S on tight gaps
+
+## 0.51.78
+- fix(scene): stabilise elbow routing with equal-cost hysteresis (no jumping)
