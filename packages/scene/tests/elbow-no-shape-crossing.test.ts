@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { elementId, linkId, layerId } from "@oh-just-another/types";
+import { elementId, linkId, layerId, type Vec2 } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addElement,
@@ -11,7 +11,6 @@ import {
   updateLink,
   type Link,
   type RectangleElement,
-  type Vec2,
 } from "../src/index";
 
 const rect = (id: string, x: number, y: number, w: number, h: number): RectangleElement => ({
@@ -54,7 +53,11 @@ describe("elbow route never crosses a bound shape", () => {
       const e: Link = {
         id: linkId("e"),
         layerId: layerId(DEFAULT_LAYER_ID),
-        from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+        from: {
+          kind: "anchor",
+          elementId: elementId("a"),
+          anchor: { kind: "named", name: "bottom" },
+        },
         to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
         routing: "orthogonal",
         order: orderBetween(null, null),
@@ -64,7 +67,8 @@ describe("elbow route never crosses a bound shape", () => {
       ({ scene: s } = updateLink(s, e.id, (x) => ({ ...x, routedPoints: routeElbowLink(s, e) })));
       const path = getLinkPath(s, [...s.links.values()][0]!)!;
       for (let i = 1; i < path.length; i++) {
-        const crosses = segCrosses(path[i - 1]!, path[i]!, a) || segCrosses(path[i - 1]!, path[i]!, b);
+        const crosses =
+          segCrosses(path[i - 1]!, path[i]!, a) || segCrosses(path[i - 1]!, path[i]!, b);
         expect(crosses, `segment crosses a shape at dx=${dx}: ${JSON.stringify(path)}`).toBe(false);
       }
     }
@@ -74,7 +78,7 @@ describe("elbow route never crosses a bound shape", () => {
   // retracing its terminal buffer. For a well-separated bottom→top connector
   // (target clearly below) no 180° buffer reversal should appear.
   it("a.bottom → b.top (separated) has no 180° buffer retrace", () => {
-    const hasFold = (p: Vec2[]): boolean => {
+    const hasFold = (p: readonly Vec2[]): boolean => {
       for (let i = 1; i < p.length - 1; i++) {
         const a = p[i - 1]!;
         const b = p[i]!;
@@ -97,7 +101,11 @@ describe("elbow route never crosses a bound shape", () => {
       const e: Link = {
         id: linkId("e"),
         layerId: layerId(DEFAULT_LAYER_ID),
-        from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+        from: {
+          kind: "anchor",
+          elementId: elementId("a"),
+          anchor: { kind: "named", name: "bottom" },
+        },
         to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
         routing: "orthogonal",
         order: orderBetween(null, null),
@@ -121,7 +129,11 @@ describe("elbow route never crosses a bound shape", () => {
       const e: Link = {
         id: linkId("e2"),
         layerId: layerId(DEFAULT_LAYER_ID),
-        from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+        from: {
+          kind: "anchor",
+          elementId: elementId("a"),
+          anchor: { kind: "named", name: "bottom" },
+        },
         to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
         routing: "orthogonal",
         order: orderBetween(null, null),
@@ -138,7 +150,7 @@ describe("elbow route never crosses a bound shape", () => {
   // (not a sharp reversal at a stub). The route must stay orthogonal, keep its
   // fixed stubs, and place any short reverse step away from the stub joints.
   it("tight-gap overlap is a mid-step S, not a buffer-side spike; stays orthogonal", () => {
-    const isOrthogonal = (p: Vec2[]): boolean => {
+    const isOrthogonal = (p: readonly Vec2[]): boolean => {
       for (let i = 1; i < p.length; i++) {
         if (!(Math.abs(p[i]!.x - p[i - 1]!.x) < 1e-6 || Math.abs(p[i]!.y - p[i - 1]!.y) < 1e-6)) {
           return false;
@@ -148,7 +160,7 @@ describe("elbow route never crosses a bound shape", () => {
     };
     // No antiparallel reversal directly at a stub joint: the first two segments
     // after `from` must not reverse, nor the last two before `to`.
-    const reversesAtStub = (p: Vec2[]): boolean => {
+    const reversesAtStub = (p: readonly Vec2[]): boolean => {
       const rev = (a: Vec2, b: Vec2, c: Vec2): boolean => {
         const abH = Math.abs(a.y - b.y) < 1e-6 && Math.abs(a.x - b.x) > 1e-6;
         const bcH = Math.abs(b.y - c.y) < 1e-6 && Math.abs(b.x - c.x) > 1e-6;
@@ -173,7 +185,11 @@ describe("elbow route never crosses a bound shape", () => {
     const e: Link = {
       id: linkId("z"),
       layerId: layerId(DEFAULT_LAYER_ID),
-      from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+      from: {
+        kind: "anchor",
+        elementId: elementId("a"),
+        anchor: { kind: "named", name: "bottom" },
+      },
       to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
       routing: "orthogonal",
       order: orderBetween(null, null),
@@ -195,16 +211,74 @@ describe("elbow route never crosses a bound shape", () => {
     const e2: Link = {
       id: linkId("vs"),
       layerId: layerId(DEFAULT_LAYER_ID),
-      from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+      from: {
+        kind: "anchor",
+        elementId: elementId("a"),
+        anchor: { kind: "named", name: "bottom" },
+      },
       to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
       routing: "orthogonal",
       order: orderBetween(null, null),
       style: { stroke: "#000" },
     };
     ({ scene: s2 } = addLink(s2, e2));
-    ({ scene: s2 } = updateLink(s2, e2.id, (x) => ({ ...x, routedPoints: routeElbowLink(s2, e2) })));
+    ({ scene: s2 } = updateLink(s2, e2.id, (x) => ({
+      ...x,
+      routedPoints: routeElbowLink(s2, e2),
+    })));
     const vpath = getLinkPath(s2, [...s2.links.values()][0]!)!;
     expect(isOrthogonal(vpath), `vstack not orthogonal: ${JSON.stringify(vpath)}`).toBe(true);
+  });
+
+  // Diagonal pair whose boxes OVERLAP vertically (the upper box's bottom edge
+  // sits below the lower box's top edge). The crossover must break in the
+  // CENTRE between the two anchors — not jump to a box edge.
+  it("diagonal vertical-overlap breaks at the centre, not a box edge", () => {
+    // bottom-center of a = (150,300); top-center of b = (450,150).
+    // a.bottom (300) is below b.top (150) → vertically overlapping.
+    let s = emptyScene();
+    const a = rect("a", 100, 200, 100, 100); // bottom edge y=300, center x=150
+    const b = rect("b", 400, 150, 100, 100); // top edge y=150, center x=450
+    ({ scene: s } = addElement(s, a));
+    ({ scene: s } = addElement(s, b));
+    const e: Link = {
+      id: linkId("d"),
+      layerId: layerId(DEFAULT_LAYER_ID),
+      from: {
+        kind: "anchor",
+        elementId: elementId("a"),
+        anchor: { kind: "named", name: "bottom" },
+      },
+      to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
+      routing: "orthogonal",
+      order: orderBetween(null, null),
+      style: { stroke: "#000" },
+    };
+    ({ scene: s } = addLink(s, e));
+    ({ scene: s } = updateLink(s, e.id, (x) => ({ ...x, routedPoints: routeElbowLink(s, e) })));
+    const path = getLinkPath(s, [...s.links.values()][0]!)!;
+    // The long vertical crossover segment must sit at the centre x = 300, i.e.
+    // (150 + 450) / 2 — halfway between the anchors, in the gap between boxes.
+    let crossoverX = NaN;
+    let maxLen = 0;
+    for (let i = 1; i < path.length; i++) {
+      const p = path[i - 1]!;
+      const q = path[i]!;
+      if (Math.abs(p.x - q.x) < 1e-6) {
+        const len = Math.abs(p.y - q.y);
+        if (len > maxLen) {
+          maxLen = len;
+          crossoverX = p.x;
+        }
+      }
+    }
+    expect(crossoverX, `crossover not centred: ${JSON.stringify(path)}`).toBeCloseTo(300, 1);
+    // …and it still must not cross either shape.
+    for (let i = 1; i < path.length; i++) {
+      const crosses =
+        segCrosses(path[i - 1]!, path[i]!, a) || segCrosses(path[i - 1]!, path[i]!, b);
+      expect(crosses, `crosses shape: ${JSON.stringify(path)}`).toBe(false);
+    }
   });
 
   // The terminal stub is a FIXED length (never shrinks). On tight gaps the two
@@ -219,7 +293,11 @@ describe("elbow route never crosses a bound shape", () => {
       const e: Link = {
         id: linkId("e3"),
         layerId: layerId(DEFAULT_LAYER_ID),
-        from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "bottom" } },
+        from: {
+          kind: "anchor",
+          elementId: elementId("a"),
+          anchor: { kind: "named", name: "bottom" },
+        },
         to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
         routing: "orthogonal",
         order: orderBetween(null, null),

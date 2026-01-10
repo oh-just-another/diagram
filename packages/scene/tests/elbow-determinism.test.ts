@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { elbowRoute, type Vec2 } from "../src/index";
+import type { Vec2 } from "@oh-just-another/types";
+import { elbowRoute } from "../src/index";
 
 // Routing is a PURE function of the inputs (no history): the same geometry
 // always yields the same route, and it always terminates.

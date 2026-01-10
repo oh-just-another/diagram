@@ -33,9 +33,9 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
   const toP = getLinkEndpointWorld(scene, edge.to);
   if (!fromP || !toP) return [];
   const from =
-    edge.from.kind === "floating" ? getLinkEndpointWorld(scene, edge.from, toP) ?? fromP : fromP;
+    edge.from.kind === "floating" ? (getLinkEndpointWorld(scene, edge.from, toP) ?? fromP) : fromP;
   const to =
-    edge.to.kind === "floating" ? getLinkEndpointWorld(scene, edge.to, fromP) ?? toP : toP;
+    edge.to.kind === "floating" ? (getLinkEndpointWorld(scene, edge.to, fromP) ?? toP) : toP;
   if (from.x === to.x && from.y === to.y) return [];
 
   const a = endInfo(scene, edge.from, from, to);
@@ -112,18 +112,27 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
  * sharp reversal at a stub. Returns null when the stubs don't overlap (the
  * normal A* route is fine).
  */
-const overlapMidS = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo, bufA: Vec2, bufB: Vec2): Vec2[] | null => {
-  const dy = to.y - from.y;
-  const dx = to.x - from.x;
+const overlapMidS = (
+  from: Vec2,
+  to: Vec2,
+  a: EndInfo,
+  b: EndInfo,
+  bufA: Vec2,
+  bufB: Vec2,
+): Vec2[] | null => {
   // Vertical pair (e.g. bottom→top): stubs along Y, overlapping when bufA has
-  // passed bufB along the exit heading.
-  if (a.heading.y !== 0 && b.heading.y === -a.heading.y && Math.sign(a.heading.y) === Math.sign(dy)) {
+  // passed bufB along the exit heading. We deliberately DON'T require the
+  // endpoints' dy to match the heading: when the boxes overlap vertically (the
+  // upper box's bottom edge drops below the lower box's top edge) dy flips sign,
+  // but the centred crossover is still the right shape — break in the MIDDLE,
+  // not at a box edge. `pathCrossesObstacle` rejects the S if it would clip.
+  if (a.heading.y !== 0 && b.heading.y === -a.heading.y) {
     if (Math.sign(bufA.y - bufB.y) !== Math.sign(a.heading.y)) return null; // no overlap
     const mx = (from.x + to.x) / 2;
     return [bufA, { x: mx, y: bufA.y }, { x: mx, y: bufB.y }, bufB];
   }
   // Horizontal pair (e.g. right→left): stubs along X.
-  if (a.heading.x !== 0 && b.heading.x === -a.heading.x && Math.sign(a.heading.x) === Math.sign(dx)) {
+  if (a.heading.x !== 0 && b.heading.x === -a.heading.x) {
     if (Math.sign(bufA.x - bufB.x) !== Math.sign(a.heading.x)) return null;
     const my = (from.y + to.y) / 2;
     return [bufA, { x: bufA.x, y: my }, { x: bufB.x, y: my }, bufB];
@@ -142,7 +151,8 @@ const pathCrossesObstacle = (path: readonly Vec2[], obstacles: readonly Bounds[]
       const x = p.x + (q.x - p.x) * t;
       const y = p.y + (q.y - p.y) * t;
       for (const o of obstacles) {
-        if (x > o.x + m && x < o.x + o.width - m && y > o.y + m && y < o.y + o.height - m) return true;
+        if (x > o.x + m && x < o.x + o.width - m && y > o.y + m && y < o.y + o.height - m)
+          return true;
       }
     }
   }
@@ -154,7 +164,10 @@ const pointEndInfo = (scene: Scene, elId: ElementId | null, self: Vec2, other: V
   if (!elId) return { heading: headingForPoint(other, self), obstacle: null };
   const shape = getElement(scene, elId);
   if (!shape) return { heading: headingForPoint(other, self), obstacle: null };
-  return { heading: headingForPointFromElement(shape, self), obstacle: getElementWorldBounds(shape) };
+  return {
+    heading: headingForPointFromElement(shape, self),
+    obstacle: getElementWorldBounds(shape),
+  };
 };
 
 /**

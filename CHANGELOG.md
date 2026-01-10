@@ -1168,3 +1168,6 @@
 
 ## 0.51.78
 - fix(scene): stabilise elbow routing with equal-cost hysteresis (no jumping)
+
+## 0.51.79
+- fix(scene): deterministic elbow routing (drop history-dependent hysteresis)
