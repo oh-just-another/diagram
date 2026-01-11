@@ -88,11 +88,12 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   const obstacles: Bounds[] = [];
   if (a.obstacle) obstacles.push(a.obstacle);
   if (b.obstacle) obstacles.push(b.obstacle);
-  // Opposite-axis stubs that overlap (gap < 2×buffer): build a clean S whose
-  // step sits in the MIDDLE between the two stub joints (rounded smoothly by
-  // the renderer) instead of a sharp reversal at a stub. Fall back to A* if
-  // that S would clip a bound shape.
-  const midS = overlapMidS(from, to, a, b, bufA, bufB);
+  // Collinear-opposite stubs (top↔bottom, left↔right): build a clean,
+  // deterministic centred S/Z whose crossover sits in the MIDDLE between the
+  // two stub joints — same rule whether the shapes overlap or are separated, so
+  // dragging never makes the crossover jump (A* would snap it to a grid line).
+  // Fall back to A* only if that path would clip a bound shape.
+  const midS = midS_(from, to, a, b, bufA, bufB);
   if (midS && !pathCrossesObstacle(midS, obstacles)) return collapseColinear(midS);
   const routed = elbowRoute(bufA, bufB, obstacles, {
     startHeading: a.heading,
@@ -106,13 +107,22 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
 };
 
 /**
- * For two opposite-axis stubs that OVERLAP (the shapes are closer than
- * 2×buffer), return a 4-point S `[bufA, c1, c2, bufB]` whose connecting step
- * sits at the midpoint between the joints — a smooth mid-bend rather than a
- * sharp reversal at a stub. Returns null when the stubs don't overlap (the
- * normal A* route is fine).
+ * For two COLLINEAR-OPPOSITE stubs (top↔bottom or left↔right — the two exit
+ * headings point along the same axis in opposite directions), return a 4-point
+ * S/Z `[bufA, c1, c2, bufB]` whose crossover sits at the midpoint between the
+ * joints. One deterministic rule covers the whole drag:
+ *   - OVERLAP (the joints have crossed along the exit axis, e.g. tight gap or
+ *     the boxes overlap vertically): the crossover is the SHORT cross-axis step,
+ *     placed at the cross-axis midpoint (mx / my) — a smooth mid-bend.
+ *   - SEPARATED (the joints haven't crossed): the crossover is the long
+ *     cross-run, placed at the exit-axis midpoint between the two buffers.
+ * Both forms degenerate to the same straight segment at the boundary (gap =
+ * 2×buffer), so the route is continuous as the shape is dragged — no jump to a
+ * grid line the way A* does. Returns null for non-collinear pairs (L-shapes,
+ * same-side), where A* is the right tool. `pathCrossesObstacle` rejects the
+ * result if the centred path would clip a bound shape (then A* takes over).
  */
-const overlapMidS = (
+const midS_ = (
   from: Vec2,
   to: Vec2,
   a: EndInfo,
@@ -120,22 +130,29 @@ const overlapMidS = (
   bufA: Vec2,
   bufB: Vec2,
 ): Vec2[] | null => {
-  // Vertical pair (e.g. bottom→top): stubs along Y, overlapping when bufA has
-  // passed bufB along the exit heading. We deliberately DON'T require the
-  // endpoints' dy to match the heading: when the boxes overlap vertically (the
-  // upper box's bottom edge drops below the lower box's top edge) dy flips sign,
-  // but the centred crossover is still the right shape — break in the MIDDLE,
-  // not at a box edge. `pathCrossesObstacle` rejects the S if it would clip.
+  // Vertical pair (e.g. bottom→top): stubs run along Y.
   if (a.heading.y !== 0 && b.heading.y === -a.heading.y) {
-    if (Math.sign(bufA.y - bufB.y) !== Math.sign(a.heading.y)) return null; // no overlap
-    const mx = (from.x + to.x) / 2;
-    return [bufA, { x: mx, y: bufA.y }, { x: mx, y: bufB.y }, bufB];
-  }
-  // Horizontal pair (e.g. right→left): stubs along X.
-  if (a.heading.x !== 0 && b.heading.x === -a.heading.x) {
-    if (Math.sign(bufA.x - bufB.x) !== Math.sign(a.heading.x)) return null;
-    const my = (from.y + to.y) / 2;
+    const overlap = Math.sign(bufA.y - bufB.y) === Math.sign(a.heading.y);
+    if (overlap) {
+      // Joints crossed: short vertical step at the horizontal midpoint.
+      const mx = (from.x + to.x) / 2;
+      return [bufA, { x: mx, y: bufA.y }, { x: mx, y: bufB.y }, bufB];
+    }
+    // Separated: horizontal cross-run at the vertical midpoint between buffers.
+    const my = (bufA.y + bufB.y) / 2;
     return [bufA, { x: bufA.x, y: my }, { x: bufB.x, y: my }, bufB];
+  }
+  // Horizontal pair (e.g. right→left): stubs run along X.
+  if (a.heading.x !== 0 && b.heading.x === -a.heading.x) {
+    const overlap = Math.sign(bufA.x - bufB.x) === Math.sign(a.heading.x);
+    if (overlap) {
+      // Joints crossed: short horizontal step at the vertical midpoint.
+      const my = (from.y + to.y) / 2;
+      return [bufA, { x: bufA.x, y: my }, { x: bufB.x, y: my }, bufB];
+    }
+    // Separated: vertical cross-run at the horizontal midpoint between buffers.
+    const mx = (bufA.x + bufB.x) / 2;
+    return [bufA, { x: mx, y: bufA.y }, { x: mx, y: bufB.y }, bufB];
   }
   return null;
 };

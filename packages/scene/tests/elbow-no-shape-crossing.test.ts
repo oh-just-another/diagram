@@ -281,6 +281,143 @@ describe("elbow route never crosses a bound shape", () => {
     }
   });
 
+  // Dragging a box must not make the route jump across the overlap↔separated
+  // boundary. Resample each route to N points and assert consecutive drag steps
+  // stay close — a jump would show a large pointwise gap.
+  it("dragging a box past the overlap boundary doesn't make the route jump", () => {
+    const resample = (path: readonly Vec2[], n: number): Vec2[] => {
+      let total = 0;
+      const segLen: number[] = [];
+      for (let i = 1; i < path.length; i++) {
+        const d = Math.hypot(path[i]!.x - path[i - 1]!.x, path[i]!.y - path[i - 1]!.y);
+        segLen.push(d);
+        total += d;
+      }
+      const out: Vec2[] = [];
+      for (let k = 0; k < n; k++) {
+        let target = (total * k) / (n - 1);
+        let i = 1;
+        while (i < path.length && target > segLen[i - 1]!) {
+          target -= segLen[i - 1]!;
+          i++;
+        }
+        if (i >= path.length) {
+          out.push({ ...path[path.length - 1]! });
+          continue;
+        }
+        const t = segLen[i - 1]! > 1e-9 ? target / segLen[i - 1]! : 0;
+        out.push({
+          x: path[i - 1]!.x + (path[i]!.x - path[i - 1]!.x) * t,
+          y: path[i - 1]!.y + (path[i]!.y - path[i - 1]!.y) * t,
+        });
+      }
+      return out;
+    };
+    const routeFor = (ay: number): Vec2[] => {
+      let s = emptyScene();
+      const a = rect("a", 100, ay, 100, 100); // center x=150
+      const b = rect("b", 400, 400, 100, 100); // center x=450, top y=400
+      ({ scene: s } = addElement(s, a));
+      ({ scene: s } = addElement(s, b));
+      const e: Link = {
+        id: linkId("j"),
+        layerId: layerId(DEFAULT_LAYER_ID),
+        from: {
+          kind: "anchor",
+          elementId: elementId("a"),
+          anchor: { kind: "named", name: "bottom" },
+        },
+        to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "top" } },
+        routing: "orthogonal",
+        order: orderBetween(null, null),
+        style: { stroke: "#000" },
+      };
+      ({ scene: s } = addLink(s, e));
+      ({ scene: s } = updateLink(s, e.id, (x) => ({ ...x, routedPoints: routeElbowLink(s, e) })));
+      return resample(getLinkPath(s, [...s.links.values()][0]!)!, 24);
+    };
+    const STEP = 4; // drag increment
+    let prev = routeFor(360);
+    for (let ay = 356; ay >= 80; ay -= STEP) {
+      const cur = routeFor(ay);
+      let maxMove = 0;
+      for (let k = 0; k < cur.length; k++) {
+        maxMove = Math.max(maxMove, Math.hypot(cur[k]!.x - prev[k]!.x, cur[k]!.y - prev[k]!.y));
+      }
+      // A continuous route moves ~O(drag step). Allow generous slack for the
+      // crossover sliding; a real jump (snap to a far grid line) is far larger.
+      expect(maxMove, `route jumped at ay=${ay}: move=${maxMove}`).toBeLessThan(40);
+      prev = cur;
+    }
+  });
+
+  // Same continuity guarantee for a HORIZONTAL pair (right→left): sliding the
+  // left box past the overlap boundary must not snap the vertical crossover.
+  it("horizontal pair: dragging past the overlap boundary doesn't jump", () => {
+    const resample = (path: readonly Vec2[], n: number): Vec2[] => {
+      let total = 0;
+      const segLen: number[] = [];
+      for (let i = 1; i < path.length; i++) {
+        const d = Math.hypot(path[i]!.x - path[i - 1]!.x, path[i]!.y - path[i - 1]!.y);
+        segLen.push(d);
+        total += d;
+      }
+      const out: Vec2[] = [];
+      for (let k = 0; k < n; k++) {
+        let target = (total * k) / (n - 1);
+        let i = 1;
+        while (i < path.length && target > segLen[i - 1]!) {
+          target -= segLen[i - 1]!;
+          i++;
+        }
+        if (i >= path.length) {
+          out.push({ ...path[path.length - 1]! });
+          continue;
+        }
+        const t = segLen[i - 1]! > 1e-9 ? target / segLen[i - 1]! : 0;
+        out.push({
+          x: path[i - 1]!.x + (path[i]!.x - path[i - 1]!.x) * t,
+          y: path[i - 1]!.y + (path[i]!.y - path[i - 1]!.y) * t,
+        });
+      }
+      return out;
+    };
+    const routeFor = (ax: number): Vec2[] => {
+      let s = emptyScene();
+      const a = rect("a", ax, 100, 100, 100); // right→ , center y=150
+      const b = rect("b", 400, 400, 100, 100); // left edge x=400, center y=450
+      ({ scene: s } = addElement(s, a));
+      ({ scene: s } = addElement(s, b));
+      const e: Link = {
+        id: linkId("jh"),
+        layerId: layerId(DEFAULT_LAYER_ID),
+        from: {
+          kind: "anchor",
+          elementId: elementId("a"),
+          anchor: { kind: "named", name: "right" },
+        },
+        to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "left" } },
+        routing: "orthogonal",
+        order: orderBetween(null, null),
+        style: { stroke: "#000" },
+      };
+      ({ scene: s } = addLink(s, e));
+      ({ scene: s } = updateLink(s, e.id, (x) => ({ ...x, routedPoints: routeElbowLink(s, e) })));
+      return resample(getLinkPath(s, [...s.links.values()][0]!)!, 24);
+    };
+    const STEP = 4;
+    let prev = routeFor(360);
+    for (let ax = 356; ax >= 80; ax -= STEP) {
+      const cur = routeFor(ax);
+      let maxMove = 0;
+      for (let k = 0; k < cur.length; k++) {
+        maxMove = Math.max(maxMove, Math.hypot(cur[k]!.x - prev[k]!.x, cur[k]!.y - prev[k]!.y));
+      }
+      expect(maxMove, `route jumped at ax=${ax}: move=${maxMove}`).toBeLessThan(40);
+      prev = cur;
+    }
+  });
+
   // The terminal stub is a FIXED length (never shrinks). On tight gaps the two
   // fixed stubs overlap and the middle takes a smooth S; the stubs stay = 30.
   it("near-level bottom→top stubs stay fixed (never shrink)", () => {

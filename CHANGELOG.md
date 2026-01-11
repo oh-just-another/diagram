@@ -1171,3 +1171,6 @@
 
 ## 0.51.79
 - fix(scene): deterministic elbow routing (drop history-dependent hysteresis)
+
+## 0.51.80
+- fix(scene): elbow vertical-overlap breaks at centre, not box edge
