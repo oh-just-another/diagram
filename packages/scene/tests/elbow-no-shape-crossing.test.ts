@@ -40,6 +40,37 @@ const segCrosses = (a: Vec2, b: Vec2, r: RectangleElement): boolean => {
   return false;
 };
 
+// Resample a polyline to `n` evenly-spaced points along its arclength, so two
+// routes can be compared pointwise to detect a discontinuity under drag.
+const resample = (path: readonly Vec2[], n: number): Vec2[] => {
+  let total = 0;
+  const segLen: number[] = [];
+  for (let i = 1; i < path.length; i++) {
+    const d = Math.hypot(path[i]!.x - path[i - 1]!.x, path[i]!.y - path[i - 1]!.y);
+    segLen.push(d);
+    total += d;
+  }
+  const out: Vec2[] = [];
+  for (let k = 0; k < n; k++) {
+    let target = (total * k) / (n - 1);
+    let i = 1;
+    while (i < path.length && target > segLen[i - 1]!) {
+      target -= segLen[i - 1]!;
+      i++;
+    }
+    if (i >= path.length) {
+      out.push({ ...path[path.length - 1]! });
+      continue;
+    }
+    const t = segLen[i - 1]! > 1e-9 ? target / segLen[i - 1]! : 0;
+    out.push({
+      x: path[i - 1]!.x + (path[i]!.x - path[i - 1]!.x) * t,
+      y: path[i - 1]!.y + (path[i]!.y - path[i - 1]!.y) * t,
+    });
+  }
+  return out;
+};
+
 describe("elbow route never crosses a bound shape", () => {
   // A `bottom`→`top` connector with the target above-right of the source must
   // route cleanly around both shapes for any drag position.
@@ -285,34 +316,6 @@ describe("elbow route never crosses a bound shape", () => {
   // boundary. Resample each route to N points and assert consecutive drag steps
   // stay close — a jump would show a large pointwise gap.
   it("dragging a box past the overlap boundary doesn't make the route jump", () => {
-    const resample = (path: readonly Vec2[], n: number): Vec2[] => {
-      let total = 0;
-      const segLen: number[] = [];
-      for (let i = 1; i < path.length; i++) {
-        const d = Math.hypot(path[i]!.x - path[i - 1]!.x, path[i]!.y - path[i - 1]!.y);
-        segLen.push(d);
-        total += d;
-      }
-      const out: Vec2[] = [];
-      for (let k = 0; k < n; k++) {
-        let target = (total * k) / (n - 1);
-        let i = 1;
-        while (i < path.length && target > segLen[i - 1]!) {
-          target -= segLen[i - 1]!;
-          i++;
-        }
-        if (i >= path.length) {
-          out.push({ ...path[path.length - 1]! });
-          continue;
-        }
-        const t = segLen[i - 1]! > 1e-9 ? target / segLen[i - 1]! : 0;
-        out.push({
-          x: path[i - 1]!.x + (path[i]!.x - path[i - 1]!.x) * t,
-          y: path[i - 1]!.y + (path[i]!.y - path[i - 1]!.y) * t,
-        });
-      }
-      return out;
-    };
     const routeFor = (ay: number): Vec2[] => {
       let s = emptyScene();
       const a = rect("a", 100, ay, 100, 100); // center x=150
@@ -354,34 +357,6 @@ describe("elbow route never crosses a bound shape", () => {
   // Same continuity guarantee for a HORIZONTAL pair (right→left): sliding the
   // left box past the overlap boundary must not snap the vertical crossover.
   it("horizontal pair: dragging past the overlap boundary doesn't jump", () => {
-    const resample = (path: readonly Vec2[], n: number): Vec2[] => {
-      let total = 0;
-      const segLen: number[] = [];
-      for (let i = 1; i < path.length; i++) {
-        const d = Math.hypot(path[i]!.x - path[i - 1]!.x, path[i]!.y - path[i - 1]!.y);
-        segLen.push(d);
-        total += d;
-      }
-      const out: Vec2[] = [];
-      for (let k = 0; k < n; k++) {
-        let target = (total * k) / (n - 1);
-        let i = 1;
-        while (i < path.length && target > segLen[i - 1]!) {
-          target -= segLen[i - 1]!;
-          i++;
-        }
-        if (i >= path.length) {
-          out.push({ ...path[path.length - 1]! });
-          continue;
-        }
-        const t = segLen[i - 1]! > 1e-9 ? target / segLen[i - 1]! : 0;
-        out.push({
-          x: path[i - 1]!.x + (path[i]!.x - path[i - 1]!.x) * t,
-          y: path[i - 1]!.y + (path[i]!.y - path[i - 1]!.y) * t,
-        });
-      }
-      return out;
-    };
     const routeFor = (ax: number): Vec2[] => {
       let s = emptyScene();
       const a = rect("a", ax, 100, 100, 100); // right→ , center y=150
@@ -414,6 +389,56 @@ describe("elbow route never crosses a bound shape", () => {
         maxMove = Math.max(maxMove, Math.hypot(cur[k]!.x - prev[k]!.x, cur[k]!.y - prev[k]!.y));
       }
       expect(maxMove, `route jumped at ax=${ax}: move=${maxMove}`).toBeLessThan(40);
+      prev = cur;
+    }
+  });
+
+  // Diverging collinear pair: from = lower.left (exits LEFT), to = upper.right
+  // (exits RIGHT). When the boxes overlap vertically the centred thread can't
+  // fit, so the connector wraps around the union and the wrap stays on one side
+  // as the lower box is dragged. Sweep entirely WITHIN the vertical-overlap
+  // region and assert no jump.
+  it("diverging left→right wrap stays on one side under drag (no flip-flop)", () => {
+    const routeFor = (ly: number): Vec2[] => {
+      let s = emptyScene();
+      const up = rect("up", 200, 100, 100, 100); // right-center (300,150)
+      const lo = rect("lo", 200, ly, 100, 100); // left-center (200, ly+50)
+      ({ scene: s } = addElement(s, up));
+      ({ scene: s } = addElement(s, lo));
+      const e: Link = {
+        id: linkId("lr"),
+        layerId: layerId(DEFAULT_LAYER_ID),
+        from: {
+          kind: "anchor",
+          elementId: elementId("lo"),
+          anchor: { kind: "named", name: "left" },
+        },
+        to: {
+          kind: "anchor",
+          elementId: elementId("up"),
+          anchor: { kind: "named", name: "right" },
+        },
+        routing: "orthogonal",
+        order: orderBetween(null, null),
+        style: { stroke: "#000" },
+      };
+      ({ scene: s } = addLink(s, e));
+      ({ scene: s } = updateLink(s, e.id, (x) => ({ ...x, routedPoints: routeElbowLink(s, e) })));
+      return resample(getLinkPath(s, [...s.links.values()][0]!)!, 24);
+    };
+    // upper box spans y=100..200; keep the lower box overlapping it (ly so that
+    // lo.top < 200 and lo.bottom > 100) the whole sweep — pure wrap region.
+    const STEP = 4;
+    let prev = routeFor(180); // lo y=180..280, overlaps upper (100..200)
+    for (let ly = 176; ly >= 105; ly -= STEP) {
+      const cur = routeFor(ly);
+      let maxMove = 0;
+      for (let k = 0; k < cur.length; k++) {
+        maxMove = Math.max(maxMove, Math.hypot(cur[k]!.x - prev[k]!.x, cur[k]!.y - prev[k]!.y));
+      }
+      // Wrap side is stable → route moves ~O(drag step). A flip top↔bottom would
+      // be a move on the order of the box+gap height (far larger than 40).
+      expect(maxMove, `wrap flipped at ly=${ly}: move=${maxMove}`).toBeLessThan(40);
       prev = cur;
     }
   });

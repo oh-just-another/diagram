@@ -1174,3 +1174,6 @@
 
 ## 0.51.80
 - fix(scene): elbow vertical-overlap breaks at centre, not box edge
+
+## 0.51.81
+- fix(scene): deterministic centred elbow crossover — no jump at overlap boundary

@@ -1,5 +1,5 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
-import { ELBOW_TERMINAL_BUFFER } from "./constants.js";
+import { ELBOW_OBSTACLE_MARGIN, ELBOW_TERMINAL_BUFFER } from "./constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
 import { elbowRoute } from "./elbow-router.js";
@@ -95,6 +95,13 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   // Fall back to A* only if that path would clip a bound shape.
   const midS = midS_(from, to, a, b, bufA, bufB);
   if (midS && !pathCrossesObstacle(midS, obstacles)) return collapseColinear(midS);
+  // The centred crossover would clip a shape (collinear-opposite ends whose
+  // boxes overlap on the cross axis — e.g. lower.left → upper.right when the
+  // boxes overlap vertically). Wrap deterministically around the union of the
+  // obstacles on ONE consistently-chosen side instead of letting A* flip-flop
+  // between routing over the top and under the bottom as the shape is dragged.
+  const wrap = wrapRoute(from, to, a, b, bufA, bufB, obstacles);
+  if (wrap && !pathCrossesObstacle(wrap, obstacles)) return collapseColinear(wrap);
   const routed = elbowRoute(bufA, bufB, obstacles, {
     startHeading: a.heading,
     endHeading: b.heading,
@@ -153,6 +160,58 @@ const midS_ = (
     // Separated: vertical cross-run at the horizontal midpoint between buffers.
     const mx = (bufA.x + bufB.x) / 2;
     return [bufA, { x: mx, y: bufA.y }, { x: mx, y: bufB.y }, bufB];
+  }
+  return null;
+};
+
+/**
+ * Deterministic C-wrap for a collinear-opposite pair whose centred crossover
+ * (the {@link midS_} thread) would clip a shape — i.e. the two boxes overlap on
+ * the cross axis, so there's no gap to thread. Route the crossover run just
+ * OUTSIDE the union of the obstacles, on the side (top/bottom for a horizontal
+ * pair, left/right for a vertical pair) closest to the natural midpoint. Using
+ * the midpoint distance as the side-picker makes the choice a continuous
+ * function of position: it switches exactly once (when the midpoint crosses the
+ * union's centre), instead of A*'s erratic side-flipping under a drag.
+ */
+const wrapRoute = (
+  from: Vec2,
+  to: Vec2,
+  a: EndInfo,
+  b: EndInfo,
+  bufA: Vec2,
+  bufB: Vec2,
+  obstacles: readonly Bounds[],
+): Vec2[] | null => {
+  if (obstacles.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const o of obstacles) {
+    minX = Math.min(minX, o.x);
+    minY = Math.min(minY, o.y);
+    maxX = Math.max(maxX, o.x + o.width);
+    maxY = Math.max(maxY, o.y + o.height);
+  }
+  const m = ELBOW_OBSTACLE_MARGIN;
+  minX -= m;
+  minY -= m;
+  maxX += m;
+  maxY += m;
+  // Horizontal pair (ends exit ±x): the crossover is a horizontal run; place it
+  // just above or below the union.
+  if (a.heading.y === 0 && b.heading.y === 0 && a.heading.x !== 0 && b.heading.x === -a.heading.x) {
+    const my = (from.y + to.y) / 2;
+    const yPick = Math.abs(my - minY) <= Math.abs(my - maxY) ? minY : maxY;
+    return [bufA, { x: bufA.x, y: yPick }, { x: bufB.x, y: yPick }, bufB];
+  }
+  // Vertical pair (ends exit ±y): the crossover is a vertical run; place it just
+  // left or right of the union.
+  if (a.heading.x === 0 && b.heading.x === 0 && a.heading.y !== 0 && b.heading.y === -a.heading.y) {
+    const mx = (from.x + to.x) / 2;
+    const xPick = Math.abs(mx - minX) <= Math.abs(mx - maxX) ? minX : maxX;
+    return [bufA, { x: xPick, y: bufA.y }, { x: xPick, y: bufB.y }, bufB];
   }
   return null;
 };
