@@ -1,5 +1,10 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
-import { ELBOW_OBSTACLE_MARGIN, ELBOW_TERMINAL_BUFFER } from "./constants.js";
+import {
+  ELBOW_CROSS_SAMPLE_STEP,
+  ELBOW_OBSTACLE_CLEARANCE,
+  ELBOW_OBSTACLE_MARGIN,
+  ELBOW_TERMINAL_BUFFER,
+} from "./constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
 import { elbowRoute } from "./elbow-router.js";
@@ -219,11 +224,11 @@ const wrapRoute = (
 /** True if any axis-aligned segment of `path` passes through an obstacle's
  * interior (sampled; a margin keeps the line off the very edge). */
 const pathCrossesObstacle = (path: readonly Vec2[], obstacles: readonly Bounds[]): boolean => {
-  const m = 1; // tiny inset so edge-touching isn't a "cross"
+  const m = ELBOW_OBSTACLE_CLEARANCE; // inset so edge-touching isn't a "cross"
   for (let i = 1; i < path.length; i++) {
     const p = path[i - 1]!;
     const q = path[i]!;
-    for (let t = 0; t <= 1; t += 0.1) {
+    for (let t = 0; t <= 1; t += ELBOW_CROSS_SAMPLE_STEP) {
       const x = p.x + (q.x - p.x) * t;
       const y = p.y + (q.y - p.y) * t;
       for (const o of obstacles) {

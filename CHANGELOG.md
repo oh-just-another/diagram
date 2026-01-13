@@ -1177,3 +1177,6 @@
 
 ## 0.51.81
 - fix(scene): deterministic centred elbow crossover — no jump at overlap boundary
+
+## 0.51.82
+- fix(scene): deterministic C-wrap for diverging elbow ends (no side flip-flop)

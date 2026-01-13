@@ -52,6 +52,25 @@ export const ELBOW_BEND_PENALTY = 100000;
 export const ELBOW_TERMINAL_BUFFER = 30;
 
 /**
+ * Clearance (world px) a candidate centred path (the "thread"/mid-S or the
+ * C-wrap) must keep from a bound shape's interior before it counts as CROSSING
+ * it. This is the threshold that decides thread-vs-wrap-vs-A*: a larger value
+ * makes the router bail off the direct/centred path sooner (route stays further
+ * from shapes), a smaller value lets it skim closer to an edge before detouring.
+ * At 1 px it only rejects genuine interior crossings, allowing edge-grazing.
+ * Range: 1–8.
+ */
+export const ELBOW_OBSTACLE_CLEARANCE = 1;
+
+/**
+ * Parametric step used to sample each segment of a candidate path when testing
+ * whether it crosses a shape (`pathCrossesObstacle`). Smaller = finer (catches
+ * a narrow shape a coarse sampling would skip) at more cost; 0.1 samples 11
+ * points per segment, enough for typical shape sizes. Range: 0.02–0.2.
+ */
+export const ELBOW_CROSS_SAMPLE_STEP = 0.1;
+
+/**
  * --- Curved (bezier) link geometry ---
  *
  * Shared by the renderer (draws cubic beziers), hit-testing and bounds
