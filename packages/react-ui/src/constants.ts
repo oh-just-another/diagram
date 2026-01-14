@@ -70,6 +70,25 @@ export const TOOLTIP_HIDE_GRACE_MS = 80;
 export const TOOLTIP_OFFSET_PX = 6;
 
 /**
+ * Floating-panel positioning defaults for the `@floating-ui/dom`-positioned
+ * overlays. Each is the fallback used when the component is rendered without
+ * an explicit prop, so hosts can re-tune the spacing globally here.
+ *
+ * - `SELECTION_PANEL_OFFSET_PX` — distance between the selection floating
+ *   panel and the selected element's bbox. 12 matches the standard feel.
+ *   Range: 6–20.
+ * - `SELECTION_PANEL_VIEWPORT_PADDING_PX` — min distance the panel keeps from
+ *   the viewport edges (the `shift` middleware padding). Bump it if fixed
+ *   chrome (e.g. a top bar) must never be covered. Range: 4–24.
+ * - `POPOVER_OFFSET_PX` — distance between a popover and its trigger. Smaller
+ *   than the selection-panel gap since a popover hangs off a control, not a
+ *   shape. Range: 4–12.
+ */
+export const SELECTION_PANEL_OFFSET_PX = 12;
+export const SELECTION_PANEL_VIEWPORT_PADDING_PX = 8;
+export const POPOVER_OFFSET_PX = 6;
+
+/**
  * Text contextual-panel controls.
  *
  * - `TEXT_FONT_SIZE_PRESETS` — the S/M/L/XL quick buckets in the font
@@ -80,12 +99,13 @@ export const TOOLTIP_OFFSET_PX = 6;
  *   dropdown. `value` is written verbatim to `TextElement.fontFamily`;
  *   `label` is the human name shown in the menu.
  */
-export const TEXT_FONT_SIZE_PRESETS: readonly { readonly label: string; readonly value: number }[] = [
-  { label: "S", value: 16 },
-  { label: "M", value: 24 },
-  { label: "L", value: 36 },
-  { label: "XL", value: 64 },
-];
+export const TEXT_FONT_SIZE_PRESETS: readonly { readonly label: string; readonly value: number }[] =
+  [
+    { label: "S", value: 16 },
+    { label: "M", value: 24 },
+    { label: "L", value: 36 },
+    { label: "XL", value: 64 },
+  ];
 export const TEXT_FONT_SIZE_MIN = 8;
 export const TEXT_FONT_SIZE_MAX = 256;
 export const TEXT_FONT_STACKS: readonly { readonly label: string; readonly value: string }[] = [

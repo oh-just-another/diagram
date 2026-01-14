@@ -1,11 +1,4 @@
-import {
-  autoUpdate,
-  computePosition,
-  flip,
-  offset,
-  shift,
-  type Placement,
-} from "@floating-ui/dom";
+import { autoUpdate, computePosition, flip, offset, shift, type Placement } from "@floating-ui/dom";
 import {
   cloneElement,
   isValidElement,
@@ -20,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { POPOVER_OFFSET_PX } from "./constants.js";
 
 /**
  * Floating popover primitive. Wraps a trigger element and renders its
@@ -55,7 +49,7 @@ export const Popover = ({
   trigger,
   children,
   placement = "bottom-start",
-  offset: gap = 6,
+  offset: gap = POPOVER_OFFSET_PX,
   className,
   open: openProp,
   onOpenChange,
@@ -132,13 +126,10 @@ export const Popover = ({
         triggerRef.current = el;
         const r = (trigger as unknown as { ref?: unknown }).ref;
         if (typeof r === "function") (r as (n: HTMLElement | null) => void)(el);
-        else if (r && typeof r === "object")
-          (r as { current: HTMLElement | null }).current = el;
+        else if (r && typeof r === "object") (r as { current: HTMLElement | null }).current = el;
       },
       onClick: (ev: React.MouseEvent) => {
-        const prev = existing["onClick"] as
-          | ((ev: React.MouseEvent) => void)
-          | undefined;
+        const prev = existing.onClick as ((ev: React.MouseEvent) => void) | undefined;
         prev?.(ev);
         if (ev.defaultPrevented) return;
         setOpen(!open);

@@ -17,6 +17,7 @@ import {
 } from "@oh-just-another/scene";
 import { computeLinkWorldBounds } from "@oh-just-another/renderer-core";
 import type { Editor } from "@oh-just-another/state";
+import { SELECTION_PANEL_OFFSET_PX, SELECTION_PANEL_VIEWPORT_PADDING_PX } from "./constants.js";
 import { useDiagramOptional } from "./hooks.js";
 import { PropertyPanel } from "./property-panel.js";
 
@@ -57,9 +58,9 @@ export interface SelectionFloatingPanelProps {
 }
 
 export const SelectionFloatingPanel = ({
-  offset: gap = 12,
+  offset: gap = SELECTION_PANEL_OFFSET_PX,
   placement = "top",
-  viewportPadding = 8,
+  viewportPadding = SELECTION_PANEL_VIEWPORT_PADDING_PX,
 }: SelectionFloatingPanelProps = {}) => {
   const editor = useDiagramOptional();
   const [hasSelection, setHasSelection] = useState(false);

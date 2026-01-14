@@ -1180,3 +1180,6 @@
 
 ## 0.51.82
 - fix(scene): deterministic C-wrap for diverging elbow ends (no side flip-flop)
+
+## 0.51.83
+- refactor(scene): extract elbow obstacle-crossing magic numbers to constants
