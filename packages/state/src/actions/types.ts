@@ -73,5 +73,14 @@ export interface Action {
   readonly perform: (ctx: ActionContext) => void;
 }
 
-/** Shared predicate — "selection is non-empty". */
+/** Shared predicate — "element selection is non-empty". */
 export const hasSelection = (ctx: ActionContext): boolean => ctx.editor.selection.size > 0;
+
+/**
+ * Predicate — "anything deletable is selected": either elements OR a link.
+ * Links live in a separate single-selection slot (`editor.selectedLink`), so a
+ * link-only selection must still enable Delete/Backspace. `deleteSelected()`
+ * already removes the selected link; this just opens the gate for it.
+ */
+export const hasSelectionOrLink = (ctx: ActionContext): boolean =>
+  ctx.editor.selection.size > 0 || ctx.editor.selectedLink !== null;

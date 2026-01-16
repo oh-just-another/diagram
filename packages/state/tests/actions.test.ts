@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { elementId } from "@oh-just-another/types";
+import { elementId, linkId } from "@oh-just-another/types";
 import {
   addElement,
+  addLink,
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
+  type Link,
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
@@ -30,48 +32,38 @@ const sceneWith = (...elements: Element[]): Scene => {
   return s;
 };
 
-const makeEditor = (): Editor => {
-  const noopTarget = {
-    save: () => {},
-    restore: () => {},
-    setTransform: () => {},
-    clear: () => {},
-    setFill: () => {},
-    setStroke: () => {},
-    setStrokeWidth: () => {},
-    setOpacity: () => {},
-    setLineCap: () => {},
-    setLineJoin: () => {},
-    setDashArray: () => {},
-    setFont: () => {},
-    setTextAlign: () => {},
-    setTextBaseline: () => {},
-    beginPath: () => {},
-    closePath: () => {},
-    moveTo: () => {},
-    lineTo: () => {},
-    bezierCurveTo: () => {},
-    rect: () => {},
-    ellipse: () => {},
-    fill: () => {},
-    stroke: () => {},
-    fillText: () => {},
-    measureText: () => ({ width: 0 }),
-    drawImage: () => {},
-  } as never;
+// A render target whose every method is a no-op; `measureText` returns a zero
+// box. Proxy avoids spelling out ~25 empty methods (and the no-empty-function
+// lint they'd trip). `() => undefined` is intentionally non-empty.
+const noop = () => undefined;
+const targetBase: Record<string, unknown> = { measureText: () => ({ width: 0 }) };
+const noopTarget = new Proxy(targetBase, {
+  get: (o, k: string) => (k in o ? o[k] : noop),
+}) as never;
+
+// A canvas host stub. Returns the registered keydown/pointer handlers so a test
+// can drive interaction (`handlers.get("pointerdown")!(...)`).
+const makeHost = (w = 100, h = 100) => {
+  const handlers = new Map<string, (ev: unknown) => void>();
   const host = {
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }),
+    addEventListener: (ty: string, fn: (ev: unknown) => void) => handlers.set(ty, fn),
+    removeEventListener: noop,
+    setPointerCapture: noop,
+    releasePointerCapture: noop,
+    hasPointerCapture: () => true,
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: w, height: h }),
     style: { cursor: "" },
   } as never;
-  return new Editor({
-    host,
+  return { host, handlers };
+};
+
+const makeEditor = (): Editor =>
+  new Editor({
+    host: makeHost().host,
     mainTarget: noopTarget,
     overlayTarget: noopTarget,
     initialScene: sceneWith(rect("a"), rect("b")),
   });
-};
 
 describe("ActionRegistry", () => {
   it("register + get + getAll preserve insertion order", () => {
@@ -86,8 +78,8 @@ describe("ActionRegistry", () => {
 
   it("register throws on duplicate id; replace updates in place", () => {
     const reg = new ActionRegistry();
-    reg.register({ id: "x", perform: () => {} });
-    expect(() => reg.register({ id: "x", perform: () => {} })).toThrow();
+    reg.register({ id: "x", perform: noop });
+    expect(() => reg.register({ id: "x", perform: noop })).toThrow();
     const next = { id: "x", perform: vi.fn() };
     reg.replace(next);
     expect(reg.get("x")).toBe(next);
@@ -242,5 +234,65 @@ describe("defaultActionRegistry built-ins", () => {
     expect(editor.mode).toBe("hand");
     defaultActionRegistry.dispatch("mode-select", { editor });
     expect(editor.mode).toBe("select");
+  });
+
+  // A LINK lives in a separate single-selection slot (editor.selectedLink),
+  // not the element Selection set. Delete/Backspace must still fire when only
+  // a link is selected — its predicate considers both.
+  it("delete-selection fires for a link-only selection (Backspace on a link)", () => {
+    const { host, handlers } = makeHost(800, 600);
+    let s = emptyScene();
+    s = addElement(s, { ...rect("a"), position: { x: 0, y: 80 } }).scene; // right ≈ (50,105)
+    s = addElement(s, { ...rect("b"), position: { x: 200, y: 80 } }).scene; // left ≈ (200,105)
+    const link: Link = {
+      id: linkId("L"),
+      layerId: DEFAULT_LAYER_ID,
+      order: orderBetween(null, null),
+      from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "right" } },
+      to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "left" } },
+      style: { stroke: "#000" },
+      routing: "orthogonal",
+    };
+    s = addLink(s, link).scene;
+    const editor = new Editor({
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: s,
+    });
+    editor.setViewportSize(800, 600);
+
+    // Click the link mid-span to select it (no element selected).
+    const pe = (type: string, x: number, y: number) => ({
+      type,
+      clientX: x,
+      clientY: y,
+      pointerId: 1,
+      pointerType: "mouse",
+      button: 0,
+      buttons: type === "pointerup" ? 0 : 1,
+      shiftKey: false,
+      ctrlKey: false,
+      altKey: false,
+      metaKey: false,
+      timeStamp: 0,
+      preventDefault: noop,
+    });
+    handlers.get("pointerdown")!(pe("pointerdown", 125, 105));
+    handlers.get("pointerup")!(pe("pointerup", 125, 105));
+    expect(editor.selectedLink).not.toBeNull();
+    expect(editor.selection.size).toBe(0);
+
+    const ev = {
+      key: "Backspace",
+      code: "Backspace",
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+    } as unknown as KeyboardEvent;
+    expect(defaultActionRegistry.dispatchHotkey(ev, { editor })).toBe(true);
+    expect(editor.scene.links.has(linkId("L"))).toBe(false);
+    expect(editor.selectedLink).toBeNull();
   });
 });

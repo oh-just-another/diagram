@@ -1183,3 +1183,6 @@
 
 ## 0.51.83
 - refactor(scene): extract elbow obstacle-crossing magic numbers to constants
+
+## 0.51.84
+- refactor(react-ui): extract floating-panel positioning defaults to constants

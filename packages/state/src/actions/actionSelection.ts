@@ -1,4 +1,4 @@
-import { type Action, hasSelection } from "./types.js";
+import { type Action, hasSelection, hasSelectionOrLink } from "./types.js";
 
 export const actionSelectAll: Action = {
   id: "select-all",
@@ -13,7 +13,7 @@ export const actionDeleteSelection: Action = {
   label: "Delete",
   category: "selection",
   hotkey: [{ key: "Delete" }, { key: "Backspace" }],
-  predicate: hasSelection,
+  predicate: hasSelectionOrLink,
   perform: ({ editor }) => editor.deleteSelected(),
 };
 

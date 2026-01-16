@@ -55,17 +55,13 @@ export {
 } from "./file-drop.js";
 
 // Action architecture — command registry.
-export type {
-  Action,
-  ActionCategory,
-  ActionContext,
-  HotkeyMatcher,
-} from "./actions/index.js";
+export type { Action, ActionCategory, ActionContext, HotkeyMatcher } from "./actions/index.js";
 export {
   ActionRegistry,
   defaultActionRegistry,
   registerBuiltinActions,
   hasSelection,
+  hasSelectionOrLink,
   // Re-export individual built-ins so hosts can replace / compose.
   actionUndo,
   actionRedo,
