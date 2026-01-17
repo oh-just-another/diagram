@@ -1189,3 +1189,6 @@
 
 ## 0.51.85
 - fix(state): Delete/Backspace removes a selected link (not just elements)
+
+## 0.51.86
+- fix(serialization): accept style.roundness + strokeAlign (no data loss on reload)

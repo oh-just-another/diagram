@@ -1,6 +1,6 @@
 {
   "name": "diagram",
-  "version": "0.51.86",
+  "version": "0.51.87",
   "private": true,
   "description": "Monorepo for the diagram library \u2014",
   "type": "module",
@@ -12,6 +12,7 @@
   "scripts": {
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",
+    "test:coverage": "vitest run --coverage --coverage.include='packages/*/src/**' --coverage.include='apps/cli/src/**'",
     "lint": "nx run-many -t lint",
     "typecheck": "nx run-many -t typecheck",
     "format": "prettier --write .",
