@@ -1186,3 +1186,6 @@
 
 ## 0.51.84
 - refactor(react-ui): extract floating-panel positioning defaults to constants
+
+## 0.51.85
+- fix(state): Delete/Backspace removes a selected link (not just elements)

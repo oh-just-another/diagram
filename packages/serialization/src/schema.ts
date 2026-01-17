@@ -12,6 +12,13 @@ const Vec2Z = z.object({ x: z.number(), y: z.number() });
 const BoundsZ = z.object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() });
 void BoundsZ;
 
+const RoundnessZ = z
+  .object({
+    type: z.enum(["sharp", "round"]),
+    value: z.number().optional(),
+  })
+  .strict();
+
 const StyleZ = z
   .object({
     fill: z.string().optional(),
@@ -21,6 +28,8 @@ const StyleZ = z
     dashArray: z.array(z.number()).readonly().optional(),
     lineCap: z.enum(["butt", "round", "square"]).optional(),
     lineJoin: z.enum(["miter", "round", "bevel"]).optional(),
+    strokeAlign: z.enum(["center", "inside", "outside"]).optional(),
+    roundness: RoundnessZ.optional(),
   })
   .strict();
 
@@ -47,7 +56,9 @@ const AnchorRefZ = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("named"), name: NamedAnchorZ }).strict(),
   z.object({ kind: z.literal("ratio"), position: Vec2Z }).strict(),
   z.object({ kind: z.literal("absolute"), offset: Vec2Z }).strict(),
-  z.object({ kind: z.literal("edge"), index: z.number().int().nonnegative(), t: z.number() }).strict(),
+  z
+    .object({ kind: z.literal("edge"), index: z.number().int().nonnegative(), t: z.number() })
+    .strict(),
 ]);
 
 // --- Shapes ---
