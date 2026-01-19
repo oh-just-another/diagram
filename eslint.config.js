@@ -50,5 +50,13 @@ export default tseslint.config(
       "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
+  {
+    // Root config files aren't part of any package tsconfig project, so the
+    // type-aware ruleset (projectService) can't resolve them. Lint them
+    // syntactically only.
+    files: ["*.config.{ts,mts,cts}", "*.config.cjs", ".dependency-cruiser.cjs"],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: { parserOptions: { projectService: false } },
+  },
   prettier,
 );

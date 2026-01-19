@@ -16,3 +16,5 @@ pre-push:
       run: pnpm typecheck
     test:
       run: pnpm test
+    deps:
+      run: pnpm deps:check

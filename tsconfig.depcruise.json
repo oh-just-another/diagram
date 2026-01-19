@@ -1,0 +1,10 @@
+{
+  "//": "Resolution-only tsconfig for dependency-cruiser. Maps the workspace package names to their SRC so the cruiser analyses source (not built dist) and cross-package edges land under packages/<name>/src. NOT used by the build.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@oh-just-another/*": ["packages/*/src"]
+    }
+  }
+}

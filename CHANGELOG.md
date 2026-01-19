@@ -1192,3 +1192,6 @@
 
 ## 0.51.86
 - fix(serialization): accept style.roundness + strokeAlign (no data loss on reload)
+
+## 0.51.87
+- chore: add test:coverage script (v8 workspace-wide merged report)

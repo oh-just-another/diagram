@@ -1,0 +1,18 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreWorkspaces": ["apps/diagram", "apps/e2e"],
+  "workspaces": {
+    "packages/*": {
+      "entry": ["src/index.ts!"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "apps/cli": {
+      "entry": ["src/cli.ts", "src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    ".": {
+      "entry": ["scripts/*.{ts,mjs,js}"],
+      "project": ["scripts/**/*.{ts,mjs,js}"]
+    }
+  }
+}
