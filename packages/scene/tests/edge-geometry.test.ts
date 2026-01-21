@@ -6,8 +6,10 @@ import {
   addElement,
   emptyScene,
   findLinkAt,
+  getLinkCurvePoints,
   getLinkEndpointWorld,
   getLinkPath,
+  getLinkWaypointMidpoints,
   orderBetween,
   type EllipseElement,
   type Link,
@@ -177,7 +179,10 @@ describe("floating endpoints", () => {
   it("getLinkEndpointWorld without `toward` falls back to the shape centre", () => {
     const r = rect("a", 0, 0);
     const s = sceneWith([r]);
-    expect(getLinkEndpointWorld(s, { kind: "floating", elementId: r.id })).toEqual({ x: 50, y: 30 });
+    expect(getLinkEndpointWorld(s, { kind: "floating", elementId: r.id })).toEqual({
+      x: 50,
+      y: 30,
+    });
   });
 
   it("resolves to the perimeter point on the side facing the partner", () => {
@@ -268,5 +273,76 @@ describe("findLinkAt — curved (bezier) links are hit along the arc", () => {
     });
     const s = sceneWith([], [e]);
     expect(findLinkAt(s, { x: 100, y: 0 }, 6)).not.toBeNull();
+  });
+});
+
+describe("getLinkWaypointMidpoints — add-handles sit on the drawn line", () => {
+  const distToPolyline = (
+    p: { x: number; y: number },
+    poly: readonly { x: number; y: number }[],
+  ) => {
+    let best = Infinity;
+    for (const q of poly) best = Math.min(best, Math.hypot(p.x - q.x, p.y - q.y));
+    return best;
+  };
+
+  it("bezier (no waypoints): the single add-handle lies on the arc, not the chord", () => {
+    // Same C-curve as the hit-test above: a.right (100,30) → b.right (100,230),
+    // bows out to apex ≈ (220,130); the chord midpoint is (100,130).
+    const a = rect("a", 0, 0);
+    const b = rect("b", 0, 200);
+    const e: Link = edge({
+      from: { kind: "anchor", elementId: a.id, anchor: { kind: "named", name: "right" } },
+      to: { kind: "anchor", elementId: b.id, anchor: { kind: "named", name: "right" } },
+      routing: "bezier",
+    });
+    const s = sceneWith([a, b], [e]);
+    const mids = getLinkWaypointMidpoints(s, e)!;
+    expect(mids).toHaveLength(1);
+    const curve = getLinkCurvePoints(s, e)!;
+    // On the drawn arc …
+    expect(distToPolyline(mids[0]!, curve)).toBeLessThan(0.5);
+    // … and well clear of the straight chord midpoint (100,130) — the
+    // handle follows the curve, not the chord.
+    expect(Math.hypot(mids[0]!.x - 100, mids[0]!.y - 130)).toBeGreaterThan(40);
+  });
+
+  it("bezier (with a waypoint): one handle per span, each on the arc", () => {
+    const e: Link = edge({
+      from: { kind: "point", position: { x: 0, y: 0 } },
+      to: { kind: "point", position: { x: 200, y: 0 } },
+      waypoints: [{ x: 100, y: 80 }],
+      routing: "bezier",
+    });
+    const s = sceneWith([], [e]);
+    const mids = getLinkWaypointMidpoints(s, e)!;
+    expect(mids).toHaveLength(2); // spans: from→wp, wp→to
+    const curve = getLinkCurvePoints(s, e)!;
+    for (const m of mids) expect(distToPolyline(m, curve)).toBeLessThan(0.5);
+  });
+
+  it("straight: add-handles are the chord midpoints", () => {
+    const e: Link = edge({
+      from: { kind: "point", position: { x: 0, y: 0 } },
+      to: { kind: "point", position: { x: 200, y: 0 } },
+      waypoints: [{ x: 100, y: 50 }],
+      routing: "straight",
+    });
+    const s = sceneWith([], [e]);
+    const mids = getLinkWaypointMidpoints(s, e)!;
+    expect(mids).toEqual([
+      { x: 50, y: 25 }, // mid of (0,0)–(100,50)
+      { x: 150, y: 25 }, // mid of (100,50)–(200,0)
+    ]);
+  });
+
+  it("orthogonal (elbow): returns null (caller computes routed-segment handles)", () => {
+    const e: Link = edge({
+      from: { kind: "point", position: { x: 0, y: 0 } },
+      to: { kind: "point", position: { x: 200, y: 100 } },
+      routing: "orthogonal",
+    });
+    const s = sceneWith([], [e]);
+    expect(getLinkWaypointMidpoints(s, e)).toBeNull();
   });
 });

@@ -13,10 +13,7 @@ export type {
   Roundness,
 } from "./style.js";
 export { getCornerRadius } from "./style.js";
-export {
-  ADAPTIVE_CORNER_RADIUS,
-  PROPORTIONAL_CORNER_RADIUS,
-} from "./constants.js";
+export { ADAPTIVE_CORNER_RADIUS, PROPORTIONAL_CORNER_RADIUS } from "./constants.js";
 export type {
   Element,
   ElementBase,
@@ -53,6 +50,7 @@ export {
   findLinkAt,
   getLinkCurvePoints,
   getLinkCurveSegments,
+  getLinkWaypointMidpoints,
 } from "./edge-geometry.js";
 export {
   catmullRomBeziers,

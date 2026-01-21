@@ -3,6 +3,7 @@ import { intersect } from "@oh-just-another/math";
 import { getAnchorWorld } from "./anchors.js";
 import {
   catmullRomBeziers,
+  cubicAt,
   cubicWithEndTangents,
   flattenSegments,
   type BezierSegment,
@@ -97,7 +98,8 @@ export const getLinkEndpointWorld = (
   const shape = getElement(scene, endpoint.elementId);
   if (!shape) return null;
   if (endpoint.kind === "anchor") return getAnchorWorld(shape, endpoint.anchor);
-  if (endpoint.kind === "floating") return floatingOutlineWorld(shape, toward ?? shapeCentre(shape));
+  if (endpoint.kind === "floating")
+    return floatingOutlineWorld(shape, toward ?? shapeCentre(shape));
   return getOutlinePoint(shape, endpoint.ratio);
 };
 
@@ -122,11 +124,11 @@ export const getLinkPath = (scene: Scene, edge: Link): readonly Vec2[] | null =>
   if (!toProvisional) return null;
   const from =
     edge.from.kind === "floating"
-      ? getLinkEndpointWorld(scene, edge.from, toProvisional) ?? fromProvisional
+      ? (getLinkEndpointWorld(scene, edge.from, toProvisional) ?? fromProvisional)
       : fromProvisional;
   const to =
     edge.to.kind === "floating"
-      ? getLinkEndpointWorld(scene, edge.to, fromProvisional) ?? toProvisional
+      ? (getLinkEndpointWorld(scene, edge.to, fromProvisional) ?? toProvisional)
       : toProvisional;
 
   const routing = edge.routing ?? "straight";
@@ -161,7 +163,7 @@ export const getLinkPath = (scene: Scene, edge: Link): readonly Vec2[] | null =>
   if (fromDir || toDir) {
     const path: Vec2[] = [from];
     let cursorFrom = from;
-    let cursorTo = to;
+    const cursorTo = to;
     if (fromDir) {
       cursorFrom = { x: from.x + fromDir.x * stub, y: from.y + fromDir.y * stub };
       path.push(cursorFrom);
@@ -297,6 +299,42 @@ export const getLinkCurvePoints = (scene: Scene, edge: Link): readonly Vec2[] | 
   const curve = getLinkCurveSegments(scene, edge);
   if (!curve) return null;
   return flattenSegments(curve.start, curve.segments);
+};
+
+/**
+ * Per-span "add a waypoint" handle positions for a selected link's bend
+ * editing — one handle per logical span of `[from, ...waypoints, to]`, index i
+ * being the span between point i and i+1 (what `beginWaypointDrag(i, insert)`
+ * expects). The handle sits at the VISUAL middle of its span:
+ *   - bezier — the curve point at `t=0.5` of that span's cubic, so the handle
+ *     lands ON the drawn arc (not the straight chord beside it);
+ *   - straight — the chord midpoint (the span IS straight).
+ * Returns `null` for orthogonal (elbow) links — their segment handles are
+ * computed from the routed path by the caller — or when unresolvable.
+ */
+export const getLinkWaypointMidpoints = (scene: Scene, edge: Link): Vec2[] | null => {
+  const routing = edge.routing ?? "straight";
+  if (routing === "orthogonal") return null;
+  if (routing === "bezier") {
+    const curve = getLinkCurveSegments(scene, edge);
+    if (!curve) return null;
+    const mids: Vec2[] = [];
+    let prev = curve.start;
+    for (const s of curve.segments) {
+      mids.push(cubicAt(prev, s.c1, s.c2, s.to, 0.5));
+      prev = s.to;
+    }
+    return mids;
+  }
+  const path = getLinkPath(scene, edge);
+  if (!path || path.length < 2) return null;
+  const mids: Vec2[] = [];
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i]!;
+    const b = path[i + 1]!;
+    mids.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  }
+  return mids;
 };
 
 /**

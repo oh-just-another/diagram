@@ -66,7 +66,8 @@ export const catmullRomBeziers = (pts: readonly Vec2[]): BezierSegment[] => {
   return segs;
 };
 
-const cubicAt = (p0: Vec2, c1: Vec2, c2: Vec2, p1: Vec2, t: number): Vec2 => {
+/** Point on a cubic bezier at parameter `t` (0..1). de Casteljau / Bernstein. */
+export const cubicAt = (p0: Vec2, c1: Vec2, c2: Vec2, p1: Vec2, t: number): Vec2 => {
   const u = 1 - t;
   const a = u * u * u;
   const b = 3 * u * u * t;

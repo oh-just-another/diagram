@@ -6,6 +6,7 @@ import {
   getElementWorldBounds,
   getLink,
   getLinkPath,
+  getLinkWaypointMidpoints,
   updateAnnotation,
 } from "@oh-just-another/scene";
 import { bounds as B } from "@oh-just-another/math";
@@ -235,13 +236,15 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     if (editor.mode === "select" && editor._selectedLink) {
       const edge = getLink(editor._scene, editor._selectedLink);
       // Elbow links use segment-drag (separate mechanic), not free waypoints.
-      const path = edge && (edge.routing ?? "straight") !== "orthogonal" ? getLinkPath(editor._scene, edge) : null;
+      const path =
+        edge && (edge.routing ?? "straight") !== "orthogonal"
+          ? getLinkPath(editor._scene, edge)
+          : null;
       if (edge && path && path.length >= 2) {
         const zoom = editor._scene.viewport.zoom || 1;
         const r = LINK_ENDPOINT_HANDLE_RADIUS / zoom;
         const r2 = r * r;
         const waypoints: Vec2[] = [...(edge.waypoints ?? [])];
-        const chain: Vec2[] = [path[0]!, ...waypoints, path[path.length - 1]!];
         const within = (p: Vec2): boolean => {
           const dx = p.x - worldPoint.x;
           const dy = p.y - worldPoint.y;
@@ -262,11 +265,12 @@ export const bindPointerEvents = (editor: any): (() => void) => {
           }
         }
         if (!grabbed) {
-          for (let i = 0; i < chain.length - 1; i++) {
-            const a = chain[i]!;
-            const b = chain[i + 1]!;
-            const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-            if (within(mid)) {
+          // "Add waypoint" handles sit on the drawn arc (bezier) / chord
+          // (straight) — same geometry the overlay renders, so the click target
+          // matches the visible handle.
+          const mids = getLinkWaypointMidpoints(editor._scene, edge) ?? [];
+          for (let i = 0; i < mids.length; i++) {
+            if (within(mids[i]!)) {
               editor.beginWaypointDrag(editor._selectedLink, i, true);
               grabbed = true;
               break;
@@ -346,8 +350,12 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     const isLinkOpen =
       linkModifier && target.kind === "element" && editor.elementLink(target.id) !== null;
     if (!isLinkOpen && target.kind === "element" && !editor._selection.has(target.id)) {
-      const additive = Boolean(data.modifiers?.shift || data.modifiers?.meta || data.modifiers?.ctrl);
-      editor._selection = additive ? Selection.add(editor._selection, target.id) : Selection.single(target.id);
+      const additive = Boolean(
+        data.modifiers?.shift || data.modifiers?.meta || data.modifiers?.ctrl,
+      );
+      editor._selection = additive
+        ? Selection.add(editor._selection, target.id)
+        : Selection.single(target.id);
       // Remember an additive promotion so a tap's up-handler doesn't
       // SELECT_TOGGLE it back off.
       if (additive) editor.additivePressAdded = target.id;
@@ -452,7 +460,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
     // Pan gesture in flight — translate cursor delta to a screen
     // pan and short-circuit. Doesn't touch the machine.
-    if (editor.panGesture && editor.panGesture.pointerId === ev.pointerId) {
+    if (editor.panGesture?.pointerId === ev.pointerId) {
       const dx = data.point.x - editor.panGesture.lastPoint.x;
       const dy = data.point.y - editor.panGesture.lastPoint.y;
       editor.panGesture.lastPoint = data.point;
@@ -558,8 +566,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         if (zone) {
           const next = { id: container.id, dropZone: zone };
           if (
-            !editor.containerHover ||
-            editor.containerHover.id !== next.id ||
+            editor.containerHover?.id !== next.id ||
             editor.containerHover.dropZone !== next.dropZone
           ) {
             editor.containerHover = next;
@@ -624,7 +631,9 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     if (!ctx.pressOrigin) {
       const hov = editor.hitTest(worldPoint);
       const directHs = hov?.kind === "element" ? editor._scene.elements.get(hov.id) : undefined;
-      editor.hoverAnimatedElement(directHs?.type === "image" && directHs.animationKind ? directHs.id : null);
+      editor.hoverAnimatedElement(
+        directHs?.type === "image" && directHs.animationKind ? directHs.id : null,
+      );
       // Hover-to-connect (standard): reveal the hovered shape's link-start dots
       // in select mode so a link can be dragged from it even unselected.
       // `worldPoint` drives the proximity-grow of the nearest dot.
@@ -649,7 +658,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     editor.activePointers.delete(ev.pointerId);
 
     // Pan gesture ends — clean up cursor and state, skip the rest.
-    if (editor.panGesture && editor.panGesture.pointerId === ev.pointerId) {
+    if (editor.panGesture?.pointerId === ev.pointerId) {
       editor.endPanGesture();
       return;
     }
@@ -712,7 +721,10 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         const zoom = editor._scene.viewport.zoom || 1;
         let onDot = false;
         if (selShape) {
-          const { names, worldPoints } = anchorOverlayPoints(selShape, LINK_START_ANCHOR_OUTSET / zoom);
+          const { names, worldPoints } = anchorOverlayPoints(
+            selShape,
+            LINK_START_ANCHOR_OUTSET / zoom,
+          );
           const idx = names.indexOf(drag.anchorName);
           if (idx >= 0) {
             const dp = worldPoints[idx]!;
@@ -727,8 +739,10 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         } else {
           const upHit = editor.hitTest(upWorld);
           if (upHit.kind === "empty") editor.applyEmit({ type: "SELECT_CLEAR" });
-          else if (upHit.kind === "element") editor.applyEmit({ type: "SELECT_REPLACE", id: upHit.id });
-          else if (upHit.kind === "link") editor.applyEmit({ type: "SELECT_EDGE_REPLACE", id: upHit.id });
+          else if (upHit.kind === "element")
+            editor.applyEmit({ type: "SELECT_REPLACE", id: upHit.id });
+          else if (upHit.kind === "link")
+            editor.applyEmit({ type: "SELECT_EDGE_REPLACE", id: upHit.id });
         }
       }
       editor.edgePreview = null;
@@ -806,10 +820,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // it (net zero). Drop the redundant toggle. (shift-tap on a shape that
     // was already selected → additivePressAdded is null → toggle still
     // fires and removes it, as expected.)
-    if (
-      clickEffect?.type === "SELECT_TOGGLE" &&
-      editor.additivePressAdded === clickEffect.id
-    ) {
+    if (clickEffect?.type === "SELECT_TOGGLE" && editor.additivePressAdded === clickEffect.id) {
       clickEffect = null;
     }
     editor.additivePressAdded = null;
@@ -866,7 +877,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
 
   const onCancel = (ev: PointerEvent) => {
     editor.activePointers.delete(ev.pointerId);
-    if (editor.panGesture && editor.panGesture.pointerId === ev.pointerId) {
+    if (editor.panGesture?.pointerId === ev.pointerId) {
       editor.endPanGesture();
       return;
     }
@@ -939,12 +950,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
   const isEditableTarget = (target: EventTarget | null): boolean => {
     if (!(target instanceof HTMLElement)) return false;
     const tag = target.tagName;
-    return (
-      tag === "INPUT" ||
-      tag === "TEXTAREA" ||
-      tag === "SELECT" ||
-      target.isContentEditable
-    );
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
   };
   const onKeyDown = (ev: KeyboardEvent): void => {
     if (ev.code !== "Space" && ev.key !== " ") return;

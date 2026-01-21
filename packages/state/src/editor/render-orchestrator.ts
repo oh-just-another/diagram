@@ -2,16 +2,12 @@ import {
   getLink,
   getLinkPath,
   getLinkCurvePoints,
+  getLinkWaypointMidpoints,
   getElement,
   getElementWorldBounds,
   type Scene,
 } from "@oh-just-another/scene";
-import {
-  DEFAULT_LOD,
-  renderLinks,
-  renderGrid,
-  renderScene,
-} from "@oh-just-another/renderer-core";
+import { DEFAULT_LOD, renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
 import { renderOverlay, type PortOverlay } from "../overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import { buildElementForCreate } from "./applies/create.js";
@@ -91,9 +87,7 @@ export const renderEditor = (editor: any): void => {
     // already maintains — `renderScene` uses it to skip the per-shape AABB
     // cull on shapes outside the viewport.
     const sharedIndex =
-      editor._scene.elements.size >= LARGE_SCENE_HIT_THRESHOLD
-        ? editor.ensureSpatialIndex()
-        : null;
+      editor._scene.elements.size >= LARGE_SCENE_HIT_THRESHOLD ? editor.ensureSpatialIndex() : null;
     renderScene(editor._scene, editor.mainTarget, {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
       ...(dirtyWorld ? { dirtyWorld } : {}),
@@ -238,7 +232,10 @@ export const renderEditor = (editor: any): void => {
             }
             // Hovering ON a dot (within the click radius) → ghost preview of
             // what a click would create (copy element + connector).
-            const { names, worldPoints } = anchorOverlayPoints(shape, LINK_START_ANCHOR_OUTSET / zoom);
+            const { names, worldPoints } = anchorOverlayPoints(
+              shape,
+              LINK_START_ANCHOR_OUTSET / zoom,
+            );
             const clickR2 = (ANCHOR_DOT_CLICK_RADIUS / zoom) ** 2;
             let hoveredName: string | null = null;
             for (let i = 0; i < worldPoints.length; i++) {
@@ -268,7 +265,7 @@ export const renderEditor = (editor: any): void => {
     // element (not a specific dot), highlight that element so the user knows
     // it'll float vs fix to a point.
     const hov = editor.hoveredLinkTarget;
-    if (hov && hov.mode === "element") {
+    if (hov?.mode === "element") {
       const tshape = getElement(editor._scene, hov.elementId);
       if (tshape) overlayOpts.linkAttachHighlight = getElementWorldBounds(tshape);
     }
@@ -344,15 +341,13 @@ export const renderEditor = (editor: any): void => {
           overlayOpts.edgeSelection = { from, to, midpoints };
         } else {
           const waypoints = [...(edge.waypoints ?? [])];
-          const chain: Vec2[] = [from, ...waypoints, to];
-          const midpoints: Vec2[] = [];
-          if (!editor.linkWaypointDrag) {
-            for (let i = 0; i < chain.length - 1; i++) {
-              const a = chain[i]!;
-              const b = chain[i + 1]!;
-              midpoints.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-            }
-          }
+          // "Add waypoint" handles sit at the VISUAL middle of each span — on
+          // the drawn arc for bezier (t=0.5 of the span's cubic), on the chord
+          // for straight. The raw chord midpoint would put bezier handles off
+          // the curve.
+          const midpoints = editor.linkWaypointDrag
+            ? []
+            : (getLinkWaypointMidpoints(editor._scene, edge) ?? []);
           overlayOpts.edgeSelection = { from, to, waypoints, midpoints };
         }
       }

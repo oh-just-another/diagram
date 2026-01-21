@@ -1195,3 +1195,6 @@
 
 ## 0.51.87
 - chore: add test:coverage script (v8 workspace-wide merged report)
+
+## 0.52.0
+- chore: add deps:check (dependency-cruiser), knip, clean, test:watch, coverage gate
