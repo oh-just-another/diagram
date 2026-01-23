@@ -844,9 +844,17 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // it lands: drawing a new edge, or re-binding an existing edge
     // endpoint. The hit-test sees the *current* selection (edge or
     // shape) and so resolves correctly to either kind.
-    const needsUpTarget =
-      ctxBeforeUp.mode === "draw-edge" || ctxBeforeUp.pressTarget?.kind === "edge-endpoint";
-    const upTarget = needsUpTarget ? editor.hitTest(worldPoint) : undefined;
+    // For drawing a NEW edge, the normal hit-test resolves the drop (no link is
+    // selected, so it falls through to the element). For re-binding an EXISTING
+    // endpoint, the dragged end now lives at the cursor and `hitTest` would
+    // return that endpoint handle instead of the element under it — use the
+    // element-only attach hit-test so the drop binds to the shape / anchor.
+    let upTarget: ReturnType<typeof editor.hitTest> | undefined;
+    if (ctxBeforeUp.mode === "draw-edge") {
+      upTarget = editor.hitTest(worldPoint);
+    } else if (ctxBeforeUp.pressTarget?.kind === "edge-endpoint") {
+      upTarget = editor.linkAttachTargetAt(worldPoint);
+    }
     editor.actor.send(
       upTarget !== undefined
         ? { type: "POINTER_UP", point: worldPoint, target: upTarget }

@@ -64,10 +64,12 @@ const pe = (type: string, x: number, y: number) => ({
 });
 
 // a.right = (40,20), b.left = (200,20). Link L anchored a.right → b.left.
+// c is a free target shape at (500,500,40,40): centre (520,520), left = (500,520).
 const scene = (): Scene => {
   let s = emptyScene();
   s = addElement(s, rect("a", 0, 0, 40, 40)).scene;
   s = addElement(s, rect("b", 200, 0, 40, 40)).scene;
+  s = addElement(s, rect("c", 500, 500, 40, 40)).scene;
   const link: Link = {
     id: linkId("L"),
     layerId: DEFAULT_LAYER_ID,
@@ -135,5 +137,23 @@ describe("link endpoint rebind drag", () => {
       elementId: elementId("b"),
       anchor: { kind: "named", name: "left" },
     });
+  });
+
+  it("dropping on an element body attaches as floating", () => {
+    const { down, move, up, linkTo } = harness();
+    down(200, 20); // grab the 'to' endpoint
+    move(520, 520); // onto c's body (centre, far from any anchor dot)
+    up(520, 520);
+    expect(linkTo()).toEqual({ kind: "floating", elementId: elementId("c") });
+  });
+
+  it("dropping on an element's anchor attaches as a fixed anchor", () => {
+    const { down, move, up, linkTo } = harness();
+    down(200, 20);
+    move(500, 520); // c's left edge midpoint anchor
+    up(500, 520);
+    const to = linkTo();
+    expect(to.kind).toBe("anchor");
+    expect((to as { elementId: string }).elementId).toBe(elementId("c"));
   });
 });

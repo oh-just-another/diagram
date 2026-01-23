@@ -3081,6 +3081,23 @@ export class Editor {
   // Pure body in `./editor/hit-test.ts`. Editor passes a narrow
   // context bundle that closes over its private state + accel
   // helpers (acceleratedElementAt, isElementInteractable, …).
+  /**
+   * Attach target under `worldPoint` for an endpoint-rebind drop: the topmost
+   * interactable ELEMENT (group-promoted), ignoring link bodies and the dragged
+   * link's own endpoint handle. Used instead of {@link hitTest} when finishing
+   * an endpoint drag — `hitTest` would return the (now live, cursor-tracking)
+   * endpoint handle and shadow the element beneath it, blocking re-binding.
+   * `undefined` → dropped on empty space (the end stays a free point).
+   */
+  private linkAttachTargetAt(worldPoint: Vec2): PressTarget | undefined {
+    const shape = this.acceleratedElementAt(worldPoint);
+    if (shape && this.isElementInteractable(shape)) {
+      const target = this.promoteToGroupRoot(shape);
+      return { kind: "element", id: target.id, bounds: getElementWorldBounds(target) };
+    }
+    return undefined;
+  }
+
   private hitTest(worldPoint: Vec2): PressTarget {
     return pickPressTarget(worldPoint, {
       scene: this._scene,

@@ -1201,3 +1201,6 @@
 
 ## 0.52.1
 - fix(links): curved-link bend handles sit on the arc, not the chord
+
+## 0.52.2
+- fix(state): live link-endpoint rebind + Escape reverts any gesture
