@@ -59,6 +59,8 @@ import {
   removeElement,
   SnapEngine,
   SpatialGrid,
+  isNoop,
+  invert,
   type BrushPoint,
   updateAnnotation,
   updateLink,
@@ -121,11 +123,7 @@ import {
   WAYPOINT_COLLAPSE_RADIUS,
 } from "./constants.js";
 import { fromPointerEvent } from "./dom-events.js";
-import {
-  FileDropRegistry,
-  type FileDropContext,
-  type FileDropHandler,
-} from "./file-drop.js";
+import { FileDropRegistry, type FileDropContext, type FileDropHandler } from "./file-drop.js";
 import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
 import { AnimationTick } from "./animation-tick.js";
 import {
@@ -307,10 +305,7 @@ import {
   selectByBounds as selectByBoundsPure,
   selectByBoundsLive as selectByBoundsLivePure,
 } from "./editor/applies/selection.js";
-import {
-  computeLinkEndpointUpdate,
-  computeLinkPreviewEndpoints,
-} from "./editor/applies/edge.js";
+import { computeLinkEndpointUpdate, computeLinkPreviewEndpoints } from "./editor/applies/edge.js";
 import {
   computeAnnotationMovePatch,
   computeGroupMovePatches,
@@ -438,7 +433,10 @@ export type TileComposeFn = (
      * last frame. Compositors route by case (add / remove / move).
      * `null` on one side = added / removed.
      */
-    readonly changedElements: ReadonlyMap<ElementId, { before: Bounds | null; after: Bounds | null }>;
+    readonly changedElements: ReadonlyMap<
+      ElementId,
+      { before: Bounds | null; after: Bounds | null }
+    >;
     readonly zoomBucket: number;
   },
 ) => void;
@@ -865,10 +863,8 @@ export class Editor {
    * (A plain id set lost adds — new id wasn't in the tile reverse
    * index yet.)
    */
-  private tileDirtyElements: Map<
-    ElementId,
-    { before: Bounds | null; after: Bounds | null }
-  > = new Map();
+  private tileDirtyElements: Map<ElementId, { before: Bounds | null; after: Bounds | null }> =
+    new Map();
 
   /**
    * Tool-lock flag (standard model). When `false` (default), a
@@ -955,6 +951,14 @@ export class Editor {
   private readonly _history: HistoryProvider;
   /** Open transaction during a single drag/resize gesture. */
   private gestureTx: TransactionHandle | null = null;
+  /**
+   * Immutable snapshot of `_scene` taken when a gesture transaction opens.
+   * The history transaction only records patches for undo — cancelling it does
+   * NOT roll back `_scene`. Keeping the pre-gesture scene lets Escape (and any
+   * cancel) restore it, so a drag/move/resize/endpoint-rebind aborted with Esc
+   * leaves the scene exactly as it was. Cleared on commit.
+   */
+  private gestureStartScene: Scene | null = null;
   /**
    * Wraps gesture lifecycle (transaction open/commit/cancel +
    * post-create mode revert) so editor.ts doesn't carry the bodies.
@@ -1589,8 +1593,7 @@ export class Editor {
       // picks up the current frame.
       this.lastRenderedScene = null;
       this.render();
-      const cost =
-        (typeof performance !== "undefined" ? performance.now() : Date.now()) - now;
+      const cost = (typeof performance !== "undefined" ? performance.now() : Date.now()) - now;
       // EMA so a single spike doesn't overreact; decays back when load drops.
       this.gifRenderCostEma = this.gifRenderCostEma * 0.8 + cost * 0.2;
     },
@@ -1808,8 +1811,7 @@ export class Editor {
       const st = this.playbackState.get(img.id);
       if (!st || !st.playing) continue;
       const heavy =
-        img.animationData instanceof ArrayBuffer &&
-        img.animationData.byteLength > HEAVY_GIF_BYTES;
+        img.animationData instanceof ArrayBuffer && img.animationData.byteLength > HEAVY_GIF_BYTES;
       if (!heavy) continue;
       // Hovered heavy GIF keeps playing — push its timer forward so it
       // never auto-stops while the pointer is over it.
@@ -2094,7 +2096,8 @@ export class Editor {
     // Commit any in-flight edit on a different shape first.
     if (this._editingTextElement !== null && this._editingTextElement !== id) this.commitTextEdit();
     this._editingTextElement = id;
-    this._textEditOrigin = this._pendingTextCreate === id ? null : (getElement(this._scene, id) ?? null);
+    this._textEditOrigin =
+      this._pendingTextCreate === id ? null : (getElement(this._scene, id) ?? null);
     const shape = getElement(this._scene, id) as TextElement | undefined;
     const len = shape?.text.length ?? 0;
     this._textSel = { start: len, end: len, dir: "forward" };
@@ -2108,7 +2111,12 @@ export class Editor {
    * Mutates the scene WITHOUT a history entry — history is recorded
    * once on commit. No-op when not editing.
    */
-  setEditingText(value: string, selStart: number, selEnd: number, dir: "forward" | "backward" = "forward"): void {
+  setEditingText(
+    value: string,
+    selStart: number,
+    selEnd: number,
+    dir: "forward" | "backward" = "forward",
+  ): void {
     const id = this._editingTextElement;
     if (!id) return;
     const r = updateElement(this._scene, id, (s) => ({ ...s, text: value }));
@@ -2119,7 +2127,11 @@ export class Editor {
   }
 
   /** Selection-only update (arrows / shift-select / click) — no text change. */
-  setEditingSelection(selStart: number, selEnd: number, dir: "forward" | "backward" = "forward"): void {
+  setEditingSelection(
+    selStart: number,
+    selEnd: number,
+    dir: "forward" | "backward" = "forward",
+  ): void {
     if (!this._editingTextElement) return;
     this._textSel = { start: selStart, end: selEnd, dir };
     this.wakeCaret();
@@ -2232,7 +2244,13 @@ export class Editor {
     const measure = this.measureFor(shape);
     const { x: px, y: py } = shape.position;
 
-    const local = textSelectionRects(layout, this._textSel.start, this._textSel.end, measure, align);
+    const local = textSelectionRects(
+      layout,
+      this._textSel.start,
+      this._textSel.end,
+      measure,
+      align,
+    );
     const selectionRects: Bounds[] = local.map((r) => ({
       x: px + r.x,
       y: py + r.y,
@@ -2284,7 +2302,8 @@ export class Editor {
 
     if (pending) {
       // Record the whole creation as one add patch.
-      if (finalElement) this._history.push({ kind: "element", id, before: null, after: finalElement });
+      if (finalElement)
+        this._history.push({ kind: "element", id, before: null, after: finalElement });
     } else if (origin && finalElement) {
       // Existing edit: record ONLY the text delta. Other fields (font
       // size etc.) changed via the panel push their own history during
@@ -2435,7 +2454,10 @@ export class Editor {
   }
 
   /** Current in-progress brush stroke, exposed for the overlay preview. */
-  get pendingBrushStroke(): { readonly origin: Vec2; readonly points: readonly BrushPoint[] } | null {
+  get pendingBrushStroke(): {
+    readonly origin: Vec2;
+    readonly points: readonly BrushPoint[];
+  } | null {
     return this.brushStroke;
   }
 
@@ -2503,10 +2525,10 @@ export class Editor {
    * Bound to Escape in default keyboard nav.
    */
   cancelInteraction(): void {
-    if (this.gestureTx) {
-      this.gestureTx.cancel();
-      this.gestureTx = null;
-    }
+    // Abort the in-flight gesture AND roll `_scene` back to the pre-gesture
+    // snapshot — Esc during any drag/move/resize/endpoint-rebind restores the
+    // scene to exactly where it was (cancelling the history tx alone wouldn't).
+    this.cancelGesture();
     this.actor.send({ type: "POINTER_CANCEL" });
     this.drawingPreview = null;
     this.edgePreview = null;
@@ -2523,6 +2545,9 @@ export class Editor {
     this.pendingLinkDropMenu = null;
     this.linkWaypointDrag = null;
     this.linkSegmentDrag = null;
+    // Endpoint-rebind drag: gestureTx.cancel above already reverted the live
+    // re-point; just drop the handle-preview state so the dot stops tracking.
+    this.linkEndpointDrag = null;
     // Esc exits group-isolation if active. The selection that was
     // active inside the group is dropped (Esc reads as a full
     // "back out" — selecting the group is a separate gesture).
@@ -2732,10 +2757,7 @@ export class Editor {
     this._history.push(result.patch);
     this.notify();
   }
-  compactLayerZOrder(
-    layerId?: LayerId,
-    options: { recordHistory?: boolean } = {},
-  ): void {
+  compactLayerZOrder(layerId?: LayerId, options: { recordHistory?: boolean } = {}): void {
     const recordHistory = options.recordHistory ?? true;
     const layerIds: readonly LayerId[] = layerId ? [layerId] : [...this._scene.layers.keys()];
     const tx = recordHistory ? this._history.transaction() : null;
@@ -3226,10 +3248,7 @@ export class Editor {
    * regardless of result, so subsequent calls can detect a double-
    * click against this event.
    */
-  private routeIsolationClick(
-    clickEffect: InteractionEmit | null,
-    worldPoint: Vec2,
-  ): boolean {
+  private routeIsolationClick(clickEffect: InteractionEmit | null, worldPoint: Vec2): boolean {
     const now = performance.now();
     const isDouble =
       now - this.lastClickAt < DOUBLE_CLICK_MS &&
@@ -3270,7 +3289,10 @@ export class Editor {
       this.beginLinkCaptionEdit(clickEffect.id);
       return true;
     }
-    if (isDouble && (clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE")) {
+    if (
+      isDouble &&
+      (clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE")
+    ) {
       const raw = this.acceleratedElementAt(worldPoint);
       if (raw?.type === "text") {
         this.beginTextEdit(raw.id);
@@ -3336,12 +3358,7 @@ export class Editor {
         }
         return;
       case "UPDATE_EDGE_ENDPOINT_PREVIEW":
-        this.linkEndpointDrag = {
-          linkId: emit.linkId,
-          side: emit.side,
-          toPoint: emit.toPoint,
-        };
-        this.notify();
+        this.applyLinkEndpointMove(emit.linkId, emit.side, emit.toPoint);
         return;
       case "UPDATE_EDGE_ENDPOINT":
         this.applyLinkEndpointUpdate(emit);
@@ -3742,8 +3759,13 @@ export class Editor {
       this.notify();
       return;
     }
-    const result = computeElementResize(this._scene, id, handle, delta, originalBounds, (s, raw, h) =>
-      this.clampContainerToChildren(s, raw, h),
+    const result = computeElementResize(
+      this._scene,
+      id,
+      handle,
+      delta,
+      originalBounds,
+      (s, raw, h) => this.clampContainerToChildren(s, raw, h),
     );
     if (!result) return;
     this._scene = result.scene;
@@ -3781,12 +3803,7 @@ export class Editor {
    * undo step in the same gesture transaction as the create.
    */
   private assignFrameMembers(frameId: ElementId, frameBounds: Bounds): void {
-    this._scene = assignFrameMembersHelper(
-      this._scene,
-      this._history,
-      frameId,
-      frameBounds,
-    );
+    this._scene = assignFrameMembersHelper(this._scene, this._history, frameId, frameBounds);
   }
 
   // Pure body in `./editor/applies/create.ts`. Endpoint snapping
@@ -3820,12 +3837,14 @@ export class Editor {
    * end to float against it. Element + re-point land in one undo step; the
    * new element becomes the selection. No-op when no menu is pending.
    */
-  placeShapeAtLinkDrop(factory: (ctx: {
-    id: ElementId;
-    layerId: LayerId;
-    position: Vec2;
-    order: FractionalIndex;
-  }) => Element): void {
+  placeShapeAtLinkDrop(
+    factory: (ctx: {
+      id: ElementId;
+      layerId: LayerId;
+      position: Vec2;
+      order: FractionalIndex;
+    }) => Element,
+  ): void {
     const pending = this.pendingLinkDropMenu;
     if (!pending) return;
     const link = getLink(this._scene, pending.linkId);
@@ -3840,7 +3859,12 @@ export class Editor {
         .filter((sh) => sh.layerId === this._activeLayerId)
         .map((sh) => sh.order),
     );
-    const built = factory({ id: newId, layerId: this._activeLayerId, position: pending.world, order });
+    const built = factory({
+      id: newId,
+      layerId: this._activeLayerId,
+      position: pending.world,
+      order,
+    });
     // Centre the element on the drop point regardless of how the factory
     // anchored it at `position`.
     const wb = getElementWorldBounds(built);
@@ -4013,14 +4037,23 @@ export class Editor {
     const edge = getLink(ghostScene, PREVIEW_GHOST_LINK_ID)!;
     if ((edge.routing ?? "straight") === "orthogonal") {
       const routedPoints = routeElbowLink(ghostScene, edge);
-      ghostScene = updateLink(ghostScene, PREVIEW_GHOST_LINK_ID, (e) => ({ ...e, routedPoints })).scene;
+      ghostScene = updateLink(ghostScene, PREVIEW_GHOST_LINK_ID, (e) => ({
+        ...e,
+        routedPoints,
+      })).scene;
     }
     // Render only the ghost link (the shapes stay for endpoint resolution).
     ghostScene = {
       ...ghostScene,
       links: new Map([[PREVIEW_GHOST_LINK_ID, getLink(ghostScene, PREVIEW_GHOST_LINK_ID)!]]),
     };
-    return { bounds, path: [fromWorld, nearEdge], element, ghostScene, ghostLinkId: PREVIEW_GHOST_LINK_ID };
+    return {
+      bounds,
+      path: [fromWorld, nearEdge],
+      element,
+      ghostScene,
+      ghostLinkId: PREVIEW_GHOST_LINK_ID,
+    };
   }
 
   /**
@@ -4099,21 +4132,56 @@ export class Editor {
   // Pure body in `./editor/applies/edge.ts`. The wrapper here
   // owns the side effects (history push, drag-state clearing,
   // notify).
+  /**
+   * Live endpoint-rebind move: re-point the dragged end to the cursor in the
+   * scene (a free `point` endpoint), recorded in the gesture transaction so the
+   * WHOLE link redraws under the cursor with full fidelity — real style,
+   * arrowhead, curved bow, and (via `rerouteElbows` in `render`) a live elbow
+   * re-route. One undo step on commit; Escape cancels the transaction and the
+   * link snaps back to where it was. The handle dot follows via `linkEndpointDrag`.
+   */
+  private applyLinkEndpointMove(linkId: LinkId, side: "from" | "to", toPoint: Vec2): void {
+    const edge = getLink(this._scene, linkId);
+    if (!edge) return;
+    // A real drag breaks the handle double-click chain (mirrors waypoint /
+    // segment drags) so a quick click after dropping isn't read as a delete.
+    this.lastHandleClickAt = 0;
+    const ep: LinkEndpoint = { kind: "point", position: toPoint };
+    const r = updateLink(this._scene, linkId, (e) =>
+      side === "from" ? { ...e, from: ep } : { ...e, to: ep },
+    );
+    this._scene = r.scene;
+    this.recordGesturePatch(r.patch);
+    this.linkEndpointDrag = { linkId, side, toPoint };
+    this.notify();
+  }
+
   private applyLinkEndpointUpdate(
     emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
   ): void {
+    // A move opened a gesture transaction (live re-point per tick). The final
+    // snapped endpoint goes into the SAME transaction so the net history step is
+    // original → final (one undo). A pure click (no move, no tx) that resolves
+    // to a no-op change must not leave a junk undo entry.
+    const moved = this.gestureTx !== null;
     const result = computeLinkEndpointUpdate(this._scene, emit, (toElement, toPoint) =>
       this.snapLinkEndpoint(toElement, toPoint),
     );
     if (result === null) {
+      this.cancelGesture();
+      this.linkEndpointDrag = null;
+      this.notify();
+      return;
+    }
+    if (!moved && isNoop(result.patch)) {
       this.linkEndpointDrag = null;
       this.notify();
       return;
     }
     this._scene = result.scene;
-    this._history.push(result.patch);
+    this.recordGesturePatch(result.patch);
+    this.commitGesture();
     this.linkEndpointDrag = null;
-    this.notify();
   }
 
   /** True while a waypoint of the selected link is being dragged. */
@@ -4406,11 +4474,17 @@ export class Editor {
   // below preserve the original call sites; the bodies (and their
   // docstrings) moved out to the controller.
   private recordGesturePatch(patch: Patch): void {
+    // Snapshot the pre-gesture scene the moment the transaction opens, so a
+    // later cancel/Escape can restore it (the history tx only records undo data,
+    // it doesn't roll `_scene` back). Callers apply the patch to `_scene` BEFORE
+    // recording, so reconstruct the pre-state by inverting this first patch.
+    if (this.gestureTx === null) this.gestureStartScene = apply(this._scene, invert(patch));
     this.gestures.record(patch);
   }
   private commitGesture(): void {
     this._resizeOriginElement = null;
     this.gestures.commit();
+    this.gestureStartScene = null;
   }
   private finalizeOpenGestureTx(): void {
     this.gestures.finalize();
@@ -4463,6 +4537,12 @@ export class Editor {
   private cancelGesture(): void {
     this._resizeOriginElement = null;
     this.gestures.cancel();
+    // Roll the scene back to the pre-gesture snapshot — cancelling the history
+    // transaction alone leaves the live drag mutations in `_scene`.
+    if (this.gestureStartScene !== null) {
+      this._scene = this.gestureStartScene;
+      this.gestureStartScene = null;
+    }
   }
 
   /**
@@ -4556,10 +4636,7 @@ export class Editor {
    * for callers that only care about one dimension. The legacy
    * `subscribe()` still works and fires in lock-step.
    */
-  on<K extends keyof EditorEvents>(
-    event: K,
-    fn: EditorEvents[K],
-  ): () => void {
+  on<K extends keyof EditorEvents>(event: K, fn: EditorEvents[K]): () => void {
     // Cast through `never`: TS can't prove that EditorEvents[K]
     // satisfies the emitter's `extends AnyListener ? T : never`
     // conditional through a generic body. Every entry of
@@ -4567,10 +4644,7 @@ export class Editor {
     return this.events.on(event, fn as never);
   }
 
-  off<K extends keyof EditorEvents>(
-    event: K,
-    fn: EditorEvents[K],
-  ): void {
+  off<K extends keyof EditorEvents>(event: K, fn: EditorEvents[K]): void {
     this.events.off(event, fn as never);
   }
 
@@ -4645,7 +4719,9 @@ export class Editor {
     // so paused / reduced-motion GIFs freeze and resumed ones continue
     // from the right frame. Set immediately before the synchronous
     // render pass (the shape-renderer has no options channel).
-    setAnimationClock((shape: { readonly id?: unknown }) => this.playbackClock(shape.id as ElementId));
+    setAnimationClock((shape: { readonly id?: unknown }) =>
+      this.playbackClock(shape.id as ElementId),
+    );
     renderEditor(this);
     // Present AFTER the paint, on the same tick — deferred-submission
     // surfaces (WebGL2 / OffscreenCanvas) would otherwise lag one frame.

@@ -304,15 +304,11 @@ export const renderEditor = (editor: any): void => {
     if (edge) {
       const path = getLinkPath(editor._scene, edge);
       if (path && path.length >= 2) {
-        // Endpoints in their stored positions; the dragged side jumps to
-        // the cursor so the user sees where the rebind will land. The
-        // edge itself stays on its old path until release.
-        let from = path[0]!;
-        let to = path[path.length - 1]!;
-        if (editor.linkEndpointDrag?.linkId === editor._selectedLink) {
-          if (editor.linkEndpointDrag.side === "from") from = editor.linkEndpointDrag.toPoint;
-          else to = editor.linkEndpointDrag.toPoint;
-        }
+        // During an endpoint-rebind drag the dragged end is re-pointed live in
+        // the scene (the whole link follows the cursor), so `path` already
+        // reflects the cursor position — handles ride along with it.
+        const from = path[0]!;
+        const to = path[path.length - 1]!;
         // Bend-point handles: existing waypoints (solid) + segment-midpoint
         // "add" handles along the logical [from, ...waypoints, to] chain.
         // Midpoints are hidden during an active waypoint drag to declutter.

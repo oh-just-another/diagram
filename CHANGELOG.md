@@ -1198,3 +1198,6 @@
 
 ## 0.52.0
 - chore: add deps:check (dependency-cruiser), knip, clean, test:watch, coverage gate
+
+## 0.52.1
+- fix(links): curved-link bend handles sit on the arc, not the chord
