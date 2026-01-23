@@ -156,4 +156,21 @@ describe("link endpoint rebind drag", () => {
     expect(to.kind).toBe("anchor");
     expect((to as { elementId: string }).elementId).toBe(elementId("c"));
   });
+
+  it("highlights the attach target during the drag (shared with draw-edge)", () => {
+    const { editor, down, move, up } = harness();
+    down(200, 20);
+    // Over empty space → nothing highlighted.
+    move(400, 400);
+    expect(editor.linkAttachTarget).toBeNull();
+    // Over c's body → highlight c as a float target.
+    move(520, 520);
+    expect(editor.linkAttachTarget).toEqual({ elementId: elementId("c"), mode: "element" });
+    // Over c's anchor dot → highlight as a fixed (point) target.
+    move(500, 520);
+    expect(editor.linkAttachTarget).toEqual({ elementId: elementId("c"), mode: "point" });
+    // Release clears the highlight.
+    up(500, 520);
+    expect(editor.linkAttachTarget).toBeNull();
+  });
 });

@@ -4163,13 +4163,22 @@ export class Editor {
     // A real drag breaks the handle double-click chain (mirrors waypoint /
     // segment drags) so a quick click after dropping isn't read as a delete.
     this.lastHandleClickAt = 0;
-    const ep: LinkEndpoint = { kind: "point", position: toPoint };
+    // Resolve the attach target under the cursor and snap the endpoint to it
+    // with the SAME logic the drop uses, so the link attaches LIVE exactly as it
+    // will commit — lands on the dot (fixed), floats on the body, or stays a
+    // free point over empty space.
+    const target = this.linkAttachTargetAt(toPoint);
+    const targetId = target?.kind === "element" ? target.id : null;
+    const ep = this.snapLinkEndpoint(targetId, toPoint);
     const r = updateLink(this._scene, linkId, (e) =>
       side === "from" ? { ...e, from: ep } : { ...e, to: ep },
     );
     this._scene = r.scene;
     this.recordGesturePatch(r.patch);
     this.linkEndpointDrag = { linkId, side, toPoint };
+    // Attach-point highlight — the SAME feedback as drawing a new link
+    // (candidate dots + float-element halo), driven by `hoveredLinkTarget`.
+    this.updateHoveredLinkTarget(toPoint);
     this.notify();
   }
 
@@ -4187,11 +4196,13 @@ export class Editor {
     if (result === null) {
       this.cancelGesture();
       this.linkEndpointDrag = null;
+      this.hoveredLinkTarget = null;
       this.notify();
       return;
     }
     if (!moved && isNoop(result.patch)) {
       this.linkEndpointDrag = null;
+      this.hoveredLinkTarget = null;
       this.notify();
       return;
     }
@@ -4199,6 +4210,7 @@ export class Editor {
     this.recordGesturePatch(result.patch);
     this.commitGesture();
     this.linkEndpointDrag = null;
+    this.hoveredLinkTarget = null;
   }
 
   /** True while a waypoint of the selected link is being dragged. */

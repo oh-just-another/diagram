@@ -1204,3 +1204,6 @@
 
 ## 0.52.2
 - fix(state): live link-endpoint rebind + Escape reverts any gesture
+
+## 0.52.3
+- fix(state): endpoint-rebind drop attaches to the element under the cursor
