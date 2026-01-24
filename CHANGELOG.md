@@ -1207,3 +1207,6 @@
 
 ## 0.52.3
 - fix(state): endpoint-rebind drop attaches to the element under the cursor
+
+## 0.52.4
+- feat(state): endpoint-rebind shares draw-edge attach highlight + live snap

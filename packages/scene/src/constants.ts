@@ -52,6 +52,25 @@ export const ELBOW_BEND_PENALTY = 100000;
 export const ELBOW_TERMINAL_BUFFER = 30;
 
 /**
+ * --- Self-loop connectors (a link whose both ends bind to the SAME element) ---
+ *
+ * A self-loop is routed OUTSIDE the element so it reads as a loop/arc instead of
+ * a flat line on (or across) the shape.
+ *
+ * - `SELF_LOOP_SIZE` — how far (world px) the loop bows out past the element's
+ *   edge. Fixed for every element. Range: 24–80.
+ * - `SELF_LOOP_SPREAD` — when both ends resolve to the SAME point (centre /
+ *   floating / same anchor) the two exit points are spread this far apart along
+ *   the edge so the loop has width. Clamped to a third of the side. Range: 12–40.
+ * - `SELF_LOOP_CURVE_ARM_FACTOR` — control-arm length for a curved self-loop as a
+ *   multiple of `SELF_LOOP_SIZE`; larger = rounder, more pronounced arc. 2.2
+ *   gives a clean teardrop. Range: 1.5–3.
+ */
+export const SELF_LOOP_SIZE = 40;
+export const SELF_LOOP_SPREAD = 24;
+export const SELF_LOOP_CURVE_ARM_FACTOR = 2.2;
+
+/**
  * Clearance (world px) a candidate centred path (the "thread"/mid-S or the
  * C-wrap) must keep from a bound shape's interior before it counts as CROSSING
  * it. This is the threshold that decides thread-vs-wrap-vs-A*: a larger value

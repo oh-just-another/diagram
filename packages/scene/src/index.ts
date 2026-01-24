@@ -51,6 +51,7 @@ export {
   getLinkCurvePoints,
   getLinkCurveSegments,
   getLinkWaypointMidpoints,
+  getSelfLoopSpec,
 } from "./edge-geometry.js";
 export {
   catmullRomBeziers,

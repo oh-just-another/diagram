@@ -1,6 +1,7 @@
-import type { Vec2 } from "@oh-just-another/types";
+import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import { intersect } from "@oh-just-another/math";
-import { getAnchorWorld } from "./anchors.js";
+import { getAnchorOutwardNormal, getAnchorWorld } from "./anchors.js";
+import { SELF_LOOP_CURVE_ARM_FACTOR, SELF_LOOP_SIZE, SELF_LOOP_SPREAD } from "./constants.js";
 import {
   catmullRomBeziers,
   cubicAt,
@@ -9,10 +10,131 @@ import {
   type BezierSegment,
 } from "./edge-curve.js";
 import type { Link, LinkEndpoint } from "./edge.js";
+import { headingForEdgePoint } from "./heading.js";
 import { getOutlinePoint, getOutlineSampler } from "./outline.js";
 import { getElementWorldBounds, type ElementBase } from "./shape.js";
 import type { Scene } from "./scene.js";
 import { getElement } from "./queries.js";
+
+/**
+ * --- Self-loop geometry ---
+ *
+ * A link whose `from` and `to` both bind to the SAME element. Routed OUTSIDE the
+ * element: curved → an arc, orthogonal/straight → a rectangular loop. Without
+ * this both ends collapse to (nearly) the same point and the link renders as a
+ * flat line on/across the shape.
+ */
+interface SelfLoopSpec {
+  readonly p1: Vec2; // exit point on the outline
+  readonly n1: Vec2; // outward normal at p1 (axis-aligned)
+  readonly p2: Vec2; // entry point on the outline
+  readonly n2: Vec2; // outward normal at p2 (axis-aligned)
+  readonly bounds: Bounds;
+}
+
+const endpointElementOf = (ep: LinkEndpoint): ElementId | null =>
+  ep.kind === "point" ? null : ep.elementId;
+
+/** Snap a unit vector to the dominant axis (corner anchors give diagonals). */
+const axisSnap = (n: Vec2): Vec2 =>
+  Math.abs(n.x) >= Math.abs(n.y) ? { x: Math.sign(n.x) || 0, y: 0 } : { x: 0, y: Math.sign(n.y) };
+
+const outwardNormalFor = (shape: ElementBase, ep: LinkEndpoint, p: Vec2): Vec2 => {
+  if (ep.kind === "anchor") {
+    const n = axisSnap(getAnchorOutwardNormal(shape, ep.anchor));
+    if (n.x !== 0 || n.y !== 0) return n;
+  }
+  const h = axisSnap(headingForEdgePoint(shape, p));
+  return h.x !== 0 || h.y !== 0 ? h : { x: 0, y: -1 };
+};
+
+const edgeMidpoint = (b: Bounds, n: Vec2): Vec2 => {
+  const cx = b.x + b.width / 2;
+  const cy = b.y + b.height / 2;
+  if (n.y < 0) return { x: cx, y: b.y };
+  if (n.y > 0) return { x: cx, y: b.y + b.height };
+  if (n.x < 0) return { x: b.x, y: cy };
+  return { x: b.x + b.width, y: cy };
+};
+
+/**
+ * Resolve a self-loop's two outline exit points + outward normals, or `null`
+ * when the link isn't a self-loop. When both ends land on the same point
+ * (centre / floating / same anchor) they're spread along the chosen side
+ * (default top) so the loop has width.
+ */
+export const getSelfLoopSpec = (scene: Scene, edge: Link): SelfLoopSpec | null => {
+  const el = endpointElementOf(edge.from);
+  if (!el || el !== endpointElementOf(edge.to)) return null;
+  const shape = getElement(scene, el);
+  if (!shape) return null;
+  const bounds = getElementWorldBounds(shape);
+  const w1 = getLinkEndpointWorld(scene, edge.from);
+  const w2 = getLinkEndpointWorld(scene, edge.to);
+  if (!w1 || !w2) return null;
+
+  let p1 = w1;
+  let p2 = w2;
+  let n1 = outwardNormalFor(shape, edge.from, p1);
+  let n2 = outwardNormalFor(shape, edge.to, p2);
+
+  if (Math.hypot(p2.x - p1.x, p2.y - p1.y) < 1) {
+    // Degenerate: both ends at one point → loop on n1's side (default top),
+    // two points spread symmetrically along that edge.
+    const side = n1.x !== 0 || n1.y !== 0 ? n1 : { x: 0, y: -1 };
+    n1 = side;
+    n2 = side;
+    const t = { x: -side.y, y: side.x }; // tangent along the edge
+    const sideLen = side.x !== 0 ? bounds.height : bounds.width;
+    const half = Math.min(SELF_LOOP_SPREAD, sideLen / 3);
+    const mid = edgeMidpoint(bounds, side);
+    p1 = { x: mid.x - t.x * half, y: mid.y - t.y * half };
+    p2 = { x: mid.x + t.x * half, y: mid.y + t.y * half };
+  }
+  return { p1, n1, p2, n2, bounds };
+};
+
+/** Orthogonal/straight self-loop polyline `[p1, …outside…, p2]`. */
+const selfLoopPolyline = (spec: SelfLoopSpec): Vec2[] => {
+  const L = SELF_LOOP_SIZE;
+  const { p1, n1, p2, n2, bounds } = spec;
+  const a1 = { x: p1.x + n1.x * L, y: p1.y + n1.y * L };
+  const a2 = { x: p2.x + n2.x * L, y: p2.y + n2.y * L };
+  const same = n1.x === n2.x && n1.y === n2.y;
+  const opposite = n1.x === -n2.x && n1.y === -n2.y;
+  if (same) {
+    // Staple: both stubs on the same outward level.
+    return [p1, a1, a2, p2];
+  }
+  if (opposite) {
+    // Wrap around one side (the +x side for a vertical pair, +y for horizontal).
+    if (n1.x === 0) {
+      const outX = bounds.x + bounds.width + L;
+      return [p1, a1, { x: outX, y: a1.y }, { x: outX, y: a2.y }, a2, p2];
+    }
+    const outY = bounds.y + bounds.height + L;
+    return [p1, a1, { x: a1.x, y: outY }, { x: a2.x, y: outY }, a2, p2];
+  }
+  // Perpendicular: route through the outside corner.
+  const corner = { x: n1.y !== 0 ? a2.x : a1.x, y: n1.y !== 0 ? a1.y : a2.y };
+  return [p1, a1, corner, a2, p2];
+};
+
+/** Curved self-loop: a single cubic that bows out along both normals. */
+const selfLoopCurve = (spec: SelfLoopSpec): { start: Vec2; segments: BezierSegment[] } => {
+  const k = SELF_LOOP_SIZE * SELF_LOOP_CURVE_ARM_FACTOR;
+  const { p1, n1, p2, n2 } = spec;
+  return {
+    start: p1,
+    segments: [
+      {
+        c1: { x: p1.x + n1.x * k, y: p1.y + n1.y * k },
+        c2: { x: p2.x + n2.x * k, y: p2.y + n2.y * k },
+        to: p2,
+      },
+    ],
+  };
+};
 
 /**
  * World-space centre of a shape's bounding box. Origin of the ray used to
@@ -114,6 +236,12 @@ export const getLinkEndpointWorld = (
  * an edge with custom bends.
  */
 export const getLinkPath = (scene: Scene, edge: Link): readonly Vec2[] | null => {
+  // Self-loop (both ends on the same element): route a loop OUTSIDE the shape
+  // (orthogonal/straight → rectangular loop) instead of a flat line. Curved
+  // self-loops are handled in `getLinkCurveSegments`.
+  const loop = getSelfLoopSpec(scene, edge);
+  if (loop) return selfLoopPolyline(loop);
+
   // Two-pass resolve so a `floating` endpoint can aim at its partner.
   // Pass 1: provisional points (floating → its own centre). Pass 2:
   // re-resolve floating ends toward the partner's provisional point. When
@@ -276,6 +404,9 @@ export const getLinkCurveSegments = (
   edge: Link,
 ): { start: Vec2; segments: BezierSegment[] } | null => {
   if ((edge.routing ?? "straight") !== "bezier") return null;
+  // Self-loop → an arc that bows outside the element (see getSelfLoopSpec).
+  const loop = getSelfLoopSpec(scene, edge);
+  if (loop) return selfLoopCurve(loop);
   const path = getLinkPath(scene, edge);
   if (!path || path.length < 2) return null;
   const start = path[0]!;

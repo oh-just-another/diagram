@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkId, layerId, elementId } from "@oh-just-another/types";
+import { linkId, layerId, elementId, type Vec2 } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addLink,
@@ -10,6 +10,7 @@ import {
   getLinkEndpointWorld,
   getLinkPath,
   getLinkWaypointMidpoints,
+  getSelfLoopSpec,
   orderBetween,
   type EllipseElement,
   type Link,
@@ -344,5 +345,78 @@ describe("getLinkWaypointMidpoints — add-handles sit on the drawn line", () =>
     });
     const s = sceneWith([], [e]);
     expect(getLinkWaypointMidpoints(s, e)).toBeNull();
+  });
+});
+
+describe("self-loop (both ends on the same element) routes OUTSIDE the shape", () => {
+  // a = (0,0,100,60): top edge y=0, bottom y=60, left x=0, right x=100.
+  const insideStrict = (p: Vec2, b: { x: number; y: number; w: number; h: number }) =>
+    p.x > b.x + 0.5 && p.x < b.x + b.w - 0.5 && p.y > b.y + 0.5 && p.y < b.y + b.h - 0.5;
+  const box = { x: 0, y: 0, w: 100, h: 60 };
+
+  it("getSelfLoopSpec detects same-element links and is null otherwise", () => {
+    const a = rect("a", 0, 0, 100, 60);
+    const self = edge({
+      from: { kind: "floating", elementId: elementId("a") },
+      to: { kind: "floating", elementId: elementId("a") },
+    });
+    const s = sceneWith([a], [self]);
+    expect(getSelfLoopSpec(s, self)).not.toBeNull();
+
+    const b = rect("b", 300, 0, 100, 60);
+    const cross = edge({
+      id: linkId("e2"),
+      from: { kind: "floating", elementId: elementId("a") },
+      to: { kind: "floating", elementId: elementId("b") },
+    });
+    const s2 = sceneWith([a, b], [cross]);
+    expect(getSelfLoopSpec(s2, cross)).toBeNull();
+  });
+
+  it("orthogonal self-loop is a loop above the element (default-top), not a flat line", () => {
+    const a = rect("a", 0, 0, 100, 60);
+    const self = edge({
+      from: { kind: "floating", elementId: elementId("a") },
+      to: { kind: "floating", elementId: elementId("a") },
+      routing: "orthogonal",
+    });
+    const s = sceneWith([a], [self]);
+    const path = getLinkPath(s, self)!;
+    expect(path.length).toBeGreaterThanOrEqual(4); // a real loop, not [from,to]
+    // Bows out above the top edge (y goes negative) and never sits below the top.
+    expect(Math.min(...path.map((p) => p.y))).toBeLessThanOrEqual(-30);
+    expect(Math.max(...path.map((p) => p.y))).toBeLessThanOrEqual(0.5);
+    // No vertex inside the element.
+    for (const p of path) expect(insideStrict(p, box)).toBe(false);
+  });
+
+  it("curved self-loop bows outside as an arc", () => {
+    const a = rect("a", 0, 0, 100, 60);
+    const self = edge({
+      from: { kind: "floating", elementId: elementId("a") },
+      to: { kind: "floating", elementId: elementId("a") },
+      routing: "bezier",
+    });
+    const s = sceneWith([a], [self]);
+    const pts = getLinkCurvePoints(s, self)!;
+    expect(pts.length).toBeGreaterThan(4);
+    // Arc apex is well above the element; no sample sits deep inside it.
+    expect(Math.min(...pts.map((p) => p.y))).toBeLessThan(-20);
+    for (const p of pts) expect(insideStrict(p, box)).toBe(false);
+  });
+
+  it("named anchors on different sides make a corner loop outside", () => {
+    const a = rect("a", 0, 0, 100, 60);
+    const self = edge({
+      from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "top" } },
+      to: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "right" } },
+      routing: "orthogonal",
+    });
+    const s = sceneWith([a], [self]);
+    const path = getLinkPath(s, self)!;
+    // Exits above the top and past the right edge; stays outside the box.
+    expect(Math.min(...path.map((p) => p.y))).toBeLessThan(0); // above top
+    expect(Math.max(...path.map((p) => p.x))).toBeGreaterThan(100); // past right
+    for (const p of path) expect(insideStrict(p, box)).toBe(false);
   });
 });
