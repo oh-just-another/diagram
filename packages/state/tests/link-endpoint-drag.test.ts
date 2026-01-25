@@ -70,6 +70,8 @@ const scene = (): Scene => {
   s = addElement(s, rect("a", 0, 0, 40, 40)).scene;
   s = addElement(s, rect("b", 200, 0, 40, 40)).scene;
   s = addElement(s, rect("c", 500, 500, 40, 40)).scene;
+  // d is large so a point mid-edge is far (>snapThreshold) from any anchor dot.
+  s = addElement(s, rect("d", 500, 800, 200, 80)).scene;
   const link: Link = {
     id: linkId("L"),
     layerId: DEFAULT_LAYER_ID,
@@ -155,6 +157,19 @@ describe("link endpoint rebind drag", () => {
     const to = linkTo();
     expect(to.kind).toBe("anchor");
     expect((to as { elementId: string }).elementId).toBe(elementId("c"));
+  });
+
+  it("dropping on an arbitrary edge point attaches to the outline (not the centre)", () => {
+    const { down, move, up, linkTo } = harness();
+    down(200, 20); // grab 'to'
+    // d's top edge (y=800), x=560 — 40px from top-centre, 60px from a corner,
+    // well beyond the 12px snap threshold, so it's an EDGE point, not a dot.
+    move(560, 800);
+    up(560, 800);
+    const to = linkTo();
+    expect(to.kind).toBe("outline");
+    expect((to as { elementId: string }).elementId).toBe(elementId("d"));
+    expect(typeof (to as { ratio: number }).ratio).toBe("number");
   });
 
   it("highlights the attach target during the drag (shared with draw-edge)", () => {

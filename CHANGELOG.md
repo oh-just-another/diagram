@@ -1210,3 +1210,6 @@
 
 ## 0.52.4
 - feat(state): endpoint-rebind shares draw-edge attach highlight + live snap
+
+## 0.52.5
+- feat(scene): self-loop connectors route outside the element (arc / loop)

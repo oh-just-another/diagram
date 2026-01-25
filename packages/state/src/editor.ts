@@ -4098,10 +4098,11 @@ export class Editor {
       gesture: "draw-edge",
     });
 
-    // standard contract: dropping on a specific port dot → *fixed* anchor;
-    // dropping anywhere else on the shape (body, or near the edge but not
-    // on a dot) → *floating* against the whole shape, so the connection
-    // re-aims at the partner as either shape moves.
+    // Attach contract: dropping on a port dot → *fixed* anchor; dropping
+    // near an EDGE (not a dot) → *fixed* outline point (a ratio along the
+    // perimeter — survives move/resize); dropping on the body interior (no
+    // snap to a dot or edge) → *floating* against the whole shape, so the
+    // connection re-aims at the partner as either shape moves.
     // Prefer a candidate that belongs to the press-target shape — avoids
     // attaching to a neighbouring shape closer to the release point.
     const onTarget = result.all.filter((c) => c.metadata?.elementId === pressTargetElement);
@@ -4109,6 +4110,15 @@ export class Editor {
     if (anchorHit) {
       const ep = endpointFromSnap(pressTargetElement, anchorHit, shape);
       if (ep.kind === "anchor") return ep;
+    }
+    // Edge attach: an outline snap means the cursor is near a specific point on
+    // the perimeter — bind there (fixed), mirroring the hover highlight. Without
+    // this the link fell back to floating (centre-aimed) despite showing an
+    // edge dot, so arbitrary edge points couldn't be attached to.
+    const outlineHit = onTarget.find((c) => c.kind === "outline");
+    if (outlineHit) {
+      const ep = endpointFromSnap(pressTargetElement, outlineHit, shape);
+      if (ep.kind === "outline") return ep;
     }
     return { kind: "floating", elementId: pressTargetElement };
   }
@@ -4474,9 +4484,10 @@ export class Editor {
       return;
     }
 
-    // Mode mirrors snapLinkEndpoint: a named-anchor hit → fixed point;
-    // anything else over the shape → floating (attach to the whole element).
-    const mode: "point" | "element" = activeName !== null ? "point" : "element";
+    // Mode mirrors snapLinkEndpoint: a named-anchor OR edge (outline) hit →
+    // *fixed* point (show the dot, no float halo); only the body interior with
+    // no edge/dot snap → floating (attach to the whole element).
+    const mode: "point" | "element" = activeName !== null || outlinePoint ? "point" : "element";
     this.hoveredLinkTarget = { elementId: shape.id, activeAnchor: activeName, outlinePoint, mode };
     this.notify();
   }
