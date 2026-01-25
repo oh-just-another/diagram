@@ -1213,3 +1213,6 @@
 
 ## 0.52.5
 - feat(scene): self-loop connectors route outside the element (arc / loop)
+
+## 0.52.6
+- fix(state): attach a link to an arbitrary edge point (outline), not the centre
