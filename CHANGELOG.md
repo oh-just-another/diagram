@@ -1216,3 +1216,6 @@
 
 ## 0.52.6
 - fix(state): attach a link to an arbitrary edge point (outline), not the centre
+
+## 0.52.7
+- chore: gitignore ./settings.local.json (per-developer local settings)

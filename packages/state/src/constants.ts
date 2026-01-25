@@ -4,6 +4,7 @@
  * timing the host might want to tweak here — keep magic numbers out
  * of the hot path code.
  */
+import type { ArrowheadStyle, LinkRouting } from "@oh-just-another/scene";
 
 /**
  * World-unit distance below which a snap candidate is preferred over
@@ -20,10 +21,10 @@ export const DEFAULT_SNAP_THRESHOLD = 12;
  * `"bezier"` to change the default for new links; the per-link toolbar can
  * still switch any individual link afterwards.
  */
-export const DEFAULT_LINK_ROUTING: import("@oh-just-another/scene").LinkRouting = "orthogonal";
+export const DEFAULT_LINK_ROUTING: LinkRouting = "orthogonal";
 
 /** Arrowhead on the `to` end of a newly created link. */
-export const DEFAULT_LINK_ARROWHEAD: import("@oh-just-another/scene").ArrowheadStyle = "triangle";
+export const DEFAULT_LINK_ARROWHEAD: ArrowheadStyle = "triangle";
 
 /**
  * Padding ratio added to the world-space viewport rect before passing
@@ -151,9 +152,9 @@ export const LINK_ATTACH_ANCHOR_STROKE = ANCHOR_BRAND_COLOR;
  * edge along its outward normal ("floating" ports). Two independent knobs
  * because the roles want different offsets:
  *
- *   - **link-start** sits a few px off the edge so it reads as a separate
- *     grab affordance ("drag from here"), clear of the element's own
- *     border and resize handles. Range: 0–16.
+ *   - **link-start** sits off the edge so it reads as a separate grab
+ *     affordance ("drag from here"), clear of the element's own border and
+ *     resize handles. Range: 0–28.
  *   - **link-attach** stays ON (or barely off) the edge because it marks
  *     where the link will actually land — a large offset re-introduces the
  *     dot-vs-landing-point mismatch. Default 0 (exactly on the edge); bump
@@ -162,7 +163,7 @@ export const LINK_ATTACH_ANCHOR_STROKE = ANCHOR_BRAND_COLOR;
  * Applied only to the discrete named / edge anchor dots; the free
  * outline-attach point is never offset (it is the real landing point).
  */
-export const LINK_START_ANCHOR_OUTSET = 8;
+export const LINK_START_ANCHOR_OUTSET = 20;
 export const LINK_ATTACH_ANCHOR_OUTSET = 0;
 
 /**
