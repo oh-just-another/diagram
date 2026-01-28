@@ -30,17 +30,38 @@ const sceneWith = (...elements: Element[]): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 800, height: 600 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 800, height: 600 },
 } as never;
 
 const makeHost = () => {
@@ -48,7 +69,8 @@ const makeHost = () => {
   const host = {
     addEventListener: (type: string, fn: (ev: unknown) => void) => handlers.set(type, fn),
     removeEventListener: (type: string) => handlers.delete(type),
-    setPointerCapture: () => {}, releasePointerCapture: () => {},
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
     hasPointerCapture: () => true,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
     style: { cursor: "" },
@@ -57,10 +79,19 @@ const makeHost = () => {
 };
 
 const pointer = (type: string, x: number, y: number) => ({
-  type, clientX: x, clientY: y, pointerId: 1, pointerType: "mouse", button: 0,
+  type,
+  clientX: x,
+  clientY: y,
+  pointerId: 1,
+  pointerType: "mouse",
+  button: 0,
   buttons: type === "pointerup" ? 0 : 1,
-  shiftKey: false, ctrlKey: false, altKey: false, metaKey: false,
-  timeStamp: 0, preventDefault: () => {},
+  shiftKey: false,
+  ctrlKey: false,
+  altKey: false,
+  metaKey: false,
+  timeStamp: 0,
+  preventDefault: () => {},
 });
 
 // Minimal rectangle factory matching the TemplateContext shape.
@@ -86,8 +117,9 @@ const dropOnEmpty = (editor: Editor, handlers: Map<string, (ev: unknown) => void
   const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
   const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
   const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
-  down(20, 20); up(20, 20); // select A
-  down(48, 20); // press A's right dot
+  down(20, 20);
+  up(20, 20); // select A
+  down(60, 20); // press A's right dot (edge 40 + LINK_START_ANCHOR_OUTSET 20)
   move(400, 400); // drag to empty canvas
   up(400, 400);
 };
@@ -96,7 +128,9 @@ describe("link dropped on empty canvas → shape-picker", () => {
   it("opens a pending shape menu at the drop point with a free-ended link", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(rect("a", 0, 0, 40, 40)),
     });
     dropOnEmpty(editor, handlers);
@@ -112,7 +146,9 @@ describe("link dropped on empty canvas → shape-picker", () => {
   it("picking a shape creates it and re-points the link to float against it", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(rect("a", 0, 0, 40, 40)),
     });
     dropOnEmpty(editor, handlers);
@@ -136,7 +172,9 @@ describe("link dropped on empty canvas → shape-picker", () => {
   it("dismissing leaves the free-ended link on the canvas", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(rect("a", 0, 0, 40, 40)),
     });
     dropOnEmpty(editor, handlers);

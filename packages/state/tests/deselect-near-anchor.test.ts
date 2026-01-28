@@ -31,17 +31,38 @@ const sceneWith = (...elements: Element[]): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 800, height: 600 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 800, height: 600 },
 } as never;
 
 const makeHost = () => {
@@ -74,24 +95,22 @@ const pointer = (type: string, x: number, y: number) => ({
   preventDefault: () => {},
 });
 
-// Geometry (verified by instrumentation): rect "a" at the origin covers
-// world 0..40. Its resize handles sit on / just outside that edge, and
-// its link-start anchor dots sit 8px further out (LINK_START_ANCHOR_OUTSET)
-// with an 11px grab radius. The point (55,20) lands in the gap PAST the
-// east resize handle but still INSIDE the anchor grab halo: it hit-tests
-// as empty canvas yet is grabbed by the host-managed link-from-anchor
-// gesture on pointerdown. That combination is the bug: the grabbed
-// gesture used to return on pointerup without running click semantics, so
-// a click there left the selection intact and the user had to click again
-// further out ("two clicks to deselect"). The fix makes a non-dragging
-// grab fall back to hit-test-based select/deselect.
-const HALO_EMPTY = { x: 58, y: 20 } as const;
+// Geometry: rect "a" at the origin covers world 0..40. Its east link-start
+// anchor dot sits at x = 40 + LINK_START_ANCHOR_OUTSET (20) = 60, with an 11px
+// grab radius (ACTIVE 5 + SLOP 6) and a tighter 7px "on a dot" click radius.
+// (70,20) is 10px from the dot: past the click radius (not "on a dot") but
+// inside the grab halo. It hit-tests as empty canvas yet is grabbed by the
+// host-managed link-from-anchor gesture on pointerdown. A non-dragging grab
+// falls back to hit-test select.
+const HALO_EMPTY = { x: 70, y: 20 } as const;
 
 describe("deselect near a selected element's anchor halo", () => {
   it("a single click in the anchor halo over empty canvas clears the selection", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(rect("a", 0, 0)),
     });
     const tap = (x: number, y: number) => {
@@ -107,15 +126,20 @@ describe("deselect near a selected element's anchor halo", () => {
   it("still draws a link when the anchor press actually drags", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(rect("a", 0, 0), rect("b", 100, 100)),
     });
-    const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
-    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
+    const down = (x: number, y: number) =>
+      handlers.get("pointerdown")!(pointer("pointerdown", x, y));
+    const move = (x: number, y: number) =>
+      handlers.get("pointermove")!(pointer("pointermove", x, y));
     const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
 
     const before = editor.scene.links.size;
-    down(20, 20); up(20, 20); // select A
+    down(20, 20);
+    up(20, 20); // select A
     down(HALO_EMPTY.x, HALO_EMPTY.y); // press in the anchor halo
     move(110, 110); // drag onto B
     up(120, 120);

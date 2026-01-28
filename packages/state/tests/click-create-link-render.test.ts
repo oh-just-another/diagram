@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
-import { DEFAULT_LAYER_ID, addElement, emptyScene, orderBetween, type Element } from "@oh-just-another/scene";
+import {
+  DEFAULT_LAYER_ID,
+  addElement,
+  emptyScene,
+  orderBetween,
+  type Element,
+} from "@oh-just-another/scene";
 import { installBuiltinRenderers } from "@oh-just-another/renderer-core";
 import { Editor } from "../src/editor.js";
 
@@ -16,7 +22,9 @@ const flushRAF = () => {
 };
 beforeEach(() => {
   rafQueue = [];
-  (globalThis as { requestAnimationFrame?: unknown }).requestAnimationFrame = (cb: FrameRequestCallback) => {
+  (globalThis as { requestAnimationFrame?: unknown }).requestAnimationFrame = (
+    cb: FrameRequestCallback,
+  ) => {
     rafQueue.push(cb);
     return 1;
   };
@@ -53,11 +61,25 @@ const recordingTarget = () => {
   let tx = 0;
   let ty = 0;
   const t = {
-    save: () => {}, restore: () => {}, setTransform: () => { tx = 0; ty = 0; }, clear: () => {},
-    setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-    setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-    setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-    setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
+    save: () => {},
+    restore: () => {},
+    setTransform: () => {
+      tx = 0;
+      ty = 0;
+    },
+    clear: () => {},
+    setFill: () => {},
+    setStroke: () => {},
+    setStrokeWidth: () => {},
+    setOpacity: () => {},
+    setLineCap: () => {},
+    setLineJoin: () => {},
+    setDashArray: () => {},
+    setFont: () => {},
+    setTextAlign: () => {},
+    setTextBaseline: () => {},
+    beginPath: () => {},
+    closePath: () => {},
     moveTo: (x: number, y: number) => {
       cx = x;
       cy = y;
@@ -67,13 +89,27 @@ const recordingTarget = () => {
       cx = x;
       cy = y;
     },
-    quadraticCurveTo: () => {}, bezierCurveTo: () => {},
-    rect: (x: number, y: number, w: number, h: number) => rects.push({ x: x + tx, y: y + ty, w, h }),
+    quadraticCurveTo: () => {},
+    bezierCurveTo: () => {},
+    rect: (x: number, y: number, w: number, h: number) =>
+      rects.push({ x: x + tx, y: y + ty, w, h }),
     ellipse: () => {},
-    fill: () => {}, stroke: () => {}, fillText: () => {},
-    measureText: () => ({ width: 0 }), drawImage: () => {},
-    translate: (x: number, y: number) => { tx += x; ty += y; }, rotate: () => {}, scale: () => {},
-    resetTransform: () => { tx = 0; ty = 0; }, size: { width: 800, height: 600 },
+    fill: () => {},
+    stroke: () => {},
+    fillText: () => {},
+    measureText: () => ({ width: 0 }),
+    drawImage: () => {},
+    translate: (x: number, y: number) => {
+      tx += x;
+      ty += y;
+    },
+    rotate: () => {},
+    scale: () => {},
+    resetTransform: () => {
+      tx = 0;
+      ty = 0;
+    },
+    size: { width: 800, height: 600 },
   };
   return { target: t as never, segs, rects };
 };
@@ -81,17 +117,28 @@ const recordingTarget = () => {
 const host = (handlers: Map<string, (e: unknown) => void>) =>
   ({
     addEventListener: (t: string, fn: (e: unknown) => void) => handlers.set(t, fn),
-    removeEventListener: () => {}, setPointerCapture: () => {}, releasePointerCapture: () => {},
+    removeEventListener: () => {},
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
     hasPointerCapture: () => true,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
     style: { cursor: "" },
   }) as never;
 
 const ev = (type: string, x: number, y: number) => ({
-  type, clientX: x, clientY: y, pointerId: 1, pointerType: "mouse", button: 0,
+  type,
+  clientX: x,
+  clientY: y,
+  pointerId: 1,
+  pointerType: "mouse",
+  button: 0,
   buttons: type === "pointerup" ? 0 : 1,
-  shiftKey: false, ctrlKey: false, altKey: false, metaKey: false,
-  timeStamp: 0, preventDefault: () => {},
+  shiftKey: false,
+  ctrlKey: false,
+  altKey: false,
+  metaKey: false,
+  timeStamp: 0,
+  preventDefault: () => {},
 });
 
 // Is the connector between A (right edge x=40) and the copy (left edge x≈80)
@@ -112,7 +159,9 @@ describe("click a start dot to create a copy — connector renders immediately",
     let s = emptyScene();
     s = addElement(s, rect("a", 0, 0)).scene;
     const editor = new Editor({
-      host: host(handlers), mainTarget: main.target, overlayTarget: recordingTarget().target,
+      host: host(handlers),
+      mainTarget: main.target,
+      overlayTarget: recordingTarget().target,
       initialScene: s,
     });
     editor.setViewportSize(800, 600);
@@ -121,11 +170,13 @@ describe("click a start dot to create a copy — connector renders immediately",
     const down = (x: number, y: number) => handlers.get("pointerdown")!(ev("pointerdown", x, y));
     const up = (x: number, y: number) => handlers.get("pointerup")!(ev("pointerup", x, y));
 
-    down(20, 20); up(20, 20); // select A
+    down(20, 20);
+    up(20, 20); // select A
     flushRAF();
 
     main.segs.length = 0;
-    down(48, 20); up(48, 20); // click A's right dot → create copy + connector
+    down(60, 20);
+    up(60, 20); // click A's right dot (edge 40 + outset 20) → copy + connector
     flushRAF();
 
     expect([...editor.scene.links.values()].length).toBe(1); // link created

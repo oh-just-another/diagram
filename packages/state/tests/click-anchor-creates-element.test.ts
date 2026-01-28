@@ -34,17 +34,38 @@ const sceneWith = (...elements: Element[]): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 800, height: 600 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 800, height: 600 },
 } as never;
 
 const makeHost = () => {
@@ -91,13 +112,20 @@ describe("click a link-start dot → create new element + link", () => {
   const setup = () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(rect("a", 0, 0)),
     });
-    const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
-    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
+    const down = (x: number, y: number) =>
+      handlers.get("pointerdown")!(pointer("pointerdown", x, y));
+    const move = (x: number, y: number) =>
+      handlers.get("pointermove")!(pointer("pointermove", x, y));
     const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
-    const tap = (x: number, y: number) => { down(x, y); up(x, y); };
+    const tap = (x: number, y: number) => {
+      down(x, y);
+      up(x, y);
+    };
     return { editor, tap, down, move, up };
   };
 
@@ -152,11 +180,10 @@ describe("click a link-start dot → create new element + link", () => {
   it("a click in the halo but NOT on a dot still deselects (no new element)", () => {
     const { editor, tap } = setup();
     tap(20, 20);
-    // (58,20): 10px from the east dot (48,20) — inside the 11px grab halo
-    // (press is captured) but outside the 7px click radius (not a create),
-    // and hit-tests as empty canvas → deselect. (55,20) would sit exactly
-    // on the 7px boundary, so use 58 for clearance.
-    tap(58, 20);
+    // (70,20): 10px from the east dot (60,20 = edge 40 + outset 20) — inside
+    // the 11px grab halo (press is captured) but outside the 7px click radius
+    // (not a create), and hit-tests as empty canvas → deselect.
+    tap(70, 20);
     expect([...editor.selection]).toEqual([]);
     expect(editor.scene.elements.size).toBe(1); // nothing created
     expect(editor.scene.links.size).toBe(0);

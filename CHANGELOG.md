@@ -1219,3 +1219,6 @@
 
 ## 0.52.7
 - chore: gitignore ./settings.local.json (per-developer local settings)
+
+## 0.52.8
+- feat(state): push link-start anchor dots 20px off the element edge
