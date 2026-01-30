@@ -344,6 +344,13 @@ export const setupTemplates = (): void => {
       style: { fill: "#f7fbf7", stroke: "#7aa07a", strokeWidth: 1.5, dashArray: [6, 4] },
       width: 360,
       height: 100,
+      // Floor size at 200×200; the effective minimum is max(this, content size)
+      // — clampWrapContainer additionally floors at the widest child / wrapped
+      // content height. `noFlip` forbids mirroring the box by dragging a handle
+      // past the opposite edge.
+      minWidth: 200,
+      minHeight: 200,
+      noFlip: true,
       metadata: {
         // Flow + wrap (CSS flex-wrap / inline-block): children keep their size,
         // wrap to a new row when the container is narrowed; height grows down.

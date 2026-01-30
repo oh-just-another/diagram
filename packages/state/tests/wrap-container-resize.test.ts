@@ -9,9 +9,15 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import { clampContainerToChildren } from "../src/editor/container-ops.js";
-import type { HandleId } from "../src/handle.js";
+import { computeElementResize } from "../src/editor/applies/resize.js";
 
-const rect = (id: string, parentId: string | null, w: number, h: number, order = orderBetween(null, null)): Element => ({
+const rect = (
+  id: string,
+  parentId: string | null,
+  w: number,
+  h: number,
+  order = orderBetween(null, null),
+): Element => ({
   id: elementId(id),
   layerId: DEFAULT_LAYER_ID,
   type: "rectangle",
@@ -34,6 +40,9 @@ const setup = (): { scene: Scene; container: Element } => {
   const container: Element = {
     ...rect("p", null, 360, 100),
     position: { x: 0, y: 0 },
+    minWidth: 200,
+    minHeight: 200,
+    noFlip: true,
     metadata: {
       autoLayout: { kind: "wrap", gap: 10 },
       container: { dropZone: { x: 10, y: 10, width: 340, height: 80 }, padding: 10 },
@@ -60,7 +69,7 @@ describe("wrap container resize clamp", () => {
       scene,
       container,
       { x: 0, y: 0, width: 150, height: 100 },
-      "e" as HandleId,
+      "e",
     );
     expect(out.width).toBe(150); // narrowing allowed
     expect(out.height).toBe(190); // grew DOWN to the wrapped content height
@@ -74,7 +83,7 @@ describe("wrap container resize clamp", () => {
       scene,
       container,
       { x: 0, y: 0, width: 100, height: 100 },
-      "e" as HandleId,
+      "e",
     );
     expect(out.width).toBe(120); // widest child 100 + padding 2×10
   });
@@ -85,7 +94,7 @@ describe("wrap container resize clamp", () => {
       scene,
       container,
       { x: 0, y: 0, width: 100, height: 100 },
-      "w" as HandleId,
+      "w",
     );
     expect(out.width).toBe(120);
     expect(out.x).toBe(-20); // shifted left so the right edge stays put
@@ -97,9 +106,27 @@ describe("wrap container resize clamp", () => {
       scene,
       container,
       { x: 0, y: 0, width: 600, height: 400 },
-      "se" as HandleId,
+      "se",
     );
     expect(out.width).toBe(600);
     expect(out.height).toBe(400);
+  });
+
+  it("noFlip + minWidth: dragging the left edge past the right doesn't mirror, floors at 200", () => {
+    const { scene, container } = setup();
+    // Drag the west edge 1000px right — would mirror the box without noFlip.
+    const out = computeElementResize(
+      scene,
+      container.id,
+      "w",
+      { x: 1000, y: 0 },
+      { x: 0, y: 0, width: 360, height: 100 },
+      (shape, raw, h) => clampContainerToChildren(scene, shape, raw, h),
+    );
+    const next = out!.scene.elements.get(container.id) as Element & { width: number };
+    expect(next.width).toBe(200); // floored at minWidth (= max(200, content)); no flip
+    expect(next.width).toBeGreaterThan(0); // not mirrored/negative
+    // East edge stays put (west handle keeps the opposite edge fixed).
+    expect(next.position.x + next.width).toBeCloseTo(360, 0);
   });
 });

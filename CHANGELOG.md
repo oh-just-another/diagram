@@ -1225,3 +1225,6 @@
 
 ## 0.53.0
 - test(state): fix dot-grab coords after LINK_START_ANCHOR_OUTSET 8->20
+
+## 0.53.1
+- feat(scene): wrap auto-stack — children flow + wrap (flex-wrap / inline-block)
