@@ -9,7 +9,14 @@ import {
   type Scene,
   type Element,
 } from "../src/index.js";
-import { gridLayout, stackLayout, treeLayout } from "../src/layout.js";
+import {
+  gridLayout,
+  measureWrap,
+  runAutoLayout,
+  stackLayout,
+  treeLayout,
+  wrapLayout,
+} from "../src/layout.js";
 
 const rect = (id: string, parentId: string | null, w = 40, h = 30): Element => ({
   id: elementId(id),
@@ -86,6 +93,80 @@ describe("treeLayout", () => {
     const next = apply(scene, patch!);
     expect(next.elements.get(a1.id)!.position.x).toBe(0);
     expect(next.elements.get(a1.id)!.position.y).toBe(100); // root (30h) + ranksep + a (30h) + ranksep = 30+20+30+20 = 100
+  });
+});
+
+describe("wrapLayout (flex-wrap flow)", () => {
+  // Three 100×50 boxes, ordered a<b<c, gap 10.
+  const ordered = (): { a: Element; b: Element; c: Element } => {
+    const o0 = orderBetween(null, null);
+    const o1 = orderBetween(o0, null);
+    const o2 = orderBetween(o1, null);
+    const mk = (id: string, order: typeof o0): Element => ({ ...rect(id, null, 100, 50), order });
+    return { a: mk("a", o0), b: mk("b", o1), c: mk("c", o2) };
+  };
+
+  it("flows left→right, wraps to a new row when the next child overruns innerWidth", () => {
+    const { a, b, c } = ordered();
+    const scene = sceneWith(a, b, c);
+    // innerWidth 250: a(100)+gap(10)+b(100)=210 fits; +c would be 320 > 250 → wrap.
+    const patch = wrapLayout(scene, {
+      shapeIds: [a.id, b.id, c.id],
+      innerWidth: 250,
+      gap: 10,
+      origin: { x: 0, y: 0 },
+    });
+    const next = apply(scene, patch!);
+    expect(next.elements.get(a.id)!.position).toEqual({ x: 0, y: 0 });
+    expect(next.elements.get(b.id)!.position).toEqual({ x: 110, y: 0 });
+    expect(next.elements.get(c.id)!.position).toEqual({ x: 0, y: 60 }); // row height 50 + gap 10
+  });
+
+  it("measureWrap reports widest child + wrapped content height", () => {
+    const o0 = orderBetween(null, null);
+    const o1 = orderBetween(o0, null);
+    const o2 = orderBetween(o1, null);
+    const parent: Element = {
+      ...rect("p", null, 360, 100),
+      metadata: { autoLayout: { kind: "wrap", gap: 10 } },
+    };
+    const a = { ...rect("a", "p", 100, 50), order: o0 };
+    const b = { ...rect("b", "p", 100, 50), order: o1 };
+    const c = { ...rect("c", "p", 100, 50), order: o2 };
+    const scene = sceneWith(parent, a, b, c);
+    // Wide: two per row → height 50 + 10 + 50 = 110, widest 100, contentWidth 210.
+    expect(measureWrap(scene, parent.id, 250)).toEqual({
+      widest: 100,
+      contentWidth: 210,
+      contentHeight: 110,
+    });
+    // Narrow (< widest): one per row → height 50*3 + 10*2 = 170.
+    expect(measureWrap(scene, parent.id, 90)).toEqual({
+      widest: 100,
+      contentWidth: 100,
+      contentHeight: 170,
+    });
+  });
+
+  it("runAutoLayout dispatches a wrap container within its drop-zone", () => {
+    const o0 = orderBetween(null, null);
+    const o1 = orderBetween(o0, null);
+    const parent: Element = {
+      ...rect("p", null, 360, 100),
+      position: { x: 0, y: 0 },
+      metadata: {
+        autoLayout: { kind: "wrap", gap: 10 },
+        container: { dropZone: { x: 10, y: 10, width: 340, height: 80 }, padding: 10 },
+      },
+    };
+    // 200-wide boxes: only one fits per 340-wide row → each on its own row.
+    const a = { ...rect("a", "p", 200, 50), order: o0 };
+    const b = { ...rect("b", "p", 200, 50), order: o1 };
+    const scene = sceneWith(parent, a, b);
+    const patch = runAutoLayout(scene, parent.id);
+    const next = apply(scene, patch!);
+    expect(next.elements.get(a.id)!.position).toEqual({ x: 10, y: 10 }); // drop-zone origin
+    expect(next.elements.get(b.id)!.position).toEqual({ x: 10, y: 70 }); // wrapped below
   });
 });
 

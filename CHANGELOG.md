@@ -1222,3 +1222,6 @@
 
 ## 0.52.8
 - feat(state): push link-start anchor dots 20px off the element edge
+
+## 0.53.0
+- test(state): fix dot-grab coords after LINK_START_ANCHOR_OUTSET 8->20

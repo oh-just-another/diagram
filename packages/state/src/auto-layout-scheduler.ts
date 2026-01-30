@@ -2,6 +2,9 @@ import type { ElementId } from "@oh-just-another/types";
 import {
   apply,
   getAutoLayoutSpec,
+  getDropZoneWorld,
+  getElement,
+  getElementWorldBounds,
   runAutoLayout,
   type Patch,
   type Scene,
@@ -69,10 +72,24 @@ export class AutoLayoutScheduler {
 
   private signatureFor(parentId: ElementId): string {
     const scene = this.opts.getScene();
-    const ids: string[] = [];
-    for (const s of scene.elements.values()) {
-      if (s.parentId === parentId) ids.push(s.id);
+    const parent = getElement(scene, parentId);
+    const children = [...scene.elements.values()].filter((s) => s.parentId === parentId);
+    // Wrap containers reflow on container-width AND child-size changes (not just
+    // child add/remove): fold the drop-zone width + each child's size into the
+    // signature so resizing the container or a child re-wraps. Other kinds keep
+    // the ids-only fingerprint (a manual position nudge isn't snapped back).
+    if (parent && getAutoLayoutSpec(parent)?.kind === "wrap") {
+      const dz = getDropZoneWorld(parent);
+      const innerW = dz ? Math.round(dz.width) : 0;
+      const parts = children
+        .map((s) => {
+          const b = getElementWorldBounds(s);
+          return `${s.id}:${Math.round(b.width)}x${Math.round(b.height)}`;
+        })
+        .sort();
+      return `w${innerW}|${parts.join(",")}`;
     }
+    const ids = children.map((s) => s.id);
     ids.sort();
     return ids.join(",");
   }

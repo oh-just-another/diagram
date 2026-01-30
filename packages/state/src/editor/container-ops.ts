@@ -1,11 +1,13 @@
 import {
   containerSizeForZone,
   expandDropZoneToFit,
+  getAutoLayoutSpec,
   getContainerSpec,
   getDropZoneWorld,
   getElement,
   getElementWorldBounds,
   isContainer,
+  measureWrap,
   orderForTop,
   updateElement,
   type Scene,
@@ -72,6 +74,13 @@ export const clampContainerToChildren = (
   handle: HandleId,
 ): Bounds => {
   if (!isContainer(shape) || !hasWidthHeight(shape)) return raw;
+  // Wrap containers REFLOW on resize: the width may shrink down to the widest
+  // single child (children re-wrap into more rows); the height is floored to
+  // the wrapped content height and grows down. The children-union clamp below
+  // would forbid narrowing, so handle wrap separately.
+  if (getAutoLayoutSpec(shape)?.kind === "wrap") {
+    return clampWrapContainer(scene, shape, raw, handle);
+  }
   const childrenBox = childrenWorldUnion(scene, shape.id);
   if (!childrenBox) return raw;
   // Compose a hypothetical container with the proposed bounds, then
@@ -112,6 +121,42 @@ export const clampContainerToChildren = (
     const shift = dy0 - cy0;
     y -= shift;
     height += shift;
+  }
+  return { x, y, width, height };
+};
+
+/**
+ * Resize clamp for a wrap (flex-wrap) container: width floors at the widest
+ * single child (+padding) — narrower has nowhere to wrap; height floors at the
+ * wrapped content height at the resulting width and grows DOWN. The dragged
+ * edge keeps controlling direction (west/north shift the opposite edge).
+ */
+const clampWrapContainer = (
+  scene: Scene,
+  shape: Element,
+  raw: Bounds,
+  handle: HandleId,
+): Bounds => {
+  const pad = getContainerSpec(shape)?.padding ?? 0;
+  const rawInner = Math.max(0, raw.width - 2 * pad);
+  const m = measureWrap(scene, shape.id, rawInner);
+  if (!m) return raw; // no children → no constraint
+  let { x, y, width, height } = raw;
+
+  const minWidth = m.widest + 2 * pad;
+  if (width < minWidth) {
+    const deficit = minWidth - width;
+    width = minWidth;
+    if (handle.includes("w")) x -= deficit; // keep the east edge fixed
+  }
+  // Content height at the FINAL width (narrower ⇒ more rows ⇒ taller).
+  const finalInner = Math.max(0, width - 2 * pad);
+  const mh = finalInner === rawInner ? m : (measureWrap(scene, shape.id, finalInner) ?? m);
+  const minHeight = mh.contentHeight + 2 * pad;
+  if (height < minHeight) {
+    const deficit = minHeight - height;
+    height = minHeight;
+    if (handle.includes("n")) y -= deficit; // keep the south edge fixed
   }
   return { x, y, width, height };
 };

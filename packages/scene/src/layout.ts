@@ -121,6 +121,132 @@ export const stackLayout: LayoutFn<StackLayoutSpec> = (scene, spec) => {
   return batch(patches);
 };
 
+export interface WrapLayoutSpec extends LayoutSpec {
+  /** Inner width to wrap within (the container's drop-zone width). */
+  readonly innerWidth: number;
+  readonly gap?: number;
+}
+
+interface WrapMeasure {
+  /** Child placements (top-left), in input order. */
+  readonly placements: readonly { readonly id: ElementId; readonly x: number; readonly y: number }[];
+  /** Widest single child — the minimum the container can ever be. */
+  readonly widest: number;
+  /** Width of the widest row (≤ innerWidth unless a child is wider). */
+  readonly contentWidth: number;
+  /** Total height of all rows (top of first row → bottom of last). */
+  readonly contentHeight: number;
+}
+
+/**
+ * Greedy flex-wrap packing (CSS `flex-wrap: wrap`, `inline-block` flow):
+ * children keep their own size and flow left→right; the next child that would
+ * overrun `innerWidth` starts a new row. Row height = tallest child in the row;
+ * rows are top-aligned and stack downward. A child wider than `innerWidth` gets
+ * its own row (overflows — that's what bounds the minimum width). Pure.
+ */
+const packWrap = (
+  sizes: readonly { readonly id: ElementId; readonly w: number; readonly h: number }[],
+  gap: number,
+  innerWidth: number,
+  origin: Vec2,
+): WrapMeasure => {
+  const placements: { id: ElementId; x: number; y: number }[] = [];
+  let cursorX = origin.x;
+  let cursorY = origin.y;
+  let rowH = 0;
+  let widest = 0;
+  let maxRowW = 0;
+  let firstInRow = true;
+  for (const s of sizes) {
+    widest = Math.max(widest, s.w);
+    if (!firstInRow && cursorX - origin.x + s.w > innerWidth + 1e-6) {
+      // Wrap: close the current row, start a new one below.
+      maxRowW = Math.max(maxRowW, cursorX - gap - origin.x);
+      cursorX = origin.x;
+      cursorY += rowH + gap;
+      rowH = 0;
+      firstInRow = true;
+    }
+    placements.push({ id: s.id, x: cursorX, y: cursorY }); // top-aligned
+    cursorX += s.w + gap;
+    rowH = Math.max(rowH, s.h);
+    firstInRow = false;
+  }
+  maxRowW = Math.max(maxRowW, cursorX - gap - origin.x);
+  return {
+    placements,
+    widest,
+    contentWidth: Math.max(0, maxRowW),
+    contentHeight: cursorY + rowH - origin.y,
+  };
+};
+
+/** Ordered (by `order`) children of `parentId` with their advance sizes. */
+const childSizes = (
+  scene: Scene,
+  ids: readonly ElementId[],
+): { id: ElementId; w: number; h: number }[] => {
+  const shapes: Element[] = [];
+  for (const id of ids) {
+    const s = getElement(scene, id);
+    if (s) shapes.push(s);
+  }
+  shapes.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  return shapes.map((s) => {
+    const sz = shapeAdvanceSize(s);
+    return { id: s.id, w: sz.width, h: sz.height };
+  });
+};
+
+/**
+ * Position children in a wrapping flow (see {@link packWrap}). Children keep
+ * their own size; the container is expected to grow vertically to fit the rows
+ * (handled by the host's container auto-grow / resize clamp).
+ */
+export const wrapLayout: LayoutFn<WrapLayoutSpec> = (scene, spec) => {
+  if (spec.shapeIds.length === 0) return null;
+  const gap = spec.gap ?? 16;
+  const origin = spec.origin ?? { x: 0, y: 0 };
+  const sizes = childSizes(scene, spec.shapeIds);
+  const { placements } = packWrap(sizes, gap, spec.innerWidth, origin);
+
+  const patches: Patch[] = [];
+  let working = scene;
+  for (const p of placements) {
+    const shape = getElement(working, p.id);
+    if (!shape) continue;
+    if (shape.position.x === p.x && shape.position.y === p.y) continue;
+    const r = updateElement(working, p.id, (s) => ({ ...s, position: { x: p.x, y: p.y } }));
+    working = r.scene;
+    patches.push(r.patch);
+  }
+  if (patches.length === 0) return null;
+  return batch(patches);
+};
+
+/**
+ * Measure a wrap container's children at a hypothetical `innerWidth` WITHOUT
+ * moving anything — used by the resize clamp / scheduler to know the minimum
+ * width (widest child) and the wrapped content height (so the container can
+ * grow down). Returns `null` when the parent has no children.
+ */
+export const measureWrap = (
+  scene: Scene,
+  parentId: ElementId,
+  innerWidth: number,
+): { readonly widest: number; readonly contentWidth: number; readonly contentHeight: number } | null => {
+  const ids: ElementId[] = [];
+  for (const s of scene.elements.values()) {
+    if (s.parentId === parentId) ids.push(s.id);
+  }
+  if (ids.length === 0) return null;
+  const sizes = childSizes(scene, ids);
+  const gap = (getAutoLayoutSpec(getElement(scene, parentId)!) as { gap?: number } | null)?.gap ?? 16;
+  const m = packWrap(sizes, gap, innerWidth, { x: 0, y: 0 });
+  return { widest: m.widest, contentWidth: m.contentWidth, contentHeight: m.contentHeight };
+};
+
 /**
  * Convenience: list all shape ids in a layer in z-order, suitable
  * as `LayoutSpec.shapeIds`.
@@ -143,6 +269,7 @@ export const allElementsInLayer = (scene: Scene, layerId: Scene["layers"] extend
 export type AutoLayoutSpec =
   | { readonly kind: "grid"; readonly cols: number; readonly gap?: number }
   | { readonly kind: "stack"; readonly direction: "horizontal" | "vertical"; readonly gap?: number }
+  | { readonly kind: "wrap"; readonly gap?: number }
   | {
       readonly kind: "tree";
       /** Vertical distance between successive depth levels. Default 80. */
@@ -177,6 +304,9 @@ export const getAutoLayoutSpec = (shape: Element): AutoLayoutSpec | null => {
       direction: raw.direction,
       ...(typeof raw.gap === "number" ? { gap: raw.gap } : {}),
     };
+  }
+  if (raw.kind === "wrap") {
+    return { kind: "wrap", ...(typeof raw.gap === "number" ? { gap: raw.gap } : {}) };
   }
   if (raw.kind === "tree") {
     const treeRaw = m as { ranksep?: number; nodesep?: number };
@@ -239,6 +369,17 @@ export const runAutoLayout = (scene: Scene, parentId: ElementId): Patch | null =
       shapeIds: children,
       origin,
       direction: spec.direction,
+      ...(spec.gap !== undefined ? { gap: spec.gap } : {}),
+    });
+  }
+  if (spec.kind === "wrap") {
+    // Wrap within the drop-zone width; children flow + wrap, the container
+    // grows DOWN to fit new rows (via the host's auto-grow / resize clamp).
+    const innerWidth = dropZone ? dropZone.width : Number.POSITIVE_INFINITY;
+    return wrapLayout(scene, {
+      shapeIds: children,
+      origin,
+      innerWidth,
       ...(spec.gap !== undefined ? { gap: spec.gap } : {}),
     });
   }

@@ -206,12 +206,15 @@ export type {
   LayoutSpec,
   GridLayoutSpec,
   StackLayoutSpec,
+  WrapLayoutSpec,
   TreeLayoutSpec,
   AutoLayoutSpec,
 } from "./layout.js";
 export {
   gridLayout,
   stackLayout,
+  wrapLayout,
+  measureWrap,
   treeLayout,
   allElementsInLayer,
   getAutoLayoutSpec,

@@ -330,7 +330,7 @@ export const setupTemplates = (): void => {
   });
   defaultRegistry.register({
     id: "layout.auto-stack",
-    name: "Auto-stack (H)",
+    name: "Auto-stack (wrap)",
     category: "layout",
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="1"/><rect x="6" y="9" width="4" height="6"/><rect x="11" y="9" width="4" height="6"/><rect x="16" y="9" width="3" height="6"/></svg>',
     factory: (ctx) => ({
@@ -345,7 +345,9 @@ export const setupTemplates = (): void => {
       width: 360,
       height: 100,
       metadata: {
-        autoLayout: { kind: "stack", direction: "horizontal", gap: 10 },
+        // Flow + wrap (CSS flex-wrap / inline-block): children keep their size,
+        // wrap to a new row when the container is narrowed; height grows down.
+        autoLayout: { kind: "wrap", gap: 10 },
         container: {
           dropZone: { x: 10, y: 10, width: 340, height: 80 },
           padding: 10,
