@@ -30,7 +30,7 @@ export const computeElementResize = (
   handle: HandleId,
   delta: Vec2,
   originalBounds: Bounds,
-  clampContainer: (shape: Element, raw: Bounds, handle: HandleId) => Bounds,
+  clampContainer: (shape: Element, raw: Bounds, handle: HandleId, originalBounds: Bounds) => Bounds,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const shape = getElement(scene, id);
   if (!shape) return null;
@@ -38,7 +38,7 @@ export const computeElementResize = (
 
   const raw = resizeFromHandle(originalBounds, handle, delta);
   const intermediate = applyResizeConstraints(originalBounds, raw, handle, shape);
-  const constrained = clampContainer(shape, intermediate, handle);
+  const constrained = clampContainer(shape, intermediate, handle, originalBounds);
 
   // `constrained` is in world units (originalBounds was world AABB).
   // For shapes with a width/height field, persist that directly and

@@ -1228,3 +1228,6 @@
 
 ## 0.53.1
 - feat(scene): wrap auto-stack — children flow + wrap (flex-wrap / inline-block)
+
+## 0.53.2
+- feat(app): auto-stack min 200x200 + noFlip (no resize flip)
