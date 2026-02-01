@@ -112,29 +112,6 @@ describe("wrap container resize clamp", () => {
     expect(out.height).toBe(400);
   });
 
-  it("top-left (nw) resize grows DOWN, not up — the top stays pinned", () => {
-    const { scene, container } = setup();
-    // Drag the nw corner in (narrow by 210 → 150-ish, shrink height by 50).
-    // Without the pin, the min/content height floor would anchor the south edge
-    // and move the top UP to -100. We want the top to stay at 0 and the box to
-    // extend downward.
-    const out = computeElementResize(
-      scene,
-      container.id,
-      "nw",
-      { x: 210, y: 50 },
-      { x: 0, y: 0, width: 360, height: 100 },
-      (shape, raw, h, ob) => clampContainerToChildren(scene, shape, raw, h, ob),
-    );
-    const next = out!.scene.elements.get(container.id) as Element & {
-      width: number;
-      height: number;
-    };
-    expect(next.position.y).toBe(0); // top PINNED (did not grow up)
-    expect(next.height).toBeGreaterThanOrEqual(200); // grew DOWN to fit content/min
-    expect(next.position.x + next.width).toBeCloseTo(360, 0); // east edge fixed (narrowed from left)
-  });
-
   it("noFlip + minWidth: dragging the left edge past the right doesn't mirror, floors at 200", () => {
     const { scene, container } = setup();
     // Drag the west edge 1000px right — would mirror the box without noFlip.

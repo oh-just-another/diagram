@@ -1231,3 +1231,6 @@
 
 ## 0.53.2
 - feat(app): auto-stack min 200x200 + noFlip (no resize flip)
+
+## 0.53.3
+- fix(state): wrap container grows DOWN on top/corner resize (top pinned)

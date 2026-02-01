@@ -3782,7 +3782,7 @@ export class Editor {
       handle,
       delta,
       originalBounds,
-      (s, raw, h, ob) => this.clampContainerToChildren(s, raw, h, ob),
+      (s, raw, h) => this.clampContainerToChildren(s, raw, h),
     );
     if (!result) return;
     this._scene = result.scene;
@@ -4557,13 +4557,8 @@ export class Editor {
   }
 
   // Pure body in `./editor/container-ops.ts`.
-  private clampContainerToChildren(
-    shape: Element,
-    raw: Bounds,
-    handle: HandleId,
-    originalBounds: Bounds,
-  ): Bounds {
-    return clampContainerToChildrenPure(this._scene, shape, raw, handle, originalBounds);
+  private clampContainerToChildren(shape: Element, raw: Bounds, handle: HandleId): Bounds {
+    return clampContainerToChildrenPure(this._scene, shape, raw, handle);
   }
 
   /**

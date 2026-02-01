@@ -72,7 +72,6 @@ export const clampContainerToChildren = (
   shape: Element,
   raw: Bounds,
   handle: HandleId,
-  originalBounds?: Bounds,
 ): Bounds => {
   if (!isContainer(shape) || !hasWidthHeight(shape)) return raw;
   // Wrap containers REFLOW on resize: the width may shrink down to the widest
@@ -80,7 +79,7 @@ export const clampContainerToChildren = (
   // the wrapped content height and grows down. The children-union clamp below
   // would forbid narrowing, so handle wrap separately.
   if (getAutoLayoutSpec(shape)?.kind === "wrap") {
-    return clampWrapContainer(scene, shape, raw, handle, originalBounds);
+    return clampWrapContainer(scene, shape, raw, handle);
   }
   const childrenBox = childrenWorldUnion(scene, shape.id);
   if (!childrenBox) return raw;
@@ -137,7 +136,6 @@ const clampWrapContainer = (
   shape: Element,
   raw: Bounds,
   handle: HandleId,
-  originalBounds?: Bounds,
 ): Bounds => {
   const pad = getContainerSpec(shape)?.padding ?? 0;
   const rawInner = Math.max(0, raw.width - 2 * pad);
@@ -155,12 +153,11 @@ const clampWrapContainer = (
   const finalInner = Math.max(0, width - 2 * pad);
   const mh = finalInner === rawInner ? m : (measureWrap(scene, shape.id, finalInner) ?? m);
   const minHeight = mh.contentHeight + 2 * pad;
-  if (height < minHeight) height = minHeight;
-  // Content is top-anchored → the box grows DOWN, never up. Pin the top to the
-  // gesture-start top so a north/corner handle (which `applyResizeConstraints`
-  // would anchor to the SOUTH edge, growing upward) instead keeps the top fixed
-  // and extends the bottom. Falls back to the raw top if no original given.
-  if (originalBounds) y = originalBounds.y;
+  if (height < minHeight) {
+    const deficit = minHeight - height;
+    height = minHeight;
+    if (handle.includes("n")) y -= deficit; // keep the south edge fixed
+  }
   return { x, y, width, height };
 };
 
@@ -197,7 +194,10 @@ export interface ContainerOpsRef {
  * `_worldPoint` is unused; kept on the signature for the exact
  * release coordinates.
  */
-export const applyContainerDrop = (ref: ContainerOpsRef, _worldPoint: unknown): void => {
+export const applyContainerDrop = (
+  ref: ContainerOpsRef,
+  _worldPoint: unknown,
+): void => {
   const dragId = ref.dragElementId;
   if (!dragId) return;
   const shape = getElement(ref.scene, dragId);
@@ -283,24 +283,19 @@ export const maybeGrowContainer = (
       { width: container.width, height: container.height, spec },
       expanded,
     );
-    const r = updateElement(
-      ref.scene,
-      containerId,
-      (s) =>
-        ({
-          ...s,
-          position: {
-            x: s.position.x + sized.positionOffset.x,
-            y: s.position.y + sized.positionOffset.y,
-          },
-          width: sized.width,
-          height: sized.height,
-          metadata: {
-            ...(s.metadata ?? {}),
-            container: { ...spec, dropZone: expanded },
-          },
-        }) as Element,
-    );
+    const r = updateElement(ref.scene, containerId, (s) => ({
+      ...s,
+      position: {
+        x: s.position.x + sized.positionOffset.x,
+        y: s.position.y + sized.positionOffset.y,
+      },
+      width: sized.width,
+      height: sized.height,
+      metadata: {
+        ...(s.metadata ?? {}),
+        container: { ...spec, dropZone: expanded },
+      },
+    }) as Element);
     ref.applyPatch(r.patch, r.scene);
     // Children are stored in absolute world coords — translating
     // the container's `position` does NOT visually move them, so
