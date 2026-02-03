@@ -1234,3 +1234,6 @@
 
 ## 0.53.3
 - fix(state): wrap container grows DOWN on top/corner resize (top pinned)
+
+## 0.53.4
+- Revert "fix(state): wrap container grows DOWN on top/corner resize (top pinned)"

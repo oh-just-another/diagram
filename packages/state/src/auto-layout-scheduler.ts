@@ -74,12 +74,15 @@ export class AutoLayoutScheduler {
     const scene = this.opts.getScene();
     const parent = getElement(scene, parentId);
     const children = [...scene.elements.values()].filter((s) => s.parentId === parentId);
-    // Wrap containers reflow on container-width AND child-size changes (not just
-    // child add/remove): fold the drop-zone width + each child's size into the
-    // signature so resizing the container or a child re-wraps. Other kinds keep
-    // the ids-only fingerprint (a manual position nudge isn't snapped back).
+    // Wrap containers reflow on drop-zone geometry (origin + width) AND
+    // child-size changes (not just child add/remove): fold the drop-zone
+    // top-left + width + each child's size into the signature so resizing the
+    // container, MOVING it, or resizing a child re-anchors children at the
+    // (top-left-pinned) drop-zone origin. Other kinds keep the ids-only
+    // fingerprint (a manual position nudge isn't snapped back).
     if (parent && getAutoLayoutSpec(parent)?.kind === "wrap") {
       const dz = getDropZoneWorld(parent);
+      const origin = dz ? `${Math.round(dz.x)},${Math.round(dz.y)}` : "0,0";
       const innerW = dz ? Math.round(dz.width) : 0;
       const parts = children
         .map((s) => {
@@ -87,7 +90,7 @@ export class AutoLayoutScheduler {
           return `${s.id}:${Math.round(b.width)}x${Math.round(b.height)}`;
         })
         .sort();
-      return `w${innerW}|${parts.join(",")}`;
+      return `o${origin}|w${innerW}|${parts.join(",")}`;
     }
     const ids = children.map((s) => s.id);
     ids.sort();
