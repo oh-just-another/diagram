@@ -1,5 +1,6 @@
 import {
   apply,
+  getAutoLayoutSpec,
   getElement,
   type Scene,
   type Element,
@@ -37,7 +38,14 @@ export const computeElementResize = (
   if (!hasWidthHeight(shape)) return null;
 
   const raw = resizeFromHandle(originalBounds, handle, delta);
-  const intermediate = applyResizeConstraints(originalBounds, raw, handle, shape);
+  // An auto-layout container (a box holding laid-out children) must NEVER
+  // mirror through its own body: dragging an edge inward past the opposite
+  // edge would otherwise hand control to that opposite edge ("flip through
+  // the face"). Force `noFlip` regardless of the element's stored flag so
+  // instances that lack it behave the same.
+  const noFlip = shape.noFlip === true || getAutoLayoutSpec(shape) !== null;
+  const constraints: Element = noFlip ? ({ ...shape, noFlip: true } as Element) : shape;
+  const intermediate = applyResizeConstraints(originalBounds, raw, handle, constraints);
   const constrained = clampContainer(shape, intermediate, handle);
 
   // `constrained` is in world units (originalBounds was world AABB).

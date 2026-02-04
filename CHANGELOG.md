@@ -1237,3 +1237,6 @@
 
 ## 0.53.4
 - Revert "fix(state): wrap container grows DOWN on top/corner resize (top pinned)"
+
+## 0.53.5
+- fix(state): wrap children re-anchor on drop-zone origin move (top edge / move)

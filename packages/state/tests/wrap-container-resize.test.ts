@@ -112,6 +112,36 @@ describe("wrap container resize clamp", () => {
     expect(out.height).toBe(400);
   });
 
+  it("auto-layout container without a stored noFlip flag still can't flip through its body", () => {
+    // Strip the noFlip flag. `computeElementResize` must force noFlip anyway
+    // because it's an auto-layout container, so dragging the west edge far
+    // past the east edge keeps the east edge fixed and never mirrors.
+    const { scene, container } = setup();
+    const legacy = { ...container } as Element & { noFlip?: boolean };
+    delete legacy.noFlip;
+    let legacyScene = emptyScene();
+    for (const el of [
+      legacy as Element,
+      rect("a", "p", 100, 50),
+      rect("b", "p", 100, 50),
+      rect("c", "p", 100, 50),
+    ]) {
+      legacyScene = addElement(legacyScene, el).scene;
+    }
+    const out = computeElementResize(
+      legacyScene,
+      container.id,
+      "w",
+      { x: 1000, y: 0 },
+      { x: 0, y: 0, width: 360, height: 100 },
+      (shape, raw, h) => clampContainerToChildren(legacyScene, shape, raw, h),
+    );
+    const next = out!.scene.elements.get(container.id) as Element & { width: number };
+    expect(next.width).toBeGreaterThan(0); // not mirrored/negative
+    // East edge stays put — control did NOT cross over to the opposite edge.
+    expect(next.position.x + next.width).toBeCloseTo(360, 0);
+  });
+
   it("noFlip + minWidth: dragging the left edge past the right doesn't mirror, floors at 200", () => {
     const { scene, container } = setup();
     // Drag the west edge 1000px right — would mirror the box without noFlip.
