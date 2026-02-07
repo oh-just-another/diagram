@@ -249,6 +249,37 @@ describe("round-trip", () => {
     expect(serialized?.metadata).toBeUndefined();
   });
 
+  it("confetti template metadata (animated + confetti config) round-trips through the store", () => {
+    // The custom.confetti template is a plain rectangle carrying
+    // metadata.animated (arms the AnimationTick) and metadata.confetti
+    // (read by the renderer). Both are plain JSON and must survive
+    // stringifyScene → parseScene.
+    let scene = emptyScene();
+    const confettiBox: Element = {
+      ...rect("confetti-1"),
+      metadata: {
+        animated: true,
+        confetti: {
+          emitters: [
+            { cx: 0.25, cy: 0.5, dirX: -1, dirY: -1 },
+            { cx: 0.75, cy: 0.5, dirX: 1, dirY: -1 },
+          ],
+        },
+      },
+    };
+    ({ scene } = addElement(scene, confettiBox));
+
+    const restored = parseScene(stringifyScene(scene));
+    const r = restored.elements.get(elementId("confetti-1"));
+    expect(r?.metadata?.animated).toBe(true);
+    expect(r?.metadata?.confetti).toEqual({
+      emitters: [
+        { cx: 0.25, cy: 0.5, dirX: -1, dirY: -1 },
+        { cx: 0.75, cy: 0.5, dirX: 1, dirY: -1 },
+      ],
+    });
+  });
+
   it("undo patches keep working after round-trip", () => {
     let scene = emptyScene();
     const r = rect("a");

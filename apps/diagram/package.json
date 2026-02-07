@@ -32,6 +32,7 @@
     "@oh-just-another/templates": "workspace:*",
     "@oh-just-another/templates-jsx": "workspace:*",
     "@oh-just-another/text-wasm": "workspace:*",
+    "@oh-just-another/tokens": "workspace:*",
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/versioning": "workspace:*",
     "gifuct-js": "^2.1.2",

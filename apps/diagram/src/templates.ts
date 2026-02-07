@@ -363,5 +363,46 @@ export const setupTemplates = (): void => {
     }),
   });
 
+  // Confetti template: a plain rectangle (full standard UI/UX — style,
+  // resize, serialization) with two procedural confetti sources on the
+  // bottom layer. `metadata.animated` arms the editor's AnimationTick;
+  // `metadata.confetti` is read by `installConfettiRenderer()` which draws
+  // the particles behind the box. Left source fires up-left, right source
+  // up-right, each from the centre of its half.
+  defaultRegistry.register({
+    id: "custom.confetti",
+    name: "Confetti",
+    category: "custom",
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 L9 9"/><path d="M20 20 L15 9"/><circle cx="7" cy="5" r="1"/><circle cx="17" cy="5" r="1"/><circle cx="12" cy="3" r="1"/><circle cx="12" cy="9" r="1"/></svg>',
+    factory: (ctx) => ({
+      id: ctx.id,
+      layerId: ctx.layerId,
+      type: "rectangle",
+      position: ctx.position,
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: ctx.order,
+      style: {
+        fill: "#ffffff",
+        stroke: "#444444",
+        strokeWidth: 1.5,
+        roundness: { type: "round", value: 8 },
+      },
+      width: 240,
+      height: 140,
+      metadata: {
+        animated: true,
+        confetti: {
+          emitters: [
+            // Left half centre → up-left.
+            { cx: 0.25, cy: 0.5, dirX: -1, dirY: -1 },
+            // Right half centre → up-right.
+            { cx: 0.75, cy: 0.5, dirX: 1, dirY: -1 },
+          ],
+        },
+      },
+    }),
+  });
+
   installed = true;
 };

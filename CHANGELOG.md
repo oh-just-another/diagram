@@ -1240,3 +1240,6 @@
 
 ## 0.53.5
 - fix(state): wrap children re-anchor on drop-zone origin move (top edge / move)
+
+## 0.53.6
+- fix(state): force noFlip for auto-layout containers on resize

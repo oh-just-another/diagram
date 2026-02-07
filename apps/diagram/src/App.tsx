@@ -12,6 +12,7 @@ import { elementId } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "./index";
 import { setupTemplates } from "./templates";
+import { installConfettiRenderer } from "./confetti";
 import { installGifAnimationAdapter } from "./gif-animation";
 import { useHotkeys } from "./hotkeys";
 import { useCollab } from "./collab";
@@ -165,6 +166,14 @@ export const App = () => {
   // persistence is enabled via `persistTheme` prop below. The host
   // no longer needs its own theme state.
   const [editor, setEditor] = useState<Editor | null>(null);
+  // Wrap the rectangle renderer for the confetti template AFTER the
+  // surface mounted (`installBuiltinRenderers()` runs on mount and resets
+  // the rectangle renderer to the plain built-in). `installConfettiRenderer`
+  // is idempotent, so re-running it on a remount is safe.
+  const handleReady = useCallback((ed: Editor) => {
+    installConfettiRenderer();
+    setEditor(ed);
+  }, []);
   const apiRef = useRef<DiagramAPI>(null);
   useHotkeys(editor);
   const collab = useCollab(editor);
@@ -253,7 +262,7 @@ export const App = () => {
       <Diagram
         ref={apiRef}
         initialScene={initialScene}
-        onReady={setEditor}
+        onReady={handleReady}
         onSceneChange={handleSceneChange}
         renderTopBarLeft={renderHeaderLeft}
         renderTopBarRight={renderHeaderRight}
