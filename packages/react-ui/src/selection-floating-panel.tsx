@@ -17,7 +17,13 @@ import {
 } from "@oh-just-another/scene";
 import { computeLinkWorldBounds } from "@oh-just-another/renderer-core";
 import type { Editor } from "@oh-just-another/state";
-import { SELECTION_PANEL_OFFSET_PX, SELECTION_PANEL_VIEWPORT_PADDING_PX } from "./constants.js";
+import {
+  SELECTION_PANEL_OFFSET_PX,
+  SELECTION_PANEL_EDGE_INSET_TOP_PX,
+  SELECTION_PANEL_EDGE_INSET_RIGHT_PX,
+  SELECTION_PANEL_EDGE_INSET_BOTTOM_PX,
+  SELECTION_PANEL_EDGE_INSET_LEFT_PX,
+} from "./constants.js";
 import { useDiagramOptional } from "./hooks.js";
 import { PropertyPanel } from "./property-panel.js";
 
@@ -50,18 +56,32 @@ export interface SelectionFloatingPanelProps {
    */
   readonly placement?: Placement;
   /**
-   * Padding from viewport edges for `shift` middleware. Default 8.
-   * Increase if you have fixed chrome (top bar) that should never
-   * be covered.
+   * Per-side inset (in px) that shrinks the region the panel may occupy,
+   * measured from each viewport edge. Fed to the `shift` middleware as a
+   * per-side `padding` so the panel never lands over fixed chrome on that
+   * side (top toolbar, bottom bar, docked side panels). Each side defaults
+   * to its `SELECTION_PANEL_EDGE_INSET_*_PX` constant; pass a partial to
+   * override only some sides.
    */
-  readonly viewportPadding?: number;
+  readonly edgeInset?: {
+    readonly top?: number;
+    readonly right?: number;
+    readonly bottom?: number;
+    readonly left?: number;
+  };
 }
 
 export const SelectionFloatingPanel = ({
   offset: gap = SELECTION_PANEL_OFFSET_PX,
   placement = "top",
-  viewportPadding = SELECTION_PANEL_VIEWPORT_PADDING_PX,
+  edgeInset,
 }: SelectionFloatingPanelProps = {}) => {
+  const edgePadding = {
+    top: edgeInset?.top ?? SELECTION_PANEL_EDGE_INSET_TOP_PX,
+    right: edgeInset?.right ?? SELECTION_PANEL_EDGE_INSET_RIGHT_PX,
+    bottom: edgeInset?.bottom ?? SELECTION_PANEL_EDGE_INSET_BOTTOM_PX,
+    left: edgeInset?.left ?? SELECTION_PANEL_EDGE_INSET_LEFT_PX,
+  };
   const editor = useDiagramOptional();
   const [hasSelection, setHasSelection] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -115,7 +135,7 @@ export const SelectionFloatingPanel = ({
         middleware: [
           offset(gap),
           flip({ fallbackPlacements: ["bottom", "right", "left"] }),
-          shift({ padding: viewportPadding }),
+          shift({ padding: edgePadding }),
         ],
       }).then(({ x, y }) => {
         panel.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
@@ -131,7 +151,19 @@ export const SelectionFloatingPanel = ({
     // about — those come from the event emitter).
     const cleanup = autoUpdate(virtualEl, panel, update);
     return cleanup;
-  }, [editor, hasSelection, tick, gap, placement, viewportPadding]);
+    // Depend on the four primitive insets (not the freshly-built
+    // `edgePadding` object, which would change identity every render).
+  }, [
+    editor,
+    hasSelection,
+    tick,
+    gap,
+    placement,
+    edgePadding.top,
+    edgePadding.right,
+    edgePadding.bottom,
+    edgePadding.left,
+  ]);
 
   if (!editor || !hasSelection) return null;
 

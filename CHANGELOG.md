@@ -1249,3 +1249,6 @@
 
 ## 0.53.8
 - fix(renderer-canvas): WebGL2 save/restore snapshots full paint state
+
+## 0.53.9
+- feat(app): empty default scene instead of the demo template grid

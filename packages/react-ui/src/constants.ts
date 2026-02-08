@@ -75,17 +75,27 @@ export const TOOLTIP_OFFSET_PX = 6;
  * an explicit prop, so hosts can re-tune the spacing globally here.
  *
  * - `SELECTION_PANEL_OFFSET_PX` — distance between the selection floating
- *   panel and the selected element's bbox. 12 matches the standard feel.
- *   Range: 6–20.
- * - `SELECTION_PANEL_VIEWPORT_PADDING_PX` — min distance the panel keeps from
- *   the viewport edges (the `shift` middleware padding). Bump it if fixed
- *   chrome (e.g. a top bar) must never be covered. Range: 4–24.
+ *   panel and the selected element's bbox. Range: 6–48.
+ * - `SELECTION_PANEL_EDGE_INSET_*_PX` — per-side inset that shrinks the region
+ *   the panel is allowed to occupy, measured from each viewport edge (fed to
+ *   the `shift` middleware as a per-side `padding`). The panel starts shifting
+ *   to stay inside the inset region as it approaches that edge, so it never
+ *   lands over fixed chrome on that side (top toolbar, bottom zoom bar, docked
+ *   side panels). Tune each side to the chrome that lives there. Range per
+ *   side: 0–320.
  * - `POPOVER_OFFSET_PX` — distance between a popover and its trigger. Smaller
  *   than the selection-panel gap since a popover hangs off a control, not a
  *   shape. Range: 4–12.
  */
-export const SELECTION_PANEL_OFFSET_PX = 12;
-export const SELECTION_PANEL_VIEWPORT_PADDING_PX = 8;
+export const SELECTION_PANEL_OFFSET_PX = 40;
+/** Inset from the TOP edge — clears the top toolbar. */
+export const SELECTION_PANEL_EDGE_INSET_TOP_PX = 48;
+/** Inset from the RIGHT edge. Bump it if a right-docked panel must stay clear. */
+export const SELECTION_PANEL_EDGE_INSET_RIGHT_PX = 16;
+/** Inset from the BOTTOM edge — clears the bottom zoom / status bar. */
+export const SELECTION_PANEL_EDGE_INSET_BOTTOM_PX = 48;
+/** Inset from the LEFT edge — small margin (no left-docked chrome by default). */
+export const SELECTION_PANEL_EDGE_INSET_LEFT_PX = 16;
 export const POPOVER_OFFSET_PX = 6;
 
 /**
