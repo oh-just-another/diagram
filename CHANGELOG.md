@@ -1246,3 +1246,6 @@
 
 ## 0.53.7
 - feat(app): confetti custom template (two procedural sources)
+
+## 0.53.8
+- fix(renderer-canvas): WebGL2 save/restore snapshots full paint state

@@ -1,14 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  DEFAULT_LAYER_ID,
-  addElement,
-  emptyScene,
-  orderBetween,
-  type Scene,
-} from "@oh-just-another/scene";
-import { defaultRegistry, type Template } from "@oh-just-another/templates";
+import { emptyScene, type Scene } from "@oh-just-another/scene";
 import { parseScene, parseFiles, stringifyScene, stringifyFiles } from "@oh-just-another/serialization";
-import { elementId } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "./index";
 import { setupTemplates } from "./templates";
@@ -48,37 +40,13 @@ const FILES_KEY = "oh-just-another-diagram-files-v1";
 // one write after the user pauses.
 const AUTOSAVE_DEBOUNCE_MS = 600;
 
+// Default / clean scene: always empty. A fresh load (no saved autosave,
+// or a collab room before its snapshot arrives) starts blank — the user
+// builds from an empty canvas, not a demo grid of every template. Only
+// the grid size is set so the background grid is visible from frame one.
 const seedScene = (): Scene => {
-  let s = emptyScene();
-  s = { ...s, viewport: { ...s.viewport, gridSize: DEFAULT_GRID_SIZE } };
-  const templates: readonly Template[] = defaultRegistry.list();
-  if (templates.length === 0) return s;
-
-  const cols = 4;
-  const cellW = 260;
-  const cellH = 220;
-  const margin = 40;
-  let prevOrder = orderBetween(null, null);
-  templates.forEach((tmpl, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const id = elementId(`seed-${tmpl.id}-${i}`);
-    const ctx = {
-      id,
-      layerId: DEFAULT_LAYER_ID,
-      position: { x: margin + col * cellW, y: margin + row * cellH },
-      order: prevOrder,
-    };
-    try {
-      const shape = tmpl.factory(ctx);
-      const next = { ...shape, order: prevOrder };
-      ({ scene: s } = addElement(s, next));
-      prevOrder = orderBetween(prevOrder, null);
-    } catch (err) {
-      console.warn(`[diagram] template ${tmpl.id} factory failed`, err);
-    }
-  });
-  return s;
+  const s = emptyScene();
+  return { ...s, viewport: { ...s.viewport, gridSize: DEFAULT_GRID_SIZE } };
 };
 
 const DEFAULT_GRID_SIZE = 20;
