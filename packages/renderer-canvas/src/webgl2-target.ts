@@ -101,7 +101,15 @@ export class WebGL2Target implements RenderTarget {
    */
   private currentEllipse: { cx: number; cy: number; rx: number; ry: number } | null = null;
   private transform: MutableTransform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
-  private readonly stack: MutableTransform[] = [];
+  /**
+   * save() / restore() snapshot stack. Mirrors Canvas2D's `ctx.save/
+   * restore` contract: the full paint + text state is saved, not just
+   * the transform — otherwise `opacity` / fill / stroke set inside a
+   * save()…restore() block would leak onto everything drawn afterwards.
+   * The current PATH is excluded — Canvas2D's save/restore doesn't
+   * snapshot the path either.
+   */
+  private readonly stack: GfxState[] = [];
 
   constructor(canvas: HTMLCanvasElement | OffscreenCanvas, width: number, height: number) {
     // `preserveDrawingBuffer: true` is required for an editor surface:
@@ -260,12 +268,45 @@ export class WebGL2Target implements RenderTarget {
   // --- State stack ---
 
   save(): void {
-    this.stack.push({ ...this.transform });
+    this.stack.push({
+      transform: { ...this.transform },
+      fillColor: [this.fillColor[0], this.fillColor[1], this.fillColor[2]],
+      fillAlpha: this.fillAlpha,
+      strokeColor: [this.strokeColor[0], this.strokeColor[1], this.strokeColor[2]],
+      strokeAlpha: this.strokeAlpha,
+      fillColorString: this.fillColorString,
+      strokeWidth: this.strokeWidth,
+      lineCap: this.lineCap,
+      lineJoin: this.lineJoin,
+      opacity: this.opacity,
+      fontFamily: this.fontFamily,
+      fontSize: this.fontSize,
+      fontWeight: this.fontWeight,
+      fontStyle: this.fontStyle,
+      textAlign: this.textAlign,
+      textBaseline: this.textBaseline,
+    });
   }
 
   restore(): void {
-    const next = this.stack.pop();
-    if (next) this.transform = next;
+    const s = this.stack.pop();
+    if (!s) return;
+    this.transform = s.transform;
+    this.fillColor = s.fillColor;
+    this.fillAlpha = s.fillAlpha;
+    this.strokeColor = s.strokeColor;
+    this.strokeAlpha = s.strokeAlpha;
+    this.fillColorString = s.fillColorString;
+    this.strokeWidth = s.strokeWidth;
+    this.lineCap = s.lineCap;
+    this.lineJoin = s.lineJoin;
+    this.opacity = s.opacity;
+    this.fontFamily = s.fontFamily;
+    this.fontSize = s.fontSize;
+    this.fontWeight = s.fontWeight;
+    this.fontStyle = s.fontStyle;
+    this.textAlign = s.textAlign;
+    this.textBaseline = s.textBaseline;
   }
 
   // --- Transform ---
@@ -1207,6 +1248,31 @@ type MutableTransform = {
   d: number;
   e: number;
   f: number;
+};
+
+/**
+ * Full graphics-state snapshot pushed by `save()` and popped by
+ * `restore()` — transform plus all paint + text state, matching
+ * Canvas2D's `ctx.save/restore` contract. Excludes the current path
+ * (Canvas2D doesn't snapshot it either).
+ */
+type GfxState = {
+  transform: MutableTransform;
+  fillColor: [number, number, number];
+  fillAlpha: number;
+  strokeColor: [number, number, number];
+  strokeAlpha: number;
+  fillColorString: string;
+  strokeWidth: number;
+  lineCap: LineCap;
+  lineJoin: LineJoin;
+  opacity: number;
+  fontFamily: string;
+  fontSize: number;
+  fontWeight: "normal" | "bold";
+  fontStyle: "normal" | "italic";
+  textAlign: TextAlign;
+  textBaseline: TextBaseline;
 };
 
 /**

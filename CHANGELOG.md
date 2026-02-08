@@ -1243,3 +1243,6 @@
 
 ## 0.53.6
 - fix(state): force noFlip for auto-layout containers on resize
+
+## 0.53.7
+- feat(app): confetti custom template (two procedural sources)
