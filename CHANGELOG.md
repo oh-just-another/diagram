@@ -1252,3 +1252,6 @@
 
 ## 0.53.9
 - feat(app): empty default scene instead of the demo template grid
+
+## 0.53.10
+- feat(react-ui): selection panel 40px offset + per-side edge inset

@@ -134,7 +134,17 @@ export const SelectionFloatingPanel = ({
         placement,
         middleware: [
           offset(gap),
-          flip({ fallbackPlacements: ["bottom", "right", "left"] }),
+          // `padding: edgePadding` makes the top/bottom (and the
+          // placement-axis) insets effective: `flip` treats the viewport
+          // as shrunk by the per-side inset, so it flips to a fallback
+          // side once the panel comes within that inset of the current
+          // placement's edge — not only on a real 0px overflow. `shift`
+          // below only slides the panel along the cross axis.
+          flip({ fallbackPlacements: ["bottom", "right", "left"], padding: edgePadding }),
+          // Cross-axis clamp only (horizontal for a top/bottom-placed panel) —
+          // the left/right insets. NOT crossAxis: that would slide the panel
+          // along the placement axis, over the element, instead of letting
+          // `flip` hand it to the opposite side.
           shift({ padding: edgePadding }),
         ],
       }).then(({ x, y }) => {
