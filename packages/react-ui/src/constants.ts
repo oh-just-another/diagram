@@ -87,13 +87,13 @@ export const TOOLTIP_OFFSET_PX = 6;
  *   than the selection-panel gap since a popover hangs off a control, not a
  *   shape. Range: 4–12.
  */
-export const SELECTION_PANEL_OFFSET_PX = 40;
+export const SELECTION_PANEL_OFFSET_PX = 48;
 /** Inset from the TOP edge — clears the top toolbar. */
-export const SELECTION_PANEL_EDGE_INSET_TOP_PX = 48;
+export const SELECTION_PANEL_EDGE_INSET_TOP_PX = 66;
 /** Inset from the RIGHT edge. Bump it if a right-docked panel must stay clear. */
 export const SELECTION_PANEL_EDGE_INSET_RIGHT_PX = 16;
 /** Inset from the BOTTOM edge — clears the bottom zoom / status bar. */
-export const SELECTION_PANEL_EDGE_INSET_BOTTOM_PX = 48;
+export const SELECTION_PANEL_EDGE_INSET_BOTTOM_PX = 66;
 /** Inset from the LEFT edge — small margin (no left-docked chrome by default). */
 export const SELECTION_PANEL_EDGE_INSET_LEFT_PX = 16;
 export const POPOVER_OFFSET_PX = 6;

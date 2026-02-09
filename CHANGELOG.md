@@ -1255,3 +1255,6 @@
 
 ## 0.53.10
 - feat(react-ui): selection panel 40px offset + per-side edge inset
+
+## 0.53.11
+- fix(react-ui): feed edge inset to flip so TOP/BOTTOM insets work
