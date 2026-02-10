@@ -46,6 +46,12 @@ export interface PaletteProps {
    * panel header above the palette body.
    */
   readonly searchQuery?: string;
+  /**
+   * Item layout: `"grid"` (default) packs 2-up square tiles; `"list"`
+   * is a compact single-column list of icon + name rows. Grouping by
+   * category is identical in both.
+   */
+  readonly layout?: "grid" | "list";
   readonly style?: CSSProperties;
   readonly className?: string;
 }
@@ -57,9 +63,11 @@ export const Palette = ({
   categories = DEFAULT_CATEGORIES,
   collapsedByDefault = [],
   searchQuery,
+  layout = "grid",
   style,
   className,
 }: PaletteProps) => {
+  const itemsClass = layout === "list" ? "du-palette-list" : "du-palette-grid";
   const present = useMemo(() => new Set(registry.categories()), [registry]);
   const visibleCategories = useMemo(
     () => categories.filter((c) => present.has(c)),
@@ -109,7 +117,7 @@ export const Palette = ({
               No templates match “{trimmedQuery}”
             </div>
           ) : (
-            <div className="du-palette-grid">
+            <div className={itemsClass}>
               {flatMatches.map((template) => (
                 <PaletteItem key={template.id} template={template} />
               ))}
@@ -121,6 +129,7 @@ export const Palette = ({
               key={category}
               category={category}
               items={items}
+              itemsClass={itemsClass}
               collapsed={collapsed.has(category)}
               onToggle={() => toggle(category)}
             />
@@ -134,11 +143,13 @@ export const Palette = ({
 const CategorySection = ({
   category,
   items,
+  itemsClass,
   collapsed,
   onToggle,
 }: {
   readonly category: Category;
   readonly items: readonly Template[];
+  readonly itemsClass: string;
   readonly collapsed: boolean;
   readonly onToggle: () => void;
 }) => {
@@ -161,7 +172,7 @@ const CategorySection = ({
         </span>
       </button>
       {collapsed ? null : (
-        <div className="du-palette-grid">
+        <div className={itemsClass}>
           {items.map((template) => (
             <PaletteItem key={template.id} template={template} />
           ))}

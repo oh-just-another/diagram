@@ -216,7 +216,7 @@ export const LibraryPanel = ({
         />
       </div>
       <div className="du-side-panel-body du-side-panel-body-flush">
-        <Palette searchQuery={search} />
+        <Palette searchQuery={search} layout="list" />
       </div>
     </aside>
   );

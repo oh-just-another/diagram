@@ -40,7 +40,8 @@ import {
   ButtonGroup,
   ContextMenu,
   DEFAULT_CONTEXT_MENU,
-  DEFAULT_TOOLBAR,
+  DEFAULT_VERTICAL_TOOLBAR,
+  type ToolbarItem,
   DiagramRoot,
   DiagramSurface,
   HelpButton,
@@ -594,12 +595,40 @@ const EditorShell = ({
   const [helpOpen, setHelpOpen] = useState(false);
   useHelpDialogHotkey(() => setHelpOpen((v) => !v));
 
-  // While the library is docked + open, the canvas area shrinks
-  // by the panel's width so the surface doesn't get covered. The
-  // bars (TopBar / BottomBar) inherit the same inset so they stop
-  // before the panel's edge.
+  // modern-style layout: a floating vertical creation toolbar pinned to
+  // the far left, and the templates library opening to its RIGHT. When
+  // the library is docked + open, the canvas area shrinks from the LEFT
+  // by the toolbar gutter + panel width so the surface isn't covered;
+  // bars inherit the same inset. When not docked, the toolbar floats
+  // over the canvas and nothing insets.
   const DOCKED_PANEL_WIDTH = 240;
-  const dockedInset = libraryOpen && libraryDocked ? DOCKED_PANEL_WIDTH : 0;
+  // Far-left strip reserved for the floating vertical toolbar — the
+  // docked library column starts just to the right of it.
+  const TOOLBAR_GUTTER = 64;
+  const libraryDockedOpen = libraryOpen && libraryDocked;
+  const leftInset = libraryDockedOpen ? TOOLBAR_GUTTER + DOCKED_PANEL_WIDTH : 0;
+
+  // Items for the vertical creation dock: an optional templates-library
+  // toggle on top (hidden with `hideLibraryButton`), then the standard
+  // creation tools.
+  const toolbarItems = useMemo<ToolbarItem[]>(
+    () =>
+      hideLibraryButton
+        ? [...DEFAULT_VERTICAL_TOOLBAR]
+        : [
+            {
+              kind: "action",
+              id: "toggle-library",
+              label: <LibraryIcon {...buttonIcon} />,
+              title: "Templates library",
+              active: libraryOpen,
+              onClick: () => setLibraryOpen((v) => !v),
+            },
+            { kind: "divider" },
+            ...DEFAULT_VERTICAL_TOOLBAR,
+          ],
+    [hideLibraryButton, libraryOpen],
+  );
 
   return (
     <div
@@ -609,17 +638,17 @@ const EditorShell = ({
       onDragLeave={paletteDropHandlers.onDragLeave}
       onDrop={paletteDropHandlers.onDrop}
     >
-      {/* Canvas area — shrinks horizontally when the library
-          panel is docked so the surface + bars stop before its
-          edge. `right` inset is used because LibraryPanel
-          defaults to side="right". */}
+      {/* Canvas area — shrinks from the LEFT when the library panel
+          is docked (toolbar gutter + panel width) so the surface +
+          bars stop after the docked column. The library now docks on
+          the left (modern layout), to the right of the floating toolbar. */}
       <div
         style={{
           position: "absolute",
           top: 0,
           bottom: 0,
-          left: 0,
-          right: dockedInset,
+          left: leftInset,
+          right: 0,
         }}
       >
         <DiagramSurface style={{ position: "absolute", inset: 0 }} />
@@ -630,19 +659,20 @@ const EditorShell = ({
         {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
       </div>
 
-      {/* Docked library — static column on the right of the
-          canvas area. Hidden when the panel is not docked OR
-          not open; in that case the standard overlay copy below
-          renders inside the UI layer. */}
-      {libraryOpen && libraryDocked ? (
+      {/* Docked library — static column on the LEFT of the canvas
+          area, just to the right of the floating toolbar gutter.
+          Hidden when the panel is not docked OR not open; in that
+          case the standard overlay copy below renders inside the UI
+          layer. */}
+      {libraryDockedOpen ? (
         <div
           style={{
             position: "absolute",
             top: 0,
-            right: 0,
+            left: TOOLBAR_GUTTER,
             bottom: 0,
             width: DOCKED_PANEL_WIDTH,
-            borderLeft: "1px solid var(--du-ui-border)",
+            borderRight: "1px solid var(--du-ui-border)",
             background: "var(--du-ui-bg-solid)",
             display: "flex",
             flexDirection: "column",
@@ -651,6 +681,7 @@ const EditorShell = ({
           <LibraryPanel
             open
             docked
+            side="left"
             onDockedChange={(d) => setLibraryDocked(d)}
             onClose={() => setLibraryOpen(false)}
             {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
@@ -658,10 +689,30 @@ const EditorShell = ({
         </div>
       ) : null}
 
+      {/* Floating vertical creation toolbar — pinned to the far left,
+          over the canvas. Rendered outside UILayer
+          (whose wrapper is pointer-events:none) so its buttons stay
+          interactive. */}
+      {!hideToolbar ? (
+        <Toolbar
+          orientation="vertical"
+          items={toolbarItems}
+          style={{
+            position: "absolute",
+            // Start below the top bar so the dock doesn't overlap the
+            // logo / main menu in the TopBar's left zone. Mirrors the
+            // side-panel top offset (bar inset + button + gap).
+            top: "calc(var(--du-bar-inset, 12px) + var(--du-button-size, 36px) + var(--du-gap, 8px))",
+            left: "var(--du-bar-inset, 12px)",
+            zIndex: 60,
+          }}
+        />
+      ) : null}
+
       {/* UI layer — top/bottom bars + overlay panels. Stops at
           the docked-panel edge so floating chrome doesn't slide
           underneath the dock. */}
-      <UILayer style={{ right: dockedInset }}>
+      <UILayer style={{ left: leftInset }}>
         {!hideTopBar && (
           <TopBar
             left={
@@ -887,25 +938,10 @@ const EditorShell = ({
                 {renderTopBarLeft ? renderTopBarLeft() : null}
               </ButtonGroup>
             }
-            center={
-              !hideToolbar
-                ? renderTopBarCenter
-                  ? renderTopBarCenter()
-                  : <Toolbar items={DEFAULT_TOOLBAR} />
-                : renderTopBarCenter?.()
-            }
+            center={renderTopBarCenter?.()}
             right={
               <ButtonGroup ariaLabel="Top bar actions">
                 {renderTopBarRight ? renderTopBarRight() : null}
-                {!hideLibraryButton && (
-                  <IconButton
-                    label="Library"
-                    active={libraryOpen}
-                    onClick={() => setLibraryOpen((v) => !v)}
-                  >
-                    <LibraryIcon {...buttonIcon} />
-                  </IconButton>
-                )}
               </ButtonGroup>
             }
           />
@@ -944,6 +980,8 @@ const EditorShell = ({
           <LibraryPanel
             open={libraryOpen}
             docked={false}
+            side="left"
+            style={{ left: TOOLBAR_GUTTER }}
             onDockedChange={(d) => setLibraryDocked(d)}
             onClose={() => setLibraryOpen(false)}
             {...(onImportTemplates ? { onImport: onImportTemplates } : {})}

@@ -59,6 +59,8 @@ export type ToolbarItem =
       readonly label: ReactNode;
       readonly title?: string;
       readonly disabled?: boolean;
+      /** Render the button in its pressed/active state (e.g. a toggle). */
+      readonly active?: boolean;
       readonly onClick: (editor: Editor) => void;
     }
   | { readonly kind: "divider" }
@@ -139,27 +141,68 @@ export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "divider" },
 ];
 
+/**
+ * Creation-tool set for the vertical left dock. Just the creation tools +
+ * the tool-lock toggle — no undo/redo/zoom (those live in the menu /
+ * bottom-left). Hosts prepend their own leading items (e.g. a
+ * templates-library toggle) and render with
+ * `<Toolbar orientation="vertical" />`.
+ */
+export const DEFAULT_VERTICAL_TOOLBAR: readonly ToolbarItem[] = [
+  { kind: "mode", mode: "select", label: <MousePointer2 {...iconProps} />, title: "Select (V)" },
+  { kind: "mode", mode: "hand", label: <Hand {...iconProps} />, title: "Pan (H)" },
+  { kind: "divider" },
+  { kind: "mode", mode: "draw-rect", label: <Square {...iconProps} />, title: "Rectangle (R)" },
+  { kind: "mode", mode: "draw-ellipse", label: <Circle {...iconProps} />, title: "Ellipse (E)" },
+  { kind: "mode", mode: "draw-text", label: <Type {...iconProps} />, title: "Text (T)" },
+  { kind: "mode", mode: "draw-edge", label: <Slash {...iconProps} />, title: "Link (L)" },
+  { kind: "mode", mode: "brush", label: <PenLine {...iconProps} />, title: "Brush (B)" },
+  { kind: "mode", mode: "draw-frame", label: <Frame {...iconProps} />, title: "Frame (F)" },
+  {
+    kind: "action",
+    id: "insert-image",
+    label: <ImageIcon {...iconProps} />,
+    title: "Insert image (I)",
+    onClick: (editor) => openImageFilePicker(editor),
+  },
+  { kind: "divider" },
+  { kind: "tool-lock", label: <Lock {...iconProps} />, title: "Lock current tool (stay in mode after each create)" },
+];
+
 export interface ToolbarProps {
   readonly items?: readonly ToolbarItem[];
   readonly style?: CSSProperties;
   readonly className?: string;
+  /**
+   * Lay the toolbar out as a horizontal row (default) or a vertical
+   * column (the left creation dock). Vertical flips the button-group
+   * flex direction and draws horizontal dividers.
+   */
+  readonly orientation?: "horizontal" | "vertical";
 }
 
-export const Toolbar = ({ items = DEFAULT_TOOLBAR, style, className }: ToolbarProps) => {
+export const Toolbar = ({
+  items = DEFAULT_TOOLBAR,
+  style,
+  className,
+  orientation = "horizontal",
+}: ToolbarProps) => {
   const editor = useDiagramOptional();
   const mode = useMode();
   const { canUndo, canRedo, undo, redo } = useHistory();
+  const vertical = orientation === "vertical";
 
   return (
     <div
       role="toolbar"
-      className={`du-button-group ${className ?? ""}`.trim()}
+      aria-orientation={orientation}
+      className={`du-button-group${vertical ? " du-button-group-vertical" : ""} ${className ?? ""}`.trim()}
       style={style}
     >
       {items.map((item, i) => {
         switch (item.kind) {
           case "divider":
-            return <ToolbarDivider key={i} />;
+            return <ToolbarDivider key={i} vertical={vertical} />;
           case "mode": {
             const active = mode === item.mode;
             return (
@@ -180,6 +223,7 @@ export const Toolbar = ({ items = DEFAULT_TOOLBAR, style, className }: ToolbarPr
                 key={i}
                 {...(item.title !== undefined ? { title: item.title } : {})}
                 disabled={item.disabled ?? !editor}
+                active={item.active}
                 onClick={() => {
                   if (editor) item.onClick(editor);
                 }}
@@ -458,13 +502,23 @@ const ToolbarButton = ({
   return title ? <Tooltip content={title}>{btn}</Tooltip> : btn;
 };
 
-const ToolbarDivider = () => (
-  <span
-    style={{
-      width: 1,
-      height: TOOLBAR_SEPARATOR_HEIGHT,
-      background: "var(--du-ui-border, #333)",
-      margin: "0 4px",
-    }}
-  />
-);
+const ToolbarDivider = ({ vertical = false }: { readonly vertical?: boolean }) =>
+  vertical ? (
+    <span
+      style={{
+        height: 1,
+        width: "100%",
+        background: "var(--du-ui-border, #333)",
+        margin: "4px 0",
+      }}
+    />
+  ) : (
+    <span
+      style={{
+        width: 1,
+        height: TOOLBAR_SEPARATOR_HEIGHT,
+        background: "var(--du-ui-border, #333)",
+        margin: "0 4px",
+      }}
+    />
+  );

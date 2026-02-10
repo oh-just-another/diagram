@@ -72,6 +72,7 @@ export { LinkCaptionEditor } from "./link-caption-editor.js";
 export {
   Toolbar,
   DEFAULT_TOOLBAR,
+  DEFAULT_VERTICAL_TOOLBAR,
   openImageFilePicker,
   ZoomWidget,
   ZoomInButton,

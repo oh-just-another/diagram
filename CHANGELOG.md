@@ -1258,3 +1258,6 @@
 
 ## 0.53.11
 - fix(react-ui): feed edge inset to flip so TOP/BOTTOM insets work
+
+## 0.53.12
+- chore(react-ui): tune selection panel offset + edge insets

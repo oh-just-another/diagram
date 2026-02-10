@@ -311,6 +311,13 @@
      be able to render outside the group's bounds. */
 }
 
+/* Vertical variant — the left creation dock. Stacks buttons in a
+   column; dividers (rendered inline by <Toolbar>) become horizontal. */
+.du-button-group-vertical {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .du-button-group > .du-icon-button {
   border: none;
   box-shadow: none;
@@ -318,6 +325,13 @@
   background: transparent;
   width: var(--du-button-size-sm);
   height: var(--du-button-size-sm);
+}
+
+/* Vertical dock buttons are square + centred (icon-only tools). */
+.du-button-group-vertical > .du-icon-button {
+  width: var(--du-button-size-sm) !important;
+  min-width: var(--du-button-size-sm) !important;
+  padding: 0 !important;
 }
 
 .du-button-group > .du-icon-button:hover:not(:disabled) {
@@ -468,6 +482,41 @@
    .du-palette-section; remove the duplicate to avoid double margin. */
 .du-palette-section > .du-palette-grid {
   padding: 0;
+}
+
+/* Compact list layout (modern-style templates panel) — single column of
+   icon + name rows. Denser than the grid; the label reads left-aligned
+   beside a small icon. */
+.du-palette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--du-pad) var(--du-pad-sm);
+}
+.du-palette-section > .du-palette-list {
+  padding: 0;
+}
+.du-palette-list .du-palette-item {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  aspect-ratio: auto;
+  gap: 8px;
+  padding: 5px 8px;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.du-palette-list .du-palette-item-icon {
+  width: 20px !important;
+  height: 20px !important;
+  flex: 0 0 auto;
+}
+.du-palette-list .du-palette-item-label {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .du-palette-empty {
