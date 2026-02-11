@@ -699,11 +699,12 @@ const EditorShell = ({
           items={toolbarItems}
           style={{
             position: "absolute",
-            // Start below the top bar so the dock doesn't overlap the
-            // logo / main menu in the TopBar's left zone. Mirrors the
-            // side-panel top offset (bar inset + button + gap).
-            top: "calc(var(--du-bar-inset, 12px) + var(--du-button-size, 36px) + var(--du-gap, 8px))",
+            // Vertically centred on the left edge (standard dock). transform
+            // recentres the dock around its own height regardless of how
+            // many tools it holds.
+            top: "50%",
             left: "var(--du-bar-inset, 12px)",
+            transform: "translateY(-50%)",
             zIndex: 60,
           }}
         />

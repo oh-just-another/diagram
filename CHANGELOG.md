@@ -1261,3 +1261,6 @@
 
 ## 0.53.12
 - chore(react-ui): tune selection panel offset + edge insets
+
+## 0.53.13
+- feat(react-ui): vertical left toolbar + left templates library (modern layout)
