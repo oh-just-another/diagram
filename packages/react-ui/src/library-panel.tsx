@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Pin, PinOff, Search, Upload, X } from "lucide-react";
+import { Search, Upload, X } from "lucide-react";
 import { Palette } from "./palette.js";
 import { IconButton } from "./icon-button.js";
 
@@ -7,27 +7,23 @@ const SIDE_PANEL_ICON_SIZE = 14;
 const SIDE_PANEL_ICON_STROKE = 1.75;
 
 /**
- * Slide-in side library panel — modern-style replacement for
- * the old fixed-sidebar Palette. Header carries:
+ * Slide-in side library panel. Opened by a host button, closed by
+ * the panel's own ✕ — it does NOT auto-close on canvas clicks.
+ * Header carries:
  *
  *   • a live search input that filters templates by name / category /
  *     tags (case-insensitive substring);
- *   • a pin toggle that disables the host's auto-close-on-canvas-
- *     click behaviour (panel still floats over the canvas);
  *   • an optional dock toggle for hosts that want the panel to
  *     sit beside the canvas instead of overlaying it (visual
  *     state only — the host owns the actual layout flip via
  *     `onDockChange`);
  *   • optional Import button + Close.
  *
- * Default `side="right"` matches standard's layout where the
- * Library toggle lives in the top-right and the panel slides in
- * from that edge. Hosts that prefer a left layout can override.
+ * Default `side="right"`; hosts that prefer a left layout override.
  *
- * Pin + dock states are persisted to localStorage (keys
- * `du:library:pinned` / `du:library:docked`) when `persist` is
- * truthy — survives page reloads. Hosts can suppress persistence
- * by setting `persist={false}` (e.g. embedded read-only previews).
+ * Dock state is persisted to localStorage (`du:library:docked`)
+ * when `persist` is truthy — survives page reloads. Hosts can
+ * suppress persistence by setting `persist={false}`.
  */
 export interface LibraryPanelProps {
   readonly open: boolean;
@@ -42,14 +38,6 @@ export interface LibraryPanelProps {
   /** Override panel width (default 240 px via CSS). */
   readonly style?: CSSProperties;
   /**
-   * Controlled pinned flag. When `true`, the panel asks the host
-   * not to auto-close it on canvas clicks (host reads via
-   * `onPinnedChange` / persisted localStorage). Uncontrolled mode
-   * uses internal state seeded from localStorage.
-   */
-  readonly pinned?: boolean;
-  readonly onPinnedChange?: (pinned: boolean) => void;
-  /**
    * Controlled docked flag. Pure UI toggle here — host must wire
    * `onDockedChange` to actually reflow the layout (e.g. mount the
    * panel as a sibling of `<DiagramSurface>` instead of an overlay
@@ -61,7 +49,6 @@ export interface LibraryPanelProps {
   readonly persist?: boolean;
 }
 
-const PINNED_KEY = "du:library:pinned";
 const DOCKED_KEY = "du:library:docked";
 
 const readBoolStorage = (key: string): boolean => {
@@ -88,29 +75,17 @@ export const LibraryPanel = ({
   side = "right",
   onImport,
   style,
-  pinned: pinnedProp,
-  onPinnedChange,
   docked: dockedProp,
   onDockedChange,
   persist = true,
 }: LibraryPanelProps) => {
-  // Pin + dock — controlled when host supplies the prop, otherwise
-  // self-managed; both persist to localStorage when `persist` is on.
-  const [internalPinned, setInternalPinned] = useState<boolean>(() =>
-    persist ? readBoolStorage(PINNED_KEY) : false,
-  );
+  // Dock — controlled when host supplies the prop, otherwise
+  // self-managed; persists to localStorage when `persist` is on.
   const [internalDocked, setInternalDocked] = useState<boolean>(() =>
     persist ? readBoolStorage(DOCKED_KEY) : false,
   );
-  const pinned = pinnedProp ?? internalPinned;
   const docked = dockedProp ?? internalDocked;
 
-  const togglePinned = (): void => {
-    const next = !pinned;
-    if (pinnedProp === undefined) setInternalPinned(next);
-    if (persist) writeBoolStorage(PINNED_KEY, next);
-    onPinnedChange?.(next);
-  };
   const toggleDocked = (): void => {
     const next = !docked;
     if (dockedProp === undefined) setInternalDocked(next);
@@ -131,23 +106,9 @@ export const LibraryPanel = ({
     if (open) searchRef.current?.focus();
   }, [open]);
 
-  // Auto-close on canvas click — only when not pinned, not docked
-  // (docked panel takes its own column), and currently open. We
-  // listen on `pointerdown` (capture: false) so toolbar / menu
-  // clicks aren't swallowed; check whether the event landed
-  // outside the panel itself before closing.
+  // The panel closes only via its ✕ button — no auto-close on canvas
+  // clicks. (Open is driven by the host's toolbar toggle.)
   const panelRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (!open || pinned || docked) return undefined;
-    const onDown = (ev: PointerEvent): void => {
-      const el = panelRef.current;
-      if (!el) return;
-      if (ev.target instanceof Node && el.contains(ev.target)) return;
-      onClose();
-    };
-    window.addEventListener("pointerdown", onDown);
-    return () => window.removeEventListener("pointerdown", onDown);
-  }, [open, pinned, docked, onClose]);
 
   if (!open) return null;
   const sideClass = side === "right" ? "du-side-panel-right" : "du-side-panel-left";
@@ -157,22 +118,9 @@ export const LibraryPanel = ({
       ref={panelRef}
       className={`du-side-panel ${sideClass}${dockClass}`}
       style={style}
-      data-pinned={pinned}
     >
       <header className="du-side-panel-header">
         <div style={{ display: "inline-flex", gap: 4 }}>
-          <IconButton
-            label={pinned ? "Unpin library" : "Pin library (stay open)"}
-            size="sm"
-            active={pinned}
-            onClick={togglePinned}
-          >
-            {pinned ? (
-              <PinOff size={SIDE_PANEL_ICON_SIZE} strokeWidth={SIDE_PANEL_ICON_STROKE} />
-            ) : (
-              <Pin size={SIDE_PANEL_ICON_SIZE} strokeWidth={SIDE_PANEL_ICON_STROKE} />
-            )}
-          </IconButton>
           {onDockedChange !== undefined || dockedProp !== undefined ? (
             <IconButton
               label={docked ? "Undock library" : "Dock library beside canvas"}

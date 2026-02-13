@@ -1264,3 +1264,6 @@
 
 ## 0.53.13
 - feat(react-ui): vertical left toolbar + left templates library (modern layout)
+
+## 0.53.14
+- fix(app): center the vertical toolbar on the left edge

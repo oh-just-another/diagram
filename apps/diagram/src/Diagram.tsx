@@ -565,17 +565,15 @@ const EditorShell = ({
   // selector hook — re-renders only on scene identity flips.
   void useScene();
   const paletteDropHandlers = usePalettePlacement();
-  // Auto-open on mount if the user previously pinned OR docked the
-  // panel — both flags semantically mean "I want this panel visible
-  // permanently". `open` itself isn't persisted; it's derived from
-  // pin/dock storage so a session that ended with the panel closed
-  // (regular floating overlay) doesn't keep popping back open.
+  // Auto-open on mount if the user previously DOCKED the panel — that
+  // flag means "I want this panel visible permanently". `open` itself
+  // isn't persisted; a session that ended with a floating panel closed
+  // doesn't keep popping back open. (Pin was removed: the panel opens
+  // via the toolbar toggle and closes via its own ✕.)
   const [libraryOpen, setLibraryOpen] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     try {
-      const pinned = window.localStorage.getItem("du:library:pinned") === "1";
-      const docked = window.localStorage.getItem("du:library:docked") === "1";
-      return pinned || docked;
+      return window.localStorage.getItem("du:library:docked") === "1";
     } catch {
       return false;
     }
@@ -595,18 +593,17 @@ const EditorShell = ({
   const [helpOpen, setHelpOpen] = useState(false);
   useHelpDialogHotkey(() => setHelpOpen((v) => !v));
 
-  // modern-style layout: a floating vertical creation toolbar pinned to
-  // the far left, and the templates library opening to its RIGHT. When
-  // the library is docked + open, the canvas area shrinks from the LEFT
-  // by the toolbar gutter + panel width so the surface isn't covered;
-  // bars inherit the same inset. When not docked, the toolbar floats
-  // over the canvas and nothing insets.
+  // Layout (left → right): templates library at the window edge, then
+  // the floating vertical creation toolbar, then the canvas. The
+  // library sits flush at the left edge; the toolbar floats just to its
+  // right (closer to the canvas centre). When the library is docked +
+  // open, the canvas + bars shrink from the LEFT by the panel width.
   const DOCKED_PANEL_WIDTH = 240;
-  // Far-left strip reserved for the floating vertical toolbar — the
-  // docked library column starts just to the right of it.
-  const TOOLBAR_GUTTER = 64;
+  const BAR_INSET = 12;
   const libraryDockedOpen = libraryOpen && libraryDocked;
-  const leftInset = libraryDockedOpen ? TOOLBAR_GUTTER + DOCKED_PANEL_WIDTH : 0;
+  const leftInset = libraryDockedOpen ? DOCKED_PANEL_WIDTH : 0;
+  // Toolbar floats right of the library when it's open, else at the edge.
+  const toolbarLeft = libraryOpen ? DOCKED_PANEL_WIDTH + BAR_INSET : BAR_INSET;
 
   // Items for the vertical creation dock: an optional templates-library
   // toggle on top (hidden with `hideLibraryButton`), then the standard
@@ -659,17 +656,16 @@ const EditorShell = ({
         {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
       </div>
 
-      {/* Docked library — static column on the LEFT of the canvas
-          area, just to the right of the floating toolbar gutter.
-          Hidden when the panel is not docked OR not open; in that
-          case the standard overlay copy below renders inside the UI
-          layer. */}
+      {/* Docked library — static column flush against the LEFT window
+          edge. The toolbar floats to its right. Hidden when the panel
+          is not docked OR not open; in that case the standard overlay
+          copy below renders inside the UI layer. */}
       {libraryDockedOpen ? (
         <div
           style={{
             position: "absolute",
             top: 0,
-            left: TOOLBAR_GUTTER,
+            left: 0,
             bottom: 0,
             width: DOCKED_PANEL_WIDTH,
             borderRight: "1px solid var(--du-ui-border)",
@@ -699,11 +695,10 @@ const EditorShell = ({
           items={toolbarItems}
           style={{
             position: "absolute",
-            // Vertically centred on the left edge (standard dock). transform
-            // recentres the dock around its own height regardless of how
-            // many tools it holds.
+            // Vertically centred on the left; floats just to the right of
+            // the library when it's open (else flush near the edge).
             top: "50%",
-            left: "var(--du-bar-inset, 12px)",
+            left: toolbarLeft,
             transform: "translateY(-50%)",
             zIndex: 60,
           }}
@@ -982,7 +977,7 @@ const EditorShell = ({
             open={libraryOpen}
             docked={false}
             side="left"
-            style={{ left: TOOLBAR_GUTTER }}
+            style={{ left: 0 }}
             onDockedChange={(d) => setLibraryDocked(d)}
             onClose={() => setLibraryOpen(false)}
             {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
