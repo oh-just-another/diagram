@@ -565,45 +565,19 @@ const EditorShell = ({
   // selector hook — re-renders only on scene identity flips.
   void useScene();
   const paletteDropHandlers = usePalettePlacement();
-  // Auto-open on mount if the user previously DOCKED the panel — that
-  // flag means "I want this panel visible permanently". `open` itself
-  // isn't persisted; a session that ended with a floating panel closed
-  // doesn't keep popping back open. (Pin was removed: the panel opens
-  // via the toolbar toggle and closes via its own ✕.)
-  const [libraryOpen, setLibraryOpen] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return window.localStorage.getItem("du:library:docked") === "1";
-    } catch {
-      return false;
-    }
-  });
-  // Library dock state lives in the host so the shell can reflow
-  // canvas + bars when the panel becomes a sibling column instead
-  // of a floating overlay. Seeded from localStorage by LibraryPanel
-  // itself; the callback below keeps the host's copy in sync.
-  const [libraryDocked, setLibraryDocked] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return window.localStorage.getItem("du:library:docked") === "1";
-    } catch {
-      return false;
-    }
-  });
+  // The templates library is a floating overlay opened via the toolbar
+  // toggle and closed via its ✕. Starts closed; no dock / pin.
+  const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
   const [helpOpen, setHelpOpen] = useState(false);
   useHelpDialogHotkey(() => setHelpOpen((v) => !v));
 
-  // Layout (left → right): templates library at the window edge, then
-  // the floating vertical creation toolbar, then the canvas. The
-  // library sits flush at the left edge; the toolbar floats just to its
-  // right (closer to the canvas centre). When the library is docked +
-  // open, the canvas + bars shrink from the LEFT by the panel width.
-  const DOCKED_PANEL_WIDTH = 240;
+  // Layout (left → right): templates library overlay at the window
+  // edge, then the floating vertical creation toolbar, then the canvas.
+  // The library overlays the canvas (no reflow); the toolbar floats just
+  // to its right when open, else near the edge.
+  const LIBRARY_PANEL_WIDTH = 240;
   const BAR_INSET = 12;
-  const libraryDockedOpen = libraryOpen && libraryDocked;
-  const leftInset = libraryDockedOpen ? DOCKED_PANEL_WIDTH : 0;
-  // Toolbar floats right of the library when it's open, else at the edge.
-  const toolbarLeft = libraryOpen ? DOCKED_PANEL_WIDTH + BAR_INSET : BAR_INSET;
+  const toolbarLeft = libraryOpen ? LIBRARY_PANEL_WIDTH + BAR_INSET : BAR_INSET;
 
   // Items for the vertical creation dock: an optional templates-library
   // toggle on top (hidden with `hideLibraryButton`), then the standard
@@ -635,16 +609,14 @@ const EditorShell = ({
       onDragLeave={paletteDropHandlers.onDragLeave}
       onDrop={paletteDropHandlers.onDrop}
     >
-      {/* Canvas area — shrinks from the LEFT when the library panel
-          is docked (toolbar gutter + panel width) so the surface +
-          bars stop after the docked column. The library now docks on
-          the left (modern layout), to the right of the floating toolbar. */}
+      {/* Canvas area — full width; the library is a floating overlay
+          that doesn't reflow the canvas. */}
       <div
         style={{
           position: "absolute",
           top: 0,
           bottom: 0,
-          left: leftInset,
+          left: 0,
           right: 0,
         }}
       >
@@ -655,35 +627,6 @@ const EditorShell = ({
         <LinkCaptionEditor />
         {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
       </div>
-
-      {/* Docked library — static column flush against the LEFT window
-          edge. The toolbar floats to its right. Hidden when the panel
-          is not docked OR not open; in that case the standard overlay
-          copy below renders inside the UI layer. */}
-      {libraryDockedOpen ? (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            width: DOCKED_PANEL_WIDTH,
-            borderRight: "1px solid var(--du-ui-border)",
-            background: "var(--du-ui-bg-solid)",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <LibraryPanel
-            open
-            docked
-            side="left"
-            onDockedChange={(d) => setLibraryDocked(d)}
-            onClose={() => setLibraryOpen(false)}
-            {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
-          />
-        </div>
-      ) : null}
 
       {/* Floating vertical creation toolbar — pinned to the far left,
           over the canvas. Rendered outside UILayer
@@ -705,10 +648,9 @@ const EditorShell = ({
         />
       ) : null}
 
-      {/* UI layer — top/bottom bars + overlay panels. Stops at
-          the docked-panel edge so floating chrome doesn't slide
-          underneath the dock. */}
-      <UILayer style={{ left: leftInset }}>
+      {/* UI layer — top/bottom bars + overlay panels (full width; the
+          library overlays rather than reflows). */}
+      <UILayer>
         {!hideTopBar && (
           <TopBar
             left={
@@ -948,8 +890,8 @@ const EditorShell = ({
             left={
               renderBottomBarLeft
                 ? renderBottomBarLeft()
-                : !hideZoomControls
-                  ? <ZoomControls />
+                : !hideHelpButton
+                  ? <HelpButton />
                   : null
             }
             center={
@@ -962,27 +904,22 @@ const EditorShell = ({
             right={
               renderBottomBarRight
                 ? renderBottomBarRight()
-                : !hideHelpButton
-                  ? <HelpButton />
+                : !hideZoomControls
+                  ? <ZoomControls />
                   : null
             }
           />
         )}
 
-        {/* Overlay copy — rendered only when NOT docked. The
-            docked instance is hoisted out of the UI layer above
-            so it can split the canvas column. */}
-        {!libraryDocked ? (
-          <LibraryPanel
-            open={libraryOpen}
-            docked={false}
-            side="left"
-            style={{ left: 0 }}
-            onDockedChange={(d) => setLibraryDocked(d)}
-            onClose={() => setLibraryOpen(false)}
-            {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
-          />
-        ) : null}
+        {/* Templates library — floating overlay flush at the left edge,
+            opened from the toolbar toggle, closed via its ✕. */}
+        <LibraryPanel
+          open={libraryOpen}
+          side="left"
+          style={{ left: 0 }}
+          onClose={() => setLibraryOpen(false)}
+          {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
+        />
 
       </UILayer>
 

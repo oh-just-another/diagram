@@ -1267,3 +1267,6 @@
 
 ## 0.53.14
 - fix(app): center the vertical toolbar on the left edge
+
+## 0.53.15
+- feat(react-ui): drop library pin; swap library/toolbar sides

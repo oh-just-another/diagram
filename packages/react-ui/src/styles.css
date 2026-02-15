@@ -877,31 +877,6 @@
   pointer-events: none;
 }
 
-/* Docked variant — the panel becomes a static sibling of the canvas
-   instead of a floating overlay. Host owns the actual layout flip;
-   these rules just drop the floating-pill chrome. */
-.du-side-panel.du-side-panel-docked {
-  position: static;
-  top: auto;
-  bottom: auto;
-  left: auto;
-  right: auto;
-  height: 100%;
-  width: 240px;
-  border-radius: 0;
-  box-shadow: none;
-  border-top: none;
-  border-bottom: none;
-}
-
-.du-side-panel.du-side-panel-docked.du-side-panel-left {
-  border-left: none;
-}
-
-.du-side-panel.du-side-panel-docked.du-side-panel-right {
-  border-right: none;
-}
-
 /* ------------------------------------------------------------------ */
 /* Toast for reset-to-content visibility hint.                        */
 /* ------------------------------------------------------------------ */
