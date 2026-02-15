@@ -887,13 +887,7 @@ const EditorShell = ({
 
         {!hideBottomBar && (
           <BottomBar
-            left={
-              renderBottomBarLeft
-                ? renderBottomBarLeft()
-                : !hideHelpButton
-                  ? <HelpButton />
-                  : null
-            }
+            left={renderBottomBarLeft ? renderBottomBarLeft() : null}
             center={
               renderBottomBarCenter
                 ? renderBottomBarCenter()
@@ -902,11 +896,14 @@ const EditorShell = ({
                   : null
             }
             right={
-              renderBottomBarRight
-                ? renderBottomBarRight()
-                : !hideZoomControls
-                  ? <ZoomControls />
-                  : null
+              renderBottomBarRight ? (
+                renderBottomBarRight()
+              ) : !hideZoomControls ? (
+                // Help sits inside the zoom pill group, right next to it.
+                <ZoomControls trailing={!hideHelpButton ? <HelpButton /> : undefined} />
+              ) : !hideHelpButton ? (
+                <HelpButton />
+              ) : null
             }
           />
         )}
@@ -952,12 +949,15 @@ const ZOOM_RESET_HOTKEY = formatHotkey({ meta: true, key: "0" });
 const ZOOM_FIT_HOTKEY = formatHotkey({ meta: true, key: "1" });
 
 /**
- * Bottom-left zoom controls — three pills (zoom-out / zoom level / zoom-in)
+ * Bottom-right zoom controls — three pills (zoom-out / zoom level / zoom-in)
  * + a fit-to-screen button. Wraps the editor's zoom API in the
  * unified IconButton chrome so the visual style matches the rest of
  * the bar.
+ *
+ * `trailing` lets the host append extra controls inside the same pill
+ * group (e.g. the Help button, so it sits right next to zoom).
  */
-const ZoomControls = () => {
+const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
   const editor = useDiagramOptional();
   // Force re-render on viewport change.
   const [, force] = useState(0);
@@ -993,6 +993,7 @@ const ZoomControls = () => {
       <IconButton label={`Fit to screen (${ZOOM_FIT_HOTKEY})`} onClick={() => editor.zoomToFit()}>
         <Maximize {...buttonIcon} />
       </IconButton>
+      {trailing}
     </ButtonGroup>
   );
 };

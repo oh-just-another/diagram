@@ -1270,3 +1270,6 @@
 
 ## 0.53.15
 - feat(react-ui): drop library pin; swap library/toolbar sides
+
+## 0.53.16
+- feat(react-ui): remove library dock; move zoom to bottom-right
