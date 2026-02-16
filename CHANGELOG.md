@@ -1273,3 +1273,6 @@
 
 ## 0.53.16
 - feat(react-ui): remove library dock; move zoom to bottom-right
+
+## 0.53.17
+- feat(app): move Help button next to zoom in the bottom-right

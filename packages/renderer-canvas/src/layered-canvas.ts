@@ -54,10 +54,9 @@ export class LayeredCanvas {
       canvas.style.pointerEvents = name === "overlay" ? "auto" : "none";
       host.appendChild(canvas);
       const dpr = setupHiDpi(canvas, width, height, this.dprOverride);
-      void dpr;
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Failed to obtain 2D context");
-      layers.set(name, new Canvas2DTarget(ctx, width, height));
+      layers.set(name, new Canvas2DTarget(ctx, width, height, dpr));
       canvases.set(name, canvas);
     }
 
@@ -92,8 +91,8 @@ export class LayeredCanvas {
     this.width = width;
     this.height = height;
     for (const [name, canvas] of this.canvases) {
-      setupHiDpi(canvas, width, height, this.dprOverride);
-      this.layers.get(name)!.resize(width, height);
+      const dpr = setupHiDpi(canvas, width, height, this.dprOverride);
+      this.layers.get(name)!.resize(width, height, dpr);
     }
   }
 

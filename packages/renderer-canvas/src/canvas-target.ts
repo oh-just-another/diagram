@@ -22,26 +22,36 @@ export class Canvas2DTarget implements RenderTarget {
   private readonly ctx: CanvasRenderingContext2D;
   private _width: number;
   private _height: number;
+  /**
+   * Device-pixel-ratio the canvas bitmap is scaled by (see `setupHiDpi`).
+   * `setTransform` / `resetTransform` take a transform that maps world →
+   * CSS pixels; they pre-multiply by `scale(dpr)` so the result lands in
+   * the DPR-scaled device buffer.
+   */
+  private dpr: number;
 
   /**
-   * `width` / `height` are CSS-pixel dimensions. The constructor assumes the
-   * caller has already configured the canvas bitmap and the context transform
-   * for DPR scaling (see `setupHiDpi`).
+   * `width` / `height` are CSS-pixel dimensions. `dpr` must match the value
+   * `setupHiDpi` used to scale the bitmap (default 1). The constructor assumes
+   * the caller has already configured the canvas bitmap + context transform.
    */
-  constructor(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  constructor(ctx: CanvasRenderingContext2D, width: number, height: number, dpr = 1) {
     this.ctx = ctx;
     this._width = width;
     this._height = height;
+    this.dpr = dpr;
   }
 
   get size(): { readonly width: number; readonly height: number } {
     return { width: this._width, height: this._height };
   }
 
-  /** Mutator for callers that resize the canvas. */
-  resize(width: number, height: number): void {
+  /** Mutator for callers that resize the canvas. `dpr` updates the device
+   *  scale when the canvas moves to a different-density display. */
+  resize(width: number, height: number, dpr?: number): void {
     this._width = width;
     this._height = height;
+    if (dpr !== undefined) this.dpr = dpr;
   }
 
   // --- Style ---
@@ -106,10 +116,14 @@ export class Canvas2DTarget implements RenderTarget {
     this.ctx.scale(sx, sy);
   }
   setTransform(t: Transform): void {
-    this.ctx.setTransform(t.a, t.b, t.c, t.d, t.e, t.f);
+    // Compose with the DPR base: device = scale(dpr) · t. `t` maps world →
+    // CSS px; the bitmap is dpr× bigger, so every coordinate scales by dpr.
+    const d = this.dpr;
+    this.ctx.setTransform(d * t.a, d * t.b, d * t.c, d * t.d, d * t.e, d * t.f);
   }
   resetTransform(): void {
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    // Reset to the DPR base (NOT raw identity) so CSS-px draws stay scaled.
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
 
   // --- Path primitives ---

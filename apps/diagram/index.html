@@ -2,7 +2,15 @@
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Suppress the browser's own pinch / double-tap page zoom on touch
+         devices: the editor owns zooming (pinch gesture → scene zoom). Without
+         this, iOS Safari visually zooms the PAGE while pointer coordinates stay
+         in layout space, so hit-testing lands "off to the side" of where
+         elements appear after a pinch. `viewport-fit=cover` handles notches. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>@oh-just-another/demo</title>
     <style>
       :root {
@@ -24,6 +32,14 @@
       #root {
         margin: 0;
         height: 100%;
+      }
+      /* No rubber-band / pull-to-refresh, and the page itself never
+         scrolls or pans on touch — the canvas handles all gestures. */
+      html,
+      body {
+        overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: none;
       }
 
       /* Dark theme (default) */

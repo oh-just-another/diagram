@@ -60,6 +60,7 @@ const init = (canvas: OffscreenCanvas, width: number, height: number, dpr: numbe
     ctx as unknown as CanvasRenderingContext2D,
     width,
     height,
+    dpr,
   );
   post({ type: "ready" });
 };
@@ -71,7 +72,7 @@ const resize = (width: number, height: number): void => {
   const ctx = state.canvas.getContext("2d");
   if (!ctx) return;
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
-  state.target.resize(width, height);
+  state.target.resize(width, height, state.dpr);
 };
 
 const snapshot = (scene: Scene): void => {
