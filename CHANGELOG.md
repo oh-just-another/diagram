@@ -1276,3 +1276,6 @@
 
 ## 0.53.17
 - feat(app): move Help button next to zoom in the bottom-right
+
+## 0.53.18
+- fix(renderer-canvas): DPR-aware Canvas2D setTransform (mobile overlay offset)

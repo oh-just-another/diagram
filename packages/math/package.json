@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/math",
-  "version": "0.53.18",
+  "version": "0.54.0",
   "description": "math package",
   "type": "module",
   "main": "./dist/index.js",
