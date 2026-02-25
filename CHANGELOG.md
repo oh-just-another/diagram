@@ -1279,3 +1279,6 @@
 
 ## 0.53.18
 - fix(renderer-canvas): DPR-aware Canvas2D setTransform (mobile overlay offset)
+
+## 0.54.0
+- test(history,renderer-core): close L1 coverage gaps + assessment doc
