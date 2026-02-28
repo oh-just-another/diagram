@@ -377,6 +377,22 @@
   right: var(--du-bar-inset);
 }
 
+/* Sheet mode — fills the parent BottomSheet; the sheet provides the
+   surface, so drop the floating-pill position / border / shadow. */
+.du-side-panel.du-side-panel-sheet {
+  position: static;
+  top: auto;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
 .du-side-panel-header {
   display: flex;
   align-items: center;

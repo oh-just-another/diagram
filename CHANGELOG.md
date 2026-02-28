@@ -1285,3 +1285,6 @@
 
 ## 0.55.0
 - test(scene,state,network): top up coverage to .md targets
+
+## 0.55.1
+- feat(react-ui): mobile bottom-sheet property panel + useMobileLayout

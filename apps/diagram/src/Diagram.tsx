@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import {
   BottomBar,
+  BottomSheet,
   ButtonGroup,
   ContextMenu,
   DEFAULT_CONTEXT_MENU,
@@ -63,6 +64,7 @@ import {
   UILayer,
   useDiagramOptional,
   useHelpDialogHotkey,
+  useMobileLayout,
   usePalettePlacement,
   useScene,
 } from "@oh-just-another/react-ui";
@@ -565,6 +567,9 @@ const EditorShell = ({
   // selector hook — re-renders only on scene identity flips.
   void useScene();
   const paletteDropHandlers = usePalettePlacement();
+  // Touch / narrow screens: the library opens as a bottom sheet instead of
+  // a left overlay (which would cover the whole small canvas).
+  const mobile = useMobileLayout();
   // The templates library is a floating overlay opened via the toolbar
   // toggle and closed via its ✕. Starts closed; no dock / pin.
   const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
@@ -574,10 +579,11 @@ const EditorShell = ({
   // Layout (left → right): templates library overlay at the window
   // edge, then the floating vertical creation toolbar, then the canvas.
   // The library overlays the canvas (no reflow); the toolbar floats just
-  // to its right when open, else near the edge.
+  // to its right when open, else near the edge. On mobile the library is a
+  // bottom sheet, so the toolbar never shifts.
   const LIBRARY_PANEL_WIDTH = 240;
   const BAR_INSET = 12;
-  const toolbarLeft = libraryOpen ? LIBRARY_PANEL_WIDTH + BAR_INSET : BAR_INSET;
+  const toolbarLeft = !mobile && libraryOpen ? LIBRARY_PANEL_WIDTH + BAR_INSET : BAR_INSET;
 
   // Items for the vertical creation dock: an optional templates-library
   // toggle on top (hidden with `hideLibraryButton`), then the standard
@@ -908,15 +914,37 @@ const EditorShell = ({
           />
         )}
 
-        {/* Templates library — floating overlay flush at the left edge,
-            opened from the toolbar toggle, closed via its ✕. */}
-        <LibraryPanel
-          open={libraryOpen}
-          side="left"
-          style={{ left: 0 }}
-          onClose={() => setLibraryOpen(false)}
-          {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
-        />
+        {/* Templates library. Desktop: floating overlay flush at the left
+            edge. Mobile: a bottom sheet (swipe-down / ✕ to close) so it
+            doesn't cover the whole small canvas. Both open from the toolbar
+            toggle. */}
+        {mobile ? (
+          libraryOpen ? (
+            <BottomSheet
+              snapPoints={[0, 60, 92]}
+              defaultValue={60}
+              style={{ pointerEvents: "auto" }}
+              onChange={(vh) => {
+                if (vh <= 0) setLibraryOpen(false);
+              }}
+            >
+              <LibraryPanel
+                open
+                sheet
+                onClose={() => setLibraryOpen(false)}
+                {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
+              />
+            </BottomSheet>
+          ) : null
+        ) : (
+          <LibraryPanel
+            open={libraryOpen}
+            side="left"
+            style={{ left: 0 }}
+            onClose={() => setLibraryOpen(false)}
+            {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
+          />
+        )}
 
       </UILayer>
 

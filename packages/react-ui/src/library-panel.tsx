@@ -23,6 +23,12 @@ export interface LibraryPanelProps {
   /** Side the panel anchors to. Default `"right"`. */
   readonly side?: "left" | "right";
   /**
+   * Sheet mode: render as plain flex content that fills its parent
+   * (no fixed floating-pill chrome) — for hosting inside a `BottomSheet`
+   * on mobile. The parent provides the surface / position.
+   */
+  readonly sheet?: boolean;
+  /**
    * Called when the user clicks "Import". Hosts wire this to a file
    * picker / OS dialog. Skipped when omitted (button hidden).
    */
@@ -35,6 +41,7 @@ export const LibraryPanel = ({
   open,
   onClose,
   side = "right",
+  sheet = false,
   onImport,
   style,
 }: LibraryPanelProps) => {
@@ -52,9 +59,14 @@ export const LibraryPanel = ({
   }, [open]);
 
   if (!open) return null;
-  const sideClass = side === "right" ? "du-side-panel-right" : "du-side-panel-left";
+  // Sheet mode fills its parent (BottomSheet) — no side anchoring / pill chrome.
+  const variantClass = sheet
+    ? "du-side-panel-sheet"
+    : side === "right"
+      ? "du-side-panel-right"
+      : "du-side-panel-left";
   return (
-    <aside className={`du-side-panel ${sideClass}`} style={style}>
+    <aside className={`du-side-panel ${variantClass}`} style={style}>
       <header className="du-side-panel-header">
         <div style={{ display: "inline-flex", gap: 4 }}>
           {onImport ? (
