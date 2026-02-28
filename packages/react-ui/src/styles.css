@@ -334,6 +334,43 @@
   padding: 0 !important;
 }
 
+/* ------------------------------------------------------------------ */
+/* Mobile / coarse-pointer chrome (keep the 640px breakpoint in sync   */
+/* with MOBILE_MAX_WIDTH_PX in constants.ts).                          */
+/* ------------------------------------------------------------------ */
+@media (pointer: coarse), (max-width: 640px) {
+  /* Bars clear the notch / home indicator + rounded corners. */
+  .du-bar-top {
+    top: calc(var(--du-bar-inset) + env(safe-area-inset-top, 0px));
+  }
+  .du-bar-bottom {
+    bottom: calc(var(--du-bar-inset) + env(safe-area-inset-bottom, 0px));
+  }
+  .du-bar {
+    left: calc(var(--du-bar-inset) + env(safe-area-inset-left, 0px));
+    right: calc(var(--du-bar-inset) + env(safe-area-inset-right, 0px));
+  }
+
+  /* Vertical creation dock: ≥44px touch targets; scroll inside the dock
+     when a short screen can't fit every tool. */
+  .du-button-group-vertical {
+    max-height: calc(
+      100vh - 2 * var(--du-bar-inset) - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+    );
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .du-button-group-vertical::-webkit-scrollbar {
+    display: none;
+  }
+  .du-button-group-vertical > .du-icon-button {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+  }
+}
+
 .du-button-group > .du-icon-button:hover:not(:disabled) {
   background: var(--du-hover-overlay);
 }
@@ -1068,11 +1105,16 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* Sit ABOVE the bottom bar (zoom / help) + the home-indicator safe area
+     so the two don't overlap. Mirrors the side-panel top offset. */
+  bottom: calc(
+    var(--du-bar-inset) + var(--du-button-size) + var(--du-gap) +
+      env(safe-area-inset-bottom, 0px)
+  );
   z-index: 1500;
   display: flex;
   justify-content: center;
-  padding: 0 8px calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: 0 8px;
   pointer-events: none;
 }
 

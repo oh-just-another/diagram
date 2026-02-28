@@ -1288,3 +1288,6 @@
 
 ## 0.55.1
 - feat(react-ui): mobile bottom-sheet property panel + useMobileLayout
+
+## 0.55.2
+- feat(react-ui,app): library opens as a bottom sheet on mobile (§4)
