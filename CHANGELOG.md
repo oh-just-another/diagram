@@ -1282,3 +1282,6 @@
 
 ## 0.54.0
 - test(history,renderer-core): close L1 coverage gaps + assessment doc
+
+## 0.55.0
+- test(scene,state,network): top up coverage to .md targets

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import {
   DEFAULT_LAYER_ID,
   emptyScene,
@@ -7,6 +7,7 @@ import {
   type Layer,
   type Scene,
 } from "@oh-just-another/scene";
+import { MOBILE_MAX_WIDTH_PX } from "./constants.js";
 import {
   type AnnotationId,
   type LinkId,
@@ -25,6 +26,30 @@ import { useDiagramContext, useDiagramContextOptional, useEditorSelector } from 
  * waited until the editor is ready.
  */
 export const useDiagram = (): Editor => useDiagramContext();
+
+/**
+ * `true` when the chrome should use its mobile layout — a coarse pointer
+ * (touch) OR a narrow viewport (≤ {@link MOBILE_MAX_WIDTH_PX}). Reactive:
+ * re-renders on orientation / resize / input-mode change. SSR-safe (returns
+ * `false` until mounted). Single source of truth for mobile adaptations.
+ */
+const MOBILE_MEDIA = `(pointer: coarse), (max-width: ${MOBILE_MAX_WIDTH_PX}px)`;
+const matchMobile = (): boolean =>
+  typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia(MOBILE_MEDIA).matches
+    : false;
+
+export const useMobileLayout = (): boolean =>
+  useSyncExternalStore(
+    (onChange) => {
+      if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+      const mq = window.matchMedia(MOBILE_MEDIA);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    matchMobile,
+    () => false,
+  );
 
 /**
  * Same as `useDiagram` but returns `null` while the editor is being

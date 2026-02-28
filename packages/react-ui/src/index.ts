@@ -52,6 +52,7 @@ export {
   useAnnotations,
   useSelectedAnnotation,
   useSelectedLink,
+  useMobileLayout,
 } from "./hooks.js";
 export { LayerPanel, type LayerPanelProps } from "./layer-panel.js";
 export {

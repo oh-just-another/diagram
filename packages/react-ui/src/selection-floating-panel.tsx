@@ -24,7 +24,7 @@ import {
   SELECTION_PANEL_EDGE_INSET_BOTTOM_PX,
   SELECTION_PANEL_EDGE_INSET_LEFT_PX,
 } from "./constants.js";
-import { useDiagramOptional } from "./hooks.js";
+import { useDiagramOptional, useMobileLayout } from "./hooks.js";
 import { PropertyPanel } from "./property-panel.js";
 
 /**
@@ -83,6 +83,9 @@ export const SelectionFloatingPanel = ({
     left: edgeInset?.left ?? SELECTION_PANEL_EDGE_INSET_LEFT_PX,
   };
   const editor = useDiagramOptional();
+  // On touch / narrow screens the panel docks to the bottom instead of
+  // floating at the selection bbox — no floating-ui math.
+  const mobile = useMobileLayout();
   const [hasSelection, setHasSelection] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   // Force-rerender token bumped every time selection or scene or
@@ -123,7 +126,8 @@ export const SelectionFloatingPanel = ({
   }, [editor]);
 
   useLayoutEffect(() => {
-    if (!editor || !hasSelection) return;
+    // Mobile docks to the bottom — skip the floating-ui positioning entirely.
+    if (!editor || !hasSelection || mobile) return;
     const panel = panelRef.current;
     if (!panel) return;
     const virtualEl = makeSelectionVirtualEl(editor);
@@ -166,6 +170,7 @@ export const SelectionFloatingPanel = ({
   }, [
     editor,
     hasSelection,
+    mobile,
     tick,
     gap,
     placement,
@@ -176,6 +181,22 @@ export const SelectionFloatingPanel = ({
   ]);
 
   if (!editor || !hasSelection) return null;
+
+  // Mobile: dock the panel to the bottom edge (above the bottom bar +
+  // safe-area), full width. The PropertyPanel's own mobile variant shows
+  // the primary row + ⋮ expand. No floating-ui, no flash-gate.
+  if (mobile) {
+    return createPortal(
+      <div
+        className="du-sel-panel-dock"
+        role="toolbar"
+        aria-label="Selection actions"
+      >
+        <PropertyPanel mobile />
+      </div>,
+      document.body,
+    );
+  }
 
   // Portal to body so the panel survives any overflow:hidden on the
   // canvas container. Inline `transform` is set by the layout effect

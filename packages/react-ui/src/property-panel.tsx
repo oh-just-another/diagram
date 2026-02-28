@@ -13,6 +13,7 @@ import {
   Link as LinkIcon,
   Minus,
   MoreHorizontal,
+  MoreVertical,
   MoveDown,
   MoveRight,
   MoveUp,
@@ -66,82 +67,159 @@ import {
 export interface PropertyPanelProps {
   readonly style?: CSSProperties;
   readonly className?: string;
+  /**
+   * Mobile bottom-sheet variant: a single row of the frequently-used
+   * (primary) controls plus a vertical-dots button that expands the
+   * sheet to reveal the rest (overflow). No property is dropped —
+   * overflow is a regrouping, not a removal. Desktop (default) lays
+   * everything out in one floating pill row.
+   */
+  readonly mobile?: boolean;
 }
 
-export const PropertyPanel = ({ style, className }: PropertyPanelProps) => {
+export const PropertyPanel = ({ style, className, mobile = false }: PropertyPanelProps) => {
   const selection = useSelection();
   const selectedLinkId = useSelectedLink();
   const scene = useScene();
 
   // Dispatcher: edge wins only when no shape is selected — if both
-  // happen to be set (rare), shape panel is more useful.
+  // happen to be set (rare), shape panel is more useful. Each branch
+  // splits its controls into `primary` (always visible) + `overflow`
+  // (behind the ⋮ on mobile; inline on desktop). Approved split — see
+  // .
   if (selection.size > 0) {
     const shapes = [...selection]
       .map((id) => scene.elements.get(id))
       .filter((s): s is ElementBase => s !== undefined);
     if (shapes.length === 0) return null;
-    // Per-type control sets:
-    //  - text  → typography (font size / family / alignment + colour);
-    //  - image → opacity only (an image's pixels are the content — a
-    //    fill/background or stroke/border makes no sense, so those
-    //    controls are dropped);
-    //  - else  → the generic fill / stroke / roundness row.
     const allText = shapes.every((s) => s.type === "text");
     const allImage = shapes.every((s) => s.type === "image");
+
+    const primary: ReactNode[] = [];
+    const overflow: ReactNode[] = [];
+    if (allText) {
+      primary.push(
+        <FontSizeControl key="size" shapes={shapes} />,
+        <ColorOpacityControl key="color" shapes={shapes} />,
+        <TextAlignControl key="align" shapes={shapes} />,
+      );
+      overflow.push(
+        <FontFamilyControl key="family" shapes={shapes} />,
+        <TextDecorationControl key="decor" shapes={shapes} />,
+      );
+    } else if (allImage) {
+      // An image's pixels are the content — fill/stroke make no sense.
+      primary.push(<OpacityControl key="opacity" shapes={shapes} />);
+    } else {
+      primary.push(
+        <FillControl key="fill" shapes={shapes} />,
+        <StrokeControl key="stroke" shapes={shapes} />,
+        <StrokeWidthControl key="width" shapes={shapes} />,
+      );
+      overflow.push(
+        <StrokeStyleControl key="dash" shapes={shapes} />,
+        <RoundnessControl key="round" shapes={shapes} />,
+        <OpacityControl key="opacity" shapes={shapes} />,
+      );
+    }
+    // Common trailing controls for every shape type.
+    overflow.push(
+      <ZOrderControl key="z" />,
+      <LinkControl key="link" shapes={shapes} />,
+      <ActionsControl key="actions" shapes={shapes} />,
+      <MoreButton key="more" />,
+    );
     return (
-      <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style}>
-        {allText ? (
-          <>
-            <FontSizeControl shapes={shapes} />
-            <FontFamilyControl shapes={shapes} />
-            <TextDecorationControl shapes={shapes} />
-            <TextAlignControl shapes={shapes} />
-            <Divider />
-            <ColorOpacityControl shapes={shapes} />
-          </>
-        ) : allImage ? (
-          <OpacityControl shapes={shapes} />
-        ) : (
-          <>
-            <FillControl shapes={shapes} />
-            <StrokeControl shapes={shapes} />
-            <StrokeWidthControl shapes={shapes} />
-            <StrokeStyleControl shapes={shapes} />
-            <RoundnessControl shapes={shapes} />
-            <OpacityControl shapes={shapes} />
-          </>
-        )}
-        <Divider />
-        <ZOrderControl />
-        <Divider />
-        <LinkControl shapes={shapes} />
-        <ActionsControl shapes={shapes} />
-        <MoreButton />
-      </div>
+      <PanelShell
+        mobile={mobile}
+        primary={primary}
+        overflow={overflow}
+        className={className}
+        style={style}
+      />
     );
   }
 
   if (selectedLinkId !== null) {
     const edge = scene.links.get(selectedLinkId);
     if (!edge) return null;
+    const primary: ReactNode[] = [
+      <LinkStrokeColorControl key="color" edge={edge} />,
+      <LinkStrokeWidthControl key="width" edge={edge} />,
+      <LinkArrowheadControl key="arrow-to" edge={edge} side="to" />,
+    ];
+    const overflow: ReactNode[] = [
+      <LinkStrokeStyleControl key="dash" edge={edge} />,
+      <LinkRoutingControl key="routing" edge={edge} />,
+      <LinkLineKindControl key="kind" edge={edge} />,
+      <LinkArrowheadControl key="arrow-from" edge={edge} side="from" />,
+      <LinkAutoRouteControl key="auto" />,
+      <LinkDeleteControl key="delete" />,
+      <MoreButton key="more" />,
+    ];
     return (
-      <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style}>
-        <LinkStrokeColorControl edge={edge} />
-        <LinkStrokeWidthControl edge={edge} />
-        <LinkStrokeStyleControl edge={edge} />
-        <LinkRoutingControl edge={edge} />
-        <LinkLineKindControl edge={edge} />
-        <Divider />
-        <LinkArrowheadControl edge={edge} side="from" />
-        <LinkArrowheadControl edge={edge} side="to" />
-        <Divider />
-        <LinkAutoRouteControl />
-        <LinkDeleteControl />
-        <MoreButton />
-      </div>
+      <PanelShell
+        mobile={mobile}
+        primary={primary}
+        overflow={overflow}
+        className={className}
+        style={style}
+      />
     );
   }
   return null;
+};
+
+/**
+ * Lays out the primary / overflow control groups. Desktop = one floating
+ * pill row (primary · divider · overflow). Mobile = a primary row with a
+ * vertical-dots ⋮ that expands a wrapped overflow grid below it.
+ */
+const PanelShell = ({
+  mobile,
+  primary,
+  overflow,
+  className,
+  style,
+}: {
+  readonly mobile: boolean;
+  readonly primary: readonly ReactNode[];
+  readonly overflow: readonly ReactNode[];
+  readonly className?: string | undefined;
+  readonly style?: CSSProperties | undefined;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  if (!mobile) {
+    return (
+      <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style}>
+        {primary}
+        {overflow.length > 0 ? <Divider /> : null}
+        {overflow}
+      </div>
+    );
+  }
+  return (
+    <div className={`du-sel-panel du-sel-panel-mobile ${className ?? ""}`.trim()} style={style}>
+      <div className="du-sel-mobile-row">
+        <div className="du-sel-mobile-primary">{primary}</div>
+        {overflow.length > 0 ? (
+          <button
+            type="button"
+            className={`du-sel-icon-button du-sel-mobile-expand${expanded ? " is-active" : ""}`}
+            aria-expanded={expanded}
+            aria-label={expanded ? "Hide more properties" : "More properties"}
+            title="More properties"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            <MoreVertical size={18} strokeWidth={1.75} aria-hidden />
+          </button>
+        ) : null}
+      </div>
+      {expanded && overflow.length > 0 ? (
+        <div className="du-sel-mobile-overflow">{overflow}</div>
+      ) : null}
+    </div>
+  );
 };
 
 /**

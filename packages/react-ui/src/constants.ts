@@ -4,6 +4,14 @@
  * these are the defaults baked into the built-in panels.
  */
 
+/**
+ * Viewport width (CSS px) at/below which the chrome switches to its mobile
+ * layout (bottom-sheet property panel, etc.). Combined with `(pointer: coarse)`
+ * so touch tablets also get the mobile treatment regardless of width.
+ * See `useMobileLayout`.
+ */
+export const MOBILE_MAX_WIDTH_PX = 640;
+
 /** Width of the left palette panel, in CSS pixels. */
 export const PALETTE_WIDTH = 200;
 

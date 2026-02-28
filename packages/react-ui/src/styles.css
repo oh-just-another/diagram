@@ -1045,6 +1045,77 @@
   scrollbar-width: thin;
 }
 
+/* ---- Mobile bottom-sheet property panel (modern-style) ---- */
+/* Fixed dock at the bottom edge; transparent container so only the
+   panel itself catches touches. Honours the home-indicator safe area. */
+.du-sel-panel-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1500;
+  display: flex;
+  justify-content: center;
+  padding: 0 8px calc(8px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+}
+
+/* Full-width sheet: a primary row + (when ⋮ is tapped) a wrapped
+   overflow grid below. Overrides the floating pill's row/scroll chrome. */
+.du-sel-panel-mobile {
+  pointer-events: auto;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  max-width: 560px;
+  overflow: visible;
+  gap: 6px;
+  padding: 8px;
+}
+.du-sel-mobile-row {
+  display: flex;
+  align-items: center;
+  gap: var(--du-gap-sm);
+  width: 100%;
+}
+/* Primary controls scroll horizontally if they don't fit; the ⋮ button
+   stays pinned to the right, always reachable. */
+.du-sel-mobile-primary {
+  display: flex;
+  align-items: center;
+  gap: var(--du-gap-sm);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.du-sel-mobile-primary::-webkit-scrollbar {
+  display: none;
+}
+.du-sel-mobile-expand {
+  flex: 0 0 auto;
+}
+.du-sel-mobile-overflow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--du-gap-sm);
+  border-top: 1px solid var(--du-ui-border);
+  padding-top: 8px;
+}
+/* ≥44px touch targets on the mobile panel (Apple HIG). Standalone icon
+   buttons + color triggers grow; grouped segmented buttons stay a touch
+   smaller so wide controls (font-size S/M/L/XL) still fit one row. */
+.du-sel-panel-mobile .du-sel-icon-button,
+.du-sel-panel-mobile .du-sel-color-trigger {
+  width: 44px;
+  height: 44px;
+}
+.du-sel-panel-mobile .du-button-group > .du-icon-button {
+  width: 38px;
+  height: 38px;
+}
+
 /* Flat segmented controls inside the floating panel — no group
    pill chrome (the outer panel already provides it). Reuses the
    button-group rules from PropertyPanel but with tighter gaps. */
