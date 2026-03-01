@@ -44,8 +44,6 @@ const group = (id: string, parentId?: ReturnType<typeof elementId>): Element => 
   scale: { x: 1, y: 1 },
   order: orderBetween(null, null),
   style: {},
-  width: 0,
-  height: 0,
   ...(parentId !== undefined ? { parentId } : {}),
 });
 

@@ -32,7 +32,10 @@ describe("interactive hit-tester registry", () => {
   it("the tester is callable and forwards its arguments", () => {
     const result = { kind: "interaction" as const, type: "custom" as const };
     const fn = () => result;
-    registerInteractiveHitTester("callable-shape", fn as Parameters<typeof registerInteractiveHitTester>[1]);
+    registerInteractiveHitTester(
+      "callable-shape",
+      fn as unknown as Parameters<typeof registerInteractiveHitTester>[1],
+    );
     const retrieved = getInteractiveHitTester("callable-shape")!;
     expect(retrieved({} as never, { x: 0, y: 0 })).toBe(result);
   });

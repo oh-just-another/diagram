@@ -246,7 +246,7 @@ const withFakeFileReader = (resultValue: string | null, triggerError = false) =>
       else setTimeout(() => this.onload?.(), 0);
     }),
   };
-  g.FileReader = vi.fn(() => instance);
+  g.FileReader = vi.fn(() => instance) as unknown as typeof FileReader;
   return {
     restore: () => {
       if (original === undefined) delete g.FileReader;

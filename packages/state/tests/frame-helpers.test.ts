@@ -15,26 +15,28 @@ import { nextFrameName, assignFrameMembers } from "../src/frame-helpers.js";
 // Helpers
 // ---------------------------------------------------------------------------
 
-const baseElement = (id: string, type: string, x: number, y: number, w = 20, h = 20): Element => ({
-  id: elementId(id),
-  layerId: DEFAULT_LAYER_ID,
-  type,
-  position: { x, y },
-  rotation: 0,
-  scale: { x: 1, y: 1 },
-  order: orderBetween(null, null),
-  style: { fill: "#000" },
-  width: w,
-  height: h,
-});
+const baseElement = (id: string, type: string, x: number, y: number, w = 20, h = 20): Element =>
+  ({
+    id: elementId(id),
+    layerId: DEFAULT_LAYER_ID,
+    type,
+    position: { x, y },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: { fill: "#000" },
+    width: w,
+    height: h,
+  }) as unknown as Element;
 
 const rect = (id: string, x: number, y: number, w = 20, h = 20): Element =>
   baseElement(id, "rectangle", x, y, w, h);
 
-const frame = (id: string, name: string, x = 0, y = 0, w = 200, h = 200): Element => ({
-  ...baseElement(id, "frame", x, y, w, h),
-  name,
-});
+const frame = (id: string, name: string, x = 0, y = 0, w = 200, h = 200): Element =>
+  ({
+    ...baseElement(id, "frame", x, y, w, h),
+    name,
+  }) as unknown as Element;
 
 const sceneWith = (...elements: Element[]): Scene => {
   let s = emptyScene();
@@ -52,10 +54,10 @@ const sceneWith = (...elements: Element[]): Scene => {
 /** Minimal HistoryProvider mock that captures pushed patches. */
 const makeHistory = () => {
   const patches: unknown[] = [];
-  return {
-    push: (p: unknown) => patches.push(p),
-    patches,
-  };
+  // assignFrameMembers only calls `.push`; cast the minimal mock to the
+  // full provider type (keeping `patches` visible for assertions).
+  const h = { push: (p: unknown) => patches.push(p), patches };
+  return h as unknown as Parameters<typeof assignFrameMembers>[1] & { patches: unknown[] };
 };
 
 // ---------------------------------------------------------------------------

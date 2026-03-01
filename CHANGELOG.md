@@ -1291,3 +1291,6 @@
 
 ## 0.55.2
 - feat(react-ui,app): library opens as a bottom sheet on mobile (§4)
+
+## 0.55.3
+- feat(react-ui): mobile chrome — safe-area bars, touch toolbar, dock clears bar (§5)
