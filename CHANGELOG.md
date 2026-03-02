@@ -1294,3 +1294,6 @@
 
 ## 0.55.3
 - feat(react-ui): mobile chrome — safe-area bars, touch toolbar, dock clears bar (§5)
+
+## 0.55.4
+- test(state): fix typecheck in coverage tests (75561c8)

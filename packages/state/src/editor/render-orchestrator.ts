@@ -13,9 +13,7 @@ import { anchorOverlayPoints } from "./anchor-points.js";
 import { buildElementForCreate } from "./applies/create.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
-  ANCHOR_DOT_CLICK_RADIUS,
   ANCHOR_DOT_HOVER_GROW_RADIUS,
-  ANCHOR_START_HIT_SLOP,
   GHOST_PREVIEW_OPACITY,
   ISOLATION_DIM_OPACITY,
   LARGE_SCENE_HIT_THRESHOLD,
@@ -207,7 +205,8 @@ export const renderEditor = (editor: any): void => {
         if (shape) {
           const b = getElementWorldBounds(shape);
           const pad =
-            (LINK_START_ANCHOR_OUTSET + ANCHOR_DOT_ACTIVE_RADIUS + ANCHOR_START_HIT_SLOP) / zoom;
+            (LINK_START_ANCHOR_OUTSET + ANCHOR_DOT_ACTIVE_RADIUS + editor.anchorStartHitSlop) /
+            zoom;
           const near =
             cursor.x >= b.x - pad &&
             cursor.x <= b.x + b.width + pad &&
@@ -236,7 +235,7 @@ export const renderEditor = (editor: any): void => {
               shape,
               LINK_START_ANCHOR_OUTSET / zoom,
             );
-            const clickR2 = (ANCHOR_DOT_CLICK_RADIUS / zoom) ** 2;
+            const clickR2 = (editor.anchorClickRadius / zoom) ** 2;
             let hoveredName: string | null = null;
             for (let i = 0; i < worldPoints.length; i++) {
               const p = worldPoints[i]!;

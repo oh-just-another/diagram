@@ -17,8 +17,6 @@ import { getInteractiveHitTester } from "../interactive.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
-  ANCHOR_DOT_CLICK_RADIUS,
-  ANCHOR_START_HIT_SLOP,
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_START_ANCHOR_OUTSET,
   LONG_PRESS_MAX_MOVEMENT_PX,
@@ -306,7 +304,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         if (!shape) return false;
         const zoom = editor._scene.viewport.zoom || 1;
         const { names, worldPoints } = anchorOverlayPoints(shape, LINK_START_ANCHOR_OUTSET / zoom);
-        const grab = (ANCHOR_DOT_ACTIVE_RADIUS + ANCHOR_START_HIT_SLOP) / zoom;
+        const grab = (ANCHOR_DOT_ACTIVE_RADIUS + editor.anchorStartHitSlop) / zoom;
         let bestName: string | null = null;
         let bestD2 = grab * grab;
         for (let i = 0; i < worldPoints.length; i++) {
@@ -728,7 +726,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
           const idx = names.indexOf(drag.anchorName);
           if (idx >= 0) {
             const dp = worldPoints[idx]!;
-            const r = ANCHOR_DOT_CLICK_RADIUS / zoom;
+            const r = editor.anchorClickRadius / zoom;
             const dx = dp.x - drag.origin.x;
             const dy = dp.y - drag.origin.y;
             onDot = dx * dx + dy * dy <= r * r;

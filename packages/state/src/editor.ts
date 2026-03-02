@@ -161,6 +161,10 @@ import {
   TOUCH_LINK_HANDLE_HIT_SLOP,
   TOUCH_LINK_HIT_THRESHOLD,
   TOUCH_HANDLE_HIT_SLOP,
+  ANCHOR_START_HIT_SLOP,
+  ANCHOR_DOT_CLICK_RADIUS,
+  TOUCH_ANCHOR_START_HIT_SLOP,
+  TOUCH_ANCHOR_DOT_CLICK_RADIUS,
   VIEWPORT_CULL_PADDING_RATIO,
   DOUBLE_CLICK_MS,
   DOUBLE_CLICK_TOLERANCE_PX,
@@ -947,6 +951,9 @@ export class Editor {
   private readonly handleHitSlop: number;
   private readonly edgeHandleHitSlop: number;
   private readonly edgeHitThreshold: number;
+  /** Link-start anchor-dot grab/click hit radii — touch-enlarged in touch mode. */
+  private readonly anchorStartHitSlop: number;
+  private readonly anchorClickRadius: number;
 
   private readonly _history: HistoryProvider;
   /** Open transaction during a single drag/resize gesture. */
@@ -1081,6 +1088,10 @@ export class Editor {
       this.inputMode === "touch" ? TOUCH_LINK_HANDLE_HIT_SLOP : LINK_ENDPOINT_HANDLE_RADIUS;
     this.edgeHitThreshold =
       this.inputMode === "touch" ? TOUCH_LINK_HIT_THRESHOLD : LINK_HIT_THRESHOLD;
+    this.anchorStartHitSlop =
+      this.inputMode === "touch" ? TOUCH_ANCHOR_START_HIT_SLOP : ANCHOR_START_HIT_SLOP;
+    this.anchorClickRadius =
+      this.inputMode === "touch" ? TOUCH_ANCHOR_DOT_CLICK_RADIUS : ANCHOR_DOT_CLICK_RADIUS;
 
     this.actor = createActor(interactionMachine);
     this.actor.subscribe({

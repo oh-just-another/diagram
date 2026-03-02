@@ -356,6 +356,17 @@ export const TOUCH_LINK_HANDLE_HIT_SLOP = 22;
 export const TOUCH_LINK_HIT_THRESHOLD = 18;
 
 /**
+ * Touch variants of the link-start anchor-dot hit zones (the dots that sit
+ * just outside a selected element's edges). Mouse uses the small
+ * {@link ANCHOR_START_HIT_SLOP} / {@link ANCHOR_DOT_CLICK_RADIUS}; on a
+ * coarse pointer these grow to a finger-friendly ~16 px so the grab (start a
+ * link drag) and click (create a linked element) zones are tappable. The
+ * drawn dot stays the same size — only the hit area enlarges.
+ */
+export const TOUCH_ANCHOR_START_HIT_SLOP = 16;
+export const TOUCH_ANCHOR_DOT_CLICK_RADIUS = 16;
+
+/**
  * Annotation pin visuals on the overlay.
  *
  * - `ANNOTATION_PIN_RADIUS` — screen-pixel radius of the circular pin
