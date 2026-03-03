@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_HANDLES,
+  CORNER_HANDLES,
   HANDLE_HIT_SLOP,
   HANDLE_OUTSET,
   handlePosition,
@@ -50,10 +51,32 @@ describe("hitHandle", () => {
     expect(hitHandle({ x: 50, y: 25 }, bounds, 1)).toBeNull();
   });
   it("compensates for zoom: handle stays the same screen size", () => {
-    // At zoom 4, world tolerance shrinks to HANDLE_HIT_SLOP / 4.
+    // At zoom 4, world tolerance shrinks to HANDLE_HIT_SLOP / 4. Probe
+    // DIAGONALLY outside the nw corner (off both edge lines) so the corner's
+    // shrunk hit area is what's tested, not an edge.
+    const offset = HANDLE_OUTSET / 4; // nw corner world pos at zoom 4
     const tooFar = HANDLE_HIT_SLOP / 4 + 1;
-    expect(hitHandle({ x: tooFar, y: 0 }, bounds, 4)).toBeNull();
-    expect(hitHandle({ x: -HANDLE_OUTSET / 4, y: -HANDLE_OUTSET / 4 }, bounds, 4)).toBe("nw");
+    expect(hitHandle({ x: -offset - tooFar, y: -offset - tooFar }, bounds, 4)).toBeNull();
+    expect(hitHandle({ x: -offset, y: -offset }, bounds, 4)).toBe("nw");
+  });
+
+  it("an edge is grabbable along the whole side (not just the midpoint)", () => {
+    // Edge-midpoint dots were removed; the selection-box side is the target.
+    expect(hitHandle({ x: 30, y: 0 }, bounds, 1)).toBe("n"); // top edge, off-centre
+    expect(hitHandle({ x: 70, y: 50 }, bounds, 1)).toBe("s"); // bottom edge
+    expect(hitHandle({ x: 100, y: 25 }, bounds, 1)).toBe("e"); // right edge
+    expect(hitHandle({ x: 0, y: 25 }, bounds, 1)).toBe("w"); // left edge
+  });
+
+  it("a corner wins over its adjacent edges", () => {
+    expect(hitHandle({ x: -HANDLE_OUTSET, y: -HANDLE_OUTSET }, bounds, 1)).toBe("nw");
+  });
+
+  it("CORNER_HANDLES set ignores edge lines (aspect-locked resize)", () => {
+    // No edge in the set → a point on the top edge is not a hit.
+    expect(hitHandle({ x: 30, y: 0 }, bounds, 1, HANDLE_HIT_SLOP, CORNER_HANDLES)).toBeNull();
+    // Corners still hit.
+    expect(hitHandle({ x: -HANDLE_OUTSET, y: -HANDLE_OUTSET }, bounds, 1, HANDLE_HIT_SLOP, CORNER_HANDLES)).toBe("nw");
   });
 });
 

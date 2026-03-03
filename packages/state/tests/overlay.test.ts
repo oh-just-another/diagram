@@ -126,9 +126,10 @@ describe("renderOverlay", () => {
     const scene = sceneWith(shape);
     const { target, calls } = makeRecorder();
     renderOverlay(scene, new Set([shape.id]), target);
-    // Each handle is an ellipse; 8 handles expected
+    // Each handle is an ellipse. Only the 4 CORNER dots are drawn now — the
+    // edge-midpoint handles were removed (edge resize = drag the box side).
     const ellipses = calls.filter((c) => c.method === "ellipse");
-    expect(ellipses.length).toBeGreaterThanOrEqual(8);
+    expect(ellipses.length).toBe(4);
   });
 
   it("draws no per-shape handles for multi-selection", () => {
@@ -235,7 +236,9 @@ describe("renderOverlay", () => {
       groupBounds: { x: 0, y: 0, width: 100, height: 80 },
     });
     const ellipses = calls.filter((c) => c.method === "ellipse");
-    expect(ellipses.length).toBe(8); // 8 handles for non-aspect-locked
+    // Group box also draws only the 4 corner dots now (edge resize = drag
+    // the box side); edges stay hit-testable but aren't drawn.
+    expect(ellipses.length).toBe(4);
   });
 
   it("draws only 4 corner handles when groupAspectLocked is true", () => {

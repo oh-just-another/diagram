@@ -62,14 +62,26 @@ export const handlePosition = (handle: HandleId, b: Bounds, zoom = 1): Vec2 => {
 };
 
 /**
- * Find which handle the point is over, given the shape's world bounds and the
- * current view zoom (handles stay the same size in screen pixels regardless
- * of zoom). Returns `null` if no handle is hit.
+ * Find which resize handle the point is over, given the shape's world bounds
+ * and the current view zoom (hit area stays constant in screen pixels).
+ * Returns `null` if nothing is hit.
  *
- * `screenHalfSize` defaults to `HANDLE_HIT_SLOP` (mouse precision —
- * visual handle + outset on each side). Touch hosts pass a larger
- * value (`TOUCH_HANDLE_HIT_SLOP`) so a finger can grab the handle
- * without precision-pointing it.
+ * Two grab shapes, so the edge-midpoint dots can be removed from the chrome
+ * while edge resize stays available (drag the selection-box side itself):
+ *
+ *   • Corners (`nw/ne/se/sw`) — a square grab at the drawn corner dot (offset
+ *     outward by `HANDLE_OUTSET`). Checked first so a near-corner point
+ *     resolves to the diagonal, not an edge.
+ *   • Edges (`n/s/e/w`) — the WHOLE side of the box: a slop band along the
+ *     corresponding bounds edge, spanning between the corners. No dot is drawn
+ *     for these; the side line is the target.
+ *
+ * Edges only participate when present in `handleSet` (e.g. aspect-locked
+ * resize passes `CORNER_HANDLES`, so only corners hit). The returned id feeds
+ * the same `resizeBounds` / resize dispatch.
+ *
+ * `screenHalfSize` defaults to `HANDLE_HIT_SLOP` (mouse); touch hosts pass
+ * `TOUCH_HANDLE_HIT_SLOP` so a finger can grab without precision-pointing.
  */
 export const hitHandle = (
   point: Vec2,
@@ -78,11 +90,36 @@ export const hitHandle = (
   screenHalfSize: number = HANDLE_HIT_SLOP,
   handleSet: readonly HandleId[] = ALL_HANDLES,
 ): HandleId | null => {
-  const halfWorld = screenHalfSize / zoom;
+  const slop = screenHalfSize / zoom;
+  // Corners — point-grab at each drawn dot.
   for (const id of handleSet) {
+    if (id.length !== 2) continue; // skip edges this pass
     const p = handlePosition(id, b, zoom);
-    if (Math.abs(point.x - p.x) <= halfWorld && Math.abs(point.y - p.y) <= halfWorld) {
+    if (Math.abs(point.x - p.x) <= slop && Math.abs(point.y - p.y) <= slop) {
       return id;
+    }
+  }
+  // Edges — slop band along the selection-box side, between the corners.
+  const minX = b.x;
+  const maxX = b.x + b.width;
+  const minY = b.y;
+  const maxY = b.y + b.height;
+  const onX = point.x >= minX - slop && point.x <= maxX + slop;
+  const onY = point.y >= minY - slop && point.y <= maxY + slop;
+  for (const id of handleSet) {
+    switch (id) {
+      case "n":
+        if (onX && Math.abs(point.y - minY) <= slop) return "n";
+        break;
+      case "s":
+        if (onX && Math.abs(point.y - maxY) <= slop) return "s";
+        break;
+      case "w":
+        if (onY && Math.abs(point.x - minX) <= slop) return "w";
+        break;
+      case "e":
+        if (onY && Math.abs(point.x - maxX) <= slop) return "e";
+        break;
     }
   }
   return null;

@@ -341,7 +341,11 @@ export const renderOverlay = (
 
     if (multiSelect || !isResizable(shape)) continue;
 
-    for (const handle of resizeHandlesFor(shape)) {
+    // Draw only the four CORNER dots. The edge-midpoint handles are gone from
+    // the chrome — edge resize is done by dragging the selection-box side
+    // (see `hitHandle`), so no midpoint dot is needed. `resizeHandlesFor`
+    // (ALL_HANDLES) still drives hit-test capability.
+    for (const handle of CORNER_HANDLES) {
       const worldPoint = handlePosition(handle, worldBounds, zoom);
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);
       drawHandle(target, screenPoint, style);
@@ -561,11 +565,13 @@ export const renderOverlay = (
   }
 
   // 7. Multi-selection / group-typed combined bounds — outline + handles.
-  //    Aspect-locked groups: corner handles only; otherwise full 8.
+  //    Only CORNER dots are drawn (edge resize = drag the box side); the
+  //    edge handles stay hit-testable via `hitHandle` for non-aspect-locked
+  //    groups.
   if (options.groupBounds) {
     const groupScreen = projectBounds(options.groupBounds, w2s);
     drawOutline(target, groupScreen, style);
-    const handleSet = options.groupAspectLocked ? CORNER_HANDLES : ALL_HANDLES;
+    const handleSet = CORNER_HANDLES;
     for (const handle of handleSet) {
       const worldPoint = handlePosition(handle, options.groupBounds, zoom);
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);

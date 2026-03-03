@@ -1297,3 +1297,6 @@
 
 ## 0.55.4
 - test(state): fix typecheck in coverage tests (75561c8)
+
+## 0.55.5
+- feat(state): touch-sized link-start anchor-dot hit radii (§6)
