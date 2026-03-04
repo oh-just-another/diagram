@@ -1300,3 +1300,6 @@
 
 ## 0.55.5
 - feat(state): touch-sized link-start anchor-dot hit radii (§6)
+
+## 0.55.6
+- feat(state): corner-only resize handles; resize edges by dragging the box side

@@ -67,6 +67,9 @@ export class WebGL2Target implements RenderTarget {
   private strokeWidth = 1;
   private lineCap: LineCap = "butt";
   private lineJoin: LineJoin = "miter";
+  /** Dash pattern in WORLD units (matches Canvas2D, which dashes in the
+   *  world-space ctx transform). `null` = solid. */
+  private dashArray: readonly number[] | null = null;
   private opacity = 1;
   private currentPath: Bounds | null = null;
   // Text state — kept in sync with Canvas2D semantics and replayed into
@@ -278,6 +281,7 @@ export class WebGL2Target implements RenderTarget {
       strokeWidth: this.strokeWidth,
       lineCap: this.lineCap,
       lineJoin: this.lineJoin,
+      dashArray: this.dashArray,
       opacity: this.opacity,
       fontFamily: this.fontFamily,
       fontSize: this.fontSize,
@@ -300,6 +304,7 @@ export class WebGL2Target implements RenderTarget {
     this.strokeWidth = s.strokeWidth;
     this.lineCap = s.lineCap;
     this.lineJoin = s.lineJoin;
+    this.dashArray = s.dashArray;
     this.opacity = s.opacity;
     this.fontFamily = s.fontFamily;
     this.fontSize = s.fontSize;
@@ -933,26 +938,36 @@ export class WebGL2Target implements RenderTarget {
     if (this.currentPolyline.length < 2) return;
     const effectiveAlpha = this.opacity * this.strokeAlpha;
     if (effectiveAlpha <= 0) return; // transparent stroke — nothing to draw
-    drawPolylineStrokeImpl(
-      this.gl,
-      this.currentPolyline,
-      {
-        width: this.strokeWidth,
-        color: this.strokeColor,
-        opacity: effectiveAlpha,
-        join: this.lineJoin,
-        cap: this.lineCap,
-      },
-      this.transform,
-      this._size,
-      this.program,
-      this.uTransformLoc,
-      this.uColorLoc,
-      this.uOpacityLoc,
-      this.dynamicVbo,
-      this.aPosLoc,
-      IDENTITY_MAT3,
-    );
+    // Dashed: split the polyline into "on" sub-polylines in world units
+    // (Canvas2D dashes in the world-space ctx transform, so this
+    // matches it), then stroke each through the same pipeline. Solid →
+    // one call.
+    const runs = this.dashArray
+      ? dashPolyline(this.currentPolyline, this.dashArray)
+      : [this.currentPolyline];
+    for (const run of runs) {
+      if (run.length < 2) continue;
+      drawPolylineStrokeImpl(
+        this.gl,
+        run,
+        {
+          width: this.strokeWidth,
+          color: this.strokeColor,
+          opacity: effectiveAlpha,
+          join: this.lineJoin,
+          cap: this.lineCap,
+        },
+        this.transform,
+        this._size,
+        this.program,
+        this.uTransformLoc,
+        this.uColorLoc,
+        this.uOpacityLoc,
+        this.dynamicVbo,
+        this.aPosLoc,
+        IDENTITY_MAT3,
+      );
+    }
     // Stroke wrote into the dynamic VBO; rebind the static unit-quad VBO
     // so the next solid rect fill picks up the right vertex stream.
     this.restoreSolidProgram();
@@ -965,8 +980,8 @@ export class WebGL2Target implements RenderTarget {
   setLineJoin(join: LineJoin): void {
     this.lineJoin = join;
   }
-  setDashArray(_dash: readonly number[] | null): void {
-    void _dash;
+  setDashArray(dash: readonly number[] | null): void {
+    this.dashArray = dash && dash.length > 0 ? dash : null;
   }
   setFont(
     family: string,
@@ -1251,6 +1266,51 @@ type MutableTransform = {
 };
 
 /**
+ * Split a polyline into the "on" dash runs for `pattern` ([on, off, on, …]),
+ * lengths in the polyline's own (world) units. Walks each segment, toggling
+ * on/off as the running distance crosses each pattern element, and emits the
+ * point lists of the drawn runs. Used by WebGL2 `stroke()` to render dashed /
+ * dotted lines (Canvas2D gets this for free from `ctx.setLineDash`).
+ */
+export const dashPolyline = (pts: readonly Vec2[], pattern: readonly number[]): Vec2[][] => {
+  const runs: Vec2[][] = [];
+  let idx = 0;
+  let remaining = pattern[0] ?? 0;
+  let drawing = true;
+  let cur: Vec2[] = [];
+  if (remaining <= 0) return [pts.slice()]; // degenerate pattern → solid
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i]!;
+    const b = pts[i + 1]!;
+    const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+    if (segLen < 1e-9) continue;
+    const dx = (b.x - a.x) / segLen;
+    const dy = (b.y - a.y) / segLen;
+    let pos = { x: a.x, y: a.y };
+    let left = segLen;
+    if (drawing && cur.length === 0) cur.push(pos);
+    while (left > 1e-9) {
+      const step = Math.min(left, remaining);
+      const next = { x: pos.x + dx * step, y: pos.y + dy * step };
+      if (drawing) cur.push(next);
+      pos = next;
+      left -= step;
+      remaining -= step;
+      if (remaining <= 1e-9) {
+        if (drawing && cur.length >= 2) runs.push(cur);
+        drawing = !drawing;
+        idx = (idx + 1) % pattern.length;
+        remaining = pattern[idx] ?? 0;
+        cur = drawing ? [{ x: pos.x, y: pos.y }] : [];
+        if (remaining <= 0) remaining = 1e-6; // avoid stall on zero-length element
+      }
+    }
+  }
+  if (drawing && cur.length >= 2) runs.push(cur);
+  return runs;
+};
+
+/**
  * Full graphics-state snapshot pushed by `save()` and popped by
  * `restore()` — transform plus all paint + text state, matching
  * Canvas2D's `ctx.save/restore` contract. Excludes the current path
@@ -1266,6 +1326,7 @@ type GfxState = {
   strokeWidth: number;
   lineCap: LineCap;
   lineJoin: LineJoin;
+  dashArray: readonly number[] | null;
   opacity: number;
   fontFamily: string;
   fontSize: number;
