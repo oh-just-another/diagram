@@ -259,6 +259,10 @@ describe("renderOverlay", () => {
     // Should include a lineTo call for the 2nd and 3rd points
     const lineTos = calls.filter((c) => c.method === "lineTo");
     expect(lineTos.length).toBeGreaterThanOrEqual(2);
+    // Round join/cap so the halo follows elbow bends with rounded corners
+    // (matching the link), not sharp miter spikes.
+    expect(calls.some((c) => c.method === "setLineJoin" && c.args[0] === "round")).toBe(true);
+    expect(calls.some((c) => c.method === "setLineCap" && c.args[0] === "round")).toBe(true);
   });
 
   it("hoveredLinkPath with fewer than 2 points draws nothing", () => {

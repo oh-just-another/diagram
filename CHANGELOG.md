@@ -1303,3 +1303,6 @@
 
 ## 0.55.6
 - feat(state): corner-only resize handles; resize edges by dragging the box side
+
+## 0.55.7
+- fix(renderer-canvas): render dashed/dotted strokes on WebGL2

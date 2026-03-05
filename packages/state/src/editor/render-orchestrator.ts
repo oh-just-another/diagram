@@ -13,7 +13,9 @@ import { anchorOverlayPoints } from "./anchor-points.js";
 import { buildElementForCreate } from "./applies/create.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
+  ANCHOR_DOT_RADIUS,
   ANCHOR_DOT_HOVER_GROW_RADIUS,
+  ANCHOR_DOT_HOVER_MAX_RADIUS,
   GHOST_PREVIEW_OPACITY,
   ISOLATION_DIM_OPACITY,
   LARGE_SCENE_HIT_THRESHOLD,
@@ -227,7 +229,17 @@ export const renderEditor = (editor: any): void => {
                   bestI = i;
                 }
               });
-              portSets.push(bestI >= 0 ? { ...set, activeIndex: bestI } : set);
+              if (bestI >= 0) {
+                // Smooth proximity grow: scale the nearest dot from its resting
+                // radius up to the max as the cursor closes in (t = 1 at the
+                // dot, 0 at the edge of the grow radius).
+                const t = r > 0 ? Math.max(0, 1 - Math.sqrt(bestD2) / r) : 0;
+                const activeRadius =
+                  ANCHOR_DOT_RADIUS + (ANCHOR_DOT_HOVER_MAX_RADIUS - ANCHOR_DOT_RADIUS) * t;
+                portSets.push({ ...set, activeIndex: bestI, activeRadius });
+              } else {
+                portSets.push(set);
+              }
             }
             // Hovering ON a dot (within the click radius) → ghost preview of
             // what a click would create (copy element + connector).

@@ -137,6 +137,13 @@ export const ANCHOR_NEUTRAL_COLOR = "#fff";
 export const ANCHOR_DOT_RADIUS = 3.5;
 /** Highlighted radius for the hovered / snap-target anchor (screen px). */
 export const ANCHOR_DOT_ACTIVE_RADIUS = 5;
+/**
+ * Max radius (screen px) of the nearest link-start dot at closest cursor
+ * approach. The dot scales smoothly from {@link ANCHOR_DOT_RADIUS} up to this
+ * as the cursor enters {@link ANCHOR_DOT_HOVER_GROW_RADIUS} ("grows as you
+ * approach"), instead of a binary jump to the active radius.
+ */
+export const ANCHOR_DOT_HOVER_MAX_RADIUS = 8;
 /** Ring stroke width for anchor dots (screen px). Range: 1–2.5. */
 export const ANCHOR_DOT_STROKE_WIDTH = 1.5;
 

@@ -137,6 +137,12 @@ export interface PortOverlay {
   /** Highlight one of the points (the snap target). Optional. */
   readonly activeIndex?: number;
   /**
+   * Screen-px radius to draw the active dot at — lets the host scale it
+   * smoothly by cursor proximity (link-start grow). Falls back to
+   * `ANCHOR_DOT_ACTIVE_RADIUS` when unset.
+   */
+  readonly activeRadius?: number;
+  /**
    * Visual role (standard model).
    *   - link-start: shown on selection (where to drag from).
    *   - link-attach: shown on hover / proximity (where to land).
@@ -452,7 +458,7 @@ export const renderOverlay = (
       for (let i = 0; i < set.worldPoints.length; i++) {
         const screen = matrix.applyToPoint(w2s, set.worldPoints[i]!);
         const active = set.activeIndex === i;
-        drawPortDot(target, screen, style, active, set.role);
+        drawPortDot(target, screen, style, active, set.role, active ? set.activeRadius : undefined);
       }
     }
   }
@@ -460,10 +466,17 @@ export const renderOverlay = (
   // 4.5 Hover highlight for the link under the cursor (when not selected).
   if (options.hoveredLinkPath && options.hoveredLinkPath.length >= 2) {
     const pts = options.hoveredLinkPath;
+    // Points are projected to screen manually, so the highlight must draw in
+    // screen space (IDENTITY) regardless of any transform a prior section left.
+    target.setTransform(matrix.IDENTITY);
     target.setStroke(style.selectionStroke);
     target.setStrokeWidth(6);
     target.setOpacity(0.22);
     target.setDashArray(null);
+    // Round joins/caps so the halo follows elbow bends with the same rounded
+    // corners as the link itself (no sharp miter spikes at the corners).
+    target.setLineJoin("round");
+    target.setLineCap("round");
     target.beginPath();
     const p0 = matrix.applyToPoint(w2s, pts[0]!);
     target.moveTo(p0.x, p0.y);
@@ -473,6 +486,8 @@ export const renderOverlay = (
     }
     target.stroke();
     target.setOpacity(1);
+    target.setLineJoin("miter");
+    target.setLineCap("butt");
   }
 
   // 5. Selected-edge endpoint handles + bend-point (waypoint) handles.
@@ -836,8 +851,9 @@ const drawPortDot = (
   style: OverlayStyle,
   active: boolean,
   role: "link-start" | "link-attach" = "link-start",
+  activeRadius?: number,
 ): void => {
-  const radius = active ? ANCHOR_DOT_ACTIVE_RADIUS : ANCHOR_DOT_RADIUS;
+  const radius = active ? (activeRadius ?? ANCHOR_DOT_ACTIVE_RADIUS) : ANCHOR_DOT_RADIUS;
   const isStart = role === "link-start";
 
   // When active (snapped), use the inverse fill of the resting state
