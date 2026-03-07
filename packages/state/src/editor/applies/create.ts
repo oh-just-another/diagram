@@ -15,6 +15,7 @@ import type {
   LinkId,
   LayerId,
   ElementId,
+  Vec2,
 } from "@oh-just-another/types";
 import { DEFAULT_LINK_ARROWHEAD, DEFAULT_LINK_ROUTING } from "../../constants.js";
 
@@ -93,6 +94,32 @@ export const buildLinkForCreate = (
     style: { ...DEFAULT_EDGE_STYLE },
     arrowheads: { to: DEFAULT_LINK_ARROWHEAD },
   };
+};
+
+/**
+ * Build the throwaway `Link` for the live draw-edge connector preview.
+ * Same default object as {@link buildLinkForCreate} (so the dragged preview is
+ * a WYSIWYG of the committed link — solid, default arrowhead, default style),
+ * with point endpoints at the preview's resolved ends. When the caller already
+ * routed the polyline (`points` = `[from, ...corners, to]`), its interior
+ * corners are reused as `routedPoints` so the elbow geometry matches exactly.
+ */
+export const buildEdgePreviewLink = (
+  scene: Scene,
+  preview: { readonly from: Vec2; readonly to: Vec2; readonly points?: readonly Vec2[] },
+  id: LinkId,
+  layerId: LayerId,
+): Link => {
+  const base = buildLinkForCreate(
+    scene,
+    { kind: "point", position: preview.from },
+    { kind: "point", position: preview.to },
+    id,
+    layerId,
+  );
+  return preview.points && preview.points.length > 2
+    ? { ...base, routedPoints: preview.points.slice(1, -1) }
+    : base;
 };
 
 /**

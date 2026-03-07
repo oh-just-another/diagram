@@ -10,7 +10,7 @@ import {
 import { DEFAULT_LOD, renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
 import { renderOverlay, type PortOverlay } from "../overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
-import { buildElementForCreate } from "./applies/create.js";
+import { buildElementForCreate, buildEdgePreviewLink } from "./applies/create.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   ANCHOR_DOT_RADIUS,
@@ -22,7 +22,7 @@ import {
   LINK_START_ANCHOR_OUTSET,
   LINK_ATTACH_ANCHOR_OUTSET,
 } from "../constants.js";
-import type { ElementId, Vec2 } from "@oh-just-another/types";
+import type { ElementId, LinkId, Vec2 } from "@oh-just-another/types";
 
 /**
  * Stable throwaway id for the transient shape-draw preview element. Never
@@ -30,6 +30,9 @@ import type { ElementId, Vec2 } from "@oh-just-another/types";
  * overlay paint, so any constant id is fine.
  */
 const DRAW_PREVIEW_ELEMENT_ID = "__draw-preview__" as ElementId;
+
+/** Throwaway id for the live draw-edge connector preview link. */
+const DRAW_PREVIEW_LINK_ID = "__draw-preview-link__" as LinkId;
 
 /**
  * Render orchestrator. ~130 lines of branching across:
@@ -133,7 +136,23 @@ export const renderEditor = (editor: any): void => {
       overlayOpts.drawingPreview = editor.drawingPreview;
     }
   }
-  if (editor.edgePreview) overlayOpts.edgePreview = editor.edgePreview;
+  // Draw-edge connector preview: render the would-be link through the real
+  // link renderer (solid, default arrowheads, full colour) so the dragged
+  // preview looks exactly like the link that'll be created — same default
+  // object as commit (`buildLinkForCreate`), not a faded/dashed stand-in.
+  let edgePreviewScene: Scene | null = null;
+  if (editor.edgePreview) {
+    const previewLink = buildEdgePreviewLink(
+      editor._scene,
+      editor.edgePreview as { from: Vec2; to: Vec2; points?: readonly Vec2[] },
+      DRAW_PREVIEW_LINK_ID,
+      editor._activeLayerId,
+    );
+    edgePreviewScene = {
+      ...editor._scene,
+      links: new Map([[DRAW_PREVIEW_LINK_ID, previewLink]]),
+    };
+  }
   // Connection anchors. Two roles: link-start (on selection) and link-attach
   // (on hover/proximity). During a drag started FROM a start-anchor (select
   // mode, no tool switch) BOTH are shown: the source keeps its start dots
@@ -391,5 +410,11 @@ export const renderEditor = (editor: any): void => {
     editor.overlayTarget.setOpacity(GHOST_PREVIEW_OPACITY);
     renderLinks(ghostScene, editor.overlayTarget, {});
     editor.overlayTarget.restore();
+  }
+
+  // Live draw-edge connector preview — real link renderer, FULL opacity (the
+  // preview must look identical to the committed link, not faded/dashed).
+  if (edgePreviewScene) {
+    renderLinks(edgePreviewScene, editor.overlayTarget, {});
   }
 };

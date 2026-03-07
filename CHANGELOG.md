@@ -1306,3 +1306,6 @@
 
 ## 0.55.7
 - fix(renderer-canvas): render dashed/dotted strokes on WebGL2
+
+## 0.55.8
+- fix(state): elbow hover-highlight rounding + smooth anchor-dot proximity grow
