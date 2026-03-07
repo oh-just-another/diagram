@@ -1312,3 +1312,6 @@
 
 ## 0.55.9
 - fix(state): draw-edge preview renders as the real link (WYSIWYG), not dashed
+
+## 0.55.10
+- test(renderer-core): fix typecheck in coverage tests (e143378)

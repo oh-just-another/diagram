@@ -10,7 +10,12 @@ import {
   type ElementBase,
 } from "@oh-just-another/scene";
 import { bounds as B, matrix } from "@oh-just-another/math";
-import { getElementRenderer, type RenderTarget } from "@oh-just-another/renderer-core";
+import {
+  getElementRenderer,
+  strokeRoundedPolyline,
+  LINK_CORNER_RADIUS,
+  type RenderTarget,
+} from "@oh-just-another/renderer-core";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   ANCHOR_DOT_RADIUS,
@@ -465,29 +470,28 @@ export const renderOverlay = (
 
   // 4.5 Hover highlight for the link under the cursor (when not selected).
   if (options.hoveredLinkPath && options.hoveredLinkPath.length >= 2) {
-    const pts = options.hoveredLinkPath;
-    // Points are projected to screen manually, so the highlight must draw in
-    // screen space (IDENTITY) regardless of any transform a prior section left.
-    target.setTransform(matrix.IDENTITY);
+    const pts = options.hoveredLinkPath; // world coords
+    // Draw in WORLD space and reuse the link renderer's own rounded-corner
+    // routine + radius, so the halo's bends match the elbow link EXACTLY
+    // (a screen-space lineJoin:round rounds by half the stroke width — a
+    // different, "crooked" radius). Stroke width is kept ~constant on screen
+    // by dividing by zoom.
+    target.setTransform(w2s);
     target.setStroke(style.selectionStroke);
-    target.setStrokeWidth(6);
+    target.setStrokeWidth(6 / (zoom || 1));
     target.setOpacity(0.22);
     target.setDashArray(null);
-    // Round joins/caps so the halo follows elbow bends with the same rounded
-    // corners as the link itself (no sharp miter spikes at the corners).
     target.setLineJoin("round");
     target.setLineCap("round");
     target.beginPath();
-    const p0 = matrix.applyToPoint(w2s, pts[0]!);
-    target.moveTo(p0.x, p0.y);
-    for (let i = 1; i < pts.length; i++) {
-      const p = matrix.applyToPoint(w2s, pts[i]!);
-      target.lineTo(p.x, p.y);
-    }
+    strokeRoundedPolyline(target, pts, LINK_CORNER_RADIUS);
     target.stroke();
+    // Reset to the screen-space IDENTITY + default stroke state the following
+    // sections (manual w2s projection) assume.
     target.setOpacity(1);
     target.setLineJoin("miter");
     target.setLineCap("butt");
+    target.setTransform(matrix.IDENTITY);
   }
 
   // 5. Selected-edge endpoint handles + bend-point (waypoint) handles.

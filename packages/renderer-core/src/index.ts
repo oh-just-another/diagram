@@ -17,7 +17,7 @@ export type { RenderGridOptions } from "./grid-renderer.js";
 export { registerElementRenderer, getElementRenderer, hasElementRenderer } from "./shape-renderer.js";
 export { LAYER_ORDER } from "./layers.js";
 export { renderScene } from "./scene-renderer.js";
-export { renderLinks } from "./edge-renderer.js";
+export { renderLinks, strokeRoundedPolyline } from "./edge-renderer.js";
 export { renderGrid } from "./grid-renderer.js";
 
 // Backend-agnostic shape renderers for the built-in `BuiltinElement` types.
@@ -88,4 +88,9 @@ export {
   sharedLinkBoundsCache,
 } from "./edge-cache.js";
 
-export { DEFAULT_LOD, DEFAULT_PLACEHOLDER_FILL, VIEWPORT_CULL_PADDING_RATIO } from "./constants.js";
+export {
+  DEFAULT_LOD,
+  DEFAULT_PLACEHOLDER_FILL,
+  VIEWPORT_CULL_PADDING_RATIO,
+  LINK_CORNER_RADIUS,
+} from "./constants.js";

@@ -345,7 +345,7 @@ const cornersOnly = (pts: readonly Vec2[]): readonly Vec2[] => {
  return out;
 };
 
-const strokeRoundedPolyline = (
+export const strokeRoundedPolyline = (
  target: RenderTarget,
  raw: readonly Vec2[],
  radius: number,
