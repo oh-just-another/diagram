@@ -44,7 +44,7 @@ const sceneWithGrid = (
       ...base.viewport,
       zoom,
       gridSize,
-      gridStyle,
+      ...(gridStyle !== undefined ? { gridStyle } : {}),
     },
   };
 };

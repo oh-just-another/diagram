@@ -87,7 +87,7 @@ describe("drawRectangle", () => {
       type: "rectangle",
       width: 100,
       height: 60,
-      style: { fill: "#f00", roundness: 0.5 },
+      style: { fill: "#f00", roundness: { type: "round", value: 8 } },
     } as Element);
     expect(calls.some((c) => c.method === "quadraticCurveTo")).toBe(true);
     expect(calls.some((c) => c.method === "fill")).toBe(true);

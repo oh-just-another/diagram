@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { linkId, elementId } from "@oh-just-another/types";
+import { linkId, elementId, type Vec2 } from "@oh-just-another/types";
 import {
   addElement,
   addLink,
@@ -9,7 +9,6 @@ import {
   type LinkRouting,
   type Link,
   type Element,
-  type Vec2,
 } from "@oh-just-another/scene";
 import { renderLinks } from "../src/index";
 

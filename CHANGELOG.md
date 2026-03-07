@@ -1309,3 +1309,6 @@
 
 ## 0.55.8
 - fix(state): elbow hover-highlight rounding + smooth anchor-dot proximity grow
+
+## 0.55.9
+- fix(state): draw-edge preview renders as the real link (WYSIWYG), not dashed
