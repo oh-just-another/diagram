@@ -1315,3 +1315,6 @@
 
 ## 0.55.10
 - test(renderer-core): fix typecheck in coverage tests (e143378)
+
+## 0.55.11
+- fix(state): hover-highlight matches the elbow link's corner rounding (H1)

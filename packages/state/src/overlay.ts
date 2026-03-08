@@ -42,6 +42,7 @@ import {
   LINK_MIDPOINT_HANDLE_DRAW_RADIUS,
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_HIT_THRESHOLD,
+  HOVER_HIGHLIGHT_MARGIN_PX,
   LINK_START_ANCHOR_FILL,
   LINK_START_ANCHOR_STROKE,
   PEER_SELECTION_DASH,
@@ -219,6 +220,12 @@ export const renderOverlay = (
      * painted as a soft thick highlight so the user sees it is clickable.
      */
     hoveredLinkPath?: readonly Vec2[];
+    /**
+     * Rendered stroke width (world units) of the hovered link, so the halo
+     * can size itself relative to the link's VISUAL width (which scales with
+     * zoom) instead of a fixed screen px that thick links swallow at high zoom.
+     */
+    hoveredLinkWidth?: number;
     /**
      * World-space bounds of the element a connector endpoint will FLOAT-attach
      * to (drop on the body, not a dot). Painted as a brand outline so the user
@@ -478,7 +485,12 @@ export const renderOverlay = (
     // by dividing by zoom.
     target.setTransform(w2s);
     target.setStroke(style.selectionStroke);
-    target.setStrokeWidth(6 / (zoom || 1));
+    // Halo width tracks the link's VISUAL width: link world-width + a constant
+    // screen-px margin (÷zoom → world). So it always peeks out beyond the link
+    // at every zoom, even thick links at high zoom (a fixed-px halo got
+    // swallowed). Drawn in world space, same as the link.
+    const linkWorldWidth = options.hoveredLinkWidth ?? 1.5;
+    target.setStrokeWidth(linkWorldWidth + HOVER_HIGHLIGHT_MARGIN_PX / (zoom || 1));
     target.setOpacity(0.22);
     target.setDashArray(null);
     target.setLineJoin("round");

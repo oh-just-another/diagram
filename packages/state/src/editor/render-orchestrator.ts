@@ -326,7 +326,13 @@ export const renderEditor = (editor: any): void => {
       // Curve-aware so the soft hover highlight follows the drawn arc, not the
       // straight chord (matches the curve-aware hit-test).
       const hovPath = getLinkCurvePoints(editor._scene, hovEdge);
-      if (hovPath && hovPath.length >= 2) overlayOpts.hoveredLinkPath = hovPath;
+      if (hovPath && hovPath.length >= 2) {
+        overlayOpts.hoveredLinkPath = hovPath;
+        // Halo sizes itself to the link's visual width (see overlay) so it
+        // stays visible around thick links at high zoom. Mirror the renderer's
+        // `edge.style.strokeWidth ?? 1` fallback.
+        overlayOpts.hoveredLinkWidth = hovEdge.style?.strokeWidth ?? 1;
+      }
     }
   }
   if (editor._selectedLink) {
