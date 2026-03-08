@@ -15,6 +15,8 @@
     "preview": "vite preview",
     "clean:cache": "rm -rf node_modules/.vite",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint src"
   },
   "dependencies": {

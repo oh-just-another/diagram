@@ -1318,3 +1318,6 @@
 
 ## 0.55.11
 - fix(state): hover-highlight matches the elbow link's corner rounding (H1)
+
+## 0.55.12
+- fix(state): hover-highlight halo tracks the link's visual width (H1 zoom)

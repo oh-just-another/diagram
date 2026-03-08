@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { emptyScene, type Scene } from "@oh-just-another/scene";
+import { createSceneAutosave } from "./autosave";
 import { parseScene, parseFiles, stringifyScene, stringifyFiles } from "@oh-just-another/serialization";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "./index";
@@ -154,43 +155,67 @@ export const App = () => {
   // bytes is expensive, and pan / move / typing never touch `files`,
   // so re-encoding them every save tanked FPS (arrayBufferToBase64 hot
   // path).
-  const pendingScene = useRef<Scene | null>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFilesRef = useRef<Scene["files"] | null>(null);
   const lastFilesStr = useRef<string | null>(null);
+  // Synchronously serialise + persist `s`. Pure side-effect on
+  // localStorage; safe to call from both the debounce timer and an
+  // unload flush.
+  const writeScene = useCallback((s: Scene) => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, stringifyScene(s));
+      if (s.files.size > 0) {
+        // Cache the serialised sidecar by `files` identity — only
+        // re-encode when the binary map changed (add / remove file),
+        // never on a viewport / position change.
+        if (s.files !== lastFilesRef.current || lastFilesStr.current === null) {
+          lastFilesStr.current = stringifyFiles(s);
+          lastFilesRef.current = s.files;
+        }
+        window.localStorage.setItem(FILES_KEY, lastFilesStr.current);
+      } else {
+        window.localStorage.removeItem(FILES_KEY);
+        lastFilesRef.current = null;
+        lastFilesStr.current = null;
+      }
+    } catch {
+      /* quota / private mode — ignore */
+    }
+  }, []);
+  // Debounced autosave controller. `flush()` is wired to tab-hide /
+  // unload below so an edit made in the last `AUTOSAVE_DEBOUNCE_MS`
+  // isn't lost when the user reloads or closes the tab before the timer
+  // fires (data-loss: clones vanished after reload —
+  //
+  const autosave = useMemo(
+    () => createSceneAutosave<Scene>(writeScene, AUTOSAVE_DEBOUNCE_MS),
+    [writeScene],
+  );
   const handleSceneChange = useCallback(
     (scene: Scene) => {
       if (isCollab || typeof window === "undefined") return;
-      pendingScene.current = scene;
-      if (saveTimer.current !== null) return; // a flush is already scheduled
-      saveTimer.current = setTimeout(() => {
-        saveTimer.current = null;
-        const s = pendingScene.current;
-        if (!s) return;
-        pendingScene.current = null;
-        try {
-          window.localStorage.setItem(STORAGE_KEY, stringifyScene(s));
-          if (s.files.size > 0) {
-            // Cache the serialised sidecar by `files` identity — only
-            // re-encode when the binary map changed (add / remove file),
-            // never on a viewport / position change.
-            if (s.files !== lastFilesRef.current || lastFilesStr.current === null) {
-              lastFilesStr.current = stringifyFiles(s);
-              lastFilesRef.current = s.files;
-            }
-            window.localStorage.setItem(FILES_KEY, lastFilesStr.current);
-          } else {
-            window.localStorage.removeItem(FILES_KEY);
-            lastFilesRef.current = null;
-            lastFilesStr.current = null;
-          }
-        } catch {
-          /* quota / private mode — ignore */
-        }
-      }, AUTOSAVE_DEBOUNCE_MS);
+      autosave.schedule(scene);
     },
-    [isCollab],
+    [isCollab, autosave],
   );
+
+  // Flush the pending autosave when the tab is hidden or unloading.
+  // `visibilitychange→hidden` is the reliable signal on mobile (where
+  // `beforeunload` often never fires); `pagehide` covers bfcache /
+  // desktop reload. On unmount, drop the timer without writing.
+  useEffect(() => {
+    if (isCollab || typeof window === "undefined") return;
+    const onHide = () => {
+      if (document.visibilityState === "hidden") autosave.flush();
+    };
+    const onPageHide = () => autosave.flush();
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onPageHide);
+      autosave.cancel();
+    };
+  }, [isCollab, autosave]);
 
   // Re-render the header chrome when the collab status badge flips.
   useEffect(() => {
