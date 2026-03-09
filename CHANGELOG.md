@@ -1321,3 +1321,6 @@
 
 ## 0.55.12
 - fix(state): hover-highlight halo tracks the link's visual width (H1 zoom)
+
+## 0.55.13
+- fix: flush autosave on tab hide/unload

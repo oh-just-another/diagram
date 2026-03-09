@@ -431,17 +431,17 @@ export const bindPointerEvents = (editor: any): (() => void) => {
     // the leaves applyGroupResize actually scales. Same expansion
     // is harmless for plain multi-selection (no descendants).
     if (target.kind === "group-handle") {
-      const shapes = new Map<ElementId, { position: Vec2; bounds: Bounds; scale: Vec2 }>();
+      const elements = new Map<ElementId, { position: Vec2; bounds: Bounds; scale: Vec2 }>();
       for (const id of editor.expandSelectionWithDescendants()) {
         const s = getElement(editor._scene, id);
         if (!s) continue;
-        shapes.set(id, {
+        elements.set(id, {
           position: s.position,
           bounds: getElementWorldBounds(s),
           scale: s.scale,
         });
       }
-      editor.groupResizeOrigin = { combined: target.bounds, shapes };
+      editor.groupResizeOrigin = { combined: target.bounds, elements };
     } else {
       editor.groupResizeOrigin = null;
     }
