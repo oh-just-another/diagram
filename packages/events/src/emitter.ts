@@ -28,11 +28,15 @@
  */
 
 /**
- * Marker for any function type. Exposed for consumers writing
- * helper types around an `Emitter`.
+ * Marker supertype for any listener function. `never[]` params make
+ * EVERY function assignable to this (a function with stricter params is
+ * assignable to one declared with `never` params), so `E[K] extends
+ * AnyListener` holds for any typed listener — unlike `unknown[]`, which
+ * would reject them. The emit path casts back to a callable signature
+ * to actually invoke. Exposed for consumers writing helper types around
+ * an `Emitter`.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyListener = (...args: any[]) => void;
+export type AnyListener = (...args: never[]) => void;
 
 /**
  * Conventional event map shape. Consumers don't have to satisfy this
@@ -115,7 +119,7 @@ export const createEmitter = <E>(): Emitter<E> => {
     let count = 0;
     for (const fn of snapshot) {
       try {
-        fn(...args);
+        (fn as (...a: unknown[]) => void)(...args);
         count++;
       } catch (err) {
         firstError ??= err instanceof Error ? err : new Error(String(err));

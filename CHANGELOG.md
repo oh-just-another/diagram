@@ -1327,3 +1327,6 @@
 
 ## 0.55.14
 - fix: group resize threw "origin.elements is not iterable"
+
+## 0.55.15
+- feat(state): connectors move rigidly with their elements
