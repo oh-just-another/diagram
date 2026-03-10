@@ -316,6 +316,10 @@ import {
   computeElementMovePatch,
 } from "./editor/applies/move.js";
 import {
+  computeRigidLinkMovePatches,
+  computeRigidLinkMoveForNudge,
+} from "./editor/applies/link-move.js";
+import {
   computeCreateLink,
   computeCreateElement,
   newLinkId,
@@ -635,6 +639,14 @@ export class Editor {
    * fans out when this map is populated.
    */
   private groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null = null;
+  /**
+   * Press-time snapshot of connectors that must follow a multi-element
+   * drag rigidly — both endpoints bound to moved elements, carrying
+   * absolute geometry (waypoints / fixedSegments / routedPoints). Each
+   * frame translates from these originals so the shift never compounds.
+   * Cleared on gesture commit / cancel alongside `groupMoveOrigin`.
+   */
+  private groupLinkMoveOrigin: ReadonlyMap<LinkId, Link> | null = null;
   /**
    * Per-shape snapshot for a group-resize gesture — `bounds` is the
    * shape's world AABB at press-down. Editor scales the relative
@@ -1008,6 +1020,13 @@ export class Editor {
       set groupMoveOrigin(v) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         self.groupMoveOrigin = v as any;
+      },
+      get groupLinkMoveOrigin() {
+        return self.groupLinkMoveOrigin;
+      },
+      set groupLinkMoveOrigin(v) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        self.groupLinkMoveOrigin = v as any;
       },
       get groupResizeOrigin() {
         return self.groupResizeOrigin;
@@ -2373,6 +2392,11 @@ export class Editor {
     const tx = this._history.transaction();
     this._scene = result.scene;
     for (const patch of result.patches) tx.add(patch);
+    // Connectors bound on both ends to nudged elements move rigidly too
+    // (same parity as drag) — translate their absolute geometry by delta.
+    const linkResult = computeRigidLinkMoveForNudge(this._scene, targets, delta);
+    this._scene = linkResult.scene;
+    for (const patch of linkResult.patches) tx.add(patch);
     tx.commit();
     this.notify();
     this.announce(describeNudgePure(delta, result.moved));
@@ -3536,6 +3560,20 @@ export class Editor {
     for (const patch of patches) {
       this._scene = apply(this._scene, patch);
       this.recordGesturePatch(patch);
+    }
+    // Connectors bound on both ends to moved elements translate rigidly
+    // (standard parity) — shift their absolute geometry by the
+    // same delta from the press-time snapshot.
+    if (this.groupLinkMoveOrigin) {
+      const linkPatches = computeRigidLinkMovePatches(
+        this._scene,
+        this.groupLinkMoveOrigin,
+        delta,
+      );
+      for (const patch of linkPatches) {
+        this._scene = apply(this._scene, patch);
+        this.recordGesturePatch(patch);
+      }
     }
     this.notify();
   }

@@ -1324,3 +1324,6 @@
 
 ## 0.55.13
 - fix: flush autosave on tab hide/unload
+
+## 0.55.14
+- fix: group resize threw "origin.elements is not iterable"

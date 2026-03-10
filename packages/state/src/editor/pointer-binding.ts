@@ -15,6 +15,7 @@ import { fromPointerEvent } from "../dom-events.js";
 import * as Selection from "../selection.js";
 import { getInteractiveHitTester } from "../interactive.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
+import { snapshotRigidLinks } from "./applies/link-move.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   LINK_ENDPOINT_HANDLE_RADIUS,
@@ -412,11 +413,16 @@ export const bindPointerEvents = (editor: any): (() => void) => {
             if (s) snap.set(id, s.position);
           }
           editor.groupMoveOrigin = snap;
+          // Connectors fully inside the moved set translate rigidly —
+          // snapshot their press-time geometry (see link-move.ts).
+          editor.groupLinkMoveOrigin = snapshotRigidLinks(editor._scene, ids);
         } else {
           editor.groupMoveOrigin = null;
+          editor.groupLinkMoveOrigin = null;
         }
       } else {
         editor.groupMoveOrigin = null;
+        editor.groupLinkMoveOrigin = null;
       }
     } else {
       editor.groupMoveOrigin = null;

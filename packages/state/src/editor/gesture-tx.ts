@@ -18,6 +18,7 @@ export interface GestureRef {
   readonly history: HistoryProvider;
   gestureTx: TransactionHandle | null;
   groupMoveOrigin: unknown;
+  groupLinkMoveOrigin: unknown;
   groupResizeOrigin: unknown;
   dragElementId: ElementId | null;
   containerHover: { readonly id: ElementId } | null;
@@ -52,6 +53,7 @@ export class GestureController {
 
   commit(): void {
     this.ref.groupMoveOrigin = null;
+    this.ref.groupLinkMoveOrigin = null;
     this.ref.groupResizeOrigin = null;
     this.ref.dragElementId = null;
     if (this.ref.containerHover !== null) {
@@ -79,6 +81,7 @@ export class GestureController {
 
   cancel(): void {
     this.ref.groupMoveOrigin = null;
+    this.ref.groupLinkMoveOrigin = null;
     this.ref.groupResizeOrigin = null;
     if (!this.ref.gestureTx) return;
     this.ref.gestureTx.cancel();
