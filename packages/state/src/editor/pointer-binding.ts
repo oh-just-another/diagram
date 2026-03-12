@@ -7,6 +7,7 @@ import {
   getLink,
   getLinkPath,
   getLinkWaypointMidpoints,
+  isImage,
   updateAnnotation,
 } from "@oh-just-another/scene";
 import { bounds as B } from "@oh-just-another/math";
@@ -28,6 +29,7 @@ import {
   WHEEL_ZOOM_SPEED,
 } from "../constants.js";
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
+import type { Editor } from "../editor.js";
 
 /** Inclusive integer range `[a..b]`; empty when `b < a`. */
 const range = (a: number, b: number): number[] => {
@@ -48,15 +50,13 @@ const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z
  * Returns an unsubscribe function that removes every listener it
  * installed.
  *
- * Pragma note: `editor` is typed as `any` because this handler
- * needs the wide Editor surface (host, private fields, private
- * mutators). A narrow structural interface would be a maintenance
- * burden bigger than the type loss — the two files are
- * intentionally tightly coupled, an "internal partial" of Editor.
- * Editor.ts is the only call site.
+ * Typed against the full `Editor` class (type-only import — erased at
+ * runtime, so no import cycle and dependency-cruiser ignores it). This
+ * handler reaches deep into Editor's surface, so the members it touches
+ * are declared `public` (with the `_`-prefix convention marking them
+ * internal). editor.ts is the only call site.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const bindPointerEvents = (editor: any): (() => void) => {
+export const bindPointerEvents = (editor: Editor): (() => void) => {
   const onDown = (ev: PointerEvent) => {
     ev.preventDefault();
     editor.host.setPointerCapture(ev.pointerId);
@@ -636,7 +636,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
       const hov = editor.hitTest(worldPoint);
       const directHs = hov?.kind === "element" ? editor._scene.elements.get(hov.id) : undefined;
       editor.hoverAnimatedElement(
-        directHs?.type === "image" && directHs.animationKind ? directHs.id : null,
+        directHs && isImage(directHs) && directHs.animationKind ? directHs.id : null,
       );
       // Hover-to-connect (standard): reveal the hovered shape's link-start dots
       // in select mode so a link can be dragged from it even unselected.
@@ -881,7 +881,7 @@ export const bindPointerEvents = (editor: any): (() => void) => {
         const hit = editor.hitTest(worldPoint);
         if (hit?.kind === "element") {
           const s = editor._scene.elements.get(hit.id);
-          if (s?.type === "image" && s.animationKind) editor.togglePlayback(s.id);
+          if (s && isImage(s) && s.animationKind) editor.togglePlayback(s.id);
         }
       }
     }

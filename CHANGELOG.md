@@ -1330,3 +1330,6 @@
 
 ## 0.55.15
 - feat(state): connectors move rigidly with their elements
+
+## 0.55.16
+- refactor(events): drop `any` from AnyListener marker

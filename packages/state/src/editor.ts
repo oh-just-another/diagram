@@ -466,10 +466,10 @@ export type GroupSelectedResult =
   | { readonly kind: "grouped"; readonly groupId: ElementId };
 
 export class Editor {
-  private readonly host: HTMLElement;
-  private readonly mainTarget: RenderTarget;
-  private readonly overlayTarget: RenderTarget;
-  private readonly backgroundTarget: RenderTarget | null;
+  public readonly host: HTMLElement;
+  public readonly mainTarget: RenderTarget;
+  public readonly overlayTarget: RenderTarget;
+  public readonly backgroundTarget: RenderTarget | null;
   private readonly onAfterRender: (() => void) | null;
   /**
    * Debug: when true the overlay paints every element's mouse hit-zones
@@ -478,7 +478,7 @@ export class Editor {
    * View-only — never persisted or recorded in history.
    */
   debugHitZones = false;
-  private readonly actor: Actor<typeof interactionMachine>;
+  public readonly actor: Actor<typeof interactionMachine>;
   private readonly listeners = new Set<() => void>();
   /**
    * Typed event surface. Specific events (`mode`, `selection`,
@@ -500,23 +500,23 @@ export class Editor {
   private readonly eventCache: EditorEventCache = createEventCache();
   private readonly unbind: () => void;
 
-  private _scene: Scene;
-  private _selection: Selection.Selection = Selection.EMPTY;
+  public _scene: Scene;
+  public _selection: Selection.Selection = Selection.EMPTY;
   /**
    * Snapshot of an in-progress annotation drag (press on pin → move
    * pointer → release). `originPosition` is the annotation's stored
    * position at press time; per-move handler computes a delta from
    * the current pointer in world space and writes it back.
    */
-  private annotationDrag: {
+  public annotationDrag: {
     id: AnnotationId;
     originPosition: Vec2;
     originWorldPoint: Vec2;
     moved: boolean;
   } | null = null;
   /** Live preview while drawing a new shape; null when not drawing. */
-  private drawingPreview: Bounds | null = null;
-  private edgePreview: { from: Vec2; to: Vec2; points?: readonly Vec2[] } | null = null;
+  public drawingPreview: Bounds | null = null;
+  public edgePreview: { from: Vec2; to: Vec2; points?: readonly Vec2[] } | null = null;
   /**
    * Active "drag a link from a start-anchor" gesture (standard). Set when a
    * press lands on one of the selected element's link-start dots; lets
@@ -526,7 +526,7 @@ export class Editor {
    * threshold). Read by the pointer handlers (drive preview / commit on
    * up) and the render orchestrator (keep the source's start dots visible
    * during the drag). Null when no such drag is in flight. */
-  private linkDragFromAnchor: {
+  public linkDragFromAnchor: {
     fromElement: ElementId;
     fromWorld: Vec2;
     /** Named anchor the gesture started on — drives the click-to-create
@@ -540,7 +540,7 @@ export class Editor {
    * overlay render so the user sees attachment points. `null` outside
    * draw-edge mode or when the pointer is over empty canvas.
    */
-  private hoveredLinkTarget: {
+  public hoveredLinkTarget: {
     elementId: ElementId;
     activeAnchor: string | null;
     outlinePoint?: Vec2 | undefined;
@@ -561,9 +561,9 @@ export class Editor {
    * to null on press / gesture / leaving the shape.
    */
   private hoverLinkStartElement: ElementId | null = null;
-  private hoverCursorWorld: Vec2 | null = null;
+  public hoverCursorWorld: Vec2 | null = null;
   /** Link under the idle cursor (overlay paints a soft hover highlight). */
-  private hoveredLinkId: LinkId | null = null;
+  public hoveredLinkId: LinkId | null = null;
   /**
    * When a link is dropped on empty canvas, the edge is created with a
    * free `point` end and this records where, so the host can pop a
@@ -579,14 +579,14 @@ export class Editor {
   /**
    * Currently selected edge.
    */
-  private _selectedLink: LinkId | null = null;
+  public _selectedLink: LinkId | null = null;
   /**
    * Currently focused annotation thread — overlay highlights its pin
    * with an accent ring and hosts (e.g. `<CommentsPopover>`) render
    * the thread for this id. Independent of shape / edge selection so
    * users can edit shapes while a comment thread is open.
    */
-  private _selectedAnnotation: AnnotationId | null = null;
+  public _selectedAnnotation: AnnotationId | null = null;
   /**
    * Author identity used for comments posted via `addComment` /
    * `addAnnotation` without an explicit author. Hosts set this once
@@ -598,7 +598,7 @@ export class Editor {
    * Mid-drag preview state when the user is dragging an edge endpoint.
    * Drawn as an overlay line + handle dot so the user sees the target.
    */
-  private linkEndpointDrag: {
+  public linkEndpointDrag: {
     linkId: LinkId;
     side: "from" | "to";
     toPoint: Vec2;
@@ -610,7 +610,7 @@ export class Editor {
    * first move (so a no-move click adds nothing). Live-mutated through the
    * gesture transaction → one undo step per drag.
    */
-  private linkWaypointDrag: {
+  public linkWaypointDrag: {
     linkId: LinkId;
     index: number;
     pendingInsert: boolean;
@@ -621,9 +621,9 @@ export class Editor {
    * pins the segment's perpendicular coordinate into `Link.fixedSegments`;
    * the reroute pass re-flows the rest. One undo step via the gesture tx.
    */
-  private linkSegmentDrag: { linkId: LinkId; axis: "h" | "v"; at: number } | null = null;
+  public linkSegmentDrag: { linkId: LinkId; axis: "h" | "v"; at: number } | null = null;
   /** Live lasso bounds during a rubber-band select gesture. */
-  private lassoPreview: Bounds | null = null;
+  public lassoPreview: Bounds | null = null;
 
   /**
    * Selection captured at lasso-press time. Used to compute the live
@@ -638,7 +638,7 @@ export class Editor {
    * machine still emits per-shape MOVE_SHAPE — the editor intercepts and
    * fans out when this map is populated.
    */
-  private groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null = null;
+  public groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null = null;
   /**
    * Press-time snapshot of connectors that must follow a multi-element
    * drag rigidly — both endpoints bound to moved elements, carrying
@@ -646,13 +646,13 @@ export class Editor {
    * frame translates from these originals so the shift never compounds.
    * Cleared on gesture commit / cancel alongside `groupMoveOrigin`.
    */
-  private groupLinkMoveOrigin: ReadonlyMap<LinkId, Link> | null = null;
+  public groupLinkMoveOrigin: ReadonlyMap<LinkId, Link> | null = null;
   /**
    * Per-shape snapshot for a group-resize gesture — `bounds` is the
    * shape's world AABB at press-down. Editor scales the relative
    * position / size against the combined bounds delta each frame.
    */
-  private groupResizeOrigin: {
+  public groupResizeOrigin: {
     readonly combined: Bounds;
     readonly elements: ReadonlyMap<
       ElementId,
@@ -671,7 +671,7 @@ export class Editor {
    * here when their input doesn't specify a `layerId`. Defaults to the
    * scene's `DEFAULT_LAYER_ID`; hosts switch via `setActiveLayer`.
    */
-  private _activeLayerId: LayerId = castLayerId(DEFAULT_LAYER_ID);
+  public _activeLayerId: LayerId = castLayerId(DEFAULT_LAYER_ID);
   private nextId = 0;
 
   /** Generate a short unique id with a stable prefix. */
@@ -698,7 +698,7 @@ export class Editor {
    * a scene op replaces the shape ref. Could be exposed for hit-test
    * sharing in a follow-up.
    */
-  private readonly boundsCache: ElementCache<Bounds> = new ElementCache<Bounds>();
+  public readonly boundsCache: ElementCache<Bounds> = new ElementCache<Bounds>();
 
   /**
    * Lazy SpatialGrid for hit-test acceleration in large scenes.
@@ -714,7 +714,7 @@ export class Editor {
    * letting the user directly manipulate inner shapes. Cleared on
    * escape, click outside the group's descendants, or `cancelInteraction`.
    */
-  private _enteredGroup: ElementId | null = null;
+  public _enteredGroup: ElementId | null = null;
 
   /**
    * Double-click detection state. Updated on every non-drag pointer
@@ -740,7 +740,7 @@ export class Editor {
    * `extendBrushStroke`; the overlay reads it through
    * `pendingBrushStroke` to draw a live preview.
    */
-  private brushStroke: BrushStrokeState | null = null;
+  public brushStroke: BrushStrokeState | null = null;
 
   /**
    * Last world-space pointer position observed by the host's onMove
@@ -748,7 +748,7 @@ export class Editor {
    * paste lands under the cursor instead of overlapping the originals.
    * `null` until the pointer first enters the host.
    */
-  private lastPointerWorld: Vec2 | null = null;
+  public lastPointerWorld: Vec2 | null = null;
 
   /**
    * Scene rendered on the last frame. Used to compute a dirty rect by
@@ -757,7 +757,7 @@ export class Editor {
    * and gets skipped together with the surrounding clear. `null` until
    * the first render.
    */
-  private lastRenderedScene: Scene | null = null;
+  public lastRenderedScene: Scene | null = null;
   /**
    * Last-painted isolation root — paired with `lastRenderedScene` so
    * the dirty-rect optimization invalidates when the user enters or
@@ -765,7 +765,7 @@ export class Editor {
    * this, drilling into a group never triggers a redraw → the dim
    * pass would never visibly apply.
    */
-  private lastRenderedEnteredGroup: ElementId | null = null;
+  public lastRenderedEnteredGroup: ElementId | null = null;
 
   /**
    * Fractional-order compaction scheduler (microtask-coalesced).
@@ -808,7 +808,7 @@ export class Editor {
    * gestures, set in onDown when press lands on a shape and cleared
    * in onUp / cancel.
    */
-  private dragElementId: ElementId | null = null;
+  public dragElementId: ElementId | null = null;
 
   /**
    * Element that the current press added to the selection additively
@@ -817,7 +817,7 @@ export class Editor {
    * otherwise `SELECT_TOGGLE` it straight back off, so it consults this
    * to skip that redundant toggle. Reset at every press-down.
    */
-  private additivePressAdded: ElementId | null = null;
+  public additivePressAdded: ElementId | null = null;
 
   /**
    * Live container highlight: the container shape the dragged item is
@@ -825,7 +825,7 @@ export class Editor {
    * accent rect on the container's drop-zone so the user knows where
    * the shape will land after release.
    */
-  private containerHover: { id: ElementId; dropZone: Bounds } | null = null;
+  public containerHover: { id: ElementId; dropZone: Bounds } | null = null;
 
   /**
    * Remote peer cursors / selections, pushed in by the host (typically
@@ -833,14 +833,14 @@ export class Editor {
    * editor only renders them; it doesn't fetch or interpret. Each
    * setter triggers `render()` so the overlay updates immediately.
    */
-  private _peerCursors: readonly PeerCursor[] = [];
-  private _peerSelections: readonly PeerSelection[] = [];
+  public _peerCursors: readonly PeerCursor[] = [];
+  public _peerSelections: readonly PeerSelection[] = [];
 
   /**
    * Subscribers notified on every host pointer move (world-space). Used
    * by `@collab` to broadcast the local cursor into awareness.
    */
-  private readonly cursorListeners = new Set<(point: Vec2) => void>();
+  public readonly cursorListeners = new Set<(point: Vec2) => void>();
 
   /**
    * Active screen-space pointer positions keyed by `pointerId`. With
@@ -848,10 +848,10 @@ export class Editor {
    * two or more entries we enter a pinch / pan gesture and bypass the
    * interaction machine — `pinchOrigin` holds the baseline.
    */
-  private readonly activePointers = new Map<number, Vec2>();
+  public readonly activePointers = new Map<number, Vec2>();
   // Pinch gesture state lives in PinchController (./editor/pinch.ts)
   // — `pinch.isActive()` replaces the old `pinchOrigin !== null` check.
-  private pinch!: PinchController;
+  public pinch!: PinchController;
   /** Bridge for `editor/container-ops.ts`. Built lazily in constructor. */
   private containerOpsRef!: ContainerOpsRef;
 
@@ -861,7 +861,7 @@ export class Editor {
    * "grab" / "grabbing". Wires a window-level keydown/keyup listener
    * in `bindPointerEvents`.
    */
-  private spaceHeld = false;
+  public spaceHeld = false;
 
   /**
    * Host-supplied tile compositor — when set (via
@@ -869,7 +869,7 @@ export class Editor {
    * render path delegates to it instead of `renderScene`. Stays
    * `null` for the typical small-scene case.
    */
-  private readonly tileComposeFn: TileComposeFn | null;
+  public readonly tileComposeFn: TileComposeFn | null;
 
   /**
    * Per-shape change record (before/after world bbox) since the last
@@ -879,7 +879,7 @@ export class Editor {
    * (A plain id set lost adds — new id wasn't in the tile reverse
    * index yet.)
    */
-  private tileDirtyElements: Map<ElementId, { before: Bounds | null; after: Bounds | null }> =
+  public tileDirtyElements: Map<ElementId, { before: Bounds | null; after: Bounds | null }> =
     new Map();
 
   /**
@@ -914,7 +914,7 @@ export class Editor {
    * only treat right-click releases as potential context-menu
    * triggers (Space + left-drag never opens a menu).
    */
-  private panGesture: {
+  public panGesture: {
     pointerId: number;
     button: number;
     startPoint: Vec2;
@@ -928,10 +928,10 @@ export class Editor {
    * (the gesture decides whether to fire the menu manually on
    * pointerup based on whether the user dragged).
    */
-  private suppressNextContextMenu = false;
+  public suppressNextContextMenu = false;
 
   /** Cursor style we set on the host while a pan gesture is in flight. */
-  private previousHostCursor: string | null = null;
+  public previousHostCursor: string | null = null;
 
   /**
    * Long-press tracking. Starts on `pointerdown`; cancelled on
@@ -942,7 +942,7 @@ export class Editor {
   // Long-press timer + origin live in LongPressController
   // (./editor/long-press.ts). The Set of subscribers stays here
   // because `onLongPress` is part of the public Editor API.
-  private longPress!: LongPressController;
+  public longPress!: LongPressController;
   private readonly longPressListeners = new Set<
     (payload: { screenPoint: Vec2; worldPoint: Vec2 }) => void
   >();
@@ -964,12 +964,12 @@ export class Editor {
   private readonly edgeHandleHitSlop: number;
   private readonly edgeHitThreshold: number;
   /** Link-start anchor-dot grab/click hit radii — touch-enlarged in touch mode. */
-  private readonly anchorStartHitSlop: number;
-  private readonly anchorClickRadius: number;
+  public readonly anchorStartHitSlop: number;
+  public readonly anchorClickRadius: number;
 
-  private readonly _history: HistoryProvider;
+  public readonly _history: HistoryProvider;
   /** Open transaction during a single drag/resize gesture. */
-  private gestureTx: TransactionHandle | null = null;
+  public gestureTx: TransactionHandle | null = null;
   /**
    * Immutable snapshot of `_scene` taken when a gesture transaction opens.
    * The history transaction only records patches for undo — cancelling it does
@@ -2543,7 +2543,7 @@ export class Editor {
   private selectionRoots(): readonly Element[] {
     return selectionRoots(this._scene, this._selection);
   }
-  private expandSelectionWithDescendants(): ReadonlySet<ElementId> {
+  public expandSelectionWithDescendants(): ReadonlySet<ElementId> {
     return expandSelectionWithDescendants(this._scene, this._selection);
   }
   focusCycle(direction: "next" | "prev"): void {
@@ -3030,7 +3030,7 @@ export class Editor {
    * events arrive even outside the host bounds, cancel anything the
    * machine might have started this tick, and switch the cursor.
    */
-  private beginPanGesture(pointerId: number, button: number, point: Vec2): void {
+  public beginPanGesture(pointerId: number, button: number, point: Vec2): void {
     this.actor.send({ type: "POINTER_CANCEL" });
     this.cancelGesture();
     this.cancelLongPress();
@@ -3056,7 +3056,7 @@ export class Editor {
    * menu opens at the click position — that's the "right-click =
    * menu, right-drag = pan" decision rule.
    */
-  private endPanGesture(): void {
+  public endPanGesture(): void {
     const gesture = this.panGesture;
     this.panGesture = null;
     if (gesture && (gesture.button === 2 || gesture.button === 1) && !gesture.moved) {
@@ -3083,24 +3083,24 @@ export class Editor {
     }
   }
 
-  private isDrawingPhase(ctx: InteractionContext): boolean {
+  public isDrawingPhase(ctx: InteractionContext): boolean {
     return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse" || ctx.mode === "draw-edge";
   }
 
   // --- Long-press --- (controller in `./editor/long-press.ts`)
 
-  private startLongPress(screenPoint: Vec2): void {
+  public startLongPress(screenPoint: Vec2): void {
     this.longPress.start(screenPoint);
   }
-  private cancelLongPress(): void {
+  public cancelLongPress(): void {
     this.longPress.cancel();
   }
 
   // --- Pinch gesture --- (controller in `./editor/pinch.ts`)
-  private beginPinch(): void {
+  public beginPinch(): void {
     this.pinch.begin([...this.activePointers.values()]);
   }
-  private applyPinch(): void {
+  public applyPinch(): void {
     this.pinch.apply([...this.activePointers.values()]);
   }
 
@@ -3124,7 +3124,7 @@ export class Editor {
    * endpoint handle and shadow the element beneath it, blocking re-binding.
    * `undefined` → dropped on empty space (the end stays a free point).
    */
-  private linkAttachTargetAt(worldPoint: Vec2): PressTarget | undefined {
+  public linkAttachTargetAt(worldPoint: Vec2): PressTarget | undefined {
     const shape = this.acceleratedElementAt(worldPoint);
     if (shape && this.isElementInteractable(shape)) {
       const target = this.promoteToGroupRoot(shape);
@@ -3133,7 +3133,7 @@ export class Editor {
     return undefined;
   }
 
-  private hitTest(worldPoint: Vec2): PressTarget {
+  public hitTest(worldPoint: Vec2): PressTarget {
     return pickPressTarget(worldPoint, {
       scene: this._scene,
       selection: this._selection,
@@ -3225,11 +3225,11 @@ export class Editor {
    * selected, you can see".
    */
   // Body moved to `./editor/shape-filters.ts`.
-  private computeHiddenElements(): ReadonlySet<ElementId> | undefined {
+  public computeHiddenElements(): ReadonlySet<ElementId> | undefined {
     return computeHiddenElementsPure(this._scene);
   }
 
-  private computeDimElements(enteredGroupId: ElementId): ReadonlySet<ElementId> {
+  public computeDimElements(enteredGroupId: ElementId): ReadonlySet<ElementId> {
     return computeDimElementsHelper(this._scene, this._selection, enteredGroupId);
   }
 
@@ -3254,7 +3254,7 @@ export class Editor {
    * scene-identity. Scene operations replace `_scene` (immutable patches), 
    * so reference-equality is a sufficient invalidation signal.
    */
-  private acceleratedElementAt(worldPoint: Vec2): Element | undefined {
+  public acceleratedElementAt(worldPoint: Vec2): Element | undefined {
     if (this._scene.elements.size < LARGE_SCENE_HIT_THRESHOLD) {
       return getElementAt(this._scene, worldPoint);
     }
@@ -3271,7 +3271,7 @@ export class Editor {
    * renderer pass (passed to `renderScene` as `spatialIndex`), so
    * the grid build cost is amortised across both consumers.
    */
-  private ensureSpatialIndex(): SpatialGrid {
+  public ensureSpatialIndex(): SpatialGrid {
     const cached = this.spatialIndexCache;
     if (cached && cached.scene === this._scene) return cached.index;
     const index = buildSpatialIndex(this._scene);
@@ -3300,7 +3300,7 @@ export class Editor {
    * regardless of result, so subsequent calls can detect a double-
    * click against this event.
    */
-  private routeIsolationClick(clickEffect: InteractionEmit | null, worldPoint: Vec2): boolean {
+  public routeIsolationClick(clickEffect: InteractionEmit | null, worldPoint: Vec2): boolean {
     const now = performance.now();
     const isDouble =
       now - this.lastClickAt < DOUBLE_CLICK_MS &&
@@ -3381,7 +3381,7 @@ export class Editor {
     return pickDrillTargetHelper(this._scene, raw, top, this._enteredGroup);
   }
 
-  private applyEmit(emit: InteractionEmit): void {
+  public applyEmit(emit: InteractionEmit): void {
     switch (emit.type) {
       case "SELECT_REPLACE":
         this._selection = Selection.single(emit.id);
@@ -3579,7 +3579,7 @@ export class Editor {
   }
 
   // Body moved to `./editor/viewport-helpers.ts`.
-  private computeViewportWorld(): Bounds | null {
+  public computeViewportWorld(): Bounds | null {
     return computeViewportWorldPure(this._scene);
   }
 
@@ -3594,7 +3594,7 @@ export class Editor {
    * nothing changed; renderScene will cull every shape via its
    * `dirtyWorld` filter — effectively a no-op main pass.
    */
-  private computeDirtyWorld(): Bounds | null {
+  public computeDirtyWorld(): Bounds | null {
     const prev = this.lastRenderedScene;
     const next = this._scene;
     if (!prev) return null;
@@ -3756,7 +3756,7 @@ export class Editor {
   }
 
   // Bodies moved to `./editor/viewport-helpers.ts`.
-  private combinedSelectionBounds(): Bounds | null {
+  public combinedSelectionBounds(): Bounds | null {
     return combinedSelectionBoundsPure(this._scene, this._selection);
   }
   private groupChildrenUnion(groupId: ElementId): Bounds | null {
@@ -3770,7 +3770,7 @@ export class Editor {
    * 8-handle / free-aspect behaviour (matches user expectation:
    * grouping is the explicit "lock the ratio" gesture).
    */
-  private selectionIsAspectLocked(): boolean {
+  public selectionIsAspectLocked(): boolean {
     if (this._selection.size === 0) return false;
     if (this._selection.size === 1) {
       const [only] = [...this._selection];
@@ -3974,7 +3974,7 @@ export class Editor {
    * the same kind). Direction is source → new; the new element becomes the
    * selection. Element + link land in one undo step.
    */
-  private createLinkedElementFromAnchor(fromElement: ElementId, anchorName: string): void {
+  public createLinkedElementFromAnchor(fromElement: ElementId, anchorName: string): void {
     const src = getElement(this._scene, fromElement);
     if (!src) return;
     const anchor: AnchorRef = { kind: "named", name: anchorName };
@@ -4491,7 +4491,7 @@ export class Editor {
     this.notify();
   }
 
-  private updateHoveredLinkTarget(worldPoint: Vec2): void {
+  public updateHoveredLinkTarget(worldPoint: Vec2): void {
     const shape = this.acceleratedElementAt(worldPoint);
     if (!shape) {
       if (this.hoveredLinkTarget !== null) {
@@ -4542,7 +4542,7 @@ export class Editor {
   }
 
   // Pure body in `./editor/applies/edge.ts`.
-  private applyLinkPreview(fromElement: ElementId | null, fromPoint: Vec2, toPoint: Vec2): void {
+  public applyLinkPreview(fromElement: ElementId | null, fromPoint: Vec2, toPoint: Vec2): void {
     const ep = computeLinkPreviewEndpoints(this._scene, fromElement, fromPoint, toPoint);
     // Match the preview to the connector that will be committed: when new
     // links default to elbow, draw the orthogonal route, not a straight line.
@@ -4570,7 +4570,7 @@ export class Editor {
     if (this.gestureTx === null) this.gestureStartScene = apply(this._scene, invert(patch));
     this.gestures.record(patch);
   }
-  private commitGesture(): void {
+  public commitGesture(): void {
     this._resizeOriginElement = null;
     this.gestures.commit();
     this.gestureStartScene = null;
@@ -4596,7 +4596,7 @@ export class Editor {
   // Pure body in `./editor/container-ops.ts`. Editor exposes a
   // small `ContainerOpsRef` bridge so the module can mutate scene
   // + push patches into the running gesture transaction.
-  private applyContainerDrop(worldPoint: Vec2): void {
+  public applyContainerDrop(worldPoint: Vec2): void {
     applyContainerDropPure(this.containerOpsRef, worldPoint);
   }
 
@@ -4623,7 +4623,7 @@ export class Editor {
   }
 
   // Body moved to `./editor/gesture-tx.ts`.
-  private cancelGesture(): void {
+  public cancelGesture(): void {
     this._resizeOriginElement = null;
     this.gestures.cancel();
     // Roll the scene back to the pre-gesture snapshot — cancelling the history
@@ -4650,7 +4650,7 @@ export class Editor {
     if (next !== null) this._selection = next;
   }
 
-  private notify(): void {
+  public notify(): void {
     this.scheduleRender();
     fanOutEvents(this.eventCache, this.events, this.observableSnapshot());
     for (const fn of this.listeners) fn();

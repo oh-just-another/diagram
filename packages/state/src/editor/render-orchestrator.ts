@@ -5,6 +5,7 @@ import {
   getLinkWaypointMidpoints,
   getElement,
   getElementWorldBounds,
+  isImage,
   type Scene,
 } from "@oh-just-another/scene";
 import { DEFAULT_LOD, renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
@@ -23,6 +24,7 @@ import {
   LINK_ATTACH_ANCHOR_OUTSET,
 } from "../constants.js";
 import type { ElementId, LinkId, Vec2 } from "@oh-just-another/types";
+import type { Editor } from "../editor.js";
 
 /**
  * Stable throwaway id for the transient shape-draw preview element. Never
@@ -35,21 +37,14 @@ const DRAW_PREVIEW_ELEMENT_ID = "__draw-preview__" as ElementId;
 const DRAW_PREVIEW_LINK_ID = "__draw-preview-link__" as LinkId;
 
 /**
- * Render orchestrator. ~130 lines of branching across:
- *   - background grid pass (if dedicated layer);
- *   - tile-cache vs full renderScene path;
- *   - overlay options builder (drawing / lasso preview, edge
- *     preview, hovered ports, group handles, container drop zone,
- *     brush stroke, edge endpoint drag, peer cursors, annotations).
- *
- * Kept in one file because the branching reads naturally top-down
- * and slicing into smaller helpers would just trade clarity for
- * file count. Same `editor: any` pragma as pointer-binding — this
- * is an "internal partial" of Editor; the single call site is in
- * editor.ts's own private `render()` wrapper.
+ * Render orchestrator: background grid pass, tile-cache vs full renderScene
+ * path, and the overlay options builder (drawing / lasso preview, edge
+ * preview, hovered ports, group handles, container drop zone, brush stroke,
+ * edge endpoint drag, peer cursors, annotations). Typed against the full
+ * `Editor` class via a type-only import erased at runtime; the single call
+ * site is editor.ts's own private `render()` wrapper.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const renderEditor = (editor: any): void => {
+export const renderEditor = (editor: Editor): void => {
   // Background layer (grid) — when the host gave us a dedicated target.
   // Otherwise the grid lives on mainTarget *before* shapes are drawn,
   // so renderScene's clear takes care of it.
@@ -395,7 +390,7 @@ export const renderEditor = (editor: any): void => {
   // prefers-reduced-motion. Signals a click resumes them.
   const gifBadges = [];
   for (const shape of editor._scene.elements.values()) {
-    if (shape.type === "image" && shape.animationKind && editor.isPlaybackPaused(shape.id)) {
+    if (isImage(shape) && shape.animationKind && editor.isPlaybackPaused(shape.id)) {
       gifBadges.push(getElementWorldBounds(shape));
     }
   }
