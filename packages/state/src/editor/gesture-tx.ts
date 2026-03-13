@@ -1,5 +1,5 @@
-import type { Patch } from "@oh-just-another/scene";
-import type { ElementId } from "@oh-just-another/types";
+import type { Link, Patch } from "@oh-just-another/scene";
+import type { Bounds, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
 import type { HistoryProvider, TransactionHandle } from "@oh-just-another/history";
 import type { Mode } from "../modes.js";
 
@@ -17,11 +17,17 @@ import type { Mode } from "../modes.js";
 export interface GestureRef {
   readonly history: HistoryProvider;
   gestureTx: TransactionHandle | null;
-  groupMoveOrigin: unknown;
-  groupLinkMoveOrigin: unknown;
-  groupResizeOrigin: unknown;
+  groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null;
+  groupLinkMoveOrigin: ReadonlyMap<LinkId, Link> | null;
+  groupResizeOrigin: {
+    readonly combined: Bounds;
+    readonly elements: ReadonlyMap<
+      ElementId,
+      { readonly position: Vec2; readonly bounds: Bounds; readonly scale: Vec2 }
+    >;
+  } | null;
   dragElementId: ElementId | null;
-  containerHover: { readonly id: ElementId } | null;
+  containerHover: { id: ElementId; dropZone: Bounds } | null;
   readonly toolLocked: boolean;
   readonly mode: Mode;
   setMode(mode: Mode): void;

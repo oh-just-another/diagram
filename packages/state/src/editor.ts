@@ -1018,22 +1018,19 @@ export class Editor {
         return self.groupMoveOrigin;
       },
       set groupMoveOrigin(v) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        self.groupMoveOrigin = v as any;
+        self.groupMoveOrigin = v;
       },
       get groupLinkMoveOrigin() {
         return self.groupLinkMoveOrigin;
       },
       set groupLinkMoveOrigin(v) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        self.groupLinkMoveOrigin = v as any;
+        self.groupLinkMoveOrigin = v;
       },
       get groupResizeOrigin() {
         return self.groupResizeOrigin;
       },
       set groupResizeOrigin(v) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        self.groupResizeOrigin = v as any;
+        self.groupResizeOrigin = v;
       },
       get dragElementId() {
         return self.dragElementId;
@@ -1045,8 +1042,7 @@ export class Editor {
         return self.containerHover;
       },
       set containerHover(v) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        self.containerHover = v as any;
+        self.containerHover = v;
       },
       get toolLocked() {
         return self._toolLocked;

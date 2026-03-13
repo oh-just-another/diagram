@@ -1333,3 +1333,6 @@
 
 ## 0.55.16
 - refactor(events): drop `any` from AnyListener marker
+
+## 0.55.17
+- refactor(state): type the editor param, drop `editor: any` (removes ~890 unsafe-* lint errors)
