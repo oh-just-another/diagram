@@ -40,6 +40,15 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/explicit-module-boundary-types": "off",
+      // This is a graphics codebase — template literals build SVG path /
+      // CSS transform / debug strings from numbers (and the odd boolean)
+      // constantly. `${n}` is exactly what `allowNumber` is for; wrapping
+      // every coordinate in `String()` is noise, not safety. Objects /
+      // any / nullish in templates are still errors.
+      "@typescript-eslint/restrict-template-expressions": [
+        "error",
+        { allowNumber: true, allowBoolean: true },
+      ],
       "no-console": ["warn", { allow: ["warn", "error"] }],
     },
   },

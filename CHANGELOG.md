@@ -1339,3 +1339,6 @@
 
 ## 0.55.18
 - refactor(state): drop the 4 `v as any` casts in the GestureRef proxy
+
+## 0.55.19
+- chore(lint): switch eslint to strictTypeChecked + apply autofixes
