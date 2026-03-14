@@ -77,7 +77,7 @@ export const buildTextElementAt = (
     fontFamily: TEXT_DEFAULT_FONT_FAMILY,
     fontSize: TEXT_DEFAULT_FONT_SIZE,
     style: { fill: TEXT_DEFAULT_FILL, textAlign: "left", textBaseline: "top" },
-  } as Element;
+  };
 };
 
 /** Generate a fresh shape id with the editor's nextId counter. */

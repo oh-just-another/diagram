@@ -8,7 +8,7 @@ export const actionBringToFront: Action = {
   // Cmd+] is bound to `bringForward`.
   hotkey: { key: "]", meta: true, shift: true },
   predicate: hasSelection,
-  perform: ({ editor }) => editor.bringToFront(),
+  perform: ({ editor }) => { editor.bringToFront(); },
 };
 
 export const actionSendToBack: Action = {
@@ -17,7 +17,7 @@ export const actionSendToBack: Action = {
   category: "z-order",
   hotkey: { key: "[", meta: true, shift: true },
   predicate: hasSelection,
-  perform: ({ editor }) => editor.sendToBack(),
+  perform: ({ editor }) => { editor.sendToBack(); },
 };
 
 export const actionBringForward: Action = {
@@ -26,7 +26,7 @@ export const actionBringForward: Action = {
   category: "z-order",
   hotkey: { key: "]", meta: true },
   predicate: hasSelection,
-  perform: ({ editor }) => editor.bringForward(),
+  perform: ({ editor }) => { editor.bringForward(); },
 };
 
 export const actionSendBackward: Action = {
@@ -35,7 +35,7 @@ export const actionSendBackward: Action = {
   category: "z-order",
   hotkey: { key: "[", meta: true },
   predicate: hasSelection,
-  perform: ({ editor }) => editor.sendBackward(),
+  perform: ({ editor }) => { editor.sendBackward(); },
 };
 
 export const zOrderActions: readonly Action[] = [

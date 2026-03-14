@@ -86,7 +86,7 @@ export const MainMenu = ({
     };
   }, [open]);
 
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => { setOpen(false); }, []);
 
   const containerStyle: CSSProperties = {
     position: "relative",
@@ -118,7 +118,7 @@ export const MainMenu = ({
         aria-controls={menuId}
         aria-label="Main menu"
         title="Main menu"
-        onClick={() => setOpen((p) => !p)}
+        onClick={() => { setOpen((p) => !p); }}
       >
         {trigger}
       </button>
@@ -305,7 +305,7 @@ const Toggle = <T extends string>({
             aria-checked={active}
             title={opt.label}
             aria-label={opt.label}
-            onClick={() => onChange(opt.value)}
+            onClick={() => { onChange(opt.value); }}
             style={{
               flex: 1,
               display: "inline-flex",

@@ -80,12 +80,12 @@ export const LayerPanel = ({ style, className }: LayerPanelProps) => {
             onActivate={() => editor?.setActiveLayer(layer.id)}
             onToggleVisible={() => editor?.toggleLayerVisibility(layer.id)}
             onToggleLock={() => editor?.toggleLayerLock(layer.id)}
-            onStartRename={() => setRenamingId(layer.id)}
+            onStartRename={() => { setRenamingId(layer.id); }}
             onCommitRename={(name) => {
               editor?.renameLayer(layer.id, name);
               setRenamingId(null);
             }}
-            onCancelRename={() => setRenamingId(null)}
+            onCancelRename={() => { setRenamingId(null); }}
             onDelete={
               layers.length > 1
                 ? () => {
@@ -172,8 +172,8 @@ const LayerRow = ({
         <input
           autoFocus
           defaultValue={layer.name}
-          onClick={(ev) => ev.stopPropagation()}
-          onBlur={(ev) => onCommitRename(ev.currentTarget.value)}
+          onClick={(ev) => { ev.stopPropagation(); }}
+          onBlur={(ev) => { onCommitRename(ev.currentTarget.value); }}
           onKeyDown={(ev) => {
             if (ev.key === "Enter") onCommitRename((ev.target as HTMLInputElement).value);
             else if (ev.key === "Escape") onCancelRename();

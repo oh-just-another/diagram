@@ -21,14 +21,14 @@ import {
 
 export interface SerializedFilesDocument {
   readonly version: 1;
-  readonly files: ReadonlyArray<{
+  readonly files: readonly {
     readonly id: string;
     readonly mime: string;
     readonly name?: string;
     readonly createdAt: number;
     /** base64-encoded bytes (no data-URL prefix). */
     readonly data: string;
-  }>;
+  }[];
 }
 
 export const serializeFiles = (scene: Scene): SerializedFilesDocument => {
@@ -52,7 +52,7 @@ export const stringifyFiles = (scene: Scene, indent: number | null = null): stri
 
 export const parseFiles = (json: string | SerializedFilesDocument): ReadonlyMap<FileId, BinaryFile> => {
   const doc = typeof json === "string" ? (JSON.parse(json) as SerializedFilesDocument) : json;
-  if (!doc || doc.version !== 1 || !Array.isArray(doc.files)) {
+  if (doc?.version !== 1 || !Array.isArray(doc.files)) {
     throw new Error("parseFiles: unsupported document version or shape");
   }
   const out = new Map<FileId, BinaryFile>();
@@ -96,5 +96,5 @@ const base64ToArrayBuffer = (b64: string): ArrayBuffer => {
     return bytes.buffer;
   }
   const buf = Buffer.from(b64, "base64");
-  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 };

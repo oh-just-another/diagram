@@ -112,7 +112,7 @@ export interface RenderSceneOptions {
    * re-rasterise. Without it the cache is treated as cold every
    * frame (defensive — better stale work than a stale visual).
    */
-  readonly layerCompositeCache?: LayerCompositeCache<unknown>;
+  readonly layerCompositeCache?: LayerCompositeCache;
   readonly dirtyLayerIds?: ReadonlySet<LayerId>;
   /**
    * Host-side layer rasteriser. Receives the layer id, the active

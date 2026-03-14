@@ -51,7 +51,7 @@ export interface RenderLinksOptions {
   * `drawImage` instead of re-stroking the path. Pass `undefined`
   * to opt out — the rest of renderLinks works unchanged.
   */
- readonly edgeBitmapCache?: LinkBitmapCache<unknown>;
+ readonly edgeBitmapCache?: LinkBitmapCache;
  /**
   * Host-side rasteriser: receives the edge, its world bbox, the
   * scene reference, and the active zoom bucket; returns the

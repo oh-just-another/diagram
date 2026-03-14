@@ -189,7 +189,7 @@ const fetchModuleBytes = async (
     const { fileURLToPath } = await import("node:url");
     const path = fileURLToPath(urlStr);
     const buf = await readFile(path);
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
   }
   const res = await fetch(source);
   if (!res.ok) {

@@ -99,8 +99,8 @@ export const exportPdf = async (
   });
 
   return new Promise<Uint8Array>((resolve, reject) => {
-    sink.on("finish", () => resolve(Buffer.concat(chunks)));
-    sink.on("error", (err) => reject(err));
+    sink.on("finish", () => { resolve(Buffer.concat(chunks)); });
+    sink.on("error", (err) => { reject(err); });
     doc.pipe(sink);
     doc.end();
   });

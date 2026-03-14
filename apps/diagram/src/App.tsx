@@ -207,7 +207,7 @@ export const App = () => {
     const onHide = () => {
       if (document.visibilityState === "hidden") autosave.flush();
     };
-    const onPageHide = () => autosave.flush();
+    const onPageHide = () => { autosave.flush(); };
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", onPageHide);
     return () => {

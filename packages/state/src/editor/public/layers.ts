@@ -13,7 +13,7 @@ import {
 } from "@oh-just-another/scene";
 import type { LayerId } from "@oh-just-another/types";
 import { layerId as castLayerId } from "@oh-just-another/types";
-import * as Selection from "../../selection.js";
+import type * as Selection from "../../selection.js";
 
 /**
  * Build a fresh top-of-stack layer + the patch that adds it. Caller

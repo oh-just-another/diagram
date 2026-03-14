@@ -254,7 +254,7 @@ const diffMapInto = <V>(
   }
   for (const [id, value] of after) {
     const prev = before.get(id);
-    if (prev !== value) target.set(id, value as unknown);
+    if (prev !== value) target.set(id, value);
   }
 };
 

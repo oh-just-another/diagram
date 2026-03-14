@@ -209,7 +209,7 @@ const PanelShell = ({
             aria-expanded={expanded}
             aria-label={expanded ? "Hide more properties" : "More properties"}
             title="More properties"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => { setExpanded((v) => !v); }}
           >
             <MoreVertical size={18} strokeWidth={1.75} aria-hidden />
           </button>
@@ -236,7 +236,7 @@ const LinkControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
   const ids = shapes.map((s) => s.id);
   const current = sharedString(shapes, (s) => (s as { href?: string }).href);
   const hasLink = shapes.some((s) => Boolean((s as { href?: string }).href));
-  const save = (raw: string): void => editor.setLink(ids, raw);
+  const save = (raw: string): void => { editor.setLink(ids, raw); };
   return (
     <Popover
       ariaLabel="Link"
@@ -271,17 +271,17 @@ const LinkControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
           <button
             type="button"
             className="du-sel-text-button"
-            onClick={() => save(inputRef.current?.value ?? "")}
+            onClick={() => { save(inputRef.current?.value ?? ""); }}
           >
             Save
           </button>
           {hasLink ? (
-            <button type="button" className="du-sel-text-button" onClick={() => editor.openLink(current)}>
+            <button type="button" className="du-sel-text-button" onClick={() => { editor.openLink(current); }}>
               Open
             </button>
           ) : null}
           {hasLink ? (
-            <button type="button" className="du-sel-text-button" onClick={() => editor.setLink(ids, null)}>
+            <button type="button" className="du-sel-text-button" onClick={() => { editor.setLink(ids, null); }}>
               Remove
             </button>
           ) : null}
@@ -402,7 +402,7 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
         <header className="du-sel-popover-label">Color</header>
         <ColorSwatchPicker
           value={color}
-          onChange={(v) => editor.updateStyle(ids, { fill: v ?? "transparent" })}
+          onChange={(v) => { editor.updateStyle(ids, { fill: v ?? "transparent" }); }}
         />
         <header className="du-sel-popover-label">Opacity</header>
         <Slider
@@ -412,7 +412,7 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
           step={5}
           ariaLabel="Opacity"
           valueLabel={pct === null ? "—" : `${pct}%`}
-          onChange={(v) => editor.updateStyle(ids, { opacity: v / 100 })}
+          onChange={(v) => { editor.updateStyle(ids, { opacity: v / 100 }); }}
         />
       </div>
     </Popover>
@@ -429,7 +429,7 @@ const FillControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
       label="Fill"
       ariaLabel="Fill color"
       color={value}
-      onChange={(v) => editor.updateStyle(ids, { fill: v ?? "transparent" })}
+      onChange={(v) => { editor.updateStyle(ids, { fill: v ?? "transparent" }); }}
     />
   );
 };
@@ -473,7 +473,7 @@ const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }
             label: p.label,
             icon: <span style={{ fontSize: 11, fontWeight: 600 }}>{p.label}</span>,
           }))}
-          onChange={(v) => editor.updateTextProps(ids, { fontSize: v })}
+          onChange={(v) => { editor.updateTextProps(ids, { fontSize: v }); }}
         />
         <Slider
           value={value}
@@ -482,7 +482,7 @@ const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }
           step={1}
           ariaLabel="Font size"
           valueLabel={value === null ? "—" : `${value}px`}
-          onChange={(v) => editor.updateTextProps(ids, { fontSize: v })}
+          onChange={(v) => { editor.updateTextProps(ids, { fontSize: v }); }}
         />
       </div>
     </Popover>
@@ -521,7 +521,7 @@ const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ElementBase[]
             aria-checked={f.value === value}
             className={`du-sel-menu-row${f.value === value ? " is-active" : ""}`}
             style={{ fontFamily: f.value }}
-            onClick={() => editor.updateTextProps(ids, { fontFamily: f.value })}
+            onClick={() => { editor.updateTextProps(ids, { fontFamily: f.value }); }}
           >
             {f.label}
           </button>
@@ -545,7 +545,7 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
         { value: "center", label: "Center", icon: <AlignCenter size={14} strokeWidth={1.75} /> },
         { value: "right", label: "Right", icon: <AlignRight size={14} strokeWidth={1.75} /> },
       ]}
-      onChange={(v) => editor.updateStyle(ids, { textAlign: v })}
+      onChange={(v) => { editor.updateStyle(ids, { textAlign: v }); }}
     />
   );
 };
@@ -615,25 +615,25 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
             active={allBold}
             label="Bold"
             icon={<Bold size={14} strokeWidth={1.75} />}
-            onClick={() => editor.updateStyle(ids, { fontWeight: allBold ? "normal" : "bold" })}
+            onClick={() => { editor.updateStyle(ids, { fontWeight: allBold ? "normal" : "bold" }); }}
           />
           <Toggle
             active={allItalic}
             label="Italic"
             icon={<Italic size={14} strokeWidth={1.75} />}
-            onClick={() => editor.updateStyle(ids, { fontStyle: allItalic ? "normal" : "italic" })}
+            onClick={() => { editor.updateStyle(ids, { fontStyle: allItalic ? "normal" : "italic" }); }}
           />
           <Toggle
             active={allUnderline}
             label="Underline"
             icon={<Underline size={14} strokeWidth={1.75} />}
-            onClick={() => setDecoration("underline", !allUnderline)}
+            onClick={() => { setDecoration("underline", !allUnderline); }}
           />
           <Toggle
             active={allStrike}
             label="Strikethrough"
             icon={<Strikethrough size={14} strokeWidth={1.75} />}
-            onClick={() => setDecoration("strikethrough", !allStrike)}
+            onClick={() => { setDecoration("strikethrough", !allStrike); }}
           />
         </div>
       </div>
@@ -651,7 +651,7 @@ const StrokeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) 
       label="Stroke"
       ariaLabel="Stroke color"
       color={value}
-      onChange={(v) => editor.updateStyle(ids, { stroke: v ?? "transparent" })}
+      onChange={(v) => { editor.updateStyle(ids, { stroke: v ?? "transparent" }); }}
     />
   );
 };
@@ -670,7 +670,7 @@ const StrokeWidthControl = ({ shapes }: { readonly shapes: readonly ElementBase[
         { value: 2, label: "Medium", icon: <StrokeWidthIcon thickness={2.5} /> },
         { value: 4, label: "Thick", icon: <StrokeWidthIcon thickness={4} /> },
       ]}
-      onChange={(v) => editor.updateStyle(ids, { strokeWidth: v })}
+      onChange={(v) => { editor.updateStyle(ids, { strokeWidth: v }); }}
     />
   );
 };
@@ -746,7 +746,7 @@ const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
             { value: "sharp", label: "Sharp", icon: <CornerIcon kind="sharp" /> },
             { value: "round", label: "Round", icon: <CornerIcon kind="round" /> },
           ]}
-          onChange={(v) => editor.updateStyle(ids, { roundness: { type: v } })}
+          onChange={(v) => { editor.updateStyle(ids, { roundness: { type: v } }); }}
         />
         {type === "round" ? (
           <>
@@ -775,7 +775,7 @@ const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
                 ariaLabel="Corner radius"
                 valueLabel={`${radius ?? 8}px`}
                 onChange={(v) =>
-                  editor.updateStyle(ids, { roundness: { type: "round", value: v } })
+                  { editor.updateStyle(ids, { roundness: { type: "round", value: v } }); }
                 }
               />
             ) : null}
@@ -821,7 +821,7 @@ const OpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
           step={5}
           ariaLabel="Opacity"
           valueLabel={label}
-          onChange={(v) => editor.updateStyle(ids, { opacity: v / 100 })}
+          onChange={(v) => { editor.updateStyle(ids, { opacity: v / 100 }); }}
         />
       </div>
     </Popover>
@@ -910,10 +910,10 @@ const LinkStrokeColorControl = ({ edge }: { readonly edge: Link }) => {
       ariaLabel="Link stroke color"
       color={color}
       onChange={(v) =>
-        editor.updateSelectedLink((e) => ({
+        { editor.updateSelectedLink((e) => ({
           ...e,
           style: { ...e.style, stroke: v ?? "transparent" },
-        }))
+        })); }
       }
     />
   );
@@ -933,10 +933,10 @@ const LinkStrokeWidthControl = ({ edge }: { readonly edge: Link }) => {
         { value: 4, label: "Thick", icon: <StrokeWidthIcon thickness={4} /> },
       ]}
       onChange={(v) =>
-        editor.updateSelectedLink((e) => ({
+        { editor.updateSelectedLink((e) => ({
           ...e,
           style: { ...e.style, strokeWidth: v },
-        }))
+        })); }
       }
     />
   );
@@ -983,7 +983,7 @@ const LinkLineKindControl = ({ edge }: { readonly edge: Link }) => {
         { value: "line", label: "Line", icon: <Minus size={14} strokeWidth={1.75} /> },
         { value: "block-arrow", label: "Block arrow", icon: <MoveRight size={14} strokeWidth={2.5} /> },
       ]}
-      onChange={(v) => editor.updateSelectedLink((e) => ({ ...e, lineKind: v }))}
+      onChange={(v) => { editor.updateSelectedLink((e) => ({ ...e, lineKind: v })); }}
     />
   );
 };
@@ -1002,7 +1002,7 @@ const LinkRoutingControl = ({ edge }: { readonly edge: Link }) => {
         { value: "bezier", label: "Curved", icon: <Spline size={14} strokeWidth={1.75} /> },
       ]}
       onChange={(v) =>
-        editor.updateSelectedLink((e) => ({ ...e, routing: v }))
+        { editor.updateSelectedLink((e) => ({ ...e, routing: v })); }
       }
     />
   );
@@ -1020,10 +1020,10 @@ const LinkArrowheadControl = ({
   if (!editor) return null;
   const current: ArrowheadStyle = edge.arrowheads?.[side] ?? "none";
   const pick = (style: ArrowheadStyle) =>
-    editor.updateSelectedLink((e) => ({
+    { editor.updateSelectedLink((e) => ({
       ...e,
       arrowheads: { ...(e.arrowheads ?? {}), [side]: style },
-    }));
+    })); };
   const Option = ({ style }: { readonly style: ArrowheadStyle }) => (
     <button
       type="button"
@@ -1031,7 +1031,7 @@ const LinkArrowheadControl = ({
       title={ARROWHEAD_LABELS[style]}
       aria-label={ARROWHEAD_LABELS[style]}
       aria-pressed={style === current}
-      onClick={() => pick(style)}
+      onClick={() => { pick(style); }}
     >
       {style === "none" ? (
         <span className="du-arrowhead-none">∅</span>
@@ -1066,7 +1066,7 @@ const LinkArrowheadControl = ({
           type="button"
           className="du-arrowhead-erd-toggle"
           aria-expanded={showErd}
-          onClick={() => setShowErd((v) => !v)}
+          onClick={() => { setShowErd((v) => !v); }}
         >
           {showErd ? "▾" : "▸"} ER diagram
         </button>
@@ -1091,7 +1091,7 @@ const LinkAutoRouteControl = () => {
       className="du-sel-icon-button"
       title="Route around shapes"
       aria-label="Route around shapes"
-      onClick={() => editor.autoRouteSelectedLink()}
+      onClick={() => { editor.autoRouteSelectedLink(); }}
     >
       <Waypoints size={14} strokeWidth={1.75} aria-hidden />
     </button>
@@ -1107,7 +1107,7 @@ const LinkDeleteControl = () => {
       className="du-sel-icon-button"
       title="Delete edge"
       aria-label="Delete edge"
-      onClick={() => editor.deleteSelected()}
+      onClick={() => { editor.deleteSelected(); }}
     >
       <Trash2 size={14} strokeWidth={1.75} aria-hidden />
     </button>
@@ -1235,8 +1235,8 @@ const ArrowheadGlyph = ({
       <polyline
         points={
           flipped
-            ? `${headCx + 3},${4} ${headCx},${7} ${headCx + 3},${10}`
-            : `${headCx - 3},${4} ${headCx},${7} ${headCx - 3},${10}`
+            ? `${headCx + 3},4 ${headCx},7 ${headCx + 3},10`
+            : `${headCx - 3},4 ${headCx},7 ${headCx - 3},10`
         }
         stroke="currentColor"
         strokeWidth={1.5}
@@ -1250,8 +1250,8 @@ const ArrowheadGlyph = ({
       <polygon
         points={
           flipped
-            ? `${headCx},${7} ${headBase},${4} ${headBase},${10}`
-            : `${headCx},${7} ${headBase},${4} ${headBase},${10}`
+            ? `${headCx},7 ${headBase},4 ${headBase},10`
+            : `${headCx},7 ${headBase},4 ${headBase},10`
         }
         fill="currentColor"
       />
@@ -1259,7 +1259,7 @@ const ArrowheadGlyph = ({
   } else if (fam === "diamond") {
     head = (
       <polygon
-        points={`${headCx},${4} ${headCx + (flipped ? -3 : 3)},${7} ${headCx},${10} ${headCx + (flipped ? 3 : -3)},${7}`}
+        points={`${headCx},4 ${headCx + (flipped ? -3 : 3)},7 ${headCx},10 ${headCx + (flipped ? 3 : -3)},7`}
         fill={kind === "filledRhombus" ? "currentColor" : "none"}
         stroke="currentColor"
         strokeWidth={1.2}
@@ -1341,7 +1341,7 @@ const sharedValue = <T,>(
   for (const s of elements) set.add(pick(s));
   if (set.size !== 1) return null;
   const v = set.values().next().value;
-  return v == null ? null : (v as T);
+  return v == null ? null : (v);
 };
 
 const sharedString = (

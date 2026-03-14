@@ -111,7 +111,7 @@ const Trigger = ({ tab, children }: { tab: string; children: ReactNode }) => {
     <button
       type="button"
       aria-pressed={isActive}
-      onClick={() => setActive(tab)}
+      onClick={() => { setActive(tab); }}
       style={{
         background: isActive ? "var(--accent, #1a73e8)" : "transparent",
         color: isActive ? "var(--surface, #fff)" : "var(--text, #ddd)",

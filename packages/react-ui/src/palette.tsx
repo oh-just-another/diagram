@@ -131,7 +131,7 @@ export const Palette = ({
               items={items}
               itemsClass={itemsClass}
               collapsed={collapsed.has(category)}
-              onToggle={() => toggle(category)}
+              onToggle={() => { toggle(category); }}
             />
           ))
         )}
@@ -208,7 +208,7 @@ export const subscribePaletteDrag = (fn: () => void): (() => void) => {
 /** Hook variant of `subscribePaletteDrag` — returns the current drag template. */
 export const usePaletteDrag = (): Template | null => {
   const [tmpl, setTmpl] = useState<Template | null>(activeDrag);
-  useEffect(() => subscribePaletteDrag(() => setTmpl(activeDrag)), []);
+  useEffect(() => subscribePaletteDrag(() => { setTmpl(activeDrag); }), []);
   return tmpl;
 };
 
@@ -302,7 +302,7 @@ export const usePalettePlacement = () => {
       placementRef.current = null;
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
   }, []);
 
   // If the drag ends outside any canvas — clean up.
@@ -409,7 +409,7 @@ export const usePalettePlacement = () => {
       void (async () => {
         for await (const file of walkDataTransfer(dt, {
           onError: (path, err) =>
-            console.warn(`[file-drop] failed at ${path}:`, err),
+            { console.warn(`[file-drop] failed at ${path}:`, err); },
         })) {
           void editor.dispatchFileDrop(file, target);
         }

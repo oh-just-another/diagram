@@ -50,7 +50,7 @@ export const ColorSwatchPicker = ({
           key={c}
           color={c}
           selected={normalise(c) === normalise(value)}
-          onClick={() => onChange(c === "transparent" ? null : c)}
+          onClick={() => { onChange(c === "transparent" ? null : c); }}
         />
       ))}
       {allowCustom ? (
@@ -66,7 +66,7 @@ export const ColorSwatchPicker = ({
           type="button"
           aria-label="Clear colour"
           title="Clear colour"
-          onClick={() => onChange(null)}
+          onClick={() => { onChange(null); }}
           className="du-swatch du-swatch-clear"
         >
           <span className="du-swatch-fill du-swatch-fill-blank">
@@ -143,7 +143,7 @@ const CustomSwatch = ({
           onChange(ev.target.value);
           onOpenChange(false);
         }}
-        onClick={() => onOpenChange(!open)}
+        onClick={() => { onOpenChange(!open); }}
         className="du-swatch-color-input"
       />
     </label>

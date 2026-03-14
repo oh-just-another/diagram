@@ -150,7 +150,7 @@ const hydrateElement = (s: SceneDocument["elements"][number], id: ElementId): El
 const hydrateLink = (e: SceneDocument["links"][number], id: LinkId): Link => {
   const hydrateEndpoint = (ep: SceneDocument["links"][number]["from"]): Link["from"] => {
     if (ep.kind === "anchor" || ep.kind === "outline" || ep.kind === "floating") {
-      return { ...ep, elementId: elementId(ep.elementId) } as Link["from"];
+      return { ...ep, elementId: elementId(ep.elementId) };
     }
     return ep;
   };

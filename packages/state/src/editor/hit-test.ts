@@ -11,7 +11,7 @@ import type { AnnotationId, LayerId, ElementId, Vec2 } from "@oh-just-another/ty
 import { ALL_HANDLES, CORNER_HANDLES, hitHandle } from "../handle.js";
 import { isResizable, resizeHandlesFor } from "../overlay.js";
 import type { PressTarget } from "../machine.js";
-import * as Selection from "../selection.js";
+import type * as Selection from "../selection.js";
 import { getElement } from "@oh-just-another/scene";
 
 /** Local helper — keeps this module dependency-free of `@math`. */

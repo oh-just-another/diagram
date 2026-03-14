@@ -18,7 +18,7 @@ export const parseWebGL2Color = (color: Color | null): [number, number, number, 
     return [r / 255, g / 255, b / 255, a];
   } catch {
     if (typeof console !== "undefined") {
-      // eslint-disable-next-line no-console
+
       console.warn(`[WebGL2Target] cannot parse color '${color}', falling back to black`);
     }
     return [0, 0, 0, 1];

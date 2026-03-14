@@ -5,7 +5,7 @@ export const actionSelectAll: Action = {
   label: "Select all",
   category: "selection",
   hotkey: { key: "a", meta: true },
-  perform: ({ editor }) => editor.selectAll(),
+  perform: ({ editor }) => { editor.selectAll(); },
 };
 
 export const actionDeleteSelection: Action = {
@@ -14,7 +14,7 @@ export const actionDeleteSelection: Action = {
   category: "selection",
   hotkey: [{ key: "Delete" }, { key: "Backspace" }],
   predicate: hasSelectionOrLink,
-  perform: ({ editor }) => editor.deleteSelected(),
+  perform: ({ editor }) => { editor.deleteSelected(); },
 };
 
 export const actionDuplicateSelection: Action = {
@@ -23,7 +23,7 @@ export const actionDuplicateSelection: Action = {
   category: "selection",
   hotkey: { key: "d", meta: true },
   predicate: hasSelection,
-  perform: ({ editor }) => editor.duplicateSelected(),
+  perform: ({ editor }) => { editor.duplicateSelected(); },
 };
 
 export const selectionActions: readonly Action[] = [

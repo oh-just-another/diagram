@@ -75,7 +75,7 @@ export const useCollab = (editor: Editor | null): CollabAPI => {
       setCredentials(readCredentialsFromHash());
     };
     window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    return () => { window.removeEventListener("hashchange", onHashChange); };
   }, []);
 
   useEffect(() => {
@@ -85,7 +85,7 @@ export const useCollab = (editor: Editor | null): CollabAPI => {
 
     void (async () => {
       const key = await importRoomKey(credentials.keyBase64).catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.warn("[collab] invalid key in URL hash:", err);
         return null;
       });

@@ -146,7 +146,7 @@ export const readFileAsDataURL = (file: File): Promise<string> =>
       else reject(new Error(`Unexpected FileReader result type for ${file.name}`));
     };
     reader.onerror = () =>
-      reject(reader.error ?? new Error(`Failed to read ${file.name}`));
+      { reject(reader.error ?? new Error(`Failed to read ${file.name}`)); };
     reader.readAsDataURL(file);
   });
 
@@ -160,7 +160,7 @@ export const readFileAsText = (file: File): Promise<string> =>
       else reject(new Error(`Unexpected FileReader result type for ${file.name}`));
     };
     reader.onerror = () =>
-      reject(reader.error ?? new Error(`Failed to read ${file.name}`));
+      { reject(reader.error ?? new Error(`Failed to read ${file.name}`)); };
     reader.readAsText(file);
   });
 

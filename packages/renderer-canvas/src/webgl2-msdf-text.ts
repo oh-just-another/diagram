@@ -361,7 +361,7 @@ const link = (
   vert: WebGLShader,
   frag: WebGLShader,
 ): WebGLProgram => {
-  const program = gl.createProgram()!;
+  const program = gl.createProgram();
   gl.attachShader(program, vert);
   gl.attachShader(program, frag);
   gl.linkProgram(program);

@@ -56,7 +56,7 @@ const stripTransientMetadata = <
     animationData?: unknown;
   };
   if (hasTransientMeta) {
-    const { image: _image, ...rest } = md!;
+    const { image: _image, ...rest } = md;
     void _image;
     if (Object.keys(rest).length > 0) next.metadata = rest;
     else delete next.metadata;

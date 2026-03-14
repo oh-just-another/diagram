@@ -21,11 +21,11 @@ import {
 } from "./constants.js";
 
 /**
- * `<Tooltip>` — modern-style hover hint with a *shared* timer so a
- * second hover within `TOOLTIP_SKIP_DELAY_MS` after the first one
- * opens skips the delay entirely. The browser's native `title=`
- * attribute is too slow (≈700 ms, OS-controlled) and impossible to
- * style, so toolbar items pipe their hint through this instead.
+ * `<Tooltip>` — hover hint with a *shared* timer so a second hover within
+ * `TOOLTIP_SKIP_DELAY_MS` after the first one opens skips the delay
+ * entirely. The browser's native `title=` attribute is too slow (≈700 ms,
+ * OS-controlled) and impossible to style, so toolbar items pipe their hint
+ * through this instead.
  *
  * Usage:
  *
@@ -36,15 +36,14 @@ import {
  *     </Tooltip>
  *   </TooltipProvider>
  *
- * The provider is required — without it `<Tooltip>` falls back to
- * the native `title` attribute (degraded but functional). One
- * provider per app: child timers share state so the "skip delay"
- * window survives moving the pointer between buttons.
+ * The provider is required — without it `<Tooltip>` falls back to the
+ * native `title` attribute (degraded but functional). One provider per
+ * app: child timers share state so the "skip delay" window survives moving
+ * the pointer between buttons.
  *
- * Singleton state lives in module scope so tooltip events from any
- * subtree converge on the same timer, identical to standard's
- * `TooltipManager`. Subscribers (the `<TooltipPortal>` rendered by
- * the provider) listen via `useSyncExternalStore`-style hooks.
+ * Singleton state lives in module scope so tooltip events from any subtree
+ * converge on the same timer. Subscribers (the `<TooltipPortal>` rendered
+ * by the provider) listen via `useSyncExternalStore`-style hooks.
  */
 
 interface TooltipTarget {
@@ -110,7 +109,7 @@ const requestClose = (id: string): void => {
     clearTimeout(openTimer);
     openTimer = null;
   }
-  if (currentTarget && currentTarget.id === id) {
+  if (currentTarget?.id === id) {
     if (hideTimer) clearTimeout(hideTimer);
     hideTimer = setTimeout(() => {
       hideTimer = null;
@@ -138,8 +137,8 @@ const forceClose = (): void => {
 
 /** Provider — install once near the app root. Renders the portal. */
 export const TooltipProvider = ({ children }: { readonly children: ReactNode }) => {
-  // pointerdown anywhere closes — matches standard and standard.
-  // Capture phase so we beat the rest of the app to the event.
+  // pointerdown anywhere closes. Capture phase so we beat the rest of the
+  // app to the event.
   useEffect(() => {
     const onDown = (): void => {
       pointerDown = true;
@@ -173,8 +172,8 @@ const TooltipProviderCtx = createContext<boolean>(false);
 const useHasProvider = (): boolean => useContext(TooltipProviderCtx);
 
 /**
- * Internal — the singleton tooltip surface. Renders via portal into
- * `document.body` so it can sit above modal overlays.
+ * The singleton tooltip surface. Renders via portal into `document.body`
+ * so it can sit above modal overlays.
  */
 const TooltipPortal = () => {
   const [target, setTargetState] = useState<TooltipTarget | null>(null);
@@ -244,16 +243,16 @@ export interface TooltipProps {
 }
 
 /**
- * Wrap a single element to attach a shared-state tooltip. Returns
- * the child with mouse / focus handlers spliced in — the trigger's
- * existing handlers are preserved.
+ * Wrap a single element to attach a shared-state tooltip. Returns the
+ * child with mouse / focus handlers spliced in — the trigger's existing
+ * handlers are preserved.
  */
 export const Tooltip = ({ content, side = "bottom", disabled, children }: TooltipProps) => {
   const id = useId();
   const hasProvider = useHasProvider();
 
-  // Fall back to native title= when there's no provider (degraded
-  // but functional — keeps stories / isolated tests working).
+  // Fall back to native title= when there's no provider (degraded but
+  // functional — keeps stories / isolated tests working).
   if (!hasProvider || disabled || content === undefined || content === null) {
     if (!isValidElement(children)) return children;
     if (typeof content === "string" && !disabled) {
@@ -308,4 +307,3 @@ export const Tooltip = ({ content, side = "bottom", disabled, children }: Toolti
     title: undefined,
   });
 };
-

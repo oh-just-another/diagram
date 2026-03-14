@@ -55,7 +55,7 @@ export const computeSetLink = (
   const patches: Patch[] = [];
   for (const id of targetIds) {
     const r = updateElement(s, id, (sh) => {
-      const next = { ...sh } as Element & { href?: string };
+      const next = { ...sh };
       if (href === null) delete next.href;
       else next.href = href;
       return next;

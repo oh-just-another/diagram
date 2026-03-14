@@ -16,7 +16,7 @@ export const LinkCaptionEditor = () => {
 
   useEffect(() => {
     if (!editor) return undefined;
-    return editor.on("change", () => bump());
+    return editor.on("change", () => { bump(); });
   }, [editor]);
 
   const editingId = editor?.editingLinkCaption ?? null;
@@ -30,7 +30,7 @@ export const LinkCaptionEditor = () => {
       inputRef.current?.focus();
       inputRef.current?.select();
     }, 0);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); };
   }, [editor, editingId]);
 
   if (!editor || editingId === null) return null;
@@ -44,7 +44,7 @@ export const LinkCaptionEditor = () => {
   const sx = (world.x - v.pan.x) * v.zoom + hostRect.left;
   const sy = (world.y - v.pan.y) * v.zoom + hostRect.top;
 
-  const commit = () => editor.commitLinkCaptionEdit(value);
+  const commit = () => { editor.commitLinkCaptionEdit(value); };
 
   return createPortal(
     <input
@@ -59,7 +59,7 @@ export const LinkCaptionEditor = () => {
         transform: "translate(-50%, -50%)",
         zIndex: 1602,
       }}
-      onChange={(e) => setValue(e.target.value)}
+      onChange={(e) => { setValue(e.target.value); }}
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === "Enter") {

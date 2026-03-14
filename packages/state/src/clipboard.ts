@@ -53,7 +53,7 @@ export const cloneElementForClipboard = (shape: Element): Element => {
     delete m.image;
     stripped.metadata = m;
   }
-  const cloned = structuredClone(stripped) as Record<string, unknown>;
+  const cloned = structuredClone(stripped);
   if (liveImage !== undefined) {
     cloned.metadata = { ...(cloned.metadata as Record<string, unknown> | undefined), image: liveImage };
   }

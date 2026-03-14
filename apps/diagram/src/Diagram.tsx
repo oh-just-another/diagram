@@ -147,8 +147,8 @@ export interface DiagramProps {
   // --- Plugins ---
   readonly templates?: readonly Template[];
   readonly fileDropHandlers?: readonly FileDropHandler[];
-  readonly layoutKinds?: readonly LayoutKindEntry<unknown>[];
-  readonly animationAdapters?: readonly AnimatedSourceAdapter<unknown>[];
+  readonly layoutKinds?: readonly LayoutKindEntry[];
+  readonly animationAdapters?: readonly AnimatedSourceAdapter[];
 
   // --- Imperative API ---
   readonly apiRef?: React.Ref<DiagramAPI>;
@@ -341,7 +341,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
               // Settle even on failure so a text-bearing scene still
               // mounts (with the fallback font) instead of hanging.
               setWasmTextSettled(true);
-              // eslint-disable-next-line no-console
+               
               console.warn("[diagram] WASM text shaper load failed", err);
             },
           ),
@@ -356,7 +356,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
               setWasmRaster(r);
             },
             (err) => {
-              // eslint-disable-next-line no-console
+               
               console.warn("[diagram] WASM rasterizer load failed", err);
             },
           ),
@@ -437,7 +437,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
       return undefined;
     }
     document.documentElement.setAttribute("data-theme", theme);
-    return () => document.documentElement.removeAttribute("data-theme");
+    return () => { document.documentElement.removeAttribute("data-theme"); };
   }, [theme]);
 
   if (!profile) {
@@ -574,7 +574,7 @@ const EditorShell = ({
   // toggle and closed via its ✕. Starts closed; no dock / pin.
   const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  useHelpDialogHotkey(() => setHelpOpen((v) => !v));
+  useHelpDialogHotkey(() => { setHelpOpen((v) => !v); });
 
   // Layout (left → right): templates library overlay at the window
   // edge, then the floating vertical creation toolbar, then the canvas.
@@ -599,7 +599,7 @@ const EditorShell = ({
               label: <LibraryIcon {...buttonIcon} />,
               title: "Templates library",
               active: libraryOpen,
-              onClick: () => setLibraryOpen((v) => !v),
+              onClick: () => { setLibraryOpen((v) => !v); },
             },
             { kind: "divider" },
             ...DEFAULT_VERTICAL_TOOLBAR,
@@ -682,7 +682,7 @@ const EditorShell = ({
                     <MainMenu.Group title="File">
                       <MainMenu.Item
                         icon={<FileUp {...menuIcon} />}
-                        onClick={() => openSceneFile(editor)}
+                        onClick={() => { openSceneFile(editor); }}
                       >
                         Open…
                       </MainMenu.Item>
@@ -849,7 +849,7 @@ const EditorShell = ({
                     <MainMenu.Group title="Grid">
                       <MainMenu.Toggle<"lines" | "dots" | "off">
                         value={gridSelection(editor)}
-                        onChange={(next) => applyGridSelection(editor, next)}
+                        onChange={(next) => { applyGridSelection(editor, next); }}
                         options={[
                           { value: "lines", label: "Lines", icon: <Grid3x3 {...toggleIcon} /> },
                           { value: "dots", label: "Dots", icon: <Grip {...toggleIcon} /> },
@@ -862,7 +862,7 @@ const EditorShell = ({
                       <MainMenu.Item
                         icon={<HelpCircle {...menuIcon} />}
                         shortcut="?"
-                        onClick={() => setHelpOpen(true)}
+                        onClick={() => { setHelpOpen(true); }}
                       >
                         Hotkeys
                       </MainMenu.Item>
@@ -933,7 +933,7 @@ const EditorShell = ({
               <LibraryPanel
                 open
                 sheet
-                onClose={() => setLibraryOpen(false)}
+                onClose={() => { setLibraryOpen(false); }}
                 {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
               />
             </BottomSheet>
@@ -943,7 +943,7 @@ const EditorShell = ({
             open={libraryOpen}
             side="left"
             style={{ left: 0 }}
-            onClose={() => setLibraryOpen(false)}
+            onClose={() => { setLibraryOpen(false); }}
             {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
           />
         )}
@@ -960,7 +960,7 @@ const EditorShell = ({
       {/* Standalone HelpDialog for hotkey activation — only renders
           when the `?` hotkey opens it without going through the
           button. HelpButton manages its own copy when clicked. */}
-      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HelpDialog open={helpOpen} onClose={() => { setHelpOpen(false); }} />
 
       {void editor}
     </div>
@@ -993,13 +993,13 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
   const [, force] = useState(0);
   useEffect(() => {
     if (!editor) return undefined;
-    return editor.subscribe(() => force((n) => n + 1));
+    return editor.subscribe(() => { force((n) => n + 1); });
   }, [editor]);
   if (!editor) return null;
   const zoom = editor.scene.viewport.zoom;
   return (
     <ButtonGroup ariaLabel="Zoom">
-      <IconButton label={`Zoom out (${ZOOM_OUT_HOTKEY})`} onClick={() => editor.zoomOut()}>
+      <IconButton label={`Zoom out (${ZOOM_OUT_HOTKEY})`} onClick={() => { editor.zoomOut(); }}>
         <Minus {...buttonIcon} />
       </IconButton>
       <Tooltip content={`Reset zoom to 100% (${ZOOM_RESET_HOTKEY})`}>
@@ -1007,7 +1007,7 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
           type="button"
           className="du-icon-button"
           aria-label="Reset zoom to 100%"
-          onClick={() => editor.resetZoom()}
+          onClick={() => { editor.resetZoom(); }}
           style={{
             minWidth: 56,
             padding: "0 8px",
@@ -1017,10 +1017,10 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
           {Math.round(zoom * 100)}%
         </button>
       </Tooltip>
-      <IconButton label={`Zoom in (${ZOOM_IN_HOTKEY})`} onClick={() => editor.zoomIn()}>
+      <IconButton label={`Zoom in (${ZOOM_IN_HOTKEY})`} onClick={() => { editor.zoomIn(); }}>
         <Plus {...buttonIcon} />
       </IconButton>
-      <IconButton label={`Fit to screen (${ZOOM_FIT_HOTKEY})`} onClick={() => editor.zoomToFit()}>
+      <IconButton label={`Fit to screen (${ZOOM_FIT_HOTKEY})`} onClick={() => { editor.zoomToFit(); }}>
         <Maximize {...buttonIcon} />
       </IconButton>
       {trailing}
@@ -1044,7 +1044,7 @@ const downloadBlob = (blob: Blob, filename: string): void => {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  requestAnimationFrame(() => URL.revokeObjectURL(url));
+  requestAnimationFrame(() => { URL.revokeObjectURL(url); });
 };
 
 /** "Save as JSON" — serialises the scene through @serialization. */
@@ -1071,7 +1071,7 @@ const openSceneFile = (editor: Editor | null): void => {
         const scene = parseScene(text);
         editor.loadScene(scene);
       } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error("[diagram] failed to parse scene file:", err);
         window.alert(
           "Failed to parse the file — make sure it was saved through this app's Save action.",
@@ -1127,7 +1127,7 @@ const downloadPng = async (
  */
 const readCanvasBackgroundColor = (): string => {
   const probe = document.querySelector('canvas[data-layer="main"]') ?? document.body;
-  const value = getComputedStyle(probe as Element).getPropertyValue("--du-canvas-bg").trim();
+  const value = getComputedStyle(probe).getPropertyValue("--du-canvas-bg").trim();
   return value || "#ffffff";
 };
 
@@ -1154,7 +1154,7 @@ const gridSelection = (editor: Editor | null): "lines" | "dots" | "off" => {
   if (!editor) return "lines";
   const vp = editor.scene.viewport;
   if (!vp.gridSize || vp.gridSize <= 0) return "off";
-  return (vp.gridStyle ?? "lines") as "lines" | "dots";
+  return (vp.gridStyle ?? "lines");
 };
 
 /**
@@ -1174,5 +1174,5 @@ const applyGridSelection = (
   }
   const vp = editor.scene.viewport;
   const size = vp.gridSize && vp.gridSize > 0 ? vp.gridSize : DEFAULT_GRID_SIZE;
-  editor.setGrid({ size, style: next as GridStyle });
+  editor.setGrid({ size, style: next });
 };

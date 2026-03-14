@@ -8,7 +8,7 @@ export const actionZoomIn: Action = {
     { key: "=", meta: true },
     { key: "+", meta: true },
   ],
-  perform: ({ editor }) => editor.zoomIn(),
+  perform: ({ editor }) => { editor.zoomIn(); },
 };
 
 export const actionZoomOut: Action = {
@@ -19,7 +19,7 @@ export const actionZoomOut: Action = {
     { key: "-", meta: true },
     { key: "_", meta: true },
   ],
-  perform: ({ editor }) => editor.zoomOut(),
+  perform: ({ editor }) => { editor.zoomOut(); },
 };
 
 export const actionZoomReset: Action = {
@@ -27,7 +27,7 @@ export const actionZoomReset: Action = {
   label: "Reset zoom",
   category: "zoom",
   hotkey: { key: "0", meta: true },
-  perform: ({ editor }) => editor.resetZoom(),
+  perform: ({ editor }) => { editor.resetZoom(); },
 };
 
 export const actionZoomToFit: Action = {
@@ -35,7 +35,7 @@ export const actionZoomToFit: Action = {
   label: "Fit to screen",
   category: "zoom",
   hotkey: { key: "1", meta: true },
-  perform: ({ editor }) => editor.zoomToFit(),
+  perform: ({ editor }) => { editor.zoomToFit(); },
 };
 
 export const zoomActions: readonly Action[] = [

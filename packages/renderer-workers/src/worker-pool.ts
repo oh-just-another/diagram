@@ -11,11 +11,11 @@
 export class WorkerPool {
   private readonly workers: readonly Worker[];
   private readonly busy: boolean[];
-  private readonly queue: Array<{
+  private readonly queue: {
     readonly task: (worker: Worker) => Promise<unknown>;
     readonly resolve: (value: unknown) => void;
     readonly reject: (err: unknown) => void;
-  }> = [];
+  }[] = [];
 
   constructor(workers: readonly Worker[]) {
     if (workers.length === 0) throw new Error("WorkerPool needs at least one worker");

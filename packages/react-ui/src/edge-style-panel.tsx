@@ -108,7 +108,7 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
         // Empty string removes the label entirely.
         const { label: _l, ...rest } = e as Link & { label?: unknown };
         void _l;
-        return rest as Link;
+        return rest;
       }
       return { ...e, label: { ...(e.label ?? {}), text } };
     });
@@ -132,10 +132,10 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
         <select
           value={edge.lineKind ?? "line"}
           onChange={(ev) =>
-            editor.updateSelectedLink((e) => ({
+            { editor.updateSelectedLink((e) => ({
               ...e,
               lineKind: ev.target.value === "block-arrow" ? "block-arrow" : "line",
-            }))
+            })); }
           }
           style={selectStyle}
         >
@@ -147,7 +147,7 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
       <Row label="Routing">
         <select
           value={edge.routing ?? "straight"}
-          onChange={(ev) => setRouting(ev.target.value as LinkRouting)}
+          onChange={(ev) => { setRouting(ev.target.value as LinkRouting); }}
           style={selectStyle}
         >
           {ROUTING_OPTIONS.map((o) => (
@@ -161,7 +161,7 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
       <Row label="Start">
         <select
           value={edge.arrowheads?.from ?? "none"}
-          onChange={(ev) => setArrowhead("from", ev.target.value as ArrowheadStyle)}
+          onChange={(ev) => { setArrowhead("from", ev.target.value as ArrowheadStyle); }}
           style={selectStyle}
         >
           {ARROW_OPTIONS.map((o) => (
@@ -175,7 +175,7 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
       <Row label="End">
         <select
           value={edge.arrowheads?.to ?? "none"}
-          onChange={(ev) => setArrowhead("to", ev.target.value as ArrowheadStyle)}
+          onChange={(ev) => { setArrowhead("to", ev.target.value as ArrowheadStyle); }}
           style={selectStyle}
         >
           {ARROW_OPTIONS.map((o) => (
@@ -190,7 +190,7 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
         <input
           type="color"
           value={normaliseColor(edge.style.stroke)}
-          onChange={(ev) => setStroke(ev.target.value)}
+          onChange={(ev) => { setStroke(ev.target.value); }}
           style={{ width: 36, height: 24, border: "none", background: "none", padding: 0 }}
         />
       </Row>
@@ -202,7 +202,7 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
           max={20}
           step={0.5}
           value={edge.style.strokeWidth ?? 1.5}
-          onChange={(ev) => setStrokeWidth(Number(ev.target.value) || 1)}
+          onChange={(ev) => { setStrokeWidth(Number(ev.target.value) || 1); }}
           style={{ ...selectStyle, width: 72 }}
         />
       </Row>
@@ -210,7 +210,7 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
       <Row label="Dash">
         <select
           value={dashKey(edge.style.dashArray)}
-          onChange={(ev) => setDash(ev.target.value)}
+          onChange={(ev) => { setDash(ev.target.value); }}
           style={selectStyle}
         >
           {DASH_OPTIONS.map((o) => (
@@ -226,7 +226,7 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
           type="text"
           placeholder="(no label)"
           value={edge.label?.text ?? ""}
-          onChange={(ev) => setLabel(ev.target.value)}
+          onChange={(ev) => { setLabel(ev.target.value); }}
           style={{ ...selectStyle, flex: 1 }}
         />
       </Row>

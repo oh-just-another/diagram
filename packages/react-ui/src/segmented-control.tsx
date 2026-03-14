@@ -36,7 +36,7 @@ export const SegmentedControl = <T extends string | number>({
         key={String(opt.value)}
         label={opt.label}
         active={value === opt.value}
-        onClick={() => onChange(opt.value)}
+        onClick={() => { onChange(opt.value); }}
         size="sm"
       >
         {opt.icon}

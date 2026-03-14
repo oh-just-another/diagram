@@ -20,8 +20,8 @@ const measureImage = (dataUrl: string): Promise<{ width: number; height: number 
     }
     const img = new Image();
     img.onload = () =>
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = () => reject(new Error("Failed to decode image data URL"));
+      { resolve({ width: img.naturalWidth, height: img.naturalHeight }); };
+    img.onerror = () => { reject(new Error("Failed to decode image data URL")); };
     img.src = dataUrl;
   });
 
@@ -105,8 +105,8 @@ export const imageFileDropHandler: FileDropHandler = {
       // rectangle on first paint.
       if (!img.complete) {
         await new Promise<void>((resolve) => {
-          img!.onload = () => resolve();
-          img!.onerror = () => resolve();
+          img!.onload = () => { resolve(); };
+          img!.onerror = () => { resolve(); };
         });
       }
     }
@@ -192,7 +192,7 @@ export const videoFileDropHandler: FileDropHandler = {
     video.style.height = "1px";
     sink.appendChild(video);
     await new Promise<void>((resolve) => {
-      const done = (): void => resolve();
+      const done = (): void => { resolve(); };
       video.onloadedmetadata = done;
       video.onerror = done;
     });

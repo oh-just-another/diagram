@@ -468,7 +468,7 @@ export const renderOverlay = (
     const portSets = Array.isArray(options.ports) ? options.ports : [options.ports];
     for (const set of portSets) {
       for (let i = 0; i < set.worldPoints.length; i++) {
-        const screen = matrix.applyToPoint(w2s, set.worldPoints[i]!);
+        const screen = matrix.applyToPoint(w2s, set.worldPoints[i]);
         const active = set.activeIndex === i;
         drawPortDot(target, screen, style, active, set.role, active ? set.activeRadius : undefined);
       }

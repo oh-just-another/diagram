@@ -88,7 +88,7 @@ const snapshot = (scene: Scene): void => {
   renderScene(scene, state.target);
   ctx.restore();
   const bitmap = state.canvas.transferToImageBitmap();
-  post({ type: "frame-done", bitmap }, [bitmap as unknown as Transferable]);
+  post({ type: "frame-done", bitmap }, [bitmap]);
 };
 
 /**
@@ -105,7 +105,7 @@ const replay = (commands: readonly RenderCommand[]): void => {
   replayCommands(state.target, commands);
 };
 
-type ReplayMessage = { readonly type: "replay"; readonly commands: readonly RenderCommand[] };
+interface ReplayMessage { readonly type: "replay"; readonly commands: readonly RenderCommand[] }
 type InboundMessage = WorkerRenderMessage | ReplayMessage;
 
 (self as unknown as DedicatedWorkerGlobalScope).addEventListener(

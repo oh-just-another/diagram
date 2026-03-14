@@ -22,7 +22,7 @@ export const actionUngroupSelection: Action = {
     }
     return false;
   },
-  perform: ({ editor }) => editor.ungroup(),
+  perform: ({ editor }) => { editor.ungroup(); },
 };
 
 export const groupingActions: readonly Action[] = [actionGroupSelection, actionUngroupSelection];

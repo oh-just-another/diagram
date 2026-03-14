@@ -74,7 +74,7 @@ export const ContextMenu = ({ items, target, style, className }: ContextMenuProp
   useEffect(() => {
     if (!controller) return undefined;
     return controller.register(({ screenPoint, worldPoint }) =>
-      setOpen({ screenPoint, worldPoint }),
+      { setOpen({ screenPoint, worldPoint }); },
     );
   }, [controller]);
 
@@ -129,7 +129,7 @@ export const ContextMenu = ({ items, target, style, className }: ContextMenuProp
     };
   }, [open]);
 
-  const close = useCallback(() => setOpen(null), []);
+  const close = useCallback(() => { setOpen(null); }, []);
 
   if (!editor || !open) return null;
 
@@ -305,7 +305,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Delete",
     shortcut: "Del",
     visible: (e) => e.selection.size > 0,
-    onClick: (e) => e.deleteSelected(),
+    onClick: (e) => { e.deleteSelected(); },
   },
   {
     kind: "action",
@@ -313,7 +313,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Duplicate",
     shortcut: "⌘D",
     visible: (e) => e.selection.size > 0,
-    onClick: (e) => e.duplicateSelected(),
+    onClick: (e) => { e.duplicateSelected(); },
   },
   {
     kind: "action",
@@ -321,7 +321,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Copy",
     shortcut: "⌘C",
     visible: (e) => e.selection.size > 0,
-    onClick: (e) => e.copySelected(),
+    onClick: (e) => { e.copySelected(); },
   },
   {
     kind: "action",
@@ -329,21 +329,21 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Cut",
     shortcut: "⌘X",
     visible: (e) => e.selection.size > 0,
-    onClick: (e) => e.cutSelected(),
+    onClick: (e) => { e.cutSelected(); },
   },
   {
     kind: "action",
     id: "paste",
     label: "Paste",
     shortcut: "⌘V",
-    onClick: (e) => e.paste(),
+    onClick: (e) => { e.paste(); },
   },
   {
     kind: "action",
     id: "select-all",
     label: "Select all",
     shortcut: "⌘A",
-    onClick: (e) => e.selectAll(),
+    onClick: (e) => { e.selectAll(); },
   },
   { kind: "divider" },
   // --- Grouping ---
@@ -367,28 +367,28 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
       }
       return false;
     },
-    onClick: (e) => e.ungroup(),
+    onClick: (e) => { e.ungroup(); },
   },
   {
     kind: "action",
     id: "arrange-grid",
     label: "Arrange as grid",
     visible: (e) => e.selection.size > 1,
-    onClick: (e) => e.arrangeAsGrid(),
+    onClick: (e) => { e.arrangeAsGrid(); },
   },
   {
     kind: "action",
     id: "arrange-stack-h",
     label: "Stack horizontally",
     visible: (e) => e.selection.size > 1,
-    onClick: (e) => e.arrangeAsStack({ direction: "horizontal" }),
+    onClick: (e) => { e.arrangeAsStack({ direction: "horizontal" }); },
   },
   {
     kind: "action",
     id: "arrange-stack-v",
     label: "Stack vertically",
     visible: (e) => e.selection.size > 1,
-    onClick: (e) => e.arrangeAsStack({ direction: "vertical" }),
+    onClick: (e) => { e.arrangeAsStack({ direction: "vertical" }); },
   },
   {
     kind: "action",
@@ -414,7 +414,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     kind: "action",
     id: "compact-z-order",
     label: "Compact z-order",
-    onClick: (e) => e.compactLayerZOrder(),
+    onClick: (e) => { e.compactLayerZOrder(); },
   },
   { kind: "divider" },
   // --- Z-order (single-selection scope) ---
@@ -424,7 +424,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Bring to front",
     shortcut: "⌘]",
     visible: (e) => e.selection.size === 1,
-    onClick: (e) => e.bringToFront(),
+    onClick: (e) => { e.bringToFront(); },
   },
   {
     kind: "action",
@@ -432,7 +432,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Send to back",
     shortcut: "⌘[",
     visible: (e) => e.selection.size === 1,
-    onClick: (e) => e.sendToBack(),
+    onClick: (e) => { e.sendToBack(); },
   },
   {
     kind: "action",
@@ -515,21 +515,21 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     id: "zoom-in",
     label: "Zoom in",
     shortcut: "⌘+",
-    onClick: (e) => e.zoomIn(),
+    onClick: (e) => { e.zoomIn(); },
   },
   {
     kind: "action",
     id: "zoom-out",
     label: "Zoom out",
     shortcut: "⌘−",
-    onClick: (e) => e.zoomOut(),
+    onClick: (e) => { e.zoomOut(); },
   },
   {
     kind: "action",
     id: "reset-zoom",
     label: "Reset zoom (100%)",
     shortcut: "⌘0",
-    onClick: (e) => e.resetZoom(),
+    onClick: (e) => { e.resetZoom(); },
   },
   {
     kind: "action",
@@ -537,6 +537,6 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Fit to screen",
     shortcut: "⌘1",
     visible: (e) => e.scene.elements.size > 0,
-    onClick: (e) => e.zoomToFit(),
+    onClick: (e) => { e.zoomToFit(); },
   }
 ];

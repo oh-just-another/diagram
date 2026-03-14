@@ -13,7 +13,7 @@ const platform = (): string =>
 export const isMac = /Mac|iPod|iPhone|iPad/.test(platform());
 
 /** Microsoft Windows. */
-export const isWindows = /^Win/.test(platform());
+export const isWindows = platform().startsWith("Win");
 
 /** Android device (any browser). */
 export const isAndroid = /\b(android)\b/i.test(ua());
@@ -28,7 +28,7 @@ export const isIOS =
   (typeof navigator !== "undefined" &&
     /Mac/i.test(platform()) &&
     typeof (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints === "number" &&
-    (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 1);
+    (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints > 1);
 
 /** Linux desktop. */
 export const isLinux = /Linux/i.test(platform()) && !isAndroid;

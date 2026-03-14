@@ -68,7 +68,7 @@ export const ToastHost = ({
       const ttl = duration ?? defaultDuration;
       setItems((prev) => [...prev, { id, kind, message, duration: ttl }]);
       if (ttl > 0 && Number.isFinite(ttl)) {
-        window.setTimeout(() => dismiss(id), ttl);
+        window.setTimeout(() => { dismiss(id); }, ttl);
       }
       return id;
     },
@@ -150,7 +150,7 @@ const ToastItem = ({
       <button
         type="button"
         aria-label="Dismiss"
-        onClick={() => onDismiss(toast.id)}
+        onClick={() => { onDismiss(toast.id); }}
         style={{
           background: "transparent",
           border: "none",

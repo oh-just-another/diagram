@@ -2,6 +2,8 @@ import { createActor, type Actor } from "xstate";
 import { createEmitter, type Emitter } from "@oh-just-another/events";
 import type { Bounds, FileId, ElementId, Vec2 } from "@oh-just-another/types";
 import { fileId as castFileId, elementId as castElementId } from "@oh-just-another/types";
+import type {
+  SpatialGrid} from "@oh-just-another/scene";
 import {
   addAnnotation,
   addLink,
@@ -58,7 +60,6 @@ import {
   removeLayer,
   removeElement,
   SnapEngine,
-  SpatialGrid,
   isNoop,
   invert,
   type BrushPoint,
@@ -775,7 +776,7 @@ export class Editor {
    */
   private readonly autoCompactScheduler = new AutoCompactScheduler({
     getScene: () => this._scene,
-    compact: (layerId) => this.compactLayerZOrder(layerId, { recordHistory: false }),
+    compact: (layerId) => { this.compactLayerZOrder(layerId, { recordHistory: false }); },
   });
 
   /**
@@ -790,7 +791,7 @@ export class Editor {
       if (this.gestureTx) this.gestureTx.add(patch);
       else this._history.push(patch);
     },
-    growContainer: (parentId, childId) => this.maybeGrowContainer(parentId, childId),
+    growContainer: (parentId, childId) => { this.maybeGrowContainer(parentId, childId); },
     onMutated: () => {
       // Re-render only; do NOT call notify() — that would re-schedule
       // the check and risk a microtask loop. Listeners already saw
@@ -879,8 +880,8 @@ export class Editor {
    * (A plain id set lost adds — new id wasn't in the tile reverse
    * index yet.)
    */
-  public tileDirtyElements: Map<ElementId, { before: Bounds | null; after: Bounds | null }> =
-    new Map();
+  public tileDirtyElements =
+    new Map<ElementId, { before: Bounds | null; after: Bounds | null }>();
 
   /**
    * Tool-lock flag (standard model). When `false` (default), a
@@ -1050,8 +1051,8 @@ export class Editor {
       get mode() {
         return self.mode;
       },
-      setMode: (m) => self.setMode(m),
-      notify: () => self.notify(),
+      setMode: (m) => { self.setMode(m); },
+      notify: () => { self.notify(); },
     });
     this.tileComposeFn =
       options.useTileCache === true && options.tileCompose ? options.tileCompose : null;
@@ -1142,8 +1143,8 @@ export class Editor {
     // the editor's own zoomAt / panBy / screenToWorld.
     this.pinch = new PinchController(
       (p) => this.screenToWorld(p),
-      (factor, anchorWorld) => this.zoomAt(factor, anchorWorld),
-      (delta) => this.panBy(delta),
+      (factor, anchorWorld) => { this.zoomAt(factor, anchorWorld); },
+      (delta) => { this.panBy(delta); },
     );
     // Bridge for container-ops module — narrow surface that the
     // pure functions in editor/container-ops.ts call back into.
@@ -1181,7 +1182,7 @@ export class Editor {
     // completes it nudges us here. Re-render so a PAUSED animated shape
     // (reduced-motion / auto-stopped / frozen) — which has no tick to
     // pick the frames up — paints its decoded frame after reload.
-    this.animationContentOff = onAnimationContentReady(() => this.scheduleRender());
+    this.animationContentOff = onAnimationContentReady(() => { this.scheduleRender(); });
     // First paint — synchronous so the canvas isn't blank for one
     // frame on mount. Hosts that mount + immediately read the
     // bitmap also get a consistent first frame.
@@ -1835,7 +1836,7 @@ export class Editor {
       const img = shape as ImageElement;
       if (!img.animationKind) continue;
       const st = this.playbackState.get(img.id);
-      if (!st || !st.playing) continue;
+      if (!st?.playing) continue;
       const heavy =
         img.animationData instanceof ArrayBuffer && img.animationData.byteLength > HEAVY_GIF_BYTES;
       if (!heavy) continue;
@@ -2078,7 +2079,7 @@ export class Editor {
           const next = { ...e } as typeof e & { label?: unknown };
           if (nextLabel) next.label = nextLabel;
           else delete next.label;
-          return next as typeof e;
+          return next;
         });
         this._scene = r.scene;
         this._history.push(r.patch);
@@ -3269,7 +3270,7 @@ export class Editor {
    */
   public ensureSpatialIndex(): SpatialGrid {
     const cached = this.spatialIndexCache;
-    if (cached && cached.scene === this._scene) return cached.index;
+    if (cached?.scene === this._scene) return cached.index;
     const index = buildSpatialIndex(this._scene);
     this.spatialIndexCache = { scene: this._scene, index };
     return index;
@@ -3805,7 +3806,7 @@ export class Editor {
     // Text: aspect-locked font scaling. Snapshot the pristine shape on
     // the gesture's first tick so the scale base never compounds.
     if (shape?.type === "text") {
-      if (!this._resizeOriginElement || this._resizeOriginElement.id !== id) {
+      if (this._resizeOriginElement?.id !== id) {
         this._resizeOriginElement = shape;
       }
       const result = computeTextResize(
@@ -4321,7 +4322,7 @@ export class Editor {
       return;
     }
     const edge = getLink(this._scene, drag.linkId);
-    if (edge && edge.waypoints && drag.index >= 0 && drag.index < edge.waypoints.length) {
+    if (edge?.waypoints && drag.index >= 0 && drag.index < edge.waypoints.length) {
       const path = getLinkPath(this._scene, edge);
       const wp = edge.waypoints[drag.index]!;
       // Neighbours in the [from, ...waypoints, to] chain: path[index] and
@@ -4412,7 +4413,7 @@ export class Editor {
    */
   deleteWaypoint(linkId: LinkId, index: number): void {
     const edge = getLink(this._scene, linkId);
-    if (!edge || !edge.waypoints || index < 0 || index >= edge.waypoints.length) return;
+    if (!edge?.waypoints || index < 0 || index >= edge.waypoints.length) return;
     const wps = edge.waypoints.filter((_, i) => i !== index);
     const r = updateLink(this._scene, linkId, (e) => ({ ...e, waypoints: wps }));
     this._scene = r.scene;
@@ -4430,7 +4431,7 @@ export class Editor {
    */
   resetSegmentPin(linkId: LinkId, axis: "h" | "v", pos: number, at: number): void {
     const edge = getLink(this._scene, linkId);
-    if (!edge || !edge.fixedSegments || edge.fixedSegments.length === 0) return;
+    if (!edge?.fixedSegments || edge.fixedSegments.length === 0) return;
     let bestIdx = -1;
     let bestD = Infinity;
     for (let i = 0; i < edge.fixedSegments.length; i++) {

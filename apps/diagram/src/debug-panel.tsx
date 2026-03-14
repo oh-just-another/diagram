@@ -107,7 +107,7 @@ export const DebugPanel = ({ editor }: { editor: Editor | null }) => {
       lastGAt = 0;
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
   }, []);
 
   // Force re-render on every editor mutation. The four tabs read
@@ -117,20 +117,20 @@ export const DebugPanel = ({ editor }: { editor: Editor | null }) => {
   const [, force] = useState(0);
   useEffect(() => {
     if (!editor) return;
-    return editor.subscribe(() => force((v) => v + 1));
+    return editor.subscribe(() => { force((v) => v + 1); });
   }, [editor]);
 
   if (!open) return null;
   if (!editor) {
     return (
-      <Drawer onClose={() => setOpen(false)} tab={tab} setTab={setTab}>
+      <Drawer onClose={() => { setOpen(false); }} tab={tab} setTab={setTab}>
         <div style={{ padding: 16, color: "var(--muted)" }}>Editor not ready.</div>
       </Drawer>
     );
   }
 
   return (
-    <Drawer onClose={() => setOpen(false)} tab={tab} setTab={setTab}>
+    <Drawer onClose={() => { setOpen(false); }} tab={tab} setTab={setTab}>
       {tab === "inspector" && <InspectorTab editor={editor} />}
       {tab === "state" && <StateTab editor={editor} />}
       {tab === "history" && <HistoryTab editor={editor} />}
@@ -257,7 +257,7 @@ const Drawer = ({
         <button
           key={t.id}
           type="button"
-          onClick={() => setTab(t.id)}
+          onClick={() => { setTab(t.id); }}
           style={{
             background: tab === t.id ? "var(--du-selected-bg, #e6e7ff)" : "transparent",
             color: tab === t.id ? "var(--du-selected-fg, #5753c6)" : "var(--du-text, #1a1a1a)",
@@ -574,7 +574,7 @@ const GeneratorsTab = ({ editor }: { editor: Editor }) => {
         <Section title="Element template">
           <select
             value={templateId}
-            onChange={(e) => setTemplateId(e.target.value)}
+            onChange={(e) => { setTemplateId(e.target.value); }}
             style={selectStyle}
           >
             {templates.map((t) => (
@@ -668,7 +668,7 @@ const GridSection = ({
       <button
         type="button"
         onClick={() =>
-          runBatch(editor, () =>
+          { runBatch(editor, () =>
             buildGrid(editor, template, {
               count,
               cols,
@@ -677,7 +677,7 @@ const GridSection = ({
               connect,
               origin: viewportTopLeftWithMargin(editor),
             }),
-          )
+          ); }
         }
         style={primaryButtonStyle}
       >
@@ -706,7 +706,7 @@ const StackSection = ({
       <Field label="Direction">
         <select
           value={direction}
-          onChange={(e) => setDirection(e.target.value as "horizontal" | "vertical")}
+          onChange={(e) => { setDirection(e.target.value as "horizontal" | "vertical"); }}
           style={selectStyle}
         >
           <option value="horizontal">horizontal</option>
@@ -719,14 +719,14 @@ const StackSection = ({
       <button
         type="button"
         onClick={() =>
-          runBatch(editor, () =>
+          { runBatch(editor, () =>
             buildStack(editor, template, {
               count,
               direction,
               gap,
               origin: viewportTopLeftWithMargin(editor),
             }),
-          )
+          ); }
         }
         style={primaryButtonStyle}
       >
@@ -917,7 +917,7 @@ const TimerSection = ({
   }, []);
 
   // Cleanup on unmount or template/editor change.
-  useEffect(() => () => stop(), [stop]);
+  useEffect(() => () => { stop(); }, [stop]);
 
   if (!template) return null;
 
@@ -1025,7 +1025,7 @@ const MosaicSection = ({ editor }: { editor: Editor }) => {
       </Field>
       <CheckboxRow
         checked={fixedCols !== null}
-        onChange={(v) => setFixedCols(v ? 50 : null)}
+        onChange={(v) => { setFixedCols(v ? 50 : null); }}
         label="Fixed column count"
       />
       {fixedCols !== null && (
@@ -1070,7 +1070,7 @@ const nextDebugId = (prefix: string): ElementId =>
   elementId(`debug-${prefix}-${++debugIdCounter}-${Date.now().toString(36)}`);
 
 const activeLayerId = (editor: Editor): LayerId =>
-  ([...editor.scene.layers.keys()][0] ?? ("default" as LayerId)) as LayerId;
+  ([...editor.scene.layers.keys()][0] ?? ("default" as LayerId));
 
 const buildOne = (
   editor: Editor,
@@ -1349,7 +1349,7 @@ const buildTreeFractal = (
       order,
     });
     order = orderBetween(order, null);
-    let shape: Element = { ...base, rotation: angle, scale: { x: scale, y: scale } } as Element;
+    let shape: Element = { ...base, rotation: angle, scale: { x: scale, y: scale } };
     if (opts.colorful) shape = withFill(shape, hslToHex((level / Math.max(depth, 1)) * 300, 70, 62));
     shapes.push(shape);
     if (level >= depth) return;
@@ -1558,7 +1558,7 @@ const safeBounds = (shape: Element) => {
 };
 
 const withFill = (shape: Element, fill: string): Element =>
-  ({ ...shape, style: { ...shape.style, fill } }) as Element;
+  ({ ...shape, style: { ...shape.style, fill } });
 
 // The project's color parser (packages/math/src/color.ts) accepts only
 // hex / rgb / rgba / a small named set — `hsl()` falls back to opaque
@@ -1649,7 +1649,7 @@ const runMosaicChunks = async (
     if (!onProgress(Math.round((done / total) * 100))) {
       return; // aborted
     }
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => { resolve(); }));
 
     const end = Math.min(done + CHUNK, total);
     for (let i = done; i < end; i++) {
@@ -1831,7 +1831,7 @@ const CheckboxRow = ({
   label: string;
 }) => (
   <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
-    <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    <input type="checkbox" checked={checked} onChange={(e) => { onChange(e.target.checked); }} />
     {label}
   </label>
 );

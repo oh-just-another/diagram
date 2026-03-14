@@ -57,7 +57,7 @@ export const warnSkippedImage = (value: unknown): void => {
         : "stale-object"; // e.g. a {} from a serialised <img>
   if (warnedImageKinds.has(kind)) return;
   warnedImageKinds.add(kind);
-  // eslint-disable-next-line no-console
+   
   console.warn(
     `[renderer] skipped a non-drawable image source (kind: ${kind}). ` +
       "The shape's image handle isn't a live HTMLImageElement / canvas / " +

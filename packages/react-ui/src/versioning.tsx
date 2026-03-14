@@ -85,7 +85,7 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
         return;
       }
       const target = store.branches().find((b) => b.id === currentBranchId);
-      if (!target || !target.head) {
+      if (!target?.head) {
         if (typeof window !== "undefined") {
           window.alert("Current branch has no snapshots to merge into.");
         }
@@ -203,7 +203,7 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
             <div key={br.id}>
               <button
                 type="button"
-                onClick={() => store.setCurrentBranch(br.id)}
+                onClick={() => { store.setCurrentBranch(br.id); }}
                 style={{
                   display: "flex",
                   width: "100%",
@@ -291,7 +291,7 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
                       </div>
                       <button
                         type="button"
-                        onClick={() => onRestore(snap.id)}
+                        onClick={() => { onRestore(snap.id); }}
                         style={miniButtonStyle}
                         title="Restore this version"
                       >
@@ -299,7 +299,7 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
                       </button>
                       <button
                         type="button"
-                        onClick={() => onDiff(snap.id)}
+                        onClick={() => { onDiff(snap.id); }}
                         style={miniButtonStyle}
                         title="Diff with current scene"
                       >
@@ -307,7 +307,7 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
                       </button>
                       <button
                         type="button"
-                        onClick={() => onBranch(snap.id)}
+                        onClick={() => { onBranch(snap.id); }}
                         style={miniButtonStyle}
                         title="Branch from here"
                       >
@@ -325,7 +325,7 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
           store={store}
           sourceVersionId={mergeRequest.sourceVersionId}
           targetVersionId={mergeRequest.targetVersionId}
-          onCancel={() => setMergeRequest(null)}
+          onCancel={() => { setMergeRequest(null); }}
           onApply={(merged) => {
             editor.loadScene(merged);
             // Record the merged result as a new snapshot on the target

@@ -54,7 +54,7 @@ export const buildImageElement = (
     ...(input.animationKind ? { animationKind: input.animationKind } : {}),
     ...(input.animationData !== undefined ? { animationData: input.animationData } : {}),
     ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
-  } as Element;
+  };
 };
 
 /**

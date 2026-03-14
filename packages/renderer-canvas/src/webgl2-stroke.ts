@@ -20,7 +20,7 @@ import type { Transform, Vec2 } from "@oh-just-another/types";
  */
 
 /** Two-vertex pair per polyline vertex (left + right side of the band). */
-type SideOffset = { ox: number; oy: number };
+interface SideOffset { ox: number; oy: number }
 
 /**
  * Maximum miter overshoot, in units of stroke width. Past this the

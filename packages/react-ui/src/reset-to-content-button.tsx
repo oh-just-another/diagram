@@ -29,7 +29,7 @@ export const ResetToContentButton = () => {
     <button
       type="button"
       className="du-pill-button"
-      onClick={() => editor.zoomToFit()}
+      onClick={() => { editor.zoomToFit(); }}
       title="Reset view to fit all content"
     >
       <LocateFixed size={PILL_ICON_SIZE} strokeWidth={PILL_ICON_STROKE} aria-hidden />

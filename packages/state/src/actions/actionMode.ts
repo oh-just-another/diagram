@@ -5,7 +5,7 @@ export const actionModeSelect: Action = {
   label: "Select tool",
   category: "mode",
   hotkey: { key: "v" },
-  perform: ({ editor }) => editor.setMode("select"),
+  perform: ({ editor }) => { editor.setMode("select"); },
 };
 
 export const actionModeHand: Action = {
@@ -13,7 +13,7 @@ export const actionModeHand: Action = {
   label: "Hand tool",
   category: "mode",
   hotkey: { key: "h" },
-  perform: ({ editor }) => editor.setMode("hand"),
+  perform: ({ editor }) => { editor.setMode("hand"); },
 };
 
 export const actionModeRect: Action = {
@@ -21,7 +21,7 @@ export const actionModeRect: Action = {
   label: "Rectangle tool",
   category: "mode",
   hotkey: { key: "r" },
-  perform: ({ editor }) => editor.setMode("draw-rect"),
+  perform: ({ editor }) => { editor.setMode("draw-rect"); },
 };
 
 export const actionModeEllipse: Action = {
@@ -29,7 +29,7 @@ export const actionModeEllipse: Action = {
   label: "Ellipse tool",
   category: "mode",
   hotkey: { key: "e" },
-  perform: ({ editor }) => editor.setMode("draw-ellipse"),
+  perform: ({ editor }) => { editor.setMode("draw-ellipse"); },
 };
 
 export const actionModeText: Action = {
@@ -37,7 +37,7 @@ export const actionModeText: Action = {
   label: "Text tool",
   category: "mode",
   hotkey: { key: "t" },
-  perform: ({ editor }) => editor.setMode("draw-text"),
+  perform: ({ editor }) => { editor.setMode("draw-text"); },
 };
 
 export const actionModeLink: Action = {
@@ -45,7 +45,7 @@ export const actionModeLink: Action = {
   label: "Link tool",
   category: "mode",
   hotkey: { key: "l" },
-  perform: ({ editor }) => editor.setMode("draw-edge"),
+  perform: ({ editor }) => { editor.setMode("draw-edge"); },
 };
 
 export const actionModeBrush: Action = {
@@ -53,7 +53,7 @@ export const actionModeBrush: Action = {
   label: "Brush tool",
   category: "mode",
   hotkey: { key: "b" },
-  perform: ({ editor }) => editor.setMode("brush"),
+  perform: ({ editor }) => { editor.setMode("brush"); },
 };
 
 export const actionModeFrame: Action = {
@@ -61,7 +61,7 @@ export const actionModeFrame: Action = {
   label: "Frame tool",
   category: "mode",
   hotkey: { key: "f" },
-  perform: ({ editor }) => editor.setMode("draw-frame"),
+  perform: ({ editor }) => { editor.setMode("draw-frame"); },
 };
 
 export const actionToggleToolLock: Action = {
@@ -71,7 +71,7 @@ export const actionToggleToolLock: Action = {
   // No default hotkey — toolbar button only. Hosts can register one
   // via `defaultActionRegistry.replace({...actionToggleToolLock,
   // hotkey: ...})` if needed.
-  perform: ({ editor }) => editor.setToolLocked(!editor.toolLocked),
+  perform: ({ editor }) => { editor.setToolLocked(!editor.toolLocked); },
 };
 
 export const actionCancel: Action = {
@@ -79,7 +79,7 @@ export const actionCancel: Action = {
   label: "Cancel / clear selection",
   category: "edit",
   hotkey: { key: "Escape" },
-  perform: ({ editor }) => editor.cancelInteraction(),
+  perform: ({ editor }) => { editor.cancelInteraction(); },
 };
 
 export const modeActions: readonly Action[] = [

@@ -40,7 +40,7 @@ interface DecodedGif {
 const DEFAULT_FRAME_DELAY_MS = 100;
 
 const decodeCache = new WeakMap<object, DecodedGif>();
-const decoding = new WeakSet<object>();
+const decoding = new WeakSet();
 
 const compositeGifFrames = async (buffer: ArrayBuffer): Promise<DecodedGif> => {
   const gif = parseGIF(buffer);
@@ -123,7 +123,7 @@ const gifAdapter: AnimatedSourceAdapter<ArrayBuffer> = {
     return decoded.frames[decoded.frames.length - 1]!.bitmap;
   },
   totalDurationMs(data) {
-    return decodeCache.get(data as object)?.totalMs ?? 0;
+    return decodeCache.get(data)?.totalMs ?? 0;
   },
 };
 

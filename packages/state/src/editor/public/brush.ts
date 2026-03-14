@@ -76,7 +76,7 @@ export const commitBrushStroke = (
     order,
     style: { fill: "#222" },
     points: stroke.points.slice(),
-  } as Element;
+  };
   const r = addElement(scene, shape);
   return { scene: r.scene, patch: r.patch, elementId: newElementId };
 };

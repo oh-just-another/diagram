@@ -13,7 +13,7 @@ import {
   type Element,
 } from "@oh-just-another/scene";
 import { createOffscreenCanvas2DTarget } from "./offscreen.js";
-import { Canvas2DTarget } from "./canvas-target.js";
+import type { Canvas2DTarget } from "./canvas-target.js";
 import { getElementRenderer } from "@oh-just-another/renderer-core";
 
 /**

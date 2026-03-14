@@ -218,7 +218,7 @@ export class WasmTextShaper implements TextShaper {
    */
   resolveFontId(family: string, bold = false, italic = false): number {
     const wasm = this.wasm;
-    if (!wasm || !wasm.resolveFont) return 0;
+    if (!wasm?.resolveFont) return 0;
     const bytes = this.textEncoder.encode(family);
     const ptr = wasm.alloc(bytes.byteLength);
     new Uint8Array(wasm.memory.buffer, ptr, bytes.byteLength).set(bytes);
@@ -240,7 +240,7 @@ export class WasmTextShaper implements TextShaper {
    */
   glyphMetrics(codePoint: number, fontId = 0): GlyphMetrics | null {
     const wasm = this.wasm;
-    if (!wasm || !wasm.glyphMetrics) return null;
+    if (!wasm?.glyphMetrics) return null;
     const ptr = wasm.glyphMetrics(fontId, codePoint);
     const buffer = wasm.memory.buffer;
     // 6 contiguous little-endian f32 (24 bytes). Read via DataView, not
@@ -285,7 +285,7 @@ export class WasmTextShaper implements TextShaper {
     fontId = 0,
   ): MsdfGlyphTile | null {
     const wasm = this.wasm;
-    if (!wasm || !wasm.rasterizeGlyphMSDF) return null;
+    if (!wasm?.rasterizeGlyphMSDF) return null;
     const ptr = wasm.rasterizeGlyphMSDF(fontId, codePoint, atlasSize, range);
     const len = atlasSize * atlasSize * 3;
     // Copy out of WASM memory into a standalone Uint8Array. `slice()`
@@ -373,7 +373,7 @@ const fetchModuleBytes = async (
     const { fileURLToPath } = await import("node:url");
     const path = fileURLToPath(urlStr);
     const buf = await readFile(path);
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
   }
   const res = await fetch(source);
   if (!res.ok) {

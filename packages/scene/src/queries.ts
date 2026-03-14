@@ -89,7 +89,7 @@ export const isElementHidden = (scene: Scene, shape: Element): boolean => {
  */
 export const getRootSelf = (scene: Scene, elementId: ElementId): Element | undefined => {
   let current = scene.elements.get(elementId);
-  for (let i = 0; current && current.parentId && i < MAX_PARENT_DEPTH; i++) {
+  for (let i = 0; current?.parentId && i < MAX_PARENT_DEPTH; i++) {
     const parent = scene.elements.get(current.parentId);
     if (!parent) break;
     current = parent;
@@ -259,7 +259,7 @@ export const getElementAtIndexed = (
     if (!shape) continue;
     if (!B.contains(getElementWorldBounds(shape), point)) continue;
     const layer = scene.layers.get(shape.layerId);
-    if (!layer || !layer.visible) continue;
+    if (!layer?.visible) continue;
     const layerOrder = layer.order as string;
     if (
       !bestSet ||
@@ -268,7 +268,7 @@ export const getElementAtIndexed = (
     ) {
       best = shape;
       bestLayerOrder = layerOrder;
-      bestElementOrder = shape.order as string;
+      bestElementOrder = shape.order;
       bestSet = true;
     }
   }

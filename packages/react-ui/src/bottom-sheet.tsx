@@ -54,7 +54,7 @@ export const BottomSheet = ({
   };
 
   const onPointerMove = (ev: React.PointerEvent<HTMLDivElement>): void => {
-    if (!dragState.current || dragState.current.pointerId !== ev.pointerId) return;
+    if (dragState.current?.pointerId !== ev.pointerId) return;
     const vh = window.innerHeight || 1;
     const deltaPct = ((dragState.current.startY - ev.clientY) / vh) * 100;
     const next = clamp(dragState.current.startHeight + deltaPct, 0, 100);
@@ -62,7 +62,7 @@ export const BottomSheet = ({
   };
 
   const onPointerUp = (ev: React.PointerEvent<HTMLDivElement>): void => {
-    if (!dragState.current || dragState.current.pointerId !== ev.pointerId) return;
+    if (dragState.current?.pointerId !== ev.pointerId) return;
     dragState.current = null;
     // Snap to nearest snap point.
     let best = snapPoints[0]!;
@@ -83,7 +83,7 @@ export const BottomSheet = ({
       if (ev.key === "Escape") setHeight(Math.min(...snapPoints));
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
   }, [setHeight, snapPoints]);
 
   return (

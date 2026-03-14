@@ -46,17 +46,17 @@ export interface AnimatedSourceAdapter<Data = unknown> {
   totalDurationMs?(data: Data): number;
 }
 
-const registry = new Map<string, AnimatedSourceAdapter<unknown>>();
+const registry = new Map<string, AnimatedSourceAdapter>();
 
 export const registerAnimationAdapter = <D>(adapter: AnimatedSourceAdapter<D>): void => {
-  registry.set(adapter.kind, adapter as AnimatedSourceAdapter<unknown>);
+  registry.set(adapter.kind, adapter);
 };
 
 export const unregisterAnimationAdapter = (kind: string): void => {
   registry.delete(kind);
 };
 
-export const getAnimationAdapter = (kind: string): AnimatedSourceAdapter<unknown> | undefined =>
+export const getAnimationAdapter = (kind: string): AnimatedSourceAdapter | undefined =>
   registry.get(kind);
 
 export const listAnimationKinds = (): readonly string[] => [...registry.keys()];

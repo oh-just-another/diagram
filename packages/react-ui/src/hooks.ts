@@ -45,7 +45,7 @@ export const useMobileLayout = (): boolean =>
       if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
       const mq = window.matchMedia(MOBILE_MEDIA);
       mq.addEventListener("change", onChange);
-      return () => mq.removeEventListener("change", onChange);
+      return () => { mq.removeEventListener("change", onChange); };
     },
     matchMobile,
     () => false,

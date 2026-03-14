@@ -103,7 +103,7 @@ export const FramePanel = ({ onExport, style }: FramePanelProps) => {
               {onExport ? (
                 <button
                   type="button"
-                  onClick={() => onExport(frame.id, frame)}
+                  onClick={() => { onExport(frame.id, frame); }}
                   style={{
                     fontSize: 10,
                     padding: "2px 8px",

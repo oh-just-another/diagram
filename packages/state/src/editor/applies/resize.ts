@@ -44,7 +44,7 @@ export const computeElementResize = (
   // the face"). Force `noFlip` regardless of the element's stored flag so
   // instances that lack it behave the same.
   const noFlip = shape.noFlip === true || getAutoLayoutSpec(shape) !== null;
-  const constraints: Element = noFlip ? ({ ...shape, noFlip: true } as Element) : shape;
+  const constraints: Element = noFlip ? ({ ...shape, noFlip: true }) : shape;
   const intermediate = applyResizeConstraints(originalBounds, raw, handle, constraints);
   const constrained = clampContainer(shape, intermediate, handle);
 

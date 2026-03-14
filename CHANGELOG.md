@@ -1336,3 +1336,6 @@
 
 ## 0.55.17
 - refactor(state): type the editor param, drop `editor: any` (removes ~890 unsafe-* lint errors)
+
+## 0.55.18
+- refactor(state): drop the 4 `v as any` casts in the GestureRef proxy

@@ -139,7 +139,7 @@ export const renderEditor = (editor: Editor): void => {
   if (editor.edgePreview) {
     const previewLink = buildEdgePreviewLink(
       editor._scene,
-      editor.edgePreview as { from: Vec2; to: Vec2; points?: readonly Vec2[] },
+      editor.edgePreview,
       DRAW_PREVIEW_LINK_ID,
       editor._activeLayerId,
     );
@@ -214,7 +214,7 @@ export const renderEditor = (editor: Editor): void => {
       // cursor travels out to a dot. Dots are NOT shown on unselected
       // elements — select first, then connect. The dot nearest the cursor
       // grows (`ANCHOR_DOT_HOVER_GROW_RADIUS`).
-      const cursor = editor.hoverCursorWorld as Vec2 | null;
+      const cursor = editor.hoverCursorWorld;
       if (editor._selection.size === 1 && cursor) {
         const id = [...editor._selection][0]!;
         const shape = getElement(editor._scene, id);

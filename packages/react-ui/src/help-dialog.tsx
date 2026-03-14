@@ -104,7 +104,7 @@ export const useHelpDialogHotkey = (open: () => void): void => {
       open();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
   }, [open]);
 };
 

@@ -59,7 +59,7 @@ export const SessionButton = ({ collab }: { readonly collab: CollabAPI }) => {
     try {
       await navigator.clipboard.writeText(location.href);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setTimeout(() => { setCopied(false); }, 1500);
     } catch {
       /* clipboard blocked — user can still select + copy manually */
     }

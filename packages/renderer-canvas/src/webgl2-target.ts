@@ -63,7 +63,7 @@ export class WebGL2Target implements RenderTarget {
   private fillAlpha = 1;
   private strokeColor: [number, number, number] = [0, 0, 0];
   private strokeAlpha = 1;
-  private fillColorString: string = "#000";
+  private fillColorString = "#000";
   private strokeWidth = 1;
   private lineCap: LineCap = "butt";
   private lineJoin: LineJoin = "miter";
@@ -141,7 +141,7 @@ export class WebGL2Target implements RenderTarget {
           "Chrome allows ~16). LayeredSurface will fall back to canvas2d.",
       );
     }
-    this.gl = gl as WebGL2RenderingContext;
+    this.gl = gl;
     this._size = { width, height };
 
     const vert = compile(
@@ -776,7 +776,7 @@ export class WebGL2Target implements RenderTarget {
       flat[i * 2 + 1] = p.y;
     }
     // Pass only the populated prefix — `subarray` is a view, no copy.
-    const indices = earcut(flat.subarray(0, n * 2) as unknown as number[]);
+    const indices = earcut(flat.subarray(0, n * 2));
     if (indices.length === 0) {
       // Pathological polygon — fall back to a fan so something renders.
       this.drawTriangleFan(polyline, n, effectiveAlpha);
@@ -1256,14 +1256,14 @@ const isTextBitmapBacked = (
 };
 
 /** Mutable mirror of `Transform` for the internal matrix book-keeping. */
-type MutableTransform = {
+interface MutableTransform {
   a: number;
   b: number;
   c: number;
   d: number;
   e: number;
   f: number;
-};
+}
 
 /**
  * Split a polyline into the "on" dash runs for `pattern` ([on, off, on, …]),
@@ -1316,7 +1316,7 @@ export const dashPolyline = (pts: readonly Vec2[], pattern: readonly number[]): 
  * Canvas2D's `ctx.save/restore` contract. Excludes the current path
  * (Canvas2D doesn't snapshot it either).
  */
-type GfxState = {
+interface GfxState {
   transform: MutableTransform;
   fillColor: [number, number, number];
   fillAlpha: number;
@@ -1334,7 +1334,7 @@ type GfxState = {
   fontStyle: "normal" | "italic";
   textAlign: TextAlign;
   textBaseline: TextBaseline;
-};
+}
 
 /**
  * Module-level scratch buffers for the polygon-fill path
@@ -1576,7 +1576,7 @@ const link = (
   vert: WebGLShader,
   frag: WebGLShader,
 ): WebGLProgram => {
-  const program = gl.createProgram()!;
+  const program = gl.createProgram();
   gl.attachShader(program, vert);
   gl.attachShader(program, frag);
   gl.linkProgram(program);

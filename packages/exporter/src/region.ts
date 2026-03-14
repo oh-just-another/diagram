@@ -52,7 +52,7 @@ export const sceneForRegion = (scene: Scene, region: ExportRegion | undefined): 
  */
 export const sceneForFrame = (scene: Scene, frameId: ElementId): Scene | null => {
   const frame = getElement(scene, frameId);
-  if (!frame || frame.type !== "frame") return null;
+  if (frame?.type !== "frame") return null;
   const bounds = getElementWorldBounds(frame);
 
   const elements = new Map<ElementId, Element>();
