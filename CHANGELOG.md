@@ -1342,3 +1342,6 @@
 
 ## 0.55.19
 - chore(lint): switch eslint to strictTypeChecked + apply autofixes
+
+## 0.55.20
+- chore(lint): allow number/boolean in template expressions

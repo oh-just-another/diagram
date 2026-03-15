@@ -5,8 +5,7 @@ import { DEFAULT_ATLAS_SIZE, DEFAULT_RANGE, DEFAULT_TILE_SIZE } from "./constant
  * Structurally compatible with `@text-wasm`'s `WasmTextShaper` (its
  * `glyphMetrics` + `rasterizeGlyphMSDF` methods match exactly), but
  * declared here so the atlas package doesn't depend on `@text-wasm` —
- * hosts that ship a different MSDF backend (msdfgen via emscripten,
- * native AOT, etc.) can plug in too.
+ * hosts that ship a different MSDF backend can plug in too.
  */
 export interface MsdfShaper {
   glyphMetrics(
@@ -75,7 +74,7 @@ export interface AtlasGlyph {
 }
 
 export interface GlyphAtlasOptions {
-  /** Link length of the backing texture. Default {@link DEFAULT_ATLAS_SIZE}. */
+  /** Edge length of the backing texture. Default {@link DEFAULT_ATLAS_SIZE}. */
   readonly atlasSize?: number;
   /** Per-glyph tile edge. Default {@link DEFAULT_TILE_SIZE}. */
   readonly tileSize?: number;
@@ -90,18 +89,14 @@ export interface GlyphAtlasOptions {
  * every tile is the same `tileSize × tileSize`, so placement is
  * O(1) (no shelf packing required).
  *
- * Why uniform grid over shelf packing:
- *   • Lookup → integer division, no per-glyph dimension hash.
+ * Uniform grid rather than shelf packing because:
+ *   • Lookup is integer division, no per-glyph dimension hash.
  *   • Atlas churn is predictable — never fragments.
  *   • The MSDF pipeline gives every glyph the same tile size by
  *     construction (scale-to-fit), so heterogeneous packing wouldn't
  *     save anything.
  *
- * Eviction policy: none yet. The default 2048×2048 atlas at 32-px
- * tiles holds 4096 glyphs — the entire BMP basic + extended Latin
- * + Cyrillic + most punctuation. Beyond that the atlas throws on
- * overflow; LRU eviction lands in a follow-up when a host actually
- * hits the cap.
+ * No eviction: when the atlas is full it returns null on overflow.
  *
  * GPU coupling lives in {@link GlyphAtlas.uploadTo} so this module
  * doesn't have to depend on a WebGL surface; the host calls it with
@@ -121,7 +116,7 @@ export class GlyphAtlas {
   private readonly buffer: Uint8Array;
   /** Tile indices baked since the last upload (newly added). */
   private readonly dirtyTiles = new Set<number>();
-  /** Set to true while `buffer` has never been pushed to the GPU. */
+  /** True while `buffer` has never been pushed to the GPU. */
   private needsFullUpload = true;
   /** Next free tile slot in row-major order. */
   private nextSlot = 0;
@@ -143,20 +138,20 @@ export class GlyphAtlas {
     this.buffer = new Uint8Array(this.atlasSize * this.atlasSize * 3);
   }
 
+  /** Resolve a CSS font-family (+ bold/italic) to the shaper's font id (0 when single-font). */
+  resolveFontId(family: string, bold = false, italic = false): number {
+    return this.shaper.resolveFontId?.(family, bold, italic) ?? 0;
+  }
+
   /**
-   * Resolve a glyph slot, baking it on first request. Returns
-   * `null` only if the atlas is full (`capacity` slots used) and the
+   * Resolve a glyph slot, baking it on first request. Returns `null`
+   * only if the atlas is full (`capacity` slots used) and the
    * requested code point isn't already cached.
    *
    * Empty / whitespace glyphs are cached too — their tile stays at
    * zero so the GPU sample reads as "fully outside". The slot stays
    * allocated so the metrics are still discoverable.
    */
-  /** Resolve a CSS font-family (+ bold/italic) to the shaper's font id (0 when single-font). */
-  resolveFontId(family: string, bold = false, italic = false): number {
-    return this.shaper.resolveFontId?.(family, bold, italic) ?? 0;
-  }
-
   getOrRasterize(codePoint: number, fontId = 0): AtlasGlyph | null {
     // Glyphs from different fonts share one atlas texture but must not
     // collide in the cache — key by (fontId, codePoint). codePoint is
@@ -167,7 +162,7 @@ export class GlyphAtlas {
     if (this.nextSlot >= this.capacity) return null;
 
     const metrics = this.shaper.glyphMetrics(codePoint, fontId);
-    if (!metrics) return null; // shaper module pre-MSDF — caller should fall back
+    if (!metrics) return null; // shaper without MSDF support — caller should fall back
 
     const slot = this.nextSlot++;
     const col = slot % this.columns;
@@ -181,7 +176,7 @@ export class GlyphAtlas {
       if (tile) {
         // Blit the per-tile MSDF into the right region of the
         // atlas-wide buffer (texel-rows are non-contiguous in the
-        // big buffer, so we copy row by row).
+        // big buffer, so copy row by row).
         for (let y = 0; y < this.tileSize; y++) {
           const srcOffset = y * this.tileSize * 3;
           const dstOffset = ((atlasY + y) * this.atlasSize + atlasX) * 3;
@@ -212,18 +207,15 @@ export class GlyphAtlas {
     return entry;
   }
 
-  /**
-   * Number of glyphs currently cached. Useful for tests and for
-   * hosts that want to surface atlas pressure in dev tools.
-   */
+  /** Number of glyphs currently cached. */
   get glyphCount(): number {
     return this.glyphs.size;
   }
 
   /**
    * Read-only access to the CPU-side mirror of the atlas texture.
-   * Tests use this to assert that a glyph landed where expected;
-   * the GPU upload uses it as the texImage2D source.
+   * Tests assert that a glyph landed where expected; the GPU upload
+   * uses it as the texImage2D source.
    */
   get cpuBuffer(): Uint8Array {
     return this.buffer;
@@ -243,6 +235,9 @@ export class GlyphAtlas {
   uploadTo(gl: WebGL2RenderingContext): WebGLTexture {
     if (!this.texture) {
       const tex = gl.createTexture();
+      // lib.dom types createTexture() as non-null, but WebGL really does
+      // return null on context loss / OOM — keep the runtime guard.
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!tex) throw new Error("GlyphAtlas: gl.createTexture() returned null");
       this.texture = tex;
       gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -275,9 +270,8 @@ export class GlyphAtlas {
     if (this.dirtyTiles.size === 0) return this.texture;
 
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    // `UNPACK_ROW_LENGTH` lets us push a sub-rectangle out of the
-    // big atlas buffer without copying it into a contiguous slab
-    // first. WebGL2 always supports this (WebGL1 didn't).
+    // `UNPACK_ROW_LENGTH` pushes a sub-rectangle out of the big atlas
+    // buffer without copying it into a contiguous slab first.
     gl.pixelStorei(gl.UNPACK_ROW_LENGTH, this.atlasSize);
     for (const slot of this.dirtyTiles) {
       const col = slot % this.columns;
@@ -311,8 +305,8 @@ export class GlyphAtlas {
 
   /**
    * Release the GPU texture. The CPU mirror stays around — the
-   * atlas can be re-uploaded into a fresh context (e.g. after a
-   * backend swap) without re-baking any glyphs.
+   * atlas can be re-uploaded into a fresh context without re-baking
+   * any glyphs.
    */
   dispose(gl?: WebGL2RenderingContext): void {
     if (this.texture && gl) {

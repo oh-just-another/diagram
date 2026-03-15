@@ -121,9 +121,10 @@ export class WebSocketTransport implements Transport {
 
     sock.addEventListener("open", () => {
       this.reconnectDelay = this.initialDelay;
-      while (this.buffer.length > 0) {
-        const next = this.buffer.shift()!;
+      let next = this.buffer.shift();
+      while (next !== undefined) {
         sock.send(next);
+        next = this.buffer.shift();
       }
       this.setStatus("open");
     });

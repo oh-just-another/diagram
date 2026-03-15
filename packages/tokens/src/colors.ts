@@ -63,12 +63,19 @@ export interface HueTones {
   readonly textHigh: string;
 }
 
+/** Read a required scale step, failing loudly if the token is absent. */
+const step = (s: Record<string, string>, key: string): string => {
+  const v = s[key];
+  if (v === undefined) throw new Error(`Missing color token: ${key}`);
+  return v;
+};
+
 const hueLight = (s: Record<string, string>, name: Hue): HueTones => ({
-  fill: s[`${name}4`]!,
-  solid: s[`${name}9`]!,
-  solidHover: s[`${name}10`]!,
-  textLow: s[`${name}11`]!,
-  textHigh: s[`${name}12`]!,
+  fill: step(s, `${name}4`),
+  solid: step(s, `${name}9`),
+  solidHover: step(s, `${name}10`),
+  textLow: step(s, `${name}11`),
+  textHigh: step(s, `${name}12`),
 });
 
 /** Lookup `{ hue → tones }` for a given theme. */

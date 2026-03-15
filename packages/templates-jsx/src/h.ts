@@ -220,7 +220,7 @@ const readText = (
       asString += String(c);
       return;
     }
-    if (typeof c === "object" && c !== null && "bind" in c) {
+    if (typeof c === "object" && "bind" in c) {
       asBinding = c;
     }
   };

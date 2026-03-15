@@ -78,9 +78,9 @@ export interface Emitter<E> {
    * Remove every listener for `event`, or every listener for every
    * event when no argument is supplied.
    */
-  clear<K extends keyof E>(event?: K): void;
+  clear(event?: keyof E): void;
   /** Number of listeners currently registered for `event`. */
-  listenerCount<K extends keyof E>(event: K): number;
+  listenerCount(event: keyof E): number;
 }
 
 /** Creates a fresh typed emitter. */
