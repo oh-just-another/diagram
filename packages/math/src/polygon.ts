@@ -1,6 +1,17 @@
 import type { Vec2 } from "@oh-just-another/types";
 
 /**
+ * Assert a loop-index lookup is present. `noUncheckedIndexedAccess`
+ * widens every `arr[i]` to `T | undefined`; inside these geometry loops
+ * the index is provably in range, so a miss is a real bug — fail loudly
+ * instead of asserting non-null silently.
+ */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("polygon: index out of range");
+  return v;
+};
+
+/**
  * Offset a closed polygon's vertices along the bisector at each corner.
  * Positive `distance` moves vertices inward (toward the centroid), negative
  * moves outward; both winding orders are handled by projecting the bisector
@@ -36,8 +47,8 @@ export const offsetClosedPath = (
   const nx = new Array<number>(n);
   const ny = new Array<number>(n);
   for (let i = 0; i < n; i++) {
-    const a = points[i]!;
-    const b = points[(i + 1) % n]!;
+    const a = req(points[i]);
+    const b = req(points[(i + 1) % n]);
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -48,10 +59,10 @@ export const offsetClosedPath = (
   const out: Vec2[] = [];
   for (let i = 0; i < n; i++) {
     const prev = (i - 1 + n) % n;
-    const n1x = nx[prev]!;
-    const n1y = ny[prev]!;
-    const n2x = nx[i]!;
-    const n2y = ny[i]!;
+    const n1x = req(nx[prev]);
+    const n1y = req(ny[prev]);
+    const n2x = req(nx[i]);
+    const n2y = req(ny[i]);
     let bx = n1x + n2x;
     let by = n1y + n2y;
     const blen = Math.hypot(bx, by);
@@ -65,15 +76,16 @@ export const offsetClosedPath = (
     }
     // Inward = toward centroid; check the bisector's component along
     // (centroid - vertex).
-    const towardCx = cx - points[i]!.x;
-    const towardCy = cy - points[i]!.y;
+    const vertex = req(points[i]);
+    const towardCx = cx - vertex.x;
+    const towardCy = cy - vertex.y;
     const dot = bx * towardCx + by * towardCy;
     const sign = dot >= 0 ? 1 : -1;
     const cos = bx * n1x + by * n1y;
     const miterLen = cos > 1e-6 ? distance / cos : distance;
     out.push({
-      x: points[i]!.x + sign * bx * miterLen,
-      y: points[i]!.y + sign * by * miterLen,
+      x: vertex.x + sign * bx * miterLen,
+      y: vertex.y + sign * by * miterLen,
     });
   }
   return out;
@@ -87,8 +99,8 @@ export const offsetClosedPath = (
 export const signedArea = (points: readonly Vec2[]): number => {
   let s = 0;
   for (let i = 0; i < points.length; i++) {
-    const a = points[i]!;
-    const b = points[(i + 1) % points.length]!;
+    const a = req(points[i]);
+    const b = req(points[(i + 1) % points.length]);
     s += a.x * b.y - b.x * a.y;
   }
   return s / 2;

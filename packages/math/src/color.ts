@@ -36,15 +36,16 @@ const NAMED: Readonly<Record<string, RGBA>> = Object.freeze({
 export const parse = (input: string): RGBA => {
   const s = input.trim().toLowerCase();
 
-  if (s in NAMED) return NAMED[s]!;
+  const named = NAMED[s];
+  if (named !== undefined) return named;
 
   if (s.startsWith("#")) {
     const hex = s.slice(1);
     if (hex.length === 3 || hex.length === 4) {
-      const r = parseHexByte(hex[0]! + hex[0]!);
-      const g = parseHexByte(hex[1]! + hex[1]!);
-      const b = parseHexByte(hex[2]! + hex[2]!);
-      const a = hex.length === 4 ? parseHexByte(hex[3]! + hex[3]!) / 255 : 1;
+      const r = parseHexByte(hex.charAt(0) + hex.charAt(0));
+      const g = parseHexByte(hex.charAt(1) + hex.charAt(1));
+      const b = parseHexByte(hex.charAt(2) + hex.charAt(2));
+      const a = hex.length === 4 ? parseHexByte(hex.charAt(3) + hex.charAt(3)) / 255 : 1;
       if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b) || Number.isNaN(a)) {
         throw new Error(`Invalid hex color: ${input}`);
       }
@@ -65,7 +66,7 @@ export const parse = (input: string): RGBA => {
 
   const rgbMatch = /^rgba?\(([^)]+)\)$/.exec(s);
   if (rgbMatch) {
-    const parts = rgbMatch[1]!.split(",").map((p) => p.trim());
+    const parts = (rgbMatch[1] ?? "").split(",").map((p) => p.trim());
     if (parts.length !== 3 && parts.length !== 4) {
       throw new Error(`Expected 3 or 4 components: ${input}`);
     }

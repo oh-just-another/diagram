@@ -1345,3 +1345,6 @@
 
 ## 0.55.20
 - chore(lint): allow number/boolean in template expressions
+
+## 0.55.21
+- refactor(lint): clear strict errors in leaf packages (tokens, events, network, glyph-atlas, templates-jsx)

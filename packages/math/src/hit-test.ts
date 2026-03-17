@@ -12,8 +12,9 @@ export const pointInPolygon = (p: Vec2, polygon: readonly Vec2[]): boolean => {
   if (polygon.length < 3) return false;
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const a = polygon[i]!;
-    const b = polygon[j]!;
+    const a = polygon[i];
+    const b = polygon[j];
+    if (!a || !b) continue;
     const intersect =
       a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x;
     if (intersect) inside = !inside;
@@ -52,7 +53,9 @@ export const pointOnSegment = (p: Vec2, a: Vec2, b: Vec2, tolerance = 1): boolea
 
 export const pointOnPolyline = (p: Vec2, points: readonly Vec2[], tolerance = 1): boolean => {
   for (let i = 0; i < points.length - 1; i++) {
-    if (pointOnSegment(p, points[i]!, points[i + 1]!, tolerance)) return true;
+    const a = points[i];
+    const b = points[i + 1];
+    if (a && b && pointOnSegment(p, a, b, tolerance)) return true;
   }
   return false;
 };
