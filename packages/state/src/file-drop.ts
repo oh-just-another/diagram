@@ -104,7 +104,7 @@ export const VIDEO_MIME_TYPES: readonly string[] = [
 
 /** True when the file MIME (or extension) indicates a video. */
 export const isVideoFile = (file: File): boolean => {
-  if (file.type && file.type.startsWith("video/")) return true;
+  if (file.type.startsWith("video/")) return true;
   const ext = file.name.toLowerCase().split(".").pop();
   return ext === "mp4" || ext === "webm" || ext === "ogv" || ext === "mov";
 };
@@ -227,19 +227,20 @@ export const walkDataTransfer = async function* (
 ): AsyncGenerator<File, void, void> {
   const skip = options.skipDirectory ?? DEFAULT_SKIP;
   const maxDepth = options.maxDepth ?? 32;
-  const items = (dt.items as unknown as ArrayLike<DataTransferItemLike>) ?? null;
+  // `DataTransfer.items` is absent in some browsers; the cast to a
+  // possibly-null ArrayLike keeps the runtime guards meaningful.
+  const items = dt.items as unknown as ArrayLike<DataTransferItemLike> | null;
 
   // Fast path: no items API or no webkitGetAsEntry — yield the flat files
   // list and we're done.
   const hasEntryApi =
-    items && items.length > 0 && typeof items[0]?.webkitGetAsEntry === "function";
-  if (!hasEntryApi) {
+    items !== null && items.length > 0 && typeof items[0]?.webkitGetAsEntry === "function";
+  if (items === null || !hasEntryApi) {
     for (const file of Array.from(dt.files)) yield file;
     return;
   }
 
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i]!;
+  for (const item of Array.from(items)) {
     if (item.kind !== "file") continue;
     const entry = item.webkitGetAsEntry?.();
     if (!entry) continue;

@@ -89,8 +89,7 @@ export const computeBringForward = (
   // the shape's own. Anything above the neighbour follows.
   const above = siblings.find((s) => s.order > shape.order) ?? null;
   if (!above) return null; // already topmost
-  const aboveAbove =
-    siblings.find((s) => above && s.order > above.order) ?? null;
+  const aboveAbove = siblings.find((s) => s.order > above.order) ?? null;
   // Place the shape strictly between `above` and the one after it. If
   // `above` is the topmost sibling, jump to top-of-stack via
   // `orderForTop` to avoid colliding with existing keys.
@@ -122,8 +121,7 @@ export const computeSendBackward = (
     .sort((a, b) => (a.order > b.order ? -1 : a.order < b.order ? 1 : 0));
   const below = siblings.find((s) => s.order < shape.order) ?? null;
   if (!below) return null; // already bottom-most
-  const belowBelow =
-    siblings.find((s) => below && s.order < below.order) ?? null;
+  const belowBelow = siblings.find((s) => s.order < below.order) ?? null;
   const order: FractionalIndex = belowBelow
     ? orderBetween(belowBelow.order, below.order)
     : orderForBottom(siblings.map((s) => s.order));
@@ -151,8 +149,8 @@ export const rewriteOrders = <T extends { readonly order: FractionalIndex }>(
   const fresh = orderBetweenMany(null, null, sorted.length);
   let changed = 0;
   sorted.forEach((entity, i) => {
-    const next = fresh[i]!;
-    if (next === entity.order) return;
+    const next = fresh[i];
+    if (next === undefined || next === entity.order) return;
     apply(entity, next);
     changed++;
   });

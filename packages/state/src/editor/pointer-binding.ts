@@ -10,7 +10,6 @@ import {
   isImage,
   updateAnnotation,
 } from "@oh-just-another/scene";
-import { bounds as B } from "@oh-just-another/math";
 import { boundsFromPoints, interpretPressEnd, DRAG_THRESHOLD } from "../machine.js";
 import { fromPointerEvent } from "../dom-events.js";
 import * as Selection from "../selection.js";
@@ -40,6 +39,12 @@ const range = (a: number, b: number): number[] => {
 
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+
+/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/state: index out of range");
+  return v;
+};
 
 /**
  * Pointer + wheel event binding. Owns the branchy dispatch — pan /
@@ -138,7 +143,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (editor.mode === "draw-text") {
       editor.cancelLongPress();
       const hit = editor.hitTest(worldPoint);
-      const existing = hit?.kind === "element" ? getElement(editor._scene, hit.id) : null;
+      const existing = hit.kind === "element" ? getElement(editor._scene, hit.id) : null;
       if (existing?.type === "text") {
         editor._selection = Selection.single(existing.id);
         editor.beginTextEdit(existing.id);
@@ -204,8 +209,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
           // routed elbow (terminal stubs touch from/to and aren't slid).
           const segs = path.length === 2 ? [0] : range(1, path.length - 3);
           for (const k of segs) {
-            const a = path[k]!;
-            const b = path[k + 1]!;
+            const a = req(path[k]);
+            const b = req(path[k + 1]);
             const mx = (a.x + b.x) / 2;
             const my = (a.y + b.y) / 2;
             const dx = mx - worldPoint.x;
@@ -252,7 +257,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
         // Existing waypoints take priority over the midpoint "add" handles.
         let grabbed = false;
         for (let i = 0; i < waypoints.length; i++) {
-          if (within(waypoints[i]!)) {
+          if (within(req(waypoints[i]))) {
             // Double-click a waypoint handle → delete the bend point.
             if (editor.isHandleDoubleClick(worldPoint)) {
               editor.deleteWaypoint(editor._selectedLink, i);
@@ -269,7 +274,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
           // matches the visible handle.
           const mids = getLinkWaypointMidpoints(editor._scene, edge) ?? [];
           for (let i = 0; i < mids.length; i++) {
-            if (within(mids[i]!)) {
+            if (within(req(mids[i]))) {
               editor.beginWaypointDrag(editor._selectedLink, i, true);
               grabbed = true;
               break;
@@ -292,9 +297,9 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // appear. Modifier-clicks fall through to normal (additive) select.
     if (
       editor.mode === "select" &&
-      !data.modifiers?.shift &&
-      !data.modifiers?.meta &&
-      !data.modifiers?.ctrl
+      !data.modifiers.shift &&
+      !data.modifiers.meta &&
+      !data.modifiers.ctrl
     ) {
       // Begin a link FROM a start dot of the single SELECTED element
       // (connection dots only on the selected shape, so only its dots
@@ -309,13 +314,13 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
         let bestName: string | null = null;
         let bestD2 = grab * grab;
         for (let i = 0; i < worldPoints.length; i++) {
-          const p = worldPoints[i]!;
+          const p = req(worldPoints[i]);
           const dx = p.x - worldPoint.x;
           const dy = p.y - worldPoint.y;
           const d2 = dx * dx + dy * dy;
           if (d2 <= bestD2) {
             bestD2 = d2;
-            bestName = names[i]!;
+            bestName = req(names[i]);
           }
         }
         if (bestName === null) return false;
@@ -345,13 +350,11 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // Cmd/Ctrl-click on a shape that carries a (safe) link is a
     // link-open gesture, NOT additive selection — don't mutate the
     // selection on press; `onUp` opens the URL on a tap.
-    const linkModifier = Boolean(data.modifiers?.meta || data.modifiers?.ctrl);
+    const linkModifier = data.modifiers.meta || data.modifiers.ctrl;
     const isLinkOpen =
       linkModifier && target.kind === "element" && editor.elementLink(target.id) !== null;
     if (!isLinkOpen && target.kind === "element" && !editor._selection.has(target.id)) {
-      const additive = Boolean(
-        data.modifiers?.shift || data.modifiers?.meta || data.modifiers?.ctrl,
-      );
+      const additive = data.modifiers.shift || data.modifiers.meta || data.modifiers.ctrl;
       editor._selection = additive
         ? Selection.add(editor._selection, target.id)
         : Selection.single(target.id);
@@ -634,7 +637,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // anchor paths.)
     if (!ctx.pressOrigin) {
       const hov = editor.hitTest(worldPoint);
-      const directHs = hov?.kind === "element" ? editor._scene.elements.get(hov.id) : undefined;
+      const directHs = hov.kind === "element" ? editor._scene.elements.get(hov.id) : undefined;
       editor.hoverAnimatedElement(
         directHs && isImage(directHs) && directHs.animationKind ? directHs.id : null,
       );
@@ -642,12 +645,12 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       // in select mode so a link can be dragged from it even unselected.
       // `worldPoint` drives the proximity-grow of the nearest dot.
       editor.setHoverLinkStart(
-        editor.mode === "select" && hov?.kind === "element" ? hov.id : null,
+        editor.mode === "select" && hov.kind === "element" ? hov.id : null,
         editor.mode === "select" ? worldPoint : null,
       );
       // Hover highlight for a link body under the cursor (when not selected).
       editor.setHoveredLink(
-        editor.mode === "select" && hov?.kind === "link" && hov.id !== editor._selectedLink
+        editor.mode === "select" && hov.kind === "link" && hov.id !== editor._selectedLink
           ? hov.id
           : null,
       );
@@ -708,7 +711,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       const upWorld = editor.screenToWorld(upData.point);
       if (drag.moved) {
         const upHit = editor.hitTest(upWorld);
-        const toElement = upHit?.kind === "element" ? upHit.id : null;
+        const toElement = upHit.kind === "element" ? upHit.id : null;
         editor.applyEmit({
           type: "CREATE_EDGE",
           fromElement: drag.fromElement,
@@ -731,7 +734,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
           );
           const idx = names.indexOf(drag.anchorName);
           if (idx >= 0) {
-            const dp = worldPoints[idx]!;
+            const dp = req(worldPoints[idx]);
             const r = editor.anchorClickRadius / zoom;
             const dx = dp.x - drag.origin.x;
             const dy = dp.y - drag.origin.y;
@@ -797,13 +800,13 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // case, so selection is untouched.
     {
       const origin = editor.actor.getSnapshot().context.pressOrigin;
-      const linkMod = Boolean(data.modifiers?.meta || data.modifiers?.ctrl);
+      const linkMod = data.modifiers.meta || data.modifiers.ctrl;
       if (origin && linkMod) {
         const zoom = editor._scene.viewport.zoom || 1;
         const movedPx = Math.hypot(worldPoint.x - origin.x, worldPoint.y - origin.y) * zoom;
         if (movedPx < LONG_PRESS_MAX_MOVEMENT_PX) {
           const hit = editor.hitTest(worldPoint);
-          if (hit?.kind === "element") {
+          if (hit.kind === "element") {
             const href = editor.elementLink(hit.id);
             if (href) {
               editor.openLink(href);
@@ -879,7 +882,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       const movedPx = Math.hypot(worldPoint.x - origin.x, worldPoint.y - origin.y) * zoom;
       if (movedPx < LONG_PRESS_MAX_MOVEMENT_PX) {
         const hit = editor.hitTest(worldPoint);
-        if (hit?.kind === "element") {
+        if (hit.kind === "element") {
           const s = editor._scene.elements.get(hit.id);
           if (s && isImage(s) && s.animationKind) editor.togglePlayback(s.id);
         }

@@ -1,91 +1,58 @@
 import { createActor, type Actor } from "xstate";
 import { createEmitter, type Emitter } from "@oh-just-another/events";
 import type { Bounds, FileId, ElementId, Vec2 } from "@oh-just-another/types";
-import { fileId as castFileId, elementId as castElementId } from "@oh-just-another/types";
+import { elementId as castElementId } from "@oh-just-another/types";
 import type {
   SpatialGrid} from "@oh-just-another/scene";
 import {
-  addAnnotation,
-  addLink,
-  addLayer,
   addElement,
   anchorSnapper,
   apply,
   buildSpatialIndex,
   getBinaryFile,
-  gridLayout,
   isElementHidden,
   isElementLocked,
   runAutoLayout,
-  stackLayout,
   DEFAULT_LAYER_ID,
-  findLinkAt,
   findNearestAnchor,
   getAnchorWorld,
   getAnchorOutwardNormal,
-  getAnnotationWorldPosition,
   elbowRoute,
   routeElbowLink,
   routeElbowPreview,
   getLink,
   getLinkPath,
   getElement,
-  getElementAccessibleName,
   getElementAt,
   getElementAtIndexed,
-  getElementsCoveredByBounds,
-  getElementsInBounds,
-  isContainer,
-  getContainerSpec,
-  getDropZoneWorld,
-  findContainerAt,
-  expandDropZoneToFit,
-  containerSizeForZone,
   getElementWorldBounds,
   setTextMeasurer,
   getScreenToWorld,
-  panBy as viewportPanBy,
-  resize as viewportResize,
-  zoomAt as viewportZoomAt,
   gridSnapper,
-  listAnchorsLocal,
   snapExcludedAnchors,
-  orderForBottom,
-  orderBetweenMany,
   orderForTop,
   type FractionalIndex,
   outlineSnapper,
-  removeAnnotation,
-  removeLink,
-  removeLayer,
   removeElement,
   SnapEngine,
   isNoop,
   invert,
   type BrushPoint,
-  updateAnnotation,
   updateLink,
-  updateLayer,
   updateElement,
   type AnchorRef,
-  type Annotation,
-  type Comment,
   type Link,
   type LinkEndpoint,
   type ImageElement,
-  type Layer,
   type Patch,
   type Scene,
   type Element,
+  type GridStyle,
   type SnapCandidate,
   type TextElement,
   type TextStyle,
-  createBinaryFile,
 } from "@oh-just-another/scene";
 import {
-  annotationId as castAnnotationId,
-  commentId as castCommentId,
-  linkId as castLinkId,
   layerId as castLayerId,
   type AnnotationId,
   type CommentId,
@@ -96,20 +63,18 @@ import { bounds as B, matrix } from "@oh-just-another/math";
 import {
   caretGeometry,
   computeLinkWorldBounds,
-  DEFAULT_LOD,
   layoutText,
   onAnimationContentReady,
   pointToCaretIndex,
   selectionRects as textSelectionRects,
-  renderLinks,
-  renderGrid,
-  renderScene,
   setActiveRasterizer,
   setActiveTextShaper,
   setAnimationClock,
   ElementCache,
   type EditableTextLayout,
   type RenderTarget,
+  type TextShaper,
+  type Rasterizer,
 } from "@oh-just-another/renderer-core";
 import {
   History,
@@ -123,7 +88,6 @@ import {
   DEFAULT_LINK_ROUTING,
   WAYPOINT_COLLAPSE_RADIUS,
 } from "./constants.js";
-import { fromPointerEvent } from "./dom-events.js";
 import { FileDropRegistry, type FileDropContext, type FileDropHandler } from "./file-drop.js";
 import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
 import { AnimationTick } from "./animation-tick.js";
@@ -138,27 +102,13 @@ import {
   assignFrameMembers as assignFrameMembersHelper,
   nextFrameName as nextFrameNameHelper,
 } from "./frame-helpers.js";
-import {
-  copyElements as copyElementsHelper,
-  pasteElements as pasteElementsHelper,
-} from "./clipboard.js";
 import { AutoCompactScheduler } from "./auto-compact.js";
 import { AutoLayoutScheduler } from "./auto-layout-scheduler.js";
 import {
-  ANNOTATION_PIN_HIT_SLOP,
-  DEFAULT_BRUSH_WIDTH,
   DEFAULT_SNAP_THRESHOLD,
   LINK_ENDPOINT_HANDLE_RADIUS,
-  CONTAINER_KEEP_THRESHOLD,
   LINK_HIT_THRESHOLD,
   LARGE_SCENE_HIT_THRESHOLD,
-  LASSO_COVERAGE_THRESHOLD,
-  MAX_BRUSH_WIDTH,
-  LONG_PRESS_DELAY_MS,
-  LONG_PRESS_MAX_MOVEMENT_PX,
-  MAX_ZOOM,
-  MIN_ZOOM,
-  PINCH_MIN_MOVEMENT_PX,
   TOUCH_LINK_HANDLE_HIT_SLOP,
   TOUCH_LINK_HIT_THRESHOLD,
   TOUCH_HANDLE_HIT_SLOP,
@@ -166,13 +116,8 @@ import {
   ANCHOR_DOT_CLICK_RADIUS,
   TOUCH_ANCHOR_START_HIT_SLOP,
   TOUCH_ANCHOR_DOT_CLICK_RADIUS,
-  VIEWPORT_CULL_PADDING_RATIO,
   DOUBLE_CLICK_MS,
   DOUBLE_CLICK_TOLERANCE_PX,
-  ISOLATION_DIM_OPACITY,
-  WHEEL_PAN_FACTOR,
-  WHEEL_ZOOM_MAX_STEP,
-  WHEEL_ZOOM_SPEED,
   WHEEL_ZOOM_STEP,
   ANIMATION_MIN_INTERVAL_MS,
   ANIMATION_MAX_INTERVAL_MS,
@@ -181,12 +126,9 @@ import {
   GIF_AUTOSTOP_MS,
   CARET_BLINK_INTERVAL_MS,
 } from "./constants.js";
-import { ALL_HANDLES, CORNER_HANDLES, HANDLE_HIT_SLOP, hitHandle } from "./handle.js";
-import { getInteractiveHitTester } from "./interactive.js";
+import { HANDLE_HIT_SLOP } from "./handle.js";
 import {
-  boundsFromPoints,
   interactionMachine,
-  interpretPressEnd,
   type InteractionContext,
   type InteractionEmit,
   type PressTarget,
@@ -210,7 +152,6 @@ import {
   maybeGrowContainer as maybeGrowContainerPure,
   type ContainerOpsRef,
 } from "./editor/container-ops.js";
-import { hasWidthHeight } from "./editor/shape-traits.js";
 import {
   computeGroupResizePatches,
   computeElementResize,
@@ -326,7 +267,7 @@ import {
   newLinkId,
   newElementId,
 } from "./editor/applies/create.js";
-import { isResizable, renderOverlay, type PeerCursor, type PeerSelection } from "./overlay.js";
+import { type PeerCursor, type PeerSelection } from "./overlay.js";
 import * as Selection from "./selection.js";
 
 export interface LoadSceneOptions {
@@ -392,7 +333,7 @@ export interface EditorOptions {
    * for deterministic browser-vs-Node parity (Roboto Regular
    * embedded; advance widths match across environments).
    */
-  readonly textShaper?: import("@oh-just-another/renderer-core").TextShaper;
+  readonly textShaper?: TextShaper;
   /**
    * Optional rasterizer. When supplied, hosts of `renderLinks` /
    * future path-heavy code can opt in to WASM bezier / stroke-to-
@@ -401,7 +342,7 @@ export interface EditorOptions {
    * this directly today — exposed here so the field travels with
    * `EditorOptions` and hosts have a single config surface.
    */
-  readonly rasterizer?: import("@oh-just-another/renderer-core").Rasterizer;
+  readonly rasterizer?: Rasterizer;
 
   /**
    * When `true`, the editor routes per-frame rendering through a
@@ -465,6 +406,15 @@ export type TileComposeFn = (
 export type GroupSelectedResult =
   | { readonly kind: "noop" }
   | { readonly kind: "grouped"; readonly groupId: ElementId };
+
+/**
+ * Index-access helper for provably-valid indices: throws instead of
+ * returning `undefined` so callers stay non-nullable without `!`.
+ */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/state: index out of range");
+  return v;
+};
 
 export class Editor {
   public readonly host: HTMLElement;
@@ -1004,6 +954,7 @@ export class Editor {
     // fields on Editor (instead of forcing them public to satisfy
     // structural implements), and lets the controller live in its
     // own module without importing Editor.
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- getters/setters in the literal rebind `this`; alias keeps Editor reference
     const self = this;
     this.gestures = new GestureController({
       get history() {
@@ -1148,6 +1099,7 @@ export class Editor {
     );
     // Bridge for container-ops module — narrow surface that the
     // pure functions in editor/container-ops.ts call back into.
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- bridge literal rebinds `this`; alias keeps Editor reference
     const self2 = this;
     this.containerOpsRef = {
       get scene() {
@@ -1490,10 +1442,8 @@ export class Editor {
     // Cursor affordance for hand mode — grab when armed, grabbing
     // takes over inside an active pan gesture. Restore the host's
     // previous cursor when leaving the mode.
-    if (mode === "hand" && this.host?.style) {
-      if (this.previousHostCursor === null) {
-        this.previousHostCursor = this.host.style.cursor;
-      }
+    if (mode === "hand") {
+      this.previousHostCursor ??= this.host.style.cursor;
       this.host.style.cursor = "grab";
     } else if (this.previousHostCursor !== null && this.mode === "hand" && !this.panGesture) {
       this.host.style.cursor = this.previousHostCursor;
@@ -1558,7 +1508,7 @@ export class Editor {
     position: Vec2;
     image?: HTMLImageElement;
     animated?: boolean;
-    fileId?: import("@oh-just-another/types").FileId;
+    fileId?: FileId;
     animationKind?: string;
     animationData?: unknown;
   }): ElementId {
@@ -2103,11 +2053,11 @@ export class Editor {
     if (!path || path.length < 2) return null;
     const t = edge.label?.position ?? 0.5;
     let total = 0;
-    for (let i = 1; i < path.length; i++) total += distanceTo(path[i - 1]!, path[i]!);
+    for (let i = 1; i < path.length; i++) total += distanceTo(req(path[i - 1]), req(path[i]));
     let remaining = total * t;
     for (let i = 1; i < path.length; i++) {
-      const a = path[i - 1]!;
-      const b = path[i]!;
+      const a = req(path[i - 1]);
+      const b = req(path[i]);
       const seg = distanceTo(a, b);
       if (remaining <= seg) {
         const r = seg === 0 ? 0 : remaining / seg;
@@ -2115,7 +2065,7 @@ export class Editor {
       }
       remaining -= seg;
     }
-    return path[path.length - 1]!;
+    return req(path[path.length - 1]);
   }
 
   beginTextEdit(id: ElementId): void {
@@ -2948,7 +2898,7 @@ export class Editor {
     this._scene = next;
     this.notify();
   }
-  setGrid(patch: { size?: number; style?: import("@oh-just-another/scene").GridStyle }): void {
+  setGrid(patch: { size?: number; style?: GridStyle }): void {
     const next = computeSetGrid(this._scene, patch);
     if (!next) return;
     this._scene = next;
@@ -3039,9 +2989,7 @@ export class Editor {
       lastPoint: point,
       moved: false,
     };
-    if (this.previousHostCursor === null) {
-      this.previousHostCursor = this.host.style.cursor;
-    }
+    this.previousHostCursor ??= this.host.style.cursor;
     this.host.style.cursor = "grabbing";
   }
 
@@ -3415,9 +3363,7 @@ export class Editor {
       case "LASSO_PROGRESS":
         // Capture the pre-lasso selection on the first progress emit
         // of a gesture; subsequent emits use it as the additive base.
-        if (this.lassoBaseSelection === null) {
-          this.lassoBaseSelection = this._selection;
-        }
+        this.lassoBaseSelection ??= this._selection;
         this.lassoPreview = emit.bounds;
         this.applyLassoLiveSelection(emit.bounds, emit.mode);
         this.notify();
@@ -3712,6 +3658,7 @@ export class Editor {
         if (b) add(b);
       }
     }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `acc` is mutated via the `add` closure; TS flow analysis can't see it and narrows to null
     if (acc === null) return { x: -1e9, y: -1e9, width: 0, height: 0 };
     // Transitive expansion: any shape whose bounds intersect the
     // current dirty rect must be repainted, AND its bounds added
@@ -4013,7 +3960,7 @@ export class Editor {
     tx.add(added.patch);
 
     const linkId = newLinkId(++this.nextId);
-    const placed = getElement(this._scene, newId)!;
+    const placed = req(getElement(this._scene, newId));
     const { ref: toRef } = findNearestAnchor(placed, srcCenter, snapExcludedAnchors(placed));
     const linkResult = computeCreateLink(
       this._scene,
@@ -4087,7 +4034,7 @@ export class Editor {
     // callers that just want the straight from→to segment.
     const srcCenter = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
     const withGhost = addElement(this._scene, element).scene;
-    const placed = getElement(withGhost, PREVIEW_GHOST_ELEMENT_ID)!;
+    const placed = req(getElement(withGhost, PREVIEW_GHOST_ELEMENT_ID));
     const { ref: toRef } = findNearestAnchor(placed, srcCenter, snapExcludedAnchors(placed));
     const linkResult = computeCreateLink(
       withGhost,
@@ -4097,7 +4044,7 @@ export class Editor {
       this._activeLayerId,
     );
     let ghostScene = linkResult.scene;
-    const edge = getLink(ghostScene, PREVIEW_GHOST_LINK_ID)!;
+    const edge = req(getLink(ghostScene, PREVIEW_GHOST_LINK_ID));
     if ((edge.routing ?? "straight") === "orthogonal") {
       const routedPoints = routeElbowLink(ghostScene, edge);
       ghostScene = updateLink(ghostScene, PREVIEW_GHOST_LINK_ID, (e) => ({
@@ -4108,7 +4055,7 @@ export class Editor {
     // Render only the ghost link (the shapes stay for endpoint resolution).
     ghostScene = {
       ...ghostScene,
-      links: new Map([[PREVIEW_GHOST_LINK_ID, getLink(ghostScene, PREVIEW_GHOST_LINK_ID)!]]),
+      links: new Map([[PREVIEW_GHOST_LINK_ID, req(getLink(ghostScene, PREVIEW_GHOST_LINK_ID))]]),
     };
     return {
       bounds,
@@ -4324,7 +4271,7 @@ export class Editor {
     const edge = getLink(this._scene, drag.linkId);
     if (edge?.waypoints && drag.index >= 0 && drag.index < edge.waypoints.length) {
       const path = getLinkPath(this._scene, edge);
-      const wp = edge.waypoints[drag.index]!;
+      const wp = req(edge.waypoints[drag.index]);
       // Neighbours in the [from, ...waypoints, to] chain: path[index] and
       // path[index + 2] (path[0] = from, so waypoint i sits at path[i + 1]).
       // Dropping the waypoint back onto the straight segment between its
@@ -4435,7 +4382,7 @@ export class Editor {
     let bestIdx = -1;
     let bestD = Infinity;
     for (let i = 0; i < edge.fixedSegments.length; i++) {
-      const f = edge.fixedSegments[i]!;
+      const f = req(edge.fixedSegments[i]);
       if (f.axis !== axis) continue;
       const d = Math.abs(f.pos - pos) + Math.abs(f.at - at) * 0.001;
       if (d < bestD) {
@@ -4465,8 +4412,8 @@ export class Editor {
     if (!edge) return;
     const path = getLinkPath(this._scene, edge);
     if (!path || path.length < 2) return;
-    const from = path[0]!;
-    const to = path[path.length - 1]!;
+    const from = req(path[0]);
+    const to = req(path[path.length - 1]);
 
     // Don't treat the link's own endpoint shapes as obstacles.
     const exclude = new Set<ElementId>();
@@ -4543,9 +4490,9 @@ export class Editor {
     const ep = computeLinkPreviewEndpoints(this._scene, fromElement, fromPoint, toPoint);
     // Match the preview to the connector that will be committed: when new
     // links default to elbow, draw the orthogonal route, not a straight line.
-    if (ep && DEFAULT_LINK_ROUTING === "orthogonal") {
+    if (DEFAULT_LINK_ROUTING === "orthogonal") {
       const hit = this.hitTest(ep.to);
-      const toElement = hit?.kind === "element" ? hit.id : null;
+      const toElement = hit.kind === "element" ? hit.id : null;
       const points = routeElbowPreview(this._scene, fromElement, ep.from, toElement, ep.to);
       this.edgePreview = { ...ep, points };
     } else {
@@ -4613,9 +4560,7 @@ export class Editor {
    * container reparent).
    */
   private beginOrAttachGesture(): TransactionHandle {
-    if (!this.gestureTx) {
-      this.gestureTx = this._history.transaction();
-    }
+    this.gestureTx ??= this._history.transaction();
     return this.gestureTx;
   }
 
@@ -4836,13 +4781,6 @@ const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y
  * Convert `PointerEvent.pressure` (0–1) to a brush half-width in local
  * pixels. Devices without pressure (most mice on Chromium) report 0.5 by
  * spec; zero pressure (some Windows touch) falls back to a sensible
- * minimum so a stroke is still visible.
- */
-const pressureToWidth = (pressure: number): number => {
-  if (pressure <= 0) return DEFAULT_BRUSH_WIDTH;
-  return Math.max(0.5, pressure * MAX_BRUSH_WIDTH);
-};
-
 /**
  * Type guard — `true` when the value already implements the
  * `HistoryProvider` surface. Used to decide between "host supplied
@@ -4861,8 +4799,6 @@ const isHistoryProvider = (
     typeof (value as HistoryProvider).transaction === "function"
   );
 };
-
-const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 // `describeNudge` moved to `./editor/public/selection-ops.ts`.
 

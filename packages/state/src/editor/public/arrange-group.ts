@@ -139,8 +139,9 @@ export const computeGroupSelected = (
   readonly groupId: ElementId;
 } | null => {
   const roots = selectionRoots(scene, selection);
-  if (roots.length < 2) return null;
-  const layerId = roots[0]!.layerId;
+  const firstRoot = roots[0];
+  if (roots.length < 2 || firstRoot === undefined) return null;
+  const layerId = firstRoot.layerId;
   const order = orderForTop(
     [...scene.elements.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
   );

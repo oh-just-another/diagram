@@ -136,8 +136,9 @@ export const pasteElements = (
     patches.push(r.patch);
     newIds.push(newId);
   }
-  if (patches.length > 0) {
-    history.push(patches.length === 1 ? patches[0]! : batch(patches));
+  const first = patches[0];
+  if (first !== undefined) {
+    history.push(patches.length === 1 ? first : batch(patches));
   }
   return { scene: next, newIds };
 };

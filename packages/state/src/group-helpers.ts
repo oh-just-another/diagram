@@ -16,9 +16,9 @@ const MAX_PARENT_DEPTH = 64;
  */
 export const topGroupAncestor = (scene: Scene, shape: Element): Element | null => {
   let topGroup: Element | null = null;
-  let cursor: Element | undefined = shape;
+  let cursor: Element = shape;
   let depth = 0;
-  while (cursor?.parentId && depth < MAX_PARENT_DEPTH) {
+  while (cursor.parentId && depth < MAX_PARENT_DEPTH) {
     const parent = getElement(scene, cursor.parentId);
     if (!parent) break;
     if (parent.type === "group") topGroup = parent;
@@ -112,10 +112,10 @@ export const pickDrillTarget = (
 ): Element | null => {
   if (!top) return null;
   if (enteredGroup !== top.id) return top;
-  let cursor: Element | undefined = raw;
+  let cursor: Element = raw;
   let next: Element | null = null;
   let depth = 0;
-  while (cursor?.parentId && depth < MAX_PARENT_DEPTH) {
+  while (cursor.parentId && depth < MAX_PARENT_DEPTH) {
     const parent = getElement(scene, cursor.parentId);
     if (!parent) break;
     if (parent.id === top.id) break;

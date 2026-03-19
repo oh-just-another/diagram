@@ -12,7 +12,7 @@ export const computeHiddenElements = (scene: Scene): ReadonlySet<ElementId> | un
   let out: Set<ElementId> | null = null;
   for (const s of scene.elements.values()) {
     if (isElementHidden(scene, s)) {
-      if (!out) out = new Set();
+      out ??= new Set();
       out.add(s.id);
     }
   }

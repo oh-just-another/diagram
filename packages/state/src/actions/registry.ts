@@ -48,7 +48,9 @@ export class ActionRegistry {
   }
 
   getAll(): readonly Action[] {
-    return this.order.map((id) => this.entries.get(id)!).filter(Boolean);
+    return this.order
+      .map((id) => this.entries.get(id))
+      .filter((a): a is Action => a !== undefined);
   }
 
   /**
@@ -76,9 +78,11 @@ export class ActionRegistry {
   dispatchHotkey(event: KeyboardEvent, ctx: Omit<ActionContext, "event">): boolean {
     const fullCtx: ActionContext = { ...ctx, event };
     for (const id of this.order) {
-      const action = this.entries.get(id)!;
-      if (!action.hotkey) continue;
-      const matchers = Array.isArray(action.hotkey) ? action.hotkey : [action.hotkey];
+      const action = this.entries.get(id);
+      if (!action?.hotkey) continue;
+      const matchers: readonly HotkeyMatcher[] = Array.isArray(action.hotkey)
+        ? action.hotkey
+        : [action.hotkey];
       for (const m of matchers) {
         if (!matchesHotkey(event, m)) continue;
         if (action.predicate && !action.predicate(fullCtx)) continue;

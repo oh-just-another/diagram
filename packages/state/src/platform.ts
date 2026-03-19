@@ -7,6 +7,7 @@
 
 const ua = (): string => (typeof navigator !== "undefined" ? navigator.userAgent : "");
 const platform = (): string =>
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- `navigator.platform` is deprecated but remains the canonical OS-detection source; no non-deprecated equivalent
   typeof navigator !== "undefined" ? navigator.platform || "" : "";
 
 /** macOS or iOS Safari. */

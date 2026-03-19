@@ -1,4 +1,4 @@
-import { getElement, updateElement, type Scene, type Patch, type Element } from "@oh-just-another/scene";
+import { getElement, updateElement, type Scene, type Patch } from "@oh-just-another/scene";
 import type { ElementId } from "@oh-just-another/types";
 
 /**
@@ -63,5 +63,12 @@ export const computeSetLink = (
     s = r.scene;
     patches.push(r.patch);
   }
-  return { scene: s, patch: patches.length === 1 ? patches[0]! : { kind: "batch", patches } };
+  const firstPatch = patches[0];
+  return {
+    scene: s,
+    patch:
+      patches.length === 1 && firstPatch !== undefined
+        ? firstPatch
+        : { kind: "batch", patches },
+  };
 };

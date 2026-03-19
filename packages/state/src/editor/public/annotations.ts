@@ -145,7 +145,8 @@ export const hitAnnotation = (scene: Scene, worldPoint: Vec2): AnnotationId | nu
   const radius = ANNOTATION_PIN_HIT_SLOP / zoom;
   const list = [...scene.annotations.values()];
   for (let i = list.length - 1; i >= 0; i--) {
-    const ann = list[i]!;
+    const ann = list[i];
+    if (ann === undefined) continue;
     const center = getAnnotationWorldPosition(scene, ann);
     const dx = worldPoint.x - center.x;
     const dy = worldPoint.y - center.y;

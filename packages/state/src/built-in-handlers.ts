@@ -1,6 +1,5 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { DEFAULT_IMAGE_MAX_EDGE_PX } from "./constants.js";
-import type { Editor } from "./editor.js";
 import {
   isImageFile,
   isVideoFile,
@@ -103,10 +102,11 @@ export const imageFileDropHandler: FileDropHandler = {
       // Wait for the image to decode before handing it to the renderer; an
       // undecoded element draws nothing and the user sees a flash of empty
       // rectangle on first paint.
-      if (!img.complete) {
+      const el = img;
+      if (!el.complete) {
         await new Promise<void>((resolve) => {
-          img!.onload = () => { resolve(); };
-          img!.onerror = () => { resolve(); };
+          el.onload = () => { resolve(); };
+          el.onerror = () => { resolve(); };
         });
       }
     }
@@ -208,7 +208,9 @@ export const videoFileDropHandler: FileDropHandler = {
     };
     // Best-effort play (some browsers require an interaction
     // before allowing autoplay even when muted).
-    void video.play().catch(() => {});
+    void video.play().catch(() => {
+      /* intentional no-op: autoplay rejection is expected before user interaction */
+    });
     editor.insertImage({
       src: url,
       width,

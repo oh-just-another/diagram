@@ -7,7 +7,7 @@ import {
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
-import type { AnnotationId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
+import type { AnnotationId, Bounds, LayerId, LinkId, ElementId, Vec2 } from "@oh-just-another/types";
 import { ALL_HANDLES, CORNER_HANDLES, hitHandle } from "../handle.js";
 import { isResizable, resizeHandlesFor } from "../overlay.js";
 import type { PressTarget } from "../machine.js";
@@ -16,6 +16,12 @@ import { getElement } from "@oh-just-another/scene";
 
 /** Local helper — keeps this module dependency-free of `@math`. */
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
+
+/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/state: index out of range");
+  return v;
+};
 
 /**
  * Bundle of everything `pickPressTarget` needs from the host
@@ -27,14 +33,14 @@ const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y
 export interface HitTestContext {
   readonly scene: Scene;
   readonly selection: Selection.Selection;
-  readonly selectedLink: import("@oh-just-another/types").LinkId | null;
+  readonly selectedLink: LinkId | null;
   readonly enteredGroup: ElementId | null;
   readonly handleHitSlop: number;
   readonly edgeHandleHitSlop: number;
   readonly edgeHitThreshold: number;
   readonly hitAnnotation: (worldPoint: Vec2) => AnnotationId | null;
   readonly selectionIsAspectLocked: () => boolean;
-  readonly combinedSelectionBounds: () => import("@oh-just-another/types").Bounds | null;
+  readonly combinedSelectionBounds: () => Bounds | null;
   readonly acceleratedElementAt: (worldPoint: Vec2) => Element | undefined;
   readonly isElementInteractable: (shape: Element) => boolean;
   readonly isLayerLocked: (layerId: LayerId) => boolean;
@@ -116,8 +122,8 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
       const path = getLinkPath(ctx.scene, edge);
       if (path && path.length >= 2) {
         const handleR = ctx.edgeHandleHitSlop / zoom;
-        const fromPoint = path[0]!;
-        const toPoint = path[path.length - 1]!;
+        const fromPoint = req(path[0]);
+        const toPoint = req(path[path.length - 1]);
         if (distanceTo(worldPoint, fromPoint) <= handleR) {
           return { kind: "edge-endpoint", linkId: edge.id, side: "from" };
         }

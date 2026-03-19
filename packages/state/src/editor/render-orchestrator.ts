@@ -36,6 +36,12 @@ const DRAW_PREVIEW_ELEMENT_ID = "__draw-preview__" as ElementId;
 /** Throwaway id for the live draw-edge connector preview link. */
 const DRAW_PREVIEW_LINK_ID = "__draw-preview-link__" as LinkId;
 
+/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/state: index out of range");
+  return v;
+};
+
 /**
  * Render orchestrator: background grid pass, tile-cache vs full renderScene
  * path, and the overlay options builder (drawing / lasso preview, edge
@@ -77,9 +83,7 @@ export const renderEditor = (editor: Editor): void => {
           : 1,
     });
     editor.tileDirtyElements = new Map();
-    renderLinks(editor._scene, editor.mainTarget, {
-      ...(viewportWorld ? { viewportWorld } : {}),
-    });
+    renderLinks(editor._scene, editor.mainTarget, { viewportWorld });
   } else {
     // For very large scenes share the same SpatialGrid the hit-test path
     // already maintains — `renderScene` uses it to skip the per-shape AABB
@@ -202,7 +206,8 @@ export const renderEditor = (editor: Editor): void => {
       if (attachSet) portSets.push(attachSet);
     } else if (
       !editor.panGesture &&
-      !editor.pinch?.isActive() && // `pinch` may be unset during the constructor's first render
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `pinch` is unset during the constructor's first render; type says non-null but runtime can be undefined
+      !editor.pinch?.isActive() &&
       !editor.gestureTx && // hide only during a real drag (tx opens on first move-patch), not on a bare press
       !editor.edgePreview && // don't show start-anchors if we are already drawing a link
       !editor.linkEndpointDrag // or dragging an existing endpoint
@@ -216,7 +221,7 @@ export const renderEditor = (editor: Editor): void => {
       // grows (`ANCHOR_DOT_HOVER_GROW_RADIUS`).
       const cursor = editor.hoverCursorWorld;
       if (editor._selection.size === 1 && cursor) {
-        const id = [...editor._selection][0]!;
+        const id = req([...editor._selection][0]);
         const shape = getElement(editor._scene, id);
         if (shape) {
           const b = getElementWorldBounds(shape);
@@ -264,9 +269,9 @@ export const renderEditor = (editor: Editor): void => {
             const clickR2 = (editor.anchorClickRadius / zoom) ** 2;
             let hoveredName: string | null = null;
             for (let i = 0; i < worldPoints.length; i++) {
-              const p = worldPoints[i]!;
+              const p = req(worldPoints[i]);
               if ((p.x - cursor.x) ** 2 + (p.y - cursor.y) ** 2 <= clickR2) {
-                hoveredName = names[i]!;
+                hoveredName = req(names[i]);
                 break;
               }
             }
@@ -283,7 +288,7 @@ export const renderEditor = (editor: Editor): void => {
       }
     }
 
-    if (portSets.length === 1) overlayOpts.ports = portSets[0]!;
+    if (portSets.length === 1) overlayOpts.ports = req(portSets[0]);
     else if (portSets.length > 1) overlayOpts.ports = portSets;
 
     // Float-attach feedback: when the endpoint will attach to the whole
@@ -326,7 +331,7 @@ export const renderEditor = (editor: Editor): void => {
         // Halo sizes itself to the link's visual width (see overlay) so it
         // stays visible around thick links at high zoom. Mirror the renderer's
         // `edge.style.strokeWidth ?? 1` fallback.
-        overlayOpts.hoveredLinkWidth = hovEdge.style?.strokeWidth ?? 1;
+        overlayOpts.hoveredLinkWidth = hovEdge.style.strokeWidth ?? 1;
       }
     }
   }
@@ -338,8 +343,8 @@ export const renderEditor = (editor: Editor): void => {
         // During an endpoint-rebind drag the dragged end is re-pointed live in
         // the scene (the whole link follows the cursor), so `path` already
         // reflects the cursor position — handles ride along with it.
-        const from = path[0]!;
-        const to = path[path.length - 1]!;
+        const from = req(path[0]);
+        const to = req(path[path.length - 1]);
         // Bend-point handles: existing waypoints (solid) + segment-midpoint
         // "add" handles along the logical [from, ...waypoints, to] chain.
         // Midpoints are hidden during an active waypoint drag to declutter.
@@ -360,8 +365,8 @@ export const renderEditor = (editor: Editor): void => {
                 ? [0]
                 : Array.from({ length: Math.max(0, path.length - 3) }, (_, i) => i + 1);
             for (const k of segs) {
-              const a = path[k]!;
-              const b = path[k + 1]!;
+              const a = req(path[k]);
+              const b = req(path[k + 1]);
               midpoints.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
             }
           }

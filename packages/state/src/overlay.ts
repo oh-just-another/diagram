@@ -62,6 +62,12 @@ import {
 } from "./handle.js";
 import type { Selection } from "./selection.js";
 
+/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/state: index out of range");
+  return v;
+};
+
 const RESIZABLE_TYPES: ReadonlySet<string> = new Set([
   "rectangle",
   "ellipse",
@@ -465,10 +471,12 @@ export const renderOverlay = (
   // 4. Port dots — hover affordance in draw-edge mode. May be one set or
   //    several (source start-anchors + target attach-anchors at once).
   if (options.ports) {
-    const portSets = Array.isArray(options.ports) ? options.ports : [options.ports];
+    const portSets: readonly PortOverlay[] = Array.isArray(options.ports)
+      ? options.ports
+      : [options.ports];
     for (const set of portSets) {
       for (let i = 0; i < set.worldPoints.length; i++) {
-        const screen = matrix.applyToPoint(w2s, set.worldPoints[i]);
+        const screen = matrix.applyToPoint(w2s, req(set.worldPoints[i]));
         const active = set.activeIndex === i;
         drawPortDot(target, screen, style, active, set.role, active ? set.activeRadius : undefined);
       }
@@ -547,14 +555,14 @@ export const renderOverlay = (
     const ox = bp.origin.x;
     const oy = bp.origin.y;
     if (pts.length === 1) {
-      const p = pts[0]!;
+      const p = req(pts[0]);
       target.beginPath();
       target.ellipse(ox + p.x, oy + p.y, p.width, p.width);
       target.fill();
     } else {
       for (let i = 0; i < pts.length - 1; i++) {
-        const a = pts[i]!;
-        const b = pts[i + 1]!;
+        const a = req(pts[i]);
+        const b = req(pts[i + 1]);
         const ax = ox + a.x;
         const ay = oy + a.y;
         const bx = ox + b.x;
@@ -719,7 +727,6 @@ const drawHitZones = (target: RenderTarget, scene: Scene, w2s: Transform, zoom: 
   for (const shape of scene.elements.values()) {
     if (!isResizable(shape)) continue;
     const wb = getElementWorldBounds(shape);
-    if (!wb) continue;
     for (const handle of resizeHandlesFor(shape)) {
       const c = matrix.applyToPoint(w2s, handlePosition(handle, wb, zoom));
       fillZoneRect(
@@ -743,15 +750,15 @@ const drawHitZones = (target: RenderTarget, scene: Scene, w2s: Transform, zoom: 
     target.setLineCap("round");
     target.setLineJoin("round");
     target.beginPath();
-    const start = matrix.applyToPoint(w2s, path[0]!);
+    const start = matrix.applyToPoint(w2s, req(path[0]));
     target.moveTo(start.x, start.y);
     for (let i = 1; i < path.length; i++) {
-      const p = matrix.applyToPoint(w2s, path[i]!);
+      const p = matrix.applyToPoint(w2s, req(path[i]));
       target.lineTo(p.x, p.y);
     }
     target.stroke();
-    const from = matrix.applyToPoint(w2s, path[0]!);
-    const to = matrix.applyToPoint(w2s, path[path.length - 1]!);
+    const from = matrix.applyToPoint(w2s, req(path[0]));
+    const to = matrix.applyToPoint(w2s, req(path[path.length - 1]));
     fillZoneCircle(target, from.x, from.y, LINK_ENDPOINT_HANDLE_RADIUS);
     fillZoneCircle(target, to.x, to.y, LINK_ENDPOINT_HANDLE_RADIUS);
   }
@@ -856,8 +863,12 @@ const drawLinkPreviewPath = (target: RenderTarget, pts: readonly Vec2[], style: 
   target.setStrokeWidth(1.5);
   target.setDashArray(style.drawingDash);
   target.beginPath();
-  target.moveTo(pts[0]!.x, pts[0]!.y);
-  for (let i = 1; i < pts.length; i++) target.lineTo(pts[i]!.x, pts[i]!.y);
+  const first = req(pts[0]);
+  target.moveTo(first.x, first.y);
+  for (let i = 1; i < pts.length; i++) {
+    const p = req(pts[i]);
+    target.lineTo(p.x, p.y);
+  }
   target.stroke();
 };
 

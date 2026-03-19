@@ -181,9 +181,13 @@ export const computeUpdateStyle = (
     s = r.scene;
     patches.push(r.patch);
   }
+  const firstPatch = patches[0];
   return {
     scene: s,
-    patch: patches.length === 1 ? patches[0]! : { kind: "batch", patches },
+    patch:
+      patches.length === 1 && firstPatch !== undefined
+        ? firstPatch
+        : { kind: "batch", patches },
   };
 };
 
@@ -210,9 +214,13 @@ export const computeUpdateTextProps = (
     s = r.scene;
     patches.push(r.patch);
   }
+  const firstPatch = patches[0];
   return {
     scene: s,
-    patch: patches.length === 1 ? patches[0]! : { kind: "batch", patches },
+    patch:
+      patches.length === 1 && firstPatch !== undefined
+        ? firstPatch
+        : { kind: "batch", patches },
   };
 };
 

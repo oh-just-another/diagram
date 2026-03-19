@@ -1348,3 +1348,6 @@
 
 ## 0.55.21
 - refactor(lint): clear strict errors in leaf packages (tokens, events, network, glyph-atlas, templates-jsx)
+
+## 0.55.22
+- refactor(lint): drop non-null assertions in math (color, hit-test, polygon)
