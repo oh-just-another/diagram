@@ -1351,3 +1351,6 @@
 
 ## 0.55.22
 - refactor(lint): drop non-null assertions in math (color, hit-test, polygon)
+
+## 0.55.23
+- refactor(lint): clear strictTypeChecked errors in state

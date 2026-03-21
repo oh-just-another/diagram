@@ -38,15 +38,15 @@ export class MsdfTextPipeline {
     const vert = compile(gl, gl.VERTEX_SHADER, VERTEX_SRC);
     const frag = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT_SRC);
     this.program = link(gl, vert, frag);
-    this.vbo = gl.createBuffer()!;
+    this.vbo = glReq(gl.createBuffer());
     this.aPos = gl.getAttribLocation(this.program, "aPos");
     this.aUV = gl.getAttribLocation(this.program, "aUV");
-    this.uTransform = gl.getUniformLocation(this.program, "uTransform")!;
-    this.uColor = gl.getUniformLocation(this.program, "uColor")!;
-    this.uOpacity = gl.getUniformLocation(this.program, "uOpacity")!;
-    this.uAtlasSize = gl.getUniformLocation(this.program, "uAtlasSize")!;
-    this.uPxRange = gl.getUniformLocation(this.program, "uPxRange")!;
-    this.uAtlas = gl.getUniformLocation(this.program, "uAtlas")!;
+    this.uTransform = glReq(gl.getUniformLocation(this.program, "uTransform"));
+    this.uColor = glReq(gl.getUniformLocation(this.program, "uColor"));
+    this.uOpacity = glReq(gl.getUniformLocation(this.program, "uOpacity"));
+    this.uAtlasSize = glReq(gl.getUniformLocation(this.program, "uAtlasSize"));
+    this.uPxRange = glReq(gl.getUniformLocation(this.program, "uPxRange"));
+    this.uAtlas = glReq(gl.getUniformLocation(this.program, "uAtlas"));
   }
 
   /**
@@ -91,7 +91,8 @@ export class MsdfTextPipeline {
     let writeOffset = 0;
     let cursor = x;
     for (const ch of text) {
-      const cp = ch.codePointAt(0)!;
+      const cp = ch.codePointAt(0);
+      if (cp === undefined) continue;
       const glyph = atlas.getOrRasterize(cp, fontId);
       if (!glyph) break; // atlas full or shaper unavailable
       const advancePx = (glyph.advance * fontSize) / glyph.unitsPerEm;
@@ -344,8 +345,17 @@ void main() {
   fragColor = vec4(uColor * a, a);
 }`;
 
+/**
+ * Asserts a WebGL resource handle is non-null. Creation APIs are typed
+ * non-null but return `null` on context loss; surface that as a throw.
+ */
+const glReq = <T>(v: T | null): T => {
+  if (v === null) throw new Error("packages/renderer-canvas: WebGL resource creation failed");
+  return v;
+};
+
 const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {
-  const sh = gl.createShader(type)!;
+  const sh = glReq(gl.createShader(type));
   gl.shaderSource(sh, src);
   gl.compileShader(sh);
   if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {

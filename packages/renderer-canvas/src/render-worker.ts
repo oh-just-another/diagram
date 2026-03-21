@@ -81,7 +81,11 @@ const snapshot = (scene: Scene): void => {
     return;
   }
   ensureRenderers();
-  const ctx = state.canvas.getContext("2d")!;
+  const ctx = state.canvas.getContext("2d");
+  if (ctx === null) {
+    post({ type: "error", message: "Worker not initialised" });
+    return;
+  }
   ctx.save();
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   ctx.clearRect(0, 0, state.target.size.width, state.target.size.height);

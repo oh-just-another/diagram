@@ -11,12 +11,10 @@ import type { Transform, Vec2 } from "@oh-just-another/types";
  *   joins: "miter" (default), "bevel", "round"
  *   caps:  "butt" (default),  "square", "round"
  *
- * Why one big TRIANGLES list instead of a strip + extra primitives:
- *   • Round joins / caps need fan triangles glued on top of the
- *     strip — splitting the draw into multiple sub-calls would
- *     re-bind the buffer on every join, which is wasteful.
- *   • TRIANGLES indices are also easier to author when join geometry
- *     is heterogeneous (miter = 0 extra tris, bevel = 1, round = N).
+ * One TRIANGLES list rather than a strip + extra primitives: round
+ * joins / caps need fan triangles glued on top of the strip, and a
+ * single TRIANGLES list avoids re-binding the buffer per join while
+ * keeping heterogeneous join geometry easy to author.
  */
 
 /** Two-vertex pair per polyline vertex (left + right side of the band). */
@@ -24,32 +22,33 @@ interface SideOffset { ox: number; oy: number }
 
 /**
  * Maximum miter overshoot, in units of stroke width. Past this the
- * miter falls back to a bevel — matches Canvas2D's `miterLimit`
- * default of 10 and SVG's spec default.
+ * miter falls back to a bevel — matches Canvas2D's `miterLimit` default
+ * of 10 and SVG's spec default.
  */
 const MITER_LIMIT = 10;
 
-/** Round-join / round-cap fan segments per pi radians. 12 is enough
- * to look smooth at any sensible zoom (each segment ≈ 15°). */
+/** Round-join / round-cap fan segments per pi radians. 12 keeps each
+ *  segment ≈ 15°, smooth at any sensible zoom. */
 const ROUND_SEGMENTS_PER_PI = 12;
+
+/** Asserts a polyline index is in range (loop bounds guarantee it). */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/renderer-canvas: polyline index out of range");
+  return v;
+};
 
 /**
  * Module-level scratch buffers — reused across every
- * `drawPolylineStroke` invocation so the hot path allocates **zero**
- * `Float32Array`s per frame after the first warmup. Previously each
- * call paid for three new TypedArray's (nx, ny, and the projected
- * vertex stream), plus a plain `number[]` that grew via push — on
- * scenes with hundreds of strokes that was 1-2 MB/frame of GC
- * pressure visible as regular saw-tooth in DevTools memory chart.
+ * `drawPolylineStroke` invocation so the hot path allocates zero
+ * `Float32Array`s per frame after warmup.
  *
  * Safe because WebGL is single-threaded and `drawPolylineStroke` is
- * called serially from `WebGL2Target.stroke()` — multiple canvases
- * on the same page still share these buffers, which is fine.
+ * called serially from `WebGL2Target.stroke()`; multiple canvases on
+ * the same page share these buffers, which is fine.
  *
- * Initial caps cover a typical small stroke (≤32 segments) without
- * a single grow. `ensureNCapacity` / `ensureTrisCapacity` upsize to
- * the next power of 2 on demand; capacity only ratchets up (never
- * shrinks) so steady-state cost is zero allocations.
+ * Initial caps cover a typical small stroke (≤32 segments) without a
+ * grow. `ensureNCapacity` / `ensureTrisCapacity` upsize to the next
+ * power of 2 on demand; capacity only ratchets up.
  */
 let scratchNx = new Float32Array(64);
 let scratchNy = new Float32Array(64);
@@ -93,8 +92,8 @@ export interface StrokeStyle {
 /**
  * Compute one miter offset at the hinge between two unit normals.
  * Returns `{ ox, oy }` along the bisector, clamped to MITER_LIMIT.
- * Exported so `webgl2-target.ts` can reuse it for closed-polyline
- * seam vertices.
+ * Exported so `webgl2-target.ts` can reuse it for closed-polyline seam
+ * vertices.
  */
 export const miterOffset = (
   n1x: number,
@@ -123,9 +122,9 @@ export const miterOffset = (
  * pre-projected into clip space here.
  *
  * The caller passes its solid program + cached `aPos` attribute
- * location + its dynamic VBO. We bind & set up the attribute
- * ourselves so the function is self-contained — no implicit
- * dependency on the previous draw's GL state.
+ * location + its dynamic VBO. This function binds & sets up the
+ * attribute itself so it's self-contained — no implicit dependency on
+ * the previous draw's GL state.
  */
 export const drawPolylineStroke = (
   gl: WebGL2RenderingContext,
@@ -146,13 +145,12 @@ export const drawPolylineStroke = (
 
   const segCount = polyline.length - 1;
   // Reuse the module-level scratch nx/ny buffers — grow on demand.
-  // Reads inside this function use plain Float32Array indexing.
   ensureNCapacity(segCount);
   const nx = scratchNx;
   const ny = scratchNy;
   for (let i = 0; i < segCount; i++) {
-    const a = polyline[i]!;
-    const b = polyline[i + 1]!;
+    const a = req(polyline[i]);
+    const b = req(polyline[i + 1]);
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -160,20 +158,20 @@ export const drawPolylineStroke = (
     ny[i] = dx / len;
   }
 
+  const first = req(polyline[0]);
+  const last = req(polyline[polyline.length - 1]);
   const closed =
-    polyline.length >= 3 &&
-    polyline[0]!.x === polyline[polyline.length - 1]!.x &&
-    polyline[0]!.y === polyline[polyline.length - 1]!.y;
+    polyline.length >= 3 && first.x === last.x && first.y === last.y;
 
-  // Reset the scratch vertex stream length — we'll push world-space
-  // (x, y) pairs into `scratchTris` via `trisPush`, then project
-  // in-place to clip space at the end before the bufferData call.
+  // Reset the scratch vertex stream length — world-space (x, y) pairs
+  // are pushed into `scratchTris` via `trisPush`, then projected
+  // in-place to clip space before the bufferData call.
   scratchTrisLen = 0;
   const push = trisPush;
 
-  // Render the segment band between vertex i and i+1 as two
-  // triangles. Both endpoints use the SAME side-offset for now;
-  // join geometry stitches the next segment on.
+  // Render the segment band between vertex i and i+1 as two triangles.
+  // Both endpoints use the same side-offset; join geometry stitches the
+  // next segment on.
   const band = (
     ax: number, ay: number, anx: number, any: number,
     bx: number, by: number, bnx: number, bny: number,
@@ -193,23 +191,23 @@ export const drawPolylineStroke = (
 
   // Per-segment side offsets (the polyline endpoint offset, no
   // bisector — joins add their own geometry between adjacent bands).
-  const segLeft = (i: number): SideOffset => ({ ox: nx[i]! * half, oy: ny[i]! * half });
+  const segLeft = (i: number): SideOffset => ({ ox: req(nx[i]) * half, oy: req(ny[i]) * half });
 
   // Emit the rect bands for every segment.
   for (let i = 0; i < segCount; i++) {
-    const a = polyline[i]!;
-    const b = polyline[i + 1]!;
+    const a = req(polyline[i]);
+    const b = req(polyline[i + 1]);
     const o = segLeft(i);
     band(a.x, a.y, o.ox, o.oy, b.x, b.y, o.ox, o.oy);
   }
 
-  // Emit join geometry at every interior vertex (and at the seam
-  // for closed polylines).
+  // Emit join geometry at every interior vertex (and at the seam for
+  // closed polylines).
   const emitJoin = (vertexX: number, vertexY: number, n1x: number, n1y: number, n2x: number, n2y: number): void => {
     if (style.join === "miter") {
       const { ox, oy } = miterOffset(n1x, n1y, n2x, n2y, half);
-      // Outside-of-bend wedge: tip = (vertex + offset on outer side).
-      // Determine outer side from cross product sign.
+      // Outside-of-bend wedge: tip = vertex + offset on outer side.
+      // Outer side comes from the cross-product sign.
       const cross = n1x * n2y - n1y * n2x;
       if (Math.abs(cross) < 1e-9) return; // colinear — no join needed
       // Outer normal direction = cross < 0 → +offset; cross > 0 → -offset.
@@ -247,7 +245,7 @@ export const drawPolylineStroke = (
       const sign = cross < 0 ? 1 : -1;
       const startAngle = Math.atan2(sign * n1y, sign * n1x);
       const endAngle = Math.atan2(sign * n2y, sign * n2x);
-      // Pick shortest angular sweep.
+      // Pick the shortest angular sweep.
       let delta = endAngle - startAngle;
       while (delta > Math.PI) delta -= 2 * Math.PI;
       while (delta < -Math.PI) delta += 2 * Math.PI;
@@ -269,34 +267,34 @@ export const drawPolylineStroke = (
   };
 
   for (let i = 1; i < segCount; i++) {
-    const p = polyline[i]!;
-    emitJoin(p.x, p.y, nx[i - 1]!, ny[i - 1]!, nx[i]!, ny[i]!);
+    const p = req(polyline[i]);
+    emitJoin(p.x, p.y, req(nx[i - 1]), req(ny[i - 1]), req(nx[i]), req(ny[i]));
   }
   if (closed) {
-    const p = polyline[0]!;
-    emitJoin(p.x, p.y, nx[segCount - 1]!, ny[segCount - 1]!, nx[0]!, ny[0]!);
+    const p = req(polyline[0]);
+    emitJoin(p.x, p.y, req(nx[segCount - 1]), req(ny[segCount - 1]), req(nx[0]), req(ny[0]));
   }
 
   // Caps on open polylines (closed shapes don't have caps).
   if (!closed) {
-    const first = polyline[0]!;
-    const second = polyline[1]!;
-    emitCap(push, first.x, first.y, second.x, second.y, nx[0]!, ny[0]!, half, style.cap, true);
-    const lastVx = polyline[polyline.length - 1]!;
-    const prevVx = polyline[polyline.length - 2]!;
-    emitCap(push, lastVx.x, lastVx.y, prevVx.x, prevVx.y, nx[segCount - 1]!, ny[segCount - 1]!, half, style.cap, false);
+    const capFirst = req(polyline[0]);
+    const second = req(polyline[1]);
+    emitCap(push, capFirst.x, capFirst.y, second.x, second.y, req(nx[0]), req(ny[0]), half, style.cap, true);
+    const lastVx = req(polyline[polyline.length - 1]);
+    const prevVx = req(polyline[polyline.length - 2]);
+    emitCap(push, lastVx.x, lastVx.y, prevVx.x, prevVx.y, req(nx[segCount - 1]), req(ny[segCount - 1]), half, style.cap, false);
   }
 
   if (scratchTrisLen === 0) return;
 
-  // Project all triangle vertices into clip space — in-place: we read
-  // world (x, y) into wx/wy first, then overwrite the same indices
-  // with clip-space values. Saves a second Float32Array allocation.
+  // Project all triangle vertices into clip space in-place: read world
+  // (x, y) first, then overwrite the same indices with clip-space
+  // values.
   const sx = 2 / size.width;
   const sy = -2 / size.height;
   for (let i = 0; i < scratchTrisLen; i += 2) {
-    const x = scratchTris[i]!;
-    const y = scratchTris[i + 1]!;
+    const x = req(scratchTris[i]);
+    const y = req(scratchTris[i + 1]);
     const wx = transform.a * x + transform.c * y + transform.e;
     const wy = transform.b * x + transform.d * y + transform.f;
     scratchTris[i] = wx * sx - 1;
@@ -306,7 +304,6 @@ export const drawPolylineStroke = (
   gl.useProgram(program);
   gl.bindBuffer(gl.ARRAY_BUFFER, dynamicVbo);
   // subarray gives a view into the live scratch buffer — no copy.
-  // gl.bufferData uploads exactly `byteLength` bytes from it.
   gl.bufferData(gl.ARRAY_BUFFER, scratchTris.subarray(0, scratchTrisLen), gl.DYNAMIC_DRAW);
   gl.enableVertexAttribArray(aPosLoc);
   gl.vertexAttribPointer(aPosLoc, 2, gl.FLOAT, false, 0, 0);
@@ -318,8 +315,8 @@ export const drawPolylineStroke = (
 
 /**
  * Emit a cap at one endpoint of an open polyline. `start` indicates
- * whether this is the leading (first) cap — needed because the
- * "outward" tangent direction reverses for the trailing cap.
+ * whether this is the leading (first) cap — the outward tangent
+ * direction reverses for the trailing cap.
  *   `butt`   → nothing (the rect band already squared off the end).
  *   `square` → extend the rect band by `half` along the tangent.
  *   `round`  → half-circle fan.
@@ -338,22 +335,21 @@ const emitCap = (
 ): void => {
   if (cap === "butt") return;
   // Outward tangent direction: from vertex away from the polyline's
-  // interior. For `start`, it's vertex → -other (extending the
-  // polyline backward); for the trailing cap, it's vertex → +other
-  // direction (extending forward). Both end up pointing away from
-  // the next-vertex along the segment direction.
+  // interior. For `start`, it's vertex → -other (extending backward);
+  // for the trailing cap, it's vertex → +other (extending forward).
+  // Both point away from the next-vertex along the segment direction.
   const dx = otherX - vx;
   const dy = otherY - vy;
   const len = Math.hypot(dx, dy) || 1;
   const tx = -dx / len; // outward tangent
   const ty = -dy / len;
-  // `start` cap points outward by reversing; trailing cap already
-  // points outward (other is the *previous* vertex).
+  // `start` cap points outward by reversing; the trailing cap already
+  // points outward (other is the previous vertex).
   const sign = start ? 1 : -1;
   const outX = sign * tx;
   const outY = sign * ty;
   if (cap === "square") {
-    // Extend band by `half` along the outward tangent.
+    // Extend the band by `half` along the outward tangent.
     const A = { x: vx + nrmX * half, y: vy + nrmY * half };
     const B = { x: vx - nrmX * half, y: vy - nrmY * half };
     const Aext = { x: A.x + outX * half, y: A.y + outY * half };
@@ -366,13 +362,13 @@ const emitCap = (
     push(Bext.x, Bext.y);
     return;
   }
-  // round cap: half-circle fan starting from +normal, sweeping
-  // through outward tangent, ending at -normal.
+  // round cap: half-circle fan starting from +normal, sweeping through
+  // the outward tangent, ending at -normal.
   const startAngle = Math.atan2(nrmY, nrmX);
   const segs = ROUND_SEGMENTS_PER_PI;
   // Sweep π radians in the outward direction. The sweep direction
-  // (CW vs CCW) depends on which side `out` is relative to the
-  // normal — use the cross product sign.
+  // (CW vs CCW) depends on which side `out` is relative to the normal —
+  // use the cross-product sign.
   const cross = nrmX * outY - nrmY * outX;
   const sweepSign = cross >= 0 ? 1 : -1;
   let prevX = vx + Math.cos(startAngle) * half;

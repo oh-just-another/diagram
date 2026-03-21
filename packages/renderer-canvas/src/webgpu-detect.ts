@@ -39,6 +39,7 @@ export const isWebGL2Available = (): boolean => {
     if (!gl) return false;
     // Optional-chain both the method and the result — test stubs
     // hand back a bare object with no `getExtension`.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- lib.dom types getExtension non-null, but test stubs omit it
     gl.getExtension?.("WEBGL_lose_context")?.loseContext();
     return true;
   } catch {
@@ -61,10 +62,8 @@ export const pickAvailableBackend = async (
       if (isWebGL2Available()) return "webgl2";
       continue;
     }
-    if (choice === "webgpu") {
-      if (await isWebGPUAvailable()) return "webgl2"; // best surrogate today
-      continue;
-    }
+    // "webgpu" falls back to "webgl2" as the best surrogate.
+    if (await isWebGPUAvailable()) return "webgl2";
   }
   return "canvas2d";
 };

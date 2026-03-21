@@ -42,11 +42,11 @@ export class EllipsePipeline {
     this.program = link(gl, vert, frag);
     this.aPos = gl.getAttribLocation(this.program, "aPos");
     this.aLocal = gl.getAttribLocation(this.program, "aLocal");
-    this.uTransform = gl.getUniformLocation(this.program, "uTransform")!;
-    this.uColor = gl.getUniformLocation(this.program, "uColor")!;
-    this.uOpacity = gl.getUniformLocation(this.program, "uOpacity")!;
+    this.uTransform = glReq(gl.getUniformLocation(this.program, "uTransform"));
+    this.uColor = glReq(gl.getUniformLocation(this.program, "uColor"));
+    this.uOpacity = glReq(gl.getUniformLocation(this.program, "uOpacity"));
     // Static interleaved buffer — never re-uploaded.
-    this.vbo = gl.createBuffer()!;
+    this.vbo = glReq(gl.createBuffer());
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
     gl.bufferData(
       gl.ARRAY_BUFFER,
@@ -155,8 +155,17 @@ void main() {
   fragColor = vec4(uColor * a, a);
 }`;
 
+/**
+ * Asserts a WebGL resource handle is non-null. Creation APIs are typed
+ * non-null but return `null` on context loss; surface that as a throw.
+ */
+const glReq = <T>(v: T | null): T => {
+  if (v === null) throw new Error("packages/renderer-canvas: WebGL resource creation failed");
+  return v;
+};
+
 const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {
-  const sh = gl.createShader(type)!;
+  const sh = glReq(gl.createShader(type));
   gl.shaderSource(sh, src);
   gl.compileShader(sh);
   if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {

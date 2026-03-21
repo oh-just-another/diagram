@@ -92,7 +92,9 @@ export class LayeredCanvas {
     this.height = height;
     for (const [name, canvas] of this.canvases) {
       const dpr = setupHiDpi(canvas, width, height, this.dprOverride);
-      this.layers.get(name)!.resize(width, height, dpr);
+      const layer = this.layers.get(name);
+      if (layer === undefined) continue;
+      layer.resize(width, height, dpr);
     }
   }
 

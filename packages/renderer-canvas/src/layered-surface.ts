@@ -2,7 +2,7 @@ import { LAYER_ORDER, type LayerName, type RenderTarget } from "@oh-just-another
 import { LayeredCanvas } from "./layered-canvas.js";
 import { WebGL2Target } from "./webgl2-target.js";
 import { RecordingTarget } from "./recording-target.js";
-import { setupHiDpi, setupHiDpiNoContext } from "./hi-dpi.js";
+import { setupHiDpiNoContext } from "./hi-dpi.js";
 
 /**
  * Backend selector for `createLayeredSurface`.
@@ -308,8 +308,8 @@ class OffscreenLayeredSurface implements LayeredSurface {
     for (const [name, canvas] of this.canvases) {
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
-      this.targets.get(name)!.resize(width, height);
-      this.workers.get(name)!.postMessage({ type: "resize", width, height });
+      this.targets.get(name)?.resize(width, height);
+      this.workers.get(name)?.postMessage({ type: "resize", width, height });
     }
   }
   get size(): { readonly width: number; readonly height: number } {
@@ -319,7 +319,7 @@ class OffscreenLayeredSurface implements LayeredSurface {
     for (const [name, target] of this.targets) {
       const cmds = target.flush();
       if (cmds.length === 0) continue;
-      this.workers.get(name)!.postMessage({ type: "replay", commands: cmds });
+      this.workers.get(name)?.postMessage({ type: "replay", commands: cmds });
     }
   }
   dispose(): void {

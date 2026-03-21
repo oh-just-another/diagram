@@ -43,13 +43,13 @@ export class LoopBlinnCurvePipeline {
     const vert = compile(gl, gl.VERTEX_SHADER, VERTEX_SRC);
     const frag = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT_SRC);
     this.program = link(gl, vert, frag);
-    this.vbo = gl.createBuffer()!;
-    this.uvBuf = gl.createBuffer()!;
+    this.vbo = glReq(gl.createBuffer());
+    this.uvBuf = glReq(gl.createBuffer());
     this.aPos = gl.getAttribLocation(this.program, "aPos");
     this.aUVW = gl.getAttribLocation(this.program, "aUVW");
-    this.uTransform = gl.getUniformLocation(this.program, "uTransform")!;
-    this.uColor = gl.getUniformLocation(this.program, "uColor")!;
-    this.uOpacity = gl.getUniformLocation(this.program, "uOpacity")!;
+    this.uTransform = glReq(gl.getUniformLocation(this.program, "uTransform"));
+    this.uColor = glReq(gl.getUniformLocation(this.program, "uColor"));
+    this.uOpacity = glReq(gl.getUniformLocation(this.program, "uOpacity"));
   }
 
   /**
@@ -165,8 +165,18 @@ void main() {
   fragColor = vec4(uColor * a, a);
 }`;
 
+/**
+ * Asserts a WebGL resource handle is non-null. `gl.createBuffer` /
+ * `getUniformLocation` / `createShader` are typed non-null but return
+ * `null` on context loss; this surfaces that as a throw.
+ */
+const glReq = <T>(v: T | null): T => {
+  if (v === null) throw new Error("packages/renderer-canvas: WebGL resource creation failed");
+  return v;
+};
+
 const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {
-  const sh = gl.createShader(type)!;
+  const sh = glReq(gl.createShader(type));
   gl.shaderSource(sh, src);
   gl.compileShader(sh);
   if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {

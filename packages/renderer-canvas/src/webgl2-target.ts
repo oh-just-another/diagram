@@ -82,8 +82,7 @@ export class WebGL2Target implements RenderTarget {
   private textBaseline: TextBaseline = "top";
   /**
    * Polyline path being assembled by moveTo / lineTo. Cleared on
-   * `beginPath()`; pushed to GPU on `stroke()`. Bezier curves still
-   * throw NotImplemented — see `notImpl()`.
+   * `beginPath()`; pushed to GPU on `stroke()`.
    */
   private currentPolyline: Vec2[] = [];
   /**
@@ -129,12 +128,10 @@ export class WebGL2Target implements RenderTarget {
       premultipliedAlpha: true,
       preserveDrawingBuffer: true,
     });
-    if (!gl) {
-      gl = (canvas as HTMLCanvasElement).getContext("webgl2", {
-        premultipliedAlpha: true,
-        preserveDrawingBuffer: true,
-      });
-    }
+    gl ??= (canvas as HTMLCanvasElement).getContext("webgl2", {
+      premultipliedAlpha: true,
+      preserveDrawingBuffer: true,
+    });
     if (!gl) {
       throw new Error(
         "WebGL2 unavailable in this environment (probably hit the per-page GL context cap; " +
@@ -160,7 +157,7 @@ export class WebGL2Target implements RenderTarget {
     // Single quad shared across every solid-fill rect — the vertex
     // shader applies the per-call transform to scale + translate it
     // into place.
-    this.vbo = this.gl.createBuffer()!;
+    this.vbo = glReq(this.gl.createBuffer());
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
     this.gl.bufferData(
       this.gl.ARRAY_BUFFER,
@@ -169,15 +166,15 @@ export class WebGL2Target implements RenderTarget {
     );
     // Dynamic buffer for polygon / stroke / fan vertex streams. Created
     // empty — each draw bind + bufferData fills it.
-    this.dynamicVbo = this.gl.createBuffer()!;
+    this.dynamicVbo = glReq(this.gl.createBuffer());
 
     this.aPosLoc = this.gl.getAttribLocation(this.program, "aPos");
     this.gl.enableVertexAttribArray(this.aPosLoc);
     this.gl.vertexAttribPointer(this.aPosLoc, 2, this.gl.FLOAT, false, 0, 0);
 
-    this.uTransformLoc = this.gl.getUniformLocation(this.program, "uTransform")!;
-    this.uColorLoc = this.gl.getUniformLocation(this.program, "uColor")!;
-    this.uOpacityLoc = this.gl.getUniformLocation(this.program, "uOpacity")!;
+    this.uTransformLoc = glReq(this.gl.getUniformLocation(this.program, "uTransform"));
+    this.uColorLoc = glReq(this.gl.getUniformLocation(this.program, "uColor"));
+    this.uOpacityLoc = glReq(this.gl.getUniformLocation(this.program, "uOpacity"));
 
     this.gl.enable(this.gl.BLEND);
     // Premultiplied-alpha blending. The context was created with
@@ -383,8 +380,9 @@ export class WebGL2Target implements RenderTarget {
   }
 
   closePath(): void {
-    if (this.currentPolyline.length > 1) {
-      this.currentPolyline.push({ ...this.currentPolyline[0]! });
+    const start = this.currentPolyline[0];
+    if (this.currentPolyline.length > 1 && start !== undefined) {
+      this.currentPolyline.push({ ...start });
     }
   }
 
@@ -453,12 +451,12 @@ export class WebGL2Target implements RenderTarget {
         ],
         tolerance,
       );
-      for (let i = 1; i < pts.length; i++) this.currentPolyline.push(pts[i]!);
+      for (let i = 1; i < pts.length; i++) this.currentPolyline.push(req(pts[i]));
       return;
     }
     const count = Math.max(8, Math.min(128, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)));
     const samples = sampleQuadratic(start, { x: cx, y: cy }, { x, y }, count);
-    for (let i = 1; i < samples.length; i++) this.currentPolyline.push(samples[i]!);
+    for (let i = 1; i < samples.length; i++) this.currentPolyline.push(req(samples[i]));
   }
 
   /** Cubic Bezier — same dual-track approach as quadratic. */
@@ -490,12 +488,12 @@ export class WebGL2Target implements RenderTarget {
         ],
         tolerance,
       );
-      for (let i = 1; i < pts.length; i++) this.currentPolyline.push(pts[i]!);
+      for (let i = 1; i < pts.length; i++) this.currentPolyline.push(req(pts[i]));
       return;
     }
     const count = Math.max(12, Math.min(192, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)));
     const samples = sampleCubic(start, { x: c1x, y: c1y }, { x: c2x, y: c2y }, { x, y }, count);
-    for (let i = 1; i < samples.length; i++) this.currentPolyline.push(samples[i]!);
+    for (let i = 1; i < samples.length; i++) this.currentPolyline.push(req(samples[i]));
   }
 
   /**
@@ -617,6 +615,7 @@ export class WebGL2Target implements RenderTarget {
       return cached;
     }
     const tex = this.gl.createTexture();
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- createTexture typed non-null but returns null on context loss
     if (!tex) return null;
     this.gl.bindTexture(this.gl.TEXTURE_2D, tex);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
@@ -656,7 +655,8 @@ export class WebGL2Target implements RenderTarget {
       // handles. Move it to the tail so the LRU pointer advances and the
       // next-oldest entry is tried.
       if (isTextBitmapBacked(this.textBitmaps, oldestKey)) {
-        const tex = this.textures.get(oldestKey)!;
+        const tex = this.textures.get(oldestKey);
+        if (tex === undefined) continue;
         this.textures.delete(oldestKey);
         this.textures.set(oldestKey, tex);
         continue;
@@ -675,7 +675,7 @@ export class WebGL2Target implements RenderTarget {
     // Ellipse path — single fragment-SDF quad regardless of radius.
     // Vector-perfect at any zoom; 4 vertices instead of 24-512.
     if (this.currentEllipse) {
-      if (!this.ellipsePipeline) this.ellipsePipeline = new EllipsePipeline(this.gl);
+      this.ellipsePipeline ??= new EllipsePipeline(this.gl);
       const e = this.currentEllipse;
       this.ellipsePipeline.draw(
         e.cx, e.cy, e.rx, e.ry,
@@ -732,7 +732,7 @@ export class WebGL2Target implements RenderTarget {
     // doesn't have. The artefact is invisible at 1× zoom and tiny even
     // at 20×.
     if (this.currentCurves.length > 0) {
-      if (!this.curvePipeline) this.curvePipeline = new LoopBlinnCurvePipeline(this.gl);
+      this.curvePipeline ??= new LoopBlinnCurvePipeline(this.gl);
       this.curvePipeline.draw(
         this.currentCurves,
         this.fillColor,
@@ -757,10 +757,13 @@ export class WebGL2Target implements RenderTarget {
     // Skip the implicitly-closed duplicate last vertex if the caller
     // already issued `closePath` — earcut would treat it as a degenerate
     // sliver.
+    const polyFirst = polyline[0];
+    const polyLast = polyline[polyline.length - 1];
     const n =
       polyline.length >= 4 &&
-      polyline[0]!.x === polyline[polyline.length - 1]!.x &&
-      polyline[0]!.y === polyline[polyline.length - 1]!.y
+      polyFirst !== undefined &&
+      polyFirst.x === polyLast?.x &&
+      polyFirst.y === polyLast.y
         ? polyline.length - 1
         : polyline.length;
     if (n < 3) return;
@@ -771,7 +774,7 @@ export class WebGL2Target implements RenderTarget {
     ensureEarcutVertexCapacity(n);
     const flat = scratchEarcutFlat;
     for (let i = 0; i < n; i++) {
-      const p = polyline[i]!;
+      const p = req(polyline[i]);
       flat[i * 2] = p.x;
       flat[i * 2 + 1] = p.y;
     }
@@ -790,7 +793,7 @@ export class WebGL2Target implements RenderTarget {
     const sy = -2 / this._size.height;
     const verts = scratchEarcutVerts;
     for (let i = 0; i < n; i++) {
-      const p = polyline[i]!;
+      const p = req(polyline[i]);
       const wx = this.transform.a * p.x + this.transform.c * p.y + this.transform.e;
       const wy = this.transform.b * p.x + this.transform.d * p.y + this.transform.f;
       verts[i * 2] = wx * sx - 1;
@@ -802,7 +805,7 @@ export class WebGL2Target implements RenderTarget {
     // TypedArray view to bufferData with no further allocation.
     ensureEarcutIndexCapacity(indices.length);
     for (let i = 0; i < indices.length; i++) {
-      scratchEarcutIndices[i] = indices[i]!;
+      scratchEarcutIndices[i] = req(indices[i]);
     }
 
     const gl = this.gl;
@@ -818,7 +821,7 @@ export class WebGL2Target implements RenderTarget {
     gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
     // Lazy IBO — earcut returns 16-bit indices for ≤65535 verts (the
     // realistic ceiling for any one polygon).
-    if (!this.indexBuffer) this.indexBuffer = gl.createBuffer();
+    this.indexBuffer ??= gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.bufferData(
       gl.ELEMENT_ARRAY_BUFFER,
@@ -844,7 +847,7 @@ export class WebGL2Target implements RenderTarget {
     ensureEarcutVertexCapacity(n);
     const verts = scratchEarcutVerts;
     for (let i = 0; i < n; i++) {
-      const p = polyline[i]!;
+      const p = req(polyline[i]);
       const wx = this.transform.a * p.x + this.transform.c * p.y + this.transform.e;
       const wy = this.transform.b * p.x + this.transform.d * p.y + this.transform.f;
       verts[i * 2] = wx * sx - 1;
@@ -1064,7 +1067,7 @@ export class WebGL2Target implements RenderTarget {
    * doesn't round-trip the WASM measure().
    */
   private fillTextMSDF(text: string, x: number, y: number, atlas: GlyphAtlas): void {
-    if (!this.msdfPipeline) this.msdfPipeline = new MsdfTextPipeline(this.gl);
+    this.msdfPipeline ??= new MsdfTextPipeline(this.gl);
     // Pick the embedded font for the current family + weight/style.
     const fontId = atlas.resolveFontId(
       this.fontFamily,
@@ -1168,7 +1171,8 @@ export class WebGL2Target implements RenderTarget {
       );
       let w = 0;
       for (const ch of text) {
-        const cp = ch.codePointAt(0)!;
+        const cp = ch.codePointAt(0);
+        if (cp === undefined) continue;
         const glyph = atlas.getOrRasterize(cp, fontId);
         if (!glyph) continue;
         w += (glyph.advance * this.fontSize) / glyph.unitsPerEm;
@@ -1280,8 +1284,8 @@ export const dashPolyline = (pts: readonly Vec2[], pattern: readonly number[]): 
   let cur: Vec2[] = [];
   if (remaining <= 0) return [pts.slice()]; // degenerate pattern → solid
   for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i]!;
-    const b = pts[i + 1]!;
+    const a = req(pts[i]);
+    const b = req(pts[i + 1]);
     const segLen = Math.hypot(b.x - a.x, b.y - a.y);
     if (segLen < 1e-9) continue;
     const dx = (b.x - a.x) / segLen;
@@ -1511,18 +1515,11 @@ void main() {
     program,
     aPos: gl.getAttribLocation(program, "aPos"),
     aUV: gl.getAttribLocation(program, "aUV"),
-    uTransform: gl.getUniformLocation(program, "uTransform")!,
-    uTex: gl.getUniformLocation(program, "uTex")!,
-    uOpacity: gl.getUniformLocation(program, "uOpacity")!,
+    uTransform: glReq(gl.getUniformLocation(program, "uTransform")),
+    uTex: glReq(gl.getUniformLocation(program, "uTex")),
+    uOpacity: glReq(gl.getUniformLocation(program, "uOpacity")),
   };
 };
-
-const notImpl = (method: string): never => {
-  throw new Error(
-    `WebGL2Target: ${method}() is out of MVP scope. Fall back to Canvas2DTarget for this draw call.`,
-  );
-};
-
 
 /**
  * Build a 3×3 column-major matrix that maps a unit quad [0,0]–[1,1]
@@ -1559,8 +1556,23 @@ void main() {
   fragColor = vec4(uColor * uOpacity, uOpacity);
 }`;
 
+/**
+ * Asserts a WebGL resource handle is non-null. Creation APIs are typed
+ * non-null but return `null` on context loss; surface that as a throw.
+ */
+const glReq = <T>(v: T | null): T => {
+  if (v === null) throw new Error("packages/renderer-canvas: WebGL resource creation failed");
+  return v;
+};
+
+/** Asserts an array index is in range (loop bounds guarantee it). */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/renderer-canvas: index out of range");
+  return v;
+};
+
 const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {
-  const sh = gl.createShader(type)!;
+  const sh = glReq(gl.createShader(type));
   gl.shaderSource(sh, src);
   gl.compileShader(sh);
   if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
