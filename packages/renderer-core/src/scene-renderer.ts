@@ -124,7 +124,7 @@ export interface RenderSceneOptions {
     layerId: LayerId,
     zoomBucket: number,
     scene: Scene,
-  ) => unknown | null;
+  ) => unknown;
 }
 
 /**

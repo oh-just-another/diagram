@@ -66,11 +66,17 @@ export const wrapText = (
       continue;
     }
 
-    let current = words[0]!;
+    const firstWord = words[0];
+    if (firstWord === undefined) {
+      out.push({ text: "", width: 0 });
+      continue;
+    }
+    let current = firstWord;
     let currentWidth = measure(current);
 
     for (let i = 1; i < words.length; i++) {
-      const word = words[i]!;
+      const word = words[i];
+      if (word === undefined) continue;
       const candidate = `${current} ${word}`;
       const w = measure(candidate);
       if (w <= maxWidth) {

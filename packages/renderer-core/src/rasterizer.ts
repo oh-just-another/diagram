@@ -6,15 +6,15 @@ import type { PathCommand } from "@oh-just-another/scene";
 // flattening) reads at draw time. `null` falls back to the backend's
 // built-in JS sampler.
 
-let activeRasterizer: import("./rasterizer.js").Rasterizer | null = null;
+let activeRasterizer: Rasterizer | null = null;
 
 export const setActiveRasterizer = (
-  r: import("./rasterizer.js").Rasterizer | null,
+  r: Rasterizer | null,
 ): void => {
   activeRasterizer = r;
 };
 
-export const getActiveRasterizer = (): import("./rasterizer.js").Rasterizer | null =>
+export const getActiveRasterizer = (): Rasterizer | null =>
   activeRasterizer;
 
 

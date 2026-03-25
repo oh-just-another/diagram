@@ -23,6 +23,11 @@ import {
   TEXT_STRIKETHROUGH_OFFSET,
 } from "./constants.js";
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/renderer-core: index out of range");
+  return v;
+};
+
 /**
  * Applies common style fields to a target. Returns whether any fill or stroke
  * was configured — shape renderers use the result to decide which paint call
@@ -189,10 +194,12 @@ const drawPolygon: ElementRenderer<PolygonElement> = (shape, target) => {
 
 /** Emit a closed polygon outline as `moveTo` + `lineTo`s + `closePath`. */
 const polygonPath = (target: RenderTarget, pts: readonly { x: number; y: number }[]): void => {
-  const first = pts[0]!;
+  const first = pts[0];
+  if (first === undefined) return;
   target.moveTo(first.x, first.y);
   for (let i = 1; i < pts.length; i++) {
-    const p = pts[i]!;
+    const p = pts[i];
+    if (p === undefined) continue;
     target.lineTo(p.x, p.y);
   }
   target.closePath();
@@ -319,15 +326,15 @@ const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
   target.setStroke(null);
   // Single dot for one-point strokes — degenerate quad would be invisible.
   if (pts.length === 1) {
-    const p = pts[0]!;
+    const p = req(pts[0]);
     target.beginPath();
     target.ellipse(p.x, p.y, p.width, p.width);
     target.fill();
     return;
   }
   for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i]!;
-    const b = pts[i + 1]!;
+    const a = req(pts[i]);
+    const b = req(pts[i + 1]);
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -380,7 +387,9 @@ export const installBuiltinRenderers = (): void => {
   registerElementRenderer<ImageElement>("image", drawImage);
   // Group shapes are invisible containers — the editor's overlay draws
   // a halo for selected groups, but the shape itself paints nothing.
-  registerElementRenderer<GroupElement>("group", () => {});
+  registerElementRenderer<GroupElement>("group", () => {
+    /* intentional no-op: group shapes are invisible containers and paint nothing */
+  });
   registerElementRenderer<FrameElement>("frame", drawFrame);
   registerElementRenderer<BlockArrowElement>("block-arrow", drawBlockArrow);
   registerElementRenderer<BrushElement>("brush", drawBrush);

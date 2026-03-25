@@ -1,7 +1,11 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { bezier } from "@oh-just-another/math";
-import type { PathCommand } from "@oh-just-another/scene";
 import type { Rasterizer } from "./rasterizer.js";
+
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/renderer-core: index out of range");
+  return v;
+};
 
 /**
  * Reference JS implementation of the `Rasterizer` interface. Path
@@ -30,7 +34,7 @@ export const jsRasterizer: Rasterizer = {
         case "Q": {
           const chord = Math.hypot(cmd.to.x - pen.x, cmd.to.y - pen.y);
           const samples = bezier.flattenQuadratic(pen, cmd.control, cmd.to, sampleCount(chord));
-          for (let i = 1; i < samples.length; i++) out.push(samples[i]!);
+          for (let i = 1; i < samples.length; i++) out.push(req(samples[i]));
           pen = cmd.to;
           break;
         }
@@ -43,14 +47,14 @@ export const jsRasterizer: Rasterizer = {
             cmd.to,
             sampleCount(chord),
           );
-          for (let i = 1; i < samples.length; i++) out.push(samples[i]!);
+          for (let i = 1; i < samples.length; i++) out.push(req(samples[i]));
           pen = cmd.to;
           break;
         }
         case "Z":
           // Close — connect back to the first point if it exists.
           if (out.length > 0) {
-            const first = out[0]!;
+            const first = req(out[0]);
             out.push(first);
             pen = first;
           }
@@ -68,21 +72,22 @@ export const jsRasterizer: Rasterizer = {
     const left: Vec2[] = [];
     const right: Vec2[] = [];
     for (let i = 0; i < polyline.length; i++) {
-      const prev = polyline[Math.max(0, i - 1)]!;
-      const next = polyline[Math.min(polyline.length - 1, i + 1)]!;
+      const prev = req(polyline[Math.max(0, i - 1)]);
+      const next = req(polyline[Math.min(polyline.length - 1, i + 1)]);
+      const cur = req(polyline[i]);
       const dx = next.x - prev.x;
       const dy = next.y - prev.y;
       const len = Math.hypot(dx, dy) || 1;
       const nx = -dy / len;
       const ny = dx / len;
-      left.push({ x: polyline[i]!.x + nx * half, y: polyline[i]!.y + ny * half });
-      right.push({ x: polyline[i]!.x - nx * half, y: polyline[i]!.y - ny * half });
+      left.push({ x: cur.x + nx * half, y: cur.y + ny * half });
+      right.push({ x: cur.x - nx * half, y: cur.y - ny * half });
     }
     // Round / square caps would extend the line ends here; butt =
     // just the side offsets.
     if (cap === "round" || cap === "square") {
       // No-op: non-butt endcaps need extra verts; not generated here.
     }
-    return [...left, ...right.reverse(), left[0]!];
+    return [...left, ...right.reverse(), req(left[0])];
   },
 };

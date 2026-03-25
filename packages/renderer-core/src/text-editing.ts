@@ -1,5 +1,10 @@
 import type { TextAlign } from "./render-target.js";
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/renderer-core: index out of range");
+  return v;
+};
+
 /**
  * Caret-aware text layout. Unlike {@link wrapText} (which collapses
  * whitespace and is only good enough for *drawing*), this keeps every
@@ -82,7 +87,7 @@ const wrapParagraph = (
   };
   let i = 0;
   while (i < words.length) {
-    const w = words[i]!;
+    const w = req(words[i]);
     if (measure(para.slice(lineStart, w.e)) <= maxWidth) {
       i++; // word fits on the current line — keep it, try the next
       continue;
@@ -154,7 +159,7 @@ const lineLeftX = (lineWidth: number, blockWidth: number, align: TextAlign): num
 const lineIndexForCaret = (layout: EditableTextLayout, caret: number): number => {
   const { lines } = layout;
   for (let i = 0; i < lines.length; i++) {
-    const l = lines[i]!;
+    const l = req(lines[i]);
     // Caret belongs to this line when it's within [start, end]; the
     // upper bound is inclusive so end-of-line resolves here, while
     // start-of-next-line (end + 1 for a hard `\n`) resolves to the
@@ -187,7 +192,7 @@ export const caretGeometry = (
   align: TextAlign,
 ): CaretGeometry => {
   const i = lineIndexForCaret(layout, caret);
-  const line = layout.lines[i]!;
+  const line = req(layout.lines[i]);
   const col = Math.max(0, Math.min(caret, line.end) - line.start);
   const prefixWidth = col === 0 ? 0 : measure(line.text.slice(0, col));
   const left = lineLeftX(line.width, layout.blockWidth, align);
@@ -206,7 +211,7 @@ export const pointToCaretIndex = (
 ): number => {
   const { lines, lineHeight } = layout;
   const i = Math.max(0, Math.min(lines.length - 1, Math.floor(point.y / lineHeight)));
-  const line = lines[i]!;
+  const line = req(lines[i]);
   const left = lineLeftX(line.width, layout.blockWidth, align);
   // Walk columns, picking the boundary whose x is closest to point.x.
   let best = 0;
@@ -245,7 +250,7 @@ export const selectionRects = (
   if (lo === hi) return [];
   const rects: SelectionRect[] = [];
   for (let i = 0; i < layout.lines.length; i++) {
-    const line = layout.lines[i]!;
+    const line = req(layout.lines[i]);
     const a = Math.max(lo, line.start);
     const b = Math.min(hi, line.end);
     if (a > b) continue;
