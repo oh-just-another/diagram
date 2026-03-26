@@ -1,6 +1,11 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { getElementLocalBounds, type ElementBase, type PolygonElement } from "./shape.js";
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/scene: index out of range");
+  return v;
+};
+
 /**
  * Built-in outline samplers — one per shape `type` that the kernel ships.
  * Plugins can register their own via `registerOutlineSampler` so custom
@@ -95,30 +100,30 @@ const localToWorld = (shape: ElementBase, local: Vec2): Vec2 => {
  */
 const samplePolyline = (points: readonly Vec2[], ratio: number): Vec2 => {
   if (points.length === 0) return { x: 0, y: 0 };
-  if (points.length === 1) return points[0]!;
+  if (points.length === 1) return req(points[0]);
   // Walk segments by cumulative length until we land on `ratio * total`.
   let total = 0;
   const lengths: number[] = [];
   for (let i = 0; i < points.length; i++) {
-    const a = points[i]!;
-    const b = points[(i + 1) % points.length]!;
+    const a = req(points[i]);
+    const b = req(points[(i + 1) % points.length]);
     const len = distance(a, b);
     lengths.push(len);
     total += len;
   }
-  if (total === 0) return points[0]!;
+  if (total === 0) return req(points[0]);
   let target = total * ratio;
   for (let i = 0; i < points.length; i++) {
-    const len = lengths[i]!;
+    const len = req(lengths[i]);
     if (target <= len) {
-      const a = points[i]!;
-      const b = points[(i + 1) % points.length]!;
+      const a = req(points[i]);
+      const b = req(points[(i + 1) % points.length]);
       const t = len === 0 ? 0 : target / len;
       return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
     }
     target -= len;
   }
-  return points[0]!;
+  return req(points[0]);
 };
 
 // --- built-in samplers ---

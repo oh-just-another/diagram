@@ -16,6 +16,11 @@ import { getElementWorldBounds, type ElementBase } from "./shape.js";
 import type { Scene } from "./scene.js";
 import { getElement } from "./queries.js";
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/scene: index out of range");
+  return v;
+};
+
 /**
  * --- Self-loop geometry ---
  *
@@ -409,8 +414,8 @@ export const getLinkCurveSegments = (
   if (loop) return selfLoopCurve(loop);
   const path = getLinkPath(scene, edge);
   if (!path || path.length < 2) return null;
-  const start = path[0]!;
-  const end = path[path.length - 1]!;
+  const start = req(path[0]);
+  const end = req(path[path.length - 1]);
   if (path.length === 2) {
     const dirFrom = curveEndDir(edge.from, start, end);
     const dirTo = curveEndDir(edge.to, end, start);
@@ -461,8 +466,8 @@ export const getLinkWaypointMidpoints = (scene: Scene, edge: Link): Vec2[] | nul
   if (!path || path.length < 2) return null;
   const mids: Vec2[] = [];
   for (let i = 0; i < path.length - 1; i++) {
-    const a = path[i]!;
-    const b = path[i + 1]!;
+    const a = req(path[i]);
+    const b = req(path[i + 1]);
     mids.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   }
   return mids;
@@ -483,7 +488,7 @@ export const findLinkAt = (scene: Scene, worldPoint: Vec2, threshold = 5): Link 
     if (!path) continue;
     let minDistance = Infinity;
     for (let i = 1; i < path.length; i++) {
-      const d = distanceToSegment(worldPoint, path[i - 1]!, path[i]!);
+      const d = distanceToSegment(worldPoint, req(path[i - 1]), req(path[i]));
       if (d < minDistance) minDistance = d;
     }
     if (minDistance > threshold) continue;

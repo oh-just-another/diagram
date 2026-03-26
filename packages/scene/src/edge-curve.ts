@@ -6,6 +6,11 @@ import {
   CURVE_FLATTEN_SEGMENTS,
 } from "./constants.js";
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/scene: index out of range");
+  return v;
+};
+
 /**
  * Curved (bezier) link geometry — the single source of truth for the curve
  * shape so the renderer (draws cubic beziers) and hit-testing / bounds
@@ -53,9 +58,9 @@ export const catmullRomBeziers = (pts: readonly Vec2[]): BezierSegment[] => {
   const segs: BezierSegment[] = [];
   const k = CURVE_CATMULL_TENSION;
   for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] ?? pts[i]!;
-    const p1 = pts[i]!;
-    const p2 = pts[i + 1]!;
+    const p1 = req(pts[i]);
+    const p2 = req(pts[i + 1]);
+    const p0 = pts[i - 1] ?? p1;
     const p3 = pts[i + 2] ?? p2;
     segs.push({
       c1: { x: p1.x + (p2.x - p0.x) / k, y: p1.y + (p2.y - p0.y) / k },

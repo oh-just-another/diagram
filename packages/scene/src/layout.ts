@@ -7,6 +7,11 @@ import { updateElement, type OperationResult } from "./operations.js";
 import { batch, type Patch } from "./patch.js";
 import { getLayoutKind } from "./layout-registry.js";
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/scene: index out of range");
+  return v;
+};
+
 /**
  * Visual width / height of a shape in its OWN frame (no `position`,
  * yes `scale`). Uses the registered bounder so polygon / path /
@@ -242,7 +247,9 @@ export const measureWrap = (
   }
   if (ids.length === 0) return null;
   const sizes = childSizes(scene, ids);
-  const gap = (getAutoLayoutSpec(getElement(scene, parentId)!) as { gap?: number } | null)?.gap ?? 16;
+  const parent = getElement(scene, parentId);
+  const gap =
+    (parent ? (getAutoLayoutSpec(parent) as { gap?: number } | null) : null)?.gap ?? 16;
   const m = packWrap(sizes, gap, innerWidth, { x: 0, y: 0 });
   return { widest: m.widest, contentWidth: m.contentWidth, contentHeight: m.contentHeight };
 };
@@ -383,6 +390,7 @@ export const runAutoLayout = (scene: Scene, parentId: ElementId): Patch | null =
       ...(spec.gap !== undefined ? { gap: spec.gap } : {}),
     });
   }
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- closed union narrows to "tree", but plugin kinds exist at runtime and must fall through to the registry below.
   if (spec.kind === "tree") {
     return treeLayout(scene, {
       shapeIds: children,
@@ -450,7 +458,9 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   const shapeHeight = (s: Element): number => shapeAdvanceSize(s).height;
 
   const measure = (id: ElementId): { w: number; h: number } => {
-    if (widthOf.has(id)) return { w: widthOf.get(id)!, h: heightOf.get(id)! };
+    const cachedW = widthOf.get(id);
+    const cachedH = heightOf.get(id);
+    if (cachedW !== undefined && cachedH !== undefined) return { w: cachedW, h: cachedH };
     const shape = getElement(scene, id);
     if (!shape) {
       widthOf.set(id, 0);
@@ -468,7 +478,7 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
     let kidsW = 0;
     let kidsH = 0;
     for (let i = 0; i < kids.length; i++) {
-      const m = measure(kids[i]!.id);
+      const m = measure(req(kids[i]).id);
       kidsW += m.w;
       if (i > 0) kidsW += nodesep;
       if (m.h > kidsH) kidsH = m.h;

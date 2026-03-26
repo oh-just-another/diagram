@@ -3,7 +3,6 @@ import { bounds as B } from "@oh-just-another/math";
 import type { Scene } from "./scene.js";
 import type { Element, ElementBase } from "./shape.js";
 import { getLayersInOrder, getElementsInLayer } from "./queries.js";
-import { getElementWorldBounds } from "./shape.js";
 
 /**
  * Container behaviour spec. Carried on a shape via
@@ -147,11 +146,12 @@ export const findContainerAt = (
 ): Element | null => {
   const layers = getLayersInOrder(scene);
   for (let i = layers.length - 1; i >= 0; i--) {
-    const layer = layers[i]!;
-    if (!layer.visible) continue;
+    const layer = layers[i];
+    if (!layer?.visible) continue;
     const shapes = getElementsInLayer(scene, layer.id);
     for (let j = shapes.length - 1; j >= 0; j--) {
-      const s = shapes[j]!;
+      const s = shapes[j];
+      if (s === undefined) continue;
       if (exclude.has(s.id)) continue;
       const zone = getDropZoneWorld(s);
       if (!zone) continue;

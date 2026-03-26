@@ -1357,3 +1357,6 @@
 
 ## 0.55.24
 - refactor(lint): clear strictTypeChecked errors in renderer-canvas
+
+## 0.55.25
+- refactor(lint): clear strictTypeChecked errors in renderer-core

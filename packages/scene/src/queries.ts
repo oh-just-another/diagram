@@ -109,7 +109,8 @@ export const getDescendantsOf = (scene: Scene, parentId: ElementId): readonly El
   const out: Element[] = [root];
   const stack: ElementId[] = [parentId];
   while (stack.length > 0) {
-    const cur = stack.pop()!;
+    const cur = stack.pop();
+    if (cur === undefined) break;
     for (const child of getChildrenOf(scene, cur)) {
       if (visited.has(child.id)) continue;
       visited.add(child.id);
@@ -192,11 +193,12 @@ export const getElementsCoveredByBounds = (
 export const getElementAt = (scene: Scene, point: Vec2): Element | undefined => {
   const layers = getLayersInOrder(scene);
   for (let i = layers.length - 1; i >= 0; i--) {
-    const layer = layers[i]!;
-    if (!layer.visible) continue;
+    const layer = layers[i];
+    if (!layer?.visible) continue;
     const shapes = getElementsInLayer(scene, layer.id);
     for (let j = shapes.length - 1; j >= 0; j--) {
-      const s = shapes[j]!;
+      const s = shapes[j];
+      if (s === undefined) continue;
       if (B.contains(getElementWorldBounds(s), point)) return s;
     }
   }

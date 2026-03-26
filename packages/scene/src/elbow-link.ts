@@ -23,6 +23,11 @@ import { getElement } from "./queries.js";
 import type { Scene } from "./scene.js";
 import { getElementWorldBounds } from "./shape.js";
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/scene: index out of range");
+  return v;
+};
+
 /**
  * Compute the orthogonal (elbow) route for a link: the corner points
  * between `from` and `to` (exclusive). This is what the editor stores on
@@ -226,8 +231,8 @@ const wrapRoute = (
 const pathCrossesObstacle = (path: readonly Vec2[], obstacles: readonly Bounds[]): boolean => {
   const m = ELBOW_OBSTACLE_CLEARANCE; // inset so edge-touching isn't a "cross"
   for (let i = 1; i < path.length; i++) {
-    const p = path[i - 1]!;
-    const q = path[i]!;
+    const p = req(path[i - 1]);
+    const q = req(path[i]);
     for (let t = 0; t <= 1; t += ELBOW_CROSS_SAMPLE_STEP) {
       const x = p.x + (q.x - p.x) * t;
       const y = p.y + (q.y - p.y) * t;
@@ -269,8 +274,8 @@ const applyFixedSegments = (full: Vec2[], fixed: Link["fixedSegments"]): Vec2[] 
     let bestK = -1;
     let bestD = Infinity;
     for (let k = 1; k < lastSeg; k++) {
-      const a = out[k]!;
-      const b = out[k + 1]!;
+      const a = req(out[k]);
+      const b = req(out[k + 1]);
       const isH = Math.abs(a.y - b.y) < 1e-6;
       const isV = Math.abs(a.x - b.x) < 1e-6;
       if ((pin.axis === "h") !== isH || (pin.axis === "v") !== isV) continue;
@@ -283,8 +288,8 @@ const applyFixedSegments = (full: Vec2[], fixed: Link["fixedSegments"]): Vec2[] 
     }
     if (bestK >= 0) {
       // Slide an existing interior segment to its pinned coordinate.
-      const a = out[bestK]!;
-      const b = out[bestK + 1]!;
+      const a = req(out[bestK]);
+      const b = req(out[bestK + 1]);
       if (pin.axis === "h") {
         a.y = pin.pos;
         b.y = pin.pos;
@@ -299,8 +304,8 @@ const applyFixedSegments = (full: Vec2[], fixed: Link["fixedSegments"]): Vec2[] 
     // Reconstruct the middle as a "staple" between the FIXED buffer joints
     // (out[0] = bufA, out[last] = bufB) so a segment of the pinned axis sits at
     // `pos` while the terminal buffers stay put (standard terminal-drag).
-    const j0 = out[0]!;
-    const j1 = out[out.length - 1]!;
+    const j0 = req(out[0]);
+    const j1 = req(out[out.length - 1]);
     out =
       pin.axis === "h"
         ? [j0, { x: j0.x, y: pin.pos }, { x: j1.x, y: pin.pos }, j1]
@@ -352,11 +357,11 @@ const fallbackCorner = (a: Vec2, b: Vec2, headingA: Heading): Vec2 =>
 /** Drop colinear midpoints from an axis-aligned polyline (tolerant). */
 const collapseColinear = (points: readonly Vec2[]): Vec2[] => {
   if (points.length <= 2) return [...points];
-  const out: Vec2[] = [points[0]!];
+  const out: Vec2[] = [req(points[0])];
   for (let i = 1; i < points.length - 1; i++) {
-    const prev = out[out.length - 1]!;
-    const cur = points[i]!;
-    const next = points[i + 1]!;
+    const prev = req(out[out.length - 1]);
+    const cur = req(points[i]);
+    const next = req(points[i + 1]);
     const eps = 1e-6;
     const horizontal = Math.abs(prev.y - cur.y) < eps && Math.abs(cur.y - next.y) < eps;
     const vertical = Math.abs(prev.x - cur.x) < eps && Math.abs(cur.x - next.x) < eps;
@@ -364,6 +369,6 @@ const collapseColinear = (points: readonly Vec2[]): Vec2[] => {
     if (horizontal || vertical || coincident) continue;
     out.push(cur);
   }
-  out.push(points[points.length - 1]!);
+  out.push(req(points[points.length - 1]));
   return out;
 };

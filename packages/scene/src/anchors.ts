@@ -262,8 +262,9 @@ const addPolygonEdgeMidpoints = (shape: PolygonElement, out: Map<string, Vec2>):
   const pts = shape.points;
   if (pts.length < 2) return;
   for (let i = 0; i < pts.length; i++) {
-    const a = pts[i]!;
-    const b = pts[(i + 1) % pts.length]!;
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    if (a === undefined || b === undefined) continue;
     out.set(`edge-${i}`, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   }
 };
@@ -306,10 +307,12 @@ const resolveEdgeRefLocal = (shape: ElementBase, index: number, t: number): Vec2
     const n = pts.length;
     // Wrap a possibly out-of-range / negative index into [0, n).
     const i = ((index % n) + n) % n;
-    const a = pts[i]!;
-    const b = pts[(i + 1) % n]!;
-    const tc = t < 0 ? 0 : t > 1 ? 1 : t;
-    return { x: a.x + (b.x - a.x) * tc, y: a.y + (b.y - a.y) * tc };
+    const a = pts[i];
+    const b = pts[(i + 1) % n];
+    if (a !== undefined && b !== undefined) {
+      const tc = t < 0 ? 0 : t > 1 ? 1 : t;
+      return { x: a.x + (b.x - a.x) * tc, y: a.y + (b.y - a.y) * tc };
+    }
   }
   const bounds = getElementLocalBounds(shape);
   return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
@@ -329,6 +332,7 @@ const lookupNamed = (shape: ElementBase, name: NamedAnchor): Vec2 | undefined =>
     if (!isNaN(index)) return resolveEdgeRefLocal(shape, index, 0.5);
   }
   const standard = STANDARD_ANCHOR_RATIOS[name as StandardAnchor];
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `name` is cast from a broader type; a non-standard name yields undefined at runtime.
   if (!standard) return undefined;
   const b = getElementLocalBounds(shape);
   return { x: b.x + b.width * standard.x, y: b.y + b.height * standard.y };

@@ -31,6 +31,11 @@ import {
   ELBOW_BEND_PENALTY,
 } from "./constants.js";
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/scene: index out of range");
+  return v;
+};
+
 const MARGIN = ELBOW_OBSTACLE_MARGIN;
 const INTERIOR_EPS = ELBOW_OBSTACLE_INTERIOR_EPSILON;
 const BEND_PENALTY = ELBOW_BEND_PENALTY;
@@ -81,8 +86,8 @@ export const elbowRoute = (
 
   // Each node is "(xIndex,yIndex)" packed into one string for Map keys.
   const nodeKey = (xi: number, yi: number): string => `${xi},${yi}`;
-  const xOfIdx = (xi: number): number => xList[xi]!;
-  const yOfIdx = (yi: number): number => yList[yi]!;
+  const xOfIdx = (xi: number): number => req(xList[xi]);
+  const yOfIdx = (yi: number): number => req(yList[yi]);
 
   const startXi = xList.indexOf(from.x);
   const startYi = yList.indexOf(from.y);
@@ -115,7 +120,7 @@ export const elbowRoute = (
   while (open.length > 0) {
     // Extract-min with a deterministic tie-break (f, then g, then key).
     open.sort((a, b) => a.f - b.f || a.g - b.g || (a.skey < b.skey ? -1 : 1));
-    const cur = open.shift()!;
+    const cur = req(open.shift());
     if (cur.xi === endXi && cur.yi === endYi) {
       return reconstructPath(cameFrom, cur.skey, xOfIdx, yOfIdx);
     }
@@ -250,8 +255,8 @@ const reconstructPath = (
   // but this makes a hang structurally impossible regardless.
   while (cursor && !seen.has(cursor)) {
     seen.add(cursor);
-    const [xi, yi] = cursor.split(",").map(Number);
-    path.unshift({ x: xOfIdx(xi!), y: yOfIdx(yi!) });
+    const parts = cursor.split(",").map(Number);
+    path.unshift({ x: xOfIdx(req(parts[0])), y: yOfIdx(req(parts[1])) });
     cursor = cameFrom.get(cursor);
   }
   return collapseColinear(path);
@@ -264,16 +269,16 @@ const reconstructPath = (
  */
 const collapseColinear = (points: readonly Vec2[]): readonly Vec2[] => {
   if (points.length <= 2) return points;
-  const out: Vec2[] = [points[0]!];
+  const out: Vec2[] = [req(points[0])];
   for (let i = 1; i < points.length - 1; i++) {
-    const prev = points[i - 1]!;
-    const cur = points[i]!;
-    const next = points[i + 1]!;
+    const prev = req(points[i - 1]);
+    const cur = req(points[i]);
+    const next = req(points[i + 1]);
     const horizontal = prev.y === cur.y && cur.y === next.y;
     const vertical = prev.x === cur.x && cur.x === next.x;
     if (horizontal || vertical) continue;
     out.push(cur);
   }
-  out.push(points[points.length - 1]!);
+  out.push(req(points[points.length - 1]));
   return out;
 };
