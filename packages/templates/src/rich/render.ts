@@ -114,8 +114,8 @@ const paintBox = (node: TemplateNode, b: Bounds, target: RenderTarget): void => 
   if (!hasFill && !hasStroke) return;
 
   if (style.opacity !== undefined) target.setOpacity(style.opacity);
-  if (hasFill && style.fill !== undefined) target.setFill(style.fill);
-  if (hasStroke && style.stroke !== undefined) {
+  if (hasFill && style.fill) target.setFill(style.fill);
+  if (hasStroke && style.stroke) {
     target.setStroke(style.stroke);
     target.setStrokeWidth(style.strokeWidth ?? 1);
   }

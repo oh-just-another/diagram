@@ -48,8 +48,9 @@ export const resolveRichTemplateChain = (
     current = lookup(current.extends);
   }
   if (!current) {
+    const first = chain[0];
     throw new Error(
-      `Rich template "${ext.id}" extends "${chain[0]!.extends}", which is not registered.`,
+      `Rich template "${ext.id}" extends "${first ? first.extends : ext.extends}", which is not registered.`,
     );
   }
   // `current` is the concrete base `RichTemplate` now.

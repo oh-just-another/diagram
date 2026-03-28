@@ -17,6 +17,12 @@ import {
   type Position,
 } from "./style.js";
 
+/** Index-access helper: asserts a provably-valid index is present. */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/templates: index out of range");
+  return v;
+};
+
 /**
  * `MeasureText(text, fontFamily, fontSize)` returns the rendered width of the
  * given text run in CSS pixels. The layout engine relies on this for
@@ -151,7 +157,7 @@ const measureContainer = (node: ContainerNode, available: Size, measure: Measure
   };
 
   for (let i = 0; i < inFlow.length; i++) {
-    const child = inFlow[i]!;
+    const child = req(inFlow[i]);
     const childMargin = marginOf(child.layout ?? {});
     const childSize = measureNode(child, innerAvail, measure);
     const childWithMarginMain =
@@ -294,7 +300,7 @@ const positionNode = (node: TemplateNode, bounds: Bounds, measure: MeasureText):
 
   // Place each line individually.
   for (let li = 0; li < lines.length; li++) {
-    const line = lines[li]!;
+    const line = req(lines[li]);
     const lineCross = wrap
       ? (lineCrossSizes[li] ?? 0)
       : direction === "row"
@@ -378,7 +384,7 @@ const placeLine = (
   const availMain = direction === "row" ? lineBounds.width : lineBounds.height;
   let usedMain = 0;
   for (let i = 0; i < line.length; i++) {
-    const c = line[i]!;
+    const c = req(line[i]);
     usedMain +=
       direction === "row"
         ? c.baseSize.width + c.margin.left + c.margin.right
@@ -416,7 +422,7 @@ const placeLine = (
   const lineBaseline = direction === "row" ? lineBaselineY(line, lineBounds.y) : null;
 
   for (let i = 0; i < line.length; i++) {
-    const c = line[i]!;
+    const c = req(line[i]);
     const grow = totalFlex > 0 ? (c.flexGrow / totalFlex) * leftover : 0;
     const mainSize = (direction === "row" ? c.baseSize.width : c.baseSize.height) + grow;
     const alignSelf = c.node.layout?.alignSelf ?? align;

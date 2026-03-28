@@ -39,8 +39,8 @@ const findInteractiveAncestor = (root: LayoutedNode, target: LayoutedNode): Layo
   const chain = findChain(root, target);
   if (!chain) return null;
   for (let i = chain.length - 1; i >= 0; i--) {
-    const node = chain[i]!;
-    if (isInteractive(node.node)) return node;
+    const node = chain[i];
+    if (node && isInteractive(node.node)) return node;
   }
   return null;
 };

@@ -12,6 +12,12 @@
 
 import type { RenderTarget } from "@oh-just-another/renderer-core";
 
+/** Index-access helper: asserts a provably-valid index is present. */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/templates: index out of range");
+  return v;
+};
+
 interface Paint {
   fill: string | null;
   stroke: string | null;
@@ -86,7 +92,7 @@ const collect = (body: string, inherit: Paint, out: Element[], defaultColor: str
     /<(g|path|rect|circle|ellipse|line|polyline|polygon)\b([^>]*?)(\/>|>([\s\S]*?)<\/\1>)/gi;
   let m: RegExpExecArray | null;
   while ((m = elRe.exec(body)) !== null) {
-    const tag = m[1]!.toLowerCase();
+    const tag = (m[1] ?? "").toLowerCase();
     const attrs = parseAttrs(m[2] ?? "");
     const paint = mergePaint(inherit, attrs, defaultColor);
     if (tag === "g") {
@@ -193,11 +199,15 @@ const paintPath = (el: PathEl, target: RenderTarget): void => {
 };
 
 const paintPolygon = (el: PolygonEl, target: RenderTarget): void => {
-  if (el.points.length === 0) return;
+  const first = el.points[0];
+  if (first === undefined) return;
   applyPaint(el.paint, target);
   target.beginPath();
-  target.moveTo(el.points[0]!.x, el.points[0]!.y);
-  for (let i = 1; i < el.points.length; i++) target.lineTo(el.points[i]!.x, el.points[i]!.y);
+  target.moveTo(first.x, first.y);
+  for (let i = 1; i < el.points.length; i++) {
+    const p = req(el.points[i]);
+    target.lineTo(p.x, p.y);
+  }
   if (el.kind === "polygon") target.closePath();
   if (el.paint.fill) target.fill();
   if (el.paint.stroke) target.stroke();
@@ -262,7 +272,7 @@ const parseAttrs = (s: string): Record<string, string> => {
   const out: Record<string, string> = {};
   const re = /([a-zA-Z_:][\w:.-]*)\s*=\s*"([^"]*)"/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(s)) !== null) out[m[1]!] = m[2]!;
+  while ((m = re.exec(s)) !== null) out[m[1] ?? ""] = m[2] ?? "";
   return out;
 };
 
@@ -275,7 +285,7 @@ const parseViewBox = (
     .split(/[\s,]+/)
     .map(Number);
   if (parts.length !== 4 || parts.some(Number.isNaN)) return null;
-  return { x: parts[0]!, y: parts[1]!, width: parts[2]!, height: parts[3]! };
+  return { x: req(parts[0]), y: req(parts[1]), width: req(parts[2]), height: req(parts[3]) };
 };
 
 const parsePoints = (value: string): { x: number; y: number }[] => {
@@ -285,7 +295,7 @@ const parsePoints = (value: string): { x: number; y: number }[] => {
     .map(Number)
     .filter((n) => !Number.isNaN(n));
   const out: { x: number; y: number }[] = [];
-  for (let i = 0; i + 1 < nums.length; i += 2) out.push({ x: nums[i]!, y: nums[i + 1]! });
+  for (let i = 0; i + 1 < nums.length; i += 2) out.push({ x: req(nums[i]), y: req(nums[i + 1]) });
   return out;
 };
 
@@ -340,12 +350,12 @@ const parsePathData = (d: string): Cmd[] => {
 
   const take = (n: number): number[] => {
     const r: number[] = [];
-    for (let k = 0; k < n; k++) r.push(parseFloat(tokens[i++]!));
+    for (let k = 0; k < n; k++) r.push(parseFloat(req(tokens[i++])));
     return r;
   };
 
   while (i < tokens.length) {
-    const t = tokens[i]!;
+    const t = req(tokens[i]);
     if (!/^[MLHVCSQTAZmlhvcsqtaz]$/.test(t)) {
       // Numeric without a preceding command: skip.
       i++;
@@ -354,7 +364,7 @@ const parsePathData = (d: string): Cmd[] => {
     const cmd = t;
     i++;
 
-    while (i < tokens.length && /^-?\d*\.?\d+(?:[eE][-+]?\d+)?$/.test(tokens[i]!)) {
+    while (i < tokens.length && /^-?\d*\.?\d+(?:[eE][-+]?\d+)?$/.test(req(tokens[i]))) {
       switch (cmd) {
         case "M":
         case "m": {

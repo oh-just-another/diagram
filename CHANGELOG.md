@@ -1363,3 +1363,6 @@
 
 ## 0.55.26
 - refactor(lint): clear strictTypeChecked errors in scene
+
+## 0.55.27
+- refactor(lint): clear strictTypeChecked errors in react-ui
