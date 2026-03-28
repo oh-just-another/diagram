@@ -104,7 +104,6 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
     if (!editor) return;
     const message =
       typeof window === "undefined" ? "Snapshot" : (window.prompt("Snapshot message", "") ?? "");
-    if (message === null) return;
     captureFromEditor(store, editor, { message: message || "Untitled snapshot", author });
   }, [editor, store, author]);
 

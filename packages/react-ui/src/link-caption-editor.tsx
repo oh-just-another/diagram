@@ -34,7 +34,7 @@ export const LinkCaptionEditor = () => {
   }, [editor, editingId]);
 
   if (!editor || editingId === null) return null;
-  const host = editor.hostElement;
+  const host = editor.hostElement as HTMLElement | null;
   if (!host) return null;
   const world = editor.linkLabelWorld(editingId);
   if (!world) return null;

@@ -120,7 +120,7 @@ export const Popover = ({
   // The trigger's own onClick (if any) is preserved and fires first.
   const triggerWithProps = useMemo(() => {
     if (!isValidElement(trigger)) return trigger;
-    const existing = (trigger.props as Record<string, unknown>) ?? {};
+    const existing = trigger.props as Record<string, unknown>;
     return cloneElement(trigger, {
       ref: (el: HTMLElement | null) => {
         triggerRef.current = el;

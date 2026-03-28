@@ -251,11 +251,16 @@ const collapseDividers = (items: readonly ContextMenuItem[]): readonly ContextMe
   for (const item of items) {
     if (item.kind === "divider") {
       if (out.length === 0) continue;
-      if (out[out.length - 1]!.kind === "divider") continue;
+      const last = out[out.length - 1];
+      if (last?.kind === "divider") continue;
     }
     out.push(item);
   }
-  while (out.length > 0 && out[out.length - 1]!.kind === "divider") out.pop();
+  while (out.length > 0) {
+    const last = out[out.length - 1];
+    if (last?.kind !== "divider") break;
+    out.pop();
+  }
   return out;
 };
 

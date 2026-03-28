@@ -245,6 +245,7 @@ export const SelectionFloatingPanel = ({
  */
 const makeSelectionVirtualEl = (editor: Editor): VirtualElement | null => {
   const host = editor.hostElement;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- hostElement typed non-null but may be unset before mount
   if (!host) return null;
   return {
     getBoundingClientRect: () => {

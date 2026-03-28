@@ -304,7 +304,7 @@ const MoreButton = () => {
       onClick={(ev) => {
         const rect = ev.currentTarget.getBoundingClientRect();
         const screenPoint = { x: rect.left, y: rect.bottom + 4 };
-        const host = editor.hostElement;
+        const host = editor.hostElement as HTMLElement | null;
         const hostRect = host?.getBoundingClientRect();
         const worldPoint = hostRect
           ? editor.screenToWorld({
@@ -377,8 +377,8 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
-  const color = sharedString(shapes, (s) => s.style?.fill);
-  const opacity = sharedValue<number>(shapes, (s) => s.style?.opacity ?? 1);
+  const color = sharedString(shapes, (s) => s.style.fill);
+  const opacity = sharedValue<number>(shapes, (s) => s.style.opacity ?? 1);
   const pct = opacity === null ? null : Math.round(opacity * 100);
   const swatchBg =
     !color || color === "transparent"
@@ -422,7 +422,7 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
 const FillControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor || !shapes.some(hasFill)) return null;
-  const value = sharedString(shapes, (s) => s.style?.fill);
+  const value = sharedString(shapes, (s) => s.style.fill);
   const ids = shapes.map((s) => s.id);
   return (
     <ColorTrigger
@@ -446,7 +446,11 @@ const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
-  const value = sharedValue<number>(shapes, (s) => (s as TextElement).fontSize ?? null);
+  const value = sharedValue<number>(
+    shapes,
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- cast asserts TextElement; non-text shapes lack fontSize at runtime
+    (s) => (s as TextElement).fontSize ?? null,
+  );
   const presetValue =
     value !== null && TEXT_FONT_SIZE_PRESETS.some((p) => p.value === value) ? value : null;
   return (
@@ -457,7 +461,7 @@ const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }
           type="button"
           className="du-sel-text-button"
           title="Font size"
-          aria-label={`Font size ${value === null ? "mixed" : value}`}
+          aria-label={`Font size ${value ?? "mixed"}`}
         >
           {value === null ? "—" : `${Math.round(value)}`}
         </button>
@@ -535,7 +539,7 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
-  const value = sharedValue<TextAlign>(shapes, (s) => (s as TextElement).style?.textAlign ?? "left");
+  const value = sharedValue<TextAlign>(shapes, (s) => (s as TextElement).style.textAlign ?? "left");
   return (
     <SegmentedControl<TextAlign>
       ariaLabel="Text alignment"
@@ -644,7 +648,7 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
 const StrokeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor || !shapes.some(hasStroke)) return null;
-  const value = sharedString(shapes, (s) => s.style?.stroke);
+  const value = sharedString(shapes, (s) => s.style.stroke);
   const ids = shapes.map((s) => s.id);
   return (
     <ColorTrigger
@@ -658,8 +662,8 @@ const StrokeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) 
 
 const StrokeWidthControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
-  if (!editor || !shapes.some((s) => s.style?.stroke !== undefined)) return null;
-  const value = sharedValue<number>(shapes, (s) => s.style?.strokeWidth ?? null);
+  if (!editor || !shapes.some((s) => s.style.stroke !== undefined)) return null;
+  const value = sharedValue<number>(shapes, (s) => s.style.strokeWidth ?? null);
   const ids = shapes.map((s) => s.id);
   return (
     <SegmentedControl<number>
@@ -683,7 +687,7 @@ const StrokeStyleControl = ({ shapes }: { readonly shapes: readonly ElementBase[
   // template-authored arrays like `[6, 4]` (auto-grid frames) as
   // "dashed" instead of "mixed".
   const value = sharedValue<"solid" | "dashed" | "dotted">(shapes, (s) => {
-    const da = s.style?.dashArray;
+    const da = s.style.dashArray;
     if (!da || da.length === 0) return "solid";
     const first = da[0] ?? 0;
     return first <= 3 ? "dotted" : "dashed";
@@ -719,8 +723,8 @@ const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
   if (!editor) return null;
   const supports = shapes.every((s) => s.type === "rectangle" || s.type === "container");
   if (!supports) return null;
-  const type = sharedValue<Roundness["type"]>(shapes, (s) => s.style?.roundness?.type ?? "sharp");
-  const radius = sharedValue<number>(shapes, (s) => s.style?.roundness?.value ?? null);
+  const type = sharedValue<Roundness["type"]>(shapes, (s) => s.style.roundness?.type ?? "sharp");
+  const radius = sharedValue<number>(shapes, (s) => s.style.roundness?.value ?? null);
   const ids = shapes.map((s) => s.id);
   const isAuto = radius === null;
   return (
@@ -768,12 +772,12 @@ const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
             </label>
             {!isAuto ? (
               <Slider
-                value={radius ?? 8}
+                value={radius}
                 min={0}
                 max={64}
                 step={1}
                 ariaLabel="Corner radius"
-                valueLabel={`${radius ?? 8}px`}
+                valueLabel={`${radius}px`}
                 onChange={(v) =>
                   { editor.updateStyle(ids, { roundness: { type: "round", value: v } }); }
                 }
@@ -794,7 +798,7 @@ const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
 const OpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
-  const value = sharedValue<number>(shapes, (s) => s.style?.opacity ?? 1);
+  const value = sharedValue<number>(shapes, (s) => s.style.opacity ?? 1);
   const ids = shapes.map((s) => s.id);
   const percent = value === null ? null : Math.round(value * 100);
   const label = percent === null ? "—" : `${percent}%`;
@@ -845,7 +849,7 @@ const ZOrderControl = () => {
         if (v === "back") editor.sendToBack();
         else if (v === "backward") editor.sendBackward();
         else if (v === "forward") editor.bringForward();
-        else if (v === "front") editor.bringToFront();
+        else editor.bringToFront();
       }}
     />
   );
@@ -887,7 +891,7 @@ const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
         if (v === "duplicate") editor.duplicateSelected();
         else if (v === "delete") editor.deleteSelected();
         else if (v === "group") editor.groupSelected();
-        else if (v === "ungroup") editor.ungroup();
+        else editor.ungroup();
       }}
     />
   );
@@ -903,7 +907,7 @@ const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
 const LinkStrokeColorControl = ({ edge }: { readonly edge: Link }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
-  const color = typeof edge.style?.stroke === "string" ? edge.style.stroke : null;
+  const color = typeof edge.style.stroke === "string" ? edge.style.stroke : null;
   return (
     <ColorTrigger
       label="Stroke"
@@ -922,7 +926,7 @@ const LinkStrokeColorControl = ({ edge }: { readonly edge: Link }) => {
 const LinkStrokeWidthControl = ({ edge }: { readonly edge: Link }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
-  const value = typeof edge.style?.strokeWidth === "number" ? edge.style.strokeWidth : null;
+  const value = typeof edge.style.strokeWidth === "number" ? edge.style.strokeWidth : null;
   return (
     <SegmentedControl<number>
       ariaLabel="Link stroke width"
@@ -945,7 +949,7 @@ const LinkStrokeWidthControl = ({ edge }: { readonly edge: Link }) => {
 const LinkStrokeStyleControl = ({ edge }: { readonly edge: Link }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
-  const da = edge.style?.dashArray;
+  const da = edge.style.dashArray;
   const value: "solid" | "dashed" | "dotted" = (() => {
     if (!da || da.length === 0) return "solid";
     const first = da[0] ?? 0;
@@ -1341,7 +1345,7 @@ const sharedValue = <T,>(
   for (const s of elements) set.add(pick(s));
   if (set.size !== 1) return null;
   const v = set.values().next().value;
-  return v == null ? null : (v);
+  return v ?? null;
 };
 
 const sharedString = (
@@ -1352,5 +1356,5 @@ const sharedString = (
   return typeof value === "string" ? value : null;
 };
 
-const hasFill = (shape: ElementBase): boolean => shape.style?.fill !== undefined;
-const hasStroke = (shape: ElementBase): boolean => shape.style?.stroke !== undefined;
+const hasFill = (shape: ElementBase): boolean => shape.style.fill !== undefined;
+const hasStroke = (shape: ElementBase): boolean => shape.style.stroke !== undefined;

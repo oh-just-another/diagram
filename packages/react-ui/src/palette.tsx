@@ -398,6 +398,7 @@ export const usePalettePlacement = () => {
       }
       // Otherwise treat it as a file drop from the OS / browser.
       const dt = ev.dataTransfer;
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- DOM DataTransfer is typed non-null but is null outside drag contexts
       if (!dt) return;
       const world = cursorWorld(ev);
       const target = world ?? { x: 0, y: 0 };

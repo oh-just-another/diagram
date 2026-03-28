@@ -41,7 +41,13 @@ const Ctx = createContext<MenuContext | null>(null);
 
 const useMenuCtx = (): MenuContext => {
   const ctx = useContext(Ctx);
-  return ctx ?? { close: () => {} };
+  return (
+    ctx ?? {
+      close: () => {
+        /* no-op: fallback when used outside a MainMenu provider */
+      },
+    }
+  );
 };
 
 export interface MainMenuProps {

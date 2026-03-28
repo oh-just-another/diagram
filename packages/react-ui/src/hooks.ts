@@ -42,7 +42,10 @@ const matchMobile = (): boolean =>
 export const useMobileLayout = (): boolean =>
   useSyncExternalStore(
     (onChange) => {
-      if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+      if (typeof window === "undefined" || typeof window.matchMedia !== "function")
+        return () => {
+          /* no-op: SSR / no-matchMedia env has no subscription to tear down */
+        };
       const mq = window.matchMedia(MOBILE_MEDIA);
       mq.addEventListener("change", onChange);
       return () => { mq.removeEventListener("change", onChange); };

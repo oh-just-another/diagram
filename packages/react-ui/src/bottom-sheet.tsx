@@ -50,6 +50,7 @@ export const BottomSheet = ({
 
   const onPointerDown = (ev: React.PointerEvent<HTMLDivElement>): void => {
     dragState.current = { startY: ev.clientY, startHeight: current, pointerId: ev.pointerId };
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- setPointerCapture typed non-optional but absent on non-element/older targets
     (ev.target as Element).setPointerCapture?.(ev.pointerId);
   };
 
@@ -65,7 +66,8 @@ export const BottomSheet = ({
     if (dragState.current?.pointerId !== ev.pointerId) return;
     dragState.current = null;
     // Snap to nearest snap point.
-    let best = snapPoints[0]!;
+    let best = snapPoints[0];
+    if (best === undefined) return;
     let bestDist = Math.abs(current - best);
     for (const sp of snapPoints) {
       const dist = Math.abs(current - sp);

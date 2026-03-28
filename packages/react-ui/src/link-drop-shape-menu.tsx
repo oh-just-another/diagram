@@ -34,7 +34,7 @@ export const LinkDropShapeMenu = () => {
   if (!editor) return null;
   const menu = editor.linkDropMenu;
   if (!menu) return null;
-  const host = editor.hostElement;
+  const host = editor.hostElement as HTMLElement | null;
   if (!host) return null;
 
   const v = editor.scene.viewport;
@@ -72,7 +72,7 @@ export const LinkDropShapeMenu = () => {
             className="du-link-drop-item"
             title={t.name}
             aria-label={`Create ${t.name}`}
-            onClick={() => { editor.placeShapeAtLinkDrop(t.factory); }}
+            onClick={() => { editor.placeShapeAtLinkDrop((ctx) => t.factory(ctx)); }}
             dangerouslySetInnerHTML={{ __html: t.icon }}
           />
         ))}

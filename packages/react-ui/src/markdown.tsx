@@ -55,7 +55,7 @@ const tokenise = (line: string): readonly Token[] => {
     }
     // *italic* or _italic_
     if (line[i] === "*" || line[i] === "_") {
-      const close = line.indexOf(line[i]!, i + 1);
+      const close = line.indexOf(line.charAt(i), i + 1);
       if (close !== -1 && close > i + 1) {
         flushText();
         tokens.push({ kind: "italic", value: line.slice(i + 1, close) });
@@ -91,7 +91,7 @@ const tokenise = (line: string): readonly Token[] => {
         }
       }
     }
-    textBuf += line[i]!;
+    textBuf += line.charAt(i);
     i++;
   }
   flushText();
@@ -147,7 +147,8 @@ export const Markdown = ({ text }: MarkdownProps): ReactNode => {
   const out: ReactNode[] = [];
   for (let i = 0; i < lines.length; i++) {
     if (i > 0) out.push(<br key={`br-${i}`} />);
-    const tokens = tokenise(lines[i]!);
+    const line = lines[i] ?? "";
+    const tokens = tokenise(line);
     out.push(...tokensToNodes(tokens, `l${i}`));
   }
   return out;

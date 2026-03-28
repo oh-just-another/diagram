@@ -1360,3 +1360,6 @@
 
 ## 0.55.25
 - refactor(lint): clear strictTypeChecked errors in renderer-core
+
+## 0.55.26
+- refactor(lint): clear strictTypeChecked errors in scene

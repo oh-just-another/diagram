@@ -50,7 +50,7 @@ export const IconButton = ({
         type="button"
         className={cls}
         aria-label={label}
-        aria-pressed={active === undefined ? undefined : active}
+        aria-pressed={active ?? undefined}
         {...rest}
       >
         {children}

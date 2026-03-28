@@ -28,7 +28,7 @@ export const LinkHoverPopup = () => {
 
   useEffect(() => {
     if (!editor) return undefined;
-    const host = editor.hostElement;
+    const host = editor.hostElement as HTMLElement | null;
     if (!host) return undefined;
 
     const clearClose = () => {
@@ -74,7 +74,7 @@ export const LinkHoverPopup = () => {
   }, [editor]);
 
   if (!editor || !hover) return null;
-  const host = editor.hostElement;
+  const host = editor.hostElement as HTMLElement | null;
   if (!host) return null;
 
   // World bounds → screen (top-centre of the element), then offset by the
