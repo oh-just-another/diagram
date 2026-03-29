@@ -1366,3 +1366,6 @@
 
 ## 0.55.27
 - refactor(lint): clear strictTypeChecked errors in react-ui
+
+## 0.55.28
+- refactor(lint): clear strictTypeChecked errors in templates

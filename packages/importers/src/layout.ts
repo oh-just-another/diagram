@@ -36,7 +36,7 @@ export const layoutGraph = (
     return {
       nodes: graph.nodes.map((n) => ({
         ...n,
-        position: n.position!,
+        position: n.position ?? { x: 0, y: 0 },
         width: n.width ?? DEFAULT_NODE_W,
         height: n.height ?? DEFAULT_NODE_H,
       })),
@@ -77,14 +77,14 @@ export const layoutGraph = (
       out.push({
         ...n,
         position: n.position,
-        width: n.width ?? dagreNode.width ?? DEFAULT_NODE_W,
-        height: n.height ?? dagreNode.height ?? DEFAULT_NODE_H,
+        width: n.width ?? dagreNode.width,
+        height: n.height ?? dagreNode.height,
       });
       continue;
     }
     // dagre returns the *centre* of each node; we want the top-left.
-    const w = n.width ?? dagreNode.width ?? DEFAULT_NODE_W;
-    const h = n.height ?? dagreNode.height ?? DEFAULT_NODE_H;
+    const w = n.width ?? dagreNode.width;
+    const h = n.height ?? dagreNode.height;
     out.push({
       ...n,
       width: w,

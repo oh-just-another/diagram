@@ -41,7 +41,7 @@ export const parseMermaid = (source: string): GraphDocument => {
 
     const header = /^(?:graph|flowchart)\s+(TD|TB|BT|LR|RL)\b/i.exec(line);
     if (header) {
-      const dir = header[1]!.toUpperCase();
+      const dir = (header[1] ?? "").toUpperCase();
       layout = dir === "TD" ? "TB" : (dir as GraphLayoutDirection);
       continue;
     }
@@ -67,7 +67,7 @@ const parseStatement = (text: string, nodes: Map<string, GraphNode>, edges: Grap
   let pendingLink: { direction: "directed" | "undirected"; label?: string } | null = null;
 
   while (i < text.length) {
-    while (i < text.length && /\s/.test(text[i]!)) i++;
+    while (i < text.length && /\s/.test(text.charAt(i))) i++;
     if (i >= text.length) break;
 
     const nodeMatch = matchNode(text.slice(i));
@@ -97,7 +97,7 @@ const parseStatement = (text: string, nodes: Map<string, GraphNode>, edges: Grap
 
     const edgeMatch = EDGE_RE.exec(text.slice(i));
     if (edgeMatch) {
-      const arrow = edgeMatch[1]!;
+      const arrow = edgeMatch[1] ?? "";
       const label = edgeMatch[2];
       const direction: "directed" | "undirected" =
         arrow.includes(">") || arrow.includes("<") ? "directed" : "undirected";
@@ -114,7 +114,7 @@ const parseStatement = (text: string, nodes: Map<string, GraphNode>, edges: Grap
 const matchNode = (input: string): NodeMatch | null => {
   const m = NODE_RE.exec(input);
   if (!m) return null;
-  const id = m[1]!;
+  const id = m[1] ?? "";
   const bracket = m[2] ?? "";
   let shape: NodeShape | undefined;
   let label: string | undefined;

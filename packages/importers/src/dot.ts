@@ -36,7 +36,7 @@ export const parseDot = (source: string): GraphDocument => {
 
   let i = 0;
   while (i < tokens.length) {
-    const tok = tokens[i]!;
+    const tok = req(tokens[i]);
 
     // Statement terminators.
     if (tok === ";") {
@@ -49,10 +49,10 @@ export const parseDot = (source: string): GraphDocument => {
       isIdent(tok) &&
       tokens[i + 1] === "=" &&
       i + 2 < tokens.length &&
-      isValueToken(tokens[i + 2]!)
+      isValueToken(req(tokens[i + 2]))
     ) {
       if (tok.toLowerCase() === "rankdir") {
-        const value = unquote(tokens[i + 2]!).toUpperCase();
+        const value = unquote(req(tokens[i + 2])).toUpperCase();
         if (value === "TB" || value === "BT" || value === "LR" || value === "RL") {
           layout = value;
         }
@@ -82,7 +82,7 @@ export const parseDot = (source: string): GraphDocument => {
     // Link: -> or -- to next node, possibly chained.
     let prev = sourceId;
     while (tokens[i] === "->" || tokens[i] === "--") {
-      const op = tokens[i]!;
+      const op = req(tokens[i]);
       const direction: "directed" | "undirected" =
         op === "->" ? "directed" : isDirectedDefault ? "directed" : "undirected";
       i += 1;
@@ -116,6 +116,11 @@ export const parseDot = (source: string): GraphDocument => {
 
 // --- helpers ---
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/importers: index out of range");
+  return v;
+};
+
 const stripComments = (s: string): string => {
   let out = "";
   let i = 0;
@@ -134,7 +139,7 @@ const stripComments = (s: string): string => {
       while (i < s.length && s[i] !== "\n") i++;
       continue;
     }
-    out += s[i];
+    out += s.charAt(i);
     i++;
   }
   return out;
@@ -146,14 +151,14 @@ const extractBody = (source: string): { kind: "digraph" | "graph"; body: string 
       source,
     );
   if (!m) return null;
-  return { kind: m[1] as "digraph" | "graph", body: m[2]! };
+  return { kind: m[1] as "digraph" | "graph", body: m[2] ?? "" };
 };
 
 const tokenize = (body: string): string[] => {
   const out: string[] = [];
   let i = 0;
   while (i < body.length) {
-    const c = body[i]!;
+    const c = body.charAt(i);
     if (/\s/.test(c)) {
       i++;
       continue;
@@ -185,7 +190,7 @@ const tokenize = (body: string): string[] => {
     }
     if (/[A-Za-z_0-9.]/.test(c)) {
       let j = i;
-      while (j < body.length && /[A-Za-z_0-9.]/.test(body[j]!)) j++;
+      while (j < body.length && /[A-Za-z_0-9.]/.test(body.charAt(j))) j++;
       out.push(body.slice(i, j));
       i = j;
       continue;
@@ -211,9 +216,9 @@ const readAttrBlock = (
   const attrs: Record<string, string> = {};
   let i = start + 1;
   while (i < tokens.length && tokens[i] !== "]") {
-    const key = tokens[i]!;
+    const key = req(tokens[i]);
     if (tokens[i + 1] === "=" && i + 2 < tokens.length) {
-      attrs[key.toLowerCase()] = tokens[i + 2]!;
+      attrs[key.toLowerCase()] = req(tokens[i + 2]);
       i += 3;
       if (tokens[i] === "," || tokens[i] === ";") i++;
     } else {

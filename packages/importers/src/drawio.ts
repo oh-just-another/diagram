@@ -71,7 +71,11 @@ const parseAttrs = (s: string): Record<string, string> => {
   const out: Record<string, string> = {};
   const re = /([A-Za-z_:][\w:.-]*)\s*=\s*"([^"]*)"/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(s)) !== null) out[m[1]!] = m[2]!;
+  while ((m = re.exec(s)) !== null) {
+    const key = m[1];
+    if (key === undefined) continue;
+    out[key] = m[2] ?? "";
+  }
   return out;
 };
 
