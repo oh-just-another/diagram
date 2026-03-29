@@ -1369,3 +1369,6 @@
 
 ## 0.55.28
 - refactor(lint): clear strictTypeChecked errors in templates
+
+## 0.55.29
+- refactor(lint): clear strictTypeChecked errors in importers

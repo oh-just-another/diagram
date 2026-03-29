@@ -51,12 +51,17 @@ export const stringifyFiles = (scene: Scene, indent: number | null = null): stri
     : JSON.stringify(serializeFiles(scene), null, indent);
 
 export const parseFiles = (json: string | SerializedFilesDocument): ReadonlyMap<FileId, BinaryFile> => {
-  const doc = typeof json === "string" ? (JSON.parse(json) as SerializedFilesDocument) : json;
-  if (doc?.version !== 1 || !Array.isArray(doc.files)) {
+  const doc: unknown = typeof json === "string" ? JSON.parse(json) : json;
+  if (
+    typeof doc !== "object" ||
+    doc === null ||
+    (doc as { version?: unknown }).version !== 1 ||
+    !Array.isArray((doc as { files?: unknown }).files)
+  ) {
     throw new Error("parseFiles: unsupported document version or shape");
   }
   const out = new Map<FileId, BinaryFile>();
-  for (const entry of doc.files) {
+  for (const entry of (doc as SerializedFilesDocument).files) {
     const id = castFileId(entry.id);
     out.set(
       id,
