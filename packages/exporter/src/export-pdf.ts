@@ -156,11 +156,12 @@ const pageDimensions = (
   size: PdfPageSize,
   orientation: "portrait" | "landscape",
 ): [number, number] => {
-  const base =
+  const base: [number, number] =
     typeof size === "string"
-      ? (STANDARD_SIZES[size] ?? STANDARD_SIZES.A4!)
+      ? (STANDARD_SIZES[size] ?? STANDARD_SIZES.A4 ?? [595.28, 841.89])
       : [size.width, size.height];
-  return orientation === "landscape" ? [base[1]!, base[0]!] : [base[0]!, base[1]!];
+  const [w, h] = base;
+  return orientation === "landscape" ? [h, w] : [w, h];
 };
 
 const stripUndefined = <T extends Record<string, unknown>>(obj: T): T => {

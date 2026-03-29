@@ -58,7 +58,7 @@ const startsWith = (a: Uint8Array, b: Uint8Array): boolean => {
 };
 
 const readUint32 = (b: Uint8Array, i: number): number =>
-  (b[i]! << 24) | (b[i + 1]! << 16) | (b[i + 2]! << 8) | b[i + 3]!;
+  ((b[i] ?? 0) << 24) | ((b[i + 1] ?? 0) << 16) | ((b[i + 2] ?? 0) << 8) | (b[i + 3] ?? 0);
 
 const writeUint32 = (b: Uint8Array, i: number, value: number): void => {
   b[i] = (value >>> 24) & 0xff;
@@ -106,7 +106,7 @@ const getCrcTable = (): Uint32Array => {
 const crc32 = (bytes: Uint8Array): number => {
   const table = getCrcTable();
   let c = 0xff_ff_ff_ff;
-  for (const byte of bytes) c = table[(c ^ byte) & 0xff]! ^ (c >>> 8);
+  for (const byte of bytes) c = (table[(c ^ byte) & 0xff] ?? 0) ^ (c >>> 8);
   return (c ^ 0xff_ff_ff_ff) >>> 0;
 };
 

@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/templates",
-  "version": "0.55.31",
+  "version": "0.55.32",
   "description": "templates package",
   "type": "module",
   "main": "./dist/index.js",

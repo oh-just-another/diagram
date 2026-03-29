@@ -1375,3 +1375,6 @@
 
 ## 0.55.30
 - refactor(lint): clear strictTypeChecked errors in serialization
+
+## 0.55.31
+- refactor(lint): clear strictTypeChecked errors in history

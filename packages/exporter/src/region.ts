@@ -1,4 +1,4 @@
-import type { Bounds, ElementId } from "@oh-just-another/types";
+import type { ElementId } from "@oh-just-another/types";
 import { getElement, getElementWorldBounds, type Scene, type Element } from "@oh-just-another/scene";
 import { parseScene } from "@oh-just-another/serialization";
 import type { ExportRegion } from "./options.js";
