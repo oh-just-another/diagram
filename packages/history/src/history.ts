@@ -120,7 +120,11 @@ export class History implements HistoryProvider {
         if (tx.length === 0) return;
         const collapsed = this.mergeTransactions ? mergeByEntity(tx) : tx;
         if (collapsed.length === 0) return;
-        const record = collapsed.length === 1 ? collapsed[0]! : batch(collapsed);
+        const firstCollapsed = collapsed[0];
+        const record =
+          collapsed.length === 1 && firstCollapsed !== undefined
+            ? firstCollapsed
+            : batch(collapsed);
         if (isNoop(record)) return;
         this.past.push(record);
         this.future.length = 0;

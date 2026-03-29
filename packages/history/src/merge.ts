@@ -12,6 +12,11 @@ interface Slot<P> {
   latest: P;
 }
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/history: slot missing for visited patch");
+  return v;
+};
+
 /**
  * Merge a sequence of patches produced inside a single transaction so that
  * each entity has at most one patch. The merged patch keeps the *first*
@@ -30,6 +35,10 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
   const annotations = new Map<string, Slot<AnnotationPatch>>();
   const files = new Map<string, Slot<FilePatch>>();
   let viewport: Slot<ViewportPatch> | null = null;
+  // Read through a function so the post-loop call sites see the declared union
+  // type rather than the `null` flow-narrowing TS infers after the
+  // closure-driven population loop below.
+  const getViewport = (): Slot<ViewportPatch> | null => viewport;
 
   const order: Patch[] = [];
   let viewportOrderIndex = -1;
@@ -100,12 +109,14 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
 
   for (const p of patches) visit(p);
 
+  const viewportSlot = getViewport();
+
   const out: Patch[] = [];
   for (let i = 0; i < order.length; i++) {
-    const p = order[i]!;
+    const p = req(order[i]);
     let merged: Patch;
     if (p.kind === "element") {
-      const slot = shapes.get(p.id)!;
+      const slot = req(shapes.get(p.id));
       merged = {
         kind: "element",
         id: slot.first.id,
@@ -113,7 +124,7 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
         after: slot.latest.after,
       };
     } else if (p.kind === "link") {
-      const slot = edges.get(p.id)!;
+      const slot = req(edges.get(p.id));
       merged = {
         kind: "link",
         id: slot.first.id,
@@ -121,7 +132,7 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
         after: slot.latest.after,
       };
     } else if (p.kind === "layer") {
-      const slot = layers.get(p.id)!;
+      const slot = req(layers.get(p.id));
       merged = {
         kind: "layer",
         id: slot.first.id,
@@ -129,7 +140,7 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
         after: slot.latest.after,
       };
     } else if (p.kind === "annotation") {
-      const slot = annotations.get(p.id)!;
+      const slot = req(annotations.get(p.id));
       merged = {
         kind: "annotation",
         id: slot.first.id,
@@ -137,16 +148,19 @@ export const mergeByEntity = (patches: readonly Patch[]): readonly Patch[] => {
         after: slot.latest.after,
       };
     } else if (p.kind === "file") {
-      const slot = files.get(p.id)!;
+      const slot = req(files.get(p.id));
       merged = {
         kind: "file",
         id: slot.first.id,
         before: slot.first.before,
         after: slot.latest.after,
       };
-    } else if (i === viewportOrderIndex && viewport !== null) {
-      const vp: Slot<ViewportPatch> = viewport;
-      merged = { kind: "viewport", before: vp.first.before, after: vp.latest.after };
+    } else if (i === viewportOrderIndex && viewportSlot !== null) {
+      merged = {
+        kind: "viewport",
+        before: viewportSlot.first.before,
+        after: viewportSlot.latest.after,
+      };
     } else {
       continue;
     }

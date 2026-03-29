@@ -42,17 +42,19 @@ export const describe = (patch: Patch): string => {
     }
     case "batch": {
       if (patch.patches.length === 0) return "Empty batch";
-      if (patch.patches.length === 1) return describe(patch.patches[0]!);
+      const firstPatch = patch.patches[0];
+      if (firstPatch === undefined) return "Empty batch";
+      if (patch.patches.length === 1) return describe(firstPatch);
       // If every inner patch describes to the same label, surface it; otherwise
       // give a generic n-count.
-      const first = describe(patch.patches[0]!);
+      const first = describe(firstPatch);
       const allSame = patch.patches.every((p) => describe(p) === first);
       return allSame ? `${first} (×${patch.patches.length})` : `${patch.patches.length} changes`;
     }
   }
 };
 
-const titleCase = (s: string): string => (s ? s[0]!.toUpperCase() + s.slice(1) : s);
+const titleCase = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 const labelForCreate = (shape: { type: string } | null): string =>
   shape ? `Create ${titleCase(shape.type)}` : "Create shape";
