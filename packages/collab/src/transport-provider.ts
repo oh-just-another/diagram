@@ -67,8 +67,8 @@ export class TransportProvider {
   // --- inbound ---
 
   private readonly onInbound = (payload: Uint8Array): void => {
-    if (payload.length === 0) return;
-    const tag = payload[0]!;
+    const tag = payload[0];
+    if (tag === undefined) return;
     const body = payload.subarray(1);
     switch (tag) {
       case TAG_DOC:

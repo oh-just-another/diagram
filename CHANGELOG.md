@@ -1378,3 +1378,6 @@
 
 ## 0.55.31
 - refactor(lint): clear strictTypeChecked errors in history
+
+## 0.55.32
+- refactor(lint): clear strictTypeChecked errors in exporter

@@ -176,7 +176,7 @@ const randomHex = (byteCount: number): string => {
  */
 const base64UrlEncode = (bytes: Uint8Array): string => {
   let bin = "";
-  for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]!);
+  for (const byte of bytes) bin += String.fromCharCode(byte);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 };
 

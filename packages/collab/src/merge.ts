@@ -21,7 +21,7 @@ export interface BranchId {
 
 export interface MergeConflict {
   readonly elementId: ElementId;
-  readonly base: unknown | null;
+  readonly base: unknown;
   readonly source: unknown;
   readonly target: unknown;
 }

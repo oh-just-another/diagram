@@ -11,7 +11,8 @@ export const extractMentions = (body: string): readonly string[] => {
   const re = /(^|\s)@(\w+)/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(body)) !== null) {
-    out.push(match[2]!.toLowerCase());
+    const handle = match[2];
+    if (handle !== undefined) out.push(handle.toLowerCase());
   }
   return out;
 };

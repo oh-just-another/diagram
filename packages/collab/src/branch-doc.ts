@@ -135,7 +135,7 @@ export class BranchDoc implements BranchMergeAPI {
    * land in the returned `autoMerged` scene; conflicts wait for
    * `applyConflictResolution`.
    */
-  async mergeBranch(source: BranchId, target: BranchId): Promise<MergeReport> {
+  mergeBranch(source: BranchId, target: BranchId): Promise<MergeReport> {
     const sMeta = this.requireBranch(source.id);
     const sourceScene = this.requireSceneDoc(source.id).snapshot();
     const targetScene = this.requireSceneDoc(target.id).snapshot();
@@ -157,11 +157,11 @@ export class BranchDoc implements BranchMergeAPI {
       source: c.source,
       target: c.target,
     }));
-    return {
+    return Promise.resolve({
       applied,
       conflicts,
       autoMerged: report.autoMerged,
-    };
+    });
   }
 
   /**
@@ -170,11 +170,12 @@ export class BranchDoc implements BranchMergeAPI {
    * host commits it by calling `sceneDocFor(targetId).replace(
    * finalScene)` when it wants to materialise the merge.
    */
-  async applyConflictResolution(
+  applyConflictResolution(
     report: MergeReport,
     resolutions: readonly ConflictResolution[],
   ): Promise<Scene> {
-    return applyConflictResolutions(
+    return Promise.resolve(
+      applyConflictResolutions(
       {
         autoMerged: report.autoMerged,
         conflicts: report.conflicts.map((c) => ({
@@ -188,6 +189,7 @@ export class BranchDoc implements BranchMergeAPI {
         elementId: r.elementId,
         choice: r.choice === "ours" ? "ours" : r.choice === "theirs" ? "theirs" : "both",
       })),
+      ),
     );
   }
 

@@ -53,7 +53,12 @@ export interface YjsHistoryOptions {
 export class YjsHistory implements HistoryProvider {
   private readonly doc: Y.Doc;
   private readonly origin: symbol;
-  private readonly maps: readonly Y.Map<unknown>[];
+  private readonly maps: readonly [
+    Y.Map<unknown>,
+    Y.Map<unknown>,
+    Y.Map<unknown>,
+    Y.Map<unknown>,
+  ];
   private readonly viewportMap: Y.Map<unknown>;
   private readonly undoManager: Y.UndoManager;
 
@@ -175,10 +180,10 @@ export class YjsHistory implements HistoryProvider {
   private applyToCrdt(p: Patch): void {
     const before = this.current;
     const after = apply(before, p);
-    diffMapInto(before.elements, after.elements, this.maps[0]!);
-    diffMapInto(before.links, after.links, this.maps[1]!);
-    diffMapInto(before.layers, after.layers, this.maps[2]!);
-    diffMapInto(before.annotations, after.annotations, this.maps[3]!);
+    diffMapInto(before.elements, after.elements, this.maps[0]);
+    diffMapInto(before.links, after.links, this.maps[1]);
+    diffMapInto(before.layers, after.layers, this.maps[2]);
+    diffMapInto(before.annotations, after.annotations, this.maps[3]);
     if (before.viewport !== after.viewport) {
       this.viewportMap.set("current", after.viewport);
     }
@@ -240,7 +245,8 @@ const diffAsPatch = (before: Scene, after: Scene): Patch | null => {
   }
 
   if (ops.length === 0) return null;
-  if (ops.length === 1) return ops[0]!;
+  const first = ops[0];
+  if (ops.length === 1 && first !== undefined) return first;
   return batch(ops);
 };
 
