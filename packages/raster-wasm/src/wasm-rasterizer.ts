@@ -3,6 +3,12 @@ import type { PathCommand } from "@oh-just-another/scene";
 import { jsRasterizer, type Rasterizer } from "@oh-just-another/renderer-core";
 import { DEFAULT_FLATTEN_TOLERANCE } from "./constants.js";
 
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined)
+    throw new Error("packages/raster-wasm: index out of range");
+  return v;
+};
+
 /**
  * WASM-backed `Rasterizer`. Until `loadModule(...)` swaps in a real
  * WASM build, `flatten` / `strokeToFill` delegate to the JS reference
@@ -235,8 +241,10 @@ const packCommands = (commands: readonly PathCommand[]): Float32Array => {
 const packVec2Array = (points: readonly Vec2[]): Float32Array => {
   const out = new Float32Array(points.length * 2);
   for (let i = 0; i < points.length; i++) {
-    out[i * 2] = points[i]!.x;
-    out[i * 2 + 1] = points[i]!.y;
+    const p = points[i];
+    if (p === undefined) continue;
+    out[i * 2] = p.x;
+    out[i * 2 + 1] = p.y;
   }
   return out;
 };
@@ -250,9 +258,9 @@ const readVec2Array = (
   count: number,
 ): readonly Vec2[] => {
   const view = new Float32Array(memory.buffer, ptr, count * 2);
-  const out: Vec2[] = new Array(count);
+  const out: Vec2[] = new Array<Vec2>(count);
   for (let i = 0; i < count; i++) {
-    out[i] = { x: view[i * 2]!, y: view[i * 2 + 1]! };
+    out[i] = { x: req(view[i * 2]), y: req(view[i * 2 + 1]) };
   }
   return out;
 };
