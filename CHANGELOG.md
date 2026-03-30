@@ -1381,3 +1381,6 @@
 
 ## 0.55.32
 - refactor(lint): clear strictTypeChecked errors in exporter
+
+## 0.55.33
+- refactor(lint): clear strictTypeChecked errors in collab

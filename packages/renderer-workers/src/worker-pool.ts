@@ -64,7 +64,8 @@ export class WorkerPool {
     work: { task: (w: Worker) => Promise<unknown>; resolve: (v: unknown) => void; reject: (err: unknown) => void },
   ): void {
     this.busy[index] = true;
-    const worker = this.workers[index]!;
+    const worker = this.workers[index];
+    if (worker === undefined) throw new Error("packages/renderer-workers: index out of range");
     work.task(worker).then(
       (value) => {
         this.busy[index] = false;
@@ -72,7 +73,7 @@ export class WorkerPool {
         if (next) this.run(index, next);
         work.resolve(value);
       },
-      (err) => {
+      (err: unknown) => {
         this.busy[index] = false;
         const next = this.queue.shift();
         if (next) this.run(index, next);

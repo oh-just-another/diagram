@@ -1,6 +1,12 @@
 import type { LayerId } from "@oh-just-another/types";
 import { WorkerPool } from "./worker-pool.js";
 
+/** Assert a known-valid indexed access is present (constructor guarantees ≥1 worker). */
+const req = <T>(v: T | undefined): T => {
+  if (v === undefined) throw new Error("packages/renderer-workers: index out of range");
+  return v;
+};
+
 /**
  * Per-layer worker assignment on top of `WorkerPool`.
  *
@@ -46,18 +52,19 @@ export class LayerWorkerPool {
    */
   workerFor(layerId: LayerId): Worker {
     const existing = this.assignment.get(layerId);
-    if (existing !== undefined) return this.workers[existing]!;
+    if (existing !== undefined) return req(this.workers[existing]);
     let pickIndex = 0;
-    let pickLoad = this.perWorkerLoad[0]!;
+    let pickLoad = req(this.perWorkerLoad[0]);
     for (let i = 1; i < this.workers.length; i++) {
-      if (this.perWorkerLoad[i]! < pickLoad) {
+      const load = req(this.perWorkerLoad[i]);
+      if (load < pickLoad) {
         pickIndex = i;
-        pickLoad = this.perWorkerLoad[i]!;
+        pickLoad = load;
       }
     }
     this.assignment.set(layerId, pickIndex);
-    this.perWorkerLoad[pickIndex]!++;
-    return this.workers[pickIndex]!;
+    this.perWorkerLoad[pickIndex] = req(this.perWorkerLoad[pickIndex]) + 1;
+    return req(this.workers[pickIndex]);
   }
 
   /**
@@ -90,7 +97,7 @@ export class LayerWorkerPool {
     const idx = this.assignment.get(layerId);
     if (idx === undefined) return;
     this.assignment.delete(layerId);
-    this.perWorkerLoad[idx] = Math.max(0, this.perWorkerLoad[idx]! - 1);
+    this.perWorkerLoad[idx] = Math.max(0, req(this.perWorkerLoad[idx]) - 1);
   }
 
   /** Terminate every worker. Pool is unusable afterwards. */
