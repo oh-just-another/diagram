@@ -1390,3 +1390,6 @@
 
 ## 0.55.35
 - refactor(lint): clear strictTypeChecked errors in raster-wasm
+
+## 0.55.36
+- refactor(lint): clear strictTypeChecked errors in diagram(app)

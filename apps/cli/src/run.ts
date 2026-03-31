@@ -88,7 +88,8 @@ export const parseArgs = (argv: readonly string[]): Args => {
     help: false,
   };
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i]!;
+    const a = argv[i];
+    if (a === undefined) continue;
     if (a === "--help" || a === "-h") out.help = true;
     else if (a === "--out" || a === "-o") out.output = argv[++i] ?? null;
     else if (a === "--width") out.width = Number(argv[++i]);
@@ -126,7 +127,16 @@ const parseCrop = (raw: string): ExportRegion => {
   if (parts.length !== 4 || parts.some(Number.isNaN)) {
     throw new Error("--crop expects X,Y,W,H (e.g. 0,0,400,300)");
   }
-  return { x: parts[0]!, y: parts[1]!, width: parts[2]!, height: parts[3]! };
+  const req = (v: number | undefined): number => {
+    if (v === undefined) throw new Error("apps/cli: index out of range");
+    return v;
+  };
+  return {
+    x: req(parts[0]),
+    y: req(parts[1]),
+    width: req(parts[2]),
+    height: req(parts[3]),
+  };
 };
 
 export const run = async (argv: readonly string[]): Promise<void> => {
