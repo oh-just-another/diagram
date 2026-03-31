@@ -84,11 +84,12 @@ export const useCollab = (editor: Editor | null): CollabAPI => {
     let cleanup: (() => void) | null = null;
 
     void (async () => {
-      const key = await importRoomKey(credentials.keyBase64).catch((err) => {
-         
+      const key = await importRoomKey(credentials.keyBase64).catch((err: unknown) => {
+
         console.warn("[collab] invalid key in URL hash:", err);
         return null;
       });
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `cancelled` is mutated by the cleanup closure; CFA inside the IIFE can't see it
       if (cancelled || !key) return;
 
       const doc = new Y.Doc();
@@ -203,10 +204,10 @@ const resolveRelayBase = (): string => {
 
 // --- Peer identity ---------------------------------------------------------
 
-const COLORS = ["#1a73e8", "#e91e63", "#43a047", "#fb8c00", "#7b1fa2", "#00838f"];
+const COLORS = ["#1a73e8", "#e91e63", "#43a047", "#fb8c00", "#7b1fa2", "#00838f"] as const;
 
 const randomUser = (): { id: string; name: string; color: string } => {
   const id = Math.random().toString(36).slice(2, 8);
-  const color = COLORS[Math.floor(Math.random() * COLORS.length)]!;
+  const color = COLORS[Math.floor(Math.random() * COLORS.length)] ?? COLORS[0];
   return { id, name: `Peer ${id.slice(0, 4)}`, color };
 };

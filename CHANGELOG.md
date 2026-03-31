@@ -1387,3 +1387,6 @@
 
 ## 0.55.34
 - refactor(lint): clear strictTypeChecked errors in renderer-workers
+
+## 0.55.35
+- refactor(lint): clear strictTypeChecked errors in raster-wasm

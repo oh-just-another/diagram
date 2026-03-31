@@ -120,7 +120,8 @@ const gifAdapter: AnimatedSourceAdapter<ArrayBuffer> = {
     for (const frame of decoded.frames) {
       if (t < frame.endMs) return frame.bitmap;
     }
-    return decoded.frames[decoded.frames.length - 1]!.bitmap;
+    const last = decoded.frames[decoded.frames.length - 1];
+    return last ? last.bitmap : null;
   },
   totalDurationMs(data) {
     return decodeCache.get(data)?.totalMs ?? 0;

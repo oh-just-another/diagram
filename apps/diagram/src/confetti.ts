@@ -156,7 +156,8 @@ const drawConfetti = (shape: RectangleElement, cfg: ConfettiConfig, target: Rend
       const size = CONFETTI_SIZE_MIN + r2 * (CONFETTI_SIZE_MAX - CONFETTI_SIZE_MIN);
       const spin = (r3 - 0.5) * 2 * CONFETTI_SPIN_MAX;
       const rot = r4 * TAU + spin * t;
-      const color = CONFETTI_COLORS[(ei * count + i) % CONFETTI_COLORS.length]!;
+      const color = CONFETTI_COLORS[(ei * count + i) % CONFETTI_COLORS.length];
+      if (color === undefined) continue;
 
       target.save();
       target.translate(x, y);

@@ -85,7 +85,7 @@ const toggleIcon = { size: TOGGLE_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } a
 const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
 import { formatHotkey } from "@oh-just-another/state";
-import { emptyScene, type GridStyle, type Scene } from "@oh-just-another/scene";
+import { emptyScene, type Scene } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
@@ -316,10 +316,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      if (!detectionRef.current) {
-        detectionRef.current = detectCapabilities(capabilityOverrides);
-      }
+      detectionRef.current ??= detectCapabilities(capabilityOverrides);
       const detected = await detectionRef.current;
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `cancelled` is mutated by the cleanup closure; CFA inside the IIFE can't see it
       if (cancelled) return;
       if (!loggedRef.current) {
         loggedRef.current = true;
@@ -336,7 +335,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
               setWasmShaper(shaper);
               setWasmTextSettled(true);
             },
-            (err) => {
+            (err: unknown) => {
               if (cancelled) return;
               // Settle even on failure so a text-bearing scene still
               // mounts (with the fallback font) instead of hanging.
@@ -355,8 +354,8 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
               setActiveRasterizer(r);
               setWasmRaster(r);
             },
-            (err) => {
-               
+            (err: unknown) => {
+
               console.warn("[diagram] WASM rasterizer load failed", err);
             },
           ),
@@ -688,7 +687,7 @@ const EditorShell = ({
                       </MainMenu.Item>
                       <MainMenu.Item
                         icon={<FileDown {...menuIcon} />}
-                        onClick={() => editor && downloadScene(editor.scene)}
+                        onClick={() => { if (editor) downloadScene(editor.scene); }}
                         disabled={!editor}
                       >
                         Save as JSON
@@ -722,7 +721,7 @@ const EditorShell = ({
                         <MainMenu.Separator />
                         <MainMenu.Item
                           icon={<Download {...menuIcon} />}
-                          onClick={() => editor && downloadSvg(editor.scene)}
+                          onClick={() => { if (editor) downloadSvg(editor.scene); }}
                           disabled={!editor}
                         >
                           SVG

@@ -7,7 +7,6 @@ import {
   orderBetween,
   type Link,
   type Patch,
-  type Scene,
   type Element,
 } from "@oh-just-another/scene";
 import type { Editor } from "@oh-just-another/state";
@@ -386,7 +385,7 @@ const ShapeCard = ({ shape }: { shape: Element }) => {
   );
 };
 
-const LinkCard = ({ edge }: { edge: import("@oh-just-another/scene").Link }) => (
+const LinkCard = ({ edge }: { edge: Link }) => (
   <Card>
     <Row label="id">
       <Code>{edge.id}</Code>
@@ -1053,7 +1052,7 @@ const MosaicSection = ({ editor }: { editor: Editor }) => {
           </button>
         </div>
       ) : (
-        <button type="button" onClick={generate} disabled={!image} style={primaryButtonStyle}>
+        <button type="button" onClick={() => void generate()} disabled={!image} style={primaryButtonStyle}>
           Generate mosaic
         </button>
       )}
@@ -1190,10 +1189,11 @@ const buildGrid = (
   // each frame). Good for stress-testing edge routing under
   // movement.
   const edges: Link[] = [];
-  const head = shapes[0]!;
+  const head = shapes[0];
   let edgeOrder: Link["order"] = orderBetween(null, null);
   for (let i = 1; i < shapes.length; i++) {
-    const target = shapes[i]!;
+    const target = shapes[i];
+    if (head === undefined || target === undefined) continue;
     edges.push({
       id: nextDebugLinkId(`grid-${i}`),
       layerId,
@@ -1948,9 +1948,9 @@ const fmt = (n: number): string =>
 const stringify = (v: unknown): string =>
   JSON.stringify(
     v,
-    (_key, value) => {
-      if (value instanceof Map) return Object.fromEntries(value);
-      if (value instanceof Set) return [...value];
+    (_key, value: unknown) => {
+      if (value instanceof Map) return Object.fromEntries(value as Map<PropertyKey, unknown>);
+      if (value instanceof Set) return [...(value as Set<unknown>)];
       return value;
     },
     2,
