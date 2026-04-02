@@ -126,7 +126,7 @@ describe("WebSocketTransport — constructor & status", () => {
     const { t, instances } = makeTransport();
     const statuses: string[] = [];
     t.onStatusChange((s) => statuses.push(s));
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     expect(t.status).toBe("open");
     expect(statuses).toContain("open");
     t.close();
@@ -146,11 +146,11 @@ describe("WebSocketTransport — onStatusChange", () => {
   it("does not fire when status does not change (idempotent)", () => {
     const { t, instances } = makeTransport();
     // Open the socket first
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     const received: string[] = [];
     const unsub = t.onStatusChange((s) => received.push(s));
     // Already open — firing open again must not emit a second "open"
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     expect(received.filter((s) => s === "open").length).toBe(1);
     unsub();
     t.close();
@@ -161,7 +161,7 @@ describe("WebSocketTransport — onStatusChange", () => {
     const received: string[] = [];
     const unsub = t.onStatusChange((s) => received.push(s));
     unsub();
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     // Only the initial synchronous call should be in the array
     expect(received).toEqual(["connecting"]);
     t.close();
@@ -175,20 +175,20 @@ describe("WebSocketTransport — send / buffer", () => {
     const p2 = new Uint8Array([2]);
     t.send(p1);
     t.send(p2);
-    expect(instances[0].sentFrames).toEqual([]); // not yet sent
+    expect(instances[0]!.sentFrames).toEqual([]); // not yet sent
 
-    instances[0].fire("open");
+    instances[0]!.fire("open");
 
-    expect(instances[0].sentFrames).toEqual([p1, p2]);
+    expect(instances[0]!.sentFrames).toEqual([p1, p2]);
     t.close();
   });
 
   it("sends directly when socket is already open", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     const p = new Uint8Array([42]);
     t.send(p);
-    expect(instances[0].sentFrames).toContain(p);
+    expect(instances[0]!.sentFrames).toContain(p);
     t.close();
   });
 
@@ -198,19 +198,19 @@ describe("WebSocketTransport — send / buffer", () => {
     t.close();
     // The close guard prevents connect from running again, so opening
     // the socket sends nothing.
-    instances[0].fire("open");
-    expect(instances[0].sentFrames).toEqual([]);
+    instances[0]!.fire("open");
+    expect(instances[0]!.sentFrames).toEqual([]);
   });
 });
 
 describe("WebSocketTransport — onMessage", () => {
   it("dispatches ArrayBuffer payloads to handlers", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     const received: Uint8Array[] = [];
     const unsub = t.onMessage((p) => received.push(p));
     const buf = new Uint8Array([10, 20, 30]).buffer;
-    instances[0].fireMessage(buf);
+    instances[0]!.fireMessage(buf);
     expect(Array.from(received[0]!)).toEqual([10, 20, 30]);
     unsub();
     t.close();
@@ -218,44 +218,44 @@ describe("WebSocketTransport — onMessage", () => {
 
   it("dispatches Uint8Array payloads directly", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     const received: Uint8Array[] = [];
     t.onMessage((p) => received.push(p));
     const arr = new Uint8Array([5, 6]);
-    instances[0].fireMessage(arr);
+    instances[0]!.fireMessage(arr);
     expect(received[0]).toBe(arr);
     t.close();
   });
 
   it("drops non-binary messages silently", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     const received: Uint8Array[] = [];
     t.onMessage((p) => received.push(p));
-    instances[0].fireMessage("not binary");
+    instances[0]!.fireMessage("not binary");
     expect(received).toHaveLength(0);
     t.close();
   });
 
   it("unsubscribe stops handler from receiving messages", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     const received: Uint8Array[] = [];
     const unsub = t.onMessage((p) => received.push(p));
     unsub();
-    instances[0].fireMessage(new Uint8Array([1]).buffer);
+    instances[0]!.fireMessage(new Uint8Array([1]).buffer);
     expect(received).toHaveLength(0);
     t.close();
   });
 
   it("clears message handlers on close()", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     const received: Uint8Array[] = [];
     t.onMessage((p) => received.push(p));
     t.close();
     // Fire message on the now-closed socket
-    instances[0].fireMessage(new Uint8Array([9]).buffer);
+    instances[0]!.fireMessage(new Uint8Array([9]).buffer);
     expect(received).toHaveLength(0);
   });
 });
@@ -270,11 +270,11 @@ describe("WebSocketTransport — reconnect on close event", () => {
 
   it("schedules a reconnect after socket close and transitions to reconnecting", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     const statuses: string[] = [];
     t.onStatusChange((s) => statuses.push(s));
 
-    instances[0].fire("close");
+    instances[0]!.fire("close");
 
     expect(t.status).toBe("reconnecting");
     expect(statuses).toContain("reconnecting");
@@ -283,7 +283,7 @@ describe("WebSocketTransport — reconnect on close event", () => {
 
   it("creates a new socket after the initial backoff delay", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("close"); // triggers reconnect
+    instances[0]!.fire("close"); // triggers reconnect
 
     expect(instances).toHaveLength(1);
     vi.advanceTimersByTime(500);
@@ -295,7 +295,7 @@ describe("WebSocketTransport — reconnect on close event", () => {
     const { t, instances } = makeTransport();
 
     // 1st disconnect → 500 ms timer
-    instances[0].fire("close");
+    instances[0]!.fire("close");
     vi.advanceTimersByTime(500); // fires timer → 2nd socket
 
     // 2nd disconnect → 1 000 ms timer
@@ -315,7 +315,7 @@ describe("WebSocketTransport — reconnect on close event", () => {
     });
 
     // 1st drop → 100 ms
-    instances[0].fire("close");
+    instances[0]!.fire("close");
     vi.advanceTimersByTime(100);
 
     // 2nd drop → would be 200 ms (capped at max)
@@ -334,7 +334,7 @@ describe("WebSocketTransport — reconnect on close event", () => {
     const { t, instances } = makeTransport();
 
     // Drop once → 500 ms
-    instances[0].fire("close");
+    instances[0]!.fire("close");
     vi.advanceTimersByTime(500);
 
     // 2nd socket opens successfully
@@ -361,7 +361,7 @@ describe("WebSocketTransport — reconnect on error event", () => {
 
   it("also reconnects when the socket fires an error", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("error");
+    instances[0]!.fire("error");
     expect(t.status).toBe("reconnecting");
 
     vi.advanceTimersByTime(500);
@@ -386,7 +386,7 @@ describe("WebSocketTransport — close()", () => {
 
   it("cancels a pending reconnect timer", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("close"); // starts 500 ms timer
+    instances[0]!.fire("close"); // starts 500 ms timer
     expect(t.status).toBe("reconnecting");
     t.close();
     vi.advanceTimersByTime(500);
@@ -396,9 +396,9 @@ describe("WebSocketTransport — close()", () => {
 
   it("does not reconnect after close() even if socket later fires close", () => {
     const { t, instances } = makeTransport();
-    instances[0].fire("open");
+    instances[0]!.fire("open");
     t.close();
-    instances[0].fire("close"); // should be ignored
+    instances[0]!.fire("close"); // should be ignored
     vi.advanceTimersByTime(1000);
     expect(instances).toHaveLength(1);
   });
@@ -423,15 +423,15 @@ describe("WebSocketTransport — stale socket event guard", () => {
     const { t, instances } = makeTransport();
 
     // 1st socket closes → timer fires → 2nd socket is created
-    instances[0].fire("close");
+    instances[0]!.fire("close");
     vi.advanceTimersByTime(500);
     expect(instances).toHaveLength(2);
 
-    // 2nd socket opens — now the current socket is instances[1]
+    // 2nd socket opens — now the current socket is instances[1]!
     instances[1]!.fire("open");
 
     // The old (stale) socket fires close — must not trigger another reconnect
-    instances[0].fire("close");
+    instances[0]!.fire("close");
 
     expect(t.status).toBe("open");
     t.close();

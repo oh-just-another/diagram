@@ -25,7 +25,7 @@ const rect = (id: string, overrides: Partial<Element> = {}): Element => ({
   width: 10,
   height: 10,
   ...overrides,
-});
+}) as Element;
 
 const mkLink = (id: string) => ({
   id: linkId(id),

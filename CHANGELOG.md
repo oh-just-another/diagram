@@ -1393,3 +1393,6 @@
 
 ## 0.55.36
 - refactor(lint): clear strictTypeChecked errors in diagram(app)
+
+## 0.55.37
+- refactor(lint): clear strictTypeChecked errors in cli(app)

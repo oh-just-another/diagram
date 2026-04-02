@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/headless",
-  "version": "0.55.37",
+  "version": "0.55.38",
   "description": "Headless rendering engine \u2014 turn a Scene into SVG / PNG in Node.",
   "type": "module",
   "main": "./dist/index.js",
