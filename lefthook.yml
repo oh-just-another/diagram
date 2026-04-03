@@ -14,6 +14,8 @@ pre-push:
   commands:
     typecheck:
       run: pnpm typecheck
+    lint:
+      run: pnpm lint
     test:
       run: pnpm test
     deps:

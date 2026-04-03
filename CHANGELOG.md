@@ -1399,3 +1399,6 @@
 
 ## 0.55.38
 - fix(test): green up pre-existing typecheck errors in history/network tests
+
+## 0.55.39
+- chore(lint): make `pnpm lint` green across tests + e2e
