@@ -53,10 +53,39 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.test.ts", "**/*.spec.ts", "**/tests/**/*.ts"],
+    // Tests use a looser ruleset: they lean on hand-rolled mocks
+    // (`noopTarget` with many empty methods, `as never` casts, `!` on
+    // fixture lookups) where production-grade strictness is noise. Type
+    // safety of the code under test is still enforced by `tsc` on the
+    // package's `tests/**` include — this only relaxes lint.
+    files: [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+      "**/tests/**/*.ts",
+      "**/tests/**/*.tsx",
+    ],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
+      "@typescript-eslint/no-empty-function": "off",
+      "@typescript-eslint/no-confusing-void-expression": "off",
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
+      "@typescript-eslint/non-nullable-type-assertion-style": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/require-await": "off",
+      "@typescript-eslint/no-floating-promises": "off",
+      "@typescript-eslint/unbound-method": "off",
+      "@typescript-eslint/prefer-optional-chain": "off",
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
+      "@typescript-eslint/array-type": "off",
+      "@typescript-eslint/dot-notation": "off",
     },
   },
   {
@@ -64,6 +93,14 @@ export default tseslint.config(
     // type-aware ruleset (projectService) can't resolve them. Lint them
     // syntactically only.
     files: ["*.config.{ts,mts,cts}", "*.config.cjs", ".dependency-cruiser.cjs"],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: { parserOptions: { projectService: false } },
+  },
+  {
+    // The e2e app is a standalone Playwright project with no tsconfig in the
+    // type-aware project graph, so the typed ruleset can't resolve its specs.
+    // Lint them syntactically only.
+    files: ["apps/e2e/**/*.{ts,tsx}"],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { parserOptions: { projectService: false } },
   },

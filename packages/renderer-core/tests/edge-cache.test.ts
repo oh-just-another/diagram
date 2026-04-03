@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { linkId, elementId } from "@oh-just-another/types";
 import {
   addLink,
-  addElement,
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,

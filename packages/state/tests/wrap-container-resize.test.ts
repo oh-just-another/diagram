@@ -116,7 +116,7 @@ describe("wrap container resize clamp", () => {
     // Strip the noFlip flag. `computeElementResize` must force noFlip anyway
     // because it's an auto-layout container, so dragging the west edge far
     // past the east edge keeps the east edge fixed and never mirrors.
-    const { scene, container } = setup();
+    const { container } = setup();
     const legacy = { ...container } as Element & { noFlip?: boolean };
     delete legacy.noFlip;
     let legacyScene = emptyScene();

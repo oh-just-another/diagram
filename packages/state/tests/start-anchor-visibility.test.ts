@@ -108,7 +108,6 @@ describe("link-start anchor visibility on selection", () => {
     // A real drag is in flight — the gesture transaction is open (it opens
     // on the first move-emitted patch). Start anchors must hide; only the
     // resize handles remain.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (editor as any).gestureTx = { add: () => {}, commit: () => {}, cancel: () => {} };
     const midDrag = renderEllipses(editor, overlay);
 
@@ -134,7 +133,6 @@ describe("link-start anchor visibility on selection", () => {
 
     // Simulate the post-pointerdown state: a press landed on the shape
     // (dragElementId set) but the user hasn't moved, so no gesture tx.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (editor as any).dragElementId = elementId("a");
     const onPress = renderEllipses(editor, overlay);
 
@@ -156,7 +154,6 @@ describe("link-start anchor visibility on selection", () => {
     editor.setHoverLinkStart(elementId("a"), { x: 125, y: 125 }); // hover over the selected element so start dots show
 
     const atRest = renderEllipses(editor, overlay);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (editor as any).gestureTx = { add: () => {}, commit: () => {}, cancel: () => {} };
     const midDrag = renderEllipses(editor, overlay);
 

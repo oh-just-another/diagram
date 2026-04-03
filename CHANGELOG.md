@@ -1396,3 +1396,6 @@
 
 ## 0.55.37
 - refactor(lint): clear strictTypeChecked errors in cli(app)
+
+## 0.55.38
+- fix(test): green up pre-existing typecheck errors in history/network tests
