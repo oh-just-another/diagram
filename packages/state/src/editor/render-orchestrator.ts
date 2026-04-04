@@ -320,7 +320,7 @@ export const renderEditor = (editor: Editor): void => {
   }
   // Hover highlight for the link under the cursor (skip the selected one —
   // it already shows handles).
-  if (editor.hoveredLinkId && editor.hoveredLinkId !== editor._selectedLink) {
+  if (editor.hoveredLinkId && !editor._selectedLinks.has(editor.hoveredLinkId)) {
     const hovEdge = getLink(editor._scene, editor.hoveredLinkId);
     if (hovEdge) {
       // Curve-aware so the soft hover highlight follows the drawn arc, not the
@@ -335,8 +335,25 @@ export const renderEditor = (editor: Editor): void => {
       }
     }
   }
-  if (editor._selectedLink) {
-    const edge = getLink(editor._scene, editor._selectedLink);
+  // Persistent halo around EVERY selected link (multi-select). Curve-aware
+  // so the halo follows the drawn path, matching the hover highlight.
+  if (editor._selectedLinks.size > 0) {
+    const halos: { path: readonly Vec2[]; width: number }[] = [];
+    for (const id of editor._selectedLinks) {
+      const edge = getLink(editor._scene, id);
+      if (!edge) continue;
+      const hpath = getLinkCurvePoints(editor._scene, edge);
+      if (hpath && hpath.length >= 2) {
+        halos.push({ path: hpath, width: edge.style.strokeWidth ?? 1 });
+      }
+    }
+    if (halos.length > 0) overlayOpts.selectedLinkPaths = halos;
+  }
+  // Endpoint / bend handles only for the SOLE selected link (no elements);
+  // a multi/mixed selection hides them to stay uncluttered.
+  const soleSelectedLink = editor.selectedLink;
+  if (soleSelectedLink) {
+    const edge = getLink(editor._scene, soleSelectedLink);
     if (edge) {
       const path = getLinkPath(editor._scene, edge);
       if (path && path.length >= 2) {

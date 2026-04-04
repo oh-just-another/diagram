@@ -53,31 +53,35 @@ export const computeMoveSelectionBy = (
 export const computeDeleteSelection = (
   scene: Scene,
   selection: Selection.Selection,
-  selectedLink: LinkId | null,
+  selectedLinks: ReadonlySet<LinkId>,
 ): { readonly scene: Scene; readonly patches: Patch[] } | null => {
-  if (selection.size === 0 && !selectedLink) return null;
+  if (selection.size === 0 && selectedLinks.size === 0) return null;
   let s = scene;
   const patches: Patch[] = [];
+  // Track removed links so an explicitly-selected link that's also
+  // attached to a deleted element isn't removed twice (removeLink throws).
+  const removed = new Set<LinkId>();
+  const dropLink = (id: LinkId) => {
+    if (removed.has(id) || !s.links.has(id)) return;
+    const r = removeLink(s, id);
+    s = r.scene;
+    patches.push(r.patch);
+    removed.add(id);
+  };
   for (const id of selection) {
     for (const edge of [...s.links.values()]) {
       if (
         (edge.from.kind !== "point" && edge.from.elementId === id) ||
         (edge.to.kind !== "point" && edge.to.elementId === id)
       ) {
-        const r = removeLink(s, edge.id);
-        s = r.scene;
-        patches.push(r.patch);
+        dropLink(edge.id);
       }
     }
     const r = removeElement(s, id);
     s = r.scene;
     patches.push(r.patch);
   }
-  if (selectedLink) {
-    const r = removeLink(s, selectedLink);
-    s = r.scene;
-    patches.push(r.patch);
-  }
+  for (const id of selectedLinks) dropLink(id);
   return { scene: s, patches };
 };
 
@@ -156,6 +160,21 @@ export const computeSelectAll = (
     next = Selection.add(next, shape.id);
   }
   if (Selection.equals(next, current)) return null;
+  return next;
+};
+
+/**
+ * Every link on a visible / unlocked layer — the link half of Cmd+A.
+ * Returns the full set (caller diffs against the current link
+ * selection to decide whether anything changed).
+ */
+export const computeSelectAllLinks = (scene: Scene): Set<LinkId> => {
+  const next = new Set<LinkId>();
+  for (const edge of scene.links.values()) {
+    const layer = scene.layers.get(edge.layerId);
+    if (!layer || !layer.visible || layer.locked) continue;
+    next.add(edge.id);
+  }
   return next;
 };
 

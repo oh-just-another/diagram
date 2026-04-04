@@ -223,6 +223,7 @@ import {
   computeDuplicateSelection,
   computeMoveSelectionBy,
   computeSelectAll,
+  computeSelectAllLinks,
   computeSetSelection,
   computeUpdateStyle,
   computeUpdateTextProps,
@@ -250,6 +251,7 @@ import { computeHiddenElements as computeHiddenElementsPure } from "./editor/sha
 import {
   selectByBounds as selectByBoundsPure,
   selectByBoundsLive as selectByBoundsLivePure,
+  selectLinksByBoundsLive as selectLinksByBoundsLivePure,
 } from "./editor/applies/selection.js";
 import { computeLinkEndpointUpdate, computeLinkPreviewEndpoints } from "./editor/applies/edge.js";
 import {
@@ -269,6 +271,7 @@ import {
 } from "./editor/applies/create.js";
 import { type PeerCursor, type PeerSelection } from "./overlay.js";
 import * as Selection from "./selection.js";
+import * as LinkSelection from "./link-selection.js";
 
 export interface LoadSceneOptions {
   /**
@@ -528,9 +531,13 @@ export class Editor {
     world: Vec2;
   } | null = null;
   /**
-   * Currently selected edge.
+   * Currently selected links (connectors). Links are first-class members
+   * of the selection: they coexist with selected elements, join Cmd+A and
+   * marquee, and multi-select via Shift-click. Endpoint drag handles show
+   * only when EXACTLY one link is selected and no elements are (see
+   * `selectedLink`). Empty set = no link selected.
    */
-  public _selectedLink: LinkId | null = null;
+  public _selectedLinks: LinkSelection.LinkSelection = LinkSelection.EMPTY;
   /**
    * Currently focused annotation thread — overlay highlights its pin
    * with an accent ring and hosts (e.g. `<CommentsPopover>`) render
@@ -583,6 +590,8 @@ export class Editor {
    * the user already had selected don't blink out and back.
    */
   private lassoBaseSelection: Selection.Selection | null = null;
+  /** Link-selection counterpart of `lassoBaseSelection` for the marquee. */
+  private lassoBaseLinks: LinkSelection.LinkSelection | null = null;
   /**
    * Snapshot of every selected shape's `position` at press-down. Used to
    * translate the whole group additively during a multi-shape drag. The
@@ -1152,6 +1161,7 @@ export class Editor {
     return {
       mode: this.mode,
       selection: this._selection,
+      selectedLinks: this._selectedLinks,
       scene: this._scene,
       canUndo: this.canUndo,
       canRedo: this.canRedo,
@@ -1361,9 +1371,20 @@ export class Editor {
     return this._toolLocked;
   }
 
-  /** Currently-selected edge id, if any. Null when no edge is selected. */
+  /** All currently-selected link (connector) ids. */
+  get selectedLinks(): LinkSelection.LinkSelection {
+    return this._selectedLinks;
+  }
+
+  /**
+   * The sole selected link — non-null ONLY when exactly one link and no
+   * elements are selected. Drives endpoint handles, the edge-style panel,
+   * caption edit and `updateSelectedLink`; a multi/mixed selection yields
+   * null so those single-link affordances stay hidden.
+   */
   get selectedLink(): LinkId | null {
-    return this._selectedLink;
+    if (this._selection.size > 0) return null;
+    return LinkSelection.sole(this._selectedLinks);
   }
 
   /**
@@ -1373,7 +1394,7 @@ export class Editor {
    * object — Link is readonly). No-op when no edge is selected.
    */
   updateSelectedLink(updater: (edge: Link) => Link): void {
-    const id = this._selectedLink;
+    const id = this.selectedLink;
     if (id === null) return;
     const r = updateLink(this._scene, id, updater);
     this._scene = r.scene;
@@ -1901,14 +1922,14 @@ export class Editor {
 
   // Pure body in `./editor/public/selection-ops.ts`.
   deleteSelected(): void {
-    const result = computeDeleteSelection(this._scene, this._selection, this._selectedLink);
+    const result = computeDeleteSelection(this._scene, this._selection, this._selectedLinks);
     if (!result) return;
     const tx = this._history.transaction();
     this._scene = result.scene;
     for (const patch of result.patches) tx.add(patch);
     tx.commit();
     this._selection = Selection.EMPTY;
-    this._selectedLink = null;
+    this._selectedLinks = LinkSelection.EMPTY;
     this.notify();
   }
 
@@ -2537,7 +2558,7 @@ export class Editor {
       this._enteredGroup = null;
     }
     this._selection = Selection.EMPTY;
-    this._selectedLink = null;
+    this._selectedLinks = LinkSelection.EMPTY;
     this.notify();
     this.announce("Selection cleared");
   }
@@ -2563,15 +2584,21 @@ export class Editor {
     const next = computeSetSelection(this._scene, ids, this._selection);
     if (!next) return;
     this._selection = next;
-    if (this._selectedLink !== null) this._selectedLink = null;
+    if (this._selectedLinks.size > 0) this._selectedLinks = LinkSelection.EMPTY;
     this.notify();
   }
   selectAll(): void {
     const next = computeSelectAll(this._scene, this._selection);
-    if (!next) return;
-    this._selection = next;
+    const nextLinks = computeSelectAllLinks(this._scene);
+    const linksChanged = !LinkSelection.equals(nextLinks, this._selectedLinks);
+    // `computeSelectAll` returns null when the element set is unchanged;
+    // still proceed if the link set changed (e.g. only links left to add).
+    if (!next && !linksChanged) return;
+    if (next) this._selection = next;
+    this._selectedLinks = nextLinks;
     this.notify();
-    this.announce(`Selected ${next.size} shapes`);
+    const count = this._selection.size + this._selectedLinks.size;
+    this.announce(`Selected ${count} objects`);
   }
 
   /**
@@ -2771,7 +2798,7 @@ export class Editor {
       links: new Map(),
     };
     this._selection = Selection.EMPTY;
-    this._selectedLink = null;
+    this._selectedLinks = LinkSelection.EMPTY;
     this._history.clear();
     this.notify();
   }
@@ -3082,7 +3109,7 @@ export class Editor {
     return pickPressTarget(worldPoint, {
       scene: this._scene,
       selection: this._selection,
-      selectedLink: this._selectedLink,
+      selectedLink: this.selectedLink,
       enteredGroup: this._enteredGroup,
       handleHitSlop: this.handleHitSlop,
       edgeHandleHitSlop: this.edgeHandleHitSlop,
@@ -3282,7 +3309,8 @@ export class Editor {
     // through to the normal single-click handler.
     // Double-click on a link → edit its caption inline (standard).
     if (isDouble && clickEffect.type === "SELECT_EDGE_REPLACE") {
-      this._selectedLink = clickEffect.id;
+      this._selectedLinks = LinkSelection.single(clickEffect.id);
+      this._selection = Selection.EMPTY;
       this.beginLinkCaptionEdit(clickEffect.id);
       return true;
     }
@@ -3303,7 +3331,7 @@ export class Editor {
         if (target) {
           this._enteredGroup = target.id;
           this._selection = Selection.single(raw.id);
-          if (this._selectedLink !== null) this._selectedLink = null;
+          if (this._selectedLinks.size > 0) this._selectedLinks = LinkSelection.EMPTY;
           this.notify();
           return true;
         }
@@ -3329,28 +3357,35 @@ export class Editor {
   public applyEmit(emit: InteractionEmit): void {
     switch (emit.type) {
       case "SELECT_REPLACE":
+        // Plain element click replaces the whole selection (elements + links).
         this._selection = Selection.single(emit.id);
-        if (this._selectedLink !== null) this._selectedLink = null;
+        this._selectedLinks = LinkSelection.EMPTY;
         this.notify();
         return;
       case "SELECT_TOGGLE":
+        // Shift/meta element click toggles the element; selected links stay.
         this._selection = Selection.toggle(this._selection, emit.id);
-        if (this._selectedLink !== null) this._selectedLink = null;
         this.notify();
         return;
       case "SELECT_CLEAR":
         this._selection = Selection.EMPTY;
-        if (this._selectedLink !== null) this._selectedLink = null;
+        this._selectedLinks = LinkSelection.EMPTY;
         this.notify();
         return;
       case "SELECT_EDGE_REPLACE":
-        this._selectedLink = emit.id;
+        // Plain link click replaces the whole selection with this one link.
+        this._selectedLinks = LinkSelection.single(emit.id);
         this._selection = Selection.EMPTY;
         this.notify();
         return;
+      case "SELECT_EDGE_TOGGLE":
+        // Shift/meta link click toggles the link; selected elements stay.
+        this._selectedLinks = LinkSelection.toggle(this._selectedLinks, emit.id);
+        this.notify();
+        return;
       case "SELECT_EDGE_CLEAR":
-        if (this._selectedLink !== null) {
-          this._selectedLink = null;
+        if (this._selectedLinks.size > 0) {
+          this._selectedLinks = LinkSelection.EMPTY;
           this.notify();
         }
         return;
@@ -3364,14 +3399,20 @@ export class Editor {
         // Capture the pre-lasso selection on the first progress emit
         // of a gesture; subsequent emits use it as the additive base.
         this.lassoBaseSelection ??= this._selection;
+        this.lassoBaseLinks ??= this._selectedLinks;
         this.lassoPreview = emit.bounds;
         this.applyLassoLiveSelection(emit.bounds, emit.mode);
         this.notify();
         return;
       case "LASSO_CLEAR":
-        if (this.lassoPreview !== null || this.lassoBaseSelection !== null) {
+        if (
+          this.lassoPreview !== null ||
+          this.lassoBaseSelection !== null ||
+          this.lassoBaseLinks !== null
+        ) {
           this.lassoPreview = null;
           this.lassoBaseSelection = null;
+          this.lassoBaseLinks = null;
           this.notify();
         }
         return;
@@ -3380,6 +3421,7 @@ export class Editor {
         // the visible selection matches what lands. Reset the base
         // snapshot so the next gesture re-captures it.
         this.lassoBaseSelection = null;
+        this.lassoBaseLinks = null;
         this.applySelectByBounds(emit.bounds, emit.mode);
         return;
       case "MOVE_SHAPE":
@@ -3900,7 +3942,7 @@ export class Editor {
 
     this.pendingLinkDropMenu = null;
     this._selection = Selection.single(newId);
-    this._selectedLink = null;
+    this._selectedLinks = LinkSelection.EMPTY;
     this.notify();
   }
 
@@ -3974,7 +4016,7 @@ export class Editor {
     tx.commit();
 
     this._selection = Selection.single(newId);
-    if (this._selectedLink !== null) this._selectedLink = null;
+    if (this._selectedLinks.size > 0) this._selectedLinks = LinkSelection.EMPTY;
     this.notify();
   }
 
@@ -4126,8 +4168,16 @@ export class Editor {
       bounds,
       mode,
     );
-    if (this._selectedLink !== null) this._selectedLink = null;
-    if (Selection.equals(next, this._selection)) {
+    const nextLinks = selectLinksByBoundsLivePure(
+      this._scene,
+      mode === "add" ? this._selectedLinks : LinkSelection.EMPTY,
+      (id) => this.isLayerLocked(id),
+      bounds,
+      mode,
+    );
+    const linksChanged = !LinkSelection.equals(nextLinks, this._selectedLinks);
+    this._selectedLinks = nextLinks;
+    if (Selection.equals(next, this._selection) && !linksChanged) {
       this.notify();
       return;
     }
@@ -4144,8 +4194,17 @@ export class Editor {
       bounds,
       mode,
     );
-    if (Selection.equals(next, this._selection)) return;
-    if (this._selectedLink !== null) this._selectedLink = null;
+    const linkBase = this.lassoBaseLinks ?? LinkSelection.EMPTY;
+    const nextLinks = selectLinksByBoundsLivePure(
+      this._scene,
+      linkBase,
+      (id) => this.isLayerLocked(id),
+      bounds,
+      mode,
+    );
+    const linksChanged = !LinkSelection.equals(nextLinks, this._selectedLinks);
+    if (Selection.equals(next, this._selection) && !linksChanged) return;
+    this._selectedLinks = nextLinks;
     this._selection = next;
   }
 
@@ -4406,7 +4465,7 @@ export class Editor {
    * `AUTO_ROUTE_MAX_OBSTACLES` shapes (perf gate, à la standard's snap gate).
    */
   autoRouteSelectedLink(): void {
-    const id = this._selectedLink;
+    const id = this.selectedLink;
     if (id === null) return;
     const edge = getLink(this._scene, id);
     if (!edge) return;

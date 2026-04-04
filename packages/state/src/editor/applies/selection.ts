@@ -1,6 +1,7 @@
-import { getElementsCoveredByBounds, type Scene } from "@oh-just-another/scene";
-import type { Bounds, LayerId } from "@oh-just-another/types";
+import { getElementsCoveredByBounds, getLinkPath, type Scene } from "@oh-just-another/scene";
+import type { Bounds, LayerId, Vec2 } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
+import * as LinkSelection from "../../link-selection.js";
 import { LASSO_COVERAGE_THRESHOLD } from "../../constants.js";
 
 /**
@@ -50,6 +51,33 @@ export const selectByBoundsLive = (
   for (const shape of hits) {
     if (isLayerLocked(shape.layerId)) continue;
     next = Selection.add(next, shape.id);
+  }
+  return next;
+};
+
+const inside = (p: Vec2, b: Bounds): boolean =>
+  p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
+
+/**
+ * Link half of the marquee. A connector is captured when its ENTIRE drawn
+ * path lies inside `bounds` (fully-enclosed rule), so dragging a box across
+ * the canvas grabs only the links that are wholly within it. `"replace"`
+ * rebuilds from the box each frame; `"add"` keeps the pre-lasso link picks
+ * (`base`).
+ */
+export const selectLinksByBoundsLive = (
+  scene: Scene,
+  base: LinkSelection.LinkSelection,
+  isLayerLocked: (id: LayerId) => boolean,
+  bounds: Bounds,
+  mode: "replace" | "add",
+): LinkSelection.LinkSelection => {
+  let next: LinkSelection.LinkSelection = mode === "replace" ? LinkSelection.EMPTY : base;
+  for (const edge of scene.links.values()) {
+    if (isLayerLocked(edge.layerId)) continue;
+    const path = getLinkPath(scene, edge);
+    if (!path || path.length < 2) continue;
+    if (path.every((p) => inside(p, bounds))) next = LinkSelection.add(next, edge.id);
   }
   return next;
 };

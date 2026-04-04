@@ -132,6 +132,7 @@ export type InteractionEmit =
       readonly mode: "replace" | "add";
     }
   | { readonly type: "SELECT_EDGE_REPLACE"; readonly id: LinkId }
+  | { readonly type: "SELECT_EDGE_TOGGLE"; readonly id: LinkId }
   | { readonly type: "SELECT_EDGE_CLEAR" }
   | {
       readonly type: "UPDATE_EDGE_ENDPOINT_PREVIEW";
@@ -755,6 +756,12 @@ export const interpretPressEnd = (
     return { type: "SELECT_REPLACE", id: ctx.pressTarget.id };
   }
   if (ctx.pressTarget.kind === "link") {
+    // Shift / meta / ctrl click toggles the link's membership in the
+    // combined selection (links + elements coexist); plain click replaces.
+    const m = ctx.pressModifiers;
+    if (m && (m.shift || m.meta || m.ctrl)) {
+      return { type: "SELECT_EDGE_TOGGLE", id: ctx.pressTarget.id };
+    }
     return { type: "SELECT_EDGE_REPLACE", id: ctx.pressTarget.id };
   }
   if (ctx.pressTarget.kind === "empty" && ctx.mode === "select") {

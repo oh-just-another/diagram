@@ -1402,3 +1402,6 @@
 
 ## 0.55.39
 - chore(lint): make `pnpm lint` green across tests + e2e
+
+## 0.55.40
+- chore(hooks): add `pnpm lint` to the pre-push gate

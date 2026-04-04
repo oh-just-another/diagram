@@ -13,6 +13,7 @@ import {
 import { boundsFromPoints, interpretPressEnd, DRAG_THRESHOLD } from "../machine.js";
 import { fromPointerEvent } from "../dom-events.js";
 import * as Selection from "../selection.js";
+import * as LinkSelection from "../link-selection.js";
 import { getInteractiveHitTester } from "../interactive.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import { snapshotRigidLinks } from "./applies/link-move.js";
@@ -196,8 +197,9 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // Elbow segment drag: a press on an interior segment's midpoint handle
     // moves the whole segment perpendicular. Checked before the hit-test so
     // it isn't read as deselect.
-    if (editor.mode === "select" && editor._selectedLink) {
-      const edge = getLink(editor._scene, editor._selectedLink);
+    const segDragLink = editor.selectedLink;
+    if (editor.mode === "select" && segDragLink) {
+      const edge = getLink(editor._scene, segDragLink);
       if (edge && (edge.routing ?? "straight") === "orthogonal") {
         const path = getLinkPath(editor._scene, edge);
         if (path && path.length >= 2) {
@@ -221,9 +223,9 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
               const pos = axis === "h" ? a.y : a.x; // pinned perpendicular coord
               // Double-click a segment handle → drop its pin (back to auto route).
               if (editor.isHandleDoubleClick(worldPoint)) {
-                editor.resetSegmentPin(editor._selectedLink, axis, pos, at);
+                editor.resetSegmentPin(segDragLink, axis, pos, at);
               } else {
-                editor.beginSegmentDrag(editor._selectedLink, axis, at);
+                editor.beginSegmentDrag(segDragLink, axis, at);
               }
               editor.cancelLongPress();
               return;
@@ -237,8 +239,9 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // existing waypoint handle moves it; a press on a segment-midpoint
     // handle inserts a new waypoint there (on first move). Checked before
     // the normal hit-test so it isn't read as deselect / new gesture.
-    if (editor.mode === "select" && editor._selectedLink) {
-      const edge = getLink(editor._scene, editor._selectedLink);
+    const wpDragLink = editor.selectedLink;
+    if (editor.mode === "select" && wpDragLink) {
+      const edge = getLink(editor._scene, wpDragLink);
       // Elbow links use segment-drag (separate mechanic), not free waypoints.
       const path =
         edge && (edge.routing ?? "straight") !== "orthogonal"
@@ -260,9 +263,9 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
           if (within(req(waypoints[i]))) {
             // Double-click a waypoint handle → delete the bend point.
             if (editor.isHandleDoubleClick(worldPoint)) {
-              editor.deleteWaypoint(editor._selectedLink, i);
+              editor.deleteWaypoint(wpDragLink, i);
             } else {
-              editor.beginWaypointDrag(editor._selectedLink, i, false);
+              editor.beginWaypointDrag(wpDragLink, i, false);
             }
             grabbed = true;
             break;
@@ -275,7 +278,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
           const mids = getLinkWaypointMidpoints(editor._scene, edge) ?? [];
           for (let i = 0; i < mids.length; i++) {
             if (within(req(mids[i]))) {
-              editor.beginWaypointDrag(editor._selectedLink, i, true);
+              editor.beginWaypointDrag(wpDragLink, i, true);
               grabbed = true;
               break;
             }
@@ -361,7 +364,11 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       // Remember an additive promotion so a tap's up-handler doesn't
       // SELECT_TOGGLE it back off.
       if (additive) editor.additivePressAdded = target.id;
-      if (editor._selectedLink !== null) editor._selectedLink = null;
+      // Plain (non-additive) press on an element replaces the whole
+      // selection, so drop any selected links; an additive press keeps them.
+      if (!additive && editor._selectedLinks.size > 0) {
+        editor._selectedLinks = LinkSelection.EMPTY;
+      }
       // Notify happens at the end of the gesture path; selecting now
       // ensures the live `_selection` reflects what subsequent
       // MOVE_SHAPE emits will operate on.
@@ -650,7 +657,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       );
       // Hover highlight for a link body under the cursor (when not selected).
       editor.setHoveredLink(
-        editor.mode === "select" && hov.kind === "link" && hov.id !== editor._selectedLink
+        editor.mode === "select" && hov.kind === "link" && !editor._selectedLinks.has(hov.id)
           ? hov.id
           : null,
       );

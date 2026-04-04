@@ -222,6 +222,12 @@ export const renderOverlay = (
     ports?: PortOverlay | readonly PortOverlay[];
     edgeSelection?: LinkSelection;
     /**
+     * World-space polylines (+ visual width) of every SELECTED link, painted
+     * as a persistent selection halo. Multi-select shows N halos; the sole-
+     * link endpoint/bend handles are still driven by `edgeSelection`.
+     */
+    selectedLinkPaths?: readonly { readonly path: readonly Vec2[]; readonly width: number }[];
+    /**
      * World-space polyline of the link under the cursor (not selected) —
      * painted as a soft thick highlight so the user sees it is clickable.
      */
@@ -508,6 +514,29 @@ export const renderOverlay = (
     target.stroke();
     // Reset to the screen-space IDENTITY + default stroke state the following
     // sections (manual w2s projection) assume.
+    target.setOpacity(1);
+    target.setLineJoin("miter");
+    target.setLineCap("butt");
+    target.setTransform(matrix.IDENTITY);
+  }
+
+  // 4.6 Persistent selection halo around every selected link. Same world-
+  // space rounded-stroke technique as the hover halo, but with the
+  // selection colour and a touch more opacity so it reads as "selected".
+  if (options.selectedLinkPaths && options.selectedLinkPaths.length > 0) {
+    target.setTransform(w2s);
+    target.setStroke(style.selectionStroke);
+    target.setOpacity(0.32);
+    target.setDashArray(null);
+    target.setLineJoin("round");
+    target.setLineCap("round");
+    for (const { path, width } of options.selectedLinkPaths) {
+      if (path.length < 2) continue;
+      target.setStrokeWidth(width + HOVER_HIGHLIGHT_MARGIN_PX / (zoom || 1));
+      target.beginPath();
+      strokeRoundedPolyline(target, path, LINK_CORNER_RADIUS);
+      target.stroke();
+    }
     target.setOpacity(1);
     target.setLineJoin("miter");
     target.setLineCap("butt");

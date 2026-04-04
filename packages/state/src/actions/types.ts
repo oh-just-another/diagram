@@ -77,10 +77,10 @@ export interface Action {
 export const hasSelection = (ctx: ActionContext): boolean => ctx.editor.selection.size > 0;
 
 /**
- * Predicate — "anything deletable is selected": either elements OR a link.
- * Links live in a separate single-selection slot (`editor.selectedLink`), so a
- * link-only selection must still enable Delete/Backspace. `deleteSelected()`
- * already removes the selected link; this just opens the gate for it.
+ * Predicate — "anything deletable is selected": elements OR one-or-more
+ * links. Links live in a parallel selection set (`editor.selectedLinks`), so
+ * a link-only (incl. multi-link) selection must still enable Delete/Backspace.
+ * `deleteSelected()` removes every selected link; this just opens the gate.
  */
 export const hasSelectionOrLink = (ctx: ActionContext): boolean =>
-  ctx.editor.selection.size > 0 || ctx.editor.selectedLink !== null;
+  ctx.editor.selection.size > 0 || ctx.editor.selectedLinks.size > 0;
