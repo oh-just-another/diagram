@@ -87,6 +87,42 @@ export const translateLinkForDrag = (
   return out;
 };
 
+/**
+ * Scale a link for a GROUP RESIZE: its geometry (waypoints / fixedSegments /
+ * routedPoints) and any free `point` endpoints scale about the anchor
+ * `(ax, ay)` by `(sx, sy)` — the same transform the resized elements undergo,
+ * so the connector stretches with the box in both size and coordinates. Bound
+ * endpoints are left alone (they re-resolve from their own scaled elements).
+ * `null` when there's nothing to scale.
+ */
+export const scaleLinkAround = (
+  link: Link,
+  ax: number,
+  ay: number,
+  sx: number,
+  sy: number,
+): Partial<Link> | null => {
+  const sp = (p: Vec2): Vec2 => ({ x: ax + (p.x - ax) * sx, y: ay + (p.y - ay) * sy });
+  const fromMoves = link.from.kind === "point";
+  const toMoves = link.to.kind === "point";
+  if (!hasMovableGeometry(link) && !fromMoves && !toMoves) return null;
+  const out: { -readonly [K in keyof Link]?: Link[K] } = {};
+  if (link.waypoints?.length) out.waypoints = link.waypoints.map(sp);
+  if (link.fixedSegments?.length) {
+    out.fixedSegments = link.fixedSegments.map((s) => ({
+      axis: s.axis,
+      // `pos` is the segment's perpendicular coord (h→Y, v→X), `at` its
+      // centre along its own axis (h→X, v→Y) — scale each on its own axis.
+      pos: s.axis === "h" ? ay + (s.pos - ay) * sy : ax + (s.pos - ax) * sx,
+      at: s.axis === "h" ? ax + (s.at - ax) * sx : ay + (s.at - ay) * sy,
+    }));
+  }
+  if (link.routedPoints?.length) out.routedPoints = link.routedPoints.map(sp);
+  if (link.from.kind === "point") out.from = { kind: "point", position: sp(link.from.position) };
+  if (link.to.kind === "point") out.to = { kind: "point", position: sp(link.to.position) };
+  return out;
+};
+
 /** A link moves with a drag when it's selected OR rigidly bound to moved elements. */
 const linkMovesWithDrag = (
   link: Link,

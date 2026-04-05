@@ -25,6 +25,7 @@ export interface GestureRef {
       ElementId,
       { readonly position: Vec2; readonly bounds: Bounds; readonly scale: Vec2 }
     >;
+    readonly links: ReadonlyMap<LinkId, Link>;
   } | null;
   dragElementId: ElementId | null;
   containerHover: { id: ElementId; dropZone: Bounds } | null;

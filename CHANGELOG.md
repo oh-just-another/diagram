@@ -1408,3 +1408,6 @@
 
 ## 0.55.41
 - feat(state): links are first-class selection members
+
+## 0.55.42
+- feat(state): selected links ride along when the selection is dragged/nudged

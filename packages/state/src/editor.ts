@@ -618,6 +618,7 @@ export class Editor {
       ElementId,
       { readonly position: Vec2; readonly bounds: Bounds; readonly scale: Vec2 }
     >;
+    readonly links: ReadonlyMap<LinkId, Link>;
   } | null = null;
   /**
    * Pristine shape snapshot for a single-shape text resize, captured on
@@ -3116,6 +3117,7 @@ export class Editor {
       scene: this._scene,
       selection: this._selection,
       selectedLink: this.selectedLink,
+      selectedLinkCount: this._selectedLinks.size,
       enteredGroup: this._enteredGroup,
       handleHitSlop: this.handleHitSlop,
       edgeHandleHitSlop: this.edgeHandleHitSlop,
@@ -3749,7 +3751,28 @@ export class Editor {
 
   // Bodies moved to `./editor/viewport-helpers.ts`.
   public combinedSelectionBounds(): Bounds | null {
-    return combinedSelectionBoundsPure(this._scene, this._selection);
+    let acc = combinedSelectionBoundsPure(this._scene, this._selection);
+    // Selected links join the selection box (standard parity) — union in
+    // each link's drawn-path AABB so the rectangle frames connectors too.
+    for (const id of this._selectedLinks) {
+      const edge = getLink(this._scene, id);
+      if (!edge) continue;
+      const path = getLinkPath(this._scene, edge);
+      if (!path || path.length === 0) continue;
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const p of path) {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      }
+      const b: Bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+      acc = acc ? B.union(acc, b) : b;
+    }
+    return acc;
   }
   private groupChildrenUnion(groupId: ElementId): Bounds | null {
     return groupChildrenUnionPure(this._scene, groupId);

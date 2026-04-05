@@ -34,6 +34,8 @@ export interface HitTestContext {
   readonly scene: Scene;
   readonly selection: Selection.Selection;
   readonly selectedLink: LinkId | null;
+  /** Count of selected links — group handles trigger on total objects > 1. */
+  readonly selectedLinkCount: number;
   readonly enteredGroup: ElementId | null;
   readonly handleHitSlop: number;
   readonly edgeHandleHitSlop: number;
@@ -84,7 +86,8 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
   //     no intrinsic bounds — children's union AABB serves as the
   //     resize frame). Aspect-locked groups restrict the hit set to
   //     the four corner handles.
-  const useGroupHandles = ctx.selection.size > 1 || ctx.selectionIsAspectLocked();
+  const useGroupHandles =
+    ctx.selection.size + ctx.selectedLinkCount > 1 || ctx.selectionIsAspectLocked();
   if (useGroupHandles) {
     const combined = ctx.combinedSelectionBounds();
     if (combined) {

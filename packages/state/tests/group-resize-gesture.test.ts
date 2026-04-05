@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { elementId } from "@oh-just-another/types";
+import { elementId, linkId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
   addElement,
+  addLink,
   emptyScene,
   orderBetween,
   getElement,
+  getLink,
   type Scene,
   type Element,
+  type Link,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
@@ -116,5 +119,40 @@ describe("group resize gesture (end-to-end through pointer)", () => {
     expect(b.position.x).toBeGreaterThan(100);
     // Anchor (NW corner) stayed put.
     expect(a.position.x).toBeCloseTo(0, 5);
+  });
+
+  it("includes a selected link in the box and scales its point endpoints", () => {
+    const { host, handlers } = makeHost();
+    // Element A (0,0)-(40,40) + a free link from (0,0) to (100,100).
+    let scene = sceneWith(rect("a", 0));
+    const free: Link = {
+      id: linkId("L"),
+      layerId: DEFAULT_LAYER_ID,
+      from: { kind: "point", position: { x: 0, y: 0 } },
+      to: { kind: "point", position: { x: 100, y: 100 } },
+      routing: "straight",
+      order: orderBetween(null, null),
+      style: { stroke: "#000" },
+    };
+    scene = addLink(scene, free).scene;
+    const editor = new Editor({
+      host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: scene,
+    });
+    editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
+    editor.applyEmit({ type: "SELECT_EDGE_TOGGLE", id: linkId("L") });
+
+    // The link extends the selection box to its path AABB → SE corner (100,100).
+    const bounds = editor.combinedSelectionBounds()!;
+    expect(bounds.x + bounds.width).toBeCloseTo(100, 5);
+    expect(bounds.y + bounds.height).toBeCloseTo(100, 5);
+
+    // Drag SE corner (100,100) → (200,100): sx=2, sy=1, anchor NW (0,0).
+    handlers.get("pointerdown")!(pointer("pointerdown", 100, 100));
+    handlers.get("pointermove")!(pointer("pointermove", 200, 100));
+    handlers.get("pointerup")!(pointer("pointerup", 200, 100));
+
+    const moved = getLink(editor.scene, linkId("L"));
+    expect(moved?.from).toEqual({ kind: "point", position: { x: 0, y: 0 } });
+    expect(moved?.to).toEqual({ kind: "point", position: { x: 200, y: 100 } });
   });
 });

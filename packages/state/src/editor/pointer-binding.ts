@@ -461,7 +461,14 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
           scale: s.scale,
         });
       }
-      editor.groupResizeOrigin = { combined: target.bounds, elements };
+      // Links that scale with the box: selected links + connectors bound on
+      // both ends to the resized elements (same set as the move snapshot).
+      const links = snapshotMovingLinks(
+        editor._scene,
+        new Set(elements.keys()),
+        editor._selectedLinks,
+      );
+      editor.groupResizeOrigin = { combined: target.bounds, elements, links };
     } else {
       editor.groupResizeOrigin = null;
     }

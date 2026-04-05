@@ -2,15 +2,18 @@ import {
   apply,
   getAutoLayoutSpec,
   getElement,
+  getLink,
   type Scene,
   type Element,
+  type Link,
   type Patch,
   type TextElement,
 } from "@oh-just-another/scene";
-import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "../../handle.js";
 import { applyResizeConstraints, resizeFromHandle } from "../resize-helpers.js";
 import { hasWidthHeight } from "../shape-traits.js";
+import { scaleLinkAround } from "./link-move.js";
 import { TEXT_RESIZE_MIN_FONT_SIZE } from "../../constants.js";
 
 /**
@@ -153,6 +156,13 @@ export interface GroupResizeOrigin {
       readonly bounds: Bounds;
     }
   >;
+  /**
+   * Press-time snapshot of links that scale with the box: selected links
+   * (whole, incl. free endpoints) ∪ connectors bound on both ends to resized
+   * elements (geometry follows). Optional for back-compat with callers that
+   * don't resize links.
+   */
+  readonly links?: ReadonlyMap<LinkId, Link>;
 }
 
 export const computeGroupResizePatches = (
@@ -235,6 +245,18 @@ export const computeGroupResizePatches = (
       scale: { x: newScaleX, y: newScaleY },
     };
     const patch: Patch = { kind: "element", id, before: shape, after: nextElement };
+    runningScene = apply(runningScene, patch);
+    patches.push(patch);
+  }
+
+  // Scale the links that ride with the box (selected ∪ bound-both) about the
+  // same anchor by the same (sx, sy) — geometry + free point endpoints.
+  for (const [id, linkOrigin] of origin.links ?? []) {
+    const current = getLink(runningScene, id);
+    if (!current) continue;
+    const scaled = scaleLinkAround(linkOrigin, ax, ay, sx, sy);
+    if (!scaled) continue;
+    const patch: Patch = { kind: "link", id, before: current, after: { ...current, ...scaled } };
     runningScene = apply(runningScene, patch);
     patches.push(patch);
   }
