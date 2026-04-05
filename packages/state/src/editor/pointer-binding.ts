@@ -16,7 +16,7 @@ import * as Selection from "../selection.js";
 import * as LinkSelection from "../link-selection.js";
 import { getInteractiveHitTester } from "../interactive.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
-import { snapshotRigidLinks } from "./applies/link-move.js";
+import { snapshotMovingLinks } from "./applies/link-move.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   LINK_ENDPOINT_HANDLE_RADIUS,
@@ -416,16 +416,20 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
             if (s.frameId === target.id) ids.add(s.id);
           }
         }
-        if (ids.size > 1) {
+        // Links that ride along with this drag: selected links (moved
+        // whole) + connectors bound on both ends to the dragged elements
+        // (geometry follows). Snapshotted at press so frames don't compound.
+        const movingLinks = snapshotMovingLinks(editor._scene, ids, editor._selectedLinks);
+        // Start a group drag for a real multi-selection OR whenever links
+        // need to ride along (even with a single dragged element).
+        if (ids.size > 1 || movingLinks.size > 0) {
           const snap = new Map<ElementId, Vec2>();
           for (const id of ids) {
             const s = getElement(editor._scene, id);
             if (s) snap.set(id, s.position);
           }
           editor.groupMoveOrigin = snap;
-          // Connectors fully inside the moved set translate rigidly —
-          // snapshot their press-time geometry (see link-move.ts).
-          editor.groupLinkMoveOrigin = snapshotRigidLinks(editor._scene, ids);
+          editor.groupLinkMoveOrigin = movingLinks.size > 0 ? movingLinks : null;
         } else {
           editor.groupMoveOrigin = null;
           editor.groupLinkMoveOrigin = null;

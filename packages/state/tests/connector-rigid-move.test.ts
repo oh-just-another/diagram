@@ -174,4 +174,36 @@ describe("connector rigid move — pointer drag (press-time snapshot)", () => {
     // delta = (30,40): h-seg pos(Y) += 40 → 140, at(X) += 30 → 80.
     expect(seg).toEqual({ axis: "h", pos: 140, at: 80 });
   });
+
+  it("a SELECTED free (point-to-point) link rides along when its element is dragged", () => {
+    const { host, handlers } = makeHost();
+    // Free link with point endpoints, not bound to any element.
+    const free: Link = {
+      id: linkId("L"),
+      layerId: DEFAULT_LAYER_ID,
+      from: { kind: "point", position: { x: 300, y: 300 } },
+      to: { kind: "point", position: { x: 340, y: 340 } },
+      routing: "straight",
+      order: orderBetween(null, null),
+      style: { stroke: "#000" },
+    };
+    const editor = new Editor({
+      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      initialScene: sceneWith(free),
+    });
+    // Select element A AND the free link (coexisting selection).
+    editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
+    editor.applyEmit({ type: "SELECT_EDGE_TOGGLE", id: linkId("L") });
+    expect(editor.selection.size).toBe(1);
+    expect(editor.selectedLinks.size).toBe(1);
+
+    // Drag A by (50, 60) — the selected link's point endpoints follow.
+    handlers.get("pointerdown")!(pointer("pointerdown", 20, 20));
+    handlers.get("pointermove")!(pointer("pointermove", 70, 80));
+    handlers.get("pointerup")!(pointer("pointerup", 70, 80));
+
+    const moved = getLink(editor.scene, linkId("L"));
+    expect(moved?.from).toEqual({ kind: "point", position: { x: 350, y: 360 } });
+    expect(moved?.to).toEqual({ kind: "point", position: { x: 390, y: 400 } });
+  });
 });

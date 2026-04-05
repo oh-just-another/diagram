@@ -1405,3 +1405,6 @@
 
 ## 0.55.40
 - chore(hooks): add `pnpm lint` to the pre-push gate
+
+## 0.55.41
+- feat(state): links are first-class selection members

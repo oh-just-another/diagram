@@ -260,8 +260,8 @@ import {
   computeElementMovePatch,
 } from "./editor/applies/move.js";
 import {
-  computeRigidLinkMovePatches,
-  computeRigidLinkMoveForNudge,
+  computeMovingLinkPatches,
+  computeMovingLinkForNudge,
 } from "./editor/applies/link-move.js";
 import {
   computeCreateLink,
@@ -2351,23 +2351,29 @@ export class Editor {
    */
   // Pure body in `./editor/public/selection-ops.ts`.
   moveSelectionBy(delta: Vec2): void {
-    if (this._selection.size === 0) return;
+    if (this._selection.size === 0 && this._selectedLinks.size === 0) return;
     const targets = this.expandSelectionWithDescendants();
-    const result = computeMoveSelectionBy(this._scene, targets, delta, (lid) =>
-      this.isLayerLocked(lid),
+    const result =
+      this._selection.size > 0
+        ? computeMoveSelectionBy(this._scene, targets, delta, (lid) => this.isLayerLocked(lid))
+        : null;
+    // Selected links (translated whole, incl. free endpoints) + connectors
+    // bound on both ends to nudged elements move by the same delta.
+    const sceneAfterElements = result ? result.scene : this._scene;
+    const linkResult = computeMovingLinkForNudge(
+      sceneAfterElements,
+      targets,
+      this._selectedLinks,
+      delta,
     );
-    if (!result) return;
+    if (!result && linkResult.patches.length === 0) return;
     const tx = this._history.transaction();
-    this._scene = result.scene;
-    for (const patch of result.patches) tx.add(patch);
-    // Connectors bound on both ends to nudged elements move rigidly too
-    // (same parity as drag) — translate their absolute geometry by delta.
-    const linkResult = computeRigidLinkMoveForNudge(this._scene, targets, delta);
     this._scene = linkResult.scene;
+    if (result) for (const patch of result.patches) tx.add(patch);
     for (const patch of linkResult.patches) tx.add(patch);
     tx.commit();
     this.notify();
-    this.announce(describeNudgePure(delta, result.moved));
+    this.announce(describeNudgePure(delta, result?.moved ?? 0));
   }
 
   /**
@@ -3546,11 +3552,11 @@ export class Editor {
       this._scene = apply(this._scene, patch);
       this.recordGesturePatch(patch);
     }
-    // Connectors bound on both ends to moved elements translate rigidly
-    // (standard parity) — shift their absolute geometry by the
+    // Selected links + connectors bound on both ends to moved elements
+    // translate with the drag (standard parity) — shifted by the
     // same delta from the press-time snapshot.
     if (this.groupLinkMoveOrigin) {
-      const linkPatches = computeRigidLinkMovePatches(
+      const linkPatches = computeMovingLinkPatches(
         this._scene,
         this.groupLinkMoveOrigin,
         delta,

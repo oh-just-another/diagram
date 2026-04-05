@@ -62,29 +62,63 @@ export const translateLinkGeometry = (
   return out;
 };
 
+/** A `point` endpoint shifted by `delta`; bound endpoints pass through. */
+const shiftEndpoint = (ep: Link["from"], delta: Vec2): Link["from"] =>
+  ep.kind === "point" ? { kind: "point", position: { x: ep.position.x + delta.x, y: ep.position.y + delta.y } } : ep;
+
 /**
- * Snapshot the links that should follow a multi-element drag rigidly —
- * both endpoints bound to elements in `moved` AND carrying movable
- * geometry. Captured at press time so every frame translates from the
- * ORIGINAL geometry (cumulative delta), never compounding.
+ * Translate a link for a DRAG: its geometry (waypoints / fixedSegments /
+ * routedPoints) PLUS any free `point` endpoints, by `delta`. Bound
+ * endpoints (anchor / outline / floating) are left alone — they re-resolve
+ * from their (also-moving) elements. Returns the changed fields, or `null`
+ * when there's nothing to move (a pure auto-routed bound link).
  */
-export const snapshotRigidLinks = (
+export const translateLinkForDrag = (
+  link: Link,
+  delta: Vec2,
+): Partial<Link> | null => {
+  const geom = translateLinkGeometry(link, delta);
+  const fromMoves = link.from.kind === "point";
+  const toMoves = link.to.kind === "point";
+  if (!geom && !fromMoves && !toMoves) return null;
+  const out: { -readonly [K in keyof Link]?: Link[K] } = { ...(geom ?? {}) };
+  if (fromMoves) out.from = shiftEndpoint(link.from, delta);
+  if (toMoves) out.to = shiftEndpoint(link.to, delta);
+  return out;
+};
+
+/** A link moves with a drag when it's selected OR rigidly bound to moved elements. */
+const linkMovesWithDrag = (
+  link: Link,
+  moved: ReadonlySet<ElementId>,
+  selected: ReadonlySet<LinkId>,
+): boolean => selected.has(link.id) || linkMovesRigidly(link, moved);
+
+/**
+ * Snapshot links that follow a drag: every SELECTED link (translated whole,
+ * incl. free point endpoints) plus links bound on both ends to `moved`
+ * elements (geometry-only — their endpoints already follow). Captured at
+ * press time so each frame translates from the ORIGINAL, never compounding.
+ */
+export const snapshotMovingLinks = (
   scene: Scene,
   moved: ReadonlySet<ElementId>,
+  selected: ReadonlySet<LinkId>,
 ): Map<LinkId, Link> => {
   const out = new Map<LinkId, Link>();
   for (const link of scene.links.values()) {
-    if (linkMovesRigidly(link, moved) && hasMovableGeometry(link)) out.set(link.id, link);
+    if (linkMovesWithDrag(link, moved, selected) && translateLinkForDrag(link, { x: 0, y: 0 }) !== null) {
+      out.set(link.id, link);
+    }
   }
   return out;
 };
 
 /**
- * Per-frame drag patches: translate each snapshot link to `origin +
- * delta`. `before` is the live link so the patch chain composes frame
- * to frame; `after` derives from the press-time snapshot.
+ * Per-frame drag patches: translate each snapshot link to `origin + delta`.
+ * `before` is the live link so the patch chain composes frame to frame.
  */
-export const computeRigidLinkMovePatches = (
+export const computeMovingLinkPatches = (
   scene: Scene,
   originLinks: ReadonlyMap<LinkId, Link>,
   delta: Vec2,
@@ -93,7 +127,7 @@ export const computeRigidLinkMovePatches = (
   for (const [id, origin] of originLinks) {
     const current = getLink(scene, id);
     if (!current) continue;
-    const translated = translateLinkGeometry(origin, delta);
+    const translated = translateLinkForDrag(origin, delta);
     if (!translated) continue;
     out.push({ kind: "link", id, before: current, after: { ...current, ...translated } });
   }
@@ -101,21 +135,22 @@ export const computeRigidLinkMovePatches = (
 };
 
 /**
- * One-shot translation for committed moves (keyboard nudge): translate
- * every rigidly-moving link's CURRENT geometry by `delta`, threading the
- * scene so patches stack in one transaction. No snapshot needed — each
- * nudge is a discrete committed step.
+ * One-shot translation for committed moves (keyboard nudge): translate every
+ * moving link's CURRENT geometry + free endpoints by `delta`, threading the
+ * scene so patches stack in one transaction. No snapshot needed — each nudge
+ * is a discrete committed step.
  */
-export const computeRigidLinkMoveForNudge = (
+export const computeMovingLinkForNudge = (
   scene: Scene,
   moved: ReadonlySet<ElementId>,
+  selected: ReadonlySet<LinkId>,
   delta: Vec2,
 ): { readonly scene: Scene; readonly patches: Patch[] } => {
   let s = scene;
   const patches: Patch[] = [];
   for (const link of [...scene.links.values()]) {
-    if (!linkMovesRigidly(link, moved) || !hasMovableGeometry(link)) continue;
-    const translated = translateLinkGeometry(link, delta);
+    if (!linkMovesWithDrag(link, moved, selected)) continue;
+    const translated = translateLinkForDrag(link, delta);
     if (!translated) continue;
     const r = updateLink(s, link.id, (l) => ({ ...l, ...translated }));
     s = r.scene;
