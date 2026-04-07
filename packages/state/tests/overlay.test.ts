@@ -251,41 +251,6 @@ describe("renderOverlay", () => {
     expect(ellipses.length).toBe(4);
   });
 
-  it("draws a hovered link highlight path (thick, translucent)", () => {
-    const { target, calls } = makeRecorder();
-    renderOverlay(emptyScene(), emptySelection, target, {
-      hoveredLinkPath: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }],
-    });
-    // Should include a lineTo call for the 2nd and 3rd points
-    const lineTos = calls.filter((c) => c.method === "lineTo");
-    expect(lineTos.length).toBeGreaterThanOrEqual(2);
-    // Round join/cap so the halo follows elbow bends with rounded corners
-    // (matching the link), not sharp miter spikes.
-    expect(calls.some((c) => c.method === "setLineJoin" && c.args[0] === "round")).toBe(true);
-    expect(calls.some((c) => c.method === "setLineCap" && c.args[0] === "round")).toBe(true);
-  });
-
-  it("halo width = link width + margin (so it stays visible around thick links)", () => {
-    // zoom 1 (emptyScene): halo world width = linkWidth + HOVER_HIGHLIGHT_MARGIN_PX.
-    const { target, calls } = makeRecorder();
-    renderOverlay(emptyScene(), emptySelection, target, {
-      hoveredLinkPath: [{ x: 0, y: 0 }, { x: 100, y: 0 }],
-      hoveredLinkWidth: 4,
-    });
-    // 4 (link) + 8 (margin / zoom 1) = 12; wider than a thick link at any zoom.
-    expect(calls.some((c) => c.method === "setStrokeWidth" && c.args[0] === 12)).toBe(true);
-  });
-
-  it("hoveredLinkPath with fewer than 2 points draws nothing", () => {
-    const { target: t1, calls: c1 } = makeRecorder();
-    const { target: t2, calls: c2 } = makeRecorder();
-    renderOverlay(emptyScene(), emptySelection, t1, { hoveredLinkPath: [] });
-    renderOverlay(emptyScene(), emptySelection, t2, { hoveredLinkPath: [{ x: 0, y: 0 }] });
-    // No moveTo for the hover path in either case
-    expect(c1.filter((c) => c.method === "moveTo").length).toBe(0);
-    expect(c2.filter((c) => c.method === "moveTo").length).toBe(0);
-  });
-
   it("draws peer cursors (arrow + chip)", () => {
     const { target, calls } = makeRecorder();
     renderOverlay(emptyScene(), emptySelection, target, {

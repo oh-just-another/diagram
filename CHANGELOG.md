@@ -1411,3 +1411,6 @@
 
 ## 0.55.42
 - feat(state): selected links ride along when the selection is dragged/nudged
+
+## 0.55.43
+- feat(state): selected links join the selection box and scale on group resize (standard parity)

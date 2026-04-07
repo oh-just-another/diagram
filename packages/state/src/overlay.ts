@@ -228,17 +228,6 @@ export const renderOverlay = (
      */
     selectedLinkPaths?: readonly { readonly path: readonly Vec2[]; readonly width: number }[];
     /**
-     * World-space polyline of the link under the cursor (not selected) —
-     * painted as a soft thick highlight so the user sees it is clickable.
-     */
-    hoveredLinkPath?: readonly Vec2[];
-    /**
-     * Rendered stroke width (world units) of the hovered link, so the halo
-     * can size itself relative to the link's VISUAL width (which scales with
-     * zoom) instead of a fixed screen px that thick links swallow at high zoom.
-     */
-    hoveredLinkWidth?: number;
-    /**
      * World-space bounds of the element a connector endpoint will FLOAT-attach
      * to (drop on the body, not a dot). Painted as a brand outline so the user
      * sees "this whole object" vs a specific point.
@@ -487,37 +476,6 @@ export const renderOverlay = (
         drawPortDot(target, screen, style, active, set.role, active ? set.activeRadius : undefined);
       }
     }
-  }
-
-  // 4.5 Hover highlight for the link under the cursor (when not selected).
-  if (options.hoveredLinkPath && options.hoveredLinkPath.length >= 2) {
-    const pts = options.hoveredLinkPath; // world coords
-    // Draw in WORLD space and reuse the link renderer's own rounded-corner
-    // routine + radius, so the halo's bends match the elbow link EXACTLY
-    // (a screen-space lineJoin:round rounds by half the stroke width — a
-    // different, "crooked" radius). Stroke width is kept ~constant on screen
-    // by dividing by zoom.
-    target.setTransform(w2s);
-    target.setStroke(style.selectionStroke);
-    // Halo width tracks the link's VISUAL width: link world-width + a constant
-    // screen-px margin (÷zoom → world). So it always peeks out beyond the link
-    // at every zoom, even thick links at high zoom (a fixed-px halo got
-    // swallowed). Drawn in world space, same as the link.
-    const linkWorldWidth = options.hoveredLinkWidth ?? 1.5;
-    target.setStrokeWidth(linkWorldWidth + HOVER_HIGHLIGHT_MARGIN_PX / (zoom || 1));
-    target.setOpacity(0.22);
-    target.setDashArray(null);
-    target.setLineJoin("round");
-    target.setLineCap("round");
-    target.beginPath();
-    strokeRoundedPolyline(target, pts, LINK_CORNER_RADIUS);
-    target.stroke();
-    // Reset to the screen-space IDENTITY + default stroke state the following
-    // sections (manual w2s projection) assume.
-    target.setOpacity(1);
-    target.setLineJoin("miter");
-    target.setLineCap("butt");
-    target.setTransform(matrix.IDENTITY);
   }
 
   // 4.6 Persistent selection halo around every selected link. Same world-

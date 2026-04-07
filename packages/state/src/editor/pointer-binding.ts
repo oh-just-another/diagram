@@ -666,12 +666,6 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
         editor.mode === "select" && hov.kind === "element" ? hov.id : null,
         editor.mode === "select" ? worldPoint : null,
       );
-      // Hover highlight for a link body under the cursor (when not selected).
-      editor.setHoveredLink(
-        editor.mode === "select" && hov.kind === "link" && !editor._selectedLinks.has(hov.id)
-          ? hov.id
-          : null,
-      );
     }
     editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
   };

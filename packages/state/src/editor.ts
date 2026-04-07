@@ -516,8 +516,6 @@ export class Editor {
    */
   private hoverLinkStartElement: ElementId | null = null;
   public hoverCursorWorld: Vec2 | null = null;
-  /** Link under the idle cursor (overlay paints a soft hover highlight). */
-  public hoveredLinkId: LinkId | null = null;
   /**
    * When a link is dropped on empty canvas, the edge is created with a
    * free `point` end and this records where, so the host can pop a
@@ -1773,18 +1771,6 @@ export class Editor {
     if (changed || id !== null || this._selection.size === 1) this.notify();
   }
 
-  /** Record the link under the idle cursor for the overlay hover highlight. */
-  setHoveredLink(id: LinkId | null): void {
-    if (this.hoveredLinkId === id) return;
-    this.hoveredLinkId = id;
-    this.notify();
-  }
-
-  /** Link currently under the cursor (hover highlight), or null. */
-  get hoveredLink(): LinkId | null {
-    return this.hoveredLinkId;
-  }
-
   /** Live link-draw preview polyline (elbow), or null when not drawing. */
   get linkPreviewPath(): readonly Vec2[] | null {
     return this.edgePreview?.points ?? null;
@@ -2550,7 +2536,6 @@ export class Editor {
     this.hoveredLinkTarget = null;
     this.hoverLinkStartElement = null;
     this.hoverCursorWorld = null;
-    this.hoveredLinkId = null;
     this._editingLinkCaption = null;
     this.pendingLinkDropMenu = null;
     this.linkWaypointDrag = null;
