@@ -5,6 +5,7 @@ import {
   getLinkWaypointMidpoints,
   getElement,
   getElementWorldBounds,
+  getElementOutline,
   isImage,
   type Scene,
 } from "@oh-just-another/scene";
@@ -334,6 +335,17 @@ export const renderEditor = (editor: Editor): void => {
       }
     }
     if (halos.length > 0) overlayOpts.selectedLinkPaths = halos;
+  }
+  // Contour selection halo for every selected element (polygon exact,
+  // ellipse/path sampled, group → per-child loops, else bbox).
+  if (editor._selection.size > 0) {
+    const outlines: (readonly Vec2[])[] = [];
+    for (const id of editor._selection) {
+      const shape = getElement(editor._scene, id);
+      if (!shape) continue;
+      for (const loop of getElementOutline(editor._scene, shape)) outlines.push(loop);
+    }
+    if (outlines.length > 0) overlayOpts.selectedElementOutlines = outlines;
   }
   // Endpoint / bend handles only for the SOLE selected link (no elements);
   // a multi/mixed selection hides them to stay uncluttered.

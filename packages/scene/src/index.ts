@@ -187,6 +187,7 @@ export {
   queryByIndex,
   getElementAtIndexed,
   getChildrenOf,
+  getElementOutline,
   getRootSelf,
   getDescendantsOf,
   isElementLocked,

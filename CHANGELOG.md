@@ -1414,3 +1414,6 @@
 
 ## 0.55.43
 - feat(state): selected links join the selection box and scale on group resize (standard parity)
+
+## 0.55.44
+- feat(state): drop the on-hover highlight (parity)

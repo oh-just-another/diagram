@@ -3,7 +3,19 @@ import { bounds as B } from "@oh-just-another/math";
 import type { Link } from "./edge.js";
 import type { Layer } from "./layer.js";
 import type { Scene } from "./scene.js";
-import { getElementWorldBounds, type Element } from "./shape.js";
+import {
+  getElementWorldBounds,
+  getElementLocalBounds,
+  isPolygon,
+  isEllipse,
+  isRectangle,
+  isImage,
+  isText,
+  isPath,
+  isGroup,
+  type Element,
+  type PathCommand,
+} from "./shape.js";
 import { SpatialGrid } from "./spatial.js";
 
 // --- direct lookups ---
@@ -33,6 +45,110 @@ export const getLinksInLayer = (scene: Scene, layerId: LayerId): readonly Link[]
   [...scene.links.values()]
     .filter((e) => e.layerId === layerId)
     .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+
+// --- selection outline (contour) ---
+
+/** Number of samples for an ellipse's outline polyline. */
+const ELLIPSE_OUTLINE_SAMPLES = 48;
+/** Samples per Q/C path segment when flattening to a polyline. */
+const PATH_CURVE_SAMPLES = 10;
+
+/** Apply a shape's local→world transform (scale → rotate → translate). */
+const toWorld = (shape: Element, p: Vec2): Vec2 => {
+  const sx = p.x * shape.scale.x;
+  const sy = p.y * shape.scale.y;
+  const cos = Math.cos(shape.rotation);
+  const sin = Math.sin(shape.rotation);
+  return {
+    x: shape.position.x + (sx * cos - sy * sin),
+    y: shape.position.y + (sx * sin + sy * cos),
+  };
+};
+
+const rectLoop = (b: Bounds): Vec2[] => [
+  { x: b.x, y: b.y },
+  { x: b.x + b.width, y: b.y },
+  { x: b.x + b.width, y: b.y + b.height },
+  { x: b.x, y: b.y + b.height },
+];
+
+const flattenPath = (commands: readonly PathCommand[]): Vec2[] => {
+  const pts: Vec2[] = [];
+  let cur: Vec2 = { x: 0, y: 0 };
+  for (const c of commands) {
+    if (c.kind === "M" || c.kind === "L") {
+      cur = c.to;
+      pts.push({ x: cur.x, y: cur.y });
+    } else if (c.kind === "Q") {
+      for (let i = 1; i <= PATH_CURVE_SAMPLES; i++) {
+        const t = i / PATH_CURVE_SAMPLES;
+        const u = 1 - t;
+        pts.push({
+          x: u * u * cur.x + 2 * u * t * c.control.x + t * t * c.to.x,
+          y: u * u * cur.y + 2 * u * t * c.control.y + t * t * c.to.y,
+        });
+      }
+      cur = c.to;
+    } else if (c.kind === "C") {
+      for (let i = 1; i <= PATH_CURVE_SAMPLES; i++) {
+        const t = i / PATH_CURVE_SAMPLES;
+        const u = 1 - t;
+        pts.push({
+          x: u ** 3 * cur.x + 3 * u * u * t * c.control1.x + 3 * u * t * t * c.control2.x + t ** 3 * c.to.x,
+          y: u ** 3 * cur.y + 3 * u * u * t * c.control1.y + 3 * u * t * t * c.control2.y + t ** 3 * c.to.y,
+        });
+      }
+      cur = c.to;
+    }
+    // "Z" closes implicitly (the halo renderer closes each loop).
+  }
+  return pts;
+};
+
+/** Local-space outline loop(s) for a single (non-group) shape, or `null`. */
+const localOutlineLoops = (shape: Element): Vec2[][] | null => {
+  if (isPolygon(shape)) return [shape.points.map((p) => ({ x: p.x, y: p.y }))];
+  if (isEllipse(shape)) {
+    const b = getElementLocalBounds(shape);
+    const cx = b.x + b.width / 2;
+    const cy = b.y + b.height / 2;
+    const rx = b.width / 2;
+    const ry = b.height / 2;
+    const pts: Vec2[] = [];
+    for (let i = 0; i < ELLIPSE_OUTLINE_SAMPLES; i++) {
+      const a = (i / ELLIPSE_OUTLINE_SAMPLES) * Math.PI * 2 - Math.PI / 2;
+      pts.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) });
+    }
+    return [pts];
+  }
+  if (isRectangle(shape) || isImage(shape) || isText(shape)) {
+    return [rectLoop(getElementLocalBounds(shape))];
+  }
+  if (isPath(shape)) return [flattenPath(shape.commands)];
+  // group handled by the caller; brush / template / custom → bbox fallback.
+  return null;
+};
+
+/**
+ * World-space outline loop(s) tracing a shape's actual contour, for the
+ * selection halo. polygon (star / diamond / hexagon) is exact; ellipse and
+ * path are sampled; a group returns one loop per descendant (handles
+ * visually-disconnected figures). Shapes without known geometry (composite
+ * template, brush, custom) fall back to their world bounding box. Cheap
+ * enough to recompute every frame — no baking needed.
+ */
+export const getElementOutline = (scene: Scene, shape: Element): Vec2[][] => {
+  if (isGroup(shape)) {
+    const loops: Vec2[][] = [];
+    for (const child of getChildrenOf(scene, shape.id)) loops.push(...getElementOutline(scene, child));
+    return loops;
+  }
+  const local = localOutlineLoops(shape);
+  if (local) return local.map((loop) => loop.map((p) => toWorld(shape, p)));
+  // Fallback: axis-aligned world bounding box.
+  const b = getElementWorldBounds(shape);
+  return [rectLoop(b)];
+};
 
 // --- group queries (parentId chain) ---
 
