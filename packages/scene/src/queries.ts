@@ -105,6 +105,22 @@ const flattenPath = (commands: readonly PathCommand[]): Vec2[] => {
   return pts;
 };
 
+/**
+ * Outline provider for a custom / composite element type — returns the
+ * shape's contour as one or more LOCAL-space loops (pre transform). Lets a
+ * plugin element made of several visually-disconnected figures (e.g. two
+ * unconnected ellipses, no background) supply a multi-loop selection halo
+ * instead of falling back to its bounding box. Registered by `shape.type`.
+ */
+export type ElementOutlineProvider = (shape: Element) => Vec2[][];
+
+const outlineProviders = new Map<string, ElementOutlineProvider>();
+
+/** Register a multi-loop outline provider for a custom element `type`. */
+export const registerElementOutline = (type: string, provider: ElementOutlineProvider): void => {
+  outlineProviders.set(type, provider);
+};
+
 /** Local-space outline loop(s) for a single (non-group) shape, or `null`. */
 const localOutlineLoops = (shape: Element): Vec2[][] | null => {
   if (isPolygon(shape)) return [shape.points.map((p) => ({ x: p.x, y: p.y }))];
@@ -145,6 +161,12 @@ export const getElementOutline = (scene: Scene, shape: Element): Vec2[][] => {
   }
   const local = localOutlineLoops(shape);
   if (local) return local.map((loop) => loop.map((p) => toWorld(shape, p)));
+  // Custom / composite type with a registered outline provider (multi-loop).
+  const provider = outlineProviders.get(shape.type);
+  if (provider) {
+    const loops = provider(shape).filter((loop) => loop.length >= 2);
+    if (loops.length > 0) return loops.map((loop) => loop.map((p) => toWorld(shape, p)));
+  }
   // Fallback: axis-aligned world bounding box.
   const b = getElementWorldBounds(shape);
   return [rectLoop(b)];

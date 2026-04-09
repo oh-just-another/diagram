@@ -5,6 +5,7 @@ import {
   rich,
 } from "@oh-just-another/templates";
 import { registerInteractiveHitTester } from "@oh-just-another/state";
+import { installDualEllipse } from "./dual-ellipse";
 
 /**
  * One-time global template setup. Installs the 12 built-in basic +
@@ -24,6 +25,9 @@ export const setupTemplates = (): void => {
   // and react to clicks.
   rich.installTemplateShapeRenderer();
   registerInteractiveHitTester("template", rich.templateInteractiveHitTester);
+  // Demo composite element (two disconnected ellipses) — exercises the
+  // multi-loop selection halo via a registered outline provider.
+  installDualEllipse();
   loadTemplateLibrary(
     {
       format: "oh-just-another/template-library",

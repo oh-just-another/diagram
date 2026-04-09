@@ -1417,3 +1417,6 @@
 
 ## 0.55.44
 - feat(state): drop the on-hover highlight (parity)
+
+## 0.55.45
+- feat(scene,state): contour-following selection halo for elements

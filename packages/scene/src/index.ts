@@ -188,6 +188,8 @@ export {
   getElementAtIndexed,
   getChildrenOf,
   getElementOutline,
+  registerElementOutline,
+  type ElementOutlineProvider,
   getRootSelf,
   getDescendantsOf,
   isElementLocked,

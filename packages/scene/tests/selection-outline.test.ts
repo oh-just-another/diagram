@@ -5,6 +5,7 @@ import {
   addElement,
   emptyScene,
   getElementOutline,
+  registerElementOutline,
   orderBetween,
   type Element,
   type Scene,
@@ -82,6 +83,33 @@ describe("getElementOutline", () => {
     const scene = sceneWith(group, c1, c2);
     const loops = getElementOutline(scene, group);
     expect(loops).toHaveLength(2);
+  });
+
+  it("uses a registered multi-loop outline provider for a custom type", () => {
+    registerElementOutline("test.dual", (shape) => {
+      const s = shape as Element & { width: number };
+      return [
+        [
+          { x: 0, y: 0 },
+          { x: s.width / 2, y: 0 },
+          { x: s.width / 2, y: 10 },
+        ],
+        [
+          { x: s.width / 2, y: 0 },
+          { x: s.width, y: 0 },
+          { x: s.width, y: 10 },
+        ],
+      ];
+    });
+    const custom = base("d", { type: "test.dual", position: { x: 5, y: 5 } } as Partial<Element>) as Element & {
+      width: number;
+    };
+    (custom as { width: number }).width = 40;
+    const loops = getElementOutline(emptyScene(), custom);
+    expect(loops).toHaveLength(2);
+    // first loop's first point transformed by position (5,5)
+    expect(loops[0]![0]).toEqual({ x: 5, y: 5 });
+    expect(loops[1]![0]).toEqual({ x: 25, y: 5 });
   });
 
   it("applies scale and rotation to the traced contour", () => {
