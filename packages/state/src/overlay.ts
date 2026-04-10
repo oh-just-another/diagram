@@ -120,6 +120,51 @@ export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
   drawingDash: [4, 4],
 };
 
+/** Translucent fill opacity for the under-shape selection halo. */
+const SELECTION_HALO_OPACITY = 0.32;
+
+/**
+ * Paint the contour selection halo for elements — a translucent stroke
+ * hugging each world-space outline loop. Drawn on the MAIN target as an
+ * underlay (under the shapes) so the halo peeks out from behind them, not
+ * on the overlay. Sets the world transform itself; callers wrap it in a
+ * save/restore (the renderScene underlay hook does).
+ */
+export const paintElementSelectionHalo = (
+  target: RenderTarget,
+  w2s: Transform,
+  loops: readonly (readonly Vec2[])[],
+  zoom: number,
+  style: OverlayStyle = DEFAULT_OVERLAY_STYLE,
+): void => {
+  if (loops.length === 0) return;
+  target.setTransform(w2s);
+  target.setStroke(style.selectionStroke);
+  target.setOpacity(SELECTION_HALO_OPACITY);
+  target.setStrokeWidth(HOVER_HIGHLIGHT_MARGIN_PX / (zoom || 1));
+  target.setDashArray(null);
+  target.setLineJoin("round");
+  target.setLineCap("round");
+  for (const loop of loops) {
+    if (loop.length < 2) continue;
+    target.beginPath();
+    let started = false;
+    for (const p of loop) {
+      if (started) target.lineTo(p.x, p.y);
+      else {
+        target.moveTo(p.x, p.y);
+        started = true;
+      }
+    }
+    target.closePath();
+    target.stroke();
+  }
+  target.setOpacity(1);
+  target.setLineJoin("miter");
+  target.setLineCap("butt");
+  target.setTransform(matrix.IDENTITY);
+};
+
 /**
  * Draws selection outlines, resize handles, and the rubber-band rectangle on
  * the overlay layer. Pure draw — does not alter scene or state.
@@ -227,13 +272,6 @@ export const renderOverlay = (
      * link endpoint/bend handles are still driven by `edgeSelection`.
      */
     selectedLinkPaths?: readonly { readonly path: readonly Vec2[]; readonly width: number }[];
-    /**
-     * World-space closed outline loop(s) of every selected element, painted
-     * as a contour-hugging selection halo (polygon exact, ellipse/path
-     * sampled, group → one loop per child). Drawn under the crisp bbox
-     * outline + handles.
-     */
-    selectedElementOutlines?: readonly (readonly Vec2[])[];
     /**
      * World-space bounds of the element a connector endpoint will FLOAT-attach
      * to (drop on the body, not a dot). Painted as a brand outline so the user
@@ -345,37 +383,6 @@ export const renderOverlay = (
   // 0. Debug hit-zones — drawn first so the real selection chrome sits
   //    on top. Visualises every element's mouse hit-targets.
   if (options.debugHitZones) drawHitZones(target, scene, w2s, zoom);
-
-  // 0.5 Contour selection halo for elements — a translucent stroke hugging
-  //     each selected shape's actual outline (drawn under the crisp bbox
-  //     outline + handles below). World-space, like the link halo.
-  if (options.selectedElementOutlines && options.selectedElementOutlines.length > 0) {
-    target.setTransform(w2s);
-    target.setStroke(style.selectionStroke);
-    target.setOpacity(0.32);
-    target.setStrokeWidth(HOVER_HIGHLIGHT_MARGIN_PX / (zoom || 1));
-    target.setDashArray(null);
-    target.setLineJoin("round");
-    target.setLineCap("round");
-    for (const loop of options.selectedElementOutlines) {
-      if (loop.length < 2) continue;
-      target.beginPath();
-      let started = false;
-      for (const p of loop) {
-        if (started) target.lineTo(p.x, p.y);
-        else {
-          target.moveTo(p.x, p.y);
-          started = true;
-        }
-      }
-      target.closePath();
-      target.stroke();
-    }
-    target.setOpacity(1);
-    target.setLineJoin("miter");
-    target.setLineCap("butt");
-    target.setTransform(matrix.IDENTITY);
-  }
 
   // 1. Selection outlines (+ handles only when a single shape is
   //    selected). Multi-selection skips per-shape handles in favour of

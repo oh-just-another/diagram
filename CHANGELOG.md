@@ -1420,3 +1420,6 @@
 
 ## 0.55.45
 - feat(scene,state): contour-following selection halo for elements
+
+## 0.55.46
+- feat(scene,diagram): outline-provider API + dual-ellipse demo (multi-loop halo)

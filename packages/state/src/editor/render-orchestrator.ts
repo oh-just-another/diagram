@@ -6,11 +6,18 @@ import {
   getElement,
   getElementWorldBounds,
   getElementOutline,
+  getWorldToScreen,
   isImage,
   type Scene,
 } from "@oh-just-another/scene";
-import { DEFAULT_LOD, renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
-import { renderOverlay, type PortOverlay } from "../overlay.js";
+import {
+  DEFAULT_LOD,
+  renderLinks,
+  renderGrid,
+  renderScene,
+  type RenderTarget,
+} from "@oh-just-another/renderer-core";
+import { renderOverlay, paintElementSelectionHalo, type PortOverlay } from "../overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import { buildElementForCreate, buildEdgePreviewLink } from "./applies/create.js";
 import {
@@ -69,12 +76,28 @@ export const renderEditor = (editor: Editor): void => {
     : undefined;
   const hideElements = editor.computeHiddenElements();
 
+  // Contour selection halo — drawn UNDER the shapes (bottom layer) so it
+  // peeks out from behind each selected element. polygon exact, ellipse/path
+  // sampled, group → per-child loops, else bbox.
+  const haloOutlines: (readonly Vec2[])[] = [];
+  for (const id of editor._selection) {
+    const shape = getElement(editor._scene, id);
+    if (!shape) continue;
+    for (const loop of getElementOutline(editor._scene, shape)) haloOutlines.push(loop);
+  }
+  const haloW2s = getWorldToScreen(editor._scene.viewport);
+  const haloZoom = editor._scene.viewport.zoom || 1;
+  const paintHalo = (t: RenderTarget): void => {
+    if (haloOutlines.length > 0) paintElementSelectionHalo(t, haloW2s, haloOutlines, haloZoom);
+  };
+
   if (editor.tileComposeFn && viewportWorld) {
     // Tile-cache path: clear main once, then composite cached tiles. Dim /
     // hide sets aren't honoured by the tile cache (would require a separate
     // pass); this opt-in path is intended for very-large static scenes where
     // neither typically applies.
     editor.mainTarget.clear();
+    paintHalo(editor.mainTarget);
     editor.tileComposeFn(editor._scene, editor.mainTarget, {
       viewport: viewportWorld,
       changedElements: editor.tileDirtyElements,
@@ -99,6 +122,7 @@ export const renderEditor = (editor: Editor): void => {
       ...(dimElements ? { dimElements, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
       ...(hideElements ? { hideElements } : {}),
       ...(sharedIndex ? { spatialIndex: sharedIndex } : {}),
+      underlay: paintHalo,
     });
     renderLinks(editor._scene, editor.mainTarget, {
       ...(viewportWorld ? { viewportWorld } : {}),
@@ -335,17 +359,6 @@ export const renderEditor = (editor: Editor): void => {
       }
     }
     if (halos.length > 0) overlayOpts.selectedLinkPaths = halos;
-  }
-  // Contour selection halo for every selected element (polygon exact,
-  // ellipse/path sampled, group → per-child loops, else bbox).
-  if (editor._selection.size > 0) {
-    const outlines: (readonly Vec2[])[] = [];
-    for (const id of editor._selection) {
-      const shape = getElement(editor._scene, id);
-      if (!shape) continue;
-      for (const loop of getElementOutline(editor._scene, shape)) outlines.push(loop);
-    }
-    if (outlines.length > 0) overlayOpts.selectedElementOutlines = outlines;
   }
   // Endpoint / bend handles only for the SOLE selected link (no elements);
   // a multi/mixed selection hides them to stay uncluttered.

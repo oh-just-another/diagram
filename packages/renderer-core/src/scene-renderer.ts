@@ -35,6 +35,13 @@ export interface LodOptions {
 export interface RenderSceneOptions {
   /** Skip clearing the target before drawing. Default: false. */
   readonly skipClear?: boolean;
+  /**
+   * Optional bottom-layer paint, invoked after the clear and before any
+   * shape (with the world transform applied, inside a save/restore). Use it
+   * for chrome that must sit UNDER the shapes — e.g. a selection halo that
+   * peeks out from behind the elements.
+   */
+  readonly underlay?: (target: RenderTarget) => void;
   /** Called for shapes whose `type` has no registered renderer. Default: ignore. */
   readonly onUnknownElement?: (shape: ElementBase) => void;
   /**
@@ -167,6 +174,16 @@ export const renderScene = (
 
   target.save();
   target.setTransform(w2s);
+
+  // Underlay: drawn AFTER the clear but BEFORE any shape, so it sits on the
+  // bottom layer and peeks out from under the shapes (e.g. a selection halo
+  // behind the elements). Wrapped in save/restore so it can't disturb the
+  // world transform / paint state the shape pass relies on.
+  if (options.underlay) {
+    target.save();
+    options.underlay(target);
+    target.restore();
+  }
 
   const boundsCache = options.boundsCache ?? new ElementCache<Bounds>();
   const viewport = options.viewport;
