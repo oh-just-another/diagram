@@ -143,8 +143,11 @@ export const paintElementSelectionHalo = (
   target.setOpacity(SELECTION_HALO_OPACITY);
   target.setStrokeWidth(HOVER_HIGHLIGHT_MARGIN_PX / (zoom || 1));
   target.setDashArray(null);
-  target.setLineJoin("round");
-  target.setLineCap("round");
+  // Miter join so the halo reproduces the element's own corners (sharp on a
+  // rectangle / polygon, pointed on a star); rounded corners come from the
+  // traced outline points (rounded-rect / ellipse), not the join.
+  target.setLineJoin("miter");
+  target.setLineCap("butt");
   for (const loop of loops) {
     if (loop.length < 2) continue;
     target.beginPath();
@@ -160,8 +163,6 @@ export const paintElementSelectionHalo = (
     target.stroke();
   }
   target.setOpacity(1);
-  target.setLineJoin("miter");
-  target.setLineCap("butt");
   target.setTransform(matrix.IDENTITY);
 };
 

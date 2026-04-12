@@ -1423,3 +1423,6 @@
 
 ## 0.55.46
 - feat(scene,diagram): outline-provider API + dual-ellipse demo (multi-loop halo)
+
+## 0.55.47
+- feat(state,renderer-core): draw the element selection halo UNDER the shapes

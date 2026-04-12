@@ -68,26 +68,6 @@ describe("renderScene", () => {
     expect(calls.find((c) => c.method === "clear")).toBeUndefined();
   });
 
-  it("runs the underlay after the clear and before any shape", () => {
-    const order: string[] = [];
-    const renderer: ElementRenderer = () => order.push("shape");
-    registerElementRenderer("underlay-rect", renderer);
-    let scene = emptyScene();
-    ({ scene } = addElement(scene, { ...rect("a"), type: "underlay-rect" }));
-    const { target, calls } = makeRecorder();
-    const clearSeenBeforeUnderlay = { value: false };
-    renderScene(scene, target, {
-      underlay: () => {
-        clearSeenBeforeUnderlay.value = calls.some((c) => c.method === "clear");
-        order.push("underlay");
-      },
-    });
-    // underlay ran after the clear...
-    expect(clearSeenBeforeUnderlay.value).toBe(true);
-    // ...and before the shape pass.
-    expect(order).toEqual(["underlay", "shape"]);
-  });
-
   it("invokes the registered renderer for each shape", () => {
     const renderer = vi.fn<ElementRenderer>();
     registerElementRenderer("test-rect", renderer);

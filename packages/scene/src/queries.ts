@@ -16,6 +16,7 @@ import {
   type Element,
   type PathCommand,
 } from "./shape.js";
+import { getCornerRadius } from "./style.js";
 import { SpatialGrid } from "./spatial.js";
 
 // --- direct lookups ---
@@ -71,6 +72,30 @@ const rectLoop = (b: Bounds): Vec2[] => [
   { x: b.x + b.width, y: b.y + b.height },
   { x: b.x, y: b.y + b.height },
 ];
+
+/** Samples per rounded-rect corner arc. */
+const CORNER_ARC_SAMPLES = 6;
+
+/** Rounded-rect outline as a polyline — straight edges + sampled corner arcs. */
+const roundedRectLoop = (b: Bounds, r: number): Vec2[] => {
+  const { x, y, width: w, height: h } = b;
+  const arc = (cx: number, cy: number, from: number, to: number): Vec2[] => {
+    const pts: Vec2[] = [];
+    for (let i = 0; i <= CORNER_ARC_SAMPLES; i++) {
+      const a = from + (to - from) * (i / CORNER_ARC_SAMPLES);
+      pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    }
+    return pts;
+  };
+  const HALF_PI = Math.PI / 2;
+  return [
+    // top-left → top-right → bottom-right → bottom-left corners (clockwise).
+    ...arc(x + r, y + r, Math.PI, Math.PI + HALF_PI),
+    ...arc(x + w - r, y + r, -HALF_PI, 0),
+    ...arc(x + w - r, y + h - r, 0, HALF_PI),
+    ...arc(x + r, y + h - r, HALF_PI, Math.PI),
+  ];
+};
 
 const flattenPath = (commands: readonly PathCommand[]): Vec2[] => {
   const pts: Vec2[] = [];
@@ -137,7 +162,12 @@ const localOutlineLoops = (shape: Element): Vec2[][] | null => {
     }
     return [pts];
   }
-  if (isRectangle(shape) || isImage(shape) || isText(shape)) {
+  if (isRectangle(shape)) {
+    const b = getElementLocalBounds(shape);
+    const r = getCornerRadius(shape.style.roundness, b.width, b.height);
+    return [r > 0 ? roundedRectLoop(b, r) : rectLoop(b)];
+  }
+  if (isImage(shape) || isText(shape)) {
     return [rectLoop(getElementLocalBounds(shape))];
   }
   if (isPath(shape)) return [flattenPath(shape.commands)];

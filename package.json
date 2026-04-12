@@ -1,6 +1,6 @@
 {
   "name": "diagram",
-  "version": "0.55.47",
+  "version": "0.55.48",
   "private": true,
   "description": "Monorepo for the diagram library \u2014",
   "type": "module",

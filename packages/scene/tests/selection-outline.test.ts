@@ -70,6 +70,25 @@ describe("getElementOutline", () => {
     ]);
   });
 
+  it("traces a rounded rectangle's corners (arc-sampled, not 4 sharp points)", () => {
+    const r = base("r", {
+      type: "rectangle",
+      width: 40,
+      height: 20,
+      style: { roundness: { type: "round", value: 6 } },
+    } as Partial<Element>);
+    const loops = getElementOutline(sceneWith(r), r);
+    expect(loops).toHaveLength(1);
+    // Far more than 4 points (each corner is an arc); none pokes past the bbox.
+    expect(loops[0]!.length).toBeGreaterThan(4);
+    for (const p of loops[0]!) {
+      expect(p.x).toBeGreaterThanOrEqual(-0.001);
+      expect(p.x).toBeLessThanOrEqual(40.001);
+      expect(p.y).toBeGreaterThanOrEqual(-0.001);
+      expect(p.y).toBeLessThanOrEqual(20.001);
+    }
+  });
+
   it("returns one loop per child for a group (handles disconnected figures)", () => {
     const group = base("g", { type: "group" });
     const c1 = base("c1", { type: "rectangle", width: 10, height: 10, parentId: elementId("g") });
