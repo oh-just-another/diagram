@@ -107,13 +107,14 @@ export const AUTO_ROUTE_MAX_OBSTACLES = 400;
 export const LINK_HIT_THRESHOLD = 9;
 
 /**
- * Extra width (screen px, total) of the link hover-highlight halo BEYOND the
- * link's own rendered width, so the soft halo always peeks out on both sides
- * (≈ half this each side) at every zoom. The halo width tracks the link's
- * visual width (`strokeWidth × zoom`) + this margin — a fixed-px halo was
- * swallowed by thick links at high zoom. Range: 6–12.
+ * How far (screen px) the selection halo peeks out beyond an object's
+ * VISIBLE outer edge — shared by elements and links. The halo is sized so
+ * it always shows exactly this much past the shape's contour + its border
+ * extent (which depends on stroke width and inside/center/outside
+ * alignment), at every zoom. Constant on screen regardless of border
+ * thickness. Range: 3–8.
  */
-export const HOVER_HIGHLIGHT_MARGIN_PX = 8;
+export const SELECTION_HALO_PEEK_PX = 4;
 
 /**
  * Screen-pixel radius of the inactive port dot rendered on a hovered

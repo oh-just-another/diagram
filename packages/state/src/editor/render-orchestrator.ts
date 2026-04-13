@@ -7,11 +7,18 @@ import {
   getElementWorldBounds,
   getElementOutline,
   getWorldToScreen,
+  strokeOutsideExtent,
   isImage,
   type Scene,
+  type Style,
 } from "@oh-just-another/scene";
 import { DEFAULT_LOD, renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
-import { renderOverlay, paintElementSelectionHalo, type PortOverlay } from "../overlay.js";
+import {
+  renderOverlay,
+  paintElementSelectionHalo,
+  type ElementHalo,
+  type PortOverlay,
+} from "../overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import { buildElementForCreate, buildEdgePreviewLink } from "./applies/create.js";
 import {
@@ -62,17 +69,21 @@ export const renderEditor = (editor: Editor): void => {
   // before shapes are drawn, so renderScene's clear takes care of it.
   if (editor.backgroundTarget) {
     renderGrid(editor._scene, editor.backgroundTarget);
-    const haloOutlines: (readonly Vec2[])[] = [];
+    const halos: ElementHalo[] = [];
     for (const id of editor._selection) {
       const shape = getElement(editor._scene, id);
       if (!shape) continue;
-      for (const loop of getElementOutline(editor._scene, shape)) haloOutlines.push(loop);
+      const style: Style = (shape as { style?: Style }).style ?? {};
+      halos.push({
+        loops: getElementOutline(editor._scene, shape),
+        outsetWorld: strokeOutsideExtent(style),
+      });
     }
-    if (haloOutlines.length > 0) {
+    if (halos.length > 0) {
       paintElementSelectionHalo(
         editor.backgroundTarget,
         getWorldToScreen(editor._scene.viewport),
-        haloOutlines,
+        halos,
         editor._scene.viewport.zoom || 1,
       );
     }

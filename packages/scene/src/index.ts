@@ -12,7 +12,7 @@ export type {
   StrokeAlign,
   Roundness,
 } from "./style.js";
-export { getCornerRadius } from "./style.js";
+export { getCornerRadius, strokeOutsideExtent } from "./style.js";
 export { ADAPTIVE_CORNER_RADIUS, PROPORTIONAL_CORNER_RADIUS } from "./constants.js";
 export type {
   Element,

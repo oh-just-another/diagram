@@ -1426,3 +1426,6 @@
 
 ## 0.55.47
 - feat(state,renderer-core): draw the element selection halo UNDER the shapes
+
+## 0.55.48
+- fix(state): draw element halo on the background layer; match shape corners

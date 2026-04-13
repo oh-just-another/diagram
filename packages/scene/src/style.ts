@@ -88,23 +88,27 @@ export interface TextStyle extends Style {
 }
 
 /**
- * Resolve a corner radius (in world units) for a rectangular shape
- * with the given `Roundness` spec and bounds. Implements standard's
- * adaptive algorithm:
- *
- *   • `roundness` undefined / `type === "sharp"` → 0 (sharp corners).
- *   • Explicit `value` → use it, clamped so the radius can't exceed
- *     half the smaller side (avoids self-overlapping corners on
- *     narrow shapes).
- *   • `type === "round"` without `value` → adaptive: fixed
- *     {@link ADAPTIVE_CORNER_RADIUS} for shapes ≥ cutoff
- *     (`ADAPTIVE / PROPORTIONAL = 128 px`), scaled proportionally
- *     ({@link PROPORTIONAL_CORNER_RADIUS}) for anything smaller so
- *     thumbnails don't look like capsules.
- *
- * The "smaller side" is `min(width, height)` — corners use the same
- * radius on every axis (uniform rounding).
+ * How far a shape's stroke extends OUTSIDE its geometric contour, in world
+ * units. Depends on stroke width and alignment: `outside` → the full width,
+ * `center` → half, `inside` → none. No stroke → 0. Used to place the
+ * selection halo a constant distance beyond the shape's VISIBLE outer edge
+ * (contour + this extent), regardless of border thickness / alignment.
  */
+export const strokeOutsideExtent = (style: Style): number => {
+  const hasStroke = style.stroke !== undefined && style.stroke !== "transparent";
+  if (!hasStroke) return 0;
+  const w = style.strokeWidth ?? 1;
+  if (w <= 0) return 0;
+  switch (style.strokeAlign ?? "center") {
+    case "outside":
+      return w;
+    case "inside":
+      return 0;
+    default:
+      return w / 2;
+  }
+};
+
 export const getCornerRadius = (
   roundness: Roundness | undefined,
   width: number,
