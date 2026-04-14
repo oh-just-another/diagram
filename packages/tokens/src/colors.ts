@@ -224,6 +224,15 @@ export const UI_ACCENT = {
 export const GRID_COLOR = gray.gray6;
 
 /**
+ * Dot-grid colour — deliberately darker than {@link GRID_COLOR}.
+ * A lone dot covers far less area than a ruled line, so at the
+ * line colour (step-6) the dots read as a faint, low-contrast
+ * haze on a gray canvas. Step-9 ("solid") gives each dot enough
+ * weight to be a legible anchor without turning the field busy.
+ */
+export const GRID_DOT_COLOR = gray.gray9;
+
+/**
  * Default shape styles applied when a user draws a new shape
  * with the toolbar. The user can override anything via the
  * property panel afterwards.

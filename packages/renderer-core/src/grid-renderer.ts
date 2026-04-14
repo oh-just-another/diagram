@@ -1,8 +1,16 @@
 import { getScreenToWorld, getWorldToScreen, type Scene } from "@oh-just-another/scene";
 import { matrix } from "@oh-just-another/math";
-import { GRID_COLOR } from "@oh-just-another/tokens";
 import type { Bounds } from "@oh-just-another/types";
 import type { RenderTarget } from "./render-target.js";
+import {
+  DEFAULT_GRID_DOT_LEVELS,
+  DEFAULT_GRID_LINE_LEVELS,
+  GRID_DOT_FILL,
+  GRID_DOT_RADIUS_PX,
+  GRID_LINE_COLOR,
+  GRID_LINE_WIDTH_PX,
+  GRID_MIN_SCREEN_SPACING_PX,
+} from "./constants.js";
 
 export interface RenderGridOptions {
   /** Stroke / fill colour for the grid primitives. Defaults to `GRID_COLOR` from `@oh-just-another/tokens`. */
@@ -49,8 +57,13 @@ export const renderGrid = (
   const gridSize = scene.viewport.gridSize;
   if (!gridSize || gridSize <= 0) return;
 
-  const color = options.color ?? DEFAULT_GRID_COLOR;
-  const levels = options.levels ?? DEFAULT_GRID_LEVELS;
+  const style = scene.viewport.gridStyle ?? "lines";
+  // Lines and dots default to different colours and ladders (see
+  // constants). Explicit options.color / options.levels still win so
+  // hosts can fully re-skin either style.
+  const color = options.color ?? (style === "dots" ? GRID_DOT_FILL : GRID_LINE_COLOR);
+  const levels =
+    options.levels ?? (style === "dots" ? DEFAULT_GRID_DOT_LEVELS : DEFAULT_GRID_LINE_LEVELS);
   const zoom = scene.viewport.zoom;
   const { width, height } = target.size;
   if (width <= 0 || height <= 0) return;
@@ -58,8 +71,6 @@ export const renderGrid = (
   // Project the screen rect into world coords (axis-aligned AABB).
   const viewportWorld = computeViewportWorldRect(scene, width, height);
   if (!viewportWorld) return;
-
-  const style = scene.viewport.gridStyle ?? "lines";
 
   target.save();
   target.setTransform(getWorldToScreen(scene.viewport));
@@ -70,7 +81,7 @@ export const renderGrid = (
     if (opacity <= 0) continue;
     const step = level.step * gridSize;
     const screenSpacing = step * zoom;
-    if (screenSpacing < MIN_SCREEN_SPACING_PX) continue;
+    if (screenSpacing < GRID_MIN_SCREEN_SPACING_PX) continue;
     target.setOpacity(opacity);
     if (style === "dots") {
       drawDotLevel(target, viewportWorld, step, color, zoom);
@@ -93,7 +104,7 @@ const drawLineLevel = (
   zoom: number,
 ): void => {
   const { minX, maxX, minY, maxY } = snappedExtents(viewport, step);
-  const lineWidth = 1 / zoom;
+  const lineWidth = GRID_LINE_WIDTH_PX / zoom;
   target.setStroke(color);
   target.setStrokeWidth(lineWidth);
   target.beginPath();
@@ -179,38 +190,3 @@ const computeViewportWorldRect = (
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 };
 
-// --- Defaults ---------------------------------------------------------------
-
-/**
- * Single grid colour used for every level. The level distinction is
- * carried by opacity, not hue — keeps the grid quiet at every zoom.
- * Sourced from `@oh-just-another/tokens` (gray.gray6).
- */
-const DEFAULT_GRID_COLOR = GRID_COLOR;
-
-/**
- * Below this on-screen spacing a level paints nothing — denser
- * rendering reads as a flat haze. Matches standard's behaviour where
- * a level is implicitly hidden once it gets too dense.
- */
-const MIN_SCREEN_SPACING_PX = 4;
-
-/**
- * Dot radius in screen pixels for `gridStyle === "dots"`. Constant
- * across zoom levels (divided by `zoom` at use site) so dots stay
- * a calm 1-pixel mark regardless of view scale.
- */
-const GRID_DOT_RADIUS_PX = 1.0;
-
-/**
- * Default ladder: 4 self-similar levels tuned for editors with a
- * 20-unit base grid. Matches the visual cadence standard uses
- * (`{ min: -1, mid: 0.15, step: 64 }` etc.) — coarsest rung is
- * always visible, finer rungs fade in around 1× zoom and below.
- */
-const DEFAULT_GRID_LEVELS: readonly GridLevel[] = [
-  { min: -1, mid: 0.15, step: 64 },
-  { min: 0.05, mid: 0.375, step: 16 },
-  { min: 0.15, mid: 1, step: 4 },
-  { min: 0.7, mid: 2.5, step: 1 },
-];

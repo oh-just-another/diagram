@@ -1429,3 +1429,6 @@
 
 ## 0.55.48
 - fix(state): draw element halo on the background layer; match shape corners
+
+## 0.55.49
+- fix(state,scene): selection halo peeks a constant px past the visible edge

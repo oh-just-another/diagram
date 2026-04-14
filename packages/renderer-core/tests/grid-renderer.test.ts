@@ -3,6 +3,13 @@ import { emptyScene } from "@oh-just-another/scene";
 import type { Scene } from "@oh-just-another/scene";
 import type { RenderTarget } from "../src/render-target.js";
 import { renderGrid, type GridLevel } from "../src/grid-renderer.js";
+import {
+  DEFAULT_GRID_DOT_LEVELS,
+  DEFAULT_GRID_LINE_LEVELS,
+  GRID_DOT_FILL,
+  GRID_DOT_RADIUS_PX,
+  GRID_LINE_COLOR,
+} from "../src/constants.js";
 
 // ---------------------------------------------------------------------------
 // Recorder
@@ -349,6 +356,51 @@ describe("renderGrid – custom color", () => {
     renderGrid(scene, target, { color: "#ff0000", levels: SINGLE_LEVEL });
     const strokeCalls = calls.filter((c) => c.method === "setStroke");
     expect(strokeCalls.some((c) => c.args[0] === "#ff0000")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: per-style defaults (lines vs dots diverge)
+// ---------------------------------------------------------------------------
+describe("renderGrid – per-style defaults", () => {
+  it("dots default to the darker dot fill, lines to the line colour", () => {
+    const dots = makeRecorder();
+    renderGrid(sceneWithGrid(20, 1, "dots"), dots.target);
+    const dotFill = dots.calls.find((c) => c.method === "setFill");
+    expect(dotFill?.args[0]).toBe(GRID_DOT_FILL);
+
+    const lines = makeRecorder();
+    renderGrid(sceneWithGrid(20, 1, "lines"), lines.target);
+    const lineStroke = lines.calls.find(
+      (c) => c.method === "setStroke" && c.args[0] !== null,
+    );
+    expect(lineStroke?.args[0]).toBe(GRID_LINE_COLOR);
+    // The two styles use a different colour (dots are deliberately darker).
+    expect(GRID_DOT_FILL).not.toBe(GRID_LINE_COLOR);
+  });
+
+  it("dots use the (finer) dot ladder by default", () => {
+    // The dot ladder's finest rung is step:1 (one dot per gridSize),
+    // whereas the line ladder's finest visible-at-zoom-1 rung is step:4.
+    // So at zoom 1 / gridSize 20 the dot field is denser than the lines.
+    expect(DEFAULT_GRID_DOT_LEVELS.some((l) => l.step === 1 && l.mid <= 1)).toBe(true);
+    expect(DEFAULT_GRID_LINE_LEVELS.find((l) => l.step === 1)?.mid).toBeGreaterThan(1);
+
+    const { target, calls } = makeRecorder(200, 200);
+    renderGrid(sceneWithGrid(20, 1, "dots"), target);
+    // A denser ladder paints more dots than a single coarse level would.
+    expect(calls.filter((c) => c.method === "rect").length).toBeGreaterThan(0);
+  });
+
+  it("sizes each dot square from GRID_DOT_RADIUS_PX / zoom", () => {
+    const zoom = 2;
+    const { target, calls } = makeRecorder();
+    renderGrid(sceneWithGrid(20, zoom, "dots"), target, { levels: SINGLE_LEVEL });
+    const rect = calls.find((c) => c.method === "rect");
+    expect(rect).toBeDefined();
+    // rect(x - r, y - r, d, d) — width arg (index 2) is the diameter.
+    const diameter = rect!.args[2] as number;
+    expect(diameter).toBeCloseTo((2 * GRID_DOT_RADIUS_PX) / zoom);
   });
 });
 
