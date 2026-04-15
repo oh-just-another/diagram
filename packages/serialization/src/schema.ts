@@ -290,6 +290,8 @@ const ViewportZ = z
     rotation: z.number(),
     size: z.object({ width: z.number(), height: z.number() }).strict(),
     gridSize: z.number().optional(),
+    gridStyle: z.enum(["lines", "dots"]).optional(),
+    snapToGrid: z.boolean().optional(),
   })
   .strict();
 

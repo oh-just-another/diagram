@@ -51,6 +51,8 @@ import {
   type SnapCandidate,
   type TextElement,
   type TextStyle,
+  isSnapToGridEnabled,
+  resolveSnapSpacing,
 } from "@oh-just-another/scene";
 import {
   layerId as castLayerId,
@@ -269,6 +271,12 @@ import {
   newLinkId,
   newElementId,
 } from "./editor/applies/create.js";
+import {
+  snapCreateBounds,
+  snapGroupDelta,
+  snapMoveDelta,
+  snapResizeDelta,
+} from "./editor/applies/snap-grid.js";
 import { type PeerCursor, type PeerSelection } from "./overlay.js";
 import * as Selection from "./selection.js";
 import * as LinkSelection from "./link-selection.js";
@@ -650,6 +658,14 @@ export class Editor {
   ]);
   /** Snap threshold in world units. */
   private readonly snapThreshold = DEFAULT_SNAP_THRESHOLD;
+
+  /**
+   * Transient flag set by the host while a snap-suppress modifier
+   * (Cmd / Ctrl) is held during a drag — lets the user pull a shape off
+   * the grid for one gesture without toggling snap off. Read by the
+   * move / resize / create wrappers; never persisted.
+   */
+  private snapSuppressed = false;
 
   /**
    * Persistent world-bounds cache shared with `renderScene` for viewport
@@ -2917,11 +2933,40 @@ export class Editor {
     this._scene = next;
     this.notify();
   }
-  setGrid(patch: { size?: number; style?: GridStyle }): void {
+  setGrid(patch: { size?: number; style?: GridStyle; snap?: boolean }): void {
     const next = computeSetGrid(this._scene, patch);
     if (!next) return;
     this._scene = next;
     this.notify();
+  }
+
+  /** Whether snap-to-grid is currently enabled (default on). */
+  get snapToGridEnabled(): boolean {
+    return isSnapToGridEnabled(this._scene.viewport);
+  }
+
+  /** Toggle snap-to-grid on/off. Persists in the viewport. */
+  setSnapToGrid(enabled: boolean): void {
+    this.setGrid({ snap: enabled });
+  }
+
+  /**
+   * Host hook: while held, the next move/resize/create gesture ignores
+   * snap-to-grid (Cmd/Ctrl modifier). The app wires keydown/keyup
+   * of the modifier to this. Idempotent; never touches history.
+   */
+  setSnapSuppressed(suppressed: boolean): void {
+    this.snapSuppressed = suppressed;
+  }
+
+  /** True when a gesture should snap: feature on AND modifier not held. */
+  private snapActive(): boolean {
+    return !this.snapSuppressed && isSnapToGridEnabled(this._scene.viewport);
+  }
+
+  /** World-unit spacing the current gesture snaps to. */
+  private snapSpacing(): number {
+    return resolveSnapSpacing(this._scene.viewport);
   }
 
   /**
@@ -3525,7 +3570,10 @@ export class Editor {
 
   // Pure body in `./editor/applies/move.ts`.
   private applyMove(id: ElementId, delta: Vec2, originalBounds: Bounds): void {
-    const patch = computeElementMovePatch(this._scene, id, delta, originalBounds);
+    const d = this.snapActive()
+      ? snapMoveDelta(originalBounds, delta, this.snapSpacing())
+      : delta;
+    const patch = computeElementMovePatch(this._scene, id, d, originalBounds);
     if (!patch) return;
     this._scene = apply(this._scene, patch);
     this.recordGesturePatch(patch);
@@ -3534,7 +3582,10 @@ export class Editor {
 
   private applyGroupMove(delta: Vec2): void {
     if (!this.groupMoveOrigin) return;
-    const patches = computeGroupMovePatches(this._scene, this.groupMoveOrigin, delta);
+    const d = this.snapActive()
+      ? snapGroupDelta(this.groupMoveOrigin, delta, this.snapSpacing())
+      : delta;
+    const patches = computeGroupMovePatches(this._scene, this.groupMoveOrigin, d);
     for (const patch of patches) {
       this._scene = apply(this._scene, patch);
       this.recordGesturePatch(patch);
@@ -3546,7 +3597,7 @@ export class Editor {
       const linkPatches = computeMovingLinkPatches(
         this._scene,
         this.groupLinkMoveOrigin,
-        delta,
+        d,
       );
       for (const patch of linkPatches) {
         this._scene = apply(this._scene, patch);
@@ -3791,11 +3842,14 @@ export class Editor {
   // Pure body in `./editor/applies/resize.ts`.
   private applyGroupResize(handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
     if (!this.groupResizeOrigin) return;
+    const d = this.snapActive()
+      ? snapResizeDelta(originalBounds, handle, delta, this.snapSpacing())
+      : delta;
     const result = computeGroupResizePatches(
       this._scene,
       this.groupResizeOrigin,
       handle,
-      delta,
+      d,
       originalBounds,
       this.selectionIsAspectLocked(),
     );
@@ -3806,6 +3860,9 @@ export class Editor {
 
   private applyResize(id: ElementId, handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
     const shape = getElement(this._scene, id);
+    const d = this.snapActive()
+      ? snapResizeDelta(originalBounds, handle, delta, this.snapSpacing())
+      : delta;
     // Text: aspect-locked font scaling. Snapshot the pristine shape on
     // the gesture's first tick so the scale base never compounds.
     if (shape?.type === "text") {
@@ -3816,7 +3873,7 @@ export class Editor {
         this._scene,
         this._resizeOriginElement as TextElement,
         handle,
-        delta,
+        d,
         originalBounds,
       );
       if (!result) return;
@@ -3829,7 +3886,7 @@ export class Editor {
       this._scene,
       id,
       handle,
-      delta,
+      d,
       originalBounds,
       (s, raw, h) => this.clampContainerToChildren(s, raw, h),
     );
@@ -3842,7 +3899,8 @@ export class Editor {
   // Pure body in `./editor/applies/create.ts`.
   private applyCreate(kind: "rect" | "ellipse" | "frame", bounds: Bounds): void {
     const id = newElementId(++this.nextId);
-    const result = computeCreateElement(this._scene, kind, bounds, id, this._activeLayerId, () =>
+    const b = this.snapActive() ? snapCreateBounds(bounds, this.snapSpacing()) : bounds;
+    const result = computeCreateElement(this._scene, kind, b, id, this._activeLayerId, () =>
       this.nextFrameName(),
     );
     this._scene = result.scene;
@@ -3852,7 +3910,7 @@ export class Editor {
     // Frame-specific: scoop up every shape whose centre lies inside
     // the new frame's bounds and tag them with `frameId`.
     if (kind === "frame") {
-      this.assignFrameMembers(id, bounds);
+      this.assignFrameMembers(id, b);
     }
     this.maybeRevertModeAfterCreate();
     this.notify();

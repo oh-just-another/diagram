@@ -154,6 +154,7 @@ describe("connector rigid move — pointer drag (press-time snapshot)", () => {
         linkWith({ routing: "orthogonal", fixedSegments: [{ axis: "h", pos: 100, at: 50 }] }),
       ),
     });
+    editor.setSnapToGrid(false); // isolate the rigid-move math from grid snapping
     // rect A occupies world (0,0)-(40,40); select both via clicks.
     const tap = (x: number, y: number, shift = false) => {
       handlers.get("pointerdown")!(pointer("pointerdown", x, y, shift));
@@ -191,6 +192,7 @@ describe("connector rigid move — pointer drag (press-time snapshot)", () => {
       host, mainTarget: noopTarget, overlayTarget: noopTarget,
       initialScene: sceneWith(free),
     });
+    editor.setSnapToGrid(false); // isolate the rigid-move math from grid snapping
     // Select element A AND the free link (coexisting selection).
     editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
     editor.applyEmit({ type: "SELECT_EDGE_TOGGLE", id: linkId("L") });

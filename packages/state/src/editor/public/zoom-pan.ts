@@ -108,16 +108,20 @@ export const computeViewportResize = (
  */
 export const computeSetGrid = (
   scene: Scene,
-  patch: { size?: number; style?: GridStyle },
+  patch: { size?: number; style?: GridStyle; snap?: boolean },
 ): Scene | null => {
   const vp = scene.viewport;
   const nextSize = patch.size ?? vp.gridSize;
   const nextStyle = patch.style ?? vp.gridStyle;
-  if (nextSize === vp.gridSize && nextStyle === vp.gridStyle) return null;
+  const nextSnap = patch.snap ?? vp.snapToGrid;
+  if (nextSize === vp.gridSize && nextStyle === vp.gridStyle && nextSnap === vp.snapToGrid) {
+    return null;
+  }
   const nextViewport: typeof vp = {
     ...vp,
     ...(nextSize === undefined ? {} : { gridSize: nextSize }),
     ...(nextStyle === undefined ? {} : { gridStyle: nextStyle }),
+    ...(nextSnap === undefined ? {} : { snapToGrid: nextSnap }),
   };
   return { ...scene, viewport: nextViewport };
 };

@@ -1432,3 +1432,6 @@
 
 ## 0.55.49
 - fix(state,scene): selection halo peeks a constant px past the visible edge
+
+## 0.55.50
+- feat(grid): separate dot-grid styling — darker, denser, own constants

@@ -54,6 +54,23 @@ describe("round-trip", () => {
     expect(restored.viewport).toEqual(scene.viewport);
   });
 
+  it("preserves grid + snap viewport preferences", () => {
+    let scene = emptyScene();
+    scene = {
+      ...scene,
+      viewport: {
+        ...scene.viewport,
+        gridSize: 20,
+        gridStyle: "dots",
+        snapToGrid: false,
+      },
+    };
+    const restored = deserializeScene(serializeScene(scene));
+    expect(restored.viewport.gridStyle).toBe("dots");
+    expect(restored.viewport.snapToGrid).toBe(false);
+    expect(restored.viewport.gridSize).toBe(20);
+  });
+
   it("stringify → parseScene round-trip", () => {
     let scene = emptyScene();
     ({ scene } = addElement(scene, rect("a")));

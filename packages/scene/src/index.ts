@@ -126,6 +126,8 @@ export {
   panBy,
   zoomAt,
   resize,
+  resolveSnapSpacing,
+  isSnapToGridEnabled,
 } from "./viewport.js";
 
 // Scene constructor + apply + ordering helpers
@@ -234,6 +236,7 @@ export {
 // Tunable thresholds.
 export {
   SNAP_PROBE_CULL_RADIUS,
+  DEFAULT_GRID_SPACING,
   ELBOW_OBSTACLE_MARGIN,
   ELBOW_OBSTACLE_INTERIOR_EPSILON,
 } from "./constants.js";

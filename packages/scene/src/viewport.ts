@@ -1,5 +1,6 @@
 import type { Transform, Vec2 } from "@oh-just-another/types";
 import { matrix } from "@oh-just-another/math";
+import { DEFAULT_GRID_SPACING } from "./constants.js";
 
 /**
  * Visual style of the background grid (when `gridSize > 0`).
@@ -26,9 +27,11 @@ export interface Viewport {
   readonly rotation: number;
   readonly size: { readonly width: number; readonly height: number };
   /**
-   * Snap grid size in world units. When `undefined` the grid is hidden
-   * and snap-to-grid is off. Renderers that paint a background grid use
-   * the same value.
+   * Grid size in world units. When `undefined` / `0` the background
+   * grid is hidden. Renderers that paint a background grid use this
+   * value. Snap-to-grid uses it when present and falls back to
+   * {@link DEFAULT_GRID_SPACING} when the grid is hidden but snapping
+   * is still on (see {@link resolveSnapSpacing}).
    */
   readonly gridSize?: number;
   /**
@@ -37,7 +40,28 @@ export interface Viewport {
    * when the field is missing.
    */
   readonly gridStyle?: GridStyle;
+  /**
+   * Whether dragging / resizing / creating snaps geometry to the grid.
+   * `undefined` is treated as ON (see {@link isSnapToGridEnabled}) so
+   * existing documents get the default-on behaviour. Independent of
+   * grid visibility — snapping can stay on with the grid hidden.
+   */
+  readonly snapToGrid?: boolean;
 }
+
+/**
+ * Resolve the world-unit spacing snap-to-grid should round to. Uses the
+ * visible `gridSize` when set, otherwise the {@link DEFAULT_GRID_SPACING}
+ * fallback — so snapping keeps working when the grid is hidden.
+ */
+export const resolveSnapSpacing = (viewport: Viewport): number =>
+  viewport.gridSize && viewport.gridSize > 0 ? viewport.gridSize : DEFAULT_GRID_SPACING;
+
+/**
+ * Whether snap-to-grid is enabled for this viewport. `undefined`
+ * (legacy / fresh documents) counts as ON — the product default.
+ */
+export const isSnapToGridEnabled = (viewport: Viewport): boolean => viewport.snapToGrid ?? true;
 
 export const DEFAULT_VIEWPORT: Viewport = Object.freeze({
   pan: { x: 0, y: 0 },
