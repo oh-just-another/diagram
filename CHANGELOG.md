@@ -1435,3 +1435,6 @@
 
 ## 0.55.50
 - feat(grid): separate dot-grid styling — darker, denser, own constants
+
+## 0.55.51
+- feat(state,scene): snap-to-grid for move / resize / create

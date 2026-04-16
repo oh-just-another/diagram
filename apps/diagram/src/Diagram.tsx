@@ -21,6 +21,7 @@ import {
   HelpCircle,
   ImageDown,
   Library as LibraryIcon,
+  Magnet,
   Maximize,
   Minus,
   Monitor,
@@ -417,6 +418,24 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
       }
     });
   }, [editor, onSceneChange, onSelectionChange]);
+
+  // Hold Cmd / Ctrl to temporarily pull a shape off the grid during a
+  // drag (standard). We read the modifier state off every key event
+  // (and reset on blur) so a missed keyup can't leave snapping stuck off.
+  useEffect(() => {
+    if (!editor) return undefined;
+    const sync = (e: KeyboardEvent) => { editor.setSnapSuppressed(e.metaKey || e.ctrlKey); };
+    const reset = () => { editor.setSnapSuppressed(false); };
+    window.addEventListener("keydown", sync);
+    window.addEventListener("keyup", sync);
+    window.addEventListener("blur", reset);
+    return () => {
+      window.removeEventListener("keydown", sync);
+      window.removeEventListener("keyup", sync);
+      window.removeEventListener("blur", reset);
+      editor.setSnapSuppressed(false);
+    };
+  }, [editor]);
 
   useImperativeHandle<DiagramAPI, DiagramAPI>(
     ref,
@@ -856,6 +875,16 @@ const EditorShell = ({
                         ]}
                       />
                     </MainMenu.Group>
+                    <MainMenu.Group title="Snap to grid">
+                      <MainMenu.Toggle<"on" | "off">
+                        value={snapSelection(editor)}
+                        onChange={(next) => { editor?.setSnapToGrid(next === "on"); }}
+                        options={[
+                          { value: "on", label: "On", icon: <Magnet {...toggleIcon} /> },
+                          { value: "off", label: "Off", icon: <Minus {...toggleIcon} /> },
+                        ]}
+                      />
+                    </MainMenu.Group>
                     <MainMenu.Separator />
                     <MainMenu.Group title="Help">
                       <MainMenu.Item
@@ -1155,6 +1184,14 @@ const gridSelection = (editor: Editor | null): "lines" | "dots" | "off" => {
   if (!vp.gridSize || vp.gridSize <= 0) return "off";
   return (vp.gridStyle ?? "lines");
 };
+
+/**
+ * Map the editor's snap-to-grid state to the Snap toggle. Defaults to
+ * "on" (matches the editor default; snapping is independent of grid
+ * visibility).
+ */
+const snapSelection = (editor: Editor | null): "on" | "off" =>
+  (editor?.snapToGridEnabled ?? true) ? "on" : "off";
 
 /**
  * Inverse — translate the toggle's value back into a `setGrid`
