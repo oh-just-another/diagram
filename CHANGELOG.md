@@ -1438,3 +1438,6 @@
 
 ## 0.55.51
 - feat(state,scene): snap-to-grid for move / resize / create
+
+## 0.55.52
+- feat(diagram): snap-to-grid menu toggle + Cmd/Ctrl suppress
