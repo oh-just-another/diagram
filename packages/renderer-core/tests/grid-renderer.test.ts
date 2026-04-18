@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import { emptyScene } from "@oh-just-another/scene";
 import type { Scene } from "@oh-just-another/scene";
 import type { RenderTarget } from "../src/render-target.js";
-import { renderGrid, type GridLevel } from "../src/grid-renderer.js";
+import { computeGridRungs, renderGrid, type GridLevel } from "../src/grid-renderer.js";
 import {
-  DEFAULT_GRID_DOT_LEVELS,
-  DEFAULT_GRID_LINE_LEVELS,
+  GRID_DOT_FADE_FROM_PX,
+  GRID_DOT_FADE_FULL_PX,
   GRID_DOT_FILL,
   GRID_DOT_RADIUS_PX,
   GRID_LINE_COLOR,
+  GRID_LINE_FADE_FROM_PX,
+  GRID_LINE_FADE_FULL_PX,
 } from "../src/constants.js";
 
 // ---------------------------------------------------------------------------
@@ -379,17 +381,15 @@ describe("renderGrid – per-style defaults", () => {
     expect(GRID_DOT_FILL).not.toBe(GRID_LINE_COLOR);
   });
 
-  it("dots use the (finer) dot ladder by default", () => {
-    // The dot ladder's finest rung is step:1 (one dot per gridSize),
-    // whereas the line ladder's finest visible-at-zoom-1 rung is step:4.
-    // So at zoom 1 / gridSize 20 the dot field is denser than the lines.
-    expect(DEFAULT_GRID_DOT_LEVELS.some((l) => l.step === 1 && l.mid <= 1)).toBe(true);
-    expect(DEFAULT_GRID_LINE_LEVELS.find((l) => l.step === 1)?.mid).toBeGreaterThan(1);
-
-    const { target, calls } = makeRecorder(200, 200);
-    renderGrid(sceneWithGrid(20, 1, "dots"), target);
-    // A denser ladder paints more dots than a single coarse level would.
-    expect(calls.filter((c) => c.method === "rect").length).toBeGreaterThan(0);
+  it("dots are denser than lines at 100% (base lattice solid)", () => {
+    // Dot fade band fills earlier, so the gridSize lattice is fully
+    // opaque at zoom 1 while the same line lattice is still faint.
+    const dotRungs = computeGridRungs(20, 1, GRID_DOT_FADE_FROM_PX, GRID_DOT_FADE_FULL_PX);
+    const lineRungs = computeGridRungs(20, 1, GRID_LINE_FADE_FROM_PX, GRID_LINE_FADE_FULL_PX);
+    const dotBase = dotRungs.find((r) => r.step === 20);
+    const lineBase = lineRungs.find((r) => r.step === 20);
+    expect(dotBase?.opacity).toBe(1); // dots: solid base lattice
+    expect(lineBase?.opacity).toBeLessThan(1); // lines: still fading in
   });
 
   it("sizes each dot square from GRID_DOT_RADIUS_PX / zoom", () => {
@@ -401,6 +401,57 @@ describe("renderGrid – per-style defaults", () => {
     // rect(x - r, y - r, d, d) — width arg (index 2) is the diameter.
     const diameter = rect!.args[2] as number;
     expect(diameter).toBeCloseTo((2 * GRID_DOT_RADIUS_PX) / zoom);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: dynamic (infinite) ladder — new rungs at every zoom
+// ---------------------------------------------------------------------------
+describe("computeGridRungs – infinite self-similar ladder", () => {
+  const FROM = GRID_LINE_FADE_FROM_PX;
+  const FULL = GRID_LINE_FADE_FULL_PX;
+
+  it("keeps subdividing below gridSize when zoomed in past 100%", () => {
+    // At 100% the finest rung is the gridSize lattice (step 20). Zooming
+    // in introduces finer rungs (step < 20).
+    const finestAt = (zoom: number) =>
+      Math.min(...computeGridRungs(20, zoom, FROM, FULL).map((r) => r.step));
+    expect(finestAt(1)).toBe(20);
+    // Deep zoom-in → a sub-gridSize rung exists.
+    expect(finestAt(8)).toBeLessThan(20);
+    expect(finestAt(32)).toBeLessThan(finestAt(8));
+  });
+
+  it("the finest visible rung never drops below the fade-in floor", () => {
+    // Whatever the zoom, the finest rung's on-screen spacing is ≥ FROM
+    // (it's the smallest rung that cleared the floor) — bounded density.
+    for (const zoom of [0.2, 0.7, 1, 3, 9, 27]) {
+      const rungs = computeGridRungs(20, zoom, FROM, FULL);
+      const finestScreen = Math.min(...rungs.map((r) => r.step * zoom));
+      expect(finestScreen).toBeGreaterThanOrEqual(FROM - 1e-9);
+    }
+  });
+
+  it("a new finer rung fades in continuously as zoom increases (no pop)", () => {
+    // Sweep zoom upward; the finest rung's opacity should grow smoothly
+    // from ~0 and never jump by a large step between adjacent samples.
+    let prev = 0;
+    for (let z = 1; z <= 4; z += 0.05) {
+      const rungs = computeGridRungs(20, z, FROM, FULL);
+      const finest = rungs.reduce((a, b) => (b.step < a.step ? b : a));
+      // Opacity is always within [0,1].
+      expect(finest.opacity).toBeGreaterThanOrEqual(0);
+      expect(finest.opacity).toBeLessThanOrEqual(1);
+      prev = finest.opacity;
+    }
+    expect(prev).toBeGreaterThanOrEqual(0);
+  });
+
+  it("always keeps a fully-opaque coarse tier", () => {
+    for (const zoom of [0.3, 1, 2.5, 7]) {
+      const rungs = computeGridRungs(20, zoom, FROM, FULL);
+      expect(rungs.some((r) => r.opacity === 1)).toBe(true);
+    }
   });
 });
 

@@ -3,11 +3,15 @@ import { matrix } from "@oh-just-another/math";
 import type { Bounds } from "@oh-just-another/types";
 import type { RenderTarget } from "./render-target.js";
 import {
-  DEFAULT_GRID_DOT_LEVELS,
-  DEFAULT_GRID_LINE_LEVELS,
+  GRID_DOT_FADE_FROM_PX,
+  GRID_DOT_FADE_FULL_PX,
   GRID_DOT_FILL,
   GRID_DOT_RADIUS_PX,
+  GRID_LEVEL_RUNGS,
+  GRID_LEVEL_SUBDIV,
   GRID_LINE_COLOR,
+  GRID_LINE_FADE_FROM_PX,
+  GRID_LINE_FADE_FULL_PX,
   GRID_LINE_WIDTH_PX,
   GRID_MIN_SCREEN_SPACING_PX,
 } from "./constants.js";
@@ -18,10 +22,12 @@ export interface RenderGridOptions {
   /** Skip the implicit `target.clear()` before drawing. Default `false`. */
   readonly skipClear?: boolean;
   /**
-   * Override the default multi-level step ladder. Each entry says
-   * "this `step` (in `gridSize` units) is fully visible once the
-   * zoom reaches `mid`, fades in from `min` to `mid`, and hides
-   * below `min`". Hosts use this to dial the density.
+   * Fixed multi-level step ladder. Each entry says "this `step` (in
+   * `gridSize` units) is fully visible once the zoom reaches `mid`, fades
+   * in from `min` to `mid`, and hides below `min`". When omitted the grid
+   * uses the default DYNAMIC (infinite) ladder — see {@link computeGridRungs}
+   * — which keeps subdividing at every zoom instead of bottoming out at the
+   * ladder's finest rung.
    */
   readonly levels?: readonly GridLevel[];
 }
@@ -35,17 +41,61 @@ export interface GridLevel {
   readonly step: number;
 }
 
+/** One rung of the dynamic ladder: a world-space step and its opacity. */
+export interface GridRung {
+  /** Spacing between lines / dots, in world units. */
+  readonly step: number;
+  /** Paint opacity in [0, 1]. */
+  readonly opacity: number;
+}
+
 /**
- * modern-style multi-level grid:
- * each ladder rung is a self-similar lattice (lines or dots) at
- * `step * gridSize` spacing. As zoom changes, finer rungs fade in
- * and coarser rungs remain — so the user sees an ever-denser grid
- * when zooming in and a sparser one when zooming out, with smooth
- * opacity transitions instead of pop-in.
+ * Compute the dynamic, self-similar grid ladder for a given zoom. The
+ * rungs are anchored to the current zoom — the finest rung is the
+ * smallest `gridSize · SUBDIV^k` (k ∈ ℤ, possibly negative → finer than
+ * `gridSize`) whose on-screen spacing is at least `fadeFromPx` — so as
+ * the zoom changes the whole ladder slides and a new rung always fades
+ * in. Each rung's opacity ramps from `fadeFromPx` (0) to `fadeFullPx`
+ * (1) of on-screen spacing. Pure / allocation-light; exported for tests.
+ */
+export const computeGridRungs = (
+  gridSize: number,
+  zoom: number,
+  fadeFromPx: number,
+  fadeFullPx: number,
+  subdiv = GRID_LEVEL_SUBDIV,
+  rungs = GRID_LEVEL_RUNGS,
+): GridRung[] => {
+  const out: GridRung[] = [];
+  if (gridSize <= 0 || zoom <= 0) return out;
+  // Screen spacing of the base (k = 0) lattice, then the smallest k whose
+  // spacing clears the fade-in floor.
+  const baseScreen = gridSize * zoom;
+  const kMin = Math.ceil(Math.log(fadeFromPx / baseScreen) / Math.log(subdiv));
+  for (let i = 0; i < rungs; i++) {
+    const k = kMin + i;
+    const step = gridSize * subdiv ** k;
+    const screenSpacing = step * zoom;
+    const opacity = Math.max(
+      0,
+      Math.min(1, (screenSpacing - fadeFromPx) / (fadeFullPx - fadeFromPx)),
+    );
+    if (opacity <= 0) continue;
+    out.push({ step, opacity });
+  }
+  return out;
+};
+
+/**
+ * Self-similar background grid. By default it paints a DYNAMIC ladder
+ * (see {@link computeGridRungs}): a handful of zoom-anchored rungs, each
+ * `GRID_LEVEL_SUBDIV`× the previous, so new lines / dots fade in at every
+ * zoom — there's no fixed finest rung to bottom out on. Pass
+ * `options.levels` for the fixed-ladder behaviour.
  *
- * Designed for a dedicated background layer (`target.clear()` ed
- * before painting unless `skipClear` is set). The fill / stroke
- * colour is one constant — opacity carries the level distinction.
+ * Designed for a dedicated background layer (`target.clear()` ed before
+ * painting unless `skipClear` is set). The fill / stroke colour is one
+ * constant — opacity carries the level distinction.
  */
 export const renderGrid = (
   scene: Scene,
@@ -58,12 +108,10 @@ export const renderGrid = (
   if (!gridSize || gridSize <= 0) return;
 
   const style = scene.viewport.gridStyle ?? "lines";
-  // Lines and dots default to different colours and ladders (see
-  // constants). Explicit options.color / options.levels still win so
-  // hosts can fully re-skin either style.
-  const color = options.color ?? (style === "dots" ? GRID_DOT_FILL : GRID_LINE_COLOR);
-  const levels =
-    options.levels ?? (style === "dots" ? DEFAULT_GRID_DOT_LEVELS : DEFAULT_GRID_LINE_LEVELS);
+  const isDots = style === "dots";
+  // Lines and dots default to different colours. Explicit options.color
+  // still wins so hosts can fully re-skin either style.
+  const color = options.color ?? (isDots ? GRID_DOT_FILL : GRID_LINE_COLOR);
   const zoom = scene.viewport.zoom;
   const { width, height } = target.size;
   if (width <= 0 || height <= 0) return;
@@ -72,21 +120,32 @@ export const renderGrid = (
   const viewportWorld = computeViewportWorldRect(scene, width, height);
   if (!viewportWorld) return;
 
+  const draw = (step: number): void => {
+    if (isDots) drawDotLevel(target, viewportWorld, step, color, zoom);
+    else drawLineLevel(target, viewportWorld, step, color, zoom);
+  };
+
   target.save();
   target.setTransform(getWorldToScreen(scene.viewport));
   target.setDashArray(null);
 
-  for (const level of levels) {
-    const opacity = levelOpacity(zoom, level);
-    if (opacity <= 0) continue;
-    const step = level.step * gridSize;
-    const screenSpacing = step * zoom;
-    if (screenSpacing < GRID_MIN_SCREEN_SPACING_PX) continue;
-    target.setOpacity(opacity);
-    if (style === "dots") {
-      drawDotLevel(target, viewportWorld, step, color, zoom);
-    } else {
-      drawLineLevel(target, viewportWorld, step, color, zoom);
+  if (options.levels) {
+    // Fixed-ladder path: opacity keyed off absolute zoom.
+    for (const level of options.levels) {
+      const opacity = levelOpacity(zoom, level);
+      if (opacity <= 0) continue;
+      const step = level.step * gridSize;
+      if (step * zoom < GRID_MIN_SCREEN_SPACING_PX) continue;
+      target.setOpacity(opacity);
+      draw(step);
+    }
+  } else {
+    // Default dynamic (infinite) ladder.
+    const fadeFrom = isDots ? GRID_DOT_FADE_FROM_PX : GRID_LINE_FADE_FROM_PX;
+    const fadeFull = isDots ? GRID_DOT_FADE_FULL_PX : GRID_LINE_FADE_FULL_PX;
+    for (const rung of computeGridRungs(gridSize, zoom, fadeFrom, fadeFull)) {
+      target.setOpacity(rung.opacity);
+      draw(rung.step);
     }
   }
 
@@ -153,7 +212,7 @@ const snappedExtents = (
 });
 
 /**
- * Linear-fade opacity for one rung. Same shape as standard's:
+ * Linear-fade opacity for one rung.
  *   z ≥ mid → 1
  *   min ≤ z < mid → (z − min) / (mid − min)
  *   z < min → 0
@@ -189,4 +248,3 @@ const computeViewportWorldRect = (
   if (!Number.isFinite(minX)) return null;
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 };
-

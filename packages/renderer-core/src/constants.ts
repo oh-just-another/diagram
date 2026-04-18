@@ -6,7 +6,6 @@
 
 import { GRID_COLOR, GRID_DOT_COLOR } from "@oh-just-another/tokens";
 import type { LodOptions } from "./scene-renderer.js";
-import type { GridLevel } from "./grid-renderer.js";
 
 /**
  * Default zoom thresholds for the level-of-detail pipeline. Tuned for
@@ -86,35 +85,48 @@ export const GRID_LINE_WIDTH_PX = 1.0;
  * zoom (divided by `zoom` at the use site). Reads as a crisp anchor on
  * a gray surface. Range: 1.0–2.0.
  */
-export const GRID_DOT_RADIUS_PX = 1.4;
+export const GRID_DOT_RADIUS_PX = 1;
 
 /**
  * Below this on-screen spacing (px) a grid level paints nothing —
- * denser rendering reads as a flat haze. Matches standard's behaviour
- * where a level is implicitly hidden once it gets too dense.
+ * denser rendering reads as a flat haze. Only used by the fixed-ladder
+ * path (`options.levels`); the default dynamic ladder uses the fade
+ * bands below instead.
  */
 export const GRID_MIN_SCREEN_SPACING_PX = 4;
 
-/**
- * Default ruled-grid ladder: 4 self-similar levels tuned for a 20-unit
- * base grid. Coarsest rung is always visible; finer rungs fade in around
- * 1× zoom and below. (standard cadence.)
- */
-export const DEFAULT_GRID_LINE_LEVELS: readonly GridLevel[] = [
-  { min: -1, mid: 0.15, step: 64 },
-  { min: 0.05, mid: 0.375, step: 16 },
-  { min: 0.15, mid: 1, step: 4 },
-  { min: 0.7, mid: 2.5, step: 1 },
-];
+// --- Dynamic (infinite) grid ladder -----------------------------------------
+//
+// The default grid is a SELF-SIMILAR, zoom-relative ladder: instead of a
+// fixed set of world steps it renders a handful of rungs anchored to the
+// current zoom, each rung `GRID_LEVEL_SUBDIV`× the previous. As you zoom
+// the rungs slide — a finer rung fades in and a coarser one fades out —
+// so new lines / dots keep appearing at EVERY zoom, not just at the
+// hand-picked thresholds of a fixed ladder. Rungs finer than `gridSize`
+// are purely visual (snap-to-grid still rounds to `gridSize`).
+
+/** Ratio between adjacent rungs. 4 keeps the 64/16/4/1 cadence. */
+export const GRID_LEVEL_SUBDIV = 4;
 
 /**
- * Default dot-grid ladder — shifted one rung finer than the line ladder
- * so the base `step: 1` lattice (one dot per `gridSize`, ≈20 px at zoom
- * 1) is fully visible at default zoom. Dots are cheaper to read densely
- * than lines, so the user gets a tighter, more useful snapping field.
+ * How many self-similar rungs to paint at once (finest first). 3 keeps a
+ * stable fully-opaque coarse tier while the finest rung fades in/out.
  */
-export const DEFAULT_GRID_DOT_LEVELS: readonly GridLevel[] = [
-  { min: -1, mid: 0.15, step: 16 },
-  { min: 0.05, mid: 0.375, step: 4 },
-  { min: 0.15, mid: 1, step: 1 },
-];
+export const GRID_LEVEL_RUNGS = 3;
+
+/**
+ * Line grid fade band (on-screen px). A rung is invisible at/below
+ * `FROM`, ramps to full opacity by `FULL`, and stays full above. Tuned
+ * so at 100 % (gridSize 20) the 20 px rung reads faint and the 80 px rung
+ * is solid, while subdividing forever.
+ */
+export const GRID_LINE_FADE_FROM_PX = 12;
+export const GRID_LINE_FADE_FULL_PX = 56;
+
+/**
+ * Dot grid fade band. Lower / tighter than lines so the base `gridSize`
+ * dot lattice is fully solid at 100 % (the denser dot field) yet still
+ * subdivides on zoom-in.
+ */
+export const GRID_DOT_FADE_FROM_PX = 10;
+export const GRID_DOT_FADE_FULL_PX = 20;

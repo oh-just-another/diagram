@@ -1441,3 +1441,6 @@
 
 ## 0.55.52
 - feat(diagram): snap-to-grid menu toggle + Cmd/Ctrl suppress
+
+## 0.55.53
+- docs(changeset): dot-grid styling + snap-to-grid

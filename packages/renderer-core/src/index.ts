@@ -12,13 +12,13 @@ export type { ElementRenderer } from "./shape-renderer.js";
 export type { LayerName } from "./layers.js";
 export type { RenderSceneOptions, LodOptions } from "./scene-renderer.js";
 export type { RenderLinksOptions } from "./edge-renderer.js";
-export type { RenderGridOptions } from "./grid-renderer.js";
+export type { RenderGridOptions, GridLevel, GridRung } from "./grid-renderer.js";
 
 export { registerElementRenderer, getElementRenderer, hasElementRenderer } from "./shape-renderer.js";
 export { LAYER_ORDER } from "./layers.js";
 export { renderScene } from "./scene-renderer.js";
 export { renderLinks, strokeRoundedPolyline } from "./edge-renderer.js";
-export { renderGrid } from "./grid-renderer.js";
+export { renderGrid, computeGridRungs } from "./grid-renderer.js";
 
 // Backend-agnostic shape renderers for the built-in `BuiltinElement` types.
 // `installBuiltinRenderers()` registers them via `registerElementRenderer` and
@@ -98,6 +98,10 @@ export {
   GRID_LINE_WIDTH_PX,
   GRID_DOT_RADIUS_PX,
   GRID_MIN_SCREEN_SPACING_PX,
-  DEFAULT_GRID_LINE_LEVELS,
-  DEFAULT_GRID_DOT_LEVELS,
+  GRID_LEVEL_SUBDIV,
+  GRID_LEVEL_RUNGS,
+  GRID_LINE_FADE_FROM_PX,
+  GRID_LINE_FADE_FULL_PX,
+  GRID_DOT_FADE_FROM_PX,
+  GRID_DOT_FADE_FULL_PX,
 } from "./constants.js";
