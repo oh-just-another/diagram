@@ -1444,3 +1444,6 @@
 
 ## 0.55.53
 - docs(changeset): dot-grid styling + snap-to-grid
+
+## 0.55.54
+- feat(grid): infinite self-similar ladder — new lines/dots at every zoom
