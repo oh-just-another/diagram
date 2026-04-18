@@ -153,7 +153,7 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       <LinkRoutingControl key="routing" edge={edge} />,
       <LinkLineKindControl key="kind" edge={edge} />,
       <LinkArrowheadControl key="arrow-from" edge={edge} side="from" />,
-      <LinkAutoRouteControl key="auto" />,
+      <LinkAutoRouteControl key="auto" edge={edge} />,
       <LinkDeleteControl key="delete" />,
       <MoreButton key="more" />,
     ];
@@ -1086,9 +1086,14 @@ const LinkArrowheadControl = ({
   );
 };
 
-const LinkAutoRouteControl = () => {
+const LinkAutoRouteControl = ({ edge }: { readonly edge: Link }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
+  // Obstacle-avoidance produces an orthogonal (waypointed) path, so it
+  // only makes sense for straight / elbow links — a curved (bezier) link
+  // can't carry the routed polyline. Hide the button for curved.
+  const routing: LinkRouting = edge.routing ?? "straight";
+  if (routing === "bezier") return null;
   return (
     <button
       type="button"

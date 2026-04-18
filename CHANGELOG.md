@@ -1447,3 +1447,6 @@
 
 ## 0.55.54
 - feat(grid): infinite self-similar ladder — new lines/dots at every zoom
+
+## 0.55.55
+- docs(changeset): note infinite grid ladder
