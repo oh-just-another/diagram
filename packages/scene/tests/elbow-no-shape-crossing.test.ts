@@ -476,3 +476,71 @@ describe("elbow route never crosses a bound shape", () => {
     }
   });
 });
+
+// Regression for: a bare side
+// threshold flips the wrap top↔bottom every frame when the endpoints' midpoint
+// oscillates around the union centre during a drag. The fix is hysteresis off
+// the previous route (edge.routedPoints) — mirroring the editor's per-frame
+// rerouteElbows loop, which carries routedPoints from frame to frame.
+describe("elbow wrap side is stable under an oscillating drag (hysteresis)", () => {
+  // Tall `up` box dominates the union so its centre stays at y=250 across the
+  // wiggle; the lower `lo` box's y sets where the connection midpoint sits.
+  // midpoint y = (loY + 50 + 250) / 2 → crosses the union centre (250) at
+  // loY = 200, so a wiggle around loY≈200 sits right on the threshold.
+  const UNION_CENTER_Y = 250;
+  const routeAt = (loY: number, prev?: readonly Vec2[]): readonly Vec2[] => {
+    let s = emptyScene();
+    const up = rect("up", 400, 150, 100, 200); // right end, spans y[150,350]
+    const lo = rect("lo", 100, loY, 100, 100); // left end
+    ({ scene: s } = addElement(s, up));
+    ({ scene: s } = addElement(s, lo));
+    const e: Link = {
+      id: linkId("hz"),
+      layerId: layerId(DEFAULT_LAYER_ID),
+      from: { kind: "anchor", elementId: elementId("lo"), anchor: { kind: "named", name: "left" } },
+      to: { kind: "anchor", elementId: elementId("up"), anchor: { kind: "named", name: "right" } },
+      routing: "orthogonal",
+      order: orderBetween(null, null),
+      style: { stroke: "#000" },
+      ...(prev ? { routedPoints: prev } : {}),
+    };
+    ({ scene: s } = addLink(s, e));
+    return routeElbowLink(s, e);
+  };
+  // The wrap crossover runs OUTSIDE the union → the path's extreme-from-centre
+  // point reveals the side.
+  const sideOf = (path: readonly Vec2[]): "top" | "bottom" => {
+    let best = path[0]!.y;
+    let bestD = Math.abs(best - UNION_CENTER_Y);
+    for (const p of path) {
+      const d = Math.abs(p.y - UNION_CENTER_Y);
+      if (d > bestD) {
+        bestD = d;
+        best = p.y;
+      }
+    }
+    return best < UNION_CENTER_Y ? "top" : "bottom";
+  };
+
+  it("keeps its side while the midpoint wiggles across the union centre", () => {
+    // Establish a side clearly on one side of the threshold (loY=160 → midpoint
+    // 230 < 250 → top).
+    let prev = routeAt(160);
+    const established = sideOf(prev);
+    // Wiggle across the threshold (loY 160↔210, midpoint 230↔255), carrying
+    // routedPoints each step like rerouteElbows does.
+    for (const loY of [210, 160, 210, 195, 205, 200, 210, 160]) {
+      const cur = routeAt(loY, prev);
+      expect(sideOf(cur), `wrap flipped at loY=${loY}`).toBe(established);
+      prev = cur;
+    }
+  });
+
+  it("WITHOUT the previous route the bare side would flip (test is meaningful)", () => {
+    // Same geometry, no hysteresis hint → the natural side tracks the midpoint,
+    // so the two sides of the threshold disagree.
+    const below = sideOf(routeAt(160)); // midpoint 230 < 250
+    const above = sideOf(routeAt(240)); // midpoint 270 > 250
+    expect(below).not.toBe(above);
+  });
+});

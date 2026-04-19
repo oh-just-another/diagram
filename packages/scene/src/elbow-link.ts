@@ -4,6 +4,7 @@ import {
   ELBOW_OBSTACLE_CLEARANCE,
   ELBOW_OBSTACLE_MARGIN,
   ELBOW_TERMINAL_BUFFER,
+  ELBOW_WRAP_HYSTERESIS,
 } from "./constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
@@ -56,7 +57,10 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
   // from→bufA / bufB→to segments that `getLinkPath` adds when it wraps
   // routedPoints with from/to — they're never collapsed, so an aligned elbow
   // still has 3 segments (buffer + movable + buffer) and reads as one line.
-  let middle = routeMiddle(from, to, a, b);
+  // Pass the previously routed path as a side-hint so the C-wrap stays on
+  // the same side under a small drag (hysteresis — see wrapRoute). This is
+  // the only history the elbow router consults; the A* core stays pure.
+  let middle = routeMiddle(from, to, a, b, edge.routedPoints);
   middle = applyFixedSegments(middle, edge.fixedSegments);
   return middle;
 };
@@ -89,7 +93,13 @@ export const routeElbowPreview = (
  * non-movable terminal segments. On very short links the buffer is clamped so
  * the two stubs don't overrun each other.
  */
-const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
+const routeMiddle = (
+  from: Vec2,
+  to: Vec2,
+  a: EndInfo,
+  b: EndInfo,
+  prev?: readonly Vec2[],
+): Vec2[] => {
   // FIXED buffer: every terminal stub is exactly ELBOW_TERMINAL_BUFFER — one
   // constant length, never shrunk. bufA / bufB are the stub joints.
   const buf = ELBOW_TERMINAL_BUFFER;
@@ -110,7 +120,7 @@ const routeMiddle = (from: Vec2, to: Vec2, a: EndInfo, b: EndInfo): Vec2[] => {
   // boxes overlap vertically). Wrap deterministically around the union of the
   // obstacles on ONE consistently-chosen side instead of letting A* flip-flop
   // between routing over the top and under the bottom as the shape is dragged.
-  const wrap = wrapRoute(from, to, a, b, bufA, bufB, obstacles);
+  const wrap = wrapRoute(from, to, a, b, bufA, bufB, obstacles, prev);
   if (wrap && !pathCrossesObstacle(wrap, obstacles)) return collapseColinear(wrap);
   const routed = elbowRoute(bufA, bufB, obstacles, {
     startHeading: a.heading,
@@ -175,14 +185,41 @@ const midS_ = (
 };
 
 /**
+ * Pick one of two outside-the-union crossover coordinates (`lo` = top/left,
+ * `hi` = bottom/right) with HYSTERESIS so a small drag doesn't flip the side.
+ *
+ * `mid` is the endpoints' midpoint along the cross axis; `centre` the union
+ * centre. The natural (shortest) side is whichever the midpoint leans toward.
+ * But near the centre — exactly where a diagonal-overlap configuration rests —
+ * a bare threshold flips top↔bottom every frame under a drag (jitter). So
+ * within `ELBOW_WRAP_HYSTERESIS` of the centre we KEEP the previous side
+ * (`prevLo`: was the last route on the `lo` side?); the side only switches once
+ * the midpoint moves past the centre by the band. This is the only history the
+ * elbow router consults — the A* core stays pure (see
+ *,
+ */
+const pickWrapSide = (
+  mid: number,
+  centre: number,
+  lo: number,
+  hi: number,
+  prevLo: boolean | null,
+): number => {
+  const naturalLo = mid <= centre;
+  if (prevLo !== null && Math.abs(mid - centre) < ELBOW_WRAP_HYSTERESIS) {
+    return prevLo ? lo : hi;
+  }
+  return naturalLo ? lo : hi;
+};
+
+/**
  * Deterministic C-wrap for a collinear-opposite pair whose centred crossover
  * (the {@link midS_} thread) would clip a shape — i.e. the two boxes overlap on
  * the cross axis, so there's no gap to thread. Route the crossover run just
- * OUTSIDE the union of the obstacles, on the side (top/bottom for a horizontal
- * pair, left/right for a vertical pair) closest to the natural midpoint. Using
- * the midpoint distance as the side-picker makes the choice a continuous
- * function of position: it switches exactly once (when the midpoint crosses the
- * union's centre), instead of A*'s erratic side-flipping under a drag.
+ * OUTSIDE the union of the obstacles, on one side (top/bottom for a horizontal
+ * pair, left/right for a vertical pair). The side is chosen by
+ * {@link pickWrapSide} with hysteresis off the previous route (`prev`) so a
+ * small drag near the union centre no longer flips the route ("jitter").
  */
 const wrapRoute = (
   from: Vec2,
@@ -192,6 +229,7 @@ const wrapRoute = (
   bufA: Vec2,
   bufB: Vec2,
   obstacles: readonly Bounds[],
+  prev?: readonly Vec2[],
 ): Vec2[] | null => {
   if (obstacles.length === 0) return null;
   let minX = Infinity;
@@ -213,17 +251,45 @@ const wrapRoute = (
   // just above or below the union.
   if (a.heading.y === 0 && b.heading.y === 0 && a.heading.x !== 0 && b.heading.x === -a.heading.x) {
     const my = (from.y + to.y) / 2;
-    const yPick = Math.abs(my - minY) <= Math.abs(my - maxY) ? minY : maxY;
+    const yPick = pickWrapSide(my, (minY + maxY) / 2, minY, maxY, prevWrapLo(prev, "y"));
     return [bufA, { x: bufA.x, y: yPick }, { x: bufB.x, y: yPick }, bufB];
   }
   // Vertical pair (ends exit ±y): the crossover is a vertical run; place it just
   // left or right of the union.
   if (a.heading.x === 0 && b.heading.x === 0 && a.heading.y !== 0 && b.heading.y === -a.heading.y) {
     const mx = (from.x + to.x) / 2;
-    const xPick = Math.abs(mx - minX) <= Math.abs(mx - maxX) ? minX : maxX;
+    const xPick = pickWrapSide(mx, (minX + maxX) / 2, minX, maxX, prevWrapLo(prev, "x"));
     return [bufA, { x: xPick, y: bufA.y }, { x: xPick, y: bufB.y }, bufB];
   }
   return null;
+};
+
+/**
+ * Which side did the previous wrap take? The crossover run sits OUTSIDE the
+ * union, beyond the two endpoints (`prev[0]` / `prev[last]` = the stub joints).
+ * So a `lo`-side wrap dips the path's minimum BELOW the endpoints' band, and a
+ * `hi`-side wrap pushes the maximum ABOVE it. Compare those overshoots. Returns
+ * `null` when there's no usable previous path (first route, degenerate, or no
+ * overshoot either way) — the caller then uses the natural side.
+ */
+const prevWrapLo = (prev: readonly Vec2[] | undefined, axis: "x" | "y"): boolean | null => {
+  if (!prev || prev.length < 3) return null;
+  const at = (p: Vec2): number => (axis === "y" ? p.y : p.x);
+  const first = at(req(prev[0]));
+  const last = at(req(prev[prev.length - 1]));
+  const endLo = Math.min(first, last);
+  const endHi = Math.max(first, last);
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const p of prev) {
+    const v = at(p);
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  const overLo = endLo - lo; // how far the path dips below the endpoints
+  const overHi = hi - endHi; // how far it rises above them
+  if (overLo <= 0 && overHi <= 0) return null; // no crossover overshoot → no hint
+  return overLo >= overHi;
 };
 
 /** True if any axis-aligned segment of `path` passes through an obstacle's

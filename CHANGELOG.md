@@ -1450,3 +1450,6 @@
 
 ## 0.55.55
 - docs(changeset): note infinite grid ladder
+
+## 0.55.56
+- fix(react-ui): hide Route-around button for curved links
