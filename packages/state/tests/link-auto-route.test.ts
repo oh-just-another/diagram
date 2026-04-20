@@ -5,6 +5,7 @@ import {
   addElement,
   addLink,
   emptyScene,
+  getLinkPath,
   orderBetween,
   type Scene,
   type Element,
@@ -76,24 +77,68 @@ const pointer = (type: string, x: number, y: number) => ({
   timeStamp: 0, preventDefault: () => {},
 });
 
-describe("auto-route link around obstacles", () => {
-  it("produces obstacle-avoiding waypoints and switches to orthogonal", () => {
+// True if the polyline passes through the obstacle's interior (sampled).
+const crossesObstacle = (path: readonly { x: number; y: number }[]): boolean => {
+  // obstacle rect: x∈[120,180], y∈[-40,40].
+  for (let i = 1; i < path.length; i++) {
+    const p = path[i - 1]!;
+    const q = path[i]!;
+    for (let t = 0; t <= 1; t += 0.02) {
+      const x = p.x + (q.x - p.x) * t;
+      const y = p.y + (q.y - p.y) * t;
+      if (x > 122 && x < 178 && y > -38 && y < 38) return true;
+    }
+  }
+  return false;
+};
+
+describe("avoid-obstacles link property (route around shapes)", () => {
+  const selectLink = (): Editor => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
       host, mainTarget: noopTarget, overlayTarget: noopTarget,
       initialScene: buildScene(),
     });
-    // Select the link by tapping its body before the obstacle.
     handlers.get("pointerdown")!(pointer("pointerdown", 40, 0));
     handlers.get("pointerup")!(pointer("pointerup", 40, 0));
     expect(editor.selectedLink).toBe(linkId("L"));
+    return editor;
+  };
 
-    editor.autoRouteSelectedLink();
+  it("enabling sets the flag + orthogonal routing and routes around the obstacle", () => {
+    const editor = selectLink();
+    editor.setSelectedLinkAvoidObstacles(true);
+    editor.forceRender(); // rerouteElbows recomputes routedPoints
 
     const link = [...editor.scene.links.values()][0]!;
+    expect(link.avoidObstacles).toBe(true);
     expect(link.routing).toBe("orthogonal");
-    expect((link.waypoints ?? []).length).toBeGreaterThan(0);
-    // The detour must leave y=0 (go around the obstacle that straddles it).
-    expect((link.waypoints ?? []).some((p) => Math.abs(p.y) > 0)).toBe(true);
+    const path = getLinkPath(editor.scene, link)!;
+    // The detour must leave y=0 and must not pass through the obstacle.
+    expect(path.some((p) => Math.abs(p.y) > 0)).toBe(true);
+    expect(crossesObstacle(path)).toBe(false);
+  });
+
+  it("reflects in the getter and toggles off", () => {
+    const editor = selectLink();
+    expect(editor.selectedLinkAvoidsObstacles).toBe(false);
+    editor.setSelectedLinkAvoidObstacles(true);
+    expect(editor.selectedLinkAvoidsObstacles).toBe(true);
+    editor.setSelectedLinkAvoidObstacles(false);
+    expect(editor.selectedLinkAvoidsObstacles).toBe(false);
+    const link = [...editor.scene.links.values()][0]!;
+    expect(link.avoidObstacles).toBe(false);
+  });
+
+  it("re-routes when the obstacle moves into the path (avoid digest)", () => {
+    const editor = selectLink();
+    editor.setSelectedLinkAvoidObstacles(true);
+    editor.forceRender();
+    const before = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
+    expect(crossesObstacle(before)).toBe(false);
+    // The link still clears the obstacle after a forced re-render (stable).
+    editor.forceRender();
+    const after = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
+    expect(crossesObstacle(after)).toBe(false);
   });
 });

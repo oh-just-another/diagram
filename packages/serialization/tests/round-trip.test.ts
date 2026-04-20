@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { annotationId, commentId, fileId, elementId } from "@oh-just-another/types";
+import { annotationId, commentId, fileId, elementId, linkId } from "@oh-just-another/types";
 import {
   addAnnotation,
   addElement,
+  addLink,
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,
@@ -10,6 +11,7 @@ import {
   type Annotation,
   type Patch,
   type Element,
+  type Link,
 } from "@oh-just-another/scene";
 import { deserializeScene, parseScene, serializeScene, stringifyScene } from "../src/index";
 
@@ -69,6 +71,25 @@ describe("round-trip", () => {
     expect(restored.viewport.gridStyle).toBe("dots");
     expect(restored.viewport.snapToGrid).toBe(false);
     expect(restored.viewport.gridSize).toBe(20);
+  });
+
+  it("preserves a link's avoidObstacles + routing", () => {
+    let scene = emptyScene();
+    const link: Link = {
+      id: linkId("L"),
+      layerId: DEFAULT_LAYER_ID,
+      from: { kind: "point", position: { x: 0, y: 0 } },
+      to: { kind: "point", position: { x: 100, y: 0 } },
+      routing: "orthogonal",
+      avoidObstacles: true,
+      order: orderBetween(null, null),
+      style: { stroke: "#000" },
+    };
+    ({ scene } = addLink(scene, link));
+    const restored = deserializeScene(serializeScene(scene));
+    const r = [...restored.links.values()][0]!;
+    expect(r.avoidObstacles).toBe(true);
+    expect(r.routing).toBe("orthogonal");
   });
 
   it("stringify → parseScene round-trip", () => {

@@ -1,5 +1,6 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import {
+  ELBOW_AVOID_MAX_OBSTACLES,
   ELBOW_CROSS_SAMPLE_STEP,
   ELBOW_OBSTACLE_CLEARANCE,
   ELBOW_OBSTACLE_MARGIN,
@@ -57,12 +58,35 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
   // from→bufA / bufB→to segments that `getLinkPath` adds when it wraps
   // routedPoints with from/to — they're never collapsed, so an aligned elbow
   // still has 3 segments (buffer + movable + buffer) and reads as one line.
+  // "Avoid obstacles" mode: route around EVERY scene shape, not just the two
+  // bound ends. Collect the rest of the scene as obstacles and let A* find a
+  // clear orthogonal path (the analytic mid-S / C-wrap only know the two bound
+  // boxes, so they're skipped in this mode).
+  const avoidList = edge.avoidObstacles === true ? collectAvoidObstacles(scene, edge) : undefined;
+  // Perf gate: above the cap, skip whole-scene avoidance (too many obstacle
+  // corners to A* every frame) and fall back to the cheap two-box elbow.
+  const avoid = avoidList && avoidList.length <= ELBOW_AVOID_MAX_OBSTACLES ? avoidList : undefined;
   // Pass the previously routed path as a side-hint so the C-wrap stays on
   // the same side under a small drag (hysteresis — see wrapRoute). This is
   // the only history the elbow router consults; the A* core stays pure.
-  let middle = routeMiddle(from, to, a, b, edge.routedPoints);
+  let middle = routeMiddle(from, to, a, b, edge.routedPoints, avoid);
   middle = applyFixedSegments(middle, edge.fixedSegments);
   return middle;
+};
+
+/**
+ * World bboxes of every scene element EXCEPT the link's own two bound shapes
+ * (those are handled by the headings/dongles). Used by "avoid obstacles" mode.
+ */
+const collectAvoidObstacles = (scene: Scene, edge: Link): Bounds[] => {
+  const skip = new Set<ElementId>();
+  for (const ep of [edge.from, edge.to]) if (ep.kind !== "point") skip.add(ep.elementId);
+  const out: Bounds[] = [];
+  for (const el of scene.elements.values()) {
+    if (skip.has(el.id)) continue;
+    out.push(getElementWorldBounds(el));
+  }
+  return out;
 };
 
 /**
@@ -99,6 +123,7 @@ const routeMiddle = (
   a: EndInfo,
   b: EndInfo,
   prev?: readonly Vec2[],
+  avoid?: readonly Bounds[],
 ): Vec2[] => {
   // FIXED buffer: every terminal stub is exactly ELBOW_TERMINAL_BUFFER — one
   // constant length, never shrunk. bufA / bufB are the stub joints.
@@ -108,6 +133,16 @@ const routeMiddle = (
   const obstacles: Bounds[] = [];
   if (a.obstacle) obstacles.push(a.obstacle);
   if (b.obstacle) obstacles.push(b.obstacle);
+  // Avoid-obstacles mode: route around the whole scene via A* (the analytic
+  // mid-S / C-wrap only reason about the two bound boxes). Include the bound
+  // boxes too so the route still keeps clear of its own ends.
+  if (avoid) {
+    const all = [...obstacles, ...avoid];
+    const routed = elbowRoute(bufA, bufB, all, { startHeading: a.heading, endHeading: b.heading });
+    const mid =
+      routed && routed.length >= 2 ? routed : [bufA, fallbackCorner(bufA, bufB, a.heading), bufB];
+    return collapseColinear(mid);
+  }
   // Collinear-opposite stubs (top↔bottom, left↔right): build a clean,
   // deterministic centred S/Z whose crossover sits in the MIDDLE between the
   // two stub joints — same rule whether the shapes overlap or are separated, so

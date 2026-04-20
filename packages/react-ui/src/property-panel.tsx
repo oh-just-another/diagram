@@ -1089,18 +1089,20 @@ const LinkArrowheadControl = ({
 const LinkAutoRouteControl = ({ edge }: { readonly edge: Link }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
-  // Obstacle-avoidance produces an orthogonal (waypointed) path, so it
-  // only makes sense for straight / elbow links — a curved (bezier) link
-  // can't carry the routed polyline. Hide the button for curved.
+  // Obstacle-avoidance produces an orthogonal path, so it only makes sense
+  // for straight / elbow links — a curved (bezier) link can't carry the
+  // routed polyline. Hide the toggle for curved.
   const routing: LinkRouting = edge.routing ?? "straight";
   if (routing === "bezier") return null;
+  const on = edge.avoidObstacles === true;
   return (
     <button
       type="button"
-      className="du-sel-icon-button"
+      className={`du-sel-icon-button${on ? " is-active" : ""}`}
       title="Route around shapes"
       aria-label="Route around shapes"
-      onClick={() => { editor.autoRouteSelectedLink(); }}
+      aria-pressed={on}
+      onClick={() => { editor.setSelectedLinkAvoidObstacles(!on); }}
     >
       <Waypoints size={14} strokeWidth={1.75} aria-hidden />
     </button>

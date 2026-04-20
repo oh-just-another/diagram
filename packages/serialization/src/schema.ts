@@ -261,6 +261,7 @@ const LinkZ = z
       .readonly()
       .optional(),
     routing: LinkRoutingZ.optional(),
+    avoidObstacles: z.boolean().optional(),
     arrowheads: LinkArrowheadsZ.optional(),
     label: LinkLabelZ.optional(),
     order: z.string(),

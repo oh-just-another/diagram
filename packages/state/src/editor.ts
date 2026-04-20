@@ -17,7 +17,6 @@ import {
   findNearestAnchor,
   getAnchorWorld,
   getAnchorOutwardNormal,
-  elbowRoute,
   routeElbowLink,
   routeElbowPreview,
   getLink,
@@ -86,7 +85,6 @@ import {
 } from "@oh-just-another/history";
 import {
   ANCHOR_CLICK_NEW_ELEMENT_GAP,
-  AUTO_ROUTE_MAX_OBSTACLES,
   DEFAULT_LINK_ROUTING,
   WAYPOINT_COLLAPSE_RADIUS,
 } from "./constants.js";
@@ -4529,40 +4527,36 @@ export class Editor {
     this.notify();
   }
 
+  /** Whether the selected link has obstacle-avoidance routing enabled. */
+  get selectedLinkAvoidsObstacles(): boolean {
+    const id = this.selectedLink;
+    if (id === null) return false;
+    return getLink(this._scene, id)?.avoidObstacles === true;
+  }
+
   /**
-   * Route the selected link around other shapes (A* elbow router). Stores
-   * the obstacle-avoiding bends in `waypoints` and switches the link to
-   * orthogonal routing — one undo step. No-op when nothing is selected, the
-   * route can't be found, or the scene has more than
-   * `AUTO_ROUTE_MAX_OBSTACLES` shapes (perf gate, à la standard's snap gate).
+   * Toggle persistent "route around shapes" on the selected link (standard
+   * model). Enabling sets `avoidObstacles` and forces `orthogonal` routing —
+   * the elbow router then keeps the path clear of EVERY scene shape and
+   * re-routes whenever an obstacle moves into the way (see
+   * `routeElbowLink` / `elbowSignature`). Disabling drops the flag; the
+   * routing type is left as-is. One undo step; the routed path itself is
+   * derived (recomputed by `rerouteElbows`). No-op when no link is selected.
    */
-  autoRouteSelectedLink(): void {
+  setSelectedLinkAvoidObstacles(enabled: boolean): void {
     const id = this.selectedLink;
     if (id === null) return;
     const edge = getLink(this._scene, id);
-    if (!edge) return;
-    const path = getLinkPath(this._scene, edge);
-    if (!path || path.length < 2) return;
-    const from = req(path[0]);
-    const to = req(path[path.length - 1]);
-
-    // Don't treat the link's own endpoint shapes as obstacles.
-    const exclude = new Set<ElementId>();
-    for (const ep of [edge.from, edge.to]) if (ep.kind !== "point") exclude.add(ep.elementId);
-
-    const obstacles: Bounds[] = [];
-    for (const shape of this._scene.elements.values()) {
-      if (exclude.has(shape.id)) continue;
-      obstacles.push(getElementWorldBounds(shape));
-      if (obstacles.length > AUTO_ROUTE_MAX_OBSTACLES) return; // perf gate
-    }
-
-    const route = elbowRoute(from, to, obstacles);
-    if (!route || route.length < 2) return;
-    const waypoints = route.slice(1, -1); // drop the resolved from / to
-    const r = updateLink(this._scene, id, (e) => ({ ...e, routing: "orthogonal", waypoints }));
+    if (!edge || edge.avoidObstacles === enabled) return;
+    const r = updateLink(this._scene, id, (e) => ({
+      ...e,
+      avoidObstacles: enabled,
+      ...(enabled ? { routing: "orthogonal" as const } : {}),
+    }));
     this._scene = r.scene;
     this._history.push(r.patch);
+    // Force the next reroute to recompute with the new mode.
+    this.elbowRouteSig.delete(id);
     this.notify();
   }
 
@@ -4851,7 +4845,19 @@ export class Editor {
             : "f";
       return `${ep.kind}:${ep.elementId}:${ref}:${b ? `${b.x},${b.y},${b.width},${b.height}` : "x"}`;
     };
-    return `${part(edge.from)}|${part(edge.to)}|${JSON.stringify(edge.fixedSegments ?? null)}`;
+    const base = `${part(edge.from)}|${part(edge.to)}|${JSON.stringify(edge.fixedSegments ?? null)}`;
+    // Avoid-obstacles links depend on EVERY shape's geometry, so their route
+    // must invalidate when any obstacle moves — fold a digest of all element
+    // bboxes into the signature. Only paid by links that opt in.
+    if (edge.avoidObstacles === true) {
+      let digest = "|avoid:";
+      for (const el of this._scene.elements.values()) {
+        const bb = getElementWorldBounds(el);
+        digest += `${el.id},${bb.x},${bb.y},${bb.width},${bb.height};`;
+      }
+      return base + digest;
+    }
+    return base;
   }
 
   /**

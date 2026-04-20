@@ -177,6 +177,14 @@ export interface Link {
   /** Routing strategy. Default `straight`. */
   readonly routing?: LinkRouting;
   /**
+   * When `true` (and `routing === "orthogonal"`), the elbow router avoids
+   * EVERY scene shape, not just the two it binds — re-routing around any
+   * obstacle that moves into the way. Persistent per-edge property (the
+   * standard "route around shapes" toggle). Off / absent → the router only
+   * keeps clear of its own two bound shapes (cheaper, the default).
+   */
+  readonly avoidObstacles?: boolean;
+  /**
    * Visual flavour of the connector body.
    *
    * - `"line"` — thin stroked polyline (the default). Width =

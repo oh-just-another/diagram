@@ -1453,3 +1453,6 @@
 
 ## 0.55.56
 - fix(react-ui): hide Route-around button for curved links
+
+## 0.55.57
+- fix(scene): stabilize elbow C-wrap side with hysteresis

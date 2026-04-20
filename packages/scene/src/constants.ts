@@ -63,6 +63,15 @@ export const ELBOW_BEND_PENALTY = 100000;
 export const ELBOW_WRAP_HYSTERESIS = 24;
 
 /**
+ * Perf cap for "avoid obstacles" routing. The A* grid scales with the
+ * number of obstacle corners, and the route is recomputed every frame
+ * while a shape is dragged, so above this many scene shapes we skip
+ * whole-scene avoidance and fall back to the cheap two-box elbow (the
+ * link still keeps clear of its own ends). Range: 60–300.
+ */
+export const ELBOW_AVOID_MAX_OBSTACLES = 150;
+
+/**
  * Length (world px) of the fixed, non-movable terminal segment an elbow
  * connector always leaves at each end before its first bend — the endpoint
  * is pushed out this far along its exit heading so the connector departs/
