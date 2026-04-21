@@ -1459,3 +1459,6 @@
 
 ## 0.55.58
 - feat(scene,state): persistent "avoid obstacles" link property
+
+## 0.55.59
+- docs(links): close route-around + record fix-commits; changeset

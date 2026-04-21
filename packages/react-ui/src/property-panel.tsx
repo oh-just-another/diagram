@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlignCenter,
   AlignLeft,
@@ -189,6 +189,21 @@ const PanelShell = ({
   readonly style?: CSSProperties | undefined;
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  // Collapse the expanded overflow sheet on a tap outside the panel.
+  // The ⋮ button and the grabber collapse it directly; this covers taps
+  // on the canvas / elsewhere.
+  useEffect(() => {
+    if (!mobile || !expanded) return undefined;
+    const onDown = (e: PointerEvent): void => {
+      const el = panelRef.current;
+      if (el && e.target instanceof Node && !el.contains(e.target)) setExpanded(false);
+    };
+    // `capture` so we see the tap even if something stops propagation.
+    document.addEventListener("pointerdown", onDown, true);
+    return () => { document.removeEventListener("pointerdown", onDown, true); };
+  }, [mobile, expanded]);
+
   if (!mobile) {
     return (
       <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style}>
@@ -199,7 +214,11 @@ const PanelShell = ({
     );
   }
   return (
-    <div className={`du-sel-panel du-sel-panel-mobile ${className ?? ""}`.trim()} style={style}>
+    <div
+      ref={panelRef}
+      className={`du-sel-panel du-sel-panel-mobile ${className ?? ""}`.trim()}
+      style={style}
+    >
       <div className="du-sel-mobile-row">
         <div className="du-sel-mobile-primary">{primary}</div>
         {overflow.length > 0 ? (
