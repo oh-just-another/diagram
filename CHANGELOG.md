@@ -1456,3 +1456,6 @@
 
 ## 0.55.57
 - fix(scene): stabilize elbow C-wrap side with hysteresis
+
+## 0.55.58
+- feat(scene,state): persistent "avoid obstacles" link property
