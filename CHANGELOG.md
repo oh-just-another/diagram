@@ -1462,3 +1462,6 @@
 
 ## 0.55.59
 - docs(links): close route-around + record fix-commits; changeset
+
+## 0.55.60
+- feat(react-ui): collapse mobile property sheet on tap-outside

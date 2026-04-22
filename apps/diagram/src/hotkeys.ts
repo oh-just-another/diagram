@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { defaultActionRegistry, type Editor } from "@oh-just-another/state";
 import { openImageFilePicker } from "@oh-just-another/react-ui";
+import { isEditableTarget } from "./dom-focus.js";
 
 /**
  * Wire global keyboard shortcuts to the editor:
@@ -34,7 +35,10 @@ export const useHotkeys = (editor: Editor | null): void => {
 
     const onKey = (ev: KeyboardEvent): void => {
       const t = ev.target;
-      const inTextField = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
+      // Editable = INPUT / TEXTAREA / SELECT / contenteditable. The bare
+      // instanceof check missed contenteditable hosts, so shortcuts fired
+      // while typing in them.
+      const inTextField = isEditableTarget(t);
       // Text fields own their keystrokes — but Escape is special. It must
       // still cancel / deselect even when a field (e.g. the library search
       // box) has focus, otherwise opening the library panel "swallows" the

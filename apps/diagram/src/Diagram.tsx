@@ -111,6 +111,7 @@ import {
 } from "./capabilities";
 import { createRenderWorker } from "./render-worker-factory";
 import { exportSceneToPng, type PngExportBackground } from "./png-export";
+import { isEditableTarget } from "./dom-focus";
 
 /**
  * `<Diagram>` — library shell. Mount inside any
@@ -424,7 +425,12 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   // (and reset on blur) so a missed keyup can't leave snapping stuck off.
   useEffect(() => {
     if (!editor) return undefined;
-    const sync = (e: KeyboardEvent) => { editor.setSnapSuppressed(e.metaKey || e.ctrlKey); };
+    const sync = (e: KeyboardEvent) => {
+      // Don't track the modifier (or touch snap state) while typing in a
+      // field — keep the editor's snap-suppress flag inert there.
+      if (isEditableTarget(e.target)) return;
+      editor.setSnapSuppressed(e.metaKey || e.ctrlKey);
+    };
     const reset = () => { editor.setSnapSuppressed(false); };
     window.addEventListener("keydown", sync);
     window.addEventListener("keyup", sync);
