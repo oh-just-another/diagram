@@ -822,6 +822,14 @@ export class Editor {
    * interaction machine — `pinchOrigin` holds the baseline.
    */
   public readonly activePointers = new Map<number, Vec2>();
+  /**
+   * One-finger-pan candidate: set at pointer-down when a TOUCH press lands
+   * on empty canvas in select mode. A tap (no movement) still falls through
+   * to select/deselect; once the finger drags past slop, onMove promotes
+   * this to a real pan instead of a marquee lasso (mobile convention —
+   * Screen-space origin point.
+   */
+  public touchPanCandidate: Vec2 | null = null;
   // Pinch gesture state lives in PinchController (./editor/pinch.ts)
   // — `pinch.isActive()` replaces the old `pinchOrigin !== null` check.
   public pinch!: PinchController;

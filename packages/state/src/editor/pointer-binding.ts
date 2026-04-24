@@ -99,6 +99,11 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       editor.actor.send({ type: "POINTER_CANCEL" });
       editor.cancelGesture();
       editor.cancelLongPress();
+      // A one-finger pan may already be in flight (first finger dragged on
+      // empty canvas) — drop it so it doesn't fight the pinch. No menu fires
+      // (touch pan is button 0), so clear directly rather than endPanGesture.
+      editor.panGesture = null;
+      editor.touchPanCandidate = null;
       editor.beginPinch();
       return;
     }
@@ -472,6 +477,14 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     } else {
       editor.groupResizeOrigin = null;
     }
+    // Arm one-finger pan: a TOUCH press on empty canvas in select mode.
+    // A tap still deselects via the machine below; onMove promotes this to
+    // a pan once the finger drags past slop (instead of a marquee lasso).
+    editor.touchPanCandidate =
+      data.kind === "touch" && editor.mode === "select" && target.kind === "empty"
+        ? data.point
+        : null;
+
     editor.actor.send({
       type: "POINTER_DOWN",
       point: worldPoint,
@@ -513,6 +526,26 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     }
     if (editor.pinch.isActive()) {
       editor.applyPinch();
+      return;
+    }
+
+    // One-finger pan: an armed touch press on empty canvas that has now
+    // dragged past slop becomes a pan (not a marquee lasso). beginPanGesture
+    // POINTER_CANCELs the nascent machine gesture (clears the lasso preview).
+    if (
+      editor.touchPanCandidate !== null &&
+      editor.activePointers.size === 1 &&
+      distanceTo(editor.touchPanCandidate, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
+    ) {
+      const origin = editor.touchPanCandidate;
+      editor.touchPanCandidate = null;
+      editor.beginPanGesture(ev.pointerId, ev.button, origin);
+      const pan = editor.panGesture;
+      if (pan) {
+        pan.moved = true;
+        editor.panBy({ x: data.point.x - origin.x, y: data.point.y - origin.y });
+        pan.lastPoint = data.point;
+      }
       return;
     }
 
@@ -675,6 +708,9 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       editor.host.releasePointerCapture(ev.pointerId);
     }
     editor.activePointers.delete(ev.pointerId);
+    // Tap or drag finished — disarm the one-finger-pan candidate (a tap
+    // never promoted to a pan, so it falls through to select/deselect).
+    editor.touchPanCandidate = null;
 
     // Pan gesture ends — clean up cursor and state, skip the rest.
     if (editor.panGesture?.pointerId === ev.pointerId) {
@@ -904,6 +940,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
 
   const onCancel = (ev: PointerEvent) => {
     editor.activePointers.delete(ev.pointerId);
+    editor.touchPanCandidate = null;
     if (editor.panGesture?.pointerId === ev.pointerId) {
       editor.endPanGesture();
       return;

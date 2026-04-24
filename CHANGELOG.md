@@ -1465,3 +1465,6 @@
 
 ## 0.55.60
 - feat(react-ui): collapse mobile property sheet on tap-outside
+
+## 0.55.61
+- fix(diagram): don't trigger hotkeys/snap modifier while typing in a field
