@@ -1468,3 +1468,6 @@
 
 ## 0.55.61
 - fix(diagram): don't trigger hotkeys/snap modifier while typing in a field
+
+## 0.55.62
+- feat(state): one-finger touch pan on empty canvas

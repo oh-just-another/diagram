@@ -238,6 +238,7 @@ const getEmptyDragImage = (): HTMLDivElement | null => {
 };
 
 const PaletteItem = ({ template }: { readonly template: Template }) => {
+  const editor = useDiagramOptional();
   const onDragStart = (ev: DragEvent<HTMLDivElement>) => {
     ev.dataTransfer.setData("application/x-template-id", template.id);
     ev.dataTransfer.effectAllowed = "copy";
@@ -251,6 +252,36 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
     setActiveDrag(null);
   };
 
+  // Tap-to-place: HTML5 drag-and-drop doesn't fire on touch, so the
+  // library couldn't reach the canvas on mobile
+  //. On coarse-pointer
+  // devices a tap drops the template's default shape at the viewport
+  // centre (one undo step), then selects it for the user to move.
+  // Desktop keeps drag-to-position — the click is a no-op there.
+  const onClick = (): void => {
+    if (!editor) return;
+    if (typeof window !== "undefined" && !window.matchMedia("(pointer: coarse)").matches) return;
+    const host = editor.hostElement;
+    const rect = host.getBoundingClientRect();
+    const center = editor.screenToWorld({ x: rect.width / 2, y: rect.height / 2 });
+    const id = elementId(
+      `shape-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    );
+    const shape = template.factory({
+      id,
+      layerId: DEFAULT_LAYER_ID,
+      position: center,
+      order: orderForTop(
+        [...editor.scene.elements.values()]
+          .filter((s) => s.layerId === DEFAULT_LAYER_ID)
+          .map((s) => s.order),
+      ),
+    });
+    const placement = editor.beginPlacement(shape);
+    placement.update(center);
+    placement.commit();
+  };
+
   return (
     <div
       role="button"
@@ -258,6 +289,7 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
       title={template.name}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
+      onClick={onClick}
       className="du-palette-item"
     >
       <span
