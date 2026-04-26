@@ -1474,3 +1474,6 @@
 
 ## 0.55.63
 - feat(react-ui): tap-to-place library items on touch
+
+## 0.55.64
+- feat(state): action registry — sequence hotkeys, keyTest, UI metadata
