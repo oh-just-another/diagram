@@ -9,15 +9,9 @@ import {
   type Patch,
   type Element,
 } from "@oh-just-another/scene";
-import type { Editor } from "@oh-just-another/state";
+import { defaultActionRegistry, type Editor } from "@oh-just-another/state";
 import { defaultRegistry, type Template, type TemplateContext } from "@oh-just-another/templates";
 import { linkId, elementId, type LinkId, type LayerId, type ElementId } from "@oh-just-another/types";
-
-/**
- * Window (ms) within which the "g d" debug-toggle sequence must
- * complete — press `g`, then `d` faster than this to toggle the panel.
- */
-const DEBUG_TOGGLE_SEQUENCE_WINDOW_MS = 600;
 
 /** Renderer backend choices surfaced in the Display tab. */
 const RENDERERS = ["auto", "canvas2d", "webgl2", "offscreen"] as const;
@@ -80,33 +74,25 @@ export const DebugPanel = ({ editor }: { editor: Editor | null }) => {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<TabId>("inspector");
 
-  // Toggle hotkey — the "g d" key sequence (no modifiers), global on
-  // `window`. Layout-independent via `event.code`. Suppressed while a
-  // text field is focused so typing isn't hijacked.
+  // Toggle via a registered action: the "d d" sequence routes through
+  // `defaultActionRegistry` like every other hotkey (fed by `hotkeys.ts`,
+  // which already skips editable targets). Exposed as a `toggle` action so
+  // the panel can also be toggled from a button / programmatically.
+  // `replace` (not `register`) is idempotent across StrictMode double-mount
+  // / HMR. A ref keeps `checked` reading the live `open` without re-binding.
+  const openRef = useRef(open);
+  openRef.current = open;
   useEffect(() => {
-    let lastGAt = 0;
-    const onKey = (ev: KeyboardEvent) => {
-      const inText =
-        ev.target instanceof HTMLInputElement ||
-        ev.target instanceof HTMLTextAreaElement ||
-        (ev.target as HTMLElement | null)?.isContentEditable;
-      if (inText) return;
-      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
-      if (ev.code === "KeyG") {
-        lastGAt = ev.timeStamp;
-        return;
-      }
-      if (ev.code === "KeyD" && ev.timeStamp - lastGAt <= DEBUG_TOGGLE_SEQUENCE_WINDOW_MS) {
-        lastGAt = 0;
-        ev.preventDefault();
-        setOpen((v) => !v);
-        return;
-      }
-      // Any other key breaks a pending sequence.
-      lastGAt = 0;
-    };
-    window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("keydown", onKey); };
+    defaultActionRegistry.replace({
+      id: "toggle-debug-panel",
+      label: "Debug panel",
+      category: "other",
+      uiKind: "toggle",
+      sequence: ["g", "d"],
+      checked: () => openRef.current,
+      perform: () => { setOpen((v) => !v); },
+    });
+    return () => { defaultActionRegistry.unregister("toggle-debug-panel"); };
   }, []);
 
   // Force re-render on every editor mutation. The four tabs read

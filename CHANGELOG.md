@@ -1477,3 +1477,6 @@
 
 ## 0.55.64
 - feat(state): action registry — sequence hotkeys, keyTest, UI metadata
+
+## 0.55.65
+- docs(changeset): action registry sequence/keyTest/UI-meta fields
