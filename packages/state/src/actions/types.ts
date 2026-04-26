@@ -64,11 +64,44 @@ export interface Action {
   /** Hotkey trigger; multiple matchers allowed (e.g. ⌘Z and Ctrl+Z). */
   readonly hotkey?: HotkeyMatcher | readonly HotkeyMatcher[];
   /**
+   * Multi-key SEQUENCE trigger — the keys (plain, no modifiers) must be
+   * pressed in order within `SEQUENCE_HOTKEY_WINDOW_MS` (e.g.
+   * `["g", "d"]` to toggle the debug panel, vim/Gmail style). Matched
+   * case-insensitively against `event.key`. Sequences are checked before
+   * single-key `hotkey` / `keyTest` so the final key can't double-fire.
+   */
+  readonly sequence?: readonly string[];
+  /**
+   * Escape hatch for hotkeys the declarative `hotkey` / `sequence` can't
+   * express (modifier combos with custom logic, contextual triggers).
+   * Returns `true` to claim the event. Checked after `sequence` and
+   * before the declarative `hotkey` matchers.
+   */
+  readonly keyTest?: (event: KeyboardEvent, ctx: ActionContext) => boolean;
+  /**
    * `true` when the action makes sense in the current state — used
    * by menus to gate visibility AND by `dispatch` to short-circuit
    * a no-op trigger. Defaults to "always true" when omitted.
    */
   readonly predicate?: (ctx: ActionContext) => boolean;
+  /**
+   * Toggle state for `uiKind: "toggle"` actions (e.g. is the debug panel
+   * open, is snap on). Read by the UI to render the pressed/checked state.
+   * Pure read of editor / host state.
+   */
+  readonly checked?: (ctx: ActionContext) => boolean;
+  /**
+   * Serializable UI metadata so `react-ui` can render the action without
+   * the kernel importing React. `iconId` keys an icon registry on the UI
+   * side; `uiKind` picks the control shape.
+   */
+  readonly iconId?: string;
+  readonly uiKind?: "button" | "toggle" | "menu-item";
+  /**
+   * When `true`, the action stays available in read-only / view mode.
+   * Default (absent) → hidden in view mode.
+   */
+  readonly viewMode?: boolean;
   /** The actual work — receives the editor and (optionally) the event. */
   readonly perform: (ctx: ActionContext) => void;
 }

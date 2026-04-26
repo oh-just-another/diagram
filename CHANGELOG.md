@@ -1471,3 +1471,6 @@
 
 ## 0.55.62
 - feat(state): one-finger touch pan on empty canvas
+
+## 0.55.63
+- feat(react-ui): tap-to-place library items on touch

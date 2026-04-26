@@ -295,4 +295,95 @@ describe("defaultActionRegistry built-ins", () => {
     expect(editor.scene.links.has(linkId("L"))).toBe(false);
     expect(editor.selectedLink).toBeNull();
   });
+
+  const keyEv = (key: string, t: number, mods: Partial<KeyboardEvent> = {}): KeyboardEvent =>
+    ({
+      key,
+      code: `Key${key.toUpperCase()}`,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      timeStamp: t,
+      ...mods,
+    }) as unknown as KeyboardEvent;
+
+  it("sequence hotkey (g d) fires only after the full chain in order", () => {
+    const reg = new ActionRegistry();
+    const perf = vi.fn();
+    reg.register({ id: "toggle-debug", sequence: ["g", "d"], perform: perf });
+    const editor = makeEditor();
+    // `g` alone — no fire.
+    expect(reg.dispatchHotkey(keyEv("g", 0), { editor })).toBe(false);
+    expect(perf).not.toHaveBeenCalled();
+    // then `d` — completes the sequence.
+    expect(reg.dispatchHotkey(keyEv("d", 100), { editor })).toBe(true);
+    expect(perf).toHaveBeenCalledOnce();
+  });
+
+  it("sequence does NOT fire when the keys fall outside the time window", () => {
+    const reg = new ActionRegistry();
+    const perf = vi.fn();
+    reg.register({ id: "toggle-debug", sequence: ["g", "d"], perform: perf });
+    const editor = makeEditor();
+    reg.dispatchHotkey(keyEv("g", 0), { editor });
+    // `d` long after `g` (> SEQUENCE_HOTKEY_WINDOW_MS) — buffer pruned.
+    expect(reg.dispatchHotkey(keyEv("d", 5000), { editor })).toBe(false);
+    expect(perf).not.toHaveBeenCalled();
+  });
+
+  it("a modifier press between sequence keys breaks the chain", () => {
+    const reg = new ActionRegistry();
+    const perf = vi.fn();
+    reg.register({ id: "toggle-debug", sequence: ["g", "d"], perform: perf });
+    const editor = makeEditor();
+    reg.dispatchHotkey(keyEv("g", 0), { editor });
+    reg.dispatchHotkey(keyEv("a", 50, { metaKey: true, ctrlKey: true }), { editor }); // Cmd+A
+    expect(reg.dispatchHotkey(keyEv("d", 100), { editor })).toBe(false);
+    expect(perf).not.toHaveBeenCalled();
+  });
+
+  it("keyTest escape hatch claims the event", () => {
+    const reg = new ActionRegistry();
+    const perf = vi.fn();
+    reg.register({
+      id: "custom",
+      keyTest: (ev) => ev.key === "Enter" && ev.shiftKey,
+      perform: perf,
+    });
+    const editor = makeEditor();
+    expect(reg.dispatchHotkey(keyEv("Enter", 0, { shiftKey: true }), { editor })).toBe(true);
+    expect(perf).toHaveBeenCalledOnce();
+    expect(reg.dispatchHotkey(keyEv("Enter", 1), { editor })).toBe(false); // no shift
+  });
+
+  it("keyTest still honours predicate", () => {
+    const reg = new ActionRegistry();
+    const perf = vi.fn();
+    reg.register({
+      id: "custom",
+      keyTest: () => true,
+      predicate: () => false,
+      perform: perf,
+    });
+    const editor = makeEditor();
+    expect(reg.dispatchHotkey(keyEv("x", 0), { editor })).toBe(false);
+    expect(perf).not.toHaveBeenCalled();
+  });
+
+  it("checked reflects toggle state and is a pure read", () => {
+    const reg = new ActionRegistry();
+    let on = false;
+    reg.register({
+      id: "toggle-thing",
+      uiKind: "toggle",
+      checked: () => on,
+      perform: () => { on = !on; },
+    });
+    const editor = makeEditor();
+    const a = reg.get("toggle-thing")!;
+    expect(a.checked?.({ editor })).toBe(false);
+    reg.dispatch("toggle-thing", { editor });
+    expect(a.checked?.({ editor })).toBe(true);
+  });
 });

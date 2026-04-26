@@ -1,4 +1,5 @@
 import { isMac } from "../platform.js";
+import { SEQUENCE_HOTKEY_WINDOW_MS } from "../constants.js";
 import { historyActions } from "./actionHistory.js";
 import { selectionActions } from "./actionSelection.js";
 import { clipboardActions } from "./actionClipboard.js";
@@ -19,6 +20,13 @@ export class ActionRegistry {
   private readonly entries = new Map<string, Action>();
   /** Registered keys for ordered iteration on dispatch. */
   private readonly order: string[] = [];
+  /**
+   * Rolling buffer of recent plain keypresses (key + event timestamp) for
+   * matching multi-key `sequence` actions like `g d`. Pruned to the
+   * `SEQUENCE_HOTKEY_WINDOW_MS` window on each feed; cleared on a match or
+   * when a modifier combo interrupts the chain.
+   */
+  private seqBuffer: { key: string; t: number }[] = [];
 
   register(action: Action): void {
     if (this.entries.has(action.id)) {
@@ -77,9 +85,20 @@ export class ActionRegistry {
    */
   dispatchHotkey(event: KeyboardEvent, ctx: Omit<ActionContext, "event">): boolean {
     const fullCtx: ActionContext = { ...ctx, event };
+    // 1. Multi-key sequences (g d, …) — checked first so the final key
+    //    can't also fire a single-key action bound to the same letter.
+    if (this.trySequence(event, fullCtx)) return true;
     for (const id of this.order) {
       const action = this.entries.get(id);
-      if (!action?.hotkey) continue;
+      if (!action) continue;
+      // 2. Custom keyTest escape hatch (before declarative matchers).
+      if (action.keyTest?.(event, fullCtx)) {
+        if (action.predicate && !action.predicate(fullCtx)) continue;
+        action.perform(fullCtx);
+        return true;
+      }
+      // 3. Declarative single-key matchers.
+      if (!action.hotkey) continue;
       const matchers: readonly HotkeyMatcher[] = Array.isArray(action.hotkey)
         ? action.hotkey
         : [action.hotkey];
@@ -89,6 +108,37 @@ export class ActionRegistry {
         action.perform(fullCtx);
         return true;
       }
+    }
+    return false;
+  }
+
+  /**
+   * Feed the event into the sequence buffer and dispatch the first action
+   * whose `sequence` the buffer's tail now completes (within the time
+   * window). Only plain keypresses (single char, no Meta/Ctrl/Alt) chain;
+   * any modifier combo clears the buffer so `g`-then-`Cmd+d` can't match.
+   */
+  private trySequence(event: KeyboardEvent, ctx: ActionContext): boolean {
+    const plain =
+      event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
+    if (!plain) {
+      this.seqBuffer = [];
+      return false;
+    }
+    const t = event.timeStamp;
+    this.seqBuffer = this.seqBuffer.filter((e) => t - e.t <= SEQUENCE_HOTKEY_WINDOW_MS);
+    this.seqBuffer.push({ key: event.key.toLowerCase(), t });
+    for (const id of this.order) {
+      const action = this.entries.get(id);
+      if (!action?.sequence || action.sequence.length === 0) continue;
+      const seq = action.sequence.map((k) => k.toLowerCase());
+      const tail = this.seqBuffer.slice(-seq.length);
+      if (tail.length !== seq.length) continue;
+      if (!tail.every((e, i) => e.key === seq[i])) continue;
+      if (action.predicate && !action.predicate(ctx)) continue;
+      this.seqBuffer = [];
+      action.perform(ctx);
+      return true;
     }
     return false;
   }

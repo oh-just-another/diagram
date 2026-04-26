@@ -531,6 +531,15 @@ export const TEXT_FONT_SIZE_MAX = 256;
  * - `TEXT_RESIZE_MIN_FONT_SIZE` — clamp so corner-resize can't shrink
  *   text below a usable size.
  */
+/**
+ * Time window (ms) within which a multi-key action sequence (e.g. `g`
+ * then `d` to toggle the debug panel) must complete. Keys further apart
+ * than this don't chain — the buffer prunes stale presses. 1 s matches
+ * the "press g, then d" feel of vim-/Gmail-style sequence shortcuts.
+ * Range: 500–2000.
+ */
+export const SEQUENCE_HOTKEY_WINDOW_MS = 1000;
+
 export const CARET_BLINK_INTERVAL_MS = 530;
 export const TEXT_SELECTION_FILL = "#1a73e8";
 export const TEXT_SELECTION_OPACITY = 0.25;
