@@ -386,4 +386,27 @@ describe("defaultActionRegistry built-ins", () => {
     reg.dispatch("toggle-thing", { editor });
     expect(a.checked?.({ editor })).toBe(true);
   });
+
+  it("arrow keys nudge the selection (Shift = coarse step) via the registry", () => {
+    const editor = makeEditor();
+    editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
+    const x0 = editor.scene.elements.get(elementId("a"))!.position.x;
+    expect(defaultActionRegistry.dispatchHotkey(keyEv("ArrowRight", 0), { editor })).toBe(true);
+    expect(editor.scene.elements.get(elementId("a"))!.position.x).toBe(x0 + 1);
+    expect(
+      defaultActionRegistry.dispatchHotkey(keyEv("ArrowRight", 1, { shiftKey: true }), { editor }),
+    ).toBe(true);
+    expect(editor.scene.elements.get(elementId("a"))!.position.x).toBe(x0 + 11);
+  });
+
+  it("Tab is a registered focus-cycle action", () => {
+    const editor = makeEditor();
+    expect(defaultActionRegistry.dispatchHotkey(keyEv("Tab", 0), { editor })).toBe(true);
+  });
+
+  it("Enter only fires edit-or-create when applicable (predicate gate)", () => {
+    const editor = makeEditor();
+    // Nothing selected, select mode → Enter does nothing (falls through).
+    expect(defaultActionRegistry.dispatchHotkey(keyEv("Enter", 0), { editor })).toBe(false);
+  });
 });

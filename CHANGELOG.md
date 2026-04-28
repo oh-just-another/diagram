@@ -1480,3 +1480,6 @@
 
 ## 0.55.65
 - docs(changeset): action registry sequence/keyTest/UI-meta fields
+
+## 0.55.66
+- refactor(diagram): route debug-panel "g d" through the action registry

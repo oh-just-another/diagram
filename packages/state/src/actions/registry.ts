@@ -7,6 +7,7 @@ import { zOrderActions } from "./actionZOrder.js";
 import { groupingActions } from "./actionGrouping.js";
 import { zoomActions } from "./actionZoom.js";
 import { modeActions } from "./actionMode.js";
+import { keyboardActions } from "./actionKeyboard.js";
 import type { Action, ActionContext, HotkeyMatcher } from "./types.js";
 
 /**
@@ -261,6 +262,7 @@ export const registerBuiltinActions = (registry: ActionRegistry): void => {
     ...groupingActions,
     ...zoomActions,
     ...modeActions,
+    ...keyboardActions,
   ];
   for (const action of allBuiltins) {
     registry.register(action);

@@ -51,83 +51,26 @@ export const useHotkeys = (editor: Editor | null): void => {
         (t as HTMLElement).blur();
       }
 
-      // First chance: registered actions. Covers everything in the
-      // built-in registry (undo/redo, clipboard, selection, z-order,
-      // grouping, zoom, mode switching). Hosts that add custom
-      // actions just need to register them on `defaultActionRegistry`
-      // (or pass a custom one) — no edit to hotkeys.ts.
+      // Everything is a registered action (built-ins + the host-registered
+      // `insert-image` below + arrows/Tab/Enter). One dispatch, no inline
+      // command branches.
       if (defaultActionRegistry.dispatchHotkey(ev, { editor })) {
         ev.preventDefault();
         return;
       }
-
-      // The remaining hotkeys are arrow nudging + Tab navigation +
-      // Enter (open text edit / create at cursor) — gestures with
-      // dynamic per-event payloads (nudge amount, shift modifier
-      // direction) that don't fit the static Action shape neatly.
-      // Keep them inline until the Action contract grows a "payload"
-      // slot.
-      const meta = ev.metaKey || ev.ctrlKey;
-      if (meta || ev.altKey) return;
-
-      const nudge = ev.shiftKey ? 10 : 1;
-      switch (ev.key) {
-        case "ArrowLeft":
-          ev.preventDefault();
-          editor.moveSelectionBy({ x: -nudge, y: 0 });
-          return;
-        case "ArrowRight":
-          ev.preventDefault();
-          editor.moveSelectionBy({ x: nudge, y: 0 });
-          return;
-        case "ArrowUp":
-          ev.preventDefault();
-          editor.moveSelectionBy({ x: 0, y: -nudge });
-          return;
-        case "ArrowDown":
-          ev.preventDefault();
-          editor.moveSelectionBy({ x: 0, y: nudge });
-          return;
-        case "Tab":
-          ev.preventDefault();
-          editor.focusCycle(ev.shiftKey ? "prev" : "next");
-          return;
-        case "i":
-        case "I":
-          // Insert image — open the OS file picker. Not an Action
-          // (the picker touches the DOM, which the L2 state package
-          // can't), so it's wired inline here alongside the other
-          // host-level shortcuts.
-          ev.preventDefault();
-          openImageFilePicker(editor);
-          return;
-      }
-
-      // Enter on single text shape selection → start inline edit.
-      if (ev.key === "Enter" && editor.selection.size === 1) {
-        const [id] = [...editor.selection];
-        if (id) {
-          const shape = editor.scene.elements.get(id);
-          if (shape?.type === "text") {
-            ev.preventDefault();
-            editor.beginTextEdit(id);
-            return;
-          }
-        }
-      }
-
-      // Enter in a draw mode → keyboard-only shape creation at viewport
-      // center. Lets screen-reader / keyboard-only users add shapes
-      // without a drag gesture.
-      if (
-        ev.key === "Enter" &&
-        (editor.mode === "draw-rect" || editor.mode === "draw-ellipse")
-      ) {
-        ev.preventDefault();
-        editor.createElementAtCursor();
-        return;
-      }
     };
+
+    // Insert image (`I`) is host-registered: it opens the OS file picker,
+    // which touches the DOM the L2 kernel can't import — so it lives here
+    // rather than in the core action set. `replace` is idempotent across
+    // re-mounts; unregistered on cleanup.
+    defaultActionRegistry.replace({
+      id: "insert-image",
+      label: "Insert image",
+      category: "edit",
+      hotkey: { key: "i" },
+      perform: () => { openImageFilePicker(editor); },
+    });
 
     window.addEventListener("keydown", onKey);
 
@@ -161,6 +104,7 @@ export const useHotkeys = (editor: Editor | null): void => {
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("paste", onPaste);
+      defaultActionRegistry.unregister("insert-image");
     };
   }, [editor]);
 };

@@ -540,6 +540,13 @@ export const TEXT_FONT_SIZE_MAX = 256;
  */
 export const SEQUENCE_HOTKEY_WINDOW_MS = 1000;
 
+/**
+ * Arrow-key nudge step (world px) for the selection. Plain arrow moves by
+ * `NUDGE_STEP_PX`; holding Shift moves by `NUDGE_STEP_SHIFT_PX` (coarse).
+ */
+export const NUDGE_STEP_PX = 1;
+export const NUDGE_STEP_SHIFT_PX = 10;
+
 export const CARET_BLINK_INTERVAL_MS = 530;
 export const TEXT_SELECTION_FILL = "#1a73e8";
 export const TEXT_SELECTION_OPACITY = 0.25;
