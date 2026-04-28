@@ -1483,3 +1483,6 @@
 
 ## 0.55.66
 - refactor(diagram): route debug-panel "g d" through the action registry
+
+## 0.55.67
+- feat(state,diagram): migrate arrows/Tab/Enter/I hotkeys to the action registry
