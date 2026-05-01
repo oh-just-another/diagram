@@ -211,10 +211,16 @@ describe("ActionRegistry", () => {
 });
 
 describe("defaultActionRegistry built-ins", () => {
-  it("undo / redo wired", () => {
+  it("undo / redo wired (gated by canUndo predicate)", () => {
     const editor = makeEditor();
     const undoSpy = vi.spyOn(editor, "undo");
-    defaultActionRegistry.dispatch("undo", { editor });
+    // Fresh editor → nothing to undo → predicate gates the dispatch.
+    expect(defaultActionRegistry.dispatch("undo", { editor })).toBe(false);
+    expect(undoSpy).not.toHaveBeenCalled();
+    // Create an undoable change, then undo fires.
+    editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
+    editor.deleteSelected();
+    expect(defaultActionRegistry.dispatch("undo", { editor })).toBe(true);
     expect(undoSpy).toHaveBeenCalled();
   });
 

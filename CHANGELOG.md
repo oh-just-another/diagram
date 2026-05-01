@@ -1486,3 +1486,6 @@
 
 ## 0.55.67
 - feat(state,diagram): migrate arrows/Tab/Enter/I hotkeys to the action registry
+
+## 0.55.68
+- docs(tasks): subtasks 6-7 done; changeset for keyboard actions

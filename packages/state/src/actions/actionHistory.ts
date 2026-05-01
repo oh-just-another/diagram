@@ -5,6 +5,10 @@ export const actionUndo: Action = {
   label: "Undo",
   category: "history",
   hotkey: { key: "z", meta: true },
+  iconId: "undo",
+  // Gates the toolbar/menu disabled state (and short-circuits a no-op
+  // dispatch) when there's nothing to undo.
+  predicate: ({ editor }) => editor.canUndo,
   perform: ({ editor }) => editor.undo(),
 };
 
@@ -16,6 +20,8 @@ export const actionRedo: Action = {
     { key: "z", meta: true, shift: true },
     { key: "y", meta: true },
   ],
+  iconId: "redo",
+  predicate: ({ editor }) => editor.canRedo,
   perform: ({ editor }) => editor.redo(),
 };
 

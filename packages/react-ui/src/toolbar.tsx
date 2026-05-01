@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ComponentType, type ReactNode } from "react";
 import {
   Circle,
   Frame,
@@ -14,7 +14,7 @@ import {
   Undo2,
 } from "lucide-react";
 import type { Editor, Mode } from "@oh-just-another/state";
-import { formatHotkey } from "@oh-just-another/state";
+import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
 import { useEditorSelector } from "./context.js";
 import { useDiagramOptional, useHistory, useMode } from "./hooks.js";
 import { TOOLBAR_SEPARATOR_HEIGHT } from "./constants.js";
@@ -28,6 +28,63 @@ import { Tooltip } from "./tooltip.js";
 const TOOLBAR_ICON_SIZE = 16;
 const TOOLBAR_ICON_STROKE = 1.75;
 const iconProps = { size: TOOLBAR_ICON_SIZE, strokeWidth: TOOLBAR_ICON_STROKE } as const;
+
+/**
+ * Maps an action's serializable `iconId` (declared in core, no React) to a
+ * concrete lucide icon, so a registry-driven `action-ref` button renders
+ * identically to the hardcoded toolbar.
+ */
+const ACTION_ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
+  "mode-select": MousePointer2,
+  "mode-hand": Hand,
+  "mode-rect": Square,
+  "mode-ellipse": Circle,
+  "mode-text": Type,
+  "mode-edge": Slash,
+  "mode-brush": PenLine,
+  "mode-frame": Frame,
+  "insert-image": ImageIcon,
+  "tool-lock": Lock,
+  undo: Undo2,
+  redo: Redo2,
+};
+
+/**
+ * Toolbar button sourced entirely from a registered action: label, icon
+ * (via `iconId`), hotkey tooltip, pressed state (`checked`) and disabled
+ * state (`predicate`) all come from `defaultActionRegistry`. Clicking
+ * dispatches the action. Subscribes to the editor's `change` event so the
+ * checked/disabled state stays live. Renders nothing if the action isn't
+ * registered (e.g. a host that didn't register `insert-image`).
+ */
+const ActionRefButton = ({ id }: { readonly id: string }) => {
+  const editor = useDiagramOptional();
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (!editor) return undefined;
+    return editor.on("change", () => { force((n) => n + 1); });
+  }, [editor]);
+  const action = defaultActionRegistry.get(id);
+  if (!action) return null;
+  const Icon = action.iconId ? ACTION_ICONS[action.iconId] : undefined;
+  const ctx = editor ? { editor } : null;
+  const active = ctx ? (action.checked?.(ctx) ?? false) : false;
+  const enabled = ctx ? (action.predicate ? action.predicate(ctx) : true) : false;
+  const matchers: readonly HotkeyMatcher[] =
+    action.hotkey === undefined ? [] : Array.isArray(action.hotkey) ? action.hotkey : [action.hotkey];
+  const first = matchers[0];
+  const title = `${action.label ?? id}${first ? ` (${formatHotkey(first)})` : ""}`;
+  return (
+    <ToolbarButton
+      title={title}
+      active={active}
+      disabled={!enabled}
+      onClick={() => { if (editor) defaultActionRegistry.dispatch(id, { editor }); }}
+    >
+      {Icon ? <Icon {...iconProps} /> : (action.label ?? id)}
+    </ToolbarButton>
+  );
+};
 
 /**
  * Platform-correct zoom hotkey labels — ⌘ glyphs on macOS, "Ctrl+…"
@@ -62,6 +119,16 @@ export type ToolbarItem =
       /** Render the button in its pressed/active state (e.g. a toggle). */
       readonly active?: boolean;
       readonly onClick: (editor: Editor) => void;
+    }
+  | {
+      /**
+       * Button sourced from a registered action by id — label / icon /
+       * hotkey / pressed (`checked`) / disabled (`predicate`) all come from
+       * `defaultActionRegistry`. The registry-driven way to place a built-in
+       * (mode-*, undo, redo, tool-lock, …) on the toolbar.
+       */
+      readonly kind: "action-ref";
+      readonly id: string;
     }
   | { readonly kind: "divider" }
   | { readonly kind: "undo"; readonly label?: ReactNode }
@@ -118,15 +185,20 @@ export const openImageFilePicker = (editor: Editor): void => {
 };
 
 /** Convenience default — modes + tool-lock + undo/redo + zoom widget. */
+// Built from the action registry: modes / undo / redo / tool-lock are
+// `action-ref` (label·icon·hotkey·pressed·disabled sourced from the
+// action). Insert-image stays an inline `action` — it's host-registered at
+// runtime, so the default toolbar wires the file picker directly to be
+// robust even when the action isn't present.
 export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
-  { kind: "mode", mode: "select", label: <MousePointer2 {...iconProps} />, title: "Select (V)" },
-  { kind: "mode", mode: "hand", label: <Hand {...iconProps} />, title: "Pan (H)" },
-  { kind: "mode", mode: "draw-rect", label: <Square {...iconProps} />, title: "Rectangle (R)" },
-  { kind: "mode", mode: "draw-ellipse", label: <Circle {...iconProps} />, title: "Ellipse (E)" },
-  { kind: "mode", mode: "draw-text", label: <Type {...iconProps} />, title: "Text (T)" },
-  { kind: "mode", mode: "draw-edge", label: <Slash {...iconProps} />, title: "Link (L)" },
-  { kind: "mode", mode: "brush", label: <PenLine {...iconProps} />, title: "Brush (B)" },
-  { kind: "mode", mode: "draw-frame", label: <Frame {...iconProps} />, title: "Frame (F)" },
+  { kind: "action-ref", id: "mode-select" },
+  { kind: "action-ref", id: "mode-hand" },
+  { kind: "action-ref", id: "mode-rect" },
+  { kind: "action-ref", id: "mode-ellipse" },
+  { kind: "action-ref", id: "mode-text" },
+  { kind: "action-ref", id: "mode-edge" },
+  { kind: "action-ref", id: "mode-brush" },
+  { kind: "action-ref", id: "mode-frame" },
   {
     kind: "action",
     id: "insert-image",
@@ -134,10 +206,10 @@ export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
     title: "Insert image (I)",
     onClick: (editor) => { openImageFilePicker(editor); },
   },
-  { kind: "tool-lock", label: <Lock {...iconProps} />, title: "Lock current tool (stay in mode after each create)" },
+  { kind: "action-ref", id: "toggle-tool-lock" },
   { kind: "divider" },
-  { kind: "undo", label: <Undo2 {...iconProps} /> },
-  { kind: "redo", label: <Redo2 {...iconProps} /> },
+  { kind: "action-ref", id: "undo" },
+  { kind: "action-ref", id: "redo" },
   { kind: "divider" },
 ];
 
@@ -149,15 +221,15 @@ export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
  * `<Toolbar orientation="vertical" />`.
  */
 export const DEFAULT_VERTICAL_TOOLBAR: readonly ToolbarItem[] = [
-  { kind: "mode", mode: "select", label: <MousePointer2 {...iconProps} />, title: "Select (V)" },
-  { kind: "mode", mode: "hand", label: <Hand {...iconProps} />, title: "Pan (H)" },
+  { kind: "action-ref", id: "mode-select" },
+  { kind: "action-ref", id: "mode-hand" },
   { kind: "divider" },
-  { kind: "mode", mode: "draw-rect", label: <Square {...iconProps} />, title: "Rectangle (R)" },
-  { kind: "mode", mode: "draw-ellipse", label: <Circle {...iconProps} />, title: "Ellipse (E)" },
-  { kind: "mode", mode: "draw-text", label: <Type {...iconProps} />, title: "Text (T)" },
-  { kind: "mode", mode: "draw-edge", label: <Slash {...iconProps} />, title: "Link (L)" },
-  { kind: "mode", mode: "brush", label: <PenLine {...iconProps} />, title: "Brush (B)" },
-  { kind: "mode", mode: "draw-frame", label: <Frame {...iconProps} />, title: "Frame (F)" },
+  { kind: "action-ref", id: "mode-rect" },
+  { kind: "action-ref", id: "mode-ellipse" },
+  { kind: "action-ref", id: "mode-text" },
+  { kind: "action-ref", id: "mode-edge" },
+  { kind: "action-ref", id: "mode-brush" },
+  { kind: "action-ref", id: "mode-frame" },
   {
     kind: "action",
     id: "insert-image",
@@ -166,7 +238,7 @@ export const DEFAULT_VERTICAL_TOOLBAR: readonly ToolbarItem[] = [
     onClick: (editor) => { openImageFilePicker(editor); },
   },
   { kind: "divider" },
-  { kind: "tool-lock", label: <Lock {...iconProps} />, title: "Lock current tool (stay in mode after each create)" },
+  { kind: "action-ref", id: "toggle-tool-lock" },
 ];
 
 export interface ToolbarProps {
@@ -203,6 +275,8 @@ export const Toolbar = ({
         switch (item.kind) {
           case "divider":
             return <ToolbarDivider key={i} vertical={vertical} />;
+          case "action-ref":
+            return <ActionRefButton key={i} id={item.id} />;
           case "mode": {
             const active = mode === item.mode;
             return (
