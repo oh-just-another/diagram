@@ -1489,3 +1489,6 @@
 
 ## 0.55.68
 - docs(tasks): subtasks 6-7 done; changeset for keyboard actions
+
+## 0.55.69
+- feat(react-ui,state): build the toolbar from the action registry
