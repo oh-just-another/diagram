@@ -1498,3 +1498,6 @@
 
 ## 0.55.71
 - feat(react-ui,state): build the context menu from the action registry
+
+## 0.55.72
+- docs: functionally complete (context menu from registry); changeset

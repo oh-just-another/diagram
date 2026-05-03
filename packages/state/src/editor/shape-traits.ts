@@ -10,4 +10,5 @@ export const hasWidthHeight = (s: Element): s is Element & { width: number; heig
   s.type === "rectangle" ||
   s.type === "ellipse" ||
   s.type === "image" ||
-  s.type === "template";
+  s.type === "template" ||
+  s.type === "frame";
