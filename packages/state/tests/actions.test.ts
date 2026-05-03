@@ -415,4 +415,20 @@ describe("defaultActionRegistry built-ins", () => {
     // Nothing selected, select mode → Enter does nothing (falls through).
     expect(defaultActionRegistry.dispatchHotkey(keyEv("Enter", 0), { editor })).toBe(false);
   });
+
+  it("arrange actions require a multi-selection", () => {
+    const editor = makeEditor();
+    expect(defaultActionRegistry.dispatch("arrange-grid", { editor })).toBe(false);
+    editor.setSelection([elementId("a"), elementId("b")]);
+    const spy = vi.spyOn(editor, "arrangeAsGrid");
+    expect(defaultActionRegistry.dispatch("arrange-grid", { editor })).toBe(true);
+    expect(spy).toHaveBeenCalledOnce();
+  });
+
+  it("compact-z-order is always dispatchable", () => {
+    const editor = makeEditor();
+    const spy = vi.spyOn(editor, "compactLayerZOrder");
+    expect(defaultActionRegistry.dispatch("compact-z-order", { editor })).toBe(true);
+    expect(spy).toHaveBeenCalledOnce();
+  });
 });

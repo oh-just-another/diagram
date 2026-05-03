@@ -1492,3 +1492,6 @@
 
 ## 0.55.69
 - feat(react-ui,state): build the toolbar from the action registry
+
+## 0.55.70
+- docs(tasks): toolbar-from-registry done; context-menu scope finding

@@ -7,8 +7,8 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
-import { getAutoLayoutSpec } from "@oh-just-another/scene";
 import type { Editor } from "@oh-just-another/state";
+import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
 import { useDiagramOptional } from "./hooks.js";
 import { useContextMenuController } from "./context-menu-controller.js";
 
@@ -265,9 +265,43 @@ const collapseDividers = (items: readonly ContextMenuItem[]): readonly ContextMe
 };
 
 /**
- * Default menu — sensible starting set. Hosts compose this with their
- * own custom items.
+ * Build a context-menu row from a registered action: label, shortcut (from
+ * the action's hotkey, platform-correct), visibility (the action's
+ * `predicate`) and click (dispatch) all come from the registry. Position-/
+ * DOM-dependent menu items (annotations, add-comment, move-to-layer) can't be
+ * registry actions (the action context carries no world point) and stay
+ * inline below.
+ *
+ * `opts.label` / `opts.visible` override when the menu needs different
+ * text or visibility than the action's defaults (e.g. z-order entries
+ * shown only for a single selection).
  */
+const actionMenuItem = (
+  actionId: string,
+  opts?: {
+    readonly label?: ReactNode;
+    readonly visible?: (editor: Editor, ctx: ContextMenuContext) => boolean;
+  },
+): ContextMenuItem => {
+  const action = defaultActionRegistry.get(actionId);
+  const pred = action?.predicate;
+  const matchers: readonly HotkeyMatcher[] = !action?.hotkey
+    ? []
+    : Array.isArray(action.hotkey)
+      ? action.hotkey
+      : [action.hotkey];
+  const first = matchers[0];
+  const visible = opts?.visible ?? (pred ? (editor: Editor) => pred({ editor }) : undefined);
+  return {
+    kind: "action",
+    id: actionId,
+    label: opts?.label ?? action?.label ?? actionId,
+    ...(first ? { shortcut: formatHotkey(first) } : {}),
+    ...(visible ? { visible } : {}),
+    onClick: (editor: Editor) => { defaultActionRegistry.dispatch(actionId, { editor }); },
+  };
+};
+
 export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   // --- Annotation pin actions (only when right-click landed on a pin) ---
   {
@@ -303,142 +337,27 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   {
     kind: "divider",
   },
-  // --- Selection ops (when there's a selection) ---
-  {
-    kind: "action",
-    id: "delete",
-    label: "Delete",
-    shortcut: "Del",
-    visible: (e) => e.selection.size > 0,
-    onClick: (e) => { e.deleteSelected(); },
-  },
-  {
-    kind: "action",
-    id: "duplicate",
-    label: "Duplicate",
-    shortcut: "⌘D",
-    visible: (e) => e.selection.size > 0,
-    onClick: (e) => { e.duplicateSelected(); },
-  },
-  {
-    kind: "action",
-    id: "copy",
-    label: "Copy",
-    shortcut: "⌘C",
-    visible: (e) => e.selection.size > 0,
-    onClick: (e) => { e.copySelected(); },
-  },
-  {
-    kind: "action",
-    id: "cut",
-    label: "Cut",
-    shortcut: "⌘X",
-    visible: (e) => e.selection.size > 0,
-    onClick: (e) => { e.cutSelected(); },
-  },
-  {
-    kind: "action",
-    id: "paste",
-    label: "Paste",
-    shortcut: "⌘V",
-    onClick: (e) => { e.paste(); },
-  },
-  {
-    kind: "action",
-    id: "select-all",
-    label: "Select all",
-    shortcut: "⌘A",
-    onClick: (e) => { e.selectAll(); },
-  },
+  // --- Selection ops (registry-backed) ---
+  actionMenuItem("delete-selection", { label: "Delete" }),
+  actionMenuItem("duplicate-selection", { label: "Duplicate" }),
+  actionMenuItem("copy"),
+  actionMenuItem("cut"),
+  actionMenuItem("paste"),
+  actionMenuItem("select-all"),
   { kind: "divider" },
-  // --- Grouping ---
-  {
-    kind: "action",
-    id: "group",
-    label: "Group",
-    shortcut: "⌘G",
-    visible: (e) => e.selection.size > 1,
-    onClick: (e) => e.groupSelected(),
-  },
-  {
-    kind: "action",
-    id: "ungroup",
-    label: "Ungroup",
-    shortcut: "⌘⇧G",
-    visible: (e) => {
-      for (const id of e.selection) {
-        const s = e.scene.elements.get(id);
-        if (s?.type === "group") return true;
-      }
-      return false;
-    },
-    onClick: (e) => { e.ungroup(); },
-  },
-  {
-    kind: "action",
-    id: "arrange-grid",
-    label: "Arrange as grid",
-    visible: (e) => e.selection.size > 1,
-    onClick: (e) => { e.arrangeAsGrid(); },
-  },
-  {
-    kind: "action",
-    id: "arrange-stack-h",
-    label: "Stack horizontally",
-    visible: (e) => e.selection.size > 1,
-    onClick: (e) => { e.arrangeAsStack({ direction: "horizontal" }); },
-  },
-  {
-    kind: "action",
-    id: "arrange-stack-v",
-    label: "Stack vertically",
-    visible: (e) => e.selection.size > 1,
-    onClick: (e) => { e.arrangeAsStack({ direction: "vertical" }); },
-  },
-  {
-    kind: "action",
-    id: "auto-arrange",
-    label: "Auto-arrange children",
-    // Visible only when the single selected shape carries an
-    // auto-layout spec in metadata. Manual nudge of children is
-    // preserved between auto-runs (fingerprint ignores positions),
-    // so this entry is the "rebuild from spec right now" command.
-    visible: (e) => {
-      if (e.selection.size !== 1) return false;
-      const [id] = [...e.selection];
-      if (!id) return false;
-      const shape = e.scene.elements.get(id);
-      return shape ? getAutoLayoutSpec(shape) !== null : false;
-    },
-    onClick: (e) => {
-      const [id] = [...e.selection];
-      if (id) e.runLayout(id);
-    },
-  },
-  {
-    kind: "action",
-    id: "compact-z-order",
-    label: "Compact z-order",
-    onClick: (e) => { e.compactLayerZOrder(); },
-  },
+  // --- Grouping + arrange (registry-backed) ---
+  actionMenuItem("group-selection", { label: "Group" }),
+  actionMenuItem("ungroup-selection", { label: "Ungroup" }),
+  actionMenuItem("arrange-grid"),
+  actionMenuItem("arrange-stack-h"),
+  actionMenuItem("arrange-stack-v"),
+  actionMenuItem("auto-arrange"),
+  actionMenuItem("compact-z-order"),
   { kind: "divider" },
-  // --- Z-order (single-selection scope) ---
-  {
-    kind: "action",
-    id: "bring-to-front",
-    label: "Bring to front",
-    shortcut: "⌘]",
-    visible: (e) => e.selection.size === 1,
-    onClick: (e) => { e.bringToFront(); },
-  },
-  {
-    kind: "action",
-    id: "send-to-back",
-    label: "Send to back",
-    shortcut: "⌘[",
-    visible: (e) => e.selection.size === 1,
-    onClick: (e) => { e.sendToBack(); },
-  },
+  // --- Z-order (single-selection scope; registry-backed, visibility
+  //     narrowed to a single selection) ---
+  actionMenuItem("bring-to-front", { visible: (e) => e.selection.size === 1 }),
+  actionMenuItem("send-to-back", { visible: (e) => e.selection.size === 1 }),
   {
     kind: "action",
     id: "move-to-layer",
@@ -514,34 +433,12 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     },
   },
   { kind: "divider" },
-  // --- Viewport ---
-  {
-    kind: "action",
-    id: "zoom-in",
-    label: "Zoom in",
-    shortcut: "⌘+",
-    onClick: (e) => { e.zoomIn(); },
-  },
-  {
-    kind: "action",
-    id: "zoom-out",
-    label: "Zoom out",
-    shortcut: "⌘−",
-    onClick: (e) => { e.zoomOut(); },
-  },
-  {
-    kind: "action",
-    id: "reset-zoom",
-    label: "Reset zoom (100%)",
-    shortcut: "⌘0",
-    onClick: (e) => { e.resetZoom(); },
-  },
-  {
-    kind: "action",
-    id: "fit-zoom",
+  // --- Viewport (registry-backed) ---
+  actionMenuItem("zoom-in"),
+  actionMenuItem("zoom-out"),
+  actionMenuItem("zoom-reset", { label: "Reset zoom (100%)" }),
+  actionMenuItem("zoom-to-fit", {
     label: "Fit to screen",
-    shortcut: "⌘1",
     visible: (e) => e.scene.elements.size > 0,
-    onClick: (e) => { e.zoomToFit(); },
-  }
+  }),
 ];
