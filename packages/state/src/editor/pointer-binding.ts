@@ -918,6 +918,9 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // Container reparent / drag-out — must run before commitGesture
     // so the parentId / autoGrow patches land in the same undo step.
     editor.applyContainerDrop(worldPoint);
+    // Frame membership re-evaluation (drop into / out of a frame, or a
+    // frame resized over shapes) — also before commit so it's one undo.
+    editor.reconcileFrameMembership();
     editor.commitGesture();
 
     // A tap (not a drag) on an animated image toggles its GIF playback —

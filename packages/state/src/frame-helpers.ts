@@ -64,3 +64,48 @@ export const assignFrameMembers = (
   }
   return next;
 };
+
+/**
+ * Re-evaluate frame membership for EVERY non-frame element against the
+ * current frames — run at the end of a move / resize gesture. An element
+ * joins the top-most frame whose world bounds contain its centre, and is
+ * released (`frameId` cleared) when its centre is over no frame. Idempotent:
+ * pushes a patch only when an element's owning frame actually changed, so a
+ * plain click / no-op drag costs nothing. Mutates `history`; returns the new
+ * scene.
+ */
+export const reconcileFrameMembership = (scene: Scene, history: HistoryProvider): Scene => {
+  // Frames top-most first — highest z-order (fractional-index string) wins
+  // when frames overlap.
+  const frames = [...scene.elements.values()]
+    .filter((s) => s.type === "frame")
+    .sort((a, b) => (a.order < b.order ? 1 : a.order > b.order ? -1 : 0))
+    .map((f) => ({ id: f.id, b: getElementWorldBounds(f) }));
+
+  let next = scene;
+  for (const shape of scene.elements.values()) {
+    if (shape.type === "frame") continue;
+    const b = getElementWorldBounds(shape);
+    const cx = b.x + b.width / 2;
+    const cy = b.y + b.height / 2;
+    let owner: ElementId | undefined;
+    for (const f of frames) {
+      if (cx >= f.b.x && cx <= f.b.x + f.b.width && cy >= f.b.y && cy <= f.b.y + f.b.height) {
+        owner = f.id;
+        break;
+      }
+    }
+    if (shape.frameId === owner) continue;
+    const r = updateElement(next, shape.id, (s) => {
+      const copy: typeof s = { ...s };
+      // `exactOptionalPropertyTypes`: omit the key on release rather than
+      // setting it to `undefined`.
+      if (owner === undefined) delete (copy as { frameId?: ElementId }).frameId;
+      else (copy as { frameId?: ElementId }).frameId = owner;
+      return copy;
+    });
+    next = r.scene;
+    history.push(r.patch);
+  }
+  return next;
+};

@@ -25,6 +25,7 @@ import {
   getElementAt,
   getElementAtIndexed,
   getElementWorldBounds,
+  getElementRenderBounds,
   setTextMeasurer,
   getScreenToWorld,
   gridSnapper,
@@ -101,6 +102,7 @@ import {
 import {
   assignFrameMembers as assignFrameMembersHelper,
   nextFrameName as nextFrameNameHelper,
+  reconcileFrameMembership as reconcileFrameMembershipHelper,
 } from "./frame-helpers.js";
 import { AutoCompactScheduler } from "./auto-compact.js";
 import { AutoLayoutScheduler } from "./auto-layout-scheduler.js";
@@ -3703,8 +3705,10 @@ export class Editor {
       const old = prev.elements.get(id);
       if (old === shape) continue;
       changedElementIds.add(id);
-      const afterBounds = getElementWorldBounds(shape);
-      const beforeBounds = old ? getElementWorldBounds(old) : null;
+      // Render bounds (not geometric) so overpaint — a frame's header
+      // strip, confetti particles — is cleared too, no ghost trail.
+      const afterBounds = getElementRenderBounds(shape);
+      const beforeBounds = old ? getElementRenderBounds(old) : null;
       add(afterBounds);
       if (beforeBounds) add(beforeBounds);
       // Stash for the tile-cache path — covers add + move via
@@ -3717,7 +3721,8 @@ export class Editor {
     for (const [id, shape] of prev.elements) {
       if (!next.elements.has(id)) {
         changedElementIds.add(id);
-        const beforeBounds = getElementWorldBounds(shape);
+        // Render bounds so a removed frame/confetti clears its overpaint.
+        const beforeBounds = getElementRenderBounds(shape);
         add(beforeBounds);
         if (this.tileComposeFn !== null) {
           this.tileDirtyElements.set(id, { before: beforeBounds, after: null });
@@ -3934,6 +3939,18 @@ export class Editor {
    */
   private assignFrameMembers(frameId: ElementId, frameBounds: Bounds): void {
     this._scene = assignFrameMembersHelper(this._scene, this._history, frameId, frameBounds);
+  }
+
+  /**
+   * Re-evaluate frame membership at the end of a move / resize gesture —
+   * elements dropped inside a frame join it, those dragged out are
+   * released (standard "membership on drop"). Runs inside the gesture
+   * transaction (called from pointer-up before `commitGesture`) so the
+   * frameId changes undo together with the drag. No-op when nothing
+   * changed.
+   */
+  public reconcileFrameMembership(): void {
+    this._scene = reconcileFrameMembershipHelper(this._scene, this._history);
   }
 
   // Pure body in `./editor/applies/create.ts`. Endpoint snapping

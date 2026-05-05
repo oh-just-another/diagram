@@ -9,7 +9,11 @@ import {
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
-import { nextFrameName, assignFrameMembers } from "../src/frame-helpers.js";
+import {
+  nextFrameName,
+  assignFrameMembers,
+  reconcileFrameMembership,
+} from "../src/frame-helpers.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -182,5 +186,50 @@ describe("assignFrameMembers", () => {
     expect(next.elements.get(a.id)?.frameId).toBe(fId);
     expect(next.elements.get(b.id)?.frameId).toBe(fId);
     expect(history.patches.length).toBe(2);
+  });
+});
+
+describe("reconcileFrameMembership (membership on drop)", () => {
+  it("assigns an element whose centre is inside a frame (even if created later)", () => {
+    const f = frame("F", "Frame 1", 0, 0, 200, 200);
+    const inside = rect("s1", 80, 80, 20, 20); // centre (90,90) inside
+    const scene = sceneWith(f, inside);
+    const history = makeHistory();
+    const next = reconcileFrameMembership(scene, history);
+    expect(next.elements.get(inside.id)?.frameId).toBe(f.id);
+  });
+
+  it("releases an element dragged out of its frame (centre now outside)", () => {
+    const f = frame("F", "Frame 1", 0, 0, 200, 200);
+    const moved: Element = { ...rect("s1", 400, 400, 20, 20), frameId: elementId("F") };
+    const scene = sceneWith(f, moved);
+    const history = makeHistory();
+    const next = reconcileFrameMembership(scene, history);
+    expect(next.elements.get(moved.id)?.frameId).toBeUndefined();
+  });
+
+  it("is a no-op (no patches) when membership already matches geometry", () => {
+    const f = frame("F", "Frame 1", 0, 0, 200, 200);
+    const owned: Element = { ...rect("s1", 80, 80, 20, 20), frameId: elementId("F") };
+    const outside = rect("s2", 400, 400, 20, 20); // already no frameId, stays out
+    const scene = sceneWith(f, owned, outside);
+    const history = makeHistory();
+    reconcileFrameMembership(scene, history);
+    expect(history.patches.length).toBe(0);
+  });
+
+  it("picks the top-most frame when frames overlap", () => {
+    // f2 drawn after f1 (higher fractional order) and overlapping it.
+    const f1: Element = { ...frame("F1", "Frame 1", 0, 0, 200, 200), order: orderBetween(null, null) };
+    const f2: Element = {
+      ...frame("F2", "Frame 2", 50, 50, 200, 200),
+      order: orderBetween(f1.order, null),
+    };
+    const inside = rect("s1", 90, 90, 20, 20); // centre (100,100) inside both
+    const scene = sceneWith(f1, f2, inside);
+    const history = makeHistory();
+    const next = reconcileFrameMembership(scene, history);
+    // f2 has the higher fractional order (added last) → wins.
+    expect(next.elements.get(inside.id)?.frameId).toBe(f2.id);
   });
 });

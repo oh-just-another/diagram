@@ -1501,3 +1501,6 @@
 
 ## 0.55.72
 - docs: functionally complete (context menu from registry); changeset
+
+## 0.55.73
+- fix(state): make frames resizable
