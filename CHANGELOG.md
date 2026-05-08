@@ -1507,3 +1507,6 @@
 
 ## 0.55.74
 - feat(state): frames accept elements on drop / resize
+
+## 0.55.75
+- fix(scene,state): clear overpaint on delete via render bounds
