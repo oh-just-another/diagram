@@ -84,6 +84,11 @@ export {
   getElementWorldBounds,
 } from "./shape.js";
 export {
+  registerRenderOverflow,
+  getElementRenderBounds,
+  type RenderOverflow,
+} from "./render-bounds.js";
+export {
   setTextMeasurer,
   getTextMeasurer,
   type TextMeasurer,

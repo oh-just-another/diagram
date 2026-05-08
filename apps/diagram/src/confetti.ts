@@ -4,7 +4,7 @@ import {
   type ElementRenderer,
   type RenderTarget,
 } from "@oh-just-another/renderer-core";
-import type { RectangleElement } from "@oh-just-another/scene";
+import { registerRenderOverflow, type RectangleElement } from "@oh-just-another/scene";
 import { HUE_TONES } from "@oh-just-another/tokens";
 
 /**
@@ -54,6 +54,13 @@ export const CONFETTI_FLUTTER_AMP = 10;
 export const CONFETTI_FLUTTER_FREQ = 6;
 /** Fraction of life over which a particle fades out (tail). */
 export const CONFETTI_FADE_TAIL = 0.35;
+/**
+ * How far (local px) particles can fly past the box edges — used to expand
+ * the element's render bounds so the dirty-rect / tile invalidation clears
+ * the whole particle field (no ghost trail on delete/move). Bounds the
+ * worst case: max speed × max lifetime + gravity drop, with headroom.
+ */
+export const CONFETTI_RENDER_OVERFLOW_PX = 560;
 
 const TAU = Math.PI * 2;
 
@@ -198,4 +205,18 @@ export const installConfettiRenderer = (): void => {
   };
   wrapped[CONFETTI_MARK] = true;
   registerElementRenderer<RectangleElement>("rectangle", wrapped);
+  // Confetti rectangles throw particles well past their box → their dirty
+  // region must include the particle field, or deleting one leaves a ghost
+  //. Plain rectangles
+  // (no confetti config) report no overflow.
+  registerRenderOverflow("rectangle", (shape) =>
+    readConfig(shape.metadata)
+      ? {
+          top: CONFETTI_RENDER_OVERFLOW_PX,
+          right: CONFETTI_RENDER_OVERFLOW_PX,
+          bottom: CONFETTI_RENDER_OVERFLOW_PX,
+          left: CONFETTI_RENDER_OVERFLOW_PX,
+        }
+      : {},
+  );
 };

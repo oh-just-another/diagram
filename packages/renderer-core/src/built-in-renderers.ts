@@ -1,6 +1,7 @@
 import { polygon as polygonMath } from "@oh-just-another/math";
 import {
   getCornerRadius,
+  registerRenderOverflow,
   type BlockArrowElement,
   type BrushElement,
   type EllipseElement,
@@ -391,6 +392,10 @@ export const installBuiltinRenderers = (): void => {
     /* intentional no-op: group shapes are invisible containers and paint nothing */
   });
   registerElementRenderer<FrameElement>("frame", drawFrame);
+  // The frame paints its header strip ABOVE the rectangle, so its dirty
+  // region must extend up by the header height — otherwise deleting a
+  // frame leaves the header behind.
+  registerRenderOverflow("frame", () => ({ top: FRAME_HEADER_HEIGHT }));
   registerElementRenderer<BlockArrowElement>("block-arrow", drawBlockArrow);
   registerElementRenderer<BrushElement>("brush", drawBrush);
 };

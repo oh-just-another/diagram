@@ -1504,3 +1504,6 @@
 
 ## 0.55.73
 - fix(state): make frames resizable
+
+## 0.55.74
+- feat(state): frames accept elements on drop / resize
