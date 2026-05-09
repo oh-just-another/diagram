@@ -78,6 +78,7 @@ const ElementBaseZ = z.object({
   noFlip: z.boolean().optional(),
   anchors: z.record(z.string(), AnchorRefZ).optional(),
   parentId: z.string().optional(),
+  frameId: z.string().optional(),
   href: z.string().optional(),
 });
 

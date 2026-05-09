@@ -1510,3 +1510,6 @@
 
 ## 0.55.75
 - fix(scene,state): clear overpaint on delete via render bounds
+
+## 0.55.76
+- docs(changeset): frame resize/membership/overpaint fixes; record fix-commit

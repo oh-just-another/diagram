@@ -40,6 +40,13 @@ describe("round-trip", () => {
     expect(restored.elements.get(elementId("b"))?.position).toEqual({ x: 30, y: 40 });
   });
 
+  it("preserves an element's frameId (frame membership)", () => {
+    let scene = emptyScene();
+    ({ scene } = addElement(scene, { ...rect("a", 10, 20), frameId: elementId("F") }));
+    const restored = deserializeScene(serializeScene(scene));
+    expect(restored.elements.get(elementId("a"))?.frameId).toBe(elementId("F"));
+  });
+
   it("preserves layers (including the default one)", () => {
     const restored = deserializeScene(serializeScene(emptyScene()));
     expect(restored.layers.size).toBe(1);
