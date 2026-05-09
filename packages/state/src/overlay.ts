@@ -73,6 +73,7 @@ const RESIZABLE_TYPES: ReadonlySet<string> = new Set([
   "ellipse",
   "template",
   "text",
+  "frame",
 ]);
 
 export const isResizable = (shape: ElementBase): boolean => RESIZABLE_TYPES.has(shape.type);

@@ -1513,3 +1513,6 @@
 
 ## 0.55.76
 - docs(changeset): frame resize/membership/overpaint fixes; record fix-commit
+
+## 0.55.77
+- fix(serialization): persist element frameId (strict schema rejected it)
