@@ -2,6 +2,10 @@ import { polygon as polygonMath } from "@oh-just-another/math";
 import {
   getCornerRadius,
   registerRenderOverflow,
+  FRAME_HEADER_HEIGHT,
+  FRAME_HEADER_MAX_WIDTH,
+  FRAME_HEADER_PADDING_X,
+  FRAME_HEADER_FONT_SIZE,
   type BlockArrowElement,
   type BrushElement,
   type EllipseElement,
@@ -481,7 +485,6 @@ const rotateLocal = (
  * the child, not the frame chrome.
  */
 const FRAME_STROKE = "#888";
-const FRAME_HEADER_HEIGHT = 24;
 
 const drawFrame: ElementRenderer<FrameElement> = (shape, target) => {
   // Body — dashed rectangle.
@@ -498,13 +501,13 @@ const drawFrame: ElementRenderer<FrameElement> = (shape, target) => {
   const name = shape.name ?? "Frame";
   target.setFill("#222");
   target.beginPath();
-  target.rect(0, -FRAME_HEADER_HEIGHT, Math.min(160, shape.width), FRAME_HEADER_HEIGHT);
+  target.rect(0, -FRAME_HEADER_HEIGHT, Math.min(FRAME_HEADER_MAX_WIDTH, shape.width), FRAME_HEADER_HEIGHT);
   target.fill();
 
   // Header label text.
   target.setFill("#ddd");
-  target.setFont("system-ui, sans-serif", 12);
+  target.setFont("system-ui, sans-serif", FRAME_HEADER_FONT_SIZE);
   target.setTextBaseline("middle");
   target.setTextAlign("left");
-  target.fillText(name, 8, -FRAME_HEADER_HEIGHT / 2);
+  target.fillText(name, FRAME_HEADER_PADDING_X, -FRAME_HEADER_HEIGHT / 2);
 };

@@ -182,3 +182,22 @@ export const PROPORTIONAL_CORNER_RADIUS = 0.25;
  */
 export const TEXT_APPROX_CHAR_WIDTH_FACTOR = 0.6;
 export const TEXT_LINE_HEIGHT_FACTOR = 1.2;
+
+/**
+ * --- Frame header (label strip) geometry ---
+ *
+ * The frame's name is drawn in a strip ABOVE the frame body (local y in
+ * `[-FRAME_HEADER_HEIGHT, 0]`). Shared by the renderer (draws it), the
+ * editor (header double-click → rename hit zone + render overflow) and
+ * react-ui (positions the inline name editor) so all three agree.
+ *
+ * - `FRAME_HEADER_HEIGHT` — strip height (world px).
+ * - `FRAME_HEADER_MAX_WIDTH` — strip caps at this width (world px) so a
+ *   wide frame doesn't get a full-width header bar.
+ * - `FRAME_HEADER_PADDING_X` — left text inset (world px).
+ * - `FRAME_HEADER_FONT_SIZE` — label font size (world px).
+ */
+export const FRAME_HEADER_HEIGHT = 24;
+export const FRAME_HEADER_MAX_WIDTH = 160;
+export const FRAME_HEADER_PADDING_X = 8;
+export const FRAME_HEADER_FONT_SIZE = 12;

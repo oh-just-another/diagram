@@ -1516,3 +1516,6 @@
 
 ## 0.55.77
 - fix(serialization): persist element frameId (strict schema rejected it)
+
+## 0.55.78
+- fix(state): frame resize handles — add frame to isResizable

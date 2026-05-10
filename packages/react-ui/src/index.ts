@@ -67,6 +67,7 @@ export { BottomSheet, type BottomSheetProps } from "./bottom-sheet.js";
 export { FramePanel, type FramePanelProps } from "./frame-panel.js";
 export { Markdown, type MarkdownProps } from "./markdown.js";
 export { TextEditorOverlay } from "./text-editor-overlay.js";
+export { FrameNameEditorOverlay } from "./frame-name-editor-overlay.js";
 export { LinkHoverPopup } from "./link-hover-popup.js";
 export { LinkDropShapeMenu } from "./link-drop-shape-menu.js";
 export { LinkCaptionEditor } from "./link-caption-editor.js";

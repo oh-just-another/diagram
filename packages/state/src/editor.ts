@@ -26,6 +26,9 @@ import {
   getElementAtIndexed,
   getElementWorldBounds,
   getElementRenderBounds,
+  isFrame,
+  FRAME_HEADER_HEIGHT,
+  FRAME_HEADER_MAX_WIDTH,
   setTextMeasurer,
   getScreenToWorld,
   gridSnapper,
@@ -1962,6 +1965,15 @@ export class Editor {
     return this._editingLinkCaption;
   }
   /**
+   * Frame whose NAME (header label) is being edited inline (double-click
+   * the header), or null. The host overlay (`<FrameNameEditorOverlay>` in
+   * `@react-ui`) renders an input over the header and commits the name.
+   */
+  private _editingFrameName: ElementId | null = null;
+  get editingFrameName(): ElementId | null {
+    return this._editingFrameName;
+  }
+  /**
    * When the `draw-text` tool just placed a shape and opened its
    * editor, this holds that shape's id until the first commit. A
    * pending creation isn't in history yet: committing non-empty text
@@ -2112,6 +2124,81 @@ export class Editor {
     this._textSel = { start: len, end: len, dir: "forward" };
     this.startCaretBlink();
     this.notify();
+  }
+
+  // --- Frame name inline editing (double-click the header) ---
+
+  /**
+   * Start editing a frame's header name. No-op unless `id` is a frame on
+   * an unlocked layer. Commits any in-flight text edit first.
+   */
+  beginFrameNameEdit(id: ElementId): void {
+    const shape = getElement(this._scene, id);
+    if (shape?.type !== "frame") return;
+    if (this.isLayerLocked(shape.layerId)) return;
+    if (this._editingTextElement !== null) this.commitTextEdit();
+    this._editingFrameName = id;
+    this.notify();
+  }
+
+  /**
+   * Commit the edited frame name. Empty / whitespace-only clears the
+   * stored name (the renderer falls back to "Frame"). One history step;
+   * no-op when the name is unchanged. Always clears the editing state.
+   */
+  commitFrameNameEdit(name: string): void {
+    const id = this._editingFrameName;
+    if (id === null) return;
+    this._editingFrameName = null;
+    const shape = getElement(this._scene, id);
+    if (shape?.type === "frame") {
+      const trimmed = name.trim();
+      const current = (shape as { name?: string }).name ?? "";
+      if (trimmed !== current) {
+        const r = updateElement(this._scene, id, (s) => {
+          const copy = { ...s } as typeof s & { name?: string };
+          // `exactOptionalPropertyTypes`: drop the key when cleared.
+          if (trimmed === "") delete copy.name;
+          else copy.name = trimmed;
+          return copy;
+        });
+        this._scene = r.scene;
+        this._history.push(r.patch);
+      }
+    }
+    this.notify();
+  }
+
+  /** Abandon the frame-name edit without changing the name. */
+  cancelFrameNameEdit(): void {
+    if (this._editingFrameName === null) return;
+    this._editingFrameName = null;
+    this.notify();
+  }
+
+  /**
+   * Frame whose header strip (the label bar ABOVE the body) contains the
+   * world point — top-most by z-order. Used to route a double-click on the
+   * header to a name edit, since the header sits outside the frame's
+   * hit-test bounds. Assumes unrotated frames (the common case).
+   */
+  private frameHeaderAt(p: Vec2): ElementId | null {
+    let bestId: ElementId | null = null;
+    let bestOrder = "";
+    for (const s of this._scene.elements.values()) {
+      if (!isFrame(s)) continue;
+      const hx = s.position.x;
+      const hw = Math.min(FRAME_HEADER_MAX_WIDTH, s.width) * s.scale.x;
+      const hh = FRAME_HEADER_HEIGHT * s.scale.y;
+      const hyTop = s.position.y - hh;
+      if (p.x >= hx && p.x <= hx + hw && p.y >= hyTop && p.y <= hyTop + hh) {
+        if (bestId === null || s.order > bestOrder) {
+          bestId = s.id;
+          bestOrder = s.order;
+        }
+      }
+    }
+    return bestId;
   }
 
   /**
@@ -3327,6 +3414,18 @@ export class Editor {
     this.lastClickAt = now;
     this.lastClickWorldPoint = worldPoint;
 
+    // Double-click the frame HEADER (label strip above the body) → rename.
+    // Checked before the clickEffect gate because the header sits outside
+    // the frame's hit-test bounds, so the click produces SELECT_CLEAR (or
+    // no effect), not a frame select.
+    if (isDouble) {
+      const headerFrame = this.frameHeaderAt(worldPoint);
+      if (headerFrame !== null) {
+        this.beginFrameNameEdit(headerFrame);
+        return true;
+      }
+    }
+
     if (!clickEffect) return false;
 
     // Click outside the entered group while in isolation → exit; let
@@ -3367,6 +3466,10 @@ export class Editor {
       const raw = this.acceleratedElementAt(worldPoint);
       if (raw?.type === "text") {
         this.beginTextEdit(raw.id);
+        return true;
+      }
+      if (raw?.type === "frame") {
+        this.beginFrameNameEdit(raw.id);
         return true;
       }
       if (raw) {

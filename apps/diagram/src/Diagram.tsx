@@ -57,6 +57,7 @@ import {
   LinkCaptionEditor,
   SelectionFloatingPanel,
   TextEditorOverlay,
+  FrameNameEditorOverlay,
   ToastHost,
   Toolbar,
   Tooltip,
@@ -652,6 +653,7 @@ const EditorShell = ({
       >
         <DiagramSurface style={{ position: "absolute", inset: 0 }} />
         <TextEditorOverlay />
+        <FrameNameEditorOverlay />
         <LinkHoverPopup />
         <LinkDropShapeMenu />
         <LinkCaptionEditor />
