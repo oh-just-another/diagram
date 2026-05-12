@@ -192,12 +192,13 @@ export const TEXT_LINE_HEIGHT_FACTOR = 1.2;
  * react-ui (positions the inline name editor) so all three agree.
  *
  * - `FRAME_HEADER_HEIGHT` — strip height (world px).
- * - `FRAME_HEADER_MAX_WIDTH` — strip caps at this width (world px) so a
- *   wide frame doesn't get a full-width header bar.
- * - `FRAME_HEADER_PADDING_X` — left text inset (world px).
+ * - `FRAME_HEADER_PADDING_X` — horizontal text inset, each side (world px).
  * - `FRAME_HEADER_FONT_SIZE` — label font size (world px).
+ *
+ * The strip width is dynamic: it hugs the label width but is capped at the
+ * frame's own width (a too-long name is ellipsised) — computed in the
+ * renderer, which can measure text.
  */
 export const FRAME_HEADER_HEIGHT = 24;
-export const FRAME_HEADER_MAX_WIDTH = 160;
 export const FRAME_HEADER_PADDING_X = 8;
 export const FRAME_HEADER_FONT_SIZE = 12;

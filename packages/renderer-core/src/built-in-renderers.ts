@@ -3,7 +3,6 @@ import {
   getCornerRadius,
   registerRenderOverflow,
   FRAME_HEADER_HEIGHT,
-  FRAME_HEADER_MAX_WIDTH,
   FRAME_HEADER_PADDING_X,
   FRAME_HEADER_FONT_SIZE,
   type BlockArrowElement,
@@ -486,6 +485,28 @@ const rotateLocal = (
  */
 const FRAME_STROKE = "#888";
 
+const FRAME_HEADER_ELLIPSIS = "…";
+
+/**
+ * Trim `text` with a trailing ellipsis until it fits `maxWidth` (in the
+ * font already set on `target`). Returns the full text when it fits, the
+ * longest prefix + "…" otherwise, or just "…" when even one char can't
+ * fit. Binary-searches the prefix length to keep `measureText` calls ~log.
+ */
+const ellipsizeToWidth = (text: string, maxWidth: number, target: RenderTarget): string => {
+  if (maxWidth <= 0) return "";
+  if (target.measureText(text).width <= maxWidth) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const w = target.measureText(text.slice(0, mid) + FRAME_HEADER_ELLIPSIS).width;
+    if (w <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo > 0 ? text.slice(0, lo) + FRAME_HEADER_ELLIPSIS : FRAME_HEADER_ELLIPSIS;
+};
+
 const drawFrame: ElementRenderer<FrameElement> = (shape, target) => {
   // Body — dashed rectangle.
   target.setFill(null);
@@ -497,17 +518,29 @@ const drawFrame: ElementRenderer<FrameElement> = (shape, target) => {
   target.stroke();
   target.setDashArray(null);
 
-  // Header label background.
+  // Header label: the strip hugs the text width but never exceeds the
+  // frame's right edge; a name too long for the frame is ellipsised.
   const name = shape.name ?? "Frame";
+  target.setFont("system-ui, sans-serif", FRAME_HEADER_FONT_SIZE);
+  const avail = shape.width - FRAME_HEADER_PADDING_X * 2;
+  const fits = target.measureText(name).width <= avail;
+  // Fits → the strip hugs the text. Too long → ellipsise the text and
+  // stretch the strip to the frame's full width (the label runs to the
+  // right edge).
+  const label = fits ? name : ellipsizeToWidth(name, avail, target);
+  const headerWidth = fits
+    ? Math.min(target.measureText(name).width + FRAME_HEADER_PADDING_X * 2, shape.width)
+    : shape.width;
+
+  // Header label background — stretches to fit the (possibly truncated) text.
   target.setFill("#222");
   target.beginPath();
-  target.rect(0, -FRAME_HEADER_HEIGHT, Math.min(FRAME_HEADER_MAX_WIDTH, shape.width), FRAME_HEADER_HEIGHT);
+  target.rect(0, -FRAME_HEADER_HEIGHT, headerWidth, FRAME_HEADER_HEIGHT);
   target.fill();
 
   // Header label text.
   target.setFill("#ddd");
-  target.setFont("system-ui, sans-serif", FRAME_HEADER_FONT_SIZE);
   target.setTextBaseline("middle");
   target.setTextAlign("left");
-  target.fillText(name, FRAME_HEADER_PADDING_X, -FRAME_HEADER_HEIGHT / 2);
+  target.fillText(label, FRAME_HEADER_PADDING_X, -FRAME_HEADER_HEIGHT / 2);
 };

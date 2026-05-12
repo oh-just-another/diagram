@@ -3,7 +3,6 @@ import {
   getElement,
   isFrame,
   FRAME_HEADER_HEIGHT,
-  FRAME_HEADER_MAX_WIDTH,
   FRAME_HEADER_PADDING_X,
   FRAME_HEADER_FONT_SIZE,
 } from "@oh-just-another/scene";
@@ -51,7 +50,9 @@ export const FrameNameEditorOverlay = () => {
   const z = vp.zoom;
   const left = (frame.position.x - vp.pan.x) * z;
   const top = (frame.position.y - FRAME_HEADER_HEIGHT * frame.scale.y - vp.pan.y) * z;
-  const width = Math.min(FRAME_HEADER_MAX_WIDTH, frame.width) * frame.scale.x * z;
+  // Editor input spans the frame's full width so a long name stays visible
+  // while typing (the rendered label hugs/ellipsises, but editing wants room).
+  const width = frame.width * frame.scale.x * z;
   const height = FRAME_HEADER_HEIGHT * frame.scale.y * z;
 
   return (

@@ -1519,3 +1519,6 @@
 
 ## 0.55.78
 - fix(state): frame resize handles — add frame to isResizable
+
+## 0.55.79
+- feat(frame): inline-edit the frame header name (double-click)

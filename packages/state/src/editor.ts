@@ -28,7 +28,6 @@ import {
   getElementRenderBounds,
   isFrame,
   FRAME_HEADER_HEIGHT,
-  FRAME_HEADER_MAX_WIDTH,
   setTextMeasurer,
   getScreenToWorld,
   gridSnapper,
@@ -2188,7 +2187,9 @@ export class Editor {
     for (const s of this._scene.elements.values()) {
       if (!isFrame(s)) continue;
       const hx = s.position.x;
-      const hw = Math.min(FRAME_HEADER_MAX_WIDTH, s.width) * s.scale.x;
+      // The header strip can extend up to the frame's full width (it hugs
+      // the label but is capped there), so the rename hit zone spans it.
+      const hw = s.width * s.scale.x;
       const hh = FRAME_HEADER_HEIGHT * s.scale.y;
       const hyTop = s.position.y - hh;
       if (p.x >= hx && p.x <= hx + hw && p.y >= hyTop && p.y <= hyTop + hh) {

@@ -641,8 +641,9 @@ describe("drawFrame", () => {
     expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#222")).toBe(true);
   });
 
-  it("header width is capped at min(160, shape.width)", () => {
-    // wide frame — cap at 160
+  it("header strip hugs the text width on a wide frame (not full width)", () => {
+    // Recorder measureText = text.length * 7. Default name "Frame" (5) → 35;
+    // header width = 35 + 2*PADDING(8) = 51, well under the 400 frame width.
     const calls = addAndRender({
       ...base(),
       type: "frame",
@@ -650,23 +651,27 @@ describe("drawFrame", () => {
       height: 300,
       style: {},
     });
-    // Header rect: rect(0, -FRAME_HEADER_HEIGHT, Math.min(160, width), FRAME_HEADER_HEIGHT)
-    // args: [x=0, y=-24, w=160, h=24] — y (args[1]) is negative
     const headerRects = calls.filter((c) => c.method === "rect" && (c.args[1] as number) < 0);
-    expect(headerRects.some((c) => c.args[2] === 160)).toBe(true);
+    expect(headerRects.some((c) => c.args[2] === 51)).toBe(true);
+    // It must NOT span the whole 400-wide frame.
+    expect(headerRects.some((c) => c.args[2] === 400)).toBe(false);
   });
 
-  it("header width equals shape.width when shape is narrow", () => {
+  it("caps the header at the frame width and ellipsises a too-long name", () => {
     const calls = addAndRender({
       ...base(),
       type: "frame",
       width: 80,
       height: 100,
       style: {},
-    });
-    // args[1] is negative y (header is above the frame top)
+      name: "A very long frame name that does not fit",
+    } as never);
+    // Header rect is capped at the frame width.
     const headerRects = calls.filter((c) => c.method === "rect" && (c.args[1] as number) < 0);
     expect(headerRects.some((c) => c.args[2] === 80)).toBe(true);
+    // The drawn label is truncated with an ellipsis.
+    const labels = calls.filter((c) => c.method === "fillText").map((c) => String(c.args[0]));
+    expect(labels.some((t) => t.includes("…"))).toBe(true);
   });
 });
 
