@@ -4319,12 +4319,6 @@ export class Editor {
    * shapes when the user clearly aimed for this one).
    */
   private snapLinkEndpoint(pressTargetElement: ElementId | null, worldPoint: Vec2): LinkEndpoint {
-    if (!pressTargetElement) {
-      return { kind: "point", position: worldPoint };
-    }
-    const shape = getElement(this._scene, pressTargetElement);
-    if (!shape) return { kind: "point", position: worldPoint };
-
     const result = this.snapEngine.snap({
       scene: this._scene,
       probe: worldPoint,
@@ -4336,25 +4330,47 @@ export class Editor {
     // near an EDGE (not a dot) → *fixed* outline point (a ratio along the
     // perimeter — survives move/resize); dropping on the body interior (no
     // snap to a dot or edge) → *floating* against the whole shape, so the
-    // connection re-aims at the partner as either shape moves.
-    // Prefer a candidate that belongs to the press-target shape — avoids
-    // attaching to a neighbouring shape closer to the release point.
-    const onTarget = result.all.filter((c) => c.metadata?.elementId === pressTargetElement);
-    const anchorHit = onTarget.find((c) => c.kind === "anchor");
-    if (anchorHit) {
-      const ep = endpointFromSnap(pressTargetElement, anchorHit, shape);
-      if (ep.kind === "anchor") return ep;
+    // connection re-aims at the partner as either shape moves; dropping on
+    // empty canvas → a free point.
+    //
+    // Pick a candidate ON the pressed shape if there is one, otherwise the
+    // nearest overall. The "nearest overall" branch matters because the
+    // attach DOTS are drawn OUTSIDE the body — a release on a dot finds no
+    // element under it (hit-test = empty), so `pressTargetElement` is null,
+    // yet the snap engine still reports the dot's anchor within threshold.
+    // Binding it makes the endpoint enter PERPENDICULAR to that edge instead
+    // of staying a free point that aims at the partner (jumping between the
+    // four sides).
+    const pick = (kind: SnapCandidate["kind"]): SnapCandidate | undefined => {
+      if (pressTargetElement !== null) {
+        const onTarget = result.all.find(
+          (c) => c.kind === kind && c.metadata?.elementId === pressTargetElement,
+        );
+        if (onTarget) return onTarget;
+      }
+      return result.all.find((c) => c.kind === kind);
+    };
+
+    const boundFrom = (cand: SnapCandidate | undefined, want: "anchor" | "outline"): LinkEndpoint | null => {
+      if (!cand) return null;
+      const elId = cand.metadata?.elementId as ElementId | undefined;
+      if (elId === undefined) return null;
+      const shp = getElement(this._scene, elId);
+      if (!shp) return null;
+      const ep = endpointFromSnap(elId, cand, shp);
+      return ep.kind === want ? ep : null;
+    };
+
+    const anchorEp = boundFrom(pick("anchor"), "anchor");
+    if (anchorEp) return anchorEp;
+    const outlineEp = boundFrom(pick("outline"), "outline");
+    if (outlineEp) return outlineEp;
+
+    // No dot/edge snap. Over a shape body → floating; else a free point.
+    if (pressTargetElement !== null && getElement(this._scene, pressTargetElement)) {
+      return { kind: "floating", elementId: pressTargetElement };
     }
-    // Edge attach: an outline snap means the cursor is near a specific point on
-    // the perimeter — bind there (fixed), mirroring the hover highlight. Without
-    // this the link fell back to floating (centre-aimed) despite showing an
-    // edge dot, so arbitrary edge points couldn't be attached to.
-    const outlineHit = onTarget.find((c) => c.kind === "outline");
-    if (outlineHit) {
-      const ep = endpointFromSnap(pressTargetElement, outlineHit, shape);
-      if (ep.kind === "outline") return ep;
-    }
-    return { kind: "floating", elementId: pressTargetElement };
+    return { kind: "point", position: worldPoint };
   }
 
   // Pure body in `./editor/applies/selection.ts`. The wrappers

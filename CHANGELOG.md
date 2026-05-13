@@ -1522,3 +1522,6 @@
 
 ## 0.55.79
 - feat(frame): inline-edit the frame header name (double-click)
+
+## 0.55.80
+- feat(frame): header strip fits the name, ellipsises when too wide
