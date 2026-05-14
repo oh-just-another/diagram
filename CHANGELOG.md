@@ -1525,3 +1525,6 @@
 
 ## 0.55.80
 - feat(frame): header strip fits the name, ellipsises when too wide
+
+## 0.55.81
+- fix(state): bind link endpoint dropped on an edge dot (perpendicular elbow)
