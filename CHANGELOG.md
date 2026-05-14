@@ -1528,3 +1528,6 @@
 
 ## 0.55.81
 - fix(state): bind link endpoint dropped on an edge dot (perpendicular elbow)
+
+## 0.55.82
+- docs(changeset): record elbow edge-dot attach fix (0f6f114)

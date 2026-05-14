@@ -28,7 +28,7 @@ export class ActionRegistry {
    * `SEQUENCE_HOTKEY_WINDOW_MS` window on each feed; cleared on a match or
    * when a modifier combo interrupts the chain.
    */
-  private seqBuffer: { key: string; t: number }[] = [];
+  private seqBuffer: { key: string; code: string; t: number }[] = [];
 
   register(action: Action): void {
     if (this.entries.has(action.id)) {
@@ -129,14 +129,16 @@ export class ActionRegistry {
     }
     const t = event.timeStamp;
     this.seqBuffer = this.seqBuffer.filter((e) => t - e.t <= SEQUENCE_HOTKEY_WINDOW_MS);
-    this.seqBuffer.push({ key: event.key.toLowerCase(), t });
+    // Keep key AND code so the match is layout-independent (a Cyrillic
+    // layout's physical G/D still complete a "g d" sequence via `code`).
+    this.seqBuffer.push({ key: event.key, code: event.code, t });
     for (const id of this.order) {
       const action = this.entries.get(id);
       if (!action?.sequence || action.sequence.length === 0) continue;
-      const seq = action.sequence.map((k) => k.toLowerCase());
+      const seq = action.sequence;
       const tail = this.seqBuffer.slice(-seq.length);
       if (tail.length !== seq.length) continue;
-      if (!tail.every((e, i) => e.key === seq[i])) continue;
+      if (!tail.every((e, i) => matchKeyOrCodeRaw(e.key, e.code, seq[i] ?? ""))) continue;
       if (action.predicate && !action.predicate(ctx)) continue;
       this.seqBuffer = [];
       action.perform(ctx);
@@ -189,14 +191,24 @@ const matchesHotkey = (event: KeyboardEvent, m: HotkeyMatcher): boolean => {
  * (because the IME is bypassed), so they hit step 1. The few that
  * deliver an IME glyph instead are caught by step 3.
  */
-const matchKeyOrCode = (event: KeyboardEvent, want: string): boolean => {
-  if (event.key.toLowerCase() === want.toLowerCase()) return true;
+const matchKeyOrCode = (event: KeyboardEvent, want: string): boolean =>
+  matchKeyOrCodeRaw(event.key, event.code, want);
+
+/**
+ * Layout-independent key match on raw (`key`, `code`) — the core of
+ * {@link matchKeyOrCode}, also used by sequence matching where we only kept
+ * the key/code, not the whole event. Same rules: prefer `key`, bail on a
+ * mismatching Latin letter, else fall back to the physical `code` (so a
+ * Cyrillic/Greek/etc layout still triggers a Latin-letter shortcut).
+ */
+const matchKeyOrCodeRaw = (key: string, code: string, want: string): boolean => {
+  if (key.toLowerCase() === want.toLowerCase()) return true;
   // Bail when the user pressed a *different* Latin letter — we'd
   // otherwise hijack layouts that swap physical key positions
   // (Czech Y/Z, French QWERTY-AZERTY, etc).
-  if (isLatinChar(event.key)) return false;
+  if (isLatinChar(key)) return false;
   const expectedCode = codeForKey(want);
-  return expectedCode !== null && event.code === expectedCode;
+  return expectedCode !== null && code === expectedCode;
 };
 
 const isLatinChar = (s: string): boolean => /^[a-z]$/i.test(s);

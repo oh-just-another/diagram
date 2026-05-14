@@ -327,6 +327,17 @@ describe("defaultActionRegistry built-ins", () => {
     expect(perf).toHaveBeenCalledOnce();
   });
 
+  it("sequence matches on a non-Latin layout via physical code (g d on Cyrillic)", () => {
+    const reg = new ActionRegistry();
+    const perf = vi.fn();
+    reg.register({ id: "toggle-debug", sequence: ["g", "d"], perform: perf });
+    const editor = makeEditor();
+    // Cyrillic layout: physical G key -> key U+043F (code KeyG), D -> U+0432 (KeyD).
+    expect(reg.dispatchHotkey(keyEv("\u043f", 0, { code: "KeyG" }), { editor })).toBe(false);
+    expect(reg.dispatchHotkey(keyEv("\u0432", 100, { code: "KeyD" }), { editor })).toBe(true);
+    expect(perf).toHaveBeenCalledOnce();
+  });
+
   it("sequence does NOT fire when the keys fall outside the time window", () => {
     const reg = new ActionRegistry();
     const perf = vi.fn();
