@@ -13,11 +13,10 @@ import {
 import type { RenderTarget } from "@oh-just-another/renderer-core";
 import {
   renderOverlay,
-  isResizable,
-  resizeHandlesFor,
   paintElementSelectionHalo,
   DEFAULT_OVERLAY_STYLE,
 } from "../src/overlay.js";
+import { isResizable, resizeHandlesFor } from "../src/editor/shape-traits.js";
 import type { Selection } from "../src/selection.js";
 
 // ---------------------------------------------------------------------------

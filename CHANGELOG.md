@@ -1531,3 +1531,6 @@
 
 ## 0.55.82
 - docs(changeset): record elbow edge-dot attach fix (0f6f114)
+
+## 0.55.83
+- fix(state): sequence hotkeys (g d) work on non-Latin keyboard layouts

@@ -1,13 +1,11 @@
 import type { AnnotationId, Bounds, ElementId, Transform, Vec2 } from "@oh-just-another/types";
 import {
   getAnnotationWorldPosition,
-  getLinkPath,
   getElementWorldBounds,
   getWorldToScreen,
   type Annotation,
   type Element,
   type Scene,
-  type ElementBase,
 } from "@oh-just-another/scene";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import {
@@ -30,18 +28,12 @@ import {
   CURSOR_NAME_CHIP_PADDING_X,
   CURSOR_NAME_CHIP_PADDING_Y,
   CURSOR_NAME_FONT_SIZE,
-  DEBUG_HIT_ZONE_FILL,
-  DEBUG_HIT_ZONE_FILL_OPACITY,
-  DEBUG_HIT_ZONE_STROKE,
-  DEBUG_HIT_ZONE_STROKE_OPACITY,
   DRAW_PREVIEW_OPACITY,
   GHOST_PREVIEW_OPACITY,
   LINK_ATTACH_ANCHOR_FILL,
   LINK_ATTACH_ANCHOR_STROKE,
   LINK_ENDPOINT_HANDLE_DRAW_RADIUS,
   LINK_MIDPOINT_HANDLE_DRAW_RADIUS,
-  LINK_ENDPOINT_HANDLE_RADIUS,
-  LINK_HIT_THRESHOLD,
   SELECTION_HALO_PEEK_PX,
   LINK_START_ANCHOR_FILL,
   LINK_START_ANCHOR_STROKE,
@@ -53,13 +45,12 @@ import {
   TEXT_SELECTION_OPACITY,
 } from "./constants.js";
 import {
-  ALL_HANDLES,
   CORNER_HANDLES,
-  HANDLE_HIT_SLOP,
   HANDLE_SIZE,
   handlePosition,
-  type HandleId,
 } from "./handle.js";
+import { isResizable } from "./editor/shape-traits.js";
+import { drawHitZones } from "./editor/hit-test.js";
 import type { Selection } from "./selection.js";
 
 /** Index-access helper: throws on out-of-range instead of returning `undefined`. */
@@ -67,25 +58,6 @@ const req = <T>(v: T | undefined): T => {
   if (v === undefined) throw new Error("packages/state: index out of range");
   return v;
 };
-
-const RESIZABLE_TYPES: ReadonlySet<string> = new Set([
-  "rectangle",
-  "ellipse",
-  "template",
-  "text",
-  "frame",
-]);
-
-export const isResizable = (shape: ElementBase): boolean => RESIZABLE_TYPES.has(shape.type);
-
-/**
- * Resize-handle set for a single selected shape. Text uses all 8
- * handles but with standard semantics (see `computeTextResize`): corners
- * and the top/bottom (n/s) handles scale the font uniformly, while the
- * left/right (e/w) handles change only the wrap width — narrowing the
- * box reflows the text onto new lines. Other shapes resize normally.
- */
-export const resizeHandlesFor = (_shape: ElementBase): readonly HandleId[] => ALL_HANDLES;
 
 /**
  * Union AABB of every direct child of `groupId` (recursive). Returns
@@ -768,100 +740,6 @@ const drawGifBadge = (target: RenderTarget, screen: Bounds): void => {
   target.setTextAlign("center");
   target.setTextBaseline("middle");
   target.fillText("gif", x + w / 2, y + h / 2);
-};
-
-/**
- * Debug overlay: paint the mouse hit-zones for every element so the
- * tuned slop/threshold values can be eyeballed in the browser. Handle
- * slop squares for resizable shapes; endpoint circles + a body band
- * for edges. All sizes are screen-pixel (the hit-test works in screen
- * space). Isolated in its own save/restore so the translucent paint
- * state never leaks into the real selection chrome.
- */
-const drawHitZones = (target: RenderTarget, scene: Scene, w2s: Transform, zoom: number): void => {
-  target.save();
-  // Resize-handle slop squares — resizable shapes only (matches the
-  // hit-test, which only offers handles on resizable selections).
-  for (const shape of scene.elements.values()) {
-    if (!isResizable(shape)) continue;
-    const wb = getElementWorldBounds(shape);
-    for (const handle of resizeHandlesFor(shape)) {
-      const c = matrix.applyToPoint(w2s, handlePosition(handle, wb, zoom));
-      fillZoneRect(
-        target,
-        c.x - HANDLE_HIT_SLOP,
-        c.y - HANDLE_HIT_SLOP,
-        HANDLE_HIT_SLOP * 2,
-        HANDLE_HIT_SLOP * 2,
-      );
-    }
-  }
-  // Link body bands (polyline stroked at 2× the hit threshold) +
-  // endpoint circles.
-  for (const edge of scene.links.values()) {
-    const path = getLinkPath(scene, edge);
-    if (!path || path.length < 2) continue;
-    target.setFill(null);
-    target.setStroke(DEBUG_HIT_ZONE_STROKE);
-    target.setStrokeWidth(LINK_HIT_THRESHOLD * 2);
-    target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
-    target.setLineCap("round");
-    target.setLineJoin("round");
-    target.beginPath();
-    const start = matrix.applyToPoint(w2s, req(path[0]));
-    target.moveTo(start.x, start.y);
-    for (let i = 1; i < path.length; i++) {
-      const p = matrix.applyToPoint(w2s, req(path[i]));
-      target.lineTo(p.x, p.y);
-    }
-    target.stroke();
-    const from = matrix.applyToPoint(w2s, req(path[0]));
-    const to = matrix.applyToPoint(w2s, req(path[path.length - 1]));
-    fillZoneCircle(target, from.x, from.y, LINK_ENDPOINT_HANDLE_RADIUS);
-    fillZoneCircle(target, to.x, to.y, LINK_ENDPOINT_HANDLE_RADIUS);
-  }
-  target.setOpacity(1);
-  target.restore();
-};
-
-/** Translucent debug rect: filled zone + faint outline. */
-const fillZoneRect = (
-  target: RenderTarget,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-): void => {
-  target.setStroke(null);
-  target.setFill(DEBUG_HIT_ZONE_FILL);
-  target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
-  target.beginPath();
-  target.rect(x, y, w, h);
-  target.fill();
-  target.setFill(null);
-  target.setStroke(DEBUG_HIT_ZONE_STROKE);
-  target.setStrokeWidth(1);
-  target.setOpacity(DEBUG_HIT_ZONE_STROKE_OPACITY);
-  target.beginPath();
-  target.rect(x, y, w, h);
-  target.stroke();
-};
-
-/** Translucent debug circle: filled zone + faint outline. */
-const fillZoneCircle = (target: RenderTarget, cx: number, cy: number, r: number): void => {
-  target.setStroke(null);
-  target.setFill(DEBUG_HIT_ZONE_FILL);
-  target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
-  target.beginPath();
-  target.ellipse(cx, cy, r, r);
-  target.fill();
-  target.setFill(null);
-  target.setStroke(DEBUG_HIT_ZONE_STROKE);
-  target.setStrokeWidth(1);
-  target.setOpacity(DEBUG_HIT_ZONE_STROKE_OPACITY);
-  target.beginPath();
-  target.ellipse(cx, cy, r, r);
-  target.stroke();
 };
 
 const projectBounds = (b: Bounds, w2s: Transform): Bounds => {
