@@ -119,6 +119,23 @@ const readCapabilityOverrides = (): CapabilityOverrides | undefined => {
   return undefined;
 };
 
+/**
+ * Read the `hitzones` debug switch from the URL — supports both
+ * `?hitzones=1` (search) and `#hitzones=1` (hash), like `renderer`
+ * above. When truthy, the editor paints the mouse hit-zones overlay
+ * (resize-handle slop, link handles, anchor-dot grab/click radii) so
+ * the tuned thresholds can be eyeballed in the browser. Same toggle as
+ * the debug panel's "Show hit-zones", but enabled from a shareable URL.
+ * Accepts `1` / `true` / `on` (case-insensitive); anything else = off.
+ */
+const readDebugHitZones = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const search = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const v = (search.get("hitzones") ?? hashParams.get("hitzones") ?? "").toLowerCase();
+  return v === "1" || v === "true" || v === "on";
+};
+
 export const App = () => {
   // Read the hash once at mount — decides whether to seed an empty
   // collab scene (room snapshot is authoritative) or restore the
@@ -141,6 +158,10 @@ export const App = () => {
   // is idempotent, so re-running it on a remount is safe.
   const handleReady = useCallback((ed: Editor) => {
     installConfettiRenderer();
+    // Debug hit-zone overlay from the URL (`?hitzones=1`) — read once at
+    // ready, same as the renderer override. The debug panel can still
+    // toggle it afterwards.
+    if (readDebugHitZones()) ed.setDebugHitZones(true);
     setEditor(ed);
   }, []);
   const apiRef = useRef<DiagramAPI>(null);

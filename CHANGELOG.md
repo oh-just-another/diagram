@@ -1534,3 +1534,6 @@
 
 ## 0.55.83
 - fix(state): sequence hotkeys (g d) work on non-Latin keyboard layouts
+
+## 0.55.84
+- refactor(state): move hit-zone debug viz next to the hit-test it visualises

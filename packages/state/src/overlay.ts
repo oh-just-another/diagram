@@ -375,7 +375,9 @@ export const renderOverlay = (
 
   // 0. Debug hit-zones — drawn first so the real selection chrome sits
   //    on top. Visualises every element's mouse hit-targets.
-  if (options.debugHitZones) drawHitZones(target, scene, w2s, zoom);
+  if (options.debugHitZones) {
+    drawHitZones(target, scene, w2s, zoom, selection, options.edgeSelection);
+  }
 
   // 1. Selection outlines (+ handles only when a single shape is
   //    selected). Multi-selection skips per-shape handles in favour of

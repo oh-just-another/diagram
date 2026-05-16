@@ -20,13 +20,18 @@ import { matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
 import { ALL_HANDLES, CORNER_HANDLES, HANDLE_HIT_SLOP, handlePosition, hitHandle } from "../handle.js";
 import { isResizable, resizeHandlesFor } from "./shape-traits.js";
+import { anchorOverlayPoints } from "./anchor-points.js";
 import {
+  ANCHOR_DOT_ACTIVE_RADIUS,
+  ANCHOR_DOT_CLICK_RADIUS,
+  ANCHOR_START_HIT_SLOP,
   DEBUG_HIT_ZONE_FILL,
   DEBUG_HIT_ZONE_FILL_OPACITY,
   DEBUG_HIT_ZONE_STROKE,
   DEBUG_HIT_ZONE_STROKE_OPACITY,
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_HIT_THRESHOLD,
+  LINK_START_ANCHOR_OUTSET,
 } from "../constants.js";
 import type { PressTarget } from "../machine.js";
 import type * as Selection from "../selection.js";
@@ -218,18 +223,70 @@ const fillZoneCircle = (target: RenderTarget, cx: number, cy: number, r: number)
 };
 
 /**
+ * Outline-only debug circle — no fill. Used to draw a SECONDARY zone
+ * nested inside a filled one (e.g. the narrow click radius inside the
+ * wider grab halo of an anchor dot) so the two read as distinct without
+ * the inner fill muddying the outer one. Dashed so it can't be mistaken
+ * for the solid grab-halo outline.
+ */
+const strokeZoneCircle = (target: RenderTarget, cx: number, cy: number, r: number): void => {
+  target.setFill(null);
+  target.setStroke(DEBUG_HIT_ZONE_STROKE);
+  target.setStrokeWidth(1);
+  target.setDashArray([2, 2]);
+  target.setOpacity(DEBUG_HIT_ZONE_STROKE_OPACITY);
+  target.beginPath();
+  target.ellipse(cx, cy, r, r);
+  target.stroke();
+  target.setDashArray(null);
+};
+
+/**
+ * Minimal slice of the selected link's handle geometry the debug viz
+ * needs — endpoints plus the bend / segment handle world positions the
+ * orchestrator already computed for the real overlay. Mirrors
+ * `LinkSelection` in `overlay.ts` without importing it (would close the
+ * overlay ↔ hit-test runtime cycle).
+ */
+export interface HitZoneEdge {
+  readonly from: Vec2;
+  readonly to: Vec2;
+  /** Existing bend points (world) — grabbable at `LINK_ENDPOINT_HANDLE_RADIUS`. */
+  readonly waypoints?: readonly Vec2[];
+  /** Segment / "add waypoint" midpoints (world) — same grab radius. */
+  readonly midpoints?: readonly Vec2[];
+}
+
+/**
  * Paint every element's mouse hit-zones so the tuned slop / threshold values
- * can be eyeballed in the browser. Handle slop squares for resizable shapes
- * (matches the handle hit-test in `pickPressTarget`); endpoint circles + a
- * body band for links (the `LINK_HIT_THRESHOLD` band `findLinkAt` uses).
- * Isolated in its own save/restore so the translucent paint state never
- * leaks into the real selection chrome.
+ * can be eyeballed in the browser. Covers, in screen space (the hit-test
+ * works in screen px):
+ *   - resize-handle slop squares for resizable shapes (matches the handle
+ *     hit-test in `pickPressTarget`);
+ *   - a body band for every link (the `LINK_HIT_THRESHOLD` band `findLinkAt`
+ *     uses);
+ *   - the SELECTED link's endpoint + waypoint + segment handle circles
+ *     (`LINK_ENDPOINT_HANDLE_RADIUS` — these handles are only hit-testable on
+ *     the selected link, so they're drawn only for it);
+ *   - the SINGLE selected element's link-start anchor dots, each with TWO
+ *     nested zones: the wider filled grab halo
+ *     (`ANCHOR_DOT_ACTIVE_RADIUS + ANCHOR_START_HIT_SLOP`, begins a link
+ *     drag) and the narrow dashed click radius (`ANCHOR_DOT_CLICK_RADIUS`,
+ *     click-to-create-element).
+ *
+ * `edgeSelection` carries the sole selected link's handle positions the
+ * orchestrator already computed for the real overlay, so the drawn handle
+ * zones land exactly where the chrome does. Isolated in its own
+ * save/restore so the translucent paint state never leaks into the real
+ * selection chrome.
  */
 export const drawHitZones = (
   target: RenderTarget,
   scene: Scene,
   w2s: Transform,
   zoom: number,
+  selection: Selection.Selection,
+  edgeSelection?: HitZoneEdge,
 ): void => {
   target.save();
   // Resize-handle slop squares — resizable shapes only (matches the
@@ -248,8 +305,8 @@ export const drawHitZones = (
       );
     }
   }
-  // Link body bands (polyline stroked at 2× the hit threshold) + endpoint
-  // circles.
+  // Link body bands (polyline stroked at 2× the hit threshold) — the
+  // `findLinkAt` target, hit-testable for EVERY link.
   for (const edge of scene.links.values()) {
     const path = getLinkPath(scene, edge);
     if (!path || path.length < 2) continue;
@@ -267,10 +324,41 @@ export const drawHitZones = (
       target.lineTo(p.x, p.y);
     }
     target.stroke();
-    const from = matrix.applyToPoint(w2s, req(path[0]));
-    const to = matrix.applyToPoint(w2s, req(path[path.length - 1]));
+  }
+  // Selected link's handle zones — endpoint, waypoint and segment-midpoint
+  // grab circles. These handles only exist on the selected link (see
+  // `pickPressTarget` step 2 + the waypoint / segment drag in
+  // `pointer-binding`), so they're drawn only for it, at the same
+  // `LINK_ENDPOINT_HANDLE_RADIUS` the press uses.
+  if (edgeSelection) {
+    const from = matrix.applyToPoint(w2s, edgeSelection.from);
+    const to = matrix.applyToPoint(w2s, edgeSelection.to);
     fillZoneCircle(target, from.x, from.y, LINK_ENDPOINT_HANDLE_RADIUS);
     fillZoneCircle(target, to.x, to.y, LINK_ENDPOINT_HANDLE_RADIUS);
+    for (const w of edgeSelection.waypoints ?? []) {
+      const p = matrix.applyToPoint(w2s, w);
+      fillZoneCircle(target, p.x, p.y, LINK_ENDPOINT_HANDLE_RADIUS);
+    }
+    for (const m of edgeSelection.midpoints ?? []) {
+      const p = matrix.applyToPoint(w2s, m);
+      fillZoneCircle(target, p.x, p.y, LINK_ENDPOINT_HANDLE_RADIUS);
+    }
+  }
+  // Single selected element's link-start anchor dots — wider filled grab
+  // halo (begins a link drag) + narrow dashed click radius (click-to-create).
+  // Only on a sole-element selection, matching the anchor-drag hit-test.
+  if (selection.size === 1) {
+    const id = req([...selection][0]);
+    const shape = getElement(scene, id);
+    if (shape) {
+      const grab = ANCHOR_DOT_ACTIVE_RADIUS + ANCHOR_START_HIT_SLOP;
+      const { worldPoints } = anchorOverlayPoints(shape, LINK_START_ANCHOR_OUTSET / zoom);
+      for (const p of worldPoints) {
+        const c = matrix.applyToPoint(w2s, p);
+        fillZoneCircle(target, c.x, c.y, grab);
+        strokeZoneCircle(target, c.x, c.y, ANCHOR_DOT_CLICK_RADIUS);
+      }
+    }
   }
   target.setOpacity(1);
   target.restore();
