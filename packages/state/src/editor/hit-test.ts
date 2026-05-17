@@ -258,6 +258,24 @@ export interface HitZoneEdge {
 }
 
 /**
+ * Link-attach drop-zones to paint while a link endpoint is being placed
+ * (drag from a start dot / draw-edge / endpoint rebind). These are the
+ * snap-engine catchments `snapLinkEndpoint` resolves against, so the user
+ * can see where a drop lands ON a point vs ON an edge:
+ *   - `anchors` — world landing points of each element's connection anchors
+ *     (drop within `thresholdWorld` → fixed anchor);
+ *   - `outlineLoops` — world outline loops of each element (drop within
+ *     `thresholdWorld` of the perimeter → fixed outline point).
+ * `thresholdWorld` is the snap threshold in WORLD units (constant on screen
+ * only after × zoom), matching the engine which compares world distances.
+ */
+export interface HitZoneAttach {
+  readonly anchors: readonly Vec2[];
+  readonly outlineLoops: readonly (readonly Vec2[])[];
+  readonly thresholdWorld: number;
+}
+
+/**
  * Paint every element's mouse hit-zones so the tuned slop / threshold values
  * can be eyeballed in the browser. Covers, in screen space (the hit-test
  * works in screen px):
@@ -287,6 +305,7 @@ export const drawHitZones = (
   zoom: number,
   selection: Selection.Selection,
   edgeSelection?: HitZoneEdge,
+  attach?: HitZoneAttach,
 ): void => {
   target.save();
   // Resize-handle slop squares — resizable shapes only (matches the
@@ -358,6 +377,34 @@ export const drawHitZones = (
         fillZoneCircle(target, c.x, c.y, grab);
         strokeZoneCircle(target, c.x, c.y, ANCHOR_DOT_CLICK_RADIUS);
       }
+    }
+  }
+  // Link-attach drop-zones — only while a link endpoint is being placed.
+  // Snap catchment is in WORLD units, so screen radius / band width = world
+  // threshold × zoom. Edge bands first (under the dots), then anchor circles.
+  if (attach) {
+    const bandWorld = attach.thresholdWorld * zoom;
+    target.setFill(null);
+    target.setStroke(DEBUG_HIT_ZONE_STROKE);
+    target.setStrokeWidth(bandWorld * 2);
+    target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
+    target.setLineCap("round");
+    target.setLineJoin("round");
+    for (const loop of attach.outlineLoops) {
+      if (loop.length < 2) continue;
+      target.beginPath();
+      const first = matrix.applyToPoint(w2s, req(loop[0]));
+      target.moveTo(first.x, first.y);
+      for (let i = 1; i < loop.length; i++) {
+        const p = matrix.applyToPoint(w2s, req(loop[i]));
+        target.lineTo(p.x, p.y);
+      }
+      target.closePath();
+      target.stroke();
+    }
+    for (const a of attach.anchors) {
+      const c = matrix.applyToPoint(w2s, a);
+      fillZoneCircle(target, c.x, c.y, bandWorld);
     }
   }
   target.setOpacity(1);

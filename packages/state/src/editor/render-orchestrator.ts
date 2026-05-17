@@ -26,6 +26,7 @@ import {
   ANCHOR_DOT_RADIUS,
   ANCHOR_DOT_HOVER_GROW_RADIUS,
   ANCHOR_DOT_HOVER_MAX_RADIUS,
+  DEFAULT_SNAP_THRESHOLD,
   GHOST_PREVIEW_OPACITY,
   ISOLATION_DIM_OPACITY,
   LARGE_SCENE_HIT_THRESHOLD,
@@ -438,7 +439,32 @@ export const renderEditor = (editor: Editor): void => {
   // under edit (null when not editing).
   const editingText = editor.editingTextOverlay();
   if (editingText) overlayOpts.editingText = editingText;
-  if (editor.debugHitZones) overlayOpts.debugHitZones = true;
+  if (editor.debugHitZones) {
+    overlayOpts.debugHitZones = true;
+    // While a link endpoint is being placed, also paint the link-attach
+    // drop-zones (anchor catchments + edge bands) the snap engine resolves
+    // against, for every element except the drag source. Lets the user see
+    // where a drop lands ON a point vs ON an edge.
+    const linkDragActive =
+      editor.linkDragFromAnchor !== null ||
+      editor.edgePreview !== null ||
+      editor.linkEndpointDrag !== null;
+    if (linkDragActive) {
+      const srcId = editor.linkDragFromAnchor?.fromElement;
+      const anchors: Vec2[] = [];
+      const outlineLoops: (readonly Vec2[])[] = [];
+      for (const shape of editor._scene.elements.values()) {
+        if (shape.id === srcId) continue;
+        anchors.push(...anchorOverlayPoints(shape, 0).worldPoints);
+        for (const loop of getElementOutline(editor._scene, shape)) outlineLoops.push(loop);
+      }
+      overlayOpts.debugAttachZones = {
+        anchors,
+        outlineLoops,
+        thresholdWorld: DEFAULT_SNAP_THRESHOLD,
+      };
+    }
+  }
   renderOverlay(editor._scene, editor._selection, editor.overlayTarget, overlayOpts);
 
   // Ghost connector (click-create hover) — drawn through the REAL link

@@ -50,7 +50,7 @@ import {
   handlePosition,
 } from "./handle.js";
 import { isResizable } from "./editor/shape-traits.js";
-import { drawHitZones } from "./editor/hit-test.js";
+import { drawHitZones, type HitZoneAttach } from "./editor/hit-test.js";
 import type { Selection } from "./selection.js";
 
 /** Index-access helper: throws on out-of-range instead of returning `undefined`. */
@@ -360,6 +360,12 @@ export const renderOverlay = (
      * the debug panel. Drawn first, under the real selection chrome.
      */
     debugHitZones?: boolean;
+    /**
+     * Debug: link-attach drop-zones (anchor catchment circles + edge bands)
+     * to paint while a link endpoint is being placed. Only meaningful with
+     * `debugHitZones` on; supplied by the orchestrator during a link drag.
+     */
+    debugAttachZones?: HitZoneAttach;
     style?: Partial<OverlayStyle>;
   } = {},
 ): void => {
@@ -376,7 +382,7 @@ export const renderOverlay = (
   // 0. Debug hit-zones — drawn first so the real selection chrome sits
   //    on top. Visualises every element's mouse hit-targets.
   if (options.debugHitZones) {
-    drawHitZones(target, scene, w2s, zoom, selection, options.edgeSelection);
+    drawHitZones(target, scene, w2s, zoom, selection, options.edgeSelection, options.debugAttachZones);
   }
 
   // 1. Selection outlines (+ handles only when a single shape is

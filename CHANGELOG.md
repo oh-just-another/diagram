@@ -1537,3 +1537,6 @@
 
 ## 0.55.84
 - refactor(state): move hit-zone debug viz next to the hit-test it visualises
+
+## 0.55.85
+- feat(state): hit-zone viz for anchor dots + link handles, ?hitzones URL param
