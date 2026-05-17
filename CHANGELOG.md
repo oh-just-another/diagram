@@ -1540,3 +1540,6 @@
 
 ## 0.55.85
 - feat(state): hit-zone viz for anchor dots + link handles, ?hitzones URL param
+
+## 0.55.86
+- feat(state): hit-zone viz for link-attach drop-zones (point + edge)

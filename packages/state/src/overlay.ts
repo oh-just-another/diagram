@@ -50,7 +50,12 @@ import {
   handlePosition,
 } from "./handle.js";
 import { isResizable } from "./editor/shape-traits.js";
-import { drawHitZones, type HitZoneAttach } from "./editor/hit-test.js";
+import {
+  drawHitZones,
+  hitZoneVisibility,
+  type HitZoneAttach,
+  type HitZoneVisibility,
+} from "./editor/hit-test.js";
 import type { Selection } from "./selection.js";
 
 /** Index-access helper: throws on out-of-range instead of returning `undefined`. */
@@ -366,6 +371,12 @@ export const renderOverlay = (
      * `debugHitZones` on; supplied by the orchestrator during a link drag.
      */
     debugAttachZones?: HitZoneAttach;
+    /**
+     * Which hit-zone categories are actionable right now (from
+     * `hitZoneVisibility`). Gates `drawHitZones` so it only paints the
+     * targets the user can act on. Defaults to the at-rest set when omitted.
+     */
+    debugHitZoneVisibility?: HitZoneVisibility;
     style?: Partial<OverlayStyle>;
   } = {},
 ): void => {
@@ -382,7 +393,15 @@ export const renderOverlay = (
   // 0. Debug hit-zones — drawn first so the real selection chrome sits
   //    on top. Visualises every element's mouse hit-targets.
   if (options.debugHitZones) {
-    drawHitZones(target, scene, w2s, zoom, selection, options.edgeSelection, options.debugAttachZones);
+    drawHitZones(target, {
+      scene,
+      w2s,
+      zoom,
+      selection,
+      visibility: options.debugHitZoneVisibility ?? hitZoneVisibility({ linkDragActive: false }),
+      ...(options.edgeSelection ? { edgeSelection: options.edgeSelection } : {}),
+      ...(options.debugAttachZones ? { attach: options.debugAttachZones } : {}),
+    });
   }
 
   // 1. Selection outlines (+ handles only when a single shape is

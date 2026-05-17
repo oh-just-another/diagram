@@ -20,6 +20,7 @@ import {
   type PortOverlay,
 } from "../overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
+import { hitZoneVisibility } from "./hit-test.js";
 import { buildElementForCreate, buildEdgePreviewLink } from "./applies/create.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
@@ -441,15 +442,20 @@ export const renderEditor = (editor: Editor): void => {
   if (editingText) overlayOpts.editingText = editingText;
   if (editor.debugHitZones) {
     overlayOpts.debugHitZones = true;
-    // While a link endpoint is being placed, also paint the link-attach
-    // drop-zones (anchor catchments + edge bands) the snap engine resolves
-    // against, for every element except the drag source. Lets the user see
-    // where a drop lands ON a point vs ON an edge.
+    // One decision point for which hit-zone categories are actionable now
+    // (see `hitZoneVisibility`): while a link endpoint is being placed only
+    // the link-attach drop-zones are live; at rest the resize / body / handle
+    // / start-dot zones are. The overlay paints only the visible ones.
     const linkDragActive =
       editor.linkDragFromAnchor !== null ||
       editor.edgePreview !== null ||
       editor.linkEndpointDrag !== null;
-    if (linkDragActive) {
+    const visibility = hitZoneVisibility({ linkDragActive });
+    overlayOpts.debugHitZoneVisibility = visibility;
+    if (visibility.attachDropZones) {
+      // Link-attach drop-zones (anchor catchments + edge bands) the snap
+      // engine resolves against, for every element except the drag source —
+      // shows where a drop lands ON a point vs ON an edge.
       const srcId = editor.linkDragFromAnchor?.fromElement;
       const anchors: Vec2[] = [];
       const outlineLoops: (readonly Vec2[])[] = [];

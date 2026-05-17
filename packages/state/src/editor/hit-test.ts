@@ -276,9 +276,75 @@ export interface HitZoneAttach {
 }
 
 /**
- * Paint every element's mouse hit-zones so the tuned slop / threshold values
- * can be eyeballed in the browser. Covers, in screen space (the hit-test
- * works in screen px):
+ * Which hit-zone categories the debug overlay should paint. Each flag maps to
+ * one block in `drawHitZones`.
+ */
+export interface HitZoneVisibility {
+  /** Resize-handle slop squares on resizable shapes. */
+  readonly resizeHandles: boolean;
+  /** Body bands for every link (the `findLinkAt` catchment). */
+  readonly linkBodies: boolean;
+  /** The selected link's endpoint / waypoint / segment handle circles. */
+  readonly selectedEdgeHandles: boolean;
+  /** The single selected element's link-start anchor dots (grab + click). */
+  readonly anchorDots: boolean;
+  /** Link-attach drop-zones (anchor catchments + edge bands). */
+  readonly attachDropZones: boolean;
+}
+
+/**
+ * SINGLE source of truth for which hit-zone categories are actionable in the
+ * current interaction state — so the debug overlay highlights ONLY what the
+ * user can actually do right now (and the real `pickPressTarget` /
+ * pointer-binding would accept).
+ *
+ * While a link endpoint is being placed (drag from a start dot / draw-edge /
+ * endpoint rebind) every press is consumed by that gesture: resize handles,
+ * link bodies, selected-edge handles and start dots are all inert, and the
+ * only live targets are the link-attach drop-zones. At rest the reverse
+ * holds. Keep this the one place that encodes the gating — extend it (more
+ * inputs, more cases) when new interactions change what's grabbable, instead
+ * of scattering `if (dragging)` checks through the draw code.
+ */
+export const hitZoneVisibility = (input: {
+  readonly linkDragActive: boolean;
+}): HitZoneVisibility =>
+  input.linkDragActive
+    ? {
+        resizeHandles: false,
+        linkBodies: false,
+        selectedEdgeHandles: false,
+        anchorDots: false,
+        attachDropZones: true,
+      }
+    : {
+        resizeHandles: true,
+        linkBodies: true,
+        selectedEdgeHandles: true,
+        anchorDots: true,
+        attachDropZones: false,
+      };
+
+/**
+ * Inputs for `drawHitZones`. `visibility` (from `hitZoneVisibility`) gates
+ * which blocks paint; the geometry fields are consumed only by their
+ * corresponding block.
+ */
+export interface DrawHitZonesOptions {
+  readonly scene: Scene;
+  readonly w2s: Transform;
+  readonly zoom: number;
+  readonly selection: Selection.Selection;
+  readonly visibility: HitZoneVisibility;
+  readonly edgeSelection?: HitZoneEdge;
+  readonly attach?: HitZoneAttach;
+}
+
+/**
+ * Paint the mouse hit-zones gated by `visibility` so the tuned slop /
+ * threshold values can be eyeballed in the browser AND only the currently
+ * actionable targets show. Covers, in screen space (the hit-test works in
+ * screen px):
  *   - resize-handle slop squares for resizable shapes (matches the handle
  *     hit-test in `pickPressTarget`);
  *   - a body band for every link (the `LINK_HIT_THRESHOLD` band `findLinkAt`
@@ -298,58 +364,55 @@ export interface HitZoneAttach {
  * save/restore so the translucent paint state never leaks into the real
  * selection chrome.
  */
-export const drawHitZones = (
-  target: RenderTarget,
-  scene: Scene,
-  w2s: Transform,
-  zoom: number,
-  selection: Selection.Selection,
-  edgeSelection?: HitZoneEdge,
-  attach?: HitZoneAttach,
-): void => {
+export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): void => {
+  const { scene, w2s, zoom, selection, visibility, edgeSelection, attach } = opts;
   target.save();
   // Resize-handle slop squares — resizable shapes only (matches the
   // hit-test, which only offers handles on resizable selections).
-  for (const shape of scene.elements.values()) {
-    if (!isResizable(shape)) continue;
-    const wb = getElementWorldBounds(shape);
-    for (const handle of resizeHandlesFor(shape)) {
-      const c = matrix.applyToPoint(w2s, handlePosition(handle, wb, zoom));
-      fillZoneRect(
-        target,
-        c.x - HANDLE_HIT_SLOP,
-        c.y - HANDLE_HIT_SLOP,
-        HANDLE_HIT_SLOP * 2,
-        HANDLE_HIT_SLOP * 2,
-      );
+  if (visibility.resizeHandles) {
+    for (const shape of scene.elements.values()) {
+      if (!isResizable(shape)) continue;
+      const wb = getElementWorldBounds(shape);
+      for (const handle of resizeHandlesFor(shape)) {
+        const c = matrix.applyToPoint(w2s, handlePosition(handle, wb, zoom));
+        fillZoneRect(
+          target,
+          c.x - HANDLE_HIT_SLOP,
+          c.y - HANDLE_HIT_SLOP,
+          HANDLE_HIT_SLOP * 2,
+          HANDLE_HIT_SLOP * 2,
+        );
+      }
     }
   }
   // Link body bands (polyline stroked at 2× the hit threshold) — the
   // `findLinkAt` target, hit-testable for EVERY link.
-  for (const edge of scene.links.values()) {
-    const path = getLinkPath(scene, edge);
-    if (!path || path.length < 2) continue;
-    target.setFill(null);
-    target.setStroke(DEBUG_HIT_ZONE_STROKE);
-    target.setStrokeWidth(LINK_HIT_THRESHOLD * 2);
-    target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
-    target.setLineCap("round");
-    target.setLineJoin("round");
-    target.beginPath();
-    const start = matrix.applyToPoint(w2s, req(path[0]));
-    target.moveTo(start.x, start.y);
-    for (let i = 1; i < path.length; i++) {
-      const p = matrix.applyToPoint(w2s, req(path[i]));
-      target.lineTo(p.x, p.y);
+  if (visibility.linkBodies) {
+    for (const edge of scene.links.values()) {
+      const path = getLinkPath(scene, edge);
+      if (!path || path.length < 2) continue;
+      target.setFill(null);
+      target.setStroke(DEBUG_HIT_ZONE_STROKE);
+      target.setStrokeWidth(LINK_HIT_THRESHOLD * 2);
+      target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
+      target.setLineCap("round");
+      target.setLineJoin("round");
+      target.beginPath();
+      const start = matrix.applyToPoint(w2s, req(path[0]));
+      target.moveTo(start.x, start.y);
+      for (let i = 1; i < path.length; i++) {
+        const p = matrix.applyToPoint(w2s, req(path[i]));
+        target.lineTo(p.x, p.y);
+      }
+      target.stroke();
     }
-    target.stroke();
   }
   // Selected link's handle zones — endpoint, waypoint and segment-midpoint
   // grab circles. These handles only exist on the selected link (see
   // `pickPressTarget` step 2 + the waypoint / segment drag in
   // `pointer-binding`), so they're drawn only for it, at the same
   // `LINK_ENDPOINT_HANDLE_RADIUS` the press uses.
-  if (edgeSelection) {
+  if (visibility.selectedEdgeHandles && edgeSelection) {
     const from = matrix.applyToPoint(w2s, edgeSelection.from);
     const to = matrix.applyToPoint(w2s, edgeSelection.to);
     fillZoneCircle(target, from.x, from.y, LINK_ENDPOINT_HANDLE_RADIUS);
@@ -366,7 +429,7 @@ export const drawHitZones = (
   // Single selected element's link-start anchor dots — wider filled grab
   // halo (begins a link drag) + narrow dashed click radius (click-to-create).
   // Only on a sole-element selection, matching the anchor-drag hit-test.
-  if (selection.size === 1) {
+  if (visibility.anchorDots && selection.size === 1) {
     const id = req([...selection][0]);
     const shape = getElement(scene, id);
     if (shape) {
@@ -382,7 +445,7 @@ export const drawHitZones = (
   // Link-attach drop-zones — only while a link endpoint is being placed.
   // Snap catchment is in WORLD units, so screen radius / band width = world
   // threshold × zoom. Edge bands first (under the dots), then anchor circles.
-  if (attach) {
+  if (visibility.attachDropZones && attach) {
     const bandWorld = attach.thresholdWorld * zoom;
     target.setFill(null);
     target.setStroke(DEBUG_HIT_ZONE_STROKE);
