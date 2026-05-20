@@ -219,17 +219,46 @@ export const ANCHOR_DOT_HOVER_GROW_RADIUS = 18;
 export const ANCHOR_CLICK_NEW_ELEMENT_GAP = 40;
 
 /**
- * Debug hit-zone overlay (debug panel → Display → "Show hit-zones").
- * Visualises the mouse hit-targets (handle slop, edge-endpoint radius,
- * edge-body threshold) so the values tuned in this layer can be
- * eyeballed in the browser. `_FILL_OPACITY` keeps the translucent fill
- * from hiding the geometry underneath; `_STROKE_OPACITY` outlines each
- * zone. Pure debug — never drawn unless the flag is on.
+ * Debug hit-zone overlay (debug panel → Display → "Show hit-zones" /
+ * `?hitzones=1`). Visualises the mouse hit-targets so the values tuned in
+ * this layer can be eyeballed in the browser. `_FILL_OPACITY` keeps the
+ * translucent fill from hiding the geometry underneath; `_STROKE_OPACITY`
+ * outlines each zone. Pure debug — never drawn unless the flag is on.
+ *
+ * Shared opacities; per-category colours below so different hit-target kinds
+ * are visually distinguishable (point vs edge vs body vs container vs frame).
+ * Kept generic (`DEBUG_HIT_ZONE_FILL`/`STROKE`) as the alias for the
+ * resize-handle category and any uncoloured fallback.
  */
 export const DEBUG_HIT_ZONE_FILL = "#e8118c";
 export const DEBUG_HIT_ZONE_STROKE = "#e8118c";
 export const DEBUG_HIT_ZONE_FILL_OPACITY = 0.16;
 export const DEBUG_HIT_ZONE_STROKE_OPACITY = 0.7;
+
+/**
+ * Per-category debug hit-zone colours. One hue per hit-target kind so the
+ * overlay reads as a legend. Each colour is used for
+ * BOTH the translucent fill and the outline of its zones.
+ *
+ * - `_RESIZE` — resize-handle slop squares (magenta).
+ * - `_LINK_BODY` — link body select band (amber).
+ * - `_LINK_HANDLE` — selected link's endpoint / waypoint / segment handles (blue).
+ * - `_ANCHOR_START` — selected element's link-start dots (green).
+ * - `_ATTACH_POINT` — link-attach named/edge anchor catchments, L1/L2 (cyan).
+ * - `_ATTACH_EDGE` — link-attach outline band, L3 (purple).
+ * - `_ATTACH_BODY` — link-attach floating-on-body region, L4 (yellow).
+ * - `_FRAME` — frame membership zone, E1 (red).
+ * - `_CONTAINER` — container drop-zone, E2–E4 (teal).
+ */
+export const DEBUG_ZONE_RESIZE = "#e8118c";
+export const DEBUG_ZONE_LINK_BODY = "#f59e0b";
+export const DEBUG_ZONE_LINK_HANDLE = "#2563eb";
+export const DEBUG_ZONE_ANCHOR_START = "#16a34a";
+export const DEBUG_ZONE_ATTACH_POINT = "#06b6d4";
+export const DEBUG_ZONE_ATTACH_EDGE = "#a855f7";
+export const DEBUG_ZONE_ATTACH_BODY = "#eab308";
+export const DEBUG_ZONE_FRAME = "#dc2626";
+export const DEBUG_ZONE_CONTAINER = "#14b8a6";
 
 /**
  * Visual sizes for the remote-peer cursor overlay.

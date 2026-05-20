@@ -54,6 +54,7 @@ import {
   drawHitZones,
   hitZoneVisibility,
   type HitZoneAttach,
+  type HitZoneContainers,
   type HitZoneVisibility,
 } from "./editor/hit-test.js";
 import type { Selection } from "./selection.js";
@@ -372,6 +373,12 @@ export const renderOverlay = (
      */
     debugAttachZones?: HitZoneAttach;
     /**
+     * Debug: element drop-zones (frames + containers) to paint while an
+     * element is being dragged. Only meaningful with `debugHitZones` on;
+     * supplied by the orchestrator during an element drag.
+     */
+    debugContainerZones?: HitZoneContainers;
+    /**
      * Which hit-zone categories are actionable right now (from
      * `hitZoneVisibility`). Gates `drawHitZones` so it only paints the
      * targets the user can act on. Defaults to the at-rest set when omitted.
@@ -398,9 +405,12 @@ export const renderOverlay = (
       w2s,
       zoom,
       selection,
-      visibility: options.debugHitZoneVisibility ?? hitZoneVisibility({ linkDragActive: false }),
+      visibility:
+        options.debugHitZoneVisibility ??
+        hitZoneVisibility({ linkDragActive: false, elementDragActive: false }),
       ...(options.edgeSelection ? { edgeSelection: options.edgeSelection } : {}),
       ...(options.debugAttachZones ? { attach: options.debugAttachZones } : {}),
+      ...(options.debugContainerZones ? { containers: options.debugContainerZones } : {}),
     });
   }
 

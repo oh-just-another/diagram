@@ -25,10 +25,17 @@ import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   ANCHOR_DOT_CLICK_RADIUS,
   ANCHOR_START_HIT_SLOP,
-  DEBUG_HIT_ZONE_FILL,
   DEBUG_HIT_ZONE_FILL_OPACITY,
-  DEBUG_HIT_ZONE_STROKE,
   DEBUG_HIT_ZONE_STROKE_OPACITY,
+  DEBUG_ZONE_ANCHOR_START,
+  DEBUG_ZONE_ATTACH_BODY,
+  DEBUG_ZONE_ATTACH_EDGE,
+  DEBUG_ZONE_ATTACH_POINT,
+  DEBUG_ZONE_CONTAINER,
+  DEBUG_ZONE_FRAME,
+  DEBUG_ZONE_LINK_BODY,
+  DEBUG_ZONE_LINK_HANDLE,
+  DEBUG_ZONE_RESIZE,
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_HIT_THRESHOLD,
   LINK_START_ANCHOR_OUTSET,
@@ -188,16 +195,23 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
 // selection overlay (host debug panel → Display → "Show hit-zones"); all
 // sizes are screen-pixel because the hit-test works in screen space.
 
-/** Translucent debug rect: filled zone + faint outline. */
-const fillZoneRect = (target: RenderTarget, x: number, y: number, w: number, h: number): void => {
+/** Translucent debug rect in `color`: filled zone + faint outline. */
+const fillZoneRect = (
+  target: RenderTarget,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: string,
+): void => {
   target.setStroke(null);
-  target.setFill(DEBUG_HIT_ZONE_FILL);
+  target.setFill(color);
   target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
   target.beginPath();
   target.rect(x, y, w, h);
   target.fill();
   target.setFill(null);
-  target.setStroke(DEBUG_HIT_ZONE_STROKE);
+  target.setStroke(color);
   target.setStrokeWidth(1);
   target.setOpacity(DEBUG_HIT_ZONE_STROKE_OPACITY);
   target.beginPath();
@@ -205,16 +219,22 @@ const fillZoneRect = (target: RenderTarget, x: number, y: number, w: number, h: 
   target.stroke();
 };
 
-/** Translucent debug circle: filled zone + faint outline. */
-const fillZoneCircle = (target: RenderTarget, cx: number, cy: number, r: number): void => {
+/** Translucent debug circle in `color`: filled zone + faint outline. */
+const fillZoneCircle = (
+  target: RenderTarget,
+  cx: number,
+  cy: number,
+  r: number,
+  color: string,
+): void => {
   target.setStroke(null);
-  target.setFill(DEBUG_HIT_ZONE_FILL);
+  target.setFill(color);
   target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
   target.beginPath();
   target.ellipse(cx, cy, r, r);
   target.fill();
   target.setFill(null);
-  target.setStroke(DEBUG_HIT_ZONE_STROKE);
+  target.setStroke(color);
   target.setStrokeWidth(1);
   target.setOpacity(DEBUG_HIT_ZONE_STROKE_OPACITY);
   target.beginPath();
@@ -223,15 +243,21 @@ const fillZoneCircle = (target: RenderTarget, cx: number, cy: number, r: number)
 };
 
 /**
- * Outline-only debug circle — no fill. Used to draw a SECONDARY zone
- * nested inside a filled one (e.g. the narrow click radius inside the
- * wider grab halo of an anchor dot) so the two read as distinct without
- * the inner fill muddying the outer one. Dashed so it can't be mistaken
- * for the solid grab-halo outline.
+ * Outline-only debug circle in `color` — no fill. Used to draw a SECONDARY
+ * zone nested inside a filled one (e.g. the narrow click radius inside the
+ * wider grab halo of an anchor dot) so the two read as distinct without the
+ * inner fill muddying the outer one. Dashed so it can't be mistaken for the
+ * solid grab-halo outline.
  */
-const strokeZoneCircle = (target: RenderTarget, cx: number, cy: number, r: number): void => {
+const strokeZoneCircle = (
+  target: RenderTarget,
+  cx: number,
+  cy: number,
+  r: number,
+  color: string,
+): void => {
   target.setFill(null);
-  target.setStroke(DEBUG_HIT_ZONE_STROKE);
+  target.setStroke(color);
   target.setStrokeWidth(1);
   target.setDashArray([2, 2]);
   target.setOpacity(DEBUG_HIT_ZONE_STROKE_OPACITY);
@@ -239,6 +265,39 @@ const strokeZoneCircle = (target: RenderTarget, cx: number, cy: number, r: numbe
   target.ellipse(cx, cy, r, r);
   target.stroke();
   target.setDashArray(null);
+};
+
+/**
+ * Translucent debug polygon (filled closed loop) in `color` — used for area
+ * zones like a floating-attach body or a container drop-zone. `pts` are
+ * SCREEN-space points.
+ */
+const fillZoneLoop = (target: RenderTarget, pts: readonly Vec2[], color: string): void => {
+  if (pts.length < 3) return;
+  target.setStroke(null);
+  target.setFill(color);
+  target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
+  target.beginPath();
+  const first = req(pts[0]);
+  target.moveTo(first.x, first.y);
+  for (let i = 1; i < pts.length; i++) {
+    const p = req(pts[i]);
+    target.lineTo(p.x, p.y);
+  }
+  target.closePath();
+  target.fill();
+  target.setFill(null);
+  target.setStroke(color);
+  target.setStrokeWidth(1);
+  target.setOpacity(DEBUG_HIT_ZONE_STROKE_OPACITY);
+  target.beginPath();
+  target.moveTo(first.x, first.y);
+  for (let i = 1; i < pts.length; i++) {
+    const p = req(pts[i]);
+    target.lineTo(p.x, p.y);
+  }
+  target.closePath();
+  target.stroke();
 };
 
 /**
@@ -276,6 +335,22 @@ export interface HitZoneAttach {
 }
 
 /**
+ * Element drop-zones to paint while an ELEMENT is being dragged — the two
+ * (separate) membership systems an element can be dropped into:
+ *   - `frames` — full world bounds of every frame; an element joins the
+ *     top-most frame whose bounds contain the dragged element's CENTROID
+ *     (`reconcileFrameMembership`).
+ *   - `containers` — resolved drop-zone world bounds of every template /
+ *     auto-layout / static container; an element reparents to the container
+ *     whose drop-zone contains the cursor (`findContainerAt`).
+ * All bounds are WORLD-space; the draw projects them to screen.
+ */
+export interface HitZoneContainers {
+  readonly frames: readonly Bounds[];
+  readonly containers: readonly Bounds[];
+}
+
+/**
  * Which hit-zone categories the debug overlay should paint. Each flag maps to
  * one block in `drawHitZones`.
  */
@@ -288,8 +363,10 @@ export interface HitZoneVisibility {
   readonly selectedEdgeHandles: boolean;
   /** The single selected element's link-start anchor dots (grab + click). */
   readonly anchorDots: boolean;
-  /** Link-attach drop-zones (anchor catchments + edge bands). */
+  /** Link-attach drop-zones (anchor catchments + edge bands + floating body). */
   readonly attachDropZones: boolean;
+  /** Element drop-zones (frames + containers) while dragging an element. */
+  readonly containerDropZones: boolean;
 }
 
 /**
@@ -298,32 +375,38 @@ export interface HitZoneVisibility {
  * user can actually do right now (and the real `pickPressTarget` /
  * pointer-binding would accept).
  *
- * While a link endpoint is being placed (drag from a start dot / draw-edge /
- * endpoint rebind) every press is consumed by that gesture: resize handles,
- * link bodies, selected-edge handles and start dots are all inert, and the
- * only live targets are the link-attach drop-zones. At rest the reverse
- * holds. Keep this the one place that encodes the gating — extend it (more
- * inputs, more cases) when new interactions change what's grabbable, instead
- * of scattering `if (dragging)` checks through the draw code.
+ * Three mutually-exclusive regimes:
+ *   - placing a link endpoint (drag from a start dot / draw-edge / endpoint
+ *     rebind) → only the link-attach drop-zones are live;
+ *   - dragging an element → only the element drop-zones (frames + containers)
+ *     are live;
+ *   - at rest → resize / link-body / selected-edge / start-dot zones.
+ * Every press in a drag regime is consumed by that gesture, so the other
+ * categories are inert and hidden.
  */
 export const hitZoneVisibility = (input: {
   readonly linkDragActive: boolean;
-}): HitZoneVisibility =>
-  input.linkDragActive
-    ? {
-        resizeHandles: false,
-        linkBodies: false,
-        selectedEdgeHandles: false,
-        anchorDots: false,
-        attachDropZones: true,
-      }
-    : {
-        resizeHandles: true,
-        linkBodies: true,
-        selectedEdgeHandles: true,
-        anchorDots: true,
-        attachDropZones: false,
-      };
+  readonly elementDragActive: boolean;
+}): HitZoneVisibility => {
+  const none: HitZoneVisibility = {
+    resizeHandles: false,
+    linkBodies: false,
+    selectedEdgeHandles: false,
+    anchorDots: false,
+    attachDropZones: false,
+    containerDropZones: false,
+  };
+  // Link placement wins if somehow both are set (it can't normally).
+  if (input.linkDragActive) return { ...none, attachDropZones: true };
+  if (input.elementDragActive) return { ...none, containerDropZones: true };
+  return {
+    ...none,
+    resizeHandles: true,
+    linkBodies: true,
+    selectedEdgeHandles: true,
+    anchorDots: true,
+  };
+};
 
 /**
  * Inputs for `drawHitZones`. `visibility` (from `hitZoneVisibility`) gates
@@ -338,6 +421,7 @@ export interface DrawHitZonesOptions {
   readonly visibility: HitZoneVisibility;
   readonly edgeSelection?: HitZoneEdge;
   readonly attach?: HitZoneAttach;
+  readonly containers?: HitZoneContainers;
 }
 
 /**
@@ -365,7 +449,7 @@ export interface DrawHitZonesOptions {
  * selection chrome.
  */
 export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): void => {
-  const { scene, w2s, zoom, selection, visibility, edgeSelection, attach } = opts;
+  const { scene, w2s, zoom, selection, visibility, edgeSelection, attach, containers } = opts;
   target.save();
   // Resize-handle slop squares — resizable shapes only (matches the
   // hit-test, which only offers handles on resizable selections).
@@ -381,6 +465,7 @@ export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): v
           c.y - HANDLE_HIT_SLOP,
           HANDLE_HIT_SLOP * 2,
           HANDLE_HIT_SLOP * 2,
+          DEBUG_ZONE_RESIZE,
         );
       }
     }
@@ -392,7 +477,7 @@ export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): v
       const path = getLinkPath(scene, edge);
       if (!path || path.length < 2) continue;
       target.setFill(null);
-      target.setStroke(DEBUG_HIT_ZONE_STROKE);
+      target.setStroke(DEBUG_ZONE_LINK_BODY);
       target.setStrokeWidth(LINK_HIT_THRESHOLD * 2);
       target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
       target.setLineCap("round");
@@ -415,15 +500,15 @@ export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): v
   if (visibility.selectedEdgeHandles && edgeSelection) {
     const from = matrix.applyToPoint(w2s, edgeSelection.from);
     const to = matrix.applyToPoint(w2s, edgeSelection.to);
-    fillZoneCircle(target, from.x, from.y, LINK_ENDPOINT_HANDLE_RADIUS);
-    fillZoneCircle(target, to.x, to.y, LINK_ENDPOINT_HANDLE_RADIUS);
+    fillZoneCircle(target, from.x, from.y, LINK_ENDPOINT_HANDLE_RADIUS, DEBUG_ZONE_LINK_HANDLE);
+    fillZoneCircle(target, to.x, to.y, LINK_ENDPOINT_HANDLE_RADIUS, DEBUG_ZONE_LINK_HANDLE);
     for (const w of edgeSelection.waypoints ?? []) {
       const p = matrix.applyToPoint(w2s, w);
-      fillZoneCircle(target, p.x, p.y, LINK_ENDPOINT_HANDLE_RADIUS);
+      fillZoneCircle(target, p.x, p.y, LINK_ENDPOINT_HANDLE_RADIUS, DEBUG_ZONE_LINK_HANDLE);
     }
     for (const m of edgeSelection.midpoints ?? []) {
       const p = matrix.applyToPoint(w2s, m);
-      fillZoneCircle(target, p.x, p.y, LINK_ENDPOINT_HANDLE_RADIUS);
+      fillZoneCircle(target, p.x, p.y, LINK_ENDPOINT_HANDLE_RADIUS, DEBUG_ZONE_LINK_HANDLE);
     }
   }
   // Single selected element's link-start anchor dots — wider filled grab
@@ -437,18 +522,29 @@ export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): v
       const { worldPoints } = anchorOverlayPoints(shape, LINK_START_ANCHOR_OUTSET / zoom);
       for (const p of worldPoints) {
         const c = matrix.applyToPoint(w2s, p);
-        fillZoneCircle(target, c.x, c.y, grab);
-        strokeZoneCircle(target, c.x, c.y, ANCHOR_DOT_CLICK_RADIUS);
+        fillZoneCircle(target, c.x, c.y, grab, DEBUG_ZONE_ANCHOR_START);
+        strokeZoneCircle(target, c.x, c.y, ANCHOR_DOT_CLICK_RADIUS, DEBUG_ZONE_ANCHOR_START);
       }
     }
   }
   // Link-attach drop-zones — only while a link endpoint is being placed.
   // Snap catchment is in WORLD units, so screen radius / band width = world
-  // threshold × zoom. Edge bands first (under the dots), then anchor circles.
+  // threshold × zoom. Order (under → over): floating body fill (L4), edge band
+  // (L3), anchor catchment circles (L1/L2) so points sit on top.
   if (visibility.attachDropZones && attach) {
     const bandWorld = attach.thresholdWorld * zoom;
+    // L4: drop on the body interior → floating attach. Fill each candidate's
+    // outline loop so the user sees "drop anywhere here floats to this shape".
+    for (const loop of attach.outlineLoops) {
+      fillZoneLoop(
+        target,
+        loop.map((p) => matrix.applyToPoint(w2s, p)),
+        DEBUG_ZONE_ATTACH_BODY,
+      );
+    }
+    // L3: outline band (fixed outline point along the perimeter).
     target.setFill(null);
-    target.setStroke(DEBUG_HIT_ZONE_STROKE);
+    target.setStroke(DEBUG_ZONE_ATTACH_EDGE);
     target.setStrokeWidth(bandWorld * 2);
     target.setOpacity(DEBUG_HIT_ZONE_FILL_OPACITY);
     target.setLineCap("round");
@@ -465,10 +561,27 @@ export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): v
       target.closePath();
       target.stroke();
     }
+    // L1/L2: named / edge anchor catchment circles.
     for (const a of attach.anchors) {
       const c = matrix.applyToPoint(w2s, a);
-      fillZoneCircle(target, c.x, c.y, bandWorld);
+      fillZoneCircle(target, c.x, c.y, bandWorld, DEBUG_ZONE_ATTACH_POINT);
     }
+  }
+  // Element drop-zones — only while an element is being dragged. Frames
+  // (centroid-in-bounds) and containers (cursor-in-drop-zone). Bounds
+  // are world-space; project the four corners to a screen loop.
+  if (visibility.containerDropZones && containers) {
+    const drawBounds = (b: Bounds, color: string): void => {
+      const corners = [
+        { x: b.x, y: b.y },
+        { x: b.x + b.width, y: b.y },
+        { x: b.x + b.width, y: b.y + b.height },
+        { x: b.x, y: b.y + b.height },
+      ].map((p) => matrix.applyToPoint(w2s, p));
+      fillZoneLoop(target, corners, color);
+    };
+    for (const b of containers.frames) drawBounds(b, DEBUG_ZONE_FRAME);
+    for (const b of containers.containers) drawBounds(b, DEBUG_ZONE_CONTAINER);
   }
   target.setOpacity(1);
   target.restore();

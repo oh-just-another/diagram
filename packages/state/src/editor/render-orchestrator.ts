@@ -7,6 +7,7 @@ import {
   getElementWorldBounds,
   getElementOutline,
   getWorldToScreen,
+  getDropZoneWorld,
   strokeOutsideExtent,
   isImage,
   type Scene,
@@ -34,7 +35,7 @@ import {
   LINK_START_ANCHOR_OUTSET,
   LINK_ATTACH_ANCHOR_OUTSET,
 } from "../constants.js";
-import type { ElementId, LinkId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
 import type { Editor } from "../editor.js";
 
 /**
@@ -450,12 +451,17 @@ export const renderEditor = (editor: Editor): void => {
       editor.linkDragFromAnchor !== null ||
       editor.edgePreview !== null ||
       editor.linkEndpointDrag !== null;
-    const visibility = hitZoneVisibility({ linkDragActive });
+    // An element move is in flight: position snapshot taken (groupMoveOrigin)
+    // AND a real drag transaction opened (gestureTx opens only past the drag
+    // threshold, so a bare press doesn't count). Resize uses groupResizeOrigin
+    // instead, so this stays move-only.
+    const elementDragActive = editor.groupMoveOrigin !== null && editor.gestureTx !== null;
+    const visibility = hitZoneVisibility({ linkDragActive, elementDragActive });
     overlayOpts.debugHitZoneVisibility = visibility;
     if (visibility.attachDropZones) {
-      // Link-attach drop-zones (anchor catchments + edge bands) the snap
-      // engine resolves against, for every element except the drag source —
-      // shows where a drop lands ON a point vs ON an edge.
+      // Link-attach drop-zones (anchor catchments + edge bands + floating body)
+      // the snap engine resolves against, for every element except the drag
+      // source — shows where a drop lands ON a point vs ON an edge vs the body.
       const srcId = editor.linkDragFromAnchor?.fromElement;
       const anchors: Vec2[] = [];
       const outlineLoops: (readonly Vec2[])[] = [];
@@ -469,6 +475,25 @@ export const renderEditor = (editor: Editor): void => {
         outlineLoops,
         thresholdWorld: DEFAULT_SNAP_THRESHOLD,
       };
+    }
+    if (visibility.containerDropZones) {
+      // Element drop-zones for ALL frames + containers at once. Frames use
+      // centroid-in-body (full world bounds); containers use
+      // cursor-in-drop-zone (resolved zone). The dragged elements themselves
+      // are skipped — you can't drop into self.
+      const dragged = editor.groupMoveOrigin;
+      const frames: Bounds[] = [];
+      const containers: Bounds[] = [];
+      for (const shape of editor._scene.elements.values()) {
+        if (dragged?.has(shape.id)) continue;
+        if (shape.type === "frame") {
+          frames.push(getElementWorldBounds(shape));
+          continue;
+        }
+        const zone = getDropZoneWorld(shape);
+        if (zone) containers.push(zone);
+      }
+      overlayOpts.debugContainerZones = { frames, containers };
     }
   }
   renderOverlay(editor._scene, editor._selection, editor.overlayTarget, overlayOpts);

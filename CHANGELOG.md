@@ -1543,3 +1543,6 @@
 
 ## 0.55.86
 - feat(state): hit-zone viz for link-attach drop-zones (point + edge)
+
+## 0.55.87
+- refactor(state): gate hit-zones by interaction state via one function
