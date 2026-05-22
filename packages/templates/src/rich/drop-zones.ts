@@ -36,3 +36,30 @@ export const extractDropZone = (root: LayoutedNode): Bounds | null => {
   visit(root);
   return best;
 };
+
+/**
+ * Walk a layouted template tree and return **every** `drop-zone` node's bounds
+ * in **local** coordinates (relative to the root top-left), in tree order.
+ *
+ * Unlike `extractDropZone` (which collapses to the single largest zone for the
+ * container-attach protocol), this keeps all zones — e.g. each lane of a
+ * multi-lane swim-lane. Used by the debug hit-zone overlay to highlight every
+ * drop region; returns `[]` when the tree has no drop-zone.
+ */
+export const extractAllDropZones = (root: LayoutedNode): Bounds[] => {
+  const rootBounds = root.bounds;
+  const zones: Bounds[] = [];
+  const visit = (l: LayoutedNode): void => {
+    if (l.node.type === "drop-zone") {
+      zones.push({
+        x: l.bounds.x - rootBounds.x,
+        y: l.bounds.y - rootBounds.y,
+        width: l.bounds.width,
+        height: l.bounds.height,
+      });
+    }
+    for (const child of l.children) visit(child);
+  };
+  visit(root);
+  return zones;
+};

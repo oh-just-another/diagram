@@ -131,6 +131,45 @@ export const getDropZoneWorld = (s: ElementBase): Bounds | null => {
 };
 
 /**
+ * Resolver returning EVERY drop-zone of a shape in local coords (relative
+ * to `shape.position`) — e.g. each lane of a multi-lane swim-lane. Distinct
+ * from `ContainerResolver`, which collapses to the single attach zone. Return
+ * `null` to defer to the next resolver. Registered by `@templates`.
+ */
+export type ContainerZonesResolver = (shape: ElementBase) => readonly Bounds[] | null;
+
+const zonesResolvers: ContainerZonesResolver[] = [];
+
+/** Plug in a multi-zone resolver. First non-null wins; idempotent. */
+export const registerContainerZonesResolver = (resolver: ContainerZonesResolver): void => {
+  if (!zonesResolvers.includes(resolver)) zonesResolvers.push(resolver);
+};
+
+/**
+ * ALL drop-zones of `s` in world coords — every lane of a multi-lane
+ * container, not just the single attach zone. Tries the multi-zone resolvers
+ * first; falls back to the single `getDropZoneWorld` (wrapped) so non-template
+ * containers still report their one zone. Returns `[]` when the shape is not a
+ * container. Introspection only — the attach protocol uses the single-zone
+ * path (`getDropZoneWorld` / `findContainerAt`).
+ */
+export const getDropZonesWorld = (s: ElementBase): readonly Bounds[] => {
+  for (const resolver of zonesResolvers) {
+    const local = resolver(s);
+    if (local) {
+      return local.map((z) => ({
+        x: s.position.x + z.x,
+        y: s.position.y + z.y,
+        width: z.width,
+        height: z.height,
+      }));
+    }
+  }
+  const single = getDropZoneWorld(s);
+  return single ? [single] : [];
+};
+
+/**
  * Topmost container shape whose drop-zone contains `worldPoint`.
  * Walks layers top-down + shapes within layer top-down so the visually
  * topmost container wins. `exclude` lets the caller skip shapes being

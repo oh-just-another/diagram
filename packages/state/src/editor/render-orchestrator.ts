@@ -7,7 +7,7 @@ import {
   getElementWorldBounds,
   getElementOutline,
   getWorldToScreen,
-  getDropZoneWorld,
+  getDropZonesWorld,
   strokeOutsideExtent,
   isImage,
   type Scene,
@@ -490,8 +490,9 @@ export const renderEditor = (editor: Editor): void => {
           frames.push(getElementWorldBounds(shape));
           continue;
         }
-        const zone = getDropZoneWorld(shape);
-        if (zone) containers.push(zone);
+        // All drop-zones (every lane of a multi-lane container), not just the
+        // single attach zone — so a swim-lane shows a region per lane.
+        containers.push(...getDropZonesWorld(shape));
       }
       overlayOpts.debugContainerZones = { frames, containers };
     }

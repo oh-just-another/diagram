@@ -1546,3 +1546,6 @@
 
 ## 0.55.87
 - refactor(state): gate hit-zones by interaction state via one function
+
+## 0.55.88
+- feat(state): floating + container/frame drop-zones in hit-zone viz, per-type colors

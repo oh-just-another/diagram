@@ -2,9 +2,11 @@ import type { Bounds, Color, Vec2 } from "@oh-just-another/types";
 import {
   registerBounder,
   registerContainerResolver,
+  registerContainerZonesResolver,
+  type ElementBase,
   type TemplateElement as SceneTemplateElement,
 } from "@oh-just-another/scene";
-import { extractDropZone } from "./drop-zones.js";
+import { extractDropZone, extractAllDropZones } from "./drop-zones.js";
 import {
   registerElementRenderer,
   type RenderTarget,
@@ -275,34 +277,45 @@ export const installTemplateShapeRenderer = (): void => {
     // the user's resize gesture changes both the AABB and the painted layout.
     return { x: 0, y: 0, width: shape.width, height: shape.height };
   });
-  // Live drop-zone resolver for template shapes — re-layout the
-  // template tree against the shape's current `width / height` and
-  // return the actual `drop-zone` node bounds. Keeps the container
-  // hit area in sync with the visible body after the user resizes
-  // the template (e.g. growing a swim-lane).
-  registerContainerResolver((shape) => {
+  // Re-layout a template shape's tree against its current width/height so the
+  // drop-zone bounds stay in sync with the visible body after the user resizes
+  // it (e.g. growing a swim-lane). Returns the layouted root, or null when the
+  // shape isn't a known template.
+  //
+  // Same trick as renderTemplateElement: inject the shape's current
+  // width/height into the root layout, otherwise the root container collapses
+  // to its intrinsic size (~80×60 driven by the drop-zone's intrinsic) and the
+  // resolver returns a tiny box.
+  const layoutTemplateShape = (shape: ElementBase): LayoutedNode | null => {
     if (shape.type !== "template") return null;
     const tmpl = shape as SceneTemplateElement;
     const template = defaultRichRegistry.get(tmpl.templateId);
     if (!template) return null;
-    // IMPORTANT: same trick as renderTemplateElement — inject the shape's
-    // current width/height into the root layout, otherwise the root
-    // container collapses to its intrinsic size (~80×60 driven by the
-    // drop-zone's intrinsic) and the resolver returns a tiny box.
-    // The renderer paints the lane at full size, but the layout pass
-    // for the *resolver* has to be primed too.
     const rootWithSize: TemplateNode = {
       ...template.root,
       layout: { ...(template.root.layout ?? {}), width: tmpl.width, height: tmpl.height },
     };
-    const layouted = layoutTree(rootWithSize, {
+    return layoutTree(rootWithSize, {
       available: { width: tmpl.width, height: tmpl.height },
     });
+  };
+  // Live single-zone resolver — the container-attach protocol's drop target.
+  registerContainerResolver((shape) => {
+    const layouted = layoutTemplateShape(shape);
+    if (!layouted) return null;
     const dropZone = extractDropZone(layouted);
     if (!dropZone) return null;
     // Read padding from the shape's static metadata fallback (if any)
     // so authors can tune it per-template; default 8.
     const staticMeta = (shape.metadata?.container as { padding?: number } | undefined) ?? {};
     return { dropZone, padding: staticMeta.padding ?? 8 };
+  });
+  // Live multi-zone resolver — every lane of a multi-lane template, for the
+  // debug hit-zone overlay (the attach protocol still uses the single zone).
+  registerContainerZonesResolver((shape) => {
+    const layouted = layoutTemplateShape(shape);
+    if (!layouted) return null;
+    const zones = extractAllDropZones(layouted);
+    return zones.length > 0 ? zones : null;
   });
 };

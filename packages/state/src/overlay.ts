@@ -411,6 +411,10 @@ export const renderOverlay = (
       ...(options.edgeSelection ? { edgeSelection: options.edgeSelection } : {}),
       ...(options.debugAttachZones ? { attach: options.debugAttachZones } : {}),
       ...(options.debugContainerZones ? { containers: options.debugContainerZones } : {}),
+      ...(options.groupBounds ? { groupBounds: options.groupBounds } : {}),
+      ...(options.groupAspectLocked !== undefined
+        ? { groupAspectLocked: options.groupAspectLocked }
+        : {}),
     });
   }
 

@@ -290,6 +290,9 @@ export {
   expandDropZoneToFit,
   containerSizeForZone,
   registerContainerResolver,
+  getDropZonesWorld,
+  registerContainerZonesResolver,
   type ContainerSpec,
   type ContainerResolver,
+  type ContainerZonesResolver,
 } from "./container.js";

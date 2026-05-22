@@ -259,6 +259,8 @@ export const DEBUG_ZONE_ATTACH_EDGE = "#a855f7";
 export const DEBUG_ZONE_ATTACH_BODY = "#eab308";
 export const DEBUG_ZONE_FRAME = "#dc2626";
 export const DEBUG_ZONE_CONTAINER = "#14b8a6";
+/** Annotation-pin grab radius (rose). Group-handle slop reuses `_RESIZE`. */
+export const DEBUG_ZONE_ANNOTATION = "#f43f5e";
 
 /**
  * Visual sizes for the remote-peer cursor overlay.

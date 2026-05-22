@@ -25,9 +25,11 @@ import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   ANCHOR_DOT_CLICK_RADIUS,
   ANCHOR_START_HIT_SLOP,
+  ANNOTATION_PIN_HIT_SLOP,
   DEBUG_HIT_ZONE_FILL_OPACITY,
   DEBUG_HIT_ZONE_STROKE_OPACITY,
   DEBUG_ZONE_ANCHOR_START,
+  DEBUG_ZONE_ANNOTATION,
   DEBUG_ZONE_ATTACH_BODY,
   DEBUG_ZONE_ATTACH_EDGE,
   DEBUG_ZONE_ATTACH_POINT,
@@ -367,6 +369,10 @@ export interface HitZoneVisibility {
   readonly attachDropZones: boolean;
   /** Element drop-zones (frames + containers) while dragging an element. */
   readonly containerDropZones: boolean;
+  /** Group-bounds resize-handle slop (multi-select / aspect-locked group). */
+  readonly groupHandles: boolean;
+  /** Annotation-pin grab radius. */
+  readonly annotationPins: boolean;
 }
 
 /**
@@ -395,6 +401,8 @@ export const hitZoneVisibility = (input: {
     anchorDots: false,
     attachDropZones: false,
     containerDropZones: false,
+    groupHandles: false,
+    annotationPins: false,
   };
   // Link placement wins if somehow both are set (it can't normally).
   if (input.linkDragActive) return { ...none, attachDropZones: true };
@@ -405,6 +413,8 @@ export const hitZoneVisibility = (input: {
     linkBodies: true,
     selectedEdgeHandles: true,
     anchorDots: true,
+    groupHandles: true,
+    annotationPins: true,
   };
 };
 
@@ -422,6 +432,10 @@ export interface DrawHitZonesOptions {
   readonly edgeSelection?: HitZoneEdge;
   readonly attach?: HitZoneAttach;
   readonly containers?: HitZoneContainers;
+  /** Combined multi-selection / group bounds (world) — for group-handle slop. */
+  readonly groupBounds?: Bounds;
+  /** Restrict group-handle slop to the four corners (aspect-locked). */
+  readonly groupAspectLocked?: boolean;
 }
 
 /**
@@ -450,6 +464,7 @@ export interface DrawHitZonesOptions {
  */
 export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): void => {
   const { scene, w2s, zoom, selection, visibility, edgeSelection, attach, containers } = opts;
+  const { groupBounds, groupAspectLocked } = opts;
   target.save();
   // Resize-handle slop squares — resizable shapes only (matches the
   // hit-test, which only offers handles on resizable selections).
@@ -582,6 +597,32 @@ export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): v
     };
     for (const b of containers.frames) drawBounds(b, DEBUG_ZONE_FRAME);
     for (const b of containers.containers) drawBounds(b, DEBUG_ZONE_CONTAINER);
+  }
+  // Group-bounds resize-handle slop — multi-selection / aspect-locked group.
+  // Handle set matches the hit-test: corners only when aspect-locked, else all
+  // 8. Same `HANDLE_HIT_SLOP` squares as single-shape handles, resize colour.
+  if (visibility.groupHandles && groupBounds) {
+    const handleSet = groupAspectLocked ? CORNER_HANDLES : ALL_HANDLES;
+    for (const handle of handleSet) {
+      const c = matrix.applyToPoint(w2s, handlePosition(handle, groupBounds, zoom));
+      fillZoneRect(
+        target,
+        c.x - HANDLE_HIT_SLOP,
+        c.y - HANDLE_HIT_SLOP,
+        HANDLE_HIT_SLOP * 2,
+        HANDLE_HIT_SLOP * 2,
+        DEBUG_ZONE_RESIZE,
+      );
+    }
+  }
+  // Annotation-pin grab circles — radius `ANNOTATION_PIN_HIT_SLOP` (screen px),
+  // matching `hitAnnotation`. Pins sit visually above everything, so their hit
+  // wins first in `pickPressTarget`.
+  if (visibility.annotationPins) {
+    for (const ann of scene.annotations.values()) {
+      const c = matrix.applyToPoint(w2s, getAnnotationWorldPosition(scene, ann));
+      fillZoneCircle(target, c.x, c.y, ANNOTATION_PIN_HIT_SLOP, DEBUG_ZONE_ANNOTATION);
+    }
   }
   target.setOpacity(1);
   target.restore();
