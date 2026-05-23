@@ -1558,3 +1558,6 @@
 
 ## 0.55.91
 - feat(diagram): move debug-panel hotkey g d Right d b
+
+## 0.55.92
+- fix(diagram): debug-panel hotkey d b Right d d (b was the brush tool)

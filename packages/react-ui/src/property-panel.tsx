@@ -94,10 +94,15 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
     if (shapes.length === 0) return null;
     const allText = shapes.every((s) => s.type === "text");
     const allImage = shapes.every((s) => s.type === "image");
+    const allFrame = shapes.every((s) => s.type === "frame");
 
     const primary: ReactNode[] = [];
     const overflow: ReactNode[] = [];
-    if (allText) {
+    if (allFrame) {
+      // A frame's border is fixed chrome (dashed outline); only its body fill
+      // is user-configurable. No stroke / width / dash / roundness controls.
+      primary.push(<FillControl key="fill" shapes={shapes} />);
+    } else if (allText) {
       primary.push(
         <FontSizeControl key="size" shapes={shapes} />,
         <ColorOpacityControl key="color" shapes={shapes} />,
