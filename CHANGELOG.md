@@ -1549,3 +1549,6 @@
 
 ## 0.55.88
 - feat(state): floating + container/frame drop-zones in hit-zone viz, per-type colors
+
+## 0.55.89
+- feat(state): P2 hit-zones — per-lane containers, group-handle slop, annotation pins

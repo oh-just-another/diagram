@@ -484,6 +484,7 @@ const rotateLocal = (
  * the child, not the frame chrome.
  */
 const FRAME_STROKE = "#888";
+const FRAME_FILL = "#ffffff";
 
 const FRAME_HEADER_ELLIPSIS = "…";
 
@@ -508,7 +509,16 @@ const ellipsizeToWidth = (text: string, maxWidth: number, target: RenderTarget):
 };
 
 const drawFrame: ElementRenderer<FrameElement> = (shape, target) => {
-  // Body — dashed rectangle.
+  // Body — solid fill (no element should be background-less) + dashed outline.
+  // Frames sit at the bottom z-order, so the fill backs their members without
+  // covering them. Honours an explicit `style.fill`, else the default white.
+  target.setFill(shape.style.fill ?? FRAME_FILL);
+  target.setStroke(null);
+  target.setDashArray(null);
+  target.beginPath();
+  target.rect(0, 0, shape.width, shape.height);
+  target.fill();
+  // Dashed outline on top of the fill.
   target.setFill(null);
   target.setStroke(FRAME_STROKE);
   target.setStrokeWidth(1);
