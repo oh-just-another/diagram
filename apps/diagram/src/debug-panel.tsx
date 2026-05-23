@@ -88,7 +88,9 @@ export const DebugPanel = ({ editor }: { editor: Editor | null }) => {
       label: "Debug panel",
       category: "other",
       uiKind: "toggle",
-      sequence: ["g", "d"],
+      // `d b` (mnemonic "debug"). Leaves `g` free for a future standard-parity
+      // grid toggle (`G`); the old `g d` would shadow a single-`g` action.
+      sequence: ["d", "b"],
       checked: () => openRef.current,
       perform: () => { setOpen((v) => !v); },
     });
@@ -259,12 +261,12 @@ const Drawer = ({
       ))}
       <div style={{ flex: 1 }} />
       <span style={{ color: "var(--du-text-muted, #6b6b6b)", fontSize: 11, marginRight: 8 }}>
-        ⌘⇧D
+        d b
       </span>
       <button
         type="button"
         onClick={onClose}
-        title="Close (Cmd+Shift+D)"
+        title="Toggle (d then b)"
         style={{
           background: "transparent",
           border: "none",

@@ -1552,3 +1552,6 @@
 
 ## 0.55.89
 - feat(state): P2 hit-zones — per-lane containers, group-handle slop, annotation pins
+
+## 0.55.90
+- feat(renderer-core): frame gets a solid (white) body fill
