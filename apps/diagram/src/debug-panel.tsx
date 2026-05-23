@@ -88,9 +88,11 @@ export const DebugPanel = ({ editor }: { editor: Editor | null }) => {
       label: "Debug panel",
       category: "other",
       uiKind: "toggle",
-      // `d b` (mnemonic "debug"). Leaves `g` free for a future standard-parity
-      // grid toggle (`G`); the old `g d` would shadow a single-`g` action.
-      sequence: ["d", "b"],
+      // `d d` (double-tap, mnemonic "debug"). Both keys must be non-tool keys:
+      // a sequence ending in a tool key (b=brush, v, r, …) falls through to
+      // that tool if the two presses miss the sequence window. `d` is only
+      // bound as ⌘D, so plain `d` is safe.
+      sequence: ["d", "d"],
       checked: () => openRef.current,
       perform: () => { setOpen((v) => !v); },
     });
@@ -261,12 +263,12 @@ const Drawer = ({
       ))}
       <div style={{ flex: 1 }} />
       <span style={{ color: "var(--du-text-muted, #6b6b6b)", fontSize: 11, marginRight: 8 }}>
-        d b
+        d d
       </span>
       <button
         type="button"
         onClick={onClose}
-        title="Toggle (d then b)"
+        title="Toggle (d then d)"
         style={{
           background: "transparent",
           border: "none",

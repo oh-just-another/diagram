@@ -1555,3 +1555,6 @@
 
 ## 0.55.90
 - feat(renderer-core): frame gets a solid (white) body fill
+
+## 0.55.91
+- feat(diagram): move debug-panel hotkey g d Right d b
