@@ -589,7 +589,7 @@ describe("drawImage", () => {
 // drawFrame
 // ---------------------------------------------------------------------------
 describe("drawFrame", () => {
-  it("emits a dashed rect for the frame body", () => {
+  it("emits a filled rect + thin solid outline for the frame body", () => {
     const calls = addAndRender({
       ...base(),
       type: "frame",
@@ -597,13 +597,14 @@ describe("drawFrame", () => {
       height: 300,
       style: {},
     });
-    // Frame draws: setDashArray → rect → stroke → setDashArray(null)
-    expect(calls.some((c) => c.method === "setDashArray" && Array.isArray(c.args[0]))).toBe(true);
+    // Frame draws a solid-fill body + a solid (non-dashed) 1px outline.
     expect(calls.some((c) => c.method === "rect" && c.args[2] === 400)).toBe(true);
+    expect(calls.some((c) => c.method === "fill")).toBe(true);
     expect(calls.some((c) => c.method === "stroke")).toBe(true);
-    // Dash array is reset after the body
+    expect(calls.some((c) => c.method === "setStrokeWidth" && c.args[0] === 1)).toBe(true);
+    // No dashed outline — every setDashArray call clears the dash (null).
     const dashCalls = calls.filter((c) => c.method === "setDashArray");
-    expect(dashCalls.some((c) => c.args[0] === null)).toBe(true);
+    expect(dashCalls.every((c) => c.args[0] === null)).toBe(true);
   });
 
   it("emits fillText with the frame name", () => {

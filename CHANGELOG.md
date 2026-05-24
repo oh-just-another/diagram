@@ -1564,3 +1564,6 @@
 
 ## 0.55.93
 - feat(react-ui): frame property panel — fill only, no border controls
+
+## 0.55.94
+- fix(state,react-ui): make frame background editable from the panel

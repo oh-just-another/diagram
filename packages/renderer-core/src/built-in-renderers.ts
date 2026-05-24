@@ -509,24 +509,23 @@ const ellipsizeToWidth = (text: string, maxWidth: number, target: RenderTarget):
 };
 
 const drawFrame: ElementRenderer<FrameElement> = (shape, target) => {
-  // Body — solid fill (no element should be background-less) + dashed outline.
-  // Frames sit at the bottom z-order, so the fill backs their members without
-  // covering them. Honours an explicit `style.fill`, else the default white.
+  // Body — solid fill + thin solid outline. Frames sit at the bottom
+  // z-order, so the fill backs their members without covering them.
+  // Honours an explicit `style.fill`, else default white.
   target.setFill(shape.style.fill ?? FRAME_FILL);
   target.setStroke(null);
   target.setDashArray(null);
   target.beginPath();
   target.rect(0, 0, shape.width, shape.height);
   target.fill();
-  // Dashed outline on top of the fill.
+  // Outline on top of the fill — thin 1px solid (not dashed).
   target.setFill(null);
   target.setStroke(FRAME_STROKE);
   target.setStrokeWidth(1);
-  target.setDashArray([6, 4]);
+  target.setDashArray(null);
   target.beginPath();
   target.rect(0, 0, shape.width, shape.height);
   target.stroke();
-  target.setDashArray(null);
 
   // Header label: the strip hugs the text width but never exceeds the
   // frame's right edge; a name too long for the frame is ellipsised.
