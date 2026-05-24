@@ -2,6 +2,19 @@ import type { ElementBase } from "@oh-just-another/scene";
 import type { RenderTarget } from "./render-target.js";
 
 /**
+ * Optional draw context passed to an {@link ElementRenderer}. Carries the
+ * current view `zoom` so a renderer can draw screen-constant features (e.g. a
+ * 1px hairline border that does NOT scale with zoom): a local stroke width of
+ * `1 / (zoom * shape.scale)` lands at one device pixel. Optional and additive —
+ * renderers that don't need it ignore the third argument, and callers that
+ * can't supply it (preview / export at 1:1) may omit it.
+ */
+export interface ElementRenderContext {
+  /** Current view scale (1.0 = 1:1). `world × zoom = screen px`. */
+  readonly zoom: number;
+}
+
+/**
  * Draws a single shape onto `target`. The shape's `position` / `rotation` /
  * `scale` have already been applied to the target — implementations draw in
  * the shape's *local* coordinate space.
@@ -13,6 +26,7 @@ import type { RenderTarget } from "./render-target.js";
 export type ElementRenderer<S extends ElementBase = ElementBase> = (
   shape: S,
   target: RenderTarget,
+  ctx?: ElementRenderContext,
 ) => void;
 
 const registry = new Map<string, ElementRenderer>();

@@ -268,7 +268,7 @@ export const renderScene = (
       if (shape.scale.x !== 1 || shape.scale.y !== 1) {
         target.scale(shape.scale.x, shape.scale.y);
       }
-      renderer(shape, target);
+      renderer(shape, target, { zoom });
       target.restore();
     }
   }

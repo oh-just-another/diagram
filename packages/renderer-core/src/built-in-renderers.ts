@@ -508,7 +508,7 @@ const ellipsizeToWidth = (text: string, maxWidth: number, target: RenderTarget):
   return lo > 0 ? text.slice(0, lo) + FRAME_HEADER_ELLIPSIS : FRAME_HEADER_ELLIPSIS;
 };
 
-const drawFrame: ElementRenderer<FrameElement> = (shape, target) => {
+const drawFrame: ElementRenderer<FrameElement> = (shape, target, ctx) => {
   // Body — solid fill + thin solid outline. Frames sit at the bottom
   // z-order, so the fill backs their members without covering them.
   // Honours an explicit `style.fill`, else default white.
@@ -518,10 +518,14 @@ const drawFrame: ElementRenderer<FrameElement> = (shape, target) => {
   target.beginPath();
   target.rect(0, 0, shape.width, shape.height);
   target.fill();
-  // Outline on top of the fill — thin 1px solid (not dashed).
+  // Outline on top of the fill — a 1px SCREEN-constant hairline (doesn't scale
+  // with zoom). The renderer draws in local coords where 1 unit = zoom × scale
+  // device px, so divide to keep the stroke at one device pixel. Falls back to
+  // 1 world-px when no zoom context is supplied (preview / export at 1:1).
+  const screenScale = (ctx?.zoom ?? 1) * (shape.scale.x || 1);
   target.setFill(null);
   target.setStroke(FRAME_STROKE);
-  target.setStrokeWidth(1);
+  target.setStrokeWidth(1 / (screenScale || 1));
   target.setDashArray(null);
   target.beginPath();
   target.rect(0, 0, shape.width, shape.height);

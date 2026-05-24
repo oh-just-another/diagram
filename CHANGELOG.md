@@ -1567,3 +1567,6 @@
 
 ## 0.55.94
 - fix(state,react-ui): make frame background editable from the panel
+
+## 0.55.95
+- feat(renderer-core): frame border thin 1px solid (was dashed)
