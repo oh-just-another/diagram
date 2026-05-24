@@ -184,6 +184,14 @@ export const LINK_START_ANCHOR_OUTSET = 20;
 export const LINK_ATTACH_ANCHOR_OUTSET = 0;
 
 /**
+ * Default body fill for a freshly-created frame. Frames must have a
+ * background (no element is background-less); white reads on most canvases.
+ * Carried in `style.fill` at creation so the property panel shows it and it
+ * serialises; the renderer falls back to the same white if ever unset.
+ */
+export const FRAME_DEFAULT_FILL = "#ffffff";
+
+/**
  * Screen-px slop ADDED to `ANCHOR_DOT_ACTIVE_RADIUS` when hit-testing a
  * press against a link-start anchor dot — the "drag a link straight from
  * the dot" gesture (no draw-edge tool needed). Mirrors `HANDLE_HIT_SLOP`

@@ -1387,5 +1387,8 @@ const sharedString = (
   return typeof value === "string" ? value : null;
 };
 
-const hasFill = (shape: ElementBase): boolean => shape.style.fill !== undefined;
+// Frames are always fillable (white by default) even when `style.fill` is
+// unset.
+const hasFill = (shape: ElementBase): boolean =>
+  shape.style.fill !== undefined || shape.type === "frame";
 const hasStroke = (shape: ElementBase): boolean => shape.style.stroke !== undefined;

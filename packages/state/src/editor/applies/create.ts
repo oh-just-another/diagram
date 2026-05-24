@@ -17,7 +17,7 @@ import type {
   ElementId,
   Vec2,
 } from "@oh-just-another/types";
-import { DEFAULT_LINK_ARROWHEAD, DEFAULT_LINK_ROUTING } from "../../constants.js";
+import { DEFAULT_LINK_ARROWHEAD, DEFAULT_LINK_ROUTING, FRAME_DEFAULT_FILL } from "../../constants.js";
 
 /**
  * Defaults used by `buildElementForCreate` — sourced from
@@ -63,8 +63,9 @@ export const buildElementForCreate = (
   if (kind === "ellipse") {
     return { ...common, type: "ellipse", style: { ...DEFAULT_ELLIPSE_STYLE } };
   }
-  // Frame: empty style (renderer hard-codes the dashed look), auto-numbered name.
-  return { ...common, type: "frame", style: {}, name: nextFrameName() };
+  // Frame: white body fill (configurable from the panel; border is fixed
+  // chrome). Auto-numbered name.
+  return { ...common, type: "frame", style: { fill: FRAME_DEFAULT_FILL }, name: nextFrameName() };
 };
 
 /**
