@@ -1012,7 +1012,7 @@ const EditorShell = ({
 const ZOOM_OUT_HOTKEY = formatHotkey({ meta: true, key: "−" });
 const ZOOM_IN_HOTKEY = formatHotkey({ meta: true, key: "+" });
 const ZOOM_RESET_HOTKEY = formatHotkey({ meta: true, key: "0" });
-const ZOOM_FIT_HOTKEY = formatHotkey({ meta: true, key: "1" });
+const ZOOM_FIT_HOTKEY = formatHotkey({ alt: true, key: "1" });
 
 /**
  * Bottom-right zoom controls — three pills (zoom-out / zoom level / zoom-in)

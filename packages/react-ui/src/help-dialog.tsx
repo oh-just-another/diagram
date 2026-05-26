@@ -115,9 +115,18 @@ export const useHelpDialogHotkey = (open: () => void): void => {
  * actions (no hotkey) return an empty array.
  */
 const actionKeys = (action: Action): (readonly string[])[] => {
-  if (!action.hotkey) return [];
-  const raw = Array.isArray(action.hotkey) ? action.hotkey : [action.hotkey];
-  return raw.map((h) => formatHotkeyParts(h as HotkeyMatcher));
+  const combos: (readonly string[])[] = [];
+  if (action.hotkey) {
+    const raw = Array.isArray(action.hotkey) ? action.hotkey : [action.hotkey];
+    for (const h of raw) combos.push(formatHotkeyParts(h as HotkeyMatcher));
+  }
+  // Multi-key sequences (e.g. `d d`) render as a single chip with the keys
+  // space-separated, distinct from a `+` chord.
+  if (action.sequence && action.sequence.length > 0) {
+    const seq = action.sequence.map((k) => (k.length === 1 ? k.toUpperCase() : k)).join(" ");
+    combos.push([seq]);
+  }
+  return combos;
 };
 
 export const HelpDialog = ({

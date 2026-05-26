@@ -8,8 +8,9 @@ import { isEditableTarget } from "./dom-focus.js";
  *
  *   V               select mode
  *   R               draw-rectangle mode
- *   E               draw-ellipse mode
+ *   O               draw-ellipse mode (standard "Oval")
  *   L               draw-edge mode (L = link)
+ *   G               toggle background grid
  *   Delete / ⌫      delete selected shapes / edge
  *   ⌘D              duplicate selection
  *   ⌘A              select all

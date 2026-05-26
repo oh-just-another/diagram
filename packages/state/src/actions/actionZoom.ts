@@ -4,9 +4,12 @@ export const actionZoomIn: Action = {
   id: "zoom-in",
   label: "Zoom in",
   category: "zoom",
+  // `⌘=`/`⌘+` and bare `+`/`=`.
   hotkey: [
     { key: "=", meta: true },
     { key: "+", meta: true },
+    { key: "+" },
+    { key: "=" },
   ],
   perform: ({ editor }) => { editor.zoomIn(); },
 };
@@ -15,9 +18,12 @@ export const actionZoomOut: Action = {
   id: "zoom-out",
   label: "Zoom out",
   category: "zoom",
+  // `⌘-`/`⌘_` and bare `-`/`_`.
   hotkey: [
     { key: "-", meta: true },
     { key: "_", meta: true },
+    { key: "-" },
+    { key: "_" },
   ],
   perform: ({ editor }) => { editor.zoomOut(); },
 };
@@ -34,7 +40,11 @@ export const actionZoomToFit: Action = {
   id: "zoom-to-fit",
   label: "Fit to screen",
   category: "zoom",
-  hotkey: { key: "1", meta: true },
+  // `⌥1` (standard "Zoom to fit"); `⌘1` is an alias.
+  hotkey: [
+    { key: "1", alt: true },
+    { key: "1", meta: true },
+  ],
   perform: ({ editor }) => { editor.zoomToFit(); },
 };
 

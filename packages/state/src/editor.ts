@@ -442,6 +442,11 @@ export class Editor {
    * View-only — never persisted or recorded in history.
    */
   debugHitZones = false;
+  /**
+   * When false the background grid is not painted. Toggled via `toggleGrid`
+   * (`g` hotkey, standard parity). View-only — never persisted or in history.
+   */
+  gridVisible = true;
   public readonly actor: Actor<typeof interactionMachine>;
   private readonly listeners = new Set<() => void>();
   /**
@@ -1389,6 +1394,18 @@ export class Editor {
     if (this.debugHitZones === on) return;
     this.debugHitZones = on;
     this.scheduleRender();
+  }
+
+  /** Show/hide the background grid (standard `g`). View-only — not in history. */
+  setGridVisible(on: boolean): void {
+    if (this.gridVisible === on) return;
+    this.gridVisible = on;
+    this.scheduleRender();
+  }
+
+  /** Toggle background grid visibility. */
+  toggleGrid(): void {
+    this.setGridVisible(!this.gridVisible);
   }
 
   /** Whether the active draw-mode sticks after a create (toolbar lock). */

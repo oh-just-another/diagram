@@ -442,4 +442,38 @@ describe("defaultActionRegistry built-ins", () => {
     expect(defaultActionRegistry.dispatch("compact-z-order", { editor })).toBe(true);
     expect(spy).toHaveBeenCalledOnce();
   });
+
+  const plainKey = (key: string, mods: Partial<KeyboardEvent> = {}): KeyboardEvent =>
+    ({
+      key,
+      code: `Key${key.toUpperCase()}`,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+      altKey: false,
+      ...mods,
+    }) as unknown as KeyboardEvent;
+
+  it("`o` switches to the ellipse tool", () => {
+    const editor = makeEditor();
+    expect(defaultActionRegistry.dispatchHotkey(plainKey("o"), { editor })).toBe(true);
+    expect(editor.mode).toBe("draw-ellipse");
+  });
+
+  it("`g` toggles the background grid", () => {
+    const editor = makeEditor();
+    expect(editor.gridVisible).toBe(true);
+    expect(defaultActionRegistry.dispatchHotkey(plainKey("g"), { editor })).toBe(true);
+    expect(editor.gridVisible).toBe(false);
+    defaultActionRegistry.dispatchHotkey(plainKey("g"), { editor });
+    expect(editor.gridVisible).toBe(true);
+  });
+
+  it("zoom-to-fit accepts ⌥1 and ⌘1", () => {
+    const editor = makeEditor();
+    const fit = vi.spyOn(editor, "zoomToFit");
+    expect(defaultActionRegistry.dispatchHotkey(plainKey("1", { altKey: true }), { editor })).toBe(true);
+    expect(defaultActionRegistry.dispatchHotkey(plainKey("1", { metaKey: true, ctrlKey: true }), { editor })).toBe(true);
+    expect(fit).toHaveBeenCalledTimes(2);
+  });
 });

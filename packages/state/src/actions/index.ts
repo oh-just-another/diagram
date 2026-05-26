@@ -33,3 +33,4 @@ export {
   actionCancel,
   modeActions,
 } from "./actionMode.js";
+export { actionToggleGrid, viewActions } from "./actionView.js";

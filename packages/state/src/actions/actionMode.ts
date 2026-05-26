@@ -41,7 +41,8 @@ export const actionModeEllipse: Action = {
   id: "mode-ellipse",
   label: "Ellipse tool",
   category: "mode",
-  hotkey: { key: "e" },
+  // `O` (standard "Oval").
+  hotkey: { key: "o" },
   iconId: "mode-ellipse",
   uiKind: "toggle",
   checked: ({ editor }) => editor.mode === "draw-ellipse",

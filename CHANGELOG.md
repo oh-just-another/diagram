@@ -1570,3 +1570,6 @@
 
 ## 0.55.95
 - feat(renderer-core): frame border thin 1px solid (was dashed)
+
+## 0.55.96
+- feat(renderer-core): frame border = zoom-independent 1px hairline
