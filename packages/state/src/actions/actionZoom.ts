@@ -1,4 +1,4 @@
-import type { Action } from "./types.js";
+import { hasSelection, type Action } from "./types.js";
 
 export const actionZoomIn: Action = {
   id: "zoom-in",
@@ -48,9 +48,19 @@ export const actionZoomToFit: Action = {
   perform: ({ editor }) => { editor.zoomToFit(); },
 };
 
+export const actionZoomToSelection: Action = {
+  id: "zoom-to-selection",
+  label: "Zoom to selection",
+  category: "zoom",
+  hotkey: { key: "2", alt: true },
+  predicate: hasSelection,
+  perform: ({ editor }) => { editor.zoomToSelection(); },
+};
+
 export const zoomActions: readonly Action[] = [
   actionZoomIn,
   actionZoomOut,
   actionZoomReset,
   actionZoomToFit,
+  actionZoomToSelection,
 ];

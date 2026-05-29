@@ -1573,3 +1573,6 @@
 
 ## 0.55.96
 - feat(renderer-core): frame border = zoom-independent 1px hairline
+
+## 0.55.97
+- feat(state): standard hotkey remaps + toggle-grid (g)

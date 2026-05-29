@@ -476,4 +476,32 @@ describe("defaultActionRegistry built-ins", () => {
     expect(defaultActionRegistry.dispatchHotkey(plainKey("1", { metaKey: true, ctrlKey: true }), { editor })).toBe(true);
     expect(fit).toHaveBeenCalledTimes(2);
   });
+
+  it("zoom-to-selection (⌥2) fires only with a selection", () => {
+    const editor = makeEditor();
+    const zoom = vi.spyOn(editor, "zoomToSelection");
+    // Nothing selected → predicate fails, key passes through.
+    expect(defaultActionRegistry.dispatchHotkey(plainKey("2", { altKey: true }), { editor })).toBe(false);
+    editor.setSelection([elementId("a")]);
+    expect(defaultActionRegistry.dispatchHotkey(plainKey("2", { altKey: true }), { editor })).toBe(true);
+    expect(zoom).toHaveBeenCalledOnce();
+  });
+
+  it("select-closest picks the element in the given direction", () => {
+    const a = rect("a"); // at (0,0)
+    const b = { ...rect("b"), position: { x: 200, y: 0 } };
+    const editor = new Editor({
+      host: makeHost().host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: sceneWith(a, b),
+    });
+    editor.setSelection([elementId("a")]);
+    editor.selectClosest("right");
+    expect([...editor.selection]).toEqual([elementId("b")]);
+    // Nothing to the left of `a` → no change.
+    editor.setSelection([elementId("a")]);
+    editor.selectClosest("left");
+    expect([...editor.selection]).toEqual([elementId("a")]);
+  });
 });

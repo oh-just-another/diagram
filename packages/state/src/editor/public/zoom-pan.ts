@@ -58,33 +58,43 @@ export const computeResetZoom = (scene: Scene): Scene | null => {
 };
 
 /**
- * Pure: fit every shape into the viewport with `padding` px of
- * breathing room. Returns `null` when the scene is empty, the
- * viewport is degenerate, or the combined AABB is zero-area.
+ * Fit the camera to an arbitrary world `bounds` with `padding` screen
+ * px on each side. Returns `null` when the viewport or bounds are
+ * degenerate. Shared by zoom-to-fit (all content) and
+ * zoom-to-selection.
  */
-export const computeZoomToFit = (scene: Scene, padding: number): Scene | null => {
-  if (scene.elements.size === 0) return null;
+export const computeZoomToBounds = (
+  scene: Scene,
+  bounds: Bounds,
+  padding: number,
+): Scene | null => {
   const vp = scene.viewport;
   if (vp.size.width <= 0 || vp.size.height <= 0) return null;
-  let combined: Bounds | null = null;
-  for (const s of scene.elements.values()) {
-    const b = getElementWorldBounds(s);
-    combined = combined ? B.union(combined, b) : b;
-  }
-  if (!combined || combined.width <= 0 || combined.height <= 0) return null;
+  if (bounds.width <= 0 || bounds.height <= 0) return null;
   const availW = vp.size.width - padding * 2;
   const availH = vp.size.height - padding * 2;
   if (availW <= 0 || availH <= 0) return null;
-  const zoom = clampZoom(Math.min(availW / combined.width, availH / combined.height));
+  const zoom = clampZoom(Math.min(availW / bounds.width, availH / bounds.height));
   const centerWorld = {
-    x: combined.x + combined.width / 2,
-    y: combined.y + combined.height / 2,
+    x: bounds.x + bounds.width / 2,
+    y: bounds.y + bounds.height / 2,
   };
   const pan = {
     x: centerWorld.x - vp.size.width / 2 / zoom,
     y: centerWorld.y - vp.size.height / 2 / zoom,
   };
   return { ...scene, viewport: { ...vp, zoom, pan } };
+};
+
+export const computeZoomToFit = (scene: Scene, padding: number): Scene | null => {
+  if (scene.elements.size === 0) return null;
+  let combined: Bounds | null = null;
+  for (const s of scene.elements.values()) {
+    const b = getElementWorldBounds(s);
+    combined = combined ? B.union(combined, b) : b;
+  }
+  if (!combined) return null;
+  return computeZoomToBounds(scene, combined, padding);
 };
 
 /**

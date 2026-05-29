@@ -18,6 +18,7 @@ export {
   actionZoomOut,
   actionZoomReset,
   actionZoomToFit,
+  actionZoomToSelection,
   zoomActions,
 } from "./actionZoom.js";
 export {

@@ -42,6 +42,42 @@ const nudgeSelection: Action = {
   },
 };
 
+/**
+ * `⌘`/`Ctrl` + arrows select the nearest element in that direction.
+ * Distinct from plain arrows (nudge) by the modifier. Always consumes the
+ * combo so the page doesn't scroll.
+ */
+const selectClosest: Action = {
+  id: "select-closest",
+  label: "Select closest in direction",
+  category: "selection",
+  keyTest: (ev) =>
+    (ev.metaKey || ev.ctrlKey) &&
+    !ev.altKey &&
+    !ev.shiftKey &&
+    (ev.key === "ArrowLeft" ||
+      ev.key === "ArrowRight" ||
+      ev.key === "ArrowUp" ||
+      ev.key === "ArrowDown"),
+  perform: ({ editor, event }) => {
+    if (!event) return;
+    switch (event.key) {
+      case "ArrowLeft":
+        editor.selectClosest("left");
+        return;
+      case "ArrowRight":
+        editor.selectClosest("right");
+        return;
+      case "ArrowUp":
+        editor.selectClosest("up");
+        return;
+      case "ArrowDown":
+        editor.selectClosest("down");
+        return;
+    }
+  },
+};
+
 /** Tab / Shift+Tab cycle keyboard focus through elements. */
 const focusNext: Action = {
   id: "focus-next",
@@ -93,6 +129,7 @@ const editOrCreate: Action = {
 
 export const keyboardActions: readonly Action[] = [
   nudgeSelection,
+  selectClosest,
   focusNext,
   focusPrev,
   editOrCreate,
