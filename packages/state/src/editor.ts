@@ -3423,6 +3423,56 @@ export class Editor {
     this.notify();
   }
 
+  /**
+   * Enter the single selected container — select its contents (standard `⌘⇧↓`).
+   * Members are children via `parentId` (group / template container) or via
+   * `frameId` (frame). For a group we also set `enteredGroup` so subsequent
+   * clicks land on children. No-op unless exactly one container with members
+   * is selected.
+   */
+  enterContainer(): void {
+    if (this._selection.size !== 1) return;
+    const id = req([...this._selection][0]);
+    const el = getElement(this._scene, id);
+    if (!el) return;
+    const isFrameEl = el.type === "frame";
+    const members: ElementId[] = [];
+    for (const s of this._scene.elements.values()) {
+      if (s.parentId === id || (isFrameEl && s.frameId === id)) members.push(s.id);
+    }
+    if (members.length === 0) return;
+    if (el.type === "group") this._enteredGroup = id;
+    this.setSelection(members);
+  }
+
+  /**
+   * Exit to the container of the current selection — select the parent group /
+   * template container (`parentId`) or frame (`frameId`) when every selected
+   * element shares one (standard `⌘⇧↑`). Clears `enteredGroup`. No-op when there
+   * is no single common container.
+   */
+  exitContainer(): void {
+    if (this._selection.size === 0) return;
+    let parent: ElementId | undefined;
+    let common = true;
+    for (const sid of this._selection) {
+      const s = getElement(this._scene, sid);
+      const p = s?.parentId ?? s?.frameId;
+      if (p === undefined) {
+        common = false;
+        break;
+      }
+      if (parent === undefined) parent = p;
+      else if (parent !== p) {
+        common = false;
+        break;
+      }
+    }
+    this._enteredGroup = null;
+    if (common && parent !== undefined) this.setSelection([parent]);
+    else this.notify();
+  }
+
   /** Currently "entered" group, if any. */
   get enteredGroup(): ElementId | null {
     return this._enteredGroup;

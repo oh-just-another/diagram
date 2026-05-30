@@ -1576,3 +1576,6 @@
 
 ## 0.55.97
 - feat(state): standard hotkey remaps + toggle-grid (g)
+
+## 0.55.98
+- feat(state): zoom-to-selection (Alt-2) + select-closest (Cmd+arrows)

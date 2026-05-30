@@ -26,8 +26,28 @@ export const actionDuplicateSelection: Action = {
   perform: ({ editor }) => { editor.duplicateSelected(); },
 };
 
+export const actionEnterContainer: Action = {
+  id: "enter-container",
+  label: "Enter container",
+  category: "selection",
+  hotkey: { key: "ArrowDown", meta: true, shift: true },
+  predicate: ({ editor }) => editor.selection.size === 1,
+  perform: ({ editor }) => { editor.enterContainer(); },
+};
+
+export const actionExitContainer: Action = {
+  id: "exit-container",
+  label: "Exit container",
+  category: "selection",
+  hotkey: { key: "ArrowUp", meta: true, shift: true },
+  predicate: hasSelection,
+  perform: ({ editor }) => { editor.exitContainer(); },
+};
+
 export const selectionActions: readonly Action[] = [
   actionSelectAll,
   actionDeleteSelection,
   actionDuplicateSelection,
+  actionEnterContainer,
+  actionExitContainer,
 ];

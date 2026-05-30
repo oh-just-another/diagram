@@ -8,6 +8,8 @@ export {
   actionSelectAll,
   actionDeleteSelection,
   actionDuplicateSelection,
+  actionEnterContainer,
+  actionExitContainer,
   selectionActions,
 } from "./actionSelection.js";
 export { actionCopy, actionCut, actionPaste, clipboardActions } from "./actionClipboard.js";

@@ -487,6 +487,25 @@ describe("defaultActionRegistry built-ins", () => {
     expect(zoom).toHaveBeenCalledOnce();
   });
 
+  it("enter/exit container navigates frame membership", () => {
+    const frame = { ...rect("f"), type: "frame", width: 300, height: 200 } as unknown as Element;
+    const m1 = { ...rect("m1"), frameId: elementId("f") } as unknown as Element;
+    const m2 = { ...rect("m2"), frameId: elementId("f") } as unknown as Element;
+    const editor = new Editor({
+      host: makeHost().host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: sceneWith(frame, m1, m2),
+    });
+    editor.setSelection([elementId("f")]);
+    editor.enterContainer();
+    expect(new Set([...editor.selection])).toEqual(
+      new Set([elementId("m1"), elementId("m2")]),
+    );
+    editor.exitContainer();
+    expect([...editor.selection]).toEqual([elementId("f")]);
+  });
+
   it("select-closest picks the element in the given direction", () => {
     const a = rect("a"); // at (0,0)
     const b = { ...rect("b"), position: { x: 200, y: 0 } };
