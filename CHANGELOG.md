@@ -1579,3 +1579,6 @@
 
 ## 0.55.98
 - feat(state): zoom-to-selection (Alt-2) + select-closest (Cmd+arrows)
+
+## 0.55.99
+- feat(state): enter/exit container hotkeys (Cmd-Shift-Down / Cmd-Shift-Up)

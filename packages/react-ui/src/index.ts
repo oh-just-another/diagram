@@ -119,6 +119,7 @@ export {
   type HelpRow,
   type HelpSection,
 } from "./help-dialog.js";
+export { CommandPalette } from "./command-palette.js";
 export {
   ToastHost,
   useToast,

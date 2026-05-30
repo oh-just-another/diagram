@@ -45,6 +45,7 @@ import {
   DEFAULT_VERTICAL_TOOLBAR,
   type ToolbarItem,
   DiagramRoot,
+  CommandPalette,
   DiagramSurface,
   HelpButton,
   HelpDialog,
@@ -997,6 +998,10 @@ const EditorShell = ({
           when the `?` hotkey opens it without going through the
           button. HelpButton manages its own copy when clicked. */}
       <HelpDialog open={helpOpen} onClose={() => { setHelpOpen(false); }} />
+
+      {/* Command palette (⌘K) — self-contained: manages its own open state and
+          registers the open action. */}
+      <CommandPalette />
 
       {void editor}
     </div>
