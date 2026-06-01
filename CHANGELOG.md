@@ -1582,3 +1582,6 @@
 
 ## 0.55.99
 - feat(state): enter/exit container hotkeys (Cmd-Shift-Down / Cmd-Shift-Up)
+
+## 0.55.100
+- feat(react-ui): command palette (CmdK) over the action registry

@@ -141,6 +141,7 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
     for (const id of ctx.selection) {
       const shape = getElement(ctx.scene, id);
       if (!shape || !isResizable(shape)) continue;
+      if (shape.locked === true) continue; // locked: no resize handles
       const bounds = getElementWorldBounds(shape);
       const handle = hitHandle(worldPoint, bounds, zoom, ctx.handleHitSlop, resizeHandlesFor(shape));
       if (handle) {

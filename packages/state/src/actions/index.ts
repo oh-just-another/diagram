@@ -8,6 +8,7 @@ export {
   actionSelectAll,
   actionDeleteSelection,
   actionDuplicateSelection,
+  actionToggleLock,
   actionEnterContainer,
   actionExitContainer,
   selectionActions,

@@ -401,7 +401,11 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       if (inSelection || pressedIsGroup || pressedIsFrame) {
         const ids = new Set<ElementId>();
         if (inSelection) {
-          for (const id of editor.expandSelectionWithDescendants()) ids.add(id);
+          // Locked / layer-locked elements stay put (still selectable).
+          for (const id of editor.expandSelectionWithDescendants()) {
+            const s = getElement(editor._scene, id);
+            if (s && editor.isElementManipulable(s)) ids.add(id);
+          }
         }
         if (pressedIsGroup) {
           const visit = (parentId: ElementId): void => {

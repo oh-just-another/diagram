@@ -2469,7 +2469,13 @@ export class Editor {
   // Pure body in `./editor/public/selection-ops.ts`.
   moveSelectionBy(delta: Vec2): void {
     if (this._selection.size === 0 && this._selectedLinks.size === 0) return;
-    const targets = this.expandSelectionWithDescendants();
+    // Locked / layer-locked elements don't move (they're still selectable).
+    const targets = new Set(
+      [...this.expandSelectionWithDescendants()].filter((id) => {
+        const s = getElement(this._scene, id);
+        return s ? this.isElementManipulable(s) : false;
+      }),
+    );
     const result =
       this._selection.size > 0
         ? computeMoveSelectionBy(this._scene, targets, delta, (lid) => this.isLayerLocked(lid))
@@ -3347,9 +3353,50 @@ export class Editor {
    */
   private isElementInteractable(shape: Element): boolean {
     if (this.isLayerLocked(shape.layerId)) return false;
+    if (isElementHidden(this._scene, shape)) return false;
+    // NOTE: a `locked` element IS interactable for SELECTION (so the user can
+    // click it to unlock) — movement / resize are blocked separately via
+    // `isElementManipulable`. Click-through past a locked shape is therefore
+    // disabled, matching standard.
+    return true;
+  }
+
+  /**
+   * Can this shape be moved / resized? False when the shape (or an ancestor)
+   * is `locked`, its layer is locked, or it's hidden. Distinct from
+   * `isElementInteractable`, which still allows selecting a locked shape so it
+   * can be unlocked.
+   */
+  public isElementManipulable(shape: Element): boolean {
+    if (this.isLayerLocked(shape.layerId)) return false;
     if (isElementLocked(this._scene, shape)) return false;
     if (isElementHidden(this._scene, shape)) return false;
     return true;
+  }
+
+  /**
+   * Toggle the `locked` flag on the selection (standard `⌘⇧L`). If any selected
+   * element is currently unlocked, lock all; otherwise unlock all. One undo
+   * step. A locked element stays selectable (click → select → unlock) but
+   * can't be moved or resized.
+   */
+  toggleLockSelection(): void {
+    if (this._selection.size === 0) return;
+    const ids = [...this._selection];
+    const anyUnlocked = ids.some((id) => getElement(this._scene, id)?.locked !== true);
+    const tx = this._history.transaction();
+    for (const id of ids) {
+      const r = updateElement(this._scene, id, (s) => {
+        const copy: typeof s = { ...s };
+        if (anyUnlocked) (copy as { locked?: boolean }).locked = true;
+        else delete (copy as { locked?: boolean }).locked;
+        return copy;
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
+    }
+    tx.commit();
+    this.notify();
   }
 
   /**
@@ -3806,6 +3853,9 @@ export class Editor {
 
   // Pure body in `./editor/applies/move.ts`.
   private applyMove(id: ElementId, delta: Vec2, originalBounds: Bounds): void {
+    // Locked / layer-locked elements are selectable but don't move.
+    const el = getElement(this._scene, id);
+    if (el && !this.isElementManipulable(el)) return;
     const d = this.snapActive()
       ? snapMoveDelta(originalBounds, delta, this.snapSpacing())
       : delta;

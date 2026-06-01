@@ -487,6 +487,22 @@ describe("defaultActionRegistry built-ins", () => {
     expect(zoom).toHaveBeenCalledOnce();
   });
 
+  it("⌘⇧L locks/unlocks selection; locked elements don't move", () => {
+    const editor = makeEditor();
+    const lockKey = plainKey("l", { metaKey: true, ctrlKey: true, shiftKey: true });
+    editor.setSelection([elementId("a")]);
+    expect(defaultActionRegistry.dispatchHotkey(lockKey, { editor })).toBe(true);
+    expect(editor.scene.elements.get(elementId("a"))?.locked).toBe(true);
+    // Locked → nudge is a no-op.
+    editor.moveSelectionBy({ x: 10, y: 0 });
+    expect(editor.scene.elements.get(elementId("a"))?.position.x).toBe(0);
+    // Unlock → moves again.
+    defaultActionRegistry.dispatchHotkey(lockKey, { editor });
+    expect(editor.scene.elements.get(elementId("a"))?.locked).toBeUndefined();
+    editor.moveSelectionBy({ x: 10, y: 0 });
+    expect(editor.scene.elements.get(elementId("a"))?.position.x).toBe(10);
+  });
+
   it("enter/exit container navigates frame membership", () => {
     const frame = { ...rect("f"), type: "frame", width: 300, height: 200 } as unknown as Element;
     const m1 = { ...rect("m1"), frameId: elementId("f") } as unknown as Element;

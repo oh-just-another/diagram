@@ -437,6 +437,13 @@ export const renderOverlay = (
 
     drawOutline(target, screenBounds, style);
 
+    // Locked element: no resize handles; show a small lock badge instead so
+    // the user sees why it won't move/resize (click still selects → unlock).
+    if (shape.locked === true) {
+      drawLockBadge(target, screenBounds);
+      continue;
+    }
+
     if (multiSelect || !isResizable(shape)) continue;
 
     // Draw only the four CORNER dots. The edge-midpoint handles are gone from
@@ -753,6 +760,36 @@ const GIF_BADGE_W = 30;
 const GIF_BADGE_H = 16;
 const GIF_BADGE_PAD = 4;
 const GIF_BADGE_RADIUS = 4;
+
+/** Small padlock badge at a selected locked element's top-right corner. */
+const LOCK_BADGE_SIZE = 16;
+const drawLockBadge = (target: RenderTarget, b: Bounds): void => {
+  const s = LOCK_BADGE_SIZE;
+  const x = b.x + b.width - s - 2;
+  const y = b.y + 2;
+  const color = "#1a73e8";
+  // Shackle — a ring above the body; its lower half is hidden by the body so
+  // the visible top arc reads as the lock's bow.
+  target.setStroke(color);
+  target.setFill(null);
+  target.setStrokeWidth(2);
+  target.setDashArray(null);
+  target.setOpacity(1);
+  target.beginPath();
+  target.ellipse(x + s / 2, y + s * 0.46, s * 0.22, s * 0.26);
+  target.stroke();
+  // Body — solid rounded block.
+  target.setStroke(null);
+  target.setFill(color);
+  target.beginPath();
+  target.rect(x + s * 0.2, y + s * 0.44, s * 0.6, s * 0.48);
+  target.fill();
+  // Keyhole.
+  target.setFill("#fff");
+  target.beginPath();
+  target.ellipse(x + s / 2, y + s * 0.64, s * 0.07, s * 0.07);
+  target.fill();
+};
 
 const drawGifBadge = (target: RenderTarget, screen: Bounds): void => {
   const x = screen.x + GIF_BADGE_PAD;

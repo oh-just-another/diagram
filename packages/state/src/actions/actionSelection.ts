@@ -26,6 +26,15 @@ export const actionDuplicateSelection: Action = {
   perform: ({ editor }) => { editor.duplicateSelected(); },
 };
 
+export const actionToggleLock: Action = {
+  id: "toggle-lock",
+  label: "Lock / Unlock",
+  category: "selection",
+  hotkey: { key: "l", meta: true, shift: true },
+  predicate: hasSelection,
+  perform: ({ editor }) => { editor.toggleLockSelection(); },
+};
+
 export const actionEnterContainer: Action = {
   id: "enter-container",
   label: "Enter container",
@@ -48,6 +57,7 @@ export const selectionActions: readonly Action[] = [
   actionSelectAll,
   actionDeleteSelection,
   actionDuplicateSelection,
+  actionToggleLock,
   actionEnterContainer,
   actionExitContainer,
 ];

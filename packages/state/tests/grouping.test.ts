@@ -318,7 +318,7 @@ describe("grouping", () => {
 });
 
 describe("group lock / hide propagation", () => {
-  it("locking a group locks every descendant for hit-test", () => {
+  it("locking a group keeps it selectable (for unlock) but not manipulable", () => {
     const a = rect("a", 0, 0);
     const b = rect("b", 100, 0);
     const editor = makeEditor(sceneWith(a, b));
@@ -335,12 +335,16 @@ describe("group lock / hide propagation", () => {
       elements: new Map(editor.scene.elements).set(groupId, locked),
     };
 
-    // Click on A should miss now (descendant of locked group).
+    // Clicking A selects (promoted to the group root) so it can be unlocked;
+    // a locked group is not click-through.
     const target = (editor as unknown as { hitTest(p: { x: number; y: number }): { kind: string } }).hitTest({
       x: 10,
       y: 10,
     });
-    expect(target.kind).toBe("empty");
+    expect(target.kind).toBe("element");
+    // …but the locked group and its descendants can't be moved/resized.
+    const childA = editor.scene.elements.get(a.id)!;
+    expect(editor.isElementManipulable(childA)).toBe(false);
   });
 
   it("hiding a group adds every descendant to the render hide set", () => {
