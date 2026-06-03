@@ -1588,3 +1588,6 @@
 
 ## 0.55.101
 - feat(state): lock/unlock selection (Cmd-Shift-L)
+
+## 0.55.102
+- feat(state): Alt-drag duplicates the selection (incl. frame contents)

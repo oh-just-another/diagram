@@ -120,6 +120,23 @@ describe("snap-to-grid move gesture (end-to-end)", () => {
     expect(a.position.y).toBe(19); // 7 + 12
   });
 
+  it("hiding the grid disables snap; re-showing restores it", () => {
+    const { editor, tap, drag } = setup((e) => { e.setGridVisible(false); });
+    expect(editor.snapToGridEnabled).toBe(true); // preference unchanged…
+    tap(33, 27);
+    drag([33, 27], [45, 39]); // …but no snap while grid is hidden
+    let a = getElement(editor.scene, elementId("a"))!;
+    expect(a.position.x).toBe(25); // 13 + 12, free
+    expect(a.position.y).toBe(19);
+    // Re-show the grid → snapping returns.
+    editor.setGridVisible(true);
+    tap(38, 32);
+    drag([38, 32], [50, 44]); // press-time (25,19) +12 → (37,31) → snaps (40,40)
+    a = getElement(editor.scene, elementId("a"))!;
+    expect(a.position.x).toBe(40);
+    expect(a.position.y).toBe(40);
+  });
+
   it("suppresses snap for the gesture while the modifier flag is set", () => {
     const { editor, tap, drag } = setup();
     tap(33, 27);
