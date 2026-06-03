@@ -347,7 +347,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       if (selId && tryAnchorDrag(selId)) return;
     }
 
-    const target = editor.hitTest(worldPoint);
+    let target = editor.hitTest(worldPoint);
     // Auto-select on press for shapes / edges that the user is about
     // to act on (drag, resize handles): you can't manipulate an
     // element that isn't selected, so pressing on an unselected one
@@ -379,6 +379,22 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       // MOVE_SHAPE emits will operate on.
       editor.notify();
     }
+    // ⌥-drag duplicate: holding Alt and pressing a selected element clones
+    // the whole selection IN PLACE (incl. frame contents / group
+    // descendants); the drag below then moves the clones, leaving the
+    // originals. Runs after auto-select so the press target is in the
+    // selection. `target` is re-pointed to the clone so the snapshot drags it.
+    // (An ⌥-press without a drag leaves a stacked clone — undoable.)
+    if (
+      data.modifiers.alt &&
+      editor.mode === "select" &&
+      target.kind === "element" &&
+      editor._selection.has(target.id)
+    ) {
+      const clone = editor.duplicateSelectedInPlace(target.id);
+      if (clone !== null) target = { kind: "element", id: clone, bounds: target.bounds };
+    }
+
     // Track the dragged shape id for container drop / drag-out logic
     // on pointerup. Cleared in onUp / cancel.
     editor.dragElementId = target.kind === "element" ? target.id : null;

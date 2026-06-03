@@ -503,6 +503,30 @@ describe("defaultActionRegistry built-ins", () => {
     expect(editor.scene.elements.get(elementId("a"))?.position.x).toBe(10);
   });
 
+  it("duplicateSelectedInPlace clones a frame with its members (⌥-drag)", () => {
+    const frame = { ...rect("f"), type: "frame", width: 300, height: 200 } as unknown as Element;
+    const m1 = { ...rect("m1"), frameId: elementId("f") } as unknown as Element;
+    const editor = new Editor({
+      host: makeHost().host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: sceneWith(frame, m1),
+    });
+    editor.setSelection([elementId("f")]);
+    const cloneFrame = editor.duplicateSelectedInPlace(elementId("f"));
+    expect(cloneFrame).not.toBeNull();
+    // f, m1, clone-f, clone-m1
+    expect(editor.scene.elements.size).toBe(4);
+    // the cloned frame has its own member (frameId remapped to the clone).
+    const cloneMembers = [...editor.scene.elements.values()].filter(
+      (s) => s.frameId === cloneFrame,
+    );
+    expect(cloneMembers.length).toBe(1);
+    // selection is the cloned frame; originals untouched.
+    expect([...editor.selection]).toEqual([cloneFrame]);
+    expect(editor.scene.elements.get(elementId("m1"))?.frameId).toBe(elementId("f"));
+  });
+
   it("enter/exit container navigates frame membership", () => {
     const frame = { ...rect("f"), type: "frame", width: 300, height: 200 } as unknown as Element;
     const m1 = { ...rect("m1"), frameId: elementId("f") } as unknown as Element;

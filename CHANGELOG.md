@@ -1585,3 +1585,6 @@
 
 ## 0.55.100
 - feat(react-ui): command palette (CmdK) over the action registry
+
+## 0.55.101
+- feat(state): lock/unlock selection (Cmd-Shift-L)
