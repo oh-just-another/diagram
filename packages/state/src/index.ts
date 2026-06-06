@@ -35,7 +35,7 @@ export { fromPointerEvent, fromKeyboardEvent, fromWheelEvent } from "./dom-event
 export type { InteractiveHitTester } from "./interactive.js";
 export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive.js";
 
-export type { EditorOptions, LoadSceneOptions } from "./editor.js";
+export type { EditorOptions, LoadSceneOptions, CursorRole, CursorSpec } from "./editor.js";
 export { Editor } from "./editor.js";
 export type { EditorEvents } from "./editor-events.js";
 export { normalizeHref, safeHref } from "./editor/public/link.js";

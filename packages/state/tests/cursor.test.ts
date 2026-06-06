@@ -122,4 +122,28 @@ describe("context cursor", () => {
     e.refreshCursor(rightDot);
     expect(cursorOf(e)).toBe("crosshair");
   });
+
+  it("custom cursor override (DPR-aware image-set) wins for its role", () => {
+    const e = makeEditor(rect("a", 0, 0));
+    e.setCursorOverride("draw", {
+      url: "a.png",
+      url2x: "a@2x.png",
+      hotspot: { x: 6, y: 6 },
+      fallback: "crosshair",
+    });
+    e.setMode("draw-rect"); // role "draw"
+    expect(cursorOf(e)).toBe(
+      'image-set(url("a.png") 1x, url("a@2x.png") 2x) 6 6, crosshair',
+    );
+    // Clearing restores the keyword.
+    e.setCursorOverride("draw", null);
+    expect(cursorOf(e)).toBe("crosshair");
+  });
+
+  it("override without @2x emits a plain url()", () => {
+    const e = makeEditor(rect("a", 0, 0));
+    e.setCursorOverride("draw", { url: "a.png", hotspot: { x: 2, y: 3 } });
+    e.setMode("draw-rect");
+    expect(cursorOf(e)).toBe('url("a.png") 2 3, crosshair');
+  });
 });

@@ -1594,3 +1594,6 @@
 
 ## 0.55.103
 - feat(state): grid toggle also gates snap-to-grid
+
+## 0.55.104
+- feat(state): context-aware canvas cursor

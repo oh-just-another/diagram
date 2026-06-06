@@ -433,6 +433,67 @@ const req = <T>(v: T | undefined): T => {
   return v;
 };
 
+/**
+ * Stable keys for cursor states a host can override with a custom image via
+ * {@link Editor.setCursorOverride}. Each maps to one outcome of `computeCursor`.
+ */
+export type CursorRole =
+  | "default"
+  | "pan-ready"
+  | "pan-active"
+  | "move"
+  | "draw"
+  | "text"
+  | "link-start"
+  | "link-handle"
+  | "annotation"
+  | "resize-nwse"
+  | "resize-nesw"
+  | "resize-ns"
+  | "resize-ew";
+
+/**
+ * A custom cursor: either a raw CSS `cursor` value, or an image with an
+ * optional `@2x` variant (DPR-aware via `image-set`), hotspot, and keyword
+ * fallback.
+ */
+export type CursorSpec =
+  | string
+  | {
+      /** 1x image URL or data-URL. */
+      readonly url: string;
+      /** Optional 2x image for hi-DPI (retina) — emitted via `image-set`. */
+      readonly url2x?: string;
+      /** Hotspot offset (px) within the image; defaults to (0, 0). */
+      readonly hotspot?: { readonly x: number; readonly y: number };
+      /** Keyword shown if the image can't load / is too large. */
+      readonly fallback?: string;
+    };
+
+/** Resize handle → cursor override role. */
+const RESIZE_ROLE: Record<HandleId, CursorRole> = {
+  nw: "resize-nwse",
+  se: "resize-nwse",
+  ne: "resize-nesw",
+  sw: "resize-nesw",
+  n: "resize-ns",
+  s: "resize-ns",
+  e: "resize-ew",
+  w: "resize-ew",
+};
+
+/** Build a CSS `cursor` value from a {@link CursorSpec}. */
+const cssCursor = (spec: CursorSpec, fallbackKeyword: string): string => {
+  if (typeof spec === "string") return spec;
+  const hx = spec.hotspot?.x ?? 0;
+  const hy = spec.hotspot?.y ?? 0;
+  const img =
+    spec.url2x !== undefined
+      ? `image-set(url("${spec.url}") 1x, url("${spec.url2x}") 2x)`
+      : `url("${spec.url}")`;
+  return `${img} ${String(hx)} ${String(hy)}, ${spec.fallback ?? fallbackKeyword}`;
+};
+
 export class Editor {
   public readonly host: HTMLElement;
   public readonly mainTarget: RenderTarget;
@@ -735,6 +796,8 @@ export class Editor {
    * `null` until the pointer first enters the host.
    */
   public lastPointerWorld: Vec2 | null = null;
+  /** Host-registered custom cursor images per role (see `setCursorOverride`). */
+  private readonly cursorOverrides = new Map<CursorRole, CursorSpec>();
 
   /**
    * Scene rendered on the last frame. Used to compute a dirty rect by
@@ -3410,25 +3473,30 @@ export class Editor {
    * draw tool → idle hover hit-test. Pure read of editor state; no side effects.
    */
   private computeCursor(p: Vec2 | null): string {
+    // Each outcome is a (role, fallback-keyword) pair; `resolveCursor` returns
+    // a host-registered custom image for that role if one exists, else the
+    // keyword. Roles are the stable override keys (see `setCursorOverride`).
+    const r = (role: CursorRole, keyword: string): string => this.resolveCursor(role, keyword);
+    const resizeRole = (h: HandleId): string => r(RESIZE_ROLE[h], cursorForHandle(h));
     // 1. Active gestures (highest priority — what the pointer is doing now).
-    if (this.panGesture) return "grabbing";
-    if (this.linkDragFromAnchor?.moved === true) return "crosshair";
-    if (this.isDraggingWaypoint || this.isDraggingSegment) return "grabbing";
-    if (this.annotationDrag?.moved === true) return "grabbing";
-    if (this.brushStroke) return "crosshair";
+    if (this.panGesture) return r("pan-active", "grabbing");
+    if (this.linkDragFromAnchor?.moved === true) return r("draw", "crosshair");
+    if (this.isDraggingWaypoint || this.isDraggingSegment) return r("move", "grabbing");
+    if (this.annotationDrag?.moved === true) return r("move", "grabbing");
+    if (this.brushStroke) return r("draw", "crosshair");
     // Machine-driven drag past the threshold (`gestureTx` opens then): resize
     // shows the handle's arrow; element / link move shows grabbing.
     if (this.gestureTx) {
       const t = this.actor.getSnapshot().context.pressTarget;
-      if (t && (t.kind === "handle" || t.kind === "group-handle")) return cursorForHandle(t.handle);
+      if (t && (t.kind === "handle" || t.kind === "group-handle")) return resizeRole(t.handle);
       if (t && (t.kind === "element" || t.kind === "link" || t.kind === "edge-endpoint")) {
-        return "grabbing";
+        return r("move", "grabbing");
       }
     }
     // 2. In-canvas text editing → I-beam.
-    if (this.editingTextElement !== null) return "text";
+    if (this.editingTextElement !== null) return r("text", "text");
     // 3. Pan affordance (idle): Space held or hand tool.
-    if (this.spaceHeld || this.mode === "hand") return "grab";
+    if (this.spaceHeld || this.mode === "hand") return r("pan-ready", "grab");
     // 4. Draw tools (idle, before a gesture starts).
     switch (this.mode) {
       case "draw-rect":
@@ -3436,29 +3504,51 @@ export class Editor {
       case "draw-frame":
       case "draw-edge":
       case "brush":
-        return "crosshair";
+        return r("draw", "crosshair");
       case "draw-text":
-        return "text";
+        return r("text", "text");
       default:
         break;
     }
     // 5. Idle hover in select mode — key off the hit-test target.
     if (p) {
-      if (this.isOverLinkStartDot(p)) return "crosshair";
+      if (this.isOverLinkStartDot(p)) return r("link-start", "crosshair");
       const t = this.hitTest(p);
       switch (t.kind) {
         case "handle":
         case "group-handle":
-          return cursorForHandle(t.handle);
+          return resizeRole(t.handle);
         case "edge-endpoint":
-          return "grab";
+          return r("link-handle", "grab");
         case "annotation":
-          return "pointer";
+          return r("annotation", "pointer");
         default:
-          return "default";
+          return r("default", "default");
       }
     }
-    return "default";
+    return r("default", "default");
+  }
+
+  /**
+   * Resolve a cursor role to a CSS `cursor` value: a host-registered custom
+   * image (via {@link setCursorOverride}) if present, else `fallbackKeyword`.
+   */
+  private resolveCursor(role: CursorRole, fallbackKeyword: string): string {
+    const spec = this.cursorOverrides.get(role);
+    return spec === undefined ? fallbackKeyword : cssCursor(spec, fallbackKeyword);
+  }
+
+  /**
+   * Register (or clear, with `null`) a custom cursor image for a state role.
+   * The image is shown wherever `computeCursor` resolves that role; pass a
+   * `CursorSpec` object for a DPR-aware image (`image-set(1x, 2x)`) with a
+   * hotspot + keyword fallback, or a raw CSS cursor string. Host-only view
+   * state — not persisted.
+   */
+  setCursorOverride(role: CursorRole, spec: CursorSpec | null): void {
+    if (spec === null) this.cursorOverrides.delete(role);
+    else this.cursorOverrides.set(role, spec);
+    this.refreshCursor();
   }
 
   /**
