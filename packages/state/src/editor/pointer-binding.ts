@@ -577,6 +577,10 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // sensible drop target.
     editor.lastPointerWorld = worldPoint;
 
+    // Context cursor: recompute every move (before the gesture branches below
+    // early-return) so it reflects hover targets AND active gestures.
+    editor.refreshCursor(worldPoint);
+
     // Host-managed elbow segment drag of the selected link.
     if (editor.isDraggingSegment) {
       editor.updateSegmentDrag(worldPoint);
@@ -959,6 +963,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
         }
       }
     }
+    // The gesture is over — recompute the cursor for the now-idle hover state.
+    editor.refreshCursor(worldPoint);
   };
 
   const onCancel = (ev: PointerEvent) => {
@@ -1045,10 +1051,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (editor.spaceHeld) return;
     editor.spaceHeld = true;
     // Visual affordance: "grab" cursor signals the user can drag-pan.
-    if (editor.previousHostCursor === null) {
-      editor.previousHostCursor = editor.host.style.cursor;
-      editor.host.style.cursor = "grab";
-    }
+    editor.refreshCursor();
     // Prevent page scroll on Space — common in browsers when no
     // input is focused. We're holding it as a modifier, not as text.
     ev.preventDefault();
@@ -1057,12 +1060,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (ev.code !== "Space" && ev.key !== " ") return;
     if (!editor.spaceHeld) return;
     editor.spaceHeld = false;
-    // Don't reset cursor if a pan gesture is still in flight — the
-    // gesture's own end-handler restores it. Otherwise restore now.
-    if (!editor.panGesture && editor.previousHostCursor !== null) {
-      editor.host.style.cursor = editor.previousHostCursor;
-      editor.previousHostCursor = null;
-    }
+    // Recompute (→ "grabbing" if a pan is still in flight, else idle hover).
+    editor.refreshCursor();
   };
   // window guard so node-env tests can still construct the editor.
   if (typeof window !== "undefined") {

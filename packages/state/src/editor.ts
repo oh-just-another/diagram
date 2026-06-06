@@ -118,6 +118,8 @@ import {
   TOUCH_HANDLE_HIT_SLOP,
   ANCHOR_START_HIT_SLOP,
   ANCHOR_DOT_CLICK_RADIUS,
+  ANCHOR_DOT_ACTIVE_RADIUS,
+  LINK_START_ANCHOR_OUTSET,
   TOUCH_ANCHOR_START_HIT_SLOP,
   TOUCH_ANCHOR_DOT_CLICK_RADIUS,
   DOUBLE_CLICK_MS,
@@ -130,7 +132,8 @@ import {
   GIF_AUTOSTOP_MS,
   CARET_BLINK_INTERVAL_MS,
 } from "./constants.js";
-import { HANDLE_HIT_SLOP } from "./handle.js";
+import { HANDLE_HIT_SLOP, cursorForHandle } from "./handle.js";
+import { anchorOverlayPoints } from "./editor/anchor-points.js";
 import {
   interactionMachine,
   type InteractionContext,
@@ -921,9 +924,6 @@ export class Editor {
    */
   public suppressNextContextMenu = false;
 
-  /** Cursor style we set on the host while a pan gesture is in flight. */
-  public previousHostCursor: string | null = null;
-
   /**
    * Long-press tracking. Starts on `pointerdown`; cancelled on
    * `pointermove > LONG_PRESS_MAX_MOVEMENT_PX` or `pointerup` before
@@ -1503,17 +1503,10 @@ export class Editor {
     if (mode !== "draw-edge" && this.hoveredLinkTarget !== null) {
       this.hoveredLinkTarget = null;
     }
-    // Cursor affordance for hand mode — grab when armed, grabbing
-    // takes over inside an active pan gesture. Restore the host's
-    // previous cursor when leaving the mode.
-    if (mode === "hand") {
-      this.previousHostCursor ??= this.host.style.cursor;
-      this.host.style.cursor = "grab";
-    } else if (this.previousHostCursor !== null && this.mode === "hand" && !this.panGesture) {
-      this.host.style.cursor = this.previousHostCursor;
-      this.previousHostCursor = null;
-    }
     this.actor.send({ type: "SET_MODE", mode });
+    // Cursor affordance follows the new mode (hand → grab, draw tools →
+    // crosshair, etc.) — recompute through the single chokepoint.
+    this.refreshCursor();
     this.notify();
   }
 
@@ -3298,8 +3291,7 @@ export class Editor {
       lastPoint: point,
       moved: false,
     };
-    this.previousHostCursor ??= this.host.style.cursor;
-    this.host.style.cursor = "grabbing";
+    this.refreshCursor(); // → "grabbing" while panGesture is set
   }
 
   /**
@@ -3327,14 +3319,9 @@ export class Editor {
       // until the upcoming `contextmenu` event lands (Chrome fires
       // it after pointerup on right button).
     }
-    if (this.spaceHeld) {
-      this.host.style.cursor = "grab";
-      return;
-    }
-    if (this.previousHostCursor !== null) {
-      this.host.style.cursor = this.previousHostCursor;
-      this.previousHostCursor = null;
-    }
+    // Pan over — recompute (→ "grab" if Space/hand still armed, else the
+    // idle hover cursor).
+    this.refreshCursor();
   }
 
   public isDrawingPhase(ctx: InteractionContext): boolean {
@@ -3405,6 +3392,97 @@ export class Editor {
       isLayerLocked: (id) => this.isLayerLocked(id),
       promoteToGroupRoot: (s) => this.promoteToGroupRoot(s),
     });
+  }
+
+  /**
+   * Recompute the canvas cursor from the current interaction state and apply
+   * it to the host element. Single chokepoint — called from pointer-move
+   * (hover), gesture begin/end, and mode changes so the cursor never drifts
+   * out of sync. `worldPoint` defaults to the last known pointer position.
+   */
+  refreshCursor(worldPoint?: Vec2): void {
+    const next = this.computeCursor(worldPoint ?? this.lastPointerWorld);
+    if (this.host.style.cursor !== next) this.host.style.cursor = next;
+  }
+
+  /**
+   * The CSS cursor for the current state. Priority: active gesture → text edit → pan affordance →
+   * draw tool → idle hover hit-test. Pure read of editor state; no side effects.
+   */
+  private computeCursor(p: Vec2 | null): string {
+    // 1. Active gestures (highest priority — what the pointer is doing now).
+    if (this.panGesture) return "grabbing";
+    if (this.linkDragFromAnchor?.moved === true) return "crosshair";
+    if (this.isDraggingWaypoint || this.isDraggingSegment) return "grabbing";
+    if (this.annotationDrag?.moved === true) return "grabbing";
+    if (this.brushStroke) return "crosshair";
+    // Machine-driven drag past the threshold (`gestureTx` opens then): resize
+    // shows the handle's arrow; element / link move shows grabbing.
+    if (this.gestureTx) {
+      const t = this.actor.getSnapshot().context.pressTarget;
+      if (t && (t.kind === "handle" || t.kind === "group-handle")) return cursorForHandle(t.handle);
+      if (t && (t.kind === "element" || t.kind === "link" || t.kind === "edge-endpoint")) {
+        return "grabbing";
+      }
+    }
+    // 2. In-canvas text editing → I-beam.
+    if (this.editingTextElement !== null) return "text";
+    // 3. Pan affordance (idle): Space held or hand tool.
+    if (this.spaceHeld || this.mode === "hand") return "grab";
+    // 4. Draw tools (idle, before a gesture starts).
+    switch (this.mode) {
+      case "draw-rect":
+      case "draw-ellipse":
+      case "draw-frame":
+      case "draw-edge":
+      case "brush":
+        return "crosshair";
+      case "draw-text":
+        return "text";
+      default:
+        break;
+    }
+    // 5. Idle hover in select mode — key off the hit-test target.
+    if (p) {
+      if (this.isOverLinkStartDot(p)) return "crosshair";
+      const t = this.hitTest(p);
+      switch (t.kind) {
+        case "handle":
+        case "group-handle":
+          return cursorForHandle(t.handle);
+        case "edge-endpoint":
+          return "grab";
+        case "annotation":
+          return "pointer";
+        default:
+          return "default";
+      }
+    }
+    return "default";
+  }
+
+  /**
+   * True when `p` is within the grab radius of one of the single selected
+   * element's link-start dots — used to show a `crosshair` (start a link).
+   * Mirrors the anchor-drag hit-test in pointer-binding so the cursor matches
+   * exactly where a press would begin a link.
+   */
+  private isOverLinkStartDot(p: Vec2): boolean {
+    if (this.mode !== "select" || this._selection.size !== 1) return false;
+    const id = [...this._selection][0];
+    if (id === undefined) return false;
+    const shape = getElement(this._scene, id);
+    if (!shape) return false;
+    const zoom = this._scene.viewport.zoom || 1;
+    const { worldPoints } = anchorOverlayPoints(shape, LINK_START_ANCHOR_OUTSET / zoom);
+    const grab = (ANCHOR_DOT_ACTIVE_RADIUS + this.anchorStartHitSlop) / zoom;
+    const grab2 = grab * grab;
+    for (const wp of worldPoints) {
+      const dx = wp.x - p.x;
+      const dy = wp.y - p.y;
+      if (dx * dx + dy * dy <= grab2) return true;
+    }
+    return false;
   }
 
   /** True when the given layer exists and is marked `locked`. */

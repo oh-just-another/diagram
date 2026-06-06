@@ -1591,3 +1591,6 @@
 
 ## 0.55.102
 - feat(state): Alt-drag duplicates the selection (incl. frame contents)
+
+## 0.55.103
+- feat(state): grid toggle also gates snap-to-grid

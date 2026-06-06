@@ -17,6 +17,31 @@ export const ALL_HANDLES: readonly HandleId[] = ["nw", "n", "ne", "e", "se", "s"
 export const CORNER_HANDLES: readonly HandleId[] = ["nw", "ne", "se", "sw"];
 
 /**
+ * CSS `cursor` for a resize handle — the bidirectional arrow aligned with the
+ * handle's resize axis. Opposite handles share a cursor (e.g. `nw`/`se` →
+ * `nwse-resize`). Used by the editor's context-cursor logic.
+ *
+ * Ignores element rotation — a rotated shape's handles technically want a
+ * rotated cursor, but CSS only offers the 8 fixed arrows; we map by handle id.
+ */
+export const cursorForHandle = (handle: HandleId): string => {
+  switch (handle) {
+    case "nw":
+    case "se":
+      return "nwse-resize";
+    case "ne":
+    case "sw":
+      return "nesw-resize";
+    case "n":
+    case "s":
+      return "ns-resize";
+    case "e":
+    case "w":
+      return "ew-resize";
+  }
+};
+
+/**
  * Re-exports handle geometry/hit-target constants from `constants.ts`.
  * `HANDLE_HIT_SLOP` is decoupled from `HANDLE_SIZE`/`HANDLE_OUTSET` — the grab
  * area grows independently of the drawn square. Re-exported so consumers
