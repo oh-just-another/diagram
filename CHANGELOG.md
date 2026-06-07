@@ -1597,3 +1597,6 @@
 
 ## 0.55.104
 - feat(state): context-aware canvas cursor
+
+## 0.55.105
+- feat(state): custom cursor image API (DPR-aware via image-set)

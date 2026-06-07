@@ -18,7 +18,14 @@ import type {
 } from "@oh-just-another/types";
 import { matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
-import { ALL_HANDLES, CORNER_HANDLES, HANDLE_HIT_SLOP, handlePosition, hitHandle } from "../handle.js";
+import {
+  ALL_HANDLES,
+  CORNER_HANDLES,
+  HANDLE_HIT_SLOP,
+  handlePosition,
+  hitHandle,
+  type HandleId,
+} from "../handle.js";
 import { isResizable, resizeHandlesFor } from "./shape-traits.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import {
@@ -304,6 +311,53 @@ const fillZoneLoop = (target: RenderTarget, pts: readonly Vec2[], color: string)
 };
 
 /**
+ * Resize hit-zones for a world AABB, matching `hitHandle` exactly: CORNER
+ * handles are square grabs at the outset dot positions; EDGE handles
+ * (`n/s/e/w`) are slop BANDS along the whole side (edge resize = drag the box
+ * side, not a midpoint square). Drawn in screen space.
+ */
+const drawResizeZones = (
+  target: RenderTarget,
+  w2s: Transform,
+  wb: Bounds,
+  zoom: number,
+  handleSet: readonly HandleId[],
+  color: string,
+): void => {
+  const tl = matrix.applyToPoint(w2s, { x: wb.x, y: wb.y });
+  const br = matrix.applyToPoint(w2s, { x: wb.x + wb.width, y: wb.y + wb.height });
+  const x = Math.min(tl.x, br.x);
+  const y = Math.min(tl.y, br.y);
+  const w = Math.abs(br.x - tl.x);
+  const h = Math.abs(br.y - tl.y);
+  const s = HANDLE_HIT_SLOP;
+  for (const id of handleSet) {
+    switch (id) {
+      case "nw":
+      case "ne":
+      case "se":
+      case "sw": {
+        const c = matrix.applyToPoint(w2s, handlePosition(id, wb, zoom));
+        fillZoneRect(target, c.x - s, c.y - s, s * 2, s * 2, color);
+        break;
+      }
+      case "n":
+        fillZoneRect(target, x - s, y - s, w + s * 2, s * 2, color);
+        break;
+      case "s":
+        fillZoneRect(target, x - s, y + h - s, w + s * 2, s * 2, color);
+        break;
+      case "w":
+        fillZoneRect(target, x - s, y - s, s * 2, h + s * 2, color);
+        break;
+      case "e":
+        fillZoneRect(target, x + w - s, y - s, s * 2, h + s * 2, color);
+        break;
+    }
+  }
+};
+
+/**
  * Minimal slice of the selected link's handle geometry the debug viz
  * needs — endpoints plus the bend / segment handle world positions the
  * orchestrator already computed for the real overlay. Mirrors
@@ -472,18 +526,14 @@ export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): v
   if (visibility.resizeHandles) {
     for (const shape of scene.elements.values()) {
       if (!isResizable(shape)) continue;
-      const wb = getElementWorldBounds(shape);
-      for (const handle of resizeHandlesFor(shape)) {
-        const c = matrix.applyToPoint(w2s, handlePosition(handle, wb, zoom));
-        fillZoneRect(
-          target,
-          c.x - HANDLE_HIT_SLOP,
-          c.y - HANDLE_HIT_SLOP,
-          HANDLE_HIT_SLOP * 2,
-          HANDLE_HIT_SLOP * 2,
-          DEBUG_ZONE_RESIZE,
-        );
-      }
+      drawResizeZones(
+        target,
+        w2s,
+        getElementWorldBounds(shape),
+        zoom,
+        resizeHandlesFor(shape),
+        DEBUG_ZONE_RESIZE,
+      );
     }
   }
   // Link body bands (polyline stroked at 2× the hit threshold) — the
@@ -604,17 +654,7 @@ export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): v
   // 8. Same `HANDLE_HIT_SLOP` squares as single-shape handles, resize colour.
   if (visibility.groupHandles && groupBounds) {
     const handleSet = groupAspectLocked ? CORNER_HANDLES : ALL_HANDLES;
-    for (const handle of handleSet) {
-      const c = matrix.applyToPoint(w2s, handlePosition(handle, groupBounds, zoom));
-      fillZoneRect(
-        target,
-        c.x - HANDLE_HIT_SLOP,
-        c.y - HANDLE_HIT_SLOP,
-        HANDLE_HIT_SLOP * 2,
-        HANDLE_HIT_SLOP * 2,
-        DEBUG_ZONE_RESIZE,
-      );
-    }
+    drawResizeZones(target, w2s, groupBounds, zoom, handleSet, DEBUG_ZONE_RESIZE);
   }
   // Annotation-pin grab circles — radius `ANNOTATION_PIN_HIT_SLOP` (screen px),
   // matching `hitAnnotation`. Pins sit visually above everything, so their hit
