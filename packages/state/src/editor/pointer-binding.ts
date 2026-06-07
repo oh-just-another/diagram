@@ -716,13 +716,10 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       editor.hoverAnimatedElement(
         directHs && isImage(directHs) && directHs.animationKind ? directHs.id : null,
       );
-      // Hover-to-connect (standard): reveal the hovered shape's link-start dots
-      // in select mode so a link can be dragged from it even unselected.
-      // `worldPoint` drives the proximity-grow of the nearest dot.
-      editor.setHoverLinkStart(
-        editor.mode === "select" && hov.kind === "element" ? hov.id : null,
-        editor.mode === "select" ? worldPoint : null,
-      );
+      // Track the idle cursor so the SINGLE selected element's link-start dot
+      // grows by proximity (`worldPoint`). Only the selected element's dots
+      // react; connecting from an unselected shape on hover is not offered.
+      editor.setHoverCursorWorld(editor.mode === "select" ? worldPoint : null);
     }
     editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
   };

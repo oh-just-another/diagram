@@ -1603,3 +1603,6 @@
 
 ## 0.55.106
 - fix(state): hit-zone viz — edge resize is a side band, not a midpoint square
+
+## 0.55.107
+- fix(state): hit-zone resize zones only for the single selected shape

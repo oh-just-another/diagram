@@ -588,13 +588,10 @@ export class Editor {
     mode: "point" | "element";
   } | null = null;
   /**
-   * Hover-to-connect (standard): the shape the cursor is idly over in select
-   * mode, whose link-start dots the overlay reveals even when it is not
-   * selected. `hoverCursorWorld` is the last cursor position — the overlay
-   * grows the dot nearest it (`ANCHOR_DOT_HOVER_GROW_RADIUS`). Both reset
-   * to null on press / gesture / leaving the shape.
+   * Last idle cursor position (world) in select mode — the overlay grows the
+   * SINGLE selected element's link-start dot nearest it
+   * (`ANCHOR_DOT_HOVER_GROW_RADIUS`). Reset to null on press / gesture.
    */
-  private hoverLinkStartElement: ElementId | null = null;
   public hoverCursorWorld: Vec2 | null = null;
   /**
    * When a link is dropped on empty canvas, the edge is created with a
@@ -1856,19 +1853,16 @@ export class Editor {
   }
 
   /**
-   * Hover-to-connect (standard): record the shape under the idle cursor and
-   * the cursor position so the overlay can reveal that shape's link-start
-   * dots (even unselected) and grow the dot nearest the cursor. Re-renders
-   * when the hovered shape changes, or on every move while one is hovered
-   * (the proximity grow tracks the cursor). Pass `(null, null)` to clear.
+   * Record the idle cursor position so the overlay can grow the SINGLE
+   * selected element's link-start dot nearest the cursor. Only the selected
+   * element shows start dots (connecting from an unselected element on hover
+   * was a cancelled product decision — see
+   * Pass `null` to clear.
    */
-  setHoverLinkStart(id: ElementId | null, cursor: Vec2 | null): void {
-    const changed = this.hoverLinkStartElement !== id;
-    this.hoverLinkStartElement = id;
+  setHoverCursorWorld(cursor: Vec2 | null): void {
     this.hoverCursorWorld = cursor;
-    // Re-render on hovered-element change, or on any cursor move while a single
-    // element is selected — its start dots appear/grow by cursor proximity.
-    if (changed || id !== null || this._selection.size === 1) this.notify();
+    // Dots only render for a single selection; skip notify otherwise.
+    if (this._selection.size === 1) this.notify();
   }
 
   /** Live link-draw preview polyline (elbow), or null when not drawing. */
@@ -2726,7 +2720,6 @@ export class Editor {
     // gesture left mid-flight would keep its preview after Escape.
     this.linkDragFromAnchor = null;
     this.hoveredLinkTarget = null;
-    this.hoverLinkStartElement = null;
     this.hoverCursorWorld = null;
     this._editingLinkCaption = null;
     this.pendingLinkDropMenu = null;
