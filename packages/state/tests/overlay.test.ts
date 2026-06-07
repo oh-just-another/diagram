@@ -486,12 +486,13 @@ describe("renderOverlay", () => {
   });
 
   it("renders debug hit zones (fillZoneRect + fillZoneCircle) when debugHitZones is true", () => {
-    // Need a resizable shape so that fillZoneRect is called for its handle slop squares.
+    // Resize zones only show for the SINGLE selected resizable shape (matches
+    // the real hit-test — nothing is resizable with no selection), so select it.
     const shape = rect("r1", 0, 0, 50, 50);
     const scene = sceneWith(shape);
     const { target, calls } = makeRecorder();
-    renderOverlay(scene, emptySelection, target, { debugHitZones: true });
-    // fillZoneRect → rect() called for each of the 8 handle slop squares
+    renderOverlay(scene, new Set([shape.id]), target, { debugHitZones: true });
+    // fillZoneRect → rect() called for the 4 corner squares + 4 edge bands.
     const rects = calls.filter((c) => c.method === "rect");
     expect(rects.length).toBeGreaterThanOrEqual(8);
   });

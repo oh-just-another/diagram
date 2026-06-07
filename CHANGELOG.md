@@ -1600,3 +1600,6 @@
 
 ## 0.55.105
 - feat(state): custom cursor image API (DPR-aware via image-set)
+
+## 0.55.106
+- fix(state): hit-zone viz — edge resize is a side band, not a midpoint square

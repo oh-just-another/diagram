@@ -521,19 +521,15 @@ export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): v
   const { scene, w2s, zoom, selection, visibility, edgeSelection, attach, containers } = opts;
   const { groupBounds, groupAspectLocked } = opts;
   target.save();
-  // Resize-handle slop squares — resizable shapes only (matches the
-  // hit-test, which only offers handles on resizable selections).
-  if (visibility.resizeHandles) {
-    for (const shape of scene.elements.values()) {
-      if (!isResizable(shape)) continue;
-      drawResizeZones(
-        target,
-        w2s,
-        getElementWorldBounds(shape),
-        zoom,
-        resizeHandlesFor(shape),
-        DEBUG_ZONE_RESIZE,
-      );
+  // Resize-handle zones — ONLY for the single selected resizable, unlocked
+  // shape. Mirrors `pickPressTarget` step 1b, which offers per-shape handles
+  // only when exactly one shape is selected (multi-select / groups use the
+  // group-bounds handles below). Nothing is resizable with no selection.
+  if (visibility.resizeHandles && selection.size === 1) {
+    const id = req([...selection][0]);
+    const shape = getElement(scene, id);
+    if (shape && isResizable(shape) && shape.locked !== true) {
+      drawResizeZones(target, w2s, getElementWorldBounds(shape), zoom, resizeHandlesFor(shape), DEBUG_ZONE_RESIZE);
     }
   }
   // Link body bands (polyline stroked at 2× the hit threshold) — the
