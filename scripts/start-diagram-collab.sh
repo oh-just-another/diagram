@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Boots the `diagram-collab` relay server from the sibling directory.
 # Used by the root `pnpm dev:collab` script — the server lives in
-# its own repo (see docs/collab-server.md) so this wrapper hides
+# its own repo so this wrapper hides
 # the path lookup, dependency install, and a friendly error message
 # when the repo isn't checked out yet.
 
@@ -20,7 +20,7 @@ if [ ! -d "$COLLAB_DIR" ]; then
   echo "    git clone <repo-url> diagram-collab" >&2
   echo "    cd diagram-collab && pnpm install" >&2
   echo "" >&2
-  echo "  See docs/collab-server.md for details." >&2
+  echo "  See the collab-server setup for details." >&2
   exit 1
 fi
 

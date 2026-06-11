@@ -230,8 +230,7 @@ const midS_ = (
  * within `ELBOW_WRAP_HYSTERESIS` of the centre we KEEP the previous side
  * (`prevLo`: was the last route on the `lo` side?); the side only switches once
  * the midpoint moves past the centre by the band. This is the only history the
- * elbow router consults — the A* core stays pure (see
- *,
+ * elbow router consults — the A* core stays pure.
  */
 const pickWrapSide = (
   mid: number,

@@ -52,4 +52,3 @@ export const App = () => (
 - **Toolbar item kinds are a discriminated union.** Hosts can mix builtin `mode` / `undo` / `redo` items with arbitrary `action` items in one declarative array.
 - **Palette uses SVG icons through `dangerouslySetInnerHTML`.** Template authors define the icon markup; same SVG goes through the canvas renderer's SVG-parser (Phase 6b). No cross-package surprises.
 - **Tests run under `jsdom`.** `tests/setup.ts` stubs `HTMLCanvasElement.prototype.getContext`, pointer-capture, and `ResizeObserver` — enough for the editor to mount without pulling the native `canvas` npm package.
-

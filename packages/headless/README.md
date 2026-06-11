@@ -54,4 +54,3 @@ Phase 8 target was < 50 ms for 100 shapes — there's roughly 300× of headroom.
 - **Two paths, one entry point.** SVG is the fast, dependency-free path; PNG goes through resvg (Rust → WASM). Adding more rasterizers (skia, node-canvas) slots in beside `renderToPng` without changing the public API.
 - **Optional peer-dependency for resvg-js.** Tree-shaking can't drop a static `import "@resvg/resvg-js"` — its wasm init has side effects. Loading it dynamically keeps the SVG-only path zero-cost and tree-shakable.
 - **PNG via dynamic specifier-variable import.** The `import(/* @vite-ignore */ specifier)` form hides the module id from bundlers so they don't bake `@resvg/resvg-js` into the SVG-only output.
-

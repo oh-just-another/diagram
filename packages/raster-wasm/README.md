@@ -10,7 +10,7 @@ import { WasmRasterizer } from "@oh-just-another/raster-wasm";
 const rasterizer = new WasmRasterizer();
 await rasterizer.loadModule("/raster.wasm"); // optional — JS fallback used until then
 
-const editor = new Editor({ rasterizer, /* … */ });
+const editor = new Editor({ rasterizer /* … */ });
 ```
 
 ## Expected WASM exports
@@ -41,3 +41,4 @@ interface WasmRasterizerExports {
 
 Commands are packed into a Float32 array: `[kindEnum, x0, y0, x1?, y1?, x2?, y2?]` per command (variable width). Output Vec2 arrays are returned by writing `outPtr` + `outCount` to caller-provided host pointers.
 
+See `@oh-just-another/renderer-core`'s `Rasterizer` interface.

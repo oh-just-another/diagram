@@ -2,6 +2,8 @@
 
 Monorepo library for drawing diagrams: browser editor + headless-render for servers, split into independent npm packages.
 
+**Status: in active development.**
+
 ## Quick start (for contributors)
 
 ```bash
@@ -45,8 +47,6 @@ packages/   — publishable npm packages (L0–L5)
 apps/       — applications: demo, cli (L6)
 scripts/    — utility scripts (package generator)
 ```
-
-## Documentation
 
 ## License
 

@@ -187,9 +187,7 @@ const drawPolygon: ElementRenderer<PolygonElement> = (shape, target) => {
   }
   if (stroke) {
     const offset = strokeAlignOffset(shape.style);
-    const pts = offset !== 0
-      ? polygonMath.offsetClosedPath(shape.points, offset)
-      : shape.points;
+    const pts = offset !== 0 ? polygonMath.offsetClosedPath(shape.points, offset) : shape.points;
     target.beginPath();
     polygonPath(target, pts);
     target.stroke();
@@ -307,7 +305,12 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
       }
       if (deco.strikethrough) {
         target.beginPath();
-        target.rect(l.x, l.top + fontSize * TEXT_STRIKETHROUGH_OFFSET - thickness / 2, l.width, thickness);
+        target.rect(
+          l.x,
+          l.top + fontSize * TEXT_STRIKETHROUGH_OFFSET - thickness / 2,
+          l.width,
+          thickness,
+        );
         target.fill();
       }
     }

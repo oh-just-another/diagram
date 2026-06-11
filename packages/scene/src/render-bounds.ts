@@ -49,5 +49,10 @@ export const getElementRenderBounds = (shape: ElementBase): Bounds => {
   const bottom = o.bottom ?? 0;
   const left = o.left ?? 0;
   if (top === 0 && right === 0 && bottom === 0 && left === 0) return b;
-  return { x: b.x - left, y: b.y - top, width: b.width + left + right, height: b.height + top + bottom };
+  return {
+    x: b.x - left,
+    y: b.y - top,
+    width: b.width + left + right,
+    height: b.height + top + bottom,
+  };
 };

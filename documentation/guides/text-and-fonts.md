@@ -1,6 +1,7 @@
 # Text and Fonts
 
-**Structure.** Content — TODO. Technical depth (architecture, WASM build,
+**Framework.** Content — TODO. Technical depth (architecture, WASM build,
+adding fonts) — in dev-doc;
 here will be a user perspective.
 
 ## Text Tool

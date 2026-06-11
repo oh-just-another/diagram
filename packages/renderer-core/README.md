@@ -30,12 +30,11 @@ renderScene(scene, canvasTarget);
 
 ## API
 
-| Name                                                                  | Purpose                                                                        |
+| Name                                                                  | Purpose                                                                       |
 | --------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `RenderTarget`                                                        | Backend-agnostic drawing surface (interface).                                 |
 | `LineCap`, `LineJoin`, `TextAlign`, `TextBaseline`, `FillRule`        | Style enums used by `RenderTarget`.                                           |
 | `ElementRenderer<S>`                                                  | `(element, target) => void`. Draws in the element's _local_ coordinate space. |
-| `registerElementRenderer`, `getElementRenderer`, `hasElementRenderer` | Registry CRUD.                                                                 |
+| `registerElementRenderer`, `getElementRenderer`, `hasElementRenderer` | Registry CRUD.                                                                |
 | `renderScene(scene, target, options?)`                                | Top-level walker. `options.skipClear`, `options.onUnknownElement`.            |
 | `LAYER_ORDER`, `LayerName`                                            | Canonical layer names (`background` / `main` / `overlay`).                    |
-

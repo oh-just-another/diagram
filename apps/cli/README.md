@@ -46,4 +46,3 @@ The same logic is exported as a function for tests and scripts:
 import { run } from "@oh-just-another/cli";
 await run(["render", "scene.json", "--out", "scene.svg"]);
 ```
-

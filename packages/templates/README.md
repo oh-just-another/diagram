@@ -71,4 +71,3 @@ editor.addElement(element);
 - **Built-in icons are inline SVG.** No external image deps; trivially replaceable via `registry.replace({ ...template, icon })`.
 - **`category` is `string`.** `"basic"` and `"flowchart"` are conventions surfaced as `StandardCategory`; plugins are free to introduce their own category name.
 - **`installBuiltinTemplates()` is explicit.** Same trade-off as `installBuiltinRenderers()` — keeps `sideEffects: false` and gives the host control over what's available.
-

@@ -83,10 +83,9 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
   const scene = useScene();
 
   // Dispatcher: edge wins only when no shape is selected — if both
-  // happen to be set (rare), shape panel is more useful. Each branch
-  // splits its controls into `primary` (always visible) + `overflow`
-  // (behind the ⋮ on mobile; inline on desktop). Approved split — see
-  // .
+  // happen to be set (rare), the shape panel is more useful. Each branch
+  // splits its controls into `primary` (always visible) and `overflow`
+  // (behind the ⋮ on mobile; inline on desktop).
   if (selection.size > 0) {
     const shapes = [...selection]
       .map((id) => scene.elements.get(id))
@@ -206,7 +205,9 @@ const PanelShell = ({
     };
     // `capture` so we see the tap even if something stops propagation.
     document.addEventListener("pointerdown", onDown, true);
-    return () => { document.removeEventListener("pointerdown", onDown, true); };
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+    };
   }, [mobile, expanded]);
 
   if (!mobile) {
@@ -233,7 +234,9 @@ const PanelShell = ({
             aria-expanded={expanded}
             aria-label={expanded ? "Hide more properties" : "More properties"}
             title="More properties"
-            onClick={() => { setExpanded((v) => !v); }}
+            onClick={() => {
+              setExpanded((v) => !v);
+            }}
           >
             <MoreVertical size={18} strokeWidth={1.75} aria-hidden />
           </button>
@@ -260,7 +263,9 @@ const LinkControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
   const ids = shapes.map((s) => s.id);
   const current = sharedString(shapes, (s) => (s as { href?: string }).href);
   const hasLink = shapes.some((s) => Boolean((s as { href?: string }).href));
-  const save = (raw: string): void => { editor.setLink(ids, raw); };
+  const save = (raw: string): void => {
+    editor.setLink(ids, raw);
+  };
   return (
     <Popover
       ariaLabel="Link"
@@ -295,17 +300,31 @@ const LinkControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
           <button
             type="button"
             className="du-sel-text-button"
-            onClick={() => { save(inputRef.current?.value ?? ""); }}
+            onClick={() => {
+              save(inputRef.current?.value ?? "");
+            }}
           >
             Save
           </button>
           {hasLink ? (
-            <button type="button" className="du-sel-text-button" onClick={() => { editor.openLink(current); }}>
+            <button
+              type="button"
+              className="du-sel-text-button"
+              onClick={() => {
+                editor.openLink(current);
+              }}
+            >
               Open
             </button>
           ) : null}
           {hasLink ? (
-            <button type="button" className="du-sel-text-button" onClick={() => { editor.setLink(ids, null); }}>
+            <button
+              type="button"
+              className="du-sel-text-button"
+              onClick={() => {
+                editor.setLink(ids, null);
+              }}
+            >
               Remove
             </button>
           ) : null}
@@ -366,12 +385,7 @@ const ColorTrigger = ({
   <Popover
     ariaLabel={ariaLabel}
     trigger={
-      <button
-        type="button"
-        className="du-sel-color-trigger"
-        title={label}
-        aria-label={ariaLabel}
-      >
+      <button type="button" className="du-sel-color-trigger" title={label} aria-label={ariaLabel}>
         <span
           className="du-sel-color-swatch"
           style={{
@@ -418,7 +432,10 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
           title="Color & opacity"
           aria-label="Text color and opacity"
         >
-          <span className="du-sel-color-swatch" style={{ background: swatchBg, opacity: opacity ?? 1 }} />
+          <span
+            className="du-sel-color-swatch"
+            style={{ background: swatchBg, opacity: opacity ?? 1 }}
+          />
         </button>
       }
     >
@@ -426,7 +443,9 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
         <header className="du-sel-popover-label">Color</header>
         <ColorSwatchPicker
           value={color}
-          onChange={(v) => { editor.updateStyle(ids, { fill: v ?? "transparent" }); }}
+          onChange={(v) => {
+            editor.updateStyle(ids, { fill: v ?? "transparent" });
+          }}
         />
         <header className="du-sel-popover-label">Opacity</header>
         <Slider
@@ -436,7 +455,9 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
           step={5}
           ariaLabel="Opacity"
           valueLabel={pct === null ? "—" : `${pct}%`}
-          onChange={(v) => { editor.updateStyle(ids, { opacity: v / 100 }); }}
+          onChange={(v) => {
+            editor.updateStyle(ids, { opacity: v / 100 });
+          }}
         />
       </div>
     </Popover>
@@ -453,7 +474,9 @@ const FillControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
       label="Fill"
       ariaLabel="Fill color"
       color={value}
-      onChange={(v) => { editor.updateStyle(ids, { fill: v ?? "transparent" }); }}
+      onChange={(v) => {
+        editor.updateStyle(ids, { fill: v ?? "transparent" });
+      }}
     />
   );
 };
@@ -501,7 +524,9 @@ const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }
             label: p.label,
             icon: <span style={{ fontSize: 11, fontWeight: 600 }}>{p.label}</span>,
           }))}
-          onChange={(v) => { editor.updateTextProps(ids, { fontSize: v }); }}
+          onChange={(v) => {
+            editor.updateTextProps(ids, { fontSize: v });
+          }}
         />
         <Slider
           value={value}
@@ -510,7 +535,9 @@ const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }
           step={1}
           ariaLabel="Font size"
           valueLabel={value === null ? "—" : `${value}px`}
-          onChange={(v) => { editor.updateTextProps(ids, { fontSize: v }); }}
+          onChange={(v) => {
+            editor.updateTextProps(ids, { fontSize: v });
+          }}
         />
       </div>
     </Popover>
@@ -549,7 +576,9 @@ const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ElementBase[]
             aria-checked={f.value === value}
             className={`du-sel-menu-row${f.value === value ? " is-active" : ""}`}
             style={{ fontFamily: f.value }}
-            onClick={() => { editor.updateTextProps(ids, { fontFamily: f.value }); }}
+            onClick={() => {
+              editor.updateTextProps(ids, { fontFamily: f.value });
+            }}
           >
             {f.label}
           </button>
@@ -573,7 +602,9 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
         { value: "center", label: "Center", icon: <AlignCenter size={14} strokeWidth={1.75} /> },
         { value: "right", label: "Right", icon: <AlignRight size={14} strokeWidth={1.75} /> },
       ]}
-      onChange={(v) => { editor.updateStyle(ids, { textAlign: v }); }}
+      onChange={(v) => {
+        editor.updateStyle(ids, { textAlign: v });
+      }}
     />
   );
 };
@@ -631,7 +662,12 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
     <Popover
       ariaLabel="Text style"
       trigger={
-        <button type="button" className="du-sel-icon-button" title="Text style (bold / italic / …)" aria-label="Text style">
+        <button
+          type="button"
+          className="du-sel-icon-button"
+          title="Text style (bold / italic / …)"
+          aria-label="Text style"
+        >
           <CaseSensitive size={16} strokeWidth={1.75} aria-hidden />
         </button>
       }
@@ -643,25 +679,33 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
             active={allBold}
             label="Bold"
             icon={<Bold size={14} strokeWidth={1.75} />}
-            onClick={() => { editor.updateStyle(ids, { fontWeight: allBold ? "normal" : "bold" }); }}
+            onClick={() => {
+              editor.updateStyle(ids, { fontWeight: allBold ? "normal" : "bold" });
+            }}
           />
           <Toggle
             active={allItalic}
             label="Italic"
             icon={<Italic size={14} strokeWidth={1.75} />}
-            onClick={() => { editor.updateStyle(ids, { fontStyle: allItalic ? "normal" : "italic" }); }}
+            onClick={() => {
+              editor.updateStyle(ids, { fontStyle: allItalic ? "normal" : "italic" });
+            }}
           />
           <Toggle
             active={allUnderline}
             label="Underline"
             icon={<Underline size={14} strokeWidth={1.75} />}
-            onClick={() => { setDecoration("underline", !allUnderline); }}
+            onClick={() => {
+              setDecoration("underline", !allUnderline);
+            }}
           />
           <Toggle
             active={allStrike}
             label="Strikethrough"
             icon={<Strikethrough size={14} strokeWidth={1.75} />}
-            onClick={() => { setDecoration("strikethrough", !allStrike); }}
+            onClick={() => {
+              setDecoration("strikethrough", !allStrike);
+            }}
           />
         </div>
       </div>
@@ -679,7 +723,9 @@ const StrokeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) 
       label="Stroke"
       ariaLabel="Stroke color"
       color={value}
-      onChange={(v) => { editor.updateStyle(ids, { stroke: v ?? "transparent" }); }}
+      onChange={(v) => {
+        editor.updateStyle(ids, { stroke: v ?? "transparent" });
+      }}
     />
   );
 };
@@ -698,7 +744,9 @@ const StrokeWidthControl = ({ shapes }: { readonly shapes: readonly ElementBase[
         { value: 2, label: "Medium", icon: <StrokeWidthIcon thickness={2.5} /> },
         { value: 4, label: "Thick", icon: <StrokeWidthIcon thickness={4} /> },
       ]}
-      onChange={(v) => { editor.updateStyle(ids, { strokeWidth: v }); }}
+      onChange={(v) => {
+        editor.updateStyle(ids, { strokeWidth: v });
+      }}
     />
   );
 };
@@ -755,12 +803,7 @@ const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
     <Popover
       ariaLabel="Corners"
       trigger={
-        <button
-          type="button"
-          className="du-sel-icon-button"
-          title="Corners"
-          aria-label="Corners"
-        >
+        <button type="button" className="du-sel-icon-button" title="Corners" aria-label="Corners">
           <CornerIcon kind={type ?? "sharp"} />
         </button>
       }
@@ -774,7 +817,9 @@ const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
             { value: "sharp", label: "Sharp", icon: <CornerIcon kind="sharp" /> },
             { value: "round", label: "Round", icon: <CornerIcon kind="round" /> },
           ]}
-          onChange={(v) => { editor.updateStyle(ids, { roundness: { type: v } }); }}
+          onChange={(v) => {
+            editor.updateStyle(ids, { roundness: { type: v } });
+          }}
         />
         {type === "round" ? (
           <>
@@ -802,9 +847,9 @@ const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
                 step={1}
                 ariaLabel="Corner radius"
                 valueLabel={`${radius}px`}
-                onChange={(v) =>
-                  { editor.updateStyle(ids, { roundness: { type: "round", value: v } }); }
-                }
+                onChange={(v) => {
+                  editor.updateStyle(ids, { roundness: { type: "round", value: v } });
+                }}
               />
             ) : null}
           </>
@@ -849,7 +894,9 @@ const OpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
           step={5}
           ariaLabel="Opacity"
           valueLabel={label}
-          onChange={(v) => { editor.updateStyle(ids, { opacity: v / 100 }); }}
+          onChange={(v) => {
+            editor.updateStyle(ids, { opacity: v / 100 });
+          }}
         />
       </div>
     </Popover>
@@ -864,10 +911,22 @@ const ZOrderControl = () => {
       ariaLabel="Z-order"
       value={null}
       options={[
-        { value: "back", label: "Send to back", icon: <ChevronsDown size={14} strokeWidth={1.75} /> },
-        { value: "backward", label: "Send backward", icon: <MoveDown size={14} strokeWidth={1.75} /> },
+        {
+          value: "back",
+          label: "Send to back",
+          icon: <ChevronsDown size={14} strokeWidth={1.75} />,
+        },
+        {
+          value: "backward",
+          label: "Send backward",
+          icon: <MoveDown size={14} strokeWidth={1.75} />,
+        },
         { value: "forward", label: "Bring forward", icon: <MoveUp size={14} strokeWidth={1.75} /> },
-        { value: "front", label: "Bring to front", icon: <ChevronsUp size={14} strokeWidth={1.75} /> },
+        {
+          value: "front",
+          label: "Bring to front",
+          icon: <ChevronsUp size={14} strokeWidth={1.75} />,
+        },
       ]}
       onChange={(v) => {
         if (v === "back") editor.sendToBack();
@@ -901,10 +960,18 @@ const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
     { value: "delete", label: "Delete", icon: <Trash2 size={14} strokeWidth={1.75} /> },
   ];
   if (canGroup) {
-    options.push({ value: "group", label: "Group", icon: <GroupIcon size={14} strokeWidth={1.75} /> });
+    options.push({
+      value: "group",
+      label: "Group",
+      icon: <GroupIcon size={14} strokeWidth={1.75} />,
+    });
   }
   if (canUngroup) {
-    options.push({ value: "ungroup", label: "Ungroup", icon: <UngroupIcon size={14} strokeWidth={1.75} /> });
+    options.push({
+      value: "ungroup",
+      label: "Ungroup",
+      icon: <UngroupIcon size={14} strokeWidth={1.75} />,
+    });
   }
   return (
     <SegmentedControl<ActionId>
@@ -937,12 +1004,12 @@ const LinkStrokeColorControl = ({ edge }: { readonly edge: Link }) => {
       label="Stroke"
       ariaLabel="Link stroke color"
       color={color}
-      onChange={(v) =>
-        { editor.updateSelectedLink((e) => ({
+      onChange={(v) => {
+        editor.updateSelectedLink((e) => ({
           ...e,
           style: { ...e.style, stroke: v ?? "transparent" },
-        })); }
-      }
+        }));
+      }}
     />
   );
 };
@@ -960,12 +1027,12 @@ const LinkStrokeWidthControl = ({ edge }: { readonly edge: Link }) => {
         { value: 2, label: "Medium", icon: <StrokeWidthIcon thickness={2.5} /> },
         { value: 4, label: "Thick", icon: <StrokeWidthIcon thickness={4} /> },
       ]}
-      onChange={(v) =>
-        { editor.updateSelectedLink((e) => ({
+      onChange={(v) => {
+        editor.updateSelectedLink((e) => ({
           ...e,
           style: { ...e.style, strokeWidth: v },
-        })); }
-      }
+        }));
+      }}
     />
   );
 };
@@ -1009,9 +1076,15 @@ const LinkLineKindControl = ({ edge }: { readonly edge: Link }) => {
       value={value}
       options={[
         { value: "line", label: "Line", icon: <Minus size={14} strokeWidth={1.75} /> },
-        { value: "block-arrow", label: "Block arrow", icon: <MoveRight size={14} strokeWidth={2.5} /> },
+        {
+          value: "block-arrow",
+          label: "Block arrow",
+          icon: <MoveRight size={14} strokeWidth={2.5} />,
+        },
       ]}
-      onChange={(v) => { editor.updateSelectedLink((e) => ({ ...e, lineKind: v })); }}
+      onChange={(v) => {
+        editor.updateSelectedLink((e) => ({ ...e, lineKind: v }));
+      }}
     />
   );
 };
@@ -1029,9 +1102,9 @@ const LinkRoutingControl = ({ edge }: { readonly edge: Link }) => {
         { value: "orthogonal", label: "Elbow", icon: <RoutingIcon kind="orthogonal" /> },
         { value: "bezier", label: "Curved", icon: <Spline size={14} strokeWidth={1.75} /> },
       ]}
-      onChange={(v) =>
-        { editor.updateSelectedLink((e) => ({ ...e, routing: v })); }
-      }
+      onChange={(v) => {
+        editor.updateSelectedLink((e) => ({ ...e, routing: v }));
+      }}
     />
   );
 };
@@ -1047,11 +1120,12 @@ const LinkArrowheadControl = ({
   const [showErd, setShowErd] = useState(false);
   if (!editor) return null;
   const current: ArrowheadStyle = edge.arrowheads?.[side] ?? "none";
-  const pick = (style: ArrowheadStyle) =>
-    { editor.updateSelectedLink((e) => ({
+  const pick = (style: ArrowheadStyle) => {
+    editor.updateSelectedLink((e) => ({
       ...e,
       arrowheads: { ...(e.arrowheads ?? {}), [side]: style },
-    })); };
+    }));
+  };
   const Option = ({ style }: { readonly style: ArrowheadStyle }) => (
     <button
       type="button"
@@ -1059,12 +1133,16 @@ const LinkArrowheadControl = ({
       title={ARROWHEAD_LABELS[style]}
       aria-label={ARROWHEAD_LABELS[style]}
       aria-pressed={style === current}
-      onClick={() => { pick(style); }}
+      onClick={() => {
+        pick(style);
+      }}
     >
       {style === "none" ? (
         <span className="du-arrowhead-none">∅</span>
       ) : arrowheadGlyphFamily(style) === "none" ? (
-        <span className="du-arrowhead-erd-label">{ARROWHEAD_LABELS[style].replace(/^ERD /, "")}</span>
+        <span className="du-arrowhead-erd-label">
+          {ARROWHEAD_LABELS[style].replace(/^ERD /, "")}
+        </span>
       ) : (
         <ArrowheadGlyph kind={style} side={side} />
       )}
@@ -1094,7 +1172,9 @@ const LinkArrowheadControl = ({
           type="button"
           className="du-arrowhead-erd-toggle"
           aria-expanded={showErd}
-          onClick={() => { setShowErd((v) => !v); }}
+          onClick={() => {
+            setShowErd((v) => !v);
+          }}
         >
           {showErd ? "▾" : "▸"} ER diagram
         </button>
@@ -1126,7 +1206,9 @@ const LinkAutoRouteControl = ({ edge }: { readonly edge: Link }) => {
       title="Route around shapes"
       aria-label="Route around shapes"
       aria-pressed={on}
-      onClick={() => { editor.setSelectedLinkAvoidObstacles(!on); }}
+      onClick={() => {
+        editor.setSelectedLinkAvoidObstacles(!on);
+      }}
     >
       <Waypoints size={14} strokeWidth={1.75} aria-hidden />
     </button>
@@ -1142,7 +1224,9 @@ const LinkDeleteControl = () => {
       className="du-sel-icon-button"
       title="Delete edge"
       aria-label="Delete edge"
-      onClick={() => { editor.deleteSelected(); }}
+      onClick={() => {
+        editor.deleteSelected();
+      }}
     >
       <Trash2 size={14} strokeWidth={1.75} aria-hidden />
     </button>
@@ -1155,14 +1239,29 @@ const RoutingIcon = ({ kind }: { readonly kind: "straight" | "orthogonal" }) => 
   if (kind === "straight") {
     return (
       <svg width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden>
-        <line x1={2} y1={11} x2={12} y2={3} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+        <line
+          x1={2}
+          y1={11}
+          x2={12}
+          y2={3}
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+        />
       </svg>
     );
   }
   // orthogonal (elbow)
   return (
     <svg width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden>
-      <path d="M 2 11 L 2 7 L 12 7 L 12 3" stroke="currentColor" strokeWidth={1.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M 2 11 L 2 7 L 12 7 L 12 3"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 };
@@ -1328,7 +1427,13 @@ const Divider = () => <span className="du-sel-divider" aria-hidden />;
 
 // Section / Row kept as exports because tests may rely on them; they're
 // no longer used internally.
-export const Section = ({ label, children }: { readonly label: string; readonly children: ReactNode }) => (
+export const Section = ({
+  label,
+  children,
+}: {
+  readonly label: string;
+  readonly children: ReactNode;
+}) => (
   <section className="du-prop-section">
     <h3 className="du-prop-section-label">{label}</h3>
     {children}
@@ -1359,7 +1464,16 @@ const CornerIcon = ({ kind }: { readonly kind: Roundness["type"] }) => {
   }
   return (
     <svg width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden>
-      <rect x={2} y={2} width={10} height={10} rx={3} ry={3} stroke="currentColor" strokeWidth={1.5} />
+      <rect
+        x={2}
+        y={2}
+        width={10}
+        height={10}
+        rx={3}
+        ry={3}
+        stroke="currentColor"
+        strokeWidth={1.5}
+      />
     </svg>
   );
 };

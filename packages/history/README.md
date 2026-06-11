@@ -52,4 +52,3 @@ tx.commit(); // merged per entity: 100 moves of one shape collapse to 1
 - **Transactions merge per entity by default.** A 100-tick drag of one shape becomes one undo record with `before = shape-at-press`, `after = shape-at-up`. Disable for debug logs that want every intermediate state.
 - **Selection should not be a patch.** Most editors (standard, standard) exclude selection from undo. The kernel doesn't enforce it — just don't `push` selection-only changes.
 - **Branches (CRDT)** will live alongside the linear stack when Phase 13 lands; the API will gain an `apply(remotePatch)` path without breaking `undo/redo` semantics for local operations.
-

@@ -2,8 +2,7 @@ import { createActor, type Actor } from "xstate";
 import { createEmitter, type Emitter } from "@oh-just-another/events";
 import type { Bounds, FileId, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
-import type {
-  SpatialGrid} from "@oh-just-another/scene";
+import type { SpatialGrid } from "@oh-just-another/scene";
 import {
   addElement,
   anchorSnapper,
@@ -267,10 +266,7 @@ import {
   computeGroupMovePatches,
   computeElementMovePatch,
 } from "./editor/applies/move.js";
-import {
-  computeMovingLinkPatches,
-  computeMovingLinkForNudge,
-} from "./editor/applies/link-move.js";
+import { computeMovingLinkPatches, computeMovingLinkForNudge } from "./editor/applies/link-move.js";
 import {
   computeCreateLink,
   computeCreateElement,
@@ -294,11 +290,9 @@ export interface LoadSceneOptions {
    * local history must survive remote edits. Default `false`:
    * top-level callers loading a saved scene get a clean slate.
    *
-   * **Caveat**: when `true`, history patches that reference shapes
-   * removed by the remote peer become un-applicable. The local user
-   * will see an undo no-op or an exception on that step; future work
-   * (Y.UndoManager integration) will replace the linear stack with
-   * a CRDT-aware undo that survives concurrent edits cleanly.
+   * When `true`, history patches that reference shapes removed by the
+   * remote peer become un-applicable: the local user sees an undo no-op
+   * or an exception on that step.
    */
   readonly preserveHistory?: boolean;
 }
@@ -319,8 +313,8 @@ export interface EditorOptions {
    * targets have been painted. Hosts whose surface defers submission
    * (WebGL2 flush, OffscreenCanvas worker replay) MUST present here — not
    * on `subscribe()`, which fires on `notify()` BEFORE the rAF-scheduled
-   * paint, leaving the surface one frame behind (shape appears only after
-   * the next mutation, e.g. a pan). No-op surfaces (Canvas2D) can omit it.
+   * paint, leaving the surface one frame behind. No-op surfaces (Canvas2D)
+   * can omit it.
    */
   readonly onAfterRender?: () => void;
   readonly initialScene: Scene;
@@ -413,10 +407,6 @@ export type TileComposeFn = (
  * pointer events from the host element into the interaction machine, applies
  * the machine's emitted effects back to the scene, and re-renders main and
  * overlay on every change.
- *
- * The editor is single-mode and single-window. The patch returned from each scene op is
- * already invertible (`@scene.invert(patch)`), so wiring history later is a
- * one-line subscription.
  */
 
 /** Outcome of `Editor.groupSelected`. `noop` when nothing was selected. */
@@ -519,10 +509,9 @@ export class Editor {
    * `scene`, `history`, `viewport`) fan out of `notify()` based on
    * what actually changed since the last fire, so subscribers only
    * wake up when their slice flips. `change` still fires once per
-   * `notify()` for legacy callers that don't care which slice.
+   * `notify()` for callers that don't care which slice.
    *
-   * The `subscribe()` set is kept — both notification
-   * paths run in lockstep so external code can migrate incrementally.
+   * The `subscribe()` set runs in lockstep with the typed events.
    */
   private readonly events: Emitter<EditorEvents> = createEmitter<EditorEvents>();
   /**
@@ -552,9 +541,9 @@ export class Editor {
   public drawingPreview: Bounds | null = null;
   public edgePreview: { from: Vec2; to: Vec2; points?: readonly Vec2[] } | null = null;
   /**
-   * Active "drag a link from a start-anchor" gesture (standard). Set when a
+   * Active "drag a link from a start-anchor" gesture. Set when a
    * press lands on one of the selected element's link-start dots; lets
-   * the user draw a link straight from the dot WITHOUT switching to the
+   * the user draw a link straight from the dot without switching to the
    * draw-edge tool. `fromWorld` is the true anchor world point (the link
    * origin, un-offset); `origin` is the press point (for the drag
    * threshold). Read by the pointer handlers (drive preview / commit on
@@ -716,9 +705,7 @@ export class Editor {
   }
 
   /**
-   * Snap engine — defaults to grid + anchor + outline contributors. Hosts
-   * that want to tweak this can subclass or instantiate `Editor` with a
-   * custom `snapEngine` option.
+   * Snap engine — defaults to grid + anchor + outline contributors.
    */
   private readonly snapEngine: SnapEngine = new SnapEngine([
     gridSnapper,
@@ -821,7 +808,9 @@ export class Editor {
    */
   private readonly autoCompactScheduler = new AutoCompactScheduler({
     getScene: () => this._scene,
-    compact: (layerId) => { this.compactLayerZOrder(layerId, { recordHistory: false }); },
+    compact: (layerId) => {
+      this.compactLayerZOrder(layerId, { recordHistory: false });
+    },
   });
 
   /**
@@ -836,7 +825,9 @@ export class Editor {
       if (this.gestureTx) this.gestureTx.add(patch);
       else this._history.push(patch);
     },
-    growContainer: (parentId, childId) => { this.maybeGrowContainer(parentId, childId); },
+    growContainer: (parentId, childId) => {
+      this.maybeGrowContainer(parentId, childId);
+    },
     onMutated: () => {
       // Re-render only; do NOT call notify() — that would re-schedule
       // the check and risk a microtask loop. Listeners already saw
@@ -868,8 +859,8 @@ export class Editor {
   /**
    * Live container highlight: the container shape the dragged item is
    * currently hovering over. Drawn by the overlay as a dashed
-   * accent rect on the container's drop-zone so the user knows where
-   * the shape will land after release.
+   * accent rect on the container's drop-zone so the user sees where the
+   * shape will land after release.
    */
   public containerHover: { id: ElementId; dropZone: Bounds } | null = null;
 
@@ -899,7 +890,7 @@ export class Editor {
    * One-finger-pan candidate: set at pointer-down when a TOUCH press lands
    * on empty canvas in select mode. A tap (no movement) still falls through
    * to select/deselect; once the finger drags past slop, onMove promotes
-   * this to a real pan instead of a marquee lasso (mobile convention —
+   * this to a real pan instead of a marquee lasso (mobile convention).
    * Screen-space origin point.
    */
   public touchPanCandidate: Vec2 | null = null;
@@ -933,8 +924,7 @@ export class Editor {
    * (A plain id set lost adds — new id wasn't in the tile reverse
    * index yet.)
    */
-  public tileDirtyElements =
-    new Map<ElementId, { before: Bounds | null; after: Bounds | null }>();
+  public tileDirtyElements = new Map<ElementId, { before: Bounds | null; after: Bounds | null }>();
 
   /**
    * Tool-lock flag (standard model). When `false` (default), a
@@ -977,7 +967,7 @@ export class Editor {
   } | null = null;
 
   /**
-   * Set on right-click pointerdown result so the upcoming native
+   * Set on a right-click pointerdown so the upcoming native
    * `contextmenu` event can be unconditionally preventDefault'ed
    * (the gesture decides whether to fire the menu manually on
    * pointerup based on whether the user dragged).
@@ -1102,23 +1092,26 @@ export class Editor {
       get mode() {
         return self.mode;
       },
-      setMode: (m) => { self.setMode(m); },
-      notify: () => { self.notify(); },
+      setMode: (m) => {
+        self.setMode(m);
+      },
+      notify: () => {
+        self.notify();
+      },
     });
     this.tileComposeFn =
       options.useTileCache === true && options.tileCompose ? options.tileCompose : null;
 
-    // If the host plugged a TextShaper (e.g.
-    // WasmTextShaper.loadBundled()), install it process-globally
-    // so the built-in text renderer's wrap path uses it instead
-    // of Canvas2D.measureText. Hosts that don't care leave the
-    // field unset and the default behaviour is unchanged.
+    // If the host plugged a TextShaper, install it process-globally so the
+    // built-in text renderer's wrap path uses it instead of
+    // Canvas2D.measureText. Hosts that don't care leave the field unset and
+    // the default behaviour is unchanged.
     if (options.textShaper) setActiveTextShaper(options.textShaper);
-    // Same pattern for Rasterizer. The WebGL2
-    // backend reads `getActiveRasterizer()` from its curve methods
-    // and routes through WASM flatten / strokeToFill when set.
-    // Other backends (Canvas2D, SVG) leave the field alone —
-    // native ctx.bezierCurveTo beats any WASM round-trip there.
+    // Same pattern for the Rasterizer. The WebGL2 backend reads
+    // `getActiveRasterizer()` from its curve methods and routes through WASM
+    // flatten / strokeToFill when set. Other backends (Canvas2D, SVG) leave
+    // the field alone — native ctx.bezierCurveTo beats any WASM round-trip
+    // there.
     if (options.rasterizer) setActiveRasterizer(options.rasterizer);
 
     // Drive the scene text bounder from the renderer's own metrics so
@@ -1194,8 +1187,12 @@ export class Editor {
     // the editor's own zoomAt / panBy / screenToWorld.
     this.pinch = new PinchController(
       (p) => this.screenToWorld(p),
-      (factor, anchorWorld) => { this.zoomAt(factor, anchorWorld); },
-      (delta) => { this.panBy(delta); },
+      (factor, anchorWorld) => {
+        this.zoomAt(factor, anchorWorld);
+      },
+      (delta) => {
+        this.panBy(delta);
+      },
     );
     // Bridge for container-ops module — narrow surface that the
     // pure functions in editor/container-ops.ts call back into.
@@ -1218,10 +1215,10 @@ export class Editor {
     };
 
     this.unbind = this.bindPointerEvents();
-    // G2: pause animation playback when the tab / window is hidden
-    // (browsers throttle rAF to ~1fps in background but don't stop
-    // it; explicit stop saves the decode + render entirely). Resume
-    // when visible again, viewport permitting.
+    // Pause animation playback when the tab / window is hidden (browsers
+    // throttle rAF to ~1fps in background but don't stop it; an explicit
+    // stop saves the decode + render entirely). Resume when visible again,
+    // viewport permitting.
     if (typeof document !== "undefined") {
       document.addEventListener("visibilitychange", this.onVisibilityChange);
     }
@@ -1234,7 +1231,9 @@ export class Editor {
     // completes it nudges us here. Re-render so a PAUSED animated shape
     // (reduced-motion / auto-stopped / frozen) — which has no tick to
     // pick the frames up — paints its decoded frame after reload.
-    this.animationContentOff = onAnimationContentReady(() => { this.scheduleRender(); });
+    this.animationContentOff = onAnimationContentReady(() => {
+      this.scheduleRender();
+    });
     // First paint — synchronous so the canvas isn't blank for one
     // frame on mount. Hosts that mount + immediately read the
     // bitmap also get a consistent first frame.
@@ -1656,23 +1655,22 @@ export class Editor {
    * `./animation-tick.ts`). `insertImage({animated:true})` and
    * `loadScene` start the tick; `dispose()` stops it.
    */
-  /** EMA of animation-tick render cost (ms) — drives adaptive throttle (G3). */
+  /** EMA of animation-tick render cost (ms) — drives the adaptive throttle. */
   private gifRenderCostEma = 0;
-  /** Wall-clock of the last animation-tick render — for interval throttle (G3). */
+  /** Wall-clock of the last animation-tick render — for the interval throttle. */
   private lastGifTickMs = 0;
 
   private readonly animationTick = new AnimationTick({
-    // G1: keep ticking only while an animated shape is actually
-    // on-screen. Frame selection is wall-clock-based, so when the
-    // GIF scrolls back into view the tick resumes on the correct
-    // frame (logical playback never "froze"). Tick is re-armed on
-    // viewport changes via `maybeAnimate()` in `notify()`.
+    // Keep ticking only while an animated shape is actually on-screen.
+    // Frame selection is wall-clock-based, so when the GIF scrolls back
+    // into view the tick resumes on the correct frame. The tick is re-armed
+    // on viewport changes via `maybeAnimate()` in `notify()`.
     isAnimated: () => this.hasVisibleAnimatedElement(),
     onTick: () => {
-      // G3: adaptive throttle — skip this rAF if we rendered an
-      // animation frame too recently. Target interval grows with the
-      // measured render cost so a heavy scene drops GIF fps instead
-      // of blowing the frame budget.
+      // Adaptive throttle — skip this rAF if an animation frame was rendered
+      // too recently. The target interval grows with the measured render
+      // cost so a heavy scene drops GIF fps instead of blowing the frame
+      // budget.
       const now = typeof performance !== "undefined" ? performance.now() : Date.now();
       const target = Math.min(
         ANIMATION_MAX_INTERVAL_MS,
@@ -1680,7 +1678,7 @@ export class Editor {
       );
       if (now - this.lastGifTickMs < target) return;
       this.lastGifTickMs = now;
-      // G4: freeze heavy GIFs that have played long enough.
+      // Freeze heavy GIFs that have played long enough.
       this.autoStopHeavyGifs();
       // Force a full re-render: the scene reference hasn't changed,
       // but the animation adapter advanced the GIF frame. Re-painting
@@ -1700,10 +1698,10 @@ export class Editor {
 
   /**
    * True when at least one animated shape's world AABB intersects the
-   * current viewport. Drives G1 viewport-culling of the animation
-   * tick — off-screen GIFs don't burn decode / render cost, and the
-   * wall-clock frame selection means they show the right frame the
-   * moment they scroll back in.
+   * current viewport. Drives viewport-culling of the animation tick —
+   * off-screen GIFs don't burn decode / render cost, and the wall-clock
+   * frame selection means they show the right frame the moment they
+   * scroll back in.
    */
   private hasVisibleAnimatedElement(): boolean {
     if (!hasAnimatedElement(this._scene)) return false;
@@ -1726,7 +1724,7 @@ export class Editor {
     if (this.hasVisibleAnimatedElement()) this.animationTick.start();
   }
 
-  /** G2: bound `visibilitychange` handler — pause/resume the tick. */
+  /** Bound `visibilitychange` handler — pause/resume the tick. */
   private readonly onVisibilityChange = (): void => {
     if (typeof document === "undefined") return;
     if (document.hidden) {
@@ -1736,7 +1734,7 @@ export class Editor {
     }
   };
 
-  // ── Per-shape GIF playback (G4 auto-stop + G5 reduced-motion) ──────
+  // ── Per-shape GIF playback (auto-stop + reduced-motion) ──────
   /**
    * Transient per-shape playback state for animated images. `originMs`
    * is the wall-clock the current play run started; `frozenMs` is the
@@ -1775,8 +1773,8 @@ export class Editor {
   }
 
   /**
-   * Seed playback for a freshly-animated shape. G5: start paused (frozen
-   * on frame 0) when the user prefers reduced motion; playing otherwise.
+   * Seed playback for a freshly-animated shape. Start paused (frozen on
+   * frame 0) when the user prefers reduced motion; playing otherwise.
    */
   private initPlayback(id: ElementId): void {
     if (this.playbackState.has(id)) return;
@@ -1801,8 +1799,8 @@ export class Editor {
 
   /**
    * Toggle GIF playback for a shape — wired to a click on an animated
-   * image (G4 resume after auto-stop, G5 play after reduced-motion).
-   * Resuming continues from the frozen frame.
+   * image (resume after auto-stop, play after reduced-motion). Resuming
+   * continues from the frozen frame.
    */
   togglePlayback(id: ElementId): void {
     const now = Editor.nowMs();
@@ -1856,8 +1854,7 @@ export class Editor {
    * Record the idle cursor position so the overlay can grow the SINGLE
    * selected element's link-start dot nearest the cursor. Only the selected
    * element shows start dots (connecting from an unselected element on hover
-   * was a cancelled product decision — see
-   * Pass `null` to clear.
+   * was a cancelled product decision). Pass `null` to clear.
    */
   setHoverCursorWorld(cursor: Vec2 | null): void {
     this.hoverCursorWorld = cursor;
@@ -1877,7 +1874,7 @@ export class Editor {
   }
 
   /**
-   * G4: freeze heavy GIFs after `GIF_AUTOSTOP_MS` of continuous play.
+   * Freeze heavy GIFs after `GIF_AUTOSTOP_MS` of continuous play.
    * Light GIFs (small byte payload) loop forever. Called from the tick
    * before each animation render.
    */
@@ -1923,7 +1920,7 @@ export class Editor {
       const img = shape as ImageElement;
       if (!img.animationKind) continue;
       // Seed playback for every animated shape loaded from the scene
-      // (G5 honours reduced-motion at this point too).
+      // (reduced-motion is honoured at this point too).
       this.initPlayback(img.id);
       if (!img.fileId) continue;
       if (img.animationData instanceof ArrayBuffer) continue; // already live
@@ -1943,7 +1940,7 @@ export class Editor {
    * scene immediately so the user sees it dragging under the cursor,
    * but defers the history entry until `commit()` is called. `update`
    * re-positions without writing per-move patches; `cancel` removes
-   * the shape entirely and leaves history intact (no undo entry).
+   * the shape entirely and leaves history untouched (no undo entry).
    *
    * Typical wiring: HTML5 dragenter starts the placement, dragover
    * updates, drop commits, dragleave / window keydown(Escape) cancel.
@@ -1978,17 +1975,13 @@ export class Editor {
         }
         tx.add({ kind: "element", id: shape.id, before: null, after: state.current });
         tx.commit();
-        // Notify is mandatory here, not optional. `update()` was firing
-        // notifications during the dragover, but those snapshots had
-        // the placement preview WITHOUT `parentId` — so the
-        // AutoLayoutScheduler's `signatureFor(parent)` did not include
-        // the new child, and no `runAutoLayout` was scheduled. The
-        // reparent above just set `parentId`; without this final
-        // `notify()` the scheduler never sees the change and the child
-        // sits at its cursor-drop position until the NEXT unrelated
-        // notification picks up the lag. Visible to the user as
-        // "elements overlap on add, then snap to grid only after the
-        // next add".
+        // Notify is mandatory here. The dragover snapshots carried the
+        // placement preview WITHOUT `parentId`, so the
+        // AutoLayoutScheduler's `signatureFor(parent)` did not include the
+        // new child and no `runAutoLayout` was scheduled. The reparent above
+        // set `parentId`; this final `notify()` lets the scheduler see the
+        // change so the child is laid out immediately instead of on the next
+        // unrelated notification.
         this.notify();
       },
       cancel: () => {
@@ -2742,7 +2735,7 @@ export class Editor {
 
   /**
    * Duplicate the selected shapes 10 px down-right of the originals.
-   * Links between selected shapes are NOT cloned. They break cleanly.
+   * Links between selected shapes are NOT cloned. Single undo step.
    */
   // Pure body in `./editor/public/selection-ops.ts`.
   duplicateSelected(): void {
@@ -2865,7 +2858,7 @@ export class Editor {
    * Paste clipboard contents into the scene. The cluster lands so that
    * its centroid sits at `targetWorld` (defaults to the last tracked
    * cursor position; when even that is unavailable, falls back to a
-   * +10 px nudge so duplicates remain visible). Relative offsets
+   * +10 px nudge so duplicates stay visible). Relative offsets
    * between clipboard items are preserved.
    *
    * New shapes get fresh ids and end up selected. Single undo step.
@@ -3253,9 +3246,7 @@ export class Editor {
    * Re-showing the grid restores the stored snap preference.
    */
   private snapActive(): boolean {
-    return (
-      !this.snapSuppressed && this.gridVisible && isSnapToGridEnabled(this._scene.viewport)
-    );
+    return !this.snapSuppressed && this.gridVisible && isSnapToGridEnabled(this._scene.viewport);
   }
 
   /** World-unit spacing the current gesture snaps to. */
@@ -3362,7 +3353,7 @@ export class Editor {
     const gesture = this.panGesture;
     this.panGesture = null;
     if (gesture && (gesture.button === 2 || gesture.button === 1) && !gesture.moved) {
-      // Right-click without drag → trigger the context-menu listeners.
+      // Right-click without a drag → trigger the context-menu listeners.
       // Same payload as touch long-press so existing UI (e.g.
       // `@react-ui/ContextMenu`) works without changes.
       const worldPoint = this.screenToWorld(gesture.startPoint);
@@ -3370,10 +3361,10 @@ export class Editor {
         fn({ screenPoint: gesture.startPoint, worldPoint });
       }
     } else {
-      // Either it was a real drag, or Space + left drag. In both
-      // cases we DO want to keep the native context menu suppressed
-      // until the upcoming `contextmenu` event lands (Chrome fires
-      // it after pointerup on right button).
+      // Either it was a real drag, or Space + left drag. In both cases the
+      // native context menu stays suppressed until the upcoming
+      // `contextmenu` event lands (Chrome fires it after pointerup on the
+      // right button).
     }
     // Pan over — recompute (→ "grab" if Space/hand still armed, else the
     // idle hover cursor).
@@ -4086,9 +4077,7 @@ export class Editor {
     // Locked / layer-locked elements are selectable but don't move.
     const el = getElement(this._scene, id);
     if (el && !this.isElementManipulable(el)) return;
-    const d = this.snapActive()
-      ? snapMoveDelta(originalBounds, delta, this.snapSpacing())
-      : delta;
+    const d = this.snapActive() ? snapMoveDelta(originalBounds, delta, this.snapSpacing()) : delta;
     const patch = computeElementMovePatch(this._scene, id, d, originalBounds);
     if (!patch) return;
     this._scene = apply(this._scene, patch);
@@ -4110,11 +4099,7 @@ export class Editor {
     // translate with the drag (standard parity) — shifted by the
     // same delta from the press-time snapshot.
     if (this.groupLinkMoveOrigin) {
-      const linkPatches = computeMovingLinkPatches(
-        this._scene,
-        this.groupLinkMoveOrigin,
-        d,
-      );
+      const linkPatches = computeMovingLinkPatches(this._scene, this.groupLinkMoveOrigin, d);
       for (const patch of linkPatches) {
         this._scene = apply(this._scene, patch);
         this.recordGesturePatch(patch);
@@ -4401,13 +4386,8 @@ export class Editor {
       this.notify();
       return;
     }
-    const result = computeElementResize(
-      this._scene,
-      id,
-      handle,
-      d,
-      originalBounds,
-      (s, raw, h) => this.clampContainerToChildren(s, raw, h),
+    const result = computeElementResize(this._scene, id, handle, d, originalBounds, (s, raw, h) =>
+      this.clampContainerToChildren(s, raw, h),
     );
     if (!result) return;
     this._scene = result.scene;
@@ -4755,7 +4735,10 @@ export class Editor {
       return result.all.find((c) => c.kind === kind);
     };
 
-    const boundFrom = (cand: SnapCandidate | undefined, want: "anchor" | "outline"): LinkEndpoint | null => {
+    const boundFrom = (
+      cand: SnapCandidate | undefined,
+      want: "anchor" | "outline",
+    ): LinkEndpoint | null => {
       if (!cand) return null;
       const elId = cand.metadata?.elementId as ElementId | undefined;
       if (elId === undefined) return null;
@@ -5177,9 +5160,8 @@ export class Editor {
 
   // Gesture lifecycle — recordGesturePatch / commitGesture /
   // cancelGesture / finalizeOpenGestureTx / maybeRevertModeAfterCreate
-  // live in `./editor/gesture-tx.ts`. The thin instance methods
-  // below preserve the original call sites; the bodies (and their
-  // docstrings) moved out to the controller.
+  // live in `./editor/gesture-tx.ts`. The thin instance methods below
+  // preserve the original call sites.
   private recordGesturePatch(patch: Patch): void {
     // Snapshot the pre-gesture scene the moment the transaction opens, so a
     // later cancel/Escape can restore it (the history tx only records undo data,
@@ -5200,16 +5182,16 @@ export class Editor {
   /**
    * End-of-drag container hookup. Runs after the state machine has
    * received POINTER_UP but before the gesture transaction commits,
-   * so reparent + auto-grow land in a single undo step with the drag.
+   * so reparent + auto-grow land in one undo step with the drag itself.
    *
    * Rules:
-   * - If the shape hovered over a container and is not yet its child →
-   *   set `parentId`. If the shape exceeds the dropZone bounds,
-   *   grow the zone (expand container size).
-   * - If the shape was a child of something but the final world bounds
-   *   no longer intersect the parent's drop-zone — clear `parentId` (drag-out).
-   * - Cycles (container into its own descendant) are prevented
-   *   by the `containerHover` pipeline above — the exclude set blocks them.
+   * - If the shape was dropped over a container and is not yet its child →
+   *   set `parentId`. If the shape extends past the dropZone, the zone is
+   *   grown (and the container's size with it).
+   * - If the shape was someone's child but its final world bounds no longer
+   *   intersect the parent's drop-zone → clear `parentId` (drag-out).
+   * - Cycles (a container inside its own descendant) are prevented by the
+   *   `containerHover` pipeline above — the exclude set rules them out.
    */
   // Pure body in `./editor/container-ops.ts`. Editor exposes a
   // small `ContainerOpsRef` bridge so the module can mutate scene
@@ -5229,9 +5211,9 @@ export class Editor {
   }
 
   /**
-   * Return the running gesture tx or open a new one if the drag ended
-   * with an empty transaction (move-by-zero pixels can still carry
-   * container reparent).
+   * Return the running gesture tx, or open a new one if the drag finished
+   * with an empty transaction (a move-by-zero-pixels gesture can still
+   * carry a container reparent).
    */
   private beginOrAttachGesture(): TransactionHandle {
     this.gestureTx ??= this._history.transaction();
@@ -5272,8 +5254,8 @@ export class Editor {
     for (const fn of this.listeners) fn();
     this.autoCompactScheduler.schedule();
     this.autoLayoutScheduler.schedule();
-    // G1: a pan / zoom / scene edit may have scrolled an animated
-    // shape into view — re-arm the (viewport-culled) animation tick.
+    // A pan / zoom / scene edit may have scrolled an animated shape into
+    // view — re-arm the (viewport-culled) animation tick.
     this.maybeAnimate();
   }
 
@@ -5281,9 +5263,7 @@ export class Editor {
    * Pending `requestAnimationFrame` id for the next render, or null
    * when no render is scheduled. Used to coalesce bursts of `notify()`
    * calls (drag-pan, drag shape, multi-key, scripted batch mutations)
-   * into a single render per frame — the previous synchronous render
-   * inside notify() turned 240Hz pointer rate on modern trackpads
-   * into 4×renders per browser frame, of which 3 were never composited.
+   * into a single render per frame.
    */
   private renderRafId: number | null = null;
   /** Unsubscribe for the animation-content-ready listener (decode → re-render). */
@@ -5464,10 +5444,6 @@ const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y
 // use by container-ops and the future applies/resize module.
 
 /**
- * Convert `PointerEvent.pressure` (0–1) to a brush half-width in local
- * pixels. Devices without pressure (most mice on Chromium) report 0.5 by
- * spec; zero pressure (some Windows touch) falls back to a sensible
-/**
  * Type guard — `true` when the value already implements the
  * `HistoryProvider` surface. Used to decide between "host supplied
  * an existing backend (use it as-is)" and "host supplied options
@@ -5488,11 +5464,6 @@ const isHistoryProvider = (
 
 // `describeNudge` moved to `./editor/public/selection-ops.ts`.
 
-/**
- * Convert a snap candidate into an `LinkEndpoint`. Anchor snap → named
- * anchor ref; outline snap → outline ref with the sampled ratio. Falls
- * back to a free point if the metadata isn't recognised.
- */
 /** Distance from point `p` to the finite segment `a`–`b` (world space). */
 function distanceToSegmentPt(p: Vec2, a: Vec2, b: Vec2): number {
   const dx = b.x - a.x;
@@ -5504,6 +5475,11 @@ function distanceToSegmentPt(p: Vec2, a: Vec2, b: Vec2): number {
   return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
 }
 
+/**
+ * Convert a snap candidate into an `LinkEndpoint`. Anchor snap → named
+ * anchor ref; outline snap → outline ref with the sampled ratio. Falls
+ * back to a free point if the metadata isn't recognised.
+ */
 const endpointFromSnap = (
   elementId: ElementId,
   candidate: SnapCandidate,

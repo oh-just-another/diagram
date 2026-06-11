@@ -213,8 +213,7 @@ export const ANCHOR_DOT_CLICK_RADIUS = 7;
 /**
  * Screen-px proximity at which the nearest link-start dot is "grown"
  * (rendered at `ANCHOR_DOT_ACTIVE_RADIUS` instead of the resting radius)
- * as the cursor approaches it — the dot's affordance hint, in lieu of
- * standard's directional arrows. Kept ≥
+ * as the cursor approaches it — the dot's affordance hint. Kept ≥
  * the grab radius so the dot visibly grows slightly before it becomes
  * grabbable. Range: 12–28.
  */

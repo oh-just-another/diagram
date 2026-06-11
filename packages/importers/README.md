@@ -74,4 +74,3 @@ For other formats use `importDot` / `importDrawio`. If you need the intermediate
 - **drawio skips layout entirely** when every node has a `position` — there's no point relaying-out a hand-crafted diagram.
 - **Per-format parsers are hand-rolled** (no `mermaid` / `pegjs-dot` / `xmldom` deps). The supported subset is intentionally minimal — hosts needing full fidelity can pre-process with the official tool and hand the output to us as a `GraphDocument`.
 - **Each node spawns two elements** (the geometry + a centered text label), not a single composite "labelled node". Keeps `BuiltinElement` open-element semantics intact — labels are normal `text` elements hosts can move / edit independently.
-

@@ -4,8 +4,7 @@ import { defineConfig } from "vitest/config";
 // `vitest.workspace.ts`; this file carries the cross-project COVERAGE settings
 // for the merged report produced by `vitest run --coverage`.
 //
-// Thresholds mirror the targets
-// (L0–L1 ≥ 90%, everything else ≥ 75%). They are only enforced when the
+// Thresholds (L0–L1 ≥ 90%, everything else ≥ 75%) are only enforced when the
 // `COV_GATE` env var is set (the `test:coverage:gate` script) so the everyday
 // `test:coverage` stays a non-failing report.
 const CORE_GLOB = "packages/{types,math,events,tokens,scene,renderer-core,history}/src/**";

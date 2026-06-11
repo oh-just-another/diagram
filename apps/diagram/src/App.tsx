@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { emptyScene, type Scene } from "@oh-just-another/scene";
 import { createSceneAutosave } from "./autosave";
-import { parseScene, parseFiles, stringifyScene, stringifyFiles } from "@oh-just-another/serialization";
+import {
+  parseScene,
+  parseFiles,
+  stringifyScene,
+  stringifyFiles,
+} from "@oh-just-another/serialization";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "./index";
 import { setupTemplates } from "./templates";
@@ -54,16 +59,14 @@ const DEFAULT_GRID_SIZE = 20;
 
 const restoreScene = (): Scene => {
   try {
-    const saved =
-      typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
     if (saved) {
       let parsed = parseScene(saved);
       // Re-attach the binary-file sidecar so image / GIF shapes can
       // resolve their `fileId` again (and the editor can rehydrate
       // animationData for GIFs). Missing / unparseable sidecar just
       // leaves `files` empty — images won't render but nothing crashes.
-      const filesRaw =
-        typeof window !== "undefined" ? localStorage.getItem(FILES_KEY) : null;
+      const filesRaw = typeof window !== "undefined" ? localStorage.getItem(FILES_KEY) : null;
       if (filesRaw) {
         try {
           parsed = { ...parsed, files: parseFiles(filesRaw) };
@@ -144,10 +147,7 @@ export const App = () => {
   // Renderer backend override from the URL (`?renderer=canvas2d`).
   // Read once at mount — switching backend needs a reload anyway.
   const capabilityOverrides = useMemo(() => readCapabilityOverrides(), []);
-  const initialScene = useMemo<Scene>(
-    () => (isCollab ? seedScene() : restoreScene()),
-    [isCollab],
-  );
+  const initialScene = useMemo<Scene>(() => (isCollab ? seedScene() : restoreScene()), [isCollab]);
   // Theme is owned by <Diagram> now (Theme submenu in MainMenu);
   // persistence is enabled via `persistTheme` prop below. The host
   // no longer needs its own theme state.
@@ -174,8 +174,8 @@ export const App = () => {
   // frame. The binary-file sidecar is re-serialised ONLY when the
   // `files` map actually changes — base64-encoding large GIF / image
   // bytes is expensive, and pan / move / typing never touch `files`,
-  // so re-encoding them every save tanked FPS (arrayBufferToBase64 hot
-  // path).
+  // so re-encoding them every save is expensive (arrayBufferToBase64
+  // hot path).
   const lastFilesRef = useRef<Scene["files"] | null>(null);
   const lastFilesStr = useRef<string | null>(null);
   // Synchronously serialise + persist `s`. Pure side-effect on
@@ -205,8 +205,7 @@ export const App = () => {
   // Debounced autosave controller. `flush()` is wired to tab-hide /
   // unload below so an edit made in the last `AUTOSAVE_DEBOUNCE_MS`
   // isn't lost when the user reloads or closes the tab before the timer
-  // fires (data-loss: clones vanished after reload —
-  //
+  // fires.
   const autosave = useMemo(
     () => createSceneAutosave<Scene>(writeScene, AUTOSAVE_DEBOUNCE_MS),
     [writeScene],
@@ -228,7 +227,9 @@ export const App = () => {
     const onHide = () => {
       if (document.visibilityState === "hidden") autosave.flush();
     };
-    const onPageHide = () => { autosave.flush(); };
+    const onPageHide = () => {
+      autosave.flush();
+    };
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", onPageHide);
     return () => {

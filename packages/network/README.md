@@ -37,4 +37,3 @@ transport.close();
 - **No reconnect logic in the broadcast channel.** Browser keeps the channel alive for the page lifetime; we don't need it.
 - **WebSocket auto-reconnect with exponential backoff** capped at 30 s. Buffered sends are flushed on `open`. `close()` is final — no further reconnect attempts.
 - **`webSocketImpl` injection.** Lets the package run in Node (e.g. with `ws`) and lets tests use a stub without touching the global `WebSocket`.
-

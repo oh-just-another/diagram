@@ -477,11 +477,10 @@ describe("elbow route never crosses a bound shape", () => {
   });
 });
 
-// Regression for: a bare side
-// threshold flips the wrap top↔bottom every frame when the endpoints' midpoint
-// oscillates around the union centre during a drag. The fix is hysteresis off
-// the previous route (edge.routedPoints) — mirroring the editor's per-frame
-// rerouteElbows loop, which carries routedPoints from frame to frame.
+// Hysteresis off the previous route (edge.routedPoints) keeps the wrap side
+// stable when the endpoints' midpoint oscillates around the union centre during
+// a drag, mirroring the editor's per-frame rerouteElbows loop that carries
+// routedPoints from frame to frame.
 describe("elbow wrap side is stable under an oscillating drag (hysteresis)", () => {
   // Tall `up` box dominates the union so its centre stays at y=250 across the
   // wiggle; the lower `lo` box's y sets where the connection midpoint sits.

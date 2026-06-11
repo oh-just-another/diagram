@@ -1,7 +1,6 @@
 // @ts-check
 /**
- * Dependency-cruiser config — enforces the package layering and core purity
- *.
+ * Dependency-cruiser config — enforces package layering and core purity.
  *
  * Layers: a package may import only same-or-lower levels; importing a
  * HIGHER level is forbidden. Leaf packages with no internal deps

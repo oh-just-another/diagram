@@ -100,10 +100,7 @@ import {
   setActiveTextShaper,
   type AnimatedSourceAdapter,
 } from "@oh-just-another/renderer-core";
-import {
-  registerLayoutKind,
-  type LayoutKindEntry,
-} from "@oh-just-another/scene";
+import { registerLayoutKind, type LayoutKindEntry } from "@oh-just-another/scene";
 import { type Template, defaultRegistry } from "@oh-just-another/templates";
 import {
   detectCapabilities,
@@ -224,10 +221,7 @@ export interface DiagramProps {
 
 export type DiagramTheme = "dark" | "light" | "system";
 
-export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
-  props,
-  ref,
-) {
+export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(props, ref) {
   const {
     initialScene,
     initialMode = "select",
@@ -344,7 +338,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
               // Settle even on failure so a text-bearing scene still
               // mounts (with the fallback font) instead of hanging.
               setWasmTextSettled(true);
-               
+
               console.warn("[diagram] WASM text shaper load failed", err);
             },
           ),
@@ -359,7 +353,6 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
               setWasmRaster(r);
             },
             (err: unknown) => {
-
               console.warn("[diagram] WASM rasterizer load failed", err);
             },
           ),
@@ -433,7 +426,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
       if (isEditableTarget(e.target)) return;
       editor.setSnapSuppressed(e.metaKey || e.ctrlKey);
     };
-    const reset = () => { editor.setSnapSuppressed(false); };
+    const reset = () => {
+      editor.setSnapSuppressed(false);
+    };
     window.addEventListener("keydown", sync);
     window.addEventListener("keyup", sync);
     window.addEventListener("blur", reset);
@@ -463,7 +458,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
       return undefined;
     }
     document.documentElement.setAttribute("data-theme", theme);
-    return () => { document.documentElement.removeAttribute("data-theme"); };
+    return () => {
+      document.documentElement.removeAttribute("data-theme");
+    };
   }, [theme]);
 
   if (!profile) {
@@ -475,64 +472,57 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(
   // fonts like this; Canvas2D always draws system fonts (no jump), and
   // text-free scenes have nothing to jump — both mount immediately, so
   // we don't pay shaper-load latency on first paint.
-  if (
-    profile.renderer === "webgl2" &&
-    profile.wasmText &&
-    !wasmTextSettled &&
-    sceneHasText
-  ) {
+  if (profile.renderer === "webgl2" && profile.wasmText && !wasmTextSettled && sceneHasText) {
     return <div className={className} style={style} />;
   }
 
   return (
     <ToastHost>
       <TooltipProvider>
-      <div
-        className={className}
-        data-diagram-root
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-          background: "var(--du-canvas-bg)",
-          ...style,
-        }}
-      >
-        <DiagramRoot
-          initialScene={seed}
-          initialMode={initialMode}
-          onReady={handleReady}
-          renderer={profile.renderer}
-          {...(profile.renderer === "offscreen"
-            ? { workerFactory: createRenderWorker }
-            : {})}
-          {...(wasmShaper ? { textShaper: wasmShaper } : {})}
-          {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
+        <div
+          className={className}
+          data-diagram-root
+          style={{
+            position: "relative",
+            width: "100%",
+            height: "100%",
+            background: "var(--du-canvas-bg)",
+            ...style,
+          }}
         >
-          <EditorShell
-            hideTopBar={hideTopBar}
-            hideBottomBar={hideBottomBar}
-            hideToolbar={hideToolbar}
-            hideLibraryButton={hideLibraryButton}
-            hideMainMenu={hideMainMenu}
-            hideZoomControls={hideZoomControls}
-            hideResetToContent={hideResetToContent}
-            hideHelpButton={hideHelpButton}
-            hideContextMenu={hideContextMenu}
-            hideSelectionPanel={hideSelectionPanel}
-            renderTopBarLeft={renderTopBarLeft}
-            renderTopBarCenter={renderTopBarCenter}
-            renderTopBarRight={renderTopBarRight}
-            renderBottomBarLeft={renderBottomBarLeft}
-            renderBottomBarCenter={renderBottomBarCenter}
-            renderBottomBarRight={renderBottomBarRight}
-            renderMainMenuExtras={renderMainMenuExtras}
-            onImportTemplates={onImportTemplates}
-            theme={theme}
-            changeTheme={changeTheme}
-          />
-        </DiagramRoot>
-      </div>
+          <DiagramRoot
+            initialScene={seed}
+            initialMode={initialMode}
+            onReady={handleReady}
+            renderer={profile.renderer}
+            {...(profile.renderer === "offscreen" ? { workerFactory: createRenderWorker } : {})}
+            {...(wasmShaper ? { textShaper: wasmShaper } : {})}
+            {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
+          >
+            <EditorShell
+              hideTopBar={hideTopBar}
+              hideBottomBar={hideBottomBar}
+              hideToolbar={hideToolbar}
+              hideLibraryButton={hideLibraryButton}
+              hideMainMenu={hideMainMenu}
+              hideZoomControls={hideZoomControls}
+              hideResetToContent={hideResetToContent}
+              hideHelpButton={hideHelpButton}
+              hideContextMenu={hideContextMenu}
+              hideSelectionPanel={hideSelectionPanel}
+              renderTopBarLeft={renderTopBarLeft}
+              renderTopBarCenter={renderTopBarCenter}
+              renderTopBarRight={renderTopBarRight}
+              renderBottomBarLeft={renderBottomBarLeft}
+              renderBottomBarCenter={renderBottomBarCenter}
+              renderBottomBarRight={renderBottomBarRight}
+              renderMainMenuExtras={renderMainMenuExtras}
+              onImportTemplates={onImportTemplates}
+              theme={theme}
+              changeTheme={changeTheme}
+            />
+          </DiagramRoot>
+        </div>
       </TooltipProvider>
     </ToastHost>
   );
@@ -600,7 +590,9 @@ const EditorShell = ({
   // toggle and closed via its ✕. Starts closed; no dock / pin.
   const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  useHelpDialogHotkey(() => { setHelpOpen((v) => !v); });
+  useHelpDialogHotkey(() => {
+    setHelpOpen((v) => !v);
+  });
 
   // Layout (left → right): templates library overlay at the window
   // edge, then the floating vertical creation toolbar, then the canvas.
@@ -625,7 +617,9 @@ const EditorShell = ({
               label: <LibraryIcon {...buttonIcon} />,
               title: "Templates library",
               active: libraryOpen,
-              onClick: () => { setLibraryOpen((v) => !v); },
+              onClick: () => {
+                setLibraryOpen((v) => !v);
+              },
             },
             { kind: "divider" },
             ...DEFAULT_VERTICAL_TOOLBAR,
@@ -709,13 +703,17 @@ const EditorShell = ({
                     <MainMenu.Group title="File">
                       <MainMenu.Item
                         icon={<FileUp {...menuIcon} />}
-                        onClick={() => { openSceneFile(editor); }}
+                        onClick={() => {
+                          openSceneFile(editor);
+                        }}
                       >
                         Open…
                       </MainMenu.Item>
                       <MainMenu.Item
                         icon={<FileDown {...menuIcon} />}
-                        onClick={() => { if (editor) downloadScene(editor.scene); }}
+                        onClick={() => {
+                          if (editor) downloadScene(editor.scene);
+                        }}
                         disabled={!editor}
                       >
                         Save as JSON
@@ -749,7 +747,9 @@ const EditorShell = ({
                         <MainMenu.Separator />
                         <MainMenu.Item
                           icon={<Download {...menuIcon} />}
-                          onClick={() => { if (editor) downloadSvg(editor.scene); }}
+                          onClick={() => {
+                            if (editor) downloadSvg(editor.scene);
+                          }}
                           disabled={!editor}
                         >
                           SVG
@@ -759,9 +759,7 @@ const EditorShell = ({
                         icon={<RotateCcw {...menuIcon} />}
                         onClick={() => {
                           if (!editor) return;
-                          if (
-                            window.confirm("Reset canvas? This clears all shapes.")
-                          ) {
+                          if (window.confirm("Reset canvas? This clears all shapes.")) {
                             // editor.clear() keeps viewport (zoom /
                             // pan / gridSize) and layers — only
                             // shapes / edges go. loadScene(emptyScene())
@@ -876,7 +874,9 @@ const EditorShell = ({
                     <MainMenu.Group title="Grid">
                       <MainMenu.Toggle<"lines" | "dots" | "off">
                         value={gridSelection(editor)}
-                        onChange={(next) => { applyGridSelection(editor, next); }}
+                        onChange={(next) => {
+                          applyGridSelection(editor, next);
+                        }}
                         options={[
                           { value: "lines", label: "Lines", icon: <Grid3x3 {...toggleIcon} /> },
                           { value: "dots", label: "Dots", icon: <Grip {...toggleIcon} /> },
@@ -887,7 +887,9 @@ const EditorShell = ({
                     <MainMenu.Group title="Snap to grid">
                       <MainMenu.Toggle<"on" | "off">
                         value={snapSelection(editor)}
-                        onChange={(next) => { editor?.setSnapToGrid(next === "on"); }}
+                        onChange={(next) => {
+                          editor?.setSnapToGrid(next === "on");
+                        }}
                         options={[
                           { value: "on", label: "On", icon: <Magnet {...toggleIcon} /> },
                           { value: "off", label: "Off", icon: <Minus {...toggleIcon} /> },
@@ -899,14 +901,13 @@ const EditorShell = ({
                       <MainMenu.Item
                         icon={<HelpCircle {...menuIcon} />}
                         shortcut="?"
-                        onClick={() => { setHelpOpen(true); }}
+                        onClick={() => {
+                          setHelpOpen(true);
+                        }}
                       >
                         Hotkeys
                       </MainMenu.Item>
-                      <MainMenu.ItemLink
-                        href="https://github.com/oh-just-another/diagram"
-                        external
-                      >
+                      <MainMenu.ItemLink href="https://github.com/oh-just-another/diagram" external>
                         GitHub
                       </MainMenu.ItemLink>
                     </MainMenu.Group>
@@ -934,11 +935,11 @@ const EditorShell = ({
           <BottomBar
             left={renderBottomBarLeft ? renderBottomBarLeft() : null}
             center={
-              renderBottomBarCenter
-                ? renderBottomBarCenter()
-                : !hideResetToContent
-                  ? <ResetToContentButton />
-                  : null
+              renderBottomBarCenter ? (
+                renderBottomBarCenter()
+              ) : !hideResetToContent ? (
+                <ResetToContentButton />
+              ) : null
             }
             right={
               renderBottomBarRight ? (
@@ -970,7 +971,9 @@ const EditorShell = ({
               <LibraryPanel
                 open
                 sheet
-                onClose={() => { setLibraryOpen(false); }}
+                onClose={() => {
+                  setLibraryOpen(false);
+                }}
                 {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
               />
             </BottomSheet>
@@ -980,11 +983,12 @@ const EditorShell = ({
             open={libraryOpen}
             side="left"
             style={{ left: 0 }}
-            onClose={() => { setLibraryOpen(false); }}
+            onClose={() => {
+              setLibraryOpen(false);
+            }}
             {...(onImportTemplates ? { onImport: onImportTemplates } : {})}
           />
         )}
-
       </UILayer>
 
       {/* Floating selection panel — portal to body, positions itself
@@ -997,7 +1001,12 @@ const EditorShell = ({
       {/* Standalone HelpDialog for hotkey activation — only renders
           when the `?` hotkey opens it without going through the
           button. HelpButton manages its own copy when clicked. */}
-      <HelpDialog open={helpOpen} onClose={() => { setHelpOpen(false); }} />
+      <HelpDialog
+        open={helpOpen}
+        onClose={() => {
+          setHelpOpen(false);
+        }}
+      />
 
       {/* Command palette (⌘K) — self-contained: manages its own open state and
           registers the open action. */}
@@ -1034,13 +1043,20 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
   const [, force] = useState(0);
   useEffect(() => {
     if (!editor) return undefined;
-    return editor.subscribe(() => { force((n) => n + 1); });
+    return editor.subscribe(() => {
+      force((n) => n + 1);
+    });
   }, [editor]);
   if (!editor) return null;
   const zoom = editor.scene.viewport.zoom;
   return (
     <ButtonGroup ariaLabel="Zoom">
-      <IconButton label={`Zoom out (${ZOOM_OUT_HOTKEY})`} onClick={() => { editor.zoomOut(); }}>
+      <IconButton
+        label={`Zoom out (${ZOOM_OUT_HOTKEY})`}
+        onClick={() => {
+          editor.zoomOut();
+        }}
+      >
         <Minus {...buttonIcon} />
       </IconButton>
       <Tooltip content={`Reset zoom to 100% (${ZOOM_RESET_HOTKEY})`}>
@@ -1048,7 +1064,9 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
           type="button"
           className="du-icon-button"
           aria-label="Reset zoom to 100%"
-          onClick={() => { editor.resetZoom(); }}
+          onClick={() => {
+            editor.resetZoom();
+          }}
           style={{
             minWidth: 56,
             padding: "0 8px",
@@ -1058,10 +1076,20 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
           {Math.round(zoom * 100)}%
         </button>
       </Tooltip>
-      <IconButton label={`Zoom in (${ZOOM_IN_HOTKEY})`} onClick={() => { editor.zoomIn(); }}>
+      <IconButton
+        label={`Zoom in (${ZOOM_IN_HOTKEY})`}
+        onClick={() => {
+          editor.zoomIn();
+        }}
+      >
         <Plus {...buttonIcon} />
       </IconButton>
-      <IconButton label={`Fit to screen (${ZOOM_FIT_HOTKEY})`} onClick={() => { editor.zoomToFit(); }}>
+      <IconButton
+        label={`Fit to screen (${ZOOM_FIT_HOTKEY})`}
+        onClick={() => {
+          editor.zoomToFit();
+        }}
+      >
         <Maximize {...buttonIcon} />
       </IconButton>
       {trailing}
@@ -1085,7 +1113,9 @@ const downloadBlob = (blob: Blob, filename: string): void => {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  requestAnimationFrame(() => { URL.revokeObjectURL(url); });
+  requestAnimationFrame(() => {
+    URL.revokeObjectURL(url);
+  });
 };
 
 /** "Save as JSON" — serialises the scene through @serialization. */
@@ -1112,7 +1142,6 @@ const openSceneFile = (editor: Editor | null): void => {
         const scene = parseScene(text);
         editor.loadScene(scene);
       } catch (err) {
-         
         console.error("[diagram] failed to parse scene file:", err);
         window.alert(
           "Failed to parse the file — make sure it was saved through this app's Save action.",
@@ -1142,10 +1171,7 @@ const openSceneFile = (editor: Editor | null): void => {
  */
 const PNG_EXPORT_SCALE = 2;
 
-const downloadPng = async (
-  editor: Editor,
-  background: PngExportBackground,
-): Promise<void> => {
+const downloadPng = async (editor: Editor, background: PngExportBackground): Promise<void> => {
   const backgroundColor = readCanvasBackgroundColor();
   const blob = await exportSceneToPng(editor.scene, {
     background,
@@ -1195,7 +1221,7 @@ const gridSelection = (editor: Editor | null): "lines" | "dots" | "off" => {
   if (!editor) return "lines";
   const vp = editor.scene.viewport;
   if (!vp.gridSize || vp.gridSize <= 0) return "off";
-  return (vp.gridStyle ?? "lines");
+  return vp.gridStyle ?? "lines";
 };
 
 /**
@@ -1212,10 +1238,7 @@ const snapSelection = (editor: Editor | null): "on" | "off" =>
  * grid size so the user doesn't have to also re-enter it
  * separately.
  */
-const applyGridSelection = (
-  editor: Editor | null,
-  next: "lines" | "dots" | "off",
-): void => {
+const applyGridSelection = (editor: Editor | null, next: "lines" | "dots" | "off"): void => {
   if (!editor) return;
   if (next === "off") {
     editor.setGrid({ size: 0 });

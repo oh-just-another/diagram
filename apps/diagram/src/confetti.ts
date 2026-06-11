@@ -143,7 +143,8 @@ const drawConfetti = (shape: RectangleElement, cfg: ConfettiConfig, target: Rend
       const r3 = hash(seed * 2.3 + 9.1);
       const r4 = hash(seed * 3.1 + 17.7);
 
-      const period = CONFETTI_LIFETIME_S * (1 - CONFETTI_LIFETIME_JITTER * 0.5 + CONFETTI_LIFETIME_JITTER * r1);
+      const period =
+        CONFETTI_LIFETIME_S * (1 - CONFETTI_LIFETIME_JITTER * 0.5 + CONFETTI_LIFETIME_JITTER * r1);
       // Stagger launch so the stream is continuous, not pulsed.
       const u = frac(t0 / period + i / count + r2 * 0.13);
       const t = u * period;
@@ -205,10 +206,9 @@ export const installConfettiRenderer = (): void => {
   };
   wrapped[CONFETTI_MARK] = true;
   registerElementRenderer<RectangleElement>("rectangle", wrapped);
-  // Confetti rectangles throw particles well past their box → their dirty
-  // region must include the particle field, or deleting one leaves a ghost
-  //. Plain rectangles
-  // (no confetti config) report no overflow.
+  // Confetti rectangles throw particles well past their box, so their dirty
+  // region must include the particle field, or deleting one leaves a ghost.
+  // Plain rectangles (no confetti config) report no overflow.
   registerRenderOverflow("rectangle", (shape) =>
     readConfig(shape.metadata)
       ? {

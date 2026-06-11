@@ -3,12 +3,9 @@
  *
  * Coalesces a burst of scene mutations (pan / drag / typing fire one
  * per frame) into a single persist call after `debounceMs` of quiet.
- * Crucially, `flush()` persists the pending scene IMMEDIATELY — wire it
- * to `visibilitychange` / `pagehide` so an edit made inside the debounce
- * window survives a reload or tab close. Without that flush the last
- * <debounceMs> of edits are silently lost (e.g. duplicated elements
- * vanished after reload — see
- *
+ * `flush()` persists the pending scene immediately — wire it to
+ * `visibilitychange` / `pagehide` so an edit made inside the debounce
+ * window survives a reload or tab close.
  *
  * Pure of any DOM / React: it only touches `setTimeout` and the `write`
  * callback passed in, which keeps it unit-testable with fake timers.

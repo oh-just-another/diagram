@@ -19,8 +19,10 @@
 
 <!-- TODO: brief positioning: two render-backends (Canvas2D +
 WebGL2), pure-canvas (without DOM-overlays), headless-render, real-time
+collab. Move the summary into a user-friendly
 tone. -->
 
 ## Installation
 
 <!-- TODO: npm/pnpm install, minimal example. See
+ as source. -->

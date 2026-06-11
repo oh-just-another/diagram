@@ -55,4 +55,3 @@ doc.destroy();
 - **Self-origin filter on Yjs transactions.** `bindEditor` tags its own writes so the `update` listener doesn't ricochet — without it every keystroke would flicker through `loadScene`.
 - **Transport-agnostic.** The same `SceneDoc` works behind BroadcastChannel (same-origin tabs) or WebSocket (any server speaking y-protocols). Sharded WebRTC / WebTransport implementations slot in without touching the binding.
 - **Single-tag wire format.** `TransportProvider` prepends one byte to every message: `0x00` doc / `0x01` awareness / `0x02` sync-request. Lets us multiplex over a single binary channel without a separate signalling layer.
-

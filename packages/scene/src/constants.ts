@@ -52,12 +52,10 @@ export const ELBOW_BEND_PENALTY = 100000;
  * Hysteresis band (world px) for the C-wrap side choice in `wrapRoute`.
  * When the connector must wrap around the union of its two bound shapes,
  * the over/under (or left/right) side is picked from the endpoints'
- * midpoint vs the union centre. A bare threshold flips the route every
- * frame when the midpoint sits on the centre during a drag (jitter, see
- * Within this band of the
- * centre we KEEP the previous side (read from `edge.routedPoints`), so a
- * small back-and-forth drag no longer thrashes; the side only switches
- * once the midpoint moves this far past the centre. Larger = stickier.
+ * midpoint vs the union centre. Within this band of the centre the
+ * previous side is kept (read from `edge.routedPoints`), so a small
+ * back-and-forth drag doesn't thrash; the side only switches once the
+ * midpoint moves this far past the centre. Larger = stickier.
  * Range: 8–48.
  */
 export const ELBOW_WRAP_HYSTERESIS = 24;

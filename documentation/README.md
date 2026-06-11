@@ -3,13 +3,8 @@
 Framework **public library documentation website** — what will be hosted in the future
 through GitHub (Pages or external docs-hosting).
 
->
-> | Folder | Audience | Content |
-> |---|---|---|
-> | `documentation/` | library users | public site: guides, API, examples |
->
-> but `documentation/` is written «for those who are connecting the library», not
-> «for those who are developing it».
+> `documentation/` is written «for those who connect the library» — public
+> website: guides, API, examples. This is not internal dev-notes for development.
 
 ## Status
 
@@ -37,5 +32,6 @@ documentation/
 ## How to populate
 
 1. Write pages as regular markdown in `guides/` / `reference/`.
-3. When we choose the generator — add configuration and navigation on top of these same
-   markdown files (the folder structure is already tailored for this).
+2. Keep pages self-sufficient for library users.
+3. When we choose a generator — add configuration and navigation on top of these same
+   markdown files (folder structure is already tailored for this).

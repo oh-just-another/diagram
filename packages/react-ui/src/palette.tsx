@@ -1,11 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type DragEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { DEFAULT_LAYER_ID, orderForTop } from "@oh-just-another/scene";
 import { elementId } from "@oh-just-another/types";
@@ -106,16 +99,11 @@ export const Palette = ({
   }, [sections, trimmedQuery]);
 
   return (
-    <aside
-      className={`du-palette ${className ?? ""}`.trim()}
-      style={style}
-    >
+    <aside className={`du-palette ${className ?? ""}`.trim()} style={style}>
       <div className="du-palette-body">
         {trimmedQuery ? (
           flatMatches.length === 0 ? (
-            <div className="du-palette-empty">
-              No templates match “{trimmedQuery}”
-            </div>
+            <div className="du-palette-empty">No templates match “{trimmedQuery}”</div>
           ) : (
             <div className={itemsClass}>
               {flatMatches.map((template) => (
@@ -131,7 +119,9 @@ export const Palette = ({
               items={items}
               itemsClass={itemsClass}
               collapsed={collapsed.has(category)}
-              onToggle={() => { toggle(category); }}
+              onToggle={() => {
+                toggle(category);
+              }}
             />
           ))
         )}
@@ -208,7 +198,13 @@ export const subscribePaletteDrag = (fn: () => void): (() => void) => {
 /** Hook variant of `subscribePaletteDrag` — returns the current drag template. */
 export const usePaletteDrag = (): Template | null => {
   const [tmpl, setTmpl] = useState<Template | null>(activeDrag);
-  useEffect(() => subscribePaletteDrag(() => { setTmpl(activeDrag); }), []);
+  useEffect(
+    () =>
+      subscribePaletteDrag(() => {
+        setTmpl(activeDrag);
+      }),
+    [],
+  );
   return tmpl;
 };
 
@@ -252,12 +248,10 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
     setActiveDrag(null);
   };
 
-  // Tap-to-place: HTML5 drag-and-drop doesn't fire on touch, so the
-  // library couldn't reach the canvas on mobile
-  //. On coarse-pointer
-  // devices a tap drops the template's default shape at the viewport
-  // centre (one undo step), then selects it for the user to move.
-  // Desktop keeps drag-to-position — the click is a no-op there.
+  // Tap-to-place: HTML5 drag-and-drop doesn't fire on touch. On
+  // coarse-pointer devices a tap drops the template's default shape at
+  // the viewport centre (one undo step), then selects it for the user
+  // to move. Desktop keeps drag-to-position — the click is a no-op there.
   const onClick = (): void => {
     if (!editor) return;
     if (typeof window !== "undefined" && !window.matchMedia("(pointer: coarse)").matches) return;
@@ -334,7 +328,9 @@ export const usePalettePlacement = () => {
       placementRef.current = null;
     };
     window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("keydown", onKey); };
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   // If the drag ends outside any canvas — clean up.
@@ -441,8 +437,9 @@ export const usePalettePlacement = () => {
       // sub-folder doesn't stop the rest.
       void (async () => {
         for await (const file of walkDataTransfer(dt, {
-          onError: (path, err) =>
-            { console.warn(`[file-drop] failed at ${path}:`, err); },
+          onError: (path, err) => {
+            console.warn(`[file-drop] failed at ${path}:`, err);
+          },
         })) {
           void editor.dispatchFileDrop(file, target);
         }

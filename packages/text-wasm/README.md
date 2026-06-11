@@ -11,7 +11,7 @@ const shaper = new WasmTextShaper();
 await shaper.loadModule("/text-shaper.wasm"); // optional — without it, fallback is used
 
 // pass into the editor
-const editor = new Editor({ textShaper: shaper, /* … */ });
+const editor = new Editor({ textShaper: shaper /* … */ });
 ```
 
 ## Expected WASM exports
@@ -28,3 +28,4 @@ interface WasmShaperExports {
 
 Any toolchain that emits a `WebAssembly.Instance` matching this shape works (Rust + `wasm-bindgen` with `#[no_mangle]` exports, AssemblyScript, hand-crafted `.wat`, …). The kernel does not ship a bundled module — hosts pick the engine that matches their font pipeline.
 
+See `@oh-just-another/renderer-core`'s `TextShaper` interface.

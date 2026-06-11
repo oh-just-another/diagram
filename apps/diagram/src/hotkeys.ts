@@ -36,9 +36,7 @@ export const useHotkeys = (editor: Editor | null): void => {
 
     const onKey = (ev: KeyboardEvent): void => {
       const t = ev.target;
-      // Editable = INPUT / TEXTAREA / SELECT / contenteditable. The bare
-      // instanceof check missed contenteditable hosts, so shortcuts fired
-      // while typing in them.
+      // Editable = INPUT / TEXTAREA / SELECT / contenteditable.
       const inTextField = isEditableTarget(t);
       // Text fields own their keystrokes — but Escape is special. It must
       // still cancel / deselect even when a field (e.g. the library search
@@ -70,7 +68,9 @@ export const useHotkeys = (editor: Editor | null): void => {
       label: "Insert image",
       category: "edit",
       hotkey: { key: "i" },
-      perform: () => { openImageFilePicker(editor); },
+      perform: () => {
+        openImageFilePicker(editor);
+      },
     });
 
     window.addEventListener("keydown", onKey);

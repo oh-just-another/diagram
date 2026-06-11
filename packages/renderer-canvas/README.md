@@ -34,4 +34,3 @@ renderScene(scene, layered.get("main"));
 - **DPR handled at the canvas level**, not on every draw. `setupHiDpi` scales the bitmap and sets a transform once; `Canvas2DTarget` operates entirely in CSS pixels.
 - **One canvas per logical layer.** Background and main canvases have `pointer-events: none`; the overlay receives input. This keeps static content cached even when the overlay re-paints every frame.
 - **Image source is opaque (`unknown`).** The renderer hands `shape.metadata.image ?? shape.src` to `ctx.drawImage` — the host app is responsible for loading and caching `HTMLImageElement`s ahead of time.
-

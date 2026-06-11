@@ -14,28 +14,28 @@ so a single fetch / read gives both the engine and the fonts.
 
 Font id = `family_base + (bold?1:0) + (italic?2:0)`:
 
-| family | base | files (R / B / I / BI) |
-|---|---|---|
-| sans (default) | 0 | `Roboto-{Regular,Bold,Italic,BoldItalic}.ttf` |
-| serif | 4 | `PTSerif-{Regular,Bold,Italic,BoldItalic}.ttf` |
-| mono | 8 | `RobotoMono-{Regular,Bold,Italic,BoldItalic}.ttf` |
+| family         | base | files (R / B / I / BI)                            |
+| -------------- | ---- | ------------------------------------------------- |
+| sans (default) | 0    | `Roboto-{Regular,Bold,Italic,BoldItalic}.ttf`     |
+| serif          | 4    | `PTSerif-{Regular,Bold,Italic,BoldItalic}.ttf`    |
+| mono           | 8    | `RobotoMono-{Regular,Bold,Italic,BoldItalic}.ttf` |
 
 So e.g. bold-italic serif = `4 + 1 + 2 = 7`. All faces are static
 (a dedicated file per style — no variable-font instancing).
 
 Exports:
 
-| Name | Signature | Notes |
-|---|---|---|
-| `memory` | `WebAssembly.Memory` | linear memory, auto-exported |
-| `alloc(n)` | `(usize) → *mut u8` | bump allocator |
-| `free(ptr, n)` | `(*mut u8, usize) → ()` | no-op (bump = no reclaim) |
-| `reset()` | `() → ()` | bump cursor back to 0 |
-| `resolveFont(family_ptr, family_len, bold, italic)` | `(*const u8, usize, u32, u32) → u32` | CSS family + bold/italic → font id |
-| `setFont(family_ptr, family_len, size_px, bold, italic)` | `(*const u8, usize, f32, u32, u32)` | sets size + current font (for `measure`) |
-| `measure(text_ptr, text_len)` | `(*const u8, usize) → f32` | advance width in CSS-px (current font) |
-| `glyphMetrics(font_id, code_point)` | `(u32, u32) → *const f32` | 6×f32: advance, bbox, UPM (font units) |
-| `rasterizeGlyphMSDF(font_id, code_point, atlas_size, range)` | `(u32, u32, u32, f32) → *const u8` | `atlas_size²×3` RGB MSDF tile |
+| Name                                                         | Signature                            | Notes                                    |
+| ------------------------------------------------------------ | ------------------------------------ | ---------------------------------------- |
+| `memory`                                                     | `WebAssembly.Memory`                 | linear memory, auto-exported             |
+| `alloc(n)`                                                   | `(usize) → *mut u8`                  | bump allocator                           |
+| `free(ptr, n)`                                               | `(*mut u8, usize) → ()`              | no-op (bump = no reclaim)                |
+| `reset()`                                                    | `() → ()`                            | bump cursor back to 0                    |
+| `resolveFont(family_ptr, family_len, bold, italic)`          | `(*const u8, usize, u32, u32) → u32` | CSS family + bold/italic → font id       |
+| `setFont(family_ptr, family_len, size_px, bold, italic)`     | `(*const u8, usize, f32, u32, u32)`  | sets size + current font (for `measure`) |
+| `measure(text_ptr, text_len)`                                | `(*const u8, usize) → f32`           | advance width in CSS-px (current font)   |
+| `glyphMetrics(font_id, code_point)`                          | `(u32, u32) → *const f32`            | 6×f32: advance, bbox, UPM (font units)   |
+| `rasterizeGlyphMSDF(font_id, code_point, atlas_size, range)` | `(u32, u32, u32, f32) → *const u8`   | `atlas_size²×3` RGB MSDF tile            |
 
 The MSDF tiles are generated **lazily at runtime** per glyph (inside
 the wasm, by `fdsm`) and cached in a GPU atlas on the host — there's no
@@ -55,11 +55,11 @@ architecture (Canvas2D vs WebGL2) and how to add a font.
 
 Bezier flatten + stroke-to-fill, no font embed. Exports:
 
-| Name | Signature | Notes |
-|---|---|---|
-| `memory` / `alloc` / `free` / `reset` | (same as above) | shared ABI |
-| `flattenF32(cmds_ptr, cmds_len, tolerance, out_ptr_out, out_count_out)` | flatten packed Float32 path into polyline |
-| `strokeToFillF32(poly_ptr, poly_len, width, cap, join, out_ptr_out, out_count_out)` | offset polyline into fill polygon |
+| Name                                                                                | Signature                                 | Notes      |
+| ----------------------------------------------------------------------------------- | ----------------------------------------- | ---------- |
+| `memory` / `alloc` / `free` / `reset`                                               | (same as above)                           | shared ABI |
+| `flattenF32(cmds_ptr, cmds_len, tolerance, out_ptr_out, out_count_out)`             | flatten packed Float32 path into polyline |
+| `strokeToFillF32(poly_ptr, poly_len, width, cap, join, out_ptr_out, out_count_out)` | offset polyline into fill polygon         |
 
 Footprint: ~16 KB `.wasm`.
 

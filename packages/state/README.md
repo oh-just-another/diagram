@@ -41,15 +41,15 @@ This division keeps the state machine completely pure and easy to test, and allo
 
 ## API
 
-| Name                                                                                                                                    | Purpose                                                                                      |
-| --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `Editor` / `EditorOptions`                                                                                                              | Top-level controller. Attaches to a host element with two render targets and an initial scene. |
-| `Mode` (`select` / `draw-rect` / `draw-ellipse`), `DEFAULT_MODE`                                                                        | Modes of the editor.                                                                         |
+| Name                                                                                                                                    | Purpose                                                                                       |
+| --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `Editor` / `EditorOptions`                                                                                                              | Top-level controller. Mounts on a host element with two render targets and an initial scene.  |
+| `Mode` (`select` / `draw-rect` / `draw-ellipse`), `DEFAULT_MODE`                                                                        | Editor modes.                                                                                 |
 | `Selection`, `selection.*`                                                                                                              | Immutable `ReadonlySet<ElementId>` + helpers (`single`, `add`, `remove`, `toggle`, `equals`). |
-| `HandleId`, `handlePosition`, `hitHandle`, `resizeBounds`, `HANDLE_SIZE`                                                                | Geometry of resize-handles (8 corner/edge handles, zoom-aware hit-test).                         |
-| `interactionMachine`, `InteractionContext`, `InteractionEvent`, `InteractionEmit`, `PressTarget`, `DRAG_THRESHOLD`, `interpretPressEnd` | Pure xstate machine + types + helpers.                                                       |
-| `renderOverlay(scene, selection, target, options?)`, `OverlayStyle`                                                                     | Draws selection outlines, handles, and drawing previews on the overlay layer.                |
-| `fromPointerEvent` / `fromKeyboardEvent` / `fromWheelEvent`                                                                             | Normalizers from DOM to domain events (CSS-pixel coordinates relative to host element).        |
+| `HandleId`, `handlePosition`, `hitHandle`, `resizeBounds`, `HANDLE_SIZE`                                                                | Resize-handle geometry (8 corner/edge handles, zoom-aware hit-test).                          |
+| `interactionMachine`, `InteractionContext`, `InteractionEvent`, `InteractionEmit`, `PressTarget`, `DRAG_THRESHOLD`, `interpretPressEnd` | Pure xstate machine + types + helpers.                                                        |
+| `renderOverlay(scene, selection, target, options?)`, `OverlayStyle`                                                                     | Draws selection outlines, handles, and drawing previews on the overlay layer.                 |
+| `fromPointerEvent` / `fromKeyboardEvent` / `fromWheelEvent`                                                                             | DOM → domain event normalizers (CSS-pixel coords relative to host element).                   |
 
 ## Design notes
 
@@ -58,4 +58,3 @@ This division keeps the state machine completely pure and easy to test, and allo
 - **Hit-test order:** handles of currently-selected elements win over element body hits. This matches how every editor feels — once an element is selected, clicking its handle resizes rather than re-selects.
 - **Handles are screen-sized.** `hitHandle` divides the tolerance by viewport zoom so handles stay 8 × 8 CSS px regardless of zoom level.
 - **DOM listeners are pointer-events** (`pointerdown` / `move` / `up` / `cancel`) with `setPointerCapture`. Touch and mouse share a single path; no separate touch handlers.
-

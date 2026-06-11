@@ -72,4 +72,3 @@ specifier)` so bundlers don't bake them in.
 - **`A4` / `Letter` etc. as string constants.** Custom sizes via `{ width,
 height }` in PDF points (1pt = 1/72in). The CLI accepts the same plus a
   `WxH` shorthand.
-

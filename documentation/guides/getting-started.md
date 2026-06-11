@@ -1,5 +1,7 @@
 # Getting started
 
+**Framework.** Content — TODO. Source for transfer in user-friendly tone:.
+
 ## Installation
 
 <!-- TODO: pnpm/npm install required packages. -->

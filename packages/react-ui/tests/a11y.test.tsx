@@ -20,7 +20,7 @@ import { branchId, SnapshotStore, versionId } from "@oh-just-another/versioning"
  *   - every dialog has `role="dialog"` + `aria-label`;
  *   - panels do not place text inside `aria-hidden` containers;
  *   - per-item color affordances pair with a text label or icon (audit
- *     enforced manually via, not unit-test).
+ *     enforced manually, not unit-test).
  */
 describe("react-ui accessibility", () => {
   it("Palette buttons carry a name", () => {
@@ -30,9 +30,7 @@ describe("react-ui accessibility", () => {
     const buttons = container.querySelectorAll("button");
     for (const btn of buttons) {
       const hasName =
-        btn.textContent?.trim() ||
-        btn.getAttribute("aria-label") ||
-        btn.getAttribute("title");
+        btn.textContent?.trim() || btn.getAttribute("aria-label") || btn.getAttribute("title");
       expect(hasName, `button without name: ${btn.outerHTML}`).toBeTruthy();
     }
   });
@@ -48,9 +46,7 @@ describe("react-ui accessibility", () => {
       // Toggle / action buttons require a title; structural rows (the
       // layer name button) require text content.
       const hasName =
-        btn.textContent?.trim() ||
-        btn.getAttribute("aria-label") ||
-        btn.getAttribute("title");
+        btn.textContent?.trim() || btn.getAttribute("aria-label") || btn.getAttribute("title");
       expect(hasName, `layer-panel button without name`).toBeTruthy();
     }
   });
@@ -72,7 +68,13 @@ describe("react-ui accessibility", () => {
           id: stub,
           branchId: branchId("main"),
           parentId: null,
-          scene: { elements: new Map(), links: new Map(), layers: new Map(), annotations: new Map(), viewport: { offset: { x: 0, y: 0 }, zoom: 1, size: { width: 0, height: 0 } } },
+          scene: {
+            elements: new Map(),
+            links: new Map(),
+            layers: new Map(),
+            annotations: new Map(),
+            viewport: { offset: { x: 0, y: 0 }, zoom: 1, size: { width: 0, height: 0 } },
+          },
           author: { id: "u", name: "u" },
           message: "stub",
           timestamp: "0",

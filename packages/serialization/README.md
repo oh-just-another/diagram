@@ -49,4 +49,3 @@ editor.loadScene(scene);
 - **Strict schemas with a `passthrough` arm for unknown shape `type`s.** Plugins that register a custom shape can persist it without modifying the wire schema; the kernel just hands the raw object to the bounder/renderer registry on load.
 - **Deserialise re-brands ids.** `ElementId` / `LinkId` / `LayerId` are branded strings in the kernel but plain strings in JSON; `hydrate` casts them back through `elementId()` / `linkId()` / `layerId()`.
 - **`exactOptionalPropertyTypes` workaround.** Zod's parsed output exposes optional fields as `T | undefined`, which the kernel rejects. The hydrate path strips `undefined`-valued keys before constructing the typed shape.
-

@@ -39,4 +39,3 @@ const svg = target.toSvg();
 - **`ellipse()` decomposes into 4 cubic Bezier curves** (kappa ≈ 0.5523). SVG's native `<ellipse>` would be more compact, but every other shape goes through `<path>` already; the uniformity is worth the few extra bytes.
 - **Text measurement is pluggable.** Default `approxTextWidth` ratios match a system-ui sans-serif at 16px and are decent for ASCII; pixel-perfect callers supply their own measurer (typically wrapped around `node-canvas` or `opentype.js`).
 - **`clear()` without bounds wipes the element buffer** (matches "erase the surface" semantics); bounded clears emit a white `<rect>` so callers don't have to special-case the backend.
-

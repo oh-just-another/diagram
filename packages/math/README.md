@@ -30,4 +30,3 @@ Re-exports `RGBA` and `DecomposedTransform` types from the relevant modules.
 - `Vec2`, `Bounds`, `Transform` are immutable by convention (no `readonly` enforcement at runtime).
 - Epsilon parameters default to `0` (strict). Use a positive epsilon for floating-point tolerance.
 - The `pointOn*` Bezier helpers and `segmentCubic` are sampled approximations suited for interactive picking; pixel-precise rendering belongs to the renderer packages.
-

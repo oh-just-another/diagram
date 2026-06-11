@@ -1606,3 +1606,6 @@
 
 ## 0.55.107
 - fix(state): hit-zone resize zones only for the single selected shape
+
+## 0.55.108
+- refactor(state): drop write-only hoverLinkStartElement (cancelled hover-to-connect)
