@@ -2,6 +2,15 @@
   "name": "@oh-just-another/cli",
   "version": "0.56.0",
   "description": "Command-line interface for headless diagram rendering.",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git",
+    "directory": "apps/cli"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

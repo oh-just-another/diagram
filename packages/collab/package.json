@@ -2,6 +2,23 @@
   "name": "@oh-just-another/collab",
   "version": "0.56.0",
   "description": "Real-time collaboration: Yjs binding for scenes + awareness for presence.",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git",
+    "directory": "packages/collab"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
+  "keywords": [
+    "diagram",
+    "canvas",
+    "svg",
+    "editor",
+    "graph",
+    "drawing"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

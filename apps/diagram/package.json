@@ -2,6 +2,15 @@
   "name": "@oh-just-another/diagram",
   "version": "0.0.0",
   "description": "Drop-in diagram editor component. Auto-detects browser capabilities (renderer / WASM / workers) and exposes a single <Diagram> React component with plugin / slot / theme props.",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git",
+    "directory": "apps/diagram"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
   "type": "module",
   "private": true,
   "main": "./src/index.ts",

@@ -1,7 +1,24 @@
 {
   "name": "@oh-just-another/network",
   "version": "0.56.0",
-  "description": "Transport abstractions for collaborative editing \u2014 WebSocket, BroadcastChannel.",
+  "description": "Transport abstractions for collaborative editing — WebSocket, BroadcastChannel.",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git",
+    "directory": "packages/network"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
+  "keywords": [
+    "diagram",
+    "canvas",
+    "svg",
+    "editor",
+    "graph",
+    "drawing"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

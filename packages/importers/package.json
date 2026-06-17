@@ -1,7 +1,24 @@
 {
   "name": "@oh-just-another/importers",
   "version": "0.56.0",
-  "description": "Importers: Mermaid, Graphviz dot, drawio XML \u2192 @oh-just-another/scene documents.",
+  "description": "Importers: Mermaid, Graphviz dot, drawio XML → @oh-just-another/scene documents.",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git",
+    "directory": "packages/importers"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
+  "keywords": [
+    "diagram",
+    "canvas",
+    "svg",
+    "editor",
+    "graph",
+    "drawing"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

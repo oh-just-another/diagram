@@ -1,8 +1,24 @@
 {
   "name": "diagram",
   "version": "0.56.0",
-  "private": true,
   "description": "Monorepo for the diagram library",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
+  "keywords": [
+    "diagram",
+    "canvas",
+    "svg",
+    "editor",
+    "graph",
+    "drawing"
+  ],
+  "private": true,
   "type": "module",
   "engines": {
     "node": ">=22",

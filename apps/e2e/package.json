@@ -2,6 +2,15 @@
   "name": "@oh-just-another/e2e",
   "version": "0.0.0",
   "description": "Playwright e2e suite — drives the demo app to verify smoke flows, hotkeys, collab reconnect, touch sim.",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git",
+    "directory": "apps/e2e"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
   "type": "module",
   "private": true,
   "scripts": {
