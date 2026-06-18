@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/tokens",
-  "version": "0.56.0",
+  "version": "0.57.0",
   "description": "Single source of truth for colour tokens — Radix Colors wrapped into curated subsets (element palette, canvas backgrounds, UI accents, grid, default shape styles). L0, no project deps.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

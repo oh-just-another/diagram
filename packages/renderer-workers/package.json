@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-workers",
-  "version": "0.56.0",
+  "version": "0.57.0",
   "description": "Worker-pool primitives for off-thread rendering. Layer-pinned dispatch + generic round-robin pool.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

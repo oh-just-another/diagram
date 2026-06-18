@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/glyph-atlas",
-  "version": "0.56.0",
+  "version": "0.57.0",
   "description": "MSDF glyph atlas — pre-rasterised glyphs packed into a single WebGL2 texture for sharp text at any zoom.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
