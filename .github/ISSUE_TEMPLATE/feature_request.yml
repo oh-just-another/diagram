@@ -1,0 +1,50 @@
+name: "🚀 Feature request"
+description: Propose a new capability for the library
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the proposal. Make the use case as concrete as you can.
+
+        Note: user-visible UI/UX changes need maintainer approval on the details before implementation.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: The problem and use cases, in as much detail as possible — who benefits and why.
+      placeholder: "As a user of the library I want [goal] so that [benefit]."
+    validations:
+      required: true
+  - type: textarea
+    id: suggested-solution
+    attributes:
+      label: Suggested solution
+      description: What should change. A checklist of concrete steps is welcome.
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where in code (optional)
+      description: Package / file pointers if you know them.
+      placeholder: "packages/scene/src/edge.ts"
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered (optional)
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context (optional)
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+        - label: This is a concrete feature proposal, not a general question.
+          required: true

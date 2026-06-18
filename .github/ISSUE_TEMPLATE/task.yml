@@ -1,0 +1,58 @@
+name: "🔧 Task (refactor / polish / research / infra)"
+description: Propose an engineering task that is neither a user-facing feature nor a bug
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the proposal. Describe the goal and, if you can, where in the code it lands.
+
+        Note: user-visible UI/UX changes need maintainer approval on the details before implementation.
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: The problem or goal in 1–3 sentences — who benefits and how.
+      placeholder: "As a user I want ... so that ..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should change. A checklist of concrete steps is ideal.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where in code (optional)
+      description: Package / file pointers if you know them.
+      placeholder: "packages/state/src/editor.ts"
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered (optional)
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - refactor
+        - UX polish
+        - research
+        - tooling / infra
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+        - label: This is a concrete proposal, not a general question.
+          required: true

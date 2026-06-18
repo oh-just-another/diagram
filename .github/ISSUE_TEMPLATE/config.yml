@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+# No external contact links yet (Discussions / chat not configured).
+# Add them here once available, e.g.:
+# contact_links:
+#   - name: Questions & Discussions
+#     url: https://github.com/oh-just-another/diagram/discussions
+#     about: For questions and open-ended ideas, use Discussions instead of issues.

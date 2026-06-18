@@ -1,0 +1,91 @@
+name: "🐛 Bug report"
+description: Report a defect in a working build of the library
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Concrete reproduction steps make fixes much faster.
+  - type: textarea
+    id: what
+    attributes:
+      label: What's wrong
+      description: A clear, concise description of the defect.
+      placeholder: "When I ..., the renderer ..., but I expected ..."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps. If it only happens with a specific backend, scene, or template, say so.
+      placeholder: |
+        1. Create a rectangle
+        2. Set a non-default border width
+        3. Deselect, then click it again
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: The toolbar should open already showing the correct active state, with no flash.
+    validations:
+      required: true
+  - type: input
+    id: reproduction
+    attributes:
+      label: Reproduction (optional)
+      description: A link to a minimal repo or sandbox, if you have one. Appreciated but not required.
+      placeholder: https://...
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Renderer backend
+      description: Which rendering path does it affect?
+      options:
+        - Canvas2D
+        - WebGL2
+        - SVG
+        - Headless (Node)
+        - Not rendering-related
+        - Unsure
+    validations:
+      required: true
+  - type: input
+    id: package
+    attributes:
+      label: Affected package(s)
+      description: "Which @oh-just-another/* package(s)? Leave blank if unsure."
+      placeholder: "@oh-just-another/renderer-canvas, @oh-just-another/state"
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: "minor — cosmetic / has a workaround · major — breaks a feature · critical — crash / data loss / unusable"
+      options:
+        - minor
+        - major
+        - critical
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: "Browser + version, OS, and GPU (important for WebGL2 issues). `npx envinfo --system --binaries --browsers` covers most of it."
+      render: shell
+      placeholder: "OS, Browser, GPU, Node version"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+        - label: This is a concrete, reproducible defect (not a question or feature request).
+          required: true
+        - label: The steps above are a minimal reproduction.
+          required: true
