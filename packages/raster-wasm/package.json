@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/raster-wasm",
-  "version": "0.0.0",
-  "description": "WASM rasterisation helpers (flatten / strokeToFill) for the diagram renderer (Phase 47).",
+  "version": "0.56.0",
+  "description": "WASM rasterisation helpers (flatten / strokeToFill) for the diagram renderer.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {

@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/curve-mesh",
-  "version": "0.0.0",
+  "version": "0.56.0",
   "description": "Loop-Blinn-style quadratic Bezier triangulation for resolution-independent WebGL2 curve rendering.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

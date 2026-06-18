@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/text-wasm",
-  "version": "0.0.0",
-  "description": "WASM text-shaping backend for the diagram renderer (Phase 46).",
+  "version": "0.56.0",
+  "description": "WASM text-shaping backend for the diagram renderer.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {
