@@ -99,6 +99,11 @@ export const DiagramRoot = ({
   const observerRef = useRef<ResizeObserver | null>(null);
   const hostRef = useRef<HTMLElement | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  // Set once an offscreen surface has been degraded to canvas2d after an
+  // async worker failure — keeps the rebuild from looping and pins us on the
+  // safe backend until the host explicitly changes `renderer`.
+  const fellBackRef = useRef(false);
+  const onWorkerErrorRef = useRef<(error: unknown) => void>(() => undefined);
   // The factory ref keeps `registerSurface`'s deps stable while
   // still letting renderer/backend reactivity below see the latest
   // values when it re-mounts the surface.
@@ -120,8 +125,11 @@ export const DiagramRoot = ({
       width,
       height,
       {
-        backend: rendererRef.current,
+        backend: fellBackRef.current ? "canvas2d" : rendererRef.current,
         ...(workerFactoryRef.current ? { workerFactory: workerFactoryRef.current } : {}),
+        onWorkerError: (error) => {
+          onWorkerErrorRef.current(error);
+        },
       },
       (requested, err) => {
         // Backend unavailable (no WebGL2 / OffscreenCanvas / context
@@ -184,6 +192,23 @@ export const DiagramRoot = ({
     surfaceRef.current = null;
   }, []);
 
+  // If an offscreen worker dies asynchronously (e.g. a non-Vite bundle that
+  // never emitted the worker chunk), rebuild the surface on canvas2d instead
+  // of leaving a blank canvas. Reassigned each render so it closes over the
+  // current (stable) mount/teardown callbacks; guarded against re-entry.
+  onWorkerErrorRef.current = (error) => {
+    if (fellBackRef.current) return;
+    fellBackRef.current = true;
+    console.warn(
+      "[DiagramRoot] offscreen render worker failed to load; falling back to canvas2d:",
+      error,
+    );
+    const host = hostRef.current;
+    if (!host) return;
+    teardownSurface();
+    mountSurface(host);
+  };
+
   const registerSurface = useCallback<RegisterSurface>(
     (host) => {
       teardownSurface();
@@ -215,6 +240,9 @@ export const DiagramRoot = ({
     }
     if (mountedRendererRef.current === renderer) return;
     mountedRendererRef.current = renderer;
+    // Explicit backend switch — give the new one a fresh chance even if a
+    // previous offscreen attempt had fallen back to canvas2d.
+    fellBackRef.current = false;
     teardownSurface();
     mountSurface(host);
   }, [renderer, mountSurface, teardownSurface]);
