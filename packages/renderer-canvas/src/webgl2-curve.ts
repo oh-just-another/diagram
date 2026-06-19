@@ -33,9 +33,9 @@ export class LoopBlinnCurvePipeline {
   private readonly program: WebGLProgram;
   private readonly vbo: WebGLBuffer;
   private readonly uvBuf: WebGLBuffer;
-  private readonly uTransform: WebGLUniformLocation;
-  private readonly uColor: WebGLUniformLocation;
-  private readonly uOpacity: WebGLUniformLocation;
+  private readonly uTransform: WebGLUniformLocation | null;
+  private readonly uColor: WebGLUniformLocation | null;
+  private readonly uOpacity: WebGLUniformLocation | null;
   private readonly aPos: number;
   private readonly aUVW: number;
 
@@ -47,9 +47,9 @@ export class LoopBlinnCurvePipeline {
     this.uvBuf = glReq(gl.createBuffer());
     this.aPos = gl.getAttribLocation(this.program, "aPos");
     this.aUVW = gl.getAttribLocation(this.program, "aUVW");
-    this.uTransform = glReq(gl.getUniformLocation(this.program, "uTransform"));
-    this.uColor = glReq(gl.getUniformLocation(this.program, "uColor"));
-    this.uOpacity = glReq(gl.getUniformLocation(this.program, "uOpacity"));
+    this.uTransform = gl.getUniformLocation(this.program, "uTransform");
+    this.uColor = gl.getUniformLocation(this.program, "uColor");
+    this.uOpacity = gl.getUniformLocation(this.program, "uOpacity");
   }
 
   /**
