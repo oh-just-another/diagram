@@ -86,6 +86,9 @@ const BUTTON_ICON_STROKE = 1.75;
 const menuIcon = { size: MENU_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 const toggleIcon = { size: TOGGLE_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
+
+/** Default target for the Help-menu "GitHub" link (overridable / hideable via the `repositoryUrl` prop). */
+const DEFAULT_REPOSITORY_URL = "https://github.com/oh-just-another/diagram";
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
 import type { ElementId } from "@oh-just-another/types";
 import { formatHotkey } from "@oh-just-another/state";
@@ -237,6 +240,14 @@ export interface DiagramProps {
    */
   readonly persistTheme?: boolean | string;
 
+  // --- Branding ---
+  /**
+   * URL for the "GitHub" link in the Help menu. Omit to use the
+   * project's repository; pass your own, or `null` to hide the link
+   * entirely (e.g. when embedding the editor in another product).
+   */
+  readonly repositoryUrl?: string | null;
+
   // --- Layout ---
   readonly className?: string;
   readonly style?: CSSProperties;
@@ -279,6 +290,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     defaultTheme = "system",
     onThemeChange,
     persistTheme,
+    repositoryUrl,
     className,
     style,
   } = props;
@@ -557,6 +569,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
               renderBottomBarRight={renderBottomBarRight}
               renderMainMenuExtras={renderMainMenuExtras}
               onImportTemplates={onImportTemplates}
+              repositoryUrl={repositoryUrl}
               theme={theme}
               changeTheme={changeTheme}
             />
@@ -596,6 +609,7 @@ const EditorShell = ({
   renderBottomBarRight,
   renderMainMenuExtras,
   onImportTemplates,
+  repositoryUrl,
   theme,
   changeTheme,
 }: {
@@ -617,10 +631,13 @@ const EditorShell = ({
   readonly renderBottomBarRight: (() => ReactNode) | undefined;
   readonly renderMainMenuExtras: (() => ReactNode) | undefined;
   readonly onImportTemplates: (() => void) | undefined;
+  readonly repositoryUrl: string | null | undefined;
   readonly theme: DiagramTheme;
   readonly changeTheme: (next: DiagramTheme) => void;
 }) => {
   const editor = useDiagramOptional();
+  // Omitted → project repo; explicit string → that URL; null → no link.
+  const repositoryHref = repositoryUrl === undefined ? DEFAULT_REPOSITORY_URL : repositoryUrl;
   // Subscribe to scene changes so the Grid toggle in MainMenu reads
   // the latest viewport.gridSize / gridStyle. `useScene` is a thin
   // selector hook — re-renders only on scene identity flips.
@@ -950,9 +967,11 @@ const EditorShell = ({
                       >
                         Hotkeys
                       </MainMenu.Item>
-                      <MainMenu.ItemLink href="https://github.com/oh-just-another/diagram" external>
-                        GitHub
-                      </MainMenu.ItemLink>
+                      {repositoryHref ? (
+                        <MainMenu.ItemLink href={repositoryHref} external>
+                          GitHub
+                        </MainMenu.ItemLink>
+                      ) : null}
                     </MainMenu.Group>
                     {renderMainMenuExtras ? (
                       <>
