@@ -37,6 +37,21 @@ Object.defineProperty(HTMLElement.prototype, "hasPointerCapture", {
   writable: true,
 });
 
+// jsdom doesn't implement `isContentEditable` (it reads back `undefined`);
+// real browsers always return a boolean. Provide a browser-like getter that
+// derives it from the `contenteditable` attribute so editor focus-guards
+// behave as they would in a browser.
+const ceDesc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "isContentEditable");
+if (!ceDesc || ceDesc.configurable) {
+  Object.defineProperty(HTMLElement.prototype, "isContentEditable", {
+    configurable: true,
+    get(this: HTMLElement): boolean {
+      const v = this.getAttribute("contenteditable");
+      return v === "" || v === "true" || v === "plaintext-only";
+    },
+  });
+}
+
 // jsdom ResizeObserver is absent — stub with a no-op.
 if (typeof globalThis.ResizeObserver === "undefined") {
   class StubResizeObserver {
