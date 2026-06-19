@@ -87,6 +87,7 @@ const menuIcon = { size: MENU_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as co
 const toggleIcon = { size: TOGGLE_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
+import type { ElementId } from "@oh-just-another/types";
 import { formatHotkey } from "@oh-just-another/state";
 import { emptyScene, type Scene } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
@@ -134,10 +135,28 @@ import { isEditableTarget } from "./dom-focus";
  * slots through `renderTopBar*` / `renderBottomBar*` props.
  */
 export interface DiagramAPI {
+  /**
+   * The live editor engine (`EditorInstance` from `@oh-just-another/state`) —
+   * the full power-user escape hatch beyond the curated verbs below. `null`
+   * until the editor has mounted (i.e. until `onReady` fires).
+   */
   readonly editor: Editor | null;
+  /** Resolved renderer / WASM / worker profile, or `null` before detection settles. */
+  readonly capabilities: CapabilityProfile | null;
+  // --- Scene ---
   readonly getScene: () => Scene;
   readonly loadScene: (scene: Scene) => void;
-  readonly capabilities: CapabilityProfile | null;
+  // --- Mode ---
+  readonly getMode: () => Mode | null;
+  readonly setMode: (mode: Mode) => void;
+  // --- Selection ---
+  readonly getSelection: () => ReadonlySet<ElementId>;
+  readonly setSelection: (ids: Iterable<ElementId>) => void;
+  // --- History ---
+  readonly undo: () => void;
+  readonly redo: () => void;
+  // --- Viewport ---
+  readonly zoomToFit: () => void;
 }
 
 export interface DiagramProps {
@@ -151,13 +170,10 @@ export interface DiagramProps {
   readonly layoutKinds?: readonly LayoutKindEntry[];
   readonly animationAdapters?: readonly AnimatedSourceAdapter[];
 
-  // --- Imperative API ---
-  readonly apiRef?: React.Ref<DiagramAPI>;
-
   // --- Callbacks ---
   readonly onReady?: (editor: Editor) => void;
   readonly onSceneChange?: (scene: Scene) => void;
-  readonly onSelectionChange?: (ids: ReadonlySet<string>) => void;
+  readonly onSelectionChange?: (ids: ReadonlySet<ElementId>) => void;
 
   // --- Capabilities ---
   readonly capabilities?: CapabilityOverrides;
@@ -452,9 +468,22 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     ref,
     () => ({
       editor,
+      capabilities: profile,
       getScene: () => editor?.scene ?? seed,
       loadScene: (scene) => editor?.loadScene(scene),
-      capabilities: profile,
+      getMode: () => editor?.mode ?? null,
+      setMode: (mode) => editor?.setMode(mode),
+      getSelection: () => editor?.selection ?? new Set<ElementId>(),
+      setSelection: (ids) => editor?.setSelection(ids),
+      undo: () => {
+        editor?.undo();
+      },
+      redo: () => {
+        editor?.redo();
+      },
+      zoomToFit: () => {
+        editor?.zoomToFit();
+      },
     }),
     [editor, seed, profile],
   );
@@ -537,6 +566,10 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     </ToastHost>
   );
 });
+
+// Match the primary public name (`<Editor>`) in DevTools / stack traces,
+// even though the internal forwardRef function is named `Diagram`.
+Diagram.displayName = "Editor";
 
 /**
  * Inner shell — must render *inside* `<DiagramRoot>` so hooks that
