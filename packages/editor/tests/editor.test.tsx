@@ -131,6 +131,21 @@ describe("<Editor> — slots & chrome flags", () => {
   });
 });
 
+describe("<Editor> — theme scoping", () => {
+  it("applies data-theme to its own root, not the global <html>", async () => {
+    const { result } = await mountEditor({ theme: "dark" });
+    const root = result.container.querySelector("[data-diagram-root]");
+    expect(root?.getAttribute("data-theme")).toBe("dark");
+    expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
+  });
+
+  it("omits data-theme for system theme (falls through to the stylesheet)", async () => {
+    const { result } = await mountEditor({ theme: "system" });
+    const root = result.container.querySelector("[data-diagram-root]");
+    expect(root?.hasAttribute("data-theme")).toBe(false);
+  });
+});
+
 describe("<Editor> — prop permutations", () => {
   it("mounts with persisted / controlled theme variants", async () => {
     const { ref: r1 } = await mountEditor({ persistTheme: true, defaultTheme: "light" });

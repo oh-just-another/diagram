@@ -32,9 +32,10 @@ export function App() {
 
 > **Theming.** `@oh-just-another/react-ui/styles.css` ships the complete token
 > set — light and dark, plus a `prefers-color-scheme` fallback for "system" —
-> so the import above is all you need. The editor toggles `data-theme` for you
-> via the `theme` prop; override any `--du-*` (or legacy `--bg` / `--accent` /
-> …) variable in your own stylesheet to re-skin.
+> so the import above is all you need. The editor toggles `data-theme` on its
+> own root element (not the global `<html>`, so multiple editors theme
+> independently) via the `theme` prop; override any `--du-*` (or legacy `--bg` /
+> `--accent` / …) variable in your own stylesheet to re-skin.
 
 ## Driving it from code
 
@@ -75,20 +76,21 @@ Anything not on the handle is reachable through `editor` — the full
 
 ## Props
 
-| Prop                                                                                                                                                                                            | Type                  | Purpose                                                                |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------------- |
-| `initialScene`                                                                                                                                                                                  | `Scene`               | Seed scene (defaults to empty).                                        |
-| `initialMode`                                                                                                                                                                                   | `Mode`                | Initial tool mode (default `"select"`).                                |
-| `capabilities`                                                                                                                                                                                  | `CapabilityOverrides` | Force / disable renderer, WASM, workers, tiles.                        |
-| `templates` / `fileDropHandlers` / `layoutKinds` / `animationAdapters`                                                                                                                          | arrays                | Plugins registered on mount.                                           |
-| `onReady` / `onSceneChange` / `onSelectionChange`                                                                                                                                               | callbacks             | Lifecycle + change notifications.                                      |
-| `theme` / `defaultTheme` / `onThemeChange` / `persistTheme`                                                                                                                                     | theme                 | Controlled or self-managed theme; optional `localStorage` persistence. |
-| `hideTopBar` / `hideBottomBar` / `hideToolbar` / `hideMainMenu` / `hideLibraryButton` / `hideZoomControls` / `hideResetToContent` / `hideHelpButton` / `hideContextMenu` / `hideSelectionPanel` | `boolean`             | Toggle chrome off.                                                     |
-| `renderTopBar{Left,Center,Right}` / `renderBottomBar{Left,Center,Right}` / `renderMainMenuExtras`                                                                                               | `() => ReactNode`     | Inject custom content into the bars / menu.                            |
-| `onImportTemplates`                                                                                                                                                                             | `() => void`          | Library-panel "Import" click.                                          |
-| `repositoryUrl`                                                                                                                                                                                 | `string \| null`      | Help-menu link target; `null` hides it.                                |
-| `workerFactory`                                                                                                                                                                                 | `() => Worker`        | Override the offscreen render-worker constructor.                      |
-| `className` / `style`                                                                                                                                                                           | —                     | Applied to the editor root.                                            |
+| Prop                                                                                                                                                                                            | Type                  | Purpose                                                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------- |
+| `initialScene`                                                                                                                                                                                  | `Scene`               | Seed scene (defaults to empty).                                                         |
+| `initialMode`                                                                                                                                                                                   | `Mode`                | Initial tool mode (default `"select"`).                                                 |
+| `capabilities`                                                                                                                                                                                  | `CapabilityOverrides` | Force / disable renderer, WASM, workers, tiles.                                         |
+| `templates` / `fileDropHandlers` / `layoutKinds` / `animationAdapters`                                                                                                                          | arrays                | Plugins registered on mount.                                                            |
+| `onReady` / `onSceneChange` / `onSelectionChange`                                                                                                                                               | callbacks             | Lifecycle + change notifications.                                                       |
+| `theme` / `defaultTheme` / `onThemeChange` / `persistTheme`                                                                                                                                     | theme                 | Controlled or self-managed theme; optional `localStorage` persistence.                  |
+| `hideTopBar` / `hideBottomBar` / `hideToolbar` / `hideMainMenu` / `hideLibraryButton` / `hideZoomControls` / `hideResetToContent` / `hideHelpButton` / `hideContextMenu` / `hideSelectionPanel` | `boolean`             | Toggle chrome off.                                                                      |
+| `renderTopBar{Left,Center,Right}` / `renderBottomBar{Left,Center,Right}` / `renderMainMenuExtras`                                                                                               | `() => ReactNode`     | Inject custom content into the bars / menu.                                             |
+| `onImportTemplates`                                                                                                                                                                             | `() => void`          | Library-panel "Import" click.                                                           |
+| `repositoryUrl`                                                                                                                                                                                 | `string \| null`      | Help-menu link target; `null` hides it.                                                 |
+| `onConfirm` / `onNotify`                                                                                                                                                                        | callbacks             | Override the reset-confirm / error dialogs (default `window.confirm` / `window.alert`). |
+| `workerFactory`                                                                                                                                                                                 | `() => Worker`        | Override the offscreen render-worker constructor.                                       |
+| `className` / `style`                                                                                                                                                                           | —                     | Applied to the editor root.                                                             |
 
 ## Capabilities
 
