@@ -94,6 +94,7 @@ import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
 import { WasmRasterizer } from "@oh-just-another/raster-wasm";
+import { createRenderWorker } from "@oh-just-another/renderer-canvas";
 import {
   registerAnimationAdapter,
   setActiveRasterizer,
@@ -108,7 +109,6 @@ import {
   type CapabilityOverrides,
   type CapabilityProfile,
 } from "./capabilities";
-import { createRenderWorker } from "./render-worker-factory";
 import { exportSceneToPng, type PngExportBackground } from "./png-export";
 import { isEditableTarget } from "./dom-focus";
 
@@ -161,6 +161,13 @@ export interface DiagramProps {
 
   // --- Capabilities ---
   readonly capabilities?: CapabilityOverrides;
+  /**
+   * Override how the offscreen-canvas render worker is constructed.
+   * Only used when the resolved renderer backend is `"offscreen"`.
+   * Defaults to the worker shipped with `@oh-just-another/renderer-canvas`.
+   * Supply your own when a non-Vite bundler needs a custom worker URL.
+   */
+  readonly workerFactory?: () => Worker;
 
   // --- Chrome on/off ---
   readonly hideTopBar?: boolean;
@@ -233,6 +240,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     onSceneChange,
     onSelectionChange,
     capabilities: capabilityOverrides,
+    workerFactory,
     hideTopBar,
     hideBottomBar,
     hideToolbar,
@@ -495,7 +503,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
             initialMode={initialMode}
             onReady={handleReady}
             renderer={profile.renderer}
-            {...(profile.renderer === "offscreen" ? { workerFactory: createRenderWorker } : {})}
+            {...(profile.renderer === "offscreen"
+              ? { workerFactory: workerFactory ?? createRenderWorker }
+              : {})}
             {...(wasmShaper ? { textShaper: wasmShaper } : {})}
             {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
           >

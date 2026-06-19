@@ -9,6 +9,7 @@ export {
   createOffscreenCanvas2DTarget,
   transferCanvasToWorker,
 } from "./offscreen.js";
+export { createRenderWorker } from "./worker-factory.js";
 // WorkerPool / LayerWorkerPool live in @oh-just-another/renderer-workers
 // (backend-neutral primitives don't belong in the Canvas-specific package).
 // Re-export to keep existing imports working.
