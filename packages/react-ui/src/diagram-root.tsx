@@ -197,13 +197,24 @@ export const DiagramRoot = ({
     [mountSurface, teardownSurface],
   );
 
-  // Re-mount the surface when the host swaps backends at runtime.
-  // The first mount is driven by `registerSurface`; subsequent
-  // backend changes need an explicit tear-down + remount because
-  // `LayeredSurface` ownership is per-backend.
+  // Re-mount the surface only when the host swaps backends at runtime.
+  // The first mount is driven by `registerSurface` (the host ref callback,
+  // which runs before this passive effect), so the effect must SKIP its
+  // initial run — otherwise it tears down the just-mounted surface and
+  // builds a second one, double-firing `onReady` with a stale editor.
+  // Subsequent `renderer` changes need an explicit tear-down + remount
+  // because `LayeredSurface` ownership is per-backend.
+  const mountedRendererRef = useRef<RendererBackend | null>(null);
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    if (mountedRendererRef.current === null) {
+      // registerSurface already mounted with this backend — record it, no remount.
+      mountedRendererRef.current = renderer;
+      return;
+    }
+    if (mountedRendererRef.current === renderer) return;
+    mountedRendererRef.current = renderer;
     teardownSurface();
     mountSurface(host);
   }, [renderer, mountSurface, teardownSurface]);
