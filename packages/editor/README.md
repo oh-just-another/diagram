@@ -30,11 +30,11 @@ export function App() {
 }
 ```
 
-> **Theme tokens.** The chrome reads CSS variables (`--bg`, `--panel`,
-> `--accent`, `--text`, …) from a `[data-theme="dark"|"light"]` scope. Until
-> this package ships its own theme stylesheet (planned — see the repo issues),
-> copy the `[data-theme]` token block from the demo app's `index.html` into
-> your host page.
+> **Theming.** `@oh-just-another/react-ui/styles.css` ships the complete token
+> set — light and dark, plus a `prefers-color-scheme` fallback for "system" —
+> so the import above is all you need. The editor toggles `data-theme` for you
+> via the `theme` prop; override any `--du-*` (or legacy `--bg` / `--accent` /
+> …) variable in your own stylesheet to re-skin.
 
 ## Driving it from code
 

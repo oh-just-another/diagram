@@ -136,6 +136,16 @@
   --menu-text: var(--du-text);
   --menu-border: var(--du-ui-border);
   --menu-divider: var(--du-ui-border);
+  /* Remaining legacy names the chrome reads — defined here (forwarding to the
+     theme-aware `--du-*` set) so the editor is fully themed from this stylesheet
+     alone, without a host-provided token block. */
+  --divider: var(--du-ui-border);
+  --text-strong: var(--du-text);
+  --faint: var(--du-text-muted);
+  --toolbar-bg: var(--du-ui-bg-solid);
+  --cursor-bg: var(--du-selected-bg);
+  --code-bg: var(--du-ui-bg-solid);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 [data-theme="dark"] {
