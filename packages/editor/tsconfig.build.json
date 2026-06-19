@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.tsx.test"],
+  "references": [
+    { "path": "../types/tsconfig.build.json" },
+    { "path": "../scene/tsconfig.build.json" },
+    { "path": "../renderer-core/tsconfig.build.json" },
+    { "path": "../renderer-canvas/tsconfig.build.json" },
+    { "path": "../renderer-svg/tsconfig.build.json" },
+    { "path": "../state/tsconfig.build.json" },
+    { "path": "../serialization/tsconfig.build.json" },
+    { "path": "../templates/tsconfig.build.json" },
+    { "path": "../raster-wasm/tsconfig.build.json" },
+    { "path": "../text-wasm/tsconfig.build.json" },
+    { "path": "../react-ui/tsconfig.build.json" }
+  ]
+}

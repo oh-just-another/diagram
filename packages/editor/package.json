@@ -1,0 +1,75 @@
+{
+  "name": "@oh-just-another/editor",
+  "version": "0.57.0",
+  "description": "Drop-in diagram editor as a single React component. Auto-detects renderer / WASM / worker capabilities and exposes a programmatic editor API.",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git",
+    "directory": "packages/editor"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
+  "keywords": [
+    "diagram",
+    "canvas",
+    "svg",
+    "editor",
+    "graph",
+    "drawing"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src tests",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@oh-just-another/raster-wasm": "workspace:*",
+    "@oh-just-another/react-ui": "workspace:*",
+    "@oh-just-another/renderer-canvas": "workspace:*",
+    "@oh-just-another/renderer-core": "workspace:*",
+    "@oh-just-another/renderer-svg": "workspace:*",
+    "@oh-just-another/scene": "workspace:*",
+    "@oh-just-another/serialization": "workspace:*",
+    "@oh-just-another/state": "workspace:*",
+    "@oh-just-another/templates": "workspace:*",
+    "@oh-just-another/text-wasm": "workspace:*",
+    "@oh-just-another/types": "workspace:*",
+    "lucide-react": "^1.16.0"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "jsdom": "^25.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
