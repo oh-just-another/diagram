@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { defaultActionRegistry, type Editor } from "@oh-just-another/state";
 import { openImageFilePicker } from "@oh-just-another/react-ui";
-import { isEditableTarget } from "./dom-focus.js";
+import { isEditableTarget } from "@oh-just-another/editor";
 
 /**
  * Wire global keyboard shortcuts to the editor:

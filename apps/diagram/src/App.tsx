@@ -8,7 +8,7 @@ import {
   stringifyFiles,
 } from "@oh-just-another/serialization";
 import type { Editor } from "@oh-just-another/state";
-import { Diagram, type CapabilityOverrides, type DiagramAPI } from "./index";
+import { Diagram, type CapabilityOverrides, type DiagramAPI } from "@oh-just-another/editor";
 import { setupTemplates } from "./templates";
 import { installConfettiRenderer } from "./confetti";
 import { installGifAnimationAdapter } from "./gif-animation";

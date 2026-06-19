@@ -12,6 +12,6 @@
  */
 
 export const createRenderWorker = (): Worker =>
-  new Worker(new URL("../../../packages/renderer-canvas/src/render-worker.ts", import.meta.url), {
+  new Worker(new URL("../../renderer-canvas/src/render-worker.ts", import.meta.url), {
     type: "module",
   });

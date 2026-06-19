@@ -89,6 +89,9 @@ importers:
       '@oh-just-another/collab':
         specifier: workspace:*
         version: link:../../packages/collab
+      '@oh-just-another/editor':
+        specifier: workspace:*
+        version: link:../../packages/editor
       '@oh-just-another/history':
         specifier: workspace:*
         version: link:../../packages/history
