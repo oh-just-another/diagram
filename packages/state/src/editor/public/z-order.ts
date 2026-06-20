@@ -22,7 +22,7 @@ const resolveTarget = (
   id: ElementId | undefined,
   selection: ReadonlySet<ElementId>,
 ): ElementId | null => {
-  const target = id ?? (selection.size === 1 ? [...selection][0] ?? null : null);
+  const target = id ?? (selection.size === 1 ? ([...selection][0] ?? null) : null);
   if (!target) return null;
   return scene.elements.has(target) ? target : null;
 };
@@ -143,9 +143,7 @@ export const rewriteOrders = <T extends { readonly order: FractionalIndex }>(
   apply: (entity: T, order: FractionalIndex) => void,
 ): number => {
   if (entities.length === 0) return 0;
-  const sorted = [...entities].sort((a, b) =>
-    a.order < b.order ? -1 : a.order > b.order ? 1 : 0,
-  );
+  const sorted = [...entities].sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
   const fresh = orderBetweenMany(null, null, sorted.length);
   let changed = 0;
   sorted.forEach((entity, i) => {
@@ -165,10 +163,7 @@ export const rewriteOrders = <T extends { readonly order: FractionalIndex }>(
 export const compactLayerZOrderPatches = (
   scene: Scene,
   layerIds: readonly LayerId[],
-  mutate: (
-    nextScene: Scene,
-    patch: Patch,
-  ) => void,
+  mutate: (nextScene: Scene, patch: Patch) => void,
 ): number => {
   let s = scene;
   let touched = 0;

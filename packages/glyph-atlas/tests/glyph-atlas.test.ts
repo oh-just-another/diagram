@@ -10,27 +10,31 @@ type MsdfGlyphTile = NonNullable<ReturnType<MsdfShaper["rasterizeGlyphMSDF"]>>;
  * `getOrRasterize` copies the right bytes into the right place
  * inside the atlas buffer without booting WASM.
  */
-const makeFakeShaper = (overrides: Partial<{
-  metrics: (cp: number) => GlyphMetrics | null;
-  tile: (cp: number, size: number) => MsdfGlyphTile | null;
-}> = {}): MsdfShaper => {
+const makeFakeShaper = (
+  overrides: Partial<{
+    metrics: (cp: number) => GlyphMetrics | null;
+    tile: (cp: number, size: number) => MsdfGlyphTile | null;
+  }> = {},
+): MsdfShaper => {
   const shaper = {
     glyphMetrics: vi.fn(
-      overrides.metrics ?? ((cp: number) => ({
-        advance: 100,
-        bboxXMin: 0,
-        bboxYMin: 0,
-        bboxW: cp === 0x20 ? 0 : 80, // space → empty
-        bboxH: cp === 0x20 ? 0 : 80,
-        unitsPerEm: 1000,
-      })),
+      overrides.metrics ??
+        ((cp: number) => ({
+          advance: 100,
+          bboxXMin: 0,
+          bboxYMin: 0,
+          bboxW: cp === 0x20 ? 0 : 80, // space → empty
+          bboxH: cp === 0x20 ? 0 : 80,
+          unitsPerEm: 1000,
+        })),
     ),
     rasterizeGlyphMSDF: vi.fn(
-      overrides.tile ?? ((cp: number, size: number) => ({
-        atlasSize: size,
-        range: 4,
-        data: new Uint8Array(size * size * 3).fill(cp & 0xff),
-      })),
+      overrides.tile ??
+        ((cp: number, size: number) => ({
+          atlasSize: size,
+          range: 4,
+          data: new Uint8Array(size * size * 3).fill(cp & 0xff),
+        })),
     ),
   } as unknown as MsdfShaper;
   return shaper;
@@ -47,9 +51,9 @@ describe("GlyphAtlas", () => {
   });
 
   it("rejects atlasSize not divisible by tileSize", () => {
-    expect(
-      () => new GlyphAtlas(makeFakeShaper(), { atlasSize: 100, tileSize: 32 }),
-    ).toThrow(/multiple of tileSize/);
+    expect(() => new GlyphAtlas(makeFakeShaper(), { atlasSize: 100, tileSize: 32 })).toThrow(
+      /multiple of tileSize/,
+    );
   });
 
   it("caches per-glyph slots; second lookup is a hit", () => {
@@ -181,7 +185,7 @@ const makeFakeGl = () => {
     UNPACK_ROW_LENGTH: 12,
     UNPACK_SKIP_PIXELS: 13,
     UNPACK_SKIP_ROWS: 14,
-    createTexture: vi.fn(() => ({} as WebGLTexture)),
+    createTexture: vi.fn(() => ({}) as WebGLTexture),
     bindTexture: vi.fn(),
     texParameteri: vi.fn(),
     texImage2D: vi.fn(),

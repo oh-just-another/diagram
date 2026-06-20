@@ -54,7 +54,12 @@ const rect = (id: string): Element => ({
 });
 
 const noop = new Proxy({} as Record<string, unknown>, {
-  get: (_, k) => (k === "size" ? { width: 100, height: 100 } : k === "measureText" ? () => ({ width: 0 }) : () => {}),
+  get: (_, k) =>
+    k === "size"
+      ? { width: 100, height: 100 }
+      : k === "measureText"
+        ? () => ({ width: 0 })
+        : () => {},
 }) as never;
 const host = {
   addEventListener: () => {},
@@ -71,7 +76,9 @@ describe("editor.setLink / elementLink", () => {
     ({ scene: s } = addElement(s, rect("r")));
     const e = makeEditor(s);
     e.setLink([elementId("r")], "example.com"); // normalised inside setLink
-    expect((e.scene.elements.get(elementId("r")) as { href?: string }).href).toBe("https://example.com");
+    expect((e.scene.elements.get(elementId("r")) as { href?: string }).href).toBe(
+      "https://example.com",
+    );
     expect(e.elementLink(elementId("r"))).toBe("https://example.com");
     e.undo();
     expect((e.scene.elements.get(elementId("r")) as { href?: string }).href).toBeUndefined();

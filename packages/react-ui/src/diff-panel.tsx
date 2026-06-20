@@ -90,7 +90,8 @@ const SideView = ({
   //     own bounds — so the user sees the before AND after position
   //     of a moved shape.
   const overlays = useMemo(() => {
-    const out: { id: string; color: string; bounds: ReturnType<typeof getElementWorldBounds> }[] = [];
+    const out: { id: string; color: string; bounds: ReturnType<typeof getElementWorldBounds> }[] =
+      [];
     const palette = DIFF_COLORS;
     if (side === "left") {
       for (const id of diff.removed) {

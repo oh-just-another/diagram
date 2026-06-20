@@ -40,7 +40,7 @@ export const exportPdf = async (
 
   const resolved = resolveScene(scene);
   const cropped = options.frameId
-    ? sceneForFrame(resolved, options.frameId) ?? sceneForRegion(resolved, options.region)
+    ? (sceneForFrame(resolved, options.frameId) ?? sceneForRegion(resolved, options.region))
     : sceneForRegion(resolved, options.region);
 
   const svgWidth = options.width ?? cropped.viewport.size.width;
@@ -99,8 +99,12 @@ export const exportPdf = async (
   });
 
   return new Promise<Uint8Array>((resolve, reject) => {
-    sink.on("finish", () => { resolve(Buffer.concat(chunks)); });
-    sink.on("error", (err) => { reject(err); });
+    sink.on("finish", () => {
+      resolve(Buffer.concat(chunks));
+    });
+    sink.on("error", (err) => {
+      reject(err);
+    });
     doc.pipe(sink);
     doc.end();
   });

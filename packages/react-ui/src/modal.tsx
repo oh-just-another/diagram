@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 
 /**
  * Base modal / dialog primitive. Renders a backdrop plus a
@@ -84,7 +79,9 @@ export const Modal = ({
       }
     };
     window.addEventListener("keydown", onKey, true);
-    return () => { window.removeEventListener("keydown", onKey, true); };
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+    };
   }, [open]);
 
   if (!open) return null;
@@ -126,7 +123,9 @@ export const Modal = ({
         tabIndex={-1}
         className={className}
         style={box}
-        onClick={(ev) => { ev.stopPropagation(); }}
+        onClick={(ev) => {
+          ev.stopPropagation();
+        }}
       >
         {children}
       </div>

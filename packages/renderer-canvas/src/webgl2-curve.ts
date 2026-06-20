@@ -112,9 +112,15 @@ const affineToClipMat3 = (t: Transform, w: number, h: number): Float32Array => {
   const sx = 2 / w;
   const sy = -2 / h;
   return new Float32Array([
-    t.a * sx, t.b * sy, 0,
-    t.c * sx, t.d * sy, 0,
-    t.e * sx - 1, t.f * sy + 1, 1,
+    t.a * sx,
+    t.b * sy,
+    0,
+    t.c * sx,
+    t.d * sy,
+    0,
+    t.e * sx - 1,
+    t.f * sy + 1,
+    1,
   ]);
 };
 
@@ -187,11 +193,7 @@ const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLSh
   return sh;
 };
 
-const link = (
-  gl: WebGL2RenderingContext,
-  vert: WebGLShader,
-  frag: WebGLShader,
-): WebGLProgram => {
+const link = (gl: WebGL2RenderingContext, vert: WebGLShader, frag: WebGLShader): WebGLProgram => {
   const program = gl.createProgram();
   gl.attachShader(program, vert);
   gl.attachShader(program, frag);

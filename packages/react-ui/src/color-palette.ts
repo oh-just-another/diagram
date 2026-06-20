@@ -72,12 +72,8 @@ export const CANVAS_PALETTE_DARK: readonly string[] = ["#121113", ...canvasDark]
  * host that re-renders on theme change picks up the switch without
  * subscribing.
  */
-export const resolvePaletteTheme = (
-  theme: "light" | "dark" | "system",
-): "light" | "dark" => {
+export const resolvePaletteTheme = (theme: "light" | "dark" | "system"): "light" | "dark" => {
   if (theme === "light" || theme === "dark") return theme;
   if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };

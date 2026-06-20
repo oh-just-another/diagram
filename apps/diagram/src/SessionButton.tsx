@@ -59,7 +59,9 @@ export const SessionButton = ({ collab }: { readonly collab: CollabAPI }) => {
     try {
       await navigator.clipboard.writeText(location.href);
       setCopied(true);
-      setTimeout(() => { setCopied(false); }, 1500);
+      setTimeout(() => {
+        setCopied(false);
+      }, 1500);
     } catch {
       /* clipboard blocked — user can still select + copy manually */
     }
@@ -83,9 +85,11 @@ export const SessionButton = ({ collab }: { readonly collab: CollabAPI }) => {
         onClick={() => void startOrToggle()}
         disabled={busy}
       >
-        {active
-          ? <Users size={SESSION_ICON_SIZE} strokeWidth={SESSION_ICON_STROKE} />
-          : <Share2 size={SESSION_ICON_SIZE} strokeWidth={SESSION_ICON_STROKE} />}
+        {active ? (
+          <Users size={SESSION_ICON_SIZE} strokeWidth={SESSION_ICON_STROKE} />
+        ) : (
+          <Share2 size={SESSION_ICON_SIZE} strokeWidth={SESSION_ICON_STROKE} />
+        )}
       </button>
       {open && active ? (
         <div
@@ -111,8 +115,8 @@ export const SessionButton = ({ collab }: { readonly collab: CollabAPI }) => {
         >
           <div style={{ fontWeight: 600 }}>Live session</div>
           <div style={{ color: "var(--muted)" }}>
-            Share this URL — peers join automatically. The AES key in the
-            URL fragment never reaches the server.
+            Share this URL — peers join automatically. The AES key in the URL fragment never reaches
+            the server.
           </div>
           <code
             style={{
@@ -133,9 +137,13 @@ export const SessionButton = ({ collab }: { readonly collab: CollabAPI }) => {
               style={{ width: "auto", padding: "0 10px" }}
               onClick={() => void copy()}
             >
-              {copied
-                ? <><Check size={14} strokeWidth={SESSION_ICON_STROKE} /> Copied</>
-                : "Copy"}
+              {copied ? (
+                <>
+                  <Check size={14} strokeWidth={SESSION_ICON_STROKE} /> Copied
+                </>
+              ) : (
+                "Copy"
+              )}
             </button>
             <button
               type="button"

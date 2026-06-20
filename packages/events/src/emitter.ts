@@ -55,15 +55,9 @@ export interface Emitter<E> {
    * Subscribe to an event. Returns an unsubscribe function. Idempotent:
    * calling the returned function twice is a no-op.
    */
-  on<K extends keyof E>(
-    event: K,
-    fn: E[K] extends AnyListener ? E[K] : never,
-  ): () => void;
+  on<K extends keyof E>(event: K, fn: E[K] extends AnyListener ? E[K] : never): () => void;
   /** Unsubscribe a previously registered listener. No-op if not found. */
-  off<K extends keyof E>(
-    event: K,
-    fn: E[K] extends AnyListener ? E[K] : never,
-  ): void;
+  off<K extends keyof E>(event: K, fn: E[K] extends AnyListener ? E[K] : never): void;
   /**
    * Synchronously call every listener registered for `event` with the
    * supplied arguments. Returns the number of listeners that ran.

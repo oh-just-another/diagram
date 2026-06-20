@@ -223,11 +223,7 @@ const levelOpacity = (z: number, level: GridLevel): number => {
   return (z - level.min) / (level.mid - level.min);
 };
 
-const computeViewportWorldRect = (
-  scene: Scene,
-  width: number,
-  height: number,
-): Bounds | null => {
+const computeViewportWorldRect = (scene: Scene, width: number, height: number): Bounds | null => {
   const s2w = getScreenToWorld(scene.viewport);
   const corners = [
     matrix.applyToPoint(s2w, { x: 0, y: 0 }),

@@ -94,9 +94,7 @@ describe("compactLayerZOrder", () => {
 
     editor.compactLayerZOrder(DEFAULT_LAYER_ID);
 
-    const maxLenAfter = Math.max(
-      ...[...editor.scene.elements.values()].map((s) => s.order.length),
-    );
+    const maxLenAfter = Math.max(...[...editor.scene.elements.values()].map((s) => s.order.length));
     expect(maxLenAfter).toBeLessThanOrEqual(maxLenBefore);
     // Sequence is monotonic — sorted shape ids match the pre-compact
     // visual order.

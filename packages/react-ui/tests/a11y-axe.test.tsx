@@ -85,9 +85,7 @@ const formatViolations = (violations: readonly Result[]): string => {
   return violations
     .map(
       (v) =>
-        `[${v.impact ?? "?"}] ${v.id}: ${v.help}\n  ${v.nodes
-          .map((n) => n.html)
-          .join("\n  ")}`,
+        `[${v.impact ?? "?"}] ${v.id}: ${v.help}\n  ${v.nodes.map((n) => n.html).join("\n  ")}`,
     )
     .join("\n\n");
 };

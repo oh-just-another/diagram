@@ -13,19 +13,20 @@ import { describe } from "../src/describe.js";
 // Helpers
 // ---------------------------------------------------------------------------
 
-const rect = (id: string, overrides: Partial<Element> = {}): Element => ({
-  id: elementId(id),
-  layerId: DEFAULT_LAYER_ID,
-  type: "rectangle",
-  position: { x: 0, y: 0 },
-  rotation: 0,
-  scale: { x: 1, y: 1 },
-  order: orderBetween(null, null),
-  style: { fill: "#000" },
-  width: 10,
-  height: 10,
-  ...overrides,
-}) as Element;
+const rect = (id: string, overrides: Partial<Element> = {}): Element =>
+  ({
+    id: elementId(id),
+    layerId: DEFAULT_LAYER_ID,
+    type: "rectangle",
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: { fill: "#000" },
+    width: 10,
+    height: 10,
+    ...overrides,
+  }) as Element;
 
 const mkLink = (id: string) => ({
   id: linkId(id),
@@ -229,7 +230,12 @@ viDescribe("describe — layer patches", () => {
 
   it("update layer → 'Update layer'", () => {
     const layer = mkLayer("ly1");
-    const patch: Patch = { kind: "layer", id: layer.id, before: layer as never, after: layer as never };
+    const patch: Patch = {
+      kind: "layer",
+      id: layer.id,
+      before: layer as never,
+      after: layer as never,
+    };
     expect(describe(patch)).toBe("Update layer");
   });
 });
@@ -253,7 +259,12 @@ viDescribe("describe — annotation patches", () => {
 
   it("update annotation → 'Update comment'", () => {
     const ann = mkAnnotation("an1");
-    const patch: Patch = { kind: "annotation", id: ann.id, before: ann as never, after: ann as never };
+    const patch: Patch = {
+      kind: "annotation",
+      id: ann.id,
+      before: ann as never,
+      after: ann as never,
+    };
     expect(describe(patch)).toBe("Update comment");
   });
 });

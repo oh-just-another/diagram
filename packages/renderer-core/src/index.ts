@@ -14,7 +14,11 @@ export type { RenderSceneOptions, LodOptions } from "./scene-renderer.js";
 export type { RenderLinksOptions } from "./edge-renderer.js";
 export type { RenderGridOptions, GridLevel, GridRung } from "./grid-renderer.js";
 
-export { registerElementRenderer, getElementRenderer, hasElementRenderer } from "./shape-renderer.js";
+export {
+  registerElementRenderer,
+  getElementRenderer,
+  hasElementRenderer,
+} from "./shape-renderer.js";
 export { LAYER_ORDER } from "./layers.js";
 export { renderScene } from "./scene-renderer.js";
 export { renderLinks, strokeRoundedPolyline } from "./edge-renderer.js";
@@ -70,10 +74,7 @@ export { setActiveTextShaper, getActiveTextShaper } from "./text-shaper.js";
 export type { Rasterizer } from "./rasterizer.js";
 export { setActiveRasterizer, getActiveRasterizer } from "./rasterizer.js";
 export { jsRasterizer } from "./js-rasterizer.js";
-export type {
-  WorkerRenderMessage,
-  WorkerRenderResponse,
-} from "./worker-render.js";
+export type { WorkerRenderMessage, WorkerRenderResponse } from "./worker-render.js";
 export { WORKER_AUTO_THRESHOLD } from "./worker-render.js";
 export type { TileKey, TileCache, TileCacheEntry } from "./tile-renderer.js";
 export {
@@ -82,11 +83,7 @@ export {
   LOD_THRESHOLD,
   InMemoryTileCache,
 } from "./tile-renderer.js";
-export {
-  LinkBoundsCache,
-  computeLinkWorldBounds,
-  sharedLinkBoundsCache,
-} from "./edge-cache.js";
+export { LinkBoundsCache, computeLinkWorldBounds, sharedLinkBoundsCache } from "./edge-cache.js";
 
 export {
   DEFAULT_LOD,

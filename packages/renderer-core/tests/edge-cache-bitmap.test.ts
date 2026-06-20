@@ -8,8 +8,16 @@ const edge = (id: string): Link =>
     id: linkId(id),
     layerId: layerId("default"),
     order: orderBetween(null, null),
-    from: { kind: "anchor", elementId: { __brand: "shape" } as never, anchor: { kind: "named", name: "center" } },
-    to: { kind: "anchor", elementId: { __brand: "shape" } as never, anchor: { kind: "named", name: "center" } },
+    from: {
+      kind: "anchor",
+      elementId: { __brand: "shape" } as never,
+      anchor: { kind: "named", name: "center" },
+    },
+    to: {
+      kind: "anchor",
+      elementId: { __brand: "shape" } as never,
+      anchor: { kind: "named", name: "center" },
+    },
     style: {},
   }) as Link;
 

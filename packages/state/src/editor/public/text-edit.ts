@@ -1,9 +1,4 @@
-import {
-  getElement,
-  updateElement,
-  type Scene,
-  type Patch,
-} from "@oh-just-another/scene";
+import { getElement, updateElement, type Scene, type Patch } from "@oh-just-another/scene";
 import type { LayerId, ElementId } from "@oh-just-another/types";
 
 /**

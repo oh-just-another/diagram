@@ -44,17 +44,38 @@ const buildScene = (): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 800, height: 600 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 800, height: 600 },
 } as never;
 
 const makeHost = () => {
@@ -62,7 +83,8 @@ const makeHost = () => {
   const host = {
     addEventListener: (type: string, fn: (ev: unknown) => void) => handlers.set(type, fn),
     removeEventListener: (type: string) => handlers.delete(type),
-    setPointerCapture: () => {}, releasePointerCapture: () => {},
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
     hasPointerCapture: () => true,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
     style: { cursor: "" },
@@ -71,10 +93,19 @@ const makeHost = () => {
 };
 
 const pointer = (type: string, x: number, y: number) => ({
-  type, clientX: x, clientY: y, pointerId: 1, pointerType: "mouse", button: 0,
+  type,
+  clientX: x,
+  clientY: y,
+  pointerId: 1,
+  pointerType: "mouse",
+  button: 0,
   buttons: type === "pointerup" ? 0 : 1,
-  shiftKey: false, ctrlKey: false, altKey: false, metaKey: false,
-  timeStamp: 0, preventDefault: () => {},
+  shiftKey: false,
+  ctrlKey: false,
+  altKey: false,
+  metaKey: false,
+  timeStamp: 0,
+  preventDefault: () => {},
 });
 
 // True if the polyline passes through the obstacle's interior (sampled).
@@ -96,7 +127,9 @@ describe("avoid-obstacles link property (route around shapes)", () => {
   const selectLink = (): Editor => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: buildScene(),
     });
     handlers.get("pointerdown")!(pointer("pointerdown", 40, 0));

@@ -26,6 +26,8 @@ export const useTheme = (): { theme: Theme; toggle: () => void } => {
     window.localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
-  const toggle = (): void => { setTheme((prev) => (prev === "light" ? "dark" : "light")); };
+  const toggle = (): void => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+  };
   return { theme, toggle };
 };

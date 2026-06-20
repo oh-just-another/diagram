@@ -30,17 +30,38 @@ const sceneWith = (...els: Element[]): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 400, height: 400 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 400, height: 400 },
 } as never;
 
 const makeHost = () => {
@@ -48,7 +69,8 @@ const makeHost = () => {
   const host = {
     addEventListener: (type: string, fn: (ev: unknown) => void) => handlers.set(type, fn),
     removeEventListener: (type: string) => handlers.delete(type),
-    setPointerCapture: () => {}, releasePointerCapture: () => {},
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
     hasPointerCapture: () => true,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 400, height: 400 }),
     style: { cursor: "" },
@@ -57,10 +79,20 @@ const makeHost = () => {
 };
 
 const ptr = (type: string, x: number, y: number, pointerType = "touch") => ({
-  type, clientX: x, clientY: y, pointerId: 1, pointerType, button: 0,
+  type,
+  clientX: x,
+  clientY: y,
+  pointerId: 1,
+  pointerType,
+  button: 0,
   buttons: type === "pointerup" ? 0 : 1,
-  shiftKey: false, ctrlKey: false, altKey: false, metaKey: false,
-  pressure: 0.5, timeStamp: 0, preventDefault: () => {},
+  shiftKey: false,
+  ctrlKey: false,
+  altKey: false,
+  metaKey: false,
+  pressure: 0.5,
+  timeStamp: 0,
+  preventDefault: () => {},
 });
 
 describe("one-finger touch pan", () => {
@@ -68,7 +100,9 @@ describe("one-finger touch pan", () => {
     const { host, handlers } = makeHost();
     // A small rect at (0,0); empty space is anywhere away from it.
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(rect("a", 0, 0)),
     });
     const fire = (t: string, x: number, y: number, pt = "touch") =>

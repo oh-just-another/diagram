@@ -175,7 +175,14 @@ export class Canvas2DTarget implements RenderTarget {
 
   // --- Images ---
 
-  drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number, _dynamic?: boolean): void {
+  drawImage(
+    image: unknown,
+    dx: number,
+    dy: number,
+    dw: number,
+    dh: number,
+    _dynamic?: boolean,
+  ): void {
     // `_dynamic` ignored — Canvas2D reads the source element live on
     // every drawImage, so animated GIF / video frames are picked up
     // automatically as long as the host re-renders (AnimationTick).
@@ -228,14 +235,8 @@ export class Canvas2DTarget implements RenderTarget {
     }
     const minX = Math.min(this.dirtyRect.x, bounds.x);
     const minY = Math.min(this.dirtyRect.y, bounds.y);
-    const maxX = Math.max(
-      this.dirtyRect.x + this.dirtyRect.width,
-      bounds.x + bounds.width,
-    );
-    const maxY = Math.max(
-      this.dirtyRect.y + this.dirtyRect.height,
-      bounds.y + bounds.height,
-    );
+    const maxX = Math.max(this.dirtyRect.x + this.dirtyRect.width, bounds.x + bounds.width);
+    const maxY = Math.max(this.dirtyRect.y + this.dirtyRect.height, bounds.y + bounds.height);
     this.dirtyRect = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }
 

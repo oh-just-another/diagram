@@ -18,7 +18,10 @@ import type { Transform, Vec2 } from "@oh-just-another/types";
  */
 
 /** Two-vertex pair per polyline vertex (left + right side of the band). */
-interface SideOffset { ox: number; oy: number }
+interface SideOffset {
+  ox: number;
+  oy: number;
+}
 
 /**
  * Maximum miter overshoot, in units of stroke width. Past this the
@@ -160,8 +163,7 @@ export const drawPolylineStroke = (
 
   const first = req(polyline[0]);
   const last = req(polyline[polyline.length - 1]);
-  const closed =
-    polyline.length >= 3 && first.x === last.x && first.y === last.y;
+  const closed = polyline.length >= 3 && first.x === last.x && first.y === last.y;
 
   // Reset the scratch vertex stream length — world-space (x, y) pairs
   // are pushed into `scratchTris` via `trisPush`, then projected
@@ -173,8 +175,14 @@ export const drawPolylineStroke = (
   // Both endpoints use the same side-offset; join geometry stitches the
   // next segment on.
   const band = (
-    ax: number, ay: number, anx: number, any: number,
-    bx: number, by: number, bnx: number, bny: number,
+    ax: number,
+    ay: number,
+    anx: number,
+    any: number,
+    bx: number,
+    by: number,
+    bnx: number,
+    bny: number,
   ): void => {
     // Vertices:
     //   A_left  = (ax + anx, ay + any)
@@ -203,7 +211,14 @@ export const drawPolylineStroke = (
 
   // Emit join geometry at every interior vertex (and at the seam for
   // closed polylines).
-  const emitJoin = (vertexX: number, vertexY: number, n1x: number, n1y: number, n2x: number, n2y: number): void => {
+  const emitJoin = (
+    vertexX: number,
+    vertexY: number,
+    n1x: number,
+    n1y: number,
+    n2x: number,
+    n2y: number,
+  ): void => {
     if (style.join === "miter") {
       const { ox, oy } = miterOffset(n1x, n1y, n2x, n2y, half);
       // Outside-of-bend wedge: tip = vertex + offset on outer side.
@@ -279,10 +294,32 @@ export const drawPolylineStroke = (
   if (!closed) {
     const capFirst = req(polyline[0]);
     const second = req(polyline[1]);
-    emitCap(push, capFirst.x, capFirst.y, second.x, second.y, req(nx[0]), req(ny[0]), half, style.cap, true);
+    emitCap(
+      push,
+      capFirst.x,
+      capFirst.y,
+      second.x,
+      second.y,
+      req(nx[0]),
+      req(ny[0]),
+      half,
+      style.cap,
+      true,
+    );
     const lastVx = req(polyline[polyline.length - 1]);
     const prevVx = req(polyline[polyline.length - 2]);
-    emitCap(push, lastVx.x, lastVx.y, prevVx.x, prevVx.y, req(nx[segCount - 1]), req(ny[segCount - 1]), half, style.cap, false);
+    emitCap(
+      push,
+      lastVx.x,
+      lastVx.y,
+      prevVx.x,
+      prevVx.y,
+      req(nx[segCount - 1]),
+      req(ny[segCount - 1]),
+      half,
+      style.cap,
+      false,
+    );
   }
 
   if (scratchTrisLen === 0) return;

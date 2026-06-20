@@ -103,7 +103,10 @@ export const createLayeredSurfaceWithFallback = (
 ): { surface: LayeredSurface; effectiveBackend: RendererBackend } => {
   const requested = options.backend ?? "canvas2d";
   try {
-    return { surface: createLayeredSurface(host, width, height, options), effectiveBackend: requested };
+    return {
+      surface: createLayeredSurface(host, width, height, options),
+      effectiveBackend: requested,
+    };
   } catch (err) {
     if (requested === "canvas2d") throw err;
     onFallback?.(requested, err);
@@ -248,12 +251,7 @@ class OffscreenLayeredSurface implements LayeredSurface {
   private _height: number;
   private readonly dpr: number;
 
-  constructor(
-    host: HTMLElement,
-    width: number,
-    height: number,
-    workerFactory: () => Worker,
-  ) {
+  constructor(host: HTMLElement, width: number, height: number, workerFactory: () => Worker) {
     this._width = width;
     this._height = height;
     this.dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
@@ -276,10 +274,9 @@ class OffscreenLayeredSurface implements LayeredSurface {
 
         const worker = workerFactory();
         const offscreen = canvas.transferControlToOffscreen();
-        worker.postMessage(
-          { type: "init", canvas: offscreen, width, height, dpr: this.dpr },
-          [offscreen],
-        );
+        worker.postMessage({ type: "init", canvas: offscreen, width, height, dpr: this.dpr }, [
+          offscreen,
+        ]);
 
         this.canvases.set(name, canvas);
         this.workers.set(name, worker);

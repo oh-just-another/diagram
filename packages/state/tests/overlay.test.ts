@@ -11,11 +11,7 @@ import {
   type Element,
 } from "@oh-just-another/scene";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
-import {
-  renderOverlay,
-  paintElementSelectionHalo,
-  DEFAULT_OVERLAY_STYLE,
-} from "../src/overlay.js";
+import { renderOverlay, paintElementSelectionHalo, DEFAULT_OVERLAY_STYLE } from "../src/overlay.js";
 import { isResizable, resizeHandlesFor } from "../src/editor/shape-traits.js";
 import type { Selection } from "../src/selection.js";
 
@@ -153,9 +149,7 @@ describe("renderOverlay", () => {
     const rects = calls.filter((c) => c.method === "rect");
     expect(rects.length).toBeGreaterThanOrEqual(1);
     // setDashArray must have been called with a non-null value
-    const dashCalls = calls.filter(
-      (c) => c.method === "setDashArray" && Array.isArray(c.args[0]),
-    );
+    const dashCalls = calls.filter((c) => c.method === "setDashArray" && Array.isArray(c.args[0]));
     expect(dashCalls.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -174,7 +168,11 @@ describe("renderOverlay", () => {
       edgePreview: {
         from: { x: 0, y: 0 },
         to: { x: 100, y: 100 },
-        points: [{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 100, y: 100 }],
+        points: [
+          { x: 0, y: 0 },
+          { x: 50, y: 0 },
+          { x: 100, y: 100 },
+        ],
       },
     });
     const lineTo = calls.filter((c) => c.method === "lineTo");
@@ -185,7 +183,10 @@ describe("renderOverlay", () => {
     const { target, calls } = makeRecorder();
     renderOverlay(emptyScene(), emptySelection, target, {
       ports: {
-        worldPoints: [{ x: 0, y: 0 }, { x: 50, y: 50 }],
+        worldPoints: [
+          { x: 0, y: 0 },
+          { x: 50, y: 50 },
+        ],
       },
     });
     const ellipses = calls.filter((c) => c.method === "ellipse");
@@ -197,7 +198,12 @@ describe("renderOverlay", () => {
     renderOverlay(emptyScene(), emptySelection, target, {
       ports: [
         { worldPoints: [{ x: 0, y: 0 }] },
-        { worldPoints: [{ x: 10, y: 10 }, { x: 20, y: 20 }] },
+        {
+          worldPoints: [
+            { x: 10, y: 10 },
+            { x: 20, y: 20 },
+          ],
+        },
       ],
     });
     const ellipses = calls.filter((c) => c.method === "ellipse");
@@ -228,7 +234,7 @@ describe("renderOverlay", () => {
     const ellipses = calls.filter((c) => c.method === "ellipse");
     expect(ellipses.length).toBe(1);
     // Active radius > 0
-    expect((ellipses[0]!.args[2] as number)).toBeGreaterThan(0);
+    expect(ellipses[0]!.args[2] as number).toBeGreaterThan(0);
   });
 
   it("draws group bounds outline and handles when groupBounds is supplied", () => {
@@ -258,7 +264,18 @@ describe("renderOverlay", () => {
     paintElementSelectionHalo(
       target,
       w2s,
-      [{ loops: [[{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }]], outsetWorld: 2 }],
+      [
+        {
+          loops: [
+            [
+              { x: 0, y: 0 },
+              { x: 10, y: 0 },
+              { x: 10, y: 10 },
+            ],
+          ],
+          outsetWorld: 2,
+        },
+      ],
       1,
     );
     // peek = SELECTION_HALO_PEEK_PX (4), zoom 1 → 2×(2 + 4) = 12.
@@ -270,7 +287,15 @@ describe("renderOverlay", () => {
   it("link halo peeks the same constant past the link's centred stroke", () => {
     const { target, calls } = makeRecorder();
     renderOverlay(emptyScene(), emptySelection, target, {
-      selectedLinkPaths: [{ path: [{ x: 0, y: 0 }, { x: 100, y: 0 }], width: 4 }],
+      selectedLinkPaths: [
+        {
+          path: [
+            { x: 0, y: 0 },
+            { x: 100, y: 0 },
+          ],
+          width: 4,
+        },
+      ],
     });
     // link visible half-width = 4/2; halo = width + 2×peek/zoom = 4 + 8 = 12.
     expect(calls.some((c) => c.method === "setStrokeWidth" && c.args[0] === 12)).toBe(true);
@@ -289,13 +314,9 @@ describe("renderOverlay", () => {
   it("draws peer selection halos as dashed rects", () => {
     const { target, calls } = makeRecorder();
     renderOverlay(emptyScene(), emptySelection, target, {
-      peerSelections: [
-        { color: "#0f0", bounds: [{ x: 10, y: 10, width: 40, height: 40 }] },
-      ],
+      peerSelections: [{ color: "#0f0", bounds: [{ x: 10, y: 10, width: 40, height: 40 }] }],
     });
-    const dashCalls = calls.filter(
-      (c) => c.method === "setDashArray" && Array.isArray(c.args[0]),
-    );
+    const dashCalls = calls.filter((c) => c.method === "setDashArray" && Array.isArray(c.args[0]));
     expect(dashCalls.length).toBeGreaterThanOrEqual(1);
     const rects = calls.filter((c) => c.method === "rect");
     expect(rects.length).toBeGreaterThanOrEqual(1);
@@ -424,9 +445,7 @@ describe("renderOverlay", () => {
     renderOverlay(scene, new Set([shape.id]), target, {
       style: { selectionStroke: customStroke },
     });
-    const strokeCalls = calls.filter(
-      (c) => c.method === "setStroke" && c.args[0] === customStroke,
-    );
+    const strokeCalls = calls.filter((c) => c.method === "setStroke" && c.args[0] === customStroke);
     expect(strokeCalls.length).toBeGreaterThanOrEqual(1);
   });
 

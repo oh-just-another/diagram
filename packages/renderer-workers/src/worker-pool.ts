@@ -61,7 +61,11 @@ export class WorkerPool {
 
   private run(
     index: number,
-    work: { task: (w: Worker) => Promise<unknown>; resolve: (v: unknown) => void; reject: (err: unknown) => void },
+    work: {
+      task: (w: Worker) => Promise<unknown>;
+      resolve: (v: unknown) => void;
+      reject: (err: unknown) => void;
+    },
   ): void {
     this.busy[index] = true;
     const worker = this.workers[index];

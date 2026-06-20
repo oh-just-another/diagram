@@ -40,8 +40,7 @@ export const groupChildrenUnion = (scene: Scene, groupId: ElementId): Bounds | n
   let acc: Bounds | null = null;
   for (const s of scene.elements.values()) {
     if (s.parentId !== groupId) continue;
-    const inner =
-      s.type === "group" ? groupChildrenUnion(scene, s.id) : getElementWorldBounds(s);
+    const inner = s.type === "group" ? groupChildrenUnion(scene, s.id) : getElementWorldBounds(s);
     if (!inner) continue;
     acc = acc ? B.union(acc, inner) : inner;
   }

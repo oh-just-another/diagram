@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fileId } from "@oh-just-another/types";
-import {
-  addBinaryFile,
-  createBinaryFile,
-  emptyScene,
-} from "@oh-just-another/scene";
+import { addBinaryFile, createBinaryFile, emptyScene } from "@oh-just-another/scene";
 import { parseFiles, serializeFiles, stringifyFiles } from "../src/files";
 
 const bytesOf = (...values: number[]) => new Uint8Array(values).buffer as ArrayBuffer;

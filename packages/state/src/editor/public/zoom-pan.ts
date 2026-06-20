@@ -27,11 +27,7 @@ export const computePan = (scene: Scene, deltaScreen: Vec2): Scene | null => {
  * under the same screen pixel. Result is clamped to `[MIN_ZOOM,
  * MAX_ZOOM]`; a zero-effect call returns `null`.
  */
-export const computeZoomAt = (
-  scene: Scene,
-  factor: number,
-  anchorWorld: Vec2,
-): Scene | null => {
+export const computeZoomAt = (scene: Scene, factor: number, anchorWorld: Vec2): Scene | null => {
   const currentZoom = scene.viewport.zoom;
   const targetZoom = clampZoom(currentZoom * factor);
   const effectiveFactor = targetZoom / currentZoom;

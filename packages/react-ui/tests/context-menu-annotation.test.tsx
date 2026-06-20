@@ -10,19 +10,14 @@ import { DEFAULT_CONTEXT_MENU, type ContextMenuItem } from "../src/context-menu"
  */
 
 const findAction = (id: string): Extract<ContextMenuItem, { kind: "action" }> => {
-  const found = DEFAULT_CONTEXT_MENU.find(
-    (item) => item.kind === "action" && item.id === id,
-  );
+  const found = DEFAULT_CONTEXT_MENU.find((item) => item.kind === "action" && item.id === id);
   if (!found || found.kind !== "action") {
     throw new Error(`Action ${id} missing from DEFAULT_CONTEXT_MENU`);
   }
   return found;
 };
 
-const editorWith = (
-  hit: AnnotationId | null,
-  overrides: Partial<Editor> = {},
-): Editor =>
+const editorWith = (hit: AnnotationId | null, overrides: Partial<Editor> = {}): Editor =>
   ({
     hitAnnotation: vi.fn(() => hit),
     setSelectedAnnotation: vi.fn(),

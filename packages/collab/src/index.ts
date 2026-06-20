@@ -26,8 +26,4 @@ export {
   EncryptedTransport,
   type RoomCredentials,
 } from "./encryption.js";
-export {
-  ROOM_ID_BYTES,
-  ENCRYPTION_KEY_BITS,
-  ENCRYPTION_IV_BYTES,
-} from "./constants.js";
+export { ROOM_ID_BYTES, ENCRYPTION_KEY_BITS, ENCRYPTION_IV_BYTES } from "./constants.js";

@@ -9,12 +9,7 @@ import {
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
-import {
-  findCommonAncestor,
-  SnapshotStore,
-  mergeBranchHeads,
-  threeWayMerge,
-} from "../src/index";
+import { findCommonAncestor, SnapshotStore, mergeBranchHeads, threeWayMerge } from "../src/index";
 
 const rect = (id: string, x = 0, y = 0, w = 20, h = 20): Element => ({
   id: elementId(id),

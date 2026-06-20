@@ -76,7 +76,15 @@ describe("hitHandle", () => {
     // No edge in the set → a point on the top edge is not a hit.
     expect(hitHandle({ x: 30, y: 0 }, bounds, 1, HANDLE_HIT_SLOP, CORNER_HANDLES)).toBeNull();
     // Corners still hit.
-    expect(hitHandle({ x: -HANDLE_OUTSET, y: -HANDLE_OUTSET }, bounds, 1, HANDLE_HIT_SLOP, CORNER_HANDLES)).toBe("nw");
+    expect(
+      hitHandle(
+        { x: -HANDLE_OUTSET, y: -HANDLE_OUTSET },
+        bounds,
+        1,
+        HANDLE_HIT_SLOP,
+        CORNER_HANDLES,
+      ),
+    ).toBe("nw");
   });
 });
 

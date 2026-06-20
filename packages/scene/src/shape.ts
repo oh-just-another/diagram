@@ -307,8 +307,7 @@ export const isImage = (s: ElementBase): s is ImageElement => s.type === "image"
 export const isTemplate = (s: ElementBase): s is TemplateElement => s.type === "template";
 export const isGroup = (s: ElementBase): s is GroupElement => s.type === "group";
 export const isFrame = (s: ElementBase): s is FrameElement => s.type === "frame";
-export const isBlockArrow = (s: ElementBase): s is BlockArrowElement =>
-  s.type === "block-arrow";
+export const isBlockArrow = (s: ElementBase): s is BlockArrowElement => s.type === "block-arrow";
 export const isBrush = (s: ElementBase): s is BrushElement => s.type === "brush";
 
 // --- bounder registry ---

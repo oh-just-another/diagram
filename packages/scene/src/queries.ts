@@ -21,7 +21,8 @@ import { SpatialGrid } from "./spatial.js";
 
 // --- direct lookups ---
 
-export const getElement = (scene: Scene, id: ElementId): Element | undefined => scene.elements.get(id);
+export const getElement = (scene: Scene, id: ElementId): Element | undefined =>
+  scene.elements.get(id);
 
 export const getLink = (scene: Scene, id: LinkId): Link | undefined => scene.links.get(id);
 
@@ -119,8 +120,16 @@ const flattenPath = (commands: readonly PathCommand[]): Vec2[] => {
         const t = i / PATH_CURVE_SAMPLES;
         const u = 1 - t;
         pts.push({
-          x: u ** 3 * cur.x + 3 * u * u * t * c.control1.x + 3 * u * t * t * c.control2.x + t ** 3 * c.to.x,
-          y: u ** 3 * cur.y + 3 * u * u * t * c.control1.y + 3 * u * t * t * c.control2.y + t ** 3 * c.to.y,
+          x:
+            u ** 3 * cur.x +
+            3 * u * u * t * c.control1.x +
+            3 * u * t * t * c.control2.x +
+            t ** 3 * c.to.x,
+          y:
+            u ** 3 * cur.y +
+            3 * u * u * t * c.control1.y +
+            3 * u * t * t * c.control2.y +
+            t ** 3 * c.to.y,
         });
       }
       cur = c.to;
@@ -186,7 +195,8 @@ const localOutlineLoops = (shape: Element): Vec2[][] | null => {
 export const getElementOutline = (scene: Scene, shape: Element): Vec2[][] => {
   if (isGroup(shape)) {
     const loops: Vec2[][] = [];
-    for (const child of getChildrenOf(scene, shape.id)) loops.push(...getElementOutline(scene, child));
+    for (const child of getChildrenOf(scene, shape.id))
+      loops.push(...getElementOutline(scene, child));
     return loops;
   }
   const local = localOutlineLoops(shape);
@@ -394,7 +404,11 @@ export const buildSpatialIndex = (scene: Scene, cellSize?: number): SpatialGrid 
  * actually intersects `range`. The grid pre-filters by cell overlap; this
  * function does the precise AABB filter.
  */
-export const queryByIndex = (scene: Scene, grid: SpatialGrid, range: Bounds): readonly Element[] => {
+export const queryByIndex = (
+  scene: Scene,
+  grid: SpatialGrid,
+  range: Bounds,
+): readonly Element[] => {
   const candidates = grid.query(range);
   const out: Element[] = [];
   for (const id of candidates) {

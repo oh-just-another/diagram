@@ -92,7 +92,9 @@ export const MainMenu = ({
     };
   }, [open]);
 
-  const close = useCallback(() => { setOpen(false); }, []);
+  const close = useCallback(() => {
+    setOpen(false);
+  }, []);
 
   const containerStyle: CSSProperties = {
     position: "relative",
@@ -124,7 +126,9 @@ export const MainMenu = ({
         aria-controls={menuId}
         aria-label="Main menu"
         title="Main menu"
-        onClick={() => { setOpen((p) => !p); }}
+        onClick={() => {
+          setOpen((p) => !p);
+        }}
       >
         {trigger}
       </button>
@@ -209,7 +213,7 @@ const Item = ({ children, onClick, shortcut, disabled, active, icon }: MainMenuI
             color: active ? "var(--du-accent, #1a73e8)" : "var(--du-text-muted, #888)",
           }}
         >
-          {active ? <Check size={12} strokeWidth={2.25} /> : icon ?? ""}
+          {active ? <Check size={12} strokeWidth={2.25} /> : (icon ?? "")}
         </span>
         {children}
       </span>
@@ -284,11 +288,7 @@ export interface MainMenuToggleProps<T extends string> {
   readonly options: readonly { value: T; label: string; icon?: ReactNode }[];
 }
 
-const Toggle = <T extends string>({
-  value,
-  onChange,
-  options,
-}: MainMenuToggleProps<T>) => {
+const Toggle = <T extends string>({ value, onChange, options }: MainMenuToggleProps<T>) => {
   return (
     <div
       role="radiogroup"
@@ -311,7 +311,9 @@ const Toggle = <T extends string>({
             aria-checked={active}
             title={opt.label}
             aria-label={opt.label}
-            onClick={() => { onChange(opt.value); }}
+            onClick={() => {
+              onChange(opt.value);
+            }}
             style={{
               flex: 1,
               display: "inline-flex",

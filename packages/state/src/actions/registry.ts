@@ -59,9 +59,7 @@ export class ActionRegistry {
   }
 
   getAll(): readonly Action[] {
-    return this.order
-      .map((id) => this.entries.get(id))
-      .filter((a): a is Action => a !== undefined);
+    return this.order.map((id) => this.entries.get(id)).filter((a): a is Action => a !== undefined);
   }
 
   /**
@@ -122,8 +120,7 @@ export class ActionRegistry {
    * any modifier combo clears the buffer so `g`-then-`Cmd+d` can't match.
    */
   private trySequence(event: KeyboardEvent, ctx: ActionContext): boolean {
-    const plain =
-      event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
+    const plain = event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
     if (!plain) {
       this.seqBuffer = [];
       return false;

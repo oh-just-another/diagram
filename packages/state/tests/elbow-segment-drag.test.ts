@@ -43,17 +43,38 @@ const buildScene = (): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 800, height: 600 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 800, height: 600 },
 } as never;
 
 const makeHost = () => {
@@ -61,7 +82,9 @@ const makeHost = () => {
   const host = {
     addEventListener: (t: string, fn: (ev: unknown) => void) => handlers.set(t, fn),
     removeEventListener: (t: string) => handlers.delete(t),
-    setPointerCapture: () => {}, releasePointerCapture: () => {}, hasPointerCapture: () => true,
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+    hasPointerCapture: () => true,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
     style: { cursor: "" },
   } as never;
@@ -69,10 +92,19 @@ const makeHost = () => {
 };
 
 const pointer = (type: string, x: number, y: number) => ({
-  type, clientX: x, clientY: y, pointerId: 1, pointerType: "mouse", button: 0,
+  type,
+  clientX: x,
+  clientY: y,
+  pointerId: 1,
+  pointerType: "mouse",
+  button: 0,
   buttons: type === "pointerup" ? 0 : 1,
-  shiftKey: false, ctrlKey: false, altKey: false, metaKey: false,
-  timeStamp: 0, preventDefault: () => {},
+  shiftKey: false,
+  ctrlKey: false,
+  altKey: false,
+  metaKey: false,
+  timeStamp: 0,
+  preventDefault: () => {},
 });
 
 const orthogonal = (path: readonly { x: number; y: number }[]) => {
@@ -88,7 +120,10 @@ describe("elbow segment drag", () => {
   it("dragging an interior segment moves it perpendicular and pins it", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: buildScene(),
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: buildScene(),
     });
     editor.forceRender(); // fill routedPoints
 
@@ -102,11 +137,14 @@ describe("elbow segment drag", () => {
     const axis: "h" | "v" = Math.abs(a.y - b.y) < 1e-6 ? "h" : "v";
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 
-    const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
-    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
+    const down = (x: number, y: number) =>
+      handlers.get("pointerdown")!(pointer("pointerdown", x, y));
+    const move = (x: number, y: number) =>
+      handlers.get("pointermove")!(pointer("pointermove", x, y));
     const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
 
-    down(mid.x, mid.y); up(mid.x, mid.y); // select the link
+    down(mid.x, mid.y);
+    up(mid.x, mid.y); // select the link
     expect(editor.selectedLink).toBe(linkId("L"));
 
     // Drag the interior segment perpendicular by +40.
@@ -125,15 +163,24 @@ describe("elbow segment drag", () => {
     const wanted = axis === "h" ? mid.y + 40 : mid.x + 40;
     const found =
       axis === "h"
-        ? newPath.some((p, i) => i > 0 && Math.abs(p.y - wanted) < 1 && Math.abs(newPath[i - 1]!.y - wanted) < 1)
-        : newPath.some((p, i) => i > 0 && Math.abs(p.x - wanted) < 1 && Math.abs(newPath[i - 1]!.x - wanted) < 1);
+        ? newPath.some(
+            (p, i) =>
+              i > 0 && Math.abs(p.y - wanted) < 1 && Math.abs(newPath[i - 1]!.y - wanted) < 1,
+          )
+        : newPath.some(
+            (p, i) =>
+              i > 0 && Math.abs(p.x - wanted) < 1 && Math.abs(newPath[i - 1]!.x - wanted) < 1,
+          );
     expect(found).toBe(true);
   });
 
   it("a pinned segment survives a shape move (matched by axis + position)", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: buildScene(),
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: buildScene(),
     });
     editor.forceRender();
     const path = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
@@ -142,12 +189,17 @@ describe("elbow segment drag", () => {
     const b = path[k + 1]!;
     const axis: "h" | "v" = Math.abs(a.y - b.y) < 1e-6 ? "h" : "v";
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
-    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
+    const down = (x: number, y: number) =>
+      handlers.get("pointerdown")!(pointer("pointerdown", x, y));
+    const move = (x: number, y: number) =>
+      handlers.get("pointermove")!(pointer("pointermove", x, y));
     const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
-    down(mid.x, mid.y); up(mid.x, mid.y);
+    down(mid.x, mid.y);
+    up(mid.x, mid.y);
     const target = axis === "h" ? { x: mid.x, y: mid.y + 40 } : { x: mid.x + 40, y: mid.y };
-    down(mid.x, mid.y); move(target.x, target.y); up(target.x, target.y);
+    down(mid.x, mid.y);
+    move(target.x, target.y);
+    up(target.x, target.y);
     editor.forceRender();
     const wanted = axis === "h" ? mid.y + 40 : mid.x + 40;
 
@@ -161,8 +213,12 @@ describe("elbow segment drag", () => {
     const p2 = getLinkPath(editor.scene, link)!;
     const stillPinned =
       axis === "h"
-        ? p2.some((p, i) => i > 0 && Math.abs(p.y - wanted) < 1 && Math.abs(p2[i - 1]!.y - wanted) < 1)
-        : p2.some((p, i) => i > 0 && Math.abs(p.x - wanted) < 1 && Math.abs(p2[i - 1]!.x - wanted) < 1);
+        ? p2.some(
+            (p, i) => i > 0 && Math.abs(p.y - wanted) < 1 && Math.abs(p2[i - 1]!.y - wanted) < 1,
+          )
+        : p2.some(
+            (p, i) => i > 0 && Math.abs(p.x - wanted) < 1 && Math.abs(p2[i - 1]!.x - wanted) < 1,
+          );
     expect(stillPinned).toBe(true);
     expect(orthogonal(p2)).toBe(true);
   });
@@ -185,7 +241,12 @@ describe("elbow segment drag", () => {
     s = addLink(s, e).scene;
 
     const { host, handlers } = makeHost();
-    const editor = new Editor({ host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: s });
+    const editor = new Editor({
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: s,
+    });
     editor.forceRender();
     const path = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
     expect(path.length).toBe(4); // buffered straight: [from, bufA, bufB, to]
@@ -196,11 +257,16 @@ describe("elbow segment drag", () => {
     const segB = path[2]!;
     const mid = { x: (segA.x + segB.x) / 2, y: segA.y };
 
-    const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
-    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
+    const down = (x: number, y: number) =>
+      handlers.get("pointerdown")!(pointer("pointerdown", x, y));
+    const move = (x: number, y: number) =>
+      handlers.get("pointermove")!(pointer("pointermove", x, y));
     const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
-    down(mid.x, mid.y); up(mid.x, mid.y); // select
-    down(mid.x, mid.y); move(mid.x, mid.y + 60); up(mid.x, mid.y + 60); // bend middle down
+    down(mid.x, mid.y);
+    up(mid.x, mid.y); // select
+    down(mid.x, mid.y);
+    move(mid.x, mid.y + 60);
+    up(mid.x, mid.y + 60); // bend middle down
     editor.forceRender();
 
     const p2 = getLinkPath(editor.scene, [...editor.scene.links.values()][0]!)!;
@@ -217,7 +283,10 @@ describe("elbow segment drag", () => {
   it("double-clicking a pinned segment handle drops the pin (back to auto route)", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: buildScene(),
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: buildScene(),
     });
     editor.forceRender();
 
@@ -228,14 +297,19 @@ describe("elbow segment drag", () => {
     const axis: "h" | "v" = Math.abs(a.y - b.y) < 1e-6 ? "h" : "v";
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 
-    const down = (x: number, y: number) => handlers.get("pointerdown")!(pointer("pointerdown", x, y));
-    const move = (x: number, y: number) => handlers.get("pointermove")!(pointer("pointermove", x, y));
+    const down = (x: number, y: number) =>
+      handlers.get("pointerdown")!(pointer("pointerdown", x, y));
+    const move = (x: number, y: number) =>
+      handlers.get("pointermove")!(pointer("pointermove", x, y));
     const up = (x: number, y: number) => handlers.get("pointerup")!(pointer("pointerup", x, y));
 
-    down(mid.x, mid.y); up(mid.x, mid.y); // select
+    down(mid.x, mid.y);
+    up(mid.x, mid.y); // select
     // Pin the interior segment by dragging it +40 perpendicular.
     const tgt = axis === "h" ? { x: mid.x, y: mid.y + 40 } : { x: mid.x + 40, y: mid.y };
-    down(mid.x, mid.y); move(tgt.x, tgt.y); up(tgt.x, tgt.y);
+    down(mid.x, mid.y);
+    move(tgt.x, tgt.y);
+    up(tgt.x, tgt.y);
     editor.forceRender();
     expect([...editor.scene.links.values()][0]!.fixedSegments!.length).toBeGreaterThan(0);
 
@@ -257,8 +331,10 @@ describe("elbow segment drag", () => {
     }
 
     // Double-click that handle → pin removed.
-    down(hx, hy); up(hx, hy);
-    down(hx, hy); up(hx, hy);
+    down(hx, hy);
+    up(hx, hy);
+    down(hx, hy);
+    up(hx, hy);
     editor.forceRender();
     const fixed = [...editor.scene.links.values()][0]!.fixedSegments ?? [];
     expect(fixed.length).toBe(0);

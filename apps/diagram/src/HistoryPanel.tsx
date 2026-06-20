@@ -1,5 +1,10 @@
 import { describe as describePatch } from "@oh-just-another/history";
-import { useHistory, useScene, useDiagramOptional, useEditorSelector } from "@oh-just-another/react-ui";
+import {
+  useHistory,
+  useScene,
+  useDiagramOptional,
+  useEditorSelector,
+} from "@oh-just-another/react-ui";
 import type { Editor } from "@oh-just-another/state";
 import type { Patch } from "@oh-just-another/scene";
 

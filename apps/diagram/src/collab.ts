@@ -11,11 +11,7 @@ import {
   SceneDoc,
   TransportProvider,
 } from "@oh-just-another/collab";
-import {
-  WebSocketTransport,
-  type Transport,
-  type WebSocketStatus,
-} from "@oh-just-another/network";
+import { WebSocketTransport, type Transport, type WebSocketStatus } from "@oh-just-another/network";
 
 /**
  * Collab orchestration for the demo. URL model:
@@ -59,9 +55,7 @@ export interface CollabAPI {
 }
 
 export const useCollab = (editor: Editor | null): CollabAPI => {
-  const [credentials, setCredentials] = useState<ParsedHashCreds | null>(
-    readCredentialsFromHash,
-  );
+  const [credentials, setCredentials] = useState<ParsedHashCreds | null>(readCredentialsFromHash);
   const [awareness, setAwareness] = useState<CollabAwareness | null>(null);
   const [status, setStatus] = useState<ConnectionStatus | null>(null);
   const credentialsRef = useRef(credentials);
@@ -75,7 +69,9 @@ export const useCollab = (editor: Editor | null): CollabAPI => {
       setCredentials(readCredentialsFromHash());
     };
     window.addEventListener("hashchange", onHashChange);
-    return () => { window.removeEventListener("hashchange", onHashChange); };
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -85,7 +81,6 @@ export const useCollab = (editor: Editor | null): CollabAPI => {
 
     void (async () => {
       const key = await importRoomKey(credentials.keyBase64).catch((err: unknown) => {
-
         console.warn("[collab] invalid key in URL hash:", err);
         return null;
       });
@@ -102,9 +97,7 @@ export const useCollab = (editor: Editor | null): CollabAPI => {
         `${resolveRelayBase()}/${credentials.roomId}`,
       );
       const unsubscribeStatus =
-        rawTransport instanceof WebSocketTransport
-          ? rawTransport.onStatusChange(setStatus)
-          : null;
+        rawTransport instanceof WebSocketTransport ? rawTransport.onStatusChange(setStatus) : null;
       const transport = new EncryptedTransport(rawTransport, key);
 
       const provider = new TransportProvider({

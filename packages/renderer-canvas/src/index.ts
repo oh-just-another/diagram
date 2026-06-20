@@ -13,11 +13,7 @@ export {
 // (backend-neutral primitives don't belong in the Canvas-specific package).
 // Re-export to keep existing imports working.
 export { WorkerPool, LayerWorkerPool } from "@oh-just-another/renderer-workers";
-export {
-  RecordingTarget,
-  replayCommands,
-  type RenderCommand,
-} from "./recording-target.js";
+export { RecordingTarget, replayCommands, type RenderCommand } from "./recording-target.js";
 export {
   createLayeredSurface,
   createLayeredSurfaceWithFallback,
@@ -25,11 +21,7 @@ export {
   type RendererBackend,
   type CreateLayeredSurfaceOptions,
 } from "./layered-surface.js";
-export {
-  isWebGPUAvailable,
-  isWebGL2Available,
-  pickAvailableBackend,
-} from "./webgpu-detect.js";
+export { isWebGPUAvailable, isWebGL2Available, pickAvailableBackend } from "./webgpu-detect.js";
 export { LARGE_SCENE_WORKER_THRESHOLD } from "./constants.js";
 
 // `installBuiltinRenderers` and `wrapText` live in

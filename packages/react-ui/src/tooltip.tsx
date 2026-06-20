@@ -90,8 +90,7 @@ const requestOpen = (target: TooltipTarget): void => {
   if (openTimer) clearTimeout(openTimer);
 
   const elapsedSinceLastClose = Date.now() - lastClosedAt;
-  const skipDelay = currentTarget !== null
-    || elapsedSinceLastClose < TOOLTIP_SKIP_DELAY_MS;
+  const skipDelay = currentTarget !== null || elapsedSinceLastClose < TOOLTIP_SKIP_DELAY_MS;
 
   if (skipDelay) {
     setTarget(target);

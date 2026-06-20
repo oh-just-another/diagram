@@ -1,5 +1,12 @@
 import { assign, enqueueActions, setup } from "xstate";
-import type { AnnotationId, Bounds, LinkId, Modifiers, ElementId, Vec2 } from "@oh-just-another/types";
+import type {
+  AnnotationId,
+  Bounds,
+  LinkId,
+  Modifiers,
+  ElementId,
+  Vec2,
+} from "@oh-just-another/types";
 import type { HandleId } from "./handle.js";
 import { DEFAULT_MODE, type Mode } from "./modes.js";
 

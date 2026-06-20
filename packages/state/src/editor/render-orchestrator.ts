@@ -340,10 +340,7 @@ export const renderEditor = (editor: Editor): void => {
   // Group-handle overlay: a multi-object selection (elements + links) OR a
   // single group-typed shape. A lone link keeps its endpoint handles, not a
   // resize box. Aspect-locked groups flag the overlay for corner-only handles.
-  if (
-    editor._selection.size + editor._selectedLinks.size > 1 ||
-    editor.selectionIsAspectLocked()
-  ) {
+  if (editor._selection.size + editor._selectedLinks.size > 1 || editor.selectionIsAspectLocked()) {
     const combined = editor.combinedSelectionBounds();
     if (combined) overlayOpts.groupBounds = combined;
     if (editor.selectionIsAspectLocked()) overlayOpts.groupAspectLocked = true;

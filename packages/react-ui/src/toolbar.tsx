@@ -62,7 +62,9 @@ const ActionRefButton = ({ id }: { readonly id: string }) => {
   const [, force] = useState(0);
   useEffect(() => {
     if (!editor) return undefined;
-    return editor.on("change", () => { force((n) => n + 1); });
+    return editor.on("change", () => {
+      force((n) => n + 1);
+    });
   }, [editor]);
   const action = defaultActionRegistry.get(id);
   if (!action) return null;
@@ -71,7 +73,11 @@ const ActionRefButton = ({ id }: { readonly id: string }) => {
   const active = ctx ? (action.checked?.(ctx) ?? false) : false;
   const enabled = ctx ? (action.predicate ? action.predicate(ctx) : true) : false;
   const matchers: readonly HotkeyMatcher[] =
-    action.hotkey === undefined ? [] : Array.isArray(action.hotkey) ? action.hotkey : [action.hotkey];
+    action.hotkey === undefined
+      ? []
+      : Array.isArray(action.hotkey)
+        ? action.hotkey
+        : [action.hotkey];
   const first = matchers[0];
   const title = `${action.label ?? id}${first ? ` (${formatHotkey(first)})` : ""}`;
   return (
@@ -79,7 +85,9 @@ const ActionRefButton = ({ id }: { readonly id: string }) => {
       title={title}
       active={active}
       disabled={!enabled}
-      onClick={() => { if (editor) defaultActionRegistry.dispatch(id, { editor }); }}
+      onClick={() => {
+        if (editor) defaultActionRegistry.dispatch(id, { editor });
+      }}
     >
       {Icon ? <Icon {...iconProps} /> : (action.label ?? id)}
     </ToolbarButton>
@@ -204,7 +212,9 @@ export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
     id: "insert-image",
     label: <ImageIcon {...iconProps} />,
     title: "Insert image (I)",
-    onClick: (editor) => { openImageFilePicker(editor); },
+    onClick: (editor) => {
+      openImageFilePicker(editor);
+    },
   },
   { kind: "action-ref", id: "toggle-tool-lock" },
   { kind: "divider" },
@@ -235,7 +245,9 @@ export const DEFAULT_VERTICAL_TOOLBAR: readonly ToolbarItem[] = [
     id: "insert-image",
     label: <ImageIcon {...iconProps} />,
     title: "Insert image (I)",
-    onClick: (editor) => { openImageFilePicker(editor); },
+    onClick: (editor) => {
+      openImageFilePicker(editor);
+    },
   },
   { kind: "divider" },
   { kind: "action-ref", id: "toggle-tool-lock" },
@@ -462,7 +474,13 @@ export const ZoomToFitButton = ({
  * Live zoom percent. Clicks reset zoom to 100% — same UX as the percent
  * button in `ZoomWidget`.
  */
-export const ZoomDisplay = ({ className, style }: { readonly className?: string; readonly style?: CSSProperties }) => {
+export const ZoomDisplay = ({
+  className,
+  style,
+}: {
+  readonly className?: string;
+  readonly style?: CSSProperties;
+}) => {
   const editor = useDiagramOptional();
   const zoom = useEditorSelector((e) => e.scene.viewport.zoom, 1);
   const percent = `${Math.round(zoom * 100)}%`;
@@ -483,8 +501,17 @@ export const ZoomDisplay = ({ className, style }: { readonly className?: string;
  * Pre-composed inline zoom widget: − / current % / + / Fit. Equivalent
  * to laying the four standalone buttons + display in a row.
  */
-export const ZoomWidget = ({ className, style }: { readonly className?: string; readonly style?: CSSProperties }) => (
-  <span className={className} style={{ display: "inline-flex", alignItems: "center", gap: 2, ...style }}>
+export const ZoomWidget = ({
+  className,
+  style,
+}: {
+  readonly className?: string;
+  readonly style?: CSSProperties;
+}) => (
+  <span
+    className={className}
+    style={{ display: "inline-flex", alignItems: "center", gap: 2, ...style }}
+  >
     <ZoomOutButton />
     <ZoomDisplay />
     <ZoomInButton />

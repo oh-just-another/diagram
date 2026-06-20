@@ -26,7 +26,10 @@ test("persistence: created shape survives a hard reload", async ({ page }) => {
   await page.waitForLoadState("networkidle");
 
   // Create one rectangle: R, then Enter on the focused canvas.
-  await page.locator("canvas").first().click({ position: { x: 120, y: 120 } });
+  await page
+    .locator("canvas")
+    .first()
+    .click({ position: { x: 120, y: 120 } });
   await page.keyboard.press("r");
   await page.keyboard.press("Enter");
   // Wait a tick so the autosave's queueMicrotask has fired.
@@ -52,7 +55,10 @@ test("persistence: created shape survives a hard reload", async ({ page }) => {
   // shapes — Tab + Enter inside the editor mode picks the first focusable
   // shape. This just checks a no-throw boot path; the assertion above
   // already proves persistence happened.
-  await page.locator("canvas").first().click({ position: { x: 30, y: 30 } });
+  await page
+    .locator("canvas")
+    .first()
+    .click({ position: { x: 30, y: 30 } });
   await page.keyboard.press("Tab");
   await expect(page.locator("body")).toBeVisible();
 });

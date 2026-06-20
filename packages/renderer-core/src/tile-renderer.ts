@@ -229,13 +229,11 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
    * Caller computes the bounds via `getElementWorldBounds(before|after)`
    * since this package is pure and doesn't know about Element geometry.
    */
-  invalidateForPatch(
-    options: {
-      readonly removedElementId?: ElementId;
-      readonly beforeBounds?: Bounds;
-      readonly afterBounds?: Bounds;
-    },
-  ): void {
+  invalidateForPatch(options: {
+    readonly removedElementId?: ElementId;
+    readonly beforeBounds?: Bounds;
+    readonly afterBounds?: Bounds;
+  }): void {
     if (options.removedElementId) this.invalidateForElement(options.removedElementId);
     if (options.beforeBounds) this.invalidateRect(options.beforeBounds);
     if (options.afterBounds) this.invalidateRect(options.afterBounds);

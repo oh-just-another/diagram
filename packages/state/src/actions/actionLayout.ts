@@ -13,7 +13,9 @@ const arrangeGrid: Action = {
   label: "Arrange as grid",
   category: "layout",
   predicate: ({ editor }) => editor.selection.size > 1,
-  perform: ({ editor }) => { editor.arrangeAsGrid(); },
+  perform: ({ editor }) => {
+    editor.arrangeAsGrid();
+  },
 };
 
 const arrangeStackH: Action = {
@@ -21,7 +23,9 @@ const arrangeStackH: Action = {
   label: "Stack horizontally",
   category: "layout",
   predicate: ({ editor }) => editor.selection.size > 1,
-  perform: ({ editor }) => { editor.arrangeAsStack({ direction: "horizontal" }); },
+  perform: ({ editor }) => {
+    editor.arrangeAsStack({ direction: "horizontal" });
+  },
 };
 
 const arrangeStackV: Action = {
@@ -29,7 +33,9 @@ const arrangeStackV: Action = {
   label: "Stack vertically",
   category: "layout",
   predicate: ({ editor }) => editor.selection.size > 1,
-  perform: ({ editor }) => { editor.arrangeAsStack({ direction: "vertical" }); },
+  perform: ({ editor }) => {
+    editor.arrangeAsStack({ direction: "vertical" });
+  },
 };
 
 /**
@@ -57,7 +63,9 @@ const compactZOrder: Action = {
   id: "compact-z-order",
   label: "Compact z-order",
   category: "z-order",
-  perform: ({ editor }) => { editor.compactLayerZOrder(); },
+  perform: ({ editor }) => {
+    editor.compactLayerZOrder();
+  },
 };
 
 export const layoutActions: readonly Action[] = [

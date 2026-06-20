@@ -59,12 +59,16 @@ export const LinkHoverPopup = () => {
         scheduleClose();
       }
     };
-    const onLeave = () => { scheduleClose(); };
+    const onLeave = () => {
+      scheduleClose();
+    };
 
     host.addEventListener("pointermove", onMove);
     host.addEventListener("pointerleave", onLeave);
     // Follow pan / zoom while the popup is open.
-    const off = editor.on("change", () => { bump(); });
+    const off = editor.on("change", () => {
+      bump();
+    });
     return () => {
       host.removeEventListener("pointermove", onMove);
       host.removeEventListener("pointerleave", onLeave);

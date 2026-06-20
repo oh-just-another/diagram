@@ -14,47 +14,47 @@ import type { Transport } from "./transport.js";
  * job.
  */
 export class BroadcastChannelTransport implements Transport {
- private channel: BroadcastChannel | null;
- private readonly handlers = new Set<(payload: Uint8Array) => void>();
+  private channel: BroadcastChannel | null;
+  private readonly handlers = new Set<(payload: Uint8Array) => void>();
 
- constructor(name: string) {
-  this.channel = new BroadcastChannel(name);
-  this.channel.addEventListener("message", this.onNativeMessage);
- }
-
- send(payload: Uint8Array): void {
-  if (!this.channel) return;
-  // postMessage clones structured data — pass the buffer directly so
-  // receivers see a fresh Uint8Array on the other side.
-  this.channel.postMessage(payload);
- }
-
- onMessage(handler: (payload: Uint8Array) => void): () => void {
-  this.handlers.add(handler);
-  return () => this.handlers.delete(handler);
- }
-
- close(): void {
-  if (!this.channel) return;
-  this.channel.removeEventListener("message", this.onNativeMessage);
-  this.channel.close();
-  this.channel = null;
-  this.handlers.clear();
- }
-
- // Bound so we can remove the listener cleanly.
- private readonly onNativeMessage = (ev: MessageEvent<unknown>): void => {
-  const payload = toUint8Array(ev.data);
-  if (!payload) {
-   console.warn(
-    "[BroadcastChannelTransport] dropped inbound message — unsupported payload type",
-    Object.prototype.toString.call(ev.data),
-    ev.data,
-   );
-   return;
+  constructor(name: string) {
+    this.channel = new BroadcastChannel(name);
+    this.channel.addEventListener("message", this.onNativeMessage);
   }
-  for (const h of this.handlers) h(payload);
- };
+
+  send(payload: Uint8Array): void {
+    if (!this.channel) return;
+    // postMessage clones structured data — pass the buffer directly so
+    // receivers see a fresh Uint8Array on the other side.
+    this.channel.postMessage(payload);
+  }
+
+  onMessage(handler: (payload: Uint8Array) => void): () => void {
+    this.handlers.add(handler);
+    return () => this.handlers.delete(handler);
+  }
+
+  close(): void {
+    if (!this.channel) return;
+    this.channel.removeEventListener("message", this.onNativeMessage);
+    this.channel.close();
+    this.channel = null;
+    this.handlers.clear();
+  }
+
+  // Bound so we can remove the listener cleanly.
+  private readonly onNativeMessage = (ev: MessageEvent<unknown>): void => {
+    const payload = toUint8Array(ev.data);
+    if (!payload) {
+      console.warn(
+        "[BroadcastChannelTransport] dropped inbound message — unsupported payload type",
+        Object.prototype.toString.call(ev.data),
+        ev.data,
+      );
+      return;
+    }
+    for (const h of this.handlers) h(payload);
+  };
 }
 
 /**
@@ -64,12 +64,12 @@ export class BroadcastChannelTransport implements Transport {
  * via `Object.prototype.toString.call` instead.
  */
 const toUint8Array = (data: unknown): Uint8Array | null => {
- if (data === null || data === undefined) return null;
- const tag = Object.prototype.toString.call(data);
- if (tag === "[object Uint8Array]") {
-  const view = data as { buffer: ArrayBuffer; byteOffset: number; byteLength: number };
-  return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
- }
- if (tag === "[object ArrayBuffer]") return new Uint8Array(data as ArrayBuffer);
- return null;
+  if (data === null || data === undefined) return null;
+  const tag = Object.prototype.toString.call(data);
+  if (tag === "[object Uint8Array]") {
+    const view = data as { buffer: ArrayBuffer; byteOffset: number; byteLength: number };
+    return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+  }
+  if (tag === "[object ArrayBuffer]") return new Uint8Array(data as ArrayBuffer);
+  return null;
 };

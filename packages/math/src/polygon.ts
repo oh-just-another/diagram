@@ -25,10 +25,7 @@ const req = <T>(v: T | undefined): T => {
  * inward/outward sign on isolated vertices. Polygons with fewer than 3 vertices
  * are returned unchanged.
  */
-export const offsetClosedPath = (
-  points: readonly Vec2[],
-  distance: number,
-): Vec2[] => {
+export const offsetClosedPath = (points: readonly Vec2[], distance: number): Vec2[] => {
   if (points.length < 3 || distance === 0) return points.map((p) => ({ x: p.x, y: p.y }));
 
   // Centroid as an interior reference, used to disambiguate inward / outward

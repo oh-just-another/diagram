@@ -1,9 +1,5 @@
 import type { Transport } from "@oh-just-another/network";
-import {
-  ENCRYPTION_IV_BYTES,
-  ENCRYPTION_KEY_BITS,
-  ROOM_ID_BYTES,
-} from "./constants.js";
+import { ENCRYPTION_IV_BYTES, ENCRYPTION_KEY_BITS, ROOM_ID_BYTES } from "./constants.js";
 
 /**
  * Client-side AES-GCM encryption for collab transports. Mirrors

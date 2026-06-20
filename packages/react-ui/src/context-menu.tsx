@@ -73,9 +73,9 @@ export const ContextMenu = ({ items, target, style, className }: ContextMenuProp
   // menu at a chosen point.
   useEffect(() => {
     if (!controller) return undefined;
-    return controller.register(({ screenPoint, worldPoint }) =>
-      { setOpen({ screenPoint, worldPoint }); },
-    );
+    return controller.register(({ screenPoint, worldPoint }) => {
+      setOpen({ screenPoint, worldPoint });
+    });
   }, [controller]);
 
   // Wire the contextmenu listener (mouse right-click) AND long-press
@@ -129,7 +129,9 @@ export const ContextMenu = ({ items, target, style, className }: ContextMenuProp
     };
   }, [open]);
 
-  const close = useCallback(() => { setOpen(null); }, []);
+  const close = useCallback(() => {
+    setOpen(null);
+  }, []);
 
   if (!editor || !open) return null;
 
@@ -298,7 +300,9 @@ const actionMenuItem = (
     label: opts?.label ?? action?.label ?? actionId,
     ...(first ? { shortcut: formatHotkey(first) } : {}),
     ...(visible ? { visible } : {}),
-    onClick: (editor: Editor) => { defaultActionRegistry.dispatch(actionId, { editor }); },
+    onClick: (editor: Editor) => {
+      defaultActionRegistry.dispatch(actionId, { editor });
+    },
   };
 };
 

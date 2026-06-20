@@ -1,7 +1,4 @@
-import {
-  registerElementRenderer,
-  type ElementRenderer,
-} from "@oh-just-another/renderer-core";
+import { registerElementRenderer, type ElementRenderer } from "@oh-just-another/renderer-core";
 import {
   registerBounder,
   registerElementOutline,

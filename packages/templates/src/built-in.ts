@@ -28,7 +28,12 @@ const baseElement = (ctx: TemplateContext) => ({
   order: ctx.order,
 });
 
-const filledRect = (ctx: TemplateContext, width: number, height: number, style: Style): Element => ({
+const filledRect = (
+  ctx: TemplateContext,
+  width: number,
+  height: number,
+  style: Style,
+): Element => ({
   ...baseElement(ctx),
   type: "rectangle",
   style,

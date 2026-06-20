@@ -8,21 +8,43 @@ import { emptyScene } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 100, height: 100 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 100, height: 100 },
 } as never;
 
 const host = {
-  addEventListener: () => {}, removeEventListener: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
   getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }),
   style: { cursor: "" },
 } as never;
@@ -40,11 +62,11 @@ describe("editor typed events", () => {
     const editor = makeEditor();
     const fn = vi.fn();
     editor.on("mode", fn);
-    editor.setMode("select");           // same value
+    editor.setMode("select"); // same value
     expect(fn).not.toHaveBeenCalled();
     editor.setMode("draw-rect");
     expect(fn).toHaveBeenCalledWith("draw-rect");
-    editor.setMode("draw-rect");        // re-set same → no event
+    editor.setMode("draw-rect"); // re-set same → no event
     expect(fn).toHaveBeenCalledTimes(1);
   });
 

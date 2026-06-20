@@ -8,10 +8,7 @@ import {
   type Scene,
   type Element,
 } from "../src/index.js";
-import {
-  applyConflictResolutions,
-  mergeScenesThreeWay,
-} from "../src/three-way-merge.js";
+import { applyConflictResolutions, mergeScenesThreeWay } from "../src/three-way-merge.js";
 
 const rect = (id: string, x: number, y: number): Element => ({
   id: elementId(id),
@@ -98,9 +95,7 @@ describe("mergeScenesThreeWay", () => {
     const source = sceneOf(sourceVersion);
     const target = sceneOf(targetVersion);
     const report = mergeScenesThreeWay(ancestor, source, target);
-    const final = applyConflictResolutions(report, [
-      { elementId: elementId("a"), choice: "both" },
-    ]);
+    const final = applyConflictResolutions(report, [{ elementId: elementId("a"), choice: "both" }]);
     expect(final.elements.get(elementId("a"))?.position).toEqual({ x: 0, y: 50 });
     expect(final.elements.get(elementId("a-copy"))?.position).toEqual({ x: 50, y: 0 });
   });

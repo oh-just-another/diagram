@@ -98,10 +98,7 @@ export const snapResizeDelta = (
  */
 export const snapCreateBounds = (bounds: Bounds, spacing: number): Bounds => {
   const tl = snapPointToGrid({ x: bounds.x, y: bounds.y }, spacing);
-  const br = snapPointToGrid(
-    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
-    spacing,
-  );
+  const br = snapPointToGrid({ x: bounds.x + bounds.width, y: bounds.y + bounds.height }, spacing);
   return {
     x: tl.x,
     y: tl.y,

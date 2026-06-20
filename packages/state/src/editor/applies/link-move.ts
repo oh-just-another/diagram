@@ -47,7 +47,11 @@ export const translateLinkGeometry = (
   if (!hasMovableGeometry(link)) return null;
   const out: {
     waypoints?: readonly Vec2[];
-    fixedSegments?: readonly { readonly axis: "h" | "v"; readonly pos: number; readonly at: number }[];
+    fixedSegments?: readonly {
+      readonly axis: "h" | "v";
+      readonly pos: number;
+      readonly at: number;
+    }[];
     routedPoints?: readonly Vec2[];
   } = {};
   if (link.waypoints?.length) out.waypoints = shiftPts(link.waypoints, delta);
@@ -64,7 +68,9 @@ export const translateLinkGeometry = (
 
 /** A `point` endpoint shifted by `delta`; bound endpoints pass through. */
 const shiftEndpoint = (ep: Link["from"], delta: Vec2): Link["from"] =>
-  ep.kind === "point" ? { kind: "point", position: { x: ep.position.x + delta.x, y: ep.position.y + delta.y } } : ep;
+  ep.kind === "point"
+    ? { kind: "point", position: { x: ep.position.x + delta.x, y: ep.position.y + delta.y } }
+    : ep;
 
 /**
  * Translate a link for a DRAG: its geometry (waypoints / fixedSegments /
@@ -73,10 +79,7 @@ const shiftEndpoint = (ep: Link["from"], delta: Vec2): Link["from"] =>
  * from their (also-moving) elements. Returns the changed fields, or `null`
  * when there's nothing to move (a pure auto-routed bound link).
  */
-export const translateLinkForDrag = (
-  link: Link,
-  delta: Vec2,
-): Partial<Link> | null => {
+export const translateLinkForDrag = (link: Link, delta: Vec2): Partial<Link> | null => {
   const geom = translateLinkGeometry(link, delta);
   const fromMoves = link.from.kind === "point";
   const toMoves = link.to.kind === "point";
@@ -143,7 +146,10 @@ export const snapshotMovingLinks = (
 ): Map<LinkId, Link> => {
   const out = new Map<LinkId, Link>();
   for (const link of scene.links.values()) {
-    if (linkMovesWithDrag(link, moved, selected) && translateLinkForDrag(link, { x: 0, y: 0 }) !== null) {
+    if (
+      linkMovesWithDrag(link, moved, selected) &&
+      translateLinkForDrag(link, { x: 0, y: 0 }) !== null
+    ) {
       out.set(link.id, link);
     }
   }

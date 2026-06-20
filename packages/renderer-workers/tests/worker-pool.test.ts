@@ -11,7 +11,7 @@ const fakeWorker = (): Worker =>
     onmessage: null,
     onmessageerror: null,
     onerror: null,
-  } as unknown as Worker);
+  }) as unknown as Worker;
 
 describe("WorkerPool", () => {
   it("submits to the first idle worker", async () => {

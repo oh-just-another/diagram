@@ -62,9 +62,7 @@ export const commitBrushStroke = (
 ): { readonly scene: Scene; readonly patch: Patch; readonly elementId: ElementId } | null => {
   if (!stroke || stroke.points.length === 0) return null;
   const order = orderForTop(
-    [...scene.elements.values()]
-      .filter((s) => s.layerId === activeLayerId)
-      .map((s) => s.order),
+    [...scene.elements.values()].filter((s) => s.layerId === activeLayerId).map((s) => s.order),
   );
   const shape: Element = {
     id: newElementId,

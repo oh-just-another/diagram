@@ -1,8 +1,7 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { LONG_PRESS_DELAY_MS } from "../constants.js";
 
-const distance = (a: Vec2, b: Vec2): number =>
-  Math.hypot(a.x - b.x, a.y - b.y);
+const distance = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 /** Payload fired to subscribers when the long-press timer wins. */
 export interface LongPressFire {

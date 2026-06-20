@@ -39,12 +39,20 @@ const noopTarget = new Proxy(
 
 const makeEditor = (...els: Element[]): Editor => {
   const host = {
-    addEventListener: () => {}, removeEventListener: () => {},
-    setPointerCapture: () => {}, releasePointerCapture: () => {}, hasPointerCapture: () => true,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+    hasPointerCapture: () => true,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 400, height: 400 }),
     style: { cursor: "" },
   } as never;
-  return new Editor({ host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: sceneWith(...els) });
+  return new Editor({
+    host,
+    mainTarget: noopTarget,
+    overlayTarget: noopTarget,
+    initialScene: sceneWith(...els),
+  });
 };
 
 const frameName = (editor: Editor): string | undefined =>

@@ -19,7 +19,7 @@ export const exportPng = async (
 ): Promise<Uint8Array> => {
   const resolved = resolveScene(scene);
   const cropped = options.frameId
-    ? sceneForFrame(resolved, options.frameId) ?? sceneForRegion(resolved, options.region)
+    ? (sceneForFrame(resolved, options.frameId) ?? sceneForRegion(resolved, options.region))
     : sceneForRegion(resolved, options.region);
 
   const renderOpts: {

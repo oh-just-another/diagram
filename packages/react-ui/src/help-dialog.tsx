@@ -104,7 +104,9 @@ export const useHelpDialogHotkey = (open: () => void): void => {
       open();
     };
     window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("keydown", onKey); };
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 };
 
@@ -180,9 +182,7 @@ export const HelpDialog = ({
         <div style={headerStyle}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span className="du-help-platform-badge">
-              {isMac ? "macOS" : "Win / Linux"}
-            </span>
+            <span className="du-help-platform-badge">{isMac ? "macOS" : "Win / Linux"}</span>
             <button
               type="button"
               aria-label="Close help"

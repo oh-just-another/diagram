@@ -4,8 +4,7 @@ import { jsRasterizer, type Rasterizer } from "@oh-just-another/renderer-core";
 import { DEFAULT_FLATTEN_TOLERANCE } from "./constants.js";
 
 const req = <T>(v: T | undefined): T => {
-  if (v === undefined)
-    throw new Error("packages/raster-wasm: index out of range");
+  if (v === undefined) throw new Error("packages/raster-wasm: index out of range");
   return v;
 };
 
@@ -90,9 +89,7 @@ export class WasmRasterizer implements Rasterizer {
     return this.wasm !== null;
   }
 
-  async loadModule(
-    source: string | URL | ArrayBuffer | Uint8Array | Response,
-  ): Promise<void> {
+  async loadModule(source: string | URL | ArrayBuffer | Uint8Array | Response): Promise<void> {
     const bytes = await fetchModuleBytes(source);
     const { instance } = await WebAssembly.instantiate(bytes, {});
     this.wasm = instance.exports as unknown as WasmRasterizerExports;
@@ -101,9 +98,7 @@ export class WasmRasterizer implements Rasterizer {
   /**
    * Load the bundled `rasterizer.wasm` shipped with this package.
    */
-  static async loadBundled(
-    options: WasmRasterizerOptions = {},
-  ): Promise<WasmRasterizer> {
+  static async loadBundled(options: WasmRasterizerOptions = {}): Promise<WasmRasterizer> {
     const r = new WasmRasterizer(options);
     const url = new URL("../wasm/rasterizer.wasm", import.meta.url);
     await r.loadModule(url);
@@ -119,7 +114,10 @@ export class WasmRasterizer implements Rasterizer {
   strokeToFill(
     polyline: readonly Vec2[],
     width: number,
-    options?: { readonly cap?: "butt" | "round" | "square"; readonly join?: "miter" | "round" | "bevel" },
+    options?: {
+      readonly cap?: "butt" | "round" | "square";
+      readonly join?: "miter" | "round" | "bevel";
+    },
   ): readonly Vec2[] {
     if (!this.wasm) return jsRasterizer.strokeToFill(polyline, width, options);
     return this.strokeToFillViaWasm(polyline, width, options, this.wasm);
@@ -152,7 +150,9 @@ export class WasmRasterizer implements Rasterizer {
   private strokeToFillViaWasm(
     polyline: readonly Vec2[],
     width: number,
-    options: { readonly cap?: "butt" | "round" | "square"; readonly join?: "miter" | "round" | "bevel" } | undefined,
+    options:
+      | { readonly cap?: "butt" | "round" | "square"; readonly join?: "miter" | "round" | "bevel" }
+      | undefined,
     wasm: WasmRasterizerExports,
   ): readonly Vec2[] {
     const packed = packVec2Array(polyline);
@@ -252,11 +252,7 @@ const packVec2Array = (points: readonly Vec2[]): Float32Array => {
 const readU32 = (memory: WebAssembly.Memory, ptr: number): number =>
   new DataView(memory.buffer, ptr, 4).getUint32(0, true);
 
-const readVec2Array = (
-  memory: WebAssembly.Memory,
-  ptr: number,
-  count: number,
-): readonly Vec2[] => {
+const readVec2Array = (memory: WebAssembly.Memory, ptr: number, count: number): readonly Vec2[] => {
   const view = new Float32Array(memory.buffer, ptr, count * 2);
   const out: Vec2[] = new Array<Vec2>(count);
   for (let i = 0; i < count; i++) {

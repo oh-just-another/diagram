@@ -30,7 +30,10 @@ export const isDrawableImageSource = (value: unknown): value is CanvasImageSourc
   const g = globalThis as Record<string, unknown>;
   for (const name of DRAWABLE_CTOR_NAMES) {
     const ctor = g[name];
-    if (typeof ctor === "function" && value instanceof (ctor as new (...args: never[]) => unknown)) {
+    if (
+      typeof ctor === "function" &&
+      value instanceof (ctor as new (...args: never[]) => unknown)
+    ) {
       return true;
     }
   }
@@ -57,7 +60,7 @@ export const warnSkippedImage = (value: unknown): void => {
         : "stale-object"; // e.g. a {} from a serialised <img>
   if (warnedImageKinds.has(kind)) return;
   warnedImageKinds.add(kind);
-   
+
   console.warn(
     `[renderer] skipped a non-drawable image source (kind: ${kind}). ` +
       "The shape's image handle isn't a live HTMLImageElement / canvas / " +

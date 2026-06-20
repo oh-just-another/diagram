@@ -63,27 +63,48 @@ const makeTarget = () => {
   // up drawn after the dirty filter.
   const drawn: Array<{ x: number; y: number; w: number; h: number }> = [];
   const target = {
-    save: vi.fn(), restore: vi.fn(), setTransform: vi.fn(), clear: vi.fn(),
-    setFill: vi.fn(), setStroke: vi.fn(), setStrokeWidth: vi.fn(),
-    setOpacity: vi.fn(), setLineCap: vi.fn(), setLineJoin: vi.fn(),
-    setDashArray: vi.fn(), setFont: vi.fn(), setTextAlign: vi.fn(),
-    setTextBaseline: vi.fn(), beginPath: vi.fn(), closePath: vi.fn(),
-    moveTo: vi.fn(), lineTo: vi.fn(), quadraticCurveTo: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    setTransform: vi.fn(),
+    clear: vi.fn(),
+    setFill: vi.fn(),
+    setStroke: vi.fn(),
+    setStrokeWidth: vi.fn(),
+    setOpacity: vi.fn(),
+    setLineCap: vi.fn(),
+    setLineJoin: vi.fn(),
+    setDashArray: vi.fn(),
+    setFont: vi.fn(),
+    setTextAlign: vi.fn(),
+    setTextBaseline: vi.fn(),
+    beginPath: vi.fn(),
+    closePath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
     bezierCurveTo: vi.fn(),
     rect: vi.fn((x: number, y: number, w: number, h: number) => {
       drawn.push({ x, y, w, h });
     }),
-    ellipse: vi.fn(), fill: vi.fn(), stroke: vi.fn(), fillText: vi.fn(),
+    ellipse: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    fillText: vi.fn(),
     measureText: vi.fn(() => ({ width: 0 })),
-    drawImage: vi.fn(), translate: vi.fn(), rotate: vi.fn(), scale: vi.fn(),
-    resetTransform: vi.fn(), size: { width: 800, height: 600 },
+    drawImage: vi.fn(),
+    translate: vi.fn(),
+    rotate: vi.fn(),
+    scale: vi.fn(),
+    resetTransform: vi.fn(),
+    size: { width: 800, height: 600 },
     drawPoint: vi.fn(),
   };
   return { target: target as never, drawn };
 };
 
 const host = {
-  addEventListener: () => {}, removeEventListener: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
   getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
   style: { cursor: "" },
 } as never;

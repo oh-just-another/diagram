@@ -291,7 +291,9 @@ export const DiagramSurface = ({ style, className, ariaLabel }: DiagramSurfacePr
   useLayoutEffect(() => {
     if (!register) return undefined;
     register(ref.current);
-    return () => { register(null); };
+    return () => {
+      register(null);
+    };
   }, [register]);
 
   if (!register) {

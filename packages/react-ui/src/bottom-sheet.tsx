@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 
 /**
  * Bottom-sheet container with swipe-to-collapse + snap points. Touch
@@ -35,7 +42,9 @@ export const BottomSheet = ({
   className,
   style,
 }: BottomSheetProps) => {
-  const [internal, setInternal] = useState<number>(() => defaultValue ?? snapPoints.find((s) => s > 0) ?? 50);
+  const [internal, setInternal] = useState<number>(
+    () => defaultValue ?? snapPoints.find((s) => s > 0) ?? 50,
+  );
   const current = value ?? internal;
   const setHeight = useCallback(
     (next: number): void => {
@@ -85,7 +94,9 @@ export const BottomSheet = ({
       if (ev.key === "Escape") setHeight(Math.min(...snapPoints));
     };
     window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("keydown", onKey); };
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
   }, [setHeight, snapPoints]);
 
   return (

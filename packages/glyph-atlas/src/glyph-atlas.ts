@@ -180,10 +180,7 @@ export class GlyphAtlas {
         for (let y = 0; y < this.tileSize; y++) {
           const srcOffset = y * this.tileSize * 3;
           const dstOffset = ((atlasY + y) * this.atlasSize + atlasX) * 3;
-          this.buffer.set(
-            tile.data.subarray(srcOffset, srcOffset + this.tileSize * 3),
-            dstOffset,
-          );
+          this.buffer.set(tile.data.subarray(srcOffset, srcOffset + this.tileSize * 3), dstOffset);
         }
         this.dirtyTiles.add(slot);
       }

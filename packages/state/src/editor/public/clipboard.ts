@@ -16,10 +16,8 @@ import * as Selection from "../../selection.js";
  */
 
 /** Copy: returns the shape array the editor stores as `clipboard`. */
-export const copySelected = (
-  scene: Scene,
-  selection: Selection.Selection,
-): readonly Element[] => copyElementsHelper(scene, selection);
+export const copySelected = (scene: Scene, selection: Selection.Selection): readonly Element[] =>
+  copyElementsHelper(scene, selection);
 
 /**
  * Paste: produce the new scene + freshly-generated shape ids for the

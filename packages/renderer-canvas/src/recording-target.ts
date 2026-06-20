@@ -33,7 +33,10 @@ export type RenderCommand =
       readonly k: "setFont";
       readonly family: string;
       readonly size: number;
-      readonly options?: { readonly weight?: "normal" | "bold"; readonly style?: "normal" | "italic" };
+      readonly options?: {
+        readonly weight?: "normal" | "bold";
+        readonly style?: "normal" | "italic";
+      };
     }
   | { readonly k: "setTextAlign"; readonly align: TextAlign }
   | { readonly k: "setTextBaseline"; readonly baseline: TextBaseline }
@@ -64,8 +67,20 @@ export type RenderCommand =
       readonly x: number;
       readonly y: number;
     }
-  | { readonly k: "rect"; readonly x: number; readonly y: number; readonly w: number; readonly h: number }
-  | { readonly k: "ellipse"; readonly cx: number; readonly cy: number; readonly rx: number; readonly ry: number }
+  | {
+      readonly k: "rect";
+      readonly x: number;
+      readonly y: number;
+      readonly w: number;
+      readonly h: number;
+    }
+  | {
+      readonly k: "ellipse";
+      readonly cx: number;
+      readonly cy: number;
+      readonly rx: number;
+      readonly ry: number;
+    }
   | { readonly k: "fill"; readonly rule?: FillRule }
   | { readonly k: "stroke" }
   | {
@@ -249,10 +264,7 @@ export class RecordingTarget implements RenderTarget {
  * Used by the worker entry point to apply commands shipped from the
  * main thread.
  */
-export const replayCommands = (
-  target: RenderTarget,
-  commands: readonly RenderCommand[],
-): void => {
+export const replayCommands = (target: RenderTarget, commands: readonly RenderCommand[]): void => {
   for (const cmd of commands) {
     switch (cmd.k) {
       case "setFill":

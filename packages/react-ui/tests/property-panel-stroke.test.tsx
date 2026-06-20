@@ -38,7 +38,16 @@ const mountEditor = (): Editor => {
   ({ scene } = addElement(scene, rect));
   const host = document.createElement("div");
   Object.defineProperty(host, "getBoundingClientRect", {
-    value: () => ({ x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600 }),
+    value: () => ({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+    }),
   });
   const noop = new Proxy({} as Record<string, unknown>, {
     get: (_, key) =>

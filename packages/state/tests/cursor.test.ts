@@ -32,17 +32,38 @@ const sceneWith = (...els: Element[]): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 400, height: 400 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 400, height: 400 },
 } as never;
 
 const makeHost = () => {
@@ -66,7 +87,8 @@ const makeEditor = (...els: Element[]): Editor =>
     initialScene: sceneWith(...els),
   });
 
-const cursorOf = (e: Editor): string => (e as unknown as { host: { style: { cursor: string } } }).host.style.cursor;
+const cursorOf = (e: Editor): string =>
+  (e as unknown as { host: { style: { cursor: string } } }).host.style.cursor;
 
 describe("cursorForHandle", () => {
   it("maps handles to the resize-axis arrow", () => {
@@ -132,9 +154,7 @@ describe("context cursor", () => {
       fallback: "crosshair",
     });
     e.setMode("draw-rect"); // role "draw"
-    expect(cursorOf(e)).toBe(
-      'image-set(url("a.png") 1x, url("a@2x.png") 2x) 6 6, crosshair',
-    );
+    expect(cursorOf(e)).toBe('image-set(url("a.png") 1x, url("a@2x.png") 2x) 6 6, crosshair');
     // Clearing restores the keyword.
     e.setCursorOverride("draw", null);
     expect(cursorOf(e)).toBe("crosshair");

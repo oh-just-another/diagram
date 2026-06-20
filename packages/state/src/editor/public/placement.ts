@@ -146,7 +146,9 @@ export const computePlacementContainerDrop = (
 };
 
 /** Build the initial placement state for `beginPlacement`. */
-export const beginPlacementState = (shape: Element): {
+export const beginPlacementState = (
+  shape: Element,
+): {
   readonly scene: (s: Scene) => { readonly scene: Scene; readonly patch: Patch };
   readonly state: PlacementState;
 } => {

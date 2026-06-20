@@ -1,9 +1,4 @@
-import type {
-  Bounds,
-  Color,
-  Transform,
-  Vec2,
-} from "@oh-just-another/types";
+import type { Bounds, Color, Transform, Vec2 } from "@oh-just-another/types";
 import type {
   FillRule,
   LineCap,
@@ -16,10 +11,7 @@ import { getActiveRasterizer, getActiveTextShaper } from "@oh-just-another/rende
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
 import earcut from "earcut";
 import { parseWebGL2Color } from "./webgl2-color.js";
-import {
-  WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
-  WEBGL2_TEXT_BITMAP_CACHE_CAP,
-} from "./constants.js";
+import { WEBGL2_IMAGE_TEXTURE_CACHE_CAP, WEBGL2_TEXT_BITMAP_CACHE_CAP } from "./constants.js";
 import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
@@ -141,16 +133,8 @@ export class WebGL2Target implements RenderTarget {
     this.gl = gl;
     this._size = { width, height };
 
-    const vert = compile(
-      this.gl,
-      this.gl.VERTEX_SHADER,
-      VERTEX_SHADER,
-    );
-    const frag = compile(
-      this.gl,
-      this.gl.FRAGMENT_SHADER,
-      FRAGMENT_SHADER,
-    );
+    const vert = compile(this.gl, this.gl.VERTEX_SHADER, VERTEX_SHADER);
+    const frag = compile(this.gl, this.gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
     this.program = link(this.gl, vert, frag);
     this.gl.useProgram(this.program);
 
@@ -454,20 +438,16 @@ export class WebGL2Target implements RenderTarget {
       for (let i = 1; i < pts.length; i++) this.currentPolyline.push(req(pts[i]));
       return;
     }
-    const count = Math.max(8, Math.min(128, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)));
+    const count = Math.max(
+      8,
+      Math.min(128, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)),
+    );
     const samples = sampleQuadratic(start, { x: cx, y: cy }, { x, y }, count);
     for (let i = 1; i < samples.length; i++) this.currentPolyline.push(req(samples[i]));
   }
 
   /** Cubic Bezier — same dual-track approach as quadratic. */
-  bezierCurveTo(
-    c1x: number,
-    c1y: number,
-    c2x: number,
-    c2y: number,
-    x: number,
-    y: number,
-  ): void {
+  bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number): void {
     const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x, y };
     this.currentCurves.push({
       kind: "c",
@@ -491,7 +471,10 @@ export class WebGL2Target implements RenderTarget {
       for (let i = 1; i < pts.length; i++) this.currentPolyline.push(req(pts[i]));
       return;
     }
-    const count = Math.max(12, Math.min(192, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)));
+    const count = Math.max(
+      12,
+      Math.min(192, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)),
+    );
     const samples = sampleCubic(start, { x: c1x, y: c1y }, { x: c2x, y: c2y }, { x, y }, count);
     for (let i = 1; i < samples.length; i++) this.currentPolyline.push(req(samples[i]));
   }
@@ -517,7 +500,14 @@ export class WebGL2Target implements RenderTarget {
    * as a textured quad via a dedicated program created lazily on the
    * first image call.
    */
-  drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number, dynamic?: boolean): void {
+  drawImage(
+    image: unknown,
+    dx: number,
+    dy: number,
+    dw: number,
+    dh: number,
+    dynamic?: boolean,
+  ): void {
     const tex = this.textureFor(image as TexImageSource, dynamic ?? false);
     if (!tex) return;
     if (!this.imageProgram) {
@@ -678,7 +668,10 @@ export class WebGL2Target implements RenderTarget {
       this.ellipsePipeline ??= new EllipsePipeline(this.gl);
       const e = this.currentEllipse;
       this.ellipsePipeline.draw(
-        e.cx, e.cy, e.rx, e.ry,
+        e.cx,
+        e.cy,
+        e.rx,
+        e.ry,
         this.fillColor,
         effectiveAlpha,
         this.transform,
@@ -693,14 +686,18 @@ export class WebGL2Target implements RenderTarget {
     // most shape backgrounds (rectangles) hit it.
     if (this.currentPath) {
       const r = this.currentPath;
-      const projected = applyMat({
-        a: this.transform.a * r.width,
-        b: this.transform.b * r.width,
-        c: this.transform.c * r.height,
-        d: this.transform.d * r.height,
-        e: this.transform.e + this.transform.a * r.x + this.transform.c * r.y,
-        f: this.transform.f + this.transform.b * r.x + this.transform.d * r.y,
-      }, this._size.width, this._size.height);
+      const projected = applyMat(
+        {
+          a: this.transform.a * r.width,
+          b: this.transform.b * r.width,
+          c: this.transform.c * r.height,
+          d: this.transform.d * r.height,
+          e: this.transform.e + this.transform.a * r.x + this.transform.c * r.y,
+          f: this.transform.f + this.transform.b * r.x + this.transform.d * r.y,
+        },
+        this._size.width,
+        this._size.height,
+      );
       this.restoreSolidProgram(); // ensure the solid VBO+attrib is live
       this.gl.uniformMatrix3fv(this.uTransformLoc, false, projected);
       this.gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
@@ -1411,16 +1408,10 @@ const isMsdfShaper = (shaper: unknown): shaper is MsdfShaper => {
  * proportional to it, used to pick a JS-fallback sample count
  * commensurate with the tolerance.
  */
-const curveLengthEstimate = (a: Vec2, b: Vec2): number =>
-  Math.hypot(a.x - b.x, a.y - b.y);
+const curveLengthEstimate = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 /** Sample a quadratic Bezier curve at `count` evenly-spaced t values. */
-const sampleQuadratic = (
-  p0: Vec2,
-  p1: Vec2,
-  p2: Vec2,
-  count: number,
-): Vec2[] => {
+const sampleQuadratic = (p0: Vec2, p1: Vec2, p2: Vec2, count: number): Vec2[] => {
   const out: Vec2[] = [];
   for (let i = 0; i <= count; i++) {
     const t = i / count;
@@ -1434,13 +1425,7 @@ const sampleQuadratic = (
 };
 
 /** Sample a cubic Bezier curve at `count` evenly-spaced t values. */
-const sampleCubic = (
-  p0: Vec2,
-  p1: Vec2,
-  p2: Vec2,
-  p3: Vec2,
-  count: number,
-): Vec2[] => {
+const sampleCubic = (p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, count: number): Vec2[] => {
   const out: Vec2[] = [];
   for (let i = 0; i <= count; i++) {
     const t = i / count;
@@ -1462,9 +1447,15 @@ const applyImageMat = (t: MutableTransform, w: number, h: number): Float32Array 
   const sx = 2 / w;
   const sy = -2 / h;
   return new Float32Array([
-    t.a * sx, t.b * sy, 0,
-    t.c * sx, t.d * sy, 0,
-    t.e * sx - 1, t.f * sy + 1, 1,
+    t.a * sx,
+    t.b * sy,
+    0,
+    t.c * sx,
+    t.d * sy,
+    0,
+    t.e * sx - 1,
+    t.f * sy + 1,
+    1,
   ]);
 };
 
@@ -1531,9 +1522,15 @@ const applyMat = (t: Transform, w: number, h: number): Float32Array => {
   const sx = 2 / w;
   const sy = -2 / h;
   return new Float32Array([
-    t.a * sx, t.b * sy, 0,
-    t.c * sx, t.d * sy, 0,
-    t.e * sx - 1, t.f * sy + 1, 1,
+    t.a * sx,
+    t.b * sy,
+    0,
+    t.c * sx,
+    t.d * sy,
+    0,
+    t.e * sx - 1,
+    t.f * sy + 1,
+    1,
   ]);
 };
 
@@ -1583,11 +1580,7 @@ const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLSh
   return sh;
 };
 
-const link = (
-  gl: WebGL2RenderingContext,
-  vert: WebGLShader,
-  frag: WebGLShader,
-): WebGLProgram => {
+const link = (gl: WebGL2RenderingContext, vert: WebGLShader, frag: WebGLShader): WebGLProgram => {
   const program = gl.createProgram();
   gl.attachShader(program, vert);
   gl.attachShader(program, frag);

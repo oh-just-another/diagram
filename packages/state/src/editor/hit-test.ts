@@ -150,7 +150,13 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
       if (!shape || !isResizable(shape)) continue;
       if (shape.locked === true) continue; // locked: no resize handles
       const bounds = getElementWorldBounds(shape);
-      const handle = hitHandle(worldPoint, bounds, zoom, ctx.handleHitSlop, resizeHandlesFor(shape));
+      const handle = hitHandle(
+        worldPoint,
+        bounds,
+        zoom,
+        ctx.handleHitSlop,
+        resizeHandlesFor(shape),
+      );
       if (handle) {
         return { kind: "handle", elementId: id, handle, bounds };
       }
@@ -529,7 +535,14 @@ export const drawHitZones = (target: RenderTarget, opts: DrawHitZonesOptions): v
     const id = req([...selection][0]);
     const shape = getElement(scene, id);
     if (shape && isResizable(shape) && shape.locked !== true) {
-      drawResizeZones(target, w2s, getElementWorldBounds(shape), zoom, resizeHandlesFor(shape), DEBUG_ZONE_RESIZE);
+      drawResizeZones(
+        target,
+        w2s,
+        getElementWorldBounds(shape),
+        zoom,
+        resizeHandlesFor(shape),
+        DEBUG_ZONE_RESIZE,
+      );
     }
   }
   // Link body bands (polyline stroked at 2× the hit threshold) — the

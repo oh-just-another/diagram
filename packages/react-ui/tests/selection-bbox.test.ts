@@ -36,7 +36,16 @@ const mkEditor = (...elements: Element[]): Editor => {
   for (const s of elements) ({ scene } = addElement(scene, s));
   const host = document.createElement("div");
   Object.defineProperty(host, "getBoundingClientRect", {
-    value: () => ({ x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600 }),
+    value: () => ({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+    }),
   });
   const noopTarget = new Proxy({} as Record<string, unknown>, {
     get: (_, key) =>
@@ -89,27 +98,25 @@ describe("computeSelectionWorldBbox", () => {
   it("returns the union of descendants for a selected group", () => {
     // Two rects parented to a group. Group at (50, 50), children at
     // their own world positions (groups don't move children).
-    const editor = mkEditor(
-      rect("c1", 0, 0, 80, 40),
-      rect("c2", 200, 100, 60, 30),
-      {
-        id: elementId("g"),
-        layerId: DEFAULT_LAYER_ID,
-        type: "group",
-        position: { x: 50, y: 50 },
-        rotation: 0,
-        scale: { x: 1, y: 1 },
-        order: orderBetween(null, null),
-        style: {},
-      } as Element,
-    );
+    const editor = mkEditor(rect("c1", 0, 0, 80, 40), rect("c2", 200, 100, 60, 30), {
+      id: elementId("g"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "group",
+      position: { x: 50, y: 50 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+    } as Element);
     // Reparent children to the group.
     const apply = (id: string) => {
       const s = editor.scene.elements.get(elementId(id))!;
       const next = { ...s, parentId: elementId("g") } as Element;
-      editor["_scene"] = (editor as unknown as {
-        _scene: typeof editor.scene;
-      })._scene = ((scene) => {
+      editor["_scene"] = (
+        editor as unknown as {
+          _scene: typeof editor.scene;
+        }
+      )._scene = ((scene) => {
         const map = new Map(scene.elements);
         map.set(next.id, next);
         return { ...scene, elements: map };

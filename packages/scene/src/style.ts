@@ -1,8 +1,5 @@
 import type { Color } from "@oh-just-another/types";
-import {
-  ADAPTIVE_CORNER_RADIUS,
-  PROPORTIONAL_CORNER_RADIUS,
-} from "./constants.js";
+import { ADAPTIVE_CORNER_RADIUS, PROPORTIONAL_CORNER_RADIUS } from "./constants.js";
 
 export type LineCap = "butt" | "round" | "square";
 export type LineJoin = "miter" | "round" | "bevel";

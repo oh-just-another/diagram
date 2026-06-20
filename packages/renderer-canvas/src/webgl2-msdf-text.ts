@@ -236,12 +236,30 @@ const writeGlyphQuad = (
   // Two triangles, six vertices, (x, y, u, v) each.
   buf.set(
     [
-      left,  top,    u0, v0,
-      right, top,    u1, v0,
-      left,  bottom, u0, v1,
-      right, top,    u1, v0,
-      right, bottom, u1, v1,
-      left,  bottom, u0, v1,
+      left,
+      top,
+      u0,
+      v0,
+      right,
+      top,
+      u1,
+      v0,
+      left,
+      bottom,
+      u0,
+      v1,
+      right,
+      top,
+      u1,
+      v0,
+      right,
+      bottom,
+      u1,
+      v1,
+      left,
+      bottom,
+      u0,
+      v1,
     ],
     offset,
   );
@@ -276,12 +294,7 @@ const ensureGlyphBufCapacity = (n: number): void => {
  * pixels, then we scale pixels into clip space (-1..1) with a y flip so
  * positive y goes down on the screen.
  */
-const writeAffineToClipMat3 = (
-  out: Float32Array,
-  t: Transform,
-  w: number,
-  h: number,
-): void => {
+const writeAffineToClipMat3 = (out: Float32Array, t: Transform, w: number, h: number): void => {
   const sx = 2 / w;
   const sy = -2 / h;
   out[0] = t.a * sx;
@@ -366,11 +379,7 @@ const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLSh
   return sh;
 };
 
-const link = (
-  gl: WebGL2RenderingContext,
-  vert: WebGLShader,
-  frag: WebGLShader,
-): WebGLProgram => {
+const link = (gl: WebGL2RenderingContext, vert: WebGLShader, frag: WebGLShader): WebGLProgram => {
   const program = gl.createProgram();
   gl.attachShader(program, vert);
   gl.attachShader(program, frag);

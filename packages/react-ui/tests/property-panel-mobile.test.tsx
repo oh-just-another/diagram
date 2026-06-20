@@ -47,9 +47,23 @@ const mountEditor = (): Editor => {
   ({ scene } = addElement(scene, rect));
   const host = document.createElement("div");
   Object.defineProperty(host, "getBoundingClientRect", {
-    value: () => ({ x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600 }),
+    value: () => ({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+    }),
   });
-  return new Editor({ host: host as never, mainTarget: noop, overlayTarget: noop, initialScene: scene });
+  return new Editor({
+    host: host as never,
+    mainTarget: noop,
+    overlayTarget: noop,
+    initialScene: scene,
+  });
 };
 
 const renderPanel = (editor: Editor, mobile: boolean) =>
@@ -81,9 +95,7 @@ describe("PropertyPanel — mobile bottom-sheet variant", () => {
     expect(container.querySelector('button[aria-label="Dashed"]')).not.toBeNull();
 
     // ⋮ now collapses.
-    expect(
-      container.querySelector('button[aria-label="Hide more properties"]'),
-    ).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Hide more properties"]')).not.toBeNull();
     editor.dispose();
   });
 

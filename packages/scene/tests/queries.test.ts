@@ -114,7 +114,12 @@ describe("queries", () => {
         order: orderBetween(a.order, null),
       };
       const start = emptyScene();
-      const s1 = apply(start, { kind: "element", id: a.id, before: null, after: a } satisfies Patch);
+      const s1 = apply(start, {
+        kind: "element",
+        id: a.id,
+        before: null,
+        after: a,
+      } satisfies Patch);
       const s2 = apply(s1, { kind: "element", id: b.id, before: null, after: b } satisfies Patch);
       const hit = getElementAt(s2, { x: 5, y: 5 });
       // Both cover (5,5); `b` has higher order so it should win.

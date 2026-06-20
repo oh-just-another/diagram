@@ -128,9 +128,7 @@ export const detectCapabilities = async (
       ? overrides.workers
       : supportsOffscreenCanvas() && supportsWorkers();
   const tiles =
-    overrides.tiles !== undefined && overrides.tiles !== "auto"
-      ? overrides.tiles
-      : true;
+    overrides.tiles !== undefined && overrides.tiles !== "auto" ? overrides.tiles : true;
   return { renderer, wasmText, wasmRaster, workers, tiles, touch: isTouchPrimary() };
 };
 

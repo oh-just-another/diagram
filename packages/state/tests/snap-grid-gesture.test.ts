@@ -32,17 +32,38 @@ const sceneWith = (...elements: Element[]): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 400, height: 400 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 400, height: 400 },
 } as never;
 
 const makeHost = () => {
@@ -111,7 +132,9 @@ describe("snap-to-grid move gesture (end-to-end)", () => {
   });
 
   it("moves freely (no rounding) when snap is toggled off", () => {
-    const { editor, tap, drag } = setup((e) => { e.setSnapToGrid(false); });
+    const { editor, tap, drag } = setup((e) => {
+      e.setSnapToGrid(false);
+    });
     expect(editor.snapToGridEnabled).toBe(false);
     tap(33, 27);
     drag([33, 27], [45, 39]);
@@ -121,7 +144,9 @@ describe("snap-to-grid move gesture (end-to-end)", () => {
   });
 
   it("hiding the grid disables snap; re-showing restores it", () => {
-    const { editor, tap, drag } = setup((e) => { e.setGridVisible(false); });
+    const { editor, tap, drag } = setup((e) => {
+      e.setGridVisible(false);
+    });
     expect(editor.snapToGridEnabled).toBe(true); // preference unchanged…
     tap(33, 27);
     drag([33, 27], [45, 39]); // …but no snap while grid is hidden
@@ -148,7 +173,9 @@ describe("snap-to-grid move gesture (end-to-end)", () => {
   });
 
   it("respects the visible gridSize over the fallback", () => {
-    const { editor, tap, drag } = setup((e) => { e.setGrid({ size: 50 }); });
+    const { editor, tap, drag } = setup((e) => {
+      e.setGrid({ size: 50 });
+    });
     tap(33, 27);
     // press-time (13,7) +12/+12 → (25,19); on a 50-grid that rounds to
     // (50,0): 25/50 = 0.5 → 50, 19/50 ≈ 0.38 → 0.
@@ -159,7 +186,9 @@ describe("snap-to-grid move gesture (end-to-end)", () => {
   });
 
   it("setSnapToGrid persists in the viewport", () => {
-    const { editor } = setup((e) => { e.setSnapToGrid(false); });
+    const { editor } = setup((e) => {
+      e.setSnapToGrid(false);
+    });
     expect(editor.scene.viewport.snapToGrid).toBe(false);
     editor.setSnapToGrid(true);
     expect(editor.scene.viewport.snapToGrid).toBe(true);

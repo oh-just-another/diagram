@@ -120,7 +120,10 @@ describe("getElementOutline", () => {
         ],
       ];
     });
-    const custom = base("d", { type: "test.dual", position: { x: 5, y: 5 } } as Partial<Element>) as Element & {
+    const custom = base("d", {
+      type: "test.dual",
+      position: { x: 5, y: 5 },
+    } as Partial<Element>) as Element & {
       width: number;
     };
     (custom as { width: number }).width = 40;

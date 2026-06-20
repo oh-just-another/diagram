@@ -84,7 +84,9 @@ const focusNext: Action = {
   label: "Focus next element",
   category: "selection",
   hotkey: { key: "Tab" },
-  perform: ({ editor }) => { editor.focusCycle("next"); },
+  perform: ({ editor }) => {
+    editor.focusCycle("next");
+  },
 };
 
 const focusPrev: Action = {
@@ -92,7 +94,9 @@ const focusPrev: Action = {
   label: "Focus previous element",
   category: "selection",
   hotkey: { key: "Tab", shift: true },
-  perform: ({ editor }) => { editor.focusCycle("prev"); },
+  perform: ({ editor }) => {
+    editor.focusCycle("prev");
+  },
 };
 
 /**

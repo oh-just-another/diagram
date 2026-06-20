@@ -38,12 +38,25 @@ afterEach(() => {
 const recordingTarget = () => {
   let rects = 0;
   const t = {
-    save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-    setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-    setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-    setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-    setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-    moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
+    save: () => {},
+    restore: () => {},
+    setTransform: () => {},
+    clear: () => {},
+    setFill: () => {},
+    setStroke: () => {},
+    setStrokeWidth: () => {},
+    setOpacity: () => {},
+    setLineCap: () => {},
+    setLineJoin: () => {},
+    setDashArray: () => {},
+    setFont: () => {},
+    setTextAlign: () => {},
+    setTextBaseline: () => {},
+    beginPath: () => {},
+    closePath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    quadraticCurveTo: () => {},
     bezierCurveTo: () => {},
     rect: () => {
       rects += 1;
@@ -51,19 +64,34 @@ const recordingTarget = () => {
     ellipse: () => {
       rects += 1;
     },
-    fill: () => {}, stroke: () => {}, fillText: () => {},
-    measureText: () => ({ width: 0 }), drawImage: () => {},
-    translate: () => {}, rotate: () => {}, scale: () => {},
-    resetTransform: () => {}, size: { width: 800, height: 600 },
+    fill: () => {},
+    stroke: () => {},
+    fillText: () => {},
+    measureText: () => ({ width: 0 }),
+    drawImage: () => {},
+    translate: () => {},
+    rotate: () => {},
+    scale: () => {},
+    resetTransform: () => {},
+    size: { width: 800, height: 600 },
   };
   return { target: t as never, count: () => rects, reset: () => (rects = 0) };
 };
 
 const ev = (type: string, x: number, y: number) => ({
-  type, clientX: x, clientY: y, pointerId: 1, pointerType: "mouse", button: 0,
+  type,
+  clientX: x,
+  clientY: y,
+  pointerId: 1,
+  pointerType: "mouse",
+  button: 0,
   buttons: type === "pointerup" ? 0 : 1,
-  shiftKey: false, ctrlKey: false, altKey: false, metaKey: false,
-  timeStamp: 0, preventDefault: () => {},
+  shiftKey: false,
+  ctrlKey: false,
+  altKey: false,
+  metaKey: false,
+  timeStamp: 0,
+  preventDefault: () => {},
 });
 
 describe("draw-shape commit render", () => {
@@ -72,7 +100,8 @@ describe("draw-shape commit render", () => {
     const host = {
       addEventListener: (t: string, fn: (e: unknown) => void) => handlers.set(t, fn),
       removeEventListener: (t: string) => handlers.delete(t),
-      setPointerCapture: () => {}, releasePointerCapture: () => {},
+      setPointerCapture: () => {},
+      releasePointerCapture: () => {},
       hasPointerCapture: () => true,
       getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
       style: { cursor: "" },
@@ -112,7 +141,8 @@ describe("draw-shape commit render", () => {
     const host = {
       addEventListener: (t: string, fn: (e: unknown) => void) => handlers.set(t, fn),
       removeEventListener: (t: string) => handlers.delete(t),
-      setPointerCapture: () => {}, releasePointerCapture: () => {},
+      setPointerCapture: () => {},
+      releasePointerCapture: () => {},
       hasPointerCapture: () => true,
       getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
       style: { cursor: "" },

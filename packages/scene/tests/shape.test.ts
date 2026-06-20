@@ -91,9 +91,7 @@ describe("shape", () => {
     it("bold text yields a wider box than regular via the measurer opts", () => {
       // Measurer: 10px/char, bold +50%. Mirrors how the editor injects a
       // renderer-backed measurer that honours weight/style.
-      setTextMeasurer((text, _family, _size, opts) =>
-        text.length * 10 * (opts?.bold ? 1.5 : 1),
-      );
+      setTextMeasurer((text, _family, _size, opts) => text.length * 10 * (opts?.bold ? 1.5 : 1));
       const base = {
         ...baseProps,
         id: elementId("t"),
@@ -115,7 +113,13 @@ describe("shape", () => {
 
   describe("built-in bounders for other shape types", () => {
     it("ellipse local bounds use w/h", () => {
-      const e = { ...baseProps, id: elementId("e"), type: "ellipse" as const, width: 40, height: 20 };
+      const e = {
+        ...baseProps,
+        id: elementId("e"),
+        type: "ellipse" as const,
+        width: 40,
+        height: 20,
+      };
       expect(getElementLocalBounds(e)).toEqual({ x: 0, y: 0, width: 40, height: 20 });
     });
     it("polygon local bounds = AABB of points", () => {

@@ -41,11 +41,7 @@ const makeRecorder = (
 // ---------------------------------------------------------------------------
 // Scene helpers
 // ---------------------------------------------------------------------------
-const sceneWithGrid = (
-  gridSize: number,
-  zoom = 1,
-  gridStyle?: "lines" | "dots",
-): Scene => {
+const sceneWithGrid = (gridSize: number, zoom = 1, gridStyle?: "lines" | "dots"): Scene => {
   const base = emptyScene();
   return {
     ...base,
@@ -373,9 +369,7 @@ describe("renderGrid – per-style defaults", () => {
 
     const lines = makeRecorder();
     renderGrid(sceneWithGrid(20, 1, "lines"), lines.target);
-    const lineStroke = lines.calls.find(
-      (c) => c.method === "setStroke" && c.args[0] !== null,
-    );
+    const lineStroke = lines.calls.find((c) => c.method === "setStroke" && c.args[0] !== null);
     expect(lineStroke?.args[0]).toBe(GRID_LINE_COLOR);
     // The two styles use a different colour (dots are deliberately darker).
     expect(GRID_DOT_FILL).not.toBe(GRID_LINE_COLOR);

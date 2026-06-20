@@ -8,11 +8,7 @@ import {
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
-import {
-  InMemoryLayerCompositeCache,
-  installBuiltinRenderers,
-  renderScene,
-} from "../src/index";
+import { InMemoryLayerCompositeCache, installBuiltinRenderers, renderScene } from "../src/index";
 
 installBuiltinRenderers();
 

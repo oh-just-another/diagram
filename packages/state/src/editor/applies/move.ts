@@ -6,12 +6,7 @@ import {
   type Element,
   type Patch,
 } from "@oh-just-another/scene";
-import type {
-  AnnotationId,
-  Bounds,
-  ElementId,
-  Vec2,
-} from "@oh-just-another/types";
+import type { AnnotationId, Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 
 /**
  * Pure: compute the patch that moves shape `id` by `delta` from

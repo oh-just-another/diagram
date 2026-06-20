@@ -8,15 +8,11 @@ import type { PathCommand } from "@oh-just-another/scene";
 
 let activeRasterizer: Rasterizer | null = null;
 
-export const setActiveRasterizer = (
-  r: Rasterizer | null,
-): void => {
+export const setActiveRasterizer = (r: Rasterizer | null): void => {
   activeRasterizer = r;
 };
 
-export const getActiveRasterizer = (): Rasterizer | null =>
-  activeRasterizer;
-
+export const getActiveRasterizer = (): Rasterizer | null => activeRasterizer;
 
 /**
  * 2D rasterisation helpers. Lets a host swap the pure-TS bezier flatten /

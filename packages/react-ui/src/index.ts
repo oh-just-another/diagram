@@ -22,10 +22,7 @@ export {
   type SelectionFloatingPanelProps,
 } from "./selection-floating-panel.js";
 export { Popover, type PopoverProps } from "./popover.js";
-export {
-  ColorSwatchPicker,
-  type ColorSwatchPickerProps,
-} from "./color-swatch-picker.js";
+export { ColorSwatchPicker, type ColorSwatchPickerProps } from "./color-swatch-picker.js";
 export {
   ELEMENT_PALETTE_LIGHT,
   ELEMENT_PALETTE_DARK,
@@ -139,12 +136,7 @@ export {
 } from "./main-menu.js";
 export { Modal, type ModalProps } from "./modal.js";
 export { Sidebar, type SidebarProps } from "./sidebar.js";
-export {
-  Tooltip,
-  TooltipProvider,
-  type TooltipProps,
-  type TooltipSide,
-} from "./tooltip.js";
+export { Tooltip, TooltipProvider, type TooltipProps, type TooltipSide } from "./tooltip.js";
 
 // Tunable layout sizes for the built-in panels and toolbar.
 export {

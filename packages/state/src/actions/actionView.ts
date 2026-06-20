@@ -11,7 +11,9 @@ export const actionToggleGrid: Action = {
   hotkey: { key: "g" },
   uiKind: "toggle",
   checked: ({ editor }) => editor.gridVisible,
-  perform: ({ editor }) => { editor.toggleGrid(); },
+  perform: ({ editor }) => {
+    editor.toggleGrid();
+  },
 };
 
 export const viewActions: readonly Action[] = [actionToggleGrid];

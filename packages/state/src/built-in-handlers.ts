@@ -1,11 +1,6 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { DEFAULT_IMAGE_MAX_EDGE_PX } from "./constants.js";
-import {
-  isImageFile,
-  isVideoFile,
-  readFileAsDataURL,
-  type FileDropHandler,
-} from "./file-drop.js";
+import { isImageFile, isVideoFile, readFileAsDataURL, type FileDropHandler } from "./file-drop.js";
 
 /**
  * Read an image data URL and return its natural pixel dimensions
@@ -18,9 +13,12 @@ const measureImage = (dataUrl: string): Promise<{ width: number; height: number 
       return;
     }
     const img = new Image();
-    img.onload = () =>
-      { resolve({ width: img.naturalWidth, height: img.naturalHeight }); };
-    img.onerror = () => { reject(new Error("Failed to decode image data URL")); };
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = () => {
+      reject(new Error("Failed to decode image data URL"));
+    };
     img.src = dataUrl;
   });
 
@@ -47,8 +45,7 @@ export const imageFileDropHandler: FileDropHandler = {
     // where `URL.createObjectURL(blob)` is unavailable (headless / SSR):
     // the file is read as a dataURL so the shape still has something to
     // draw if a host renders it before the file blob lands.
-    const useObjectUrl =
-      typeof URL !== "undefined" && typeof URL.createObjectURL === "function";
+    const useObjectUrl = typeof URL !== "undefined" && typeof URL.createObjectURL === "function";
     const fileId = await editor.addBinaryFile(file, file.name);
     const src = useObjectUrl ? URL.createObjectURL(file) : await readFileAsDataURL(file);
 
@@ -105,8 +102,12 @@ export const imageFileDropHandler: FileDropHandler = {
       const el = img;
       if (!el.complete) {
         await new Promise<void>((resolve) => {
-          el.onload = () => { resolve(); };
-          el.onerror = () => { resolve(); };
+          el.onload = () => {
+            resolve();
+          };
+          el.onerror = () => {
+            resolve();
+          };
         });
       }
     }
@@ -192,7 +193,9 @@ export const videoFileDropHandler: FileDropHandler = {
     video.style.height = "1px";
     sink.appendChild(video);
     await new Promise<void>((resolve) => {
-      const done = (): void => { resolve(); };
+      const done = (): void => {
+        resolve();
+      };
       video.onloadedmetadata = done;
       video.onerror = done;
     });

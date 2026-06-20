@@ -23,7 +23,12 @@ const rect = (id: string, x = 0): Element => ({
   height: 10,
 });
 
-const addElementPatch = (s: Element): Patch => ({ kind: "element", id: s.id, before: null, after: s });
+const addElementPatch = (s: Element): Patch => ({
+  kind: "element",
+  id: s.id,
+  before: null,
+  after: s,
+});
 
 describe("History — basic stack", () => {
   it("push adds to undo stack", () => {

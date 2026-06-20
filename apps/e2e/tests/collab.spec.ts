@@ -18,10 +18,7 @@ test("collab: two tabs on the same room exchange presence", async ({ context }) 
 
   await a.goto("/?room=test-room");
   await b.goto("/?room=test-room");
-  await Promise.all([
-    a.waitForLoadState("networkidle"),
-    b.waitForLoadState("networkidle"),
-  ]);
+  await Promise.all([a.waitForLoadState("networkidle"), b.waitForLoadState("networkidle")]);
 
   // Both pages should show the room badge in the header.
   await expect(a.getByText(/room:/i).first()).toBeVisible({ timeout: 5_000 });

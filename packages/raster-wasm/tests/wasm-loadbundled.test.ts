@@ -18,7 +18,12 @@ describe("WasmRasterizer.loadBundled (real .wasm)", () => {
     const pts = r.flatten(
       [
         { kind: "M", to: { x: 0, y: 0 } },
-        { kind: "C", control1: { x: 0, y: 100 }, control2: { x: 100, y: 100 }, to: { x: 100, y: 0 } },
+        {
+          kind: "C",
+          control1: { x: 0, y: 100 },
+          control2: { x: 100, y: 100 },
+          to: { x: 100, y: 0 },
+        },
       ],
       1,
     );

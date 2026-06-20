@@ -9,7 +9,7 @@ and.
 description and link to their API. Levels L0→L6 — but in
 user-friendly tone (what to connect for what task). -->
 
-| Package                              | Purpose    |
+| Package                            | Purpose       |
 | ---------------------------------- | ------------- |
 | `@oh-just-another/scene`           | <!-- TODO --> |
 | `@oh-just-another/state`           | <!-- TODO --> |

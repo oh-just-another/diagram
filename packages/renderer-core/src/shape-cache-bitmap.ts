@@ -20,8 +20,7 @@ export interface ElementBitmapCache<V = unknown> {
   readonly size: number;
 }
 
-const keyFor = (shape: ElementBase, zoomBucket: number): string =>
-  `${shape.id}@${zoomBucket}`;
+const keyFor = (shape: ElementBase, zoomBucket: number): string => `${shape.id}@${zoomBucket}`;
 
 interface Entry<V> {
   readonly shapeRef: ElementBase;

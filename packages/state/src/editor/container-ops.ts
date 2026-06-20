@@ -194,10 +194,7 @@ export interface ContainerOpsRef {
  * `_worldPoint` is unused; kept on the signature for the exact
  * release coordinates.
  */
-export const applyContainerDrop = (
-  ref: ContainerOpsRef,
-  _worldPoint: unknown,
-): void => {
+export const applyContainerDrop = (ref: ContainerOpsRef, _worldPoint: unknown): void => {
   const dragId = ref.dragElementId;
   if (!dragId) return;
   const shape = getElement(ref.scene, dragId);
@@ -283,19 +280,24 @@ export const maybeGrowContainer = (
       { width: container.width, height: container.height, spec },
       expanded,
     );
-    const r = updateElement(ref.scene, containerId, (s) => ({
-      ...s,
-      position: {
-        x: s.position.x + sized.positionOffset.x,
-        y: s.position.y + sized.positionOffset.y,
-      },
-      width: sized.width,
-      height: sized.height,
-      metadata: {
-        ...(s.metadata ?? {}),
-        container: { ...spec, dropZone: expanded },
-      },
-    }) as Element);
+    const r = updateElement(
+      ref.scene,
+      containerId,
+      (s) =>
+        ({
+          ...s,
+          position: {
+            x: s.position.x + sized.positionOffset.x,
+            y: s.position.y + sized.positionOffset.y,
+          },
+          width: sized.width,
+          height: sized.height,
+          metadata: {
+            ...(s.metadata ?? {}),
+            container: { ...spec, dropZone: expanded },
+          },
+        }) as Element,
+    );
     ref.applyPatch(r.patch, r.scene);
     // Children are stored in absolute world coords — translating
     // the container's `position` does NOT visually move them, so

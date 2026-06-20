@@ -10,7 +10,12 @@ import {
   type Element,
   type SpatialGrid,
 } from "@oh-just-another/scene";
-import { installBuiltinRenderers, renderScene, ElementCache, type RenderTarget } from "../src/index";
+import {
+  installBuiltinRenderers,
+  renderScene,
+  ElementCache,
+  type RenderTarget,
+} from "../src/index";
 
 installBuiltinRenderers();
 

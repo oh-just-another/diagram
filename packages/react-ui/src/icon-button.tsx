@@ -13,8 +13,7 @@ import { Tooltip } from "./tooltip.js";
  * The tooltip uses the shared `<TooltipProvider>` singleton so a second
  * hover within the open-delay window skips the delay.
  */
-export interface IconButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
+export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
   /**
    * Accessible name and tooltip text. Required. Renders through
    * `<Tooltip>` (singleton) when a `<TooltipProvider>` is mounted; falls

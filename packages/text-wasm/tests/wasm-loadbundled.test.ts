@@ -78,8 +78,7 @@ describe("WasmTextShaper.loadBundled (real .wasm)", () => {
     expect(insideCount).toBeLessThan(total * 0.6);
     // Top-left corner sits in the `range`-pixel margin → guaranteed
     // outside; median should be < 128.
-    const cornerMedian = [tile!.data[0]!, tile!.data[1]!, tile!.data[2]!]
-      .sort((a, z) => a - z)[1]!;
+    const cornerMedian = [tile!.data[0]!, tile!.data[1]!, tile!.data[2]!].sort((a, z) => a - z)[1]!;
     expect(cornerMedian).toBeLessThan(128);
   });
 

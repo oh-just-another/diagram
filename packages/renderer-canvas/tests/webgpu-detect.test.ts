@@ -1,9 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  isWebGL2Available,
-  isWebGPUAvailable,
-  pickAvailableBackend,
-} from "../src/webgpu-detect";
+import { isWebGL2Available, isWebGPUAvailable, pickAvailableBackend } from "../src/webgpu-detect";
 
 // vitest runs in node by default for this package — `navigator` and
 // `document` are getter-only globals, so the tests stub them by

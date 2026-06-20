@@ -68,7 +68,9 @@ export const ToastHost = ({
       const ttl = duration ?? defaultDuration;
       setItems((prev) => [...prev, { id, kind, message, duration: ttl }]);
       if (ttl > 0 && Number.isFinite(ttl)) {
-        window.setTimeout(() => { dismiss(id); }, ttl);
+        window.setTimeout(() => {
+          dismiss(id);
+        }, ttl);
       }
       return id;
     },
@@ -121,13 +123,7 @@ const KIND_ACCENT: Record<ToastKind, string> = {
   error: "#c83232",
 };
 
-const ToastItem = ({
-  toast,
-  onDismiss,
-}: {
-  toast: Toast;
-  onDismiss: (id: string) => void;
-}) => {
+const ToastItem = ({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) => {
   const itemStyle: CSSProperties = {
     pointerEvents: "auto",
     minWidth: 240,
@@ -150,7 +146,9 @@ const ToastItem = ({
       <button
         type="button"
         aria-label="Dismiss"
-        onClick={() => { onDismiss(toast.id); }}
+        onClick={() => {
+          onDismiss(toast.id);
+        }}
         style={{
           background: "transparent",
           border: "none",

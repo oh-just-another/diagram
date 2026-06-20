@@ -243,7 +243,10 @@ describe("routeElbowPreview", () => {
   it("returns [from, to] when from === to", () => {
     const s = emptyScene();
     const result = routeElbowPreview(s, null, { x: 5, y: 5 }, null, { x: 5, y: 5 });
-    expect(result).toEqual([{ x: 5, y: 5 }, { x: 5, y: 5 }]);
+    expect(result).toEqual([
+      { x: 5, y: 5 },
+      { x: 5, y: 5 },
+    ]);
   });
 
   it("routes free (no elements): result starts with from and ends with to", () => {

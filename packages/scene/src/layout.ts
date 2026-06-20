@@ -83,7 +83,10 @@ export const gridLayout: LayoutFn<GridLayoutSpec> = (scene, spec) => {
     const row = Math.floor(i / spec.cols);
     const target = { x: origin.x + col * stride.x, y: origin.y + row * stride.y };
     if (shape.position.x === target.x && shape.position.y === target.y) return;
-    const r: OperationResult = updateElement(working, shape.id, (s) => ({ ...s, position: target }));
+    const r: OperationResult = updateElement(working, shape.id, (s) => ({
+      ...s,
+      position: target,
+    }));
     working = r.scene;
     patches.push(r.patch);
   });
@@ -134,7 +137,11 @@ export interface WrapLayoutSpec extends LayoutSpec {
 
 interface WrapMeasure {
   /** Child placements (top-left), in input order. */
-  readonly placements: readonly { readonly id: ElementId; readonly x: number; readonly y: number }[];
+  readonly placements: readonly {
+    readonly id: ElementId;
+    readonly x: number;
+    readonly y: number;
+  }[];
   /** Widest single child — the minimum the container can ever be. */
   readonly widest: number;
   /** Width of the widest row (≤ innerWidth unless a child is wider). */
@@ -240,7 +247,11 @@ export const measureWrap = (
   scene: Scene,
   parentId: ElementId,
   innerWidth: number,
-): { readonly widest: number; readonly contentWidth: number; readonly contentHeight: number } | null => {
+): {
+  readonly widest: number;
+  readonly contentWidth: number;
+  readonly contentHeight: number;
+} | null => {
   const ids: ElementId[] = [];
   for (const s of scene.elements.values()) {
     if (s.parentId === parentId) ids.push(s.id);
@@ -248,8 +259,7 @@ export const measureWrap = (
   if (ids.length === 0) return null;
   const sizes = childSizes(scene, ids);
   const parent = getElement(scene, parentId);
-  const gap =
-    (parent ? (getAutoLayoutSpec(parent) as { gap?: number } | null) : null)?.gap ?? 16;
+  const gap = (parent ? (getAutoLayoutSpec(parent) as { gap?: number } | null) : null)?.gap ?? 16;
   const m = packWrap(sizes, gap, innerWidth, { x: 0, y: 0 });
   return { widest: m.widest, contentWidth: m.contentWidth, contentHeight: m.contentHeight };
 };
@@ -258,8 +268,10 @@ export const measureWrap = (
  * Convenience: list all shape ids in a layer in z-order, suitable
  * as `LayoutSpec.shapeIds`.
  */
-export const allElementsInLayer = (scene: Scene, layerId: Scene["layers"] extends ReadonlyMap<infer K, unknown> ? K : never): readonly ElementId[] =>
-  getElementsInLayer(scene, layerId).map((s) => s.id);
+export const allElementsInLayer = (
+  scene: Scene,
+  layerId: Scene["layers"] extends ReadonlyMap<infer K, unknown> ? K : never,
+): readonly ElementId[] => getElementsInLayer(scene, layerId).map((s) => s.id);
 
 // --- auto-layout container ---
 
@@ -360,9 +372,7 @@ export const runAutoLayout = (scene: Scene, parentId: ElementId): Patch | null =
   }
   if (children.length === 0) return null;
   const dropZone = getDropZoneWorld(parent);
-  const origin = dropZone
-    ? { x: dropZone.x, y: dropZone.y }
-    : parent.position;
+  const origin = dropZone ? { x: dropZone.x, y: dropZone.y } : parent.position;
   if (spec.kind === "grid") {
     return gridLayout(scene, {
       shapeIds: children,

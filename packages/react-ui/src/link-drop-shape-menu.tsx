@@ -20,7 +20,9 @@ export const LinkDropShapeMenu = () => {
   useEffect(() => {
     if (!editor) return undefined;
     // Reflect open/close and follow pan/zoom while open.
-    const off = editor.on("change", () => { bump(); });
+    const off = editor.on("change", () => {
+      bump();
+    });
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key === "Escape" && editor.linkDropMenu) editor.dismissLinkDropMenu();
     };
@@ -50,7 +52,9 @@ export const LinkDropShapeMenu = () => {
       <div
         className="du-link-drop-backdrop"
         style={{ position: "fixed", inset: 0, zIndex: 1600 }}
-        onPointerDown={() => { editor.dismissLinkDropMenu(); }}
+        onPointerDown={() => {
+          editor.dismissLinkDropMenu();
+        }}
       />
       <div
         className="du-link-drop-menu"
@@ -63,7 +67,9 @@ export const LinkDropShapeMenu = () => {
           transform: "translate(-50%, -100%)",
           zIndex: 1601,
         }}
-        onPointerDown={(e) => { e.stopPropagation(); }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+        }}
       >
         {templates.map((t) => (
           <button
@@ -72,7 +78,9 @@ export const LinkDropShapeMenu = () => {
             className="du-link-drop-item"
             title={t.name}
             aria-label={`Create ${t.name}`}
-            onClick={() => { editor.placeShapeAtLinkDrop((ctx) => t.factory(ctx)); }}
+            onClick={() => {
+              editor.placeShapeAtLinkDrop((ctx) => t.factory(ctx));
+            }}
             dangerouslySetInnerHTML={{ __html: t.icon }}
           />
         ))}

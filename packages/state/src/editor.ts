@@ -3748,8 +3748,8 @@ export class Editor {
 
   /**
    * SpatialGrid-accelerated topmost-shape lookup. Linear scan for small
-   * scenes; for larger scenes builds a grid lazily, keyed by current 
-   * scene-identity. Scene operations replace `_scene` (immutable patches), 
+   * scenes; for larger scenes builds a grid lazily, keyed by current
+   * scene-identity. Scene operations replace `_scene` (immutable patches),
    * so reference-equality is a sufficient invalidation signal.
    */
   public acceleratedElementAt(worldPoint: Vec2): Element | undefined {

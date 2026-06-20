@@ -48,8 +48,7 @@ export const unregisterLayoutKind = (kind: string): LayoutKindEntry | undefined 
   return prev;
 };
 
-export const getLayoutKind = (kind: string): LayoutKindEntry | undefined =>
-  registry.get(kind);
+export const getLayoutKind = (kind: string): LayoutKindEntry | undefined => registry.get(kind);
 
 /** Iterate every registered kind — useful for diagnostics / lints. */
 export const listLayoutKinds = (): readonly string[] => [...registry.keys()];

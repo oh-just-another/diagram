@@ -80,7 +80,11 @@ describe("renderSceneToSvg", () => {
         ],
       ]),
     };
-    ({ scene } = addElement(scene, { ...rect("a", 0, 0), layerId: hidden, style: { fill: "#f00" } }));
+    ({ scene } = addElement(scene, {
+      ...rect("a", 0, 0),
+      layerId: hidden,
+      style: { fill: "#f00" },
+    }));
     const svg = renderSceneToSvg(scene);
     expect(svg).not.toContain('fill="#f00"');
   });

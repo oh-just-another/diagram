@@ -168,7 +168,8 @@ const drawLink = (
     // no-waypoint span exits/enters perpendicular to the element edges
     // (flowchart look); a waypointed span splines through the bends. The
     // flattened curve feeds the arrowhead so its tangent matches.
-    const curve = (edge.routing ?? "straight") === "bezier" ? getLinkCurveSegments(scene, edge) : null;
+    const curve =
+      (edge.routing ?? "straight") === "bezier" ? getLinkCurveSegments(scene, edge) : null;
 
     target.beginPath();
     if (curve) {
@@ -212,11 +213,7 @@ const drawLink = (
  * still get block-arrow rendering but the head sits at the last
  * segment endpoint regardless of curve direction.
  */
-const drawBlockArrowLink = (
-  edge: Link,
-  path: readonly Vec2[],
-  target: RenderTarget,
-): void => {
+const drawBlockArrowLink = (edge: Link, path: readonly Vec2[], target: RenderTarget): void => {
   const headLength = edge.blockArrow?.headLength ?? 18;
   const thickness = edge.blockArrow?.bodyThickness ?? 12;
   const fill = edge.style.fill ?? edge.style.stroke ?? "#444";
@@ -564,11 +561,15 @@ const drawArrowhead = (
     case "erdOneOrMany":
     case "erdZeroOrOne":
     case "erdZeroOrMany": {
-      const wantsMany = style === "erdMany" || style === "erdOneOrMany" || style === "erdZeroOrMany";
+      const wantsMany =
+        style === "erdMany" || style === "erdOneOrMany" || style === "erdZeroOrMany";
       const wantsZero = style === "erdZeroOrOne" || style === "erdZeroOrMany";
       const twoBars = style === "erdOnlyOne";
       const oneBar =
-        style === "erdOne" || style === "erdOnlyOne" || style === "erdOneOrMany" || style === "erdZeroOrOne";
+        style === "erdOne" ||
+        style === "erdOnlyOne" ||
+        style === "erdOneOrMany" ||
+        style === "erdZeroOrOne";
       // Crow's foot: three lines from a base point back to the tip's spread.
       if (wantsMany) {
         const base = along(size);

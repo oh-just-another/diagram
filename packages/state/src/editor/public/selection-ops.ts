@@ -204,9 +204,7 @@ export const computeUpdateStyle = (
   return {
     scene: s,
     patch:
-      patches.length === 1 && firstPatch !== undefined
-        ? firstPatch
-        : { kind: "batch", patches },
+      patches.length === 1 && firstPatch !== undefined ? firstPatch : { kind: "batch", patches },
   };
 };
 
@@ -237,9 +235,7 @@ export const computeUpdateTextProps = (
   return {
     scene: s,
     patch:
-      patches.length === 1 && firstPatch !== undefined
-        ? firstPatch
-        : { kind: "batch", patches },
+      patches.length === 1 && firstPatch !== undefined ? firstPatch : { kind: "batch", patches },
   };
 };
 

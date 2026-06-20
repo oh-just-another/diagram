@@ -111,7 +111,9 @@ const Trigger = ({ tab, children }: { tab: string; children: ReactNode }) => {
     <button
       type="button"
       aria-pressed={isActive}
-      onClick={() => { setActive(tab); }}
+      onClick={() => {
+        setActive(tab);
+      }}
       style={{
         background: isActive ? "var(--accent, #1a73e8)" : "transparent",
         color: isActive ? "var(--surface, #fff)" : "var(--text, #ddd)",
@@ -132,9 +134,7 @@ const Tab = ({ tab, children }: { tab: string; children: ReactNode }) => {
   const { active } = useSidebar();
   if (active !== tab) return null;
   return (
-    <div style={{ flex: "1 1 auto", overflowY: "auto", padding: "10px 12px" }}>
-      {children}
-    </div>
+    <div style={{ flex: "1 1 auto", overflowY: "auto", padding: "10px 12px" }}>{children}</div>
   );
 };
 

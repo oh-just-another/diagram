@@ -21,29 +21,29 @@
 
 :root {
   /* --- Surfaces (from UI_SURFACE.light) --- */
-  --du-canvas-bg: #f5f5f5;                              /* UI_SURFACE.light.canvas */
-  --du-ui-bg: rgba(255, 255, 255, 0.95);                /* UI_SURFACE.light.bg */
-  --du-ui-bg-solid: #ffffff;                            /* UI_SURFACE.light.bgSolid */
-  --du-ui-border: rgba(0, 0, 0, 0.08);                  /* UI_SURFACE.light.border */
+  --du-canvas-bg: #f5f5f5; /* UI_SURFACE.light.canvas */
+  --du-ui-bg: rgba(255, 255, 255, 0.95); /* UI_SURFACE.light.bg */
+  --du-ui-bg-solid: #ffffff; /* UI_SURFACE.light.bgSolid */
+  --du-ui-border: rgba(0, 0, 0, 0.08); /* UI_SURFACE.light.border */
   --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
 
   /* --- Text (from UI_SURFACE.light) --- */
-  --du-text: #1a1a1a;                                   /* UI_SURFACE.light.text */
-  --du-text-muted: #6b6b6b;                             /* UI_SURFACE.light.textMuted */
+  --du-text: #1a1a1a; /* UI_SURFACE.light.text */
+  --du-text-muted: #6b6b6b; /* UI_SURFACE.light.textMuted */
   --du-text-on-accent: #ffffff;
 
   /* --- Accent (from UI_ACCENT.light — Radix iris) --- */
-  --du-accent: #5b5bd6;                                 /* UI_ACCENT.light.accent (iris.iris9) */
-  --du-accent-hover: #5151cd;                           /* UI_ACCENT.light.accentHover (iris.iris10) */
-  --du-danger: #e54d2e;                                 /* UI_ACCENT.light.danger (tomato.tomato9) */
+  --du-accent: #5b5bd6; /* UI_ACCENT.light.accent (iris.iris9) */
+  --du-accent-hover: #5151cd; /* UI_ACCENT.light.accentHover (iris.iris10) */
+  --du-danger: #e54d2e; /* UI_ACCENT.light.danger (tomato.tomato9) */
 
   /* --- Selected (tonal, modern-style) --- */
   /* Active toolbar / icon buttons get a *muted* tonal fill so they
      read as "this state is selected" without hijacking the eye like
      a saturated accent fill would. The icon switches to the accent
      hue, the background stays close to the surface. */
-  --du-selected-bg: #e6e7ff;                            /* UI_ACCENT.light.selectedBg (iris.iris4) */
-  --du-selected-fg: #5753c6;                            /* UI_ACCENT.light.selectedFg (iris.iris11) */
+  --du-selected-bg: #e6e7ff; /* UI_ACCENT.light.selectedBg (iris.iris4) */
+  --du-selected-fg: #5753c6; /* UI_ACCENT.light.selectedFg (iris.iris11) */
 
   /* --- Sizing --- */
   --du-radius: 10px;
@@ -79,18 +79,18 @@
   :root {
     /* All values mirror UI_SURFACE.dark + UI_ACCENT.dark from
        `@oh-just-another/tokens`. */
-    --du-canvas-bg: #121212;                            /* UI_SURFACE.dark.canvas */
-    --du-ui-bg: rgba(35, 35, 35, 0.95);                 /* UI_SURFACE.dark.bg */
-    --du-ui-bg-solid: #252525;                          /* UI_SURFACE.dark.bgSolid */
-    --du-ui-border: rgba(255, 255, 255, 0.08);          /* UI_SURFACE.dark.border */
+    --du-canvas-bg: #121212; /* UI_SURFACE.dark.canvas */
+    --du-ui-bg: rgba(35, 35, 35, 0.95); /* UI_SURFACE.dark.bg */
+    --du-ui-bg-solid: #252525; /* UI_SURFACE.dark.bgSolid */
+    --du-ui-border: rgba(255, 255, 255, 0.08); /* UI_SURFACE.dark.border */
     --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
-    --du-text: #e8e8e8;                                 /* UI_SURFACE.dark.text */
-    --du-text-muted: #9a9a9a;                           /* UI_SURFACE.dark.textMuted */
-    --du-accent: #5b5bd6;                               /* UI_ACCENT.dark.accent (irisDark.iris9) */
-    --du-accent-hover: #6e6ade;                         /* UI_ACCENT.dark.accentHover (irisDark.iris10) */
-    --du-hover-overlay: rgba(255, 255, 255, 0.06);      /* UI_SURFACE.dark.hoverOverlay */
-    --du-selected-bg: #262a65;                          /* UI_ACCENT.dark.selectedBg (irisDark.iris4) */
-    --du-selected-fg: #b1a9ff;                          /* UI_ACCENT.dark.selectedFg (irisDark.iris11) */
+    --du-text: #e8e8e8; /* UI_SURFACE.dark.text */
+    --du-text-muted: #9a9a9a; /* UI_SURFACE.dark.textMuted */
+    --du-accent: #5b5bd6; /* UI_ACCENT.dark.accent (irisDark.iris9) */
+    --du-accent-hover: #6e6ade; /* UI_ACCENT.dark.accentHover (irisDark.iris10) */
+    --du-hover-overlay: rgba(255, 255, 255, 0.06); /* UI_SURFACE.dark.hoverOverlay */
+    --du-selected-bg: #262a65; /* UI_ACCENT.dark.selectedBg (irisDark.iris4) */
+    --du-selected-fg: #b1a9ff; /* UI_ACCENT.dark.selectedFg (irisDark.iris11) */
   }
 }
 
@@ -106,11 +106,11 @@
   --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
   --du-text: #1a1a1a;
   --du-text-muted: #6b6b6b;
-  --du-accent: #5b5bd6;                                 /* iris.iris9 */
-  --du-accent-hover: #5151cd;                           /* iris.iris10 */
+  --du-accent: #5b5bd6; /* iris.iris9 */
+  --du-accent-hover: #5151cd; /* iris.iris10 */
   --du-hover-overlay: rgba(0, 0, 0, 0.05);
-  --du-selected-bg: #e6e7ff;                            /* iris.iris4 */
-  --du-selected-fg: #5753c6;                            /* iris.iris11 */
+  --du-selected-bg: #e6e7ff; /* iris.iris4 */
+  --du-selected-fg: #5753c6; /* iris.iris11 */
 }
 
 /* ------------------------------------------------------------------ */
@@ -147,11 +147,11 @@
   --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
   --du-text: #e8e8e8;
   --du-text-muted: #9a9a9a;
-  --du-accent: #5b5bd6;                                 /* irisDark.iris9 */
-  --du-accent-hover: #6e6ade;                           /* irisDark.iris10 */
+  --du-accent: #5b5bd6; /* irisDark.iris9 */
+  --du-accent-hover: #6e6ade; /* irisDark.iris10 */
   --du-hover-overlay: rgba(255, 255, 255, 0.06);
-  --du-selected-bg: #262a65;                            /* irisDark.iris4 */
-  --du-selected-fg: #b1a9ff;                            /* irisDark.iris11 */
+  --du-selected-bg: #262a65; /* irisDark.iris4 */
+  --du-selected-fg: #b1a9ff; /* irisDark.iris11 */
 }
 
 /* ------------------------------------------------------------------ */
@@ -227,7 +227,10 @@
   font-size: 14px;
   line-height: 1;
   box-shadow: var(--du-ui-shadow);
-  transition: background 0.12s ease, color 0.12s ease, transform 0.05s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    transform 0.05s ease;
   padding: 0;
   outline: none;
   user-select: none;
@@ -455,9 +458,7 @@
    so its long grid can scroll. */
 .du-side-panel-auto-height {
   bottom: auto;
-  max-height: calc(
-    100% - 2 * var(--du-bar-inset) - 2 * var(--du-button-size) - 2 * var(--du-gap)
-  );
+  max-height: calc(100% - 2 * var(--du-bar-inset) - 2 * var(--du-button-size) - 2 * var(--du-gap));
 }
 
 .du-side-panel-body {
@@ -766,7 +767,10 @@
   border-radius: var(--du-radius-sm);
   border: 1px solid var(--du-ui-border);
   box-sizing: border-box;
-  transition: width 0.12s ease, height 0.12s ease, border-color 0.12s ease;
+  transition:
+    width 0.12s ease,
+    height 0.12s ease,
+    border-color 0.12s ease;
 }
 
 .du-swatch:hover .du-swatch-fill,
@@ -948,7 +952,9 @@
   font-size: 13px;
   line-height: 1;
   white-space: nowrap;
-  transition: background 0.15s ease, transform 0.05s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.05s ease;
 }
 
 .du-pill-button:hover {
@@ -1108,8 +1114,7 @@
   /* Sit ABOVE the bottom bar (zoom / help) + the home-indicator safe area
      so the two don't overlap. Mirrors the side-panel top offset. */
   bottom: calc(
-    var(--du-bar-inset) + var(--du-button-size) + var(--du-gap) +
-      env(safe-area-inset-bottom, 0px)
+    var(--du-bar-inset) + var(--du-button-size) + var(--du-gap) + env(safe-area-inset-bottom, 0px)
   );
   z-index: 1500;
   display: flex;
@@ -1379,7 +1384,12 @@
   gap: 6px;
   max-width: 280px;
   padding: 4px 8px;
-  font: 12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font:
+    12px system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    sans-serif;
   color: var(--du-accent, #5082ff);
   text-decoration: none;
   background: var(--menu-bg, #1a1a1a);
@@ -1455,7 +1465,9 @@
   min-width: 60px;
   max-width: 220px;
   padding: 2px 6px;
-  font: 12px system-ui, sans-serif;
+  font:
+    12px system-ui,
+    sans-serif;
   text-align: center;
   color: var(--du-fg, #222);
   background: var(--du-panel-bg, #fff);

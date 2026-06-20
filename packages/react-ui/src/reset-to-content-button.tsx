@@ -2,10 +2,7 @@ import { useMemo } from "react";
 import { LocateFixed } from "lucide-react";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import type { Bounds } from "@oh-just-another/types";
-import {
-  getScreenToWorld,
-  getElementWorldBounds,
-} from "@oh-just-another/scene";
+import { getScreenToWorld, getElementWorldBounds } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene } from "./hooks.js";
 
 /** Pill-button icon footprint — matches BottomBar density. */
@@ -29,7 +26,9 @@ export const ResetToContentButton = () => {
     <button
       type="button"
       className="du-pill-button"
-      onClick={() => { editor.zoomToFit(); }}
+      onClick={() => {
+        editor.zoomToFit();
+      }}
       title="Reset view to fit all content"
     >
       <LocateFixed size={PILL_ICON_SIZE} strokeWidth={PILL_ICON_STROKE} aria-hidden />
@@ -65,9 +64,11 @@ const isContentOffscreen = (scene: ReturnType<typeof useScene>): boolean => {
     height: Math.abs(br.y - tl.y),
   };
   // Off-screen = no overlap between content AABB and viewport AABB.
-  const overlapX = combined.x < viewportWorld.x + viewportWorld.width
-    && viewportWorld.x < combined.x + combined.width;
-  const overlapY = combined.y < viewportWorld.y + viewportWorld.height
-    && viewportWorld.y < combined.y + combined.height;
+  const overlapX =
+    combined.x < viewportWorld.x + viewportWorld.width &&
+    viewportWorld.x < combined.x + combined.width;
+  const overlapY =
+    combined.y < viewportWorld.y + viewportWorld.height &&
+    viewportWorld.y < combined.y + combined.height;
   return !(overlapX && overlapY);
 };

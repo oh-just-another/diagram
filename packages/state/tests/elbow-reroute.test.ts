@@ -43,22 +43,46 @@ const buildScene = (): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 800, height: 600 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 800, height: 600 },
 } as never;
 
 const host = {
-  addEventListener: () => {}, removeEventListener: () => {},
-  setPointerCapture: () => {}, releasePointerCapture: () => {}, hasPointerCapture: () => true,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  setPointerCapture: () => {},
+  releasePointerCapture: () => {},
+  hasPointerCapture: () => true,
   getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
   style: { cursor: "" },
 } as never;
@@ -74,7 +98,12 @@ const orthogonal = (path: readonly { x: number; y: number }[]) => {
 
 describe("elbow reroute pass (editor fills routedPoints)", () => {
   it("fills routedPoints for orthogonal links and the path is axis-aligned", () => {
-    const editor = new Editor({ host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: buildScene() });
+    const editor = new Editor({
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: buildScene(),
+    });
     editor.forceRender();
     const link = [...editor.scene.links.values()][0]!;
     expect(link.routedPoints).toBeDefined();
@@ -83,7 +112,12 @@ describe("elbow reroute pass (editor fills routedPoints)", () => {
   });
 
   it("re-routes when a bound shape moves", () => {
-    const editor = new Editor({ host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: buildScene() });
+    const editor = new Editor({
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: buildScene(),
+    });
     editor.forceRender();
     const before = JSON.stringify([...editor.scene.links.values()][0]!.routedPoints);
 

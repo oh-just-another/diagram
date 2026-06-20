@@ -120,11 +120,7 @@ export interface RenderSceneOptions {
    * `null` to opt out. The kernel doesn't ship one — `Offscreen
    * Canvas` import lives in `@renderer-canvas`.
    */
-  readonly compositeLayerBitmap?: (
-    layerId: LayerId,
-    zoomBucket: number,
-    scene: Scene,
-  ) => unknown;
+  readonly compositeLayerBitmap?: (layerId: LayerId, zoomBucket: number, scene: Scene) => unknown;
 }
 
 /**

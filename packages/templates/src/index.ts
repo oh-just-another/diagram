@@ -1,10 +1,6 @@
 export type { Template, TemplateContext, Category, StandardCategory } from "./types.js";
 export { TemplateRegistry, defaultRegistry } from "./registry.js";
-export {
-  BUILTIN_TEMPLATES,
-  installBuiltinTemplates,
-  matchesTemplateSearch,
-} from "./built-in.js";
+export { BUILTIN_TEMPLATES, installBuiltinTemplates, matchesTemplateSearch } from "./built-in.js";
 export * as icons from "./icons.js";
 
 // JSON spec + programmatic library import.

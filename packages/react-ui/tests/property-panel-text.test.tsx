@@ -38,7 +38,16 @@ const mountEditor = (): Editor => {
   ({ scene } = addElement(scene, text));
   const host = document.createElement("div");
   Object.defineProperty(host, "getBoundingClientRect", {
-    value: () => ({ x: 0, y: 0, top: 0, left: 0, right: 800, bottom: 600, width: 800, height: 600 }),
+    value: () => ({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+    }),
   });
   const noop = new Proxy({} as Record<string, unknown>, {
     get: (_, key) =>
@@ -48,7 +57,12 @@ const mountEditor = (): Editor => {
           ? () => ({ width: 0 })
           : () => {},
   }) as never;
-  return new Editor({ host: host as never, mainTarget: noop, overlayTarget: noop, initialScene: scene });
+  return new Editor({
+    host: host as never,
+    mainTarget: noop,
+    overlayTarget: noop,
+    initialScene: scene,
+  });
 };
 
 describe("PropertyPanel for text shapes", () => {
@@ -90,9 +104,9 @@ describe("PropertyPanel for text shapes", () => {
     const bold = document.body.querySelector('button[aria-label="Bold"]') as HTMLElement;
     expect(bold).not.toBeNull();
     act(() => fireEvent.click(bold));
-    expect((editor.scene.elements.get(text.id) as { style: { fontWeight?: string } }).style.fontWeight).toBe(
-      "bold",
-    );
+    expect(
+      (editor.scene.elements.get(text.id) as { style: { fontWeight?: string } }).style.fontWeight,
+    ).toBe("bold");
     editor.dispose();
   });
 });

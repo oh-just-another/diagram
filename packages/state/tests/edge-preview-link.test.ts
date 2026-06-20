@@ -54,7 +54,14 @@ describe("buildEdgePreviewLink", () => {
   it("a 2-point (straight) polyline adds no routedPoints", () => {
     const link = buildEdgePreviewLink(
       emptyScene(),
-      { from: { x: 0, y: 0 }, to: { x: 100, y: 0 }, points: [{ x: 0, y: 0 }, { x: 100, y: 0 }] },
+      {
+        from: { x: 0, y: 0 },
+        to: { x: 100, y: 0 },
+        points: [
+          { x: 0, y: 0 },
+          { x: 100, y: 0 },
+        ],
+      },
       previewId,
       lid,
     );

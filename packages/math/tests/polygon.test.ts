@@ -77,7 +77,15 @@ describe("offsetClosedPath", () => {
   });
 
   it("handles fewer than 3 vertices as no-op", () => {
-    expect(offsetClosedPath([{ x: 0, y: 0 }, { x: 1, y: 0 }], 1)).toEqual([
+    expect(
+      offsetClosedPath(
+        [
+          { x: 0, y: 0 },
+          { x: 1, y: 0 },
+        ],
+        1,
+      ),
+    ).toEqual([
       { x: 0, y: 0 },
       { x: 1, y: 0 },
     ]);

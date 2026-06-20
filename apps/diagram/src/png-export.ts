@@ -5,11 +5,7 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import type { Bounds } from "@oh-just-another/types";
-import {
-  renderLinks,
-  renderGrid,
-  renderScene,
-} from "@oh-just-another/renderer-core";
+import { renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
 import { createOffscreenCanvas2DTarget } from "@oh-just-another/renderer-canvas";
 
 /**
@@ -100,12 +96,8 @@ export const exportSceneToPng = async (
       zoom: options.scale,
       rotation: 0,
       size: { width: canvasW, height: canvasH },
-      ...(scene.viewport.gridSize !== undefined
-        ? { gridSize: scene.viewport.gridSize }
-        : {}),
-      ...(scene.viewport.gridStyle !== undefined
-        ? { gridStyle: scene.viewport.gridStyle }
-        : {}),
+      ...(scene.viewport.gridSize !== undefined ? { gridSize: scene.viewport.gridSize } : {}),
+      ...(scene.viewport.gridStyle !== undefined ? { gridStyle: scene.viewport.gridStyle } : {}),
     },
   };
 

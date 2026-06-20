@@ -81,7 +81,9 @@ export const FrameNameEditorOverlay = () => {
           ev.stopPropagation();
         }
       }}
-      onBlur={(ev) => { editor.commitFrameNameEdit(ev.currentTarget.value); }}
+      onBlur={(ev) => {
+        editor.commitFrameNameEdit(ev.currentTarget.value);
+      }}
       style={{
         position: "absolute",
         left,

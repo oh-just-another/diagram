@@ -25,7 +25,12 @@ const seed = (): Scene => {
     width: 40,
     height: 40,
   };
-  const b: Element = { ...a, id: elementId("b"), position: { x: 100, y: 0 }, style: { fill: "#bbb" } };
+  const b: Element = {
+    ...a,
+    id: elementId("b"),
+    position: { x: 100, y: 0 },
+    style: { fill: "#bbb" },
+  };
   ({ scene: s } = addElement(s, a));
   ({ scene: s } = addElement(s, b));
   return s;

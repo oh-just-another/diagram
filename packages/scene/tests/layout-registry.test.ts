@@ -26,13 +26,13 @@ const rect = (id: string, parentId?: string): Element =>
     width: 40,
     height: 40,
     ...(parentId ? { parentId: elementId(parentId) } : {}),
-  } as Element);
+  }) as Element;
 
 const container = (id: string, autoLayout: Record<string, unknown>): Element =>
   ({
     ...rect(id),
     metadata: { autoLayout },
-  } as Element);
+  }) as Element;
 
 describe("pluggable layout registry", () => {
   afterEach(() => {

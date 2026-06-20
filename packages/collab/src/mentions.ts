@@ -46,7 +46,12 @@ export const resolveMentions = (mentions: readonly string[], peers: readonly Pee
  * or constructor missing — keeps `@collab` portable to Node.
  */
 export const notifyMention = (
-  notif: { new (title: string, options?: { body?: string; tag?: string }): unknown; permission: string } | undefined,
+  notif:
+    | {
+        new (title: string, options?: { body?: string; tag?: string }): unknown;
+        permission: string;
+      }
+    | undefined,
   opts: {
     readonly authorName: string;
     readonly body: string;

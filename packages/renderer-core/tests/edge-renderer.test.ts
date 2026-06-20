@@ -119,8 +119,16 @@ describe("renderLinks — lifecycle", () => {
       id: linkId("orphan"),
       layerId: DEFAULT_LAYER_ID,
       order: orderBetween(null, null),
-      from: { kind: "anchor", elementId: elementId("missing"), anchor: { kind: "named", name: "right" } },
-      to: { kind: "anchor", elementId: elementId("missing2"), anchor: { kind: "named", name: "left" } },
+      from: {
+        kind: "anchor",
+        elementId: elementId("missing"),
+        anchor: { kind: "named", name: "right" },
+      },
+      to: {
+        kind: "anchor",
+        elementId: elementId("missing2"),
+        anchor: { kind: "named", name: "left" },
+      },
       style: {},
     };
     let s = emptyScene();
@@ -226,7 +234,10 @@ describe("renderLinks — orthogonal routing with routedPoints", () => {
   it("emits stroke for an orthogonal edge with routedPoints", () => {
     const link: Link = baseLink("a", "b", {
       routing: "orthogonal",
-      routedPoints: [{ x: 100, y: 10 }, { x: 100, y: 10 }],
+      routedPoints: [
+        { x: 100, y: 10 },
+        { x: 100, y: 10 },
+      ],
     });
     const s = sceneWith(link);
     const t = stubTarget();
@@ -476,7 +487,11 @@ describe("renderLinks — label along multi-segment path", () => {
       order: orderBetween(null, null),
       from: { kind: "anchor", elementId: elementId("a"), anchor: { kind: "named", name: "right" } },
       to: { kind: "anchor", elementId: elementId("b"), anchor: { kind: "named", name: "left" } },
-      routedPoints: [{ x: 60, y: 10 }, { x: 60, y: 100 }, { x: 140, y: 100 }],
+      routedPoints: [
+        { x: 60, y: 10 },
+        { x: 60, y: 100 },
+        { x: 140, y: 100 },
+      ],
       style: { stroke: "#000" },
       label: { text: "mid", fontSize: 12, position: 0.5 },
     };

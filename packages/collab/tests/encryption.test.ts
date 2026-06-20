@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Transport } from "@oh-just-another/network";
-import {
-  EncryptedTransport,
-  ENCRYPTION_IV_BYTES,
-  generateRoomKey,
-  importRoomKey,
-} from "../src";
+import { EncryptedTransport, ENCRYPTION_IV_BYTES, generateRoomKey, importRoomKey } from "../src";
 
 /**
  * In-memory pair of transports — `a` sends, `b` receives, and vice

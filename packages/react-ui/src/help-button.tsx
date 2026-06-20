@@ -22,12 +22,29 @@ export const HelpButton = ({ renderDialog }: HelpButtonProps) => {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <IconButton label="Help" onClick={() => { setOpen(true); }}>
+      <IconButton
+        label="Help"
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
         <HelpCircle size={HELP_ICON_SIZE} strokeWidth={HELP_ICON_STROKE} />
       </IconButton>
-      {renderDialog
-        ? renderDialog({ open, onClose: () => { setOpen(false); } })
-        : <HelpDialog open={open} onClose={() => { setOpen(false); }} />}
+      {renderDialog ? (
+        renderDialog({
+          open,
+          onClose: () => {
+            setOpen(false);
+          },
+        })
+      ) : (
+        <HelpDialog
+          open={open}
+          onClose={() => {
+            setOpen(false);
+          }}
+        />
+      )}
     </>
   );
 };

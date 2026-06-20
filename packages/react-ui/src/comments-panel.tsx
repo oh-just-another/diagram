@@ -172,7 +172,9 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
         </span>
         <button
           type="button"
-          onClick={() => { editor.toggleAnnotationResolved(ann.id); }}
+          onClick={() => {
+            editor.toggleAnnotationResolved(ann.id);
+          }}
           style={popoverButtonStyle}
         >
           {ann.resolved ? "Reopen" : "Resolve"}
@@ -189,7 +191,9 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
         </button>
         <button
           type="button"
-          onClick={() => { editor.setSelectedAnnotation(null); }}
+          onClick={() => {
+            editor.setSelectedAnnotation(null);
+          }}
           style={{ ...popoverButtonStyle, marginLeft: 4 }}
           aria-label="Close"
         >
@@ -204,7 +208,9 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
             <div key={c.id} style={{ marginBottom: 10, position: "relative" }}>
               <button
                 type="button"
-                onClick={() => { editor.removeComment(ann.id, c.id); }}
+                onClick={() => {
+                  editor.removeComment(ann.id, c.id);
+                }}
                 aria-label="Delete comment"
                 title="Delete comment"
                 style={{
@@ -254,7 +260,9 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
         <input
           type="text"
           value={draft}
-          onChange={(ev) => { setDraft(ev.target.value); }}
+          onChange={(ev) => {
+            setDraft(ev.target.value);
+          }}
           placeholder="Reply…"
           style={{
             flex: 1,

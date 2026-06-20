@@ -110,7 +110,15 @@ export const elbowRoute = (
 
   const startNode = nodeKey(startXi, startYi);
   const open: NodeState[] = [
-    { key: startNode, skey: `${startNode},0`, xi: startXi, yi: startYi, axis: 0, g: 0, f: h(startXi, startYi) },
+    {
+      key: startNode,
+      skey: `${startNode},0`,
+      xi: startXi,
+      yi: startYi,
+      axis: 0,
+      g: 0,
+      f: h(startXi, startYi),
+    },
   ];
   // cameFrom / gScore keyed by *state* (node + arrival axis) so a node can be
   // reached from both axes with different bend costs.
@@ -213,11 +221,7 @@ const neighbours = (
  * segment runs along the bbox boundary) is allowed — that's the
  * whole point of the margin inflate.
  */
-const segmentCrossesObstacle = (
-  from: Vec2,
-  to: Vec2,
-  obstacles: readonly Bounds[],
-): boolean => {
+const segmentCrossesObstacle = (from: Vec2, to: Vec2, obstacles: readonly Bounds[]): boolean => {
   const minX = Math.min(from.x, to.x);
   const maxX = Math.max(from.x, to.x);
   const minY = Math.min(from.y, to.y);

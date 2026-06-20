@@ -12,7 +12,7 @@ const fakeWorker = (): Worker =>
     onmessage: null,
     onmessageerror: null,
     onerror: null,
-  } as unknown as Worker);
+  }) as unknown as Worker;
 
 describe("LayerWorkerPool", () => {
   it("assigns each new layer to the least-loaded worker", () => {

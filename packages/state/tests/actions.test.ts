@@ -395,7 +395,9 @@ describe("defaultActionRegistry built-ins", () => {
       id: "toggle-thing",
       uiKind: "toggle",
       checked: () => on,
-      perform: () => { on = !on; },
+      perform: () => {
+        on = !on;
+      },
     });
     const editor = makeEditor();
     const a = reg.get("toggle-thing")!;
@@ -472,8 +474,14 @@ describe("defaultActionRegistry built-ins", () => {
   it("zoom-to-fit accepts ⌥1 and ⌘1", () => {
     const editor = makeEditor();
     const fit = vi.spyOn(editor, "zoomToFit");
-    expect(defaultActionRegistry.dispatchHotkey(plainKey("1", { altKey: true }), { editor })).toBe(true);
-    expect(defaultActionRegistry.dispatchHotkey(plainKey("1", { metaKey: true, ctrlKey: true }), { editor })).toBe(true);
+    expect(defaultActionRegistry.dispatchHotkey(plainKey("1", { altKey: true }), { editor })).toBe(
+      true,
+    );
+    expect(
+      defaultActionRegistry.dispatchHotkey(plainKey("1", { metaKey: true, ctrlKey: true }), {
+        editor,
+      }),
+    ).toBe(true);
     expect(fit).toHaveBeenCalledTimes(2);
   });
 
@@ -481,9 +489,13 @@ describe("defaultActionRegistry built-ins", () => {
     const editor = makeEditor();
     const zoom = vi.spyOn(editor, "zoomToSelection");
     // Nothing selected → predicate fails, key passes through.
-    expect(defaultActionRegistry.dispatchHotkey(plainKey("2", { altKey: true }), { editor })).toBe(false);
+    expect(defaultActionRegistry.dispatchHotkey(plainKey("2", { altKey: true }), { editor })).toBe(
+      false,
+    );
     editor.setSelection([elementId("a")]);
-    expect(defaultActionRegistry.dispatchHotkey(plainKey("2", { altKey: true }), { editor })).toBe(true);
+    expect(defaultActionRegistry.dispatchHotkey(plainKey("2", { altKey: true }), { editor })).toBe(
+      true,
+    );
     expect(zoom).toHaveBeenCalledOnce();
   });
 
@@ -539,9 +551,7 @@ describe("defaultActionRegistry built-ins", () => {
     });
     editor.setSelection([elementId("f")]);
     editor.enterContainer();
-    expect(new Set([...editor.selection])).toEqual(
-      new Set([elementId("m1"), elementId("m2")]),
-    );
+    expect(new Set([...editor.selection])).toEqual(new Set([elementId("m1"), elementId("m2")]));
     editor.exitContainer();
     expect([...editor.selection]).toEqual([elementId("f")]);
   });

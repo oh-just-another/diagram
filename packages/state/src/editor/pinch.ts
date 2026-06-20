@@ -62,8 +62,7 @@ export class PinchController {
     const dist = distance(p1, p2);
     const midScreen = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
     const moved =
-      distance(midScreen, this.origin.midpointScreen) +
-      Math.abs(dist - this.origin.distance);
+      distance(midScreen, this.origin.midpointScreen) + Math.abs(dist - this.origin.distance);
     if (moved < PINCH_MIN_MOVEMENT_PX) return;
 
     // Zoom: ratio of current finger distance over the start distance,

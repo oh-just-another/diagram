@@ -68,11 +68,7 @@ const compositeGifFrames = async (buffer: ArrayBuffer): Promise<DecodedGif> => {
     // be typed as `Uint8ClampedArray<ArrayBufferLike>` (SharedArrayBuffer
     // union), which `ImageData` doesn't accept under TS's strict
     // ArrayBuffer typing.
-    const imageData = new ImageData(
-      new Uint8ClampedArray(fr.patch),
-      fr.dims.width,
-      fr.dims.height,
-    );
+    const imageData = new ImageData(new Uint8ClampedArray(fr.patch), fr.dims.width, fr.dims.height);
     patch.width = fr.dims.width;
     patch.height = fr.dims.height;
     pctx.putImageData(imageData, 0, 0);

@@ -24,9 +24,7 @@ const rect = (id: string, x: number, y: number, w = 50, h = 50): Element => ({
   height: h,
 });
 
-const annotation = (
-  overrides: Partial<Annotation> & Pick<Annotation, "id">,
-): Annotation => ({
+const annotation = (overrides: Partial<Annotation> & Pick<Annotation, "id">): Annotation => ({
   elementId: null,
   position: { x: 0, y: 0 },
   resolved: false,

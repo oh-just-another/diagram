@@ -1,12 +1,5 @@
 import * as Y from "yjs";
-import {
-  apply,
-  batch,
-  invert,
-  isNoop,
-  type Patch,
-  type Scene,
-} from "@oh-just-another/scene";
+import { apply, batch, invert, isNoop, type Patch, type Scene } from "@oh-just-another/scene";
 import type { HistoryProvider, TransactionHandle } from "@oh-just-another/history";
 import type { SceneDoc } from "./scene-doc.js";
 
@@ -53,12 +46,7 @@ export interface YjsHistoryOptions {
 export class YjsHistory implements HistoryProvider {
   private readonly doc: Y.Doc;
   private readonly origin: symbol;
-  private readonly maps: readonly [
-    Y.Map<unknown>,
-    Y.Map<unknown>,
-    Y.Map<unknown>,
-    Y.Map<unknown>,
-  ];
+  private readonly maps: readonly [Y.Map<unknown>, Y.Map<unknown>, Y.Map<unknown>, Y.Map<unknown>];
   private readonly viewportMap: Y.Map<unknown>;
   private readonly undoManager: Y.UndoManager;
 
@@ -237,7 +225,8 @@ const diffAsPatch = (before: Scene, after: Scene): Patch | null => {
     else if (next !== prev) ops.push({ kind: "annotation", id, before: prev, after: next });
   }
   for (const [id, next] of after.annotations) {
-    if (!before.annotations.has(id)) ops.push({ kind: "annotation", id, before: null, after: next });
+    if (!before.annotations.has(id))
+      ops.push({ kind: "annotation", id, before: null, after: next });
   }
 
   if (before.viewport !== after.viewport) {

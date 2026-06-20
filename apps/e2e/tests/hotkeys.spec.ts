@@ -4,7 +4,10 @@ test.describe("hotkeys", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await page.locator("canvas").first().click({ position: { x: 100, y: 100 } });
+    await page
+      .locator("canvas")
+      .first()
+      .click({ position: { x: 100, y: 100 } });
   });
 
   test("⌘A selects all (or no-op on empty scene)", async ({ page }) => {

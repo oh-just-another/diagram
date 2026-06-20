@@ -1,8 +1,4 @@
-import type {
-  ShapedGlyph,
-  ShaperFont,
-  TextShaper,
-} from "@oh-just-another/renderer-core";
+import type { ShapedGlyph, ShaperFont, TextShaper } from "@oh-just-another/renderer-core";
 import { FALLBACK_ADVANCE_FACTOR, MEASURE_CACHE_SIZE } from "./constants.js";
 
 /**
@@ -141,9 +137,7 @@ export class WasmTextShaper implements TextShaper {
    * different from the real ones, so reusing them would produce a
    * layout pop on the next paint.
    */
-  async loadModule(
-    source: string | URL | ArrayBuffer | Uint8Array | Response,
-  ): Promise<void> {
+  async loadModule(source: string | URL | ArrayBuffer | Uint8Array | Response): Promise<void> {
     const bytes = await fetchModuleBytes(source);
     const { instance } = await WebAssembly.instantiate(bytes, {});
     this.wasm = instance.exports as unknown as WasmShaperExports;
@@ -325,11 +319,7 @@ export class WasmTextShaper implements TextShaper {
     if (fkey !== this.currentFontKey) {
       const familyBytes = this.textEncoder.encode(font.family);
       const familyPtr = wasm.alloc(familyBytes.byteLength);
-      const familyView = new Uint8Array(
-        wasm.memory.buffer,
-        familyPtr,
-        familyBytes.byteLength,
-      );
+      const familyView = new Uint8Array(wasm.memory.buffer, familyPtr, familyBytes.byteLength);
       familyView.set(familyBytes);
       // The `measure()` path has no weight/style channel (ShaperFont is
       // family+size only) — measure the regular face. The bold/italic

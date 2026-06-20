@@ -50,7 +50,9 @@ export const ColorSwatchPicker = ({
           key={c}
           color={c}
           selected={normalise(c) === normalise(value)}
-          onClick={() => { onChange(c === "transparent" ? null : c); }}
+          onClick={() => {
+            onChange(c === "transparent" ? null : c);
+          }}
         />
       ))}
       {allowCustom ? (
@@ -66,7 +68,9 @@ export const ColorSwatchPicker = ({
           type="button"
           aria-label="Clear colour"
           title="Clear colour"
-          onClick={() => { onChange(null); }}
+          onClick={() => {
+            onChange(null);
+          }}
           className="du-swatch du-swatch-clear"
         >
           <span className="du-swatch-fill du-swatch-fill-blank">
@@ -129,10 +133,7 @@ const CustomSwatch = ({
   const hasColour = !!value && value !== "transparent";
   return (
     <label className="du-swatch du-swatch-custom" title="Pick custom colour">
-      <span
-        className="du-swatch-fill"
-        style={hasColour ? { background: value } : undefined}
-      >
+      <span className="du-swatch-fill" style={hasColour ? { background: value } : undefined}>
         {hasColour ? null : <Plus size={12} strokeWidth={2} />}
       </span>
       <input
@@ -143,7 +144,9 @@ const CustomSwatch = ({
           onChange(ev.target.value);
           onOpenChange(false);
         }}
-        onClick={() => { onOpenChange(!open); }}
+        onClick={() => {
+          onOpenChange(!open);
+        }}
         className="du-swatch-color-input"
       />
     </label>
@@ -170,7 +173,5 @@ const defaultPaletteForCurrentTheme = (): readonly string[] => {
   const attr = document.documentElement.getAttribute("data-theme");
   if (attr === "dark") return ELEMENT_PALETTE_DARK;
   if (attr === "light") return ELEMENT_PALETTE_LIGHT;
-  return resolvePaletteTheme("system") === "dark"
-    ? ELEMENT_PALETTE_DARK
-    : ELEMENT_PALETTE_LIGHT;
+  return resolvePaletteTheme("system") === "dark" ? ELEMENT_PALETTE_DARK : ELEMENT_PALETTE_LIGHT;
 };

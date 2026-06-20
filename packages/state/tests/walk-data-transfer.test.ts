@@ -104,9 +104,7 @@ describe("walkDataTransfer", () => {
     };
     const good = makeFile("good.txt");
     const onError = vi.fn();
-    const out = await collect(
-      walkDataTransfer(dt([badFile, fileEntry(good)]), { onError }),
-    );
+    const out = await collect(walkDataTransfer(dt([badFile, fileEntry(good)]), { onError }));
     expect(out.map((f) => f.name)).toEqual(["good.txt"]);
     expect(onError).toHaveBeenCalledWith("bad.txt", expect.any(Error));
   });
@@ -116,9 +114,7 @@ describe("walkDataTransfer", () => {
     const inner = dirEntry("d2", [fileEntry(makeFile("deep.txt"))]);
     const outer = dirEntry("d1", [inner]);
     const onError = vi.fn();
-    const out = await collect(
-      walkDataTransfer(dt([outer]), { maxDepth: 1, onError }),
-    );
+    const out = await collect(walkDataTransfer(dt([outer]), { maxDepth: 1, onError }));
     expect(out).toEqual([]);
     expect(onError).toHaveBeenCalled();
   });

@@ -75,9 +75,7 @@ describe("quadraticToTriangle", () => {
   });
 
   it("returns null for colinear (degenerate) curves", () => {
-    expect(
-      quadraticToTriangle({ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 10, y: 0 }),
-    ).toBeNull();
+    expect(quadraticToTriangle({ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 10, y: 0 })).toBeNull();
   });
 });
 

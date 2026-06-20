@@ -30,22 +30,46 @@ const sceneWith = (...els: Element[]): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 800, height: 600 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 800, height: 600 },
 } as never;
 
 const host = {
-  addEventListener: () => {}, removeEventListener: () => {},
-  setPointerCapture: () => {}, releasePointerCapture: () => {}, hasPointerCapture: () => true,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  setPointerCapture: () => {},
+  releasePointerCapture: () => {},
+  hasPointerCapture: () => true,
   getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
   style: { cursor: "" },
 } as never;
@@ -53,7 +77,9 @@ const host = {
 describe("previewClickCreate (ghost of click-creates-element)", () => {
   it("ghost element is offset in the dot direction; connector links them", () => {
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(rect("a", 0, 0)),
     });
     // Right dot → ghost to the right of A (40 wide + gap), same size.
@@ -88,7 +114,10 @@ describe("previewClickCreate (ghost of click-creates-element)", () => {
 
   it("returns null for a missing element", () => {
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: emptyScene(),
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: emptyScene(),
     });
     expect(editor.previewClickCreate(elementId("nope"), "right")).toBeNull();
   });

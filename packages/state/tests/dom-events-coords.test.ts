@@ -11,7 +11,19 @@ import { fromPointerEvent, fromWheelEvent } from "../src/dom-events.js";
 
 // Minimal host stub returning a fixed bounding rect.
 const hostAt = (left: number, top: number): HTMLElement =>
-  ({ getBoundingClientRect: () => ({ left, top, right: 0, bottom: 0, width: 0, height: 0, x: left, y: top, toJSON() {} }) }) as unknown as HTMLElement;
+  ({
+    getBoundingClientRect: () => ({
+      left,
+      top,
+      right: 0,
+      bottom: 0,
+      width: 0,
+      height: 0,
+      x: left,
+      y: top,
+      toJSON() {},
+    }),
+  }) as unknown as HTMLElement;
 
 const ptr = (over: Partial<PointerEvent>): PointerEvent =>
   ({
@@ -32,14 +44,49 @@ const ptr = (over: Partial<PointerEvent>): PointerEvent =>
 describe("fromPointerEvent — host-relative coordinates", () => {
   const cases = [
     { desc: "origin host", left: 0, top: 0, clientX: 120, clientY: 80, ex: 120, ey: 80 },
-    { desc: "host offset by top bar", left: 0, top: 48, clientX: 120, clientY: 80, ex: 120, ey: 32 },
-    { desc: "host inset by left panel", left: 252, top: 0, clientX: 300, clientY: 200, ex: 48, ey: 200 },
-    { desc: "scrolled page (negative rect)", left: -40, top: -300, clientX: 10, clientY: 10, ex: 50, ey: 310 },
-    { desc: "fractional DPR-ish rect", left: 12.5, top: 7.25, clientX: 112.5, clientY: 57.25, ex: 100, ey: 50 },
+    {
+      desc: "host offset by top bar",
+      left: 0,
+      top: 48,
+      clientX: 120,
+      clientY: 80,
+      ex: 120,
+      ey: 32,
+    },
+    {
+      desc: "host inset by left panel",
+      left: 252,
+      top: 0,
+      clientX: 300,
+      clientY: 200,
+      ex: 48,
+      ey: 200,
+    },
+    {
+      desc: "scrolled page (negative rect)",
+      left: -40,
+      top: -300,
+      clientX: 10,
+      clientY: 10,
+      ex: 50,
+      ey: 310,
+    },
+    {
+      desc: "fractional DPR-ish rect",
+      left: 12.5,
+      top: 7.25,
+      clientX: 112.5,
+      clientY: 57.25,
+      ex: 100,
+      ey: 50,
+    },
   ];
   for (const c of cases) {
     it(c.desc, () => {
-      const data = fromPointerEvent(ptr({ clientX: c.clientX, clientY: c.clientY }), hostAt(c.left, c.top));
+      const data = fromPointerEvent(
+        ptr({ clientX: c.clientX, clientY: c.clientY }),
+        hostAt(c.left, c.top),
+      );
       expect(data.point.x).toBeCloseTo(c.ex, 6);
       expect(data.point.y).toBeCloseTo(c.ey, 6);
     });
@@ -77,7 +124,10 @@ describe("fromWheelEvent — host-relative + trackpad deltas", () => {
     }) as WheelEvent;
 
   it("point is host-relative; ctrl+wheel (pinch-zoom on trackpads) is flagged", () => {
-    const data = fromWheelEvent(wheel({ clientX: 200, clientY: 100, deltaY: -53, ctrlKey: true }), hostAt(50, 20));
+    const data = fromWheelEvent(
+      wheel({ clientX: 200, clientY: 100, deltaY: -53, ctrlKey: true }),
+      hostAt(50, 20),
+    );
     expect(data.point).toEqual({ x: 150, y: 80 });
     expect(data.deltaY).toBe(-53);
     expect(data.modifiers.ctrl).toBe(true); // trackpad pinch = ctrl+wheel

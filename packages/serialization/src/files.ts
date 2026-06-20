@@ -1,9 +1,5 @@
 import { fileId as castFileId, type FileId } from "@oh-just-another/types";
-import {
-  createBinaryFile,
-  type BinaryFile,
-  type Scene,
-} from "@oh-just-another/scene";
+import { createBinaryFile, type BinaryFile, type Scene } from "@oh-just-another/scene";
 
 /**
  * Sidecar serializer for `Scene.files`. The JSON document keeps every
@@ -50,7 +46,9 @@ export const stringifyFiles = (scene: Scene, indent: number | null = null): stri
     ? JSON.stringify(serializeFiles(scene))
     : JSON.stringify(serializeFiles(scene), null, indent);
 
-export const parseFiles = (json: string | SerializedFilesDocument): ReadonlyMap<FileId, BinaryFile> => {
+export const parseFiles = (
+  json: string | SerializedFilesDocument,
+): ReadonlyMap<FileId, BinaryFile> => {
   const doc: unknown = typeof json === "string" ? JSON.parse(json) : json;
   if (
     typeof doc !== "object" ||

@@ -6,7 +6,9 @@ export const actionCopy: Action = {
   category: "clipboard",
   hotkey: { key: "c", meta: true },
   predicate: hasSelection,
-  perform: ({ editor }) => { editor.copySelected(); },
+  perform: ({ editor }) => {
+    editor.copySelected();
+  },
 };
 
 export const actionCut: Action = {
@@ -15,7 +17,9 @@ export const actionCut: Action = {
   category: "clipboard",
   hotkey: { key: "x", meta: true },
   predicate: hasSelection,
-  perform: ({ editor }) => { editor.cutSelected(); },
+  perform: ({ editor }) => {
+    editor.cutSelected();
+  },
 };
 
 export const actionPaste: Action = {
@@ -23,7 +27,9 @@ export const actionPaste: Action = {
   label: "Paste",
   category: "clipboard",
   hotkey: { key: "v", meta: true },
-  perform: ({ editor }) => { editor.paste(); },
+  perform: ({ editor }) => {
+    editor.paste();
+  },
 };
 
 export const clipboardActions: readonly Action[] = [actionCopy, actionCut, actionPaste];

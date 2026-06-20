@@ -12,10 +12,7 @@ import {
   type Link,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
-import {
-  linkMovesRigidly,
-  translateLinkGeometry,
-} from "../src/editor/applies/link-move.js";
+import { linkMovesRigidly, translateLinkGeometry } from "../src/editor/applies/link-move.js";
 
 const rect = (id: string, x: number): Element => ({
   id: elementId(id),
@@ -51,17 +48,38 @@ const sceneWith = (link: Link): Scene => {
 };
 
 const noopTarget = {
-  save: () => {}, restore: () => {}, setTransform: () => {}, clear: () => {},
-  setFill: () => {}, setStroke: () => {}, setStrokeWidth: () => {},
-  setOpacity: () => {}, setLineCap: () => {}, setLineJoin: () => {},
-  setDashArray: () => {}, setFont: () => {}, setTextAlign: () => {},
-  setTextBaseline: () => {}, beginPath: () => {}, closePath: () => {},
-  moveTo: () => {}, lineTo: () => {}, quadraticCurveTo: () => {},
-  bezierCurveTo: () => {}, rect: () => {}, ellipse: () => {},
-  fill: () => {}, stroke: () => {}, fillText: () => {},
-  measureText: () => ({ width: 0 }), drawImage: () => {},
-  translate: () => {}, rotate: () => {}, scale: () => {},
-  resetTransform: () => {}, size: { width: 800, height: 600 },
+  save: () => {},
+  restore: () => {},
+  setTransform: () => {},
+  clear: () => {},
+  setFill: () => {},
+  setStroke: () => {},
+  setStrokeWidth: () => {},
+  setOpacity: () => {},
+  setLineCap: () => {},
+  setLineJoin: () => {},
+  setDashArray: () => {},
+  setFont: () => {},
+  setTextAlign: () => {},
+  setTextBaseline: () => {},
+  beginPath: () => {},
+  closePath: () => {},
+  moveTo: () => {},
+  lineTo: () => {},
+  quadraticCurveTo: () => {},
+  bezierCurveTo: () => {},
+  rect: () => {},
+  ellipse: () => {},
+  fill: () => {},
+  stroke: () => {},
+  fillText: () => {},
+  measureText: () => ({ width: 0 }),
+  drawImage: () => {},
+  translate: () => {},
+  rotate: () => {},
+  scale: () => {},
+  resetTransform: () => {},
+  size: { width: 800, height: 600 },
 } as never;
 
 const makeHost = () => {
@@ -69,7 +87,8 @@ const makeHost = () => {
   const host = {
     addEventListener: (type: string, fn: (ev: unknown) => void) => handlers.set(type, fn),
     removeEventListener: (type: string) => handlers.delete(type),
-    setPointerCapture: () => {}, releasePointerCapture: () => {},
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
     hasPointerCapture: () => true,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
     style: { cursor: "" },
@@ -78,10 +97,19 @@ const makeHost = () => {
 };
 
 const pointer = (type: string, x: number, y: number, shift = false) => ({
-  type, clientX: x, clientY: y, pointerId: 1, pointerType: "mouse", button: 0,
+  type,
+  clientX: x,
+  clientY: y,
+  pointerId: 1,
+  pointerType: "mouse",
+  button: 0,
   buttons: type === "pointerup" ? 0 : 1,
-  shiftKey: shift, ctrlKey: false, altKey: false, metaKey: false,
-  timeStamp: 0, preventDefault: () => {},
+  shiftKey: shift,
+  ctrlKey: false,
+  altKey: false,
+  metaKey: false,
+  timeStamp: 0,
+  preventDefault: () => {},
 });
 
 describe("connector rigid move — pure helpers", () => {
@@ -98,7 +126,10 @@ describe("connector rigid move — pure helpers", () => {
   });
 
   it("translateLinkGeometry shifts waypoints by delta", () => {
-    const out = translateLinkGeometry(linkWith({ waypoints: [{ x: 50, y: 60 }] }), { x: 10, y: 20 });
+    const out = translateLinkGeometry(linkWith({ waypoints: [{ x: 50, y: 60 }] }), {
+      x: 10,
+      y: 20,
+    });
     expect(out?.waypoints).toEqual([{ x: 60, y: 80 }]);
   });
 
@@ -124,7 +155,9 @@ describe("connector rigid move — keyboard nudge", () => {
   const setup = (link: Link) => {
     const { host } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(link),
     });
     return editor;
@@ -149,7 +182,9 @@ describe("connector rigid move — pointer drag (press-time snapshot)", () => {
   it("dragging both elements translates fixedSegments without compounding", () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(
         linkWith({ routing: "orthogonal", fixedSegments: [{ axis: "h", pos: 100, at: 50 }] }),
       ),
@@ -189,7 +224,9 @@ describe("connector rigid move — pointer drag (press-time snapshot)", () => {
       style: { stroke: "#000" },
     };
     const editor = new Editor({
-      host, mainTarget: noopTarget, overlayTarget: noopTarget,
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
       initialScene: sceneWith(free),
     });
     editor.setSnapToGrid(false); // isolate the rigid-move math from grid snapping

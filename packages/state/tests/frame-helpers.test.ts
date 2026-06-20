@@ -220,7 +220,10 @@ describe("reconcileFrameMembership (membership on drop)", () => {
 
   it("picks the top-most frame when frames overlap", () => {
     // f2 drawn after f1 (higher fractional order) and overlapping it.
-    const f1: Element = { ...frame("F1", "Frame 1", 0, 0, 200, 200), order: orderBetween(null, null) };
+    const f1: Element = {
+      ...frame("F1", "Frame 1", 0, 0, 200, 200),
+      order: orderBetween(null, null),
+    };
     const f2: Element = {
       ...frame("F2", "Frame 2", 50, 50, 200, 200),
       order: orderBetween(f1.order, null),

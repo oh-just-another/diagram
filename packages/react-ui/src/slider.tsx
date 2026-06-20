@@ -44,7 +44,7 @@ export const Slider = ({
         aria-label={ariaLabel}
         className="du-slider-track"
       />
-      <span className="du-slider-value">{value === null ? "—" : valueLabel ?? value}</span>
+      <span className="du-slider-value">{value === null ? "—" : (valueLabel ?? value)}</span>
     </div>
   );
 };

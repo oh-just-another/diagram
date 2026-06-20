@@ -1,9 +1,6 @@
 import * as Y from "yjs";
 import type { Scene } from "@oh-just-another/scene";
-import {
-  applyConflictResolutions,
-  mergeScenesThreeWay,
-} from "@oh-just-another/scene";
+import { applyConflictResolutions, mergeScenesThreeWay } from "@oh-just-another/scene";
 import { SceneDoc } from "./scene-doc.js";
 import type { ElementId } from "@oh-just-another/types";
 import type {
@@ -176,19 +173,19 @@ export class BranchDoc implements BranchMergeAPI {
   ): Promise<Scene> {
     return Promise.resolve(
       applyConflictResolutions(
-      {
-        autoMerged: report.autoMerged,
-        conflicts: report.conflicts.map((c) => ({
-          elementId: c.elementId,
-          base: c.base as never,
-          source: c.source as never,
-          target: c.target as never,
+        {
+          autoMerged: report.autoMerged,
+          conflicts: report.conflicts.map((c) => ({
+            elementId: c.elementId,
+            base: c.base as never,
+            source: c.source as never,
+            target: c.target as never,
+          })),
+        },
+        resolutions.map((r) => ({
+          elementId: r.elementId,
+          choice: r.choice === "ours" ? "ours" : r.choice === "theirs" ? "theirs" : "both",
         })),
-      },
-      resolutions.map((r) => ({
-        elementId: r.elementId,
-        choice: r.choice === "ours" ? "ours" : r.choice === "theirs" ? "theirs" : "both",
-      })),
       ),
     );
   }
@@ -245,20 +242,10 @@ export class BranchDoc implements BranchMergeAPI {
  * "no changes" on the source side.
  */
 const cloneScene = (scene: Scene): Scene => ({
-  elements: new Map(
-    [...scene.elements].map(([id, shape]) => [id, structuredClone(shape)]),
-  ),
-  links: new Map(
-    [...scene.links].map(([id, edge]) => [id, structuredClone(edge)]),
-  ),
-  layers: new Map(
-    [...scene.layers].map(([id, layer]) => [id, structuredClone(layer)]),
-  ),
-  annotations: new Map(
-    [...scene.annotations].map(([id, ann]) => [id, structuredClone(ann)]),
-  ),
-  files: new Map(
-    [...scene.files].map(([id, file]) => [id, structuredClone(file)]),
-  ),
+  elements: new Map([...scene.elements].map(([id, shape]) => [id, structuredClone(shape)])),
+  links: new Map([...scene.links].map(([id, edge]) => [id, structuredClone(edge)])),
+  layers: new Map([...scene.layers].map(([id, layer]) => [id, structuredClone(layer)])),
+  annotations: new Map([...scene.annotations].map(([id, ann]) => [id, structuredClone(ann)])),
+  files: new Map([...scene.files].map(([id, file]) => [id, structuredClone(file)])),
   viewport: structuredClone(scene.viewport),
 });

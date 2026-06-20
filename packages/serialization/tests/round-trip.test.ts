@@ -161,7 +161,9 @@ describe("round-trip", () => {
     }
     const restored = deserializeScene(serializeScene(scene));
     for (const id of ids) {
-      expect(restored.elements.get(elementId(id))?.type).toBe(scene.elements.get(elementId(id))?.type);
+      expect(restored.elements.get(elementId(id))?.type).toBe(
+        scene.elements.get(elementId(id))?.type,
+      );
     }
   });
 
@@ -188,7 +190,9 @@ describe("round-trip", () => {
     } as unknown as Element;
     ({ scene } = addElement(scene, t));
     const restored = deserializeScene(serializeScene(scene));
-    const st = (restored.elements.get(elementId("td")) as unknown as { style: Record<string, unknown> }).style;
+    const st = (
+      restored.elements.get(elementId("td")) as unknown as { style: Record<string, unknown> }
+    ).style;
     expect(st.fontWeight).toBe("bold");
     expect(st.fontStyle).toBe("italic");
     expect(st.textDecoration).toEqual({ underline: true, strikethrough: true });

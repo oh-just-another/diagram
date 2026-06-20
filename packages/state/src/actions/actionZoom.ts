@@ -5,13 +5,10 @@ export const actionZoomIn: Action = {
   label: "Zoom in",
   category: "zoom",
   // `⌘=`/`⌘+` and bare `+`/`=`.
-  hotkey: [
-    { key: "=", meta: true },
-    { key: "+", meta: true },
-    { key: "+" },
-    { key: "=" },
-  ],
-  perform: ({ editor }) => { editor.zoomIn(); },
+  hotkey: [{ key: "=", meta: true }, { key: "+", meta: true }, { key: "+" }, { key: "=" }],
+  perform: ({ editor }) => {
+    editor.zoomIn();
+  },
 };
 
 export const actionZoomOut: Action = {
@@ -19,13 +16,10 @@ export const actionZoomOut: Action = {
   label: "Zoom out",
   category: "zoom",
   // `⌘-`/`⌘_` and bare `-`/`_`.
-  hotkey: [
-    { key: "-", meta: true },
-    { key: "_", meta: true },
-    { key: "-" },
-    { key: "_" },
-  ],
-  perform: ({ editor }) => { editor.zoomOut(); },
+  hotkey: [{ key: "-", meta: true }, { key: "_", meta: true }, { key: "-" }, { key: "_" }],
+  perform: ({ editor }) => {
+    editor.zoomOut();
+  },
 };
 
 export const actionZoomReset: Action = {
@@ -33,7 +27,9 @@ export const actionZoomReset: Action = {
   label: "Reset zoom",
   category: "zoom",
   hotkey: { key: "0", meta: true },
-  perform: ({ editor }) => { editor.resetZoom(); },
+  perform: ({ editor }) => {
+    editor.resetZoom();
+  },
 };
 
 export const actionZoomToFit: Action = {
@@ -45,7 +41,9 @@ export const actionZoomToFit: Action = {
     { key: "1", alt: true },
     { key: "1", meta: true },
   ],
-  perform: ({ editor }) => { editor.zoomToFit(); },
+  perform: ({ editor }) => {
+    editor.zoomToFit();
+  },
 };
 
 export const actionZoomToSelection: Action = {
@@ -54,7 +52,9 @@ export const actionZoomToSelection: Action = {
   category: "zoom",
   hotkey: { key: "2", alt: true },
   predicate: hasSelection,
-  perform: ({ editor }) => { editor.zoomToSelection(); },
+  perform: ({ editor }) => {
+    editor.zoomToSelection();
+  },
 };
 
 export const zoomActions: readonly Action[] = [

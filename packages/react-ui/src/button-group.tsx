@@ -13,11 +13,7 @@ export interface ButtonGroupProps {
 }
 
 export const ButtonGroup = ({ children, className, ariaLabel }: ButtonGroupProps) => (
-  <div
-    className={`du-button-group ${className ?? ""}`.trim()}
-    role="group"
-    aria-label={ariaLabel}
-  >
+  <div className={`du-button-group ${className ?? ""}`.trim()} role="group" aria-label={ariaLabel}>
     {children}
   </div>
 );

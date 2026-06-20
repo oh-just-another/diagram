@@ -10,7 +10,12 @@ import {
 } from "../src/index";
 
 // Test-only element types need a bounder so getElementWorldBounds resolves.
-const wh = (s: { width: number; height: number }) => ({ x: 0, y: 0, width: s.width, height: s.height });
+const wh = (s: { width: number; height: number }) => ({
+  x: 0,
+  y: 0,
+  width: s.width,
+  height: s.height,
+});
 registerBounder("overflow-test", wh as never);
 registerBounder("maybe-overflow", wh as never);
 

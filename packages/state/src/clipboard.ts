@@ -55,7 +55,10 @@ export const cloneElementForClipboard = (shape: Element): Element => {
   }
   const cloned = structuredClone(stripped);
   if (liveImage !== undefined) {
-    cloned.metadata = { ...(cloned.metadata as Record<string, unknown> | undefined), image: liveImage };
+    cloned.metadata = {
+      ...(cloned.metadata as Record<string, unknown> | undefined),
+      image: liveImage,
+    };
   }
   if (liveAnim !== undefined) cloned.animationData = liveAnim;
   return cloned as unknown as Element;
@@ -67,10 +70,7 @@ export const cloneElementForClipboard = (shape: Element): Element => {
  * image element, animation buffer) survive — a plain `structuredClone`
  * throws on the DOM `<img>` an image shape carries in `metadata.image`.
  */
-export const copyElements = (
-  scene: Scene,
-  selection: Iterable<ElementId>,
-): Element[] => {
+export const copyElements = (scene: Scene, selection: Iterable<ElementId>): Element[] => {
   const out: Element[] = [];
   for (const id of selection) {
     const s = getElement(scene, id);
@@ -106,9 +106,7 @@ export const pasteElements = (
   }
   cx /= clipboard.length;
   cy /= clipboard.length;
-  const delta = target
-    ? { x: target.x - cx, y: target.y - cy }
-    : { x: 10, y: 10 };
+  const delta = target ? { x: target.x - cx, y: target.y - cy } : { x: 10, y: 10 };
 
   // Build the patch list first, push as one batch. `history.transaction()`
   // is intentionally avoided: an Editor with an open gesture-transaction
@@ -121,9 +119,7 @@ export const pasteElements = (
   for (const tmpl of clipboard) {
     const newId = genId();
     const order = orderForTop(
-      [...next.elements.values()]
-        .filter((s) => s.layerId === tmpl.layerId)
-        .map((s) => s.order),
+      [...next.elements.values()].filter((s) => s.layerId === tmpl.layerId).map((s) => s.order),
     );
     const clone = {
       ...cloneElementForClipboard(tmpl),

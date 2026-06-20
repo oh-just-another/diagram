@@ -31,7 +31,10 @@ describe("elbowRoute", () => {
 
   it("draws a straight axis-aligned line when no obstacles in the way", () => {
     const out = elbowRoute({ x: 0, y: 0 }, { x: 100, y: 0 }, []);
-    expect(out).toEqual([{ x: 0, y: 0 }, { x: 100, y: 0 }]);
+    expect(out).toEqual([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ]);
   });
 
   it("produces only axis-aligned segments", () => {

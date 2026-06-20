@@ -8,11 +8,7 @@ import {
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
-import {
-  DEFAULT_EDGE_STYLE,
-  DEFAULT_ELEMENT_STYLES,
-  HUE_TONES,
-} from "@oh-just-another/tokens";
+import { DEFAULT_EDGE_STYLE, DEFAULT_ELEMENT_STYLES, HUE_TONES } from "@oh-just-another/tokens";
 import { linkId, elementId } from "@oh-just-another/types";
 import type { GraphDocument } from "./graph.js";
 import { layoutGraph } from "./layout.js";

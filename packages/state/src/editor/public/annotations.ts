@@ -8,12 +8,7 @@ import {
   type Scene,
   type Patch,
 } from "@oh-just-another/scene";
-import type {
-  AnnotationId,
-  CommentId,
-  ElementId,
-  Vec2,
-} from "@oh-just-another/types";
+import type { AnnotationId, CommentId, ElementId, Vec2 } from "@oh-just-another/types";
 import {
   annotationId as castAnnotationId,
   commentId as castCommentId,

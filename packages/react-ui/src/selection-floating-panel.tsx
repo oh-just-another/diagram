@@ -187,11 +187,7 @@ export const SelectionFloatingPanel = ({
   // the primary row + ⋮ expand. No floating-ui, no flash-gate.
   if (mobile) {
     return createPortal(
-      <div
-        className="du-sel-panel-dock"
-        role="toolbar"
-        aria-label="Selection actions"
-      >
+      <div className="du-sel-panel-dock" role="toolbar" aria-label="Selection actions">
         <PropertyPanel mobile />
       </div>,
       document.body,

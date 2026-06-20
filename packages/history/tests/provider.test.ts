@@ -5,12 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
-import {
-  DEFAULT_LAYER_ID,
-  orderBetween,
-  type Element,
-  type Patch,
-} from "@oh-just-another/scene";
+import { DEFAULT_LAYER_ID, orderBetween, type Element, type Patch } from "@oh-just-another/scene";
 import type { HistoryProvider } from "../src/provider.js";
 import { History } from "../src/index.js";
 

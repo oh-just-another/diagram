@@ -272,9 +272,11 @@ describe("grouping", () => {
 
     // The method is private; its contract is the source of truth for what
     // the renderer dims.
-    const dim = (editor as unknown as {
-      computeDimElements(id: typeof groupId): ReadonlySet<typeof a.id>;
-    }).computeDimElements(groupId);
+    const dim = (
+      editor as unknown as {
+        computeDimElements(id: typeof groupId): ReadonlySet<typeof a.id>;
+      }
+    ).computeDimElements(groupId);
 
     expect(dim.has(a.id)).toBe(false);
     expect(dim.has(b.id)).toBe(false);
@@ -294,7 +296,9 @@ describe("grouping", () => {
 
     // Simulate the editor's drag pipeline at the moment applyContainerDrop fires.
     (editor as unknown as { dragElementId: typeof a.id | null }).dragElementId = a.id;
-    (editor as unknown as { applyContainerDrop(p: { x: number; y: number }): void }).applyContainerDrop({
+    (
+      editor as unknown as { applyContainerDrop(p: { x: number; y: number }): void }
+    ).applyContainerDrop({
       x: a.position.x,
       y: a.position.y,
     });
@@ -337,7 +341,9 @@ describe("group lock / hide propagation", () => {
 
     // Clicking A selects (promoted to the group root) so it can be unlocked;
     // a locked group is not click-through.
-    const target = (editor as unknown as { hitTest(p: { x: number; y: number }): { kind: string } }).hitTest({
+    const target = (
+      editor as unknown as { hitTest(p: { x: number; y: number }): { kind: string } }
+    ).hitTest({
       x: 10,
       y: 10,
     });
@@ -363,7 +369,9 @@ describe("group lock / hide propagation", () => {
       elements: new Map(editor.scene.elements).set(groupId, hidden),
     };
 
-    const hideSet = (editor as unknown as { computeHiddenElements(): ReadonlySet<typeof a.id> | undefined }).computeHiddenElements();
+    const hideSet = (
+      editor as unknown as { computeHiddenElements(): ReadonlySet<typeof a.id> | undefined }
+    ).computeHiddenElements();
     expect(hideSet).toBeDefined();
     expect(hideSet!.has(groupId)).toBe(true);
     expect(hideSet!.has(a.id)).toBe(true);
@@ -391,7 +399,12 @@ describe("auto-layout containers", () => {
     },
   });
 
-  const childOf = (id: string, parentId: ReturnType<typeof elementId>, x: number, y: number): Element => ({
+  const childOf = (
+    id: string,
+    parentId: ReturnType<typeof elementId>,
+    x: number,
+    y: number,
+  ): Element => ({
     id: elementId(id),
     layerId: DEFAULT_LAYER_ID,
     type: "rectangle",
@@ -557,12 +570,7 @@ describe("auto-layout containers", () => {
 
 describe("arrange layouts", () => {
   it("arrangeAsGrid positions selection on a regular grid", () => {
-    const shapes = [
-      rect("a", 500, 500),
-      rect("b", 0, 0),
-      rect("c", 800, 800),
-      rect("d", 100, 100),
-    ];
+    const shapes = [rect("a", 500, 500), rect("b", 0, 0), rect("c", 800, 800), rect("d", 100, 100)];
     const editor = makeEditor(sceneWith(...shapes));
     editor.setSelection(new Set(shapes.map((s) => s.id)));
     editor.arrangeAsGrid({ cols: 2, gap: 4 });

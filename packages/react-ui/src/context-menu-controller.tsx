@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useMemo,
-  useRef,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, useRef, type ReactNode } from "react";
 
 /** Screen-space (CSS px) + world-space point pair an open request carries. */
 export interface ContextMenuOpenRequest {

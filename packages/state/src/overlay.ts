@@ -44,11 +44,7 @@ import {
   TEXT_SELECTION_FILL,
   TEXT_SELECTION_OPACITY,
 } from "./constants.js";
-import {
-  CORNER_HANDLES,
-  HANDLE_SIZE,
-  handlePosition,
-} from "./handle.js";
+import { CORNER_HANDLES, HANDLE_SIZE, handlePosition } from "./handle.js";
 import { isResizable } from "./editor/shape-traits.js";
 import {
   drawHitZones,
@@ -74,7 +70,8 @@ const groupWorldBounds = (scene: Scene, groupId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
   for (const shape of scene.elements.values()) {
     if (shape.parentId !== groupId) continue;
-    const inner = shape.type === "group" ? groupWorldBounds(scene, shape.id) : getElementWorldBounds(shape);
+    const inner =
+      shape.type === "group" ? groupWorldBounds(scene, shape.id) : getElementWorldBounds(shape);
     if (!inner) continue;
     acc = acc ? B.union(acc, inner) : inner;
   }
@@ -872,7 +869,11 @@ const drawLinkPreview = (target: RenderTarget, from: Vec2, to: Vec2, style: Over
 };
 
 /** Dashed polyline preview (elbow) in screen space. */
-const drawLinkPreviewPath = (target: RenderTarget, pts: readonly Vec2[], style: OverlayStyle): void => {
+const drawLinkPreviewPath = (
+  target: RenderTarget,
+  pts: readonly Vec2[],
+  style: OverlayStyle,
+): void => {
   target.setStroke(style.drawingStroke);
   target.setStrokeWidth(1.5);
   target.setDashArray(style.drawingDash);
@@ -900,8 +901,12 @@ const drawPortDot = (
   // When active (snapped), use the inverse fill of the resting state
   // to highlight the dot.
   const fill = active
-    ? (isStart ? LINK_START_ANCHOR_STROKE : LINK_ATTACH_ANCHOR_STROKE)
-    : (isStart ? LINK_START_ANCHOR_FILL : LINK_ATTACH_ANCHOR_FILL);
+    ? isStart
+      ? LINK_START_ANCHOR_STROKE
+      : LINK_ATTACH_ANCHOR_STROKE
+    : isStart
+      ? LINK_START_ANCHOR_FILL
+      : LINK_ATTACH_ANCHOR_FILL;
   const stroke = isStart ? LINK_START_ANCHOR_STROKE : LINK_ATTACH_ANCHOR_STROKE;
 
   target.setStroke(stroke);

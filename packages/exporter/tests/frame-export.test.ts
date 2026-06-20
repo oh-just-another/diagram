@@ -23,7 +23,7 @@ const frame = (id: string, x: number, y: number, w: number, h: number, name = "F
     width: w,
     height: h,
     name,
-  } as Element);
+  }) as Element;
 
 const rect = (id: string, parent?: string, x = 0, y = 0): Element =>
   ({
@@ -38,7 +38,7 @@ const rect = (id: string, parent?: string, x = 0, y = 0): Element =>
     width: 40,
     height: 40,
     ...(parent ? { frameId: elementId(parent) } : {}),
-  } as Element);
+  }) as Element;
 
 const sceneWith = (...elements: Element[]): Scene => {
   let s = emptyScene();

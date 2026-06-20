@@ -92,7 +92,9 @@ export const MergeDialog = ({
               key={conflictKey(c)}
               conflict={c}
               pick={pickFor(c)}
-              onPick={(p) => { setPick(c, p); }}
+              onPick={(p) => {
+                setPick(c, p);
+              }}
             />
           ))
         )}
@@ -139,14 +141,13 @@ const ConflictRow = ({
     </div>
     <div style={{ display: "flex", gap: 8 }}>
       {(["source", "target", "both"] as const).map((side) => (
-        <label
-          key={side}
-          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}
-        >
+        <label key={side} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
           <input
             type="radio"
             checked={pick === side}
-            onChange={() => { onPick(side); }}
+            onChange={() => {
+              onPick(side);
+            }}
             name={`pick-${String(conflict.id)}`}
           />
           {side}

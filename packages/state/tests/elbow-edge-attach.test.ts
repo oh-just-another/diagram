@@ -36,12 +36,20 @@ const noopTarget = new Proxy(
 
 const makeEditor = (...els: Element[]): Editor => {
   const host = {
-    addEventListener: () => {}, removeEventListener: () => {},
-    setPointerCapture: () => {}, releasePointerCapture: () => {}, hasPointerCapture: () => true,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+    hasPointerCapture: () => true,
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
     style: { cursor: "" },
   } as never;
-  return new Editor({ host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: sceneWith(...els) });
+  return new Editor({
+    host,
+    mainTarget: noopTarget,
+    overlayTarget: noopTarget,
+    initialScene: sceneWith(...els),
+  });
 };
 
 describe("elbow endpoint binds to an edge dot dropped outside the body", () => {

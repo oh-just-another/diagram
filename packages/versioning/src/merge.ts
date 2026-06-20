@@ -1,12 +1,5 @@
 import type { AnnotationId, LinkId, LayerId, ElementId } from "@oh-just-another/types";
-import type {
-  Annotation,
-  Link,
-  Layer,
-  Patch,
-  Scene,
-  Element,
-} from "@oh-just-another/scene";
+import type { Annotation, Link, Layer, Patch, Scene, Element } from "@oh-just-another/scene";
 import { apply } from "@oh-just-another/scene";
 import type { Snapshot, VersionId } from "./types.js";
 import type { SnapshotStore } from "./store.js";

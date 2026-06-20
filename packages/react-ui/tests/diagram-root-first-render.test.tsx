@@ -76,14 +76,15 @@ const makeMockContext = (callLog: { args: number[] }[]): CanvasRenderingContext2
 
 const captureFillCalls = () => {
   const callLog: { args: number[] }[] = [];
-  const stub = vi
-    .spyOn(HTMLCanvasElement.prototype, "getContext")
-    .mockImplementation(function (this: HTMLCanvasElement, type: string) {
-      if (type !== "2d") return null;
-      const ctx = makeMockContext(callLog);
-      (ctx as { canvas: HTMLCanvasElement }).canvas = this;
-      return ctx;
-    });
+  const stub = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (
+    this: HTMLCanvasElement,
+    type: string,
+  ) {
+    if (type !== "2d") return null;
+    const ctx = makeMockContext(callLog);
+    (ctx as { canvas: HTMLCanvasElement }).canvas = this;
+    return ctx;
+  });
   return { callLog, restore: () => stub.mockRestore() };
 };
 

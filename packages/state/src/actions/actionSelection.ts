@@ -5,7 +5,9 @@ export const actionSelectAll: Action = {
   label: "Select all",
   category: "selection",
   hotkey: { key: "a", meta: true },
-  perform: ({ editor }) => { editor.selectAll(); },
+  perform: ({ editor }) => {
+    editor.selectAll();
+  },
 };
 
 export const actionDeleteSelection: Action = {
@@ -14,7 +16,9 @@ export const actionDeleteSelection: Action = {
   category: "selection",
   hotkey: [{ key: "Delete" }, { key: "Backspace" }],
   predicate: hasSelectionOrLink,
-  perform: ({ editor }) => { editor.deleteSelected(); },
+  perform: ({ editor }) => {
+    editor.deleteSelected();
+  },
 };
 
 export const actionDuplicateSelection: Action = {
@@ -23,7 +27,9 @@ export const actionDuplicateSelection: Action = {
   category: "selection",
   hotkey: { key: "d", meta: true },
   predicate: hasSelection,
-  perform: ({ editor }) => { editor.duplicateSelected(); },
+  perform: ({ editor }) => {
+    editor.duplicateSelected();
+  },
 };
 
 export const actionToggleLock: Action = {
@@ -32,7 +38,9 @@ export const actionToggleLock: Action = {
   category: "selection",
   hotkey: { key: "l", meta: true, shift: true },
   predicate: hasSelection,
-  perform: ({ editor }) => { editor.toggleLockSelection(); },
+  perform: ({ editor }) => {
+    editor.toggleLockSelection();
+  },
 };
 
 export const actionEnterContainer: Action = {
@@ -41,7 +49,9 @@ export const actionEnterContainer: Action = {
   category: "selection",
   hotkey: { key: "ArrowDown", meta: true, shift: true },
   predicate: ({ editor }) => editor.selection.size === 1,
-  perform: ({ editor }) => { editor.enterContainer(); },
+  perform: ({ editor }) => {
+    editor.enterContainer();
+  },
 };
 
 export const actionExitContainer: Action = {
@@ -50,7 +60,9 @@ export const actionExitContainer: Action = {
   category: "selection",
   hotkey: { key: "ArrowUp", meta: true, shift: true },
   predicate: hasSelection,
-  perform: ({ editor }) => { editor.exitContainer(); },
+  perform: ({ editor }) => {
+    editor.exitContainer();
+  },
 };
 
 export const selectionActions: readonly Action[] = [

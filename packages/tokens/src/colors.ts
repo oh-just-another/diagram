@@ -34,15 +34,7 @@ import {
 } from "@radix-ui/colors";
 
 /** Hue families exposed to the rest of the codebase. */
-export const HUES = [
-  "tomato",
-  "amber",
-  "grass",
-  "cyan",
-  "iris",
-  "plum",
-  "gray",
-] as const;
+export const HUES = ["tomato", "amber", "grass", "cyan", "iris", "plum", "gray"] as const;
 export type Hue = (typeof HUES)[number];
 
 /**

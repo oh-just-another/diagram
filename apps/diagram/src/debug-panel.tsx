@@ -11,7 +11,13 @@ import {
 } from "@oh-just-another/scene";
 import { defaultActionRegistry, type Editor } from "@oh-just-another/state";
 import { defaultRegistry, type Template, type TemplateContext } from "@oh-just-another/templates";
-import { linkId, elementId, type LinkId, type LayerId, type ElementId } from "@oh-just-another/types";
+import {
+  linkId,
+  elementId,
+  type LinkId,
+  type LayerId,
+  type ElementId,
+} from "@oh-just-another/types";
 
 /** Renderer backend choices surfaced in the Display tab. */
 const RENDERERS = ["auto", "canvas2d", "webgl2", "offscreen"] as const;
@@ -94,9 +100,13 @@ export const DebugPanel = ({ editor }: { editor: Editor | null }) => {
       // bound as ⌘D, so plain `d` is safe.
       sequence: ["d", "d"],
       checked: () => openRef.current,
-      perform: () => { setOpen((v) => !v); },
+      perform: () => {
+        setOpen((v) => !v);
+      },
     });
-    return () => { defaultActionRegistry.unregister("toggle-debug-panel"); };
+    return () => {
+      defaultActionRegistry.unregister("toggle-debug-panel");
+    };
   }, []);
 
   // Force re-render on every editor mutation. The four tabs read
@@ -106,20 +116,34 @@ export const DebugPanel = ({ editor }: { editor: Editor | null }) => {
   const [, force] = useState(0);
   useEffect(() => {
     if (!editor) return;
-    return editor.subscribe(() => { force((v) => v + 1); });
+    return editor.subscribe(() => {
+      force((v) => v + 1);
+    });
   }, [editor]);
 
   if (!open) return null;
   if (!editor) {
     return (
-      <Drawer onClose={() => { setOpen(false); }} tab={tab} setTab={setTab}>
+      <Drawer
+        onClose={() => {
+          setOpen(false);
+        }}
+        tab={tab}
+        setTab={setTab}
+      >
         <div style={{ padding: 16, color: "var(--muted)" }}>Editor not ready.</div>
       </Drawer>
     );
   }
 
   return (
-    <Drawer onClose={() => { setOpen(false); }} tab={tab} setTab={setTab}>
+    <Drawer
+      onClose={() => {
+        setOpen(false);
+      }}
+      tab={tab}
+      setTab={setTab}
+    >
       {tab === "inspector" && <InspectorTab editor={editor} />}
       {tab === "state" && <StateTab editor={editor} />}
       {tab === "history" && <HistoryTab editor={editor} />}
@@ -246,7 +270,9 @@ const Drawer = ({
         <button
           key={t.id}
           type="button"
-          onClick={() => { setTab(t.id); }}
+          onClick={() => {
+            setTab(t.id);
+          }}
           style={{
             background: tab === t.id ? "var(--du-selected-bg, #e6e7ff)" : "transparent",
             color: tab === t.id ? "var(--du-selected-fg, #5753c6)" : "var(--du-text, #1a1a1a)",
@@ -463,7 +489,7 @@ const StateTab = ({ editor }: { editor: Editor }) => {
           <Code>{editor.history.size}</Code>
         </Row>
         <Row label="redo">
-          <Code>{(editor.history.redoStack?.length ?? 0)}</Code>
+          <Code>{editor.history.redoStack?.length ?? 0}</Code>
         </Row>
         <Row label="canUndo / canRedo">
           <Code>
@@ -494,7 +520,13 @@ const HistoryTab = ({ editor }: { editor: Editor }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {pastDesc.map((p, i) => (
-        <PatchRow key={`past-${i}`} patch={p} index={past.length - 1 - i} active={i === 0} side="past" />
+        <PatchRow
+          key={`past-${i}`}
+          patch={p}
+          index={past.length - 1 - i}
+          active={i === 0}
+          side="past"
+        />
       ))}
       {futureDesc.length > 0 ? (
         <>
@@ -558,12 +590,20 @@ const GeneratorsTab = ({ editor }: { editor: Editor }) => {
   const template = templates.find((t) => t.id === templateId) ?? templates[0];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+        gap: 12,
+      }}
+    >
       <Card>
         <Section title="Element template">
           <select
             value={templateId}
-            onChange={(e) => { setTemplateId(e.target.value); }}
+            onChange={(e) => {
+              setTemplateId(e.target.value);
+            }}
             style={selectStyle}
           >
             {templates.map((t) => (
@@ -624,13 +664,7 @@ const SingleAddSection = ({
   );
 };
 
-const GridSection = ({
-  editor,
-  template,
-}: {
-  editor: Editor;
-  template: Template | undefined;
-}) => {
+const GridSection = ({ editor, template }: { editor: Editor; template: Template | undefined }) => {
   const [count, setCount] = useState(50);
   const [cols, setCols] = useState(10);
   const [gap, setGap] = useState(20);
@@ -649,15 +683,11 @@ const GridSection = ({
         <NumberInput value={gap} onChange={setGap} min={0} max={500} />
       </Field>
       <CheckboxRow checked={rainbow} onChange={setRainbow} label="Rainbow fill" />
-      <CheckboxRow
-        checked={connect}
-        onChange={setConnect}
-        label="Connect first → each"
-      />
+      <CheckboxRow checked={connect} onChange={setConnect} label="Connect first → each" />
       <button
         type="button"
-        onClick={() =>
-          { runBatch(editor, () =>
+        onClick={() => {
+          runBatch(editor, () =>
             buildGrid(editor, template, {
               count,
               cols,
@@ -666,8 +696,8 @@ const GridSection = ({
               connect,
               origin: viewportTopLeftWithMargin(editor),
             }),
-          ); }
-        }
+          );
+        }}
         style={primaryButtonStyle}
       >
         Generate grid
@@ -676,13 +706,7 @@ const GridSection = ({
   );
 };
 
-const StackSection = ({
-  editor,
-  template,
-}: {
-  editor: Editor;
-  template: Template | undefined;
-}) => {
+const StackSection = ({ editor, template }: { editor: Editor; template: Template | undefined }) => {
   const [count, setCount] = useState(20);
   const [direction, setDirection] = useState<"horizontal" | "vertical">("horizontal");
   const [gap, setGap] = useState(10);
@@ -695,7 +719,9 @@ const StackSection = ({
       <Field label="Direction">
         <select
           value={direction}
-          onChange={(e) => { setDirection(e.target.value as "horizontal" | "vertical"); }}
+          onChange={(e) => {
+            setDirection(e.target.value as "horizontal" | "vertical");
+          }}
           style={selectStyle}
         >
           <option value="horizontal">horizontal</option>
@@ -707,16 +733,16 @@ const StackSection = ({
       </Field>
       <button
         type="button"
-        onClick={() =>
-          { runBatch(editor, () =>
+        onClick={() => {
+          runBatch(editor, () =>
             buildStack(editor, template, {
               count,
               direction,
               gap,
               origin: viewportTopLeftWithMargin(editor),
             }),
-          ); }
-        }
+          );
+        }}
         style={primaryButtonStyle}
       >
         Generate stack
@@ -883,13 +909,7 @@ const FractalSection = ({
   );
 };
 
-const TimerSection = ({
-  editor,
-  template,
-}: {
-  editor: Editor;
-  template: Template | undefined;
-}) => {
+const TimerSection = ({ editor, template }: { editor: Editor; template: Template | undefined }) => {
   const [count, setCount] = useState(50);
   const [interval, setInterval] = useState(100);
   const [running, setRunning] = useState(false);
@@ -906,7 +926,12 @@ const TimerSection = ({
   }, []);
 
   // Cleanup on unmount or template/editor change.
-  useEffect(() => () => { stop(); }, [stop]);
+  useEffect(
+    () => () => {
+      stop();
+    },
+    [stop],
+  );
 
   if (!template) return null;
 
@@ -933,7 +958,13 @@ const TimerSection = ({
         <NumberInput value={count} onChange={setCount} min={1} max={5000} disabled={running} />
       </Field>
       <Field label="Interval (ms)">
-        <NumberInput value={interval} onChange={setInterval} min={16} max={5000} disabled={running} />
+        <NumberInput
+          value={interval}
+          onChange={setInterval}
+          min={16}
+          max={5000}
+          disabled={running}
+        />
       </Field>
       {running ? (
         <button type="button" onClick={stop} style={dangerButtonStyle}>
@@ -1014,7 +1045,9 @@ const MosaicSection = ({ editor }: { editor: Editor }) => {
       </Field>
       <CheckboxRow
         checked={fixedCols !== null}
-        onChange={(v) => { setFixedCols(v ? 50 : null); }}
+        onChange={(v) => {
+          setFixedCols(v ? 50 : null);
+        }}
         label="Fixed column count"
       />
       {fixedCols !== null && (
@@ -1042,7 +1075,12 @@ const MosaicSection = ({ editor }: { editor: Editor }) => {
           </button>
         </div>
       ) : (
-        <button type="button" onClick={() => void generate()} disabled={!image} style={primaryButtonStyle}>
+        <button
+          type="button"
+          onClick={() => void generate()}
+          disabled={!image}
+          style={primaryButtonStyle}
+        >
           Generate mosaic
         </button>
       )}
@@ -1059,7 +1097,7 @@ const nextDebugId = (prefix: string): ElementId =>
   elementId(`debug-${prefix}-${++debugIdCounter}-${Date.now().toString(36)}`);
 
 const activeLayerId = (editor: Editor): LayerId =>
-  ([...editor.scene.layers.keys()][0] ?? ("default" as LayerId));
+  [...editor.scene.layers.keys()][0] ?? ("default" as LayerId);
 
 const buildOne = (
   editor: Editor,
@@ -1132,11 +1170,7 @@ interface GridOptions {
   readonly origin: { x: number; y: number };
 }
 
-const buildGrid = (
-  editor: Editor,
-  template: Template,
-  opts: GridOptions,
-): BuildResult => {
+const buildGrid = (editor: Editor, template: Template, opts: GridOptions): BuildResult => {
   const shapes: Element[] = [];
   const layerId = activeLayerId(editor);
   // Build first instance to measure the cell size (templates have
@@ -1217,11 +1251,7 @@ interface StackOptions {
   readonly origin: { x: number; y: number };
 }
 
-const buildStack = (
-  editor: Editor,
-  template: Template,
-  opts: StackOptions,
-): BuildResult => {
+const buildStack = (editor: Editor, template: Template, opts: StackOptions): BuildResult => {
   const shapes: Element[] = [];
   const layerId = activeLayerId(editor);
   let cursorX = opts.origin.x;
@@ -1270,11 +1300,7 @@ interface FractalOptions {
  */
 const FRACTAL_WORLD_SPAN = 14000;
 
-const buildFractal = (
-  editor: Editor,
-  template: Template,
-  opts: FractalOptions,
-): BuildResult => {
+const buildFractal = (editor: Editor, template: Template, opts: FractalOptions): BuildResult => {
   switch (opts.type) {
     case "tree":
       return buildTreeFractal(editor, template, opts);
@@ -1340,7 +1366,8 @@ const buildTreeFractal = (
     });
     order = orderBetween(order, null);
     let shape: Element = { ...base, rotation: angle, scale: { x: scale, y: scale } };
-    if (opts.colorful) shape = withFill(shape, hslToHex((level / Math.max(depth, 1)) * 300, 70, 62));
+    if (opts.colorful)
+      shape = withFill(shape, hslToHex((level / Math.max(depth, 1)) * 300, 70, 62));
     shapes.push(shape);
     if (level >= depth) return;
     const tipX = x + Math.sin(angle) * segLen * scale;
@@ -1348,7 +1375,13 @@ const buildTreeFractal = (
     const n = Math.max(1, branches);
     for (let i = 0; i < n; i++) {
       const t = n === 1 ? 0 : i / (n - 1) - 0.5;
-      place(tipX, tipY, angle + t * FRACTAL_ANGLE_SPREAD * 2, scale * FRACTAL_SCALE_RATIO, level + 1);
+      place(
+        tipX,
+        tipY,
+        angle + t * FRACTAL_ANGLE_SPREAD * 2,
+        scale * FRACTAL_SCALE_RATIO,
+        level + 1,
+      );
     }
   };
   // Root scale sized so the tree spans ≈ FRACTAL_WORLD_SPAN: total
@@ -1547,8 +1580,10 @@ const safeBounds = (shape: Element) => {
   }
 };
 
-const withFill = (shape: Element, fill: string): Element =>
-  ({ ...shape, style: { ...shape.style, fill } });
+const withFill = (shape: Element, fill: string): Element => ({
+  ...shape,
+  style: { ...shape.style, fill },
+});
 
 // The project's color parser (packages/math/src/color.ts) accepts only
 // hex / rgb / rgba / a small named set — `hsl()` falls back to opaque
@@ -1562,7 +1597,7 @@ const hslToHex = (h: number, s: number, l: number): string => {
   const sn = s / 100;
   const ln = l / 100;
   const c = (1 - Math.abs(2 * ln - 1)) * sn;
-  const hp = ((h % 360) + 360) % 360 / 60;
+  const hp = (((h % 360) + 360) % 360) / 60;
   const x = c * (1 - Math.abs((hp % 2) - 1));
   let r1 = 0;
   let g1 = 0;
@@ -1639,7 +1674,11 @@ const runMosaicChunks = async (
     if (!onProgress(Math.round((done / total) * 100))) {
       return; // aborted
     }
-    await new Promise<void>((resolve) => requestAnimationFrame(() => { resolve(); }));
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => {
+        resolve();
+      }),
+    );
 
     const end = Math.min(done + CHUNK, total);
     for (let i = done; i < end; i++) {
@@ -1821,7 +1860,13 @@ const CheckboxRow = ({
   label: string;
 }) => (
   <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
-    <input type="checkbox" checked={checked} onChange={(e) => { onChange(e.target.checked); }} />
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => {
+        onChange(e.target.checked);
+      }}
+    />
     {label}
   </label>
 );
@@ -1929,8 +1974,7 @@ const disabledButtonStyle: React.CSSProperties = {
   cursor: "not-allowed",
 };
 
-const fmt = (n: number): string =>
-  Math.abs(n) >= 1000 ? n.toFixed(0) : n.toFixed(1);
+const fmt = (n: number): string => (Math.abs(n) >= 1000 ? n.toFixed(0) : n.toFixed(1));
 
 // Custom JSON stringify that handles Map / Set fields gracefully —
 // scene fields like `shapes` / `edges` are Maps and would print as

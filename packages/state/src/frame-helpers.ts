@@ -1,9 +1,5 @@
 import type { Bounds, ElementId } from "@oh-just-another/types";
-import {
-  getElementWorldBounds,
-  updateElement,
-  type Scene,
-} from "@oh-just-another/scene";
+import { getElementWorldBounds, updateElement, type Scene } from "@oh-just-another/scene";
 import type { HistoryProvider } from "@oh-just-another/history";
 
 /**

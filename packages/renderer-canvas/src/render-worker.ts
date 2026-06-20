@@ -1,10 +1,7 @@
 /// <reference lib="webworker" />
 import { installBuiltinRenderers, renderScene } from "@oh-just-another/renderer-core";
 import type { Scene } from "@oh-just-another/scene";
-import type {
-  WorkerRenderMessage,
-  WorkerRenderResponse,
-} from "@oh-just-another/renderer-core";
+import type { WorkerRenderMessage, WorkerRenderResponse } from "@oh-just-another/renderer-core";
 import { Canvas2DTarget } from "./canvas-target.js";
 import { replayCommands, type RenderCommand } from "./recording-target.js";
 
@@ -56,12 +53,7 @@ const init = (canvas: OffscreenCanvas, width: number, height: number, dpr: numbe
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("OffscreenCanvas 2D context unavailable");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  state.target = new Canvas2DTarget(
-    ctx as unknown as CanvasRenderingContext2D,
-    width,
-    height,
-    dpr,
-  );
+  state.target = new Canvas2DTarget(ctx as unknown as CanvasRenderingContext2D, width, height, dpr);
   post({ type: "ready" });
 };
 
@@ -109,7 +101,10 @@ const replay = (commands: readonly RenderCommand[]): void => {
   replayCommands(state.target, commands);
 };
 
-interface ReplayMessage { readonly type: "replay"; readonly commands: readonly RenderCommand[] }
+interface ReplayMessage {
+  readonly type: "replay";
+  readonly commands: readonly RenderCommand[];
+}
 type InboundMessage = WorkerRenderMessage | ReplayMessage;
 
 (self as unknown as DedicatedWorkerGlobalScope).addEventListener(

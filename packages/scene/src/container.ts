@@ -70,9 +70,7 @@ export const getContainerSpec = (s: ElementBase): ContainerSpec | null => {
   // initial/serialised fallback only. Otherwise a resize of the frame
   // wouldn't grow the drop-area (stored zone stays e.g. 296×176 even
   // after the rectangle becomes 500×300).
-  const meta = s.metadata as
-    | { autoLayout?: unknown; container?: { padding?: number } }
-    | undefined;
+  const meta = s.metadata as { autoLayout?: unknown; container?: { padding?: number } } | undefined;
   // ElementBase doesn't carry width/height (text / path / freedraw
   // shapes lack them); detect through a type-erased probe rather
   // than narrowing through TS overloads.
@@ -99,9 +97,10 @@ export const getContainerSpec = (s: ElementBase): ContainerSpec | null => {
   if (!m || typeof m !== "object") return null;
   const obj = m as { dropZone?: Bounds; padding?: number };
   if (!obj.dropZone) return null;
-  const spec: ContainerSpec = obj.padding !== undefined
-    ? { dropZone: obj.dropZone, padding: obj.padding }
-    : { dropZone: obj.dropZone };
+  const spec: ContainerSpec =
+    obj.padding !== undefined
+      ? { dropZone: obj.dropZone, padding: obj.padding }
+      : { dropZone: obj.dropZone };
   return spec;
 };
 
@@ -209,10 +208,7 @@ export const findContainerAt = (
  * Padding inflates the new edge but is never subtracted from existing
  * edges — the zone only grows, never shrinks.
  */
-export const expandDropZoneToFit = (
-  container: ElementBase,
-  childWorld: Bounds,
-): Bounds | null => {
+export const expandDropZoneToFit = (container: ElementBase, childWorld: Bounds): Bounds | null => {
   const spec = getContainerSpec(container);
   if (!spec) return null;
   const padding = spec.padding ?? 0;

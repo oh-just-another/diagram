@@ -92,7 +92,9 @@ export const LibraryPanel = ({
           value={search}
           placeholder="Search templates…"
           aria-label="Search templates"
-          onChange={(ev) => { setSearch(ev.target.value); }}
+          onChange={(ev) => {
+            setSearch(ev.target.value);
+          }}
           onKeyDown={(ev) => {
             if (ev.key === "Escape" && search) {
               ev.stopPropagation();

@@ -4,13 +4,13 @@ The framework is intentionally not tied to a specific generator. When we have ti
 
 ## Candidates
 
-| Generator | Pros | Cons |
-|---|---|---|
-| **Astro Starlight** | fast, MDX, built-in search, good for libraries | requires build-step |
-| **VitePress** | lightweight, Vue ecosystem, fast dev | fewer "doc" features |
-| **Docusaurus** | mature, document versioning, i18n | heavier, React-bound |
-| **MkDocs Material** | very simple, Python | outside JS tooling monorepo |
-| **plain GitHub Pages + Jekyll** | no dependencies | minimal features |
+| Generator                       | Pros                                           | Cons                        |
+| ------------------------------- | ---------------------------------------------- | --------------------------- |
+| **Astro Starlight**             | fast, MDX, built-in search, good for libraries | requires build-step         |
+| **VitePress**                   | lightweight, Vue ecosystem, fast dev           | fewer "doc" features        |
+| **Docusaurus**                  | mature, document versioning, i18n              | heavier, React-bound        |
+| **MkDocs Material**             | very simple, Python                            | outside JS tooling monorepo |
+| **plain GitHub Pages + Jekyll** | no dependencies                                | minimal features            |
 
 ## Hosting
 

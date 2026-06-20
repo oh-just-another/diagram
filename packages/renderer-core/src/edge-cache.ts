@@ -85,7 +85,12 @@ export const computeLinkWorldBounds = (scene: Scene, edge: Link): Bounds | null 
     (heads?.from !== undefined && heads.from !== "none") ||
     (heads?.to !== undefined && heads.to !== "none");
   const pad = Math.max(2, (edge.style.strokeWidth ?? 1) / 2 + (hasHead ? (heads.size ?? 10) : 0));
-  return { x: minX - pad, y: minY - pad, width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 };
+  return {
+    x: minX - pad,
+    y: minY - pad,
+    width: maxX - minX + pad * 2,
+    height: maxY - minY + pad * 2,
+  };
 };
 
 /**

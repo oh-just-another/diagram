@@ -14,8 +14,7 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const makeFile = (name: string, type = ""): File =>
-  new File(["content"], name, { type });
+const makeFile = (name: string, type = ""): File => new File(["content"], name, { type });
 
 // ---------------------------------------------------------------------------
 // isVideoFile
@@ -207,16 +206,37 @@ describe("FileDropRegistry", () => {
 
   it("dispatch returns false for an empty registry", async () => {
     const reg = new FileDropRegistry();
-    const result = await reg.dispatch(makeFile("f.png"), { editor: {} as never, worldPoint: { x: 0, y: 0 } });
+    const result = await reg.dispatch(makeFile("f.png"), {
+      editor: {} as never,
+      worldPoint: { x: 0, y: 0 },
+    });
     expect(result).toBe(false);
   });
 
   it("multiple handlers are called in registration order (first match wins)", async () => {
     const reg = new FileDropRegistry();
     const order: string[] = [];
-    reg.register({ id: "a", accept: () => false, handle: () => { order.push("a"); } });
-    reg.register({ id: "b", accept: () => true,  handle: () => { order.push("b"); } });
-    reg.register({ id: "c", accept: () => true,  handle: () => { order.push("c"); } });
+    reg.register({
+      id: "a",
+      accept: () => false,
+      handle: () => {
+        order.push("a");
+      },
+    });
+    reg.register({
+      id: "b",
+      accept: () => true,
+      handle: () => {
+        order.push("b");
+      },
+    });
+    reg.register({
+      id: "c",
+      accept: () => true,
+      handle: () => {
+        order.push("c");
+      },
+    });
     await reg.dispatch(makeFile("f.png"), { editor: {} as never, worldPoint: { x: 0, y: 0 } });
     expect(order).toEqual(["b"]); // a rejected; b accepted; c not reached
   });

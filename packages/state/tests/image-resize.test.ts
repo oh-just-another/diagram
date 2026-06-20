@@ -7,10 +7,7 @@ import {
   orderBetween,
   type Element,
 } from "@oh-just-another/scene";
-import {
-  computeGroupResizePatches,
-  type GroupResizeOrigin,
-} from "../src/editor/applies/resize.js";
+import { computeGroupResizePatches, type GroupResizeOrigin } from "../src/editor/applies/resize.js";
 
 const image = (): Element =>
   ({
@@ -31,7 +28,14 @@ const sceneWith = (s: Element) => addElement(emptyScene(), s).scene;
 
 const originFor = (s: Element): GroupResizeOrigin => ({
   elements: new Map([
-    [s.id, { position: s.position, bounds: { x: 0, y: 0, width: 100, height: 50 }, scale: { x: 1, y: 1 } }],
+    [
+      s.id,
+      {
+        position: s.position,
+        bounds: { x: 0, y: 0, width: 100, height: 50 },
+        scale: { x: 1, y: 1 },
+      },
+    ],
   ]),
 });
 
@@ -79,7 +83,14 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
     } as unknown as Element;
     const scene = sceneWith(rect);
     const bounds = { x: 0, y: 0, width: 100, height: 50 };
-    const r = computeGroupResizePatches(scene, originFor(rect), "se", { x: 100, y: 10 }, bounds, false);
+    const r = computeGroupResizePatches(
+      scene,
+      originFor(rect),
+      "se",
+      { x: 100, y: 10 },
+      bounds,
+      false,
+    );
     const after = (r.patches[0] as { after: Element & { width: number; height: number } }).after;
     expect(after.width / after.height).not.toBeCloseTo(100 / 50);
   });
@@ -115,8 +126,22 @@ describe("image resize is aspect-locked (only scale, no distortion)", () => {
     ({ scene } = addElement(scene, img));
     const origin: GroupResizeOrigin = {
       elements: new Map([
-        [rect.id, { position: { x: 0, y: 0 }, bounds: { x: 0, y: 0, width: 100, height: 50 }, scale: { x: 1, y: 1 } }],
-        [img.id, { position: { x: 100, y: 0 }, bounds: { x: 100, y: 0, width: 80, height: 40 }, scale: { x: 1, y: 1 } }],
+        [
+          rect.id,
+          {
+            position: { x: 0, y: 0 },
+            bounds: { x: 0, y: 0, width: 100, height: 50 },
+            scale: { x: 1, y: 1 },
+          },
+        ],
+        [
+          img.id,
+          {
+            position: { x: 100, y: 0 },
+            bounds: { x: 100, y: 0, width: 80, height: 40 },
+            scale: { x: 1, y: 1 },
+          },
+        ],
       ]),
     };
     // Group box is 180×50. Drag SE corner non-uniformly: sx large, sy small.

@@ -330,8 +330,12 @@ describe("drawPath", () => {
       ],
       style: { fill: "#f0f" },
     });
-    expect(calls.some((c) => c.method === "moveTo" && c.args[0] === 10 && c.args[1] === 20)).toBe(true);
-    expect(calls.some((c) => c.method === "lineTo" && c.args[0] === 50 && c.args[1] === 60)).toBe(true);
+    expect(calls.some((c) => c.method === "moveTo" && c.args[0] === 10 && c.args[1] === 20)).toBe(
+      true,
+    );
+    expect(calls.some((c) => c.method === "lineTo" && c.args[0] === 50 && c.args[1] === 60)).toBe(
+      true,
+    );
     expect(calls.some((c) => c.method === "fill")).toBe(true);
   });
 
@@ -416,7 +420,9 @@ describe("drawText", () => {
       fontSize: 16,
       style: {},
     });
-    expect(calls.some((c) => c.method === "setFont" && c.args[0] === "sans-serif" && c.args[1] === 16)).toBe(true);
+    expect(
+      calls.some((c) => c.method === "setFont" && c.args[0] === "sans-serif" && c.args[1] === 16),
+    ).toBe(true);
   });
 
   it("calls fillText with the text content", () => {
@@ -680,15 +686,14 @@ describe("drawFrame", () => {
 // drawBlockArrow
 // ---------------------------------------------------------------------------
 describe("drawBlockArrow", () => {
-  const mkArrow = (direction?: "right" | "left" | "up" | "down", style = {}): Element =>
-    ({
-      ...base(),
-      type: "block-arrow",
-      width: 100,
-      height: 60,
-      direction,
-      style,
-    });
+  const mkArrow = (direction?: "right" | "left" | "up" | "down", style = {}): Element => ({
+    ...base(),
+    type: "block-arrow",
+    width: 100,
+    height: 60,
+    direction,
+    style,
+  });
 
   it("emits moveTo + lineTo + fill for a filled right arrow", () => {
     const calls = addAndRender(mkArrow("right", { fill: "#f00" }));
@@ -782,7 +787,10 @@ describe("drawBrush", () => {
     const calls = addAndRender({
       ...base(),
       type: "brush",
-      points: [{ x: 0, y: 0, width: 4 }, { x: 10, y: 0, width: 4 }],
+      points: [
+        { x: 0, y: 0, width: 4 },
+        { x: 10, y: 0, width: 4 },
+      ],
       style: { fill: "#abc" },
     });
     expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#abc")).toBe(true);
@@ -792,7 +800,10 @@ describe("drawBrush", () => {
     const calls = addAndRender({
       ...base(),
       type: "brush",
-      points: [{ x: 0, y: 0, width: 4 }, { x: 10, y: 0, width: 4 }],
+      points: [
+        { x: 0, y: 0, width: 4 },
+        { x: 10, y: 0, width: 4 },
+      ],
       style: { stroke: "#f0f" },
     });
     expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#f0f")).toBe(true);
@@ -802,7 +813,10 @@ describe("drawBrush", () => {
     const calls = addAndRender({
       ...base(),
       type: "brush",
-      points: [{ x: 0, y: 0, width: 4 }, { x: 10, y: 0, width: 4 }],
+      points: [
+        { x: 0, y: 0, width: 4 },
+        { x: 10, y: 0, width: 4 },
+      ],
       style: {},
     });
     expect(calls.some((c) => c.method === "setStroke" && c.args[0] === null)).toBe(true);

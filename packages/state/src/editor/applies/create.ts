@@ -10,14 +10,12 @@ import {
   type Patch,
 } from "@oh-just-another/scene";
 import { DEFAULT_EDGE_STYLE, DEFAULT_ELEMENT_STYLES } from "@oh-just-another/tokens";
-import type {
-  Bounds,
-  LinkId,
-  LayerId,
-  ElementId,
-  Vec2,
-} from "@oh-just-another/types";
-import { DEFAULT_LINK_ARROWHEAD, DEFAULT_LINK_ROUTING, FRAME_DEFAULT_FILL } from "../../constants.js";
+import type { Bounds, LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
+import {
+  DEFAULT_LINK_ARROWHEAD,
+  DEFAULT_LINK_ROUTING,
+  FRAME_DEFAULT_FILL,
+} from "../../constants.js";
 
 /**
  * Defaults used by `buildElementForCreate` — sourced from

@@ -42,9 +42,13 @@ export const CommandPalette = (): ReactElement | null => {
       label: "Command palette",
       category: "other",
       hotkey: { key: "k", meta: true },
-      perform: () => { setOpen(true); },
+      perform: () => {
+        setOpen(true);
+      },
     });
-    return () => { defaultActionRegistry.unregister("open-command-palette"); };
+    return () => {
+      defaultActionRegistry.unregister("open-command-palette");
+    };
   }, []);
 
   // Actions with a label, minus the palette opener itself. Built once; the
@@ -60,9 +64,7 @@ export const CommandPalette = (): ReactElement | null => {
   const ctx = editor ? { editor } : null;
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q
-      ? all.filter((a) => (a.label ?? "").toLowerCase().includes(q))
-      : all;
+    const list = q ? all.filter((a) => (a.label ?? "").toLowerCase().includes(q)) : all;
     return list.map((a) => ({
       action: a,
       enabled: ctx ? (a.predicate ? a.predicate(ctx) : true) : false,
@@ -76,14 +78,20 @@ export const CommandPalette = (): ReactElement | null => {
     setActive(0);
     // Focus the input after the modal mounts.
     const id = requestAnimationFrame(() => inputRef.current?.focus());
-    return () => { cancelAnimationFrame(id); };
+    return () => {
+      cancelAnimationFrame(id);
+    };
   }, [open]);
 
-  useEffect(() => { setActive(0); }, [query]);
+  useEffect(() => {
+    setActive(0);
+  }, [query]);
 
   if (!open) return null;
 
-  const close = (): void => { setOpen(false); };
+  const close = (): void => {
+    setOpen(false);
+  };
 
   const run = (entry: { action: Action; enabled: boolean }): void => {
     if (!entry.enabled || !ctx) return;
@@ -121,7 +129,9 @@ export const CommandPalette = (): ReactElement | null => {
       <input
         ref={inputRef}
         value={query}
-        onChange={(e) => { setQuery(e.target.value); }}
+        onChange={(e) => {
+          setQuery(e.target.value);
+        }}
         onKeyDown={onInputKey}
         placeholder="Search commands…"
         aria-label="Search commands"
@@ -140,8 +150,12 @@ export const CommandPalette = (): ReactElement | null => {
                 aria-selected={i === active}
                 aria-disabled={!entry.enabled}
                 style={rowStyle(i, entry.enabled)}
-                onPointerEnter={() => { setActive(i); }}
-                onClick={() => { run(entry); }}
+                onPointerEnter={() => {
+                  setActive(i);
+                }}
+                onClick={() => {
+                  run(entry);
+                }}
               >
                 <span>{entry.action.label}</span>
                 {keys ? <kbd style={KBD_STYLE}>{keys}</kbd> : null}
