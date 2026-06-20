@@ -1,23 +1,9 @@
 /**
- * Public API of `@oh-just-another/diagram` — the library-shaped
- * diagram editor. Import `<Diagram>` and mount.
+ * `@oh-just-another/diagram` — thin compatibility alias.
  *
- * ```tsx
- * import { Diagram } from "@oh-just-another/diagram";
- *
- * function App() {
- *   return <Diagram />;
- * }
- * ```
- *
- * See `DiagramProps` for the customisation surface: plugins,
- * chrome on/off flags, slot renderers, imperative `apiRef`,
- * capability overrides, theme.
+ * The editor moved into its own package, `@oh-just-another/editor`.
+ * This entry re-exports it so existing `@oh-just-another/diagram`
+ * imports keep working. Prefer importing from `@oh-just-another/editor`
+ * directly in new code.
  */
-export { Diagram, type DiagramAPI, type DiagramProps } from "./Diagram.js";
-export {
-  detectCapabilities,
-  logCapabilities,
-  type CapabilityProfile,
-  type CapabilityOverrides,
-} from "./capabilities.js";
+export * from "@oh-just-another/editor";

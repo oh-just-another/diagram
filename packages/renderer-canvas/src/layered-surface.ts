@@ -49,6 +49,15 @@ export interface CreateLayeredSurfaceOptions {
    * is no sensible cross-bundler default).
    */
   readonly workerFactory?: () => Worker;
+  /**
+   * Called at most once if an offscreen render worker fails to load or
+   * run *asynchronously* — e.g. a bundler that doesn't emit the worker
+   * chunk, so the URL 404s after construction. The constructor itself
+   * succeeds (the failure is async), leaving a live surface whose workers
+   * are dead; the host can use this hook to tear down and rebuild on the
+   * always-safe `canvas2d` backend. Only the offscreen backend calls it.
+   */
+  readonly onWorkerError?: (error: unknown) => void;
 }
 
 /**
@@ -79,7 +88,13 @@ export const createLayeredSurface = (
           "createLayeredSurface: workerFactory is required for the offscreen backend",
         );
       }
-      return new OffscreenLayeredSurface(host, width, height, options.workerFactory);
+      return new OffscreenLayeredSurface(
+        host,
+        width,
+        height,
+        options.workerFactory,
+        options.onWorkerError,
+      );
   }
 };
 
@@ -251,7 +266,13 @@ class OffscreenLayeredSurface implements LayeredSurface {
   private _height: number;
   private readonly dpr: number;
 
-  constructor(host: HTMLElement, width: number, height: number, workerFactory: () => Worker) {
+  constructor(
+    host: HTMLElement,
+    width: number,
+    height: number,
+    workerFactory: () => Worker,
+    onWorkerError?: (error: unknown) => void,
+  ) {
     this._width = width;
     this._height = height;
     this.dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
@@ -259,6 +280,15 @@ class OffscreenLayeredSurface implements LayeredSurface {
     if (getComputedStyle(host).position === "static") {
       host.style.position = "relative";
     }
+
+    // Fire the host's async-failure hook at most once, no matter how many
+    // per-layer workers error out.
+    let workerErrorReported = false;
+    const reportWorkerError = (error: unknown): void => {
+      if (workerErrorReported) return;
+      workerErrorReported = true;
+      onWorkerError?.(error);
+    };
 
     try {
       for (const name of LAYER_ORDER) {
@@ -273,6 +303,12 @@ class OffscreenLayeredSurface implements LayeredSurface {
         host.appendChild(canvas);
 
         const worker = workerFactory();
+        // Async load/run failure (404 worker chunk, import error in the
+        // worker) surfaces here, after construction returns — route it to
+        // the host so it can rebuild on canvas2d instead of going blank.
+        worker.onerror = (event) => {
+          reportWorkerError(event);
+        };
         const offscreen = canvas.transferControlToOffscreen();
         worker.postMessage({ type: "init", canvas: offscreen, width, height, dpr: this.dpr }, [
           offscreen,

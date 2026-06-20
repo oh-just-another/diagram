@@ -86,7 +86,11 @@ const BUTTON_ICON_STROKE = 1.75;
 const menuIcon = { size: MENU_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 const toggleIcon = { size: TOGGLE_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
+
+/** Default target for the Help-menu "GitHub" link (overridable / hideable via the `repositoryUrl` prop). */
+const DEFAULT_REPOSITORY_URL = "https://github.com/oh-just-another/diagram";
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
+import type { ElementId } from "@oh-just-another/types";
 import { formatHotkey } from "@oh-just-another/state";
 import { emptyScene, type Scene } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
@@ -94,6 +98,7 @@ import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
 import { WasmRasterizer } from "@oh-just-another/raster-wasm";
+import { createRenderWorker } from "@oh-just-another/renderer-canvas";
 import {
   registerAnimationAdapter,
   setActiveRasterizer,
@@ -108,7 +113,6 @@ import {
   type CapabilityOverrides,
   type CapabilityProfile,
 } from "./capabilities";
-import { createRenderWorker } from "./render-worker-factory";
 import { exportSceneToPng, type PngExportBackground } from "./png-export";
 import { isEditableTarget } from "./dom-focus";
 
@@ -134,10 +138,28 @@ import { isEditableTarget } from "./dom-focus";
  * slots through `renderTopBar*` / `renderBottomBar*` props.
  */
 export interface DiagramAPI {
+  /**
+   * The live editor engine (`EditorInstance` from `@oh-just-another/state`) —
+   * the full power-user escape hatch beyond the curated verbs below. `null`
+   * until the editor has mounted (i.e. until `onReady` fires).
+   */
   readonly editor: Editor | null;
+  /** Resolved renderer / WASM / worker profile, or `null` before detection settles. */
+  readonly capabilities: CapabilityProfile | null;
+  // --- Scene ---
   readonly getScene: () => Scene;
   readonly loadScene: (scene: Scene) => void;
-  readonly capabilities: CapabilityProfile | null;
+  // --- Mode ---
+  readonly getMode: () => Mode | null;
+  readonly setMode: (mode: Mode) => void;
+  // --- Selection ---
+  readonly getSelection: () => ReadonlySet<ElementId>;
+  readonly setSelection: (ids: Iterable<ElementId>) => void;
+  // --- History ---
+  readonly undo: () => void;
+  readonly redo: () => void;
+  // --- Viewport ---
+  readonly zoomToFit: () => void;
 }
 
 export interface DiagramProps {
@@ -151,16 +173,20 @@ export interface DiagramProps {
   readonly layoutKinds?: readonly LayoutKindEntry[];
   readonly animationAdapters?: readonly AnimatedSourceAdapter[];
 
-  // --- Imperative API ---
-  readonly apiRef?: React.Ref<DiagramAPI>;
-
   // --- Callbacks ---
   readonly onReady?: (editor: Editor) => void;
   readonly onSceneChange?: (scene: Scene) => void;
-  readonly onSelectionChange?: (ids: ReadonlySet<string>) => void;
+  readonly onSelectionChange?: (ids: ReadonlySet<ElementId>) => void;
 
   // --- Capabilities ---
   readonly capabilities?: CapabilityOverrides;
+  /**
+   * Override how the offscreen-canvas render worker is constructed.
+   * Only used when the resolved renderer backend is `"offscreen"`.
+   * Defaults to the worker shipped with `@oh-just-another/renderer-canvas`.
+   * Supply your own when a non-Vite bundler needs a custom worker URL.
+   */
+  readonly workerFactory?: () => Worker;
 
   // --- Chrome on/off ---
   readonly hideTopBar?: boolean;
@@ -214,6 +240,28 @@ export interface DiagramProps {
    */
   readonly persistTheme?: boolean | string;
 
+  // --- Branding ---
+  /**
+   * URL for the "GitHub" link in the Help menu. Omit to use the
+   * project's repository; pass your own, or `null` to hide the link
+   * entirely (e.g. when embedding the editor in another product).
+   */
+  readonly repositoryUrl?: string | null;
+
+  // --- Dialogs ---
+  /**
+   * Confirm a destructive action (the "Reset canvas" menu item). Return
+   * `true` to proceed. Defaults to `window.confirm`; override to route
+   * through your own dialog when embedding.
+   */
+  readonly onConfirm?: (message: string) => boolean;
+  /**
+   * Surface a notification — a file that failed to parse, or an empty
+   * scene on export. Defaults to `window.alert`; override to route through
+   * your own toast / dialog.
+   */
+  readonly onNotify?: (message: string) => void;
+
   // --- Layout ---
   readonly className?: string;
   readonly style?: CSSProperties;
@@ -233,6 +281,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     onSceneChange,
     onSelectionChange,
     capabilities: capabilityOverrides,
+    workerFactory,
     hideTopBar,
     hideBottomBar,
     hideToolbar,
@@ -255,6 +304,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     defaultTheme = "system",
     onThemeChange,
     persistTheme,
+    repositoryUrl,
+    onConfirm,
+    onNotify,
     className,
     style,
   } = props;
@@ -444,24 +496,25 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     ref,
     () => ({
       editor,
+      capabilities: profile,
       getScene: () => editor?.scene ?? seed,
       loadScene: (scene) => editor?.loadScene(scene),
-      capabilities: profile,
+      getMode: () => editor?.mode ?? null,
+      setMode: (mode) => editor?.setMode(mode),
+      getSelection: () => editor?.selection ?? new Set<ElementId>(),
+      setSelection: (ids) => editor?.setSelection(ids),
+      undo: () => {
+        editor?.undo();
+      },
+      redo: () => {
+        editor?.redo();
+      },
+      zoomToFit: () => {
+        editor?.zoomToFit();
+      },
     }),
     [editor, seed, profile],
   );
-
-  useEffect(() => {
-    if (typeof document === "undefined") return undefined;
-    if (theme === "system") {
-      document.documentElement.removeAttribute("data-theme");
-      return undefined;
-    }
-    document.documentElement.setAttribute("data-theme", theme);
-    return () => {
-      document.documentElement.removeAttribute("data-theme");
-    };
-  }, [theme]);
 
   if (!profile) {
     return <div className={className} style={style} />;
@@ -482,6 +535,11 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
         <div
           className={className}
           data-diagram-root
+          // Theme is scoped to this editor root (not the global <html>), so
+          // multiple editors can theme independently and the host document is
+          // left untouched. "system" omits the attribute, falling through to
+          // the stylesheet's `prefers-color-scheme` / `:root` defaults.
+          {...(theme === "system" ? {} : { "data-theme": theme })}
           style={{
             position: "relative",
             width: "100%",
@@ -495,7 +553,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
             initialMode={initialMode}
             onReady={handleReady}
             renderer={profile.renderer}
-            {...(profile.renderer === "offscreen" ? { workerFactory: createRenderWorker } : {})}
+            {...(profile.renderer === "offscreen"
+              ? { workerFactory: workerFactory ?? createRenderWorker }
+              : {})}
             {...(wasmShaper ? { textShaper: wasmShaper } : {})}
             {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
           >
@@ -518,6 +578,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
               renderBottomBarRight={renderBottomBarRight}
               renderMainMenuExtras={renderMainMenuExtras}
               onImportTemplates={onImportTemplates}
+              repositoryUrl={repositoryUrl}
+              onConfirm={onConfirm}
+              onNotify={onNotify}
               theme={theme}
               changeTheme={changeTheme}
             />
@@ -527,6 +590,10 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     </ToastHost>
   );
 });
+
+// Match the primary public name (`<Editor>`) in DevTools / stack traces,
+// even though the internal forwardRef function is named `Diagram`.
+Diagram.displayName = "Editor";
 
 /**
  * Inner shell — must render *inside* `<DiagramRoot>` so hooks that
@@ -553,6 +620,9 @@ const EditorShell = ({
   renderBottomBarRight,
   renderMainMenuExtras,
   onImportTemplates,
+  repositoryUrl,
+  onConfirm,
+  onNotify,
   theme,
   changeTheme,
 }: {
@@ -574,10 +644,22 @@ const EditorShell = ({
   readonly renderBottomBarRight: (() => ReactNode) | undefined;
   readonly renderMainMenuExtras: (() => ReactNode) | undefined;
   readonly onImportTemplates: (() => void) | undefined;
+  readonly repositoryUrl: string | null | undefined;
+  readonly onConfirm: ((message: string) => boolean) | undefined;
+  readonly onNotify: ((message: string) => void) | undefined;
   readonly theme: DiagramTheme;
   readonly changeTheme: (next: DiagramTheme) => void;
 }) => {
   const editor = useDiagramOptional();
+  // Omitted → project repo; explicit string → that URL; null → no link.
+  const repositoryHref = repositoryUrl === undefined ? DEFAULT_REPOSITORY_URL : repositoryUrl;
+  // Native dialogs by default; hosts can route through their own UI.
+  const confirmDialog = onConfirm ?? ((message: string) => window.confirm(message));
+  const notify =
+    onNotify ??
+    ((message: string) => {
+      window.alert(message);
+    });
   // Subscribe to scene changes so the Grid toggle in MainMenu reads
   // the latest viewport.gridSize / gridStyle. `useScene` is a thin
   // selector hook — re-renders only on scene identity flips.
@@ -704,7 +786,7 @@ const EditorShell = ({
                       <MainMenu.Item
                         icon={<FileUp {...menuIcon} />}
                         onClick={() => {
-                          openSceneFile(editor);
+                          openSceneFile(editor, notify);
                         }}
                       >
                         Open…
@@ -725,21 +807,23 @@ const EditorShell = ({
                       >
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "transparent")}
+                          onClick={() => editor && void downloadPng(editor, "transparent", notify)}
                           disabled={!editor}
                         >
                           PNG (transparent)
                         </MainMenu.Item>
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "color")}
+                          onClick={() => editor && void downloadPng(editor, "color", notify)}
                           disabled={!editor}
                         >
                           PNG (with background)
                         </MainMenu.Item>
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "color-and-grid")}
+                          onClick={() =>
+                            editor && void downloadPng(editor, "color-and-grid", notify)
+                          }
                           disabled={!editor}
                         >
                           PNG (with background + grid)
@@ -759,7 +843,7 @@ const EditorShell = ({
                         icon={<RotateCcw {...menuIcon} />}
                         onClick={() => {
                           if (!editor) return;
-                          if (window.confirm("Reset canvas? This clears all shapes.")) {
+                          if (confirmDialog("Reset canvas? This clears all shapes.")) {
                             // editor.clear() keeps viewport (zoom /
                             // pan / gridSize) and layers — only
                             // shapes / edges go. loadScene(emptyScene())
@@ -907,9 +991,11 @@ const EditorShell = ({
                       >
                         Hotkeys
                       </MainMenu.Item>
-                      <MainMenu.ItemLink href="https://github.com/oh-just-another/diagram" external>
-                        GitHub
-                      </MainMenu.ItemLink>
+                      {repositoryHref ? (
+                        <MainMenu.ItemLink href={repositoryHref} external>
+                          GitHub
+                        </MainMenu.ItemLink>
+                      ) : null}
                     </MainMenu.Group>
                     {renderMainMenuExtras ? (
                       <>
@@ -1129,7 +1215,7 @@ const downloadScene = (scene: Scene): void => {
  * and replaces the editor's scene. Resets history (matches the
  * default `loadScene` behaviour). User cancellation = no-op.
  */
-const openSceneFile = (editor: Editor | null): void => {
+const openSceneFile = (editor: Editor | null, notify: (message: string) => void): void => {
   if (!editor) return;
   const input = document.createElement("input");
   input.type = "file";
@@ -1143,9 +1229,7 @@ const openSceneFile = (editor: Editor | null): void => {
         editor.loadScene(scene);
       } catch (err) {
         console.error("[diagram] failed to parse scene file:", err);
-        window.alert(
-          "Failed to parse the file — make sure it was saved through this app's Save action.",
-        );
+        notify("Failed to parse the file — make sure it was saved through this app's Save action.");
       }
     });
   };
@@ -1171,7 +1255,11 @@ const openSceneFile = (editor: Editor | null): void => {
  */
 const PNG_EXPORT_SCALE = 2;
 
-const downloadPng = async (editor: Editor, background: PngExportBackground): Promise<void> => {
+const downloadPng = async (
+  editor: Editor,
+  background: PngExportBackground,
+  notify: (message: string) => void,
+): Promise<void> => {
   const backgroundColor = readCanvasBackgroundColor();
   const blob = await exportSceneToPng(editor.scene, {
     background,
@@ -1180,7 +1268,7 @@ const downloadPng = async (editor: Editor, background: PngExportBackground): Pro
   });
   if (!blob) {
     // Empty scene — convertToBlob unavailable or no shapes to export.
-    window.alert("Nothing to export — the canvas is empty.");
+    notify("Nothing to export — the canvas is empty.");
     return;
   }
   downloadBlob(blob, "scene.png");

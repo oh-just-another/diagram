@@ -25,12 +25,11 @@ export interface Msdf2DTextStyle {
 export class MsdfTextPipeline {
   private readonly program: WebGLProgram;
   private readonly vbo: WebGLBuffer;
-  private readonly uTransform: WebGLUniformLocation;
-  private readonly uColor: WebGLUniformLocation;
-  private readonly uOpacity: WebGLUniformLocation;
-  private readonly uAtlasSize: WebGLUniformLocation;
-  private readonly uPxRange: WebGLUniformLocation;
-  private readonly uAtlas: WebGLUniformLocation;
+  private readonly uTransform: WebGLUniformLocation | null;
+  private readonly uColor: WebGLUniformLocation | null;
+  private readonly uOpacity: WebGLUniformLocation | null;
+  private readonly uPxRange: WebGLUniformLocation | null;
+  private readonly uAtlas: WebGLUniformLocation | null;
   private readonly aPos: number;
   private readonly aUV: number;
 
@@ -41,12 +40,11 @@ export class MsdfTextPipeline {
     this.vbo = glReq(gl.createBuffer());
     this.aPos = gl.getAttribLocation(this.program, "aPos");
     this.aUV = gl.getAttribLocation(this.program, "aUV");
-    this.uTransform = glReq(gl.getUniformLocation(this.program, "uTransform"));
-    this.uColor = glReq(gl.getUniformLocation(this.program, "uColor"));
-    this.uOpacity = glReq(gl.getUniformLocation(this.program, "uOpacity"));
-    this.uAtlasSize = glReq(gl.getUniformLocation(this.program, "uAtlasSize"));
-    this.uPxRange = glReq(gl.getUniformLocation(this.program, "uPxRange"));
-    this.uAtlas = glReq(gl.getUniformLocation(this.program, "uAtlas"));
+    this.uTransform = gl.getUniformLocation(this.program, "uTransform");
+    this.uColor = gl.getUniformLocation(this.program, "uColor");
+    this.uOpacity = gl.getUniformLocation(this.program, "uOpacity");
+    this.uPxRange = gl.getUniformLocation(this.program, "uPxRange");
+    this.uAtlas = gl.getUniformLocation(this.program, "uAtlas");
   }
 
   /**
@@ -129,7 +127,6 @@ export class MsdfTextPipeline {
     gl.uniformMatrix3fv(this.uTransform, false, scratchMat3);
     gl.uniform3f(this.uColor, style.color[0], style.color[1], style.color[2]);
     gl.uniform1f(this.uOpacity, style.opacity);
-    gl.uniform1f(this.uAtlasSize, atlas.atlasSize);
     // `pxRange` is the SDF range converted into screen pixels at the
     // current font size: the shader needs it to keep the AA band the
     // right thickness independent of zoom.

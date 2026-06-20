@@ -39,9 +39,9 @@ export class WebGL2Target implements RenderTarget {
    * from `vbo` so the static unit quad never gets stomped.
    */
   private readonly dynamicVbo: WebGLBuffer;
-  private readonly uTransformLoc: WebGLUniformLocation;
-  private readonly uColorLoc: WebGLUniformLocation;
-  private readonly uOpacityLoc: WebGLUniformLocation;
+  private readonly uTransformLoc: WebGLUniformLocation | null;
+  private readonly uColorLoc: WebGLUniformLocation | null;
+  private readonly uOpacityLoc: WebGLUniformLocation | null;
   /**
    * Cached attribute location for the solid program. `getAttribLocation`
    * is a string-keyed driver lookup; repeating it per draw is a real
@@ -156,9 +156,9 @@ export class WebGL2Target implements RenderTarget {
     this.gl.enableVertexAttribArray(this.aPosLoc);
     this.gl.vertexAttribPointer(this.aPosLoc, 2, this.gl.FLOAT, false, 0, 0);
 
-    this.uTransformLoc = glReq(this.gl.getUniformLocation(this.program, "uTransform"));
-    this.uColorLoc = glReq(this.gl.getUniformLocation(this.program, "uColor"));
-    this.uOpacityLoc = glReq(this.gl.getUniformLocation(this.program, "uOpacity"));
+    this.uTransformLoc = this.gl.getUniformLocation(this.program, "uTransform");
+    this.uColorLoc = this.gl.getUniformLocation(this.program, "uColor");
+    this.uOpacityLoc = this.gl.getUniformLocation(this.program, "uOpacity");
 
     this.gl.enable(this.gl.BLEND);
     // Premultiplied-alpha blending. The context was created with
@@ -1463,9 +1463,9 @@ interface ImageProgram {
   readonly program: WebGLProgram;
   readonly aPos: number;
   readonly aUV: number;
-  readonly uTransform: WebGLUniformLocation;
-  readonly uTex: WebGLUniformLocation;
-  readonly uOpacity: WebGLUniformLocation;
+  readonly uTransform: WebGLUniformLocation | null;
+  readonly uTex: WebGLUniformLocation | null;
+  readonly uOpacity: WebGLUniformLocation | null;
 }
 
 const createImageProgram = (gl: WebGL2RenderingContext): ImageProgram => {
@@ -1506,9 +1506,9 @@ void main() {
     program,
     aPos: gl.getAttribLocation(program, "aPos"),
     aUV: gl.getAttribLocation(program, "aUV"),
-    uTransform: glReq(gl.getUniformLocation(program, "uTransform")),
-    uTex: glReq(gl.getUniformLocation(program, "uTex")),
-    uOpacity: glReq(gl.getUniformLocation(program, "uOpacity")),
+    uTransform: gl.getUniformLocation(program, "uTransform"),
+    uTex: gl.getUniformLocation(program, "uTex"),
+    uOpacity: gl.getUniformLocation(program, "uOpacity"),
   };
 };
 

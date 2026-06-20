@@ -24,6 +24,7 @@ const workspacePackages = [
   "network",
   "collab",
   "react-ui",
+  "editor",
 ];
 
 export default defineConfig({

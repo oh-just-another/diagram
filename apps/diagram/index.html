@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <!-- Suppress the browser's own pinch / double-tap page zoom on touch
@@ -42,43 +42,10 @@
         touch-action: none;
       }
 
-      /* Dark theme (default) */
-      [data-theme="dark"] {
-        --bg: #1a1a1a;
-        --panel: #161616;
-        --surface: #fff;
-        --border: #2a2a2a;
-        --divider: #333;
-        --text: #ddd;
-        --text-strong: #fff;
-        --muted: #888;
-        --faint: #555;
-        --accent: #1a73e8;
-        --accent-dim: #4f80ff;
-        --accent-halo: rgba(26, 115, 232, 0.3);
-        --cursor-bg: rgba(26, 115, 232, 0.12);
-        --toolbar-bg: #1a1a1a;
-        --button-bg: #2a2a2a;
-      }
-
-      /* Light theme */
-      [data-theme="light"] {
-        --bg: #fafafa;
-        --panel: #fff;
-        --surface: #fff;
-        --border: #e2e2e2;
-        --divider: #ddd;
-        --text: #333;
-        --text-strong: #000;
-        --muted: #666;
-        --faint: #999;
-        --accent: #1a73e8;
-        --accent-dim: #4f80ff;
-        --accent-halo: rgba(26, 115, 232, 0.25);
-        --cursor-bg: rgba(26, 115, 232, 0.08);
-        --toolbar-bg: #fff;
-        --button-bg: #f3f3f3;
-      }
+      /* Theme tokens (light / dark, incl. legacy --bg / --accent / …) come
+         from @oh-just-another/react-ui/styles.css — the canonical iris palette.
+         The editor scopes data-theme to its own root and follows the OS theme
+         ("system") by default — the page isn't forced to a fixed theme. */
 
       body {
         background: var(--bg);

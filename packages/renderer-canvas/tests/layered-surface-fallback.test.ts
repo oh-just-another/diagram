@@ -94,6 +94,30 @@ describe("createLayeredSurfaceWithFallback", () => {
     expect(onFallback).toHaveBeenCalledOnce();
   });
 
+  it("routes an async worker failure to onWorkerError exactly once", () => {
+    const host = makeHostStub();
+    const workers: { onerror: ((e: unknown) => void) | null }[] = [];
+    const workerFactory = () => {
+      const w = { onerror: null, postMessage: vi.fn(), terminate: vi.fn() };
+      workers.push(w);
+      return w as unknown as Worker;
+    };
+    const onWorkerError = vi.fn();
+    const { effectiveBackend } = createLayeredSurfaceWithFallback(host, 100, 100, {
+      backend: "offscreen",
+      workerFactory,
+      onWorkerError,
+    });
+    // Construction succeeds — the failure is asynchronous.
+    expect(effectiveBackend).toBe("offscreen");
+    expect(workers.length).toBeGreaterThan(1); // one worker per layer
+
+    // Two workers die; the host hook still fires only once.
+    workers[0]?.onerror?.(new Event("error"));
+    workers[1]?.onerror?.(new Event("error"));
+    expect(onWorkerError).toHaveBeenCalledTimes(1);
+  });
+
   it("re-throws if canvas2d itself fails (no further fallback)", () => {
     const brokenHost = {
       ownerDocument: {

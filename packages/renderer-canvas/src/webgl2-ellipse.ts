@@ -32,9 +32,9 @@ export class EllipsePipeline {
   private readonly vbo: WebGLBuffer;
   private readonly aPos: number;
   private readonly aLocal: number;
-  private readonly uTransform: WebGLUniformLocation;
-  private readonly uColor: WebGLUniformLocation;
-  private readonly uOpacity: WebGLUniformLocation;
+  private readonly uTransform: WebGLUniformLocation | null;
+  private readonly uColor: WebGLUniformLocation | null;
+  private readonly uOpacity: WebGLUniformLocation | null;
 
   constructor(private readonly gl: WebGL2RenderingContext) {
     const vert = compile(gl, gl.VERTEX_SHADER, VERTEX_SRC);
@@ -42,9 +42,9 @@ export class EllipsePipeline {
     this.program = link(gl, vert, frag);
     this.aPos = gl.getAttribLocation(this.program, "aPos");
     this.aLocal = gl.getAttribLocation(this.program, "aLocal");
-    this.uTransform = glReq(gl.getUniformLocation(this.program, "uTransform"));
-    this.uColor = glReq(gl.getUniformLocation(this.program, "uColor"));
-    this.uOpacity = glReq(gl.getUniformLocation(this.program, "uOpacity"));
+    this.uTransform = gl.getUniformLocation(this.program, "uTransform");
+    this.uColor = gl.getUniformLocation(this.program, "uColor");
+    this.uOpacity = gl.getUniformLocation(this.program, "uOpacity");
     // Static interleaved buffer — never re-uploaded.
     this.vbo = glReq(gl.createBuffer());
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
