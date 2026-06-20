@@ -142,4 +142,72 @@ describe("DiagramRoot first render", () => {
     result.unmount();
     restore();
   });
+
+  it("repaints synchronously on resize — no blank frame (flicker fix)", () => {
+    const { restore } = captureFillCalls();
+
+    // Capture the ResizeObserver callback DiagramRoot registers so we can fire
+    // it deterministically (jsdom doesn't run layout). The default test stub is
+    // a no-op; override it for this test, then restore.
+    const callbacks: ResizeObserverCallback[] = [];
+    const PrevRO = globalThis.ResizeObserver;
+    class CapturingResizeObserver {
+      constructor(cb: ResizeObserverCallback) {
+        callbacks.push(cb);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    globalThis.ResizeObserver = CapturingResizeObserver as unknown as typeof ResizeObserver;
+
+    // Holder object rather than a `let`: the assignment happens inside the
+    // ProbeRoot effect (a closure), so control-flow analysis would narrow a
+    // bare `let` back to its `null` initializer at the top-scope read below.
+    // A property read keeps the declared `Editor | null` type.
+    const captured: { editor: Editor | null } = { editor: null };
+    const ProbeRoot = () => {
+      const e = useDiagramOptional();
+      useEffect(() => {
+        captured.editor = e ?? null;
+      }, [e]);
+      return null;
+    };
+
+    const result = render(
+      <DiagramRoot initialScene={seedScene()} initialMode="select" skipInstallRenderers={false}>
+        <ProbeRoot />
+        <DiagramSurface style={{ width: 800, height: 600 }} />
+      </DiagramRoot>,
+    );
+
+    try {
+      expect(captured.editor, "DiagramRoot should have created an editor").not.toBeNull();
+      expect(callbacks.length, "DiagramRoot should register a ResizeObserver").toBeGreaterThan(0);
+
+      const editor = captured.editor as Editor;
+      const forceRenderSpy = vi.spyOn(editor, "forceRender");
+
+      // Fire the resize callback. The fix must repaint synchronously inside the
+      // callback (which runs before the browser paints) — deferring to rAF lets
+      // the cleared canvas paint first, which is the flicker. No await here:
+      // the assertion pins that the repaint is synchronous.
+      act(() => {
+        callbacks.forEach((cb) => {
+          cb([], {} as ResizeObserver);
+        });
+      });
+
+      expect(
+        forceRenderSpy,
+        "resize must repaint synchronously via forceRender; deferring to rAF flickers",
+      ).toHaveBeenCalled();
+
+      forceRenderSpy.mockRestore();
+    } finally {
+      globalThis.ResizeObserver = PrevRO;
+      result.unmount();
+      restore();
+    }
+  });
 });
