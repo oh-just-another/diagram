@@ -1,5 +1,12 @@
 # @oh-just-another/editor
 
+## 0.58.1
+
+### Patch Changes
+
+- Updated dependencies [ac94614]
+  - @oh-just-another/react-ui@0.57.2
+
 ## 0.58.0
 
 ### Minor Changes
