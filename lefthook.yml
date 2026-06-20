@@ -12,6 +12,8 @@ pre-commit:
 
 pre-push:
   commands:
+    format:
+      run: pnpm format:check
     typecheck:
       run: pnpm typecheck
     lint:
