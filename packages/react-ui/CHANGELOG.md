@@ -1,5 +1,12 @@
 # @oh-just-another/react-ui
 
+## 0.57.1
+
+### Patch Changes
+
+- Updated dependencies [8515093]
+  - @oh-just-another/renderer-canvas@0.58.0
+
 ## 0.57.0
 
 ### Minor Changes
