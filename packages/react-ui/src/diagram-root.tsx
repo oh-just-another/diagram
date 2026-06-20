@@ -175,7 +175,12 @@ export const DiagramRoot = ({
       const next = host.getBoundingClientRect();
       surface.resize(next.width, next.height);
       e.setViewportSize(next.width, next.height);
-      e.setMode(e.mode); // forces a re-render at the new size
+      // Repaint synchronously, inside the ResizeObserver callback (which runs
+      // after layout but before the browser paints). `surface.resize` clears
+      // the canvas immediately; a deferred (rAF-scheduled) render would let the
+      // cleared frame paint first — one blank frame per resize event, i.e.
+      // visible flicker. forceRender draws the new size before this paint.
+      e.forceRender();
     });
     ro.observe(host);
     observerRef.current = ro;
