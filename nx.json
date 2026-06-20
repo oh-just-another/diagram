@@ -34,6 +34,7 @@
       "cache": true
     },
     "lint": {
+      "dependsOn": ["^build"],
       "inputs": ["default", "{workspaceRoot}/eslint.config.js"],
       "cache": true
     }
