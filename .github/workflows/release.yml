@@ -39,4 +39,6 @@ jobs:
           title: "chore: release packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # setup-node's registry-url writes an .npmrc that reads NODE_AUTH_TOKEN,
+          # so the npm token must be exposed under that name for `changeset publish`.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
