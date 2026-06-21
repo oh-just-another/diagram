@@ -14,6 +14,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # Mint the OIDC token npm needs to attach build provenance on publish.
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,3 +44,7 @@ jobs:
           # setup-node's registry-url writes an .npmrc that reads NODE_AUTH_TOKEN,
           # so the npm token must be exposed under that name for `changeset publish`.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Publish with signed build provenance (npm shows the verified-build
+          # badge). Needs the id-token permission above; each package's
+          # repository field must match this repo.
+          NPM_CONFIG_PROVENANCE: "true"
