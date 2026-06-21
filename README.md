@@ -16,34 +16,45 @@ Monorepo library for drawing diagrams: browser editor + headless-render for serv
 
 **Status: in active development.**
 
+## Documentation
+
+Docs and a live, in-browser editor demo: **<https://oh-just-another.github.io/diagram/>**
+
+## Use in your app
+
+```bash
+pnpm add @oh-just-another/editor react react-dom
+```
+
+```tsx
+import { Editor } from "@oh-just-another/editor";
+import "@oh-just-another/react-ui/styles.css"; // styles the toolbar, panels, menus
+
+function App() {
+  return <Editor style={{ position: "fixed", inset: 0 }} />;
+}
+```
+
+`<Editor>` auto-selects the best renderer (WebGL2 / OffscreenCanvas / Canvas2D),
+loads a WASM text-shaper where supported, and exposes a programmatic handle via
+`ref`. (`Diagram` is a back-compat alias of `Editor`.)
+
 ## Quick start (for contributors)
 
 ```bash
-pnpm install     # installing dependencies
-pnpm build       # building all packages
+pnpm install     # install dependencies
+pnpm build       # build all packages
 pnpm test        # tests
 pnpm lint        # eslint
 pnpm typecheck   # tsc --noEmit
 pnpm format      # prettier --write .
 ```
 
-Run the editor in the browser:
+Run the demo in the browser:
 
 ```bash
 pnpm --filter @oh-just-another/diagram dev   # http://localhost:5174
 ```
-
-Use as a component in your project:
-
-```tsx
-import { Diagram } from "@oh-just-another/diagram";
-
-function App() {
-  return <Diagram />;
-}
-```
-
-`<Diagram>` automatically selects the best renderer (WebGL2 / OffscreenCanvas / Canvas2D), loads WASM-shaper for text where supported, and logs the actual profile to console.log on mount.
 
 ## Structure
 
@@ -55,4 +66,4 @@ scripts/    — utility scripts (package generator)
 
 ## License
 
-MIT (TBD).
+MIT — see [LICENSE](./LICENSE).
