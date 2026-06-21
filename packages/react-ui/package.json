@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/react-ui",
-  "version": "0.57.2",
+  "version": "0.57.3",
   "description": "React components and hooks over the diagram editor — DiagramCanvas, Toolbar, Palette, PropertyPanel.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

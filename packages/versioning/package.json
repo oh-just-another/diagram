@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/versioning",
-  "version": "0.57.0",
+  "version": "0.57.1",
   "description": "Snapshot history + branch tree + diff utilities for diagram scenes.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

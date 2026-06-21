@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-core",
-  "version": "0.57.0",
+  "version": "0.57.1",
   "description": "renderer-core package",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
