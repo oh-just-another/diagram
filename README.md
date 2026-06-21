@@ -18,7 +18,7 @@ Monorepo library for drawing diagrams: browser editor + headless-render for serv
 
 ## Documentation
 
-Docs and a live, in-browser editor demo: **<https://oh-just-another.github.io/diagram/>**
+Docs and a live, in-browser editor demo: **<https://ohjustanother.site>**
 
 ## Use in your app
 
