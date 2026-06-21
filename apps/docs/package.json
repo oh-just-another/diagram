@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/docs",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "Documentation site for the diagram library, with a live in-browser editor playground.",
   "scripts": {

@@ -1,5 +1,22 @@
 # @oh-just-another/editor
 
+## 0.58.2
+
+### Patch Changes
+
+- Updated dependencies [d1b96d9]
+- Updated dependencies [d1b96d9]
+  - @oh-just-another/react-ui@0.57.3
+  - @oh-just-another/scene@0.58.0
+  - @oh-just-another/state@0.58.0
+  - @oh-just-another/raster-wasm@0.57.1
+  - @oh-just-another/renderer-canvas@0.58.1
+  - @oh-just-another/renderer-core@0.57.1
+  - @oh-just-another/renderer-svg@0.57.1
+  - @oh-just-another/serialization@0.57.1
+  - @oh-just-another/templates@0.57.1
+  - @oh-just-another/text-wasm@0.57.1
+
 ## 0.58.1
 
 ### Patch Changes
