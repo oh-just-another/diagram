@@ -1,0 +1,51 @@
+{
+  "name": "@oh-just-another/docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Documentation site for the diagram library, with a live in-browser editor playground.",
+  "scripts": {
+    "docusaurus": "docusaurus",
+    "start": "docusaurus start",
+    "build": "docusaurus build",
+    "swizzle": "docusaurus swizzle",
+    "clear": "docusaurus clear",
+    "serve": "docusaurus serve",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.1",
+    "@docusaurus/preset-classic": "3.10.1",
+    "@mdx-js/react": "^3.0.0",
+    "@oh-just-another/editor": "workspace:*",
+    "@oh-just-another/react-ui": "workspace:*",
+    "clsx": "^2.0.0",
+    "prism-react-renderer": "^2.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "3.10.1",
+    "@docusaurus/tsconfig": "3.10.1",
+    "@docusaurus/types": "3.10.1",
+    "@swc/core": "^1.10.0",
+    "@types/react": "^19.0.0",
+    "swc-loader": "^0.2.6",
+    "typescript": "~5.7.0",
+    "webpack": "^5.107.2"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 3 chrome version",
+      "last 3 firefox version",
+      "last 5 safari version"
+    ]
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

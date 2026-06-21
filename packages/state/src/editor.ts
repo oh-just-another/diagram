@@ -3240,13 +3240,18 @@ export class Editor {
   }
 
   /**
-   * True when a gesture should snap: feature on, grid visible, AND the
-   * suppress modifier not held. Hiding the grid (`toggleGrid` / `g`) also
-   * disables snap-to-grid — snapping to an invisible grid is confusing.
-   * Re-showing the grid restores the stored snap preference.
+   * True when a gesture should snap. Snapping is coupled to grid *display*:
+   * it is active only while a grid is actually shown — the toggle is on
+   * (`gridVisible`, `g` hotkey) AND the scene has a positive `gridSize` (the
+   * same condition `renderGrid` paints under). Snapping to an invisible grid
+   * is confusing, so no grid → no snap, always. `snapToGrid` is an extra
+   * programmatic opt-out; the suppress modifier (Cmd/Ctrl) bypasses snapping
+   * for the current gesture.
    */
   private snapActive(): boolean {
-    return !this.snapSuppressed && this.gridVisible && isSnapToGridEnabled(this._scene.viewport);
+    const viewport = this._scene.viewport;
+    const gridShown = this.gridVisible && (viewport.gridSize ?? 0) > 0;
+    return !this.snapSuppressed && gridShown && isSnapToGridEnabled(viewport);
   }
 
   /** World-unit spacing the current gesture snaps to. */

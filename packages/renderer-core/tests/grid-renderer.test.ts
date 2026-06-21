@@ -92,8 +92,11 @@ describe("renderGrid – early exit when grid is off", () => {
   it("does nothing extra after clear when gridSize is undefined", () => {
     const { target, calls } = makeRecorder();
     const base = emptyScene();
-    // viewport has no gridSize field → undefined
-    renderGrid(base, target);
+    // emptyScene now ships a default gridSize — drop the key to get the
+    // undefined case (exactOptionalPropertyTypes forbids `gridSize: undefined`).
+    const { gridSize: _gridSize, ...viewport } = base.viewport;
+    const noGrid: Scene = { ...base, viewport };
+    renderGrid(noGrid, target);
     const meaningful = calls.filter((c) => c.method !== "clear");
     expect(meaningful).toHaveLength(0);
   });
