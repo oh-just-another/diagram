@@ -1,4 +1,4 @@
-# diagram
+# Oh, just another diagram library!
 
 Monorepo library for drawing diagrams: browser editor + headless-render for servers, split into independent npm packages.
 
@@ -44,13 +44,6 @@ function App() {
 ```
 
 `<Diagram>` automatically selects the best renderer (WebGL2 / OffscreenCanvas / Canvas2D), loads WASM-shaper for text where supported, and logs the actual profile to console.log on mount.
-
-Create a new package:
-
-```bash
-pnpm new-package <name>          # → packages/<name>
-pnpm new-package <name> --app    # → apps/<name>
-```
 
 ## Structure
 
