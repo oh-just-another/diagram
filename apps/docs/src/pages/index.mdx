@@ -1,0 +1,60 @@
+---
+title: diagram
+description: Drop-in diagram editor for React — try it live and drop it into your app.
+---
+
+import LiveEditor from "@site/src/components/LiveEditor";
+
+# diagram
+
+A drop-in diagram editor for React. It auto-detects the best renderer
+(WebGL2 / Canvas2D / OffscreenCanvas) and exposes a single `<Editor>` component
+plus a programmatic handle for driving it from code.
+
+The canvas below is the real `<Editor>` component, running in your browser — the
+same package you would `pnpm add` into your app.
+
+<LiveEditor height="70vh" />
+
+## Mount it
+
+Add the package and render the component. Import the react-ui stylesheet once (it
+styles the toolbar, panels, and menus), and give the editor a sized container.
+
+```tsx
+import { Editor } from "@oh-just-another/editor";
+import "@oh-just-another/react-ui/styles.css";
+
+export function App() {
+  return <Editor style={{ position: "fixed", inset: 0 }} />;
+}
+```
+
+`react` / `react-dom` (>=18) are peer dependencies:
+
+```bash
+pnpm add @oh-just-another/editor react react-dom
+```
+
+## Drive it from code
+
+Attach a `ref` to get an `EditorAPI` handle — mode, selection, undo/redo,
+zoom-to-fit, and scene load/save — so the editor is as easy to control from code
+as from the UI.
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+import "@oh-just-another/react-ui/styles.css";
+
+export function App() {
+  const api = useRef<EditorAPI>(null);
+
+  return (
+    <>
+      <button onClick={() => api.current?.zoomToFit()}>Zoom to fit</button>
+      <Editor ref={api} style={{ position: "fixed", inset: 0 }} />
+    </>
+  );
+}
+```

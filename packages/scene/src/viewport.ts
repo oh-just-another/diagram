@@ -41,10 +41,11 @@ export interface Viewport {
    */
   readonly gridStyle?: GridStyle;
   /**
-   * Whether dragging / resizing / creating snaps geometry to the grid.
-   * `undefined` is treated as ON (see {@link isSnapToGridEnabled}) so
-   * existing documents get the default-on behaviour. Independent of
-   * grid visibility — snapping can stay on with the grid hidden.
+   * Extra programmatic opt-out for snapping. `undefined` is treated as ON
+   * (see {@link isSnapToGridEnabled}). Snapping additionally requires a
+   * *displayed* grid: it is active only while a grid is shown
+   * (`gridVisible && gridSize > 0`) — snapping to an invisible grid is
+   * confusing — so this flag only matters when a grid is on.
    */
   readonly snapToGrid?: boolean;
 }
@@ -68,6 +69,11 @@ export const DEFAULT_VIEWPORT: Viewport = Object.freeze({
   zoom: 1,
   rotation: 0,
   size: { width: 0, height: 0 },
+  // Grid is ON by default — a positive `gridSize` is what `renderGrid` paints
+  // AND what snap-to-grid keys off (snap is active only while a grid is shown).
+  // Tune the default spacing in `constants.ts` (`DEFAULT_GRID_SPACING`); pass a
+  // scene with `gridSize: 0` (or omit it) for a gridless, snap-free canvas.
+  gridSize: DEFAULT_GRID_SPACING,
 });
 
 /** World → screen transform. */

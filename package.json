@@ -26,7 +26,7 @@
   },
   "packageManager": "pnpm@10.29.3",
   "scripts": {
-    "build": "nx run-many -t build",
+    "build": "nx run-many -t build --exclude=@oh-just-another/docs",
     "test": "nx run-many -t test",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -46,6 +46,8 @@
     "render:svg": "vite-node scripts/render-svg.ts",
     "build:wasm": "bash scripts/build-wasm.sh",
     "dev": "pnpm --filter @oh-just-another/diagram dev",
+    "docs:dev": "pnpm --filter @oh-just-another/docs start",
+    "docs:build": "pnpm --filter @oh-just-another/docs build",
     "dev:collab": "concurrently -k -n diagram,relay -c blue,yellow \"pnpm --filter @oh-just-another/diagram dev\" \"bash scripts/start-diagram-collab.sh\"",
     "prepare": "lefthook install"
   },

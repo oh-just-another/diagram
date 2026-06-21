@@ -53,16 +53,11 @@ interface OpenState {
  */
 export interface ContextMenuProps {
   readonly items: readonly ContextMenuItem[];
-  /**
-   * Target element to attach the `contextmenu` listener to. Defaults to
-   * the element the trigger is rendered into.
-   */
-  readonly target?: HTMLElement | null;
   readonly style?: CSSProperties;
   readonly className?: string;
 }
 
-export const ContextMenu = ({ items, target, style, className }: ContextMenuProps) => {
+export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   const editor = useDiagramOptional();
   const controller = useContextMenuController();
   const [open, setOpen] = useState<OpenState | null>(null);
@@ -78,38 +73,24 @@ export const ContextMenu = ({ items, target, style, className }: ContextMenuProp
     });
   }, [controller]);
 
-  // Wire the contextmenu listener (mouse right-click) AND long-press
-  // (touch). Both end up calling `setOpen` with viewport-relative
-  // screen coords.
+  // Open the menu from the editor's single gesture channel: `onLongPress`
+  // fires for a clean right-click (Editor.endPanGesture) AND for touch
+  // long-press, scoped to the editor host by the pointer-binding. We do NOT
+  // attach our own `contextmenu` DOM listener — a document/window-level one
+  // opens the menu (and preventDefault's the native one) for right-clicks
+  // anywhere on the page, which is wrong when the editor is embedded in a
+  // larger document. Coords arrive host-relative; convert to viewport for
+  // fixed-position placement.
   useEffect(() => {
     if (!editor) return undefined;
-    const root: HTMLElement | Window = target ?? window;
-    const onContext = (ev: Event): void => {
-      const me = ev as MouseEvent;
-      me.preventDefault();
-      const screenPoint = { x: me.clientX, y: me.clientY };
-      const rect = editor.hostElement.getBoundingClientRect();
-      const worldPoint = editor.screenToWorld({
-        x: screenPoint.x - rect.left,
-        y: screenPoint.y - rect.top,
-      });
-      setOpen({ screenPoint, worldPoint });
-    };
-    root.addEventListener("contextmenu", onContext);
-    // Touch fallback: editor fires onLongPress with host-relative
-    // coords; the menu needs viewport-relative for positioning.
-    const unsubscribeLongPress = editor.onLongPress(({ screenPoint, worldPoint }) => {
+    return editor.onLongPress(({ screenPoint, worldPoint }) => {
       const rect = editor.hostElement.getBoundingClientRect();
       setOpen({
         screenPoint: { x: screenPoint.x + rect.left, y: screenPoint.y + rect.top },
         worldPoint,
       });
     });
-    return () => {
-      root.removeEventListener("contextmenu", onContext);
-      unsubscribeLongPress();
-    };
-  }, [editor, target]);
+  }, [editor]);
 
   // Dismiss on click outside / Escape.
   useEffect(() => {

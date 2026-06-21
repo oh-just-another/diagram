@@ -16,10 +16,10 @@
 export const SNAP_PROBE_CULL_RADIUS = 1000;
 
 /**
- * Fallback grid spacing (world units) used by snap-to-grid when the
- * viewport has no `gridSize` (grid hidden) but snapping is still on.
- * Lets the user keep clean grid-aligned geometry without a visible
- * grid. Matches the app's default `gridSize` of 20. Range: 4–64.
+ * Default grid spacing (world units). Used as `DEFAULT_VIEWPORT.gridSize`, so a
+ * fresh scene ships with a visible grid and snapping on. Also the fallback
+ * spacing `resolveSnapSpacing` returns for legacy/custom viewports that omit
+ * `gridSize`. Tune this to change the default grid; range 4–64.
  */
 export const DEFAULT_GRID_SPACING = 20;
 

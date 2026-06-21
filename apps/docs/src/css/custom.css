@@ -1,0 +1,29 @@
+/**
+ * Global styles. The classic template bundles Infima.
+ * The primary palette is tuned to the editor's iris accent
+ * (see @oh-just-another/react-ui tokens) so the docs and the
+ * embedded editor share one brand colour.
+ */
+
+:root {
+  --ifm-color-primary: #5b5bd6;
+  --ifm-color-primary-dark: #4a4ac9;
+  --ifm-color-primary-darker: #4646be;
+  --ifm-color-primary-darkest: #3a3a9d;
+  --ifm-color-primary-light: #6e6edd;
+  --ifm-color-primary-lighter: #7a7ae0;
+  --ifm-color-primary-lightest: #9b9beb;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] {
+  --ifm-color-primary: #9b9bf0;
+  --ifm-color-primary-dark: #8181ec;
+  --ifm-color-primary-darker: #7474ea;
+  --ifm-color-primary-darkest: #5252e4;
+  --ifm-color-primary-light: #b5b5f4;
+  --ifm-color-primary-lighter: #c2c2f6;
+  --ifm-color-primary-lightest: #e9e9fc;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}

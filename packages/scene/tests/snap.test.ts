@@ -53,7 +53,8 @@ describe("gridSnapper", () => {
   });
 
   it("returns nothing when the viewport has no gridSize", () => {
-    expect(gridSnapper.contribute(ctx(emptyScene(), { x: 5, y: 5 }))).toEqual([]);
+    // gridSize 0 = no grid (emptyScene now ships the default grid).
+    expect(gridSnapper.contribute(ctx(withGrid(0), { x: 5, y: 5 }))).toEqual([]);
   });
 });
 

@@ -148,10 +148,11 @@ describe("exportSceneToPng — variants", () => {
     expect(colorAndGrid).toBeGreaterThan(color);
   });
 
-  it("color-and-grid skips the grid pass when gridSize is absent", async () => {
+  it("color-and-grid skips the grid pass when there is no grid (gridSize 0)", async () => {
     vi.stubGlobal("OffscreenCanvas", TrackingOffscreenCanvas);
     const withGrid = await callsFor("color-and-grid", 20);
-    const withoutGrid = await callsFor("color-and-grid");
+    // gridSize 0 = no grid (emptyScene now ships the default grid).
+    const withoutGrid = await callsFor("color-and-grid", 0);
     expect(withGrid).toBeGreaterThan(withoutGrid);
   });
 });

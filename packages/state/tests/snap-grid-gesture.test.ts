@@ -162,6 +162,18 @@ describe("snap-to-grid move gesture (end-to-end)", () => {
     expect(a.position.y).toBe(40);
   });
 
+  it("does not snap when there is no visible grid (gridSize 0), even with the toggle on", () => {
+    const { editor, tap, drag } = setup((e) => {
+      e.setGrid({ size: 0 }); // no grid spacing → grid not painted
+    });
+    expect(editor.gridVisible).toBe(true); // toggle is still on…
+    tap(33, 27);
+    drag([33, 27], [45, 39]); // …but snap is coupled to a *displayed* grid
+    const a = getElement(editor.scene, elementId("a"))!;
+    expect(a.position.x).toBe(25); // 13 + 12, free (no snap)
+    expect(a.position.y).toBe(19);
+  });
+
   it("suppresses snap for the gesture while the modifier flag is set", () => {
     const { editor, tap, drag } = setup();
     tap(33, 27);
