@@ -18,7 +18,7 @@ import { createOffscreenCanvas2DTarget } from "@oh-just-another/renderer-canvas"
  *   • "transparent"     — no background fill, PNG alpha channel preserved.
  *   • "color"           — solid fill in the host's canvas colour.
  *   • "color-and-grid"  — solid fill + the same grid the user sees on
- *                         the canvas (same gridSize / gridStyle).
+ *                         the canvas (same gridStyle).
  *
  * Returns `null` when the scene has no shapes (host shows an alert).
  */
