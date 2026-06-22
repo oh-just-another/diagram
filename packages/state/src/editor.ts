@@ -14,7 +14,6 @@ import {
   runAutoLayout,
   DEFAULT_LAYER_ID,
   findNearestAnchor,
-  getAnchorWorld,
   getAnchorOutwardNormal,
   routeElbowLink,
   routeElbowPreview,
@@ -249,6 +248,7 @@ import {
   computePlacementContainerDrop,
   computePlacementUpdate,
   newElementIdAtCursor,
+  previewClickCreate as previewClickCreatePure,
   type PlacementState,
 } from "./editor/public/placement.js";
 import { renderEditor } from "./editor/render-orchestrator.js";
@@ -4291,76 +4291,7 @@ export class Editor {
     ghostScene: Scene;
     ghostLinkId: LinkId;
   } | null {
-    const src = getElement(this._scene, fromElement);
-    if (!src) return null;
-    const anchor: AnchorRef = { kind: "named", name: anchorName };
-    const normal = getAnchorOutwardNormal(src, anchor);
-    const b = getElementWorldBounds(src);
-    const extentAlong = Math.abs(normal.x) * b.width + Math.abs(normal.y) * b.height;
-    const dist = extentAlong + ANCHOR_CLICK_NEW_ELEMENT_GAP;
-    const delta = { x: normal.x * dist, y: normal.y * dist };
-    const bounds: Bounds = { x: b.x + delta.x, y: b.y + delta.y, width: b.width, height: b.height };
-    const fromWorld = getAnchorWorld(src, anchor);
-    // Facing edge of the ghost (toward the source) = its centre pulled back
-    // along the normal by half its extent.
-    const ghostCx = bounds.x + bounds.width / 2;
-    const ghostCy = bounds.y + bounds.height / 2;
-    const nearEdge = {
-      x: ghostCx - normal.x * (extentAlong / 2),
-      y: ghostCy - normal.y * (extentAlong / 2),
-    };
-    // The would-be element itself — a same-kind clone of the source shifted
-    // to the ghost bounds, with blank user text (mirrors
-    // `createLinkedElementFromAnchor`). The overlay renders THIS through the
-    // real renderer so the ghost looks like the actual shape (an ellipse
-    // ghosts as an ellipse), not a bounding rect. Throwaway id — never enters
-    // the real scene.
-    let element = {
-      ...src,
-      id: PREVIEW_GHOST_ELEMENT_ID,
-      position: { x: src.position.x + delta.x, y: src.position.y + delta.y },
-    } as Element;
-    if (element.type === "text") element = { ...element, text: "" } as Element;
-    else if (element.type === "frame") element = { ...element, name: "" } as Element;
-
-    // Build a throwaway scene holding the ghost element + the would-be link so
-    // the connector can be drawn through the REAL link renderer (same routing,
-    // arrowhead and style it'll have once created) — faded — instead of a
-    // dashed preview line. Mirrors the link build in
-    // `createLinkedElementFromAnchor` exactly. The `path` field stays for
-    // callers that just want the straight from→to segment.
-    const srcCenter = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
-    const withGhost = addElement(this._scene, element).scene;
-    const placed = req(getElement(withGhost, PREVIEW_GHOST_ELEMENT_ID));
-    const { ref: toRef } = findNearestAnchor(placed, srcCenter, snapExcludedAnchors(placed));
-    const linkResult = computeCreateLink(
-      withGhost,
-      { kind: "anchor", elementId: fromElement, anchor },
-      { kind: "anchor", elementId: PREVIEW_GHOST_ELEMENT_ID, anchor: toRef },
-      PREVIEW_GHOST_LINK_ID,
-      this._activeLayerId,
-    );
-    let ghostScene = linkResult.scene;
-    const edge = req(getLink(ghostScene, PREVIEW_GHOST_LINK_ID));
-    if ((edge.routing ?? "straight") === "orthogonal") {
-      const routedPoints = routeElbowLink(ghostScene, edge);
-      ghostScene = updateLink(ghostScene, PREVIEW_GHOST_LINK_ID, (e) => ({
-        ...e,
-        routedPoints,
-      })).scene;
-    }
-    // Render only the ghost link (the shapes stay for endpoint resolution).
-    ghostScene = {
-      ...ghostScene,
-      links: new Map([[PREVIEW_GHOST_LINK_ID, req(getLink(ghostScene, PREVIEW_GHOST_LINK_ID))]]),
-    };
-    return {
-      bounds,
-      path: [fromWorld, nearEdge],
-      element,
-      ghostScene,
-      ghostLinkId: PREVIEW_GHOST_LINK_ID,
-    };
+    return previewClickCreatePure(this._scene, this._activeLayerId, fromElement, anchorName);
   }
 
   /**
@@ -5049,16 +4980,6 @@ export class Editor {
     this.onAfterRender?.();
   }
 }
-
-/**
- * Throwaway id for the transient click-create ghost preview element built by
- * `previewClickCreate`. Never enters the scene / history — it lives only for
- * the duration of one overlay paint, so any stable constant is fine.
- */
-const PREVIEW_GHOST_ELEMENT_ID = "__ghost-preview__" as ElementId;
-
-/** Throwaway link id for the click-create ghost preview. See above. */
-const PREVIEW_GHOST_LINK_ID = "__ghost-preview-link__" as LinkId;
 
 // `coverageRatio` moved to `./editor/container-ops.ts`.
 
