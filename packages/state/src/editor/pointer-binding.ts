@@ -41,11 +41,7 @@ const range = (a: number, b: number): number[] => {
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
-/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/state: index out of range");
-  return v;
-};
+import { req } from "../util.js";
 
 /**
  * Pointer + wheel event binding. Owns the branchy dispatch — pan /

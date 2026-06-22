@@ -48,11 +48,7 @@ const DRAW_PREVIEW_ELEMENT_ID = "__draw-preview__" as ElementId;
 /** Throwaway id for the live draw-edge connector preview link. */
 const DRAW_PREVIEW_LINK_ID = "__draw-preview-link__" as LinkId;
 
-/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/state: index out of range");
-  return v;
-};
+import { req } from "../util.js";
 
 /**
  * Render orchestrator: background grid pass, tile-cache vs full renderScene

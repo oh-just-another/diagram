@@ -55,11 +55,7 @@ import {
 } from "./editor/hit-test.js";
 import type { Selection } from "./selection.js";
 
-/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/state: index out of range");
-  return v;
-};
+import { req } from "./util.js";
 
 /**
  * Union AABB of every direct child of `groupId` (recursive). Returns

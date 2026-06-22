@@ -56,11 +56,7 @@ import { getElement } from "@oh-just-another/scene";
 /** Local hypot helper for the hit-test hot path (cheaper than a matrix op). */
 const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
-/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/state: index out of range");
-  return v;
-};
+import { req } from "../util.js";
 
 /**
  * Bundle of everything `pickPressTarget` needs from the host

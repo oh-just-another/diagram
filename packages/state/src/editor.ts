@@ -121,6 +121,7 @@ import {
   HEAVY_GIF_BYTES,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP } from "./handle.js";
+import { req } from "./util.js";
 import {
   interactionMachine,
   type InteractionContext,
@@ -415,15 +416,6 @@ export type TileComposeFn = (
 export type GroupSelectedResult =
   | { readonly kind: "noop" }
   | { readonly kind: "grouped"; readonly groupId: ElementId };
-
-/**
- * Index-access helper for provably-valid indices: throws instead of
- * returning `undefined` so callers stay non-nullable without `!`.
- */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/state: index out of range");
-  return v;
-};
 
 // Cursor roles, spec, and resolution live in `./editor/public/cursor.js`.
 // Re-exported here so the public API path (`@oh-just-another/state`) is stable.
