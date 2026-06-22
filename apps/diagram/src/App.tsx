@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { emptyScene, type Scene } from "@oh-just-another/scene";
+import { type Scene } from "@oh-just-another/scene";
 import { createSceneAutosave } from "./autosave";
 import {
   parseScene,
@@ -43,16 +43,10 @@ const FILES_KEY = "oh-just-another-diagram-files-v1";
 // one write after the user pauses.
 const AUTOSAVE_DEBOUNCE_MS = 600;
 
-// Default / clean scene: empty, with the grid enabled so the demo opens
-// with a visible grid. A fresh load (no saved autosave, or a collab room
-// before its snapshot arrives) starts blank — the user builds from an empty
-// canvas, not a demo grid of every template.
-const seedScene = (): Scene => {
-  const s = emptyScene();
-  return { ...s, viewport: { ...s.viewport, gridEnabled: true } };
-};
-
-const restoreScene = (): Scene => {
+// Restore the autosaved scene, or `undefined` for a fresh start. On a fresh
+// start the editor seeds the default scene and the host's `grid` prop fills in
+// the grid, so the demo opens with a visible grid without seeding it here.
+const restoreScene = (): Scene | undefined => {
   try {
     const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
     if (saved) {
@@ -79,7 +73,7 @@ const restoreScene = (): Scene => {
       /* ignore */
     }
   }
-  return seedScene();
+  return undefined;
 };
 
 const readRoomFromHash = (): string | null => {
@@ -132,7 +126,10 @@ export const App = () => {
   // Renderer backend override from the URL (`?renderer=canvas2d`).
   // Read once at mount — switching backend needs a reload anyway.
   const capabilityOverrides = useMemo(() => readCapabilityOverrides(), []);
-  const initialScene = useMemo<Scene>(() => (isCollab ? seedScene() : restoreScene()), [isCollab]);
+  const initialScene = useMemo<Scene | undefined>(
+    () => (isCollab ? undefined : restoreScene()),
+    [isCollab],
+  );
   // Theme is owned by <Diagram> now (Theme submenu in MainMenu);
   // persistence is enabled via `persistTheme` prop below. The host
   // no longer needs its own theme state.
@@ -262,6 +259,7 @@ export const App = () => {
       <Diagram
         ref={apiRef}
         initialScene={initialScene}
+        grid={{ enabled: true }}
         onReady={handleReady}
         onSceneChange={handleSceneChange}
         renderTopBarLeft={renderHeaderLeft}
