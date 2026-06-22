@@ -1,10 +1,9 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
-import { intersect } from "@oh-just-another/math";
+import { bezier, intersect } from "@oh-just-another/math";
 import { getAnchorOutwardNormal, getAnchorWorld } from "./anchors.js";
 import { SELF_LOOP_CURVE_ARM_FACTOR, SELF_LOOP_SIZE, SELF_LOOP_SPREAD } from "./constants.js";
 import {
   catmullRomBeziers,
-  cubicAt,
   cubicWithEndTangents,
   flattenSegments,
   type BezierSegment,
@@ -457,7 +456,7 @@ export const getLinkWaypointMidpoints = (scene: Scene, edge: Link): Vec2[] | nul
     const mids: Vec2[] = [];
     let prev = curve.start;
     for (const s of curve.segments) {
-      mids.push(cubicAt(prev, s.c1, s.c2, s.to, 0.5));
+      mids.push(bezier.cubicAt(prev, s.c1, s.c2, s.to, 0.5));
       prev = s.to;
     }
     return mids;

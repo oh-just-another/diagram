@@ -257,7 +257,11 @@ importers:
         specifier: ^13.6.20
         version: 13.6.30
 
-  packages/curve-mesh: {}
+  packages/curve-mesh:
+    dependencies:
+      '@oh-just-another/math':
+        specifier: workspace:*
+        version: link:../math
 
   packages/editor:
     dependencies:
