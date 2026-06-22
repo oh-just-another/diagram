@@ -90,7 +90,6 @@ import {
 } from "./constants.js";
 import { FileDropRegistry, type FileDropContext, type FileDropHandler } from "./file-drop.js";
 import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
-import { AnimationTick } from "./animation-tick.js";
 import {
   computeDimElements as computeDimElementsHelper,
   isDescendantOfGroup as isDescendantOfGroupHelper,
@@ -122,9 +121,6 @@ import {
   DOUBLE_CLICK_MS,
   DOUBLE_CLICK_TOLERANCE_PX,
   WHEEL_ZOOM_STEP,
-  ANIMATION_MIN_INTERVAL_MS,
-  ANIMATION_MAX_INTERVAL_MS,
-  ANIMATION_COST_FACTOR,
   HEAVY_GIF_BYTES,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP, cursorForHandle } from "./handle.js";
@@ -144,6 +140,7 @@ import {
   primeEventCache,
   type EditorEventCache,
 } from "./editor/event-fanout.js";
+import { AnimationController } from "./editor/animation.js";
 import { CaretBlinkController } from "./editor/caret-blink.js";
 import { GestureController } from "./editor/gesture-tx.js";
 import { GifPlaybackController } from "./editor/gif-playback.js";
@@ -1216,9 +1213,7 @@ export class Editor {
     // throttle rAF to ~1fps in background but don't stop it; an explicit
     // stop saves the decode + render entirely). Resume when visible again,
     // viewport permitting.
-    if (typeof document !== "undefined") {
-      document.addEventListener("visibilitychange", this.onVisibilityChange);
-    }
+    this.animation.attach();
     // Restore GIF/video bytes onto animated image shapes loaded from
     // an initial scene (e.g. localStorage), then arm the tick so the
     // animation plays from first paint.
@@ -1655,39 +1650,16 @@ export class Editor {
    * `./animation-tick.ts`). `insertImage({animated:true})` and
    * `loadScene` start the tick; `dispose()` stops it.
    */
-  /** EMA of animation-tick render cost (ms) — drives the adaptive throttle. */
-  private gifRenderCostEma = 0;
-  /** Wall-clock of the last animation-tick render — for the interval throttle. */
-  private lastGifTickMs = 0;
-
-  private readonly animationTick = new AnimationTick({
-    // Keep ticking only while an animated shape is actually on-screen.
-    // Frame selection is wall-clock-based, so when the GIF scrolls back
-    // into view the tick resumes on the correct frame. The tick is re-armed
-    // on viewport changes via `maybeAnimate()` in `notify()`.
-    isAnimated: () => this.hasVisibleAnimatedElement(),
-    onTick: () => {
-      // Adaptive throttle — skip this rAF if an animation frame was rendered
-      // too recently. The target interval grows with the measured render
-      // cost so a heavy scene drops GIF fps instead of blowing the frame
-      // budget.
-      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
-      const target = Math.min(
-        ANIMATION_MAX_INTERVAL_MS,
-        Math.max(ANIMATION_MIN_INTERVAL_MS, this.gifRenderCostEma * ANIMATION_COST_FACTOR),
-      );
-      if (now - this.lastGifTickMs < target) return;
-      this.lastGifTickMs = now;
-      // Freeze heavy GIFs that have played long enough.
+  private readonly animation = new AnimationController({
+    hasVisibleAnimatedElement: () => this.hasVisibleAnimatedElement(),
+    autoStopHeavyGifs: () => {
       this.autoStopHeavyGifs();
-      // Force a full re-render: the scene reference hasn't changed,
-      // but the animation adapter advanced the GIF frame. Re-painting
-      // picks up the current frame.
+    },
+    forceAnimationRepaint: () => {
+      // The scene reference hasn't changed, but the adapter advanced the GIF
+      // frame — drop the paint cache and force a repaint.
       this.lastRenderedScene = null;
       this.render();
-      const cost = (typeof performance !== "undefined" ? performance.now() : Date.now()) - now;
-      // EMA so a single spike doesn't overreact; decays back when load drops.
-      this.gifRenderCostEma = this.gifRenderCostEma * 0.8 + cost * 0.2;
     },
   });
 
@@ -1721,18 +1693,8 @@ export class Editor {
    * `isAnimated()` is false, so this is cheap to call from `notify()`.
    */
   private maybeAnimate(): void {
-    if (this.hasVisibleAnimatedElement()) this.animationTick.start();
+    this.animation.maybe();
   }
-
-  /** Bound `visibilitychange` handler — pause/resume the tick. */
-  private readonly onVisibilityChange = (): void => {
-    if (typeof document === "undefined") return;
-    if (document.hidden) {
-      this.animationTick.stop();
-    } else {
-      this.maybeAnimate();
-    }
-  };
 
   /**
    * Per-shape GIF playback state (auto-stop + reduced-motion). Extracted into
@@ -3161,11 +3123,8 @@ export class Editor {
     this.cursorListeners.clear();
     this.longPressListeners.clear();
     this.announceListeners.clear();
-    this.animationTick.stop();
+    this.animation.detach();
     this.animationContentOff?.();
-    if (typeof document !== "undefined") {
-      document.removeEventListener("visibilitychange", this.onVisibilityChange);
-    }
     if (this.renderRafId !== null && typeof cancelAnimationFrame !== "undefined") {
       cancelAnimationFrame(this.renderRafId);
       this.renderRafId = null;
