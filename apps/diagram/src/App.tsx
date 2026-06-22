@@ -11,7 +11,6 @@ import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "@oh-just-another/editor";
 import { setupTemplates } from "./templates";
 import { installConfettiRenderer } from "./confetti";
-import { installGifAnimationAdapter } from "./gif-animation";
 import { useHotkeys } from "./hotkeys";
 import { useCollab } from "./collab";
 import { DebugPanel } from "./debug-panel";
@@ -27,10 +26,8 @@ import { ConnectionBadge } from "./ConnectionBadge";
  */
 
 setupTemplates();
-// Register the GIF frame decoder (gifuct-js) so animated GIFs play
-// in both Canvas2D and WebGL2 — the kernel's image renderer asks
-// this adapter for the current frame.
-installGifAnimationAdapter();
+// The GIF frame decoder is now registered by default inside `<Diagram>`
+// (built-in `installGifAnimationAdapter`), so animated GIFs play out of the box.
 
 const STORAGE_KEY = "oh-just-another-diagram-scene-v2";
 // Binary files (image / GIF bytes) live in a separate localStorage

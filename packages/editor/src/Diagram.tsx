@@ -113,6 +113,7 @@ import {
   type CapabilityOverrides,
   type CapabilityProfile,
 } from "./capabilities";
+import { installGifAnimationAdapter } from "./gif-animation.js";
 import { exportSceneToPng, type PngExportBackground } from "./png-export";
 import { isEditableTarget } from "./dom-focus";
 
@@ -347,6 +348,11 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
 
   // --- Plugin registration ---
   useEffect(() => {
+    // Built-in GIF decoder, registered by default so dropped / pasted GIFs play
+    // out of the box. Idempotent + lazy (gifuct-js loads on first decode). A
+    // host `animationAdapters` entry with kind "gif" overrides it (those are
+    // registered after).
+    installGifAnimationAdapter();
     if (templates) for (const t of templates) defaultRegistry.register(t);
     if (layoutKinds) for (const k of layoutKinds) registerLayoutKind(k);
     if (animationAdapters) for (const a of animationAdapters) registerAnimationAdapter(a);
@@ -437,18 +443,16 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     return undefined;
   }, [editor, wasmShaper, wasmRaster]);
 
-  // Animation adapters (GIF decoder) are registered in the plugin
-  // effect above, which runs AFTER the editor's first paint (child
-  // effects fire before parent ones). Force one render once both the
-  // editor and the adapters are in place so each animated shape's first
-  // `getFrameAt` runs — that kicks off the async decode, after which the
-  // decode→re-render nudge (`onAnimationContentReady`) paints the frame.
-  // Without this, a paused GIF restored from storage never even starts
-  // decoding and stays blank.
+  // Animation adapters (GIF decoder) are registered in the plugin effect above,
+  // which runs AFTER the editor's first paint (child effects fire before parent
+  // ones). Force one render once the editor is ready so each animated shape's
+  // first `getFrameAt` runs — that kicks off the async decode, after which the
+  // decode→re-render nudge (`onAnimationContentReady`) paints the frame. The
+  // built-in GIF adapter is always registered, so this nudge is unconditional
+  // (also re-runs if a host swaps `animationAdapters`). Without it, a paused GIF
+  // restored from storage never even starts decoding and stays blank.
   useEffect(() => {
-    if (editor && animationAdapters && animationAdapters.length > 0) {
-      editor.forceRender();
-    }
+    if (editor) editor.forceRender();
   }, [editor, animationAdapters]);
 
   useEffect(() => {

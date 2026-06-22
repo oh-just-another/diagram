@@ -58,6 +58,7 @@
     "@oh-just-another/templates": "workspace:*",
     "@oh-just-another/text-wasm": "workspace:*",
     "@oh-just-another/types": "workspace:*",
+    "gifuct-js": "^2.1.2",
     "lucide-react": "^1.16.0"
   },
   "peerDependencies": {

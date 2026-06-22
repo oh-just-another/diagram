@@ -42,6 +42,9 @@ export { exportSceneToPng, type PngExportBackground, type PngExportOptions } fro
 export { registerBounder, registerLayoutKind } from "@oh-just-another/scene";
 export { registerElementRenderer, registerAnimationAdapter } from "@oh-just-another/renderer-core";
 export { registerMigration } from "@oh-just-another/serialization";
+// Built-in GIF decoder — `<Editor>` installs it by default; exported so hosts
+// can install it explicitly or opt into it without the component.
+export { installGifAnimationAdapter } from "./gif-animation.js";
 
 // Peer types that surface in the public API — re-exported so consumers can
 // type their plugins, capability overrides, and imperative calls without

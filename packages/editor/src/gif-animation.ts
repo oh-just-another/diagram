@@ -1,4 +1,4 @@
-import { parseGIF, decompressFrames, type ParsedFrame } from "gifuct-js";
+import type { ParsedFrame } from "gifuct-js";
 import {
   registerAnimationAdapter,
   notifyAnimationContentReady,
@@ -6,22 +6,23 @@ import {
 } from "@oh-just-another/renderer-core";
 
 /**
- * GIF animation adapter for the host. The kernel ships only the
- * `AnimatedSourceAdapter` registry + the stateless "what does this frame
- * look like at time T?" question; the actual GIF decode lives here,
- * behind the optional `gifuct-js` dependency.
+ * Built-in GIF animation adapter. The kernel ships only the
+ * `AnimatedSourceAdapter` registry + the stateless "what does this frame look
+ * like at time T?" question; the actual GIF decode lives here, behind a LAZY
+ * `gifuct-js` import — the decoder is only fetched (its own async chunk) the
+ * first time a GIF is actually decoded, so apps that never show a GIF never
+ * pay for it.
  *
  * A hidden `<img>` is not used: browsers pause GIF frame advancement for
  * near-invisible / off-screen elements, so a 1px-opacity-0.01 sink never
- * animates reliably. Decoding frames here and selecting by timestamp
- * works identically for Canvas2D and WebGL2 — the renderer just gets an
- * `ImageBitmap` of the current frame.
+ * animates reliably. Decoding frames here and selecting by timestamp works
+ * identically for Canvas2D and WebGL2 — the renderer just gets an `ImageBitmap`
+ * of the current frame.
  *
- * `animationData` carried by the shape is the raw GIF `ArrayBuffer`
- * (the same bytes stored in `Scene.files`). Decode is async
- * (`createImageBitmap`), so `getFrameAt` kicks off a one-time decode
- * and returns `null` until it's ready — the renderer skips a null
- * handle and the `AnimationTick` re-render picks up the frames once
+ * `animationData` carried by the shape is the raw GIF `ArrayBuffer` (the same
+ * bytes stored in `Scene.files`). Decode is async, so `getFrameAt` kicks off a
+ * one-time decode and returns `null` until it's ready — the renderer skips a
+ * null handle and the `AnimationTick` re-render picks up the frames once
  * decoded. Decoded results are cached per `ArrayBuffer` identity.
  */
 
@@ -43,6 +44,8 @@ const decodeCache = new WeakMap<object, DecodedGif>();
 const decoding = new WeakSet();
 
 const compositeGifFrames = async (buffer: ArrayBuffer): Promise<DecodedGif> => {
+  // Lazy-load the decoder — only fetched when a GIF is first decoded.
+  const { parseGIF, decompressFrames } = await import("gifuct-js");
   const gif = parseGIF(buffer);
   const raw: ParsedFrame[] = decompressFrames(gif, true);
   const width = gif.lsd.width;
@@ -51,10 +54,10 @@ const compositeGifFrames = async (buffer: ArrayBuffer): Promise<DecodedGif> => {
     return { frames: [], totalMs: 0 };
   }
 
-  // Persistent composite — each frame's patch is drawn on top so
-  // partial-frame GIFs (most of them) accumulate correctly. Disposal
-  // type 2 ("restore to background") clears the patch region after
-  // snapshotting; types 1/0 keep it (the common case).
+  // Persistent composite — each frame's patch is drawn on top so partial-frame
+  // GIFs (most of them) accumulate correctly. Disposal type 2 ("restore to
+  // background") clears the patch region after snapshotting; types 1/0 keep it
+  // (the common case).
   const composite = new OffscreenCanvas(width, height);
   const cctx = composite.getContext("2d");
   const patch = new OffscreenCanvas(width, height);
@@ -64,10 +67,9 @@ const compositeGifFrames = async (buffer: ArrayBuffer): Promise<DecodedGif> => {
   const frames: DecodedFrame[] = [];
   let cumulative = 0;
   for (const fr of raw) {
-    // Copy into a fresh ArrayBuffer-backed array — gifuct's patch may
-    // be typed as `Uint8ClampedArray<ArrayBufferLike>` (SharedArrayBuffer
-    // union), which `ImageData` doesn't accept under TS's strict
-    // ArrayBuffer typing.
+    // Copy into a fresh ArrayBuffer-backed array — gifuct's patch may be typed
+    // as `Uint8ClampedArray<ArrayBufferLike>` (SharedArrayBuffer union), which
+    // `ImageData` doesn't accept under TS's strict ArrayBuffer typing.
     const imageData = new ImageData(new Uint8ClampedArray(fr.patch), fr.dims.width, fr.dims.height);
     patch.width = fr.dims.width;
     patch.height = fr.dims.height;
@@ -90,18 +92,17 @@ const gifAdapter: AnimatedSourceAdapter<ArrayBuffer> = {
     if (!(data instanceof ArrayBuffer) || data.byteLength === 0) return null;
     const decoded = decodeCache.get(data);
     if (!decoded) {
-      // First sighting — kick off a one-time async decode. Return
-      // null meanwhile; the renderer skips a null handle and the
-      // next AnimationTick frame will find the cache populated.
+      // First sighting — kick off a one-time async decode. Return null
+      // meanwhile; the renderer skips a null handle and the next AnimationTick
+      // frame will find the cache populated.
       if (!decoding.has(data)) {
         decoding.add(data);
         compositeGifFrames(data)
           .then((d) => {
             decodeCache.set(data, d);
             // Nudge the host to render once more so a paused shape
-            // (reduced-motion / auto-stopped / frozen) — which has no
-            // animation tick to pick the frames up — paints its
-            // now-decoded frame.
+            // (reduced-motion / auto-stopped / frozen) — which has no animation
+            // tick to pick the frames up — paints its now-decoded frame.
             notifyAnimationContentReady();
           })
           .catch(() => {
@@ -127,8 +128,9 @@ const gifAdapter: AnimatedSourceAdapter<ArrayBuffer> = {
 let installed = false;
 
 /**
- * Register the GIF animation adapter once. Idempotent — safe to call
- * from app setup on every mount.
+ * Register the built-in GIF animation adapter once. Idempotent — `<Editor>`
+ * calls this by default on mount, but hosts can also call it explicitly (or
+ * register their own `kind: "gif"` adapter to override it).
  */
 export const installGifAnimationAdapter = (): void => {
   if (installed) return;
