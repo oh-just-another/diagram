@@ -25,8 +25,6 @@ import {
   getElementAtIndexed,
   getElementWorldBounds,
   getElementRenderBounds,
-  isFrame,
-  FRAME_HEADER_HEIGHT,
   setTextMeasurer,
   getScreenToWorld,
   gridSnapper,
@@ -203,6 +201,10 @@ import {
   hitAnnotation as hitAnnotationPure,
 } from "./editor/public/annotations.js";
 import { canBeginTextEdit } from "./editor/public/text-edit.js";
+import {
+  frameHeaderAt as computeFrameHeaderAt,
+  computeFrameNameCommit,
+} from "./editor/public/frame-name.js";
 import {
   compactLayerZOrderPatches,
   computeBringForward,
@@ -2097,21 +2099,10 @@ export class Editor {
     const id = this._editingFrameName;
     if (id === null) return;
     this._editingFrameName = null;
-    const shape = getElement(this._scene, id);
-    if (shape?.type === "frame") {
-      const trimmed = name.trim();
-      const current = (shape as { name?: string }).name ?? "";
-      if (trimmed !== current) {
-        const r = updateElement(this._scene, id, (s) => {
-          const copy = { ...s } as typeof s & { name?: string };
-          // `exactOptionalPropertyTypes`: drop the key when cleared.
-          if (trimmed === "") delete copy.name;
-          else copy.name = trimmed;
-          return copy;
-        });
-        this._scene = r.scene;
-        this._history.push(r.patch);
-      }
+    const r = computeFrameNameCommit(this._scene, id, name);
+    if (r) {
+      this._scene = r.scene;
+      this._history.push(r.patch);
     }
     this.notify();
   }
@@ -2130,24 +2121,7 @@ export class Editor {
    * hit-test bounds. Assumes unrotated frames (the common case).
    */
   private frameHeaderAt(p: Vec2): ElementId | null {
-    let bestId: ElementId | null = null;
-    let bestOrder = "";
-    for (const s of this._scene.elements.values()) {
-      if (!isFrame(s)) continue;
-      const hx = s.position.x;
-      // The header strip can extend up to the frame's full width (it hugs
-      // the label but is capped there), so the rename hit zone spans it.
-      const hw = s.width * s.scale.x;
-      const hh = FRAME_HEADER_HEIGHT * s.scale.y;
-      const hyTop = s.position.y - hh;
-      if (p.x >= hx && p.x <= hx + hw && p.y >= hyTop && p.y <= hyTop + hh) {
-        if (bestId === null || s.order > bestOrder) {
-          bestId = s.id;
-          bestOrder = s.order;
-        }
-      }
-    }
-    return bestId;
+    return computeFrameHeaderAt(this._scene, p);
   }
 
   /**
