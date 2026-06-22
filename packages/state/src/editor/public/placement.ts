@@ -331,3 +331,47 @@ export const computeLinkedElementFromAnchor = (
   );
   return { scene: linkResult.scene, addPatch: added.patch, linkPatch: linkResult.patch };
 };
+
+/**
+ * Compute the clone-add patches for an in-place duplicate. `ids` is the expanded
+ * set to clone (selection + group/frame descendants), `idMap` the pre-allocated
+ * old→new ids so cross-references (`parentId` / `frameId`) remap to the clones.
+ * Pure — the caller owns id allocation, the history transaction, and selection.
+ * Each clone lands on top of its layer (order recomputed against the growing
+ * scene, so clones stack in iteration order).
+ */
+export const computeDuplicateInPlace = (
+  scene: Scene,
+  ids: ReadonlySet<ElementId>,
+  idMap: ReadonlyMap<ElementId, ElementId>,
+): { scene: Scene; patches: Patch[] } => {
+  let next = scene;
+  const patches: Patch[] = [];
+  for (const id of ids) {
+    const shape = getElement(next, id);
+    if (!shape) continue;
+    const newId = idMap.get(id);
+    if (newId === undefined) continue;
+    const order = orderForTop(
+      [...next.elements.values()]
+        .filter((sh) => sh.layerId === shape.layerId)
+        .map((sh) => sh.order),
+    );
+    const copy = { ...shape, id: newId, order } as Element & {
+      parentId?: ElementId;
+      frameId?: ElementId;
+    };
+    if (copy.parentId !== undefined) {
+      const mapped = idMap.get(copy.parentId);
+      if (mapped !== undefined) copy.parentId = mapped;
+    }
+    if (copy.frameId !== undefined) {
+      const mapped = idMap.get(copy.frameId);
+      if (mapped !== undefined) copy.frameId = mapped;
+    }
+    const r = addElement(next, copy);
+    next = r.scene;
+    patches.push(r.patch);
+  }
+  return { scene: next, patches };
+};

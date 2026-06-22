@@ -241,6 +241,7 @@ import {
   computePlacementContainerDrop,
   computePlacementUpdate,
   computeLinkedElementFromAnchor,
+  computeDuplicateInPlace,
   newElementIdAtCursor,
   previewClickCreate as previewClickCreatePure,
   type PlacementState,
@@ -2531,33 +2532,10 @@ export class Editor {
     // Pre-allocate new ids so cross-references (parentId/frameId) can be remapped.
     const idMap = new Map<ElementId, ElementId>();
     for (const id of ids) idMap.set(id, castElementId(this.uniqueId("shape")));
+    const dup = computeDuplicateInPlace(this._scene, ids, idMap);
     const tx = this._history.transaction();
-    for (const id of ids) {
-      const shape = getElement(this._scene, id);
-      if (!shape) continue;
-      const newId = idMap.get(id);
-      if (newId === undefined) continue;
-      const order = orderForTop(
-        [...this._scene.elements.values()]
-          .filter((sh) => sh.layerId === shape.layerId)
-          .map((sh) => sh.order),
-      );
-      const copy = { ...shape, id: newId, order } as Element & {
-        parentId?: ElementId;
-        frameId?: ElementId;
-      };
-      if (copy.parentId !== undefined) {
-        const mapped = idMap.get(copy.parentId);
-        if (mapped !== undefined) copy.parentId = mapped;
-      }
-      if (copy.frameId !== undefined) {
-        const mapped = idMap.get(copy.frameId);
-        if (mapped !== undefined) copy.frameId = mapped;
-      }
-      const r = addElement(this._scene, copy);
-      this._scene = r.scene;
-      tx.add(r.patch);
-    }
+    this._scene = dup.scene;
+    for (const patch of dup.patches) tx.add(patch);
     tx.commit();
     // Select the clones of the originally-selected ids.
     const selectedClones: ElementId[] = [];
