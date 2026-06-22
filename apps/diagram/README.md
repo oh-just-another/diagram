@@ -44,16 +44,11 @@ apps/demo
 
 ## Design notes
 
-- **No vanilla JS left.** Old `apps/demo` and `apps/react-playground` were
-  collapsed into this single React-based demo. The vanilla source is
-  reachable in git history if anyone needs the kernel-only example.
 - **PNG export uses the browser, not resvg.** Resvg is a heavyweight wasm
   blob and Node-only; for in-browser rendering we serialise the scene with
   `@renderer-svg`, load it as an `<img>` source, and paint into an
   offscreen `<canvas>`. Saves ~3 MB of bundle.
-- **Autosave key `oh-just-another-demo-scene-v2`**, bumped from the vanilla
-  demo's `v1` so users with an old broken save don't crash the new app on
-  first load. (Old key is left untouched — no migration.)
-- **Themes via CSS variables.** Components from `@react-ui` style themselves
-  imperatively for now; the demo overrides the panel chrome with `var(--*)`.
-  When `@react-ui` grows a theming API we'll drop the inline-style override.
+- **Autosave key `oh-just-another-demo-scene-v2`**, persisted to
+  `localStorage` and restored on the next load.
+- **Themes via CSS variables.** The demo overrides the panel chrome from
+  `@react-ui` with `var(--*)` so both themes share one set of tokens.

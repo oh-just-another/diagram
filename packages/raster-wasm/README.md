@@ -1,8 +1,16 @@
 # @oh-just-another/raster-wasm
 
-WASM-backed `Rasterizer` implementation for the diagram renderer (Phase 47).
+WASM-backed `Rasterizer` (flatten / strokeToFill) for the diagram renderer.
 
-Default fallback: delegates to the pure-JS `jsRasterizer` shipped by `@oh-just-another/renderer-core`. Plug a real WASM build (Skia path-ops port, custom Rust, AssemblyScript, …) via `loadModule(...)` once it's fetched.
+L2. Implements `@oh-just-another/renderer-core`'s `Rasterizer` interface. Until a WASM module is loaded, it delegates to the pure-JS `jsRasterizer` from `@oh-just-another/renderer-core`; `loadModule(...)` swaps in a real WASM build at runtime. No module is bundled.
+
+## Install
+
+```bash
+pnpm add @oh-just-another/raster-wasm
+```
+
+## Quick start
 
 ```ts
 import { WasmRasterizer } from "@oh-just-another/raster-wasm";
@@ -40,5 +48,3 @@ interface WasmRasterizerExports {
 ```
 
 Commands are packed into a Float32 array: `[kindEnum, x0, y0, x1?, y1?, x2?, y2?]` per command (variable width). Output Vec2 arrays are returned by writing `outPtr` + `outCount` to caller-provided host pointers.
-
-See `@oh-just-another/renderer-core`'s `Rasterizer` interface.

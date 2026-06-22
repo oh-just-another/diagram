@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/serialization",
   "version": "0.57.1",
-  "description": "serialization package",
+  "description": "Versioned scene (de)serialization with forward migrations and zod validation.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {

@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/renderer-svg",
   "version": "0.57.1",
-  "description": "renderer-svg package",
+  "description": "Headless SVG rendering backend: turns a Scene into an SVG-string snapshot, running identically in Node and the browser.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {

@@ -1,8 +1,10 @@
 # @oh-just-another/types
 
-L0 type vocabulary shared across the diagram library: geometric primitives, identifiers and framework-agnostic input events.
+Shared primitive types — ids, vec, bounds, color, transform and input events.
 
-No runtime dependencies. The only runtime value is the `shapeId()` cast helper.
+L0 type vocabulary shared across the diagram library: geometric primitives, branded identifiers and framework-agnostic input events.
+
+No runtime dependencies. The only runtime values are the branded-id cast helpers (`elementId()`, `linkId()`, …).
 
 ## Exports
 

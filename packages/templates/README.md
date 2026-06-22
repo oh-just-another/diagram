@@ -1,8 +1,8 @@
 # @oh-just-another/templates
 
-L2 palette presets for `@oh-just-another/scene`. A `Template` is a factory for an element — given a runtime context (id / layer / position / order) it returns a typed `Element`. Templates have an SVG icon for the palette and live in a registry that the host UI iterates.
+L2 reusable shape/diagram templates for `@oh-just-another/scene`. A `Template` is a factory for an element — given a runtime context (id / layer / position / order) it returns a typed `Element`. Templates carry an SVG palette icon and live in a registry that the host UI iterates.
 
-**Phase 6a** covers simple presets (one element per template). **Phase 6b** adds rich templates — nested node-trees with flex layout, data binding, and interactive sub-elements (buttons, drop-zones). Both reuse the same `loadTemplateLibrary` JSON entry point.
+Two flavours share the same `loadTemplateLibrary` JSON entry point: simple presets (one element per template) and rich templates — nested node-trees with flex layout, data binding, and interactive sub-elements (buttons, drop-zones).
 
 The rich-template surface is exported under `rich.*` (`import { rich } from "@oh-just-another/templates"`) and includes `TemplateNode` types, `layoutTree`, `defineRichTemplate`, `defaultRichRegistry`, `installTemplateShapeRenderer`, `templateInteractiveHitTester` and the hit-test helpers.
 

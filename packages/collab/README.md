@@ -51,7 +51,7 @@ doc.destroy();
 
 - **CRDT as the source of truth.** `SceneDoc.snapshot()` rebuilds a typed `Scene` from `Y.Map`s on demand. We don't try to incrementally patch the local scene from individual Yjs events — `editor.loadScene(snapshot)` after every remote update is simpler and within budget for typical scene sizes.
 - **`Y.Map<id, Shape>` per kind**, not nested `Y.Map`s. Concurrent edits to different ids merge under classic CRDT last-writer-wins semantics. Per-shape conflict resolution (two peers editing the same shape) is also LWW today — fine for editor UX where one peer's drag obviously stops the moment the other commits.
-- **Undo history dropped on remote updates (MVP).** `editor.history` is a linear local stack; CRDT-style multi-author undo needs a `Y.UndoManager`-backed history. Promoted to a follow-up phase.
+- **Undo history dropped on remote updates.** `editor.history` is a linear local stack; CRDT-style multi-author undo needs a `Y.UndoManager`-backed history.
 - **Self-origin filter on Yjs transactions.** `bindEditor` tags its own writes so the `update` listener doesn't ricochet — without it every keystroke would flicker through `loadScene`.
 - **Transport-agnostic.** The same `SceneDoc` works behind BroadcastChannel (same-origin tabs) or WebSocket (any server speaking y-protocols). Sharded WebRTC / WebTransport implementations slot in without touching the binding.
 - **Single-tag wire format.** `TransportProvider` prepends one byte to every message: `0x00` doc / `0x01` awareness / `0x02` sync-request. Lets us multiplex over a single binary channel without a separate signalling layer.

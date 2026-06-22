@@ -2,7 +2,7 @@
 
 L2 Canvas2D backend for the diagram renderer. Implements `RenderTarget` from `@oh-just-another/renderer-core`, ships built-in shape renderers for every built-in shape type in `@oh-just-another/scene`, and provides DOM helpers for hi-DPI and multi-layer composition.
 
-Browser-only — depends on `CanvasRenderingContext2D`, `HTMLCanvasElement` and `window.devicePixelRatio`. For headless rendering (Node), use `@oh-just-another/renderer-svg` (Phase 7).
+Browser-only — depends on `CanvasRenderingContext2D`, `HTMLCanvasElement` and `window.devicePixelRatio`. For headless rendering (Node), use `@oh-just-another/renderer-svg`.
 
 ## Quick start
 

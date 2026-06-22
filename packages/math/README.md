@@ -1,6 +1,8 @@
 # @oh-just-another/math
 
-L0 geometry kernel. Pure functions, no DOM, no Node API. Modules are exported as namespaces:
+Pure 2D geometry — vectors, matrices, bounds, color, intersection.
+
+L0 geometry kernel. Pure functions, no DOM, no Node API, no runtime dependencies. Modules are exported as namespaces:
 
 ```ts
 import { vec2, matrix, bounds, hitTest, bezier, intersect, color } from "@oh-just-another/math";

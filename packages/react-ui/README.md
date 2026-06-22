@@ -2,6 +2,8 @@
 
 React 18+ wrappers around the editor — `DiagramCanvas`, `Toolbar`, `Palette`, `PropertyPanel`, plus a small set of hooks. Mount it with three lines of JSX, customize with hooks for everything else.
 
+The React binding layer (L5) over `@oh-just-another/state`; needs React + DOM. For a single drop-in component, use `@oh-just-another/editor`.
+
 ## Install
 
 ```bash
@@ -47,8 +49,8 @@ export const App = () => (
 ## Design notes
 
 - **`<DiagramCanvas>` owns the editor's lifetime.** Created in `useLayoutEffect` so children's effects see the provider value on first paint; disposed on unmount. `initialScene` and `initialMode` are read once — runtime updates go through the editor API (`editor.loadScene`, `editor.setMode`).
-- **Hooks subscribe via the editor's `subscribe`.** Mode changes were previously not announced; `Editor.setMode` now calls `notify()` so `useMode` (and similar bespoke selectors) re-render correctly.
+- **Hooks subscribe via the editor's `subscribe`.** `Editor.setMode` calls `notify()` so `useMode` (and similar bespoke selectors) re-render on mode changes.
 - **No global state.** Every editor instance is independent — composition via context lets multiple canvases live on the same page (useful for diff viewers, presentation modes).
 - **Toolbar item kinds are a discriminated union.** Hosts can mix builtin `mode` / `undo` / `redo` items with arbitrary `action` items in one declarative array.
-- **Palette uses SVG icons through `dangerouslySetInnerHTML`.** Template authors define the icon markup; same SVG goes through the canvas renderer's SVG-parser (Phase 6b). No cross-package surprises.
+- **Palette uses SVG icons through `dangerouslySetInnerHTML`.** Template authors define the icon markup; the same SVG goes through the canvas renderer's SVG parser, so palette and canvas stay visually identical.
 - **Tests run under `jsdom`.** `tests/setup.ts` stubs `HTMLCanvasElement.prototype.getContext`, pointer-capture, and `ResizeObserver` — enough for the editor to mount without pulling the native `canvas` npm package.

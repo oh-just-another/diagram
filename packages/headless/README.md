@@ -47,8 +47,6 @@ Both functions accept either an in-memory `Scene` (e.g. produced by `@scene` ope
 |    100 |   0.17 ms | 5.8K ops/s |
 |   1000 |   1.87 ms |  534 ops/s |
 
-Phase 8 target was < 50 ms for 100 shapes — there's roughly 300× of headroom.
-
 ## Design notes
 
 - **Two paths, one entry point.** SVG is the fast, dependency-free path; PNG goes through resvg (Rust → WASM). Adding more rasterizers (skia, node-canvas) slots in beside `renderToPng` without changing the public API.

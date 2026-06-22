@@ -8,7 +8,7 @@ No DOM, no React, no Node API. Depends only on `@oh-just-another/types`, `@oh-ju
 
 - **Scene** — a container of elements, links, layers and a viewport. All fields are immutable; every operation returns a new `Scene`.
 - **Element / Link / Layer** — entities. Elements have an open type discriminator (`type: string`) so plugins can register their own variants. Built-ins: `rectangle`, `ellipse`, `polygon`, `path`, `text`, `image`. (A `Link` is a connector between elements; an element's geometric _shape_ — rectangle/ellipse/path — is a form-primitive, distinct from the element itself.)
-- **Order (fractional index)** — every element, link and layer carries an `order` string. Z-order = sort by `order`. Inserts and reorders are O(1) and conflict-free under concurrent edits (needed for Phase 13 collab).
+- **Order (fractional index)** — every element, link and layer carries an `order` string. Z-order = sort by `order`. Inserts and reorders are O(1) and conflict-free under concurrent edits.
 - **Patch** — every operation returns a `Patch` with `before` and `after`. `invert(patch)` swaps them; this powers history and CRDT replay symmetrically.
 - **Bounder registry** — local AABB computation is per-type. Built-in elements ship with bounders; plugins register their own via `registerBounder`.
 - **Spatial index** — `SpatialGrid` uniform-cell index. `buildSpatialIndex(scene)` + `queryByIndex(scene, grid, range)` give sub-millisecond range queries on 1000-element scenes.

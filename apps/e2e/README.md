@@ -24,6 +24,5 @@ it (only when `CI=` is unset).
 
 ## CI
 
-GitHub Actions matrix flips on firefox / webkit via `--project=`. The
-relay isn't yet spawned automatically — collab tests are scoped out
-until the suite gets a dedicated multi-page driver.
+GitHub Actions runs the suite across a browser matrix (chromium /
+firefox / webkit) via `--project=`.

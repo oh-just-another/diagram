@@ -1,8 +1,10 @@
 # @oh-just-another/state
 
-Level 2 interaction layer. Owns the xstate interaction machine, normalizes DOM events, draws selection/handles on the overlay layer, and ships a high-level `Editor` class that wires a scene + main/overlay render targets + DOM events together.
+Interactive editor engine over a Scene: tools, selection, history, hit-testing.
 
-Browser-only — relies on the DOM `PointerEvent` API. Depends on `@types`, `@math`, `@scene`, `@renderer-core`, and `xstate` (v5).
+The L2 interaction layer. Owns the xstate interaction machine, normalizes DOM events, draws selection/handles on the overlay layer, and ships a high-level `Editor` class that wires a scene + main/overlay render targets + DOM events together.
+
+Browser-only — relies on the DOM `PointerEvent` API. Depends on `@oh-just-another/types`, `@oh-just-another/math`, `@oh-just-another/scene`, `@oh-just-another/renderer-core`, and `xstate` (v5).
 
 ## Quick start
 
