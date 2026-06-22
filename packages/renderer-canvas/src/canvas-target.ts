@@ -185,7 +185,7 @@ export class Canvas2DTarget implements RenderTarget {
   ): void {
     // `_dynamic` ignored — Canvas2D reads the source element live on
     // every drawImage, so animated GIF / video frames are picked up
-    // automatically as long as the host re-renders (AnimationTick).
+    // automatically as long as the host re-renders.
     void _dynamic;
     // Guard against non-drawable handles. A restored scene carries
     // either a string `src` (dead blob: URL) OR a `metadata.image`

@@ -2,9 +2,9 @@ import type { LinkId } from "@oh-just-another/types";
 
 /**
  * Set of currently selected link (connector) ids. A parallel set to the
- * element selection, kept separate so the element-selection code is untouched
- * while links become first-class members of the overall selection (Cmd+A,
- * marquee, multi-select, delete).
+ * element selection, kept separate so links are first-class members of the
+ * overall selection (Cmd+A, marquee, multi-select, delete) without coupling to
+ * the element-selection set.
  *
  * Immutable — operations return new sets. Sets (not arrays) give O(1)
  * membership checks during overlay rendering and hit-testing.

@@ -208,8 +208,8 @@ const floatingOutlineWorld = (shape: ElementBase, toward: Vec2): Vec2 => {
  * scale automatically.
  *
  * Returns `null` when an `anchor` endpoint references a shape id that
- * isn't (or no longer is) in the scene. Callers usually drop the edge
- * from the render pass in that case.
+ * isn't in the scene. Callers usually drop the edge from the render
+ * pass in that case.
  *
  * `toward` is only consulted for `floating` endpoints — it's the world
  * point of the *other* endpoint, which the floating side aims at. When

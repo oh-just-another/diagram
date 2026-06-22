@@ -1,25 +1,18 @@
 /**
- * Animated-content adapter scaffold.
- *
- * The kernel doesn't decode GIF / Lottie / video itself. Instead it
- * exposes an `AnimatedSourceAdapter` interface and a process-global
- * registry indexed by `kind` ("gif", "lottie", "video", "<your-format>").
- * Hosts plug their decoder of choice:
+ * Animated-content adapter registry. The kernel doesn't decode GIF /
+ * Lottie / video itself: it exposes an `AnimatedSourceAdapter` interface
+ * and a process-global registry indexed by `kind` ("gif", "lottie",
+ * "video", "<your-format>"). Hosts plug their decoder of choice:
  *
  *   registerAnimationAdapter({
  *     kind: "gif",
  *     getFrameAt(data, timestampMs) { ... return ImageBitmap }
  *   });
  *
- * The image renderer in `renderer-core` consults the registry
- * when an `ImageElement` carries `animationKind` + `animationData`
- * fields. Renderers that don't care about animation ignore the
- * registry entirely — the shape's static `src` remains the fallback
- * path.
- *
- * The animation tick (driving requestAnimationFrame for live
- * playback) lives in the state package — the kernel only ships the
- * stateless "what should this frame look like?" question.
+ * An `ImageElement` carrying `animationKind` + `animationData` resolves
+ * its source through the registry; without those fields the static `src`
+ * is used. The kernel only answers the stateless "what should this frame
+ * look like?" question — live playback ticking is the host's job.
  */
 
 export interface AnimatedSourceAdapter<Data = unknown> {

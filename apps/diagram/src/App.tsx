@@ -26,7 +26,7 @@ import { ConnectionBadge } from "./ConnectionBadge";
  */
 
 setupTemplates();
-// The GIF frame decoder is now registered by default inside `<Diagram>`
+// The GIF frame decoder is registered by default inside `<Diagram>`
 // (built-in `installGifAnimationAdapter`), so animated GIFs play out of the box.
 
 const STORAGE_KEY = "oh-just-another-diagram-scene-v2";

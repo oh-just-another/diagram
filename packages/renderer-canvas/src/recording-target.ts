@@ -103,17 +103,16 @@ export type RenderCommand =
     };
 
 /**
- * `drawImage` is NOT serialisable through this command stream — image
- * sources (HTMLImageElement, ImageBitmap, HTMLCanvasElement) either
- * can't cross the postMessage boundary cleanly or require expensive
- * transfers. The recording target silently skips `drawImage` calls and
- * counts them in `skippedImageDraws` so the host UI can warn (or fall
- * back to main-thread compositing for image-heavy scenes).
+ * `drawImage` records `ImageBitmap` sources — they survive the
+ * postMessage boundary and are replayed onto the worker's canvas. Other
+ * source types (HTMLImageElement, HTMLCanvasElement) are skipped and
+ * counted in `skippedImageDraws` so the host UI can warn (or fall back
+ * to main-thread compositing for image-heavy scenes).
  *
- * `measureText` returns a synchronous heuristic — the worker has the
- * authoritative measurement, but routing per-call is too chatty. Hosts
- * that care about pixel-perfect text in offscreen mode should
- * pre-measure on a sidecar text shaper.
+ * `measureText` returns a synchronous heuristic — routing each call to
+ * the worker's authoritative measurement is too chatty. Hosts that care
+ * about pixel-perfect text in offscreen mode should pre-measure on a
+ * sidecar text shaper.
  */
 export class RecordingTarget implements RenderTarget {
   private commands: RenderCommand[] = [];
@@ -247,10 +246,8 @@ export class RecordingTarget implements RenderTarget {
     );
   }
   measureText(text: string): { width: number } {
-    // Heuristic — same factor as @text-wasm's fallback so layout stays
-    // roughly proportional. The Editor's text rendering path re-measures
-    // on the real Canvas2D in the main thread when it needs precise
-    // widths (label wrapping, hit-test).
+    // Heuristic so layout stays roughly proportional. Callers that need
+    // precise widths re-measure on a real Canvas2D context.
     return { width: text.length * 8 };
   }
 

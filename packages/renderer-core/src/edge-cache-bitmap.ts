@@ -1,9 +1,9 @@
 import type { Link } from "@oh-just-another/scene";
 
 /**
- * Per-edge rasterised bitmap cache. Mirror of `ElementBitmapCache` but
- * keyed on `Link` identity. Long-path edges (orthogonal routes around
- * obstacles, beziers with many waypoints) cost real CPU per frame;
+ * Per-edge rasterised bitmap cache, keyed on `Link` identity. Long-path
+ * edges (orthogonal routes around obstacles, beziers with many
+ * waypoints) cost real CPU per frame;
  * caching the rasterised stroke as an `ImageBitmap` lets pan / camera
  * moves draw with one `drawImage` call instead of a fresh
  * `path → stroke` pass.

@@ -125,8 +125,7 @@ const strokeAlignOffset = (style: Style): number => {
  *
  * Quadratic control points sit at each corner of the rect; the
  * curve goes from `r` units along one side to `r` units along the
- * adjacent side. WebGL2Target's zoom-aware flattener turns this
- * into enough chord segments to stay sub-pixel smooth at any zoom.
+ * adjacent side.
  *
  * Radius `r` is pre-clamped by `getCornerRadius` to half the
  * smaller side, so no overlap-handling is needed here.
@@ -269,8 +268,7 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
     lines = [{ text: shape.text, x: 0, width: target.measureText(shape.text).width, top: 0 }];
   } else {
     // Measure with the target's own `measureText` so wrapping matches
-    // exactly what this backend draws (WebGL2 reports MSDF advances; the
-    // selection-box bounder + caret use the same source).
+    // exactly what this backend draws.
     const measure = (s: string) => target.measureText(s).width;
     const layout = layoutText(shape.text, measure, {
       fontSize,
@@ -362,15 +360,11 @@ const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
 };
 
 const drawImage: ElementRenderer<ImageElement> = (shape, target) => {
-  // Priority: preloaded handle in metadata.image → animation-adapter
-  // frame (when `animationKind` is set and a matching adapter is
-  // registered) → static `src` fallback.
-  // For an animated source (GIF) prefer the per-frame image the
-  // registered adapter returns over `metadata.image` (a static
-  // first-frame `<img>`). `resolveImageSource` consults the adapter
-  // with `performance.now()`; it returns `null` while the async
-  // decode is still in flight — the backend's drawImage guard skips
-  // a null handle and the next AnimationTick frame picks it up.
+  // Priority: for an animated source prefer the per-frame image the
+  // registered adapter returns; otherwise a preloaded handle in
+  // `metadata.image`; otherwise the static `src` fallback.
+  // `resolveImageSource` returns `null` while an async decode is still
+  // in flight, which the backend's drawImage guard skips.
   const handle = shape.animationKind
     ? resolveImageSource(shape)
     : (shape.metadata?.image ?? resolveImageSource(shape));
@@ -382,8 +376,7 @@ const drawImage: ElementRenderer<ImageElement> = (shape, target) => {
 };
 
 /**
- * Registers renderers for every `BuiltinElement` type. Called by side-effect
- * import of `@oh-just-another/renderer-canvas/setup` (see index).
+ * Registers renderers for every `BuiltinElement` type.
  */
 export const installBuiltinRenderers = (): void => {
   registerElementRenderer<RectangleElement>("rectangle", drawRectangle);
@@ -392,8 +385,7 @@ export const installBuiltinRenderers = (): void => {
   registerElementRenderer<PathElement>("path", drawPath);
   registerElementRenderer<TextElement>("text", drawText);
   registerElementRenderer<ImageElement>("image", drawImage);
-  // Group shapes are invisible containers — the editor's overlay draws
-  // a halo for selected groups, but the shape itself paints nothing.
+  // Group shapes are invisible containers — the shape itself paints nothing.
   registerElementRenderer<GroupElement>("group", () => {
     /* intentional no-op: group shapes are invisible containers and paint nothing */
   });
@@ -480,12 +472,7 @@ const rotateLocal = (
   }
 };
 
-/**
- * Frame: dashed outline + header strip with the frame's name.
- * Hit-testing intentionally passes through the body (handled
- * editor-side) so clicks on children inside the frame still land on
- * the child, not the frame chrome.
- */
+/** Frame chrome colours: outline + header strip with the frame's name. */
 const FRAME_STROKE = "#888";
 const FRAME_FILL = "#ffffff";
 

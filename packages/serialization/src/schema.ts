@@ -331,8 +331,8 @@ export const SceneDocumentZ = z
     links: z.array(LinkZ),
     layers: z.array(LayerZ),
     /**
-     * Threaded comments. Optional for backwards compatibility — documents
-     * without an `annotations` field deserialize as an empty thread list.
+     * Threaded comments. Optional — documents without an `annotations` field
+     * deserialize as an empty thread list.
      */
     annotations: z.array(AnnotationZ).optional(),
     viewport: ViewportZ,

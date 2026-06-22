@@ -122,14 +122,9 @@ export const CANVAS_TONES = {
 } as const satisfies Record<"light" | "dark", Record<Hue, string>>;
 
 // ---------------------------------------------------------------------------
-// UI surface tokens — used by react-ui's chrome (toolbar, panels,
-// modals, tooltips). Intentionally curated, not a full scale: every UI
-// surface picks from a small fixed set so themes stay coherent.
-//
-// CSS in react-ui's styles.css mirrors these hex values by hand
-// (CSS can't import TypeScript). The comments next to each
-// declaration there point back to the token name — keep them in
-// sync when you change a value here.
+// UI surface tokens for chrome (toolbar, panels, modals, tooltips).
+// Intentionally curated, not a full scale: every UI surface picks
+// from a small fixed set so themes stay coherent.
 // ---------------------------------------------------------------------------
 
 export interface UISurface {

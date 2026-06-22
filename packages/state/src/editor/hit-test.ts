@@ -362,9 +362,9 @@ const drawResizeZones = (
 /**
  * Minimal slice of the selected link's handle geometry the debug viz
  * needs — endpoints plus the bend / segment handle world positions the
- * orchestrator already computed for the real overlay. Mirrors
- * `LinkSelection` in `overlay.ts` without importing it (would close the
- * overlay ↔ hit-test runtime cycle).
+ * orchestrator already computed for the real overlay. Redeclared rather
+ * than imported from the overlay so this module stays free of a runtime
+ * cycle with it.
  */
 export interface HitZoneEdge {
   readonly from: Vec2;

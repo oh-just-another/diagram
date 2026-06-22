@@ -4,19 +4,17 @@ import { FALLBACK_ADVANCE_FACTOR, MEASURE_CACHE_SIZE } from "./constants.js";
 /**
  * WASM-backed text shaper.
  *
- * The kernel ships an interface in `@oh-just-another/renderer-core` so
- * hosts can swap measurement engines. This package provides the
- * default WASM-aware implementation:
+ * Implements the `TextShaper` interface so hosts can swap
+ * measurement engines:
  *
  *   • Until a WASM module is loaded via `loadModule`, calls fall
  *     back to a synchronous geometric estimate (proportional
  *     monospace-style advance). Layout stays roughly correct so
  *     the first paint isn't blank.
- *   • `loadModule(bytes | url, exports)` plugs a real shaper in.
- *     The expected `exports` shape is documented inline — any
- *     HarfBuzz / harfbuzzjs / ICU4X build that exposes a
- *     `measure(textPtr, len, fontPtr) → width` function and
- *     conventional `memory` + `alloc`/`free` can be wired up.
+ *   • `loadModule(bytes | url)` plugs a real shaper in. Any module
+ *     exposing the `WasmShaperExports` shape — a `measure(textPtr,
+ *     len) → width` function and conventional `memory` +
+ *     `alloc`/`free` — can be wired up.
  *   • Cache: small LRU keyed on the (text, font) pair so repeated
  *     measurements (re-renders of the same labels) are O(1).
  *
@@ -256,13 +254,11 @@ export class WasmTextShaper implements TextShaper {
   }
 
   /**
-   * Rasterise a single glyph as an MSDF tile. The bundled wasm uses
-   * the `fdsm` crate (pure-Rust msdfgen-style implementation) — three
-   * channels, 3°-equivalent corner detection, sign-correction
-   * post-pass. `atlasSize` is the tile edge in pixels (typical 32 /
-   * 48 / 64); `range` is the SDF range in atlas pixels (typically
-   * `atlasSize / 8`, so the shader has ~`range`px to soften the edge
-   * with `smoothstep`).
+   * Rasterise a single glyph as a three-channel MSDF tile.
+   * `atlasSize` is the tile edge in pixels (typical 32 / 48 / 64);
+   * `range` is the SDF range in atlas pixels (typically `atlasSize /
+   * 8`, so the shader has ~`range`px to soften the edge with
+   * `smoothstep`).
    *
    * Returns `null` when the loaded module doesn't expose
    * `rasterizeGlyphMSDF`. Returns a buffer of zeros for missing or

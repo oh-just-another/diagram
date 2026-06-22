@@ -1,10 +1,9 @@
 import type { Vec2 } from "@oh-just-another/types";
 import type { PathCommand } from "@oh-just-another/scene";
 
-// Process-global active rasterizer. Mirrors `setActiveTextShaper` —
-// Editor installs once on mount; backend code (WebGL2Target's curve
-// flattening) reads at draw time. `null` falls back to the backend's
-// built-in JS sampler.
+// Process-global active rasterizer. A host installs one; backend code
+// reads it at draw time. `null` falls back to the backend's built-in JS
+// sampler.
 
 let activeRasterizer: Rasterizer | null = null;
 

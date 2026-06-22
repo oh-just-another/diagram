@@ -2,12 +2,12 @@ import type { Transport } from "@oh-just-another/network";
 import { ENCRYPTION_IV_BYTES, ENCRYPTION_KEY_BITS, ROOM_ID_BYTES } from "./constants.js";
 
 /**
- * Client-side AES-GCM encryption for collab transports. Mirrors
- * standard's "URL fragment carries the key" model: the secret
- * never reaches the relay, so a blind fan-out server can route
- * payloads without ever decrypting them.
+ * Client-side AES-GCM encryption for collab transports. The URL
+ * fragment carries the key: the secret never reaches the relay, so
+ * a blind fan-out server can route payloads without ever decrypting
+ * them.
  *
- * URL convention (set by the host app, parsed in `apps/diagram/src/collab.ts`):
+ * URL convention (set by the host app):
  *
  *   /#room=<roomId>,<keyBase64>
  *

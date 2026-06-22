@@ -311,8 +311,7 @@ export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
  *   programmatic button-style zoom (`Editor.zoomIn` / `zoomOut`).
  *   `1.6 = +60% per call` — punchy single-step zoom.
  * - `WHEEL_ZOOM_MAX_STEP` / `WHEEL_ZOOM_SPEED` — wheel-zoom
- *   normalisation (`packages/editor/.../normalizeWheel.ts`).
- *   Per event:
+ *   normalisation. Per event:
  *
  *     delta  = clamp(|deltaY|, WHEEL_ZOOM_MAX_STEP) * sign(deltaY)
  *     factor = 1 − (delta * WHEEL_ZOOM_SPEED) / 100

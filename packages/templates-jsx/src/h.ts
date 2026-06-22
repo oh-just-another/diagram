@@ -8,7 +8,7 @@ import type { rich } from "@oh-just-another/templates";
 // To enable JSX in a host project, set "jsx": "react-jsx" and
 // "jsxImportSource": "@oh-just-another/templates-jsx" in tsconfig.
 
-/** Marker for `<>...</>` fragments. Same convention as React. */
+/** Marker for `<>...</>` fragments. */
 export const Fragment = Symbol.for("@oh-just-another/templates-jsx/Fragment");
 export type Fragment = typeof Fragment;
 
@@ -94,7 +94,7 @@ export function h(
   ...children: JsxChild[]
 ): TemplateNode {
   const allProps = props ?? {};
-  // Children passed via spread args win over `children` prop, matching React.
+  // Children passed via spread args win over the `children` prop.
   const childList = children.length > 0 ? children : ([] as JsxChild[]);
   if (childList.length === 0 && "children" in allProps) {
     const inProp = allProps.children as JsxChild | readonly JsxChild[] | undefined;

@@ -25,8 +25,8 @@ export const DEFAULT_GRID_SPACING = 20;
  * Padding (world units) the elbow router inflates obstacle bboxes
  * by before searching. Larger values keep edges visibly clear of
  * shapes; smaller values let the router squeeze through tight
- * spaces. 20 px matches the gridSize default for diagrams that
- * snap to a 20-unit grid.
+ * spaces. 20 px matches the grid spacing for diagrams that snap to
+ * the grid.
  */
 export const ELBOW_OBSTACLE_MARGIN = 20;
 
@@ -41,8 +41,9 @@ export const ELBOW_OBSTACLE_INTERIOR_EPSILON = 0.5;
 /**
  * Per-turn cost added in the elbow A* so the router minimises BENDS first,
  * distance second (lexicographic — far larger than any plausible canvas
- * distance). Keeps routes stable: small shape moves no longer flip between
- * equal-distance alternatives, and the path takes the fewest corners.
+ * distance). Keeps routes stable: small shape moves stay on the same
+ * choice between equal-distance alternatives, and the path takes the
+ * fewest corners.
  */
 export const ELBOW_BEND_PENALTY = 100000;
 

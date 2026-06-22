@@ -1425,8 +1425,6 @@ const ArrowheadGlyph = ({
 
 const Divider = () => <span className="du-sel-divider" aria-hidden />;
 
-// Section / Row kept as exports because tests may rely on them; they're
-// no longer used internally.
 export const Section = ({
   label,
   children,

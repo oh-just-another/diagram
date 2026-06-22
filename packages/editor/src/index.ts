@@ -15,7 +15,7 @@
  * full live engine (`EditorInstance` from `@oh-just-another/state`) as the
  * power-user escape hatch. See `EditorProps` for the customisation surface.
  *
- * `Diagram` is a deprecated alias for `Editor`, kept for back-compat.
+ * @deprecated `Diagram` — use {@link Editor} instead.
  */
 export {
   Diagram as Editor,

@@ -4,13 +4,7 @@ import type { Scene } from "@oh-just-another/scene";
 /**
  * Worker-backed renderer protocol. Defines the postMessage contract between
  * the main-thread orchestrator and an OffscreenCanvas worker that owns a
- * layer of the scene. Wired up via `EditorOptions.workers` per backend:
- *
- *   workers: {
- *     canvas2d: true,         // OffscreenCanvas in worker
- *     webgl: false,
- *     textShaper: true,       // shared text-shaper worker
- *   }
+ * layer of the scene.
  */
 
 export type WorkerRenderMessage =
@@ -43,9 +37,8 @@ export type WorkerRenderResponse =
   | { readonly type: "error"; readonly message: string };
 
 /**
- * Auto-enable threshold — when the scene crosses this size and the
- * host opted into workers, the editor moves the main canvas to a
- * worker. Below the threshold, in-thread rendering is cheaper than
- * the postMessage overhead.
+ * Scene-size threshold above which moving rendering to a worker pays
+ * off. Below it, in-thread rendering is cheaper than the postMessage
+ * overhead.
  */
 export const WORKER_AUTO_THRESHOLD = 5_000;

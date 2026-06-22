@@ -42,10 +42,9 @@ export const cursorForHandle = (handle: HandleId): string => {
 };
 
 /**
- * Re-exports handle geometry/hit-target constants from `constants.ts`.
- * `HANDLE_HIT_SLOP` is decoupled from `HANDLE_SIZE`/`HANDLE_OUTSET` — the grab
- * area grows independently of the drawn square. Re-exported so consumers
- * (`overlay`, `editor`, `index`, tests) keep importing from `./handle.js`.
+ * Handle geometry / hit-target constants. `HANDLE_HIT_SLOP` is decoupled from
+ * `HANDLE_SIZE`/`HANDLE_OUTSET` — the grab area grows independently of the
+ * drawn square.
  */
 export { HANDLE_HIT_SLOP, HANDLE_OUTSET, HANDLE_SIZE };
 
@@ -153,8 +152,8 @@ export const hitHandle = (
 /**
  * Apply a delta in world coordinates to bounds, using the given handle as the
  * grab point. Anchor (opposite corner) stays fixed. The result may have
- * negative width/height while dragging — `bounds.normalize` in `@math` flips
- * it on commit.
+ * negative width/height while dragging — bounds normalization flips it on
+ * commit.
  */
 export const resizeBounds = (b: Bounds, handle: HandleId, delta: Vec2): Bounds => {
   let { x, y, width, height } = b;

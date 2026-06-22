@@ -134,7 +134,7 @@ const flattenPath = (commands: readonly PathCommand[]): Vec2[] => {
       }
       cur = c.to;
     }
-    // "Z" closes implicitly (the halo renderer closes each loop).
+    // "Z" closes implicitly — each loop is closed by the consumer.
   }
   return pts;
 };

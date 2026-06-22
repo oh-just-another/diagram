@@ -1,8 +1,8 @@
 import type { Category, Template } from "./types.js";
 
 /**
- * In-process registry of templates. Plugins register at module load; the demo
- * iterates by category to fill the palette.
+ * In-process registry of templates. Plugins register at module load; consumers
+ * iterate by category to fill a palette.
  *
  * There is no precedence or namespace — registering an existing id throws so
  * collisions are caught early.

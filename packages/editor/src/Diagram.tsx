@@ -1132,8 +1132,8 @@ const EditorShell = ({
 /**
  * Platform-correct hotkey labels for the zoom-control tooltips — ⌘
  * glyphs on macOS, "Ctrl+…" elsewhere, mirroring the top toolbar's
- * tool tooltips. Descriptors mirror the bound zoom hotkeys in
- * `actionZoom.ts` (display uses the minus/plus glyphs).
+ * tool tooltips. Mirror the bound zoom hotkeys (display uses the
+ * minus/plus glyphs).
  */
 const ZOOM_OUT_HOTKEY = formatHotkey({ meta: true, key: "−" });
 const ZOOM_IN_HOTKEY = formatHotkey({ meta: true, key: "+" });
@@ -1272,12 +1272,9 @@ const openSceneFile = (editor: Editor | null, notify: (message: string) => void)
  *   • color            — solid background fill (host canvas colour)
  *   • color-and-grid   — solid fill + same grid the user sees
  *
- * Scale fixed at 2× for retina-quality output (matches the standard /
- * standard default). The full-scene contract makes this symmetric with
- * SVG export, which always emits the whole scene.
- *
- * Implementation lives in `./png-export.ts` so this file stays
- * focused on UI wiring.
+ * Scale fixed at 2× for retina-quality output. The full-scene
+ * contract makes this symmetric with SVG export, which always emits
+ * the whole scene.
  */
 const PNG_EXPORT_SCALE = 2;
 
@@ -1313,9 +1310,8 @@ const readCanvasBackgroundColor = (): string => {
 };
 
 /**
- * "Export as SVG" — uses `@renderer-svg.renderSceneToSvg` so the
- * output is identical to the headless render path (vector, no
- * bitmap fall-back, works in any browser). One file per scene.
+ * "Export as SVG" — renders the scene to vector SVG (no bitmap
+ * fall-back, works in any browser). One file per scene.
  */
 const downloadSvg = (scene: Scene): void => {
   const svg = renderSceneToSvg(scene);

@@ -3,9 +3,7 @@ import type { Patch } from "@oh-just-another/scene";
 /**
  * Best-effort short label for a patch, suitable for a history side-panel.
  * The wording is deliberately generic ("Update shape", "Move/resize shape",
- * "Create rectangle") because the kernel does not know enough about user
- * intent to say more. Hosts that want richer labels can attach `metadata` to
- * their shapes and read it here.
+ * "Create rectangle") because a patch alone does not carry user intent.
  */
 export const describe = (patch: Patch): string => {
   switch (patch.kind) {

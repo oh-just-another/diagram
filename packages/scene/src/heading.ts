@@ -2,8 +2,8 @@ import type { Vec2 } from "@oh-just-another/types";
 import { getElementWorldBounds, type ElementBase } from "./shape.js";
 
 /**
- * Heading — the cardinal direction an elbow connector exits a shape on
- * (standard model). One of four unit vectors. Used by the orthogonal
+ * Heading — the cardinal direction an elbow connector exits a shape on.
+ * One of four unit vectors. Used by the orthogonal
  * router to push the endpoint out perpendicular to the shape's edge (the
  * "dongle") before routing, so connectors always leave a box straight.
  */
@@ -24,8 +24,8 @@ export const flipHeading = (h: Heading): Heading => ({ x: -h.x || 0, y: -h.y || 
 
 /**
  * Quantise an arbitrary vector to the nearest cardinal heading. Ties on
- * the dominant axis resolve to vertical (matches standard's
- * `vectorToHeading`: `x > |y|` → right, `x <= -|y|` → left, else by y).
+ * the dominant axis resolve to vertical: `x > |y|` → right,
+ * `x <= -|y|` → left, else by y.
  */
 export const vectorToHeading = (v: Vec2): Heading => {
   const ax = Math.abs(v.x);

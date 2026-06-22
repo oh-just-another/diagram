@@ -439,10 +439,9 @@ export const renderOverlay = (
 
     if (multiSelect || !isResizable(shape)) continue;
 
-    // Draw only the four CORNER dots. The edge-midpoint handles are gone from
-    // the chrome — edge resize is done by dragging the selection-box side
-    // (see `hitHandle`), so no midpoint dot is needed. `resizeHandlesFor`
-    // (ALL_HANDLES) still drives hit-test capability.
+    // Draw only the four CORNER dots. Edge resize is done by dragging the
+    // selection-box side itself, so no midpoint dot is needed; the edge handles
+    // stay hit-testable via `hitHandle`.
     for (const handle of CORNER_HANDLES) {
       const worldPoint = handlePosition(handle, worldBounds, zoom);
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);

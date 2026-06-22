@@ -35,7 +35,7 @@ const req = <T>(v: T | undefined): T => {
  * between `from` and `to` (exclusive). This is what the editor stores on
  * `Link.routedPoints` and `getLinkPath` renders as `[from, ...points, to]`.
  *
- * standard model: each end exits perpendicular to its shape (a "dongle"
+ * Each end exits perpendicular to its shape (a "dongle"
  * pushed out by `ELBOW_TERMINAL_BUFFER` along the end's heading), the A* router
  * routes between the dongles around the two bound shapes, and the whole
  * chain is collapsed to corner points. The result is always axis-aligned.
@@ -66,7 +66,7 @@ export const routeElbowLink = (scene: Scene, edge: Link): readonly Vec2[] => {
   // Perf gate: above the cap, skip whole-scene avoidance (too many obstacle
   // corners to A* every frame) and fall back to the cheap two-box elbow.
   const avoid = avoidList && avoidList.length <= ELBOW_AVOID_MAX_OBSTACLES ? avoidList : undefined;
-  // Pass the previously routed path as a side-hint so the C-wrap stays on
+  // Pass the prior routed path as a side-hint so the C-wrap stays on
   // the same side under a small drag (hysteresis — see wrapRoute). This is
   // the only history the elbow router consults; the A* core stays pure.
   let middle = routeMiddle(from, to, a, b, edge.routedPoints, avoid);
@@ -253,7 +253,7 @@ const pickWrapSide = (
  * OUTSIDE the union of the obstacles, on one side (top/bottom for a horizontal
  * pair, left/right for a vertical pair). The side is chosen by
  * {@link pickWrapSide} with hysteresis off the previous route (`prev`) so a
- * small drag near the union centre no longer flips the route ("jitter").
+ * small drag near the union centre keeps the route stable ("jitter").
  */
 const wrapRoute = (
   from: Vec2,

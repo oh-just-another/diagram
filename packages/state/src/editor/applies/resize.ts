@@ -159,7 +159,7 @@ export interface GroupResizeOrigin {
   /**
    * Press-time snapshot of links that scale with the box: selected links
    * (whole, incl. free endpoints) ∪ connectors bound on both ends to resized
-   * elements (geometry follows). Optional for back-compat with callers that
+   * elements (geometry follows). Optional: omitted by callers that
    * don't resize links.
    */
   readonly links?: ReadonlyMap<LinkId, Link>;

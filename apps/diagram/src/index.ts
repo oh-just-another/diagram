@@ -1,9 +1,7 @@
 /**
- * `@oh-just-another/diagram` — thin compatibility alias.
+ * `@oh-just-another/diagram` — alias that re-exports
+ * `@oh-just-another/editor`.
  *
- * The editor moved into its own package, `@oh-just-another/editor`.
- * This entry re-exports it so existing `@oh-just-another/diagram`
- * imports keep working. Prefer importing from `@oh-just-another/editor`
- * directly in new code.
+ * @deprecated Import from `@oh-just-another/editor` directly.
  */
 export * from "@oh-just-another/editor";

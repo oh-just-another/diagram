@@ -4,9 +4,8 @@ import type { Style } from "./style.js";
 
 /**
  * Standard named connection points exposed by every shape — four corners,
- * four edge centres, and the geometric centre (9 total). See
- * `STANDARD_ANCHOR_RATIOS` in `./anchors.ts` for the bounds-relative
- * coordinates.
+ * four edge centres, and the geometric centre (9 total). The bounds-relative
+ * coordinates live in `STANDARD_ANCHOR_RATIOS`.
  *
  *   top-left ─── top ─── top-right
  *       │         │          │
@@ -88,12 +87,12 @@ export type LinkRouting = "straight" | "orthogonal" | "bezier";
  * style to its own primitives (Canvas2D / SVG marker / pdfkit shape).
  */
 /**
- * Endpoint cap vocabulary, aligned with standard's connector ends. Grouped:
+ * Endpoint cap vocabulary for connector ends. Grouped:
  *   - lines:    none, arrow (open V), openArrow (wider open V), roundedArrow
  *               (open V, round joins), arcArrow (concave back)
- *   - filled:   filledArrow (solid triangle), triangle (outlined — kept for
- *               back-compat), circle / filledCircle, rhombus / filledRhombus,
- *               diamond (outlined rhombus — back-compat alias)
+ *   - filled:   filledArrow (solid triangle), triangle (outlined),
+ *               circle / filledCircle, rhombus / filledRhombus,
+ *               diamond (outlined rhombus, alias of rhombus)
  *   - ERD:      erdOne, erdOnlyOne, erdMany, erdOneOrMany, erdZeroOrOne,
  *               erdZeroOrMany (entity-relationship crow's-foot notation)
  */
@@ -162,7 +161,7 @@ export interface Link {
    */
   readonly routedPoints?: readonly Vec2[];
   /**
-   * User-pinned elbow segments (standard model). Each entry pins one
+   * User-pinned elbow segments. Each entry pins one
    * interior segment's perpendicular coordinate (`pos`); `axis` is the
    * segment's orientation and `at` is its centre along its own axis — used to
    * re-identify the segment after the route re-flows (matching by position

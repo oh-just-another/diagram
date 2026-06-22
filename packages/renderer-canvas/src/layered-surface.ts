@@ -255,7 +255,8 @@ class WebGL2LayeredSurface implements LayeredSurface {
  *     overlay (pointer-following handles) sees one rAF of delay
  *     because the worker draws after the main thread yields.
  *   • Memory: 3× workers, each owning a DPR-sized OffscreenCanvas.
- *   • drawImage is silently skipped — see `RecordingTarget` docs.
+ *   • drawImage records `ImageBitmap` sources; other source types are
+ *     skipped and counted on the `RecordingTarget`.
  */
 class OffscreenLayeredSurface implements LayeredSurface {
   readonly backend = "offscreen" as const;

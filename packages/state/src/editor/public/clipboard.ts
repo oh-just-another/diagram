@@ -9,10 +9,8 @@ import { elementId as castElementId } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
 
 /**
- * Internal clipboard storage. Editor owns the array; copy / paste
- * delegators below read & write through it. Stored as deep-cloned
- * snapshots so subsequent mutations don't affect the buffer. Cross-tab
- * paste uses host-level `navigator.clipboard`.
+ * Copy / paste delegators over the editor-owned clipboard buffer. Copies are
+ * deep-cloned snapshots so later mutations don't affect the buffer.
  */
 
 /** Copy: returns the shape array the editor stores as `clipboard`. */

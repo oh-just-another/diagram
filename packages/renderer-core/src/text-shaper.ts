@@ -7,9 +7,9 @@ import type { TextAlign, TextBaseline } from "./render-target.js";
  * browser layout matters or when batching many measurements is the
  * hot path.
  *
- * The kernel ships a `Canvas2DTextShaper` implementation that delegates to
- * `ctx.measureText`. Hosts that need deterministic cross-environment layout
- * can implement this interface and pass it via `EditorOptions.textShaper`.
+ * The default path delegates to `ctx.measureText`. Hosts that need
+ * deterministic cross-environment layout implement this interface and
+ * install it via {@link setActiveTextShaper}.
  */
 export interface TextShaper {
   /**
@@ -47,13 +47,10 @@ export interface ShapedGlyph {
 // Re-export the RenderTarget alignment types under the shaper namespace.
 export type { TextAlign, TextBaseline };
 
-// Process-global active shaper. `wrapText` accepts an optional `shaper`
-// parameter, but the built-in `drawText` renderer in `built-in-renderers.ts`
-// is an `ElementRenderer<TextElement>` whose signature is `(shape, target)`
-// with no extra arg. Instead of threading a shaper through every
-// ElementRenderer, a module-level registry that `drawText` consults at call
-// time. Editor sets it via `setActiveTextShaper(options.textShaper)` on
-// construction.
+// Process-global active shaper. The built-in text renderer's signature is
+// `(shape, target)` with no extra arg, so rather than thread a shaper
+// through every renderer it consults this module-level registry at call
+// time.
 
 let activeShaper: TextShaper | null = null;
 

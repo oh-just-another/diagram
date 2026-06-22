@@ -10,8 +10,7 @@ import type { Transport } from "./transport.js";
  *  - Cross-window editor coordination (multiple editor instances on the
  *   same page sharing a single Y.Doc).
  *
- * Doesn't replicate to other machines — that's the WebSocket transport's
- * job.
+ * Same-origin only; it does not replicate to other machines.
  */
 export class BroadcastChannelTransport implements Transport {
   private channel: BroadcastChannel | null;

@@ -10,8 +10,8 @@ import { createOffscreenCanvas2DTarget } from "@oh-just-another/renderer-canvas"
 
 /**
  * Browser-side PNG export — renders the **full scene** (not just the
- * current viewport) into an OffscreenCanvas via the standard
- * `renderScene` + `renderLinks` pipeline, then converts to a PNG blob.
+ * current viewport) into an OffscreenCanvas via the `renderScene` +
+ * `renderLinks` pipeline, then converts to a PNG blob.
  *
  * Three variants, exposed as separate menu items:
  *
@@ -19,12 +19,6 @@ import { createOffscreenCanvas2DTarget } from "@oh-just-another/renderer-canvas"
  *   • "color"           — solid fill in the host's canvas colour.
  *   • "color-and-grid"  — solid fill + the same grid the user sees on
  *                         the canvas (same gridSize / gridStyle).
- *
- * This host-side helper is used instead of `@oh-just-another/exporter.exportPng`
- * because exporter's path goes through `@headless.renderToPng`, which pulls
- * `@resvg/resvg-js` (~3 MB WASM peer dep). For a browser host the kernel's
- * `Canvas2DTarget` + `renderScene` are already on hand — no extra
- * dependency, no SVG round-trip, identical visual output.
  *
  * Returns `null` when the scene has no shapes (host shows an alert).
  */

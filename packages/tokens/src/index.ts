@@ -7,10 +7,5 @@
  * `HUE_TONES.dark.iris.solid`, `DEFAULT_ELEMENT_STYLES.rectangle`,
  * `GRID_COLOR` — never raw hex. To re-skin the editor, edit
  * `colors.ts`; every package picks the change up.
- *
- * CSS-level mirrors (`packages/react-ui/src/styles.css`'s `--du-*`
- * variables) are hand-copied because CSS can't import TypeScript.
- * Comments in that file point back to the token names — keep them
- * in sync.
  */
 export * from "./colors.js";

@@ -1585,9 +1585,9 @@ const withFill = (shape: Element, fill: string): Element => ({
   style: { ...shape.style, fill },
 });
 
-// The project's color parser (packages/math/src/color.ts) accepts only
-// hex / rgb / rgba / a small named set — `hsl()` falls back to opaque
-// black + a dev-time warn. So convert HSL → hex inline.
+// The project's color parser accepts only hex / rgb / rgba / a small
+// named set — `hsl()` falls back to opaque black + a dev-time warn. So
+// convert HSL → hex inline.
 const rainbow = (i: number, total: number): string => {
   const hue = (i / Math.max(total, 1)) * 360;
   return hslToHex(hue, 70, 80);

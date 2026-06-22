@@ -5,12 +5,10 @@ import type { LayerId } from "@oh-just-another/types";
  * composite so renderScene can replay unchanged layers via a single
  * `drawImage` instead of walking every shape on every frame.
  *
- * Invalidation: the editor's patch pipeline knows which layers had any
- * shape/edge change this frame; it passes that set down to renderScene
- * which calls `invalidateLayer(id)` for each. The
- * `LayerCompositeCache.get` then misses for those layers and the
- * renderer falls back to the per-shape walk + optionally caches the
- * result via the host's `compositeLayerBitmap` callback.
+ * Invalidation: `invalidateLayer(id)` is called for each layer changed
+ * this frame, so `get` then misses for those layers and the renderer
+ * falls back to the per-shape walk + optionally re-caches the result via
+ * the host's `compositeLayerBitmap` callback.
  *
  * `Map<LayerId @ zoomBucket → bitmap>` shape mirrors the per-shape /
  * per-edge caches; LRU by insertion order with a count cap.

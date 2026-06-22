@@ -3,10 +3,10 @@ import type { Bounds, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "../handle.js";
 
 /**
- * Equivalent to `handle.resizeBounds` for the case where the shape's local
- * AABB starts at (0, 0) — applies the delta directly to the world bounds
- * captured at press-down. Duplicated from `handle.ts` to avoid a circular
- * import.
+ * Resize a world-space AABB by applying the handle delta directly, for the
+ * case where the shape's local AABB starts at (0, 0) — operating on the world
+ * bounds captured at press-down. Kept here, separate from the handle module,
+ * to avoid a circular import.
  */
 export const resizeFromHandle = (b: Bounds, handle: HandleId, delta: Vec2): Bounds => {
   let x = b.x;

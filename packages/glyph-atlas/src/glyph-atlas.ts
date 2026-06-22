@@ -2,10 +2,8 @@ import { DEFAULT_ATLAS_SIZE, DEFAULT_RANGE, DEFAULT_TILE_SIZE } from "./constant
 
 /**
  * Minimum interface a shaper must satisfy to back a {@link GlyphAtlas}.
- * Structurally compatible with `@text-wasm`'s `WasmTextShaper` (its
- * `glyphMetrics` + `rasterizeGlyphMSDF` methods match exactly), but
- * declared here so the atlas package doesn't depend on `@text-wasm` —
- * hosts that ship a different MSDF backend can plug in too.
+ * Declared here so the atlas carries no dependency on any concrete MSDF
+ * backend — hosts can plug in whichever one they ship.
  */
 export interface MsdfShaper {
   glyphMetrics(
@@ -84,10 +82,10 @@ export interface GlyphAtlasOptions {
 
 /**
  * Pre-rasterised glyph cache backed by a single fixed-size RGB
- * texture. Glyphs are baked on first request through the bundled
- * MSDF generator in `@text-wasm` and packed into a uniform grid —
- * every tile is the same `tileSize × tileSize`, so placement is
- * O(1) (no shelf packing required).
+ * texture. Glyphs are baked on first request through the supplied
+ * MSDF shaper and packed into a uniform grid — every tile is the
+ * same `tileSize × tileSize`, so placement is O(1) (no shelf
+ * packing required).
  *
  * Uniform grid rather than shelf packing because:
  *   • Lookup is integer division, no per-glyph dimension hash.

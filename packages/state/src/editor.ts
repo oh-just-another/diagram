@@ -417,7 +417,6 @@ export type GroupSelectedResult =
   | { readonly kind: "noop" }
   | { readonly kind: "grouped"; readonly groupId: ElementId };
 
-// Cursor roles, spec, and resolution live in `./editor/public/cursor.js`.
 // Re-exported here so the public API path (`@oh-just-another/state`) is stable.
 export type { CursorRole, CursorSpec };
 
@@ -448,7 +447,7 @@ export class Editor {
   private readonly events: Emitter<EditorEvents> = createEmitter<EditorEvents>();
   /**
    * Last-emitted snapshot of every observable slice. Used by
-   * `fanOutEvents` (in `editor/event-fanout.ts`) to decide which
+   * `fanOutEvents` to decide which
    * typed events to fire on each `notify()` — only the slices
    * whose identity changed since the previous notify get an event.
    */
@@ -736,7 +735,6 @@ export class Editor {
    * Fractional-order compaction scheduler (microtask-coalesced).
    * Triggered from every `notify()`; only does real work when at
    * least one shape/edge order string crossed AUTO_COMPACT_THRESHOLD.
-   * See `./auto-compact.ts` for the extracted logic.
    */
   private readonly autoCompactScheduler = new AutoCompactScheduler({
     getScene: () => this._scene,
@@ -747,8 +745,7 @@ export class Editor {
 
   /**
    * Auto-layout scheduler — microtask-coalesced re-run of every
-   * shape carrying `metadata.autoLayout`. See
-   * `./auto-layout-scheduler.ts` for the extracted logic.
+   * shape carrying `metadata.autoLayout`.
    */
   private readonly autoLayoutScheduler = new AutoLayoutScheduler({
     getScene: () => this._scene,
@@ -826,10 +823,10 @@ export class Editor {
    * Screen-space origin point.
    */
   public touchPanCandidate: Vec2 | null = null;
-  // Pinch gesture state lives in PinchController (./editor/pinch.ts)
-  // — `pinch.isActive()` replaces the old `pinchOrigin !== null` check.
+  // Pinch gesture state lives in PinchController; `pinch.isActive()`
+  // reports whether a two-finger gesture is in flight.
   public pinch!: PinchController;
-  /** Bridge for `editor/container-ops.ts`. Built lazily in constructor. */
+  /** Bridge for the container-ops helpers. Built lazily in constructor. */
   private containerOpsRef!: ContainerOpsRef;
 
   /**
@@ -912,9 +909,9 @@ export class Editor {
    * the timer fires. Hosts subscribe via `onLongPress` to surface a
    * context menu (mobile alternative to right-click).
    */
-  // Long-press timer + origin live in LongPressController
-  // (./editor/long-press.ts). The Set of subscribers stays here
-  // because `onLongPress` is part of the public Editor API.
+  // Long-press timer + origin live in LongPressController. The Set of
+  // subscribers stays here because `onLongPress` is part of the public
+  // Editor API.
   public longPress!: LongPressController;
   private readonly longPressListeners = new Set<
     (payload: { screenPoint: Vec2; worldPoint: Vec2 }) => void
@@ -954,8 +951,7 @@ export class Editor {
   /**
    * Wraps gesture lifecycle (transaction open/commit/cancel +
    * post-create mode revert) so editor.ts doesn't carry the bodies.
-   * Implementation lives in `./editor/gesture-tx.ts`; the
-   * controller calls back through the narrow `GestureRef` bridge
+   * The controller calls back through the narrow `GestureRef` bridge
    * built lazily below.
    */
   private readonly gestures: GestureController;
@@ -1126,8 +1122,8 @@ export class Editor {
         this.panBy(delta);
       },
     );
-    // Bridge for container-ops module — narrow surface that the
-    // pure functions in editor/container-ops.ts call back into.
+    // Bridge for the container-ops helpers — narrow surface that the
+    // pure functions call back into.
     // eslint-disable-next-line @typescript-eslint/no-this-alias -- bridge literal rebinds `this`; alias keeps Editor reference
     const self2 = this;
     this.containerOpsRef = {
@@ -1259,7 +1255,6 @@ export class Editor {
     this.notify();
   }
 
-  // Pure bodies in `./editor/public/annotations.ts`.
   addAnnotation(opts: {
     position: Vec2;
     elementId?: ElementId | null;
@@ -1477,7 +1472,6 @@ export class Editor {
     this.notify();
   }
 
-  // Body moved to `./editor/gesture-tx.ts`.
   private maybeRevertModeAfterCreate(): void {
     this.gestures.maybeRevertModeAfterCreate();
   }
@@ -1549,7 +1543,6 @@ export class Editor {
    * file-drop handler, a host CDN URL, an SVG string in
    * `image/svg+xml;base64,...` form.
    */
-  // Pure body in `./editor/public/image-insert.ts`.
   insertImage(input: {
     src: string;
     width: number;
@@ -1584,9 +1577,9 @@ export class Editor {
    * current frame of natively-animated elements. Self-terminates
    * when no animated shapes remain.
    *
-   * Lifecycle managed by the `AnimationTick` helper (see
-   * `./animation-tick.ts`). `insertImage({animated:true})` and
-   * `loadScene` start the tick; `dispose()` stops it.
+   * Lifecycle managed by the `AnimationTick` helper.
+   * `insertImage({animated:true})` and `loadScene` start the tick;
+   * `dispose()` stops it.
    */
   private readonly animation = new AnimationController({
     hasVisibleAnimatedElement: () => this.hasVisibleAnimatedElement(),
@@ -1601,7 +1594,6 @@ export class Editor {
     },
   });
 
-  // Pure body in `./editor/public/image-insert.ts`.
   private hasAnimatedElement(): boolean {
     return hasAnimatedElement(this._scene);
   }
@@ -1754,7 +1746,6 @@ export class Editor {
    * Typical wiring: HTML5 dragenter starts the placement, dragover
    * updates, drop commits, dragleave / window keydown(Escape) cancel.
    */
-  // Placement helpers live in `./editor/public/placement.ts`.
   // Editor owns the transaction lifecycle and selection mutate;
   // the closure threads scene mutations through the pure helpers.
   beginPlacement(shape: Element): {
@@ -1803,7 +1794,6 @@ export class Editor {
     };
   }
 
-  // Pure body in `./editor/public/selection-ops.ts`.
   deleteSelected(): void {
     const result = computeDeleteSelection(this._scene, this._selection, this._selectedLinks);
     if (!result) return;
@@ -1889,7 +1879,6 @@ export class Editor {
    * exist or isn't a text shape. Concurrent edits commit themselves
    * (only one shape at a time). Caret defaults to the end of the text.
    */
-  // Pure bodies in `./editor/public/text-edit.ts`.
   /** Open inline caption editing for a link (double-click). */
   beginLinkCaptionEdit(id: LinkId): void {
     if (!getLink(this._scene, id)) return;
@@ -2268,7 +2257,6 @@ export class Editor {
    * keyboard navigation; hosts pass `{ x: 1, y: 0 }` for fine nudge
    * and `{ x: 10, y: 0 }` for shift-arrow.
    */
-  // Pure body in `./editor/public/selection-ops.ts`.
   moveSelectionBy(delta: Vec2): void {
     if (this._selection.size === 0 && this._selectedLinks.size === 0) return;
     // Locked / layer-locked elements don't move (they're still selectable).
@@ -2311,7 +2299,6 @@ export class Editor {
    * Hosts can bind this to "Enter" while in a draw mode, providing a
    * mouse-free alternative to drag-out creation.
    */
-  // Pure body in `./editor/public/placement.ts`.
   createElementAtCursor(): ElementId | null {
     const vp = this._scene.viewport;
     const world = this.screenToWorld({
@@ -2353,7 +2340,6 @@ export class Editor {
     return id;
   }
 
-  // Pure bodies in `./editor/public/brush.ts`.
   beginBrushStroke(world: Vec2, pressure = 0.5): void {
     this.brushStroke = beginBrushStrokePure(world, pressure);
     this.notify();
@@ -2395,7 +2381,6 @@ export class Editor {
     return this.brushStroke;
   }
 
-  // Pure bodies in `./editor/public/arrange-group.ts`.
   arrangeAsGrid(opts: { cols?: number; gap?: number } = {}): void {
     const origin = this.combinedSelectionBounds() ?? { x: 0, y: 0 };
     const result = computeArrangeAsGrid(this._scene, this._selection, opts, origin);
@@ -2496,7 +2481,6 @@ export class Editor {
    * Duplicate the selected shapes 10 px down-right of the originals.
    * Links between selected shapes are NOT cloned. Single undo step.
    */
-  // Pure body in `./editor/public/selection-ops.ts`.
   duplicateSelected(): void {
     const result = computeDuplicateSelection(this._scene, this._selection, () => ++this.nextId);
     if (!result) return;
@@ -2577,7 +2561,6 @@ export class Editor {
    */
   private clipboard: Element[] = [];
 
-  // Pure body in `./editor/public/clipboard.ts`.
   copySelected(): void {
     const out = copySelectedPure(this._scene, this._selection);
     if (out.length === 0) return;
@@ -2599,7 +2582,6 @@ export class Editor {
    *
    * New shapes get fresh ids and end up selected. Single undo step.
    */
-  // Pure body in `./editor/public/clipboard.ts`.
   paste(targetWorld?: Vec2): void {
     if (this.clipboard.length === 0) return;
     // Defensive: if a gesture is mid-flight (drag / resize) the
@@ -2630,7 +2612,6 @@ export class Editor {
    *
    * No-op when `ids` is empty or none of the targeted shapes exist.
    */
-  // Pure body in `./editor/public/selection-ops.ts`.
   updateStyle(ids: Iterable<ElementId>, partial: Partial<TextStyle>): void {
     const result = computeUpdateStyle(this._scene, ids, partial);
     if (!result) return;
@@ -2701,7 +2682,6 @@ export class Editor {
     return { id: shape.id, href, bounds: getElementWorldBounds(shape) };
   }
 
-  // Pure bodies in `./editor/public/z-order.ts`.
   bringToFront(id?: ElementId): void {
     const result = computeBringToFront(this._scene, id, this._selection);
     if (!result) return;
@@ -2786,7 +2766,6 @@ export class Editor {
     this.notify();
   }
 
-  // Pure bodies in `./editor/public/layers.ts`.
   createLayer(name: string): LayerId {
     const result = computeCreateLayer(this._scene, name, newLayerId(++this.nextId));
     this._scene = result.scene;
@@ -2850,7 +2829,6 @@ export class Editor {
    * x → shapes move right relative to the user). Not recorded in
    * history — viewport state is editor-local.
    */
-  // Pure bodies in `./editor/public/zoom-pan.ts`.
   panBy(deltaScreen: Vec2): void {
     const next = computePan(this._scene, deltaScreen);
     if (!next) return;
@@ -3024,9 +3002,6 @@ export class Editor {
 
   // --- Internal ---
 
-  // Body moved to `./editor/pointer-binding.ts` (~700 lines of
-  // pointer / wheel / keyboard dispatch). The thin wrapper here
-  // preserves the original constructor call site.
   private bindPointerEvents(): () => void {
     return bindPointerEventsExternal(this);
   }
@@ -3085,7 +3060,7 @@ export class Editor {
     return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse" || ctx.mode === "draw-edge";
   }
 
-  // --- Long-press --- (controller in `./editor/long-press.ts`)
+  // --- Long-press ---
 
   public startLongPress(screenPoint: Vec2): void {
     this.longPress.start(screenPoint);
@@ -3094,7 +3069,7 @@ export class Editor {
     this.longPress.cancel();
   }
 
-  // --- Pinch gesture --- (controller in `./editor/pinch.ts`)
+  // --- Pinch gesture ---
   public beginPinch(): void {
     this.pinch.begin([...this.activePointers.values()]);
   }
@@ -3111,9 +3086,9 @@ export class Editor {
     return matrix.applyToPoint(getScreenToWorld(this._scene.viewport), point);
   }
 
-  // Pure body in `./editor/hit-test.ts`. Editor passes a narrow
-  // context bundle that closes over its private state + accel
-  // helpers (acceleratedElementAt, isElementInteractable, …).
+  // Editor passes a narrow context bundle that closes over its
+  // private state + accel helpers (acceleratedElementAt,
+  // isElementInteractable, …).
   /**
    * Attach target under `worldPoint` for an endpoint-rebind drop: the topmost
    * interactable ELEMENT (group-promoted), ignoring link bodies and the dragged
@@ -3267,8 +3242,7 @@ export class Editor {
    * Topmost group ancestor of `shape` (walks parentId chain, returns
    * the highest `type === "group"` parent). `null` if `shape` has no
    * group ancestor. Used by drill-down: a double-click on a shape
-   * with a group ancestor enters that group. Body extracted to
-   * `./group-helpers.ts`.
+   * with a group ancestor enters that group.
    */
   private topGroupAncestor(shape: Element): Element | null {
     return topGroupAncestorHelper(this._scene, shape);
@@ -3297,7 +3271,6 @@ export class Editor {
    * practice, but the guard keeps the contract simple — "what you've
    * selected, you can see".
    */
-  // Body moved to `./editor/shape-filters.ts`.
   public computeHiddenElements(): ReadonlySet<ElementId> | undefined {
     return computeHiddenElementsPure(this._scene);
   }
@@ -3649,7 +3622,6 @@ export class Editor {
    * Wrapped in a single gestureTx so per-move updates collapse
    * into one undo step.
    */
-  // Pure body in `./editor/applies/move.ts`.
   private applyAnnotationMove(id: AnnotationId, delta: Vec2, origin: Vec2): void {
     const result = computeAnnotationMovePatch(this._scene, id, delta, origin);
     if (!result) return;
@@ -3697,7 +3669,6 @@ export class Editor {
     this.applyEmit(emit);
   }
 
-  // Pure body in `./editor/applies/move.ts`.
   private applyMove(id: ElementId, delta: Vec2, originalBounds: Bounds): void {
     // Locked / layer-locked elements are selectable but don't move.
     const el = getElement(this._scene, id);
@@ -3733,7 +3704,6 @@ export class Editor {
     this.notify();
   }
 
-  // Body moved to `./editor/viewport-helpers.ts`.
   public computeViewportWorld(): Bounds | null {
     return computeViewportWorldPure(this._scene);
   }
@@ -3914,7 +3884,6 @@ export class Editor {
     return B.expand(expanded, 4);
   }
 
-  // Bodies moved to `./editor/viewport-helpers.ts`.
   public combinedSelectionBounds(): Bounds | null {
     let acc = combinedSelectionBoundsPure(this._scene, this._selection);
     // Selected links join the selection box (standard parity) — union in
@@ -3968,7 +3937,6 @@ export class Editor {
     return true;
   }
 
-  // Pure body in `./editor/applies/resize.ts`.
   private applyGroupResize(handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
     if (!this.groupResizeOrigin) return;
     const d = this.snapActive()
@@ -4020,7 +3988,6 @@ export class Editor {
     this.notify();
   }
 
-  // Pure body in `./editor/applies/create.ts`.
   private applyCreate(kind: "rect" | "ellipse" | "frame", bounds: Bounds): void {
     const id = newElementId(++this.nextId);
     const b = this.snapActive() ? snapCreateBounds(bounds, this.snapSpacing()) : bounds;
@@ -4066,8 +4033,7 @@ export class Editor {
     this._scene = reconcileFrameMembershipHelper(this._scene, this._history);
   }
 
-  // Pure body in `./editor/applies/create.ts`. Endpoint snapping
-  // stays here because it needs the snap engine.
+  // Endpoint snapping stays here because it needs the snap engine.
   private applyCreateLink(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
     const from = this.snapLinkEndpoint(emit.fromElement, emit.fromPoint);
     const to = this.snapLinkEndpoint(emit.toElement, emit.toPoint);
@@ -4204,8 +4170,8 @@ export class Editor {
     );
   }
 
-  // Pure body in `./editor/applies/selection.ts`. The wrappers
-  // here own the side effects (`_selectedLink` clearing, notify).
+  // The wrappers here own the side effects (`_selectedLink`
+  // clearing, notify).
   private applySelectByBounds(bounds: Bounds, mode: "replace" | "add"): void {
     const next = selectByBoundsPure(
       this._scene,
@@ -4254,9 +4220,8 @@ export class Editor {
     this._selection = next;
   }
 
-  // Pure body in `./editor/applies/edge.ts`. The wrapper here
-  // owns the side effects (history push, drag-state clearing,
-  // notify).
+  // The wrapper here owns the side effects (history push,
+  // drag-state clearing, notify).
   /**
    * Live endpoint-rebind move: re-point the dragged end to the cursor in the
    * scene (a free `point` endpoint), recorded in the gesture transaction so the
@@ -4586,7 +4551,6 @@ export class Editor {
     this.notify();
   }
 
-  // Pure body in `./editor/applies/edge.ts`.
   public applyLinkPreview(fromElement: ElementId | null, fromPoint: Vec2, toPoint: Vec2): void {
     const ep = computeLinkPreviewEndpoints(this._scene, fromElement, fromPoint, toPoint);
     // Match the preview to the connector that will be committed: when new
@@ -4603,9 +4567,7 @@ export class Editor {
   }
 
   // Gesture lifecycle — recordGesturePatch / commitGesture /
-  // cancelGesture / finalizeOpenGestureTx / maybeRevertModeAfterCreate
-  // live in `./editor/gesture-tx.ts`. The thin instance methods below
-  // preserve the original call sites.
+  // cancelGesture / finalizeOpenGestureTx / maybeRevertModeAfterCreate.
   private recordGesturePatch(patch: Patch): void {
     // Snapshot the pre-gesture scene the moment the transaction opens, so a
     // later cancel/Escape can restore it (the history tx only records undo data,
@@ -4637,9 +4599,9 @@ export class Editor {
    * - Cycles (a container inside its own descendant) are prevented by the
    *   `containerHover` pipeline above — the exclude set rules them out.
    */
-  // Pure body in `./editor/container-ops.ts`. Editor exposes a
-  // small `ContainerOpsRef` bridge so the module can mutate scene
-  // + push patches into the running gesture transaction.
+  // Editor exposes a small `ContainerOpsRef` bridge so the pure
+  // helper can mutate scene + push patches into the running gesture
+  // transaction.
   public applyContainerDrop(worldPoint: Vec2): void {
     applyContainerDropPure(this.containerOpsRef, worldPoint);
   }
@@ -4649,7 +4611,6 @@ export class Editor {
     maybeGrowContainerPure(this.containerOpsRef, containerId, childId);
   }
 
-  // Pure body in `./editor/container-ops.ts`.
   private clampContainerToChildren(shape: Element, raw: Bounds, handle: HandleId): Bounds {
     return clampContainerToChildrenPure(this._scene, shape, raw, handle);
   }
@@ -4664,7 +4625,6 @@ export class Editor {
     return this.gestureTx;
   }
 
-  // Body moved to `./editor/gesture-tx.ts`.
   public cancelGesture(): void {
     this._resizeOriginElement = null;
     this.gestures.cancel();
@@ -4761,9 +4721,8 @@ export class Editor {
   /**
    * Typed event surface — subscribe to a specific slice (`mode`,
    * `selection`, `scene`, `history`, `viewport`) or the umbrella
-   * `change`. Replaces ad-hoc selectors over the coarse `subscribe()`
-   * for callers that only care about one dimension. The legacy
-   * `subscribe()` still works and fires in lock-step.
+   * `change`. For callers that only care about one dimension;
+   * `subscribe()` fires in lock-step with these.
    */
   on<K extends keyof EditorEvents>(event: K, fn: EditorEvents[K]): () => void {
     // Cast through `never`: TS can't prove that EditorEvents[K]
@@ -4825,7 +4784,6 @@ export class Editor {
     this._scene = next;
   }
 
-  // Pure body in `./editor/render-orchestrator.ts` (~130 lines).
   private render(): void {
     this.rerouteElbows();
     // Feed the renderer's animation clock our per-shape playback state
@@ -4841,11 +4799,6 @@ export class Editor {
     this.onAfterRender?.();
   }
 }
-
-// `coverageRatio` moved to `./editor/container-ops.ts`.
-
-// `hasWidthHeight` moved to `./editor/shape-traits.ts` for shared
-// use by container-ops and the future applies/resize module.
 
 /**
  * Type guard — `true` when the value already implements the
@@ -4866,10 +4819,4 @@ const isHistoryProvider = (
   );
 };
 
-// `describeNudge` moved to `./editor/public/selection-ops.ts`.
-
 /** Distance from point `p` to the finite segment `a`–`b` (world space). */
-
-// `resizeFromHandle`, `applyResizeConstraints`, the four handle-
-// quadrant predicates moved to `./editor/resize-helpers.ts` so
-// they're shared between applies/resize and the container clamp.
