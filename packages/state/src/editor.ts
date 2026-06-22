@@ -59,7 +59,7 @@ import {
   type LinkId,
   type LayerId,
 } from "@oh-just-another/types";
-import { bounds as B, matrix } from "@oh-just-another/math";
+import { bounds as B, matrix, vec2, hitTest } from "@oh-just-another/math";
 import {
   caretGeometry,
   computeLinkWorldBounds,
@@ -1952,12 +1952,12 @@ export class Editor {
     if (!path || path.length < 2) return null;
     const t = edge.label?.position ?? 0.5;
     let total = 0;
-    for (let i = 1; i < path.length; i++) total += distanceTo(req(path[i - 1]), req(path[i]));
+    for (let i = 1; i < path.length; i++) total += vec2.distance(req(path[i - 1]), req(path[i]));
     let remaining = total * t;
     for (let i = 1; i < path.length; i++) {
       const a = req(path[i - 1]);
       const b = req(path[i]);
-      const seg = distanceTo(a, b);
+      const seg = vec2.distance(a, b);
       if (remaining <= seg) {
         const r = seg === 0 ? 0 : remaining / seg;
         return { x: a.x + (b.x - a.x) * r, y: a.y + (b.y - a.y) * r };
@@ -3483,7 +3483,7 @@ export class Editor {
     const isDouble =
       now - this.lastClickAt < DOUBLE_CLICK_MS &&
       this.lastClickWorldPoint !== null &&
-      distanceTo(this.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX;
+      vec2.distance(this.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX;
     this.lastClickAt = now;
     this.lastClickWorldPoint = worldPoint;
 
@@ -4572,7 +4572,7 @@ export class Editor {
       const collapse = WAYPOINT_COLLAPSE_RADIUS / (this._scene.viewport.zoom || 1);
       const a = path?.[drag.index];
       const b = path?.[drag.index + 2];
-      if (a && b && distanceToSegmentPt(wp, a, b) <= collapse) {
+      if (a && b && hitTest.distanceToSegment(wp, a, b) <= collapse) {
         const wps = edge.waypoints.filter((_, i) => i !== drag.index);
         const r = updateLink(this._scene, drag.linkId, (e) => ({ ...e, waypoints: wps }));
         this._scene = r.scene;
@@ -4641,7 +4641,7 @@ export class Editor {
     const isDouble =
       now - this.lastHandleClickAt < DOUBLE_CLICK_MS &&
       this.lastHandleClickWorld !== null &&
-      distanceTo(this.lastHandleClickWorld, world) <= DOUBLE_CLICK_TOLERANCE_PX;
+      vec2.distance(this.lastHandleClickWorld, world) <= DOUBLE_CLICK_TOLERANCE_PX;
     this.lastHandleClickAt = now;
     this.lastHandleClickWorld = world;
     return isDouble;
@@ -5068,8 +5068,6 @@ const PREVIEW_GHOST_ELEMENT_ID = "__ghost-preview__" as ElementId;
 /** Throwaway link id for the click-create ghost preview. See above. */
 const PREVIEW_GHOST_LINK_ID = "__ghost-preview-link__" as LinkId;
 
-const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
-
 // `coverageRatio` moved to `./editor/container-ops.ts`.
 
 // `hasWidthHeight` moved to `./editor/shape-traits.ts` for shared
@@ -5097,15 +5095,6 @@ const isHistoryProvider = (
 // `describeNudge` moved to `./editor/public/selection-ops.ts`.
 
 /** Distance from point `p` to the finite segment `a`–`b` (world space). */
-function distanceToSegmentPt(p: Vec2, a: Vec2, b: Vec2): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
-  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
-}
 
 // `resizeFromHandle`, `applyResizeConstraints`, the four handle-
 // quadrant predicates moved to `./editor/resize-helpers.ts` so
