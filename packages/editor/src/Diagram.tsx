@@ -665,7 +665,7 @@ const EditorShell = ({
       window.alert(message);
     });
   // Subscribe to scene changes so the Grid toggle in MainMenu reads
-  // the latest viewport.gridSize / gridStyle. `useScene` is a thin
+  // the latest viewport.gridEnabled / gridStyle. `useScene` is a thin
   // selector hook — re-renders only on scene identity flips.
   void useScene();
   const paletteDropHandlers = usePalettePlacement();
@@ -849,10 +849,10 @@ const EditorShell = ({
                           if (!editor) return;
                           if (confirmDialog("Reset canvas? This clears all shapes.")) {
                             // editor.clear() keeps viewport (zoom /
-                            // pan / gridSize) and layers — only
+                            // pan / gridEnabled) and layers — only
                             // shapes / edges go. loadScene(emptyScene())
-                            // would also drop the grid because
-                            // DEFAULT_VIEWPORT has no gridSize.
+                            // would also reset the grid because
+                            // DEFAULT_VIEWPORT has it disabled.
                             editor.clear();
                           }
                         }}
@@ -1302,17 +1302,15 @@ const downloadSvg = (scene: Scene): void => {
 
 // --- Grid toggle helpers ----------------------------------------------------
 
-const DEFAULT_GRID_SIZE = 20;
-
 /**
- * Map the current viewport state to the segmented Grid toggle's
- * value. `"off"` when the user hid the grid (gridSize 0 / unset);
- * otherwise the stored gridStyle (default `"lines"`).
+ * Map the current viewport state to the segmented Grid toggle's value.
+ * `"off"` when the grid is disabled; otherwise the stored gridStyle
+ * (default `"lines"`).
  */
 const gridSelection = (editor: Editor | null): "lines" | "dots" | "off" => {
   if (!editor) return "lines";
   const vp = editor.scene.viewport;
-  if (!vp.gridSize || vp.gridSize <= 0) return "off";
+  if (!vp.gridEnabled) return "off";
   return vp.gridStyle ?? "lines";
 };
 
@@ -1324,19 +1322,12 @@ const gridSelection = (editor: Editor | null): "lines" | "dots" | "off" => {
 const snapSelection = (editor: Editor | null): "on" | "off" =>
   (editor?.snapToGridEnabled ?? true) ? "on" : "off";
 
-/**
- * Inverse — translate the toggle's value back into a `setGrid`
- * call. Switching from "off" to lines/dots restores the default
- * grid size so the user doesn't have to also re-enter it
- * separately.
- */
+/** Inverse — translate the toggle's value back into a `setGrid` call. */
 const applyGridSelection = (editor: Editor | null, next: "lines" | "dots" | "off"): void => {
   if (!editor) return;
   if (next === "off") {
-    editor.setGrid({ size: 0 });
+    editor.setGrid({ enabled: false });
     return;
   }
-  const vp = editor.scene.viewport;
-  const size = vp.gridSize && vp.gridSize > 0 ? vp.gridSize : DEFAULT_GRID_SIZE;
-  editor.setGrid({ size, style: next });
+  editor.setGrid({ enabled: true, style: next });
 };

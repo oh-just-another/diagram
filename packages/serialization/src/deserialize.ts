@@ -14,6 +14,7 @@ import { type FractionalIndex } from "fractional-keys";
 import { z } from "zod";
 import { CURRENT_VERSION, type SceneDocument, SceneDocumentZ } from "./schema.js";
 import { runMigrations } from "./migrations.js";
+import "./migrations-builtin.js";
 
 /**
  * Error thrown when validation fails. Carries the original `z.ZodError` for

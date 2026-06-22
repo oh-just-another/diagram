@@ -26,10 +26,10 @@ const rectAt = (id: string, x: number, y: number): Element => ({
   height: 50,
 });
 
-const sceneWith = (shapes: Element[], gridSize?: number): Scene => {
+const sceneWith = (shapes: Element[], gridEnabled = false): Scene => {
   let scene = emptyScene();
   for (const s of shapes) scene = addElement(scene, s).scene;
-  return gridSize === undefined ? scene : { ...scene, viewport: { ...scene.viewport, gridSize } };
+  return { ...scene, viewport: { ...scene.viewport, gridEnabled } };
 };
 
 interface Call {
@@ -129,9 +129,9 @@ describe("exportSceneToPng — variants", () => {
   // (+ background fill) < color-and-grid (+ grid pass). Asserting the
   // ordering distinguishes the three variants without depending on how
   // Canvas2DTarget maps its calls onto the raw 2D context.
-  const callsFor = async (background: string, gridSize?: number): Promise<number> => {
+  const callsFor = async (background: string, gridEnabled = false): Promise<number> => {
     created = [];
-    const blob = await exportSceneToPng(sceneWith([rectAt("r", 10, 10)], gridSize), {
+    const blob = await exportSceneToPng(sceneWith([rectAt("r", 10, 10)], gridEnabled), {
       ...OPTS,
       background: background as typeof OPTS.background,
     });
@@ -143,16 +143,15 @@ describe("exportSceneToPng — variants", () => {
     vi.stubGlobal("OffscreenCanvas", TrackingOffscreenCanvas);
     const transparent = await callsFor("transparent");
     const color = await callsFor("color");
-    const colorAndGrid = await callsFor("color-and-grid", 20);
+    const colorAndGrid = await callsFor("color-and-grid", true);
     expect(color).toBeGreaterThan(transparent);
     expect(colorAndGrid).toBeGreaterThan(color);
   });
 
-  it("color-and-grid skips the grid pass when there is no grid (gridSize 0)", async () => {
+  it("color-and-grid skips the grid pass when the grid is disabled", async () => {
     vi.stubGlobal("OffscreenCanvas", TrackingOffscreenCanvas);
-    const withGrid = await callsFor("color-and-grid", 20);
-    // gridSize 0 = no grid (emptyScene now ships the default grid).
-    const withoutGrid = await callsFor("color-and-grid", 0);
+    const withGrid = await callsFor("color-and-grid", true);
+    const withoutGrid = await callsFor("color-and-grid", false);
     expect(withGrid).toBeGreaterThan(withoutGrid);
   });
 });

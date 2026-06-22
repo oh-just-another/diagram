@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 /**
- * Wire format version. Bump on any breaking schema change; add a migration in
- * `migrations.ts` that upgrades the older shape to the current one.
+ * Wire format version. Bump on any breaking schema change; pair it with a
+ * migration that upgrades the older shape to the current one.
  */
-export const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 2;
 
 // --- Atoms ---
 
@@ -291,7 +291,7 @@ const ViewportZ = z
     zoom: z.number(),
     rotation: z.number(),
     size: z.object({ width: z.number(), height: z.number() }).strict(),
-    gridSize: z.number().optional(),
+    gridEnabled: z.boolean(),
     gridStyle: z.enum(["lines", "dots"]).optional(),
     snapToGrid: z.boolean().optional(),
   })

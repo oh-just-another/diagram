@@ -15,7 +15,7 @@ export const VIEWPORT_SCOPE = {
   zoom: "browser",
   rotation: "browser",
   size: "ephemeral",
-  gridSize: "export",
+  gridEnabled: "export",
   gridStyle: "export",
   snapToGrid: "export",
 } as const satisfies Record<keyof Viewport, SettingScope>;

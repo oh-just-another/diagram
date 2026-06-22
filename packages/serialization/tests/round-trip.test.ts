@@ -57,7 +57,13 @@ describe("round-trip", () => {
     let scene = emptyScene();
     scene = {
       ...scene,
-      viewport: { pan: { x: 10, y: 0 }, zoom: 2, rotation: 0, size: { width: 800, height: 600 } },
+      viewport: {
+        pan: { x: 10, y: 0 },
+        zoom: 2,
+        rotation: 0,
+        size: { width: 800, height: 600 },
+        gridEnabled: false,
+      },
     };
     const restored = deserializeScene(serializeScene(scene));
     expect(restored.viewport).toEqual(scene.viewport);
@@ -69,7 +75,7 @@ describe("round-trip", () => {
       ...scene,
       viewport: {
         ...scene.viewport,
-        gridSize: 20,
+        gridEnabled: true,
         gridStyle: "dots",
         snapToGrid: false,
       },
@@ -77,7 +83,7 @@ describe("round-trip", () => {
     const restored = deserializeScene(serializeScene(scene));
     expect(restored.viewport.gridStyle).toBe("dots");
     expect(restored.viewport.snapToGrid).toBe(false);
-    expect(restored.viewport.gridSize).toBe(20);
+    expect(restored.viewport.gridEnabled).toBe(true);
   });
 
   it("preserves a link's avoidObstacles + routing", () => {

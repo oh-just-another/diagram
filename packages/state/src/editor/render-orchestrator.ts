@@ -73,7 +73,7 @@ export const renderEditor = (editor: Editor): void => {
   if (editor.backgroundTarget) {
     // Grid pass also clears the background layer each frame. When the grid is
     // toggled off, still clear it so no stale grid lingers under the halos.
-    if (editor.gridVisible) renderGrid(editor._scene, editor.backgroundTarget);
+    if (editor.gridEnabled) renderGrid(editor._scene, editor.backgroundTarget);
     else editor.backgroundTarget.clear();
     const halos: ElementHalo[] = [];
     for (const id of editor._selection) {

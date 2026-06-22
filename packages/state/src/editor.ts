@@ -499,11 +499,6 @@ export class Editor {
    * View-only — never persisted or recorded in history.
    */
   debugHitZones = false;
-  /**
-   * When false the background grid is not painted. Toggled via `toggleGrid`
-   * (`g` hotkey, standard parity). View-only — never persisted or in history.
-   */
-  gridVisible = true;
   public readonly actor: Actor<typeof interactionMachine>;
   private readonly listeners = new Set<() => void>();
   /**
@@ -1458,16 +1453,19 @@ export class Editor {
     this.scheduleRender();
   }
 
-  /** Show/hide the background grid (standard `g`). View-only — not in history. */
-  setGridVisible(on: boolean): void {
-    if (this.gridVisible === on) return;
-    this.gridVisible = on;
-    this.scheduleRender();
+  /** Whether the background grid is enabled for the scene. */
+  get gridEnabled(): boolean {
+    return this._scene.viewport.gridEnabled;
   }
 
-  /** Toggle background grid visibility. */
+  /** Show/hide the background grid (`g`). Persists in the viewport, not in history. */
+  setGridVisible(on: boolean): void {
+    this.setGrid({ enabled: on });
+  }
+
+  /** Toggle the background grid on/off. */
   toggleGrid(): void {
-    this.setGridVisible(!this.gridVisible);
+    this.setGrid({ enabled: !this.gridEnabled });
   }
 
   /** Whether the active draw-mode sticks after a create (toolbar lock). */
@@ -3074,7 +3072,7 @@ export class Editor {
     this._scene = next;
     this.notify();
   }
-  setGrid(patch: { size?: number; style?: GridStyle; snap?: boolean }): void {
+  setGrid(patch: { enabled?: boolean; style?: GridStyle; snap?: boolean }): void {
     const next = computeSetGrid(this._scene, patch);
     if (!next) return;
     this._scene = next;
@@ -3101,23 +3099,19 @@ export class Editor {
   }
 
   /**
-   * True when a gesture should snap. Snapping is coupled to grid *display*:
-   * it is active only while a grid is actually shown — the toggle is on
-   * (`gridVisible`, `g` hotkey) AND the scene has a positive `gridSize` (the
-   * same condition `renderGrid` paints under). Snapping to an invisible grid
-   * is confusing, so no grid → no snap, always. `snapToGrid` is an extra
-   * programmatic opt-out; the suppress modifier (Cmd/Ctrl) bypasses snapping
-   * for the current gesture.
+   * True when a gesture should snap. Snapping is coupled to grid display:
+   * it is active only while the grid is enabled (`gridEnabled`) — snapping to
+   * a hidden grid is confusing. `snapToGrid` is an extra programmatic opt-out;
+   * the suppress modifier (Cmd/Ctrl) bypasses snapping for the current gesture.
    */
   private snapActive(): boolean {
     const viewport = this._scene.viewport;
-    const gridShown = this.gridVisible && (viewport.gridSize ?? 0) > 0;
-    return !this.snapSuppressed && gridShown && isSnapToGridEnabled(viewport);
+    return !this.snapSuppressed && viewport.gridEnabled && isSnapToGridEnabled(viewport);
   }
 
   /** World-unit spacing the current gesture snaps to. */
   private snapSpacing(): number {
-    return resolveSnapSpacing(this._scene.viewport);
+    return resolveSnapSpacing();
   }
 
   /**

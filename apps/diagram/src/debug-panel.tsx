@@ -469,7 +469,7 @@ const StateTab = ({ editor }: { editor: Editor }) => {
         </Row>
         <Row label="grid">
           <Code>
-            {v.gridSize ?? "none"} ({v.gridStyle ?? "lines"})
+            {v.gridEnabled ? "on" : "off"} ({v.gridStyle ?? "lines"})
           </Code>
         </Row>
       </Section>

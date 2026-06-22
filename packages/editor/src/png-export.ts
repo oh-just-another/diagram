@@ -96,18 +96,14 @@ export const exportSceneToPng = async (
       zoom: options.scale,
       rotation: 0,
       size: { width: canvasW, height: canvasH },
-      ...(scene.viewport.gridSize !== undefined ? { gridSize: scene.viewport.gridSize } : {}),
+      gridEnabled: scene.viewport.gridEnabled,
       ...(scene.viewport.gridStyle !== undefined ? { gridStyle: scene.viewport.gridStyle } : {}),
     },
   };
 
-  // Grid pass — only for the color-and-grid variant. Skipped when the
-  // scene has no gridSize (user disabled it).
-  if (
-    options.background === "color-and-grid" &&
-    exportScene.viewport.gridSize &&
-    exportScene.viewport.gridSize > 0
-  ) {
+  // Grid pass — only for the color-and-grid variant, and only when the scene
+  // has the grid enabled.
+  if (options.background === "color-and-grid" && exportScene.viewport.gridEnabled) {
     renderGrid(exportScene, target);
   }
 

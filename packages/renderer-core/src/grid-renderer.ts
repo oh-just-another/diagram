@@ -1,4 +1,9 @@
-import { getScreenToWorld, getWorldToScreen, type Scene } from "@oh-just-another/scene";
+import {
+  DEFAULT_GRID_SPACING,
+  getScreenToWorld,
+  getWorldToScreen,
+  type Scene,
+} from "@oh-just-another/scene";
 import { matrix } from "@oh-just-another/math";
 import type { Bounds } from "@oh-just-another/types";
 import type { RenderTarget } from "./render-target.js";
@@ -104,8 +109,8 @@ export const renderGrid = (
 ): void => {
   if (!options.skipClear) target.clear();
 
-  const gridSize = scene.viewport.gridSize;
-  if (!gridSize || gridSize <= 0) return;
+  if (!scene.viewport.gridEnabled) return;
+  const gridSize = DEFAULT_GRID_SPACING;
 
   const style = scene.viewport.gridStyle ?? "lines";
   const isDots = style === "dots";

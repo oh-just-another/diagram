@@ -43,16 +43,14 @@ const FILES_KEY = "oh-just-another-diagram-files-v1";
 // one write after the user pauses.
 const AUTOSAVE_DEBOUNCE_MS = 600;
 
-// Default / clean scene: always empty. A fresh load (no saved autosave,
-// or a collab room before its snapshot arrives) starts blank — the user
-// builds from an empty canvas, not a demo grid of every template. Only
-// the grid size is set so the background grid is visible from frame one.
+// Default / clean scene: empty, with the grid enabled so the demo opens
+// with a visible grid. A fresh load (no saved autosave, or a collab room
+// before its snapshot arrives) starts blank — the user builds from an empty
+// canvas, not a demo grid of every template.
 const seedScene = (): Scene => {
   const s = emptyScene();
-  return { ...s, viewport: { ...s.viewport, gridSize: DEFAULT_GRID_SIZE } };
+  return { ...s, viewport: { ...s.viewport, gridEnabled: true } };
 };
-
-const DEFAULT_GRID_SIZE = 20;
 
 const restoreScene = (): Scene => {
   try {
@@ -70,16 +68,6 @@ const restoreScene = (): Scene => {
         } catch (err) {
           console.warn("[diagram] stored files sidecar unparseable", err);
         }
-      }
-      // Saves can come back without `gridSize`, which makes the grid
-      // invisible after reload. Force the default on restoration so
-      // the canvas always has a visible grid unless the user
-      // explicitly turned it off.
-      if (!parsed.viewport.gridSize) {
-        return {
-          ...parsed,
-          viewport: { ...parsed.viewport, gridSize: DEFAULT_GRID_SIZE },
-        };
       }
       return parsed;
     }

@@ -72,9 +72,9 @@ describe("<Editor> — imperative API", () => {
     const target = ref.current?.editor?.scene;
     expect(target).toBeTruthy();
     act(() => {
-      ref.current?.loadScene({ ...target!, viewport: { ...target!.viewport, gridSize: 99 } });
+      ref.current?.loadScene({ ...target!, viewport: { ...target!.viewport, gridEnabled: true } });
     });
-    expect(ref.current?.getScene().viewport.gridSize).toBe(99);
+    expect(ref.current?.getScene().viewport.gridEnabled).toBe(true);
   });
 });
 

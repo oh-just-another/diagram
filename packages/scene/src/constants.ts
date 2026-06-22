@@ -16,10 +16,8 @@
 export const SNAP_PROBE_CULL_RADIUS = 1000;
 
 /**
- * Default grid spacing (world units). Used as `DEFAULT_VIEWPORT.gridSize`, so a
- * fresh scene ships with a visible grid and snapping on. Also the fallback
- * spacing `resolveSnapSpacing` returns for legacy/custom viewports that omit
- * `gridSize`. Tune this to change the default grid; range 4–64.
+ * Fixed grid spacing in world units: the step `renderGrid` paints and the
+ * step snap-to-grid rounds to. Tune to change the grid density; range 4–64.
  */
 export const DEFAULT_GRID_SPACING = 20;
 

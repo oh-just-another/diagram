@@ -106,6 +106,9 @@ describe("snap-to-grid move gesture (end-to-end)", () => {
       overlayTarget: noopTarget,
       initialScene: sceneWith(rect("a", 13, 7)),
     });
+    // These gesture tests exercise snapping, so the grid starts enabled
+    // (the product default is off).
+    editor.setGrid({ enabled: true });
     configure?.(editor);
     const tap = (x: number, y: number) => {
       handlers.get("pointerdown")!(pointer("pointerdown", x, y));
@@ -119,9 +122,9 @@ describe("snap-to-grid move gesture (end-to-end)", () => {
     return { editor, tap, drag };
   };
 
-  it("snaps a dragged element onto the grid (default on, no visible grid)", () => {
+  it("snaps a dragged element onto the grid", () => {
     const { editor, tap, drag } = setup();
-    // Snap defaults to ON even with no gridSize (falls back to spacing 20).
+    // Snap preference defaults to ON; spacing is the fixed 20 units.
     expect(editor.snapToGridEnabled).toBe(true);
     tap(33, 27); // inside the rect → select
     // press-time top-left (13,7); drag +12/+12 → (25,19) → snaps to (20,20).
@@ -162,18 +165,6 @@ describe("snap-to-grid move gesture (end-to-end)", () => {
     expect(a.position.y).toBe(40);
   });
 
-  it("does not snap when there is no visible grid (gridSize 0), even with the toggle on", () => {
-    const { editor, tap, drag } = setup((e) => {
-      e.setGrid({ size: 0 }); // no grid spacing → grid not painted
-    });
-    expect(editor.gridVisible).toBe(true); // toggle is still on…
-    tap(33, 27);
-    drag([33, 27], [45, 39]); // …but snap is coupled to a *displayed* grid
-    const a = getElement(editor.scene, elementId("a"))!;
-    expect(a.position.x).toBe(25); // 13 + 12, free (no snap)
-    expect(a.position.y).toBe(19);
-  });
-
   it("suppresses snap for the gesture while the modifier flag is set", () => {
     const { editor, tap, drag } = setup();
     tap(33, 27);
@@ -182,19 +173,6 @@ describe("snap-to-grid move gesture (end-to-end)", () => {
     const a = getElement(editor.scene, elementId("a"))!;
     expect(a.position.x).toBe(25);
     expect(a.position.y).toBe(19);
-  });
-
-  it("respects the visible gridSize over the fallback", () => {
-    const { editor, tap, drag } = setup((e) => {
-      e.setGrid({ size: 50 });
-    });
-    tap(33, 27);
-    // press-time (13,7) +12/+12 → (25,19); on a 50-grid that rounds to
-    // (50,0): 25/50 = 0.5 → 50, 19/50 ≈ 0.38 → 0.
-    drag([33, 27], [45, 39]);
-    const a = getElement(editor.scene, elementId("a"))!;
-    expect(a.position.x).toBe(50);
-    expect(a.position.y).toBe(0);
   });
 
   it("setSnapToGrid persists in the viewport", () => {
