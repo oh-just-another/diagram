@@ -75,7 +75,7 @@ export const resolveCursor = (
   role: CursorRole,
   fallbackKeyword: string,
 ): string => {
-  const spec = editor.cursorOverrides.get(role);
+  const spec = editor.getCursorOverride(role);
   return spec === undefined ? fallbackKeyword : cssCursor(spec, fallbackKeyword);
 };
 

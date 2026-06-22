@@ -721,8 +721,7 @@ export class Editor {
    */
   public lastPointerWorld: Vec2 | null = null;
   /** Host-registered custom cursor images per role (see `setCursorOverride`). */
-  /** Public for the cursor module (`editor/public/cursor.ts`) to resolve roles. */
-  public readonly cursorOverrides = new Map<CursorRole, CursorSpec>();
+  private readonly cursorOverrides = new Map<CursorRole, CursorSpec>();
 
   /**
    * Scene rendered on the last frame. Used to compute a dirty rect by
@@ -3229,6 +3228,15 @@ export class Editor {
     if (spec === null) this.cursorOverrides.delete(role);
     else this.cursorOverrides.set(role, spec);
     this.refreshCursor();
+  }
+
+  /**
+   * Read-only lookup of a host-registered cursor override. Used by the cursor
+   * module to resolve a role without exposing the mutable override map (mutate
+   * only via {@link setCursorOverride}, so `refreshCursor` stays in sync).
+   */
+  getCursorOverride(role: CursorRole): CursorSpec | undefined {
+    return this.cursorOverrides.get(role);
   }
 
   /** True when the given layer exists and is marked `locked`. */
