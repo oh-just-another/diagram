@@ -47,7 +47,6 @@ import {
   type Scene,
   type Element,
   type GridStyle,
-  type SnapCandidate,
   type TextElement,
   type TextStyle,
   isSnapToGridEnabled,
@@ -235,7 +234,12 @@ import {
   describeNudge as describeNudgePure,
   selectionFromNewIds,
 } from "./editor/public/selection-ops.js";
-import { computeSetLink, normalizeHref, safeHref } from "./editor/public/link.js";
+import {
+  computeSetLink,
+  normalizeHref,
+  safeHref,
+  snapLinkEndpoint as snapLinkEndpointPure,
+} from "./editor/public/link.js";
 import {
   beginPlacementState,
   buildElementAtCursor,
@@ -4371,61 +4375,13 @@ export class Editor {
    * shapes when the user clearly aimed for this one).
    */
   private snapLinkEndpoint(pressTargetElement: ElementId | null, worldPoint: Vec2): LinkEndpoint {
-    const result = this.snapEngine.snap({
-      scene: this._scene,
-      probe: worldPoint,
-      threshold: this.snapThreshold,
-      gesture: "draw-edge",
-    });
-
-    // Attach contract: dropping on a port dot → *fixed* anchor; dropping
-    // near an EDGE (not a dot) → *fixed* outline point (a ratio along the
-    // perimeter — survives move/resize); dropping on the body interior (no
-    // snap to a dot or edge) → *floating* against the whole shape, so the
-    // connection re-aims at the partner as either shape moves; dropping on
-    // empty canvas → a free point.
-    //
-    // Pick a candidate ON the pressed shape if there is one, otherwise the
-    // nearest overall. The "nearest overall" branch matters because the
-    // attach DOTS are drawn OUTSIDE the body — a release on a dot finds no
-    // element under it (hit-test = empty), so `pressTargetElement` is null,
-    // yet the snap engine still reports the dot's anchor within threshold.
-    // Binding it makes the endpoint enter PERPENDICULAR to that edge instead
-    // of staying a free point that aims at the partner (jumping between the
-    // four sides).
-    const pick = (kind: SnapCandidate["kind"]): SnapCandidate | undefined => {
-      if (pressTargetElement !== null) {
-        const onTarget = result.all.find(
-          (c) => c.kind === kind && c.metadata?.elementId === pressTargetElement,
-        );
-        if (onTarget) return onTarget;
-      }
-      return result.all.find((c) => c.kind === kind);
-    };
-
-    const boundFrom = (
-      cand: SnapCandidate | undefined,
-      want: "anchor" | "outline",
-    ): LinkEndpoint | null => {
-      if (!cand) return null;
-      const elId = cand.metadata?.elementId as ElementId | undefined;
-      if (elId === undefined) return null;
-      const shp = getElement(this._scene, elId);
-      if (!shp) return null;
-      const ep = endpointFromSnap(elId, cand, shp);
-      return ep.kind === want ? ep : null;
-    };
-
-    const anchorEp = boundFrom(pick("anchor"), "anchor");
-    if (anchorEp) return anchorEp;
-    const outlineEp = boundFrom(pick("outline"), "outline");
-    if (outlineEp) return outlineEp;
-
-    // No dot/edge snap. Over a shape body → floating; else a free point.
-    if (pressTargetElement !== null && getElement(this._scene, pressTargetElement)) {
-      return { kind: "floating", elementId: pressTargetElement };
-    }
-    return { kind: "point", position: worldPoint };
+    return snapLinkEndpointPure(
+      this._scene,
+      this.snapEngine,
+      this.snapThreshold,
+      pressTargetElement,
+      worldPoint,
+    );
   }
 
   // Pure body in `./editor/applies/selection.ts`. The wrappers
@@ -5142,28 +5098,6 @@ function distanceToSegmentPt(p: Vec2, a: Vec2, b: Vec2): number {
   t = Math.max(0, Math.min(1, t));
   return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
 }
-
-/**
- * Convert a snap candidate into an `LinkEndpoint`. Anchor snap → named
- * anchor ref; outline snap → outline ref with the sampled ratio. Falls
- * back to a free point if the metadata isn't recognised.
- */
-const endpointFromSnap = (
-  elementId: ElementId,
-  candidate: SnapCandidate,
-  shape: Element,
-): LinkEndpoint => {
-  if (candidate.kind === "anchor") {
-    const ref = candidate.metadata?.ref as AnchorRef | undefined;
-    if (ref) return { kind: "anchor", elementId, anchor: ref };
-  }
-  if (candidate.kind === "outline" && typeof candidate.metadata?.ratio === "number") {
-    return { kind: "outline", elementId, ratio: candidate.metadata.ratio };
-  }
-  // Defensive fallback — should not happen with built-in contributors.
-  void shape;
-  return { kind: "point", position: candidate.snapped };
-};
 
 // `resizeFromHandle`, `applyResizeConstraints`, the four handle-
 // quadrant predicates moved to `./editor/resize-helpers.ts` so
