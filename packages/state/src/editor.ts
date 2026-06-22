@@ -25,7 +25,6 @@ import {
   setTextMeasurer,
   getScreenToWorld,
   gridSnapper,
-  orderForTop,
   type FractionalIndex,
   outlineSnapper,
   removeElement,
@@ -242,6 +241,7 @@ import {
   computePlacementUpdate,
   computeLinkedElementFromAnchor,
   computeDuplicateInPlace,
+  computeShapeAtLinkDrop,
   newElementIdAtCursor,
   previewClickCreate as previewClickCreatePure,
   type PlacementState,
@@ -4137,38 +4137,11 @@ export class Editor {
       return;
     }
     const newId = newElementId(++this.nextId);
-    const order = orderForTop(
-      [...this._scene.elements.values()]
-        .filter((sh) => sh.layerId === this._activeLayerId)
-        .map((sh) => sh.order),
-    );
-    const built = factory({
-      id: newId,
-      layerId: this._activeLayerId,
-      position: pending.world,
-      order,
-    });
-    // Centre the element on the drop point regardless of how the factory
-    // anchored it at `position`.
-    const wb = getElementWorldBounds(built);
-    const shape = {
-      ...built,
-      position: {
-        x: built.position.x + (pending.world.x - (wb.x + wb.width / 2)),
-        y: built.position.y + (pending.world.y - (wb.y + wb.height / 2)),
-      },
-    } as Element;
-
+    const r = computeShapeAtLinkDrop(this._scene, this._activeLayerId, pending, newId, factory);
     const tx = this._history.transaction();
-    const added = addElement(this._scene, shape);
-    this._scene = added.scene;
-    tx.add(added.patch);
-    const upd = updateLink(this._scene, pending.linkId, (e) => ({
-      ...e,
-      [pending.side]: { kind: "floating", elementId: newId },
-    }));
-    this._scene = upd.scene;
-    tx.add(upd.patch);
+    this._scene = r.scene;
+    tx.add(r.addPatch);
+    tx.add(r.linkPatch);
     tx.commit();
 
     this.pendingLinkDropMenu = null;

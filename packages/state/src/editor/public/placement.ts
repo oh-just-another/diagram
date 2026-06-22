@@ -17,6 +17,7 @@ import {
   type Element,
   type Patch,
   type AnchorRef,
+  type FractionalIndex,
 } from "@oh-just-another/scene";
 import type { LayerId, ElementId, LinkId, Bounds, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
@@ -374,4 +375,46 @@ export const computeDuplicateInPlace = (
     patches.push(r.patch);
   }
   return { scene: next, patches };
+};
+
+/**
+ * Compute the scene + two patches (element-add, link re-point) for dropping a
+ * link end onto empty canvas and picking a shape from the menu: build a shape
+ * from `factory` centred on the drop point and float the dropped link end
+ * against it. Pure — the caller pre-allocates `newId` and owns the history
+ * transaction + selection.
+ */
+export const computeShapeAtLinkDrop = (
+  scene: Scene,
+  activeLayerId: LayerId,
+  drop: { linkId: LinkId; side: "from" | "to"; world: Vec2 },
+  newId: ElementId,
+  factory: (ctx: {
+    id: ElementId;
+    layerId: LayerId;
+    position: Vec2;
+    order: FractionalIndex;
+  }) => Element,
+): { scene: Scene; addPatch: Patch; linkPatch: Patch } => {
+  const order = orderForTop(
+    [...scene.elements.values()].filter((sh) => sh.layerId === activeLayerId).map((sh) => sh.order),
+  );
+  const built = factory({ id: newId, layerId: activeLayerId, position: drop.world, order });
+  // Centre the element on the drop point regardless of how the factory anchored
+  // it at `position`.
+  const wb = getElementWorldBounds(built);
+  const shape = {
+    ...built,
+    position: {
+      x: built.position.x + (drop.world.x - (wb.x + wb.width / 2)),
+      y: built.position.y + (drop.world.y - (wb.y + wb.height / 2)),
+    },
+  } as Element;
+
+  const added = addElement(scene, shape);
+  const upd = updateLink(added.scene, drop.linkId, (e) => ({
+    ...e,
+    [drop.side]: { kind: "floating", elementId: newId },
+  }));
+  return { scene: upd.scene, addPatch: added.patch, linkPatch: upd.patch };
 };
