@@ -224,6 +224,7 @@ import {
   computeUpdateStyle,
   computeUpdateTextProps,
   describeNudge as describeNudgePure,
+  findClosestInDirection,
   selectionFromNewIds,
 } from "./editor/public/selection-ops.js";
 import {
@@ -2900,39 +2901,15 @@ export class Editor {
   selectClosest(direction: "left" | "right" | "up" | "down"): void {
     const ref = this.combinedSelectionBounds();
     const vp = this._scene.viewport;
-    const refC = ref
+    const refCenter = ref
       ? { x: ref.x + ref.width / 2, y: ref.y + ref.height / 2 }
       : {
           x: vp.pan.x + vp.size.width / 2 / vp.zoom,
           y: vp.pan.y + vp.size.height / 2 / vp.zoom,
         };
-    const dv =
-      direction === "left"
-        ? { x: -1, y: 0 }
-        : direction === "right"
-          ? { x: 1, y: 0 }
-          : direction === "up"
-            ? { x: 0, y: -1 }
-            : { x: 0, y: 1 };
-    let best: ElementId | null = null;
-    let bestScore = Infinity;
-    for (const s of this._scene.elements.values()) {
-      if (s.parentId !== undefined) continue; // top-level shapes only
-      if (this._selection.has(s.id)) continue;
-      if (!this.isElementInteractable(s)) continue;
-      const b = getElementWorldBounds(s);
-      const cx = b.x + b.width / 2 - refC.x;
-      const cy = b.y + b.height / 2 - refC.y;
-      const along = cx * dv.x + cy * dv.y;
-      if (along <= 0) continue; // not in the direction's half-plane
-      const perp = Math.abs(cx * dv.y - cy * dv.x);
-      if (perp > along) continue; // outside the 45° cone
-      const score = along + perp;
-      if (score < bestScore) {
-        bestScore = score;
-        best = s.id;
-      }
-    }
+    const best = findClosestInDirection(this._scene, this._selection, direction, refCenter, (s) =>
+      this.isElementInteractable(s),
+    );
     if (best === null) return;
     this.setSelection([best]);
   }

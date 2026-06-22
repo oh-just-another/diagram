@@ -1,6 +1,7 @@
 import {
   addElement,
   getElement,
+  getElementWorldBounds,
   orderForTop,
   removeLink,
   removeElement,
@@ -255,4 +256,48 @@ export const selectionFromNewIds = (ids: readonly ElementId[]): Selection.Select
   let next: Selection.Selection = Selection.EMPTY;
   for (const id of ids) next = Selection.add(next, id);
   return next;
+};
+
+/**
+ * Spatial-keyboard navigation: the nearest top-level interactable element to
+ * `refCenter` in `direction`, scored by distance along the axis plus a 45°-cone
+ * penalty (so a shape roughly in line wins over a nearer one off to the side).
+ * Already-selected and non-interactable shapes are skipped. `null` when nothing
+ * lies in that half-plane.
+ */
+export const findClosestInDirection = (
+  scene: Scene,
+  selected: { has: (id: ElementId) => boolean },
+  direction: "left" | "right" | "up" | "down",
+  refCenter: Vec2,
+  isInteractable: (s: Element) => boolean,
+): ElementId | null => {
+  const dv =
+    direction === "left"
+      ? { x: -1, y: 0 }
+      : direction === "right"
+        ? { x: 1, y: 0 }
+        : direction === "up"
+          ? { x: 0, y: -1 }
+          : { x: 0, y: 1 };
+  let best: ElementId | null = null;
+  let bestScore = Infinity;
+  for (const s of scene.elements.values()) {
+    if (s.parentId !== undefined) continue; // top-level shapes only
+    if (selected.has(s.id)) continue;
+    if (!isInteractable(s)) continue;
+    const b = getElementWorldBounds(s);
+    const cx = b.x + b.width / 2 - refCenter.x;
+    const cy = b.y + b.height / 2 - refCenter.y;
+    const along = cx * dv.x + cy * dv.y;
+    if (along <= 0) continue; // not in the direction's half-plane
+    const perp = Math.abs(cx * dv.y - cy * dv.x);
+    if (perp > along) continue; // outside the 45° cone
+    const score = along + perp;
+    if (score < bestScore) {
+      bestScore = score;
+      best = s.id;
+    }
+  }
+  return best;
 };
