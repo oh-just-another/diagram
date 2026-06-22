@@ -114,8 +114,6 @@ import {
   TOUCH_HANDLE_HIT_SLOP,
   ANCHOR_START_HIT_SLOP,
   ANCHOR_DOT_CLICK_RADIUS,
-  ANCHOR_DOT_ACTIVE_RADIUS,
-  LINK_START_ANCHOR_OUTSET,
   TOUCH_ANCHOR_START_HIT_SLOP,
   TOUCH_ANCHOR_DOT_CLICK_RADIUS,
   DOUBLE_CLICK_MS,
@@ -123,8 +121,7 @@ import {
   WHEEL_ZOOM_STEP,
   HEAVY_GIF_BYTES,
 } from "./constants.js";
-import { HANDLE_HIT_SLOP, cursorForHandle } from "./handle.js";
-import { anchorOverlayPoints } from "./editor/anchor-points.js";
+import { HANDLE_HIT_SLOP } from "./handle.js";
 import {
   interactionMachine,
   type InteractionContext,
@@ -202,6 +199,8 @@ import {
   frameHeaderAt as computeFrameHeaderAt,
   computeFrameNameCommit,
 } from "./editor/public/frame-name.js";
+import { computeCursor } from "./editor/public/cursor.js";
+import type { CursorRole, CursorSpec } from "./editor/public/cursor.js";
 import {
   compactLayerZOrderPatches,
   computeBringForward,
@@ -422,66 +421,9 @@ const req = <T>(v: T | undefined): T => {
   return v;
 };
 
-/**
- * Stable keys for cursor states a host can override with a custom image via
- * {@link Editor.setCursorOverride}. Each maps to one outcome of `computeCursor`.
- */
-export type CursorRole =
-  | "default"
-  | "pan-ready"
-  | "pan-active"
-  | "move"
-  | "draw"
-  | "text"
-  | "link-start"
-  | "link-handle"
-  | "annotation"
-  | "resize-nwse"
-  | "resize-nesw"
-  | "resize-ns"
-  | "resize-ew";
-
-/**
- * A custom cursor: either a raw CSS `cursor` value, or an image with an
- * optional `@2x` variant (DPR-aware via `image-set`), hotspot, and keyword
- * fallback.
- */
-export type CursorSpec =
-  | string
-  | {
-      /** 1x image URL or data-URL. */
-      readonly url: string;
-      /** Optional 2x image for hi-DPI (retina) — emitted via `image-set`. */
-      readonly url2x?: string;
-      /** Hotspot offset (px) within the image; defaults to (0, 0). */
-      readonly hotspot?: { readonly x: number; readonly y: number };
-      /** Keyword shown if the image can't load / is too large. */
-      readonly fallback?: string;
-    };
-
-/** Resize handle → cursor override role. */
-const RESIZE_ROLE: Record<HandleId, CursorRole> = {
-  nw: "resize-nwse",
-  se: "resize-nwse",
-  ne: "resize-nesw",
-  sw: "resize-nesw",
-  n: "resize-ns",
-  s: "resize-ns",
-  e: "resize-ew",
-  w: "resize-ew",
-};
-
-/** Build a CSS `cursor` value from a {@link CursorSpec}. */
-const cssCursor = (spec: CursorSpec, fallbackKeyword: string): string => {
-  if (typeof spec === "string") return spec;
-  const hx = spec.hotspot?.x ?? 0;
-  const hy = spec.hotspot?.y ?? 0;
-  const img =
-    spec.url2x !== undefined
-      ? `image-set(url("${spec.url}") 1x, url("${spec.url2x}") 2x)`
-      : `url("${spec.url}")`;
-  return `${img} ${String(hx)} ${String(hy)}, ${spec.fallback ?? fallbackKeyword}`;
-};
+// Cursor roles, spec, and resolution live in `./editor/public/cursor.js`.
+// Re-exported here so the public API path (`@oh-just-another/state`) is stable.
+export type { CursorRole, CursorSpec };
 
 export class Editor {
   public readonly host: HTMLElement;
@@ -775,7 +717,8 @@ export class Editor {
    */
   public lastPointerWorld: Vec2 | null = null;
   /** Host-registered custom cursor images per role (see `setCursorOverride`). */
-  private readonly cursorOverrides = new Map<CursorRole, CursorSpec>();
+  /** Public for the cursor module (`editor/public/cursor.ts`) to resolve roles. */
+  public readonly cursorOverrides = new Map<CursorRole, CursorSpec>();
 
   /**
    * Scene rendered on the last frame. Used to compute a dirty rect by
@@ -3267,78 +3210,8 @@ export class Editor {
    * out of sync. `worldPoint` defaults to the last known pointer position.
    */
   refreshCursor(worldPoint?: Vec2): void {
-    const next = this.computeCursor(worldPoint ?? this.lastPointerWorld);
+    const next = computeCursor(this, worldPoint ?? this.lastPointerWorld);
     if (this.host.style.cursor !== next) this.host.style.cursor = next;
-  }
-
-  /**
-   * The CSS cursor for the current state. Priority: active gesture → text edit → pan affordance →
-   * draw tool → idle hover hit-test. Pure read of editor state; no side effects.
-   */
-  private computeCursor(p: Vec2 | null): string {
-    // Each outcome is a (role, fallback-keyword) pair; `resolveCursor` returns
-    // a host-registered custom image for that role if one exists, else the
-    // keyword. Roles are the stable override keys (see `setCursorOverride`).
-    const r = (role: CursorRole, keyword: string): string => this.resolveCursor(role, keyword);
-    const resizeRole = (h: HandleId): string => r(RESIZE_ROLE[h], cursorForHandle(h));
-    // 1. Active gestures (highest priority — what the pointer is doing now).
-    if (this.panGesture) return r("pan-active", "grabbing");
-    if (this.linkDragFromAnchor?.moved === true) return r("draw", "crosshair");
-    if (this.isDraggingWaypoint || this.isDraggingSegment) return r("move", "grabbing");
-    if (this.annotationDrag?.moved === true) return r("move", "grabbing");
-    if (this.brushStroke) return r("draw", "crosshair");
-    // Machine-driven drag past the threshold (`gestureTx` opens then): resize
-    // shows the handle's arrow; element / link move shows grabbing.
-    if (this.gestureTx) {
-      const t = this.actor.getSnapshot().context.pressTarget;
-      if (t && (t.kind === "handle" || t.kind === "group-handle")) return resizeRole(t.handle);
-      if (t && (t.kind === "element" || t.kind === "link" || t.kind === "edge-endpoint")) {
-        return r("move", "grabbing");
-      }
-    }
-    // 2. In-canvas text editing → I-beam.
-    if (this.editingTextElement !== null) return r("text", "text");
-    // 3. Pan affordance (idle): Space held or hand tool.
-    if (this.spaceHeld || this.mode === "hand") return r("pan-ready", "grab");
-    // 4. Draw tools (idle, before a gesture starts).
-    switch (this.mode) {
-      case "draw-rect":
-      case "draw-ellipse":
-      case "draw-frame":
-      case "draw-edge":
-      case "brush":
-        return r("draw", "crosshair");
-      case "draw-text":
-        return r("text", "text");
-      default:
-        break;
-    }
-    // 5. Idle hover in select mode — key off the hit-test target.
-    if (p) {
-      if (this.isOverLinkStartDot(p)) return r("link-start", "crosshair");
-      const t = this.hitTest(p);
-      switch (t.kind) {
-        case "handle":
-        case "group-handle":
-          return resizeRole(t.handle);
-        case "edge-endpoint":
-          return r("link-handle", "grab");
-        case "annotation":
-          return r("annotation", "pointer");
-        default:
-          return r("default", "default");
-      }
-    }
-    return r("default", "default");
-  }
-
-  /**
-   * Resolve a cursor role to a CSS `cursor` value: a host-registered custom
-   * image (via {@link setCursorOverride}) if present, else `fallbackKeyword`.
-   */
-  private resolveCursor(role: CursorRole, fallbackKeyword: string): string {
-    const spec = this.cursorOverrides.get(role);
-    return spec === undefined ? fallbackKeyword : cssCursor(spec, fallbackKeyword);
   }
 
   /**
@@ -3352,30 +3225,6 @@ export class Editor {
     if (spec === null) this.cursorOverrides.delete(role);
     else this.cursorOverrides.set(role, spec);
     this.refreshCursor();
-  }
-
-  /**
-   * True when `p` is within the grab radius of one of the single selected
-   * element's link-start dots — used to show a `crosshair` (start a link).
-   * Mirrors the anchor-drag hit-test in pointer-binding so the cursor matches
-   * exactly where a press would begin a link.
-   */
-  private isOverLinkStartDot(p: Vec2): boolean {
-    if (this.mode !== "select" || this._selection.size !== 1) return false;
-    const id = [...this._selection][0];
-    if (id === undefined) return false;
-    const shape = getElement(this._scene, id);
-    if (!shape) return false;
-    const zoom = this._scene.viewport.zoom || 1;
-    const { worldPoints } = anchorOverlayPoints(shape, LINK_START_ANCHOR_OUTSET / zoom);
-    const grab = (ANCHOR_DOT_ACTIVE_RADIUS + this.anchorStartHitSlop) / zoom;
-    const grab2 = grab * grab;
-    for (const wp of worldPoints) {
-      const dx = wp.x - p.x;
-      const dy = wp.y - p.y;
-      if (dx * dx + dy * dy <= grab2) return true;
-    }
-    return false;
   }
 
   /** True when the given layer exists and is marked `locked`. */
