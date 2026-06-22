@@ -138,6 +138,7 @@ export {
 // Scene constructor + apply + ordering helpers
 export {
   DEFAULT_LAYER_ID,
+  DEFAULT_SCENE,
   emptyScene,
   apply,
   orderForTop,
@@ -149,6 +150,10 @@ export {
   getBinaryFile,
 } from "./scene.js";
 export type { FractionalIndex } from "fractional-keys";
+
+// Scene defaults: hydration / dehydration + per-key persistence scope
+export { hydrateScene, dehydrateScene, VIEWPORT_SCOPE } from "./hydrate.js";
+export type { SettingScope, SceneSettings, HydrateInput } from "./hydrate.js";
 
 // Binary file registry.
 export type { BinaryFile } from "./file.js";
