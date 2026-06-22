@@ -128,7 +128,6 @@ import {
   ANIMATION_MAX_INTERVAL_MS,
   ANIMATION_COST_FACTOR,
   HEAVY_GIF_BYTES,
-  CARET_BLINK_INTERVAL_MS,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP, cursorForHandle } from "./handle.js";
 import { anchorOverlayPoints } from "./editor/anchor-points.js";
@@ -147,6 +146,7 @@ import {
   primeEventCache,
   type EditorEventCache,
 } from "./editor/event-fanout.js";
+import { CaretBlinkController } from "./editor/caret-blink.js";
 import { GestureController } from "./editor/gesture-tx.js";
 import { GifPlaybackController } from "./editor/gif-playback.js";
 import { LongPressController } from "./editor/long-press.js";
@@ -1964,8 +1964,9 @@ export class Editor {
   private _textSel: { start: number; end: number; dir: "forward" | "backward" } | null = null;
   /** Anchor offset for a canvas drag-select inside the edited text. */
   private _textDragAnchor: number | null = null;
-  private _caretBlinkOn = true;
-  private _caretBlinkTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly caretBlink = new CaretBlinkController(() => {
+    this.notify();
+  });
 
   get editingTextSelection(): { start: number; end: number; dir: "forward" | "backward" } | null {
     return this._textSel;
@@ -1976,34 +1977,11 @@ export class Editor {
     return this._textSel.dir === "backward" ? this._textSel.start : this._textSel.end;
   }
   get caretBlinkOn(): boolean {
-    return this._caretBlinkOn;
+    return this.caretBlink.on;
   }
   /** `true` while a canvas drag-select inside the edited text is active. */
   get isTextDragging(): boolean {
     return this._textDragAnchor !== null;
-  }
-
-  private startCaretBlink(): void {
-    this._caretBlinkOn = true;
-    this.stopCaretBlink();
-    // Only run the blink when a DOM clock exists (browser host). Node
-    // test envs construct the editor without a window — skip so a
-    // dangling interval can't keep the process alive.
-    if (typeof window === "undefined") return;
-    this._caretBlinkTimer = setInterval(() => {
-      this._caretBlinkOn = !this._caretBlinkOn;
-      this.notify();
-    }, CARET_BLINK_INTERVAL_MS);
-  }
-  private stopCaretBlink(): void {
-    if (this._caretBlinkTimer !== null) {
-      clearInterval(this._caretBlinkTimer);
-      this._caretBlinkTimer = null;
-    }
-  }
-  /** Reset the caret to solid (called on type / move so it never blinks off mid-action). */
-  private wakeCaret(): void {
-    this._caretBlinkOn = true;
   }
 
   /**
@@ -2091,7 +2069,7 @@ export class Editor {
     const shape = getElement(this._scene, id) as TextElement | undefined;
     const len = shape?.text.length ?? 0;
     this._textSel = { start: len, end: len, dir: "forward" };
-    this.startCaretBlink();
+    this.caretBlink.start();
     this.notify();
   }
 
@@ -2189,7 +2167,7 @@ export class Editor {
     const r = updateElement(this._scene, id, (s) => ({ ...s, text: value }));
     this._scene = r.scene;
     this._textSel = { start: selStart, end: selEnd, dir };
-    this.wakeCaret();
+    this.caretBlink.wake();
     this.notify();
   }
 
@@ -2201,7 +2179,7 @@ export class Editor {
   ): void {
     if (!this._editingTextElement) return;
     this._textSel = { start: selStart, end: selEnd, dir };
-    this.wakeCaret();
+    this.caretBlink.wake();
     this.notify();
   }
 
@@ -2326,7 +2304,7 @@ export class Editor {
     }));
 
     let caret: { x: number; y: number; height: number } | null = null;
-    if (this._caretBlinkOn) {
+    if (this.caretBlink.on) {
       const cIdx = this._textSel.dir === "backward" ? this._textSel.start : this._textSel.end;
       const g = caretGeometry(layout, cIdx, measure, shape.fontSize, align);
       caret = { x: px + g.x, y: py + g.y, height: g.height };
@@ -2348,7 +2326,7 @@ export class Editor {
     this._pendingTextCreate = null;
     this._textEditOrigin = null;
     this._textSel = null;
-    this.stopCaretBlink();
+    this.caretBlink.stop();
 
     const finalElement = getElement(this._scene, id) as TextElement | undefined;
     const text = finalElement?.text ?? "";
@@ -2394,7 +2372,7 @@ export class Editor {
     this._pendingTextCreate = null;
     this._textEditOrigin = null;
     this._textSel = null;
-    this.stopCaretBlink();
+    this.caretBlink.stop();
 
     // Revert live edits with no history entry. Pending creations are
     // removed entirely; existing shapes have only their TEXT restored
