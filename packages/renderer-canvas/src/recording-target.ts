@@ -92,7 +92,15 @@ export type RenderCommand =
     }
   | { readonly k: "clear"; readonly bounds?: Bounds }
   | { readonly k: "markDirty"; readonly bounds: Bounds }
-  | { readonly k: "resize"; readonly w: number; readonly h: number };
+  | { readonly k: "resize"; readonly w: number; readonly h: number }
+  | {
+      readonly k: "drawImage";
+      readonly bitmap: ImageBitmap;
+      readonly dx: number;
+      readonly dy: number;
+      readonly dw: number;
+      readonly dh: number;
+    };
 
 /**
  * `drawImage` is NOT serialisable through this command stream — image
@@ -246,8 +254,20 @@ export class RecordingTarget implements RenderTarget {
     return { width: text.length * 8 };
   }
 
-  drawImage(_image: unknown, _dx: number, _dy: number, _dw: number, _dh: number): void {
-    this.skippedImageDraws++;
+  drawImage(
+    image: unknown,
+    dx: number,
+    dy: number,
+    dw: number,
+    dh: number,
+    _dynamic?: boolean,
+  ): void {
+    void _dynamic;
+    if (typeof ImageBitmap !== "undefined" && image instanceof ImageBitmap) {
+      this.commands.push({ k: "drawImage", bitmap: image, dx, dy, dw, dh });
+    } else {
+      this.skippedImageDraws++;
+    }
   }
 
   clear(bounds?: Bounds): void {
@@ -364,6 +384,9 @@ export const replayCommands = (target: RenderTarget, commands: readonly RenderCo
         // No-op for replay — the worker owns the canvas size and
         // resizes via its own `resize` message, not via the command
         // stream.
+        break;
+      case "drawImage":
+        target.drawImage(cmd.bitmap, cmd.dx, cmd.dy, cmd.dw, cmd.dh);
         break;
     }
   }

@@ -28,12 +28,28 @@ describe("RecordingTarget", () => {
     expect(t.flush().length).toBe(1);
   });
 
-  it("skips drawImage and bumps skippedImageDraws", () => {
+  it("skips a non-ImageBitmap drawImage and bumps skippedImageDraws", () => {
     const t = new RecordingTarget(10, 10);
     t.drawImage({} as unknown, 0, 0, 10, 10);
     t.drawImage({} as unknown, 0, 0, 10, 10);
     expect(t.skippedImageDraws).toBe(2);
     expect(t.flush()).toEqual([]);
+  });
+
+  it("records an ImageBitmap drawImage as a structured-clone-safe command", () => {
+    class FakeImageBitmap {
+      readonly _brand = "bitmap";
+    }
+    (globalThis as { ImageBitmap?: unknown }).ImageBitmap = FakeImageBitmap;
+    try {
+      const t = new RecordingTarget(10, 10);
+      const bmp = new FakeImageBitmap();
+      t.drawImage(bmp as unknown, 1, 2, 3, 4);
+      expect(t.skippedImageDraws).toBe(0);
+      expect(t.flush()).toEqual([{ k: "drawImage", bitmap: bmp, dx: 1, dy: 2, dw: 3, dh: 4 }]);
+    } finally {
+      delete (globalThis as { ImageBitmap?: unknown }).ImageBitmap;
+    }
   });
 
   it("resize updates size and emits a resize command", () => {
@@ -107,6 +123,14 @@ describe("replayCommands", () => {
     rec.fill("evenodd");
     replayCommands(fake, rec.flush());
     expect(fill).toHaveBeenCalledWith("evenodd");
+  });
+
+  it("replays a drawImage command onto the target", () => {
+    const drawImage = vi.fn();
+    const fake = stubTarget({ drawImage });
+    const bmp = {} as unknown as ImageBitmap;
+    replayCommands(fake, [{ k: "drawImage", bitmap: bmp, dx: 1, dy: 2, dw: 3, dh: 4 }]);
+    expect(drawImage).toHaveBeenCalledWith(bmp, 1, 2, 3, 4);
   });
 
   it("ignores resize commands during replay (worker owns sizing)", () => {
