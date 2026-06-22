@@ -257,7 +257,11 @@ import {
   selectByBoundsLive as selectByBoundsLivePure,
   selectLinksByBoundsLive as selectLinksByBoundsLivePure,
 } from "./editor/applies/selection.js";
-import { computeLinkEndpointUpdate, computeLinkPreviewEndpoints } from "./editor/applies/edge.js";
+import {
+  computeLinkEndpointUpdate,
+  computeLinkPreviewEndpoints,
+  elbowSignature,
+} from "./editor/applies/edge.js";
 import {
   computeAnnotationMovePatch,
   computeGroupMovePatches,
@@ -4873,34 +4877,6 @@ export class Editor {
    */
   private readonly elbowRouteSig = new Map<LinkId, string>();
 
-  private elbowSignature(edge: Link): string {
-    const part = (ep: LinkEndpoint): string => {
-      if (ep.kind === "point") return `p:${ep.position.x},${ep.position.y}`;
-      const s = getElement(this._scene, ep.elementId);
-      const b = s ? getElementWorldBounds(s) : null;
-      const ref =
-        ep.kind === "anchor"
-          ? JSON.stringify(ep.anchor)
-          : ep.kind === "outline"
-            ? `o:${ep.ratio}`
-            : "f";
-      return `${ep.kind}:${ep.elementId}:${ref}:${b ? `${b.x},${b.y},${b.width},${b.height}` : "x"}`;
-    };
-    const base = `${part(edge.from)}|${part(edge.to)}|${JSON.stringify(edge.fixedSegments ?? null)}`;
-    // Avoid-obstacles links depend on EVERY shape's geometry, so their route
-    // must invalidate when any obstacle moves — fold a digest of all element
-    // bboxes into the signature. Only paid by links that opt in.
-    if (edge.avoidObstacles === true) {
-      let digest = "|avoid:";
-      for (const el of this._scene.elements.values()) {
-        const bb = getElementWorldBounds(el);
-        digest += `${el.id},${bb.x},${bb.y},${bb.width},${bb.height};`;
-      }
-      return base + digest;
-    }
-    return base;
-  }
-
   /**
    * Choke-point reroute (standard model): recompute `routedPoints` for
    * every orthogonal link whose inputs changed since the last pass, and
@@ -4912,7 +4888,7 @@ export class Editor {
     let next = this._scene;
     for (const [id, edge] of this._scene.links) {
       if ((edge.routing ?? "straight") !== "orthogonal") continue;
-      const sig = this.elbowSignature(edge);
+      const sig = elbowSignature(this._scene, edge);
       if (this.elbowRouteSig.get(id) === sig) continue;
       this.elbowRouteSig.set(id, sig);
       const routedPoints = routeElbowLink(next, edge);
