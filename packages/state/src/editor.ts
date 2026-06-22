@@ -13,8 +13,6 @@ import {
   isElementLocked,
   runAutoLayout,
   DEFAULT_LAYER_ID,
-  findNearestAnchor,
-  getAnchorOutwardNormal,
   routeElbowLink,
   routeElbowPreview,
   getLink,
@@ -27,7 +25,6 @@ import {
   setTextMeasurer,
   getScreenToWorld,
   gridSnapper,
-  snapExcludedAnchors,
   orderForTop,
   type FractionalIndex,
   outlineSnapper,
@@ -81,11 +78,7 @@ import {
   type HistoryProvider,
   type TransactionHandle,
 } from "@oh-just-another/history";
-import {
-  ANCHOR_CLICK_NEW_ELEMENT_GAP,
-  DEFAULT_LINK_ROUTING,
-  WAYPOINT_COLLAPSE_RADIUS,
-} from "./constants.js";
+import { DEFAULT_LINK_ROUTING, WAYPOINT_COLLAPSE_RADIUS } from "./constants.js";
 import { FileDropRegistry, type FileDropContext, type FileDropHandler } from "./file-drop.js";
 import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
 import {
@@ -247,6 +240,7 @@ import {
   computePlacementCancel,
   computePlacementContainerDrop,
   computePlacementUpdate,
+  computeLinkedElementFromAnchor,
   newElementIdAtCursor,
   previewClickCreate as previewClickCreatePure,
   type PlacementState,
@@ -4216,58 +4210,21 @@ export class Editor {
    * selection. Element + link land in one undo step.
    */
   public createLinkedElementFromAnchor(fromElement: ElementId, anchorName: string): void {
-    const src = getElement(this._scene, fromElement);
-    if (!src) return;
-    const anchor: AnchorRef = { kind: "named", name: anchorName };
-    const normal = getAnchorOutwardNormal(src, anchor);
-    const bounds = getElementWorldBounds(src);
-    const srcCenter = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
-    // Same-size clone → centre-to-centre distance = the source's extent
-    // along the normal + the gap, leaving exactly
-    // ANCHOR_CLICK_NEW_ELEMENT_GAP between the facing edges. `extentAlong`
-    // resolves to width for a horizontal normal, height for a vertical one
-    // (link-start dots are the four edge midpoints).
-    const extentAlong = Math.abs(normal.x) * bounds.width + Math.abs(normal.y) * bounds.height;
-    const dist = extentAlong + ANCHOR_CLICK_NEW_ELEMENT_GAP;
-    const delta = { x: normal.x * dist, y: normal.y * dist };
-
     const newId = newElementId(++this.nextId);
-    const order = orderForTop(
-      [...this._scene.elements.values()]
-        .filter((sh) => sh.layerId === src.layerId)
-        .map((sh) => sh.order),
-    );
-    let clone = {
-      ...src,
-      id: newId,
-      position: { x: src.position.x + delta.x, y: src.position.y + delta.y },
-      order,
-    } as Element;
-    // Blank user text — the new element is a fresh same-kind shape, not a
-    // content copy (standard). Only `text` (TextElement) and `name`
-    // (FrameElement) carry user-entered text. Cast through `Element` because
-    // `exactOptionalPropertyTypes` rejects the bare object literal against
-    // the union (TS2375), even though the narrowed branch is sound.
-    if (clone.type === "text") clone = { ...clone, text: "" } as Element;
-    else if (clone.type === "frame") clone = { ...clone, name: "" } as Element;
-
-    const tx = this._history.transaction();
-    const added = addElement(this._scene, clone);
-    this._scene = added.scene;
-    tx.add(added.patch);
-
     const linkId = newLinkId(++this.nextId);
-    const placed = req(getElement(this._scene, newId));
-    const { ref: toRef } = findNearestAnchor(placed, srcCenter, snapExcludedAnchors(placed));
-    const linkResult = computeCreateLink(
+    const r = computeLinkedElementFromAnchor(
       this._scene,
-      { kind: "anchor", elementId: fromElement, anchor },
-      { kind: "anchor", elementId: newId, anchor: toRef },
-      linkId,
       this._activeLayerId,
+      fromElement,
+      anchorName,
+      newId,
+      linkId,
     );
-    this._scene = linkResult.scene;
-    tx.add(linkResult.patch);
+    if (!r) return;
+    const tx = this._history.transaction();
+    this._scene = r.scene;
+    tx.add(r.addPatch);
+    tx.add(r.linkPatch);
     tx.commit();
 
     this._selection = Selection.single(newId);

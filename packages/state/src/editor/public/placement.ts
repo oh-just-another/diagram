@@ -274,3 +274,60 @@ export const previewClickCreate = (
     ghostLinkId: PREVIEW_GHOST_LINK_ID,
   };
 };
+
+/**
+ * Compute the scene + two patches (clone-add, link) for the "click a link-start
+ * dot" gesture: spawn a same-kind blank clone of `fromElement` in the dot's
+ * outward direction and link source → clone. Pure — the caller pre-allocates
+ * `newId` / `linkId` and owns the history transaction + selection. Returns
+ * `null` when the source is gone.
+ */
+export const computeLinkedElementFromAnchor = (
+  scene: Scene,
+  activeLayerId: LayerId,
+  fromElement: ElementId,
+  anchorName: string,
+  newId: ElementId,
+  linkId: LinkId,
+): { scene: Scene; addPatch: Patch; linkPatch: Patch } | null => {
+  const src = getElement(scene, fromElement);
+  if (!src) return null;
+  const anchor: AnchorRef = { kind: "named", name: anchorName };
+  const normal = getAnchorOutwardNormal(src, anchor);
+  const bounds = getElementWorldBounds(src);
+  const srcCenter = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+  // Same-size clone → centre-to-centre distance = the source's extent along the
+  // normal + the gap, leaving exactly ANCHOR_CLICK_NEW_ELEMENT_GAP between the
+  // facing edges. `extentAlong` resolves to width for a horizontal normal,
+  // height for a vertical one (link-start dots are the four edge midpoints).
+  const extentAlong = Math.abs(normal.x) * bounds.width + Math.abs(normal.y) * bounds.height;
+  const dist = extentAlong + ANCHOR_CLICK_NEW_ELEMENT_GAP;
+  const delta = { x: normal.x * dist, y: normal.y * dist };
+
+  const order = orderForTop(
+    [...scene.elements.values()].filter((sh) => sh.layerId === src.layerId).map((sh) => sh.order),
+  );
+  let clone = {
+    ...src,
+    id: newId,
+    position: { x: src.position.x + delta.x, y: src.position.y + delta.y },
+    order,
+  } as Element;
+  // Blank user text — a fresh same-kind shape, not a content copy. Cast through
+  // `Element` because `exactOptionalPropertyTypes` rejects the bare literal
+  // against the union (TS2375), though the narrowed branch is sound.
+  if (clone.type === "text") clone = { ...clone, text: "" } as Element;
+  else if (clone.type === "frame") clone = { ...clone, name: "" } as Element;
+
+  const added = addElement(scene, clone);
+  const placed = req(getElement(added.scene, newId));
+  const { ref: toRef } = findNearestAnchor(placed, srcCenter, snapExcludedAnchors(placed));
+  const linkResult = computeCreateLink(
+    added.scene,
+    { kind: "anchor", elementId: fromElement, anchor },
+    { kind: "anchor", elementId: newId, anchor: toRef },
+    linkId,
+    activeLayerId,
+  );
+  return { scene: linkResult.scene, addPatch: added.patch, linkPatch: linkResult.patch };
+};
