@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { createRef } from "react";
 import { elementId } from "@oh-just-another/types";
-import { DEFAULT_LAYER_ID, orderBetween, type Element } from "@oh-just-another/scene";
+import { DEFAULT_LAYER_ID, emptyScene, orderBetween, type Element } from "@oh-just-another/scene";
 import { installBuiltinRenderers } from "@oh-just-another/renderer-canvas";
 import { Editor as EditorClass } from "@oh-just-another/state";
 import { Editor, type EditorAPI } from "../src/index";
@@ -75,6 +75,25 @@ describe("<Editor> — imperative API", () => {
       ref.current?.loadScene({ ...target!, viewport: { ...target!.viewport, gridEnabled: true } });
     });
     expect(ref.current?.getScene().viewport.gridEnabled).toBe(true);
+  });
+});
+
+describe("<Editor> — scene settings props", () => {
+  it("is gridless by default", async () => {
+    const { ref } = await mountEditor();
+    expect(ref.current?.editor?.scene.viewport.gridEnabled).toBe(false);
+  });
+
+  it("enables the grid via the grid prop", async () => {
+    const { ref } = await mountEditor({ grid: { enabled: true, style: "dots" } });
+    expect(ref.current?.editor?.scene.viewport.gridEnabled).toBe(true);
+    expect(ref.current?.editor?.scene.viewport.gridStyle).toBe("dots");
+  });
+
+  it("a persisted initialScene wins over the grid prop", async () => {
+    // initialScene carries gridEnabled:false; the prop asks for true → data wins.
+    const { ref } = await mountEditor({ initialScene: emptyScene(), grid: { enabled: true } });
+    expect(ref.current?.editor?.scene.viewport.gridEnabled).toBe(false);
   });
 });
 

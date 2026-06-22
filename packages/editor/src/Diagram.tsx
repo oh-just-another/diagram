@@ -92,7 +92,7 @@ const DEFAULT_REPOSITORY_URL = "https://github.com/oh-just-another/diagram";
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
 import type { ElementId } from "@oh-just-another/types";
 import { formatHotkey } from "@oh-just-another/state";
-import { emptyScene, type Scene } from "@oh-just-another/scene";
+import { hydrateScene, type Scene, type SceneSettings } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
@@ -167,6 +167,14 @@ export interface DiagramProps {
   // --- Data ---
   readonly initialScene?: Scene;
   readonly initialMode?: Mode;
+
+  // --- Scene settings ---
+  // Granular initial scene settings, merged over the defaults. A persisted
+  // `initialScene` takes precedence over these (user data wins over config).
+  /** Background grid: whether it is shown and how it is painted. */
+  readonly grid?: { readonly enabled?: boolean; readonly style?: "lines" | "dots" };
+  /** Snap-to-grid preference (independent of grid visibility). */
+  readonly snap?: boolean;
 
   // --- Plugins ---
   readonly templates?: readonly Template[];
@@ -274,6 +282,8 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   const {
     initialScene,
     initialMode = "select",
+    grid,
+    snap,
     templates,
     fileDropHandlers,
     layoutKinds,
@@ -338,7 +348,19 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     [themeProp, onThemeChange, storageKey],
   );
 
-  const seed = useMemo<Scene>(() => initialScene ?? emptyScene(), [initialScene]);
+  // Seed scene: host grid/snap props are merged over the defaults; a persisted
+  // `initialScene` (user data) wins over them. Depend on primitives so an
+  // inline `grid` object prop doesn't re-seed the editor every render.
+  const gridEnabled = grid?.enabled;
+  const gridStyle = grid?.style;
+  const seed = useMemo<Scene>(
+    () =>
+      hydrateScene({
+        ...(initialScene ? { saved: initialScene } : {}),
+        hostSettings: buildHostSettings(gridEnabled, gridStyle, snap),
+      }),
+    [initialScene, gridEnabled, gridStyle, snap],
+  );
   // Does the initial scene contain any text? Drives whether first paint
   // waits for the MSDF shaper (see the mount gate below).
   const sceneHasText = useMemo(() => {
@@ -1301,6 +1323,19 @@ const downloadSvg = (scene: Scene): void => {
 };
 
 // --- Grid toggle helpers ----------------------------------------------------
+
+/** Translate the `grid` / `snap` props into a partial settings override. */
+const buildHostSettings = (
+  gridEnabled: boolean | undefined,
+  gridStyle: "lines" | "dots" | undefined,
+  snap: boolean | undefined,
+): SceneSettings => ({
+  viewport: {
+    ...(gridEnabled !== undefined ? { gridEnabled } : {}),
+    ...(gridStyle !== undefined ? { gridStyle } : {}),
+    ...(snap !== undefined ? { snapToGrid: snap } : {}),
+  },
+});
 
 /**
  * Map the current viewport state to the segmented Grid toggle's value.
