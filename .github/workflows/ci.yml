@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   check:
-    name: Lint • Typecheck • Test • Build
+    name: Lint • Typecheck • Test • Coverage • Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,6 +40,9 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Coverage gate
+        run: pnpm test:coverage:gate
 
       - name: Build
         run: pnpm build
