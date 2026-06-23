@@ -1,4 +1,5 @@
 import dagre from "@dagrejs/dagre";
+import type { Vec2 } from "@oh-just-another/types";
 import type { GraphDocument, GraphLayoutDirection, GraphNode } from "./graph.js";
 
 const DEFAULT_NODE_W = 120;
@@ -7,7 +8,7 @@ const NODE_SEP = 40;
 const RANK_SEP = 60;
 
 export interface LayoutedNode extends GraphNode {
-  readonly position: { readonly x: number; readonly y: number };
+  readonly position: Vec2;
   readonly width: number;
   readonly height: number;
 }

@@ -9,6 +9,7 @@ import {
   getWorldToScreen,
   getDropZonesWorld,
   strokeOutsideExtent,
+  isFrame,
   isImage,
   type Scene,
   type Style,
@@ -482,7 +483,7 @@ export const renderEditor = (editor: Editor): void => {
       const containers: Bounds[] = [];
       for (const shape of editor._scene.elements.values()) {
         if (dragged?.has(shape.id)) continue;
-        if (shape.type === "frame") {
+        if (isFrame(shape)) {
           frames.push(getElementWorldBounds(shape));
           continue;
         }

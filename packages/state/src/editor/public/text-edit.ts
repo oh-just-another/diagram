@@ -1,4 +1,4 @@
-import { getElement, updateElement, type Scene, type Patch } from "@oh-just-another/scene";
+import { getElement, isText, updateElement, type Scene, type Patch } from "@oh-just-another/scene";
 import type { LayerId, ElementId } from "@oh-just-another/types";
 
 /**
@@ -11,7 +11,7 @@ export const canBeginTextEdit = (
   isLayerLocked: (id: LayerId) => boolean,
 ): boolean => {
   const shape = getElement(scene, id);
-  if (shape?.type !== "text") return false;
+  if (shape === undefined || !isText(shape)) return false;
   if (isLayerLocked(shape.layerId)) return false;
   return true;
 };
@@ -27,7 +27,7 @@ export const computeCommitTextEdit = (
   next: string,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const shape = getElement(scene, id);
-  if (shape?.type !== "text") return null;
+  if (shape === undefined || !isText(shape)) return null;
   if ((shape as { text?: string }).text === next) return null;
   const r = updateElement(scene, id, (s) => ({ ...s, text: next }));
   return { scene: r.scene, patch: r.patch };

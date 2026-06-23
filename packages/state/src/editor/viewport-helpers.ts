@@ -4,6 +4,7 @@ import {
   getScreenToWorld,
   getElement,
   getElementWorldBounds,
+  isGroup,
   type Scene,
 } from "@oh-just-another/scene";
 import { VIEWPORT_CULL_PADDING_RATIO } from "../constants.js";
@@ -40,7 +41,7 @@ export const groupChildrenUnion = (scene: Scene, groupId: ElementId): Bounds | n
   let acc: Bounds | null = null;
   for (const s of scene.elements.values()) {
     if (s.parentId !== groupId) continue;
-    const inner = s.type === "group" ? groupChildrenUnion(scene, s.id) : getElementWorldBounds(s);
+    const inner = isGroup(s) ? groupChildrenUnion(scene, s.id) : getElementWorldBounds(s);
     if (!inner) continue;
     acc = acc ? B.union(acc, inner) : inner;
   }
@@ -61,7 +62,7 @@ export const combinedSelectionBounds = (
   for (const id of selection) {
     const s = getElement(scene, id);
     if (!s) continue;
-    const b = s.type === "group" ? groupChildrenUnion(scene, s.id) : getElementWorldBounds(s);
+    const b = isGroup(s) ? groupChildrenUnion(scene, s.id) : getElementWorldBounds(s);
     if (!b) continue;
     acc = acc ? B.union(acc, b) : b;
   }

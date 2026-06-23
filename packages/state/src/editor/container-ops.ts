@@ -7,6 +7,7 @@ import {
   getElement,
   getElementWorldBounds,
   isContainer,
+  isGroup,
   measureWrap,
   orderForTop,
   updateElement,
@@ -233,7 +234,7 @@ export const applyContainerDrop = (ref: ContainerOpsRef, _worldPoint: unknown): 
     // not spatial containers. The drag-out / coverage logic is for
     // proper containers (swimlane, frame, template); a group child
     // must stay parented to its group regardless of its world bounds.
-    if (parent?.type === "group") return;
+    if (parent !== undefined && isGroup(parent)) return;
     // hover = null: cursor left the parent's zone, but the child
     // itself may still be mostly inside. Coverage check decides:
     //   ≥ CONTAINER_KEEP_THRESHOLD → keep parent + grow zone to fit.

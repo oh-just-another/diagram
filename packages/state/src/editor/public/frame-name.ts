@@ -47,7 +47,7 @@ export const computeFrameNameCommit = (
   name: string,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const shape = getElement(scene, id);
-  if (shape?.type !== "frame") return null;
+  if (shape === undefined || !isFrame(shape)) return null;
   const trimmed = name.trim();
   const current = (shape as { name?: string }).name ?? "";
   if (trimmed === current) return null;

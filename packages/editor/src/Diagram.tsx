@@ -92,7 +92,13 @@ const DEFAULT_REPOSITORY_URL = "https://github.com/oh-just-another/diagram";
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
 import type { ElementId } from "@oh-just-another/types";
 import { formatHotkey } from "@oh-just-another/state";
-import { hydrateScene, type Scene, type SceneSettings } from "@oh-just-another/scene";
+import {
+  hydrateScene,
+  isText,
+  type Scene,
+  type SceneSettings,
+  type GridStyle,
+} from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
@@ -172,7 +178,7 @@ export interface DiagramProps {
   // Granular initial scene settings, merged over the defaults. A persisted
   // `initialScene` takes precedence over these (user data wins over config).
   /** Background grid: whether it is shown and how it is painted. */
-  readonly grid?: { readonly enabled?: boolean; readonly style?: "lines" | "dots" };
+  readonly grid?: { readonly enabled?: boolean; readonly style?: GridStyle };
   /** Snap-to-grid preference (independent of grid visibility). */
   readonly snap?: boolean;
 
@@ -364,7 +370,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   // Does the initial scene contain any text? Drives whether first paint
   // waits for the MSDF shaper (see the mount gate below).
   const sceneHasText = useMemo(() => {
-    for (const s of seed.elements.values()) if (s.type === "text") return true;
+    for (const s of seed.elements.values()) if (isText(s)) return true;
     return false;
   }, [seed]);
 
@@ -1323,7 +1329,7 @@ const downloadSvg = (scene: Scene): void => {
 /** Translate the `grid` / `snap` props into a partial settings override. */
 const buildHostSettings = (
   gridEnabled: boolean | undefined,
-  gridStyle: "lines" | "dots" | undefined,
+  gridStyle: GridStyle | undefined,
   snap: boolean | undefined,
 ): SceneSettings => ({
   viewport: {

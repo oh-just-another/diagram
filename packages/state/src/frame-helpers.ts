@@ -1,5 +1,5 @@
 import type { Bounds, ElementId } from "@oh-just-another/types";
-import { getElementWorldBounds, updateElement, type Scene } from "@oh-just-another/scene";
+import { getElementWorldBounds, isFrame, updateElement, type Scene } from "@oh-just-another/scene";
 import type { HistoryProvider } from "@oh-just-another/history";
 
 /**
@@ -19,7 +19,7 @@ const FRAME_NAME_PATTERN = /^Frame (\d+)$/;
 export const nextFrameName = (scene: Scene): string => {
   let max = 0;
   for (const s of scene.elements.values()) {
-    if (s.type !== "frame") continue;
+    if (!isFrame(s)) continue;
     const m = FRAME_NAME_PATTERN.exec((s as { name?: string }).name ?? "");
     if (m) max = Math.max(max, Number(m[1]));
   }
@@ -48,7 +48,7 @@ export const assignFrameMembers = (
   let next = scene;
   for (const shape of scene.elements.values()) {
     if (shape.id === frameId) continue;
-    if (shape.type === "frame") continue;
+    if (isFrame(shape)) continue;
     if (shape.frameId !== undefined) continue;
     const b = getElementWorldBounds(shape);
     const cx = b.x + b.width / 2;
@@ -74,13 +74,13 @@ export const reconcileFrameMembership = (scene: Scene, history: HistoryProvider)
   // Frames top-most first — highest z-order (fractional-index string) wins
   // when frames overlap.
   const frames = [...scene.elements.values()]
-    .filter((s) => s.type === "frame")
+    .filter(isFrame)
     .sort((a, b) => (a.order < b.order ? 1 : a.order > b.order ? -1 : 0))
     .map((f) => ({ id: f.id, b: getElementWorldBounds(f) }));
 
   let next = scene;
   for (const shape of scene.elements.values()) {
-    if (shape.type === "frame") continue;
+    if (isFrame(shape)) continue;
     const b = getElementWorldBounds(shape);
     const cx = b.x + b.width / 2;
     const cy = b.y + b.height / 2;

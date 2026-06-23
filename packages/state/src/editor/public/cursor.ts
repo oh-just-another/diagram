@@ -37,7 +37,7 @@ export type CursorSpec =
       /** Optional 2x image for hi-DPI (retina) — emitted via `image-set`. */
       readonly url2x?: string;
       /** Hotspot offset (px) within the image; defaults to (0, 0). */
-      readonly hotspot?: { readonly x: number; readonly y: number };
+      readonly hotspot?: Vec2;
       /** Keyword shown if the image can't load / is too large. */
       readonly fallback?: string;
     };

@@ -2,6 +2,7 @@ import type { ElementId } from "@oh-just-another/types";
 import {
   getElement,
   getElementWorldBounds,
+  isFrame,
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
@@ -57,7 +58,7 @@ export const sceneForRegion = (scene: Scene, region: ExportRegion | undefined): 
  */
 export const sceneForFrame = (scene: Scene, frameId: ElementId): Scene | null => {
   const frame = getElement(scene, frameId);
-  if (frame?.type !== "frame") return null;
+  if (!frame || !isFrame(frame)) return null;
   const bounds = getElementWorldBounds(frame);
 
   const elements = new Map<ElementId, Element>();

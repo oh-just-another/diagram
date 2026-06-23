@@ -1,5 +1,5 @@
 import type { ElementId } from "@oh-just-another/types";
-import { getElement, type Scene, type Element } from "@oh-just-another/scene";
+import { getElement, isGroup, type Scene, type Element } from "@oh-just-another/scene";
 
 /**
  * Group / isolation helpers — pure functions over Scene + ElementId with no
@@ -21,7 +21,7 @@ export const topGroupAncestor = (scene: Scene, shape: Element): Element | null =
   while (cursor.parentId && depth < MAX_PARENT_DEPTH) {
     const parent = getElement(scene, cursor.parentId);
     if (!parent) break;
-    if (parent.type === "group") topGroup = parent;
+    if (isGroup(parent)) topGroup = parent;
     cursor = parent;
     depth++;
   }
@@ -68,7 +68,7 @@ export const promoteToGroupRoot = (
     if (enteredGroup === current.parentId) break;
     const parent = getElement(scene, current.parentId);
     if (!parent) break;
-    if (parent.type !== "group") break;
+    if (!isGroup(parent)) break;
     current = parent;
     depth++;
   }
@@ -119,7 +119,7 @@ export const pickDrillTarget = (
     const parent = getElement(scene, cursor.parentId);
     if (!parent) break;
     if (parent.id === top.id) break;
-    if (parent.type === "group") next = parent;
+    if (isGroup(parent)) next = parent;
     cursor = parent;
     depth++;
   }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { DEFAULT_LAYER_ID, orderForTop } from "@oh-just-another/scene";
-import { elementId } from "@oh-just-another/types";
+import { elementId, type Vec2 } from "@oh-just-another/types";
 import {
   defaultRegistry,
   matchesTemplateSearch,
@@ -315,7 +315,7 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
 export const usePalettePlacement = () => {
   const editor = useDiagramOptional();
   const placementRef = useRef<{
-    update: (worldCenter: { x: number; y: number }) => void;
+    update: (worldCenter: Vec2) => void;
     commit: () => void;
     cancel: () => void;
   } | null>(null);
@@ -369,7 +369,7 @@ export const usePalettePlacement = () => {
     return true;
   };
 
-  const cursorWorld = (ev: DragEvent<HTMLElement>): { x: number; y: number } | null => {
+  const cursorWorld = (ev: DragEvent<HTMLElement>): Vec2 | null => {
     if (!editor) return null;
     const rect = ev.currentTarget.getBoundingClientRect();
     return editor.screenToWorld({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });

@@ -17,6 +17,7 @@ import {
   type LinkId,
   type LayerId,
   type ElementId,
+  type Vec2,
 } from "@oh-just-another/types";
 import { readUrlParam } from "./url-params";
 
@@ -1097,11 +1098,7 @@ const nextDebugId = (prefix: string): ElementId =>
 const activeLayerId = (editor: Editor): LayerId =>
   [...editor.scene.layers.keys()][0] ?? ("default" as LayerId);
 
-const buildOne = (
-  editor: Editor,
-  template: Template,
-  position: { x: number; y: number },
-): Element => {
+const buildOne = (editor: Editor, template: Template, position: Vec2): Element => {
   const ctx: TemplateContext = {
     id: nextDebugId(template.id),
     layerId: activeLayerId(editor),
@@ -1165,7 +1162,7 @@ interface GridOptions {
   readonly gap: number;
   readonly rainbow: boolean;
   readonly connect: boolean;
-  readonly origin: { x: number; y: number };
+  readonly origin: Vec2;
 }
 
 const buildGrid = (editor: Editor, template: Template, opts: GridOptions): BuildResult => {
@@ -1246,7 +1243,7 @@ interface StackOptions {
   readonly count: number;
   readonly direction: "horizontal" | "vertical";
   readonly gap: number;
-  readonly origin: { x: number; y: number };
+  readonly origin: Vec2;
 }
 
 const buildStack = (editor: Editor, template: Template, opts: StackOptions): BuildResult => {
@@ -1286,7 +1283,7 @@ interface FractalOptions {
   readonly colorful: boolean;
   /** Mandelbrot/Julia: drop the far-exterior fill (fast-escaping flat cells). */
   readonly skipOutside?: boolean;
-  readonly origin: { x: number; y: number };
+  readonly origin: Vec2;
 }
 
 /**
@@ -1614,7 +1611,7 @@ const hslToHex = (h: number, s: number, l: number): string => {
   return `#${to(r1)}${to(g1)}${to(b1)}`;
 };
 
-const viewportCenter = (editor: Editor): { x: number; y: number } => {
+const viewportCenter = (editor: Editor): Vec2 => {
   const v = editor.scene.viewport;
   return {
     x: v.pan.x + v.size.width / (2 * v.zoom),
@@ -1622,12 +1619,12 @@ const viewportCenter = (editor: Editor): { x: number; y: number } => {
   };
 };
 
-const viewportTopLeftWithMargin = (editor: Editor): { x: number; y: number } => {
+const viewportTopLeftWithMargin = (editor: Editor): Vec2 => {
   const v = editor.scene.viewport;
   return { x: v.pan.x + 40 / v.zoom, y: v.pan.y + 40 / v.zoom };
 };
 
-const randomInViewport = (editor: Editor): { x: number; y: number } => {
+const randomInViewport = (editor: Editor): Vec2 => {
   const v = editor.scene.viewport;
   return {
     x: v.pan.x + Math.random() * (v.size.width / v.zoom),

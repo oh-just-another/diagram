@@ -2,6 +2,7 @@ import {
   getLayersInOrder,
   getElementsInLayer,
   getWorldToScreen,
+  isText,
   type Scene,
   type ElementBase,
   type SpatialGrid,
@@ -229,7 +230,7 @@ export const renderScene = (
         if (!B.intersects(bb, dirtyWorld)) continue;
       }
 
-      if (dropText && shape.type === "text") continue;
+      if (dropText && isText(shape)) continue;
 
       if (usePlaceholder) {
         // Draw the AABB directly in world coords — skip the renderer

@@ -7,7 +7,10 @@ import {
   getLink,
   getLinkPath,
   getLinkWaypointMidpoints,
+  isFrame,
+  isGroup,
   isImage,
+  isText,
   updateAnnotation,
 } from "@oh-just-another/scene";
 import { boundsFromPoints, interpretPressEnd, DRAG_THRESHOLD } from "../machine.js";
@@ -142,8 +145,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (editor.mode === "draw-text") {
       editor.cancelLongPress();
       const hit = editor.hitTest(worldPoint);
-      const existing = hit.kind === "element" ? getElement(editor._scene, hit.id) : null;
-      if (existing?.type === "text") {
+      const existing = hit.kind === "element" ? getElement(editor._scene, hit.id) : undefined;
+      if (existing !== undefined && isText(existing)) {
         editor._selection = Selection.single(existing.id);
         editor.beginTextEdit(existing.id);
         editor.notify();
@@ -404,8 +407,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     //      looking exactly like the group had been ungrouped.
     if (target.kind === "element") {
       const pressedElement = getElement(editor._scene, target.id);
-      const pressedIsGroup = pressedElement?.type === "group";
-      const pressedIsFrame = pressedElement?.type === "frame";
+      const pressedIsGroup = pressedElement !== undefined && isGroup(pressedElement);
+      const pressedIsFrame = pressedElement !== undefined && isFrame(pressedElement);
       const inSelection = editor._selection.has(target.id);
       if (inSelection || pressedIsGroup || pressedIsFrame) {
         const ids = new Set<ElementId>();

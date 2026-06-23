@@ -5,6 +5,7 @@ import {
   getElement,
   getElementAccessibleName,
   gridLayout,
+  isGroup,
   orderForTop,
   removeElement,
   stackLayout,
@@ -13,7 +14,7 @@ import {
   type Element,
   type Patch,
 } from "@oh-just-another/scene";
-import type { Bounds, ElementId } from "@oh-just-another/types";
+import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
 import type * as Selection from "../../selection.js";
 
@@ -26,7 +27,7 @@ export const computeArrangeAsGrid = (
   scene: Scene,
   selection: Selection.Selection,
   opts: { cols?: number; gap?: number },
-  origin: Bounds | { x: number; y: number },
+  origin: Bounds | Vec2,
 ): {
   readonly scene: Scene;
   readonly patch: Patch;
@@ -52,7 +53,7 @@ export const computeArrangeAsStack = (
   scene: Scene,
   selection: Selection.Selection,
   opts: { direction?: "horizontal" | "vertical"; gap?: number },
-  origin: Bounds | { x: number; y: number },
+  origin: Bounds | Vec2,
 ): {
   readonly scene: Scene;
   readonly patch: Patch;
@@ -185,7 +186,7 @@ export const computeUngroup = (
 } | null => {
   const targets = [...selection]
     .map((id) => getElement(scene, id))
-    .filter((s): s is Element => s?.type === "group");
+    .filter((s) => s !== undefined && isGroup(s));
   if (targets.length === 0) return null;
   let s = scene;
   const patches: Patch[] = [];

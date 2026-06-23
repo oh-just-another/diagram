@@ -2,6 +2,7 @@ import {
   addElement,
   getElement,
   getElementWorldBounds,
+  isText,
   orderForTop,
   removeLink,
   removeElement,
@@ -222,7 +223,8 @@ export const computeUpdateTextProps = (
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetIds: ElementId[] = [];
   for (const id of ids) {
-    if (getElement(scene, id)?.type === "text") targetIds.push(id);
+    const el = getElement(scene, id);
+    if (el !== undefined && isText(el)) targetIds.push(id);
   }
   if (targetIds.length === 0) return null;
   let s = scene;

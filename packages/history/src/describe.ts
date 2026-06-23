@@ -1,3 +1,4 @@
+import type { Vec2 } from "@oh-just-another/types";
 import type { Patch } from "@oh-just-another/scene";
 
 /**
@@ -62,9 +63,9 @@ const labelForRemove = (shape: { type: string } | null): string =>
 
 interface MaybeElement {
   type?: unknown;
-  position?: { x: number; y: number };
+  position?: Vec2;
   rotation?: number;
-  scale?: { x: number; y: number };
+  scale?: Vec2;
   width?: number;
   height?: number;
   text?: string;

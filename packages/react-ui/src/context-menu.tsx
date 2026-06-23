@@ -7,6 +7,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
+import type { Vec2 } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
 import { useDiagramOptional } from "./hooks.js";
@@ -35,14 +36,14 @@ export type ContextMenuItem =
 /** Per-open snapshot the menu hands to predicates and click handlers. */
 export interface ContextMenuContext {
   /** World-space pointer position where the menu opened. */
-  readonly worldPoint: { readonly x: number; readonly y: number };
+  readonly worldPoint: Vec2;
   /** Screen-space pointer position (CSS pixels). */
-  readonly screenPoint: { readonly x: number; readonly y: number };
+  readonly screenPoint: Vec2;
 }
 
 interface OpenState {
-  readonly screenPoint: { readonly x: number; readonly y: number };
-  readonly worldPoint: { readonly x: number; readonly y: number };
+  readonly screenPoint: Vec2;
+  readonly worldPoint: Vec2;
 }
 
 /**

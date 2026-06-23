@@ -8,6 +8,8 @@ import {
   getElement,
   getElementWorldBounds,
   getLink,
+  isFrame,
+  isText,
   orderForTop,
   removeElement,
   routeElbowLink,
@@ -234,8 +236,8 @@ export const previewClickCreate = (
     id: PREVIEW_GHOST_ELEMENT_ID,
     position: { x: src.position.x + delta.x, y: src.position.y + delta.y },
   } as Element;
-  if (element.type === "text") element = { ...element, text: "" } as Element;
-  else if (element.type === "frame") element = { ...element, name: "" } as Element;
+  if (isText(element)) element = { ...element, text: "" };
+  else if (isFrame(element)) element = { ...element, name: "" };
 
   // Build a throwaway scene holding the ghost element + the would-be link so the
   // connector can be drawn through the REAL link renderer (same routing,
@@ -317,8 +319,8 @@ export const computeLinkedElementFromAnchor = (
   // Blank user text — a fresh same-kind shape, not a content copy. Cast through
   // `Element` because `exactOptionalPropertyTypes` rejects the bare literal
   // against the union (TS2375), though the narrowed branch is sound.
-  if (clone.type === "text") clone = { ...clone, text: "" } as Element;
-  else if (clone.type === "frame") clone = { ...clone, name: "" } as Element;
+  if (isText(clone)) clone = { ...clone, text: "" };
+  else if (isFrame(clone)) clone = { ...clone, name: "" };
 
   const added = addElement(scene, clone);
   const placed = req(getElement(added.scene, newId));

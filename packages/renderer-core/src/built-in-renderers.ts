@@ -26,7 +26,7 @@ import {
   TEXT_UNDERLINE_OFFSET,
   TEXT_STRIKETHROUGH_OFFSET,
 } from "./constants.js";
-import { req } from "@oh-just-another/types";
+import { req, type Vec2 } from "@oh-just-another/types";
 
 /**
  * Applies common style fields to a target. Returns whether any fill or stroke
@@ -190,7 +190,7 @@ const drawPolygon: ElementRenderer<PolygonElement> = (shape, target) => {
 };
 
 /** Emit a closed polygon outline as `moveTo` + `lineTo`s + `closePath`. */
-const polygonPath = (target: RenderTarget, pts: readonly { x: number; y: number }[]): void => {
+const polygonPath = (target: RenderTarget, pts: readonly Vec2[]): void => {
   const first = pts[0];
   if (first === undefined) return;
   target.moveTo(first.x, first.y);

@@ -20,6 +20,10 @@ import {
   getElement,
   getElementAt,
   getElementAtIndexed,
+  isFrame,
+  isGroup,
+  isText,
+  isImage,
   getElementWorldBounds,
   getElementRenderBounds,
   setTextMeasurer,
@@ -37,7 +41,6 @@ import {
   type AnchorRef,
   type Link,
   type LinkEndpoint,
-  type ImageElement,
   type Patch,
   type Scene,
   type Element,
@@ -1693,8 +1696,8 @@ export class Editor {
   private autoStopHeavyGifs(): void {
     const heavyIds: ElementId[] = [];
     for (const shape of this._scene.elements.values()) {
-      if (shape.type !== "image") continue;
-      const img = shape as ImageElement;
+      if (!isImage(shape)) continue;
+      const img = shape;
       if (!img.animationKind) continue;
       const heavy =
         img.animationData instanceof ArrayBuffer && img.animationData.byteLength > HEAVY_GIF_BYTES;
@@ -1717,8 +1720,8 @@ export class Editor {
    */
   private rehydrateAnimatedImages(): void {
     for (const shape of this._scene.elements.values()) {
-      if (shape.type !== "image") continue;
-      const img = shape as ImageElement;
+      if (!isImage(shape)) continue;
+      const img = shape;
       if (!img.animationKind) continue;
       // Seed playback for every animated shape loaded from the scene
       // (reduced-motion is honoured at this point too).
@@ -1970,7 +1973,7 @@ export class Editor {
    */
   beginFrameNameEdit(id: ElementId): void {
     const shape = getElement(this._scene, id);
-    if (shape?.type !== "frame") return;
+    if (shape === undefined || !isFrame(shape)) return;
     if (this.isLayerLocked(shape.layerId)) return;
     if (this._editingTextElement !== null) this.commitTextEdit();
     this._editingFrameName = id;
@@ -3301,13 +3304,13 @@ export class Editor {
     const id = req([...this._selection][0]);
     const el = getElement(this._scene, id);
     if (!el) return;
-    const isFrameEl = el.type === "frame";
+    const isFrameEl = isFrame(el);
     const members: ElementId[] = [];
     for (const s of this._scene.elements.values()) {
       if (s.parentId === id || (isFrameEl && s.frameId === id)) members.push(s.id);
     }
     if (members.length === 0) return;
-    if (el.type === "group") this._enteredGroup = id;
+    if (isGroup(el)) this._enteredGroup = id;
     this.setSelection(members);
   }
 
@@ -3455,11 +3458,11 @@ export class Editor {
       (clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE")
     ) {
       const raw = this.acceleratedElementAt(worldPoint);
-      if (raw?.type === "text") {
+      if (raw !== undefined && isText(raw)) {
         this.beginTextEdit(raw.id);
         return true;
       }
-      if (raw?.type === "frame") {
+      if (raw !== undefined && isFrame(raw)) {
         this.beginFrameNameEdit(raw.id);
         return true;
       }
@@ -3932,7 +3935,8 @@ export class Editor {
     // Multi-selection: lock when every selected shape is an image — they
     // must never be stretched out of ratio, only scaled together.
     for (const id of this._selection) {
-      if (getElement(this._scene, id)?.type !== "image") return false;
+      const el = getElement(this._scene, id);
+      if (el === undefined || !isImage(el)) return false;
     }
     return true;
   }
@@ -3962,7 +3966,7 @@ export class Editor {
       : delta;
     // Text: aspect-locked font scaling. Snapshot the pristine shape on
     // the gesture's first tick so the scale base never compounds.
-    if (shape?.type === "text") {
+    if (shape !== undefined && isText(shape)) {
       if (this._resizeOriginElement?.id !== id) {
         this._resizeOriginElement = shape;
       }

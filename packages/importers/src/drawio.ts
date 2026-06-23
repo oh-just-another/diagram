@@ -1,3 +1,4 @@
+import type { Vec2 } from "@oh-just-another/types";
 import type { GraphDocument, GraphEdge, GraphNode, NodeShape } from "./graph.js";
 
 /**
@@ -80,7 +81,7 @@ const parseAttrs = (s: string): Record<string, string> => {
 };
 
 interface Geometry {
-  readonly position?: { x: number; y: number };
+  readonly position?: Vec2;
   readonly size?: { width: number; height: number };
 }
 

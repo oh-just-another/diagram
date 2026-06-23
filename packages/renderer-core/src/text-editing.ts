@@ -1,5 +1,5 @@
 import type { TextAlign } from "./render-target.js";
-import { req } from "@oh-just-another/types";
+import { req, type Vec2 } from "@oh-just-another/types";
 
 /**
  * Caret-aware text layout. Unlike {@link wrapText} (which collapses
@@ -201,7 +201,7 @@ export const caretGeometry = (
  */
 export const pointToCaretIndex = (
   layout: EditableTextLayout,
-  point: { readonly x: number; readonly y: number },
+  point: Vec2,
   measure: MeasureText,
   align: TextAlign,
 ): number => {

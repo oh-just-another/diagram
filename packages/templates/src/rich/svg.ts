@@ -11,7 +11,7 @@
  */
 
 import type { RenderTarget } from "@oh-just-another/renderer-core";
-import { req } from "@oh-just-another/types";
+import { req, type Vec2 } from "@oh-just-another/types";
 
 interface Paint {
   fill: string | null;
@@ -34,7 +34,7 @@ interface PathEl {
 
 interface PolygonEl {
   kind: "polygon" | "polyline";
-  points: readonly { x: number; y: number }[];
+  points: readonly Vec2[];
   paint: Paint;
 }
 
@@ -283,13 +283,13 @@ const parseViewBox = (
   return { x: req(parts[0]), y: req(parts[1]), width: req(parts[2]), height: req(parts[3]) };
 };
 
-const parsePoints = (value: string): { x: number; y: number }[] => {
+const parsePoints = (value: string): Vec2[] => {
   const nums = value
     .trim()
     .split(/[\s,]+/)
     .map(Number)
     .filter((n) => !Number.isNaN(n));
-  const out: { x: number; y: number }[] = [];
+  const out: Vec2[] = [];
   for (let i = 0; i + 1 < nums.length; i += 2) out.push({ x: req(nums[i]), y: req(nums[i + 1]) });
   return out;
 };

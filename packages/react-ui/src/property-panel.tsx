@@ -29,6 +29,10 @@ import {
 } from "lucide-react";
 import {
   isGroup,
+  isText,
+  isImage,
+  isFrame,
+  isRectangle,
   type ArrowheadStyle,
   type Link,
   type LinkRouting,
@@ -91,9 +95,9 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       .map((id) => scene.elements.get(id))
       .filter((s): s is ElementBase => s !== undefined);
     if (shapes.length === 0) return null;
-    const allText = shapes.every((s) => s.type === "text");
-    const allImage = shapes.every((s) => s.type === "image");
-    const allFrame = shapes.every((s) => s.type === "frame");
+    const allText = shapes.every((s) => isText(s));
+    const allImage = shapes.every((s) => isImage(s));
+    const allFrame = shapes.every((s) => isFrame(s));
 
     const primary: ReactNode[] = [];
     const overflow: ReactNode[] = [];
@@ -793,7 +797,7 @@ const StrokeStyleControl = ({ shapes }: { readonly shapes: readonly ElementBase[
 const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
-  const supports = shapes.every((s) => s.type === "rectangle" || s.type === "container");
+  const supports = shapes.every((s) => isRectangle(s) || s.type === "container");
   if (!supports) return null;
   const type = sharedValue<Roundness["type"]>(shapes, (s) => s.style.roundness?.type ?? "sharp");
   const radius = sharedValue<number>(shapes, (s) => s.style.roundness?.value ?? null);
@@ -1501,6 +1505,5 @@ const sharedString = (
 
 // Frames are always fillable (white by default) even when `style.fill` is
 // unset.
-const hasFill = (shape: ElementBase): boolean =>
-  shape.style.fill !== undefined || shape.type === "frame";
+const hasFill = (shape: ElementBase): boolean => shape.style.fill !== undefined || isFrame(shape);
 const hasStroke = (shape: ElementBase): boolean => shape.style.stroke !== undefined;

@@ -3,6 +3,7 @@ import {
   getAnnotationWorldPosition,
   getElementWorldBounds,
   getWorldToScreen,
+  isGroup,
   type Annotation,
   type Element,
   type Scene,
@@ -66,8 +67,7 @@ const groupWorldBounds = (scene: Scene, groupId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
   for (const shape of scene.elements.values()) {
     if (shape.parentId !== groupId) continue;
-    const inner =
-      shape.type === "group" ? groupWorldBounds(scene, shape.id) : getElementWorldBounds(shape);
+    const inner = isGroup(shape) ? groupWorldBounds(scene, shape.id) : getElementWorldBounds(shape);
     if (!inner) continue;
     acc = acc ? B.union(acc, inner) : inner;
   }
@@ -312,7 +312,7 @@ export const renderOverlay = (
      * (matches the BrushElement memory layout).
      */
     brushPreview?: {
-      readonly origin: { readonly x: number; readonly y: number };
+      readonly origin: Vec2;
       readonly points: readonly { x: number; y: number; width: number }[];
       readonly fill: string;
     };
@@ -423,8 +423,7 @@ export const renderOverlay = (
     // Groups have no intrinsic geometry — outline the union of their
     // descendants instead. Otherwise the selection chrome would collapse
     // to a zero-size point at the group's origin.
-    const worldBounds =
-      shape.type === "group" ? groupWorldBounds(scene, id) : getElementWorldBounds(shape);
+    const worldBounds = isGroup(shape) ? groupWorldBounds(scene, id) : getElementWorldBounds(shape);
     if (!worldBounds) continue;
     const screenBounds = projectBounds(worldBounds, w2s);
 
