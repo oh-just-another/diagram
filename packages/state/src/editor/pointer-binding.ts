@@ -29,6 +29,7 @@ import {
   WHEEL_ZOOM_SPEED,
 } from "../constants.js";
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
+import { vec2 } from "@oh-just-another/math";
 import type { Editor } from "../editor.js";
 
 /** Inclusive integer range `[a..b]`; empty when `b < a`. */
@@ -38,7 +39,6 @@ const range = (a: number, b: number): number[] => {
   return out;
 };
 
-const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 import { req } from "../util.js";
@@ -523,7 +523,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       // drag for right-click gestures.
       if (
         !editor.panGesture.moved &&
-        distanceTo(editor.panGesture.startPoint, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
+        vec2.distance(editor.panGesture.startPoint, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
       ) {
         editor.panGesture.moved = true;
       }
@@ -551,7 +551,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (
       editor.touchPanCandidate !== null &&
       editor.activePointers.size === 1 &&
-      distanceTo(editor.touchPanCandidate, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
+      vec2.distance(editor.touchPanCandidate, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
     ) {
       const origin = editor.touchPanCandidate;
       editor.touchPanCandidate = null;

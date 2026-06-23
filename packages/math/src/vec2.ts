@@ -43,6 +43,12 @@ export const lerp = (a: Vec2, b: Vec2, t: number): Vec2 => ({
   y: a.y + (b.y - a.y) * t,
 });
 
+/** Midpoint of two points. */
+export const midpoint = (a: Vec2, b: Vec2): Vec2 => ({
+  x: (a.x + b.x) / 2,
+  y: (a.y + b.y) / 2,
+});
+
 /** Angle of the vector from the positive x-axis, in radians (-π, π]. */
 export const angle = (a: Vec2): number => Math.atan2(a.y, a.x);
 

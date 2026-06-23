@@ -16,7 +16,7 @@ import type {
   Transform,
   Vec2,
 } from "@oh-just-another/types";
-import { matrix } from "@oh-just-another/math";
+import { matrix, vec2 } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
 import {
   ALL_HANDLES,
@@ -52,9 +52,6 @@ import {
 import type { PressTarget } from "../machine.js";
 import type * as Selection from "../selection.js";
 import { getElement } from "@oh-just-another/scene";
-
-/** Local hypot helper for the hit-test hot path (cheaper than a matrix op). */
-const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 import { req } from "../util.js";
 
@@ -169,10 +166,10 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
         const handleR = ctx.edgeHandleHitSlop / zoom;
         const fromPoint = req(path[0]);
         const toPoint = req(path[path.length - 1]);
-        if (distanceTo(worldPoint, fromPoint) <= handleR) {
+        if (vec2.distance(worldPoint, fromPoint) <= handleR) {
           return { kind: "edge-endpoint", linkId: edge.id, side: "from" };
         }
-        if (distanceTo(worldPoint, toPoint) <= handleR) {
+        if (vec2.distance(worldPoint, toPoint) <= handleR) {
           return { kind: "edge-endpoint", linkId: edge.id, side: "to" };
         }
       }

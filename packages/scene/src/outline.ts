@@ -1,4 +1,5 @@
 import { req, type Vec2 } from "@oh-just-another/types";
+import { scalar, vec2 } from "@oh-just-another/math";
 import { getElementLocalBounds, type ElementBase, type PolygonElement } from "./shape.js";
 
 /**
@@ -34,7 +35,7 @@ export const getOutlinePoint = (shape: ElementBase, ratio: number): Vec2 => {
   if (!sampler) {
     throw new Error(`No outline sampler registered for shape type: ${shape.type}`);
   }
-  const local = sampler(shape, clamp01(ratio));
+  const local = sampler(shape, scalar.clamp01(ratio));
   return localToWorld(shape, local);
 };
 
@@ -57,11 +58,11 @@ export const findNearestOutlinePoint = (
   if (!sampler) return null;
   let bestRatio = 0;
   let bestPoint: Vec2 = localToWorld(shape, sampler(shape, 0));
-  let bestDistance = distance(worldPoint, bestPoint);
+  let bestDistance = vec2.distance(worldPoint, bestPoint);
   for (let i = 1; i < samples; i++) {
     const ratio = i / samples;
     const world = localToWorld(shape, sampler(shape, ratio));
-    const d = distance(worldPoint, world);
+    const d = vec2.distance(worldPoint, world);
     if (d < bestDistance) {
       bestDistance = d;
       bestRatio = ratio;
@@ -72,10 +73,6 @@ export const findNearestOutlinePoint = (
 };
 
 // --- helpers ---
-
-const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
-
-const distance = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 const localToWorld = (shape: ElementBase, local: Vec2): Vec2 => {
   const sx = local.x * shape.scale.x;
@@ -102,7 +99,7 @@ const samplePolyline = (points: readonly Vec2[], ratio: number): Vec2 => {
   for (let i = 0; i < points.length; i++) {
     const a = req(points[i]);
     const b = req(points[(i + 1) % points.length]);
-    const len = distance(a, b);
+    const len = vec2.distance(a, b);
     lengths.push(len);
     total += len;
   }

@@ -1,5 +1,5 @@
 import { req, type Bounds, type ElementId, type Vec2 } from "@oh-just-another/types";
-import { bezier, intersect } from "@oh-just-another/math";
+import { bezier, hitTest, intersect, vec2 } from "@oh-just-another/math";
 import { getAnchorOutwardNormal, getAnchorWorld } from "./anchors.js";
 import { SELF_LOOP_CURVE_ARM_FACTOR, SELF_LOOP_SIZE, SELF_LOOP_SPREAD } from "./constants.js";
 import {
@@ -357,26 +357,6 @@ const exitDirectionFor = (endpoint: Link["from"]): Vec2 | null => {
 };
 
 /**
- * Distance from a point to a finite line segment in world coordinates.
- * Used by `findLinkAt` for hit-testing.
- */
-const distanceToSegment = (point: Vec2, a: Vec2, b: Vec2): number => {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) {
-    const ex = point.x - a.x;
-    const ey = point.y - a.y;
-    return Math.hypot(ex, ey);
-  }
-  let t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  const cx = a.x + dx * t;
-  const cy = a.y + dy * t;
-  return Math.hypot(point.x - cx, point.y - cy);
-};
-
-/**
  * Unit direction a curved link should leave/enter an endpoint along: the
  * edge's outward normal for a named-side anchor, else a fallback along the
  * dominant axis toward `toward` (so a free point / corner / floating end
@@ -462,7 +442,7 @@ export const getLinkWaypointMidpoints = (scene: Scene, edge: Link): Vec2[] | nul
   for (let i = 0; i < path.length - 1; i++) {
     const a = req(path[i]);
     const b = req(path[i + 1]);
-    mids.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    mids.push(vec2.midpoint(a, b));
   }
   return mids;
 };
@@ -482,7 +462,7 @@ export const findLinkAt = (scene: Scene, worldPoint: Vec2, threshold = 5): Link 
     if (!path) continue;
     let minDistance = Infinity;
     for (let i = 1; i < path.length; i++) {
-      const d = distanceToSegment(worldPoint, req(path[i - 1]), req(path[i]));
+      const d = hitTest.distanceToSegment(worldPoint, req(path[i - 1]), req(path[i]));
       if (d < minDistance) minDistance = d;
     }
     if (minDistance > threshold) continue;

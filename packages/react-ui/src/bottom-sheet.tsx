@@ -6,6 +6,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { scalar } from "@oh-just-another/math";
 
 /**
  * Bottom-sheet container with swipe-to-collapse + snap points. Touch
@@ -67,7 +68,7 @@ export const BottomSheet = ({
     if (dragState.current?.pointerId !== ev.pointerId) return;
     const vh = window.innerHeight || 1;
     const deltaPct = ((dragState.current.startY - ev.clientY) / vh) * 100;
-    const next = clamp(dragState.current.startHeight + deltaPct, 0, 100);
+    const next = scalar.clamp(dragState.current.startHeight + deltaPct, 0, 100);
     setHeight(next);
   };
 
@@ -156,5 +157,3 @@ export const BottomSheet = ({
     </div>
   );
 };
-
-const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));

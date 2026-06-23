@@ -4,7 +4,7 @@ import {
   getWorldToScreen,
   type Scene,
 } from "@oh-just-another/scene";
-import { matrix } from "@oh-just-another/math";
+import { bounds, matrix } from "@oh-just-another/math";
 import type { Bounds } from "@oh-just-another/types";
 import type { RenderTarget } from "./render-target.js";
 import {
@@ -236,16 +236,7 @@ const computeViewportWorldRect = (scene: Scene, width: number, height: number): 
     matrix.applyToPoint(s2w, { x: width, y: height }),
     matrix.applyToPoint(s2w, { x: 0, y: height }),
   ];
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-  for (const p of corners) {
-    if (p.x < minX) minX = p.x;
-    if (p.x > maxX) maxX = p.x;
-    if (p.y < minY) minY = p.y;
-    if (p.y > maxY) maxY = p.y;
-  }
-  if (!Number.isFinite(minX)) return null;
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  const rect = bounds.fromPoints(corners);
+  if (!Number.isFinite(rect.x)) return null;
+  return rect;
 };
