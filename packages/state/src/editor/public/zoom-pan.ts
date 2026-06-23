@@ -10,7 +10,8 @@ import {
 import type { Bounds, Vec2 } from "@oh-just-another/types";
 import { MAX_ZOOM, MIN_ZOOM } from "../../constants.js";
 
-const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+/** Clamp a zoom factor to the editor's `[MIN_ZOOM, MAX_ZOOM]` range. */
+export const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 /**
  * Shift the camera by a screen-space delta. Returns the next scene, or

@@ -46,6 +46,7 @@
     "@oh-just-another/headless": "workspace:*",
     "@oh-just-another/exporter": "workspace:*",
     "@oh-just-another/importers": "workspace:*",
-    "@oh-just-another/serialization": "workspace:*"
+    "@oh-just-another/serialization": "workspace:*",
+    "@oh-just-another/types": "workspace:*"
   }
 }

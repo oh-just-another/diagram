@@ -11,7 +11,7 @@ import {
   updateAnnotation,
 } from "@oh-just-another/scene";
 import { boundsFromPoints, interpretPressEnd, DRAG_THRESHOLD } from "../machine.js";
-import { fromPointerEvent } from "../dom-events.js";
+import { fromPointerEvent, isEditableTarget } from "../dom-events.js";
 import * as Selection from "../selection.js";
 import * as LinkSelection from "../link-selection.js";
 import { getInteractiveHitTester } from "../interactive.js";
@@ -22,8 +22,6 @@ import {
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_START_ANCHOR_OUTSET,
   LONG_PRESS_MAX_MOVEMENT_PX,
-  MAX_ZOOM,
-  MIN_ZOOM,
   WHEEL_PAN_FACTOR,
   WHEEL_ZOOM_MAX_STEP,
   WHEEL_ZOOM_SPEED,
@@ -39,8 +37,7 @@ const range = (a: number, b: number): number[] => {
   return out;
 };
 
-const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
-
+import { clampZoom } from "./public/zoom-pan.js";
 import { req } from "../util.js";
 
 /**
@@ -1033,11 +1030,6 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
   // Window-level Space tracking so Space anywhere on the page
   // arms the next mouse drag as a pan. Skip when focus is in a
   // text input — Space should still type a space there.
-  const isEditableTarget = (target: EventTarget | null): boolean => {
-    if (!(target instanceof HTMLElement)) return false;
-    const tag = target.tagName;
-    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
-  };
   const onKeyDown = (ev: KeyboardEvent): void => {
     if (ev.code !== "Space" && ev.key !== " ") return;
     if (isEditableTarget(ev.target)) return;

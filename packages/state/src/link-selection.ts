@@ -1,4 +1,5 @@
 import type { LinkId } from "@oh-just-another/types";
+import { setsEqual } from "./util.js";
 
 /**
  * Set of currently selected link (connector) ids. A parallel set to the
@@ -34,12 +35,7 @@ export const remove = (sel: LinkSelection, id: LinkId): LinkSelection => {
 export const toggle = (sel: LinkSelection, id: LinkId): LinkSelection =>
   sel.has(id) ? remove(sel, id) : add(sel, id);
 
-export const equals = (a: LinkSelection, b: LinkSelection): boolean => {
-  if (a === b) return true;
-  if (a.size !== b.size) return false;
-  for (const id of a) if (!b.has(id)) return false;
-  return true;
-};
+export const equals = (a: LinkSelection, b: LinkSelection): boolean => setsEqual(a, b);
 
 /** The sole selected link, or null unless exactly one is selected. */
 export const sole = (sel: LinkSelection): LinkId | null => {

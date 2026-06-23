@@ -83,6 +83,9 @@ importers:
       '@oh-just-another/serialization':
         specifier: workspace:*
         version: link:../../packages/serialization
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../../packages/types
 
   apps/diagram:
     dependencies:

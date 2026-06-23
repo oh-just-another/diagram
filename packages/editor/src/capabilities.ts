@@ -1,6 +1,7 @@
 import {
   isWebGL2Available,
   isWebGPUAvailable,
+  supportsOffscreenCanvas,
   type RendererBackend,
 } from "@oh-just-another/renderer-canvas";
 
@@ -66,12 +67,6 @@ export interface CapabilityOverrides {
   readonly workers?: boolean | "auto";
   readonly tiles?: boolean | "auto";
 }
-
-const supportsOffscreenCanvas = (): boolean => {
-  if (typeof OffscreenCanvas === "undefined") return false;
-  if (typeof HTMLCanvasElement === "undefined") return false;
-  return typeof HTMLCanvasElement.prototype.transferControlToOffscreen === "function";
-};
 
 const supportsWorkers = (): boolean => typeof Worker !== "undefined";
 

@@ -172,7 +172,7 @@ export class WebGL2Target implements RenderTarget {
 
     // Initial viewport — must match the canvas drawing buffer size. The
     // WebGL spec defaults to the canvas's initial size, but if the
-    // canvas was resized via setupHiDpiNoContext after creation the
+    // canvas was resized via setupHiDpi (no-context) after creation the
     // viewport stays at the first size, so set it explicitly.
     this.gl.viewport(0, 0, canvas.width, canvas.height);
   }

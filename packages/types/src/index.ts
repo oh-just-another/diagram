@@ -5,6 +5,7 @@ export type { Color } from "./color.js";
 export type { ElementId, LinkId, LayerId, AnnotationId, CommentId, FileId } from "./ids.js";
 export { elementId, linkId, layerId, annotationId, commentId, fileId } from "./ids.js";
 export { req } from "./assert.js";
+export { stripUndefined } from "./object.js";
 export type {
   Modifiers,
   PointerKind,

@@ -30,7 +30,12 @@ export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./overlay.js";
 
 export { PEER_CURSOR_BROADCAST_INTERVAL_MS } from "./constants.js";
 
-export { fromPointerEvent, fromKeyboardEvent, fromWheelEvent } from "./dom-events.js";
+export {
+  fromPointerEvent,
+  fromKeyboardEvent,
+  fromWheelEvent,
+  isEditableTarget,
+} from "./dom-events.js";
 
 export type { InteractiveHitTester } from "./interactive.js";
 export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive.js";

@@ -1,4 +1,5 @@
 import type { Scene } from "@oh-just-another/scene";
+import { stripUndefined } from "@oh-just-another/types";
 import { renderToSvg } from "@oh-just-another/headless";
 import { resolveScene, sceneForFrame, sceneForRegion } from "./region.js";
 import type { ExportPdfOptions, PdfPageSize } from "./options.js";
@@ -166,10 +167,4 @@ const pageDimensions = (
       : [size.width, size.height];
   const [w, h] = base;
   return orientation === "landscape" ? [h, w] : [w, h];
-};
-
-const stripUndefined = <T extends Record<string, unknown>>(obj: T): T => {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) if (v !== undefined) out[k] = v;
-  return out as T;
 };
