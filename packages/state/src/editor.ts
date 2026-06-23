@@ -24,7 +24,6 @@ import {
   isText,
   isImage,
   getElementWorldBounds,
-  getElementRenderBounds,
   setTextMeasurer,
   getScreenToWorld,
   gridSnapper,
@@ -59,7 +58,6 @@ import {
 import { bounds as B, matrix, vec2, hitTest } from "@oh-just-another/math";
 import {
   caretGeometry,
-  computeLinkWorldBounds,
   layoutText,
   onAnimationContentReady,
   pointToCaretIndex,
@@ -134,6 +132,7 @@ import { CaretBlinkController } from "./editor/caret-blink.js";
 import { GestureController } from "./editor/gesture-tx.js";
 import { GifPlaybackController } from "./editor/gif-playback.js";
 import * as animScene from "./editor/animation-scene.js";
+import { computeSceneDirtyRect } from "./editor/dirty-rect.js";
 import { LongPressController } from "./editor/long-press.js";
 import { pickPressTarget } from "./editor/hit-test.js";
 import { PinchController } from "./editor/pinch.js";
@@ -3706,115 +3705,14 @@ export class Editor {
     // of shapes without touching the scene reference, so force a full
     // repaint when the entered-group identity changes between frames.
     if (this.lastRenderedEnteredGroup !== this._enteredGroup) return null;
-    // Scene ref unchanged → nothing changed on main canvas → skip the
-    // whole pass via an empty off-screen rect that the dirty filter
-    // culls every shape against.
-    if (prev === next) {
-      return { x: -1e9, y: -1e9, width: 0, height: 0 };
+    // Diff the two scenes for the dirty rect + tile-cache invalidation. The
+    // state-coupled guards above stay here; the pure scene diff lives in
+    // `computeSceneDirtyRect`.
+    const { world, tileDirty } = computeSceneDirtyRect(prev, next);
+    if (this.tileComposeFn !== null) {
+      for (const [id, entry] of tileDirty) this.tileDirtyElements.set(id, entry);
     }
-    let acc: Bounds | null = null;
-    const add = (b: Bounds): void => {
-      acc = acc ? B.union(acc, b) : b;
-    };
-    // Track shapes that changed (added / removed / mutated). Links
-    // attached to any of these have stale rendered paths even when
-    // the edge object itself is reference-equal — the path resolves
-    // through the shape's new position, but the old path stays on
-    // screen as a "ghost" trail unless we explicitly invalidate it.
-    const changedElementIds = new Set<ElementId>();
-    for (const [id, shape] of next.elements) {
-      const old = prev.elements.get(id);
-      if (old === shape) continue;
-      changedElementIds.add(id);
-      // Render bounds (not geometric) so overpaint — a frame's header
-      // strip, confetti particles — is cleared too, no ghost trail.
-      const afterBounds = getElementRenderBounds(shape);
-      const beforeBounds = old ? getElementRenderBounds(old) : null;
-      add(afterBounds);
-      if (beforeBounds) add(beforeBounds);
-      // Stash for the tile-cache path — covers add + move via
-      // before/after pair; pure mutation re-uses the single
-      // afterBounds rect.
-      if (this.tileComposeFn !== null) {
-        this.tileDirtyElements.set(id, { before: beforeBounds, after: afterBounds });
-      }
-    }
-    for (const [id, shape] of prev.elements) {
-      if (!next.elements.has(id)) {
-        changedElementIds.add(id);
-        // Render bounds so a removed frame/confetti clears its overpaint.
-        const beforeBounds = getElementRenderBounds(shape);
-        add(beforeBounds);
-        if (this.tileComposeFn !== null) {
-          this.tileDirtyElements.set(id, { before: beforeBounds, after: null });
-        }
-      }
-    }
-    const linkTouchesChangedElement = (edge: Link): boolean => {
-      for (const ep of [edge.from, edge.to]) {
-        if (ep.kind !== "point") {
-          if (changedElementIds.has(ep.elementId)) return true;
-        }
-      }
-      return false;
-    };
-    for (const [id, edge] of next.links) {
-      const old = prev.links.get(id);
-      // Refresh edge dirty-rect when: edge object changed, OR an
-      // endpoint references a shape that moved this frame (path is
-      // re-resolved every render but the old screen pixels persist).
-      if (old === edge && !linkTouchesChangedElement(edge)) continue;
-      const b = computeLinkWorldBounds(next, edge);
-      if (b) add(b);
-      const oldLink = old ?? edge; // prev scene resolves with prev shapes for ghost-clear
-      const ob = computeLinkWorldBounds(prev, oldLink);
-      if (ob) add(ob);
-    }
-    for (const [id, edge] of prev.links) {
-      if (!next.links.has(id)) {
-        const b = computeLinkWorldBounds(prev, edge);
-        if (b) add(b);
-      }
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `acc` is mutated via the `add` closure; TS flow analysis can't see it and narrows to null
-    if (acc === null) return { x: -1e9, y: -1e9, width: 0, height: 0 };
-    // Transitive expansion: any shape whose bounds intersect the
-    // current dirty rect must be repainted, AND its bounds added
-    // to the dirty rect so any shape ABOVE it that overlaps gets
-    // included too. Repeat until the set stabilises.
-    //
-    // Without this, dragging A through a B/C stack produces
-    // visual jitter: B intersects the dirty rect and gets
-    // repainted, but C — sitting above B and partially overlapping
-    // it — doesn't intersect the original dirty, so B re-emerges
-    // on top of where C should still be drawn. Z-order is correct
-    // in `getElementsInLayer`; the issue is missed shapes, not
-    // wrong order.
-    const visited = new Set<ElementId>();
-    let expanded: Bounds = acc;
-    let grew = true;
-    while (grew) {
-      grew = false;
-      for (const shape of next.elements.values()) {
-        if (visited.has(shape.id)) continue;
-        const bb = getElementWorldBounds(shape);
-        if (!B.intersects(bb, expanded)) continue;
-        visited.add(shape.id);
-        const merged = B.union(expanded, bb);
-        if (
-          merged.x !== expanded.x ||
-          merged.y !== expanded.y ||
-          merged.width !== expanded.width ||
-          merged.height !== expanded.height
-        ) {
-          expanded = merged;
-          grew = true;
-        }
-      }
-    }
-    // Inflate by a couple pixels to cover anti-aliased stroke fuzz
-    // around the geometry edges.
-    return B.expand(expanded, 4);
+    return world;
   }
 
   public combinedSelectionBounds(): Bounds | null {
