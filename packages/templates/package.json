@@ -51,7 +51,7 @@
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/renderer-core": "workspace:*",
     "@oh-just-another/tokens": "workspace:*",
-    "fractional-keys": "^0.1.1",
-    "zod": "^3.24.1"
+    "fractional-keys": "0.1.1",
+    "zod": "3.25.76"
   }
 }

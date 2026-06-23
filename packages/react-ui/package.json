@@ -62,20 +62,20 @@
     "@oh-just-another/tokens": "workspace:*",
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/versioning": "workspace:*",
-    "@floating-ui/dom": "^1.6.0",
-    "lucide-react": "^1.16.0"
+    "@floating-ui/dom": "1.7.6",
+    "lucide-react": "1.16.0"
   },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.1.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "axe-core": "^4.11.4",
-    "jsdom": "^25.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "@testing-library/react": "16.3.2",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "axe-core": "4.11.4",
+    "jsdom": "25.0.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   }
 }

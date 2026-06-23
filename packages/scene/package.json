@@ -49,6 +49,6 @@
   "dependencies": {
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/math": "workspace:*",
-    "fractional-keys": "^0.1.1"
+    "fractional-keys": "0.1.1"
   }
 }

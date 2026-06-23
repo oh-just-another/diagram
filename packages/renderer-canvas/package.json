@@ -59,9 +59,9 @@
     "@oh-just-another/renderer-workers": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/types": "workspace:*",
-    "earcut": "^3.0.2"
+    "earcut": "3.0.2"
   },
   "devDependencies": {
-    "@types/earcut": "^3.0.0"
+    "@types/earcut": "3.0.0"
   }
 }

@@ -52,32 +52,42 @@
     "prepare": "lefthook install"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.10",
-    "@eslint/js": "^9.17.0",
-    "@types/node": "^22.10.2",
-    "@typescript-eslint/eslint-plugin": "^8.18.1",
-    "@typescript-eslint/parser": "^8.18.1",
-    "@vitest/coverage-v8": "^2.1.8",
-    "concurrently": "^9.2.1",
-    "dependency-cruiser": "^17.4.3",
-    "eslint": "^9.17.0",
-    "eslint-config-prettier": "^9.1.0",
-    "globals": "^15.14.0",
-    "knip": "^6.16.1",
-    "lefthook": "^1.10.0",
-    "nx": "^20.3.0",
-    "prettier": "^3.4.2",
-    "typescript": "^5.7.2",
-    "typescript-eslint": "^8.18.1",
-    "vite": "^6.4.2",
-    "vite-node": "^2.1.9",
-    "vitest": "^2.1.8"
+    "@changesets/cli": "2.31.0",
+    "@eslint/js": "9.39.4",
+    "@types/node": "22.19.19",
+    "@typescript-eslint/eslint-plugin": "8.59.4",
+    "@typescript-eslint/parser": "8.59.4",
+    "@vitest/coverage-v8": "2.1.9",
+    "concurrently": "9.2.1",
+    "dependency-cruiser": "17.4.3",
+    "eslint": "9.39.4",
+    "eslint-config-prettier": "9.1.2",
+    "globals": "15.15.0",
+    "knip": "6.16.1",
+    "lefthook": "1.13.6",
+    "nx": "20.8.4",
+    "prettier": "3.8.3",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.59.4",
+    "vite": "6.4.3",
+    "vite-node": "2.1.9",
+    "vitest": "2.1.9"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
       "lefthook",
       "nx"
-    ]
+    ],
+    "overrides": {
+      "shell-quote": "1.8.4",
+      "minimatch@>=9.0.0 <9.0.7": "9.0.7",
+      "tmp": "0.2.7",
+      "form-data@>=4.0.0 <4.0.6": "4.0.6",
+      "postcss": "8.5.15",
+      "ws@>=8.0.0 <8.21.0": "8.21.0",
+      "vite": "6.4.3",
+      "esbuild": "0.25.12"
+    }
   }
 }

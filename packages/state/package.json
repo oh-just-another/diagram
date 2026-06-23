@@ -54,6 +54,6 @@
     "@oh-just-another/history": "workspace:*",
     "@oh-just-another/events": "workspace:*",
     "@oh-just-another/tokens": "workspace:*",
-    "xstate": "^5.20.0"
+    "xstate": "5.31.1"
   }
 }

@@ -69,10 +69,10 @@
     }
   },
   "devDependencies": {
-    "@resvg/resvg-js": "^2.6.0",
-    "pdfkit": "^0.15.0",
-    "svg-to-pdfkit": "^0.1.8",
-    "@types/pdfkit": "^0.13.0",
-    "@types/svg-to-pdfkit": "^0.1.4"
+    "@resvg/resvg-js": "2.6.2",
+    "pdfkit": "0.15.2",
+    "svg-to-pdfkit": "0.1.8",
+    "@types/pdfkit": "0.13.9",
+    "@types/svg-to-pdfkit": "0.1.4"
   }
 }

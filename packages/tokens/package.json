@@ -47,6 +47,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@radix-ui/colors": "^3.0.0"
+    "@radix-ui/colors": "3.0.0"
   }
 }

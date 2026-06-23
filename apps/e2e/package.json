@@ -21,7 +21,7 @@
     "lint": "eslint tests playwright.config.ts"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.10.1",
-    "@playwright/test": "^1.49.1"
+    "@axe-core/playwright": "4.11.3",
+    "@playwright/test": "1.60.0"
   }
 }
