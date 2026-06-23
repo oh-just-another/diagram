@@ -1,6 +1,8 @@
 import { req, type Vec2 } from "@oh-just-another/types";
 import { scalar, vec2 } from "@oh-just-another/math";
 import { getElementLocalBounds, type ElementBase, type PolygonElement } from "./shape.js";
+import { localToWorld } from "./shape-transform.js";
+import { ellipseOutlinePoint } from "./ellipse.js";
 
 /**
  * Built-in outline samplers — one per shape `type` that the kernel ships.
@@ -74,17 +76,6 @@ export const findNearestOutlinePoint = (
 
 // --- helpers ---
 
-const localToWorld = (shape: ElementBase, local: Vec2): Vec2 => {
-  const sx = local.x * shape.scale.x;
-  const sy = local.y * shape.scale.y;
-  const cos = Math.cos(shape.rotation);
-  const sin = Math.sin(shape.rotation);
-  return {
-    x: shape.position.x + (sx * cos - sy * sin),
-    y: shape.position.y + (sx * sin + sy * cos),
-  };
-};
-
 /**
  * Sample a closed polyline (sequence of points, implicit wrap-around) at
  * `ratio` along its total perimeter. Used by rectangle / polygon
@@ -140,8 +131,7 @@ registerOutlineSampler("ellipse", (shape, ratio) => {
   const cy = b.y + b.height / 2;
   const rx = b.width / 2;
   const ry = b.height / 2;
-  const angle = ratio * Math.PI * 2 - Math.PI / 2; // start at the top
-  return { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
+  return ellipseOutlinePoint(cx, cy, rx, ry, ratio);
 });
 
 registerOutlineSampler<PolygonElement>("polygon", (shape, ratio) => {

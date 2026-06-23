@@ -151,6 +151,9 @@ export {
 } from "./scene.js";
 export type { FractionalIndex } from "fractional-keys";
 
+// Z-order comparators.
+export { byOrderAsc, byOrderDesc } from "./order.js";
+
 // Scene defaults: hydration / dehydration + per-key persistence scope
 export { hydrateScene, dehydrateScene, VIEWPORT_SCOPE } from "./hydrate.js";
 export type { SettingScope, SceneSettings, HydrateInput } from "./hydrate.js";

@@ -1,5 +1,6 @@
 import {
   addLayer,
+  byOrderDesc,
   getElement,
   orderForTop,
   removeLink,
@@ -72,9 +73,7 @@ export const computeRemoveLayer = (
 
   let nextActive = currentActive;
   if (currentActive === id) {
-    const top = [...s.layers.values()].sort((a, b) =>
-      a.order > b.order ? -1 : a.order < b.order ? 1 : 0,
-    )[0];
+    const top = [...s.layers.values()].sort(byOrderDesc)[0];
     if (top) nextActive = top.id;
   }
   return { scene: s, patches, nextActiveLayerId: nextActive };

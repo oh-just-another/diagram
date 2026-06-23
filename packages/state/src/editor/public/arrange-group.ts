@@ -1,6 +1,7 @@
 import {
   addElement,
   apply,
+  byOrderAsc,
   getElement,
   getElementAccessibleName,
   gridLayout,
@@ -218,14 +219,12 @@ export const pickFocusCycle = (
   current: ElementId | undefined,
   direction: "next" | "prev",
 ): { readonly id: ElementId; readonly name: string } | null => {
-  const layers = [...scene.layers.values()]
-    .filter((l) => l.visible && !l.locked)
-    .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  const layers = [...scene.layers.values()].filter((l) => l.visible && !l.locked).sort(byOrderAsc);
   const ordered: ElementId[] = [];
   for (const layer of layers) {
     const inLayer = [...scene.elements.values()]
       .filter((s) => s.layerId === layer.id)
-      .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+      .sort(byOrderAsc);
     for (const s of inLayer) ordered.push(s.id);
   }
   if (ordered.length === 0) return null;
