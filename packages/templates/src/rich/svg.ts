@@ -11,12 +11,7 @@
  */
 
 import type { RenderTarget } from "@oh-just-another/renderer-core";
-
-/** Index-access helper: asserts a provably-valid index is present. */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/templates: index out of range");
-  return v;
-};
+import { req } from "@oh-just-another/types";
 
 interface Paint {
   fill: string | null;

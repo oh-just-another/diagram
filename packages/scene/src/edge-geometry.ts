@@ -1,4 +1,4 @@
-import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
+import { req, type Bounds, type ElementId, type Vec2 } from "@oh-just-another/types";
 import { bezier, intersect } from "@oh-just-another/math";
 import { getAnchorOutwardNormal, getAnchorWorld } from "./anchors.js";
 import { SELF_LOOP_CURVE_ARM_FACTOR, SELF_LOOP_SIZE, SELF_LOOP_SPREAD } from "./constants.js";
@@ -14,11 +14,6 @@ import { getOutlinePoint, getOutlineSampler } from "./outline.js";
 import { getElementWorldBounds, type ElementBase } from "./shape.js";
 import type { Scene } from "./scene.js";
 import { getElement } from "./queries.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/scene: index out of range");
-  return v;
-};
 
 /**
  * --- Self-loop geometry ---

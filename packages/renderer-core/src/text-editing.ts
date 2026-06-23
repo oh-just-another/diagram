@@ -1,9 +1,5 @@
 import type { TextAlign } from "./render-target.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/renderer-core: index out of range");
-  return v;
-};
+import { req } from "@oh-just-another/types";
 
 /**
  * Caret-aware text layout. Unlike {@link wrapText} (which collapses

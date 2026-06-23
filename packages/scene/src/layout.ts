@@ -1,4 +1,4 @@
-import type { ElementId, Vec2 } from "@oh-just-another/types";
+import { req, type ElementId, type Vec2 } from "@oh-just-another/types";
 import { getDropZoneWorld } from "./container.js";
 import type { Scene } from "./scene.js";
 import { getElementLocalBounds, type Element } from "./shape.js";
@@ -6,11 +6,6 @@ import { getElement, getElementsInLayer } from "./queries.js";
 import { updateElement, type OperationResult } from "./operations.js";
 import { batch, type Patch } from "./patch.js";
 import { getLayoutKind } from "./layout-registry.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/scene: index out of range");
-  return v;
-};
 
 /**
  * Visual width / height of a shape in its OWN frame (no `position`,

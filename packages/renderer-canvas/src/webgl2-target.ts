@@ -1,4 +1,4 @@
-import type { Bounds, Color, Transform, Vec2 } from "@oh-just-another/types";
+import { req, type Bounds, type Color, type Transform, type Vec2 } from "@oh-just-another/types";
 import type {
   FillRule,
   LineCap,
@@ -1555,9 +1555,3 @@ void main() {
   // premultipliedAlpha:true contract + blendFunc(ONE, 1-SRC_ALPHA).
   fragColor = vec4(uColor * uOpacity, uOpacity);
 }`;
-
-/** Asserts an array index is in range (loop bounds guarantee it). */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/renderer-canvas: index out of range");
-  return v;
-};

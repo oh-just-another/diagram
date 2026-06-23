@@ -26,11 +26,7 @@ import {
   TEXT_UNDERLINE_OFFSET,
   TEXT_STRIKETHROUGH_OFFSET,
 } from "./constants.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/renderer-core: index out of range");
-  return v;
-};
+import { req } from "@oh-just-another/types";
 
 /**
  * Applies common style fields to a target. Returns whether any fill or stroke

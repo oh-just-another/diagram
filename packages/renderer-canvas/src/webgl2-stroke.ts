@@ -1,5 +1,5 @@
 import type { LineCap, LineJoin } from "@oh-just-another/renderer-core";
-import type { Transform, Vec2 } from "@oh-just-another/types";
+import { req, type Transform, type Vec2 } from "@oh-just-another/types";
 
 /**
  * GPU-side stroke pipeline for the WebGL2 backend. Builds a single
@@ -33,12 +33,6 @@ const MITER_LIMIT = 10;
 /** Round-join / round-cap fan segments per pi radians. 12 keeps each
  *  segment ≈ 15°, smooth at any sensible zoom. */
 const ROUND_SEGMENTS_PER_PI = 12;
-
-/** Asserts a polyline index is in range (loop bounds guarantee it). */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/renderer-canvas: polyline index out of range");
-  return v;
-};
 
 /**
  * Module-level scratch buffers — reused across every

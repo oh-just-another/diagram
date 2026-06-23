@@ -1,4 +1,4 @@
-import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
+import { req, type Bounds, type ElementId, type Vec2 } from "@oh-just-another/types";
 import {
   ELBOW_AVOID_MAX_OBSTACLES,
   ELBOW_CROSS_SAMPLE_STEP,
@@ -24,11 +24,6 @@ import {
 import { getElement } from "./queries.js";
 import type { Scene } from "./scene.js";
 import { getElementWorldBounds } from "./shape.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/scene: index out of range");
-  return v;
-};
 
 /**
  * Compute the orthogonal (elbow) route for a link: the corner points

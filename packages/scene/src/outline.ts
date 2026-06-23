@@ -1,10 +1,5 @@
-import type { Vec2 } from "@oh-just-another/types";
+import { req, type Vec2 } from "@oh-just-another/types";
 import { getElementLocalBounds, type ElementBase, type PolygonElement } from "./shape.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/scene: index out of range");
-  return v;
-};
 
 /**
  * Built-in outline samplers — one per shape `type` that the kernel ships.

@@ -1,4 +1,4 @@
-import type { Bounds } from "@oh-just-another/types";
+import { req, type Bounds } from "@oh-just-another/types";
 import {
   isContainer,
   type ButtonNode,
@@ -16,12 +16,6 @@ import {
   type Length,
   type Position,
 } from "./style.js";
-
-/** Index-access helper: asserts a provably-valid index is present. */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/templates: index out of range");
-  return v;
-};
 
 /**
  * `MeasureText(text, fontFamily, fontSize)` returns the rendered width of the

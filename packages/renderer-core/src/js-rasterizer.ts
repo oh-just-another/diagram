@@ -1,11 +1,6 @@
-import type { Vec2 } from "@oh-just-another/types";
+import { req, type Vec2 } from "@oh-just-another/types";
 import { bezier } from "@oh-just-another/math";
 import type { Rasterizer } from "./rasterizer.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/renderer-core: index out of range");
-  return v;
-};
 
 /**
  * Reference JS implementation of the `Rasterizer` interface. Path

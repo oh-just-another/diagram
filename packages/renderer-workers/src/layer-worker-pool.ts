@@ -1,11 +1,5 @@
-import type { LayerId } from "@oh-just-another/types";
+import { req, type LayerId } from "@oh-just-another/types";
 import { WorkerPool } from "./worker-pool.js";
-
-/** Assert a known-valid indexed access is present (constructor guarantees ≥1 worker). */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/renderer-workers: index out of range");
-  return v;
-};
 
 /**
  * Per-layer worker assignment on top of `WorkerPool`.

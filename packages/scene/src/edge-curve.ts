@@ -1,4 +1,4 @@
-import type { Vec2 } from "@oh-just-another/types";
+import { req, type Vec2 } from "@oh-just-another/types";
 import { bezier } from "@oh-just-another/math";
 import {
   CURVE_CATMULL_TENSION,
@@ -6,11 +6,6 @@ import {
   CURVE_END_TANGENT_RATIO,
   CURVE_FLATTEN_SEGMENTS,
 } from "./constants.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/scene: index out of range");
-  return v;
-};
 
 /**
  * Curved (bezier) link geometry — the single source of truth for the curve

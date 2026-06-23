@@ -11,17 +11,12 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import { bounds as B } from "@oh-just-another/math";
-import type { Bounds, Vec2 } from "@oh-just-another/types";
+import { req, type Bounds, type Vec2 } from "@oh-just-another/types";
 import type { RenderTarget } from "./render-target.js";
 import { sharedLinkBoundsCache, type LinkBoundsCache } from "./edge-cache.js";
 import type { LinkBitmapCache } from "./edge-cache-bitmap.js";
 import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
 import { LINK_CORNER_RADIUS } from "./constants.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/renderer-core: index out of range");
-  return v;
-};
 
 export interface RenderLinksOptions {
   /**

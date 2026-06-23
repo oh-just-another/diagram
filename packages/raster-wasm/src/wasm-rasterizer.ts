@@ -1,12 +1,7 @@
-import type { Vec2 } from "@oh-just-another/types";
+import { req, type Vec2 } from "@oh-just-another/types";
 import type { PathCommand } from "@oh-just-another/scene";
 import { jsRasterizer, type Rasterizer } from "@oh-just-another/renderer-core";
 import { DEFAULT_FLATTEN_TOLERANCE } from "./constants.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/raster-wasm: index out of range");
-  return v;
-};
 
 /**
  * WASM-backed `Rasterizer`. Until `loadModule(...)` swaps in a real
