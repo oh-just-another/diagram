@@ -3,8 +3,7 @@ import type { ElementBase } from "./shape.js";
 
 /**
  * Apply a shape's local→world transform to a local-space point:
- * scale → rotate (about origin) → translate by `position`. Shared by the
- * outline sampler and the selection-contour builder.
+ * scale → rotate (about origin) → translate by `position`.
  */
 export const localToWorld = (shape: ElementBase, local: Vec2): Vec2 => {
   const sx = local.x * shape.scale.x;
