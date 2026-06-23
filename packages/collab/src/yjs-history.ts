@@ -9,14 +9,14 @@ import { diffMapInto } from "./diff-map.js";
  *
  * In a collaborative session, the linear `History` from
  * `@oh-just-another/history` undoes *any* recent change, including a
- * peer's. `YjsHistory` scopes undo to the local client by tagging
+ * peer's. `CollabHistory` scopes undo to the local client by tagging
  * every locally-pushed Yjs transaction with a shared origin and
  * tracking only that origin in the underlying `Y.UndoManager`.
  *
  * Wiring (the host's job):
  *
  *   const sceneDoc = new SceneDoc();
- *   const history = new YjsHistory(sceneDoc);
+ *   const history = new CollabHistory(sceneDoc);
  *   const editor = new Editor({ ..., history });
  *   bindEditor(editor, sceneDoc);
  *
@@ -29,7 +29,7 @@ import { diffMapInto } from "./diff-map.js";
  * undo step.
  */
 
-export interface YjsHistoryOptions {
+export interface CollabHistoryOptions {
   /**
    * Number of undo steps to keep on the stack. Mirrors the linear
    * `History.limit`. Default: governed by `Y.UndoManager` defaults.
@@ -44,7 +44,7 @@ export interface YjsHistoryOptions {
   readonly captureTimeout?: number;
 }
 
-export class YjsHistory implements HistoryProvider {
+export class CollabHistory implements HistoryProvider {
   private readonly doc: Y.Doc;
   private readonly origin: symbol;
   private readonly maps: readonly [Y.Map<unknown>, Y.Map<unknown>, Y.Map<unknown>, Y.Map<unknown>];
@@ -55,7 +55,7 @@ export class YjsHistory implements HistoryProvider {
   private readonly snapshot: () => Scene;
   private current: Scene;
 
-  constructor(sceneDoc: SceneDoc, options: YjsHistoryOptions = {}) {
+  constructor(sceneDoc: SceneDoc, options: CollabHistoryOptions = {}) {
     this.doc = sceneDoc.doc;
     this.origin = Symbol("yjs-history");
     this.maps = [

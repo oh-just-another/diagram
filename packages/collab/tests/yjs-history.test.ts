@@ -11,7 +11,7 @@ import {
   type Element,
 } from "@oh-just-another/scene";
 import { SceneDoc } from "../src/scene-doc";
-import { YjsHistory } from "../src/yjs-history";
+import { CollabHistory } from "../src/yjs-history";
 
 const rect = (id: string, x = 0): Element => ({
   id: elementId(id),
@@ -32,11 +32,11 @@ const seed = (): Scene => {
   return s;
 };
 
-describe("YjsHistory", () => {
+describe("CollabHistory", () => {
   it("canUndo/canRedo reflect Y.UndoManager state", () => {
     const sceneDoc = new SceneDoc();
     sceneDoc.replace(seed());
-    const h = new YjsHistory(sceneDoc);
+    const h = new CollabHistory(sceneDoc);
     expect(h.canUndo).toBe(false);
     expect(h.canRedo).toBe(false);
 
@@ -48,7 +48,7 @@ describe("YjsHistory", () => {
   it("undo returns a patch that reverses the last push", () => {
     const sceneDoc = new SceneDoc();
     sceneDoc.replace(seed());
-    const h = new YjsHistory(sceneDoc);
+    const h = new CollabHistory(sceneDoc);
 
     const addB: Patch = { kind: "element", id: elementId("b"), before: null, after: rect("b") };
     h.push(addB);
@@ -65,7 +65,7 @@ describe("YjsHistory", () => {
   it("redo replays the previously-undone change", () => {
     const sceneDoc = new SceneDoc();
     sceneDoc.replace(seed());
-    const h = new YjsHistory(sceneDoc);
+    const h = new CollabHistory(sceneDoc);
     h.push({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
     h.undo();
     expect(sceneDoc.elements.has("b")).toBe(false);
@@ -77,7 +77,7 @@ describe("YjsHistory", () => {
   it("clear empties the undo stack", () => {
     const sceneDoc = new SceneDoc();
     sceneDoc.replace(seed());
-    const h = new YjsHistory(sceneDoc);
+    const h = new CollabHistory(sceneDoc);
     h.push({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
     h.clear();
     expect(h.canUndo).toBe(false);
@@ -86,7 +86,7 @@ describe("YjsHistory", () => {
   it("transaction.commit coalesces pushes into one undo step", () => {
     const sceneDoc = new SceneDoc();
     sceneDoc.replace(seed());
-    const h = new YjsHistory(sceneDoc);
+    const h = new CollabHistory(sceneDoc);
 
     const tx = h.transaction();
     tx.add({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
@@ -103,7 +103,7 @@ describe("YjsHistory", () => {
   it("transaction.cancel discards buffered patches", () => {
     const sceneDoc = new SceneDoc();
     sceneDoc.replace(seed());
-    const h = new YjsHistory(sceneDoc);
+    const h = new CollabHistory(sceneDoc);
     const tx = h.transaction();
     tx.add({ kind: "element", id: elementId("b"), before: null, after: rect("b") });
     tx.cancel();

@@ -326,7 +326,7 @@ export interface EditorOptions {
   /**
    * Pre-existing history backend, or options for the default
    * `History` (linear stack). Any `HistoryProvider` implementation
-   * works — `@oh-just-another/collab` ships `YjsHistory` that wraps
+   * works — `@oh-just-another/collab` ships `CollabHistory` that wraps
    * `Y.UndoManager` for CRDT-aware undo in collaborative sessions.
    */
   readonly history?: HistoryProvider | HistoryOptions;
