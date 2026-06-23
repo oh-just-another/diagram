@@ -1,4 +1,4 @@
-import { bezier, vec2 } from "@oh-just-another/math";
+import { bezier } from "@oh-just-another/math";
 import { DEFAULT_CUBIC_SUBDIVISIONS } from "./constants.js";
 
 /** 2D point. */
@@ -71,7 +71,6 @@ export const subdivideCubic = (
 ): readonly [Point, Point, Point][] => {
   const segments: [Point, Point, Point][] = [];
   let prevPoint = p0;
-  let prevControl = vec2.midpoint(p1, p2);
   for (let i = 0; i < subdivisions; i++) {
     const t0 = i / subdivisions;
     const t1 = (i + 1) / subdivisions;
@@ -89,9 +88,7 @@ export const subdivideCubic = (
     };
     segments.push([prevPoint, control, endPoint]);
     prevPoint = endPoint;
-    prevControl = control;
   }
-  void prevControl;
   return segments;
 };
 

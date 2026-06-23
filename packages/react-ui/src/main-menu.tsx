@@ -282,7 +282,7 @@ const Group = ({ title, children }: { title: string; children: ReactNode }) => (
  * the accent colour. The menu stays open after a click so the user can
  * try several values without re-opening the dropdown.
  */
-export interface MainMenuToggleProps<T extends string> {
+interface MainMenuToggleProps<T extends string> {
   readonly value: T;
   readonly onChange: (next: T) => void;
   readonly options: readonly { value: T; label: string; icon?: ReactNode }[];

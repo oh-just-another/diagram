@@ -56,7 +56,7 @@ export const resolveSpacing = (
 export type FlexDirection = "row" | "column";
 export type JustifyContent = "start" | "center" | "end" | "space-between" | "space-around";
 export type AlignItems = "start" | "center" | "end" | "stretch" | "baseline";
-export type FlexWrap = "nowrap" | "wrap";
+type FlexWrap = "nowrap" | "wrap";
 export type Position = "relative" | "absolute" | "spot";
 
 /**

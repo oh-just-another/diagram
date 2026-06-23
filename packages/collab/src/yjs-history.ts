@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { apply, batch, invert, isNoop, type Patch, type Scene } from "@oh-just-another/scene";
+import { apply, batch, isNoop, type Patch, type Scene } from "@oh-just-another/scene";
 import type { HistoryProvider, TransactionHandle } from "@oh-just-another/history";
 import type { SceneDoc } from "./scene-doc.js";
 import { diffMapInto } from "./diff-map.js";
@@ -239,8 +239,3 @@ const diffAsPatch = (before: Scene, after: Scene): Patch | null => {
   if (ops.length === 1 && first !== undefined) return first;
   return batch(ops);
 };
-
-// `invert` and `Patch` come from `@oh-just-another/scene` — re-export
-// the inverse helper for hosts that want to derive their own
-// inverses externally (debugging tools, e2e harnesses).
-export { invert };
