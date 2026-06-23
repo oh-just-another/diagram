@@ -8,7 +8,6 @@ import {
   anchorSnapper,
   apply,
   buildSpatialIndex,
-  getBinaryFile,
   isElementHidden,
   isElementLocked,
   runAutoLayout,
@@ -112,7 +111,6 @@ import {
   DOUBLE_CLICK_MS,
   DOUBLE_CLICK_TOLERANCE_PX,
   WHEEL_ZOOM_STEP,
-  HEAVY_GIF_BYTES,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP } from "./handle.js";
 import { req } from "./util.js";
@@ -135,6 +133,7 @@ import { AnimationController } from "./editor/animation.js";
 import { CaretBlinkController } from "./editor/caret-blink.js";
 import { GestureController } from "./editor/gesture-tx.js";
 import { GifPlaybackController } from "./editor/gif-playback.js";
+import * as animScene from "./editor/animation-scene.js";
 import { LongPressController } from "./editor/long-press.js";
 import { pickPressTarget } from "./editor/hit-test.js";
 import { PinchController } from "./editor/pinch.js";
@@ -1154,7 +1153,7 @@ export class Editor {
     // Restore GIF/video bytes onto animated image shapes loaded from
     // an initial scene (e.g. localStorage), then arm the tick so the
     // animation plays from first paint.
-    this.rehydrateAnimatedImages();
+    animScene.rehydrateAnimatedImages(this);
     this.maybeAnimate();
     // An animated adapter (GIF) decodes asynchronously; when a decode
     // completes it nudges us here. Re-render so a PAUSED animated shape
@@ -1585,9 +1584,9 @@ export class Editor {
    * `dispose()` stops it.
    */
   private readonly animation = new AnimationController({
-    hasVisibleAnimatedElement: () => this.hasVisibleAnimatedElement(),
+    hasVisibleAnimatedElement: () => animScene.hasVisibleAnimatedElement(this),
     autoStopHeavyGifs: () => {
-      this.autoStopHeavyGifs();
+      animScene.autoStopHeavyGifs(this);
     },
     forceAnimationRepaint: () => {
       // The scene reference hasn't changed, but the adapter advanced the GIF
@@ -1599,24 +1598,6 @@ export class Editor {
 
   private hasAnimatedElement(): boolean {
     return hasAnimatedElement(this._scene);
-  }
-
-  /**
-   * True when at least one animated shape's world AABB intersects the
-   * current viewport. Drives viewport-culling of the animation tick —
-   * off-screen GIFs don't burn decode / render cost, and the wall-clock
-   * frame selection means they show the right frame the moment they
-   * scroll back in.
-   */
-  private hasVisibleAnimatedElement(): boolean {
-    if (!hasAnimatedElement(this._scene)) return false;
-    const viewport = this.computeViewportWorld();
-    if (!viewport) return true; // no viewport yet — don't suppress
-    for (const shape of this._scene.elements.values()) {
-      if (shape.metadata?.animated !== true) continue;
-      if (B.intersects(getElementWorldBounds(shape), viewport)) return true;
-    }
-    return false;
   }
 
   /**
@@ -1634,7 +1615,7 @@ export class Editor {
    * a controller; the Editor keeps the orchestration (scene iteration,
    * animation tick, render scheduling) and delegates state ops here.
    */
-  private readonly gifPlayback = new GifPlaybackController();
+  readonly gifPlayback = new GifPlaybackController();
 
   /**
    * Toggle GIF playback for a shape — wired to a click on an animated
@@ -1686,57 +1667,6 @@ export class Editor {
   get linkAttachTarget(): { elementId: ElementId; mode: "point" | "element" } | null {
     const t = this.hoveredLinkTarget;
     return t ? { elementId: t.elementId, mode: t.mode } : null;
-  }
-
-  /**
-   * Freeze heavy GIFs after `GIF_AUTOSTOP_MS` of continuous play.
-   * Light GIFs (small byte payload) loop forever. Called from the tick
-   * before each animation render.
-   */
-  private autoStopHeavyGifs(): void {
-    const heavyIds: ElementId[] = [];
-    for (const shape of this._scene.elements.values()) {
-      if (!isImage(shape)) continue;
-      const img = shape;
-      if (!img.animationKind) continue;
-      const heavy =
-        img.animationData instanceof ArrayBuffer && img.animationData.byteLength > HEAVY_GIF_BYTES;
-      if (heavy) heavyIds.push(img.id);
-    }
-    this.gifPlayback.autoStopHeavy(heavyIds);
-  }
-
-  /**
-   * Restore transient `animationData` for animated image shapes after
-   * a scene load. The raw GIF bytes don't survive serialisation
-   * (`serializeScene` strips the ArrayBuffer), but they're persisted
-   * in `Scene.files` via the shape's `fileId`. Here we copy the bytes
-   * back onto `shape.animationData` so the registered animation
-   * adapter (host-side, e.g. the gifuct decoder) can produce frames.
-   *
-   * Applied directly to `_scene` (no history entry — this is an
-   * internal rehydration, not a user edit). No-op for shapes that
-   * already carry live `animationData` or lack a resolvable file.
-   */
-  private rehydrateAnimatedImages(): void {
-    for (const shape of this._scene.elements.values()) {
-      if (!isImage(shape)) continue;
-      const img = shape;
-      if (!img.animationKind) continue;
-      // Seed playback for every animated shape loaded from the scene
-      // (reduced-motion is honoured at this point too).
-      this.gifPlayback.ensure(img.id);
-      if (!img.fileId) continue;
-      if (img.animationData instanceof ArrayBuffer) continue; // already live
-      const file = getBinaryFile(this._scene, img.fileId);
-      if (!file) continue;
-      this._scene = apply(this._scene, {
-        kind: "element",
-        id: img.id,
-        before: img,
-        after: { ...img, animationData: file.data },
-      });
-    }
   }
 
   /**
@@ -2976,7 +2906,7 @@ export class Editor {
     }
     // Restore transient animationData (GIF bytes) from Scene.files
     // before the tick so the animation adapter can decode frames.
-    this.rehydrateAnimatedImages();
+    animScene.rehydrateAnimatedImages(this);
     this.notify();
     // Loaded scene may carry animated shapes (e.g. GIF re-imported
     // from saved JSON). Re-arm the tick — `metadata.animated` survives
