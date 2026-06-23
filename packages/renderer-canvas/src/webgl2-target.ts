@@ -17,6 +17,7 @@ import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
 import { EllipsePipeline } from "./webgl2-ellipse.js";
 import { isDrawableImageSource, warnSkippedImage } from "./image-source.js";
+import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -133,9 +134,9 @@ export class WebGL2Target implements RenderTarget {
     this.gl = gl;
     this._size = { width, height };
 
-    const vert = compile(this.gl, this.gl.VERTEX_SHADER, VERTEX_SHADER);
-    const frag = compile(this.gl, this.gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-    this.program = link(this.gl, vert, frag);
+    const vert = compileShader(this.gl, this.gl.VERTEX_SHADER, VERTEX_SHADER, "WebGL2");
+    const frag = compileShader(this.gl, this.gl.FRAGMENT_SHADER, FRAGMENT_SHADER, "WebGL2");
+    this.program = linkProgram(this.gl, vert, frag, "WebGL2");
     this.gl.useProgram(this.program);
 
     // Single quad shared across every solid-fill rect — the vertex
@@ -1469,7 +1470,7 @@ interface ImageProgram {
 }
 
 const createImageProgram = (gl: WebGL2RenderingContext): ImageProgram => {
-  const vert = compile(
+  const vert = compileShader(
     gl,
     gl.VERTEX_SHADER,
     `#version 300 es
@@ -1482,8 +1483,9 @@ void main() {
   gl_Position = vec4(p.xy, 0.0, 1.0);
   vUV = aUV;
 }`,
+    "WebGL2",
   );
-  const frag = compile(
+  const frag = compileShader(
     gl,
     gl.FRAGMENT_SHADER,
     `#version 300 es
@@ -1500,8 +1502,9 @@ void main() {
   vec4 t = texture(uTex, vUV);
   fragColor = vec4(t.rgb * uOpacity, t.a * uOpacity);
 }`,
+    "WebGL2",
   );
-  const program = link(gl, vert, frag);
+  const program = linkProgram(gl, vert, frag, "WebGL2");
   return {
     program,
     aPos: gl.getAttribLocation(program, "aPos"),
@@ -1553,42 +1556,8 @@ void main() {
   fragColor = vec4(uColor * uOpacity, uOpacity);
 }`;
 
-/**
- * Asserts a WebGL resource handle is non-null. Creation APIs are typed
- * non-null but return `null` on context loss; surface that as a throw.
- */
-const glReq = <T>(v: T | null): T => {
-  if (v === null) throw new Error("packages/renderer-canvas: WebGL resource creation failed");
-  return v;
-};
-
 /** Asserts an array index is in range (loop bounds guarantee it). */
 const req = <T>(v: T | undefined): T => {
   if (v === undefined) throw new Error("packages/renderer-canvas: index out of range");
   return v;
-};
-
-const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {
-  const sh = glReq(gl.createShader(type));
-  gl.shaderSource(sh, src);
-  gl.compileShader(sh);
-  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-    const log = gl.getShaderInfoLog(sh);
-    gl.deleteShader(sh);
-    throw new Error(`Shader compile failed: ${log}`);
-  }
-  return sh;
-};
-
-const link = (gl: WebGL2RenderingContext, vert: WebGLShader, frag: WebGLShader): WebGLProgram => {
-  const program = gl.createProgram();
-  gl.attachShader(program, vert);
-  gl.attachShader(program, frag);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const log = gl.getProgramInfoLog(program);
-    gl.deleteProgram(program);
-    throw new Error(`Program link failed: ${log}`);
-  }
-  return program;
 };

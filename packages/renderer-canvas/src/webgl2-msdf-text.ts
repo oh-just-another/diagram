@@ -1,5 +1,6 @@
 import type { AtlasGlyph, GlyphAtlas } from "@oh-just-another/glyph-atlas";
 import type { Transform } from "@oh-just-another/types";
+import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
 
 /**
  * MSDF text-rendering glue for WebGL2Target. Owns the dedicated shader
@@ -34,9 +35,9 @@ export class MsdfTextPipeline {
   private readonly aUV: number;
 
   constructor(private readonly gl: WebGL2RenderingContext) {
-    const vert = compile(gl, gl.VERTEX_SHADER, VERTEX_SRC);
-    const frag = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT_SRC);
-    this.program = link(gl, vert, frag);
+    const vert = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SRC, "MSDF");
+    const frag = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SRC, "MSDF");
+    this.program = linkProgram(gl, vert, frag, "MSDF");
     this.vbo = glReq(gl.createBuffer());
     this.aPos = gl.getAttribLocation(this.program, "aPos");
     this.aUV = gl.getAttribLocation(this.program, "aUV");
@@ -354,37 +355,3 @@ void main() {
   float a = alpha * uOpacity;
   fragColor = vec4(uColor * a, a);
 }`;
-
-/**
- * Asserts a WebGL resource handle is non-null. Creation APIs are typed
- * non-null but return `null` on context loss; surface that as a throw.
- */
-const glReq = <T>(v: T | null): T => {
-  if (v === null) throw new Error("packages/renderer-canvas: WebGL resource creation failed");
-  return v;
-};
-
-const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {
-  const sh = glReq(gl.createShader(type));
-  gl.shaderSource(sh, src);
-  gl.compileShader(sh);
-  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-    const log = gl.getShaderInfoLog(sh);
-    gl.deleteShader(sh);
-    throw new Error(`MSDF shader compile failed: ${log}`);
-  }
-  return sh;
-};
-
-const link = (gl: WebGL2RenderingContext, vert: WebGLShader, frag: WebGLShader): WebGLProgram => {
-  const program = gl.createProgram();
-  gl.attachShader(program, vert);
-  gl.attachShader(program, frag);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const log = gl.getProgramInfoLog(program);
-    gl.deleteProgram(program);
-    throw new Error(`MSDF program link failed: ${log}`);
-  }
-  return program;
-};
