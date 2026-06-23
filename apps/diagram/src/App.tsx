@@ -17,6 +17,7 @@ import { DebugPanel } from "./debug-panel";
 import { SessionButton } from "./SessionButton";
 import { Peers } from "./Peers";
 import { ConnectionBadge } from "./ConnectionBadge";
+import { readUrlParam } from "./url-params";
 
 /**
  * Example app showing how to embed `<Diagram>` into a host
@@ -91,10 +92,7 @@ const readRoomFromHash = (): string | null => {
  * back to auto-detect.
  */
 const readCapabilityOverrides = (): CapabilityOverrides | undefined => {
-  if (typeof window === "undefined") return undefined;
-  const search = new URLSearchParams(window.location.search);
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const renderer = search.get("renderer") ?? hashParams.get("renderer");
+  const renderer = readUrlParam("renderer");
   if (renderer === "webgl2" || renderer === "canvas2d" || renderer === "offscreen") {
     return { renderer };
   }
@@ -111,10 +109,7 @@ const readCapabilityOverrides = (): CapabilityOverrides | undefined => {
  * Accepts `1` / `true` / `on` (case-insensitive); anything else = off.
  */
 const readDebugHitZones = (): boolean => {
-  if (typeof window === "undefined") return false;
-  const search = new URLSearchParams(window.location.search);
-  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const v = (search.get("hitzones") ?? hashParams.get("hitzones") ?? "").toLowerCase();
+  const v = (readUrlParam("hitzones") ?? "").toLowerCase();
   return v === "1" || v === "true" || v === "on";
 };
 

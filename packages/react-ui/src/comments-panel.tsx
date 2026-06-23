@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { useAnnotations, useDiagramOptional, useSelectedAnnotation } from "./hooks.js";
 import { COMMENTS_PANEL_WIDTH } from "./constants.js";
+import { formatTime } from "./format-time.js";
 import { Markdown } from "./markdown.js";
 
 /**
@@ -290,10 +291,4 @@ const popoverButtonStyle: CSSProperties = {
   borderRadius: 4,
   cursor: "pointer",
   fontSize: 11,
-};
-
-const formatTime = (iso: string): string => {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString();
 };

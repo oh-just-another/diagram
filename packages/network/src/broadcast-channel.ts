@@ -1,3 +1,5 @@
+import { createListeners } from "@oh-just-another/events";
+
 import type { Transport } from "./transport.js";
 
 /**
@@ -14,7 +16,7 @@ import type { Transport } from "./transport.js";
  */
 export class BroadcastChannelTransport implements Transport {
   private channel: BroadcastChannel | null;
-  private readonly handlers = new Set<(payload: Uint8Array) => void>();
+  private readonly listeners = createListeners<Uint8Array>();
 
   constructor(name: string) {
     this.channel = new BroadcastChannel(name);
@@ -29,8 +31,7 @@ export class BroadcastChannelTransport implements Transport {
   }
 
   onMessage(handler: (payload: Uint8Array) => void): () => void {
-    this.handlers.add(handler);
-    return () => this.handlers.delete(handler);
+    return this.listeners.add(handler);
   }
 
   close(): void {
@@ -38,7 +39,7 @@ export class BroadcastChannelTransport implements Transport {
     this.channel.removeEventListener("message", this.onNativeMessage);
     this.channel.close();
     this.channel = null;
-    this.handlers.clear();
+    this.listeners.clear();
   }
 
   // Bound so we can remove the listener cleanly.
@@ -52,7 +53,7 @@ export class BroadcastChannelTransport implements Transport {
       );
       return;
     }
-    for (const h of this.handlers) h(payload);
+    this.listeners.emit(payload);
   };
 }
 

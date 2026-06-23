@@ -8,6 +8,7 @@ import {
   type Element,
 } from "@oh-just-another/scene";
 import { annotationId, layerId, linkId, elementId } from "@oh-just-another/types";
+import { diffMapInto } from "./diff-map.js";
 
 /**
  * CRDT-backed mirror of a `Scene`. Wraps a `Y.Doc` whose top-level maps
@@ -95,26 +96,13 @@ export class SceneDoc {
    */
   applyDelta(prev: Scene, next: Scene, origin?: unknown): void {
     this.doc.transact(() => {
-      diffMap(prev.elements, next.elements, this.elements);
-      diffMap(prev.links, next.links, this.links);
-      diffMap(prev.layers, next.layers, this.layers);
-      diffMap(prev.annotations, next.annotations, this.annotations);
+      diffMapInto(prev.elements, next.elements, this.elements);
+      diffMapInto(prev.links, next.links, this.links);
+      diffMapInto(prev.layers, next.layers, this.layers);
+      diffMapInto(prev.annotations, next.annotations, this.annotations);
       if (prev.viewport !== next.viewport) {
         this.viewport.set("current", next.viewport);
       }
     }, origin);
   }
 }
-
-const diffMap = <K extends string, V>(
-  prev: ReadonlyMap<K, V>,
-  next: ReadonlyMap<K, V>,
-  target: Y.Map<V>,
-): void => {
-  for (const [id] of prev) {
-    if (!next.has(id)) target.delete(id);
-  }
-  for (const [id, value] of next) {
-    if (prev.get(id) !== value) target.set(id, value);
-  }
-};

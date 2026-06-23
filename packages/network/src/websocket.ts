@@ -1,3 +1,5 @@
+import { createListeners } from "@oh-just-another/events";
+
 import type { Transport } from "./transport.js";
 
 /**
@@ -35,7 +37,7 @@ export type WebSocketStatus = "connecting" | "open" | "reconnecting" | "closed";
 
 export class WebSocketTransport implements Transport {
   private readonly url: string;
-  private readonly handlers = new Set<(payload: Uint8Array) => void>();
+  private readonly listeners = createListeners<Uint8Array>();
   private readonly statusHandlers = new Set<(status: WebSocketStatus) => void>();
   private readonly buffer: Uint8Array[] = [];
   private readonly webSocketImpl: typeof globalThis.WebSocket;
@@ -71,8 +73,7 @@ export class WebSocketTransport implements Transport {
   }
 
   onMessage(handler: (payload: Uint8Array) => void): () => void {
-    this.handlers.add(handler);
-    return () => this.handlers.delete(handler);
+    return this.listeners.add(handler);
   }
 
   /** Current lifecycle state. Updates fire via `onStatusChange`. */
@@ -108,7 +109,7 @@ export class WebSocketTransport implements Transport {
       this.socket = null;
     }
     this.setStatus("closed");
-    this.handlers.clear();
+    this.listeners.clear();
     this.statusHandlers.clear();
     this.buffer.length = 0;
   }
@@ -135,7 +136,7 @@ export class WebSocketTransport implements Transport {
       if (data instanceof ArrayBuffer) payload = new Uint8Array(data);
       else if (data instanceof Uint8Array) payload = data;
       if (!payload) return;
-      for (const h of this.handlers) h(payload);
+      this.listeners.emit(payload);
     });
 
     const onTerminated = () => {

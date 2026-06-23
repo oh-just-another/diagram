@@ -18,6 +18,7 @@ import {
   type LayerId,
   type ElementId,
 } from "@oh-just-another/types";
+import { readUrlParam } from "./url-params";
 
 /** Renderer backend choices surfaced in the Display tab. */
 const RENDERERS = ["auto", "canvas2d", "webgl2", "offscreen"] as const;
@@ -25,10 +26,7 @@ type RendererChoice = (typeof RENDERERS)[number];
 
 /** Current renderer override from the URL (search or hash); "auto" when absent. */
 const readRendererParam = (): RendererChoice => {
-  if (typeof window === "undefined") return "auto";
-  const search = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const r = search.get("renderer") ?? hash.get("renderer");
+  const r = readUrlParam("renderer");
   return r === "canvas2d" || r === "webgl2" || r === "offscreen" ? r : "auto";
 };
 

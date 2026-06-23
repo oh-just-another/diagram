@@ -2,6 +2,7 @@ import * as Y from "yjs";
 import { apply, batch, invert, isNoop, type Patch, type Scene } from "@oh-just-another/scene";
 import type { HistoryProvider, TransactionHandle } from "@oh-just-another/history";
 import type { SceneDoc } from "./scene-doc.js";
+import { diffMapInto } from "./diff-map.js";
 
 /**
  * CRDT-aware history backend backed by `Y.UndoManager`.
@@ -168,10 +169,10 @@ export class YjsHistory implements HistoryProvider {
   private applyToCrdt(p: Patch): void {
     const before = this.current;
     const after = apply(before, p);
-    diffMapInto(before.elements, after.elements, this.maps[0]);
-    diffMapInto(before.links, after.links, this.maps[1]);
-    diffMapInto(before.layers, after.layers, this.maps[2]);
-    diffMapInto(before.annotations, after.annotations, this.maps[3]);
+    diffMapInto<unknown>(before.elements, after.elements, this.maps[0]);
+    diffMapInto<unknown>(before.links, after.links, this.maps[1]);
+    diffMapInto<unknown>(before.layers, after.layers, this.maps[2]);
+    diffMapInto<unknown>(before.annotations, after.annotations, this.maps[3]);
     if (before.viewport !== after.viewport) {
       this.viewportMap.set("current", after.viewport);
     }
@@ -237,20 +238,6 @@ const diffAsPatch = (before: Scene, after: Scene): Patch | null => {
   const first = ops[0];
   if (ops.length === 1 && first !== undefined) return first;
   return batch(ops);
-};
-
-const diffMapInto = <V>(
-  before: ReadonlyMap<string, V>,
-  after: ReadonlyMap<string, V>,
-  target: Y.Map<unknown>,
-): void => {
-  for (const [id] of before) {
-    if (!after.has(id)) target.delete(id);
-  }
-  for (const [id, value] of after) {
-    const prev = before.get(id);
-    if (prev !== value) target.set(id, value);
-  }
 };
 
 // `invert` and `Patch` come from `@oh-just-another/scene` — re-export

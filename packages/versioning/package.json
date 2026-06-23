@@ -47,6 +47,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@oh-just-another/events": "workspace:*",
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/serialization": "workspace:*"

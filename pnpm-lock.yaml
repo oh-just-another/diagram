@@ -423,7 +423,11 @@ importers:
         specifier: workspace:*
         version: link:../types
 
-  packages/network: {}
+  packages/network:
+    dependencies:
+      '@oh-just-another/events':
+        specifier: workspace:*
+        version: link:../events
 
   packages/raster-wasm:
     dependencies:
@@ -668,6 +672,9 @@ importers:
 
   packages/versioning:
     dependencies:
+      '@oh-just-another/events':
+        specifier: workspace:*
+        version: link:../events
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene

@@ -183,21 +183,37 @@ const buildNode = (
   throw new Error(`Unknown JSX element: ${String(type)}`);
 };
 
-const flattenChildren = (raw: readonly JsxChild[]): TemplateNode[] => {
-  const out: TemplateNode[] = [];
+/**
+ * Walk a JSX child list, skipping the empty children (`null` / `undefined` /
+ * `false`) and flattening nested arrays, invoking `visit` once per remaining
+ * leaf (a string, number, `TemplateNode`, or `Binding`). The per-leaf output
+ * is the caller's concern — `flattenChildren` builds nodes, `readText`
+ * concatenates text.
+ */
+const walkJsxChildren = (
+  raw: readonly JsxChild[],
+  visit: (leaf: Exclude<JsxChild, readonly JsxChild[] | null | undefined | false>) => void,
+): void => {
   const walk = (c: JsxChild): void => {
     if (c === null || c === undefined || c === false) return;
     if (Array.isArray(c)) {
       for (const inner of c as readonly JsxChild[]) walk(inner);
       return;
     }
+    visit(c as Exclude<JsxChild, readonly JsxChild[] | null | undefined | false>);
+  };
+  for (const c of raw) walk(c);
+};
+
+const flattenChildren = (raw: readonly JsxChild[]): TemplateNode[] => {
+  const out: TemplateNode[] = [];
+  walkJsxChildren(raw, (c) => {
     if (typeof c === "string" || typeof c === "number") {
       out.push({ type: "text", text: String(c) });
       return;
     }
     out.push(c as TemplateNode);
-  };
-  for (const c of raw) walk(c);
+  });
   return out;
 };
 
@@ -210,12 +226,7 @@ const readText = (
   // Concatenate string/number children; binding objects are taken whole.
   let asString = "";
   let asBinding: rich.Binding<string> | undefined;
-  const walk = (c: JsxChild): void => {
-    if (c === null || c === undefined || c === false) return;
-    if (Array.isArray(c)) {
-      for (const inner of c as readonly JsxChild[]) walk(inner);
-      return;
-    }
+  walkJsxChildren(rawChildren, (c) => {
     if (typeof c === "string" || typeof c === "number") {
       asString += String(c);
       return;
@@ -223,8 +234,7 @@ const readText = (
     if (typeof c === "object" && "bind" in c) {
       asBinding = c;
     }
-  };
-  for (const c of rawChildren) walk(c);
+  });
   if (asBinding) return asBinding;
   return asString === "" ? undefined : asString;
 };

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ExternalLink } from "lucide-react";
 import type { Bounds } from "@oh-just-another/types";
 import { useDiagramOptional } from "./hooks.js";
+import { useDismissTimer } from "./use-dismiss-timer.js";
 
 /**
  * Hover link popup. When the pointer is over an element that carries a
@@ -24,25 +25,14 @@ export const LinkHoverPopup = () => {
   const [hover, setHover] = useState<{ href: string; bounds: Bounds } | null>(null);
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const overPopup = useRef(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { schedule, cancel } = useDismissTimer(() => {
+    if (!overPopup.current) setHover(null);
+  });
 
   useEffect(() => {
     if (!editor) return undefined;
     const host = editor.hostElement as HTMLElement | null;
     if (!host) return undefined;
-
-    const clearClose = () => {
-      if (closeTimer.current !== null) {
-        clearTimeout(closeTimer.current);
-        closeTimer.current = null;
-      }
-    };
-    const scheduleClose = () => {
-      clearClose();
-      closeTimer.current = setTimeout(() => {
-        if (!overPopup.current) setHover(null);
-      }, CLOSE_GRACE_MS);
-    };
 
     const onMove = (ev: PointerEvent) => {
       if (editor.editingTextElement !== null) {
@@ -53,14 +43,14 @@ export const LinkHoverPopup = () => {
       const world = editor.screenToWorld({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });
       const link = editor.linkAt(world);
       if (link) {
-        clearClose();
+        cancel();
         setHover({ href: link.href, bounds: link.bounds });
       } else if (!overPopup.current) {
-        scheduleClose();
+        schedule(CLOSE_GRACE_MS);
       }
     };
     const onLeave = () => {
-      scheduleClose();
+      schedule(CLOSE_GRACE_MS);
     };
 
     host.addEventListener("pointermove", onMove);
@@ -73,9 +63,9 @@ export const LinkHoverPopup = () => {
       host.removeEventListener("pointermove", onMove);
       host.removeEventListener("pointerleave", onLeave);
       off();
-      clearClose();
+      cancel();
     };
-  }, [editor]);
+  }, [editor, schedule, cancel]);
 
   if (!editor || !hover) return null;
   const host = editor.hostElement as HTMLElement | null;
