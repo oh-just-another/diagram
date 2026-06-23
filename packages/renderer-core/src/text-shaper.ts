@@ -1,9 +1,8 @@
 /**
  * Text-shaping abstraction. Lets a host swap the default
- * `canvas.measureText`-based path for a richer engine (HarfBuzz /
- * ICU4X / harfbuzzjs / canvaskit) when consistent server-side ↔
- * browser layout matters or when batching many measurements is the
- * hot path.
+ * `canvas.measureText`-based path for a richer shaping engine when
+ * consistent server-side ↔ browser layout matters or when batching
+ * many measurements is the hot path.
  *
  * The default path delegates to `ctx.measureText`. Hosts that need
  * deterministic cross-environment layout implement this interface and

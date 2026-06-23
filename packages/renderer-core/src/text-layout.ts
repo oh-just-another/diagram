@@ -17,7 +17,7 @@ export interface WrapOptions {
    */
   readonly fontFamily?: string;
   /**
-   * Optional `TextShaper` (WASM / harfbuzz / canvaskit) that
+   * Optional `TextShaper` (e.g. a WASM shaping engine) that
    * replaces the default `target.measureText` path. When set,
    * the wrap algorithm queries `shaper.measure(line, font)` per
    * candidate line, so layouts stay deterministic across
