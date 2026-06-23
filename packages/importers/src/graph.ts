@@ -24,13 +24,13 @@ export interface GraphNode {
   readonly stroke?: string;
 }
 
-export type LinkDirection = "directed" | "undirected";
+export type EdgeDirection = "directed" | "undirected";
 
 export interface GraphEdge {
   readonly source: string;
   readonly target: string;
   readonly label?: string;
-  readonly direction?: LinkDirection;
+  readonly direction?: EdgeDirection;
 }
 
 export type GraphLayoutDirection = "TB" | "BT" | "LR" | "RL";
