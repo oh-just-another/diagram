@@ -1,6 +1,7 @@
 import type * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
 import type { Vec2 } from "@oh-just-another/types";
+import { createListeners } from "@oh-just-another/events";
 
 /**
  * Identity + presence payload broadcast to every peer in the room.
@@ -38,7 +39,7 @@ export interface PeerUser {
  */
 export class CollabAwareness {
   readonly awareness: Awareness;
-  private readonly listeners = new Set<(peers: readonly Peer[]) => void>();
+  private readonly listeners = createListeners<readonly Peer[]>();
 
   constructor(doc: Y.Doc) {
     this.awareness = new Awareness(doc);
@@ -89,8 +90,7 @@ export class CollabAwareness {
 
   /** Subscribe to peer-list changes. Returns an unsubscribe function. */
   onPeers(listener: (peers: readonly Peer[]) => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return this.listeners.add(listener);
   }
 
   /** Release resources. The underlying `Awareness` is destroyed. */
@@ -101,8 +101,7 @@ export class CollabAwareness {
   }
 
   private readonly onAwarenessChange = (): void => {
-    const peers = this.getPeers();
-    for (const l of this.listeners) l(peers);
+    this.listeners.emit(this.getPeers());
   };
 
   private toPeer(clientId: number, state: unknown): Peer | null {

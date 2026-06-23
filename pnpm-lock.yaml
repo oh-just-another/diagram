@@ -235,6 +235,9 @@ importers:
 
   packages/collab:
     dependencies:
+      '@oh-just-another/events':
+        specifier: workspace:*
+        version: link:../events
       '@oh-just-another/history':
         specifier: workspace:*
         version: link:../history
@@ -449,6 +452,9 @@ importers:
       '@floating-ui/dom':
         specifier: ^1.6.0
         version: 1.7.6
+      '@oh-just-another/events':
+        specifier: workspace:*
+        version: link:../events
       '@oh-just-another/history':
         specifier: workspace:*
         version: link:../history

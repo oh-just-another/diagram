@@ -10,6 +10,7 @@ import {
   type TemplateRegistry,
 } from "@oh-just-another/templates";
 import { walkDataTransfer } from "@oh-just-another/state";
+import { createListeners } from "@oh-just-another/events";
 import { useDiagramOptional } from "./hooks.js";
 import { PALETTE_ITEM_SIZE } from "./constants.js";
 
@@ -177,23 +178,18 @@ const CategorySection = ({
 // hides dataTransfer.getData() during dragover (security), so we use a
 // pub/sub for the active drag instead.
 let activeDrag: Template | null = null;
-const dragListeners = new Set<() => void>();
+const dragListeners = createListeners();
 const setActiveDrag = (tmpl: Template | null): void => {
   if (activeDrag === tmpl) return;
   activeDrag = tmpl;
-  for (const fn of dragListeners) fn();
+  dragListeners.emit();
 };
 
 /** Currently-dragged palette template, or `null` when nothing is in flight. */
 export const getActivePaletteDrag = (): Template | null => activeDrag;
 
 /** Subscribe to active-drag changes. Returns unsubscribe. */
-export const subscribePaletteDrag = (fn: () => void): (() => void) => {
-  dragListeners.add(fn);
-  return () => {
-    dragListeners.delete(fn);
-  };
-};
+export const subscribePaletteDrag = (fn: () => void): (() => void) => dragListeners.add(fn);
 
 /** Hook variant of `subscribePaletteDrag` — returns the current drag template. */
 export const usePaletteDrag = (): Template | null => {
