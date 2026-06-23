@@ -234,7 +234,6 @@ export {
   wrapLayout,
   measureWrap,
   treeLayout,
-  allElementsInLayer,
   getAutoLayoutSpec,
   runAutoLayout,
 } from "./layout.js";

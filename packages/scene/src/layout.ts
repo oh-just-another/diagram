@@ -2,7 +2,7 @@ import { req, type ElementId, type Vec2 } from "@oh-just-another/types";
 import { getDropZoneWorld } from "./container.js";
 import type { Scene } from "./scene.js";
 import { getElementLocalBounds, type Element } from "./shape.js";
-import { getElement, getElementsInLayer } from "./queries.js";
+import { getElement } from "./queries.js";
 import { updateElement, type OperationResult } from "./operations.js";
 import { batch, type Patch } from "./patch.js";
 import { getLayoutKind } from "./layout-registry.js";
@@ -259,15 +259,6 @@ export const measureWrap = (
   const m = packWrap(sizes, gap, innerWidth, { x: 0, y: 0 });
   return { widest: m.widest, contentWidth: m.contentWidth, contentHeight: m.contentHeight };
 };
-
-/**
- * Convenience: list all shape ids in a layer in z-order, suitable
- * as `LayoutSpec.shapeIds`.
- */
-export const allElementsInLayer = (
-  scene: Scene,
-  layerId: Scene["layers"] extends ReadonlyMap<infer K, unknown> ? K : never,
-): readonly ElementId[] => getElementsInLayer(scene, layerId).map((s) => s.id);
 
 // --- auto-layout container ---
 
