@@ -7,6 +7,7 @@ import {
 import type { Bounds } from "@oh-just-another/types";
 import { renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
 import { createOffscreenCanvas2DTarget } from "@oh-just-another/renderer-canvas";
+import { EXPORT_PADDING_WORLD } from "./constants.js";
 
 /**
  * Browser-side PNG export — renders the **full scene** (not just the
@@ -37,14 +38,6 @@ export interface PngExportOptions {
    */
   readonly backgroundColor: string;
 }
-
-/**
- * Padding around the scene bbox, in world units. Matches the
- * `zoomToFit` default so the exported framing feels like "what fit
- * on screen would look like". Hosts that want a tight bbox can crop
- * after the fact.
- */
-const EXPORT_PADDING_WORLD = 20;
 
 export const exportSceneToPng = async (
   scene: Scene,

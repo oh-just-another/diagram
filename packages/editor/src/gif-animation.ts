@@ -4,6 +4,7 @@ import {
   notifyAnimationContentReady,
   type AnimatedSourceAdapter,
 } from "@oh-just-another/renderer-core";
+import { DEFAULT_FRAME_DELAY_MS } from "./constants.js";
 
 /**
  * Built-in GIF animation adapter. The kernel ships only the
@@ -36,9 +37,6 @@ interface DecodedGif {
   readonly frames: readonly DecodedFrame[];
   readonly totalMs: number;
 }
-
-/** Default per-frame delay when a GIF frame reports 0 (some encoders do). */
-const DEFAULT_FRAME_DELAY_MS = 100;
 
 const decodeCache = new WeakMap<object, DecodedGif>();
 const decoding = new WeakSet();

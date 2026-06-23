@@ -2,6 +2,7 @@ import type { Scene } from "@oh-just-another/scene";
 import { stripUndefined } from "@oh-just-another/types";
 import { renderToSvg } from "@oh-just-another/headless";
 import { resolveScene, sceneForFrame, sceneForRegion } from "./region.js";
+import { DEFAULT_PDF_MARGIN_PT, PDF_PAGE_SIZES_PT } from "./constants.js";
 import type { ExportPdfOptions, PdfPageSize } from "./options.js";
 
 // Both deps are loaded lazily so the SVG / PNG paths don't pull pdfkit's
@@ -48,7 +49,7 @@ export const exportPdf = async (
   const svgHeight = options.height ?? cropped.viewport.size.height;
   const svg = renderToSvg(cropped, { width: svgWidth, height: svgHeight });
 
-  const margin = options.margin ?? 36;
+  const margin = options.margin ?? DEFAULT_PDF_MARGIN_PT;
   const pageSize = options.pageSize ?? "A4";
   const orientation = options.orientation ?? "portrait";
 
@@ -148,22 +149,13 @@ const loadPdfDeps = async (): Promise<PdfDeps> => {
   return pdfDepsPromise;
 };
 
-// PDFKit sizes in points (72 / inch).
-const STANDARD_SIZES: Record<string, [number, number]> = {
-  A4: [595.28, 841.89],
-  A5: [419.53, 595.28],
-  Letter: [612, 792],
-  Legal: [612, 1008],
-  Tabloid: [792, 1224],
-};
-
 const pageDimensions = (
   size: PdfPageSize,
   orientation: "portrait" | "landscape",
 ): [number, number] => {
   const base: [number, number] =
     typeof size === "string"
-      ? (STANDARD_SIZES[size] ?? STANDARD_SIZES.A4 ?? [595.28, 841.89])
+      ? (PDF_PAGE_SIZES_PT[size] ?? PDF_PAGE_SIZES_PT.A4 ?? [595.28, 841.89])
       : [size.width, size.height];
   const [w, h] = base;
   return orientation === "landscape" ? [h, w] : [w, h];
