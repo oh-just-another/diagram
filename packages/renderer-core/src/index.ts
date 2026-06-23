@@ -8,7 +8,7 @@ export type {
   FontStyleOptions,
   DrawPoint,
 } from "./render-target.js";
-export type { ElementRenderer } from "./shape-renderer.js";
+export type { ElementRenderer, ElementRenderContext } from "./shape-renderer.js";
 export type { LayerName } from "./layers.js";
 export type { RenderSceneOptions, LodOptions } from "./scene-renderer.js";
 export type { RenderLinksOptions } from "./edge-renderer.js";
