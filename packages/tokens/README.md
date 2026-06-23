@@ -1,6 +1,6 @@
 # @oh-just-another/tokens
 
-L0 colour tokens — single source of truth for every hex that ships in the editor. Built on top of [Radix Colors](https://www.radix-ui.com/colors). No project dependencies.
+L0 colour tokens — single source of truth for every hex that ships in the editor. No project dependencies.
 
 Consumers import named tokens (`UI_ACCENT.light.accent`, `HUE_TONES.dark.iris.solid`, `DEFAULT_ELEMENT_STYLES.rectangle`, `GRID_COLOR`) rather than raw hex. To re-skin the editor, edit `colors.ts` in one place and every package picks the change up.
 

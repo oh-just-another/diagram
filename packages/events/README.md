@@ -36,8 +36,11 @@ off(); // unsubscribe
 
 ## Exports
 
-| Name            | Kind     | Notes                                                                        |
-| --------------- | -------- | ---------------------------------------------------------------------------- |
-| `createEmitter` | function | `<E>() => Emitter<E>`. Creates a fresh typed emitter.                        |
-| `Emitter`       | type     | The pub/sub interface: `on` / `off` / `emit` / `clear` / `listenerCount`.    |
-| `EventMap`      | type     | Conventional event-map shape (`Record<string, listener>`). Not a constraint. |
+| Name              | Kind     | Notes                                                                                                        |
+| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------ |
+| `createEmitter`   | function | `<E>() => Emitter<E>`. Creates a fresh typed multi-event emitter.                                            |
+| `Emitter`         | type     | The pub/sub interface: `on` / `off` / `emit` / `clear` / `listenerCount`.                                    |
+| `EventMap`        | type     | Conventional event-map shape (`Record<string, listener>`). Not a constraint.                                 |
+| `AnyListener`     | type     | Marker supertype `(...args: never[]) => void` for any listener — for helper types around an `Emitter`.       |
+| `createListeners` | function | `<T>() => Listeners<T>`. A single-channel fan-out: `add` returns an unsubscribe, `emit(value)` notifies all. |
+| `Listeners`       | type     | The fan-out interface: `add` / `emit` / `clear` / `size`.                                                    |
