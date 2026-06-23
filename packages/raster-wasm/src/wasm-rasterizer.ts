@@ -1,6 +1,6 @@
 import { req, type Vec2 } from "@oh-just-another/types";
 import type { PathCommand } from "@oh-just-another/scene";
-import { jsRasterizer, type Rasterizer } from "@oh-just-another/renderer-core";
+import { fetchModuleBytes, jsRasterizer, type Rasterizer } from "@oh-just-another/renderer-core";
 import { DEFAULT_FLATTEN_TOLERANCE } from "./constants.js";
 
 /**
@@ -85,7 +85,7 @@ export class WasmRasterizer implements Rasterizer {
   }
 
   async loadModule(source: string | URL | ArrayBuffer | Uint8Array | Response): Promise<void> {
-    const bytes = await fetchModuleBytes(source);
+    const bytes = await fetchModuleBytes(source, "WasmRasterizer.loadModule");
     const { instance } = await WebAssembly.instantiate(bytes, {});
     this.wasm = instance.exports as unknown as WasmRasterizerExports;
   }
@@ -171,33 +171,6 @@ export class WasmRasterizer implements Rasterizer {
     }
   }
 }
-
-const fetchModuleBytes = async (
-  source: string | URL | ArrayBuffer | Uint8Array | Response,
-): Promise<ArrayBuffer> => {
-  if (source instanceof ArrayBuffer) return source;
-  if (source instanceof Uint8Array) {
-    return source.buffer.slice(
-      source.byteOffset,
-      source.byteOffset + source.byteLength,
-    ) as ArrayBuffer;
-  }
-  if (source instanceof Response) return source.arrayBuffer();
-  // file:// path goes through fs — Node's fetch doesn't accept it.
-  const urlStr = typeof source === "string" ? source : source.href;
-  if (urlStr.startsWith("file:")) {
-    const { readFile } = await import("node:fs/promises");
-    const { fileURLToPath } = await import("node:url");
-    const path = fileURLToPath(urlStr);
-    const buf = await readFile(path);
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-  }
-  const res = await fetch(source);
-  if (!res.ok) {
-    throw new Error(`WasmRasterizer.loadModule: fetch failed (${res.status})`);
-  }
-  return res.arrayBuffer();
-};
 
 const packCommands = (commands: readonly PathCommand[]): Float32Array => {
   // Variable-width pack — layout depends on command kind. Worst case is

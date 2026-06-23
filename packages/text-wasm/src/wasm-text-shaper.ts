@@ -1,4 +1,9 @@
-import type { ShapedGlyph, ShaperFont, TextShaper } from "@oh-just-another/renderer-core";
+import {
+  fetchModuleBytes,
+  type ShapedGlyph,
+  type ShaperFont,
+  type TextShaper,
+} from "@oh-just-another/renderer-core";
 import { FALLBACK_ADVANCE_FACTOR, MEASURE_CACHE_SIZE } from "./constants.js";
 
 /**
@@ -136,7 +141,7 @@ export class WasmTextShaper implements TextShaper {
    * layout pop on the next paint.
    */
   async loadModule(source: string | URL | ArrayBuffer | Uint8Array | Response): Promise<void> {
-    const bytes = await fetchModuleBytes(source);
+    const bytes = await fetchModuleBytes(source, "WasmTextShaper.loadModule");
     const { instance } = await WebAssembly.instantiate(bytes, {});
     this.wasm = instance.exports as unknown as WasmShaperExports;
     this.cache.clear();
@@ -338,32 +343,3 @@ export class WasmTextShaper implements TextShaper {
 
 const fontKey = (font: ShaperFont): string =>
   `${font.family}|${font.size}|${font.weight ?? "normal"}|${font.style ?? "normal"}`;
-
-const fetchModuleBytes = async (
-  source: string | URL | ArrayBuffer | Uint8Array | Response,
-): Promise<ArrayBuffer> => {
-  if (source instanceof ArrayBuffer) return source;
-  if (source instanceof Uint8Array) {
-    return source.buffer.slice(
-      source.byteOffset,
-      source.byteOffset + source.byteLength,
-    ) as ArrayBuffer;
-  }
-  if (source instanceof Response) return source.arrayBuffer();
-  // Node's WHATWG fetch refuses `file://` URLs (not implemented as
-  // of Node 22). Detect the protocol and read straight from disk
-  // so `loadBundled()` works in tests / SSR / CLI contexts.
-  const urlStr = typeof source === "string" ? source : source.href;
-  if (urlStr.startsWith("file:")) {
-    const { readFile } = await import("node:fs/promises");
-    const { fileURLToPath } = await import("node:url");
-    const path = fileURLToPath(urlStr);
-    const buf = await readFile(path);
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-  }
-  const res = await fetch(source);
-  if (!res.ok) {
-    throw new Error(`WasmTextShaper.loadModule: fetch failed (${res.status})`);
-  }
-  return res.arrayBuffer();
-};
