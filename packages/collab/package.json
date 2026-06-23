@@ -52,7 +52,6 @@
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/history": "workspace:*",
     "@oh-just-another/state": "workspace:*",
-    "@oh-just-another/serialization": "workspace:*",
     "@oh-just-another/network": "workspace:*",
     "yjs": "^13.6.20",
     "y-protocols": "^1.0.6"

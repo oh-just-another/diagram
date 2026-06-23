@@ -1429,19 +1429,6 @@ const ArrowheadGlyph = ({
 
 const Divider = () => <span className="du-sel-divider" aria-hidden />;
 
-export const Section = ({
-  label,
-  children,
-}: {
-  readonly label: string;
-  readonly children: ReactNode;
-}) => (
-  <section className="du-prop-section">
-    <h3 className="du-prop-section-label">{label}</h3>
-    {children}
-  </section>
-);
-
 // ---------------------------------------------------------------------------
 // Inline SVG glyphs
 // ---------------------------------------------------------------------------

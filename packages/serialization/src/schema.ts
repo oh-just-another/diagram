@@ -345,5 +345,3 @@ export type SerializedElement = z.infer<typeof ElementZ>;
 export type SerializedLink = z.infer<typeof LinkZ>;
 export type SerializedLayer = z.infer<typeof LayerZ>;
 export type SerializedViewport = z.infer<typeof ViewportZ>;
-export type SerializedAnnotation = z.infer<typeof AnnotationZ>;
-export type SerializedComment = z.infer<typeof CommentZ>;

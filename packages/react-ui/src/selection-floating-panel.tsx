@@ -7,7 +7,7 @@ import {
   type Placement,
   type VirtualElement,
 } from "@floating-ui/dom";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   getDescendantsOf,
@@ -335,4 +335,3 @@ const unionRect = (
 // ---------------------------------------------------------------------------
 
 export { computeSelectionWorldBbox as _computeSelectionWorldBboxForTesting };
-export type { ReactNode };

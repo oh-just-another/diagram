@@ -247,9 +247,6 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
-      '@oh-just-another/serialization':
-        specifier: workspace:*
-        version: link:../serialization
       '@oh-just-another/state':
         specifier: workspace:*
         version: link:../state
@@ -337,9 +334,6 @@ importers:
       '@oh-just-another/headless':
         specifier: workspace:*
         version: link:../headless
-      '@oh-just-another/renderer-svg':
-        specifier: workspace:*
-        version: link:../renderer-svg
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
@@ -370,9 +364,6 @@ importers:
 
   packages/headless:
     dependencies:
-      '@oh-just-another/renderer-core':
-        specifier: workspace:*
-        version: link:../renderer-core
       '@oh-just-another/renderer-svg':
         specifier: workspace:*
         version: link:../renderer-svg
@@ -434,9 +425,6 @@ importers:
 
   packages/raster-wasm:
     dependencies:
-      '@oh-just-another/math':
-        specifier: workspace:*
-        version: link:../math
       '@oh-just-another/renderer-core':
         specifier: workspace:*
         version: link:../renderer-core
@@ -455,9 +443,6 @@ importers:
       '@oh-just-another/events':
         specifier: workspace:*
         version: link:../events
-      '@oh-just-another/history':
-        specifier: workspace:*
-        version: link:../history
       '@oh-just-another/math':
         specifier: workspace:*
         version: link:../math

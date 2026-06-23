@@ -50,8 +50,7 @@
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/serialization": "workspace:*",
-    "@oh-just-another/headless": "workspace:*",
-    "@oh-just-another/renderer-svg": "workspace:*"
+    "@oh-just-another/headless": "workspace:*"
   },
   "peerDependencies": {
     "@resvg/resvg-js": "^2.6.0",

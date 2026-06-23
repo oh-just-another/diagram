@@ -1,5 +1,3 @@
-import type { TextAlign, TextBaseline } from "./render-target.js";
-
 /**
  * Text-shaping abstraction. Lets a host swap the default
  * `canvas.measureText`-based path for a richer engine (HarfBuzz /
@@ -43,9 +41,6 @@ export interface ShapedGlyph {
   /** Y offset from the line baseline. */
   readonly y: number;
 }
-
-// Re-export the RenderTarget alignment types under the shaper namespace.
-export type { TextAlign, TextBaseline };
 
 // Process-global active shaper. The built-in text renderer's signature is
 // `(shape, target)` with no extra arg, so rather than thread a shaper

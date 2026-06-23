@@ -1,6 +1,5 @@
 import type { ElementId } from "@oh-just-another/types";
 import {
-  apply,
   getAutoLayoutSpec,
   getDropZoneWorld,
   getElement,
@@ -115,6 +114,3 @@ export interface AutoLayoutSchedulerOptions {
    */
   readonly onMutated: () => void;
 }
-
-export type { Patch, Scene };
-export { apply };

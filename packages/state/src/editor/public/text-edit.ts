@@ -1,4 +1,4 @@
-import { getElement, isText, updateElement, type Scene, type Patch } from "@oh-just-another/scene";
+import { getElement, isText, type Scene } from "@oh-just-another/scene";
 import type { LayerId, ElementId } from "@oh-just-another/types";
 
 /**
@@ -14,21 +14,4 @@ export const canBeginTextEdit = (
   if (shape === undefined || !isText(shape)) return false;
   if (isLayerLocked(shape.layerId)) return false;
   return true;
-};
-
-/**
- * Compute the patch for replacing a text shape's body. Returns `null`
- * when the shape disappeared or the text didn't actually change (the
- * caller still clears `_editingTextElement` and notifies on null).
- */
-export const computeCommitTextEdit = (
-  scene: Scene,
-  id: ElementId,
-  next: string,
-): { readonly scene: Scene; readonly patch: Patch } | null => {
-  const shape = getElement(scene, id);
-  if (shape === undefined || !isText(shape)) return null;
-  if ((shape as { text?: string }).text === next) return null;
-  const r = updateElement(scene, id, (s) => ({ ...s, text: next }));
-  return { scene: r.scene, patch: r.patch };
 };

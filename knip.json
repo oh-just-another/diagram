@@ -1,10 +1,25 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreWorkspaces": ["apps/diagram", "apps/e2e"],
+  "ignoreDependencies": ["@typescript-eslint/eslint-plugin", "@typescript-eslint/parser"],
   "workspaces": {
     "packages/*": {
       "entry": ["src/index.ts!"],
       "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/templates-jsx": {
+      "entry": ["src/index.ts!", "src/jsx-runtime.ts!"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/exporter": {
+      "entry": ["src/index.ts!"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["pdfkit", "svg-to-pdfkit", "@types/pdfkit", "@types/svg-to-pdfkit"]
+    },
+    "packages/headless": {
+      "entry": ["src/index.ts!"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["@resvg/resvg-js", "tinybench"]
     },
     "apps/cli": {
       "entry": ["src/cli.ts", "src/index.ts"],

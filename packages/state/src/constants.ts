@@ -91,13 +91,6 @@ export const LINK_MIDPOINT_HANDLE_DRAW_RADIUS = 4;
 export const WAYPOINT_COLLAPSE_RADIUS = 12;
 
 /**
- * Upper bound on how many candidate obstacles the A*-based "route around
- * shapes" command will consider. Above this the command bails (returns the
- * link unchanged) rather than spending the A* cost. Range: 100–1000.
- */
-export const AUTO_ROUTE_MAX_OBSTACLES = 400;
-
-/**
  * Screen-pixel tolerance for edge hit-testing. Cursors within this
  * distance of an edge polyline segment register a hit. Should stay
  * larger than the typical stroke width but small enough that two
@@ -115,14 +108,6 @@ export const LINK_HIT_THRESHOLD = 9;
  * thickness. Range: 3–8.
  */
 export const SELECTION_HALO_PEEK_PX = 4;
-
-/**
- * Screen-pixel radius of the inactive port dot rendered on a hovered
- * shape in draw-edge mode. `PORT_DOT_ACTIVE_RADIUS` is used for the
- * snap target so the user sees which one will catch.
- */
-export const PORT_DOT_RADIUS = 3.5;
-export const PORT_DOT_ACTIVE_RADIUS = 5;
 
 /**
  * Connection anchors.
@@ -234,11 +219,7 @@ export const ANCHOR_CLICK_NEW_ELEMENT_GAP = 40;
  *
  * Shared opacities; per-category colours below so different hit-target kinds
  * are visually distinguishable (point vs edge vs body vs container vs frame).
- * Kept generic (`DEBUG_HIT_ZONE_FILL`/`STROKE`) as the alias for the
- * resize-handle category and any uncoloured fallback.
  */
-export const DEBUG_HIT_ZONE_FILL = "#e8118c";
-export const DEBUG_HIT_ZONE_STROKE = "#e8118c";
 export const DEBUG_HIT_ZONE_FILL_OPACITY = 0.16;
 export const DEBUG_HIT_ZONE_STROKE_OPACITY = 0.7;
 
@@ -546,14 +527,10 @@ export const GIF_AUTOSTOP_MS = 30_000;
  * - `TEXT_DEFAULT_FONT_SIZE` — initial font size in world units.
  * - `TEXT_DEFAULT_FONT_FAMILY` — initial font stack.
  * - `TEXT_DEFAULT_FILL` — initial text colour (near-black).
- * - `TEXT_FONT_SIZE_MIN` / `TEXT_FONT_SIZE_MAX` — clamp range for the
- *   font-size control in the contextual panel.
  */
 export const TEXT_DEFAULT_FONT_SIZE = 24;
 export const TEXT_DEFAULT_FONT_FAMILY = "system-ui, sans-serif";
 export const TEXT_DEFAULT_FILL = "#1a1a1a";
-export const TEXT_FONT_SIZE_MIN = 8;
-export const TEXT_FONT_SIZE_MAX = 256;
 
 /**
  * In-canvas text editing.

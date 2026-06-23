@@ -16,8 +16,6 @@ export const EMPTY: LinkSelection = Object.freeze(new Set<LinkId>());
 
 export const single = (id: LinkId): LinkSelection => new Set([id]);
 
-export const has = (sel: LinkSelection, id: LinkId): boolean => sel.has(id);
-
 export const add = (sel: LinkSelection, id: LinkId): LinkSelection => {
   if (sel.has(id)) return sel;
   const next = new Set(sel);
@@ -25,7 +23,7 @@ export const add = (sel: LinkSelection, id: LinkId): LinkSelection => {
   return next;
 };
 
-export const remove = (sel: LinkSelection, id: LinkId): LinkSelection => {
+const remove = (sel: LinkSelection, id: LinkId): LinkSelection => {
   if (!sel.has(id)) return sel;
   const next = new Set(sel);
   next.delete(id);

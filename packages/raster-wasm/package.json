@@ -49,7 +49,6 @@
   },
   "dependencies": {
     "@oh-just-another/types": "workspace:*",
-    "@oh-just-another/math": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/renderer-core": "workspace:*"
   }

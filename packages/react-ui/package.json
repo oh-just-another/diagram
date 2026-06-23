@@ -52,7 +52,6 @@
   },
   "dependencies": {
     "@oh-just-another/events": "workspace:*",
-    "@oh-just-another/history": "workspace:*",
     "@oh-just-another/math": "workspace:*",
     "@oh-just-another/renderer-canvas": "workspace:*",
     "@oh-just-another/renderer-core": "workspace:*",
