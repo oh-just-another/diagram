@@ -103,4 +103,57 @@ describe("offsetClosedPath", () => {
       new Set(["1,1", "1,9", "9,1", "9,9"]),
     );
   });
+
+  it("degenerate zero-length edge (duplicate vertex) does not throw or NaN", () => {
+    // Two coincident vertices produce a zero-length edge; `Math.hypot(...) || 1`
+    // guards the divide-by-zero so the normal stays finite.
+    const poly = [
+      { x: 0, y: 0 },
+      { x: 0, y: 0 }, // duplicate → zero-length edge
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    const out = offsetClosedPath(poly, 1);
+    expect(out).toHaveLength(5);
+    for (const p of out) {
+      expect(Number.isFinite(p.x)).toBe(true);
+      expect(Number.isFinite(p.y)).toBe(true);
+    }
+  });
+
+  it("180° spike vertex (bisector ill-defined) falls back to a normal", () => {
+    // A needle/spike: the path goes out to a far point and immediately back,
+    // so at that vertex the two adjacent edge normals are opposite and the
+    // bisector length ≈ 0 → the code uses one normal instead of NaN.
+    const spike = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0.0001 }, // out
+      { x: 0, y: 0.0002 }, // back almost on top of the first edge → 180° turn
+      { x: 0, y: 50 },
+    ];
+    const out = offsetClosedPath(spike, 1);
+    expect(out).toHaveLength(4);
+    for (const p of out) {
+      expect(Number.isFinite(p.x)).toBe(true);
+      expect(Number.isFinite(p.y)).toBe(true);
+    }
+  });
+
+  it("very sharp angle (cos ≤ 1e-6) clamps miter length to distance", () => {
+    // A thin sliver triangle: the apex angle is near 0° so the bisector is
+    // nearly perpendicular to the edge normal (cos ≈ 0) and the miter clamp
+    // (`cos > 1e-6 ? distance/cos : distance`) takes the else branch.
+    const sliver = [
+      { x: 0, y: 0 },
+      { x: 100, y: 1 },
+      { x: 100, y: -1 },
+    ];
+    const out = offsetClosedPath(sliver, 1);
+    expect(out).toHaveLength(3);
+    for (const p of out) {
+      expect(Number.isFinite(p.x)).toBe(true);
+      expect(Number.isFinite(p.y)).toBe(true);
+    }
+  });
 });

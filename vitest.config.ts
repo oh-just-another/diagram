@@ -24,7 +24,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["packages/*/src/**", "apps/cli/src/**"],
-      reporter: ["text", "html"],
+      reporter: ["text", "html", "json-summary"],
       ...(process.env.COV_GATE
         ? {
             thresholds: {
