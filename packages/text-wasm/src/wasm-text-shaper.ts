@@ -1,4 +1,5 @@
 import {
+  allocBytes,
   fetchModuleBytes,
   type ShapedGlyph,
   type ShaperFont,
@@ -217,10 +218,9 @@ export class WasmTextShaper implements TextShaper {
     const wasm = this.wasm;
     if (!wasm?.resolveFont) return 0;
     const bytes = this.textEncoder.encode(family);
-    const ptr = wasm.alloc(bytes.byteLength);
-    new Uint8Array(wasm.memory.buffer, ptr, bytes.byteLength).set(bytes);
-    const id = wasm.resolveFont(ptr, bytes.byteLength, bold ? 1 : 0, italic ? 1 : 0);
-    wasm.free(ptr, bytes.byteLength);
+    const { ptr, len, free } = allocBytes(wasm, bytes);
+    const id = wasm.resolveFont(ptr, len, bold ? 1 : 0, italic ? 1 : 0);
+    free();
     return id;
   }
 
@@ -319,24 +319,20 @@ export class WasmTextShaper implements TextShaper {
     const fkey = fontKey(font);
     if (fkey !== this.currentFontKey) {
       const familyBytes = this.textEncoder.encode(font.family);
-      const familyPtr = wasm.alloc(familyBytes.byteLength);
-      const familyView = new Uint8Array(wasm.memory.buffer, familyPtr, familyBytes.byteLength);
-      familyView.set(familyBytes);
+      const family = allocBytes(wasm, familyBytes);
       // The `measure()` path has no weight/style channel (ShaperFont is
       // family+size only) — measure the regular face. The bold/italic
       // glyph advances reach callers via the atlas path (`glyphMetrics`
       // with an explicit fontId), which is what the WebGL2 backend uses.
-      wasm.setFont(familyPtr, familyBytes.byteLength, font.size, 0, 0);
-      wasm.free(familyPtr, familyBytes.byteLength);
+      wasm.setFont(family.ptr, family.len, font.size, 0, 0);
+      family.free();
       this.currentFontKey = fkey;
     }
 
     const textBytes = this.textEncoder.encode(text);
-    const textPtr = wasm.alloc(textBytes.byteLength);
-    const textView = new Uint8Array(wasm.memory.buffer, textPtr, textBytes.byteLength);
-    textView.set(textBytes);
-    const width = wasm.measure(textPtr, textBytes.byteLength);
-    wasm.free(textPtr, textBytes.byteLength);
+    const { ptr, len, free } = allocBytes(wasm, textBytes);
+    const width = wasm.measure(ptr, len);
+    free();
     return { width };
   }
 }

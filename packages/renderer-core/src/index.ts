@@ -28,7 +28,9 @@ export { renderGrid, computeGridRungs } from "./grid-renderer.js";
 // `installBuiltinRenderers()` registers them via `registerElementRenderer` and
 // is safe to call multiple times.
 export { installBuiltinRenderers } from "./built-in-renderers.js";
-export { fetchModuleBytes } from "./wasm-bytes.js";
+export { fetchModuleBytes, allocBytes } from "./wasm-bytes.js";
+export type { WasmArena } from "./wasm-bytes.js";
+export { LruCache } from "./lru-cache.js";
 export type { WrapOptions, WrappedLine } from "./text-layout.js";
 export { wrapText } from "./text-layout.js";
 export type {

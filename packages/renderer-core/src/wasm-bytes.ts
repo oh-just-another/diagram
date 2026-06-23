@@ -36,3 +36,27 @@ export const fetchModuleBytes = async (
   }
   return res.arrayBuffer();
 };
+
+/** Minimal WASM bump-allocator surface used for FFI marshalling. */
+export interface WasmArena {
+  readonly alloc: (size: number) => number;
+  readonly free: (ptr: number, size: number) => void;
+  readonly memory: { readonly buffer: ArrayBufferLike };
+}
+
+/** Copy `bytes` into freshly-alloc'd WASM memory; returns the pointer + a `free` cleanup. */
+export const allocBytes = (
+  wasm: WasmArena,
+  bytes: Uint8Array,
+): { readonly ptr: number; readonly len: number; readonly free: () => void } => {
+  const len = bytes.byteLength;
+  const ptr = wasm.alloc(len);
+  new Uint8Array(wasm.memory.buffer, ptr, len).set(bytes);
+  return {
+    ptr,
+    len,
+    free: () => {
+      wasm.free(ptr, len);
+    },
+  };
+};

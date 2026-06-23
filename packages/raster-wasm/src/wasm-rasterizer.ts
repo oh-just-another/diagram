@@ -1,6 +1,11 @@
 import { req, type Vec2 } from "@oh-just-another/types";
 import type { PathCommand } from "@oh-just-another/scene";
-import { fetchModuleBytes, jsRasterizer, type Rasterizer } from "@oh-just-another/renderer-core";
+import {
+  allocBytes,
+  fetchModuleBytes,
+  jsRasterizer,
+  type Rasterizer,
+} from "@oh-just-another/renderer-core";
 import { DEFAULT_FLATTEN_TOLERANCE } from "./constants.js";
 
 /**
@@ -124,19 +129,19 @@ export class WasmRasterizer implements Rasterizer {
     wasm: WasmRasterizerExports,
   ): readonly Vec2[] {
     const packed = packCommands(commands);
-    const inPtr = wasm.alloc(packed.byteLength);
-    new Uint8Array(wasm.memory.buffer, inPtr, packed.byteLength).set(
+    const input = allocBytes(
+      wasm,
       new Uint8Array(packed.buffer, packed.byteOffset, packed.byteLength),
     );
     const outPtrOut = wasm.alloc(4);
     const outCountOut = wasm.alloc(4);
     try {
-      wasm.flattenF32(inPtr, packed.length, tolerance, outPtrOut, outCountOut);
+      wasm.flattenF32(input.ptr, packed.length, tolerance, outPtrOut, outCountOut);
       const outPtr = readU32(wasm.memory, outPtrOut);
       const outCount = readU32(wasm.memory, outCountOut);
       return readVec2Array(wasm.memory, outPtr, outCount);
     } finally {
-      wasm.free(inPtr, packed.byteLength);
+      input.free();
       wasm.free(outPtrOut, 4);
       wasm.free(outCountOut, 4);
     }
@@ -151,8 +156,8 @@ export class WasmRasterizer implements Rasterizer {
     wasm: WasmRasterizerExports,
   ): readonly Vec2[] {
     const packed = packVec2Array(polyline);
-    const inPtr = wasm.alloc(packed.byteLength);
-    new Uint8Array(wasm.memory.buffer, inPtr, packed.byteLength).set(
+    const input = allocBytes(
+      wasm,
       new Uint8Array(packed.buffer, packed.byteOffset, packed.byteLength),
     );
     const outPtrOut = wasm.alloc(4);
@@ -160,12 +165,12 @@ export class WasmRasterizer implements Rasterizer {
     try {
       const cap = CAP_TO_ENUM[options?.cap ?? "butt"];
       const join = JOIN_TO_ENUM[options?.join ?? "miter"];
-      wasm.strokeToFillF32(inPtr, polyline.length, width, cap, join, outPtrOut, outCountOut);
+      wasm.strokeToFillF32(input.ptr, polyline.length, width, cap, join, outPtrOut, outCountOut);
       const outPtr = readU32(wasm.memory, outPtrOut);
       const outCount = readU32(wasm.memory, outCountOut);
       return readVec2Array(wasm.memory, outPtr, outCount);
     } finally {
-      wasm.free(inPtr, packed.byteLength);
+      input.free();
       wasm.free(outPtrOut, 4);
       wasm.free(outCountOut, 4);
     }

@@ -1,4 +1,5 @@
 import type { ElementBase } from "@oh-just-another/scene";
+import { LruCache } from "./lru-cache.js";
 
 /**
  * Per-shape rasterised cache. Keyed by the shape's identity reference —
@@ -34,11 +35,10 @@ interface Entry<V> {
  * mechanism — no version field needed.
  */
 export class InMemoryElementBitmapCache<V> implements ElementBitmapCache<V> {
-  private readonly entries = new Map<string, Entry<V>>();
-  private readonly cap: number;
+  private readonly entries: LruCache<string, Entry<V>>;
 
   constructor(cap = 512) {
-    this.cap = cap;
+    this.entries = new LruCache(cap);
   }
 
   get size(): number {
@@ -54,21 +54,11 @@ export class InMemoryElementBitmapCache<V> implements ElementBitmapCache<V> {
       this.entries.delete(key);
       return undefined;
     }
-    // Re-insert to mark as recently-used (Map preserves insert order).
-    this.entries.delete(key);
-    this.entries.set(key, e);
     return e.value;
   }
 
   set(shape: ElementBase, zoomBucket: number, value: V): void {
-    const key = keyFor(shape, zoomBucket);
-    if (this.entries.has(key)) this.entries.delete(key);
-    this.entries.set(key, { shapeRef: shape, value });
-    if (this.entries.size > this.cap) {
-      // Evict the oldest entry (first key in insertion order).
-      const oldest = this.entries.keys().next().value;
-      if (oldest !== undefined) this.entries.delete(oldest);
-    }
+    this.entries.set(keyFor(shape, zoomBucket), { shapeRef: shape, value });
   }
 
   delete(shape: ElementBase, zoomBucket: number): void {

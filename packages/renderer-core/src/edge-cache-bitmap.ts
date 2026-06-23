@@ -1,4 +1,5 @@
 import type { Link } from "@oh-just-another/scene";
+import { LruCache } from "./lru-cache.js";
 
 /**
  * Per-edge rasterised bitmap cache, keyed on `Link` identity. Long-path
@@ -32,11 +33,10 @@ interface Entry<V> {
 const keyFor = (edge: Link, zoomBucket: number): string => `${edge.id}@${zoomBucket}`;
 
 export class InMemoryLinkBitmapCache<V> implements LinkBitmapCache<V> {
-  private readonly entries = new Map<string, Entry<V>>();
-  private readonly cap: number;
+  private readonly entries: LruCache<string, Entry<V>>;
 
   constructor(cap = 256) {
-    this.cap = cap;
+    this.entries = new LruCache(cap);
   }
 
   get size(): number {
@@ -51,19 +51,11 @@ export class InMemoryLinkBitmapCache<V> implements LinkBitmapCache<V> {
       this.entries.delete(key);
       return undefined;
     }
-    this.entries.delete(key);
-    this.entries.set(key, e);
     return e.value;
   }
 
   set(edge: Link, zoomBucket: number, value: V): void {
-    const key = keyFor(edge, zoomBucket);
-    if (this.entries.has(key)) this.entries.delete(key);
-    this.entries.set(key, { edgeRef: edge, value });
-    if (this.entries.size > this.cap) {
-      const oldest = this.entries.keys().next().value;
-      if (oldest !== undefined) this.entries.delete(oldest);
-    }
+    this.entries.set(keyFor(edge, zoomBucket), { edgeRef: edge, value });
   }
 
   delete(edge: Link, zoomBucket: number): void {
