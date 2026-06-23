@@ -1,6 +1,11 @@
 import { createListeners } from "@oh-just-another/events";
 
 import type { Transport } from "./transport.js";
+import {
+  DEFAULT_INITIAL_RECONNECT_DELAY_MS,
+  DEFAULT_MAX_RECONNECT_DELAY_MS,
+  RECONNECT_BACKOFF_FACTOR,
+} from "./constants.js";
 
 /**
  * `Transport` backed by a single `WebSocket` connection. Suitable for
@@ -53,8 +58,8 @@ export class WebSocketTransport implements Transport {
   constructor(url: string, options: WebSocketTransportOptions = {}) {
     this.url = url;
     this.webSocketImpl = options.webSocketImpl ?? globalThis.WebSocket;
-    this.initialDelay = options.initialReconnectDelay ?? 500;
-    this.maxDelay = options.maxReconnectDelay ?? 30_000;
+    this.initialDelay = options.initialReconnectDelay ?? DEFAULT_INITIAL_RECONNECT_DELAY_MS;
+    this.maxDelay = options.maxReconnectDelay ?? DEFAULT_MAX_RECONNECT_DELAY_MS;
     this.reconnectDelay = this.initialDelay;
     if (typeof this.webSocketImpl !== "function") {
       throw new Error(
@@ -153,7 +158,7 @@ export class WebSocketTransport implements Transport {
 
   private scheduleReconnect(): void {
     const delay = this.reconnectDelay;
-    this.reconnectDelay = Math.min(this.maxDelay, this.reconnectDelay * 2);
+    this.reconnectDelay = Math.min(this.maxDelay, this.reconnectDelay * RECONNECT_BACKOFF_FACTOR);
     this.setStatus("reconnecting");
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
