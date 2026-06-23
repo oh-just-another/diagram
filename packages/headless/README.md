@@ -34,7 +34,7 @@ Both functions accept either an in-memory `Scene` (e.g. produced by `@scene` ope
 | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `renderToSvg(scene, options?)`          | Scene → SVG string. Sync. ~0.2 ms / 100 shapes.                                                  |
 | `renderToPng(scene, options?)`          | Scene → PNG `Uint8Array`. Async. Throws if `@resvg/resvg-js` is missing.                         |
-| `RenderSceneToSvgOptions`               | `width`, `height`, `measureText`, `skipInstall`, standard `RenderSceneOptions` (`skipClear`, …). |
+| `RenderToSvgOptions`                    | `width`, `height`, `measureText`, `skipInstall`, standard `RenderSceneOptions` (`skipClear`, …). |
 | `RenderToPngOptions` (extends SVG opts) | `scale`, `background`, `fitToWidth`, `fitToHeight`.                                              |
 
 ## Benchmarks
