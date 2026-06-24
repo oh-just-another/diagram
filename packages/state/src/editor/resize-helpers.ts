@@ -52,6 +52,27 @@ export const resizeFromHandle = (b: Bounds, handle: HandleId, delta: Vec2): Boun
   return { x, y, width, height };
 };
 
+/**
+ * Adjust a freshly-resized AABB so it keeps the original's aspect ratio: the
+ * axis with the larger relative change drives a uniform scale, the other
+ * follows. Position is left untouched — the caller's anchor pass re-pins the
+ * edge opposite the dragged handle. Signs are preserved so a drag past the
+ * anchor still mirrors uniformly. A degenerate original (zero side) is
+ * returned unchanged.
+ */
+export const lockAspectRatio = (original: Bounds, raw: Bounds): Bounds => {
+  if (original.width === 0 || original.height === 0) return raw;
+  const sx = raw.width / original.width;
+  const sy = raw.height / original.height;
+  const factor = Math.abs(sx - 1) >= Math.abs(sy - 1) ? sx : sy;
+  return {
+    x: raw.x,
+    y: raw.y,
+    width: original.width * factor,
+    height: original.height * factor,
+  };
+};
+
 export interface ResizeConstraints {
   readonly minWidth?: number;
   readonly minHeight?: number;

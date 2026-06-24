@@ -11,7 +11,7 @@ import {
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "../../handle.js";
-import { applyResizeConstraints, resizeFromHandle } from "../resize-helpers.js";
+import { applyResizeConstraints, lockAspectRatio, resizeFromHandle } from "../resize-helpers.js";
 import { hasWidthHeight } from "../shape-traits.js";
 import { scaleLinkAround } from "./link-move.js";
 import { TEXT_RESIZE_MIN_FONT_SIZE } from "../../constants.js";
@@ -35,12 +35,14 @@ export const computeElementResize = (
   delta: Vec2,
   originalBounds: Bounds,
   clampContainer: (shape: Element, raw: Bounds, handle: HandleId) => Bounds,
+  lockAspect = false,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const shape = getElement(scene, id);
   if (!shape) return null;
   if (!hasWidthHeight(shape)) return null;
 
-  const raw = resizeFromHandle(originalBounds, handle, delta);
+  const free = resizeFromHandle(originalBounds, handle, delta);
+  const raw = lockAspect ? lockAspectRatio(originalBounds, free) : free;
   // An auto-layout container (a box holding laid-out children) must NEVER
   // mirror through its own body: dragging an edge inward past the opposite
   // edge would otherwise hand control to that opposite edge ("flip through
