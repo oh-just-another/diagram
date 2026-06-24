@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { LruCache } from "@oh-just-another/renderer-core";
 import { RecordingTarget, replayCommands } from "../src/recording-target";
 
 describe("RecordingTarget", () => {
@@ -36,7 +37,7 @@ describe("RecordingTarget", () => {
     expect(t.flush()).toEqual([]);
   });
 
-  it("records an ImageBitmap drawImage as a structured-clone-safe command", () => {
+  it("interns an ImageBitmap: defineImage once, then drawImage by id", () => {
     class FakeImageBitmap {
       readonly _brand = "bitmap";
     }
@@ -44,9 +45,44 @@ describe("RecordingTarget", () => {
     try {
       const t = new RecordingTarget(10, 10);
       const bmp = new FakeImageBitmap();
+      // First draw: ships the pixels under id 0.
       t.drawImage(bmp as unknown, 1, 2, 3, 4);
+      // Second draw of the SAME bitmap (even across a flush): id reference only.
+      t.drawImage(bmp as unknown, 5, 6, 7, 8);
       expect(t.skippedImageDraws).toBe(0);
-      expect(t.flush()).toEqual([{ k: "drawImage", bitmap: bmp, dx: 1, dy: 2, dw: 3, dh: 4 }]);
+      expect(t.flush()).toEqual([
+        { k: "defineImage", id: 0, bitmap: bmp },
+        { k: "drawImage", id: 0, dx: 1, dy: 2, dw: 3, dh: 4 },
+        { k: "drawImage", id: 0, dx: 5, dy: 6, dw: 7, dh: 8 },
+      ]);
+      // A later flush re-draws the cached bitmap without re-defining it.
+      t.drawImage(bmp as unknown, 0, 0, 1, 1);
+      expect(t.flush()).toEqual([{ k: "drawImage", id: 0, dx: 0, dy: 0, dw: 1, dh: 1 }]);
+    } finally {
+      delete (globalThis as { ImageBitmap?: unknown }).ImageBitmap;
+    }
+  });
+
+  it("re-defines an evicted bitmap under a fresh id once the LRU overflows", () => {
+    class FakeImageBitmap {
+      constructor(readonly n: number) {}
+    }
+    (globalThis as { ImageBitmap?: unknown }).ImageBitmap = FakeImageBitmap;
+    try {
+      const t = new RecordingTarget(10, 10);
+      // OFFSCREEN_IMAGE_CACHE_CAP distinct bitmaps fill the cache; one more
+      // evicts the coldest (the very first, id 0).
+      const cap = 64;
+      const bitmaps = Array.from({ length: cap + 1 }, (_v, i) => new FakeImageBitmap(i));
+      for (const b of bitmaps) t.drawImage(b as unknown, 0, 0, 1, 1);
+      t.flush();
+      // The coldest bitmap was evicted: redrawing it re-ships under a new id.
+      t.drawImage(bitmaps[0] as unknown, 0, 0, 1, 1);
+      const evicted = t.flush();
+      expect(evicted[0]).toEqual({ k: "defineImage", id: cap + 1, bitmap: bitmaps[0] });
+      // The most-recent bitmap is still cached: id reference only.
+      t.drawImage(bitmaps[cap] as unknown, 0, 0, 1, 1);
+      expect(t.flush()).toEqual([{ k: "drawImage", id: cap, dx: 0, dy: 0, dw: 1, dh: 1 }]);
     } finally {
       delete (globalThis as { ImageBitmap?: unknown }).ImageBitmap;
     }
@@ -127,12 +163,38 @@ describe("replayCommands", () => {
     expect(fill).toHaveBeenCalledWith("evenodd");
   });
 
-  it("replays a drawImage command onto the target", () => {
+  it("defines a bitmap then replays drawImage-by-id onto the target", () => {
     const drawImage = vi.fn();
     const fake = stubTarget({ drawImage });
     const bmp = {} as unknown as ImageBitmap;
-    replayCommands(fake, [{ k: "drawImage", bitmap: bmp, dx: 1, dy: 2, dw: 3, dh: 4 }]);
+    const images = new LruCache<number, ImageBitmap>(8);
+    replayCommands(
+      fake,
+      [
+        { k: "defineImage", id: 0, bitmap: bmp },
+        { k: "drawImage", id: 0, dx: 1, dy: 2, dw: 3, dh: 4 },
+      ],
+      images,
+    );
     expect(drawImage).toHaveBeenCalledWith(bmp, 1, 2, 3, 4);
+  });
+
+  it("draws a previously-defined bitmap across replays via the shared cache", () => {
+    const drawImage = vi.fn();
+    const fake = stubTarget({ drawImage });
+    const bmp = {} as unknown as ImageBitmap;
+    const images = new LruCache<number, ImageBitmap>(8);
+    replayCommands(fake, [{ k: "defineImage", id: 0, bitmap: bmp }], images);
+    // A later replay references the id alone — no redefine needed.
+    replayCommands(fake, [{ k: "drawImage", id: 0, dx: 0, dy: 0, dw: 1, dh: 1 }], images);
+    expect(drawImage).toHaveBeenCalledWith(bmp, 0, 0, 1, 1);
+  });
+
+  it("skips a drawImage whose id was never defined (out-of-sync stream)", () => {
+    const drawImage = vi.fn();
+    const fake = stubTarget({ drawImage });
+    replayCommands(fake, [{ k: "drawImage", id: 99, dx: 0, dy: 0, dw: 1, dh: 1 }]);
+    expect(drawImage).not.toHaveBeenCalled();
   });
 
   it("ignores resize commands during replay (worker owns sizing)", () => {

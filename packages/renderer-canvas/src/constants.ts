@@ -38,6 +38,28 @@ export const LARGE_SCENE_WORKER_THRESHOLD = 50_000;
 export const WEBGL2_TEXT_BITMAP_CACHE_CAP = 256;
 
 /**
+ * LRU cap on the offscreen image cache shared by `RecordingTarget`
+ * (main thread, identity → id) and the render worker (id → ImageBitmap).
+ *
+ * The offscreen backend re-renders every frame so animated GIF / video
+ * frames are picked up; without this cache each frame re-posts (clones)
+ * every drawn `ImageBitmap` across the worker boundary. With it, a bitmap
+ * is shipped once under a stable id and later referenced by id alone —
+ * the GIF adapter returns the same cached bitmap for a frame held across
+ * several rAF ticks, so the per-tick redraw costs one tiny command.
+ *
+ * Both sides keep an LRU of identical capacity, so they evict the same
+ * id in lockstep (the command stream drives both in the same order);
+ * the worker also closes the evicted bitmap clone to release memory.
+ *
+ * 64 — a scene rarely has more than 10-20 distinct images in flight at
+ * once; a 3-6x margin covers a short GIF loop's frames without thrashing.
+ * On overflow the coldest image is dropped; its next draw re-ships the
+ * bitmap (one extra clone) and re-inserts.
+ */
+export const OFFSCREEN_IMAGE_CACHE_CAP = 64;
+
+/**
  * LRU cap on `WebGL2Target.textures` — image-source to WebGLTexture
  * cache used by `drawImage`. Each entry holds a GPU texture
  * (`width × height × 4` bytes VRAM).
