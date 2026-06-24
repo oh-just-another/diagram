@@ -1,0 +1,25 @@
+Embedded fonts — licensing
+===========================
+
+text_shaper.wasm embeds a 3-family × 4-style matrix (12 faces). Font id
+= family base (0 sans / 4 serif / 8 mono) + (bold?1:0) + (italic?2:0).
+
+Sans + Mono — Apache License 2.0
+  (http://www.apache.org/licenses/LICENSE-2.0):
+- Roboto-Regular / -Bold / -Italic / -BoldItalic.ttf
+    © Google (Christian Robertson)
+- RobotoMono-Regular / -Bold / -Italic / -BoldItalic.ttf
+    © The Roboto Mono Project Authors
+
+Serif — SIL Open Font License 1.1 (https://scripts.sil.org/OFL):
+- PTSerif-Regular / -Bold / -Italic / -BoldItalic.ttf
+    © ParaType Inc. (PT Serif)
+
+Both licenses permit embedding and redistribution (including inside a
+compiled WebAssembly binary) provided the license + attribution are
+retained — which this file does.
+
+Sources:
+- https://github.com/googlefonts/roboto
+- https://github.com/googlefonts/RobotoMono
+- https://github.com/google/fonts/tree/main/ofl/ptserif

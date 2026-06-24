@@ -104,6 +104,7 @@ import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
 import { WasmRasterizer } from "@oh-just-another/raster-wasm";
+import { registerBundledFonts } from "@oh-just-another/fonts";
 import { createRenderWorker } from "@oh-just-another/renderer-canvas";
 import {
   registerAnimationAdapter,
@@ -395,6 +396,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   // font is ready, so text doesn't render in a fallback font and then
   // snap to the WASM font ("jump" on load — a FOUT).
   const [wasmTextSettled, setWasmTextSettled] = useState(false);
+  // Flipped once the bundled web fonts finish loading, so the canvas can
+  // redraw text in them (the browser doesn't auto-repaint canvas text).
+  const [fontsReady, setFontsReady] = useState(false);
   const detectionRef = useRef<Promise<CapabilityProfile> | null>(null);
   const loggedRef = useRef(false);
   useEffect(() => {
@@ -410,6 +414,21 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
       }
       setProfile(detected);
       const loads: Promise<unknown>[] = [];
+      // Load the bundled fonts so every backend draws the same faces; redraw
+      // once they settle.
+      loads.push(
+        registerBundledFonts(document).then(
+          () => {
+            if (!cancelled) setFontsReady(true);
+          },
+          (err: unknown) => {
+            // Settle even on failure so a text scene still mounts (in the
+            // fallback font) instead of hanging on the first-paint gate.
+            if (!cancelled) setFontsReady(true);
+            console.warn("[diagram] bundled fonts load failed", err);
+          },
+        ),
+      );
       if (detected.wasmText) {
         loads.push(
           WasmTextShaper.loadBundled().then(
@@ -483,6 +502,12 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     if (editor) editor.forceRender();
   }, [editor, animationAdapters]);
 
+  // Redraw once the bundled fonts load so canvas text switches from the
+  // fallback face to the bundled one.
+  useEffect(() => {
+    if (editor && fontsReady) editor.forceRender();
+  }, [editor, fontsReady]);
+
   useEffect(() => {
     if (!editor || (!onSceneChange && !onSelectionChange)) return undefined;
     let lastScene = editor.scene;
@@ -551,12 +576,14 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   if (!profile) {
     return <div className={className} style={style} />;
   }
-  // Hold the first paint of a text-bearing scene until the MSDF shaper
-  // has settled, so text renders in its final font from frame one (no
-  // fallback-font → WASM-font jump). Only the WebGL2 MSDF path swaps
-  // fonts like this; Canvas2D always draws system fonts (no jump), and
-  // text-free scenes have nothing to jump — both mount immediately, so
-  // we don't pay shaper-load latency on first paint.
+  // Hold the first paint of a text-bearing scene until its font is ready, so
+  // text renders in its final face from frame one (no fallback-font jump).
+  // Every backend now draws the bundled fonts, so all wait on `fontsReady`;
+  // the WebGL2 MSDF path also waits on the shaper. Text-free scenes mount
+  // immediately and don't pay the load latency.
+  if (sceneHasText && !fontsReady) {
+    return <div className={className} style={style} />;
+  }
   if (profile.renderer === "webgl2" && profile.wasmText && !wasmTextSettled && sceneHasText) {
     return <div className={className} style={style} />;
   }

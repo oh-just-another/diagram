@@ -60,11 +60,13 @@ describe("RecordingTarget", () => {
     expect(cmds[0]).toEqual({ k: "resize", w: 80, h: 40 });
   });
 
-  it("measureText returns a heuristic without buffering anything", () => {
+  it("measureText returns a positive width without buffering anything", () => {
     const t = new RecordingTarget(10, 10);
+    t.setFont("Arial", 16);
     const m = t.measureText("hello");
-    expect(m.width).toBe(40);
-    expect(t.flush()).toEqual([]);
+    expect(m.width).toBeGreaterThan(0);
+    // measureText must not record a command (only `setFont` did).
+    expect(t.flush()).toEqual([{ k: "setFont", family: "Arial", size: 16 }]);
   });
 });
 

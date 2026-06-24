@@ -9,6 +9,7 @@ import type {
 } from "@oh-just-another/renderer-core";
 import { getActiveRasterizer, getActiveTextShaper } from "@oh-just-another/renderer-core";
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
+import { resolveBundledFamily } from "@oh-just-another/fonts";
 import earcut from "earcut";
 import { parseWebGL2Color } from "./webgl2-color.js";
 import {
@@ -1081,14 +1082,11 @@ export class WebGL2Target implements RenderTarget {
     // it measures the run and shifts via the transform), so no separate
     // width-measuring pass here.
     const alignFactor = this.textAlign === "center" ? 0.5 : this.textAlign === "right" ? 1 : 0;
-    let py = y;
-    // Editor convention: baseline=top means y is the top of the text
-    // box. The MSDF quad math places the glyph relative to its font
-    // baseline, so shift y down by one font size for the "top" baseline
-    // (gets the visible bbox into [y, y+fontSize]).
-    if (this.textBaseline === "top") py += this.fontSize;
-    else if (this.textBaseline === "middle") py += this.fontSize / 2;
-    // baseline=bottom uses py as-is (cursor sits on the baseline).
+    // The MSDF quad math places glyphs relative to the font baseline, so
+    // convert the requested `textBaseline` into a baseline `y` using the same
+    // browser metrics Canvas2D honours (measured on a hidden 2D context), so
+    // the two backends place text at exactly the same height.
+    const py = y + this.baselineOffsetForBaseline();
     this.msdfPipeline.drawText(
       text,
       x,
@@ -1156,7 +1154,40 @@ export class WebGL2Target implements RenderTarget {
   }
 
   private textFontSpec(): string {
-    return `${this.fontSize}px ${this.fontFamily}`;
+    // Bundled face first so the no-MSDF fallback matches the MSDF path and
+    // the Canvas2D backend.
+    return `${this.fontSize}px "${resolveBundledFamily(this.fontFamily)}", ${this.fontFamily}`;
+  }
+
+  private readonly baselineOffsetCache = new Map<string, number>();
+
+  /**
+   * Distance (px) from the line of the active `textBaseline` down to the
+   * alphabetic baseline, for the current font. Measured on a hidden 2D
+   * context so it uses the exact same browser font metrics Canvas2D applies
+   * when it honours `textBaseline` — keeping the MSDF text at the same
+   * vertical position as the Canvas2D backend. Falls back to a proportional
+   * estimate where measurement isn't available.
+   */
+  private baselineOffsetForBaseline(): number {
+    const ctx = this.ensureTextCtx();
+    if (!ctx) return this.fontSize * 0.8;
+    const spec = this.textFontSpec();
+    const key = `${spec}|${this.textBaseline}`;
+    const cached = this.baselineOffsetCache.get(key);
+    if (cached !== undefined) return cached;
+    ctx.font = spec;
+    ctx.textBaseline = "alphabetic";
+    const alphaDescent = ctx.measureText("Mg").fontBoundingBoxDescent;
+    ctx.textBaseline = this.textBaseline;
+    const thisDescent = ctx.measureText("Mg").fontBoundingBoxDescent;
+    // `fontBoundingBox*` is absent on a few old engines — fall back there.
+    const offset =
+      Number.isFinite(alphaDescent) && Number.isFinite(thisDescent)
+        ? thisDescent - alphaDescent
+        : this.fontSize * 0.8;
+    this.baselineOffsetCache.set(key, offset);
+    return offset;
   }
 
   private textMetrics(text: string): { width: number } {

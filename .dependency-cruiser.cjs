@@ -8,7 +8,7 @@
  * require them — what matters is that every real edge points same-or-down.
  */
 const LEVELS = [
-  ["types", "math", "events", "tokens"], // L0 — primitives
+  ["types", "math", "events", "tokens", "fonts"], // L0 — primitives
   ["scene", "renderer-core", "history", "glyph-atlas", "curve-mesh", "renderer-workers"], // L1 — core + render-leaves
   [
     "renderer-canvas",

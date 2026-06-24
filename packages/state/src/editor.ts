@@ -1988,9 +1988,15 @@ export class Editor {
     if (shape?.type !== "text") return null;
     const layout = this.editingTextLayout(shape);
     if (!layout) return null;
-    // World → shape-local (translate by position; rotation/scale on text
-    // edit is uncommon — ignore for hit purposes).
-    const local = { x: worldPoint.x - shape.position.x, y: worldPoint.y - shape.position.y };
+    // World → shape-local: undo the element transform so the hit lands on the
+    // right glyph. Translate by position, then divide out scale (rotation
+    // while editing text is not handled — an uncommon case).
+    const sx = shape.scale.x || 1;
+    const sy = shape.scale.y || 1;
+    const local = {
+      x: (worldPoint.x - shape.position.x) / sx,
+      y: (worldPoint.y - shape.position.y) / sy,
+    };
     const align = shape.style.textAlign ?? "left";
     return pointToCaretIndex(layout, local, this.measureFor(shape), align);
   }
@@ -2081,6 +2087,12 @@ export class Editor {
     const align = shape.style.textAlign ?? "left";
     const measure = this.measureFor(shape);
     const { x: px, y: py } = shape.position;
+    // The layout is in the shape's own (unscaled) space; the renderer draws it
+    // through the element transform, so caret + selection geometry must scale
+    // too or they trail the rendered text on a scaled element. (Rotation while
+    // editing text is not handled — an uncommon case.)
+    const sx = shape.scale.x;
+    const sy = shape.scale.y;
 
     const local = textSelectionRects(
       layout,
@@ -2090,17 +2102,17 @@ export class Editor {
       align,
     );
     const selectionRects: Bounds[] = local.map((r) => ({
-      x: px + r.x,
-      y: py + r.y,
-      width: r.width,
-      height: r.height,
+      x: px + Math.min(r.x * sx, (r.x + r.width) * sx),
+      y: py + Math.min(r.y * sy, (r.y + r.height) * sy),
+      width: Math.abs(r.width * sx),
+      height: Math.abs(r.height * sy),
     }));
 
     let caret: { x: number; y: number; height: number } | null = null;
     if (this.caretBlink.on) {
       const cIdx = this._textSel.dir === "backward" ? this._textSel.start : this._textSel.end;
       const g = caretGeometry(layout, cIdx, measure, shape.fontSize, align);
-      caret = { x: px + g.x, y: py + g.y, height: g.height };
+      caret = { x: px + g.x * sx, y: py + g.y * sy, height: g.height * Math.abs(sy) };
     }
     return { caret, caretColor: shape.style.fill ?? "#1a1a1a", selectionRects };
   }

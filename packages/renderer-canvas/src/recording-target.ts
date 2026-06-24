@@ -7,6 +7,7 @@ import type {
   TextAlign,
   TextBaseline,
 } from "@oh-just-another/renderer-core";
+import { resolveBundledFamily } from "@oh-just-another/fonts";
 
 /**
  * Backend-agnostic RenderTarget that captures every method call as a
@@ -120,6 +121,10 @@ export class RecordingTarget implements RenderTarget {
   private _height: number;
   /** Counter so hosts can warn when images are silently skipped. */
   skippedImageDraws = 0;
+  /** Current font as a CSS shorthand, mirrored from `setFont` for `measureText`. */
+  private fontSpec = "10px sans-serif";
+  /** Hidden 2D context used to measure text with the active font. */
+  private measureCtx: CanvasRenderingContext2D | null = null;
 
   constructor(width: number, height: number) {
     this._width = width;
@@ -175,6 +180,12 @@ export class RecordingTarget implements RenderTarget {
     options?: { weight?: "normal" | "bold"; style?: "normal" | "italic" },
   ): void {
     this.commands.push({ k: "setFont", family, size, ...(options ? { options } : {}) });
+    // CSS font shorthand order: `<style> <weight> <size> <family>` — same as
+    // the worker's Canvas2D target (bundled face first), so `measureText`
+    // matches what it draws.
+    const style = options?.style === "italic" ? "italic " : "";
+    const weight = options?.weight === "bold" ? "bold " : "";
+    this.fontSpec = `${style}${weight}${size}px "${resolveBundledFamily(family)}", ${family}`;
   }
   setTextAlign(align: TextAlign): void {
     this.commands.push({ k: "setTextAlign", align });
@@ -246,9 +257,24 @@ export class RecordingTarget implements RenderTarget {
     );
   }
   measureText(text: string): { width: number } {
-    // Heuristic so layout stays roughly proportional. Callers that need
-    // precise widths re-measure on a real Canvas2D context.
-    return { width: text.length * 8 };
+    // Measure on a hidden 2D context with the active font, matching the
+    // worker's Canvas2D target — so caret / selection geometry on the
+    // offscreen backend lines up with the drawn glyphs. Falls back to a
+    // proportional estimate where `OffscreenCanvas` is unavailable.
+    const ctx = this.ensureMeasureCtx();
+    if (!ctx) return { width: text.length * (Number.parseFloat(this.fontSpec) || 8) * 0.5 };
+    ctx.font = this.fontSpec;
+    return { width: ctx.measureText(text).width };
+  }
+
+  private ensureMeasureCtx(): CanvasRenderingContext2D | null {
+    if (this.measureCtx) return this.measureCtx;
+    if (typeof OffscreenCanvas === "undefined") return null;
+    const ctx = new OffscreenCanvas(1, 1).getContext("2d");
+    // OffscreenCanvasRenderingContext2D is structurally compatible with the
+    // `font` / `measureText` members used here.
+    this.measureCtx = (ctx as unknown as CanvasRenderingContext2D | null) ?? null;
+    return this.measureCtx;
   }
 
   drawImage(

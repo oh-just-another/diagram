@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "@oh-just-another/curve-mesh": "workspace:*",
+    "@oh-just-another/fonts": "workspace:*",
     "@oh-just-another/glyph-atlas": "workspace:*",
     "@oh-just-another/math": "workspace:*",
     "@oh-just-another/renderer-core": "workspace:*",

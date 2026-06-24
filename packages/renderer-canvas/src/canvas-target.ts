@@ -7,6 +7,7 @@ import type {
   TextAlign,
   TextBaseline,
 } from "@oh-just-another/renderer-core";
+import { resolveBundledFamily } from "@oh-just-another/fonts";
 import { isDrawableImageSource, warnSkippedImage } from "./image-source.js";
 
 /**
@@ -82,10 +83,12 @@ export class Canvas2DTarget implements RenderTarget {
     fontSize: number,
     options?: { weight?: "normal" | "bold"; style?: "normal" | "italic" },
   ): void {
-    // CSS font shorthand order: `<style> <weight> <size> <family>`.
+    // CSS font shorthand order: `<style> <weight> <size> <family>`. Draw with
+    // the bundled face that backs the requested family (matching the WebGL2
+    // MSDF path), falling back to the original stack until it has loaded.
     const style = options?.style === "italic" ? "italic " : "";
     const weight = options?.weight === "bold" ? "bold " : "";
-    this.ctx.font = `${style}${weight}${fontSize}px ${fontFamily}`;
+    this.ctx.font = `${style}${weight}${fontSize}px "${resolveBundledFamily(fontFamily)}", ${fontFamily}`;
   }
   setTextAlign(align: TextAlign): void {
     this.ctx.textAlign = align === "center" ? "center" : align;

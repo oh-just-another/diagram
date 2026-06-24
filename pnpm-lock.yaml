@@ -279,6 +279,9 @@ importers:
 
   packages/editor:
     dependencies:
+      '@oh-just-another/fonts':
+        specifier: workspace:*
+        version: link:../fonts
       '@oh-just-another/raster-wasm':
         specifier: workspace:*
         version: link:../raster-wasm
@@ -407,6 +410,8 @@ importers:
       svg-to-pdfkit:
         specifier: 0.1.8
         version: 0.1.8
+
+  packages/fonts: {}
 
   packages/glyph-atlas: {}
 
@@ -552,6 +557,9 @@ importers:
       '@oh-just-another/curve-mesh':
         specifier: workspace:*
         version: link:../curve-mesh
+      '@oh-just-another/fonts':
+        specifier: workspace:*
+        version: link:../fonts
       '@oh-just-another/glyph-atlas':
         specifier: workspace:*
         version: link:../glyph-atlas

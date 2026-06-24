@@ -2,6 +2,7 @@
 import { installBuiltinRenderers, renderScene } from "@oh-just-another/renderer-core";
 import type { Scene } from "@oh-just-another/scene";
 import type { WorkerRenderMessage, WorkerRenderResponse } from "@oh-just-another/renderer-core";
+import { registerBundledFonts, type FontScope } from "@oh-just-another/fonts";
 import { Canvas2DTarget } from "./canvas-target.js";
 import { replayCommands, type RenderCommand } from "./recording-target.js";
 
@@ -43,6 +44,10 @@ const post = (msg: WorkerRenderResponse, transfer?: Transferable[]): void => {
 };
 
 const init = (canvas: OffscreenCanvas, width: number, height: number, dpr: number): void => {
+  // Load the bundled fonts into the worker's font set so its Canvas2D target
+  // draws the same faces as the main thread. Fire-and-forget — replays after
+  // it resolves pick up the loaded fonts.
+  void registerBundledFonts(self as unknown as FontScope);
   state.canvas = canvas;
   state.dpr = dpr;
   // Resize the bitmap to dpr-scaled pixels — the host's CSS size is

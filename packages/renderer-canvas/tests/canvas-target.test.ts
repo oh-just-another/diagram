@@ -72,11 +72,13 @@ describe("Canvas2DTarget", () => {
     expect(props.fillStyle).toBe("transparent");
   });
 
-  it("setFont serializes 'Npx Family'", () => {
+  it("setFont serializes with the bundled face first, then the requested family", () => {
     const { ctx, props } = makeCtx();
     const t = new Canvas2DTarget(ctx, 100, 100);
     t.setFont("Arial", 16);
-    expect(props.font).toBe("16px Arial");
+    // "Arial" resolves to the bundled sans (Roboto); the original stays as a
+    // fallback until the web font loads.
+    expect(props.font).toBe('16px "Roboto", Arial');
   });
 
   it("setTransform passes a/b/c/d/e/f to ctx", () => {

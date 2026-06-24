@@ -1,0 +1,48 @@
+{
+  "name": "@oh-just-another/fonts",
+  "version": "0.0.0",
+  "description": "Bundled editor fonts (Roboto, PT Serif, Roboto Mono) as web fonts, so every render backend draws identical text.",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git",
+    "directory": "packages/fonts"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
+  "keywords": [
+    "diagram",
+    "fonts",
+    "roboto",
+    "webfont"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "fonts",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

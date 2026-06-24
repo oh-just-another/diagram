@@ -132,4 +132,45 @@ describe("inline text edit", () => {
     e.undo();
     expect((e.scene.elements.get(elementId("t1")) as TextElement).text).toBe("before");
   });
+
+  it("scales caret + selection geometry with the element's scale", () => {
+    // A measuring target so the layout has real, non-zero widths.
+    const measuringTarget = {
+      ...(noopTarget as Record<string, unknown>),
+      measureText: (t: string) => ({ width: t.length * 10 }),
+    } as never;
+    const scaled: TextElement = { ...textElement("t1", "hi"), scale: { x: 2, y: 2 } };
+    const e = new Editor({
+      host,
+      mainTarget: measuringTarget,
+      overlayTarget: measuringTarget,
+      initialScene: sceneWith(scaled),
+    });
+    e.beginTextEdit(elementId("t1"));
+    e.setEditingText("hi", 0, 2); // select the whole word
+
+    const overlay = e.editingTextOverlay();
+    expect(overlay).not.toBeNull();
+    // "hi" measures to width 20 in local space; at scale 2 the selection
+    // rectangle that hugs it must be ~40 wide, not the unscaled 20.
+    const selWidth = overlay!.selectionRects[0]?.width ?? 0;
+    expect(selWidth).toBeCloseTo(40, 0);
+  });
+
+  it("maps a world click back through scale to the right caret index", () => {
+    const measuringTarget = {
+      ...(noopTarget as Record<string, unknown>),
+      measureText: (t: string) => ({ width: t.length * 10 }),
+    } as never;
+    const scaled: TextElement = { ...textElement("t1", "abcd"), scale: { x: 2, y: 2 } };
+    const e = new Editor({
+      host,
+      mainTarget: measuringTarget,
+      overlayTarget: measuringTarget,
+      initialScene: sceneWith(scaled),
+    });
+    e.beginTextEdit(elementId("t1"));
+    // World x=40 → local x=20 (÷ scale 2) → 2 chars in at 10px each.
+    expect(e.caretIndexAtWorldPoint({ x: 40, y: 5 })).toBe(2);
+  });
 });

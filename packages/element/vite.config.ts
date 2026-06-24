@@ -10,6 +10,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const packagesRoot = path.resolve(here, "../../packages");
 
 const workspacePackages = [
+  "fonts",
   "types",
   "math",
   "events",
