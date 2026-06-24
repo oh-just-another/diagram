@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "tests", "**/*.test.ts", "**/*.test.tsx"],
+  "references": [
+    { "path": "../element/tsconfig.build.json" },
+    { "path": "../scene/tsconfig.build.json" }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "name": "@oh-just-another/vue",
+  "version": "0.0.0",
+  "description": "Vue 3 wrapper for the diagram editor — a thin <OhDiagram> component over the <oh-diagram> custom element.",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git",
+    "directory": "packages/vue"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
+  "keywords": [
+    "diagram",
+    "canvas",
+    "editor",
+    "vue",
+    "vue3"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "./dist/OhDiagram.js"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "vue": "^3.4.0"
+  },
+  "dependencies": {
+    "@oh-just-another/element": "workspace:*",
+    "@oh-just-another/scene": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "5.2.4",
+    "@vue/test-utils": "2.4.11",
+    "jsdom": "25.0.1",
+    "vite": "6.4.3",
+    "vue": "3.5.38"
+  }
+}
