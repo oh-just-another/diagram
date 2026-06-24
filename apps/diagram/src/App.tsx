@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type Scene } from "@oh-just-another/scene";
+import { type Scene, type BinaryFile } from "@oh-just-another/scene";
+import { type FileId } from "@oh-just-another/types";
 import { createSceneAutosave } from "./autosave";
-import {
-  parseScene,
-  parseFiles,
-  stringifyScene,
-  stringifyFiles,
-} from "@oh-just-another/serialization";
+import { parseScene, parseFiles, stringifyScene } from "@oh-just-another/serialization";
+import { loadAllFiles, saveFiles, pruneFilesExcept } from "./idb-files";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "@oh-just-another/editor";
 import { setupTemplates } from "./templates";
@@ -31,11 +28,11 @@ setupTemplates();
 // (built-in `installGifAnimationAdapter`), so animated GIFs play out of the box.
 
 const STORAGE_KEY = "oh-just-another-diagram-scene-v2";
-// Binary files (image / GIF bytes) live in a separate localStorage
-// entry — `stringifyScene` deliberately omits `Scene.files` to keep
-// scene.json small, so we persist the sidecar ourselves. Without it
-// images (and GIF frames decoded from these bytes) can't be
-// rehydrated after reload.
+// Binary files (image / GIF bytes) live in IndexedDB (see `idb-files`):
+// `stringifyScene` omits `Scene.files` to keep scene.json small, and the
+// bytes can outgrow the localStorage quota, so they get their own store.
+// This key is only read once to migrate a sidecar written by an earlier
+// build into IndexedDB.
 const FILES_KEY = "oh-just-another-diagram-files-v1";
 
 // Autosave debounce. A pan / drag mutates the scene (viewport or shape
@@ -44,28 +41,42 @@ const FILES_KEY = "oh-just-another-diagram-files-v1";
 // one write after the user pauses.
 const AUTOSAVE_DEBOUNCE_MS = 600;
 
+// One-time migration: pull a binary-file sidecar written by an earlier
+// build out of localStorage and into IndexedDB, then clear the old key.
+// Returns the parsed files (empty map on absence / parse failure).
+const migrateLegacyFiles = async (): Promise<void> => {
+  if (typeof window === "undefined") return;
+  let filesRaw: string | null = null;
+  try {
+    filesRaw = localStorage.getItem(FILES_KEY);
+  } catch {
+    return;
+  }
+  if (!filesRaw) return;
+  try {
+    await saveFiles(parseFiles(filesRaw));
+    localStorage.removeItem(FILES_KEY);
+  } catch (err) {
+    console.warn("[diagram] could not migrate stored files sidecar", err);
+  }
+};
+
 // Restore the autosaved scene, or `undefined` for a fresh start. On a fresh
 // start the editor seeds the default scene and the host's `grid` prop fills in
 // the grid, so the demo opens with a visible grid without seeding it here.
-const restoreScene = (): Scene | undefined => {
+const restoreScene = async (): Promise<Scene | undefined> => {
+  if (typeof window === "undefined") return undefined;
+  let saved: string | null = null;
   try {
-    const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    if (saved) {
-      let parsed = parseScene(saved);
-      // Re-attach the binary-file sidecar so image / GIF shapes can
-      // resolve their `fileId` again (and the editor can rehydrate
-      // animationData for GIFs). Missing / unparseable sidecar just
-      // leaves `files` empty — images won't render but nothing crashes.
-      const filesRaw = typeof window !== "undefined" ? localStorage.getItem(FILES_KEY) : null;
-      if (filesRaw) {
-        try {
-          parsed = { ...parsed, files: parseFiles(filesRaw) };
-        } catch (err) {
-          console.warn("[diagram] stored files sidecar unparseable", err);
-        }
-      }
-      return parsed;
-    }
+    saved = localStorage.getItem(STORAGE_KEY);
+  } catch (err) {
+    console.warn("[diagram] localStorage unavailable", err);
+    return undefined;
+  }
+  if (!saved) return undefined;
+  let parsed: Scene;
+  try {
+    parsed = parseScene(saved);
   } catch (err) {
     console.warn("[diagram] stored scene unparseable, starting fresh", err);
     try {
@@ -73,8 +84,23 @@ const restoreScene = (): Scene | undefined => {
     } catch {
       /* ignore */
     }
+    return undefined;
   }
-  return undefined;
+  // Re-attach the binary bytes from IndexedDB so image / GIF shapes can
+  // resolve their `fileId` again (and the editor can rehydrate
+  // animationData for GIFs). A first run after an upgrade migrates the
+  // old localStorage sidecar across before the read.
+  let files = new Map<FileId, BinaryFile>();
+  try {
+    files = await loadAllFiles();
+    if (files.size === 0) {
+      await migrateLegacyFiles();
+      files = await loadAllFiles();
+    }
+  } catch (err) {
+    console.warn("[diagram] could not load stored files", err);
+  }
+  return files.size > 0 ? { ...parsed, files } : parsed;
 };
 
 const readRoomFromHash = (): string | null => {
@@ -121,10 +147,32 @@ export const App = () => {
   // Renderer backend override from the URL (`?renderer=canvas2d`).
   // Read once at mount — switching backend needs a reload anyway.
   const capabilityOverrides = useMemo(() => readCapabilityOverrides(), []);
-  const initialScene = useMemo<Scene | undefined>(
-    () => (isCollab ? undefined : restoreScene()),
-    [isCollab],
-  );
+  // Loading the binary assets from IndexedDB is async, so the autosaved
+  // scene is restored after mount and the editor surface waits for it —
+  // a brief gate that avoids mounting with images missing, then
+  // re-attaching them on a second pass. Collab seeds an empty scene (the
+  // room snapshot is authoritative) and never waits.
+  const [initialScene, setInitialScene] = useState<Scene | undefined>(undefined);
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    if (isCollab || typeof window === "undefined") {
+      setRestored(true);
+      return;
+    }
+    let cancelled = false;
+    void restoreScene()
+      .then((scene) => {
+        if (cancelled) return;
+        setInitialScene(scene);
+        setRestored(true);
+      })
+      .catch(() => {
+        if (!cancelled) setRestored(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isCollab]);
   // Theme is owned by <Diagram> now (Theme submenu in MainMenu);
   // persistence is enabled via `persistTheme` prop below. The host
   // no longer needs its own theme state.
@@ -147,37 +195,30 @@ export const App = () => {
   const { awareness, status } = collab;
 
   // Autosave on scene mutation, debounced so a pan / drag (which
-  // mutates the scene every frame) doesn't write localStorage on each
-  // frame. The binary-file sidecar is re-serialised ONLY when the
-  // `files` map actually changes — base64-encoding large GIF / image
-  // bytes is expensive, and pan / move / typing never touch `files`,
-  // so re-encoding them every save is expensive (arrayBufferToBase64
-  // hot path).
+  // mutates the scene every frame) doesn't write on each frame. The
+  // binary store is touched ONLY when the `files` map identity changes
+  // (add / remove image) — pan / move / typing never touch `files`, so
+  // a viewport change never rewrites multi-megabyte bytes.
   const lastFilesRef = useRef<Scene["files"] | null>(null);
-  const lastFilesStr = useRef<string | null>(null);
-  // Synchronously serialise + persist `s`. Pure side-effect on
-  // localStorage; safe to call from both the debounce timer and an
-  // unload flush.
+  // Persist `s`: the scene JSON goes to localStorage (small — bytes are
+  // stripped), the binary assets go to IndexedDB. Safe to call from both
+  // the debounce timer and an unload flush.
   const writeScene = useCallback((s: Scene) => {
     try {
       window.localStorage.setItem(STORAGE_KEY, stringifyScene(s));
-      if (s.files.size > 0) {
-        // Cache the serialised sidecar by `files` identity — only
-        // re-encode when the binary map changed (add / remove file),
-        // never on a viewport / position change.
-        if (s.files !== lastFilesRef.current || lastFilesStr.current === null) {
-          lastFilesStr.current = stringifyFiles(s);
-          lastFilesRef.current = s.files;
-        }
-        window.localStorage.setItem(FILES_KEY, lastFilesStr.current);
-      } else {
-        window.localStorage.removeItem(FILES_KEY);
-        lastFilesRef.current = null;
-        lastFilesStr.current = null;
-      }
-    } catch {
-      /* quota / private mode — ignore */
+    } catch (err) {
+      console.warn("[diagram] could not persist scene", err);
     }
+    if (s.files === lastFilesRef.current) return;
+    lastFilesRef.current = s.files;
+    // Fire-and-forget — the bytes are already in memory, so a write that
+    // lands a tick later still survives the next reload.
+    void saveFiles(s.files).catch((err: unknown) => {
+      console.warn("[diagram] could not persist files", err);
+    });
+    void pruneFilesExcept(new Set(s.files.keys())).catch(() => {
+      /* best-effort cleanup */
+    });
   }, []);
   // Debounced autosave controller. `flush()` is wired to tab-hide /
   // unload below so an edit made in the last `AUTOSAVE_DEBOUNCE_MS`
@@ -249,17 +290,21 @@ export const App = () => {
     [status, awareness, collab],
   );
 
+  // Hold the surface until the autosaved scene (with its IndexedDB-backed
+  // assets) is ready, so it mounts once with images already attached.
+  if (!restored) return null;
+
   return (
     <>
       <Diagram
         ref={apiRef}
-        initialScene={initialScene}
         grid={{ enabled: true }}
         onReady={handleReady}
         onSceneChange={handleSceneChange}
         renderTopBarLeft={renderHeaderLeft}
         renderTopBarRight={renderHeaderRight}
         persistTheme
+        {...(initialScene ? { initialScene } : {})}
         {...(capabilityOverrides ? { capabilities: capabilityOverrides } : {})}
       />
       <DebugPanel editor={editor} />
