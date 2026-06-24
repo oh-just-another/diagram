@@ -271,6 +271,7 @@ import {
   computeElementMovePatch,
   constrainDeltaToAxis,
 } from "./editor/applies/move.js";
+import { computeFlipPatches, type FlipAxis } from "./editor/applies/arrange.js";
 import { computeMovingLinkPatches, computeMovingLinkForNudge } from "./editor/applies/link-move.js";
 import {
   computeCreateLink,
@@ -2666,6 +2667,23 @@ export class Editor {
     if (!result) return;
     this._scene = result.scene;
     this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Mirror the current selection about its bounding-box centre on the given
+   * axis — `horizontal` flips left↔right, `vertical` flips top↔bottom. A single
+   * element flips about its own centre. One undoable step.
+   */
+  flipSelection(axis: FlipAxis): void {
+    const patches = computeFlipPatches(this._scene, this._selection, axis);
+    if (patches.length === 0) return;
+    const tx = this._history.transaction();
+    for (const patch of patches) {
+      this._scene = apply(this._scene, patch);
+      tx.add(patch);
+    }
+    tx.commit();
     this.notify();
   }
   compactLayerZOrder(layerId?: LayerId, options: { recordHistory?: boolean } = {}): void {

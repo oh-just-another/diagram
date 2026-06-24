@@ -10,6 +10,7 @@ import { modeActions } from "./actionMode.js";
 import { keyboardActions } from "./actionKeyboard.js";
 import { layoutActions } from "./actionLayout.js";
 import { viewActions } from "./actionView.js";
+import { arrangeActions } from "./actionArrange.js";
 import type { Action, ActionContext, HotkeyMatcher } from "./types.js";
 
 /**
@@ -276,6 +277,7 @@ export const registerBuiltinActions = (registry: ActionRegistry): void => {
     ...keyboardActions,
     ...layoutActions,
     ...viewActions,
+    ...arrangeActions,
   ];
   for (const action of allBuiltins) {
     registry.register(action);

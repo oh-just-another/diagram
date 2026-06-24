@@ -51,6 +51,7 @@ export type ActionCategory =
   | "zoom"
   | "mode"
   | "layout"
+  | "arrange"
   | "edit"
   | "other";
 

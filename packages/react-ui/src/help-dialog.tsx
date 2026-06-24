@@ -63,6 +63,7 @@ const CATEGORY_TITLES: Record<ActionCategory, string> = {
   zoom: "Zoom",
   mode: "Tools",
   layout: "Layout",
+  arrange: "Arrange",
   edit: "Editing",
   other: "Other",
 };

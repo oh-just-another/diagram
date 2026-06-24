@@ -8,6 +8,8 @@ import {
   ChevronsDown,
   ChevronsUp,
   Copy as CopyIcon,
+  FlipHorizontal2 as FlipHorizontalIcon,
+  FlipVertical2 as FlipVerticalIcon,
   Group as GroupIcon,
   Italic,
   Link as LinkIcon,
@@ -952,7 +954,7 @@ const ZOrderControl = () => {
  *
  * Duplicate / Delete are always shown.
  */
-type ActionId = "duplicate" | "delete" | "group" | "ungroup";
+type ActionId = "duplicate" | "delete" | "group" | "ungroup" | "flip-h" | "flip-v";
 
 const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
@@ -977,6 +979,18 @@ const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
       icon: <UngroupIcon size={14} strokeWidth={1.75} />,
     });
   }
+  options.push(
+    {
+      value: "flip-h",
+      label: "Flip horizontal",
+      icon: <FlipHorizontalIcon size={14} strokeWidth={1.75} />,
+    },
+    {
+      value: "flip-v",
+      label: "Flip vertical",
+      icon: <FlipVerticalIcon size={14} strokeWidth={1.75} />,
+    },
+  );
   return (
     <SegmentedControl<ActionId>
       ariaLabel="Element actions"
@@ -986,7 +1000,9 @@ const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
         if (v === "duplicate") editor.duplicateSelected();
         else if (v === "delete") editor.deleteSelected();
         else if (v === "group") editor.groupSelected();
-        else editor.ungroup();
+        else if (v === "ungroup") editor.ungroup();
+        else if (v === "flip-h") editor.flipSelection("horizontal");
+        else editor.flipSelection("vertical");
       }}
     />
   );

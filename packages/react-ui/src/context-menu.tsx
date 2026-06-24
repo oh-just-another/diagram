@@ -334,6 +334,8 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   // --- Grouping + arrange (registry-backed) ---
   actionMenuItem("group-selection", { label: "Group" }),
   actionMenuItem("ungroup-selection", { label: "Ungroup" }),
+  actionMenuItem("flip-horizontal", { label: "Flip horizontal" }),
+  actionMenuItem("flip-vertical", { label: "Flip vertical" }),
   actionMenuItem("arrange-grid"),
   actionMenuItem("arrange-stack-h"),
   actionMenuItem("arrange-stack-v"),
