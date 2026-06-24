@@ -47,4 +47,15 @@ describe("<oh-diagram> custom element", () => {
       el.zoomToFit();
     }).not.toThrow();
   });
+
+  it("retains a scene assigned before the editor is ready", () => {
+    // A wrapper restoring persisted state on mount sets `scene` before the
+    // engine exists. The element must stash it (not drop it) so it can be
+    // applied once ready — the actual apply-on-ready path is covered by the
+    // mounted example harnesses (manual verification).
+    const el = document.createElement("oh-diagram");
+    const scene = { schemaVersion: 1 } as unknown as NonNullable<typeof el.scene>;
+    el.scene = scene;
+    expect(el.scene).toBe(scene);
+  });
 });

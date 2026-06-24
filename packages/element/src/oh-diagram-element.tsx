@@ -193,6 +193,13 @@ export class OhDiagramElement extends HTMLElement {
         // keeps text-field suppression correct across the shadow boundary.
         this.#unbindHotkeys?.();
         this.#unbindHotkeys = bindEditorHotkeys(editor);
+        // A scene assigned before the engine was ready — e.g. a framework
+        // wrapper restoring persisted state on mount — was only stashed in
+        // `#scene` (the imperative API didn't exist yet) and the editor
+        // seeded from an empty `initialScene`. Apply it now via the live
+        // engine so the restore actually lands. (`#api` is still null here:
+        // `useImperativeHandle` updates the ref a render later than `onReady`.)
+        if (this.#scene) editor.loadScene(this.#scene);
         this.#emit("ready", { editor });
       },
       onSceneChange: (scene) => {
