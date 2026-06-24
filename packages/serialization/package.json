@@ -34,7 +34,9 @@
     "README.md",
     "CHANGELOG.md"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/migrations-builtin.js"
+  ],
   "scripts": {
     "build": "tsc -b tsconfig.build.json",
     "typecheck": "tsc --noEmit",

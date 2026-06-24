@@ -14,6 +14,9 @@ export default tseslint.config(
       "**/.nx/**",
       "**/*.config.js",
       "**/*.config.mjs",
+      // Node-only build / codegen tooling — not part of any tsconfig project,
+      // so the type-aware ruleset can't resolve them.
+      "**/scripts/*.mjs",
     ],
   },
   eslint.configs.recommended,

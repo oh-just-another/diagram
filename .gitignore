@@ -41,3 +41,4 @@ Thumbs.db
 *.tgz
 .turbo
 
+packages/element/src/styles.generated.ts
