@@ -53,7 +53,7 @@ pnpm format      # prettier --write .
 Run the demo in the browser:
 
 ```bash
-pnpm --filter @oh-just-another/diagram dev   # http://localhost:5174
+pnpm --filter @oh-just-another/playground dev   # http://localhost:5174
 ```
 
 ## Structure

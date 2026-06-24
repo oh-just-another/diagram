@@ -23,8 +23,8 @@ const LEVELS = [
   ["network", "collab"], // L4 — integration
   ["react-ui"], // L5 — UI
   ["editor"], // L6 — umbrella (drop-in editor component)
-  ["element"], // L7 — framework-neutral custom element wrapping the editor
-  ["vue", "svelte"], // L8 — thin framework wrappers over <oh-diagram>
+  ["diagram"], // L7 — framework-neutral custom element wrapping the editor
+  ["diagram-vue", "diagram-svelte"], // L8 — thin framework wrappers over <oja-diagram>
 ];
 
 /** Core packages (L0–L1) that must stay pure: no React / DOM / Node API. */

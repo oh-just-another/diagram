@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignoreWorkspaces": ["apps/diagram", "apps/e2e"],
+  "ignoreWorkspaces": ["apps/playground", "apps/e2e"],
   "ignoreDependencies": ["@typescript-eslint/eslint-plugin", "@typescript-eslint/parser"],
   "workspaces": {
     "packages/*": {
