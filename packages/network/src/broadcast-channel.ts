@@ -3,9 +3,9 @@ import { createListeners } from "@oh-just-another/events";
 import type { Transport } from "./transport.js";
 
 /**
- * `Transport` over the browser's [`BroadcastChannel`](https://developer.mozilla.org/en-US/Web/API/BroadcastChannel)
- * API. Connects every tab / iframe / worker on the same origin that
- * opens a channel with the same `name`.
+ * `Transport` over the browser's `BroadcastChannel` API. Connects
+ * every tab / iframe / worker on the same origin that opens a channel
+ * with the same `name`.
  *
  * Use for:
  *  - "Open this URL in another tab to see your peer" demo flows.

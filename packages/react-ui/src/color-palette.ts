@@ -6,9 +6,9 @@
  *
  * Palette is sourced from `@oh-just-another/tokens`. Each hue carries
  * two pinned tones — step-4 ("subtle") for fills and step-9 ("solid")
- * for strokes / marks. Step-9 stays the same hex on both themes per
- * Radix spec, so the picker reads as the same "brand" colour
- * regardless of the active theme.
+ * for strokes / marks. Step-9 stays the same hex on both themes, so
+ * the picker reads as the same "brand" colour regardless of the
+ * active theme.
  *
  * `"transparent"` is the canonical "no colour" sentinel — the picker
  * renders it as a checkerboard swatch and writes the string
@@ -38,9 +38,9 @@ export const ELEMENT_PALETTE_LIGHT: readonly string[] = [
 
 /**
  * Dark-theme element palette — step-4 dark tints for fills,
- * step-9 dark for solids. Per Radix spec, the step-9 hex matches
- * the light variant so brand colour stays anchored across themes;
- * only the tint row swaps to deep-tinted backgrounds.
+ * step-9 dark for solids. The step-9 hex matches the light variant
+ * so brand colour stays anchored across themes; only the tint row
+ * swaps to deep-tinted backgrounds.
  */
 export const ELEMENT_PALETTE_DARK: readonly string[] = [
   ...fillsDark,
@@ -60,8 +60,8 @@ export const CANVAS_PALETTE_LIGHT: readonly string[] = ["#ffffff", ...canvasLigh
 
 /**
  * Dark-theme canvas palette — near-black backgrounds. Step-2 dark
- * from each Radix hue: deep, almost-neutral tints that read as
- * "themed background" rather than "filled colour".
+ * from each hue: deep, almost-neutral tints that read as "themed
+ * background" rather than "filled colour".
  */
 export const CANVAS_PALETTE_DARK: readonly string[] = ["#121113", ...canvasDark];
 
