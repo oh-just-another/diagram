@@ -40,6 +40,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "bench": "vitest bench --run",
     "lint": "eslint src tests",
     "clean": "rm -rf dist *.tsbuildinfo"
   },

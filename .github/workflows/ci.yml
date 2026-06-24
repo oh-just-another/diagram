@@ -46,3 +46,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # Smoke-run the benchmarks so they keep compiling and executing. Absolute
+      # timings are not gated — shared CI runners are too noisy for a stable
+      # threshold; baselines are tracked by running `pnpm bench` locally.
+      - name: Benchmarks
+        run: pnpm bench

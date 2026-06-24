@@ -31,6 +31,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:coverage:gate": "COV_GATE=1 vitest run --coverage",
+    "bench": "nx run-many -t bench",
     "lint": "nx run-many -t lint",
     "typecheck": "nx run-many -t typecheck",
     "clean": "nx run-many -t clean",
