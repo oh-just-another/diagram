@@ -1,5 +1,7 @@
 import {
   DEFAULT_LAYER_ID,
+  FALLBACK_SCENE_HEIGHT,
+  FALLBACK_SCENE_WIDTH,
   addLink,
   addElement,
   emptyScene,
@@ -14,8 +16,6 @@ import type { GraphDocument } from "./graph.js";
 import { layoutGraph } from "./layout.js";
 import {
   EDGE_STROKE_WIDTH,
-  FALLBACK_SCENE_HEIGHT,
-  FALLBACK_SCENE_WIDTH,
   NODE_LABEL_FONT_SIZE,
   NODE_STROKE_WIDTH,
   SCENE_FIT_MARGIN,

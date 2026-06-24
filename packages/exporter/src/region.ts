@@ -1,5 +1,7 @@
 import type { ElementId } from "@oh-just-another/types";
 import {
+  FALLBACK_SCENE_HEIGHT,
+  FALLBACK_SCENE_WIDTH,
   getElement,
   getElementWorldBounds,
   isFrame,
@@ -7,7 +9,7 @@ import {
   type Element,
 } from "@oh-just-another/scene";
 import { parseScene } from "@oh-just-another/serialization";
-import { FALLBACK_SCENE_HEIGHT, FALLBACK_SCENE_WIDTH, SHAPE_SIZE_ESTIMATE } from "./constants.js";
+import { SHAPE_SIZE_ESTIMATE } from "./constants.js";
 import type { ExportRegion } from "./options.js";
 
 /**

@@ -34,12 +34,6 @@ export const LAYOUT_GRAPH_MARGIN = 20;
  */
 export const SCENE_FIT_MARGIN = 20;
 
-/** Fallback viewport width, in pixels, when the node bbox is non-finite. */
-export const FALLBACK_SCENE_WIDTH = 800;
-
-/** Fallback viewport height, in pixels, when the node bbox is non-finite. */
-export const FALLBACK_SCENE_HEIGHT = 600;
-
 /** Default font size, in pixels, for node labels. Range: ~10–20. */
 export const NODE_LABEL_FONT_SIZE = 13;
 

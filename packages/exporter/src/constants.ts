@@ -23,18 +23,6 @@ export const PDF_PAGE_SIZES_PT: Record<string, [number, number]> = {
 };
 
 /**
- * Fallback width, in CSS pixels, for an empty scene with no explicit viewport
- * size. Range: a few hundred to ~2000; just needs to be non-degenerate.
- */
-export const FALLBACK_SCENE_WIDTH = 800;
-
-/**
- * Fallback height, in CSS pixels, for an empty scene with no explicit viewport
- * size. Range: a few hundred to ~2000; just needs to be non-degenerate.
- */
-export const FALLBACK_SCENE_HEIGHT = 600;
-
-/**
  * Coarse per-axis size estimate, in CSS pixels, used when inferring a scene's
  * viewport from shape positions without a bounder registry. Range: ~50–200.
  */

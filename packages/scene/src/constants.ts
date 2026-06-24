@@ -231,3 +231,12 @@ export const DEFAULT_TREE_NODE_SEP = 24;
  */
 export const DEFAULT_OUTLINE_SAMPLES = 64;
 export const FLOATING_OUTLINE_SAMPLES = 96;
+
+/**
+ * Fallback scene dimensions, in pixels, for a scene with no explicit
+ * viewport size — a freshly imported document whose source carries no
+ * canvas size, or an empty export region. Just needs to be non-degenerate.
+ * Range: a few hundred to ~2000.
+ */
+export const FALLBACK_SCENE_WIDTH = 800;
+export const FALLBACK_SCENE_HEIGHT = 600;
