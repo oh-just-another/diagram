@@ -44,6 +44,14 @@ import {
   TEXT_CARET_WIDTH_PX,
   TEXT_SELECTION_FILL,
   TEXT_SELECTION_OPACITY,
+  GIF_BADGE_W,
+  GIF_BADGE_H,
+  GIF_BADGE_PAD,
+  GIF_BADGE_RADIUS,
+  GIF_BADGE_BG_COLOR,
+  LOCK_BADGE_SIZE,
+  LOCK_BADGE_COLOR,
+  LOCK_BADGE_KEYHOLE_COLOR,
 } from "./constants.js";
 import { CORNER_HANDLES, HANDLE_SIZE, handlePosition } from "./handle.js";
 import { isResizable } from "./editor/shape-traits.js";
@@ -745,20 +753,11 @@ export const renderOverlay = (
   target.restore();
 };
 
-/** Rounded "gif" chip in a shape's top-left corner — signals a paused
- *  GIF the user can click (or hover) to resume. */
-const GIF_BADGE_W = 30;
-const GIF_BADGE_H = 16;
-const GIF_BADGE_PAD = 4;
-const GIF_BADGE_RADIUS = 4;
-
-/** Small padlock badge at a selected locked element's top-right corner. */
-const LOCK_BADGE_SIZE = 16;
 const drawLockBadge = (target: RenderTarget, b: Bounds): void => {
   const s = LOCK_BADGE_SIZE;
   const x = b.x + b.width - s - 2;
   const y = b.y + 2;
-  const color = "#1a73e8";
+  const color = LOCK_BADGE_COLOR;
   // Shackle — a ring above the body; its lower half is hidden by the body so
   // the visible top arc reads as the lock's bow.
   target.setStroke(color);
@@ -776,7 +775,7 @@ const drawLockBadge = (target: RenderTarget, b: Bounds): void => {
   target.rect(x + s * 0.2, y + s * 0.44, s * 0.6, s * 0.48);
   target.fill();
   // Keyhole.
-  target.setFill("#fff");
+  target.setFill(LOCK_BADGE_KEYHOLE_COLOR);
   target.beginPath();
   target.ellipse(x + s / 2, y + s * 0.64, s * 0.07, s * 0.07);
   target.fill();
@@ -790,7 +789,7 @@ const drawGifBadge = (target: RenderTarget, screen: Bounds): void => {
   const r = GIF_BADGE_RADIUS;
   // Rounded-rect background.
   target.setStroke(null);
-  target.setFill("rgba(0,0,0,0.65)");
+  target.setFill(GIF_BADGE_BG_COLOR);
   target.beginPath();
   target.moveTo(x + r, y);
   target.lineTo(x + w - r, y);

@@ -11,7 +11,12 @@ import { getActiveRasterizer, getActiveTextShaper } from "@oh-just-another/rende
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
 import earcut from "earcut";
 import { parseWebGL2Color } from "./webgl2-color.js";
-import { WEBGL2_IMAGE_TEXTURE_CACHE_CAP, WEBGL2_TEXT_BITMAP_CACHE_CAP } from "./constants.js";
+import {
+  ELLIPSE_MAX_SEGMENTS,
+  ELLIPSE_MIN_SEGMENTS,
+  WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
+  WEBGL2_TEXT_BITMAP_CACHE_CAP,
+} from "./constants.js";
 import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
@@ -1368,15 +1373,6 @@ const ensureEarcutIndexCapacity = (n: number): void => {
   while (cap < n) cap *= 2;
   scratchEarcutIndices = new Uint16Array(cap);
 };
-
-/**
- * Lower / upper bounds on the polygon approximation of an ellipse. The
- * minimum keeps small ellipses from collapsing to a hexagon at far zoom;
- * the maximum caps GPU work for huge ellipses where the marginal
- * pixel-error improvement is invisible.
- */
-const ELLIPSE_MIN_SEGMENTS = 24;
-const ELLIPSE_MAX_SEGMENTS = 512;
 
 const IDENTITY_MAT3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 

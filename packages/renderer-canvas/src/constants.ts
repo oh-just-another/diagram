@@ -52,3 +52,16 @@ export const WEBGL2_TEXT_BITMAP_CACHE_CAP = 256;
  * cost).
  */
 export const WEBGL2_IMAGE_TEXTURE_CACHE_CAP = 64;
+
+/**
+ * Lower bound on the polygon approximation of an ellipse. Keeps small
+ * ellipses from collapsing to a coarse hexagon at far zoom. Range: 12–48.
+ */
+export const ELLIPSE_MIN_SEGMENTS = 24;
+
+/**
+ * Upper bound on the polygon approximation of an ellipse. Caps GPU work
+ * for huge ellipses where extra segments yield invisible pixel-error
+ * improvement. Range: 256–1024.
+ */
+export const ELLIPSE_MAX_SEGMENTS = 512;

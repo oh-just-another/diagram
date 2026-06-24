@@ -1,4 +1,9 @@
-import { DEFAULT_ATLAS_SIZE, DEFAULT_RANGE, DEFAULT_TILE_SIZE } from "./constants.js";
+import {
+  DEFAULT_ATLAS_SIZE,
+  DEFAULT_RANGE,
+  DEFAULT_TILE_SIZE,
+  UNICODE_CODEPOINT_SPAN,
+} from "./constants.js";
 
 /**
  * Minimum interface a shaper must satisfy to back a {@link GlyphAtlas}.
@@ -108,7 +113,7 @@ export class GlyphAtlas {
   readonly columns: number;
   readonly capacity: number;
 
-  /** Per-glyph cache. Key = `fontId * 0x110000 + codePoint` (see `glyphKey`). */
+  /** Per-glyph cache. Key = `fontId * UNICODE_CODEPOINT_SPAN + codePoint`. */
   private readonly glyphs = new Map<number, AtlasGlyph>();
   /** CPU-side RGB buffer mirroring the GPU texture. */
   private readonly buffer: Uint8Array;
@@ -154,7 +159,7 @@ export class GlyphAtlas {
     // Glyphs from different fonts share one atlas texture but must not
     // collide in the cache — key by (fontId, codePoint). codePoint is
     // ≤ 0x10FFFF, so the multiply leaves no overlap.
-    const key = fontId * 0x110000 + codePoint;
+    const key = fontId * UNICODE_CODEPOINT_SPAN + codePoint;
     const cached = this.glyphs.get(key);
     if (cached) return cached;
     if (this.nextSlot >= this.capacity) return null;

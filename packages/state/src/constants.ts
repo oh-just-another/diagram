@@ -566,3 +566,23 @@ export const TEXT_SELECTION_FILL = "#1a73e8";
 export const TEXT_SELECTION_OPACITY = 0.25;
 export const TEXT_CARET_WIDTH_PX = 1.5;
 export const TEXT_RESIZE_MIN_FONT_SIZE = 4;
+
+/**
+ * Paused-GIF chip drawn in a shape's top-left corner — signals a GIF the
+ * user can click / hover to resume. Dimensions in screen px; the scrim is
+ * a translucent black so the "gif" label stays legible over any artwork.
+ */
+export const GIF_BADGE_W = 30;
+export const GIF_BADGE_H = 16;
+export const GIF_BADGE_PAD = 4;
+export const GIF_BADGE_RADIUS = 4;
+export const GIF_BADGE_BG_COLOR = "rgba(0,0,0,0.65)";
+
+/**
+ * Padlock badge at a selected locked element's top-right corner. `SIZE` is
+ * the icon edge in screen px; the body uses the accent colour, the keyhole
+ * a contrasting fill.
+ */
+export const LOCK_BADGE_SIZE = 16;
+export const LOCK_BADGE_COLOR = "#1a73e8";
+export const LOCK_BADGE_KEYHOLE_COLOR = "#fff";
