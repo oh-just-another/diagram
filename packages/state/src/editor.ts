@@ -269,6 +269,7 @@ import {
   computeAnnotationMovePatch,
   computeGroupMovePatches,
   computeElementMovePatch,
+  constrainDeltaToAxis,
 } from "./editor/applies/move.js";
 import { computeMovingLinkPatches, computeMovingLinkForNudge } from "./editor/applies/link-move.js";
 import {
@@ -654,6 +655,15 @@ export class Editor {
    * move / resize / create wrappers; never persisted.
    */
   private snapSuppressed = false;
+
+  /**
+   * Transient transform-modifier state mirrored from the host while a drag is
+   * in flight. `alt` resizes symmetrically about the centre; `shift` locks the
+   * resize aspect ratio or constrains a move to a single axis. Read by the
+   * move / resize wrappers; never persisted.
+   */
+  private transformAltKey = false;
+  private transformShiftKey = false;
 
   /**
    * Persistent world-bounds cache shared with `renderScene` for viewport
@@ -2874,6 +2884,17 @@ export class Editor {
   }
 
   /**
+   * Host hook: mirror the Alt / Shift modifier state so an in-flight resize or
+   * move reacts to it — `alt` resizes about the centre, `shift` locks the
+   * resize aspect ratio (or constrains a move to one axis). The app wires
+   * keydown/keyup of the modifiers to this. Idempotent; never touches history.
+   */
+  setTransformModifiers(mods: { readonly alt: boolean; readonly shift: boolean }): void {
+    this.transformAltKey = mods.alt;
+    this.transformShiftKey = mods.shift;
+  }
+
+  /**
    * True when a gesture should snap. Snapping is coupled to grid display:
    * it is active only while the grid is enabled (`gridEnabled`) — snapping to
    * a hidden grid is confusing. `snapToGrid` is an extra programmatic opt-out;
@@ -3617,7 +3638,9 @@ export class Editor {
     // Locked / layer-locked elements are selectable but don't move.
     const el = getElement(this._scene, id);
     if (el && !this.isElementManipulable(el)) return;
-    const d = this.snapActive() ? snapMoveDelta(originalBounds, delta, this.snapSpacing()) : delta;
+    // Shift constrains the drag to one axis before snapping.
+    const moved = this.transformShiftKey ? constrainDeltaToAxis(delta) : delta;
+    const d = this.snapActive() ? snapMoveDelta(originalBounds, moved, this.snapSpacing()) : moved;
     const patch = computeElementMovePatch(this._scene, id, d, originalBounds);
     if (!patch) return;
     this._scene = apply(this._scene, patch);
@@ -3627,9 +3650,11 @@ export class Editor {
 
   private applyGroupMove(delta: Vec2): void {
     if (!this.groupMoveOrigin) return;
+    // Shift constrains the drag to one axis before snapping.
+    const moved = this.transformShiftKey ? constrainDeltaToAxis(delta) : delta;
     const d = this.snapActive()
-      ? snapGroupDelta(this.groupMoveOrigin, delta, this.snapSpacing())
-      : delta;
+      ? snapGroupDelta(this.groupMoveOrigin, moved, this.snapSpacing())
+      : moved;
     const patches = computeGroupMovePatches(this._scene, this.groupMoveOrigin, d);
     for (const patch of patches) {
       this._scene = apply(this._scene, patch);

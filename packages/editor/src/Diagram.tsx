@@ -524,19 +524,22 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     });
   }, [editor, onSceneChange, onSelectionChange]);
 
-  // Hold Cmd / Ctrl to temporarily pull a shape off the grid during a
-  // drag (standard). We read the modifier state off every key event
-  // (and reset on blur) so a missed keyup can't leave snapping stuck off.
+  // Track transform modifiers off every key event (and reset on blur) so a
+  // missed keyup can't leave a flag stuck: Cmd/Ctrl pulls a shape off the grid
+  // for one drag; Alt resizes about the centre; Shift locks the resize aspect
+  // ratio or constrains a move to one axis.
   useEffect(() => {
     if (!editor) return undefined;
     const sync = (e: KeyboardEvent) => {
-      // Don't track the modifier (or touch snap state) while typing in a
-      // field — keep the editor's snap-suppress flag inert there.
+      // Don't track modifiers (or touch snap state) while typing in a field —
+      // keep the editor's transform flags inert there.
       if (isEditableTarget(e.target)) return;
       editor.setSnapSuppressed(e.metaKey || e.ctrlKey);
+      editor.setTransformModifiers({ alt: e.altKey, shift: e.shiftKey });
     };
     const reset = () => {
       editor.setSnapSuppressed(false);
+      editor.setTransformModifiers({ alt: false, shift: false });
     };
     window.addEventListener("keydown", sync);
     window.addEventListener("keyup", sync);
@@ -546,6 +549,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
       window.removeEventListener("keyup", sync);
       window.removeEventListener("blur", reset);
       editor.setSnapSuppressed(false);
+      editor.setTransformModifiers({ alt: false, shift: false });
     };
   }, [editor]);
 
