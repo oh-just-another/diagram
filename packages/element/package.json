@@ -40,6 +40,7 @@
   ],
   "scripts": {
     "gen:styles": "node scripts/gen-styles.mjs",
+    "dev": "vite",
     "build": "pnpm gen:styles && tsc -b tsconfig.build.json && pnpm build:cdn",
     "build:cdn": "node scripts/build-cdn.mjs",
     "typecheck": "pnpm gen:styles && tsc --noEmit",
@@ -61,7 +62,9 @@
   "devDependencies": {
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "4.7.0",
     "esbuild": "0.25.12",
-    "jsdom": "25.0.1"
+    "jsdom": "25.0.1",
+    "vite": "6.4.3"
   }
 }

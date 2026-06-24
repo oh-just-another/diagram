@@ -17,6 +17,9 @@ export default tseslint.config(
       // Node-only build / codegen tooling — not part of any tsconfig project,
       // so the type-aware ruleset can't resolve them.
       "**/scripts/*.mjs",
+      // Standalone runnable examples — served by their own dev server, not
+      // part of the package's tsconfig project.
+      "**/example/**",
     ],
   },
   eslint.configs.recommended,
