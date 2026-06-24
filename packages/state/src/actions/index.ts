@@ -38,4 +38,14 @@ export {
   modeActions,
 } from "./actionMode.js";
 export { actionToggleGrid, viewActions } from "./actionView.js";
-export { actionFlipHorizontal, actionFlipVertical, arrangeActions } from "./actionArrange.js";
+export {
+  actionFlipHorizontal,
+  actionFlipVertical,
+  actionAlignLeft,
+  actionAlignHCenter,
+  actionAlignRight,
+  actionAlignTop,
+  actionAlignVCenter,
+  actionAlignBottom,
+  arrangeActions,
+} from "./actionArrange.js";

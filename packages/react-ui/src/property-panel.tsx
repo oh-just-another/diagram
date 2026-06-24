@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlignCenter,
+  AlignCenterHorizontal,
+  AlignCenterVertical,
+  AlignEndHorizontal,
+  AlignEndVertical,
   AlignLeft,
   AlignRight,
+  AlignStartHorizontal,
+  AlignStartVertical,
   Bold,
   CaseSensitive,
   ChevronsDown,
@@ -133,12 +139,10 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       );
     }
     // Common trailing controls for every shape type.
-    overflow.push(
-      <ZOrderControl key="z" />,
-      <LinkControl key="link" shapes={shapes} />,
-      <ActionsControl key="actions" shapes={shapes} />,
-      <MoreButton key="more" />,
-    );
+    overflow.push(<ZOrderControl key="z" />, <LinkControl key="link" shapes={shapes} />);
+    // Alignment needs a reference box — only meaningful for 2+ shapes.
+    if (shapes.length >= 2) overflow.push(<AlignControl key="align" />);
+    overflow.push(<ActionsControl key="actions" shapes={shapes} />, <MoreButton key="more" />);
     return (
       <PanelShell
         mobile={mobile}
@@ -1005,6 +1009,69 @@ const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
         else editor.flipSelection("vertical");
       }}
     />
+  );
+};
+
+/**
+ * Align popover — a 3×2 grid of edge / centre alignments for the current
+ * multi-selection. Mounted only when two or more shapes are selected (a single
+ * shape has nothing to align to).
+ */
+type AlignEdgeId = "left" | "h-center" | "right" | "top" | "v-center" | "bottom";
+
+const ALIGN_OPTIONS: { edge: AlignEdgeId; label: string; icon: ReactNode }[] = [
+  { edge: "left", label: "Align left", icon: <AlignStartVertical size={16} strokeWidth={1.75} /> },
+  {
+    edge: "h-center",
+    label: "Align horizontal centres",
+    icon: <AlignCenterVertical size={16} strokeWidth={1.75} />,
+  },
+  { edge: "right", label: "Align right", icon: <AlignEndVertical size={16} strokeWidth={1.75} /> },
+  { edge: "top", label: "Align top", icon: <AlignStartHorizontal size={16} strokeWidth={1.75} /> },
+  {
+    edge: "v-center",
+    label: "Align vertical centres",
+    icon: <AlignCenterHorizontal size={16} strokeWidth={1.75} />,
+  },
+  {
+    edge: "bottom",
+    label: "Align bottom",
+    icon: <AlignEndHorizontal size={16} strokeWidth={1.75} />,
+  },
+];
+
+const AlignControl = () => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  return (
+    <Popover
+      ariaLabel="Align"
+      trigger={
+        <button type="button" className="du-sel-icon-button" title="Align" aria-label="Align">
+          <AlignCenterVertical size={16} strokeWidth={1.75} />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Align</header>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
+          {ALIGN_OPTIONS.map((o) => (
+            <button
+              key={o.edge}
+              type="button"
+              className="du-sel-icon-button"
+              title={o.label}
+              aria-label={o.label}
+              onClick={() => {
+                editor.alignSelection(o.edge);
+              }}
+            >
+              {o.icon}
+            </button>
+          ))}
+        </div>
+      </div>
+    </Popover>
   );
 };
 

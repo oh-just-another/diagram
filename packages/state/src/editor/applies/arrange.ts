@@ -10,6 +10,9 @@ import type { Bounds, ElementId } from "@oh-just-another/types";
 
 export type FlipAxis = "horizontal" | "vertical";
 
+/** Which edge / centre line the selection aligns to within its bounding box. */
+export type AlignEdge = "left" | "h-center" | "right" | "top" | "v-center" | "bottom";
+
 /** Collect the live elements for `ids`, skipping any that no longer exist. */
 const collect = (scene: Scene, ids: Iterable<ElementId>): Element[] => {
   const out: Element[] = [];
@@ -57,6 +60,54 @@ export const computeFlipPatches = (
           position: { x: el.position.x, y: 2 * cy - el.position.y },
           scale: { x: el.scale.x, y: -el.scale.y },
         };
+    patches.push({ kind: "element", id: el.id, before: el, after });
+  }
+  return patches;
+};
+
+/**
+ * Pure: align every selected element to the given edge / centre line of the
+ * combined selection's bounding box (e.g. `left` moves each shape so its left
+ * edge meets the box's left edge; `h-center` lines up horizontal centres).
+ * Only the relevant axis moves; sizes are unchanged. A no-op below two
+ * elements.
+ */
+export const computeAlignPatches = (
+  scene: Scene,
+  ids: Iterable<ElementId>,
+  edge: AlignEdge,
+): Patch[] => {
+  const elements = collect(scene, ids);
+  if (elements.length < 2) return [];
+  const box = enclosingBounds(elements);
+
+  const patches: Patch[] = [];
+  for (const el of elements) {
+    const b = getElementWorldBounds(el);
+    let dx = 0;
+    let dy = 0;
+    switch (edge) {
+      case "left":
+        dx = box.x - b.x;
+        break;
+      case "right":
+        dx = box.x + box.width - (b.x + b.width);
+        break;
+      case "h-center":
+        dx = box.x + box.width / 2 - (b.x + b.width / 2);
+        break;
+      case "top":
+        dy = box.y - b.y;
+        break;
+      case "bottom":
+        dy = box.y + box.height - (b.y + b.height);
+        break;
+      case "v-center":
+        dy = box.y + box.height / 2 - (b.y + b.height / 2);
+        break;
+    }
+    if (dx === 0 && dy === 0) continue;
+    const after: Element = { ...el, position: { x: el.position.x + dx, y: el.position.y + dy } };
     patches.push({ kind: "element", id: el.id, before: el, after });
   }
   return patches;

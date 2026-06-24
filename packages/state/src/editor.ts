@@ -271,7 +271,12 @@ import {
   computeElementMovePatch,
   constrainDeltaToAxis,
 } from "./editor/applies/move.js";
-import { computeFlipPatches, type FlipAxis } from "./editor/applies/arrange.js";
+import {
+  computeAlignPatches,
+  computeFlipPatches,
+  type AlignEdge,
+  type FlipAxis,
+} from "./editor/applies/arrange.js";
 import { computeMovingLinkPatches, computeMovingLinkForNudge } from "./editor/applies/link-move.js";
 import {
   computeCreateLink,
@@ -2676,7 +2681,20 @@ export class Editor {
    * element flips about its own centre. One undoable step.
    */
   flipSelection(axis: FlipAxis): void {
-    const patches = computeFlipPatches(this._scene, this._selection, axis);
+    this.commitArrange(computeFlipPatches(this._scene, this._selection, axis));
+  }
+
+  /**
+   * Align the selection to the given edge / centre line of its bounding box
+   * (e.g. `left` flushes every shape's left edge; `h-center` lines up
+   * horizontal centres). Needs two or more elements. One undoable step.
+   */
+  alignSelection(edge: AlignEdge): void {
+    this.commitArrange(computeAlignPatches(this._scene, this._selection, edge));
+  }
+
+  /** Apply a batch of arrange patches as a single undoable step. */
+  private commitArrange(patches: readonly Patch[]): void {
     if (patches.length === 0) return;
     const tx = this._history.transaction();
     for (const patch of patches) {
