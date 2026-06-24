@@ -3820,6 +3820,7 @@ export class Editor {
       // Aspect-locked when the selection type demands it (images / groups) or
       // the user holds Shift for this gesture.
       this.selectionIsAspectLocked() || this.transformShiftKey,
+      this.transformAltKey,
     );
     this._scene = result.scene;
     for (const patch of result.patches) this.recordGesturePatch(patch);
@@ -3843,6 +3844,7 @@ export class Editor {
         handle,
         d,
         originalBounds,
+        this.transformAltKey,
       );
       if (!result) return;
       this._scene = result.scene;
@@ -3858,6 +3860,7 @@ export class Editor {
       originalBounds,
       (s, raw, h) => this.clampContainerToChildren(s, raw, h),
       this.transformShiftKey,
+      this.transformAltKey,
     );
     if (!result) return;
     this._scene = result.scene;

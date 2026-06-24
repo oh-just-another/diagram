@@ -11,7 +11,12 @@ import {
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
 import type { HandleId } from "../../handle.js";
-import { applyResizeConstraints, lockAspectRatio, resizeFromHandle } from "../resize-helpers.js";
+import {
+  applyResizeConstraints,
+  lockAspectRatio,
+  resizeFromCenter,
+  resizeFromHandle,
+} from "../resize-helpers.js";
 import { hasWidthHeight } from "../shape-traits.js";
 import { scaleLinkAround } from "./link-move.js";
 import { TEXT_RESIZE_MIN_FONT_SIZE } from "../../constants.js";
@@ -36,13 +41,15 @@ export const computeElementResize = (
   originalBounds: Bounds,
   clampContainer: (shape: Element, raw: Bounds, handle: HandleId) => Bounds,
   lockAspect = false,
+  fromCenter = false,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const shape = getElement(scene, id);
   if (!shape) return null;
   if (!hasWidthHeight(shape)) return null;
 
   const free = resizeFromHandle(originalBounds, handle, delta);
-  const raw = lockAspect ? lockAspectRatio(originalBounds, free) : free;
+  const shaped = lockAspect ? lockAspectRatio(originalBounds, free) : free;
+  const raw = fromCenter ? resizeFromCenter(originalBounds, shaped) : shaped;
   // An auto-layout container (a box holding laid-out children) must NEVER
   // mirror through its own body: dragging an edge inward past the opposite
   // edge would otherwise hand control to that opposite edge ("flip through
@@ -50,7 +57,7 @@ export const computeElementResize = (
   // instances that lack it behave the same.
   const noFlip = shape.noFlip === true || getAutoLayoutSpec(shape) !== null;
   const constraints: Element = noFlip ? { ...shape, noFlip: true } : shape;
-  const intermediate = applyResizeConstraints(originalBounds, raw, handle, constraints);
+  const intermediate = applyResizeConstraints(originalBounds, raw, handle, constraints, fromCenter);
   const constrained = clampContainer(shape, intermediate, handle);
 
   // `constrained` is in world units (originalBounds was world AABB).
@@ -89,16 +96,19 @@ export const computeTextResize = (
   handle: HandleId,
   delta: Vec2,
   originalBounds: Bounds,
+  fromCenter = false,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const current = getElement(scene, original.id);
   if (!current) return null;
   const raw = resizeFromHandle(originalBounds, handle, delta);
+  const cx = originalBounds.x + originalBounds.width / 2;
+  const cy = originalBounds.y + originalBounds.height / 2;
 
   // Left / right edges → wrap-width only (no scale).
   if (handle === "e" || handle === "w") {
     const newMaxWidth = Math.max(original.fontSize, Math.abs(raw.width));
     const anchorX = handle === "w" ? originalBounds.x + originalBounds.width : originalBounds.x;
-    const nx = handle === "w" ? anchorX - newMaxWidth : anchorX;
+    const nx = fromCenter ? cx - newMaxWidth / 2 : handle === "w" ? anchorX - newMaxWidth : anchorX;
     const next: Element = {
       ...original,
       position: { x: nx, y: originalBounds.y },
@@ -124,8 +134,8 @@ export const computeTextResize = (
   // n/s the horizontal position pins to the left edge.
   const ax = handle.includes("w") ? originalBounds.x + originalBounds.width : originalBounds.x;
   const ay = handle.includes("n") ? originalBounds.y + originalBounds.height : originalBounds.y;
-  const nx = handle.includes("w") ? ax - newW : ax;
-  const ny = handle.includes("n") ? ay - newH : ay;
+  const nx = fromCenter ? cx - newW / 2 : handle.includes("w") ? ax - newW : ax;
+  const ny = fromCenter ? cy - newH / 2 : handle.includes("n") ? ay - newH : ay;
   const next: Element = {
     ...original,
     position: { x: nx, y: ny },
@@ -174,6 +184,7 @@ export const computeGroupResizePatches = (
   delta: Vec2,
   originalBounds: Bounds,
   isAspectLocked: boolean,
+  fromCenter = false,
 ): { scene: Scene; patches: Patch[] } => {
   const next = resizeFromHandle(originalBounds, handle, delta);
   const minDim = 1;
@@ -188,6 +199,12 @@ export const computeGroupResizePatches = (
     sx = locked * (sx >= 0 ? 1 : -1);
     sy = locked * (sy >= 0 ? 1 : -1);
   }
+  // Centre-anchored resize: the dragged side moves while the opposite side
+  // mirrors, so the scale deviation from 1 doubles about the centre.
+  if (fromCenter) {
+    sx = 1 + 2 * (sx - 1);
+    sy = 1 + 2 * (sy - 1);
+  }
   // Uniform factor for aspect-locked members (images) inside a mixed
   // selection: an image must only *scale*, never distort, even while
   // its neighbours follow the box's independent sx/sy (images are
@@ -198,10 +215,18 @@ export const computeGroupResizePatches = (
   // stays put in the group's layout — only its size stays proportional.
   const imgScale = Math.abs(sx - 1) >= Math.abs(sy - 1) ? sx : sy;
 
-  // Anchor for the scale = the unchanging corner / edge midpoint
-  // of the original bounds (opposite to the dragged handle).
-  const ax = handle.includes("w") ? originalBounds.x + originalBounds.width : originalBounds.x;
-  const ay = handle.includes("n") ? originalBounds.y + originalBounds.height : originalBounds.y;
+  // Anchor for the scale: the original centre when resizing from centre,
+  // otherwise the unchanging corner / edge midpoint opposite the dragged handle.
+  const ax = fromCenter
+    ? originalBounds.x + originalBounds.width / 2
+    : handle.includes("w")
+      ? originalBounds.x + originalBounds.width
+      : originalBounds.x;
+  const ay = fromCenter
+    ? originalBounds.y + originalBounds.height / 2
+    : handle.includes("n")
+      ? originalBounds.y + originalBounds.height
+      : originalBounds.y;
 
   let runningScene = scene;
   const patches: Patch[] = [];
