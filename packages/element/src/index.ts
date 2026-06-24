@@ -2,6 +2,19 @@ import { OhDiagramElement } from "./oh-diagram-element.js";
 
 export { OhDiagramElement } from "./oh-diagram-element.js";
 
+export {
+  applyOhDiagramProps,
+  bindOhDiagramEvents,
+  ohDiagramController,
+  OH_DIAGRAM_EVENTS,
+  type DiagramRenderer,
+  type DiagramTheme,
+  type OhDiagramController,
+  type OhDiagramEventHandlers,
+  type OhDiagramEventMap,
+  type OhDiagramProps,
+} from "./bindings.js";
+
 /** The tag name the element registers under. */
 export const OH_DIAGRAM_TAG = "oh-diagram";
 
