@@ -13,6 +13,9 @@ export type FlipAxis = "horizontal" | "vertical";
 /** Which edge / centre line the selection aligns to within its bounding box. */
 export type AlignEdge = "left" | "h-center" | "right" | "top" | "v-center" | "bottom";
 
+/** Axis along which the selection is evenly distributed. */
+export type DistributeAxis = "horizontal" | "vertical";
+
 /** Collect the live elements for `ids`, skipping any that no longer exist. */
 const collect = (scene: Scene, ids: Iterable<ElementId>): Element[] => {
   const out: Element[] = [];
@@ -109,6 +112,51 @@ export const computeAlignPatches = (
     if (dx === 0 && dy === 0) continue;
     const after: Element = { ...el, position: { x: el.position.x + dx, y: el.position.y + dy } };
     patches.push({ kind: "element", id: el.id, before: el, after });
+  }
+  return patches;
+};
+
+/**
+ * Pure: evenly space the selection along the given axis so the gaps between
+ * adjacent elements are equal. The outermost two elements stay put; the rest
+ * shift to balance the gaps (accounting for differing sizes). A no-op below
+ * three elements.
+ */
+export const computeDistributePatches = (
+  scene: Scene,
+  ids: Iterable<ElementId>,
+  axis: DistributeAxis,
+): Patch[] => {
+  const elements = collect(scene, ids);
+  if (elements.length < 3) return [];
+  const horizontal = axis === "horizontal";
+  const start = (b: Bounds): number => (horizontal ? b.x : b.y);
+  const size = (b: Bounds): number => (horizontal ? b.width : b.height);
+
+  const sorted = elements
+    .map((el) => ({ el, b: getElementWorldBounds(el) }))
+    .sort((p, q) => start(p.b) - start(q.b));
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  if (!first || !last) return [];
+
+  const span = start(last.b) + size(last.b) - start(first.b);
+  const totalSize = sorted.reduce((acc, p) => acc + size(p.b), 0);
+  const gap = (span - totalSize) / (sorted.length - 1);
+
+  const patches: Patch[] = [];
+  let cursor = start(first.b) + size(first.b) + gap;
+  for (let i = 1; i < sorted.length - 1; i++) {
+    const p = sorted[i];
+    if (!p) continue;
+    const delta = cursor - start(p.b);
+    if (delta !== 0) {
+      const after: Element = horizontal
+        ? { ...p.el, position: { x: p.el.position.x + delta, y: p.el.position.y } }
+        : { ...p.el, position: { x: p.el.position.x, y: p.el.position.y + delta } };
+      patches.push({ kind: "element", id: p.el.id, before: p.el, after });
+    }
+    cursor += size(p.b) + gap;
   }
   return patches;
 };

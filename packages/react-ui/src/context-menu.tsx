@@ -342,6 +342,8 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   actionMenuItem("align-top", { label: "Align top" }),
   actionMenuItem("align-v-center", { label: "Align vertical centres" }),
   actionMenuItem("align-bottom", { label: "Align bottom" }),
+  actionMenuItem("distribute-horizontal", { label: "Distribute horizontally" }),
+  actionMenuItem("distribute-vertical", { label: "Distribute vertically" }),
   actionMenuItem("arrange-grid"),
   actionMenuItem("arrange-stack-h"),
   actionMenuItem("arrange-stack-v"),

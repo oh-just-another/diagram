@@ -273,8 +273,10 @@ import {
 } from "./editor/applies/move.js";
 import {
   computeAlignPatches,
+  computeDistributePatches,
   computeFlipPatches,
   type AlignEdge,
+  type DistributeAxis,
   type FlipAxis,
 } from "./editor/applies/arrange.js";
 import { computeMovingLinkPatches, computeMovingLinkForNudge } from "./editor/applies/link-move.js";
@@ -2691,6 +2693,15 @@ export class Editor {
    */
   alignSelection(edge: AlignEdge): void {
     this.commitArrange(computeAlignPatches(this._scene, this._selection, edge));
+  }
+
+  /**
+   * Evenly space the selection along the given axis so the gaps between
+   * adjacent shapes are equal; the outermost shapes stay put. Needs three or
+   * more elements. One undoable step.
+   */
+  distributeSelection(axis: DistributeAxis): void {
+    this.commitArrange(computeDistributePatches(this._scene, this._selection, axis));
   }
 
   /** Apply a batch of arrange patches as a single undoable step. */

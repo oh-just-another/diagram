@@ -10,7 +10,11 @@ import {
   type Patch,
   type Scene,
 } from "@oh-just-another/scene";
-import { computeAlignPatches, computeFlipPatches } from "../src/editor/applies/arrange";
+import {
+  computeAlignPatches,
+  computeDistributePatches,
+  computeFlipPatches,
+} from "../src/editor/applies/arrange";
 
 const rect = (id: string, x: number, y = 0): Element => ({
   id: elementId(id),
@@ -112,5 +116,31 @@ describe("computeAlignPatches", () => {
 
   it("needs at least two elements", () => {
     expect(computeAlignPatches(scene, [elementId("a")], "left")).toEqual([]);
+  });
+});
+
+describe("computeDistributePatches", () => {
+  const ids = [elementId("a"), elementId("b"), elementId("c")];
+
+  it("equalises horizontal gaps, keeping the outer two fixed", () => {
+    // a:0..40, b:50..90, c:200..240 → span 240, sizes 120, gap (240−120)/2 = 60
+    const scene = sceneWith(rect("a", 0), rect("b", 50), rect("c", 200));
+    const m = afters(computeDistributePatches(scene, ids, "horizontal"));
+    expect(m.get(elementId("b"))!.position.x).toBeCloseTo(100); // 0+40+60
+    expect(m.has(elementId("a"))).toBe(false); // outer two untouched
+    expect(m.has(elementId("c"))).toBe(false);
+  });
+
+  it("distributes on the vertical axis", () => {
+    const scene = sceneWith(rect("a", 0, 0), rect("b", 0, 50), rect("c", 0, 200));
+    const m = afters(computeDistributePatches(scene, ids, "vertical"));
+    expect(m.get(elementId("b"))!.position.y).toBeCloseTo(100);
+  });
+
+  it("needs at least three elements", () => {
+    const scene = sceneWith(rect("a", 0), rect("b", 50));
+    expect(computeDistributePatches(scene, [elementId("a"), elementId("b")], "horizontal")).toEqual(
+      [],
+    );
   });
 });

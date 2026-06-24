@@ -8,6 +8,9 @@ import { type Action, type ActionContext, hasSelection } from "./types.js";
 /** Alignment needs at least two elements to have a meaningful reference box. */
 const hasMultiSelection = (ctx: ActionContext): boolean => ctx.editor.selection.size >= 2;
 
+/** Distribution needs at least three elements (outer two pin the span). */
+const hasThreePlus = (ctx: ActionContext): boolean => ctx.editor.selection.size >= 3;
+
 export const actionFlipHorizontal: Action = {
   id: "flip-horizontal",
   label: "Flip horizontal",
@@ -102,6 +105,30 @@ export const actionAlignBottom: Action = {
   },
 };
 
+export const actionDistributeHorizontal: Action = {
+  id: "distribute-horizontal",
+  label: "Distribute horizontally",
+  category: "arrange",
+  hotkey: { key: "h", alt: true },
+  iconId: "distribute-horizontal",
+  predicate: hasThreePlus,
+  perform: ({ editor }) => {
+    editor.distributeSelection("horizontal");
+  },
+};
+
+export const actionDistributeVertical: Action = {
+  id: "distribute-vertical",
+  label: "Distribute vertically",
+  category: "arrange",
+  hotkey: { key: "v", alt: true },
+  iconId: "distribute-vertical",
+  predicate: hasThreePlus,
+  perform: ({ editor }) => {
+    editor.distributeSelection("vertical");
+  },
+};
+
 export const arrangeActions: readonly Action[] = [
   actionFlipHorizontal,
   actionFlipVertical,
@@ -111,4 +138,6 @@ export const arrangeActions: readonly Action[] = [
   actionAlignTop,
   actionAlignVCenter,
   actionAlignBottom,
+  actionDistributeHorizontal,
+  actionDistributeVertical,
 ];

@@ -5,10 +5,12 @@ import {
   AlignCenterVertical,
   AlignEndHorizontal,
   AlignEndVertical,
+  AlignHorizontalDistributeCenter,
   AlignLeft,
   AlignRight,
   AlignStartHorizontal,
   AlignStartVertical,
+  AlignVerticalDistributeCenter,
   Bold,
   CaseSensitive,
   ChevronsDown,
@@ -1042,10 +1044,13 @@ const ALIGN_OPTIONS: { edge: AlignEdgeId; label: string; icon: ReactNode }[] = [
 
 const AlignControl = () => {
   const editor = useDiagramOptional();
+  const selection = useSelection();
   if (!editor) return null;
+  // Distribution needs three+ elements; alignment is offered from two.
+  const canDistribute = selection.size >= 3;
   return (
     <Popover
-      ariaLabel="Align"
+      ariaLabel="Align and distribute"
       trigger={
         <button type="button" className="du-sel-icon-button" title="Align" aria-label="Align">
           <AlignCenterVertical size={16} strokeWidth={1.75} />
@@ -1070,6 +1075,35 @@ const AlignControl = () => {
             </button>
           ))}
         </div>
+        {canDistribute ? (
+          <>
+            <header className="du-sel-popover-label">Distribute</header>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                type="button"
+                className="du-sel-icon-button"
+                title="Distribute horizontally"
+                aria-label="Distribute horizontally"
+                onClick={() => {
+                  editor.distributeSelection("horizontal");
+                }}
+              >
+                <AlignHorizontalDistributeCenter size={16} strokeWidth={1.75} />
+              </button>
+              <button
+                type="button"
+                className="du-sel-icon-button"
+                title="Distribute vertically"
+                aria-label="Distribute vertically"
+                onClick={() => {
+                  editor.distributeSelection("vertical");
+                }}
+              >
+                <AlignVerticalDistributeCenter size={16} strokeWidth={1.75} />
+              </button>
+            </div>
+          </>
+        ) : null}
       </div>
     </Popover>
   );

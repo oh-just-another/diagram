@@ -47,5 +47,7 @@ export {
   actionAlignTop,
   actionAlignVCenter,
   actionAlignBottom,
+  actionDistributeHorizontal,
+  actionDistributeVertical,
   arrangeActions,
 } from "./actionArrange.js";
