@@ -1,6 +1,7 @@
 import { createRoot, type Root } from "react-dom/client";
 import {
   Editor as EditorComponent,
+  bindEditorHotkeys,
   type EditorAPI,
   type EditorProps,
   type ElementId,
@@ -54,6 +55,7 @@ export class OhDiagramElement extends HTMLElement {
   /** Wraps the editor + portals; carries `data-theme` so both pick up the theme. */
   #themeHost: HTMLDivElement | null = null;
   #api: EditorAPI | null = null;
+  #unbindHotkeys: (() => void) | null = null;
   /** Initial scene captured before mount; live updates go through `loadScene`. */
   #scene: Scene | undefined = undefined;
 
@@ -83,6 +85,8 @@ export class OhDiagramElement extends HTMLElement {
   }
 
   disconnectedCallback(): void {
+    this.#unbindHotkeys?.();
+    this.#unbindHotkeys = null;
     this.#root?.unmount();
     this.#root = null;
     this.#api = null;
@@ -183,8 +187,12 @@ export class OhDiagramElement extends HTMLElement {
       ...(theme ? { theme } : {}),
       ...(renderer ? { capabilities: { renderer } } : {}),
       onReady: (editor) => {
-        // `onReady` hands back the live engine; the API ref is captured in
-        // `#render` via the imperative handle, so re-emit once both settle.
+        // Wire keyboard shortcuts so the editor is usable without a host
+        // doing it. Listen on `window`: a shadow-internal element doesn't
+        // have to hold focus for the shortcut to land, and `composedPath`
+        // keeps text-field suppression correct across the shadow boundary.
+        this.#unbindHotkeys?.();
+        this.#unbindHotkeys = bindEditorHotkeys(editor);
         this.#emit("ready", { editor });
       },
       onSceneChange: (scene) => {
