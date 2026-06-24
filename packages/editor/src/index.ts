@@ -34,6 +34,7 @@ export {
   type CapabilityOverrides,
 } from "./capabilities.js";
 export { isEditableTarget } from "./dom-focus.js";
+export { bindEditorHotkeys, type HotkeyBindingOptions } from "@oh-just-another/state";
 export { exportSceneToPng, type PngExportBackground, type PngExportOptions } from "./png-export.js";
 
 // Plug-in registries from the underlying packages, surfaced here so the

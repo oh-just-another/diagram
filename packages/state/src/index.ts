@@ -37,6 +37,8 @@ export {
   isEditableTarget,
 } from "./dom-events.js";
 
+export { bindEditorHotkeys, type HotkeyBindingOptions } from "./hotkeys-binding.js";
+
 export type { InteractiveHitTester } from "./interactive.js";
 export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive.js";
 
