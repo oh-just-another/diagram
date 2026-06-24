@@ -33,15 +33,18 @@ export const CommandPalette = (): ReactElement | null => {
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Register the open action so `⌘K` routes through the registry like every
-  // other hotkey (fed by the host keydown listener) and shows in the help
-  // dialog. `replace` is idempotent across StrictMode / HMR.
+  // Register the open action so `⌘K` (or `⌘⇧P`) routes through the registry
+  // like every other hotkey (fed by the host keydown listener) and shows in the
+  // help dialog. `replace` is idempotent across StrictMode / HMR.
   useEffect(() => {
     defaultActionRegistry.replace({
       id: "open-command-palette",
       label: "Command palette",
       category: "other",
-      hotkey: { key: "k", meta: true },
+      hotkey: [
+        { key: "k", meta: true },
+        { key: "p", meta: true, shift: true },
+      ],
       perform: () => {
         setOpen(true);
       },
