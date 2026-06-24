@@ -20,6 +20,9 @@ export default tseslint.config(
       // Standalone runnable examples — served by their own dev server, not
       // part of the package's tsconfig project.
       "**/example/**",
+      // Copy-out starter templates — standalone projects with their own
+      // tooling / tsconfig, not part of this workspace's lint surface.
+      "templates/**",
     ],
   },
   eslint.configs.recommended,
