@@ -25,6 +25,14 @@ import {
   TEXT_DECORATION_THICKNESS,
   TEXT_UNDERLINE_OFFSET,
   TEXT_STRIKETHROUGH_OFFSET,
+  ARROWHEAD_HEAD_RATIO,
+  ARROWHEAD_BODY_THICKNESS,
+  ARROWHEAD_RATIO_MIN,
+  ARROWHEAD_RATIO_MAX,
+  FRAME_STROKE_COLOR,
+  FRAME_FILL_COLOR,
+  FRAME_HEADER_BG_COLOR,
+  FRAME_HEADER_TEXT_COLOR,
 } from "./constants.js";
 import { req, type Vec2 } from "@oh-just-another/types";
 
@@ -411,8 +419,14 @@ export const installBuiltinRenderers = (): void => {
 const drawBlockArrow: ElementRenderer<BlockArrowElement> = (shape, target) => {
   const { fill, stroke } = applyStyle(shape.style, target);
   const direction = shape.direction ?? "right";
-  const headRatio = Math.max(0.1, Math.min(0.9, shape.headRatio ?? 0.4));
-  const bodyT = Math.max(0.1, Math.min(0.9, shape.bodyThickness ?? 0.5));
+  const headRatio = Math.max(
+    ARROWHEAD_RATIO_MIN,
+    Math.min(ARROWHEAD_RATIO_MAX, shape.headRatio ?? ARROWHEAD_HEAD_RATIO),
+  );
+  const bodyT = Math.max(
+    ARROWHEAD_RATIO_MIN,
+    Math.min(ARROWHEAD_RATIO_MAX, shape.bodyThickness ?? ARROWHEAD_BODY_THICKNESS),
+  );
   const w = shape.width;
   const h = shape.height;
   // Compute the local path for a `right`-pointing arrow inside
@@ -468,10 +482,6 @@ const rotateLocal = (
   }
 };
 
-/** Frame chrome colours: outline + header strip with the frame's name. */
-const FRAME_STROKE = "#888";
-const FRAME_FILL = "#ffffff";
-
 const FRAME_HEADER_ELLIPSIS = "…";
 
 /**
@@ -498,7 +508,7 @@ const drawFrame: ElementRenderer<FrameElement> = (shape, target, ctx) => {
   // Body — solid fill + thin solid outline. Frames sit at the bottom
   // z-order, so the fill backs their members without covering them.
   // Honours an explicit `style.fill`, else default white.
-  target.setFill(shape.style.fill ?? FRAME_FILL);
+  target.setFill(shape.style.fill ?? FRAME_FILL_COLOR);
   target.setStroke(null);
   target.setDashArray(null);
   target.beginPath();
@@ -510,7 +520,7 @@ const drawFrame: ElementRenderer<FrameElement> = (shape, target, ctx) => {
   // 1 world-px when no zoom context is supplied (preview / export at 1:1).
   const screenScale = (ctx?.zoom ?? 1) * (shape.scale.x || 1);
   target.setFill(null);
-  target.setStroke(FRAME_STROKE);
+  target.setStroke(FRAME_STROKE_COLOR);
   target.setStrokeWidth(1 / (screenScale || 1));
   target.setDashArray(null);
   target.beginPath();
@@ -532,13 +542,13 @@ const drawFrame: ElementRenderer<FrameElement> = (shape, target, ctx) => {
     : shape.width;
 
   // Header label background — stretches to fit the (possibly truncated) text.
-  target.setFill("#222");
+  target.setFill(FRAME_HEADER_BG_COLOR);
   target.beginPath();
   target.rect(0, -FRAME_HEADER_HEIGHT, headerWidth, FRAME_HEADER_HEIGHT);
   target.fill();
 
   // Header label text.
-  target.setFill("#ddd");
+  target.setFill(FRAME_HEADER_TEXT_COLOR);
   target.setTextBaseline("middle");
   target.setTextAlign("left");
   target.fillText(label, FRAME_HEADER_PADDING_X, -FRAME_HEADER_HEIGHT / 2);

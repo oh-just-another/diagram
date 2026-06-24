@@ -1,7 +1,12 @@
 import { req, type Bounds, type ElementId, type Vec2 } from "@oh-just-another/types";
 import { bezier, hitTest, intersect, vec2 } from "@oh-just-another/math";
 import { getAnchorOutwardNormal, getAnchorWorld } from "./anchors.js";
-import { SELF_LOOP_CURVE_ARM_FACTOR, SELF_LOOP_SIZE, SELF_LOOP_SPREAD } from "./constants.js";
+import {
+  FLOATING_OUTLINE_SAMPLES,
+  SELF_LOOP_CURVE_ARM_FACTOR,
+  SELF_LOOP_SIZE,
+  SELF_LOOP_SPREAD,
+} from "./constants.js";
 import {
   catmullRomBeziers,
   cubicWithEndTangents,
@@ -143,13 +148,6 @@ const shapeCentre = (shape: ElementBase): Vec2 => {
   const b = getElementWorldBounds(shape);
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
 };
-
-/**
- * Number of segments the outline is sampled into when intersecting it with
- * the floating-endpoint ray. 96 is smooth enough for ellipses at high zoom
- * without being a hot-loop cost (resolved once per edge per frame).
- */
-const FLOATING_OUTLINE_SAMPLES = 96;
 
 /**
  * Resolve a `floating` endpoint: the point where the shape's outline is

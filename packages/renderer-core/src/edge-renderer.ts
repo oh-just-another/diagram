@@ -16,7 +16,19 @@ import type { RenderTarget } from "./render-target.js";
 import { sharedLinkBoundsCache, type LinkBoundsCache } from "./edge-cache.js";
 import type { LinkBitmapCache } from "./edge-cache-bitmap.js";
 import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
-import { LINK_CORNER_RADIUS } from "./constants.js";
+import {
+  LINK_CORNER_RADIUS,
+  BLOCK_ARROW_HEAD_LENGTH,
+  BLOCK_ARROW_BODY_THICKNESS,
+  BLOCK_ARROW_FILL_COLOR,
+  BLOCK_ARROW_STROKE_COLOR,
+  ARROWHEAD_SIZE,
+  EDGE_STROKE_COLOR,
+  LABEL_POSITION,
+  LABEL_FONT_SIZE,
+  LABEL_FILL_COLOR,
+  LABEL_BG_COLOR,
+} from "./constants.js";
 
 export interface RenderLinksOptions {
   /**
@@ -189,7 +201,7 @@ const drawLink = (
 
     if (edge.arrowheads) {
       const headPath = curve ? flattenSegments(curve.start, curve.segments) : path;
-      drawArrowheads(headPath, edge.arrowheads, target, edge.style.stroke ?? "#000");
+      drawArrowheads(headPath, edge.arrowheads, target, edge.style.stroke ?? EDGE_STROKE_COLOR);
     }
   }
   if (edge.label) {
@@ -209,10 +221,10 @@ const drawLink = (
  * segment endpoint regardless of curve direction.
  */
 const drawBlockArrowLink = (edge: Link, path: readonly Vec2[], target: RenderTarget): void => {
-  const headLength = edge.blockArrow?.headLength ?? 18;
-  const thickness = edge.blockArrow?.bodyThickness ?? 12;
-  const fill = edge.style.fill ?? edge.style.stroke ?? "#444";
-  const stroke = edge.style.stroke ?? "#222";
+  const headLength = edge.blockArrow?.headLength ?? BLOCK_ARROW_HEAD_LENGTH;
+  const thickness = edge.blockArrow?.bodyThickness ?? BLOCK_ARROW_BODY_THICKNESS;
+  const fill = edge.style.fill ?? edge.style.stroke ?? BLOCK_ARROW_FILL_COLOR;
+  const stroke = edge.style.stroke ?? BLOCK_ARROW_STROKE_COLOR;
   const strokeWidth = edge.style.strokeWidth ?? 1;
   if (edge.style.opacity !== undefined) target.setOpacity(edge.style.opacity);
 
@@ -402,7 +414,7 @@ export const strokeRoundedPolyline = (
 };
 
 const applyStrokeStyle = (edge: Link, target: RenderTarget): void => {
-  const stroke = edge.style.stroke ?? "#000";
+  const stroke = edge.style.stroke ?? EDGE_STROKE_COLOR;
   target.setStroke(stroke);
   target.setFill(null);
   target.setStrokeWidth(edge.style.strokeWidth ?? 1);
@@ -418,7 +430,7 @@ const drawArrowheads = (
   target: RenderTarget,
   color: string,
 ): void => {
-  const size = heads.size ?? 10;
+  const size = heads.size ?? ARROWHEAD_SIZE;
   if (heads.from && heads.from !== "none") {
     const tip = path[0];
     const next = path[1];
@@ -603,10 +615,10 @@ const drawArrowhead = (
 const xy = (p: Vec2): [number, number] => [p.x, p.y];
 
 const drawLabel = (path: readonly Vec2[], label: LinkLabel, target: RenderTarget): void => {
-  const t = label.position ?? 0.5;
-  const fontSize = label.fontSize ?? 12;
-  const fill = label.fill ?? "#222";
-  const bg = label.background ?? "#fff";
+  const t = label.position ?? LABEL_POSITION;
+  const fontSize = label.fontSize ?? LABEL_FONT_SIZE;
+  const fill = label.fill ?? LABEL_FILL_COLOR;
+  const bg = label.background ?? LABEL_BG_COLOR;
   const point = pointAlongPath(path, t);
   const halfWidth = label.text.length * fontSize * 0.3 + 4; // rough estimate
   const halfHeight = fontSize * 0.7;

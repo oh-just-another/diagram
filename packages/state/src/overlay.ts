@@ -561,7 +561,7 @@ export const renderOverlay = (
   if (options.selectedLinkPaths && options.selectedLinkPaths.length > 0) {
     target.setTransform(w2s);
     target.setStroke(style.selectionStroke);
-    target.setOpacity(0.32);
+    target.setOpacity(SELECTION_HALO_OPACITY);
     target.setDashArray(null);
     target.setLineJoin("round");
     target.setLineCap("round");

@@ -3,6 +3,7 @@ import { scalar, vec2 } from "@oh-just-another/math";
 import { getElementLocalBounds, type ElementBase, type PolygonElement } from "./shape.js";
 import { localToWorld } from "./shape-transform.js";
 import { ellipseOutlinePoint } from "./ellipse.js";
+import { DEFAULT_OUTLINE_SAMPLES } from "./constants.js";
 
 /**
  * Built-in outline samplers — one per shape `type` that the kernel ships.
@@ -54,7 +55,7 @@ export const getOutlinePoint = (shape: ElementBase, ratio: number): Vec2 => {
 export const findNearestOutlinePoint = (
   shape: ElementBase,
   worldPoint: Vec2,
-  samples = 64,
+  samples = DEFAULT_OUTLINE_SAMPLES,
 ): { ratio: number; world: Vec2; distance: number } | null => {
   const sampler = outlineSamplers.get(shape.type);
   if (!sampler) return null;
