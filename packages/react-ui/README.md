@@ -32,19 +32,117 @@ export const App = () => (
 
 `DiagramCanvas` constructs the underlying `Editor` and supplies it to every descendant via context. Toolbar / Palette / PropertyPanel are independent — drop them anywhere in the subtree, layered with normal CSS.
 
-## API
+## Components
 
-| Name                                                           | Purpose                                                                                   |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `DiagramCanvas` / `DiagramCanvasProps`                         | Mounts a host element, instantiates `Editor`, wraps children in `DiagramProvider`.        |
-| `DiagramProvider` (+ `useDiagramContext`)                      | Standalone provider for advanced hosts that build their own editor.                       |
-| `useDiagram()`                                                 | Live `Editor`. Imperative access (no re-render on change).                                |
-| `useScene()` / `useSelection()` / `useMode()` / `useHistory()` | Reactive slices. `useHistory` exposes `canUndo` / `canRedo` + `undo` / `redo`.            |
-| `useEditorSelector(select)`                                    | Build your own selector — re-renders when the projected value changes.                    |
-| `Toolbar` / `DEFAULT_TOOLBAR` / `ToolbarItem`                  | Items: `mode`, `action`, `divider`, `undo`, `redo`. Action items receive the live editor. |
-| `Palette` / `PaletteProps`                                     | Drag-and-drop catalog of templates. Defaults to `defaultRegistry`.                        |
-| `usePaletteDropHandler()`                                      | Convert an HTML5 drop event on any element into `editor.addShape(template.factory(...))`. |
-| `PropertyPanel` / `PropertyPanelProps`                         | Read-only inspector for the current selection.                                            |
+Every component reads the editor from context, so most take no required props.
+
+### Mounting & layout
+
+| Name                             | Purpose                                                          |
+| -------------------------------- | ---------------------------------------------------------------- |
+| `DiagramCanvas`                  | Mounts a host element, instantiates `Editor`, provides context.  |
+| `DiagramRoot` / `DiagramSurface` | Lower-level split of the canvas: provider root + render surface. |
+| `DiagramProvider`                | Standalone provider for hosts that build their own editor.       |
+| `UILayer`                        | Positioned overlay layer for placing chrome over the canvas.     |
+| `TopBar` / `BottomBar`           | Edge-anchored bars for toolbars and status chrome.               |
+| `Sidebar`                        | Collapsible side container for panels.                           |
+| `BottomSheet`                    | Sliding bottom container (touch / mobile layouts).               |
+
+### Toolbar & zoom
+
+| Name                                                                                     | Purpose                                                                          |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `Toolbar` / `DEFAULT_TOOLBAR` / `DEFAULT_VERTICAL_TOOLBAR`                               | Declarative tool/action bar. Items: `mode`, `action`, `divider`, `undo`, `redo`. |
+| `openImageFilePicker`                                                                    | Opens the OS file picker and inserts the chosen image.                           |
+| `ZoomWidget` / `FloatingZoomControls`                                                    | Composite zoom controls.                                                         |
+| `ZoomInButton` / `ZoomOutButton` / `ResetZoomButton` / `ZoomToFitButton` / `ZoomDisplay` | Individual zoom controls.                                                        |
+| `ResetToContentButton`                                                                   | Recenters the viewport on scene content.                                         |
+
+### Palettes & shape catalog
+
+| Name                                                                                              | Purpose                                            |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `Palette`                                                                                         | Drag-and-drop catalog of templates.                |
+| `LibraryPanel`                                                                                    | Browsable template library panel.                  |
+| `ColorSwatchPicker`                                                                               | Color swatch grid picker.                          |
+| `ELEMENT_PALETTE_LIGHT` / `ELEMENT_PALETTE_DARK` / `CANVAS_PALETTE_LIGHT` / `CANVAS_PALETTE_DARK` | Built-in color palettes.                           |
+| `resolvePaletteTheme`                                                                             | Picks the light/dark palette for the active theme. |
+
+### Inspectors & property panels
+
+| Name                     | Purpose                                      |
+| ------------------------ | -------------------------------------------- |
+| `PropertyPanel`          | Inspector for the current selection.         |
+| `LinkStylePanel`         | Edge/link styling controls.                  |
+| `LayerPanel`             | Layer list with visibility / ordering.       |
+| `FramePanel`             | Frame list and controls.                     |
+| `SelectionFloatingPanel` | Floating controls anchored to the selection. |
+
+### Menus, dialogs & overlays
+
+| Name                                   | Purpose                                            |
+| -------------------------------------- | -------------------------------------------------- |
+| `MainMenu`                             | Top-level application menu with submenus.          |
+| `ContextMenu` / `DEFAULT_CONTEXT_MENU` | Right-click menu over the canvas.                  |
+| `CommandPalette`                       | Searchable command launcher.                       |
+| `Modal` / `Popover`                    | Generic modal dialog and anchored popover.         |
+| `Tooltip` / `TooltipProvider`          | Hover tooltips (wrap the subtree in the provider). |
+| `HelpButton` / `HelpDialog`            | Keyboard-shortcut / help dialog and its trigger.   |
+| `ToastHost`                            | Renders transient toasts; pair with `useToast`.    |
+
+### Collaboration & versioning
+
+| Name                                | Purpose                                   |
+| ----------------------------------- | ----------------------------------------- |
+| `CommentsPanel` / `CommentsPopover` | Thread list and anchored comment popover. |
+| `VersionPanel`                      | Snapshot history browser.                 |
+| `MergeDialog`                       | Resolve conflicts when merging versions.  |
+| `DiffPanel`                         | Visual diff between two scenes.           |
+
+### Editing overlays
+
+| Name                                                         | Purpose                                |
+| ------------------------------------------------------------ | -------------------------------------- |
+| `TextEditorOverlay` / `FrameNameEditorOverlay`               | In-place text editors over the canvas. |
+| `LinkHoverPopup` / `LinkDropShapeMenu` / `LinkCaptionEditor` | Link interaction overlays.             |
+| `Markdown`                                                   | Renders markdown (comments, captions). |
+
+### Primitives
+
+| Name                          | Purpose                            |
+| ----------------------------- | ---------------------------------- |
+| `IconButton` / `ButtonGroup`  | Buttons and grouped button rows.   |
+| `SegmentedControl` / `Slider` | Segmented toggle and range slider. |
+
+## Hooks
+
+| Name                                                                     | Purpose                                                        |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| `useDiagram()` / `useDiagramOptional()`                                  | Live `Editor` (imperative; no re-render on change).            |
+| `useDiagramContext()` / `useDiagramContextOptional()`                    | Raw context value.                                             |
+| `useEditorSelector(select)`                                              | Custom selector — re-renders when the projected value changes. |
+| `useScene()` / `useSelection()` / `useMode()`                            | Reactive slices of editor state.                               |
+| `useHistory()`                                                           | `canUndo` / `canRedo` + `undo` / `redo`.                       |
+| `useLayers()` / `useActiveLayerId()`                                     | Layer list and active layer.                                   |
+| `useAnnotations()` / `useSelectedAnnotation()` / `useSelectedLink()`     | Annotation and link selection state.                           |
+| `useMobileLayout()`                                                      | Whether the compact / touch layout is active.                  |
+| `useToast()` / `useToastOptional()` / `useEphemeralToast()`              | Toast API (pair with `ToastHost`).                             |
+| `useSnapshotStore()`                                                     | Snapshot store backing `VersionPanel`.                         |
+| `useHelpDialogHotkey()`                                                  | Wires the help-dialog hotkey.                                  |
+| `useContextMenuController()` / `ContextMenuControllerProvider`           | Imperative control of `ContextMenu`.                           |
+| `usePaletteDropHandler()` / `usePalettePlacement()` / `usePaletteDrag()` | Palette drop / placement / drag wiring.                        |
+| `getActivePaletteDrag()` / `subscribePaletteDrag()`                      | Read/observe the active palette drag outside React.            |
+
+## Layout constants
+
+Tunable sizes for the built-in panels and toolbar:
+`PALETTE_WIDTH`, `PALETTE_ITEM_SIZE`, `PROPERTY_PANEL_WIDTH`, `PROPERTY_SWATCH_SIZE`,
+`LAYER_PANEL_WIDTH`, `LAYER_TOGGLE_ICON_SIZE`, `LAYER_SWATCH_SIZE`,
+`COMMENTS_PANEL_WIDTH`, `TOOLBAR_SEPARATOR_HEIGHT`.
+
+Each component also exports its `*Props` type (e.g. `ToolbarProps`, `PaletteProps`); menu, toast,
+help, and context-menu modules additionally export their item/section types (`ToolbarItem`,
+`ContextMenuItem`, `ToastKind`, `HelpRow`, etc.).
 
 ## Design notes
 

@@ -25,11 +25,12 @@ transport.close();
 
 ## API
 
-| Name                                | Purpose                                                                           |
-| ----------------------------------- | --------------------------------------------------------------------------------- |
-| `Transport`                         | `send(Uint8Array)` / `onMessage(handler) → unsubscribe` / `close()`.              |
-| `BroadcastChannelTransport(name)`   | Same-origin tabs / iframes / workers via the native `BroadcastChannel` API.       |
-| `WebSocketTransport(url, options?)` | Wraps a `WebSocket` connection with lazy buffer, auto-reconnect, injectable impl. |
+| Name                                | Purpose                                                                                         |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `Transport`                         | `send(Uint8Array)` / `onMessage(handler) → unsubscribe` / `close()`.                            |
+| `BroadcastChannelTransport(name)`   | Same-origin tabs / iframes / workers via the native `BroadcastChannel` API.                     |
+| `WebSocketTransport(url, options?)` | Wraps a `WebSocket` connection with lazy buffer, auto-reconnect, injectable impl.               |
+| `WebSocketStatus`                   | Connection state of a `WebSocketTransport` (`connecting` / `open` / `reconnecting` / `closed`). |
 
 ## Design notes
 

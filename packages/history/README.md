@@ -36,6 +36,7 @@ tx.commit(); // merged per entity: 100 moves of one shape collapse to 1
 | `hasOpenTransaction()`                | True between `transaction()` and `commit/cancel()`.                                                          |
 | `record(patch, { transaction? })`     | Route through a given open transaction, or `push` directly.                                                  |
 | `mergeByEntity(patches)`              | Standalone helper: collapses a patch list per entity (first.`before` / latest.`after`). Used internally too. |
+| `describe(patch)`                     | Human-readable label for a patch (e.g. for undo/redo menu text).                                             |
 
 ## Design notes
 
