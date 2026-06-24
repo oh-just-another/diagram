@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { usePortalContainer } from "./portal-container.js";
 import {
   TOOLTIP_HIDE_GRACE_MS,
   TOOLTIP_OFFSET_PX,
@@ -176,12 +177,13 @@ const useHasProvider = (): boolean => useContext(TooltipProviderCtx);
  */
 const TooltipPortal = () => {
   const [target, setTargetState] = useState<TooltipTarget | null>(null);
+  const portalContainer = usePortalContainer();
   useEffect(() => subscribe(setTargetState), []);
 
   if (!target) return null;
   if (typeof document === "undefined") return null;
 
-  return createPortal(<TooltipSurface target={target} />, document.body);
+  return createPortal(<TooltipSurface target={target} />, portalContainer);
 };
 
 const TooltipSurface = ({ target }: { readonly target: TooltipTarget }) => {

@@ -25,6 +25,7 @@ import {
   SELECTION_PANEL_EDGE_INSET_LEFT_PX,
 } from "./constants.js";
 import { useDiagramOptional, useMobileLayout } from "./hooks.js";
+import { usePortalContainer } from "./portal-container.js";
 import { PropertyPanel } from "./property-panel.js";
 
 /**
@@ -83,6 +84,7 @@ export const SelectionFloatingPanel = ({
     left: edgeInset?.left ?? SELECTION_PANEL_EDGE_INSET_LEFT_PX,
   };
   const editor = useDiagramOptional();
+  const portalContainer = usePortalContainer();
   // On touch / narrow screens the panel docks to the bottom instead of
   // floating at the selection bbox — no floating-ui math.
   const mobile = useMobileLayout();
@@ -190,7 +192,7 @@ export const SelectionFloatingPanel = ({
       <div className="du-sel-panel-dock" role="toolbar" aria-label="Selection actions">
         <PropertyPanel mobile />
       </div>,
-      document.body,
+      portalContainer,
     );
   }
 
@@ -221,7 +223,7 @@ export const SelectionFloatingPanel = ({
     >
       <PropertyPanel />
     </div>,
-    document.body,
+    portalContainer,
   );
 };
 

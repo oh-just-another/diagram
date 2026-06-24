@@ -2,6 +2,7 @@ import { useEffect, useReducer } from "react";
 import { createPortal } from "react-dom";
 import { defaultRegistry, type Template } from "@oh-just-another/templates";
 import { useDiagramOptional } from "./hooks.js";
+import { usePortalContainer } from "./portal-container.js";
 
 /**
  * Shape picker shown after a link is dropped on empty canvas. The
@@ -16,6 +17,7 @@ import { useDiagramOptional } from "./hooks.js";
 export const LinkDropShapeMenu = () => {
   const editor = useDiagramOptional();
   const [, bump] = useReducer((x: number) => x + 1, 0);
+  const portalContainer = usePortalContainer();
 
   useEffect(() => {
     if (!editor) return undefined;
@@ -86,6 +88,6 @@ export const LinkDropShapeMenu = () => {
         ))}
       </div>
     </>,
-    document.body,
+    portalContainer,
   );
 };

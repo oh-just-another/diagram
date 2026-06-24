@@ -137,6 +137,7 @@ export {
 export { Modal, type ModalProps } from "./modal.js";
 export { Sidebar, type SidebarProps } from "./sidebar.js";
 export { Tooltip, TooltipProvider, type TooltipProps, type TooltipSide } from "./tooltip.js";
+export { PortalContainerProvider, usePortalContainer } from "./portal-container.js";
 
 // Tunable layout sizes for the built-in panels and toolbar.
 export {

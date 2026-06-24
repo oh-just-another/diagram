@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import type { Bounds } from "@oh-just-another/types";
 import { useDiagramOptional } from "./hooks.js";
 import { useDismissTimer } from "./use-dismiss-timer.js";
+import { usePortalContainer } from "./portal-container.js";
 
 /**
  * Hover link popup. When the pointer is over an element that carries a
@@ -25,6 +26,7 @@ export const LinkHoverPopup = () => {
   const [hover, setHover] = useState<{ href: string; bounds: Bounds } | null>(null);
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const overPopup = useRef(false);
+  const portalContainer = usePortalContainer();
   const { schedule, cancel } = useDismissTimer(() => {
     if (!overPopup.current) setHover(null);
   });
@@ -106,6 +108,6 @@ export const LinkHoverPopup = () => {
         <ExternalLink size={13} strokeWidth={1.75} aria-hidden />
       </a>
     </div>,
-    document.body,
+    portalContainer,
   );
 };
