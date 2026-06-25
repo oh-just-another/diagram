@@ -51,3 +51,4 @@ export {
   actionDistributeVertical,
   arrangeActions,
 } from "./actionArrange.js";
+export { actionIncreaseFontSize, actionDecreaseFontSize, textActions } from "./actionText.js";

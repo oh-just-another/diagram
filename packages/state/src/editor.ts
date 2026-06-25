@@ -221,6 +221,7 @@ import {
   computeMoveSelectionBy,
   computeSelectAll,
   computeSelectAllLinks,
+  computeAdjustFontSize,
   computeSetSelection,
   computeUpdateStyle,
   computeUpdateTextProps,
@@ -2592,6 +2593,19 @@ export class Editor {
     partial: { fontSize?: number; fontFamily?: string; maxWidth?: number },
   ): void {
     const result = computeUpdateTextProps(this._scene, ids, partial);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Step the font size of every selected text shape up or down by one gentle
+   * multiplicative increment (each shape relative to its own size). One
+   * undoable step; no-op when no text is selected.
+   */
+  adjustSelectionFontSize(direction: "increase" | "decrease"): void {
+    const result = computeAdjustFontSize(this._scene, this._selection, direction);
     if (!result) return;
     this._scene = result.scene;
     this._history.push(result.patch);

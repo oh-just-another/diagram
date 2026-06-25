@@ -15,6 +15,11 @@ import {
 import type { LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
+import {
+  TEXT_FONT_SIZE_STEP,
+  TEXT_MAX_FONT_SIZE,
+  TEXT_RESIZE_MIN_FONT_SIZE,
+} from "../../constants.js";
 
 /**
  * Nudge every selected shape (plus descendants) by `delta`, skipping
@@ -239,6 +244,42 @@ export const computeUpdateTextProps = (
     scene: s,
     patch:
       patches.length === 1 && firstPatch !== undefined ? firstPatch : { kind: "batch", patches },
+  };
+};
+
+/**
+ * Pure: step every selected text shape's font size up or down by the
+ * multiplicative {@link TEXT_FONT_SIZE_STEP} (at least ±1 px so small sizes
+ * still move), clamped to the usable range. Each shape steps from its own
+ * size, so a mixed selection keeps its relative sizing. One patch (batch for
+ * 2+). `null` when nothing selected is text or every size is already at the
+ * clamp.
+ */
+export const computeAdjustFontSize = (
+  scene: Scene,
+  ids: Iterable<ElementId>,
+  direction: "increase" | "decrease",
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const up = direction === "increase";
+  const factor = up ? TEXT_FONT_SIZE_STEP : 1 / TEXT_FONT_SIZE_STEP;
+  let s = scene;
+  const patches: Patch[] = [];
+  for (const id of ids) {
+    const el = getElement(s, id);
+    if (el === undefined || !isText(el)) continue;
+    const scaled = Math.round(el.fontSize * factor);
+    const stepped = up ? Math.max(el.fontSize + 1, scaled) : Math.min(el.fontSize - 1, scaled);
+    const next = Math.min(TEXT_MAX_FONT_SIZE, Math.max(TEXT_RESIZE_MIN_FONT_SIZE, stepped));
+    if (next === el.fontSize) continue;
+    const r = updateElement(s, id, (sh) => ({ ...sh, fontSize: next }));
+    s = r.scene;
+    patches.push(r.patch);
+  }
+  const firstPatch = patches[0];
+  if (firstPatch === undefined) return null;
+  return {
+    scene: s,
+    patch: patches.length === 1 ? firstPatch : { kind: "batch", patches },
   };
 };
 

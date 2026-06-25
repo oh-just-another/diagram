@@ -568,6 +568,20 @@ export const TEXT_CARET_WIDTH_PX = 1.5;
 export const TEXT_RESIZE_MIN_FONT_SIZE = 4;
 
 /**
+ * Multiplicative step for the increase/decrease-font-size shortcuts: each
+ * press scales the current size by this factor (min ±1 px so small sizes still
+ * move), clamped to {@link TEXT_RESIZE_MIN_FONT_SIZE}…{@link TEXT_MAX_FONT_SIZE}.
+ * 1.1 ≈ a gentle 10 % step. Range: 1.05–1.5.
+ */
+export const TEXT_FONT_SIZE_STEP = 1.1;
+
+/**
+ * Upper clamp (world px) for font size — matches the property panel's slider
+ * ceiling so the keyboard and the panel agree on the maximum.
+ */
+export const TEXT_MAX_FONT_SIZE = 256;
+
+/**
  * Paused-GIF chip drawn in a shape's top-left corner — signals a GIF the
  * user can click / hover to resume. Dimensions in screen px; the scrim is
  * a translucent black so the "gif" label stays legible over any artwork.
