@@ -123,11 +123,11 @@ describe("renderOverlay", () => {
     const scene = sceneWith(shape);
     const { target, calls } = makeRecorder();
     renderOverlay(scene, new Set([shape.id]), target);
-    // Each handle is an ellipse. 4 CORNER dots (edge-midpoint handles removed —
-    // edge resize = drag the box side) plus the rotate grip circle above the
-    // box = 5.
+    // Each corner handle is an ellipse: 4 CORNER dots (edge-midpoint handles
+    // removed — edge resize = drag the box side). The rotate grip is a glyph
+    // (arcs/lines, no ellipse), so it doesn't add to the count.
     const ellipses = calls.filter((c) => c.method === "ellipse");
-    expect(ellipses.length).toBe(5);
+    expect(ellipses.length).toBe(4);
   });
 
   it("draws no per-shape handles for multi-selection", () => {
@@ -244,9 +244,9 @@ describe("renderOverlay", () => {
       groupBounds: { x: 0, y: 0, width: 100, height: 80 },
     });
     const ellipses = calls.filter((c) => c.method === "ellipse");
-    // Group box draws the 4 corner dots (edge resize = drag the box side) plus
-    // the rotate grip circle above it = 5.
-    expect(ellipses.length).toBe(5);
+    // Group box draws the 4 corner dots (edge resize = drag the box side); the
+    // rotate grip is a glyph (arcs/lines), not an ellipse.
+    expect(ellipses.length).toBe(4);
   });
 
   it("draws only 4 corner handles (+ rotate grip) when groupAspectLocked is true", () => {
@@ -256,7 +256,7 @@ describe("renderOverlay", () => {
       groupAspectLocked: true,
     });
     const ellipses = calls.filter((c) => c.method === "ellipse");
-    expect(ellipses.length).toBe(5);
+    expect(ellipses.length).toBe(4);
   });
 
   it("element halo peeks a constant width past the border: 2×(outset + peek/zoom)", () => {

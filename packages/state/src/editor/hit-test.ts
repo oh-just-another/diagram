@@ -170,7 +170,7 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
   //     rather than selecting a shape behind it.
   const groupRotateBounds: Bounds | null = useGroupHandles ? ctx.combinedSelectionBounds() : null;
   if (groupRotateBounds) {
-    const { grip } = rotateGripForBounds(groupRotateBounds, zoom);
+    const grip = rotateGripForBounds(groupRotateBounds, zoom);
     if (hitRotateGrip(worldPoint, grip, zoom, ctx.handleHitSlop)) {
       return {
         kind: "rotate-handle",

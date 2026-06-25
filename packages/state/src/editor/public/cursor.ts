@@ -18,6 +18,7 @@ export type CursorRole =
   | "text"
   | "link-start"
   | "link-handle"
+  | "rotate"
   | "annotation"
   | "resize-nwse"
   | "resize-nesw"
@@ -124,6 +125,7 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
   if (editor.gestureTx) {
     const t = editor.actor.getSnapshot().context.pressTarget;
     if (t && (t.kind === "handle" || t.kind === "group-handle")) return resizeRole(t.handle);
+    if (t?.kind === "rotate-handle") return r("rotate", "grabbing");
     if (t && (t.kind === "element" || t.kind === "link" || t.kind === "edge-endpoint")) {
       return r("move", "grabbing");
     }
@@ -153,6 +155,8 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
       case "handle":
       case "group-handle":
         return resizeRole(t.handle);
+      case "rotate-handle":
+        return r("rotate", "grab");
       case "edge-endpoint":
         return r("link-handle", "grab");
       case "annotation":

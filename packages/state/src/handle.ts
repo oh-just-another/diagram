@@ -269,10 +269,6 @@ export const registerRotateAnchor = (type: string, anchor: AnchorRef): void => {
 export const getRotateAnchor = (type: string): AnchorRef =>
   rotateAnchors.get(type) ?? DEFAULT_ROTATE_ANCHOR;
 
-/** World point on the shape body the grip stem attaches to (its template anchor). */
-export const rotateGripAnchorWorld = (shape: ElementBase): Vec2 =>
-  getAnchorWorld(shape, getRotateAnchor(shape.type));
-
 /**
  * World position of the rotate grip for a single shape: the template anchor
  * pushed `ROTATE_HANDLE_OFFSET` screen pixels along its outward normal. Both
@@ -288,14 +284,12 @@ export const rotateGripWorld = (shape: ElementBase, zoom = 1): Vec2 => {
 };
 
 /**
- * Rotate grip for an axis-aligned group / multi-selection frame: the bottom-left
- * corner of `b`, pushed out along the down-left diagonal. Returns both the stem
- * anchor (on the box) and the grip circle so the overlay can draw the connector.
+ * World position of the rotate grip for an axis-aligned group / multi-selection
+ * frame: the bottom-left corner of `b`, pushed out along the down-left diagonal.
  */
-export const rotateGripForBounds = (b: Bounds, zoom = 1): { anchor: Vec2; grip: Vec2 } => {
-  const anchor: Vec2 = { x: b.x, y: b.y + b.height };
+export const rotateGripForBounds = (b: Bounds, zoom = 1): Vec2 => {
   const o = (ROTATE_HANDLE_OFFSET / zoom) * Math.SQRT1_2;
-  return { anchor, grip: { x: anchor.x - o, y: anchor.y + o } };
+  return { x: b.x - o, y: b.y + b.height + o };
 };
 
 /** True when world `point` is within grab slop of a grip at `grip`. */

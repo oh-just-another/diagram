@@ -62,11 +62,18 @@ export const HANDLE_OUTSET = 3;
 export const HANDLE_HIT_SLOP = 11;
 
 /**
- * Screen-pixel gap between the selection box's top edge and the rotate grip
- * that floats above it (with a connector line). Far enough to clear the corner
- * resize handles. Range: 20–32.
+ * Screen-pixel gap between the shape's rotate anchor (default bottom-left
+ * corner) and the rotate grip that floats just outside it. Far enough to clear
+ * the corner resize handle. Range: 20–32.
  */
 export const ROTATE_HANDLE_OFFSET = 26;
+
+/**
+ * Screen-pixel radius of the rotate grip's circular-arrow glyph (a clockwise
+ * rotate icon). Slightly larger than `HANDLE_SIZE` so the icon reads as an
+ * affordance, not a plain resize dot. Range: 6–9.
+ */
+export const ROTATE_ICON_RADIUS = 7;
 
 /**
  * Angle step (radians) the rotate gesture snaps to while Shift is held — 15°

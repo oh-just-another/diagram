@@ -52,6 +52,7 @@ import {
   LOCK_BADGE_SIZE,
   LOCK_BADGE_COLOR,
   LOCK_BADGE_KEYHOLE_COLOR,
+  ROTATE_ICON_RADIUS,
 } from "./constants.js";
 import {
   CORNER_HANDLES,
@@ -59,7 +60,6 @@ import {
   frameCorners,
   handlePosition,
   handleWorldOnFrame,
-  rotateGripAnchorWorld,
   rotateGripForBounds,
   rotateGripWorld,
   shapeSelectionFrame,
@@ -487,12 +487,7 @@ export const renderOverlay = (
       drawHandle(target, matrix.applyToPoint(w2s, worldPoint), style);
     }
     // Rotate grip from the shape's template anchor (default bottom-left).
-    drawRotateGrip(
-      target,
-      matrix.applyToPoint(w2s, rotateGripAnchorWorld(shape)),
-      matrix.applyToPoint(w2s, rotateGripWorld(shape, zoom)),
-      style,
-    );
+    drawRotateIcon(target, matrix.applyToPoint(w2s, rotateGripWorld(shape, zoom)), style);
   }
 
   // 2. Rubber-band drawing preview (already in world coords if drawn before transform reset)
@@ -922,19 +917,52 @@ const drawHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): vo
   target.stroke();
 };
 
-/** Rotate grip: a connector stem from the box top edge to a handle circle. */
-const drawRotateGrip = (target: RenderTarget, top: Vec2, grip: Vec2, style: OverlayStyle): void => {
+/**
+ * Rotate grip: a clockwise circular-arrow glyph (the `rotate-cw` icon) centred
+ * at `grip` (screen px), with no connector line back to the shape. Authored in
+ * lucide's 24×24 space — a near-full circle (radius 9) opening on the right plus
+ * an `L`-shaped arrowhead at the opening — scaled so the circle radius is
+ * `ROTATE_ICON_RADIUS` screen px.
+ */
+const drawRotateIcon = (target: RenderTarget, grip: Vec2, style: OverlayStyle): void => {
+  const s = ROTATE_ICON_RADIUS / 9; // icon radius 9 (in its 24×24 box) → screen px
+  // Map a point from the icon's 24×24 space (centre 12,12) to screen.
+  const tx = (px: number, py: number): Vec2 => ({
+    x: grip.x + (px - 12) * s,
+    y: grip.y + (py - 12) * s,
+  });
   target.setStroke(style.handleStroke);
-  target.setStrokeWidth(1);
+  target.setFill(null);
+  target.setStrokeWidth(2 * s); // lucide strokeWidth 2
+  target.setLineCap("round");
+  target.setLineJoin("round");
   target.setDashArray(null);
+  // Arc: centre (12,12), radius 9, from 0° (east tail) clockwise to (21,8)
+  // (≈ 336° swept) — a polyline is smooth enough at this size.
+  const END_DEG = 336;
+  const STEPS = 30;
   target.beginPath();
-  target.moveTo(top.x, top.y);
-  target.lineTo(grip.x, grip.y);
+  for (let i = 0; i <= STEPS; i++) {
+    const a = ((END_DEG * i) / STEPS) * (Math.PI / 180);
+    const p = tx(12 + 9 * Math.cos(a), 12 + 9 * Math.sin(a));
+    if (i === 0) target.moveTo(p.x, p.y);
+    else target.lineTo(p.x, p.y);
+  }
   target.stroke();
-  drawHandle(target, grip, style);
+  // Arrowhead at the arc's end (lucide `M21 3 v5 h-5`): a right-angle chevron.
+  const a1 = tx(21, 3);
+  const a2 = tx(21, 8);
+  const a3 = tx(16, 8);
+  target.beginPath();
+  target.moveTo(a1.x, a1.y);
+  target.lineTo(a2.x, a2.y);
+  target.lineTo(a3.x, a3.y);
+  target.stroke();
+  target.setLineCap("butt");
+  target.setLineJoin("miter");
 };
 
-/** Project the rotate grip + its connector to screen and draw it for AABB `b`. */
+/** Project the rotate grip to screen and draw the icon for AABB `b`. */
 const drawRotateGripForBounds = (
   target: RenderTarget,
   b: Bounds,
@@ -942,8 +970,8 @@ const drawRotateGripForBounds = (
   w2s: Transform,
   style: OverlayStyle,
 ): void => {
-  const { anchor, grip } = rotateGripForBounds(b, zoom);
-  drawRotateGrip(target, matrix.applyToPoint(w2s, anchor), matrix.applyToPoint(w2s, grip), style);
+  const grip = rotateGripForBounds(b, zoom);
+  drawRotateIcon(target, matrix.applyToPoint(w2s, grip), style);
 };
 
 const drawDrawingPreview = (target: RenderTarget, b: Bounds, style: OverlayStyle): void => {
