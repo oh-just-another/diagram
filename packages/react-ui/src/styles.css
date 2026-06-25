@@ -177,6 +177,22 @@
 }
 
 /* ------------------------------------------------------------------ */
+/* Canvas surface focus ring. The surface is `tabIndex=0` so keyboard   */
+/* users can land on it, but it also takes focus on a pointer press     */
+/* (so shortcuts work right after a click). Gate the ring on            */
+/* `:focus-visible` so it shows ONLY for keyboard focus — a mouse click */
+/* never draws an input-like outline. Class+pseudo specificity (0,2,0)  */
+/* beats a host's `*:focus { outline: none }`.                          */
+/* ------------------------------------------------------------------ */
+.du-canvas-surface {
+  outline: none;
+}
+.du-canvas-surface:focus-visible {
+  outline: 2px solid var(--du-accent);
+  outline-offset: -2px;
+}
+
+/* ------------------------------------------------------------------ */
 /* UI layer — absolute overlay above the canvas surface.              */
 /* pointer-events: none on the wrapper, auto on children, so the      */
 /* canvas keeps receiving pointer events anywhere the UI isn't drawn. */
