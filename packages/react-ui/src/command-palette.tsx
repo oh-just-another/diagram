@@ -15,6 +15,7 @@ import {
 } from "@oh-just-another/state";
 import { Modal } from "./modal.js";
 import { useDiagramOptional } from "./hooks.js";
+import { clearCanvasWithConfirm } from "./context-menu.js";
 
 /**
  * Command palette (standard `⌘K`). A searchable list of every registered action,
@@ -49,8 +50,25 @@ export const CommandPalette = (): ReactElement | null => {
         setOpen(true);
       },
     });
+    // Clear-canvas is destructive and not undoable (it wipes history), so the
+    // shortcut goes through a confirm — registered here in the UI layer where
+    // `window.confirm` is available, rather than in the headless kernel.
+    defaultActionRegistry.replace({
+      id: "clear-canvas",
+      label: "Clear canvas",
+      category: "edit",
+      hotkey: [
+        { key: "Delete", meta: true },
+        { key: "Backspace", meta: true },
+      ],
+      predicate: ({ editor }) => editor.scene.elements.size > 0 || editor.scene.links.size > 0,
+      perform: ({ editor }) => {
+        clearCanvasWithConfirm(editor);
+      },
+    });
     return () => {
       defaultActionRegistry.unregister("open-command-palette");
+      defaultActionRegistry.unregister("clear-canvas");
     };
   }, []);
 

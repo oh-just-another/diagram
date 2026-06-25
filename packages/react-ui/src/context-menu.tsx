@@ -260,6 +260,17 @@ const collapseDividers = (items: readonly ContextMenuItem[]): readonly ContextMe
  * text or visibility than the action's defaults (e.g. z-order entries
  * shown only for a single selection).
  */
+/**
+ * Confirm-then-wipe the whole canvas. Destructive and not undoable (it clears
+ * history), so it always asks first. Shared by the right-click entry and the
+ * `clear-canvas` shortcut.
+ */
+export const clearCanvasWithConfirm = (editor: Editor): void => {
+  if (window.confirm("Clear the canvas? Every shape is removed and this can't be undone.")) {
+    editor.clear();
+  }
+};
+
 const actionMenuItem = (
   actionId: string,
   opts?: {
@@ -439,4 +450,14 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Fit to screen",
     visible: (e) => e.scene.elements.size > 0,
   }),
+  { kind: "divider" },
+  {
+    kind: "action",
+    id: "clear-canvas",
+    label: "Clear canvas",
+    visible: (e) => e.scene.elements.size > 0 || e.scene.links.size > 0,
+    onClick: (e) => {
+      clearCanvasWithConfirm(e);
+    },
+  },
 ];
