@@ -292,6 +292,11 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       }
     }
 
+    // Resolve the press target up-front so the anchor-drag path below can defer
+    // to the rotate grip (it floats above the shape, overlapping the top
+    // anchor's grab zone — the grip must win there).
+    let target = editor.hitTest(worldPoint);
+
     // Link-start anchor drag: a press on one of the single selected
     // element's link-start dots begins an edge FROM that anchor without
     // switching to the draw-edge tool. Checked before the normal hit-test
@@ -303,7 +308,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       editor.mode === "select" &&
       !data.modifiers.shift &&
       !data.modifiers.meta &&
-      !data.modifiers.ctrl
+      !data.modifiers.ctrl &&
+      target.kind !== "rotate-handle"
     ) {
       // Begin a link FROM a start dot of the single SELECTED element
       // (connection dots only on the selected shape, so only its dots
@@ -343,7 +349,6 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       if (selId && tryAnchorDrag(selId)) return;
     }
 
-    let target = editor.hitTest(worldPoint);
     // Auto-select on press for shapes / edges that the user is about
     // to act on (drag, resize handles): you can't manipulate an
     // element that isn't selected, so pressing on an unselected one
@@ -492,6 +497,19 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       editor.groupResizeOrigin = { combined: target.bounds, elements, links };
     } else {
       editor.groupResizeOrigin = null;
+    }
+    // Snapshot every member's pose when the press lands on the rotate grip, so
+    // the per-frame rotate math turns from a stable baseline. Expand to
+    // descendants (the leaves that actually carry geometry), matching resize.
+    if (target.kind === "rotate-handle") {
+      const origin = new Map<ElementId, { position: Vec2; rotation: number }>();
+      for (const id of editor.expandSelectionWithDescendants()) {
+        const s = getElement(editor._scene, id);
+        if (s) origin.set(id, { position: s.position, rotation: s.rotation });
+      }
+      editor.rotateGestureOrigin = { pivot: target.pivot, origin };
+    } else {
+      editor.rotateGestureOrigin = null;
     }
     // Arm one-finger pan: a TOUCH press on empty canvas in select mode.
     // A tap still deselects via the machine below; onMove promotes this to

@@ -62,6 +62,19 @@ export const HANDLE_OUTSET = 3;
 export const HANDLE_HIT_SLOP = 11;
 
 /**
+ * Screen-pixel gap between the selection box's top edge and the rotate grip
+ * that floats above it (with a connector line). Far enough to clear the corner
+ * resize handles. Range: 20–32.
+ */
+export const ROTATE_HANDLE_OFFSET = 26;
+
+/**
+ * Angle step (radians) the rotate gesture snaps to while Shift is held — 15°
+ * (π/12), the common increment for diagram alignment. Range: π/24–π/6.
+ */
+export const ROTATE_SNAP_RADIANS = Math.PI / 12;
+
+/**
  * Screen-pixel hit-test slop for grabbing an edge endpoint handle.
  * Larger than `LINK_ENDPOINT_HANDLE_DRAW_RADIUS` so the handle is
  * easier to grab on touch without enlarging the visual. Mouse default

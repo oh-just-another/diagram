@@ -1,5 +1,5 @@
 import type { Bounds, Vec2 } from "@oh-just-another/types";
-import { HANDLE_HIT_SLOP, HANDLE_OUTSET, HANDLE_SIZE } from "./constants.js";
+import { HANDLE_HIT_SLOP, HANDLE_OUTSET, HANDLE_SIZE, ROTATE_HANDLE_OFFSET } from "./constants.js";
 
 /**
  * Eight resize-handle positions arranged around the shape's AABB. `nw` is
@@ -147,6 +147,28 @@ export const hitHandle = (
     }
   }
   return null;
+};
+
+/**
+ * World position of the rotate grip — centred above the top edge of `b` by
+ * `ROTATE_HANDLE_OFFSET` screen pixels. Positioned against the (rotation-aware)
+ * AABB so the drawn grip and its hit zone always agree.
+ */
+export const rotateHandlePosition = (b: Bounds, zoom = 1): Vec2 => ({
+  x: b.x + b.width / 2,
+  y: b.y - ROTATE_HANDLE_OFFSET / zoom,
+});
+
+/** True when `point` is within grab slop of the rotate grip above `b`. */
+export const hitRotateHandle = (
+  point: Vec2,
+  b: Bounds,
+  zoom: number,
+  screenHalfSize: number = HANDLE_HIT_SLOP,
+): boolean => {
+  const p = rotateHandlePosition(b, zoom);
+  const slop = screenHalfSize / zoom;
+  return Math.abs(point.x - p.x) <= slop && Math.abs(point.y - p.y) <= slop;
 };
 
 /**

@@ -110,6 +110,7 @@ import {
   DOUBLE_CLICK_MS,
   DOUBLE_CLICK_TOLERANCE_PX,
   WHEEL_ZOOM_STEP,
+  ROTATE_SNAP_RADIANS,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP } from "./handle.js";
 import { req } from "./util.js";
@@ -628,6 +629,16 @@ export class Editor {
       { readonly position: Vec2; readonly bounds: Bounds; readonly scale: Vec2 }
     >;
     readonly links: ReadonlyMap<LinkId, Link>;
+  } | null = null;
+  /**
+   * Press-time snapshot for a rotate gesture: the pivot (selection bbox centre)
+   * and every member's pristine `position` / `rotation`. Each frame rotates
+   * from this baseline so the cumulative angle never drifts. Cleared on gesture
+   * end (commit / cancel).
+   */
+  public rotateGestureOrigin: {
+    readonly pivot: Vec2;
+    readonly origin: ReadonlyMap<ElementId, { readonly position: Vec2; readonly rotation: number }>;
   } | null = null;
   /**
    * Pristine shape snapshot for a single-shape text resize, captured on
@@ -3658,6 +3669,9 @@ export class Editor {
       case "RESIZE_SHAPE":
         this.applyResize(emit.id, emit.handle, emit.delta, emit.originalBounds);
         return;
+      case "ROTATE":
+        this.applyRotate(emit.deltaAngle);
+        return;
       case "CREATE_SHAPE":
         this.applyCreate(emit.shapeType, emit.bounds);
         return;
@@ -3920,6 +3934,26 @@ export class Editor {
       if (el === undefined || !isImage(el)) return false;
     }
     return true;
+  }
+
+  /**
+   * Per-frame rotate during a grip drag: turn the press-time snapshot by
+   * `deltaAngle` about its pivot. Shift snaps the swept angle to
+   * {@link ROTATE_SNAP_RADIANS} steps. Recorded as gesture patches (one undo
+   * step on commit).
+   */
+  private applyRotate(deltaAngle: number): void {
+    const gesture = this.rotateGestureOrigin;
+    if (!gesture) return;
+    const d = this.transformShiftKey
+      ? Math.round(deltaAngle / ROTATE_SNAP_RADIANS) * ROTATE_SNAP_RADIANS
+      : deltaAngle;
+    const patches = computeRotatePatches(this._scene, gesture.origin, gesture.pivot, d);
+    for (const patch of patches) {
+      this._scene = apply(this._scene, patch);
+      this.recordGesturePatch(patch);
+    }
+    this.notify();
   }
 
   private applyGroupResize(handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
@@ -4574,6 +4608,7 @@ export class Editor {
   }
   public commitGesture(): void {
     this._resizeOriginElement = null;
+    this.rotateGestureOrigin = null;
     this.gestures.commit();
     this.gestureStartScene = null;
   }
@@ -4623,6 +4658,7 @@ export class Editor {
 
   public cancelGesture(): void {
     this._resizeOriginElement = null;
+    this.rotateGestureOrigin = null;
     this.gestures.cancel();
     // Roll the scene back to the pre-gesture snapshot — cancelling the history
     // transaction alone leaves the live drag mutations in `_scene`.

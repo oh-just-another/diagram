@@ -180,3 +180,46 @@ describe("group resize gesture (end-to-end through pointer)", () => {
     expect(moved?.to).toEqual({ kind: "point", position: { x: 200, y: 100 } });
   });
 });
+
+describe("rotate gesture (end-to-end through pointer)", () => {
+  // Single 40×40 rect at world (0,0). AABB centre = (20,20); top-centre =
+  // (20,0); the rotate grip floats ROTATE_HANDLE_OFFSET (26px) above → (20,-26).
+  // Select via the emit (not a pointer tap) so the grip press isn't read as a
+  // double-click of a same-column tap.
+  const setup = () => {
+    const { host, handlers } = makeHost();
+    const editor = new Editor({
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: sceneWith(rect("a", 0)),
+    });
+    editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
+    return { editor, handlers };
+  };
+
+  it("dragging the rotate grip turns the selected shape", () => {
+    const { editor, handlers } = setup();
+    expect(editor.selection.size).toBe(1);
+    // Press the grip (20,-26) (angle −90° from pivot), drag to (60,20)
+    // (angle 0°) → +90° rotation.
+    handlers.get("pointerdown")!(pointer("pointerdown", 20, -26));
+    handlers.get("pointermove")!(pointer("pointermove", 60, 20));
+    handlers.get("pointerup")!(pointer("pointerup", 60, 20));
+    const a = getElement(editor.scene, elementId("a"))!;
+    expect(a.rotation).toBeCloseTo(Math.PI / 2, 3);
+  });
+
+  it("Shift snaps the angle to 15° steps", () => {
+    const { editor, handlers } = setup();
+    // The Shift snap reads the editor's transform-modifier state (wired from
+    // key events in the React layer); set it directly here.
+    editor.setTransformModifiers({ alt: false, shift: true });
+    // Drag to (50,-5): angle ≈ −39.8°, delta ≈ +50.2°; Shift snaps to 45°.
+    handlers.get("pointerdown")!(pointer("pointerdown", 20, -26, true));
+    handlers.get("pointermove")!(pointer("pointermove", 50, -5, true));
+    handlers.get("pointerup")!(pointer("pointerup", 50, -5, true));
+    const a = getElement(editor.scene, elementId("a"))!;
+    expect(a.rotation).toBeCloseTo(Math.PI / 4, 5);
+  });
+});

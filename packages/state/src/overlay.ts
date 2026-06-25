@@ -53,7 +53,7 @@ import {
   LOCK_BADGE_COLOR,
   LOCK_BADGE_KEYHOLE_COLOR,
 } from "./constants.js";
-import { CORNER_HANDLES, HANDLE_SIZE, handlePosition } from "./handle.js";
+import { CORNER_HANDLES, HANDLE_SIZE, handlePosition, rotateHandlePosition } from "./handle.js";
 import { isResizable } from "./editor/shape-traits.js";
 import {
   drawHitZones,
@@ -454,6 +454,7 @@ export const renderOverlay = (
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);
       drawHandle(target, screenPoint, style);
     }
+    drawRotateGripForBounds(target, worldBounds, zoom, w2s, style);
   }
 
   // 2. Rubber-band drawing preview (already in world coords if drawn before transform reset)
@@ -693,6 +694,7 @@ export const renderOverlay = (
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);
       drawHandle(target, screenPoint, style);
     }
+    drawRotateGripForBounds(target, options.groupBounds, zoom, w2s, style);
   }
 
   // 7.5. Annotation pins — drawn before peer cursors so cursors stay
@@ -840,6 +842,31 @@ const drawHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): vo
   target.ellipse(center.x, center.y, HANDLE_SIZE, HANDLE_SIZE);
   target.fill();
   target.stroke();
+};
+
+/** Rotate grip: a connector stem from the box top edge to a handle circle. */
+const drawRotateGrip = (target: RenderTarget, top: Vec2, grip: Vec2, style: OverlayStyle): void => {
+  target.setStroke(style.handleStroke);
+  target.setStrokeWidth(1);
+  target.setDashArray(null);
+  target.beginPath();
+  target.moveTo(top.x, top.y);
+  target.lineTo(grip.x, grip.y);
+  target.stroke();
+  drawHandle(target, grip, style);
+};
+
+/** Project the rotate grip + its connector to screen and draw it above `b`. */
+const drawRotateGripForBounds = (
+  target: RenderTarget,
+  b: Bounds,
+  zoom: number,
+  w2s: Transform,
+  style: OverlayStyle,
+): void => {
+  const grip = matrix.applyToPoint(w2s, rotateHandlePosition(b, zoom));
+  const top = matrix.applyToPoint(w2s, { x: b.x + b.width / 2, y: b.y });
+  drawRotateGrip(target, top, grip, style);
 };
 
 const drawDrawingPreview = (target: RenderTarget, b: Bounds, style: OverlayStyle): void => {

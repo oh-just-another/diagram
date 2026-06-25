@@ -24,6 +24,7 @@ import {
   HANDLE_HIT_SLOP,
   handlePosition,
   hitHandle,
+  hitRotateHandle,
   type HandleId,
 } from "../handle.js";
 import { isResizable, resizeHandlesFor } from "./shape-traits.js";
@@ -154,6 +155,30 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
         return { kind: "handle", elementId: id, handle, bounds };
       }
     }
+  }
+
+  // 1c. Rotate grip — floats above the selection (group bbox, or a single
+  //     resizable shape's AABB). It sits further out than the resize handles,
+  //     and is checked before the element pick so grabbing it always rotates
+  //     rather than selecting a shape behind it.
+  let rotateBounds: Bounds | null = useGroupHandles ? ctx.combinedSelectionBounds() : null;
+  if (!rotateBounds && ctx.selection.size === 1) {
+    for (const id of ctx.selection) {
+      const shape = getElement(ctx.scene, id);
+      if (shape && isResizable(shape) && shape.locked !== true) {
+        rotateBounds = getElementWorldBounds(shape);
+      }
+    }
+  }
+  if (rotateBounds && hitRotateHandle(worldPoint, rotateBounds, zoom, ctx.handleHitSlop)) {
+    return {
+      kind: "rotate-handle",
+      pivot: {
+        x: rotateBounds.x + rotateBounds.width / 2,
+        y: rotateBounds.y + rotateBounds.height / 2,
+      },
+      bounds: rotateBounds,
+    };
   }
 
   // 2. Endpoint handles on a selected edge — only when an edge is
