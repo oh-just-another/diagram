@@ -329,6 +329,8 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   actionMenuItem("copy"),
   actionMenuItem("cut"),
   actionMenuItem("paste"),
+  actionMenuItem("copy-style", { label: "Copy style" }),
+  actionMenuItem("paste-style", { label: "Paste style" }),
   actionMenuItem("select-all"),
   { kind: "divider" },
   // --- Grouping + arrange (registry-backed) ---

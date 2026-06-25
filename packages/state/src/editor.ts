@@ -43,6 +43,7 @@ import {
   type Scene,
   type Element,
   type GridStyle,
+  type Style,
   type TextElement,
   type TextStyle,
   isSnapToGridEnabled,
@@ -673,6 +674,13 @@ export class Editor {
    */
   private transformAltKey = false;
   private transformShiftKey = false;
+
+  /**
+   * In-editor style memory for copy-style / paste-style. Holds the visual
+   * `style` (fill / stroke / dash / …) captured from a shape; `null` until a
+   * copy happens. Not the OS clipboard — a lightweight per-editor buffer.
+   */
+  private styleClipboard: Style | null = null;
 
   /**
    * Persistent world-bounds cache shared with `renderScene` for viewport
@@ -2575,6 +2583,32 @@ export class Editor {
    *
    * No-op when `ids` is empty or none of the targeted shapes exist.
    */
+  /**
+   * Capture the visual style of the first selected element into the style
+   * buffer, for a later {@link pasteSelectionStyle}. No-op / clears nothing
+   * when the selection is empty.
+   */
+  copySelectionStyle(): void {
+    for (const id of this._selection) {
+      const el = getElement(this._scene, id);
+      if (el !== undefined) {
+        this.styleClipboard = { ...el.style };
+        return;
+      }
+    }
+  }
+
+  /** Apply the copied style (if any) to every selected element. One undo step. */
+  pasteSelectionStyle(): void {
+    if (this.styleClipboard === null) return;
+    this.updateStyle(this._selection, this.styleClipboard);
+  }
+
+  /** Whether a style has been copied and can be pasted. */
+  get hasStyleClipboard(): boolean {
+    return this.styleClipboard !== null;
+  }
+
   updateStyle(ids: Iterable<ElementId>, partial: Partial<TextStyle>): void {
     const result = computeUpdateStyle(this._scene, ids, partial);
     if (!result) return;

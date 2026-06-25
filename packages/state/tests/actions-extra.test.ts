@@ -238,3 +238,29 @@ describe("zOrderActions", () => {
     expect(orderOf(editor, "b") < orderOf(editor, "a")).toBe(true);
   });
 });
+
+describe("copy / paste style", () => {
+  const styled = (id: string, style: Element["style"]): Element => ({ ...rect(id), style });
+
+  it("copies the first selection's style and applies it on paste", () => {
+    const editor = makeEditor(
+      sceneWith(styled("a", { fill: "#f00", strokeWidth: 3 }), styled("b", { fill: "#00f" })),
+    );
+    editor.setSelection([elementId("a")]);
+    editor.copySelectionStyle();
+    editor.setSelection([elementId("b")]);
+    editor.pasteSelectionStyle();
+    const b = editor.scene.elements.get(elementId("b"));
+    expect(b?.style.fill).toBe("#f00");
+    expect(b?.style.strokeWidth).toBe(3);
+  });
+
+  it("paste is inert before any copy", () => {
+    const editor = makeEditor();
+    expect(editor.hasStyleClipboard).toBe(false);
+    editor.setSelection([elementId("a")]);
+    expect(() => {
+      editor.pasteSelectionStyle();
+    }).not.toThrow();
+  });
+});
