@@ -147,6 +147,7 @@ import {
 import {
   computeGroupResizePatches,
   computeElementResize,
+  computeRotatedElementResize,
   computeTextResize,
 } from "./editor/applies/resize.js";
 import { bindPointerEvents as bindPointerEventsExternal } from "./editor/pointer-binding.js";
@@ -3979,6 +3980,27 @@ export class Editor {
 
   private applyResize(id: ElementId, handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
     const shape = getElement(this._scene, id);
+    // Rotated shape: the axis-aligned world resize below would corrupt it
+    // (handles live on the tilted box). Resize in the shape's own frame,
+    // keeping the opposite corner fixed in world. Snapshot the pristine pose
+    // on the first tick so the closed-form never compounds. Grid-snap is
+    // skipped — snapping a tilted box to the world grid is ill-defined.
+    if (shape !== undefined && !isText(shape) && shape.rotation !== 0) {
+      if (this._resizeOriginElement?.id !== id) this._resizeOriginElement = shape;
+      const result = computeRotatedElementResize(
+        this._scene,
+        this._resizeOriginElement,
+        handle,
+        delta,
+        this.transformShiftKey,
+        this.transformAltKey,
+      );
+      if (!result) return;
+      this._scene = result.scene;
+      this.recordGesturePatch(result.patch);
+      this.notify();
+      return;
+    }
     const d = this.snapActive()
       ? snapResizeDelta(originalBounds, handle, delta, this.snapSpacing())
       : delta;

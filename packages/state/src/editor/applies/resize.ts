@@ -10,7 +10,7 @@ import {
   type TextElement,
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
-import type { HandleId } from "../../handle.js";
+import { frameCorners, shapeSelectionFrame, type HandleId } from "../../handle.js";
 import {
   applyResizeConstraints,
   lockAspectRatio,
@@ -73,6 +73,75 @@ export const computeElementResize = (
     height: constrained.height,
   } as Element;
   const patch: Patch = { kind: "element", id, before: shape, after: next };
+  return { scene: apply(scene, patch), patch };
+};
+
+/**
+ * Pure: resize a single ROTATED shape, keeping the corner opposite the dragged
+ * handle fixed in world (the natural "the other side stays put" feel).
+ *
+ * The axis-aligned resize helpers (`resizeFromHandle` + constraints) can't run
+ * in world space here — the shape's box is tilted. So we work in the shape's
+ * own un-rotated frame: project the world drag onto the box's local axes, run
+ * the exact same pipeline as {@link computeElementResize} on the local AABB,
+ * then map the resulting box back to world via the basis `(O, u, v)` — where
+ * `O` is the box's NW corner and `u` / `v` are its width / height directions.
+ * Because the new shape is emitted at `scale: 1` with the same `rotation`, its
+ * render basis is exactly `(u, v)`, so the box lands pixel-exact.
+ *
+ * `original` is the pristine shape snapshotted at the gesture's first tick;
+ * `worldDelta` is the cumulative pointer displacement since press. Returns
+ * `null` when the shape vanished or can't carry a width/height resize.
+ */
+export const computeRotatedElementResize = (
+  scene: Scene,
+  original: Element,
+  handle: HandleId,
+  worldDelta: Vec2,
+  lockAspect = false,
+  fromCenter = false,
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const current = getElement(scene, original.id);
+  if (!current) return null;
+  if (!hasWidthHeight(original)) return null;
+
+  // Box basis: NW corner `O` (world) + unit width/height axes `u` / `v`.
+  const frame = shapeSelectionFrame(original);
+  const [O] = frameCorners(frame);
+  const cos = Math.cos(frame.rotation);
+  const sin = Math.sin(frame.rotation);
+  const u: Vec2 = { x: cos, y: sin };
+  const v: Vec2 = { x: -sin, y: cos };
+
+  // Drag projected onto the box axes → a delta in the local (un-rotated) frame.
+  const localDelta: Vec2 = {
+    x: worldDelta.x * u.x + worldDelta.y * u.y,
+    y: worldDelta.x * v.x + worldDelta.y * v.y,
+  };
+
+  // Same pipeline as the unrotated path, on the local AABB anchored at (0,0).
+  const base: Bounds = { x: 0, y: 0, width: frame.bounds.width, height: frame.bounds.height };
+  const free = resizeFromHandle(base, handle, localDelta);
+  const shaped = lockAspect ? lockAspectRatio(base, free) : free;
+  const raw = fromCenter ? resizeFromCenter(base, shaped) : shaped;
+  const noFlip = original.noFlip === true || getAutoLayoutSpec(original) !== null;
+  const constraints: Element = noFlip ? { ...original, noFlip: true } : original;
+  const constrained = applyResizeConstraints(base, raw, handle, constraints, fromCenter);
+
+  // Map the new local box back to world through the basis. The new NW corner is
+  // the shape's local origin (rotation pivot), so it becomes `position`.
+  const position: Vec2 = {
+    x: O.x + constrained.x * u.x + constrained.y * v.x,
+    y: O.y + constrained.x * u.y + constrained.y * v.y,
+  };
+  const next: Element = {
+    ...original,
+    position,
+    scale: { x: 1, y: 1 },
+    width: constrained.width,
+    height: constrained.height,
+  } as Element;
+  const patch: Patch = { kind: "element", id: original.id, before: current, after: next };
   return { scene: apply(scene, patch), patch };
 };
 
