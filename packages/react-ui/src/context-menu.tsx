@@ -7,11 +7,13 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import type { Vec2 } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
 import { useDiagramOptional } from "./hooks.js";
 import { useContextMenuController } from "./context-menu-controller.js";
+import { usePortalContainer } from "./portal-container.js";
 
 /**
  * Declarative menu entry. `divider` paints a separator; everything else
@@ -61,6 +63,7 @@ export interface ContextMenuProps {
 export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   const editor = useDiagramOptional();
   const controller = useContextMenuController();
+  const portalContainer = usePortalContainer();
   const [open, setOpen] = useState<OpenState | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -131,7 +134,11 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   const cleanedItems = collapseDividers(visibleItems);
   if (cleanedItems.length === 0) return null;
 
-  return (
+  // Portal into the themed container so the menu inherits the app theme — when
+  // rendered inline it can escape the editor root and pick up the stylesheet's
+  // OS `prefers-color-scheme` fallback instead. Fallbacks forward to the `--du-*`
+  // theme chain (light-leaning) so it never defaults to a dark surface.
+  return createPortal(
     <div
       ref={menuRef}
       role="menu"
@@ -140,13 +147,13 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
         zIndex: 1000,
         top: open.screenPoint.y,
         left: open.screenPoint.x,
-        background: "var(--menu-bg, #1a1a1a)",
-        color: "var(--menu-text, #ddd)",
-        border: "1px solid var(--menu-border, #333)",
+        background: "var(--menu-bg, var(--du-ui-bg-solid, #fff))",
+        color: "var(--menu-text, var(--du-text, #1a1a1a))",
+        border: "1px solid var(--menu-border, var(--du-ui-border, rgba(0,0,0,0.08)))",
         borderRadius: 6,
         padding: "4px 0",
         minWidth: 180,
-        boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+        boxShadow: "var(--du-ui-shadow, 0 4px 16px rgba(0,0,0,0.18))",
         font: "13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
         ...style,
       }}
@@ -158,7 +165,7 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
             key={`d-${i}`}
             style={{
               border: 0,
-              borderTop: "1px solid var(--menu-divider, #2a2a2a)",
+              borderTop: "1px solid var(--menu-divider, var(--du-ui-border, rgba(0,0,0,0.08)))",
               margin: "4px 0",
             }}
           />
@@ -175,7 +182,8 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
           />
         ),
       )}
-    </div>
+    </div>,
+    portalContainer,
   );
 };
 
@@ -216,7 +224,8 @@ const ContextMenuRow = ({
         boxSizing: "border-box",
       }}
       onMouseEnter={(ev) => {
-        if (!disabled) ev.currentTarget.style.background = "#2a2a2a";
+        if (!disabled)
+          ev.currentTarget.style.background = "var(--du-hover-overlay, rgba(0,0,0,0.05))";
       }}
       onMouseLeave={(ev) => {
         ev.currentTarget.style.background = "transparent";

@@ -59,6 +59,7 @@ import {
   SelectionFloatingPanel,
   TextEditorOverlay,
   FrameNameEditorOverlay,
+  PortalContainerProvider,
   ToastHost,
   Toolbar,
   Tooltip,
@@ -121,6 +122,7 @@ import {
   type CapabilityProfile,
 } from "./capabilities";
 import { installGifAnimationAdapter } from "./gif-animation.js";
+import { useThemedPortalContainer } from "./themed-portal-container.js";
 import { exportSceneToPng, type PngExportBackground } from "./png-export";
 import { isEditableTarget } from "./dom-focus";
 
@@ -344,6 +346,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     return defaultTheme;
   });
   const theme: DiagramTheme = themeProp ?? internalTheme;
+  // Floating UI portals here (a body-level wrapper that mirrors `theme`) so it
+  // inherits the app theme instead of the OS `prefers-color-scheme` fallback.
+  const portalContainer = useThemedPortalContainer(theme);
   const changeTheme = useCallback(
     (next: DiagramTheme) => {
       if (themeProp === undefined) setInternalTheme(next);
@@ -593,64 +598,66 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   }
 
   return (
-    <ToastHost>
-      <TooltipProvider>
-        <div
-          className={className}
-          data-diagram-root
-          // Theme is scoped to this editor root (not the global <html>), so
-          // multiple editors can theme independently and the host document is
-          // left untouched. "system" omits the attribute, falling through to
-          // the stylesheet's `prefers-color-scheme` / `:root` defaults.
-          {...(theme === "system" ? {} : { "data-theme": theme })}
-          style={{
-            position: "relative",
-            width: "100%",
-            height: "100%",
-            background: "var(--du-canvas-bg)",
-            ...style,
-          }}
-        >
-          <DiagramRoot
-            initialScene={seed}
-            initialMode={initialMode}
-            onReady={handleReady}
-            renderer={profile.renderer}
-            {...(profile.renderer === "offscreen"
-              ? { workerFactory: workerFactory ?? createRenderWorker }
-              : {})}
-            {...(wasmShaper ? { textShaper: wasmShaper } : {})}
-            {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
+    <PortalContainerProvider container={portalContainer}>
+      <ToastHost>
+        <TooltipProvider>
+          <div
+            className={className}
+            data-diagram-root
+            // Theme is scoped to this editor root (not the global <html>), so
+            // multiple editors can theme independently and the host document is
+            // left untouched. "system" omits the attribute, falling through to
+            // the stylesheet's `prefers-color-scheme` / `:root` defaults.
+            {...(theme === "system" ? {} : { "data-theme": theme })}
+            style={{
+              position: "relative",
+              width: "100%",
+              height: "100%",
+              background: "var(--du-canvas-bg)",
+              ...style,
+            }}
           >
-            <EditorShell
-              hideTopBar={hideTopBar}
-              hideBottomBar={hideBottomBar}
-              hideToolbar={hideToolbar}
-              hideLibraryButton={hideLibraryButton}
-              hideMainMenu={hideMainMenu}
-              hideZoomControls={hideZoomControls}
-              hideResetToContent={hideResetToContent}
-              hideHelpButton={hideHelpButton}
-              hideContextMenu={hideContextMenu}
-              hideSelectionPanel={hideSelectionPanel}
-              renderTopBarLeft={renderTopBarLeft}
-              renderTopBarCenter={renderTopBarCenter}
-              renderTopBarRight={renderTopBarRight}
-              renderBottomBarLeft={renderBottomBarLeft}
-              renderBottomBarCenter={renderBottomBarCenter}
-              renderBottomBarRight={renderBottomBarRight}
-              renderMainMenuExtras={renderMainMenuExtras}
-              onImportTemplates={onImportTemplates}
-              repositoryUrl={repositoryUrl}
-              onConfirm={onConfirm}
-              onNotify={onNotify}
-              theme={theme}
-              changeTheme={changeTheme}
-            />
-          </DiagramRoot>
-        </div>
-      </TooltipProvider>
-    </ToastHost>
+            <DiagramRoot
+              initialScene={seed}
+              initialMode={initialMode}
+              onReady={handleReady}
+              renderer={profile.renderer}
+              {...(profile.renderer === "offscreen"
+                ? { workerFactory: workerFactory ?? createRenderWorker }
+                : {})}
+              {...(wasmShaper ? { textShaper: wasmShaper } : {})}
+              {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
+            >
+              <EditorShell
+                hideTopBar={hideTopBar}
+                hideBottomBar={hideBottomBar}
+                hideToolbar={hideToolbar}
+                hideLibraryButton={hideLibraryButton}
+                hideMainMenu={hideMainMenu}
+                hideZoomControls={hideZoomControls}
+                hideResetToContent={hideResetToContent}
+                hideHelpButton={hideHelpButton}
+                hideContextMenu={hideContextMenu}
+                hideSelectionPanel={hideSelectionPanel}
+                renderTopBarLeft={renderTopBarLeft}
+                renderTopBarCenter={renderTopBarCenter}
+                renderTopBarRight={renderTopBarRight}
+                renderBottomBarLeft={renderBottomBarLeft}
+                renderBottomBarCenter={renderBottomBarCenter}
+                renderBottomBarRight={renderBottomBarRight}
+                renderMainMenuExtras={renderMainMenuExtras}
+                onImportTemplates={onImportTemplates}
+                repositoryUrl={repositoryUrl}
+                onConfirm={onConfirm}
+                onNotify={onNotify}
+                theme={theme}
+                changeTheme={changeTheme}
+              />
+            </DiagramRoot>
+          </div>
+        </TooltipProvider>
+      </ToastHost>
+    </PortalContainerProvider>
   );
 });
 
