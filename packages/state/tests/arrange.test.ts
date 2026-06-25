@@ -14,6 +14,7 @@ import {
   computeAlignPatches,
   computeDistributePatches,
   computeFlipPatches,
+  computeRotatePatches,
 } from "../src/editor/applies/arrange";
 
 const rect = (id: string, x: number, y = 0): Element => ({
@@ -142,5 +143,46 @@ describe("computeDistributePatches", () => {
     expect(computeDistributePatches(scene, [elementId("a"), elementId("b")], "horizontal")).toEqual(
       [],
     );
+  });
+});
+
+describe("computeRotatePatches", () => {
+  const HALF_PI = Math.PI / 2;
+  const origin = (...entries: [string, { x: number; y: number }, number][]) =>
+    new Map(entries.map(([id, position, rotation]) => [elementId(id), { position, rotation }]));
+
+  it("advances each element's rotation by delta", () => {
+    const scene = sceneWith(rect("a", 0));
+    const m = afters(
+      computeRotatePatches(scene, origin(["a", { x: 0, y: 0 }, 0]), { x: 20, y: 20 }, HALF_PI),
+    );
+    expect(m.get(elementId("a"))!.rotation).toBeCloseTo(HALF_PI);
+  });
+
+  it("orbits the position about the pivot", () => {
+    // pos (10,0) rotated 90° about pivot (0,0) → (0,10).
+    const scene = sceneWith(rect("a", 10));
+    const m = afters(
+      computeRotatePatches(scene, origin(["a", { x: 10, y: 0 }, 0]), { x: 0, y: 0 }, HALF_PI),
+    );
+    expect(m.get(elementId("a"))!.position.x).toBeCloseTo(0);
+    expect(m.get(elementId("a"))!.position.y).toBeCloseTo(10);
+  });
+
+  it("leaves a shape centred on the pivot in place (only spins)", () => {
+    const scene = sceneWith(rect("a", 0));
+    const m = afters(
+      computeRotatePatches(scene, origin(["a", { x: 5, y: 5 }, 0]), { x: 5, y: 5 }, HALF_PI),
+    );
+    expect(m.get(elementId("a"))!.position).toEqual({ x: 5, y: 5 });
+    expect(m.get(elementId("a"))!.rotation).toBeCloseTo(HALF_PI);
+  });
+
+  it("accumulates from the snapshot rotation, not the live value", () => {
+    const scene = sceneWith(rect("a", 0));
+    const m = afters(
+      computeRotatePatches(scene, origin(["a", { x: 0, y: 0 }, HALF_PI]), { x: 0, y: 0 }, HALF_PI),
+    );
+    expect(m.get(elementId("a"))!.rotation).toBeCloseTo(Math.PI);
   });
 });

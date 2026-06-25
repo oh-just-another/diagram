@@ -6,7 +6,7 @@ import {
   type Patch,
   type Scene,
 } from "@oh-just-another/scene";
-import type { Bounds, ElementId } from "@oh-just-another/types";
+import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 
 export type FlipAxis = "horizontal" | "vertical";
 
@@ -15,6 +15,9 @@ export type AlignEdge = "left" | "h-center" | "right" | "top" | "v-center" | "bo
 
 /** Axis along which the selection is evenly distributed. */
 export type DistributeAxis = "horizontal" | "vertical";
+
+/** Press-time snapshot for a rotate gesture: each element's pristine pose. */
+export type RotateOrigin = ReadonlyMap<ElementId, { position: Vec2; rotation: number }>;
 
 /** Collect the live elements for `ids`, skipping any that no longer exist. */
 const collect = (scene: Scene, ids: Iterable<ElementId>): Element[] => {
@@ -159,4 +162,40 @@ export const computeDistributePatches = (
     cursor += size(p.b) + gap;
   }
   return patches;
+};
+
+/**
+ * Pure: rotate the snapshotted elements by `delta` radians about `pivot`. Each
+ * element orbits the pivot (its `position` rotates around it) and its own
+ * `rotation` advances by `delta`, so the whole selection turns rigidly. Driven
+ * from a press-time {@link RotateOrigin} so the cumulative angle never drifts.
+ */
+export const computeRotatePatches = (
+  scene: Scene,
+  origin: RotateOrigin,
+  pivot: Vec2,
+  delta: number,
+): Patch[] => {
+  const cos = Math.cos(delta);
+  const sin = Math.sin(delta);
+  const patches: Patch[] = [];
+  for (const [id, snap] of origin) {
+    const el = getElement(scene, id);
+    if (!el) continue;
+    const dx = snap.position.x - pivot.x;
+    const dy = snap.position.y - pivot.y;
+    const after: Element = {
+      ...el,
+      position: { x: pivot.x + (dx * cos - dy * sin), y: pivot.y + (dx * sin + dy * cos) },
+      rotation: snap.rotation + delta,
+    };
+    patches.push({ kind: "element", id, before: el, after });
+  }
+  return patches;
+};
+
+/** Centre of the world AABB enclosing `elements` — the natural rotation pivot. */
+export const selectionCenter = (elements: readonly Element[]): Vec2 => {
+  const box = enclosingBounds(elements);
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 };

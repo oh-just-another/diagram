@@ -277,6 +277,8 @@ import {
   computeAlignPatches,
   computeDistributePatches,
   computeFlipPatches,
+  computeRotatePatches,
+  selectionCenter,
   type AlignEdge,
   type DistributeAxis,
   type FlipAxis,
@@ -2750,6 +2752,25 @@ export class Editor {
    */
   distributeSelection(axis: DistributeAxis): void {
     this.commitArrange(computeDistributePatches(this._scene, this._selection, axis));
+  }
+
+  /**
+   * Rotate the whole selection by `delta` radians about its bounding-box centre
+   * (a single shape turns about its own centre). One undoable step. The live
+   * rotate gesture drives the same maths from a press-time snapshot.
+   */
+  rotateSelection(delta: number): void {
+    const elements: Element[] = [];
+    const origin = new Map<ElementId, { position: Vec2; rotation: number }>();
+    for (const id of this._selection) {
+      const el = getElement(this._scene, id);
+      if (el === undefined) continue;
+      elements.push(el);
+      origin.set(id, { position: el.position, rotation: el.rotation });
+    }
+    if (elements.length === 0) return;
+    const pivot = selectionCenter(elements);
+    this.commitArrange(computeRotatePatches(this._scene, origin, pivot, delta));
   }
 
   /** Apply a batch of arrange patches as a single undoable step. */
