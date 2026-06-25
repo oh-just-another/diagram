@@ -62,6 +62,15 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
   const onDown = (ev: PointerEvent) => {
     ev.preventDefault();
     editor.host.setPointerCapture(ev.pointerId);
+    // Give the canvas keyboard focus on press. `preventDefault` above suppresses
+    // the browser's default focus-on-pointerdown, so without this the surface
+    // never focuses by clicking — keyboard shortcuts (and a clean blur of a
+    // previously-focused panel input) would only kick in after tabbing to it,
+    // which reads as "the first click did nothing". Skipped when the press lands
+    // on a text field (in-canvas text editing) so it keeps its own focus.
+    if (typeof editor.host.focus === "function" && !isEditableTarget(ev.target)) {
+      editor.host.focus({ preventScroll: true });
+    }
     const data = fromPointerEvent(ev, editor.host);
     // Fresh press — forget any additive promotion from the last gesture.
     editor.additivePressAdded = null;
