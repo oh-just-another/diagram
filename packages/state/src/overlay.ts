@@ -53,7 +53,18 @@ import {
   LOCK_BADGE_COLOR,
   LOCK_BADGE_KEYHOLE_COLOR,
 } from "./constants.js";
-import { CORNER_HANDLES, HANDLE_SIZE, handlePosition, rotateHandlePosition } from "./handle.js";
+import {
+  CORNER_HANDLES,
+  HANDLE_SIZE,
+  frameCorners,
+  handlePosition,
+  handleWorldOnFrame,
+  rotateGripAnchorWorld,
+  rotateGripForBounds,
+  rotateGripWorld,
+  shapeSelectionFrame,
+  type SelectionFrame,
+} from "./handle.js";
 import { isResizable } from "./editor/shape-traits.js";
 import {
   drawHitZones,
@@ -429,32 +440,59 @@ export const renderOverlay = (
     const shape = scene.elements.get(id);
     if (!shape) continue;
     // Groups have no intrinsic geometry — outline the union of their
-    // descendants instead. Otherwise the selection chrome would collapse
-    // to a zero-size point at the group's origin.
-    const worldBounds = isGroup(shape) ? groupWorldBounds(scene, id) : getElementWorldBounds(shape);
-    if (!worldBounds) continue;
-    const screenBounds = projectBounds(worldBounds, w2s);
+    // descendants as an axis-aligned box. A single shape gets an oriented
+    // frame that turns with its rotation, so the selection box hugs the body
+    // instead of its (larger, axis-aligned) AABB.
+    if (isGroup(shape)) {
+      const worldBounds = groupWorldBounds(scene, id);
+      if (!worldBounds) continue;
+      const screenBounds = projectBounds(worldBounds, w2s);
+      drawOutline(target, screenBounds, style);
+      if (shape.locked === true) {
+        drawLockBadge(target, screenBounds);
+        continue;
+      }
+      if (multiSelect || !isResizable(shape)) continue;
+      for (const handle of CORNER_HANDLES) {
+        const worldPoint = handlePosition(handle, worldBounds, zoom);
+        drawHandle(target, matrix.applyToPoint(w2s, worldPoint), style);
+      }
+      drawRotateGripForBounds(target, worldBounds, zoom, w2s, style);
+      continue;
+    }
 
-    drawOutline(target, screenBounds, style);
+    const frame = shapeSelectionFrame(shape);
+    // Unrotated → the plain AABB rect (unchanged rendering); rotated → a quad
+    // through the frame's corners so the box turns with the shape.
+    if (frame.rotation === 0) {
+      drawOutline(target, projectBounds(frame.bounds, w2s), style);
+    } else {
+      drawFrameOutline(target, frame, w2s, style);
+    }
 
     // Locked element: no resize handles; show a small lock badge instead so
     // the user sees why it won't move/resize (click still selects → unlock).
     if (shape.locked === true) {
-      drawLockBadge(target, screenBounds);
+      drawLockBadge(target, frameScreenBounds(frame, w2s));
       continue;
     }
 
     if (multiSelect || !isResizable(shape)) continue;
 
-    // Draw only the four CORNER dots. Edge resize is done by dragging the
-    // selection-box side itself, so no midpoint dot is needed; the edge handles
-    // stay hit-testable via `hitHandle`.
+    // Draw only the four CORNER dots — at the rotated frame corners. Edge
+    // resize is done by dragging the selection-box side itself, so no midpoint
+    // dot is needed; the edge handles stay hit-testable via `hitHandleOnFrame`.
     for (const handle of CORNER_HANDLES) {
-      const worldPoint = handlePosition(handle, worldBounds, zoom);
-      const screenPoint = matrix.applyToPoint(w2s, worldPoint);
-      drawHandle(target, screenPoint, style);
+      const worldPoint = handleWorldOnFrame(handle, frame, zoom);
+      drawHandle(target, matrix.applyToPoint(w2s, worldPoint), style);
     }
-    drawRotateGripForBounds(target, worldBounds, zoom, w2s, style);
+    // Rotate grip from the shape's template anchor (default bottom-left).
+    drawRotateGrip(
+      target,
+      matrix.applyToPoint(w2s, rotateGripAnchorWorld(shape)),
+      matrix.applyToPoint(w2s, rotateGripWorld(shape, zoom)),
+      style,
+    );
   }
 
   // 2. Rubber-band drawing preview (already in world coords if drawn before transform reset)
@@ -829,6 +867,46 @@ const drawOutline = (target: RenderTarget, b: Bounds, style: OverlayStyle): void
   target.stroke();
 };
 
+/** Selection outline as a (possibly rotated) quad through the frame's corners. */
+const drawFrameOutline = (
+  target: RenderTarget,
+  frame: SelectionFrame,
+  w2s: Transform,
+  style: OverlayStyle,
+): void => {
+  const [wnw, wne, wse, wsw] = frameCorners(frame);
+  const nw = matrix.applyToPoint(w2s, wnw);
+  const ne = matrix.applyToPoint(w2s, wne);
+  const se = matrix.applyToPoint(w2s, wse);
+  const sw = matrix.applyToPoint(w2s, wsw);
+  target.setStroke(style.selectionStroke);
+  target.setStrokeWidth(style.selectionStrokeWidth);
+  target.setDashArray(null);
+  target.beginPath();
+  target.moveTo(nw.x, nw.y);
+  target.lineTo(ne.x, ne.y);
+  target.lineTo(se.x, se.y);
+  target.lineTo(sw.x, sw.y);
+  target.closePath();
+  target.stroke();
+};
+
+/** Screen-space AABB enclosing the frame's (rotated) corners — for badges. */
+const frameScreenBounds = (frame: SelectionFrame, w2s: Transform): Bounds => {
+  const pts = frameCorners(frame).map((c) => matrix.applyToPoint(w2s, c));
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of pts) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+};
+
 const drawHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
   // Circle of radius HANDLE_SIZE — visually equivalent to a rounded
   // square with maximum corner radius, but renders via `ellipse`
@@ -856,7 +934,7 @@ const drawRotateGrip = (target: RenderTarget, top: Vec2, grip: Vec2, style: Over
   drawHandle(target, grip, style);
 };
 
-/** Project the rotate grip + its connector to screen and draw it above `b`. */
+/** Project the rotate grip + its connector to screen and draw it for AABB `b`. */
 const drawRotateGripForBounds = (
   target: RenderTarget,
   b: Bounds,
@@ -864,9 +942,8 @@ const drawRotateGripForBounds = (
   w2s: Transform,
   style: OverlayStyle,
 ): void => {
-  const grip = matrix.applyToPoint(w2s, rotateHandlePosition(b, zoom));
-  const top = matrix.applyToPoint(w2s, { x: b.x + b.width / 2, y: b.y });
-  drawRotateGrip(target, top, grip, style);
+  const { anchor, grip } = rotateGripForBounds(b, zoom);
+  drawRotateGrip(target, matrix.applyToPoint(w2s, anchor), matrix.applyToPoint(w2s, grip), style);
 };
 
 const drawDrawingPreview = (target: RenderTarget, b: Bounds, style: OverlayStyle): void => {

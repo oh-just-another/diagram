@@ -5,7 +5,15 @@ export type { Selection } from "./selection.js";
 export * as selection from "./selection.js";
 
 export type { HandleId } from "./handle.js";
-export { ALL_HANDLES, HANDLE_SIZE, handlePosition, hitHandle, resizeBounds } from "./handle.js";
+export {
+  ALL_HANDLES,
+  HANDLE_SIZE,
+  handlePosition,
+  hitHandle,
+  resizeBounds,
+  registerRotateAnchor,
+  getRotateAnchor,
+} from "./handle.js";
 
 export type {
   InteractionContext,

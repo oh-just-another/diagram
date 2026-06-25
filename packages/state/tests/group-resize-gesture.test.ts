@@ -13,6 +13,7 @@ import {
   type Link,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
+import { rotateGripWorld } from "../src/handle.js";
 
 const rect = (id: string, x: number): Element => ({
   id: elementId(id),
@@ -182,10 +183,13 @@ describe("group resize gesture (end-to-end through pointer)", () => {
 });
 
 describe("rotate gesture (end-to-end through pointer)", () => {
-  // Single 40×40 rect at world (0,0). AABB centre = (20,20); top-centre =
-  // (20,0); the rotate grip floats ROTATE_HANDLE_OFFSET (26px) above → (20,-26).
+  // Single 40×40 rect at world (0,0). Frame centre (rotate pivot) = (20,20).
+  // The rotate grip sits at the shape's template anchor (bottom-left corner,
+  // (0,40)) pushed ROTATE_HANDLE_OFFSET (26px) out along its outward normal
+  // (down-left) → ≈ (−18.38, 58.38), at angle 135° from the pivot.
   // Select via the emit (not a pointer tap) so the grip press isn't read as a
   // double-click of a same-column tap.
+  const PIVOT = { x: 20, y: 20 };
   const setup = () => {
     const { host, handlers } = makeHost();
     const editor = new Editor({
@@ -195,31 +199,44 @@ describe("rotate gesture (end-to-end through pointer)", () => {
       initialScene: sceneWith(rect("a", 0)),
     });
     editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
-    return { editor, handlers };
+    // Real grip position (robust to the offset constant / anchor default).
+    const grip = rotateGripWorld(getElement(editor.scene, elementId("a"))!);
+    return { editor, handlers, grip };
+  };
+
+  // Rotate `p` by `radians` about the pivot — the target a grip press must be
+  // dragged to so the swept angle equals `radians`.
+  const orbit = (p: { x: number; y: number }, radians: number) => {
+    const dx = p.x - PIVOT.x;
+    const dy = p.y - PIVOT.y;
+    const c = Math.cos(radians);
+    const s = Math.sin(radians);
+    return { x: PIVOT.x + (dx * c - dy * s), y: PIVOT.y + (dx * s + dy * c) };
   };
 
   it("dragging the rotate grip turns the selected shape", () => {
-    const { editor, handlers } = setup();
+    const { editor, handlers, grip } = setup();
     expect(editor.selection.size).toBe(1);
-    // Press the grip (20,-26) (angle −90° from pivot), drag to (60,20)
-    // (angle 0°) → +90° rotation.
-    handlers.get("pointerdown")!(pointer("pointerdown", 20, -26));
-    handlers.get("pointermove")!(pointer("pointermove", 60, 20));
-    handlers.get("pointerup")!(pointer("pointerup", 60, 20));
+    // Press the grip, drag to where it lands after a −90° sweep → rotation −π/2.
+    const to = orbit(grip, -Math.PI / 2);
+    handlers.get("pointerdown")!(pointer("pointerdown", grip.x, grip.y));
+    handlers.get("pointermove")!(pointer("pointermove", to.x, to.y));
+    handlers.get("pointerup")!(pointer("pointerup", to.x, to.y));
     const a = getElement(editor.scene, elementId("a"))!;
-    expect(a.rotation).toBeCloseTo(Math.PI / 2, 3);
+    expect(a.rotation).toBeCloseTo(-Math.PI / 2, 3);
   });
 
   it("Shift snaps the angle to 15° steps", () => {
-    const { editor, handlers } = setup();
+    const { editor, handlers, grip } = setup();
     // The Shift snap reads the editor's transform-modifier state (wired from
     // key events in the React layer); set it directly here.
     editor.setTransformModifiers({ alt: false, shift: true });
-    // Drag to (50,-5): angle ≈ −39.8°, delta ≈ +50.2°; Shift snaps to 45°.
-    handlers.get("pointerdown")!(pointer("pointerdown", 20, -26, true));
-    handlers.get("pointermove")!(pointer("pointermove", 50, -5, true));
-    handlers.get("pointerup")!(pointer("pointerup", 50, -5, true));
+    // Sweep −50.2°; Shift snaps to the nearest 15° step → −45° (−π/4).
+    const to = orbit(grip, (-50.2 * Math.PI) / 180);
+    handlers.get("pointerdown")!(pointer("pointerdown", grip.x, grip.y, true));
+    handlers.get("pointermove")!(pointer("pointermove", to.x, to.y, true));
+    handlers.get("pointerup")!(pointer("pointerup", to.x, to.y, true));
     const a = getElement(editor.scene, elementId("a"))!;
-    expect(a.rotation).toBeCloseTo(Math.PI / 4, 5);
+    expect(a.rotation).toBeCloseTo(-Math.PI / 4, 5);
   });
 });

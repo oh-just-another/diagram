@@ -22,9 +22,14 @@ import {
   ALL_HANDLES,
   CORNER_HANDLES,
   HANDLE_HIT_SLOP,
+  frameCenter,
   handlePosition,
   hitHandle,
-  hitRotateHandle,
+  hitHandleOnFrame,
+  hitRotateGrip,
+  rotateGripForBounds,
+  rotateGripWorld,
+  shapeSelectionFrame,
   type HandleId,
 } from "../handle.js";
 import { isResizable, resizeHandlesFor } from "./shape-traits.js";
@@ -143,16 +148,18 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
       const shape = getElement(ctx.scene, id);
       if (!shape || !isResizable(shape)) continue;
       if (shape.locked === true) continue; // locked: no resize handles
-      const bounds = getElementWorldBounds(shape);
-      const handle = hitHandle(
+      // Oriented frame so the handles turn with a rotated shape; for an
+      // unrotated shape the frame's bounds equal its world AABB exactly.
+      const frame = shapeSelectionFrame(shape);
+      const handle = hitHandleOnFrame(
         worldPoint,
-        bounds,
+        frame,
         zoom,
         ctx.handleHitSlop,
         resizeHandlesFor(shape),
       );
       if (handle) {
-        return { kind: "handle", elementId: id, handle, bounds };
+        return { kind: "handle", elementId: id, handle, bounds: frame.bounds };
       }
     }
   }
@@ -161,24 +168,29 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
   //     resizable shape's AABB). It sits further out than the resize handles,
   //     and is checked before the element pick so grabbing it always rotates
   //     rather than selecting a shape behind it.
-  let rotateBounds: Bounds | null = useGroupHandles ? ctx.combinedSelectionBounds() : null;
-  if (!rotateBounds && ctx.selection.size === 1) {
+  const groupRotateBounds: Bounds | null = useGroupHandles ? ctx.combinedSelectionBounds() : null;
+  if (groupRotateBounds) {
+    const { grip } = rotateGripForBounds(groupRotateBounds, zoom);
+    if (hitRotateGrip(worldPoint, grip, zoom, ctx.handleHitSlop)) {
+      return {
+        kind: "rotate-handle",
+        pivot: {
+          x: groupRotateBounds.x + groupRotateBounds.width / 2,
+          y: groupRotateBounds.y + groupRotateBounds.height / 2,
+        },
+        bounds: groupRotateBounds,
+      };
+    }
+  } else if (ctx.selection.size === 1) {
     for (const id of ctx.selection) {
       const shape = getElement(ctx.scene, id);
-      if (shape && isResizable(shape) && shape.locked !== true) {
-        rotateBounds = getElementWorldBounds(shape);
+      if (!shape || !isResizable(shape) || shape.locked === true) continue;
+      const grip = rotateGripWorld(shape, zoom);
+      if (hitRotateGrip(worldPoint, grip, zoom, ctx.handleHitSlop)) {
+        const frame = shapeSelectionFrame(shape);
+        return { kind: "rotate-handle", pivot: frameCenter(frame), bounds: frame.bounds };
       }
     }
-  }
-  if (rotateBounds && hitRotateHandle(worldPoint, rotateBounds, zoom, ctx.handleHitSlop)) {
-    return {
-      kind: "rotate-handle",
-      pivot: {
-        x: rotateBounds.x + rotateBounds.width / 2,
-        y: rotateBounds.y + rotateBounds.height / 2,
-      },
-      bounds: rotateBounds,
-    };
   }
 
   // 2. Endpoint handles on a selected edge — only when an edge is
