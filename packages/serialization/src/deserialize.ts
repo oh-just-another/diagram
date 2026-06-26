@@ -8,12 +8,14 @@ import {
   layerId,
   elementId,
   type ElementId,
+  stripUndefined,
 } from "@oh-just-another/types";
 import type { Annotation, Link, Layer, Scene, Element, Viewport } from "@oh-just-another/scene";
 import { type FractionalIndex } from "fractional-keys";
 import { z } from "zod";
 import { CURRENT_VERSION, type SceneDocument, SceneDocumentZ } from "./schema.js";
 import { runMigrations } from "./migrations.js";
+import "./migrations-builtin.js";
 
 /**
  * Error thrown when validation fails. Carries the original `z.ZodError` for
@@ -165,13 +167,4 @@ const hydrateLink = (e: SceneDocument["links"][number], id: LinkId): Link => {
     from,
     to,
   } as Link;
-};
-
-/** Return a shallow copy of `obj` with all `undefined`-valued keys removed. */
-const stripUndefined = <T extends object>(obj: T): T => {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (v !== undefined) out[k] = v;
-  }
-  return out as T;
 };

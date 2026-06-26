@@ -1,5 +1,15 @@
-import { getElement, updateElement, type Scene, type Patch } from "@oh-just-another/scene";
-import type { ElementId } from "@oh-just-another/types";
+import {
+  getElement,
+  updateElement,
+  type Scene,
+  type Patch,
+  type SnapEngine,
+  type SnapCandidate,
+  type LinkEndpoint,
+  type AnchorRef,
+  type Element,
+} from "@oh-just-another/scene";
+import type { ElementId, Vec2 } from "@oh-just-another/types";
 
 /**
  * Schemes allowed to be stored / opened. Everything else (notably
@@ -7,7 +17,10 @@ import type { ElementId } from "@oh-just-another/types";
  * can't smuggle an XSS / local-file payload through an element link.
  */
 const SAFE_SCHEME = /^(https?:|mailto:)/i;
-const BARE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Domain labels exclude `.` so the literal dots don't overlap the surrounding
+// character classes — that overlap is what lets a crafted `a@!.!.!.…` string
+// drive polynomial backtracking. Each label is matched linearly.
+const BARE_EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
 /**
  * Normalise user-entered link text into a safe, storable href, or
@@ -69,4 +82,83 @@ export const computeSetLink = (
     patch:
       patches.length === 1 && firstPatch !== undefined ? firstPatch : { kind: "batch", patches },
   };
+};
+
+/**
+ * Convert a snap candidate into a `LinkEndpoint`. Anchor snap → named anchor
+ * ref; outline snap → outline ref with the sampled ratio. Falls back to a free
+ * point if the metadata isn't recognised.
+ */
+const endpointFromSnap = (
+  elementId: ElementId,
+  candidate: SnapCandidate,
+  shape: Element,
+): LinkEndpoint => {
+  if (candidate.kind === "anchor") {
+    const ref = candidate.metadata?.ref as AnchorRef | undefined;
+    if (ref) return { kind: "anchor", elementId, anchor: ref };
+  }
+  if (candidate.kind === "outline" && typeof candidate.metadata?.ratio === "number") {
+    return { kind: "outline", elementId, ratio: candidate.metadata.ratio };
+  }
+  // Defensive fallback — should not happen with built-in contributors.
+  void shape;
+  return { kind: "point", position: candidate.snapped };
+};
+
+/**
+ * Resolve where a link endpoint should attach when dropped at `worldPoint`.
+ * Attach contract: a port dot → *fixed* anchor; near an EDGE (not a dot) →
+ * *fixed* outline point (a perimeter ratio — survives move/resize); the body
+ * interior → *floating* against the whole shape (re-aims as shapes move); empty
+ * canvas → a free point. `pressTargetElement` biases the pick toward the pressed
+ * shape, but a dot drawn outside the body still binds even when it's null.
+ */
+export const snapLinkEndpoint = (
+  scene: Scene,
+  snapEngine: SnapEngine,
+  threshold: number,
+  pressTargetElement: ElementId | null,
+  worldPoint: Vec2,
+): LinkEndpoint => {
+  const result = snapEngine.snap({
+    scene,
+    probe: worldPoint,
+    threshold,
+    gesture: "draw-edge",
+  });
+
+  const pick = (kind: SnapCandidate["kind"]): SnapCandidate | undefined => {
+    if (pressTargetElement !== null) {
+      const onTarget = result.all.find(
+        (c) => c.kind === kind && c.metadata?.elementId === pressTargetElement,
+      );
+      if (onTarget) return onTarget;
+    }
+    return result.all.find((c) => c.kind === kind);
+  };
+
+  const boundFrom = (
+    cand: SnapCandidate | undefined,
+    want: "anchor" | "outline",
+  ): LinkEndpoint | null => {
+    if (!cand) return null;
+    const elId = cand.metadata?.elementId as ElementId | undefined;
+    if (elId === undefined) return null;
+    const shp = getElement(scene, elId);
+    if (!shp) return null;
+    const ep = endpointFromSnap(elId, cand, shp);
+    return ep.kind === want ? ep : null;
+  };
+
+  const anchorEp = boundFrom(pick("anchor"), "anchor");
+  if (anchorEp) return anchorEp;
+  const outlineEp = boundFrom(pick("outline"), "outline");
+  if (outlineEp) return outlineEp;
+
+  // No dot/edge snap. Over a shape body → floating; else a free point.
+  if (pressTargetElement !== null && getElement(scene, pressTargetElement)) {
+    return { kind: "floating", elementId: pressTargetElement };
+  }
+  return { kind: "point", position: worldPoint };
 };

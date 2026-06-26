@@ -8,7 +8,7 @@
  * require them — what matters is that every real edge points same-or-down.
  */
 const LEVELS = [
-  ["types", "math", "events", "tokens"], // L0 — primitives
+  ["types", "math", "events", "tokens", "fonts"], // L0 — primitives
   ["scene", "renderer-core", "history", "glyph-atlas", "curve-mesh", "renderer-workers"], // L1 — core + render-leaves
   [
     "renderer-canvas",
@@ -23,6 +23,8 @@ const LEVELS = [
   ["network", "collab"], // L4 — integration
   ["react-ui"], // L5 — UI
   ["editor"], // L6 — umbrella (drop-in editor component)
+  ["diagram"], // L7 — framework-neutral custom element wrapping the editor
+  ["diagram-vue", "diagram-svelte"], // L8 — thin framework wrappers over <oja-diagram>
 ];
 
 /** Core packages (L0–L1) that must stay pure: no React / DOM / Node API. */

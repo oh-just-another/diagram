@@ -50,6 +50,6 @@
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/tokens": "workspace:*",
-    "@dagrejs/dagre": "^1.1.5"
+    "@dagrejs/dagre": "1.1.8"
   }
 }

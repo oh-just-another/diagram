@@ -5,7 +5,7 @@ renderer (WebGL2 / Canvas2D / OffscreenCanvas), opt-in WASM text-shaping and
 rasterisation, and worker offloading — then exposes one `<Editor>` component
 plus a programmatic handle for driving it from code.
 
-This is the umbrella package: it composes `@oh-just-another/react-ui`,
+The umbrella package (L6): it composes `@oh-just-another/react-ui`,
 `@oh-just-another/state`, the renderers, serialization and templates into a
 ready-to-mount editor. For lower-level building blocks, depend on those
 packages directly.
@@ -34,13 +34,13 @@ export function App() {
 > set — light and dark, plus a `prefers-color-scheme` fallback for "system" —
 > so the import above is all you need. The editor toggles `data-theme` on its
 > own root element (not the global `<html>`, so multiple editors theme
-> independently) via the `theme` prop; override any `--du-*` (or legacy `--bg` /
-> `--accent` / …) variable in your own stylesheet to re-skin.
+> independently) via the `theme` prop; override any `--du-*` variable in your
+> own stylesheet to re-skin.
 
 ## Driving it from code
 
-Pass a `ref` to get an imperative handle — the escape hatch for programmatic
-control (the live `editor` exposes undo/redo, zoom, selection, mutations, …):
+Pass a `ref` to get an imperative handle for programmatic control — undo/redo,
+zoom, selection, mutations:
 
 ```tsx
 import { useRef } from "react";
@@ -139,4 +139,4 @@ import { registerBounder, registerElementRenderer } from "@oh-just-another/edito
   `layoutKinds` / `animationAdapters` props.
 - `exportSceneToPng` — render the full scene to a PNG `Blob` headlessly.
 
-`Diagram` is exported as a deprecated alias of `Editor` for back-compat.
+`Diagram` is a deprecated alias of `Editor`.

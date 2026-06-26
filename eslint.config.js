@@ -14,6 +14,17 @@ export default tseslint.config(
       "**/.nx/**",
       "**/*.config.js",
       "**/*.config.mjs",
+      // Root vitest workspace definition — not part of any tsconfig project.
+      "vitest.workspace.ts",
+      // Node-only build / codegen tooling — not part of any tsconfig project,
+      // so the type-aware ruleset can't resolve them.
+      "**/scripts/*.mjs",
+      // Standalone runnable examples — served by their own dev server, not
+      // part of the package's tsconfig project.
+      "**/example/**",
+      // Copy-out starter templates — standalone projects with their own
+      // tooling / tsconfig, not part of this workspace's lint surface.
+      "templates/**",
     ],
   },
   eslint.configs.recommended,

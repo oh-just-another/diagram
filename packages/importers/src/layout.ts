@@ -1,13 +1,16 @@
 import dagre from "@dagrejs/dagre";
+import type { Vec2 } from "@oh-just-another/types";
 import type { GraphDocument, GraphLayoutDirection, GraphNode } from "./graph.js";
-
-const DEFAULT_NODE_W = 120;
-const DEFAULT_NODE_H = 60;
-const NODE_SEP = 40;
-const RANK_SEP = 60;
+import {
+  DEFAULT_NODE_HEIGHT,
+  DEFAULT_NODE_WIDTH,
+  LAYOUT_GRAPH_MARGIN,
+  LAYOUT_NODE_SEP,
+  LAYOUT_RANK_SEP,
+} from "./constants.js";
 
 export interface LayoutedNode extends GraphNode {
-  readonly position: { readonly x: number; readonly y: number };
+  readonly position: Vec2;
   readonly width: number;
   readonly height: number;
 }
@@ -37,8 +40,8 @@ export const layoutGraph = (
       nodes: graph.nodes.map((n) => ({
         ...n,
         position: n.position ?? { x: 0, y: 0 },
-        width: n.width ?? DEFAULT_NODE_W,
-        height: n.height ?? DEFAULT_NODE_H,
+        width: n.width ?? DEFAULT_NODE_WIDTH,
+        height: n.height ?? DEFAULT_NODE_HEIGHT,
       })),
       edges: graph.edges,
     };
@@ -50,17 +53,17 @@ export const layoutGraph = (
   });
   g.setGraph({
     rankdir: dagreDirection(direction),
-    nodesep: NODE_SEP,
-    ranksep: RANK_SEP,
-    marginx: 20,
-    marginy: 20,
+    nodesep: LAYOUT_NODE_SEP,
+    ranksep: LAYOUT_RANK_SEP,
+    marginx: LAYOUT_GRAPH_MARGIN,
+    marginy: LAYOUT_GRAPH_MARGIN,
   });
   g.setDefaultEdgeLabel(() => ({}));
 
   for (const n of graph.nodes) {
     g.setNode(n.id, {
-      width: n.width ?? DEFAULT_NODE_W,
-      height: n.height ?? DEFAULT_NODE_H,
+      width: n.width ?? DEFAULT_NODE_WIDTH,
+      height: n.height ?? DEFAULT_NODE_HEIGHT,
     });
   }
   for (const e of graph.edges) {

@@ -30,3 +30,11 @@ export const DEFAULT_TILE_SIZE = 64;
  * stays constant.
  */
 export const DEFAULT_RANGE = 8;
+
+/**
+ * Size of the Unicode code-point space (`0x10FFFF` + 1). Used to pack
+ * `(fontId, codePoint)` into one cache key: `fontId * UNICODE_CODEPOINT_SPAN
+ * + codePoint`. Since every code point is `< UNICODE_CODEPOINT_SPAN`, the
+ * multiply guarantees keys from different fonts never collide.
+ */
+export const UNICODE_CODEPOINT_SPAN = 0x110000;

@@ -10,8 +10,13 @@ import {
   type TextElement,
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
-import type { HandleId } from "../../handle.js";
-import { applyResizeConstraints, resizeFromHandle } from "../resize-helpers.js";
+import { frameCorners, shapeSelectionFrame, type HandleId } from "../../handle.js";
+import {
+  applyResizeConstraints,
+  lockAspectRatio,
+  resizeFromCenter,
+  resizeFromHandle,
+} from "../resize-helpers.js";
 import { hasWidthHeight } from "../shape-traits.js";
 import { scaleLinkAround } from "./link-move.js";
 import { TEXT_RESIZE_MIN_FONT_SIZE } from "../../constants.js";
@@ -35,12 +40,16 @@ export const computeElementResize = (
   delta: Vec2,
   originalBounds: Bounds,
   clampContainer: (shape: Element, raw: Bounds, handle: HandleId) => Bounds,
+  lockAspect = false,
+  fromCenter = false,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const shape = getElement(scene, id);
   if (!shape) return null;
   if (!hasWidthHeight(shape)) return null;
 
-  const raw = resizeFromHandle(originalBounds, handle, delta);
+  const free = resizeFromHandle(originalBounds, handle, delta);
+  const shaped = lockAspect ? lockAspectRatio(originalBounds, free) : free;
+  const raw = fromCenter ? resizeFromCenter(originalBounds, shaped) : shaped;
   // An auto-layout container (a box holding laid-out children) must NEVER
   // mirror through its own body: dragging an edge inward past the opposite
   // edge would otherwise hand control to that opposite edge ("flip through
@@ -48,7 +57,7 @@ export const computeElementResize = (
   // instances that lack it behave the same.
   const noFlip = shape.noFlip === true || getAutoLayoutSpec(shape) !== null;
   const constraints: Element = noFlip ? { ...shape, noFlip: true } : shape;
-  const intermediate = applyResizeConstraints(originalBounds, raw, handle, constraints);
+  const intermediate = applyResizeConstraints(originalBounds, raw, handle, constraints, fromCenter);
   const constrained = clampContainer(shape, intermediate, handle);
 
   // `constrained` is in world units (originalBounds was world AABB).
@@ -64,6 +73,75 @@ export const computeElementResize = (
     height: constrained.height,
   } as Element;
   const patch: Patch = { kind: "element", id, before: shape, after: next };
+  return { scene: apply(scene, patch), patch };
+};
+
+/**
+ * Pure: resize a single ROTATED shape, keeping the corner opposite the dragged
+ * handle fixed in world (the natural "the other side stays put" feel).
+ *
+ * The axis-aligned resize helpers (`resizeFromHandle` + constraints) can't run
+ * in world space here — the shape's box is tilted. So we work in the shape's
+ * own un-rotated frame: project the world drag onto the box's local axes, run
+ * the exact same pipeline as {@link computeElementResize} on the local AABB,
+ * then map the resulting box back to world via the basis `(O, u, v)` — where
+ * `O` is the box's NW corner and `u` / `v` are its width / height directions.
+ * Because the new shape is emitted at `scale: 1` with the same `rotation`, its
+ * render basis is exactly `(u, v)`, so the box lands pixel-exact.
+ *
+ * `original` is the pristine shape snapshotted at the gesture's first tick;
+ * `worldDelta` is the cumulative pointer displacement since press. Returns
+ * `null` when the shape vanished or can't carry a width/height resize.
+ */
+export const computeRotatedElementResize = (
+  scene: Scene,
+  original: Element,
+  handle: HandleId,
+  worldDelta: Vec2,
+  lockAspect = false,
+  fromCenter = false,
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const current = getElement(scene, original.id);
+  if (!current) return null;
+  if (!hasWidthHeight(original)) return null;
+
+  // Box basis: NW corner `O` (world) + unit width/height axes `u` / `v`.
+  const frame = shapeSelectionFrame(original);
+  const [O] = frameCorners(frame);
+  const cos = Math.cos(frame.rotation);
+  const sin = Math.sin(frame.rotation);
+  const u: Vec2 = { x: cos, y: sin };
+  const v: Vec2 = { x: -sin, y: cos };
+
+  // Drag projected onto the box axes → a delta in the local (un-rotated) frame.
+  const localDelta: Vec2 = {
+    x: worldDelta.x * u.x + worldDelta.y * u.y,
+    y: worldDelta.x * v.x + worldDelta.y * v.y,
+  };
+
+  // Same pipeline as the unrotated path, on the local AABB anchored at (0,0).
+  const base: Bounds = { x: 0, y: 0, width: frame.bounds.width, height: frame.bounds.height };
+  const free = resizeFromHandle(base, handle, localDelta);
+  const shaped = lockAspect ? lockAspectRatio(base, free) : free;
+  const raw = fromCenter ? resizeFromCenter(base, shaped) : shaped;
+  const noFlip = original.noFlip === true || getAutoLayoutSpec(original) !== null;
+  const constraints: Element = noFlip ? { ...original, noFlip: true } : original;
+  const constrained = applyResizeConstraints(base, raw, handle, constraints, fromCenter);
+
+  // Map the new local box back to world through the basis. The new NW corner is
+  // the shape's local origin (rotation pivot), so it becomes `position`.
+  const position: Vec2 = {
+    x: O.x + constrained.x * u.x + constrained.y * v.x,
+    y: O.y + constrained.x * u.y + constrained.y * v.y,
+  };
+  const next: Element = {
+    ...original,
+    position,
+    scale: { x: 1, y: 1 },
+    width: constrained.width,
+    height: constrained.height,
+  } as Element;
+  const patch: Patch = { kind: "element", id: original.id, before: current, after: next };
   return { scene: apply(scene, patch), patch };
 };
 
@@ -87,16 +165,19 @@ export const computeTextResize = (
   handle: HandleId,
   delta: Vec2,
   originalBounds: Bounds,
+  fromCenter = false,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const current = getElement(scene, original.id);
   if (!current) return null;
   const raw = resizeFromHandle(originalBounds, handle, delta);
+  const cx = originalBounds.x + originalBounds.width / 2;
+  const cy = originalBounds.y + originalBounds.height / 2;
 
   // Left / right edges → wrap-width only (no scale).
   if (handle === "e" || handle === "w") {
     const newMaxWidth = Math.max(original.fontSize, Math.abs(raw.width));
     const anchorX = handle === "w" ? originalBounds.x + originalBounds.width : originalBounds.x;
-    const nx = handle === "w" ? anchorX - newMaxWidth : anchorX;
+    const nx = fromCenter ? cx - newMaxWidth / 2 : handle === "w" ? anchorX - newMaxWidth : anchorX;
     const next: Element = {
       ...original,
       position: { x: nx, y: originalBounds.y },
@@ -122,8 +203,8 @@ export const computeTextResize = (
   // n/s the horizontal position pins to the left edge.
   const ax = handle.includes("w") ? originalBounds.x + originalBounds.width : originalBounds.x;
   const ay = handle.includes("n") ? originalBounds.y + originalBounds.height : originalBounds.y;
-  const nx = handle.includes("w") ? ax - newW : ax;
-  const ny = handle.includes("n") ? ay - newH : ay;
+  const nx = fromCenter ? cx - newW / 2 : handle.includes("w") ? ax - newW : ax;
+  const ny = fromCenter ? cy - newH / 2 : handle.includes("n") ? ay - newH : ay;
   const next: Element = {
     ...original,
     position: { x: nx, y: ny },
@@ -159,7 +240,7 @@ export interface GroupResizeOrigin {
   /**
    * Press-time snapshot of links that scale with the box: selected links
    * (whole, incl. free endpoints) ∪ connectors bound on both ends to resized
-   * elements (geometry follows). Optional for back-compat with callers that
+   * elements (geometry follows). Optional: omitted by callers that
    * don't resize links.
    */
   readonly links?: ReadonlyMap<LinkId, Link>;
@@ -172,6 +253,7 @@ export const computeGroupResizePatches = (
   delta: Vec2,
   originalBounds: Bounds,
   isAspectLocked: boolean,
+  fromCenter = false,
 ): { scene: Scene; patches: Patch[] } => {
   const next = resizeFromHandle(originalBounds, handle, delta);
   const minDim = 1;
@@ -186,6 +268,12 @@ export const computeGroupResizePatches = (
     sx = locked * (sx >= 0 ? 1 : -1);
     sy = locked * (sy >= 0 ? 1 : -1);
   }
+  // Centre-anchored resize: the dragged side moves while the opposite side
+  // mirrors, so the scale deviation from 1 doubles about the centre.
+  if (fromCenter) {
+    sx = 1 + 2 * (sx - 1);
+    sy = 1 + 2 * (sy - 1);
+  }
   // Uniform factor for aspect-locked members (images) inside a mixed
   // selection: an image must only *scale*, never distort, even while
   // its neighbours follow the box's independent sx/sy (images are
@@ -196,10 +284,18 @@ export const computeGroupResizePatches = (
   // stays put in the group's layout — only its size stays proportional.
   const imgScale = Math.abs(sx - 1) >= Math.abs(sy - 1) ? sx : sy;
 
-  // Anchor for the scale = the unchanging corner / edge midpoint
-  // of the original bounds (opposite to the dragged handle).
-  const ax = handle.includes("w") ? originalBounds.x + originalBounds.width : originalBounds.x;
-  const ay = handle.includes("n") ? originalBounds.y + originalBounds.height : originalBounds.y;
+  // Anchor for the scale: the original centre when resizing from centre,
+  // otherwise the unchanging corner / edge midpoint opposite the dragged handle.
+  const ax = fromCenter
+    ? originalBounds.x + originalBounds.width / 2
+    : handle.includes("w")
+      ? originalBounds.x + originalBounds.width
+      : originalBounds.x;
+  const ay = fromCenter
+    ? originalBounds.y + originalBounds.height / 2
+    : handle.includes("n")
+      ? originalBounds.y + originalBounds.height
+      : originalBounds.y;
 
   let runningScene = scene;
   const patches: Patch[] = [];

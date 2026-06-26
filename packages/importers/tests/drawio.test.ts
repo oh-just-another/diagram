@@ -44,4 +44,20 @@ describe("parseDrawio", () => {
       </root></mxGraphModel>`;
     expect(parseDrawio(xml).nodes[0]?.label).toBe("A & B");
   });
+
+  it("decodes entities in a single pass (no double-unescape)", () => {
+    const xml = `
+      <mxGraphModel><root>
+        <mxCell id="x" value="A &amp;lt; B" vertex="1"><mxGeometry x="0" y="0" width="10" height="10"/></mxCell>
+      </root></mxGraphModel>`;
+    // `&amp;lt;` must decode once to the literal `&lt;`, never to `<`.
+    expect(parseDrawio(xml).nodes[0]?.label).toBe("A &lt; B");
+  });
+
+  it("parses attributes linearly on a pathological run (no ReDoS)", () => {
+    // A long colon run in the attribute area used to drive polynomial
+    // backtracking in the attribute regex; it must still return promptly.
+    const evil = `<mxGraphModel><root><mxCell ${":".repeat(20_000)} /></root></mxGraphModel>`;
+    expect(parseDrawio(evil).nodes).toEqual([]);
+  }, 2000);
 });

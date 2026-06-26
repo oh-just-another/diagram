@@ -8,6 +8,8 @@
  * `position` and skip the layout step; otherwise the dagre layout assigns
  * them.
  */
+import type { Vec2 } from "@oh-just-another/types";
+
 export type NodeShape = "rectangle" | "ellipse" | "diamond" | "round";
 
 export interface GraphNode {
@@ -17,18 +19,18 @@ export interface GraphNode {
   readonly width?: number;
   readonly height?: number;
   /** Explicit world-coordinate position, in pixels. Overrides layout. */
-  readonly position?: { readonly x: number; readonly y: number };
+  readonly position?: Vec2;
   readonly fill?: string;
   readonly stroke?: string;
 }
 
-export type LinkDirection = "directed" | "undirected";
+export type EdgeDirection = "directed" | "undirected";
 
 export interface GraphEdge {
   readonly source: string;
   readonly target: string;
   readonly label?: string;
-  readonly direction?: LinkDirection;
+  readonly direction?: EdgeDirection;
 }
 
 export type GraphLayoutDirection = "TB" | "BT" | "LR" | "RL";

@@ -5,7 +5,7 @@
 /**
  * Length of the public room identifier in bytes (hex string =
  * 2× chars). 10 bytes = 80 bits = ~1 in 2^80 collision odds at
- * realistic concurrency; matches standard's 20-hex format.
+ * realistic concurrency, yielding a 20-hex identifier.
  */
 export const ROOM_ID_BYTES = 10;
 

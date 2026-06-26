@@ -1,5 +1,7 @@
 import {
   DEFAULT_LAYER_ID,
+  FALLBACK_SCENE_HEIGHT,
+  FALLBACK_SCENE_WIDTH,
   addLink,
   addElement,
   emptyScene,
@@ -12,6 +14,12 @@ import { DEFAULT_EDGE_STYLE, DEFAULT_ELEMENT_STYLES, HUE_TONES } from "@oh-just-
 import { linkId, elementId } from "@oh-just-another/types";
 import type { GraphDocument } from "./graph.js";
 import { layoutGraph } from "./layout.js";
+import {
+  EDGE_STROKE_WIDTH,
+  NODE_LABEL_FONT_SIZE,
+  NODE_STROKE_WIDTH,
+  SCENE_FIT_MARGIN,
+} from "./constants.js";
 
 /**
  * Convert a backend-neutral `GraphDocument` into a `Scene`. Runs layout
@@ -44,7 +52,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
       rotation: 0,
       scale: { x: 1, y: 1 },
       order,
-      style: { fill, stroke, strokeWidth: 1.5 },
+      style: { fill, stroke, strokeWidth: NODE_STROKE_WIDTH },
     } as const;
     order = orderBetween(order, null);
 
@@ -90,7 +98,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
         },
         text: n.label,
         fontFamily: "system-ui, sans-serif",
-        fontSize: 13,
+        fontSize: NODE_LABEL_FONT_SIZE,
         maxWidth: n.width,
       };
       order = orderBetween(order, null);
@@ -115,7 +123,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
       layerId: DEFAULT_LAYER_ID,
       from: { kind: "anchor", elementId: sourceId, anchor: { kind: "named", name: "center" } },
       to: { kind: "anchor", elementId: targetId, anchor: { kind: "named", name: "center" } },
-      style: { ...DEFAULT_EDGE_STYLE, strokeWidth: 1 },
+      style: { ...DEFAULT_EDGE_STYLE, strokeWidth: EDGE_STROKE_WIDTH },
       order: edgeOrder,
       ...(e.label !== undefined ? { metadata: { label: e.label } } : {}),
     };
@@ -125,7 +133,7 @@ export const graphToScene = (graph: GraphDocument): Scene => {
 
   // Fit the viewport around the laid-out nodes plus a margin so callers
   // get something sensible to render without extra computation.
-  const margin = 20;
+  const margin = SCENE_FIT_MARGIN;
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -139,11 +147,11 @@ export const graphToScene = (graph: GraphDocument): Scene => {
   const width =
     Number.isFinite(maxX) && Number.isFinite(minX)
       ? Math.ceil(maxX - Math.min(0, minX)) + margin
-      : 800;
+      : FALLBACK_SCENE_WIDTH;
   const height =
     Number.isFinite(maxY) && Number.isFinite(minY)
       ? Math.ceil(maxY - Math.min(0, minY)) + margin
-      : 600;
+      : FALLBACK_SCENE_HEIGHT;
   scene = { ...scene, viewport: { ...scene.viewport, size: { width, height } } };
 
   return scene;

@@ -4,6 +4,7 @@ import { renderToPng, renderToSvg } from "@oh-just-another/headless";
 import { exportPdf, exportPng, type ExportRegion } from "@oh-just-another/exporter";
 import { importDot, importDrawio, importMermaid } from "@oh-just-another/importers";
 import { stringifyScene } from "@oh-just-another/serialization";
+import { stripUndefined } from "@oh-just-another/types";
 
 const HELP = `diagram — headless renderer for @oh-just-another/scene documents.
 
@@ -276,10 +277,4 @@ const parsePageSize = (
   const m = /^(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)$/i.exec(raw);
   if (!m) throw new Error(`--page expects A4/A5/Letter/Legal/Tabloid or WxH (got "${raw}")`);
   return { width: Number(m[1]), height: Number(m[2]) };
-};
-
-const stripUndefined = <T extends Record<string, unknown>>(obj: T): T => {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) if (v !== undefined) out[k] = v;
-  return out as T;
 };

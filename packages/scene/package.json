@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/scene",
   "version": "0.58.0",
-  "description": "scene package",
+  "description": "Immutable diagram scene model: elements, links, layers, patch-based operations, and a fast spatial index.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {
@@ -40,6 +40,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "bench": "vitest bench --run",
     "lint": "eslint src tests",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
@@ -49,6 +50,6 @@
   "dependencies": {
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/math": "workspace:*",
-    "fractional-keys": "^0.1.1"
+    "fractional-keys": "0.1.1"
   }
 }

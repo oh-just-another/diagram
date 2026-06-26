@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/renderer-core",
   "version": "0.57.1",
-  "description": "renderer-core package",
+  "description": "Backend-agnostic rendering abstraction: a RenderTarget surface, an element-renderer registry, and a Scene walker.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {

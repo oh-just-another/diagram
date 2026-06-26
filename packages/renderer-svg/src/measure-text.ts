@@ -9,6 +9,8 @@
  * a system-ui font at the given size.
  */
 
+import { DEFAULT_CHAR_WIDTH_RATIO } from "./constants.js";
+
 // Per-glyph width ratios as a fraction of font-size. Calibrated against a
 // system-ui sans-serif at 16px; broadly accurate for ASCII.
 const CHAR_RATIOS: Record<string, number> = {
@@ -29,12 +31,10 @@ const CHAR_RATIOS: Record<string, number> = {
   // Default ~0.55 (handled below)
 };
 
-const DEFAULT_RATIO = 0.55;
-
 export const approxTextWidth = (text: string, _fontFamily: string, fontSize: number): number => {
   let total = 0;
   for (const ch of text) {
-    total += (CHAR_RATIOS[ch] ?? DEFAULT_RATIO) * fontSize;
+    total += (CHAR_RATIOS[ch] ?? DEFAULT_CHAR_WIDTH_RATIO) * fontSize;
   }
   return total;
 };

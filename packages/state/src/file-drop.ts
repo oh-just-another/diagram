@@ -43,8 +43,7 @@ export class FileDropRegistry {
   private readonly entries: FileDropHandler[] = [];
 
   register(handler: FileDropHandler): void {
-    // Replace existing entry with the same id so re-registration is idempotent
-    // (mirrors ActionRegistry.replace semantics).
+    // Replace existing entry with the same id so re-registration is idempotent.
     const idx = this.entries.findIndex((h) => h.id === handler.id);
     if (idx !== -1) {
       this.entries[idx] = handler;

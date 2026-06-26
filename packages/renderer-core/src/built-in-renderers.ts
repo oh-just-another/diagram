@@ -25,12 +25,16 @@ import {
   TEXT_DECORATION_THICKNESS,
   TEXT_UNDERLINE_OFFSET,
   TEXT_STRIKETHROUGH_OFFSET,
+  ARROWHEAD_HEAD_RATIO,
+  ARROWHEAD_BODY_THICKNESS,
+  ARROWHEAD_RATIO_MIN,
+  ARROWHEAD_RATIO_MAX,
+  FRAME_STROKE_COLOR,
+  FRAME_FILL_COLOR,
+  FRAME_HEADER_BG_COLOR,
+  FRAME_HEADER_TEXT_COLOR,
 } from "./constants.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/renderer-core: index out of range");
-  return v;
-};
+import { req, type Vec2 } from "@oh-just-another/types";
 
 /**
  * Applies common style fields to a target. Returns whether any fill or stroke
@@ -125,8 +129,7 @@ const strokeAlignOffset = (style: Style): number => {
  *
  * Quadratic control points sit at each corner of the rect; the
  * curve goes from `r` units along one side to `r` units along the
- * adjacent side. WebGL2Target's zoom-aware flattener turns this
- * into enough chord segments to stay sub-pixel smooth at any zoom.
+ * adjacent side.
  *
  * Radius `r` is pre-clamped by `getCornerRadius` to half the
  * smaller side, so no overlap-handling is needed here.
@@ -195,7 +198,7 @@ const drawPolygon: ElementRenderer<PolygonElement> = (shape, target) => {
 };
 
 /** Emit a closed polygon outline as `moveTo` + `lineTo`s + `closePath`. */
-const polygonPath = (target: RenderTarget, pts: readonly { x: number; y: number }[]): void => {
+const polygonPath = (target: RenderTarget, pts: readonly Vec2[]): void => {
   const first = pts[0];
   if (first === undefined) return;
   target.moveTo(first.x, first.y);
@@ -269,8 +272,7 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
     lines = [{ text: shape.text, x: 0, width: target.measureText(shape.text).width, top: 0 }];
   } else {
     // Measure with the target's own `measureText` so wrapping matches
-    // exactly what this backend draws (WebGL2 reports MSDF advances; the
-    // selection-box bounder + caret use the same source).
+    // exactly what this backend draws.
     const measure = (s: string) => target.measureText(s).width;
     const layout = layoutText(shape.text, measure, {
       fontSize,
@@ -362,15 +364,11 @@ const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
 };
 
 const drawImage: ElementRenderer<ImageElement> = (shape, target) => {
-  // Priority: preloaded handle in metadata.image → animation-adapter
-  // frame (when `animationKind` is set and a matching adapter is
-  // registered) → static `src` fallback.
-  // For an animated source (GIF) prefer the per-frame image the
-  // registered adapter returns over `metadata.image` (a static
-  // first-frame `<img>`). `resolveImageSource` consults the adapter
-  // with `performance.now()`; it returns `null` while the async
-  // decode is still in flight — the backend's drawImage guard skips
-  // a null handle and the next AnimationTick frame picks it up.
+  // Priority: for an animated source prefer the per-frame image the
+  // registered adapter returns; otherwise a preloaded handle in
+  // `metadata.image`; otherwise the static `src` fallback.
+  // `resolveImageSource` returns `null` while an async decode is still
+  // in flight, which the backend's drawImage guard skips.
   const handle = shape.animationKind
     ? resolveImageSource(shape)
     : (shape.metadata?.image ?? resolveImageSource(shape));
@@ -382,8 +380,7 @@ const drawImage: ElementRenderer<ImageElement> = (shape, target) => {
 };
 
 /**
- * Registers renderers for every `BuiltinElement` type. Called by side-effect
- * import of `@oh-just-another/renderer-canvas/setup` (see index).
+ * Registers renderers for every `BuiltinElement` type.
  */
 export const installBuiltinRenderers = (): void => {
   registerElementRenderer<RectangleElement>("rectangle", drawRectangle);
@@ -392,8 +389,7 @@ export const installBuiltinRenderers = (): void => {
   registerElementRenderer<PathElement>("path", drawPath);
   registerElementRenderer<TextElement>("text", drawText);
   registerElementRenderer<ImageElement>("image", drawImage);
-  // Group shapes are invisible containers — the editor's overlay draws
-  // a halo for selected groups, but the shape itself paints nothing.
+  // Group shapes are invisible containers — the shape itself paints nothing.
   registerElementRenderer<GroupElement>("group", () => {
     /* intentional no-op: group shapes are invisible containers and paint nothing */
   });
@@ -423,8 +419,14 @@ export const installBuiltinRenderers = (): void => {
 const drawBlockArrow: ElementRenderer<BlockArrowElement> = (shape, target) => {
   const { fill, stroke } = applyStyle(shape.style, target);
   const direction = shape.direction ?? "right";
-  const headRatio = Math.max(0.1, Math.min(0.9, shape.headRatio ?? 0.4));
-  const bodyT = Math.max(0.1, Math.min(0.9, shape.bodyThickness ?? 0.5));
+  const headRatio = Math.max(
+    ARROWHEAD_RATIO_MIN,
+    Math.min(ARROWHEAD_RATIO_MAX, shape.headRatio ?? ARROWHEAD_HEAD_RATIO),
+  );
+  const bodyT = Math.max(
+    ARROWHEAD_RATIO_MIN,
+    Math.min(ARROWHEAD_RATIO_MAX, shape.bodyThickness ?? ARROWHEAD_BODY_THICKNESS),
+  );
   const w = shape.width;
   const h = shape.height;
   // Compute the local path for a `right`-pointing arrow inside
@@ -480,15 +482,6 @@ const rotateLocal = (
   }
 };
 
-/**
- * Frame: dashed outline + header strip with the frame's name.
- * Hit-testing intentionally passes through the body (handled
- * editor-side) so clicks on children inside the frame still land on
- * the child, not the frame chrome.
- */
-const FRAME_STROKE = "#888";
-const FRAME_FILL = "#ffffff";
-
 const FRAME_HEADER_ELLIPSIS = "…";
 
 /**
@@ -515,7 +508,7 @@ const drawFrame: ElementRenderer<FrameElement> = (shape, target, ctx) => {
   // Body — solid fill + thin solid outline. Frames sit at the bottom
   // z-order, so the fill backs their members without covering them.
   // Honours an explicit `style.fill`, else default white.
-  target.setFill(shape.style.fill ?? FRAME_FILL);
+  target.setFill(shape.style.fill ?? FRAME_FILL_COLOR);
   target.setStroke(null);
   target.setDashArray(null);
   target.beginPath();
@@ -527,7 +520,7 @@ const drawFrame: ElementRenderer<FrameElement> = (shape, target, ctx) => {
   // 1 world-px when no zoom context is supplied (preview / export at 1:1).
   const screenScale = (ctx?.zoom ?? 1) * (shape.scale.x || 1);
   target.setFill(null);
-  target.setStroke(FRAME_STROKE);
+  target.setStroke(FRAME_STROKE_COLOR);
   target.setStrokeWidth(1 / (screenScale || 1));
   target.setDashArray(null);
   target.beginPath();
@@ -549,13 +542,13 @@ const drawFrame: ElementRenderer<FrameElement> = (shape, target, ctx) => {
     : shape.width;
 
   // Header label background — stretches to fit the (possibly truncated) text.
-  target.setFill("#222");
+  target.setFill(FRAME_HEADER_BG_COLOR);
   target.beginPath();
   target.rect(0, -FRAME_HEADER_HEIGHT, headerWidth, FRAME_HEADER_HEIGHT);
   target.fill();
 
   // Header label text.
-  target.setFill("#ddd");
+  target.setFill(FRAME_HEADER_TEXT_COLOR);
   target.setTextBaseline("middle");
   target.setTextAlign("left");
   target.fillText(label, FRAME_HEADER_PADDING_X, -FRAME_HEADER_HEIGHT / 2);

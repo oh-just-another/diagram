@@ -2,6 +2,7 @@ import {
   getLayersInOrder,
   getElementsInLayer,
   getWorldToScreen,
+  isText,
   type Scene,
   type ElementBase,
   type SpatialGrid,
@@ -95,11 +96,9 @@ export interface RenderSceneOptions {
    */
   readonly dimOpacity?: number;
   /**
-   * Element ids that should NOT render this pass. Used by hosts that
-   * implement per-shape / group hide propagation: the editor walks
-   * the parent chain to compute which shapes are effectively hidden
-   * and forwards the set here. Hidden shapes are also skipped in
-   * hit-test on the editor side, so they read as "absent" entirely.
+   * Element ids that should NOT render this pass. The host computes
+   * which shapes are effectively hidden (e.g. via group hide
+   * propagation) and forwards the set here.
    */
   readonly hideElements?: ReadonlySet<ElementId>;
   /**
@@ -117,8 +116,8 @@ export interface RenderSceneOptions {
   /**
    * Host-side layer rasteriser. Receives the layer id, the active
    * zoom bucket, and the scene; returns the bitmap to cache or
-   * `null` to opt out. The kernel doesn't ship one — `Offscreen
-   * Canvas` import lives in `@renderer-canvas`.
+   * `null` to opt out. The kernel doesn't ship one — OffscreenCanvas
+   * creation is the backend's job.
    */
   readonly compositeLayerBitmap?: (layerId: LayerId, zoomBucket: number, scene: Scene) => unknown;
 }
@@ -197,12 +196,11 @@ export const renderScene = (
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;
 
-    // Per-layer composite cache fast path. Only fires when the
-    // host plugged a cache + a layer rasteriser; the kernel
-    // doesn't ship a default rasteriser because OffscreenCanvas
-    // creation lives in renderer-canvas. Drop dirty layers + ones
-    // touched by a dirty rect from the cache so the bitmap isn't
-    // re-used after a mutation.
+    // Per-layer composite cache fast path. Only fires when the host
+    // plugged a cache + a layer rasteriser; the kernel ships no default
+    // rasteriser (OffscreenCanvas creation is the backend's job). Drop
+    // dirty layers from the cache so the bitmap isn't re-used after a
+    // mutation.
     if (layerCache && compositeLayerBitmap) {
       if (dirtyLayers?.has(layer.id)) layerCache.invalidateLayer(layer.id);
       let bitmap = layerCache.get(layer.id, zoomBucket);
@@ -232,7 +230,7 @@ export const renderScene = (
         if (!B.intersects(bb, dirtyWorld)) continue;
       }
 
-      if (dropText && shape.type === "text") continue;
+      if (dropText && isText(shape)) continue;
 
       if (usePlaceholder) {
         // Draw the AABB directly in world coords — skip the renderer

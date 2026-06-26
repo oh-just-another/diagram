@@ -120,4 +120,57 @@ describe("bezier", () => {
       expect(out).toHaveLength(5);
     });
   });
+
+  // --- Degenerate extrema branches (exercised through *Bounds) ---
+  describe("quadraticExtrema branches (via quadraticBounds)", () => {
+    it("collinear control point (denom === 0) yields endpoint-only AABB", () => {
+      // a - 2b + c === 0 on both axes: choose b as the midpoint of a,c so the
+      // 1D Bezier is linear → no interior extremum → endpoints bound it.
+      const b = bezier.quadraticBounds({ x: 0, y: 0 }, { x: 5, y: 5 }, { x: 10, y: 10 });
+      expect(close(b.x, 0)).toBe(true);
+      expect(close(b.y, 0)).toBe(true);
+      expect(close(b.width, 10)).toBe(true);
+      expect(close(b.height, 10)).toBe(true);
+    });
+
+    it("extremum outside (0,1) is discarded (t ≤ 0 / t ≥ 1)", () => {
+      // Monotone-rising control net: the unconstrained extremum t falls
+      // outside (0,1), so the bounds collapse to the endpoints.
+      const b = bezier.quadraticBounds({ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 10, y: 10 });
+      expect(close(b.x, 0)).toBe(true);
+      expect(close(b.width, 10)).toBe(true);
+      expect(close(b.height, 10)).toBe(true);
+    });
+  });
+
+  describe("cubicExtrema branches (via cubicBounds)", () => {
+    it("straight-line cubic (alpha & beta ≈ 0) has endpoint-only AABB", () => {
+      // Evenly-spaced control net → derivative is constant → no extrema.
+      const b = bezier.cubicBounds({ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 2 }, { x: 3, y: 3 });
+      expect(close(b.x, 0)).toBe(true);
+      expect(close(b.width, 3)).toBe(true);
+      expect(close(b.height, 3)).toBe(true);
+    });
+
+    it("degenerate-quadratic derivative (alpha ≈ 0, beta ≠ 0) picks the linear root", () => {
+      // alpha = -a + 3b - 3c + d. Pick a net where alpha cancels but beta does
+      // not, so the derivative is linear with one root, possibly in (0,1).
+      // x: a=0,b=1,c=2,d=3 → alpha=0 (line). y: choose a curve with a bump.
+      const b = bezier.cubicBounds({ x: 0, y: 0 }, { x: 1, y: 3 }, { x: 2, y: -3 }, { x: 3, y: 0 });
+      // y dips below 0 and rises above 0 — real extrema exist beyond endpoints.
+      expect(b.y).toBeLessThan(0);
+      expect(b.y + b.height).toBeGreaterThan(0);
+    });
+
+    it("negative discriminant (disc < 0) yields no interior extrema", () => {
+      // y-net (0,1,1,3): derivative 3t²−2t+1 has discriminant −8 < 0, so it
+      // never vanishes → y is strictly monotone → bounds are the endpoints.
+      // x-net (0,1,2,3) is linear (alpha = beta = 0) → also endpoint-bound.
+      const b = bezier.cubicBounds({ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 1 }, { x: 3, y: 3 });
+      expect(b.x).toBeCloseTo(0, 5);
+      expect(b.width).toBeCloseTo(3, 5);
+      expect(b.y).toBeCloseTo(0, 5);
+      expect(b.height).toBeCloseTo(3, 5);
+    });
+  });
 });

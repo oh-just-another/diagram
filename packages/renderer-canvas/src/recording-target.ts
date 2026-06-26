@@ -1,12 +1,15 @@
 import type { Bounds, Color, Transform } from "@oh-just-another/types";
-import type {
-  FillRule,
-  LineCap,
-  LineJoin,
-  RenderTarget,
-  TextAlign,
-  TextBaseline,
+import {
+  LruCache,
+  type FillRule,
+  type LineCap,
+  type LineJoin,
+  type RenderTarget,
+  type TextAlign,
+  type TextBaseline,
 } from "@oh-just-another/renderer-core";
+import { resolveBundledFamily } from "@oh-just-another/fonts";
+import { OFFSCREEN_IMAGE_CACHE_CAP } from "./constants.js";
 
 /**
  * Backend-agnostic RenderTarget that captures every method call as a
@@ -92,20 +95,34 @@ export type RenderCommand =
     }
   | { readonly k: "clear"; readonly bounds?: Bounds }
   | { readonly k: "markDirty"; readonly bounds: Bounds }
-  | { readonly k: "resize"; readonly w: number; readonly h: number };
+  | { readonly k: "resize"; readonly w: number; readonly h: number }
+  | { readonly k: "defineImage"; readonly id: number; readonly bitmap: ImageBitmap }
+  | {
+      readonly k: "drawImage";
+      readonly id: number;
+      readonly dx: number;
+      readonly dy: number;
+      readonly dw: number;
+      readonly dh: number;
+    };
 
 /**
- * `drawImage` is NOT serialisable through this command stream — image
- * sources (HTMLImageElement, ImageBitmap, HTMLCanvasElement) either
- * can't cross the postMessage boundary cleanly or require expensive
- * transfers. The recording target silently skips `drawImage` calls and
- * counts them in `skippedImageDraws` so the host UI can warn (or fall
- * back to main-thread compositing for image-heavy scenes).
+ * `drawImage` records `ImageBitmap` sources — they survive the
+ * postMessage boundary and are replayed onto the worker's canvas. Other
+ * source types (HTMLImageElement, HTMLCanvasElement) are skipped and
+ * counted in `skippedImageDraws` so the host UI can warn (or fall back
+ * to main-thread compositing for image-heavy scenes).
  *
- * `measureText` returns a synchronous heuristic — the worker has the
- * authoritative measurement, but routing per-call is too chatty. Hosts
- * that care about pixel-perfect text in offscreen mode should
- * pre-measure on a sidecar text shaper.
+ * To avoid re-shipping the same bitmap every frame (the offscreen path
+ * re-renders each frame so GIF / video advance), bitmaps are interned by
+ * identity to a stable numeric id: the first draw emits a `defineImage`
+ * carrying the bitmap, later draws of the same bitmap emit only a tiny
+ * `drawImage` referencing the id. An LRU bounds the live set; the worker
+ * mirrors the same-capacity LRU, so both evict the same id in lockstep.
+ *
+ * `measureText` measures on a hidden 2D context with the active font, so
+ * caret / selection geometry lines up with the text the worker draws —
+ * without routing each call across the worker boundary.
  */
 export class RecordingTarget implements RenderTarget {
   private commands: RenderCommand[] = [];
@@ -113,6 +130,19 @@ export class RecordingTarget implements RenderTarget {
   private _height: number;
   /** Counter so hosts can warn when images are silently skipped. */
   skippedImageDraws = 0;
+  /** Current font as a CSS shorthand, mirrored from `setFont` for `measureText`. */
+  private fontSpec = "10px sans-serif";
+  /** Hidden 2D context used to measure text with the active font. */
+  private measureCtx: CanvasRenderingContext2D | null = null;
+  /**
+   * Identity → id intern table for shipped bitmaps. Persists across
+   * `flush()` (the worker keeps its mirror across replays); bounded by an
+   * LRU of {@link OFFSCREEN_IMAGE_CACHE_CAP} so a long animation can't grow
+   * it without bound. Ids are monotonic and never reused, so an evicted
+   * bitmap that reappears is simply re-defined under a fresh id.
+   */
+  private readonly imageIds = new LruCache<ImageBitmap, number>(OFFSCREEN_IMAGE_CACHE_CAP);
+  private nextImageId = 0;
 
   constructor(width: number, height: number) {
     this._width = width;
@@ -168,6 +198,12 @@ export class RecordingTarget implements RenderTarget {
     options?: { weight?: "normal" | "bold"; style?: "normal" | "italic" },
   ): void {
     this.commands.push({ k: "setFont", family, size, ...(options ? { options } : {}) });
+    // CSS font shorthand order: `<style> <weight> <size> <family>` — same as
+    // the worker's Canvas2D target (bundled face first), so `measureText`
+    // matches what it draws.
+    const style = options?.style === "italic" ? "italic " : "";
+    const weight = options?.weight === "bold" ? "bold " : "";
+    this.fontSpec = `${style}${weight}${size}px "${resolveBundledFamily(family)}", ${family}`;
   }
   setTextAlign(align: TextAlign): void {
     this.commands.push({ k: "setTextAlign", align });
@@ -239,15 +275,48 @@ export class RecordingTarget implements RenderTarget {
     );
   }
   measureText(text: string): { width: number } {
-    // Heuristic — same factor as @text-wasm's fallback so layout stays
-    // roughly proportional. The Editor's text rendering path re-measures
-    // on the real Canvas2D in the main thread when it needs precise
-    // widths (label wrapping, hit-test).
-    return { width: text.length * 8 };
+    // Measure on a hidden 2D context with the active font, matching the
+    // worker's Canvas2D target — so caret / selection geometry on the
+    // offscreen backend lines up with the drawn glyphs. Falls back to a
+    // proportional estimate where `OffscreenCanvas` is unavailable.
+    const ctx = this.ensureMeasureCtx();
+    if (!ctx) return { width: text.length * (Number.parseFloat(this.fontSpec) || 8) * 0.5 };
+    ctx.font = this.fontSpec;
+    return { width: ctx.measureText(text).width };
   }
 
-  drawImage(_image: unknown, _dx: number, _dy: number, _dw: number, _dh: number): void {
-    this.skippedImageDraws++;
+  private ensureMeasureCtx(): CanvasRenderingContext2D | null {
+    if (this.measureCtx) return this.measureCtx;
+    if (typeof OffscreenCanvas === "undefined") return null;
+    const ctx = new OffscreenCanvas(1, 1).getContext("2d");
+    // OffscreenCanvasRenderingContext2D is structurally compatible with the
+    // `font` / `measureText` members used here.
+    this.measureCtx = (ctx as unknown as CanvasRenderingContext2D | null) ?? null;
+    return this.measureCtx;
+  }
+
+  drawImage(
+    image: unknown,
+    dx: number,
+    dy: number,
+    dw: number,
+    dh: number,
+    _dynamic?: boolean,
+  ): void {
+    void _dynamic;
+    if (typeof ImageBitmap !== "undefined" && image instanceof ImageBitmap) {
+      let id = this.imageIds.get(image);
+      if (id === undefined) {
+        // First sight of this bitmap (or it was evicted): assign a fresh
+        // id and ship the pixels once via `defineImage`.
+        id = this.nextImageId++;
+        this.imageIds.set(image, id);
+        this.commands.push({ k: "defineImage", id, bitmap: image });
+      }
+      this.commands.push({ k: "drawImage", id, dx, dy, dw, dh });
+    } else {
+      this.skippedImageDraws++;
+    }
   }
 
   clear(bounds?: Bounds): void {
@@ -263,8 +332,18 @@ export class RecordingTarget implements RenderTarget {
  * Replay a previously-flushed command buffer onto a real RenderTarget.
  * Used by the worker entry point to apply commands shipped from the
  * main thread.
+ *
+ * `images` holds the bitmaps interned by {@link RecordingTarget}: a
+ * `defineImage` stores one under its id, a `drawImage` looks it up. The
+ * caller (worker) owns this cache so it survives across replays and
+ * mirrors the recorder's same-capacity LRU. When omitted (callers with
+ * no image commands) a throwaway cache is used.
  */
-export const replayCommands = (target: RenderTarget, commands: readonly RenderCommand[]): void => {
+export const replayCommands = (
+  target: RenderTarget,
+  commands: readonly RenderCommand[],
+  images: LruCache<number, ImageBitmap> = new LruCache(OFFSCREEN_IMAGE_CACHE_CAP),
+): void => {
   for (const cmd of commands) {
     switch (cmd.k) {
       case "setFill":
@@ -365,6 +444,17 @@ export const replayCommands = (target: RenderTarget, commands: readonly RenderCo
         // resizes via its own `resize` message, not via the command
         // stream.
         break;
+      case "defineImage":
+        images.set(cmd.id, cmd.bitmap);
+        break;
+      case "drawImage": {
+        // `get` bumps recency so the worker LRU evicts in lockstep with
+        // the recorder's. A miss means an out-of-sync stream — skip
+        // rather than throw (matches the non-drawable skip on record).
+        const bitmap = images.get(cmd.id);
+        if (bitmap) target.drawImage(bitmap, cmd.dx, cmd.dy, cmd.dw, cmd.dh);
+        break;
+      }
     }
   }
 };

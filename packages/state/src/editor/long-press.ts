@@ -1,7 +1,6 @@
 import type { Vec2 } from "@oh-just-another/types";
+import { vec2 } from "@oh-just-another/math";
 import { LONG_PRESS_DELAY_MS } from "../constants.js";
-
-const distance = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 /** Payload fired to subscribers when the long-press timer wins. */
 export interface LongPressFire {
@@ -60,6 +59,6 @@ export class LongPressController {
    */
   cancelIfMovedBeyond(point: Vec2, slop: number): void {
     if (!this.origin) return;
-    if (distance(this.origin, point) > slop) this.cancel();
+    if (vec2.distance(this.origin, point) > slop) this.cancel();
   }
 }

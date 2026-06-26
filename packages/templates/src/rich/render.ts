@@ -1,5 +1,6 @@
 import type { Bounds, Color, Vec2 } from "@oh-just-another/types";
 import {
+  isTemplate,
   registerBounder,
   registerContainerResolver,
   registerContainerZonesResolver,
@@ -287,8 +288,8 @@ export const installTemplateShapeRenderer = (): void => {
   // to its intrinsic size (~80×60 driven by the drop-zone's intrinsic) and the
   // resolver returns a tiny box.
   const layoutTemplateShape = (shape: ElementBase): LayoutedNode | null => {
-    if (shape.type !== "template") return null;
-    const tmpl = shape as SceneTemplateElement;
+    if (!isTemplate(shape)) return null;
+    const tmpl = shape;
     const template = defaultRichRegistry.get(tmpl.templateId);
     if (!template) return null;
     const rootWithSize: TemplateNode = {

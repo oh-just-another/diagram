@@ -1,4 +1,5 @@
 import type { Patch } from "@oh-just-another/scene";
+import { req } from "@oh-just-another/types";
 
 type ElementPatch = Extract<Patch, { kind: "element" }>;
 type LinkPatch = Extract<Patch, { kind: "link" }>;
@@ -11,11 +12,6 @@ interface Slot<P> {
   first: P;
   latest: P;
 }
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/history: slot missing for visited patch");
-  return v;
-};
 
 /**
  * Merge a sequence of patches produced inside a single transaction so that

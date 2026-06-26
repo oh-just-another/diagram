@@ -2,7 +2,7 @@
 
 Monorepo library for drawing diagrams: browser editor + headless-render for servers, split into independent npm packages.
 
-<!-- Badges track the flagship drop-in package, @oh-just-another/editor. -->
+<!-- Badges track the drop-in package, @oh-just-another/editor. -->
 
 [![npm version](https://img.shields.io/npm/v/@oh-just-another/editor.svg)](https://www.npmjs.com/package/@oh-just-another/editor)
 [![CI](https://github.com/oh-just-another/diagram/actions/workflows/ci.yml/badge.svg)](https://github.com/oh-just-another/diagram/actions/workflows/ci.yml)
@@ -37,7 +37,7 @@ function App() {
 
 `<Editor>` auto-selects the best renderer (WebGL2 / OffscreenCanvas / Canvas2D),
 loads a WASM text-shaper where supported, and exposes a programmatic handle via
-`ref`. (`Diagram` is a back-compat alias of `Editor`.)
+`ref`.
 
 ## Quick start (for contributors)
 
@@ -53,7 +53,7 @@ pnpm format      # prettier --write .
 Run the demo in the browser:
 
 ```bash
-pnpm --filter @oh-just-another/diagram dev   # http://localhost:5174
+pnpm --filter @oh-just-another/playground dev   # http://localhost:5174
 ```
 
 ## Structure

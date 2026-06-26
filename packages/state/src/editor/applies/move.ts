@@ -9,6 +9,14 @@ import {
 import type { AnnotationId, Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 
 /**
+ * Pure: constrain a drag delta to a single axis — the component with the
+ * larger magnitude is kept, the other is zeroed. Lets a held modifier pin a
+ * move to be purely horizontal or vertical.
+ */
+export const constrainDeltaToAxis = (delta: Vec2): Vec2 =>
+  Math.abs(delta.x) >= Math.abs(delta.y) ? { x: delta.x, y: 0 } : { x: 0, y: delta.y };
+
+/**
  * Pure: compute the patch that moves shape `id` by `delta` from
  * the press-down state captured in `originalBounds`. Returns
  * `null` when the shape no longer exists (deleted mid-drag, etc.).

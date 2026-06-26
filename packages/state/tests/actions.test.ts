@@ -464,11 +464,11 @@ describe("defaultActionRegistry built-ins", () => {
 
   it("`g` toggles the background grid", () => {
     const editor = makeEditor();
-    expect(editor.gridVisible).toBe(true);
+    expect(editor.gridEnabled).toBe(false);
     expect(defaultActionRegistry.dispatchHotkey(plainKey("g"), { editor })).toBe(true);
-    expect(editor.gridVisible).toBe(false);
+    expect(editor.gridEnabled).toBe(true);
     defaultActionRegistry.dispatchHotkey(plainKey("g"), { editor });
-    expect(editor.gridVisible).toBe(true);
+    expect(editor.gridEnabled).toBe(false);
   });
 
   it("zoom-to-fit accepts ⌥1 and ⌘1", () => {

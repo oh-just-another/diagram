@@ -1,9 +1,10 @@
 import { createContext, useContext, useMemo, useRef, type ReactNode } from "react";
+import type { Vec2 } from "@oh-just-another/types";
 
 /** Screen-space (CSS px) + world-space point pair an open request carries. */
 export interface ContextMenuOpenRequest {
-  readonly screenPoint: { readonly x: number; readonly y: number };
-  readonly worldPoint: { readonly x: number; readonly y: number };
+  readonly screenPoint: Vec2;
+  readonly worldPoint: Vec2;
 }
 
 type OpenFn = (req: ContextMenuOpenRequest) => void;

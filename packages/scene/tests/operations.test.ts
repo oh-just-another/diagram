@@ -131,6 +131,7 @@ describe("operations", () => {
         zoom: 2,
         rotation: 0,
         size: { width: 800, height: 600 },
+        gridEnabled: false,
       };
       const { scene, patch } = setViewport(emptyScene(), next);
       expect(scene.viewport).toEqual(next);

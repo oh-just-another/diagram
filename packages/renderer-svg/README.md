@@ -1,6 +1,8 @@
 # @oh-just-another/renderer-svg
 
-Second rendering backend — turns a `Scene` into an SVG-string snapshot. Pure TS, no DOM, runs identically in Node and the browser. Designed for headless rendering, file export (Phase 9), and pixel-parity testing against the Canvas backend.
+SVG rendering backend — turns a `Scene` into an SVG-string snapshot. Pure TS, no DOM, runs identically in Node and the browser. Designed for headless rendering, file export, and pixel-parity testing against the Canvas backend.
+
+L2 backend for `@oh-just-another/renderer-core`. Depends only on `@oh-just-another/types`, `@oh-just-another/math`, `@oh-just-another/scene`, `@oh-just-another/renderer-core`.
 
 ## Quick start
 

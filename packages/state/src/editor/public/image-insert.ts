@@ -21,7 +21,7 @@ export const buildImageElement = (
     width: number;
     height: number;
     position: Vec2;
-    image?: HTMLImageElement;
+    image?: ImageBitmap | HTMLImageElement;
     animated?: boolean;
     fileId?: FileId;
     animationKind?: string;

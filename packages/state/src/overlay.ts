@@ -3,6 +3,7 @@ import {
   getAnnotationWorldPosition,
   getElementWorldBounds,
   getWorldToScreen,
+  isGroup,
   type Annotation,
   type Element,
   type Scene,
@@ -43,8 +44,27 @@ import {
   TEXT_CARET_WIDTH_PX,
   TEXT_SELECTION_FILL,
   TEXT_SELECTION_OPACITY,
+  GIF_BADGE_W,
+  GIF_BADGE_H,
+  GIF_BADGE_PAD,
+  GIF_BADGE_RADIUS,
+  GIF_BADGE_BG_COLOR,
+  LOCK_BADGE_SIZE,
+  LOCK_BADGE_COLOR,
+  LOCK_BADGE_KEYHOLE_COLOR,
+  ROTATE_ICON_RADIUS,
 } from "./constants.js";
-import { CORNER_HANDLES, HANDLE_SIZE, handlePosition } from "./handle.js";
+import {
+  CORNER_HANDLES,
+  HANDLE_SIZE,
+  frameCorners,
+  handlePosition,
+  handleWorldOnFrame,
+  rotateGripForBounds,
+  rotateGripWorld,
+  shapeSelectionFrame,
+  type SelectionFrame,
+} from "./handle.js";
 import { isResizable } from "./editor/shape-traits.js";
 import {
   drawHitZones,
@@ -55,11 +75,7 @@ import {
 } from "./editor/hit-test.js";
 import type { Selection } from "./selection.js";
 
-/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/state: index out of range");
-  return v;
-};
+import { req } from "./util.js";
 
 /**
  * Union AABB of every direct child of `groupId` (recursive). Returns
@@ -70,8 +86,7 @@ const groupWorldBounds = (scene: Scene, groupId: ElementId): Bounds | null => {
   let acc: Bounds | null = null;
   for (const shape of scene.elements.values()) {
     if (shape.parentId !== groupId) continue;
-    const inner =
-      shape.type === "group" ? groupWorldBounds(scene, shape.id) : getElementWorldBounds(shape);
+    const inner = isGroup(shape) ? groupWorldBounds(scene, shape.id) : getElementWorldBounds(shape);
     if (!inner) continue;
     acc = acc ? B.union(acc, inner) : inner;
   }
@@ -316,7 +331,7 @@ export const renderOverlay = (
      * (matches the BrushElement memory layout).
      */
     brushPreview?: {
-      readonly origin: { readonly x: number; readonly y: number };
+      readonly origin: Vec2;
       readonly points: readonly { x: number; y: number; width: number }[];
       readonly fill: string;
     };
@@ -425,33 +440,54 @@ export const renderOverlay = (
     const shape = scene.elements.get(id);
     if (!shape) continue;
     // Groups have no intrinsic geometry — outline the union of their
-    // descendants instead. Otherwise the selection chrome would collapse
-    // to a zero-size point at the group's origin.
-    const worldBounds =
-      shape.type === "group" ? groupWorldBounds(scene, id) : getElementWorldBounds(shape);
-    if (!worldBounds) continue;
-    const screenBounds = projectBounds(worldBounds, w2s);
+    // descendants as an axis-aligned box. A single shape gets an oriented
+    // frame that turns with its rotation, so the selection box hugs the body
+    // instead of its (larger, axis-aligned) AABB.
+    if (isGroup(shape)) {
+      const worldBounds = groupWorldBounds(scene, id);
+      if (!worldBounds) continue;
+      const screenBounds = projectBounds(worldBounds, w2s);
+      drawOutline(target, screenBounds, style);
+      if (shape.locked === true) {
+        drawLockBadge(target, screenBounds);
+        continue;
+      }
+      if (multiSelect || !isResizable(shape)) continue;
+      for (const handle of CORNER_HANDLES) {
+        const worldPoint = handlePosition(handle, worldBounds, zoom);
+        drawHandle(target, matrix.applyToPoint(w2s, worldPoint), style);
+      }
+      drawRotateGripForBounds(target, worldBounds, zoom, w2s, style);
+      continue;
+    }
 
-    drawOutline(target, screenBounds, style);
+    const frame = shapeSelectionFrame(shape);
+    // Unrotated → the plain AABB rect (unchanged rendering); rotated → a quad
+    // through the frame's corners so the box turns with the shape.
+    if (frame.rotation === 0) {
+      drawOutline(target, projectBounds(frame.bounds, w2s), style);
+    } else {
+      drawFrameOutline(target, frame, w2s, style);
+    }
 
     // Locked element: no resize handles; show a small lock badge instead so
     // the user sees why it won't move/resize (click still selects → unlock).
     if (shape.locked === true) {
-      drawLockBadge(target, screenBounds);
+      drawLockBadge(target, frameScreenBounds(frame, w2s));
       continue;
     }
 
     if (multiSelect || !isResizable(shape)) continue;
 
-    // Draw only the four CORNER dots. The edge-midpoint handles are gone from
-    // the chrome — edge resize is done by dragging the selection-box side
-    // (see `hitHandle`), so no midpoint dot is needed. `resizeHandlesFor`
-    // (ALL_HANDLES) still drives hit-test capability.
+    // Draw only the four CORNER dots — at the rotated frame corners. Edge
+    // resize is done by dragging the selection-box side itself, so no midpoint
+    // dot is needed; the edge handles stay hit-testable via `hitHandleOnFrame`.
     for (const handle of CORNER_HANDLES) {
-      const worldPoint = handlePosition(handle, worldBounds, zoom);
-      const screenPoint = matrix.applyToPoint(w2s, worldPoint);
-      drawHandle(target, screenPoint, style);
+      const worldPoint = handleWorldOnFrame(handle, frame, zoom);
+      drawHandle(target, matrix.applyToPoint(w2s, worldPoint), style);
     }
+    // Rotate grip from the shape's template anchor (default bottom-left).
+    drawRotateIcon(target, matrix.applyToPoint(w2s, rotateGripWorld(shape, zoom)), style);
   }
 
   // 2. Rubber-band drawing preview (already in world coords if drawn before transform reset)
@@ -567,7 +603,7 @@ export const renderOverlay = (
   if (options.selectedLinkPaths && options.selectedLinkPaths.length > 0) {
     target.setTransform(w2s);
     target.setStroke(style.selectionStroke);
-    target.setOpacity(0.32);
+    target.setOpacity(SELECTION_HALO_OPACITY);
     target.setDashArray(null);
     target.setLineJoin("round");
     target.setLineCap("round");
@@ -691,6 +727,7 @@ export const renderOverlay = (
       const screenPoint = matrix.applyToPoint(w2s, worldPoint);
       drawHandle(target, screenPoint, style);
     }
+    drawRotateGripForBounds(target, options.groupBounds, zoom, w2s, style);
   }
 
   // 7.5. Annotation pins — drawn before peer cursors so cursors stay
@@ -751,20 +788,11 @@ export const renderOverlay = (
   target.restore();
 };
 
-/** Rounded "gif" chip in a shape's top-left corner — signals a paused
- *  GIF the user can click (or hover) to resume. */
-const GIF_BADGE_W = 30;
-const GIF_BADGE_H = 16;
-const GIF_BADGE_PAD = 4;
-const GIF_BADGE_RADIUS = 4;
-
-/** Small padlock badge at a selected locked element's top-right corner. */
-const LOCK_BADGE_SIZE = 16;
 const drawLockBadge = (target: RenderTarget, b: Bounds): void => {
   const s = LOCK_BADGE_SIZE;
   const x = b.x + b.width - s - 2;
   const y = b.y + 2;
-  const color = "#1a73e8";
+  const color = LOCK_BADGE_COLOR;
   // Shackle — a ring above the body; its lower half is hidden by the body so
   // the visible top arc reads as the lock's bow.
   target.setStroke(color);
@@ -782,7 +810,7 @@ const drawLockBadge = (target: RenderTarget, b: Bounds): void => {
   target.rect(x + s * 0.2, y + s * 0.44, s * 0.6, s * 0.48);
   target.fill();
   // Keyhole.
-  target.setFill("#fff");
+  target.setFill(LOCK_BADGE_KEYHOLE_COLOR);
   target.beginPath();
   target.ellipse(x + s / 2, y + s * 0.64, s * 0.07, s * 0.07);
   target.fill();
@@ -796,7 +824,7 @@ const drawGifBadge = (target: RenderTarget, screen: Bounds): void => {
   const r = GIF_BADGE_RADIUS;
   // Rounded-rect background.
   target.setStroke(null);
-  target.setFill("rgba(0,0,0,0.65)");
+  target.setFill(GIF_BADGE_BG_COLOR);
   target.beginPath();
   target.moveTo(x + r, y);
   target.lineTo(x + w - r, y);
@@ -834,6 +862,46 @@ const drawOutline = (target: RenderTarget, b: Bounds, style: OverlayStyle): void
   target.stroke();
 };
 
+/** Selection outline as a (possibly rotated) quad through the frame's corners. */
+const drawFrameOutline = (
+  target: RenderTarget,
+  frame: SelectionFrame,
+  w2s: Transform,
+  style: OverlayStyle,
+): void => {
+  const [wnw, wne, wse, wsw] = frameCorners(frame);
+  const nw = matrix.applyToPoint(w2s, wnw);
+  const ne = matrix.applyToPoint(w2s, wne);
+  const se = matrix.applyToPoint(w2s, wse);
+  const sw = matrix.applyToPoint(w2s, wsw);
+  target.setStroke(style.selectionStroke);
+  target.setStrokeWidth(style.selectionStrokeWidth);
+  target.setDashArray(null);
+  target.beginPath();
+  target.moveTo(nw.x, nw.y);
+  target.lineTo(ne.x, ne.y);
+  target.lineTo(se.x, se.y);
+  target.lineTo(sw.x, sw.y);
+  target.closePath();
+  target.stroke();
+};
+
+/** Screen-space AABB enclosing the frame's (rotated) corners — for badges. */
+const frameScreenBounds = (frame: SelectionFrame, w2s: Transform): Bounds => {
+  const pts = frameCorners(frame).map((c) => matrix.applyToPoint(w2s, c));
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of pts) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+};
+
 const drawHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
   // Circle of radius HANDLE_SIZE — visually equivalent to a rounded
   // square with maximum corner radius, but renders via `ellipse`
@@ -847,6 +915,63 @@ const drawHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): vo
   target.ellipse(center.x, center.y, HANDLE_SIZE, HANDLE_SIZE);
   target.fill();
   target.stroke();
+};
+
+/**
+ * Rotate grip: a clockwise circular-arrow glyph (the `rotate-cw` icon) centred
+ * at `grip` (screen px), with no connector line back to the shape. Authored in
+ * lucide's 24×24 space — a near-full circle (radius 9) opening on the right plus
+ * an `L`-shaped arrowhead at the opening — scaled so the circle radius is
+ * `ROTATE_ICON_RADIUS` screen px.
+ */
+const drawRotateIcon = (target: RenderTarget, grip: Vec2, style: OverlayStyle): void => {
+  const s = ROTATE_ICON_RADIUS / 9; // icon radius 9 (in its 24×24 box) → screen px
+  // Map a point from the icon's 24×24 space (centre 12,12) to screen.
+  const tx = (px: number, py: number): Vec2 => ({
+    x: grip.x + (px - 12) * s,
+    y: grip.y + (py - 12) * s,
+  });
+  target.setStroke(style.handleStroke);
+  target.setFill(null);
+  target.setStrokeWidth(2 * s); // lucide strokeWidth 2
+  target.setLineCap("round");
+  target.setLineJoin("round");
+  target.setDashArray(null);
+  // Arc: centre (12,12), radius 9, from 0° (east tail) clockwise to (21,8)
+  // (≈ 336° swept) — a polyline is smooth enough at this size.
+  const END_DEG = 336;
+  const STEPS = 30;
+  target.beginPath();
+  for (let i = 0; i <= STEPS; i++) {
+    const a = ((END_DEG * i) / STEPS) * (Math.PI / 180);
+    const p = tx(12 + 9 * Math.cos(a), 12 + 9 * Math.sin(a));
+    if (i === 0) target.moveTo(p.x, p.y);
+    else target.lineTo(p.x, p.y);
+  }
+  target.stroke();
+  // Arrowhead at the arc's end (lucide `M21 3 v5 h-5`): a right-angle chevron.
+  const a1 = tx(21, 3);
+  const a2 = tx(21, 8);
+  const a3 = tx(16, 8);
+  target.beginPath();
+  target.moveTo(a1.x, a1.y);
+  target.lineTo(a2.x, a2.y);
+  target.lineTo(a3.x, a3.y);
+  target.stroke();
+  target.setLineCap("butt");
+  target.setLineJoin("miter");
+};
+
+/** Project the rotate grip to screen and draw the icon for AABB `b`. */
+const drawRotateGripForBounds = (
+  target: RenderTarget,
+  b: Bounds,
+  zoom: number,
+  w2s: Transform,
+  style: OverlayStyle,
+): void => {
+  const grip = rotateGripForBounds(b, zoom);
+  drawRotateIcon(target, matrix.applyToPoint(w2s, grip), style);
 };
 
 const drawDrawingPreview = (target: RenderTarget, b: Bounds, style: OverlayStyle): void => {

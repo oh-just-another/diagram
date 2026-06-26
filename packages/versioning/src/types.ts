@@ -22,9 +22,7 @@ export const DEFAULT_BRANCH_ID: BranchId = branchId("main");
 
 /**
  * A snapshot is an immutable point-in-time copy of a `Scene` plus
- * metadata (author, timestamp, message, parent link). Stored by
- * `SnapshotStore`; restored by `Editor.restoreSnapshot` which calls
- * `loadScene(snapshot.scene)`.
+ * metadata (author, timestamp, message, parent link).
  */
 export interface Snapshot {
   readonly id: VersionId;

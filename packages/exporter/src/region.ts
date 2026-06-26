@@ -1,11 +1,15 @@
 import type { ElementId } from "@oh-just-another/types";
 import {
+  FALLBACK_SCENE_HEIGHT,
+  FALLBACK_SCENE_WIDTH,
   getElement,
   getElementWorldBounds,
+  isFrame,
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
 import { parseScene } from "@oh-just-another/serialization";
+import { SHAPE_SIZE_ESTIMATE } from "./constants.js";
 import type { ExportRegion } from "./options.js";
 
 /**
@@ -57,7 +61,7 @@ export const sceneForRegion = (scene: Scene, region: ExportRegion | undefined): 
  */
 export const sceneForFrame = (scene: Scene, frameId: ElementId): Scene | null => {
   const frame = getElement(scene, frameId);
-  if (frame?.type !== "frame") return null;
+  if (!frame || !isFrame(frame)) return null;
   const bounds = getElementWorldBounds(frame);
 
   const elements = new Map<ElementId, Element>();
@@ -84,7 +88,8 @@ export const sceneForFrame = (scene: Scene, frameId: ElementId): Scene | null =>
  * 800 × 600 so callers always get a non-degenerate image.
  */
 const inferSceneSize = (scene: Scene): { width: number; height: number } => {
-  if (scene.elements.size === 0) return { width: 800, height: 600 };
+  if (scene.elements.size === 0)
+    return { width: FALLBACK_SCENE_WIDTH, height: FALLBACK_SCENE_HEIGHT };
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -95,12 +100,12 @@ const inferSceneSize = (scene: Scene): { width: number; height: number } => {
     if (x < minX) minX = x;
     if (y < minY) minY = y;
     // Shape bounds aren't available without a bounder registry; estimate
-    // 100 px on each axis as a coarse guard.
-    if (x + 100 > maxX) maxX = x + 100;
-    if (y + 100 > maxY) maxY = y + 100;
+    // a coarse per-axis size as a guard.
+    if (x + SHAPE_SIZE_ESTIMATE > maxX) maxX = x + SHAPE_SIZE_ESTIMATE;
+    if (y + SHAPE_SIZE_ESTIMATE > maxY) maxY = y + SHAPE_SIZE_ESTIMATE;
   }
   return {
-    width: Math.max(100, Math.ceil(maxX - Math.min(0, minX))),
-    height: Math.max(100, Math.ceil(maxY - Math.min(0, minY))),
+    width: Math.max(SHAPE_SIZE_ESTIMATE, Math.ceil(maxX - Math.min(0, minX))),
+    height: Math.max(SHAPE_SIZE_ESTIMATE, Math.ceil(maxY - Math.min(0, minY))),
   };
 };

@@ -1,14 +1,7 @@
 /**
- * Backend-neutral binary transport used by `@oh-just-another/collab` to exchange
- * Yjs update / awareness messages between peers.
- *
- * Implementations:
- *   - **`BroadcastChannelTransport`** — same-origin browser tabs. No server.
- *   - **`WebSocketTransport`** — generic wrapper around a `WebSocket`
- *     instance. The transport doesn't speak any particular wire protocol;
- *     it just hands raw `Uint8Array` payloads to the y-websocket server.
- *
- * The interface is intentionally minimal and backend-agnostic.
+ * Backend-neutral binary transport for exchanging update / awareness messages
+ * between peers. The interface is intentionally minimal and backend-agnostic —
+ * it carries raw `Uint8Array` payloads and speaks no particular wire protocol.
  */
 export interface Transport {
   /** Send a binary payload to all connected peers. */

@@ -6,13 +6,16 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   check:
-    name: Lint • Typecheck • Test • Build
+    name: Lint • Typecheck • Test • Coverage • Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,5 +44,14 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Coverage gate
+        run: pnpm test:coverage:gate
+
       - name: Build
         run: pnpm build
+
+      # Smoke-run the benchmarks so they keep compiling and executing. Absolute
+      # timings are not gated — shared CI runners are too noisy for a stable
+      # threshold; baselines are tracked by running `pnpm bench` locally.
+      - name: Benchmarks
+        run: pnpm bench

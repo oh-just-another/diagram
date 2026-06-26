@@ -8,8 +8,6 @@
  * Maps point (x, y) to (a*x + c*y + e, b*x + d*y + f).
  * Compatible with CanvasRenderingContext2D.setTransform(a, b, c, d, e, f)
  * and DOMMatrix.
- *
- * Operations live in @oh-just-another/math/matrix.
  */
 export interface Transform {
   readonly a: number;

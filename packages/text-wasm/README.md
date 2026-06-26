@@ -1,14 +1,22 @@
 # @oh-just-another/text-wasm
 
-WASM-backed `TextShaper` implementation for the diagram renderer (Phase 46).
+WASM-backed `TextShaper` for the diagram renderer.
 
-Default fallback: a synchronous geometric estimate so first paint isn't blank. Plug a real WASM module (HarfBuzz / harfbuzzjs / ICU4X / canvaskit-text) via `loadModule(...)` once it is fetched.
+L2. Implements `@oh-just-another/renderer-core`'s `TextShaper` interface. Until a WASM module is loaded, `measure` uses a synchronous geometric estimate so first paint isn't blank; `loadModule(...)` swaps in a real shaper at runtime. No module is bundled — the host picks the engine that matches its font pipeline.
+
+## Install
+
+```bash
+pnpm add @oh-just-another/text-wasm
+```
+
+## Quick start
 
 ```ts
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
 
 const shaper = new WasmTextShaper();
-await shaper.loadModule("/text-shaper.wasm"); // optional — without it, fallback is used
+await shaper.loadModule("/text-shaper.wasm"); // optional — without it, the fallback estimate is used
 
 // pass into the editor
 const editor = new Editor({ textShaper: shaper /* … */ });
@@ -26,6 +34,4 @@ interface WasmShaperExports {
 }
 ```
 
-Any toolchain that emits a `WebAssembly.Instance` matching this shape works (Rust + `wasm-bindgen` with `#[no_mangle]` exports, AssemblyScript, hand-crafted `.wat`, …). The kernel does not ship a bundled module — hosts pick the engine that matches their font pipeline.
-
-See `@oh-just-another/renderer-core`'s `TextShaper` interface.
+Any toolchain that emits a `WebAssembly.Instance` matching this shape works (Rust + `wasm-bindgen` with `#[no_mangle]` exports, AssemblyScript, hand-crafted `.wat`, …). Optional `glyphMetrics` / `rasterizeGlyphMSDF` exports, when present, feed `@oh-just-another/glyph-atlas`.

@@ -1,4 +1,5 @@
 export * as vec2 from "./vec2.js";
+export * as scalar from "./scalar.js";
 export * as matrix from "./matrix.js";
 export * as bounds from "./bounds.js";
 export * as hitTest from "./hit-test.js";

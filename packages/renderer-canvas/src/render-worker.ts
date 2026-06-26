@@ -1,9 +1,11 @@
 /// <reference lib="webworker" />
-import { installBuiltinRenderers, renderScene } from "@oh-just-another/renderer-core";
+import { LruCache, installBuiltinRenderers, renderScene } from "@oh-just-another/renderer-core";
 import type { Scene } from "@oh-just-another/scene";
 import type { WorkerRenderMessage, WorkerRenderResponse } from "@oh-just-another/renderer-core";
+import { registerBundledFonts, type FontScope } from "@oh-just-another/fonts";
 import { Canvas2DTarget } from "./canvas-target.js";
 import { replayCommands, type RenderCommand } from "./recording-target.js";
+import { OFFSCREEN_IMAGE_CACHE_CAP } from "./constants.js";
 
 /**
  * OffscreenCanvas render worker.
@@ -22,9 +24,24 @@ interface WorkerState {
   canvas: OffscreenCanvas | null;
   target: Canvas2DTarget | null;
   dpr: number;
+  /**
+   * Bitmaps shipped by the main thread's RecordingTarget, keyed by the
+   * id it assigned. Persists across `replay` messages and mirrors the
+   * recorder's same-capacity LRU. Evicted clones are closed to release
+   * their memory promptly (these are worker-owned copies, distinct from
+   * the main thread's source bitmaps).
+   */
+  readonly images: LruCache<number, ImageBitmap>;
 }
 
-const state: WorkerState = { canvas: null, target: null, dpr: 1 };
+const state: WorkerState = {
+  canvas: null,
+  target: null,
+  dpr: 1,
+  images: new LruCache<number, ImageBitmap>(OFFSCREEN_IMAGE_CACHE_CAP, (_id, bitmap) => {
+    bitmap.close();
+  }),
+};
 
 let renderersInstalled = false;
 
@@ -43,6 +60,10 @@ const post = (msg: WorkerRenderResponse, transfer?: Transferable[]): void => {
 };
 
 const init = (canvas: OffscreenCanvas, width: number, height: number, dpr: number): void => {
+  // Load the bundled fonts into the worker's font set so its Canvas2D target
+  // draws the same faces as the main thread. Fire-and-forget — replays after
+  // it resolves pick up the loaded fonts.
+  void registerBundledFonts(self as unknown as FontScope);
   state.canvas = canvas;
   state.dpr = dpr;
   // Resize the bitmap to dpr-scaled pixels — the host's CSS size is
@@ -98,7 +119,7 @@ const replay = (commands: readonly RenderCommand[]): void => {
     post({ type: "error", message: "Worker not initialised" });
     return;
   }
-  replayCommands(state.target, commands);
+  replayCommands(state.target, commands, state.images);
 };
 
 interface ReplayMessage {

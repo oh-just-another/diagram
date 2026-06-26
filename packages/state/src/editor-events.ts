@@ -25,6 +25,6 @@ export interface EditorEvents {
   scene: (scene: Scene) => void;
   /** Undo/redo availability flipped (push, undo, redo, clear). */
   history: (state: { readonly canUndo: boolean; readonly canRedo: boolean }) => void;
-  /** Viewport (zoom / pan / size / gridSize / gridStyle) changed. */
+  /** Viewport (zoom / pan / size / gridEnabled / gridStyle) changed. */
   viewport: (scene: Scene) => void;
 }

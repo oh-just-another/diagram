@@ -58,14 +58,28 @@ const defaultLayer = (): Layer => ({
   order: generateKeyBetween(null, null),
 });
 
-/** Empty scene with a single default layer and a zero-size viewport. */
-export const emptyScene = (): Scene => ({
-  elements: new Map(),
-  links: new Map(),
-  layers: new Map([[DEFAULT_LAYER_ID, defaultLayer()]]),
-  annotations: new Map(),
-  files: new Map(),
+/**
+ * Canonical fully-populated default scene: a single default layer, empty
+ * entity maps, and {@link DEFAULT_VIEWPORT}. Single source of truth for
+ * scene-level defaults — `emptyScene` and hydration derive from it.
+ */
+export const DEFAULT_SCENE: Scene = Object.freeze({
+  elements: new Map<ElementId, Element>(),
+  links: new Map<LinkId, Link>(),
+  layers: new Map<LayerId, Layer>([[DEFAULT_LAYER_ID, defaultLayer()]]),
+  annotations: new Map<AnnotationId, Annotation>(),
+  files: new Map<FileId, BinaryFile>(),
   viewport: DEFAULT_VIEWPORT,
+});
+
+/** Fresh empty scene derived from {@link DEFAULT_SCENE} (own mutable maps). */
+export const emptyScene = (): Scene => ({
+  elements: new Map(DEFAULT_SCENE.elements),
+  links: new Map(DEFAULT_SCENE.links),
+  layers: new Map(DEFAULT_SCENE.layers),
+  annotations: new Map(DEFAULT_SCENE.annotations),
+  files: new Map(DEFAULT_SCENE.files),
+  viewport: DEFAULT_SCENE.viewport,
 });
 
 /**

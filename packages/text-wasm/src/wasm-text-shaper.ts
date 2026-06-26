@@ -1,22 +1,26 @@
-import type { ShapedGlyph, ShaperFont, TextShaper } from "@oh-just-another/renderer-core";
+import {
+  allocBytes,
+  fetchModuleBytes,
+  type ShapedGlyph,
+  type ShaperFont,
+  type TextShaper,
+} from "@oh-just-another/renderer-core";
 import { FALLBACK_ADVANCE_FACTOR, MEASURE_CACHE_SIZE } from "./constants.js";
 
 /**
  * WASM-backed text shaper.
  *
- * The kernel ships an interface in `@oh-just-another/renderer-core` so
- * hosts can swap measurement engines. This package provides the
- * default WASM-aware implementation:
+ * Implements the `TextShaper` interface so hosts can swap
+ * measurement engines:
  *
  *   • Until a WASM module is loaded via `loadModule`, calls fall
  *     back to a synchronous geometric estimate (proportional
  *     monospace-style advance). Layout stays roughly correct so
  *     the first paint isn't blank.
- *   • `loadModule(bytes | url, exports)` plugs a real shaper in.
- *     The expected `exports` shape is documented inline — any
- *     HarfBuzz / harfbuzzjs / ICU4X build that exposes a
- *     `measure(textPtr, len, fontPtr) → width` function and
- *     conventional `memory` + `alloc`/`free` can be wired up.
+ *   • `loadModule(bytes | url)` plugs a real shaper in. Any module
+ *     exposing the `WasmShaperExports` shape — a `measure(textPtr,
+ *     len) → width` function and conventional `memory` +
+ *     `alloc`/`free` — can be wired up.
  *   • Cache: small LRU keyed on the (text, font) pair so repeated
  *     measurements (re-renders of the same labels) are O(1).
  *
@@ -138,7 +142,7 @@ export class WasmTextShaper implements TextShaper {
    * layout pop on the next paint.
    */
   async loadModule(source: string | URL | ArrayBuffer | Uint8Array | Response): Promise<void> {
-    const bytes = await fetchModuleBytes(source);
+    const bytes = await fetchModuleBytes(source, "WasmTextShaper.loadModule");
     const { instance } = await WebAssembly.instantiate(bytes, {});
     this.wasm = instance.exports as unknown as WasmShaperExports;
     this.cache.clear();
@@ -214,10 +218,9 @@ export class WasmTextShaper implements TextShaper {
     const wasm = this.wasm;
     if (!wasm?.resolveFont) return 0;
     const bytes = this.textEncoder.encode(family);
-    const ptr = wasm.alloc(bytes.byteLength);
-    new Uint8Array(wasm.memory.buffer, ptr, bytes.byteLength).set(bytes);
-    const id = wasm.resolveFont(ptr, bytes.byteLength, bold ? 1 : 0, italic ? 1 : 0);
-    wasm.free(ptr, bytes.byteLength);
+    const { ptr, len, free } = allocBytes(wasm, bytes);
+    const id = wasm.resolveFont(ptr, len, bold ? 1 : 0, italic ? 1 : 0);
+    free();
     return id;
   }
 
@@ -256,13 +259,11 @@ export class WasmTextShaper implements TextShaper {
   }
 
   /**
-   * Rasterise a single glyph as an MSDF tile. The bundled wasm uses
-   * the `fdsm` crate (pure-Rust msdfgen-style implementation) — three
-   * channels, 3°-equivalent corner detection, sign-correction
-   * post-pass. `atlasSize` is the tile edge in pixels (typical 32 /
-   * 48 / 64); `range` is the SDF range in atlas pixels (typically
-   * `atlasSize / 8`, so the shader has ~`range`px to soften the edge
-   * with `smoothstep`).
+   * Rasterise a single glyph as a three-channel MSDF tile.
+   * `atlasSize` is the tile edge in pixels (typical 32 / 48 / 64);
+   * `range` is the SDF range in atlas pixels (typically `atlasSize /
+   * 8`, so the shader has ~`range`px to soften the edge with
+   * `smoothstep`).
    *
    * Returns `null` when the loaded module doesn't expose
    * `rasterizeGlyphMSDF`. Returns a buffer of zeros for missing or
@@ -318,56 +319,23 @@ export class WasmTextShaper implements TextShaper {
     const fkey = fontKey(font);
     if (fkey !== this.currentFontKey) {
       const familyBytes = this.textEncoder.encode(font.family);
-      const familyPtr = wasm.alloc(familyBytes.byteLength);
-      const familyView = new Uint8Array(wasm.memory.buffer, familyPtr, familyBytes.byteLength);
-      familyView.set(familyBytes);
+      const family = allocBytes(wasm, familyBytes);
       // The `measure()` path has no weight/style channel (ShaperFont is
       // family+size only) — measure the regular face. The bold/italic
       // glyph advances reach callers via the atlas path (`glyphMetrics`
       // with an explicit fontId), which is what the WebGL2 backend uses.
-      wasm.setFont(familyPtr, familyBytes.byteLength, font.size, 0, 0);
-      wasm.free(familyPtr, familyBytes.byteLength);
+      wasm.setFont(family.ptr, family.len, font.size, 0, 0);
+      family.free();
       this.currentFontKey = fkey;
     }
 
     const textBytes = this.textEncoder.encode(text);
-    const textPtr = wasm.alloc(textBytes.byteLength);
-    const textView = new Uint8Array(wasm.memory.buffer, textPtr, textBytes.byteLength);
-    textView.set(textBytes);
-    const width = wasm.measure(textPtr, textBytes.byteLength);
-    wasm.free(textPtr, textBytes.byteLength);
+    const { ptr, len, free } = allocBytes(wasm, textBytes);
+    const width = wasm.measure(ptr, len);
+    free();
     return { width };
   }
 }
 
 const fontKey = (font: ShaperFont): string =>
   `${font.family}|${font.size}|${font.weight ?? "normal"}|${font.style ?? "normal"}`;
-
-const fetchModuleBytes = async (
-  source: string | URL | ArrayBuffer | Uint8Array | Response,
-): Promise<ArrayBuffer> => {
-  if (source instanceof ArrayBuffer) return source;
-  if (source instanceof Uint8Array) {
-    return source.buffer.slice(
-      source.byteOffset,
-      source.byteOffset + source.byteLength,
-    ) as ArrayBuffer;
-  }
-  if (source instanceof Response) return source.arrayBuffer();
-  // Node's WHATWG fetch refuses `file://` URLs (not implemented as
-  // of Node 22). Detect the protocol and read straight from disk
-  // so `loadBundled()` works in tests / SSR / CLI contexts.
-  const urlStr = typeof source === "string" ? source : source.href;
-  if (urlStr.startsWith("file:")) {
-    const { readFile } = await import("node:fs/promises");
-    const { fileURLToPath } = await import("node:url");
-    const path = fileURLToPath(urlStr);
-    const buf = await readFile(path);
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-  }
-  const res = await fetch(source);
-  if (!res.ok) {
-    throw new Error(`WasmTextShaper.loadModule: fetch failed (${res.status})`);
-  }
-  return res.arrayBuffer();
-};

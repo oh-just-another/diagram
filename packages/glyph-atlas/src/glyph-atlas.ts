@@ -1,11 +1,14 @@
-import { DEFAULT_ATLAS_SIZE, DEFAULT_RANGE, DEFAULT_TILE_SIZE } from "./constants.js";
+import {
+  DEFAULT_ATLAS_SIZE,
+  DEFAULT_RANGE,
+  DEFAULT_TILE_SIZE,
+  UNICODE_CODEPOINT_SPAN,
+} from "./constants.js";
 
 /**
  * Minimum interface a shaper must satisfy to back a {@link GlyphAtlas}.
- * Structurally compatible with `@text-wasm`'s `WasmTextShaper` (its
- * `glyphMetrics` + `rasterizeGlyphMSDF` methods match exactly), but
- * declared here so the atlas package doesn't depend on `@text-wasm` —
- * hosts that ship a different MSDF backend can plug in too.
+ * Declared here so the atlas carries no dependency on any concrete MSDF
+ * backend — hosts can plug in whichever one they ship.
  */
 export interface MsdfShaper {
   glyphMetrics(
@@ -84,10 +87,10 @@ export interface GlyphAtlasOptions {
 
 /**
  * Pre-rasterised glyph cache backed by a single fixed-size RGB
- * texture. Glyphs are baked on first request through the bundled
- * MSDF generator in `@text-wasm` and packed into a uniform grid —
- * every tile is the same `tileSize × tileSize`, so placement is
- * O(1) (no shelf packing required).
+ * texture. Glyphs are baked on first request through the supplied
+ * MSDF shaper and packed into a uniform grid — every tile is the
+ * same `tileSize × tileSize`, so placement is O(1) (no shelf
+ * packing required).
  *
  * Uniform grid rather than shelf packing because:
  *   • Lookup is integer division, no per-glyph dimension hash.
@@ -110,7 +113,7 @@ export class GlyphAtlas {
   readonly columns: number;
   readonly capacity: number;
 
-  /** Per-glyph cache. Key = `fontId * 0x110000 + codePoint` (see `glyphKey`). */
+  /** Per-glyph cache. Key = `fontId * UNICODE_CODEPOINT_SPAN + codePoint`. */
   private readonly glyphs = new Map<number, AtlasGlyph>();
   /** CPU-side RGB buffer mirroring the GPU texture. */
   private readonly buffer: Uint8Array;
@@ -156,7 +159,7 @@ export class GlyphAtlas {
     // Glyphs from different fonts share one atlas texture but must not
     // collide in the cache — key by (fontId, codePoint). codePoint is
     // ≤ 0x10FFFF, so the multiply leaves no overlap.
-    const key = fontId * 0x110000 + codePoint;
+    const key = fontId * UNICODE_CODEPOINT_SPAN + codePoint;
     const cached = this.glyphs.get(key);
     if (cached) return cached;
     if (this.nextSlot >= this.capacity) return null;

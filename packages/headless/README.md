@@ -34,7 +34,7 @@ Both functions accept either an in-memory `Scene` (e.g. produced by `@scene` ope
 | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `renderToSvg(scene, options?)`          | Scene → SVG string. Sync. ~0.2 ms / 100 shapes.                                                  |
 | `renderToPng(scene, options?)`          | Scene → PNG `Uint8Array`. Async. Throws if `@resvg/resvg-js` is missing.                         |
-| `RenderSceneToSvgOptions`               | `width`, `height`, `measureText`, `skipInstall`, standard `RenderSceneOptions` (`skipClear`, …). |
+| `RenderToSvgOptions`                    | `width`, `height`, `measureText`, `skipInstall`, standard `RenderSceneOptions` (`skipClear`, …). |
 | `RenderToPngOptions` (extends SVG opts) | `scale`, `background`, `fitToWidth`, `fitToHeight`.                                              |
 
 ## Benchmarks
@@ -46,8 +46,6 @@ Both functions accept either an in-memory `Scene` (e.g. produced by `@scene` ope
 |     10 |  0.018 ms |  55K ops/s |
 |    100 |   0.17 ms | 5.8K ops/s |
 |   1000 |   1.87 ms |  534 ops/s |
-
-Phase 8 target was < 50 ms for 100 shapes — there's roughly 300× of headroom.
 
 ## Design notes
 

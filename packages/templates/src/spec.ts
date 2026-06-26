@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { stripUndefined } from "@oh-just-another/types";
 import type { Element, TemplateElement as SceneTemplateElement } from "@oh-just-another/scene";
 import { layoutTree } from "./rich/layout.js";
 import { extractPorts } from "./rich/ports.js";
@@ -149,12 +150,6 @@ export const TemplateLibrarySpecZ = z
   .strict();
 
 export type TemplateLibrarySpec = z.infer<typeof TemplateLibrarySpecZ>;
-
-const stripUndefined = <T extends object>(obj: T): T => {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) if (v !== undefined) out[k] = v;
-  return out as T;
-};
 
 /**
  * Reconstruct a callable `Template` from a `TemplateSpec`. The factory closes

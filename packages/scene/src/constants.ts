@@ -16,10 +16,8 @@
 export const SNAP_PROBE_CULL_RADIUS = 1000;
 
 /**
- * Default grid spacing (world units). Used as `DEFAULT_VIEWPORT.gridSize`, so a
- * fresh scene ships with a visible grid and snapping on. Also the fallback
- * spacing `resolveSnapSpacing` returns for legacy/custom viewports that omit
- * `gridSize`. Tune this to change the default grid; range 4–64.
+ * Fixed grid spacing in world units: the step `renderGrid` paints and the
+ * step snap-to-grid rounds to. Tune to change the grid density; range 4–64.
  */
 export const DEFAULT_GRID_SPACING = 20;
 
@@ -27,8 +25,8 @@ export const DEFAULT_GRID_SPACING = 20;
  * Padding (world units) the elbow router inflates obstacle bboxes
  * by before searching. Larger values keep edges visibly clear of
  * shapes; smaller values let the router squeeze through tight
- * spaces. 20 px matches the gridSize default for diagrams that
- * snap to a 20-unit grid.
+ * spaces. 20 px matches the grid spacing for diagrams that snap to
+ * the grid.
  */
 export const ELBOW_OBSTACLE_MARGIN = 20;
 
@@ -43,8 +41,9 @@ export const ELBOW_OBSTACLE_INTERIOR_EPSILON = 0.5;
 /**
  * Per-turn cost added in the elbow A* so the router minimises BENDS first,
  * distance second (lexicographic — far larger than any plausible canvas
- * distance). Keeps routes stable: small shape moves no longer flip between
- * equal-distance alternatives, and the path takes the fewest corners.
+ * distance). Keeps routes stable: small shape moves stay on the same
+ * choice between equal-distance alternatives, and the path takes the
+ * fewest corners.
  */
 export const ELBOW_BEND_PENALTY = 100000;
 
@@ -200,3 +199,44 @@ export const TEXT_LINE_HEIGHT_FACTOR = 1.2;
 export const FRAME_HEADER_HEIGHT = 24;
 export const FRAME_HEADER_PADDING_X = 8;
 export const FRAME_HEADER_FONT_SIZE = 12;
+
+/**
+ * --- Layout defaults ---
+ *
+ * Used by the built-in layout functions (`gridLayout`, `stackLayout`,
+ * `wrapLayout`, `treeLayout`) when the caller's spec omits the value.
+ *
+ * - `DEFAULT_LAYOUT_GAP` — cell/sibling gap (world px) for grid, stack and
+ *   wrap layouts. Larger = more breathing room between shapes. Range: 8–48.
+ * - `DEFAULT_TREE_RANK_SEP` — vertical distance (world px) between successive
+ *   depth levels in the tree layout. Larger = taller tree. Range: 40–160.
+ * - `DEFAULT_TREE_NODE_SEP` — horizontal distance (world px) between siblings
+ *   in the tree layout. Larger = wider tree. Range: 12–64.
+ */
+export const DEFAULT_LAYOUT_GAP = 16;
+export const DEFAULT_TREE_RANK_SEP = 80;
+export const DEFAULT_TREE_NODE_SEP = 24;
+
+/**
+ * --- Outline sampling ---
+ *
+ * - `DEFAULT_OUTLINE_SAMPLES` — fixed density `findNearestOutlinePoint` walks
+ *   the outline at when resolving the nearest ratio to a world point. Good
+ *   enough for visual snap; bump it for sub-pixel accuracy at high zoom.
+ *   Range: 32–256.
+ * - `FLOATING_OUTLINE_SAMPLES` — segments the outline is sampled into when
+ *   intersecting it with the floating-endpoint ray. Smooth enough for
+ *   ellipses at high zoom without being a hot-loop cost (resolved once per
+ *   edge per frame). Range: 48–256.
+ */
+export const DEFAULT_OUTLINE_SAMPLES = 64;
+export const FLOATING_OUTLINE_SAMPLES = 96;
+
+/**
+ * Fallback scene dimensions, in pixels, for a scene with no explicit
+ * viewport size — a freshly imported document whose source carries no
+ * canvas size, or an empty export region. Just needs to be non-degenerate.
+ * Range: a few hundred to ~2000.
+ */
+export const FALLBACK_SCENE_WIDTH = 800;
+export const FALLBACK_SCENE_HEIGHT = 600;

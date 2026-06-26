@@ -1,21 +1,22 @@
+import { createListeners } from "@oh-just-another/events";
+
 import type { Transport } from "./transport.js";
 
 /**
- * `Transport` over the browser's [`BroadcastChannel`](https://developer.mozilla.org/en-US/Web/API/BroadcastChannel)
- * API. Connects every tab / iframe / worker on the same origin that
- * opens a channel with the same `name`.
+ * `Transport` over the browser's `BroadcastChannel` API. Connects
+ * every tab / iframe / worker on the same origin that opens a channel
+ * with the same `name`.
  *
  * Use for:
  *  - "Open this URL in another tab to see your peer" demo flows.
  *  - Cross-window editor coordination (multiple editor instances on the
  *   same page sharing a single Y.Doc).
  *
- * Doesn't replicate to other machines — that's the WebSocket transport's
- * job.
+ * Same-origin only; it does not replicate to other machines.
  */
 export class BroadcastChannelTransport implements Transport {
   private channel: BroadcastChannel | null;
-  private readonly handlers = new Set<(payload: Uint8Array) => void>();
+  private readonly listeners = createListeners<Uint8Array>();
 
   constructor(name: string) {
     this.channel = new BroadcastChannel(name);
@@ -30,8 +31,7 @@ export class BroadcastChannelTransport implements Transport {
   }
 
   onMessage(handler: (payload: Uint8Array) => void): () => void {
-    this.handlers.add(handler);
-    return () => this.handlers.delete(handler);
+    return this.listeners.add(handler);
   }
 
   close(): void {
@@ -39,7 +39,7 @@ export class BroadcastChannelTransport implements Transport {
     this.channel.removeEventListener("message", this.onNativeMessage);
     this.channel.close();
     this.channel = null;
-    this.handlers.clear();
+    this.listeners.clear();
   }
 
   // Bound so we can remove the listener cleanly.
@@ -53,7 +53,7 @@ export class BroadcastChannelTransport implements Transport {
       );
       return;
     }
-    for (const h of this.handlers) h(payload);
+    this.listeners.emit(payload);
   };
 }
 

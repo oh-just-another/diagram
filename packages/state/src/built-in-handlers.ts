@@ -118,13 +118,25 @@ export const imageFileDropHandler: FileDropHandler = {
     // `animationData` is transient (an ArrayBuffer doesn't survive JSON) —
     // on reload the editor rehydrates it from `Scene.files`.
     const animationBytes = isGif ? await file.arrayBuffer() : undefined;
+    // Static images hand the renderer an ImageBitmap so every backend — incl.
+    // the OffscreenCanvas worker, which can't receive an HTMLImageElement —
+    // draws them. GIFs draw through the animation adapter, so their handle
+    // stays the frame-advancing <img>.
+    let imageHandle: ImageBitmap | HTMLImageElement | undefined = img ?? undefined;
+    if (img && !isGif && typeof createImageBitmap === "function") {
+      try {
+        imageHandle = await createImageBitmap(img);
+      } catch {
+        /* fall back to the <img> handle on decode failure */
+      }
+    }
     editor.insertImage({
       src,
       fileId,
       width,
       height,
       position: topLeft,
-      ...(img ? { image: img } : {}),
+      ...(imageHandle ? { image: imageHandle } : {}),
       animated: isGif,
       ...(isGif ? { animationKind: "gif" } : {}),
       ...(animationBytes ? { animationData: animationBytes } : {}),

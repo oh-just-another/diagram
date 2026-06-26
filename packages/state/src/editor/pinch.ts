@@ -1,7 +1,6 @@
 import type { Vec2 } from "@oh-just-another/types";
+import { vec2 } from "@oh-just-another/math";
 import { PINCH_MIN_MOVEMENT_PX } from "../constants.js";
-
-const distance = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
 
 /**
  * Two-finger pinch / pan gesture controller.
@@ -39,11 +38,11 @@ export class PinchController {
   begin(points: readonly Vec2[]): void {
     if (points.length < 2) return;
     const [p1, p2] = points as [Vec2, Vec2];
-    const midpointScreen = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    const midpointScreen = vec2.midpoint(p1, p2);
     this.origin = {
       midpointScreen,
       midpointWorld: this.screenToWorld(midpointScreen),
-      distance: distance(p1, p2),
+      distance: vec2.distance(p1, p2),
     };
   }
 
@@ -59,10 +58,10 @@ export class PinchController {
     if (points.length < 2) return;
     const [p1, p2] = points as [Vec2, Vec2];
 
-    const dist = distance(p1, p2);
-    const midScreen = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    const dist = vec2.distance(p1, p2);
+    const midScreen = vec2.midpoint(p1, p2);
     const moved =
-      distance(midScreen, this.origin.midpointScreen) + Math.abs(dist - this.origin.distance);
+      vec2.distance(midScreen, this.origin.midpointScreen) + Math.abs(dist - this.origin.distance);
     if (moved < PINCH_MIN_MOVEMENT_PX) return;
 
     // Zoom: ratio of current finger distance over the start distance,

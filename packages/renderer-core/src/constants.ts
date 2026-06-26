@@ -130,3 +130,91 @@ export const GRID_LINE_FADE_FULL_PX = 56;
  */
 export const GRID_DOT_FADE_FROM_PX = 10;
 export const GRID_DOT_FADE_FULL_PX = 20;
+
+// --- Block-arrow shape (BlockArrowElement) ----------------------------------
+
+/**
+ * Fraction of the shape's length given to the arrow head when
+ * `BlockArrowElement.headRatio` is omitted. 0.4 = head spans the last 40 %,
+ * body the first 60 %. Clamped to `ARROWHEAD_RATIO_MIN`..`ARROWHEAD_RATIO_MAX`.
+ */
+export const ARROWHEAD_HEAD_RATIO = 0.4;
+
+/**
+ * Fraction of the shape's cross-axis filled by the body when
+ * `BlockArrowElement.bodyThickness` is omitted. 0.5 = body half as thick as
+ * the box. Clamped to `ARROWHEAD_RATIO_MIN`..`ARROWHEAD_RATIO_MAX`.
+ */
+export const ARROWHEAD_BODY_THICKNESS = 0.5;
+
+/**
+ * Lower clamp for the block-arrow head/body ratios so a degenerate input can't
+ * collapse the head or body to nothing. Range: 0–`ARROWHEAD_RATIO_MAX`.
+ */
+export const ARROWHEAD_RATIO_MIN = 0.1;
+
+/**
+ * Upper clamp for the block-arrow head/body ratios so the head/body can't eat
+ * the whole box. Range: `ARROWHEAD_RATIO_MIN`–1.
+ */
+export const ARROWHEAD_RATIO_MAX = 0.9;
+
+// --- Frame chrome colours ---------------------------------------------------
+
+/** Outline colour of a frame when no explicit style overrides it. Neutral gray. */
+export const FRAME_STROKE_COLOR = "#888";
+
+/** Default body fill of a frame when `style.fill` is omitted. White. */
+export const FRAME_FILL_COLOR = "#ffffff";
+
+/** Background fill of the frame's header strip. Near-black. */
+export const FRAME_HEADER_BG_COLOR = "#222";
+
+/** Text colour of the frame's header label. Light gray for contrast on the dark strip. */
+export const FRAME_HEADER_TEXT_COLOR = "#ddd";
+
+// --- Edge / link rendering defaults -----------------------------------------
+
+/**
+ * Length (world px) of a block-arrow edge's head triangle when
+ * `Link.blockArrow.headLength` is omitted. The body terminates this far before
+ * the endpoint so the head fills the gap. Range: ~8–40.
+ */
+export const BLOCK_ARROW_HEAD_LENGTH = 18;
+
+/**
+ * Body thickness (world px) of a block-arrow edge when
+ * `Link.blockArrow.bodyThickness` is omitted. Offset half this on each side of
+ * the routed path. Range: ~4–32.
+ */
+export const BLOCK_ARROW_BODY_THICKNESS = 12;
+
+/** Fallback fill for a block-arrow edge when neither `style.fill` nor `style.stroke` is set. Mid gray. */
+export const BLOCK_ARROW_FILL_COLOR = "#444";
+
+/** Fallback stroke for a block-arrow edge when `style.stroke` is omitted. Near-black. */
+export const BLOCK_ARROW_STROKE_COLOR = "#222";
+
+/**
+ * Arrowhead size (world px) when `LinkArrowheads.size` is omitted. Drives the
+ * wing/length scale of every arrowhead style. Range: ~6–24.
+ */
+export const ARROWHEAD_SIZE = 10;
+
+/** Fallback stroke colour for an edge / its arrowheads when `style.stroke` is omitted. Black. */
+export const EDGE_STROKE_COLOR = "#000";
+
+/**
+ * Position along the edge (0 = start, 1 = end) where a link label sits when
+ * `LinkLabel.position` is omitted. 0.5 = midpoint.
+ */
+export const LABEL_POSITION = 0.5;
+
+/** Font size (world px) of a link label when `LinkLabel.fontSize` is omitted. */
+export const LABEL_FONT_SIZE = 12;
+
+/** Fallback text colour of a link label when `LinkLabel.fill` is omitted. Near-black. */
+export const LABEL_FILL_COLOR = "#222";
+
+/** Fallback pill-background colour of a link label when `LinkLabel.background` is omitted. White. */
+export const LABEL_BG_COLOR = "#fff";

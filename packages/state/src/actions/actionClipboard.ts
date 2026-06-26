@@ -32,4 +32,32 @@ export const actionPaste: Action = {
   },
 };
 
-export const clipboardActions: readonly Action[] = [actionCopy, actionCut, actionPaste];
+export const actionCopyStyle: Action = {
+  id: "copy-style",
+  label: "Copy style",
+  category: "clipboard",
+  hotkey: { key: "c", meta: true, alt: true },
+  predicate: hasSelection,
+  perform: ({ editor }) => {
+    editor.copySelectionStyle();
+  },
+};
+
+export const actionPasteStyle: Action = {
+  id: "paste-style",
+  label: "Paste style",
+  category: "clipboard",
+  hotkey: { key: "v", meta: true, alt: true },
+  predicate: ({ editor }) => editor.selection.size > 0 && editor.hasStyleClipboard,
+  perform: ({ editor }) => {
+    editor.pasteSelectionStyle();
+  },
+};
+
+export const clipboardActions: readonly Action[] = [
+  actionCopy,
+  actionCut,
+  actionPaste,
+  actionCopyStyle,
+  actionPasteStyle,
+];

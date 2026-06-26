@@ -16,14 +16,20 @@ import type {
   Transform,
   Vec2,
 } from "@oh-just-another/types";
-import { matrix } from "@oh-just-another/math";
+import { matrix, vec2 } from "@oh-just-another/math";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
 import {
   ALL_HANDLES,
   CORNER_HANDLES,
   HANDLE_HIT_SLOP,
+  frameCenter,
   handlePosition,
   hitHandle,
+  hitHandleOnFrame,
+  hitRotateGrip,
+  rotateGripForBounds,
+  rotateGripWorld,
+  shapeSelectionFrame,
   type HandleId,
 } from "../handle.js";
 import { isResizable, resizeHandlesFor } from "./shape-traits.js";
@@ -53,14 +59,7 @@ import type { PressTarget } from "../machine.js";
 import type * as Selection from "../selection.js";
 import { getElement } from "@oh-just-another/scene";
 
-/** Local hypot helper for the hit-test hot path (cheaper than a matrix op). */
-const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
-
-/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/state: index out of range");
-  return v;
-};
+import { req } from "../util.js";
 
 /**
  * Bundle of everything `pickPressTarget` needs from the host
@@ -149,16 +148,47 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
       const shape = getElement(ctx.scene, id);
       if (!shape || !isResizable(shape)) continue;
       if (shape.locked === true) continue; // locked: no resize handles
-      const bounds = getElementWorldBounds(shape);
-      const handle = hitHandle(
+      // Oriented frame so the handles turn with a rotated shape; for an
+      // unrotated shape the frame's bounds equal its world AABB exactly.
+      const frame = shapeSelectionFrame(shape);
+      const handle = hitHandleOnFrame(
         worldPoint,
-        bounds,
+        frame,
         zoom,
         ctx.handleHitSlop,
         resizeHandlesFor(shape),
       );
       if (handle) {
-        return { kind: "handle", elementId: id, handle, bounds };
+        return { kind: "handle", elementId: id, handle, bounds: frame.bounds };
+      }
+    }
+  }
+
+  // 1c. Rotate grip — floats above the selection (group bbox, or a single
+  //     resizable shape's AABB). It sits further out than the resize handles,
+  //     and is checked before the element pick so grabbing it always rotates
+  //     rather than selecting a shape behind it.
+  const groupRotateBounds: Bounds | null = useGroupHandles ? ctx.combinedSelectionBounds() : null;
+  if (groupRotateBounds) {
+    const grip = rotateGripForBounds(groupRotateBounds, zoom);
+    if (hitRotateGrip(worldPoint, grip, zoom, ctx.handleHitSlop)) {
+      return {
+        kind: "rotate-handle",
+        pivot: {
+          x: groupRotateBounds.x + groupRotateBounds.width / 2,
+          y: groupRotateBounds.y + groupRotateBounds.height / 2,
+        },
+        bounds: groupRotateBounds,
+      };
+    }
+  } else if (ctx.selection.size === 1) {
+    for (const id of ctx.selection) {
+      const shape = getElement(ctx.scene, id);
+      if (!shape || !isResizable(shape) || shape.locked === true) continue;
+      const grip = rotateGripWorld(shape, zoom);
+      if (hitRotateGrip(worldPoint, grip, zoom, ctx.handleHitSlop)) {
+        const frame = shapeSelectionFrame(shape);
+        return { kind: "rotate-handle", pivot: frameCenter(frame), bounds: frame.bounds };
       }
     }
   }
@@ -173,10 +203,10 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
         const handleR = ctx.edgeHandleHitSlop / zoom;
         const fromPoint = req(path[0]);
         const toPoint = req(path[path.length - 1]);
-        if (distanceTo(worldPoint, fromPoint) <= handleR) {
+        if (vec2.distance(worldPoint, fromPoint) <= handleR) {
           return { kind: "edge-endpoint", linkId: edge.id, side: "from" };
         }
-        if (distanceTo(worldPoint, toPoint) <= handleR) {
+        if (vec2.distance(worldPoint, toPoint) <= handleR) {
           return { kind: "edge-endpoint", linkId: edge.id, side: "to" };
         }
       }
@@ -366,9 +396,9 @@ const drawResizeZones = (
 /**
  * Minimal slice of the selected link's handle geometry the debug viz
  * needs — endpoints plus the bend / segment handle world positions the
- * orchestrator already computed for the real overlay. Mirrors
- * `LinkSelection` in `overlay.ts` without importing it (would close the
- * overlay ↔ hit-test runtime cycle).
+ * orchestrator already computed for the real overlay. Redeclared rather
+ * than imported from the overlay so this module stays free of a runtime
+ * cycle with it.
  */
 export interface HitZoneEdge {
   readonly from: Vec2;

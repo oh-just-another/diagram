@@ -1,16 +1,13 @@
-import type { ElementId, Vec2 } from "@oh-just-another/types";
+import { req, type ElementId, type Vec2 } from "@oh-just-another/types";
 import { getDropZoneWorld } from "./container.js";
 import type { Scene } from "./scene.js";
 import { getElementLocalBounds, type Element } from "./shape.js";
-import { getElement, getElementsInLayer } from "./queries.js";
+import { getElement } from "./queries.js";
 import { updateElement, type OperationResult } from "./operations.js";
 import { batch, type Patch } from "./patch.js";
 import { getLayoutKind } from "./layout-registry.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/scene: index out of range");
-  return v;
-};
+import { byOrderAsc } from "./order.js";
+import { DEFAULT_LAYOUT_GAP, DEFAULT_TREE_NODE_SEP, DEFAULT_TREE_RANK_SEP } from "./constants.js";
 
 /**
  * Visual width / height of a shape in its OWN frame (no `position`,
@@ -62,14 +59,14 @@ export interface GridLayoutSpec extends LayoutSpec {
  */
 export const gridLayout: LayoutFn<GridLayoutSpec> = (scene, spec) => {
   if (spec.shapeIds.length === 0 || spec.cols < 1) return null;
-  const gap = spec.gap ?? 16;
+  const gap = spec.gap ?? DEFAULT_LAYOUT_GAP;
   const origin = spec.origin ?? { x: 0, y: 0 };
   const shapes: Element[] = [];
   for (const id of spec.shapeIds) {
     const s = getElement(scene, id);
     if (s) shapes.push(s);
   }
-  shapes.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  shapes.sort(byOrderAsc);
 
   const sizes = shapes.map(shapeAdvanceSize);
   const cellW = sizes.reduce((m, s) => Math.max(m, s.width), 0);
@@ -102,14 +99,14 @@ export interface StackLayoutSpec extends LayoutSpec {
 /** Position shapes top-to-bottom or left-to-right without wrapping. */
 export const stackLayout: LayoutFn<StackLayoutSpec> = (scene, spec) => {
   if (spec.shapeIds.length === 0) return null;
-  const gap = spec.gap ?? 16;
+  const gap = spec.gap ?? DEFAULT_LAYOUT_GAP;
   const origin = spec.origin ?? { x: 0, y: 0 };
   const shapes: Element[] = [];
   for (const id of spec.shapeIds) {
     const s = getElement(scene, id);
     if (s) shapes.push(s);
   }
-  shapes.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  shapes.sort(byOrderAsc);
 
   const patches: Patch[] = [];
   let working = scene;
@@ -204,7 +201,7 @@ const childSizes = (
     const s = getElement(scene, id);
     if (s) shapes.push(s);
   }
-  shapes.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  shapes.sort(byOrderAsc);
   return shapes.map((s) => {
     const sz = shapeAdvanceSize(s);
     return { id: s.id, w: sz.width, h: sz.height };
@@ -218,7 +215,7 @@ const childSizes = (
  */
 export const wrapLayout: LayoutFn<WrapLayoutSpec> = (scene, spec) => {
   if (spec.shapeIds.length === 0) return null;
-  const gap = spec.gap ?? 16;
+  const gap = spec.gap ?? DEFAULT_LAYOUT_GAP;
   const origin = spec.origin ?? { x: 0, y: 0 };
   const sizes = childSizes(scene, spec.shapeIds);
   const { placements } = packWrap(sizes, gap, spec.innerWidth, origin);
@@ -259,19 +256,12 @@ export const measureWrap = (
   if (ids.length === 0) return null;
   const sizes = childSizes(scene, ids);
   const parent = getElement(scene, parentId);
-  const gap = (parent ? (getAutoLayoutSpec(parent) as { gap?: number } | null) : null)?.gap ?? 16;
+  const gap =
+    (parent ? (getAutoLayoutSpec(parent) as { gap?: number } | null) : null)?.gap ??
+    DEFAULT_LAYOUT_GAP;
   const m = packWrap(sizes, gap, innerWidth, { x: 0, y: 0 });
   return { widest: m.widest, contentWidth: m.contentWidth, contentHeight: m.contentHeight };
 };
-
-/**
- * Convenience: list all shape ids in a layer in z-order, suitable
- * as `LayoutSpec.shapeIds`.
- */
-export const allElementsInLayer = (
-  scene: Scene,
-  layerId: Scene["layers"] extends ReadonlyMap<infer K, unknown> ? K : never,
-): readonly ElementId[] => getElementsInLayer(scene, layerId).map((s) => s.id);
 
 // --- auto-layout container ---
 
@@ -443,8 +433,8 @@ export interface TreeLayoutSpec extends LayoutSpec {
  */
 export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
   if (spec.shapeIds.length === 0) return null;
-  const ranksep = spec.ranksep ?? 80;
-  const nodesep = spec.nodesep ?? 24;
+  const ranksep = spec.ranksep ?? DEFAULT_TREE_RANK_SEP;
+  const nodesep = spec.nodesep ?? DEFAULT_TREE_NODE_SEP;
   const origin = spec.origin ?? { x: 0, y: 0 };
 
   // Build a child-of map filtered to shapes that exist.
@@ -453,7 +443,7 @@ export const treeLayout: LayoutFn<TreeLayoutSpec> = (scene, spec) => {
     for (const s of scene.elements.values()) {
       if (s.parentId === id) out.push(s);
     }
-    out.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+    out.sort(byOrderAsc);
     return out;
   };
 

@@ -7,24 +7,19 @@ import {
 import type { Bounds } from "@oh-just-another/types";
 import { renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
 import { createOffscreenCanvas2DTarget } from "@oh-just-another/renderer-canvas";
+import { EXPORT_PADDING_WORLD } from "./constants.js";
 
 /**
  * Browser-side PNG export — renders the **full scene** (not just the
- * current viewport) into an OffscreenCanvas via the standard
- * `renderScene` + `renderLinks` pipeline, then converts to a PNG blob.
+ * current viewport) into an OffscreenCanvas via the `renderScene` +
+ * `renderLinks` pipeline, then converts to a PNG blob.
  *
  * Three variants, exposed as separate menu items:
  *
  *   • "transparent"     — no background fill, PNG alpha channel preserved.
  *   • "color"           — solid fill in the host's canvas colour.
  *   • "color-and-grid"  — solid fill + the same grid the user sees on
- *                         the canvas (same gridSize / gridStyle).
- *
- * This host-side helper is used instead of `@oh-just-another/exporter.exportPng`
- * because exporter's path goes through `@headless.renderToPng`, which pulls
- * `@resvg/resvg-js` (~3 MB WASM peer dep). For a browser host the kernel's
- * `Canvas2DTarget` + `renderScene` are already on hand — no extra
- * dependency, no SVG round-trip, identical visual output.
+ *                         the canvas (same gridStyle).
  *
  * Returns `null` when the scene has no shapes (host shows an alert).
  */
@@ -43,14 +38,6 @@ export interface PngExportOptions {
    */
   readonly backgroundColor: string;
 }
-
-/**
- * Padding around the scene bbox, in world units. Matches the
- * `zoomToFit` default so the exported framing feels like "what fit
- * on screen would look like". Hosts that want a tight bbox can crop
- * after the fact.
- */
-const EXPORT_PADDING_WORLD = 20;
 
 export const exportSceneToPng = async (
   scene: Scene,
@@ -96,18 +83,14 @@ export const exportSceneToPng = async (
       zoom: options.scale,
       rotation: 0,
       size: { width: canvasW, height: canvasH },
-      ...(scene.viewport.gridSize !== undefined ? { gridSize: scene.viewport.gridSize } : {}),
+      gridEnabled: scene.viewport.gridEnabled,
       ...(scene.viewport.gridStyle !== undefined ? { gridStyle: scene.viewport.gridStyle } : {}),
     },
   };
 
-  // Grid pass — only for the color-and-grid variant. Skipped when the
-  // scene has no gridSize (user disabled it).
-  if (
-    options.background === "color-and-grid" &&
-    exportScene.viewport.gridSize &&
-    exportScene.viewport.gridSize > 0
-  ) {
+  // Grid pass — only for the color-and-grid variant, and only when the scene
+  // has the grid enabled.
+  if (options.background === "color-and-grid" && exportScene.viewport.gridEnabled) {
     renderGrid(exportScene, target);
   }
 

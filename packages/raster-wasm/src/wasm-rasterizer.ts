@@ -1,12 +1,12 @@
-import type { Vec2 } from "@oh-just-another/types";
+import { req, type Vec2 } from "@oh-just-another/types";
 import type { PathCommand } from "@oh-just-another/scene";
-import { jsRasterizer, type Rasterizer } from "@oh-just-another/renderer-core";
+import {
+  allocBytes,
+  fetchModuleBytes,
+  jsRasterizer,
+  type Rasterizer,
+} from "@oh-just-another/renderer-core";
 import { DEFAULT_FLATTEN_TOLERANCE } from "./constants.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/raster-wasm: index out of range");
-  return v;
-};
 
 /**
  * WASM-backed `Rasterizer`. Until `loadModule(...)` swaps in a real
@@ -90,7 +90,7 @@ export class WasmRasterizer implements Rasterizer {
   }
 
   async loadModule(source: string | URL | ArrayBuffer | Uint8Array | Response): Promise<void> {
-    const bytes = await fetchModuleBytes(source);
+    const bytes = await fetchModuleBytes(source, "WasmRasterizer.loadModule");
     const { instance } = await WebAssembly.instantiate(bytes, {});
     this.wasm = instance.exports as unknown as WasmRasterizerExports;
   }
@@ -129,19 +129,19 @@ export class WasmRasterizer implements Rasterizer {
     wasm: WasmRasterizerExports,
   ): readonly Vec2[] {
     const packed = packCommands(commands);
-    const inPtr = wasm.alloc(packed.byteLength);
-    new Uint8Array(wasm.memory.buffer, inPtr, packed.byteLength).set(
+    const input = allocBytes(
+      wasm,
       new Uint8Array(packed.buffer, packed.byteOffset, packed.byteLength),
     );
     const outPtrOut = wasm.alloc(4);
     const outCountOut = wasm.alloc(4);
     try {
-      wasm.flattenF32(inPtr, packed.length, tolerance, outPtrOut, outCountOut);
+      wasm.flattenF32(input.ptr, packed.length, tolerance, outPtrOut, outCountOut);
       const outPtr = readU32(wasm.memory, outPtrOut);
       const outCount = readU32(wasm.memory, outCountOut);
       return readVec2Array(wasm.memory, outPtr, outCount);
     } finally {
-      wasm.free(inPtr, packed.byteLength);
+      input.free();
       wasm.free(outPtrOut, 4);
       wasm.free(outCountOut, 4);
     }
@@ -156,8 +156,8 @@ export class WasmRasterizer implements Rasterizer {
     wasm: WasmRasterizerExports,
   ): readonly Vec2[] {
     const packed = packVec2Array(polyline);
-    const inPtr = wasm.alloc(packed.byteLength);
-    new Uint8Array(wasm.memory.buffer, inPtr, packed.byteLength).set(
+    const input = allocBytes(
+      wasm,
       new Uint8Array(packed.buffer, packed.byteOffset, packed.byteLength),
     );
     const outPtrOut = wasm.alloc(4);
@@ -165,44 +165,17 @@ export class WasmRasterizer implements Rasterizer {
     try {
       const cap = CAP_TO_ENUM[options?.cap ?? "butt"];
       const join = JOIN_TO_ENUM[options?.join ?? "miter"];
-      wasm.strokeToFillF32(inPtr, polyline.length, width, cap, join, outPtrOut, outCountOut);
+      wasm.strokeToFillF32(input.ptr, polyline.length, width, cap, join, outPtrOut, outCountOut);
       const outPtr = readU32(wasm.memory, outPtrOut);
       const outCount = readU32(wasm.memory, outCountOut);
       return readVec2Array(wasm.memory, outPtr, outCount);
     } finally {
-      wasm.free(inPtr, packed.byteLength);
+      input.free();
       wasm.free(outPtrOut, 4);
       wasm.free(outCountOut, 4);
     }
   }
 }
-
-const fetchModuleBytes = async (
-  source: string | URL | ArrayBuffer | Uint8Array | Response,
-): Promise<ArrayBuffer> => {
-  if (source instanceof ArrayBuffer) return source;
-  if (source instanceof Uint8Array) {
-    return source.buffer.slice(
-      source.byteOffset,
-      source.byteOffset + source.byteLength,
-    ) as ArrayBuffer;
-  }
-  if (source instanceof Response) return source.arrayBuffer();
-  // file:// path goes through fs — Node's fetch doesn't accept it.
-  const urlStr = typeof source === "string" ? source : source.href;
-  if (urlStr.startsWith("file:")) {
-    const { readFile } = await import("node:fs/promises");
-    const { fileURLToPath } = await import("node:url");
-    const path = fileURLToPath(urlStr);
-    const buf = await readFile(path);
-    return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-  }
-  const res = await fetch(source);
-  if (!res.ok) {
-    throw new Error(`WasmRasterizer.loadModule: fetch failed (${res.status})`);
-  }
-  return res.arrayBuffer();
-};
 
 const packCommands = (commands: readonly PathCommand[]): Float32Array => {
   // Variable-width pack — layout depends on command kind. Worst case is

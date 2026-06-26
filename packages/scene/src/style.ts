@@ -17,9 +17,9 @@ export type StrokeAlign = "center" | "inside" | "outside";
 
 /**
  * Corner-rounding spec for shapes that support it (rectangle, container,
- * box arrow, …). Borrowed from standard's adaptive model:
+ * box arrow, …):
  *   `sharp`  — no rounding (sharp corners). Equivalent to omitting the
- *              field; kept for explicit serialisation.
+ *              field; lets the value be set explicitly.
  *   `round`  — rounded corners. Without `value`, falls back to the
  *              adaptive radius (fixed 32 px for big shapes, scales to
  *              25 % of the smaller side for shapes < 128 px so they

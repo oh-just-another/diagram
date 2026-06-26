@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDiagramOptional } from "./hooks.js";
+import { usePortalContainer } from "./portal-container.js";
 
 /**
  * Inline editor for a link's caption. Opens on double-click of a link
@@ -13,6 +14,7 @@ export const LinkCaptionEditor = () => {
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const portalContainer = usePortalContainer();
 
   useEffect(() => {
     if (!editor) return undefined;
@@ -80,6 +82,6 @@ export const LinkCaptionEditor = () => {
         e.stopPropagation();
       }}
     />,
-    document.body,
+    portalContainer,
   );
 };

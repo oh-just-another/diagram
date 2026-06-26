@@ -6,6 +6,7 @@ import {
   type Point,
 } from "@oh-just-another/curve-mesh";
 import type { Transform } from "@oh-just-another/types";
+import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
 
 /**
  * Loop-Blinn curve rendering for WebGL2Target. Owns the dedicated
@@ -40,9 +41,9 @@ export class LoopBlinnCurvePipeline {
   private readonly aUVW: number;
 
   constructor(private readonly gl: WebGL2RenderingContext) {
-    const vert = compile(gl, gl.VERTEX_SHADER, VERTEX_SRC);
-    const frag = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT_SRC);
-    this.program = link(gl, vert, frag);
+    const vert = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SRC, "Loop-Blinn");
+    const frag = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SRC, "Loop-Blinn");
+    this.program = linkProgram(gl, vert, frag, "Loop-Blinn");
     this.vbo = glReq(gl.createBuffer());
     this.uvBuf = glReq(gl.createBuffer());
     this.aPos = gl.getAttribLocation(this.program, "aPos");
@@ -170,38 +171,3 @@ void main() {
   float a = coverage * uOpacity;
   fragColor = vec4(uColor * a, a);
 }`;
-
-/**
- * Asserts a WebGL resource handle is non-null. `gl.createBuffer` /
- * `getUniformLocation` / `createShader` are typed non-null but return
- * `null` on context loss; this surfaces that as a throw.
- */
-const glReq = <T>(v: T | null): T => {
-  if (v === null) throw new Error("packages/renderer-canvas: WebGL resource creation failed");
-  return v;
-};
-
-const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {
-  const sh = glReq(gl.createShader(type));
-  gl.shaderSource(sh, src);
-  gl.compileShader(sh);
-  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-    const log = gl.getShaderInfoLog(sh);
-    gl.deleteShader(sh);
-    throw new Error(`Loop-Blinn shader compile failed: ${log}`);
-  }
-  return sh;
-};
-
-const link = (gl: WebGL2RenderingContext, vert: WebGLShader, frag: WebGLShader): WebGLProgram => {
-  const program = gl.createProgram();
-  gl.attachShader(program, vert);
-  gl.attachShader(program, frag);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const log = gl.getProgramInfoLog(program);
-    gl.deleteProgram(program);
-    throw new Error(`Loop-Blinn program link failed: ${log}`);
-  }
-  return program;
-};

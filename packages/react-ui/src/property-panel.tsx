@@ -1,13 +1,23 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlignCenter,
+  AlignCenterHorizontal,
+  AlignCenterVertical,
+  AlignEndHorizontal,
+  AlignEndVertical,
+  AlignHorizontalDistributeCenter,
   AlignLeft,
   AlignRight,
+  AlignStartHorizontal,
+  AlignStartVertical,
+  AlignVerticalDistributeCenter,
   Bold,
   CaseSensitive,
   ChevronsDown,
   ChevronsUp,
   Copy as CopyIcon,
+  FlipHorizontal2 as FlipHorizontalIcon,
+  FlipVertical2 as FlipVerticalIcon,
   Group as GroupIcon,
   Italic,
   Link as LinkIcon,
@@ -29,6 +39,10 @@ import {
 } from "lucide-react";
 import {
   isGroup,
+  isText,
+  isImage,
+  isFrame,
+  isRectangle,
   type ArrowheadStyle,
   type Link,
   type LinkRouting,
@@ -91,9 +105,9 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       .map((id) => scene.elements.get(id))
       .filter((s): s is ElementBase => s !== undefined);
     if (shapes.length === 0) return null;
-    const allText = shapes.every((s) => s.type === "text");
-    const allImage = shapes.every((s) => s.type === "image");
-    const allFrame = shapes.every((s) => s.type === "frame");
+    const allText = shapes.every((s) => isText(s));
+    const allImage = shapes.every((s) => isImage(s));
+    const allFrame = shapes.every((s) => isFrame(s));
 
     const primary: ReactNode[] = [];
     const overflow: ReactNode[] = [];
@@ -127,12 +141,10 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       );
     }
     // Common trailing controls for every shape type.
-    overflow.push(
-      <ZOrderControl key="z" />,
-      <LinkControl key="link" shapes={shapes} />,
-      <ActionsControl key="actions" shapes={shapes} />,
-      <MoreButton key="more" />,
-    );
+    overflow.push(<ZOrderControl key="z" />, <LinkControl key="link" shapes={shapes} />);
+    // Alignment needs a reference box — only meaningful for 2+ shapes.
+    if (shapes.length >= 2) overflow.push(<AlignControl key="align" />);
+    overflow.push(<ActionsControl key="actions" shapes={shapes} />, <MoreButton key="more" />);
     return (
       <PanelShell
         mobile={mobile}
@@ -793,7 +805,7 @@ const StrokeStyleControl = ({ shapes }: { readonly shapes: readonly ElementBase[
 const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
-  const supports = shapes.every((s) => s.type === "rectangle" || s.type === "container");
+  const supports = shapes.every((s) => isRectangle(s) || s.type === "container");
   if (!supports) return null;
   const type = sharedValue<Roundness["type"]>(shapes, (s) => s.style.roundness?.type ?? "sharp");
   const radius = sharedValue<number>(shapes, (s) => s.style.roundness?.value ?? null);
@@ -948,7 +960,7 @@ const ZOrderControl = () => {
  *
  * Duplicate / Delete are always shown.
  */
-type ActionId = "duplicate" | "delete" | "group" | "ungroup";
+type ActionId = "duplicate" | "delete" | "group" | "ungroup" | "flip-h" | "flip-v";
 
 const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
@@ -973,6 +985,18 @@ const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
       icon: <UngroupIcon size={14} strokeWidth={1.75} />,
     });
   }
+  options.push(
+    {
+      value: "flip-h",
+      label: "Flip horizontal",
+      icon: <FlipHorizontalIcon size={14} strokeWidth={1.75} />,
+    },
+    {
+      value: "flip-v",
+      label: "Flip vertical",
+      icon: <FlipVerticalIcon size={14} strokeWidth={1.75} />,
+    },
+  );
   return (
     <SegmentedControl<ActionId>
       ariaLabel="Element actions"
@@ -982,9 +1006,106 @@ const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
         if (v === "duplicate") editor.duplicateSelected();
         else if (v === "delete") editor.deleteSelected();
         else if (v === "group") editor.groupSelected();
-        else editor.ungroup();
+        else if (v === "ungroup") editor.ungroup();
+        else if (v === "flip-h") editor.flipSelection("horizontal");
+        else editor.flipSelection("vertical");
       }}
     />
+  );
+};
+
+/**
+ * Align popover — a 3×2 grid of edge / centre alignments for the current
+ * multi-selection. Mounted only when two or more shapes are selected (a single
+ * shape has nothing to align to).
+ */
+type AlignEdgeId = "left" | "h-center" | "right" | "top" | "v-center" | "bottom";
+
+const ALIGN_OPTIONS: { edge: AlignEdgeId; label: string; icon: ReactNode }[] = [
+  { edge: "left", label: "Align left", icon: <AlignStartVertical size={16} strokeWidth={1.75} /> },
+  {
+    edge: "h-center",
+    label: "Align horizontal centres",
+    icon: <AlignCenterVertical size={16} strokeWidth={1.75} />,
+  },
+  { edge: "right", label: "Align right", icon: <AlignEndVertical size={16} strokeWidth={1.75} /> },
+  { edge: "top", label: "Align top", icon: <AlignStartHorizontal size={16} strokeWidth={1.75} /> },
+  {
+    edge: "v-center",
+    label: "Align vertical centres",
+    icon: <AlignCenterHorizontal size={16} strokeWidth={1.75} />,
+  },
+  {
+    edge: "bottom",
+    label: "Align bottom",
+    icon: <AlignEndHorizontal size={16} strokeWidth={1.75} />,
+  },
+];
+
+const AlignControl = () => {
+  const editor = useDiagramOptional();
+  const selection = useSelection();
+  if (!editor) return null;
+  // Distribution needs three+ elements; alignment is offered from two.
+  const canDistribute = selection.size >= 3;
+  return (
+    <Popover
+      ariaLabel="Align and distribute"
+      trigger={
+        <button type="button" className="du-sel-icon-button" title="Align" aria-label="Align">
+          <AlignCenterVertical size={16} strokeWidth={1.75} />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Align</header>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
+          {ALIGN_OPTIONS.map((o) => (
+            <button
+              key={o.edge}
+              type="button"
+              className="du-sel-icon-button"
+              title={o.label}
+              aria-label={o.label}
+              onClick={() => {
+                editor.alignSelection(o.edge);
+              }}
+            >
+              {o.icon}
+            </button>
+          ))}
+        </div>
+        {canDistribute ? (
+          <>
+            <header className="du-sel-popover-label">Distribute</header>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                type="button"
+                className="du-sel-icon-button"
+                title="Distribute horizontally"
+                aria-label="Distribute horizontally"
+                onClick={() => {
+                  editor.distributeSelection("horizontal");
+                }}
+              >
+                <AlignHorizontalDistributeCenter size={16} strokeWidth={1.75} />
+              </button>
+              <button
+                type="button"
+                className="du-sel-icon-button"
+                title="Distribute vertically"
+                aria-label="Distribute vertically"
+                onClick={() => {
+                  editor.distributeSelection("vertical");
+                }}
+              >
+                <AlignVerticalDistributeCenter size={16} strokeWidth={1.75} />
+              </button>
+            </div>
+          </>
+        ) : null}
+      </div>
+    </Popover>
   );
 };
 
@@ -1425,21 +1546,6 @@ const ArrowheadGlyph = ({
 
 const Divider = () => <span className="du-sel-divider" aria-hidden />;
 
-// Section / Row kept as exports because tests may rely on them; they're
-// no longer used internally.
-export const Section = ({
-  label,
-  children,
-}: {
-  readonly label: string;
-  readonly children: ReactNode;
-}) => (
-  <section className="du-prop-section">
-    <h3 className="du-prop-section-label">{label}</h3>
-    {children}
-  </section>
-);
-
 // ---------------------------------------------------------------------------
 // Inline SVG glyphs
 // ---------------------------------------------------------------------------
@@ -1503,6 +1609,5 @@ const sharedString = (
 
 // Frames are always fillable (white by default) even when `style.fill` is
 // unset.
-const hasFill = (shape: ElementBase): boolean =>
-  shape.style.fill !== undefined || shape.type === "frame";
+const hasFill = (shape: ElementBase): boolean => shape.style.fill !== undefined || isFrame(shape);
 const hasStroke = (shape: ElementBase): boolean => shape.style.stroke !== undefined;

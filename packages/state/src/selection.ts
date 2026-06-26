@@ -1,4 +1,5 @@
 import type { ElementId } from "@oh-just-another/types";
+import { setsEqual } from "./util.js";
 
 /**
  * Set of currently selected shape ids. Immutable — operations return new sets.
@@ -35,9 +36,4 @@ export const replace = (id: ElementId): Selection => single(id);
 
 export const clear = (): Selection => EMPTY;
 
-export const equals = (a: Selection, b: Selection): boolean => {
-  if (a === b) return true;
-  if (a.size !== b.size) return false;
-  for (const id of a) if (!b.has(id)) return false;
-  return true;
-};
+export const equals = (a: Selection, b: Selection): boolean => setsEqual(a, b);

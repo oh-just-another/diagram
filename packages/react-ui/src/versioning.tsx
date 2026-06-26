@@ -9,6 +9,7 @@ import {
   type VersionId,
 } from "@oh-just-another/versioning";
 import { useDiagramOptional } from "./hooks.js";
+import { formatTime } from "./format-time.js";
 import { MergeDialog } from "./merge-dialog.js";
 
 interface StoreSnapshot {
@@ -287,7 +288,7 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
                           {snap.message}
                         </div>
                         <div style={{ fontSize: 10, color: "var(--muted, #888)" }}>
-                          {snap.author.name} · {formatTime(snap.timestamp)}
+                          {snap.author.name} · {formatTime(snap.timestamp, "time")}
                         </div>
                       </div>
                       <button
@@ -359,10 +360,4 @@ const miniButtonStyle: CSSProperties = {
   borderRadius: 3,
   cursor: "pointer",
   fontSize: 11,
-};
-
-const formatTime = (iso: string): string => {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString();
 };

@@ -1,21 +1,22 @@
 import * as Y from "yjs";
-import { apply, batch, invert, isNoop, type Patch, type Scene } from "@oh-just-another/scene";
+import { apply, batch, isNoop, type Patch, type Scene } from "@oh-just-another/scene";
 import type { HistoryProvider, TransactionHandle } from "@oh-just-another/history";
 import type { SceneDoc } from "./scene-doc.js";
+import { diffMapInto } from "./diff-map.js";
 
 /**
  * CRDT-aware history backend backed by `Y.UndoManager`.
  *
  * In a collaborative session, the linear `History` from
  * `@oh-just-another/history` undoes *any* recent change, including a
- * peer's. `YjsHistory` scopes undo to the local client by tagging
+ * peer's. `CollabHistory` scopes undo to the local client by tagging
  * every locally-pushed Yjs transaction with a shared origin and
  * tracking only that origin in the underlying `Y.UndoManager`.
  *
  * Wiring (the host's job):
  *
  *   const sceneDoc = new SceneDoc();
- *   const history = new YjsHistory(sceneDoc);
+ *   const history = new CollabHistory(sceneDoc);
  *   const editor = new Editor({ ..., history });
  *   bindEditor(editor, sceneDoc);
  *
@@ -28,7 +29,7 @@ import type { SceneDoc } from "./scene-doc.js";
  * undo step.
  */
 
-export interface YjsHistoryOptions {
+export interface CollabHistoryOptions {
   /**
    * Number of undo steps to keep on the stack. Mirrors the linear
    * `History.limit`. Default: governed by `Y.UndoManager` defaults.
@@ -43,7 +44,7 @@ export interface YjsHistoryOptions {
   readonly captureTimeout?: number;
 }
 
-export class YjsHistory implements HistoryProvider {
+export class CollabHistory implements HistoryProvider {
   private readonly doc: Y.Doc;
   private readonly origin: symbol;
   private readonly maps: readonly [Y.Map<unknown>, Y.Map<unknown>, Y.Map<unknown>, Y.Map<unknown>];
@@ -54,7 +55,7 @@ export class YjsHistory implements HistoryProvider {
   private readonly snapshot: () => Scene;
   private current: Scene;
 
-  constructor(sceneDoc: SceneDoc, options: YjsHistoryOptions = {}) {
+  constructor(sceneDoc: SceneDoc, options: CollabHistoryOptions = {}) {
     this.doc = sceneDoc.doc;
     this.origin = Symbol("yjs-history");
     this.maps = [
@@ -168,10 +169,10 @@ export class YjsHistory implements HistoryProvider {
   private applyToCrdt(p: Patch): void {
     const before = this.current;
     const after = apply(before, p);
-    diffMapInto(before.elements, after.elements, this.maps[0]);
-    diffMapInto(before.links, after.links, this.maps[1]);
-    diffMapInto(before.layers, after.layers, this.maps[2]);
-    diffMapInto(before.annotations, after.annotations, this.maps[3]);
+    diffMapInto<unknown>(before.elements, after.elements, this.maps[0]);
+    diffMapInto<unknown>(before.links, after.links, this.maps[1]);
+    diffMapInto<unknown>(before.layers, after.layers, this.maps[2]);
+    diffMapInto<unknown>(before.annotations, after.annotations, this.maps[3]);
     if (before.viewport !== after.viewport) {
       this.viewportMap.set("current", after.viewport);
     }
@@ -238,22 +239,3 @@ const diffAsPatch = (before: Scene, after: Scene): Patch | null => {
   if (ops.length === 1 && first !== undefined) return first;
   return batch(ops);
 };
-
-const diffMapInto = <V>(
-  before: ReadonlyMap<string, V>,
-  after: ReadonlyMap<string, V>,
-  target: Y.Map<unknown>,
-): void => {
-  for (const [id] of before) {
-    if (!after.has(id)) target.delete(id);
-  }
-  for (const [id, value] of after) {
-    const prev = before.get(id);
-    if (prev !== value) target.set(id, value);
-  }
-};
-
-// `invert` and `Patch` come from `@oh-just-another/scene` — re-export
-// the inverse helper for hosts that want to derive their own
-// inverses externally (debugging tools, e2e harnesses).
-export { invert };

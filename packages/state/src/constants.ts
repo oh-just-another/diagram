@@ -62,6 +62,26 @@ export const HANDLE_OUTSET = 3;
 export const HANDLE_HIT_SLOP = 11;
 
 /**
+ * Screen-pixel gap between the shape's rotate anchor (default bottom-left
+ * corner) and the rotate grip that floats just outside it. Far enough to clear
+ * the corner resize handle. Range: 20–32.
+ */
+export const ROTATE_HANDLE_OFFSET = 26;
+
+/**
+ * Screen-pixel radius of the rotate grip's circular-arrow glyph (a clockwise
+ * rotate icon). Slightly larger than `HANDLE_SIZE` so the icon reads as an
+ * affordance, not a plain resize dot. Range: 6–9.
+ */
+export const ROTATE_ICON_RADIUS = 7;
+
+/**
+ * Angle step (radians) the rotate gesture snaps to while Shift is held — 15°
+ * (π/12), the common increment for diagram alignment. Range: π/24–π/6.
+ */
+export const ROTATE_SNAP_RADIANS = Math.PI / 12;
+
+/**
  * Screen-pixel hit-test slop for grabbing an edge endpoint handle.
  * Larger than `LINK_ENDPOINT_HANDLE_DRAW_RADIUS` so the handle is
  * easier to grab on touch without enlarging the visual. Mouse default
@@ -91,13 +111,6 @@ export const LINK_MIDPOINT_HANDLE_DRAW_RADIUS = 4;
 export const WAYPOINT_COLLAPSE_RADIUS = 12;
 
 /**
- * Upper bound on how many candidate obstacles the A*-based "route around
- * shapes" command will consider. Above this the command bails (returns the
- * link unchanged) rather than spending the A* cost. Range: 100–1000.
- */
-export const AUTO_ROUTE_MAX_OBSTACLES = 400;
-
-/**
  * Screen-pixel tolerance for edge hit-testing. Cursors within this
  * distance of an edge polyline segment register a hit. Should stay
  * larger than the typical stroke width but small enough that two
@@ -115,14 +128,6 @@ export const LINK_HIT_THRESHOLD = 9;
  * thickness. Range: 3–8.
  */
 export const SELECTION_HALO_PEEK_PX = 4;
-
-/**
- * Screen-pixel radius of the inactive port dot rendered on a hovered
- * shape in draw-edge mode. `PORT_DOT_ACTIVE_RADIUS` is used for the
- * snap target so the user sees which one will catch.
- */
-export const PORT_DOT_RADIUS = 3.5;
-export const PORT_DOT_ACTIVE_RADIUS = 5;
 
 /**
  * Connection anchors.
@@ -234,11 +239,7 @@ export const ANCHOR_CLICK_NEW_ELEMENT_GAP = 40;
  *
  * Shared opacities; per-category colours below so different hit-target kinds
  * are visually distinguishable (point vs edge vs body vs container vs frame).
- * Kept generic (`DEBUG_HIT_ZONE_FILL`/`STROKE`) as the alias for the
- * resize-handle category and any uncoloured fallback.
  */
-export const DEBUG_HIT_ZONE_FILL = "#e8118c";
-export const DEBUG_HIT_ZONE_STROKE = "#e8118c";
 export const DEBUG_HIT_ZONE_FILL_OPACITY = 0.16;
 export const DEBUG_HIT_ZONE_STROKE_OPACITY = 0.7;
 
@@ -311,8 +312,7 @@ export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
  *   programmatic button-style zoom (`Editor.zoomIn` / `zoomOut`).
  *   `1.6 = +60% per call` — punchy single-step zoom.
  * - `WHEEL_ZOOM_MAX_STEP` / `WHEEL_ZOOM_SPEED` — wheel-zoom
- *   normalisation (`packages/editor/.../normalizeWheel.ts`).
- *   Per event:
+ *   normalisation. Per event:
  *
  *     delta  = clamp(|deltaY|, WHEEL_ZOOM_MAX_STEP) * sign(deltaY)
  *     factor = 1 − (delta * WHEEL_ZOOM_SPEED) / 100
@@ -547,14 +547,10 @@ export const GIF_AUTOSTOP_MS = 30_000;
  * - `TEXT_DEFAULT_FONT_SIZE` — initial font size in world units.
  * - `TEXT_DEFAULT_FONT_FAMILY` — initial font stack.
  * - `TEXT_DEFAULT_FILL` — initial text colour (near-black).
- * - `TEXT_FONT_SIZE_MIN` / `TEXT_FONT_SIZE_MAX` — clamp range for the
- *   font-size control in the contextual panel.
  */
 export const TEXT_DEFAULT_FONT_SIZE = 24;
 export const TEXT_DEFAULT_FONT_FAMILY = "system-ui, sans-serif";
 export const TEXT_DEFAULT_FILL = "#1a1a1a";
-export const TEXT_FONT_SIZE_MIN = 8;
-export const TEXT_FONT_SIZE_MAX = 256;
 
 /**
  * In-canvas text editing.
@@ -590,3 +586,37 @@ export const TEXT_SELECTION_FILL = "#1a73e8";
 export const TEXT_SELECTION_OPACITY = 0.25;
 export const TEXT_CARET_WIDTH_PX = 1.5;
 export const TEXT_RESIZE_MIN_FONT_SIZE = 4;
+
+/**
+ * Multiplicative step for the increase/decrease-font-size shortcuts: each
+ * press scales the current size by this factor (min ±1 px so small sizes still
+ * move), clamped to {@link TEXT_RESIZE_MIN_FONT_SIZE}…{@link TEXT_MAX_FONT_SIZE}.
+ * 1.1 ≈ a gentle 10 % step. Range: 1.05–1.5.
+ */
+export const TEXT_FONT_SIZE_STEP = 1.1;
+
+/**
+ * Upper clamp (world px) for font size — matches the property panel's slider
+ * ceiling so the keyboard and the panel agree on the maximum.
+ */
+export const TEXT_MAX_FONT_SIZE = 256;
+
+/**
+ * Paused-GIF chip drawn in a shape's top-left corner — signals a GIF the
+ * user can click / hover to resume. Dimensions in screen px; the scrim is
+ * a translucent black so the "gif" label stays legible over any artwork.
+ */
+export const GIF_BADGE_W = 30;
+export const GIF_BADGE_H = 16;
+export const GIF_BADGE_PAD = 4;
+export const GIF_BADGE_RADIUS = 4;
+export const GIF_BADGE_BG_COLOR = "rgba(0,0,0,0.65)";
+
+/**
+ * Padlock badge at a selected locked element's top-right corner. `SIZE` is
+ * the icon edge in screen px; the body uses the accent colour, the keyhole
+ * a contrasting fill.
+ */
+export const LOCK_BADGE_SIZE = 16;
+export const LOCK_BADGE_COLOR = "#1a73e8";
+export const LOCK_BADGE_KEYHOLE_COLOR = "#fff";

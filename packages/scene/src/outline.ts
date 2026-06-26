@@ -1,10 +1,9 @@
-import type { Vec2 } from "@oh-just-another/types";
+import { req, type Vec2 } from "@oh-just-another/types";
+import { scalar, vec2 } from "@oh-just-another/math";
 import { getElementLocalBounds, type ElementBase, type PolygonElement } from "./shape.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/scene: index out of range");
-  return v;
-};
+import { localToWorld } from "./shape-transform.js";
+import { ellipseOutlinePoint } from "./ellipse.js";
+import { DEFAULT_OUTLINE_SAMPLES } from "./constants.js";
 
 /**
  * Built-in outline samplers — one per shape `type` that the kernel ships.
@@ -39,7 +38,7 @@ export const getOutlinePoint = (shape: ElementBase, ratio: number): Vec2 => {
   if (!sampler) {
     throw new Error(`No outline sampler registered for shape type: ${shape.type}`);
   }
-  const local = sampler(shape, clamp01(ratio));
+  const local = sampler(shape, scalar.clamp01(ratio));
   return localToWorld(shape, local);
 };
 
@@ -56,17 +55,17 @@ export const getOutlinePoint = (shape: ElementBase, ratio: number): Vec2 => {
 export const findNearestOutlinePoint = (
   shape: ElementBase,
   worldPoint: Vec2,
-  samples = 64,
+  samples = DEFAULT_OUTLINE_SAMPLES,
 ): { ratio: number; world: Vec2; distance: number } | null => {
   const sampler = outlineSamplers.get(shape.type);
   if (!sampler) return null;
   let bestRatio = 0;
   let bestPoint: Vec2 = localToWorld(shape, sampler(shape, 0));
-  let bestDistance = distance(worldPoint, bestPoint);
+  let bestDistance = vec2.distance(worldPoint, bestPoint);
   for (let i = 1; i < samples; i++) {
     const ratio = i / samples;
     const world = localToWorld(shape, sampler(shape, ratio));
-    const d = distance(worldPoint, world);
+    const d = vec2.distance(worldPoint, world);
     if (d < bestDistance) {
       bestDistance = d;
       bestRatio = ratio;
@@ -77,21 +76,6 @@ export const findNearestOutlinePoint = (
 };
 
 // --- helpers ---
-
-const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n);
-
-const distance = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
-
-const localToWorld = (shape: ElementBase, local: Vec2): Vec2 => {
-  const sx = local.x * shape.scale.x;
-  const sy = local.y * shape.scale.y;
-  const cos = Math.cos(shape.rotation);
-  const sin = Math.sin(shape.rotation);
-  return {
-    x: shape.position.x + (sx * cos - sy * sin),
-    y: shape.position.y + (sx * sin + sy * cos),
-  };
-};
 
 /**
  * Sample a closed polyline (sequence of points, implicit wrap-around) at
@@ -107,7 +91,7 @@ const samplePolyline = (points: readonly Vec2[], ratio: number): Vec2 => {
   for (let i = 0; i < points.length; i++) {
     const a = req(points[i]);
     const b = req(points[(i + 1) % points.length]);
-    const len = distance(a, b);
+    const len = vec2.distance(a, b);
     lengths.push(len);
     total += len;
   }
@@ -148,8 +132,7 @@ registerOutlineSampler("ellipse", (shape, ratio) => {
   const cy = b.y + b.height / 2;
   const rx = b.width / 2;
   const ry = b.height / 2;
-  const angle = ratio * Math.PI * 2 - Math.PI / 2; // start at the top
-  return { x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) };
+  return ellipseOutlinePoint(cx, cy, rx, ry, ratio);
 });
 
 registerOutlineSampler<PolygonElement>("polygon", (shape, ratio) => {

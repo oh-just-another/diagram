@@ -1,4 +1,5 @@
 import type { Vec2 } from "@oh-just-another/types";
+import { vec2 } from "@oh-just-another/math";
 import { isContainer } from "./container.js";
 import type { AnchorRef, NamedAnchor, StandardAnchor } from "./edge.js";
 import type { ElementBase, PolygonElement } from "./shape.js";
@@ -265,7 +266,7 @@ const addPolygonEdgeMidpoints = (shape: PolygonElement, out: Map<string, Vec2>):
     const a = pts[i];
     const b = pts[(i + 1) % pts.length];
     if (a === undefined || b === undefined) continue;
-    out.set(`edge-${i}`, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    out.set(`edge-${i}`, vec2.midpoint(a, b));
   }
 };
 

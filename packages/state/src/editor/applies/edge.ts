@@ -3,8 +3,10 @@ import {
   getLink,
   getElement,
   getElementAt,
+  getElementWorldBounds,
   snapExcludedAnchors,
   updateLink,
+  type Link,
   type LinkEndpoint,
   type Scene,
   type Patch,
@@ -63,4 +65,35 @@ export const computeLinkEndpointUpdate = (
     [emit.side]: newEndpoint,
   }));
   return { scene: result.scene, patch: result.patch, linkId: edge.id };
+};
+
+/**
+ * Per-link signature of the inputs that determine an elbow route (endpoint refs
+ * + bound-shape bounds + fixedSegments). When unchanged between frames the A*
+ * route is reused. Avoid-obstacles links also fold a digest of every shape's
+ * bbox in, so their route invalidates when any obstacle moves.
+ */
+export const elbowSignature = (scene: Scene, edge: Link): string => {
+  const part = (ep: LinkEndpoint): string => {
+    if (ep.kind === "point") return `p:${ep.position.x},${ep.position.y}`;
+    const s = getElement(scene, ep.elementId);
+    const b = s ? getElementWorldBounds(s) : null;
+    const ref =
+      ep.kind === "anchor"
+        ? JSON.stringify(ep.anchor)
+        : ep.kind === "outline"
+          ? `o:${ep.ratio}`
+          : "f";
+    return `${ep.kind}:${ep.elementId}:${ref}:${b ? `${b.x},${b.y},${b.width},${b.height}` : "x"}`;
+  };
+  const base = `${part(edge.from)}|${part(edge.to)}|${JSON.stringify(edge.fixedSegments ?? null)}`;
+  if (edge.avoidObstacles === true) {
+    let digest = "|avoid:";
+    for (const el of scene.elements.values()) {
+      const bb = getElementWorldBounds(el);
+      digest += `${el.id},${bb.x},${bb.y},${bb.width},${bb.height};`;
+    }
+    return base + digest;
+  }
+  return base;
 };

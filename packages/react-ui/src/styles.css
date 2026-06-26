@@ -121,8 +121,20 @@
 /*                                                                    */
 /* Hosts can still override the legacy names individually — these     */
 /* are defaults that *forward* to the unified theme variables.        */
+/*                                                                    */
+/* Declared at every theme scope (not just `:root`) on purpose: a     */
+/* `var()` inside a custom property resolves on the element where the */
+/* property is declared. If these lived on `:root` alone, the alias   */
+/* would bake in `:root`'s `--du-*` (e.g. the OS `prefers-color-scheme` */
+/* dark value) and inherit that frozen colour past a `[data-theme]`   */
+/* override — so a light app would still get a dark context menu.     */
+/* Re-declaring per scope lets each alias re-resolve against the      */
+/* scoped `--du-*`, including the themed portal wrapper menus mount    */
+/* into. */
 /* ------------------------------------------------------------------ */
-:root {
+:root,
+[data-theme="light"],
+[data-theme="dark"] {
   --bg: var(--du-canvas-bg);
   --panel: var(--du-ui-bg-solid);
   --surface: var(--du-ui-bg-solid);
@@ -162,6 +174,22 @@
   --du-hover-overlay: rgba(255, 255, 255, 0.06);
   --du-selected-bg: #262a65; /* irisDark.iris4 */
   --du-selected-fg: #b1a9ff; /* irisDark.iris11 */
+}
+
+/* ------------------------------------------------------------------ */
+/* Canvas surface focus ring. The surface is `tabIndex=0` so keyboard   */
+/* users can land on it, but it also takes focus on a pointer press     */
+/* (so shortcuts work right after a click). Gate the ring on            */
+/* `:focus-visible` so it shows ONLY for keyboard focus — a mouse click */
+/* never draws an input-like outline. Class+pseudo specificity (0,2,0)  */
+/* beats a host's `*:focus { outline: none }`.                          */
+/* ------------------------------------------------------------------ */
+.du-canvas-surface {
+  outline: none;
+}
+.du-canvas-surface:focus-visible {
+  outline: 2px solid var(--du-accent);
+  outline-offset: -2px;
 }
 
 /* ------------------------------------------------------------------ */

@@ -15,7 +15,7 @@
  * full live engine (`EditorInstance` from `@oh-just-another/state`) as the
  * power-user escape hatch. See `EditorProps` for the customisation surface.
  *
- * `Diagram` is a deprecated alias for `Editor`, kept for back-compat.
+ * @deprecated `Diagram` — use {@link Editor} instead.
  */
 export {
   Diagram as Editor,
@@ -34,6 +34,7 @@ export {
   type CapabilityOverrides,
 } from "./capabilities.js";
 export { isEditableTarget } from "./dom-focus.js";
+export { bindEditorHotkeys, type HotkeyBindingOptions } from "@oh-just-another/state";
 export { exportSceneToPng, type PngExportBackground, type PngExportOptions } from "./png-export.js";
 
 // Plug-in registries from the underlying packages, surfaced here so the
@@ -42,6 +43,9 @@ export { exportSceneToPng, type PngExportBackground, type PngExportOptions } fro
 export { registerBounder, registerLayoutKind } from "@oh-just-another/scene";
 export { registerElementRenderer, registerAnimationAdapter } from "@oh-just-another/renderer-core";
 export { registerMigration } from "@oh-just-another/serialization";
+// Built-in GIF decoder — `<Editor>` installs it by default; exported so hosts
+// can install it explicitly or opt into it without the component.
+export { installGifAnimationAdapter } from "./gif-animation.js";
 
 // Peer types that surface in the public API — re-exported so consumers can
 // type their plugins, capability overrides, and imperative calls without

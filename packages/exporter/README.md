@@ -42,15 +42,17 @@ await writeFile(
 
 ## API
 
-| Name                          | Purpose                                                                                         |
-| ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| `exportPng(scene, options?)`  | Scene → PNG `Uint8Array`. Optional `region`, `scale`, `background`, `dpi`.                      |
-| `exportPdf(scene, options?)`  | Scene → PDF `Uint8Array`. Optional `region`, `pageSize`, `orientation`, `margin`, doc metadata. |
-| `setPngDpi(png, dpi)`         | Standalone helper to embed a `pHYs` chunk into any PNG.                                         |
-| `BaseExportOptions`           | Shared: `region`, `width`, `height`, `background`.                                              |
-| `ExportPngOptions`            | Adds `scale`, `dpi`.                                                                            |
-| `ExportPdfOptions`            | Adds `pageSize`, `orientation`, `margin`, `title`, `author`, `subject`.                         |
-| `ExportRegion`, `PdfPageSize` | Type aliases re-exported for convenience.                                                       |
+| Name                            | Purpose                                                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `exportPng(scene, options?)`    | Scene → PNG `Uint8Array`. Optional `region`, `scale`, `background`, `dpi`.                      |
+| `exportPdf(scene, options?)`    | Scene → PDF `Uint8Array`. Optional `region`, `pageSize`, `orientation`, `margin`, doc metadata. |
+| `setPngDpi(png, dpi)`           | Standalone helper to embed a `pHYs` chunk into any PNG.                                         |
+| `sceneForFrame(scene, id)`      | Sub-scene scoped to a frame element's bounds.                                                   |
+| `sceneForRegion(scene, region)` | Sub-scene scoped to a world-coordinate region.                                                  |
+| `BaseExportOptions`             | Shared: `region`, `width`, `height`, `background`.                                              |
+| `ExportPngOptions`              | Adds `scale`, `dpi`.                                                                            |
+| `ExportPdfOptions`              | Adds `pageSize`, `orientation`, `margin`, `title`, `author`, `subject`.                         |
+| `ExportRegion`, `PdfPageSize`   | Type aliases re-exported for convenience.                                                       |
 
 ## Design notes
 

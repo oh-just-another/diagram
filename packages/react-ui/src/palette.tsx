@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { DEFAULT_LAYER_ID, orderForTop } from "@oh-just-another/scene";
-import { elementId } from "@oh-just-another/types";
+import { elementId, type Vec2 } from "@oh-just-another/types";
 import {
   defaultRegistry,
   matchesTemplateSearch,
@@ -10,6 +10,7 @@ import {
   type TemplateRegistry,
 } from "@oh-just-another/templates";
 import { walkDataTransfer } from "@oh-just-another/state";
+import { createListeners } from "@oh-just-another/events";
 import { useDiagramOptional } from "./hooks.js";
 import { PALETTE_ITEM_SIZE } from "./constants.js";
 
@@ -177,23 +178,18 @@ const CategorySection = ({
 // hides dataTransfer.getData() during dragover (security), so we use a
 // pub/sub for the active drag instead.
 let activeDrag: Template | null = null;
-const dragListeners = new Set<() => void>();
+const dragListeners = createListeners();
 const setActiveDrag = (tmpl: Template | null): void => {
   if (activeDrag === tmpl) return;
   activeDrag = tmpl;
-  for (const fn of dragListeners) fn();
+  dragListeners.emit();
 };
 
 /** Currently-dragged palette template, or `null` when nothing is in flight. */
 export const getActivePaletteDrag = (): Template | null => activeDrag;
 
 /** Subscribe to active-drag changes. Returns unsubscribe. */
-export const subscribePaletteDrag = (fn: () => void): (() => void) => {
-  dragListeners.add(fn);
-  return () => {
-    dragListeners.delete(fn);
-  };
-};
+export const subscribePaletteDrag = (fn: () => void): (() => void) => dragListeners.add(fn);
 
 /** Hook variant of `subscribePaletteDrag` — returns the current drag template. */
 export const usePaletteDrag = (): Template | null => {
@@ -315,7 +311,7 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
 export const usePalettePlacement = () => {
   const editor = useDiagramOptional();
   const placementRef = useRef<{
-    update: (worldCenter: { x: number; y: number }) => void;
+    update: (worldCenter: Vec2) => void;
     commit: () => void;
     cancel: () => void;
   } | null>(null);
@@ -369,7 +365,7 @@ export const usePalettePlacement = () => {
     return true;
   };
 
-  const cursorWorld = (ev: DragEvent<HTMLElement>): { x: number; y: number } | null => {
+  const cursorWorld = (ev: DragEvent<HTMLElement>): Vec2 | null => {
     if (!editor) return null;
     const rect = ev.currentTarget.getBoundingClientRect();
     return editor.screenToWorld({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });

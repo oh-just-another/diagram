@@ -1,15 +1,4 @@
-import type { Vec2 } from "@oh-just-another/types";
-
-/**
- * Assert a loop-index lookup is present. `noUncheckedIndexedAccess`
- * widens every `arr[i]` to `T | undefined`; inside these geometry loops
- * the index is provably in range, so a miss is a real bug — fail loudly
- * instead of asserting non-null silently.
- */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("polygon: index out of range");
-  return v;
-};
+import { req, type Vec2 } from "@oh-just-another/types";
 
 /**
  * Offset a closed polygon's vertices along the bisector at each corner.

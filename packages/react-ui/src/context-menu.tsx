@@ -7,10 +7,13 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
+import type { Vec2 } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
 import { useDiagramOptional } from "./hooks.js";
 import { useContextMenuController } from "./context-menu-controller.js";
+import { usePortalContainer } from "./portal-container.js";
 
 /**
  * Declarative menu entry. `divider` paints a separator; everything else
@@ -35,14 +38,14 @@ export type ContextMenuItem =
 /** Per-open snapshot the menu hands to predicates and click handlers. */
 export interface ContextMenuContext {
   /** World-space pointer position where the menu opened. */
-  readonly worldPoint: { readonly x: number; readonly y: number };
+  readonly worldPoint: Vec2;
   /** Screen-space pointer position (CSS pixels). */
-  readonly screenPoint: { readonly x: number; readonly y: number };
+  readonly screenPoint: Vec2;
 }
 
 interface OpenState {
-  readonly screenPoint: { readonly x: number; readonly y: number };
-  readonly worldPoint: { readonly x: number; readonly y: number };
+  readonly screenPoint: Vec2;
+  readonly worldPoint: Vec2;
 }
 
 /**
@@ -60,6 +63,7 @@ export interface ContextMenuProps {
 export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   const editor = useDiagramOptional();
   const controller = useContextMenuController();
+  const portalContainer = usePortalContainer();
   const [open, setOpen] = useState<OpenState | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -130,7 +134,11 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   const cleanedItems = collapseDividers(visibleItems);
   if (cleanedItems.length === 0) return null;
 
-  return (
+  // Portal into the themed container so the menu inherits the app theme — when
+  // rendered inline it can escape the editor root and pick up the stylesheet's
+  // OS `prefers-color-scheme` fallback instead. Fallbacks forward to the `--du-*`
+  // theme chain (light-leaning) so it never defaults to a dark surface.
+  return createPortal(
     <div
       ref={menuRef}
       role="menu"
@@ -139,13 +147,13 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
         zIndex: 1000,
         top: open.screenPoint.y,
         left: open.screenPoint.x,
-        background: "var(--menu-bg, #1a1a1a)",
-        color: "var(--menu-text, #ddd)",
-        border: "1px solid var(--menu-border, #333)",
+        background: "var(--menu-bg, var(--du-ui-bg-solid, #fff))",
+        color: "var(--menu-text, var(--du-text, #1a1a1a))",
+        border: "1px solid var(--menu-border, var(--du-ui-border, rgba(0,0,0,0.08)))",
         borderRadius: 6,
         padding: "4px 0",
         minWidth: 180,
-        boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+        boxShadow: "var(--du-ui-shadow, 0 4px 16px rgba(0,0,0,0.18))",
         font: "13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
         ...style,
       }}
@@ -157,7 +165,7 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
             key={`d-${i}`}
             style={{
               border: 0,
-              borderTop: "1px solid var(--menu-divider, #2a2a2a)",
+              borderTop: "1px solid var(--menu-divider, var(--du-ui-border, rgba(0,0,0,0.08)))",
               margin: "4px 0",
             }}
           />
@@ -174,7 +182,8 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
           />
         ),
       )}
-    </div>
+    </div>,
+    portalContainer,
   );
 };
 
@@ -215,7 +224,8 @@ const ContextMenuRow = ({
         boxSizing: "border-box",
       }}
       onMouseEnter={(ev) => {
-        if (!disabled) ev.currentTarget.style.background = "#2a2a2a";
+        if (!disabled)
+          ev.currentTarget.style.background = "var(--du-hover-overlay, rgba(0,0,0,0.05))";
       }}
       onMouseLeave={(ev) => {
         ev.currentTarget.style.background = "transparent";
@@ -259,6 +269,17 @@ const collapseDividers = (items: readonly ContextMenuItem[]): readonly ContextMe
  * text or visibility than the action's defaults (e.g. z-order entries
  * shown only for a single selection).
  */
+/**
+ * Confirm-then-wipe the whole canvas. Destructive and not undoable (it clears
+ * history), so it always asks first. Shared by the right-click entry and the
+ * `clear-canvas` shortcut.
+ */
+export const clearCanvasWithConfirm = (editor: Editor): void => {
+  if (window.confirm("Clear the canvas? Every shape is removed and this can't be undone.")) {
+    editor.clear();
+  }
+};
+
 const actionMenuItem = (
   actionId: string,
   opts?: {
@@ -328,11 +349,23 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   actionMenuItem("copy"),
   actionMenuItem("cut"),
   actionMenuItem("paste"),
+  actionMenuItem("copy-style", { label: "Copy style" }),
+  actionMenuItem("paste-style", { label: "Paste style" }),
   actionMenuItem("select-all"),
   { kind: "divider" },
   // --- Grouping + arrange (registry-backed) ---
   actionMenuItem("group-selection", { label: "Group" }),
   actionMenuItem("ungroup-selection", { label: "Ungroup" }),
+  actionMenuItem("flip-horizontal", { label: "Flip horizontal" }),
+  actionMenuItem("flip-vertical", { label: "Flip vertical" }),
+  actionMenuItem("align-left", { label: "Align left" }),
+  actionMenuItem("align-h-center", { label: "Align horizontal centres" }),
+  actionMenuItem("align-right", { label: "Align right" }),
+  actionMenuItem("align-top", { label: "Align top" }),
+  actionMenuItem("align-v-center", { label: "Align vertical centres" }),
+  actionMenuItem("align-bottom", { label: "Align bottom" }),
+  actionMenuItem("distribute-horizontal", { label: "Distribute horizontally" }),
+  actionMenuItem("distribute-vertical", { label: "Distribute vertically" }),
   actionMenuItem("arrange-grid"),
   actionMenuItem("arrange-stack-h"),
   actionMenuItem("arrange-stack-v"),
@@ -426,4 +459,14 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     label: "Fit to screen",
     visible: (e) => e.scene.elements.size > 0,
   }),
+  { kind: "divider" },
+  {
+    kind: "action",
+    id: "clear-canvas",
+    label: "Clear canvas",
+    visible: (e) => e.scene.elements.size > 0 || e.scene.links.size > 0,
+    onClick: (e) => {
+      clearCanvasWithConfirm(e);
+    },
+  },
 ];

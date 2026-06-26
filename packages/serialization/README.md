@@ -42,6 +42,9 @@ editor.loadScene(scene);
 | `DeserializationError`                                                | Thrown on validation failure. `reason` carries the original `ZodError`.                               |
 | `registerMigration(fromVersion, fn)` / `runMigrations(doc, from, to)` | Forward migrations between schema versions.                                                           |
 | `MissingMigrationError`                                               | Thrown when an intermediate version has no migration registered.                                      |
+| `serializeFiles(files)` / `stringifyFiles(files, indent?)`            | `Scene.files` binary sidecar → wire document / JSON string.                                           |
+| `parseFiles(json)`                                                    | JSON string → typed `Scene.files`.                                                                    |
+| `SerializedFilesDocument`                                             | Wire-format type for the file sidecar.                                                                |
 
 ## Design notes
 

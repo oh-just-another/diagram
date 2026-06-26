@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/types",
   "version": "0.57.0",
-  "description": "types package",
+  "description": "Shared primitive types — ids, vec, bounds, color, transform and input events. L0, no dependencies.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {

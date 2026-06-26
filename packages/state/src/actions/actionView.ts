@@ -10,7 +10,7 @@ export const actionToggleGrid: Action = {
   category: "other",
   hotkey: { key: "g" },
   uiKind: "toggle",
-  checked: ({ editor }) => editor.gridVisible,
+  checked: ({ editor }) => editor.gridEnabled,
   perform: ({ editor }) => {
     editor.toggleGrid();
   },

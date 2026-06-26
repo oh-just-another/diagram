@@ -18,6 +18,9 @@ import {
 } from "./shape.js";
 import { getCornerRadius } from "./style.js";
 import { SpatialGrid } from "./spatial.js";
+import { byOrderAsc } from "./order.js";
+import { localToWorld } from "./shape-transform.js";
+import { ellipseOutlinePoint } from "./ellipse.js";
 
 // --- direct lookups ---
 
@@ -35,18 +38,14 @@ export const getLayer = (scene: Scene, id: LayerId): Layer | undefined => scene.
  * (which should not happen in practice with fractional indices).
  */
 export const getLayersInOrder = (scene: Scene): readonly Layer[] =>
-  [...scene.layers.values()].sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  [...scene.layers.values()].sort(byOrderAsc);
 
 /** Shapes in `layerId`, sorted bottom-to-top by `order`. */
 export const getElementsInLayer = (scene: Scene, layerId: LayerId): readonly Element[] =>
-  [...scene.elements.values()]
-    .filter((s) => s.layerId === layerId)
-    .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  [...scene.elements.values()].filter((s) => s.layerId === layerId).sort(byOrderAsc);
 
 export const getLinksInLayer = (scene: Scene, layerId: LayerId): readonly Link[] =>
-  [...scene.links.values()]
-    .filter((e) => e.layerId === layerId)
-    .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  [...scene.links.values()].filter((e) => e.layerId === layerId).sort(byOrderAsc);
 
 // --- selection outline (contour) ---
 
@@ -54,18 +53,6 @@ export const getLinksInLayer = (scene: Scene, layerId: LayerId): readonly Link[]
 const ELLIPSE_OUTLINE_SAMPLES = 48;
 /** Samples per Q/C path segment when flattening to a polyline. */
 const PATH_CURVE_SAMPLES = 10;
-
-/** Apply a shape's local→world transform (scale → rotate → translate). */
-const toWorld = (shape: Element, p: Vec2): Vec2 => {
-  const sx = p.x * shape.scale.x;
-  const sy = p.y * shape.scale.y;
-  const cos = Math.cos(shape.rotation);
-  const sin = Math.sin(shape.rotation);
-  return {
-    x: shape.position.x + (sx * cos - sy * sin),
-    y: shape.position.y + (sx * sin + sy * cos),
-  };
-};
 
 const rectLoop = (b: Bounds): Vec2[] => [
   { x: b.x, y: b.y },
@@ -134,7 +121,7 @@ const flattenPath = (commands: readonly PathCommand[]): Vec2[] => {
       }
       cur = c.to;
     }
-    // "Z" closes implicitly (the halo renderer closes each loop).
+    // "Z" closes implicitly — each loop is closed by the consumer.
   }
   return pts;
 };
@@ -166,8 +153,7 @@ const localOutlineLoops = (shape: Element): Vec2[][] | null => {
     const ry = b.height / 2;
     const pts: Vec2[] = [];
     for (let i = 0; i < ELLIPSE_OUTLINE_SAMPLES; i++) {
-      const a = (i / ELLIPSE_OUTLINE_SAMPLES) * Math.PI * 2 - Math.PI / 2;
-      pts.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) });
+      pts.push(ellipseOutlinePoint(cx, cy, rx, ry, i / ELLIPSE_OUTLINE_SAMPLES));
     }
     return [pts];
   }
@@ -200,12 +186,12 @@ export const getElementOutline = (scene: Scene, shape: Element): Vec2[][] => {
     return loops;
   }
   const local = localOutlineLoops(shape);
-  if (local) return local.map((loop) => loop.map((p) => toWorld(shape, p)));
+  if (local) return local.map((loop) => loop.map((p) => localToWorld(shape, p)));
   // Custom / composite type with a registered outline provider (multi-loop).
   const provider = outlineProviders.get(shape.type);
   if (provider) {
     const loops = provider(shape).filter((loop) => loop.length >= 2);
-    if (loops.length > 0) return loops.map((loop) => loop.map((p) => toWorld(shape, p)));
+    if (loops.length > 0) return loops.map((loop) => loop.map((p) => localToWorld(shape, p)));
   }
   // Fallback: axis-aligned world bounding box.
   const b = getElementWorldBounds(shape);
@@ -224,7 +210,7 @@ export const getChildrenOf = (scene: Scene, parentId: ElementId): readonly Eleme
   for (const s of scene.elements.values()) {
     if (s.parentId === parentId) out.push(s);
   }
-  out.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  out.sort(byOrderAsc);
   return out;
 };
 

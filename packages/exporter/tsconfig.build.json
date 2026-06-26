@@ -11,7 +11,6 @@
     { "path": "../types/tsconfig.build.json" },
     { "path": "../scene/tsconfig.build.json" },
     { "path": "../serialization/tsconfig.build.json" },
-    { "path": "../renderer-svg/tsconfig.build.json" },
     { "path": "../headless/tsconfig.build.json" }
   ]
 }

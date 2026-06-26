@@ -43,6 +43,12 @@ export const lerp = (a: Vec2, b: Vec2, t: number): Vec2 => ({
   y: a.y + (b.y - a.y) * t,
 });
 
+/** Midpoint of two points. */
+export const midpoint = (a: Vec2, b: Vec2): Vec2 => ({
+  x: (a.x + b.x) / 2,
+  y: (a.y + b.y) / 2,
+});
+
 /** Angle of the vector from the positive x-axis, in radians (-π, π]. */
 export const angle = (a: Vec2): number => Math.atan2(a.y, a.x);
 
@@ -51,6 +57,15 @@ export const rotate = (a: Vec2, radians: number): Vec2 => {
   const c = Math.cos(radians);
   const s = Math.sin(radians);
   return { x: a.x * c - a.y * s, y: a.x * s + a.y * c };
+};
+
+/** Rotate `a` counterclockwise by `radians` around `pivot`. */
+export const rotateAround = (a: Vec2, pivot: Vec2, radians: number): Vec2 => {
+  const c = Math.cos(radians);
+  const s = Math.sin(radians);
+  const dx = a.x - pivot.x;
+  const dy = a.y - pivot.y;
+  return { x: pivot.x + (dx * c - dy * s), y: pivot.y + (dx * s + dy * c) };
 };
 
 /** Counterclockwise 90° perpendicular. */

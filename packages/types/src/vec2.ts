@@ -1,6 +1,6 @@
 /**
  * 2D vector / point in any coordinate space (world, local, screen).
- * Immutable by convention — operations live in @oh-just-another/math/vec2.
+ * Immutable by convention.
  */
 export interface Vec2 {
   readonly x: number;

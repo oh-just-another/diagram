@@ -123,8 +123,9 @@ describe("renderOverlay", () => {
     const scene = sceneWith(shape);
     const { target, calls } = makeRecorder();
     renderOverlay(scene, new Set([shape.id]), target);
-    // Each handle is an ellipse. Only the 4 CORNER dots are drawn now — the
-    // edge-midpoint handles were removed (edge resize = drag the box side).
+    // Each corner handle is an ellipse: 4 CORNER dots (edge-midpoint handles
+    // removed — edge resize = drag the box side). The rotate grip is a glyph
+    // (arcs/lines, no ellipse), so it doesn't add to the count.
     const ellipses = calls.filter((c) => c.method === "ellipse");
     expect(ellipses.length).toBe(4);
   });
@@ -243,12 +244,12 @@ describe("renderOverlay", () => {
       groupBounds: { x: 0, y: 0, width: 100, height: 80 },
     });
     const ellipses = calls.filter((c) => c.method === "ellipse");
-    // Group box also draws only the 4 corner dots now (edge resize = drag
-    // the box side); edges stay hit-testable but aren't drawn.
+    // Group box draws the 4 corner dots (edge resize = drag the box side); the
+    // rotate grip is a glyph (arcs/lines), not an ellipse.
     expect(ellipses.length).toBe(4);
   });
 
-  it("draws only 4 corner handles when groupAspectLocked is true", () => {
+  it("draws only 4 corner handles (+ rotate grip) when groupAspectLocked is true", () => {
     const { target, calls } = makeRecorder();
     renderOverlay(emptyScene(), emptySelection, target, {
       groupBounds: { x: 0, y: 0, width: 100, height: 80 },

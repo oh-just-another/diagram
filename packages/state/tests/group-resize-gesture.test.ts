@@ -13,6 +13,7 @@ import {
   type Link,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
+import { rotateGripWorld } from "../src/handle.js";
 
 const rect = (id: string, x: number): Element => ({
   id: elementId(id),
@@ -178,5 +179,64 @@ describe("group resize gesture (end-to-end through pointer)", () => {
     const moved = getLink(editor.scene, linkId("L"));
     expect(moved?.from).toEqual({ kind: "point", position: { x: 0, y: 0 } });
     expect(moved?.to).toEqual({ kind: "point", position: { x: 200, y: 100 } });
+  });
+});
+
+describe("rotate gesture (end-to-end through pointer)", () => {
+  // Single 40×40 rect at world (0,0). Frame centre (rotate pivot) = (20,20).
+  // The rotate grip sits at the shape's template anchor (bottom-left corner,
+  // (0,40)) pushed ROTATE_HANDLE_OFFSET (26px) out along its outward normal
+  // (down-left) → ≈ (−18.38, 58.38), at angle 135° from the pivot.
+  // Select via the emit (not a pointer tap) so the grip press isn't read as a
+  // double-click of a same-column tap.
+  const PIVOT = { x: 20, y: 20 };
+  const setup = () => {
+    const { host, handlers } = makeHost();
+    const editor = new Editor({
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: sceneWith(rect("a", 0)),
+    });
+    editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
+    // Real grip position (robust to the offset constant / anchor default).
+    const grip = rotateGripWorld(getElement(editor.scene, elementId("a"))!);
+    return { editor, handlers, grip };
+  };
+
+  // Rotate `p` by `radians` about the pivot — the target a grip press must be
+  // dragged to so the swept angle equals `radians`.
+  const orbit = (p: { x: number; y: number }, radians: number) => {
+    const dx = p.x - PIVOT.x;
+    const dy = p.y - PIVOT.y;
+    const c = Math.cos(radians);
+    const s = Math.sin(radians);
+    return { x: PIVOT.x + (dx * c - dy * s), y: PIVOT.y + (dx * s + dy * c) };
+  };
+
+  it("dragging the rotate grip turns the selected shape", () => {
+    const { editor, handlers, grip } = setup();
+    expect(editor.selection.size).toBe(1);
+    // Press the grip, drag to where it lands after a −90° sweep → rotation −π/2.
+    const to = orbit(grip, -Math.PI / 2);
+    handlers.get("pointerdown")!(pointer("pointerdown", grip.x, grip.y));
+    handlers.get("pointermove")!(pointer("pointermove", to.x, to.y));
+    handlers.get("pointerup")!(pointer("pointerup", to.x, to.y));
+    const a = getElement(editor.scene, elementId("a"))!;
+    expect(a.rotation).toBeCloseTo(-Math.PI / 2, 3);
+  });
+
+  it("Shift snaps the angle to 15° steps", () => {
+    const { editor, handlers, grip } = setup();
+    // The Shift snap reads the editor's transform-modifier state (wired from
+    // key events in the React layer); set it directly here.
+    editor.setTransformModifiers({ alt: false, shift: true });
+    // Sweep −50.2°; Shift snaps to the nearest 15° step → −45° (−π/4).
+    const to = orbit(grip, (-50.2 * Math.PI) / 180);
+    handlers.get("pointerdown")!(pointer("pointerdown", grip.x, grip.y, true));
+    handlers.get("pointermove")!(pointer("pointermove", to.x, to.y, true));
+    handlers.get("pointerup")!(pointer("pointerup", to.x, to.y, true));
+    const a = getElement(editor.scene, elementId("a"))!;
+    expect(a.rotation).toBeCloseTo(-Math.PI / 4, 5);
   });
 });

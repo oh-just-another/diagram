@@ -347,7 +347,7 @@ export const DiagramSurface = ({ style, className, ariaLabel }: DiagramSurfacePr
   return (
     <div
       ref={ref}
-      className={className}
+      className={className ? `du-canvas-surface ${className}` : "du-canvas-surface"}
       role="application"
       tabIndex={0}
       aria-label={ariaLabel ?? "Diagram canvas"}
@@ -358,18 +358,7 @@ export const DiagramSurface = ({ style, className, ariaLabel }: DiagramSurfacePr
         overflow: "hidden",
         touchAction: "none",
         userSelect: "none",
-        // Visible focus ring — UA-default for `outline` is sometimes
-        // suppressed by parent `*:focus { outline: none }` rules; we
-        // declare an explicit one so keyboard users always see focus.
-        outline: "none",
         ...style,
-      }}
-      onFocus={(ev) => {
-        ev.currentTarget.style.outline = "2px solid var(--accent, #1a73e8)";
-        ev.currentTarget.style.outlineOffset = "-2px";
-      }}
-      onBlur={(ev) => {
-        ev.currentTarget.style.outline = "none";
       }}
     />
   );

@@ -1,9 +1,11 @@
 import {
   addElement,
   apply,
+  byOrderAsc,
   getElement,
   getElementAccessibleName,
   gridLayout,
+  isGroup,
   orderForTop,
   removeElement,
   stackLayout,
@@ -12,7 +14,7 @@ import {
   type Element,
   type Patch,
 } from "@oh-just-another/scene";
-import type { Bounds, ElementId } from "@oh-just-another/types";
+import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
 import type * as Selection from "../../selection.js";
 
@@ -25,7 +27,7 @@ export const computeArrangeAsGrid = (
   scene: Scene,
   selection: Selection.Selection,
   opts: { cols?: number; gap?: number },
-  origin: Bounds | { x: number; y: number },
+  origin: Bounds | Vec2,
 ): {
   readonly scene: Scene;
   readonly patch: Patch;
@@ -51,7 +53,7 @@ export const computeArrangeAsStack = (
   scene: Scene,
   selection: Selection.Selection,
   opts: { direction?: "horizontal" | "vertical"; gap?: number },
-  origin: Bounds | { x: number; y: number },
+  origin: Bounds | Vec2,
 ): {
   readonly scene: Scene;
   readonly patch: Patch;
@@ -184,7 +186,7 @@ export const computeUngroup = (
 } | null => {
   const targets = [...selection]
     .map((id) => getElement(scene, id))
-    .filter((s): s is Element => s?.type === "group");
+    .filter((s) => s !== undefined && isGroup(s));
   if (targets.length === 0) return null;
   let s = scene;
   const patches: Patch[] = [];
@@ -218,14 +220,12 @@ export const pickFocusCycle = (
   current: ElementId | undefined,
   direction: "next" | "prev",
 ): { readonly id: ElementId; readonly name: string } | null => {
-  const layers = [...scene.layers.values()]
-    .filter((l) => l.visible && !l.locked)
-    .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  const layers = [...scene.layers.values()].filter((l) => l.visible && !l.locked).sort(byOrderAsc);
   const ordered: ElementId[] = [];
   for (const layer of layers) {
     const inLayer = [...scene.elements.values()]
       .filter((s) => s.layerId === layer.id)
-      .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+      .sort(byOrderAsc);
     for (const s of inLayer) ordered.push(s.id);
   }
   if (ordered.length === 0) return null;

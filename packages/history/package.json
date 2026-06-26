@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/history",
   "version": "0.57.1",
-  "description": "history package",
+  "description": "Undo/redo kernel: transactional, invertible patch stacks over a Scene.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {

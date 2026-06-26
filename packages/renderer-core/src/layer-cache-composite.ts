@@ -1,16 +1,15 @@
 import type { LayerId } from "@oh-just-another/types";
+import { LruCache } from "./lru-cache.js";
 
 /**
  * Per-layer composite cache. Caches the rasterised `LayerId @ zoomBucket`
  * composite so renderScene can replay unchanged layers via a single
  * `drawImage` instead of walking every shape on every frame.
  *
- * Invalidation: the editor's patch pipeline knows which layers had any
- * shape/edge change this frame; it passes that set down to renderScene
- * which calls `invalidateLayer(id)` for each. The
- * `LayerCompositeCache.get` then misses for those layers and the
- * renderer falls back to the per-shape walk + optionally caches the
- * result via the host's `compositeLayerBitmap` callback.
+ * Invalidation: `invalidateLayer(id)` is called for each layer changed
+ * this frame, so `get` then misses for those layers and the renderer
+ * falls back to the per-shape walk + optionally re-caches the result via
+ * the host's `compositeLayerBitmap` callback.
  *
  * `Map<LayerId @ zoomBucket → bitmap>` shape mirrors the per-shape /
  * per-edge caches; LRU by insertion order with a count cap.
@@ -27,11 +26,10 @@ export interface LayerCompositeCache<V = unknown> {
 const keyFor = (layerId: LayerId, zoomBucket: number): string => `${layerId}@${zoomBucket}`;
 
 export class InMemoryLayerCompositeCache<V> implements LayerCompositeCache<V> {
-  private readonly entries = new Map<string, V>();
-  private readonly cap: number;
+  private readonly entries: LruCache<string, V>;
 
   constructor(cap = 32) {
-    this.cap = cap;
+    this.entries = new LruCache(cap);
   }
 
   get size(): number {
@@ -39,22 +37,11 @@ export class InMemoryLayerCompositeCache<V> implements LayerCompositeCache<V> {
   }
 
   get(layerId: LayerId, zoomBucket: number): V | undefined {
-    const key = keyFor(layerId, zoomBucket);
-    const v = this.entries.get(key);
-    if (v === undefined) return undefined;
-    this.entries.delete(key);
-    this.entries.set(key, v);
-    return v;
+    return this.entries.get(keyFor(layerId, zoomBucket));
   }
 
   set(layerId: LayerId, zoomBucket: number, value: V): void {
-    const key = keyFor(layerId, zoomBucket);
-    if (this.entries.has(key)) this.entries.delete(key);
-    this.entries.set(key, value);
-    if (this.entries.size > this.cap) {
-      const oldest = this.entries.keys().next().value;
-      if (oldest !== undefined) this.entries.delete(oldest);
-    }
+    this.entries.set(keyFor(layerId, zoomBucket), value);
   }
 
   /**

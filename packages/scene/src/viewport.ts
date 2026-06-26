@@ -3,13 +3,11 @@ import { matrix } from "@oh-just-another/math";
 import { DEFAULT_GRID_SPACING } from "./constants.js";
 
 /**
- * Visual style of the background grid (when `gridSize > 0`).
- *   `"lines"` — classic ruled grid (default; matches a standard grid).
- *   `"dots"`  — a dot at every grid intersection. Looks calmer for
- *              free-form diagramming (standard style).
+ * How the background grid is painted.
+ *   `"lines"` — ruled grid lines (default).
+ *   `"dots"`  — a dot at every grid intersection.
  *
- * Snap behaviour is identical between styles — only the paint
- * differs.
+ * Snap behaviour is identical between styles; only the paint differs.
  */
 export type GridStyle = "lines" | "dots";
 
@@ -27,40 +25,27 @@ export interface Viewport {
   readonly rotation: number;
   readonly size: { readonly width: number; readonly height: number };
   /**
-   * Grid size in world units. When `undefined` / `0` the background
-   * grid is hidden. Renderers that paint a background grid use this
-   * value. Snap-to-grid uses it when present and falls back to
-   * {@link DEFAULT_GRID_SPACING} when the grid is hidden but snapping
-   * is still on (see {@link resolveSnapSpacing}).
+   * Whether the background grid is drawn for this scene. Spacing is fixed
+   * at {@link DEFAULT_GRID_SPACING}; this flag controls only visibility.
    */
-  readonly gridSize?: number;
-  /**
-   * How the grid is painted. Default `"lines"` for backwards-compat;
-   * snap math doesn't read this field. Renderers fall back to lines
-   * when the field is missing.
-   */
+  readonly gridEnabled: boolean;
+  /** How the grid is painted. Renderers fall back to lines when unset. */
   readonly gridStyle?: GridStyle;
   /**
-   * Extra programmatic opt-out for snapping. `undefined` is treated as ON
-   * (see {@link isSnapToGridEnabled}). Snapping additionally requires a
-   * *displayed* grid: it is active only while a grid is shown
-   * (`gridVisible && gridSize > 0`) — snapping to an invisible grid is
-   * confusing — so this flag only matters when a grid is on.
+   * Programmatic snap opt-out. `undefined` is treated as ON
+   * (see {@link isSnapToGridEnabled}). Snapping also requires the grid to be
+   * enabled — snapping to a hidden grid is confusing — so this flag only
+   * matters while `gridEnabled` is true.
    */
   readonly snapToGrid?: boolean;
 }
 
-/**
- * Resolve the world-unit spacing snap-to-grid should round to. Uses the
- * visible `gridSize` when set, otherwise the {@link DEFAULT_GRID_SPACING}
- * fallback — so snapping keeps working when the grid is hidden.
- */
-export const resolveSnapSpacing = (viewport: Viewport): number =>
-  viewport.gridSize && viewport.gridSize > 0 ? viewport.gridSize : DEFAULT_GRID_SPACING;
+/** World-unit spacing snap-to-grid rounds to (the fixed grid spacing). */
+export const resolveSnapSpacing = (): number => DEFAULT_GRID_SPACING;
 
 /**
- * Whether snap-to-grid is enabled for this viewport. `undefined`
- * (legacy / fresh documents) counts as ON — the product default.
+ * Whether snap-to-grid is enabled for this viewport. `undefined` counts as
+ * ON — the product default.
  */
 export const isSnapToGridEnabled = (viewport: Viewport): boolean => viewport.snapToGrid ?? true;
 
@@ -69,11 +54,8 @@ export const DEFAULT_VIEWPORT: Viewport = Object.freeze({
   zoom: 1,
   rotation: 0,
   size: { width: 0, height: 0 },
-  // Grid is ON by default — a positive `gridSize` is what `renderGrid` paints
-  // AND what snap-to-grid keys off (snap is active only while a grid is shown).
-  // Tune the default spacing in `constants.ts` (`DEFAULT_GRID_SPACING`); pass a
-  // scene with `gridSize: 0` (or omit it) for a gridless, snap-free canvas.
-  gridSize: DEFAULT_GRID_SPACING,
+  // Grid off by default; hosts enable it per scene via `gridEnabled`.
+  gridEnabled: false,
 });
 
 /** World → screen transform. */

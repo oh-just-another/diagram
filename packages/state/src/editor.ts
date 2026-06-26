@@ -8,14 +8,10 @@ import {
   anchorSnapper,
   apply,
   buildSpatialIndex,
-  getBinaryFile,
   isElementHidden,
   isElementLocked,
   runAutoLayout,
   DEFAULT_LAYER_ID,
-  findNearestAnchor,
-  getAnchorWorld,
-  getAnchorOutwardNormal,
   routeElbowLink,
   routeElbowPreview,
   getLink,
@@ -23,15 +19,14 @@ import {
   getElement,
   getElementAt,
   getElementAtIndexed,
-  getElementWorldBounds,
-  getElementRenderBounds,
   isFrame,
-  FRAME_HEADER_HEIGHT,
+  isGroup,
+  isText,
+  isImage,
+  getElementWorldBounds,
   setTextMeasurer,
   getScreenToWorld,
   gridSnapper,
-  snapExcludedAnchors,
-  orderForTop,
   type FractionalIndex,
   outlineSnapper,
   removeElement,
@@ -44,12 +39,11 @@ import {
   type AnchorRef,
   type Link,
   type LinkEndpoint,
-  type ImageElement,
   type Patch,
   type Scene,
   type Element,
   type GridStyle,
-  type SnapCandidate,
+  type Style,
   type TextElement,
   type TextStyle,
   isSnapToGridEnabled,
@@ -62,10 +56,9 @@ import {
   type LinkId,
   type LayerId,
 } from "@oh-just-another/types";
-import { bounds as B, matrix } from "@oh-just-another/math";
+import { bounds as B, matrix, vec2, hitTest } from "@oh-just-another/math";
 import {
   caretGeometry,
-  computeLinkWorldBounds,
   layoutText,
   onAnimationContentReady,
   pointToCaretIndex,
@@ -85,14 +78,9 @@ import {
   type HistoryProvider,
   type TransactionHandle,
 } from "@oh-just-another/history";
-import {
-  ANCHOR_CLICK_NEW_ELEMENT_GAP,
-  DEFAULT_LINK_ROUTING,
-  WAYPOINT_COLLAPSE_RADIUS,
-} from "./constants.js";
+import { DEFAULT_LINK_ROUTING, WAYPOINT_COLLAPSE_RADIUS } from "./constants.js";
 import { FileDropRegistry, type FileDropContext, type FileDropHandler } from "./file-drop.js";
 import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
-import { AnimationTick } from "./animation-tick.js";
 import {
   computeDimElements as computeDimElementsHelper,
   isDescendantOfGroup as isDescendantOfGroupHelper,
@@ -117,22 +105,15 @@ import {
   TOUCH_HANDLE_HIT_SLOP,
   ANCHOR_START_HIT_SLOP,
   ANCHOR_DOT_CLICK_RADIUS,
-  ANCHOR_DOT_ACTIVE_RADIUS,
-  LINK_START_ANCHOR_OUTSET,
   TOUCH_ANCHOR_START_HIT_SLOP,
   TOUCH_ANCHOR_DOT_CLICK_RADIUS,
   DOUBLE_CLICK_MS,
   DOUBLE_CLICK_TOLERANCE_PX,
   WHEEL_ZOOM_STEP,
-  ANIMATION_MIN_INTERVAL_MS,
-  ANIMATION_MAX_INTERVAL_MS,
-  ANIMATION_COST_FACTOR,
-  HEAVY_GIF_BYTES,
-  GIF_AUTOSTOP_MS,
-  CARET_BLINK_INTERVAL_MS,
+  ROTATE_SNAP_RADIANS,
 } from "./constants.js";
-import { HANDLE_HIT_SLOP, cursorForHandle } from "./handle.js";
-import { anchorOverlayPoints } from "./editor/anchor-points.js";
+import { HANDLE_HIT_SLOP } from "./handle.js";
+import { req } from "./util.js";
 import {
   interactionMachine,
   type InteractionContext,
@@ -148,7 +129,12 @@ import {
   primeEventCache,
   type EditorEventCache,
 } from "./editor/event-fanout.js";
+import { AnimationController } from "./editor/animation.js";
+import { CaretBlinkController } from "./editor/caret-blink.js";
 import { GestureController } from "./editor/gesture-tx.js";
+import { GifPlaybackController } from "./editor/gif-playback.js";
+import * as animScene from "./editor/animation-scene.js";
+import { computeSceneDirtyRect } from "./editor/dirty-rect.js";
 import { LongPressController } from "./editor/long-press.js";
 import { pickPressTarget } from "./editor/hit-test.js";
 import { PinchController } from "./editor/pinch.js";
@@ -161,6 +147,7 @@ import {
 import {
   computeGroupResizePatches,
   computeElementResize,
+  computeRotatedElementResize,
   computeTextResize,
 } from "./editor/applies/resize.js";
 import { bindPointerEvents as bindPointerEventsExternal } from "./editor/pointer-binding.js";
@@ -204,6 +191,12 @@ import {
 } from "./editor/public/annotations.js";
 import { canBeginTextEdit } from "./editor/public/text-edit.js";
 import {
+  frameHeaderAt as computeFrameHeaderAt,
+  computeFrameNameCommit,
+} from "./editor/public/frame-name.js";
+import { computeCursor } from "./editor/public/cursor.js";
+import type { CursorRole, CursorSpec } from "./editor/public/cursor.js";
+import {
   compactLayerZOrderPatches,
   computeBringForward,
   computeBringToFront,
@@ -231,13 +224,20 @@ import {
   computeMoveSelectionBy,
   computeSelectAll,
   computeSelectAllLinks,
+  computeAdjustFontSize,
   computeSetSelection,
   computeUpdateStyle,
   computeUpdateTextProps,
   describeNudge as describeNudgePure,
+  findClosestInDirection,
   selectionFromNewIds,
 } from "./editor/public/selection-ops.js";
-import { computeSetLink, normalizeHref, safeHref } from "./editor/public/link.js";
+import {
+  computeSetLink,
+  normalizeHref,
+  safeHref,
+  snapLinkEndpoint as snapLinkEndpointPure,
+} from "./editor/public/link.js";
 import {
   beginPlacementState,
   buildElementAtCursor,
@@ -245,7 +245,11 @@ import {
   computePlacementCancel,
   computePlacementContainerDrop,
   computePlacementUpdate,
+  computeLinkedElementFromAnchor,
+  computeDuplicateInPlace,
+  computeShapeAtLinkDrop,
   newElementIdAtCursor,
+  previewClickCreate as previewClickCreatePure,
   type PlacementState,
 } from "./editor/public/placement.js";
 import { renderEditor } from "./editor/render-orchestrator.js";
@@ -260,12 +264,27 @@ import {
   selectByBoundsLive as selectByBoundsLivePure,
   selectLinksByBoundsLive as selectLinksByBoundsLivePure,
 } from "./editor/applies/selection.js";
-import { computeLinkEndpointUpdate, computeLinkPreviewEndpoints } from "./editor/applies/edge.js";
+import {
+  computeLinkEndpointUpdate,
+  computeLinkPreviewEndpoints,
+  elbowSignature,
+} from "./editor/applies/edge.js";
 import {
   computeAnnotationMovePatch,
   computeGroupMovePatches,
   computeElementMovePatch,
+  constrainDeltaToAxis,
 } from "./editor/applies/move.js";
+import {
+  computeAlignPatches,
+  computeDistributePatches,
+  computeFlipPatches,
+  computeRotatePatches,
+  selectionCenter,
+  type AlignEdge,
+  type DistributeAxis,
+  type FlipAxis,
+} from "./editor/applies/arrange.js";
 import { computeMovingLinkPatches, computeMovingLinkForNudge } from "./editor/applies/link-move.js";
 import {
   computeCreateLink,
@@ -322,7 +341,7 @@ export interface EditorOptions {
   /**
    * Pre-existing history backend, or options for the default
    * `History` (linear stack). Any `HistoryProvider` implementation
-   * works — `@oh-just-another/collab` ships `YjsHistory` that wraps
+   * works — `@oh-just-another/collab` ships `CollabHistory` that wraps
    * `Y.UndoManager` for CRDT-aware undo in collaborative sessions.
    */
   readonly history?: HistoryProvider | HistoryOptions;
@@ -414,75 +433,8 @@ export type GroupSelectedResult =
   | { readonly kind: "noop" }
   | { readonly kind: "grouped"; readonly groupId: ElementId };
 
-/**
- * Index-access helper for provably-valid indices: throws instead of
- * returning `undefined` so callers stay non-nullable without `!`.
- */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/state: index out of range");
-  return v;
-};
-
-/**
- * Stable keys for cursor states a host can override with a custom image via
- * {@link Editor.setCursorOverride}. Each maps to one outcome of `computeCursor`.
- */
-export type CursorRole =
-  | "default"
-  | "pan-ready"
-  | "pan-active"
-  | "move"
-  | "draw"
-  | "text"
-  | "link-start"
-  | "link-handle"
-  | "annotation"
-  | "resize-nwse"
-  | "resize-nesw"
-  | "resize-ns"
-  | "resize-ew";
-
-/**
- * A custom cursor: either a raw CSS `cursor` value, or an image with an
- * optional `@2x` variant (DPR-aware via `image-set`), hotspot, and keyword
- * fallback.
- */
-export type CursorSpec =
-  | string
-  | {
-      /** 1x image URL or data-URL. */
-      readonly url: string;
-      /** Optional 2x image for hi-DPI (retina) — emitted via `image-set`. */
-      readonly url2x?: string;
-      /** Hotspot offset (px) within the image; defaults to (0, 0). */
-      readonly hotspot?: { readonly x: number; readonly y: number };
-      /** Keyword shown if the image can't load / is too large. */
-      readonly fallback?: string;
-    };
-
-/** Resize handle → cursor override role. */
-const RESIZE_ROLE: Record<HandleId, CursorRole> = {
-  nw: "resize-nwse",
-  se: "resize-nwse",
-  ne: "resize-nesw",
-  sw: "resize-nesw",
-  n: "resize-ns",
-  s: "resize-ns",
-  e: "resize-ew",
-  w: "resize-ew",
-};
-
-/** Build a CSS `cursor` value from a {@link CursorSpec}. */
-const cssCursor = (spec: CursorSpec, fallbackKeyword: string): string => {
-  if (typeof spec === "string") return spec;
-  const hx = spec.hotspot?.x ?? 0;
-  const hy = spec.hotspot?.y ?? 0;
-  const img =
-    spec.url2x !== undefined
-      ? `image-set(url("${spec.url}") 1x, url("${spec.url2x}") 2x)`
-      : `url("${spec.url}")`;
-  return `${img} ${String(hx)} ${String(hy)}, ${spec.fallback ?? fallbackKeyword}`;
-};
+// Re-exported here so the public API path (`@oh-just-another/state`) is stable.
+export type { CursorRole, CursorSpec };
 
 export class Editor {
   public readonly host: HTMLElement;
@@ -497,11 +449,6 @@ export class Editor {
    * View-only — never persisted or recorded in history.
    */
   debugHitZones = false;
-  /**
-   * When false the background grid is not painted. Toggled via `toggleGrid`
-   * (`g` hotkey, standard parity). View-only — never persisted or in history.
-   */
-  gridVisible = true;
   public readonly actor: Actor<typeof interactionMachine>;
   private readonly listeners = new Set<() => void>();
   /**
@@ -516,7 +463,7 @@ export class Editor {
   private readonly events: Emitter<EditorEvents> = createEmitter<EditorEvents>();
   /**
    * Last-emitted snapshot of every observable slice. Used by
-   * `fanOutEvents` (in `editor/event-fanout.ts`) to decide which
+   * `fanOutEvents` to decide which
    * typed events to fire on each `notify()` — only the slices
    * whose identity changed since the previous notify get an event.
    */
@@ -685,6 +632,16 @@ export class Editor {
     readonly links: ReadonlyMap<LinkId, Link>;
   } | null = null;
   /**
+   * Press-time snapshot for a rotate gesture: the pivot (selection bbox centre)
+   * and every member's pristine `position` / `rotation`. Each frame rotates
+   * from this baseline so the cumulative angle never drifts. Cleared on gesture
+   * end (commit / cancel).
+   */
+  public rotateGestureOrigin: {
+    readonly pivot: Vec2;
+    readonly origin: ReadonlyMap<ElementId, { readonly position: Vec2; readonly rotation: number }>;
+  } | null = null;
+  /**
    * Pristine shape snapshot for a single-shape text resize, captured on
    * the gesture's first tick. Font scaling is computed against this base
    * so it never compounds across pointermove ticks. Cleared on gesture
@@ -722,6 +679,22 @@ export class Editor {
    * move / resize / create wrappers; never persisted.
    */
   private snapSuppressed = false;
+
+  /**
+   * Transient transform-modifier state mirrored from the host while a drag is
+   * in flight. `alt` resizes symmetrically about the centre; `shift` locks the
+   * resize aspect ratio or constrains a move to a single axis. Read by the
+   * move / resize wrappers; never persisted.
+   */
+  private transformAltKey = false;
+  private transformShiftKey = false;
+
+  /**
+   * In-editor style memory for copy-style / paste-style. Holds the visual
+   * `style` (fill / stroke / dash / …) captured from a shape; `null` until a
+   * copy happens. Not the OS clipboard — a lightweight per-editor buffer.
+   */
+  private styleClipboard: Style | null = null;
 
   /**
    * Persistent world-bounds cache shared with `renderScene` for viewport
@@ -804,7 +777,6 @@ export class Editor {
    * Fractional-order compaction scheduler (microtask-coalesced).
    * Triggered from every `notify()`; only does real work when at
    * least one shape/edge order string crossed AUTO_COMPACT_THRESHOLD.
-   * See `./auto-compact.ts` for the extracted logic.
    */
   private readonly autoCompactScheduler = new AutoCompactScheduler({
     getScene: () => this._scene,
@@ -815,8 +787,7 @@ export class Editor {
 
   /**
    * Auto-layout scheduler — microtask-coalesced re-run of every
-   * shape carrying `metadata.autoLayout`. See
-   * `./auto-layout-scheduler.ts` for the extracted logic.
+   * shape carrying `metadata.autoLayout`.
    */
   private readonly autoLayoutScheduler = new AutoLayoutScheduler({
     getScene: () => this._scene,
@@ -894,10 +865,10 @@ export class Editor {
    * Screen-space origin point.
    */
   public touchPanCandidate: Vec2 | null = null;
-  // Pinch gesture state lives in PinchController (./editor/pinch.ts)
-  // — `pinch.isActive()` replaces the old `pinchOrigin !== null` check.
+  // Pinch gesture state lives in PinchController; `pinch.isActive()`
+  // reports whether a two-finger gesture is in flight.
   public pinch!: PinchController;
-  /** Bridge for `editor/container-ops.ts`. Built lazily in constructor. */
+  /** Bridge for the container-ops helpers. Built lazily in constructor. */
   private containerOpsRef!: ContainerOpsRef;
 
   /**
@@ -980,9 +951,9 @@ export class Editor {
    * the timer fires. Hosts subscribe via `onLongPress` to surface a
    * context menu (mobile alternative to right-click).
    */
-  // Long-press timer + origin live in LongPressController
-  // (./editor/long-press.ts). The Set of subscribers stays here
-  // because `onLongPress` is part of the public Editor API.
+  // Long-press timer + origin live in LongPressController. The Set of
+  // subscribers stays here because `onLongPress` is part of the public
+  // Editor API.
   public longPress!: LongPressController;
   private readonly longPressListeners = new Set<
     (payload: { screenPoint: Vec2; worldPoint: Vec2 }) => void
@@ -1022,8 +993,7 @@ export class Editor {
   /**
    * Wraps gesture lifecycle (transaction open/commit/cancel +
    * post-create mode revert) so editor.ts doesn't carry the bodies.
-   * Implementation lives in `./editor/gesture-tx.ts`; the
-   * controller calls back through the narrow `GestureRef` bridge
+   * The controller calls back through the narrow `GestureRef` bridge
    * built lazily below.
    */
   private readonly gestures: GestureController;
@@ -1194,8 +1164,8 @@ export class Editor {
         this.panBy(delta);
       },
     );
-    // Bridge for container-ops module — narrow surface that the
-    // pure functions in editor/container-ops.ts call back into.
+    // Bridge for the container-ops helpers — narrow surface that the
+    // pure functions call back into.
     // eslint-disable-next-line @typescript-eslint/no-this-alias -- bridge literal rebinds `this`; alias keeps Editor reference
     const self2 = this;
     this.containerOpsRef = {
@@ -1219,13 +1189,11 @@ export class Editor {
     // throttle rAF to ~1fps in background but don't stop it; an explicit
     // stop saves the decode + render entirely). Resume when visible again,
     // viewport permitting.
-    if (typeof document !== "undefined") {
-      document.addEventListener("visibilitychange", this.onVisibilityChange);
-    }
+    this.animation.attach();
     // Restore GIF/video bytes onto animated image shapes loaded from
     // an initial scene (e.g. localStorage), then arm the tick so the
     // animation plays from first paint.
-    this.rehydrateAnimatedImages();
+    animScene.rehydrateAnimatedImages(this);
     this.maybeAnimate();
     // An animated adapter (GIF) decodes asynchronously; when a decode
     // completes it nudges us here. Re-render so a PAUSED animated shape
@@ -1329,7 +1297,6 @@ export class Editor {
     this.notify();
   }
 
-  // Pure bodies in `./editor/public/annotations.ts`.
   addAnnotation(opts: {
     position: Vec2;
     elementId?: ElementId | null;
@@ -1456,16 +1423,19 @@ export class Editor {
     this.scheduleRender();
   }
 
-  /** Show/hide the background grid (standard `g`). View-only — not in history. */
-  setGridVisible(on: boolean): void {
-    if (this.gridVisible === on) return;
-    this.gridVisible = on;
-    this.scheduleRender();
+  /** Whether the background grid is enabled for the scene. */
+  get gridEnabled(): boolean {
+    return this._scene.viewport.gridEnabled;
   }
 
-  /** Toggle background grid visibility. */
+  /** Show/hide the background grid (`g`). Persists in the viewport, not in history. */
+  setGridVisible(on: boolean): void {
+    this.setGrid({ enabled: on });
+  }
+
+  /** Toggle the background grid on/off. */
   toggleGrid(): void {
-    this.setGridVisible(!this.gridVisible);
+    this.setGrid({ enabled: !this.gridEnabled });
   }
 
   /** Whether the active draw-mode sticks after a create (toolbar lock). */
@@ -1544,7 +1514,6 @@ export class Editor {
     this.notify();
   }
 
-  // Body moved to `./editor/gesture-tx.ts`.
   private maybeRevertModeAfterCreate(): void {
     this.gestures.maybeRevertModeAfterCreate();
   }
@@ -1616,13 +1585,12 @@ export class Editor {
    * file-drop handler, a host CDN URL, an SVG string in
    * `image/svg+xml;base64,...` form.
    */
-  // Pure body in `./editor/public/image-insert.ts`.
   insertImage(input: {
     src: string;
     width: number;
     height: number;
     position: Vec2;
-    image?: HTMLImageElement;
+    image?: ImageBitmap | HTMLImageElement;
     animated?: boolean;
     fileId?: FileId;
     animationKind?: string;
@@ -1632,7 +1600,7 @@ export class Editor {
     const shape = buildImageElement(this._scene, input, id, this._activeLayerId);
     this.addElement(shape);
     if (input.animated) {
-      this.initPlayback(id);
+      this.gifPlayback.ensure(id);
       this.maybeAnimate();
     }
     return id;
@@ -1651,67 +1619,25 @@ export class Editor {
    * current frame of natively-animated elements. Self-terminates
    * when no animated shapes remain.
    *
-   * Lifecycle managed by the `AnimationTick` helper (see
-   * `./animation-tick.ts`). `insertImage({animated:true})` and
-   * `loadScene` start the tick; `dispose()` stops it.
+   * Lifecycle managed by the `AnimationTick` helper.
+   * `insertImage({animated:true})` and `loadScene` start the tick;
+   * `dispose()` stops it.
    */
-  /** EMA of animation-tick render cost (ms) — drives the adaptive throttle. */
-  private gifRenderCostEma = 0;
-  /** Wall-clock of the last animation-tick render — for the interval throttle. */
-  private lastGifTickMs = 0;
-
-  private readonly animationTick = new AnimationTick({
-    // Keep ticking only while an animated shape is actually on-screen.
-    // Frame selection is wall-clock-based, so when the GIF scrolls back
-    // into view the tick resumes on the correct frame. The tick is re-armed
-    // on viewport changes via `maybeAnimate()` in `notify()`.
-    isAnimated: () => this.hasVisibleAnimatedElement(),
-    onTick: () => {
-      // Adaptive throttle — skip this rAF if an animation frame was rendered
-      // too recently. The target interval grows with the measured render
-      // cost so a heavy scene drops GIF fps instead of blowing the frame
-      // budget.
-      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
-      const target = Math.min(
-        ANIMATION_MAX_INTERVAL_MS,
-        Math.max(ANIMATION_MIN_INTERVAL_MS, this.gifRenderCostEma * ANIMATION_COST_FACTOR),
-      );
-      if (now - this.lastGifTickMs < target) return;
-      this.lastGifTickMs = now;
-      // Freeze heavy GIFs that have played long enough.
-      this.autoStopHeavyGifs();
-      // Force a full re-render: the scene reference hasn't changed,
-      // but the animation adapter advanced the GIF frame. Re-painting
-      // picks up the current frame.
+  private readonly animation = new AnimationController({
+    hasVisibleAnimatedElement: () => animScene.hasVisibleAnimatedElement(this),
+    autoStopHeavyGifs: () => {
+      animScene.autoStopHeavyGifs(this);
+    },
+    forceAnimationRepaint: () => {
+      // The scene reference hasn't changed, but the adapter advanced the GIF
+      // frame — drop the paint cache and force a repaint.
       this.lastRenderedScene = null;
       this.render();
-      const cost = (typeof performance !== "undefined" ? performance.now() : Date.now()) - now;
-      // EMA so a single spike doesn't overreact; decays back when load drops.
-      this.gifRenderCostEma = this.gifRenderCostEma * 0.8 + cost * 0.2;
     },
   });
 
-  // Pure body in `./editor/public/image-insert.ts`.
   private hasAnimatedElement(): boolean {
     return hasAnimatedElement(this._scene);
-  }
-
-  /**
-   * True when at least one animated shape's world AABB intersects the
-   * current viewport. Drives viewport-culling of the animation tick —
-   * off-screen GIFs don't burn decode / render cost, and the wall-clock
-   * frame selection means they show the right frame the moment they
-   * scroll back in.
-   */
-  private hasVisibleAnimatedElement(): boolean {
-    if (!hasAnimatedElement(this._scene)) return false;
-    const viewport = this.computeViewportWorld();
-    if (!viewport) return true; // no viewport yet — don't suppress
-    for (const shape of this._scene.elements.values()) {
-      if (shape.metadata?.animated !== true) continue;
-      if (B.intersects(getElementWorldBounds(shape), viewport)) return true;
-    }
-    return false;
   }
 
   /**
@@ -1721,81 +1647,15 @@ export class Editor {
    * `isAnimated()` is false, so this is cheap to call from `notify()`.
    */
   private maybeAnimate(): void {
-    if (this.hasVisibleAnimatedElement()) this.animationTick.start();
-  }
-
-  /** Bound `visibilitychange` handler — pause/resume the tick. */
-  private readonly onVisibilityChange = (): void => {
-    if (typeof document === "undefined") return;
-    if (document.hidden) {
-      this.animationTick.stop();
-    } else {
-      this.maybeAnimate();
-    }
-  };
-
-  // ── Per-shape GIF playback (auto-stop + reduced-motion) ──────
-  /**
-   * Transient per-shape playback state for animated images. `originMs`
-   * is the wall-clock the current play run started; `frozenMs` is the
-   * playback offset a paused shape is held at. Not serialised — purely
-   * a runtime view, rebuilt on insert / rehydrate.
-   */
-  private readonly playbackState = new Map<
-    ElementId,
-    {
-      playing: boolean;
-      /** Wall-clock origin for playback position (now − originMs = frame time). */
-      originMs: number;
-      /** Wall-clock the current play run began — drives the auto-stop timer
-       *  independently of `originMs` so resuming doesn't instantly re-trip it. */
-      playStartMs: number;
-      /** Playback offset a paused shape is frozen at. */
-      frozenMs: number;
-    }
-  >();
-
-  /** Element id currently hovered — a hovered heavy GIF keeps playing
-   *  (its auto-stop timer is held off). Set by the pointer hover path. */
-  private hoveredAnimatedId: ElementId | null = null;
-
-  private static nowMs(): number {
-    return typeof performance !== "undefined" ? performance.now() : Date.now();
-  }
-
-  private static prefersReducedMotion(): boolean {
-    if (typeof matchMedia !== "function") return false;
-    try {
-      return matchMedia("(prefers-reduced-motion: reduce)").matches;
-    } catch {
-      return false;
-    }
+    this.animation.maybe();
   }
 
   /**
-   * Seed playback for a freshly-animated shape. Start paused (frozen on
-   * frame 0) when the user prefers reduced motion; playing otherwise.
+   * Per-shape GIF playback state (auto-stop + reduced-motion). Extracted into
+   * a controller; the Editor keeps the orchestration (scene iteration,
+   * animation tick, render scheduling) and delegates state ops here.
    */
-  private initPlayback(id: ElementId): void {
-    if (this.playbackState.has(id)) return;
-    const now = Editor.nowMs();
-    this.playbackState.set(id, {
-      playing: !Editor.prefersReducedMotion(),
-      originMs: now,
-      playStartMs: now,
-      frozenMs: 0,
-    });
-  }
-
-  /** Playback timestamp fed to the renderer's animation clock for a
-   *  shape: wall-clock when unmanaged, play offset when playing, the
-   *  frozen frame when paused. */
-  private playbackClock(elementId: ElementId): number {
-    const st = this.playbackState.get(elementId);
-    const now = Editor.nowMs();
-    if (!st) return now;
-    return st.playing ? now - st.originMs : st.frozenMs;
-  }
+  readonly gifPlayback = new GifPlaybackController();
 
   /**
    * Toggle GIF playback for a shape — wired to a click on an animated
@@ -1803,22 +1663,7 @@ export class Editor {
    * continues from the frozen frame.
    */
   togglePlayback(id: ElementId): void {
-    const now = Editor.nowMs();
-    const st = this.playbackState.get(id);
-    if (!st) {
-      this.playbackState.set(id, { playing: true, originMs: now, playStartMs: now, frozenMs: 0 });
-    } else if (st.playing) {
-      st.frozenMs = now - st.originMs;
-      st.playing = false;
-    } else {
-      // Resume from the frozen frame AND restart the auto-stop timer,
-      // otherwise a heavy GIF (frozen past GIF_AUTOSTOP_MS) would
-      // re-trip auto-stop on the very next tick — playing one frame
-      // then freezing again.
-      st.originMs = now - st.frozenMs;
-      st.playStartMs = now;
-      st.playing = true;
-    }
+    this.gifPlayback.toggle(id);
     this.maybeAnimate();
     this.scheduleRender();
   }
@@ -1830,24 +1675,15 @@ export class Editor {
    * Pass `null` when the pointer leaves all shapes.
    */
   hoverAnimatedElement(id: ElementId | null): void {
-    if (this.hoveredAnimatedId === id) return;
-    this.hoveredAnimatedId = id;
-    if (id !== null) {
-      const st = this.playbackState.get(id);
-      const now = Editor.nowMs();
-      if (st && !st.playing) {
-        st.originMs = now - st.frozenMs;
-        st.playStartMs = now;
-        st.playing = true;
-        this.maybeAnimate();
-        this.scheduleRender();
-      }
+    if (this.gifPlayback.hoverEnter(id)) {
+      this.maybeAnimate();
+      this.scheduleRender();
     }
   }
 
   /** True when the shape's GIF is paused (drives the overlay badge). */
   isPlaybackPaused(id: ElementId): boolean {
-    return this.playbackState.get(id)?.playing === false;
+    return this.gifPlayback.isPaused(id);
   }
 
   /**
@@ -1874,68 +1710,6 @@ export class Editor {
   }
 
   /**
-   * Freeze heavy GIFs after `GIF_AUTOSTOP_MS` of continuous play.
-   * Light GIFs (small byte payload) loop forever. Called from the tick
-   * before each animation render.
-   */
-  private autoStopHeavyGifs(): void {
-    const now = Editor.nowMs();
-    for (const shape of this._scene.elements.values()) {
-      if (shape.type !== "image") continue;
-      const img = shape as ImageElement;
-      if (!img.animationKind) continue;
-      const st = this.playbackState.get(img.id);
-      if (!st?.playing) continue;
-      const heavy =
-        img.animationData instanceof ArrayBuffer && img.animationData.byteLength > HEAVY_GIF_BYTES;
-      if (!heavy) continue;
-      // Hovered heavy GIF keeps playing — push its timer forward so it
-      // never auto-stops while the pointer is over it.
-      if (img.id === this.hoveredAnimatedId) {
-        st.playStartMs = now;
-        continue;
-      }
-      if (now - st.playStartMs > GIF_AUTOSTOP_MS) {
-        st.frozenMs = now - st.originMs;
-        st.playing = false;
-      }
-    }
-  }
-
-  /**
-   * Restore transient `animationData` for animated image shapes after
-   * a scene load. The raw GIF bytes don't survive serialisation
-   * (`serializeScene` strips the ArrayBuffer), but they're persisted
-   * in `Scene.files` via the shape's `fileId`. Here we copy the bytes
-   * back onto `shape.animationData` so the registered animation
-   * adapter (host-side, e.g. the gifuct decoder) can produce frames.
-   *
-   * Applied directly to `_scene` (no history entry — this is an
-   * internal rehydration, not a user edit). No-op for shapes that
-   * already carry live `animationData` or lack a resolvable file.
-   */
-  private rehydrateAnimatedImages(): void {
-    for (const shape of this._scene.elements.values()) {
-      if (shape.type !== "image") continue;
-      const img = shape as ImageElement;
-      if (!img.animationKind) continue;
-      // Seed playback for every animated shape loaded from the scene
-      // (reduced-motion is honoured at this point too).
-      this.initPlayback(img.id);
-      if (!img.fileId) continue;
-      if (img.animationData instanceof ArrayBuffer) continue; // already live
-      const file = getBinaryFile(this._scene, img.fileId);
-      if (!file) continue;
-      this._scene = apply(this._scene, {
-        kind: "element",
-        id: img.id,
-        before: img,
-        after: { ...img, animationData: file.data },
-      });
-    }
-  }
-
-  /**
    * Drag-to-place flow for palette templates. Adds the shape to the
    * scene immediately so the user sees it dragging under the cursor,
    * but defers the history entry until `commit()` is called. `update`
@@ -1945,7 +1719,6 @@ export class Editor {
    * Typical wiring: HTML5 dragenter starts the placement, dragover
    * updates, drop commits, dragleave / window keydown(Escape) cancel.
    */
-  // Placement helpers live in `./editor/public/placement.ts`.
   // Editor owns the transaction lifecycle and selection mutate;
   // the closure threads scene mutations through the pure helpers.
   beginPlacement(shape: Element): {
@@ -1994,7 +1767,6 @@ export class Editor {
     };
   }
 
-  // Pure body in `./editor/public/selection-ops.ts`.
   deleteSelected(): void {
     const result = computeDeleteSelection(this._scene, this._selection, this._selectedLinks);
     if (!result) return;
@@ -2055,8 +1827,9 @@ export class Editor {
   private _textSel: { start: number; end: number; dir: "forward" | "backward" } | null = null;
   /** Anchor offset for a canvas drag-select inside the edited text. */
   private _textDragAnchor: number | null = null;
-  private _caretBlinkOn = true;
-  private _caretBlinkTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly caretBlink = new CaretBlinkController(() => {
+    this.notify();
+  });
 
   get editingTextSelection(): { start: number; end: number; dir: "forward" | "backward" } | null {
     return this._textSel;
@@ -2067,34 +1840,11 @@ export class Editor {
     return this._textSel.dir === "backward" ? this._textSel.start : this._textSel.end;
   }
   get caretBlinkOn(): boolean {
-    return this._caretBlinkOn;
+    return this.caretBlink.on;
   }
   /** `true` while a canvas drag-select inside the edited text is active. */
   get isTextDragging(): boolean {
     return this._textDragAnchor !== null;
-  }
-
-  private startCaretBlink(): void {
-    this._caretBlinkOn = true;
-    this.stopCaretBlink();
-    // Only run the blink when a DOM clock exists (browser host). Node
-    // test envs construct the editor without a window — skip so a
-    // dangling interval can't keep the process alive.
-    if (typeof window === "undefined") return;
-    this._caretBlinkTimer = setInterval(() => {
-      this._caretBlinkOn = !this._caretBlinkOn;
-      this.notify();
-    }, CARET_BLINK_INTERVAL_MS);
-  }
-  private stopCaretBlink(): void {
-    if (this._caretBlinkTimer !== null) {
-      clearInterval(this._caretBlinkTimer);
-      this._caretBlinkTimer = null;
-    }
-  }
-  /** Reset the caret to solid (called on type / move so it never blinks off mid-action). */
-  private wakeCaret(): void {
-    this._caretBlinkOn = true;
   }
 
   /**
@@ -2102,7 +1852,6 @@ export class Editor {
    * exist or isn't a text shape. Concurrent edits commit themselves
    * (only one shape at a time). Caret defaults to the end of the text.
    */
-  // Pure bodies in `./editor/public/text-edit.ts`.
   /** Open inline caption editing for a link (double-click). */
   beginLinkCaptionEdit(id: LinkId): void {
     if (!getLink(this._scene, id)) return;
@@ -2157,12 +1906,12 @@ export class Editor {
     if (!path || path.length < 2) return null;
     const t = edge.label?.position ?? 0.5;
     let total = 0;
-    for (let i = 1; i < path.length; i++) total += distanceTo(req(path[i - 1]), req(path[i]));
+    for (let i = 1; i < path.length; i++) total += vec2.distance(req(path[i - 1]), req(path[i]));
     let remaining = total * t;
     for (let i = 1; i < path.length; i++) {
       const a = req(path[i - 1]);
       const b = req(path[i]);
-      const seg = distanceTo(a, b);
+      const seg = vec2.distance(a, b);
       if (remaining <= seg) {
         const r = seg === 0 ? 0 : remaining / seg;
         return { x: a.x + (b.x - a.x) * r, y: a.y + (b.y - a.y) * r };
@@ -2182,7 +1931,7 @@ export class Editor {
     const shape = getElement(this._scene, id) as TextElement | undefined;
     const len = shape?.text.length ?? 0;
     this._textSel = { start: len, end: len, dir: "forward" };
-    this.startCaretBlink();
+    this.caretBlink.start();
     this.notify();
   }
 
@@ -2194,7 +1943,7 @@ export class Editor {
    */
   beginFrameNameEdit(id: ElementId): void {
     const shape = getElement(this._scene, id);
-    if (shape?.type !== "frame") return;
+    if (shape === undefined || !isFrame(shape)) return;
     if (this.isLayerLocked(shape.layerId)) return;
     if (this._editingTextElement !== null) this.commitTextEdit();
     this._editingFrameName = id;
@@ -2210,21 +1959,10 @@ export class Editor {
     const id = this._editingFrameName;
     if (id === null) return;
     this._editingFrameName = null;
-    const shape = getElement(this._scene, id);
-    if (shape?.type === "frame") {
-      const trimmed = name.trim();
-      const current = (shape as { name?: string }).name ?? "";
-      if (trimmed !== current) {
-        const r = updateElement(this._scene, id, (s) => {
-          const copy = { ...s } as typeof s & { name?: string };
-          // `exactOptionalPropertyTypes`: drop the key when cleared.
-          if (trimmed === "") delete copy.name;
-          else copy.name = trimmed;
-          return copy;
-        });
-        this._scene = r.scene;
-        this._history.push(r.patch);
-      }
+    const r = computeFrameNameCommit(this._scene, id, name);
+    if (r) {
+      this._scene = r.scene;
+      this._history.push(r.patch);
     }
     this.notify();
   }
@@ -2243,24 +1981,7 @@ export class Editor {
    * hit-test bounds. Assumes unrotated frames (the common case).
    */
   private frameHeaderAt(p: Vec2): ElementId | null {
-    let bestId: ElementId | null = null;
-    let bestOrder = "";
-    for (const s of this._scene.elements.values()) {
-      if (!isFrame(s)) continue;
-      const hx = s.position.x;
-      // The header strip can extend up to the frame's full width (it hugs
-      // the label but is capped there), so the rename hit zone spans it.
-      const hw = s.width * s.scale.x;
-      const hh = FRAME_HEADER_HEIGHT * s.scale.y;
-      const hyTop = s.position.y - hh;
-      if (p.x >= hx && p.x <= hx + hw && p.y >= hyTop && p.y <= hyTop + hh) {
-        if (bestId === null || s.order > bestOrder) {
-          bestId = s.id;
-          bestOrder = s.order;
-        }
-      }
-    }
-    return bestId;
+    return computeFrameHeaderAt(this._scene, p);
   }
 
   /**
@@ -2280,7 +2001,7 @@ export class Editor {
     const r = updateElement(this._scene, id, (s) => ({ ...s, text: value }));
     this._scene = r.scene;
     this._textSel = { start: selStart, end: selEnd, dir };
-    this.wakeCaret();
+    this.caretBlink.wake();
     this.notify();
   }
 
@@ -2292,7 +2013,7 @@ export class Editor {
   ): void {
     if (!this._editingTextElement) return;
     this._textSel = { start: selStart, end: selEnd, dir };
-    this.wakeCaret();
+    this.caretBlink.wake();
     this.notify();
   }
 
@@ -2308,9 +2029,15 @@ export class Editor {
     if (shape?.type !== "text") return null;
     const layout = this.editingTextLayout(shape);
     if (!layout) return null;
-    // World → shape-local (translate by position; rotation/scale on text
-    // edit is uncommon — ignore for hit purposes).
-    const local = { x: worldPoint.x - shape.position.x, y: worldPoint.y - shape.position.y };
+    // World → shape-local: undo the element transform so the hit lands on the
+    // right glyph. Translate by position, then divide out scale (rotation
+    // while editing text is not handled — an uncommon case).
+    const sx = shape.scale.x || 1;
+    const sy = shape.scale.y || 1;
+    const local = {
+      x: (worldPoint.x - shape.position.x) / sx,
+      y: (worldPoint.y - shape.position.y) / sy,
+    };
     const align = shape.style.textAlign ?? "left";
     return pointToCaretIndex(layout, local, this.measureFor(shape), align);
   }
@@ -2401,6 +2128,12 @@ export class Editor {
     const align = shape.style.textAlign ?? "left";
     const measure = this.measureFor(shape);
     const { x: px, y: py } = shape.position;
+    // The layout is in the shape's own (unscaled) space; the renderer draws it
+    // through the element transform, so caret + selection geometry must scale
+    // too or they trail the rendered text on a scaled element. (Rotation while
+    // editing text is not handled — an uncommon case.)
+    const sx = shape.scale.x;
+    const sy = shape.scale.y;
 
     const local = textSelectionRects(
       layout,
@@ -2410,17 +2143,17 @@ export class Editor {
       align,
     );
     const selectionRects: Bounds[] = local.map((r) => ({
-      x: px + r.x,
-      y: py + r.y,
-      width: r.width,
-      height: r.height,
+      x: px + Math.min(r.x * sx, (r.x + r.width) * sx),
+      y: py + Math.min(r.y * sy, (r.y + r.height) * sy),
+      width: Math.abs(r.width * sx),
+      height: Math.abs(r.height * sy),
     }));
 
     let caret: { x: number; y: number; height: number } | null = null;
-    if (this._caretBlinkOn) {
+    if (this.caretBlink.on) {
       const cIdx = this._textSel.dir === "backward" ? this._textSel.start : this._textSel.end;
       const g = caretGeometry(layout, cIdx, measure, shape.fontSize, align);
-      caret = { x: px + g.x, y: py + g.y, height: g.height };
+      caret = { x: px + g.x * sx, y: py + g.y * sy, height: g.height * Math.abs(sy) };
     }
     return { caret, caretColor: shape.style.fill ?? "#1a1a1a", selectionRects };
   }
@@ -2439,7 +2172,7 @@ export class Editor {
     this._pendingTextCreate = null;
     this._textEditOrigin = null;
     this._textSel = null;
-    this.stopCaretBlink();
+    this.caretBlink.stop();
 
     const finalElement = getElement(this._scene, id) as TextElement | undefined;
     const text = finalElement?.text ?? "";
@@ -2485,7 +2218,7 @@ export class Editor {
     this._pendingTextCreate = null;
     this._textEditOrigin = null;
     this._textSel = null;
-    this.stopCaretBlink();
+    this.caretBlink.stop();
 
     // Revert live edits with no history entry. Pending creations are
     // removed entirely; existing shapes have only their TEXT restored
@@ -2509,7 +2242,6 @@ export class Editor {
    * keyboard navigation; hosts pass `{ x: 1, y: 0 }` for fine nudge
    * and `{ x: 10, y: 0 }` for shift-arrow.
    */
-  // Pure body in `./editor/public/selection-ops.ts`.
   moveSelectionBy(delta: Vec2): void {
     if (this._selection.size === 0 && this._selectedLinks.size === 0) return;
     // Locked / layer-locked elements don't move (they're still selectable).
@@ -2552,7 +2284,6 @@ export class Editor {
    * Hosts can bind this to "Enter" while in a draw mode, providing a
    * mouse-free alternative to drag-out creation.
    */
-  // Pure body in `./editor/public/placement.ts`.
   createElementAtCursor(): ElementId | null {
     const vp = this._scene.viewport;
     const world = this.screenToWorld({
@@ -2594,7 +2325,6 @@ export class Editor {
     return id;
   }
 
-  // Pure bodies in `./editor/public/brush.ts`.
   beginBrushStroke(world: Vec2, pressure = 0.5): void {
     this.brushStroke = beginBrushStrokePure(world, pressure);
     this.notify();
@@ -2636,7 +2366,6 @@ export class Editor {
     return this.brushStroke;
   }
 
-  // Pure bodies in `./editor/public/arrange-group.ts`.
   arrangeAsGrid(opts: { cols?: number; gap?: number } = {}): void {
     const origin = this.combinedSelectionBounds() ?? { x: 0, y: 0 };
     const result = computeArrangeAsGrid(this._scene, this._selection, opts, origin);
@@ -2737,7 +2466,6 @@ export class Editor {
    * Duplicate the selected shapes 10 px down-right of the originals.
    * Links between selected shapes are NOT cloned. Single undo step.
    */
-  // Pure body in `./editor/public/selection-ops.ts`.
   duplicateSelected(): void {
     const result = computeDuplicateSelection(this._scene, this._selection, () => ++this.nextId);
     if (!result) return;
@@ -2774,33 +2502,10 @@ export class Editor {
     // Pre-allocate new ids so cross-references (parentId/frameId) can be remapped.
     const idMap = new Map<ElementId, ElementId>();
     for (const id of ids) idMap.set(id, castElementId(this.uniqueId("shape")));
+    const dup = computeDuplicateInPlace(this._scene, ids, idMap);
     const tx = this._history.transaction();
-    for (const id of ids) {
-      const shape = getElement(this._scene, id);
-      if (!shape) continue;
-      const newId = idMap.get(id);
-      if (newId === undefined) continue;
-      const order = orderForTop(
-        [...this._scene.elements.values()]
-          .filter((sh) => sh.layerId === shape.layerId)
-          .map((sh) => sh.order),
-      );
-      const copy = { ...shape, id: newId, order } as Element & {
-        parentId?: ElementId;
-        frameId?: ElementId;
-      };
-      if (copy.parentId !== undefined) {
-        const mapped = idMap.get(copy.parentId);
-        if (mapped !== undefined) copy.parentId = mapped;
-      }
-      if (copy.frameId !== undefined) {
-        const mapped = idMap.get(copy.frameId);
-        if (mapped !== undefined) copy.frameId = mapped;
-      }
-      const r = addElement(this._scene, copy);
-      this._scene = r.scene;
-      tx.add(r.patch);
-    }
+    this._scene = dup.scene;
+    for (const patch of dup.patches) tx.add(patch);
     tx.commit();
     // Select the clones of the originally-selected ids.
     const selectedClones: ElementId[] = [];
@@ -2841,7 +2546,6 @@ export class Editor {
    */
   private clipboard: Element[] = [];
 
-  // Pure body in `./editor/public/clipboard.ts`.
   copySelected(): void {
     const out = copySelectedPure(this._scene, this._selection);
     if (out.length === 0) return;
@@ -2863,7 +2567,6 @@ export class Editor {
    *
    * New shapes get fresh ids and end up selected. Single undo step.
    */
-  // Pure body in `./editor/public/clipboard.ts`.
   paste(targetWorld?: Vec2): void {
     if (this.clipboard.length === 0) return;
     // Defensive: if a gesture is mid-flight (drag / resize) the
@@ -2894,7 +2597,32 @@ export class Editor {
    *
    * No-op when `ids` is empty or none of the targeted shapes exist.
    */
-  // Pure body in `./editor/public/selection-ops.ts`.
+  /**
+   * Capture the visual style of the first selected element into the style
+   * buffer, for a later {@link pasteSelectionStyle}. No-op / clears nothing
+   * when the selection is empty.
+   */
+  copySelectionStyle(): void {
+    for (const id of this._selection) {
+      const el = getElement(this._scene, id);
+      if (el !== undefined) {
+        this.styleClipboard = { ...el.style };
+        return;
+      }
+    }
+  }
+
+  /** Apply the copied style (if any) to every selected element. One undo step. */
+  pasteSelectionStyle(): void {
+    if (this.styleClipboard === null) return;
+    this.updateStyle(this._selection, this.styleClipboard);
+  }
+
+  /** Whether a style has been copied and can be pasted. */
+  get hasStyleClipboard(): boolean {
+    return this.styleClipboard !== null;
+  }
+
   updateStyle(ids: Iterable<ElementId>, partial: Partial<TextStyle>): void {
     const result = computeUpdateStyle(this._scene, ids, partial);
     if (!result) return;
@@ -2913,6 +2641,19 @@ export class Editor {
     partial: { fontSize?: number; fontFamily?: string; maxWidth?: number },
   ): void {
     const result = computeUpdateTextProps(this._scene, ids, partial);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Step the font size of every selected text shape up or down by one gentle
+   * multiplicative increment (each shape relative to its own size). One
+   * undoable step; no-op when no text is selected.
+   */
+  adjustSelectionFontSize(direction: "increase" | "decrease"): void {
+    const result = computeAdjustFontSize(this._scene, this._selection, direction);
     if (!result) return;
     this._scene = result.scene;
     this._history.push(result.patch);
@@ -2965,7 +2706,6 @@ export class Editor {
     return { id: shape.id, href, bounds: getElementWorldBounds(shape) };
   }
 
-  // Pure bodies in `./editor/public/z-order.ts`.
   bringToFront(id?: ElementId): void {
     const result = computeBringToFront(this._scene, id, this._selection);
     if (!result) return;
@@ -2996,6 +2736,64 @@ export class Editor {
     if (!result) return;
     this._scene = result.scene;
     this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Mirror the current selection about its bounding-box centre on the given
+   * axis — `horizontal` flips left↔right, `vertical` flips top↔bottom. A single
+   * element flips about its own centre. One undoable step.
+   */
+  flipSelection(axis: FlipAxis): void {
+    this.commitArrange(computeFlipPatches(this._scene, this._selection, axis));
+  }
+
+  /**
+   * Align the selection to the given edge / centre line of its bounding box
+   * (e.g. `left` flushes every shape's left edge; `h-center` lines up
+   * horizontal centres). Needs two or more elements. One undoable step.
+   */
+  alignSelection(edge: AlignEdge): void {
+    this.commitArrange(computeAlignPatches(this._scene, this._selection, edge));
+  }
+
+  /**
+   * Evenly space the selection along the given axis so the gaps between
+   * adjacent shapes are equal; the outermost shapes stay put. Needs three or
+   * more elements. One undoable step.
+   */
+  distributeSelection(axis: DistributeAxis): void {
+    this.commitArrange(computeDistributePatches(this._scene, this._selection, axis));
+  }
+
+  /**
+   * Rotate the whole selection by `delta` radians about its bounding-box centre
+   * (a single shape turns about its own centre). One undoable step. The live
+   * rotate gesture drives the same maths from a press-time snapshot.
+   */
+  rotateSelection(delta: number): void {
+    const elements: Element[] = [];
+    const origin = new Map<ElementId, { position: Vec2; rotation: number }>();
+    for (const id of this._selection) {
+      const el = getElement(this._scene, id);
+      if (el === undefined) continue;
+      elements.push(el);
+      origin.set(id, { position: el.position, rotation: el.rotation });
+    }
+    if (elements.length === 0) return;
+    const pivot = selectionCenter(elements);
+    this.commitArrange(computeRotatePatches(this._scene, origin, pivot, delta));
+  }
+
+  /** Apply a batch of arrange patches as a single undoable step. */
+  private commitArrange(patches: readonly Patch[]): void {
+    if (patches.length === 0) return;
+    const tx = this._history.transaction();
+    for (const patch of patches) {
+      this._scene = apply(this._scene, patch);
+      tx.add(patch);
+    }
+    tx.commit();
     this.notify();
   }
   compactLayerZOrder(layerId?: LayerId, options: { recordHistory?: boolean } = {}): void {
@@ -3050,7 +2848,6 @@ export class Editor {
     this.notify();
   }
 
-  // Pure bodies in `./editor/public/layers.ts`.
   createLayer(name: string): LayerId {
     const result = computeCreateLayer(this._scene, name, newLayerId(++this.nextId));
     this._scene = result.scene;
@@ -3114,7 +2911,6 @@ export class Editor {
    * x → shapes move right relative to the user). Not recorded in
    * history — viewport state is editor-local.
    */
-  // Pure bodies in `./editor/public/zoom-pan.ts`.
   panBy(deltaScreen: Vec2): void {
     const next = computePan(this._scene, deltaScreen);
     if (!next) return;
@@ -3165,39 +2961,15 @@ export class Editor {
   selectClosest(direction: "left" | "right" | "up" | "down"): void {
     const ref = this.combinedSelectionBounds();
     const vp = this._scene.viewport;
-    const refC = ref
+    const refCenter = ref
       ? { x: ref.x + ref.width / 2, y: ref.y + ref.height / 2 }
       : {
           x: vp.pan.x + vp.size.width / 2 / vp.zoom,
           y: vp.pan.y + vp.size.height / 2 / vp.zoom,
         };
-    const dv =
-      direction === "left"
-        ? { x: -1, y: 0 }
-        : direction === "right"
-          ? { x: 1, y: 0 }
-          : direction === "up"
-            ? { x: 0, y: -1 }
-            : { x: 0, y: 1 };
-    let best: ElementId | null = null;
-    let bestScore = Infinity;
-    for (const s of this._scene.elements.values()) {
-      if (s.parentId !== undefined) continue; // top-level shapes only
-      if (this._selection.has(s.id)) continue;
-      if (!this.isElementInteractable(s)) continue;
-      const b = getElementWorldBounds(s);
-      const cx = b.x + b.width / 2 - refC.x;
-      const cy = b.y + b.height / 2 - refC.y;
-      const along = cx * dv.x + cy * dv.y;
-      if (along <= 0) continue; // not in the direction's half-plane
-      const perp = Math.abs(cx * dv.y - cy * dv.x);
-      if (perp > along) continue; // outside the 45° cone
-      const score = along + perp;
-      if (score < bestScore) {
-        bestScore = score;
-        best = s.id;
-      }
-    }
+    const best = findClosestInDirection(this._scene, this._selection, direction, refCenter, (s) =>
+      this.isElementInteractable(s),
+    );
     if (best === null) return;
     this.setSelection([best]);
   }
@@ -3213,7 +2985,7 @@ export class Editor {
     this._scene = next;
     this.notify();
   }
-  setGrid(patch: { size?: number; style?: GridStyle; snap?: boolean }): void {
+  setGrid(patch: { enabled?: boolean; style?: GridStyle; snap?: boolean }): void {
     const next = computeSetGrid(this._scene, patch);
     if (!next) return;
     this._scene = next;
@@ -3240,23 +3012,30 @@ export class Editor {
   }
 
   /**
-   * True when a gesture should snap. Snapping is coupled to grid *display*:
-   * it is active only while a grid is actually shown — the toggle is on
-   * (`gridVisible`, `g` hotkey) AND the scene has a positive `gridSize` (the
-   * same condition `renderGrid` paints under). Snapping to an invisible grid
-   * is confusing, so no grid → no snap, always. `snapToGrid` is an extra
-   * programmatic opt-out; the suppress modifier (Cmd/Ctrl) bypasses snapping
-   * for the current gesture.
+   * Host hook: mirror the Alt / Shift modifier state so an in-flight resize or
+   * move reacts to it — `alt` resizes about the centre, `shift` locks the
+   * resize aspect ratio (or constrains a move to one axis). The app wires
+   * keydown/keyup of the modifiers to this. Idempotent; never touches history.
+   */
+  setTransformModifiers(mods: { readonly alt: boolean; readonly shift: boolean }): void {
+    this.transformAltKey = mods.alt;
+    this.transformShiftKey = mods.shift;
+  }
+
+  /**
+   * True when a gesture should snap. Snapping is coupled to grid display:
+   * it is active only while the grid is enabled (`gridEnabled`) — snapping to
+   * a hidden grid is confusing. `snapToGrid` is an extra programmatic opt-out;
+   * the suppress modifier (Cmd/Ctrl) bypasses snapping for the current gesture.
    */
   private snapActive(): boolean {
     const viewport = this._scene.viewport;
-    const gridShown = this.gridVisible && (viewport.gridSize ?? 0) > 0;
-    return !this.snapSuppressed && gridShown && isSnapToGridEnabled(viewport);
+    return !this.snapSuppressed && viewport.gridEnabled && isSnapToGridEnabled(viewport);
   }
 
   /** World-unit spacing the current gesture snaps to. */
   private snapSpacing(): number {
-    return resolveSnapSpacing(this._scene.viewport);
+    return resolveSnapSpacing();
   }
 
   /**
@@ -3287,7 +3066,7 @@ export class Editor {
     }
     // Restore transient animationData (GIF bytes) from Scene.files
     // before the tick so the animation adapter can decode frames.
-    this.rehydrateAnimatedImages();
+    animScene.rehydrateAnimatedImages(this);
     this.notify();
     // Loaded scene may carry animated shapes (e.g. GIF re-imported
     // from saved JSON). Re-arm the tick — `metadata.animated` survives
@@ -3306,11 +3085,8 @@ export class Editor {
     this.cursorListeners.clear();
     this.longPressListeners.clear();
     this.announceListeners.clear();
-    this.animationTick.stop();
+    this.animation.detach();
     this.animationContentOff?.();
-    if (typeof document !== "undefined") {
-      document.removeEventListener("visibilitychange", this.onVisibilityChange);
-    }
     if (this.renderRafId !== null && typeof cancelAnimationFrame !== "undefined") {
       cancelAnimationFrame(this.renderRafId);
       this.renderRafId = null;
@@ -3319,9 +3095,6 @@ export class Editor {
 
   // --- Internal ---
 
-  // Body moved to `./editor/pointer-binding.ts` (~700 lines of
-  // pointer / wheel / keyboard dispatch). The thin wrapper here
-  // preserves the original constructor call site.
   private bindPointerEvents(): () => void {
     return bindPointerEventsExternal(this);
   }
@@ -3380,7 +3153,7 @@ export class Editor {
     return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse" || ctx.mode === "draw-edge";
   }
 
-  // --- Long-press --- (controller in `./editor/long-press.ts`)
+  // --- Long-press ---
 
   public startLongPress(screenPoint: Vec2): void {
     this.longPress.start(screenPoint);
@@ -3389,7 +3162,7 @@ export class Editor {
     this.longPress.cancel();
   }
 
-  // --- Pinch gesture --- (controller in `./editor/pinch.ts`)
+  // --- Pinch gesture ---
   public beginPinch(): void {
     this.pinch.begin([...this.activePointers.values()]);
   }
@@ -3406,9 +3179,9 @@ export class Editor {
     return matrix.applyToPoint(getScreenToWorld(this._scene.viewport), point);
   }
 
-  // Pure body in `./editor/hit-test.ts`. Editor passes a narrow
-  // context bundle that closes over its private state + accel
-  // helpers (acceleratedElementAt, isElementInteractable, …).
+  // Editor passes a narrow context bundle that closes over its
+  // private state + accel helpers (acceleratedElementAt,
+  // isElementInteractable, …).
   /**
    * Attach target under `worldPoint` for an endpoint-rebind drop: the topmost
    * interactable ELEMENT (group-promoted), ignoring link bodies and the dragged
@@ -3453,78 +3226,8 @@ export class Editor {
    * out of sync. `worldPoint` defaults to the last known pointer position.
    */
   refreshCursor(worldPoint?: Vec2): void {
-    const next = this.computeCursor(worldPoint ?? this.lastPointerWorld);
+    const next = computeCursor(this, worldPoint ?? this.lastPointerWorld);
     if (this.host.style.cursor !== next) this.host.style.cursor = next;
-  }
-
-  /**
-   * The CSS cursor for the current state. Priority: active gesture → text edit → pan affordance →
-   * draw tool → idle hover hit-test. Pure read of editor state; no side effects.
-   */
-  private computeCursor(p: Vec2 | null): string {
-    // Each outcome is a (role, fallback-keyword) pair; `resolveCursor` returns
-    // a host-registered custom image for that role if one exists, else the
-    // keyword. Roles are the stable override keys (see `setCursorOverride`).
-    const r = (role: CursorRole, keyword: string): string => this.resolveCursor(role, keyword);
-    const resizeRole = (h: HandleId): string => r(RESIZE_ROLE[h], cursorForHandle(h));
-    // 1. Active gestures (highest priority — what the pointer is doing now).
-    if (this.panGesture) return r("pan-active", "grabbing");
-    if (this.linkDragFromAnchor?.moved === true) return r("draw", "crosshair");
-    if (this.isDraggingWaypoint || this.isDraggingSegment) return r("move", "grabbing");
-    if (this.annotationDrag?.moved === true) return r("move", "grabbing");
-    if (this.brushStroke) return r("draw", "crosshair");
-    // Machine-driven drag past the threshold (`gestureTx` opens then): resize
-    // shows the handle's arrow; element / link move shows grabbing.
-    if (this.gestureTx) {
-      const t = this.actor.getSnapshot().context.pressTarget;
-      if (t && (t.kind === "handle" || t.kind === "group-handle")) return resizeRole(t.handle);
-      if (t && (t.kind === "element" || t.kind === "link" || t.kind === "edge-endpoint")) {
-        return r("move", "grabbing");
-      }
-    }
-    // 2. In-canvas text editing → I-beam.
-    if (this.editingTextElement !== null) return r("text", "text");
-    // 3. Pan affordance (idle): Space held or hand tool.
-    if (this.spaceHeld || this.mode === "hand") return r("pan-ready", "grab");
-    // 4. Draw tools (idle, before a gesture starts).
-    switch (this.mode) {
-      case "draw-rect":
-      case "draw-ellipse":
-      case "draw-frame":
-      case "draw-edge":
-      case "brush":
-        return r("draw", "crosshair");
-      case "draw-text":
-        return r("text", "text");
-      default:
-        break;
-    }
-    // 5. Idle hover in select mode — key off the hit-test target.
-    if (p) {
-      if (this.isOverLinkStartDot(p)) return r("link-start", "crosshair");
-      const t = this.hitTest(p);
-      switch (t.kind) {
-        case "handle":
-        case "group-handle":
-          return resizeRole(t.handle);
-        case "edge-endpoint":
-          return r("link-handle", "grab");
-        case "annotation":
-          return r("annotation", "pointer");
-        default:
-          return r("default", "default");
-      }
-    }
-    return r("default", "default");
-  }
-
-  /**
-   * Resolve a cursor role to a CSS `cursor` value: a host-registered custom
-   * image (via {@link setCursorOverride}) if present, else `fallbackKeyword`.
-   */
-  private resolveCursor(role: CursorRole, fallbackKeyword: string): string {
-    const spec = this.cursorOverrides.get(role);
-    return spec === undefined ? fallbackKeyword : cssCursor(spec, fallbackKeyword);
   }
 
   /**
@@ -3541,27 +3244,12 @@ export class Editor {
   }
 
   /**
-   * True when `p` is within the grab radius of one of the single selected
-   * element's link-start dots — used to show a `crosshair` (start a link).
-   * Mirrors the anchor-drag hit-test in pointer-binding so the cursor matches
-   * exactly where a press would begin a link.
+   * Read-only lookup of a host-registered cursor override. Used by the cursor
+   * module to resolve a role without exposing the mutable override map (mutate
+   * only via {@link setCursorOverride}, so `refreshCursor` stays in sync).
    */
-  private isOverLinkStartDot(p: Vec2): boolean {
-    if (this.mode !== "select" || this._selection.size !== 1) return false;
-    const id = [...this._selection][0];
-    if (id === undefined) return false;
-    const shape = getElement(this._scene, id);
-    if (!shape) return false;
-    const zoom = this._scene.viewport.zoom || 1;
-    const { worldPoints } = anchorOverlayPoints(shape, LINK_START_ANCHOR_OUTSET / zoom);
-    const grab = (ANCHOR_DOT_ACTIVE_RADIUS + this.anchorStartHitSlop) / zoom;
-    const grab2 = grab * grab;
-    for (const wp of worldPoints) {
-      const dx = wp.x - p.x;
-      const dy = wp.y - p.y;
-      if (dx * dx + dy * dy <= grab2) return true;
-    }
-    return false;
+  getCursorOverride(role: CursorRole): CursorSpec | undefined {
+    return this.cursorOverrides.get(role);
   }
 
   /** True when the given layer exists and is marked `locked`. */
@@ -3647,8 +3335,7 @@ export class Editor {
    * Topmost group ancestor of `shape` (walks parentId chain, returns
    * the highest `type === "group"` parent). `null` if `shape` has no
    * group ancestor. Used by drill-down: a double-click on a shape
-   * with a group ancestor enters that group. Body extracted to
-   * `./group-helpers.ts`.
+   * with a group ancestor enters that group.
    */
   private topGroupAncestor(shape: Element): Element | null {
     return topGroupAncestorHelper(this._scene, shape);
@@ -3677,7 +3364,6 @@ export class Editor {
    * practice, but the guard keeps the contract simple — "what you've
    * selected, you can see".
    */
-  // Body moved to `./editor/shape-filters.ts`.
   public computeHiddenElements(): ReadonlySet<ElementId> | undefined {
     return computeHiddenElementsPure(this._scene);
   }
@@ -3708,13 +3394,13 @@ export class Editor {
     const id = req([...this._selection][0]);
     const el = getElement(this._scene, id);
     if (!el) return;
-    const isFrameEl = el.type === "frame";
+    const isFrameEl = isFrame(el);
     const members: ElementId[] = [];
     for (const s of this._scene.elements.values()) {
       if (s.parentId === id || (isFrameEl && s.frameId === id)) members.push(s.id);
     }
     if (members.length === 0) return;
-    if (el.type === "group") this._enteredGroup = id;
+    if (isGroup(el)) this._enteredGroup = id;
     this.setSelection(members);
   }
 
@@ -3808,7 +3494,7 @@ export class Editor {
     const isDouble =
       now - this.lastClickAt < DOUBLE_CLICK_MS &&
       this.lastClickWorldPoint !== null &&
-      distanceTo(this.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX;
+      vec2.distance(this.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX;
     this.lastClickAt = now;
     this.lastClickWorldPoint = worldPoint;
 
@@ -3862,11 +3548,11 @@ export class Editor {
       (clickEffect.type === "SELECT_REPLACE" || clickEffect.type === "SELECT_TOGGLE")
     ) {
       const raw = this.acceleratedElementAt(worldPoint);
-      if (raw?.type === "text") {
+      if (raw !== undefined && isText(raw)) {
         this.beginTextEdit(raw.id);
         return true;
       }
-      if (raw?.type === "frame") {
+      if (raw !== undefined && isFrame(raw)) {
         this.beginFrameNameEdit(raw.id);
         return true;
       }
@@ -3984,6 +3670,9 @@ export class Editor {
       case "RESIZE_SHAPE":
         this.applyResize(emit.id, emit.handle, emit.delta, emit.originalBounds);
         return;
+      case "ROTATE":
+        this.applyRotate(emit.deltaAngle);
+        return;
       case "CREATE_SHAPE":
         this.applyCreate(emit.shapeType, emit.bounds);
         return;
@@ -4029,7 +3718,6 @@ export class Editor {
    * Wrapped in a single gestureTx so per-move updates collapse
    * into one undo step.
    */
-  // Pure body in `./editor/applies/move.ts`.
   private applyAnnotationMove(id: AnnotationId, delta: Vec2, origin: Vec2): void {
     const result = computeAnnotationMovePatch(this._scene, id, delta, origin);
     if (!result) return;
@@ -4077,12 +3765,13 @@ export class Editor {
     this.applyEmit(emit);
   }
 
-  // Pure body in `./editor/applies/move.ts`.
   private applyMove(id: ElementId, delta: Vec2, originalBounds: Bounds): void {
     // Locked / layer-locked elements are selectable but don't move.
     const el = getElement(this._scene, id);
     if (el && !this.isElementManipulable(el)) return;
-    const d = this.snapActive() ? snapMoveDelta(originalBounds, delta, this.snapSpacing()) : delta;
+    // Shift constrains the drag to one axis before snapping.
+    const moved = this.transformShiftKey ? constrainDeltaToAxis(delta) : delta;
+    const d = this.snapActive() ? snapMoveDelta(originalBounds, moved, this.snapSpacing()) : moved;
     const patch = computeElementMovePatch(this._scene, id, d, originalBounds);
     if (!patch) return;
     this._scene = apply(this._scene, patch);
@@ -4092,9 +3781,11 @@ export class Editor {
 
   private applyGroupMove(delta: Vec2): void {
     if (!this.groupMoveOrigin) return;
+    // Shift constrains the drag to one axis before snapping.
+    const moved = this.transformShiftKey ? constrainDeltaToAxis(delta) : delta;
     const d = this.snapActive()
-      ? snapGroupDelta(this.groupMoveOrigin, delta, this.snapSpacing())
-      : delta;
+      ? snapGroupDelta(this.groupMoveOrigin, moved, this.snapSpacing())
+      : moved;
     const patches = computeGroupMovePatches(this._scene, this.groupMoveOrigin, d);
     for (const patch of patches) {
       this._scene = apply(this._scene, patch);
@@ -4113,7 +3804,6 @@ export class Editor {
     this.notify();
   }
 
-  // Body moved to `./editor/viewport-helpers.ts`.
   public computeViewportWorld(): Bounds | null {
     return computeViewportWorldPure(this._scene);
   }
@@ -4183,118 +3873,16 @@ export class Editor {
     // of shapes without touching the scene reference, so force a full
     // repaint when the entered-group identity changes between frames.
     if (this.lastRenderedEnteredGroup !== this._enteredGroup) return null;
-    // Scene ref unchanged → nothing changed on main canvas → skip the
-    // whole pass via an empty off-screen rect that the dirty filter
-    // culls every shape against.
-    if (prev === next) {
-      return { x: -1e9, y: -1e9, width: 0, height: 0 };
+    // Diff the two scenes for the dirty rect + tile-cache invalidation. The
+    // state-coupled guards above stay here; the pure scene diff lives in
+    // `computeSceneDirtyRect`.
+    const { world, tileDirty } = computeSceneDirtyRect(prev, next);
+    if (this.tileComposeFn !== null) {
+      for (const [id, entry] of tileDirty) this.tileDirtyElements.set(id, entry);
     }
-    let acc: Bounds | null = null;
-    const add = (b: Bounds): void => {
-      acc = acc ? B.union(acc, b) : b;
-    };
-    // Track shapes that changed (added / removed / mutated). Links
-    // attached to any of these have stale rendered paths even when
-    // the edge object itself is reference-equal — the path resolves
-    // through the shape's new position, but the old path stays on
-    // screen as a "ghost" trail unless we explicitly invalidate it.
-    const changedElementIds = new Set<ElementId>();
-    for (const [id, shape] of next.elements) {
-      const old = prev.elements.get(id);
-      if (old === shape) continue;
-      changedElementIds.add(id);
-      // Render bounds (not geometric) so overpaint — a frame's header
-      // strip, confetti particles — is cleared too, no ghost trail.
-      const afterBounds = getElementRenderBounds(shape);
-      const beforeBounds = old ? getElementRenderBounds(old) : null;
-      add(afterBounds);
-      if (beforeBounds) add(beforeBounds);
-      // Stash for the tile-cache path — covers add + move via
-      // before/after pair; pure mutation re-uses the single
-      // afterBounds rect.
-      if (this.tileComposeFn !== null) {
-        this.tileDirtyElements.set(id, { before: beforeBounds, after: afterBounds });
-      }
-    }
-    for (const [id, shape] of prev.elements) {
-      if (!next.elements.has(id)) {
-        changedElementIds.add(id);
-        // Render bounds so a removed frame/confetti clears its overpaint.
-        const beforeBounds = getElementRenderBounds(shape);
-        add(beforeBounds);
-        if (this.tileComposeFn !== null) {
-          this.tileDirtyElements.set(id, { before: beforeBounds, after: null });
-        }
-      }
-    }
-    const linkTouchesChangedElement = (edge: Link): boolean => {
-      for (const ep of [edge.from, edge.to]) {
-        if (ep.kind !== "point") {
-          if (changedElementIds.has(ep.elementId)) return true;
-        }
-      }
-      return false;
-    };
-    for (const [id, edge] of next.links) {
-      const old = prev.links.get(id);
-      // Refresh edge dirty-rect when: edge object changed, OR an
-      // endpoint references a shape that moved this frame (path is
-      // re-resolved every render but the old screen pixels persist).
-      if (old === edge && !linkTouchesChangedElement(edge)) continue;
-      const b = computeLinkWorldBounds(next, edge);
-      if (b) add(b);
-      const oldLink = old ?? edge; // prev scene resolves with prev shapes for ghost-clear
-      const ob = computeLinkWorldBounds(prev, oldLink);
-      if (ob) add(ob);
-    }
-    for (const [id, edge] of prev.links) {
-      if (!next.links.has(id)) {
-        const b = computeLinkWorldBounds(prev, edge);
-        if (b) add(b);
-      }
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `acc` is mutated via the `add` closure; TS flow analysis can't see it and narrows to null
-    if (acc === null) return { x: -1e9, y: -1e9, width: 0, height: 0 };
-    // Transitive expansion: any shape whose bounds intersect the
-    // current dirty rect must be repainted, AND its bounds added
-    // to the dirty rect so any shape ABOVE it that overlaps gets
-    // included too. Repeat until the set stabilises.
-    //
-    // Without this, dragging A through a B/C stack produces
-    // visual jitter: B intersects the dirty rect and gets
-    // repainted, but C — sitting above B and partially overlapping
-    // it — doesn't intersect the original dirty, so B re-emerges
-    // on top of where C should still be drawn. Z-order is correct
-    // in `getElementsInLayer`; the issue is missed shapes, not
-    // wrong order.
-    const visited = new Set<ElementId>();
-    let expanded: Bounds = acc;
-    let grew = true;
-    while (grew) {
-      grew = false;
-      for (const shape of next.elements.values()) {
-        if (visited.has(shape.id)) continue;
-        const bb = getElementWorldBounds(shape);
-        if (!B.intersects(bb, expanded)) continue;
-        visited.add(shape.id);
-        const merged = B.union(expanded, bb);
-        if (
-          merged.x !== expanded.x ||
-          merged.y !== expanded.y ||
-          merged.width !== expanded.width ||
-          merged.height !== expanded.height
-        ) {
-          expanded = merged;
-          grew = true;
-        }
-      }
-    }
-    // Inflate by a couple pixels to cover anti-aliased stroke fuzz
-    // around the geometry edges.
-    return B.expand(expanded, 4);
+    return world;
   }
 
-  // Bodies moved to `./editor/viewport-helpers.ts`.
   public combinedSelectionBounds(): Bounds | null {
     let acc = combinedSelectionBoundsPure(this._scene, this._selection);
     // Selected links join the selection box (standard parity) — union in
@@ -4343,12 +3931,32 @@ export class Editor {
     // Multi-selection: lock when every selected shape is an image — they
     // must never be stretched out of ratio, only scaled together.
     for (const id of this._selection) {
-      if (getElement(this._scene, id)?.type !== "image") return false;
+      const el = getElement(this._scene, id);
+      if (el === undefined || !isImage(el)) return false;
     }
     return true;
   }
 
-  // Pure body in `./editor/applies/resize.ts`.
+  /**
+   * Per-frame rotate during a grip drag: turn the press-time snapshot by
+   * `deltaAngle` about its pivot. Shift snaps the swept angle to
+   * {@link ROTATE_SNAP_RADIANS} steps. Recorded as gesture patches (one undo
+   * step on commit).
+   */
+  private applyRotate(deltaAngle: number): void {
+    const gesture = this.rotateGestureOrigin;
+    if (!gesture) return;
+    const d = this.transformShiftKey
+      ? Math.round(deltaAngle / ROTATE_SNAP_RADIANS) * ROTATE_SNAP_RADIANS
+      : deltaAngle;
+    const patches = computeRotatePatches(this._scene, gesture.origin, gesture.pivot, d);
+    for (const patch of patches) {
+      this._scene = apply(this._scene, patch);
+      this.recordGesturePatch(patch);
+    }
+    this.notify();
+  }
+
   private applyGroupResize(handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
     if (!this.groupResizeOrigin) return;
     const d = this.snapActive()
@@ -4360,7 +3968,10 @@ export class Editor {
       handle,
       d,
       originalBounds,
-      this.selectionIsAspectLocked(),
+      // Aspect-locked when the selection type demands it (images / groups) or
+      // the user holds Shift for this gesture.
+      this.selectionIsAspectLocked() || this.transformShiftKey,
+      this.transformAltKey,
     );
     this._scene = result.scene;
     for (const patch of result.patches) this.recordGesturePatch(patch);
@@ -4369,12 +3980,33 @@ export class Editor {
 
   private applyResize(id: ElementId, handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
     const shape = getElement(this._scene, id);
+    // Rotated shape: the axis-aligned world resize below would corrupt it
+    // (handles live on the tilted box). Resize in the shape's own frame,
+    // keeping the opposite corner fixed in world. Snapshot the pristine pose
+    // on the first tick so the closed-form never compounds. Grid-snap is
+    // skipped — snapping a tilted box to the world grid is ill-defined.
+    if (shape !== undefined && !isText(shape) && shape.rotation !== 0) {
+      if (this._resizeOriginElement?.id !== id) this._resizeOriginElement = shape;
+      const result = computeRotatedElementResize(
+        this._scene,
+        this._resizeOriginElement,
+        handle,
+        delta,
+        this.transformShiftKey,
+        this.transformAltKey,
+      );
+      if (!result) return;
+      this._scene = result.scene;
+      this.recordGesturePatch(result.patch);
+      this.notify();
+      return;
+    }
     const d = this.snapActive()
       ? snapResizeDelta(originalBounds, handle, delta, this.snapSpacing())
       : delta;
     // Text: aspect-locked font scaling. Snapshot the pristine shape on
     // the gesture's first tick so the scale base never compounds.
-    if (shape?.type === "text") {
+    if (shape !== undefined && isText(shape)) {
       if (this._resizeOriginElement?.id !== id) {
         this._resizeOriginElement = shape;
       }
@@ -4384,6 +4016,7 @@ export class Editor {
         handle,
         d,
         originalBounds,
+        this.transformAltKey,
       );
       if (!result) return;
       this._scene = result.scene;
@@ -4391,8 +4024,15 @@ export class Editor {
       this.notify();
       return;
     }
-    const result = computeElementResize(this._scene, id, handle, d, originalBounds, (s, raw, h) =>
-      this.clampContainerToChildren(s, raw, h),
+    const result = computeElementResize(
+      this._scene,
+      id,
+      handle,
+      d,
+      originalBounds,
+      (s, raw, h) => this.clampContainerToChildren(s, raw, h),
+      this.transformShiftKey,
+      this.transformAltKey,
     );
     if (!result) return;
     this._scene = result.scene;
@@ -4400,7 +4040,6 @@ export class Editor {
     this.notify();
   }
 
-  // Pure body in `./editor/applies/create.ts`.
   private applyCreate(kind: "rect" | "ellipse" | "frame", bounds: Bounds): void {
     const id = newElementId(++this.nextId);
     const b = this.snapActive() ? snapCreateBounds(bounds, this.snapSpacing()) : bounds;
@@ -4446,8 +4085,7 @@ export class Editor {
     this._scene = reconcileFrameMembershipHelper(this._scene, this._history);
   }
 
-  // Pure body in `./editor/applies/create.ts`. Endpoint snapping
-  // stays here because it needs the snap engine.
+  // Endpoint snapping stays here because it needs the snap engine.
   private applyCreateLink(emit: Extract<InteractionEmit, { type: "CREATE_EDGE" }>): void {
     const from = this.snapLinkEndpoint(emit.fromElement, emit.fromPoint);
     const to = this.snapLinkEndpoint(emit.toElement, emit.toPoint);
@@ -4494,38 +4132,11 @@ export class Editor {
       return;
     }
     const newId = newElementId(++this.nextId);
-    const order = orderForTop(
-      [...this._scene.elements.values()]
-        .filter((sh) => sh.layerId === this._activeLayerId)
-        .map((sh) => sh.order),
-    );
-    const built = factory({
-      id: newId,
-      layerId: this._activeLayerId,
-      position: pending.world,
-      order,
-    });
-    // Centre the element on the drop point regardless of how the factory
-    // anchored it at `position`.
-    const wb = getElementWorldBounds(built);
-    const shape = {
-      ...built,
-      position: {
-        x: built.position.x + (pending.world.x - (wb.x + wb.width / 2)),
-        y: built.position.y + (pending.world.y - (wb.y + wb.height / 2)),
-      },
-    } as Element;
-
+    const r = computeShapeAtLinkDrop(this._scene, this._activeLayerId, pending, newId, factory);
     const tx = this._history.transaction();
-    const added = addElement(this._scene, shape);
-    this._scene = added.scene;
-    tx.add(added.patch);
-    const upd = updateLink(this._scene, pending.linkId, (e) => ({
-      ...e,
-      [pending.side]: { kind: "floating", elementId: newId },
-    }));
-    this._scene = upd.scene;
-    tx.add(upd.patch);
+    this._scene = r.scene;
+    tx.add(r.addPatch);
+    tx.add(r.linkPatch);
     tx.commit();
 
     this.pendingLinkDropMenu = null;
@@ -4549,58 +4160,21 @@ export class Editor {
    * selection. Element + link land in one undo step.
    */
   public createLinkedElementFromAnchor(fromElement: ElementId, anchorName: string): void {
-    const src = getElement(this._scene, fromElement);
-    if (!src) return;
-    const anchor: AnchorRef = { kind: "named", name: anchorName };
-    const normal = getAnchorOutwardNormal(src, anchor);
-    const bounds = getElementWorldBounds(src);
-    const srcCenter = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
-    // Same-size clone → centre-to-centre distance = the source's extent
-    // along the normal + the gap, leaving exactly
-    // ANCHOR_CLICK_NEW_ELEMENT_GAP between the facing edges. `extentAlong`
-    // resolves to width for a horizontal normal, height for a vertical one
-    // (link-start dots are the four edge midpoints).
-    const extentAlong = Math.abs(normal.x) * bounds.width + Math.abs(normal.y) * bounds.height;
-    const dist = extentAlong + ANCHOR_CLICK_NEW_ELEMENT_GAP;
-    const delta = { x: normal.x * dist, y: normal.y * dist };
-
     const newId = newElementId(++this.nextId);
-    const order = orderForTop(
-      [...this._scene.elements.values()]
-        .filter((sh) => sh.layerId === src.layerId)
-        .map((sh) => sh.order),
-    );
-    let clone = {
-      ...src,
-      id: newId,
-      position: { x: src.position.x + delta.x, y: src.position.y + delta.y },
-      order,
-    } as Element;
-    // Blank user text — the new element is a fresh same-kind shape, not a
-    // content copy (standard). Only `text` (TextElement) and `name`
-    // (FrameElement) carry user-entered text. Cast through `Element` because
-    // `exactOptionalPropertyTypes` rejects the bare object literal against
-    // the union (TS2375), even though the narrowed branch is sound.
-    if (clone.type === "text") clone = { ...clone, text: "" } as Element;
-    else if (clone.type === "frame") clone = { ...clone, name: "" } as Element;
-
-    const tx = this._history.transaction();
-    const added = addElement(this._scene, clone);
-    this._scene = added.scene;
-    tx.add(added.patch);
-
     const linkId = newLinkId(++this.nextId);
-    const placed = req(getElement(this._scene, newId));
-    const { ref: toRef } = findNearestAnchor(placed, srcCenter, snapExcludedAnchors(placed));
-    const linkResult = computeCreateLink(
+    const r = computeLinkedElementFromAnchor(
       this._scene,
-      { kind: "anchor", elementId: fromElement, anchor },
-      { kind: "anchor", elementId: newId, anchor: toRef },
-      linkId,
       this._activeLayerId,
+      fromElement,
+      anchorName,
+      newId,
+      linkId,
     );
-    this._scene = linkResult.scene;
-    tx.add(linkResult.patch);
+    if (!r) return;
+    const tx = this._history.transaction();
+    this._scene = r.scene;
+    tx.add(r.addPatch);
+    tx.add(r.linkPatch);
     tx.commit();
 
     this._selection = Selection.single(newId);
@@ -4624,76 +4198,7 @@ export class Editor {
     ghostScene: Scene;
     ghostLinkId: LinkId;
   } | null {
-    const src = getElement(this._scene, fromElement);
-    if (!src) return null;
-    const anchor: AnchorRef = { kind: "named", name: anchorName };
-    const normal = getAnchorOutwardNormal(src, anchor);
-    const b = getElementWorldBounds(src);
-    const extentAlong = Math.abs(normal.x) * b.width + Math.abs(normal.y) * b.height;
-    const dist = extentAlong + ANCHOR_CLICK_NEW_ELEMENT_GAP;
-    const delta = { x: normal.x * dist, y: normal.y * dist };
-    const bounds: Bounds = { x: b.x + delta.x, y: b.y + delta.y, width: b.width, height: b.height };
-    const fromWorld = getAnchorWorld(src, anchor);
-    // Facing edge of the ghost (toward the source) = its centre pulled back
-    // along the normal by half its extent.
-    const ghostCx = bounds.x + bounds.width / 2;
-    const ghostCy = bounds.y + bounds.height / 2;
-    const nearEdge = {
-      x: ghostCx - normal.x * (extentAlong / 2),
-      y: ghostCy - normal.y * (extentAlong / 2),
-    };
-    // The would-be element itself — a same-kind clone of the source shifted
-    // to the ghost bounds, with blank user text (mirrors
-    // `createLinkedElementFromAnchor`). The overlay renders THIS through the
-    // real renderer so the ghost looks like the actual shape (an ellipse
-    // ghosts as an ellipse), not a bounding rect. Throwaway id — never enters
-    // the real scene.
-    let element = {
-      ...src,
-      id: PREVIEW_GHOST_ELEMENT_ID,
-      position: { x: src.position.x + delta.x, y: src.position.y + delta.y },
-    } as Element;
-    if (element.type === "text") element = { ...element, text: "" } as Element;
-    else if (element.type === "frame") element = { ...element, name: "" } as Element;
-
-    // Build a throwaway scene holding the ghost element + the would-be link so
-    // the connector can be drawn through the REAL link renderer (same routing,
-    // arrowhead and style it'll have once created) — faded — instead of a
-    // dashed preview line. Mirrors the link build in
-    // `createLinkedElementFromAnchor` exactly. The `path` field stays for
-    // callers that just want the straight from→to segment.
-    const srcCenter = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
-    const withGhost = addElement(this._scene, element).scene;
-    const placed = req(getElement(withGhost, PREVIEW_GHOST_ELEMENT_ID));
-    const { ref: toRef } = findNearestAnchor(placed, srcCenter, snapExcludedAnchors(placed));
-    const linkResult = computeCreateLink(
-      withGhost,
-      { kind: "anchor", elementId: fromElement, anchor },
-      { kind: "anchor", elementId: PREVIEW_GHOST_ELEMENT_ID, anchor: toRef },
-      PREVIEW_GHOST_LINK_ID,
-      this._activeLayerId,
-    );
-    let ghostScene = linkResult.scene;
-    const edge = req(getLink(ghostScene, PREVIEW_GHOST_LINK_ID));
-    if ((edge.routing ?? "straight") === "orthogonal") {
-      const routedPoints = routeElbowLink(ghostScene, edge);
-      ghostScene = updateLink(ghostScene, PREVIEW_GHOST_LINK_ID, (e) => ({
-        ...e,
-        routedPoints,
-      })).scene;
-    }
-    // Render only the ghost link (the shapes stay for endpoint resolution).
-    ghostScene = {
-      ...ghostScene,
-      links: new Map([[PREVIEW_GHOST_LINK_ID, req(getLink(ghostScene, PREVIEW_GHOST_LINK_ID))]]),
-    };
-    return {
-      bounds,
-      path: [fromWorld, nearEdge],
-      element,
-      ghostScene,
-      ghostLinkId: PREVIEW_GHOST_LINK_ID,
-    };
+    return previewClickCreatePure(this._scene, this._activeLayerId, fromElement, anchorName);
   }
 
   /**
@@ -4708,65 +4213,17 @@ export class Editor {
    * shapes when the user clearly aimed for this one).
    */
   private snapLinkEndpoint(pressTargetElement: ElementId | null, worldPoint: Vec2): LinkEndpoint {
-    const result = this.snapEngine.snap({
-      scene: this._scene,
-      probe: worldPoint,
-      threshold: this.snapThreshold,
-      gesture: "draw-edge",
-    });
-
-    // Attach contract: dropping on a port dot → *fixed* anchor; dropping
-    // near an EDGE (not a dot) → *fixed* outline point (a ratio along the
-    // perimeter — survives move/resize); dropping on the body interior (no
-    // snap to a dot or edge) → *floating* against the whole shape, so the
-    // connection re-aims at the partner as either shape moves; dropping on
-    // empty canvas → a free point.
-    //
-    // Pick a candidate ON the pressed shape if there is one, otherwise the
-    // nearest overall. The "nearest overall" branch matters because the
-    // attach DOTS are drawn OUTSIDE the body — a release on a dot finds no
-    // element under it (hit-test = empty), so `pressTargetElement` is null,
-    // yet the snap engine still reports the dot's anchor within threshold.
-    // Binding it makes the endpoint enter PERPENDICULAR to that edge instead
-    // of staying a free point that aims at the partner (jumping between the
-    // four sides).
-    const pick = (kind: SnapCandidate["kind"]): SnapCandidate | undefined => {
-      if (pressTargetElement !== null) {
-        const onTarget = result.all.find(
-          (c) => c.kind === kind && c.metadata?.elementId === pressTargetElement,
-        );
-        if (onTarget) return onTarget;
-      }
-      return result.all.find((c) => c.kind === kind);
-    };
-
-    const boundFrom = (
-      cand: SnapCandidate | undefined,
-      want: "anchor" | "outline",
-    ): LinkEndpoint | null => {
-      if (!cand) return null;
-      const elId = cand.metadata?.elementId as ElementId | undefined;
-      if (elId === undefined) return null;
-      const shp = getElement(this._scene, elId);
-      if (!shp) return null;
-      const ep = endpointFromSnap(elId, cand, shp);
-      return ep.kind === want ? ep : null;
-    };
-
-    const anchorEp = boundFrom(pick("anchor"), "anchor");
-    if (anchorEp) return anchorEp;
-    const outlineEp = boundFrom(pick("outline"), "outline");
-    if (outlineEp) return outlineEp;
-
-    // No dot/edge snap. Over a shape body → floating; else a free point.
-    if (pressTargetElement !== null && getElement(this._scene, pressTargetElement)) {
-      return { kind: "floating", elementId: pressTargetElement };
-    }
-    return { kind: "point", position: worldPoint };
+    return snapLinkEndpointPure(
+      this._scene,
+      this.snapEngine,
+      this.snapThreshold,
+      pressTargetElement,
+      worldPoint,
+    );
   }
 
-  // Pure body in `./editor/applies/selection.ts`. The wrappers
-  // here own the side effects (`_selectedLink` clearing, notify).
+  // The wrappers here own the side effects (`_selectedLink`
+  // clearing, notify).
   private applySelectByBounds(bounds: Bounds, mode: "replace" | "add"): void {
     const next = selectByBoundsPure(
       this._scene,
@@ -4815,9 +4272,8 @@ export class Editor {
     this._selection = next;
   }
 
-  // Pure body in `./editor/applies/edge.ts`. The wrapper here
-  // owns the side effects (history push, drag-state clearing,
-  // notify).
+  // The wrapper here owns the side effects (history push,
+  // drag-state clearing, notify).
   /**
    * Live endpoint-rebind move: re-point the dragged end to the cursor in the
    * scene (a free `point` endpoint), recorded in the gesture transaction so the
@@ -4945,7 +4401,7 @@ export class Editor {
       const collapse = WAYPOINT_COLLAPSE_RADIUS / (this._scene.viewport.zoom || 1);
       const a = path?.[drag.index];
       const b = path?.[drag.index + 2];
-      if (a && b && distanceToSegmentPt(wp, a, b) <= collapse) {
+      if (a && b && hitTest.distanceToSegment(wp, a, b) <= collapse) {
         const wps = edge.waypoints.filter((_, i) => i !== drag.index);
         const r = updateLink(this._scene, drag.linkId, (e) => ({ ...e, waypoints: wps }));
         this._scene = r.scene;
@@ -5014,7 +4470,7 @@ export class Editor {
     const isDouble =
       now - this.lastHandleClickAt < DOUBLE_CLICK_MS &&
       this.lastHandleClickWorld !== null &&
-      distanceTo(this.lastHandleClickWorld, world) <= DOUBLE_CLICK_TOLERANCE_PX;
+      vec2.distance(this.lastHandleClickWorld, world) <= DOUBLE_CLICK_TOLERANCE_PX;
     this.lastHandleClickAt = now;
     this.lastHandleClickWorld = world;
     return isDouble;
@@ -5147,7 +4603,6 @@ export class Editor {
     this.notify();
   }
 
-  // Pure body in `./editor/applies/edge.ts`.
   public applyLinkPreview(fromElement: ElementId | null, fromPoint: Vec2, toPoint: Vec2): void {
     const ep = computeLinkPreviewEndpoints(this._scene, fromElement, fromPoint, toPoint);
     // Match the preview to the connector that will be committed: when new
@@ -5164,9 +4619,7 @@ export class Editor {
   }
 
   // Gesture lifecycle — recordGesturePatch / commitGesture /
-  // cancelGesture / finalizeOpenGestureTx / maybeRevertModeAfterCreate
-  // live in `./editor/gesture-tx.ts`. The thin instance methods below
-  // preserve the original call sites.
+  // cancelGesture / finalizeOpenGestureTx / maybeRevertModeAfterCreate.
   private recordGesturePatch(patch: Patch): void {
     // Snapshot the pre-gesture scene the moment the transaction opens, so a
     // later cancel/Escape can restore it (the history tx only records undo data,
@@ -5177,6 +4630,7 @@ export class Editor {
   }
   public commitGesture(): void {
     this._resizeOriginElement = null;
+    this.rotateGestureOrigin = null;
     this.gestures.commit();
     this.gestureStartScene = null;
   }
@@ -5198,9 +4652,9 @@ export class Editor {
    * - Cycles (a container inside its own descendant) are prevented by the
    *   `containerHover` pipeline above — the exclude set rules them out.
    */
-  // Pure body in `./editor/container-ops.ts`. Editor exposes a
-  // small `ContainerOpsRef` bridge so the module can mutate scene
-  // + push patches into the running gesture transaction.
+  // Editor exposes a small `ContainerOpsRef` bridge so the pure
+  // helper can mutate scene + push patches into the running gesture
+  // transaction.
   public applyContainerDrop(worldPoint: Vec2): void {
     applyContainerDropPure(this.containerOpsRef, worldPoint);
   }
@@ -5210,7 +4664,6 @@ export class Editor {
     maybeGrowContainerPure(this.containerOpsRef, containerId, childId);
   }
 
-  // Pure body in `./editor/container-ops.ts`.
   private clampContainerToChildren(shape: Element, raw: Bounds, handle: HandleId): Bounds {
     return clampContainerToChildrenPure(this._scene, shape, raw, handle);
   }
@@ -5225,9 +4678,9 @@ export class Editor {
     return this.gestureTx;
   }
 
-  // Body moved to `./editor/gesture-tx.ts`.
   public cancelGesture(): void {
     this._resizeOriginElement = null;
+    this.rotateGestureOrigin = null;
     this.gestures.cancel();
     // Roll the scene back to the pre-gesture snapshot — cancelling the history
     // transaction alone leaves the live drag mutations in `_scene`.
@@ -5322,9 +4775,8 @@ export class Editor {
   /**
    * Typed event surface — subscribe to a specific slice (`mode`,
    * `selection`, `scene`, `history`, `viewport`) or the umbrella
-   * `change`. Replaces ad-hoc selectors over the coarse `subscribe()`
-   * for callers that only care about one dimension. The legacy
-   * `subscribe()` still works and fires in lock-step.
+   * `change`. For callers that only care about one dimension;
+   * `subscribe()` fires in lock-step with these.
    */
   on<K extends keyof EditorEvents>(event: K, fn: EditorEvents[K]): () => void {
     // Cast through `never`: TS can't prove that EditorEvents[K]
@@ -5366,34 +4818,6 @@ export class Editor {
    */
   private readonly elbowRouteSig = new Map<LinkId, string>();
 
-  private elbowSignature(edge: Link): string {
-    const part = (ep: LinkEndpoint): string => {
-      if (ep.kind === "point") return `p:${ep.position.x},${ep.position.y}`;
-      const s = getElement(this._scene, ep.elementId);
-      const b = s ? getElementWorldBounds(s) : null;
-      const ref =
-        ep.kind === "anchor"
-          ? JSON.stringify(ep.anchor)
-          : ep.kind === "outline"
-            ? `o:${ep.ratio}`
-            : "f";
-      return `${ep.kind}:${ep.elementId}:${ref}:${b ? `${b.x},${b.y},${b.width},${b.height}` : "x"}`;
-    };
-    const base = `${part(edge.from)}|${part(edge.to)}|${JSON.stringify(edge.fixedSegments ?? null)}`;
-    // Avoid-obstacles links depend on EVERY shape's geometry, so their route
-    // must invalidate when any obstacle moves — fold a digest of all element
-    // bboxes into the signature. Only paid by links that opt in.
-    if (edge.avoidObstacles === true) {
-      let digest = "|avoid:";
-      for (const el of this._scene.elements.values()) {
-        const bb = getElementWorldBounds(el);
-        digest += `${el.id},${bb.x},${bb.y},${bb.width},${bb.height};`;
-      }
-      return base + digest;
-    }
-    return base;
-  }
-
   /**
    * Choke-point reroute (standard model): recompute `routedPoints` for
    * every orthogonal link whose inputs changed since the last pass, and
@@ -5405,7 +4829,7 @@ export class Editor {
     let next = this._scene;
     for (const [id, edge] of this._scene.links) {
       if ((edge.routing ?? "straight") !== "orthogonal") continue;
-      const sig = this.elbowSignature(edge);
+      const sig = elbowSignature(this._scene, edge);
       if (this.elbowRouteSig.get(id) === sig) continue;
       this.elbowRouteSig.set(id, sig);
       const routedPoints = routeElbowLink(next, edge);
@@ -5414,7 +4838,6 @@ export class Editor {
     this._scene = next;
   }
 
-  // Pure body in `./editor/render-orchestrator.ts` (~130 lines).
   private render(): void {
     this.rerouteElbows();
     // Feed the renderer's animation clock our per-shape playback state
@@ -5422,7 +4845,7 @@ export class Editor {
     // from the right frame. Set immediately before the synchronous
     // render pass (the shape-renderer has no options channel).
     setAnimationClock((shape: { readonly id?: unknown }) =>
-      this.playbackClock(shape.id as ElementId),
+      this.gifPlayback.clock(shape.id as ElementId),
     );
     renderEditor(this);
     // Present AFTER the paint, on the same tick — deferred-submission
@@ -5430,23 +4853,6 @@ export class Editor {
     this.onAfterRender?.();
   }
 }
-
-/**
- * Throwaway id for the transient click-create ghost preview element built by
- * `previewClickCreate`. Never enters the scene / history — it lives only for
- * the duration of one overlay paint, so any stable constant is fine.
- */
-const PREVIEW_GHOST_ELEMENT_ID = "__ghost-preview__" as ElementId;
-
-/** Throwaway link id for the click-create ghost preview. See above. */
-const PREVIEW_GHOST_LINK_ID = "__ghost-preview-link__" as LinkId;
-
-const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
-
-// `coverageRatio` moved to `./editor/container-ops.ts`.
-
-// `hasWidthHeight` moved to `./editor/shape-traits.ts` for shared
-// use by container-ops and the future applies/resize module.
 
 /**
  * Type guard — `true` when the value already implements the
@@ -5467,41 +4873,4 @@ const isHistoryProvider = (
   );
 };
 
-// `describeNudge` moved to `./editor/public/selection-ops.ts`.
-
 /** Distance from point `p` to the finite segment `a`–`b` (world space). */
-function distanceToSegmentPt(p: Vec2, a: Vec2, b: Vec2): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y);
-  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
-}
-
-/**
- * Convert a snap candidate into an `LinkEndpoint`. Anchor snap → named
- * anchor ref; outline snap → outline ref with the sampled ratio. Falls
- * back to a free point if the metadata isn't recognised.
- */
-const endpointFromSnap = (
-  elementId: ElementId,
-  candidate: SnapCandidate,
-  shape: Element,
-): LinkEndpoint => {
-  if (candidate.kind === "anchor") {
-    const ref = candidate.metadata?.ref as AnchorRef | undefined;
-    if (ref) return { kind: "anchor", elementId, anchor: ref };
-  }
-  if (candidate.kind === "outline" && typeof candidate.metadata?.ratio === "number") {
-    return { kind: "outline", elementId, ratio: candidate.metadata.ratio };
-  }
-  // Defensive fallback — should not happen with built-in contributors.
-  void shape;
-  return { kind: "point", position: candidate.snapped };
-};
-
-// `resizeFromHandle`, `applyResizeConstraints`, the four handle-
-// quadrant predicates moved to `./editor/resize-helpers.ts` so
-// they're shared between applies/resize and the container clamp.

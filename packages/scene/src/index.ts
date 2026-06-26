@@ -138,6 +138,7 @@ export {
 // Scene constructor + apply + ordering helpers
 export {
   DEFAULT_LAYER_ID,
+  DEFAULT_SCENE,
   emptyScene,
   apply,
   orderForTop,
@@ -149,6 +150,13 @@ export {
   getBinaryFile,
 } from "./scene.js";
 export type { FractionalIndex } from "fractional-keys";
+
+// Z-order comparators.
+export { byOrderAsc, byOrderDesc } from "./order.js";
+
+// Scene defaults: hydration / dehydration + per-key persistence scope
+export { hydrateScene, dehydrateScene, VIEWPORT_SCOPE } from "./hydrate.js";
+export type { SettingScope, SceneSettings, HydrateInput } from "./hydrate.js";
 
 // Binary file registry.
 export type { BinaryFile } from "./file.js";
@@ -226,7 +234,6 @@ export {
   wrapLayout,
   measureWrap,
   treeLayout,
-  allElementsInLayer,
   getAutoLayoutSpec,
   runAutoLayout,
 } from "./layout.js";
@@ -247,6 +254,8 @@ export {
   FRAME_HEADER_HEIGHT,
   FRAME_HEADER_PADDING_X,
   FRAME_HEADER_FONT_SIZE,
+  FALLBACK_SCENE_WIDTH,
+  FALLBACK_SCENE_HEIGHT,
 } from "./constants.js";
 
 // Elbow router — A*-based obstacle-avoiding 90° routing.

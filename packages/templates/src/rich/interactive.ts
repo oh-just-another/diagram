@@ -1,4 +1,4 @@
-import type { ElementBase, TemplateElement as SceneTemplateElement } from "@oh-just-another/scene";
+import { isTemplate, type ElementBase } from "@oh-just-another/scene";
 import type { ElementId, Vec2 } from "@oh-just-another/types";
 import { resolveBindings } from "./binding.js";
 import { fallbackMeasureText, layoutTree } from "./layout.js";
@@ -36,8 +36,8 @@ export const templateInteractiveHitTester = (
   shape: ElementBase,
   localPoint: Vec2,
 ): TemplateTapPayload | null => {
-  if (shape.type !== "template") return null;
-  const ts = shape as SceneTemplateElement;
+  if (!isTemplate(shape)) return null;
+  const ts = shape;
   const template = defaultRichRegistry.get(ts.templateId);
   if (!template) return null;
   const root = resolveBindings(template.root, { ...template.defaults, ...ts.data });
@@ -76,8 +76,8 @@ export interface DropZoneHit {
  * payload.
  */
 export const findDropZoneAt = (shape: ElementBase, localPoint: Vec2): DropZoneHit | null => {
-  if (shape.type !== "template") return null;
-  const ts = shape as SceneTemplateElement;
+  if (!isTemplate(shape)) return null;
+  const ts = shape;
   const template = defaultRichRegistry.get(ts.templateId);
   if (!template) return null;
   const root = resolveBindings(template.root, { ...template.defaults, ...ts.data });

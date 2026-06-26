@@ -10,9 +10,6 @@ export {
   transferCanvasToWorker,
 } from "./offscreen.js";
 export { createRenderWorker } from "./worker-factory.js";
-// WorkerPool / LayerWorkerPool live in @oh-just-another/renderer-workers
-// (backend-neutral primitives don't belong in the Canvas-specific package).
-// Re-export to keep existing imports working.
 export { WorkerPool, LayerWorkerPool } from "@oh-just-another/renderer-workers";
 export { RecordingTarget, replayCommands, type RenderCommand } from "./recording-target.js";
 export {
@@ -25,13 +22,10 @@ export {
 export { isWebGPUAvailable, isWebGL2Available, pickAvailableBackend } from "./webgpu-detect.js";
 export { LARGE_SCENE_WORKER_THRESHOLD } from "./constants.js";
 
-// `installBuiltinRenderers` and `wrapText` live in
-// `@oh-just-another/renderer-core` so the SVG / headless backends can share them.
-// These re-exports keep existing imports working.
 export { installBuiltinRenderers, wrapText } from "@oh-just-another/renderer-core";
 export type { WrapOptions, WrappedLine } from "@oh-just-another/renderer-core";
 
-// `installBuiltinRenderers()` must be called once before `renderScene`
-// from `@oh-just-another/renderer-core` knows how to draw built-in shapes. It is
-// not auto-invoked so that this package stays `sideEffects: false` and tree-
-// shakeable. Hosts typically call it in their entry file.
+// `installBuiltinRenderers()` must be called once before built-in shapes
+// can be drawn. It is not auto-invoked so this package stays
+// `sideEffects: false` and tree-shakeable. Hosts typically call it in
+// their entry file.

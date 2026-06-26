@@ -96,23 +96,19 @@ export interface TileCacheEntry<B = unknown> {
 export interface TileCache<B = unknown> {
   get(key: TileKey): TileCacheEntry<B> | undefined;
   set(entry: TileCacheEntry<B>): void;
-  /**
-   * Drop any cached tile that contains the given shape id. Called
-   * by the editor when a shape's scene reference changes.
-   */
+  /** Drop any cached tile that contains the given shape id. */
   invalidateForElement(id: ElementId): void;
   /**
    * Drop any cached tile whose `bounds` intersect the given world
-   * rectangle. Used by the editor's patch hook when a shape is
-   * added (no previous id in the reverse index) or moved (the
-   * before/after AABB union covers both old and new tiles).
+   * rectangle. Covers a shape add (no previous id in the reverse
+   * index) or a move (the before/after AABB union covers both old and
+   * new tiles).
    */
   invalidateRect(rect: Bounds): void;
   /**
-   * Convenience routing used by editor patch pipelines: dispatches
-   * to `invalidateForElement` (remove), `invalidateRect` (add), or
-   * both (move) based on which of `removedElementId` / `beforeBounds`
-   * / `afterBounds` are present.
+   * Convenience routing: dispatches to `invalidateForElement` (remove),
+   * `invalidateRect` (add), or both (move) based on which of
+   * `removedElementId` / `beforeBounds` / `afterBounds` are present.
    */
   invalidateForPatch(options: {
     readonly removedElementId?: ElementId;
@@ -133,9 +129,8 @@ const keyOf = (k: TileKey): string => `${k.col},${k.row}@${k.zoom}`;
  * OffscreenCanvas / SharedArrayBuffer is the host's call.
  *
  * Invalidation is shape-id-indexed: every `set` also updates a
- * reverse index `Map<ElementId, Set<tileKey>>` so the editor's
- * patch hook can call `invalidateForElement(id)` in O(touched tiles)
- * instead of scanning every tile.
+ * reverse index `Map<ElementId, Set<tileKey>>` so `invalidateForElement
+ * (id)` runs in O(touched tiles) instead of scanning every tile.
  */
 export class InMemoryTileCache<B = unknown> implements TileCache<B> {
   private readonly entries = new Map<string, TileCacheEntry<B>>();
@@ -218,16 +213,14 @@ export class InMemoryTileCache<B = unknown> implements TileCache<B> {
   }
 
   /**
-   * Convenience hook for the editor's patch pipeline. Looks at a
-   * scene Patch and invalidates touched tiles via the right
-   * cheap path:
+   * Invalidate touched tiles via the right cheap path:
    *   • shape removed → invalidateForElement (id still in reverse index)
    *   • shape added   → invalidateRect (no id yet — drop tiles that
    *                     touch the new shape's bounds)
-   *   • shape moved   → both: removeForElement (old tiles) + rect
+   *   • shape moved   → both: invalidateForElement (old tiles) + rect
    *                     (new bounds)
-   * Caller computes the bounds via `getElementWorldBounds(before|after)`
-   * since this package is pure and doesn't know about Element geometry.
+   * Caller supplies the bounds; this package is pure and doesn't know
+   * about Element geometry.
    */
   invalidateForPatch(options: {
     readonly removedElementId?: ElementId;

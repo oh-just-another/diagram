@@ -1,4 +1,4 @@
-import type { Bounds, Vec2 } from "@oh-just-another/types";
+import { req, type Bounds, type Vec2 } from "@oh-just-another/types";
 
 /**
  * A*-based elbow router (Manhattan / 90° segments that detour
@@ -30,11 +30,6 @@ import {
   ELBOW_OBSTACLE_INTERIOR_EPSILON,
   ELBOW_BEND_PENALTY,
 } from "./constants.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/scene: index out of range");
-  return v;
-};
 
 const MARGIN = ELBOW_OBSTACLE_MARGIN;
 const INTERIOR_EPS = ELBOW_OBSTACLE_INTERIOR_EPSILON;

@@ -35,6 +35,17 @@ export type PressTarget =
       readonly handle: HandleId;
       readonly bounds: Bounds;
     }
+  | {
+      /**
+       * The rotate grip above the selection (single shape or group). The
+       * machine emits a per-frame `ROTATE` with the angle swept around
+       * `pivot`; the editor reads the press-time snapshot it kept and turns
+       * every member rigidly. `pivot` is the selection bbox centre.
+       */
+      readonly kind: "rotate-handle";
+      readonly pivot: Vec2;
+      readonly bounds: Bounds;
+    }
   | { readonly kind: "link"; readonly id: LinkId }
   | {
       readonly kind: "edge-endpoint";
@@ -188,6 +199,16 @@ export type InteractionEmit =
       readonly handle: HandleId;
       readonly delta: Vec2;
       readonly originalBounds: Bounds;
+    }
+  | {
+      /**
+       * Per-frame rotation of the selection about `pivot`. `deltaAngle` is the
+       * total swept angle since press-down (radians); the editor applies it to
+       * its press-time snapshot so the cumulative angle never drifts.
+       */
+      readonly type: "ROTATE";
+      readonly pivot: Vec2;
+      readonly deltaAngle: number;
     }
   | {
       readonly type: "CREATE_SHAPE";
@@ -351,6 +372,19 @@ export const interactionMachine = setup({
         originalBounds: context.pressTarget.bounds,
       });
     }),
+    emitRotate: enqueueActions(({ context, event, enqueue }) => {
+      if (
+        event.type !== "POINTER_MOVE" ||
+        !context.pressOrigin ||
+        context.pressTarget?.kind !== "rotate-handle"
+      ) {
+        return;
+      }
+      const { pivot } = context.pressTarget;
+      const start = Math.atan2(context.pressOrigin.y - pivot.y, context.pressOrigin.x - pivot.x);
+      const now = Math.atan2(event.point.y - pivot.y, event.point.x - pivot.x);
+      enqueue.emit({ type: "ROTATE", pivot, deltaAngle: now - start });
+    }),
     maybeEmitCreate: enqueueActions(({ context, event, enqueue }) => {
       if (event.type !== "POINTER_UP" || !context.pressOrigin || !context.drawingType) {
         return;
@@ -458,6 +492,11 @@ export const interactionMachine = setup({
       if (context.pressTarget?.kind !== "group-handle") return false;
       return dragExceeded(context.pressOrigin, event.point);
     },
+    movedAndOnRotateHandle: ({ context, event }) => {
+      if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
+      if (context.pressTarget?.kind !== "rotate-handle") return false;
+      return dragExceeded(context.pressOrigin, event.point);
+    },
     movedAndDrawing: ({ context, event }) => {
       if (event.type !== "POINTER_MOVE" || !context.pressOrigin) return false;
       if (
@@ -543,6 +582,14 @@ export const interactionMachine = setup({
             actions: [
               { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
               { type: "emitResizeGroup" },
+            ],
+          },
+          {
+            guard: "movedAndOnRotateHandle",
+            target: "draggingRotateHandle",
+            actions: [
+              { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+              { type: "emitRotate" },
             ],
           },
           {
@@ -641,6 +688,18 @@ export const interactionMachine = setup({
           actions: [
             { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
             { type: "emitResizeGroup" },
+          ],
+        },
+        POINTER_UP: { target: "idle", actions: [{ type: "resetGesture" }] },
+        POINTER_CANCEL: { target: "idle", actions: [{ type: "resetGesture" }] },
+      },
+    },
+    draggingRotateHandle: {
+      on: {
+        POINTER_MOVE: {
+          actions: [
+            { type: "updateLast", params: ({ event }) => ({ point: event.point }) },
+            { type: "emitRotate" },
           ],
         },
         POINTER_UP: { target: "idle", actions: [{ type: "resetGesture" }] },

@@ -10,6 +10,7 @@ const scene = (zoom: number, pan: { x: number; y: number }): Scene => ({
     zoom,
     rotation: 0,
     size: { width: 800, height: 600 },
+    gridEnabled: false,
   },
 });
 

@@ -1,13 +1,12 @@
 import type { Scene } from "@oh-just-another/scene";
-import type { RenderSceneToSvgOptions } from "@oh-just-another/renderer-svg";
 import { UI_SURFACE } from "@oh-just-another/tokens";
-import { renderToSvg } from "./render-to-svg.js";
+import { renderToSvg, type RenderToSvgOptions } from "./render-to-svg.js";
 
 /**
  * Options for `renderToPng`. Extends the SVG-render options with PNG-specific
  * knobs.
  */
-export interface RenderToPngOptions extends RenderSceneToSvgOptions {
+export interface RenderToPngOptions extends RenderToSvgOptions {
   /**
    * Uniform device-pixel scale factor. `2` gives a retina-quality PNG twice
    * the logical width / height. Default: 1.

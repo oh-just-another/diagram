@@ -348,7 +348,7 @@ export const Toolbar = ({
  * the active state stays in sync when the user toggles via hotkey or
  * context menu.
  */
-export const ToolLockButton = ({
+const ToolLockButton = ({
   label = "🔒",
   title = "Lock current tool",
 }: {

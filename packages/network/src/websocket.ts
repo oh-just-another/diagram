@@ -1,4 +1,11 @@
+import { createListeners } from "@oh-just-another/events";
+
 import type { Transport } from "./transport.js";
+import {
+  DEFAULT_INITIAL_RECONNECT_DELAY_MS,
+  DEFAULT_MAX_RECONNECT_DELAY_MS,
+  RECONNECT_BACKOFF_FACTOR,
+} from "./constants.js";
 
 /**
  * `Transport` backed by a single `WebSocket` connection. Suitable for
@@ -35,7 +42,7 @@ export type WebSocketStatus = "connecting" | "open" | "reconnecting" | "closed";
 
 export class WebSocketTransport implements Transport {
   private readonly url: string;
-  private readonly handlers = new Set<(payload: Uint8Array) => void>();
+  private readonly listeners = createListeners<Uint8Array>();
   private readonly statusHandlers = new Set<(status: WebSocketStatus) => void>();
   private readonly buffer: Uint8Array[] = [];
   private readonly webSocketImpl: typeof globalThis.WebSocket;
@@ -51,8 +58,8 @@ export class WebSocketTransport implements Transport {
   constructor(url: string, options: WebSocketTransportOptions = {}) {
     this.url = url;
     this.webSocketImpl = options.webSocketImpl ?? globalThis.WebSocket;
-    this.initialDelay = options.initialReconnectDelay ?? 500;
-    this.maxDelay = options.maxReconnectDelay ?? 30_000;
+    this.initialDelay = options.initialReconnectDelay ?? DEFAULT_INITIAL_RECONNECT_DELAY_MS;
+    this.maxDelay = options.maxReconnectDelay ?? DEFAULT_MAX_RECONNECT_DELAY_MS;
     this.reconnectDelay = this.initialDelay;
     if (typeof this.webSocketImpl !== "function") {
       throw new Error(
@@ -71,8 +78,7 @@ export class WebSocketTransport implements Transport {
   }
 
   onMessage(handler: (payload: Uint8Array) => void): () => void {
-    this.handlers.add(handler);
-    return () => this.handlers.delete(handler);
+    return this.listeners.add(handler);
   }
 
   /** Current lifecycle state. Updates fire via `onStatusChange`. */
@@ -108,7 +114,7 @@ export class WebSocketTransport implements Transport {
       this.socket = null;
     }
     this.setStatus("closed");
-    this.handlers.clear();
+    this.listeners.clear();
     this.statusHandlers.clear();
     this.buffer.length = 0;
   }
@@ -135,7 +141,7 @@ export class WebSocketTransport implements Transport {
       if (data instanceof ArrayBuffer) payload = new Uint8Array(data);
       else if (data instanceof Uint8Array) payload = data;
       if (!payload) return;
-      for (const h of this.handlers) h(payload);
+      this.listeners.emit(payload);
     });
 
     const onTerminated = () => {
@@ -152,7 +158,7 @@ export class WebSocketTransport implements Transport {
 
   private scheduleReconnect(): void {
     const delay = this.reconnectDelay;
-    this.reconnectDelay = Math.min(this.maxDelay, this.reconnectDelay * 2);
+    this.reconnectDelay = Math.min(this.maxDelay, this.reconnectDelay * RECONNECT_BACKOFF_FACTOR);
     this.setStatus("reconnecting");
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;

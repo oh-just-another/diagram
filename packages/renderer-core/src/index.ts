@@ -8,7 +8,7 @@ export type {
   FontStyleOptions,
   DrawPoint,
 } from "./render-target.js";
-export type { ElementRenderer } from "./shape-renderer.js";
+export type { ElementRenderer, ElementRenderContext } from "./shape-renderer.js";
 export type { LayerName } from "./layers.js";
 export type { RenderSceneOptions, LodOptions } from "./scene-renderer.js";
 export type { RenderLinksOptions } from "./edge-renderer.js";
@@ -28,6 +28,9 @@ export { renderGrid, computeGridRungs } from "./grid-renderer.js";
 // `installBuiltinRenderers()` registers them via `registerElementRenderer` and
 // is safe to call multiple times.
 export { installBuiltinRenderers } from "./built-in-renderers.js";
+export { fetchModuleBytes, allocBytes } from "./wasm-bytes.js";
+export type { WasmArena } from "./wasm-bytes.js";
+export { LruCache } from "./lru-cache.js";
 export type { WrapOptions, WrappedLine } from "./text-layout.js";
 export { wrapText } from "./text-layout.js";
 export type {

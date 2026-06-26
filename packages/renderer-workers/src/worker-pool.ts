@@ -69,7 +69,7 @@ export class WorkerPool {
   ): void {
     this.busy[index] = true;
     const worker = this.workers[index];
-    if (worker === undefined) throw new Error("packages/renderer-workers: index out of range");
+    if (worker === undefined) throw new Error("WorkerPool: worker index out of range");
     work.task(worker).then(
       (value) => {
         this.busy[index] = false;

@@ -1,4 +1,5 @@
-import type { Color } from "@oh-just-another/types";
+import type { Color, Vec2 } from "@oh-just-another/types";
+import type { TextAlign } from "@oh-just-another/scene";
 
 /**
  * Visual style of a single rich-template node. Mirrors a useful subset of CSS
@@ -16,7 +17,7 @@ export interface NodeStyle {
   readonly fontFamily?: string;
   readonly fontSize?: number;
   readonly fontWeight?: "normal" | "bold" | number;
-  readonly textAlign?: "left" | "center" | "right";
+  readonly textAlign?: TextAlign;
   readonly textBaseline?: "top" | "middle" | "bottom";
 }
 
@@ -55,7 +56,7 @@ export const resolveSpacing = (
 export type FlexDirection = "row" | "column";
 export type JustifyContent = "start" | "center" | "end" | "space-between" | "space-around";
 export type AlignItems = "start" | "center" | "end" | "stretch" | "baseline";
-export type FlexWrap = "nowrap" | "wrap";
+type FlexWrap = "nowrap" | "wrap";
 export type Position = "relative" | "absolute" | "spot";
 
 /**
@@ -77,9 +78,9 @@ export type SpotName =
   | "left"
   | "center";
 
-export type SpotRef = SpotName | { readonly ratio: { readonly x: number; readonly y: number } };
+export type SpotRef = SpotName | { readonly ratio: Vec2 };
 
-const SPOT_RATIOS: Readonly<Record<SpotName, { readonly x: number; readonly y: number }>> = {
+const SPOT_RATIOS: Readonly<Record<SpotName, Vec2>> = {
   "top-left": { x: 0, y: 0 },
   top: { x: 0.5, y: 0 },
   "top-right": { x: 1, y: 0 },
@@ -96,7 +97,7 @@ const SPOT_RATIOS: Readonly<Record<SpotName, { readonly x: number; readonly y: n
  * `STANDARD_ANCHOR_RATIOS` in `@scene` — keep the two in sync if you ever
  * add new named spots.
  */
-export const resolveSpotRatio = (ref: SpotRef): { readonly x: number; readonly y: number } => {
+export const resolveSpotRatio = (ref: SpotRef): Vec2 => {
   if (typeof ref === "string") return SPOT_RATIOS[ref];
   return ref.ratio;
 };
@@ -159,5 +160,5 @@ export interface LayoutStyle {
   /** Spot-only: anchor point on the *child* (where to pin against parent's anchor). Default `"center"`. */
   readonly anchorFocus?: SpotRef;
   /** Spot-only: pixel offset applied after spot resolution. */
-  readonly offset?: { readonly x: number; readonly y: number };
+  readonly offset?: Vec2;
 }

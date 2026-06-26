@@ -14,6 +14,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { POPOVER_OFFSET_PX } from "./constants.js";
+import { usePortalContainer } from "./portal-container.js";
 
 /**
  * Floating popover primitive. Wraps a trigger element and renders its
@@ -55,6 +56,7 @@ export const Popover = ({
   onOpenChange,
   ariaLabel,
 }: PopoverProps) => {
+  const portalContainer = usePortalContainer();
   const [openState, setOpenState] = useState(false);
   const controlled = openProp !== undefined;
   const open = controlled ? openProp : openState;
@@ -163,7 +165,7 @@ export const Popover = ({
             >
               {children}
             </div>,
-            document.body,
+            portalContainer,
           )
         : null}
     </>

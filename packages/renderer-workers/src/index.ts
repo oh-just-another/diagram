@@ -13,13 +13,8 @@
  *     one worker at a time, so frame messages must always route
  *     back to the same worker).
  *
- * The kernel doesn't ship a worker script — `@renderer-canvas`
- * provides `render-worker.ts` (Canvas2D off-thread) that hosts
- * spawn via `new Worker(new URL(...), { type: "module" })`. Hosts
- * with a custom rendering pipeline (WebGL2 worker, text shaper
- * worker, raster-wasm worker) write their own and feed the spawned
- * `Worker[]` array to `new WorkerPool(...)` / `new LayerWorkerPool
- * (...)` here.
+ * Both classes take an already-spawned `Worker[]` array; the host
+ * supplies its own worker script.
  */
 export { WorkerPool } from "./worker-pool.js";
 export { LayerWorkerPool } from "./layer-worker-pool.js";

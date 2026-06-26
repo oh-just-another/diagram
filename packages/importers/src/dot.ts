@@ -5,6 +5,7 @@ import type {
   GraphNode,
   NodeShape,
 } from "./graph.js";
+import { req } from "@oh-just-another/types";
 
 /**
  * Minimal Graphviz `dot` importer. Supports:
@@ -115,11 +116,6 @@ export const parseDot = (source: string): GraphDocument => {
 };
 
 // --- helpers ---
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/importers: index out of range");
-  return v;
-};
 
 const stripComments = (s: string): string => {
   let out = "";

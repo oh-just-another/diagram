@@ -42,7 +42,7 @@ export interface ElementBase {
    * If true, interactive resize is prevented from dragging through the
    * opposite edge — the shape cannot be mirrored by overshooting a handle.
    * `width` / `height` are clamped to a non-negative range (or `minWidth` /
-   * `minHeight` if set). Defaults to `false` for backward compatibility.
+   * `minHeight` if set). Defaults to `false`.
    */
   readonly noFlip?: boolean;
 
@@ -53,8 +53,8 @@ export interface ElementBase {
    * name override the standard placement; new names add fresh ports.
    *
    * Values are `AnchorRef`s — `ratio` keeps the point proportional to the
-   * shape's bounds, `absolute` pins it at a fixed pixel offset. Resolving
-   * an anchor is `getAnchorLocal` / `getAnchorWorld` in `./anchors.ts`.
+   * shape's bounds, `absolute` pins it at a fixed pixel offset. Resolve
+   * an anchor through `getAnchorLocal` / `getAnchorWorld`.
    */
   readonly anchors?: Readonly<Record<string, AnchorRef>>;
 
@@ -103,7 +103,7 @@ export interface ElementBase {
   readonly hidden?: boolean;
 
   /**
-   * Element-level hyperlink (standard model). Any shape — text, image,
+   * Element-level hyperlink. Any shape — text, image,
    * rectangle — can carry one. The host opens it on Cmd/Ctrl-click or via
    * the hover link-popup. Stored verbatim; the host MUST validate the
    * scheme before navigating (only `http`/`https`/`mailto` — never
@@ -157,10 +157,9 @@ export interface TextElement extends ElementBase {
 export interface ImageElement extends ElementBase {
   readonly type: "image";
   /**
-   * URL or data-URI. Kept as a fallback for legacy scenes and for
-   * remote-host / SVG images that don't need binary registration.
-   * Newer shapes set `fileId` to point at a `Scene.files` entry
-   * instead — keeps scene.json small for large bitmaps.
+   * URL or data-URI. Used for remote-host / SVG images that don't need
+   * binary registration. Setting `fileId` instead points at a
+   * `Scene.files` entry, which keeps scene.json small for large bitmaps.
    */
   readonly src: string;
   /**

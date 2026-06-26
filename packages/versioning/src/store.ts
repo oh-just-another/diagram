@@ -1,3 +1,4 @@
+import { createListeners } from "@oh-just-another/events";
 import type { Scene } from "@oh-just-another/scene";
 import {
   branchId as castBranchId,
@@ -44,7 +45,7 @@ export interface BranchRequest {
 export class SnapshotStore {
   private readonly snapshots = new Map<VersionId, Snapshot>();
   private readonly branchesMap = new Map<BranchId, Branch>();
-  private readonly listeners = new Set<() => void>();
+  private readonly listeners = createListeners();
   private idCounter = 0;
   private _currentBranchId: BranchId;
 
@@ -195,12 +196,11 @@ export class SnapshotStore {
    * Returns an unsubscribe fn.
    */
   subscribe(fn: () => void): () => void {
-    this.listeners.add(fn);
-    return () => this.listeners.delete(fn);
+    return this.listeners.add(fn);
   }
 
   private notify(): void {
-    for (const fn of this.listeners) fn();
+    this.listeners.emit();
   }
 
   private uniqueId(prefix: string): string {

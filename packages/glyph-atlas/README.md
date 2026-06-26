@@ -16,7 +16,7 @@ pnpm add @oh-just-another/glyph-atlas
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
 
 // `shaper` is any object satisfying MsdfShaper — structurally compatible
-// with @text-wasm's WasmTextShaper (glyphMetrics + rasterizeGlyphMSDF).
+// with @oh-just-another/text-wasm's WasmTextShaper (glyphMetrics + rasterizeGlyphMSDF).
 const atlas = new GlyphAtlas(shaper, { atlasSize: 1024, tileSize: 64 });
 
 const glyph = atlas.getOrRasterize("A".codePointAt(0)!); // AtlasGlyph | null (null = atlas full)

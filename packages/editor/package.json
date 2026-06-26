@@ -47,6 +47,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@oh-just-another/fonts": "workspace:*",
     "@oh-just-another/raster-wasm": "workspace:*",
     "@oh-just-another/react-ui": "workspace:*",
     "@oh-just-another/renderer-canvas": "workspace:*",
@@ -58,18 +59,19 @@
     "@oh-just-another/templates": "workspace:*",
     "@oh-just-another/text-wasm": "workspace:*",
     "@oh-just-another/types": "workspace:*",
-    "lucide-react": "^1.16.0"
+    "gifuct-js": "2.1.2",
+    "lucide-react": "1.16.0"
   },
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.1.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "jsdom": "^25.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "@testing-library/react": "16.3.2",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "jsdom": "25.0.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
   }
 }

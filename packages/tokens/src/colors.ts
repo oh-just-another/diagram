@@ -1,8 +1,8 @@
 /**
  * Curated colour tokens — single source of truth for every hex
- * the project ships. Built on top of [Radix Colors](https://www.radix-ui.com/colors).
+ * the project ships.
  *
- * Radix scales follow a consistent 12-step semantic model:
+ * The underlying scales follow a consistent 12-step semantic model:
  *   step 1-2  app background / subtle background
  *   step 3-5  UI element backgrounds (hover / active)
  *   step 6-8  borders / separators / hovered borders
@@ -94,8 +94,8 @@ export const HUE_TONES = {
 
 /**
  * Per-hue step-2 backgrounds — the "almost-pure tint" row used by
- * the canvas palette picker. Step-2 is Radix's "subtle app
- * background" — paper-like in light mode, deep-near-black in dark.
+ * the canvas palette picker. Step-2 is the "subtle app background" —
+ * paper-like in light mode, deep-near-black in dark.
  * Exposed separately from `HUE_TONES` because shape fills (step-4)
  * and canvas backgrounds (step-2) have different aesthetic
  * intents — same hue, very different role.
@@ -122,14 +122,9 @@ export const CANVAS_TONES = {
 } as const satisfies Record<"light" | "dark", Record<Hue, string>>;
 
 // ---------------------------------------------------------------------------
-// UI surface tokens — used by react-ui's chrome (toolbar, panels,
-// modals, tooltips). Intentionally curated, not a full scale: every UI
-// surface picks from a small fixed set so themes stay coherent.
-//
-// CSS in react-ui's styles.css mirrors these hex values by hand
-// (CSS can't import TypeScript). The comments next to each
-// declaration there point back to the token name — keep them in
-// sync when you change a value here.
+// UI surface tokens for chrome (toolbar, panels, modals, tooltips).
+// Intentionally curated, not a full scale: every UI surface picks
+// from a small fixed set so themes stay coherent.
 // ---------------------------------------------------------------------------
 
 export interface UISurface {

@@ -10,7 +10,8 @@ import {
 import type { Bounds, Vec2 } from "@oh-just-another/types";
 import { MAX_ZOOM, MIN_ZOOM } from "../../constants.js";
 
-const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+/** Clamp a zoom factor to the editor's `[MIN_ZOOM, MAX_ZOOM]` range. */
+export const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 
 /**
  * Shift the camera by a screen-space delta. Returns the next scene, or
@@ -108,24 +109,24 @@ export const computeViewportResize = (
 };
 
 /**
- * Merge a partial grid update (`size` and/or `style`). Returns `null`
- * when nothing actually changed. Grid settings are view preferences —
- * caller doesn't touch history.
+ * Merge a partial grid update (`enabled` and/or `style` and/or `snap`).
+ * Returns `null` when nothing actually changed. Grid settings are view
+ * preferences — caller doesn't touch history.
  */
 export const computeSetGrid = (
   scene: Scene,
-  patch: { size?: number; style?: GridStyle; snap?: boolean },
+  patch: { enabled?: boolean; style?: GridStyle; snap?: boolean },
 ): Scene | null => {
   const vp = scene.viewport;
-  const nextSize = patch.size ?? vp.gridSize;
+  const nextEnabled = patch.enabled ?? vp.gridEnabled;
   const nextStyle = patch.style ?? vp.gridStyle;
   const nextSnap = patch.snap ?? vp.snapToGrid;
-  if (nextSize === vp.gridSize && nextStyle === vp.gridStyle && nextSnap === vp.snapToGrid) {
+  if (nextEnabled === vp.gridEnabled && nextStyle === vp.gridStyle && nextSnap === vp.snapToGrid) {
     return null;
   }
   const nextViewport: typeof vp = {
     ...vp,
-    ...(nextSize === undefined ? {} : { gridSize: nextSize }),
+    gridEnabled: nextEnabled,
     ...(nextStyle === undefined ? {} : { gridStyle: nextStyle }),
     ...(nextSnap === undefined ? {} : { snapToGrid: nextSnap }),
   };

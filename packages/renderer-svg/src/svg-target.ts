@@ -9,6 +9,7 @@ import type {
   TextBaseline,
 } from "@oh-just-another/renderer-core";
 import { approxTextWidth } from "./measure-text.js";
+import { DEFAULT_FONT_SIZE_PX, KAPPA } from "./constants.js";
 
 /**
  * `RenderTarget` implementation that builds an SVG-string snapshot of the
@@ -38,7 +39,7 @@ export class SvgTarget implements RenderTarget {
   private lineJoin: LineJoin = "miter";
   private dashArray: readonly number[] | null = null;
   private fontFamily = "system-ui, sans-serif";
-  private fontSize = 14;
+  private fontSize = DEFAULT_FONT_SIZE_PX;
   private fontWeight: "normal" | "bold" = "normal";
   private fontStyle: "normal" | "italic" = "normal";
   private textAlign: TextAlign = "left";
@@ -229,10 +230,9 @@ export class SvgTarget implements RenderTarget {
   }
 
   ellipse(cx: number, cy: number, rx: number, ry: number): void {
-    // Approximate an ellipse with 4 cubic Bezier curves (kappa = 0.5522847498).
-    const kappa = 0.5522847498307936;
-    const ox = rx * kappa;
-    const oy = ry * kappa;
+    // Approximate an ellipse with 4 cubic Bezier curves using the KAPPA ratio.
+    const ox = rx * KAPPA;
+    const oy = ry * KAPPA;
     this.moveTo(cx + rx, cy);
     this.bezierCurveTo(cx + rx, cy + oy, cx + ox, cy + ry, cx, cy + ry);
     this.bezierCurveTo(cx - ox, cy + ry, cx - rx, cy + oy, cx - rx, cy);

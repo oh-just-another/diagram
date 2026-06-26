@@ -1,4 +1,4 @@
-import type { Bounds, Color, Transform, Vec2 } from "@oh-just-another/types";
+import { req, type Bounds, type Color, type Transform, type Vec2 } from "@oh-just-another/types";
 import type {
   FillRule,
   LineCap,
@@ -9,14 +9,21 @@ import type {
 } from "@oh-just-another/renderer-core";
 import { getActiveRasterizer, getActiveTextShaper } from "@oh-just-another/renderer-core";
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
+import { resolveBundledFamily } from "@oh-just-another/fonts";
 import earcut from "earcut";
 import { parseWebGL2Color } from "./webgl2-color.js";
-import { WEBGL2_IMAGE_TEXTURE_CACHE_CAP, WEBGL2_TEXT_BITMAP_CACHE_CAP } from "./constants.js";
+import {
+  ELLIPSE_MAX_SEGMENTS,
+  ELLIPSE_MIN_SEGMENTS,
+  WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
+  WEBGL2_TEXT_BITMAP_CACHE_CAP,
+} from "./constants.js";
 import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
 import { EllipsePipeline } from "./webgl2-ellipse.js";
 import { isDrawableImageSource, warnSkippedImage } from "./image-source.js";
+import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -133,9 +140,9 @@ export class WebGL2Target implements RenderTarget {
     this.gl = gl;
     this._size = { width, height };
 
-    const vert = compile(this.gl, this.gl.VERTEX_SHADER, VERTEX_SHADER);
-    const frag = compile(this.gl, this.gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-    this.program = link(this.gl, vert, frag);
+    const vert = compileShader(this.gl, this.gl.VERTEX_SHADER, VERTEX_SHADER, "WebGL2");
+    const frag = compileShader(this.gl, this.gl.FRAGMENT_SHADER, FRAGMENT_SHADER, "WebGL2");
+    this.program = linkProgram(this.gl, vert, frag, "WebGL2");
     this.gl.useProgram(this.program);
 
     // Single quad shared across every solid-fill rect — the vertex
@@ -171,7 +178,7 @@ export class WebGL2Target implements RenderTarget {
 
     // Initial viewport — must match the canvas drawing buffer size. The
     // WebGL spec defaults to the canvas's initial size, but if the
-    // canvas was resized via setupHiDpiNoContext after creation the
+    // canvas was resized via setupHiDpi (no-context) after creation the
     // viewport stays at the first size, so set it explicitly.
     this.gl.viewport(0, 0, canvas.width, canvas.height);
   }
@@ -1075,14 +1082,11 @@ export class WebGL2Target implements RenderTarget {
     // it measures the run and shifts via the transform), so no separate
     // width-measuring pass here.
     const alignFactor = this.textAlign === "center" ? 0.5 : this.textAlign === "right" ? 1 : 0;
-    let py = y;
-    // Editor convention: baseline=top means y is the top of the text
-    // box. The MSDF quad math places the glyph relative to its font
-    // baseline, so shift y down by one font size for the "top" baseline
-    // (gets the visible bbox into [y, y+fontSize]).
-    if (this.textBaseline === "top") py += this.fontSize;
-    else if (this.textBaseline === "middle") py += this.fontSize / 2;
-    // baseline=bottom uses py as-is (cursor sits on the baseline).
+    // The MSDF quad math places glyphs relative to the font baseline, so
+    // convert the requested `textBaseline` into a baseline `y` using the same
+    // browser metrics Canvas2D honours (measured on a hidden 2D context), so
+    // the two backends place text at exactly the same height.
+    const py = y + this.baselineOffsetForBaseline();
     this.msdfPipeline.drawText(
       text,
       x,
@@ -1150,7 +1154,40 @@ export class WebGL2Target implements RenderTarget {
   }
 
   private textFontSpec(): string {
-    return `${this.fontSize}px ${this.fontFamily}`;
+    // Bundled face first so the no-MSDF fallback matches the MSDF path and
+    // the Canvas2D backend.
+    return `${this.fontSize}px "${resolveBundledFamily(this.fontFamily)}", ${this.fontFamily}`;
+  }
+
+  private readonly baselineOffsetCache = new Map<string, number>();
+
+  /**
+   * Distance (px) from the line of the active `textBaseline` down to the
+   * alphabetic baseline, for the current font. Measured on a hidden 2D
+   * context so it uses the exact same browser font metrics Canvas2D applies
+   * when it honours `textBaseline` — keeping the MSDF text at the same
+   * vertical position as the Canvas2D backend. Falls back to a proportional
+   * estimate where measurement isn't available.
+   */
+  private baselineOffsetForBaseline(): number {
+    const ctx = this.ensureTextCtx();
+    if (!ctx) return this.fontSize * 0.8;
+    const spec = this.textFontSpec();
+    const key = `${spec}|${this.textBaseline}`;
+    const cached = this.baselineOffsetCache.get(key);
+    if (cached !== undefined) return cached;
+    ctx.font = spec;
+    ctx.textBaseline = "alphabetic";
+    const alphaDescent = ctx.measureText("Mg").fontBoundingBoxDescent;
+    ctx.textBaseline = this.textBaseline;
+    const thisDescent = ctx.measureText("Mg").fontBoundingBoxDescent;
+    // `fontBoundingBox*` is absent on a few old engines — fall back there.
+    const offset =
+      Number.isFinite(alphaDescent) && Number.isFinite(thisDescent)
+        ? thisDescent - alphaDescent
+        : this.fontSize * 0.8;
+    this.baselineOffsetCache.set(key, offset);
+    return offset;
   }
 
   private textMetrics(text: string): { width: number } {
@@ -1368,15 +1405,6 @@ const ensureEarcutIndexCapacity = (n: number): void => {
   scratchEarcutIndices = new Uint16Array(cap);
 };
 
-/**
- * Lower / upper bounds on the polygon approximation of an ellipse. The
- * minimum keeps small ellipses from collapsing to a hexagon at far zoom;
- * the maximum caps GPU work for huge ellipses where the marginal
- * pixel-error improvement is invisible.
- */
-const ELLIPSE_MIN_SEGMENTS = 24;
-const ELLIPSE_MAX_SEGMENTS = 512;
-
 const IDENTITY_MAT3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 
 /**
@@ -1469,7 +1497,7 @@ interface ImageProgram {
 }
 
 const createImageProgram = (gl: WebGL2RenderingContext): ImageProgram => {
-  const vert = compile(
+  const vert = compileShader(
     gl,
     gl.VERTEX_SHADER,
     `#version 300 es
@@ -1482,8 +1510,9 @@ void main() {
   gl_Position = vec4(p.xy, 0.0, 1.0);
   vUV = aUV;
 }`,
+    "WebGL2",
   );
-  const frag = compile(
+  const frag = compileShader(
     gl,
     gl.FRAGMENT_SHADER,
     `#version 300 es
@@ -1500,8 +1529,9 @@ void main() {
   vec4 t = texture(uTex, vUV);
   fragColor = vec4(t.rgb * uOpacity, t.a * uOpacity);
 }`,
+    "WebGL2",
   );
-  const program = link(gl, vert, frag);
+  const program = linkProgram(gl, vert, frag, "WebGL2");
   return {
     program,
     aPos: gl.getAttribLocation(program, "aPos"),
@@ -1552,43 +1582,3 @@ void main() {
   // premultipliedAlpha:true contract + blendFunc(ONE, 1-SRC_ALPHA).
   fragColor = vec4(uColor * uOpacity, uOpacity);
 }`;
-
-/**
- * Asserts a WebGL resource handle is non-null. Creation APIs are typed
- * non-null but return `null` on context loss; surface that as a throw.
- */
-const glReq = <T>(v: T | null): T => {
-  if (v === null) throw new Error("packages/renderer-canvas: WebGL resource creation failed");
-  return v;
-};
-
-/** Asserts an array index is in range (loop bounds guarantee it). */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/renderer-canvas: index out of range");
-  return v;
-};
-
-const compile = (gl: WebGL2RenderingContext, type: number, src: string): WebGLShader => {
-  const sh = glReq(gl.createShader(type));
-  gl.shaderSource(sh, src);
-  gl.compileShader(sh);
-  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-    const log = gl.getShaderInfoLog(sh);
-    gl.deleteShader(sh);
-    throw new Error(`Shader compile failed: ${log}`);
-  }
-  return sh;
-};
-
-const link = (gl: WebGL2RenderingContext, vert: WebGLShader, frag: WebGLShader): WebGLProgram => {
-  const program = gl.createProgram();
-  gl.attachShader(program, vert);
-  gl.attachShader(program, frag);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    const log = gl.getProgramInfoLog(program);
-    gl.deleteProgram(program);
-    throw new Error(`Program link failed: ${log}`);
-  }
-  return program;
-};

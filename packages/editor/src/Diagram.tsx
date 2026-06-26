@@ -59,6 +59,7 @@ import {
   SelectionFloatingPanel,
   TextEditorOverlay,
   FrameNameEditorOverlay,
+  PortalContainerProvider,
   ToastHost,
   Toolbar,
   Tooltip,
@@ -92,12 +93,19 @@ const DEFAULT_REPOSITORY_URL = "https://github.com/oh-just-another/diagram";
 import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
 import type { ElementId } from "@oh-just-another/types";
 import { formatHotkey } from "@oh-just-another/state";
-import { emptyScene, type Scene } from "@oh-just-another/scene";
+import {
+  hydrateScene,
+  isText,
+  type Scene,
+  type SceneSettings,
+  type GridStyle,
+} from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
 import { WasmRasterizer } from "@oh-just-another/raster-wasm";
+import { registerBundledFonts } from "@oh-just-another/fonts";
 import { createRenderWorker } from "@oh-just-another/renderer-canvas";
 import {
   registerAnimationAdapter,
@@ -113,6 +121,8 @@ import {
   type CapabilityOverrides,
   type CapabilityProfile,
 } from "./capabilities";
+import { installGifAnimationAdapter } from "./gif-animation.js";
+import { useThemedPortalContainer } from "./themed-portal-container.js";
 import { exportSceneToPng, type PngExportBackground } from "./png-export";
 import { isEditableTarget } from "./dom-focus";
 
@@ -166,6 +176,14 @@ export interface DiagramProps {
   // --- Data ---
   readonly initialScene?: Scene;
   readonly initialMode?: Mode;
+
+  // --- Scene settings ---
+  // Granular initial scene settings, merged over the defaults. A persisted
+  // `initialScene` takes precedence over these (user data wins over config).
+  /** Background grid: whether it is shown and how it is painted. */
+  readonly grid?: { readonly enabled?: boolean; readonly style?: GridStyle };
+  /** Snap-to-grid preference (independent of grid visibility). */
+  readonly snap?: boolean;
 
   // --- Plugins ---
   readonly templates?: readonly Template[];
@@ -273,6 +291,8 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   const {
     initialScene,
     initialMode = "select",
+    grid,
+    snap,
     templates,
     fileDropHandlers,
     layoutKinds,
@@ -326,6 +346,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     return defaultTheme;
   });
   const theme: DiagramTheme = themeProp ?? internalTheme;
+  // Floating UI portals here (a body-level wrapper that mirrors `theme`) so it
+  // inherits the app theme instead of the OS `prefers-color-scheme` fallback.
+  const portalContainer = useThemedPortalContainer(theme);
   const changeTheme = useCallback(
     (next: DiagramTheme) => {
       if (themeProp === undefined) setInternalTheme(next);
@@ -337,16 +360,33 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     [themeProp, onThemeChange, storageKey],
   );
 
-  const seed = useMemo<Scene>(() => initialScene ?? emptyScene(), [initialScene]);
+  // Seed scene: host grid/snap props are merged over the defaults; a persisted
+  // `initialScene` (user data) wins over them. Depend on primitives so an
+  // inline `grid` object prop doesn't re-seed the editor every render.
+  const gridEnabled = grid?.enabled;
+  const gridStyle = grid?.style;
+  const seed = useMemo<Scene>(
+    () =>
+      hydrateScene({
+        ...(initialScene ? { saved: initialScene } : {}),
+        hostSettings: buildHostSettings(gridEnabled, gridStyle, snap),
+      }),
+    [initialScene, gridEnabled, gridStyle, snap],
+  );
   // Does the initial scene contain any text? Drives whether first paint
   // waits for the MSDF shaper (see the mount gate below).
   const sceneHasText = useMemo(() => {
-    for (const s of seed.elements.values()) if (s.type === "text") return true;
+    for (const s of seed.elements.values()) if (isText(s)) return true;
     return false;
   }, [seed]);
 
   // --- Plugin registration ---
   useEffect(() => {
+    // Built-in GIF decoder, registered by default so dropped / pasted GIFs play
+    // out of the box. Idempotent + lazy (gifuct-js loads on first decode). A
+    // host `animationAdapters` entry with kind "gif" overrides it (those are
+    // registered after).
+    installGifAnimationAdapter();
     if (templates) for (const t of templates) defaultRegistry.register(t);
     if (layoutKinds) for (const k of layoutKinds) registerLayoutKind(k);
     if (animationAdapters) for (const a of animationAdapters) registerAnimationAdapter(a);
@@ -361,6 +401,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   // font is ready, so text doesn't render in a fallback font and then
   // snap to the WASM font ("jump" on load — a FOUT).
   const [wasmTextSettled, setWasmTextSettled] = useState(false);
+  // Flipped once the bundled web fonts finish loading, so the canvas can
+  // redraw text in them (the browser doesn't auto-repaint canvas text).
+  const [fontsReady, setFontsReady] = useState(false);
   const detectionRef = useRef<Promise<CapabilityProfile> | null>(null);
   const loggedRef = useRef(false);
   useEffect(() => {
@@ -376,6 +419,21 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
       }
       setProfile(detected);
       const loads: Promise<unknown>[] = [];
+      // Load the bundled fonts so every backend draws the same faces; redraw
+      // once they settle.
+      loads.push(
+        registerBundledFonts(document).then(
+          () => {
+            if (!cancelled) setFontsReady(true);
+          },
+          (err: unknown) => {
+            // Settle even on failure so a text scene still mounts (in the
+            // fallback font) instead of hanging on the first-paint gate.
+            if (!cancelled) setFontsReady(true);
+            console.warn("[diagram] bundled fonts load failed", err);
+          },
+        ),
+      );
       if (detected.wasmText) {
         loads.push(
           WasmTextShaper.loadBundled().then(
@@ -437,19 +495,23 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     return undefined;
   }, [editor, wasmShaper, wasmRaster]);
 
-  // Animation adapters (GIF decoder) are registered in the plugin
-  // effect above, which runs AFTER the editor's first paint (child
-  // effects fire before parent ones). Force one render once both the
-  // editor and the adapters are in place so each animated shape's first
-  // `getFrameAt` runs — that kicks off the async decode, after which the
-  // decode→re-render nudge (`onAnimationContentReady`) paints the frame.
-  // Without this, a paused GIF restored from storage never even starts
-  // decoding and stays blank.
+  // Animation adapters (GIF decoder) are registered in the plugin effect above,
+  // which runs AFTER the editor's first paint (child effects fire before parent
+  // ones). Force one render once the editor is ready so each animated shape's
+  // first `getFrameAt` runs — that kicks off the async decode, after which the
+  // decode→re-render nudge (`onAnimationContentReady`) paints the frame. The
+  // built-in GIF adapter is always registered, so this nudge is unconditional
+  // (also re-runs if a host swaps `animationAdapters`). Without it, a paused GIF
+  // restored from storage never even starts decoding and stays blank.
   useEffect(() => {
-    if (editor && animationAdapters && animationAdapters.length > 0) {
-      editor.forceRender();
-    }
+    if (editor) editor.forceRender();
   }, [editor, animationAdapters]);
+
+  // Redraw once the bundled fonts load so canvas text switches from the
+  // fallback face to the bundled one.
+  useEffect(() => {
+    if (editor && fontsReady) editor.forceRender();
+  }, [editor, fontsReady]);
 
   useEffect(() => {
     if (!editor || (!onSceneChange && !onSelectionChange)) return undefined;
@@ -467,19 +529,22 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     });
   }, [editor, onSceneChange, onSelectionChange]);
 
-  // Hold Cmd / Ctrl to temporarily pull a shape off the grid during a
-  // drag (standard). We read the modifier state off every key event
-  // (and reset on blur) so a missed keyup can't leave snapping stuck off.
+  // Track transform modifiers off every key event (and reset on blur) so a
+  // missed keyup can't leave a flag stuck: Cmd/Ctrl pulls a shape off the grid
+  // for one drag; Alt resizes about the centre; Shift locks the resize aspect
+  // ratio or constrains a move to one axis.
   useEffect(() => {
     if (!editor) return undefined;
     const sync = (e: KeyboardEvent) => {
-      // Don't track the modifier (or touch snap state) while typing in a
-      // field — keep the editor's snap-suppress flag inert there.
+      // Don't track modifiers (or touch snap state) while typing in a field —
+      // keep the editor's transform flags inert there.
       if (isEditableTarget(e.target)) return;
       editor.setSnapSuppressed(e.metaKey || e.ctrlKey);
+      editor.setTransformModifiers({ alt: e.altKey, shift: e.shiftKey });
     };
     const reset = () => {
       editor.setSnapSuppressed(false);
+      editor.setTransformModifiers({ alt: false, shift: false });
     };
     window.addEventListener("keydown", sync);
     window.addEventListener("keyup", sync);
@@ -489,6 +554,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
       window.removeEventListener("keyup", sync);
       window.removeEventListener("blur", reset);
       editor.setSnapSuppressed(false);
+      editor.setTransformModifiers({ alt: false, shift: false });
     };
   }, [editor]);
 
@@ -519,75 +585,79 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   if (!profile) {
     return <div className={className} style={style} />;
   }
-  // Hold the first paint of a text-bearing scene until the MSDF shaper
-  // has settled, so text renders in its final font from frame one (no
-  // fallback-font → WASM-font jump). Only the WebGL2 MSDF path swaps
-  // fonts like this; Canvas2D always draws system fonts (no jump), and
-  // text-free scenes have nothing to jump — both mount immediately, so
-  // we don't pay shaper-load latency on first paint.
+  // Hold the first paint of a text-bearing scene until its font is ready, so
+  // text renders in its final face from frame one (no fallback-font jump).
+  // Every backend now draws the bundled fonts, so all wait on `fontsReady`;
+  // the WebGL2 MSDF path also waits on the shaper. Text-free scenes mount
+  // immediately and don't pay the load latency.
+  if (sceneHasText && !fontsReady) {
+    return <div className={className} style={style} />;
+  }
   if (profile.renderer === "webgl2" && profile.wasmText && !wasmTextSettled && sceneHasText) {
     return <div className={className} style={style} />;
   }
 
   return (
-    <ToastHost>
-      <TooltipProvider>
-        <div
-          className={className}
-          data-diagram-root
-          // Theme is scoped to this editor root (not the global <html>), so
-          // multiple editors can theme independently and the host document is
-          // left untouched. "system" omits the attribute, falling through to
-          // the stylesheet's `prefers-color-scheme` / `:root` defaults.
-          {...(theme === "system" ? {} : { "data-theme": theme })}
-          style={{
-            position: "relative",
-            width: "100%",
-            height: "100%",
-            background: "var(--du-canvas-bg)",
-            ...style,
-          }}
-        >
-          <DiagramRoot
-            initialScene={seed}
-            initialMode={initialMode}
-            onReady={handleReady}
-            renderer={profile.renderer}
-            {...(profile.renderer === "offscreen"
-              ? { workerFactory: workerFactory ?? createRenderWorker }
-              : {})}
-            {...(wasmShaper ? { textShaper: wasmShaper } : {})}
-            {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
+    <PortalContainerProvider container={portalContainer}>
+      <ToastHost>
+        <TooltipProvider>
+          <div
+            className={className}
+            data-diagram-root
+            // Theme is scoped to this editor root (not the global <html>), so
+            // multiple editors can theme independently and the host document is
+            // left untouched. "system" omits the attribute, falling through to
+            // the stylesheet's `prefers-color-scheme` / `:root` defaults.
+            {...(theme === "system" ? {} : { "data-theme": theme })}
+            style={{
+              position: "relative",
+              width: "100%",
+              height: "100%",
+              background: "var(--du-canvas-bg)",
+              ...style,
+            }}
           >
-            <EditorShell
-              hideTopBar={hideTopBar}
-              hideBottomBar={hideBottomBar}
-              hideToolbar={hideToolbar}
-              hideLibraryButton={hideLibraryButton}
-              hideMainMenu={hideMainMenu}
-              hideZoomControls={hideZoomControls}
-              hideResetToContent={hideResetToContent}
-              hideHelpButton={hideHelpButton}
-              hideContextMenu={hideContextMenu}
-              hideSelectionPanel={hideSelectionPanel}
-              renderTopBarLeft={renderTopBarLeft}
-              renderTopBarCenter={renderTopBarCenter}
-              renderTopBarRight={renderTopBarRight}
-              renderBottomBarLeft={renderBottomBarLeft}
-              renderBottomBarCenter={renderBottomBarCenter}
-              renderBottomBarRight={renderBottomBarRight}
-              renderMainMenuExtras={renderMainMenuExtras}
-              onImportTemplates={onImportTemplates}
-              repositoryUrl={repositoryUrl}
-              onConfirm={onConfirm}
-              onNotify={onNotify}
-              theme={theme}
-              changeTheme={changeTheme}
-            />
-          </DiagramRoot>
-        </div>
-      </TooltipProvider>
-    </ToastHost>
+            <DiagramRoot
+              initialScene={seed}
+              initialMode={initialMode}
+              onReady={handleReady}
+              renderer={profile.renderer}
+              {...(profile.renderer === "offscreen"
+                ? { workerFactory: workerFactory ?? createRenderWorker }
+                : {})}
+              {...(wasmShaper ? { textShaper: wasmShaper } : {})}
+              {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
+            >
+              <EditorShell
+                hideTopBar={hideTopBar}
+                hideBottomBar={hideBottomBar}
+                hideToolbar={hideToolbar}
+                hideLibraryButton={hideLibraryButton}
+                hideMainMenu={hideMainMenu}
+                hideZoomControls={hideZoomControls}
+                hideResetToContent={hideResetToContent}
+                hideHelpButton={hideHelpButton}
+                hideContextMenu={hideContextMenu}
+                hideSelectionPanel={hideSelectionPanel}
+                renderTopBarLeft={renderTopBarLeft}
+                renderTopBarCenter={renderTopBarCenter}
+                renderTopBarRight={renderTopBarRight}
+                renderBottomBarLeft={renderBottomBarLeft}
+                renderBottomBarCenter={renderBottomBarCenter}
+                renderBottomBarRight={renderBottomBarRight}
+                renderMainMenuExtras={renderMainMenuExtras}
+                onImportTemplates={onImportTemplates}
+                repositoryUrl={repositoryUrl}
+                onConfirm={onConfirm}
+                onNotify={onNotify}
+                theme={theme}
+                changeTheme={changeTheme}
+              />
+            </DiagramRoot>
+          </div>
+        </TooltipProvider>
+      </ToastHost>
+    </PortalContainerProvider>
   );
 });
 
@@ -661,7 +731,7 @@ const EditorShell = ({
       window.alert(message);
     });
   // Subscribe to scene changes so the Grid toggle in MainMenu reads
-  // the latest viewport.gridSize / gridStyle. `useScene` is a thin
+  // the latest viewport.gridEnabled / gridStyle. `useScene` is a thin
   // selector hook — re-renders only on scene identity flips.
   void useScene();
   const paletteDropHandlers = usePalettePlacement();
@@ -845,10 +915,10 @@ const EditorShell = ({
                           if (!editor) return;
                           if (confirmDialog("Reset canvas? This clears all shapes.")) {
                             // editor.clear() keeps viewport (zoom /
-                            // pan / gridSize) and layers — only
+                            // pan / gridEnabled) and layers — only
                             // shapes / edges go. loadScene(emptyScene())
-                            // would also drop the grid because
-                            // DEFAULT_VIEWPORT has no gridSize.
+                            // would also reset the grid because
+                            // DEFAULT_VIEWPORT has it disabled.
                             editor.clear();
                           }
                         }}
@@ -1106,8 +1176,8 @@ const EditorShell = ({
 /**
  * Platform-correct hotkey labels for the zoom-control tooltips — ⌘
  * glyphs on macOS, "Ctrl+…" elsewhere, mirroring the top toolbar's
- * tool tooltips. Descriptors mirror the bound zoom hotkeys in
- * `actionZoom.ts` (display uses the minus/plus glyphs).
+ * tool tooltips. Mirror the bound zoom hotkeys (display uses the
+ * minus/plus glyphs).
  */
 const ZOOM_OUT_HOTKEY = formatHotkey({ meta: true, key: "−" });
 const ZOOM_IN_HOTKEY = formatHotkey({ meta: true, key: "+" });
@@ -1246,12 +1316,9 @@ const openSceneFile = (editor: Editor | null, notify: (message: string) => void)
  *   • color            — solid background fill (host canvas colour)
  *   • color-and-grid   — solid fill + same grid the user sees
  *
- * Scale fixed at 2× for retina-quality output (matches the standard /
- * standard default). The full-scene contract makes this symmetric with
- * SVG export, which always emits the whole scene.
- *
- * Implementation lives in `./png-export.ts` so this file stays
- * focused on UI wiring.
+ * Scale fixed at 2× for retina-quality output. The full-scene
+ * contract makes this symmetric with SVG export, which always emits
+ * the whole scene.
  */
 const PNG_EXPORT_SCALE = 2;
 
@@ -1287,9 +1354,8 @@ const readCanvasBackgroundColor = (): string => {
 };
 
 /**
- * "Export as SVG" — uses `@renderer-svg.renderSceneToSvg` so the
- * output is identical to the headless render path (vector, no
- * bitmap fall-back, works in any browser). One file per scene.
+ * "Export as SVG" — renders the scene to vector SVG (no bitmap
+ * fall-back, works in any browser). One file per scene.
  */
 const downloadSvg = (scene: Scene): void => {
   const svg = renderSceneToSvg(scene);
@@ -1298,17 +1364,28 @@ const downloadSvg = (scene: Scene): void => {
 
 // --- Grid toggle helpers ----------------------------------------------------
 
-const DEFAULT_GRID_SIZE = 20;
+/** Translate the `grid` / `snap` props into a partial settings override. */
+const buildHostSettings = (
+  gridEnabled: boolean | undefined,
+  gridStyle: GridStyle | undefined,
+  snap: boolean | undefined,
+): SceneSettings => ({
+  viewport: {
+    ...(gridEnabled !== undefined ? { gridEnabled } : {}),
+    ...(gridStyle !== undefined ? { gridStyle } : {}),
+    ...(snap !== undefined ? { snapToGrid: snap } : {}),
+  },
+});
 
 /**
- * Map the current viewport state to the segmented Grid toggle's
- * value. `"off"` when the user hid the grid (gridSize 0 / unset);
- * otherwise the stored gridStyle (default `"lines"`).
+ * Map the current viewport state to the segmented Grid toggle's value.
+ * `"off"` when the grid is disabled; otherwise the stored gridStyle
+ * (default `"lines"`).
  */
 const gridSelection = (editor: Editor | null): "lines" | "dots" | "off" => {
   if (!editor) return "lines";
   const vp = editor.scene.viewport;
-  if (!vp.gridSize || vp.gridSize <= 0) return "off";
+  if (!vp.gridEnabled) return "off";
   return vp.gridStyle ?? "lines";
 };
 
@@ -1320,19 +1397,12 @@ const gridSelection = (editor: Editor | null): "lines" | "dots" | "off" => {
 const snapSelection = (editor: Editor | null): "on" | "off" =>
   (editor?.snapToGridEnabled ?? true) ? "on" : "off";
 
-/**
- * Inverse — translate the toggle's value back into a `setGrid`
- * call. Switching from "off" to lines/dots restores the default
- * grid size so the user doesn't have to also re-enter it
- * separately.
- */
+/** Inverse — translate the toggle's value back into a `setGrid` call. */
 const applyGridSelection = (editor: Editor | null, next: "lines" | "dots" | "off"): void => {
   if (!editor) return;
   if (next === "off") {
-    editor.setGrid({ size: 0 });
+    editor.setGrid({ enabled: false });
     return;
   }
-  const vp = editor.scene.viewport;
-  const size = vp.gridSize && vp.gridSize > 0 ? vp.gridSize : DEFAULT_GRID_SIZE;
-  editor.setGrid({ size, style: next });
+  editor.setGrid({ enabled: true, style: next });
 };

@@ -5,7 +5,15 @@ export type { Selection } from "./selection.js";
 export * as selection from "./selection.js";
 
 export type { HandleId } from "./handle.js";
-export { ALL_HANDLES, HANDLE_SIZE, handlePosition, hitHandle, resizeBounds } from "./handle.js";
+export {
+  ALL_HANDLES,
+  HANDLE_SIZE,
+  handlePosition,
+  hitHandle,
+  resizeBounds,
+  registerRotateAnchor,
+  getRotateAnchor,
+} from "./handle.js";
 
 export type {
   InteractionContext,
@@ -30,7 +38,14 @@ export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./overlay.js";
 
 export { PEER_CURSOR_BROADCAST_INTERVAL_MS } from "./constants.js";
 
-export { fromPointerEvent, fromKeyboardEvent, fromWheelEvent } from "./dom-events.js";
+export {
+  fromPointerEvent,
+  fromKeyboardEvent,
+  fromWheelEvent,
+  isEditableTarget,
+} from "./dom-events.js";
+
+export { bindEditorHotkeys, type HotkeyBindingOptions } from "./hotkeys-binding.js";
 
 export type { InteractiveHitTester } from "./interactive.js";
 export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive.js";

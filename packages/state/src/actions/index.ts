@@ -13,7 +13,14 @@ export {
   actionExitContainer,
   selectionActions,
 } from "./actionSelection.js";
-export { actionCopy, actionCut, actionPaste, clipboardActions } from "./actionClipboard.js";
+export {
+  actionCopy,
+  actionCut,
+  actionPaste,
+  actionCopyStyle,
+  actionPasteStyle,
+  clipboardActions,
+} from "./actionClipboard.js";
 export { actionBringToFront, actionSendToBack, zOrderActions } from "./actionZOrder.js";
 export { actionGroupSelection, actionUngroupSelection, groupingActions } from "./actionGrouping.js";
 export {
@@ -38,3 +45,17 @@ export {
   modeActions,
 } from "./actionMode.js";
 export { actionToggleGrid, viewActions } from "./actionView.js";
+export {
+  actionFlipHorizontal,
+  actionFlipVertical,
+  actionAlignLeft,
+  actionAlignHCenter,
+  actionAlignRight,
+  actionAlignTop,
+  actionAlignVCenter,
+  actionAlignBottom,
+  actionDistributeHorizontal,
+  actionDistributeVertical,
+  arrangeActions,
+} from "./actionArrange.js";
+export { actionIncreaseFontSize, actionDecreaseFontSize, textActions } from "./actionText.js";

@@ -5,6 +5,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@oh-just-another/renderer-canvas", () => ({
   isWebGL2Available: vi.fn(),
   isWebGPUAvailable: vi.fn(),
+  supportsOffscreenCanvas: vi.fn(
+    () =>
+      typeof OffscreenCanvas !== "undefined" &&
+      typeof HTMLCanvasElement !== "undefined" &&
+      typeof HTMLCanvasElement.prototype.transferControlToOffscreen === "function",
+  ),
 }));
 
 import { isWebGL2Available, isWebGPUAvailable } from "@oh-just-another/renderer-canvas";

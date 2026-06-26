@@ -1,4 +1,4 @@
-import type { Bounds, ElementId } from "@oh-just-another/types";
+import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import { getElement, getElementWorldBounds } from "@oh-just-another/scene";
 import {
   PEER_CURSOR_BROADCAST_INTERVAL_MS,
@@ -45,7 +45,7 @@ export const bindAwareness = (
 ): (() => void) => {
   const throttle = options.cursorThrottleMs ?? PEER_CURSOR_BROADCAST_INTERVAL_MS;
   let lastBroadcastAt = 0;
-  let pendingCursor: { x: number; y: number } | null = null;
+  let pendingCursor: Vec2 | null = null;
   let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Initial identity push so peers see us before our first move.

@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties } from "react";
 import type { ElementId } from "@oh-just-another/types";
-import { type FrameElement } from "@oh-just-another/scene";
+import { isFrame, type FrameElement } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene } from "./hooks.js";
 
 /**
@@ -25,7 +25,7 @@ export const FramePanel = ({ onExport, style }: FramePanelProps) => {
   const frames = useMemo<readonly FrameElement[]>(() => {
     const out: FrameElement[] = [];
     for (const s of scene.elements.values()) {
-      if (s.type === "frame") out.push(s as FrameElement);
+      if (isFrame(s)) out.push(s);
     }
     out.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
     return out;

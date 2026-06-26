@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/renderer-canvas",
   "version": "0.58.1",
-  "description": "renderer-canvas package",
+  "description": "Canvas2D rendering backend: a RenderTarget over CanvasRenderingContext2D, built-in shape renderers, and hi-DPI multi-layer DOM helpers.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {
@@ -53,15 +53,16 @@
   },
   "dependencies": {
     "@oh-just-another/curve-mesh": "workspace:*",
+    "@oh-just-another/fonts": "workspace:*",
     "@oh-just-another/glyph-atlas": "workspace:*",
     "@oh-just-another/math": "workspace:*",
     "@oh-just-another/renderer-core": "workspace:*",
     "@oh-just-another/renderer-workers": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/types": "workspace:*",
-    "earcut": "^3.0.2"
+    "earcut": "3.0.2"
   },
   "devDependencies": {
-    "@types/earcut": "^3.0.0"
+    "@types/earcut": "3.0.0"
   }
 }

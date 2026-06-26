@@ -7,11 +7,14 @@ import {
   getLink,
   getLinkPath,
   getLinkWaypointMidpoints,
+  isFrame,
+  isGroup,
   isImage,
+  isText,
   updateAnnotation,
 } from "@oh-just-another/scene";
 import { boundsFromPoints, interpretPressEnd, DRAG_THRESHOLD } from "../machine.js";
-import { fromPointerEvent } from "../dom-events.js";
+import { fromPointerEvent, isEditableTarget } from "../dom-events.js";
 import * as Selection from "../selection.js";
 import * as LinkSelection from "../link-selection.js";
 import { getInteractiveHitTester } from "../interactive.js";
@@ -22,13 +25,12 @@ import {
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_START_ANCHOR_OUTSET,
   LONG_PRESS_MAX_MOVEMENT_PX,
-  MAX_ZOOM,
-  MIN_ZOOM,
   WHEEL_PAN_FACTOR,
   WHEEL_ZOOM_MAX_STEP,
   WHEEL_ZOOM_SPEED,
 } from "../constants.js";
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
+import { vec2 } from "@oh-just-another/math";
 import type { Editor } from "../editor.js";
 
 /** Inclusive integer range `[a..b]`; empty when `b < a`. */
@@ -38,14 +40,8 @@ const range = (a: number, b: number): number[] => {
   return out;
 };
 
-const distanceTo = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
-const clampZoom = (z: number): number => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
-
-/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/state: index out of range");
-  return v;
-};
+import { clampZoom } from "./public/zoom-pan.js";
+import { req } from "../util.js";
 
 /**
  * Pointer + wheel event binding. Owns the branchy dispatch — pan /
@@ -66,6 +62,15 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
   const onDown = (ev: PointerEvent) => {
     ev.preventDefault();
     editor.host.setPointerCapture(ev.pointerId);
+    // Give the canvas keyboard focus on press. `preventDefault` above suppresses
+    // the browser's default focus-on-pointerdown, so without this the surface
+    // never focuses by clicking — keyboard shortcuts (and a clean blur of a
+    // previously-focused panel input) would only kick in after tabbing to it,
+    // which reads as "the first click did nothing". Skipped when the press lands
+    // on a text field (in-canvas text editing) so it keeps its own focus.
+    if (typeof editor.host.focus === "function" && !isEditableTarget(ev.target)) {
+      editor.host.focus({ preventScroll: true });
+    }
     const data = fromPointerEvent(ev, editor.host);
     // Fresh press — forget any additive promotion from the last gesture.
     editor.additivePressAdded = null;
@@ -149,8 +154,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (editor.mode === "draw-text") {
       editor.cancelLongPress();
       const hit = editor.hitTest(worldPoint);
-      const existing = hit.kind === "element" ? getElement(editor._scene, hit.id) : null;
-      if (existing?.type === "text") {
+      const existing = hit.kind === "element" ? getElement(editor._scene, hit.id) : undefined;
+      if (existing !== undefined && isText(existing)) {
         editor._selection = Selection.single(existing.id);
         editor.beginTextEdit(existing.id);
         editor.notify();
@@ -296,6 +301,11 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       }
     }
 
+    // Resolve the press target up-front so the anchor-drag path below can defer
+    // to the rotate grip (it floats above the shape, overlapping the top
+    // anchor's grab zone — the grip must win there).
+    let target = editor.hitTest(worldPoint);
+
     // Link-start anchor drag: a press on one of the single selected
     // element's link-start dots begins an edge FROM that anchor without
     // switching to the draw-edge tool. Checked before the normal hit-test
@@ -307,7 +317,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       editor.mode === "select" &&
       !data.modifiers.shift &&
       !data.modifiers.meta &&
-      !data.modifiers.ctrl
+      !data.modifiers.ctrl &&
+      target.kind !== "rotate-handle"
     ) {
       // Begin a link FROM a start dot of the single SELECTED element
       // (connection dots only on the selected shape, so only its dots
@@ -347,7 +358,6 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       if (selId && tryAnchorDrag(selId)) return;
     }
 
-    let target = editor.hitTest(worldPoint);
     // Auto-select on press for shapes / edges that the user is about
     // to act on (drag, resize handles): you can't manipulate an
     // element that isn't selected, so pressing on an unselected one
@@ -411,8 +421,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     //      looking exactly like the group had been ungrouped.
     if (target.kind === "element") {
       const pressedElement = getElement(editor._scene, target.id);
-      const pressedIsGroup = pressedElement?.type === "group";
-      const pressedIsFrame = pressedElement?.type === "frame";
+      const pressedIsGroup = pressedElement !== undefined && isGroup(pressedElement);
+      const pressedIsFrame = pressedElement !== undefined && isFrame(pressedElement);
       const inSelection = editor._selection.has(target.id);
       if (inSelection || pressedIsGroup || pressedIsFrame) {
         const ids = new Set<ElementId>();
@@ -497,6 +507,19 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     } else {
       editor.groupResizeOrigin = null;
     }
+    // Snapshot every member's pose when the press lands on the rotate grip, so
+    // the per-frame rotate math turns from a stable baseline. Expand to
+    // descendants (the leaves that actually carry geometry), matching resize.
+    if (target.kind === "rotate-handle") {
+      const origin = new Map<ElementId, { position: Vec2; rotation: number }>();
+      for (const id of editor.expandSelectionWithDescendants()) {
+        const s = getElement(editor._scene, id);
+        if (s) origin.set(id, { position: s.position, rotation: s.rotation });
+      }
+      editor.rotateGestureOrigin = { pivot: target.pivot, origin };
+    } else {
+      editor.rotateGestureOrigin = null;
+    }
     // Arm one-finger pan: a TOUCH press on empty canvas in select mode.
     // A tap still deselects via the machine below; onMove promotes this to
     // a pan once the finger drags past slop (instead of a marquee lasso).
@@ -527,7 +550,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       // drag for right-click gestures.
       if (
         !editor.panGesture.moved &&
-        distanceTo(editor.panGesture.startPoint, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
+        vec2.distance(editor.panGesture.startPoint, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
       ) {
         editor.panGesture.moved = true;
       }
@@ -555,7 +578,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (
       editor.touchPanCandidate !== null &&
       editor.activePointers.size === 1 &&
-      distanceTo(editor.touchPanCandidate, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
+      vec2.distance(editor.touchPanCandidate, data.point) > LONG_PRESS_MAX_MOVEMENT_PX
     ) {
       const origin = editor.touchPanCandidate;
       editor.touchPanCandidate = null;
@@ -1037,11 +1060,6 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
   // Window-level Space tracking so Space anywhere on the page
   // arms the next mouse drag as a pan. Skip when focus is in a
   // text input — Space should still type a space there.
-  const isEditableTarget = (target: EventTarget | null): boolean => {
-    if (!(target instanceof HTMLElement)) return false;
-    const tag = target.tagName;
-    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
-  };
   const onKeyDown = (ev: KeyboardEvent): void => {
     if (ev.code !== "Space" && ev.key !== " ") return;
     if (isEditableTarget(ev.target)) return;

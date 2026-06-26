@@ -1,7 +1,7 @@
 {
   "name": "@oh-just-another/templates",
   "version": "0.57.1",
-  "description": "templates package",
+  "description": "Reusable shape/diagram templates with a registry and rich node-tree blueprints for @oh-just-another/scene.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {
@@ -51,7 +51,7 @@
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/renderer-core": "workspace:*",
     "@oh-just-another/tokens": "workspace:*",
-    "fractional-keys": "^0.1.1",
-    "zod": "^3.24.1"
+    "fractional-keys": "0.1.1",
+    "zod": "3.25.76"
   }
 }

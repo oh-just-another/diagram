@@ -4,7 +4,7 @@ import { findNearestOutlinePoint } from "./outline.js";
 import type { Scene } from "./scene.js";
 import type { ElementBase } from "./shape.js";
 import { findNearestAnchor, snapExcludedAnchors } from "./anchors.js";
-import { SNAP_PROBE_CULL_RADIUS } from "./constants.js";
+import { DEFAULT_GRID_SPACING, SNAP_PROBE_CULL_RADIUS } from "./constants.js";
 
 /**
  * One snap target a contributor can offer for a probe point. `snapped` is
@@ -88,14 +88,14 @@ export class SnapEngine {
 // --- Built-in contributors ---
 
 /**
- * Snap the probe to the nearest grid intersection. No-op when the scene
- * viewport has no `gridSize`.
+ * Snap the probe to the nearest grid intersection. No-op when the grid is
+ * disabled for the scene.
  */
 export const gridSnapper: SnapContributor = {
   id: "grid",
   contribute(ctx) {
-    const size = ctx.scene.viewport.gridSize;
-    if (!size || size <= 0) return [];
+    if (!ctx.scene.viewport.gridEnabled) return [];
+    const size = DEFAULT_GRID_SPACING;
     const snapped: Vec2 = {
       x: Math.round(ctx.probe.x / size) * size,
       y: Math.round(ctx.probe.y / size) * size,

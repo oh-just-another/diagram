@@ -9,6 +9,7 @@ import {
   getWorldToScreen,
   getDropZonesWorld,
   strokeOutsideExtent,
+  isFrame,
   isImage,
   type Scene,
   type Style,
@@ -48,11 +49,7 @@ const DRAW_PREVIEW_ELEMENT_ID = "__draw-preview__" as ElementId;
 /** Throwaway id for the live draw-edge connector preview link. */
 const DRAW_PREVIEW_LINK_ID = "__draw-preview-link__" as LinkId;
 
-/** Index-access helper: throws on out-of-range instead of returning `undefined`. */
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/state: index out of range");
-  return v;
-};
+import { req } from "../util.js";
 
 /**
  * Render orchestrator: background grid pass, tile-cache vs full renderScene
@@ -73,7 +70,7 @@ export const renderEditor = (editor: Editor): void => {
   if (editor.backgroundTarget) {
     // Grid pass also clears the background layer each frame. When the grid is
     // toggled off, still clear it so no stale grid lingers under the halos.
-    if (editor.gridVisible) renderGrid(editor._scene, editor.backgroundTarget);
+    if (editor.gridEnabled) renderGrid(editor._scene, editor.backgroundTarget);
     else editor.backgroundTarget.clear();
     const halos: ElementHalo[] = [];
     for (const id of editor._selection) {
@@ -486,7 +483,7 @@ export const renderEditor = (editor: Editor): void => {
       const containers: Bounds[] = [];
       for (const shape of editor._scene.elements.values()) {
         if (dragged?.has(shape.id)) continue;
-        if (shape.type === "frame") {
+        if (isFrame(shape)) {
           frames.push(getElementWorldBounds(shape));
           continue;
         }

@@ -17,7 +17,7 @@ export type {
 export { BranchDoc } from "./branch-doc.js";
 
 // Y.UndoManager-based history backend.
-export { YjsHistory, type YjsHistoryOptions } from "./yjs-history.js";
+export { CollabHistory, type CollabHistoryOptions } from "./yjs-history.js";
 
 // Client-side AES-GCM for blind-relay collab.
 export {

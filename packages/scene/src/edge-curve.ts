@@ -1,15 +1,11 @@
-import type { Vec2 } from "@oh-just-another/types";
+import { req, type Vec2 } from "@oh-just-another/types";
+import { bezier } from "@oh-just-another/math";
 import {
   CURVE_CATMULL_TENSION,
   CURVE_END_TANGENT_MAX_PX,
   CURVE_END_TANGENT_RATIO,
   CURVE_FLATTEN_SEGMENTS,
 } from "./constants.js";
-
-const req = <T>(v: T | undefined): T => {
-  if (v === undefined) throw new Error("packages/scene: index out of range");
-  return v;
-};
 
 /**
  * Curved (bezier) link geometry — the single source of truth for the curve
@@ -71,19 +67,6 @@ export const catmullRomBeziers = (pts: readonly Vec2[]): BezierSegment[] => {
   return segs;
 };
 
-/** Point on a cubic bezier at parameter `t` (0..1). de Casteljau / Bernstein. */
-export const cubicAt = (p0: Vec2, c1: Vec2, c2: Vec2, p1: Vec2, t: number): Vec2 => {
-  const u = 1 - t;
-  const a = u * u * u;
-  const b = 3 * u * u * t;
-  const c = 3 * u * t * t;
-  const d = t * t * t;
-  return {
-    x: a * p0.x + b * c1.x + c * c2.x + d * p1.x,
-    y: a * p0.y + b * c1.y + c * c2.y + d * p1.y,
-  };
-};
-
 /**
  * Flatten a `start` + cubic-segment list into a dense point list (for
  * hit-testing / bounds). Includes `start` then `perSegment` samples per cubic.
@@ -97,7 +80,7 @@ export const flattenSegments = (
   let prev = start;
   for (const s of segments) {
     for (let i = 1; i <= perSegment; i++) {
-      out.push(cubicAt(prev, s.c1, s.c2, s.to, i / perSegment));
+      out.push(bezier.cubicAt(prev, s.c1, s.c2, s.to, i / perSegment));
     }
     prev = s.to;
   }

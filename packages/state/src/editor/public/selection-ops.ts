@@ -1,6 +1,8 @@
 import {
   addElement,
   getElement,
+  getElementWorldBounds,
+  isText,
   orderForTop,
   removeLink,
   removeElement,
@@ -13,6 +15,11 @@ import {
 import type { LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
 import * as Selection from "../../selection.js";
+import {
+  TEXT_FONT_SIZE_STEP,
+  TEXT_MAX_FONT_SIZE,
+  TEXT_RESIZE_MIN_FONT_SIZE,
+} from "../../constants.js";
 
 /**
  * Nudge every selected shape (plus descendants) by `delta`, skipping
@@ -221,7 +228,8 @@ export const computeUpdateTextProps = (
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const targetIds: ElementId[] = [];
   for (const id of ids) {
-    if (getElement(scene, id)?.type === "text") targetIds.push(id);
+    const el = getElement(scene, id);
+    if (el !== undefined && isText(el)) targetIds.push(id);
   }
   if (targetIds.length === 0) return null;
   let s = scene;
@@ -236,6 +244,42 @@ export const computeUpdateTextProps = (
     scene: s,
     patch:
       patches.length === 1 && firstPatch !== undefined ? firstPatch : { kind: "batch", patches },
+  };
+};
+
+/**
+ * Pure: step every selected text shape's font size up or down by the
+ * multiplicative {@link TEXT_FONT_SIZE_STEP} (at least ±1 px so small sizes
+ * still move), clamped to the usable range. Each shape steps from its own
+ * size, so a mixed selection keeps its relative sizing. One patch (batch for
+ * 2+). `null` when nothing selected is text or every size is already at the
+ * clamp.
+ */
+export const computeAdjustFontSize = (
+  scene: Scene,
+  ids: Iterable<ElementId>,
+  direction: "increase" | "decrease",
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const up = direction === "increase";
+  const factor = up ? TEXT_FONT_SIZE_STEP : 1 / TEXT_FONT_SIZE_STEP;
+  let s = scene;
+  const patches: Patch[] = [];
+  for (const id of ids) {
+    const el = getElement(s, id);
+    if (el === undefined || !isText(el)) continue;
+    const scaled = Math.round(el.fontSize * factor);
+    const stepped = up ? Math.max(el.fontSize + 1, scaled) : Math.min(el.fontSize - 1, scaled);
+    const next = Math.min(TEXT_MAX_FONT_SIZE, Math.max(TEXT_RESIZE_MIN_FONT_SIZE, stepped));
+    if (next === el.fontSize) continue;
+    const r = updateElement(s, id, (sh) => ({ ...sh, fontSize: next }));
+    s = r.scene;
+    patches.push(r.patch);
+  }
+  const firstPatch = patches[0];
+  if (firstPatch === undefined) return null;
+  return {
+    scene: s,
+    patch: patches.length === 1 ? firstPatch : { kind: "batch", patches },
   };
 };
 
@@ -255,4 +299,48 @@ export const selectionFromNewIds = (ids: readonly ElementId[]): Selection.Select
   let next: Selection.Selection = Selection.EMPTY;
   for (const id of ids) next = Selection.add(next, id);
   return next;
+};
+
+/**
+ * Spatial-keyboard navigation: the nearest top-level interactable element to
+ * `refCenter` in `direction`, scored by distance along the axis plus a 45°-cone
+ * penalty (so a shape roughly in line wins over a nearer one off to the side).
+ * Already-selected and non-interactable shapes are skipped. `null` when nothing
+ * lies in that half-plane.
+ */
+export const findClosestInDirection = (
+  scene: Scene,
+  selected: { has: (id: ElementId) => boolean },
+  direction: "left" | "right" | "up" | "down",
+  refCenter: Vec2,
+  isInteractable: (s: Element) => boolean,
+): ElementId | null => {
+  const dv =
+    direction === "left"
+      ? { x: -1, y: 0 }
+      : direction === "right"
+        ? { x: 1, y: 0 }
+        : direction === "up"
+          ? { x: 0, y: -1 }
+          : { x: 0, y: 1 };
+  let best: ElementId | null = null;
+  let bestScore = Infinity;
+  for (const s of scene.elements.values()) {
+    if (s.parentId !== undefined) continue; // top-level shapes only
+    if (selected.has(s.id)) continue;
+    if (!isInteractable(s)) continue;
+    const b = getElementWorldBounds(s);
+    const cx = b.x + b.width / 2 - refCenter.x;
+    const cy = b.y + b.height / 2 - refCenter.y;
+    const along = cx * dv.x + cy * dv.y;
+    if (along <= 0) continue; // not in the direction's half-plane
+    const perp = Math.abs(cx * dv.y - cy * dv.x);
+    if (perp > along) continue; // outside the 45° cone
+    const score = along + perp;
+    if (score < bestScore) {
+      bestScore = score;
+      best = s.id;
+    }
+  }
+  return best;
 };

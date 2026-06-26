@@ -1,4 +1,6 @@
 import {
+  byOrderAsc,
+  byOrderDesc,
   getElement,
   orderBetween,
   orderBetweenMany,
@@ -84,7 +86,7 @@ export const computeBringForward = (
   // Siblings on the same layer, sorted bottom → top.
   const siblings = [...scene.elements.values()]
     .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
-    .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+    .sort(byOrderAsc);
   // Neighbour directly above = smallest order strictly greater than
   // the shape's own. Anything above the neighbour follows.
   const above = siblings.find((s) => s.order > shape.order) ?? null;
@@ -118,7 +120,7 @@ export const computeSendBackward = (
   // (largest order strictly less than the shape's own).
   const siblings = [...scene.elements.values()]
     .filter((s) => s.layerId === shape.layerId && s.id !== shape.id)
-    .sort((a, b) => (a.order > b.order ? -1 : a.order < b.order ? 1 : 0));
+    .sort(byOrderDesc);
   const below = siblings.find((s) => s.order < shape.order) ?? null;
   if (!below) return null; // already bottom-most
   const belowBelow = siblings.find((s) => s.order < below.order) ?? null;
@@ -143,7 +145,7 @@ export const rewriteOrders = <T extends { readonly order: FractionalIndex }>(
   apply: (entity: T, order: FractionalIndex) => void,
 ): number => {
   if (entities.length === 0) return 0;
-  const sorted = [...entities].sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+  const sorted = [...entities].sort(byOrderAsc);
   const fresh = orderBetweenMany(null, null, sorted.length);
   let changed = 0;
   sorted.forEach((entity, i) => {
