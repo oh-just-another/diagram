@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/scene",
-  "version": "0.58.0",
+  "version": "0.59.0",
   "description": "Immutable diagram scene model: elements, links, layers, patch-based operations, and a fast spatial index.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

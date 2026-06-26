@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/fonts",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Bundled editor fonts (Roboto, PT Serif, Roboto Mono) as web fonts, so every render backend draws identical text.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
