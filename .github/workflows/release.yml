@@ -32,6 +32,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Import a dedicated signing key so the version-bump commit changesets
+      # makes is verifiable. The action sets git user.name / user.email from the
+      # key's UID and turns on commit.gpgsign — so the commit is authored by the
+      # key's identity (a verified email) and signed. `required_signatures` on
+      # master then accepts the release PR, allowing a merge commit.
+      - name: Import GPG signing key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.RELEASE_GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.RELEASE_GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
       - name: Create release PR or publish
         uses: changesets/action@v1
         with:
@@ -39,6 +52,11 @@ jobs:
           version: pnpm version-packages
           commit: "chore: release packages"
           title: "chore: release packages"
+          # Keep the identity set by the GPG import step (a verified address)
+          # instead of changesets' default github-actions[bot] — otherwise the
+          # committer email wouldn't match the signing key and the commit shows
+          # as Unverified.
+          setupGitUser: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # setup-node's registry-url writes an .npmrc that reads NODE_AUTH_TOKEN,
