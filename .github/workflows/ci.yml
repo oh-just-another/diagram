@@ -53,5 +53,9 @@ jobs:
       # Smoke-run the benchmarks so they keep compiling and executing. Absolute
       # timings are not gated — shared CI runners are too noisy for a stable
       # threshold; baselines are tracked by running `pnpm bench` locally.
+      # Only on push to master: the full sampling adds ~3.5 min and the smoke
+      # value is low on every PR (typecheck already proves they compile), so we
+      # keep it off the PR critical path and still catch breakage at merge.
       - name: Benchmarks
+        if: github.event_name == 'push'
         run: pnpm bench
