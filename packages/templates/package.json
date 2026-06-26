@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/templates",
-  "version": "0.57.1",
+  "version": "0.57.2",
   "description": "Reusable shape/diagram templates with a registry and rich node-tree blueprints for @oh-just-another/scene.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

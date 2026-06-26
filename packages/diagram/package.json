@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/diagram",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Framework-neutral custom element (<oja-diagram>) wrapping the diagram editor — drop into any framework or plain HTML.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

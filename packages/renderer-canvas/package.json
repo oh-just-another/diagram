@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/renderer-canvas",
-  "version": "0.58.1",
+  "version": "0.59.0",
   "description": "Canvas2D rendering backend: a RenderTarget over CanvasRenderingContext2D, built-in shape renderers, and hi-DPI multi-layer DOM helpers.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

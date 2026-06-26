@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/math",
-  "version": "0.57.0",
+  "version": "0.58.0",
   "description": "Pure 2D geometry — vectors, matrices, bounds, color and intersection. L0, no DOM, no dependencies.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
