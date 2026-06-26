@@ -17,7 +17,10 @@ import type { ElementId, Vec2 } from "@oh-just-another/types";
  * can't smuggle an XSS / local-file payload through an element link.
  */
 const SAFE_SCHEME = /^(https?:|mailto:)/i;
-const BARE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Domain labels exclude `.` so the literal dots don't overlap the surrounding
+// character classes — that overlap is what lets a crafted `a@!.!.!.…` string
+// drive polynomial backtracking. Each label is matched linearly.
+const BARE_EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
 /**
  * Normalise user-entered link text into a safe, storable href, or

@@ -28,6 +28,18 @@ describe("normalizeHref", () => {
     expect(normalizeHref("")).toBeNull();
     expect(normalizeHref("   ")).toBeNull();
   });
+  it("recognises multi-label emails, not consecutive-dot domains", () => {
+    expect(normalizeHref("a.b@c.d.e")).toBe("mailto:a.b@c.d.e");
+    expect(normalizeHref("a@b")).toBe("https://a@b"); // no dot → not an email
+    expect(normalizeHref("a@b..c")).toBe("https://a@b..c"); // empty label → not an email
+  });
+  it("stays linear on a crafted email-like string (no ReDoS)", () => {
+    // `!@!.!.!.…` almost fits the bare-email shape but fails the end anchor;
+    // the old overlapping regex backtracked polynomially on this. It isn't a
+    // valid email, so it falls through to the https:// branch — fast.
+    const crafted = "!@" + "!.".repeat(50_000);
+    expect(normalizeHref(crafted)).toBe(`https://${crafted}`);
+  }, 2000);
 });
 
 describe("safeHref", () => {
