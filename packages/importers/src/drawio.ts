@@ -70,7 +70,11 @@ export const parseDrawio = (source: string): GraphDocument => {
 
 const parseAttrs = (s: string): Record<string, string> => {
   const out: Record<string, string> = {};
-  const re = /([A-Za-z_:][\w:.-]*)\s*=\s*"([^"]*)"/g;
+  // The name is captured inside a lookahead and re-matched via the `\1`
+  // backreference: a backreference can't be backtracked, so a run like
+  // `::::…` with no following `=` fails at once instead of retrying every
+  // split (polynomial backtracking). Capture groups: 1 = name, 2 = value.
+  const re = /(?=([A-Za-z_:][\w:.-]*))\1\s*=\s*"([^"]*)"/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(s)) !== null) {
     const key = m[1];
@@ -117,12 +121,16 @@ const shapeFromStyle = (style: string | undefined): NodeShape | undefined => {
   return "rectangle";
 };
 
+const XML_ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+};
+
+// Single left-to-right pass so a produced `&` is never re-decoded: `&amp;lt;`
+// becomes the literal `&lt;`, not `<`. Chaining `.replace(/&amp;/…)` first
+// would double-unescape it.
 const decodeEntities = (s: string): string =>
-  s
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/<br>/g, "\n")
-    .replace(/<br\/>/g, "\n");
+  s.replace(/&(?:amp|lt|gt|quot|#39);/g, (e) => XML_ENTITIES[e] ?? e).replace(/<br\s*\/?>/g, "\n");
