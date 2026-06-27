@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "diagram — a drop-in diagram editor for React"
+abstract: >-
+  An infinite-canvas diagram editor for React with an auto-detecting renderer
+  (WebGL2 / Canvas2D / OffscreenCanvas), driveable from code and renderable
+  headless on the server. MIT-licensed.
+type: software
+authors:
+  - family-names: Garifulin
+    given-names: Rustam
+repository-code: "https://github.com/oh-just-another/diagram"
+url: "https://ohjustanother.site"
+license: MIT

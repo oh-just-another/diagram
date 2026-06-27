@@ -6,6 +6,7 @@ import type * as Preset from "@docusaurus/preset-classic";
 // This runs in Node.js — don't use client-side code here (browser APIs, JSX…).
 
 const GITHUB_URL = "https://github.com/oh-just-another/diagram";
+const NPM_URL = "https://www.npmjs.com/package/@oh-just-another/editor";
 
 const config: Config = {
   title: "diagram",
@@ -78,13 +79,38 @@ const config: Config = {
     [
       "classic",
       {
-        // Single landing page for now (src/pages/index.mdx); no docs tree or blog.
-        docs: false,
+        // Docs tree lives under docs/, routed at /docs. One auto-generated
+        // sidebar (see sidebars.ts) keyed off _category_.json + frontmatter.
+        docs: {
+          sidebarPath: "./sidebars.ts",
+          // Draft scaffold mirrored layout; no "edit this page" links yet.
+          editUrl: undefined,
+        },
+        // The landing page is a simple MDX page (src/pages/index.mdx) with a
+        // live editor; the blog is a placeholder src/pages route until there's
+        // something to publish.
         blog: false,
         theme: {
           customCss: "./src/css/custom.css",
         },
       } satisfies Preset.Options,
+    ],
+  ],
+
+  themes: [
+    // Offline, build-time full-text search (no external service). Adds the
+    // navbar search box and owns the /search results route. Swap for Algolia
+    // DocSearch once the site is deployed and accepted into the OSS program.
+    [
+      "@easyops-cn/docusaurus-search-local",
+      {
+        hashed: true,
+        indexDocs: true,
+        indexBlog: false,
+        indexPages: true,
+        docsRouteBasePath: "/docs",
+        highlightSearchTermsOnTargetPage: true,
+      },
     ],
   ],
 
@@ -99,17 +125,23 @@ const config: Config = {
         alt: "diagram",
         src: "img/logo.svg",
       },
+      // Docs pages live in the diagram-docs dev clone and are pulled into
+      // apps/docs/docs/ one at a time during feature work; nav links into /docs
+      // are re-added as pages land.
       items: [{ href: GITHUB_URL, label: "GitHub", position: "right" }],
     },
     footer: {
       style: "dark",
       links: [
         {
-          title: "More",
-          items: [{ label: "GitHub", href: GITHUB_URL }],
+          title: "Community",
+          items: [
+            { label: "GitHub", href: GITHUB_URL },
+            { label: "npm", href: NPM_URL },
+          ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} oh-just-another. Built with Docusaurus.`,
+      copyright: `diagram — a drop-in diagram editor for React. © ${new Date().getFullYear()} oh-just-another · MIT licensed.`,
     },
     prism: {
       theme: prismThemes.github,
