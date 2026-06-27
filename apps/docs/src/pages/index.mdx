@@ -3,18 +3,19 @@ title: diagram
 description: Drop-in diagram editor for React — try it live and drop it into your app.
 ---
 
+import Hero from "@site/src/components/Hero";
 import LiveEditor from "@site/src/components/LiveEditor";
 
-# diagram
+<Hero />
 
-A drop-in diagram editor for React. It auto-detects the best renderer
-(WebGL2 / Canvas2D / OffscreenCanvas) and exposes a single `<Editor>` component
-plus a programmatic handle for driving it from code.
+<div className="markdown">
 
 The canvas below is the real `<Editor>` component, running in your browser — the
 same package you would `pnpm add` into your app.
 
-<LiveEditor height="70vh" />
+<div className="margin-vert--lg">
+  <LiveEditor height="70vh" />
+</div>
 
 ## Mount it
 
@@ -58,3 +59,5 @@ export function App() {
   );
 }
 ```
+
+</div>

@@ -27,3 +27,17 @@
   --ifm-color-primary-lightest: #e9e9fc;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+/* The "Get started" navbar entry rendered as a filled CTA button. */
+.navbar-cta {
+  margin-left: 0.5rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 8px;
+  color: #fff !important;
+  background: var(--ifm-color-primary);
+}
+
+.navbar-cta:hover {
+  background: var(--ifm-color-primary-dark);
+  text-decoration: none;
+}

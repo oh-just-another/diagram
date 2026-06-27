@@ -1,0 +1,70 @@
+/**
+ * Landing hero styles. Colours reference Infima theme variables (set in
+ * custom.css), so light/dark mode come for free.
+ */
+
+.hero {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 4rem 1.5rem 2rem;
+  text-align: center;
+}
+
+.title {
+  font-size: clamp(2.6rem, 7vw, 4rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+}
+
+.tagline {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: var(--ifm-color-emphasis-700);
+  max-width: 620px;
+  margin: 0 auto 1.75rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.75rem;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.6rem 1.4rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.btn:hover {
+  text-decoration: none;
+}
+
+.btnPrimary {
+  background: var(--ifm-color-primary);
+  color: #fff;
+}
+
+.btnPrimary:hover {
+  background: var(--ifm-color-primary-dark);
+  color: #fff;
+}
+
+.btnSecondary {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  color: var(--ifm-font-color-base);
+}
+
+.btnSecondary:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.install {
+  max-width: 420px;
+  margin: 0 auto;
+  text-align: left;
+}
