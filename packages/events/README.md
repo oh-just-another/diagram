@@ -1,5 +1,7 @@
 # @oh-just-another/events
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/events.svg)](https://www.npmjs.com/package/@oh-just-another/events)
+
 L0 typed event emitter. Pure TS — no DOM, no React, no Node API. Underpins the pub/sub in `Editor` / `History` / `Collab`.
 
 No runtime dependencies.

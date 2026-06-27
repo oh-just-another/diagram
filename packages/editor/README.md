@@ -1,5 +1,7 @@
 # @oh-just-another/editor
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/editor.svg)](https://www.npmjs.com/package/@oh-just-another/editor)
+
 Drop-in diagram editor as a single React component. Auto-detects the best
 renderer (WebGL2 / Canvas2D / OffscreenCanvas), opt-in WASM text-shaping and
 rasterisation, and worker offloading — then exposes one `<Editor>` component

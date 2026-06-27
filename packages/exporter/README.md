@@ -1,5 +1,7 @@
 # @oh-just-another/exporter
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/exporter.svg)](https://www.npmjs.com/package/@oh-just-another/exporter)
+
 Document-grade export of `@oh-just-another/scene` documents — high-resolution PNG with DPI metadata, vector PDF, world-coordinate cropping. Builds on top of `@headless` (which itself uses `@renderer-svg`).
 
 ## Install

@@ -1,5 +1,7 @@
 # @oh-just-another/versioning
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/versioning.svg)](https://www.npmjs.com/package/@oh-just-another/versioning)
+
 L3 snapshot history + branch tree + diff/merge utilities for diagram scenes. Depends on `@oh-just-another/types`, `@oh-just-another/scene` and `@oh-just-another/serialization`.
 
 A `SnapshotStore` is the system-of-record for a git-like version tree: every snapshot is an immutable copy of a `Scene` with author / timestamp / message, branches fork from any snapshot, and three-way merge resolves divergent heads.

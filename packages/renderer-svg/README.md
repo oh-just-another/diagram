@@ -1,5 +1,7 @@
 # @oh-just-another/renderer-svg
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/renderer-svg.svg)](https://www.npmjs.com/package/@oh-just-another/renderer-svg)
+
 SVG rendering backend — turns a `Scene` into an SVG-string snapshot. Pure TS, no DOM, runs identically in Node and the browser. Designed for headless rendering, file export, and pixel-parity testing against the Canvas backend.
 
 L2 backend for `@oh-just-another/renderer-core`. Depends only on `@oh-just-another/types`, `@oh-just-another/math`, `@oh-just-another/scene`, `@oh-just-another/renderer-core`.

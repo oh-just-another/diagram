@@ -1,5 +1,7 @@
 # @oh-just-another/react-ui
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/react-ui.svg)](https://www.npmjs.com/package/@oh-just-another/react-ui)
+
 React 18+ wrappers around the editor — `DiagramCanvas`, `Toolbar`, `Palette`, `PropertyPanel`, plus a small set of hooks. Mount it with three lines of JSX, customize with hooks for everything else.
 
 The React binding layer (L5) over `@oh-just-another/state`; needs React + DOM. For a single drop-in component, use `@oh-just-another/editor`.

@@ -7,6 +7,7 @@ import type * as Preset from "@docusaurus/preset-classic";
 
 const GITHUB_URL = "https://github.com/oh-just-another/diagram";
 const NPM_URL = "https://www.npmjs.com/package/@oh-just-another/editor";
+const DOCS_ENTRY = "/docs/introduction/installation";
 
 const config: Config = {
   title: "diagram",
@@ -125,14 +126,31 @@ const config: Config = {
         alt: "diagram",
         src: "img/logo.svg",
       },
-      // Docs pages live in the diagram-docs dev clone and are pulled into
-      // apps/docs/docs/ one at a time during feature work; nav links into /docs
-      // are re-added as pages land.
-      items: [{ href: GITHUB_URL, label: "GitHub", position: "right" }],
+      items: [
+        { to: DOCS_ENTRY, label: "Docs", position: "left" },
+        { to: "/examples", label: "Examples", position: "left" },
+        { href: GITHUB_URL, label: "GitHub", position: "right" },
+      ],
     },
     footer: {
       style: "dark",
       links: [
+        {
+          title: "Product",
+          items: [
+            { label: "Features", to: "/features" },
+            { label: "Examples", to: "/examples" },
+            { label: "FAQ", to: "/faq" },
+          ],
+        },
+        {
+          title: "Developers",
+          items: [
+            { label: "Quick start", to: DOCS_ENTRY },
+            { label: "Examples", to: "/examples" },
+            { label: "Docs", to: "/docs/getting-started/installation" },
+          ],
+        },
         {
           title: "Community",
           items: [
@@ -141,7 +159,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `diagram — a drop-in diagram editor for React. © ${new Date().getFullYear()} oh-just-another · MIT licensed.`,
+      copyright: `Copyright © ${new Date().getFullYear()} oh-just-another · MIT licensed. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

@@ -1,5 +1,7 @@
 # @oh-just-another/glyph-atlas
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/glyph-atlas.svg)](https://www.npmjs.com/package/@oh-just-another/glyph-atlas)
+
 L1 MSDF glyph atlas — pre-rasterised glyphs packed into a single WebGL2 texture for sharp text at any zoom. No runtime dependencies.
 
 Glyphs are baked on first request through a pluggable MSDF shaper and packed into a uniform grid (every tile is the same size, so placement is O(1) — no shelf packing). The atlas owns the GPU texture and only re-uploads the tiles that changed, so steady-state cost is near-zero for a stable glyph set.

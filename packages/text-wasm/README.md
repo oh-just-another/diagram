@@ -1,5 +1,7 @@
 # @oh-just-another/text-wasm
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/text-wasm.svg)](https://www.npmjs.com/package/@oh-just-another/text-wasm)
+
 WASM-backed `TextShaper` for the diagram renderer.
 
 L2. Implements `@oh-just-another/renderer-core`'s `TextShaper` interface. Until a WASM module is loaded, `measure` uses a synchronous geometric estimate so first paint isn't blank; `loadModule(...)` swaps in a real shaper at runtime. No module is bundled — the host picks the engine that matches its font pipeline.

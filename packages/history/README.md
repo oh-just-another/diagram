@@ -1,5 +1,7 @@
 # @oh-just-another/history
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/history.svg)](https://www.npmjs.com/package/@oh-just-another/history)
+
 Undo / redo kernel: transactional, invertible patch stacks for `@oh-just-another/scene`.
 
 L1 pure logic — no DOM, no Node API. Depends only on `@oh-just-another/types` and `@oh-just-another/scene`. The class owns no scene; callers push patches and apply the returned inverse / replay patches themselves, so the same instance drives an interactive editor, a headless replay, or a server-side audit log.

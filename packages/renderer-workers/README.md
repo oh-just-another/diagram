@@ -1,5 +1,7 @@
 # @oh-just-another/renderer-workers
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/renderer-workers.svg)](https://www.npmjs.com/package/@oh-just-another/renderer-workers)
+
 L1 worker-pool primitives for off-thread rendering: layer-pinned dispatch plus a generic round-robin pool. Depends only on `@oh-just-another/types`.
 
 The kernel ships no worker script — hosts supply their own `Worker[]` (e.g. `renderer-canvas`'s `render-worker.ts`) and feed it to the pools here.

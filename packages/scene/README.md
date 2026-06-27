@@ -1,5 +1,7 @@
 # @oh-just-another/scene
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/scene.svg)](https://www.npmjs.com/package/@oh-just-another/scene)
+
 L1 domain model: immutable scenes, patch-based operations, plugin-extensible elements, and the geometry/layout/routing primitives built on top of them.
 
 No DOM, no React, no Node API. Depends only on `@oh-just-another/types`, `@oh-just-another/math` and `fractional-keys`.

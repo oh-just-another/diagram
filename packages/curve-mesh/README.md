@@ -1,5 +1,7 @@
 # @oh-just-another/curve-mesh
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/curve-mesh.svg)](https://www.npmjs.com/package/@oh-just-another/curve-mesh)
+
 L1 Loop-Blinn-style quadratic Bezier triangulation for resolution-independent WebGL2 curve rendering. Pure functions — no DOM, no Node API. No runtime dependencies.
 
 Each curve segment becomes a triangle covering the convex hull of its control points; per-vertex `(u, v, w)` coordinates let a fragment shader decide which pixels fall inside the parabola, so curves stay crisp at any zoom without re-tessellation.

@@ -1,5 +1,7 @@
 # @oh-just-another/math
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/math.svg)](https://www.npmjs.com/package/@oh-just-another/math)
+
 Pure 2D geometry — vectors, matrices, bounds, color, intersection.
 
 L0 geometry kernel. Pure functions, no DOM, no Node API, no runtime dependencies. Modules are exported as namespaces:

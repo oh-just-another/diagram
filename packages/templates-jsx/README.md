@@ -1,5 +1,7 @@
 # @oh-just-another/templates-jsx
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/templates-jsx.svg)](https://www.npmjs.com/package/@oh-just-another/templates-jsx)
+
 JSX sugar over `@oh-just-another/templates` rich-template node trees.
 
 An `h()` pragma and JSX runtime that build plain `rich.TemplateNode` trees — no DOM, no virtual DOM. Output is consumed as-is by the templates package's layout / render / hit-test. Depends only on `@oh-just-another/templates` (types).
