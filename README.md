@@ -1,6 +1,9 @@
-# Oh, just another diagram library!
-
-Monorepo library for drawing diagrams: browser editor + headless-render for servers, split into independent npm packages.
+<div alt style="text-align: center;">
+	<picture>
+		<source media="(prefers-color-scheme: dark)" srcset="https://github.com/oh-just-another/diagram/raw/master/assets/github-hero-dark.png" />
+		<img alt="diagram" src="https://github.com/oh-just-another/diagram/raw/master/assets/github-hero-light.png" />
+	</picture>
+</div>
 
 <!-- Badges track the drop-in package, @oh-just-another/editor. -->
 
@@ -14,7 +17,10 @@ Monorepo library for drawing diagrams: browser editor + headless-render for serv
 [![contributors](https://img.shields.io/github/contributors/oh-just-another/diagram.svg)](https://github.com/oh-just-another/diagram/graphs/contributors)
 [![AI-native](https://img.shields.io/badge/AI--native-%E2%9C%93-7c3aed.svg)](https://github.com/oh-just-another/diagram#readme)
 
-**Status: in active development.**
+### Library for drawing diagrams: browser editor + headless-render for servers.
+
+> [!WARNING]
+> In active development!
 
 ## Documentation
 
@@ -28,40 +34,11 @@ pnpm add @oh-just-another/editor react react-dom
 
 ```tsx
 import { Editor } from "@oh-just-another/editor";
-import "@oh-just-another/react-ui/styles.css"; // styles the toolbar, panels, menus
+import "@oh-just-another/react-ui/styles.css";
 
-function App() {
+export default function Diagram() {
   return <Editor style={{ position: "fixed", inset: 0 }} />;
 }
-```
-
-`<Editor>` auto-selects the best renderer (WebGL2 / OffscreenCanvas / Canvas2D),
-loads a WASM text-shaper where supported, and exposes a programmatic handle via
-`ref`.
-
-## Quick start (for contributors)
-
-```bash
-pnpm install     # install dependencies
-pnpm build       # build all packages
-pnpm test        # tests
-pnpm lint        # eslint
-pnpm typecheck   # tsc --noEmit
-pnpm format      # prettier --write .
-```
-
-Run the demo in the browser:
-
-```bash
-pnpm --filter @oh-just-another/playground dev   # http://localhost:5174
-```
-
-## Structure
-
-```
-packages/   — publishable npm packages (L0–L5)
-apps/       — applications: demo, cli (L6)
-scripts/    — utility scripts (package generator)
 ```
 
 ## License
