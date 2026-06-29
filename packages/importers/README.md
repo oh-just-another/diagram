@@ -1,5 +1,7 @@
 # @oh-just-another/importers
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/importers.svg)](https://www.npmjs.com/package/@oh-just-another/importers)
+
 Convert popular diagram source formats into `@oh-just-another/scene` documents:
 
 - **Mermaid flowchart** — `flowchart TD … A[Start] --> B{Decide}`

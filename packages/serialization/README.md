@@ -1,5 +1,7 @@
 # @oh-just-another/serialization
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/serialization.svg)](https://www.npmjs.com/package/@oh-just-another/serialization)
+
 L2 wire format for `@oh-just-another/scene`. Validates and round-trips a scene through a versioned JSON document. Pure logic — no DOM, no Node API.
 
 ## Quick start

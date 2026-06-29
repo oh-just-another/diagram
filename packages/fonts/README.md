@@ -1,5 +1,7 @@
 # @oh-just-another/fonts
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/fonts.svg)](https://www.npmjs.com/package/@oh-just-another/fonts)
+
 The fonts the editor ships and draws with — Roboto, PT Serif, Roboto Mono — as web fonts.
 
 L0, no dependencies. WebGL2 draws text from these faces (baked into the MSDF shaper); bundling them as web fonts lets the Canvas2D and offscreen backends draw the **same** faces, so text is identical across renderers instead of falling back to whatever the OS resolves.

@@ -1,5 +1,7 @@
 # @oh-just-another/collab
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/collab.svg)](https://www.npmjs.com/package/@oh-just-another/collab)
+
 CRDT collaboration layer for `@oh-just-another/scene` documents.
 
 Real-time multi-peer editing built on Yjs (L4): a CRDT-backed scene mirror, presence/awareness for cursors and selections, mentions, branch-and-merge, CRDT-aware undo, and client-side encryption. Pair with a `@oh-just-another/network` transport (BroadcastChannel for tabs, WebSocket for cross-machine).

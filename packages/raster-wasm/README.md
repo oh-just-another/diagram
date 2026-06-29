@@ -1,5 +1,7 @@
 # @oh-just-another/raster-wasm
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/raster-wasm.svg)](https://www.npmjs.com/package/@oh-just-another/raster-wasm)
+
 WASM-backed `Rasterizer` (flatten / strokeToFill) for the diagram renderer.
 
 L2. Implements `@oh-just-another/renderer-core`'s `Rasterizer` interface. Until a WASM module is loaded, it delegates to the pure-JS `jsRasterizer` from `@oh-just-another/renderer-core`; `loadModule(...)` swaps in a real WASM build at runtime. No module is bundled.

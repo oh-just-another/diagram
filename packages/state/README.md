@@ -1,5 +1,7 @@
 # @oh-just-another/state
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/state.svg)](https://www.npmjs.com/package/@oh-just-another/state)
+
 Interactive editor engine: tools, modes, selection, history, and hit-testing over a Scene.
 
 The L2 interaction layer. It wires a Scene together with render targets and high-level operations into an `Editor` controller — framework-agnostic, with no React dependency. Depends on `@oh-just-another/types`, `@oh-just-another/math`, `@oh-just-another/scene`, `@oh-just-another/renderer-core`, `@oh-just-another/history`, `@oh-just-another/events`, `@oh-just-another/tokens`, and `xstate` (v5). Hosts feed it normalized pointer/keyboard/wheel events; it never imports the DOM directly.

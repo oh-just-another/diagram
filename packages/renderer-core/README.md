@@ -1,5 +1,7 @@
 # @oh-just-another/renderer-core
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/renderer-core.svg)](https://www.npmjs.com/package/@oh-just-another/renderer-core)
+
 Backend-agnostic render kernel: turns a `Scene` into draw calls against an abstract surface.
 
 L1 layer. Isomorphic — no DOM and no Node APIs, so it runs unchanged in the browser, a worker, or on a server. Depends only on `@oh-just-another/types`, `@oh-just-another/math`, `@oh-just-another/scene`. Concrete backends (Canvas2D, SVG, WebGPU, …) implement the `RenderTarget` interface and live in sibling packages.

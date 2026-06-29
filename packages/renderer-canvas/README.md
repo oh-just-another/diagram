@@ -1,5 +1,7 @@
 # @oh-just-another/renderer-canvas
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/renderer-canvas.svg)](https://www.npmjs.com/package/@oh-just-another/renderer-canvas)
+
 Canvas2D and WebGL2 backends for the diagram render kernel.
 
 L2 package. Implements `RenderTarget` from `@oh-just-another/renderer-core` over `CanvasRenderingContext2D` and WebGL2, plus DOM helpers for hi-DPI, multi-layer composition, tiling, command recording, and offscreen/worker rendering. Browser-only — depends on `HTMLCanvasElement`, `OffscreenCanvas` and `window.devicePixelRatio`. For headless rendering (Node), use `@oh-just-another/renderer-svg`.

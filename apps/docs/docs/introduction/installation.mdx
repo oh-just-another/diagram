@@ -1,0 +1,39 @@
+---
+title: Installation
+status: draft
+sidebar_position: 1
+---
+
+Install the umbrella package `@oh-just-another/editor` and React. It ships the drop-in `Editor` component plus everything it composes — renderers, state, serialization, and templates.
+
+## Install
+
+`react` and `react-dom` (>=18) are peer dependencies, so add them alongside the package:
+
+```bash
+pnpm add @oh-just-another/editor react react-dom
+```
+
+The same works with any package manager (`npm install`, `yarn add`).
+
+## Stylesheet
+
+The editor chrome — toolbar, panels, and menus — is styled by the `react-ui` stylesheet. Import it once in your app, anywhere before the editor renders:
+
+```tsx
+import "@oh-just-another/react-ui/styles.css";
+```
+
+The stylesheet ships the full token set (light, dark, and a `prefers-color-scheme` fallback for "system"), so this single import is all the styling you need. Override any `--du-*` CSS variable to re-skin.
+
+## TypeScript
+
+Types are bundled — no separate `@types` package. Public types such as `EditorAPI`, `EditorProps`, `Scene`, and `Mode` are re-exported from the package entry point:
+
+```ts
+import type { EditorAPI, EditorProps, Scene, Mode } from "@oh-just-another/editor";
+```
+
+## Bundlers and workers
+
+When the runtime supports it, the editor offloads rendering to an OffscreenCanvas worker, constructed via `new Worker(new URL(...), { type: "module" })`. Vite, Rollup, and webpack 5 detect and bundle this automatically. On bundlers that do not (esbuild, Parcel), either pass your own `workerFactory` prop or skip the worker path with `capabilities={{ renderer: "canvas2d" }}`. The worker is purely an optimization — the editor renders fine without it.

@@ -1,5 +1,7 @@
 # @oh-just-another/headless
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/headless.svg)](https://www.npmjs.com/package/@oh-just-another/headless)
+
 Server-side rendering for `@oh-just-another/scene` documents. Pure Node.js — no DOM, no Canvas2D, no browser shim. Produces SVG synchronously and PNG via an optional WASM dependency.
 
 ## Install

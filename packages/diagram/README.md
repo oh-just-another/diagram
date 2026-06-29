@@ -1,5 +1,7 @@
 # @oh-just-another/diagram
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/diagram.svg)](https://www.npmjs.com/package/@oh-just-another/diagram)
+
 The diagram editor as a framework-neutral custom element — `<oja-diagram>`.
 
 L7 wrapper over `@oh-just-another/editor`. It mounts the React editor inside its own shadow root (styles isolated, floating UI portaled into the same root) and exposes a plain DOM surface — so Vue, Svelte, Angular or a hand-written HTML page all drive it the same way, without touching React. React is bundled in; consumers never install or import it.

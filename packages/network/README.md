@@ -1,5 +1,7 @@
 # @oh-just-another/network
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/network.svg)](https://www.npmjs.com/package/@oh-just-another/network)
+
 Backend-neutral binary transport for collaborative editing. Used by `@oh-just-another/collab` to ferry Yjs / awareness messages between peers, but the interface is general enough for any structured-clone payload.
 
 ## Install

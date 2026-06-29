@@ -1,0 +1,99 @@
+---
+title: Quick Start
+status: draft
+sidebar_position: 2
+---
+
+Mount one component and you have a working diagram editor: floating toolbar, panels, menus, undo/redo, and a canvas that auto-selects the best available renderer. This page gets you from install to a controllable editor.
+
+## Mount the editor
+
+Render `Editor` inside a sized container and import the stylesheet once. A full-bleed `position: fixed` container is the simplest way to fill the screen.
+
+```tsx
+import { Editor } from "@oh-just-another/editor";
+import "@oh-just-another/react-ui/styles.css";
+
+export function App() {
+  return <Editor style={{ position: "fixed", inset: 0 }} />;
+}
+```
+
+The editor detects WebGL2 / OffscreenCanvas / Canvas2D, loads a WASM text-shaper where supported, and registers the built-in GIF decoder — all without configuration.
+
+## Renderers
+
+The canvas auto-selects a backend and downgrades to `canvas2d` if one fails at runtime, so there is always a working canvas. Selection order:
+
+1. **`webgl2`** — GPU pipeline for shapes (WebGPU falls back here too).
+2. **`offscreen`** — rendering moved to an OffscreenCanvas worker.
+3. **`canvas2d`** — DOM Canvas2D, always available.
+
+Force one with the `capabilities` prop instead of auto-detecting:
+
+```tsx
+<Editor capabilities={{ renderer: "webgl2" }} /> // "auto" | "webgl2" | "offscreen" | "canvas2d"
+```
+
+To render without an editor (server, thumbnails), use `renderSceneToSvg(scene)` from `@oh-just-another/renderer-svg` for an SVG string, or `exportSceneToPng(scene, options)` from `@oh-just-another/editor` for a PNG `Blob`.
+
+## Drive it from code
+
+Attach a `ref` to get an `EditorAPI` handle. It exposes curated verbs for mode, selection, history, zoom, and scene load/save:
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+import "@oh-just-another/react-ui/styles.css";
+
+export function App() {
+  const api = useRef<EditorAPI>(null);
+
+  return (
+    <>
+      <button onClick={() => api.current?.zoomToFit()}>Zoom to fit</button>
+      <button onClick={() => api.current?.undo()}>Undo</button>
+      <Editor ref={api} style={{ position: "fixed", inset: 0 }} />
+    </>
+  );
+}
+```
+
+`EditorAPI` includes `getScene()`, `loadScene(scene)`, `getMode()` / `setMode(mode)`, `getSelection()` / `setSelection(ids)`, `undo()` / `redo()`, and `zoomToFit()`. The `editor` field on the handle is the full live `EditorInstance` — the escape hatch for anything not on the curated surface.
+
+## Persist and restore a scene
+
+`stringifyScene` serializes the scene to JSON (stamped with a schema version); `parseScene` reads it back and runs migrations, so older saves still open. Seed it on mount with `initialScene`:
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+import { stringifyScene, parseScene } from "@oh-just-another/serialization";
+import "@oh-just-another/react-ui/styles.css";
+
+const KEY = "my-diagram";
+
+export function App() {
+  const api = useRef<EditorAPI>(null);
+  const saved = localStorage.getItem(KEY);
+
+  return (
+    <>
+      <button onClick={() => localStorage.setItem(KEY, stringifyScene(api.current!.getScene()))}>
+        Save
+      </button>
+      <Editor
+        ref={api}
+        initialScene={saved ? parseScene(saved) : undefined}
+        style={{ position: "fixed", inset: 0 }}
+      />
+    </>
+  );
+}
+```
+
+To load into an already-mounted editor instead of on mount, call `api.current.loadScene(parseScene(saved))`.
+
+## Customize the chrome
+
+Props such as `initialMode`, `theme`, `hideToolbar`, and the `renderTopBar*` slots let you toggle or replace parts of the UI, and `onSceneChange` / `onSelectionChange` notify you of edits. See the full props reference in the [package README](https://github.com/oh-just-another/diagram).

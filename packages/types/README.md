@@ -1,5 +1,7 @@
 # @oh-just-another/types
 
+[![npm version](https://img.shields.io/npm/v/@oh-just-another/types.svg)](https://www.npmjs.com/package/@oh-just-another/types)
+
 Shared primitive types — ids, vec, bounds, color, transform and input events.
 
 L0 type vocabulary shared across the diagram library: geometric primitives, branded identifiers and framework-agnostic input events.
