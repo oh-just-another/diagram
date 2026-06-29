@@ -39,11 +39,11 @@ pnpm add @oh-just-another/editor react react-dom
 ```
 
 ```tsx
-import {Editor} from "@oh-just-another/editor";
+import { Editor } from "@oh-just-another/editor";
 import "@oh-just-another/react-ui/styles.css";
 
 export default function Diagram() {
-  return <Editor style={{position: "fixed", inset: 0}}/>;
+  return <Editor style={{ position: "fixed", inset: 0 }} />;
 }
 ```
 
