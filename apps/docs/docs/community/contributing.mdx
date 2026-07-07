@@ -1,0 +1,50 @@
+---
+title: ⚠️ Contributing
+status: draft
+sidebar_position: 1
+---
+
+Contributions are welcome. The project is an MIT-licensed monorepo of independent npm packages with one-directional dependencies, managed with pnpm and nx.
+
+## Get the repo running
+
+Clone, install, and build. The repo uses pnpm workspaces:
+
+```bash
+git clone https://github.com/oh-just-another/diagram.git
+cd diagram
+pnpm install
+pnpm build
+```
+
+Run the in-browser playground while you work:
+
+```bash
+pnpm --filter @oh-just-another/playground dev   # http://localhost:5174
+```
+
+## Before you open a PR
+
+Keep tests, types, and lint green — these gates run in CI:
+
+```bash
+pnpm test        # vitest across all packages
+pnpm typecheck   # tsc --noEmit (vitest does not check types)
+pnpm lint        # eslint
+```
+
+Add or update tests for any behavior change, and run a changeset for any change to a package's public API:
+
+```bash
+pnpm changeset
+```
+
+## Conventions
+
+- Commits follow Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`, `test:`, `perf:`, `build:`, `ci:`).
+- Everything committed to the repo is English-only — code, comments, identifiers, and docs.
+- Respect the package layering: dependencies only flow downward (L0 to L6); a lower-level package must never import from a higher one. `pnpm deps:check` enforces this.
+
+## Licensing of contributions
+
+There is no CLA. By contributing, you agree your contributions are licensed under the project's MIT license. Open issues and pull requests at https://github.com/oh-just-another/diagram

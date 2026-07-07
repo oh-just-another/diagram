@@ -1,0 +1,34 @@
+---
+title: 🚧 Overview
+status: draft
+sidebar_position: 6
+---
+
+Starter kits are small, focused templates that wire `@oh-just-another/*`
+packages together for a concrete use case — so you can start from a working
+example instead of assembling the pieces yourself.
+
+This section mirrors a familiar catalogue of kits, so be honest about what
+exists. The library is the set of packages (`@oh-just-another/editor`,
+`@oh-just-another/scene`, `@oh-just-another/collab`, `@oh-just-another/templates`,
+and the renderers underneath). The kits below are patterns we recommend building
+on top of them — some are documented here against real, shipped exports; others
+are planned and not yet available as cloneable templates.
+
+### Maps to the library today
+
+- **Agent** — an AI agent driving the editor through the same programmatic
+  handle (`EditorAPI` / `EditorInstance`) a human uses, and constructing scenes
+  with `@oh-just-another/scene`. This is the library's AI-native direction.
+- **Multiplayer** — a collaborative canvas built on `@oh-just-another/collab`
+  with a pluggable transport (tabs via BroadcastChannel, cross-machine via
+  WebSocket).
+
+Both pages ground their examples in real package exports. Where a kit is not yet
+packaged as a cloneable repository template, that is called out as "coming".
+
+### Planned
+
+The remaining kits — **Chat**, **Branching Chat**, **Image Pipeline**,
+**Shader**, and **Workflow** — are planned. Their pages describe what each would
+be in one sentence; no API is invented for them yet.
