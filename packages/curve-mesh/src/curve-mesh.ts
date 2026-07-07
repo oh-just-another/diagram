@@ -113,8 +113,121 @@ export const cubicToTriangles = (
 };
 
 /**
+ * Zero-allocation triangle accumulator for per-frame triangulation.
+ *
+ * `quadraticToTriangle` / `cubicToTriangles` / `packCurveTriangles`
+ * allocate fresh `Float32Array`s per triangle — fine for one-off
+ * geometry, but a GC hazard when a renderer re-triangulates every
+ * curve every frame. The batch writes triangle data straight into two
+ * growable flat buffers (positions 6 floats/triangle, uvs 9
+ * floats/triangle) with a cursor, so steady-state cost after warmup is
+ * zero allocations.
+ *
+ * Contract: the `positions` / `uvs` views are valid only until the
+ * next `add*` / `reset` call on the same batch — callers that retain
+ * the data (e.g. a triangulation cache) must copy it.
+ */
+export class CurveTriangleBatch {
+  private positionsBuf = new Float32Array(INITIAL_BATCH_TRIANGLES * 6);
+  private uvsBuf = new Float32Array(INITIAL_BATCH_TRIANGLES * 9);
+  private count = 0;
+
+  /** Number of triangles accumulated since the last `reset()`. */
+  get triangleCount(): number {
+    return this.count;
+  }
+
+  /** Flat `[x, y] × 3` per triangle — view valid until the next `add*` / `reset`. */
+  get positions(): Float32Array {
+    return this.positionsBuf.subarray(0, this.count * 6);
+  }
+
+  /** Flat `[u, v, w] × 3` per triangle — view valid until the next `add*` / `reset`. */
+  get uvs(): Float32Array {
+    return this.uvsBuf.subarray(0, this.count * 9);
+  }
+
+  /** Rewind the cursor. Buffers keep their capacity (it only ratchets up). */
+  reset(): void {
+    this.count = 0;
+  }
+
+  /**
+   * Append one Loop-Blinn quadratic triangle (same math as
+   * {@link quadraticToTriangle}) without allocating. Returns `false`
+   * for degenerate (colinear) curves, which emit nothing.
+   */
+  addQuadratic(p0: Point, p1: Point, p2: Point): boolean {
+    const cross = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
+    if (cross === 0) return false;
+    const w = cross > 0 ? 1 : -1;
+    this.ensureCapacity(this.count + 1);
+    let po = this.count * 6;
+    const positions = this.positionsBuf;
+    positions[po++] = p0.x;
+    positions[po++] = p0.y;
+    positions[po++] = p1.x;
+    positions[po++] = p1.y;
+    positions[po++] = p2.x;
+    positions[po] = p2.y;
+    let uo = this.count * 9;
+    const uvs = this.uvsBuf;
+    uvs[uo++] = 0;
+    uvs[uo++] = 0;
+    uvs[uo++] = w;
+    uvs[uo++] = 0.5;
+    uvs[uo++] = 0;
+    uvs[uo++] = w;
+    uvs[uo++] = 1;
+    uvs[uo++] = 1;
+    uvs[uo] = w;
+    this.count++;
+    return true;
+  }
+
+  /**
+   * Append the triangles for one cubic Bezier via
+   * {@link subdivideCubic} + {@link addQuadratic}. Degenerate
+   * sub-quadratics are dropped, matching {@link cubicToTriangles}.
+   */
+  addCubic(
+    p0: Point,
+    p1: Point,
+    p2: Point,
+    p3: Point,
+    subdivisions = DEFAULT_CUBIC_SUBDIVISIONS,
+  ): void {
+    for (const [a, b, c] of subdivideCubic(p0, p1, p2, p3, subdivisions)) {
+      this.addQuadratic(a, b, c);
+    }
+  }
+
+  private ensureCapacity(triangles: number): void {
+    if (this.positionsBuf.length >= triangles * 6) return;
+    let cap = this.positionsBuf.length / 6;
+    while (cap < triangles) cap *= 2;
+    const nextPositions = new Float32Array(cap * 6);
+    nextPositions.set(this.positionsBuf);
+    this.positionsBuf = nextPositions;
+    const nextUvs = new Float32Array(cap * 9);
+    nextUvs.set(this.uvsBuf);
+    this.uvsBuf = nextUvs;
+  }
+}
+
+/**
+ * Initial `CurveTriangleBatch` capacity, in triangles. 64 covers a
+ * typical fill (a rounded rect is 4, a 12-segment blob ≈ 54) without a
+ * grow; capacity doubles on demand and never shrinks.
+ */
+const INITIAL_BATCH_TRIANGLES = 64;
+
+/**
  * Pack a list of curve triangles into two contiguous Float32Arrays
  * (`positions` 6N, `uvs` 9N) ready for `bufferData(STATIC_DRAW)`.
+ *
+ * Allocates fresh arrays per call — for zero-allocation per-frame
+ * triangulation use {@link CurveTriangleBatch} instead.
  */
 export const packCurveTriangles = (
   triangles: readonly CurveTriangle[],
