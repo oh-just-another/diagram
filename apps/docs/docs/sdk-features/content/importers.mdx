@@ -4,8 +4,9 @@ sidebar_position: 82
 ---
 
 `@oh-just-another/importers` converts popular diagram source formats into a
-`@oh-just-another/scene` `Scene`. Three formats are supported: Mermaid
-flowcharts, Graphviz `dot`, and drawio XML.
+`@oh-just-another/scene` `Scene`. Five formats are supported: Mermaid
+flowcharts, Graphviz `dot`, drawio XML, `.excalidraw` JSON (import and
+export), and JSON Canvas (`.canvas`).
 
 Each format has a one-shot helper (`importMermaid` / `importDot` /
 `importDrawio`) that parses, lays out, and materialises a `Scene` in a single
@@ -68,6 +69,40 @@ Vertices, edges, and shapes inferred from `style` (ellipse, rhombus/diamond,
 rounded, rectangle) are supported. Subgraphs, groups, swimlanes, custom mxgraph
 shapes, splines, and fonts are **not**.
 
+## .excalidraw
+
+`importExcalidraw(json: string): Scene` imports a `.excalidraw` JSON document;
+`exportExcalidraw(scene: Scene): string` writes one back (format version 2) —
+the pair round-trips shapes, geometry and connectors.
+
+```ts
+import { importExcalidraw, exportExcalidraw } from "@oh-just-another/importers";
+
+const scene = importExcalidraw(await readFile("sketch.excalidraw", "utf8"));
+await writeFile("sketch.excalidraw", exportExcalidraw(scene));
+```
+
+Rectangles, ellipses, diamonds (→ 4-point polygons), text, freedraw (→ brush),
+images with embedded data, frames, and arrows/lines (→ straight `Link`s with
+anchor or point endpoints) are mapped both ways. Nested groups flatten to the
+outermost group on import; templates, block arrows, paths, link labels and
+externally-hosted images are not exported. Unknown element types are skipped,
+never fatal.
+
+## JSON Canvas
+
+`importJsonCanvas(json: string): Scene` imports a JSON Canvas
+([jsoncanvas.org](https://jsoncanvas.org)) document: `text` nodes → text
+elements, `file` / `link` nodes → text elements showing the path / URL,
+`group` nodes → frames, edges → straight `Link`s anchored on `fromSide` /
+`toSide` (edge `label` and preset colours `"1"`–`"6"` carried over).
+
+```ts
+import { importJsonCanvas } from "@oh-just-another/importers";
+
+const scene = importJsonCanvas(await readFile("board.canvas", "utf8"));
+```
+
 ## Two-stage pipeline
 
 ```ts
@@ -80,4 +115,6 @@ const scene = graphToScene(graph);
 
 The per-format parsers are hand-rolled and intentionally minimal — hosts needing
 full fidelity can pre-process with the official tool and hand the result to
-`graphToScene` as a `GraphDocument`.
+`graphToScene` as a `GraphDocument`. The `.excalidraw` and JSON Canvas
+importers skip the `GraphDocument` step and build the `Scene` directly — those
+formats already carry coordinates and styles.
