@@ -20,6 +20,7 @@ For teams embedding the SDK we offer paid, invoice-based services:
 - **Custom development** — shapes, importers, exporters, or features scoped to
   your needs (released under MIT where possible).
 
-Contact: <rustam@n69.in>. The SDK itself is MIT and free for everyone — paid
+Contact: [rustam@n69.in](mailto:rustam@n69.in). The SDK itself is MIT and free
+for everyone — paid
 services never gate the library. See the
 [license pledge](https://github.com/oh-just-another/diagram/blob/master/.github/GOVERNANCE.md).
