@@ -19,7 +19,7 @@
     "packages/headless": {
       "entry": ["src/index.ts!"],
       "project": ["src/**/*.{ts,tsx}"],
-      "ignoreDependencies": ["@resvg/resvg-js", "tinybench"]
+      "ignoreDependencies": ["@resvg/resvg-js"]
     },
     "apps/cli": {
       "entry": ["src/cli.ts", "src/index.ts"],
