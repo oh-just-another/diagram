@@ -45,7 +45,32 @@ for (const el of scene.elements.values()) {
 
 ## Custom shape types
 
-Because `type` is an open `string`, you can register your own variant. Provide a bounder via `registerBounder` so the spatial index and selection can compute its local bounds.
+Because `type` is an open `string`, you can register your own variant. The recommended path is `defineShape` from `@oh-just-another/editor` — one call registers bounds (spatial index, hit-test, culling), rendering (all backends), and optional interaction hooks. Serialization is automatic: unknown types pass through.
+
+```ts
+import { defineShape, type ElementBase } from "@oh-just-another/editor";
+
+interface Widget extends ElementBase {
+  readonly type: "my-widget";
+  readonly size: number;
+}
+
+defineShape<Widget>({
+  type: "my-widget",
+  bounds: (s) => ({ x: 0, y: 0, width: s.size, height: s.size }),
+  render: (s, target) => {
+    target.setFill(s.style.fill ?? "#facc15");
+    target.beginPath();
+    target.rect(0, 0, s.size, s.size);
+    target.fill();
+  },
+  // Optional: interactiveHitTest, rotateAnchor.
+});
+```
+
+### Under the hood
+
+`defineShape` fans out to the per-package registries, which remain available for granular control: `registerBounder` (`@oh-just-another/scene`) supplies the local AABB, `registerElementRenderer` (`@oh-just-another/renderer-core`) draws the shape, and `registerInteractiveHitTester` / `registerRotateAnchor` (`@oh-just-another/state`) customize interaction. All are re-exported from `@oh-just-another/editor`.
 
 ```ts
 import { registerBounder } from "@oh-just-another/scene";

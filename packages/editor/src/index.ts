@@ -42,7 +42,11 @@ export { exportSceneToPng, type PngExportBackground, type PngExportOptions } fro
 // reaching into the lower-level packages.
 export { registerBounder, registerLayoutKind } from "@oh-just-another/scene";
 export { registerElementRenderer, registerAnimationAdapter } from "@oh-just-another/renderer-core";
+export { registerInteractiveHitTester, registerRotateAnchor } from "@oh-just-another/state";
 export { registerMigration } from "@oh-just-another/serialization";
+// `defineShape` — one-call facade over the registries above for adding a
+// custom shape type (bounds + render + optional interaction hooks).
+export { defineShape, type ShapeSpec, type ShapeRegistration } from "./define-shape.js";
 // Built-in GIF decoder — `<Editor>` installs it by default; exported so hosts
 // can install it explicitly or opt into it without the component.
 export { installGifAnimationAdapter } from "./gif-animation.js";
@@ -54,7 +58,15 @@ export { installGifAnimationAdapter } from "./gif-animation.js";
 // with the `<Editor>` component above.
 export type { ElementId } from "@oh-just-another/types";
 export type { Editor as EditorInstance, Mode, FileDropHandler } from "@oh-just-another/state";
-export type { Scene, LayoutKindEntry } from "@oh-just-another/scene";
+export type {
+  Scene,
+  LayoutKindEntry,
+  ElementBase,
+  ElementBounder,
+  AnchorRef,
+} from "@oh-just-another/scene";
+export type { ElementRenderer, RenderTarget } from "@oh-just-another/renderer-core";
+export type { InteractiveHitTester } from "@oh-just-another/state";
 export type { Template } from "@oh-just-another/templates";
 export type { AnimatedSourceAdapter } from "@oh-just-another/renderer-core";
 export type { RendererBackend } from "@oh-just-another/renderer-canvas";
