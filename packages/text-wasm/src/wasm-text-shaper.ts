@@ -114,6 +114,42 @@ export interface WasmTextShaperOptions {
   readonly fallbackAdvanceFactor?: number;
 }
 
+/**
+ * Instantiate a WASM module, preferring `WebAssembly.instantiateStreaming`
+ * when the source is a fetchable http(s) URL / Response — compilation
+ * overlaps the download and skips the intermediate ArrayBuffer copy.
+ * Falls back to the buffered `fetchModuleBytes` + `instantiate` path for
+ * raw bytes, `file://` URLs (Node reads them from disk), hosts without
+ * `instantiateStreaming`, or servers that mis-serve the wasm MIME type
+ * (streaming compilation requires `application/wasm`).
+ */
+const instantiateWasm = async (
+  source: string | URL | ArrayBuffer | Uint8Array | Response,
+  context: string,
+): Promise<WebAssembly.Instance> => {
+  const streamable =
+    typeof WebAssembly.instantiateStreaming === "function" &&
+    (source instanceof Response ||
+      ((typeof source === "string" || source instanceof URL) &&
+        !String(source).startsWith("file:")));
+  if (streamable) {
+    try {
+      // Clone a passed-in Response so the buffered fallback can still
+      // consume the original body if streaming compilation rejects.
+      const res = source instanceof Response ? source.clone() : await fetch(source);
+      const { instance } = await WebAssembly.instantiateStreaming(res, {});
+      return instance;
+    } catch {
+      // Fall through to the buffered path — it re-fetches (or reads the
+      // original Response) and surfaces the real compile error if the
+      // module itself is broken.
+    }
+  }
+  const bytes = await fetchModuleBytes(source, context);
+  const { instance } = await WebAssembly.instantiate(bytes, {});
+  return instance;
+};
+
 export class WasmTextShaper implements TextShaper {
   private readonly cacheSize: number;
   private readonly fallbackFactor: number;
@@ -142,8 +178,7 @@ export class WasmTextShaper implements TextShaper {
    * layout pop on the next paint.
    */
   async loadModule(source: string | URL | ArrayBuffer | Uint8Array | Response): Promise<void> {
-    const bytes = await fetchModuleBytes(source, "WasmTextShaper.loadModule");
-    const { instance } = await WebAssembly.instantiate(bytes, {});
+    const instance = await instantiateWasm(source, "WasmTextShaper.loadModule");
     this.wasm = instance.exports as unknown as WasmShaperExports;
     this.cache.clear();
     this.currentFontKey = null;
