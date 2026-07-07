@@ -2,6 +2,9 @@ import { req, type Bounds, type ElementId, type Vec2 } from "@oh-just-another/ty
 import { bezier, hitTest, intersect, vec2 } from "@oh-just-another/math";
 import { getAnchorOutwardNormal, getAnchorWorld } from "./anchors.js";
 import {
+  ELBOW_STUB_DISTANCE_DIVISOR,
+  ELBOW_STUB_MAX,
+  ELBOW_STUB_MIN,
   FLOATING_OUTLINE_SAMPLES,
   SELF_LOOP_CURVE_ARM_FACTOR,
   SELF_LOOP_SIZE,
@@ -283,7 +286,14 @@ export const getLinkPath = (scene: Scene, edge: Link): readonly Vec2[] | null =>
   // endpoints fall back to the longest-axis-first heuristic.
   const fromDir = exitDirectionFor(edge.from);
   const toDir = exitDirectionFor(edge.to);
-  const stub = Math.min(40, Math.max(8, Math.abs(to.x - from.x) / 4, Math.abs(to.y - from.y) / 4));
+  const stub = Math.min(
+    ELBOW_STUB_MAX,
+    Math.max(
+      ELBOW_STUB_MIN,
+      Math.abs(to.x - from.x) / ELBOW_STUB_DISTANCE_DIVISOR,
+      Math.abs(to.y - from.y) / ELBOW_STUB_DISTANCE_DIVISOR,
+    ),
+  );
 
   if (fromDir || toDir) {
     const path: Vec2[] = [from];
