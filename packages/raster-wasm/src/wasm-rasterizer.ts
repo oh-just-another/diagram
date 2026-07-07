@@ -2,7 +2,7 @@ import { req, type Vec2 } from "@oh-just-another/types";
 import type { PathCommand } from "@oh-just-another/scene";
 import {
   allocBytes,
-  fetchModuleBytes,
+  instantiateWasm,
   jsRasterizer,
   type Rasterizer,
 } from "@oh-just-another/renderer-core";
@@ -57,42 +57,6 @@ export interface WasmRasterizerOptions {
   /** Default tolerance threaded through when callers omit it. */
   readonly defaultTolerance?: number;
 }
-
-/**
- * Instantiate a WASM module, preferring `WebAssembly.instantiateStreaming`
- * when the source is a fetchable http(s) URL / Response — compilation
- * overlaps the download and skips the intermediate ArrayBuffer copy.
- * Falls back to the buffered `fetchModuleBytes` + `instantiate` path for
- * raw bytes, `file://` URLs (Node reads them from disk), hosts without
- * `instantiateStreaming`, or servers that mis-serve the wasm MIME type
- * (streaming compilation requires `application/wasm`).
- */
-const instantiateWasm = async (
-  source: string | URL | ArrayBuffer | Uint8Array | Response,
-  context: string,
-): Promise<WebAssembly.Instance> => {
-  const streamable =
-    typeof WebAssembly.instantiateStreaming === "function" &&
-    (source instanceof Response ||
-      ((typeof source === "string" || source instanceof URL) &&
-        !String(source).startsWith("file:")));
-  if (streamable) {
-    try {
-      // Clone a passed-in Response so the buffered fallback can still
-      // consume the original body if streaming compilation rejects.
-      const res = source instanceof Response ? source.clone() : await fetch(source);
-      const { instance } = await WebAssembly.instantiateStreaming(res, {});
-      return instance;
-    } catch {
-      // Fall through to the buffered path — it re-fetches (or reads the
-      // original Response) and surfaces the real compile error if the
-      // module itself is broken.
-    }
-  }
-  const bytes = await fetchModuleBytes(source, context);
-  const { instance } = await WebAssembly.instantiate(bytes, {});
-  return instance;
-};
 
 const CAP_TO_ENUM: Record<"butt" | "round" | "square", number> = {
   butt: 0,
