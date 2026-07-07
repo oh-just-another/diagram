@@ -4,7 +4,7 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master]
+    branches: [master, refactor/v2]
 
 permissions:
   contents: read
@@ -40,6 +40,12 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+      # Layering gate (L0→L8, core purity, runtime cycles). Runs in the
+      # pre-push hook locally, but forks without hooks bypass it, so it must
+      # also gate PRs here.
+      - name: Dependency graph check
+        run: pnpm deps:check
 
       - name: Test
         run: pnpm test
