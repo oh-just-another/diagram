@@ -89,6 +89,21 @@ export const WEBGL2_IMAGE_TEXTURE_CACHE_CAP = 64;
 export const MAX_DEVICE_PIXEL_RATIO = 2;
 
 /**
+ * LRU cap on the Loop-Blinn triangulation cache in `webgl2-curve.ts`.
+ * Keyed by curve control-point content (renderers emit paths in
+ * element-local coordinates, so identical geometry — e.g. every
+ * same-size rounded rect — shares one entry, and pan / zoom / drag
+ * never invalidate it: the transform is applied in the vertex shader).
+ *
+ * Each entry stores the packed positions + uvs plus the key floats —
+ * a rounded rect (4 triangles) is ≈ 500 bytes, so the cap bounds the
+ * cache at a few MB worst-case. On overflow the least-recently-drawn
+ * geometry is evicted and re-triangulated on next draw (cheap, no GPU
+ * resources involved). Range: 512–16384.
+ */
+export const WEBGL2_CURVE_TRIANGULATION_CACHE_CAP = 4096;
+
+/**
  * Lower bound on the polygon approximation of an ellipse. Keeps small
  * ellipses from collapsing to a coarse hexagon at far zoom. Range: 12–48.
  */
