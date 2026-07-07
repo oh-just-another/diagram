@@ -80,10 +80,28 @@ export class WebGL2Target implements RenderTarget {
   private textAlign: TextAlign = "left";
   private textBaseline: TextBaseline = "top";
   /**
-   * Polyline path being assembled by moveTo / lineTo. Cleared on
-   * `beginPath()`; pushed to GPU on `stroke()`.
+   * Polyline path being assembled by moveTo / lineTo, as a flat
+   * growable `[x0, y0, x1, y1, ...]` buffer with a point-count cursor —
+   * no per-vertex `{x, y}` object churn on the hot path-building path.
+   * Cleared on `beginPath()`; consumed by `fill()` / `stroke()`.
+   * Per-instance (not module-level) so interleaved path building on two
+   * targets can't stomp each other. Capacity ratchets up, never shrinks.
    */
-  private currentPolyline: Vec2[] = [];
+  private pathXY = new Float64Array(INITIAL_PATH_CAPACITY * 2);
+  /** Number of (x, y) points currently in `pathXY`. */
+  private pathPts = 0;
+
+  /** Append one point to the flat path buffer, growing it if needed. */
+  private pushPathPoint(x: number, y: number): void {
+    if ((this.pathPts + 1) * 2 > this.pathXY.length) {
+      const next = new Float64Array(this.pathXY.length * 2);
+      next.set(this.pathXY);
+      this.pathXY = next;
+    }
+    this.pathXY[this.pathPts * 2] = x;
+    this.pathXY[this.pathPts * 2 + 1] = y;
+    this.pathPts++;
+  }
   /**
    * Curve segments collected since the last `beginPath()`. Quadratic
    * and cubic Bezier `*CurveTo` calls push here in addition to pushing
@@ -345,7 +363,7 @@ export class WebGL2Target implements RenderTarget {
 
   beginPath(): void {
     this.currentPath = null;
-    this.currentPolyline = [];
+    this.pathPts = 0;
     this.currentCurves = [];
     this.currentEllipse = null;
   }
@@ -363,17 +381,17 @@ export class WebGL2Target implements RenderTarget {
   private readonly _pathRect = { x: 0, y: 0, width: 0, height: 0 };
 
   moveTo(x: number, y: number): void {
-    this.currentPolyline = [{ x, y }];
+    this.pathPts = 0;
+    this.pushPathPoint(x, y);
   }
 
   lineTo(x: number, y: number): void {
-    this.currentPolyline.push({ x, y });
+    this.pushPathPoint(x, y);
   }
 
   closePath(): void {
-    const start = this.currentPolyline[0];
-    if (this.currentPolyline.length > 1 && start !== undefined) {
-      this.currentPolyline.push({ ...start });
+    if (this.pathPts > 1) {
+      this.pushPathPoint(req(this.pathXY[0]), req(this.pathXY[1]));
     }
   }
 
@@ -386,7 +404,7 @@ export class WebGL2Target implements RenderTarget {
    */
   ellipse(cx: number, cy: number, rx: number, ry: number): void {
     this.currentEllipse = { cx, cy, rx, ry };
-    this.currentPolyline = [];
+    this.pathPts = 0;
     this.currentPath = null;
   }
 
@@ -402,13 +420,10 @@ export class WebGL2Target implements RenderTarget {
       ELLIPSE_MIN_SEGMENTS,
       Math.min(ELLIPSE_MAX_SEGMENTS, Math.ceil(Math.PI * screenRadius * 0.7)),
     );
-    this.currentPolyline = [];
+    this.pathPts = 0;
     for (let i = 0; i <= segments; i++) {
       const t = (i / segments) * Math.PI * 2;
-      this.currentPolyline.push({
-        x: e.cx + e.rx * Math.cos(t),
-        y: e.cy + e.ry * Math.sin(t),
-      });
+      this.pushPathPoint(e.cx + e.rx * Math.cos(t), e.cy + e.ry * Math.sin(t));
     }
   }
 
@@ -425,7 +440,7 @@ export class WebGL2Target implements RenderTarget {
    * (sub-pixel zoom-aware).
    */
   quadraticCurveTo(cx: number, cy: number, x: number, y: number): void {
-    const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x: cx, y: cy };
+    const start = this.lastPathPoint() ?? { x: cx, y: cy };
     this.currentCurves.push({
       kind: "q",
       points: [start, { x: cx, y: cy }, { x, y }],
@@ -442,20 +457,31 @@ export class WebGL2Target implements RenderTarget {
         ],
         tolerance,
       );
-      for (let i = 1; i < pts.length; i++) this.currentPolyline.push(req(pts[i]));
+      for (let i = 1; i < pts.length; i++) {
+        const p = req(pts[i]);
+        this.pushPathPoint(p.x, p.y);
+      }
       return;
     }
     const count = Math.max(
       8,
-      Math.min(128, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)),
+      Math.min(128, Math.ceil(curveLengthEstimate(start.x, start.y, x, y) / tolerance)),
     );
-    const samples = sampleQuadratic(start, { x: cx, y: cy }, { x, y }, count);
-    for (let i = 1; i < samples.length; i++) this.currentPolyline.push(req(samples[i]));
+    // Sample t in (0, 1] directly into the flat path buffer — the
+    // start point (t = 0) is already the path's last vertex.
+    for (let i = 1; i <= count; i++) {
+      const t = i / count;
+      const u = 1 - t;
+      this.pushPathPoint(
+        u * u * start.x + 2 * u * t * cx + t * t * x,
+        u * u * start.y + 2 * u * t * cy + t * t * y,
+      );
+    }
   }
 
   /** Cubic Bezier — same dual-track approach as quadratic. */
   bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number): void {
-    const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x, y };
+    const start = this.lastPathPoint() ?? { x, y };
     this.currentCurves.push({
       kind: "c",
       points: [start, { x: c1x, y: c1y }, { x: c2x, y: c2y }, { x, y }],
@@ -475,15 +501,38 @@ export class WebGL2Target implements RenderTarget {
         ],
         tolerance,
       );
-      for (let i = 1; i < pts.length; i++) this.currentPolyline.push(req(pts[i]));
+      for (let i = 1; i < pts.length; i++) {
+        const p = req(pts[i]);
+        this.pushPathPoint(p.x, p.y);
+      }
       return;
     }
     const count = Math.max(
       12,
-      Math.min(192, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)),
+      Math.min(192, Math.ceil(curveLengthEstimate(start.x, start.y, x, y) / tolerance)),
     );
-    const samples = sampleCubic(start, { x: c1x, y: c1y }, { x: c2x, y: c2y }, { x, y }, count);
-    for (let i = 1; i < samples.length; i++) this.currentPolyline.push(req(samples[i]));
+    // Sample t in (0, 1] directly into the flat path buffer.
+    for (let i = 1; i <= count; i++) {
+      const t = i / count;
+      const u = 1 - t;
+      const u2 = u * u;
+      const u3 = u2 * u;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      this.pushPathPoint(
+        u3 * start.x + 3 * u2 * t * c1x + 3 * u * t2 * c2x + t3 * x,
+        u3 * start.y + 3 * u2 * t * c1y + 3 * u * t2 * c2y + t3 * y,
+      );
+    }
+  }
+
+  /** Last point of the flat path buffer as a fresh `{x, y}`, or `undefined`. */
+  private lastPathPoint(): Vec2 | undefined {
+    if (this.pathPts === 0) return undefined;
+    return {
+      x: req(this.pathXY[(this.pathPts - 1) * 2]),
+      y: req(this.pathXY[(this.pathPts - 1) * 2 + 1]),
+    };
   }
 
   /**
@@ -717,8 +766,8 @@ export class WebGL2Target implements RenderTarget {
     // Triangulated through earcut so concave shapes (arrows, stars,
     // lightning bolts) fill correctly. Earcut is dependency-free and
     // handles holes too if ever needed.
-    if (this.currentPolyline.length >= 3) {
-      this.fillPolygonEarcut(this.currentPolyline, effectiveAlpha);
+    if (this.pathPts >= 3) {
+      this.fillPolygonEarcut(this.pathXY, this.pathPts, effectiveAlpha);
     }
 
     // Loop-Blinn curve overlay. Adds fragment-tested quadratic / cubic
@@ -757,49 +806,38 @@ export class WebGL2Target implements RenderTarget {
    * earcut returns an empty index list (degenerate self-intersecting
    * polygon).
    */
-  private fillPolygonEarcut(polyline: readonly Vec2[], effectiveAlpha: number): void {
+  private fillPolygonEarcut(xy: Float64Array, pointCount: number, effectiveAlpha: number): void {
     // Skip the implicitly-closed duplicate last vertex if the caller
     // already issued `closePath` — earcut would treat it as a degenerate
     // sliver.
-    const polyFirst = polyline[0];
-    const polyLast = polyline[polyline.length - 1];
     const n =
-      polyline.length >= 4 &&
-      polyFirst !== undefined &&
-      polyFirst.x === polyLast?.x &&
-      polyFirst.y === polyLast.y
-        ? polyline.length - 1
-        : polyline.length;
+      pointCount >= 4 &&
+      xy[0] === xy[(pointCount - 1) * 2] &&
+      xy[1] === xy[(pointCount - 1) * 2 + 1]
+        ? pointCount - 1
+        : pointCount;
     if (n < 3) return;
 
-    // earcut wants a flat [x0, y0, x1, y1, ...] in world coords. Reuse
-    // the module-level scratch buffers — earcut accepts any array-like
-    // with [i] + length, so a Float64Array view works.
-    ensureEarcutVertexCapacity(n);
-    const flat = scratchEarcutFlat;
-    for (let i = 0; i < n; i++) {
-      const p = req(polyline[i]);
-      flat[i * 2] = p.x;
-      flat[i * 2 + 1] = p.y;
-    }
-    // Pass only the populated prefix — `subarray` is a view, no copy.
-    const indices = earcut(flat.subarray(0, n * 2));
+    // earcut wants a flat [x0, y0, x1, y1, ...] in world coords — the
+    // path buffer already is one, and earcut accepts any array-like
+    // with [i] + length, so pass a no-copy `subarray` view directly.
+    const indices = earcut(xy.subarray(0, n * 2));
     if (indices.length === 0) {
       // Pathological polygon — fall back to a fan so something renders.
-      this.drawTriangleFan(polyline, n, effectiveAlpha);
+      this.drawTriangleFan(xy, n, effectiveAlpha);
       return;
     }
 
-    // Project once into clip space, then index-draw. Shares the earcut
-    // vertex-count budget — `ensureEarcutVertexCapacity` above already
-    // grew `scratchEarcutVerts` if needed.
+    // Project once into clip space, then index-draw.
+    ensureEarcutVertexCapacity(n);
     const sx = 2 / this._size.width;
     const sy = -2 / this._size.height;
     const verts = scratchEarcutVerts;
     for (let i = 0; i < n; i++) {
-      const p = req(polyline[i]);
-      const wx = this.transform.a * p.x + this.transform.c * p.y + this.transform.e;
-      const wy = this.transform.b * p.x + this.transform.d * p.y + this.transform.f;
+      const px = req(xy[i * 2]);
+      const py = req(xy[i * 2 + 1]);
+      const wx = this.transform.a * px + this.transform.c * py + this.transform.e;
+      const wy = this.transform.b * px + this.transform.d * py + this.transform.f;
       verts[i * 2] = wx * sx - 1;
       verts[i * 2 + 1] = wy * sy + 1;
     }
@@ -844,16 +882,17 @@ export class WebGL2Target implements RenderTarget {
    * convex polygons correctly; concave ones get a wrong silhouette (the
    * earcut path handles those instead).
    */
-  private drawTriangleFan(polyline: readonly Vec2[], n: number, effectiveAlpha: number): void {
+  private drawTriangleFan(xy: Float64Array, n: number, effectiveAlpha: number): void {
     const sx = 2 / this._size.width;
     const sy = -2 / this._size.height;
     // Share the module-level scratch verts with `fillPolygonEarcut`.
     ensureEarcutVertexCapacity(n);
     const verts = scratchEarcutVerts;
     for (let i = 0; i < n; i++) {
-      const p = req(polyline[i]);
-      const wx = this.transform.a * p.x + this.transform.c * p.y + this.transform.e;
-      const wy = this.transform.b * p.x + this.transform.d * p.y + this.transform.f;
+      const px = req(xy[i * 2]);
+      const py = req(xy[i * 2 + 1]);
+      const wx = this.transform.a * px + this.transform.c * py + this.transform.e;
+      const wy = this.transform.b * px + this.transform.d * py + this.transform.f;
       verts[i * 2] = wx * sx - 1;
       verts[i * 2 + 1] = wy * sy + 1;
     }
@@ -927,57 +966,85 @@ export class WebGL2Target implements RenderTarget {
     if (this.currentPath) {
       // Rect outline → 4 corners as a closed polyline.
       const r = this.currentPath;
-      this.currentPolyline = [
-        { x: r.x, y: r.y },
-        { x: r.x + r.width, y: r.y },
-        { x: r.x + r.width, y: r.y + r.height },
-        { x: r.x, y: r.y + r.height },
-        { x: r.x, y: r.y },
-      ];
+      this.pathPts = 0;
+      this.pushPathPoint(r.x, r.y);
+      this.pushPathPoint(r.x + r.width, r.y);
+      this.pushPathPoint(r.x + r.width, r.y + r.height);
+      this.pushPathPoint(r.x, r.y + r.height);
+      this.pushPathPoint(r.x, r.y);
     }
     // Ellipse outline — lazily generate the polyline approximation here
     // so callers that only fill don't pay for the 24-512 vertex
     // allocation. EllipsePipeline owns the fill path; stroke still goes
     // through the polygon stroke pipeline.
-    if (this.currentEllipse && this.currentPolyline.length < 2) {
+    if (this.currentEllipse && this.pathPts < 2) {
       this.buildEllipseStrokePolyline(this.currentEllipse);
     }
-    if (this.currentPolyline.length < 2) return;
+    if (this.pathPts < 2) return;
     const effectiveAlpha = this.opacity * this.strokeAlpha;
     if (effectiveAlpha <= 0) return; // transparent stroke — nothing to draw
-    // Dashed: split the polyline into "on" sub-polylines in world units
-    // (Canvas2D dashes in the world-space ctx transform, so this
-    // matches it), then stroke each through the same pipeline. Solid →
-    // one call.
-    const runs = this.dashArray
-      ? dashPolyline(this.currentPolyline, this.dashArray)
-      : [this.currentPolyline];
-    for (const run of runs) {
-      if (run.length < 2) continue;
-      drawPolylineStrokeImpl(
-        this.gl,
-        run,
-        {
-          width: this.strokeWidth,
-          color: this.strokeColor,
-          opacity: effectiveAlpha,
-          join: this.lineJoin,
-          cap: this.lineCap,
-        },
-        this.transform,
-        this._size,
-        this.program,
-        this.uTransformLoc,
-        this.uColorLoc,
-        this.uOpacityLoc,
-        this.dynamicVbo,
-        this.aPosLoc,
-        IDENTITY_MAT3,
-      );
+    const style = {
+      width: this.strokeWidth,
+      color: this.strokeColor,
+      opacity: effectiveAlpha,
+      join: this.lineJoin,
+      cap: this.lineCap,
+    };
+    if (this.dashArray) {
+      // Dashed: split the polyline into "on" sub-polylines in world
+      // units (Canvas2D dashes in the world-space ctx transform, so
+      // this matches it), then stroke each run. `dashPolyline` keeps
+      // its Vec2 contract, so materialise the flat path once — dashing
+      // is opt-in styling, the solid hot path below stays object-free.
+      const pts: Vec2[] = new Array<Vec2>(this.pathPts);
+      for (let i = 0; i < this.pathPts; i++) {
+        pts[i] = { x: req(this.pathXY[i * 2]), y: req(this.pathXY[i * 2 + 1]) };
+      }
+      for (const run of dashPolyline(pts, this.dashArray)) {
+        if (run.length < 2) continue;
+        ensureDashRunCapacity(run.length * 2);
+        for (let i = 0; i < run.length; i++) {
+          const p = req(run[i]);
+          scratchDashRunXY[i * 2] = p.x;
+          scratchDashRunXY[i * 2 + 1] = p.y;
+        }
+        this.strokePolylineFlat(scratchDashRunXY, run.length, style);
+      }
+    } else {
+      this.strokePolylineFlat(this.pathXY, this.pathPts, style);
     }
     // Stroke wrote into the dynamic VBO; rebind the static unit-quad VBO
     // so the next solid rect fill picks up the right vertex stream.
     this.restoreSolidProgram();
+  }
+
+  /** Route one flat polyline through the shared stroke pipeline. */
+  private strokePolylineFlat(
+    xy: Float64Array,
+    pointCount: number,
+    style: {
+      width: number;
+      color: [number, number, number];
+      opacity: number;
+      join: LineJoin;
+      cap: LineCap;
+    },
+  ): void {
+    drawPolylineStrokeImpl(
+      this.gl,
+      xy,
+      pointCount,
+      style,
+      this.transform,
+      this._size,
+      this.program,
+      this.uTransformLoc,
+      this.uColorLoc,
+      this.uOpacityLoc,
+      this.dynamicVbo,
+      this.aPosLoc,
+      IDENTITY_MAT3,
+    );
   }
 
   // --- Stroke style state (consumed by stroke()) ---
@@ -1385,18 +1452,37 @@ interface GfxState {
  * and never shrinks; safe for single-threaded WebGL (fill calls are
  * serialised through the editor's render path).
  */
-let scratchEarcutFlat = new Float64Array(128);
 let scratchEarcutVerts = new Float32Array(128);
 let scratchEarcutIndices = new Uint16Array(256);
 
 const ensureEarcutVertexCapacity = (vertexCount: number): void => {
   const needed = vertexCount * 2;
-  if (scratchEarcutFlat.length >= needed) return;
-  let cap = scratchEarcutFlat.length;
+  if (scratchEarcutVerts.length >= needed) return;
+  let cap = scratchEarcutVerts.length;
   while (cap < needed) cap *= 2;
-  scratchEarcutFlat = new Float64Array(cap);
   scratchEarcutVerts = new Float32Array(cap);
 };
+
+/**
+ * Module-level scratch for converting one dashed-stroke run back to the
+ * flat layout `drawPolylineStroke` consumes. Only the dashed path uses
+ * it, and runs are consumed synchronously one at a time.
+ */
+let scratchDashRunXY = new Float64Array(128);
+
+const ensureDashRunCapacity = (n: number): void => {
+  if (scratchDashRunXY.length >= n) return;
+  let cap = scratchDashRunXY.length;
+  while (cap < n) cap *= 2;
+  scratchDashRunXY = new Float64Array(cap);
+};
+
+/**
+ * Initial per-target flat path buffer capacity, in points. 128 covers a
+ * rounded rect (≈ 60-100 flattened vertices at 1×) without a grow;
+ * capacity doubles on demand and never shrinks.
+ */
+const INITIAL_PATH_CAPACITY = 128;
 
 const ensureEarcutIndexCapacity = (n: number): void => {
   if (scratchEarcutIndices.length >= n) return;
@@ -1436,39 +1522,8 @@ const isMsdfShaper = (shaper: unknown): shaper is MsdfShaper => {
  * proportional to it, used to pick a JS-fallback sample count
  * commensurate with the tolerance.
  */
-const curveLengthEstimate = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
-
-/** Sample a quadratic Bezier curve at `count` evenly-spaced t values. */
-const sampleQuadratic = (p0: Vec2, p1: Vec2, p2: Vec2, count: number): Vec2[] => {
-  const out: Vec2[] = [];
-  for (let i = 0; i <= count; i++) {
-    const t = i / count;
-    const u = 1 - t;
-    out.push({
-      x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
-      y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
-    });
-  }
-  return out;
-};
-
-/** Sample a cubic Bezier curve at `count` evenly-spaced t values. */
-const sampleCubic = (p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, count: number): Vec2[] => {
-  const out: Vec2[] = [];
-  for (let i = 0; i <= count; i++) {
-    const t = i / count;
-    const u = 1 - t;
-    const u2 = u * u;
-    const u3 = u2 * u;
-    const t2 = t * t;
-    const t3 = t2 * t;
-    out.push({
-      x: u3 * p0.x + 3 * u2 * t * p1.x + 3 * u * t2 * p2.x + t3 * p3.x,
-      y: u3 * p0.y + 3 * u2 * t * p1.y + 3 * u * t2 * p2.y + t3 * p3.y,
-    });
-  }
-  return out;
-};
+const curveLengthEstimate = (ax: number, ay: number, bx: number, by: number): number =>
+  Math.hypot(ax - bx, ay - by);
 
 interface ImageProgram {
   readonly program: WebGLProgram;
