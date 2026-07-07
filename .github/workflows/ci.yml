@@ -56,6 +56,12 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Bundle size budgets (size-limit config in the root package.json):
+      # the CDN global bundle raw size plus bundled+gzipped editor / headless
+      # entries. Needs the dist artifacts, so it runs right after Build.
+      - name: Bundle size
+        run: pnpm size
+
       # Smoke-run the benchmarks so they keep compiling and executing. Absolute
       # timings are not gated — shared CI runners are too noisy for a stable
       # threshold; baselines are tracked by running `pnpm bench` locally.

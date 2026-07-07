@@ -34,6 +34,8 @@ From a CDN, no bundler:
 <oja-diagram grid style="height: 100vh"></oja-diagram>
 ```
 
+The global bundle (`dist/oja-diagram.global.js`) is ~780 KB raw, ~235 KB gzipped — everything included (React, editor, UI). Budget enforced in CI via `size-limit`.
+
 Drive it imperatively:
 
 ```ts
