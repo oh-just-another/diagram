@@ -65,3 +65,49 @@ jobs:
       - name: Benchmarks
         if: github.event_name == 'push'
         run: pnpm bench
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          echo "version=$(node -p "require('./apps/e2e/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Chromium
+        run: pnpm --filter @oh-just-another/e2e exec playwright install chromium --with-deps
+
+      # Screenshot specs are excluded: their baselines are captured locally
+      # (macOS) and are not committed to the repo, so on a Linux runner
+      # Playwright would treat every screenshot as a missing snapshot and
+      # fail. Visual baselines stay a local-only check until per-platform
+      # (linux) snapshots are recorded and committed.
+      - name: Run e2e suite
+        run: pnpm --filter @oh-just-another/e2e e2e --grep-invert "mobile UI screenshots"
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: apps/e2e/test-results/
+          retention-days: 7
