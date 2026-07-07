@@ -14,6 +14,48 @@ Three real surfaces cover almost everything an agent does:
 - `@oh-just-another/serialization` — `serializeScene` / `stringifyScene` / `parseScene` to round-trip a scene as JSON through a model.
 - `@oh-just-another/editor` — `EditorAPI` and `EditorInstance` to drive a live editor (mode, selection, history, viewport, mutations).
 
+## JSON Schema of the scene document
+
+`sceneJsonSchema()` returns a JSON Schema (draft-07) of the serialized scene document, generated from the same zod schema `parseScene` validates against — hand it to a model as a structured-output schema or to any external validator:
+
+```ts
+import { sceneJsonSchema } from "@oh-just-another/serialization";
+
+const schema = sceneJsonSchema(); // { $schema, type: "object", properties: { elements, links, ... } }
+```
+
+Over MCP the same schema is available as the `get_scene_schema` tool.
+
+## MCP server
+
+`@oh-just-another/mcp` exposes the scene surface as MCP tools over stdio — the fastest way to let an agent draw without writing integration code:
+
+```json
+{
+  "mcpServers": {
+    "oja": { "command": "npx", "args": ["-y", "@oh-just-another/mcp"] }
+  }
+}
+```
+
+| Tool                                                  | Purpose                                                      |
+| ----------------------------------------------------- | ------------------------------------------------------------ |
+| `create_scene` / `load_scene` / `get_scene`           | Scene lifecycle; scenes live in memory per session.          |
+| `add_elements` / `update_element` / `remove_elements` | Edit elements; validated against the scene schema.           |
+| `add_link(from, to, routing?, label?)`                | Connect elements with arrows.                                |
+| `query_scene`                                         | Compact summary: counts, bounds, elements with id/type/text. |
+| `export_svg` / `export_png`                           | Render (PNG needs the optional peer `@resvg/resvg-js`).      |
+| `import_mermaid`                                      | Mermaid flowchart → scene.                                   |
+| `get_scene_schema`                                    | JSON Schema of the scene document.                           |
+
+### Prompt cookbook
+
+Prompts that work well against these tools:
+
+- _"Create a scene and draw a 3-tier web architecture: browser, API, database as rectangles left to right, connected with orthogonal arrows labelled HTTPS and SQL. Export it as SVG."_
+- _"Import this Mermaid flowchart, then query the scene and rename the node that says 'Start' to 'Begin' via update_element."_
+- _"Call get_scene_schema, then produce a valid scene document for a login flow diagram and load it with load_scene."_
+
 ## Feeding the surface to a model
 
 The TypeScript types **are** the schema. Today, the most reliable way to ground an agent is to give it these package entry points and their exported types, plus a JSON example produced by `stringifyScene`:
@@ -43,4 +85,4 @@ const scene = importMermaid("flowchart TD\n A[Start] --> B{Decide}");
 
 ## Honest status
 
-There is **no** auto-generated, machine-readable API manifest or tool-definition bundle shipped today — that is aspirational. What exists now is a small, stable, typed surface (the packages above) plus serialisation you can hand to any agent framework. Treat the exported types and a `stringifyScene` example as the contract.
+Machine-readable surfaces shipped today: the MCP tool bundle (`@oh-just-another/mcp`) and the scene JSON Schema (`sceneJsonSchema` / `get_scene_schema`). There is no auto-generated manifest of the full TypeScript API — for everything beyond scene documents and MCP tools, treat the exported types and a `stringifyScene` example as the contract.

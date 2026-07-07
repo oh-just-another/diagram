@@ -38,11 +38,26 @@ function agentStep(editor: EditorInstance) {
 }
 ```
 
+## MCP server
+
+`@oh-just-another/mcp` packages this surface as an MCP (Model Context Protocol) server. An agent connected over stdio creates scenes, adds elements and links, queries a compact summary, and renders SVG/PNG — no code integration needed:
+
+```json
+{
+  "mcpServers": {
+    "oja": { "command": "npx", "args": ["-y", "@oh-just-another/mcp"] }
+  }
+}
+```
+
+Tools: `create_scene`, `load_scene`, `get_scene`, `add_elements`, `update_element`, `remove_elements`, `add_link`, `query_scene`, `export_svg`, `export_png`, `import_mermaid`, `get_scene_schema`. Element input is validated against the serialization schema; missing base fields (id, layer, order, size) get defaults. See LLM Docs for the schema and prompt patterns.
+
 ## What's possible today
 
 - **Programmatic scene construction** via `@oh-just-another/scene` factories and operations.
 - **Driving a live editor** via `EditorAPI` / `EditorInstance`.
+- **MCP server** (`@oh-just-another/mcp`) — scene tools over stdio for any MCP client.
 - **Import from text formats** (Mermaid, dot, drawio) via `@oh-just-another/importers` — a natural bridge for LLM-generated diagram source.
-- **Serialise / deserialise** scenes for round-tripping through a model.
+- **Serialise / deserialise** scenes for round-tripping through a model, plus a JSON Schema of the wire format (`sceneJsonSchema`).
 
 There is no built-in model client or prompt layer — you wire your agent of choice to these surfaces. The point is that the surface already exists and is the real one, not an afterthought. See LLM Docs for pointing an agent at the API.
