@@ -36,7 +36,7 @@ import {
   type BrushPoint,
   updateLink,
   updateElement,
-  type AnchorRef,
+  isAnchorRef,
   type Link,
   type LinkEndpoint,
   type Patch,
@@ -1928,8 +1928,8 @@ export class Editor {
     this._editingTextElement = id;
     this._textEditOrigin =
       this._pendingTextCreate === id ? null : (getElement(this._scene, id) ?? null);
-    const shape = getElement(this._scene, id) as TextElement | undefined;
-    const len = shape?.text.length ?? 0;
+    const shape = getElement(this._scene, id);
+    const len = shape !== undefined && isText(shape) ? shape.text.length : 0;
     this._textSel = { start: len, end: len, dir: "forward" };
     this.caretBlink.start();
     this.notify();
@@ -2025,8 +2025,8 @@ export class Editor {
   caretIndexAtWorldPoint(worldPoint: Vec2): number | null {
     const id = this._editingTextElement;
     if (!id) return null;
-    const shape = getElement(this._scene, id) as TextElement | undefined;
-    if (shape?.type !== "text") return null;
+    const shape = getElement(this._scene, id);
+    if (shape === undefined || !isText(shape)) return null;
     const layout = this.editingTextLayout(shape);
     if (!layout) return null;
     // World → shape-local: undo the element transform so the hit lands on the
@@ -2121,8 +2121,8 @@ export class Editor {
   } | null {
     const id = this._editingTextElement;
     if (!id || !this._textSel) return null;
-    const shape = getElement(this._scene, id) as TextElement | undefined;
-    if (shape?.type !== "text") return null;
+    const shape = getElement(this._scene, id);
+    if (shape === undefined || !isText(shape)) return null;
     const layout = this.editingTextLayout(shape);
     if (!layout) return null;
     const align = shape.style.textAlign ?? "left";
@@ -2174,7 +2174,8 @@ export class Editor {
     this._textSel = null;
     this.caretBlink.stop();
 
-    const finalElement = getElement(this._scene, id) as TextElement | undefined;
+    const committed = getElement(this._scene, id);
+    const finalElement = committed !== undefined && isText(committed) ? committed : undefined;
     const text = finalElement?.text ?? "";
 
     // Empty (whitespace-only) text removes the shape. Pending = silent
@@ -2200,7 +2201,7 @@ export class Editor {
       // size etc.) changed via the panel push their own history during
       // the edit, so the commit's `before` keeps the final non-text
       // state and rewinds just the text.
-      const originText = (origin as TextElement).text;
+      const originText = isText(origin) ? origin.text : "";
       if (originText !== finalElement.text) {
         const before = { ...finalElement, text: originText } as Element;
         this._history.push({ kind: "element", id, before, after: finalElement });
@@ -2230,7 +2231,7 @@ export class Editor {
         if (this._selection.has(id)) this._selection = Selection.EMPTY;
       }
     } else if (origin) {
-      const originText = (origin as TextElement).text;
+      const originText = isText(origin) ? origin.text : "";
       this._scene = updateElement(this._scene, id, (s) => ({ ...s, text: originText })).scene;
     }
     this.notify();
@@ -4010,9 +4011,13 @@ export class Editor {
       if (this._resizeOriginElement?.id !== id) {
         this._resizeOriginElement = shape;
       }
+      // The snapshot was taken from a text shape above; fall back to the
+      // live shape if a stale non-text snapshot ever leaks through.
+      const origin = this._resizeOriginElement;
+      const textOrigin = isText(origin) ? origin : shape;
       const result = computeTextResize(
         this._scene,
-        this._resizeOriginElement as TextElement,
+        textOrigin,
         handle,
         d,
         originalBounds,
@@ -4576,7 +4581,8 @@ export class Editor {
     const anchor = onTarget.find((c) => c.kind === "anchor");
     const outline = onTarget.find((c) => c.kind === "outline");
 
-    const ref = anchor?.metadata?.ref as AnchorRef | undefined;
+    const refMeta = anchor?.metadata?.ref;
+    const ref = isAnchorRef(refMeta) ? refMeta : undefined;
     let activeName: string | null = null;
     if (ref?.kind === "named") {
       activeName = ref.name;
@@ -4844,8 +4850,10 @@ export class Editor {
     // so paused / reduced-motion GIFs freeze and resumed ones continue
     // from the right frame. Set immediately before the synchronous
     // render pass (the shape-renderer has no options channel).
+    // A non-string / missing id maps to an untracked key, for which
+    // `clock` falls back to the wall clock — same as before the guard.
     setAnimationClock((shape: { readonly id?: unknown }) =>
-      this.gifPlayback.clock(shape.id as ElementId),
+      this.gifPlayback.clock(castElementId(typeof shape.id === "string" ? shape.id : "")),
     );
     renderEditor(this);
     // Present AFTER the paint, on the same tick — deferred-submission

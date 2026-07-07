@@ -44,6 +44,7 @@ export type {
   NamedAnchor,
   StandardAnchor,
 } from "./edge.js";
+export { isAnchorRef } from "./edge.js";
 export {
   getLinkEndpointWorld,
   getLinkPath,
