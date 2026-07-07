@@ -19,6 +19,9 @@ export { parseDot } from "./dot.js";
 export { parseDrawio } from "./drawio.js";
 export { layoutGraph } from "./layout.js";
 export { graphToScene } from "./to-scene.js";
+export { importExcalidraw } from "./excalidraw.js";
+export { exportExcalidraw } from "./excalidraw-export.js";
+export { importJsonCanvas } from "./jsoncanvas.js";
 
 /**
  * One-shot helpers — parse + layout + materialise into a `Scene` in a
