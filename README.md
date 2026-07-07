@@ -22,6 +22,26 @@ A drop-in **infinite-canvas diagram editor for React** — and renderable headle
 **[Live demo](https://ohjustanother.site)** ·
 **[Contributing](./CONTRIBUTING.md)**
 
+## Highlights
+
+- **MIT, free for everyone — pledged.** No license keys, no watermarks, no
+  production gate, commercial use included. See the
+  [license pledge](./.github/GOVERNANCE.md).
+- **Fast canvas** — auto-detected WebGL2 / OffscreenCanvas / Canvas2D renderer
+  with MSDF text and WASM text shaping.
+- **Headless server rendering** — render scenes to SVG / PNG / PDF in Node
+  without a browser (`@oh-just-another/headless`, CLI included).
+- **Real-time collaboration** — CRDT sync (Yjs) with presence cursors and
+  optional end-to-end encryption; self-hostable relay.
+- **Version history** — snapshots, branches, scene diff, and three-way merge.
+- **Comments** — pinned annotation threads with mentions.
+- **Framework-friendly** — React drop-in, a dependency-free
+  `<oja-diagram>` custom element, and Vue / Svelte wrappers.
+- **Extensible** — registry-based custom shapes, renderers, templates,
+  importers (Mermaid / Graphviz / draw.io), and layouts.
+
+## Documentation
+
 ## Features
 
 - **Drop-in** — one `<Editor>` component. Add the package, render, ship.
