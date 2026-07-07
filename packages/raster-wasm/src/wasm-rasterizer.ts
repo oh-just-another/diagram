@@ -58,6 +58,42 @@ export interface WasmRasterizerOptions {
   readonly defaultTolerance?: number;
 }
 
+/**
+ * Instantiate a WASM module, preferring `WebAssembly.instantiateStreaming`
+ * when the source is a fetchable http(s) URL / Response — compilation
+ * overlaps the download and skips the intermediate ArrayBuffer copy.
+ * Falls back to the buffered `fetchModuleBytes` + `instantiate` path for
+ * raw bytes, `file://` URLs (Node reads them from disk), hosts without
+ * `instantiateStreaming`, or servers that mis-serve the wasm MIME type
+ * (streaming compilation requires `application/wasm`).
+ */
+const instantiateWasm = async (
+  source: string | URL | ArrayBuffer | Uint8Array | Response,
+  context: string,
+): Promise<WebAssembly.Instance> => {
+  const streamable =
+    typeof WebAssembly.instantiateStreaming === "function" &&
+    (source instanceof Response ||
+      ((typeof source === "string" || source instanceof URL) &&
+        !String(source).startsWith("file:")));
+  if (streamable) {
+    try {
+      // Clone a passed-in Response so the buffered fallback can still
+      // consume the original body if streaming compilation rejects.
+      const res = source instanceof Response ? source.clone() : await fetch(source);
+      const { instance } = await WebAssembly.instantiateStreaming(res, {});
+      return instance;
+    } catch {
+      // Fall through to the buffered path — it re-fetches (or reads the
+      // original Response) and surfaces the real compile error if the
+      // module itself is broken.
+    }
+  }
+  const bytes = await fetchModuleBytes(source, context);
+  const { instance } = await WebAssembly.instantiate(bytes, {});
+  return instance;
+};
+
 const CAP_TO_ENUM: Record<"butt" | "round" | "square", number> = {
   butt: 0,
   round: 1,
@@ -90,8 +126,7 @@ export class WasmRasterizer implements Rasterizer {
   }
 
   async loadModule(source: string | URL | ArrayBuffer | Uint8Array | Response): Promise<void> {
-    const bytes = await fetchModuleBytes(source, "WasmRasterizer.loadModule");
-    const { instance } = await WebAssembly.instantiate(bytes, {});
+    const instance = await instantiateWasm(source, "WasmRasterizer.loadModule");
     this.wasm = instance.exports as unknown as WasmRasterizerExports;
   }
 
@@ -177,10 +212,29 @@ export class WasmRasterizer implements Rasterizer {
   }
 }
 
+/**
+ * Growing module-level scratch shared by `packCommands` / `packVec2Array`.
+ * Both return a `subarray` view that is only valid until the next pack
+ * call; the callers (`flattenViaWasm` / `strokeToFillViaWasm`) copy it
+ * into WASM linear memory synchronously via `allocBytes` (which `.set`s
+ * the bytes), so no per-call allocation or trailing `slice` copy is
+ * needed. Grows geometrically, never shrinks.
+ */
+let scratchPack = new Float32Array(256);
+
+const ensurePackCapacity = (n: number): void => {
+  if (scratchPack.length >= n) return;
+  let cap = scratchPack.length;
+  while (cap < n) cap *= 2;
+  scratchPack = new Float32Array(cap);
+};
+
 const packCommands = (commands: readonly PathCommand[]): Float32Array => {
   // Variable-width pack — layout depends on command kind. Worst case is
-  // C (cubic): kind + 6 floats = 7 entries. Allocate generously then trim.
-  const buf = new Float32Array(commands.length * 7);
+  // C (cubic): kind + 6 floats = 7 entries. Reserve worst case, then
+  // return the filled prefix as a view.
+  ensurePackCapacity(commands.length * 7);
+  const buf = scratchPack;
   let off = 0;
   for (const cmd of commands) {
     buf[off++] = COMMAND_KIND[cmd.kind];
@@ -208,18 +262,20 @@ const packCommands = (commands: readonly PathCommand[]): Float32Array => {
         break;
     }
   }
-  return buf.slice(0, off);
+  return buf.subarray(0, off);
 };
 
 const packVec2Array = (points: readonly Vec2[]): Float32Array => {
-  const out = new Float32Array(points.length * 2);
+  ensurePackCapacity(points.length * 2);
+  const out = scratchPack;
   for (let i = 0; i < points.length; i++) {
     const p = points[i];
-    if (p === undefined) continue;
-    out[i * 2] = p.x;
-    out[i * 2 + 1] = p.y;
+    // Write zeros for holes — the scratch is reused, so a `continue`
+    // would leak stale values where `new Float32Array` used to zero-fill.
+    out[i * 2] = p?.x ?? 0;
+    out[i * 2 + 1] = p?.y ?? 0;
   }
-  return out;
+  return out.subarray(0, points.length * 2);
 };
 
 const readU32 = (memory: WebAssembly.Memory, ptr: number): number =>
