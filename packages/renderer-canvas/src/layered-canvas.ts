@@ -1,12 +1,18 @@
 import { LAYER_ORDER, type LayerName } from "@oh-just-another/renderer-core";
 import { Canvas2DTarget } from "./canvas-target.js";
-import { setupHiDpi } from "./hi-dpi.js";
+import { cappedDpr, setupHiDpi } from "./hi-dpi.js";
+import { MAX_DEVICE_PIXEL_RATIO } from "./constants.js";
 
 export interface LayeredCanvasOptions {
   /** Subset of layers to create. Defaults to all three. */
   readonly layers?: readonly LayerName[];
-  /** Override `window.devicePixelRatio`. */
+  /** Override `window.devicePixelRatio`. Takes precedence over `maxDpr`. */
   readonly dpr?: number;
+  /**
+   * Cap applied to the live `window.devicePixelRatio` on create and every
+   * resize. Defaults to `MAX_DEVICE_PIXEL_RATIO`. Ignored when `dpr` is set.
+   */
+  readonly maxDpr?: number;
 }
 
 /**
@@ -25,6 +31,7 @@ export class LayeredCanvas {
   private width: number;
   private height: number;
   private dprOverride: number | undefined;
+  private readonly maxDpr: number;
 
   constructor(
     host: HTMLElement,
@@ -36,6 +43,7 @@ export class LayeredCanvas {
     this.width = width;
     this.height = height;
     this.dprOverride = options.dpr;
+    this.maxDpr = options.maxDpr ?? MAX_DEVICE_PIXEL_RATIO;
 
     if (getComputedStyle(host).position === "static") {
       host.style.position = "relative";
@@ -53,7 +61,7 @@ export class LayeredCanvas {
       canvas.style.inset = "0";
       canvas.style.pointerEvents = name === "overlay" ? "auto" : "none";
       host.appendChild(canvas);
-      const dpr = setupHiDpi(canvas, width, height, this.dprOverride);
+      const dpr = setupHiDpi(canvas, width, height, this.dprOverride ?? cappedDpr(this.maxDpr));
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Failed to obtain 2D context");
       layers.set(name, new Canvas2DTarget(ctx, width, height, dpr));
@@ -91,7 +99,7 @@ export class LayeredCanvas {
     this.width = width;
     this.height = height;
     for (const [name, canvas] of this.canvases) {
-      const dpr = setupHiDpi(canvas, width, height, this.dprOverride);
+      const dpr = setupHiDpi(canvas, width, height, this.dprOverride ?? cappedDpr(this.maxDpr));
       const layer = this.layers.get(name);
       if (layer === undefined) continue;
       layer.resize(width, height, dpr);

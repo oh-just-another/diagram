@@ -76,6 +76,19 @@ export const OFFSCREEN_IMAGE_CACHE_CAP = 64;
 export const WEBGL2_IMAGE_TEXTURE_CACHE_CAP = 64;
 
 /**
+ * Cap applied to `window.devicePixelRatio` when sizing canvas bitmaps
+ * (`setupHiDpi`, `createLayeredSurface`). Mobile / hi-end displays report
+ * DPR 3–4; rendering the full ratio quadruples-to-sixteenfolds the pixel
+ * fill cost per layer for visual gains that are imperceptible in a
+ * diagram editor (thin strokes, flat fills). Capping at 2 keeps bitmap
+ * memory and raster time bounded — text and hairlines render very
+ * slightly softer on DPR-3 devices. Range: 1–4; hosts needing exact
+ * native sharpness can raise it via `CreateLayeredSurfaceOptions.maxDpr`
+ * or by passing an explicit `dpr` to `setupHiDpi`.
+ */
+export const MAX_DEVICE_PIXEL_RATIO = 2;
+
+/**
  * Lower bound on the polygon approximation of an ellipse. Keeps small
  * ellipses from collapsing to a coarse hexagon at far zoom. Range: 12–48.
  */

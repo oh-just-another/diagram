@@ -1,3 +1,5 @@
+import { MAX_DEVICE_PIXEL_RATIO } from "./constants.js";
+
 /**
  * Configures a `<canvas>` for hi-DPI rendering. Sets the bitmap size to
  * `width * dpr` × `height * dpr`, the CSS size to `width` × `height`, and
@@ -19,12 +21,16 @@
  * subsequent `getContext("webgl2")` returns null. Use `false` for the WebGL2
  * main canvas in `WebGL2LayeredSurface`; its viewport is set inside
  * `WebGL2Target` after the GL context is obtained.
+ *
+ * The default `dpr` is `window.devicePixelRatio` capped at
+ * `MAX_DEVICE_PIXEL_RATIO` (see constants.ts). An explicit `dpr` argument
+ * is honoured as-is — pass the raw ratio to opt out of the cap.
  */
 export const setupHiDpi = (
   canvas: HTMLCanvasElement,
   width: number,
   height: number,
-  dpr: number = window.devicePixelRatio || 1,
+  dpr: number = cappedDpr(),
   setupContext = true,
 ): number => {
   const targetW = Math.round(width * dpr);
@@ -50,3 +56,11 @@ export const setupHiDpi = (
   }
   return dpr;
 };
+
+/**
+ * The live `window.devicePixelRatio` clamped to `maxDpr` (SSR-safe:
+ * resolves to 1 when there is no `window`). Callers that re-read the DPR
+ * on resize (monitor changes) go through this instead of the raw ratio.
+ */
+export const cappedDpr = (maxDpr: number = MAX_DEVICE_PIXEL_RATIO): number =>
+  Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, maxDpr);

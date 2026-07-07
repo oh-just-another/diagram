@@ -2,7 +2,8 @@ import { LAYER_ORDER, type LayerName, type RenderTarget } from "@oh-just-another
 import { LayeredCanvas } from "./layered-canvas.js";
 import { WebGL2Target } from "./webgl2-target.js";
 import { RecordingTarget } from "./recording-target.js";
-import { setupHiDpi } from "./hi-dpi.js";
+import { cappedDpr, setupHiDpi } from "./hi-dpi.js";
+import { MAX_DEVICE_PIXEL_RATIO } from "./constants.js";
 
 /**
  * Backend selector for `createLayeredSurface`.
@@ -58,6 +59,13 @@ export interface CreateLayeredSurfaceOptions {
    * always-safe `canvas2d` backend. Only the offscreen backend calls it.
    */
   readonly onWorkerError?: (error: unknown) => void;
+  /**
+   * Cap applied to `window.devicePixelRatio` when sizing layer bitmaps.
+   * Defaults to `MAX_DEVICE_PIXEL_RATIO` (2). Raise it for hosts that
+   * need native sharpness on DPR-3+ displays at the cost of 2–4× the
+   * raster work per layer.
+   */
+  readonly maxDpr?: number;
 }
 
 /**
@@ -77,11 +85,12 @@ export const createLayeredSurface = (
   options: CreateLayeredSurfaceOptions = {},
 ): LayeredSurface => {
   const backend = options.backend ?? "canvas2d";
+  const maxDpr = options.maxDpr ?? MAX_DEVICE_PIXEL_RATIO;
   switch (backend) {
     case "canvas2d":
-      return new Canvas2DLayeredSurface(host, width, height);
+      return new Canvas2DLayeredSurface(host, width, height, maxDpr);
     case "webgl2":
-      return new WebGL2LayeredSurface(host, width, height);
+      return new WebGL2LayeredSurface(host, width, height, maxDpr);
     case "offscreen":
       if (!options.workerFactory) {
         throw new Error(
@@ -94,6 +103,7 @@ export const createLayeredSurface = (
         height,
         options.workerFactory,
         options.onWorkerError,
+        maxDpr,
       );
   }
 };
@@ -137,8 +147,8 @@ class Canvas2DLayeredSurface implements LayeredSurface {
   readonly backend = "canvas2d" as const;
   private readonly inner: LayeredCanvas;
 
-  constructor(host: HTMLElement, width: number, height: number) {
-    this.inner = new LayeredCanvas(host, width, height);
+  constructor(host: HTMLElement, width: number, height: number, maxDpr: number) {
+    this.inner = new LayeredCanvas(host, width, height, { maxDpr });
   }
 
   get(name: LayerName): RenderTarget {
@@ -181,14 +191,17 @@ class WebGL2LayeredSurface implements LayeredSurface {
   private readonly mainTarget: WebGL2Target;
   private _width: number;
   private _height: number;
+  private readonly maxDpr: number;
 
-  constructor(host: HTMLElement, width: number, height: number) {
+  constructor(host: HTMLElement, width: number, height: number, maxDpr: number) {
     this._width = width;
     this._height = height;
+    this.maxDpr = maxDpr;
     // Build the Canvas2D layers first; the WebGL2 main canvas is
     // spliced into the same stack between background and overlay.
     this.base = new LayeredCanvas(host, width, height, {
       layers: LAYER_ORDER.filter((name): name is "overlay" | "background" => name !== "main"),
+      maxDpr,
     });
 
     const overlay = this.base.getCanvas("overlay");
@@ -204,7 +217,7 @@ class WebGL2LayeredSurface implements LayeredSurface {
     // exclusive — one canvas, one context kind, for the life of the
     // element. `setupContext: false` sizes the bitmap without touching
     // the context.
-    setupHiDpi(canvas, width, height, window.devicePixelRatio || 1, false);
+    setupHiDpi(canvas, width, height, cappedDpr(maxDpr), false);
     try {
       this.mainCanvas = canvas;
       this.mainTarget = new WebGL2Target(canvas, width, height);
@@ -228,7 +241,7 @@ class WebGL2LayeredSurface implements LayeredSurface {
     this._width = width;
     this._height = height;
     this.base.resize(width, height);
-    setupHiDpi(this.mainCanvas, width, height, window.devicePixelRatio || 1, false);
+    setupHiDpi(this.mainCanvas, width, height, cappedDpr(this.maxDpr), false);
     this.mainTarget.resize(width, height);
   }
   get size(): { readonly width: number; readonly height: number } {
@@ -273,10 +286,11 @@ class OffscreenLayeredSurface implements LayeredSurface {
     height: number,
     workerFactory: () => Worker,
     onWorkerError?: (error: unknown) => void,
+    maxDpr: number = MAX_DEVICE_PIXEL_RATIO,
   ) {
     this._width = width;
     this._height = height;
-    this.dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    this.dpr = cappedDpr(maxDpr);
 
     if (getComputedStyle(host).position === "static") {
       host.style.position = "relative";
