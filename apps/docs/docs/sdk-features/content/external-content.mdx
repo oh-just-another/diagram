@@ -1,0 +1,25 @@
+---
+title: 🚧 External Content
+status: draft
+sidebar_position: 28
+---
+
+The editor accepts content dragged or dropped in from outside the canvas — images, videos, and scene JSON files — through a host-extensible file-drop registry. Built-in handlers for images and videos register themselves at editor construction; the first handler whose predicate matches a dropped item wins.
+
+```ts
+import {
+  FileDropRegistry,
+  isImageFile,
+  isSceneJsonFile,
+  readFileAsDataURL,
+  walkDataTransfer,
+} from "@oh-just-another/state";
+```
+
+`walkDataTransfer` iterates a `DataTransfer` (from a drop or paste event), yielding the files and string items it contains; helpers such as `isImageFile`, `isVideoFile`, and `isSceneJsonFile` classify them, and `readFileAsDataURL` / `readFileAsText` read the bytes. A dropped image is stored once in the scene's binary `files` registry (see Assets) and inserted as an `ImageElement`.
+
+Register your own handler — for a custom MIME type, a CSV import, or anything else — via the editor's file-drop registry; your handler runs only for items the built-ins didn't already claim. `IMAGE_MIME_TYPES` and `VIDEO_MIME_TYPES` are exported for matching.
+
+Internal copy/paste is handled separately by the clipboard (`actionCopy` / `actionPaste`); see Clipboard.
+
+Planned — not yet available: rich paste of external HTML or SVG markup (for example, pasting a fragment from a design tool and converting it into shapes). Today external ingestion is file-oriented through the drop/paste handlers above.

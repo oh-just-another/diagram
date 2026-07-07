@@ -1,0 +1,48 @@
+---
+title: ⚠️ Shapes
+status: draft
+sidebar_position: 11
+---
+
+A diagram is a `Scene` made of elements. `@oh-just-another/scene` defines the element model and the pure operations that mutate it. Elements are plain data; the editor engine is just the thing that applies operations to them over time.
+
+## The built-in element types
+
+`Element` is a discriminated union of `BuiltinElement` variants, each with a type guard:
+
+- `RectangleElement`, `EllipseElement`, `PolygonElement`, `PathElement` — geometry.
+- `TextElement` — text with `TextStyle`.
+- `ImageElement` — raster / SVG media (see Assets).
+- `BlockArrowElement`, `BrushElement` — arrows and freehand strokes.
+- `GroupElement`, `FrameElement`, `TemplateElement` — containers and reusable templates.
+
+Type guards (`isRectangle`, `isText`, `isImage`, `isGroup`, `isFrame`, …) narrow an `Element` safely.
+
+## Mutating a scene
+
+Operations are pure functions that take a scene and return `{ scene, patch }` — they never mutate in place. The `patch` is what history and collaboration replay.
+
+```ts
+import { emptyScene, addElement, updateElement, removeElement } from "@oh-just-another/scene";
+
+let { scene } = addElement(emptyScene(), {
+  /* a RectangleElement */
+} as never);
+
+({ scene } = updateElement(scene, /* id */ "" as never, { /* style changes */ }));
+({ scene } = removeElement(scene, /* id */ "" as never));
+```
+
+Links (edges) have their own operations — `addLink`, `updateLink`, `removeLink` — and a `Link` model with endpoints, routing, arrowheads and labels.
+
+## Layers, viewport, queries
+
+A `Scene` also carries `Layer`s (`addLayer` / `updateLayer`), a `Viewport` (pan / zoom / grid), and `Annotation`s. A rich query layer reads it without scanning: `getElement`, `getElementAt`, `getElementsInBounds`, `getElementWorldBounds`, plus a spatial index (`buildSpatialIndex`, `SpatialGrid`) for large scenes.
+
+## Anchors and snapping
+
+Elements expose anchors (`STANDARD_ANCHORS`, `getAnchorWorld`, `findNearestAnchor`) that links attach to, and a snap engine (`SnapEngine` with `gridSnapper`, `anchorSnapper`, `outlineSnapper`) drives alignment during drags.
+
+## Extending the model
+
+Custom element types plug in through registries: `registerBounder` provides an AABB so the element participates in hit-testing and selection, and a matching `registerElementRenderer` (from the renderer layer) draws it. Both are re-exported from `@oh-just-another/editor`.

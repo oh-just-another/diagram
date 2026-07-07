@@ -1,0 +1,17 @@
+---
+title: ⚠️ Scribble
+status: draft
+sidebar_position: 55
+---
+
+Freehand strokes are modelled by the brush element (`BrushElement`, type `"brush"`). A stroke is a list of `BrushPoint` vertices, each carrying an `x`/`y` position plus a `width` (stroke half-width in local pixels), so pressure-sensitive input produces a variable-width outline.
+
+```ts
+import { isBrush } from "@oh-just-another/scene";
+import type { BrushElement, BrushPoint } from "@oh-just-another/scene";
+
+declare const stroke: BrushElement;
+const points: readonly BrushPoint[] = stroke.points;
+```
+
+Strokes are drawn interactively with the editor's `brush` mode. There is no separate eraser tool yet — remove a stroke like any other element.

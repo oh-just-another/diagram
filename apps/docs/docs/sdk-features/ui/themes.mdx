@@ -1,0 +1,40 @@
+---
+title: ⚠️ Themes
+status: draft
+sidebar_position: 68
+---
+
+The editor ships light and dark themes plus a `"system"` option that follows the OS preference. Theming is scoped to the editor root, so multiple editors on one page can theme independently without touching the host document.
+
+## Controlling the theme
+
+The `<Editor>` component (`@oh-just-another/editor`) manages its own theme by default. Pass `theme` to control it, or `defaultTheme` to set the initial value while leaving the menu interactive:
+
+```tsx
+import { Editor, type EditorTheme } from "@oh-just-another/editor";
+
+function App() {
+  return (
+    <Editor
+      defaultTheme="system" // "dark" | "light" | "system"
+      onThemeChange={(t: EditorTheme) => console.log(t)}
+      persistTheme // remember the choice in localStorage ("diagram-theme")
+    />
+  );
+}
+```
+
+`persistTheme` accepts `true` (default key `"diagram-theme"`) or a custom string key. When you pass `theme` as a prop the component becomes controlled — wire `onThemeChange` to update it yourself.
+
+## How the theme is applied
+
+The editor sets `data-theme="light"` or `data-theme="dark"` on its root element; `"system"` omits the attribute and falls through to the stylesheet's `prefers-color-scheme` defaults. The colour values themselves come from `@oh-just-another/tokens`, which exposes per-theme tokens:
+
+```ts
+import { UI_ACCENT, UI_SURFACE } from "@oh-just-another/tokens";
+
+UI_ACCENT.light.accent; // accent / selection colour, light theme
+UI_SURFACE.dark.bg; // chrome background, dark theme
+```
+
+Because the theme attribute lives on the editor root rather than `<html>`, the host document's own styling is left untouched.

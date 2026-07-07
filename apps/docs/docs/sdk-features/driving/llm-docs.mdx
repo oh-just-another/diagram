@@ -1,0 +1,46 @@
+---
+title: ⚠️ LLM Docs
+status: draft
+sidebar_position: 8
+---
+
+How to point an LLM or agent at the editor's API so it can drive scenes. There is no separate "AI mode" — the machine-readable surface is the same typed public API human code uses. This page is honest about what exists today versus what's aspirational.
+
+## What an agent needs to know
+
+Three real surfaces cover almost everything an agent does:
+
+- `@oh-just-another/scene` — the data model and pure operations (`emptyScene`, `addElement`, `addLink`, `updateElement`, `removeElement`) that return `{ scene, patch }`.
+- `@oh-just-another/serialization` — `serializeScene` / `stringifyScene` / `parseScene` to round-trip a scene as JSON through a model.
+- `@oh-just-another/editor` — `EditorAPI` and `EditorInstance` to drive a live editor (mode, selection, history, viewport, mutations).
+
+## Feeding the surface to a model
+
+The TypeScript types **are** the schema. Today, the most reliable way to ground an agent is to give it these package entry points and their exported types, plus a JSON example produced by `stringifyScene`:
+
+```ts
+import { emptyScene, addElement } from "@oh-just-another/scene";
+import { stringifyScene, parseScene } from "@oh-just-another/serialization";
+
+// A concrete example doubles as a schema for the model:
+const example = stringifyScene(emptyScene(), 2);
+
+// The model returns scene JSON; validate it on the way back in:
+const scene = parseScene(modelOutput);
+```
+
+`parseScene` validates against the wire schema (`SceneDocumentZ`) and throws `DeserializationError` on malformed input — a useful guardrail when a model hands back JSON.
+
+## Importers as a text bridge
+
+LLMs are good at emitting Mermaid, Graphviz dot, or drawio XML. `@oh-just-another/importers` turns that text into a `Scene`, which sidesteps the model having to learn the full element schema:
+
+```ts
+import { importMermaid } from "@oh-just-another/importers";
+
+const scene = importMermaid("flowchart TD\n A[Start] --> B{Decide}");
+```
+
+## Honest status
+
+There is **no** auto-generated, machine-readable API manifest or tool-definition bundle shipped today — that is aspirational. What exists now is a small, stable, typed surface (the packages above) plus serialisation you can hand to any agent framework. Treat the exported types and a `stringifyScene` example as the contract.

@@ -1,0 +1,36 @@
+---
+title: 🚧 Readonly
+status: draft
+sidebar_position: 53
+---
+
+A single global read-only switch — one flag that freezes all editing while leaving pan, zoom, and selection alive — is **planned, not yet available**. There is no `readOnly` prop or `setReadOnly` method on the editor today.
+
+## What you can do now
+
+Two real, narrower mechanisms cover most read-only needs.
+
+**Lock individual elements or layers.** The scene model supports per-element and per-layer locking. A locked element is skipped by hit-testing for edits, and `isElementLocked` reports the effective state (walking up the parent / layer chain).
+
+```ts
+import { isElementLocked } from "@oh-just-another/scene";
+
+const frozen = isElementLocked(scene, element);
+```
+
+**Hide the editing chrome.** The React `Editor` component can drop the toolbar, menus, and panels, leaving a clean canvas. Combined with locked content this yields a presentation-style view.
+
+```tsx
+import { Editor } from "@oh-just-another/editor";
+
+<Editor
+  hideToolbar
+  hideMainMenu
+  hideSelectionPanel
+  hideContextMenu
+/>;
+```
+
+## Planned
+
+A first-class read-only mode would gate all mutating verbs (create, move, delete, paste) at the engine level so hosts don't have to disable each entry point individually, while keeping the camera and selection interactive. Until then, prefer locking content and hiding chrome.

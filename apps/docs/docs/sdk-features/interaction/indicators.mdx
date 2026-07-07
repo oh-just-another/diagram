@@ -1,0 +1,51 @@
+---
+title: ⚠️ Indicators
+status: draft
+sidebar_position: 39
+---
+
+Selection indicators are the on-canvas chrome that surrounds the current
+selection — the selection frame plus the floating panel that follows it. The
+geometry lives in `@oh-just-another/state` and the React surface in
+`@oh-just-another/react-ui`.
+
+## Selection frame geometry
+
+`@oh-just-another/state` computes the oriented selection frame for a shape (or an
+axis-aligned bounds), which you can draw on the overlay layer or feed into your
+own indicator UI.
+
+```ts
+import {
+  shapeSelectionFrame,
+  aabbSelectionFrame,
+  frameCorners,
+  frameCenter,
+  type SelectionFrame,
+} from "@oh-just-another/state";
+
+const frame: SelectionFrame = shapeSelectionFrame(shape);
+const [nw, ne, se, sw] = frameCorners(frame);
+const center = frameCenter(frame);
+```
+
+`frameCorners` returns the four world-space corners in `nw, ne, se, sw` order,
+so you can stroke the selection box directly onto an overlay `Canvas2DTarget`.
+
+## Floating selection panel
+
+`@oh-just-another/react-ui` provides `SelectionFloatingPanel`, the panel that
+tracks the active selection and hosts quick actions. It reads the live selection
+from the diagram context.
+
+```tsx
+import { SelectionFloatingPanel } from "@oh-just-another/react-ui";
+
+function Overlay() {
+  return <SelectionFloatingPanel />;
+}
+```
+
+The full `<Editor>` from `@oh-just-another/editor` wires these indicators up by
+default; reach for the lower-level pieces above only when building a custom
+overlay or a headless rendering of the selection state.

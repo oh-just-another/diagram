@@ -1,0 +1,52 @@
+---
+title: ⚠️ Tools
+status: draft
+sidebar_position: 70
+---
+
+Tools are expressed as the editor's active *mode*. The mode dictates how a pointer-down is interpreted — select an element, pan, or draw a new shape of a given kind.
+
+## Modes
+
+`Mode` is a string union, and `DEFAULT_MODE` is `"select"`. The built-in modes are:
+
+`select` · `hand` (pan) · `draw-rect` · `draw-ellipse` · `draw-text` · `draw-edge` · `draw-frame` · `brush`
+
+Pan and zoom remain available as gestures (middle-mouse, Space+drag, wheel) regardless of the active mode.
+
+```ts
+import { Editor, DEFAULT_MODE, type Mode } from "@oh-just-another/state";
+
+editor.setMode("draw-rect");
+const mode: Mode = editor.mode;
+```
+
+With the React component, the mode is on the `EditorAPI` handle:
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+
+function Host() {
+  const ref = useRef<EditorAPI>(null);
+  const drawRect = () => ref.current?.setMode("draw-rect");
+  return <Editor ref={ref} initialMode="select" />;
+}
+```
+
+## Sticky tools (tool lock)
+
+By default a draw mode auto-reverts to `select` after one successful create. Toggle tool-lock to keep the tool active so the user can draw many shapes in a row.
+
+```ts
+editor.setToolLocked(true);
+const locked = editor.toolLocked;
+```
+
+## Reacting to mode changes
+
+Listen to the typed `mode` event to keep a toolbar in sync.
+
+```ts
+editor.on("mode", (mode) => highlightToolButton(mode));
+```

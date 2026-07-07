@@ -1,0 +1,23 @@
+---
+title: 🚧 Ticks
+status: draft
+sidebar_position: 69
+---
+
+The editor drives animated content through a render loop and a pluggable playback **clock**, rather than exposing a general per-frame "tick" callback for application code.
+
+Rendering is scheduled on `requestAnimationFrame`: the editor coalesces changes and repaints once per frame. When a scene contains animated content (for example a GIF), an animation controller keeps the loop alive and pauses it when the tab is hidden to save the decode and render work.
+
+Playback timing flows through an `AnimationClock`. By default each animated shape is sampled against the wall clock (`performance.now()`); a host can replace this to drive playback deterministically — useful for tests, headless export of a specific frame, or syncing several shapes:
+
+```ts
+import { setAnimationClock, resetAnimationClock } from "@oh-just-another/renderer-core";
+
+setAnimationClock((shape) => myTimeline.positionFor(shape.id)); // ms
+// ...
+resetAnimationClock(); // restore wall-clock playback
+```
+
+Animated sources are decoded by adapters registered with `registerAnimationAdapter` (from `@oh-just-another/editor` / `@oh-just-another/renderer-core`); the editor ships a GIF adapter by default.
+
+Planned — not yet available: a public `editor.on("tick", …)` style hook that fires once per animation frame for arbitrary host logic. Today the frame loop is internal; drive your own animations via the clock above or your framework's own loop.

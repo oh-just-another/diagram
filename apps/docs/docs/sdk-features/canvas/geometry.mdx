@@ -1,0 +1,50 @@
+---
+title: ⚠️ Geometry
+status: draft
+sidebar_position: 32
+---
+
+`@oh-just-another/math` is the L0 geometry toolkit underpinning the scene model. It is a pure, DOM-free collection of namespaced modules: `vec2`, `scalar`, `matrix`, `bounds`, `hitTest`, `bezier`, `intersect`, `color`, and `polygon`.
+
+## Vectors
+
+The `vec2` module operates on `{ x, y }` points: `add`, `sub`, `mul`, `dot`, `cross`, `length`, `normalize`, `lerp`, `rotate`, `rotateAround`, `distance`, and more.
+
+```ts
+import { vec2 } from "@oh-just-another/math";
+
+const a = vec2.of(3, 4);
+const len = vec2.length(a); // 5
+const mid = vec2.midpoint(a, vec2.ZERO);
+const turned = vec2.rotate(a, Math.PI / 2);
+```
+
+## Bounds
+
+The `bounds` module works with axis-aligned `{ x, y, width, height }` rectangles: `fromPoints`, `union`, `intersection`, `intersects`, `contains`, `containsBounds`, `expand`, and `centerOf`.
+
+```ts
+import { bounds } from "@oh-just-another/math";
+
+const box = bounds.fromPoints([{ x: 0, y: 0 }, { x: 10, y: 20 }]);
+const hit = bounds.contains(box, { x: 5, y: 5 }); // true
+const merged = bounds.union(box, bounds.of(8, 8, 4, 4));
+```
+
+## Matrices and intersection
+
+`matrix` provides the 2D affine `Transform` algebra — `translation`, `rotation`, `scaling`, `multiply`, `inverse`, `applyToPoint`, `applyToBounds`, and `decompose`. The `intersect` module computes `lineLine`, `segmentSegment`, `segmentQuadratic`, and `segmentCubic` crossings.
+
+```ts
+import { matrix, intersect } from "@oh-just-another/math";
+
+const t = matrix.multiply(matrix.translation(10, 0), matrix.rotation(Math.PI / 4));
+const p = matrix.applyToPoint(t, { x: 1, y: 0 });
+
+const x = intersect.segmentSegment(
+  { x: 0, y: 0 }, { x: 10, y: 10 },
+  { x: 0, y: 10 }, { x: 10, y: 0 },
+); // { x: 5, y: 5 }
+```
+
+`scalar` rounds out the kit with `clamp` and `clamp01`.

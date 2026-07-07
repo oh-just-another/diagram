@@ -1,0 +1,46 @@
+---
+title: ⚠️ Editor
+status: draft
+sidebar_position: 5
+---
+
+`@oh-just-another/editor` is the umbrella package: one `Editor` React component that composes the renderers, interaction engine, UI chrome, serialization and templates into a ready-to-mount diagram editor. For lower-level control you reach the underlying engine through the same handle.
+
+## The drop-in component
+
+Mount `Editor` anywhere in a React tree and you get a working editor with a floating toolbar, top and bottom bars, and a full-bleed canvas. Import the stylesheet once for the chrome.
+
+```tsx
+import { Editor } from "@oh-just-another/editor";
+import "@oh-just-another/react-ui/styles.css";
+
+export function App() {
+  return <Editor style={{ position: "fixed", inset: 0 }} />;
+}
+```
+
+## What it auto-detects
+
+On mount, `detectCapabilities()` runs once and picks the best backend the runtime supports, collapsing to a concrete `CapabilityProfile`: a WebGL2 / OffscreenCanvas / Canvas2D renderer, optional bundled WASM text-shaping and rasterisation, and worker offloading. Override any field with the `capabilities` prop:
+
+```tsx
+<Editor capabilities={{ renderer: "canvas2d", wasmText: false }} />
+```
+
+## Customising the chrome
+
+`EditorProps` is the customisation surface. Seed the scene and mode with `initialScene` / `initialMode`, toggle individual chrome off (`hideTopBar`, `hideToolbar`, `hideSelectionPanel`, and friends), inject content with the `renderTopBar*` / `renderBottomBar*` slot props, and manage the `theme` (controlled or self-managed, with optional `localStorage` persistence). Lifecycle callbacks `onReady`, `onSceneChange` and `onSelectionChange` keep the host in sync.
+
+## The underlying engine
+
+Everything the component does sits on top of the `Editor` engine from `@oh-just-another/state` (re-exported here as `EditorInstance`). The component is the batteries-included path; the engine is the headless core. You can drop down to it directly through the imperative handle — see the Driver page — or compose the lower-level building blocks (`@oh-just-another/react-ui`, `@oh-just-another/scene`, the renderers) yourself.
+
+## Extending the kernel
+
+Plug-in registries are re-exported so the editor is the single import for adding custom element types, migrations, layout kinds and animation adapters:
+
+```ts
+import { registerBounder, registerElementRenderer, registerMigration } from "@oh-just-another/editor";
+```
+
+`Diagram` is a deprecated alias of `Editor`.

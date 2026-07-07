@@ -1,0 +1,46 @@
+---
+title: ⚠️ Input Handling
+status: draft
+sidebar_position: 40
+---
+
+The engine never touches the DOM directly. Hosts translate raw browser events into normalized, CSS-pixel domain events and feed them in. This keeps the core framework-agnostic and testable, and lets non-browser hosts drive the same engine.
+
+## Normalizing DOM events
+
+`@oh-just-another/state` ships normalizers that convert raw pointer / keyboard / wheel events into the engine's domain shapes. Pointer and wheel normalizers take the host element so they can project client coordinates into host-local space.
+
+```ts
+import {
+  fromPointerEvent,
+  fromKeyboardEvent,
+  fromWheelEvent,
+  isEditableTarget,
+} from "@oh-just-another/state";
+
+host.addEventListener("pointerdown", (ev) => {
+  const data = fromPointerEvent(ev, host);
+  // forward `data` into your pointer handling
+});
+
+host.addEventListener("wheel", (ev) => {
+  const data = fromWheelEvent(ev, host);
+  // forward `data`
+});
+```
+
+## Skipping editable targets
+
+Global keyboard handlers must bail when the event is aimed at a text field, `<select>`, or any `contenteditable` host, so the user's typing is not hijacked. `isEditableTarget` answers that — it reads the real focused node (via `composedPath`), so it works even across a shadow-root boundary.
+
+```ts
+import { fromKeyboardEvent, isEditableTarget } from "@oh-just-another/state";
+
+window.addEventListener("keydown", (ev) => {
+  if (isEditableTarget(ev.target)) return;
+  const data = fromKeyboardEvent(ev);
+  // dispatch shortcut
+});
+```
+
+`isEditableTarget` is also re-exported from `@oh-just-another/editor`. For keyboard shortcuts specifically, `bindEditorHotkeys` wires a `keydown` listener that already applies this editable-target check for you.

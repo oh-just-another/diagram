@@ -1,0 +1,11 @@
+---
+title: 🚧 Edge Scrolling
+status: draft
+sidebar_position: 21
+---
+
+Edge scrolling would automatically pan the viewport when a drag (moving a shape, drawing a selection box) reaches the edge of the canvas, so you can drag content beyond what is currently visible.
+
+**Planned — not yet available.**
+
+Panning itself is fully supported: `@oh-just-another/state` exposes `hand` mode plus Space-drag and middle-mouse pan gestures, and `@oh-just-another/scene` provides the `panBy` viewport helper. The automatic, drag-triggered pan-at-edge behaviour is not yet wired into the interaction machine.

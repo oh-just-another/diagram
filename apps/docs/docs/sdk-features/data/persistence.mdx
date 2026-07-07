@@ -1,0 +1,51 @@
+---
+title: ⚠️ Persistence
+status: draft
+sidebar_position: 52
+---
+
+Save and reload a scene through a versioned, forward-migrating JSON document. The `@oh-just-another/serialization` package round-trips an in-memory `Scene` to a stable wire format and back, running migrations and validation on load.
+
+## Save a scene
+
+`stringifyScene` produces a JSON string you can write anywhere — `localStorage`, a file, a database column.
+
+```ts
+import { stringifyScene, serializeScene } from "@oh-just-another/serialization";
+
+// JSON string (pretty-print with an optional indent).
+localStorage.setItem("scene", stringifyScene(editor.scene));
+
+// Or the plain wire document, if you want to embed it elsewhere.
+const doc = serializeScene(editor.scene);
+```
+
+## Load a scene
+
+`parseScene` reads a JSON string, runs any pending migrations, validates with zod, and re-applies branded ids — returning a typed `Scene`.
+
+```ts
+import { parseScene } from "@oh-just-another/serialization";
+
+const scene = parseScene(localStorage.getItem("scene")!);
+editor.loadScene(scene);
+```
+
+`deserializeScene` is the document-in / `Scene`-out variant if you already hold a parsed wire object.
+
+## Wire format and versioning
+
+Every document carries a `format` magic constant and a numeric `version`. The version is bumped on any breaking schema change, and migrations are **forward-only**: loading an older document walks through each registered migration up to `CURRENT_VERSION`.
+
+```ts
+import { registerMigration, CURRENT_VERSION } from "@oh-just-another/serialization";
+
+// Upgrade a v1 document to v2.
+registerMigration(1, (doc) => ({ ...doc, version: 2 /* …reshape elements… */ }));
+```
+
+If an intermediate version has no registered migration, loading throws `MissingMigrationError`.
+
+## Binary file sidecar
+
+`Scene.files` (embedded images and other binary assets) serializes separately via `serializeFiles` / `stringifyFiles` / `parseFiles`, so large binaries don't bloat the main document.

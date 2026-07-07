@@ -1,0 +1,59 @@
+---
+title: ⚠️ History
+status: draft
+sidebar_position: 37
+---
+
+Undo / redo is backed by `@oh-just-another/history` — a transactional, invertible patch stack. The engine drives it for you; you can also use the kernel directly for headless replay or server-side audit.
+
+## Undo and redo on the editor
+
+```ts
+import { Editor } from "@oh-just-another/state";
+
+if (editor.canUndo) editor.undo();
+if (editor.canRedo) editor.redo();
+```
+
+With the React component, the same verbs are on the `EditorAPI` handle, and the typed `history` event reports availability changes:
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+
+function Host() {
+  const ref = useRef<EditorAPI>(null);
+  return (
+    <>
+      <button onClick={() => ref.current?.undo()}>Undo</button>
+      <Editor ref={ref} />
+    </>
+  );
+}
+```
+
+## The history kernel
+
+`History` owns no scene: `push` records a patch, `undo()` returns the *inverse* to apply, `redo()` returns the *original*. The caller applies the returned patch with `apply` from `@oh-just-another/scene`.
+
+```ts
+import { History } from "@oh-just-another/history";
+import { apply } from "@oh-just-another/scene";
+
+const history = new History({ limit: 100 });
+history.push(patch);
+scene = apply(scene, history.undo()!); // inverse
+scene = apply(scene, history.redo()!); // original
+```
+
+## Transactions
+
+Many patches from a single gesture collapse into one undo step. By default a transaction merges per entity — a 100-tick drag of one shape becomes one record.
+
+```ts
+const tx = history.transaction();
+for (const p of dragPatches) tx.add(p);
+tx.commit();
+```
+
+Selection is conventionally excluded from history — never `push` selection-only changes.

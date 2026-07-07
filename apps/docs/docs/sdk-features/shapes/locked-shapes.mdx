@@ -1,0 +1,37 @@
+---
+title: ⚠️ Locked Shapes
+status: draft
+sidebar_position: 44
+---
+
+A locked shape ignores all interactive gestures — clicks, drags, and resize hit-test as if it were not there — but it still renders and stays serializable. Locking is controlled by the per-shape `locked` flag plus the per-layer `Layer.locked` flag.
+
+## Locking a shape
+
+Set `locked: true` through `updateElement`.
+
+```ts
+import { updateElement } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const { scene: locked } = updateElement(scene, elementId("r1"), (el) => ({
+  ...el,
+  locked: true,
+}));
+```
+
+## Propagation and the effective state
+
+Lock state propagates down the `parentId` chain: if any ancestor is locked, the descendant is effectively locked. It is also independent from the shape's layer — either the shape's `locked` flag or its `Layer.locked` being true is enough. Consult the resolved state with `isElementLocked`, which folds in both sources.
+
+```ts
+import { isElementLocked, getElement } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const el = getElement(scene, elementId("r1"));
+if (el && isElementLocked(scene, el)) {
+  // skip interaction
+}
+```
+
+Because locking only gates interaction, locked shapes are perfect for background images, guide rails, or template chrome you want to keep visible but immovable.

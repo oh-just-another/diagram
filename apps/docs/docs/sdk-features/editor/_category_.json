@@ -1,0 +1,6 @@
+{
+  "label": "Editor & engine",
+  "position": 1,
+  "collapsed": true,
+  "link": { "type": "doc", "id": "sdk-features/editor/overview" }
+}

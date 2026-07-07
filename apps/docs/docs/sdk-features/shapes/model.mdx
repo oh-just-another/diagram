@@ -1,0 +1,54 @@
+---
+title: ⚠️ Shapes
+status: draft
+sidebar_position: 60
+---
+
+Shapes (called *elements* in the SDK) are the visual entities in a scene. Every element shares a common base (`ElementBase`) and a `type` discriminator, so the model stays open to plugin-defined variants.
+
+## The element base
+
+Every shape carries `id`, `layerId`, `type`, `position`, `rotation`, `scale`, `order`, and `style`. Optional fields cover resize constraints (`minWidth` / `maxHeight`), `parentId`, `frameId`, `locked`, `hidden`, custom `anchors`, and `href`.
+
+```ts
+import { addElement, emptyScene, orderForTop, DEFAULT_LAYER_ID } from "@oh-just-another/scene";
+import type { Element } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const rect: Element = {
+  id: elementId("r1"),
+  layerId: DEFAULT_LAYER_ID,
+  type: "rectangle",
+  position: { x: 0, y: 0 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderForTop([]),
+  style: { fill: "#88f" },
+  width: 100,
+  height: 50,
+};
+
+const { scene } = addElement(emptyScene(), rect);
+```
+
+## Type guards
+
+Narrow an `Element` to a concrete variant with the exported guards — `isRectangle`, `isEllipse`, `isPolygon`, `isPath`, `isText`, `isImage`, `isTemplate`, `isGroup`, `isFrame`, `isBlockArrow`, `isBrush`.
+
+```ts
+import { isText } from "@oh-just-another/scene";
+
+for (const el of scene.elements.values()) {
+  if (isText(el)) console.log(el.text);
+}
+```
+
+## Custom shape types
+
+Because `type` is an open `string`, you can register your own variant. Provide a bounder via `registerBounder` so the spatial index and selection can compute its local bounds.
+
+```ts
+import { registerBounder } from "@oh-just-another/scene";
+
+registerBounder("my-widget", () => ({ x: 0, y: 0, width: 120, height: 80 }));
+```

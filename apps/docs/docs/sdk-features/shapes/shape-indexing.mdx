@@ -1,0 +1,43 @@
+---
+title: ⚠️ Shape Indexing
+status: draft
+sidebar_position: 58
+---
+
+Z-order is governed by each entity's `order` field, a **fractional index** string. Sorting by `order` gives the paint order; inserting or reordering picks a new key strictly between neighbors, so it is O(1) and conflict-free under concurrent edits — no neighbor renumbering required.
+
+## Picking an order key
+
+Use `orderForTop` / `orderForBottom` to place above or below everything in a layer, and `orderBetween` to slot between two neighbors.
+
+```ts
+import { orderForTop, orderForBottom, orderBetween } from "@oh-just-another/scene";
+
+const existing = [...scene.elements.values()].map((e) => e.order);
+
+const onTop = orderForTop(existing);
+const atBottom = orderForBottom(existing);
+const between = orderBetween(atBottom, onTop);
+```
+
+## Sorting by z-order
+
+The `byOrderAsc` / `byOrderDesc` comparators sort any entities that carry an `order`.
+
+```ts
+import { byOrderAsc } from "@oh-just-another/scene";
+
+const painted = [...scene.elements.values()].sort(byOrderAsc);
+```
+
+## Bulk inserts and compaction
+
+For inserting many keys at once, `orderBetweenMany` generates `n` evenly spaced indices between two bounds — useful for compacting a layer back to short, balanced strings after a burst of insert-in-the-middle operations.
+
+```ts
+import { orderBetweenMany } from "@oh-just-another/scene";
+
+const keys = orderBetweenMany(null, null, 5); // five fresh, ordered keys
+```
+
+The same `order` mechanism governs layer z-order; layers carry their own `order` field on `Layer`.

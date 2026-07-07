@@ -1,0 +1,23 @@
+---
+title: 🚧 Assets
+status: draft
+sidebar_position: 5
+---
+
+Binary assets — images and other file bytes — live once in `Scene.files` as `BinaryFile` records keyed by `FileId`. Shapes that reference an asset (such as an `ImageElement`) carry only a `fileId` and resolve the bytes through this registry at render time, so the same image used by many shapes is stored a single time.
+
+A `BinaryFile` holds the `mime` type, the `data` (an `ArrayBuffer`, which serialises cleanly through `structuredClone`, IndexedDB, and `postMessage`), an optional original `name`, and a `createdAt` timestamp.
+
+```ts
+import { createBinaryFile, addBinaryFile, getBinaryFile } from "@oh-just-another/scene";
+
+const file = createBinaryFile(fileId, bytes, { mime: "image/png", name: "logo.png" });
+const next = addBinaryFile(scene, file);
+const resolved = getBinaryFile(next, fileId);
+```
+
+Use `removeBinaryFile` to drop an entry. When you drop or paste an image into the editor, the built-in image handler stores the bytes via this registry and inserts an `ImageElement` for you (see External Content).
+
+The serializer writes `files` to a separate sidecar so the text scene JSON stays small; on import the host re-attaches the sidecar and shapes resolve their `fileId` lookups again.
+
+Planned — not yet available: a managed asset store with remote/CDN upload, content-hash deduplication, and lazy fetching of large blobs. Today asset bytes are held in memory on the scene and persisted by the host.

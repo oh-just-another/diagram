@@ -1,0 +1,46 @@
+---
+title: ⚠️ Clipboard
+status: draft
+sidebar_position: 10
+---
+
+Copy, cut, and paste move the current selection through an in-editor buffer. The engine exposes them as verbs; the corresponding actions (`actionCopy`, `actionCut`, `actionPaste`) wire them to standard hotkeys.
+
+## Copy, cut, paste
+
+```ts
+import { Editor } from "@oh-just-another/state";
+
+editor.copySelected(); // buffer the selection
+editor.cut(); // copy + delete in one step
+editor.paste(); // paste under the cursor
+```
+
+`paste(targetWorld?)` accepts an optional world-space drop target. When omitted, the engine pastes under the last observed pointer position so a fresh paste lands beneath the cursor instead of overlapping the originals.
+
+```ts
+const world = editor.screenToWorld({ x: clientX, y: clientY });
+editor.paste(world);
+```
+
+## Style clipboard
+
+Separate from element copy/paste, the engine keeps a lightweight per-editor *style* buffer — capture a shape's visual style (fill, stroke, dash, …) and stamp it onto the current selection.
+
+```ts
+editor.copySelectionStyle();
+editor.pasteSelectionStyle();
+const ready = editor.hasStyleClipboard; // true once a style is buffered
+```
+
+This is an in-editor buffer, not the OS clipboard. Cross-tab paste is the host's responsibility — wire it through the clipboard actions or your own keyboard handler.
+
+## Hotkeys
+
+The built-in clipboard actions are bundled as `clipboardActions` and dispatched by `bindEditorHotkeys`.
+
+```ts
+import { bindEditorHotkeys } from "@oh-just-another/editor";
+
+const unbind = bindEditorHotkeys(editor);
+```

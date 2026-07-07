@@ -1,0 +1,11 @@
+---
+title: 🚧 Side Effects
+status: draft
+sidebar_position: 61
+---
+
+A side-effects system would let you register before/after handlers that run whenever records are created, updated, or deleted — for validation, cascading changes, or derived data.
+
+**Planned — not yet available** as a formal registry.
+
+For now, `@oh-just-another/state` emits change notifications through the editor's typed event interface (`EditorEvents`), which you can subscribe to and react to externally. Scene mutations themselves go through the pure operations in `@oh-just-another/scene` (`addElement`, `updateElement`, …), each returning the next scene plus a `Patch` you can inspect — but there is no registered before/after hook chain yet.

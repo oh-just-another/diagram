@@ -1,0 +1,67 @@
+---
+title: ⚠️ Animation
+status: draft
+sidebar_position: 3
+---
+
+Animated image content (GIFs and other animated sources) is handled by a
+pluggable adapter registry in `@oh-just-another/renderer-core`. An adapter
+decodes frames and exposes the current frame to the renderer; `<Editor>` ships
+a GIF adapter you can install explicitly.
+
+## Installing the GIF adapter
+
+`@oh-just-another/editor` re-exports `installGifAnimationAdapter`. The `<Editor>`
+component installs it by default, but you can call it yourself for headless use
+or to opt in without the component.
+
+```ts
+import { installGifAnimationAdapter } from "@oh-just-another/editor";
+
+installGifAnimationAdapter();
+```
+
+## Registering a custom adapter
+
+Register your own adapter against an animation kind with
+`registerAnimationAdapter`. The adapter type is exported as
+`AnimatedSourceAdapter`.
+
+```ts
+import {
+  registerAnimationAdapter,
+  type AnimatedSourceAdapter,
+} from "@oh-just-another/renderer-core";
+
+const myAdapter: AnimatedSourceAdapter = {
+  /* decode + expose current frame */
+};
+registerAnimationAdapter(myAdapter);
+```
+
+`registerAnimationAdapter` is also re-exported from `@oh-just-another/editor` so
+the umbrella package is a single import for extending the editor.
+
+## Driving the clock
+
+The animation clock is controllable for deterministic rendering and tests.
+`setAnimationClock` / `resetAnimationClock` set or restore the time source, and
+`notifyAnimationContentReady` / `onAnimationContentReady` let the host schedule a
+redraw once frames are decoded.
+
+```ts
+import {
+  setAnimationClock,
+  resetAnimationClock,
+  onAnimationContentReady,
+} from "@oh-just-another/renderer-core";
+
+const off = onAnimationContentReady(() => requestRedraw());
+setAnimationClock(() => fixedTimeMs);
+// later
+resetAnimationClock();
+off();
+```
+
+Use `resolveImageSource` and `listAnimationKinds` to inspect which kinds have
+registered adapters at runtime.

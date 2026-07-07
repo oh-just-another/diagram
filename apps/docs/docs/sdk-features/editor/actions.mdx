@@ -1,0 +1,41 @@
+---
+title: ⚠️ Actions
+status: draft
+sidebar_position: 2
+---
+
+Actions are named, imperative commands — undo, copy, delete-selection, zoom-to-fit, switch-mode — collected in a registry together with their hotkeys. The registry is what hotkey binding and menus dispatch against, so the same command is reachable from a keystroke, a button, or code.
+
+## The registry
+
+`ActionRegistry` holds `Action` entries grouped by `ActionCategory`. `defaultActionRegistry` is a shared instance already populated with the built-ins by `registerBuiltinActions`. Each action carries a `HotkeyMatcher` and runs against an `ActionContext`.
+
+```ts
+import { defaultActionRegistry, type Action } from "@oh-just-another/state";
+
+// Already populated with built-ins; dispatch against it directly.
+defaultActionRegistry.dispatchHotkey(event, { editor });
+```
+
+## Built-in actions
+
+Built-ins are exported both as bundles and individually, so hosts can replace or compose them:
+
+- History — `actionUndo`, `actionRedo` (`historyActions`).
+- Selection — `actionSelectAll`, `actionDeleteSelection`, `actionDuplicateSelection` (`selectionActions`).
+- Clipboard — `actionCopy`, `actionCut`, `actionPaste` (`clipboardActions`).
+- Z-order — `actionBringToFront`, `actionSendToBack` (`zOrderActions`).
+- Grouping — `actionGroupSelection`, `actionUngroupSelection` (`groupingActions`).
+- Zoom — `actionZoomIn`, `actionZoomOut`, `actionZoomReset`, `actionZoomToFit` (`zoomActions`).
+- Modes — `actionModeSelect` … `actionModeFrame`, `actionToggleToolLock`, `actionCancel` (`modeActions`).
+
+Predicates `hasSelection` and `hasSelectionOrLink` gate actions that only make sense with something selected.
+
+```ts
+import { ActionRegistry, actionCopy, hasSelection } from "@oh-just-another/state";
+
+const registry = new ActionRegistry();
+registry.register(actionCopy);
+```
+
+Hotkeys for these actions are wired to a `keydown` listener via `bindEditorHotkeys`, which dispatches the first matching action.

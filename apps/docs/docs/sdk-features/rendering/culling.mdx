@@ -1,0 +1,58 @@
+---
+title: ⚠️ Culling
+status: draft
+sidebar_position: 14
+---
+
+Viewport culling skips elements whose bounding box falls outside the visible
+area, so frame cost scales with what is on screen rather than the total scene
+size. It is driven entirely through `renderScene` options in
+`@oh-just-another/renderer-core`.
+
+## Enabling viewport culling
+
+Pass a world-space `viewport` rectangle to `renderScene`. Shapes whose AABB does
+not intersect that rectangle are skipped. Inflate the rect slightly to avoid
+pop-in during a pan — `VIEWPORT_CULL_PADDING_RATIO` is exported so you can tune
+the inflation in one place.
+
+```ts
+import {
+  renderScene,
+  VIEWPORT_CULL_PADDING_RATIO,
+  type RenderSceneOptions,
+} from "@oh-just-another/renderer-core";
+
+const pad = viewportWidth * VIEWPORT_CULL_PADDING_RATIO;
+const viewport = {
+  x: camera.x - pad,
+  y: camera.y - pad,
+  width: viewportWidth + pad * 2,
+  height: viewportHeight + pad * 2,
+};
+
+const options: RenderSceneOptions = { viewport };
+```
+
+## Spatial index for large scenes
+
+For very large scenes, pass a pre-built `spatialIndex` alongside `viewport`. The
+renderer then picks candidate shapes from the index instead of scanning every
+layer — it starts to pay off around ~10k shapes.
+
+## Bounds cache and dirty rectangles
+
+`boundsCache` shares AABB computations across frames, hit-testing, and overlay
+drawing. When only a small region changed, pass a world-space dirty rectangle so
+the renderer clears and redraws just that region and culls the rest.
+
+```ts
+import { ElementCache, renderScene } from "@oh-just-another/renderer-core";
+
+const boundsCache = new ElementCache();
+renderScene(target, scene, camera, { viewport, boundsCache });
+```
+
+These options compose: combine `viewport`, `spatialIndex`, and `boundsCache` to
+cull aggressively while reusing work across the editor, hit-test, and overlay
+passes.

@@ -1,0 +1,58 @@
+---
+title: ⚠️ Environment
+status: draft
+sidebar_position: 24
+---
+
+Before mounting, the editor probes the browser to decide which renderer backend
+and acceleration paths to use — WebGL2 vs Canvas2D, WASM text/raster, workers,
+and tile caching. `@oh-just-another/editor` exposes this as `detectCapabilities`.
+
+## Detecting capabilities
+
+`detectCapabilities` runs the auto-detection sweep and returns a
+`CapabilityProfile`. It is async because WebGPU/WebGL2 detection awaits an
+adapter request.
+
+```ts
+import { detectCapabilities, type CapabilityProfile } from "@oh-just-another/editor";
+
+const profile: CapabilityProfile = await detectCapabilities();
+// { renderer, wasmText, wasmRaster, workers, tiles, touch }
+```
+
+The profile fields:
+
+- `renderer` — the chosen `RendererBackend` (collapsed from `auto` to a concrete value).
+- `wasmText` — use the bundled WASM text shaper for wrap measurements.
+- `wasmRaster` — use the WASM rasterizer (currently only the WebGL2 backend calls it).
+- `workers` — spawn OffscreenCanvas workers for rendering.
+- `tiles` — use the tile-cache compositor for very large scenes.
+- `touch` — `pointer: coarse` was reported (touch primary input).
+
+## Overriding detection
+
+Pass a partial `CapabilityOverrides` to force individual fields. Each field is
+`auto` when omitted (let the detector pick); a concrete value short-circuits
+detection for that field.
+
+```ts
+import { detectCapabilities, type CapabilityOverrides } from "@oh-just-another/editor";
+
+const overrides: CapabilityOverrides = { wasmText: false, renderer: "canvas2d" };
+const profile = await detectCapabilities(overrides);
+```
+
+The same overrides can be passed to the component as `<Diagram capabilities={…}>`,
+where they shallow-merge over the auto-detected result.
+
+## Logging the result
+
+`logCapabilities` prints a one-line, fixed-format summary to the console so you
+can grep it in DevTools. The `<Editor>` logs this automatically on mount.
+
+```ts
+import { logCapabilities } from "@oh-just-another/editor";
+
+logCapabilities(profile);
+```

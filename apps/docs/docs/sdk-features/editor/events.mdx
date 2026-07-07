@@ -1,0 +1,55 @@
+---
+title: ⚠️ Events
+status: draft
+sidebar_position: 27
+---
+
+`@oh-just-another/events` is a tiny, dependency-free typed event emitter (an L0
+package — no DOM, React, or Node APIs). It underpins the pub/sub in `Editor`,
+`History`, and `Collab`, and you can use it standalone for your own typed
+channels.
+
+## Typed emitter
+
+Declare an event map, then `createEmitter` gives you a fully typed
+`on` / `emit` / `off`. Payloads are typechecked and listener arguments are
+inferred.
+
+```ts
+import { createEmitter, type Emitter } from "@oh-just-another/events";
+
+interface EditorEvents {
+  mode: (mode: "select" | "draw") => void;
+  change: () => void;
+}
+
+const emitter: Emitter<EditorEvents> = createEmitter<EditorEvents>();
+
+const off = emitter.on("mode", (m) => console.log(m)); // m: "select" | "draw"
+emitter.emit("mode", "select"); // returns the number of listeners run
+off(); // idempotent unsubscribe
+```
+
+## Behaviour
+
+- `on(event, fn)` returns an idempotent unsubscribe function.
+- `emit(event, ...args)` calls every listener synchronously and returns how many
+  ran. Listeners are snapshotted first, so `on` / `off` from inside a listener
+  take effect on the next emit.
+- A listener exception does not abort the loop: remaining listeners still run and
+  the first error is re-thrown afterwards (mirrors DOM `EventTarget`).
+- `off`, `clear(event?)`, and `listenerCount(event)` round out the surface.
+
+## Single-channel fan-out
+
+For a one-event channel, `createListeners` is a lighter primitive: `add` returns
+an unsubscribe and `emit(value)` notifies all subscribers.
+
+```ts
+import { createListeners, type Listeners } from "@oh-just-another/events";
+
+const channel: Listeners<number> = createListeners<number>();
+const off = channel.add((n) => console.log(n));
+channel.emit(42);
+off();
+```

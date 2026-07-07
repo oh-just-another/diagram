@@ -1,0 +1,30 @@
+---
+title: ⚠️ Attribution
+status: draft
+sidebar_position: 6
+---
+
+The library is MIT-licensed and imposes no forced watermark. The only built-in branding is a "GitHub" link in the Help menu, and it is fully optional — you can point it anywhere or remove it entirely.
+
+## The `repositoryUrl` prop
+
+`<Editor>` (from `@oh-just-another/editor`) exposes `repositoryUrl` to control the Help-menu link:
+
+```tsx
+import { Editor } from "@oh-just-another/editor";
+
+// Omit the prop → links to the project repository (default).
+<Editor />
+
+// Point it at your own repo.
+<Editor repositoryUrl="https://github.com/acme/diagrams" />
+
+// Hide the link entirely (e.g. embedding in another product).
+<Editor repositoryUrl={null} />
+```
+
+The three cases are explicit: omitting the prop uses the project's default URL, a string sets your own, and `null` removes the menu item completely. There is no on-canvas badge, watermark, or "made with" overlay to strip — attribution is just this one optional menu link.
+
+## License
+
+Under MIT you are free to embed the editor in commercial and closed-source products without attribution. Passing `repositoryUrl={null}` is the supported way to ship a fully unbranded editor.

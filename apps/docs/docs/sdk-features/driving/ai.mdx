@@ -1,0 +1,48 @@
+---
+title: ⚠️ AI
+status: draft
+sidebar_position: 1
+---
+
+The library is built so an agent can construct and drive diagrams through the **same** programmatic surface a human uses — no separate AI API, no parallel data model. An LLM that can call `addElement` or `setMode` produces exactly the scene a click would.
+
+## The design intent
+
+A diagram is just a `Scene` — a plain, serialisable data structure (see Shapes and Persistence). The editor engine is the single source of truth that mutates it. Because both are ordinary TypeScript values and functions, an agent operates the editor exactly like application code does: through `EditorAPI` and the underlying `EditorInstance`, or by building a `Scene` directly with `@oh-just-another/scene` operations.
+
+## Building a scene from code
+
+The scene operations are pure functions returning `{ scene, patch }`, so an agent can assemble a diagram with no editor mounted at all, then hand the result to the editor or serialise it.
+
+```ts
+import { emptyScene, addElement, addLink } from "@oh-just-another/scene";
+import { stringifyScene } from "@oh-just-another/serialization";
+
+let { scene } = addElement(emptyScene(), {
+  /* a rectangle element */
+} as never);
+// chain further addElement / addLink calls...
+const json = stringifyScene(scene, 2);
+```
+
+## Driving a live editor
+
+When the editor is mounted, the agent drives it through the same handle described on the Driver page — set the mode, mutate the scene, change the selection, fit the viewport:
+
+```ts
+import type { EditorInstance } from "@oh-just-another/editor";
+
+function agentStep(editor: EditorInstance) {
+  editor.addElement(/* element */ undefined as never, { select: true });
+  editor.zoomToFit();
+}
+```
+
+## What's possible today
+
+- **Programmatic scene construction** via `@oh-just-another/scene` factories and operations.
+- **Driving a live editor** via `EditorAPI` / `EditorInstance`.
+- **Import from text formats** (Mermaid, dot, drawio) via `@oh-just-another/importers` — a natural bridge for LLM-generated diagram source.
+- **Serialise / deserialise** scenes for round-tripping through a model.
+
+There is no built-in model client or prompt layer — you wire your agent of choice to these surfaces. The point is that the surface already exists and is the real one, not an afterthought. See LLM Docs for pointing an agent at the API.

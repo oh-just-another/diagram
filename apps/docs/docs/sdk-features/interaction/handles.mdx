@@ -1,0 +1,60 @@
+---
+title: ⚠️ Handles
+status: draft
+sidebar_position: 35
+---
+
+Handles are the eight resize grips (plus rotation anchor) drawn around a
+selection. Their layout, hit-testing, and resize math live in
+`@oh-just-another/state` so they can be reused by the renderer, hit-test, and any
+custom overlay.
+
+## Handle identifiers
+
+There are eight handle positions — four corners and four edge midpoints —
+addressed by `HandleId`. `ALL_HANDLES` lists them; `CORNER_HANDLES` is the
+corner subset.
+
+```ts
+import {
+  ALL_HANDLES,
+  HANDLE_SIZE,
+  handlePosition,
+  type HandleId,
+} from "@oh-just-another/state";
+
+// HandleId = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w"
+const worldPos = handlePosition("se", bounds, zoom);
+```
+
+`handlePosition` returns the world-space point for a handle given the selection
+`bounds` and current `zoom`, so the drawn dot stays a constant screen size.
+
+## Hit-testing a pointer
+
+`hitHandle` maps a pointer position to the handle under it (or `null`), applying
+a screen-space slop band so handles stay grabbable at any zoom.
+
+```ts
+import { hitHandle } from "@oh-just-another/state";
+
+const grabbed = hitHandle(pointerWorld, bounds, zoom);
+if (grabbed) {
+  // begin resize/rotate drag for `grabbed`
+}
+```
+
+## Resizing
+
+`resizeBounds` computes the new bounds when a handle is dragged, and
+`cursorForHandle` gives the appropriate CSS cursor. Rotation uses the registered
+rotate anchor (`registerRotateAnchor` / `getRotateAnchor`).
+
+```ts
+import { resizeBounds } from "@oh-just-another/state";
+
+const next = resizeBounds(grabbed, bounds, pointerWorld);
+```
+
+`HANDLE_SIZE` and related grab-area constants are exported so hosts can match
+the visual size of the drawn handles to the hit area.

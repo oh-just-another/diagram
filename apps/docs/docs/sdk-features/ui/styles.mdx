@@ -1,0 +1,39 @@
+---
+title: ⚠️ Styles
+status: draft
+sidebar_position: 65
+---
+
+Every colour that ships in the editor comes from `@oh-just-another/tokens` — a single source of truth so re-skinning means editing one file. Consumers import named tokens rather than raw hex.
+
+## Colour tokens
+
+Tokens are grouped by purpose and keyed per theme. Shape fills and strokes come from hue families; chrome colours from surface and accent tokens:
+
+```ts
+import {
+  HUE_TONES,
+  UI_ACCENT,
+  GRID_COLOR,
+  DEFAULT_ELEMENT_STYLES,
+  type Hue,
+} from "@oh-just-another/tokens";
+
+const stroke = HUE_TONES.light.iris.solid; // step-9 brand hex
+const focusRing = UI_ACCENT.dark.accent;
+const rectDefaults = DEFAULT_ELEMENT_STYLES.rectangle; // { fill, stroke, strokeWidth }
+```
+
+The seven exposed hue families are `tomato`, `amber`, `grass`, `cyan`, `iris`, `plum`, and `gray` (the `Hue` type). Each has per-theme tones (`fill` / `solid` / `solidHover` / text).
+
+## Default shape styles
+
+Newly-drawn shapes and edges pick up their look from `DEFAULT_ELEMENT_STYLES` and `DEFAULT_EDGE_STYLE`. The grid uses theme-agnostic `GRID_COLOR` / `GRID_DOT_COLOR`, and the scene-diff overlay uses `DIFF_COLORS` (`added` / `removed` / `modified`):
+
+```ts
+import { DEFAULT_EDGE_STYLE, GRID_DOT_COLOR, DIFF_COLORS } from "@oh-just-another/tokens";
+```
+
+## Re-skinning
+
+To re-skin the editor, edit `colors.ts` in the tokens package once and every package picks the change up. The react-ui layer mirrors these as `--du-*` CSS variables (hand-copied, since CSS can't import TypeScript), so keep the two in sync when overriding at the CSS level.

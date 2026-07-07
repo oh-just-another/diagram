@@ -1,0 +1,16 @@
+---
+title: ⚠️ Pen Mode
+status: draft
+sidebar_position: 50
+---
+
+Freehand drawing is available through the editor's `brush` mode, which produces pressure-sensitive strokes (`BrushElement`). It is the pen-like tool today.
+
+```ts
+import { Editor } from "@oh-just-another/state";
+
+declare const editor: Editor;
+editor.setMode("brush");
+```
+
+A distinct "pen mode" with vector node editing (click-to-place anchor points, Bézier handle dragging) is **planned — not yet available.** For variable-width freehand strokes, use `brush` mode; see the Scribble page for the underlying `BrushElement` and `BrushPoint` shape.

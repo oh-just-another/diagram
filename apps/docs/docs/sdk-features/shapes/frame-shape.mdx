@@ -1,0 +1,18 @@
+---
+title: ⚠️ Frame Shape
+status: draft
+sidebar_position: 30
+---
+
+A frame (`FrameElement`, type `"frame"`) is a labelled container. Shapes become members by sharing the frame's id through their `frameId` field — distinct from `parentId` grouping. Moving a frame translates every shape whose `frameId` matches it, which makes frames convenient as export regions.
+
+```ts
+import { isFrame } from "@oh-just-another/scene";
+import type { FrameElement } from "@oh-just-another/scene";
+
+declare const frame: FrameElement;
+declare const elements: { id: string; frameId?: string }[];
+const members = elements.filter((e) => e.frameId === frame.id);
+```
+
+Frames are drawn interactively with the editor's `draw-frame` mode. Frame header geometry is tunable through the `FRAME_HEADER_*` constants exported from `@oh-just-another/scene`.

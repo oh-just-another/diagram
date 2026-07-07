@@ -1,0 +1,63 @@
+---
+title: ⚠️ Performance
+status: draft
+sidebar_position: 51
+---
+
+Rendering performance comes from three levers: the right backend, aggressive
+culling, and moving work off the main thread. The editor auto-tunes all three
+via capability detection, but you can drive each one directly.
+
+## Pick a backend
+
+Capability detection chooses between WebGL2, OffscreenCanvas, and Canvas2D. Let
+it pick, or force a backend for benchmarking.
+
+```ts
+import { detectCapabilities } from "@oh-just-another/editor";
+import { pickAvailableBackend, isWebGL2Available } from "@oh-just-another/renderer-canvas";
+
+const profile = await detectCapabilities();
+console.log(profile.renderer); // "webgl2" | "offscreen" | "canvas2d"
+```
+
+## Cull and cache
+
+Pass a `viewport`, a shared `boundsCache`, and (for big scenes) a `spatialIndex`
+to `renderScene` so frame cost tracks on-screen content rather than scene size.
+See the culling page for the full set of options.
+
+```ts
+import { renderScene } from "@oh-just-another/renderer-core";
+
+renderScene(target, scene, camera, { viewport, boundsCache, spatialIndex });
+```
+
+## Off-thread rendering
+
+For large scenes, the renderer can pre-rasterize tiles in OffscreenCanvas
+workers. `WORKER_AUTO_THRESHOLD` (5,000) is the element count at which off-thread
+work is considered, and `LARGE_SCENE_WORKER_THRESHOLD` (50,000) marks the very
+large scenes where the tile compositor pays off.
+
+```ts
+import { WORKER_AUTO_THRESHOLD } from "@oh-just-another/renderer-core";
+import { WorkerPool, LARGE_SCENE_WORKER_THRESHOLD } from "@oh-just-another/renderer-canvas";
+
+if (scene.elements.length > WORKER_AUTO_THRESHOLD) {
+  // worker-backed rendering becomes worthwhile
+}
+```
+
+## Level of detail
+
+`LodOptions` lets cheaper paths kick in at low zoom — drawing placeholders below
+a zoom threshold and hiding text below another. Pass it via `RenderSceneOptions`
+and tune the defaults from `DEFAULT_LOD`.
+
+```ts
+import { renderScene, type LodOptions } from "@oh-just-another/renderer-core";
+
+const lod: LodOptions = { placeholder: 0.1, hideText: 0.4 };
+renderScene(target, scene, camera, { viewport, lod });
+```

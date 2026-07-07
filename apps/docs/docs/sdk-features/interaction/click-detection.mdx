@@ -1,0 +1,45 @@
+---
+title: ⚠️ Click Detection
+status: draft
+sidebar_position: 9
+---
+
+Click detection answers "what is under this point?" — the hit-test that turns a world-space coordinate into the thing the user pressed: an element, a resize handle, a link, a link endpoint, an annotation pin, or empty canvas.
+
+## Hit-testing a point
+
+`editor.hitTest(worldPoint)` returns a `PressTarget` — a tagged union describing what was hit. Convert a screen point to world space first with `screenToWorld`.
+
+```ts
+import { Editor } from "@oh-just-another/state";
+
+const world = editor.screenToWorld({ x: clientX, y: clientY });
+const target = editor.hitTest(world);
+
+switch (target.kind) {
+  case "element":
+    console.log("element", target.id);
+    break;
+  case "handle":
+    console.log("resize handle", target.handle, "of", target.elementId);
+    break;
+  case "link":
+    console.log("link", target.id);
+    break;
+  case "empty":
+    console.log("empty canvas");
+    break;
+}
+```
+
+The full set of `PressTarget` kinds is `element`, `handle`, `group-handle`, `rotate-handle`, `link`, `edge-endpoint`, `annotation`, and `empty`. Annotation pins can also be queried directly with `editor.hitAnnotation(worldPoint)`.
+
+## Clicks vs drags
+
+A press becomes a *drag* only once the pointer travels `DRAG_THRESHOLD` from the press origin; below that it resolves to a *click*. The pure helper `interpretPressEnd` makes that decision, and handle hit zones stay a fixed CSS size at any zoom because tolerance is divided by viewport zoom.
+
+```ts
+import { DRAG_THRESHOLD, interpretPressEnd } from "@oh-just-another/state";
+```
+
+For very large scenes the engine builds a spatial index on demand to keep hit-testing fast.

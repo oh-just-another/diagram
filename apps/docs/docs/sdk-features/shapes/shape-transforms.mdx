@@ -1,0 +1,45 @@
+---
+title: ⚠️ Shape Transforms
+status: draft
+sidebar_position: 59
+---
+
+Every element carries its own affine transform: `position` (local-space origin), `rotation` (radians, counter-clockwise), and `scale` (a `Vec2`). The shape is rotated and scaled around its `position`.
+
+## Updating a transform
+
+Transforms are plain fields, so you move, rotate, or scale through `updateElement`. `moveElement` is a shorthand for setting `position`.
+
+```ts
+import { moveElement, updateElement } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+// Translate
+let { scene: s } = moveElement(scene, elementId("r1"), { x: 120, y: 80 });
+
+// Rotate 45° and scale 2× horizontally
+({ scene: s } = updateElement(s, elementId("r1"), (el) => ({
+  ...el,
+  rotation: Math.PI / 4,
+  scale: { x: 2, y: el.scale.y },
+})));
+```
+
+## Local vs world bounds
+
+`getElementLocalBounds` returns the untransformed box (via the shape's registered bounder). `getElementWorldBounds` applies `position` / `rotation` / `scale` and returns the conservative axis-aligned bounding box of the transformed corners — the form used for spatial-index keys.
+
+```ts
+import { getElementLocalBounds, getElementWorldBounds, getElement } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const el = getElement(scene, elementId("r1"));
+if (el) {
+  const local = getElementLocalBounds(el);
+  const world = getElementWorldBounds(el);
+}
+```
+
+## Resize constraints
+
+Optional `minWidth` / `minHeight` / `maxWidth` / `maxHeight` clamp interactive resize, and `noFlip` prevents dragging a handle through the opposite edge.

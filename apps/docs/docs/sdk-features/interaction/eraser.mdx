@@ -1,0 +1,16 @@
+---
+title: 🚧 Eraser
+status: draft
+sidebar_position: 25
+---
+
+Planned — not yet available. There is no eraser tool: the editor has no eraser mode, and no scratch-out gesture that removes shapes (or pixels) by drawing over them. The editor's modes are `select`, `hand`, `draw-rect`, `draw-ellipse`, `draw-text`, `draw-edge`, `draw-frame`, and `brush` — none of which erases.
+
+To remove content today, use deletion instead of erasing:
+
+- Select shapes and delete them — `actionDeleteSelection`, bound to Delete/Backspace by default.
+- Remove specific elements or links programmatically with `removeElement` / `removeLink` from `@oh-just-another/scene`, or the editor's delete verbs.
+
+Note that the `brush` mode is an additive freehand tool — it creates `BrushElement` strokes (pressure-sensitive ink), not an eraser. Erasing a brush stroke means selecting and deleting it like any other shape.
+
+Planned — not yet available: a dedicated eraser tool — both a "stroke eraser" that removes whole shapes/strokes it crosses, and a "pixel eraser" for partial erasing of brush ink. Until then, deletion is the supported way to remove content.

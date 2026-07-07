@@ -1,0 +1,47 @@
+---
+title: ⚠️ Validation
+status: draft
+sidebar_position: 75
+---
+
+Loading a scene is not a blind `JSON.parse`. `@oh-just-another/serialization` validates every document against a zod schema before it reaches the editor, so malformed or tampered input fails loudly instead of corrupting the scene.
+
+## Validation on load
+
+`parseScene` and `deserializeScene` run the document through `SceneDocumentZ` (a zod schema) after migrations and before hydration. A validation failure throws `DeserializationError`, whose `reason` carries the original `ZodError`.
+
+```ts
+import { parseScene, DeserializationError } from "@oh-just-another/serialization";
+
+try {
+  const scene = parseScene(untrustedJson);
+  editor.loadScene(scene);
+} catch (err) {
+  if (err instanceof DeserializationError) {
+    console.error("Invalid scene:", err.reason); // ZodError
+  } else {
+    throw err;
+  }
+}
+```
+
+## The schema
+
+`SceneDocumentZ` is the exported zod schema for a full scene document; `SceneDocument` is its inferred type. The element sub-schema is a `z.discriminatedUnion` over every built-in shape `type`, with a `passthrough` arm so plugin-registered custom shapes validate and persist without modifying the kernel schema.
+
+```ts
+import { SceneDocumentZ, type SceneDocument } from "@oh-just-another/serialization";
+
+const result = SceneDocumentZ.safeParse(input);
+if (result.success) {
+  const doc: SceneDocument = result.data;
+}
+```
+
+## What gets checked
+
+- `format` magic constant and numeric `version`.
+- Each element against its discriminated shape schema (unknown types pass through the plugin arm).
+- Links, layers, and the viewport (`pan`, `zoom`, `rotation`, `size`).
+
+After validation, the hydrate step re-brands `ElementId` / `LinkId` / `LayerId` back to their branded kernel types and strips `undefined`-valued optional keys.

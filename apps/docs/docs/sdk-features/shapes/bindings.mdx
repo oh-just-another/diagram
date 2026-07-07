@@ -1,0 +1,16 @@
+---
+title: ⚠️ Bindings
+status: draft
+sidebar_position: 7
+---
+
+A binding keeps a connector attached to a shape so it follows on move, resize, and rotate. Today this lives on link endpoints rather than as a separate system: a `LinkEndpoint` can be of kind `"anchor"` (pinned to a shape via an `AnchorRef` — a named port, a bounds ratio, an absolute offset, or a polygon edge) or `"outline"` (a fraction along the shape's real outline). The renderer re-resolves these every frame, so they survive transforms.
+
+```ts
+import type { LinkEndpoint, AnchorRef } from "@oh-just-another/scene";
+
+const anchor: AnchorRef = { kind: "named", name: "right" };
+const end: LinkEndpoint = { kind: "anchor", elementId: "shape-1", anchor };
+```
+
+A general, standalone binding registry (arbitrary element-to-element bindings beyond link endpoints) is **planned — not yet available.**

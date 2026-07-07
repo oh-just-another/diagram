@@ -1,0 +1,54 @@
+---
+title: ⚠️ Overlay Utils
+status: draft
+sidebar_position: 47
+---
+
+`@oh-just-another/renderer-canvas` ships DOM helpers for hi-DPI, multi-layer
+canvas stacks. The scene is split across three stacked canvases —
+`background`, `main`, and `overlay` — so drawing onto one layer never
+invalidates the others.
+
+## Hi-DPI setup
+
+`setupHiDpi` configures a canvas for crisp rendering on retina displays: it
+scales the bitmap by the device pixel ratio, sets the CSS size, and (by default)
+applies a context transform so your draw calls stay in CSS pixels. It is
+idempotent and safe to call from a `ResizeObserver`.
+
+```ts
+import { setupHiDpi } from "@oh-just-another/renderer-canvas";
+
+const dpr = setupHiDpi(canvas, width, height);
+// Pass setupContext=false for a canvas headed for WebGL2/WebGPU:
+setupHiDpi(glCanvas, width, height, window.devicePixelRatio, false);
+```
+
+## Layered canvas stack
+
+`LayeredCanvas` manages one `<canvas>` per layer inside a host element. The
+background sits at the bottom of the DOM stack and the overlay at the top; each
+layer is a `Canvas2DTarget` with its own CSS-pixel coordinate space. The host is
+made `position: relative` automatically.
+
+```ts
+import { LayeredCanvas, type LayeredCanvasOptions } from "@oh-just-another/renderer-canvas";
+
+const options: LayeredCanvasOptions = { layers: ["background", "main", "overlay"] };
+const surface = new LayeredCanvas(host, width, height, options);
+```
+
+The layer names and their stacking order come from
+`@oh-just-another/renderer-core`:
+
+```ts
+import { LAYER_ORDER, type LayerName } from "@oh-just-another/renderer-core";
+// LAYER_ORDER === ["background", "main", "overlay"]
+```
+
+## Backend-agnostic surfaces
+
+For a surface that auto-selects a backend (WebGL2, OffscreenCanvas, or
+Canvas2D), use `createLayeredSurface` / `createLayeredSurfaceWithFallback`. They
+return a `LayeredSurface` with the same per-layer model and a `RendererBackend`
+tag so the host can report what was activated.

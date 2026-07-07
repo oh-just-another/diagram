@@ -1,0 +1,39 @@
+---
+title: ⚠️ License Key
+status: draft
+sidebar_position: 43
+---
+
+There is **no license key**. `@oh-just-another/*` is MIT-licensed, open source, and free to use in production. Unlike some commercial diagram SDKs, nothing here is gated behind a key, a token, an activation call, or a domain allow-list.
+
+## Nothing to configure
+
+You do not call a `setLicenseKey(...)` function, set an environment variable, or pass a token to the editor. Install the package and use it.
+
+```bash
+pnpm add @oh-just-another/editor
+```
+
+```tsx
+import { DiagramRoot, DiagramSurface } from "@oh-just-another/react-ui";
+
+// No key, no activation, no gate.
+export function App() {
+  return (
+    <DiagramRoot>
+      <DiagramSurface />
+    </DiagramRoot>
+  );
+}
+```
+
+## No production gate
+
+- No watermark, trial banner, or "evaluation" mode.
+- No call-home / online activation — the library runs fully offline.
+- No per-seat, per-domain, or per-deployment limits.
+- No feature flags unlocked by a paid tier; every package is on npm under MIT.
+
+## Using it commercially
+
+The MIT license permits commercial use, modification, and redistribution. Keep the copyright and license notice; that is the only obligation. See the `LICENSE` file in the repository for the full text.

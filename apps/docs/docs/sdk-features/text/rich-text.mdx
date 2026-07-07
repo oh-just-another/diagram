@@ -1,0 +1,37 @@
+---
+title: 🚧 Rich Text
+status: draft
+sidebar_position: 54
+---
+
+**Planned — not yet available.** Inline rich text (mixed styles, links, or lists within a single text element) is not implemented. A text element holds one string with a single `TextStyle` applied to the whole run.
+
+## What works today
+
+Each text element has one style covering its full text — bold, italic, underline / strikethrough, alignment, font family, and size. There is no per-character or per-run styling yet.
+
+```ts
+import { isText, type TextElement } from "@oh-just-another/scene";
+
+// One TextStyle per element — applies to the whole string:
+//   style.fontWeight    → bold
+//   style.fontStyle     → italic
+//   style.textDecoration→ underline / strikethrough
+//   style.textAlign     → horizontal alignment
+
+const isLabel = (s: unknown): s is TextElement => isText(s as never);
+```
+
+To vary styling across a label, use separate text elements (optionally grouped) instead of inline runs.
+
+## Markdown rendering
+
+For comments and link captions, `@oh-just-another/react-ui` ships a `Markdown` component. This renders markdown in editor chrome (panels, popovers) — it does not turn canvas text elements into rich text:
+
+```tsx
+import { Markdown } from "@oh-just-another/react-ui";
+
+<Markdown>{"**Bold** and _italic_ in a comment thread."}</Markdown>;
+```
+
+Track progress on inline rich text on the [project's GitHub repository](https://github.com/oh-just-another/diagram).

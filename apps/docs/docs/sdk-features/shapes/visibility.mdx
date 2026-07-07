@@ -1,0 +1,48 @@
+---
+title: ⚠️ Visibility
+status: draft
+sidebar_position: 76
+---
+
+Visibility is controlled at two levels: the per-shape `hidden` flag and the per-layer `Layer.visible` flag. A hidden shape does not render and does not receive interactions.
+
+## Hiding a shape
+
+Set `hidden: true` through `updateElement`.
+
+```ts
+import { updateElement } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const { scene: hidden } = updateElement(scene, elementId("r1"), (el) => ({
+  ...el,
+  hidden: true,
+}));
+```
+
+## Propagation and the effective state
+
+Like `locked`, the `hidden` flag propagates down the `parentId` chain — if any ancestor is hidden, the descendant is hidden too. It is independent from the layer: either the shape's `hidden` being true or its `Layer.visible` being false hides the shape. Resolve the combined state with `isElementHidden`.
+
+```ts
+import { isElementHidden, getElement } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const el = getElement(scene, elementId("r1"));
+if (el && isElementHidden(scene, el)) {
+  // skip rendering / hit-testing
+}
+```
+
+## Layer visibility
+
+Toggle a whole layer with `updateLayer`, setting `visible: false`. Every shape on the layer becomes effectively hidden without touching individual `hidden` flags.
+
+```ts
+import { updateLayer, DEFAULT_LAYER_ID } from "@oh-just-another/scene";
+
+const { scene: layerHidden } = updateLayer(scene, DEFAULT_LAYER_ID, (l) => ({
+  ...l,
+  visible: false,
+}));
+```

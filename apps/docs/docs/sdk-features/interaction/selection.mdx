@@ -1,0 +1,54 @@
+---
+title: ⚠️ Selection
+status: draft
+sidebar_position: 56
+---
+
+Selection is the set of elements the user is currently acting on. The engine owns it as immutable state and exposes verbs to read and mutate it; links (connectors) are first-class members of the selection and coexist with selected elements.
+
+## Reading and setting
+
+The `selection` getter returns the current `Selection`. Set it with any iterable of element ids — passing an empty iterable clears it.
+
+```ts
+import { Editor } from "@oh-just-another/state";
+
+editor.setSelection([elementId]); // replace selection
+editor.selectAll(); // every element + link
+editor.setSelection([]); // clear
+
+const current = editor.selection;
+```
+
+With the React component, the same operations are on the `EditorAPI` handle:
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+
+function Host() {
+  const ref = useRef<EditorAPI>(null);
+  const focusOne = (id: string) => ref.current?.setSelection(new Set([id]));
+  return <Editor ref={ref} onSelectionChange={(sel) => console.log(sel)} />;
+}
+```
+
+## Operating on the selection
+
+The engine offers verbs that act on whatever is selected:
+
+- `deleteSelected()` — remove selected elements and links.
+- `moveSelectionBy(delta)` — nudge by a world-space vector.
+- `focusCycle("next" | "prev")` — keyboard-navigate selection between elements.
+- `groupSelected()` / `ungroup()` — grouping.
+- `bringToFront()` / `sendToBack()` — z-order.
+
+## Reacting to changes
+
+Subscribe to the typed `selection` event so listeners only wake when the selection identity flips.
+
+```ts
+editor.on("selection", (sel) => updateInspector(sel));
+```
+
+Link selection has its own surface: `selectedLinks` and `selectedLink`. Selection is deliberately excluded from undo history.

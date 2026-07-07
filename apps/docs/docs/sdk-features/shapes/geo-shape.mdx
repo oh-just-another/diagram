@@ -1,0 +1,17 @@
+---
+title: 🚧 Geo Shape
+status: draft
+sidebar_position: 31
+---
+
+A unified "geo" shape — a single element whose geometry (rectangle, ellipse, diamond, triangle, …) is chosen by a property — does not exist here.
+
+**Planned — not yet available.**
+
+Instead, `@oh-just-another/scene` ships geometry as distinct built-in element types: `RectangleElement`, `EllipseElement`, `PolygonElement` (an arbitrary closed polygon), and `PathElement`. Each has its own type guard (`isRectangle`, `isEllipse`, `isPolygon`, `isPath`).
+
+```ts
+import { isRectangle, isEllipse, isPolygon } from "@oh-just-another/scene";
+```
+
+Custom geometry can be registered via `registerBounder` and the outline-sampler API without amending the built-in union.

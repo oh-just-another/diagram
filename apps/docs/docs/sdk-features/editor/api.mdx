@@ -1,0 +1,51 @@
+---
+title: ⚠️ Editor
+status: draft
+sidebar_position: 22
+---
+
+The editor is the interactive engine that owns the scene, selection, viewport, and history. You use it in two forms: the framework-agnostic `Editor` class from `@oh-just-another/state`, and the drop-in React `Editor` component (plus its imperative `EditorAPI`) from `@oh-just-another/editor`.
+
+## React component
+
+The umbrella package ships a single mountable component. Importing `@oh-just-another/react-ui/styles.css` brings in the chrome (toolbar, panels, menus).
+
+```tsx
+import { Editor } from "@oh-just-another/editor";
+import "@oh-just-another/react-ui/styles.css";
+
+export function App() {
+  return <Editor style={{ position: "fixed", inset: 0 }} />;
+}
+```
+
+## Driving it from code
+
+Pass a `ref` to get an `EditorAPI` handle. It exposes curated verbs — `getScene`, `loadScene`, `getMode` / `setMode`, `getSelection` / `setSelection`, `undo` / `redo`, `zoomToFit` — plus `editor`, the full live engine (`EditorInstance`) as the escape hatch (`null` until `onReady` fires).
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+
+function Host() {
+  const ref = useRef<EditorAPI>(null);
+  const save = () => {
+    const scene = ref.current?.getScene();
+    // persist `scene`
+  };
+  return <Editor ref={ref} onReady={(editor) => console.log(editor)} />;
+}
+```
+
+## The engine class
+
+For non-React hosts, construct `Editor` directly with render targets and an initial scene. The engine never touches the DOM itself — hosts feed it normalized events. Subscribe with `editor.subscribe(fn)` (coarse-grained) or the typed `EditorEvents` surface (`change`, `mode`, `selection`, `scene`, `history`, `viewport`).
+
+```ts
+import { Editor } from "@oh-just-another/state";
+
+editor.subscribe(() => render());
+editor.setMode("draw-rect");
+```
+
+`Diagram` is a deprecated alias of the `Editor` component.

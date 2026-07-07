@@ -1,0 +1,55 @@
+---
+title: ⚠️ Groups
+status: draft
+sidebar_position: 34
+---
+
+A group is a zero-render container shape (`type: "group"`, `GroupElement`) that holds children through the shared `parentId` link. Selecting any child promotes selection to the group, and moving the group translates every descendant in lockstep.
+
+## Creating a group
+
+Add a `GroupElement`, then point children at it via `parentId`.
+
+```ts
+import {
+  emptyScene,
+  addElement,
+  updateElement,
+  orderForTop,
+  DEFAULT_LAYER_ID,
+} from "@oh-just-another/scene";
+import type { GroupElement } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const group: GroupElement = {
+  id: elementId("g1"),
+  layerId: DEFAULT_LAYER_ID,
+  type: "group",
+  position: { x: 0, y: 0 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderForTop([]),
+  style: {},
+};
+
+let { scene } = addElement(emptyScene(), group);
+// assuming `child` was already added:
+({ scene } = updateElement(scene, elementId("child"), (el) => ({
+  ...el,
+  parentId: group.id,
+})));
+```
+
+## Querying membership
+
+Use `getChildrenOf` for direct children and `getDescendantsOf` for the whole subtree. `getRootSelf` walks up the `parentId` chain to the outermost ancestor — handy when a click on a child should select the top-level group.
+
+```ts
+import { getChildrenOf, getDescendantsOf, getRootSelf } from "@oh-just-another/scene";
+
+const direct = getChildrenOf(scene, group.id);
+const all = getDescendantsOf(scene, group.id);
+const root = getRootSelf(scene, elementId("child"));
+```
+
+The group itself renders nothing; editors draw a selection box around the union bounds of its children. Frames are a separate container concept — see Parenting.

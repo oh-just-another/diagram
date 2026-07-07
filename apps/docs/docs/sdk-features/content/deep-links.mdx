@@ -1,0 +1,21 @@
+---
+title: 🚧 Deep Links
+status: draft
+sidebar_position: 17
+---
+
+Planned — not yet available. There is no built-in URL-encoded deep-link or share-link feature: the SDK does not read or write scene state, selection, or viewport from the page URL, and there is no helper to serialise a scene into a shareable link.
+
+What exists today is the persistence layer you can build deep links on top of. A scene round-trips through plain data: `dehydrateScene` prepares a scene for storage (resetting ephemeral viewport settings), and `hydrateScene` rebuilds one by layering saved data over the defaults.
+
+```ts
+import { dehydrateScene, hydrateScene } from "@oh-just-another/scene";
+
+const saved = dehydrateScene(editor.scene);
+// persist `saved` wherever you like, then later:
+const restored = hydrateScene({ saved });
+```
+
+Per-setting persistence scope is described by `VIEWPORT_SCOPE` (`export` / `browser` / `ephemeral`), so a host can decide which viewport state belongs in a shareable document versus local-only storage.
+
+To implement deep links yourself today: serialise the scene (and any binary `files` sidecar) through `@oh-just-another/serialization`, encode it into a URL or store it behind a short id, and re-hydrate on load. A first-class deep-link API — encoding viewport and selection into the URL and restoring them automatically — is planned.

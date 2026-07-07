@@ -1,0 +1,39 @@
+---
+title: ⚠️ Focus
+status: draft
+sidebar_position: 29
+---
+
+Focus handling keeps canvas keyboard shortcuts from stealing keystrokes meant for a text field. Whenever the user is typing into an `<input>`, `<textarea>`, `<select>`, or any `contenteditable` host, global handlers must stand down.
+
+## isEditableTarget
+
+`isEditableTarget` returns `true` when an event's target is an editable element. It reads the real focused node — via `composedPath()` — so it sees through a shadow-root boundary where `event.target` would be retargeted to the host. It is exported from both `@oh-just-another/editor` and `@oh-just-another/state`.
+
+```ts
+import { isEditableTarget } from "@oh-just-another/editor";
+
+window.addEventListener("keydown", (ev) => {
+  if (isEditableTarget(ev.target)) return; // user is typing — leave it alone
+  // ... canvas shortcut handling
+});
+```
+
+## Built into hotkey binding
+
+`bindEditorHotkeys` already applies this check for you: keystrokes aimed at an editable target are left alone, with one exception — `Escape` still passes through, blurring the field first.
+
+```ts
+import { bindEditorHotkeys } from "@oh-just-another/editor";
+
+const unbind = bindEditorHotkeys(editor); // listens on window by default
+// later: unbind();
+```
+
+Scope shortcuts to a specific element (useful when several editors share a page, or the editor lives in a shadow root) via the `target` option:
+
+```ts
+bindEditorHotkeys(editor, { target: editor.hostElement });
+```
+
+So for the common case you never call `isEditableTarget` directly — it is the guard that makes canvas hotkeys coexist with text editing.

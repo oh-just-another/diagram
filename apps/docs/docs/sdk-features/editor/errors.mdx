@@ -1,0 +1,43 @@
+---
+title: 🚧 Errors
+status: draft
+sidebar_position: 26
+---
+
+A dedicated, typed error taxonomy for `@oh-just-another/editor` is **planned —
+not yet available**. There are no exported error classes or error-type unions in
+the editor's public API today, so this page documents the current behaviour
+rather than a stable error contract.
+
+## Current behaviour
+
+The editor and renderer surface failures through ordinary thrown `Error`
+instances and console diagnostics rather than a branded error hierarchy. Treat
+error handling as you would any browser API: wrap calls that can fail (decoding,
+export) in `try` / `catch` and inspect `error.message`.
+
+```ts
+import { exportSceneToPng } from "@oh-just-another/editor";
+
+try {
+  const blob = await exportSceneToPng(scene, { background: "#fff" });
+} catch (error) {
+  console.error("PNG export failed", error);
+}
+```
+
+## What exists today
+
+- Capability detection is logged via `logCapabilities` so misconfiguration is
+  visible in DevTools at boot.
+- Listener exceptions in the `@oh-just-another/events` emitter do not abort the
+  emit loop — remaining listeners still run and the first error is re-thrown
+  afterwards.
+
+## Planned
+
+A future release intends to introduce stable, discriminable error types (for
+serialization/migration, capability, and export failures) exported from
+`@oh-just-another/editor`. Until then, do not rely on `instanceof` checks against
+internal error shapes. Track the
+[issue tracker](https://github.com/oh-just-another/diagram/issues) for updates.

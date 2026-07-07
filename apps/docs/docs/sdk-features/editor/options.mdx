@@ -1,0 +1,57 @@
+---
+title: ⚠️ Options
+status: draft
+sidebar_position: 46
+---
+
+The editor is configured at two levels: the `EditorProps` you pass to the
+`<Editor>` component, and the tunable constants each package keeps in its own
+`constants.ts`. Magic numbers live in `constants.ts` per the repo's policy, so a
+single place controls timing, thresholds, and defaults.
+
+## Component props
+
+`<Editor>` accepts an `EditorProps` object and exposes an imperative
+`EditorAPI` via `ref`. Capability overrides are passed through the
+`capabilities` prop.
+
+```tsx
+import { Editor, type EditorProps, type EditorAPI } from "@oh-just-another/editor";
+import { useRef } from "react";
+
+function App() {
+  const ref = useRef<EditorAPI>(null);
+  const props: EditorProps = { capabilities: { renderer: "canvas2d" } };
+  return <Editor ref={ref} {...props} />;
+}
+```
+
+## Editor host constants
+
+`@oh-just-another/editor` keeps host-level tunables in its `constants.ts` —
+for example PNG export framing and GIF frame timing:
+
+```ts
+// from @oh-just-another/editor constants.ts
+export const EXPORT_PADDING_WORLD = 20;     // world-unit padding for PNG export
+export const DEFAULT_FRAME_DELAY_MS = 100;  // fallback per-frame GIF delay
+```
+
+## Renderer and UI tunables
+
+Lower-level packages export their own constants for hosts that need to override
+defaults. Examples:
+
+- `@oh-just-another/renderer-core`: `DEFAULT_LOD`, `VIEWPORT_CULL_PADDING_RATIO`,
+  `LINK_CORNER_RADIUS`, and the grid tunables (`GRID_LINE_COLOR`,
+  `GRID_DOT_RADIUS_PX`, …).
+- `@oh-just-another/react-ui`: panel sizes such as `PALETTE_WIDTH`,
+  `PROPERTY_PANEL_WIDTH`, and `LAYER_PANEL_WIDTH`.
+
+```ts
+import { DEFAULT_LOD, VIEWPORT_CULL_PADDING_RATIO } from "@oh-just-another/renderer-core";
+import { PALETTE_WIDTH } from "@oh-just-another/react-ui";
+```
+
+Because these are plain named exports, you read them to match your own overlay
+geometry or pass tuned values back into `renderScene` and the UI components.

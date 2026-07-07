@@ -1,0 +1,23 @@
+---
+title: 🚧 User Preferences
+status: draft
+sidebar_position: 74
+---
+
+The SDK has no dedicated user-preferences store, but it does distinguish which scene settings are user-local and which belong to the document. Each viewport setting has a persistence scope (`SettingScope`):
+
+- `export` — saved into the document (grid enabled, grid style, snap-to-grid).
+- `browser` — kept locally only, e.g. in `localStorage` (pan, zoom, rotation).
+- `ephemeral` — session only, never persisted (viewport size).
+
+```ts
+import { dehydrateScene, hydrateScene, VIEWPORT_SCOPE } from "@oh-just-another/scene";
+```
+
+`VIEWPORT_SCOPE` is the source of truth for these scopes. `dehydrateScene` prepares a scene for storage by resetting ephemeral settings to their defaults; `hydrateScene` layers saved data and host-supplied overrides back over the defaults. This is how you persist per-user viewport state (pan/zoom) separately from the shared document.
+
+Several user-facing toggles live on the viewport and persist with it rather than in undo history — for example show/hide grid and snap-to-grid, set via the editor.
+
+Theme is a host concern: `@oh-just-another/react-ui` exports light and dark palettes (`ELEMENT_PALETTE_LIGHT` / `_DARK`, `CANVAS_PALETTE_LIGHT` / `_DARK`) and `resolvePaletteTheme`, but the SDK does not persist a chosen theme for you — store that preference yourself.
+
+Planned — not yet available: a unified, namespaced user-preferences API (persisted theme, default tool, grid defaults) that the editor reads on startup. Today, assemble preferences from the scoped viewport settings above plus your own storage.
