@@ -148,7 +148,7 @@ const config: Config = {
           items: [
             { label: "Quick start", to: DOCS_ENTRY },
             { label: "Examples", to: "/examples" },
-            { label: "Docs", to: "/docs/getting-started/installation" },
+            { label: "Docs", to: DOCS_ENTRY },
           ],
         },
         {
