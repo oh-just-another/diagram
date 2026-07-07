@@ -20,7 +20,7 @@ const LEVELS = [
     "text-wasm",
   ], // L2 — implementations
   ["headless", "exporter", "importers", "versioning", "templates-jsx"], // L3 — adapters
-  ["network", "collab"], // L4 — integration
+  ["network", "collab", "mcp"], // L4 — integration (mcp = MCP server over L3 headless/serialization/importers)
   ["react-ui"], // L5 — UI
   ["editor"], // L6 — umbrella (drop-in editor component)
   ["diagram"], // L7 — framework-neutral custom element wrapping the editor
