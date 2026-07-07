@@ -16,7 +16,7 @@ import { DEFAULT_BRUSH_WIDTH, MAX_BRUSH_WIDTH } from "../../constants.js";
  * by spec; zero pressure (some Windows touch) falls back to a minimum
  * so a stroke is still visible.
  */
-export const pressureToWidth = (pressure: number): number => {
+const pressureToWidth = (pressure: number): number => {
   if (pressure <= 0) return DEFAULT_BRUSH_WIDTH;
   return Math.max(0.5, pressure * MAX_BRUSH_WIDTH);
 };

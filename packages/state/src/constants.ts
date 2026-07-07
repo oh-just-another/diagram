@@ -145,8 +145,8 @@ export const SELECTION_HALO_PEEK_PX = 4;
  * brand blue / handle white so anchors share the resize-handle visual
  * language (they equal `DEFAULT_OVERLAY_STYLE.selectionStroke` / `.handleFill`).
  */
-export const ANCHOR_BRAND_COLOR = "#1a73e8";
-export const ANCHOR_NEUTRAL_COLOR = "#fff";
+const ANCHOR_BRAND_COLOR = "#1a73e8";
+const ANCHOR_NEUTRAL_COLOR = "#fff";
 
 /** Resting anchor-dot radius (screen px). */
 export const ANCHOR_DOT_RADIUS = 3.5;

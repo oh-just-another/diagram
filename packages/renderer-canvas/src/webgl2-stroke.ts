@@ -92,7 +92,7 @@ export interface StrokeStyle {
  * Exported so `webgl2-target.ts` can reuse it for closed-polyline seam
  * vertices.
  */
-export const miterOffset = (
+const miterOffset = (
   n1x: number,
   n1y: number,
   n2x: number,

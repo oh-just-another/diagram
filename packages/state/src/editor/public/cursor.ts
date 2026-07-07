@@ -56,7 +56,7 @@ const RESIZE_ROLE: Record<HandleId, CursorRole> = {
 };
 
 /** Build a CSS `cursor` value from a {@link CursorSpec}. */
-export const cssCursor = (spec: CursorSpec, fallbackKeyword: string): string => {
+const cssCursor = (spec: CursorSpec, fallbackKeyword: string): string => {
   if (typeof spec === "string") return spec;
   const hx = spec.hotspot?.x ?? 0;
   const hy = spec.hotspot?.y ?? 0;
@@ -71,11 +71,7 @@ export const cssCursor = (spec: CursorSpec, fallbackKeyword: string): string => 
  * Resolve a cursor role to a CSS `cursor` value: a host-registered custom image
  * (via {@link Editor.setCursorOverride}) if present, else `fallbackKeyword`.
  */
-export const resolveCursor = (
-  editor: Editor,
-  role: CursorRole,
-  fallbackKeyword: string,
-): string => {
+const resolveCursor = (editor: Editor, role: CursorRole, fallbackKeyword: string): string => {
   const spec = editor.getCursorOverride(role);
   return spec === undefined ? fallbackKeyword : cssCursor(spec, fallbackKeyword);
 };
@@ -86,7 +82,7 @@ export const resolveCursor = (
  * Mirrors the anchor-drag hit-test in pointer-binding so the cursor matches
  * exactly where a press would begin a link.
  */
-export const isOverLinkStartDot = (editor: Editor, p: Vec2): boolean => {
+const isOverLinkStartDot = (editor: Editor, p: Vec2): boolean => {
   if (editor.mode !== "select" || editor._selection.size !== 1) return false;
   const id = [...editor._selection][0];
   if (id === undefined) return false;

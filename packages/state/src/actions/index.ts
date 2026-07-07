@@ -21,7 +21,13 @@ export {
   actionPasteStyle,
   clipboardActions,
 } from "./actionClipboard.js";
-export { actionBringToFront, actionSendToBack, zOrderActions } from "./actionZOrder.js";
+export {
+  actionBringToFront,
+  actionSendToBack,
+  actionBringForward,
+  actionSendBackward,
+  zOrderActions,
+} from "./actionZOrder.js";
 export { actionGroupSelection, actionUngroupSelection, groupingActions } from "./actionGrouping.js";
 export {
   actionZoomIn,
