@@ -539,7 +539,7 @@ export class WebGL2Target implements RenderTarget {
     this.gl.vertexAttribPointer(ip.aUV, 2, this.gl.FLOAT, false, 16, 8);
 
     // Project the drawn region through transform + viewport.
-    const projected = applyImageMat(
+    const projected = applyMat(
       {
         a: this.transform.a * dw,
         b: this.transform.b * dw,
@@ -1470,23 +1470,6 @@ const sampleCubic = (p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, count: number): Vec
   return out;
 };
 
-/** Same projection as `applyMat` but emitted from drawImage. */
-const applyImageMat = (t: MutableTransform, w: number, h: number): Float32Array => {
-  const sx = 2 / w;
-  const sy = -2 / h;
-  return new Float32Array([
-    t.a * sx,
-    t.b * sy,
-    0,
-    t.c * sx,
-    t.d * sy,
-    0,
-    t.e * sx - 1,
-    t.f * sy + 1,
-    1,
-  ]);
-};
-
 interface ImageProgram {
   readonly program: WebGLProgram;
   readonly aPos: number;
@@ -1543,25 +1526,34 @@ void main() {
 };
 
 /**
+ * Module-level scratch for `applyMat` — the same reuse pattern as the
+ * earcut / stroke scratch buffers above. The projected mat3 is consumed
+ * synchronously by `uniformMatrix3fv` (which copies the values into GL
+ * state) before the next `applyMat` call, so one shared buffer avoids a
+ * Float32Array allocation per rect-fill / drawImage.
+ */
+const scratchMat3 = new Float32Array(9);
+
+/**
  * Build a 3×3 column-major matrix that maps a unit quad [0,0]–[1,1]
  * through the supplied 2D affine + a screen-to-clip conversion
- * (pixels → NDC).
+ * (pixels → NDC). Returns the module-level scratch — consume it before
+ * the next call.
  */
 const applyMat = (t: Transform, w: number, h: number): Float32Array => {
   // Pixel-space → clip-space: x' = (x / w) * 2 - 1; y' = 1 - (y / h) * 2.
   const sx = 2 / w;
   const sy = -2 / h;
-  return new Float32Array([
-    t.a * sx,
-    t.b * sy,
-    0,
-    t.c * sx,
-    t.d * sy,
-    0,
-    t.e * sx - 1,
-    t.f * sy + 1,
-    1,
-  ]);
+  scratchMat3[0] = t.a * sx;
+  scratchMat3[1] = t.b * sy;
+  scratchMat3[2] = 0;
+  scratchMat3[3] = t.c * sx;
+  scratchMat3[4] = t.d * sy;
+  scratchMat3[5] = 0;
+  scratchMat3[6] = t.e * sx - 1;
+  scratchMat3[7] = t.f * sy + 1;
+  scratchMat3[8] = 1;
+  return scratchMat3;
 };
 
 const VERTEX_SHADER = `#version 300 es
