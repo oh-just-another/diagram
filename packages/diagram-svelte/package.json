@@ -1,14 +1,13 @@
 {
   "name": "@oh-just-another/diagram-svelte",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Svelte 5 wrapper for the diagram editor — a thin <Diagram> component over the <oja-diagram> custom element.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/oh-just-another/diagram.git",
-    "directory": "packages/svelte"
+    "directory": "packages/diagram-svelte"
   },
   "homepage": "https://github.com/oh-just-another/diagram#readme",
   "bugs": "https://github.com/oh-just-another/diagram/issues",
@@ -57,5 +56,8 @@
     "@sveltejs/vite-plugin-svelte": "7.1.2",
     "svelte": "5.56.4",
     "vite": "6.4.3"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

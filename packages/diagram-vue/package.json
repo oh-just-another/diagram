@@ -1,14 +1,13 @@
 {
   "name": "@oh-just-another/diagram-vue",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Vue 3 wrapper for the diagram editor — a thin <Diagram> component over the <oja-diagram> custom element.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/oh-just-another/diagram.git",
-    "directory": "packages/vue"
+    "directory": "packages/diagram-vue"
   },
   "homepage": "https://github.com/oh-just-another/diagram#readme",
   "bugs": "https://github.com/oh-just-another/diagram/issues",
@@ -59,5 +58,8 @@
     "jsdom": "25.0.1",
     "vite": "6.4.3",
     "vue": "3.5.38"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
