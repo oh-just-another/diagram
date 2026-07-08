@@ -81,3 +81,4 @@ renderScene(scene, surface.get("main"));
 - **One canvas per logical layer.** Background and main canvases have `pointer-events: none`; the overlay receives input, keeping static content cached even when the overlay re-paints every frame.
 - **Backend choice is explicit but guarded.** Pick a `RendererBackend` directly, or let `createLayeredSurfaceWithFallback` / `pickAvailableBackend` select one supported by the runtime.
 - **Scenes above `LARGE_SCENE_WORKER_THRESHOLD`** are good candidates for offscreen/worker rendering via `createRenderWorker` and the `WorkerPool` re-exports.
+- **`webgl2` keeps its drawing buffer** (`preserveDrawingBuffer: true`) so incremental dirty-rect frames survive between composites. Pass `preserveDrawingBuffer: false` only when the host redraws the whole frame each time — it drops a Safari/iOS recomposite cost. Export/screenshots are unaffected (they render through a separate offscreen Canvas2D target).

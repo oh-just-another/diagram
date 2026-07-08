@@ -26,6 +26,19 @@ import { isDrawableImageSource, warnSkippedImage } from "./image-source.js";
 import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
 import { RectBatch, RectInstancePipeline } from "./webgl2-rect-batch.js";
 
+/** Construction options for {@link WebGL2Target}. */
+export interface WebGL2TargetOptions {
+  /**
+   * Keep the drawing buffer contents across composites. Defaults to
+   * `true`, which the interactive editor requires — it clears + redraws
+   * only the dirty rect each frame and expects the rest of the previous
+   * frame to persist. Set `false` only when the host redraws the full
+   * frame every time (a Safari/iOS composite win). Does not affect PNG
+   * export / screenshots — those use a separate offscreen Canvas2D target.
+   */
+  readonly preserveDrawingBuffer?: boolean;
+}
+
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
  * primitives (rect / polyline / ellipse / Bezier), fill, stroke, text
@@ -143,24 +156,41 @@ export class WebGL2Target implements RenderTarget {
   private readonly rectBatch = new RectBatch();
   private rectPipeline: RectInstancePipeline | null = null;
 
-  constructor(canvas: HTMLCanvasElement | OffscreenCanvas, width: number, height: number) {
-    // `preserveDrawingBuffer: true` is required for an editor surface:
-    // the spec permits the browser to clear the drawing buffer after
-    // each composite when this flag is false, which makes shapes
-    // disappear in the steady state. Trading a small copy at composite
-    // time for visual correctness is the right call.
+  constructor(
+    canvas: HTMLCanvasElement | OffscreenCanvas,
+    width: number,
+    height: number,
+    options: WebGL2TargetOptions = {},
+  ) {
+    // `preserveDrawingBuffer` keeps the drawing buffer across composites.
+    // It defaults to `true` because the interactive editor renders
+    // incrementally: `renderScene` clears + redraws only the dirty rect
+    // each frame (see the dirty-rect logic in renderer-core /
+    // render-orchestrator) and relies on the rest of the previous frame
+    // surviving. When this flag is `false` the spec permits the browser
+    // to wipe the buffer after each composite, so everything outside the
+    // dirty rect disappears in the steady state.
     //
+    // This is NOT for readback: PNG export / screenshots render through a
+    // separate offscreen Canvas2D target (`createOffscreenCanvas2DTarget`
+    // in `png-export` / `exporter` / `tile-compositor`), never this live
+    // context, so they don't depend on the flag.
+    //
+    // On Safari / iOS `true` forces a full re-composite per swap. A host
+    // that redraws the whole frame every time (dirty-rect culling
+    // disabled) can pass `preserveDrawingBuffer: false` for that win.
+    const preserveDrawingBuffer = options.preserveDrawingBuffer ?? true;
     // Try with antialiasing first; some integrated GPUs deny the
     // context when MSAA isn't available. Retry plain on failure so
     // WebGL2 isn't lost entirely for a stylistic preference.
     let gl = (canvas as HTMLCanvasElement).getContext("webgl2", {
       antialias: true,
       premultipliedAlpha: true,
-      preserveDrawingBuffer: true,
+      preserveDrawingBuffer,
     });
     gl ??= (canvas as HTMLCanvasElement).getContext("webgl2", {
       premultipliedAlpha: true,
-      preserveDrawingBuffer: true,
+      preserveDrawingBuffer,
     });
     if (!gl) {
       throw new Error(
@@ -950,9 +980,9 @@ export class WebGL2Target implements RenderTarget {
    * `bounds` wipes only the rectangle the editor's dirty-rect pass
    * identified. Honouring `bounds` is mandatory — when the scene
    * reference doesn't change, the editor sends a zero-area dirty rect
-   * and expects the previous frame to survive untouched.
+   * and expects the previous frame to survive untouched. The default
    * `preserveDrawingBuffer: true` carries the persistent frame across
-   * composites.
+   * composites (see the constructor for the opt-out).
    *
    * For bounded clears the implementation flips on a scissor box so the
    * clear is confined to the dirty rect, mirroring Canvas2D's

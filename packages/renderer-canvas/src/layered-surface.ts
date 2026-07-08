@@ -66,6 +66,15 @@ export interface CreateLayeredSurfaceOptions {
    * raster work per layer.
    */
   readonly maxDpr?: number;
+  /**
+   * Forwarded to the `webgl2` backend's main-layer context. Defaults to
+   * `true`, which the incremental dirty-rect renderer requires (the rest
+   * of the previous frame must survive between composites). Set `false`
+   * only when the host redraws the whole frame every time — it removes a
+   * Safari/iOS full-recomposite-per-swap cost. Ignored by the `canvas2d`
+   * and `offscreen` backends. Does not affect PNG export / screenshots.
+   */
+  readonly preserveDrawingBuffer?: boolean;
 }
 
 /**
@@ -90,7 +99,11 @@ export const createLayeredSurface = (
     case "canvas2d":
       return new Canvas2DLayeredSurface(host, width, height, maxDpr);
     case "webgl2":
-      return new WebGL2LayeredSurface(host, width, height, maxDpr);
+      return new WebGL2LayeredSurface(host, width, height, maxDpr, {
+        ...(options.preserveDrawingBuffer !== undefined
+          ? { preserveDrawingBuffer: options.preserveDrawingBuffer }
+          : {}),
+      });
     case "offscreen":
       if (!options.workerFactory) {
         throw new Error(
@@ -193,7 +206,13 @@ class WebGL2LayeredSurface implements LayeredSurface {
   private _height: number;
   private readonly maxDpr: number;
 
-  constructor(host: HTMLElement, width: number, height: number, maxDpr: number) {
+  constructor(
+    host: HTMLElement,
+    width: number,
+    height: number,
+    maxDpr: number,
+    options: { readonly preserveDrawingBuffer?: boolean } = {},
+  ) {
     this._width = width;
     this._height = height;
     this.maxDpr = maxDpr;
@@ -220,7 +239,11 @@ class WebGL2LayeredSurface implements LayeredSurface {
     setupHiDpi(canvas, width, height, cappedDpr(maxDpr), false);
     try {
       this.mainCanvas = canvas;
-      this.mainTarget = new WebGL2Target(canvas, width, height);
+      this.mainTarget = new WebGL2Target(canvas, width, height, {
+        ...(options.preserveDrawingBuffer !== undefined
+          ? { preserveDrawingBuffer: options.preserveDrawingBuffer }
+          : {}),
+      });
     } catch (err) {
       canvas.remove();
       this.base.dispose();
