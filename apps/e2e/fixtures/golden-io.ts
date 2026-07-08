@@ -27,6 +27,18 @@ export const pngGoldenDir = join(here, "golden", "png");
 export const shouldUpdateGolden = (): boolean =>
   process.env.UPDATE_GOLDEN === "1" || process.env.UPDATE_GOLDEN === "true";
 
+/**
+ * True when the platform-sensitive PNG raster diff should run. The resvg
+ * native rasteriser differs subtly per OS (AA / font hinting), so committed
+ * PNG baselines are pinned to whatever platform generated them; comparing a
+ * darwin baseline against a linux CI render would flake. The deterministic SVG
+ * golden is the always-on cross-OS guard, so the PNG diff is opt-in
+ * (`GOLDEN_PNG=1`) for local checks and a same-platform dedicated CI job.
+ * Update mode always exercises the PNG path so baselines can be regenerated.
+ */
+export const shouldRunPngGolden = (): boolean =>
+  shouldUpdateGolden() || process.env.GOLDEN_PNG === "1" || process.env.GOLDEN_PNG === "true";
+
 const ensureDir = (dir: string): void => {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 };
