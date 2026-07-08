@@ -278,14 +278,31 @@ export const getLinkPath = (scene: Scene, edge: Link): readonly Vec2[] | null =>
   }
 
   // Orthogonal heuristic fallback — modern-style elbow with side-aware
-  // stubs.
-  // When either endpoint is anchored to a named side (top / right /
-  // bottom / left), we know which axis the edge should *exit* on,
-  // so we add a small stub in that direction before bending toward
-  // the other endpoint. Corner / center anchors and free `point`
-  // endpoints fall back to the longest-axis-first heuristic.
-  const fromDir = exitDirectionFor(edge.from);
-  const toDir = exitDirectionFor(edge.to);
+  // stubs. When either endpoint is anchored to a named side (top / right /
+  // bottom / left), we know which axis the edge should *exit* on.
+  return straightElbowFallback(from, to, exitDirectionFor(edge.from), exitDirectionFor(edge.to));
+};
+
+/**
+ * Side-aware orthogonal elbow between two points, used as the headless
+ * fallback whenever no A*-routed `routedPoints` exist (e.g. `getLinkPath`
+ * outside the editor's reroute pass). Pure and deterministic — the single
+ * implementation of the ortho-fallback heuristic (the real, obstacle-aware
+ * router lives in `elbow-link.ts` / `elbow-router.ts`, which depend on this
+ * module and so can't be reused here without a cycle).
+ *
+ * `fromDir` / `toDir` are the outward exit unit vectors for a named-side
+ * anchor (see {@link exitDirectionFor}), or `null` for corner / center /
+ * free-point ends. With a direction we add a small stub before bending
+ * toward the other endpoint; without either, we fall back to a single
+ * longest-axis-first elbow.
+ */
+export const straightElbowFallback = (
+  from: Vec2,
+  to: Vec2,
+  fromDir: Vec2 | null,
+  toDir: Vec2 | null,
+): Vec2[] => {
   const stub = Math.min(
     ELBOW_STUB_MAX,
     Math.max(

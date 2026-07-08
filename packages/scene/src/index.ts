@@ -53,6 +53,7 @@ export {
   getLinkCurveSegments,
   getLinkWaypointMidpoints,
   getSelfLoopSpec,
+  straightElbowFallback,
 } from "./edge-geometry.js";
 export {
   catmullRomBeziers,
