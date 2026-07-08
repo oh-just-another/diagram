@@ -414,4 +414,50 @@ describe("round-trip", () => {
     const parsed = parseScene(legacy);
     expect(parsed.annotations.size).toBe(0);
   });
+
+  it("preserves styled text runs", () => {
+    const text: Element = {
+      id: elementId("t"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "text",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      text: "Hello world",
+      fontFamily: "sans-serif",
+      fontSize: 16,
+      runs: [{ text: "Hello", style: { fontWeight: "bold", fill: "#f00" } }, { text: " world" }],
+    };
+    let scene = emptyScene();
+    ({ scene } = addElement(scene, text));
+    const restored = deserializeScene(serializeScene(scene));
+    const back = restored.elements.get(elementId("t"));
+    expect(back && "runs" in back ? back.runs : undefined).toEqual([
+      { text: "Hello", style: { fontWeight: "bold", fill: "#f00" } },
+      { text: " world" },
+    ]);
+  });
+
+  it("a plain text element serialises without a `runs` field", () => {
+    const text: Element = {
+      id: elementId("t2"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "text",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      text: "plain",
+      fontFamily: "sans-serif",
+      fontSize: 16,
+    };
+    let scene = emptyScene();
+    ({ scene } = addElement(scene, text));
+    const doc = serializeScene(scene);
+    const el = doc.elements.find((e) => e.id === "t2");
+    expect(el && "runs" in el ? el.runs : undefined).toBeUndefined();
+  });
 });

@@ -116,6 +116,10 @@ const PathZ = ElementBaseZ.extend({
   commands: z.array(PathCommandZ),
 }).strict();
 
+// A styled run persists its raw substring plus an optional partial style
+// overlay (reuses `TextStyleZ` — every field there is already optional).
+const TextRunZ = z.object({ text: z.string(), style: TextStyleZ.optional() }).strict();
+
 const TextZ = ElementBaseZ.extend({
   type: z.literal("text"),
   style: TextStyleZ,
@@ -123,6 +127,9 @@ const TextZ = ElementBaseZ.extend({
   fontFamily: z.string(),
   fontSize: z.number(),
   maxWidth: z.number().optional(),
+  // Additive rich-text overlay. Omitted = uniform styling (legacy scenes
+  // round-trip unchanged). Invariant: run texts concatenate to `text`.
+  runs: z.array(TextRunZ).optional(),
 }).strict();
 
 const ImageZ = ElementBaseZ.extend({
