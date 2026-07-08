@@ -99,16 +99,22 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
 
-      - name: Install Chromium
-        run: pnpm --filter @oh-just-another/e2e exec playwright install chromium --with-deps
+      - name: Install Chromium + WebKit
+        run: pnpm --filter @oh-just-another/e2e exec playwright install chromium webkit --with-deps
 
       # Screenshot specs are excluded: their baselines are captured locally
       # (macOS) and are not committed to the repo, so on a Linux runner
       # Playwright would treat every screenshot as a missing snapshot and
       # fail. Visual baselines stay a local-only check until per-platform
       # (linux) snapshots are recorded and committed.
-      - name: Run e2e suite
+      - name: Run e2e suite (Chromium)
         run: pnpm --filter @oh-just-another/e2e e2e --grep-invert "mobile UI screenshots"
+
+      # Cross-engine smoke on WebKit (Desktop Safari): the `webkit-smoke`
+      # project runs only smoke.spec.ts, catching Safari-specific regressions
+      # in the core boot / keyboard-creation path.
+      - name: Run WebKit smoke
+        run: pnpm --filter @oh-just-another/e2e e2e --project=webkit-smoke
 
       - name: Upload test results
         if: failure()

@@ -34,5 +34,14 @@ export default defineConfig({
       use: { ...devices["Pixel 7"] },
       testMatch: /(touch|screenshots)\.spec\.ts/,
     },
+    {
+      // WebKit (Desktop Safari) cross-engine smoke: runs ONLY the boot /
+      // keyboard-creation smoke flow, so a Safari-specific regression in the
+      // core render/interaction path surfaces without paying for the full
+      // suite on a second engine.
+      name: "webkit-smoke",
+      use: { ...devices["Desktop Safari"] },
+      testMatch: /smoke\.spec\.ts/,
+    },
   ],
 });
