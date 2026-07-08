@@ -461,7 +461,7 @@ export class Editor {
    * View-only — never persisted or recorded in history.
    */
   debugHitZones = false;
-  public readonly actor: Actor<typeof interactionMachine>;
+  public actor!: Actor<typeof interactionMachine>;
   private readonly listeners = new Set<() => void>();
   /**
    * Typed event surface. Specific events (`mode`, `selection`,
@@ -957,13 +957,13 @@ export class Editor {
    * in the constructor from `EditorOptions.inputMode` (default `"auto"`
    * uses `matchMedia('(pointer: coarse)')`).
    */
-  private readonly inputMode: "mouse" | "touch";
-  private readonly handleHitSlop: number;
-  private readonly edgeHandleHitSlop: number;
-  private readonly edgeHitThreshold: number;
+  private inputMode!: "mouse" | "touch";
+  private handleHitSlop!: number;
+  private edgeHandleHitSlop!: number;
+  private edgeHitThreshold!: number;
   /** Link-start anchor-dot grab/click hit radii — touch-enlarged in touch mode. */
-  public readonly anchorStartHitSlop: number;
-  public readonly anchorClickRadius: number;
+  public anchorStartHitSlop!: number;
+  public anchorClickRadius!: number;
 
   public readonly _history: HistoryProvider;
   /** Open transaction during a single drag/resize gesture. */
@@ -982,19 +982,19 @@ export class Editor {
    * The controller calls back through the narrow `GestureRef` bridge
    * built lazily below.
    */
-  private readonly gestures: GestureController;
+  private gestures!: GestureController;
   /**
    * Owns the inline text-edit session (edited shape, pending creation,
    * origin snapshot, live selection, drag anchor and caret blink).
    * Editor keeps thin delegate wrappers so the public API is unchanged.
    */
-  private readonly textEdit: TextEditController;
+  private textEdit!: TextEditController;
   /**
    * Owns the link edit-handle drags (waypoint / segment / endpoint) and
    * the handle double-click detector. Editor keeps thin delegate
    * wrappers so the public API is unchanged.
    */
-  private readonly linkHandles: LinkHandleDragController;
+  private linkHandles!: LinkHandleDragController;
 
   constructor(options: EditorOptions) {
     this.host = options.host;
@@ -1006,6 +1006,53 @@ export class Editor {
     this._history = isHistoryProvider(options.history)
       ? options.history
       : new History(options.history ?? {});
+    this.tileComposeFn =
+      options.useTileCache === true && options.tileCompose ? options.tileCompose : null;
+
+    this.initControllers();
+    this.initGlobalHooks(options);
+    this.initInputMode(options);
+    this.initActor(options);
+
+    this.unbind = this.bindPointerEvents();
+    // Pause animation playback when the tab / window is hidden (browsers
+    // throttle rAF to ~1fps in background but don't stop it; an explicit
+    // stop saves the decode + render entirely). Resume when visible again,
+    // viewport permitting.
+    this.animation.attach();
+    // Restore GIF/video bytes onto animated image shapes loaded from
+    // an initial scene (e.g. localStorage), then arm the tick so the
+    // animation plays from first paint.
+    animScene.rehydrateAnimatedImages(this);
+    this.maybeAnimate();
+    // An animated adapter (GIF) decodes asynchronously; when a decode
+    // completes it nudges us here. Re-render so a PAUSED animated shape
+    // (reduced-motion / auto-stopped / frozen) — which has no tick to
+    // pick the frames up — paints its decoded frame after reload.
+    this.animationContentOff = onAnimationContentReady(() => {
+      this.scheduleRender();
+    });
+    // First paint — synchronous so the canvas isn't blank for one
+    // frame on mount. Hosts that mount + immediately read the
+    // bitmap also get a consistent first frame.
+    this.forceRender();
+    // Prime the typed-event cache with the editor's initial state so
+    // the *first* user-driven update only emits on a real flip.
+    // Without this, an `editor.on("mode", fn)` listener installed
+    // before any change would fire on the very next `setMode(current)`
+    // call because every cached slice would still be `null`.
+    primeEventCache(this.eventCache, this.observableSnapshot());
+  }
+
+  /**
+   * Build the interaction controllers (gestures, text edit, link-handle
+   * drag, long-press, pinch) and the container-ops bridge. Each wires to a
+   * narrow getter/setter surface over the editor's mutable fields, so the
+   * controllers live in their own modules without importing Editor. The
+   * getters/setters in the object literals rebind `this`, so a single
+   * `self` alias captures the Editor reference for all of them.
+   */
+  private initControllers(): void {
     // Build the gesture controller against a narrow getter/setter
     // bridge to the editor's mutable state. The bridge is a thin
     // adapter — keeps `gestureTx`/`dragElementId` etc. as `private`
@@ -1121,9 +1168,50 @@ export class Editor {
         self.hoveredLinkTarget = null;
       },
     });
-    this.tileComposeFn =
-      options.useTileCache === true && options.tileCompose ? options.tileCompose : null;
+    // Long-press controller — fired on touch-hold; fans out to
+    // host-registered listeners (mobile alt to right-click).
+    this.longPress = new LongPressController(
+      (p) => this.screenToWorld(p),
+      (payload) => {
+        for (const fn of this.longPressListeners) fn(payload);
+      },
+    );
+    // Pinch gesture controller — two-finger pan + zoom. Hooks into
+    // the editor's own zoomAt / panBy / screenToWorld.
+    this.pinch = new PinchController(
+      (p) => this.screenToWorld(p),
+      (factor, anchorWorld) => {
+        this.zoomAt(factor, anchorWorld);
+      },
+      (delta) => {
+        this.panBy(delta);
+      },
+    );
+    // Bridge for the container-ops helpers — narrow surface that the
+    // pure functions call back into.
+    this.containerOpsRef = {
+      get scene() {
+        return self._scene;
+      },
+      get dragElementId() {
+        return self.dragElementId;
+      },
+      get containerHover() {
+        return self.containerHover;
+      },
+      applyPatch(patch, nextScene) {
+        self._scene = nextScene;
+        self.beginOrAttachGesture().add(patch);
+      },
+    };
+  }
 
+  /**
+   * Install process-global hooks the host opted into: a custom text shaper
+   * and rasterizer for the WebGL2 backend, plus the scene text measurer that
+   * routes through the renderer's own metrics so selection boxes hug text.
+   */
+  private initGlobalHooks(options: EditorOptions): void {
     // If the host plugged a TextShaper, install it process-globally so the
     // built-in text renderer's wrap path uses it instead of
     // Canvas2D.measureText. Hosts that don't care leave the field unset and
@@ -1147,7 +1235,13 @@ export class Editor {
       });
       return this.mainTarget.measureText(text).width;
     });
+  }
 
+  /**
+   * Resolve the input mode (`touch` vs `mouse`, `auto` reads the coarse-
+   * pointer media query) and the derived hit slops / thresholds once.
+   */
+  private initInputMode(options: EditorOptions): void {
     // Resolve input mode + derived hit slops once. `auto` reads
     // `matchMedia('(pointer: coarse)')` when available; SSR falls
     // back to `mouse`.
@@ -1174,7 +1268,14 @@ export class Editor {
       this.inputMode === "touch" ? TOUCH_ANCHOR_START_HIT_SLOP : ANCHOR_START_HIT_SLOP;
     this.anchorClickRadius =
       this.inputMode === "touch" ? TOUCH_ANCHOR_DOT_CLICK_RADIUS : ANCHOR_DOT_CLICK_RADIUS;
+  }
 
+  /**
+   * Create and start the interaction state-machine actor, wire its render /
+   * emit subscriptions, register the built-in file-drop handlers, and apply
+   * the initial mode.
+   */
+  private initActor(options: EditorOptions): void {
     this.actor = createActor(interactionMachine);
     this.actor.subscribe({
       next: () => {
@@ -1196,74 +1297,6 @@ export class Editor {
     if (options.initialMode) {
       this.actor.send({ type: "SET_MODE", mode: options.initialMode });
     }
-
-    // Long-press controller — fired on touch-hold; fans out to
-    // host-registered listeners (mobile alt to right-click).
-    this.longPress = new LongPressController(
-      (p) => this.screenToWorld(p),
-      (payload) => {
-        for (const fn of this.longPressListeners) fn(payload);
-      },
-    );
-    // Pinch gesture controller — two-finger pan + zoom. Hooks into
-    // the editor's own zoomAt / panBy / screenToWorld.
-    this.pinch = new PinchController(
-      (p) => this.screenToWorld(p),
-      (factor, anchorWorld) => {
-        this.zoomAt(factor, anchorWorld);
-      },
-      (delta) => {
-        this.panBy(delta);
-      },
-    );
-    // Bridge for the container-ops helpers — narrow surface that the
-    // pure functions call back into.
-    // eslint-disable-next-line @typescript-eslint/no-this-alias -- bridge literal rebinds `this`; alias keeps Editor reference
-    const self2 = this;
-    this.containerOpsRef = {
-      get scene() {
-        return self2._scene;
-      },
-      get dragElementId() {
-        return self2.dragElementId;
-      },
-      get containerHover() {
-        return self2.containerHover;
-      },
-      applyPatch(patch, nextScene) {
-        self2._scene = nextScene;
-        self2.beginOrAttachGesture().add(patch);
-      },
-    };
-
-    this.unbind = this.bindPointerEvents();
-    // Pause animation playback when the tab / window is hidden (browsers
-    // throttle rAF to ~1fps in background but don't stop it; an explicit
-    // stop saves the decode + render entirely). Resume when visible again,
-    // viewport permitting.
-    this.animation.attach();
-    // Restore GIF/video bytes onto animated image shapes loaded from
-    // an initial scene (e.g. localStorage), then arm the tick so the
-    // animation plays from first paint.
-    animScene.rehydrateAnimatedImages(this);
-    this.maybeAnimate();
-    // An animated adapter (GIF) decodes asynchronously; when a decode
-    // completes it nudges us here. Re-render so a PAUSED animated shape
-    // (reduced-motion / auto-stopped / frozen) — which has no tick to
-    // pick the frames up — paints its decoded frame after reload.
-    this.animationContentOff = onAnimationContentReady(() => {
-      this.scheduleRender();
-    });
-    // First paint — synchronous so the canvas isn't blank for one
-    // frame on mount. Hosts that mount + immediately read the
-    // bitmap also get a consistent first frame.
-    this.forceRender();
-    // Prime the typed-event cache with the editor's initial state so
-    // the *first* user-driven update only emits on a real flip.
-    // Without this, an `editor.on("mode", fn)` listener installed
-    // before any change would fire on the very next `setMode(current)`
-    // call because every cached slice would still be `null`.
-    primeEventCache(this.eventCache, this.observableSnapshot());
   }
 
   /**
