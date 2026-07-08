@@ -264,6 +264,12 @@ export interface PeerSelection {
  * share a typed context (see {@link OverlayCtx}).
  */
 export interface OverlayOptions {
+  /**
+   * Image-crop frame: the world-space corners (clockwise, 4 points) of the
+   * pending crop region while in crop mode. Painted as a dashed accent quad
+   * with corner ticks so the user sees what will be kept. Honours rotation.
+   */
+  cropFrame?: readonly Vec2[];
   drawingPreview?: Bounds;
   /**
    * WYSIWYG preview of the shape being drawn by drag (rect / ellipse):
@@ -565,6 +571,15 @@ const renderSelectionHandles = (ctx: OverlayCtx): void => {
  */
 const renderPreviews = (ctx: OverlayCtx): void => {
   const { target, options, style, w2s } = ctx;
+
+  // 1. Image-crop frame (dashed accent quad over the pending crop region).
+  if (options.cropFrame && options.cropFrame.length >= 3) {
+    drawCropFrame(
+      target,
+      options.cropFrame.map((p) => matrix.applyToPoint(w2s, p)),
+      style,
+    );
+  }
 
   // 2. Rubber-band drawing preview (already in world coords if drawn before transform reset)
   if (options.drawingPreview) {
@@ -1199,6 +1214,28 @@ const drawLinkPreview = (target: RenderTarget, from: Vec2, to: Vec2, style: Over
 };
 
 /** Dashed polyline preview (elbow) in screen space. */
+/**
+ * Dashed accent quad + solid corner ticks for the image-crop preview. `pts`
+ * are already in screen space (4 corners, clockwise).
+ */
+const drawCropFrame = (target: RenderTarget, pts: readonly Vec2[], style: OverlayStyle): void => {
+  target.setStroke(style.selectionStroke);
+  target.setStrokeWidth(1.5);
+  target.setDashArray(style.drawingDash);
+  target.beginPath();
+  const first = req(pts[0]);
+  target.moveTo(first.x, first.y);
+  for (let i = 1; i < pts.length; i++) {
+    const p = req(pts[i]);
+    target.lineTo(p.x, p.y);
+  }
+  target.lineTo(first.x, first.y);
+  target.stroke();
+  // Solid corner dots so the frame reads as grabbable.
+  target.setDashArray(null);
+  for (const p of pts) drawHandle(target, p, style);
+};
+
 const drawLinkPreviewPath = (
   target: RenderTarget,
   pts: readonly Vec2[],

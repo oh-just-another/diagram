@@ -628,6 +628,14 @@ export const TEXT_RESIZE_MIN_FONT_SIZE = 4;
 export const TEXT_FONT_SIZE_STEP = 1.1;
 
 /**
+ * Gap (world px) between a source node and the connected node spawned by the
+ * flowchart auto-generate shortcut (`Cmd/Ctrl+Alt+Arrow`). Measured from the
+ * source's edge to the new node's edge along the spawn direction. Range:
+ * 40–160 — enough that the connecting link is clearly visible.
+ */
+export const SPAWN_CONNECTED_GAP_PX = 80;
+
+/**
  * Upper clamp (world px) for font size — matches the property panel's slider
  * ceiling so the keyboard and the panel agree on the maximum.
  */

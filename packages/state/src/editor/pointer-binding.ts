@@ -137,6 +137,20 @@ const handleDownEditingText = (editor: Editor, worldPoint: Vec2): boolean => {
   return false;
 };
 
+/** Crop-drag move — resize the pending crop rectangle. */
+const handleMoveCrop = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.mode !== "crop" || editor.cropSession?.dragOrigin == null) return false;
+  editor.updateImageCropDrag(worldPoint);
+  return true;
+};
+
+/** Crop-drag release — finish the drag (keeps the pending rect). */
+const handleUpCrop = (editor: Editor): boolean => {
+  if (editor.mode !== "crop" || editor.cropSession?.dragOrigin == null) return false;
+  editor.endImageCropDrag();
+  return true;
+};
+
 /** Brush mode owns the gesture end-to-end — start a stroke, skip machine. */
 const handleDownBrush = (editor: Editor, worldPoint: Vec2, pressure: number): boolean => {
   if (editor.readOnly) return false;
@@ -159,6 +173,44 @@ const handleDownLaser = (editor: Editor, worldPoint: Vec2): boolean => {
   if (editor.mode !== "laser") return false;
   editor.cancelLongPress();
   editor.beginLaserStroke(worldPoint);
+  return true;
+};
+
+/**
+ * Eyedropper tool — a click samples the colour of the shape under the cursor
+ * and applies it to the current selection, then reverts to select mode (unless
+ * the tool is locked). Owns the gesture end-to-end.
+ */
+const handleDownEyedropper = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.mode !== "eyedropper") return false;
+  editor.cancelLongPress();
+  editor.applyEyedropperAt(worldPoint);
+  return true;
+};
+
+/**
+ * Crop mode — a press begins a fresh crop-rectangle drag over the image being
+ * cropped. Enter/Escape (handled by the crop actions) commit / cancel. Owns
+ * the gesture.
+ */
+const handleDownCrop = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.mode !== "crop" || editor.cropSession === null) return false;
+  editor.cancelLongPress();
+  editor.beginImageCropDrag(worldPoint);
+  return true;
+};
+
+/**
+ * Double-click on an image (in select mode) enters crop mode. Detected via the
+ * native click-count (`detail`), matching the browser's dblclick timing.
+ */
+const handleDownCropEnter = (editor: Editor, worldPoint: Vec2, detail: number): boolean => {
+  if (editor.readOnly || editor.mode !== "select" || detail < 2) return false;
+  const hit = editor.hitTest(worldPoint);
+  if (hit.kind !== "element") return false;
+  const el = getElement(editor._scene, hit.id);
+  if (el === undefined || !isImage(el)) return false;
+  editor.beginImageCrop(hit.id);
   return true;
 };
 
@@ -1090,6 +1142,9 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // Mode / target-specific take-overs (each short-circuits when it consumes
     // the press). Order matters — it mirrors the original monolith exactly.
     if (handleDownEditingText(editor, worldPoint)) return;
+    if (handleDownCrop(editor, worldPoint)) return;
+    if (handleDownCropEnter(editor, worldPoint, ev.detail)) return;
+    if (handleDownEyedropper(editor, worldPoint)) return;
     if (handleDownBrush(editor, worldPoint, ev.pressure)) return;
     if (handleDownErase(editor, worldPoint)) return;
     if (handleDownLaser(editor, worldPoint)) return;
@@ -1151,6 +1206,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // early-return) so it reflects hover targets AND active gestures.
     editor.refreshCursor(worldPoint);
 
+    if (handleMoveCrop(editor, worldPoint)) return;
     if (handleMoveSegmentDrag(editor, worldPoint)) return;
     if (handleMoveWaypointDrag(editor, worldPoint)) return;
     if (handleMoveLinkAnchorDrag(editor, worldPoint)) return;
@@ -1179,6 +1235,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // Long-press loses its chance the moment the user releases.
     editor.cancelLongPress();
 
+    if (handleUpCrop(editor)) return;
     if (handleUpSegmentDrag(editor)) return;
     if (handleUpWaypointDrag(editor)) return;
     if (handleUpLinkAnchorDrag(editor, ev)) return;

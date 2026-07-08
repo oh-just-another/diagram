@@ -64,6 +64,18 @@ export { Editor } from "./editor.js";
 export type { EditorEvents } from "./editor-events.js";
 export { normalizeHref, safeHref } from "./editor/public/link.js";
 
+// Tool operations (eyedropper / convert-type / image-crop / spawn-connected).
+export {
+  clampCrop,
+  computeConvertType,
+  computeSetImageCrop,
+  computeSpawnConnectedNode,
+  cropRectFromWorldDrag,
+  FULL_CROP,
+  pickColorAt,
+} from "./editor/public/tool-ops.js";
+export type { ConvertTarget, SpawnDirection } from "./editor/public/tool-ops.js";
+
 // File-drop registry (host-extensible image / scene / custom).
 export type { FileDropHandler, FileDropContext, WalkOptions } from "./file-drop.js";
 export {

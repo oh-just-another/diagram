@@ -78,6 +78,44 @@ const selectClosest: Action = {
   },
 };
 
+/**
+ * `⌘`/`Ctrl` + `⌥` + arrows spawn a connected node from the single selected
+ * node in that direction (flowchart auto-generate). Distinct from plain arrows
+ * (nudge), Alt+arrows (align) and Cmd+arrows (select-closest) by requiring both
+ * meta and alt. No-op unless exactly one element is selected.
+ */
+const spawnConnected: Action = {
+  id: "spawn-connected",
+  label: "Spawn connected node",
+  category: "edit",
+  keyTest: (ev) =>
+    (ev.metaKey || ev.ctrlKey) &&
+    ev.altKey &&
+    !ev.shiftKey &&
+    (ev.key === "ArrowLeft" ||
+      ev.key === "ArrowRight" ||
+      ev.key === "ArrowUp" ||
+      ev.key === "ArrowDown"),
+  predicate: ({ editor }) => editor.selection.size === 1,
+  perform: ({ editor, event }) => {
+    if (!event) return;
+    switch (event.key) {
+      case "ArrowLeft":
+        editor.spawnConnectedNode("left");
+        return;
+      case "ArrowRight":
+        editor.spawnConnectedNode("right");
+        return;
+      case "ArrowUp":
+        editor.spawnConnectedNode("up");
+        return;
+      case "ArrowDown":
+        editor.spawnConnectedNode("down");
+        return;
+    }
+  },
+};
+
 /** Tab / Shift+Tab cycle keyboard focus through elements. */
 const focusNext: Action = {
   id: "focus-next",
@@ -134,6 +172,7 @@ const editOrCreate: Action = {
 export const keyboardActions: readonly Action[] = [
   nudgeSelection,
   selectClosest,
+  spawnConnected,
   focusNext,
   focusPrev,
   editOrCreate,

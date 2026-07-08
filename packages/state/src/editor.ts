@@ -19,6 +19,8 @@ import {
   getElement,
   getElementAt,
   getElementAtIndexed,
+  getElementLocalBounds,
+  localToWorld,
   isFrame,
   isGroup,
   isText,
@@ -41,6 +43,7 @@ import {
   type Scene,
   type Element,
   type GridStyle,
+  type ImageCrop,
   type Style,
   type TextStyle,
   isSnapToGridEnabled,
@@ -49,6 +52,7 @@ import {
 import {
   layerId as castLayerId,
   type AnnotationId,
+  type Color,
   type CommentId,
   type LinkId,
   type LayerId,
@@ -264,6 +268,16 @@ import {
   previewClickCreate as previewClickCreatePure,
   type PlacementState,
 } from "./editor/public/placement.js";
+import {
+  computeConvertType,
+  computeSetImageCrop,
+  computeSpawnConnectedNode,
+  cropRectFromWorldDrag,
+  FULL_CROP,
+  pickColorAt,
+  type ConvertTarget,
+  type SpawnDirection,
+} from "./editor/public/tool-ops.js";
 import { renderEditor, type RenderSnapshot } from "./editor/render-orchestrator.js";
 import { TextEditController } from "./editor/text-edit.js";
 import { LinkHandleDragController } from "./editor/link-handle-drag.js";
@@ -2766,6 +2780,180 @@ export class Editor {
     this.notify();
   }
 
+  // --- F8: Eyedropper ---------------------------------------------------
+
+  /**
+   * The fill (or stroke, per `role`) colour of the top-most shape under the
+   * world point, or `null` on empty canvas. Pure read — no mutation.
+   */
+  pickColorAt(worldPoint: Vec2, role: "fill" | "stroke" = "fill"): Color | null {
+    return pickColorAt(this._scene, worldPoint, role);
+  }
+
+  /**
+   * Eyedropper: sample the colour under `worldPoint` and apply it as the fill
+   * of the current selection. Returns the sampled colour (or `null` when the
+   * point was empty). Reverts to `select` mode afterwards unless the tool is
+   * locked. Read-only editors sample but don't mutate.
+   */
+  applyEyedropperAt(worldPoint: Vec2): Color | null {
+    const color = pickColorAt(this._scene, worldPoint, "fill");
+    if (color === null) return null;
+    if (!this.readOnly && this._selection.size > 0) {
+      this.updateStyle(this._selection, { fill: color });
+    }
+    if (this.mode === "eyedropper" && !this.toolLocked) this.setMode("select");
+    return color;
+  }
+
+  // --- F9: Convert element type ----------------------------------------
+
+  /**
+   * Convert every convertible selected shape (rectangle / ellipse / diamond)
+   * to `target`, preserving position, size and style. One undo step; no-op
+   * when nothing applies. See {@link ConvertTarget}.
+   */
+  convertSelection(target: ConvertTarget): void {
+    if (this.readOnly) return;
+    const result = computeConvertType(this._scene, this._selection, target);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  // --- F11: Spawn connected node ---------------------------------------
+
+  /**
+   * Flowchart auto-generate: clone the single selected node offset in
+   * `direction` and connect the two with a fresh link. Selects the new node.
+   * No-op unless exactly one element is selected. One undo step.
+   */
+  spawnConnectedNode(direction: SpawnDirection): void {
+    if (this.readOnly) return;
+    const ids = [...this._selection];
+    const sourceId = ids.length === 1 ? ids[0] : undefined;
+    if (sourceId === undefined) return;
+    const result = computeSpawnConnectedNode(
+      this._scene,
+      sourceId,
+      direction,
+      newElementId(++this.nextId),
+      newLinkId(++this.nextId),
+    );
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push({ kind: "batch", patches: [...result.patches] });
+    this.setSelection([result.newElementId]);
+    this.notify();
+  }
+
+  // --- F10: Image crop --------------------------------------------------
+
+  /**
+   * Live image-crop session, or `null` when not cropping. `id` is the image
+   * being cropped; `rect` is the pending normalised crop (previewed on the
+   * overlay). Committed by {@link commitImageCrop}, abandoned by
+   * {@link cancelImageCrop}. `dragOrigin` is set while the user is dragging a
+   * fresh crop rectangle.
+   */
+  cropSession: { id: ElementId; rect: ImageCrop; dragOrigin: Vec2 | null } | null = null;
+
+  /** The image-crop session (read-only accessor for UI / overlay). */
+  get imageCropSession(): { readonly id: ElementId; readonly rect: ImageCrop } | null {
+    return this.cropSession;
+  }
+
+  /**
+   * Enter crop mode for the image `id`, seeding the pending rect from its
+   * current crop (or the full image). No-op for non-image shapes or in
+   * read-only. Typically triggered by a double-click on an image.
+   */
+  beginImageCrop(id: ElementId): void {
+    if (this.readOnly) return;
+    const el = getElement(this._scene, id);
+    if (el === undefined || !isImage(el)) return;
+    this.cancelInteraction();
+    this._selection = Selection.single(id);
+    this.cropSession = { id, rect: el.crop ?? FULL_CROP, dragOrigin: null };
+    this.setMode("crop");
+    this.refreshCursor();
+    this.notify();
+  }
+
+  /** Start a fresh crop-rectangle drag at `worldPoint` (crop mode only). */
+  beginImageCropDrag(worldPoint: Vec2): void {
+    if (this.cropSession === null) return;
+    this.cropSession = { ...this.cropSession, dragOrigin: worldPoint };
+  }
+
+  /** Update the pending crop rect from the active drag to `worldPoint`. */
+  updateImageCropDrag(worldPoint: Vec2): void {
+    const session = this.cropSession;
+    if (session?.dragOrigin == null) return;
+    const el = getElement(this._scene, session.id);
+    if (el === undefined) return;
+    const rect = cropRectFromWorldDrag(el, session.dragOrigin, worldPoint);
+    // Ignore degenerate (near-zero) drags — keep the previous rect.
+    if (rect.width < 0.01 || rect.height < 0.01) return;
+    this.cropSession = { ...session, rect };
+    this.notify();
+  }
+
+  /** Finish the current crop-rectangle drag (keeps the pending rect). */
+  endImageCropDrag(): void {
+    if (this.cropSession === null) return;
+    this.cropSession = { ...this.cropSession, dragOrigin: null };
+  }
+
+  /** Apply the pending crop and leave crop mode. One undo step. */
+  commitImageCrop(): void {
+    const session = this.cropSession;
+    if (session === null) return;
+    const result = computeSetImageCrop(this._scene, session.id, session.rect);
+    this.cropSession = null;
+    if (result) {
+      this._scene = result.scene;
+      this._history.push(result.patch);
+    }
+    this.setMode("select");
+    this.refreshCursor();
+    this.notify();
+  }
+
+  /** Abandon the crop session without changing the image. */
+  cancelImageCrop(): void {
+    if (this.cropSession === null) return;
+    this.cropSession = null;
+    this.setMode("select");
+    this.refreshCursor();
+    this.notify();
+  }
+
+  /**
+   * World-space corners (clockwise) of the pending crop frame, or `null` when
+   * not cropping. Maps the normalised crop rect into the image's local box and
+   * through its local→world transform (so rotation is honoured).
+   */
+  private cropFrameCorners(): readonly Vec2[] | null {
+    const session = this.cropSession;
+    if (session === null) return null;
+    const el = getElement(this._scene, session.id);
+    if (el === undefined) return null;
+    const b = getElementLocalBounds(el);
+    const r = session.rect;
+    const x0 = b.x + r.x * b.width;
+    const y0 = b.y + r.y * b.height;
+    const x1 = b.x + (r.x + r.width) * b.width;
+    const y1 = b.y + (r.y + r.height) * b.height;
+    return [
+      { x: x0, y: y0 },
+      { x: x1, y: y0 },
+      { x: x1, y: y1 },
+      { x: x0, y: y1 },
+    ].map((p) => localToWorld(el, p));
+  }
+
   /**
    * Update non-style text properties (`fontSize`, `fontFamily`,
    * `maxWidth`) on every selected text shape. Non-text shapes are
@@ -4921,6 +5109,7 @@ export class Editor {
       tileDirtyElements: this.tileDirtyElements,
       mode: this.mode,
       activeLayerId: this._activeLayerId,
+      cropFrame: this.cropFrameCorners(),
       lassoPreview: this.lassoPreview,
       drawingPreview: this.drawingPreview,
       edgePreview: this.edgePreview,

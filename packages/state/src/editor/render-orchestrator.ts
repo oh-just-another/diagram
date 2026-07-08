@@ -114,6 +114,8 @@ export interface RenderSnapshot {
   // Interaction / overlay state.
   readonly mode: Mode;
   readonly activeLayerId: LayerId;
+  /** World-space corners of the pending image-crop frame, or null. */
+  readonly cropFrame: readonly Vec2[] | null;
   readonly lassoPreview: Bounds | null;
   readonly drawingPreview: Bounds | null;
   readonly edgePreview: EdgePreview | null;
@@ -205,6 +207,7 @@ const buildOverlaySignature = (e: RenderSnapshot): readonly unknown[] => [
   e.selectedAnnotation,
   e.mode,
   e.activeLayerId,
+  e.cropFrame,
   e.lassoPreview,
   e.drawingPreview,
   e.edgePreview,
@@ -349,6 +352,8 @@ export const renderEditor = (editor: RenderSnapshot): void => {
   let overlayMemo = overlayMemoByTarget.get(editor.overlayTarget);
   if (overlayMemo === undefined || !overlaySigEqual(overlayMemo.sig, overlaySig)) {
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
+    // Image-crop frame (crop mode) — dashed accent quad over the pending region.
+    if (editor.cropFrame) overlayOpts.cropFrame = editor.cropFrame;
     // Throwaway scene holding the click-create ghost connector — rendered
     // through the real link renderer (faded) AFTER the overlay, so the ghost
     // connector matches the link that will be created (routing / arrowhead /
