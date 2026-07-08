@@ -253,7 +253,7 @@ import {
   previewClickCreate as previewClickCreatePure,
   type PlacementState,
 } from "./editor/public/placement.js";
-import { renderEditor } from "./editor/render-orchestrator.js";
+import { renderEditor, type RenderSnapshot } from "./editor/render-orchestrator.js";
 import { TextEditController } from "./editor/text-edit.js";
 import { LinkHandleDragController } from "./editor/link-handle-drag.js";
 import {
@@ -4238,7 +4238,7 @@ export class Editor {
     this._scene = r.scene;
     this._history.push(r.patch);
     // Force the next reroute to recompute with the new mode.
-    this.elbowRouteSig.delete(id);
+    this.elbowRoutes.delete(id);
     this.notify();
   }
 
@@ -4502,30 +4502,113 @@ export class Editor {
   }
 
   /**
-   * Per-link signature of the inputs that determine an elbow route
-   * (endpoint refs + bound-shape bounds + fixedSegments). When unchanged
-   * between frames the A* route is reused — see `rerouteElbows`.
+   * Derived elbow-route cache, keyed by link — the source of truth for
+   * A*-routed corners, living OUTSIDE the immutable `Scene`. Each entry holds
+   * the routed interior `points` (between from/to) plus the `sig` of the
+   * inputs it was computed from (endpoint refs + bound-shape bounds +
+   * fixedSegments), so an unchanged link short-circuits the reroute.
+   *
+   * `rerouteElbows` still MIRRORS `points` onto `Link.routedPoints` in
+   * `_scene` because three readers still consume the baked field: the render
+   * path (`getLinkPath` in `renderer-core`), the headless `getLinkPath`, and
+   * serialization (`schema.ts`). The mirror is compat-only derived state — no
+   * history push / notify.
+   *
+   * TODO(fable R7a): drop the `_scene` mirror once (a) the render path reads
+   * routes from this cache via the `RenderSnapshot`, and (b) headless
+   * `getLinkPath` / serialization stop depending on baked `routedPoints`.
+   * That eviction changes headless geometry, serialized output, and
+   * collab-synced fields, so it spans the scene / serialization / renderer /
+   * headless goldens and must land as its own cross-package change — out of
+   * scope for this state-only pass.
    */
-  private readonly elbowRouteSig = new Map<LinkId, string>();
+  private readonly elbowRoutes = new Map<LinkId, { sig: string; points: readonly Vec2[] }>();
 
   /**
-   * Choke-point reroute (standard model): recompute `routedPoints` for
-   * every orthogonal link whose inputs changed since the last pass, and
-   * bake the result into `_scene`. Runs once per frame before paint —
-   * derived state, so no history push / notify (would loop). Cheap when
-   * nothing moved (signature short-circuit).
+   * Choke-point reroute (standard model): recompute the route for every
+   * orthogonal link whose inputs changed since the last pass, store it in the
+   * derived {@link elbowRoutes} cache, and mirror it onto `_scene`. Runs once
+   * per frame before paint — derived state, so no history push / notify (would
+   * loop). Cheap when nothing moved (signature short-circuit).
    */
   private rerouteElbows(): void {
     let next = this._scene;
     for (const [id, edge] of this._scene.links) {
       if ((edge.routing ?? "straight") !== "orthogonal") continue;
       const sig = elbowSignature(this._scene, edge);
-      if (this.elbowRouteSig.get(id) === sig) continue;
-      this.elbowRouteSig.set(id, sig);
-      const routedPoints = routeElbowLink(next, edge);
-      next = updateLink(next, id, (e) => ({ ...e, routedPoints })).scene;
+      if (this.elbowRoutes.get(id)?.sig === sig) continue;
+      const points = routeElbowLink(next, edge);
+      this.elbowRoutes.set(id, { sig, points });
+      // Compat mirror onto the scene (see `elbowRoutes` doc).
+      next = updateLink(next, id, (e) => ({ ...e, routedPoints: points })).scene;
     }
     this._scene = next;
+  }
+
+  /**
+   * Collect everything {@link renderEditor} paints from into a flat
+   * {@link RenderSnapshot}. Resolves the derived viewport / dirty-rect / dim /
+   * hide inputs and the shared spatial index up front (same order the
+   * orchestrator used to call them in), so the paint pass stays side-effect
+   * free and the orchestrator stays decoupled from this class.
+   *
+   * `computeDirtyWorld` is order-sensitive (it diffs against
+   * `lastRenderedScene` and populates `tileDirtyElements`); it runs here and
+   * the `lastRendered*` bookkeeping is applied in `render()` after the paint.
+   */
+  private buildRenderSnapshot(): RenderSnapshot {
+    return {
+      mainTarget: this.mainTarget,
+      overlayTarget: this.overlayTarget,
+      backgroundTarget: this.backgroundTarget,
+      scene: this._scene,
+      selection: this._selection,
+      selectedLinks: this._selectedLinks,
+      selectedLink: this.selectedLink,
+      selectedAnnotation: this._selectedAnnotation,
+      enteredGroup: this._enteredGroup,
+      gridEnabled: this.gridEnabled,
+      viewportWorld: this.computeViewportWorld(),
+      dirtyWorld: this.computeDirtyWorld(),
+      dimElements: this._enteredGroup ? this.computeDimElements(this._enteredGroup) : undefined,
+      hideElements: this.computeHiddenElements(),
+      sharedIndex:
+        this._scene.elements.size >= LARGE_SCENE_HIT_THRESHOLD ? this.ensureSpatialIndex() : null,
+      boundsCache: this.boundsCache,
+      tileComposeFn: this.tileComposeFn,
+      tileDirtyElements: this.tileDirtyElements,
+      mode: this.mode,
+      activeLayerId: this._activeLayerId,
+      lassoPreview: this.lassoPreview,
+      drawingPreview: this.drawingPreview,
+      edgePreview: this.edgePreview,
+      linkDragFromAnchor: this.linkDragFromAnchor,
+      hoveredLinkTarget: this.hoveredLinkTarget,
+      panGesture: this.panGesture,
+      // `pinch` is unset during the constructor's first render; type says
+      // non-null but runtime can be undefined.
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- see above
+      pinchActive: this.pinch?.isActive() ?? false,
+      gestureActive: this.gestureTx !== null,
+      linkEndpointDrag: this.linkEndpointDrag,
+      linkSegmentDrag: this.linkSegmentDrag,
+      linkWaypointDrag: this.linkWaypointDrag,
+      hoverCursorWorld: this.hoverCursorWorld,
+      anchorStartHitSlop: this.anchorStartHitSlop,
+      anchorClickRadius: this.anchorClickRadius,
+      containerHover: this.containerHover,
+      brushStroke: this.brushStroke,
+      peerCursors: this._peerCursors,
+      peerSelections: this._peerSelections,
+      debugHitZones: this.debugHitZones,
+      groupMoveOrigin: this.groupMoveOrigin,
+      aspectLocked: this.selectionIsAspectLocked(),
+      combinedSelectionBounds: this.combinedSelectionBounds(),
+      editingText: this.editingTextOverlay(),
+      previewClickCreate: (fromElement, anchorName) =>
+        this.previewClickCreate(fromElement, anchorName),
+      isPlaybackPaused: (id) => this.isPlaybackPaused(id),
+    };
   }
 
   private render(): void {
@@ -4539,7 +4622,14 @@ export class Editor {
     setAnimationClock((shape: { readonly id?: unknown }) =>
       this.gifPlayback.clock(castElementId(typeof shape.id === "string" ? shape.id : "")),
     );
-    renderEditor(this);
+    const snapshot = this.buildRenderSnapshot();
+    renderEditor(snapshot);
+    // Bookkeeping the orchestrator used to do inline: record what we just
+    // painted (for the next frame's dirty diff / isolation-transition check)
+    // and, on the tile-cache path, clear the consumed dirty set.
+    this.lastRenderedScene = this._scene;
+    this.lastRenderedEnteredGroup = this._enteredGroup;
+    if (snapshot.tileComposeFn && snapshot.viewportWorld) this.tileDirtyElements = new Map();
     // Present AFTER the paint, on the same tick — deferred-submission
     // surfaces (WebGL2 / OffscreenCanvas) would otherwise lag one frame.
     this.onAfterRender?.();

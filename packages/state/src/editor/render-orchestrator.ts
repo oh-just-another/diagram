@@ -13,13 +13,24 @@ import {
   isImage,
   type Scene,
   type Style,
+  type Element,
+  type SpatialGrid,
 } from "@oh-just-another/scene";
-import { DEFAULT_LOD, renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
+import {
+  DEFAULT_LOD,
+  renderLinks,
+  renderGrid,
+  renderScene,
+  type RenderTarget,
+  type ElementCache,
+} from "@oh-just-another/renderer-core";
 import {
   renderOverlay,
   paintElementSelectionHalo,
   type ElementHalo,
   type PortOverlay,
+  type PeerCursor,
+  type PeerSelection,
 } from "../overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import { hitZoneVisibility } from "./hit-test.js";
@@ -32,12 +43,105 @@ import {
   DEFAULT_SNAP_THRESHOLD,
   GHOST_PREVIEW_OPACITY,
   ISOLATION_DIM_OPACITY,
-  LARGE_SCENE_HIT_THRESHOLD,
   LINK_START_ANCHOR_OUTSET,
   LINK_ATTACH_ANCHOR_OUTSET,
 } from "../constants.js";
-import type { Bounds, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
-import type { Editor } from "../editor.js";
+import type {
+  Bounds,
+  ElementId,
+  LinkId,
+  LayerId,
+  AnnotationId,
+  Vec2,
+} from "@oh-just-another/types";
+import type { Mode } from "../modes.js";
+import type {
+  ContainerHover,
+  EdgePreview,
+  HoveredLinkTarget,
+  LinkDragFromAnchor,
+  PanGesture,
+} from "./interaction-state.js";
+import type { BrushStrokeState } from "./public/brush.js";
+import type { TileComposeFn } from "../editor.js";
+
+/**
+ * Flat, self-contained data bag the {@link renderEditor} orchestrator paints
+ * from — every field the render pass reads, precomputed by the Editor. Breaks
+ * the Editor ↔ orchestrator import cycle: the orchestrator no longer imports
+ * (nor reaches into) the `Editor` class, it just consumes this snapshot.
+ *
+ * All derived viewport/dirty/dim/hide inputs and the shared spatial index are
+ * resolved up front (same call order as before) so painting is side-effect
+ * free. The two runtime-parameterised lookups the overlay path still needs —
+ * click-create preview and GIF playback state — come in as narrow callbacks.
+ */
+export interface RenderSnapshot {
+  // Render targets.
+  readonly mainTarget: RenderTarget;
+  readonly overlayTarget: RenderTarget;
+  readonly backgroundTarget: RenderTarget | null;
+  // Scene + selection.
+  readonly scene: Scene;
+  readonly selection: ReadonlySet<ElementId>;
+  readonly selectedLinks: ReadonlySet<LinkId>;
+  /** Sole selected link (handles shown) or `null` for multi/mixed/none. */
+  readonly selectedLink: LinkId | null;
+  readonly selectedAnnotation: AnnotationId | null;
+  readonly enteredGroup: ElementId | null;
+  // Precomputed render inputs.
+  readonly gridEnabled: boolean;
+  readonly viewportWorld: Bounds | null;
+  readonly dirtyWorld: Bounds | null;
+  readonly dimElements: ReadonlySet<ElementId> | undefined;
+  readonly hideElements: ReadonlySet<ElementId> | undefined;
+  readonly sharedIndex: SpatialGrid | null;
+  readonly boundsCache: ElementCache<Bounds>;
+  readonly tileComposeFn: TileComposeFn | null;
+  readonly tileDirtyElements: Map<ElementId, { before: Bounds | null; after: Bounds | null }>;
+  // Interaction / overlay state.
+  readonly mode: Mode;
+  readonly activeLayerId: LayerId;
+  readonly lassoPreview: Bounds | null;
+  readonly drawingPreview: Bounds | null;
+  readonly edgePreview: EdgePreview | null;
+  readonly linkDragFromAnchor: LinkDragFromAnchor | null;
+  readonly hoveredLinkTarget: HoveredLinkTarget | null;
+  readonly panGesture: PanGesture | null;
+  readonly pinchActive: boolean;
+  readonly gestureActive: boolean;
+  readonly linkEndpointDrag: { linkId: LinkId; side: "from" | "to"; toPoint: Vec2 } | null;
+  readonly linkSegmentDrag: { linkId: LinkId; axis: "h" | "v"; at: number } | null;
+  readonly linkWaypointDrag: { linkId: LinkId; index: number; pendingInsert: boolean } | null;
+  readonly hoverCursorWorld: Vec2 | null;
+  readonly anchorStartHitSlop: number;
+  readonly anchorClickRadius: number;
+  readonly containerHover: ContainerHover | null;
+  readonly brushStroke: BrushStrokeState | null;
+  readonly peerCursors: readonly PeerCursor[];
+  readonly peerSelections: readonly PeerSelection[];
+  readonly debugHitZones: boolean;
+  readonly groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null;
+  readonly aspectLocked: boolean;
+  readonly combinedSelectionBounds: Bounds | null;
+  readonly editingText: {
+    caret: { x: number; y: number; height: number } | null;
+    caretColor: string;
+    selectionRects: readonly Bounds[];
+  } | null;
+  // Runtime-parameterised lookups (narrow callbacks, not the Editor class).
+  readonly previewClickCreate: (
+    fromElement: ElementId,
+    anchorName: string,
+  ) => {
+    bounds: Bounds;
+    path: readonly Vec2[];
+    element: Element;
+    ghostScene: Scene;
+    ghostLinkId: LinkId;
+  } | null;
+  readonly isPlaybackPaused: (id: ElementId) => boolean;
+}
 
 /**
  * Stable throwaway id for the transient shape-draw preview element. Never
@@ -55,11 +159,13 @@ import { req } from "../util.js";
  * Render orchestrator: background grid pass, tile-cache vs full renderScene
  * path, and the overlay options builder (drawing / lasso preview, edge
  * preview, hovered ports, group handles, container drop zone, brush stroke,
- * edge endpoint drag, peer cursors, annotations). Typed against the full
- * `Editor` class via a type-only import erased at runtime; the single call
- * site is editor.ts's own private `render()` wrapper.
+ * edge endpoint drag, peer cursors, annotations). Consumes a flat
+ * {@link RenderSnapshot} the Editor builds each frame — no coupling to the
+ * `Editor` class. The single call site is editor.ts's own private `render()`
+ * wrapper. Side-effect free apart from the paint itself: the caller owns the
+ * `lastRendered*` bookkeeping and the tile-dirty reset.
  */
-export const renderEditor = (editor: Editor): void => {
+export const renderEditor = (editor: RenderSnapshot): void => {
   // Background layer (grid + selection halo), when the host gave us a
   // dedicated target. The grid clears it each frame; the contour selection
   // halo is then painted on top of the grid but UNDER the shapes (main
@@ -70,24 +176,24 @@ export const renderEditor = (editor: Editor): void => {
   if (editor.backgroundTarget) {
     // Grid pass also clears the background layer each frame. When the grid is
     // toggled off, still clear it so no stale grid lingers under the halos.
-    if (editor.gridEnabled) renderGrid(editor._scene, editor.backgroundTarget);
+    if (editor.gridEnabled) renderGrid(editor.scene, editor.backgroundTarget);
     else editor.backgroundTarget.clear();
     const halos: ElementHalo[] = [];
-    for (const id of editor._selection) {
-      const shape = getElement(editor._scene, id);
+    for (const id of editor.selection) {
+      const shape = getElement(editor.scene, id);
       if (!shape) continue;
       const style: Style = (shape as { style?: Style }).style ?? {};
       halos.push({
-        loops: getElementOutline(editor._scene, shape),
+        loops: getElementOutline(editor.scene, shape),
         outsetWorld: strokeOutsideExtent(style),
       });
     }
     if (halos.length > 0) {
       paintElementSelectionHalo(
         editor.backgroundTarget,
-        getWorldToScreen(editor._scene.viewport),
+        getWorldToScreen(editor.scene.viewport),
         halos,
-        editor._scene.viewport.zoom || 1,
+        editor.scene.viewport.zoom || 1,
       );
     }
   }
@@ -95,12 +201,10 @@ export const renderEditor = (editor: Editor): void => {
   // shapes. Computed by mapping the screen viewport corners through the
   // inverse projection. Slightly inflated so geometry near the edge
   // does not flicker during pan.
-  const viewportWorld = editor.computeViewportWorld();
-  const dirtyWorld = editor.computeDirtyWorld();
-  const dimElements = editor._enteredGroup
-    ? editor.computeDimElements(editor._enteredGroup)
-    : undefined;
-  const hideElements = editor.computeHiddenElements();
+  const viewportWorld = editor.viewportWorld;
+  const dirtyWorld = editor.dirtyWorld;
+  const dimElements = editor.dimElements;
+  const hideElements = editor.hideElements;
 
   if (editor.tileComposeFn && viewportWorld) {
     // Tile-cache path: clear main once, then composite cached tiles. Dim /
@@ -108,23 +212,19 @@ export const renderEditor = (editor: Editor): void => {
     // pass); this opt-in path is intended for very-large static scenes where
     // neither typically applies.
     editor.mainTarget.clear();
-    editor.tileComposeFn(editor._scene, editor.mainTarget, {
+    editor.tileComposeFn(editor.scene, editor.mainTarget, {
       viewport: viewportWorld,
       changedElements: editor.tileDirtyElements,
       zoomBucket:
-        editor._scene.viewport.zoom > 0
-          ? 2 ** Math.round(Math.log2(editor._scene.viewport.zoom))
-          : 1,
+        editor.scene.viewport.zoom > 0 ? 2 ** Math.round(Math.log2(editor.scene.viewport.zoom)) : 1,
     });
-    editor.tileDirtyElements = new Map();
-    renderLinks(editor._scene, editor.mainTarget, { viewportWorld });
+    renderLinks(editor.scene, editor.mainTarget, { viewportWorld });
   } else {
     // For very large scenes share the same SpatialGrid the hit-test path
     // already maintains — `renderScene` uses it to skip the per-shape AABB
     // cull on shapes outside the viewport.
-    const sharedIndex =
-      editor._scene.elements.size >= LARGE_SCENE_HIT_THRESHOLD ? editor.ensureSpatialIndex() : null;
-    renderScene(editor._scene, editor.mainTarget, {
+    const sharedIndex = editor.sharedIndex;
+    renderScene(editor.scene, editor.mainTarget, {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
       ...(dirtyWorld ? { dirtyWorld } : {}),
       boundsCache: editor.boundsCache,
@@ -133,13 +233,11 @@ export const renderEditor = (editor: Editor): void => {
       ...(hideElements ? { hideElements } : {}),
       ...(sharedIndex ? { spatialIndex: sharedIndex } : {}),
     });
-    renderLinks(editor._scene, editor.mainTarget, {
+    renderLinks(editor.scene, editor.mainTarget, {
       ...(viewportWorld ? { viewportWorld } : {}),
       ...(dirtyWorld ? { dirtyWorld } : {}),
     });
   }
-  editor.lastRenderedScene = editor._scene;
-  editor.lastRenderedEnteredGroup = editor._enteredGroup;
   const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
   // Throwaway scene holding the click-create ghost connector — rendered
   // through the real link renderer (faded) AFTER the overlay, so the ghost
@@ -158,11 +256,11 @@ export const renderEditor = (editor: Editor): void => {
       editor.mode === "draw-rect" ? "rect" : editor.mode === "draw-ellipse" ? "ellipse" : null;
     if (kind) {
       overlayOpts.drawingPreviewElement = buildElementForCreate(
-        editor._scene,
+        editor.scene,
         kind,
         editor.drawingPreview,
         DRAW_PREVIEW_ELEMENT_ID,
-        editor._activeLayerId,
+        editor.activeLayerId,
         () => "",
       );
     } else {
@@ -176,13 +274,13 @@ export const renderEditor = (editor: Editor): void => {
   let edgePreviewScene: Scene | null = null;
   if (editor.edgePreview) {
     const previewLink = buildEdgePreviewLink(
-      editor._scene,
+      editor.scene,
       editor.edgePreview,
       DRAW_PREVIEW_LINK_ID,
-      editor._activeLayerId,
+      editor.activeLayerId,
     );
     edgePreviewScene = {
-      ...editor._scene,
+      ...editor.scene,
       links: new Map([[DRAW_PREVIEW_LINK_ID, previewLink]]),
     };
   }
@@ -191,7 +289,7 @@ export const renderEditor = (editor: Editor): void => {
   // mode, no tool switch) BOTH are shown: the source keeps its start dots
   // while the target shows its attach dots under the cursor.
   if (editor.mode !== "brush" && editor.mode !== "hand") {
-    const zoom = editor._scene.viewport.zoom || 1;
+    const zoom = editor.scene.viewport.zoom || 1;
     // Build one overlay port-set for a shape. The free outline-attach point
     // (`outlinePoint`, link-attach only) is appended un-offset — it is the
     // real landing point. `activeAnchorName` highlights the snap target if it
@@ -202,7 +300,7 @@ export const renderEditor = (editor: Editor): void => {
       activeAnchorName: string | null,
       outlinePoint?: Vec2,
     ): PortOverlay | null => {
-      const shape = getElement(editor._scene, shapeId);
+      const shape = getElement(editor.scene, shapeId);
       if (!shape) return null;
       const outsetPx = role === "link-start" ? LINK_START_ANCHOR_OUTSET : LINK_ATTACH_ANCHOR_OUTSET;
       const { names, worldPoints: anchorPts } = anchorOverlayPoints(shape, outsetPx / zoom);
@@ -240,9 +338,8 @@ export const renderEditor = (editor: Editor): void => {
       if (attachSet) portSets.push(attachSet);
     } else if (
       !editor.panGesture &&
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `pinch` is unset during the constructor's first render; type says non-null but runtime can be undefined
-      !editor.pinch?.isActive() &&
-      !editor.gestureTx && // hide only during a real drag (tx opens on first move-patch), not on a bare press
+      !editor.pinchActive &&
+      !editor.gestureActive && // hide only during a real drag (tx opens on first move-patch), not on a bare press
       !editor.edgePreview && // don't show start-anchors if we are already drawing a link
       !editor.linkEndpointDrag // or dragging an existing endpoint
     ) {
@@ -254,9 +351,9 @@ export const renderEditor = (editor: Editor): void => {
       // elements — select first, then connect. The dot nearest the cursor
       // grows (`ANCHOR_DOT_HOVER_GROW_RADIUS`).
       const cursor = editor.hoverCursorWorld;
-      if (editor._selection.size === 1 && cursor) {
-        const id = req([...editor._selection][0]);
-        const shape = getElement(editor._scene, id);
+      if (editor.selection.size === 1 && cursor) {
+        const id = req([...editor.selection][0]);
+        const shape = getElement(editor.scene, id);
         if (shape) {
           const b = getElementWorldBounds(shape);
           const pad =
@@ -330,17 +427,17 @@ export const renderEditor = (editor: Editor): void => {
     // it'll float vs fix to a point.
     const hov = editor.hoveredLinkTarget;
     if (hov?.mode === "element") {
-      const tshape = getElement(editor._scene, hov.elementId);
+      const tshape = getElement(editor.scene, hov.elementId);
       if (tshape) overlayOpts.linkAttachHighlight = getElementWorldBounds(tshape);
     }
   }
   // Group-handle overlay: a multi-object selection (elements + links) OR a
   // single group-typed shape. A lone link keeps its endpoint handles, not a
   // resize box. Aspect-locked groups flag the overlay for corner-only handles.
-  if (editor._selection.size + editor._selectedLinks.size > 1 || editor.selectionIsAspectLocked()) {
-    const combined = editor.combinedSelectionBounds();
+  if (editor.selection.size + editor.selectedLinks.size > 1 || editor.aspectLocked) {
+    const combined = editor.combinedSelectionBounds;
     if (combined) overlayOpts.groupBounds = combined;
-    if (editor.selectionIsAspectLocked()) overlayOpts.groupAspectLocked = true;
+    if (editor.aspectLocked) overlayOpts.groupAspectLocked = true;
   }
   if (editor.containerHover) {
     overlayOpts.containerDropZone = editor.containerHover.dropZone;
@@ -354,12 +451,12 @@ export const renderEditor = (editor: Editor): void => {
   }
   // Persistent halo around EVERY selected link (multi-select). Curve-aware
   // so the halo follows the drawn path, matching the hover highlight.
-  if (editor._selectedLinks.size > 0) {
+  if (editor.selectedLinks.size > 0) {
     const halos: { path: readonly Vec2[]; width: number }[] = [];
-    for (const id of editor._selectedLinks) {
-      const edge = getLink(editor._scene, id);
+    for (const id of editor.selectedLinks) {
+      const edge = getLink(editor.scene, id);
       if (!edge) continue;
-      const hpath = getLinkCurvePoints(editor._scene, edge);
+      const hpath = getLinkCurvePoints(editor.scene, edge);
       if (hpath && hpath.length >= 2) {
         halos.push({ path: hpath, width: edge.style.strokeWidth ?? 1 });
       }
@@ -370,9 +467,9 @@ export const renderEditor = (editor: Editor): void => {
   // a multi/mixed selection hides them to stay uncluttered.
   const soleSelectedLink = editor.selectedLink;
   if (soleSelectedLink) {
-    const edge = getLink(editor._scene, soleSelectedLink);
+    const edge = getLink(editor.scene, soleSelectedLink);
     if (edge) {
-      const path = getLinkPath(editor._scene, edge);
+      const path = getLinkPath(editor.scene, edge);
       if (path && path.length >= 2) {
         // During an endpoint-rebind drag the dragged end is re-pointed live in
         // the scene (the whole link follows the cursor), so `path` already
@@ -413,22 +510,22 @@ export const renderEditor = (editor: Editor): void => {
           // the curve.
           const midpoints = editor.linkWaypointDrag
             ? []
-            : (getLinkWaypointMidpoints(editor._scene, edge) ?? []);
+            : (getLinkWaypointMidpoints(editor.scene, edge) ?? []);
           overlayOpts.edgeSelection = { from, to, waypoints, midpoints };
         }
       }
     }
   }
-  if (editor._peerCursors.length > 0) overlayOpts.peerCursors = editor._peerCursors;
-  if (editor._peerSelections.length > 0) overlayOpts.peerSelections = editor._peerSelections;
-  if (editor._scene.annotations.size > 0) {
-    overlayOpts.annotations = [...editor._scene.annotations.values()];
-    overlayOpts.selectedAnnotation = editor._selectedAnnotation;
+  if (editor.peerCursors.length > 0) overlayOpts.peerCursors = editor.peerCursors;
+  if (editor.peerSelections.length > 0) overlayOpts.peerSelections = editor.peerSelections;
+  if (editor.scene.annotations.size > 0) {
+    overlayOpts.annotations = [...editor.scene.annotations.values()];
+    overlayOpts.selectedAnnotation = editor.selectedAnnotation;
   }
   // "Play" badge on paused animated (GIF) shapes — auto-stopped or held under
   // prefers-reduced-motion. Signals a click resumes them.
   const gifBadges = [];
-  for (const shape of editor._scene.elements.values()) {
+  for (const shape of editor.scene.elements.values()) {
     if (isImage(shape) && shape.animationKind && editor.isPlaybackPaused(shape.id)) {
       gifBadges.push(getElementWorldBounds(shape));
     }
@@ -436,7 +533,7 @@ export const renderEditor = (editor: Editor): void => {
   if (gifBadges.length > 0) overlayOpts.gifBadges = gifBadges;
   // In-canvas text editing: caret + selection highlight for the shape
   // under edit (null when not editing).
-  const editingText = editor.editingTextOverlay();
+  const editingText = editor.editingText;
   if (editingText) overlayOpts.editingText = editingText;
   if (editor.debugHitZones) {
     overlayOpts.debugHitZones = true;
@@ -452,7 +549,7 @@ export const renderEditor = (editor: Editor): void => {
     // AND a real drag transaction opened (gestureTx opens only past the drag
     // threshold, so a bare press doesn't count). Resize uses groupResizeOrigin
     // instead, so this stays move-only.
-    const elementDragActive = editor.groupMoveOrigin !== null && editor.gestureTx !== null;
+    const elementDragActive = editor.groupMoveOrigin !== null && editor.gestureActive;
     const visibility = hitZoneVisibility({ linkDragActive, elementDragActive });
     overlayOpts.debugHitZoneVisibility = visibility;
     if (visibility.attachDropZones) {
@@ -462,10 +559,10 @@ export const renderEditor = (editor: Editor): void => {
       const srcId = editor.linkDragFromAnchor?.fromElement;
       const anchors: Vec2[] = [];
       const outlineLoops: (readonly Vec2[])[] = [];
-      for (const shape of editor._scene.elements.values()) {
+      for (const shape of editor.scene.elements.values()) {
         if (shape.id === srcId) continue;
         anchors.push(...anchorOverlayPoints(shape, 0).worldPoints);
-        for (const loop of getElementOutline(editor._scene, shape)) outlineLoops.push(loop);
+        for (const loop of getElementOutline(editor.scene, shape)) outlineLoops.push(loop);
       }
       overlayOpts.debugAttachZones = {
         anchors,
@@ -481,7 +578,7 @@ export const renderEditor = (editor: Editor): void => {
       const dragged = editor.groupMoveOrigin;
       const frames: Bounds[] = [];
       const containers: Bounds[] = [];
-      for (const shape of editor._scene.elements.values()) {
+      for (const shape of editor.scene.elements.values()) {
         if (dragged?.has(shape.id)) continue;
         if (isFrame(shape)) {
           frames.push(getElementWorldBounds(shape));
@@ -494,7 +591,7 @@ export const renderEditor = (editor: Editor): void => {
       overlayOpts.debugContainerZones = { frames, containers };
     }
   }
-  renderOverlay(editor._scene, editor._selection, editor.overlayTarget, overlayOpts);
+  renderOverlay(editor.scene, editor.selection, editor.overlayTarget, overlayOpts);
 
   // Ghost connector (click-create hover) — drawn through the REAL link
   // renderer onto the overlay, faded, AFTER the overlay chrome so it sits on
