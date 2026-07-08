@@ -253,151 +253,180 @@ export interface PeerSelection {
   readonly bounds: readonly Bounds[];
 }
 
+/**
+ * Full option set accepted by {@link renderOverlay}. Every field is a distinct
+ * overlay layer; the orchestrator supplies only the ones it wants painted this
+ * frame. Split out of the function signature so the per-section renderers can
+ * share a typed context (see {@link OverlayCtx}).
+ */
+export interface OverlayOptions {
+  drawingPreview?: Bounds;
+  /**
+   * WYSIWYG preview of the shape being drawn by drag (rect / ellipse):
+   * the would-be `Element` rendered through its real renderer so the
+   * user sees exactly the shape + default style they'll get on release
+   * (modern-style), instead of only a dashed rubber-band rect. Mutually
+   * exclusive with `drawingPreview` — the orchestrator sets one or the
+   * other (dashed only for the lasso / select rubber-band).
+   */
+  drawingPreviewElement?: Element;
+  edgePreview?: LinkPreview;
+  /**
+   * Port-dot affordances to paint. A single set (one shape's anchors)
+   * or several sets at once — e.g. the source's link-start dots AND the
+   * target's link-attach dots simultaneously while a link is dragged
+   * from a start anchor.
+   */
+  ports?: PortOverlay | readonly PortOverlay[];
+  edgeSelection?: LinkSelection;
+  /**
+   * World-space polylines (+ visual width) of every SELECTED link, painted
+   * as a persistent selection halo. Multi-select shows N halos; the sole-
+   * link endpoint/bend handles are still driven by `edgeSelection`.
+   */
+  selectedLinkPaths?: readonly { readonly path: readonly Vec2[]; readonly width: number }[];
+  /**
+   * World-space bounds of the element a connector endpoint will FLOAT-attach
+   * to (drop on the body, not a dot). Painted as a brand outline so the user
+   * sees "this whole object" vs a specific point.
+   */
+  linkAttachHighlight?: Bounds;
+  /**
+   * Fallback bounds for the click-create ghost when no `ghostElementShape`
+   * is available — painted as a faded brand rect outline. Prefer
+   * `ghostElementShape` (the real shape). The connector is drawn separately
+   * by the orchestrator through the real link renderer.
+   */
+  ghostElement?: Bounds;
+  /**
+   * The would-be element itself (same-kind clone of the source) for the
+   * click-create ghost. When set it is rendered through its real renderer
+   * so the ghost looks like the actual shape (an ellipse ghosts as an
+   * ellipse), not a bounding rect. Falls back to a rect outline of
+   * `ghostElement` when absent.
+   */
+  ghostElementShape?: Element;
+  /**
+   * Combined world-space bounding box of a multi-selection (or a
+   * single group-typed shape's children union). When set the overlay
+   * paints a 1-px outline and resize handles on top of the per-shape
+   * selection outlines so the user can grab a group handle.
+   */
+  groupBounds?: Bounds;
+  /**
+   * Restrict the group-bounds handles to the four corners (aspect-
+   * locked resize) instead of the default 8 corner+midpoint set.
+   * Used by group-typed shapes which cannot be stretched
+   * independently along one axis.
+   */
+  groupAspectLocked?: boolean;
+  /**
+   * Drop-zone of the container currently under the dragged shape.
+   * Drawn as a dashed accent rect so the user sees where the element
+   * will be nested after release.
+   */
+  containerDropZone?: Bounds;
+  /**
+   * Live brush stroke preview during a `brush`-mode drag. Drawn as a
+   * variable-width fill so the user sees pressure modulation as they
+   * stroke. `origin` is in world coords; `points` are local-to-origin
+   * (matches the BrushElement memory layout).
+   */
+  brushPreview?: {
+    readonly origin: Vec2;
+    readonly points: readonly { x: number; y: number; width: number }[];
+    readonly fill: string;
+  };
+  /**
+   * Remote peer cursors. Each one renders as a small coloured arrow
+   * with a name chip in the peer's colour, anchored at the world-
+   * space position. The local cursor never appears here.
+   */
+  peerCursors?: readonly PeerCursor[];
+  /**
+   * Remote peer selections. Each entry paints a dashed outline in
+   * the peer's colour around every world-space bbox in `bounds`.
+   */
+  peerSelections?: readonly PeerSelection[];
+  /**
+   * Annotation pins to render on the overlay. Each pin is a small
+   * circle anchored at the annotation's world position; resolved
+   * annotations get a muted colour. Highlighted pin (the one in
+   * `selectedAnnotation`) gets an accent ring.
+   */
+  annotations?: readonly Annotation[];
+  selectedAnnotation?: AnnotationId | null;
+  /**
+   * World bboxes of animated (GIF) shapes whose playback is paused
+   * (auto-stopped or held under prefers-reduced-motion). Each draws a
+   * small "play" chip so the user knows a click resumes it.
+   */
+  gifBadges?: readonly Bounds[];
+  /**
+   * In-canvas text editing chrome for the shape under edit. All rects
+   * are WORLD-space; the overlay projects them to screen. `caret` is
+   * `null` while blinked off. Selection rects render as a translucent
+   * highlight under the caret.
+   */
+  editingText?: {
+    readonly caret: { readonly x: number; readonly y: number; readonly height: number } | null;
+    readonly caretColor: string;
+    readonly selectionRects: readonly Bounds[];
+  };
+  /**
+   * Debug: paint the mouse hit-zones (resize-handle slop, edge-
+   * endpoint radius, edge-body threshold) for **every** element, so
+   * the tuned values can be eyeballed. Off by default; toggled via
+   * the debug panel. Drawn first, under the real selection chrome.
+   */
+  debugHitZones?: boolean;
+  /**
+   * Debug: link-attach drop-zones (anchor catchment circles + edge bands)
+   * to paint while a link endpoint is being placed. Only meaningful with
+   * `debugHitZones` on; supplied by the orchestrator during a link drag.
+   */
+  debugAttachZones?: HitZoneAttach;
+  /**
+   * Debug: element drop-zones (frames + containers) to paint while an
+   * element is being dragged. Only meaningful with `debugHitZones` on;
+   * supplied by the orchestrator during an element drag.
+   */
+  debugContainerZones?: HitZoneContainers;
+  /**
+   * Which hit-zone categories are actionable right now (from
+   * `hitZoneVisibility`). Gates `drawHitZones` so it only paints the
+   * targets the user can act on. Defaults to the at-rest set when omitted.
+   */
+  debugHitZoneVisibility?: HitZoneVisibility;
+  style?: Partial<OverlayStyle>;
+}
+
+/**
+ * Shared context threaded through the per-section overlay renderers. Bundles
+ * the scene/selection, the draw target, resolved style, and the precomputed
+ * world→screen transform + zoom so each section stays a pure `(ctx) => void`.
+ */
+interface OverlayCtx {
+  readonly scene: Scene;
+  readonly selection: Selection;
+  readonly target: RenderTarget;
+  readonly options: OverlayOptions;
+  readonly style: OverlayStyle;
+  readonly w2s: Transform;
+  readonly zoom: number;
+}
+
+/**
+ * Draws selection outlines, resize handles, previews, peer chrome and other
+ * affordances on the overlay layer. Pure draw — does not alter scene or state.
+ * A thin dispatcher: each numbered layer lives in its own `render*` helper,
+ * called here in strict back-to-front paint order.
+ */
 export const renderOverlay = (
   scene: Scene,
   selection: Selection,
   target: RenderTarget,
-  options: {
-    drawingPreview?: Bounds;
-    /**
-     * WYSIWYG preview of the shape being drawn by drag (rect / ellipse):
-     * the would-be `Element` rendered through its real renderer so the
-     * user sees exactly the shape + default style they'll get on release
-     * (modern-style), instead of only a dashed rubber-band rect. Mutually
-     * exclusive with `drawingPreview` — the orchestrator sets one or the
-     * other (dashed only for the lasso / select rubber-band).
-     */
-    drawingPreviewElement?: Element;
-    edgePreview?: LinkPreview;
-    /**
-     * Port-dot affordances to paint. A single set (one shape's anchors)
-     * or several sets at once — e.g. the source's link-start dots AND the
-     * target's link-attach dots simultaneously while a link is dragged
-     * from a start anchor.
-     */
-    ports?: PortOverlay | readonly PortOverlay[];
-    edgeSelection?: LinkSelection;
-    /**
-     * World-space polylines (+ visual width) of every SELECTED link, painted
-     * as a persistent selection halo. Multi-select shows N halos; the sole-
-     * link endpoint/bend handles are still driven by `edgeSelection`.
-     */
-    selectedLinkPaths?: readonly { readonly path: readonly Vec2[]; readonly width: number }[];
-    /**
-     * World-space bounds of the element a connector endpoint will FLOAT-attach
-     * to (drop on the body, not a dot). Painted as a brand outline so the user
-     * sees "this whole object" vs a specific point.
-     */
-    linkAttachHighlight?: Bounds;
-    /**
-     * Fallback bounds for the click-create ghost when no `ghostElementShape`
-     * is available — painted as a faded brand rect outline. Prefer
-     * `ghostElementShape` (the real shape). The connector is drawn separately
-     * by the orchestrator through the real link renderer.
-     */
-    ghostElement?: Bounds;
-    /**
-     * The would-be element itself (same-kind clone of the source) for the
-     * click-create ghost. When set it is rendered through its real renderer
-     * so the ghost looks like the actual shape (an ellipse ghosts as an
-     * ellipse), not a bounding rect. Falls back to a rect outline of
-     * `ghostElement` when absent.
-     */
-    ghostElementShape?: Element;
-    /**
-     * Combined world-space bounding box of a multi-selection (or a
-     * single group-typed shape's children union). When set the overlay
-     * paints a 1-px outline and resize handles on top of the per-shape
-     * selection outlines so the user can grab a group handle.
-     */
-    groupBounds?: Bounds;
-    /**
-     * Restrict the group-bounds handles to the four corners (aspect-
-     * locked resize) instead of the default 8 corner+midpoint set.
-     * Used by group-typed shapes which cannot be stretched
-     * independently along one axis.
-     */
-    groupAspectLocked?: boolean;
-    /**
-     * Drop-zone of the container currently under the dragged shape.
-     * Drawn as a dashed accent rect so the user sees where the element
-     * will be nested after release.
-     */
-    containerDropZone?: Bounds;
-    /**
-     * Live brush stroke preview during a `brush`-mode drag. Drawn as a
-     * variable-width fill so the user sees pressure modulation as they
-     * stroke. `origin` is in world coords; `points` are local-to-origin
-     * (matches the BrushElement memory layout).
-     */
-    brushPreview?: {
-      readonly origin: Vec2;
-      readonly points: readonly { x: number; y: number; width: number }[];
-      readonly fill: string;
-    };
-    /**
-     * Remote peer cursors. Each one renders as a small coloured arrow
-     * with a name chip in the peer's colour, anchored at the world-
-     * space position. The local cursor never appears here.
-     */
-    peerCursors?: readonly PeerCursor[];
-    /**
-     * Remote peer selections. Each entry paints a dashed outline in
-     * the peer's colour around every world-space bbox in `bounds`.
-     */
-    peerSelections?: readonly PeerSelection[];
-    /**
-     * Annotation pins to render on the overlay. Each pin is a small
-     * circle anchored at the annotation's world position; resolved
-     * annotations get a muted colour. Highlighted pin (the one in
-     * `selectedAnnotation`) gets an accent ring.
-     */
-    annotations?: readonly Annotation[];
-    selectedAnnotation?: AnnotationId | null;
-    /**
-     * World bboxes of animated (GIF) shapes whose playback is paused
-     * (auto-stopped or held under prefers-reduced-motion). Each draws a
-     * small "play" chip so the user knows a click resumes it.
-     */
-    gifBadges?: readonly Bounds[];
-    /**
-     * In-canvas text editing chrome for the shape under edit. All rects
-     * are WORLD-space; the overlay projects them to screen. `caret` is
-     * `null` while blinked off. Selection rects render as a translucent
-     * highlight under the caret.
-     */
-    editingText?: {
-      readonly caret: { readonly x: number; readonly y: number; readonly height: number } | null;
-      readonly caretColor: string;
-      readonly selectionRects: readonly Bounds[];
-    };
-    /**
-     * Debug: paint the mouse hit-zones (resize-handle slop, edge-
-     * endpoint radius, edge-body threshold) for **every** element, so
-     * the tuned values can be eyeballed. Off by default; toggled via
-     * the debug panel. Drawn first, under the real selection chrome.
-     */
-    debugHitZones?: boolean;
-    /**
-     * Debug: link-attach drop-zones (anchor catchment circles + edge bands)
-     * to paint while a link endpoint is being placed. Only meaningful with
-     * `debugHitZones` on; supplied by the orchestrator during a link drag.
-     */
-    debugAttachZones?: HitZoneAttach;
-    /**
-     * Debug: element drop-zones (frames + containers) to paint while an
-     * element is being dragged. Only meaningful with `debugHitZones` on;
-     * supplied by the orchestrator during an element drag.
-     */
-    debugContainerZones?: HitZoneContainers;
-    /**
-     * Which hit-zone categories are actionable right now (from
-     * `hitZoneVisibility`). Gates `drawHitZones` so it only paints the
-     * targets the user can act on. Defaults to the at-rest set when omitted.
-     */
-    debugHitZoneVisibility?: HitZoneVisibility;
-    style?: Partial<OverlayStyle>;
-  } = {},
+  options: OverlayOptions = {},
 ): void => {
   const style = { ...DEFAULT_OVERLAY_STYLE, ...options.style };
   target.clear();
@@ -409,8 +438,29 @@ export const renderOverlay = (
   target.save();
   target.setTransform(matrix.IDENTITY);
 
-  // 0. Debug hit-zones — drawn first so the real selection chrome sits
-  //    on top. Visualises every element's mouse hit-targets.
+  const ctx: OverlayCtx = { scene, selection, target, options, style, w2s, zoom };
+  renderDebugHitZones(ctx);
+  renderSelectionHandles(ctx);
+  renderPreviews(ctx);
+  renderLinkHandles(ctx);
+  renderPeerSelections(ctx);
+  renderBrushPreview(ctx);
+  renderContainerDropZone(ctx);
+  renderGroupBounds(ctx);
+  renderAnnotations(ctx);
+  renderPeerCursors(ctx);
+  renderGifBadges(ctx);
+  renderTextEditing(ctx);
+
+  target.restore();
+};
+
+/**
+ * Section 0 — debug hit-zones. Drawn first so the real selection chrome sits
+ * on top. Visualises every element's mouse hit-targets.
+ */
+const renderDebugHitZones = (ctx: OverlayCtx): void => {
+  const { scene, selection, target, options, w2s, zoom } = ctx;
   if (options.debugHitZones) {
     drawHitZones(target, {
       scene,
@@ -429,12 +479,17 @@ export const renderOverlay = (
         : {}),
     });
   }
+};
 
-  // 1. Selection outlines (+ handles only when a single shape is
-  //    selected). Multi-selection skips per-shape handles in favour of
-  //    the combined group bbox handles drawn later — otherwise the
-  //    overlay would look like a forest of corner squares and the user
-  //    could grab a child handle, which `hitTest` also blocks.
+/**
+ * Section 1 — per-shape selection outlines (+ resize/rotate handles only when a
+ * single shape is selected). Multi-selection skips per-shape handles in favour
+ * of the combined group bbox handles (section 7) — otherwise the overlay would
+ * look like a forest of corner squares and the user could grab a child handle,
+ * which `hitTest` also blocks.
+ */
+const renderSelectionHandles = (ctx: OverlayCtx): void => {
+  const { scene, selection, target, style, w2s, zoom } = ctx;
   const multiSelect = selection.size > 1;
   for (const id of selection) {
     const shape = scene.elements.get(id);
@@ -489,6 +544,15 @@ export const renderOverlay = (
     // Rotate grip from the shape's template anchor (default bottom-left).
     drawRotateIcon(target, matrix.applyToPoint(w2s, rotateGripWorld(shape, zoom)), style);
   }
+};
+
+/**
+ * Sections 2–3.5 — the transient draw/create previews and their landing
+ * highlights: the rubber-band rect, the WYSIWYG shape preview, the link
+ * preview, the click-create ghost, and the float-attach target outline.
+ */
+const renderPreviews = (ctx: OverlayCtx): void => {
+  const { target, options, style, w2s } = ctx;
 
   // 2. Rubber-band drawing preview (already in world coords if drawn before transform reset)
   if (options.drawingPreview) {
@@ -581,6 +645,15 @@ export const renderOverlay = (
     target.rect(b.x - pad, b.y - pad, b.width + pad * 2, b.height + pad * 2);
     target.stroke();
   }
+};
+
+/**
+ * Sections 4–5 — link chrome: port-dot attach affordances, the persistent
+ * selection halo around every selected link, and the selected-edge endpoint /
+ * waypoint / midpoint handles.
+ */
+const renderLinkHandles = (ctx: OverlayCtx): void => {
+  const { target, options, style, w2s, zoom } = ctx;
 
   // 4. Port dots — hover affordance in draw-edge mode. May be one set or
   //    several (source start-anchors + target attach-anchors at once).
@@ -592,7 +665,7 @@ export const renderOverlay = (
       for (let i = 0; i < set.worldPoints.length; i++) {
         const screen = matrix.applyToPoint(w2s, req(set.worldPoints[i]));
         const active = set.activeIndex === i;
-        drawPortDot(target, screen, style, active, set.role, active ? set.activeRadius : undefined);
+        drawPortDot(target, screen, active, set.role, active ? set.activeRadius : undefined);
       }
     }
   }
@@ -639,10 +712,15 @@ export const renderOverlay = (
       drawLinkEndpointHandle(target, matrix.applyToPoint(w2s, w), style);
     }
   }
+};
 
-  // 6. Peer selection halos — dashed outline around shapes selected
-  // by remote users, painted in their colour. Drawn before own-
-  // selection outlines so own selection stays on top.
+/**
+ * Section 6 — peer selection halos. Dashed outline around shapes selected by
+ * remote users, painted in their colour. Drawn before own-selection outlines
+ * so own selection stays on top.
+ */
+const renderPeerSelections = (ctx: OverlayCtx): void => {
+  const { target, options, w2s } = ctx;
   if (options.peerSelections) {
     for (const peer of options.peerSelections) {
       for (const wb of peer.bounds) {
@@ -651,6 +729,15 @@ export const renderOverlay = (
       }
     }
   }
+};
+
+/**
+ * Section 6.5 — live brush stroke preview. Quad-strip with interpolated
+ * widths, same render path as the committed BrushElement. Runs in world coords
+ * so the stroke stays anchored to the cursor as the user zooms / pans mid-stroke.
+ */
+const renderBrushPreview = (ctx: OverlayCtx): void => {
+  const { target, options, w2s } = ctx;
 
   // 6.5. Live brush stroke preview — quad-strip with interpolated
   //      widths, same render path as the committed BrushElement. Runs
@@ -697,10 +784,15 @@ export const renderOverlay = (
     }
     target.restore();
   }
+};
 
-  // 7.0. Container drop-zone highlight — drawn under selection chrome
-  //      so handles stay legible. Dashed rect + soft fill — same
-  //      visual language as the drawing preview.
+/**
+ * Section 7.0 — container drop-zone highlight. Drawn under selection chrome so
+ * handles stay legible. Dashed rect + soft fill — same visual language as the
+ * drawing preview.
+ */
+const renderContainerDropZone = (ctx: OverlayCtx): void => {
+  const { target, options, w2s } = ctx;
   if (options.containerDropZone) {
     const zoneScreen = projectBounds(options.containerDropZone, w2s);
     target.setFill("rgba(26, 115, 232, 0.10)");
@@ -713,11 +805,15 @@ export const renderOverlay = (
     target.stroke();
     target.setDashArray(null);
   }
+};
 
-  // 7. Multi-selection / group-typed combined bounds — outline + handles.
-  //    Only CORNER dots are drawn (edge resize = drag the box side); the
-  //    edge handles stay hit-testable via `hitHandle` for non-aspect-locked
-  //    groups.
+/**
+ * Section 7 — multi-selection / group-typed combined bounds: outline + handles.
+ * Only CORNER dots are drawn (edge resize = drag the box side); the edge
+ * handles stay hit-testable via `hitHandle` for non-aspect-locked groups.
+ */
+const renderGroupBounds = (ctx: OverlayCtx): void => {
+  const { target, options, style, w2s, zoom } = ctx;
   if (options.groupBounds) {
     const groupScreen = projectBounds(options.groupBounds, w2s);
     drawOutline(target, groupScreen, style);
@@ -729,10 +825,15 @@ export const renderOverlay = (
     }
     drawRotateGripForBounds(target, options.groupBounds, zoom, w2s, style);
   }
+};
 
-  // 7.5. Annotation pins — drawn before peer cursors so cursors stay
-  // on top, but on top of selection handles. Each pin shows a comment
-  // count badge when the thread has > 0 replies.
+/**
+ * Section 7.5 — annotation pins. Drawn before peer cursors so cursors stay on
+ * top, but on top of selection handles. Each pin shows a comment-count badge
+ * when the thread has > 0 replies.
+ */
+const renderAnnotations = (ctx: OverlayCtx): void => {
+  const { scene, target, options, w2s } = ctx;
   if (options.annotations && options.annotations.length > 0) {
     for (const ann of options.annotations) {
       const world = getAnnotationWorldPosition(scene, ann);
@@ -740,28 +841,42 @@ export const renderOverlay = (
       drawAnnotationPin(target, screen, ann, options.selectedAnnotation ?? null);
     }
   }
+};
 
-  // 8. Remote peer cursors — drawn last so they sit on top of every
-  // other overlay element (including own selection handles).
+/**
+ * Section 8 — remote peer cursors. Drawn near-last so they sit on top of every
+ * other overlay element (including own selection handles).
+ */
+const renderPeerCursors = (ctx: OverlayCtx): void => {
+  const { target, options, w2s } = ctx;
   if (options.peerCursors) {
     for (const cursor of options.peerCursors) {
       const screen = matrix.applyToPoint(w2s, cursor.position);
       drawPeerCursor(target, screen, cursor.color, cursor.name);
     }
   }
+};
 
-  // 9. GIF "play" badges on paused animated shapes — drawn last
-  //    so they sit above selection chrome.
+/**
+ * Section 9 — GIF "play" badges on paused animated shapes. Drawn late so they
+ * sit above selection chrome.
+ */
+const renderGifBadges = (ctx: OverlayCtx): void => {
+  const { target, options, w2s } = ctx;
   if (options.gifBadges) {
     for (const b of options.gifBadges) {
       drawGifBadge(target, projectBounds(b, w2s));
     }
   }
+};
 
-  // 10. In-canvas text editing: translucent selection highlight, then
-  //     the caret bar on top. Both backends draw this via the shared
-  //     RenderTarget primitives (rect + fill), so it's identical on
-  //     Canvas2D and WebGL2.
+/**
+ * Section 10 — in-canvas text editing: translucent selection highlight, then
+ * the caret bar on top. Both backends draw this via the shared RenderTarget
+ * primitives (rect + fill), so it's identical on Canvas2D and WebGL2.
+ */
+const renderTextEditing = (ctx: OverlayCtx): void => {
+  const { target, options, w2s, zoom } = ctx;
   if (options.editingText) {
     const et = options.editingText;
     if (et.selectionRects.length > 0) {
@@ -784,8 +899,6 @@ export const renderOverlay = (
       target.fill();
     }
   }
-
-  target.restore();
 };
 
 const drawLockBadge = (target: RenderTarget, b: Bounds): void => {
@@ -902,19 +1015,46 @@ const frameScreenBounds = (frame: SelectionFrame, w2s: Transform): Bounds => {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 };
 
-const drawHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
-  // Circle of radius HANDLE_SIZE — visually equivalent to a rounded
-  // square with maximum corner radius, but renders via `ellipse`
-  // which every RenderTarget already supports (canvas, svg). A rounded
-  // shape reads as "draggable handle" more clearly than a sharp rectangle.
-  target.setFill(style.handleFill);
-  target.setStroke(style.handleStroke);
-  target.setStrokeWidth(1);
+/** Fill/stroke recipe for a filled, stroked circular handle dot. */
+interface HandleDotStyle {
+  readonly fill: string;
+  readonly stroke: string;
+  readonly strokeWidth: number;
+  /** When set, the dot is painted at this opacity and reset to 1 afterwards. */
+  readonly opacity?: number;
+}
+
+/**
+ * Shared draw for every "filled circle with an outline" handle affordance —
+ * resize handles, port dots, link endpoint / waypoint / midpoint grabs. A
+ * circle reads as "draggable handle" more clearly than a sharp rectangle, and
+ * `ellipse` is supported by every RenderTarget (canvas, svg). State-setter
+ * order is irrelevant to output; only the state at `fill()`/`stroke()` matters.
+ */
+const drawHandleDot = (
+  target: RenderTarget,
+  center: Vec2,
+  radius: number,
+  s: HandleDotStyle,
+): void => {
+  if (s.opacity !== undefined) target.setOpacity(s.opacity);
+  target.setStroke(s.stroke);
+  target.setStrokeWidth(s.strokeWidth);
   target.setDashArray(null);
+  target.setFill(s.fill);
   target.beginPath();
-  target.ellipse(center.x, center.y, HANDLE_SIZE, HANDLE_SIZE);
+  target.ellipse(center.x, center.y, radius, radius);
   target.fill();
   target.stroke();
+  if (s.opacity !== undefined) target.setOpacity(1);
+};
+
+const drawHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
+  drawHandleDot(target, center, HANDLE_SIZE, {
+    fill: style.handleFill,
+    stroke: style.handleStroke,
+    strokeWidth: 1,
+  });
 };
 
 /**
@@ -1015,7 +1155,6 @@ const drawLinkPreviewPath = (
 const drawPortDot = (
   target: RenderTarget,
   center: Vec2,
-  style: OverlayStyle,
   active: boolean,
   role: "link-start" | "link-attach" = "link-start",
   activeRadius?: number,
@@ -1034,43 +1173,27 @@ const drawPortDot = (
       : LINK_ATTACH_ANCHOR_FILL;
   const stroke = isStart ? LINK_START_ANCHOR_STROKE : LINK_ATTACH_ANCHOR_STROKE;
 
-  target.setStroke(stroke);
-  target.setStrokeWidth(ANCHOR_DOT_STROKE_WIDTH);
-  target.setDashArray(null);
-  target.setFill(fill);
-  target.beginPath();
-  target.ellipse(center.x, center.y, radius, radius);
-  target.fill();
-  target.stroke();
+  drawHandleDot(target, center, radius, { fill, stroke, strokeWidth: ANCHOR_DOT_STROKE_WIDTH });
 };
 
 const drawLinkEndpointHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
-  const radius = LINK_ENDPOINT_HANDLE_DRAW_RADIUS;
-  target.setStroke(style.selectionStroke);
-  target.setStrokeWidth(2);
-  target.setDashArray(null);
-  target.setFill(style.handleFill);
-  target.beginPath();
-  target.ellipse(center.x, center.y, radius, radius);
-  target.fill();
-  target.stroke();
+  drawHandleDot(target, center, LINK_ENDPOINT_HANDLE_DRAW_RADIUS, {
+    fill: style.handleFill,
+    stroke: style.selectionStroke,
+    strokeWidth: 2,
+  });
 };
 
 // Smaller, semi-transparent dot on a segment midpoint — the "drag to add a
 // bend point" affordance. Lighter than a real waypoint handle so it reads
 // as secondary.
 const drawLinkMidpointHandle = (target: RenderTarget, center: Vec2, style: OverlayStyle): void => {
-  const radius = LINK_MIDPOINT_HANDLE_DRAW_RADIUS;
-  target.setOpacity(0.55);
-  target.setStroke(style.selectionStroke);
-  target.setStrokeWidth(1.5);
-  target.setDashArray(null);
-  target.setFill(style.handleFill);
-  target.beginPath();
-  target.ellipse(center.x, center.y, radius, radius);
-  target.fill();
-  target.stroke();
-  target.setOpacity(1);
+  drawHandleDot(target, center, LINK_MIDPOINT_HANDLE_DRAW_RADIUS, {
+    fill: style.handleFill,
+    stroke: style.selectionStroke,
+    strokeWidth: 1.5,
+    opacity: 0.55,
+  });
 };
 
 const drawPeerSelection = (target: RenderTarget, b: Bounds, color: string): void => {
