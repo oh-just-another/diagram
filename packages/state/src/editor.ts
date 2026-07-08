@@ -143,6 +143,17 @@ import {
 } from "./editor/applies/resize.js";
 import { bindPointerEvents as bindPointerEventsExternal } from "./editor/pointer-binding.js";
 import {
+  InteractionState,
+  type AnnotationDrag,
+  type ContainerHover,
+  type EdgePreview,
+  type GroupResizeOrigin,
+  type HoveredLinkTarget,
+  type LinkDragFromAnchor,
+  type PanGesture,
+  type RotateGestureOrigin,
+} from "./editor/interaction-state.js";
+import {
   beginBrushStroke as beginBrushStrokePure,
   commitBrushStroke as commitBrushStrokePure,
   extendBrushStroke as extendBrushStrokePure,
@@ -461,74 +472,56 @@ export class Editor {
   public _scene: Scene;
   public _selection: Selection.Selection = Selection.EMPTY;
   /**
-   * Snapshot of an in-progress annotation drag (press on pin → move
-   * pointer → release). `originPosition` is the annotation's stored
-   * position at press time; per-move handler computes a delta from
-   * the current pointer in world space and writes it back.
+   * Ephemeral interaction / gesture state (previews, gesture origins,
+   * transient modifiers). Single source of truth for the short-lived fields
+   * the pointer handlers, render orchestrator and container-ops read/write
+   * while a gesture is in flight. The public fields below delegate to it so
+   * external writers keep referencing `editor.<field>` unchanged.
    */
-  public annotationDrag: {
-    id: AnnotationId;
-    originPosition: Vec2;
-    originWorldPoint: Vec2;
-    moved: boolean;
-  } | null = null;
+  public readonly interaction = new InteractionState();
+
+  /** Snapshot of an in-progress annotation-pin drag. */
+  get annotationDrag(): AnnotationDrag | null {
+    return this.interaction.annotationDrag;
+  }
+  set annotationDrag(v: AnnotationDrag | null) {
+    this.interaction.annotationDrag = v;
+  }
   /** Live preview while drawing a new shape; null when not drawing. */
-  public drawingPreview: Bounds | null = null;
-  public edgePreview: { from: Vec2; to: Vec2; points?: readonly Vec2[] } | null = null;
-  /**
-   * Active "drag a link from a start-anchor" gesture. Set when a
-   * press lands on one of the selected element's link-start dots; lets
-   * the user draw a link straight from the dot without switching to the
-   * draw-edge tool. `fromWorld` is the true anchor world point (the link
-   * origin, un-offset); `origin` is the press point (for the drag
-   * threshold). Read by the pointer handlers (drive preview / commit on
-   * up) and the render orchestrator (keep the source's start dots visible
-   * during the drag). Null when no such drag is in flight. */
-  public linkDragFromAnchor: {
-    fromElement: ElementId;
-    fromWorld: Vec2;
-    /** Named anchor the gesture started on — drives the click-to-create
-     * direction (outward normal) and the source link endpoint. */
-    anchorName: string;
-    origin: Vec2;
-    moved: boolean;
-  } | null = null;
-  /**
-   * Element being hovered while draw-edge mode is active. Drives the port-
-   * overlay render so the user sees attachment points. `null` outside
-   * draw-edge mode or when the pointer is over empty canvas.
-   */
-  public hoveredLinkTarget: {
-    elementId: ElementId;
-    activeAnchor: string | null;
-    outlinePoint?: Vec2 | undefined;
-    /**
-     * What the drop will produce, for clear pre-drop feedback (standard):
-     *   - `"point"` → fixed attach to a specific dot (highlight the dot);
-     *   - `"element"` → floating attach to the whole shape (highlight the
-     *     element). Mirrors `snapLinkEndpoint`: an anchor within threshold →
-     *     point, otherwise floating.
-     */
-    mode: "point" | "element";
-  } | null = null;
-  /**
-   * Last idle cursor position (world) in select mode — the overlay grows the
-   * SINGLE selected element's link-start dot nearest it
-   * (`ANCHOR_DOT_HOVER_GROW_RADIUS`). Reset to null on press / gesture.
-   */
-  public hoverCursorWorld: Vec2 | null = null;
-  /**
-   * When a link is dropped on empty canvas, the edge is created with a
-   * free `point` end and this records where, so the host can pop a
-   * mini shape-picker at that spot (standard). Picking a shape re-points the
-   * end to the new element; dismissing (Esc / click-away) leaves the free
-   * end on the canvas. `null` when no menu is pending.
-   */
-  private pendingLinkDropMenu: {
-    linkId: LinkId;
-    side: "from" | "to";
-    world: Vec2;
-  } | null = null;
+  get drawingPreview(): Bounds | null {
+    return this.interaction.drawingPreview;
+  }
+  set drawingPreview(v: Bounds | null) {
+    this.interaction.drawingPreview = v;
+  }
+  /** Live preview of an edge being drawn. */
+  get edgePreview(): EdgePreview | null {
+    return this.interaction.edgePreview;
+  }
+  set edgePreview(v: EdgePreview | null) {
+    this.interaction.edgePreview = v;
+  }
+  /** Active "drag a link from a start-anchor" gesture. */
+  get linkDragFromAnchor(): LinkDragFromAnchor | null {
+    return this.interaction.linkDragFromAnchor;
+  }
+  set linkDragFromAnchor(v: LinkDragFromAnchor | null) {
+    this.interaction.linkDragFromAnchor = v;
+  }
+  /** Element hovered while draw-edge mode is active (drives the port overlay). */
+  get hoveredLinkTarget(): HoveredLinkTarget | null {
+    return this.interaction.hoveredLinkTarget;
+  }
+  set hoveredLinkTarget(v: HoveredLinkTarget | null) {
+    this.interaction.hoveredLinkTarget = v;
+  }
+  /** Last idle cursor position (world) in select mode — grows the nearest dot. */
+  get hoverCursorWorld(): Vec2 | null {
+    return this.interaction.hoverCursorWorld;
+  }
+  set hoverCursorWorld(v: Vec2 | null) {
+    this.interaction.hoverCursorWorld = v;
+  }
   /**
    * Currently selected links (connectors). Links are first-class members
    * of the selection: they coexist with selected elements, join Cmd+A and
@@ -589,62 +582,40 @@ export class Editor {
     return this.linkHandles.segmentDrag;
   }
   /** Live lasso bounds during a rubber-band select gesture. */
-  public lassoPreview: Bounds | null = null;
-
-  /**
-   * Selection captured at lasso-press time. Used to compute the live
-   * preview correctly: in `replace` mode the lasso starts from empty
-   * each frame; in `add` mode it starts from this snapshot so shapes
-   * the user already had selected don't blink out and back.
-   */
-  private lassoBaseSelection: Selection.Selection | null = null;
-  /** Link-selection counterpart of `lassoBaseSelection` for the marquee. */
-  private lassoBaseLinks: LinkSelection.LinkSelection | null = null;
-  /**
-   * Snapshot of every selected shape's `position` at press-down. Used to
-   * translate the whole group additively during a multi-shape drag. The
-   * machine still emits per-shape MOVE_SHAPE — the editor intercepts and
-   * fans out when this map is populated.
-   */
-  public groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null = null;
-  /**
-   * Press-time snapshot of connectors that must follow a multi-element
-   * drag rigidly — both endpoints bound to moved elements, carrying
-   * absolute geometry (waypoints / fixedSegments / routedPoints). Each
-   * frame translates from these originals so the shift never compounds.
-   * Cleared on gesture commit / cancel alongside `groupMoveOrigin`.
-   */
-  public groupLinkMoveOrigin: ReadonlyMap<LinkId, Link> | null = null;
-  /**
-   * Per-shape snapshot for a group-resize gesture — `bounds` is the
-   * shape's world AABB at press-down. Editor scales the relative
-   * position / size against the combined bounds delta each frame.
-   */
-  public groupResizeOrigin: {
-    readonly combined: Bounds;
-    readonly elements: ReadonlyMap<
-      ElementId,
-      { readonly position: Vec2; readonly bounds: Bounds; readonly scale: Vec2 }
-    >;
-    readonly links: ReadonlyMap<LinkId, Link>;
-  } | null = null;
-  /**
-   * Press-time snapshot for a rotate gesture: the pivot (selection bbox centre)
-   * and every member's pristine `position` / `rotation`. Each frame rotates
-   * from this baseline so the cumulative angle never drifts. Cleared on gesture
-   * end (commit / cancel).
-   */
-  public rotateGestureOrigin: {
-    readonly pivot: Vec2;
-    readonly origin: ReadonlyMap<ElementId, { readonly position: Vec2; readonly rotation: number }>;
-  } | null = null;
-  /**
-   * Pristine shape snapshot for a single-shape text resize, captured on
-   * the gesture's first tick. Font scaling is computed against this base
-   * so it never compounds across pointermove ticks. Cleared on gesture
-   * end (commit / cancel).
-   */
-  private _resizeOriginElement: Element | null = null;
+  get lassoPreview(): Bounds | null {
+    return this.interaction.lassoPreview;
+  }
+  set lassoPreview(v: Bounds | null) {
+    this.interaction.lassoPreview = v;
+  }
+  /** Snapshot of every selected shape's `position` at press-down (multi-drag). */
+  get groupMoveOrigin(): ReadonlyMap<ElementId, Vec2> | null {
+    return this.interaction.groupMoveOrigin;
+  }
+  set groupMoveOrigin(v: ReadonlyMap<ElementId, Vec2> | null) {
+    this.interaction.groupMoveOrigin = v;
+  }
+  /** Press-time snapshot of connectors that follow a multi-element drag rigidly. */
+  get groupLinkMoveOrigin(): ReadonlyMap<LinkId, Link> | null {
+    return this.interaction.groupLinkMoveOrigin;
+  }
+  set groupLinkMoveOrigin(v: ReadonlyMap<LinkId, Link> | null) {
+    this.interaction.groupLinkMoveOrigin = v;
+  }
+  /** Per-shape snapshot for a group-resize gesture. */
+  get groupResizeOrigin(): GroupResizeOrigin | null {
+    return this.interaction.groupResizeOrigin;
+  }
+  set groupResizeOrigin(v: GroupResizeOrigin | null) {
+    this.interaction.groupResizeOrigin = v;
+  }
+  /** Press-time snapshot for a rotate gesture. */
+  get rotateGestureOrigin(): RotateGestureOrigin | null {
+    return this.interaction.rotateGestureOrigin;
+  }
+  set rotateGestureOrigin(v: RotateGestureOrigin | null) {
+    this.interaction.rotateGestureOrigin = v;
+  }
   /**
    * Active layer — new shapes created via `addElement` / `applyCreate` land
    * here when their input doesn't specify a `layerId`. Defaults to the
@@ -668,23 +639,6 @@ export class Editor {
   ]);
   /** Snap threshold in world units. */
   private readonly snapThreshold = DEFAULT_SNAP_THRESHOLD;
-
-  /**
-   * Transient flag set by the host while a snap-suppress modifier
-   * (Cmd / Ctrl) is held during a drag — lets the user pull a shape off
-   * the grid for one gesture without toggling snap off. Read by the
-   * move / resize / create wrappers; never persisted.
-   */
-  private snapSuppressed = false;
-
-  /**
-   * Transient transform-modifier state mirrored from the host while a drag is
-   * in flight. `alt` resizes symmetrically about the centre; `shift` locks the
-   * resize aspect ratio or constrains a move to a single axis. Read by the
-   * move / resize wrappers; never persisted.
-   */
-  private transformAltKey = false;
-  private transformShiftKey = false;
 
   /**
    * In-editor style memory for copy-style / paste-style. Holds the visual
@@ -718,20 +672,16 @@ export class Editor {
   public _enteredGroup: ElementId | null = null;
 
   /**
-   * Double-click detection state. Updated on every non-drag pointer
-   * up; the next pointer-up within `DOUBLE_CLICK_MS` and within
-   * `DOUBLE_CLICK_TOLERANCE_PX` of `lastClickWorldPoint` counts as a
-   * double-click. Used to trigger group drill-down (enter isolation).
-   */
-  private lastClickAt = 0;
-  private lastClickWorldPoint: Vec2 | null = null;
-
-  /**
    * In-progress brush stroke. Hosts push points via
    * `extendBrushStroke`; the overlay reads it through
    * `pendingBrushStroke` to draw a live preview.
    */
-  public brushStroke: BrushStrokeState | null = null;
+  get brushStroke(): BrushStrokeState | null {
+    return this.interaction.brushStroke;
+  }
+  set brushStroke(v: BrushStrokeState | null) {
+    this.interaction.brushStroke = v;
+  }
 
   /**
    * Last world-space pointer position observed by the host's onMove
@@ -739,7 +689,12 @@ export class Editor {
    * paste lands under the cursor instead of overlapping the originals.
    * `null` until the pointer first enters the host.
    */
-  public lastPointerWorld: Vec2 | null = null;
+  get lastPointerWorld(): Vec2 | null {
+    return this.interaction.lastPointerWorld;
+  }
+  set lastPointerWorld(v: Vec2 | null) {
+    this.interaction.lastPointerWorld = v;
+  }
   /** Host-registered custom cursor images per role (see `setCursorOverride`). */
   private readonly cursorOverrides = new Map<CursorRole, CursorSpec>();
 
@@ -803,7 +758,12 @@ export class Editor {
    * gestures, set in onDown when press lands on a shape and cleared
    * in onUp / cancel.
    */
-  public dragElementId: ElementId | null = null;
+  get dragElementId(): ElementId | null {
+    return this.interaction.dragElementId;
+  }
+  set dragElementId(v: ElementId | null) {
+    this.interaction.dragElementId = v;
+  }
 
   /**
    * Element that the current press added to the selection additively
@@ -812,7 +772,12 @@ export class Editor {
    * otherwise `SELECT_TOGGLE` it straight back off, so it consults this
    * to skip that redundant toggle. Reset at every press-down.
    */
-  public additivePressAdded: ElementId | null = null;
+  get additivePressAdded(): ElementId | null {
+    return this.interaction.additivePressAdded;
+  }
+  set additivePressAdded(v: ElementId | null) {
+    this.interaction.additivePressAdded = v;
+  }
 
   /**
    * Live container highlight: the container shape the dragged item is
@@ -820,7 +785,12 @@ export class Editor {
    * accent rect on the container's drop-zone so the user sees where the
    * shape will land after release.
    */
-  public containerHover: { id: ElementId; dropZone: Bounds } | null = null;
+  get containerHover(): ContainerHover | null {
+    return this.interaction.containerHover;
+  }
+  set containerHover(v: ContainerHover | null) {
+    this.interaction.containerHover = v;
+  }
 
   /**
    * Remote peer cursors / selections, pushed in by the host (typically
@@ -843,7 +813,9 @@ export class Editor {
    * two or more entries we enter a pinch / pan gesture and bypass the
    * interaction machine — `pinchOrigin` holds the baseline.
    */
-  public readonly activePointers = new Map<number, Vec2>();
+  get activePointers(): Map<number, Vec2> {
+    return this.interaction.activePointers;
+  }
   /**
    * One-finger-pan candidate: set at pointer-down when a TOUCH press lands
    * on empty canvas in select mode. A tap (no movement) still falls through
@@ -851,7 +823,12 @@ export class Editor {
    * this to a real pan instead of a marquee lasso (mobile convention).
    * Screen-space origin point.
    */
-  public touchPanCandidate: Vec2 | null = null;
+  get touchPanCandidate(): Vec2 | null {
+    return this.interaction.touchPanCandidate;
+  }
+  set touchPanCandidate(v: Vec2 | null) {
+    this.interaction.touchPanCandidate = v;
+  }
   // Pinch gesture state lives in PinchController; `pinch.isActive()`
   // reports whether a two-finger gesture is in flight.
   public pinch!: PinchController;
@@ -864,7 +841,12 @@ export class Editor {
    * "grab" / "grabbing". Wires a window-level keydown/keyup listener
    * in `bindPointerEvents`.
    */
-  public spaceHeld = false;
+  get spaceHeld(): boolean {
+    return this.interaction.spaceHeld;
+  }
+  set spaceHeld(v: boolean) {
+    this.interaction.spaceHeld = v;
+  }
 
   /**
    * Host-supplied tile compositor — when set (via
@@ -916,13 +898,12 @@ export class Editor {
    * only treat right-click releases as potential context-menu
    * triggers (Space + left-drag never opens a menu).
    */
-  public panGesture: {
-    pointerId: number;
-    button: number;
-    startPoint: Vec2;
-    lastPoint: Vec2;
-    moved: boolean;
-  } | null = null;
+  get panGesture(): PanGesture | null {
+    return this.interaction.panGesture;
+  }
+  set panGesture(v: PanGesture | null) {
+    this.interaction.panGesture = v;
+  }
 
   /**
    * Set on a right-click pointerdown so the upcoming native
@@ -930,7 +911,12 @@ export class Editor {
    * (the gesture decides whether to fire the menu manually on
    * pointerup based on whether the user dragged).
    */
-  public suppressNextContextMenu = false;
+  get suppressNextContextMenu(): boolean {
+    return this.interaction.suppressNextContextMenu;
+  }
+  set suppressNextContextMenu(v: boolean) {
+    this.interaction.suppressNextContextMenu = v;
+  }
 
   /**
    * Long-press tracking. Starts on `pointerdown`; cancelled on
@@ -1845,9 +1831,8 @@ export class Editor {
     return this.textEdit.editingElement;
   }
   /** Link whose caption is being edited inline (double-click), or null. */
-  private _editingLinkCaption: LinkId | null = null;
   get editingLinkCaption(): LinkId | null {
-    return this._editingLinkCaption;
+    return this.interaction.editingLinkCaption;
   }
   /**
    * Frame whose NAME (header label) is being edited inline (double-click
@@ -1882,7 +1867,7 @@ export class Editor {
   beginLinkCaptionEdit(id: LinkId): void {
     if (!getLink(this._scene, id)) return;
     if (this.editingTextElement !== null) this.commitTextEdit();
-    this._editingLinkCaption = id;
+    this.interaction.editingLinkCaption = id;
     this.notify();
   }
 
@@ -1892,8 +1877,8 @@ export class Editor {
    * styling. One undo step. Clears caption-edit mode.
    */
   commitLinkCaptionEdit(text: string): void {
-    const id = this._editingLinkCaption;
-    this._editingLinkCaption = null;
+    const id = this.interaction.editingLinkCaption;
+    this.interaction.editingLinkCaption = null;
     if (id === null) {
       this.notify();
       return;
@@ -1919,8 +1904,8 @@ export class Editor {
 
   /** Cancel link caption editing without changing the label. */
   cancelLinkCaptionEdit(): void {
-    if (this._editingLinkCaption === null) return;
-    this._editingLinkCaption = null;
+    if (this.interaction.editingLinkCaption === null) return;
+    this.interaction.editingLinkCaption = null;
     this.notify();
   }
 
@@ -2276,17 +2261,13 @@ export class Editor {
     // scene to exactly where it was (cancelling the history tx alone wouldn't).
     this.cancelGesture();
     this.actor.send({ type: "POINTER_CANCEL" });
-    this.drawingPreview = null;
-    this.edgePreview = null;
-    this.lassoPreview = null;
+    this.interaction.resetPreviews();
     // Abort a host-managed link-from-anchor gesture too — it lives outside
     // the machine, so POINTER_CANCEL above doesn't touch it. Without this a
     // gesture left mid-flight would keep its preview after Escape.
-    this.linkDragFromAnchor = null;
-    this.hoveredLinkTarget = null;
-    this.hoverCursorWorld = null;
-    this._editingLinkCaption = null;
-    this.pendingLinkDropMenu = null;
+    this.interaction.linkDragFromAnchor = null;
+    this.interaction.editingLinkCaption = null;
+    this.interaction.pendingLinkDropMenu = null;
     // Waypoint / segment / endpoint-rebind drags: gestureTx.cancel above
     // already reverted the live re-point; just drop the handle-drag state so
     // the dots stop tracking.
@@ -2849,7 +2830,7 @@ export class Editor {
    * of the modifier to this. Idempotent; never touches history.
    */
   setSnapSuppressed(suppressed: boolean): void {
-    this.snapSuppressed = suppressed;
+    this.interaction.snapSuppressed = suppressed;
   }
 
   /**
@@ -2859,8 +2840,8 @@ export class Editor {
    * keydown/keyup of the modifiers to this. Idempotent; never touches history.
    */
   setTransformModifiers(mods: { readonly alt: boolean; readonly shift: boolean }): void {
-    this.transformAltKey = mods.alt;
-    this.transformShiftKey = mods.shift;
+    this.interaction.transformAltKey = mods.alt;
+    this.interaction.transformShiftKey = mods.shift;
   }
 
   /**
@@ -2871,7 +2852,9 @@ export class Editor {
    */
   private snapActive(): boolean {
     const viewport = this._scene.viewport;
-    return !this.snapSuppressed && viewport.gridEnabled && isSnapToGridEnabled(viewport);
+    return (
+      !this.interaction.snapSuppressed && viewport.gridEnabled && isSnapToGridEnabled(viewport)
+    );
   }
 
   /** World-unit spacing the current gesture snaps to. */
@@ -3333,11 +3316,11 @@ export class Editor {
   public routeIsolationClick(clickEffect: InteractionEmit | null, worldPoint: Vec2): boolean {
     const now = performance.now();
     const isDouble =
-      now - this.lastClickAt < DOUBLE_CLICK_MS &&
-      this.lastClickWorldPoint !== null &&
-      vec2.distance(this.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX;
-    this.lastClickAt = now;
-    this.lastClickWorldPoint = worldPoint;
+      now - this.interaction.lastClickAt < DOUBLE_CLICK_MS &&
+      this.interaction.lastClickWorldPoint !== null &&
+      vec2.distance(this.interaction.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX;
+    this.interaction.lastClickAt = now;
+    this.interaction.lastClickWorldPoint = worldPoint;
 
     // Double-click the frame HEADER (label strip above the body) → rename.
     // Checked before the clickEffect gate because the header sits outside
@@ -3472,8 +3455,8 @@ export class Editor {
       case "LASSO_PROGRESS":
         // Capture the pre-lasso selection on the first progress emit
         // of a gesture; subsequent emits use it as the additive base.
-        this.lassoBaseSelection ??= this._selection;
-        this.lassoBaseLinks ??= this._selectedLinks;
+        this.interaction.lassoBaseSelection ??= this._selection;
+        this.interaction.lassoBaseLinks ??= this._selectedLinks;
         this.lassoPreview = emit.bounds;
         this.applyLassoLiveSelection(emit.bounds, emit.mode);
         this.notify();
@@ -3481,12 +3464,12 @@ export class Editor {
       case "LASSO_CLEAR":
         if (
           this.lassoPreview !== null ||
-          this.lassoBaseSelection !== null ||
-          this.lassoBaseLinks !== null
+          this.interaction.lassoBaseSelection !== null ||
+          this.interaction.lassoBaseLinks !== null
         ) {
           this.lassoPreview = null;
-          this.lassoBaseSelection = null;
-          this.lassoBaseLinks = null;
+          this.interaction.lassoBaseSelection = null;
+          this.interaction.lassoBaseLinks = null;
           this.notify();
         }
         return;
@@ -3494,8 +3477,8 @@ export class Editor {
         // Final commit — uses the same logic as the live preview so
         // the visible selection matches what lands. Reset the base
         // snapshot so the next gesture re-captures it.
-        this.lassoBaseSelection = null;
-        this.lassoBaseLinks = null;
+        this.interaction.lassoBaseSelection = null;
+        this.interaction.lassoBaseLinks = null;
         this.applySelectByBounds(emit.bounds, emit.mode);
         return;
       case "MOVE_SHAPE":
@@ -3611,7 +3594,7 @@ export class Editor {
     const el = getElement(this._scene, id);
     if (el && !this.isElementManipulable(el)) return;
     // Shift constrains the drag to one axis before snapping.
-    const moved = this.transformShiftKey ? constrainDeltaToAxis(delta) : delta;
+    const moved = this.interaction.transformShiftKey ? constrainDeltaToAxis(delta) : delta;
     const d = this.snapActive() ? snapMoveDelta(originalBounds, moved, this.snapSpacing()) : moved;
     const patch = computeElementMovePatch(this._scene, id, d, originalBounds);
     if (!patch) return;
@@ -3623,7 +3606,7 @@ export class Editor {
   private applyGroupMove(delta: Vec2): void {
     if (!this.groupMoveOrigin) return;
     // Shift constrains the drag to one axis before snapping.
-    const moved = this.transformShiftKey ? constrainDeltaToAxis(delta) : delta;
+    const moved = this.interaction.transformShiftKey ? constrainDeltaToAxis(delta) : delta;
     const d = this.snapActive()
       ? snapGroupDelta(this.groupMoveOrigin, moved, this.snapSpacing())
       : moved;
@@ -3787,7 +3770,7 @@ export class Editor {
   private applyRotate(deltaAngle: number): void {
     const gesture = this.rotateGestureOrigin;
     if (!gesture) return;
-    const d = this.transformShiftKey
+    const d = this.interaction.transformShiftKey
       ? Math.round(deltaAngle / ROTATE_SNAP_RADIANS) * ROTATE_SNAP_RADIANS
       : deltaAngle;
     const patches = computeRotatePatches(this._scene, gesture.origin, gesture.pivot, d);
@@ -3811,8 +3794,8 @@ export class Editor {
       originalBounds,
       // Aspect-locked when the selection type demands it (images / groups) or
       // the user holds Shift for this gesture.
-      this.selectionIsAspectLocked() || this.transformShiftKey,
-      this.transformAltKey,
+      this.selectionIsAspectLocked() || this.interaction.transformShiftKey,
+      this.interaction.transformAltKey,
     );
     this._scene = result.scene;
     for (const patch of result.patches) this.recordGesturePatch(patch);
@@ -3827,14 +3810,15 @@ export class Editor {
     // on the first tick so the closed-form never compounds. Grid-snap is
     // skipped — snapping a tilted box to the world grid is ill-defined.
     if (shape !== undefined && !isText(shape) && shape.rotation !== 0) {
-      if (this._resizeOriginElement?.id !== id) this._resizeOriginElement = shape;
+      if (this.interaction.resizeOriginElement?.id !== id)
+        this.interaction.resizeOriginElement = shape;
       const result = computeRotatedElementResize(
         this._scene,
-        this._resizeOriginElement,
+        this.interaction.resizeOriginElement,
         handle,
         delta,
-        this.transformShiftKey,
-        this.transformAltKey,
+        this.interaction.transformShiftKey,
+        this.interaction.transformAltKey,
       );
       if (!result) return;
       this._scene = result.scene;
@@ -3848,12 +3832,12 @@ export class Editor {
     // Text: aspect-locked font scaling. Snapshot the pristine shape on
     // the gesture's first tick so the scale base never compounds.
     if (shape !== undefined && isText(shape)) {
-      if (this._resizeOriginElement?.id !== id) {
-        this._resizeOriginElement = shape;
+      if (this.interaction.resizeOriginElement?.id !== id) {
+        this.interaction.resizeOriginElement = shape;
       }
       // The snapshot was taken from a text shape above; fall back to the
       // live shape if a stale non-text snapshot ever leaks through.
-      const origin = this._resizeOriginElement;
+      const origin = this.interaction.resizeOriginElement;
       const textOrigin = isText(origin) ? origin : shape;
       const result = computeTextResize(
         this._scene,
@@ -3861,7 +3845,7 @@ export class Editor {
         handle,
         d,
         originalBounds,
-        this.transformAltKey,
+        this.interaction.transformAltKey,
       );
       if (!result) return;
       this._scene = result.scene;
@@ -3876,8 +3860,8 @@ export class Editor {
       d,
       originalBounds,
       (s, raw, h) => this.clampContainerToChildren(s, raw, h),
-      this.transformShiftKey,
-      this.transformAltKey,
+      this.interaction.transformShiftKey,
+      this.interaction.transformAltKey,
     );
     if (!result) return;
     this._scene = result.scene;
@@ -3944,14 +3928,14 @@ export class Editor {
     // the drop point (standard). The free-ended link stays; picking re-points
     // it, dismissing keeps it. Only the `to` end is user-dragged here.
     if (to.kind === "point") {
-      this.pendingLinkDropMenu = { linkId: id, side: "to", world: to.position };
+      this.interaction.pendingLinkDropMenu = { linkId: id, side: "to", world: to.position };
     }
     this.notify();
   }
 
   /** Pending shape-picker after a link was dropped on empty canvas. */
   get linkDropMenu(): { linkId: LinkId; side: "from" | "to"; world: Vec2 } | null {
-    return this.pendingLinkDropMenu;
+    return this.interaction.pendingLinkDropMenu;
   }
 
   /**
@@ -3968,11 +3952,11 @@ export class Editor {
       order: FractionalIndex;
     }) => Element,
   ): void {
-    const pending = this.pendingLinkDropMenu;
+    const pending = this.interaction.pendingLinkDropMenu;
     if (!pending) return;
     const link = getLink(this._scene, pending.linkId);
     if (!link) {
-      this.pendingLinkDropMenu = null;
+      this.interaction.pendingLinkDropMenu = null;
       this.notify();
       return;
     }
@@ -3984,7 +3968,7 @@ export class Editor {
     tx.add(r.linkPatch);
     tx.commit();
 
-    this.pendingLinkDropMenu = null;
+    this.interaction.pendingLinkDropMenu = null;
     this._selection = Selection.single(newId);
     this._selectedLinks = LinkSelection.EMPTY;
     this.notify();
@@ -3992,8 +3976,8 @@ export class Editor {
 
   /** Dismiss the link-drop shape-picker, leaving the free-ended link. */
   dismissLinkDropMenu(): void {
-    if (!this.pendingLinkDropMenu) return;
-    this.pendingLinkDropMenu = null;
+    if (!this.interaction.pendingLinkDropMenu) return;
+    this.interaction.pendingLinkDropMenu = null;
     this.notify();
   }
 
@@ -4095,7 +4079,7 @@ export class Editor {
   }
 
   private applyLassoLiveSelection(bounds: Bounds, mode: "replace" | "add"): void {
-    const base = this.lassoBaseSelection ?? Selection.EMPTY;
+    const base = this.interaction.lassoBaseSelection ?? Selection.EMPTY;
     const next = selectByBoundsLivePure(
       this._scene,
       base,
@@ -4103,7 +4087,7 @@ export class Editor {
       bounds,
       mode,
     );
-    const linkBase = this.lassoBaseLinks ?? LinkSelection.EMPTY;
+    const linkBase = this.interaction.lassoBaseLinks ?? LinkSelection.EMPTY;
     const nextLinks = selectLinksByBoundsLivePure(
       this._scene,
       linkBase,
@@ -4335,7 +4319,7 @@ export class Editor {
     this.gestures.record(patch);
   }
   public commitGesture(): void {
-    this._resizeOriginElement = null;
+    this.interaction.resizeOriginElement = null;
     this.rotateGestureOrigin = null;
     this.gestures.commit();
     this.gestureStartScene = null;
@@ -4385,8 +4369,8 @@ export class Editor {
   }
 
   public cancelGesture(): void {
-    this._resizeOriginElement = null;
-    this.rotateGestureOrigin = null;
+    this.interaction.resizeOriginElement = null;
+    this.interaction.rotateGestureOrigin = null;
     this.gestures.cancel();
     // Roll the scene back to the pre-gesture snapshot — cancelling the history
     // transaction alone leaves the live drag mutations in `_scene`.
