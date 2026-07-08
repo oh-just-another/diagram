@@ -124,3 +124,19 @@ export const ELLIPSE_MAX_SEGMENTS = 512;
  * scenes at ~10 KB (40 bytes/instance). Range: 64–4096.
  */
 export const INITIAL_RECT_BATCH_INSTANCES = 256;
+
+/**
+ * LRU cap on the per-atlas MSDF run-width memo (`webgl2-msdf-text.ts`).
+ * The em-width of a text run (Σ advance/unitsPerEm) is immutable once its
+ * glyphs are cached, so it is memoized keyed by `(fontId, text)`: a
+ * repeat `measureText`, or a `measureText` after the same string was
+ * drawn, returns in O(1) instead of re-walking the codepoints. Caret
+ * positioning and selection geometry call `measureText` on the same
+ * label many times per frame, so the hit rate is high.
+ *
+ * Each entry is a single number keyed by the run string — cheap. 1024
+ * covers a large editing session's distinct labels with margin; on
+ * overflow the least-recently-measured run is evicted and re-walked on
+ * next measure (cheap, no GPU resources). Range: 256–8192.
+ */
+export const WEBGL2_MSDF_RUN_WIDTH_CACHE_CAP = 1024;

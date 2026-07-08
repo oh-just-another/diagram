@@ -18,7 +18,7 @@ import {
   WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
   WEBGL2_TEXT_BITMAP_CACHE_CAP,
 } from "./constants.js";
-import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
+import { MsdfTextPipeline, measureGlyphRunEm } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
 import { EllipsePipeline } from "./webgl2-ellipse.js";
@@ -1370,15 +1370,11 @@ export class WebGL2Target implements RenderTarget {
         this.fontWeight === "bold",
         this.fontStyle === "italic",
       );
-      let w = 0;
-      for (const ch of text) {
-        const cp = ch.codePointAt(0);
-        if (cp === undefined) continue;
-        const glyph = atlas.getOrRasterize(cp, fontId);
-        if (!glyph) continue;
-        w += (glyph.advance * this.fontSize) / glyph.unitsPerEm;
-      }
-      return { width: w };
+      // Shared single-pass, memoized walk — same advances `fillTextMSDF`
+      // lays out (`advance * fontSize / unitsPerEm`), so measured width
+      // and drawn width stay 1:1. em-width is fontSize-independent; scale
+      // here. A measure after the same run was drawn hits the memo.
+      return { width: measureGlyphRunEm(text, atlas, fontId) * this.fontSize };
     }
     // Fallback (no MSDF shaper): Canvas2D system-font measurement, which
     // matches the Canvas2D bitmap text path used in that case.
