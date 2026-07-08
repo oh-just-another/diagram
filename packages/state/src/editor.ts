@@ -29,9 +29,7 @@ import {
   gridSnapper,
   type FractionalIndex,
   outlineSnapper,
-  removeElement,
   SnapEngine,
-  isNoop,
   invert,
   type BrushPoint,
   updateLink,
@@ -44,7 +42,6 @@ import {
   type Element,
   type GridStyle,
   type Style,
-  type TextElement,
   type TextStyle,
   isSnapToGridEnabled,
   resolveSnapSpacing,
@@ -56,18 +53,13 @@ import {
   type LinkId,
   type LayerId,
 } from "@oh-just-another/types";
-import { bounds as B, matrix, vec2, hitTest } from "@oh-just-another/math";
+import { bounds as B, matrix, vec2 } from "@oh-just-another/math";
 import {
-  caretGeometry,
-  layoutText,
   onAnimationContentReady,
-  pointToCaretIndex,
-  selectionRects as textSelectionRects,
   setActiveRasterizer,
   setActiveTextShaper,
   setAnimationClock,
   ElementCache,
-  type EditableTextLayout,
   type RenderTarget,
   type TextShaper,
   type Rasterizer,
@@ -78,7 +70,7 @@ import {
   type HistoryProvider,
   type TransactionHandle,
 } from "@oh-just-another/history";
-import { DEFAULT_LINK_ROUTING, WAYPOINT_COLLAPSE_RADIUS } from "./constants.js";
+import { DEFAULT_LINK_ROUTING } from "./constants.js";
 import { FileDropRegistry, type FileDropContext, type FileDropHandler } from "./file-drop.js";
 import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
 import {
@@ -130,7 +122,6 @@ import {
   type EditorEventCache,
 } from "./editor/event-fanout.js";
 import { AnimationController } from "./editor/animation.js";
-import { CaretBlinkController } from "./editor/caret-blink.js";
 import { GestureController } from "./editor/gesture-tx.js";
 import { GifPlaybackController } from "./editor/gif-playback.js";
 import * as animScene from "./editor/animation-scene.js";
@@ -189,7 +180,6 @@ import {
   computeToggleAnnotationResolved,
   hitAnnotation as hitAnnotationPure,
 } from "./editor/public/annotations.js";
-import { canBeginTextEdit } from "./editor/public/text-edit.js";
 import {
   frameHeaderAt as computeFrameHeaderAt,
   computeFrameNameCommit,
@@ -253,6 +243,8 @@ import {
   type PlacementState,
 } from "./editor/public/placement.js";
 import { renderEditor } from "./editor/render-orchestrator.js";
+import { TextEditController } from "./editor/text-edit.js";
+import { LinkHandleDragController } from "./editor/link-handle-drag.js";
 import {
   combinedSelectionBounds as combinedSelectionBoundsPure,
   computeViewportWorld as computeViewportWorldPure,
@@ -264,11 +256,7 @@ import {
   selectByBoundsLive as selectByBoundsLivePure,
   selectLinksByBoundsLive as selectLinksByBoundsLivePure,
 } from "./editor/applies/selection.js";
-import {
-  computeLinkEndpointUpdate,
-  computeLinkPreviewEndpoints,
-  elbowSignature,
-} from "./editor/applies/edge.js";
+import { computeLinkPreviewEndpoints, elbowSignature } from "./editor/applies/edge.js";
 import {
   computeAnnotationMovePatch,
   computeGroupMovePatches,
@@ -566,31 +554,40 @@ export class Editor {
   /**
    * Mid-drag preview state when the user is dragging an edge endpoint.
    * Drawn as an overlay line + handle dot so the user sees the target.
+   * State lives in `LinkHandleDragController`; this is a delegate.
    */
-  public linkEndpointDrag: {
+  get linkEndpointDrag(): {
     linkId: LinkId;
     side: "from" | "to";
     toPoint: Vec2;
-  } | null = null;
+  } | null {
+    return this.linkHandles.endpointDrag;
+  }
   /**
    * Host-managed waypoint (bend-point) drag of the selected link. `index`
    * is the position in `edge.waypoints`. `pendingInsert` means the gesture
    * began on a segment midpoint and will splice a new waypoint on the
    * first move (so a no-move click adds nothing). Live-mutated through the
    * gesture transaction → one undo step per drag.
+   * State lives in `LinkHandleDragController`; this is a delegate.
    */
-  public linkWaypointDrag: {
+  get linkWaypointDrag(): {
     linkId: LinkId;
     index: number;
     pendingInsert: boolean;
-  } | null = null;
+  } | null {
+    return this.linkHandles.waypointDrag;
+  }
   /**
-   * Host-managed elbow segment drag. `index` is the segment in the routed
-   * chain `[from, ...routedPoints, to]`; `axis` is its orientation. Dragging
-   * pins the segment's perpendicular coordinate into `Link.fixedSegments`;
-   * the reroute pass re-flows the rest. One undo step via the gesture tx.
+   * Host-managed elbow segment drag. `axis` is the segment's orientation.
+   * Dragging pins the segment's perpendicular coordinate into
+   * `Link.fixedSegments`; the reroute pass re-flows the rest. One undo
+   * step via the gesture tx.
+   * State lives in `LinkHandleDragController`; this is a delegate.
    */
-  public linkSegmentDrag: { linkId: LinkId; axis: "h" | "v"; at: number } | null = null;
+  get linkSegmentDrag(): { linkId: LinkId; axis: "h" | "v"; at: number } | null {
+    return this.linkHandles.segmentDrag;
+  }
   /** Live lasso bounds during a rubber-band select gesture. */
   public lassoPreview: Bounds | null = null;
 
@@ -728,16 +725,6 @@ export class Editor {
    */
   private lastClickAt = 0;
   private lastClickWorldPoint: Vec2 | null = null;
-
-  /**
-   * Separate double-click tracker for link edit handles (waypoint /
-   * segment). Kept apart from `lastClickAt` because a handle press
-   * returns early in `onDown` (begin-drag) and never reaches the up-side
-   * double-click path that updates `lastClickAt`. Updated by
-   * `isHandleDoubleClick` on each handle press.
-   */
-  private lastHandleClickAt = 0;
-  private lastHandleClickWorld: Vec2 | null = null;
 
   /**
    * In-progress brush stroke. Hosts push points via
@@ -997,6 +984,18 @@ export class Editor {
    * built lazily below.
    */
   private readonly gestures: GestureController;
+  /**
+   * Owns the inline text-edit session (edited shape, pending creation,
+   * origin snapshot, live selection, drag anchor and caret blink).
+   * Editor keeps thin delegate wrappers so the public API is unchanged.
+   */
+  private readonly textEdit: TextEditController;
+  /**
+   * Owns the link edit-handle drags (waypoint / segment / endpoint) and
+   * the handle double-click detector. Editor keeps thin delegate
+   * wrappers so the public API is unchanged.
+   */
+  private readonly linkHandles: LinkHandleDragController;
 
   constructor(options: EditorOptions) {
     this.host = options.host;
@@ -1067,6 +1066,60 @@ export class Editor {
       },
       notify: () => {
         self.notify();
+      },
+    });
+    // Same bridge pattern for the text-edit controller: scene access goes
+    // through get/set so live edits replace `_scene` without history.
+    this.textEdit = new TextEditController({
+      get scene() {
+        return self._scene;
+      },
+      set scene(s) {
+        self._scene = s;
+      },
+      pushHistory: (patch) => {
+        self._history.push(patch);
+      },
+      notify: () => {
+        self.notify();
+      },
+      isLayerLocked: (id) => self.isLayerLocked(id),
+      clearSelectionFor: (id) => {
+        if (self._selection.has(id)) self._selection = Selection.EMPTY;
+      },
+      mainTarget: this.mainTarget,
+    });
+    // Same bridge pattern for the link handle-drag controller.
+    this.linkHandles = new LinkHandleDragController({
+      get scene() {
+        return self._scene;
+      },
+      set scene(s) {
+        self._scene = s;
+      },
+      pushHistory: (patch) => {
+        self._history.push(patch);
+      },
+      recordGesturePatch: (patch) => {
+        self.recordGesturePatch(patch);
+      },
+      commitGesture: () => {
+        self.commitGesture();
+      },
+      cancelGesture: () => {
+        self.cancelGesture();
+      },
+      hasGestureTx: () => self.gestureTx !== null,
+      notify: () => {
+        self.notify();
+      },
+      linkAttachTargetAt: (worldPoint) => self.linkAttachTargetAt(worldPoint),
+      snapLinkEndpoint: (targetId, worldPoint) => self.snapLinkEndpoint(targetId, worldPoint),
+      updateHoveredLinkTarget: (worldPoint) => {
+        self.updateHoveredLinkTarget(worldPoint);
+      },
+      clearHoveredLinkTarget: () => {
+        self.hoveredLinkTarget = null;
       },
     });
     this.tileComposeFn =
@@ -1521,7 +1574,7 @@ export class Editor {
   setMode(mode: Mode): void {
     // Switching tools commits any in-flight text edit (standard: leaving the
     // editing context ends it, keeping the typed text).
-    if (this._editingTextElement !== null) this.commitTextEdit();
+    if (this.editingTextElement !== null) this.commitTextEdit();
     // Cancel any in-progress drag gesture so the partial state is not recorded.
     if (this.gestureTx) {
       this.gestureTx.cancel();
@@ -1786,10 +1839,10 @@ export class Editor {
    * cleared by `commitTextEdit` / `cancelTextEdit`. The host overlay
    * (`<TextEditorOverlay>` in `@react-ui`) subscribes via `editor`
    * and renders a `<textarea>` positioned over the shape.
+   * State lives in `TextEditController`; this is a delegate.
    */
-  private _editingTextElement: ElementId | null = null;
   get editingTextElement(): ElementId | null {
-    return this._editingTextElement;
+    return this.textEdit.editingElement;
   }
   /** Link whose caption is being edited inline (double-click), or null. */
   private _editingLinkCaption: LinkId | null = null;
@@ -1805,46 +1858,19 @@ export class Editor {
   get editingFrameName(): ElementId | null {
     return this._editingFrameName;
   }
-  /**
-   * When the `draw-text` tool just placed a shape and opened its
-   * editor, this holds that shape's id until the first commit. A
-   * pending creation isn't in history yet: committing non-empty text
-   * records a single add patch (whole shape = one undo); committing
-   * empty / cancelling removes it with no history entry at all.
-   */
-  private _pendingTextCreate: ElementId | null = null;
-  /**
-   * Snapshot of the shape at edit start. Used to revert on cancel and
-   * as the `before` of the single commit patch. `null` for a pending
-   * creation (the shape didn't exist yet).
-   */
-  private _textEditOrigin: Element | null = null;
-  /**
-   * Live selection inside the edited text, mirrored from the hidden
-   * `<textarea>` (`start`/`end` are source offsets, `dir` is the
-   * anchored end). The caret is `dir === "backward" ? start : end`.
-   */
-  private _textSel: { start: number; end: number; dir: "forward" | "backward" } | null = null;
-  /** Anchor offset for a canvas drag-select inside the edited text. */
-  private _textDragAnchor: number | null = null;
-  private readonly caretBlink = new CaretBlinkController(() => {
-    this.notify();
-  });
-
   get editingTextSelection(): { start: number; end: number; dir: "forward" | "backward" } | null {
-    return this._textSel;
+    return this.textEdit.selection;
   }
   /** Caret offset = the moving end of the selection. */
   get editingTextCaret(): number | null {
-    if (!this._textSel) return null;
-    return this._textSel.dir === "backward" ? this._textSel.start : this._textSel.end;
+    return this.textEdit.caret;
   }
   get caretBlinkOn(): boolean {
-    return this.caretBlink.on;
+    return this.textEdit.caretBlinkOn;
   }
   /** `true` while a canvas drag-select inside the edited text is active. */
   get isTextDragging(): boolean {
-    return this._textDragAnchor !== null;
+    return this.textEdit.isDragging;
   }
 
   /**
@@ -1855,7 +1881,7 @@ export class Editor {
   /** Open inline caption editing for a link (double-click). */
   beginLinkCaptionEdit(id: LinkId): void {
     if (!getLink(this._scene, id)) return;
-    if (this._editingTextElement !== null) this.commitTextEdit();
+    if (this.editingTextElement !== null) this.commitTextEdit();
     this._editingLinkCaption = id;
     this.notify();
   }
@@ -1922,17 +1948,7 @@ export class Editor {
   }
 
   beginTextEdit(id: ElementId): void {
-    if (!canBeginTextEdit(this._scene, id, (lid) => this.isLayerLocked(lid))) return;
-    // Commit any in-flight edit on a different shape first.
-    if (this._editingTextElement !== null && this._editingTextElement !== id) this.commitTextEdit();
-    this._editingTextElement = id;
-    this._textEditOrigin =
-      this._pendingTextCreate === id ? null : (getElement(this._scene, id) ?? null);
-    const shape = getElement(this._scene, id);
-    const len = shape !== undefined && isText(shape) ? shape.text.length : 0;
-    this._textSel = { start: len, end: len, dir: "forward" };
-    this.caretBlink.start();
-    this.notify();
+    this.textEdit.begin(id);
   }
 
   // --- Frame name inline editing (double-click the header) ---
@@ -1945,7 +1961,7 @@ export class Editor {
     const shape = getElement(this._scene, id);
     if (shape === undefined || !isFrame(shape)) return;
     if (this.isLayerLocked(shape.layerId)) return;
-    if (this._editingTextElement !== null) this.commitTextEdit();
+    if (this.editingTextElement !== null) this.commitTextEdit();
     this._editingFrameName = id;
     this.notify();
   }
@@ -1996,13 +2012,7 @@ export class Editor {
     selEnd: number,
     dir: "forward" | "backward" = "forward",
   ): void {
-    const id = this._editingTextElement;
-    if (!id) return;
-    const r = updateElement(this._scene, id, (s) => ({ ...s, text: value }));
-    this._scene = r.scene;
-    this._textSel = { start: selStart, end: selEnd, dir };
-    this.caretBlink.wake();
-    this.notify();
+    this.textEdit.setText(value, selStart, selEnd, dir);
   }
 
   /** Selection-only update (arrows / shift-select / click) — no text change. */
@@ -2011,10 +2021,7 @@ export class Editor {
     selEnd: number,
     dir: "forward" | "backward" = "forward",
   ): void {
-    if (!this._editingTextElement) return;
-    this._textSel = { start: selStart, end: selEnd, dir };
-    this.caretBlink.wake();
-    this.notify();
+    this.textEdit.setSelection(selStart, selEnd, dir);
   }
 
   /**
@@ -2023,23 +2030,7 @@ export class Editor {
    * not editing or the shape is gone.
    */
   caretIndexAtWorldPoint(worldPoint: Vec2): number | null {
-    const id = this._editingTextElement;
-    if (!id) return null;
-    const shape = getElement(this._scene, id);
-    if (shape === undefined || !isText(shape)) return null;
-    const layout = this.editingTextLayout(shape);
-    if (!layout) return null;
-    // World → shape-local: undo the element transform so the hit lands on the
-    // right glyph. Translate by position, then divide out scale (rotation
-    // while editing text is not handled — an uncommon case).
-    const sx = shape.scale.x || 1;
-    const sy = shape.scale.y || 1;
-    const local = {
-      x: (worldPoint.x - shape.position.x) / sx,
-      y: (worldPoint.y - shape.position.y) / sy,
-    };
-    const align = shape.style.textAlign ?? "left";
-    return pointToCaretIndex(layout, local, this.measureFor(shape), align);
+    return this.textEdit.caretIndexAtWorldPoint(worldPoint);
   }
 
   /**
@@ -2048,65 +2039,22 @@ export class Editor {
    * repositioning the caret (inside) and committing (outside).
    */
   editedElementContainsPoint(worldPoint: Vec2): boolean {
-    const id = this._editingTextElement;
-    if (!id) return false;
-    const shape = getElement(this._scene, id);
-    if (!shape) return false;
-    const b = getElementWorldBounds(shape);
-    return (
-      worldPoint.x >= b.x &&
-      worldPoint.x <= b.x + b.width &&
-      worldPoint.y >= b.y &&
-      worldPoint.y <= b.y + b.height
-    );
+    return this.textEdit.editedElementContainsPoint(worldPoint);
   }
 
   /** Place a collapsed caret at the clicked point and start a drag-select. */
   setTextCaretFromPoint(worldPoint: Vec2): void {
-    const idx = this.caretIndexAtWorldPoint(worldPoint);
-    if (idx === null) return;
-    this._textDragAnchor = idx;
-    this.setEditingSelection(idx, idx, "forward");
+    this.textEdit.setCaretFromPoint(worldPoint);
   }
 
   /** Extend the selection from the drag anchor to the current point. */
   extendTextSelectionToPoint(worldPoint: Vec2): void {
-    if (this._textDragAnchor === null) return;
-    const idx = this.caretIndexAtWorldPoint(worldPoint);
-    if (idx === null) return;
-    const anchor = this._textDragAnchor;
-    if (idx >= anchor) this.setEditingSelection(anchor, idx, "forward");
-    else this.setEditingSelection(idx, anchor, "backward");
+    this.textEdit.extendSelectionToPoint(worldPoint);
   }
 
   /** End a canvas drag-select (clears the drag anchor). */
   endTextDragSelect(): void {
-    this._textDragAnchor = null;
-  }
-
-  /** Build the editable layout for a text shape using the main target's metrics. */
-  private editingTextLayout(shape: TextElement): EditableTextLayout | null {
-    return layoutText(shape.text, this.measureFor(shape), {
-      fontSize: shape.fontSize,
-      ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
-    });
-  }
-
-  /**
-   * A measure callback bound to a shape's font, using the main target's
-   * `measureText` — the SAME source the renderer draws with (WebGL2
-   * reports MSDF advances) and the bounder measures with. Caret /
-   * selection geometry therefore lines up exactly with the glyphs.
-   */
-  private measureFor(shape: TextElement): (s: string) => number {
-    const target = this.mainTarget;
-    // Match the rendered weight/style so caret / selection geometry lines
-    // up with bold / italic glyphs (which have different advances).
-    target.setFont(shape.fontFamily, shape.fontSize, {
-      ...(shape.style.fontWeight === "bold" ? { weight: "bold" as const } : {}),
-      ...(shape.style.fontStyle === "italic" ? { style: "italic" as const } : {}),
-    });
-    return (s: string) => target.measureText(s).width;
+    this.textEdit.endDragSelect();
   }
 
   /**
@@ -2119,122 +2067,15 @@ export class Editor {
     caretColor: string;
     selectionRects: readonly Bounds[];
   } | null {
-    const id = this._editingTextElement;
-    if (!id || !this._textSel) return null;
-    const shape = getElement(this._scene, id);
-    if (shape === undefined || !isText(shape)) return null;
-    const layout = this.editingTextLayout(shape);
-    if (!layout) return null;
-    const align = shape.style.textAlign ?? "left";
-    const measure = this.measureFor(shape);
-    const { x: px, y: py } = shape.position;
-    // The layout is in the shape's own (unscaled) space; the renderer draws it
-    // through the element transform, so caret + selection geometry must scale
-    // too or they trail the rendered text on a scaled element. (Rotation while
-    // editing text is not handled — an uncommon case.)
-    const sx = shape.scale.x;
-    const sy = shape.scale.y;
-
-    const local = textSelectionRects(
-      layout,
-      this._textSel.start,
-      this._textSel.end,
-      measure,
-      align,
-    );
-    const selectionRects: Bounds[] = local.map((r) => ({
-      x: px + Math.min(r.x * sx, (r.x + r.width) * sx),
-      y: py + Math.min(r.y * sy, (r.y + r.height) * sy),
-      width: Math.abs(r.width * sx),
-      height: Math.abs(r.height * sy),
-    }));
-
-    let caret: { x: number; y: number; height: number } | null = null;
-    if (this.caretBlink.on) {
-      const cIdx = this._textSel.dir === "backward" ? this._textSel.start : this._textSel.end;
-      const g = caretGeometry(layout, cIdx, measure, shape.fontSize, align);
-      caret = { x: px + g.x * sx, y: py + g.y * sy, height: g.height * Math.abs(sy) };
-    }
-    return { caret, caretColor: shape.style.fill ?? "#1a1a1a", selectionRects };
+    return this.textEdit.overlay();
   }
 
   commitTextEdit(next?: string): void {
-    const id = this._editingTextElement;
-    if (!id) return;
-    const pending = this._pendingTextCreate === id;
-    const origin = this._textEditOrigin;
-    // Optional explicit text (keyboard / test callers); the live path
-    // passes nothing because the scene already holds the typed text.
-    if (next !== undefined) {
-      this._scene = updateElement(this._scene, id, (s) => ({ ...s, text: next })).scene;
-    }
-    this._editingTextElement = null;
-    this._pendingTextCreate = null;
-    this._textEditOrigin = null;
-    this._textSel = null;
-    this.caretBlink.stop();
-
-    const committed = getElement(this._scene, id);
-    const finalElement = committed !== undefined && isText(committed) ? committed : undefined;
-    const text = finalElement?.text ?? "";
-
-    // Empty (whitespace-only) text removes the shape. Pending = silent
-    // (never recorded); existing = recorded so undo restores the origin.
-    if (text.trim() === "") {
-      if (finalElement) {
-        this._scene = removeElement(this._scene, id).scene;
-        if (!pending && origin) {
-          this._history.push({ kind: "element", id, before: origin, after: null });
-        }
-        if (this._selection.has(id)) this._selection = Selection.EMPTY;
-      }
-      this.notify();
-      return;
-    }
-
-    if (pending) {
-      // Record the whole creation as one add patch.
-      if (finalElement)
-        this._history.push({ kind: "element", id, before: null, after: finalElement });
-    } else if (origin && finalElement) {
-      // Existing edit: record ONLY the text delta. Other fields (font
-      // size etc.) changed via the panel push their own history during
-      // the edit, so the commit's `before` keeps the final non-text
-      // state and rewinds just the text.
-      const originText = isText(origin) ? origin.text : "";
-      if (originText !== finalElement.text) {
-        const before = { ...finalElement, text: originText } as Element;
-        this._history.push({ kind: "element", id, before, after: finalElement });
-      }
-    }
-    this.notify();
+    this.textEdit.commit(next);
   }
 
   cancelTextEdit(): void {
-    const id = this._editingTextElement;
-    if (id === null) return;
-    const pending = this._pendingTextCreate === id;
-    const origin = this._textEditOrigin;
-    this._editingTextElement = null;
-    this._pendingTextCreate = null;
-    this._textEditOrigin = null;
-    this._textSel = null;
-    this.caretBlink.stop();
-
-    // Revert live edits with no history entry. Pending creations are
-    // removed entirely; existing shapes have only their TEXT restored
-    // (panel-driven field changes during the edit keep their own
-    // committed history and must survive the cancel).
-    if (pending) {
-      if (getElement(this._scene, id)) {
-        this._scene = removeElement(this._scene, id).scene;
-        if (this._selection.has(id)) this._selection = Selection.EMPTY;
-      }
-    } else if (origin) {
-      const originText = isText(origin) ? origin.text : "";
-      this._scene = updateElement(this._scene, id, (s) => ({ ...s, text: originText })).scene;
-    }
-    this.notify();
+    this.textEdit.cancel();
   }
 
   /**
@@ -2313,11 +2154,11 @@ export class Editor {
     const id = newElementIdAtCursor(++this.nextId);
     const shape = buildTextElementAt(this._scene, worldPoint, this._activeLayerId, id);
     // No history push here — the placeholder is "pending" until the
-    // first commit (see `_pendingTextCreate`). This way an abandoned
+    // first commit (see `TextEditController.markPendingCreate`). This way an abandoned
     // text never pollutes the undo stack.
     const r = addElement(this._scene, shape);
     this._scene = r.scene;
-    this._pendingTextCreate = id;
+    this.textEdit.markPendingCreate(id);
     this._selection = Selection.single(id);
     this.maybeRevertModeAfterCreate();
     this.notify();
@@ -2446,11 +2287,10 @@ export class Editor {
     this.hoverCursorWorld = null;
     this._editingLinkCaption = null;
     this.pendingLinkDropMenu = null;
-    this.linkWaypointDrag = null;
-    this.linkSegmentDrag = null;
-    // Endpoint-rebind drag: gestureTx.cancel above already reverted the live
-    // re-point; just drop the handle-preview state so the dot stops tracking.
-    this.linkEndpointDrag = null;
+    // Waypoint / segment / endpoint-rebind drags: gestureTx.cancel above
+    // already reverted the live re-point; just drop the handle-drag state so
+    // the dots stop tracking.
+    this.linkHandles.reset();
     // Esc exits group-isolation if active. The selection that was
     // active inside the group is dropped (Esc reads as a full
     // "back out" — selecting the group is a separate gesture).
@@ -4288,64 +4128,18 @@ export class Editor {
    * link snaps back to where it was. The handle dot follows via `linkEndpointDrag`.
    */
   private applyLinkEndpointMove(linkId: LinkId, side: "from" | "to", toPoint: Vec2): void {
-    const edge = getLink(this._scene, linkId);
-    if (!edge) return;
-    // A real drag breaks the handle double-click chain (mirrors waypoint /
-    // segment drags) so a quick click after dropping isn't read as a delete.
-    this.lastHandleClickAt = 0;
-    // Resolve the attach target under the cursor and snap the endpoint to it
-    // with the SAME logic the drop uses, so the link attaches LIVE exactly as it
-    // will commit — lands on the dot (fixed), floats on the body, or stays a
-    // free point over empty space.
-    const target = this.linkAttachTargetAt(toPoint);
-    const targetId = target?.kind === "element" ? target.id : null;
-    const ep = this.snapLinkEndpoint(targetId, toPoint);
-    const r = updateLink(this._scene, linkId, (e) =>
-      side === "from" ? { ...e, from: ep } : { ...e, to: ep },
-    );
-    this._scene = r.scene;
-    this.recordGesturePatch(r.patch);
-    this.linkEndpointDrag = { linkId, side, toPoint };
-    // Attach-point highlight — the SAME feedback as drawing a new link
-    // (candidate dots + float-element halo), driven by `hoveredLinkTarget`.
-    this.updateHoveredLinkTarget(toPoint);
-    this.notify();
+    this.linkHandles.applyEndpointMove(linkId, side, toPoint);
   }
 
   private applyLinkEndpointUpdate(
     emit: Extract<InteractionEmit, { type: "UPDATE_EDGE_ENDPOINT" }>,
   ): void {
-    // A move opened a gesture transaction (live re-point per tick). The final
-    // snapped endpoint goes into the SAME transaction so the net history step is
-    // original → final (one undo). A pure click (no move, no tx) that resolves
-    // to a no-op change must not leave a junk undo entry.
-    const moved = this.gestureTx !== null;
-    const result = computeLinkEndpointUpdate(this._scene, emit, (toElement, toPoint) =>
-      this.snapLinkEndpoint(toElement, toPoint),
-    );
-    if (result === null) {
-      this.cancelGesture();
-      this.linkEndpointDrag = null;
-      this.hoveredLinkTarget = null;
-      this.notify();
-      return;
-    }
-    if (!moved && isNoop(result.patch)) {
-      this.linkEndpointDrag = null;
-      this.hoveredLinkTarget = null;
-      this.notify();
-      return;
-    }
-    this._scene = result.scene;
-    this.recordGesturePatch(result.patch);
-    this.commitGesture();
-    this.linkEndpointDrag = null;
-    this.hoveredLinkTarget = null;
+    this.linkHandles.applyEndpointUpdate(emit);
   }
 
   /** True while a waypoint of the selected link is being dragged. */
   get isDraggingWaypoint(): boolean {
-    return this.linkWaypointDrag !== null;
+    return this.linkHandles.isDraggingWaypoint;
   }
 
   /**
@@ -4355,30 +4149,12 @@ export class Editor {
    * transaction so the whole drag is one undo step.
    */
   beginWaypointDrag(linkId: LinkId, index: number, insert: boolean): void {
-    if (!getLink(this._scene, linkId)) return;
-    this.linkWaypointDrag = { linkId, index, pendingInsert: insert };
+    this.linkHandles.beginWaypointDrag(linkId, index, insert);
   }
 
   /** Live update of the dragged waypoint to `world`. */
   updateWaypointDrag(world: Vec2): void {
-    const drag = this.linkWaypointDrag;
-    if (!drag) return;
-    // A real drag breaks the handle double-click chain (see updateSegmentDrag).
-    this.lastHandleClickAt = 0;
-    const edge = getLink(this._scene, drag.linkId);
-    if (!edge) return;
-    const wps = [...(edge.waypoints ?? [])];
-    if (drag.pendingInsert) {
-      wps.splice(drag.index, 0, world);
-      drag.pendingInsert = false;
-    } else {
-      if (drag.index < 0 || drag.index >= wps.length) return;
-      wps[drag.index] = world;
-    }
-    const r = updateLink(this._scene, drag.linkId, (e) => ({ ...e, waypoints: wps }));
-    this._scene = r.scene;
-    this.recordGesturePatch(r.patch);
-    this.notify();
+    this.linkHandles.updateWaypointDrag(world);
   }
 
   /**
@@ -4387,38 +4163,12 @@ export class Editor {
    * (drag-onto-the-line to delete). A no-move insert adds nothing.
    */
   endWaypointDrag(): void {
-    const drag = this.linkWaypointDrag;
-    this.linkWaypointDrag = null;
-    if (!drag) return;
-    if (drag.pendingInsert) {
-      // Never moved → it was a click on a midpoint; nothing inserted.
-      this.commitGesture();
-      return;
-    }
-    const edge = getLink(this._scene, drag.linkId);
-    if (edge?.waypoints && drag.index >= 0 && drag.index < edge.waypoints.length) {
-      const path = getLinkPath(this._scene, edge);
-      const wp = req(edge.waypoints[drag.index]);
-      // Neighbours in the [from, ...waypoints, to] chain: path[index] and
-      // path[index + 2] (path[0] = from, so waypoint i sits at path[i + 1]).
-      // Dropping the waypoint back onto the straight segment between its
-      // neighbours removes the bend ("drag onto the line to delete").
-      const collapse = WAYPOINT_COLLAPSE_RADIUS / (this._scene.viewport.zoom || 1);
-      const a = path?.[drag.index];
-      const b = path?.[drag.index + 2];
-      if (a && b && hitTest.distanceToSegment(wp, a, b) <= collapse) {
-        const wps = edge.waypoints.filter((_, i) => i !== drag.index);
-        const r = updateLink(this._scene, drag.linkId, (e) => ({ ...e, waypoints: wps }));
-        this._scene = r.scene;
-        this.recordGesturePatch(r.patch);
-      }
-    }
-    this.commitGesture();
+    this.linkHandles.endWaypointDrag();
   }
 
   /** True while an elbow segment is being dragged. */
   get isDraggingSegment(): boolean {
-    return this.linkSegmentDrag !== null;
+    return this.linkHandles.isDraggingSegment;
   }
 
   /**
@@ -4427,8 +4177,7 @@ export class Editor {
    * across re-routes).
    */
   beginSegmentDrag(linkId: LinkId, axis: "h" | "v", at: number): void {
-    if (!getLink(this._scene, linkId)) return;
-    this.linkSegmentDrag = { linkId, axis, at };
+    this.linkHandles.beginSegmentDrag(linkId, axis, at);
   }
 
   /**
@@ -4437,30 +4186,12 @@ export class Editor {
    * rest around the pin (one undo step via the gesture transaction).
    */
   updateSegmentDrag(world: Vec2): void {
-    const drag = this.linkSegmentDrag;
-    if (!drag) return;
-    // A real drag breaks the handle double-click chain, so a single click
-    // right after pinning can't be misread as a double-click (= delete).
-    this.lastHandleClickAt = 0;
-    const edge = getLink(this._scene, drag.linkId);
-    if (!edge) return;
-    const pos = drag.axis === "h" ? world.y : world.x;
-    const fixed = [...(edge.fixedSegments ?? [])];
-    const entry = { axis: drag.axis, pos, at: drag.at };
-    const at = fixed.findIndex((f) => f.axis === drag.axis && Math.abs(f.at - drag.at) < 0.5);
-    if (at >= 0) fixed[at] = entry;
-    else fixed.push(entry);
-    const r = updateLink(this._scene, drag.linkId, (e) => ({ ...e, fixedSegments: fixed }));
-    this._scene = r.scene;
-    this.recordGesturePatch(r.patch);
-    this.notify();
+    this.linkHandles.updateSegmentDrag(world);
   }
 
   /** Finish the elbow segment drag (commit the gesture as one undo step). */
   endSegmentDrag(): void {
-    if (!this.linkSegmentDrag) return;
-    this.linkSegmentDrag = null;
-    this.commitGesture();
+    this.linkHandles.endSegmentDrag();
   }
 
   /**
@@ -4471,14 +4202,7 @@ export class Editor {
    * `onDown`, so that path never sees them).
    */
   isHandleDoubleClick(world: Vec2): boolean {
-    const now = performance.now();
-    const isDouble =
-      now - this.lastHandleClickAt < DOUBLE_CLICK_MS &&
-      this.lastHandleClickWorld !== null &&
-      vec2.distance(this.lastHandleClickWorld, world) <= DOUBLE_CLICK_TOLERANCE_PX;
-    this.lastHandleClickAt = now;
-    this.lastHandleClickWorld = world;
-    return isDouble;
+    return this.linkHandles.isHandleDoubleClick(world);
   }
 
   /**
@@ -4486,13 +4210,7 @@ export class Editor {
    * index — double-click a waypoint handle to remove it. One undo step.
    */
   deleteWaypoint(linkId: LinkId, index: number): void {
-    const edge = getLink(this._scene, linkId);
-    if (!edge?.waypoints || index < 0 || index >= edge.waypoints.length) return;
-    const wps = edge.waypoints.filter((_, i) => i !== index);
-    const r = updateLink(this._scene, linkId, (e) => ({ ...e, waypoints: wps }));
-    this._scene = r.scene;
-    this._history.push(r.patch);
-    this.notify();
+    this.linkHandles.deleteWaypoint(linkId, index);
   }
 
   /**
@@ -4504,25 +4222,7 @@ export class Editor {
    * step.
    */
   resetSegmentPin(linkId: LinkId, axis: "h" | "v", pos: number, at: number): void {
-    const edge = getLink(this._scene, linkId);
-    if (!edge?.fixedSegments || edge.fixedSegments.length === 0) return;
-    let bestIdx = -1;
-    let bestD = Infinity;
-    for (let i = 0; i < edge.fixedSegments.length; i++) {
-      const f = req(edge.fixedSegments[i]);
-      if (f.axis !== axis) continue;
-      const d = Math.abs(f.pos - pos) + Math.abs(f.at - at) * 0.001;
-      if (d < bestD) {
-        bestD = d;
-        bestIdx = i;
-      }
-    }
-    if (bestIdx < 0) return;
-    const fixed = edge.fixedSegments.filter((_, i) => i !== bestIdx);
-    const r = updateLink(this._scene, linkId, (e) => ({ ...e, fixedSegments: fixed }));
-    this._scene = r.scene;
-    this._history.push(r.patch);
-    this.notify();
+    this.linkHandles.resetSegmentPin(linkId, axis, pos, at);
   }
 
   /** Whether the selected link has obstacle-avoidance routing enabled. */
