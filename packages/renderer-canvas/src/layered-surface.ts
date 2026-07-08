@@ -248,7 +248,10 @@ class WebGL2LayeredSurface implements LayeredSurface {
     return { width: this._width, height: this._height };
   }
   present(): void {
-    // Canvas2D + WebGL2 both paint synchronously — nothing to flush.
+    // Canvas2D paints synchronously; the WebGL2 main layer defers
+    // same-style sharp-rect fills into an instanced batch, so drain it
+    // here so trailing rects reach the framebuffer within this frame.
+    this.mainTarget.flushBatch();
   }
   dispose(): void {
     this.mainTarget.dispose();

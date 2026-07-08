@@ -115,3 +115,12 @@ export const ELLIPSE_MIN_SEGMENTS = 24;
  * improvement. Range: 256–1024.
  */
 export const ELLIPSE_MAX_SEGMENTS = 512;
+
+/**
+ * Initial per-target capacity, in instances, of the sharp-rect instance
+ * batcher (`webgl2-rect-batch.ts` `RectBatch`). One frame's worth of
+ * same-run rect fills packs into this without a grow; capacity doubles
+ * on demand and never shrinks. 256 covers typical grid / background
+ * scenes at ~10 KB (40 bytes/instance). Range: 64–4096.
+ */
+export const INITIAL_RECT_BATCH_INSTANCES = 256;

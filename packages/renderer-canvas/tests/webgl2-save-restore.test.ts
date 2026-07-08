@@ -9,15 +9,35 @@ import { WebGL2Target } from "../src/webgl2-target";
  *
  * The real GPU is unavailable in jsdom, so the target is driven with a
  * Proxy GL stub that lets the constructor finish (shaders "compile",
- * uniforms resolve) and records every `uniform1f` — the rect-fill path
- * emits the effective opacity through it, so we can read back what the
- * box was actually drawn with.
+ * uniforms resolve). Sharp-rect fills are now deferred into the
+ * instanced batcher, so the effective alpha is read back from the
+ * per-instance buffer the pipeline uploads on flush (packed at float
+ * index 9 of each 10-float instance) rather than from a `uniform1f`
+ * call. `fillUnitRect` flushes after each fill so exactly one instance
+ * is captured.
  */
+const INSTANCE_FLOATS = 10;
+const ALPHA_OFFSET = 9;
+
 const makeStubGl = (opacityCalls: number[]) => {
+  const record = (_target: unknown, data: unknown) => {
+    // Only the instance uploads carry 10-float instances; the static
+    // unit-quad upload (8 floats) is ignored.
+    if (
+      (data instanceof Float32Array || Array.isArray(data)) &&
+      data.length >= INSTANCE_FLOATS &&
+      data.length % INSTANCE_FLOATS === 0
+    ) {
+      opacityCalls.push((data as ArrayLike<number>)[ALPHA_OFFSET] as number);
+    }
+  };
   const base: Record<string, unknown> = {
-    // Records the effective opacity the rect-fill path uploads.
-    uniform1f: (_loc: unknown, value: number) => {
-      opacityCalls.push(value);
+    // Records the effective alpha packed into each drawn rect instance.
+    bufferData: (target: unknown, data: unknown) => {
+      record(target, data);
+    },
+    bufferSubData: (_target: unknown, _offset: unknown, data: unknown) => {
+      record(_target, data);
     },
   };
   // Every other GL member resolves to a no-op function that doubles as a
@@ -45,6 +65,9 @@ const fillUnitRect = (t: WebGL2Target): void => {
   t.beginPath();
   t.rect(0, 0, 10, 10);
   t.fill();
+  // Drain the batch so the single queued instance is uploaded and its
+  // packed alpha recorded.
+  t.flushBatch();
 };
 
 describe("WebGL2Target save/restore snapshots full paint state", () => {

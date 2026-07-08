@@ -24,6 +24,7 @@ import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
 import { EllipsePipeline } from "./webgl2-ellipse.js";
 import { isDrawableImageSource, warnSkippedImage } from "./image-source.js";
 import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
+import { RectBatch, RectInstancePipeline } from "./webgl2-rect-batch.js";
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -130,6 +131,18 @@ export class WebGL2Target implements RenderTarget {
    */
   private readonly stack: GfxState[] = [];
 
+  /**
+   * Sharp-rect fill batcher — coalesces consecutive axis-aligned
+   * `rect()` + `fill()` calls into one `drawArraysInstanced` (B19). Any
+   * non-batchable draw (`stroke`, ellipse / polygon / curve fill, image,
+   * text) and every surface op (`clear`, `resize`, frame `present`)
+   * drain it first via {@link flushRectBatch}, so submission order —
+   * hence z-order — is preserved. The GL pipeline is created lazily on
+   * the first flush; a scene with no sharp rects never allocates it.
+   */
+  private readonly rectBatch = new RectBatch();
+  private rectPipeline: RectInstancePipeline | null = null;
+
   constructor(canvas: HTMLCanvasElement | OffscreenCanvas, width: number, height: number) {
     // `preserveDrawingBuffer: true` is required for an editor surface:
     // the spec permits the browser to clear the drawing buffer after
@@ -212,6 +225,9 @@ export class WebGL2Target implements RenderTarget {
    * in sync so downstream renderers see the new dimensions.
    */
   resize(width: number, height: number): void {
+    // Queued instances carry a clip-space matrix projected against the
+    // old size; drain them before the size / viewport change.
+    this.flushRectBatch();
     this._size.width = width;
     this._size.height = height;
     this.gl.viewport(0, 0, width, height);
@@ -224,6 +240,13 @@ export class WebGL2Target implements RenderTarget {
    * and runtime backend switches quickly hit the cap.
    */
   dispose(): void {
+    // Drop any undrawn queued rects and release the instance pipeline's
+    // GL resources (VAO / buffers / program).
+    this.rectBatch.reset();
+    if (this.rectPipeline) {
+      this.rectPipeline.dispose();
+      this.rectPipeline = null;
+    }
     if (this.msdfPipeline) {
       this.msdfPipeline.dispose();
       this.msdfPipeline = null;
@@ -564,6 +587,7 @@ export class WebGL2Target implements RenderTarget {
     dh: number,
     dynamic?: boolean,
   ): void {
+    this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     const tex = this.textureFor(image as TexImageSource, dynamic ?? false);
     if (!tex) return;
     if (!this.imageProgram) {
@@ -721,6 +745,7 @@ export class WebGL2Target implements RenderTarget {
     // Ellipse path — single fragment-SDF quad regardless of radius.
     // Vector-perfect at any zoom; 4 vertices instead of 24-512.
     if (this.currentEllipse) {
+      this.flushRectBatch(); // preserve z-order: emit queued rects first
       this.ellipsePipeline ??= new EllipsePipeline(this.gl);
       const e = this.currentEllipse;
       this.ellipsePipeline.draw(
@@ -742,23 +767,32 @@ export class WebGL2Target implements RenderTarget {
     // most shape backgrounds (rectangles) hit it.
     if (this.currentPath) {
       const r = this.currentPath;
-      const projected = applyMat(
-        {
-          a: this.transform.a * r.width,
-          b: this.transform.b * r.width,
-          c: this.transform.c * r.height,
-          d: this.transform.d * r.height,
-          e: this.transform.e + this.transform.a * r.x + this.transform.c * r.y,
-          f: this.transform.f + this.transform.b * r.x + this.transform.d * r.y,
-        },
-        this._size.width,
-        this._size.height,
+      // Project the rect's unit-quad → clip affine, then queue it as one
+      // instance instead of issuing a draw. Same math as `applyMat`
+      // (unit-quad → NDC) inlined into scalars — the batcher stores the
+      // two variable columns + translation; the constant [0,0,1] third
+      // column is reconstructed in the instance vertex shader.
+      const t = this.transform;
+      const sx = 2 / this._size.width;
+      const sy = -2 / this._size.height;
+      const pa = t.a * r.width;
+      const pb = t.b * r.width;
+      const pc = t.c * r.height;
+      const pd = t.d * r.height;
+      const pe = t.e + t.a * r.x + t.c * r.y;
+      const pf = t.f + t.b * r.x + t.d * r.y;
+      this.rectBatch.add(
+        pa * sx,
+        pb * sy,
+        pc * sx,
+        pd * sy,
+        pe * sx - 1,
+        pf * sy + 1,
+        this.fillColor[0],
+        this.fillColor[1],
+        this.fillColor[2],
+        effectiveAlpha,
       );
-      this.restoreSolidProgram(); // ensure the solid VBO+attrib is live
-      this.gl.uniformMatrix3fv(this.uTransformLoc, false, projected);
-      this.gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
-      this.gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
-      this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
       return;
     }
 
@@ -767,6 +801,7 @@ export class WebGL2Target implements RenderTarget {
     // lightning bolts) fill correctly. Earcut is dependency-free and
     // handles holes too if ever needed.
     if (this.pathPts >= 3) {
+      this.flushRectBatch(); // preserve z-order: emit queued rects first
       this.fillPolygonEarcut(this.pathXY, this.pathPts, effectiveAlpha);
     }
 
@@ -785,6 +820,7 @@ export class WebGL2Target implements RenderTarget {
     // doesn't have. The artefact is invisible at 1× zoom and tiny even
     // at 20×.
     if (this.currentCurves.length > 0) {
+      this.flushRectBatch(); // preserve z-order: emit queued rects first
       this.curvePipeline ??= new LoopBlinnCurvePipeline(this.gl);
       this.curvePipeline.draw(
         this.currentCurves,
@@ -925,6 +961,10 @@ export class WebGL2Target implements RenderTarget {
    * caller's top-left CSS-pixel rect.
    */
   clear(bounds?: Bounds): void {
+    // Drain queued rect fills before wiping pixels — a clear that lands
+    // mid-stream must not erase rects queued after it, nor let them
+    // survive a wipe meant to cover them.
+    this.flushRectBatch();
     const bitmapW = (this.gl.canvas as HTMLCanvasElement).width;
     const bitmapH = (this.gl.canvas as HTMLCanvasElement).height;
     if (bounds) {
@@ -963,6 +1003,7 @@ export class WebGL2Target implements RenderTarget {
   }
 
   stroke(): void {
+    this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     if (this.currentPath) {
       // Rect outline → 4 corners as a closed polyline.
       const r = this.currentPath;
@@ -1088,6 +1129,7 @@ export class WebGL2Target implements RenderTarget {
    */
   fillText(text: string, x: number, y: number, maxWidth?: number): void {
     if (text.length === 0) return;
+    this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     void maxWidth;
     const atlas = this.ensureGlyphAtlas();
     if (atlas) {
@@ -1187,6 +1229,34 @@ export class WebGL2Target implements RenderTarget {
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
     this.gl.enableVertexAttribArray(this.aPosLoc);
     this.gl.vertexAttribPointer(this.aPosLoc, 2, this.gl.FLOAT, false, 0, 0);
+  }
+
+  /**
+   * Draw any queued sharp-rect fill instances as one instanced call,
+   * then restore the solid-program plumbing. Called before every
+   * non-batchable draw and surface op to keep z-order intact, and from
+   * {@link flushBatch} at frame end. No-op when the queue is empty.
+   */
+  private flushRectBatch(): void {
+    if (this.rectBatch.pending === 0) return;
+    this.rectPipeline ??= new RectInstancePipeline(this.gl);
+    const pipeline = this.rectPipeline;
+    this.rectBatch.flush((data, count) => {
+      pipeline.draw(data, count);
+    });
+    this.restoreSolidProgram();
+  }
+
+  /**
+   * Flush the deferred sharp-rect batch to the GPU. The host's
+   * `LayeredSurface.present()` calls this once per frame after the
+   * Editor finishes drawing, so trailing rect fills reach the
+   * framebuffer within the frame that queued them. Backends without a
+   * batcher (Canvas2D) have no equivalent — this is WebGL2-specific and
+   * not part of the `RenderTarget` interface.
+   */
+  flushBatch(): void {
+    this.flushRectBatch();
   }
   measureText(text: string): { width: number } {
     return this.textMetrics(text);
