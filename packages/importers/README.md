@@ -43,6 +43,7 @@ For other formats use `importDot` / `importDrawio` / `importExcalidraw` / `impor
 | `parseDrawio(source)`                                                                                           | drawio XML → `GraphDocument` (positions preserved).                                                 |
 | `graphToScene(graph)`                                                                                           | Layout (via dagre) + materialise into `Scene`. Skips layout if every node already has a `position`. |
 | `importMermaid` / `importDot` / `importDrawio`                                                                  | Convenience one-shots: parse + `graphToScene` in one call.                                          |
+| `exportMermaid(scene)`                                                                                          | `Scene` → Mermaid `flowchart TD` string (inverse of `importMermaid`).                               |
 | `importExcalidraw(json)`                                                                                        | .excalidraw JSON → `Scene` (positions, styles, groups, frames, links preserved).                    |
 | `exportExcalidraw(scene)`                                                                                       | `Scene` → .excalidraw JSON string (format version 2).                                               |
 | `importJsonCanvas(json)`                                                                                        | JSON Canvas (`.canvas`) → `Scene`.                                                                  |
@@ -57,6 +58,13 @@ For other formats use `importDot` / `importDrawio` / `importExcalidraw` / `impor
 - Node bracket shapes: `A`, `A[Label]`, `A(Round)`, `A((Circle))`, `A{Decision}`.
 - Edges: `-->` (directed), `---` (undirected), `-->|label|` (labelled), chained: `A --> B --> C`.
 - Comments (`%%`), `class` / `classDef` / `style` / `subgraph` — silently ignored.
+
+### Mermaid flowchart (export)
+
+- `exportMermaid(scene)` writes `flowchart TD`: `rectangle` → `id[label]`, `ellipse` → `id((label))`, `polygon` → `id{label}`; labels come from a `text` element centred over the shape.
+- Links → `A --> B`, or `A -->|label| B` (label from `link.label.text` or a string `metadata.label`); endpoints not on an exported node are dropped.
+- Non-graph elements (`brush` / `image` / `template` / frames / groups / paths / block-arrows / standalone text) → `%% skipped: <type>` comments.
+- **Round-trips** node + edge structure through `importMermaid`. Labels are sanitised to Mermaid's bracket grammar (`[]{}()|` and newlines collapse to spaces).
 
 ### Graphviz dot
 

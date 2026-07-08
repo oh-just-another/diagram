@@ -15,6 +15,7 @@ export type {
 export type { LayoutedNode } from "./layout.js";
 
 export { parseMermaid } from "./mermaid.js";
+export { exportMermaid } from "./mermaid-export.js";
 export { parseDot } from "./dot.js";
 export { parseDrawio } from "./drawio.js";
 export { layoutGraph } from "./layout.js";
