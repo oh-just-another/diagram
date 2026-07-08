@@ -24,6 +24,25 @@ import { OFFSCREEN_IMAGE_CACHE_CAP } from "./constants.js";
  * the internal log.
  */
 
+/**
+ * Seed / mixing constants for {@link RecordingTarget}'s rolling content
+ * signature. Two 32-bit halves give a ~64-bit hash: the offscreen surface
+ * compares it to skip re-posting a layer whose command stream is identical
+ * to the frame it last shipped. Collision odds (~2⁻⁶⁴) are far below any
+ * frame budget — a miss would only defer one layer's repaint to the next
+ * genuine change. The exact values are arbitrary large odd words.
+ */
+const SIG_SEED_A = 0x811c9dc5 | 0;
+const SIG_SEED_B = (0x811c9dc5 ^ 0x9e3779b9) | 0;
+const SIG_PRIME_A = 0x01000193;
+const SIG_PRIME_B = 0x85ebca6b;
+const SIG_ROT = 0x9e3779b9 | 0;
+const SIG_NIL = 0x7fff_ffff;
+const SIG_ARR = 0x5555_5555;
+/** Shared scratch view to read a float's exact IEEE-754 bits. */
+const SIG_F64 = new Float64Array(1);
+const SIG_I32 = new Int32Array(SIG_F64.buffer);
+
 export type RenderCommand =
   | { readonly k: "setFill"; readonly color: Color | null }
   | { readonly k: "setStroke"; readonly color: Color | null }
@@ -144,6 +163,20 @@ export class RecordingTarget implements RenderTarget {
   private readonly imageIds = new LruCache<ImageBitmap, number>(OFFSCREEN_IMAGE_CACHE_CAP);
   private nextImageId = 0;
 
+  /**
+   * Rolling 64-bit content signature (two 32-bit halves) of the commands
+   * accumulated since the last {@link flush}. Every {@link emit} folds the
+   * command's tag and primitive fields in, so two frames that record a
+   * byte-identical stream produce the same signature — letting the
+   * offscreen surface skip re-posting a layer whose replay would reproduce
+   * the pixels the worker already shows. Reset to the seeds on `flush`.
+   */
+  private sigA = SIG_SEED_A;
+  private sigB = SIG_SEED_B;
+  private cmdCount = 0;
+  /** Signature of the buffer returned by the most recent {@link flush}. */
+  private _lastSignature = "";
+
   constructor(width: number, height: number) {
     this._width = width;
     this._height = height;
@@ -156,13 +189,100 @@ export class RecordingTarget implements RenderTarget {
   resize(width: number, height: number): void {
     this._width = width;
     this._height = height;
-    this.commands.push({ k: "resize", w: width, h: height });
+    this.emit({ k: "resize", w: width, h: height });
+  }
+
+  /** Buffer one command and fold it into the rolling content signature. */
+  private emit(cmd: RenderCommand): void {
+    this.commands.push(cmd);
+    this.cmdCount++;
+    this.mixString(cmd.k);
+    for (const key in cmd) {
+      if (key === "k") continue;
+      this.mixValue((cmd as Record<string, unknown>)[key]);
+    }
+  }
+
+  /** Fold one 32-bit word into both signature halves (Murmur-style mix). */
+  private mix32(x: number): void {
+    const w = x | 0;
+    this.sigA = (Math.imul(this.sigA ^ w, SIG_PRIME_A) | 0) ^ SIG_ROT;
+    this.sigB = Math.imul(this.sigB ^ (w + SIG_ROT), SIG_PRIME_B) | 0;
+  }
+
+  /** Fold a number by its exact 64-bit IEEE-754 bit pattern. */
+  private mixNumber(n: number): void {
+    SIG_F64[0] = n;
+    this.mix32(SIG_I32[0] ?? 0);
+    this.mix32(SIG_I32[1] ?? 0);
+  }
+
+  private mixString(s: string): void {
+    for (let i = 0; i < s.length; i++) this.mix32(s.charCodeAt(i));
+    // Length terminator so "ab"+"c" and "a"+"bc" don't collide.
+    this.mix32(s.length ^ 0x1_0000);
+  }
+
+  /**
+   * Fold an arbitrary command-field value: numbers by bits, strings by
+   * chars, nested `Transform` / bounds / options objects field-by-field,
+   * dash arrays element-by-element. `ImageBitmap` pixels are NOT hashed —
+   * a bitmap only ever appears in a `defineImage`, whose presence (and the
+   * accompanying numeric `id`) already differentiates the stream, so the
+   * per-frame `drawImage`-by-id path stays exact without touching pixels.
+   */
+  private mixValue(v: unknown): void {
+    if (v === null || v === undefined) {
+      this.mix32(SIG_NIL);
+      return;
+    }
+    switch (typeof v) {
+      case "number":
+        this.mixNumber(v);
+        return;
+      case "boolean":
+        this.mix32(v ? 1 : 2);
+        return;
+      case "string":
+        this.mixString(v);
+        return;
+      case "object": {
+        if (Array.isArray(v)) {
+          for (const e of v) this.mixValue(e);
+          this.mix32(v.length ^ SIG_ARR);
+          return;
+        }
+        if (typeof ImageBitmap !== "undefined" && v instanceof ImageBitmap) return;
+        for (const k in v as Record<string, unknown>) {
+          this.mixValue((v as Record<string, unknown>)[k]);
+        }
+        return;
+      }
+      default:
+        return;
+    }
+  }
+
+  /**
+   * Content signature of the buffer returned by the most recent
+   * {@link flush}. Stable across frames that record an identical command
+   * stream; used by the offscreen surface to skip re-posting unchanged
+   * layers. Empty string before the first flush.
+   */
+  get lastSignature(): string {
+    return this._lastSignature;
   }
 
   /** Pop the buffered commands and clear the internal log. */
   flush(): readonly RenderCommand[] {
     const out = this.commands;
+    this._lastSignature = `${this.cmdCount}:${(this.sigA >>> 0).toString(36)}:${(
+      this.sigB >>> 0
+    ).toString(36)}`;
     this.commands = [];
+    this.sigA = SIG_SEED_A;
+    this.sigB = SIG_SEED_B;
+    this.cmdCount = 0;
     return out;
   }
 
@@ -172,32 +292,32 @@ export class RecordingTarget implements RenderTarget {
   }
 
   setFill(color: Color | null): void {
-    this.commands.push({ k: "setFill", color });
+    this.emit({ k: "setFill", color });
   }
   setStroke(color: Color | null): void {
-    this.commands.push({ k: "setStroke", color });
+    this.emit({ k: "setStroke", color });
   }
   setStrokeWidth(w: number): void {
-    this.commands.push({ k: "setStrokeWidth", w });
+    this.emit({ k: "setStrokeWidth", w });
   }
   setOpacity(a: number): void {
-    this.commands.push({ k: "setOpacity", a });
+    this.emit({ k: "setOpacity", a });
   }
   setLineCap(cap: LineCap): void {
-    this.commands.push({ k: "setLineCap", cap });
+    this.emit({ k: "setLineCap", cap });
   }
   setLineJoin(join: LineJoin): void {
-    this.commands.push({ k: "setLineJoin", join });
+    this.emit({ k: "setLineJoin", join });
   }
   setDashArray(dash: readonly number[] | null): void {
-    this.commands.push({ k: "setDashArray", dash });
+    this.emit({ k: "setDashArray", dash });
   }
   setFont(
     family: string,
     size: number,
     options?: { weight?: "normal" | "bold"; style?: "normal" | "italic" },
   ): void {
-    this.commands.push({ k: "setFont", family, size, ...(options ? { options } : {}) });
+    this.emit({ k: "setFont", family, size, ...(options ? { options } : {}) });
     // CSS font shorthand order: `<style> <weight> <size> <family>` — same as
     // the worker's Canvas2D target (bundled face first), so `measureText`
     // matches what it draws.
@@ -206,69 +326,69 @@ export class RecordingTarget implements RenderTarget {
     this.fontSpec = `${style}${weight}${size}px "${resolveBundledFamily(family)}", ${family}`;
   }
   setTextAlign(align: TextAlign): void {
-    this.commands.push({ k: "setTextAlign", align });
+    this.emit({ k: "setTextAlign", align });
   }
   setTextBaseline(baseline: TextBaseline): void {
-    this.commands.push({ k: "setTextBaseline", baseline });
+    this.emit({ k: "setTextBaseline", baseline });
   }
 
   save(): void {
-    this.commands.push({ k: "save" });
+    this.emit({ k: "save" });
   }
   restore(): void {
-    this.commands.push({ k: "restore" });
+    this.emit({ k: "restore" });
   }
 
   translate(x: number, y: number): void {
-    this.commands.push({ k: "translate", x, y });
+    this.emit({ k: "translate", x, y });
   }
   rotate(r: number): void {
-    this.commands.push({ k: "rotate", r });
+    this.emit({ k: "rotate", r });
   }
   scale(sx: number, sy: number): void {
-    this.commands.push({ k: "scale", sx, sy });
+    this.emit({ k: "scale", sx, sy });
   }
   setTransform(t: Transform): void {
-    this.commands.push({ k: "setTransform", t });
+    this.emit({ k: "setTransform", t });
   }
   resetTransform(): void {
-    this.commands.push({ k: "resetTransform" });
+    this.emit({ k: "resetTransform" });
   }
 
   beginPath(): void {
-    this.commands.push({ k: "beginPath" });
+    this.emit({ k: "beginPath" });
   }
   closePath(): void {
-    this.commands.push({ k: "closePath" });
+    this.emit({ k: "closePath" });
   }
   moveTo(x: number, y: number): void {
-    this.commands.push({ k: "moveTo", x, y });
+    this.emit({ k: "moveTo", x, y });
   }
   lineTo(x: number, y: number): void {
-    this.commands.push({ k: "lineTo", x, y });
+    this.emit({ k: "lineTo", x, y });
   }
   quadraticCurveTo(cx: number, cy: number, x: number, y: number): void {
-    this.commands.push({ k: "quadraticCurveTo", cx, cy, x, y });
+    this.emit({ k: "quadraticCurveTo", cx, cy, x, y });
   }
   bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number): void {
-    this.commands.push({ k: "bezierCurveTo", c1x, c1y, c2x, c2y, x, y });
+    this.emit({ k: "bezierCurveTo", c1x, c1y, c2x, c2y, x, y });
   }
   rect(x: number, y: number, w: number, h: number): void {
-    this.commands.push({ k: "rect", x, y, w, h });
+    this.emit({ k: "rect", x, y, w, h });
   }
   ellipse(cx: number, cy: number, rx: number, ry: number): void {
-    this.commands.push({ k: "ellipse", cx, cy, rx, ry });
+    this.emit({ k: "ellipse", cx, cy, rx, ry });
   }
 
   fill(rule?: FillRule): void {
-    this.commands.push(rule !== undefined ? { k: "fill", rule } : { k: "fill" });
+    this.emit(rule !== undefined ? { k: "fill", rule } : { k: "fill" });
   }
   stroke(): void {
-    this.commands.push({ k: "stroke" });
+    this.emit({ k: "stroke" });
   }
 
   fillText(text: string, x: number, y: number, maxWidth?: number): void {
-    this.commands.push(
+    this.emit(
       maxWidth !== undefined
         ? { k: "fillText", text, x, y, maxWidth }
         : { k: "fillText", text, x, y },
@@ -311,20 +431,20 @@ export class RecordingTarget implements RenderTarget {
         // id and ship the pixels once via `defineImage`.
         id = this.nextImageId++;
         this.imageIds.set(image, id);
-        this.commands.push({ k: "defineImage", id, bitmap: image });
+        this.emit({ k: "defineImage", id, bitmap: image });
       }
-      this.commands.push({ k: "drawImage", id, dx, dy, dw, dh });
+      this.emit({ k: "drawImage", id, dx, dy, dw, dh });
     } else {
       this.skippedImageDraws++;
     }
   }
 
   clear(bounds?: Bounds): void {
-    this.commands.push(bounds !== undefined ? { k: "clear", bounds } : { k: "clear" });
+    this.emit(bounds !== undefined ? { k: "clear", bounds } : { k: "clear" });
   }
 
   markDirty(bounds: Bounds): void {
-    this.commands.push({ k: "markDirty", bounds });
+    this.emit({ k: "markDirty", bounds });
   }
 }
 

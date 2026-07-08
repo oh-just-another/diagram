@@ -302,6 +302,14 @@ class OffscreenLayeredSurface implements LayeredSurface {
   private readonly canvases = new Map<LayerName, HTMLCanvasElement>();
   private readonly targets = new Map<LayerName, RecordingTarget>();
   private readonly workers = new Map<LayerName, Worker>();
+  /**
+   * Content signature of the command stream last posted to each layer's
+   * worker. A frame whose flushed buffer matches its layer's entry replays
+   * to the same pixels the worker already shows, so `present()` skips the
+   * postMessage (clone) + replay entirely — e.g. a static grid / overlay
+   * while only the main layer's GIF advances.
+   */
+  private readonly lastSentSig = new Map<LayerName, string>();
   private _width: number;
   private _height: number;
   private readonly dpr: number;
@@ -385,6 +393,10 @@ class OffscreenLayeredSurface implements LayeredSurface {
       this.targets.get(name)?.resize(width, height);
       this.workers.get(name)?.postMessage({ type: "resize", width, height });
     }
+    // A resize clears each worker's OffscreenCanvas (its bitmap is re-sized),
+    // so the next frame must repost even if its content signature is
+    // unchanged — drop the cached signatures to force it.
+    this.lastSentSig.clear();
   }
   get size(): { readonly width: number; readonly height: number } {
     return { width: this._width, height: this._height };
@@ -393,6 +405,14 @@ class OffscreenLayeredSurface implements LayeredSurface {
     for (const [name, target] of this.targets) {
       const cmds = target.flush();
       if (cmds.length === 0) continue;
+      // Skip layers whose command stream is identical to the one already
+      // shipped: the worker retains its last frame between replays, so not
+      // reposting leaves the correct pixels in place and saves the clone +
+      // worker redraw. `defineImage` (first bitmap ship) and `resize` change
+      // the stream, so image / size updates never get skipped.
+      const sig = target.lastSignature;
+      if (this.lastSentSig.get(name) === sig) continue;
+      this.lastSentSig.set(name, sig);
       this.workers.get(name)?.postMessage({ type: "replay", commands: cmds });
     }
   }
