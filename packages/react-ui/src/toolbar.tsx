@@ -1,12 +1,14 @@
 import { useEffect, useState, type CSSProperties, type ComponentType, type ReactNode } from "react";
 import {
   Circle,
+  Eraser,
   Frame,
   Hand,
   Image as ImageIcon,
   Lock,
   MousePointer2,
   PenLine,
+  Radio,
   Redo2,
   Slash,
   Square,
@@ -42,6 +44,8 @@ const ACTION_ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: 
   "mode-text": Type,
   "mode-edge": Slash,
   "mode-brush": PenLine,
+  "mode-erase": Eraser,
+  "mode-laser": Radio,
   "mode-frame": Frame,
   "insert-image": ImageIcon,
   "tool-lock": Lock,
@@ -209,6 +213,8 @@ export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "action-ref", id: "mode-text" },
   { kind: "action-ref", id: "mode-edge" },
   { kind: "action-ref", id: "mode-brush" },
+  { kind: "action-ref", id: "mode-erase" },
+  { kind: "action-ref", id: "mode-laser" },
   { kind: "action-ref", id: "mode-frame" },
   {
     kind: "action",
@@ -242,6 +248,8 @@ export const DEFAULT_VERTICAL_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "action-ref", id: "mode-text" },
   { kind: "action-ref", id: "mode-edge" },
   { kind: "action-ref", id: "mode-brush" },
+  { kind: "action-ref", id: "mode-erase" },
+  { kind: "action-ref", id: "mode-laser" },
   { kind: "action-ref", id: "mode-frame" },
   {
     kind: "action",
