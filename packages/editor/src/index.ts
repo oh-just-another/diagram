@@ -71,6 +71,18 @@ export { installGifAnimationAdapter } from "./gif-animation.js";
 // with the `<Editor>` component above.
 export type { ElementId } from "@oh-just-another/types";
 export type { Editor as EditorInstance, Mode, FileDropHandler } from "@oh-just-another/state";
+// Tool operations + types (eyedropper / convert-type / image-crop / spawn).
+export {
+  clampCrop,
+  computeConvertType,
+  computeSetImageCrop,
+  computeSpawnConnectedNode,
+  cropRectFromWorldDrag,
+  FULL_CROP,
+  pickColorAt,
+} from "@oh-just-another/state";
+export type { ConvertTarget, SpawnDirection } from "@oh-just-another/state";
+export type { ImageCrop } from "@oh-just-another/scene";
 export type {
   Scene,
   LayoutKindEntry,
