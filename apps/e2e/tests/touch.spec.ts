@@ -9,9 +9,11 @@ import { expect, test } from "@playwright/test";
 test("touch tap creates focus on the canvas", async ({ page }) => {
   await page.goto("/");
   await page.waitForLoadState("networkidle");
-  const canvas = page.locator("canvas").first();
-  await canvas.tap({ position: { x: 80, y: 120 } });
-  await expect(canvas).toBeVisible();
+  // Tap the interactive surface (role="application"); non-overlay canvas
+  // layers are pointer-events:none.
+  const surface = page.getByRole("application");
+  await surface.tap({ position: { x: 80, y: 120 } });
+  await expect(surface).toBeVisible();
 });
 
 test("two-finger pinch zoom does not throw", async ({ page }) => {

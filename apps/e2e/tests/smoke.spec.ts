@@ -19,11 +19,10 @@ test("the demo boots and renders the toolbar", async ({ page }) => {
 test("keyboard-only shape creation: R → Enter creates a rectangle", async ({ page }) => {
   await page.goto("/");
   await page.waitForLoadState("networkidle");
-  // Click the canvas area to give it focus, then push the hotkeys.
-  await page
-    .locator("canvas")
-    .first()
-    .click({ position: { x: 50, y: 50 } });
+  // Click the interactive surface (role="application"), not a raw canvas:
+  // the layered backend's non-overlay canvases are pointer-events:none, so
+  // clicking `canvas.first()` lands on a click-transparent layer.
+  await page.getByRole("application").click({ position: { x: 50, y: 50 } });
   await page.keyboard.press("r");
   await page.keyboard.press("Enter");
   // Selection panel should show 1 selected (PropertyPanel renders the count).
@@ -33,10 +32,7 @@ test("keyboard-only shape creation: R → Enter creates a rectangle", async ({ p
 test("undo restores empty selection after delete", async ({ page }) => {
   await page.goto("/");
   await page.waitForLoadState("networkidle");
-  await page
-    .locator("canvas")
-    .first()
-    .click({ position: { x: 80, y: 80 } });
+  await page.getByRole("application").click({ position: { x: 80, y: 80 } });
   await page.keyboard.press("r");
   await page.keyboard.press("Enter");
   await page.keyboard.press("Delete");
