@@ -101,8 +101,6 @@ import {
   type GridStyle,
 } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
-import { parseScene, stringifyScene } from "@oh-just-another/serialization";
-import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
 import { WasmRasterizer } from "@oh-just-another/raster-wasm";
 import { registerBundledFonts } from "@oh-just-another/fonts";
@@ -123,7 +121,15 @@ import {
 } from "./capabilities";
 import { installGifAnimationAdapter } from "./gif-animation.js";
 import { useThemedPortalContainer } from "./themed-portal-container.js";
-import { exportSceneToPng, type PngExportBackground } from "./png-export";
+import {
+  downloadScene,
+  downloadSvg,
+  downloadPng,
+  openSceneFile,
+  copySceneAsImage,
+  registerFileActions,
+  setFileActionNotifier,
+} from "./file-actions.js";
 import { isEditableTarget } from "./dom-focus";
 
 /**
@@ -730,6 +736,14 @@ const EditorShell = ({
     ((message: string) => {
       window.alert(message);
     });
+  // Register the file-ops actions (Save / Open / Export / Copy-as-image)
+  // on the shared registry so hosts binding hotkeys / the command palette
+  // pick them up, and route their error messages through this shell's
+  // notifier (host toast or the alert fallback above).
+  useEffect(() => {
+    registerFileActions();
+    setFileActionNotifier(notify);
+  }, [notify]);
   // Subscribe to scene changes so the Grid toggle in MainMenu reads
   // the latest viewport.gridEnabled / gridStyle. `useScene` is a thin
   // selector hook — re-renders only on scene identity flips.
@@ -856,8 +870,9 @@ const EditorShell = ({
                       <MainMenu.Item
                         icon={<FileUp {...menuIcon} />}
                         onClick={() => {
-                          openSceneFile(editor, notify);
+                          if (editor) openSceneFile(editor);
                         }}
+                        shortcut={formatHotkey({ key: "O", meta: true })}
                       >
                         Open…
                       </MainMenu.Item>
@@ -867,8 +882,19 @@ const EditorShell = ({
                           if (editor) downloadScene(editor.scene);
                         }}
                         disabled={!editor}
+                        shortcut={formatHotkey({ key: "S", meta: true })}
                       >
                         Save as JSON
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        icon={<Copy {...menuIcon} />}
+                        onClick={() => {
+                          if (editor) void copySceneAsImage(editor);
+                        }}
+                        disabled={!editor}
+                        shortcut={formatHotkey({ key: "C", shift: true, alt: true })}
+                      >
+                        Copy as image
                       </MainMenu.Item>
                       <MainMenu.Submenu
                         icon={<Download {...menuIcon} />}
@@ -877,23 +903,22 @@ const EditorShell = ({
                       >
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "transparent", notify)}
+                          onClick={() => editor && void downloadPng(editor, "transparent")}
                           disabled={!editor}
                         >
                           PNG (transparent)
                         </MainMenu.Item>
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "color", notify)}
+                          onClick={() => editor && void downloadPng(editor, "color")}
                           disabled={!editor}
+                          shortcut={formatHotkey({ key: "E", meta: true, shift: true })}
                         >
                           PNG (with background)
                         </MainMenu.Item>
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() =>
-                            editor && void downloadPng(editor, "color-and-grid", notify)
-                          }
+                          onClick={() => editor && void downloadPng(editor, "color-and-grid")}
                           disabled={!editor}
                         >
                           PNG (with background + grid)
@@ -1251,115 +1276,6 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
       {trailing}
     </ButtonGroup>
   );
-};
-
-// --- MainMenu File-group helpers --------------------------------------------
-
-/**
- * Trigger a browser download of arbitrary bytes. Used by the
- * Save / Export menu items. Creates a temporary `<a>`, clicks it,
- * cleans up the object URL on the next animation frame so the
- * browser has time to start the download.
- */
-const downloadBlob = (blob: Blob, filename: string): void => {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  requestAnimationFrame(() => {
-    URL.revokeObjectURL(url);
-  });
-};
-
-/** "Save as JSON" — serialises the scene through @serialization. */
-const downloadScene = (scene: Scene): void => {
-  const json = stringifyScene(scene, 2);
-  downloadBlob(new Blob([json], { type: "application/json" }), "scene.diagram.json");
-};
-
-/**
- * "Open…" — file picker that accepts `.diagram.json`, parses it,
- * and replaces the editor's scene. Resets history (matches the
- * default `loadScene` behaviour). User cancellation = no-op.
- */
-const openSceneFile = (editor: Editor | null, notify: (message: string) => void): void => {
-  if (!editor) return;
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "application/json,.json";
-  input.onchange = () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    void file.text().then((text) => {
-      try {
-        const scene = parseScene(text);
-        editor.loadScene(scene);
-      } catch (err) {
-        console.error("[diagram] failed to parse scene file:", err);
-        notify("Failed to parse the file — make sure it was saved through this app's Save action.");
-      }
-    });
-  };
-  input.click();
-};
-
-/**
- * "Export as PNG" — renders the **full scene** (not just the visible
- * viewport) into an OffscreenCanvas via the standard `renderScene` +
- * `renderLinks` pipeline and downloads the result. Three variants
- * exposed in the menu:
- *
- *   • transparent      — PNG with alpha channel preserved
- *   • color            — solid background fill (host canvas colour)
- *   • color-and-grid   — solid fill + same grid the user sees
- *
- * Scale fixed at 2× for retina-quality output. The full-scene
- * contract makes this symmetric with SVG export, which always emits
- * the whole scene.
- */
-const PNG_EXPORT_SCALE = 2;
-
-const downloadPng = async (
-  editor: Editor,
-  background: PngExportBackground,
-  notify: (message: string) => void,
-): Promise<void> => {
-  const backgroundColor = readCanvasBackgroundColor();
-  const blob = await exportSceneToPng(editor.scene, {
-    background,
-    scale: PNG_EXPORT_SCALE,
-    backgroundColor,
-  });
-  if (!blob) {
-    // Empty scene — convertToBlob unavailable or no shapes to export.
-    notify("Nothing to export — the canvas is empty.");
-    return;
-  }
-  downloadBlob(blob, "scene.png");
-};
-
-/**
- * Read the host's current `--du-canvas-bg` CSS variable. Falls back
- * to white if the variable isn't set (e.g. host hasn't loaded the
- * react-ui stylesheet). Matches what the user sees behind the
- * shapes on the live canvas.
- */
-const readCanvasBackgroundColor = (): string => {
-  const probe = document.querySelector('canvas[data-layer="main"]') ?? document.body;
-  const value = getComputedStyle(probe).getPropertyValue("--du-canvas-bg").trim();
-  return value || "#ffffff";
-};
-
-/**
- * "Export as SVG" — renders the scene to vector SVG (no bitmap
- * fall-back, works in any browser). One file per scene.
- */
-const downloadSvg = (scene: Scene): void => {
-  const svg = renderSceneToSvg(scene);
-  downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "scene.svg");
 };
 
 // --- Grid toggle helpers ----------------------------------------------------

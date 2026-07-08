@@ -36,6 +36,19 @@ export {
 export { isEditableTarget } from "./dom-focus.js";
 export { bindEditorHotkeys, type HotkeyBindingOptions } from "@oh-just-another/state";
 export { exportSceneToPng, type PngExportBackground, type PngExportOptions } from "./png-export.js";
+// File operations (Save / Open / Export / Copy-as-image) — registered on
+// the action registry by `<Editor>`; exported so hosts can wire them to
+// their own chrome or a custom registry.
+export {
+  fileActions,
+  registerFileActions,
+  setFileActionNotifier,
+  downloadScene,
+  downloadSvg,
+  downloadPng,
+  openSceneFile,
+  copySceneAsImage,
+} from "./file-actions.js";
 
 // Plug-in registries from the underlying packages, surfaced here so the
 // umbrella package is the single import for extending the editor without
