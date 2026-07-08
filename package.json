@@ -66,6 +66,7 @@
     "dependency-cruiser": "17.4.3",
     "eslint": "9.39.4",
     "eslint-config-prettier": "9.1.2",
+    "fast-check": "3.23.2",
     "globals": "15.15.0",
     "knip": "6.16.1",
     "lefthook": "1.13.6",
