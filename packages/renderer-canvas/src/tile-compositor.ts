@@ -9,6 +9,7 @@ import {
   getElementsInLayer,
   getElementWorldBounds,
   getLayersInOrder,
+  type SpatialGrid,
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
@@ -55,14 +56,61 @@ export interface RenderViaTilesOptions {
   readonly changedElements?: ReadonlyMap<ElementId, ChangedElementRecord>;
   /** Current zoom (used to pick the cache bucket). */
   readonly zoomBucket: number;
+  /**
+   * Optional spatial index over the scene's current element world-AABBs,
+   * keyed by element id. When supplied, per-tile element selection queries
+   * the index (`query(tileBounds)`) instead of scanning every shape in
+   * every layer — O(shapes + Σtiles·candidates) vs O(tiles×shapes). The
+   * index must hold the same bounds `getElementWorldBounds` returns for the
+   * current frame (a stale index rasterises wrong tiles). Omit it to fall
+   * back to the full scan, which is always correct — callers without a
+   * persistent index pay nothing and behave exactly as before.
+   */
+  readonly index?: SpatialGrid;
 }
+
+/**
+ * Precomputed draw-order lookup used by the indexed tile-query path.
+ *
+ * The spatial index returns candidate ids in arbitrary order, but tiles
+ * must rasterise shapes in global z-order (layer order, then in-layer
+ * order) or overlapping fills composite wrong. Building this once per
+ * frame — a single O(shapes) walk over the ordered layers — lets each
+ * tile map its (few) candidate ids back to elements and re-sort them by
+ * draw order without re-walking the whole scene per tile.
+ */
+interface DrawOrderIndex {
+  /** Element id → element reference (visible layers only). */
+  readonly byId: ReadonlyMap<ElementId, Element>;
+  /** Element id → global draw-order rank (ascending = drawn first). */
+  readonly order: ReadonlyMap<ElementId, number>;
+}
+
+/** @internal Exported for unit tests; not part of the package API. */
+export const buildDrawOrderIndex = (scene: Scene): DrawOrderIndex => {
+  const byId = new Map<ElementId, Element>();
+  const order = new Map<ElementId, number>();
+  let rank = 0;
+  for (const layer of getLayersInOrder(scene)) {
+    if (!layer.visible) continue;
+    for (const shape of getElementsInLayer(scene, layer.id)) {
+      byId.set(shape.id, shape);
+      order.set(shape.id, rank++);
+    }
+  }
+  return { byId, order };
+};
 
 export const renderViaTiles = (
   scene: Scene,
   mainTarget: Canvas2DTarget,
   options: RenderViaTilesOptions,
 ): void => {
-  const { viewport, cache, changedElements, zoomBucket } = options;
+  const { viewport, cache, changedElements, zoomBucket, index } = options;
+
+  // Build the draw-order lookup once per frame when an index is supplied;
+  // each fresh tile reuses it instead of re-walking the scene.
+  const drawOrder = index ? buildDrawOrderIndex(scene) : null;
 
   // 1) Invalidate cached tiles per patch (covers add / remove / move).
   if (changedElements) {
@@ -87,7 +135,7 @@ export const renderViaTiles = (
       const key: TileKey = { col, row, zoom: zoomBucket };
       let entry: TileCacheEntry<OffscreenCanvas> | undefined = cache.get(key);
       if (!entry) {
-        const fresh = rasteriseTile(scene, col, row, zoomBucket);
+        const fresh = rasteriseTile(scene, col, row, zoomBucket, index, drawOrder);
         if (!fresh) continue;
         cache.set(fresh);
         entry = fresh;
@@ -115,6 +163,8 @@ const rasteriseTile = (
   col: number,
   row: number,
   zoomBucket: number,
+  index: SpatialGrid | undefined,
+  drawOrder: DrawOrderIndex | null,
 ): TileCacheEntry<OffscreenCanvas> | null => {
   if (typeof OffscreenCanvas === "undefined") return null;
   const worldX = col * TILE_SIZE;
@@ -125,7 +175,10 @@ const rasteriseTile = (
     width: TILE_SIZE,
     height: TILE_SIZE,
   };
-  const shapes = elementsIntersectingTile(scene, worldBounds);
+  const shapes =
+    index && drawOrder
+      ? elementsIntersectingTileIndexed(index, drawOrder, worldBounds)
+      : elementsIntersectingTile(scene, worldBounds);
   if (shapes.length === 0) return null;
 
   // Bitmap size — `TILE_SIZE * zoomBucket` device pixels so the tile
@@ -163,7 +216,8 @@ const rasteriseTile = (
   };
 };
 
-const elementsIntersectingTile = (scene: Scene, tileBounds: Bounds): readonly Element[] => {
+/** @internal Exported for unit tests; not part of the package API. */
+export const elementsIntersectingTile = (scene: Scene, tileBounds: Bounds): readonly Element[] => {
   const out: Element[] = [];
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;
@@ -173,6 +227,31 @@ const elementsIntersectingTile = (scene: Scene, tileBounds: Bounds): readonly El
     }
   }
   return out;
+};
+
+/**
+ * Index-backed equivalent of {@link elementsIntersectingTile}. Queries the
+ * spatial index for candidate ids overlapping the tile, filters them
+ * against the precise world-AABB (same predicate the full scan uses), then
+ * restores global draw order via `drawOrder.order`. Returns the identical
+ * set and ordering as the full scan for a correctly-populated index — only
+ * the work is O(candidates) instead of O(shapes).
+ */
+/** @internal Exported for unit tests; not part of the package API. */
+export const elementsIntersectingTileIndexed = (
+  index: SpatialGrid,
+  drawOrder: DrawOrderIndex,
+  tileBounds: Bounds,
+): readonly Element[] => {
+  const hits: { shape: Element; order: number }[] = [];
+  for (const id of index.query(tileBounds)) {
+    const shape = drawOrder.byId.get(id);
+    if (!shape) continue; // hidden layer or not in the current scene
+    if (!intersects(getElementWorldBounds(shape), tileBounds)) continue;
+    hits.push({ shape, order: drawOrder.order.get(id) ?? 0 });
+  }
+  hits.sort((a, b) => a.order - b.order);
+  return hits.map((h) => h.shape);
 };
 
 const intersects = (a: Bounds, b: Bounds): boolean =>
