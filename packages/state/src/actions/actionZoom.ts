@@ -4,6 +4,7 @@ export const actionZoomIn: Action = {
   id: "zoom-in",
   label: "Zoom in",
   category: "zoom",
+  viewMode: true,
   // `⌘=`/`⌘+` and bare `+`/`=`.
   hotkey: [{ key: "=", meta: true }, { key: "+", meta: true }, { key: "+" }, { key: "=" }],
   perform: ({ editor }) => {
@@ -15,6 +16,7 @@ export const actionZoomOut: Action = {
   id: "zoom-out",
   label: "Zoom out",
   category: "zoom",
+  viewMode: true,
   // `⌘-`/`⌘_` and bare `-`/`_`.
   hotkey: [{ key: "-", meta: true }, { key: "_", meta: true }, { key: "-" }, { key: "_" }],
   perform: ({ editor }) => {
@@ -26,6 +28,7 @@ export const actionZoomReset: Action = {
   id: "zoom-reset",
   label: "Reset zoom",
   category: "zoom",
+  viewMode: true,
   hotkey: { key: "0", meta: true },
   perform: ({ editor }) => {
     editor.resetZoom();
@@ -36,6 +39,7 @@ export const actionZoomToFit: Action = {
   id: "zoom-to-fit",
   label: "Fit to screen",
   category: "zoom",
+  viewMode: true,
   // `⌥1` (standard "Zoom to fit"); `⌘1` is an alias.
   hotkey: [
     { key: "1", alt: true },
@@ -50,6 +54,7 @@ export const actionZoomToSelection: Action = {
   id: "zoom-to-selection",
   label: "Zoom to selection",
   category: "zoom",
+  viewMode: true,
   hotkey: { key: "2", alt: true },
   predicate: hasSelection,
   perform: ({ editor }) => {

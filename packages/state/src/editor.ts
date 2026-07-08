@@ -351,6 +351,13 @@ export interface EditorOptions {
   readonly initialScene: Scene;
   readonly initialMode?: Mode;
   /**
+   * Start the editor in read-only / view mode. Pointer edits (create /
+   * move / resize / rotate / delete) and non-`viewMode` actions are gated;
+   * pan / zoom / select still work. Toggle at runtime via
+   * {@link Editor.setReadOnly}. Defaults to `false`.
+   */
+  readonly readOnly?: boolean;
+  /**
    * Pre-existing history backend, or options for the default
    * `History` (linear stack). Any `HistoryProvider` implementation
    * works — `@oh-just-another/collab` ships `CollabHistory` that wraps
@@ -457,6 +464,25 @@ export type GroupSelectedResult =
 // Re-exported here so the public API path (`@oh-just-another/state`) is stable.
 export type { CursorRole, CursorSpec };
 
+/**
+ * Machine-emit types dropped while the editor is in read-only mode — every
+ * scene mutation the interaction machine can produce. Selection / lasso /
+ * preview-clear emits are absent so a viewer keeps click + marquee select.
+ */
+const READ_ONLY_BLOCKED_EMITS: ReadonlySet<InteractionEmit["type"]> = new Set([
+  "MOVE_SHAPE",
+  "RESIZE_GROUP",
+  "RESIZE_SHAPE",
+  "ROTATE",
+  "CREATE_SHAPE",
+  "CREATE_EDGE",
+  "MOVE_ANNOTATION",
+  "COMMIT_ANNOTATION_DRAG",
+  "UPDATE_EDGE_ENDPOINT",
+  "UPDATE_EDGE_ENDPOINT_PREVIEW",
+  "DRAW_EDGE_PREVIEW",
+]);
+
 export class Editor {
   public readonly host: HTMLElement;
   public readonly mainTarget: RenderTarget;
@@ -470,6 +496,14 @@ export class Editor {
    * View-only — never persisted or recorded in history.
    */
   debugHitZones = false;
+  /**
+   * Read-only / view mode. When true the pointer paths that create,
+   * move, resize, rotate or delete are gated (pan / zoom / select stay
+   * live) and the action registry only runs actions flagged
+   * `viewMode`. View-only — never persisted or recorded in history.
+   * Read via {@link readOnly}; flip via {@link setReadOnly}.
+   */
+  private _readOnly = false;
   public actor!: Actor<typeof interactionMachine>;
   private readonly listeners = new Set<() => void>();
   /**
@@ -1303,6 +1337,8 @@ export class Editor {
     this.fileDropRegistry.register(imageFileDropHandler);
     this.fileDropRegistry.register(videoFileDropHandler);
 
+    this._readOnly = options.readOnly ?? false;
+
     if (options.initialMode) {
       this.actor.send({ type: "SET_MODE", mode: options.initialMode });
     }
@@ -1552,6 +1588,31 @@ export class Editor {
     if (this.debugHitZones === on) return;
     this.debugHitZones = on;
     this.scheduleRender();
+  }
+
+  /**
+   * Read-only / view mode flag. `true` gates pointer edits and
+   * non-`viewMode` actions while leaving pan / zoom / select live.
+   */
+  get readOnly(): boolean {
+    return this._readOnly;
+  }
+
+  /**
+   * Enter / leave read-only (view) mode. Notifies subscribers so the UI
+   * can re-render disabled chrome, and repaints (no visual diff today, but
+   * keeps the contract symmetric with other view toggles). Idempotent.
+   */
+  setReadOnly(on: boolean): void {
+    if (this._readOnly === on) return;
+    this._readOnly = on;
+    this.notify();
+    this.scheduleRender();
+  }
+
+  /** Toggle read-only (view) mode. */
+  toggleReadOnly(): void {
+    this.setReadOnly(!this._readOnly);
   }
 
   /** Whether the background grid is enabled for the scene. */
@@ -3504,6 +3565,11 @@ export class Editor {
   }
 
   public applyEmit(emit: InteractionEmit): void {
+    // Read-only gate: in view mode every scene-mutating emit is dropped
+    // (create / move / resize / rotate / annotation / edge edits + their
+    // live previews). Selection + lasso emits fall through so a viewer can
+    // still click / marquee-select and pan / zoom the document.
+    if (this._readOnly && READ_ONLY_BLOCKED_EMITS.has(emit.type)) return;
     switch (emit.type) {
       case "SELECT_REPLACE":
         // Plain element click replaces the whole selection (elements + links).

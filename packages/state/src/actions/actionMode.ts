@@ -8,6 +8,7 @@ export const actionModeSelect: Action = {
   id: "mode-select",
   label: "Select tool",
   category: "mode",
+  viewMode: true,
   hotkey: { key: "v" },
   iconId: "mode-select",
   uiKind: "toggle",
@@ -21,6 +22,7 @@ export const actionModeHand: Action = {
   id: "mode-hand",
   label: "Hand tool",
   category: "mode",
+  viewMode: true,
   hotkey: { key: "h" },
   iconId: "mode-hand",
   uiKind: "toggle",
@@ -128,6 +130,7 @@ export const actionCancel: Action = {
   id: "cancel",
   label: "Cancel / clear selection",
   category: "edit",
+  viewMode: true,
   hotkey: { key: "Escape" },
   perform: ({ editor }) => {
     editor.cancelInteraction();

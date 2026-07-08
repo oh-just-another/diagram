@@ -109,6 +109,7 @@ export {
   actionZoomToSelection,
   zoomActions,
   actionToggleGrid,
+  actionToggleReadOnly,
   viewActions,
   actionFlipHorizontal,
   actionFlipVertical,

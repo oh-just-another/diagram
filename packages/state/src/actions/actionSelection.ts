@@ -4,6 +4,7 @@ export const actionSelectAll: Action = {
   id: "select-all",
   label: "Select all",
   category: "selection",
+  viewMode: true,
   hotkey: { key: "a", meta: true },
   perform: ({ editor }) => {
     editor.selectAll();

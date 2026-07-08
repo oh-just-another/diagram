@@ -125,6 +125,7 @@ const handleDownMultiPointer = (
  * through (returns false) so the same click does its normal thing.
  */
 const handleDownEditingText = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.readOnly) return false;
   if (editor.editingTextElement === null) return false;
   if (editor.editedElementContainsPoint(worldPoint)) {
     editor.cancelLongPress();
@@ -138,6 +139,7 @@ const handleDownEditingText = (editor: Editor, worldPoint: Vec2): boolean => {
 
 /** Brush mode owns the gesture end-to-end — start a stroke, skip machine. */
 const handleDownBrush = (editor: Editor, worldPoint: Vec2, pressure: number): boolean => {
+  if (editor.readOnly) return false;
   if (editor.mode !== "brush") return false;
   editor.beginBrushStroke(worldPoint, pressure);
   return true;
@@ -148,6 +150,7 @@ const handleDownBrush = (editor: Editor, worldPoint: Vec2, pressure: number): bo
  * under the press) and opens the inline editor straight away.
  */
 const handleDownDrawText = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.readOnly) return false;
   if (editor.mode !== "draw-text") return false;
   editor.cancelLongPress();
   const hit = editor.hitTest(worldPoint);
@@ -167,6 +170,7 @@ const handleDownDrawText = (editor: Editor, worldPoint: Vec2): boolean => {
  * entirely (skip machine, skip interactive testers).
  */
 const handleDownAnnotation = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.readOnly) return false;
   const annHit = editor.hitAnnotation(worldPoint);
   if (!annHit) return false;
   const ann = editor._scene.annotations.get(annHit);
@@ -209,6 +213,7 @@ const handleDownInteractiveHit = (editor: Editor, worldPoint: Vec2): boolean => 
  * as deselect.
  */
 const handleDownSegmentDrag = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.readOnly) return false;
   const segDragLink = editor.selectedLink;
   if (!(editor.mode === "select" && segDragLink)) return false;
   const edge = getLink(editor._scene, segDragLink);
@@ -252,6 +257,7 @@ const handleDownSegmentDrag = (editor: Editor, worldPoint: Vec2): boolean => {
  * waypoint there (on first move). Checked before the normal hit-test.
  */
 const handleDownWaypointDrag = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.readOnly) return false;
   const wpDragLink = editor.selectedLink;
   if (!(editor.mode === "select" && wpDragLink)) return false;
   const edge = getLink(editor._scene, wpDragLink);
@@ -344,6 +350,7 @@ const handleDownAnchorStart = (
   worldPoint: Vec2,
   target: PressTarget,
 ): boolean => {
+  if (editor.readOnly) return false;
   if (
     !(
       editor.mode === "select" &&
@@ -397,6 +404,7 @@ const applyAltDragDuplicate = (
   data: PointerEventData,
   target: PressTarget,
 ): PressTarget => {
+  if (editor.readOnly) return target;
   if (
     data.modifiers.alt &&
     editor.mode === "select" &&
