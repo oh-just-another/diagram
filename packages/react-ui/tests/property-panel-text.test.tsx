@@ -109,4 +109,33 @@ describe("PropertyPanel for text shapes", () => {
     ).toBe("bold");
     editor.dispose();
   });
+
+  it("Bold toggle applies to the in-edit text selection as a styled run", () => {
+    const editor = mountEditor();
+    editor.setSelection([text.id]);
+    // Enter inline edit and select the first character only.
+    editor.beginTextEdit(text.id);
+    act(() => {
+      editor.setEditingSelection(0, 1, "forward");
+    });
+    render(
+      <TooltipProvider>
+        <DiagramProvider editor={editor}>
+          <PropertyPanel />
+        </DiagramProvider>
+      </TooltipProvider>,
+    );
+    const trigger = document.body.querySelector('button[aria-label="Text style"]') as HTMLElement;
+    act(() => fireEvent.click(trigger));
+    const bold = document.body.querySelector('button[aria-label="Bold"]') as HTMLElement;
+    act(() => fireEvent.click(bold));
+    const el = editor.scene.elements.get(text.id) as {
+      text: string;
+      runs?: readonly { text: string; style?: { fontWeight?: string } }[];
+    };
+    // Only the first char is bold; flat text unchanged.
+    expect(el.text).toBe("hi");
+    expect(el.runs).toEqual([{ text: "h", style: { fontWeight: "bold" } }, { text: "i" }]);
+    editor.dispose();
+  });
 });

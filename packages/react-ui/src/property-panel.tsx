@@ -48,6 +48,7 @@ import {
   isRectangle,
   isEllipse,
   isPolygon,
+  sliceRuns,
   type ArrowheadStyle,
   type Link,
   type LinkRouting,
@@ -59,6 +60,7 @@ import {
 } from "@oh-just-another/scene";
 import type { ConvertTarget } from "@oh-just-another/state";
 import { useDiagramOptional, useScene, useSelectedLink, useSelection } from "./hooks.js";
+import { useEditorSelector } from "./context.js";
 import { useContextMenuController } from "./context-menu-controller.js";
 import { ColorSwatchPicker } from "./color-swatch-picker.js";
 import { Popover } from "./popover.js";
@@ -428,6 +430,27 @@ const ColorTrigger = ({
 );
 
 /**
+ * Active inline-text-edit selection over a single shown text element, if any.
+ * When present, text-style controls (colour, bold/italic/…) target JUST the
+ * selected characters — producing styled runs (rich text) — instead of the
+ * whole element. `null` when there is no inline edit, the selection is
+ * collapsed, or the edited element isn't in the panel's `shapes`.
+ */
+interface TextRunRange {
+  readonly target: TextElement;
+  readonly from: number;
+  readonly to: number;
+}
+const useTextRunRange = (shapes: readonly ElementBase[]): TextRunRange | null => {
+  const editingId = useEditorSelector((e) => e.editingTextElement, null);
+  const sel = useEditorSelector((e) => e.editingTextSelection, null);
+  if (editingId === null || sel === null || sel.start === sel.end) return null;
+  const target = shapes.find((s) => s.id === editingId);
+  if (target === undefined || !isText(target)) return null;
+  return { target, from: Math.min(sel.start, sel.end), to: Math.max(sel.start, sel.end) };
+};
+
+/**
  * Combined color & opacity control — a single swatch trigger whose
  * popover has both the palette and an opacity slider. Used for the text
  * panel in place of separate Fill + Opacity triggers. Writes `fill` and
@@ -435,6 +458,7 @@ const ColorTrigger = ({
  */
 const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
+  const runRange = useTextRunRange(shapes);
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
   const color = sharedString(shapes, (s) => s.style.fill);
@@ -466,7 +490,15 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
         <ColorSwatchPicker
           value={color}
           onChange={(v) => {
-            editor.updateStyle(ids, { fill: v ?? "transparent" });
+            // In-edit text selection → colour just those characters (runs);
+            // otherwise colour the whole element(s).
+            if (runRange) {
+              editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
+                fill: v ?? "transparent",
+              });
+            } else {
+              editor.updateStyle(ids, { fill: v ?? "transparent" });
+            }
           }}
         />
         <header className="du-sel-popover-label">Opacity</header>
@@ -640,22 +672,53 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
  */
 const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
+  const runRange = useTextRunRange(shapes);
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
-  const allBold = shapes.every((s) => (s.style as TextStyle | undefined)?.fontWeight === "bold");
-  const allItalic = shapes.every((s) => (s.style as TextStyle | undefined)?.fontStyle === "italic");
-  const allUnderline = shapes.every(
-    (s) => (s.style as TextStyle | undefined)?.textDecoration?.underline === true,
-  );
-  const allStrike = shapes.every(
-    (s) => (s.style as TextStyle | undefined)?.textDecoration?.strikethrough === true,
-  );
-  // Toggling underline/strikethrough must preserve the other flag per
-  // shape, so merge into each shape's current decoration individually.
+
+  // Active state: over an in-edit range, read the effective per-run style
+  // (run overlay ?? element style); otherwise read the whole-element style.
+  const rangeSegs = runRange ? sliceRuns(runRange.target, runRange.from, runRange.to) : [];
+  const base = runRange?.target.style;
+  const segEvery = (pred: (st: Partial<TextStyle> | undefined) => boolean): boolean =>
+    rangeSegs.length > 0 && rangeSegs.every((r) => pred(r.style));
+  const allBold = runRange
+    ? segEvery((st) => (st?.fontWeight ?? base?.fontWeight) === "bold")
+    : shapes.every((s) => (s.style as TextStyle | undefined)?.fontWeight === "bold");
+  const allItalic = runRange
+    ? segEvery((st) => (st?.fontStyle ?? base?.fontStyle) === "italic")
+    : shapes.every((s) => (s.style as TextStyle | undefined)?.fontStyle === "italic");
+  const allUnderline = runRange
+    ? segEvery((st) => (st?.textDecoration ?? base?.textDecoration)?.underline === true)
+    : shapes.every((s) => (s.style as TextStyle | undefined)?.textDecoration?.underline === true);
+  const allStrike = runRange
+    ? segEvery((st) => (st?.textDecoration ?? base?.textDecoration)?.strikethrough === true)
+    : shapes.every(
+        (s) => (s.style as TextStyle | undefined)?.textDecoration?.strikethrough === true,
+      );
+
+  // Apply a partial text style to the in-edit range (rich text) or, with no
+  // active range, to the whole selected element(s).
+  const applyPartial = (partial: Partial<TextStyle>): void => {
+    if (runRange) {
+      editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
+    } else {
+      editor.updateStyle(ids, partial);
+    }
+  };
+  // Toggling underline/strikethrough must preserve the other flag. Range mode
+  // replaces the whole `textDecoration`, so rebuild both flags from the
+  // range's current state; whole-element mode merges per shape.
   const setDecoration = (key: "underline" | "strikethrough", on: boolean): void => {
-    for (const s of shapes) {
-      const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
-      editor.updateStyle([s.id], { textDecoration: { ...cur, [key]: on } });
+    if (runRange) {
+      editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
+        textDecoration: { underline: allUnderline, strikethrough: allStrike, [key]: on },
+      });
+    } else {
+      for (const s of shapes) {
+        const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
+        editor.updateStyle([s.id], { textDecoration: { ...cur, [key]: on } });
+      }
     }
   };
   const Toggle = ({
@@ -702,7 +765,7 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
             label="Bold"
             icon={<Bold size={14} strokeWidth={1.75} />}
             onClick={() => {
-              editor.updateStyle(ids, { fontWeight: allBold ? "normal" : "bold" });
+              applyPartial({ fontWeight: allBold ? "normal" : "bold" });
             }}
           />
           <Toggle
@@ -710,7 +773,7 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
             label="Italic"
             icon={<Italic size={14} strokeWidth={1.75} />}
             onClick={() => {
-              editor.updateStyle(ids, { fontStyle: allItalic ? "normal" : "italic" });
+              applyPartial({ fontStyle: allItalic ? "normal" : "italic" });
             }}
           />
           <Toggle
