@@ -300,6 +300,20 @@ import { type PeerCursor, type PeerSelection } from "./overlay.js";
 import * as Selection from "./selection.js";
 import * as LinkSelection from "./link-selection.js";
 
+/**
+ * The editor's observable state at one instant — the object handed to the
+ * event-fanout. A superset of `EditorObservableSnapshot` (adds `selectedLinks`).
+ * Memoized by {@link Editor.observableSnapshot} while its slices are unchanged.
+ */
+interface ObservableSnapshot {
+  readonly mode: Mode;
+  readonly selection: Selection.Selection;
+  readonly selectedLinks: LinkSelection.LinkSelection;
+  readonly scene: Scene;
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
+}
+
 export interface LoadSceneOptions {
   /**
    * Keep the existing undo/redo stack when swapping scenes. Used by
@@ -1252,16 +1266,53 @@ export class Editor {
     primeEventCache(this.eventCache, this.observableSnapshot());
   }
 
-  /** Snapshot used by event-fanout. Kept private — internal API. */
-  private observableSnapshot() {
-    return {
-      mode: this.mode,
-      selection: this._selection,
-      selectedLinks: this._selectedLinks,
-      scene: this._scene,
-      canUndo: this.canUndo,
-      canRedo: this.canRedo,
+  /**
+   * Last {@link observableSnapshot} object, reused while none of its slices
+   * have flipped. `null` until the first snapshot is built.
+   */
+  private snapshotCache: ObservableSnapshot | null = null;
+
+  /**
+   * Snapshot used by event-fanout. Kept private — internal API.
+   *
+   * Memoized by slice identity: `notify()` fires on many mutations that touch
+   * no observable slice (annotation focus, cursor pushes, viewport-only re-arm),
+   * so rebuilding the object every call is pure churn on the hot drag path.
+   * We reuse the cached object whenever all six slices compare equal (refs for
+   * mode/selection/selectedLinks/scene — scene uses structural sharing so a new
+   * ref iff something changed — plus the two history booleans), and only
+   * allocate a fresh one on a real flip. `fanOutEvents` sees identical values
+   * either way, so emitted events are unchanged.
+   */
+  private observableSnapshot(): ObservableSnapshot {
+    const mode = this.mode;
+    const selection = this._selection;
+    const selectedLinks = this._selectedLinks;
+    const scene = this._scene;
+    const canUndo = this.canUndo;
+    const canRedo = this.canRedo;
+    const cached = this.snapshotCache;
+    if (
+      cached !== null &&
+      cached.mode === mode &&
+      cached.selection === selection &&
+      cached.selectedLinks === selectedLinks &&
+      cached.scene === scene &&
+      cached.canUndo === canUndo &&
+      cached.canRedo === canRedo
+    ) {
+      return cached;
+    }
+    const snapshot: ObservableSnapshot = {
+      mode,
+      selection,
+      selectedLinks,
+      scene,
+      canUndo,
+      canRedo,
     };
+    this.snapshotCache = snapshot;
+    return snapshot;
   }
 
   // --- Public state ---
