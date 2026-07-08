@@ -241,6 +241,7 @@ import {
   computeSelectAll,
   computeSelectAllLinks,
   computeAdjustFontSize,
+  computeApplyTextRunStyle,
   computeSetSelection,
   computeUpdateStyle,
   computeUpdateTextProps,
@@ -2774,6 +2775,28 @@ export class Editor {
 
   updateStyle(ids: Iterable<ElementId>, partial: Partial<TextStyle>): void {
     const result = computeUpdateStyle(this._scene, ids, partial);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Apply a partial text style (bold / italic / colour / decoration) to the
+   * character range `[from, to)` of a single text element, producing styled
+   * runs (rich text). One undo step. No-op when the id isn't a text shape or
+   * the range is empty. Read-only editors ignore it. Use this — rather than
+   * `updateStyle` — to style only PART of a text block (e.g. the current
+   * inline-edit selection).
+   */
+  applyTextStyleToRange(
+    id: ElementId,
+    from: number,
+    to: number,
+    partial: Partial<TextStyle>,
+  ): void {
+    if (this.readOnly) return;
+    const result = computeApplyTextRunStyle(this._scene, id, from, to, partial);
     if (!result) return;
     this._scene = result.scene;
     this._history.push(result.patch);
