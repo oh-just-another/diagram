@@ -16,6 +16,9 @@ import {
   type RectangleElement,
   type Style,
   type TextElement,
+  type TextRun,
+  type TextStyle,
+  sliceRuns,
 } from "@oh-just-another/scene";
 import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "./render-target.js";
@@ -245,7 +248,105 @@ const drawPath: ElementRenderer<PathElement> = (shape, target) => {
   if (stroke) target.stroke();
 };
 
+/**
+ * Rich-text path: draw a text element whose glyphs carry per-run styling
+ * (bold / italic / colour / decoration). Each visual line is split into
+ * style segments (via `sliceRuns` against the line's source offsets) and each
+ * segment is painted with its own font + fill at an accumulated x offset —
+ * so it renders identically on Canvas2D, WebGL2 and SVG through the shared
+ * `RenderTarget`. Line breaking uses the ELEMENT's base font metrics (matches
+ * the plain-text path); per-run weight only affects glyph paint + segment
+ * widths, an acceptable etap-1 approximation for wrapping.
+ */
+const drawStyledText = (shape: TextElement, target: RenderTarget): void => {
+  const align = shape.style.textAlign ?? "left";
+  const fontSize = shape.fontSize;
+  target.setTextAlign("left");
+  target.setTextBaseline(shape.style.textBaseline ?? "top");
+
+  // Apply the resolved font for a run: run overlay wins, element style is
+  // the fallback for any field the run omits.
+  const setSegFont = (st: TextRun["style"]): void => {
+    const weight = st?.fontWeight ?? shape.style.fontWeight;
+    const style = st?.fontStyle ?? shape.style.fontStyle;
+    target.setFont(shape.fontFamily, fontSize, {
+      ...(weight ? { weight } : {}),
+      ...(style ? { style } : {}),
+    });
+  };
+
+  // Base-font line breaking — same metrics the plain path wraps with.
+  setSegFont(undefined);
+  const layout = layoutText(shape.text, (s) => target.measureText(s).width, {
+    fontSize,
+    ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
+  });
+
+  interface Seg {
+    readonly text: string;
+    readonly style: TextStyle | undefined;
+    readonly width: number;
+  }
+  const perLine = layout.lines.map((line) => {
+    const segs: Seg[] = sliceRuns(shape, line.start, line.end).map((r) => {
+      setSegFont(r.style);
+      return { text: r.text, style: r.style, width: target.measureText(r.text).width };
+    });
+    const total = segs.reduce((a, s) => a + s.width, 0);
+    return { segs, total };
+  });
+
+  // Alignment box: fixed budget, or the widest STYLED line so bold text
+  // stays self-consistently aligned.
+  const blockWidth = shape.maxWidth ?? perLine.reduce((m, l) => Math.max(m, l.total), 0);
+  const thickness = Math.max(1, fontSize * TEXT_DECORATION_THICKNESS);
+
+  perLine.forEach((line, i) => {
+    const top = i * layout.lineHeight;
+    let x =
+      align === "center"
+        ? blockWidth / 2 - line.total / 2
+        : align === "right"
+          ? blockWidth - line.total
+          : 0;
+    for (const seg of line.segs) {
+      const color = seg.style?.fill ?? shape.style.fill ?? "#000";
+      const opacity = seg.style?.opacity ?? shape.style.opacity;
+      setSegFont(seg.style);
+      target.setFill(color);
+      if (opacity !== undefined) target.setOpacity(opacity);
+      target.fillText(seg.text, x, top);
+
+      const deco = seg.style?.textDecoration ?? shape.style.textDecoration;
+      if (seg.width > 0 && (deco?.underline || deco?.strikethrough)) {
+        if (deco.underline) {
+          target.beginPath();
+          target.rect(x, top + fontSize * TEXT_UNDERLINE_OFFSET, seg.width, thickness);
+          target.fill();
+        }
+        if (deco.strikethrough) {
+          target.beginPath();
+          target.rect(
+            x,
+            top + fontSize * TEXT_STRIKETHROUGH_OFFSET - thickness / 2,
+            seg.width,
+            thickness,
+          );
+          target.fill();
+        }
+      }
+      x += seg.width;
+    }
+  });
+};
+
 const drawText: ElementRenderer<TextElement> = (shape, target) => {
+  // Rich text (styled runs) takes a dedicated path; plain text keeps the
+  // original single-style path byte-for-byte (golden-SVG compatible).
+  if (shape.runs !== undefined && shape.runs.length > 0) {
+    drawStyledText(shape, target);
+    return;
+  }
   const align = shape.style.textAlign ?? "left";
   const weight = shape.style.fontWeight;
   const fontStyle = shape.style.fontStyle;

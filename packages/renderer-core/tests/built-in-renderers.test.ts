@@ -543,6 +543,102 @@ describe("drawText", () => {
 });
 
 // ---------------------------------------------------------------------------
+// drawText — styled runs (rich text)
+// ---------------------------------------------------------------------------
+describe("drawText with styled runs", () => {
+  it("draws one fillText per run segment", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "Hello world",
+      fontFamily: "Arial",
+      fontSize: 16,
+      style: {},
+      runs: [
+        { text: "Hello", style: { fontWeight: "bold" } },
+        { text: " world", style: { fontStyle: "italic" } },
+      ],
+    });
+    const fillTexts = calls.filter((c) => c.method === "fillText");
+    expect(fillTexts.map((c) => c.args[0])).toEqual(["Hello", " world"]);
+  });
+
+  it("applies per-run weight / style / colour", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "AB",
+      fontFamily: "Arial",
+      fontSize: 16,
+      style: { fill: "#000" },
+      runs: [
+        { text: "A", style: { fontWeight: "bold", fill: "#f00" } },
+        { text: "B", style: { fontStyle: "italic" } },
+      ],
+    });
+    // Bold red for segment A.
+    const boldFont = calls.find(
+      (c) => c.method === "setFont" && (c.args[2] as { weight?: string })?.weight === "bold",
+    );
+    expect(boldFont).toBeDefined();
+    expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#f00")).toBe(true);
+    // Italic for segment B.
+    const italicFont = calls.find(
+      (c) => c.method === "setFont" && (c.args[2] as { style?: string })?.style === "italic",
+    );
+    expect(italicFont).toBeDefined();
+  });
+
+  it("positions segments left-to-right by measured width (x accumulates)", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "abcd",
+      fontFamily: "Arial",
+      fontSize: 16,
+      style: {},
+      runs: [{ text: "ab", style: { fontWeight: "bold" } }, { text: "cd" }],
+    });
+    const fillTexts = calls.filter((c) => c.method === "fillText");
+    // Recorder measure = length * 7 → "ab" is 14 wide, so "cd" starts at x=14.
+    expect(fillTexts[0]?.args).toEqual(["ab", 0, 0]);
+    expect(fillTexts[1]?.args).toEqual(["cd", 14, 0]);
+  });
+
+  it("places runs on their source line for multi-line text", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "one\ntwo",
+      fontFamily: "Arial",
+      fontSize: 10,
+      style: {},
+      runs: [{ text: "one\ntwo", style: { fill: "#123" } }],
+    });
+    const fillTexts = calls.filter((c) => c.method === "fillText");
+    // Line height = fontSize * 1.2 = 12; second line at y = 12.
+    expect(fillTexts.map((c) => [c.args[0], c.args[2]])).toEqual([
+      ["one", 0],
+      ["two", 12],
+    ]);
+  });
+
+  it("falls back to the plain path when runs is empty", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "plain",
+      fontFamily: "Arial",
+      fontSize: 16,
+      style: {},
+      runs: [],
+    });
+    const fillTexts = calls.filter((c) => c.method === "fillText");
+    expect(fillTexts.map((c) => c.args[0])).toEqual(["plain"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // drawImage
 // ---------------------------------------------------------------------------
 describe("drawImage", () => {
