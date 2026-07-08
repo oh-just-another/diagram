@@ -13,6 +13,8 @@ export type {
   Roundness,
 } from "./style.js";
 export { getCornerRadius, strokeOutsideExtent } from "./style.js";
+export type { TextRun } from "./text-runs.js";
+export { runsToText, normalizeRuns, sliceRuns, applyStyleToRange } from "./text-runs.js";
 export { ADAPTIVE_CORNER_RADIUS, PROPORTIONAL_CORNER_RADIUS } from "./constants.js";
 export type {
   Element,

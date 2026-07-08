@@ -3,6 +3,7 @@ import type { FractionalIndex } from "fractional-keys";
 import { bounds as B } from "@oh-just-another/math";
 import type { AnchorRef } from "./edge.js";
 import type { Style, TextStyle } from "./style.js";
+import type { TextRun } from "./text-runs.js";
 import { TEXT_APPROX_CHAR_WIDTH_FACTOR, TEXT_LINE_HEIGHT_FACTOR } from "./constants.js";
 import { getTextMeasurer } from "./text-measure.js";
 
@@ -152,6 +153,13 @@ export interface TextElement extends ElementBase {
   /** Width budget for wrapping; `undefined` = single line. */
   readonly maxWidth?: number;
   readonly style: TextStyle;
+  /**
+   * Optional styled-run overlay for rich text. Each run styles a contiguous
+   * substring; `runs.map(r => r.text).join("")` MUST equal `text`, which
+   * stays the flat source of truth. Omitted (or empty) = uniform styling
+   * (renders exactly like a plain text block). See {@link TextRun}.
+   */
+  readonly runs?: readonly TextRun[];
 }
 
 /**
