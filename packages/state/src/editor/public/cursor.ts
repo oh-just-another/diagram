@@ -137,6 +137,8 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
     case "draw-frame":
     case "draw-edge":
     case "brush":
+    case "erase":
+    case "laser":
       return r("draw", "crosshair");
     case "draw-text":
       return r("text", "text");

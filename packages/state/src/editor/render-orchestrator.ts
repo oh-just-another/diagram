@@ -66,6 +66,7 @@ import type {
   PanGesture,
 } from "./interaction-state.js";
 import type { BrushStrokeState } from "./public/brush.js";
+import type { LaserStroke } from "./public/laser.js";
 import type { TileComposeFn } from "../editor.js";
 
 /**
@@ -129,6 +130,7 @@ export interface RenderSnapshot {
   readonly anchorClickRadius: number;
   readonly containerHover: ContainerHover | null;
   readonly brushStroke: BrushStrokeState | null;
+  readonly laserStrokes: readonly LaserStroke[];
   readonly peerCursors: readonly PeerCursor[];
   readonly peerSelections: readonly PeerSelection[];
   readonly debugHitZones: boolean;
@@ -219,6 +221,7 @@ const buildOverlaySignature = (e: RenderSnapshot): readonly unknown[] => [
   e.anchorClickRadius,
   e.containerHover,
   e.brushStroke,
+  e.laserStrokes,
   e.peerCursors,
   e.peerSelections,
   e.debugHitZones,
@@ -561,6 +564,9 @@ export const renderEditor = (editor: RenderSnapshot): void => {
         points: editor.brushStroke.points,
         fill: "#222",
       };
+    }
+    if (editor.laserStrokes.length > 0) {
+      overlayOpts.laserStrokes = editor.laserStrokes;
     }
     // Persistent halo around EVERY selected link (multi-select). Curve-aware
     // so the halo follows the drawn path, matching the hover highlight.

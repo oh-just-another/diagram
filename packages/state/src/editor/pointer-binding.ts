@@ -145,6 +145,23 @@ const handleDownBrush = (editor: Editor, worldPoint: Vec2, pressure: number): bo
   return true;
 };
 
+/** Eraser mode — begin sweeping shapes under the press. Owns the gesture. */
+const handleDownErase = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.readOnly) return false;
+  if (editor.mode !== "erase") return false;
+  editor.cancelLongPress();
+  editor.beginEraseStroke(worldPoint);
+  return true;
+};
+
+/** Laser mode — begin an ephemeral trail. Never touches the scene. */
+const handleDownLaser = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.mode !== "laser") return false;
+  editor.cancelLongPress();
+  editor.beginLaserStroke(worldPoint);
+  return true;
+};
+
 /**
  * Text tool — a click places a new empty text shape (or edits an existing one
  * under the press) and opens the inline editor straight away.
@@ -644,6 +661,20 @@ const handleMoveBrush = (editor: Editor, worldPoint: Vec2, pressure: number): bo
   return true;
 };
 
+/** Eraser stroke in progress — sweep more shapes along the drag. */
+const handleMoveErase = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (!editor.eraseStroke) return false;
+  editor.extendEraseStroke(worldPoint);
+  return true;
+};
+
+/** Laser trail in progress — append a point to the fading stroke. */
+const handleMoveLaser = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (!editor.laserDrawing) return false;
+  editor.extendLaserStroke(worldPoint);
+  return true;
+};
+
 /**
  * Container drop preview: while dragging a single shape, find the topmost
  * container under cursor (excluding the dragged shape and its descendants) and
@@ -852,6 +883,20 @@ const handleUpBrush = (editor: Editor): boolean => {
   return true;
 };
 
+/** Commit eraser stroke — delete every swept shape in one undo step. */
+const handleUpErase = (editor: Editor): boolean => {
+  if (!editor.eraseStroke) return false;
+  editor.commitEraseStroke();
+  return true;
+};
+
+/** End the laser gesture — the trail keeps fading on its own. */
+const handleUpLaser = (editor: Editor): boolean => {
+  if (!editor.laserDrawing) return false;
+  editor.endLaserStroke();
+  return true;
+};
+
 /**
  * Annotation drag commit — issue a single patch from origin to final position so
  * history has one undo step.
@@ -1046,6 +1091,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // the press). Order matters — it mirrors the original monolith exactly.
     if (handleDownEditingText(editor, worldPoint)) return;
     if (handleDownBrush(editor, worldPoint, ev.pressure)) return;
+    if (handleDownErase(editor, worldPoint)) return;
+    if (handleDownLaser(editor, worldPoint)) return;
     if (handleDownDrawText(editor, worldPoint)) return;
     if (handleDownAnnotation(editor, worldPoint)) return;
     if (handleDownInteractiveHit(editor, worldPoint)) return;
@@ -1109,6 +1156,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (handleMoveLinkAnchorDrag(editor, worldPoint)) return;
     if (handleMoveTextDragSelect(editor, worldPoint)) return;
     if (handleMoveBrush(editor, worldPoint, ev.pressure)) return;
+    if (handleMoveErase(editor, worldPoint)) return;
+    if (handleMoveLaser(editor, worldPoint)) return;
 
     updateContainerDropPreview(editor, worldPoint);
     if (handleMoveAnnotationDrag(editor, worldPoint)) return;
@@ -1135,6 +1184,8 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (handleUpLinkAnchorDrag(editor, ev)) return;
     if (handleUpTextDragSelect(editor)) return;
     if (handleUpBrush(editor)) return;
+    if (handleUpErase(editor)) return;
+    if (handleUpLaser(editor)) return;
     if (handleUpAnnotationDrag(editor)) return;
 
     const data = fromPointerEvent(ev, editor.host);
@@ -1166,6 +1217,14 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     }
     if (editor.brushStroke) {
       editor.cancelBrushStroke();
+      return;
+    }
+    if (editor.eraseStroke) {
+      editor.cancelEraseStroke();
+      return;
+    }
+    if (editor.laserDrawing) {
+      editor.endLaserStroke();
       return;
     }
     // Annotation drag — revert to origin on cancel.

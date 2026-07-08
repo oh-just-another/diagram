@@ -141,6 +141,8 @@ export {
   actionModeText,
   actionModeLink,
   actionModeBrush,
+  actionModeErase,
+  actionModeLaser,
   actionModeFrame,
   actionToggleToolLock,
   actionCancel,

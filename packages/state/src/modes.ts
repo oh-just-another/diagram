@@ -14,6 +14,12 @@
  * - `draw-edge` — edge creation from press-down shape (or empty) to
  *   release-shape (or empty).
  * - `brush` — pressure-sensitive freehand stroke.
+ * - `erase` — press-and-drag to sweep shapes under the cursor into a
+ *   pending set (previewed dimmed); release deletes them all in one
+ *   undo step. Never draws anything.
+ * - `laser` — ephemeral presentation pointer. Press-and-drag paints a
+ *   red trail that fades over a couple of seconds; nothing is written
+ *   to the scene or history — it lives purely on the overlay.
  *
  * Pan and zoom are STILL available as gestures (middle-mouse drag,
  * Space+drag, mouse wheel zoom) regardless of mode — `hand` is the
@@ -27,6 +33,8 @@ export type Mode =
   | "draw-text"
   | "draw-edge"
   | "draw-frame"
-  | "brush";
+  | "brush"
+  | "erase"
+  | "laser";
 
 export const DEFAULT_MODE: Mode = "select";

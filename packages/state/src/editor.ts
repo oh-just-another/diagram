@@ -160,6 +160,18 @@ import {
   type BrushStrokeState,
 } from "./editor/public/brush.js";
 import {
+  beginEraseStroke as beginEraseStrokePure,
+  sampleErase as sampleErasePure,
+  computeEraseCommit,
+  type EraseStrokeState,
+} from "./editor/public/eraser.js";
+import {
+  beginLaserStroke as beginLaserStrokePure,
+  extendLaserStroke as extendLaserStrokePure,
+  pruneLaserStrokes,
+  type LaserStroke,
+} from "./editor/public/laser.js";
+import {
   copySelected as copySelectedPure,
   pasteFromClipboard,
   selectionFromPasted,
@@ -483,6 +495,12 @@ const READ_ONLY_BLOCKED_EMITS: ReadonlySet<InteractionEmit["type"]> = new Set([
   "DRAW_EDGE_PREVIEW",
 ]);
 
+/** Shared empty id set — returned by `pendingErase` when no eraser stroke runs. */
+const EMPTY_ELEMENT_SET: ReadonlySet<ElementId> = Object.freeze(new Set<ElementId>());
+
+/** Monotonic wall-clock in ms, matching the domain used by the overlay fade. */
+const nowMs = (): number => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
 export class Editor {
   public readonly host: HTMLElement;
   public readonly mainTarget: RenderTarget;
@@ -737,6 +755,23 @@ export class Editor {
   }
   set brushStroke(v: BrushStrokeState | null) {
     this.interaction.brushStroke = v;
+  }
+
+  /** In-progress eraser stroke (pending-delete set), or null between strokes. */
+  get eraseStroke(): EraseStrokeState | null {
+    return this.interaction.eraseStroke;
+  }
+  set eraseStroke(v: EraseStrokeState | null) {
+    this.interaction.eraseStroke = v;
+  }
+  /** Ids swept by the current eraser stroke — previewed dimmed, deleted on release. */
+  get pendingErase(): ReadonlySet<ElementId> {
+    return this.interaction.eraseStroke?.pending ?? EMPTY_ELEMENT_SET;
+  }
+
+  /** Live laser-pointer trails (ephemeral, fading). Empty when none active. */
+  get laserStrokes(): readonly LaserStroke[] {
+    return this.interaction.laserStrokes;
   }
 
   /**
@@ -1816,7 +1851,10 @@ export class Editor {
    * `dispose()` stops it.
    */
   private readonly animation = new AnimationController({
-    hasVisibleAnimatedElement: () => animScene.hasVisibleAnimatedElement(this),
+    // Laser trails also need a per-frame repaint to animate their fade — OR
+    // them into the tick predicate so the same rAF loop drives both.
+    hasVisibleAnimatedElement: () =>
+      animScene.hasVisibleAnimatedElement(this) || this.hasActiveLaser(),
     autoStopHeavyGifs: () => {
       animScene.autoStopHeavyGifs(this);
     },
@@ -2346,6 +2384,107 @@ export class Editor {
     return this.brushStroke;
   }
 
+  // --- Eraser tool ---
+
+  /** Start an eraser stroke at `world`, seeding it with the shape under it. */
+  beginEraseStroke(world: Vec2): void {
+    const stroke = beginEraseStrokePure(world);
+    const hit = this.acceleratedElementAt(world);
+    if (hit) stroke.pending.add(hit.id);
+    this.eraseStroke = stroke;
+    this.notify();
+  }
+  /** Extend the eraser stroke to `world`, sweeping shapes along the segment. */
+  extendEraseStroke(world: Vec2): void {
+    const stroke = this.eraseStroke;
+    if (!stroke) return;
+    const added = sampleErasePure(
+      stroke.last,
+      world,
+      (p) => this.acceleratedElementAt(p),
+      stroke.pending,
+    );
+    stroke.last = world;
+    if (added) this.notify();
+  }
+  /**
+   * Commit the eraser stroke — delete every swept shape in ONE undo step (with
+   * their attached links). No-op delete when nothing was swept. Returns the
+   * count removed.
+   */
+  commitEraseStroke(): number {
+    const stroke = this.eraseStroke;
+    if (!stroke) return 0;
+    const result = computeEraseCommit(this._scene, stroke.pending);
+    this.eraseStroke = null;
+    if (!result) {
+      this.notify();
+      return 0;
+    }
+    const tx = this._history.transaction();
+    this._scene = result.scene;
+    for (const patch of result.patches) tx.add(patch);
+    tx.commit();
+    // Drop any erased ids from the live selection so no stale handle lingers.
+    let sel = this._selection;
+    for (const id of stroke.pending) sel = Selection.remove(sel, id);
+    this._selection = sel;
+    this.notify();
+    return stroke.pending.size;
+  }
+  /** Abort the eraser stroke without deleting anything. */
+  cancelEraseStroke(): void {
+    if (!this.eraseStroke) return;
+    this.eraseStroke = null;
+    this.notify();
+  }
+
+  // --- Laser pointer ---
+
+  /** True only while the pointer is down in laser mode (a trail is being laid). */
+  get laserDrawing(): boolean {
+    return this.interaction.laserDrawing;
+  }
+
+  /** Start a laser trail at `world` (ephemeral — never enters the scene). */
+  beginLaserStroke(world: Vec2): void {
+    this.interaction.laserStrokes.push(beginLaserStrokePure(world, nowMs()));
+    this.interaction.laserDrawing = true;
+    this.maybeAnimate();
+    this.notify();
+  }
+  /** Append a point to the active laser trail (no-op unless drawing). */
+  extendLaserStroke(world: Vec2): void {
+    if (!this.interaction.laserDrawing) return;
+    const strokes = this.interaction.laserStrokes;
+    const active = strokes[strokes.length - 1];
+    if (!active) return;
+    extendLaserStrokePure(active, world, nowMs());
+    this.maybeAnimate();
+    this.notify();
+  }
+  /** End the active laser trail — it keeps fading via the animation tick. */
+  endLaserStroke(): void {
+    this.interaction.laserDrawing = false;
+    // The stroke is already ephemeral and the tick prunes it; re-arm in case
+    // the tick wasn't running.
+    this.maybeAnimate();
+  }
+  /** True while any laser trail still has visible points (drives the tick). */
+  hasActiveLaser(): boolean {
+    return this.interaction.laserStrokes.length > 0;
+  }
+  /**
+   * Drop expired laser points/strokes (called once per frame before paint).
+   * Self-terminating: once the array empties the animation tick stops.
+   */
+  private pruneLaser(): void {
+    const strokes = this.interaction.laserStrokes;
+    if (strokes.length === 0) return;
+    const r = pruneLaserStrokes(strokes, nowMs());
+    if (r.changed) this.interaction.laserStrokes = r.strokes;
+  }
+
   arrangeAsGrid(opts: { cols?: number; gap?: number } = {}): void {
     const origin = this.combinedSelectionBounds() ?? { x: 0, y: 0 };
     const result = computeArrangeAsGrid(this._scene, this._selection, opts, origin);
@@ -2421,6 +2560,11 @@ export class Editor {
     this.interaction.linkDragFromAnchor = null;
     this.interaction.editingLinkCaption = null;
     this.interaction.pendingLinkDropMenu = null;
+    // Abort an in-progress eraser stroke (nothing deleted) and stop laying a
+    // laser trail — both live outside the machine. Existing laser trails keep
+    // fading via the tick.
+    this.interaction.eraseStroke = null;
+    this.interaction.laserDrawing = false;
     // Waypoint / segment / endpoint-rebind drags: gestureTx.cancel above
     // already reverted the live re-point; just drop the handle-drag state so
     // the dots stop tracking.
@@ -3363,6 +3507,21 @@ export class Editor {
 
   public computeDimElements(enteredGroupId: ElementId): ReadonlySet<ElementId> {
     return computeDimElementsHelper(this._scene, this._selection, enteredGroupId);
+  }
+
+  /**
+   * Dim set fed to the renderer: group-isolation dim UNION the eraser's
+   * pending-delete set (shapes swept by the current eraser stroke are shown
+   * dimmed so the user sees what release will delete). `undefined` when neither
+   * is active, keeping the fast tile-cache render path.
+   */
+  private computeDimSet(): ReadonlySet<ElementId> | undefined {
+    const group = this._enteredGroup ? this.computeDimElements(this._enteredGroup) : undefined;
+    const erase = this.interaction.eraseStroke?.pending;
+    if (!erase || erase.size === 0) return group;
+    const merged = new Set<ElementId>(group);
+    for (const id of erase) merged.add(id);
+    return merged;
   }
 
   /**
@@ -4744,7 +4903,7 @@ export class Editor {
       gridEnabled: this.gridEnabled,
       viewportWorld: this.computeViewportWorld(),
       dirtyWorld: this.computeDirtyWorld(),
-      dimElements: this._enteredGroup ? this.computeDimElements(this._enteredGroup) : undefined,
+      dimElements: this.computeDimSet(),
       hideElements: this.computeHiddenElements(),
       sharedIndex:
         this._scene.elements.size >= LARGE_SCENE_HIT_THRESHOLD ? this.ensureSpatialIndex() : null,
@@ -4781,6 +4940,7 @@ export class Editor {
       anchorClickRadius: this.anchorClickRadius,
       containerHover: this.containerHover,
       brushStroke: this.brushStroke,
+      laserStrokes: this.interaction.laserStrokes,
       peerCursors: this._peerCursors,
       peerSelections: this._peerSelections,
       debugHitZones: this.debugHitZones,
@@ -4796,6 +4956,9 @@ export class Editor {
 
   private render(): void {
     this.rerouteElbows();
+    // Age out expired laser-trail points before the snapshot so the fade
+    // advances every frame and the tick self-terminates once all trails clear.
+    this.pruneLaser();
     // The per-shape animation clock is threaded per-instance through the
     // RenderSnapshot / render context (see `buildRenderSnapshot`), not set on
     // the process-global module clock each frame — so concurrent editors keep

@@ -500,6 +500,38 @@ export const MAX_BRUSH_WIDTH = 6;
 export const DEFAULT_BRUSH_WIDTH = 2;
 
 /**
+ * Eraser sampling step in WORLD units. While the eraser is dragged the host
+ * hit-tests points spaced this far apart along the pointer path so a fast
+ * swipe doesn't skip over small shapes between two move events. Smaller →
+ * more hit-tests per move (safer, costlier); larger → cheaper but can jump a
+ * thin shape. 6 px matches the default brush width so nothing narrower than a
+ * stroke slips through. Range: 3–12.
+ */
+export const ERASER_SAMPLE_STEP = 6;
+
+/**
+ * Lifetime (ms) of a laser-pointer trail point before it fully fades. Each
+ * point stores its birth time; the overlay ramps its opacity from 1 → 0 over
+ * this window and the editor prunes points older than it, so a stroke trails
+ * the cursor like a comet and vanishes ~this long after the pointer stops.
+ * "A couple of seconds" — range 800–3000.
+ */
+export const LASER_TRAIL_TTL_MS = 1400;
+
+/**
+ * Stroke colour of the laser-pointer trail. A saturated red reads as a
+ * presentation laser and stands out over any diagram fill.
+ */
+export const LASER_COLOR = "#ff2d2d";
+
+/**
+ * Screen-pixel stroke width of the laser trail. Constant on screen (drawn in
+ * screen space, not world) so the beam stays the same thickness at every zoom.
+ * Range: 2–6.
+ */
+export const LASER_WIDTH = 4;
+
+/**
  * Default upper bound on the longer edge of a freshly-inserted
  * image (CSS pixels). Larger images get downscaled proportionally
  * by the built-in image file-drop handler so a 4000×3000 phone

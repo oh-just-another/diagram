@@ -98,6 +98,34 @@ export const actionModeBrush: Action = {
   },
 };
 
+export const actionModeErase: Action = {
+  id: "mode-erase",
+  label: "Eraser tool",
+  category: "mode",
+  hotkey: { key: "e" },
+  iconId: "mode-erase",
+  uiKind: "toggle",
+  checked: ({ editor }) => editor.mode === "erase",
+  perform: ({ editor }) => {
+    editor.setMode("erase");
+  },
+};
+
+export const actionModeLaser: Action = {
+  id: "mode-laser",
+  label: "Laser pointer",
+  category: "mode",
+  // Laser is presentation-only (no scene mutation) → available in read-only.
+  viewMode: true,
+  hotkey: { key: "k" },
+  iconId: "mode-laser",
+  uiKind: "toggle",
+  checked: ({ editor }) => editor.mode === "laser",
+  perform: ({ editor }) => {
+    editor.setMode("laser");
+  },
+};
+
 export const actionModeFrame: Action = {
   id: "mode-frame",
   label: "Frame tool",
@@ -145,6 +173,8 @@ export const modeActions: readonly Action[] = [
   actionModeText,
   actionModeLink,
   actionModeBrush,
+  actionModeErase,
+  actionModeLaser,
   actionModeFrame,
   actionToggleToolLock,
   actionCancel,

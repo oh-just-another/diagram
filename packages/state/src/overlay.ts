@@ -53,7 +53,11 @@ import {
   LOCK_BADGE_COLOR,
   LOCK_BADGE_KEYHOLE_COLOR,
   ROTATE_ICON_RADIUS,
+  LASER_COLOR,
+  LASER_WIDTH,
+  LASER_TRAIL_TTL_MS,
 } from "./constants.js";
+import type { LaserStroke } from "./editor/public/laser.js";
 import {
   CORNER_HANDLES,
   HANDLE_SIZE,
@@ -338,6 +342,13 @@ export interface OverlayOptions {
     readonly fill: string;
   };
   /**
+   * Ephemeral laser-pointer trails. Each point carries a birth timestamp (`t`,
+   * `performance.now()` domain); the overlay ramps per-segment opacity from
+   * 1 → 0 over {@link LASER_TRAIL_TTL_MS} against the current time, so the trail
+   * fades tail-first like a comet. Purely presentational — never in the scene.
+   */
+  laserStrokes?: readonly LaserStroke[];
+  /**
    * Remote peer cursors. Each one renders as a small coloured arrow
    * with a name chip in the peer's colour, anchored at the world-
    * space position. The local cursor never appears here.
@@ -445,6 +456,7 @@ export const renderOverlay = (
   renderLinkHandles(ctx);
   renderPeerSelections(ctx);
   renderBrushPreview(ctx);
+  renderLaserTrails(ctx);
   renderContainerDropZone(ctx);
   renderGroupBounds(ctx);
   renderAnnotations(ctx);
@@ -784,6 +796,59 @@ const renderBrushPreview = (ctx: OverlayCtx): void => {
     }
     target.restore();
   }
+};
+
+/**
+ * Section 6.6 — laser-pointer trails. Each segment is stroked in screen space
+ * (constant on-screen width at any zoom) with an opacity that decays from the
+ * newer endpoint's age: fresh points are opaque, older ones fade out, so a
+ * released stroke melts away tail-first. Read-only — never mutates state.
+ */
+const renderLaserTrails = (ctx: OverlayCtx): void => {
+  const { target, options, w2s } = ctx;
+  const strokes = options.laserStrokes;
+  if (!strokes || strokes.length === 0) return;
+  const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+  target.setStroke(LASER_COLOR);
+  target.setStrokeWidth(LASER_WIDTH);
+  target.setDashArray(null);
+  target.setFill(null);
+  target.setLineCap("round");
+  target.setLineJoin("round");
+  for (const stroke of strokes) {
+    const pts = stroke.points;
+    if (pts.length === 1) {
+      // A tap with no drag: draw a single fading dot.
+      const p = req(pts[0]);
+      const op = 1 - (now - p.t) / LASER_TRAIL_TTL_MS;
+      if (op <= 0) continue;
+      const s = matrix.applyToPoint(w2s, { x: p.x, y: p.y });
+      target.setOpacity(op);
+      target.setFill(LASER_COLOR);
+      target.beginPath();
+      target.ellipse(s.x, s.y, LASER_WIDTH / 2, LASER_WIDTH / 2);
+      target.fill();
+      target.setFill(null);
+      continue;
+    }
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = req(pts[i]);
+      const b = req(pts[i + 1]);
+      // Opacity from the newer point's age → the tail (older) fades first.
+      const op = 1 - (now - b.t) / LASER_TRAIL_TTL_MS;
+      if (op <= 0) continue;
+      const sa = matrix.applyToPoint(w2s, { x: a.x, y: a.y });
+      const sb = matrix.applyToPoint(w2s, { x: b.x, y: b.y });
+      target.setOpacity(op);
+      target.beginPath();
+      target.moveTo(sa.x, sa.y);
+      target.lineTo(sb.x, sb.y);
+      target.stroke();
+    }
+  }
+  target.setOpacity(1);
+  target.setLineCap("butt");
+  target.setLineJoin("miter");
 };
 
 /**

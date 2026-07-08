@@ -2,6 +2,8 @@ import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import type { AnnotationId, LinkId } from "@oh-just-another/types";
 import type { Element, Link } from "@oh-just-another/scene";
 import type { BrushStrokeState } from "./public/brush.js";
+import type { EraseStrokeState } from "./public/eraser.js";
+import type { LaserStroke } from "./public/laser.js";
 import type * as Selection from "../selection.js";
 import type * as LinkSelection from "../link-selection.js";
 
@@ -155,6 +157,12 @@ export class InteractionState {
 
   /** In-progress brush stroke (live overlay preview). */
   brushStroke: BrushStrokeState | null = null;
+  /** In-progress eraser stroke (pending-delete set + last sample point). */
+  eraseStroke: EraseStrokeState | null = null;
+  /** Ephemeral laser-pointer trails — fade by TTL, never touch the scene. */
+  laserStrokes: LaserStroke[] = [];
+  /** True only while the pointer is DOWN in laser mode (a trail is being laid). */
+  laserDrawing = false;
   /** Last world-space pointer position observed by the host's onMove handler. */
   lastPointerWorld: Vec2 | null = null;
 
@@ -210,6 +218,9 @@ export class InteractionState {
     this.lastClickAt = 0;
     this.lastClickWorldPoint = null;
     this.brushStroke = null;
+    this.eraseStroke = null;
+    this.laserStrokes = [];
+    this.laserDrawing = false;
     this.lastPointerWorld = null;
     this.dragElementId = null;
     this.additivePressAdded = null;
