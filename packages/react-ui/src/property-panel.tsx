@@ -15,7 +15,10 @@ import {
   CaseSensitive,
   ChevronsDown,
   ChevronsUp,
+  Circle,
   Copy as CopyIcon,
+  Crop,
+  Diamond,
   FlipHorizontal2 as FlipHorizontalIcon,
   FlipVertical2 as FlipVerticalIcon,
   Group as GroupIcon,
@@ -43,6 +46,8 @@ import {
   isImage,
   isFrame,
   isRectangle,
+  isEllipse,
+  isPolygon,
   type ArrowheadStyle,
   type Link,
   type LinkRouting,
@@ -52,6 +57,7 @@ import {
   type TextElement,
   type TextStyle,
 } from "@oh-just-another/scene";
+import type { ConvertTarget } from "@oh-just-another/state";
 import { useDiagramOptional, useScene, useSelectedLink, useSelection } from "./hooks.js";
 import { useContextMenuController } from "./context-menu-controller.js";
 import { ColorSwatchPicker } from "./color-swatch-picker.js";
@@ -127,7 +133,10 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       );
     } else if (allImage) {
       // An image's pixels are the content — fill/stroke make no sense.
-      primary.push(<OpacityControl key="opacity" shapes={shapes} />);
+      primary.push(
+        <OpacityControl key="opacity" shapes={shapes} />,
+        <CropControl key="crop" shapes={shapes} />,
+      );
     } else {
       primary.push(
         <FillControl key="fill" shapes={shapes} />,
@@ -138,6 +147,7 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <StrokeStyleControl key="dash" shapes={shapes} />,
         <RoundnessControl key="round" shapes={shapes} />,
         <OpacityControl key="opacity" shapes={shapes} />,
+        <ConvertTypeControl key="convert" shapes={shapes} />,
       );
     }
     // Common trailing controls for every shape type.
@@ -947,6 +957,62 @@ const ZOrderControl = () => {
         else editor.bringToFront();
       }}
     />
+  );
+};
+
+/**
+ * Convert-type control (F9): switch every selected rectangle / ellipse /
+ * diamond to another of those types, preserving position, size and style.
+ * Renders only when every selected shape is convertible. The active type is
+ * shown as the pressed segment (or `null` for a mixed selection).
+ */
+const ConvertTypeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const convertible = shapes.every((s) => isRectangle(s) || isEllipse(s) || isPolygon(s));
+  if (!convertible) return null;
+  const value = sharedValue<ConvertTarget>(shapes, (s) =>
+    isRectangle(s) ? "rectangle" : isEllipse(s) ? "ellipse" : "polygon",
+  );
+  return (
+    <SegmentedControl<ConvertTarget>
+      ariaLabel="Shape type"
+      value={value}
+      options={[
+        { value: "rectangle", label: "Rectangle", icon: <Square size={14} strokeWidth={1.75} /> },
+        { value: "ellipse", label: "Ellipse", icon: <Circle size={14} strokeWidth={1.75} /> },
+        { value: "polygon", label: "Diamond", icon: <Diamond size={14} strokeWidth={1.75} /> },
+      ]}
+      onChange={(v) => {
+        editor.convertSelection(v);
+      }}
+    />
+  );
+};
+
+/**
+ * Crop control (F10): a button that enters image-crop mode for the single
+ * selected image. Renders only for a lone image selection (crop is
+ * single-target). Double-clicking the image on the canvas does the same.
+ */
+const CropControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const only = shapes.length === 1 ? shapes[0] : undefined;
+  if (only === undefined || !isImage(only)) return null;
+  const id = only.id;
+  return (
+    <button
+      type="button"
+      className="du-icon-button"
+      title="Crop image (double-click)"
+      aria-label="Crop image"
+      onClick={() => {
+        editor.beginImageCrop(id);
+      }}
+    >
+      <Crop size={16} strokeWidth={1.75} />
+    </button>
   );
 };
 
