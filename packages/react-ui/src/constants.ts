@@ -126,6 +126,13 @@ export const TEXT_FONT_SIZE_PRESETS: readonly { readonly label: string; readonly
   ];
 export const TEXT_FONT_SIZE_MIN = 8;
 export const TEXT_FONT_SIZE_MAX = 256;
+
+/**
+ * Screen-pixel padding left around a search match when the overlay frames
+ * it with `zoomToSelection`. Larger than the selection default so a small
+ * matched shape isn't zoomed in uncomfortably tight. Range: 40–320.
+ */
+export const SEARCH_ZOOM_PADDING_PX = 160;
 /**
  * Minimap overview panel defaults. The `<Minimap>` renders the whole scene
  * scaled into a small canvas plus a frame for the current viewport; hosts

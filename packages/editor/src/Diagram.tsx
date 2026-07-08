@@ -57,6 +57,8 @@ import {
   LinkDropShapeMenu,
   LinkCaptionEditor,
   SelectionFloatingPanel,
+  SearchOverlay,
+  StatsPanel,
   TextEditorOverlay,
   FrameNameEditorOverlay,
   PortalContainerProvider,
@@ -66,11 +68,13 @@ import {
   TooltipProvider,
   TopBar,
   UILayer,
+  ZenModeProvider,
   useDiagramOptional,
   useHelpDialogHotkey,
   useMobileLayout,
   usePalettePlacement,
   useScene,
+  useZenMode,
 } from "@oh-just-another/react-ui";
 
 /**
@@ -634,31 +638,33 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
               {...(wasmShaper ? { textShaper: wasmShaper } : {})}
               {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
             >
-              <EditorShell
-                hideTopBar={hideTopBar}
-                hideBottomBar={hideBottomBar}
-                hideToolbar={hideToolbar}
-                hideLibraryButton={hideLibraryButton}
-                hideMainMenu={hideMainMenu}
-                hideZoomControls={hideZoomControls}
-                hideResetToContent={hideResetToContent}
-                hideHelpButton={hideHelpButton}
-                hideContextMenu={hideContextMenu}
-                hideSelectionPanel={hideSelectionPanel}
-                renderTopBarLeft={renderTopBarLeft}
-                renderTopBarCenter={renderTopBarCenter}
-                renderTopBarRight={renderTopBarRight}
-                renderBottomBarLeft={renderBottomBarLeft}
-                renderBottomBarCenter={renderBottomBarCenter}
-                renderBottomBarRight={renderBottomBarRight}
-                renderMainMenuExtras={renderMainMenuExtras}
-                onImportTemplates={onImportTemplates}
-                repositoryUrl={repositoryUrl}
-                onConfirm={onConfirm}
-                onNotify={onNotify}
-                theme={theme}
-                changeTheme={changeTheme}
-              />
+              <ZenModeProvider>
+                <EditorShell
+                  hideTopBar={hideTopBar}
+                  hideBottomBar={hideBottomBar}
+                  hideToolbar={hideToolbar}
+                  hideLibraryButton={hideLibraryButton}
+                  hideMainMenu={hideMainMenu}
+                  hideZoomControls={hideZoomControls}
+                  hideResetToContent={hideResetToContent}
+                  hideHelpButton={hideHelpButton}
+                  hideContextMenu={hideContextMenu}
+                  hideSelectionPanel={hideSelectionPanel}
+                  renderTopBarLeft={renderTopBarLeft}
+                  renderTopBarCenter={renderTopBarCenter}
+                  renderTopBarRight={renderTopBarRight}
+                  renderBottomBarLeft={renderBottomBarLeft}
+                  renderBottomBarCenter={renderBottomBarCenter}
+                  renderBottomBarRight={renderBottomBarRight}
+                  renderMainMenuExtras={renderMainMenuExtras}
+                  onImportTemplates={onImportTemplates}
+                  repositoryUrl={repositoryUrl}
+                  onConfirm={onConfirm}
+                  onNotify={onNotify}
+                  theme={theme}
+                  changeTheme={changeTheme}
+                />
+              </ZenModeProvider>
             </DiagramRoot>
           </div>
         </TooltipProvider>
@@ -727,6 +733,9 @@ const EditorShell = ({
   readonly changeTheme: (next: DiagramTheme) => void;
 }) => {
   const editor = useDiagramOptional();
+  // Zen mode (⌥Z): hide every chrome surface for focused work, leaving the
+  // canvas + the observational overlays (search, stats, command palette).
+  const { zen } = useZenMode();
   // Omitted → project repo; explicit string → that URL; null → no link.
   const repositoryHref = repositoryUrl === undefined ? DEFAULT_REPOSITORY_URL : repositoryUrl;
   // Native dialogs by default; hosts can route through their own UI.
@@ -825,7 +834,7 @@ const EditorShell = ({
           over the canvas. Rendered outside UILayer
           (whose wrapper is pointer-events:none) so its buttons stay
           interactive. */}
-      {!hideToolbar ? (
+      {!hideToolbar && !zen ? (
         <Toolbar
           orientation="vertical"
           items={toolbarItems}
@@ -846,7 +855,7 @@ const EditorShell = ({
       {/* UI layer — top/bottom bars + overlay panels (full width; the
           library overlays rather than reflows). */}
       <UILayer>
-        {!hideTopBar && (
+        {!hideTopBar && !zen && (
           <TopBar
             left={
               <ButtonGroup ariaLabel="Logo and main menu">
@@ -1112,7 +1121,7 @@ const EditorShell = ({
           />
         )}
 
-        {!hideBottomBar && (
+        {!hideBottomBar && !zen && (
           <BottomBar
             left={renderBottomBarLeft ? renderBottomBarLeft() : null}
             center={
@@ -1138,8 +1147,8 @@ const EditorShell = ({
         {/* Templates library. Desktop: floating overlay flush at the left
             edge. Mobile: a bottom sheet (swipe-down / ✕ to close) so it
             doesn't cover the whole small canvas. Both open from the toolbar
-            toggle. */}
-        {mobile ? (
+            toggle. Hidden in zen mode. */}
+        {zen ? null : mobile ? (
           libraryOpen ? (
             <BottomSheet
               snapPoints={[0, 60, 92]}
@@ -1177,7 +1186,7 @@ const EditorShell = ({
           UILayer because it portals to document.body anyway and
           UILayer's pointer-events:none on the wrapper would
           interfere with its children's auto handling. */}
-      {!hideSelectionPanel && <SelectionFloatingPanel />}
+      {!hideSelectionPanel && !zen && <SelectionFloatingPanel />}
 
       {/* Standalone HelpDialog for hotkey activation — only renders
           when the `?` hotkey opens it without going through the
@@ -1192,6 +1201,11 @@ const EditorShell = ({
       {/* Command palette (⌘K) — self-contained: manages its own open state and
           registers the open action. */}
       <CommandPalette />
+
+      {/* Observational overlays — search (⌘F) and stats (⌥/). Self-contained
+          (own state + registered actions); stay live in zen mode. */}
+      <SearchOverlay />
+      <StatsPanel />
 
       {void editor}
     </div>

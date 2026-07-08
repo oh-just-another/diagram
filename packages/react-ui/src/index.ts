@@ -119,6 +119,9 @@ export {
   type HelpSection,
 } from "./help-dialog.js";
 export { CommandPalette } from "./command-palette.js";
+export { SearchOverlay } from "./search-overlay.js";
+export { StatsPanel } from "./stats-panel.js";
+export { ZenModeProvider, useZenMode, useZenModeOptional, type ZenModeApi } from "./zen-mode.js";
 export {
   ToastHost,
   useToast,
@@ -156,4 +159,5 @@ export {
   MINIMAP_HEIGHT_PX,
   MINIMAP_PADDING_PX,
   MINIMAP_THROTTLE_MS,
+  SEARCH_ZOOM_PADDING_PX,
 } from "./constants.js";
