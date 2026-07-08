@@ -1,0 +1,48 @@
+{
+  "format": "oh-just-another/scene",
+  "version": 2,
+  "elements": [
+    {
+      "layerId": "default",
+      "order": "a0",
+      "id": "arrow",
+      "type": "block-arrow",
+      "position": { "x": 30, "y": 30 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#2563eb", "stroke": "#1e3a8a", "strokeWidth": 2 },
+      "width": 160,
+      "height": 70,
+      "direction": "right",
+      "headRatio": 0.4,
+      "bodyThickness": 0.5
+    },
+    {
+      "layerId": "default",
+      "order": "a1",
+      "id": "brush",
+      "type": "brush",
+      "position": { "x": 40, "y": 130 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#111827" },
+      "points": [
+        { "x": 0, "y": 20, "width": 2 },
+        { "x": 50, "y": 0, "width": 6 },
+        { "x": 120, "y": 30, "width": 10 },
+        { "x": 200, "y": 5, "width": 4 }
+      ]
+    }
+  ],
+  "links": [],
+  "layers": [
+    { "id": "default", "name": "Default", "visible": true, "locked": false, "order": "a0" }
+  ],
+  "viewport": {
+    "pan": { "x": 0, "y": 0 },
+    "zoom": 1,
+    "rotation": 0,
+    "size": { "width": 320, "height": 200 },
+    "gridEnabled": false
+  }
+}

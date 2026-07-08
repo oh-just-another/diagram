@@ -28,6 +28,25 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      // The golden-scene visual regression runs in its own project below with
+      // a software-GL launch arg so WebGL2 works headless; keep it out of the
+      // default project so it isn't run twice with the wrong GL backend.
+      testIgnore: /golden-visual\.spec\.ts/,
+    },
+    {
+      // Golden-scene visual regression: renders the reference scenes through
+      // both the WebGL2 and Canvas2D backends and screenshots the canvas
+      // region. `--use-angle=swiftshader` forces a deterministic software
+      // GL implementation so WebGL2 is available (and stable) on headless CI
+      // runners that have no real GPU. `--use-gl=angle` picks the ANGLE path.
+      name: "golden-visual",
+      testMatch: /golden-visual\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: {
+          args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+        },
+      },
     },
     {
       name: "mobile-chromium",
