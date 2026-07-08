@@ -203,9 +203,12 @@ const handleDownCrop = (editor: Editor, worldPoint: Vec2): boolean => {
 /**
  * Double-click on an image (in select mode) enters crop mode. Detected via the
  * native click-count (`detail`), matching the browser's dblclick timing.
+ * `detail` may be absent (synthetic events / pointer backends that don't set
+ * it); treat a missing count as a single click so a plain tap never enters
+ * crop (which would otherwise swallow the press and break tap gestures).
  */
 const handleDownCropEnter = (editor: Editor, worldPoint: Vec2, detail: number): boolean => {
-  if (editor.readOnly || editor.mode !== "select" || detail < 2) return false;
+  if (editor.readOnly || editor.mode !== "select" || (detail || 0) < 2) return false;
   const hit = editor.hitTest(worldPoint);
   if (hit.kind !== "element") return false;
   const el = getElement(editor._scene, hit.id);
