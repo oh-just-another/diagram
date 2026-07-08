@@ -47,6 +47,15 @@ export {
 
 export { bindEditorHotkeys, type HotkeyBindingOptions } from "./hotkeys-binding.js";
 
+// Scene text search — pure substring index over shape text / frame names /
+// edge labels. UI-agnostic; drives the search overlay.
+export {
+  searchScene,
+  elementSearchText,
+  type SceneSearchMatch,
+  type SceneSearchKind,
+} from "./search.js";
+
 export type { InteractiveHitTester } from "./interactive.js";
 export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive.js";
 

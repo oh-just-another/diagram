@@ -2499,6 +2499,22 @@ export class Editor {
     if (this._selectedLinks.size > 0) this._selectedLinks = LinkSelection.EMPTY;
     this.notify();
   }
+  /**
+   * Programmatically select a single link by id (or clear the link
+   * selection with `null`), clearing the element selection so the link
+   * becomes the sole selection. Used by host navigation (search / jump-to)
+   * to frame an edge with {@link zoomToSelection}. No-op when nothing
+   * would change.
+   */
+  selectLink(id: LinkId | null): void {
+    const nextLinks = id === null ? LinkSelection.EMPTY : LinkSelection.single(id);
+    const linksChanged = !LinkSelection.equals(nextLinks, this._selectedLinks);
+    const elementsChanged = this._selection.size > 0;
+    if (!linksChanged && !elementsChanged) return;
+    this._selection = Selection.EMPTY;
+    this._selectedLinks = nextLinks;
+    this.notify();
+  }
   selectAll(): void {
     const next = computeSelectAll(this._scene, this._selection);
     const nextLinks = computeSelectAllLinks(this._scene);
