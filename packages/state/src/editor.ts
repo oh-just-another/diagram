@@ -58,7 +58,6 @@ import {
   onAnimationContentReady,
   setActiveRasterizer,
   setActiveTextShaper,
-  setAnimationClock,
   ElementCache,
   type RenderTarget,
   type TextShaper,
@@ -4575,6 +4574,15 @@ export class Editor {
       sharedIndex:
         this._scene.elements.size >= LARGE_SCENE_HIT_THRESHOLD ? this.ensureSpatialIndex() : null,
       boundsCache: this.boundsCache,
+      // Per-instance playback clock threaded through the render context (see
+      // RenderSnapshot.animationClock). Feeds the renderer our per-shape
+      // playback state so paused / reduced-motion GIFs freeze and resumed ones
+      // continue from the right frame — without mutating the process-global
+      // clock each frame, so two editors on one page don't interfere.
+      // A non-string / missing id maps to an untracked key, for which
+      // `clock` falls back to the wall clock.
+      animationClock: (shape: { readonly id?: unknown }) =>
+        this.gifPlayback.clock(castElementId(typeof shape.id === "string" ? shape.id : "")),
       tileComposeFn: this.tileComposeFn,
       tileDirtyElements: this.tileDirtyElements,
       mode: this.mode,
@@ -4613,15 +4621,10 @@ export class Editor {
 
   private render(): void {
     this.rerouteElbows();
-    // Feed the renderer's animation clock our per-shape playback state
-    // so paused / reduced-motion GIFs freeze and resumed ones continue
-    // from the right frame. Set immediately before the synchronous
-    // render pass (the shape-renderer has no options channel).
-    // A non-string / missing id maps to an untracked key, for which
-    // `clock` falls back to the wall clock — same as before the guard.
-    setAnimationClock((shape: { readonly id?: unknown }) =>
-      this.gifPlayback.clock(castElementId(typeof shape.id === "string" ? shape.id : "")),
-    );
+    // The per-shape animation clock is threaded per-instance through the
+    // RenderSnapshot / render context (see `buildRenderSnapshot`), not set on
+    // the process-global module clock each frame — so concurrent editors keep
+    // independent playback.
     const snapshot = this.buildRenderSnapshot();
     renderEditor(snapshot);
     // Bookkeeping the orchestrator used to do inline: record what we just

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { elementId } from "@oh-just-another/types";
 import {
   addElement,
@@ -145,5 +145,43 @@ describe("RenderSnapshot", () => {
     expect(mainLog.fillCalls).toBeGreaterThanOrEqual(1);
 
     editor.dispose();
+  });
+});
+
+describe("per-instance animation clock (multi-instance isolation)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("each editor's snapshot clock reflects its own playback state, not a shared global", () => {
+    // Pin the wall clock so both controllers advance deterministically.
+    let now = 1000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+
+    const gifId = elementId("gif-1");
+    const scene = emptyScene();
+    const editorA = makeEditor(scene, { rectCalls: [], clearCalls: [], fillCalls: 0 });
+    const editorB = makeEditor(scene, { rectCalls: [], clearCalls: [], fillCalls: 0 });
+
+    // Both start playback of the same shape id at t=1000.
+    editorA.gifPlayback.ensure(gifId);
+    editorB.gifPlayback.ensure(gifId);
+
+    // Advance, then freeze the GIF in editor A only.
+    now = 1500;
+    editorA.togglePlayback(gifId); // pause A → frozen at 500
+
+    now = 3000;
+    const shape = { id: "gif-1" };
+    const clockA = buildSnapshot(editorA).animationClock;
+    const clockB = buildSnapshot(editorB).animationClock;
+
+    // A is frozen (500); B keeps running (3000 - 1000 = 2000). Two editors on
+    // one page therefore drive independent playback — no shared-global leak.
+    expect(clockA(shape)).toBe(500);
+    expect(clockB(shape)).toBe(2000);
+
+    editorA.dispose();
+    editorB.dispose();
   });
 });

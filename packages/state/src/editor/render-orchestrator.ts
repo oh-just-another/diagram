@@ -21,6 +21,8 @@ import {
   renderLinks,
   renderGrid,
   renderScene,
+  setAnimationClock,
+  type AnimationClock,
   type RenderTarget,
   type ElementCache,
 } from "@oh-just-another/renderer-core";
@@ -97,6 +99,14 @@ export interface RenderSnapshot {
   readonly hideElements: ReadonlySet<ElementId> | undefined;
   readonly sharedIndex: SpatialGrid | null;
   readonly boundsCache: ElementCache<Bounds>;
+  /**
+   * Per-instance animated-content playback clock. Threaded into `renderScene`
+   * via {@link RenderSceneOptions.clock} so this editor's per-shape GIF
+   * playback (pause / offset) doesn't leak through the process-global
+   * `setAnimationClock`. The tile path can't carry a render context, so it
+   * bridges this onto the module fallback right before compositing.
+   */
+  readonly animationClock: AnimationClock;
   readonly tileComposeFn: TileComposeFn | null;
   readonly tileDirtyElements: Map<ElementId, { before: Bounds | null; after: Bounds | null }>;
   // Interaction / overlay state.
@@ -211,6 +221,12 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     // hide sets aren't honoured by the tile cache (would require a separate
     // pass); this opt-in path is intended for very-large static scenes where
     // neither typically applies.
+    // The compositor rasterises tiles through its own `renderScene` calls,
+    // which we can't hand a render context — bridge this editor's per-instance
+    // clock onto the process-global fallback so animated tiles still honour
+    // per-shape playback. Scoped to this opt-in path (rare); the common paths
+    // no longer touch the module global.
+    setAnimationClock(editor.animationClock);
     editor.mainTarget.clear();
     editor.tileComposeFn(editor.scene, editor.mainTarget, {
       viewport: viewportWorld,
@@ -228,6 +244,7 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       ...(viewportWorld ? { viewport: viewportWorld } : {}),
       ...(dirtyWorld ? { dirtyWorld } : {}),
       boundsCache: editor.boundsCache,
+      clock: editor.animationClock,
       lod: DEFAULT_LOD,
       ...(dimElements ? { dimElements, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
       ...(hideElements ? { hideElements } : {}),

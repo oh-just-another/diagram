@@ -363,15 +363,19 @@ const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
   }
 };
 
-const drawImage: ElementRenderer<ImageElement> = (shape, target) => {
+const drawImage: ElementRenderer<ImageElement> = (shape, target, ctx) => {
   // Priority: for an animated source prefer the per-frame image the
   // registered adapter returns; otherwise a preloaded handle in
   // `metadata.image`; otherwise the static `src` fallback.
   // `resolveImageSource` returns `null` while an async decode is still
   // in flight, which the backend's drawImage guard skips.
+  // Sample at the per-instance clock when the caller threaded one via the
+  // render context; `undefined` defers to `resolveImageSource`'s process-global
+  // fallback clock (headless / preview paths).
+  const t = ctx?.clock?.(shape);
   const handle = shape.animationKind
-    ? resolveImageSource(shape)
-    : (shape.metadata?.image ?? resolveImageSource(shape));
+    ? resolveImageSource(shape, t)
+    : (shape.metadata?.image ?? resolveImageSource(shape, t));
   // `dynamic` → backends that cache the upload (WebGL2) re-upload the
   // current frame. GIF / video sources flag `metadata.animated`, and
   // any adapter-driven source is dynamic by definition.

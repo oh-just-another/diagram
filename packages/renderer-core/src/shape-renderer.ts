@@ -1,5 +1,6 @@
 import type { ElementBase } from "@oh-just-another/scene";
 import type { RenderTarget } from "./render-target.js";
+import type { AnimationClock } from "./animation-adapter.js";
 
 /**
  * Optional draw context passed to an {@link ElementRenderer}. Carries the
@@ -12,6 +13,14 @@ import type { RenderTarget } from "./render-target.js";
 export interface ElementRenderContext {
   /** Current view scale (1.0 = 1:1). `world × zoom = screen px`. */
   readonly zoom: number;
+  /**
+   * Per-instance animated-content playback clock. When set, the image
+   * renderer samples animated sources at `clock(shape)` instead of the
+   * process-global fallback ({@link setAnimationClock}) — so two editors on
+   * one page can freeze / offset their GIFs independently. Omitted by headless
+   * / preview paths, which fall back to the module clock.
+   */
+  readonly clock?: AnimationClock;
 }
 
 /**

@@ -10,6 +10,7 @@ import {
 import type { Bounds, LayerId, ElementId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "./render-target.js";
+import type { AnimationClock } from "./animation-adapter.js";
 import { getElementRenderer } from "./shape-renderer.js";
 import { cachedWorldBounds, ElementCache } from "./shape-cache.js";
 import { DEFAULT_PLACEHOLDER_FILL } from "./constants.js";
@@ -120,6 +121,13 @@ export interface RenderSceneOptions {
    * creation is the backend's job.
    */
   readonly compositeLayerBitmap?: (layerId: LayerId, zoomBucket: number, scene: Scene) => unknown;
+  /**
+   * Per-instance animated-content playback clock, forwarded to each shape
+   * renderer via {@link ElementRenderContext.clock}. Lets the caller (an
+   * `Editor`) drive per-shape GIF playback without mutating the process-global
+   * {@link setAnimationClock}. Omit to fall back to the module clock.
+   */
+  readonly clock?: AnimationClock;
 }
 
 /**
@@ -175,6 +183,11 @@ export const renderScene = (
   }
 
   const zoom = scene.viewport.zoom;
+  const clock = options.clock;
+  // Reused per-shape render context. `clock` is per-instance when the caller
+  // (Editor) threads one; omitted otherwise so the image renderer falls back
+  // to the process-global animation clock.
+  const ctx: { zoom: number; clock?: AnimationClock } = clock ? { zoom, clock } : { zoom };
   const lod = options.lod;
   const usePlaceholder = lod?.placeholder !== undefined && zoom < lod.placeholder;
   const dropText = lod?.hideText !== undefined && zoom < lod.hideText;
@@ -262,7 +275,7 @@ export const renderScene = (
       if (shape.scale.x !== 1 || shape.scale.y !== 1) {
         target.scale(shape.scale.x, shape.scale.y);
       }
-      renderer(shape, target, { zoom });
+      renderer(shape, target, ctx);
       target.restore();
     }
   }

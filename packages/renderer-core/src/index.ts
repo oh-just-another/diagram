@@ -58,7 +58,7 @@ export type { LayerCompositeCache } from "./layer-cache-composite.js";
 export { InMemoryLayerCompositeCache } from "./layer-cache-composite.js";
 
 // Animated content adapter registry.
-export type { AnimatedSourceAdapter } from "./animation-adapter.js";
+export type { AnimatedSourceAdapter, AnimationClock } from "./animation-adapter.js";
 export {
   registerAnimationAdapter,
   unregisterAnimationAdapter,
