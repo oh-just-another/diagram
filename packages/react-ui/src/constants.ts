@@ -126,6 +126,29 @@ export const TEXT_FONT_SIZE_PRESETS: readonly { readonly label: string; readonly
   ];
 export const TEXT_FONT_SIZE_MIN = 8;
 export const TEXT_FONT_SIZE_MAX = 256;
+/**
+ * Minimap overview panel defaults. The `<Minimap>` renders the whole scene
+ * scaled into a small canvas plus a frame for the current viewport; hosts
+ * override the size via `width` / `height` props.
+ *
+ * - `MINIMAP_WIDTH_PX` / `MINIMAP_HEIGHT_PX` — default canvas size in CSS px.
+ * - `MINIMAP_PADDING_PX` — inner margin kept clear around the fitted scene so
+ *   shapes at the edge aren't clipped. Range: 0–32.
+ * - `MINIMAP_THROTTLE_MS` — minimum interval between overview repaints while
+ *   the scene / viewport changes rapidly (pan, drag). Lower = smoother but
+ *   more work per frame. Range: 60–500.
+ * - `MINIMAP_FRAME_COLOR` / `MINIMAP_FRAME_LINE_WIDTH` — stroke of the current
+ *   viewport rectangle drawn over the overview.
+ * - `MINIMAP_FRAME_FILL` — translucent wash inside the viewport rectangle.
+ */
+export const MINIMAP_WIDTH_PX = 200;
+export const MINIMAP_HEIGHT_PX = 150;
+export const MINIMAP_PADDING_PX = 8;
+export const MINIMAP_THROTTLE_MS = 150;
+export const MINIMAP_FRAME_COLOR = "#2563eb";
+export const MINIMAP_FRAME_LINE_WIDTH = 1.5;
+export const MINIMAP_FRAME_FILL = "rgba(37, 99, 235, 0.12)";
+
 export const TEXT_FONT_STACKS: readonly { readonly label: string; readonly value: string }[] = [
   // Labels map to the three fonts embedded in the WASM MSDF shaper
   // (sans / serif / mono). Canvas2D resolves the same stacks against

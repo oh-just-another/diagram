@@ -37,6 +37,7 @@ export {
   type DiagramSurfaceProps,
 } from "./diagram-root.js";
 export { DiagramCanvas, type DiagramCanvasProps } from "./diagram-canvas.js";
+export { Minimap, type MinimapProps } from "./minimap.js";
 export {
   useDiagram,
   useDiagramOptional,
@@ -150,4 +151,8 @@ export {
   LAYER_SWATCH_SIZE,
   COMMENTS_PANEL_WIDTH,
   TOOLBAR_SEPARATOR_HEIGHT,
+  MINIMAP_WIDTH_PX,
+  MINIMAP_HEIGHT_PX,
+  MINIMAP_PADDING_PX,
+  MINIMAP_THROTTLE_MS,
 } from "./constants.js";

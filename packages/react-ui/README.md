@@ -49,6 +49,7 @@ Every component reads the editor from context, so most take no required props.
 | `TopBar` / `BottomBar`           | Edge-anchored bars for toolbars and status chrome.               |
 | `Sidebar`                        | Collapsible side container for panels.                           |
 | `BottomSheet`                    | Sliding bottom container (touch / mobile layouts).               |
+| `Minimap`                        | Overview canvas with a viewport frame; click / drag to pan.      |
 
 ### Toolbar & zoom
 
