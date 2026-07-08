@@ -76,6 +76,14 @@ export const useSelection = (): Selection =>
 export const useMode = (): Mode => useEditorSelector<Mode>((e) => e.mode, "select", "mode");
 
 /**
+ * `true` when the editor is in read-only / view mode. Chrome uses it to
+ * disable creation tools and edit controls while keeping navigation live.
+ * Reactive — re-renders when {@link Editor.setReadOnly} flips. Defaults to
+ * `false` pre-mount.
+ */
+export const useReadOnly = (): boolean => useEditorSelector((e) => e.readOnly, false);
+
+/**
  * History introspection and actions. Returns no-op callbacks (and `false`
  * flags) while the editor is being created so toolbar buttons can render
  * disabled without bespoke null-checking.

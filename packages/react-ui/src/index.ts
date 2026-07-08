@@ -44,6 +44,7 @@ export {
   useScene,
   useSelection,
   useMode,
+  useReadOnly,
   useHistory,
   useLayers,
   useActiveLayerId,
