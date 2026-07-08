@@ -380,7 +380,7 @@ const drawImage: ElementRenderer<ImageElement> = (shape, target, ctx) => {
   // current frame. GIF / video sources flag `metadata.animated`, and
   // any adapter-driven source is dynamic by definition.
   const dynamic = shape.metadata?.animated === true || shape.animationKind !== undefined;
-  target.drawImage(handle, 0, 0, shape.width, shape.height, dynamic);
+  target.drawImage(handle, 0, 0, shape.width, shape.height, dynamic, shape.crop);
 };
 
 /**
