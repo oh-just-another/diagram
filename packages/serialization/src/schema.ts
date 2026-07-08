@@ -134,6 +134,11 @@ const ImageZ = ElementBaseZ.extend({
   // Points at a `Scene.files` BinaryFile entry. Set by `buildImageElement`
   // on every insert.
   fileId: z.string().optional(),
+  // Normalised source-crop rectangle (fractions of the intrinsic image
+  // size); omitted = whole image. Additive — older scenes lack it.
+  crop: z
+    .object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() })
+    .optional(),
   // Animated-content hints (gif / lottie / video).
   animationKind: z.string().optional(),
   animationData: z.unknown().optional(),

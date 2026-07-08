@@ -173,6 +173,33 @@ describe("round-trip", () => {
     }
   });
 
+  it("preserves an optional image crop rect (stringify → parse)", () => {
+    let scene = emptyScene();
+    const img: Element = {
+      id: elementId("ic"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "image",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      src: "data:,",
+      width: 50,
+      height: 50,
+      crop: { x: 0.1, y: 0.2, width: 0.6, height: 0.5 },
+    } as unknown as Element;
+    ({ scene } = addElement(scene, img));
+    const restored = parseScene(stringifyScene(scene, 2));
+    const el = restored.elements.get(elementId("ic"));
+    expect((el as { crop?: unknown } | undefined)?.crop).toEqual({
+      x: 0.1,
+      y: 0.2,
+      width: 0.6,
+      height: 0.5,
+    });
+  });
+
   it("preserves text decoration style (weight / italic / underline / strike)", () => {
     let scene = emptyScene();
     const t: Element = {

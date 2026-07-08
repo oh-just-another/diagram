@@ -154,6 +154,23 @@ export interface TextElement extends ElementBase {
   readonly style: TextStyle;
 }
 
+/**
+ * Normalised crop rectangle for an {@link ImageElement}. All four
+ * values are fractions in `[0, 1]` of the source image's intrinsic
+ * dimensions: `{ x: 0, y: 0, width: 1, height: 1 }` shows the whole
+ * image (equivalent to omitting `crop`). The cropped source region is
+ * stretched to fill the element's `width` × `height` box, so cropping
+ * does not change the element's on-canvas footprint — only which part
+ * of the bitmap is visible. Being normalised keeps the crop stable when
+ * the backing file is swapped for a differently-sized copy.
+ */
+export interface ImageCrop {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface ImageElement extends ElementBase {
   readonly type: "image";
   /**
@@ -162,6 +179,12 @@ export interface ImageElement extends ElementBase {
    * `Scene.files` entry, which keeps scene.json small for large bitmaps.
    */
   readonly src: string;
+  /**
+   * Optional normalised source-crop rectangle. Omitted = whole image.
+   * See {@link ImageCrop}. Additive: scenes and renderers that predate
+   * cropping simply ignore it and draw the full bitmap.
+   */
+  readonly crop?: ImageCrop;
   /**
    * Id of the `BinaryFile` in `Scene.files` that backs this image.
    * When present, hosts should resolve through the file registry

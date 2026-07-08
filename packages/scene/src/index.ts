@@ -25,6 +25,7 @@ export type {
   PathCommand,
   TextElement,
   ImageElement,
+  ImageCrop,
   TemplateElement,
   GroupElement,
   FrameElement,
@@ -291,6 +292,9 @@ export type {
   ThreeWayMergeReport,
 } from "./three-way-merge.js";
 export { mergeScenesThreeWay, applyConflictResolutions } from "./three-way-merge.js";
+
+// Shape local↔world transform helpers.
+export { localToWorld, worldToLocal } from "./shape-transform.js";
 
 // Container / drop-zone protocol.
 export {
