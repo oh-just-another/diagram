@@ -430,6 +430,15 @@ export type TileComposeFn = (
       { before: Bounds | null; after: Bounds | null }
     >;
     readonly zoomBucket: number;
+    /**
+     * Persistent spatial index over the scene's current element world-AABBs,
+     * when the editor maintains one (large scenes, shared with the hit-test
+     * path). A tile compositor that supports it (`renderViaTiles`) queries the
+     * index for per-tile element selection instead of scanning every shape in
+     * every layer. Omitted for small scenes; compositors must fall back to a
+     * full scan when absent.
+     */
+    readonly index?: SpatialGrid;
   },
 ) => void;
 
@@ -4716,7 +4725,18 @@ export class Editor {
     // and, on the tile-cache path, clear the consumed dirty set.
     this.lastRenderedScene = this._scene;
     this.lastRenderedEnteredGroup = this._enteredGroup;
-    if (snapshot.tileComposeFn && snapshot.viewportWorld) this.tileDirtyElements = new Map();
+    // Clear the accumulated tile-dirty set only when the tile path actually
+    // composited this frame. Group isolation (dim) / per-element hide make the
+    // orchestrator fall back to the full renderScene path (it can't reproduce
+    // dim/hide on cached tiles), so on those frames the pending invalidations
+    // must survive to be applied when the tile path resumes — mirror the same
+    // condition here.
+    const isolationActive =
+      (snapshot.dimElements !== undefined && snapshot.dimElements.size > 0) ||
+      (snapshot.hideElements !== undefined && snapshot.hideElements.size > 0);
+    if (snapshot.tileComposeFn && snapshot.viewportWorld && !isolationActive) {
+      this.tileDirtyElements = new Map();
+    }
     // Present AFTER the paint, on the same tick — deferred-submission
     // surfaces (WebGL2 / OffscreenCanvas) would otherwise lag one frame.
     this.onAfterRender?.();
