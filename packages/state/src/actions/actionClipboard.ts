@@ -4,6 +4,9 @@ export const actionCopy: Action = {
   id: "copy",
   label: "Copy",
   category: "clipboard",
+  // Reading the selection into the clipboard mutates nothing — stays live
+  // in read-only / view mode.
+  viewMode: true,
   hotkey: { key: "c", meta: true },
   predicate: hasSelection,
   perform: ({ editor }) => {
@@ -36,6 +39,8 @@ export const actionCopyStyle: Action = {
   id: "copy-style",
   label: "Copy style",
   category: "clipboard",
+  // Sampling the selection's style into the style clipboard is non-mutating.
+  viewMode: true,
   hotkey: { key: "c", meta: true, alt: true },
   predicate: hasSelection,
   perform: ({ editor }) => {

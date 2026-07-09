@@ -136,6 +136,13 @@ export interface RenderSnapshot {
   readonly peerCursors: readonly PeerCursor[];
   readonly peerSelections: readonly PeerSelection[];
   readonly debugHitZones: boolean;
+  /**
+   * Read-only / view mode. When true the overlay paints selection outlines
+   * (halo) but suppresses every interactive handle — resize / rotate grips,
+   * group-bounds handles and link endpoint/bend handles — so a viewer can't
+   * grab an affordance that would mutate the scene.
+   */
+  readonly readOnly: boolean;
   readonly groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null;
   readonly aspectLocked: boolean;
   readonly combinedSelectionBounds: Bounds | null;
@@ -228,6 +235,7 @@ const buildOverlaySignature = (e: RenderSnapshot): readonly unknown[] => [
   e.peerCursors,
   e.peerSelections,
   e.debugHitZones,
+  e.readOnly,
   e.groupMoveOrigin,
   e.editingText,
 ];
@@ -352,6 +360,8 @@ export const renderEditor = (editor: RenderSnapshot): void => {
   let overlayMemo = overlayMemoByTarget.get(editor.overlayTarget);
   if (overlayMemo === undefined || !overlaySigEqual(overlayMemo.sig, overlaySig)) {
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
+    // Read-only: keep selection outlines but drop every interactive handle.
+    if (editor.readOnly) overlayOpts.readOnly = true;
     // Image-crop frame (crop mode) — dashed accent quad over the pending region.
     if (editor.cropFrame) overlayOpts.cropFrame = editor.cropFrame;
     // Throwaway scene holding the click-create ghost connector — rendered

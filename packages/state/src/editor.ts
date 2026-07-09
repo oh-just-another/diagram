@@ -1117,6 +1117,11 @@ export class Editor {
     // an initial scene (e.g. localStorage), then arm the tick so the
     // animation plays from first paint.
     animScene.rehydrateAnimatedImages(this);
+    // Rebuild live handles for static images restored from storage — their
+    // `metadata.image` didn't survive serialisation and `src` is a dead
+    // `blob:` URL, so decode the bytes back from `Scene.files`. Async;
+    // repaints itself when the decode lands.
+    void animScene.rehydrateStaticImages(this);
     this.maybeAnimate();
     // An animated adapter (GIF) decodes asynchronously; when a decode
     // completes it nudges us here. Re-render so a PAUSED animated shape
@@ -1708,6 +1713,7 @@ export class Editor {
    * object — Link is readonly). No-op when no edge is selected.
    */
   updateSelectedLink(updater: (edge: Link) => Link): void {
+    if (this.readOnly) return;
     const id = this.selectedLink;
     if (id === null) return;
     const r = updateLink(this._scene, id, updater);
@@ -2013,6 +2019,7 @@ export class Editor {
   }
 
   deleteSelected(): void {
+    if (this.readOnly) return;
     const result = computeDeleteSelection(this._scene, this._selection, this._selectedLinks);
     if (!result) return;
     const tx = this._history.transaction();
@@ -2276,6 +2283,7 @@ export class Editor {
    * and `{ x: 10, y: 0 }` for shift-arrow.
    */
   moveSelectionBy(delta: Vec2): void {
+    if (this.readOnly) return;
     if (this._selection.size === 0 && this._selectedLinks.size === 0) return;
     // Locked / layer-locked elements don't move (they're still selectable).
     const targets = new Set(
@@ -2519,6 +2527,7 @@ export class Editor {
     this.announce(`Stacked ${result.count} shapes ${result.direction}`);
   }
   groupSelected(): GroupSelectedResult {
+    if (this.readOnly) return { kind: "noop" };
     const result = computeGroupSelected(
       this._scene,
       this._selection,
@@ -2534,6 +2543,7 @@ export class Editor {
     return { kind: "grouped", groupId: result.groupId };
   }
   ungroup(): void {
+    if (this.readOnly) return;
     const result = computeUngroup(this._scene, this._selection);
     if (!result) return;
     const tx = this._history.transaction();
@@ -2601,6 +2611,7 @@ export class Editor {
    * Links between selected shapes are NOT cloned. Single undo step.
    */
   duplicateSelected(): void {
+    if (this.readOnly) return;
     const result = computeDuplicateSelection(this._scene, this._selection, () => ++this.nextId);
     if (!result) return;
     const tx = this._history.transaction();
@@ -2622,6 +2633,7 @@ export class Editor {
    * originals. One undo step.
    */
   duplicateSelectedInPlace(anchorId: ElementId | null = null): ElementId | null {
+    if (this.readOnly) return null;
     if (this._selection.size === 0) return null;
     // Expand: selection + group descendants (parentId) + frame members (frameId).
     const ids = new Set<ElementId>();
@@ -2704,6 +2716,7 @@ export class Editor {
   }
 
   cutSelected(): void {
+    if (this.readOnly) return;
     this.copySelected();
     this.deleteSelected();
   }
@@ -2774,6 +2787,7 @@ export class Editor {
   }
 
   updateStyle(ids: Iterable<ElementId>, partial: Partial<TextStyle>): void {
+    if (this.readOnly) return;
     const result = computeUpdateStyle(this._scene, ids, partial);
     if (!result) return;
     this._scene = result.scene;
@@ -2986,6 +3000,7 @@ export class Editor {
     ids: Iterable<ElementId>,
     partial: { fontSize?: number; fontFamily?: string; maxWidth?: number },
   ): void {
+    if (this.readOnly) return;
     const result = computeUpdateTextProps(this._scene, ids, partial);
     if (!result) return;
     this._scene = result.scene;
@@ -2999,6 +3014,7 @@ export class Editor {
    * undoable step; no-op when no text is selected.
    */
   adjustSelectionFontSize(direction: "increase" | "decrease"): void {
+    if (this.readOnly) return;
     const result = computeAdjustFontSize(this._scene, this._selection, direction);
     if (!result) return;
     this._scene = result.scene;
@@ -3015,6 +3031,7 @@ export class Editor {
    * hover link-popup.
    */
   setLink(ids: Iterable<ElementId>, href: string | null): void {
+    if (this.readOnly) return;
     const normalized = href === null ? null : normalizeHref(href);
     const result = computeSetLink(this._scene, ids, normalized);
     if (!result) return;
@@ -3053,6 +3070,7 @@ export class Editor {
   }
 
   bringToFront(id?: ElementId): void {
+    if (this.readOnly) return;
     const result = computeBringToFront(this._scene, id, this._selection);
     if (!result) return;
     this._scene = result.scene;
@@ -3060,6 +3078,7 @@ export class Editor {
     this.notify();
   }
   sendToBack(id?: ElementId): void {
+    if (this.readOnly) return;
     const result = computeSendToBack(this._scene, id, this._selection);
     if (!result) return;
     this._scene = result.scene;
@@ -3069,6 +3088,7 @@ export class Editor {
 
   /** Move the target shape one step toward the top of its layer. */
   bringForward(id?: ElementId): void {
+    if (this.readOnly) return;
     const result = computeBringForward(this._scene, id, this._selection);
     if (!result) return;
     this._scene = result.scene;
@@ -3078,6 +3098,7 @@ export class Editor {
 
   /** Move the target shape one step toward the bottom of its layer. */
   sendBackward(id?: ElementId): void {
+    if (this.readOnly) return;
     const result = computeSendBackward(this._scene, id, this._selection);
     if (!result) return;
     this._scene = result.scene;
@@ -3133,6 +3154,7 @@ export class Editor {
 
   /** Apply a batch of arrange patches as a single undoable step. */
   private commitArrange(patches: readonly Patch[]): void {
+    if (this.readOnly) return;
     if (patches.length === 0) return;
     const tx = this._history.transaction();
     for (const patch of patches) {
@@ -3167,6 +3189,7 @@ export class Editor {
    * surprising and the operation is rarely chained with other edits.
    */
   clear(): void {
+    if (this.readOnly) return;
     if (this._scene.elements.size === 0 && this._scene.links.size === 0) return;
     this._scene = {
       ...this._scene,
@@ -3240,6 +3263,7 @@ export class Editor {
   }
 
   moveSelectionToLayer(targetLayer: LayerId): void {
+    if (this.readOnly) return;
     const result = computeMoveSelectionToLayer(this._scene, this._selection, targetLayer);
     if (!result) return;
     const tx = this._history.transaction();
@@ -3415,6 +3439,10 @@ export class Editor {
     // Restore transient animationData (GIF bytes) from Scene.files
     // before the tick so the animation adapter can decode frames.
     animScene.rehydrateAnimatedImages(this);
+    // Rebuild live handles for static images from Scene.files — their
+    // serialised handle is gone and `src` is a dead `blob:` URL after a
+    // reload. Async; repaints itself when the decode lands.
+    void animScene.rehydrateStaticImages(this);
     this.notify();
     // Loaded scene may carry animated shapes (e.g. GIF re-imported
     // from saved JSON). Re-arm the tick — `metadata.animated` survives
@@ -3643,6 +3671,7 @@ export class Editor {
    * can't be moved or resized.
    */
   toggleLockSelection(): void {
+    if (this.readOnly) return;
     if (this._selection.size === 0) return;
     const ids = [...this._selection];
     const anyUnlocked = ids.some((id) => getElement(this._scene, id)?.locked !== true);
@@ -4770,6 +4799,7 @@ export class Editor {
    * derived (recomputed by `rerouteElbows`). No-op when no link is selected.
    */
   setSelectedLinkAvoidObstacles(enabled: boolean): void {
+    if (this.readOnly) return;
     const id = this.selectedLink;
     if (id === null) return;
     const edge = getLink(this._scene, id);
@@ -5156,6 +5186,7 @@ export class Editor {
       peerCursors: this._peerCursors,
       peerSelections: this._peerSelections,
       debugHitZones: this.debugHitZones,
+      readOnly: this._readOnly,
       groupMoveOrigin: this.groupMoveOrigin,
       aspectLocked: this.selectionIsAspectLocked(),
       combinedSelectionBounds: this.combinedSelectionBounds(),

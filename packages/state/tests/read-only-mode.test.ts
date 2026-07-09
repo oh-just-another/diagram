@@ -8,7 +8,7 @@ import {
   type Element,
   type Scene,
 } from "@oh-just-another/scene";
-import { ActionRegistry } from "../src/actions/index.js";
+import { ActionRegistry, registerBuiltinActions } from "../src/actions/index.js";
 import { actionToggleReadOnly } from "../src/actions/actionView.js";
 import { Editor } from "../src/editor.js";
 
@@ -122,6 +122,74 @@ describe("Editor read-only mode", () => {
   });
 });
 
+describe("Editor mutating methods no-op in read-only (panel-reachable)", () => {
+  it("updateStyle leaves the selection's style untouched", () => {
+    const editor = makeEditor(true);
+    editor.setSelection([elementId("a")]);
+    editor.updateStyle([elementId("a")], { fill: "#ff0000" });
+    expect(editor.scene.elements.get(elementId("a"))?.style.fill).toBeUndefined();
+  });
+
+  it("deleteSelected keeps every element", () => {
+    const editor = makeEditor(true);
+    editor.setSelection([elementId("a")]);
+    editor.deleteSelected();
+    expect(editor.scene.elements.size).toBe(2);
+    expect(editor.scene.elements.has(elementId("a"))).toBe(true);
+  });
+
+  it("duplicateSelected adds nothing", () => {
+    const editor = makeEditor(true);
+    editor.setSelection([elementId("a")]);
+    editor.duplicateSelected();
+    expect(editor.scene.elements.size).toBe(2);
+  });
+
+  it("groupSelected returns noop and creates no group", () => {
+    const editor = makeEditor(true);
+    editor.setSelection([elementId("a"), elementId("b")]);
+    expect(editor.groupSelected()).toEqual({ kind: "noop" });
+    expect(editor.scene.elements.size).toBe(2);
+  });
+
+  it("clear leaves the scene intact", () => {
+    const editor = makeEditor(true);
+    editor.clear();
+    expect(editor.scene.elements.size).toBe(2);
+  });
+
+  it("moveSelectionBy does not move the selection", () => {
+    const editor = makeEditor(true);
+    editor.setSelection([elementId("a")]);
+    const before = editor.scene.elements.get(elementId("a"))?.position;
+    editor.moveSelectionBy({ x: 25, y: 25 });
+    expect(editor.scene.elements.get(elementId("a"))?.position).toEqual(before);
+  });
+
+  it("bringToFront / flipSelection leave z-order + geometry unchanged", () => {
+    const editor = makeEditor(true);
+    editor.setSelection([elementId("a"), elementId("b")]);
+    const orderA = editor.scene.elements.get(elementId("a"))?.order;
+    const posA = editor.scene.elements.get(elementId("a"))?.position;
+    editor.bringToFront(elementId("a"));
+    editor.flipSelection("horizontal");
+    expect(editor.scene.elements.get(elementId("a"))?.order).toBe(orderA);
+    expect(editor.scene.elements.get(elementId("a"))?.position).toEqual(posA);
+  });
+
+  it("the same methods DO mutate once read-only is lifted", () => {
+    const editor = makeEditor(true);
+    editor.setSelection([elementId("a")]);
+    editor.updateStyle([elementId("a")], { fill: "#00ff00" });
+    expect(editor.scene.elements.get(elementId("a"))?.style.fill).toBeUndefined();
+    editor.setReadOnly(false);
+    editor.updateStyle([elementId("a")], { fill: "#00ff00" });
+    expect(editor.scene.elements.get(elementId("a"))?.style.fill).toBe("#00ff00");
+    editor.deleteSelected();
+    expect(editor.scene.elements.has(elementId("a"))).toBe(false);
+  });
+});
+
 describe("ActionRegistry read-only gating", () => {
   const view = { id: "v", viewMode: true as const, perform: vi.fn() };
   const edit = { id: "e", perform: vi.fn() };
@@ -157,6 +225,60 @@ describe("ActionRegistry read-only gating", () => {
     editor.setReadOnly(false);
     expect(reg.dispatchHotkey(ev, { editor })).toBe(true);
     expect(perf).toHaveBeenCalledOnce();
+  });
+});
+
+describe("built-in mutating hotkeys are no-op in read-only", () => {
+  const key = (k: string, mods: Partial<KeyboardEvent> = {}): KeyboardEvent =>
+    ({
+      key: k,
+      code: k.length === 1 ? `Key${k.toUpperCase()}` : k,
+      // Set both so the meta match works regardless of the host's isMac.
+      metaKey: mods.metaKey ?? false,
+      ctrlKey: mods.ctrlKey ?? false,
+      shiftKey: mods.shiftKey ?? false,
+      altKey: mods.altKey ?? false,
+    }) as unknown as KeyboardEvent;
+
+  const meta = { metaKey: true, ctrlKey: true };
+
+  it("delete / duplicate / group / nudge don't mutate the scene in read-only", () => {
+    const reg = new ActionRegistry();
+    registerBuiltinActions(reg);
+    const editor = makeEditor(true);
+    editor.setSelection([elementId("a"), elementId("b")]);
+    const size = editor.scene.elements.size;
+    const posA = editor.scene.elements.get(elementId("a"))?.position;
+
+    // Every mutating hotkey is short-circuited (dispatchHotkey → false).
+    expect(reg.dispatchHotkey(key("Delete"), { editor })).toBe(false);
+    expect(reg.dispatchHotkey(key("Backspace"), { editor })).toBe(false);
+    expect(reg.dispatchHotkey(key("d", meta), { editor })).toBe(false);
+    expect(reg.dispatchHotkey(key("g", meta), { editor })).toBe(false);
+    expect(reg.dispatchHotkey(key("ArrowLeft"), { editor })).toBe(false);
+
+    expect(editor.scene.elements.size).toBe(size);
+    expect(editor.scene.elements.get(elementId("a"))?.position).toEqual(posA);
+  });
+
+  it("navigation hotkeys (select-all, copy, zoom) stay live in read-only", () => {
+    const reg = new ActionRegistry();
+    registerBuiltinActions(reg);
+    const editor = makeEditor(true);
+    // select-all, copy, copy-style and zoom are flagged viewMode → dispatch.
+    expect(reg.dispatchHotkey(key("a", meta), { editor })).toBe(true);
+    expect(editor.selection.size).toBe(2);
+    expect(reg.dispatchHotkey(key("c", meta), { editor })).toBe(true);
+    expect(reg.dispatchHotkey(key("0", meta), { editor })).toBe(true);
+  });
+
+  it("the same mutating hotkeys DO fire once read-only is lifted", () => {
+    const reg = new ActionRegistry();
+    registerBuiltinActions(reg);
+    const editor = makeEditor(false);
+    editor.setSelection([elementId("a")]);
+    expect(reg.dispatchHotkey(key("Delete"), { editor })).toBe(true);
+    expect(editor.scene.elements.has(elementId("a"))).toBe(false);
   });
 });
 

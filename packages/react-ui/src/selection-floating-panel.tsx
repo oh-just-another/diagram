@@ -24,7 +24,7 @@ import {
   SELECTION_PANEL_EDGE_INSET_BOTTOM_PX,
   SELECTION_PANEL_EDGE_INSET_LEFT_PX,
 } from "./constants.js";
-import { useDiagramOptional, useMobileLayout } from "./hooks.js";
+import { useDiagramOptional, useMobileLayout, useReadOnly } from "./hooks.js";
 import { usePortalContainer } from "./portal-container.js";
 import { PropertyPanel } from "./property-panel.js";
 
@@ -84,6 +84,7 @@ export const SelectionFloatingPanel = ({
     left: edgeInset?.left ?? SELECTION_PANEL_EDGE_INSET_LEFT_PX,
   };
   const editor = useDiagramOptional();
+  const readOnly = useReadOnly();
   const portalContainer = usePortalContainer();
   // On touch / narrow screens the panel docks to the bottom instead of
   // floating at the selection bbox — no floating-ui math.
@@ -182,7 +183,9 @@ export const SelectionFloatingPanel = ({
     edgePadding.left,
   ]);
 
-  if (!editor || !hasSelection) return null;
+  // Its only content is <PropertyPanel>, which is empty in read-only — hide
+  // the whole floating chrome so no stray toolbar shell appears in view mode.
+  if (!editor || !hasSelection || readOnly) return null;
 
   // Mobile: dock the panel to the bottom edge (above the bottom bar +
   // safe-area), full width. The PropertyPanel's own mobile variant shows

@@ -59,7 +59,13 @@ import {
   type TextStyle,
 } from "@oh-just-another/scene";
 import type { ConvertTarget } from "@oh-just-another/state";
-import { useDiagramOptional, useScene, useSelectedLink, useSelection } from "./hooks.js";
+import {
+  useDiagramOptional,
+  useReadOnly,
+  useScene,
+  useSelectedLink,
+  useSelection,
+} from "./hooks.js";
 import { useEditorSelector } from "./context.js";
 import { useContextMenuController } from "./context-menu-controller.js";
 import { ColorSwatchPicker } from "./color-swatch-picker.js";
@@ -103,6 +109,12 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
   const selection = useSelection();
   const selectedLinkId = useSelectedLink();
   const scene = useScene();
+  const readOnly = useReadOnly();
+
+  // Every control here mutates the selection (style / text / z-order / align /
+  // convert / delete / link). In read-only / view mode the whole panel is
+  // suppressed — the canvas is view-only, so there's nothing to edit.
+  if (readOnly) return null;
 
   // Dispatcher: edge wins only when no shape is selected — if both
   // happen to be set (rare), the shape panel is more useful. Each branch

@@ -130,6 +130,27 @@ describe("renderOverlay", () => {
     expect(ellipses.length).toBe(4);
   });
 
+  it("read-only: keeps the selection outline but draws no resize/rotate handles", () => {
+    const shape = rect("r1", 0, 0, 50, 50);
+    const scene = sceneWith(shape);
+    const { target, calls } = makeRecorder();
+    renderOverlay(scene, new Set([shape.id]), target, { readOnly: true });
+    // Outline (rect) still painted — the viewer sees what's selected...
+    expect(calls.filter((c) => c.method === "rect").length).toBeGreaterThanOrEqual(1);
+    // ...but no grab-handle dots (ellipses) to resize/rotate with.
+    expect(calls.filter((c) => c.method === "ellipse").length).toBe(0);
+  });
+
+  it("read-only: group bounds paint an outline but no combined handles", () => {
+    const { target, calls } = makeRecorder();
+    renderOverlay(emptyScene(), emptySelection, target, {
+      groupBounds: { x: 0, y: 0, width: 100, height: 80 },
+      readOnly: true,
+    });
+    expect(calls.filter((c) => c.method === "rect").length).toBeGreaterThanOrEqual(1);
+    expect(calls.filter((c) => c.method === "ellipse").length).toBe(0);
+  });
+
   it("draws no per-shape handles for multi-selection", () => {
     const a = rect("a", 0, 0, 20, 20);
     const b = rect("b", 100, 0, 20, 20);

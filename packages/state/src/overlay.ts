@@ -415,6 +415,14 @@ export interface OverlayOptions {
    * targets the user can act on. Defaults to the at-rest set when omitted.
    */
   debugHitZoneVisibility?: HitZoneVisibility;
+  /**
+   * Read-only / view mode. When set, selection outlines (halos) still paint
+   * but every interactive handle is suppressed: per-shape resize/rotate grips
+   * (section 1), the combined group-bounds handles (section 7) and the
+   * selected-link endpoint/bend handles (section 5). A viewer sees what's
+   * selected but has no affordance to grab-and-mutate.
+   */
+  readOnly?: boolean;
   style?: Partial<OverlayStyle>;
 }
 
@@ -507,7 +515,7 @@ const renderDebugHitZones = (ctx: OverlayCtx): void => {
  * which `hitTest` also blocks.
  */
 const renderSelectionHandles = (ctx: OverlayCtx): void => {
-  const { scene, selection, target, style, w2s, zoom } = ctx;
+  const { scene, selection, target, options, style, w2s, zoom } = ctx;
   const multiSelect = selection.size > 1;
   for (const id of selection) {
     const shape = scene.elements.get(id);
@@ -525,7 +533,8 @@ const renderSelectionHandles = (ctx: OverlayCtx): void => {
         drawLockBadge(target, screenBounds);
         continue;
       }
-      if (multiSelect || !isResizable(shape)) continue;
+      // Read-only: outline only — no resize/rotate affordances to grab.
+      if (multiSelect || !isResizable(shape) || options.readOnly === true) continue;
       for (const handle of CORNER_HANDLES) {
         const worldPoint = handlePosition(handle, worldBounds, zoom);
         drawHandle(target, matrix.applyToPoint(w2s, worldPoint), style);
@@ -550,7 +559,8 @@ const renderSelectionHandles = (ctx: OverlayCtx): void => {
       continue;
     }
 
-    if (multiSelect || !isResizable(shape)) continue;
+    // Read-only: outline only — no resize/rotate affordances to grab.
+    if (multiSelect || !isResizable(shape) || options.readOnly === true) continue;
 
     // Draw only the four CORNER dots — at the rotated frame corners. Edge
     // resize is done by dragging the selection-box side itself, so no midpoint
@@ -726,7 +736,9 @@ const renderLinkHandles = (ctx: OverlayCtx): void => {
   }
 
   // 5. Selected-edge endpoint handles + bend-point (waypoint) handles.
-  if (options.edgeSelection) {
+  //    Read-only: the halo above still marks the selected link, but the
+  //    endpoint/bend grips are suppressed (nothing to re-bind or drag).
+  if (options.edgeSelection && options.readOnly !== true) {
     const from = matrix.applyToPoint(w2s, options.edgeSelection.from);
     const to = matrix.applyToPoint(w2s, options.edgeSelection.to);
     // Segment-midpoint "add waypoint" handles (drawn first, under the rest).
@@ -897,6 +909,8 @@ const renderGroupBounds = (ctx: OverlayCtx): void => {
   if (options.groupBounds) {
     const groupScreen = projectBounds(options.groupBounds, w2s);
     drawOutline(target, groupScreen, style);
+    // Read-only: combined-bounds outline only — no resize/rotate handles.
+    if (options.readOnly === true) return;
     const handleSet = CORNER_HANDLES;
     for (const handle of handleSet) {
       const worldPoint = handlePosition(handle, options.groupBounds, zoom);
