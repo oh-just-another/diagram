@@ -57,7 +57,7 @@ import {
   LASER_WIDTH,
   LASER_TRAIL_TTL_MS,
 } from "./constants.js";
-import type { LaserStroke } from "./editor/public/laser.js";
+import { smoothLaserPoints, type LaserStroke } from "./editor/public/laser.js";
 import {
   CORNER_HANDLES,
   HANDLE_SIZE,
@@ -843,7 +843,10 @@ const renderLaserTrails = (ctx: OverlayCtx): void => {
   target.setLineCap("round");
   target.setLineJoin("round");
   for (const stroke of strokes) {
-    const pts = stroke.points;
+    // Resample the sparse captured polyline into a smooth Catmull-Rom curve so
+    // the beam isn't visibly angular. Timestamps are interpolated per sub-point,
+    // so the per-segment fade below is unchanged.
+    const pts = smoothLaserPoints(stroke.points);
     if (pts.length === 1) {
       // A tap with no drag: draw a single fading dot.
       const p = req(pts[0]);

@@ -532,6 +532,15 @@ export const LASER_COLOR = "#ff2d2d";
 export const LASER_WIDTH = 4;
 
 /**
+ * Samples per Catmull-Rom span when smoothing a laser trail for rendering.
+ * Laser points are collected sparsely (one per pointer-move), so the raw
+ * polyline looks angular; the overlay resamples each span into this many
+ * sub-points along a Catmull-Rom curve through the captured points, keeping the
+ * beam smooth. Higher = smoother but more segments per frame. Range: 4–16.
+ */
+export const LASER_SMOOTH_SEGMENTS = 8;
+
+/**
  * Default upper bound on the longer edge of a freshly-inserted
  * image (CSS pixels). Larger images get downscaled proportionally
  * by the built-in image file-drop handler so a 4000×3000 phone

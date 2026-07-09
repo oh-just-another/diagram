@@ -2471,7 +2471,16 @@ export class Editor {
 
   /** Start a laser trail at `world` (ephemeral — never enters the scene). */
   beginLaserStroke(world: Vec2): void {
-    this.interaction.laserStrokes.push(beginLaserStrokePure(world, nowMs()));
+    // Reassign the array (not just `.push`) so its identity changes: the
+    // render-overlay memo keys on the `laserStrokes` reference, so an in-place
+    // mutation would leave the signature unchanged and the memo would reuse a
+    // stale options bag that omits the trail — the trail then wouldn't paint
+    // until a later prune reallocated the array (~TTL later). A fresh reference
+    // forces the memo to rebuild and the trail to render on this very frame.
+    this.interaction.laserStrokes = [
+      ...this.interaction.laserStrokes,
+      beginLaserStrokePure(world, nowMs()),
+    ];
     this.interaction.laserDrawing = true;
     this.maybeAnimate();
     this.notify();
@@ -2483,6 +2492,10 @@ export class Editor {
     const active = strokes[strokes.length - 1];
     if (!active) return;
     extendLaserStrokePure(active, world, nowMs());
+    // Fresh array reference (same reasoning as `beginLaserStroke`) so the
+    // overlay memo rebuilds and repaints the growing trail on THIS move,
+    // instead of waiting for the animation loop to happen to reallocate it.
+    this.interaction.laserStrokes = strokes.slice();
     this.maybeAnimate();
     this.notify();
   }
