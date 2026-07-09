@@ -6,7 +6,6 @@ import { parseScene, parseFiles, stringifyScene } from "@oh-just-another/seriali
 import { loadAllFiles, saveFiles, pruneFilesExcept } from "./idb-files";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "@oh-just-another/editor";
-import { Minimap } from "@oh-just-another/react-ui";
 import { setupTemplates } from "./templates";
 import { installConfettiRenderer } from "./confetti";
 import { useHotkeys } from "./hotkeys";
@@ -305,27 +304,11 @@ export const App = () => {
         renderTopBarLeft={renderHeaderLeft}
         renderTopBarRight={renderHeaderRight}
         persistTheme
+        minimap
         {...(initialScene ? { initialScene } : {})}
         {...(capabilityOverrides ? { capabilities: capabilityOverrides } : {})}
       />
       <DebugPanel editor={editor} />
-      {editor ? (
-        <div
-          style={{
-            position: "fixed",
-            right: 12,
-            bottom: 12,
-            border: "1px solid var(--du-border, #d0d0d0)",
-            borderRadius: 6,
-            background: "var(--du-surface, #fff)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-            overflow: "hidden",
-            zIndex: 5,
-          }}
-        >
-          <Minimap editor={editor} />
-        </div>
-      ) : null}
     </>
   );
 };

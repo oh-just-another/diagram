@@ -52,6 +52,7 @@ import {
   IconButton,
   LibraryPanel,
   MainMenu,
+  Minimap,
   ResetToContentButton,
   LinkHoverPopup,
   LinkDropShapeMenu,
@@ -227,6 +228,12 @@ export interface DiagramProps {
   readonly hideHelpButton?: boolean;
   readonly hideContextMenu?: boolean;
   readonly hideSelectionPanel?: boolean;
+  /**
+   * Show the built-in minimap: a scene overview + viewport rect, docked
+   * bottom-right above the zoom controls. Click / drag it to pan. Hidden in
+   * zen mode along with the rest of the chrome. Off by default.
+   */
+  readonly minimap?: boolean;
 
   // --- Slots ---
   readonly renderTopBarLeft?: () => ReactNode;
@@ -322,6 +329,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     hideHelpButton,
     hideContextMenu,
     hideSelectionPanel,
+    minimap,
     renderTopBarLeft,
     renderTopBarCenter,
     renderTopBarRight,
@@ -650,6 +658,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
                   hideHelpButton={hideHelpButton}
                   hideContextMenu={hideContextMenu}
                   hideSelectionPanel={hideSelectionPanel}
+                  minimap={minimap}
                   renderTopBarLeft={renderTopBarLeft}
                   renderTopBarCenter={renderTopBarCenter}
                   renderTopBarRight={renderTopBarRight}
@@ -694,6 +703,7 @@ const EditorShell = ({
   hideHelpButton,
   hideContextMenu,
   hideSelectionPanel,
+  minimap,
   renderTopBarLeft,
   renderTopBarCenter,
   renderTopBarRight,
@@ -718,6 +728,7 @@ const EditorShell = ({
   readonly hideHelpButton: boolean | undefined;
   readonly hideContextMenu: boolean | undefined;
   readonly hideSelectionPanel: boolean | undefined;
+  readonly minimap: boolean | undefined;
   readonly renderTopBarLeft: (() => ReactNode) | undefined;
   readonly renderTopBarCenter: (() => ReactNode) | undefined;
   readonly renderTopBarRight: (() => ReactNode) | undefined;
@@ -1180,6 +1191,27 @@ const EditorShell = ({
           />
         )}
       </UILayer>
+
+      {/* Minimap — docked bottom-right ABOVE the zoom controls, hidden in
+          zen mode with the rest of the chrome. Reads the editor from context.
+          The bottom offset clears the bottom bar (inset + bar height + gap). */}
+      {minimap && !zen && (
+        <div
+          style={{
+            position: "absolute",
+            right: "var(--du-bar-inset, 12px)",
+            bottom: "calc(var(--du-bar-inset, 12px) + 52px)",
+            border: "1px solid var(--du-border, #d0d0d0)",
+            borderRadius: 6,
+            background: "var(--du-surface, #fff)",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+            overflow: "hidden",
+            zIndex: 40,
+          }}
+        >
+          <Minimap />
+        </div>
+      )}
 
       {/* Floating selection panel — portal to body, positions itself
           above the selection bbox via @floating-ui. Rendered OUTSIDE
