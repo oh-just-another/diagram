@@ -6,6 +6,7 @@ import {
   autoStopHeavyGifs,
   hasVisibleAnimatedElement,
   rehydrateAnimatedImages,
+  rehydrateStaticImages,
 } from "../src/editor/animation-scene.js";
 import { HEAVY_GIF_BYTES } from "../src/constants.js";
 
@@ -243,6 +244,102 @@ describe("rehydrateAnimatedImages", () => {
     const after = getElement(editor.scene, id) as { animationData?: unknown };
     expect(after.animationData).toBeUndefined();
     expect(elementId(String(id))).toBe(id);
+    editor.dispose();
+  });
+});
+
+describe("rehydrateStaticImages", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("rebuilds metadata.image from Scene.files for a static image restored without a live handle", async () => {
+    // A restored static image after reload: `src` is a dead blob: URL,
+    // `metadata.image` was stripped by the serializer, but the bytes survive
+    // in Scene.files under `fileId`. Decoding runs through `createImageBitmap`,
+    // stubbed here (node test env has none) to return a sentinel handle.
+    const fakeBitmap = { width: 2, height: 2 };
+    const decode = vi.fn(() => Promise.resolve(fakeBitmap));
+    vi.stubGlobal("createImageBitmap", decode);
+    const editor = makeEditor();
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    const fileId = await editor.addBinaryFile(new Blob([bytes], { type: "image/png" }), "a.png");
+    const id = editor.insertImage({
+      src: "blob:dead",
+      width: 20,
+      height: 20,
+      position: { x: 0, y: 0 },
+      fileId,
+    });
+    const before = getElement(editor.scene, id) as { metadata?: { image?: unknown } };
+    expect(before.metadata?.image).toBeUndefined();
+
+    await rehydrateStaticImages(editor);
+
+    const after = getElement(editor.scene, id) as { metadata?: { image?: unknown } };
+    expect(after.metadata?.image).toBe(fakeBitmap);
+    expect(decode).toHaveBeenCalledTimes(1);
+    editor.dispose();
+  });
+
+  it("leaves an already-live handle untouched (freshly inserted, not reloaded)", async () => {
+    const FakeBitmap = class {
+      readonly width = 1;
+    };
+    vi.stubGlobal("ImageBitmap", FakeBitmap);
+    const decode = vi.fn(() => Promise.resolve({}));
+    vi.stubGlobal("createImageBitmap", decode);
+    const editor = makeEditor();
+    const live = new FakeBitmap() as unknown as ImageBitmap;
+    const fileId = await editor.addBinaryFile(
+      new Blob([new Uint8Array([9])], { type: "image/png" }),
+      "b.png",
+    );
+    const id = editor.insertImage({
+      src: "blob:x",
+      width: 20,
+      height: 20,
+      position: { x: 0, y: 0 },
+      fileId,
+      image: live,
+    });
+    await rehydrateStaticImages(editor);
+    const after = getElement(editor.scene, id) as { metadata?: { image?: unknown } };
+    expect(after.metadata?.image).toBe(live);
+    expect(decode).not.toHaveBeenCalled();
+    editor.dispose();
+  });
+
+  it("ignores a static image with no fileId (nothing to restore from)", async () => {
+    const decode = vi.fn(() => Promise.resolve({}));
+    vi.stubGlobal("createImageBitmap", decode);
+    const editor = makeEditor();
+    editor.insertImage({ src: "blob:x", width: 20, height: 20, position: { x: 0, y: 0 } });
+    await rehydrateStaticImages(editor);
+    expect(decode).not.toHaveBeenCalled();
+    editor.dispose();
+  });
+
+  it("skips animated images (those rehydrate via animationData)", async () => {
+    const decode = vi.fn(() => Promise.resolve({}));
+    vi.stubGlobal("createImageBitmap", decode);
+    const editor = makeEditor();
+    const fileId = await editor.addBinaryFile(
+      new Blob([new Uint8Array([1])], { type: "image/gif" }),
+      "c.gif",
+    );
+    editor.insertImage({
+      src: "blob:x",
+      width: 20,
+      height: 20,
+      position: { x: 0, y: 0 },
+      fileId,
+      animated: true,
+      animationKind: "gif",
+    });
+    await rehydrateStaticImages(editor);
+    expect(decode).not.toHaveBeenCalled();
     editor.dispose();
   });
 });
