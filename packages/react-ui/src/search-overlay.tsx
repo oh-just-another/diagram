@@ -71,7 +71,9 @@ export const SearchOverlay = (): ReactElement | null => {
     } else {
       editor.selectLink(match.id as LinkId);
     }
-    editor.zoomToSelection(SEARCH_ZOOM_PADDING_PX);
+    // Reveal (center) the match without filling the screen — a small hit stays
+    // small and just gets centered; zoom only drops to fit an oversized match.
+    editor.revealSelection(SEARCH_ZOOM_PADDING_PX);
   }, [open, active, query, editor]);
 
   // Reset transient state and focus the field whenever the bar opens.
@@ -88,6 +90,11 @@ export const SearchOverlay = (): ReactElement | null => {
   if (!open) return null;
 
   const close = (): void => {
+    // Reset the query/active index on close so reopening starts empty. Without
+    // this the retained non-empty query makes the reveal effect jump straight
+    // to the previous match on open — before the user types anything.
+    setQuery("");
+    setActive(0);
     setOpen(false);
   };
 

@@ -197,6 +197,7 @@ import {
   computeZoomAt,
   computeZoomToFit,
   computeZoomToBounds,
+  computeRevealBounds,
 } from "./editor/public/zoom-pan.js";
 import {
   computeAddAnnotation,
@@ -3329,6 +3330,21 @@ export class Editor {
     const bounds = this.combinedSelectionBounds();
     if (!bounds) return;
     const next = computeZoomToBounds(this._scene, bounds, padding);
+    if (!next) return;
+    this._scene = next;
+    this.notify();
+  }
+
+  /**
+   * Center the camera on the current selection for a reveal / jump-to (search
+   * navigation). Unlike {@link zoomToSelection}, it does NOT fill the screen —
+   * a small match keeps its size and is merely centered; the zoom only drops to
+   * fit an oversized match. No-op when the selection is empty.
+   */
+  revealSelection(padding = 80): void {
+    const bounds = this.combinedSelectionBounds();
+    if (!bounds) return;
+    const next = computeRevealBounds(this._scene, bounds, padding);
     if (!next) return;
     this._scene = next;
     this.notify();

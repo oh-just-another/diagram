@@ -123,6 +123,31 @@ describe("SearchOverlay", () => {
     ctx.cleanup();
   });
 
+  it("does not navigate on reopen before the user types (query reset on close)", () => {
+    const ctx = mountEditor();
+    const { getByLabelText } = render(<SearchOverlay />, { wrapper: wrap(ctx.editor) });
+    // First search jumps to a match, then close.
+    openSearch(ctx.editor);
+    act(() => {
+      fireEvent.change(getByLabelText("Find text in diagram"), { target: { value: "goodbye" } });
+    });
+    expect([...ctx.editor.selection]).toEqual([elementId("t2")]);
+    act(() => {
+      fireEvent.keyDown(getByLabelText("Find text in diagram"), { key: "Escape" });
+    });
+    // Clear the selection so a stray reopen-navigation would be observable.
+    act(() => {
+      ctx.editor.setSelection([]);
+    });
+    // Reopen — the input must be empty and NOTHING should be selected/framed
+    // until the user types.
+    openSearch(ctx.editor);
+    const input = getByLabelText("Find text in diagram") as HTMLInputElement;
+    expect(input.value).toBe("");
+    expect([...ctx.editor.selection]).toEqual([]);
+    ctx.cleanup();
+  });
+
   it("shows a no-results state and closes on Escape", () => {
     const ctx = mountEditor();
     const { getByLabelText, getByText, queryByLabelText } = render(<SearchOverlay />, {
