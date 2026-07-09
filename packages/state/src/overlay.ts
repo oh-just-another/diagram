@@ -6,11 +6,13 @@ import {
   isGroup,
   type Annotation,
   type Element,
+  type ImageElement,
   type Scene,
 } from "@oh-just-another/scene";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import {
   getElementRenderer,
+  resolveImageSource,
   strokeRoundedPolyline,
   LINK_CORNER_RADIUS,
   type RenderTarget,
@@ -29,6 +31,9 @@ import {
   CURSOR_NAME_CHIP_PADDING_X,
   CURSOR_NAME_CHIP_PADDING_Y,
   CURSOR_NAME_FONT_SIZE,
+  CROP_BRACKET_LEN,
+  CROP_BRACKET_WIDTH,
+  CROP_GHOST_OPACITY,
   DRAW_PREVIEW_OPACITY,
   GHOST_PREVIEW_OPACITY,
   LINK_ATTACH_ANCHOR_FILL,
@@ -267,9 +272,19 @@ export interface OverlayOptions {
   /**
    * Image-crop frame: the world-space corners (clockwise, 4 points) of the
    * pending crop region while in crop mode. Painted as a dashed accent quad
-   * with corner ticks so the user sees what will be kept. Honours rotation.
+   * with L-shaped corner brackets so the user sees what will be kept and can
+   * grab the corners. Honours rotation. Its presence also suppresses the
+   * normal per-shape and group-bounds resize/rotate handles.
    */
   cropFrame?: readonly Vec2[];
+  /**
+   * Crop-mode ghost: the original image element (transform + live bitmap) and
+   * the virtual full-image LOCAL rect the whole bitmap occupies. Painted first
+   * (behind the crop chrome) at {@link CROP_GHOST_OPACITY} so the parts hidden
+   * by the crop window stay faintly visible. Skipped gracefully when no live
+   * bitmap handle is available.
+   */
+  cropGhost?: { readonly element: Element; readonly fullRect: Bounds };
   drawingPreview?: Bounds;
   /**
    * WYSIWYG preview of the shape being drawn by drag (rect / ellipse):
@@ -516,6 +531,9 @@ const renderDebugHitZones = (ctx: OverlayCtx): void => {
  */
 const renderSelectionHandles = (ctx: OverlayCtx): void => {
   const { scene, selection, target, options, style, w2s, zoom } = ctx;
+  // Crop mode owns the chrome: the crop frame + handles replace the normal
+  // per-shape resize/rotate affordances (drawn by renderPreviews).
+  if (options.cropFrame) return;
   const multiSelect = selection.size > 1;
   for (const id of selection) {
     const shape = scene.elements.get(id);
@@ -582,13 +600,18 @@ const renderSelectionHandles = (ctx: OverlayCtx): void => {
 const renderPreviews = (ctx: OverlayCtx): void => {
   const { target, options, style, w2s } = ctx;
 
-  // 1. Image-crop frame (dashed accent quad over the pending crop region).
-  if (options.cropFrame && options.cropFrame.length >= 3) {
-    drawCropFrame(
-      target,
-      options.cropFrame.map((p) => matrix.applyToPoint(w2s, p)),
-      style,
-    );
+  // 0. Crop-mode ghost — the faint full bitmap behind the crop chrome, so the
+  //    pixels hidden by the window stay visible. Drawn first (under the frame).
+  if (options.cropGhost) {
+    drawCropGhost(target, options.cropGhost, w2s);
+  }
+
+  // 1. Image-crop frame: dashed accent quad + L-shaped corner brackets (the
+  //    edge midpoints stay grabbable but aren't drawn, Excalidraw-style).
+  if (options.cropFrame && options.cropFrame.length >= 4) {
+    const cornersScreen = options.cropFrame.map((p) => matrix.applyToPoint(w2s, p));
+    drawCropFrame(target, cornersScreen, style);
+    drawCropCornerBrackets(target, cornersScreen, style);
   }
 
   // 2. Rubber-band drawing preview (already in world coords if drawn before transform reset)
@@ -909,6 +932,10 @@ const renderContainerDropZone = (ctx: OverlayCtx): void => {
  */
 const renderGroupBounds = (ctx: OverlayCtx): void => {
   const { target, options, style, w2s, zoom } = ctx;
+  // Crop mode owns the chrome: an image is aspect-locked, so its selection
+  // reports `groupBounds` — but its resize/rotate handles must not show on top
+  // of the crop brackets. Suppress them exactly like the per-shape handles.
+  if (options.cropFrame) return;
   if (options.groupBounds) {
     const groupScreen = projectBounds(options.groupBounds, w2s);
     drawOutline(target, groupScreen, style);
@@ -1232,8 +1259,9 @@ const drawLinkPreview = (target: RenderTarget, from: Vec2, to: Vec2, style: Over
 
 /** Dashed polyline preview (elbow) in screen space. */
 /**
- * Dashed accent quad + solid corner ticks for the image-crop preview. `pts`
- * are already in screen space (4 corners, clockwise).
+ * Dashed accent quad for the image-crop window. `pts` are already in screen
+ * space (4 corners, clockwise). The grab handles are drawn separately (all 8
+ * corner + edge nubs) by the caller.
  */
 const drawCropFrame = (target: RenderTarget, pts: readonly Vec2[], style: OverlayStyle): void => {
   target.setStroke(style.selectionStroke);
@@ -1248,9 +1276,81 @@ const drawCropFrame = (target: RenderTarget, pts: readonly Vec2[], style: Overla
   }
   target.lineTo(first.x, first.y);
   target.stroke();
-  // Solid corner dots so the frame reads as grabbable.
   target.setDashArray(null);
-  for (const p of pts) drawHandle(target, p, style);
+};
+
+/**
+ * L-shaped corner brackets on the crop frame (Excalidraw-style), replacing the
+ * round resize-nubs. `corners` are the 4 window corners in SCREEN space,
+ * clockwise (nw, ne, se, sw); each bracket's two arms run along the adjacent
+ * edges, so the marks stay aligned when the image is rotated. Only the corners
+ * are drawn — the edge midpoints remain grabbable via hit-testing.
+ */
+const drawCropCornerBrackets = (
+  target: RenderTarget,
+  corners: readonly Vec2[],
+  style: OverlayStyle,
+): void => {
+  if (corners.length < 4) return;
+  target.setStroke(style.selectionStroke);
+  target.setStrokeWidth(CROP_BRACKET_WIDTH);
+  target.setDashArray(null);
+  target.setLineCap("round");
+  target.setLineJoin("round");
+  const armTo = (from: Vec2, to: Vec2): Vec2 => {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const t = Math.min(CROP_BRACKET_LEN, len) / len;
+    return { x: from.x + dx * t, y: from.y + dy * t };
+  };
+  for (let i = 0; i < 4; i++) {
+    const c = req(corners[i]);
+    const prev = req(corners[(i + 3) % 4]);
+    const next = req(corners[(i + 1) % 4]);
+    const a = armTo(c, prev);
+    const b = armTo(c, next);
+    target.beginPath();
+    target.moveTo(a.x, a.y);
+    target.lineTo(c.x, c.y);
+    target.lineTo(b.x, b.y);
+    target.stroke();
+  }
+  target.setLineCap("butt");
+  target.setLineJoin("miter");
+};
+
+/**
+ * Paint the faint full-image ghost behind the crop chrome. Replicates the main
+ * image renderer's transform path: apply the element's local→world transform,
+ * then draw the whole bitmap over the virtual full-image LOCAL rect at
+ * {@link CROP_GHOST_OPACITY}. Resolves the live handle exactly as the built-in
+ * image renderer (`metadata.image`, else `resolveImageSource`); skips silently
+ * when no handle is available (async decode in flight / headless).
+ */
+const drawCropGhost = (
+  target: RenderTarget,
+  ghost: { readonly element: Element; readonly fullRect: Bounds },
+  w2s: Transform,
+): void => {
+  const el = ghost.element as ImageElement;
+  const handle =
+    el.animationKind !== undefined
+      ? resolveImageSource(el, undefined)
+      : (el.metadata?.image ?? resolveImageSource(el, undefined));
+  if (handle === null || handle === undefined) return;
+  const dynamic = el.metadata?.animated === true || el.animationKind !== undefined;
+  const { fullRect } = ghost;
+  target.save();
+  target.setTransform(w2s);
+  target.setDashArray(null);
+  target.translate(el.position.x, el.position.y);
+  if (el.rotation !== 0) target.rotate(el.rotation);
+  if (el.scale.x !== 1 || el.scale.y !== 1) target.scale(el.scale.x, el.scale.y);
+  target.setOpacity(CROP_GHOST_OPACITY);
+  target.drawImage(handle, fullRect.x, fullRect.y, fullRect.width, fullRect.height, dynamic);
+  target.setOpacity(1);
+  target.restore();
 };
 
 const drawLinkPreviewPath = (

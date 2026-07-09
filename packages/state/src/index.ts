@@ -69,12 +69,22 @@ export {
   clampCrop,
   computeConvertType,
   computeSetImageCrop,
+  computeCommitImageCrop,
   computeSpawnConnectedNode,
-  cropRectFromWorldDrag,
+  cropFullImageLocalRect,
+  cropHandleWorldPoints,
+  computeCropHandleDrag,
+  computeCropBodyPan,
+  CROP_HANDLES,
   FULL_CROP,
   pickColorAt,
 } from "./editor/public/tool-ops.js";
-export type { ConvertTarget, SpawnDirection } from "./editor/public/tool-ops.js";
+export type {
+  ConvertTarget,
+  CropDragResult,
+  CropHandle,
+  SpawnDirection,
+} from "./editor/public/tool-ops.js";
 
 // File-drop registry (host-extensible image / scene / custom).
 export type { FileDropHandler, FileDropContext, WalkOptions } from "./file-drop.js";

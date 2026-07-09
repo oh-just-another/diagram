@@ -109,35 +109,108 @@ describe("Editor.convertSelection (F9)", () => {
   });
 });
 
-describe("Editor image-crop session (F10)", () => {
-  it("begin → drag → commit writes the crop", () => {
+describe("Editor image-crop session (F10, Excalidraw-style)", () => {
+  // Image is 100 × 80 at the origin (see `image` helper), scale 1.
+  const croppedImage = (id: string): Element =>
+    ({
+      ...image(id),
+      crop: { x: 0.25, y: 0.25, width: 0.5, height: 0.5 },
+    }) as Element;
+
+  it("entering crop mode selects the image and seeds the pending box", () => {
     const e = editorWith(sceneWith(image("i")));
     e.beginImageCrop(elementId("i"));
     expect(e.mode).toBe("crop");
     expect(e.imageCropSession?.id).toBe(elementId("i"));
-    e.beginImageCropDrag({ x: 25, y: 20 });
-    e.updateImageCropDrag({ x: 75, y: 60 });
+    expect(e.imageCropSession?.width).toBe(100);
+    expect(e.imageCropSession?.height).toBe(80);
+  });
+
+  it("cropHandleAtWorld hit-tests handles, body and empty space", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.beginImageCrop(elementId("i"));
+    expect(e.cropHandleAtWorld({ x: 0, y: 0 })).toBe("nw");
+    expect(e.cropHandleAtWorld({ x: 100, y: 40 })).toBe("e");
+    expect(e.cropHandleAtWorld({ x: 50, y: 40 })).toBe("body");
+    expect(e.cropHandleAtWorld({ x: 500, y: 500 })).toBeNull();
+  });
+
+  it("handle drag updates the pending crop AND the element box", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.beginImageCrop(elementId("i"));
+    e.beginImageCropHandle("w", { x: 0, y: 40 });
+    e.updateImageCropDrag({ x: 20, y: 40 });
+    expect(e.imageCropSession?.width).toBeCloseTo(80);
+    expect(e.imageCropSession?.position.x).toBeCloseTo(20);
+    expect(e.imageCropSession?.crop.x).toBeCloseTo(0.2);
     e.endImageCropDrag();
     e.commitImageCrop();
     expect(e.mode).toBe("select");
-    const crop = (getElement(e.scene, elementId("i"))! as { crop?: { width: number } }).crop;
-    expect(crop?.width).toBeCloseTo(0.5);
+    const el = getElement(e.scene, elementId("i"))! as {
+      crop?: { x: number };
+      position: { x: number };
+      width: number;
+    };
+    expect(el.width).toBeCloseTo(80);
+    expect(el.position.x).toBeCloseTo(20);
+    expect(el.crop?.x).toBeCloseTo(0.2);
   });
 
-  it("cancel leaves the image uncropped and exits crop mode", () => {
+  it("body pan shifts the crop but leaves the element box unchanged", () => {
+    const e = editorWith(sceneWith(croppedImage("i")));
+    e.beginImageCrop(elementId("i"));
+    e.beginImageCropBody({ x: 50, y: 40 });
+    e.updateImageCropDrag({ x: 70, y: 40 }); // drag body right by 20 world units
+    e.endImageCropDrag();
+    e.commitImageCrop();
+    const el = getElement(e.scene, elementId("i"))! as {
+      crop?: { x: number };
+      position: { x: number };
+      width: number;
+    };
+    expect(el.position.x).toBe(0); // box unchanged
+    expect(el.width).toBe(100);
+    expect(el.crop?.x).toBeCloseTo(0.15); // 0.25 - 20/200
+  });
+
+  it("commit is one undo step; undo restores the original geometry", () => {
     const e = editorWith(sceneWith(image("i")));
     e.beginImageCrop(elementId("i"));
-    e.beginImageCropDrag({ x: 25, y: 20 });
-    e.updateImageCropDrag({ x: 75, y: 60 });
+    e.beginImageCropHandle("w", { x: 0, y: 40 });
+    e.updateImageCropDrag({ x: 20, y: 40 });
+    e.endImageCropDrag();
+    e.commitImageCrop();
+    expect((getElement(e.scene, elementId("i"))! as { width: number }).width).toBeCloseTo(80);
+    e.undo();
+    const restored = getElement(e.scene, elementId("i"))! as { crop?: unknown; width: number };
+    expect(restored.width).toBe(100);
+    expect(restored.crop).toBeUndefined();
+  });
+
+  it("cancel leaves the image unchanged and exits crop mode", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.beginImageCrop(elementId("i"));
+    e.beginImageCropHandle("w", { x: 0, y: 40 });
+    e.updateImageCropDrag({ x: 20, y: 40 });
     e.cancelImageCrop();
     expect(e.mode).toBe("select");
     expect(e.imageCropSession).toBeNull();
-    expect((getElement(e.scene, elementId("i"))! as { crop?: unknown }).crop).toBeUndefined();
+    const el = getElement(e.scene, elementId("i"))! as { crop?: unknown; width: number };
+    expect(el.crop).toBeUndefined();
+    expect(el.width).toBe(100);
   });
 
   it("ignores beginImageCrop on a non-image", () => {
     const e = editorWith(sceneWith(rect("r")));
     e.beginImageCrop(elementId("r"));
+    expect(e.mode).not.toBe("crop");
+    expect(e.imageCropSession).toBeNull();
+  });
+
+  it("read-only never enters crop mode", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.setReadOnly(true);
+    e.beginImageCrop(elementId("i"));
     expect(e.mode).not.toBe("crop");
     expect(e.imageCropSession).toBeNull();
   });

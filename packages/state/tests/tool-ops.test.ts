@@ -18,9 +18,14 @@ import {
   clampCrop,
   computeConvertType,
   computeSetImageCrop,
+  computeCommitImageCrop,
+  computeCropBodyPan,
+  computeCropHandleDrag,
   computeSpawnConnectedNode,
-  cropRectFromWorldDrag,
+  cropFullImageLocalRect,
+  cropHandleWorldPoints,
   pickColorAt,
+  type CropHandle,
 } from "../src/editor/public/tool-ops.js";
 
 // Pure-operation coverage for the F8–F11 tool operations. Each function is a
@@ -161,15 +166,138 @@ describe("clampCrop + computeSetImageCrop (F10 crop)", () => {
     expect(computeSetImageCrop(s, elementId("r"), FULL_CROP)).toBeNull();
     expect(computeSetImageCrop(s, elementId("i"), null)).toBeNull();
   });
+});
 
-  it("maps a world drag into a normalised crop rect", () => {
-    const img = image("i", 0, 0); // 100 × 80 at origin, scale 1
-    // Drag from (25,20) to (75,60) → normalised (0.25,0.25)-(0.75,0.75).
-    const crop = cropRectFromWorldDrag(img, { x: 25, y: 20 }, { x: 75, y: 60 });
-    expect(crop.x).toBeCloseTo(0.25);
-    expect(crop.y).toBeCloseTo(0.25);
-    expect(crop.width).toBeCloseTo(0.5);
-    expect(crop.height).toBeCloseTo(0.5);
+describe("Excalidraw-style crop geometry (F10)", () => {
+  // 100 × 80 image at the origin, scale 1, no rotation.
+  const uncropped = () => image("i", 0, 0);
+  // Same image already cropped to its centre half.
+  const cropped = () => ({ ...uncropped(), crop: { x: 0.25, y: 0.25, width: 0.5, height: 0.5 } });
+
+  it("cropFullImageLocalRect: uncropped image spans exactly the box", () => {
+    const full = cropFullImageLocalRect(uncropped(), FULL_CROP);
+    expect(full).toEqual({ x: 0, y: 0, width: 100, height: 80 });
+  });
+
+  it("cropFullImageLocalRect: cropped image extends beyond the window", () => {
+    // crop covers the middle 50%, so the full bitmap is 2× the window and the
+    // window sits 25% in from the top-left of the virtual full image.
+    const full = cropFullImageLocalRect(cropped(), cropped().crop);
+    expect(full.width).toBeCloseTo(200);
+    expect(full.height).toBeCloseTo(160);
+    expect(full.x).toBeCloseTo(-50); // -0.25 * 200
+    expect(full.y).toBeCloseTo(-40); // -0.25 * 160
+  });
+
+  it("cropHandleWorldPoints: 8 handles around the box", () => {
+    const pts = cropHandleWorldPoints(uncropped());
+    expect(pts.nw).toEqual({ x: 0, y: 0 });
+    expect(pts.ne).toEqual({ x: 100, y: 0 });
+    expect(pts.se).toEqual({ x: 100, y: 80 });
+    expect(pts.sw).toEqual({ x: 0, y: 80 });
+    expect(pts.n).toEqual({ x: 50, y: 0 });
+    expect(pts.e).toEqual({ x: 100, y: 40 });
+  });
+
+  it("handle drag: dragging the W edge shrinks the window, opposite edge fixed", () => {
+    // Drag the west (left) edge inward to x = 20.
+    const r = computeCropHandleDrag(uncropped(), FULL_CROP, "w", { x: 20, y: 40 });
+    // Right edge stays at 100 → width 80, position moves to x = 20.
+    expect(r.width).toBeCloseTo(80);
+    expect(r.height).toBeCloseTo(80);
+    expect(r.position).toEqual({ x: 20, y: 0 });
+    // crop.x = 0.2 (20/100), width 0.8.
+    expect(r.crop.x).toBeCloseTo(0.2);
+    expect(r.crop.width).toBeCloseTo(0.8);
+    expect(r.crop.y).toBeCloseTo(0);
+    expect(r.crop.height).toBeCloseTo(1);
+  });
+
+  it("handle drag: source is not stretched (source-px per local unit constant)", () => {
+    const img = uncropped(); // natural 100 wide maps across full 100 local units
+    const r = computeCropHandleDrag(img, FULL_CROP, "e", { x: 60, y: 40 });
+    // Window now 60 wide showing crop.width 0.6 → 60 source px across 60 local
+    // units = 1 src-px/unit, same as before the drag (100 px / 100 units).
+    const srcPxPerUnit = (r.crop.width * 100) / r.width;
+    expect(srcPxPerUnit).toBeCloseTo(1);
+  });
+
+  it("handle drag: min-size clamp stops the window collapsing", () => {
+    // Drag the east edge past the west edge — clamps to CROP_MIN_SIZE (10).
+    const r = computeCropHandleDrag(uncropped(), FULL_CROP, "e", { x: -50, y: 40 });
+    expect(r.width).toBeCloseTo(10);
+    expect(r.position.x).toBeCloseTo(0);
+  });
+
+  it("handle drag: dragging back out to the full extent restores a full crop", () => {
+    // Start cropped, drag the west handle back out past the virtual full edge.
+    const img = cropped();
+    const r = computeCropHandleDrag(img, img.crop, "w", { x: -999, y: 40 });
+    // Clamped to the full-image left edge (x = -50) → crop.x → 0.
+    expect(r.crop.x).toBeCloseTo(0);
+    expect(r.position.x).toBeCloseTo(-50);
+  });
+
+  it("handle drag: corner moves both edges", () => {
+    const r = computeCropHandleDrag(uncropped(), FULL_CROP, "se", { x: 70, y: 50 });
+    expect(r.width).toBeCloseTo(70);
+    expect(r.height).toBeCloseTo(50);
+    expect(r.position).toEqual({ x: 0, y: 0 });
+    expect(r.crop.width).toBeCloseTo(0.7);
+    expect(r.crop.height).toBeCloseTo(0.625);
+  });
+
+  it("body pan: shifts crop.x/y only, bounds unchanged, clamped", () => {
+    const img = cropped(); // full 200×160, window at crop (0.25,0.25,0.5,0.5)
+    // Drag body right by 20 world units → source moves left → crop.x decreases.
+    const r = computeCropBodyPan(img, img.crop, { x: 50, y: 40 }, { x: 70, y: 40 });
+    expect(r.crop.x).toBeCloseTo(0.25 - 20 / 200); // 0.15
+    expect(r.crop.y).toBeCloseTo(0.25);
+    expect(r.crop.width).toBeCloseTo(0.5);
+    expect(r.crop.height).toBeCloseTo(0.5);
+  });
+
+  it("body pan: clamps at the image edge", () => {
+    const img = cropped();
+    // Huge leftward-content drag → crop.x cannot exceed 1 - width = 0.5.
+    const r = computeCropBodyPan(img, img.crop, { x: 0, y: 40 }, { x: -9999, y: 40 });
+    expect(r.crop.x).toBeCloseTo(0.5);
+  });
+
+  it("computeCommitImageCrop: writes crop + box atomically, clears when full", () => {
+    const s = sceneWith(uncropped());
+    const committed = computeCommitImageCrop(s, elementId("i"), {
+      crop: { x: 0.2, y: 0, width: 0.8, height: 1 },
+      position: { x: 20, y: 0 },
+      width: 80,
+      height: 80,
+    });
+    const el = getElement(committed!.scene, elementId("i"))! as {
+      crop?: unknown;
+      position: { x: number };
+      width: number;
+    };
+    expect((el.crop as { x: number }).x).toBeCloseTo(0.2);
+    expect(el.position.x).toBe(20);
+    expect(el.width).toBe(80);
+    // A full crop clears the field but still writes the box.
+    const full = computeCommitImageCrop(committed!.scene, elementId("i"), {
+      crop: FULL_CROP,
+      position: { x: 0, y: 0 },
+      width: 100,
+      height: 80,
+    });
+    expect((getElement(full!.scene, elementId("i"))! as { crop?: unknown }).crop).toBeUndefined();
+  });
+
+  it("handle drag honours rotation via worldToLocal", () => {
+    const img = { ...uncropped(), rotation: Math.PI / 2 };
+    // With a 90° rotation, world (-60, 0) maps to local (0, 60). Dragging the
+    // south (bottom) handle there shrinks the LOCAL height to 60.
+    const handle: CropHandle = "s";
+    const r = computeCropHandleDrag(img, FULL_CROP, handle, { x: -60, y: 0 });
+    expect(r.width).toBeCloseTo(100);
+    expect(r.height).toBeCloseTo(60);
   });
 });
 

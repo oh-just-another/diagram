@@ -669,3 +669,28 @@ export const GIF_BADGE_BG_COLOR = "rgba(0,0,0,0.65)";
 export const LOCK_BADGE_SIZE = 16;
 export const LOCK_BADGE_COLOR = "#1a73e8";
 export const LOCK_BADGE_KEYHOLE_COLOR = "#fff";
+
+/**
+ * Image-crop UX (Excalidraw-style handle cropping).
+ *
+ * - `CROP_MIN_SIZE` — smallest allowed crop window edge, in element-LOCAL
+ *   units (unscaled). Dragging an edge handle inward stops here so the window
+ *   can never collapse to zero. Range: 4–24.
+ * - `CROP_HANDLE_HIT_RADIUS` — screen-pixel grab radius around each of the 8
+ *   crop handles. Divided by zoom before hit-testing so the effective screen
+ *   target stays constant. Mirrors {@link HANDLE_HIT_SLOP}. Range: 8–14.
+ * - `CROP_GHOST_OPACITY` — alpha of the faint full-image "ghost" painted over
+ *   the virtual full-image rect while cropping, so the user sees the hidden
+ *   parts of the source. Low so the real (cropped) pixels stay dominant.
+ *   Range: 0.08–0.2.
+ * - `CROP_BRACKET_LEN` — arm length (screen px) of the L-shaped corner brackets
+ *   that mark the crop frame (Excalidraw-style), drawn instead of round nubs.
+ *   Range: 10–20.
+ * - `CROP_BRACKET_WIDTH` — stroke width (screen px) of those brackets. Thicker
+ *   than the frame outline so the corners read as grabbable. Range: 2–4.
+ */
+export const CROP_MIN_SIZE = 10;
+export const CROP_HANDLE_HIT_RADIUS = 11;
+export const CROP_GHOST_OPACITY = 0.12;
+export const CROP_BRACKET_LEN = 14;
+export const CROP_BRACKET_WIDTH = 3;

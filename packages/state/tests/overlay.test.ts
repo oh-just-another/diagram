@@ -118,6 +118,28 @@ describe("renderOverlay", () => {
     expect(rects.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("in crop mode draws corner brackets, not round handles, and suppresses group handles", () => {
+    const shape = rect("r1", 0, 0, 40, 40);
+    const scene = sceneWith(shape);
+    const { target, calls } = makeRecorder();
+    // An image selection reports `groupBounds` (aspect-locked). In crop mode
+    // (cropFrame present) neither the per-shape nor the group-bounds resize
+    // nubs (`ellipse`) may show; the crop corner brackets are strokes.
+    renderOverlay(scene, new Set([shape.id]), target, {
+      cropFrame: [
+        { x: 0, y: 0 },
+        { x: 40, y: 0 },
+        { x: 40, y: 40 },
+        { x: 0, y: 40 },
+      ],
+      groupBounds: { x: 0, y: 0, width: 40, height: 40 },
+    });
+    // No round handle dots anywhere in crop mode.
+    expect(calls.filter((c) => c.method === "ellipse").length).toBe(0);
+    // The brackets are drawn (stroked polylines).
+    expect(calls.filter((c) => c.method === "stroke").length).toBeGreaterThanOrEqual(4);
+  });
+
   it("draws resize handles for a single resizable selection", () => {
     const shape = rect("r1", 0, 0, 50, 50);
     const scene = sceneWith(shape);

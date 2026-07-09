@@ -116,6 +116,13 @@ export interface RenderSnapshot {
   readonly activeLayerId: LayerId;
   /** World-space corners of the pending image-crop frame, or null. */
   readonly cropFrame: readonly Vec2[] | null;
+  /**
+   * Crop-mode ghost: the original image element (transform + live bitmap
+   * handle via `metadata.image`) and the virtual full-image LOCAL rect. The
+   * overlay paints the full bitmap faintly over this rect so hidden parts stay
+   * visible while cropping. `null` when not cropping.
+   */
+  readonly cropGhost: { readonly element: Element; readonly fullRect: Bounds } | null;
   readonly lassoPreview: Bounds | null;
   readonly drawingPreview: Bounds | null;
   readonly edgePreview: EdgePreview | null;
@@ -215,6 +222,7 @@ const buildOverlaySignature = (e: RenderSnapshot): readonly unknown[] => [
   e.mode,
   e.activeLayerId,
   e.cropFrame,
+  e.cropGhost,
   e.lassoPreview,
   e.drawingPreview,
   e.edgePreview,
@@ -362,8 +370,10 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
     // Read-only: keep selection outlines but drop every interactive handle.
     if (editor.readOnly) overlayOpts.readOnly = true;
-    // Image-crop frame (crop mode) — dashed accent quad over the pending region.
+    // Image-crop chrome (crop mode) — dashed accent quad over the pending
+    // window, 8 grab handles, and the faint full-image ghost behind them.
     if (editor.cropFrame) overlayOpts.cropFrame = editor.cropFrame;
+    if (editor.cropGhost) overlayOpts.cropGhost = editor.cropGhost;
     // Throwaway scene holding the click-create ghost connector — rendered
     // through the real link renderer (faded) AFTER the overlay, so the ghost
     // connector matches the link that will be created (routing / arrowhead /

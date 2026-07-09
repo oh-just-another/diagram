@@ -76,12 +76,22 @@ export {
   clampCrop,
   computeConvertType,
   computeSetImageCrop,
+  computeCommitImageCrop,
   computeSpawnConnectedNode,
-  cropRectFromWorldDrag,
+  cropFullImageLocalRect,
+  cropHandleWorldPoints,
+  computeCropHandleDrag,
+  computeCropBodyPan,
+  CROP_HANDLES,
   FULL_CROP,
   pickColorAt,
 } from "@oh-just-another/state";
-export type { ConvertTarget, SpawnDirection } from "@oh-just-another/state";
+export type {
+  ConvertTarget,
+  CropDragResult,
+  CropHandle,
+  SpawnDirection,
+} from "@oh-just-another/state";
 export type { ImageCrop } from "@oh-just-another/scene";
 export type {
   Scene,

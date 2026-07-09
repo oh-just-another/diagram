@@ -21,6 +21,7 @@ import {
   getElementAtIndexed,
   getElementLocalBounds,
   localToWorld,
+  worldToLocal,
   isFrame,
   isGroup,
   isText,
@@ -106,6 +107,7 @@ import {
   DOUBLE_CLICK_TOLERANCE_PX,
   WHEEL_ZOOM_STEP,
   ROTATE_SNAP_RADIANS,
+  CROP_HANDLE_HIT_RADIUS,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP } from "./handle.js";
 import { req } from "./util.js";
@@ -272,12 +274,17 @@ import {
 } from "./editor/public/placement.js";
 import {
   computeConvertType,
-  computeSetImageCrop,
+  computeCommitImageCrop,
+  computeCropBodyPan,
+  computeCropHandleDrag,
   computeSpawnConnectedNode,
-  cropRectFromWorldDrag,
+  cropFullImageLocalRect,
+  cropHandleWorldPoints,
+  CROP_HANDLES,
   FULL_CROP,
   pickColorAt,
   type ConvertTarget,
+  type CropHandle,
   type SpawnDirection,
 } from "./editor/public/tool-ops.js";
 import { renderEditor, type RenderSnapshot } from "./editor/render-orchestrator.js";
@@ -2902,22 +2909,46 @@ export class Editor {
   // --- F10: Image crop --------------------------------------------------
 
   /**
-   * Live image-crop session, or `null` when not cropping. `id` is the image
-   * being cropped; `rect` is the pending normalised crop (previewed on the
-   * overlay). Committed by {@link commitImageCrop}, abandoned by
-   * {@link cancelImageCrop}. `dragOrigin` is set while the user is dragging a
-   * fresh crop rectangle.
+   * Live image-crop session, or `null` when not cropping. Excalidraw-style:
+   * the crop frame IS the element's visible box, and the user drags edge /
+   * corner handles inward (hides pixels) or the image body (pans the source).
+   *
+   * - `id` — the image being cropped.
+   * - `crop` — pending normalised source rect.
+   * - `position` / `width` / `height` — the pending element box (world position
+   *   + local size); a handle drag moves them, a body pan leaves them fixed.
+   * - `drag` — the active gesture, or `null` when only hovering.
+   * - `dragStartWorld` — pointer world position at drag start (body pan basis).
+   *
+   * Seeded on {@link beginImageCrop}; committed by {@link commitImageCrop} (one
+   * undo step), abandoned by {@link cancelImageCrop}.
    */
-  cropSession: { id: ElementId; rect: ImageCrop; dragOrigin: Vec2 | null } | null = null;
+  cropSession: {
+    id: ElementId;
+    crop: ImageCrop;
+    position: Vec2;
+    width: number;
+    height: number;
+    drag: { kind: "handle"; handle: CropHandle } | { kind: "body" } | null;
+    dragStartWorld: Vec2 | null;
+  } | null = null;
 
   /** The image-crop session (read-only accessor for UI / overlay). */
-  get imageCropSession(): { readonly id: ElementId; readonly rect: ImageCrop } | null {
-    return this.cropSession;
+  get imageCropSession(): {
+    readonly id: ElementId;
+    readonly crop: ImageCrop;
+    readonly position: Vec2;
+    readonly width: number;
+    readonly height: number;
+  } | null {
+    const s = this.cropSession;
+    if (s === null) return null;
+    return { id: s.id, crop: s.crop, position: s.position, width: s.width, height: s.height };
   }
 
   /**
-   * Enter crop mode for the image `id`, seeding the pending rect from its
-   * current crop (or the full image). No-op for non-image shapes or in
+   * Enter crop mode for the image `id`, seeding the pending crop / box from its
+   * current state (or the full image). No-op for non-image shapes or in
    * read-only. Typically triggered by a double-click on an image.
    */
   beginImageCrop(id: ElementId): void {
@@ -2926,42 +2957,105 @@ export class Editor {
     if (el === undefined || !isImage(el)) return;
     this.cancelInteraction();
     this._selection = Selection.single(id);
-    this.cropSession = { id, rect: el.crop ?? FULL_CROP, dragOrigin: null };
+    this.cropSession = {
+      id,
+      crop: el.crop ?? FULL_CROP,
+      position: el.position,
+      width: el.width,
+      height: el.height,
+      drag: null,
+      dragStartWorld: null,
+    };
     this.setMode("crop");
     this.refreshCursor();
     this.notify();
   }
 
-  /** Start a fresh crop-rectangle drag at `worldPoint` (crop mode only). */
-  beginImageCropDrag(worldPoint: Vec2): void {
-    if (this.cropSession === null) return;
-    this.cropSession = { ...this.cropSession, dragOrigin: worldPoint };
+  /**
+   * Hit-test `worldPoint` against the pending crop chrome: a crop handle when
+   * within {@link CROP_HANDLE_HIT_RADIUS} (screen px, zoom-compensated) of one,
+   * `"body"` when inside the window, else `null`. Returns `null` when not
+   * cropping.
+   */
+  cropHandleAtWorld(worldPoint: Vec2): CropHandle | "body" | null {
+    const session = this.cropSession;
+    if (session === null) return null;
+    const el = getElement(this._scene, session.id);
+    if (el === undefined) return null;
+    const pending = this.pendingCropElement(el);
+    const points = cropHandleWorldPoints(pending);
+    const zoom = this._scene.viewport.zoom || 1;
+    const radius = CROP_HANDLE_HIT_RADIUS / zoom;
+    for (const handle of CROP_HANDLES) {
+      const p = points[handle];
+      if (Math.hypot(worldPoint.x - p.x, worldPoint.y - p.y) <= radius) return handle;
+    }
+    const local = worldToLocal(pending, worldPoint);
+    if (local.x >= 0 && local.x <= session.width && local.y >= 0 && local.y <= session.height) {
+      return "body";
+    }
+    return null;
   }
 
-  /** Update the pending crop rect from the active drag to `worldPoint`. */
+  /** Begin dragging crop handle `handle` from `worldPoint`. */
+  beginImageCropHandle(handle: CropHandle, worldPoint: Vec2): void {
+    if (this.cropSession === null) return;
+    this.cropSession = {
+      ...this.cropSession,
+      drag: { kind: "handle", handle },
+      dragStartWorld: worldPoint,
+    };
+  }
+
+  /** Begin panning the image body under the fixed window from `worldPoint`. */
+  beginImageCropBody(worldPoint: Vec2): void {
+    if (this.cropSession === null) return;
+    this.cropSession = { ...this.cropSession, drag: { kind: "body" }, dragStartWorld: worldPoint };
+  }
+
+  /**
+   * Update the active crop drag to `worldPoint` — resize the window (handle) or
+   * pan the source (body). Geometry is recomputed from the ORIGINAL element so
+   * it stays stable across many moves. No-op when no drag is active.
+   */
   updateImageCropDrag(worldPoint: Vec2): void {
     const session = this.cropSession;
-    if (session?.dragOrigin == null) return;
+    if (session?.drag == null || session.dragStartWorld === null) return;
     const el = getElement(this._scene, session.id);
     if (el === undefined) return;
-    const rect = cropRectFromWorldDrag(el, session.dragOrigin, worldPoint);
-    // Ignore degenerate (near-zero) drags — keep the previous rect.
-    if (rect.width < 0.01 || rect.height < 0.01) return;
-    this.cropSession = { ...session, rect };
+    const baseCrop = (el as { readonly crop?: ImageCrop }).crop ?? FULL_CROP;
+    if (session.drag.kind === "handle") {
+      const r = computeCropHandleDrag(el, baseCrop, session.drag.handle, worldPoint);
+      this.cropSession = {
+        ...session,
+        crop: r.crop,
+        position: r.position,
+        width: r.width,
+        height: r.height,
+      };
+    } else {
+      const r = computeCropBodyPan(el, baseCrop, session.dragStartWorld, worldPoint);
+      this.cropSession = { ...session, crop: r.crop };
+    }
     this.notify();
   }
 
-  /** Finish the current crop-rectangle drag (keeps the pending rect). */
+  /** Finish the current crop drag (keeps the pending crop / box). */
   endImageCropDrag(): void {
     if (this.cropSession === null) return;
-    this.cropSession = { ...this.cropSession, dragOrigin: null };
+    this.cropSession = { ...this.cropSession, drag: null, dragStartWorld: null };
   }
 
-  /** Apply the pending crop and leave crop mode. One undo step. */
+  /** Apply the pending crop + box and leave crop mode. One undo step. */
   commitImageCrop(): void {
     const session = this.cropSession;
     if (session === null) return;
-    const result = computeSetImageCrop(this._scene, session.id, session.rect);
+    const result = computeCommitImageCrop(this._scene, session.id, {
+      crop: session.crop,
+      position: session.position,
+      width: session.width,
+      height: session.height,
+    });
     this.cropSession = null;
     if (result) {
       this._scene = result.scene;
@@ -2982,27 +3076,54 @@ export class Editor {
   }
 
   /**
+   * Synthetic element carrying the PENDING crop box (position / size) over the
+   * original element's rotation / scale — the frame the user currently sees.
+   * Used to project the crop frame and handles.
+   */
+  private pendingCropElement(el: Element): Element {
+    const session = this.cropSession;
+    if (session === null) return el;
+    return {
+      ...el,
+      position: session.position,
+      width: session.width,
+      height: session.height,
+    } as Element;
+  }
+
+  /**
    * World-space corners (clockwise) of the pending crop frame, or `null` when
-   * not cropping. Maps the normalised crop rect into the image's local box and
-   * through its local→world transform (so rotation is honoured).
+   * not cropping. The frame is the pending element box mapped through its
+   * local→world transform (so rotation / scale are honoured).
    */
   private cropFrameCorners(): readonly Vec2[] | null {
     const session = this.cropSession;
     if (session === null) return null;
     const el = getElement(this._scene, session.id);
     if (el === undefined) return null;
-    const b = getElementLocalBounds(el);
-    const r = session.rect;
-    const x0 = b.x + r.x * b.width;
-    const y0 = b.y + r.y * b.height;
-    const x1 = b.x + (r.x + r.width) * b.width;
-    const y1 = b.y + (r.y + r.height) * b.height;
+    const pending = this.pendingCropElement(el);
+    const b = getElementLocalBounds(pending);
     return [
-      { x: x0, y: y0 },
-      { x: x1, y: y0 },
-      { x: x1, y: y1 },
-      { x: x0, y: y1 },
-    ].map((p) => localToWorld(el, p));
+      { x: b.x, y: b.y },
+      { x: b.x + b.width, y: b.y },
+      { x: b.x + b.width, y: b.y + b.height },
+      { x: b.x, y: b.y + b.height },
+    ].map((p) => localToWorld(pending, p));
+  }
+
+  /**
+   * Ghost-image overlay descriptor for the crop session: the ORIGINAL element
+   * (its transform + live bitmap handle) and the virtual full-image LOCAL rect
+   * the whole bitmap occupies. `null` when not cropping. The overlay paints the
+   * full bitmap faintly over this rect so hidden parts stay visible.
+   */
+  private cropGhost(): { readonly element: Element; readonly fullRect: Bounds } | null {
+    const session = this.cropSession;
+    if (session === null) return null;
+    const el = getElement(this._scene, session.id);
+    if (el === undefined) return null;
+    const baseCrop = (el as { readonly crop?: ImageCrop }).crop ?? FULL_CROP;
+    return { element: el, fullRect: cropFullImageLocalRect(el, baseCrop) };
   }
 
   /**
@@ -5192,6 +5313,7 @@ export class Editor {
       mode: this.mode,
       activeLayerId: this._activeLayerId,
       cropFrame: this.cropFrameCorners(),
+      cropGhost: this.cropGhost(),
       lassoPreview: this.lassoPreview,
       drawingPreview: this.drawingPreview,
       edgePreview: this.edgePreview,

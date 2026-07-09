@@ -4,6 +4,7 @@ import {
   getElement,
   getElementAt,
   getElementLocalBounds,
+  localToWorld,
   orderForTop,
   updateElement,
   worldToLocal,
@@ -14,8 +15,9 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import { DEFAULT_EDGE_STYLE } from "@oh-just-another/tokens";
-import type { Color, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
+import type { Bounds, Color, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
 import {
+  CROP_MIN_SIZE,
   DEFAULT_LINK_ARROWHEAD,
   DEFAULT_LINK_ROUTING,
   SPAWN_CONNECTED_GAP_PX,
@@ -163,27 +165,194 @@ export const computeSetImageCrop = (
  */
 export const FULL_CROP: ImageCrop = { x: 0, y: 0, width: 1, height: 1 };
 
+// --- Excalidraw-style handle cropping (virtual full-image geometry) --------
+
+/** The 8 crop-frame handles: 4 corners + 4 edge midpoints. */
+export type CropHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+
+/** Ordered so corner handles win a tie against the adjacent edge midpoints. */
+export const CROP_HANDLES: readonly CropHandle[] = ["nw", "ne", "se", "sw", "n", "e", "s", "w"];
+
+const clampNum = (v: number, lo: number, hi: number): number => Math.min(Math.max(v, lo), hi);
+
 /**
- * Map a two-point world-space drag to a normalised crop rect for `image`,
- * clamped to `[0,1]`. Points are projected into the image's local frame
- * (honouring rotation / scale) and divided by the element's `width` × `height`.
+ * Local-space rect the WHOLE (uncropped) bitmap would occupy, aligned so its
+ * current crop-window equals the element's box `{0,0,width,height}`. The
+ * element currently shows the sub-rectangle `crop` of this virtual full image.
+ * Used to draw the crop ghost and to clamp handle drags to the image extent.
  */
-export const cropRectFromWorldDrag = (image: Element, a: Vec2, b: Vec2): ImageCrop => {
-  const box = getElementLocalBounds(image);
-  const la = worldToLocal(image, a);
-  const lb = worldToLocal(image, b);
-  const w = box.width || 1;
-  const h = box.height || 1;
-  const nx0 = (la.x - box.x) / w;
-  const ny0 = (la.y - box.y) / h;
-  const nx1 = (lb.x - box.x) / w;
-  const ny1 = (lb.y - box.y) / h;
-  return clampCrop({
-    x: Math.min(nx0, nx1),
-    y: Math.min(ny0, ny1),
-    width: Math.abs(nx1 - nx0),
-    height: Math.abs(ny1 - ny0),
+export const cropFullImageLocalRect = (el: Element, crop: ImageCrop): Bounds => {
+  const box = getElementLocalBounds(el);
+  const cw = crop.width || 1;
+  const ch = crop.height || 1;
+  const fullW = box.width / cw;
+  const fullH = box.height / ch;
+  return {
+    x: box.x - crop.x * fullW,
+    y: box.y - crop.y * fullH,
+    width: fullW,
+    height: fullH,
+  };
+};
+
+/**
+ * World-space positions of the 8 crop handles for the element's current box
+ * `{0,0,width,height}` (the visible crop window). Honours rotation / scale via
+ * `localToWorld`. The window always equals the element bounds, so the crop
+ * fraction is not needed here — pass the (pending) element whose `width` /
+ * `height` / `position` describe the window.
+ */
+export const cropHandleWorldPoints = (el: Element): Record<CropHandle, Vec2> => {
+  const box = getElementLocalBounds(el);
+  const { x, y, width: w, height: h } = box;
+  const L = (lx: number, ly: number): Vec2 => localToWorld(el, { x: lx, y: ly });
+  return {
+    nw: L(x, y),
+    n: L(x + w / 2, y),
+    ne: L(x + w, y),
+    e: L(x + w, y + h / 2),
+    se: L(x + w, y + h),
+    s: L(x + w / 2, y + h),
+    sw: L(x, y + h),
+    w: L(x, y + h / 2),
+  };
+};
+
+const edgesOf = (
+  handle: CropHandle,
+): { west: boolean; east: boolean; north: boolean; south: boolean } => ({
+  west: handle === "nw" || handle === "w" || handle === "sw",
+  east: handle === "ne" || handle === "e" || handle === "se",
+  north: handle === "nw" || handle === "n" || handle === "ne",
+  south: handle === "sw" || handle === "s" || handle === "se",
+});
+
+/**
+ * Result of a crop handle / body drag: the pending normalised `crop` plus the
+ * element's new world `position` and local `width` × `height`. Rotation / scale
+ * are unchanged, so the caller keeps them.
+ */
+export interface CropDragResult {
+  readonly crop: ImageCrop;
+  readonly position: Vec2;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Drag one crop handle to `worldPoint`. Moves the window edge(s) that handle
+ * controls (the opposite edge stays fixed), clamped so the window stays inside
+ * the virtual full image and never shrinks below {@link CROP_MIN_SIZE}. The
+ * source is never stretched: shrinking the window hides pixels rather than
+ * scaling them. `el` must be the ORIGINAL (unmutated) element so the reference
+ * frame stays stable across a multi-move drag.
+ */
+export const computeCropHandleDrag = (
+  el: Element,
+  crop: ImageCrop,
+  handle: CropHandle,
+  worldPoint: Vec2,
+): CropDragResult => {
+  const full = cropFullImageLocalRect(el, crop);
+  const box = getElementLocalBounds(el);
+  const p = worldToLocal(el, worldPoint);
+  // Current window edges (window == element box in the original local frame).
+  let left = box.x;
+  let top = box.y;
+  let right = box.x + box.width;
+  let bottom = box.y + box.height;
+  const { west, east, north, south } = edgesOf(handle);
+  const fullRight = full.x + full.width;
+  const fullBottom = full.y + full.height;
+  if (west) left = clampNum(p.x, full.x, right - CROP_MIN_SIZE);
+  if (east) right = clampNum(p.x, left + CROP_MIN_SIZE, fullRight);
+  if (north) top = clampNum(p.y, full.y, bottom - CROP_MIN_SIZE);
+  if (south) bottom = clampNum(p.y, top + CROP_MIN_SIZE, fullBottom);
+  const win = { x: left, y: top, width: right - left, height: bottom - top };
+  const nextCrop = clampCrop({
+    x: (win.x - full.x) / full.width,
+    y: (win.y - full.y) / full.height,
+    width: win.width / full.width,
+    height: win.height / full.height,
   });
+  return {
+    crop: nextCrop,
+    position: localToWorld(el, { x: win.x, y: win.y }),
+    width: win.width,
+    height: win.height,
+  };
+};
+
+/**
+ * Pan the source under a FIXED window: the element's box (position / size) is
+ * unchanged; only which region of the bitmap shows moves. `worldDelta` from
+ * `dragStartWorld` → `worldPoint` is projected into local space and converted
+ * to a crop shift, clamped so the window stays inside the image. `el` must be
+ * the ORIGINAL element and `crop` its ORIGINAL crop (drag-start snapshot).
+ */
+export const computeCropBodyPan = (
+  el: Element,
+  crop: ImageCrop,
+  dragStartWorld: Vec2,
+  worldPoint: Vec2,
+): { readonly crop: ImageCrop } => {
+  const full = cropFullImageLocalRect(el, crop);
+  const start = worldToLocal(el, dragStartWorld);
+  const now = worldToLocal(el, worldPoint);
+  const dx = now.x - start.x;
+  const dy = now.y - start.y;
+  return {
+    crop: {
+      x: clampNum(crop.x - dx / full.width, 0, 1 - crop.width),
+      y: clampNum(crop.y - dy / full.height, 0, 1 - crop.height),
+      width: crop.width,
+      height: crop.height,
+    },
+  };
+};
+
+/** True when a crop rect is (within `eps`) the whole image — clears the field. */
+const isFullCrop = (c: ImageCrop, eps = 1e-4): boolean =>
+  Math.abs(c.x) < eps &&
+  Math.abs(c.y) < eps &&
+  Math.abs(c.width - 1) < eps &&
+  Math.abs(c.height - 1) < eps;
+
+/**
+ * Commit a pending crop drag: write the normalised `crop` AND the new element
+ * `position` / `width` / `height` in a single patch (one undo step). A crop
+ * that covers the whole image is stored as no crop (field cleared). No-op
+ * (`null`) for a missing / non-image shape or when nothing changed.
+ */
+export const computeCommitImageCrop = (
+  scene: Scene,
+  id: ElementId,
+  next: CropDragResult,
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const el = getElement(scene, id);
+  if (el?.type !== "image") return null;
+  const c = clampCrop(next.crop);
+  const cropField = isFullCrop(c) ? undefined : c;
+  const current = (el as { readonly crop?: ImageCrop }).crop;
+  const unchanged =
+    sameCrop(cropField, current) &&
+    el.position.x === next.position.x &&
+    el.position.y === next.position.y &&
+    (el as { readonly width: number }).width === next.width &&
+    (el as { readonly height: number }).height === next.height;
+  if (unchanged) return null;
+  const r = updateElement(scene, id, (sh) => {
+    const { crop: _drop, ...rest } = sh as unknown as Record<string, unknown>;
+    void _drop;
+    const base = {
+      ...rest,
+      position: next.position,
+      width: next.width,
+      height: next.height,
+    };
+    return (cropField === undefined ? base : { ...base, crop: cropField }) as unknown as typeof sh;
+  });
+  return { scene: r.scene, patch: r.patch };
 };
 
 // ---------------------------------------------------------------------------

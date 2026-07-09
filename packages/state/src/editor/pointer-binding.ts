@@ -137,16 +137,16 @@ const handleDownEditingText = (editor: Editor, worldPoint: Vec2): boolean => {
   return false;
 };
 
-/** Crop-drag move — resize the pending crop rectangle. */
+/** Crop-drag move — resize the window (handle) or pan the source (body). */
 const handleMoveCrop = (editor: Editor, worldPoint: Vec2): boolean => {
-  if (editor.mode !== "crop" || editor.cropSession?.dragOrigin == null) return false;
+  if (editor.mode !== "crop" || editor.cropSession?.drag == null) return false;
   editor.updateImageCropDrag(worldPoint);
   return true;
 };
 
-/** Crop-drag release — finish the drag (keeps the pending rect). */
+/** Crop-drag release — finish the drag (keeps the pending crop / box). */
 const handleUpCrop = (editor: Editor): boolean => {
-  if (editor.mode !== "crop" || editor.cropSession?.dragOrigin == null) return false;
+  if (editor.mode !== "crop" || editor.cropSession?.drag == null) return false;
   editor.endImageCropDrag();
   return true;
 };
@@ -189,14 +189,23 @@ const handleDownEyedropper = (editor: Editor, worldPoint: Vec2): boolean => {
 };
 
 /**
- * Crop mode — a press begins a fresh crop-rectangle drag over the image being
- * cropped. Enter/Escape (handled by the crop actions) commit / cancel. Owns
- * the gesture.
+ * Crop mode — a press hit-tests the crop chrome: a handle starts a window
+ * resize, the image body starts a source pan. A press OUTSIDE the image commits
+ * the pending crop and falls through so the click does its normal thing.
+ * Enter/Escape (handled by the crop actions) also commit / cancel. Owns the
+ * gesture only when it grabbed a handle / the body.
  */
 const handleDownCrop = (editor: Editor, worldPoint: Vec2): boolean => {
   if (editor.mode !== "crop" || editor.cropSession === null) return false;
+  const target = editor.cropHandleAtWorld(worldPoint);
+  if (target === null) {
+    // Clicked away from the image — apply the crop and let the press proceed.
+    editor.commitImageCrop();
+    return false;
+  }
   editor.cancelLongPress();
-  editor.beginImageCropDrag(worldPoint);
+  if (target === "body") editor.beginImageCropBody(worldPoint);
+  else editor.beginImageCropHandle(target, worldPoint);
   return true;
 };
 
