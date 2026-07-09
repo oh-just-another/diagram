@@ -8,7 +8,8 @@ import {
 } from "@oh-just-another/scene";
 import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
-import { DEFAULT_BRUSH_WIDTH, MAX_BRUSH_WIDTH } from "../../constants.js";
+import { BRUSH_SMOOTH_SEGMENTS, DEFAULT_BRUSH_WIDTH, MAX_BRUSH_WIDTH } from "../../constants.js";
+import { smoothStrokePoints } from "./stroke-smoothing.js";
 
 /**
  * Convert `PointerEvent.pressure` (0–1) to a brush half-width in local
@@ -50,9 +51,27 @@ export const extendBrushStroke = (
 };
 
 /**
- * Produce the shape + scene patch for committing a brush stroke.
- * Caller pushes the patch into history and clears the stroke state.
- * Returns `null` for empty strokes (zero points or no stroke at all).
+ * Resample a captured brush polyline into a smooth, dense point list by fitting
+ * a Catmull-Rom spline through the vertices (shared {@link smoothStrokePoints}
+ * resampler), interpolating each point's `width` across its span. Strokes with
+ * fewer than three points pass through unchanged.
+ */
+export const smoothBrushPoints = (
+  points: readonly BrushPoint[],
+  perSegment: number = BRUSH_SMOOTH_SEGMENTS,
+): BrushPoint[] =>
+  smoothStrokePoints(points, perSegment, (a, b, pos, u) => ({
+    x: pos.x,
+    y: pos.y,
+    width: a.width + (b.width - a.width) * u,
+  }));
+
+/**
+ * Produce the shape + scene patch for committing a brush stroke. The captured
+ * polyline is smoothed (Catmull-Rom) before it enters the scene so the stored
+ * stroke reads as a fluid line, not a chain of angular segments. Caller pushes
+ * the patch into history and clears the stroke state. Returns `null` for empty
+ * strokes (zero points or no stroke at all).
  */
 export const commitBrushStroke = (
   scene: Scene,
@@ -73,7 +92,7 @@ export const commitBrushStroke = (
     scale: { x: 1, y: 1 },
     order,
     style: { fill: "#222" },
-    points: stroke.points.slice(),
+    points: smoothBrushPoints(stroke.points),
   };
   const r = addElement(scene, shape);
   return { scene: r.scene, patch: r.patch, elementId: newElementId };

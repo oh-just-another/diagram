@@ -500,6 +500,16 @@ export const MAX_BRUSH_WIDTH = 6;
 export const DEFAULT_BRUSH_WIDTH = 2;
 
 /**
+ * Samples per Catmull-Rom span when smoothing a committed brush stroke. Brush
+ * points are captured sparsely (one per pointer-move), so the raw polyline is
+ * angular; on commit each span is resampled into this many sub-points along a
+ * Catmull-Rom curve through the captured points (interpolating per-point width
+ * too), baking a smooth stroke into the scene. Higher = smoother but more stored
+ * vertices per stroke. Range: 2–8.
+ */
+export const BRUSH_SMOOTH_SEGMENTS = 4;
+
+/**
  * Eraser sampling step in WORLD units. While the eraser is dragged the host
  * hit-tests points spaced this far apart along the pointer path so a fast
  * swipe doesn't skip over small shapes between two move events. Smaller →

@@ -57,9 +57,40 @@ describe("brush stroke", () => {
     const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
     expect(shape.type).toBe("brush");
     expect(shape.position).toEqual({ x: 10, y: 10 });
-    expect(shape.points.length).toBe(3);
-    expect(shape.points[1]!.width).toBeGreaterThan(shape.points[2]!.width);
+    // Endpoints survive the smoothing pass verbatim (first vertex is the origin,
+    // pressure-weighted widths kept): head 0.5·6=3, tail 0.3·6=1.8.
+    expect(shape.points[0]).toEqual({ x: 0, y: 0, width: 3 });
+    const tail = shape.points[shape.points.length - 1]!;
+    expect(tail.x).toBeCloseTo(20);
+    expect(tail.width).toBeCloseTo(1.8);
     expect(editor.pendingBrushStroke).toBeNull();
+  });
+
+  it("smooths the committed stroke into a dense Catmull-Rom polyline", () => {
+    const editor = makeEditor(emptyScene());
+    // A sharp corner: without smoothing the stored points equal the three
+    // captured vertices; smoothing resamples each span into sub-points and
+    // bows the path off the raw chord at the bend.
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 40 }, 0.5);
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    // Three captured vertices → far more stored points after resampling.
+    expect(shape.points.length).toBeGreaterThan(3);
+    // The corner vertex (40,0) still appears in the output (Catmull-Rom passes
+    // through its control points).
+    expect(shape.points.some((p) => Math.abs(p.x - 40) < 1e-6 && Math.abs(p.y) < 1e-6)).toBe(true);
+    // Resampling adds intermediate points that are none of the three captured
+    // vertices — the span between vertices is filled in, not just the corners.
+    const captured = [
+      { x: 0, y: 0 },
+      { x: 40, y: 0 },
+      { x: 40, y: 40 },
+    ];
+    const isCaptured = (p: { x: number; y: number }) =>
+      captured.some((c) => Math.abs(c.x - p.x) < 1e-6 && Math.abs(c.y - p.y) < 1e-6);
+    expect(shape.points.filter((p) => !isCaptured(p)).length).toBeGreaterThan(0);
   });
 
   it("cancel discards the in-progress stroke", () => {
