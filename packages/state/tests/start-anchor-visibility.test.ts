@@ -141,6 +141,42 @@ describe("link-start anchor visibility on selection", () => {
     editor.dispose();
   });
 
+  it("shows no link-start dots on hover in read-only (delta is 0)", () => {
+    // Editable: hovering a selected element makes its start dots appear, so
+    // the near-hover render paints strictly more ellipses than a far-hover
+    // one (the extra ones are the dots). Read-only never creates links, so
+    // hovering must add nothing — near and far renders are identical.
+    const mk = (readOnly: boolean) => {
+      const overlay = makeTarget();
+      const editor = new Editor({
+        host,
+        mainTarget: makeTarget() as never,
+        overlayTarget: overlay as never,
+        initialScene: sceneWith(rect("a")),
+        readOnly,
+      });
+      editor.setViewportSize(800, 600);
+      editor.setSelection([elementId("a")]);
+      return { editor, overlay };
+    };
+
+    const editable = mk(false);
+    editable.editor.setHoverCursorWorld({ x: 500, y: 500 }); // far — no dots
+    const editableFar = renderEllipses(editable.editor, editable.overlay);
+    editable.editor.setHoverCursorWorld({ x: 125, y: 125 }); // over element — dots show
+    const editableNear = renderEllipses(editable.editor, editable.overlay);
+    expect(editableNear).toBeGreaterThan(editableFar);
+    editable.editor.dispose();
+
+    const ro = mk(true);
+    ro.editor.setHoverCursorWorld({ x: 500, y: 500 });
+    const roFar = renderEllipses(ro.editor, ro.overlay);
+    ro.editor.setHoverCursorWorld({ x: 125, y: 125 });
+    const roNear = renderEllipses(ro.editor, ro.overlay);
+    expect(roNear).toBe(roFar); // read-only adds no anchor dots on hover
+    ro.editor.dispose();
+  });
+
   it("hides start anchors during a real drag (gesture tx open)", () => {
     const overlay = makeTarget();
     const editor = new Editor({

@@ -413,7 +413,9 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     // (on hover/proximity). During a drag started FROM a start-anchor (select
     // mode, no tool switch) BOTH are shown: the source keeps its start dots
     // while the target shows its attach dots under the cursor.
-    if (editor.mode !== "brush" && editor.mode !== "hand") {
+    // Read-only never creates links, so the whole port/ghost overlay is off —
+    // no anchor dots on hover, no click-create ghost element/connector.
+    if (editor.mode !== "brush" && editor.mode !== "hand" && !editor.readOnly) {
       const zoom = editor.scene.viewport.zoom || 1;
       // Build one overlay port-set for a shape. The free outline-attach point
       // (`outlinePoint`, link-attach only) is appended un-offset — it is the
