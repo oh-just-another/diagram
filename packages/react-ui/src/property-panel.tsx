@@ -676,6 +676,38 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
 };
 
 /**
+ * One decoration toggle inside {@link TextDecorationControl}'s popover.
+ * MUST stay a module-level component: defining it inside its parent would
+ * give it a fresh identity on every parent re-render, so React would
+ * remount the `<button>` each frame. During inline text editing the panel
+ * re-renders constantly (caret blink), and a remount between `mousedown`
+ * and `mouseup` swallows the synthesized `click` — the toggle would then
+ * silently never fire.
+ */
+const TextStyleToggle = ({
+  active,
+  label,
+  icon,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    className={`du-sel-icon-button${active ? " is-active" : ""}`}
+    title={label}
+    aria-label={label}
+    aria-pressed={active}
+    onClick={onClick}
+  >
+    {icon}
+  </button>
+);
+
+/**
  * Bold / Italic / Underline / Strikethrough. One trigger (Aa) opens a
  * popover with four independent toggles. Each writes through
  * `editor.updateStyle`: bold→`fontWeight`, italic→`fontStyle`,
@@ -733,28 +765,6 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
       }
     }
   };
-  const Toggle = ({
-    active,
-    label,
-    icon,
-    onClick,
-  }: {
-    active: boolean;
-    label: string;
-    icon: ReactNode;
-    onClick: () => void;
-  }) => (
-    <button
-      type="button"
-      className={`du-sel-icon-button${active ? " is-active" : ""}`}
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-      onClick={onClick}
-    >
-      {icon}
-    </button>
-  );
   return (
     <Popover
       ariaLabel="Text style"
@@ -772,7 +782,7 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
       <div className="du-sel-popover-section">
         <header className="du-sel-popover-label">Style</header>
         <div style={{ display: "flex", gap: 2 }}>
-          <Toggle
+          <TextStyleToggle
             active={allBold}
             label="Bold"
             icon={<Bold size={14} strokeWidth={1.75} />}
@@ -780,7 +790,7 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
               applyPartial({ fontWeight: allBold ? "normal" : "bold" });
             }}
           />
-          <Toggle
+          <TextStyleToggle
             active={allItalic}
             label="Italic"
             icon={<Italic size={14} strokeWidth={1.75} />}
@@ -788,7 +798,7 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
               applyPartial({ fontStyle: allItalic ? "normal" : "italic" });
             }}
           />
-          <Toggle
+          <TextStyleToggle
             active={allUnderline}
             label="Underline"
             icon={<Underline size={14} strokeWidth={1.75} />}
@@ -796,7 +806,7 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
               setDecoration("underline", !allUnderline);
             }}
           />
-          <Toggle
+          <TextStyleToggle
             active={allStrike}
             label="Strikethrough"
             icon={<Strikethrough size={14} strokeWidth={1.75} />}

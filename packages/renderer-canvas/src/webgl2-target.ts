@@ -1321,9 +1321,15 @@ export class WebGL2Target implements RenderTarget {
   }
 
   private textFontSpec(): string {
-    // Bundled face first so the no-MSDF fallback matches the MSDF path and
-    // the Canvas2D backend.
-    return `${this.fontSize}px "${resolveBundledFamily(this.fontFamily)}", ${this.fontFamily}`;
+    // CSS font shorthand order: `<style> <weight> <size> <family>` — must
+    // carry weight/style so the no-MSDF fallback (OffscreenCanvas bitmaps)
+    // draws bold/italic like the MSDF path and the Canvas2D backend do.
+    // It also keys the bitmap cache, so a bold word can't collide with the
+    // regular one (which would render regular while colour still applied).
+    // Bundled face first so the fallback matches the MSDF/Canvas2D metrics.
+    const style = this.fontStyle === "italic" ? "italic " : "";
+    const weight = this.fontWeight === "bold" ? "bold " : "";
+    return `${style}${weight}${this.fontSize}px "${resolveBundledFamily(this.fontFamily)}", ${this.fontFamily}`;
   }
 
   private readonly baselineOffsetCache = new Map<string, number>();

@@ -87,6 +87,17 @@ describe("Editor.applyTextStyleToRange", () => {
     ]);
   });
 
+  it("toggles bold back off (re-applying normal clears the bold weight)", () => {
+    const e = makeEditor(sceneWithText());
+    e.applyTextStyleToRange(elementId("t"), 0, 5, { fontWeight: "bold" });
+    e.applyTextStyleToRange(elementId("t"), 0, 5, { fontWeight: "normal" });
+    const runs = runsOf(e);
+    // The range is no longer bold — either the overlay is shed entirely
+    // (plain text) or the run carries a non-bold weight.
+    const boldSpan = (runs ?? []).some((r) => r.style?.fontWeight === "bold");
+    expect(boldSpan).toBe(false);
+  });
+
   it("records one undo step and restores the plain text on undo", () => {
     const e = makeEditor(sceneWithText());
     e.applyTextStyleToRange(elementId("t"), 0, 5, { fontWeight: "bold" });
