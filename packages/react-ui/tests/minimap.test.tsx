@@ -118,6 +118,18 @@ describe("Minimap", () => {
     expect(panSpy).toHaveBeenCalled();
   });
 
+  it("zooms the main view in around the cursor on wheel up", () => {
+    const zoomSpy = vi.spyOn(ctx.editor, "zoomAt");
+    const before = ctx.editor.scene.viewport.zoom;
+    const { container } = render(<Minimap editor={ctx.editor} />);
+    const canvas = container.querySelector("canvas") as HTMLCanvasElement;
+    // deltaY < 0 (wheel up) → factor > 1 → zoom in. Clamped to MAX_STEP.
+    fireEvent.wheel(canvas, { deltaY: -100, clientX: 20, clientY: 20 });
+    expect(zoomSpy).toHaveBeenCalled();
+    expect(zoomSpy.mock.calls[0]?.[0]).toBeGreaterThan(1);
+    expect(ctx.editor.scene.viewport.zoom).toBeGreaterThan(before);
+  });
+
   it("repaints after the throttle window when the editor notifies", () => {
     vi.useFakeTimers();
     try {

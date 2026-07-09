@@ -13,6 +13,8 @@ import {
   MINIMAP_HEIGHT_PX,
   MINIMAP_PADDING_PX,
   MINIMAP_THROTTLE_MS,
+  MINIMAP_WHEEL_ZOOM_MAX_STEP,
+  MINIMAP_WHEEL_ZOOM_SPEED,
   MINIMAP_WIDTH_PX,
 } from "./constants.js";
 
@@ -167,6 +169,46 @@ export const Minimap = ({
     },
     [editor],
   );
+
+  // Wheel over the minimap zooms the MAIN view into the world spot under the
+  // cursor: recenter there (matching click-to-pan), then zoom around it. Same
+  // delta→factor curve as the main canvas. Bound as a non-passive native
+  // listener (below) so `preventDefault` can stop the page from scrolling.
+  const zoomAtPixel = useCallback(
+    (px: number, py: number, deltaY: number) => {
+      const fit = fitRef.current;
+      if (!editor || !fit || deltaY === 0) return;
+      const world: Vec2 = { x: px / fit.zoom + fit.pan.x, y: py / fit.zoom + fit.pan.y };
+      const clamped =
+        Math.abs(deltaY) > MINIMAP_WHEEL_ZOOM_MAX_STEP
+          ? MINIMAP_WHEEL_ZOOM_MAX_STEP * Math.sign(deltaY)
+          : deltaY;
+      const factor = 1 - (clamped * MINIMAP_WHEEL_ZOOM_SPEED) / 100;
+      if (factor <= 0) return;
+      const vp = editor.scene.viewport;
+      const centerX = vp.pan.x + vp.size.width / 2 / vp.zoom;
+      const centerY = vp.pan.y + vp.size.height / 2 / vp.zoom;
+      editor.panBy({ x: (centerX - world.x) * vp.zoom, y: (centerY - world.y) * vp.zoom });
+      editor.zoomAt(factor, world);
+    },
+    [editor],
+  );
+
+  // Native non-passive wheel listener (React's onWheel is passive, so its
+  // preventDefault is a no-op). Zooms the main view; stops page scroll.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+    const onWheel = (e: WheelEvent): void => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      zoomAtPixel(e.clientX - rect.left, e.clientY - rect.top, e.deltaY);
+    };
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      canvas.removeEventListener("wheel", onWheel);
+    };
+  }, [zoomAtPixel]);
 
   const localPoint = (e: PointerEvent<HTMLCanvasElement>): { x: number; y: number } => {
     const rect = e.currentTarget.getBoundingClientRect();

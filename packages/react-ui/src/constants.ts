@@ -147,6 +147,10 @@ export const SEARCH_ZOOM_PADDING_PX = 160;
  * - `MINIMAP_FRAME_COLOR` / `MINIMAP_FRAME_LINE_WIDTH` — stroke of the current
  *   viewport rectangle drawn over the overview.
  * - `MINIMAP_FRAME_FILL` — translucent wash inside the viewport rectangle.
+ * - `MINIMAP_WHEEL_ZOOM_SPEED` / `MINIMAP_WHEEL_ZOOM_MAX_STEP` — wheel-zoom
+ *   response over the minimap, same formula as the main canvas
+ *   (`factor = 1 − clamp(|deltaY|, MAX_STEP)·SPEED / 100`). MAX_STEP keeps a
+ *   mouse notch a calm step while trackpad deltas stay granular.
  */
 export const MINIMAP_WIDTH_PX = 200;
 export const MINIMAP_HEIGHT_PX = 150;
@@ -155,6 +159,8 @@ export const MINIMAP_THROTTLE_MS = 150;
 export const MINIMAP_FRAME_COLOR = "#2563eb";
 export const MINIMAP_FRAME_LINE_WIDTH = 1.5;
 export const MINIMAP_FRAME_FILL = "rgba(37, 99, 235, 0.12)";
+export const MINIMAP_WHEEL_ZOOM_SPEED = 1;
+export const MINIMAP_WHEEL_ZOOM_MAX_STEP = 10;
 
 export const TEXT_FONT_STACKS: readonly { readonly label: string; readonly value: string }[] = [
   // Labels map to the three fonts embedded in the WASM MSDF shaper
