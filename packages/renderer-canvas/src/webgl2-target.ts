@@ -616,6 +616,12 @@ export class WebGL2Target implements RenderTarget {
     dw: number,
     dh: number,
     dynamic?: boolean,
+    crop?: {
+      readonly x: number;
+      readonly y: number;
+      readonly width: number;
+      readonly height: number;
+    },
   ): void {
     this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     const tex = this.textureFor(image as TexImageSource, dynamic ?? false);
@@ -656,6 +662,16 @@ export class WebGL2Target implements RenderTarget {
     );
     this.gl.uniformMatrix3fv(ip.uTransform, false, projected);
     this.gl.uniform1f(ip.uOpacity, this.opacity);
+    // Crop as a UV sub-rect. Identity (no crop) is offset (0,0), scale (1,1);
+    // crop fractions are already in texture-UV [0,1] space (unlike Canvas2D,
+    // which multiplies by intrinsic pixels), so they map straight to uniforms.
+    if (crop && (crop.x !== 0 || crop.y !== 0 || crop.width !== 1 || crop.height !== 1)) {
+      this.gl.uniform2f(ip.uUvOffset, crop.x, crop.y);
+      this.gl.uniform2f(ip.uUvScale, crop.width, crop.height);
+    } else {
+      this.gl.uniform2f(ip.uUvOffset, 0, 0);
+      this.gl.uniform2f(ip.uUvScale, 1, 1);
+    }
     this.gl.activeTexture(this.gl.TEXTURE0);
     this.gl.bindTexture(this.gl.TEXTURE_2D, tex);
     this.gl.uniform1i(ip.uTex, 0);
@@ -1634,6 +1650,9 @@ interface ImageProgram {
   readonly uTransform: WebGLUniformLocation | null;
   readonly uTex: WebGLUniformLocation | null;
   readonly uOpacity: WebGLUniformLocation | null;
+  /** UV sub-rect for cropping: `vUV = aUV * uUvScale + uUvOffset`. */
+  readonly uUvOffset: WebGLUniformLocation | null;
+  readonly uUvScale: WebGLUniformLocation | null;
 }
 
 const createImageProgram = (gl: WebGL2RenderingContext): ImageProgram => {
@@ -1644,11 +1663,15 @@ const createImageProgram = (gl: WebGL2RenderingContext): ImageProgram => {
 in vec2 aPos;
 in vec2 aUV;
 uniform mat3 uTransform;
+uniform vec2 uUvOffset;
+uniform vec2 uUvScale;
 out vec2 vUV;
 void main() {
   vec3 p = uTransform * vec3(aPos, 1.0);
   gl_Position = vec4(p.xy, 0.0, 1.0);
-  vUV = aUV;
+  // Crop: map the unit-quad UV into the source sub-rect. Identity is
+  // offset (0,0) + scale (1,1); a crop narrows it to the kept region.
+  vUV = aUV * uUvScale + uUvOffset;
 }`,
     "WebGL2",
   );
@@ -1679,6 +1702,8 @@ void main() {
     uTransform: gl.getUniformLocation(program, "uTransform"),
     uTex: gl.getUniformLocation(program, "uTex"),
     uOpacity: gl.getUniformLocation(program, "uOpacity"),
+    uUvOffset: gl.getUniformLocation(program, "uUvOffset"),
+    uUvScale: gl.getUniformLocation(program, "uUvScale"),
   };
 };
 

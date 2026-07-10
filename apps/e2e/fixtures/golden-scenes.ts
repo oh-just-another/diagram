@@ -513,6 +513,36 @@ export const goldenScenes: readonly GoldenScene[] = [
         .done(),
   },
   {
+    id: "image-crop",
+    title: "Cropped image — centre 50% stretched to fill the box",
+    build: () =>
+      new SceneBuilder(200, 160)
+        .add({
+          id: eid("bg"),
+          type: "rectangle",
+          position: { x: 10, y: 10 },
+          rotation: 0,
+          scale: { x: 1, y: 1 },
+          style: { fill: "#f1f5f9", stroke: "#334155", strokeWidth: 2 },
+          width: 180,
+          height: 140,
+        })
+        .add({
+          id: eid("img"),
+          type: "image",
+          position: { x: 40, y: 40 },
+          rotation: 0,
+          scale: { x: 1, y: 1 },
+          style: {},
+          src: RED_PIXEL_PNG,
+          width: 120,
+          height: 80,
+          // Keep the centre 50% of the source, stretched over the 120×80 box.
+          crop: { x: 0.25, y: 0.25, width: 0.5, height: 0.5 },
+        })
+        .done(),
+  },
+  {
     id: "group-frame",
     title: "Frame with children + a group of two shapes",
     build: () => {
