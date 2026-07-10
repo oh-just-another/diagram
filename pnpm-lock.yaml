@@ -212,6 +212,9 @@ importers:
       '@oh-just-another/history':
         specifier: workspace:*
         version: link:../../packages/history
+      '@oh-just-another/importers':
+        specifier: workspace:*
+        version: link:../../packages/importers
       '@oh-just-another/network':
         specifier: workspace:*
         version: link:../../packages/network

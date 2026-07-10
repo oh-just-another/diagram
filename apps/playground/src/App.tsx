@@ -7,6 +7,7 @@ import { loadAllFiles, saveFiles, pruneFilesExcept } from "./idb-files";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "@oh-just-another/editor";
 import { setupTemplates } from "./templates";
+import { ImportExportMenu } from "./import-export-menu";
 import { installConfettiRenderer } from "./confetti";
 import { useHotkeys } from "./hotkeys";
 import { useCollab } from "./collab";
@@ -303,6 +304,7 @@ export const App = () => {
         onSceneChange={handleSceneChange}
         renderTopBarLeft={renderHeaderLeft}
         renderTopBarRight={renderHeaderRight}
+        {...(editor ? { renderMainMenuExtras: () => <ImportExportMenu editor={editor} /> } : {})}
         persistTheme
         minimap
         {...(initialScene ? { initialScene } : {})}

@@ -32,6 +32,7 @@
     "@oh-just-another/collab": "workspace:*",
     "@oh-just-another/editor": "workspace:*",
     "@oh-just-another/history": "workspace:*",
+    "@oh-just-another/importers": "workspace:*",
     "@oh-just-another/network": "workspace:*",
     "@oh-just-another/raster-wasm": "workspace:*",
     "@oh-just-another/react-ui": "workspace:*",
