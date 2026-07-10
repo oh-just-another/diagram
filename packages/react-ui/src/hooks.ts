@@ -14,7 +14,14 @@ import {
   layerId as castLayerId,
   type LayerId,
 } from "@oh-just-another/types";
-import { selection, type Editor, type Mode, type Selection } from "@oh-just-another/state";
+import {
+  DEFAULT_BRUSH_SETTINGS,
+  selection,
+  type BrushSettings,
+  type Editor,
+  type Mode,
+  type Selection,
+} from "@oh-just-another/state";
 import { useDiagramContext, useDiagramContextOptional, useEditorSelector } from "./context.js";
 
 /**
@@ -74,6 +81,14 @@ export const useSelection = (): Selection =>
 
 /** Current interaction mode. Defaults to `"select"` pre-mount. */
 export const useMode = (): Mode => useEditorSelector<Mode>((e) => e.mode, "select", "mode");
+
+/**
+ * Live brush paint settings (line colour, fill, opacity, width) — what the
+ * drawing panel edits via {@link Editor.setBrushSettings}. Defaults to
+ * {@link DEFAULT_BRUSH_SETTINGS} pre-mount.
+ */
+export const useBrushSettings = (): BrushSettings =>
+  useEditorSelector((e) => e.brushSettings, DEFAULT_BRUSH_SETTINGS);
 
 /**
  * `true` when the editor is in read-only / view mode. Chrome uses it to

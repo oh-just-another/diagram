@@ -171,3 +171,13 @@ export const TEXT_FONT_STACKS: readonly { readonly label: string; readonly value
   { label: "Serif", value: "Georgia, 'Times New Roman', serif" },
   { label: "Mono", value: "ui-monospace, 'SF Mono', Menlo, monospace" },
 ];
+
+/**
+ * Drawing / eraser tool-options panel. `DRAWING_PANEL_WIDTH` is the floating
+ * panel width in CSS px; `BRUSH_WIDTH_MIN` / `BRUSH_WIDTH_MAX` bound the width
+ * slider (also the eraser radius). The stored brush width is a half-width in
+ * world px, so the max stays modest.
+ */
+export const DRAWING_PANEL_WIDTH = 176;
+export const BRUSH_WIDTH_MIN = 1;
+export const BRUSH_WIDTH_MAX = 40;

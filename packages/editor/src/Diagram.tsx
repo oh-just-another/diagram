@@ -50,6 +50,7 @@ import {
   HelpButton,
   HelpDialog,
   IconButton,
+  DrawingPanel,
   LibraryPanel,
   MainMenu,
   Minimap,
@@ -229,6 +230,11 @@ export interface DiagramProps {
   readonly hideContextMenu?: boolean;
   readonly hideSelectionPanel?: boolean;
   /**
+   * Hide the drawing / eraser tool-options panel (line colour, fill, opacity,
+   * width) that otherwise floats top-right while the brush or eraser is active.
+   */
+  readonly hideDrawingPanel?: boolean;
+  /**
    * Show the built-in minimap: a scene overview + viewport rect, docked
    * bottom-right above the zoom controls. Click / drag it to pan. Hidden in
    * zen mode along with the rest of the chrome. Off by default.
@@ -329,6 +335,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     hideHelpButton,
     hideContextMenu,
     hideSelectionPanel,
+    hideDrawingPanel,
     minimap,
     renderTopBarLeft,
     renderTopBarCenter,
@@ -680,6 +687,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
                   hideHelpButton={hideHelpButton}
                   hideContextMenu={hideContextMenu}
                   hideSelectionPanel={hideSelectionPanel}
+                  hideDrawingPanel={hideDrawingPanel}
                   minimap={minimap}
                   renderTopBarLeft={renderTopBarLeft}
                   renderTopBarCenter={renderTopBarCenter}
@@ -725,6 +733,7 @@ const EditorShell = ({
   hideHelpButton,
   hideContextMenu,
   hideSelectionPanel,
+  hideDrawingPanel,
   minimap,
   renderTopBarLeft,
   renderTopBarCenter,
@@ -750,6 +759,7 @@ const EditorShell = ({
   readonly hideHelpButton: boolean | undefined;
   readonly hideContextMenu: boolean | undefined;
   readonly hideSelectionPanel: boolean | undefined;
+  readonly hideDrawingPanel: boolean | undefined;
   readonly minimap: boolean | undefined;
   readonly renderTopBarLeft: (() => ReactNode) | undefined;
   readonly renderTopBarCenter: (() => ReactNode) | undefined;
@@ -1232,6 +1242,22 @@ const EditorShell = ({
           }}
         >
           <Minimap />
+        </div>
+      )}
+
+      {/* Drawing / eraser tool-options panel — floats top-right below the top
+          bar while the brush or eraser is active (DrawingPanel self-gates on
+          mode). Hidden in zen mode with the rest of the chrome. */}
+      {!hideDrawingPanel && !zen && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(var(--du-bar-inset, 12px) + 52px)",
+            right: "var(--du-bar-inset, 12px)",
+            zIndex: 40,
+          }}
+        >
+          <DrawingPanel />
         </div>
       )}
 

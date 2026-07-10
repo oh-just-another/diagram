@@ -38,12 +38,14 @@ export {
 } from "./diagram-root.js";
 export { DiagramCanvas, type DiagramCanvasProps } from "./diagram-canvas.js";
 export { Minimap, type MinimapProps } from "./minimap.js";
+export { DrawingPanel } from "./drawing-panel.js";
 export {
   useDiagram,
   useDiagramOptional,
   useScene,
   useSelection,
   useMode,
+  useBrushSettings,
   useReadOnly,
   useHistory,
   useLayers,
