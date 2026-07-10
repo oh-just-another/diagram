@@ -832,6 +832,14 @@ export class Editor {
    * pass would never visibly apply.
    */
   public lastRenderedEnteredGroup: ElementId | null = null;
+  /**
+   * Whether the last paint had eraser-dim active — paired with
+   * `lastRenderedScene` like {@link lastRenderedEnteredGroup}. When an eraser
+   * stroke ENDS by cancel (Esc), the marked shapes un-dim without a scene
+   * change, so the dirty-rect diff is empty and the dim would linger on screen;
+   * this lets that active→inactive transition force one full repaint.
+   */
+  public lastRenderedEraseActive = false;
 
   /**
    * Fractional-order compaction scheduler (microtask-coalesced).
@@ -2421,26 +2429,36 @@ export class Editor {
 
   // --- Eraser tool ---
 
-  /** Start an eraser stroke at `world`, seeding it with the shape under it. */
-  beginEraseStroke(world: Vec2): void {
+  /**
+   * Start an eraser stroke at `world`, seeding it with the shape under it so a
+   * plain click erases. With `restore` (Alt held at press) it seeds nothing —
+   * the gesture is in un-mark mode, and there's nothing marked yet to rescue.
+   */
+  beginEraseStroke(world: Vec2, restore = false): void {
     const stroke = beginEraseStrokePure(world);
-    const hit = this.acceleratedElementAt(world);
-    if (hit) stroke.pending.add(hit.id);
+    if (!restore) {
+      const hit = this.acceleratedElementAt(world);
+      if (hit) stroke.pending.add(hit.id);
+    }
     this.eraseStroke = stroke;
     this.notify();
   }
-  /** Extend the eraser stroke to `world`, sweeping shapes along the segment. */
-  extendEraseStroke(world: Vec2): void {
+  /**
+   * Extend the eraser stroke to `world`, sweeping shapes along the segment.
+   * `restore` (Alt held) un-marks swept shapes instead of marking them.
+   */
+  extendEraseStroke(world: Vec2, restore = false): void {
     const stroke = this.eraseStroke;
     if (!stroke) return;
-    const added = sampleErasePure(
+    const changed = sampleErasePure(
       stroke.last,
       world,
       (p) => this.acceleratedElementAt(p),
       stroke.pending,
+      restore,
     );
     stroke.last = world;
-    if (added) this.notify();
+    if (changed) this.notify();
   }
   /**
    * Commit the eraser stroke — delete every swept shape in ONE undo step (with
@@ -4558,7 +4576,12 @@ export class Editor {
       this.drawingPreview !== null ||
       this.edgePreview !== null ||
       this.brushStroke !== null ||
-      this.lassoPreview !== null
+      this.lassoPreview !== null ||
+      // Eraser sweep: marking / un-marking a shape re-dims it WITHOUT mutating
+      // the scene, so the scene-diff dirty rect is empty and the shape would
+      // never repaint at its erase-dim opacity. Force a full repaint while the
+      // eraser is active (like isolation), so the preview dim actually shows.
+      this.interaction.eraseStroke !== null
     ) {
       return null;
     }
@@ -4570,6 +4593,11 @@ export class Editor {
     // of shapes without touching the scene reference, so force a full
     // repaint when the entered-group identity changes between frames.
     if (this.lastRenderedEnteredGroup !== this._enteredGroup) return null;
+    // Eraser just STOPPED (the active-stroke guard above already returned, so
+    // `eraseStroke` is null here): on an Esc-cancel the marked shapes un-dim
+    // without a scene change — commit changes the scene and is caught by the
+    // diff — so force a full repaint that frame or the dim would linger.
+    if (this.lastRenderedEraseActive) return null;
     // Diff the two scenes for the dirty rect + tile-cache invalidation. The
     // state-coupled guards above stay here; the pure scene diff lives in
     // `computeSceneDirtyRect`.
@@ -5445,6 +5473,7 @@ export class Editor {
       viewportWorld: this.computeViewportWorld(),
       dirtyWorld: this.computeDirtyWorld(),
       dimElements: this.computeDimSet(),
+      eraseActive: (this.interaction.eraseStroke?.pending.size ?? 0) > 0,
       hideElements: this.computeHiddenElements(),
       sharedIndex:
         this._scene.elements.size >= LARGE_SCENE_HIT_THRESHOLD ? this.ensureSpatialIndex() : null,
@@ -5515,6 +5544,7 @@ export class Editor {
     // and, on the tile-cache path, clear the consumed dirty set.
     this.lastRenderedScene = this._scene;
     this.lastRenderedEnteredGroup = this._enteredGroup;
+    this.lastRenderedEraseActive = snapshot.eraseActive;
     // Clear the accumulated tile-dirty set only when the tile path actually
     // composited this frame. Group isolation (dim) / per-element hide make the
     // orchestrator fall back to the full renderScene path (it can't reproduce

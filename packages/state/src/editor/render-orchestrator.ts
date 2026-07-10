@@ -47,6 +47,7 @@ import {
   DEFAULT_SNAP_THRESHOLD,
   FLOWCHART_PREVIEW_OPACITY,
   GHOST_PREVIEW_OPACITY,
+  ERASE_DIM_OPACITY,
   ISOLATION_DIM_OPACITY,
   LINK_START_ANCHOR_OUTSET,
   LINK_ATTACH_ANCHOR_OUTSET,
@@ -100,6 +101,12 @@ export interface RenderSnapshot {
   readonly viewportWorld: Bounds | null;
   readonly dirtyWorld: Bounds | null;
   readonly dimElements: ReadonlySet<ElementId> | undefined;
+  /**
+   * `true` while an eraser sweep has marked shapes for deletion — the dim set
+   * then fades at {@link ERASE_DIM_OPACITY} (strong "about to delete") instead
+   * of the gentler group-isolation {@link ISOLATION_DIM_OPACITY}.
+   */
+  readonly eraseActive: boolean;
   readonly hideElements: ReadonlySet<ElementId> | undefined;
   readonly sharedIndex: SpatialGrid | null;
   readonly boundsCache: ElementCache<Bounds>;
@@ -362,7 +369,12 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       boundsCache: editor.boundsCache,
       clock: editor.animationClock,
       lod: DEFAULT_LOD,
-      ...(dimElements ? { dimElements, dimOpacity: ISOLATION_DIM_OPACITY } : {}),
+      ...(dimElements
+        ? {
+            dimElements,
+            dimOpacity: editor.eraseActive ? ERASE_DIM_OPACITY : ISOLATION_DIM_OPACITY,
+          }
+        : {}),
       ...(hideElements ? { hideElements } : {}),
       ...(sharedIndex ? { spatialIndex: sharedIndex } : {}),
     });

@@ -12,6 +12,7 @@ import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "./render-target.js";
 import type { AnimationClock } from "./animation-adapter.js";
 import { getElementRenderer } from "./shape-renderer.js";
+import { createDimTarget } from "./dim-target.js";
 import { cachedWorldBounds, ElementCache } from "./shape-cache.js";
 import { DEFAULT_PLACEHOLDER_FILL } from "./constants.js";
 import type { LayerCompositeCache } from "./layer-cache-composite.js";
@@ -206,6 +207,16 @@ export const renderScene = (
     return acc;
   };
 
+  // Dim (isolation / eraser preview) scales the alpha of `dimElements`. Route
+  // those shapes through a wrapper that multiplies `setOpacity` by `dimOpacity`
+  // — so a shape carrying its own `style.opacity` renders dimmed too, instead
+  // of overwriting the dim back to full. Built once (constant factor), reused.
+  const dimOpacity = options.dimOpacity;
+  const dimTarget =
+    options.dimElements !== undefined && dimOpacity !== undefined
+      ? createDimTarget(target, dimOpacity)
+      : null;
+
   for (const layer of getLayersInOrder(scene)) {
     if (!layer.visible) continue;
 
@@ -264,18 +275,20 @@ export const renderScene = (
       }
 
       target.save();
-      // Isolation dim — set BEFORE the renderer runs so any
-      // shape-style-specific setOpacity inside the renderer can
-      // override (see RenderSceneOptions.dimElements).
-      if (options.dimElements?.has(shape.id) && options.dimOpacity !== undefined) {
-        target.setOpacity(options.dimOpacity);
-      }
-      target.translate(shape.position.x, shape.position.y);
-      if (shape.rotation !== 0) target.rotate(shape.rotation);
+      // Isolation / eraser dim — draw through the scaling wrapper so the
+      // shape's own `style.opacity` multiplies with `dimOpacity` instead of
+      // overwriting it (see RenderSceneOptions.dimElements / createDimTarget).
+      // The wrapper's base alpha is `dimOpacity` (setOpacity(1) → dimOpacity),
+      // so a shape that never sets its own opacity still dims.
+      const dimmed = dimTarget !== null && options.dimElements?.has(shape.id) === true;
+      const draw = dimmed ? dimTarget : target;
+      if (dimmed) draw.setOpacity(1);
+      draw.translate(shape.position.x, shape.position.y);
+      if (shape.rotation !== 0) draw.rotate(shape.rotation);
       if (shape.scale.x !== 1 || shape.scale.y !== 1) {
-        target.scale(shape.scale.x, shape.scale.y);
+        draw.scale(shape.scale.x, shape.scale.y);
       }
-      renderer(shape, target, ctx);
+      renderer(shape, draw, ctx);
       target.restore();
     }
   }

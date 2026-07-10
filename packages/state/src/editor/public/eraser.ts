@@ -23,32 +23,40 @@ export const beginEraseStroke = (world: Vec2): EraseStrokeState => ({
 
 /**
  * Sample points along the segment `from → to` at {@link ERASER_SAMPLE_STEP}
- * spacing, hit-test each through `hitAt`, and add every hit element's id to
+ * spacing, hit-test each through `hitAt`, and mark every hit element in
  * `pending`. Sampling (rather than testing only the endpoint) stops a fast
- * swipe from skipping small shapes between two pointer-move events. Returns
- * `true` when at least one new id was added (so the caller can skip a redundant
- * re-render). Mutates `pending` in place.
+ * swipe from skipping small shapes between two pointer-move events.
+ *
+ * `restore` flips the direction: normally hits are ADDED to `pending`
+ * (marked-for-erase); with `restore` (Alt held) a hit already in `pending` is
+ * REMOVED (un-marked), so dragging back over a marked shape with Alt rescues it
+ * — matching the Excalidraw eraser. Returns `true` when `pending` changed (so
+ * the caller can skip a redundant re-render). Mutates `pending` in place.
  */
 export const sampleErase = (
   from: Vec2,
   to: Vec2,
   hitAt: (p: Vec2) => Element | undefined,
   pending: Set<ElementId>,
+  restore = false,
 ): boolean => {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const dist = Math.hypot(dx, dy);
   const steps = Math.max(1, Math.ceil(dist / ERASER_SAMPLE_STEP));
-  let added = false;
+  let changed = false;
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
     const hit = hitAt({ x: from.x + dx * t, y: from.y + dy * t });
-    if (hit && !pending.has(hit.id)) {
+    if (!hit) continue;
+    if (restore) {
+      if (pending.delete(hit.id)) changed = true;
+    } else if (!pending.has(hit.id)) {
       pending.add(hit.id);
-      added = true;
+      changed = true;
     }
   }
-  return added;
+  return changed;
 };
 
 /**

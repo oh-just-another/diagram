@@ -160,11 +160,11 @@ const handleDownBrush = (editor: Editor, worldPoint: Vec2, pressure: number): bo
 };
 
 /** Eraser mode — begin sweeping shapes under the press. Owns the gesture. */
-const handleDownErase = (editor: Editor, worldPoint: Vec2): boolean => {
+const handleDownErase = (editor: Editor, worldPoint: Vec2, restore: boolean): boolean => {
   if (editor.readOnly) return false;
   if (editor.mode !== "erase") return false;
   editor.cancelLongPress();
-  editor.beginEraseStroke(worldPoint);
+  editor.beginEraseStroke(worldPoint, restore);
   return true;
 };
 
@@ -725,10 +725,10 @@ const handleMoveBrush = (editor: Editor, worldPoint: Vec2, pressure: number): bo
   return true;
 };
 
-/** Eraser stroke in progress — sweep more shapes along the drag. */
-const handleMoveErase = (editor: Editor, worldPoint: Vec2): boolean => {
+/** Eraser stroke in progress — sweep more shapes along the drag (Alt un-marks). */
+const handleMoveErase = (editor: Editor, worldPoint: Vec2, restore: boolean): boolean => {
   if (!editor.eraseStroke) return false;
-  editor.extendEraseStroke(worldPoint);
+  editor.extendEraseStroke(worldPoint, restore);
   return true;
 };
 
@@ -1158,7 +1158,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (handleDownCropEnter(editor, worldPoint, ev.detail)) return;
     if (handleDownEyedropper(editor, worldPoint)) return;
     if (handleDownBrush(editor, worldPoint, ev.pressure)) return;
-    if (handleDownErase(editor, worldPoint)) return;
+    if (handleDownErase(editor, worldPoint, data.modifiers.alt)) return;
     if (handleDownLaser(editor, worldPoint)) return;
     if (handleDownDrawText(editor, worldPoint)) return;
     if (handleDownAnnotation(editor, worldPoint)) return;
@@ -1224,7 +1224,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (handleMoveLinkAnchorDrag(editor, worldPoint)) return;
     if (handleMoveTextDragSelect(editor, worldPoint)) return;
     if (handleMoveBrush(editor, worldPoint, ev.pressure)) return;
-    if (handleMoveErase(editor, worldPoint)) return;
+    if (handleMoveErase(editor, worldPoint, data.modifiers.alt)) return;
     if (handleMoveLaser(editor, worldPoint)) return;
 
     updateContainerDropPreview(editor, worldPoint);

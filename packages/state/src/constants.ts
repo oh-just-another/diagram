@@ -379,6 +379,14 @@ export const DOUBLE_CLICK_TOLERANCE_PX = 8;
 export const ISOLATION_DIM_OPACITY = 0.6;
 
 /**
+ * Opacity of an element MARKED for erasing while the eraser is swept over it
+ * (before the delete commits on pointer-up). Much lower than
+ * {@link ISOLATION_DIM_OPACITY} so "about to be deleted" reads clearly at a
+ * glance — matches the Excalidraw eraser's ~20% preview. Range: 0.15–0.4.
+ */
+export const ERASE_DIM_OPACITY = 0.2;
+
+/**
  * Opacity of the WYSIWYG shape-draw preview (the live rect / ellipse drawn
  * through its real renderer while dragging out a new shape). Slightly below
  * 1 so the in-progress shape reads as "not committed yet" while still
