@@ -15,6 +15,7 @@ export type CursorRole =
   | "pan-active"
   | "move"
   | "draw"
+  | "erase"
   | "text"
   | "link-start"
   | "link-handle"
@@ -137,11 +138,15 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
     case "draw-frame":
     case "draw-edge":
     case "brush":
-    case "erase":
     case "laser":
     case "eyedropper":
     case "crop":
       return r("draw", "crosshair");
+    // Erase hides the OS cursor: the overlay paints a size-matched ring (and a
+    // fading trail while dragging) in its place, so `none` lets that composite
+    // cleanly at any radius.
+    case "erase":
+      return r("erase", "none");
     case "draw-text":
       return r("text", "text");
     default:

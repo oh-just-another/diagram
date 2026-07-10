@@ -62,6 +62,9 @@ import {
   LASER_COLOR,
   LASER_WIDTH,
   LASER_TRAIL_TTL_MS,
+  ERASER_CURSOR_STROKE,
+  ERASER_CURSOR_LINE_WIDTH,
+  ERASER_TRAIL_TTL_MS,
 } from "./constants.js";
 import { smoothLaserPoints, type LaserStroke } from "./editor/public/laser.js";
 import {
@@ -378,6 +381,19 @@ export interface OverlayOptions {
    */
   laserStrokes?: readonly LaserStroke[];
   /**
+   * Fading eraser drag trail. Same {@link LaserStroke} shape and TTL fade as
+   * {@link laserStrokes}, but painted in a neutral eraser grey (not the laser
+   * red) — laid while an erase stroke is dragged. Purely presentational.
+   */
+  eraserTrail?: readonly LaserStroke[];
+  /**
+   * Eraser cursor ring: `center` in WORLD space (projected to screen), `radius`
+   * in SCREEN px (the panel's eraser width — NOT scaled by zoom). Painted as a
+   * grey ring following the pointer while the erase tool is active, replacing
+   * the hidden OS cursor. Skipped when `radius <= 0`.
+   */
+  eraserCursor?: { readonly center: Vec2; readonly radius: number };
+  /**
    * Remote peer cursors. Each one renders as a small coloured arrow
    * with a name chip in the peer's colour, anchored at the world-
    * space position. The local cursor never appears here.
@@ -494,6 +510,7 @@ export const renderOverlay = (
   renderPeerSelections(ctx);
   renderBrushPreview(ctx);
   renderLaserTrails(ctx);
+  renderEraserCursor(ctx);
   renderContainerDropZone(ctx);
   renderGroupBounds(ctx);
   renderAnnotations(ctx);
@@ -883,52 +900,127 @@ const renderBrushPreview = (ctx: OverlayCtx): void => {
  */
 const renderLaserTrails = (ctx: OverlayCtx): void => {
   const { target, options, w2s } = ctx;
-  const strokes = options.laserStrokes;
+  drawFadingTrail(target, w2s, options.laserStrokes, LASER_COLOR, LASER_WIDTH, LASER_TRAIL_TTL_MS);
+  // Eraser drag trail — identical fade mechanics, neutral grey (not laser red).
+  // Its width matches the cursor ring's DIAMETER (2 × the panel radius) so the
+  // wake is exactly as wide as the eraser; a much shorter TTL than the laser
+  // keeps it a tight wake, not a long comet.
+  const eraserWidth = (options.eraserCursor?.radius ?? LASER_WIDTH / 2) * 2;
+  drawFadingTrail(
+    target,
+    w2s,
+    options.eraserTrail,
+    ERASER_CURSOR_STROKE,
+    eraserWidth,
+    ERASER_TRAIL_TTL_MS,
+  );
+};
+
+/**
+ * Paint a trail (shared by the laser pointer and the eraser wake) the way
+ * Excalidraw does: ONE filled outline per stroke, not a stack of alpha-blended
+ * segments. The smoothed centreline is offset by a half-width that tapers from
+ * `width/2` at the head to 0 at the tail, giving a single comet shape with a
+ * pointed tail — no overlapping round caps beading at the joints. The whole
+ * stroke fills at one opacity that ramps down by the NEWEST point's age over
+ * `ttl` ms, so after release the comet dissolves as its tail is pruned. Drawn in
+ * screen space (constant on-screen width at any zoom). Read-only.
+ */
+const drawFadingTrail = (
+  target: RenderTarget,
+  w2s: Transform,
+  strokes: readonly LaserStroke[] | undefined,
+  color: string,
+  width: number,
+  ttl: number,
+): void => {
   if (!strokes || strokes.length === 0) return;
   const now = typeof performance !== "undefined" ? performance.now() : Date.now();
-  target.setStroke(LASER_COLOR);
-  target.setStrokeWidth(LASER_WIDTH);
+  const maxHalf = width / 2;
+  target.setStroke(null);
   target.setDashArray(null);
-  target.setFill(null);
-  target.setLineCap("round");
-  target.setLineJoin("round");
+  target.setFill(color);
   for (const stroke of strokes) {
-    // Resample the sparse captured polyline into a smooth Catmull-Rom curve so
-    // the beam isn't visibly angular. Timestamps are interpolated per sub-point,
-    // so the per-segment fade below is unchanged.
     const pts = smoothLaserPoints(stroke.points);
-    if (pts.length === 1) {
-      // A tap with no drag: draw a single fading dot.
-      const p = req(pts[0]);
-      const op = 1 - (now - p.t) / LASER_TRAIL_TTL_MS;
-      if (op <= 0) continue;
-      const s = matrix.applyToPoint(w2s, { x: p.x, y: p.y });
-      target.setOpacity(op);
-      target.setFill(LASER_COLOR);
+    if (pts.length === 0) continue;
+    // One opacity for the whole shape (Excalidraw fills a single path once);
+    // ramps by the freshest point's age so a released stroke fades as a whole.
+    const newest = req(pts[pts.length - 1]);
+    const op = 1 - (now - newest.t) / ttl;
+    if (op <= 0) continue;
+    target.setOpacity(op);
+    const screen = pts.map((p) => matrix.applyToPoint(w2s, { x: p.x, y: p.y }));
+    if (screen.length === 1) {
+      const s = req(screen[0]);
       target.beginPath();
-      target.ellipse(s.x, s.y, LASER_WIDTH / 2, LASER_WIDTH / 2);
+      target.ellipse(s.x, s.y, maxHalf, maxHalf);
       target.fill();
-      target.setFill(null);
       continue;
     }
-    for (let i = 0; i < pts.length - 1; i++) {
-      const a = req(pts[i]);
-      const b = req(pts[i + 1]);
-      // Opacity from the newer point's age → the tail (older) fades first.
-      const op = 1 - (now - b.t) / LASER_TRAIL_TTL_MS;
-      if (op <= 0) continue;
-      const sa = matrix.applyToPoint(w2s, { x: a.x, y: a.y });
-      const sb = matrix.applyToPoint(w2s, { x: b.x, y: b.y });
-      target.setOpacity(op);
-      target.beginPath();
-      target.moveTo(sa.x, sa.y);
-      target.lineTo(sb.x, sb.y);
-      target.stroke();
+    const outline = taperedTrailOutline(screen, maxHalf);
+    const first = req(outline[0]);
+    target.beginPath();
+    target.moveTo(first.x, first.y);
+    for (let i = 1; i < outline.length; i++) {
+      const p = req(outline[i]);
+      target.lineTo(p.x, p.y);
     }
+    target.closePath();
+    target.fill();
   }
   target.setOpacity(1);
-  target.setLineCap("butt");
-  target.setLineJoin("miter");
+};
+
+/**
+ * Build the closed outline polygon of a variable-width ribbon around the screen
+ * polyline `pts` (tail → head order). Each vertex is offset by ±`hw` along the
+ * local normal, where the half-width tapers linearly from 0 at the tail (index
+ * 0) to `maxHalf` at the head (last index). Returns the left side forward then
+ * the right side backward — one closed loop to fill in a single pass.
+ */
+export const taperedTrailOutline = (pts: readonly Vec2[], maxHalf: number): Vec2[] => {
+  const n = pts.length;
+  const left: Vec2[] = [];
+  const right: Vec2[] = [];
+  for (let i = 0; i < n; i++) {
+    const p = req(pts[i]);
+    const prev = req(pts[Math.max(0, i - 1)]);
+    const next = req(pts[Math.min(n - 1, i + 1)]);
+    let tx = next.x - prev.x;
+    let ty = next.y - prev.y;
+    const len = Math.hypot(tx, ty) || 1;
+    tx /= len;
+    ty /= len;
+    // Normal (perpendicular) × the tapered half-width.
+    const hw = maxHalf * (n > 1 ? i / (n - 1) : 1);
+    const nx = -ty * hw;
+    const ny = tx * hw;
+    left.push({ x: p.x + nx, y: p.y + ny });
+    right.push({ x: p.x - nx, y: p.y - ny });
+  }
+  right.reverse();
+  return [...left, ...right];
+};
+
+/**
+ * Section 6.7 — eraser cursor ring. A grey circle following the pointer while
+ * the erase tool is active, its radius the panel's eraser width in SCREEN px
+ * (so it matches the slider number, unscaled by zoom). Replaces the hidden OS
+ * cursor. Read-only — never mutates state.
+ */
+const renderEraserCursor = (ctx: OverlayCtx): void => {
+  const { target, options, w2s } = ctx;
+  const cursor = options.eraserCursor;
+  if (!cursor || cursor.radius <= 0) return;
+  const s = matrix.applyToPoint(w2s, cursor.center);
+  target.setStroke(ERASER_CURSOR_STROKE);
+  target.setStrokeWidth(ERASER_CURSOR_LINE_WIDTH);
+  target.setDashArray(null);
+  target.setFill(null);
+  target.setOpacity(1);
+  target.beginPath();
+  target.ellipse(s.x, s.y, cursor.radius, cursor.radius);
+  target.stroke();
 };
 
 /**

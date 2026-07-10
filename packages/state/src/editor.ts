@@ -111,6 +111,7 @@ import {
   ROTATE_SNAP_RADIANS,
   CROP_HANDLE_HIT_RADIUS,
   FLOWCHART_MAX_SIBLINGS,
+  ERASER_TRAIL_TTL_MS,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP } from "./handle.js";
 import { req } from "./util.js";
@@ -2460,6 +2461,10 @@ export class Editor {
       if (hit) stroke.pending.add(hit.id);
     }
     this.eraseStroke = stroke;
+    // Start a fading eraser trail (a fresh array so the render-overlay memo
+    // rebuilds this frame — same reasoning as `beginLaserStroke`).
+    this.interaction.eraserTrail = [beginLaserStrokePure(world, nowMs())];
+    this.maybeAnimate();
     this.notify();
   }
   /**
@@ -2477,7 +2482,16 @@ export class Editor {
       restore,
     );
     stroke.last = world;
-    if (changed) this.notify();
+    // Grow the fading trail alongside the sweep. Reassign the array reference
+    // (like the laser) so the overlay memo repaints the trail on this move.
+    const trail = this.interaction.eraserTrail;
+    const active = trail[trail.length - 1];
+    if (active) {
+      extendLaserStrokePure(active, world, nowMs());
+      this.interaction.eraserTrail = trail.slice();
+      this.maybeAnimate();
+    }
+    if (changed || active) this.notify();
   }
   /**
    * Commit the eraser stroke — delete every swept shape in ONE undo step (with
@@ -2555,19 +2569,34 @@ export class Editor {
     // the tick wasn't running.
     this.maybeAnimate();
   }
-  /** True while any laser trail still has visible points (drives the tick). */
+  /**
+   * True while any laser trail OR eraser trail still has visible points (drives
+   * the fade tick — so the trail keeps melting after the pointer stops).
+   */
   hasActiveLaser(): boolean {
-    return this.interaction.laserStrokes.length > 0;
+    return this.interaction.laserStrokes.length > 0 || this.interaction.eraserTrail.length > 0;
+  }
+  /** Live eraser drag trail (ephemeral, fading). Empty when none active. */
+  get eraserTrail(): readonly LaserStroke[] {
+    return this.interaction.eraserTrail;
   }
   /**
-   * Drop expired laser points/strokes (called once per frame before paint).
-   * Self-terminating: once the array empties the animation tick stops.
+   * Drop expired laser/eraser trail points (called once per frame before paint).
+   * Self-terminating: once both arrays empty the animation tick stops.
    */
   private pruneLaser(): void {
     const strokes = this.interaction.laserStrokes;
-    if (strokes.length === 0) return;
-    const r = pruneLaserStrokes(strokes, nowMs());
-    if (r.changed) this.interaction.laserStrokes = r.strokes;
+    if (strokes.length > 0) {
+      const r = pruneLaserStrokes(strokes, nowMs());
+      if (r.changed) this.interaction.laserStrokes = r.strokes;
+    }
+    const trail = this.interaction.eraserTrail;
+    if (trail.length > 0) {
+      // Prune at the eraser's own (shorter) TTL so points don't linger in the
+      // array long after they've faded to invisible.
+      const r = pruneLaserStrokes(trail, nowMs(), ERASER_TRAIL_TTL_MS);
+      if (r.changed) this.interaction.eraserTrail = r.strokes;
+    }
   }
 
   arrangeAsGrid(opts: { cols?: number; gap?: number } = {}): void {
@@ -2648,8 +2677,8 @@ export class Editor {
     this.interaction.editingLinkCaption = null;
     this.interaction.pendingLinkDropMenu = null;
     // Abort an in-progress eraser stroke (nothing deleted) and stop laying a
-    // laser trail — both live outside the machine. Existing laser trails keep
-    // fading via the tick.
+    // laser trail — both live outside the machine. Existing laser and eraser
+    // trails keep fading via the tick (not hard-cleared here).
     this.interaction.eraseStroke = null;
     this.interaction.laserDrawing = false;
     // Drop any pending flowchart-create preview (Esc / global cancel abandons it).
@@ -5533,6 +5562,16 @@ export class Editor {
       containerHover: this.containerHover,
       brushStroke: this.brushStroke,
       laserStrokes: this.interaction.laserStrokes,
+      eraserTrail: this.interaction.eraserTrail,
+      // Eraser cursor ring: a size-matched circle following the pointer while
+      // the erase tool is active (not read-only). Sourced from `lastPointerWorld`
+      // (updated on every hover AND drag move) — `hoverCursorWorld` is forced
+      // null outside select mode. Radius is the panel's eraser width in SCREEN
+      // px (matches the slider number).
+      eraserCursor:
+        this.mode === "erase" && !this._readOnly && this.lastPointerWorld !== null
+          ? { center: this.lastPointerWorld, radius: this._brushSettings.width }
+          : null,
       peerCursors: this._peerCursors,
       peerSelections: this._peerSelections,
       debugHitZones: this.debugHitZones,

@@ -158,6 +158,15 @@ export interface RenderSnapshot {
   readonly containerHover: ContainerHover | null;
   readonly brushStroke: BrushStrokeState | null;
   readonly laserStrokes: readonly LaserStroke[];
+  /** Fading eraser drag trail (laser-style), painted in neutral grey. */
+  readonly eraserTrail: readonly LaserStroke[];
+  /**
+   * Eraser cursor ring: the world-space hover centre and its SCREEN-px radius
+   * (the panel's eraser width). `null` unless the erase tool is active with a
+   * live hover point and the editor is editable. The overlay hides the OS
+   * cursor in erase mode and paints this ring in its place.
+   */
+  readonly eraserCursor: { readonly center: Vec2; readonly radius: number } | null;
   readonly peerCursors: readonly PeerCursor[];
   readonly peerSelections: readonly PeerSelection[];
   readonly debugHitZones: boolean;
@@ -260,6 +269,8 @@ const buildOverlaySignature = (e: RenderSnapshot): readonly unknown[] => [
   e.containerHover,
   e.brushStroke,
   e.laserStrokes,
+  e.eraserTrail,
+  e.eraserCursor,
   e.peerCursors,
   e.peerSelections,
   e.debugHitZones,
@@ -636,6 +647,12 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     }
     if (editor.laserStrokes.length > 0) {
       overlayOpts.laserStrokes = editor.laserStrokes;
+    }
+    if (editor.eraserTrail.length > 0) {
+      overlayOpts.eraserTrail = editor.eraserTrail;
+    }
+    if (editor.eraserCursor) {
+      overlayOpts.eraserCursor = editor.eraserCursor;
     }
     // Persistent halo around EVERY selected link (multi-select). Curve-aware
     // so the halo follows the drawn path, matching the hover highlight.

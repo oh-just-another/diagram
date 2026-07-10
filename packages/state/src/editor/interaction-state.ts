@@ -161,6 +161,12 @@ export class InteractionState {
   eraseStroke: EraseStrokeState | null = null;
   /** Ephemeral laser-pointer trails — fade by TTL, never touch the scene. */
   laserStrokes: LaserStroke[] = [];
+  /**
+   * Ephemeral eraser drag trail — a laser-style fading trail laid while an
+   * erase stroke is active. Reuses {@link LaserStroke} so the same TTL fade /
+   * prune tick drives it; painted in a neutral grey, never the laser red.
+   */
+  eraserTrail: LaserStroke[] = [];
   /** True only while the pointer is DOWN in laser mode (a trail is being laid). */
   laserDrawing = false;
   /** Last world-space pointer position observed by the host's onMove handler. */
@@ -220,6 +226,7 @@ export class InteractionState {
     this.brushStroke = null;
     this.eraseStroke = null;
     this.laserStrokes = [];
+    this.eraserTrail = [];
     this.laserDrawing = false;
     this.lastPointerWorld = null;
     this.dragElementId = null;

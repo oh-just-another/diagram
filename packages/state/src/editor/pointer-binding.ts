@@ -838,6 +838,10 @@ const dispatchMoveToMachine = (editor: Editor, worldPoint: Vec2): void => {
     // Track the idle cursor so the SINGLE selected element's link-start dot
     // grows by proximity. Only the selected element's dots react.
     editor.setHoverCursorWorld(editor.mode === "select" ? worldPoint : null);
+    // Erase-mode hover: repaint so the eraser cursor ring follows the pointer
+    // (its centre is `lastPointerWorld`, already updated above). Drag moves
+    // repaint via `extendEraseStroke`; this covers the pointer-up hover.
+    if (editor.mode === "erase") editor.notify();
   }
   editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
 };

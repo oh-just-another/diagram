@@ -540,6 +540,27 @@ export const BRUSH_SMOOTH_SEGMENTS = 4;
 export const ERASER_SAMPLE_STEP = 6;
 
 /**
+ * Stroke colour of the eraser cursor ring (and its fading drag trail). A neutral
+ * mid-grey so it reads on both light and dark canvases without looking like a
+ * tool accent. Range: any mid-luminance grey (#666–#aaa).
+ */
+export const ERASER_CURSOR_STROKE = "#888888";
+
+/**
+ * Screen-pixel line width of the eraser cursor ring. Constant on screen (the
+ * ring is drawn in screen space) so it stays crisp at any zoom. Range: 1–3.
+ */
+export const ERASER_CURSOR_LINE_WIDTH = 1.5;
+
+/**
+ * Lifetime (ms) of an eraser drag-trail point before it fully fades — the knob
+ * for how LONG the eraser wake is. Much shorter than {@link LASER_TRAIL_TTL_MS}
+ * (the laser comet) so the eraser leaves only a tight, brief wake behind the
+ * cursor, matching Excalidraw. Lower = shorter/snappier. Range: 100–400.
+ */
+export const ERASER_TRAIL_TTL_MS = 180;
+
+/**
  * Lifetime (ms) of a laser-pointer trail point before it fully fades. Each
  * point stores its birth time; the overlay ramps its opacity from 1 → 0 over
  * this window and the editor prunes points older than it, so a stroke trails
