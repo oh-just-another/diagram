@@ -159,12 +159,21 @@ const handleDownBrush = (editor: Editor, worldPoint: Vec2, pressure: number): bo
   return true;
 };
 
-/** Eraser mode — begin sweeping shapes under the press. Owns the gesture. */
-const handleDownErase = (editor: Editor, worldPoint: Vec2, restore: boolean): boolean => {
+/**
+ * Eraser mode — begin sweeping shapes under the press. Owns the gesture.
+ * `strokeErase` (Shift held) cuts brush strokes into fragments instead of
+ * deleting them whole.
+ */
+const handleDownErase = (
+  editor: Editor,
+  worldPoint: Vec2,
+  restore: boolean,
+  strokeErase: boolean,
+): boolean => {
   if (editor.readOnly) return false;
   if (editor.mode !== "erase") return false;
   editor.cancelLongPress();
-  editor.beginEraseStroke(worldPoint, restore);
+  editor.beginEraseStroke(worldPoint, restore, strokeErase);
   return true;
 };
 
@@ -1162,7 +1171,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (handleDownCropEnter(editor, worldPoint, ev.detail)) return;
     if (handleDownEyedropper(editor, worldPoint)) return;
     if (handleDownBrush(editor, worldPoint, ev.pressure)) return;
-    if (handleDownErase(editor, worldPoint, data.modifiers.alt)) return;
+    if (handleDownErase(editor, worldPoint, data.modifiers.alt, data.modifiers.shift)) return;
     if (handleDownLaser(editor, worldPoint)) return;
     if (handleDownDrawText(editor, worldPoint)) return;
     if (handleDownAnnotation(editor, worldPoint)) return;

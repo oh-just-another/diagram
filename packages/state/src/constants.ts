@@ -570,6 +570,37 @@ export const ERASER_CURSOR_LINE_WIDTH = 1.5;
 export const ERASER_TRAIL_TTL_MS = 120;
 
 /**
+ * Stroke-eraser (Shift) samples a brush polyline this densely — as a FRACTION of
+ * the eraser radius — when computing which arc-length spans fall under the disc.
+ * The eraser cuts the line's GEOMETRY (segments), not just its vertices, so a big
+ * disc merely grazing a sparsely-sampled stroke still removes the covered span.
+ * Smaller = finer edges / more samples per move; larger = coarser / cheaper. The
+ * covered-span endpoints are refined by bisection ({@link ERASE_BOUNDARY_BISECT_ITERS})
+ * regardless, so this mainly bounds the miss-a-tiny-dip risk. Range: 0.15–0.5.
+ */
+export const ERASE_COVERAGE_SAMPLE_FRACTION = 0.25;
+
+/**
+ * Floor (world units) for the stroke-eraser sample step, so a tiny eraser radius
+ * doesn't explode the sample count on a long stroke. Range: 0.25–2.
+ */
+export const ERASE_COVERAGE_MIN_SAMPLE_STEP = 0.5;
+
+/**
+ * Bisection iterations used to pin each covered-span endpoint to the eraser ring
+ * (where the brush polyline crosses distance = radius). Each iteration halves the
+ * error, so 10 ≈ step/1024 — visually exact. Range: 6–14.
+ */
+export const ERASE_BOUNDARY_BISECT_ITERS = 10;
+
+/**
+ * A surviving stroke-eraser fragment shorter than this arc length (world units)
+ * is dropped as litter — an isolated nub reads as a stray dot, not a line. Range:
+ * 0.5–3.
+ */
+export const ERASE_FRAGMENT_MIN_ARC = 1;
+
+/**
  * Lifetime (ms) of a laser-pointer trail point before it fully fades. Each
  * point stores its birth time; the overlay ramps its opacity from 1 → 0 over
  * this window and the editor prunes points older than it, so a stroke trails

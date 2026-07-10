@@ -28,6 +28,7 @@ import {
   isGroup,
   isText,
   isImage,
+  isBrush,
   getElementWorldBounds,
   setTextMeasurer,
   getScreenToWorld,
@@ -178,6 +179,12 @@ import {
   computeEraseCommit,
   type EraseStrokeState,
 } from "./editor/public/eraser.js";
+import {
+  computeEraseFromMasks,
+  computeStrokeErasePreviewFromMasks,
+  markErasedIntervals,
+} from "./editor/public/stroke-eraser.js";
+import { coveredLength } from "./editor/public/stroke-eraser-coverage.js";
 import {
   beginLaserStroke as beginLaserStrokePure,
   extendLaserStroke as extendLaserStrokePure,
@@ -844,6 +851,15 @@ export class Editor {
    * this lets that active→inactive transition force one full repaint.
    */
   public lastRenderedEraseActive = false;
+  /**
+   * Set whenever an eraser move actually CHANGES the marked / cut set (a new
+   * shape marked, un-marked, or a brush point cut). Gates the forced full
+   * repaint during erasing: only the frames that change the preview repaint the
+   * whole scene; a slowly-moving or stopped cursor over already-covered area
+   * skips the expensive main pass (only the overlay cursor / trail refresh).
+   * Cleared after each paint.
+   */
+  private eraseDirty = false;
 
   /**
    * Fractional-order compaction scheduler (microtask-coalesced).
@@ -2454,18 +2470,53 @@ export class Editor {
    * plain click erases. With `restore` (Alt held at press) it seeds nothing —
    * the gesture is in un-mark mode, and there's nothing marked yet to rescue.
    */
-  beginEraseStroke(world: Vec2, restore = false): void {
-    const stroke = beginEraseStrokePure(world);
+  beginEraseStroke(world: Vec2, restore = false, strokeErase = false): void {
+    const stroke = beginEraseStrokePure(world, strokeErase);
     if (!restore) {
       const hit = this.acceleratedElementAt(world);
-      if (hit) stroke.pending.add(hit.id);
+      // In stroke-erase mode brushes are cut by the path, not object-deleted —
+      // don't seed a brush into `pending`.
+      if (hit && !(strokeErase && hit.type === "brush")) stroke.pending.add(hit.id);
     }
     this.eraseStroke = stroke;
+    // The initial seed / cut changes the marked set → the first frame must fully
+    // repaint so the dim / cut preview shows.
+    this.eraseDirty = true;
+    // Stroke mode: mark brush points under the press point (degenerate segment)
+    // so a click still cuts.
+    if (strokeErase) this.markStrokeEraseSegment(stroke, world, world);
     // Start a fading eraser trail (a fresh array so the render-overlay memo
     // rebuilds this frame — same reasoning as `beginLaserStroke`).
     this.interaction.eraserTrail = [beginLaserStrokePure(world, nowMs())];
     this.maybeAnimate();
     this.notify();
+  }
+
+  /**
+   * Incrementally mark the brush points erased by the eraser segment `a → b`
+   * (world). Iterates the current brushes and grows `stroke.erased` in place —
+   * O(points) per move (each already-erased point is skipped), so a long drag
+   * no longer costs O(points × path length) per frame. Radius is the on-screen
+   * eraser ring converted to world units.
+   */
+  private markStrokeEraseSegment(stroke: EraseStrokeState, a: Vec2, b: Vec2): boolean {
+    const zoom = this._scene.viewport.zoom || 1;
+    const radius = this._brushSettings.width / zoom;
+    let changed = false;
+    for (const el of this._scene.elements.values()) {
+      if (!isBrush(el)) continue;
+      const existing = stroke.erased.get(el.id) ?? [];
+      const merged = markErasedIntervals(el, existing, a, b, radius);
+      // Grew the covered span (or first coverage of a single-point brush).
+      if (
+        merged.length > existing.length ||
+        coveredLength(merged) > coveredLength(existing) + 1e-6
+      ) {
+        stroke.erased.set(el.id, merged);
+        changed = true;
+      }
+    }
+    return changed;
   }
   /**
    * Extend the eraser stroke to `world`, sweeping shapes along the segment.
@@ -2480,18 +2531,32 @@ export class Editor {
       (p) => this.acceleratedElementAt(p),
       stroke.pending,
       restore,
+      stroke.strokeMode,
     );
+    // Incrementally cut brush points along the new segment (stroke mode only).
+    const cut = stroke.strokeMode ? this.markStrokeEraseSegment(stroke, stroke.last, world) : false;
+    // Only a frame that actually changed the marked / cut set needs the forced
+    // full repaint (see `eraseDirty`); a move over already-covered area doesn't.
+    if (changed || cut) this.eraseDirty = true;
     stroke.last = world;
     // Grow the fading trail alongside the sweep. Reassign the array reference
-    // (like the laser) so the overlay memo repaints the trail on this move.
+    // (like the laser) so the overlay memo repaints the trail on this move. If
+    // the trail had faded to empty (a pause with the button held), start a fresh
+    // one — otherwise resuming the drag would leave `eraserTrail` empty.
     const trail = this.interaction.eraserTrail;
     const active = trail[trail.length - 1];
     if (active) {
       extendLaserStrokePure(active, world, nowMs());
       this.interaction.eraserTrail = trail.slice();
-      this.maybeAnimate();
+    } else {
+      this.interaction.eraserTrail = [beginLaserStrokePure(world, nowMs())];
     }
-    if (changed || active) this.notify();
+    this.maybeAnimate();
+    // Always repaint: the cursor ring follows the pointer every move regardless
+    // of whether anything was marked / cut. Cheap now — a frame that changes
+    // nothing skips the full main pass (see `eraseDirty`) and only redraws the
+    // overlay cursor / trail.
+    this.notify();
   }
   /**
    * Commit the eraser stroke — delete every swept shape in ONE undo step (with
@@ -2501,22 +2566,44 @@ export class Editor {
   commitEraseStroke(): number {
     const stroke = this.eraseStroke;
     if (!stroke) return 0;
-    const result = computeEraseCommit(this._scene, stroke.pending);
     this.eraseStroke = null;
-    if (!result) {
+
+    // Object-erase part: delete every swept (non-brush, in stroke mode) shape.
+    const objectResult = computeEraseCommit(this._scene, stroke.pending);
+    let scene = objectResult ? objectResult.scene : this._scene;
+    const patches: Patch[] = objectResult ? [...objectResult.patches] : [];
+
+    // Stroke-erase part (Shift): cut every brush with erased points (accumulated
+    // incrementally during the drag) into fragments.
+    const removedBrushIds: ElementId[] = [];
+    if (stroke.strokeMode) {
+      const strokeResult = computeEraseFromMasks(scene, stroke.erased, () =>
+        newBrushId(++this.nextId),
+      );
+      if (strokeResult) {
+        scene = strokeResult.scene;
+        patches.push(...strokeResult.patches);
+        removedBrushIds.push(...strokeResult.removedIds);
+      }
+    }
+
+    if (patches.length === 0) {
       this.notify();
       return 0;
     }
+
+    // Fold the object-deletes and brush cuts into ONE undo step.
     const tx = this._history.transaction();
-    this._scene = result.scene;
-    for (const patch of result.patches) tx.add(patch);
+    this._scene = scene;
+    for (const patch of patches) tx.add(patch);
     tx.commit();
     // Drop any erased ids from the live selection so no stale handle lingers.
     let sel = this._selection;
     for (const id of stroke.pending) sel = Selection.remove(sel, id);
+    for (const id of removedBrushIds) sel = Selection.remove(sel, id);
     this._selection = sel;
     this.notify();
-    return stroke.pending.size;
+    return stroke.pending.size + removedBrushIds.length;
   }
   /** Abort the eraser stroke without deleting anything. */
   cancelEraseStroke(): void {
@@ -4111,6 +4198,24 @@ export class Editor {
     return computeHiddenElementsPure(this._scene);
   }
 
+  /**
+   * Live stroke-erase preview: while a Shift-held eraser gesture drags, the
+   * fragments each touched brush WOULD become, plus the set of touched
+   * originals to hide in the main pass. `null` outside a stroke-erase gesture
+   * or when the path touches no brush. Recomputed each frame from the
+   * path-so-far — never mutates the scene or history.
+   */
+  private computeStrokeErasePreview(): {
+    readonly elements: readonly Element[];
+    readonly hidden: ReadonlySet<ElementId>;
+  } | null {
+    const stroke = this.eraseStroke;
+    if (!stroke || !stroke.strokeMode || stroke.erased.size === 0) return null;
+    const preview = computeStrokeErasePreviewFromMasks(this._scene, stroke.erased);
+    if (!preview) return null;
+    return { elements: preview.fragments, hidden: preview.hidden };
+  }
+
   public computeDimElements(enteredGroupId: ElementId): ReadonlySet<ElementId> {
     return computeDimElementsHelper(this._scene, this._selection, enteredGroupId);
   }
@@ -4625,11 +4730,13 @@ export class Editor {
       this.edgePreview !== null ||
       this.brushStroke !== null ||
       this.lassoPreview !== null ||
-      // Eraser sweep: marking / un-marking a shape re-dims it WITHOUT mutating
-      // the scene, so the scene-diff dirty rect is empty and the shape would
-      // never repaint at its erase-dim opacity. Force a full repaint while the
-      // eraser is active (like isolation), so the preview dim actually shows.
-      this.interaction.eraseStroke !== null
+      // Eraser sweep: marking / un-marking / cutting changes what's shown
+      // WITHOUT mutating the scene, so the scene-diff dirty rect is empty and
+      // the change would never repaint. Force a full repaint — but ONLY on the
+      // frames that actually changed the marked / cut set (`eraseDirty`), so a
+      // slowly-moving or stopped cursor doesn't re-render the whole scene every
+      // frame (which froze big scenes).
+      (this.interaction.eraseStroke !== null && this.eraseDirty)
     ) {
       return null;
     }
@@ -5507,6 +5614,14 @@ export class Editor {
    * the `lastRendered*` bookkeeping is applied in `render()` after the paint.
    */
   private buildRenderSnapshot(): RenderSnapshot {
+    // Stroke-erase live preview: the touched originals are hidden in the main
+    // pass and their would-be fragments drawn on the overlay.
+    const strokeErasePreview = this.computeStrokeErasePreview();
+    const baseHidden = this.computeHiddenElements();
+    const hideElements =
+      strokeErasePreview === null
+        ? baseHidden
+        : new Set<ElementId>([...(baseHidden ?? []), ...strokeErasePreview.hidden]);
     return {
       mainTarget: this.mainTarget,
       overlayTarget: this.overlayTarget,
@@ -5522,7 +5637,8 @@ export class Editor {
       dirtyWorld: this.computeDirtyWorld(),
       dimElements: this.computeDimSet(),
       eraseActive: (this.interaction.eraseStroke?.pending.size ?? 0) > 0,
-      hideElements: this.computeHiddenElements(),
+      hideElements,
+      strokeErasePreview,
       sharedIndex:
         this._scene.elements.size >= LARGE_SCENE_HIT_THRESHOLD ? this.ensureSpatialIndex() : null,
       boundsCache: this.boundsCache,
@@ -5603,6 +5719,9 @@ export class Editor {
     this.lastRenderedScene = this._scene;
     this.lastRenderedEnteredGroup = this._enteredGroup;
     this.lastRenderedEraseActive = snapshot.eraseActive;
+    // The forced erase repaint (if any) has now happened — later idle frames
+    // (cursor moving / trail fading) skip the full main pass until the next cut.
+    this.eraseDirty = false;
     // Clear the accumulated tile-dirty set only when the tile path actually
     // composited this frame. Group isolation (dim) / per-element hide make the
     // orchestrator fall back to the full renderScene path (it can't reproduce

@@ -306,6 +306,14 @@ export interface OverlayOptions {
    * drawn separately by the orchestrator at the same opacity.
    */
   flowchartPreviewElements?: readonly Element[];
+  /**
+   * Live stroke-erase fragments (Shift eraser drag). The would-be brush
+   * fragments for every touched brush, drawn through their real renderer at full
+   * opacity — the touched originals are already hidden in the main pass, so this
+   * shows the cut WYSIWYG. Drawn per-element (NOT via `renderScene`, which would
+   * clear the overlay and wipe the eraser cursor / trail).
+   */
+  strokeErasePreviewElements?: readonly Element[];
   edgePreview?: LinkPreview;
   /**
    * Port-dot affordances to paint. A single set (one shape's anchors)
@@ -675,6 +683,24 @@ const renderPreviews = (ctx: OverlayCtx): void => {
       target.save();
       target.setTransform(w2s);
       target.setOpacity(FLOWCHART_PREVIEW_OPACITY);
+      target.setDashArray(null);
+      target.translate(el.position.x, el.position.y);
+      if (el.rotation !== 0) target.rotate(el.rotation);
+      if (el.scale.x !== 1 || el.scale.y !== 1) target.scale(el.scale.x, el.scale.y);
+      renderer(el, target);
+      target.restore();
+    }
+  }
+
+  // Stroke-erase live fragments — full opacity (the originals are hidden), drawn
+  // per-element so the overlay's cursor / trail chrome survive underneath.
+  if (options.strokeErasePreviewElements && options.strokeErasePreviewElements.length > 0) {
+    for (const el of options.strokeErasePreviewElements) {
+      const renderer = getElementRenderer(el.type);
+      if (!renderer) continue;
+      target.save();
+      target.setTransform(w2s);
+      target.setOpacity(1);
       target.setDashArray(null);
       target.translate(el.position.x, el.position.y);
       if (el.rotation !== 0) target.rotate(el.rotation);

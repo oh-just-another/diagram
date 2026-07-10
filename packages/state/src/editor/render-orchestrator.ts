@@ -141,6 +141,16 @@ export interface RenderSnapshot {
     readonly elements: readonly Element[];
     readonly links: readonly Link[];
   } | null;
+  /**
+   * Pending stroke-erase preview: the fragments each touched brush would be cut
+   * into while a Shift-held eraser gesture drags. Drawn on the overlay; the
+   * touched originals are already in `hideElements`. `null` when no such
+   * gesture is active. Fragment ids are ephemeral (never enter history).
+   */
+  readonly strokeErasePreview: {
+    readonly elements: readonly Element[];
+    readonly hidden: ReadonlySet<ElementId>;
+  } | null;
   readonly lassoPreview: Bounds | null;
   readonly drawingPreview: Bounds | null;
   readonly edgePreview: EdgePreview | null;
@@ -252,6 +262,7 @@ const buildOverlaySignature = (e: RenderSnapshot): readonly unknown[] => [
   e.cropFrame,
   e.cropGhost,
   e.flowchartPreview,
+  e.strokeErasePreview,
   e.lassoPreview,
   e.drawingPreview,
   e.edgePreview,
@@ -471,6 +482,14 @@ export const renderEditor = (editor: RenderSnapshot): void => {
         elements: previewElements,
         links: previewLinks,
       };
+    }
+    // Stroke-erase preview: the would-be brush fragments for every touched
+    // brush, drawn per-element on the overlay (the originals are hidden in the
+    // main pass). Uses the `flowchartPreviewElements`-style per-element paint —
+    // NOT `renderScene`, which clears the overlay and would wipe the eraser
+    // cursor ring / trail mid-drag.
+    if (editor.strokeErasePreview && editor.strokeErasePreview.elements.length > 0) {
+      overlayOpts.strokeErasePreviewElements = editor.strokeErasePreview.elements;
     }
     // Connection anchors. Two roles: link-start (on selection) and link-attach
     // (on hover/proximity). During a drag started FROM a start-anchor (select
