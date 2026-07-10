@@ -530,6 +530,15 @@ export const DEFAULT_BRUSH_OPACITY = 1;
 export const BRUSH_SMOOTH_SEGMENTS = 4;
 
 /**
+ * World-pixel distance under which a brush stroke's last point is treated as
+ * meeting its first — the trigger for auto-closing (and filling) a stroke on
+ * commit. Only applies when a fill colour is set and the stroke has ≥3 points.
+ * Scaled to the max stroke width so a thick stroke closes as forgivingly as it
+ * looks. Range: 6–30; larger closes more eagerly. Default: `MAX_BRUSH_WIDTH * 3`.
+ */
+export const BRUSH_CLOSE_DISTANCE = MAX_BRUSH_WIDTH * 3;
+
+/**
  * Eraser sampling step in WORLD units. While the eraser is dragged the host
  * hit-tests points spaced this far apart along the pointer path so a fast
  * swipe doesn't skip over small shapes between two move events. Smaller →

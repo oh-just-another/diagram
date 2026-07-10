@@ -173,6 +173,47 @@ describe("round-trip", () => {
     }
   });
 
+  it("preserves a brush stroke's `closed` flag (and leaves it undefined when open)", () => {
+    let scene = emptyScene();
+    const closedBrush: Element = {
+      id: elementId("bc"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "brush",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: { stroke: "#111", fill: "#fca5a5" },
+      closed: true,
+      points: [
+        { x: 0, y: 0, width: 3 },
+        { x: 10, y: 0, width: 3 },
+        { x: 5, y: 8, width: 3 },
+      ],
+    };
+    const openBrush: Element = {
+      id: elementId("bo"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "brush",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: { stroke: "#111" },
+      points: [
+        { x: 0, y: 0, width: 3 },
+        { x: 10, y: 0, width: 3 },
+      ],
+    };
+    ({ scene } = addElement(scene, closedBrush));
+    ({ scene } = addElement(scene, openBrush));
+    const restored = deserializeScene(serializeScene(scene));
+    const rc = restored.elements.get(elementId("bc")) as Extract<Element, { type: "brush" }>;
+    const ro = restored.elements.get(elementId("bo")) as Extract<Element, { type: "brush" }>;
+    expect(rc.closed).toBe(true);
+    expect(ro.closed).toBeUndefined();
+  });
+
   it("preserves an optional image crop rect (stringify → parse)", () => {
     let scene = emptyScene();
     const img: Element = {

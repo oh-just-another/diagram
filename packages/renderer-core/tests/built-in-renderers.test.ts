@@ -933,4 +933,48 @@ describe("drawBrush", () => {
     });
     expect(calls.some((c) => c.method === "setStroke" && c.args[0] === null)).toBe(true);
   });
+
+  it("fills the enclosed area of a closed stroke with style.fill", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "brush",
+      closed: true,
+      points: [
+        { x: 0, y: 0, width: 3 },
+        { x: 40, y: 0, width: 3 },
+        { x: 40, y: 40, width: 3 },
+        { x: 0, y: 40, width: 3 },
+      ],
+      style: { stroke: "#111827", fill: "#fca5a5" },
+    });
+    // The fill colour is applied for the enclosed polygon.
+    expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#fca5a5")).toBe(true);
+    // A polygon fill: closePath preceded by ≥3 lineTo, followed by fill(), all
+    // before the first stroke-body segment (which sets fill to the line colour).
+    const firstStrokeFill = calls.findIndex(
+      (c) => c.method === "setFill" && c.args[0] === "#111827",
+    );
+    const closeIdx = calls.findIndex((c, i) => c.method === "closePath" && i < firstStrokeFill);
+    expect(closeIdx).toBeGreaterThan(-1);
+    const lineTosBeforeClose = calls.slice(0, closeIdx).filter((c) => c.method === "lineTo").length;
+    expect(lineTosBeforeClose).toBeGreaterThanOrEqual(3);
+    const fillAfterClose = calls.slice(closeIdx, firstStrokeFill).some((c) => c.method === "fill");
+    expect(fillAfterClose).toBe(true);
+  });
+
+  it("does not emit an enclosed-area fill for a non-closed stroke", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "brush",
+      points: [
+        { x: 0, y: 0, width: 3 },
+        { x: 40, y: 0, width: 3 },
+        { x: 40, y: 40, width: 3 },
+        { x: 0, y: 40, width: 3 },
+      ],
+      style: { stroke: "#111827", fill: "#fca5a5" },
+    });
+    // Open stroke: the fill colour is never applied (line uses `stroke`).
+    expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#fca5a5")).toBe(false);
+  });
 });

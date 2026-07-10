@@ -254,6 +254,13 @@ export interface BrushPoint {
 export interface BrushElement extends ElementBase {
   readonly type: "brush";
   readonly points: readonly BrushPoint[];
+  /**
+   * A closed stroke: its ends meet, so the renderer fills the area enclosed by
+   * the centreline with `style.fill` (under the variable-width stroke body).
+   * Set on commit only when a fill colour is chosen and the stroke loops back
+   * on itself. Omitted (undefined) for ordinary open strokes.
+   */
+  readonly closed?: boolean;
 }
 
 /**

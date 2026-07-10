@@ -132,4 +132,42 @@ describe("brush stroke", () => {
     const pending = editor.pendingBrushStroke!;
     expect(pending.points[0]!.width).toBe(20);
   });
+
+  it("auto-closes a looped stroke when a fill colour is set", () => {
+    const editor = makeEditor(emptyScene());
+    editor.setBrushSettings({ fill: "#00ff00" });
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 40 }, 0.5);
+    editor.extendBrushStroke({ x: 0, y: 40 }, 0.5);
+    editor.extendBrushStroke({ x: 2, y: 2 }, 0.5); // returns near the start
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    expect(shape.closed).toBe(true);
+    expect(shape.style.fill).toBe("#00ff00");
+  });
+
+  it("does not close a looped stroke when no fill colour is set", () => {
+    const editor = makeEditor(emptyScene());
+    // default brushSettings.fill is null
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 40 }, 0.5);
+    editor.extendBrushStroke({ x: 0, y: 40 }, 0.5);
+    editor.extendBrushStroke({ x: 2, y: 2 }, 0.5);
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    expect(shape.closed).toBeFalsy();
+  });
+
+  it("does not close an open stroke even with a fill colour set", () => {
+    const editor = makeEditor(emptyScene());
+    editor.setBrushSettings({ fill: "#00ff00" });
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 80, y: 0 }, 0.5); // ends far from the start
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    expect(shape.closed).toBeFalsy();
+  });
 });

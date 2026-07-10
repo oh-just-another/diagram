@@ -171,6 +171,7 @@ const BrushZ = ElementBaseZ.extend({
   type: z.literal("brush"),
   style: StyleZ,
   points: z.array(BrushPointZ),
+  closed: z.boolean().optional(),
 }).strict();
 
 /**

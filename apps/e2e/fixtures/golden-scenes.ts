@@ -648,6 +648,29 @@ export const goldenScenes: readonly GoldenScene[] = [
         .done(),
   },
   {
+    id: "brush-closed-fill",
+    title: "Closed brush stroke with filled enclosed area",
+    build: () =>
+      new SceneBuilder(200, 200)
+        .add({
+          id: eid("brush"),
+          type: "brush",
+          position: { x: 40, y: 40 },
+          rotation: 0,
+          scale: { x: 1, y: 1 },
+          closed: true,
+          style: { stroke: "#111827", fill: "#fca5a5" },
+          points: [
+            { x: 0, y: 0, width: 3 },
+            { x: 110, y: 10, width: 3 },
+            { x: 120, y: 110, width: 3 },
+            { x: 15, y: 105, width: 3 },
+            { x: 4, y: 6, width: 3 },
+          ],
+        })
+        .done(),
+  },
+  {
     id: "isolation-dim",
     title: "Isolation dim — two of three shapes at reduced alpha",
     dimElementIds: ["b", "c"],

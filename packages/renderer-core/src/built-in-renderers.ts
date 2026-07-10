@@ -431,6 +431,22 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
 const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
   const pts = shape.points;
   if (pts.length === 0) return;
+  // Closed stroke with a fill colour: paint the enclosed area FIRST (under the
+  // stroke body) as a polygon through the centreline points. Needs ≥3 points to
+  // enclose an area. Open strokes skip this entirely and are unchanged.
+  if (shape.closed === true && shape.style.fill !== undefined && pts.length >= 3) {
+    target.setFill(shape.style.fill);
+    target.setStroke(null);
+    target.beginPath();
+    const start = req(pts[0]);
+    target.moveTo(start.x, start.y);
+    for (let i = 1; i < pts.length; i++) {
+      const p = req(pts[i]);
+      target.lineTo(p.x, p.y);
+    }
+    target.closePath();
+    target.fill();
+  }
   // The variable-width stroke body is painted with the line colour: prefer
   // `style.stroke` (set by the drawing panel), falling back to `style.fill` for
   // strokes authored before the stroke/fill split (their line lived in `fill`).

@@ -10,6 +10,7 @@ import {
 import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
 import {
+  BRUSH_CLOSE_DISTANCE,
   BRUSH_SMOOTH_SEGMENTS,
   DEFAULT_BRUSH_COLOR,
   DEFAULT_BRUSH_OPACITY,
@@ -108,6 +109,22 @@ export const smoothBrushPoints = (
   }));
 
 /**
+ * Decide whether a committed stroke should auto-close (and thus be filled).
+ * True only when a fill colour is set AND there are at least three points AND
+ * the first and last smoothed points are within {@link BRUSH_CLOSE_DISTANCE}.
+ * Uses squared distance to avoid a `sqrt`.
+ */
+const isClosedStroke = (points: readonly BrushPoint[], style: Style): boolean => {
+  if (style.fill === undefined || points.length < 3) return false;
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (!first || !last) return false;
+  const dx = last.x - first.x;
+  const dy = last.y - first.y;
+  return dx * dx + dy * dy <= BRUSH_CLOSE_DISTANCE * BRUSH_CLOSE_DISTANCE;
+};
+
+/**
  * Produce the shape + scene patch for committing a brush stroke. The captured
  * polyline is smoothed (Catmull-Rom) before it enters the scene so the stored
  * stroke reads as a fluid line, not a chain of angular segments. Caller pushes
@@ -125,6 +142,7 @@ export const commitBrushStroke = (
   const order = orderForTop(
     [...scene.elements.values()].filter((s) => s.layerId === activeLayerId).map((s) => s.order),
   );
+  const points = smoothBrushPoints(stroke.points);
   const shape: Element = {
     id: newElementId,
     layerId: activeLayerId,
@@ -134,7 +152,11 @@ export const commitBrushStroke = (
     scale: { x: 1, y: 1 },
     order,
     style,
-    points: smoothBrushPoints(stroke.points),
+    points,
+    // Auto-close only when a fill colour is chosen and the stroke loops back on
+    // itself — the enclosed area is filled with `style.fill` by the renderer.
+    // Omit the field for open strokes to keep serialized scenes clean.
+    ...(isClosedStroke(points, style) ? { closed: true } : {}),
   };
   const r = addElement(scene, shape);
   return { scene: r.scene, patch: r.patch, elementId: newElementId };
