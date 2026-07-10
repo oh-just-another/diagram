@@ -16,42 +16,62 @@ import type { Editor } from "../src/editor.js";
 // ---------------------------------------------------------------------------
 // Fake <img> — fires onload (or onerror when src includes "decode-fail")
 // on a microtask, with scripted natural dimensions.
+//
+// Built from a REAL `document.createElement("img")` node (so the handler can
+// `appendChild` it to the sink) with instance-own `src`/`complete`/natural-size
+// accessors defined via `Object.defineProperty`. Instance-own accessors shadow
+// jsdom's prototype `src` setter, which otherwise resolves the value to an
+// absolute URL and kicks off jsdom's real resource loader that never fires
+// `onload` for a data URL — hanging the handler's decode await. Subclassing
+// `window.Image` does NOT work: jsdom's element constructor returns an instance
+// bound to `HTMLImageElement.prototype`, discarding the subclass override.
+// `instanceof FakeImage` is honoured via a tag + `Symbol.hasInstance`.
 // ---------------------------------------------------------------------------
 
 let naturalSize = { width: 100, height: 50 };
 
-class FakeImage extends window.Image {
-  #loaded = false;
-  #src = "";
+const FAKE_IMAGE_TAG = Symbol("fake-image");
 
-  override get complete(): boolean {
-    return this.#loaded;
-  }
-
-  override get naturalWidth(): number {
-    return this.#loaded ? naturalSize.width : 0;
-  }
-
-  override get naturalHeight(): number {
-    return this.#loaded ? naturalSize.height : 0;
-  }
-
-  override get src(): string {
-    return this.#src;
-  }
-
-  override set src(value: string) {
-    this.#src = value;
-    queueMicrotask(() => {
-      if (value.includes("decode-fail")) {
-        this.onerror?.(new Event("error"));
-        return;
-      }
-      this.#loaded = true;
-      this.onload?.(new Event("load"));
-    });
-  }
+interface FakeImageElement extends HTMLImageElement {
+  [FAKE_IMAGE_TAG]: true;
 }
+
+const FakeImage = function (this: unknown): HTMLImageElement {
+  const el = document.createElement("img") as FakeImageElement;
+  let loaded = false;
+  let srcValue = "";
+  Object.defineProperty(el, "src", {
+    configurable: true,
+    get: () => srcValue,
+    set: (value: string) => {
+      srcValue = value;
+      queueMicrotask(() => {
+        if (value.includes("decode-fail")) {
+          el.onerror?.(new Event("error"));
+          return;
+        }
+        loaded = true;
+        el.onload?.(new Event("load"));
+      });
+    },
+  });
+  Object.defineProperty(el, "complete", { configurable: true, get: () => loaded });
+  Object.defineProperty(el, "naturalWidth", {
+    configurable: true,
+    get: () => (loaded ? naturalSize.width : 0),
+  });
+  Object.defineProperty(el, "naturalHeight", {
+    configurable: true,
+    get: () => (loaded ? naturalSize.height : 0),
+  });
+  el[FAKE_IMAGE_TAG] = true;
+  return el;
+} as unknown as new () => HTMLImageElement;
+
+Object.defineProperty(FakeImage, Symbol.hasInstance, {
+  value: (instance: unknown): boolean =>
+    typeof instance === "object" && instance !== null && FAKE_IMAGE_TAG in instance,
+});
 
 // ---------------------------------------------------------------------------
 // Editor stub — only the two methods the handlers call.
@@ -73,8 +93,26 @@ const makeContext = (): { editor: EditorStub; ctx: FileDropContext } => {
   };
 };
 
+/**
+ * Build a `File` whose bytes are also reachable via `arrayBuffer()`. jsdom's
+ * `Blob`/`File` polyfill implements neither `arrayBuffer()` nor `text()`, so the
+ * handler's `await file.arrayBuffer()` (GIF path) throws under jsdom. Real
+ * browsers provide it; we back-fill an instance-own method from the known bytes.
+ */
+const makeFile = (bytes: Uint8Array<ArrayBuffer>, name: string, type: string): File => {
+  const file = new File([bytes], name, { type });
+  if (typeof file.arrayBuffer !== "function") {
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    Object.defineProperty(file, "arrayBuffer", {
+      configurable: true,
+      value: () => Promise.resolve(buffer),
+    });
+  }
+  return file;
+};
+
 const pngFile = (name = "photo.png"): File =>
-  new File([new Uint8Array([1, 2, 3])], name, { type: "image/png" });
+  makeFile(new Uint8Array([1, 2, 3]), name, "image/png");
 
 beforeEach(() => {
   vi.stubGlobal("Image", FakeImage);
@@ -83,6 +121,12 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  // Restore any `vi.spyOn` (notably the video test's `document.createElement`
+  // spy) so spies don't STACK across tests. A leaked createElement spy makes the
+  // next test's trap re-`defineProperty` a non-configurable prop on an already
+  // trapped element, which throws before the handler wires `onloadedmetadata` —
+  // leaving the trap's microtask poll spinning forever and starving the loop.
+  vi.restoreAllMocks();
   document.getElementById("oh-just-another-animated-image-sink")?.remove();
 });
 
@@ -163,7 +207,7 @@ describe("imageFileDropHandler.handle", () => {
   });
 
   it("marks GIFs animated and ships the raw bytes as animationData", async () => {
-    const gif = new File([new Uint8Array([0x47, 0x49, 0x46])], "anim.gif", { type: "image/gif" });
+    const gif = makeFile(new Uint8Array([0x47, 0x49, 0x46]), "anim.gif", "image/gif");
     const { editor, ctx } = makeContext();
     await imageFileDropHandler.handle(gif, ctx);
 
@@ -179,7 +223,7 @@ describe("imageFileDropHandler.handle", () => {
   });
 
   it("detects GIFs by extension when the MIME type is empty", async () => {
-    const gif = new File([new Uint8Array([1])], "anim.GIF", { type: "image/png" });
+    const gif = makeFile(new Uint8Array([1]), "anim.GIF", "image/png");
     const { editor, ctx } = makeContext();
     await imageFileDropHandler.handle(gif, ctx);
 
@@ -211,7 +255,7 @@ describe("imageFileDropHandler.handle", () => {
   it("keeps the <img> handle (not a bitmap) for GIFs", async () => {
     const createImageBitmap = vi.fn();
     vi.stubGlobal("createImageBitmap", createImageBitmap);
-    const gif = new File([new Uint8Array([1])], "anim.gif", { type: "image/gif" });
+    const gif = makeFile(new Uint8Array([1]), "anim.gif", "image/gif");
     const { editor, ctx } = makeContext();
     await imageFileDropHandler.handle(gif, ctx);
 
@@ -243,8 +287,7 @@ describe("imageFileDropHandler.handle", () => {
 });
 
 describe("videoFileDropHandler", () => {
-  const mp4File = (): File =>
-    new File([new Uint8Array([1, 2, 3])], "clip.mp4", { type: "video/mp4" });
+  const mp4File = (): File => makeFile(new Uint8Array([1, 2, 3]), "clip.mp4", "video/mp4");
 
   /**
    * jsdom never fires loadedmetadata and its `play()` is unimplemented,
