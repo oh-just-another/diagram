@@ -14,6 +14,7 @@ import {
   type Scene,
   type Style,
   type Element,
+  type Link,
   type SpatialGrid,
 } from "@oh-just-another/scene";
 import {
@@ -44,6 +45,7 @@ import {
   ANCHOR_DOT_HOVER_GROW_RADIUS,
   ANCHOR_DOT_HOVER_MAX_RADIUS,
   DEFAULT_SNAP_THRESHOLD,
+  FLOWCHART_PREVIEW_OPACITY,
   GHOST_PREVIEW_OPACITY,
   ISOLATION_DIM_OPACITY,
   LINK_START_ANCHOR_OUTSET,
@@ -123,6 +125,15 @@ export interface RenderSnapshot {
    * visible while cropping. `null` when not cropping.
    */
   readonly cropGhost: { readonly element: Element; readonly fullRect: Bounds } | null;
+  /**
+   * Pending flowchart-create preview: the not-yet-committed nodes + links drawn
+   * faintly on the overlay while a `Cmd/Ctrl+Arrow` grow session is open.
+   * `null` when no session is active.
+   */
+  readonly flowchartPreview: {
+    readonly elements: readonly Element[];
+    readonly links: readonly Link[];
+  } | null;
   readonly lassoPreview: Bounds | null;
   readonly drawingPreview: Bounds | null;
   readonly edgePreview: EdgePreview | null;
@@ -194,6 +205,7 @@ interface OverlayMemo {
   readonly opts: OverlayOptions;
   readonly ghostScene: Scene | null;
   readonly edgePreviewScene: Scene | null;
+  readonly flowchartPreviewScene: Scene | null;
 }
 
 const overlayMemoByTarget = new WeakMap<RenderTarget, OverlayMemo>();
@@ -223,6 +235,7 @@ const buildOverlaySignature = (e: RenderSnapshot): readonly unknown[] => [
   e.activeLayerId,
   e.cropFrame,
   e.cropGhost,
+  e.flowchartPreview,
   e.lassoPreview,
   e.drawingPreview,
   e.edgePreview,
@@ -417,6 +430,23 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       edgePreviewScene = {
         ...editor.scene,
         links: new Map([[DRAW_PREVIEW_LINK_ID, previewLink]]),
+      };
+    }
+    // Flowchart-create preview: the pending nodes are drawn through the overlay
+    // (faded, `flowchartPreviewElements`); the pending links are drawn through
+    // the real link renderer onto a throwaway scene that also carries the
+    // pending nodes so both endpoints resolve. Both at reduced opacity below.
+    let flowchartPreviewScene: Scene | null = null;
+    if (editor.flowchartPreview && editor.flowchartPreview.elements.length > 0) {
+      overlayOpts.flowchartPreviewElements = editor.flowchartPreview.elements;
+      const previewElements = new Map(editor.scene.elements);
+      for (const el of editor.flowchartPreview.elements) previewElements.set(el.id, el);
+      const previewLinks = new Map<LinkId, Link>();
+      for (const link of editor.flowchartPreview.links) previewLinks.set(link.id, link);
+      flowchartPreviewScene = {
+        ...editor.scene,
+        elements: previewElements,
+        links: previewLinks,
       };
     }
     // Connection anchors. Two roles: link-start (on selection) and link-attach
@@ -733,6 +763,7 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       opts: overlayOpts,
       ghostScene,
       edgePreviewScene,
+      flowchartPreviewScene,
     };
     overlayMemoByTarget.set(editor.overlayTarget, overlayMemo);
   }
@@ -769,5 +800,16 @@ export const renderEditor = (editor: RenderSnapshot): void => {
   // preview must look identical to the committed link, not faded/dashed).
   if (overlayMemo.edgePreviewScene) {
     renderLinks(overlayMemo.edgePreviewScene, editor.overlayTarget, {});
+  }
+
+  // Flowchart-create connectors — pending links drawn through the real link
+  // renderer at reduced opacity (the pending nodes are painted by the overlay's
+  // `flowchartPreviewElements` at the same opacity). Drawn last so connectors
+  // sit over the nodes, matching scene z-order.
+  if (overlayMemo.flowchartPreviewScene) {
+    editor.overlayTarget.save();
+    editor.overlayTarget.setOpacity(FLOWCHART_PREVIEW_OPACITY);
+    renderLinks(overlayMemo.flowchartPreviewScene, editor.overlayTarget, {});
+    editor.overlayTarget.restore();
   }
 };

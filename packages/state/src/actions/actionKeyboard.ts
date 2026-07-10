@@ -43,17 +43,27 @@ const nudgeSelection: Action = {
 };
 
 /**
- * `⌘`/`Ctrl` + arrows select the nearest element in that direction.
- * Distinct from plain arrows (nudge) by the modifier. Always consumes the
- * combo so the page doesn't scroll.
+ * `⌥`/`Alt` + arrows navigate the selection to the adjacent node: a graph
+ * neighbour (linked node) best aligned with the arrow, falling back to the
+ * spatially nearest element that way. Distinct from plain arrows (nudge) by the
+ * modifier. Always consumes the combo so the page doesn't scroll. The `hotkey`
+ * array is display-only (help dialog chips); `keyTest` drives dispatch and
+ * matches first, so it can't double-fire.
  */
 const selectClosest: Action = {
   id: "select-closest",
-  label: "Select closest in direction",
+  label: "Navigate to adjacent node",
   category: "selection",
+  hotkey: [
+    { key: "ArrowLeft", alt: true },
+    { key: "ArrowRight", alt: true },
+    { key: "ArrowUp", alt: true },
+    { key: "ArrowDown", alt: true },
+  ],
   keyTest: (ev) =>
-    (ev.metaKey || ev.ctrlKey) &&
-    !ev.altKey &&
+    ev.altKey &&
+    !ev.metaKey &&
+    !ev.ctrlKey &&
     !ev.shiftKey &&
     (ev.key === "ArrowLeft" ||
       ev.key === "ArrowRight" ||
@@ -63,34 +73,43 @@ const selectClosest: Action = {
     if (!event) return;
     switch (event.key) {
       case "ArrowLeft":
-        editor.selectClosest("left");
+        editor.navigateFlowchart("left");
         return;
       case "ArrowRight":
-        editor.selectClosest("right");
+        editor.navigateFlowchart("right");
         return;
       case "ArrowUp":
-        editor.selectClosest("up");
+        editor.navigateFlowchart("up");
         return;
       case "ArrowDown":
-        editor.selectClosest("down");
+        editor.navigateFlowchart("down");
         return;
     }
   },
 };
 
 /**
- * `⌘`/`Ctrl` + `⌥` + arrows spawn a connected node from the single selected
- * node in that direction (flowchart auto-generate). Distinct from plain arrows
- * (nudge), Alt+arrows (align) and Cmd+arrows (select-closest) by requiring both
- * meta and alt. No-op unless exactly one element is selected.
+ * `⌘`/`Ctrl` + arrows grow a flowchart CREATE session from the single selected
+ * node in that direction: each press adds a pending connected sibling (preview
+ * only) until `Cmd/Ctrl` is released (commit) or `Escape` (cancel). Distinct
+ * from plain arrows (nudge), Alt+arrows (navigate) and Cmd+Shift+arrows (align)
+ * by requiring meta without alt/shift. No-op unless exactly one element is
+ * selected. The `hotkey` array is display-only; `keyTest` drives dispatch and
+ * matches first, so it can't double-fire.
  */
 const spawnConnected: Action = {
   id: "spawn-connected",
-  label: "Spawn connected node",
+  label: "Create connected node",
   category: "edit",
+  hotkey: [
+    { key: "ArrowLeft", meta: true },
+    { key: "ArrowRight", meta: true },
+    { key: "ArrowUp", meta: true },
+    { key: "ArrowDown", meta: true },
+  ],
   keyTest: (ev) =>
     (ev.metaKey || ev.ctrlKey) &&
-    ev.altKey &&
+    !ev.altKey &&
     !ev.shiftKey &&
     (ev.key === "ArrowLeft" ||
       ev.key === "ArrowRight" ||
@@ -101,16 +120,16 @@ const spawnConnected: Action = {
     if (!event) return;
     switch (event.key) {
       case "ArrowLeft":
-        editor.spawnConnectedNode("left");
+        editor.growFlowchart("left");
         return;
       case "ArrowRight":
-        editor.spawnConnectedNode("right");
+        editor.growFlowchart("right");
         return;
       case "ArrowUp":
-        editor.spawnConnectedNode("up");
+        editor.growFlowchart("up");
         return;
       case "ArrowDown":
-        editor.spawnConnectedNode("down");
+        editor.growFlowchart("down");
         return;
     }
   },

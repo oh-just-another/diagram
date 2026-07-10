@@ -83,6 +83,14 @@ export type LinkEndpoint =
   | { readonly kind: "floating"; readonly elementId: ElementId };
 
 /**
+ * The element an endpoint is attached to, or `undefined` for a free
+ * `point` endpoint (which pins to a world position, not a shape). Lets
+ * callers derive link adjacency without switching on the endpoint kind.
+ */
+export const endpointElementId = (ep: LinkEndpoint): ElementId | undefined =>
+  ep.kind === "point" ? undefined : ep.elementId;
+
+/**
  * How to draw the line between an edge's two endpoints.
  *   - `straight` — single segment endpoint-to-endpoint.
  *   - `orthogonal` — Manhattan elbow (axis-aligned segments). The

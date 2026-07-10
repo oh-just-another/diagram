@@ -648,11 +648,27 @@ export const TEXT_FONT_SIZE_STEP = 1.1;
 
 /**
  * Gap (world px) between a source node and the connected node spawned by the
- * flowchart auto-generate shortcut (`Cmd/Ctrl+Alt+Arrow`). Measured from the
- * source's edge to the new node's edge along the spawn direction. Range:
- * 40–160 — enough that the connecting link is clearly visible.
+ * flowchart create shortcut (`Cmd/Ctrl+Arrow`). Measured from the source's
+ * edge to the new node's edge along the spawn direction. Range: 40–160 —
+ * enough that the connecting link is clearly visible.
  */
 export const SPAWN_CONNECTED_GAP_PX = 80;
+
+/**
+ * Upper cap on how many sibling nodes a single flowchart create session
+ * (`Cmd/Ctrl+Arrow` held, tapped an arrow repeatedly) can pending-grow before
+ * commit. Guards against an accidental key-repeat spraying dozens of nodes.
+ * Range: 4–16.
+ */
+export const FLOWCHART_MAX_SIBLINGS = 8;
+
+/**
+ * Opacity of the pending flowchart-create preview (the not-yet-committed
+ * nodes + links drawn on the overlay while `Cmd/Ctrl` is held). Below 1 so the
+ * preview reads as provisional, high enough to judge placement. Range:
+ * 0.35–0.65.
+ */
+export const FLOWCHART_PREVIEW_OPACITY = 0.5;
 
 /**
  * Upper clamp (world px) for font size — matches the property panel's slider

@@ -5,6 +5,8 @@ import { elementId as castElementId } from "@oh-just-another/types";
 import type { SpatialGrid } from "@oh-just-another/scene";
 import {
   addElement,
+  addLink,
+  endpointElementId,
   anchorSnapper,
   apply,
   buildSpatialIndex,
@@ -108,6 +110,7 @@ import {
   WHEEL_ZOOM_STEP,
   ROTATE_SNAP_RADIANS,
   CROP_HANDLE_HIT_RADIUS,
+  FLOWCHART_MAX_SIBLINGS,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP } from "./handle.js";
 import { req } from "./util.js";
@@ -278,6 +281,7 @@ import {
   computeCropBodyPan,
   computeCropHandleDrag,
   computeSpawnConnectedNode,
+  computeSpawnConnectedNodes,
   cropFullImageLocalRect,
   cropHandleWorldPoints,
   CROP_HANDLES,
@@ -2611,6 +2615,8 @@ export class Editor {
     // fading via the tick.
     this.interaction.eraseStroke = null;
     this.interaction.laserDrawing = false;
+    // Drop any pending flowchart-create preview (Esc / global cancel abandons it).
+    this.flowchartSession = null;
     // Waypoint / segment / endpoint-rebind drags: gestureTx.cancel above
     // already reverted the live re-point; just drop the handle-drag state so
     // the dots stop tracking.
@@ -2904,6 +2910,150 @@ export class Editor {
     this._history.push({ kind: "batch", patches: [...result.patches] });
     this.setSelection([result.newElementId]);
     this.notify();
+  }
+
+  // --- Flowchart CREATE session (Cmd/Ctrl+Arrow, Excalidraw-style) ------
+
+  /**
+   * Pending flowchart-create session, or `null` when idle. Holds the ORIGINAL
+   * source id + direction, the current sibling `count`, and the pending
+   * `elements` + `links` (a PREVIEW — not yet in the scene / history). Grown by
+   * {@link growFlowchart}, committed by {@link commitFlowchart}, discarded by
+   * {@link cancelFlowchart}.
+   */
+  private flowchartSession: {
+    sourceId: ElementId;
+    direction: SpawnDirection;
+    count: number;
+    elements: Element[];
+    links: Link[];
+  } | null = null;
+
+  /**
+   * Grow the flowchart-create preview one step in `direction`. Starts a session
+   * (count = 1) when idle or when the direction changes; otherwise bumps the
+   * sibling count up to {@link FLOWCHART_MAX_SIBLINGS}. Recomputes the pending
+   * nodes/links from the ORIGINAL source each call. PREVIEW ONLY — never
+   * touches the scene or history until {@link commitFlowchart}. No-op in
+   * read-only mode or unless exactly one element is selected.
+   */
+  growFlowchart(direction: SpawnDirection): void {
+    if (this._readOnly) return;
+    if (this._selection.size !== 1) return;
+    const ids = [...this._selection];
+    const sourceId = ids[0];
+    if (sourceId === undefined || getElement(this._scene, sourceId) === undefined) return;
+    const session = this.flowchartSession;
+    const count =
+      session?.direction === direction && session.sourceId === sourceId
+        ? Math.min(session.count + 1, FLOWCHART_MAX_SIBLINGS)
+        : 1;
+    const { elements, links } = computeSpawnConnectedNodes(
+      this._scene,
+      sourceId,
+      direction,
+      count,
+      () => newElementId(++this.nextId),
+      () => newLinkId(++this.nextId),
+    );
+    this.flowchartSession = { sourceId, direction, count, elements, links };
+    this.notify();
+  }
+
+  /**
+   * Commit the pending flowchart-create preview: add every pending node + link
+   * to the scene as ONE undo step, select the first new node, clear the
+   * session. Returns the first new node's id, or `null` when no session is
+   * active.
+   */
+  commitFlowchart(): ElementId | null {
+    const session = this.flowchartSession;
+    if (session === null) return null;
+    let s = this._scene;
+    const patches: Patch[] = [];
+    for (const el of session.elements) {
+      const r = addElement(s, el);
+      s = r.scene;
+      patches.push(r.patch);
+    }
+    for (const link of session.links) {
+      const r = addLink(s, link);
+      s = r.scene;
+      patches.push(r.patch);
+    }
+    this.flowchartSession = null;
+    const first = session.elements[0]?.id ?? null;
+    if (patches.length === 0) {
+      this.notify();
+      return first;
+    }
+    this._scene = s;
+    this._history.push({ kind: "batch", patches });
+    if (first !== null) this.setSelection([first]);
+    this.notify();
+    return first;
+  }
+
+  /** Discard the pending flowchart-create preview without committing. */
+  cancelFlowchart(): void {
+    if (this.flowchartSession === null) return;
+    this.flowchartSession = null;
+    this.notify();
+  }
+
+  /**
+   * The pending flowchart-create preview (nodes + links), or `null` when no
+   * session is active. Read by the render snapshot to paint the preview on the
+   * overlay. Reference-stable between renders (only changes on grow / commit /
+   * cancel) so the overlay memo doesn't thrash.
+   */
+  get flowchartPreview(): {
+    readonly elements: readonly Element[];
+    readonly links: readonly Link[];
+  } | null {
+    const session = this.flowchartSession;
+    if (session === null) return null;
+    return { elements: session.elements, links: session.links };
+  }
+
+  /**
+   * Move the selection to an adjacent node. With exactly one element selected,
+   * prefers a graph neighbour (linked node) best aligned with `direction`;
+   * falls back to the spatial {@link selectClosest} when no neighbour lies that
+   * way. No-op unless exactly one element is selected.
+   */
+  navigateFlowchart(direction: "left" | "right" | "up" | "down"): void {
+    if (this._selection.size !== 1) return;
+    const ids = [...this._selection];
+    const sourceId = ids[0];
+    if (sourceId === undefined) return;
+    // Graph neighbours: every element linked to the source by any edge.
+    const neighbours = new Set<ElementId>();
+    for (const link of this._scene.links.values()) {
+      const a = endpointElementId(link.from);
+      const b = endpointElementId(link.to);
+      if (a === sourceId && b !== undefined && b !== sourceId) neighbours.add(b);
+      else if (b === sourceId && a !== undefined && a !== sourceId) neighbours.add(a);
+    }
+    if (neighbours.size > 0) {
+      const ref = this.combinedSelectionBounds();
+      const refCenter = ref
+        ? { x: ref.x + ref.width / 2, y: ref.y + ref.height / 2 }
+        : { x: 0, y: 0 };
+      const best = findClosestInDirection(
+        this._scene,
+        this._selection,
+        direction,
+        refCenter,
+        (el) => this.isElementInteractable(el) && neighbours.has(el.id),
+      );
+      if (best !== null) {
+        this.setSelection([best]);
+        return;
+      }
+    }
+    // No graph neighbour that way — fall back to spatial nearest.
+    this.selectClosest(direction);
   }
 
   // --- F10: Image crop --------------------------------------------------
@@ -5314,6 +5464,7 @@ export class Editor {
       activeLayerId: this._activeLayerId,
       cropFrame: this.cropFrameCorners(),
       cropGhost: this.cropGhost(),
+      flowchartPreview: this.flowchartPreview,
       lassoPreview: this.lassoPreview,
       drawingPreview: this.drawingPreview,
       edgePreview: this.edgePreview,

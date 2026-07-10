@@ -553,26 +553,48 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   // ratio or constrains a move to one axis.
   useEffect(() => {
     if (!editor) return undefined;
+    const ed = editor;
     const sync = (e: KeyboardEvent) => {
       // Don't track modifiers (or touch snap state) while typing in a field —
       // keep the editor's transform flags inert there.
       if (isEditableTarget(e.target)) return;
-      editor.setSnapSuppressed(e.metaKey || e.ctrlKey);
-      editor.setTransformModifiers({ alt: e.altKey, shift: e.shiftKey });
+      ed.setSnapSuppressed(e.metaKey || e.ctrlKey);
+      ed.setTransformModifiers({ alt: e.altKey, shift: e.shiftKey });
+    };
+    // Flowchart CREATE lifecycle: Cmd/Ctrl+Arrow grows a pending preview; the
+    // session commits when Cmd/Ctrl is released and cancels on Escape. Keydown
+    // handles the cancel; keyup the commit.
+    const onKeyDown = (e: KeyboardEvent) => {
+      sync(e);
+      if (isEditableTarget(e.target)) return;
+      if (e.key === "Escape" && ed.flowchartPreview !== null) {
+        ed.cancelFlowchart();
+        e.preventDefault();
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      sync(e);
+      // Cmd/Ctrl released while a session is open → commit the preview.
+      if (!e.metaKey && !e.ctrlKey && ed.flowchartPreview !== null) {
+        ed.commitFlowchart();
+      }
     };
     const reset = () => {
-      editor.setSnapSuppressed(false);
-      editor.setTransformModifiers({ alt: false, shift: false });
+      ed.setSnapSuppressed(false);
+      ed.setTransformModifiers({ alt: false, shift: false });
+      // A window blur can swallow the Cmd/Ctrl keyup — commit any live session
+      // so a missed keyup can't strand the preview.
+      if (ed.flowchartPreview !== null) ed.commitFlowchart();
     };
-    window.addEventListener("keydown", sync);
-    window.addEventListener("keyup", sync);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", reset);
     return () => {
-      window.removeEventListener("keydown", sync);
-      window.removeEventListener("keyup", sync);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", reset);
-      editor.setSnapSuppressed(false);
-      editor.setTransformModifiers({ alt: false, shift: false });
+      ed.setSnapSuppressed(false);
+      ed.setTransformModifiers({ alt: false, shift: false });
     };
   }, [editor]);
 

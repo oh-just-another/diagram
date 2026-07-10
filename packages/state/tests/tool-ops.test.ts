@@ -22,6 +22,7 @@ import {
   computeCropBodyPan,
   computeCropHandleDrag,
   computeSpawnConnectedNode,
+  computeSpawnConnectedNodes,
   cropFullImageLocalRect,
   cropHandleWorldPoints,
   pickColorAt,
@@ -335,5 +336,101 @@ describe("computeSpawnConnectedNode (F11 flowchart)", () => {
     expect(
       computeSpawnConnectedNode(s, elementId("ghost"), "right", elementId("n"), linkId("e")),
     ).toBeNull();
+  });
+});
+
+describe("computeSpawnConnectedNodes (flowchart create session)", () => {
+  const idGen = (prefix: string): (() => ReturnType<typeof elementId>) => {
+    let n = 0;
+    return () => elementId(`${prefix}-${++n}`);
+  };
+  const linkGen = (prefix: string): (() => ReturnType<typeof linkId>) => {
+    let n = 0;
+    return () => linkId(`${prefix}-${++n}`);
+  };
+
+  it("count=1 matches the single-node placement of computeSpawnConnectedNode", () => {
+    const s = sceneWith(rect("src", 0, 0));
+    const single = computeSpawnConnectedNode(
+      s,
+      elementId("src"),
+      "right",
+      elementId("e-1"),
+      linkId("l-1"),
+    )!;
+    const many = computeSpawnConnectedNodes(
+      s,
+      elementId("src"),
+      "right",
+      1,
+      idGen("e"),
+      linkGen("l"),
+    );
+    expect(many.elements).toHaveLength(1);
+    expect(many.links).toHaveLength(1);
+    expect(many.elements[0]!.position).toEqual(
+      getElement(single.scene, elementId("e-1"))!.position,
+    );
+  });
+
+  it("stacks N right-siblings vertically centred on the source", () => {
+    const s = sceneWith(rect("src", 0, 0)); // width 60, height 40
+    const { elements, links } = computeSpawnConnectedNodes(
+      s,
+      elementId("src"),
+      "right",
+      3,
+      idGen("e"),
+      linkGen("l"),
+    );
+    expect(elements).toHaveLength(3);
+    expect(links).toHaveLength(3);
+    // All offset +140 in x (width 60 + gap 80); y spread by step = height 40 + gap 80 = 120,
+    // centred → -120, 0, +120.
+    expect(elements.map((e) => e.position.x)).toEqual([140, 140, 140]);
+    expect(elements.map((e) => e.position.y)).toEqual([-120, 0, 120]);
+    // Each link connects source → its sibling (floating).
+    for (let i = 0; i < 3; i++) {
+      const from = links[i]!.from;
+      const to = links[i]!.to;
+      expect(from.kind === "point" ? null : from.elementId).toBe(elementId("src"));
+      expect(to.kind === "point" ? null : to.elementId).toBe(elements[i]!.id);
+    }
+  });
+
+  it("spreads down-siblings horizontally centred on the source", () => {
+    const s = sceneWith(rect("src", 100, 100));
+    const { elements } = computeSpawnConnectedNodes(
+      s,
+      elementId("src"),
+      "down",
+      2,
+      idGen("e"),
+      linkGen("l"),
+    );
+    // y offset +120 (height 40 + gap 80); x step = width 60 + gap 80 = 140, centred for N=2 → ±70.
+    expect(elements.map((e) => e.position.y)).toEqual([220, 220]);
+    expect(elements.map((e) => e.position.x)).toEqual([30, 170]);
+  });
+
+  it("does not mutate the source scene (pure)", () => {
+    const s = sceneWith(rect("src", 0, 0));
+    computeSpawnConnectedNodes(s, elementId("src"), "right", 3, idGen("e"), linkGen("l"));
+    expect(s.elements.size).toBe(1);
+    expect(s.links.size).toBe(0);
+  });
+
+  it("returns empty arrays for a missing source", () => {
+    const s = sceneWith(rect("src"));
+    const res = computeSpawnConnectedNodes(
+      s,
+      elementId("ghost"),
+      "right",
+      2,
+      idGen("e"),
+      linkGen("l"),
+    );
+    expect(res.elements).toHaveLength(0);
+    expect(res.links).toHaveLength(0);
   });
 });

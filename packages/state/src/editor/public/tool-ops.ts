@@ -433,3 +433,84 @@ export const computeSpawnConnectedNode = (
     linkId: newLinkId,
   };
 };
+
+/**
+ * Pure geometry for a flowchart CREATE session: `count` clones of `sourceId`,
+ * each linked source→clone (floating). Does NOT mutate `scene` or history —
+ * returns the pending `elements` + `links` for a PREVIEW; the caller commits
+ * them later. Placement matches Excalidraw's `addNewNodes`:
+ *
+ * - `left` / `right` — the `count` siblings stack vertically, centred on the
+ *   source (step = source height + {@link SPAWN_CONNECTED_GAP_PX}), all offset
+ *   by one source-width + gap along the axis.
+ * - `up` / `down` — siblings spread horizontally, centred on the source
+ *   (step = source width + gap), all offset by one source-height + gap.
+ *
+ * `count === 1` reproduces {@link computeSpawnConnectedNode}'s single placement
+ * (zero perpendicular offset). Returns empty arrays when the source is missing.
+ */
+export const computeSpawnConnectedNodes = (
+  scene: Scene,
+  sourceId: ElementId,
+  direction: SpawnDirection,
+  count: number,
+  makeElementId: () => ElementId,
+  makeLinkId: () => LinkId,
+): { readonly elements: Element[]; readonly links: Link[] } => {
+  const source = getElement(scene, sourceId);
+  if (source === undefined || count < 1) return { elements: [], links: [] };
+  const local = getElementLocalBounds(source);
+  const w = local.width * source.scale.x;
+  const h = local.height * source.scale.y;
+  const horizontal = direction === "left" || direction === "right";
+  // Along-axis offset: one source extent + gap in the spawn direction.
+  const alongX =
+    direction === "right"
+      ? w + SPAWN_CONNECTED_GAP_PX
+      : direction === "left"
+        ? -(w + SPAWN_CONNECTED_GAP_PX)
+        : 0;
+  const alongY =
+    direction === "down"
+      ? h + SPAWN_CONNECTED_GAP_PX
+      : direction === "up"
+        ? -(h + SPAWN_CONNECTED_GAP_PX)
+        : 0;
+  // Perpendicular step used to fan the siblings out, centred on the source.
+  const step = horizontal ? h + SPAWN_CONNECTED_GAP_PX : w + SPAWN_CONNECTED_GAP_PX;
+  const baseOrder = orderForTop(
+    [...scene.elements.values()].filter((e) => e.layerId === source.layerId).map((e) => e.order),
+  );
+  const baseLinkOrder = orderForTop(
+    [...scene.links.values()].filter((e) => e.layerId === source.layerId).map((e) => e.order),
+  );
+  // Detach any group / frame membership so spawned nodes are free-standing.
+  const { parentId: _p, frameId: _f, ...bare } = source;
+  void _p;
+  void _f;
+  const elements: Element[] = [];
+  const links: Link[] = [];
+  for (let i = 0; i < count; i++) {
+    const spread = (i - (count - 1) / 2) * step;
+    const dx = alongX + (horizontal ? 0 : spread);
+    const dy = alongY + (horizontal ? spread : 0);
+    const cloneId = makeElementId();
+    elements.push({
+      ...bare,
+      id: cloneId,
+      position: { x: source.position.x + dx, y: source.position.y + dy },
+      order: baseOrder,
+    });
+    links.push({
+      id: makeLinkId(),
+      layerId: source.layerId,
+      from: { kind: "floating", elementId: sourceId },
+      to: { kind: "floating", elementId: cloneId },
+      order: baseLinkOrder,
+      routing: DEFAULT_LINK_ROUTING,
+      style: { ...DEFAULT_EDGE_STYLE },
+      arrowheads: { to: DEFAULT_LINK_ARROWHEAD },
+    });
+  }
+  return { elements, links };
+};

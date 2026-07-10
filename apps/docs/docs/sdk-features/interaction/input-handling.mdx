@@ -44,3 +44,38 @@ window.addEventListener("keydown", (ev) => {
 ```
 
 `isEditableTarget` is also re-exported from `@oh-just-another/editor`. For keyboard shortcuts specifically, `bindEditorHotkeys` wires a `keydown` listener that already applies this editable-target check for you.
+
+## Arrow-key bindings
+
+The four arrow keys drive selection movement and flowchart building, disambiguated by modifier:
+
+| Keys | Action |
+| --- | --- |
+| `Arrow` | Nudge the selection (`Shift` = coarse step). |
+| `Cmd`/`Ctrl` + `Arrow` | Grow a flowchart CREATE session — a connected node in that direction. |
+| `Alt` + `Arrow` | Navigate to the adjacent node (graph neighbour, else spatially nearest). |
+| `Cmd`/`Ctrl` + `Shift` + `Arrow` | Align the selection left / right / top / bottom. |
+
+## Flowchart create lifecycle
+
+`Cmd`/`Ctrl` + `Arrow` opens a CREATE session on the single selected node. Each press in the same direction adds one more pending sibling (`editor.growFlowchart(dir)`); the pending nodes + links are a PREVIEW only — the scene and history are untouched. `bindEditorHotkeys` is `keydown`-only, so the host wires the commit / cancel triggers:
+
+```ts
+window.addEventListener("keyup", (ev) => {
+  // Cmd/Ctrl released → commit the preview as one undo step.
+  if (!ev.metaKey && !ev.ctrlKey && editor.flowchartPreview !== null) {
+    editor.commitFlowchart();
+  }
+});
+window.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && editor.flowchartPreview !== null) {
+    editor.cancelFlowchart(); // discard the preview, keep the selection
+    ev.preventDefault();
+  }
+});
+window.addEventListener("blur", () => {
+  editor.commitFlowchart(); // a missed keyup can't strand the preview
+});
+```
+
+`@oh-just-another/editor`'s `Diagram` component wires this for you. `commitFlowchart` selects the first new node; `flowchartPreview` exposes the pending nodes + links for custom overlays.

@@ -35,6 +35,7 @@ import {
   CROP_BRACKET_WIDTH,
   CROP_GHOST_OPACITY,
   DRAW_PREVIEW_OPACITY,
+  FLOWCHART_PREVIEW_OPACITY,
   GHOST_PREVIEW_OPACITY,
   LINK_ATTACH_ANCHOR_FILL,
   LINK_ATTACH_ANCHOR_STROKE,
@@ -295,6 +296,13 @@ export interface OverlayOptions {
    * other (dashed only for the lasso / select rubber-band).
    */
   drawingPreviewElement?: Element;
+  /**
+   * Pending flowchart-create nodes (Cmd/Ctrl+Arrow grow session). Each is
+   * rendered through its real renderer at {@link FLOWCHART_PREVIEW_OPACITY} so
+   * the user previews the shapes that will be created; the connecting links are
+   * drawn separately by the orchestrator at the same opacity.
+   */
+  flowchartPreviewElements?: readonly Element[];
   edgePreview?: LinkPreview;
   /**
    * Port-dot affordances to paint. A single set (one shape's anchors)
@@ -631,6 +639,25 @@ const renderPreviews = (ctx: OverlayCtx): void => {
       target.save();
       target.setTransform(w2s);
       target.setOpacity(DRAW_PREVIEW_OPACITY);
+      target.setDashArray(null);
+      target.translate(el.position.x, el.position.y);
+      if (el.rotation !== 0) target.rotate(el.rotation);
+      if (el.scale.x !== 1 || el.scale.y !== 1) target.scale(el.scale.x, el.scale.y);
+      renderer(el, target);
+      target.restore();
+    }
+  }
+
+  // 2.6 Flowchart-create node preview — the pending nodes of a Cmd/Ctrl+Arrow
+  //     grow session, each through its real renderer (faded). The connecting
+  //     links are drawn by the orchestrator at the same opacity.
+  if (options.flowchartPreviewElements && options.flowchartPreviewElements.length > 0) {
+    for (const el of options.flowchartPreviewElements) {
+      const renderer = getElementRenderer(el.type);
+      if (!renderer) continue;
+      target.save();
+      target.setTransform(w2s);
+      target.setOpacity(FLOWCHART_PREVIEW_OPACITY);
       target.setDashArray(null);
       target.translate(el.position.x, el.position.y);
       if (el.rotation !== 0) target.rotate(el.rotation);
