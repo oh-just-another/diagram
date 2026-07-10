@@ -11,7 +11,7 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
-import { defaultActionRegistry } from "../src/actions/index.js";
+import { ActionRegistry, defaultActionRegistry } from "../src/actions/index.js";
 
 // Excalidraw-style flowchart keyboard model: Cmd/Ctrl+Arrow grows a preview
 // CREATE session (committed on Cmd/Ctrl release), Alt+Arrow navigates the link
@@ -241,5 +241,27 @@ describe("flowchart keyboard dispatch (registry)", () => {
     defaultActionRegistry.dispatchHotkey(arrow("ArrowRight", { meta: true }), { editor });
     expect(editor.flowchartPreview!.elements).toHaveLength(1);
     editor.cancelFlowchart();
+  });
+});
+
+describe("displayHotkey is display-only (never dispatched)", () => {
+  it("dispatchHotkey ignores an action whose only binding is displayHotkey", () => {
+    // A displayHotkey exists purely to render a help-dialog chip; it must NOT
+    // participate in dispatch (which would let it fire combos the real keyTest
+    // excludes — e.g. Ctrl+Arrow on macOS the arrow matcher can't distinguish).
+    const registry = new ActionRegistry();
+    let fired = false;
+    registry.register({
+      id: "display-only-probe",
+      label: "Probe",
+      displayHotkey: { key: "ArrowLeft" },
+      perform: () => {
+        fired = true;
+      },
+    });
+    const editor = makeEditor(sceneWith([rect("src")]));
+    const handled = registry.dispatchHotkey(arrow("ArrowLeft"), { editor });
+    expect(handled).toBe(false);
+    expect(fired).toBe(false);
   });
 });

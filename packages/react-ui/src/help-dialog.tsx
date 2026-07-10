@@ -68,6 +68,9 @@ const CATEGORY_TITLES: Record<ActionCategory, string> = {
   other: "Other",
 };
 
+// Every ActionCategory must appear here or its actions are dropped from the
+// dialog entirely (a category absent from this list is never rendered). Keep in
+// sync with the `ActionCategory` union.
 const CATEGORY_ORDER: ActionCategory[] = [
   "mode",
   "edit",
@@ -76,6 +79,7 @@ const CATEGORY_ORDER: ActionCategory[] = [
   "history",
   "z-order",
   "grouping",
+  "arrange",
   "layout",
   "zoom",
   "other",
@@ -119,8 +123,11 @@ export const useHelpDialogHotkey = (open: () => void): void => {
  */
 const actionKeys = (action: Action): (readonly string[])[] => {
   const combos: (readonly string[])[] = [];
-  if (action.hotkey) {
-    const raw = Array.isArray(action.hotkey) ? action.hotkey : [action.hotkey];
+  // Dispatchable `hotkey` plus display-only `displayHotkey` (the latter surfaces
+  // chips for keyTest-driven bindings the declarative matcher can't express).
+  const declared = action.hotkey ?? action.displayHotkey;
+  if (declared) {
+    const raw = Array.isArray(declared) ? declared : [declared];
     for (const h of raw) combos.push(formatHotkeyParts(h as HotkeyMatcher));
   }
   // Multi-key sequences (e.g. `d d`) render as a single chip with the keys

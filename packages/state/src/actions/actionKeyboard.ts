@@ -9,11 +9,21 @@ import type { Action } from "./types.js";
  * import.
  */
 
-/** Arrow keys nudge the selection (Shift = coarse step). Always consumes the arrow. */
+/**
+ * Arrow keys nudge the selection (Shift = coarse step). Always consumes the
+ * arrow. `displayHotkey` only feeds the help-dialog chips — dispatch runs
+ * purely off `keyTest`, so the declarative entries never fire.
+ */
 const nudgeSelection: Action = {
   id: "nudge-selection",
   label: "Nudge selection",
   category: "selection",
+  displayHotkey: [
+    { key: "ArrowLeft" },
+    { key: "ArrowRight" },
+    { key: "ArrowUp" },
+    { key: "ArrowDown" },
+  ],
   keyTest: (ev) =>
     (ev.key === "ArrowLeft" ||
       ev.key === "ArrowRight" ||
@@ -46,15 +56,14 @@ const nudgeSelection: Action = {
  * `⌥`/`Alt` + arrows navigate the selection to the adjacent node: a graph
  * neighbour (linked node) best aligned with the arrow, falling back to the
  * spatially nearest element that way. Distinct from plain arrows (nudge) by the
- * modifier. Always consumes the combo so the page doesn't scroll. The `hotkey`
- * array is display-only (help dialog chips); `keyTest` drives dispatch and
- * matches first, so it can't double-fire.
+ * modifier. Always consumes the combo so the page doesn't scroll.
+ * `displayHotkey` only feeds the help-dialog chips; dispatch runs off `keyTest`.
  */
 const selectClosest: Action = {
   id: "select-closest",
   label: "Navigate to adjacent node",
   category: "selection",
-  hotkey: [
+  displayHotkey: [
     { key: "ArrowLeft", alt: true },
     { key: "ArrowRight", alt: true },
     { key: "ArrowUp", alt: true },
@@ -94,14 +103,14 @@ const selectClosest: Action = {
  * only) until `Cmd/Ctrl` is released (commit) or `Escape` (cancel). Distinct
  * from plain arrows (nudge), Alt+arrows (navigate) and Cmd+Shift+arrows (align)
  * by requiring meta without alt/shift. No-op unless exactly one element is
- * selected. The `hotkey` array is display-only; `keyTest` drives dispatch and
- * matches first, so it can't double-fire.
+ * selected. `displayHotkey` only feeds the help-dialog chips; dispatch runs off
+ * `keyTest`.
  */
 const spawnConnected: Action = {
   id: "spawn-connected",
   label: "Create connected node",
   category: "edit",
-  hotkey: [
+  displayHotkey: [
     { key: "ArrowLeft", meta: true },
     { key: "ArrowRight", meta: true },
     { key: "ArrowUp", meta: true },
@@ -166,6 +175,8 @@ const editOrCreate: Action = {
   id: "edit-or-create",
   label: "Edit / create",
   category: "edit",
+  // Display-only chip; `keyTest` drives dispatch.
+  displayHotkey: { key: "Enter" },
   keyTest: (ev) => ev.key === "Enter" && !ev.metaKey && !ev.ctrlKey && !ev.altKey,
   predicate: ({ editor }) => {
     if (editor.selection.size === 1) {
