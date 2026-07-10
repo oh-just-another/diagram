@@ -1013,13 +1013,17 @@ const renderEraserCursor = (ctx: OverlayCtx): void => {
   const cursor = options.eraserCursor;
   if (!cursor || cursor.radius <= 0) return;
   const s = matrix.applyToPoint(w2s, cursor.center);
-  target.setStroke(ERASER_CURSOR_STROKE);
-  target.setStrokeWidth(ERASER_CURSOR_LINE_WIDTH);
   target.setDashArray(null);
-  target.setFill(null);
   target.setOpacity(1);
   target.beginPath();
   target.ellipse(s.x, s.y, cursor.radius, cursor.radius);
+  // Solid disc in the trail colour (fully opaque), with the ring on top for a
+  // crisp radius edge.
+  target.setFill(ERASER_CURSOR_STROKE);
+  target.fill();
+  target.setFill(null);
+  target.setStroke(ERASER_CURSOR_STROKE);
+  target.setStrokeWidth(ERASER_CURSOR_LINE_WIDTH);
   target.stroke();
 };
 

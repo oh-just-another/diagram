@@ -558,7 +558,7 @@ export const ERASER_CURSOR_LINE_WIDTH = 1.5;
  * (the laser comet) so the eraser leaves only a tight, brief wake behind the
  * cursor, matching Excalidraw. Lower = shorter/snappier. Range: 100–400.
  */
-export const ERASER_TRAIL_TTL_MS = 180;
+export const ERASER_TRAIL_TTL_MS = 120;
 
 /**
  * Lifetime (ms) of a laser-pointer trail point before it fully fades. Each
