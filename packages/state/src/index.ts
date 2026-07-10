@@ -63,6 +63,8 @@ export type { EditorOptions, LoadSceneOptions, CursorRole, CursorSpec } from "./
 export { Editor } from "./editor.js";
 export type { EditorEvents } from "./editor-events.js";
 export { normalizeHref, safeHref } from "./editor/public/link.js";
+export { DEFAULT_BRUSH_SETTINGS } from "./editor/public/brush.js";
+export type { BrushSettings } from "./editor/public/brush.js";
 
 // Tool operations (eyedropper / convert-type / image-crop / spawn-connected).
 export {

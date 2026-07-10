@@ -165,7 +165,10 @@ import {
   beginBrushStroke as beginBrushStrokePure,
   commitBrushStroke as commitBrushStrokePure,
   extendBrushStroke as extendBrushStrokePure,
+  brushStyleFromSettings,
+  DEFAULT_BRUSH_SETTINGS,
   newBrushId,
+  type BrushSettings,
   type BrushStrokeState,
 } from "./editor/public/brush.js";
 import {
@@ -2386,13 +2389,28 @@ export class Editor {
     return id;
   }
 
+  /** Current brush paint settings (line colour, fill, opacity, width). */
+  private _brushSettings: BrushSettings = DEFAULT_BRUSH_SETTINGS;
+  get brushSettings(): BrushSettings {
+    return this._brushSettings;
+  }
+  /**
+   * Update one or more brush paint settings (e.g. from the drawing panel). New
+   * strokes pick them up on commit; the width also drives the pressure curve and
+   * the eraser radius. Merges over the current settings.
+   */
+  setBrushSettings(patch: Partial<BrushSettings>): void {
+    this._brushSettings = { ...this._brushSettings, ...patch };
+    this.notify();
+  }
+
   beginBrushStroke(world: Vec2, pressure = 0.5): void {
-    this.brushStroke = beginBrushStrokePure(world, pressure);
+    this.brushStroke = beginBrushStrokePure(world, pressure, this._brushSettings.width);
     this.notify();
   }
   extendBrushStroke(world: Vec2, pressure = 0.5): void {
     if (!this.brushStroke) return;
-    extendBrushStrokePure(this.brushStroke, world, pressure);
+    extendBrushStrokePure(this.brushStroke, world, pressure, this._brushSettings.width);
     this.notify();
   }
   commitBrushStroke(): ElementId | null {
@@ -2401,6 +2419,7 @@ export class Editor {
       this.brushStroke,
       this._activeLayerId,
       newBrushId(++this.nextId),
+      brushStyleFromSettings(this._brushSettings),
     );
     if (!result) {
       this.brushStroke = null;

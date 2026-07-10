@@ -5,21 +5,57 @@ import {
   type Scene,
   type Element,
   type Patch,
+  type Style,
 } from "@oh-just-another/scene";
 import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
-import { BRUSH_SMOOTH_SEGMENTS, DEFAULT_BRUSH_WIDTH, MAX_BRUSH_WIDTH } from "../../constants.js";
+import {
+  BRUSH_SMOOTH_SEGMENTS,
+  DEFAULT_BRUSH_COLOR,
+  DEFAULT_BRUSH_OPACITY,
+  DEFAULT_BRUSH_WIDTH,
+  MAX_BRUSH_WIDTH,
+} from "../../constants.js";
 import { smoothStrokePoints } from "./stroke-smoothing.js";
 
 /**
- * Convert `PointerEvent.pressure` (0–1) to a brush half-width in local
- * pixels. Devices without pressure (most mice on Chromium) report 0.5
- * by spec; zero pressure (some Windows touch) falls back to a minimum
- * so a stroke is still visible.
+ * Host-tunable brush paint settings — what the drawing panel edits and what
+ * {@link commitBrushStroke} bakes into a new stroke. `stroke` is the line
+ * colour; `fill` is the colour of the enclosed area of a CLOSED stroke (null =
+ * no fill, and unused until stroke-closing lands); `opacity` scales both; `width`
+ * is the base half-width the pressure curve scales toward.
  */
-const pressureToWidth = (pressure: number): number => {
+export interface BrushSettings {
+  readonly stroke: string;
+  readonly fill: string | null;
+  readonly opacity: number;
+  readonly width: number;
+}
+
+/** Defaults matching the pre-settings hard-coded brush (a dark line at full alpha). */
+export const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
+  stroke: DEFAULT_BRUSH_COLOR,
+  fill: null,
+  opacity: DEFAULT_BRUSH_OPACITY,
+  width: MAX_BRUSH_WIDTH,
+};
+
+/** Build the `Style` a committed brush stroke carries from its paint settings. */
+export const brushStyleFromSettings = (settings: BrushSettings): Style => ({
+  stroke: settings.stroke,
+  ...(settings.fill !== null ? { fill: settings.fill } : {}),
+  ...(settings.opacity !== 1 ? { opacity: settings.opacity } : {}),
+});
+
+/**
+ * Convert `PointerEvent.pressure` (0–1) to a brush half-width in local pixels,
+ * scaling toward `maxWidth` (the current brush width). Devices without pressure
+ * (most mice on Chromium) report 0.5 by spec; zero pressure (some Windows touch)
+ * falls back to a minimum so a stroke is still visible.
+ */
+const pressureToWidth = (pressure: number, maxWidth: number): number => {
   if (pressure <= 0) return DEFAULT_BRUSH_WIDTH;
-  return Math.max(0.5, pressure * MAX_BRUSH_WIDTH);
+  return Math.max(0.5, pressure * maxWidth);
 };
 
 /**
@@ -32,8 +68,12 @@ export interface BrushStrokeState {
   points: BrushPoint[];
 }
 
-export const beginBrushStroke = (world: Vec2, pressure: number): BrushStrokeState => ({
-  points: [{ x: 0, y: 0, width: pressureToWidth(pressure) }],
+export const beginBrushStroke = (
+  world: Vec2,
+  pressure: number,
+  maxWidth: number = MAX_BRUSH_WIDTH,
+): BrushStrokeState => ({
+  points: [{ x: 0, y: 0, width: pressureToWidth(pressure, maxWidth) }],
   origin: world,
 });
 
@@ -41,12 +81,13 @@ export const extendBrushStroke = (
   stroke: BrushStrokeState,
   world: Vec2,
   pressure: number,
+  maxWidth: number = MAX_BRUSH_WIDTH,
 ): void => {
   const o = stroke.origin;
   stroke.points.push({
     x: world.x - o.x,
     y: world.y - o.y,
-    width: pressureToWidth(pressure),
+    width: pressureToWidth(pressure, maxWidth),
   });
 };
 
@@ -78,6 +119,7 @@ export const commitBrushStroke = (
   stroke: BrushStrokeState | null,
   activeLayerId: LayerId,
   newElementId: ElementId,
+  style: Style = brushStyleFromSettings(DEFAULT_BRUSH_SETTINGS),
 ): { readonly scene: Scene; readonly patch: Patch; readonly elementId: ElementId } | null => {
   if (!stroke || stroke.points.length === 0) return null;
   const order = orderForTop(
@@ -91,7 +133,7 @@ export const commitBrushStroke = (
     rotation: 0,
     scale: { x: 1, y: 1 },
     order,
-    style: { fill: "#222" },
+    style,
     points: smoothBrushPoints(stroke.points),
   };
   const r = addElement(scene, shape);

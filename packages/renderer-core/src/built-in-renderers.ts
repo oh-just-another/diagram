@@ -431,8 +431,11 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
 const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
   const pts = shape.points;
   if (pts.length === 0) return;
-  const fill = shape.style.fill ?? shape.style.stroke ?? "#000";
-  target.setFill(fill);
+  // The variable-width stroke body is painted with the line colour: prefer
+  // `style.stroke` (set by the drawing panel), falling back to `style.fill` for
+  // strokes authored before the stroke/fill split (their line lived in `fill`).
+  const paint = shape.style.stroke ?? shape.style.fill ?? "#000";
+  target.setFill(paint);
   target.setStroke(null);
   // Single dot for one-point strokes — degenerate quad would be invisible.
   if (pts.length === 1) {

@@ -905,6 +905,22 @@ describe("drawBrush", () => {
     expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#f0f")).toBe(true);
   });
 
+  it("paints the line with style.stroke when both stroke and fill are set", () => {
+    // The drawing panel sets `stroke` = line colour and `fill` = enclosed-area
+    // colour; the stroke body must use the line colour, not the fill.
+    const calls = addAndRender({
+      ...base(),
+      type: "brush",
+      points: [
+        { x: 0, y: 0, width: 4 },
+        { x: 10, y: 0, width: 4 },
+      ],
+      style: { stroke: "#123456", fill: "#abcdef" },
+    });
+    expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#123456")).toBe(true);
+    expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#abcdef")).toBe(false);
+  });
+
   it("sets stroke to null (brush uses filled quads, not stroked paths)", () => {
     const calls = addAndRender({
       ...base(),

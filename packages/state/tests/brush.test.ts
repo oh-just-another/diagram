@@ -101,4 +101,35 @@ describe("brush stroke", () => {
     expect(editor.pendingBrushStroke).toBeNull();
     expect(editor.scene.elements.size).toBe(0);
   });
+
+  it("commits a stroke with the default line colour when settings are untouched", () => {
+    const editor = makeEditor(emptyScene());
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 10, y: 0 }, 0.5);
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    // Default line colour lives in `style.stroke` now (not the old `fill`).
+    expect(shape.style.stroke).toBe("#222222");
+  });
+
+  it("bakes brushSettings (stroke / fill / opacity) into the committed stroke", () => {
+    const editor = makeEditor(emptyScene());
+    editor.setBrushSettings({ stroke: "#ff0000", fill: "#00ff00", opacity: 0.5 });
+    expect(editor.brushSettings.stroke).toBe("#ff0000");
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 10, y: 0 }, 0.5);
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    expect(shape.style.stroke).toBe("#ff0000");
+    expect(shape.style.fill).toBe("#00ff00");
+    expect(shape.style.opacity).toBe(0.5);
+  });
+
+  it("scales stroke width by the brushSettings width (pressure ×  width)", () => {
+    const editor = makeEditor(emptyScene());
+    editor.setBrushSettings({ width: 20 });
+    editor.beginBrushStroke({ x: 0, y: 0 }, 1); // pressure 1 → half-width = width
+    const pending = editor.pendingBrushStroke!;
+    expect(pending.points[0]!.width).toBe(20);
+  });
 });

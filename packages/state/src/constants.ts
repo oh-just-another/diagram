@@ -508,6 +508,18 @@ export const MAX_BRUSH_WIDTH = 6;
 export const DEFAULT_BRUSH_WIDTH = 2;
 
 /**
+ * Default brush line colour — the paint a fresh stroke is committed with when
+ * the host hasn't changed the drawing panel. A dark neutral that reads on a
+ * light canvas (matches the pre-settings hard-coded value).
+ */
+export const DEFAULT_BRUSH_COLOR = "#222222";
+
+/**
+ * Default brush opacity (0–1) for a fresh stroke. 1 = fully opaque.
+ */
+export const DEFAULT_BRUSH_OPACITY = 1;
+
+/**
  * Samples per Catmull-Rom span when smoothing a committed brush stroke. Brush
  * points are captured sparsely (one per pointer-move), so the raw polyline is
  * angular; on commit each span is resampled into this many sub-points along a
