@@ -154,7 +154,7 @@ export const actionToggleToolLock: Action = {
   },
 };
 
-export const actionCommitCrop: Action = {
+const actionCommitCrop: Action = {
   id: "commit-image-crop",
   label: "Apply crop",
   category: "edit",
@@ -165,7 +165,7 @@ export const actionCommitCrop: Action = {
   },
 };
 
-export const actionCancelCrop: Action = {
+const actionCancelCrop: Action = {
   id: "cancel-image-crop",
   label: "Cancel crop",
   category: "edit",

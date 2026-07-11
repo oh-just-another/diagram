@@ -383,9 +383,6 @@ importers:
       rxjs:
         specifier: 7.8.2
         version: 7.8.2
-      vite:
-        specifier: 6.4.3
-        version: 6.4.3(@types/node@22.19.19)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
       zone.js:
         specifier: 0.15.1
         version: 0.15.1

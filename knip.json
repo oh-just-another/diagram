@@ -20,8 +20,11 @@
     },
     "packages/headless": {
       "entry": ["src/index.ts!"],
-      "project": ["src/**/*.{ts,tsx}"],
-      "ignoreDependencies": ["@resvg/resvg-js"]
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/mcp": {
+      "entry": ["src/index.ts!", "src/bin.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/cli": {
       "entry": ["src/cli.ts", "src/index.ts"],

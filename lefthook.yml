@@ -22,3 +22,5 @@ pre-push:
       run: pnpm test
     deps:
       run: pnpm deps:check
+    knip:
+      run: pnpm knip
