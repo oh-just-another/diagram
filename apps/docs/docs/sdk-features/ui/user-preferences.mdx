@@ -18,6 +18,6 @@ import { dehydrateScene, hydrateScene, VIEWPORT_SCOPE } from "@oh-just-another/s
 
 Several user-facing toggles live on the viewport and persist with it rather than in undo history — for example show/hide grid and snap-to-grid, set via the editor.
 
-Theme is a host concern: `@oh-just-another/react-ui` exports light and dark palettes (`ELEMENT_PALETTE_LIGHT` / `_DARK`, `CANVAS_PALETTE_LIGHT` / `_DARK`) and `resolvePaletteTheme`, but the SDK does not persist a chosen theme for you — store that preference yourself.
+Theme persistence exists only in the drop-in editor: `<Editor persistTheme>` (`@oh-just-another/editor`) stores the choice in `localStorage` (default key `"diagram-theme"`, or pass a custom key string). `@oh-just-another/react-ui` itself does not persist a theme — it exports light and dark palettes (`ELEMENT_PALETTE_LIGHT` / `_DARK`, `CANVAS_PALETTE_LIGHT` / `_DARK`) and `resolvePaletteTheme`; store the preference yourself when composing chrome directly.
 
-Planned — not yet available: a unified, namespaced user-preferences API (persisted theme, default tool, grid defaults) that the editor reads on startup. Today, assemble preferences from the scoped viewport settings above plus your own storage.
+Planned — not yet available: a unified, namespaced user-preferences API (default tool, grid defaults, theme in one store) that the editor reads on startup. Today, assemble preferences from the scoped viewport settings above, `persistTheme`, and your own storage.

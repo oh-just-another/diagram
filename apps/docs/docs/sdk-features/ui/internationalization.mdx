@@ -4,12 +4,12 @@ status: draft
 sidebar_position: 42
 ---
 
-Planned — not yet available. The SDK has no built-in i18n layer: there is no message catalog, no locale switching, and no translation hooks for the built-in UI. The components in `@oh-just-another/react-ui` and the demo ship English strings, and this documentation is English-only.
+Planned — not yet available. The SDK has no built-in i18n layer: there is no message catalog, no locale switching, and no translation hooks for the built-in UI. The components in `@oh-just-another/react-ui` and the playground app ship English strings, and this documentation is English-only.
 
 What you can localise today is anything you pass in or render yourself. Two seams are relevant:
 
 - **Your own UI.** The React components accept labels and children as props, so you can feed already-translated strings from your application's i18n framework (react-intl, i18next, etc.). The toolbar, menus, and panels are composable, so a host can rebuild them with localised text.
-- **Accessibility announcements.** The editor emits live-region strings (for example "Selected Rectangle") through `Editor.onAnnounce`. These are produced in English by the editor's canonical messages; treat them as keys and map them to localised strings in your `aria-live` sink if you need translated announcements.
+- **Accessibility announcements.** The live editor instance (`Editor` from `@oh-just-another/state`) emits live-region strings (for example "Selected Rectangle") through `editor.onAnnounce(fn)`. They are English; treat them as keys and map them to localised strings in your `aria-live` sink if you need translated announcements.
 
 Text content inside shapes is, of course, whatever the user types — full Unicode is supported and text shaping can be made deterministic across environments via `@oh-just-another/text-wasm`.
 
