@@ -33,7 +33,7 @@ function Host() {
 
 ## The history kernel
 
-`History` owns no scene: `push` records a patch, `undo()` returns the *inverse* to apply, `redo()` returns the *original*. The caller applies the returned patch with `apply` from `@oh-just-another/scene`.
+`History` owns no scene: `push` records a patch, `undo()` returns the _inverse_ to apply, `redo()` returns the _original_. The caller applies the returned patch with `apply` from `@oh-just-another/scene`.
 
 ```ts
 import { History } from "@oh-just-another/history";

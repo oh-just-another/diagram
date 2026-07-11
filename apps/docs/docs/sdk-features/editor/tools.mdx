@@ -3,26 +3,26 @@ title: Tools
 sidebar_position: 70
 ---
 
-Tools are expressed as the editor's active *mode*. The mode dictates how a pointer-down is interpreted — select an element, pan, or draw a new shape of a given kind.
+Tools are expressed as the editor's active _mode_. The mode dictates how a pointer-down is interpreted — select an element, pan, or draw a new shape of a given kind.
 
 ## Modes
 
 `Mode` is a string union, and `DEFAULT_MODE` is `"select"`. The built-in modes and their toolbar hotkeys:
 
-| Mode | Hotkey | Behaviour |
-| --- | --- | --- |
-| `select` | V | Click selects, drag on empty lassos, drag on selection moves. |
-| `hand` | H | Dedicated pan mode. |
-| `draw-rect` | R | Rubber-band rectangle creation. |
-| `draw-ellipse` | O | Rubber-band ellipse creation. |
-| `draw-text` | T | Click places a text shape and opens its inline editor. |
-| `draw-edge` | L | Edge creation from press-down shape to release shape. |
-| `draw-frame` | F | Rubber-band frame creation. |
-| `brush` | B | Pressure-sensitive freehand stroke. |
-| `erase` | E | Drag to sweep shapes into a pending set (previewed dimmed); release deletes in one undo step. Brush strokes are erased partially — the swept arc is removed and the survivors become fragments. |
-| `laser` | K | Ephemeral presentation pointer; the fading trail never touches the scene or history. |
-| `eyedropper` | — | Colour sampling. Not on the toolbar: armed from the colour picker via `editor.beginEyedropperPick(onPick)`; the next canvas click samples the colour under the cursor. |
-| `crop` | — | Image crop, entered by double-clicking an image. Enter commits, Escape cancels. |
+| Mode           | Hotkey | Behaviour                                                                                                                                                                                       |
+| -------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `select`       | V      | Click selects, drag on empty lassos, drag on selection moves.                                                                                                                                   |
+| `hand`         | H      | Dedicated pan mode.                                                                                                                                                                             |
+| `draw-rect`    | R      | Rubber-band rectangle creation.                                                                                                                                                                 |
+| `draw-ellipse` | O      | Rubber-band ellipse creation.                                                                                                                                                                   |
+| `draw-text`    | T      | Click places a text shape and opens its inline editor.                                                                                                                                          |
+| `draw-edge`    | L      | Edge creation from press-down shape to release shape.                                                                                                                                           |
+| `draw-frame`   | F      | Rubber-band frame creation.                                                                                                                                                                     |
+| `brush`        | B      | Pressure-sensitive freehand stroke.                                                                                                                                                             |
+| `erase`        | E      | Drag to sweep shapes into a pending set (previewed dimmed); release deletes in one undo step. Brush strokes are erased partially — the swept arc is removed and the survivors become fragments. |
+| `laser`        | K      | Ephemeral presentation pointer; the fading trail never touches the scene or history.                                                                                                            |
+| `eyedropper`   | —      | Colour sampling. Not on the toolbar: armed from the colour picker via `editor.beginEyedropperPick(onPick)`; the next canvas click samples the colour under the cursor.                          |
+| `crop`         | —      | Image crop, entered by double-clicking an image. Enter commits, Escape cancels.                                                                                                                 |
 
 Pan and zoom remain available as gestures (middle-mouse, Space+drag, wheel) regardless of the active mode. In read-only mode only `select`, `hand` and `laser` mode switches are allowed.
 

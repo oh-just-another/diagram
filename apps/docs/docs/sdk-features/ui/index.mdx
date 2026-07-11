@@ -44,7 +44,11 @@ import { useMode, useHistory } from "@oh-just-another/react-ui";
 function StatusBar() {
   const mode = useMode();
   const { canUndo, undo } = useHistory();
-  return <button disabled={!canUndo} onClick={undo}>Undo ({mode})</button>;
+  return (
+    <button disabled={!canUndo} onClick={undo}>
+      Undo ({mode})
+    </button>
+  );
 }
 ```
 

@@ -7,19 +7,19 @@ sidebar_position: 18
 
 ## Built-in types
 
-| `type`        | Interface             | Extra fields                                   |
-| ------------- | --------------------- | ---------------------------------------------- |
-| `rectangle`   | `RectangleElement`    | `width`, `height`                              |
-| `ellipse`     | `EllipseElement`      | `width`, `height`                              |
-| `polygon`     | `PolygonElement`      | `points` (local `Vec2[]`)                      |
-| `path`        | `PathElement`         | `commands` (`PathCommand[]`)                   |
-| `text`        | `TextElement`         | `text`, `fontFamily`, `fontSize`, `maxWidth?`, `runs?` (rich-text overlay) |
-| `image`       | `ImageElement`        | `src`, `fileId?`, `crop?`, `width`, `height`   |
-| `template`    | `TemplateElement`     | `templateId`, `data`, `width`, `height`        |
-| `group`       | `GroupElement`        | (zero-render container)                        |
-| `frame`       | `FrameElement`        | `width`, `height`, `name?`                     |
-| `block-arrow` | `BlockArrowElement`   | `width`, `height`, `direction?`, `headRatio?`, `bodyThickness?` |
-| `brush`       | `BrushElement`        | `points` (`BrushPoint[]`, per-vertex half-width), `closed?` |
+| `type`        | Interface           | Extra fields                                                               |
+| ------------- | ------------------- | -------------------------------------------------------------------------- |
+| `rectangle`   | `RectangleElement`  | `width`, `height`                                                          |
+| `ellipse`     | `EllipseElement`    | `width`, `height`                                                          |
+| `polygon`     | `PolygonElement`    | `points` (local `Vec2[]`)                                                  |
+| `path`        | `PathElement`       | `commands` (`PathCommand[]`)                                               |
+| `text`        | `TextElement`       | `text`, `fontFamily`, `fontSize`, `maxWidth?`, `runs?` (rich-text overlay) |
+| `image`       | `ImageElement`      | `src`, `fileId?`, `crop?`, `width`, `height`                               |
+| `template`    | `TemplateElement`   | `templateId`, `data`, `width`, `height`                                    |
+| `group`       | `GroupElement`      | (zero-render container)                                                    |
+| `frame`       | `FrameElement`      | `width`, `height`, `name?`                                                 |
+| `block-arrow` | `BlockArrowElement` | `width`, `height`, `direction?`, `headRatio?`, `bodyThickness?`            |
+| `brush`       | `BrushElement`      | `points` (`BrushPoint[]`, per-vertex half-width), `closed?`                |
 
 ## Creating a built-in
 

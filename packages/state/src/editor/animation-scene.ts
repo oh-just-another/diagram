@@ -88,7 +88,10 @@ const isLiveImageHandle = (value: unknown): boolean => {
   const g = globalThis as Record<string, unknown>;
   for (const name of DRAWABLE_CTOR_NAMES) {
     const ctor = g[name];
-    if (typeof ctor === "function" && value instanceof (ctor as new (...args: never[]) => unknown)) {
+    if (
+      typeof ctor === "function" &&
+      value instanceof (ctor as new (...args: never[]) => unknown)
+    ) {
       return true;
     }
   }

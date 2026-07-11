@@ -54,11 +54,11 @@ const transport = new WebSocketTransport(`wss://relay.example.com/${roomId}`);
 
 ## What the relay can and cannot see
 
-| Visible to the relay | Never leaves the client |
-| --- | --- |
-| Room id (WS pathname) | Encryption key (URL fragment) |
-| Encrypted blob sizes and timing | Scene content, text, images |
-| Peer connection count | User names in presence (encrypted) |
+| Visible to the relay            | Never leaves the client            |
+| ------------------------------- | ---------------------------------- |
+| Room id (WS pathname)           | Encryption key (URL fragment)      |
+| Encrypted blob sizes and timing | Scene content, text, images        |
+| Peer connection count           | User names in presence (encrypted) |
 
 No account system, no persistence: when the last peer leaves, the room is
 gone. Persistence and access control belong to your host app (e.g. store

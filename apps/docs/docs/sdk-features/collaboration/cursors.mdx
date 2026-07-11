@@ -35,7 +35,10 @@ import type { Peer } from "@oh-just-another/collab";
 const others: readonly Peer[] = awareness.getOthers();
 
 const off = awareness.onPeers((all) => {
-  console.log("peers now:", all.map((p) => p.user.name));
+  console.log(
+    "peers now:",
+    all.map((p) => p.user.name),
+  );
 });
 ```
 

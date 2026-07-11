@@ -35,7 +35,7 @@ The full set of `PressTarget` kinds is `element`, `handle`, `group-handle`, `rot
 
 ## Clicks vs drags
 
-A press becomes a *drag* only once the pointer travels `DRAG_THRESHOLD` from the press origin; below that it resolves to a *click*. The pure helper `interpretPressEnd` makes that decision, and handle hit zones stay a fixed CSS size at any zoom because tolerance is divided by viewport zoom.
+A press becomes a _drag_ only once the pointer travels `DRAG_THRESHOLD` from the press origin; below that it resolves to a _click_. The pure helper `interpretPressEnd` makes that decision, and handle hit zones stay a fixed CSS size at any zoom because tolerance is divided by viewport zoom.
 
 ```ts
 import { DRAG_THRESHOLD, interpretPressEnd } from "@oh-just-another/state";

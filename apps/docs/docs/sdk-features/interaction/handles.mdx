@@ -14,12 +14,7 @@ There are eight handle positions — four corners and four edge midpoints —
 addressed by `HandleId`. `ALL_HANDLES` lists them.
 
 ```ts
-import {
-  ALL_HANDLES,
-  HANDLE_SIZE,
-  handlePosition,
-  type HandleId,
-} from "@oh-just-another/state";
+import { ALL_HANDLES, HANDLE_SIZE, handlePosition, type HandleId } from "@oh-just-another/state";
 
 // HandleId = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w"
 const worldPos = handlePosition("se", bounds, zoom);

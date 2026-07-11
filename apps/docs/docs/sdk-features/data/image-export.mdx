@@ -49,7 +49,11 @@ import { exportPng, exportPdf } from "@oh-just-another/exporter";
 
 const png = await exportPng(scene, { scale: 2, dpi: 300, background: "#ffffff" }); // Uint8Array
 const crop = await exportPng(scene, { region: { x: 0, y: 0, width: 400, height: 300 } });
-const pdf = await exportPdf(scene, { pageSize: "Letter", orientation: "landscape", title: "Diagram" });
+const pdf = await exportPdf(scene, {
+  pageSize: "Letter",
+  orientation: "landscape",
+  title: "Diagram",
+});
 ```
 
 Both take a `Scene` or JSON document string. `region` crops in world coordinates (default: the scene's `viewport.size`); `frameId` instead exports a single frame's content and wins over `region`. `dpi` only embeds a `pHYs` chunk — pixel dimensions come from `scale`.

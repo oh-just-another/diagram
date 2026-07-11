@@ -39,7 +39,11 @@ Everything the component does sits on top of the `Editor` engine from `@oh-just-
 Plug-in registries are re-exported so the editor is the single import for adding custom element types, migrations, layout kinds and animation adapters:
 
 ```ts
-import { registerBounder, registerElementRenderer, registerMigration } from "@oh-just-another/editor";
+import {
+  registerBounder,
+  registerElementRenderer,
+  registerMigration,
+} from "@oh-just-another/editor";
 ```
 
 `Diagram` is a deprecated alias of `Editor`.

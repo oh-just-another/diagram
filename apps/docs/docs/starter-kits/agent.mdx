@@ -26,9 +26,9 @@ function AgentHost() {
   const runAgentStep = () => {
     const api = ref.current;
     if (!api) return;
-    const scene = api.getScene();      // read current state
+    const scene = api.getScene(); // read current state
     const next = planNextScene(scene); // your agent decides
-    api.loadScene(next);               // apply
+    api.loadScene(next); // apply
   };
 
   return <Editor ref={ref} />;
@@ -84,7 +84,7 @@ The same package ships layout helpers (`gridLayout`, `stackLayout`, `treeLayout`
 `runAutoLayout`) so an agent can arrange generated nodes deterministically before
 loading them.
 
-> **Building the agent's reasoning loop.** The model that decides *what* to draw
+> **Building the agent's reasoning loop.** The model that decides _what_ to draw
 > is yours to wire up. For Anthropic's API, tool use, and agent patterns, see the
 > [Claude API docs](https://docs.claude.com/en/api). This kit covers the editor
 > side: how the agent's decisions reach the canvas.

@@ -25,7 +25,10 @@ The `bounds` module works with axis-aligned `{ x, y, width, height }` rectangles
 ```ts
 import { bounds } from "@oh-just-another/math";
 
-const box = bounds.fromPoints([{ x: 0, y: 0 }, { x: 10, y: 20 }]);
+const box = bounds.fromPoints([
+  { x: 0, y: 0 },
+  { x: 10, y: 20 },
+]);
 const hit = bounds.contains(box, { x: 5, y: 5 }); // true
 const merged = bounds.union(box, bounds.of(8, 8, 4, 4));
 ```
@@ -41,8 +44,10 @@ const t = matrix.multiply(matrix.translation(10, 0), matrix.rotation(Math.PI / 4
 const p = matrix.applyToPoint(t, { x: 1, y: 0 });
 
 const x = intersect.segmentSegment(
-  { x: 0, y: 0 }, { x: 10, y: 10 },
-  { x: 0, y: 10 }, { x: 10, y: 0 },
+  { x: 0, y: 0 },
+  { x: 10, y: 10 },
+  { x: 0, y: 10 },
+  { x: 10, y: 0 },
 ); // { x: 5, y: 5 }
 ```
 
