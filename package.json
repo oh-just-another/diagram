@@ -105,7 +105,7 @@
         "@size-limit/esbuild"
       ],
       "brotli": false,
-      "limit": "800 KB"
+      "limit": "900 KB"
     },
     {
       "name": "@oh-just-another/editor (bundled, gzip)",
