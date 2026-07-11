@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Input Handling
-status: draft
+title: Input Handling
 sidebar_position: 40
 ---
 
@@ -31,7 +30,7 @@ host.addEventListener("wheel", (ev) => {
 
 ## Skipping editable targets
 
-Global keyboard handlers must bail when the event is aimed at a text field, `<select>`, or any `contenteditable` host, so the user's typing is not hijacked. `isEditableTarget` answers that — it reads the real focused node (via `composedPath`), so it works even across a shadow-root boundary.
+Global keyboard handlers must bail when the event is aimed at a text field, `<select>`, or any `contenteditable` host, so the user's typing is not hijacked. `isEditableTarget` answers that for the node you pass; inside a shadow root, pass `event.composedPath()[0]` (the real focused node) rather than the retargeted `event.target`.
 
 ```ts
 import { fromKeyboardEvent, isEditableTarget } from "@oh-just-another/state";

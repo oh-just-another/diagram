@@ -1,16 +1,48 @@
 ---
-title: 🚧 Eraser
-status: draft
+title: Eraser
 sidebar_position: 25
 ---
 
-Planned — not yet available. There is no eraser tool: the editor has no eraser mode, and no scratch-out gesture that removes shapes (or pixels) by drawing over them. The editor's modes are `select`, `hand`, `draw-rect`, `draw-ellipse`, `draw-text`, `draw-edge`, `draw-frame`, and `brush` — none of which erases.
+The eraser is the `erase` mode (hotkey `E`, `actionModeErase`). Press-and-drag sweeps shapes under the cursor into a pending set — previewed dimmed — and releasing deletes them all in one undo step, dropping their attached links exactly like a Delete-key delete. A plain click erases the shape under it.
 
-To remove content today, use deletion instead of erasing:
+```ts
+import { Editor } from "@oh-just-another/state";
 
-- Select shapes and delete them — `actionDeleteSelection`, bound to Delete/Backspace by default.
-- Remove specific elements or links programmatically with `removeElement` / `removeLink` from `@oh-just-another/scene`, or the editor's delete verbs.
+declare const editor: Editor;
+editor.setMode("erase");
+```
 
-Note that the `brush` mode is an additive freehand tool — it creates `BrushElement` strokes (pressure-sensitive ink), not an eraser. Erasing a brush stroke means selecting and deleting it like any other shape.
+The sweep is sampled along each pointer-move segment, so a fast swipe cannot skip small shapes between two move events. A size-matched cursor ring follows the pointer, and the drag lays a short fading trail. `Escape` cancels the in-progress stroke without deleting anything; read-only mode disables erasing entirely.
 
-Planned — not yet available: a dedicated eraser tool — both a "stroke eraser" that removes whole shapes/strokes it crosses, and a "pixel eraser" for partial erasing of brush ink. Until then, deletion is the supported way to remove content.
+## Radius
+
+The eraser radius reuses the brush width setting — the drawing panel relabels its slider to "Radius" while the eraser is active. Set it programmatically:
+
+```ts
+editor.setBrushSettings({ width: 24 }); // eraser radius in screen px
+```
+
+## Alt to restore
+
+Holding `Alt` flips the sweep: dragging back over already-marked shapes un-marks them, rescuing them before release. Pressing down with `Alt` starts the gesture in restore mode without seeding anything.
+
+## Shift: stroke eraser (partial erase of brush ink)
+
+Holding `Shift` at press switches to STROKE-ERASE. Brush strokes (`BrushElement` freehand ink) are not deleted whole — the arc-length spans of the stroke covered by the eraser ring are cut out, and the survivors become independent fragment strokes. Non-brush shapes still object-erase as usual.
+
+- Cutting is by arc length, not vertex index, so a wide eraser grazing a sparsely-sampled line still removes exactly the geometry it visibly covers; fragment endpoints are pinned to the eraser ring.
+- Fragments keep the original style and per-point widths; leftover nubs shorter than a minimum arc length are dropped.
+- Links bound to a cut brush are detached rather than re-bound to a fragment.
+- The cut is previewed live during the drag (originals hidden, fragments drawn on the overlay); nothing enters the scene or history until release.
+- Object erasures and brush cuts from one gesture commit as a single undo step.
+
+## Programmatic gesture
+
+The pointer binding drives the eraser through four editor verbs; hosts with custom input can call them directly:
+
+```ts
+editor.beginEraseStroke(world); // optional flags: (world, restore, strokeErase)
+editor.extendEraseStroke(world); // per pointer move; (world, restore)
+const removed = editor.commitEraseStroke(); // deletes, returns count
+editor.cancelEraseStroke(); // abort, nothing deleted
+```

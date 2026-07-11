@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Clipboard
-status: draft
+title: Clipboard
 sidebar_position: 10
 ---
 
@@ -12,7 +11,7 @@ Copy, cut, and paste move the current selection through an in-editor buffer. The
 import { Editor } from "@oh-just-another/state";
 
 editor.copySelected(); // buffer the selection
-editor.cut(); // copy + delete in one step
+editor.cutSelected(); // copy + delete in one step
 editor.paste(); // paste under the cursor
 ```
 

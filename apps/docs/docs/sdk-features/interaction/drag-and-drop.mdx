@@ -1,10 +1,9 @@
 ---
-title: ⚠️ Drag And Drop
-status: draft
+title: Drag And Drop
 sidebar_position: 19
 ---
 
-Dropping a file onto the canvas — an image, a video, or a serialized scene — is dispatched through a host-extensible registry. Built-in handlers cover images and scene JSON; hosts add their own for custom payloads.
+Dropping a file onto the canvas is dispatched through a host-extensible registry. Built-in handlers cover images and videos; hosts add their own for custom payloads (CSV, scene JSON, …).
 
 ## File-drop registry
 
@@ -33,7 +32,9 @@ The state package exports MIME constants and readers so handlers don't reinvent 
 ```ts
 import {
   IMAGE_MIME_TYPES,
+  VIDEO_MIME_TYPES,
   isImageFile,
+  isVideoFile,
   isSceneJsonFile,
   readFileAsDataURL,
   readFileAsText,
@@ -53,4 +54,4 @@ import { Editor } from "@oh-just-another/editor";
 <Editor fileDropHandlers={[csvHandler]} />;
 ```
 
-The same registry path is used for files arriving via a clipboard paste, not only pointer drops.
+To route files from another source (e.g. a clipboard paste), call `editor.dispatchFileDrop(file, worldPoint)` — it walks the same registry as a pointer drop.

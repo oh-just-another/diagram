@@ -1,42 +1,37 @@
 ---
-title: ⚠️ Indicators
-status: draft
+title: Indicators
 sidebar_position: 39
 ---
 
 Selection indicators are the on-canvas chrome that surrounds the current
-selection — the selection frame plus the floating panel that follows it. The
-geometry lives in `@oh-just-another/state` and the React surface in
+selection — the selection frame, handles, and the floating panel that follows
+it. The drawing lives in `@oh-just-another/state` and the React surface in
 `@oh-just-another/react-ui`.
 
-## Selection frame geometry
+## Overlay pass
 
-`@oh-just-another/state` computes the oriented selection frame for a shape (or an
-axis-aligned bounds), which you can draw on the overlay layer or feed into your
-own indicator UI.
+`renderOverlay` from `@oh-just-another/state` paints all interaction chrome —
+selection frames (oriented per shape rotation), resize/rotate handles, lasso,
+link highlights, peer cursors — onto a render target in one pass, styled by an
+`OverlayStyle` (start from `DEFAULT_OVERLAY_STYLE`). Handle geometry helpers
+(`handlePosition`, `hitHandle`, `HANDLE_SIZE`) are exported separately — see
+[Handles](./handles.mdx).
 
 ```ts
 import {
-  shapeSelectionFrame,
-  aabbSelectionFrame,
-  frameCorners,
-  frameCenter,
-  type SelectionFrame,
+  renderOverlay,
+  DEFAULT_OVERLAY_STYLE,
+  type OverlayStyle,
 } from "@oh-just-another/state";
-
-const frame: SelectionFrame = shapeSelectionFrame(shape);
-const [nw, ne, se, sw] = frameCorners(frame);
-const center = frameCenter(frame);
 ```
-
-`frameCorners` returns the four world-space corners in `nw, ne, se, sw` order,
-so you can stroke the selection box directly onto an overlay `Canvas2DTarget`.
 
 ## Floating selection panel
 
 `@oh-just-another/react-ui` provides `SelectionFloatingPanel`, the panel that
-tracks the active selection and hosts quick actions. It reads the live selection
-from the diagram context.
+tracks the active selection bounds (via floating-ui, flipping sides when space
+runs out) and hosts the property quick actions. It reads the live selection
+from the diagram context; `offset`, `placement`, and edge insets are optional
+props.
 
 ```tsx
 import { SelectionFloatingPanel } from "@oh-just-another/react-ui";

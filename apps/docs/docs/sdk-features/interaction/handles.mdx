@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Handles
-status: draft
+title: Handles
 sidebar_position: 35
 ---
 
@@ -12,8 +11,7 @@ custom overlay.
 ## Handle identifiers
 
 There are eight handle positions — four corners and four edge midpoints —
-addressed by `HandleId`. `ALL_HANDLES` lists them; `CORNER_HANDLES` is the
-corner subset.
+addressed by `HandleId`. `ALL_HANDLES` lists them.
 
 ```ts
 import {
@@ -33,28 +31,31 @@ const worldPos = handlePosition("se", bounds, zoom);
 ## Hit-testing a pointer
 
 `hitHandle` maps a pointer position to the handle under it (or `null`), applying
-a screen-space slop band so handles stay grabbable at any zoom.
+a screen-space slop band so handles stay grabbable at any zoom. Optional trailing
+arguments override the slop half-size (touch hosts pass a bigger one) and restrict
+the tested handle set (e.g. corners only for aspect-locked resize).
 
 ```ts
 import { hitHandle } from "@oh-just-another/state";
 
 const grabbed = hitHandle(pointerWorld, bounds, zoom);
 if (grabbed) {
-  // begin resize/rotate drag for `grabbed`
+  // begin resize drag for `grabbed`
 }
 ```
 
 ## Resizing
 
-`resizeBounds` computes the new bounds when a handle is dragged, and
-`cursorForHandle` gives the appropriate CSS cursor. Rotation uses the registered
+`resizeBounds(bounds, handle, delta)` applies a world-space drag delta to the
+bounds, keeping the opposite corner anchored; the result may have negative
+width/height mid-drag (normalized on commit). Rotation uses the registered
 rotate anchor (`registerRotateAnchor` / `getRotateAnchor`).
 
 ```ts
 import { resizeBounds } from "@oh-just-another/state";
 
-const next = resizeBounds(grabbed, bounds, pointerWorld);
+const next = resizeBounds(bounds, grabbed, dragDeltaWorld);
 ```
 
-`HANDLE_SIZE` and related grab-area constants are exported so hosts can match
-the visual size of the drawn handles to the hit area.
+`HANDLE_SIZE` is exported so hosts can match the visual size of the drawn
+handles to the hit area.

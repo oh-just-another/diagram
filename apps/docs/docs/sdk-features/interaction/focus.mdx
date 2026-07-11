@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Focus
-status: draft
+title: Focus
 sidebar_position: 29
 ---
 
@@ -8,7 +7,7 @@ Focus handling keeps canvas keyboard shortcuts from stealing keystrokes meant fo
 
 ## isEditableTarget
 
-`isEditableTarget` returns `true` when an event's target is an editable element. It reads the real focused node — via `composedPath()` — so it sees through a shadow-root boundary where `event.target` would be retargeted to the host. It is exported from both `@oh-just-another/editor` and `@oh-just-another/state`.
+`isEditableTarget` returns `true` when the given node is an `<input>`, `<textarea>`, `<select>`, or `contenteditable` element. It is exported from both `@oh-just-another/editor` and `@oh-just-another/state`. Note it checks exactly the node you pass — inside a shadow root, resolve the real focused node first with `event.composedPath()[0]` (where `event.target` would be retargeted to the host), which is what `bindEditorHotkeys` does internally.
 
 ```ts
 import { isEditableTarget } from "@oh-just-another/editor";

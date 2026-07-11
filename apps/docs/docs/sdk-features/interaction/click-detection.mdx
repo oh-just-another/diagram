@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Click Detection
-status: draft
+title: Click Detection
 sidebar_position: 9
 ---
 
@@ -42,4 +41,4 @@ A press becomes a *drag* only once the pointer travels `DRAG_THRESHOLD` from the
 import { DRAG_THRESHOLD, interpretPressEnd } from "@oh-just-another/state";
 ```
 
-For very large scenes the engine builds a spatial index on demand to keep hit-testing fast.
+Hit-testing runs against a spatial index the engine builds lazily and caches per scene revision, shared with the render pass.

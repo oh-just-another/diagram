@@ -1,16 +1,45 @@
 ---
-title: 🚧 Readonly
-status: draft
+title: Readonly
 sidebar_position: 53
 ---
 
-A single global read-only switch — one flag that freezes all editing while leaving pan, zoom, and selection alive — is **planned, not yet available**. There is no `readOnly` prop or `setReadOnly` method on the editor today.
+Read-only (view) mode is a single engine-level flag that gates all editing while leaving pan, zoom, and selection alive. Toggle it with `⌥R` (`actionToggleReadOnly`) or programmatically:
 
-## What you can do now
+```ts
+import { Editor } from "@oh-just-another/state";
 
-Two real, narrower mechanisms cover most read-only needs.
+const editor = new Editor({ readOnly: true }); // start read-only
+editor.setReadOnly(false); // flip at runtime (idempotent)
+editor.toggleReadOnly();
+const on = editor.readOnly;
+```
 
-**Lock individual elements or layers.** The scene model supports per-element and per-layer locking. A locked element is skipped by hit-testing for edits, and `isElementLocked` reports the effective state (walking up the parent / layer chain).
+## What it gates
+
+- **Pointer edits** — drags that would create, move, resize, rotate, erase, or draw all bail at press-down. Panning, zooming, and click-to-select still work.
+- **Actions** — the action registry disables every action not flagged `viewMode: true`. Navigation-safe actions (select-all, copy, zoom, grid, mode switches to non-editing tools, and the read-only toggle itself) stay live; the toggle is `viewMode`-flagged so the keyboard can always leave view mode.
+- **Mutating verbs** — engine verbs (`deleteSelected`, `paste`, `moveSelectionBy`, `groupSelected`, z-order, …) return early, so hosts don't have to guard each entry point.
+
+The bundled toolbar and menus disable their editing buttons automatically (`useReadOnly` hook in `@oh-just-another/react-ui`).
+
+## From React
+
+`DiagramRoot` in `@oh-just-another/react-ui` takes a `readOnly` prop (changing it after mount flips the live editor). The top-level `Editor` component has no dedicated prop yet — reach the engine through the ref:
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+
+function Host() {
+  const ref = useRef<EditorAPI>(null);
+  const freeze = () => ref.current?.editor?.setReadOnly(true);
+  return <Editor ref={ref} />;
+}
+```
+
+## Narrower alternatives
+
+**Lock individual elements or layers.** A locked element is skipped by hit-testing for edits; `isElementLocked` reports the effective state (walking up the parent / layer chain).
 
 ```ts
 import { isElementLocked } from "@oh-just-another/scene";
@@ -18,19 +47,8 @@ import { isElementLocked } from "@oh-just-another/scene";
 const frozen = isElementLocked(scene, element);
 ```
 
-**Hide the editing chrome.** The React `Editor` component can drop the toolbar, menus, and panels, leaving a clean canvas. Combined with locked content this yields a presentation-style view.
+**Hide the editing chrome.** The React `Editor` component can drop the toolbar, menus, and panels for a presentation-style view:
 
 ```tsx
-import { Editor } from "@oh-just-another/editor";
-
-<Editor
-  hideToolbar
-  hideMainMenu
-  hideSelectionPanel
-  hideContextMenu
-/>;
+<Editor hideToolbar hideMainMenu hideSelectionPanel hideContextMenu />;
 ```
-
-## Planned
-
-A first-class read-only mode would gate all mutating verbs (create, move, delete, paste) at the engine level so hosts don't have to disable each entry point individually, while keeping the camera and selection interactive. Until then, prefer locking content and hiding chrome.
