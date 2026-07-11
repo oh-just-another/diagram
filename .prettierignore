@@ -2,6 +2,7 @@ node_modules
 dist
 build
 coverage
+test-results
 .nx
 .changeset
 pnpm-lock.yaml
