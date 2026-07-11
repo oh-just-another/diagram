@@ -7,3 +7,4 @@ test-results
 .changeset
 pnpm-lock.yaml
 *.tsbuildinfo
+*.generated.ts
