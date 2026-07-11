@@ -12,6 +12,7 @@ import { elementId as castElementId } from "@oh-just-another/types";
 import {
   BRUSH_CLOSE_DISTANCE,
   BRUSH_SMOOTH_SEGMENTS,
+  BRUSH_STREAMLINE,
   DEFAULT_BRUSH_COLOR,
   DEFAULT_BRUSH_OPACITY,
   DEFAULT_BRUSH_WIDTH,
@@ -66,17 +67,25 @@ const pressureToWidth = (pressure: number, maxWidth: number): number => {
  */
 export interface BrushStrokeState {
   origin: Vec2;
+  /** Streamlined (low-pass filtered) points — what the preview and commit use. */
   points: BrushPoint[];
+  /**
+   * The last RAW input point (local coords, un-streamlined). The low-pass
+   * filter makes `points` trail the cursor by a fraction of each move, so the
+   * commit appends this catch-up point — the stroke ends exactly where the
+   * pointer was released, not a half-step behind it.
+   */
+  lastRaw: BrushPoint;
 }
 
 export const beginBrushStroke = (
   world: Vec2,
   pressure: number,
   maxWidth: number = MAX_BRUSH_WIDTH,
-): BrushStrokeState => ({
-  points: [{ x: 0, y: 0, width: pressureToWidth(pressure, maxWidth) }],
-  origin: world,
-});
+): BrushStrokeState => {
+  const first = { x: 0, y: 0, width: pressureToWidth(pressure, maxWidth) };
+  return { points: [first], lastRaw: first, origin: world };
+};
 
 export const extendBrushStroke = (
   stroke: BrushStrokeState,
@@ -85,11 +94,42 @@ export const extendBrushStroke = (
   maxWidth: number = MAX_BRUSH_WIDTH,
 ): void => {
   const o = stroke.origin;
-  stroke.points.push({
+  const raw: BrushPoint = {
     x: world.x - o.x,
     y: world.y - o.y,
     width: pressureToWidth(pressure, maxWidth),
+  };
+  // Streamline: pull the stored point only part of the way toward the raw
+  // input (exponential moving average). Raw pointer-move samples carry hand
+  // jitter and sensor noise; the low-pass turns them into a steady line. The
+  // trailing gap this leaves at the cursor is closed on commit via `lastRaw`.
+  const prev = stroke.points[stroke.points.length - 1] ?? raw;
+  const t = 1 - BRUSH_STREAMLINE;
+  stroke.points.push({
+    x: prev.x + (raw.x - prev.x) * t,
+    y: prev.y + (raw.y - prev.y) * t,
+    width: raw.width,
   });
+  stroke.lastRaw = raw;
+};
+
+/**
+ * The commit-ready polyline of an in-progress stroke: the streamlined points
+ * plus the raw catch-up point (when the filter left a trailing gap at the
+ * cursor), resampled by the shared Catmull-Rom smoother. Used by BOTH
+ * `commitBrushStroke` and the live overlay preview so what is drawn while the
+ * button is down is exactly what lands in the scene.
+ */
+export const brushCommitPoints = (stroke: {
+  readonly points: readonly BrushPoint[];
+  readonly lastRaw: BrushPoint;
+}): BrushPoint[] => {
+  const pts = stroke.points;
+  const last = pts[pts.length - 1];
+  const raw = stroke.lastRaw;
+  const trailing =
+    last !== undefined && (Math.abs(last.x - raw.x) > 1e-3 || Math.abs(last.y - raw.y) > 1e-3);
+  return smoothBrushPoints(trailing ? [...pts, raw] : pts);
 };
 
 /**
@@ -142,7 +182,7 @@ export const commitBrushStroke = (
   const order = orderForTop(
     [...scene.elements.values()].filter((s) => s.layerId === activeLayerId).map((s) => s.order),
   );
-  const points = smoothBrushPoints(stroke.points);
+  const points = brushCommitPoints(stroke);
   const shape: Element = {
     id: newElementId,
     layerId: activeLayerId,

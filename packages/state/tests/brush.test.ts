@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyScene, type Scene, type Element, type BrushPoint } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
-import { smoothBrushPoints } from "../src/editor/public/brush.js";
+import { brushCommitPoints } from "../src/editor/public/brush.js";
 
 const makeEditor = (scene: Scene): Editor => {
   const noopTarget = {
@@ -67,11 +67,11 @@ describe("brush stroke", () => {
     expect(editor.pendingBrushStroke).toBeNull();
   });
 
-  it("smooths the committed stroke into a dense Catmull-Rom polyline", () => {
+  it("smooths the committed stroke into a dense polyline that ends at the raw release point", () => {
     const editor = makeEditor(emptyScene());
-    // A sharp corner: without smoothing the stored points equal the three
-    // captured vertices; smoothing resamples each span into sub-points and
-    // bows the path off the raw chord at the bend.
+    // A sharp corner: streamline (input low-pass) pulls the stored points off
+    // the raw vertices, smoothing resamples the spans, and the commit catch-up
+    // appends the raw release point so the stroke still ends under the cursor.
     editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
     editor.extendBrushStroke({ x: 40, y: 0 }, 0.5);
     editor.extendBrushStroke({ x: 40, y: 40 }, 0.5);
@@ -79,19 +79,34 @@ describe("brush stroke", () => {
     const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
     // Three captured vertices → far more stored points after resampling.
     expect(shape.points.length).toBeGreaterThan(3);
-    // The corner vertex (40,0) still appears in the output (Catmull-Rom passes
-    // through its control points).
-    expect(shape.points.some((p) => Math.abs(p.x - 40) < 1e-6 && Math.abs(p.y) < 1e-6)).toBe(true);
-    // Resampling adds intermediate points that are none of the three captured
-    // vertices — the span between vertices is filled in, not just the corners.
-    const captured = [
-      { x: 0, y: 0 },
-      { x: 40, y: 0 },
-      { x: 40, y: 40 },
-    ];
-    const isCaptured = (p: { x: number; y: number }) =>
-      captured.some((c) => Math.abs(c.x - p.x) < 1e-6 && Math.abs(c.y - p.y) < 1e-6);
-    expect(shape.points.filter((p) => !isCaptured(p)).length).toBeGreaterThan(0);
+    // First point is the origin verbatim; last is the raw release point (the
+    // catch-up), NOT the streamlined trail that lags behind the cursor.
+    expect(shape.points[0]).toMatchObject({ x: 0, y: 0 });
+    const tail = shape.points[shape.points.length - 1]!;
+    expect(tail.x).toBeCloseTo(40);
+    expect(tail.y).toBeCloseTo(40);
+    // The streamline rounds the sharp corner off: the raw corner vertex (40,0)
+    // no longer appears verbatim — the path is pulled inside the bend.
+    expect(shape.points.some((p) => Math.abs(p.x - 40) < 1e-6 && Math.abs(p.y) < 1e-6)).toBe(false);
+  });
+
+  it("streamline damps input jitter but the stroke still reaches the raw endpoint", () => {
+    const editor = makeEditor(emptyScene());
+    // Zig-zag jitter around y=0: raw samples alternate ±4px. The low-pass must
+    // store points with strictly smaller lateral deviation than the raw input.
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    for (let i = 1; i <= 8; i++) {
+      editor.extendBrushStroke({ x: i * 10, y: i % 2 === 0 ? 4 : -4 }, 0.5);
+    }
+    const pending = editor.pendingBrushStroke!;
+    const maxStoredDeviation = Math.max(...pending.points.slice(1).map((p) => Math.abs(p.y)));
+    expect(maxStoredDeviation).toBeLessThan(4);
+    // Commit appends the raw catch-up point: the stroke ends where the pointer was.
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    const tail = shape.points[shape.points.length - 1]!;
+    expect(tail.x).toBeCloseTo(80);
+    expect(tail.y).toBeCloseTo(4);
   });
 
   it("smooths the LIVE preview stroke, not just the committed one", () => {
@@ -102,16 +117,17 @@ describe("brush stroke", () => {
     editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
     editor.extendBrushStroke({ x: 40, y: 0 }, 0.5);
     editor.extendBrushStroke({ x: 40, y: 40 }, 0.5); // 3 raw vertices, sharp corner
-    const raw = editor.pendingBrushStroke!.points;
+    const pending = editor.pendingBrushStroke!;
     const snap = (
       editor as unknown as {
         buildRenderSnapshot(): { brushStroke: { points: readonly BrushPoint[] } | null };
       }
     ).buildRenderSnapshot();
     expect(snap.brushStroke).not.toBeNull();
-    // The preview points are the commit-time smoother output — denser than raw.
-    expect(snap.brushStroke!.points.length).toBe(smoothBrushPoints(raw).length);
-    expect(snap.brushStroke!.points.length).toBeGreaterThan(raw.length);
+    // The preview points are the commit-pipeline output (catch-up + smoothing) —
+    // denser than the stored polyline.
+    expect(snap.brushStroke!.points.length).toBe(brushCommitPoints(pending).length);
+    expect(snap.brushStroke!.points.length).toBeGreaterThan(pending.points.length);
   });
 
   it("preview carries the chosen brush colour and opacity (not a hardcoded fill)", () => {

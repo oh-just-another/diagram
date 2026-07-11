@@ -530,6 +530,16 @@ export const DEFAULT_BRUSH_OPACITY = 1;
 export const BRUSH_SMOOTH_SEGMENTS = 4;
 
 /**
+ * Input-time low-pass (streamline) strength for brush capture, 0-0.9. Each
+ * pointer-move stores a point pulled only `1 - BRUSH_STREAMLINE` of the way
+ * from the previous stored point toward the raw sample, filtering hand jitter
+ * and sensor noise into a steady line. 0 = raw input (off); higher = steadier
+ * but laggier (the commit-time catch-up point hides the lag at the stroke
+ * end). Range: 0.3-0.7.
+ */
+export const BRUSH_STREAMLINE = 0.5;
+
+/**
  * World-pixel distance under which a brush stroke's last point is treated as
  * meeting its first — the trigger for auto-closing (and filling) a stroke on
  * commit. Only applies when a fill colour is set and the stroke has ≥3 points.

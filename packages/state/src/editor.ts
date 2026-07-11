@@ -168,7 +168,7 @@ import {
   beginBrushStroke as beginBrushStrokePure,
   commitBrushStroke as commitBrushStrokePure,
   extendBrushStroke as extendBrushStrokePure,
-  smoothBrushPoints,
+  brushCommitPoints,
   brushStyleFromSettings,
   DEFAULT_BRUSH_SETTINGS,
   newBrushId,
@@ -802,11 +802,11 @@ export class Editor {
   }
 
   /**
-   * The in-progress brush stroke with its captured vertices Catmull-Rom-smoothed
-   * for the LIVE overlay preview — the SAME resampler `commitBrushStroke` applies
-   * on release (see {@link smoothBrushPoints}), so the stroke reads smooth while
-   * drawn instead of snapping from an angular polyline to a curve on release. A
-   * fresh object each call (points diverge from `brushStroke.points`), so the
+   * The in-progress brush stroke run through the SAME commit pipeline
+   * `commitBrushStroke` applies on release (see {@link brushCommitPoints}:
+   * raw catch-up point + Catmull-Rom resample), so the stroke reads exactly
+   * as it will land in the scene instead of snapping on release. A fresh
+   * object each call (points diverge from `brushStroke.points`), so the
    * overlay memo repaints every move that grows the stroke.
    */
   private get brushPreviewStroke(): BrushPreview | null {
@@ -815,7 +815,7 @@ export class Editor {
     const style = brushStyleFromSettings(this._brushSettings);
     return {
       origin: s.origin,
-      points: smoothBrushPoints(s.points),
+      points: brushCommitPoints(s),
       fill: brushBodyColor(style),
       opacity: style.opacity ?? 1,
     };
@@ -2487,6 +2487,7 @@ export class Editor {
   get pendingBrushStroke(): {
     readonly origin: Vec2;
     readonly points: readonly BrushPoint[];
+    readonly lastRaw: BrushPoint;
   } | null {
     return this.brushStroke;
   }

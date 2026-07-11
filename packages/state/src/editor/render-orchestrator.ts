@@ -11,6 +11,7 @@ import {
   strokeOutsideExtent,
   isFrame,
   isImage,
+  type BrushPoint,
   type Scene,
   type Style,
   type Element,
@@ -68,16 +69,19 @@ import type {
   LinkDragFromAnchor,
   PanGesture,
 } from "./interaction-state.js";
-import type { BrushStrokeState } from "./public/brush.js";
 import type { LaserStroke } from "./public/laser.js";
 import type { TileComposeFn } from "../editor.js";
 
 /**
- * Live brush-stroke preview: the in-progress stroke's smoothed geometry plus the
- * paint colour and opacity it will commit with, so the overlay preview matches
- * the committed stroke exactly (no colour / opacity snap on release).
+ * Live brush-stroke preview: the in-progress stroke run through the commit
+ * pipeline (catch-up + smoothing) plus the paint colour and opacity it will
+ * commit with, so the overlay preview matches the committed stroke exactly
+ * (no geometry / colour / opacity snap on release). A derived snapshot — it
+ * deliberately does NOT extend the mutable `BrushStrokeState` capture bag.
  */
-export interface BrushPreview extends BrushStrokeState {
+export interface BrushPreview {
+  readonly origin: Vec2;
+  readonly points: readonly BrushPoint[];
   readonly fill: string;
   readonly opacity: number;
 }
