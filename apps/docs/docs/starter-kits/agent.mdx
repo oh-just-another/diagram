@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Agent
-status: draft
+title: Agent
 sidebar_position: 1
 ---
 
@@ -43,15 +42,42 @@ return `{ scene, patch }`. An agent assembles a scene off-canvas, then hands the
 finished `Scene` to `loadScene()`.
 
 ```ts
-import { emptyScene, addElement, addLink, gridLayout, apply } from "@oh-just-another/scene";
+import {
+  emptyScene,
+  addElement,
+  addLink,
+  orderForTop,
+  DEFAULT_LAYER_ID,
+  type Element,
+  type Link,
+} from "@oh-just-another/scene";
+import { elementId, linkId } from "@oh-just-another/types";
 
-let { scene } = addElement(emptyScene(), {
-  id: "a", type: "rectangle", x: 0, y: 0, width: 120, height: 60,
-} as never);
-({ scene } = addElement(scene, {
-  id: "b", type: "rectangle", x: 240, y: 0, width: 120, height: 60,
-} as never));
-({ scene } = addLink(scene, { id: "a-b", from: { element: "a" }, to: { element: "b" } } as never));
+const box = (id: string, x: number): Element => ({
+  id: elementId(id),
+  layerId: DEFAULT_LAYER_ID,
+  type: "rectangle",
+  position: { x, y: 0 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderForTop([]),
+  style: { fill: "#88f" },
+  width: 120,
+  height: 60,
+});
+
+const a = box("a", 0);
+const b = { ...box("b", 240), order: orderForTop([a.order]) };
+let { scene } = addElement(emptyScene(), a);
+({ scene } = addElement(scene, b));
+
+const link: Link = {
+  id: linkId("a-b"),
+  layerId: DEFAULT_LAYER_ID,
+  from: { kind: "floating", elementId: a.id },
+  to: { kind: "floating", elementId: b.id },
+};
+({ scene } = addLink(scene, link));
 ```
 
 The same package ships layout helpers (`gridLayout`, `stackLayout`, `treeLayout`,
@@ -66,5 +92,6 @@ loading them.
 ### Status
 
 The pattern above uses only shipped exports. A packaged, cloneable **Agent
-starter template** (a runnable repo wiring a model loop to the editor handle) is
-**coming** — it does not yet exist as a repository template.
+starter template** (a runnable repo wiring a model loop to the editor handle)
+does not exist yet. Generic starters that mount `<Editor>` live in
+[`templates/`](https://github.com/oh-just-another/diagram/tree/master/templates).

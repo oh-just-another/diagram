@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Multiplayer
-status: draft
+title: Multiplayer
 sidebar_position: 5
 ---
 
@@ -51,8 +50,9 @@ tabs on one machine, `WebSocketTransport` for cross-machine sessions via a relay
 
 ### Encryption (blind relay)
 
-`EncryptedTransport` wraps any transport so the relay sees only ciphertext. Mint
-credentials with `generateRoomKey()` and keep the AES key in the URL fragment —
+`EncryptedTransport` (exported from `@oh-just-another/collab`) wraps any
+transport so the relay sees only ciphertext. Mint credentials with
+`generateRoomKey()` and keep the AES key in the URL fragment —
 which browsers never transmit — so the relay routes by `roomId` without ever
 seeing plaintext. The playground's collab demo does exactly this: `roomId` rides
 the WebSocket path, the key lives in `location.hash`, and every Yjs/awareness
@@ -67,5 +67,6 @@ mentions (`extractMentions`, `resolveMentions`, `notifyMention`).
 ### Status
 
 The pattern above uses only shipped exports. A packaged, cloneable
-**Multiplayer starter template** (relay server plus client wiring as one repo) is
-**coming** — it does not yet exist as a repository template.
+**Multiplayer starter template** (relay server plus client wiring as one repo)
+does not exist yet. Generic starters that mount `<Editor>` live in
+[`templates/`](https://github.com/oh-just-another/diagram/tree/master/templates).
