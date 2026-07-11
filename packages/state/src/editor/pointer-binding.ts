@@ -152,10 +152,17 @@ const handleUpCrop = (editor: Editor): boolean => {
 };
 
 /** Brush mode owns the gesture end-to-end — start a stroke, skip machine. */
-const handleDownBrush = (editor: Editor, worldPoint: Vec2, pressure: number): boolean => {
+const handleDownBrush = (
+  editor: Editor,
+  worldPoint: Vec2,
+  pressure: number,
+  pointerType: string,
+): boolean => {
   if (editor.readOnly) return false;
   if (editor.mode !== "brush") return false;
-  editor.beginBrushStroke(worldPoint, pressure);
+  // pointerType picks the pressure source: pens report real pressure, mouse /
+  // touch get it simulated from pointer speed.
+  editor.beginBrushStroke(worldPoint, pressure, pointerType);
   return true;
 };
 
@@ -1172,7 +1179,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (handleDownEditingText(editor, worldPoint)) return;
     if (handleDownCrop(editor, worldPoint)) return;
     if (handleDownCropEnter(editor, worldPoint, ev.detail)) return;
-    if (handleDownBrush(editor, worldPoint, ev.pressure)) return;
+    if (handleDownBrush(editor, worldPoint, ev.pressure, ev.pointerType)) return;
     if (handleDownErase(editor, worldPoint, data.modifiers.alt, data.modifiers.shift)) return;
     if (handleDownLaser(editor, worldPoint)) return;
     if (handleDownDrawText(editor, worldPoint)) return;

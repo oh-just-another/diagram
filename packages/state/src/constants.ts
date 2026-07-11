@@ -540,6 +540,37 @@ export const BRUSH_SMOOTH_SEGMENTS = 4;
 export const BRUSH_STREAMLINE = 0.5;
 
 /**
+ * Per-sample lerp rate (0-1) toward the target pressure while capturing a
+ * brush stroke — rate-limits pressure changes so a single outlier sample (pen
+ * lift-off spike, sudden speed jump on mouse) can't kink the width profile.
+ * 1 = follow instantly (off); lower = smoother but slower to adapt.
+ * Range: 0.3-0.7.
+ */
+export const BRUSH_PRESSURE_SMOOTHING = 0.5;
+
+/**
+ * Screen-pixel distance per pointer sample at which SIMULATED pressure (mouse /
+ * touch — no real pressure channel) bottoms out. Standing still targets full
+ * pressure (thick); moving this fast per sample targets the minimum (thin) —
+ * the "slower = thicker" calligraphic response. Measured in screen px so the
+ * feel is zoom-independent. Range: 8-32.
+ */
+export const BRUSH_SIM_THIN_DIST_PX = 16;
+
+/**
+ * Floor for simulated brush pressure (0-1) so a fast mouse stroke stays
+ * visible instead of collapsing to a hairline. Range: 0.15-0.4.
+ */
+export const BRUSH_SIM_PRESSURE_MIN = 0.25;
+
+/**
+ * Initial simulated pressure (0-1) for the first sample of a mouse / touch
+ * stroke — matches the spec's mid pressure so a stroke starts at the familiar
+ * medium width and adapts from there. Range: 0.4-0.7.
+ */
+export const BRUSH_SIM_PRESSURE_START = 0.5;
+
+/**
  * World-pixel distance under which a brush stroke's last point is treated as
  * meeting its first — the trigger for auto-closing (and filling) a stroke on
  * commit. Only applies when a fill colour is set and the stroke has ≥3 points.

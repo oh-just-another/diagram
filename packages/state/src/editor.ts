@@ -815,7 +815,7 @@ export class Editor {
     const style = brushStyleFromSettings(this._brushSettings);
     return {
       origin: s.origin,
-      points: brushCommitPoints(s),
+      points: brushCommitPoints(s).points,
       fill: brushBodyColor(style),
       opacity: style.opacity ?? 1,
     };
@@ -2449,13 +2449,25 @@ export class Editor {
     this.notify();
   }
 
-  beginBrushStroke(world: Vec2, pressure = 0.5): void {
-    this.brushStroke = beginBrushStrokePure(world, pressure, this._brushSettings.width);
+  /**
+   * Start a brush stroke. `pointerType` (a `PointerEvent.pointerType`) decides
+   * the pressure source: a pen has a real pressure channel and is honoured
+   * verbatim (the default, which also keeps programmatic callers exact); mouse
+   * and touch have none, so pressure is simulated from pointer speed.
+   */
+  beginBrushStroke(world: Vec2, pressure = 0.5, pointerType = "pen"): void {
+    this.brushStroke = beginBrushStrokePure(
+      world,
+      pressure,
+      this._brushSettings.width,
+      pointerType !== "pen",
+    );
     this.notify();
   }
   extendBrushStroke(world: Vec2, pressure = 0.5): void {
     if (!this.brushStroke) return;
-    extendBrushStrokePure(this.brushStroke, world, pressure, this._brushSettings.width);
+    // Zoom feeds the speed-based pressure simulation (screen-px speed).
+    extendBrushStrokePure(this.brushStroke, world, pressure, this._scene.viewport.zoom || 1);
     this.notify();
   }
   commitBrushStroke(): ElementId | null {
@@ -2487,7 +2499,8 @@ export class Editor {
   get pendingBrushStroke(): {
     readonly origin: Vec2;
     readonly points: readonly BrushPoint[];
-    readonly lastRaw: BrushPoint;
+    readonly pressures: readonly number[];
+    readonly lastRaw: BrushPoint & { readonly pressure: number };
   } | null {
     return this.brushStroke;
   }

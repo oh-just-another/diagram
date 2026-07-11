@@ -126,7 +126,7 @@ describe("brush stroke", () => {
     expect(snap.brushStroke).not.toBeNull();
     // The preview points are the commit-pipeline output (catch-up + smoothing) —
     // denser than the stored polyline.
-    expect(snap.brushStroke!.points.length).toBe(brushCommitPoints(pending).length);
+    expect(snap.brushStroke!.points.length).toBe(brushCommitPoints(pending).points.length);
     expect(snap.brushStroke!.points.length).toBeGreaterThan(pending.points.length);
   });
 
@@ -145,6 +145,67 @@ describe("brush stroke", () => {
     expect(snap.brushStroke).not.toBeNull();
     expect(snap.brushStroke!.fill).toBe("#ff0000");
     expect(snap.brushStroke!.opacity).toBe(0.4);
+  });
+
+  it("simulates pressure from speed for mouse strokes: slow = thick, fast = thin", () => {
+    const editor = makeEditor(emptyScene());
+    // Mouse reports the constant spec pressure 0.5 — widths must diverge by
+    // speed anyway. Slow stroke: 2px per sample → pressure climbs toward 1.
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5, "mouse");
+    for (let i = 1; i <= 12; i++) editor.extendBrushStroke({ x: i * 2, y: 0 }, 0.5);
+    const slow = editor.pendingBrushStroke!;
+    const slowWidth = slow.points[slow.points.length - 1]!.width;
+    editor.cancelBrushStroke();
+    // Fast stroke: 40px per sample → pressure drops toward the floor.
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5, "mouse");
+    for (let i = 1; i <= 12; i++) editor.extendBrushStroke({ x: i * 40, y: 0 }, 0.5);
+    const fast = editor.pendingBrushStroke!;
+    const fastWidth = fast.points[fast.points.length - 1]!.width;
+    expect(slowWidth).toBeGreaterThan(fastWidth);
+    // Slow approaches the full base width; fast approaches the floor — both
+    // stay inside the simulated-pressure clamp.
+    expect(slowWidth).toBeGreaterThan(4); // → 6 (base width) as pressure → 1
+    expect(fastWidth).toBeLessThan(2.5); // → 1.5 (0.25 floor × 6)
+  });
+
+  it("honours real pen pressure (no speed simulation), rate-limiting spikes", () => {
+    const editor = makeEditor(emptyScene());
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5, "pen");
+    // Same fast geometry as the mouse test — a pen must NOT thin with speed.
+    for (let i = 1; i <= 12; i++) editor.extendBrushStroke({ x: i * 40, y: 0 }, 0.9);
+    const pending = editor.pendingBrushStroke!;
+    const tailWidth = pending.points[pending.points.length - 1]!.width;
+    // Pressure converges toward the device value 0.9 (width → 5.4), instead of
+    // dropping toward the simulated floor the fast mouse stroke hits.
+    expect(tailWidth).toBeGreaterThan(5);
+    // The very first extend is rate-limited: it lands between 0.5 and 0.9,
+    // not instantly at 0.9.
+    const firstExtendWidth = pending.points[1]!.width;
+    expect(firstExtendWidth).toBeGreaterThan(3);
+    expect(firstExtendWidth).toBeLessThan(5.4);
+  });
+
+  it("bakes the regeneration payload into the committed stroke", () => {
+    const editor = makeEditor(emptyScene());
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5, "mouse");
+    editor.extendBrushStroke({ x: 10, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 20, y: 0 }, 0.5);
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    expect(shape.simulatePressure).toBe(true);
+    expect(shape.baseWidth).toBe(6);
+    expect(shape.pressures).toHaveLength(shape.points.length);
+    for (const p of shape.pressures!) {
+      expect(p).toBeGreaterThan(0);
+      expect(p).toBeLessThanOrEqual(1);
+    }
+    // Pen strokes don't carry the flag (only the payload).
+    editor.beginBrushStroke({ x: 0, y: 50 }, 0.7, "pen");
+    editor.extendBrushStroke({ x: 10, y: 50 }, 0.7);
+    const penId = editor.commitBrushStroke();
+    const pen = editor.scene.elements.get(penId!) as Extract<Element, { type: "brush" }>;
+    expect(pen.simulatePressure).toBeUndefined();
+    expect(pen.pressures).toHaveLength(pen.points.length);
   });
 
   it("cancel discards the in-progress stroke", () => {

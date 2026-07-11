@@ -11,6 +11,10 @@ import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
 import {
   BRUSH_CLOSE_DISTANCE,
+  BRUSH_PRESSURE_SMOOTHING,
+  BRUSH_SIM_PRESSURE_MIN,
+  BRUSH_SIM_PRESSURE_START,
+  BRUSH_SIM_THIN_DIST_PX,
   BRUSH_SMOOTH_SEGMENTS,
   BRUSH_STREAMLINE,
   DEFAULT_BRUSH_COLOR,
@@ -60,6 +64,9 @@ const pressureToWidth = (pressure: number, maxWidth: number): number => {
   return Math.max(0.5, pressure * maxWidth);
 };
 
+/** A captured vertex: rendered geometry plus the raw pressure it derives from. */
+type WeightedPoint = BrushPoint & { readonly pressure: number };
+
 /**
  * Mutable in-progress stroke state. Editor owns one instance and
  * delegates all four lifecycle calls (begin / extend / commit /
@@ -69,35 +76,73 @@ export interface BrushStrokeState {
   origin: Vec2;
   /** Streamlined (low-pass filtered) points — what the preview and commit use. */
   points: BrushPoint[];
+  /** Input pressure (0–1) per stored point, parallel to `points`. */
+  pressures: number[];
+  /**
+   * True when the device has no real pressure channel (mouse / touch) and
+   * pressure is synthesised from pointer speed — slow = thick, fast = thin.
+   */
+  simulatePressure: boolean;
+  /** Base half-width the pressure curve scales toward (`brushSettings.width` at begin). */
+  baseWidth: number;
   /**
    * The last RAW input point (local coords, un-streamlined). The low-pass
    * filter makes `points` trail the cursor by a fraction of each move, so the
    * commit appends this catch-up point — the stroke ends exactly where the
    * pointer was released, not a half-step behind it.
    */
-  lastRaw: BrushPoint;
+  lastRaw: WeightedPoint;
 }
 
 export const beginBrushStroke = (
   world: Vec2,
   pressure: number,
   maxWidth: number = MAX_BRUSH_WIDTH,
+  simulatePressure = false,
 ): BrushStrokeState => {
-  const first = { x: 0, y: 0, width: pressureToWidth(pressure, maxWidth) };
-  return { points: [first], lastRaw: first, origin: world };
+  const p0 = simulatePressure ? BRUSH_SIM_PRESSURE_START : pressure;
+  const first: WeightedPoint = { x: 0, y: 0, width: pressureToWidth(p0, maxWidth), pressure: p0 };
+  return {
+    points: [first],
+    pressures: [p0],
+    simulatePressure,
+    baseWidth: maxWidth,
+    lastRaw: first,
+    origin: world,
+  };
 };
 
 export const extendBrushStroke = (
   stroke: BrushStrokeState,
   world: Vec2,
   pressure: number,
-  maxWidth: number = MAX_BRUSH_WIDTH,
+  zoom = 1,
 ): void => {
   const o = stroke.origin;
-  const raw: BrushPoint = {
-    x: world.x - o.x,
-    y: world.y - o.y,
-    width: pressureToWidth(pressure, maxWidth),
+  const rawX = world.x - o.x;
+  const rawY = world.y - o.y;
+  const prevP = stroke.pressures[stroke.pressures.length - 1] ?? BRUSH_SIM_PRESSURE_START;
+  let p: number;
+  if (stroke.simulatePressure) {
+    // No pressure channel: synthesise it from pointer speed — the distance the
+    // RAW input travelled since the last sample, in SCREEN pixels (world dist ×
+    // zoom) so the feel doesn't change with the zoom level. Standing still
+    // targets full pressure (thick); at BRUSH_SIM_THIN_DIST_PX per sample the
+    // target bottoms out (thin). The smoothing lerp rate-limits the change.
+    const dist = Math.hypot(rawX - stroke.lastRaw.x, rawY - stroke.lastRaw.y) * zoom;
+    const target = 1 - Math.min(1, dist / BRUSH_SIM_THIN_DIST_PX);
+    p = prevP + (target - prevP) * BRUSH_PRESSURE_SMOOTHING;
+    p = Math.min(1, Math.max(BRUSH_SIM_PRESSURE_MIN, p));
+  } else {
+    // Real pressure channel: follow the device but rate-limit spikes (a pen
+    // lifting off can emit a single outlier sample) with the same lerp.
+    p = prevP + (pressure - prevP) * BRUSH_PRESSURE_SMOOTHING;
+  }
+  const raw: WeightedPoint = {
+    x: rawX,
+    y: rawY,
+    width: pressureToWidth(stroke.simulatePressure ? p : pressure, stroke.baseWidth),
+    pressure: stroke.simulatePressure ? p : pressure,
   };
   // Streamline: pull the stored point only part of the way toward the raw
   // input (exponential moving average). Raw pointer-move samples carry hand
@@ -108,45 +153,45 @@ export const extendBrushStroke = (
   stroke.points.push({
     x: prev.x + (raw.x - prev.x) * t,
     y: prev.y + (raw.y - prev.y) * t,
-    width: raw.width,
+    width: pressureToWidth(p, stroke.baseWidth),
   });
+  stroke.pressures.push(p);
   stroke.lastRaw = raw;
 };
 
 /**
- * The commit-ready polyline of an in-progress stroke: the streamlined points
+ * The commit-ready geometry of an in-progress stroke: the streamlined points
  * plus the raw catch-up point (when the filter left a trailing gap at the
- * cursor), resampled by the shared Catmull-Rom smoother. Used by BOTH
- * `commitBrushStroke` and the live overlay preview so what is drawn while the
- * button is down is exactly what lands in the scene.
+ * cursor), resampled by the shared Catmull-Rom smoother with pressure carried
+ * across the resample. Used by BOTH `commitBrushStroke` and the live overlay
+ * preview so what is drawn while the button is down is exactly what lands in
+ * the scene.
  */
 export const brushCommitPoints = (stroke: {
   readonly points: readonly BrushPoint[];
-  readonly lastRaw: BrushPoint;
-}): BrushPoint[] => {
-  const pts = stroke.points;
-  const last = pts[pts.length - 1];
+  readonly pressures: readonly number[];
+  readonly lastRaw: WeightedPoint;
+}): { points: BrushPoint[]; pressures: number[] } => {
+  const zipped: WeightedPoint[] = stroke.points.map((pt, i) => ({
+    ...pt,
+    pressure: stroke.pressures[i] ?? BRUSH_SIM_PRESSURE_START,
+  }));
+  const last = zipped[zipped.length - 1];
   const raw = stroke.lastRaw;
-  const trailing =
-    last !== undefined && (Math.abs(last.x - raw.x) > 1e-3 || Math.abs(last.y - raw.y) > 1e-3);
-  return smoothBrushPoints(trailing ? [...pts, raw] : pts);
-};
-
-/**
- * Resample a captured brush polyline into a smooth, dense point list by fitting
- * a Catmull-Rom spline through the vertices (shared {@link smoothStrokePoints}
- * resampler), interpolating each point's `width` across its span. Strokes with
- * fewer than three points pass through unchanged.
- */
-export const smoothBrushPoints = (
-  points: readonly BrushPoint[],
-  perSegment: number = BRUSH_SMOOTH_SEGMENTS,
-): BrushPoint[] =>
-  smoothStrokePoints(points, perSegment, (a, b, pos, u) => ({
+  if (last !== undefined && (Math.abs(last.x - raw.x) > 1e-3 || Math.abs(last.y - raw.y) > 1e-3)) {
+    zipped.push(raw);
+  }
+  const smoothed = smoothStrokePoints(zipped, BRUSH_SMOOTH_SEGMENTS, (a, b, pos, u) => ({
     x: pos.x,
     y: pos.y,
     width: a.width + (b.width - a.width) * u,
+    pressure: a.pressure + (b.pressure - a.pressure) * u,
   }));
+  return {
+    points: smoothed.map(({ x, y, width }) => ({ x, y, width })),
+    pressures: smoothed.map((pt) => pt.pressure),
+  };
+};
 
 /**
  * Decide whether a committed stroke should auto-close (and thus be filled).
@@ -182,7 +227,7 @@ export const commitBrushStroke = (
   const order = orderForTop(
     [...scene.elements.values()].filter((s) => s.layerId === activeLayerId).map((s) => s.order),
   );
-  const points = brushCommitPoints(stroke);
+  const { points, pressures } = brushCommitPoints(stroke);
   const shape: Element = {
     id: newElementId,
     layerId: activeLayerId,
@@ -193,6 +238,12 @@ export const commitBrushStroke = (
     order,
     style,
     points,
+    // Regeneration payload: the raw pressures behind the baked widths, whether
+    // they were speed-simulated, and the base width they scaled toward — enough
+    // to re-derive `width` with different thinning / size later.
+    pressures,
+    baseWidth: stroke.baseWidth,
+    ...(stroke.simulatePressure ? { simulatePressure: true } : {}),
     // Auto-close only when a fill colour is chosen and the stroke loops back on
     // itself — the enclosed area is filled with `style.fill` by the renderer.
     // Omit the field for open strokes to keep serialized scenes clean.
