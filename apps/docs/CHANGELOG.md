@@ -1,5 +1,30 @@
 # @oh-just-another/docs
 
+## 0.0.3
+
+### Patch Changes
+
+- Updated dependencies [179bad8]
+- Updated dependencies [1c4941e]
+- Updated dependencies [6d184ad]
+- Updated dependencies [2fbc079]
+- Updated dependencies [ca48e8a]
+- Updated dependencies [bdc847e]
+- Updated dependencies [511a22a]
+- Updated dependencies [a9558d9]
+- Updated dependencies [22b90f9]
+- Updated dependencies [dda2e56]
+- Updated dependencies [34ddb22]
+- Updated dependencies [70a08d8]
+- Updated dependencies [bd2e26c]
+- Updated dependencies [5d8a282]
+- Updated dependencies [71a6c8b]
+- Updated dependencies [71a6c8b]
+- Updated dependencies [7f69f29]
+- Updated dependencies [cf8b735]
+  - @oh-just-another/editor@0.60.0
+  - @oh-just-another/react-ui@0.59.0
+
 ## 0.0.2
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @oh-just-another/templates-jsx
 
+## 0.57.3
+
+### Patch Changes
+
+- @oh-just-another/templates@0.57.3
+
 ## 0.57.2
 
 ### Patch Changes

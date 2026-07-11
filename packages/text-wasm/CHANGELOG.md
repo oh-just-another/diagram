@@ -1,5 +1,20 @@
 # @oh-just-another/text-wasm
 
+## 0.57.3
+
+### Patch Changes
+
+- Updated dependencies [783749e]
+- Updated dependencies [c189261]
+- Updated dependencies [c189261]
+- Updated dependencies [641842b]
+- Updated dependencies [c189261]
+- Updated dependencies [0d3934e]
+- Updated dependencies [bdc847e]
+- Updated dependencies [295f38b]
+- Updated dependencies [cf8b735]
+  - @oh-just-another/renderer-core@0.59.0
+
 ## 0.57.2
 
 ### Patch Changes
