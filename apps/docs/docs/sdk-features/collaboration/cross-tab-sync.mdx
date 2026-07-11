@@ -1,0 +1,49 @@
+---
+title: Cross-Tab Sync
+sidebar_position: 13
+---
+
+Keep multiple tabs, iframes, or workers on the same origin in sync without a server. `@oh-just-another/network`'s `BroadcastChannelTransport` wraps the native `BroadcastChannel` API and plugs straight into the collaboration layer.
+
+## The transport on its own
+
+`BroadcastChannelTransport` implements the generic `Transport` interface (`send` / `onMessage` / `close`) over a named channel. It carries raw binary payloads.
+
+```ts
+import { BroadcastChannelTransport } from "@oh-just-another/network";
+
+const transport = new BroadcastChannelTransport("editor-room");
+const off = transport.onMessage((bytes) => console.log("got", bytes));
+transport.send(new Uint8Array([1, 2, 3]));
+
+// …later
+off();
+transport.close();
+```
+
+The transport uses the platform's native `BroadcastChannel` — no polyfill or extra dependency.
+
+## Cross-tab collaboration
+
+Pair the transport with `@oh-just-another/collab` to mirror a scene across tabs. Every tab opening the same channel name shares one CRDT document — edits and cursors propagate instantly.
+
+```ts
+import * as Y from "yjs";
+import { BroadcastChannelTransport } from "@oh-just-another/network";
+import { SceneDoc, TransportProvider, bindEditor } from "@oh-just-another/collab";
+
+const doc = new Y.Doc();
+const sceneDoc = new SceneDoc(doc);
+const transport = new BroadcastChannelTransport("my-doc");
+const provider = new TransportProvider({ doc, transport });
+
+const unbind = bindEditor(editor, sceneDoc, { waitForSyncMs: 200 });
+```
+
+`waitForSyncMs` makes a newly opened tab wait briefly for the room's state before seeding the doc from its own scene — without it (default 0) a joiner with a non-empty editor can clobber the shared document.
+
+## Notes
+
+- No reconnect logic — the browser keeps a `BroadcastChannel` alive for the page lifetime.
+- Same-origin only. For cross-machine sync use `WebSocketTransport` from the same package; the rest of the wiring is identical.
+- Presence (peer cursors) rides the same channel when you pass `awareness` to `TransportProvider`.

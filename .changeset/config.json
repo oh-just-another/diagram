@@ -10,8 +10,6 @@
   "ignore": [
     "@oh-just-another/playground",
     "@oh-just-another/cli",
-    "@oh-just-another/e2e",
-    "@oh-just-another/diagram-vue",
-    "@oh-just-another/diagram-svelte"
+    "@oh-just-another/e2e"
   ]
 }

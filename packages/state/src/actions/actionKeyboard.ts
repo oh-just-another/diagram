@@ -9,11 +9,21 @@ import type { Action } from "./types.js";
  * import.
  */
 
-/** Arrow keys nudge the selection (Shift = coarse step). Always consumes the arrow. */
+/**
+ * Arrow keys nudge the selection (Shift = coarse step). Always consumes the
+ * arrow. `displayHotkey` only feeds the help-dialog chips — dispatch runs
+ * purely off `keyTest`, so the declarative entries never fire.
+ */
 const nudgeSelection: Action = {
   id: "nudge-selection",
   label: "Nudge selection",
   category: "selection",
+  displayHotkey: [
+    { key: "ArrowLeft" },
+    { key: "ArrowRight" },
+    { key: "ArrowUp" },
+    { key: "ArrowDown" },
+  ],
   keyTest: (ev) =>
     (ev.key === "ArrowLeft" ||
       ev.key === "ArrowRight" ||
@@ -43,17 +53,26 @@ const nudgeSelection: Action = {
 };
 
 /**
- * `⌘`/`Ctrl` + arrows select the nearest element in that direction.
- * Distinct from plain arrows (nudge) by the modifier. Always consumes the
- * combo so the page doesn't scroll.
+ * `⌥`/`Alt` + arrows navigate the selection to the adjacent node: a graph
+ * neighbour (linked node) best aligned with the arrow, falling back to the
+ * spatially nearest element that way. Distinct from plain arrows (nudge) by the
+ * modifier. Always consumes the combo so the page doesn't scroll.
+ * `displayHotkey` only feeds the help-dialog chips; dispatch runs off `keyTest`.
  */
 const selectClosest: Action = {
   id: "select-closest",
-  label: "Select closest in direction",
+  label: "Navigate to adjacent node",
   category: "selection",
+  displayHotkey: [
+    { key: "ArrowLeft", alt: true },
+    { key: "ArrowRight", alt: true },
+    { key: "ArrowUp", alt: true },
+    { key: "ArrowDown", alt: true },
+  ],
   keyTest: (ev) =>
-    (ev.metaKey || ev.ctrlKey) &&
-    !ev.altKey &&
+    ev.altKey &&
+    !ev.metaKey &&
+    !ev.ctrlKey &&
     !ev.shiftKey &&
     (ev.key === "ArrowLeft" ||
       ev.key === "ArrowRight" ||
@@ -63,16 +82,63 @@ const selectClosest: Action = {
     if (!event) return;
     switch (event.key) {
       case "ArrowLeft":
-        editor.selectClosest("left");
+        editor.navigateFlowchart("left");
         return;
       case "ArrowRight":
-        editor.selectClosest("right");
+        editor.navigateFlowchart("right");
         return;
       case "ArrowUp":
-        editor.selectClosest("up");
+        editor.navigateFlowchart("up");
         return;
       case "ArrowDown":
-        editor.selectClosest("down");
+        editor.navigateFlowchart("down");
+        return;
+    }
+  },
+};
+
+/**
+ * `⌘`/`Ctrl` + arrows grow a flowchart CREATE session from the single selected
+ * node in that direction: each press adds a pending connected sibling (preview
+ * only) until `Cmd/Ctrl` is released (commit) or `Escape` (cancel). Distinct
+ * from plain arrows (nudge), Alt+arrows (navigate) and Cmd+Shift+arrows (align)
+ * by requiring meta without alt/shift. No-op unless exactly one element is
+ * selected. `displayHotkey` only feeds the help-dialog chips; dispatch runs off
+ * `keyTest`.
+ */
+const spawnConnected: Action = {
+  id: "spawn-connected",
+  label: "Create connected node",
+  category: "edit",
+  displayHotkey: [
+    { key: "ArrowLeft", meta: true },
+    { key: "ArrowRight", meta: true },
+    { key: "ArrowUp", meta: true },
+    { key: "ArrowDown", meta: true },
+  ],
+  keyTest: (ev) =>
+    (ev.metaKey || ev.ctrlKey) &&
+    !ev.altKey &&
+    !ev.shiftKey &&
+    (ev.key === "ArrowLeft" ||
+      ev.key === "ArrowRight" ||
+      ev.key === "ArrowUp" ||
+      ev.key === "ArrowDown"),
+  predicate: ({ editor }) => editor.selection.size === 1,
+  perform: ({ editor, event }) => {
+    if (!event) return;
+    switch (event.key) {
+      case "ArrowLeft":
+        editor.growFlowchart("left");
+        return;
+      case "ArrowRight":
+        editor.growFlowchart("right");
+        return;
+      case "ArrowUp":
+        editor.growFlowchart("up");
+        return;
+      case "ArrowDown":
+        editor.growFlowchart("down");
         return;
     }
   },
@@ -109,6 +175,8 @@ const editOrCreate: Action = {
   id: "edit-or-create",
   label: "Edit / create",
   category: "edit",
+  // Display-only chip; `keyTest` drives dispatch.
+  displayHotkey: { key: "Enter" },
   keyTest: (ev) => ev.key === "Enter" && !ev.metaKey && !ev.ctrlKey && !ev.altKey,
   predicate: ({ editor }) => {
     if (editor.selection.size === 1) {
@@ -134,6 +202,7 @@ const editOrCreate: Action = {
 export const keyboardActions: readonly Action[] = [
   nudgeSelection,
   selectClosest,
+  spawnConnected,
   focusNext,
   focusPrev,
   editOrCreate,

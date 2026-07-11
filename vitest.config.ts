@@ -10,6 +10,10 @@ import { defineConfig } from "vitest/config";
 const CORE_GLOB = "packages/{types,math,events,tokens,scene,renderer-core,history}/src/**";
 const REST_GLOB = "packages/*/src/**";
 const CLI_GLOB = "apps/cli/src/**";
+// REST_GLOB is an aggregate, so one under-tested package can hide behind the
+// others. Per-package ratchets pin the known low outliers at their current
+// level; raise the floor as tests land (target: the REST_GLOB values).
+const EDITOR_GLOB = "packages/editor/src/**";
 
 const t = (n: number) => ({ statements: n, branches: n, functions: n, lines: n });
 
@@ -31,6 +35,11 @@ export default defineConfig({
               [CORE_GLOB]: t(90),
               [REST_GLOB]: t(75),
               [CLI_GLOB]: t(75),
+              // Ratchet: functions coverage in `editor` sits far below the
+              // aggregate (its statements pass, but most public methods are
+              // exercised only indirectly). Floor at the current level so it
+              // can only go up.
+              [EDITOR_GLOB]: { functions: 25 },
             },
           }
         : {}),

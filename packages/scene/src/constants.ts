@@ -39,6 +39,28 @@ export const ELBOW_OBSTACLE_MARGIN = 20;
 export const ELBOW_OBSTACLE_INTERIOR_EPSILON = 0.5;
 
 /**
+ * Longest stub (world px) the orthogonal heuristic fallback in
+ * `getLinkPath` adds before bending when an endpoint is anchored to a
+ * named side. Bigger values push the first bend further from the shape;
+ * reasonable range 24–64.
+ */
+export const ELBOW_STUB_MAX = 40;
+
+/**
+ * Shortest stub (world px) for the same fallback — keeps the exit
+ * visible even when the endpoints are nearly on top of each other.
+ * Reasonable range 4–16.
+ */
+export const ELBOW_STUB_MIN = 8;
+
+/**
+ * The stub scales as endpoint distance divided by this factor, clamped
+ * to [ELBOW_STUB_MIN, ELBOW_STUB_MAX]. Larger divisors give shorter
+ * stubs on mid-range spans. Reasonable range 2–8.
+ */
+export const ELBOW_STUB_DISTANCE_DIVISOR = 4;
+
+/**
  * Per-turn cost added in the elbow A* so the router minimises BENDS first,
  * distance second (lexicographic — far larger than any plausible canvas
  * distance). Keeps routes stable: small shape moves stay on the same
@@ -240,3 +262,19 @@ export const FLOATING_OUTLINE_SAMPLES = 96;
  */
 export const FALLBACK_SCENE_WIDTH = 800;
 export const FALLBACK_SCENE_HEIGHT = 600;
+
+/**
+ * Max angular step (radians) between sampled points along a brush-outline round
+ * join or cap arc. Smaller = smoother curves / more points; larger = coarser /
+ * cheaper. ~0.35 rad (20°) keeps joins visually round without flooding the
+ * polygon. Range: 0.2–0.6.
+ */
+export const BRUSH_OUTLINE_ARC_STEP = 0.35;
+
+/**
+ * Miter limit for a brush-outline concave corner: when the miter point would run
+ * more than this many half-widths from the vertex (a very sharp turn), fall back
+ * to a bevel (two offset points) so the outline can't spike into a long spar.
+ * Range: 1.5–4.
+ */
+export const BRUSH_OUTLINE_MITER_LIMIT = 2.5;

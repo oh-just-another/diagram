@@ -1,0 +1,53 @@
+---
+title: Sync
+sidebar_position: 12
+---
+
+Collaboration needs a way to move bytes between peers. `@oh-just-another/network` provides that: small, interchangeable **transports** behind one `Transport` interface, which the collaboration layer plugs into. The CRDT logic doesn't care how messages travel — only that they arrive.
+
+## The transport interface
+
+Every transport implements the same `Transport` contract, so you pick the one that fits your topology and the rest of the stack is unchanged.
+
+- `BroadcastChannelTransport` — syncs across tabs/windows of the same browser. Zero infrastructure; ideal for local multi-window demos.
+- `WebSocketTransport` — syncs across machines through a relay server. Auto-reconnects with exponential backoff; exposes a `WebSocketStatus` (`status` / `onStatusChange`) to surface in the UI, and `WebSocketTransportOptions` for reconnect delays or a custom `WebSocket` implementation.
+
+```ts
+import { BroadcastChannelTransport, WebSocketTransport } from "@oh-just-another/network";
+
+// Same-browser, across tabs:
+const local = new BroadcastChannelTransport("room-foo");
+
+// Cross-machine, through a relay:
+const remote = new WebSocketTransport("wss://example.com/room-foo");
+const offStatus = remote.onStatusChange((status) => console.log(status));
+```
+
+## Wiring a transport to collaboration
+
+The transport is handed to `@oh-just-another/collab`'s `TransportProvider`, which multiplexes the Yjs document, awareness, and sync-requests over the single channel (tagged with a one-byte discriminator):
+
+```ts
+import * as Y from "yjs";
+import { BroadcastChannelTransport } from "@oh-just-another/network";
+import { TransportProvider, CollabAwareness } from "@oh-just-another/collab";
+
+const doc = new Y.Doc();
+const awareness = new CollabAwareness(doc);
+const transport = new BroadcastChannelTransport("room-foo");
+const provider = new TransportProvider({ doc, transport, awareness: awareness.awareness });
+
+// ...later
+provider.destroy();
+transport.close();
+```
+
+See Collaboration for the full editor binding.
+
+## Encryption over any transport
+
+Because transports are interchangeable, end-to-end encryption is a wrapper rather than a special case. `EncryptedTransport` (from `@oh-just-another/collab`) wraps any `Transport` so payloads are AES-GCM encrypted client-side — a blind relay forwards only ciphertext and never sees scene data.
+
+## Bring your own
+
+The `Transport` interface is the extension point: implement it over WebRTC, a message queue, or any channel you control, and the collaboration layer works unchanged.

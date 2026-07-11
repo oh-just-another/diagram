@@ -1,0 +1,17 @@
+---
+title: Arrow Shape
+sidebar_position: 4
+---
+
+There are two ways to express an arrow. A **link** (`Link`) connects two shapes (or free points) and can carry an arrowhead on either end via `arrowheads`. A **block arrow** (`BlockArrowElement`, type `"block-arrow"`) is a standalone solid arrow shape with its own `direction`, `headRatio`, and `bodyThickness`.
+
+```ts
+import { isBlockArrow } from "@oh-just-another/scene";
+import type { BlockArrowElement, LinkArrowheads } from "@oh-just-another/scene";
+
+const heads: LinkArrowheads = { to: "triangle" };
+```
+
+Use a link when the arrow should connect and re-route as shapes move; use a block arrow when you want a filled arrow that resizes like any other element. Arrowhead variants are listed in `ArrowheadStyle` — line caps (`arrow`, `openArrow`, `roundedArrow`, `arcArrow`), filled caps (`triangle`, `filledArrow`, `circle` / `filledCircle`, `rhombus` / `filledRhombus`, `diamond`), and ERD crow's-foot notation (`erdOne`, `erdMany`, …).
+
+A link can also render its whole body as a filled arrow: set `lineKind: "block-arrow"` on the `Link`, tuned via `blockArrow.headLength` / `blockArrow.bodyThickness`.

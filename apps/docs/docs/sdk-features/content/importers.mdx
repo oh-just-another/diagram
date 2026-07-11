@@ -1,0 +1,127 @@
+---
+title: Importers
+sidebar_position: 82
+---
+
+`@oh-just-another/importers` converts popular diagram source formats into a
+`@oh-just-another/scene` `Scene`. Five formats are supported: Mermaid
+flowcharts, Graphviz `dot`, drawio XML, `.excalidraw` JSON (import and
+export), and JSON Canvas (`.canvas`).
+
+Each format has a one-shot helper (`importMermaid` / `importDot` /
+`importDrawio`) that parses, lays out, and materialises a `Scene` in a single
+call. Under the hood the pipeline is two-stage: a per-format `parseX` produces an
+intermediate `GraphDocument`, then `graphToScene` runs layout (via
+[`@dagrejs/dagre`](https://github.com/dagrejs/dagre)) and builds the `Scene`. Use
+the split when you need to inspect or transform nodes/edges before materialising.
+
+## Mermaid
+
+`importMermaid(source: string): Scene` parses a Mermaid flowchart.
+
+```ts
+import { importMermaid } from "@oh-just-another/importers";
+
+const scene = importMermaid(`flowchart TD
+  A[Start] --> B{Decide}
+  B -->|yes| C(Done)
+  B -->|no| A`);
+```
+
+Supported subset: direction headers (`TD` / `TB` / `BT` / `LR` / `RL`, plus the
+`graph` alias), bracket shapes (`[ ]`, `( )`, `(( ))`, `{ }`), directed (`-->`),
+undirected (`---`), labelled (`-->|label|`) and chained edges. Comments and
+`class` / `classDef` / `style` / `subgraph` are silently ignored.
+
+`exportMermaid(scene: Scene): string` is the inverse — it writes a
+`flowchart TD` where `rectangle` → `id[label]`, `ellipse` → `id((label))`,
+`polygon` → `id{label}` (labels from a `text` element centred over the shape),
+links become `A --> B` / `A -->|label| B`, and non-graph elements
+(`brush` / `image` / `template` / …) turn into `%% skipped: <type>` comments.
+`importMermaid(exportMermaid(scene))` round-trips the node + edge structure.
+
+## Graphviz (dot)
+
+`importDot(source: string): Scene` parses Graphviz `dot`.
+
+```ts
+import { importDot } from "@oh-just-another/importers";
+
+const scene = importDot(`digraph G {
+  rankdir=LR
+  a [shape=box, label="A"]
+  a -> b -> c
+}`);
+```
+
+Supported subset: `digraph` / `graph` with the `strict` modifier, `rankdir`,
+directed (`->`) / undirected (`--`) edges and chains, node attrs (`label`,
+`shape`, `fillcolor`, `color`), edge `label`, and `//`, `/* */`, `#` comments.
+
+## drawio
+
+`importDrawio(source: string): Scene` parses the uncompressed `<mxGraphModel>`
+XML payload. Unlike the other two, drawio files keep their original coordinates,
+so `graphToScene` skips layout entirely when every node already has a position.
+
+```ts
+import { readFile } from "node:fs/promises";
+import { importDrawio } from "@oh-just-another/importers";
+
+const xml = await readFile("diagram.drawio", "utf8");
+const scene = importDrawio(xml);
+```
+
+Vertices, edges, and shapes inferred from `style` (ellipse, rhombus/diamond,
+rounded, rectangle) are supported. Subgraphs, groups, swimlanes, custom mxgraph
+shapes, splines, and fonts are **not**.
+
+## .excalidraw
+
+`importExcalidraw(json: string): Scene` imports a `.excalidraw` JSON document;
+`exportExcalidraw(scene: Scene): string` writes one back (format version 2) —
+the pair round-trips shapes, geometry and connectors.
+
+```ts
+import { importExcalidraw, exportExcalidraw } from "@oh-just-another/importers";
+
+const scene = importExcalidraw(await readFile("sketch.excalidraw", "utf8"));
+await writeFile("sketch.excalidraw", exportExcalidraw(scene));
+```
+
+Rectangles, ellipses, diamonds (→ 4-point polygons), text, freedraw (→ brush),
+images with embedded data, frames, and arrows/lines (→ straight `Link`s with
+anchor or point endpoints) are mapped both ways. Nested groups flatten to the
+outermost group on import; templates, block arrows, paths, link labels and
+externally-hosted images are not exported. Unknown element types are skipped,
+never fatal.
+
+## JSON Canvas
+
+`importJsonCanvas(json: string): Scene` imports a JSON Canvas
+([jsoncanvas.org](https://jsoncanvas.org)) document: `text` nodes → text
+elements, `file` / `link` nodes → text elements showing the path / URL,
+`group` nodes → frames, edges → straight `Link`s anchored on `fromSide` /
+`toSide` (edge `label` and preset colours `"1"`–`"6"` carried over).
+
+```ts
+import { importJsonCanvas } from "@oh-just-another/importers";
+
+const scene = importJsonCanvas(await readFile("board.canvas", "utf8"));
+```
+
+## Two-stage pipeline
+
+```ts
+import { parseMermaid, graphToScene } from "@oh-just-another/importers";
+
+const graph = parseMermaid("flowchart LR\n A --> B");
+// inspect / mutate graph.nodes and graph.edges here…
+const scene = graphToScene(graph);
+```
+
+The per-format parsers are hand-rolled and intentionally minimal — hosts needing
+full fidelity can pre-process with the official tool and hand the result to
+`graphToScene` as a `GraphDocument`. The `.excalidraw` and JSON Canvas
+importers skip the `GraphDocument` step and build the `Scene` directly — those
+formats already carry coordinates and styles.

@@ -79,7 +79,7 @@ const shiftEndpoint = (ep: Link["from"], delta: Vec2): Link["from"] =>
  * from their (also-moving) elements. Returns the changed fields, or `null`
  * when there's nothing to move (a pure auto-routed bound link).
  */
-export const translateLinkForDrag = (link: Link, delta: Vec2): Partial<Link> | null => {
+const translateLinkForDrag = (link: Link, delta: Vec2): Partial<Link> | null => {
   const geom = translateLinkGeometry(link, delta);
   const fromMoves = link.from.kind === "point";
   const toMoves = link.to.kind === "point";

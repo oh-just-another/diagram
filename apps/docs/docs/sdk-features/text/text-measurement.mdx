@@ -1,0 +1,38 @@
+---
+title: Text Measurement
+sidebar_position: 66
+---
+
+Accurate text width matters: the selection box has to hug the rendered glyphs, and wrapping depends on real advances. The editor measures text through a pluggable shaper so the selection bounds match whichever backend actually draws the text.
+
+## The WASM shaper
+
+`@oh-just-another/text-wasm` provides a `WasmTextShaper` implementing the `TextShaper` interface from `@oh-just-another/renderer-core`. Until a WASM module is loaded it returns a synchronous geometric estimate (so first paint isn't blank); `loadModule(...)` (URL, bytes, or `Response`) swaps in a real engine at runtime, and results are cached in a small LRU keyed on the (text, font) pair:
+
+```ts
+import { WasmTextShaper } from "@oh-just-another/text-wasm";
+
+const shaper = new WasmTextShaper();
+await shaper.loadModule("/text-shaper.wasm"); // optional — fallback estimate until loaded
+
+// Or load the module shipped with the package:
+const bundled = await WasmTextShaper.loadBundled();
+```
+
+The drop-in `<Editor>` (from `@oh-just-another/editor`) wires this up for you: it detects WebGL2/WASM capability and loads the bundled MSDF-capable shaper automatically, so labels render in their final font from the first frame.
+
+## Geometric fallback in the scene kernel
+
+`@oh-just-another/scene` exposes a `TextMeasurer` hook. When a host installs one (backed by the renderer's `measureText`), the text bounder uses it for accurate width; when absent (headless / tests) it falls back to a `chars × fontSize × factor` estimate:
+
+```ts
+import { setTextMeasurer, type TextMeasurer } from "@oh-just-another/scene";
+
+const measurer: TextMeasurer = (text, fontFamily, fontSize, opts) => {
+  // return measured width in world px, or null to defer to the estimate
+  return null;
+};
+setTextMeasurer(measurer); // pass null to clear
+```
+
+The `opts` argument carries `bold` / `italic` so the measured width matches the rendered width — weight and style change glyph advances.

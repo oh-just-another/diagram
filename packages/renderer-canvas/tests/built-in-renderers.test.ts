@@ -219,7 +219,26 @@ describe("built-in renderers", () => {
     const { target, calls } = recorder();
     getElementRenderer("image")!(i, target);
     const di = calls.find((c) => c.method === "drawImage");
-    // args: (image, dx, dy, dw, dh, dynamic). Static image → dynamic=false.
-    expect(di?.args.slice(1)).toEqual([0, 0, 100, 50, false]);
+    // args: (image, dx, dy, dw, dh, dynamic, crop). Static, uncropped image →
+    // dynamic=false, crop=undefined.
+    expect(di?.args.slice(1)).toEqual([0, 0, 100, 50, false, undefined]);
+  });
+
+  it("image forwards its normalised crop rect to drawImage", () => {
+    const crop = { x: 0.1, y: 0.2, width: 0.6, height: 0.5 };
+    const i: ImageElement = {
+      ...baseProps,
+      id: elementId("ic"),
+      type: "image",
+      style: {},
+      src: "data:,",
+      width: 100,
+      height: 50,
+      crop,
+    };
+    const { target, calls } = recorder();
+    getElementRenderer("image")!(i, target);
+    const di = calls.find((c) => c.method === "drawImage");
+    expect(di?.args[6]).toEqual(crop);
   });
 });

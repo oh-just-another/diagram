@@ -13,6 +13,8 @@ export type {
   Roundness,
 } from "./style.js";
 export { getCornerRadius, strokeOutsideExtent } from "./style.js";
+export type { TextRun } from "./text-runs.js";
+export { runsToText, normalizeRuns, sliceRuns, applyStyleToRange } from "./text-runs.js";
 export { ADAPTIVE_CORNER_RADIUS, PROPORTIONAL_CORNER_RADIUS } from "./constants.js";
 export type {
   Element,
@@ -25,6 +27,7 @@ export type {
   PathCommand,
   TextElement,
   ImageElement,
+  ImageCrop,
   TemplateElement,
   GroupElement,
   FrameElement,
@@ -44,6 +47,7 @@ export type {
   NamedAnchor,
   StandardAnchor,
 } from "./edge.js";
+export { isAnchorRef, endpointElementId } from "./edge.js";
 export {
   getLinkEndpointWorld,
   getLinkPath,
@@ -52,6 +56,7 @@ export {
   getLinkCurveSegments,
   getLinkWaypointMidpoints,
   getSelfLoopSpec,
+  straightElbowFallback,
 } from "./edge-geometry.js";
 export {
   catmullRomBeziers,
@@ -78,11 +83,13 @@ export {
   isFrame,
   isBlockArrow,
   isBrush,
+  brushBodyColor,
   registerBounder,
   getBounder,
   getElementLocalBounds,
   getElementWorldBounds,
 } from "./shape.js";
+export { brushOutline } from "./brush-outline.js";
 export {
   registerRenderOverflow,
   getElementRenderBounds,
@@ -289,6 +296,9 @@ export type {
   ThreeWayMergeReport,
 } from "./three-way-merge.js";
 export { mergeScenesThreeWay, applyConflictResolutions } from "./three-way-merge.js";
+
+// Shape local↔world transform helpers.
+export { localToWorld, worldToLocal } from "./shape-transform.js";
 
 // Container / drop-zone protocol.
 export {

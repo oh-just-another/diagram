@@ -1,11 +1,6 @@
-import {
-  cubicToTriangles,
-  packCurveTriangles,
-  quadraticToTriangle,
-  type CurveTriangle,
-  type Point,
-} from "@oh-just-another/curve-mesh";
+import { CurveTriangleBatch, type Point } from "@oh-just-another/curve-mesh";
 import type { Transform } from "@oh-just-another/types";
+import { WEBGL2_CURVE_TRIANGULATION_CACHE_CAP } from "./constants.js";
 import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
 
 /**
@@ -66,22 +61,8 @@ export class LoopBlinnCurvePipeline {
     surfaceSize: { width: number; height: number },
   ): void {
     if (curves.length === 0 || opacity <= 0) return;
-    const triangles: CurveTriangle[] = [];
-    for (const seg of curves) {
-      if (seg.kind === "q") {
-        const [p0, p1, p2] = seg.points;
-        if (!p0 || !p1 || !p2) continue;
-        const tri = quadraticToTriangle(p0, p1, p2);
-        if (tri) triangles.push(tri);
-      } else {
-        const [p0, p1, p2, p3] = seg.points;
-        if (!p0 || !p1 || !p2 || !p3) continue;
-        for (const tri of cubicToTriangles(p0, p1, p2, p3)) triangles.push(tri);
-      }
-    }
-    if (triangles.length === 0) return;
-
-    const { positions, uvs } = packCurveTriangles(triangles);
+    const { positions, uvs } = triangulateCached(curves);
+    if (positions.length === 0) return;
     const gl = this.gl;
     gl.useProgram(this.program);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
@@ -109,20 +90,170 @@ export class LoopBlinnCurvePipeline {
   }
 }
 
+/**
+ * Module-level scratch for `affineToClipMat3` — same reuse pattern as
+ * the earcut / stroke / `applyMat` scratch buffers in webgl2-target.
+ * Consumed synchronously by `uniformMatrix3fv` (which copies the values
+ * into GL state), so one shared buffer avoids a Float32Array allocation
+ * per curve draw.
+ */
+const scratchClipMat3 = new Float32Array(9);
+
 const affineToClipMat3 = (t: Transform, w: number, h: number): Float32Array => {
   const sx = 2 / w;
   const sy = -2 / h;
-  return new Float32Array([
-    t.a * sx,
-    t.b * sy,
-    0,
-    t.c * sx,
-    t.d * sy,
-    0,
-    t.e * sx - 1,
-    t.f * sy + 1,
-    1,
-  ]);
+  scratchClipMat3[0] = t.a * sx;
+  scratchClipMat3[1] = t.b * sy;
+  scratchClipMat3[2] = 0;
+  scratchClipMat3[3] = t.c * sx;
+  scratchClipMat3[4] = t.d * sy;
+  scratchClipMat3[5] = 0;
+  scratchClipMat3[6] = t.e * sx - 1;
+  scratchClipMat3[7] = t.f * sy + 1;
+  scratchClipMat3[8] = 1;
+  return scratchClipMat3;
+};
+
+// --- Triangulation cache ---
+
+/**
+ * Packed triangle data for one curve list. `positions` / `uvs` are
+ * owned by the cache entry (copied out of the shared batch), so they
+ * stay valid across frames.
+ */
+interface CurveMeshEntry {
+  /** Flat control-point key this entry was computed from (collision guard). */
+  readonly key: Float64Array;
+  readonly positions: Float32Array;
+  readonly uvs: Float32Array;
+}
+
+/**
+ * Content-keyed LRU cache of Loop-Blinn triangulations, shared by all
+ * `LoopBlinnCurvePipeline` instances (the data is GL-independent).
+ *
+ * Renderers emit paths in element-local coordinates and `draw()` gets
+ * the view transform separately (applied in the vertex shader), so:
+ *   - identical geometry (every same-size rounded rect) shares one entry;
+ *   - pan / zoom / drag never invalidate an entry;
+ *   - no scale bucket is needed — triangulation is scale-independent
+ *     (fixed cubic subdivision count, no screen-space adaptivity).
+ *
+ * The `curves` array is rebuilt by `WebGL2Target` on every
+ * `beginPath()`, so there is no stable object identity to key a WeakMap
+ * on; instead the key is the flat list of segment kinds +
+ * control-point coordinates, addressed by a 32-bit FNV-1a hash with a
+ * full float comparison on hit (hash collisions fall back to
+ * recompute + replace). `Map` insertion order gives LRU: hits re-insert
+ * at the tail, overflow evicts the head.
+ */
+const curveMeshCache = new Map<number, CurveMeshEntry>();
+
+/** Scratch for building the flat key without per-draw allocation. */
+let scratchKey = new Float64Array(64);
+const ensureKeyCapacity = (n: number): void => {
+  if (scratchKey.length >= n) return;
+  let cap = scratchKey.length;
+  while (cap < n) cap *= 2;
+  scratchKey = new Float64Array(cap);
+};
+
+/** Views over one float64 for hashing its bit pattern. */
+const hashFloatBuf = new Float64Array(1);
+const hashFloatBits = new Uint32Array(hashFloatBuf.buffer);
+
+/** Shared zero-allocation triangulation sink (see `CurveTriangleBatch`). */
+const sharedBatch = new CurveTriangleBatch();
+
+/**
+ * Flatten `curves` into `scratchKey` (kind marker + control points per
+ * segment) and return the used length.
+ */
+const buildKey = (curves: readonly CurveSegment[]): number => {
+  // Worst case per segment: 1 kind marker + 4 points × 2 coords.
+  ensureKeyCapacity(curves.length * 9);
+  const key = scratchKey;
+  let off = 0;
+  for (const seg of curves) {
+    key[off++] = seg.kind === "q" ? 1 : 2;
+    for (const p of seg.points) {
+      key[off++] = p.x;
+      key[off++] = p.y;
+    }
+  }
+  return off;
+};
+
+/** FNV-1a over the bit patterns of `key[0..len)`. */
+const hashKey = (key: Float64Array, len: number): number => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < len; i++) {
+    hashFloatBuf[0] = key[i] ?? 0;
+    h = Math.imul(h ^ (hashFloatBits[0] ?? 0), 0x01000193);
+    h = Math.imul(h ^ (hashFloatBits[1] ?? 0), 0x01000193);
+  }
+  return h >>> 0;
+};
+
+const keysEqual = (a: Float64Array, b: Float64Array, len: number): boolean => {
+  if (a.length !== len) return false;
+  for (let i = 0; i < len; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+};
+
+/** Triangulate `curves` through the shared batch into a fresh entry. */
+const triangulate = (curves: readonly CurveSegment[], keyLen: number): CurveMeshEntry => {
+  sharedBatch.reset();
+  for (const seg of curves) {
+    if (seg.kind === "q") {
+      const [p0, p1, p2] = seg.points;
+      if (!p0 || !p1 || !p2) continue;
+      sharedBatch.addQuadratic(p0, p1, p2);
+    } else {
+      const [p0, p1, p2, p3] = seg.points;
+      if (!p0 || !p1 || !p2 || !p3) continue;
+      sharedBatch.addCubic(p0, p1, p2, p3);
+    }
+  }
+  return {
+    key: scratchKey.slice(0, keyLen),
+    // Copy out of the shared batch — entries outlive the next batch use.
+    positions: new Float32Array(sharedBatch.positions),
+    uvs: new Float32Array(sharedBatch.uvs),
+  };
+};
+
+/**
+ * Cached triangulation lookup. Returns per-entry packed buffers —
+ * valid until the entry is evicted, which can't happen before the
+ * caller's synchronous `bufferData` upload.
+ *
+ * Exported for tests only — not part of the package's public API.
+ */
+export const triangulateCached = (
+  curves: readonly CurveSegment[],
+): { positions: Float32Array; uvs: Float32Array } => {
+  const keyLen = buildKey(curves);
+  const hash = hashKey(scratchKey, keyLen);
+  const cached = curveMeshCache.get(hash);
+  if (cached && keysEqual(cached.key, scratchKey, keyLen)) {
+    // Touch — re-insert at the tail so LRU eviction picks colder entries.
+    curveMeshCache.delete(hash);
+    curveMeshCache.set(hash, cached);
+    return cached;
+  }
+  // Miss or hash collision — recompute and (re)place the slot.
+  const entry = triangulate(curves, keyLen);
+  curveMeshCache.delete(hash);
+  curveMeshCache.set(hash, entry);
+  while (curveMeshCache.size > WEBGL2_CURVE_TRIANGULATION_CACHE_CAP) {
+    const oldest = curveMeshCache.keys().next().value;
+    if (oldest === undefined) break;
+    curveMeshCache.delete(oldest);
+  }
+  return entry;
 };
 
 /**

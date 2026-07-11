@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
@@ -6,27 +7,14 @@ import react from "@vitejs/plugin-react";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packagesRoot = path.resolve(here, "../../packages");
 
-const workspacePackages = [
-  "fonts",
-  "types",
-  "math",
-  "scene",
-  "renderer-core",
-  "renderer-canvas",
-  "renderer-workers",
-  "renderer-svg",
-  "text-wasm",
-  "raster-wasm",
-  "state",
-  "history",
-  "templates",
-  "templates-jsx",
-  "serialization",
-  "network",
-  "collab",
-  "react-ui",
-  "editor",
-];
+// Every workspace package with a `src/index.ts` is aliased to its source so
+// the dev server never needs `dist` builds. Derived from the filesystem — a
+// hand-written list silently misses transitive deps of newly added packages
+// (vite then falls back to package.json exports → unbuilt dist → dep-scan
+// failure in e2e, which runs without a prior `pnpm build`).
+const workspacePackages = fs
+  .readdirSync(packagesRoot)
+  .filter((name) => fs.existsSync(path.join(packagesRoot, name, "src/index.ts")));
 
 export default defineConfig({
   plugins: [react()],

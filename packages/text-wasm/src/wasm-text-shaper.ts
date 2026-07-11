@@ -1,6 +1,6 @@
 import {
   allocBytes,
-  fetchModuleBytes,
+  instantiateWasm,
   type ShapedGlyph,
   type ShaperFont,
   type TextShaper,
@@ -142,8 +142,7 @@ export class WasmTextShaper implements TextShaper {
    * layout pop on the next paint.
    */
   async loadModule(source: string | URL | ArrayBuffer | Uint8Array | Response): Promise<void> {
-    const bytes = await fetchModuleBytes(source, "WasmTextShaper.loadModule");
-    const { instance } = await WebAssembly.instantiate(bytes, {});
+    const instance = await instantiateWasm(source, "WasmTextShaper.loadModule");
     this.wasm = instance.exports as unknown as WasmShaperExports;
     this.cache.clear();
     this.currentFontKey = null;

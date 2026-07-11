@@ -1,0 +1,37 @@
+{
+  "format": "oh-just-another/scene",
+  "version": 2,
+  "elements": [
+    {
+      "layerId": "default",
+      "order": "a0",
+      "id": "p",
+      "type": "path",
+      "position": { "x": 20, "y": 20 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "stroke": "#1d9bf0", "strokeWidth": 5, "lineCap": "round", "lineJoin": "round" },
+      "commands": [
+        { "kind": "M", "to": { "x": 0, "y": 120 } },
+        {
+          "kind": "C",
+          "control1": { "x": 40, "y": 0 },
+          "control2": { "x": 120, "y": 0 },
+          "to": { "x": 160, "y": 120 }
+        },
+        { "kind": "Q", "control": { "x": 200, "y": 40 }, "to": { "x": 220, "y": 120 } }
+      ]
+    }
+  ],
+  "links": [],
+  "layers": [
+    { "id": "default", "name": "Default", "visible": true, "locked": false, "order": "a0" }
+  ],
+  "viewport": {
+    "pan": { "x": 0, "y": 0 },
+    "zoom": 1,
+    "rotation": 0,
+    "size": { "width": 260, "height": 180 },
+    "gridEnabled": false
+  }
+}

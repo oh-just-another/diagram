@@ -1,6 +1,7 @@
 import type { AtlasGlyph, GlyphAtlas } from "@oh-just-another/glyph-atlas";
 import type { Transform } from "@oh-just-another/types";
 import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
+import { WEBGL2_MSDF_RUN_WIDTH_CACHE_CAP } from "./constants.js";
 
 /**
  * MSDF text-rendering glue for WebGL2Target. Owns the dedicated shader
@@ -89,11 +90,19 @@ export class MsdfTextPipeline {
     const buf = scratchGlyphBuf;
     let writeOffset = 0;
     let cursor = x;
+    // `completed` stays true only if every codepoint resolved to a glyph
+    // — a `break` (atlas full) leaves a partial run whose width differs
+    // from the measure path (which skips the missing glyph and sums the
+    // rest), so we must not seed the shared width memo from it.
+    let completed = true;
     for (const ch of text) {
       const cp = ch.codePointAt(0);
       if (cp === undefined) continue;
       const glyph = atlas.getOrRasterize(cp, fontId);
-      if (!glyph) break; // atlas full or shaper unavailable
+      if (!glyph) {
+        completed = false;
+        break; // atlas full or shaper unavailable
+      }
       const advancePx = (glyph.advance * fontSize) / glyph.unitsPerEm;
       if (glyph.empty) {
         cursor += advancePx;
@@ -103,6 +112,11 @@ export class MsdfTextPipeline {
       writeOffset += verticesPerGlyph * floatsPerVertex;
       cursor += advancePx;
     }
+    // This draw already walked every codepoint, so the run's em-width is
+    // known — seed the shared memo so a later `measureText` on the same
+    // string is O(1) (single pass across draw + measure). Only for full
+    // runs and a positive fontSize (em = px / fontSize).
+    if (completed && fontSize > 0) rememberRunEm(atlas, text, fontId, (cursor - x) / fontSize);
     if (writeOffset === 0) return cursor - x; // every glyph empty / unavailable
 
     const tex = atlas.uploadTo(this.gl);
@@ -213,6 +227,71 @@ export const glyphQuadGeometry = (
   const u1 = (g.atlasX + usedW_atlas - inset) / atlas.atlasSize;
   const v1 = (g.atlasY + usedH_atlas - inset) / atlas.atlasSize;
   return { left, top, right, bottom, u0, v0, u1, v1 };
+};
+
+/**
+ * Per-atlas memo of run em-widths (Σ advance/unitsPerEm), keyed by
+ * `(fontId, text)`. Advances are immutable once a glyph is cached in the
+ * atlas, so this value never goes stale; the atlas is the WeakMap key so
+ * a disposed atlas's memo is collected with it. Each per-atlas Map is an
+ * insertion-ordered LRU capped at {@link WEBGL2_MSDF_RUN_WIDTH_CACHE_CAP}.
+ */
+const runEmWidthMemo = new WeakMap<GlyphAtlas, Map<string, number>>();
+
+const runKey = (text: string, fontId: number): string => `${fontId} ${text}`;
+
+const rememberRunEm = (atlas: GlyphAtlas, text: string, fontId: number, em: number): void => {
+  let perAtlas = runEmWidthMemo.get(atlas);
+  if (!perAtlas) {
+    perAtlas = new Map();
+    runEmWidthMemo.set(atlas, perAtlas);
+  }
+  const key = runKey(text, fontId);
+  // Touch to move to the tail (freshest) so eviction drops the coldest.
+  perAtlas.delete(key);
+  perAtlas.set(key, em);
+  if (perAtlas.size > WEBGL2_MSDF_RUN_WIDTH_CACHE_CAP) {
+    const oldest = perAtlas.keys().next().value;
+    if (oldest !== undefined) perAtlas.delete(oldest);
+  }
+};
+
+/**
+ * Em-width of `text` under `atlas`/`fontId`: Σ over codepoints of
+ * `advance / unitsPerEm`. Multiply by `fontSize` for the pixel width the
+ * MSDF pipeline lays out (`drawText` steps the cursor by
+ * `advance * fontSize / unitsPerEm`). Missing glyphs (atlas full) are
+ * skipped, matching the layout walk's per-glyph contribution for runs it
+ * fully renders.
+ *
+ * Single pass, memoized: a repeat measure — or a measure of a string that
+ * was just drawn — returns without re-walking the codepoints. Exported so
+ * `WebGL2Target.textMetrics` shares this one implementation instead of a
+ * duplicate atlas walk.
+ */
+export const measureGlyphRunEm = (text: string, atlas: GlyphAtlas, fontId = 0): number => {
+  if (text.length === 0) return 0;
+  const key = runKey(text, fontId);
+  const perAtlas = runEmWidthMemo.get(atlas);
+  if (perAtlas) {
+    const cached = perAtlas.get(key);
+    if (cached !== undefined) {
+      // Touch on hit so hot runs stay warm under LRU pressure.
+      perAtlas.delete(key);
+      perAtlas.set(key, cached);
+      return cached;
+    }
+  }
+  let em = 0;
+  for (const ch of text) {
+    const cp = ch.codePointAt(0);
+    if (cp === undefined) continue;
+    const glyph = atlas.getOrRasterize(cp, fontId);
+    if (!glyph) continue;
+    em += glyph.advance / glyph.unitsPerEm;
+  }
+  rememberRunEm(atlas, text, fontId, em);
+  return em;
 };
 
 const writeGlyphQuad = (

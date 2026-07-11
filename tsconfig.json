@@ -16,6 +16,7 @@
     { "path": "./packages/headless/tsconfig.build.json" },
     { "path": "./packages/exporter/tsconfig.build.json" },
     { "path": "./packages/importers/tsconfig.build.json" },
+    { "path": "./packages/mcp/tsconfig.build.json" },
     { "path": "./packages/network/tsconfig.build.json" },
     { "path": "./packages/collab/tsconfig.build.json" },
     { "path": "./packages/text-wasm/tsconfig.build.json" },

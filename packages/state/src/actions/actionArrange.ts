@@ -39,7 +39,7 @@ export const actionAlignLeft: Action = {
   id: "align-left",
   label: "Align left",
   category: "arrange",
-  hotkey: { key: "ArrowLeft", alt: true },
+  hotkey: { key: "ArrowLeft", meta: true, shift: true },
   iconId: "align-left",
   predicate: hasMultiSelection,
   perform: ({ editor }) => {
@@ -62,7 +62,7 @@ export const actionAlignRight: Action = {
   id: "align-right",
   label: "Align right",
   category: "arrange",
-  hotkey: { key: "ArrowRight", alt: true },
+  hotkey: { key: "ArrowRight", meta: true, shift: true },
   iconId: "align-right",
   predicate: hasMultiSelection,
   perform: ({ editor }) => {
@@ -74,7 +74,7 @@ export const actionAlignTop: Action = {
   id: "align-top",
   label: "Align top",
   category: "arrange",
-  hotkey: { key: "ArrowUp", alt: true },
+  hotkey: { key: "ArrowUp", meta: true, shift: true },
   iconId: "align-top",
   predicate: hasMultiSelection,
   perform: ({ editor }) => {
@@ -97,7 +97,7 @@ export const actionAlignBottom: Action = {
   id: "align-bottom",
   label: "Align bottom",
   category: "arrange",
-  hotkey: { key: "ArrowDown", alt: true },
+  hotkey: { key: "ArrowDown", meta: true, shift: true },
   iconId: "align-bottom",
   predicate: hasMultiSelection,
   perform: ({ editor }) => {

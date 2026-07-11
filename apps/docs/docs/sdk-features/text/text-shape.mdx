@@ -1,0 +1,41 @@
+---
+title: Text Shape
+sidebar_position: 67
+---
+
+Text is a first-class element type. A text element carries its string, font, and style (plus optional styled runs); the renderer measures and draws it with the bundled fonts so it looks identical across the Canvas2D, WebGL2, and offscreen backends.
+
+## The text element
+
+A `TextElement` (from `@oh-just-another/scene`) is a discriminated shape with `type: "text"`. Its fields:
+
+```ts
+import { isText, type TextElement } from "@oh-just-another/scene";
+
+// TextElement fields:
+//   text: string
+//   fontFamily: string         // e.g. "sans-serif", "serif", "monospace"
+//   fontSize: number           // world px
+//   maxWidth?: number          // width budget for wrapping; omit = single line
+//   style: TextStyle           // textAlign, fontWeight, fontStyle, textDecoration…
+//   runs?: readonly TextRun[]  // optional per-range style overlay (rich text)
+
+const labels = (els: Iterable<unknown>) =>
+  [...els].filter((s): s is TextElement => isText(s as never));
+```
+
+The `style` (a `TextStyle`) controls `textAlign`, `textBaseline`, `fontWeight` (bold), `fontStyle` (italic), and `textDecoration` (underline / strikethrough); it also inherits `Style` fields (`fill` = text color). `runs` styles character ranges within one element — see [Rich Text](./rich-text.mdx).
+
+## Fonts and rendering
+
+The editor ships three font families via `@oh-just-another/fonts`: sans (Roboto), serif (PT Serif), and mono (Roboto Mono). A `fontFamily` stack is resolved to one of these so every backend draws the same glyphs:
+
+```ts
+import { resolveBundledFamily, FONT_SANS } from "@oh-just-another/fonts";
+
+resolveBundledFamily("monospace"); // "Roboto Mono"
+resolveBundledFamily("Georgia, serif"); // "PT Serif"
+resolveBundledFamily("system-ui"); // FONT_SANS (fallback)
+```
+
+On WebGL2 these faces are baked into an MSDF glyph atlas (`@oh-just-another/glyph-atlas`) for sharp text at any zoom; the Canvas2D backend draws the same bundled web fonts, so text stays consistent rather than falling back to whatever the OS resolves.

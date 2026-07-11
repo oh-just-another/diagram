@@ -1,0 +1,54 @@
+---
+title: Templates
+sidebar_position: 83
+---
+
+`@oh-just-another/templates` is the template registry plus blueprint system for building Scene content. A `Template` is a factory for an element: given a runtime `TemplateContext` (id, layer, position, order), it returns a typed element. Templates carry an inline SVG palette icon and live in a `TemplateRegistry` that the host UI iterates.
+
+## Registry and built-ins
+
+The package exposes the `TemplateRegistry` class and a `defaultRegistry` singleton, plus `installBuiltinTemplates()` to register the basic and flowchart presets. Categories are surfaced as `Category` / `StandardCategory`.
+
+```ts
+import { installBuiltinRenderers } from "@oh-just-another/renderer-canvas";
+import { DEFAULT_LAYER_ID, orderForTop } from "@oh-just-another/scene";
+import { defaultRegistry, installBuiltinTemplates } from "@oh-just-another/templates";
+import { elementId } from "@oh-just-another/types";
+
+installBuiltinRenderers();
+installBuiltinTemplates();
+
+const template = defaultRegistry.get("flowchart.process")!;
+const element = template.factory({
+  id: elementId("my-id"),
+  layerId: DEFAULT_LAYER_ID,
+  position: { x: 100, y: 100 },
+  order: orderForTop([]),
+});
+editor.addElement(element);
+```
+
+## JSON libraries and rich templates
+
+Programmatic libraries load through one entry point: `loadTemplateLibrary(input, registry?)` validates, materialises, and registers in a single call, backed by `parseTemplateLibrary`, `templatesFromLibrary`, and `templateFromSpec`. The spec types (`TemplateSpec`, `TemplateLibrarySpec`, `ShapeBlueprint`) describe a JSON `blueprint` — everything about an element except identity fields. Invalid input throws `TemplateLibraryError`.
+
+The rich-template surface lives under `rich.*` (`import { rich } from "@oh-just-another/templates"`): nested node-trees with flex layout, data binding, and interactive sub-elements. It includes `defineRichTemplate`, `defaultRichRegistry`, `layoutTree`, `installTemplateShapeRenderer`, and `templateInteractiveHitTester`. Inline icons are exported as `icons.*`; tunable constants `ICON_VIEWBOX_SIZE` and `ICON_STROKE_WIDTH` come from the package as well. The `Template` type is also re-exported from `@oh-just-another/editor`.
+
+## JSX sugar
+
+`@oh-just-another/templates-jsx` is optional JSX sugar over the rich node-tree. Its `h()` pragma and `Fragment` build plain `rich.TemplateNode` trees — no DOM, no virtual DOM. Use `bind(key)` for data bindings and `tsx2json(node)` to materialise.
+
+```tsx
+import { bind, tsx2json } from "@oh-just-another/templates-jsx";
+
+const node = (
+  <container layout={{ direction: "column", gap: 8 }}>
+    <text>{bind("title")}</text>
+    <button action="submit" label="OK" />
+  </container>
+);
+
+const json = tsx2json(node); // plain rich.TemplateNode tree
+```
+
+Prop types (`ContainerProps`, `TextProps`, `IconProps`, `ImageProps`, `ButtonProps`, `DropZoneProps`, `JsxChild`) are exported for typed authoring. Enable JSX with `jsxImportSource: "@oh-just-another/templates-jsx"` in `tsconfig.json`.

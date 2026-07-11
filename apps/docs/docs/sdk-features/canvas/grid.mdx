@@ -1,0 +1,44 @@
+---
+title: Grid
+sidebar_position: 33
+---
+
+The background grid is a per-scene viewport setting. It controls how the canvas backdrop is painted and, together with snapping, where shapes settle.
+
+## Enabling the grid
+
+The grid is off by default. Toggle it through `gridEnabled` on the viewport (via `setViewport`), and choose a paint style with `gridStyle` — `"lines"` (default) or `"dots"`.
+
+```ts
+import { setViewport } from "@oh-just-another/scene";
+
+const { scene: withGrid } = setViewport(scene, {
+  ...scene.viewport,
+  gridEnabled: true,
+  gridStyle: "dots",
+});
+```
+
+## Spacing
+
+Grid spacing is fixed at `DEFAULT_GRID_SPACING` (20 world units); `resolveSnapSpacing()` returns it. The `gridEnabled` flag controls only visibility, not spacing.
+
+```ts
+import { resolveSnapSpacing, DEFAULT_GRID_SPACING } from "@oh-just-another/scene";
+
+resolveSnapSpacing() === DEFAULT_GRID_SPACING; // true
+```
+
+`DEFAULT_GRID_SPACING` is exported from the package's `constants.ts`, so a host that wants a coarser or finer grid tunes it there.
+
+## Relation to snapping
+
+Snap-to-grid only applies while the grid is enabled — snapping to a hidden grid would be confusing. The separate `snapToGrid` viewport flag (read through `isSnapToGridEnabled`) lets a host opt out of snapping while still drawing the grid.
+
+```ts
+import { isSnapToGridEnabled } from "@oh-just-another/scene";
+
+const snapping = scene.viewport.gridEnabled && isSnapToGridEnabled(scene.viewport);
+```
+
+See Snapping for the engine that consumes these settings.

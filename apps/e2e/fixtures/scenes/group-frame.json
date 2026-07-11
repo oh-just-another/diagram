@@ -1,0 +1,92 @@
+{
+  "format": "oh-just-another/scene",
+  "version": 2,
+  "elements": [
+    {
+      "layerId": "default",
+      "order": "a0",
+      "id": "frame",
+      "type": "frame",
+      "position": { "x": 20, "y": 20 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": {},
+      "width": 180,
+      "height": 200,
+      "name": "Group A"
+    },
+    {
+      "layerId": "default",
+      "order": "a1",
+      "id": "f-child-1",
+      "type": "rectangle",
+      "position": { "x": 50, "y": 70 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#93c5fd" },
+      "width": 120,
+      "height": 50,
+      "frameId": "frame"
+    },
+    {
+      "layerId": "default",
+      "order": "a2",
+      "id": "f-child-2",
+      "type": "ellipse",
+      "position": { "x": 50, "y": 140 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#fca5a5" },
+      "width": 120,
+      "height": 50,
+      "frameId": "frame"
+    },
+    {
+      "layerId": "default",
+      "order": "a3",
+      "id": "group",
+      "type": "group",
+      "position": { "x": 0, "y": 0 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": {}
+    },
+    {
+      "layerId": "default",
+      "order": "a4",
+      "id": "g-child-1",
+      "type": "rectangle",
+      "position": { "x": 240, "y": 60 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#6ee7b7", "stroke": "#065f46", "strokeWidth": 2 },
+      "width": 90,
+      "height": 60,
+      "parentId": "group"
+    },
+    {
+      "layerId": "default",
+      "order": "a5",
+      "id": "g-child-2",
+      "type": "rectangle",
+      "position": { "x": 240, "y": 150 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#fcd34d", "stroke": "#92400e", "strokeWidth": 2 },
+      "width": 90,
+      "height": 60,
+      "parentId": "group"
+    }
+  ],
+  "links": [],
+  "layers": [
+    { "id": "default", "name": "Default", "visible": true, "locked": false, "order": "a0" }
+  ],
+  "viewport": {
+    "pan": { "x": 0, "y": 0 },
+    "zoom": 1,
+    "rotation": 0,
+    "size": { "width": 360, "height": 260 },
+    "gridEnabled": false
+  }
+}

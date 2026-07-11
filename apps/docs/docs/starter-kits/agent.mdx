@@ -1,0 +1,97 @@
+---
+title: Agent
+sidebar_position: 1
+---
+
+The Agent kit is the library's AI-native pattern: an AI agent drives the editor
+through the **same programmatic handle a human uses**. There is no separate
+"agent API" — the agent reads and mutates the live editor via `EditorAPI`, drops
+to the full `EditorInstance` for anything not on the handle, and builds scenes
+ahead of time with the pure functions in `@oh-just-another/scene`.
+
+### The handle
+
+Mount `<Editor>` and capture a `ref`. `EditorAPI` exposes curated verbs —
+selection, mode, undo/redo, zoom, and `getScene()` / `loadScene()` — plus
+`editor`, the full live engine (`EditorInstance`) as the power-user escape hatch.
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+
+function AgentHost() {
+  const ref = useRef<EditorAPI>(null);
+
+  // Anything an agent does, it does through this handle.
+  const runAgentStep = () => {
+    const api = ref.current;
+    if (!api) return;
+    const scene = api.getScene(); // read current state
+    const next = planNextScene(scene); // your agent decides
+    api.loadScene(next); // apply
+  };
+
+  return <Editor ref={ref} />;
+}
+```
+
+### Building scenes programmatically
+
+`@oh-just-another/scene` constructs and mutates scenes with pure functions that
+return `{ scene, patch }`. An agent assembles a scene off-canvas, then hands the
+finished `Scene` to `loadScene()`.
+
+```ts
+import {
+  emptyScene,
+  addElement,
+  addLink,
+  orderForTop,
+  DEFAULT_LAYER_ID,
+  type Element,
+  type Link,
+} from "@oh-just-another/scene";
+import { elementId, linkId } from "@oh-just-another/types";
+
+const box = (id: string, x: number): Element => ({
+  id: elementId(id),
+  layerId: DEFAULT_LAYER_ID,
+  type: "rectangle",
+  position: { x, y: 0 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderForTop([]),
+  style: { fill: "#88f" },
+  width: 120,
+  height: 60,
+});
+
+const a = box("a", 0);
+const b = { ...box("b", 240), order: orderForTop([a.order]) };
+let { scene } = addElement(emptyScene(), a);
+({ scene } = addElement(scene, b));
+
+const link: Link = {
+  id: linkId("a-b"),
+  layerId: DEFAULT_LAYER_ID,
+  from: { kind: "floating", elementId: a.id },
+  to: { kind: "floating", elementId: b.id },
+};
+({ scene } = addLink(scene, link));
+```
+
+The same package ships layout helpers (`gridLayout`, `stackLayout`, `treeLayout`,
+`runAutoLayout`) so an agent can arrange generated nodes deterministically before
+loading them.
+
+> **Building the agent's reasoning loop.** The model that decides _what_ to draw
+> is yours to wire up. For Anthropic's API, tool use, and agent patterns, see the
+> [Claude API docs](https://docs.claude.com/en/api). This kit covers the editor
+> side: how the agent's decisions reach the canvas.
+
+### Status
+
+The pattern above uses only shipped exports. A packaged, cloneable **Agent
+starter template** (a runnable repo wiring a model loop to the editor handle)
+does not exist yet. Generic starters that mount `<Editor>` live in
+[`templates/`](https://github.com/oh-just-another/diagram/tree/master/templates).

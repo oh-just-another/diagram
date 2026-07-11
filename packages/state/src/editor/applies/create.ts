@@ -71,7 +71,7 @@ export const buildElementForCreate = (
  * pre-resolved (snapped) by the caller — we just compose them with the
  * layer / order / style boilerplate.
  */
-export const buildLinkForCreate = (
+const buildLinkForCreate = (
   scene: Scene,
   from: LinkEndpoint,
   to: LinkEndpoint,

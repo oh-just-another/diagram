@@ -1,0 +1,29 @@
+{
+  "format": "oh-just-another/scene",
+  "version": 2,
+  "elements": [
+    {
+      "layerId": "default",
+      "order": "a0",
+      "id": "r",
+      "type": "rectangle",
+      "position": { "x": 40, "y": 40 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#4c8bf5", "stroke": "#1a3c73", "strokeWidth": 4 },
+      "width": 160,
+      "height": 100
+    }
+  ],
+  "links": [],
+  "layers": [
+    { "id": "default", "name": "Default", "visible": true, "locked": false, "order": "a0" }
+  ],
+  "viewport": {
+    "pan": { "x": 0, "y": 0 },
+    "zoom": 1,
+    "rotation": 0,
+    "size": { "width": 240, "height": 180 },
+    "gridEnabled": false
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "format": "oh-just-another/scene",
+  "version": 2,
+  "elements": [
+    {
+      "layerId": "default",
+      "order": "a0",
+      "id": "n1",
+      "type": "ellipse",
+      "position": { "x": 30, "y": 90 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#fef3c7", "stroke": "#92400e", "strokeWidth": 2 },
+      "width": 90,
+      "height": 60
+    },
+    {
+      "layerId": "default",
+      "order": "a1",
+      "id": "n2",
+      "type": "ellipse",
+      "position": { "x": 240, "y": 90 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#ede9fe", "stroke": "#5b21b6", "strokeWidth": 2 },
+      "width": 90,
+      "height": 60
+    }
+  ],
+  "links": [
+    {
+      "layerId": "default",
+      "order": "a2",
+      "id": "bez",
+      "from": {
+        "kind": "anchor",
+        "elementId": "n1",
+        "anchor": { "kind": "named", "name": "right" }
+      },
+      "to": { "kind": "anchor", "elementId": "n2", "anchor": { "kind": "named", "name": "left" } },
+      "routing": "bezier",
+      "waypoints": [{ "x": 180, "y": 40 }],
+      "style": { "stroke": "#5b21b6", "strokeWidth": 2 },
+      "arrowheads": { "from": "erdMany", "to": "diamond", "size": 14 },
+      "label": { "text": "relates", "position": 0.5 }
+    }
+  ],
+  "layers": [
+    { "id": "default", "name": "Default", "visible": true, "locked": false, "order": "a0" }
+  ],
+  "viewport": {
+    "pan": { "x": 0, "y": 0 },
+    "zoom": 1,
+    "rotation": 0,
+    "size": { "width": 360, "height": 240 },
+    "gridEnabled": false
+  }
+}

@@ -295,13 +295,18 @@ const actionMenuItem = (
       ? action.hotkey
       : [action.hotkey];
   const first = matchers[0];
-  const visible = opts?.visible ?? (pred ? (editor: Editor) => pred({ editor }) : undefined);
+  const baseVisible = opts?.visible ?? (pred ? (editor: Editor) => pred({ editor }) : undefined);
+  // In read-only / view mode only `viewMode`-flagged actions (zoom / select /
+  // copy) stay in the menu — every mutating entry is hidden, mirroring the
+  // hotkey gate (`isReadOnlyBlocked`) so panel and keyboard agree.
+  const visible = (editor: Editor, ctx: ContextMenuContext): boolean =>
+    (!editor.readOnly || action?.viewMode === true) && (baseVisible?.(editor, ctx) ?? true);
   return {
     kind: "action",
     id: actionId,
     label: opts?.label ?? action?.label ?? actionId,
     ...(first ? { shortcut: formatHotkey(first) } : {}),
-    ...(visible ? { visible } : {}),
+    visible,
     onClick: (editor: Editor) => {
       defaultActionRegistry.dispatch(actionId, { editor });
     },
@@ -380,7 +385,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     kind: "action",
     id: "move-to-layer",
     label: "Move to layer…",
-    visible: (e) => e.selection.size > 0 && e.scene.layers.size > 1,
+    visible: (e) => !e.readOnly && e.selection.size > 0 && e.scene.layers.size > 1,
     onClick: (e) => {
       if (typeof window === "undefined") return;
       const layers = [...e.scene.layers.values()];
@@ -464,7 +469,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     kind: "action",
     id: "clear-canvas",
     label: "Clear canvas",
-    visible: (e) => e.scene.elements.size > 0 || e.scene.links.size > 0,
+    visible: (e) => !e.readOnly && (e.scene.elements.size > 0 || e.scene.links.size > 0),
     onClick: (e) => {
       clearCanvasWithConfirm(e);
     },

@@ -1,0 +1,60 @@
+---
+title: Camera
+sidebar_position: 8
+---
+
+The camera is the viewport — the zoom and pan that map world coordinates onto the screen. Camera state lives in the scene's viewport but is editor-local: it is never recorded in undo history.
+
+## Zoom
+
+```ts
+import { Editor } from "@oh-just-another/state";
+
+editor.zoomIn();
+editor.zoomOut();
+editor.resetZoom();
+editor.zoomToFit(); // fit the whole scene (optional padding, default 40)
+editor.zoomToSelection(); // fit the current selection (default padding 80)
+```
+
+For zoom anchored at a point (e.g. wheel-zoom toward the cursor), use `zoomAt(factor, anchorWorld)` — the anchor world point stays put while everything scales around it.
+
+```ts
+const anchor = editor.screenToWorld({ x: clientX, y: clientY });
+editor.zoomAt(1.1, anchor);
+```
+
+## Pan and viewport size
+
+`panBy(deltaScreen)` moves the camera by a screen-pixel delta. Tell the engine the canvas size with `setViewportSize` whenever the host element resizes.
+
+```ts
+editor.panBy({ x: 0, y: -40 }); // pan up
+editor.setViewportSize(el.clientWidth, el.clientHeight);
+```
+
+## Coordinate conversion
+
+`screenToWorld` projects a host-local screen point into world space — the bridge for any pointer-driven camera or hit-test logic.
+
+```ts
+const world = editor.screenToWorld({ x: 120, y: 80 });
+```
+
+## From the React component
+
+The `EditorAPI` handle surfaces `zoomToFit` directly; anything else is reachable through the live `editor` engine.
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+
+function Host() {
+  const ref = useRef<EditorAPI>(null);
+  const fit = () => ref.current?.zoomToFit();
+  const panUp = () => ref.current?.editor?.panBy({ x: 0, y: -40 });
+  return <Editor ref={ref} />;
+}
+```
+
+Pan and zoom gestures (middle-mouse, Space+drag, wheel, pinch) work in any tool mode. Listen to the typed `viewport` event to react to camera changes.

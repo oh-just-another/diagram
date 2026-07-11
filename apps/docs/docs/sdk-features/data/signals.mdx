@@ -1,0 +1,25 @@
+---
+title: 🚧 Signals
+status: draft
+sidebar_position: 62
+---
+
+There is no fine-grained signals system (reactive cells that track dependencies and recompute derived values automatically). Reactivity in this SDK is **immutable state plus events**.
+
+The scene is an immutable value: every operation (`addElement`, `moveElement`, …) returns a new scene plus a patch, and the editor swaps its `_scene` reference. Because each change produces a fresh object identity, observers can diff cheaply by reference.
+
+The editor exposes a typed event surface (`@oh-just-another/events`). Subscribe to the whole change stream or to a single slice — slice events only fire when that slice's identity actually flips since the last notification:
+
+```ts
+const off = editor.on("selection", (sel) => {
+  /* runs only when the selection changes */
+});
+
+const unsub = editor.subscribe(() => {
+  /* runs on any scene / selection / mode / history change */
+});
+```
+
+`@oh-just-another/react-ui` builds React bindings on this — `useScene`, `useSelection`, `useMode`, `useHistory`, `useLayers`, and `useEditorSelector` re-render a component only when the slice it reads changes.
+
+Planned — not yet available: a dependency-tracking signals/computed primitive. If your framework provides signals (Solid, Preact, Vue refs), bridge them to `editor.on(...)` / `editor.subscribe(...)` — write the slice into your signal inside the listener.

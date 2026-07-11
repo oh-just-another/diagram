@@ -83,6 +83,39 @@ export const computeZoomToBounds = (
   return { ...scene, viewport: { ...vp, zoom, pan } };
 };
 
+/**
+ * Center the camera on `bounds` for a "reveal / jump-to" (search navigation,
+ * go-to-element), WITHOUT filling the screen. Unlike {@link computeZoomToBounds}
+ * (fit-to-fill), this never zooms IN past the current zoom — a small match
+ * keeps its on-screen size and is merely centered; the zoom only drops to fit
+ * when `bounds` is too large for the viewport (minus `padding`). Returns `null`
+ * on a degenerate viewport / bounds.
+ */
+export const computeRevealBounds = (
+  scene: Scene,
+  bounds: Bounds,
+  padding: number,
+): Scene | null => {
+  const vp = scene.viewport;
+  if (vp.size.width <= 0 || vp.size.height <= 0) return null;
+  if (bounds.width <= 0 || bounds.height <= 0) return null;
+  const availW = vp.size.width - padding * 2;
+  const availH = vp.size.height - padding * 2;
+  if (availW <= 0 || availH <= 0) return null;
+  const fitZoom = Math.min(availW / bounds.width, availH / bounds.height);
+  // Keep the current zoom unless the match doesn't fit — then zoom out only.
+  const zoom = clampZoom(Math.min(vp.zoom, fitZoom));
+  const centerWorld = {
+    x: bounds.x + bounds.width / 2,
+    y: bounds.y + bounds.height / 2,
+  };
+  const pan = {
+    x: centerWorld.x - vp.size.width / 2 / zoom,
+    y: centerWorld.y - vp.size.height / 2 / zoom,
+  };
+  return { ...scene, viewport: { ...vp, zoom, pan } };
+};
+
 export const computeZoomToFit = (scene: Scene, padding: number): Scene | null => {
   if (scene.elements.size === 0) return null;
   let combined: Bounds | null = null;

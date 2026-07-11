@@ -8,7 +8,7 @@ import type {
   TextBaseline,
 } from "@oh-just-another/renderer-core";
 import { resolveBundledFamily } from "@oh-just-another/fonts";
-import { isDrawableImageSource, warnSkippedImage } from "./image-source.js";
+import { intrinsicImageSize, isDrawableImageSource, warnSkippedImage } from "./image-source.js";
 
 /**
  * Wraps a `CanvasRenderingContext2D` (or compatible OffscreenCanvas context)
@@ -185,6 +185,12 @@ export class Canvas2DTarget implements RenderTarget {
     dw: number,
     dh: number,
     _dynamic?: boolean,
+    crop?: {
+      readonly x: number;
+      readonly y: number;
+      readonly width: number;
+      readonly height: number;
+    },
   ): void {
     // `_dynamic` ignored — Canvas2D reads the source element live on
     // every drawImage, so animated GIF / video frames are picked up
@@ -199,6 +205,26 @@ export class Canvas2DTarget implements RenderTarget {
     if (!isDrawableImageSource(image)) {
       warnSkippedImage(image);
       return;
+    }
+    // Cropped draw: map the normalised source rect to pixels and use the
+    // 9-argument form. Falls back to the whole image when the intrinsic
+    // size is unknown (crop can't be resolved).
+    if (crop && (crop.x !== 0 || crop.y !== 0 || crop.width !== 1 || crop.height !== 1)) {
+      const size = intrinsicImageSize(image);
+      if (size) {
+        this.ctx.drawImage(
+          image,
+          crop.x * size.width,
+          crop.y * size.height,
+          crop.width * size.width,
+          crop.height * size.height,
+          dx,
+          dy,
+          dw,
+          dh,
+        );
+        return;
+      }
     }
     this.ctx.drawImage(image, dx, dy, dw, dh);
   }

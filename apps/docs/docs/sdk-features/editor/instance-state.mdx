@@ -1,0 +1,11 @@
+---
+title: 🚧 Instance State
+status: draft
+sidebar_position: 41
+---
+
+Instance state would be the per-editor, non-document state (current tool, camera, selection, hover) kept separate from the shared scene so two editors viewing the same document can have independent viewports and tools — and so it can be persisted per instance.
+
+**Planned — not yet available** as a dedicated, named subsystem.
+
+The pieces exist in `@oh-just-another/state`: the `Editor` holds the live mode (`Mode`), selection (`Selection`), and viewport, and `@oh-just-another/scene` defines the persistence scope for viewport vs document keys (`VIEWPORT_SCOPE`, `SettingScope`). A single unified "instance state" record and its serialization contract have not been formalized yet.

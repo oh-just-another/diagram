@@ -126,6 +126,42 @@ export const TEXT_FONT_SIZE_PRESETS: readonly { readonly label: string; readonly
   ];
 export const TEXT_FONT_SIZE_MIN = 8;
 export const TEXT_FONT_SIZE_MAX = 256;
+
+/**
+ * Screen-pixel padding left around a search match when the overlay frames
+ * it with `zoomToSelection`. Larger than the selection default so a small
+ * matched shape isn't zoomed in uncomfortably tight. Range: 40–320.
+ */
+export const SEARCH_ZOOM_PADDING_PX = 160;
+/**
+ * Minimap overview panel defaults. The `<Minimap>` renders the whole scene
+ * scaled into a small canvas plus a frame for the current viewport; hosts
+ * override the size via `width` / `height` props.
+ *
+ * - `MINIMAP_WIDTH_PX` / `MINIMAP_HEIGHT_PX` — default canvas size in CSS px.
+ * - `MINIMAP_PADDING_PX` — inner margin kept clear around the fitted scene so
+ *   shapes at the edge aren't clipped. Range: 0–32.
+ * - `MINIMAP_THROTTLE_MS` — minimum interval between overview repaints while
+ *   the scene / viewport changes rapidly (pan, drag). Lower = smoother but
+ *   more work per frame. Range: 60–500.
+ * - `MINIMAP_FRAME_COLOR` / `MINIMAP_FRAME_LINE_WIDTH` — stroke of the current
+ *   viewport rectangle drawn over the overview.
+ * - `MINIMAP_FRAME_FILL` — translucent wash inside the viewport rectangle.
+ * - `MINIMAP_WHEEL_ZOOM_SPEED` / `MINIMAP_WHEEL_ZOOM_MAX_STEP` — wheel-zoom
+ *   response over the minimap, same formula as the main canvas
+ *   (`factor = 1 − clamp(|deltaY|, MAX_STEP)·SPEED / 100`). MAX_STEP keeps a
+ *   mouse notch a calm step while trackpad deltas stay granular.
+ */
+export const MINIMAP_WIDTH_PX = 200;
+export const MINIMAP_HEIGHT_PX = 150;
+export const MINIMAP_PADDING_PX = 8;
+export const MINIMAP_THROTTLE_MS = 150;
+export const MINIMAP_FRAME_COLOR = "#2563eb";
+export const MINIMAP_FRAME_LINE_WIDTH = 1.5;
+export const MINIMAP_FRAME_FILL = "rgba(37, 99, 235, 0.12)";
+export const MINIMAP_WHEEL_ZOOM_SPEED = 1;
+export const MINIMAP_WHEEL_ZOOM_MAX_STEP = 10;
+
 export const TEXT_FONT_STACKS: readonly { readonly label: string; readonly value: string }[] = [
   // Labels map to the three fonts embedded in the WASM MSDF shaper
   // (sans / serif / mono). Canvas2D resolves the same stacks against
@@ -135,3 +171,13 @@ export const TEXT_FONT_STACKS: readonly { readonly label: string; readonly value
   { label: "Serif", value: "Georgia, 'Times New Roman', serif" },
   { label: "Mono", value: "ui-monospace, 'SF Mono', Menlo, monospace" },
 ];
+
+/**
+ * Drawing / eraser tool-options panel. `DRAWING_PANEL_WIDTH` is the floating
+ * panel width in CSS px; `BRUSH_WIDTH_MIN` / `BRUSH_WIDTH_MAX` bound the width
+ * slider (also the eraser radius). The stored brush width is a half-width in
+ * world px, so the max stays modest.
+ */
+export const DRAWING_PANEL_WIDTH = 176;
+export const BRUSH_WIDTH_MIN = 1;
+export const BRUSH_WIDTH_MAX = 40;

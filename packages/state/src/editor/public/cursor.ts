@@ -15,6 +15,7 @@ export type CursorRole =
   | "pan-active"
   | "move"
   | "draw"
+  | "erase"
   | "text"
   | "link-start"
   | "link-handle"
@@ -56,7 +57,7 @@ const RESIZE_ROLE: Record<HandleId, CursorRole> = {
 };
 
 /** Build a CSS `cursor` value from a {@link CursorSpec}. */
-export const cssCursor = (spec: CursorSpec, fallbackKeyword: string): string => {
+const cssCursor = (spec: CursorSpec, fallbackKeyword: string): string => {
   if (typeof spec === "string") return spec;
   const hx = spec.hotspot?.x ?? 0;
   const hy = spec.hotspot?.y ?? 0;
@@ -71,11 +72,7 @@ export const cssCursor = (spec: CursorSpec, fallbackKeyword: string): string => 
  * Resolve a cursor role to a CSS `cursor` value: a host-registered custom image
  * (via {@link Editor.setCursorOverride}) if present, else `fallbackKeyword`.
  */
-export const resolveCursor = (
-  editor: Editor,
-  role: CursorRole,
-  fallbackKeyword: string,
-): string => {
+const resolveCursor = (editor: Editor, role: CursorRole, fallbackKeyword: string): string => {
   const spec = editor.getCursorOverride(role);
   return spec === undefined ? fallbackKeyword : cssCursor(spec, fallbackKeyword);
 };
@@ -86,7 +83,7 @@ export const resolveCursor = (
  * Mirrors the anchor-drag hit-test in pointer-binding so the cursor matches
  * exactly where a press would begin a link.
  */
-export const isOverLinkStartDot = (editor: Editor, p: Vec2): boolean => {
+const isOverLinkStartDot = (editor: Editor, p: Vec2): boolean => {
   if (editor.mode !== "select" || editor._selection.size !== 1) return false;
   const id = [...editor._selection][0];
   if (id === undefined) return false;
@@ -130,6 +127,8 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
       return r("move", "grabbing");
     }
   }
+  // 1b. Armed colour-picker pipette → crosshair, waiting for the pick click.
+  if (editor.isEyedropperArmed) return r("draw", "crosshair");
   // 2. In-canvas text editing → I-beam.
   if (editor.editingTextElement !== null) return r("text", "text");
   // 3. Pan affordance (idle): Space held or hand tool.
@@ -141,7 +140,15 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
     case "draw-frame":
     case "draw-edge":
     case "brush":
+    case "laser":
+    case "eyedropper":
+    case "crop":
       return r("draw", "crosshair");
+    // Erase hides the OS cursor: the overlay paints a size-matched ring (and a
+    // fading trail while dragging) in its place, so `none` lets that composite
+    // cleanly at any radius.
+    case "erase":
+      return r("erase", "none");
     case "draw-text":
       return r("text", "text");
     default:

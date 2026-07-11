@@ -1,0 +1,63 @@
+---
+title: Culling
+sidebar_position: 14
+---
+
+Viewport culling skips elements whose bounding box falls outside the visible
+area, so frame cost scales with what is on screen rather than the total scene
+size. It is driven entirely through `renderScene` options in
+`@oh-just-another/renderer-core`.
+
+## Enabling viewport culling
+
+Pass a world-space `viewport` rectangle in `RenderSceneOptions`. Shapes whose
+AABB does not intersect that rectangle are skipped. Inflate the rect slightly
+to avoid pop-in during a pan — `VIEWPORT_CULL_PADDING_RATIO` (0.05 = 5% per
+side) is exported so you can tune the inflation in one place.
+
+```ts
+import {
+  renderScene,
+  VIEWPORT_CULL_PADDING_RATIO,
+  type RenderSceneOptions,
+} from "@oh-just-another/renderer-core";
+
+const pad = viewportWidth * VIEWPORT_CULL_PADDING_RATIO;
+const viewport = {
+  x: camera.x - pad,
+  y: camera.y - pad,
+  width: viewportWidth + pad * 2,
+  height: viewportHeight + pad * 2,
+};
+
+renderScene(scene, target, { viewport });
+```
+
+`renderScene(scene, target, options)` takes no separate camera argument — the
+world-to-screen transform comes from `scene.viewport`.
+
+## Spatial index for large scenes
+
+For very large scenes, pass a pre-built `spatialIndex` (a `SpatialGrid` from
+`@oh-just-another/scene`) alongside `viewport`. The renderer then queries the
+index for candidate shapes instead of scanning every layer — it starts to pay
+off around ~10k shapes.
+
+## Bounds cache and dirty rectangles
+
+`boundsCache` (an `ElementCache<Bounds>`) shares AABB computations across
+frames, hit-testing, and overlay drawing. When only a small region changed,
+pass a world-space `dirtyWorld` rectangle so the renderer clips to that region
+and skips shapes outside it.
+
+```ts
+import { ElementCache, renderScene } from "@oh-just-another/renderer-core";
+import type { Bounds } from "@oh-just-another/types";
+
+const boundsCache = new ElementCache<Bounds>();
+renderScene(scene, target, { viewport, boundsCache });
+```
+
+These options compose: combine `viewport`, `spatialIndex`, `boundsCache`, and
+`dirtyWorld` to cull aggressively while reusing work across the editor,
+hit-test, and overlay passes.

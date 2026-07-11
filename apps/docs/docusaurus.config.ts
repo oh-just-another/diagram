@@ -128,7 +128,6 @@ const config: Config = {
       },
       items: [
         { to: DOCS_ENTRY, label: "Docs", position: "left" },
-        { to: "/examples", label: "Examples", position: "left" },
         { href: GITHUB_URL, label: "GitHub", position: "right" },
       ],
     },
@@ -139,7 +138,6 @@ const config: Config = {
           title: "Product",
           items: [
             { label: "Features", to: "/features" },
-            { label: "Examples", to: "/examples" },
             { label: "FAQ", to: "/faq" },
           ],
         },
@@ -147,8 +145,7 @@ const config: Config = {
           title: "Developers",
           items: [
             { label: "Quick start", to: DOCS_ENTRY },
-            { label: "Examples", to: "/examples" },
-            { label: "Docs", to: "/docs/getting-started/installation" },
+            { label: "Docs", to: DOCS_ENTRY },
           ],
         },
         {

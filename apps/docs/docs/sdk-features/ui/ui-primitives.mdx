@@ -1,0 +1,42 @@
+---
+title: UI Primitives
+sidebar_position: 72
+---
+
+Beneath the high-level panels, `@oh-just-another/react-ui` exports small building blocks — buttons, controls, and hooks — for composing your own chrome around the editor.
+
+## Primitive components
+
+These are the low-level UI atoms used to build the toolbar and panels, and they are exported for your own layouts:
+
+```tsx
+import { IconButton, ButtonGroup, SegmentedControl, Slider } from "@oh-just-another/react-ui";
+
+<ButtonGroup ariaLabel="Tools">
+  <IconButton label="Zoom in" onClick={() => {}}>
+    +
+  </IconButton>
+</ButtonGroup>;
+```
+
+`IconButton` and `ButtonGroup` cover buttons and grouped rows; `SegmentedControl` and `Slider` are a segmented toggle and a range slider. Each exports its props type (`IconButtonProps`, `SegmentedControlProps`, etc.).
+
+## Hooks
+
+Hooks let custom components read editor state. Imperative hooks (`useDiagram`) return the live `Editor` without re-rendering; reactive hooks re-render on the slice they observe:
+
+```tsx
+import { useDiagram, useScene, useSelection, useMode, useHistory } from "@oh-just-another/react-ui";
+
+function StatusBar() {
+  const { canUndo, canRedo, undo, redo } = useHistory();
+  const selection = useSelection();
+  return <span>{selection.size} selected</span>;
+}
+```
+
+Other slices include `useLayers()` / `useActiveLayerId()`, `useAnnotations()` / `useSelectedAnnotation()` / `useSelectedLink()`, and `useMobileLayout()`. For a custom projection, `useEditorSelector(select)` re-renders only when the projected value changes.
+
+## Providers and utilities
+
+Several primitives pair with a provider or imperative API: wrap a subtree in `TooltipProvider` for `Tooltip`, in `ToastHost` for `useToast()`, and in `ContextMenuControllerProvider` for `useContextMenuController()`. `PortalContainerProvider` / `usePortalContainer` control where floating UI portals render. Tunable sizing lives in layout constants such as `PALETTE_WIDTH`, `PROPERTY_PANEL_WIDTH`, and `LAYER_PANEL_WIDTH`.

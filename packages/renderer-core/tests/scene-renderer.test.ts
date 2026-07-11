@@ -273,4 +273,54 @@ describe("renderScene", () => {
       true,
     );
   });
+
+  describe("dimElements / dimOpacity", () => {
+    // A renderer that applies its shape's own opacity absolutely, exactly like
+    // the built-in `applyStyle` does — this is what used to overwrite the dim.
+    const opacityRenderer: ElementRenderer = (shape, target) => {
+      const opacity = (shape as { style: { opacity?: number } }).style.opacity;
+      if (opacity !== undefined) target.setOpacity(opacity);
+      target.beginPath();
+      target.fill();
+    };
+    const setOpacities = (calls: { method: string; args: readonly unknown[] }[]): number[] =>
+      calls.filter((c) => c.method === "setOpacity").map((c) => c.args[0] as number);
+
+    it("dims a plain shape (no own opacity) to dimOpacity", () => {
+      registerElementRenderer("dim-plain", opacityRenderer);
+      let scene = emptyScene();
+      ({ scene } = addElement(scene, { ...rect("a"), type: "dim-plain" }));
+      const { target, calls } = makeRecorder();
+      renderScene(scene, target, { dimElements: new Set([elementId("a")]), dimOpacity: 0.2 });
+      expect(setOpacities(calls)).toContain(0.2);
+    });
+
+    it("multiplies a shape's own opacity by dimOpacity instead of overwriting it", () => {
+      registerElementRenderer("dim-own", opacityRenderer);
+      let scene = emptyScene();
+      const el: Element = { ...rect("a"), type: "dim-own", style: { fill: "#000", opacity: 0.5 } };
+      ({ scene } = addElement(scene, el));
+      const { target, calls } = makeRecorder();
+      renderScene(scene, target, { dimElements: new Set([elementId("a")]), dimOpacity: 0.2 });
+      const opacities = setOpacities(calls);
+      // 0.5 (own) × 0.2 (dim) — dimmed AND semi-transparent, never full opacity.
+      expect(opacities).toContain(0.5 * 0.2);
+      expect(opacities).not.toContain(0.5);
+    });
+
+    it("leaves a non-dimmed shape's own opacity untouched", () => {
+      registerElementRenderer("dim-other", opacityRenderer);
+      let scene = emptyScene();
+      const el: Element = {
+        ...rect("a"),
+        type: "dim-other",
+        style: { fill: "#000", opacity: 0.5 },
+      };
+      ({ scene } = addElement(scene, el));
+      const { target, calls } = makeRecorder();
+      // Dim set targets a different id, so shape "a" renders at full own opacity.
+      renderScene(scene, target, { dimElements: new Set([elementId("z")]), dimOpacity: 0.2 });
+      expect(setOpacities(calls)).toContain(0.5);
+    });
+  });
 });

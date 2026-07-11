@@ -2,7 +2,7 @@ import { req, type Vec2 } from "@oh-just-another/types";
 import type { PathCommand } from "@oh-just-another/scene";
 import {
   allocBytes,
-  fetchModuleBytes,
+  instantiateWasm,
   jsRasterizer,
   type Rasterizer,
 } from "@oh-just-another/renderer-core";
@@ -90,8 +90,7 @@ export class WasmRasterizer implements Rasterizer {
   }
 
   async loadModule(source: string | URL | ArrayBuffer | Uint8Array | Response): Promise<void> {
-    const bytes = await fetchModuleBytes(source, "WasmRasterizer.loadModule");
-    const { instance } = await WebAssembly.instantiate(bytes, {});
+    const instance = await instantiateWasm(source, "WasmRasterizer.loadModule");
     this.wasm = instance.exports as unknown as WasmRasterizerExports;
   }
 
@@ -177,10 +176,29 @@ export class WasmRasterizer implements Rasterizer {
   }
 }
 
+/**
+ * Growing module-level scratch shared by `packCommands` / `packVec2Array`.
+ * Both return a `subarray` view that is only valid until the next pack
+ * call; the callers (`flattenViaWasm` / `strokeToFillViaWasm`) copy it
+ * into WASM linear memory synchronously via `allocBytes` (which `.set`s
+ * the bytes), so no per-call allocation or trailing `slice` copy is
+ * needed. Grows geometrically, never shrinks.
+ */
+let scratchPack = new Float32Array(256);
+
+const ensurePackCapacity = (n: number): void => {
+  if (scratchPack.length >= n) return;
+  let cap = scratchPack.length;
+  while (cap < n) cap *= 2;
+  scratchPack = new Float32Array(cap);
+};
+
 const packCommands = (commands: readonly PathCommand[]): Float32Array => {
   // Variable-width pack — layout depends on command kind. Worst case is
-  // C (cubic): kind + 6 floats = 7 entries. Allocate generously then trim.
-  const buf = new Float32Array(commands.length * 7);
+  // C (cubic): kind + 6 floats = 7 entries. Reserve worst case, then
+  // return the filled prefix as a view.
+  ensurePackCapacity(commands.length * 7);
+  const buf = scratchPack;
   let off = 0;
   for (const cmd of commands) {
     buf[off++] = COMMAND_KIND[cmd.kind];
@@ -208,18 +226,20 @@ const packCommands = (commands: readonly PathCommand[]): Float32Array => {
         break;
     }
   }
-  return buf.slice(0, off);
+  return buf.subarray(0, off);
 };
 
 const packVec2Array = (points: readonly Vec2[]): Float32Array => {
-  const out = new Float32Array(points.length * 2);
+  ensurePackCapacity(points.length * 2);
+  const out = scratchPack;
   for (let i = 0; i < points.length; i++) {
     const p = points[i];
-    if (p === undefined) continue;
-    out[i * 2] = p.x;
-    out[i * 2 + 1] = p.y;
+    // Write zeros for holes — the scratch is reused, so a `continue`
+    // would leak stale values where `new Float32Array` used to zero-fill.
+    out[i * 2] = p?.x ?? 0;
+    out[i * 2 + 1] = p?.y ?? 0;
   }
-  return out;
+  return out.subarray(0, points.length * 2);
 };
 
 const readU32 = (memory: WebAssembly.Memory, ptr: number): number =>

@@ -1,0 +1,78 @@
+---
+title: Shape Model
+sidebar_position: 60
+---
+
+Shapes (called _elements_ in the SDK) are the visual entities in a scene. Every element shares a common base (`ElementBase`) and a `type` discriminator, so the model stays open to plugin-defined variants.
+
+## The element base
+
+Every shape carries `id`, `layerId`, `type`, `position`, `rotation`, `scale`, `order`, and `style`. Optional fields cover resize constraints (`minWidth` / `minHeight` / `maxWidth` / `maxHeight`, plus `noFlip`), `parentId`, `frameId`, `locked`, `hidden`, custom `anchors`, `href`, and free-form `metadata`.
+
+```ts
+import { addElement, emptyScene, orderForTop, DEFAULT_LAYER_ID } from "@oh-just-another/scene";
+import type { Element } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const rect: Element = {
+  id: elementId("r1"),
+  layerId: DEFAULT_LAYER_ID,
+  type: "rectangle",
+  position: { x: 0, y: 0 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderForTop([]),
+  style: { fill: "#88f" },
+  width: 100,
+  height: 50,
+};
+
+const { scene } = addElement(emptyScene(), rect);
+```
+
+## Type guards
+
+Narrow an `Element` to a concrete variant with the exported guards — `isRectangle`, `isEllipse`, `isPolygon`, `isPath`, `isText`, `isImage`, `isTemplate`, `isGroup`, `isFrame`, `isBlockArrow`, `isBrush`.
+
+```ts
+import { isText } from "@oh-just-another/scene";
+
+for (const el of scene.elements.values()) {
+  if (isText(el)) console.log(el.text);
+}
+```
+
+## Custom shape types
+
+Because `type` is an open `string`, you can register your own variant. The recommended path is `defineShape` from `@oh-just-another/editor` — one call registers bounds (spatial index, hit-test, culling), rendering (all backends), and optional interaction hooks. Serialization is automatic: unknown types pass through.
+
+```ts
+import { defineShape, type ElementBase } from "@oh-just-another/editor";
+
+interface Widget extends ElementBase {
+  readonly type: "my-widget";
+  readonly size: number;
+}
+
+defineShape<Widget>({
+  type: "my-widget",
+  bounds: (s) => ({ x: 0, y: 0, width: s.size, height: s.size }),
+  render: (s, target) => {
+    target.setFill(s.style.fill ?? "#facc15");
+    target.beginPath();
+    target.rect(0, 0, s.size, s.size);
+    target.fill();
+  },
+  // Optional: interactiveHitTest, rotateAnchor.
+});
+```
+
+### Under the hood
+
+`defineShape` fans out to the per-package registries, which remain available for granular control: `registerBounder` (`@oh-just-another/scene`) supplies the local AABB, `registerElementRenderer` (`@oh-just-another/renderer-core`) draws the shape, and `registerInteractiveHitTester` / `registerRotateAnchor` (`@oh-just-another/state`) customize interaction. All are re-exported from `@oh-just-another/editor`.
+
+```ts
+import { registerBounder } from "@oh-just-another/scene";
+
+registerBounder("my-widget", () => ({ x: 0, y: 0, width: 120, height: 80 }));
+```

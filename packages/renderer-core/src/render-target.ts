@@ -78,6 +78,12 @@ export interface RenderTarget {
    * when `dynamic` is true; backends that read the source live every
    * draw (Canvas2D) ignore it. Default `false` — static image.
    */
+  /**
+   * `crop` (optional) is a normalised source rectangle (fractions of the
+   * image's intrinsic size, `[0,1]`) — only the cropped region is drawn,
+   * stretched to fill `dw` × `dh`. Backends that can't sample a source
+   * sub-rectangle ignore it and draw the whole image (graceful degradation).
+   */
   drawImage(
     image: unknown,
     dx: number,
@@ -85,6 +91,12 @@ export interface RenderTarget {
     dw: number,
     dh: number,
     dynamic?: boolean,
+    crop?: {
+      readonly x: number;
+      readonly y: number;
+      readonly width: number;
+      readonly height: number;
+    },
   ): void;
 
   // --- Surface control ---

@@ -1,0 +1,71 @@
+---
+title: Performance
+sidebar_position: 51
+---
+
+Rendering performance comes from three levers: the right backend, aggressive
+culling, and moving work off the main thread. The editor auto-tunes all three
+via capability detection, but you can drive each one directly.
+
+## Pick a backend
+
+`detectCapabilities` chooses between `"webgl2"`, `"offscreen"`, and
+`"canvas2d"` by probing the runtime (WebGPU currently maps to `webgl2`;
+OffscreenCanvas + Worker enables `offscreen`). Let it pick, or force a backend
+via the `capabilities` prop for benchmarking. Low-level probes
+(`isWebGL2Available`, `pickAvailableBackend`) live in
+`@oh-just-another/renderer-canvas`.
+
+```tsx
+import { Editor, detectCapabilities } from "@oh-just-another/editor";
+
+const profile = await detectCapabilities();
+console.log(profile.renderer); // "webgl2" | "offscreen" | "canvas2d"
+
+// Force a backend:
+<Editor capabilities={{ renderer: "canvas2d" }} />;
+```
+
+## Cull and cache
+
+Pass a `viewport`, a shared `boundsCache`, and (for big scenes) a
+`spatialIndex` to `renderScene` so frame cost tracks on-screen content rather
+than scene size. See the culling page for the full set of options.
+
+```ts
+import { renderScene } from "@oh-just-another/renderer-core";
+
+renderScene(scene, target, { viewport, boundsCache, spatialIndex });
+```
+
+## Off-thread rendering
+
+Hosts that wire up `WorkerPool` + `transferCanvasToWorker` can render layers in
+OffscreenCanvas workers, and `renderViaTiles` pre-rasterizes tiles for very
+large scenes. `WORKER_AUTO_THRESHOLD` (5,000 elements) is where off-thread work
+starts to beat the `postMessage` overhead; `LARGE_SCENE_WORKER_THRESHOLD`
+(50,000) marks where a full main-thread render starts dropping frames even
+with culling.
+
+```ts
+import { WORKER_AUTO_THRESHOLD } from "@oh-just-another/renderer-core";
+import { WorkerPool, LARGE_SCENE_WORKER_THRESHOLD } from "@oh-just-another/renderer-canvas";
+
+if (scene.elements.size > WORKER_AUTO_THRESHOLD) {
+  // worker-backed rendering becomes worthwhile
+}
+```
+
+## Level of detail
+
+`LodOptions` lets cheaper paths kick in at low zoom: below `placeholder` zoom,
+shapes degrade to flat AABB fills; below `hideText` zoom, text layout and
+glyph drawing are skipped. Pass it via `RenderSceneOptions.lod`; the defaults
+are exported as `DEFAULT_LOD` (`placeholder: 0.15`, `hideText: 0.4`).
+
+```ts
+import { renderScene, type LodOptions } from "@oh-just-another/renderer-core";
+
+const lod: LodOptions = { placeholder: 0.1, hideText: 0.4 };
+renderScene(scene, target, { viewport, lod });
+```

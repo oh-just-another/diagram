@@ -1,0 +1,33 @@
+---
+title: Hyperlinks
+sidebar_position: 81
+---
+
+A hyperlink is an `href` attached to a shape (element) in the scene. This is distinct from URL "deep links" — links that point _into_ the editor at a specific camera or selection. Deep links are a separate feature; this page covers links that live _on_ a shape and open an external destination.
+
+## Attaching a link
+
+`setLink(ids, href)` sets (or clears, with `null`) the `href` on every element in `ids` as a single undo step. The raw user string is normalised via `normalizeHref`: a scheme-less URL gets `https://`, a bare email gets `mailto:`, and unsafe schemes (`javascript:`, `data:`, …) are rejected. A string that normalises to nothing clears the link.
+
+```ts
+import type { Editor as EditorInstance } from "@oh-just-another/state";
+import { normalizeHref, safeHref } from "@oh-just-another/state";
+import type { ElementId } from "@oh-just-another/types";
+
+function link(editor: EditorInstance, id: ElementId) {
+  editor.setLink([id], "example.com"); // stored as https://example.com
+  editor.setLink([id], null); // clears it
+
+  // The standalone helpers are also exported:
+  normalizeHref("ada@example.com"); // "mailto:ada@example.com"
+  safeHref("javascript:alert(1)"); // null
+}
+```
+
+## Opening a link safely
+
+`openLink(href)` re-validates the scheme with `safeHref` before navigating — only `http`, `https`, and `mailto` pass — and opens in a new tab with `noopener,noreferrer`. It is a no-op for an unsafe or empty href, or outside a browser. `elementLink(id)` returns a shape's `href` if it is safe to open, else `null`.
+
+## Finding the link under a point
+
+`linkAt(worldPoint)` returns the topmost interactable shape carrying a safe link at that world-space point, as `{ id, href, bounds }`, or `null` when there is none. The built-in UI uses this to drive the hover link-popup; hosts can use it to implement Cmd/Ctrl-click navigation.

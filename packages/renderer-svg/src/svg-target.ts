@@ -55,6 +55,9 @@ export class SvgTarget implements RenderTarget {
   // --- Output ---
   private readonly elements: string[] = [];
 
+  // Monotonic counter for unique `<clipPath>` ids (cropped images).
+  private clipIdCounter = 0;
+
   // --- State stack ---
   private readonly stack: SavedState[] = [];
 
@@ -319,14 +322,66 @@ export class SvgTarget implements RenderTarget {
 
   // --- Images ---
 
-  drawImage(image: unknown, dx: number, dy: number, dw: number, dh: number): void {
+  drawImage(
+    image: unknown,
+    dx: number,
+    dy: number,
+    dw: number,
+    dh: number,
+    _dynamic?: boolean,
+    crop?: {
+      readonly x: number;
+      readonly y: number;
+      readonly width: number;
+      readonly height: number;
+    },
+  ): void {
     if (typeof image !== "string" || image === "") return;
     const p = this.apply(dx, dy);
     // Note: this is a 1:1 axis-aligned blit. Rotated/skewed transforms are
     // not preserved on the `<image>` element. For richer cases the caller
     // should compose with a `<g transform>` themselves.
+    if (crop && (crop.x !== 0 || crop.y !== 0 || crop.width !== 1 || crop.height !== 1)) {
+      this.drawCroppedImage(image, p.x, p.y, dw, dh, crop);
+      return;
+    }
     this.elements.push(
       `<image x="${fmt(p.x)}" y="${fmt(p.y)}" width="${dw}" height="${dh}" href="${escapeAttr(image)}"/>`,
+    );
+  }
+
+  /**
+   * Cropped blit: the kept source sub-rect (`crop`, normalised [0,1]) is
+   * stretched to fill the `dw`×`dh` destination box, matching Canvas2D/WebGL2.
+   * SVG can't source-clip an `<image>`, so we oversize the image to the
+   * "virtual full image" (`dw/crop.width` × `dh/crop.height`), shift it so the
+   * kept region lands at the box origin, and clip to the box with a `<clipPath>`.
+   * `preserveAspectRatio="none"` keeps the stretch semantics identical.
+   */
+  private drawCroppedImage(
+    image: string,
+    x: number,
+    y: number,
+    dw: number,
+    dh: number,
+    crop: {
+      readonly x: number;
+      readonly y: number;
+      readonly width: number;
+      readonly height: number;
+    },
+  ): void {
+    const fullW = dw / crop.width;
+    const fullH = dh / crop.height;
+    const imgX = x - crop.x * fullW;
+    const imgY = y - crop.y * fullH;
+    const id = `oja-crop-${(this.clipIdCounter++).toString()}`;
+    this.elements.push(
+      `<clipPath id="${id}"><rect x="${fmt(x)}" y="${fmt(y)}" width="${dw}" height="${dh}"/></clipPath>` +
+        `<g clip-path="url(#${id})">` +
+        `<image x="${fmt(imgX)}" y="${fmt(imgY)}" width="${fmt(fullW)}" height="${fmt(fullH)}"` +
+        ` preserveAspectRatio="none" href="${escapeAttr(image)}"/>` +
+        `</g>`,
     );
   }
 

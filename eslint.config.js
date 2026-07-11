@@ -107,13 +107,5 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { parserOptions: { projectService: false } },
   },
-  {
-    // The e2e app is a standalone Playwright project with no tsconfig in the
-    // type-aware project graph, so the typed ruleset can't resolve its specs.
-    // Lint them syntactically only.
-    files: ["apps/e2e/**/*.{ts,tsx}"],
-    extends: [tseslint.configs.disableTypeChecked],
-    languageOptions: { parserOptions: { projectService: false } },
-  },
   prettier,
 );

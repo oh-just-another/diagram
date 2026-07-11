@@ -1,0 +1,43 @@
+---
+title: Annotations & Comments
+sidebar_position: 80
+---
+
+Annotations are pins anchored to the canvas, each carrying a threaded comment conversation. A pin can float at a free world-space position or attach to a shape (via `elementId`), in which case it follows the shape as it moves. The full API lives on the live editor engine (`EditorInstance`), reached through the component ref.
+
+## Adding a pin and a thread
+
+`addAnnotation` creates a pin and returns its `AnnotationId`. The new annotation becomes the selected one. Pass an optional `firstComment` to seed the thread, and `elementId` to anchor it to a shape.
+
+```ts
+import type { Editor as EditorInstance } from "@oh-just-another/state";
+import type { Annotation, Comment } from "@oh-just-another/scene";
+
+function review(editor: EditorInstance) {
+  // Set the local author once (used by comments posted without an explicit author).
+  editor.setCommentAuthor({ id: "u1", name: "Ada" });
+
+  const id = editor.addAnnotation({
+    position: { x: 120, y: 80 },
+    firstComment: "Should this box be wider?",
+  });
+
+  editor.addComment(id, "Agreed, let's widen it.");
+  editor.addComment(id, "Done.", { id: "u2", name: "Grace" });
+}
+```
+
+## Replies, resolve, and removal
+
+- `addComment(annotationId, body, author?)` appends a reply; `author` defaults to the value set via `setCommentAuthor`.
+- `removeComment(annotationId, commentId)` deletes one reply.
+- `toggleAnnotationResolved(id)` flips the UI-only `resolved` flag (announces "Annotation resolved" / "Annotation reopened").
+- `removeAnnotation(id)` deletes the pin and its whole thread.
+
+All of these push a single history entry, so each is individually undoable.
+
+## Selection and hit-testing
+
+`selectedAnnotation` is the currently focused pin id (or `null`); `setSelectedAnnotation(id | null)` opens or closes a thread independently of shape selection. `hitAnnotation(worldPoint)` returns the `AnnotationId` of the pin under a world-space point, or `null` — useful for wiring custom click handling.
+
+The `Annotation` shape carries `id`, `elementId`, `position`, `resolved`, `createdAt`, and a `thread` of `Comment` entries (`id`, `authorId`, `authorName`, `body`, `createdAt`). Mutating annotations announces changes ("Annotation added", "Annotation removed") through the editor's live region for screen readers.

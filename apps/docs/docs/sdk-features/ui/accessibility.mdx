@@ -1,0 +1,34 @@
+---
+title: Accessibility
+sidebar_position: 1
+---
+
+The React UI ships with a baseline of keyboard and screen-reader support, and it is actively being improved. This page describes what works today and is honest about what is still partial — accessibility is a work in progress, not a finished claim.
+
+## Canvas focus and roles
+
+The drawing surface is focusable and announced as an interactive application region. `DiagramSurface` renders with `tabIndex=0` and `role="application"` so keyboard users can Tab onto the canvas and screen readers announce it. Hosts can override the accessible name.
+
+```tsx
+import { DiagramRoot, DiagramSurface } from "@oh-just-another/react-ui";
+
+export function App() {
+  return (
+    <DiagramRoot>
+      <DiagramSurface ariaLabel="Architecture diagram" />
+    </DiagramRoot>
+  );
+}
+```
+
+## What's covered today
+
+- The canvas surface is keyboard-focusable with a visible focus ring.
+- UI chrome carries ARIA semantics: the toolbar, main menu, palettes, sliders, popovers, and color pickers expose `aria-label`, `role="group"` / `role="radiogroup"`, and keyboard handlers.
+- Editing shortcuts (selection, nudging, undo/redo, etc.) are driven from the keyboard.
+
+## Known gaps
+
+Because the scene contents live on a canvas (not in the DOM), there is no per-shape DOM node for a screen reader to traverse. Full assistive-technology coverage of individual shapes, comprehensive focus management across every panel, and complete keyboard parity for all pointer gestures are **partial / in progress**.
+
+If accessibility is critical for your deployment, test with your target assistive technology and file gaps on the issue tracker — improvements here are ongoing.

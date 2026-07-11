@@ -1,0 +1,38 @@
+---
+title: UI Components
+sidebar_position: 71
+---
+
+`@oh-just-another/react-ui` is the React binding layer over the editor. It exposes the canvas plus composable chrome — toolbar, palette, property panel, menus, and panels — that read the editor from context and drop in with a few lines of JSX.
+
+## Mounting the canvas
+
+`DiagramCanvas` constructs the underlying `Editor` and provides it to every descendant via context. Toolbar / Palette / PropertyPanel are independent — place them anywhere in the subtree and layer them with normal CSS:
+
+```tsx
+import { emptyScene } from "@oh-just-another/scene";
+import { DiagramCanvas, Toolbar, Palette, PropertyPanel } from "@oh-just-another/react-ui";
+
+export const App = () => (
+  <DiagramCanvas initialScene={emptyScene()} initialMode="select">
+    <Toolbar />
+    <Palette />
+    <PropertyPanel />
+  </DiagramCanvas>
+);
+```
+
+`react` and `react-dom` (≥ 18) are peer dependencies. For a single drop-in editor with all chrome wired up, use `@oh-just-another/editor` instead.
+
+## What ships
+
+The package groups its components by role:
+
+- **Mounting & layout:** `DiagramCanvas`, `DiagramRoot` / `DiagramSurface`, `DiagramProvider`, `UILayer`, `TopBar` / `BottomBar`, `Sidebar`, `BottomSheet`.
+- **Toolbar & zoom:** `Toolbar` (with `DEFAULT_TOOLBAR` / `DEFAULT_VERTICAL_TOOLBAR`), `ZoomWidget`, `FloatingZoomControls`, `ResetToContentButton`.
+- **Palettes & catalog:** `Palette`, `LibraryPanel`, `ColorSwatchPicker`, the built-in `ELEMENT_PALETTE_*` / `CANVAS_PALETTE_*` palettes.
+- **Inspectors & panels:** `PropertyPanel`, `LinkStylePanel`, `LayerPanel`, `FramePanel`, `SelectionFloatingPanel`.
+- **Menus, dialogs & overlays:** `MainMenu`, `ContextMenu`, `CommandPalette`, `Modal` / `Popover`, `Tooltip`, `HelpDialog`, `ToastHost`.
+- **Collaboration & versioning:** `CommentsPanel`, `VersionPanel`, `MergeDialog`, `DiffPanel`.
+
+Every component reads the editor from context, so most take no required props. Each also exports its `*Props` type (e.g. `ToolbarProps`, `PaletteProps`). Lower-level building blocks and hooks are covered in UI Primitives.

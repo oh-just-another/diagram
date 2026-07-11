@@ -80,6 +80,15 @@ export interface Action {
    */
   readonly keyTest?: (event: KeyboardEvent, ctx: ActionContext) => boolean;
   /**
+   * Display-ONLY hotkey shown in the help dialog for actions whose real
+   * binding is a `keyTest` the declarative matcher can't express (e.g. plain
+   * arrows, or a modifier combo that must exclude Ctrl on macOS). NEVER
+   * dispatched — `dispatchHotkey` ignores it — so it can't double-fire or match
+   * combos the `keyTest` deliberately excludes. Use it purely to surface the
+   * chip; `keyTest` remains the source of truth for behaviour.
+   */
+  readonly displayHotkey?: HotkeyMatcher | readonly HotkeyMatcher[];
+  /**
    * `true` when the action makes sense in the current state — used
    * by menus to gate visibility AND by `dispatch` to short-circuit
    * a no-op trigger. Defaults to "always true" when omitted.

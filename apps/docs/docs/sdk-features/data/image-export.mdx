@@ -1,0 +1,61 @@
+---
+title: Image Export
+sidebar_position: 38
+---
+
+Export a scene to a raster or vector image — in the browser from a live editor, or on a server from a scene document. The library ships separate paths for each so you only pull in the dependencies you need.
+
+## Browser PNG (from the editor)
+
+`exportSceneToPng` from `@oh-just-another/editor` renders the **full scene** (not just the visible viewport) to a PNG `Blob` via an `OffscreenCanvas`. It returns `null` for an empty scene or when `OffscreenCanvas` is unavailable.
+
+```ts
+import { exportSceneToPng } from "@oh-just-another/editor";
+
+const blob = await exportSceneToPng(editor.scene, {
+  background: "color-and-grid", // "transparent" | "color" | "color-and-grid"
+  scale: 2, // device-pixel scale; 2 = retina
+  backgroundColor: "#ffffff",
+});
+
+if (blob) {
+  const url = URL.createObjectURL(blob);
+  // …trigger a download
+}
+```
+
+## Headless SVG / PNG (server-side)
+
+`@oh-just-another/headless` renders a scene with no DOM or browser shim. `renderToSvg` is synchronous and dependency-light; `renderToPng` is async and needs the optional `@resvg/resvg-js` peer.
+
+```ts
+import { writeFile, readFile } from "node:fs/promises";
+import { renderToSvg, renderToPng } from "@oh-just-another/headless";
+
+const sceneJson = await readFile("scene.json", "utf8");
+
+await writeFile("scene.svg", renderToSvg(sceneJson));
+await writeFile("scene.png", await renderToPng(sceneJson, { scale: 2 }));
+```
+
+Both accept either an in-memory `Scene` or the JSON document string `@oh-just-another/serialization` emits (parsed and validated before rendering). `renderToSvg` returns a `string`; `renderToPng` resolves to a `Uint8Array`.
+
+## Document-grade export (PNG with DPI, PDF, cropping)
+
+`@oh-just-another/exporter` builds on the headless renderer for print-quality output: high-resolution PNG with embedded DPI metadata, vector PDF, and world-coordinate cropping.
+
+```ts
+import { exportPng, exportPdf } from "@oh-just-another/exporter";
+
+const png = await exportPng(scene, { scale: 2, dpi: 300, background: "#ffffff" }); // Uint8Array
+const crop = await exportPng(scene, { region: { x: 0, y: 0, width: 400, height: 300 } });
+const pdf = await exportPdf(scene, {
+  pageSize: "Letter",
+  orientation: "landscape",
+  title: "Diagram",
+});
+```
+
+Both take a `Scene` or JSON document string. `region` crops in world coordinates (default: the scene's `viewport.size`); `frameId` instead exports a single frame's content and wins over `region`. `dpi` only embeds a `pHYs` chunk — pixel dimensions come from `scale`.
+
+PNG needs `@resvg/resvg-js`; PDF needs `pdfkit` + `svg-to-pdfkit`. Both are optional peers — install only what you call.

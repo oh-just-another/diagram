@@ -1,0 +1,50 @@
+---
+title: Cursors
+sidebar_position: 16
+---
+
+Peer cursors and selection halos are part of the collaboration layer's presence (awareness) channel. `@oh-just-another/collab` publishes the local user's cursor and selection into Yjs awareness and paints other peers' cursors back into the editor.
+
+## Bind presence
+
+`CollabAwareness` wraps `y-protocols/awareness`. `bindAwareness` publishes the local user / cursor / selection (throttled) and renders peer cursors and selection halos into the editor. It returns an unbind function.
+
+```ts
+import { CollabAwareness, bindAwareness } from "@oh-just-another/collab";
+
+const awareness = new CollabAwareness(doc);
+
+const unbind = bindAwareness(editor, awareness, {
+  user: { id: "me", name: "Alice", color: "#1a73e8" },
+  cursorThrottleMs: 50, // optional; default 33 ms (~30 fps)
+});
+
+// …on unmount
+unbind();
+```
+
+The `user` field is a `PeerUser` — an identity (`id`, `name`, `color`) attached to the local presence payload.
+
+## Read the peer list
+
+`CollabAwareness` exposes the current peers and a subscription for changes, which you can use to render an avatar stack or a "who's here" list. `getPeers()` includes the local peer; `getOthers()` filters it out. `onPeers` fires with the full list (local included).
+
+```ts
+import type { Peer } from "@oh-just-another/collab";
+
+const others: readonly Peer[] = awareness.getOthers();
+
+const off = awareness.onPeers((all) => {
+  console.log(
+    "peers now:",
+    all.map((p) => p.user.name),
+  );
+});
+```
+
+Each `Peer` carries the `clientId`, the `user` identity, the current `cursor`, the `selection`, and a free-form `extra` field.
+
+## Notes
+
+- Cursor publishing is throttled (`cursorThrottleMs`) to keep awareness traffic small.
+- Awareness is multiplexed over the same `@oh-just-another/network` transport as the document via `TransportProvider`, so peer cursors work over both BroadcastChannel (tabs) and WebSocket (cross-machine).

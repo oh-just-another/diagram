@@ -22,15 +22,23 @@ A drop-in **infinite-canvas diagram editor for React** — and renderable headle
 **[Live demo](https://ohjustanother.site)** ·
 **[Contributing](./CONTRIBUTING.md)**
 
-## Features
+## Highlights
 
-- **Drop-in** — one `<Editor>` component. Add the package, render, ship.
-- **Multi-renderer** — WebGL2 / Canvas2D / OffscreenCanvas.
-- **Headless render** — turn a scene into PNG or SVG in Node, no DOM — for servers, thumbnails, and exports.
-- **Import** — Mermaid, Graphviz, and drawio diagrams.
-- **Persistence & history** — versioned serialization with migrations, transactional undo/redo, and snapshot /
-  branch / diff history.
-- **MIT** — free for any project, commercial included; no production gate, no forced watermark.
+- **MIT, free for everyone — pledged.** No license keys, no watermarks, no
+  production gate, commercial use included. See the
+  [license pledge](./.github/GOVERNANCE.md).
+- **Fast canvas** — auto-detected WebGL2 / OffscreenCanvas / Canvas2D renderer
+  with MSDF text and WASM text shaping.
+- **Headless server rendering** — render scenes to SVG / PNG / PDF in Node
+  without a browser (`@oh-just-another/headless`, CLI included).
+- **Real-time collaboration** — CRDT sync (Yjs) with presence cursors and
+  optional end-to-end encryption; self-hostable relay.
+- **Version history** — snapshots, branches, scene diff, and three-way merge.
+- **Comments** — pinned annotation threads with mentions.
+- **Framework-friendly** — React drop-in, a dependency-free
+  `<oja-diagram>` custom element, and Vue / Svelte wrappers.
+- **Extensible** — registry-based custom shapes, renderers, templates,
+  importers (Mermaid / Graphviz / draw.io), and layouts.
 
 ## Use in your app
 

@@ -140,7 +140,7 @@ export const computeSendBackward = (
  * `apply` is the side-effect callback — the caller threads scene + tx
  * through it.
  */
-export const rewriteOrders = <T extends { readonly order: FractionalIndex }>(
+const rewriteOrders = <T extends { readonly order: FractionalIndex }>(
   entities: readonly T[],
   apply: (entity: T, order: FractionalIndex) => void,
 ): number => {

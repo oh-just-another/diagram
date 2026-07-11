@@ -145,8 +145,8 @@ export const SELECTION_HALO_PEEK_PX = 4;
  * brand blue / handle white so anchors share the resize-handle visual
  * language (they equal `DEFAULT_OVERLAY_STYLE.selectionStroke` / `.handleFill`).
  */
-export const ANCHOR_BRAND_COLOR = "#1a73e8";
-export const ANCHOR_NEUTRAL_COLOR = "#fff";
+const ANCHOR_BRAND_COLOR = "#1a73e8";
+const ANCHOR_NEUTRAL_COLOR = "#fff";
 
 /** Resting anchor-dot radius (screen px). */
 export const ANCHOR_DOT_RADIUS = 3.5;
@@ -379,6 +379,14 @@ export const DOUBLE_CLICK_TOLERANCE_PX = 8;
 export const ISOLATION_DIM_OPACITY = 0.6;
 
 /**
+ * Opacity of an element MARKED for erasing while the eraser is swept over it
+ * (before the delete commits on pointer-up). Much lower than
+ * {@link ISOLATION_DIM_OPACITY} so "about to be deleted" reads clearly at a
+ * glance — matches the Excalidraw eraser's ~20% preview. Range: 0.15–0.4.
+ */
+export const ERASE_DIM_OPACITY = 0.2;
+
+/**
  * Opacity of the WYSIWYG shape-draw preview (the live rect / ellipse drawn
  * through its real renderer while dragging out a new shape). Slightly below
  * 1 so the in-progress shape reads as "not committed yet" while still
@@ -500,6 +508,130 @@ export const MAX_BRUSH_WIDTH = 6;
 export const DEFAULT_BRUSH_WIDTH = 2;
 
 /**
+ * Default brush line colour — the paint a fresh stroke is committed with when
+ * the host hasn't changed the drawing panel. A dark neutral that reads on a
+ * light canvas (matches the pre-settings hard-coded value).
+ */
+export const DEFAULT_BRUSH_COLOR = "#222222";
+
+/**
+ * Default brush opacity (0–1) for a fresh stroke. 1 = fully opaque.
+ */
+export const DEFAULT_BRUSH_OPACITY = 1;
+
+/**
+ * Samples per Catmull-Rom span when smoothing a committed brush stroke. Brush
+ * points are captured sparsely (one per pointer-move), so the raw polyline is
+ * angular; on commit each span is resampled into this many sub-points along a
+ * Catmull-Rom curve through the captured points (interpolating per-point width
+ * too), baking a smooth stroke into the scene. Higher = smoother but more stored
+ * vertices per stroke. Range: 2–8.
+ */
+export const BRUSH_SMOOTH_SEGMENTS = 4;
+
+/**
+ * World-pixel distance under which a brush stroke's last point is treated as
+ * meeting its first — the trigger for auto-closing (and filling) a stroke on
+ * commit. Only applies when a fill colour is set and the stroke has ≥3 points.
+ * Scaled to the max stroke width so a thick stroke closes as forgivingly as it
+ * looks. Range: 6–30; larger closes more eagerly. Default: `MAX_BRUSH_WIDTH * 3`.
+ */
+export const BRUSH_CLOSE_DISTANCE = MAX_BRUSH_WIDTH * 3;
+
+/**
+ * Eraser sampling step in WORLD units. While the eraser is dragged the host
+ * hit-tests points spaced this far apart along the pointer path so a fast
+ * swipe doesn't skip over small shapes between two move events. Smaller →
+ * more hit-tests per move (safer, costlier); larger → cheaper but can jump a
+ * thin shape. 6 px matches the default brush width so nothing narrower than a
+ * stroke slips through. Range: 3–12.
+ */
+export const ERASER_SAMPLE_STEP = 6;
+
+/**
+ * Stroke colour of the eraser cursor ring (and its fading drag trail). A neutral
+ * mid-grey so it reads on both light and dark canvases without looking like a
+ * tool accent. Range: any mid-luminance grey (#666–#aaa).
+ */
+export const ERASER_CURSOR_STROKE = "#888888";
+
+/**
+ * Screen-pixel line width of the eraser cursor ring. Constant on screen (the
+ * ring is drawn in screen space) so it stays crisp at any zoom. Range: 1–3.
+ */
+export const ERASER_CURSOR_LINE_WIDTH = 1.5;
+
+/**
+ * Lifetime (ms) of an eraser drag-trail point before it fully fades — the knob
+ * for how LONG the eraser wake is. Much shorter than {@link LASER_TRAIL_TTL_MS}
+ * (the laser comet) so the eraser leaves only a tight, brief wake behind the
+ * cursor, matching Excalidraw. Lower = shorter/snappier. Range: 100–400.
+ */
+export const ERASER_TRAIL_TTL_MS = 120;
+
+/**
+ * Stroke-eraser (Shift) samples a brush polyline this densely — as a FRACTION of
+ * the eraser radius — when computing which arc-length spans fall under the disc.
+ * The eraser cuts the line's GEOMETRY (segments), not just its vertices, so a big
+ * disc merely grazing a sparsely-sampled stroke still removes the covered span.
+ * Smaller = finer edges / more samples per move; larger = coarser / cheaper. The
+ * covered-span endpoints are refined by bisection ({@link ERASE_BOUNDARY_BISECT_ITERS})
+ * regardless, so this mainly bounds the miss-a-tiny-dip risk. Range: 0.15–0.5.
+ */
+export const ERASE_COVERAGE_SAMPLE_FRACTION = 0.25;
+
+/**
+ * Floor (world units) for the stroke-eraser sample step, so a tiny eraser radius
+ * doesn't explode the sample count on a long stroke. Range: 0.25–2.
+ */
+export const ERASE_COVERAGE_MIN_SAMPLE_STEP = 0.5;
+
+/**
+ * Bisection iterations used to pin each covered-span endpoint to the eraser ring
+ * (where the brush polyline crosses distance = radius). Each iteration halves the
+ * error, so 10 ≈ step/1024 — visually exact. Range: 6–14.
+ */
+export const ERASE_BOUNDARY_BISECT_ITERS = 10;
+
+/**
+ * A surviving stroke-eraser fragment shorter than this arc length (world units)
+ * is dropped as litter — an isolated nub reads as a stray dot, not a line. Range:
+ * 0.5–3.
+ */
+export const ERASE_FRAGMENT_MIN_ARC = 1;
+
+/**
+ * Lifetime (ms) of a laser-pointer trail point before it fully fades. Each
+ * point stores its birth time; the overlay ramps its opacity from 1 → 0 over
+ * this window and the editor prunes points older than it, so a stroke trails
+ * the cursor like a comet and vanishes ~this long after the pointer stops.
+ * "A couple of seconds" — range 800–3000.
+ */
+export const LASER_TRAIL_TTL_MS = 1400;
+
+/**
+ * Stroke colour of the laser-pointer trail. A saturated red reads as a
+ * presentation laser and stands out over any diagram fill.
+ */
+export const LASER_COLOR = "#ff2d2d";
+
+/**
+ * Screen-pixel stroke width of the laser trail. Constant on screen (drawn in
+ * screen space, not world) so the beam stays the same thickness at every zoom.
+ * Range: 2–6.
+ */
+export const LASER_WIDTH = 4;
+
+/**
+ * Samples per Catmull-Rom span when smoothing a laser trail for rendering.
+ * Laser points are collected sparsely (one per pointer-move), so the raw
+ * polyline looks angular; the overlay resamples each span into this many
+ * sub-points along a Catmull-Rom curve through the captured points, keeping the
+ * beam smooth. Higher = smoother but more segments per frame. Range: 4–16.
+ */
+export const LASER_SMOOTH_SEGMENTS = 8;
+
+/**
  * Default upper bound on the longer edge of a freshly-inserted
  * image (CSS pixels). Larger images get downscaled proportionally
  * by the built-in image file-drop handler so a 4000×3000 phone
@@ -596,6 +728,30 @@ export const TEXT_RESIZE_MIN_FONT_SIZE = 4;
 export const TEXT_FONT_SIZE_STEP = 1.1;
 
 /**
+ * Gap (world px) between a source node and the connected node spawned by the
+ * flowchart create shortcut (`Cmd/Ctrl+Arrow`). Measured from the source's
+ * edge to the new node's edge along the spawn direction. Range: 40–160 —
+ * enough that the connecting link is clearly visible.
+ */
+export const SPAWN_CONNECTED_GAP_PX = 80;
+
+/**
+ * Upper cap on how many sibling nodes a single flowchart create session
+ * (`Cmd/Ctrl+Arrow` held, tapped an arrow repeatedly) can pending-grow before
+ * commit. Guards against an accidental key-repeat spraying dozens of nodes.
+ * Range: 4–16.
+ */
+export const FLOWCHART_MAX_SIBLINGS = 8;
+
+/**
+ * Opacity of the pending flowchart-create preview (the not-yet-committed
+ * nodes + links drawn on the overlay while `Cmd/Ctrl` is held). Below 1 so the
+ * preview reads as provisional, high enough to judge placement. Range:
+ * 0.35–0.65.
+ */
+export const FLOWCHART_PREVIEW_OPACITY = 0.5;
+
+/**
  * Upper clamp (world px) for font size — matches the property panel's slider
  * ceiling so the keyboard and the panel agree on the maximum.
  */
@@ -620,3 +776,28 @@ export const GIF_BADGE_BG_COLOR = "rgba(0,0,0,0.65)";
 export const LOCK_BADGE_SIZE = 16;
 export const LOCK_BADGE_COLOR = "#1a73e8";
 export const LOCK_BADGE_KEYHOLE_COLOR = "#fff";
+
+/**
+ * Image-crop UX (Excalidraw-style handle cropping).
+ *
+ * - `CROP_MIN_SIZE` — smallest allowed crop window edge, in element-LOCAL
+ *   units (unscaled). Dragging an edge handle inward stops here so the window
+ *   can never collapse to zero. Range: 4–24.
+ * - `CROP_HANDLE_HIT_RADIUS` — screen-pixel grab radius around each of the 8
+ *   crop handles. Divided by zoom before hit-testing so the effective screen
+ *   target stays constant. Mirrors {@link HANDLE_HIT_SLOP}. Range: 8–14.
+ * - `CROP_GHOST_OPACITY` — alpha of the faint full-image "ghost" painted over
+ *   the virtual full-image rect while cropping, so the user sees the hidden
+ *   parts of the source. Low so the real (cropped) pixels stay dominant.
+ *   Range: 0.08–0.2.
+ * - `CROP_BRACKET_LEN` — arm length (screen px) of the L-shaped corner brackets
+ *   that mark the crop frame (Excalidraw-style), drawn instead of round nubs.
+ *   Range: 10–20.
+ * - `CROP_BRACKET_WIDTH` — stroke width (screen px) of those brackets. Thicker
+ *   than the frame outline so the corners read as grabbable. Range: 2–4.
+ */
+export const CROP_MIN_SIZE = 10;
+export const CROP_HANDLE_HIT_RADIUS = 11;
+export const CROP_GHOST_OPACITY = 0.12;
+export const CROP_BRACKET_LEN = 14;
+export const CROP_BRACKET_WIDTH = 3;

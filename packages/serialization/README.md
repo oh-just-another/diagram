@@ -36,17 +36,18 @@ editor.loadScene(scene);
 
 ## API
 
-| Name                                                                  | Purpose                                                                                               |
-| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `CURRENT_VERSION`, `SceneDocument`, `SceneDocumentZ`                  | Wire-format constants and types.                                                                      |
-| `serializeScene(scene)` / `stringifyScene(scene, indent?)`            | In-memory `Scene` → wire document / JSON string.                                                      |
-| `deserializeScene(raw, options?)` / `parseScene(json, options?)`      | Wire document / JSON string → typed `Scene`. Runs migrations + zod validation + brand re-application. |
-| `DeserializationError`                                                | Thrown on validation failure. `reason` carries the original `ZodError`.                               |
-| `registerMigration(fromVersion, fn)` / `runMigrations(doc, from, to)` | Forward migrations between schema versions.                                                           |
-| `MissingMigrationError`                                               | Thrown when an intermediate version has no migration registered.                                      |
-| `serializeFiles(files)` / `stringifyFiles(files, indent?)`            | `Scene.files` binary sidecar → wire document / JSON string.                                           |
-| `parseFiles(json)`                                                    | JSON string → typed `Scene.files`.                                                                    |
-| `SerializedFilesDocument`                                             | Wire-format type for the file sidecar.                                                                |
+| Name                                                                  | Purpose                                                                                                                      |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `CURRENT_VERSION`, `SceneDocument`, `SceneDocumentZ`                  | Wire-format constants and types.                                                                                             |
+| `serializeScene(scene)` / `stringifyScene(scene, indent?)`            | In-memory `Scene` → wire document / JSON string.                                                                             |
+| `deserializeScene(raw, options?)` / `parseScene(json, options?)`      | Wire document / JSON string → typed `Scene`. Runs migrations + zod validation + brand re-application.                        |
+| `DeserializationError`                                                | Thrown on validation failure. `reason` carries the original `ZodError`.                                                      |
+| `sceneJsonSchema()`                                                   | JSON Schema (draft-07) of the wire document, generated from the zod schema. For LLM structured output / external validators. |
+| `registerMigration(fromVersion, fn)` / `runMigrations(doc, from, to)` | Forward migrations between schema versions.                                                                                  |
+| `MissingMigrationError`                                               | Thrown when an intermediate version has no migration registered.                                                             |
+| `serializeFiles(files)` / `stringifyFiles(files, indent?)`            | `Scene.files` binary sidecar → wire document / JSON string.                                                                  |
+| `parseFiles(json)`                                                    | JSON string → typed `Scene.files`.                                                                                           |
+| `SerializedFilesDocument`                                             | Wire-format type for the file sidecar.                                                                                       |
 
 ## Design notes
 

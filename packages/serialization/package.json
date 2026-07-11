@@ -52,6 +52,7 @@
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
     "fractional-keys": "0.1.1",
-    "zod": "3.25.76"
+    "zod": "3.25.76",
+    "zod-to-json-schema": "3.25.2"
   }
 }

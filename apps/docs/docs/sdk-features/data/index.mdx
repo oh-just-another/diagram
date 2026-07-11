@@ -1,0 +1,24 @@
+---
+title: Data & Persistence
+sidebar_position: 10
+---
+
+A `Scene` is a plain, immutable, serialisable data structure. This section covers the data layer around it:
+
+- [Store](./store.mdx) — the immutable `Scene` model: pure operations that return `{ scene, patch }`, and invertible patches.
+- [Persistence](./persistence.mdx) — `@oh-just-another/serialization`: `serializeScene` / `stringifyScene` out, `parseScene` / `deserializeScene` back, with forward-only migrations.
+- [Validation](./validation.mdx) — every loaded document is validated against the `SceneDocumentZ` zod schema; failures throw `DeserializationError`.
+- [Image export](./image-export.mdx) — browser PNG from the editor, headless SVG/PNG on the server, and document-grade PNG/PDF via `@oh-just-another/exporter`.
+- [Version history](./versioning.mdx) — `@oh-just-another/versioning`: named snapshots, branches, diff, and three-way merge.
+- [Signals](./signals.mdx) — the reactivity model: immutable state plus typed events (no fine-grained signals yet).
+
+Quick save/restore through the `EditorAPI` ref handle (`getScene()` / `loadScene()`):
+
+```ts
+import { stringifyScene, parseScene } from "@oh-just-another/serialization";
+
+const json = stringifyScene(api.getScene(), 2); // pretty-printed JSON string
+api.loadScene(parseScene(json)); // resets undo history
+```
+
+Binary blobs (embedded images) live in the `Scene.files` registry and persist separately via `serializeFiles` / `stringifyFiles` / `parseFiles` — see [Assets](../content/assets.mdx).

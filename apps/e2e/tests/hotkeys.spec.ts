@@ -4,10 +4,11 @@ test.describe("hotkeys", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
-    await page
-      .locator("canvas")
-      .first()
-      .click({ position: { x: 100, y: 100 } });
+    // Click the interactive surface (role="application"), not a raw canvas:
+    // the layered backend stacks three canvases and all but the overlay are
+    // pointer-events:none, so `canvas.first()` targets a click-transparent
+    // layer. The surface div is the element that actually owns the handlers.
+    await page.getByRole("application").click({ position: { x: 100, y: 100 } });
   });
 
   test("⌘A selects all (or no-op on empty scene)", async ({ page }) => {

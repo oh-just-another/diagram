@@ -1,6 +1,5 @@
 import type {
   KeyboardEventData,
-  KeyPhase,
   Modifiers,
   PointerEventData,
   PointerKind,
@@ -97,5 +96,3 @@ const toPointerPhase = (raw: string): PointerPhase => {
       return "move";
   }
 };
-
-export type { KeyPhase };

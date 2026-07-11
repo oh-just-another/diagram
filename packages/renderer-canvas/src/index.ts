@@ -1,8 +1,8 @@
 export { Canvas2DTarget } from "./canvas-target.js";
 export { Canvas2DTextShaper } from "./canvas-text-shaper.js";
-export { WebGL2Target } from "./webgl2-target.js";
+export { WebGL2Target, type WebGL2TargetOptions } from "./webgl2-target.js";
 export { renderViaTiles, type RenderViaTilesOptions } from "./tile-compositor.js";
-export { setupHiDpi } from "./hi-dpi.js";
+export { setupHiDpi, cappedDpr } from "./hi-dpi.js";
 export { LayeredCanvas, type LayeredCanvasOptions } from "./layered-canvas.js";
 export {
   supportsOffscreenCanvas,
@@ -20,7 +20,7 @@ export {
   type CreateLayeredSurfaceOptions,
 } from "./layered-surface.js";
 export { isWebGPUAvailable, isWebGL2Available, pickAvailableBackend } from "./webgpu-detect.js";
-export { LARGE_SCENE_WORKER_THRESHOLD } from "./constants.js";
+export { LARGE_SCENE_WORKER_THRESHOLD, MAX_DEVICE_PIXEL_RATIO } from "./constants.js";
 
 export { installBuiltinRenderers, wrapText } from "@oh-just-another/renderer-core";
 export type { WrapOptions, WrappedLine } from "@oh-just-another/renderer-core";

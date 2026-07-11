@@ -1,0 +1,48 @@
+---
+title: Parenting
+sidebar_position: 49
+---
+
+Shapes form hierarchies through two independent links: `parentId` for groups and containers, and `frameId` for frame membership. Both flatten into the scene — there is no nested `children` array — so reparenting is a single-field update.
+
+## parentId (groups & containers)
+
+Setting `parentId` makes a shape part of its parent's group: hit-test and drag promote selection to the parent, and moving the parent translates every descendant. Any shape type can act as a parent; `GroupElement` is just the default zero-render container.
+
+```ts
+import { updateElement } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const { scene: parented } = updateElement(scene, elementId("child"), (el) => ({
+  ...el,
+  parentId: elementId("g1"),
+}));
+```
+
+## frameId (frames)
+
+`frameId` is distinct from `parentId`. Frame children stay flat in the scene but share `frameId === frame.id`; dragging the frame moves matching shapes, and export-by-frame crops to the frame's bounds.
+
+```ts
+import { updateElement } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const { scene: framed } = updateElement(scene, elementId("child"), (el) => ({
+  ...el,
+  frameId: elementId("frame1"),
+}));
+```
+
+## Walking the tree
+
+`getChildrenOf` returns direct `parentId` children in z-order, `getDescendantsOf` returns the element itself plus its full subtree (depth-first, cycle-safe), and `getRootSelf` climbs to the outermost ancestor.
+
+```ts
+import { getDescendantsOf, getRootSelf } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const subtree = getDescendantsOf(scene, elementId("g1"));
+const top = getRootSelf(scene, elementId("child"));
+```
+
+Propagated traits such as `locked` and `hidden` follow the `parentId` chain — see Locked Shapes and Visibility.

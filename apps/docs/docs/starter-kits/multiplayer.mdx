@@ -1,0 +1,72 @@
+---
+title: Multiplayer
+sidebar_position: 5
+---
+
+The Multiplayer kit turns the editor into a real-time collaborative canvas using
+`@oh-just-another/collab` — a CRDT layer built on Yjs — paired with a transport
+from `@oh-just-another/network`. Multiple peers edit one scene; cursors and
+selections from other peers paint into the canvas as presence.
+
+### Wiring it up
+
+`SceneDoc` is a CRDT-backed mirror of a `Scene` over a `Y.Doc`. `bindEditor`
+keeps the live editor and the `SceneDoc` in sync (self-origin filtered so writes
+do not ricochet). `bindAwareness` publishes the local cursor/selection and paints
+peers back. A `TransportProvider` bridges the doc onto a transport.
+
+```ts
+import * as Y from "yjs";
+import {
+  SceneDoc,
+  CollabAwareness,
+  TransportProvider,
+  bindEditor,
+  bindAwareness,
+} from "@oh-just-another/collab";
+import { BroadcastChannelTransport } from "@oh-just-another/network";
+
+const doc = new Y.Doc();
+const sceneDoc = new SceneDoc(doc);
+const awareness = new CollabAwareness(doc);
+
+const transport = new BroadcastChannelTransport("room-foo");
+const provider = new TransportProvider({ doc, transport, awareness: awareness.awareness });
+
+const unbindScene = bindEditor(editor, sceneDoc);
+const unbindPresence = bindAwareness(editor, awareness, {
+  user: { id: "me", name: "Alice", color: "#1a73e8" },
+});
+
+// teardown
+// unbindPresence(); unbindScene(); provider.destroy();
+// awareness.destroy(); transport.close(); doc.destroy();
+```
+
+### Transports
+
+Swap the transport for the topology you need: `BroadcastChannelTransport` for
+tabs on one machine, `WebSocketTransport` for cross-machine sessions via a relay.
+
+### Encryption (blind relay)
+
+`EncryptedTransport` (exported from `@oh-just-another/collab`) wraps any
+transport so the relay sees only ciphertext. Mint credentials with
+`generateRoomKey()` and keep the AES key in the URL fragment —
+which browsers never transmit — so the relay routes by `roomId` without ever
+seeing plaintext. The playground's collab demo does exactly this: `roomId` rides
+the WebSocket path, the key lives in `location.hash`, and every Yjs/awareness
+frame goes through `EncryptedTransport` (AES-GCM, random IV per frame).
+
+### Also available
+
+`@oh-just-another/collab` ships branch-and-merge (`BranchDoc`, three-way merge),
+CRDT-aware undo scoped to the local client (`CollabHistory`), and `@handle`
+mentions (`extractMentions`, `resolveMentions`, `notifyMention`).
+
+### Status
+
+The pattern above uses only shipped exports. A packaged, cloneable
+**Multiplayer starter template** (relay server plus client wiring as one repo)
+does not exist yet. Generic starters that mount `<Editor>` live in
+[`templates/`](https://github.com/oh-just-another/diagram/tree/master/templates).

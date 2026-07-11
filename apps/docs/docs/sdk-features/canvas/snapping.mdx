@@ -1,0 +1,43 @@
+---
+title: Snapping
+sidebar_position: 63
+---
+
+`@oh-just-another/scene` ships a pluggable snap engine. The `SnapEngine` runs a list of _contributors_ against a probe point and returns the best candidate within a threshold. Three built-in contributors cover the common cases: `gridSnapper`, `anchorSnapper`, and `outlineSnapper`.
+
+## Running the engine
+
+```ts
+import { SnapEngine, gridSnapper, anchorSnapper, outlineSnapper } from "@oh-just-another/scene";
+
+const engine = new SnapEngine([gridSnapper, anchorSnapper, outlineSnapper]);
+
+const result = engine.snap({
+  scene,
+  probe: { x: 103, y: 48 },
+  threshold: 8,
+  gesture: "draw-edge",
+});
+if (result.best) console.log(result.best.snapped, result.best.kind);
+```
+
+The `SnapContext` carries the `scene`, the `probe` point, a world-unit `threshold`, the current `gesture` (`"draw-edge"`, `"edit-edge-endpoint"`, `"move-shape"`, or `"draw-shape"`), and an optional `excludeElementIds` set (e.g. the shape being dragged). `snap` returns `{ best, all }`: every in-threshold `SnapCandidate` sorted by distance, with `best` the closest (or `null`). A candidate's `distance` is the squared distance from the probe.
+
+The anchor and outline snappers contribute only for edge gestures (`"draw-edge"`, `"edit-edge-endpoint"`); the grid snapper applies to all gestures.
+
+## Snap-to-grid configuration
+
+Grid snapping uses the fixed world-unit spacing from `resolveSnapSpacing()` (which returns `DEFAULT_GRID_SPACING`, 20). `gridSnapper` itself no-ops when the grid is hidden (`gridEnabled: false`). The separate `snapToGrid` viewport flag is a host-level opt-out read via `isSnapToGridEnabled` — `undefined` counts as enabled; the `Editor` in `@oh-just-another/state` snaps only when both `gridEnabled` and `isSnapToGridEnabled(viewport)` hold.
+
+```ts
+import { isSnapToGridEnabled, resolveSnapSpacing } from "@oh-just-another/scene";
+
+const on = isSnapToGridEnabled(scene.viewport);
+const spacing = resolveSnapSpacing();
+```
+
+The spacing default lives in the package's `constants.ts` (`DEFAULT_GRID_SPACING`), so hosts that want a different grid can tune it there.
+
+## Custom contributors
+
+A `SnapContributor` is an object with an `id` and a `contribute(ctx: SnapContext): readonly SnapCandidate[]` method. Add your own to the engine's list to snap to guides, rulers, or domain-specific geometry; the `"guideline"` candidate kind is reserved for alignment-guide contributors.

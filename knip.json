@@ -1,7 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignoreWorkspaces": ["apps/playground", "apps/e2e"],
+  "ignoreWorkspaces": ["apps/playground", "apps/e2e", "apps/docs"],
   "ignoreDependencies": ["@typescript-eslint/eslint-plugin", "@typescript-eslint/parser"],
+  "ignoreExportsUsedInFile": { "interface": true, "type": true },
+  "rules": { "duplicates": "off" },
   "workspaces": {
     "packages/*": {
       "entry": ["src/index.ts!"],
@@ -19,7 +21,7 @@
     "packages/headless": {
       "entry": ["src/index.ts!"],
       "project": ["src/**/*.{ts,tsx}"],
-      "ignoreDependencies": ["@resvg/resvg-js", "tinybench"]
+      "ignoreDependencies": ["@resvg/resvg-js"]
     },
     "apps/cli": {
       "entry": ["src/cli.ts", "src/index.ts"],

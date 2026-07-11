@@ -16,28 +16,30 @@ import { expect, test } from "@playwright/test";
  */
 
 test("persistence: created shape survives a hard reload", async ({ page }) => {
-  // Fresh storage for this test.
-  await page.context().clearCookies();
-  await page.addInitScript(() => {
-    localStorage.clear();
-  });
-
+  // Fresh storage for this test — cleared once, NOT via addInitScript
+  // (an init script re-runs on every navigation and would wipe the
+  // autosave during the reload this test is about).
   await page.goto("/");
+  await page.evaluate(() => {
+    window.localStorage.clear();
+  });
+  await page.reload();
   await page.waitForLoadState("networkidle");
 
-  // Create one rectangle: R, then Enter on the focused canvas.
-  await page
-    .locator("canvas")
-    .first()
-    .click({ position: { x: 120, y: 120 } });
+  // Create one rectangle: R, then Enter on the focused surface. Target the
+  // role="application" host, not a raw canvas (non-overlay layers are
+  // pointer-events:none), at a point clear of the UI chrome.
+  await page.getByRole("application").click({ position: { x: 300, y: 300 } });
   await page.keyboard.press("r");
   await page.keyboard.press("Enter");
-  // Wait a tick so the autosave's queueMicrotask has fired.
-  await page.waitForTimeout(150);
+  // The autosave is debounced — poll for the write instead of a fixed sleep.
+  await page.waitForFunction(
+    () => (window.localStorage.getItem("oh-just-another-diagram-scene-v2")?.length ?? 0) > 20,
+  );
 
-  // Read storage directly — autosave key from apps/demo/src/App.tsx.
+  // Read storage directly — autosave key from apps/playground/src/App.tsx.
   const stored = await page.evaluate(() =>
-    window.localStorage.getItem("oh-just-another-demo-scene-v2"),
+    window.localStorage.getItem("oh-just-another-diagram-scene-v2"),
   );
   expect(stored, "autosave should have written a scene").toBeTruthy();
   expect(stored!.length).toBeGreaterThan(20);
@@ -47,7 +49,7 @@ test("persistence: created shape survives a hard reload", async ({ page }) => {
 
   // Storage should still be there after reload.
   const afterReload = await page.evaluate(() =>
-    window.localStorage.getItem("oh-just-another-demo-scene-v2"),
+    window.localStorage.getItem("oh-just-another-diagram-scene-v2"),
   );
   expect(afterReload).toBe(stored);
 
@@ -55,10 +57,7 @@ test("persistence: created shape survives a hard reload", async ({ page }) => {
   // shapes — Tab + Enter inside the editor mode picks the first focusable
   // shape. This just checks a no-throw boot path; the assertion above
   // already proves persistence happened.
-  await page
-    .locator("canvas")
-    .first()
-    .click({ position: { x: 30, y: 30 } });
+  await page.getByRole("application").click({ position: { x: 300, y: 300 } });
   await page.keyboard.press("Tab");
   await expect(page.locator("body")).toBeVisible();
 });

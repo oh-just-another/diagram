@@ -23,6 +23,21 @@ const rect = (id: string, x: number, y: number): Element => ({
   height: 40,
 });
 
+const brush = (id: string, x: number, y: number): Element => ({
+  id: elementId(id),
+  layerId: DEFAULT_LAYER_ID,
+  type: "brush",
+  position: { x, y },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderBetween(null, null),
+  style: { stroke: "#000" },
+  points: [
+    { x: 0, y: 0, width: 2 },
+    { x: 40, y: 10, width: 2 },
+  ],
+});
+
 const sceneWith = (...els: Element[]): Scene => {
   let s = emptyScene();
   for (const e of els) s = addElement(s, e).scene;
@@ -120,5 +135,20 @@ describe("previewClickCreate (ghost of click-creates-element)", () => {
       initialScene: emptyScene(),
     });
     expect(editor.previewClickCreate(elementId("nope"), "right")).toBeNull();
+  });
+
+  it("returns null for a drawn line (brush strokes don't clone-create)", () => {
+    const editor = new Editor({
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: sceneWith(brush("line", 0, 0)),
+    });
+    // No ghost preview for a brush stroke's start dot.
+    expect(editor.previewClickCreate(elementId("line"), "right")).toBeNull();
+    // And clicking the dot creates nothing (no clone, no link).
+    const before = editor.scene.elements.size + editor.scene.links.size;
+    editor.createLinkedElementFromAnchor(elementId("line"), "right");
+    expect(editor.scene.elements.size + editor.scene.links.size).toBe(before);
   });
 });

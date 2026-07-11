@@ -1,12 +1,14 @@
 import { useEffect, useState, type CSSProperties, type ComponentType, type ReactNode } from "react";
 import {
   Circle,
+  Eraser,
   Frame,
   Hand,
   Image as ImageIcon,
   Lock,
   MousePointer2,
   PenLine,
+  Radio,
   Redo2,
   Slash,
   Square,
@@ -16,7 +18,7 @@ import {
 import type { Editor, Mode } from "@oh-just-another/state";
 import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
 import { useEditorSelector } from "./context.js";
-import { useDiagramOptional, useHistory, useMode } from "./hooks.js";
+import { useDiagramOptional, useHistory, useMode, useReadOnly } from "./hooks.js";
 import { TOOLBAR_SEPARATOR_HEIGHT } from "./constants.js";
 import { Tooltip } from "./tooltip.js";
 
@@ -42,6 +44,8 @@ const ACTION_ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: 
   "mode-text": Type,
   "mode-edge": Slash,
   "mode-brush": PenLine,
+  "mode-erase": Eraser,
+  "mode-laser": Radio,
   "mode-frame": Frame,
   "insert-image": ImageIcon,
   "tool-lock": Lock,
@@ -71,7 +75,10 @@ const ActionRefButton = ({ id }: { readonly id: string }) => {
   const Icon = action.iconId ? ACTION_ICONS[action.iconId] : undefined;
   const ctx = editor ? { editor } : null;
   const active = ctx ? (action.checked?.(ctx) ?? false) : false;
-  const enabled = ctx ? (action.predicate ? action.predicate(ctx) : true) : false;
+  // Read-only gate: creating / mutating actions (no `viewMode`) disable
+  // themselves in view mode, matching the registry's dispatch gate.
+  const viewGated = !!editor?.readOnly && action.viewMode !== true;
+  const enabled = ctx && !viewGated ? (action.predicate ? action.predicate(ctx) : true) : false;
   const matchers: readonly HotkeyMatcher[] =
     action.hotkey === undefined
       ? []
@@ -206,6 +213,8 @@ export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "action-ref", id: "mode-text" },
   { kind: "action-ref", id: "mode-edge" },
   { kind: "action-ref", id: "mode-brush" },
+  { kind: "action-ref", id: "mode-erase" },
+  { kind: "action-ref", id: "mode-laser" },
   { kind: "action-ref", id: "mode-frame" },
   {
     kind: "action",
@@ -239,6 +248,8 @@ export const DEFAULT_VERTICAL_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "action-ref", id: "mode-text" },
   { kind: "action-ref", id: "mode-edge" },
   { kind: "action-ref", id: "mode-brush" },
+  { kind: "action-ref", id: "mode-erase" },
+  { kind: "action-ref", id: "mode-laser" },
   { kind: "action-ref", id: "mode-frame" },
   {
     kind: "action",
@@ -273,6 +284,7 @@ export const Toolbar = ({
 }: ToolbarProps) => {
   const editor = useDiagramOptional();
   const mode = useMode();
+  const readOnly = useReadOnly();
   const { canUndo, canRedo, undo, redo } = useHistory();
   const vertical = orientation === "vertical";
 
@@ -291,11 +303,14 @@ export const Toolbar = ({
             return <ActionRefButton key={i} id={item.id} />;
           case "mode": {
             const active = mode === item.mode;
+            // Only select / hand are navigation-safe; every other mode
+            // creates, so it disables in read-only.
+            const navSafe = item.mode === "select" || item.mode === "hand";
             return (
               <ToolbarButton
                 key={i}
                 {...(item.title !== undefined ? { title: item.title } : {})}
-                disabled={!editor}
+                disabled={!editor || (readOnly && !navSafe)}
                 active={active}
                 onClick={() => editor?.setMode(item.mode)}
               >
@@ -308,7 +323,7 @@ export const Toolbar = ({
               <ToolbarButton
                 key={i}
                 {...(item.title !== undefined ? { title: item.title } : {})}
-                disabled={item.disabled ?? !editor}
+                disabled={item.disabled ?? (!editor || readOnly)}
                 active={item.active}
                 onClick={() => {
                   if (editor) item.onClick(editor);
@@ -319,13 +334,13 @@ export const Toolbar = ({
             );
           case "undo":
             return (
-              <ToolbarButton key={i} disabled={!canUndo} onClick={undo}>
+              <ToolbarButton key={i} disabled={!canUndo || readOnly} onClick={undo}>
                 {item.label ?? "Undo"}
               </ToolbarButton>
             );
           case "redo":
             return (
-              <ToolbarButton key={i} disabled={!canRedo} onClick={redo}>
+              <ToolbarButton key={i} disabled={!canRedo || readOnly} onClick={redo}>
                 {item.label ?? "Redo"}
               </ToolbarButton>
             );
@@ -357,9 +372,10 @@ const ToolLockButton = ({
 }) => {
   const editor = useDiagramOptional();
   const locked = useEditorSelector((e) => e.toolLocked, false);
+  const readOnly = useReadOnly();
   return (
     <ToolbarButton
-      disabled={!editor}
+      disabled={!editor || readOnly}
       title={title}
       active={locked}
       onClick={() => editor?.setToolLocked(!locked)}

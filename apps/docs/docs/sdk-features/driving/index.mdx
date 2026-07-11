@@ -1,0 +1,52 @@
+---
+title: Driver
+sidebar_position: 4
+---
+
+The editor is fully drivable from code. Pass a `ref` to `Editor` and you get an `EditorAPI` handle of curated verbs — plus `editor`, the full live engine, as a power-user escape hatch. The same handle a human drives through the UI is available to your code.
+
+## The curated handle
+
+`EditorAPI` exposes the common operations without reaching into internals. The handle is live the moment the editor mounts (`onReady`); `editor` is `null` before then, and `capabilities` is `null` until backend detection settles.
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+
+function Host() {
+  const ref = useRef<EditorAPI>(null);
+
+  const run = () => {
+    const api = ref.current;
+    if (!api) return;
+    api.setMode("draw-rect");
+    api.zoomToFit();
+    const scene = api.getScene();
+    // ...persist `scene`
+  };
+
+  return <Editor ref={ref} onReady={() => run()} />;
+}
+```
+
+`EditorAPI` covers scene (`getScene` / `loadScene`), mode (`getMode` / `setMode`), selection (`getSelection` / `setSelection`), history (`undo` / `redo`) and viewport (`zoomToFit`).
+
+## The escape hatch: EditorInstance
+
+Anything not on the curated handle is reachable through `editor` — the full `Editor` engine from `@oh-just-another/state`, re-exported as `EditorInstance`. It carries the imperative methods the chrome itself calls: `addElement`, `insertImage`, `deleteSelected`, `copySelected` / `cutSelected` / `paste`, `selectAll`, `zoomIn` / `zoomOut`, `clear`, and `subscribe` for change notifications.
+
+```tsx
+import type { EditorInstance } from "@oh-just-another/editor";
+
+function build(editor: EditorInstance) {
+  const unsubscribe = editor.subscribe(() => {
+    console.log("scene or selection changed", editor.scene, editor.selection);
+  });
+  editor.zoomToFit();
+  return unsubscribe;
+}
+```
+
+## Why this matters
+
+Because the engine is the single source of truth, programmatic control and human interaction stay in sync — a script that calls `setMode` or `addElement` produces exactly the same scene a click would. This is the foundation the AI-native direction builds on: an agent drives the editor through the very same `EditorAPI` / `EditorInstance` surface documented here — see [AI](./ai.mdx).

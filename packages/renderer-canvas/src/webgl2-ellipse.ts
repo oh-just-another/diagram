@@ -28,6 +28,15 @@ import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
  * `smoothstep(1+fwidth, 1-fwidth, r²)` gives sub-pixel AA at the
  * boundary independent of zoom.
  */
+
+/**
+ * Module-level scratch mat3 — same reuse pattern as the earcut / stroke
+ * scratch buffers in webgl2-target/webgl2-stroke. `uniformMatrix3fv`
+ * copies the values into GL state synchronously, so one shared buffer
+ * avoids a Float32Array allocation per ellipse fill.
+ */
+const scratchMat3 = new Float32Array(9);
+
 export class EllipsePipeline {
   private readonly program: WebGLProgram;
   private readonly vbo: WebGLBuffer;
@@ -94,18 +103,16 @@ export class EllipsePipeline {
     //   inWorld = transform · (scaleSq + (left, top))
     //   inClip  = pixel→clip(inWorld)
     const t = transform;
-    const mat = new Float32Array([
-      t.a * w * sx,
-      t.b * w * sy,
-      0,
-      t.c * h * sx,
-      t.d * h * sy,
-      0,
-      (t.a * left + t.c * top + t.e) * sx - 1,
-      (t.b * left + t.d * top + t.f) * sy + 1,
-      1,
-    ]);
-    gl.uniformMatrix3fv(this.uTransform, false, mat);
+    scratchMat3[0] = t.a * w * sx;
+    scratchMat3[1] = t.b * w * sy;
+    scratchMat3[2] = 0;
+    scratchMat3[3] = t.c * h * sx;
+    scratchMat3[4] = t.d * h * sy;
+    scratchMat3[5] = 0;
+    scratchMat3[6] = (t.a * left + t.c * top + t.e) * sx - 1;
+    scratchMat3[7] = (t.b * left + t.d * top + t.f) * sy + 1;
+    scratchMat3[8] = 1;
+    gl.uniformMatrix3fv(this.uTransform, false, scratchMat3);
     gl.uniform3f(this.uColor, color[0], color[1], color[2]);
     gl.uniform1f(this.uOpacity, opacity);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

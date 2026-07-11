@@ -1,0 +1,81 @@
+---
+title: AI
+sidebar_position: 1
+---
+
+The library is built so an agent can construct and drive diagrams through the **same** programmatic surface a human uses — no separate AI API, no parallel data model. An LLM that can call `addElement` or `setMode` produces exactly the scene a click would.
+
+## The design intent
+
+A diagram is just a `Scene` — a plain, serialisable data structure (see [the scene model](../shapes/model.mdx) and [Persistence](../data/persistence.mdx)). The editor engine is the single source of truth that mutates it. Because both are ordinary TypeScript values and functions, an agent operates the editor exactly like application code does: through `EditorAPI` and the underlying `EditorInstance`, or by building a `Scene` directly with `@oh-just-another/scene` operations.
+
+## Building a scene from code
+
+The scene operations are pure functions returning `{ scene, patch }`, so an agent can assemble a diagram with no editor mounted at all, then hand the result to the editor or serialise it.
+
+```ts
+import {
+  DEFAULT_LAYER_ID,
+  addElement,
+  emptyScene,
+  orderForTop,
+  type RectangleElement,
+} from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+import { stringifyScene } from "@oh-just-another/serialization";
+
+const box: RectangleElement = {
+  id: elementId("box-1"),
+  layerId: DEFAULT_LAYER_ID,
+  type: "rectangle",
+  position: { x: 40, y: 40 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderForTop([]),
+  style: { fill: "#e3f2fd" },
+  width: 160,
+  height: 80,
+};
+
+const { scene } = addElement(emptyScene(), box);
+// chain further addElement / addLink calls on `scene`...
+const json = stringifyScene(scene, 2);
+```
+
+## Driving a live editor
+
+When the editor is mounted, the agent drives it through the same handle described on the [Driver](./index.mdx) page — set the mode, mutate the scene, change the selection, fit the viewport:
+
+```ts
+import type { Element } from "@oh-just-another/scene";
+import type { EditorInstance } from "@oh-just-another/editor";
+
+function agentStep(editor: EditorInstance, element: Element) {
+  editor.addElement(element, { select: true });
+  editor.zoomToFit();
+}
+```
+
+## MCP server
+
+`@oh-just-another/mcp` packages this surface as an MCP (Model Context Protocol) server. An agent connected over stdio creates scenes, adds elements and links, queries a compact summary, and renders SVG/PNG — no code integration needed:
+
+```json
+{
+  "mcpServers": {
+    "oja": { "command": "npx", "args": ["-y", "@oh-just-another/mcp"] }
+  }
+}
+```
+
+Tools: `create_scene`, `load_scene`, `get_scene`, `add_elements`, `update_element`, `remove_elements`, `add_link`, `query_scene`, `export_svg`, `export_png`, `import_mermaid`, `get_scene_schema`. Element input is validated against the serialization schema; missing base fields (id, layer, position, rotation/scale, order — plus width/height for rectangle/ellipse/image) get defaults. See [LLM Docs](./llm-docs.mdx) for the schema and prompt patterns.
+
+## What's possible today
+
+- **Programmatic scene construction** via `@oh-just-another/scene` factories and operations.
+- **Driving a live editor** via `EditorAPI` / `EditorInstance`.
+- **MCP server** (`@oh-just-another/mcp`) — scene tools over stdio for any MCP client.
+- **Import from text formats** (Mermaid, dot, drawio) via `@oh-just-another/importers` — a natural bridge for LLM-generated diagram source.
+- **Serialise / deserialise** scenes for round-tripping through a model, plus a JSON Schema of the wire format (`sceneJsonSchema`).
+
+There is no built-in model client or prompt layer — you wire your agent of choice to these surfaces. The point is that the surface already exists and is the real one, not an afterthought. See [LLM Docs](./llm-docs.mdx) for pointing an agent at the API.

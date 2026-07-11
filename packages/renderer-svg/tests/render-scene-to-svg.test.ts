@@ -67,6 +67,58 @@ describe("renderSceneToSvg", () => {
     expect(svg).toContain('viewBox="0 0 400 200"');
   });
 
+  const textEl = (over: Partial<Element>): Element =>
+    ({
+      id: elementId("txt"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "text",
+      position: { x: 10, y: 20 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: { fill: "#000" },
+      text: "Hello world",
+      fontFamily: "sans-serif",
+      fontSize: 16,
+      ...over,
+    }) as Element;
+
+  it("renders a plain text element as one <text> element", () => {
+    let scene = sceneOf(200, 100);
+    ({ scene } = addElement(scene, textEl({})));
+    const svg = renderSceneToSvg(scene);
+    const count = (svg.match(/<text /g) ?? []).length;
+    expect(count).toBe(1);
+    expect(svg).toContain(">Hello world</text>");
+  });
+
+  it("renders styled text runs as per-run <text> segments", () => {
+    let scene = sceneOf(200, 100);
+    ({ scene } = addElement(
+      scene,
+      textEl({
+        runs: [
+          { text: "Hello", style: { fontWeight: "bold", fill: "#f00" } },
+          { text: " world", style: { fontStyle: "italic" } },
+        ],
+      }),
+    ));
+    const svg = renderSceneToSvg(scene);
+    const texts = svg.match(/<text [^>]*>[^<]*<\/text>/g) ?? [];
+    expect(texts.length).toBe(2);
+    // Bold red "Hello" segment.
+    const hello = texts.find((t) => t.includes(">Hello</text>"));
+    expect(hello).toBeDefined();
+    expect(hello).toContain('font-weight="bold"');
+    expect(hello).toContain('fill="#f00"');
+    // Italic default-colour " world" segment.
+    const world = texts.find((t) => t.includes("world"));
+    expect(world).toBeDefined();
+    expect(world).toContain('font-style="italic"');
+    expect(world).toContain('fill="#000"');
+    expect(world).not.toContain('font-weight="bold"');
+  });
+
   it("skips hidden layers", () => {
     let scene = sceneOf(200, 100);
     const hidden = layerId("hidden");

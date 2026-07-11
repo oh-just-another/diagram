@@ -71,6 +71,7 @@ export class ActionRegistry {
   dispatch(id: string, ctx: ActionContext): boolean {
     const action = this.entries.get(id);
     if (!action) return false;
+    if (isReadOnlyBlocked(action, ctx)) return false;
     if (action.predicate && !action.predicate(ctx)) return false;
     action.perform(ctx);
     return true;
@@ -94,6 +95,7 @@ export class ActionRegistry {
     for (const id of this.order) {
       const action = this.entries.get(id);
       if (!action) continue;
+      if (isReadOnlyBlocked(action, fullCtx)) continue;
       // 2. Custom keyTest escape hatch (before declarative matchers).
       if (action.keyTest?.(event, fullCtx)) {
         if (action.predicate && !action.predicate(fullCtx)) continue;
@@ -135,6 +137,7 @@ export class ActionRegistry {
     for (const id of this.order) {
       const action = this.entries.get(id);
       if (!action?.sequence || action.sequence.length === 0) continue;
+      if (isReadOnlyBlocked(action, ctx)) continue;
       const seq = action.sequence;
       const tail = this.seqBuffer.slice(-seq.length);
       if (tail.length !== seq.length) continue;
@@ -147,6 +150,15 @@ export class ActionRegistry {
     return false;
   }
 }
+
+/**
+ * Read-only gate: in view mode only actions flagged `viewMode: true`
+ * (zoom / pan / select / grid / the read-only toggle itself, plus
+ * non-mutating file ops like Save / Export) may run. Everything that
+ * creates, edits or deletes is short-circuited before its `perform`.
+ */
+const isReadOnlyBlocked = (action: Action, ctx: ActionContext): boolean =>
+  ctx.editor.readOnly && action.viewMode !== true;
 
 const matchesHotkey = (event: KeyboardEvent, m: HotkeyMatcher): boolean => {
   if (m.key !== undefined && !matchKeyOrCode(event, m.key)) return false;

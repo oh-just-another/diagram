@@ -118,6 +118,28 @@ describe("renderOverlay", () => {
     expect(rects.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("in crop mode draws corner brackets, not round handles, and suppresses group handles", () => {
+    const shape = rect("r1", 0, 0, 40, 40);
+    const scene = sceneWith(shape);
+    const { target, calls } = makeRecorder();
+    // An image selection reports `groupBounds` (aspect-locked). In crop mode
+    // (cropFrame present) neither the per-shape nor the group-bounds resize
+    // nubs (`ellipse`) may show; the crop corner brackets are strokes.
+    renderOverlay(scene, new Set([shape.id]), target, {
+      cropFrame: [
+        { x: 0, y: 0 },
+        { x: 40, y: 0 },
+        { x: 40, y: 40 },
+        { x: 0, y: 40 },
+      ],
+      groupBounds: { x: 0, y: 0, width: 40, height: 40 },
+    });
+    // No round handle dots anywhere in crop mode.
+    expect(calls.filter((c) => c.method === "ellipse").length).toBe(0);
+    // The brackets are drawn (stroked polylines).
+    expect(calls.filter((c) => c.method === "stroke").length).toBeGreaterThanOrEqual(4);
+  });
+
   it("draws resize handles for a single resizable selection", () => {
     const shape = rect("r1", 0, 0, 50, 50);
     const scene = sceneWith(shape);
@@ -128,6 +150,27 @@ describe("renderOverlay", () => {
     // (arcs/lines, no ellipse), so it doesn't add to the count.
     const ellipses = calls.filter((c) => c.method === "ellipse");
     expect(ellipses.length).toBe(4);
+  });
+
+  it("read-only: keeps the selection outline but draws no resize/rotate handles", () => {
+    const shape = rect("r1", 0, 0, 50, 50);
+    const scene = sceneWith(shape);
+    const { target, calls } = makeRecorder();
+    renderOverlay(scene, new Set([shape.id]), target, { readOnly: true });
+    // Outline (rect) still painted — the viewer sees what's selected...
+    expect(calls.filter((c) => c.method === "rect").length).toBeGreaterThanOrEqual(1);
+    // ...but no grab-handle dots (ellipses) to resize/rotate with.
+    expect(calls.filter((c) => c.method === "ellipse").length).toBe(0);
+  });
+
+  it("read-only: group bounds paint an outline but no combined handles", () => {
+    const { target, calls } = makeRecorder();
+    renderOverlay(emptyScene(), emptySelection, target, {
+      groupBounds: { x: 0, y: 0, width: 100, height: 80 },
+      readOnly: true,
+    });
+    expect(calls.filter((c) => c.method === "rect").length).toBeGreaterThanOrEqual(1);
+    expect(calls.filter((c) => c.method === "ellipse").length).toBe(0);
   });
 
   it("draws no per-shape handles for multi-selection", () => {
@@ -474,11 +517,13 @@ describe("renderOverlay", () => {
           { x: 20, y: 5, width: 4 },
         ],
         fill: "#ff0000",
+        opacity: 1,
       },
     });
-    // Should call fill at least twice (quad-strips between pts)
+    // One closed outline polygon, filled once (matches the committed stroke).
     const fills = calls.filter((c) => c.method === "fill");
-    expect(fills.length).toBeGreaterThanOrEqual(2);
+    expect(fills.length).toBe(1);
+    expect(calls.filter((c) => c.method === "lineTo").length).toBeGreaterThan(3);
   });
 
   it("draws a brush preview as a single dot when only one point", () => {
@@ -488,6 +533,7 @@ describe("renderOverlay", () => {
         origin: { x: 5, y: 5 },
         points: [{ x: 0, y: 0, width: 8 }],
         fill: "#0000ff",
+        opacity: 1,
       },
     });
     // Single point → single ellipse
@@ -498,7 +544,7 @@ describe("renderOverlay", () => {
   it("skips brush preview drawing when points array is empty", () => {
     const { target, calls } = makeRecorder();
     renderOverlay(emptyScene(), emptySelection, target, {
-      brushPreview: { origin: { x: 0, y: 0 }, points: [], fill: "#abcdef" },
+      brushPreview: { origin: { x: 0, y: 0 }, points: [], fill: "#abcdef", opacity: 1 },
     });
     // No fill calls using our unique fill color since points is empty
     const brushFills = calls.filter((c) => c.method === "setFill" && c.args[0] === "#abcdef");

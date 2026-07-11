@@ -48,6 +48,17 @@ export type AnchorRef =
    */
   | { readonly kind: "edge"; readonly index: number; readonly t: number };
 
+/**
+ * Runtime guard for `AnchorRef` values carried through untyped channels
+ * (e.g. snap-candidate `metadata`). Checks the discriminant only — the
+ * variants' payloads are trusted once the kind matches.
+ */
+export const isAnchorRef = (value: unknown): value is AnchorRef => {
+  if (typeof value !== "object" || value === null) return false;
+  const kind = (value as { readonly kind?: unknown }).kind;
+  return kind === "named" || kind === "ratio" || kind === "absolute" || kind === "edge";
+};
+
 export type LinkEndpoint =
   | { readonly kind: "point"; readonly position: Vec2 }
   | { readonly kind: "anchor"; readonly elementId: ElementId; readonly anchor: AnchorRef }
@@ -70,6 +81,14 @@ export type LinkEndpoint =
    * on a dot yields `anchor` (fixed) instead.
    */
   | { readonly kind: "floating"; readonly elementId: ElementId };
+
+/**
+ * The element an endpoint is attached to, or `undefined` for a free
+ * `point` endpoint (which pins to a world position, not a shape). Lets
+ * callers derive link adjacency without switching on the endpoint kind.
+ */
+export const endpointElementId = (ep: LinkEndpoint): ElementId | undefined =>
+  ep.kind === "point" ? undefined : ep.elementId;
 
 /**
  * How to draw the line between an edge's two endpoints.

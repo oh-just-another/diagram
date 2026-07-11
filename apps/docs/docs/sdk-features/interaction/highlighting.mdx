@@ -1,0 +1,17 @@
+---
+title: 🚧 Highlighting
+status: draft
+sidebar_position: 36
+---
+
+There is no general-purpose "highlight this shape" API (a setter that paints an arbitrary accent ring around any element on demand). What the editor does have is a set of contextual hover highlights, drawn by the overlay during specific interactions:
+
+- **Container drop target** — while dragging a shape over a container, the hovered container's drop-zone is drawn as a dashed accent rectangle (`Editor.containerHover`).
+- **Link attachment** — in draw-edge mode the element under the cursor is highlighted, and its anchor dots grow as the pointer nears them, so you can see where a connector will attach (`Editor.hoveredLinkTarget`).
+- **Annotation focus** — the focused annotation thread's pin gets an accent ring (`Editor.setSelectedAnnotation`).
+
+These are view-only overlay states, recomputed each frame from the current gesture; they are never recorded in history or persisted. The persistent selection halo around selected shapes and links is separate — see Selection.
+
+For accessibility, the editor also emits short live-region strings (for example "Selected Rectangle") via `Editor.onAnnounce`, which a host pipes into an `aria-live` region.
+
+Planned — not yet available: a programmatic highlight API to mark arbitrary shapes (for search results, validation errors, or guided tours) with a custom colour, independent of selection and hover. Today, build this with the renderer's overlay extension points and your own state.

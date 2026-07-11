@@ -1,0 +1,65 @@
+---
+title: Self-hosting the relay
+sidebar_position: 18
+---
+
+Multiplayer needs one server: a **blind WebSocket relay** that fans out
+end-to-end-encrypted Yjs updates between the peers of a room. It never sees
+scene content — the AES-GCM key lives in the URL fragment
+(`#room=<roomId>,<key>`), which browsers do not send to servers.
+
+The reference relay is the `diagram-collab` repository — ~150 lines of
+Node + `ws`, no database, nothing written to disk.
+
+## Run it
+
+```bash
+git clone https://github.com/oh-just-another/diagram-collab.git
+cd diagram-collab
+pnpm install
+pnpm dev            # ws://0.0.0.0:1234, healthcheck GET /healthz
+```
+
+Production build:
+
+```bash
+pnpm build && pnpm start          # or: RELAY_PORT=8080 pnpm start
+```
+
+Docker:
+
+```bash
+docker build -t diagram-collab .
+docker run -p 1234:1234 diagram-collab
+```
+
+Terminate TLS in front of it (nginx / Caddy / a cloud load balancer) so
+clients connect over `wss://`.
+
+## Point the client at your relay
+
+The playground resolves the relay endpoint in this order:
+
+1. `VITE_RELAY_URL` env override — e.g. `wss://relay.example.com`.
+2. Same-origin `/relay` path (proxied by Vite in dev, your reverse proxy in
+   production).
+
+In your own host app the relay URL is wherever you construct the transport:
+
+```ts
+import { WebSocketTransport } from "@oh-just-another/network";
+
+const transport = new WebSocketTransport(`wss://relay.example.com/${roomId}`);
+```
+
+## What the relay can and cannot see
+
+| Visible to the relay            | Never leaves the client            |
+| ------------------------------- | ---------------------------------- |
+| Room id (WS pathname)           | Encryption key (URL fragment)      |
+| Encrypted blob sizes and timing | Scene content, text, images        |
+| Peer connection count           | User names in presence (encrypted) |
+
+No account system, no persistence: when the last peer leaves, the room is
+gone. Persistence and access control belong to your host app (e.g. store
+scene snapshots via `@oh-just-another/serialization`).

@@ -1,0 +1,35 @@
+{
+  "format": "oh-just-another/scene",
+  "version": 2,
+  "elements": [
+    {
+      "layerId": "default",
+      "order": "a0",
+      "id": "h",
+      "type": "polygon",
+      "position": { "x": 110, "y": 110 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#794bc4", "stroke": "#3d2668", "strokeWidth": 4, "dashArray": [12, 8] },
+      "points": [
+        { "x": 0, "y": -80 },
+        { "x": 69, "y": -40 },
+        { "x": 69, "y": 40 },
+        { "x": 0, "y": 80 },
+        { "x": -69, "y": 40 },
+        { "x": -69, "y": -40 }
+      ]
+    }
+  ],
+  "links": [],
+  "layers": [
+    { "id": "default", "name": "Default", "visible": true, "locked": false, "order": "a0" }
+  ],
+  "viewport": {
+    "pan": { "x": 0, "y": 0 },
+    "zoom": 1,
+    "rotation": 0,
+    "size": { "width": 220, "height": 220 },
+    "gridEnabled": false
+  }
+}

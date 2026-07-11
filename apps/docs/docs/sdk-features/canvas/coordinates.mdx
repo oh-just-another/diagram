@@ -1,0 +1,43 @@
+---
+title: Coordinates
+sidebar_position: 12
+---
+
+The editor works in two coordinate spaces: **world** (the scene's own units) and **screen** (canvas pixels). The `Viewport` defines the camera that maps between them via `pan`, `zoom`, and `rotation`.
+
+## World ↔ screen transforms
+
+`getWorldToScreen` builds the affine `Transform` from the viewport; `getScreenToWorld` is its inverse. Apply either to a point with `matrix.applyToPoint` from `@oh-just-another/math`.
+
+```ts
+import { getWorldToScreen, getScreenToWorld } from "@oh-just-another/scene";
+import { matrix } from "@oh-just-another/math";
+
+const toScreen = getWorldToScreen(scene.viewport);
+const screenPt = matrix.applyToPoint(toScreen, { x: 100, y: 50 });
+
+const toWorld = getScreenToWorld(scene.viewport);
+const worldPt = matrix.applyToPoint(toWorld, { x: 640, y: 360 });
+```
+
+## Moving the camera
+
+`panBy` shifts the camera by a screen-space delta; the delta is divided by `zoom`, so one screen pixel moves the world by `1 / zoom` world units. `zoomAt` zooms multiplicatively around a world anchor that stays under the same pixel. `resize` updates the viewport's pixel size.
+
+```ts
+import { panBy, zoomAt, resize } from "@oh-just-another/scene";
+
+let vp = panBy(scene.viewport, { x: 20, y: 0 });
+vp = zoomAt(vp, 1.2, { x: 100, y: 50 }); // zoom in 20% around (100, 50)
+vp = resize(vp, 1280, 720);
+```
+
+## The default viewport
+
+`DEFAULT_VIEWPORT` starts at `pan: { x: 0, y: 0 }`, `zoom: 1`, `rotation: 0`, with the grid off. A new `emptyScene()` uses it. Commit a changed viewport back to the scene with `setViewport`.
+
+```ts
+import { setViewport } from "@oh-just-another/scene";
+
+const { scene: moved } = setViewport(scene, vp);
+```

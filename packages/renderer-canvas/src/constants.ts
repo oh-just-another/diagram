@@ -76,6 +76,34 @@ export const OFFSCREEN_IMAGE_CACHE_CAP = 64;
 export const WEBGL2_IMAGE_TEXTURE_CACHE_CAP = 64;
 
 /**
+ * Cap applied to `window.devicePixelRatio` when sizing canvas bitmaps
+ * (`setupHiDpi`, `createLayeredSurface`). Mobile / hi-end displays report
+ * DPR 3–4; rendering the full ratio quadruples-to-sixteenfolds the pixel
+ * fill cost per layer for visual gains that are imperceptible in a
+ * diagram editor (thin strokes, flat fills). Capping at 2 keeps bitmap
+ * memory and raster time bounded — text and hairlines render very
+ * slightly softer on DPR-3 devices. Range: 1–4; hosts needing exact
+ * native sharpness can raise it via `CreateLayeredSurfaceOptions.maxDpr`
+ * or by passing an explicit `dpr` to `setupHiDpi`.
+ */
+export const MAX_DEVICE_PIXEL_RATIO = 2;
+
+/**
+ * LRU cap on the Loop-Blinn triangulation cache in `webgl2-curve.ts`.
+ * Keyed by curve control-point content (renderers emit paths in
+ * element-local coordinates, so identical geometry — e.g. every
+ * same-size rounded rect — shares one entry, and pan / zoom / drag
+ * never invalidate it: the transform is applied in the vertex shader).
+ *
+ * Each entry stores the packed positions + uvs plus the key floats —
+ * a rounded rect (4 triangles) is ≈ 500 bytes, so the cap bounds the
+ * cache at a few MB worst-case. On overflow the least-recently-drawn
+ * geometry is evicted and re-triangulated on next draw (cheap, no GPU
+ * resources involved). Range: 512–16384.
+ */
+export const WEBGL2_CURVE_TRIANGULATION_CACHE_CAP = 4096;
+
+/**
  * Lower bound on the polygon approximation of an ellipse. Keeps small
  * ellipses from collapsing to a coarse hexagon at far zoom. Range: 12–48.
  */
@@ -87,3 +115,28 @@ export const ELLIPSE_MIN_SEGMENTS = 24;
  * improvement. Range: 256–1024.
  */
 export const ELLIPSE_MAX_SEGMENTS = 512;
+
+/**
+ * Initial per-target capacity, in instances, of the sharp-rect instance
+ * batcher (`webgl2-rect-batch.ts` `RectBatch`). One frame's worth of
+ * same-run rect fills packs into this without a grow; capacity doubles
+ * on demand and never shrinks. 256 covers typical grid / background
+ * scenes at ~10 KB (40 bytes/instance). Range: 64–4096.
+ */
+export const INITIAL_RECT_BATCH_INSTANCES = 256;
+
+/**
+ * LRU cap on the per-atlas MSDF run-width memo (`webgl2-msdf-text.ts`).
+ * The em-width of a text run (Σ advance/unitsPerEm) is immutable once its
+ * glyphs are cached, so it is memoized keyed by `(fontId, text)`: a
+ * repeat `measureText`, or a `measureText` after the same string was
+ * drawn, returns in O(1) instead of re-walking the codepoints. Caret
+ * positioning and selection geometry call `measureText` on the same
+ * label many times per frame, so the hit rate is high.
+ *
+ * Each entry is a single number keyed by the run string — cheap. 1024
+ * covers a large editing session's distinct labels with margin; on
+ * overflow the least-recently-measured run is evicted and re-walked on
+ * next measure (cheap, no GPU resources). Range: 256–8192.
+ */
+export const WEBGL2_MSDF_RUN_WIDTH_CACHE_CAP = 1024;

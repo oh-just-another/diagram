@@ -44,6 +44,12 @@ export interface DiagramRootProps {
   readonly initialScene: Scene;
   readonly initialMode?: Mode;
   readonly children: ReactNode;
+  /**
+   * Start (and keep) the editor in read-only / view mode. Pointer edits
+   * are gated and creation chrome disables itself; pan / zoom / select
+   * stay live. Changing this prop after mount flips the live editor.
+   */
+  readonly readOnly?: boolean;
   /** Called once the editor is ready (after a `<DiagramSurface>` mounts). */
   readonly onReady?: (editor: Editor) => void;
   /** Skip the implicit `installBuiltinRenderers()` call. */
@@ -92,6 +98,7 @@ export const DiagramRoot = ({
   workerFactory,
   textShaper,
   rasterizer,
+  readOnly = false,
 }: DiagramRootProps) => {
   const [editor, setEditor] = useState<Editor | null>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -111,10 +118,12 @@ export const DiagramRoot = ({
   const workerFactoryRef = useRef<(() => Worker) | undefined>(workerFactory);
   const textShaperRef = useRef<TextShaper | undefined>(textShaper);
   const rasterizerRef = useRef<Rasterizer | undefined>(rasterizer);
+  const readOnlyRef = useRef<boolean>(readOnly);
   rendererRef.current = renderer;
   workerFactoryRef.current = workerFactory;
   textShaperRef.current = textShaper;
   rasterizerRef.current = rasterizer;
+  readOnlyRef.current = readOnly;
 
   const mountSurface = useCallback((host: HTMLElement) => {
     if (!skipInstallRenderers) installBuiltinRenderers();
@@ -160,6 +169,7 @@ export const DiagramRoot = ({
     };
     const e = new Editor(opts);
     e.setViewportSize(width, height);
+    e.setReadOnly(readOnlyRef.current);
 
     surfaceRef.current = surface;
     editorRef.current = e;
@@ -251,6 +261,13 @@ export const DiagramRoot = ({
     teardownSurface();
     mountSurface(host);
   }, [renderer, mountSurface, teardownSurface]);
+
+  // Flip the live editor when the `readOnly` prop changes after mount.
+  // The initial value is applied in `mountSurface`; this only handles
+  // runtime toggles from the host.
+  useEffect(() => {
+    editor?.setReadOnly(readOnly);
+  }, [editor, readOnly]);
 
   // Make sure the editor is disposed if `<DiagramRoot>` unmounts even if
   // no surface registered an unmount first (defensive).

@@ -9,6 +9,8 @@ export type {
 
 export { serializeScene, stringifyScene } from "./serialize.js";
 
+export { sceneJsonSchema } from "./json-schema.js";
+
 export {
   deserializeScene,
   parseScene,

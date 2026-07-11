@@ -126,6 +126,36 @@ bundlers that don't (esbuild, Parcel, no bundler), either:
 
 The worker is an optimisation; the editor renders fine without it.
 
+## Custom shapes
+
+`defineShape` registers a custom element type in one call — bounds (spatial
+index / hit-test / culling), rendering (all backends), and optional
+interaction hooks. Serialization is automatic (unknown types pass through).
+
+```ts
+import { defineShape, type ElementBase } from "@oh-just-another/editor";
+
+interface Sticker extends ElementBase {
+  readonly type: "sticker";
+  readonly size: number;
+}
+
+defineShape<Sticker>({
+  type: "sticker",
+  bounds: (s) => ({ x: 0, y: 0, width: s.size, height: s.size }),
+  render: (s, target) => {
+    target.setFill(s.style.fill ?? "#facc15");
+    target.beginPath();
+    target.rect(0, 0, s.size, s.size);
+    target.fill();
+  },
+  // Optional: interactiveHitTest, rotateAnchor.
+});
+```
+
+Returns `{ dispose() }` — currently a no-op (registries are append-only),
+reserved for future deregistration.
+
 ## Plug-in points
 
 These registries are re-exported from this package, so the editor is the single
@@ -135,6 +165,8 @@ import for extending the kernel without forking:
 import { registerBounder, registerElementRenderer } from "@oh-just-another/editor";
 ```
 
+- `defineShape` — one-call custom shape (wraps the two registries below plus
+  `registerInteractiveHitTester` / `registerRotateAnchor`).
 - `registerBounder` (AABB) + `registerElementRenderer` (draw) — custom element types.
 - `registerMigration` — wire-format migrations.
 - `registerLayoutKind` / `registerAnimationAdapter` — or pass via the

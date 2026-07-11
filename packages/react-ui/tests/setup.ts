@@ -37,6 +37,24 @@ Object.defineProperty(HTMLElement.prototype, "hasPointerCapture", {
   writable: true,
 });
 
+// jsdom ships no matchMedia; theme-aware components (colour pickers) call it.
+// Stub a never-matching query so `prefers-color-scheme` resolves to light.
+if (typeof globalThis.matchMedia === "undefined") {
+  Object.defineProperty(globalThis, "matchMedia", {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: (): undefined => undefined,
+      removeEventListener: (): undefined => undefined,
+      addListener: (): undefined => undefined,
+      removeListener: (): undefined => undefined,
+      dispatchEvent: (): boolean => false,
+    }),
+  });
+}
+
 // jsdom ResizeObserver is absent — stub with a no-op.
 if (typeof globalThis.ResizeObserver === "undefined") {
   class StubResizeObserver {

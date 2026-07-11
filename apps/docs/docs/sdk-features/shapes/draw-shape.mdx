@@ -1,0 +1,16 @@
+---
+title: Draw Shape
+sidebar_position: 20
+---
+
+Shapes can be created interactively by switching the editor's mode, or programmatically with the `addElement` operation. The drawing modes are `draw-rect` and `draw-ellipse` (rubber-band creation), `draw-text` (click to place a text shape), `draw-edge` (connect two shapes), `draw-frame`, and `brush` (freehand variable-width strokes).
+
+```ts
+import { Editor } from "@oh-just-another/state";
+import { addElement } from "@oh-just-another/scene";
+
+declare const editor: Editor;
+editor.setMode("draw-rect");
+```
+
+`Mode` from `@oh-just-another/state` enumerates the full set of tools. For non-interactive creation, call the pure `addElement` operation from `@oh-just-another/scene`, which returns the next scene plus a patch.

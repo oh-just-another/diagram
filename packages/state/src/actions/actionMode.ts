@@ -8,6 +8,7 @@ export const actionModeSelect: Action = {
   id: "mode-select",
   label: "Select tool",
   category: "mode",
+  viewMode: true,
   hotkey: { key: "v" },
   iconId: "mode-select",
   uiKind: "toggle",
@@ -21,6 +22,7 @@ export const actionModeHand: Action = {
   id: "mode-hand",
   label: "Hand tool",
   category: "mode",
+  viewMode: true,
   hotkey: { key: "h" },
   iconId: "mode-hand",
   uiKind: "toggle",
@@ -96,6 +98,34 @@ export const actionModeBrush: Action = {
   },
 };
 
+export const actionModeErase: Action = {
+  id: "mode-erase",
+  label: "Eraser tool",
+  category: "mode",
+  hotkey: { key: "e" },
+  iconId: "mode-erase",
+  uiKind: "toggle",
+  checked: ({ editor }) => editor.mode === "erase",
+  perform: ({ editor }) => {
+    editor.setMode("erase");
+  },
+};
+
+export const actionModeLaser: Action = {
+  id: "mode-laser",
+  label: "Laser pointer",
+  category: "mode",
+  // Laser is presentation-only (no scene mutation) → available in read-only.
+  viewMode: true,
+  hotkey: { key: "k" },
+  iconId: "mode-laser",
+  uiKind: "toggle",
+  checked: ({ editor }) => editor.mode === "laser",
+  perform: ({ editor }) => {
+    editor.setMode("laser");
+  },
+};
+
 export const actionModeFrame: Action = {
   id: "mode-frame",
   label: "Frame tool",
@@ -124,10 +154,34 @@ export const actionToggleToolLock: Action = {
   },
 };
 
+export const actionCommitCrop: Action = {
+  id: "commit-image-crop",
+  label: "Apply crop",
+  category: "edit",
+  hotkey: { key: "Enter" },
+  predicate: ({ editor }) => editor.mode === "crop",
+  perform: ({ editor }) => {
+    editor.commitImageCrop();
+  },
+};
+
+export const actionCancelCrop: Action = {
+  id: "cancel-image-crop",
+  label: "Cancel crop",
+  category: "edit",
+  viewMode: true,
+  hotkey: { key: "Escape" },
+  predicate: ({ editor }) => editor.mode === "crop",
+  perform: ({ editor }) => {
+    editor.cancelImageCrop();
+  },
+};
+
 export const actionCancel: Action = {
   id: "cancel",
   label: "Cancel / clear selection",
   category: "edit",
+  viewMode: true,
   hotkey: { key: "Escape" },
   perform: ({ editor }) => {
     editor.cancelInteraction();
@@ -142,7 +196,11 @@ export const modeActions: readonly Action[] = [
   actionModeText,
   actionModeLink,
   actionModeBrush,
+  actionModeErase,
+  actionModeLaser,
   actionModeFrame,
   actionToggleToolLock,
+  actionCommitCrop,
+  actionCancelCrop,
   actionCancel,
 ];

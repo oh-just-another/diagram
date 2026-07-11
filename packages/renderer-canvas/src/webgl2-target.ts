@@ -18,12 +18,26 @@ import {
   WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
   WEBGL2_TEXT_BITMAP_CACHE_CAP,
 } from "./constants.js";
-import { MsdfTextPipeline } from "./webgl2-msdf-text.js";
+import { MsdfTextPipeline, measureGlyphRunEm } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
 import { EllipsePipeline } from "./webgl2-ellipse.js";
 import { isDrawableImageSource, warnSkippedImage } from "./image-source.js";
 import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
+import { RectBatch, RectInstancePipeline } from "./webgl2-rect-batch.js";
+
+/** Construction options for {@link WebGL2Target}. */
+export interface WebGL2TargetOptions {
+  /**
+   * Keep the drawing buffer contents across composites. Defaults to
+   * `true`, which the interactive editor requires — it clears + redraws
+   * only the dirty rect each frame and expects the rest of the previous
+   * frame to persist. Set `false` only when the host redraws the full
+   * frame every time (a Safari/iOS composite win). Does not affect PNG
+   * export / screenshots — those use a separate offscreen Canvas2D target.
+   */
+  readonly preserveDrawingBuffer?: boolean;
+}
 
 /**
  * WebGL2 RenderTarget. Implements clear, transform/state stack, path
@@ -80,10 +94,28 @@ export class WebGL2Target implements RenderTarget {
   private textAlign: TextAlign = "left";
   private textBaseline: TextBaseline = "top";
   /**
-   * Polyline path being assembled by moveTo / lineTo. Cleared on
-   * `beginPath()`; pushed to GPU on `stroke()`.
+   * Polyline path being assembled by moveTo / lineTo, as a flat
+   * growable `[x0, y0, x1, y1, ...]` buffer with a point-count cursor —
+   * no per-vertex `{x, y}` object churn on the hot path-building path.
+   * Cleared on `beginPath()`; consumed by `fill()` / `stroke()`.
+   * Per-instance (not module-level) so interleaved path building on two
+   * targets can't stomp each other. Capacity ratchets up, never shrinks.
    */
-  private currentPolyline: Vec2[] = [];
+  private pathXY = new Float64Array(INITIAL_PATH_CAPACITY * 2);
+  /** Number of (x, y) points currently in `pathXY`. */
+  private pathPts = 0;
+
+  /** Append one point to the flat path buffer, growing it if needed. */
+  private pushPathPoint(x: number, y: number): void {
+    if ((this.pathPts + 1) * 2 > this.pathXY.length) {
+      const next = new Float64Array(this.pathXY.length * 2);
+      next.set(this.pathXY);
+      this.pathXY = next;
+    }
+    this.pathXY[this.pathPts * 2] = x;
+    this.pathXY[this.pathPts * 2 + 1] = y;
+    this.pathPts++;
+  }
   /**
    * Curve segments collected since the last `beginPath()`. Quadratic
    * and cubic Bezier `*CurveTo` calls push here in addition to pushing
@@ -112,24 +144,53 @@ export class WebGL2Target implements RenderTarget {
    */
   private readonly stack: GfxState[] = [];
 
-  constructor(canvas: HTMLCanvasElement | OffscreenCanvas, width: number, height: number) {
-    // `preserveDrawingBuffer: true` is required for an editor surface:
-    // the spec permits the browser to clear the drawing buffer after
-    // each composite when this flag is false, which makes shapes
-    // disappear in the steady state. Trading a small copy at composite
-    // time for visual correctness is the right call.
+  /**
+   * Sharp-rect fill batcher — coalesces consecutive axis-aligned
+   * `rect()` + `fill()` calls into one `drawArraysInstanced` (B19). Any
+   * non-batchable draw (`stroke`, ellipse / polygon / curve fill, image,
+   * text) and every surface op (`clear`, `resize`, frame `present`)
+   * drain it first via {@link flushRectBatch}, so submission order —
+   * hence z-order — is preserved. The GL pipeline is created lazily on
+   * the first flush; a scene with no sharp rects never allocates it.
+   */
+  private readonly rectBatch = new RectBatch();
+  private rectPipeline: RectInstancePipeline | null = null;
+
+  constructor(
+    canvas: HTMLCanvasElement | OffscreenCanvas,
+    width: number,
+    height: number,
+    options: WebGL2TargetOptions = {},
+  ) {
+    // `preserveDrawingBuffer` keeps the drawing buffer across composites.
+    // It defaults to `true` because the interactive editor renders
+    // incrementally: `renderScene` clears + redraws only the dirty rect
+    // each frame (see the dirty-rect logic in renderer-core /
+    // render-orchestrator) and relies on the rest of the previous frame
+    // surviving. When this flag is `false` the spec permits the browser
+    // to wipe the buffer after each composite, so everything outside the
+    // dirty rect disappears in the steady state.
     //
+    // This is NOT for readback: PNG export / screenshots render through a
+    // separate offscreen Canvas2D target (`createOffscreenCanvas2DTarget`
+    // in `png-export` / `exporter` / `tile-compositor`), never this live
+    // context, so they don't depend on the flag.
+    //
+    // On Safari / iOS `true` forces a full re-composite per swap. A host
+    // that redraws the whole frame every time (dirty-rect culling
+    // disabled) can pass `preserveDrawingBuffer: false` for that win.
+    const preserveDrawingBuffer = options.preserveDrawingBuffer ?? true;
     // Try with antialiasing first; some integrated GPUs deny the
     // context when MSAA isn't available. Retry plain on failure so
     // WebGL2 isn't lost entirely for a stylistic preference.
     let gl = (canvas as HTMLCanvasElement).getContext("webgl2", {
       antialias: true,
       premultipliedAlpha: true,
-      preserveDrawingBuffer: true,
+      preserveDrawingBuffer,
     });
     gl ??= (canvas as HTMLCanvasElement).getContext("webgl2", {
       premultipliedAlpha: true,
-      preserveDrawingBuffer: true,
+      preserveDrawingBuffer,
     });
     if (!gl) {
       throw new Error(
@@ -194,6 +255,9 @@ export class WebGL2Target implements RenderTarget {
    * in sync so downstream renderers see the new dimensions.
    */
   resize(width: number, height: number): void {
+    // Queued instances carry a clip-space matrix projected against the
+    // old size; drain them before the size / viewport change.
+    this.flushRectBatch();
     this._size.width = width;
     this._size.height = height;
     this.gl.viewport(0, 0, width, height);
@@ -206,6 +270,13 @@ export class WebGL2Target implements RenderTarget {
    * and runtime backend switches quickly hit the cap.
    */
   dispose(): void {
+    // Drop any undrawn queued rects and release the instance pipeline's
+    // GL resources (VAO / buffers / program).
+    this.rectBatch.reset();
+    if (this.rectPipeline) {
+      this.rectPipeline.dispose();
+      this.rectPipeline = null;
+    }
     if (this.msdfPipeline) {
       this.msdfPipeline.dispose();
       this.msdfPipeline = null;
@@ -345,7 +416,7 @@ export class WebGL2Target implements RenderTarget {
 
   beginPath(): void {
     this.currentPath = null;
-    this.currentPolyline = [];
+    this.pathPts = 0;
     this.currentCurves = [];
     this.currentEllipse = null;
   }
@@ -363,17 +434,17 @@ export class WebGL2Target implements RenderTarget {
   private readonly _pathRect = { x: 0, y: 0, width: 0, height: 0 };
 
   moveTo(x: number, y: number): void {
-    this.currentPolyline = [{ x, y }];
+    this.pathPts = 0;
+    this.pushPathPoint(x, y);
   }
 
   lineTo(x: number, y: number): void {
-    this.currentPolyline.push({ x, y });
+    this.pushPathPoint(x, y);
   }
 
   closePath(): void {
-    const start = this.currentPolyline[0];
-    if (this.currentPolyline.length > 1 && start !== undefined) {
-      this.currentPolyline.push({ ...start });
+    if (this.pathPts > 1) {
+      this.pushPathPoint(req(this.pathXY[0]), req(this.pathXY[1]));
     }
   }
 
@@ -386,7 +457,7 @@ export class WebGL2Target implements RenderTarget {
    */
   ellipse(cx: number, cy: number, rx: number, ry: number): void {
     this.currentEllipse = { cx, cy, rx, ry };
-    this.currentPolyline = [];
+    this.pathPts = 0;
     this.currentPath = null;
   }
 
@@ -402,13 +473,10 @@ export class WebGL2Target implements RenderTarget {
       ELLIPSE_MIN_SEGMENTS,
       Math.min(ELLIPSE_MAX_SEGMENTS, Math.ceil(Math.PI * screenRadius * 0.7)),
     );
-    this.currentPolyline = [];
+    this.pathPts = 0;
     for (let i = 0; i <= segments; i++) {
       const t = (i / segments) * Math.PI * 2;
-      this.currentPolyline.push({
-        x: e.cx + e.rx * Math.cos(t),
-        y: e.cy + e.ry * Math.sin(t),
-      });
+      this.pushPathPoint(e.cx + e.rx * Math.cos(t), e.cy + e.ry * Math.sin(t));
     }
   }
 
@@ -425,7 +493,7 @@ export class WebGL2Target implements RenderTarget {
    * (sub-pixel zoom-aware).
    */
   quadraticCurveTo(cx: number, cy: number, x: number, y: number): void {
-    const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x: cx, y: cy };
+    const start = this.lastPathPoint() ?? { x: cx, y: cy };
     this.currentCurves.push({
       kind: "q",
       points: [start, { x: cx, y: cy }, { x, y }],
@@ -442,20 +510,31 @@ export class WebGL2Target implements RenderTarget {
         ],
         tolerance,
       );
-      for (let i = 1; i < pts.length; i++) this.currentPolyline.push(req(pts[i]));
+      for (let i = 1; i < pts.length; i++) {
+        const p = req(pts[i]);
+        this.pushPathPoint(p.x, p.y);
+      }
       return;
     }
     const count = Math.max(
       8,
-      Math.min(128, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)),
+      Math.min(128, Math.ceil(curveLengthEstimate(start.x, start.y, x, y) / tolerance)),
     );
-    const samples = sampleQuadratic(start, { x: cx, y: cy }, { x, y }, count);
-    for (let i = 1; i < samples.length; i++) this.currentPolyline.push(req(samples[i]));
+    // Sample t in (0, 1] directly into the flat path buffer — the
+    // start point (t = 0) is already the path's last vertex.
+    for (let i = 1; i <= count; i++) {
+      const t = i / count;
+      const u = 1 - t;
+      this.pushPathPoint(
+        u * u * start.x + 2 * u * t * cx + t * t * x,
+        u * u * start.y + 2 * u * t * cy + t * t * y,
+      );
+    }
   }
 
   /** Cubic Bezier — same dual-track approach as quadratic. */
   bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number): void {
-    const start = this.currentPolyline[this.currentPolyline.length - 1] ?? { x, y };
+    const start = this.lastPathPoint() ?? { x, y };
     this.currentCurves.push({
       kind: "c",
       points: [start, { x: c1x, y: c1y }, { x: c2x, y: c2y }, { x, y }],
@@ -475,15 +554,38 @@ export class WebGL2Target implements RenderTarget {
         ],
         tolerance,
       );
-      for (let i = 1; i < pts.length; i++) this.currentPolyline.push(req(pts[i]));
+      for (let i = 1; i < pts.length; i++) {
+        const p = req(pts[i]);
+        this.pushPathPoint(p.x, p.y);
+      }
       return;
     }
     const count = Math.max(
       12,
-      Math.min(192, Math.ceil(curveLengthEstimate(start, { x, y }) / tolerance)),
+      Math.min(192, Math.ceil(curveLengthEstimate(start.x, start.y, x, y) / tolerance)),
     );
-    const samples = sampleCubic(start, { x: c1x, y: c1y }, { x: c2x, y: c2y }, { x, y }, count);
-    for (let i = 1; i < samples.length; i++) this.currentPolyline.push(req(samples[i]));
+    // Sample t in (0, 1] directly into the flat path buffer.
+    for (let i = 1; i <= count; i++) {
+      const t = i / count;
+      const u = 1 - t;
+      const u2 = u * u;
+      const u3 = u2 * u;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      this.pushPathPoint(
+        u3 * start.x + 3 * u2 * t * c1x + 3 * u * t2 * c2x + t3 * x,
+        u3 * start.y + 3 * u2 * t * c1y + 3 * u * t2 * c2y + t3 * y,
+      );
+    }
+  }
+
+  /** Last point of the flat path buffer as a fresh `{x, y}`, or `undefined`. */
+  private lastPathPoint(): Vec2 | undefined {
+    if (this.pathPts === 0) return undefined;
+    return {
+      x: req(this.pathXY[(this.pathPts - 1) * 2]),
+      y: req(this.pathXY[(this.pathPts - 1) * 2 + 1]),
+    };
   }
 
   /**
@@ -514,7 +616,14 @@ export class WebGL2Target implements RenderTarget {
     dw: number,
     dh: number,
     dynamic?: boolean,
+    crop?: {
+      readonly x: number;
+      readonly y: number;
+      readonly width: number;
+      readonly height: number;
+    },
   ): void {
+    this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     const tex = this.textureFor(image as TexImageSource, dynamic ?? false);
     if (!tex) return;
     if (!this.imageProgram) {
@@ -539,7 +648,7 @@ export class WebGL2Target implements RenderTarget {
     this.gl.vertexAttribPointer(ip.aUV, 2, this.gl.FLOAT, false, 16, 8);
 
     // Project the drawn region through transform + viewport.
-    const projected = applyImageMat(
+    const projected = applyMat(
       {
         a: this.transform.a * dw,
         b: this.transform.b * dw,
@@ -553,6 +662,16 @@ export class WebGL2Target implements RenderTarget {
     );
     this.gl.uniformMatrix3fv(ip.uTransform, false, projected);
     this.gl.uniform1f(ip.uOpacity, this.opacity);
+    // Crop as a UV sub-rect. Identity (no crop) is offset (0,0), scale (1,1);
+    // crop fractions are already in texture-UV [0,1] space (unlike Canvas2D,
+    // which multiplies by intrinsic pixels), so they map straight to uniforms.
+    if (crop && (crop.x !== 0 || crop.y !== 0 || crop.width !== 1 || crop.height !== 1)) {
+      this.gl.uniform2f(ip.uUvOffset, crop.x, crop.y);
+      this.gl.uniform2f(ip.uUvScale, crop.width, crop.height);
+    } else {
+      this.gl.uniform2f(ip.uUvOffset, 0, 0);
+      this.gl.uniform2f(ip.uUvScale, 1, 1);
+    }
     this.gl.activeTexture(this.gl.TEXTURE0);
     this.gl.bindTexture(this.gl.TEXTURE_2D, tex);
     this.gl.uniform1i(ip.uTex, 0);
@@ -672,6 +791,7 @@ export class WebGL2Target implements RenderTarget {
     // Ellipse path — single fragment-SDF quad regardless of radius.
     // Vector-perfect at any zoom; 4 vertices instead of 24-512.
     if (this.currentEllipse) {
+      this.flushRectBatch(); // preserve z-order: emit queued rects first
       this.ellipsePipeline ??= new EllipsePipeline(this.gl);
       const e = this.currentEllipse;
       this.ellipsePipeline.draw(
@@ -693,23 +813,32 @@ export class WebGL2Target implements RenderTarget {
     // most shape backgrounds (rectangles) hit it.
     if (this.currentPath) {
       const r = this.currentPath;
-      const projected = applyMat(
-        {
-          a: this.transform.a * r.width,
-          b: this.transform.b * r.width,
-          c: this.transform.c * r.height,
-          d: this.transform.d * r.height,
-          e: this.transform.e + this.transform.a * r.x + this.transform.c * r.y,
-          f: this.transform.f + this.transform.b * r.x + this.transform.d * r.y,
-        },
-        this._size.width,
-        this._size.height,
+      // Project the rect's unit-quad → clip affine, then queue it as one
+      // instance instead of issuing a draw. Same math as `applyMat`
+      // (unit-quad → NDC) inlined into scalars — the batcher stores the
+      // two variable columns + translation; the constant [0,0,1] third
+      // column is reconstructed in the instance vertex shader.
+      const t = this.transform;
+      const sx = 2 / this._size.width;
+      const sy = -2 / this._size.height;
+      const pa = t.a * r.width;
+      const pb = t.b * r.width;
+      const pc = t.c * r.height;
+      const pd = t.d * r.height;
+      const pe = t.e + t.a * r.x + t.c * r.y;
+      const pf = t.f + t.b * r.x + t.d * r.y;
+      this.rectBatch.add(
+        pa * sx,
+        pb * sy,
+        pc * sx,
+        pd * sy,
+        pe * sx - 1,
+        pf * sy + 1,
+        this.fillColor[0],
+        this.fillColor[1],
+        this.fillColor[2],
+        effectiveAlpha,
       );
-      this.restoreSolidProgram(); // ensure the solid VBO+attrib is live
-      this.gl.uniformMatrix3fv(this.uTransformLoc, false, projected);
-      this.gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
-      this.gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
-      this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
       return;
     }
 
@@ -717,8 +846,9 @@ export class WebGL2Target implements RenderTarget {
     // Triangulated through earcut so concave shapes (arrows, stars,
     // lightning bolts) fill correctly. Earcut is dependency-free and
     // handles holes too if ever needed.
-    if (this.currentPolyline.length >= 3) {
-      this.fillPolygonEarcut(this.currentPolyline, effectiveAlpha);
+    if (this.pathPts >= 3) {
+      this.flushRectBatch(); // preserve z-order: emit queued rects first
+      this.fillPolygonEarcut(this.pathXY, this.pathPts, effectiveAlpha);
     }
 
     // Loop-Blinn curve overlay. Adds fragment-tested quadratic / cubic
@@ -736,6 +866,7 @@ export class WebGL2Target implements RenderTarget {
     // doesn't have. The artefact is invisible at 1× zoom and tiny even
     // at 20×.
     if (this.currentCurves.length > 0) {
+      this.flushRectBatch(); // preserve z-order: emit queued rects first
       this.curvePipeline ??= new LoopBlinnCurvePipeline(this.gl);
       this.curvePipeline.draw(
         this.currentCurves,
@@ -757,49 +888,38 @@ export class WebGL2Target implements RenderTarget {
    * earcut returns an empty index list (degenerate self-intersecting
    * polygon).
    */
-  private fillPolygonEarcut(polyline: readonly Vec2[], effectiveAlpha: number): void {
+  private fillPolygonEarcut(xy: Float64Array, pointCount: number, effectiveAlpha: number): void {
     // Skip the implicitly-closed duplicate last vertex if the caller
     // already issued `closePath` — earcut would treat it as a degenerate
     // sliver.
-    const polyFirst = polyline[0];
-    const polyLast = polyline[polyline.length - 1];
     const n =
-      polyline.length >= 4 &&
-      polyFirst !== undefined &&
-      polyFirst.x === polyLast?.x &&
-      polyFirst.y === polyLast.y
-        ? polyline.length - 1
-        : polyline.length;
+      pointCount >= 4 &&
+      xy[0] === xy[(pointCount - 1) * 2] &&
+      xy[1] === xy[(pointCount - 1) * 2 + 1]
+        ? pointCount - 1
+        : pointCount;
     if (n < 3) return;
 
-    // earcut wants a flat [x0, y0, x1, y1, ...] in world coords. Reuse
-    // the module-level scratch buffers — earcut accepts any array-like
-    // with [i] + length, so a Float64Array view works.
-    ensureEarcutVertexCapacity(n);
-    const flat = scratchEarcutFlat;
-    for (let i = 0; i < n; i++) {
-      const p = req(polyline[i]);
-      flat[i * 2] = p.x;
-      flat[i * 2 + 1] = p.y;
-    }
-    // Pass only the populated prefix — `subarray` is a view, no copy.
-    const indices = earcut(flat.subarray(0, n * 2));
+    // earcut wants a flat [x0, y0, x1, y1, ...] in world coords — the
+    // path buffer already is one, and earcut accepts any array-like
+    // with [i] + length, so pass a no-copy `subarray` view directly.
+    const indices = earcut(xy.subarray(0, n * 2));
     if (indices.length === 0) {
       // Pathological polygon — fall back to a fan so something renders.
-      this.drawTriangleFan(polyline, n, effectiveAlpha);
+      this.drawTriangleFan(xy, n, effectiveAlpha);
       return;
     }
 
-    // Project once into clip space, then index-draw. Shares the earcut
-    // vertex-count budget — `ensureEarcutVertexCapacity` above already
-    // grew `scratchEarcutVerts` if needed.
+    // Project once into clip space, then index-draw.
+    ensureEarcutVertexCapacity(n);
     const sx = 2 / this._size.width;
     const sy = -2 / this._size.height;
     const verts = scratchEarcutVerts;
     for (let i = 0; i < n; i++) {
-      const p = req(polyline[i]);
-      const wx = this.transform.a * p.x + this.transform.c * p.y + this.transform.e;
-      const wy = this.transform.b * p.x + this.transform.d * p.y + this.transform.f;
+      const px = req(xy[i * 2]);
+      const py = req(xy[i * 2 + 1]);
+      const wx = this.transform.a * px + this.transform.c * py + this.transform.e;
+      const wy = this.transform.b * px + this.transform.d * py + this.transform.f;
       verts[i * 2] = wx * sx - 1;
       verts[i * 2 + 1] = wy * sy + 1;
     }
@@ -844,16 +964,17 @@ export class WebGL2Target implements RenderTarget {
    * convex polygons correctly; concave ones get a wrong silhouette (the
    * earcut path handles those instead).
    */
-  private drawTriangleFan(polyline: readonly Vec2[], n: number, effectiveAlpha: number): void {
+  private drawTriangleFan(xy: Float64Array, n: number, effectiveAlpha: number): void {
     const sx = 2 / this._size.width;
     const sy = -2 / this._size.height;
     // Share the module-level scratch verts with `fillPolygonEarcut`.
     ensureEarcutVertexCapacity(n);
     const verts = scratchEarcutVerts;
     for (let i = 0; i < n; i++) {
-      const p = req(polyline[i]);
-      const wx = this.transform.a * p.x + this.transform.c * p.y + this.transform.e;
-      const wy = this.transform.b * p.x + this.transform.d * p.y + this.transform.f;
+      const px = req(xy[i * 2]);
+      const py = req(xy[i * 2 + 1]);
+      const wx = this.transform.a * px + this.transform.c * py + this.transform.e;
+      const wy = this.transform.b * px + this.transform.d * py + this.transform.f;
       verts[i * 2] = wx * sx - 1;
       verts[i * 2 + 1] = wy * sy + 1;
     }
@@ -875,9 +996,9 @@ export class WebGL2Target implements RenderTarget {
    * `bounds` wipes only the rectangle the editor's dirty-rect pass
    * identified. Honouring `bounds` is mandatory — when the scene
    * reference doesn't change, the editor sends a zero-area dirty rect
-   * and expects the previous frame to survive untouched.
+   * and expects the previous frame to survive untouched. The default
    * `preserveDrawingBuffer: true` carries the persistent frame across
-   * composites.
+   * composites (see the constructor for the opt-out).
    *
    * For bounded clears the implementation flips on a scissor box so the
    * clear is confined to the dirty rect, mirroring Canvas2D's
@@ -886,6 +1007,10 @@ export class WebGL2Target implements RenderTarget {
    * caller's top-left CSS-pixel rect.
    */
   clear(bounds?: Bounds): void {
+    // Drain queued rect fills before wiping pixels — a clear that lands
+    // mid-stream must not erase rects queued after it, nor let them
+    // survive a wipe meant to cover them.
+    this.flushRectBatch();
     const bitmapW = (this.gl.canvas as HTMLCanvasElement).width;
     const bitmapH = (this.gl.canvas as HTMLCanvasElement).height;
     if (bounds) {
@@ -924,60 +1049,89 @@ export class WebGL2Target implements RenderTarget {
   }
 
   stroke(): void {
+    this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     if (this.currentPath) {
       // Rect outline → 4 corners as a closed polyline.
       const r = this.currentPath;
-      this.currentPolyline = [
-        { x: r.x, y: r.y },
-        { x: r.x + r.width, y: r.y },
-        { x: r.x + r.width, y: r.y + r.height },
-        { x: r.x, y: r.y + r.height },
-        { x: r.x, y: r.y },
-      ];
+      this.pathPts = 0;
+      this.pushPathPoint(r.x, r.y);
+      this.pushPathPoint(r.x + r.width, r.y);
+      this.pushPathPoint(r.x + r.width, r.y + r.height);
+      this.pushPathPoint(r.x, r.y + r.height);
+      this.pushPathPoint(r.x, r.y);
     }
     // Ellipse outline — lazily generate the polyline approximation here
     // so callers that only fill don't pay for the 24-512 vertex
     // allocation. EllipsePipeline owns the fill path; stroke still goes
     // through the polygon stroke pipeline.
-    if (this.currentEllipse && this.currentPolyline.length < 2) {
+    if (this.currentEllipse && this.pathPts < 2) {
       this.buildEllipseStrokePolyline(this.currentEllipse);
     }
-    if (this.currentPolyline.length < 2) return;
+    if (this.pathPts < 2) return;
     const effectiveAlpha = this.opacity * this.strokeAlpha;
     if (effectiveAlpha <= 0) return; // transparent stroke — nothing to draw
-    // Dashed: split the polyline into "on" sub-polylines in world units
-    // (Canvas2D dashes in the world-space ctx transform, so this
-    // matches it), then stroke each through the same pipeline. Solid →
-    // one call.
-    const runs = this.dashArray
-      ? dashPolyline(this.currentPolyline, this.dashArray)
-      : [this.currentPolyline];
-    for (const run of runs) {
-      if (run.length < 2) continue;
-      drawPolylineStrokeImpl(
-        this.gl,
-        run,
-        {
-          width: this.strokeWidth,
-          color: this.strokeColor,
-          opacity: effectiveAlpha,
-          join: this.lineJoin,
-          cap: this.lineCap,
-        },
-        this.transform,
-        this._size,
-        this.program,
-        this.uTransformLoc,
-        this.uColorLoc,
-        this.uOpacityLoc,
-        this.dynamicVbo,
-        this.aPosLoc,
-        IDENTITY_MAT3,
-      );
+    const style = {
+      width: this.strokeWidth,
+      color: this.strokeColor,
+      opacity: effectiveAlpha,
+      join: this.lineJoin,
+      cap: this.lineCap,
+    };
+    if (this.dashArray) {
+      // Dashed: split the polyline into "on" sub-polylines in world
+      // units (Canvas2D dashes in the world-space ctx transform, so
+      // this matches it), then stroke each run. `dashPolyline` keeps
+      // its Vec2 contract, so materialise the flat path once — dashing
+      // is opt-in styling, the solid hot path below stays object-free.
+      const pts: Vec2[] = new Array<Vec2>(this.pathPts);
+      for (let i = 0; i < this.pathPts; i++) {
+        pts[i] = { x: req(this.pathXY[i * 2]), y: req(this.pathXY[i * 2 + 1]) };
+      }
+      for (const run of dashPolyline(pts, this.dashArray)) {
+        if (run.length < 2) continue;
+        ensureDashRunCapacity(run.length * 2);
+        for (let i = 0; i < run.length; i++) {
+          const p = req(run[i]);
+          scratchDashRunXY[i * 2] = p.x;
+          scratchDashRunXY[i * 2 + 1] = p.y;
+        }
+        this.strokePolylineFlat(scratchDashRunXY, run.length, style);
+      }
+    } else {
+      this.strokePolylineFlat(this.pathXY, this.pathPts, style);
     }
     // Stroke wrote into the dynamic VBO; rebind the static unit-quad VBO
     // so the next solid rect fill picks up the right vertex stream.
     this.restoreSolidProgram();
+  }
+
+  /** Route one flat polyline through the shared stroke pipeline. */
+  private strokePolylineFlat(
+    xy: Float64Array,
+    pointCount: number,
+    style: {
+      width: number;
+      color: [number, number, number];
+      opacity: number;
+      join: LineJoin;
+      cap: LineCap;
+    },
+  ): void {
+    drawPolylineStrokeImpl(
+      this.gl,
+      xy,
+      pointCount,
+      style,
+      this.transform,
+      this._size,
+      this.program,
+      this.uTransformLoc,
+      this.uColorLoc,
+      this.uOpacityLoc,
+      this.dynamicVbo,
+      this.aPosLoc,
+      IDENTITY_MAT3,
+    );
   }
 
   // --- Stroke style state (consumed by stroke()) ---
@@ -1021,6 +1175,7 @@ export class WebGL2Target implements RenderTarget {
    */
   fillText(text: string, x: number, y: number, maxWidth?: number): void {
     if (text.length === 0) return;
+    this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     void maxWidth;
     const atlas = this.ensureGlyphAtlas();
     if (atlas) {
@@ -1121,6 +1276,34 @@ export class WebGL2Target implements RenderTarget {
     this.gl.enableVertexAttribArray(this.aPosLoc);
     this.gl.vertexAttribPointer(this.aPosLoc, 2, this.gl.FLOAT, false, 0, 0);
   }
+
+  /**
+   * Draw any queued sharp-rect fill instances as one instanced call,
+   * then restore the solid-program plumbing. Called before every
+   * non-batchable draw and surface op to keep z-order intact, and from
+   * {@link flushBatch} at frame end. No-op when the queue is empty.
+   */
+  private flushRectBatch(): void {
+    if (this.rectBatch.pending === 0) return;
+    this.rectPipeline ??= new RectInstancePipeline(this.gl);
+    const pipeline = this.rectPipeline;
+    this.rectBatch.flush((data, count) => {
+      pipeline.draw(data, count);
+    });
+    this.restoreSolidProgram();
+  }
+
+  /**
+   * Flush the deferred sharp-rect batch to the GPU. The host's
+   * `LayeredSurface.present()` calls this once per frame after the
+   * Editor finishes drawing, so trailing rect fills reach the
+   * framebuffer within the frame that queued them. Backends without a
+   * batcher (Canvas2D) have no equivalent — this is WebGL2-specific and
+   * not part of the `RenderTarget` interface.
+   */
+  flushBatch(): void {
+    this.flushRectBatch();
+  }
   measureText(text: string): { width: number } {
     return this.textMetrics(text);
   }
@@ -1154,9 +1337,15 @@ export class WebGL2Target implements RenderTarget {
   }
 
   private textFontSpec(): string {
-    // Bundled face first so the no-MSDF fallback matches the MSDF path and
-    // the Canvas2D backend.
-    return `${this.fontSize}px "${resolveBundledFamily(this.fontFamily)}", ${this.fontFamily}`;
+    // CSS font shorthand order: `<style> <weight> <size> <family>` — must
+    // carry weight/style so the no-MSDF fallback (OffscreenCanvas bitmaps)
+    // draws bold/italic like the MSDF path and the Canvas2D backend do.
+    // It also keys the bitmap cache, so a bold word can't collide with the
+    // regular one (which would render regular while colour still applied).
+    // Bundled face first so the fallback matches the MSDF/Canvas2D metrics.
+    const style = this.fontStyle === "italic" ? "italic " : "";
+    const weight = this.fontWeight === "bold" ? "bold " : "";
+    return `${style}${weight}${this.fontSize}px "${resolveBundledFamily(this.fontFamily)}", ${this.fontFamily}`;
   }
 
   private readonly baselineOffsetCache = new Map<string, number>();
@@ -1203,15 +1392,11 @@ export class WebGL2Target implements RenderTarget {
         this.fontWeight === "bold",
         this.fontStyle === "italic",
       );
-      let w = 0;
-      for (const ch of text) {
-        const cp = ch.codePointAt(0);
-        if (cp === undefined) continue;
-        const glyph = atlas.getOrRasterize(cp, fontId);
-        if (!glyph) continue;
-        w += (glyph.advance * this.fontSize) / glyph.unitsPerEm;
-      }
-      return { width: w };
+      // Shared single-pass, memoized walk — same advances `fillTextMSDF`
+      // lays out (`advance * fontSize / unitsPerEm`), so measured width
+      // and drawn width stay 1:1. em-width is fontSize-independent; scale
+      // here. A measure after the same run was drawn hits the memo.
+      return { width: measureGlyphRunEm(text, atlas, fontId) * this.fontSize };
     }
     // Fallback (no MSDF shaper): Canvas2D system-font measurement, which
     // matches the Canvas2D bitmap text path used in that case.
@@ -1385,18 +1570,37 @@ interface GfxState {
  * and never shrinks; safe for single-threaded WebGL (fill calls are
  * serialised through the editor's render path).
  */
-let scratchEarcutFlat = new Float64Array(128);
 let scratchEarcutVerts = new Float32Array(128);
 let scratchEarcutIndices = new Uint16Array(256);
 
 const ensureEarcutVertexCapacity = (vertexCount: number): void => {
   const needed = vertexCount * 2;
-  if (scratchEarcutFlat.length >= needed) return;
-  let cap = scratchEarcutFlat.length;
+  if (scratchEarcutVerts.length >= needed) return;
+  let cap = scratchEarcutVerts.length;
   while (cap < needed) cap *= 2;
-  scratchEarcutFlat = new Float64Array(cap);
   scratchEarcutVerts = new Float32Array(cap);
 };
+
+/**
+ * Module-level scratch for converting one dashed-stroke run back to the
+ * flat layout `drawPolylineStroke` consumes. Only the dashed path uses
+ * it, and runs are consumed synchronously one at a time.
+ */
+let scratchDashRunXY = new Float64Array(128);
+
+const ensureDashRunCapacity = (n: number): void => {
+  if (scratchDashRunXY.length >= n) return;
+  let cap = scratchDashRunXY.length;
+  while (cap < n) cap *= 2;
+  scratchDashRunXY = new Float64Array(cap);
+};
+
+/**
+ * Initial per-target flat path buffer capacity, in points. 128 covers a
+ * rounded rect (≈ 60-100 flattened vertices at 1×) without a grow;
+ * capacity doubles on demand and never shrinks.
+ */
+const INITIAL_PATH_CAPACITY = 128;
 
 const ensureEarcutIndexCapacity = (n: number): void => {
   if (scratchEarcutIndices.length >= n) return;
@@ -1436,56 +1640,8 @@ const isMsdfShaper = (shaper: unknown): shaper is MsdfShaper => {
  * proportional to it, used to pick a JS-fallback sample count
  * commensurate with the tolerance.
  */
-const curveLengthEstimate = (a: Vec2, b: Vec2): number => Math.hypot(a.x - b.x, a.y - b.y);
-
-/** Sample a quadratic Bezier curve at `count` evenly-spaced t values. */
-const sampleQuadratic = (p0: Vec2, p1: Vec2, p2: Vec2, count: number): Vec2[] => {
-  const out: Vec2[] = [];
-  for (let i = 0; i <= count; i++) {
-    const t = i / count;
-    const u = 1 - t;
-    out.push({
-      x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
-      y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
-    });
-  }
-  return out;
-};
-
-/** Sample a cubic Bezier curve at `count` evenly-spaced t values. */
-const sampleCubic = (p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, count: number): Vec2[] => {
-  const out: Vec2[] = [];
-  for (let i = 0; i <= count; i++) {
-    const t = i / count;
-    const u = 1 - t;
-    const u2 = u * u;
-    const u3 = u2 * u;
-    const t2 = t * t;
-    const t3 = t2 * t;
-    out.push({
-      x: u3 * p0.x + 3 * u2 * t * p1.x + 3 * u * t2 * p2.x + t3 * p3.x,
-      y: u3 * p0.y + 3 * u2 * t * p1.y + 3 * u * t2 * p2.y + t3 * p3.y,
-    });
-  }
-  return out;
-};
-
-/** Same projection as `applyMat` but emitted from drawImage. */
-const applyImageMat = (t: MutableTransform, w: number, h: number): Float32Array => {
-  const sx = 2 / w;
-  const sy = -2 / h;
-  return new Float32Array([
-    t.a * sx,
-    t.b * sy,
-    0,
-    t.c * sx,
-    t.d * sy,
-    0,
-    t.e * sx - 1,
-    t.f * sy + 1,
-    1,
-  ]);
-};
+const curveLengthEstimate = (ax: number, ay: number, bx: number, by: number): number =>
+  Math.hypot(ax - bx, ay - by);
 
 interface ImageProgram {
   readonly program: WebGLProgram;
@@ -1494,6 +1650,9 @@ interface ImageProgram {
   readonly uTransform: WebGLUniformLocation | null;
   readonly uTex: WebGLUniformLocation | null;
   readonly uOpacity: WebGLUniformLocation | null;
+  /** UV sub-rect for cropping: `vUV = aUV * uUvScale + uUvOffset`. */
+  readonly uUvOffset: WebGLUniformLocation | null;
+  readonly uUvScale: WebGLUniformLocation | null;
 }
 
 const createImageProgram = (gl: WebGL2RenderingContext): ImageProgram => {
@@ -1504,11 +1663,15 @@ const createImageProgram = (gl: WebGL2RenderingContext): ImageProgram => {
 in vec2 aPos;
 in vec2 aUV;
 uniform mat3 uTransform;
+uniform vec2 uUvOffset;
+uniform vec2 uUvScale;
 out vec2 vUV;
 void main() {
   vec3 p = uTransform * vec3(aPos, 1.0);
   gl_Position = vec4(p.xy, 0.0, 1.0);
-  vUV = aUV;
+  // Crop: map the unit-quad UV into the source sub-rect. Identity is
+  // offset (0,0) + scale (1,1); a crop narrows it to the kept region.
+  vUV = aUV * uUvScale + uUvOffset;
 }`,
     "WebGL2",
   );
@@ -1539,29 +1702,40 @@ void main() {
     uTransform: gl.getUniformLocation(program, "uTransform"),
     uTex: gl.getUniformLocation(program, "uTex"),
     uOpacity: gl.getUniformLocation(program, "uOpacity"),
+    uUvOffset: gl.getUniformLocation(program, "uUvOffset"),
+    uUvScale: gl.getUniformLocation(program, "uUvScale"),
   };
 };
 
 /**
+ * Module-level scratch for `applyMat` — the same reuse pattern as the
+ * earcut / stroke scratch buffers above. The projected mat3 is consumed
+ * synchronously by `uniformMatrix3fv` (which copies the values into GL
+ * state) before the next `applyMat` call, so one shared buffer avoids a
+ * Float32Array allocation per rect-fill / drawImage.
+ */
+const scratchMat3 = new Float32Array(9);
+
+/**
  * Build a 3×3 column-major matrix that maps a unit quad [0,0]–[1,1]
  * through the supplied 2D affine + a screen-to-clip conversion
- * (pixels → NDC).
+ * (pixels → NDC). Returns the module-level scratch — consume it before
+ * the next call.
  */
 const applyMat = (t: Transform, w: number, h: number): Float32Array => {
   // Pixel-space → clip-space: x' = (x / w) * 2 - 1; y' = 1 - (y / h) * 2.
   const sx = 2 / w;
   const sy = -2 / h;
-  return new Float32Array([
-    t.a * sx,
-    t.b * sy,
-    0,
-    t.c * sx,
-    t.d * sy,
-    0,
-    t.e * sx - 1,
-    t.f * sy + 1,
-    1,
-  ]);
+  scratchMat3[0] = t.a * sx;
+  scratchMat3[1] = t.b * sy;
+  scratchMat3[2] = 0;
+  scratchMat3[3] = t.c * sx;
+  scratchMat3[4] = t.d * sy;
+  scratchMat3[5] = 0;
+  scratchMat3[6] = t.e * sx - 1;
+  scratchMat3[7] = t.f * sy + 1;
+  scratchMat3[8] = 1;
+  return scratchMat3;
 };
 
 const VERTEX_SHADER = `#version 300 es

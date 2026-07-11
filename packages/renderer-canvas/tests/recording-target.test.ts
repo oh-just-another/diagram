@@ -96,6 +96,59 @@ describe("RecordingTarget", () => {
     expect(cmds[0]).toEqual({ k: "resize", w: 80, h: 40 });
   });
 
+  it("lastSignature is empty before the first flush", () => {
+    const t = new RecordingTarget(10, 10);
+    expect(t.lastSignature).toBe("");
+  });
+
+  it("two frames recording an identical stream share a signature", () => {
+    const draw = (t: RecordingTarget): void => {
+      t.setFill("red");
+      t.beginPath();
+      t.rect(10, 20, 30, 40);
+      t.fill();
+    };
+    const t = new RecordingTarget(100, 50);
+    draw(t);
+    t.flush();
+    const first = t.lastSignature;
+    draw(t);
+    t.flush();
+    expect(t.lastSignature).toBe(first);
+    expect(first).not.toBe("");
+  });
+
+  it("different coordinates at the same command count change the signature", () => {
+    const t = new RecordingTarget(100, 50);
+    t.rect(10, 20, 30, 40);
+    t.flush();
+    const a = t.lastSignature;
+    t.rect(10, 20, 30, 41); // one field differs
+    t.flush();
+    expect(t.lastSignature).not.toBe(a);
+  });
+
+  it("different fill text changes the signature", () => {
+    const t = new RecordingTarget(100, 50);
+    t.fillText("abc", 0, 0);
+    t.flush();
+    const a = t.lastSignature;
+    t.fillText("abd", 0, 0);
+    t.flush();
+    expect(t.lastSignature).not.toBe(a);
+  });
+
+  it("adding a command changes the signature (count is folded in)", () => {
+    const t = new RecordingTarget(100, 50);
+    t.save();
+    t.flush();
+    const a = t.lastSignature;
+    t.save();
+    t.save();
+    t.flush();
+    expect(t.lastSignature).not.toBe(a);
+  });
+
   it("measureText returns a positive width without buffering anything", () => {
     const t = new RecordingTarget(10, 10);
     t.setFont("Arial", 16);

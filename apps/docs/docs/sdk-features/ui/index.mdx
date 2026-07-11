@@ -1,0 +1,57 @@
+---
+title: User Interface
+sidebar_position: 14
+---
+
+`@oh-just-another/react-ui` is the React binding layer — the chrome the drop-in `Editor` is assembled from. If you want the editor's look without the umbrella component's opinions, compose these pieces yourself: a canvas, a toolbar, panels, menus and overlays, all reading the editor from context.
+
+## Three lines to mount
+
+`DiagramCanvas` constructs the underlying `Editor`, mounts the render surface, and supplies the instance to every descendant via context. Drop chrome anywhere in the subtree:
+
+```tsx
+import { emptyScene } from "@oh-just-another/scene";
+import { DiagramCanvas, Toolbar, Palette, PropertyPanel } from "@oh-just-another/react-ui";
+import "@oh-just-another/react-ui/styles.css";
+
+export const App = () => (
+  <DiagramCanvas initialScene={emptyScene()} initialMode="select">
+    <Toolbar />
+    <Palette />
+    <PropertyPanel />
+  </DiagramCanvas>
+);
+```
+
+Because every component reads the editor from context, most take no required props — layer them with normal CSS.
+
+## What's in the box
+
+- **Mounting & layout** — `DiagramCanvas`, the lower-level `DiagramRoot` / `DiagramSurface` split, `UILayer`, `TopBar` / `BottomBar`, `Sidebar`, `BottomSheet`.
+- **Toolbar & zoom** — `Toolbar` (with `DEFAULT_TOOLBAR` / `DEFAULT_VERTICAL_TOOLBAR`), `ZoomWidget`, `ResetToContentButton`.
+- **Palettes & inspectors** — `Palette`, `LibraryPanel`, `PropertyPanel`, `LinkStylePanel`, `LayerPanel`, `FramePanel`.
+- **Menus, dialogs & overlays** — `MainMenu`, `ContextMenu`, `CommandPalette`, `Modal` / `Popover`, `Tooltip`, `ToastHost`.
+- **Collaboration & versioning** — `CommentsPanel`, `VersionPanel`, `MergeDialog`, `DiffPanel`.
+- **Editing overlays** — `TextEditorOverlay`, `FrameNameEditorOverlay`, the `Link*` overlays.
+
+## Hooks
+
+State is read through hooks rather than prop drilling. `useDiagram()` returns the live editor (imperative, no re-render); reactive slices come from `useScene()`, `useSelection()`, `useMode()`, `useHistory()`, `useLayers()`. For anything custom, `useEditorSelector(select)` re-renders only when the projected value changes.
+
+```tsx
+import { useMode, useHistory } from "@oh-just-another/react-ui";
+
+function StatusBar() {
+  const mode = useMode();
+  const { canUndo, undo } = useHistory();
+  return (
+    <button disabled={!canUndo} onClick={undo}>
+      Undo ({mode})
+    </button>
+  );
+}
+```
+
+## Theming
+
+The shipped stylesheet defines the full token set — light, dark, and a `prefers-color-scheme` fallback. Override any `--du-*` variable to re-skin. For a fully-assembled editor with theme switching wired up, use `@oh-just-another/editor` instead.

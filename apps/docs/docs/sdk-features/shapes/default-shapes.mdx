@@ -1,0 +1,53 @@
+---
+title: Default Shapes
+sidebar_position: 18
+---
+
+`@oh-just-another/scene` ships eleven built-in element types, unioned as `BuiltinElement`. Each extends `ElementBase` and adds its own geometry fields.
+
+## Built-in types
+
+| `type`        | Interface           | Extra fields                                                               |
+| ------------- | ------------------- | -------------------------------------------------------------------------- |
+| `rectangle`   | `RectangleElement`  | `width`, `height`                                                          |
+| `ellipse`     | `EllipseElement`    | `width`, `height`                                                          |
+| `polygon`     | `PolygonElement`    | `points` (local `Vec2[]`)                                                  |
+| `path`        | `PathElement`       | `commands` (`PathCommand[]`)                                               |
+| `text`        | `TextElement`       | `text`, `fontFamily`, `fontSize`, `maxWidth?`, `runs?` (rich-text overlay) |
+| `image`       | `ImageElement`      | `src`, `fileId?`, `crop?`, `width`, `height`                               |
+| `template`    | `TemplateElement`   | `templateId`, `data`, `width`, `height`                                    |
+| `group`       | `GroupElement`      | (zero-render container)                                                    |
+| `frame`       | `FrameElement`      | `width`, `height`, `name?`                                                 |
+| `block-arrow` | `BlockArrowElement` | `width`, `height`, `direction?`, `headRatio?`, `bodyThickness?`            |
+| `brush`       | `BrushElement`      | `points` (`BrushPoint[]`, per-vertex half-width), `closed?`                |
+
+## Creating a built-in
+
+```ts
+import { emptyScene, addElement, orderForTop, DEFAULT_LAYER_ID } from "@oh-just-another/scene";
+import type { EllipseElement } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const ellipse: EllipseElement = {
+  id: elementId("e1"),
+  layerId: DEFAULT_LAYER_ID,
+  type: "ellipse",
+  position: { x: 40, y: 40 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderForTop([]),
+  style: { fill: "#fa0" },
+  width: 80,
+  height: 60,
+};
+
+const { scene } = addElement(emptyScene(), ellipse);
+```
+
+## Brush strokes
+
+`BrushPoint` is `{ x, y, width }` — `width` is the stroke half-width at that vertex (typically pressure-derived). The renderer builds a single filled outline from the variable-width centreline (`brushOutline`). Body colour is `brushBodyColor(style)` = `style.stroke ?? style.fill ?? "#000"`. `closed: true` marks a looped stroke (set on commit when a fill colour is chosen and the ends meet); its enclosed area is filled with `style.fill`.
+
+## Path commands
+
+`PathElement.commands` is a list of `PathCommand`s: `M` (move), `L` (line), `Q` (quadratic), `C` (cubic), and `Z` (close), all in local coordinates.

@@ -1,0 +1,57 @@
+---
+title: Drag And Drop
+sidebar_position: 19
+---
+
+Dropping a file onto the canvas is dispatched through a host-extensible registry. Built-in handlers cover images and videos; hosts add their own for custom payloads (CSV, scene JSON, …).
+
+## File-drop registry
+
+Each handler is a `FileDropHandler`: a stable `id`, a sync `accept(file)` predicate, and an async `handle(file, ctx)` that does the work (read, decode, push scene patches). The editor registers the image and video handlers at construction; register more at runtime.
+
+```ts
+import { Editor, type FileDropHandler } from "@oh-just-another/state";
+
+const csvHandler: FileDropHandler = {
+  id: "host.csv",
+  accept: (file) => file.name.endsWith(".csv"),
+  async handle(file, ctx) {
+    const text = await file.text();
+    // turn rows into elements, push patches via ctx
+  },
+};
+
+editor.registerFileDropHandler(csvHandler);
+// later: editor.unregisterFileDropHandler("host.csv");
+```
+
+## Helpers
+
+The state package exports MIME constants and readers so handlers don't reinvent them:
+
+```ts
+import {
+  IMAGE_MIME_TYPES,
+  VIDEO_MIME_TYPES,
+  isImageFile,
+  isVideoFile,
+  isSceneJsonFile,
+  readFileAsDataURL,
+  readFileAsText,
+  walkDataTransfer,
+} from "@oh-just-another/state";
+```
+
+`walkDataTransfer` flattens a dropped `DataTransfer` (including directories) into a file list.
+
+## With the React component
+
+The `Editor` component accepts a `fileDropHandlers` prop registered on mount, so you don't need to reach the engine for the common case.
+
+```tsx
+import { Editor } from "@oh-just-another/editor";
+
+<Editor fileDropHandlers={[csvHandler]} />;
+```
+
+To route files from another source (e.g. a clipboard paste), call `editor.dispatchFileDrop(file, worldPoint)` — it walks the same registry as a pointer drop.

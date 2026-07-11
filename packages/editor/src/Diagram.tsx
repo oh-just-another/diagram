@@ -50,13 +50,17 @@ import {
   HelpButton,
   HelpDialog,
   IconButton,
+  DrawingPanel,
   LibraryPanel,
   MainMenu,
+  Minimap,
   ResetToContentButton,
   LinkHoverPopup,
   LinkDropShapeMenu,
   LinkCaptionEditor,
   SelectionFloatingPanel,
+  SearchOverlay,
+  StatsPanel,
   TextEditorOverlay,
   FrameNameEditorOverlay,
   PortalContainerProvider,
@@ -66,11 +70,13 @@ import {
   TooltipProvider,
   TopBar,
   UILayer,
+  ZenModeProvider,
   useDiagramOptional,
   useHelpDialogHotkey,
   useMobileLayout,
   usePalettePlacement,
   useScene,
+  useZenMode,
 } from "@oh-just-another/react-ui";
 
 /**
@@ -101,8 +107,6 @@ import {
   type GridStyle,
 } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
-import { parseScene, stringifyScene } from "@oh-just-another/serialization";
-import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
 import { WasmRasterizer } from "@oh-just-another/raster-wasm";
 import { registerBundledFonts } from "@oh-just-another/fonts";
@@ -123,7 +127,15 @@ import {
 } from "./capabilities";
 import { installGifAnimationAdapter } from "./gif-animation.js";
 import { useThemedPortalContainer } from "./themed-portal-container.js";
-import { exportSceneToPng, type PngExportBackground } from "./png-export";
+import {
+  downloadScene,
+  downloadSvg,
+  downloadPng,
+  openSceneFile,
+  copySceneAsImage,
+  registerFileActions,
+  setFileActionNotifier,
+} from "./file-actions.js";
 import { isEditableTarget } from "./dom-focus";
 
 /**
@@ -217,6 +229,17 @@ export interface DiagramProps {
   readonly hideHelpButton?: boolean;
   readonly hideContextMenu?: boolean;
   readonly hideSelectionPanel?: boolean;
+  /**
+   * Hide the drawing / eraser tool-options panel (line colour, fill, opacity,
+   * width) that otherwise floats top-right while the brush or eraser is active.
+   */
+  readonly hideDrawingPanel?: boolean;
+  /**
+   * Show the built-in minimap: a scene overview + viewport rect, docked
+   * bottom-right above the zoom controls. Click / drag it to pan. Hidden in
+   * zen mode along with the rest of the chrome. Off by default.
+   */
+  readonly minimap?: boolean;
 
   // --- Slots ---
   readonly renderTopBarLeft?: () => ReactNode;
@@ -312,6 +335,8 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     hideHelpButton,
     hideContextMenu,
     hideSelectionPanel,
+    hideDrawingPanel,
+    minimap,
     renderTopBarLeft,
     renderTopBarCenter,
     renderTopBarRight,
@@ -535,26 +560,48 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   // ratio or constrains a move to one axis.
   useEffect(() => {
     if (!editor) return undefined;
+    const ed = editor;
     const sync = (e: KeyboardEvent) => {
       // Don't track modifiers (or touch snap state) while typing in a field —
       // keep the editor's transform flags inert there.
       if (isEditableTarget(e.target)) return;
-      editor.setSnapSuppressed(e.metaKey || e.ctrlKey);
-      editor.setTransformModifiers({ alt: e.altKey, shift: e.shiftKey });
+      ed.setSnapSuppressed(e.metaKey || e.ctrlKey);
+      ed.setTransformModifiers({ alt: e.altKey, shift: e.shiftKey });
+    };
+    // Flowchart CREATE lifecycle: Cmd/Ctrl+Arrow grows a pending preview; the
+    // session commits when Cmd/Ctrl is released and cancels on Escape. Keydown
+    // handles the cancel; keyup the commit.
+    const onKeyDown = (e: KeyboardEvent) => {
+      sync(e);
+      if (isEditableTarget(e.target)) return;
+      if (e.key === "Escape" && ed.flowchartPreview !== null) {
+        ed.cancelFlowchart();
+        e.preventDefault();
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      sync(e);
+      // Cmd/Ctrl released while a session is open → commit the preview.
+      if (!e.metaKey && !e.ctrlKey && ed.flowchartPreview !== null) {
+        ed.commitFlowchart();
+      }
     };
     const reset = () => {
-      editor.setSnapSuppressed(false);
-      editor.setTransformModifiers({ alt: false, shift: false });
+      ed.setSnapSuppressed(false);
+      ed.setTransformModifiers({ alt: false, shift: false });
+      // A window blur can swallow the Cmd/Ctrl keyup — commit any live session
+      // so a missed keyup can't strand the preview.
+      if (ed.flowchartPreview !== null) ed.commitFlowchart();
     };
-    window.addEventListener("keydown", sync);
-    window.addEventListener("keyup", sync);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", reset);
     return () => {
-      window.removeEventListener("keydown", sync);
-      window.removeEventListener("keyup", sync);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", reset);
-      editor.setSnapSuppressed(false);
-      editor.setTransformModifiers({ alt: false, shift: false });
+      ed.setSnapSuppressed(false);
+      ed.setTransformModifiers({ alt: false, shift: false });
     };
   }, [editor]);
 
@@ -628,31 +675,35 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
               {...(wasmShaper ? { textShaper: wasmShaper } : {})}
               {...(wasmRaster ? { rasterizer: wasmRaster } : {})}
             >
-              <EditorShell
-                hideTopBar={hideTopBar}
-                hideBottomBar={hideBottomBar}
-                hideToolbar={hideToolbar}
-                hideLibraryButton={hideLibraryButton}
-                hideMainMenu={hideMainMenu}
-                hideZoomControls={hideZoomControls}
-                hideResetToContent={hideResetToContent}
-                hideHelpButton={hideHelpButton}
-                hideContextMenu={hideContextMenu}
-                hideSelectionPanel={hideSelectionPanel}
-                renderTopBarLeft={renderTopBarLeft}
-                renderTopBarCenter={renderTopBarCenter}
-                renderTopBarRight={renderTopBarRight}
-                renderBottomBarLeft={renderBottomBarLeft}
-                renderBottomBarCenter={renderBottomBarCenter}
-                renderBottomBarRight={renderBottomBarRight}
-                renderMainMenuExtras={renderMainMenuExtras}
-                onImportTemplates={onImportTemplates}
-                repositoryUrl={repositoryUrl}
-                onConfirm={onConfirm}
-                onNotify={onNotify}
-                theme={theme}
-                changeTheme={changeTheme}
-              />
+              <ZenModeProvider>
+                <EditorShell
+                  hideTopBar={hideTopBar}
+                  hideBottomBar={hideBottomBar}
+                  hideToolbar={hideToolbar}
+                  hideLibraryButton={hideLibraryButton}
+                  hideMainMenu={hideMainMenu}
+                  hideZoomControls={hideZoomControls}
+                  hideResetToContent={hideResetToContent}
+                  hideHelpButton={hideHelpButton}
+                  hideContextMenu={hideContextMenu}
+                  hideSelectionPanel={hideSelectionPanel}
+                  hideDrawingPanel={hideDrawingPanel}
+                  minimap={minimap}
+                  renderTopBarLeft={renderTopBarLeft}
+                  renderTopBarCenter={renderTopBarCenter}
+                  renderTopBarRight={renderTopBarRight}
+                  renderBottomBarLeft={renderBottomBarLeft}
+                  renderBottomBarCenter={renderBottomBarCenter}
+                  renderBottomBarRight={renderBottomBarRight}
+                  renderMainMenuExtras={renderMainMenuExtras}
+                  onImportTemplates={onImportTemplates}
+                  repositoryUrl={repositoryUrl}
+                  onConfirm={onConfirm}
+                  onNotify={onNotify}
+                  theme={theme}
+                  changeTheme={changeTheme}
+                />
+              </ZenModeProvider>
             </DiagramRoot>
           </div>
         </TooltipProvider>
@@ -682,6 +733,8 @@ const EditorShell = ({
   hideHelpButton,
   hideContextMenu,
   hideSelectionPanel,
+  hideDrawingPanel,
+  minimap,
   renderTopBarLeft,
   renderTopBarCenter,
   renderTopBarRight,
@@ -706,6 +759,8 @@ const EditorShell = ({
   readonly hideHelpButton: boolean | undefined;
   readonly hideContextMenu: boolean | undefined;
   readonly hideSelectionPanel: boolean | undefined;
+  readonly hideDrawingPanel: boolean | undefined;
+  readonly minimap: boolean | undefined;
   readonly renderTopBarLeft: (() => ReactNode) | undefined;
   readonly renderTopBarCenter: (() => ReactNode) | undefined;
   readonly renderTopBarRight: (() => ReactNode) | undefined;
@@ -721,6 +776,9 @@ const EditorShell = ({
   readonly changeTheme: (next: DiagramTheme) => void;
 }) => {
   const editor = useDiagramOptional();
+  // Zen mode (⌥Z): hide every chrome surface for focused work, leaving the
+  // canvas + the observational overlays (search, stats, command palette).
+  const { zen } = useZenMode();
   // Omitted → project repo; explicit string → that URL; null → no link.
   const repositoryHref = repositoryUrl === undefined ? DEFAULT_REPOSITORY_URL : repositoryUrl;
   // Native dialogs by default; hosts can route through their own UI.
@@ -730,6 +788,14 @@ const EditorShell = ({
     ((message: string) => {
       window.alert(message);
     });
+  // Register the file-ops actions (Save / Open / Export / Copy-as-image)
+  // on the shared registry so hosts binding hotkeys / the command palette
+  // pick them up, and route their error messages through this shell's
+  // notifier (host toast or the alert fallback above).
+  useEffect(() => {
+    registerFileActions();
+    setFileActionNotifier(notify);
+  }, [notify]);
   // Subscribe to scene changes so the Grid toggle in MainMenu reads
   // the latest viewport.gridEnabled / gridStyle. `useScene` is a thin
   // selector hook — re-renders only on scene identity flips.
@@ -811,7 +877,7 @@ const EditorShell = ({
           over the canvas. Rendered outside UILayer
           (whose wrapper is pointer-events:none) so its buttons stay
           interactive. */}
-      {!hideToolbar ? (
+      {!hideToolbar && !zen ? (
         <Toolbar
           orientation="vertical"
           items={toolbarItems}
@@ -832,7 +898,7 @@ const EditorShell = ({
       {/* UI layer — top/bottom bars + overlay panels (full width; the
           library overlays rather than reflows). */}
       <UILayer>
-        {!hideTopBar && (
+        {!hideTopBar && !zen && (
           <TopBar
             left={
               <ButtonGroup ariaLabel="Logo and main menu">
@@ -856,8 +922,9 @@ const EditorShell = ({
                       <MainMenu.Item
                         icon={<FileUp {...menuIcon} />}
                         onClick={() => {
-                          openSceneFile(editor, notify);
+                          if (editor) openSceneFile(editor);
                         }}
+                        shortcut={formatHotkey({ key: "O", meta: true })}
                       >
                         Open…
                       </MainMenu.Item>
@@ -867,8 +934,19 @@ const EditorShell = ({
                           if (editor) downloadScene(editor.scene);
                         }}
                         disabled={!editor}
+                        shortcut={formatHotkey({ key: "S", meta: true })}
                       >
                         Save as JSON
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        icon={<Copy {...menuIcon} />}
+                        onClick={() => {
+                          if (editor) void copySceneAsImage(editor);
+                        }}
+                        disabled={!editor}
+                        shortcut={formatHotkey({ key: "C", shift: true, alt: true })}
+                      >
+                        Copy as image
                       </MainMenu.Item>
                       <MainMenu.Submenu
                         icon={<Download {...menuIcon} />}
@@ -877,23 +955,22 @@ const EditorShell = ({
                       >
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "transparent", notify)}
+                          onClick={() => editor && void downloadPng(editor, "transparent")}
                           disabled={!editor}
                         >
                           PNG (transparent)
                         </MainMenu.Item>
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "color", notify)}
+                          onClick={() => editor && void downloadPng(editor, "color")}
                           disabled={!editor}
+                          shortcut={formatHotkey({ key: "E", meta: true, shift: true })}
                         >
                           PNG (with background)
                         </MainMenu.Item>
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() =>
-                            editor && void downloadPng(editor, "color-and-grid", notify)
-                          }
+                          onClick={() => editor && void downloadPng(editor, "color-and-grid")}
                           disabled={!editor}
                         >
                           PNG (with background + grid)
@@ -1087,7 +1164,7 @@ const EditorShell = ({
           />
         )}
 
-        {!hideBottomBar && (
+        {!hideBottomBar && !zen && (
           <BottomBar
             left={renderBottomBarLeft ? renderBottomBarLeft() : null}
             center={
@@ -1113,8 +1190,8 @@ const EditorShell = ({
         {/* Templates library. Desktop: floating overlay flush at the left
             edge. Mobile: a bottom sheet (swipe-down / ✕ to close) so it
             doesn't cover the whole small canvas. Both open from the toolbar
-            toggle. */}
-        {mobile ? (
+            toggle. Hidden in zen mode. */}
+        {zen ? null : mobile ? (
           libraryOpen ? (
             <BottomSheet
               snapPoints={[0, 60, 92]}
@@ -1147,12 +1224,49 @@ const EditorShell = ({
         )}
       </UILayer>
 
+      {/* Minimap — docked bottom-right ABOVE the zoom controls, hidden in
+          zen mode with the rest of the chrome. Reads the editor from context.
+          The bottom offset clears the bottom bar (inset + bar height + gap). */}
+      {minimap && !zen && (
+        <div
+          style={{
+            position: "absolute",
+            right: "var(--du-bar-inset, 12px)",
+            bottom: "calc(var(--du-bar-inset, 12px) + 52px)",
+            border: "1px solid var(--du-border, #d0d0d0)",
+            borderRadius: 6,
+            background: "var(--du-surface, #fff)",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+            overflow: "hidden",
+            zIndex: 40,
+          }}
+        >
+          <Minimap />
+        </div>
+      )}
+
+      {/* Drawing / eraser tool-options panel — floats top-right below the top
+          bar while the brush or eraser is active (DrawingPanel self-gates on
+          mode). Hidden in zen mode with the rest of the chrome. */}
+      {!hideDrawingPanel && !zen && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(var(--du-bar-inset, 12px) + 52px)",
+            right: "var(--du-bar-inset, 12px)",
+            zIndex: 40,
+          }}
+        >
+          <DrawingPanel />
+        </div>
+      )}
+
       {/* Floating selection panel — portal to body, positions itself
           above the selection bbox via @floating-ui. Rendered OUTSIDE
           UILayer because it portals to document.body anyway and
           UILayer's pointer-events:none on the wrapper would
           interfere with its children's auto handling. */}
-      {!hideSelectionPanel && <SelectionFloatingPanel />}
+      {!hideSelectionPanel && !zen && <SelectionFloatingPanel />}
 
       {/* Standalone HelpDialog for hotkey activation — only renders
           when the `?` hotkey opens it without going through the
@@ -1167,6 +1281,11 @@ const EditorShell = ({
       {/* Command palette (⌘K) — self-contained: manages its own open state and
           registers the open action. */}
       <CommandPalette />
+
+      {/* Observational overlays — search (⌘F) and stats (⌥/). Self-contained
+          (own state + registered actions); stay live in zen mode. */}
+      <SearchOverlay />
+      <StatsPanel />
 
       {void editor}
     </div>
@@ -1251,115 +1370,6 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
       {trailing}
     </ButtonGroup>
   );
-};
-
-// --- MainMenu File-group helpers --------------------------------------------
-
-/**
- * Trigger a browser download of arbitrary bytes. Used by the
- * Save / Export menu items. Creates a temporary `<a>`, clicks it,
- * cleans up the object URL on the next animation frame so the
- * browser has time to start the download.
- */
-const downloadBlob = (blob: Blob, filename: string): void => {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  requestAnimationFrame(() => {
-    URL.revokeObjectURL(url);
-  });
-};
-
-/** "Save as JSON" — serialises the scene through @serialization. */
-const downloadScene = (scene: Scene): void => {
-  const json = stringifyScene(scene, 2);
-  downloadBlob(new Blob([json], { type: "application/json" }), "scene.diagram.json");
-};
-
-/**
- * "Open…" — file picker that accepts `.diagram.json`, parses it,
- * and replaces the editor's scene. Resets history (matches the
- * default `loadScene` behaviour). User cancellation = no-op.
- */
-const openSceneFile = (editor: Editor | null, notify: (message: string) => void): void => {
-  if (!editor) return;
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "application/json,.json";
-  input.onchange = () => {
-    const file = input.files?.[0];
-    if (!file) return;
-    void file.text().then((text) => {
-      try {
-        const scene = parseScene(text);
-        editor.loadScene(scene);
-      } catch (err) {
-        console.error("[diagram] failed to parse scene file:", err);
-        notify("Failed to parse the file — make sure it was saved through this app's Save action.");
-      }
-    });
-  };
-  input.click();
-};
-
-/**
- * "Export as PNG" — renders the **full scene** (not just the visible
- * viewport) into an OffscreenCanvas via the standard `renderScene` +
- * `renderLinks` pipeline and downloads the result. Three variants
- * exposed in the menu:
- *
- *   • transparent      — PNG with alpha channel preserved
- *   • color            — solid background fill (host canvas colour)
- *   • color-and-grid   — solid fill + same grid the user sees
- *
- * Scale fixed at 2× for retina-quality output. The full-scene
- * contract makes this symmetric with SVG export, which always emits
- * the whole scene.
- */
-const PNG_EXPORT_SCALE = 2;
-
-const downloadPng = async (
-  editor: Editor,
-  background: PngExportBackground,
-  notify: (message: string) => void,
-): Promise<void> => {
-  const backgroundColor = readCanvasBackgroundColor();
-  const blob = await exportSceneToPng(editor.scene, {
-    background,
-    scale: PNG_EXPORT_SCALE,
-    backgroundColor,
-  });
-  if (!blob) {
-    // Empty scene — convertToBlob unavailable or no shapes to export.
-    notify("Nothing to export — the canvas is empty.");
-    return;
-  }
-  downloadBlob(blob, "scene.png");
-};
-
-/**
- * Read the host's current `--du-canvas-bg` CSS variable. Falls back
- * to white if the variable isn't set (e.g. host hasn't loaded the
- * react-ui stylesheet). Matches what the user sees behind the
- * shapes on the live canvas.
- */
-const readCanvasBackgroundColor = (): string => {
-  const probe = document.querySelector('canvas[data-layer="main"]') ?? document.body;
-  const value = getComputedStyle(probe).getPropertyValue("--du-canvas-bg").trim();
-  return value || "#ffffff";
-};
-
-/**
- * "Export as SVG" — renders the scene to vector SVG (no bitmap
- * fall-back, works in any browser). One file per scene.
- */
-const downloadSvg = (scene: Scene): void => {
-  const svg = renderSceneToSvg(scene);
-  downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "scene.svg");
 };
 
 // --- Grid toggle helpers ----------------------------------------------------

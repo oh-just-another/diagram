@@ -4,7 +4,7 @@ import { createRef } from "react";
 import { elementId } from "@oh-just-another/types";
 import { DEFAULT_LAYER_ID, emptyScene, orderBetween, type Element } from "@oh-just-another/scene";
 import { installBuiltinRenderers } from "@oh-just-another/renderer-canvas";
-import { Editor as EditorClass } from "@oh-just-another/state";
+import { Editor as EditorClass, defaultActionRegistry } from "@oh-just-another/state";
 import { Editor, type EditorAPI } from "../src/index";
 
 installBuiltinRenderers();
@@ -147,6 +147,26 @@ describe("<Editor> — slots & chrome flags", () => {
 
     await mountEditor({ renderTopBarRight: slot, hideTopBar: true });
     expect(screen.queryByTestId("slot-x")).toBeNull();
+  });
+});
+
+describe("<Editor> — minimap", () => {
+  it("is off by default", async () => {
+    await mountEditor();
+    expect(screen.queryByLabelText("Diagram minimap")).toBeNull();
+  });
+
+  it("renders with the `minimap` prop and hides in zen mode", async () => {
+    const { ref } = await mountEditor({ minimap: true });
+    expect(screen.queryByLabelText("Diagram minimap")).not.toBeNull();
+    // Zen hides every chrome surface, the minimap included.
+    act(() => {
+      const ed = ref.current?.editor;
+      if (ed) defaultActionRegistry.dispatch("toggle-zen-mode", { editor: ed });
+    });
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Diagram minimap")).toBeNull();
+    });
   });
 });
 

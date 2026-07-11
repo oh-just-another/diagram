@@ -12,7 +12,7 @@ Real-time multi-peer editing built on Yjs (L4): a CRDT-backed scene mirror, pres
 pnpm add @oh-just-another/collab
 ```
 
-Peer deps: `yjs` and `y-protocols`.
+`yjs` and `y-protocols` ship as regular dependencies — nothing extra to install.
 
 ## Quick start
 

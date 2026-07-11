@@ -25,6 +25,8 @@ export interface DiagramCanvasProps {
   readonly style?: CSSProperties;
   readonly className?: string;
   readonly skipInstallRenderers?: boolean;
+  /** Start in read-only / view mode (see {@link DiagramRootProps.readOnly}). */
+  readonly readOnly?: boolean;
   /**
    * Optional React subtree rendered **as a sibling** of the canvas surface
    * inside a shared `<DiagramRoot>`. Useful when the host wants e.g. a
@@ -45,6 +47,7 @@ export const DiagramCanvas = ({
   style,
   className,
   skipInstallRenderers,
+  readOnly,
   children,
 }: DiagramCanvasProps) => (
   <DiagramRoot
@@ -52,6 +55,7 @@ export const DiagramCanvas = ({
     {...(initialMode !== undefined ? { initialMode } : {})}
     {...(onReady !== undefined ? { onReady } : {})}
     {...(skipInstallRenderers !== undefined ? { skipInstallRenderers } : {})}
+    {...(readOnly !== undefined ? { readOnly } : {})}
   >
     <div
       className={className}

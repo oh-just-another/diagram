@@ -1,0 +1,52 @@
+---
+title: Collaboration
+sidebar_position: 3
+---
+
+`@oh-just-another/collab` adds real-time multi-peer editing on top of a scene: a CRDT-backed mirror built on Yjs, presence for cursors and selections, mentions, branch-and-merge, CRDT-aware undo, and client-side encryption. Pair it with a transport from `@oh-just-another/network` (see Sync).
+
+## The pieces
+
+- `SceneDoc` — a CRDT mirror of a `Scene` over a `Y.Doc`; `snapshot()` rebuilds a typed scene on demand.
+- `bindEditor(editor, sceneDoc, options?)` — wires an `Editor` to the doc (self-origin filtered); returns an unbind function. Pass `waitForSyncMs` (default 0) so a joiner adopts the room's existing state instead of seeding it with its own scene.
+- `CollabAwareness` + `bindAwareness` — publish the local user, cursor and selection, and paint peers' cursors and selection halos back into the editor.
+- `TransportProvider` — bridges the `Y.Doc` and awareness onto a single transport channel.
+
+## Wiring it up
+
+```ts
+import * as Y from "yjs";
+import { BroadcastChannelTransport } from "@oh-just-another/network";
+import {
+  SceneDoc,
+  CollabAwareness,
+  TransportProvider,
+  bindEditor,
+  bindAwareness,
+} from "@oh-just-another/collab";
+
+const doc = new Y.Doc();
+const sceneDoc = new SceneDoc(doc);
+const awareness = new CollabAwareness(doc);
+
+const transport = new BroadcastChannelTransport("room-foo");
+const provider = new TransportProvider({ doc, transport, awareness: awareness.awareness });
+
+const unbindScene = bindEditor(editor, sceneDoc);
+const unbindPresence = bindAwareness(editor, awareness, {
+  user: { id: "me", name: "Alice", color: "#1a73e8" },
+});
+```
+
+Tear down in reverse with the returned unbind functions plus `provider.destroy()`, `awareness.destroy()`, `transport.close()` and `doc.destroy()`.
+
+## Beyond live editing
+
+- **Mentions** — `extractMentions` / `resolveMentions` / `notifyMention` pull `@handle` tokens from a comment body and fire a browser notification when the local user is mentioned.
+- **Branch & merge** — `BranchDoc` models named branches as Yjs subdocs; its `mergeBranch()` runs a three-way merge against the fork ancestor and returns a `MergeReport` whose conflicts the host resolves via `applyConflictResolution()` (`ConflictChoice` is `"ours" | "theirs" | "both"`).
+- **CRDT-aware undo** — `CollabHistory` is a `HistoryProvider` backed by `Y.UndoManager`, scoping undo/redo to the local client.
+- **Encryption** — `generateRoomKey` / `EncryptedTransport` wrap any transport in AES-GCM so a blind relay sees only ciphertext.
+
+## Design note
+
+`SceneDoc` is the source of truth: after each remote update the editor runs `loadScene(sceneDoc.snapshot())` rather than incrementally patching — simpler, and within budget for typical scene sizes. Per-kind `Y.Map`s merge concurrent edits to different ids cleanly; same-id conflicts resolve last-writer-wins.

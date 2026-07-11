@@ -1,0 +1,72 @@
+[
+  {
+    "id": "rect-sharp",
+    "title": "Sharp-cornered rectangle, fill + stroke"
+  },
+  {
+    "id": "rect-rounded",
+    "title": "Rounded rectangle, adaptive + explicit radius"
+  },
+  {
+    "id": "ellipse",
+    "title": "Ellipse, translucent fill over stroke"
+  },
+  {
+    "id": "diamond",
+    "title": "Polygon — 4-point diamond"
+  },
+  {
+    "id": "polygon-hex",
+    "title": "Polygon — dashed hexagon"
+  },
+  {
+    "id": "path-curves",
+    "title": "Path with cubic + quadratic curves, no fill"
+  },
+  {
+    "id": "styles-stroke-fill",
+    "title": "Stroke widths, dash, opacity, stroke-align variations"
+  },
+  {
+    "id": "rotated",
+    "title": "Rotated rectangle + rotated ellipse"
+  },
+  {
+    "id": "text-basic",
+    "title": "Text element, default zoom"
+  },
+  {
+    "id": "text-styled",
+    "title": "Text — bold, italic, underline, centered"
+  },
+  {
+    "id": "text-zoomed",
+    "title": "Text at viewport zoom 2.5 (MSDF up-scale path)"
+  },
+  {
+    "id": "edges-straight-ortho",
+    "title": "Straight + orthogonal edges with arrowheads"
+  },
+  {
+    "id": "edges-bezier-labeled",
+    "title": "Bezier edge with waypoints, label, ERD + diamond arrowheads"
+  },
+  {
+    "id": "image",
+    "title": "Image element from data-URI, scaled"
+  },
+  {
+    "id": "group-frame",
+    "title": "Frame with children + a group of two shapes"
+  },
+  {
+    "id": "block-arrow-brush",
+    "title": "Block-arrow + variable-width brush stroke"
+  },
+  {
+    "id": "isolation-dim",
+    "title": "Isolation dim — two of three shapes at reduced alpha",
+    "dimElementIds": ["b", "c"],
+    "dimOpacity": 0.2
+  }
+]

@@ -1,7 +1,5 @@
 import {
   DEFAULT_LAYER_ID,
-  FALLBACK_SCENE_HEIGHT,
-  FALLBACK_SCENE_WIDTH,
   addLink,
   addElement,
   emptyScene,
@@ -14,12 +12,8 @@ import { DEFAULT_EDGE_STYLE, DEFAULT_ELEMENT_STYLES, HUE_TONES } from "@oh-just-
 import { linkId, elementId } from "@oh-just-another/types";
 import type { GraphDocument } from "./graph.js";
 import { layoutGraph } from "./layout.js";
-import {
-  EDGE_STROKE_WIDTH,
-  NODE_LABEL_FONT_SIZE,
-  NODE_STROKE_WIDTH,
-  SCENE_FIT_MARGIN,
-} from "./constants.js";
+import { fitViewportToBoxes } from "./fit-viewport.js";
+import { EDGE_STROKE_WIDTH, NODE_LABEL_FONT_SIZE, NODE_STROKE_WIDTH } from "./constants.js";
 
 /**
  * Convert a backend-neutral `GraphDocument` into a `Scene`. Runs layout
@@ -133,28 +127,10 @@ export const graphToScene = (graph: GraphDocument): Scene => {
 
   // Fit the viewport around the laid-out nodes plus a margin so callers
   // get something sensible to render without extra computation.
-  const margin = SCENE_FIT_MARGIN;
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const n of nodes) {
-    if (n.position.x < minX) minX = n.position.x;
-    if (n.position.y < minY) minY = n.position.y;
-    if (n.position.x + n.width > maxX) maxX = n.position.x + n.width;
-    if (n.position.y + n.height > maxY) maxY = n.position.y + n.height;
-  }
-  const width =
-    Number.isFinite(maxX) && Number.isFinite(minX)
-      ? Math.ceil(maxX - Math.min(0, minX)) + margin
-      : FALLBACK_SCENE_WIDTH;
-  const height =
-    Number.isFinite(maxY) && Number.isFinite(minY)
-      ? Math.ceil(maxY - Math.min(0, minY)) + margin
-      : FALLBACK_SCENE_HEIGHT;
-  scene = { ...scene, viewport: { ...scene.viewport, size: { width, height } } };
-
-  return scene;
+  return fitViewportToBoxes(
+    scene,
+    nodes.map((n) => ({ x: n.position.x, y: n.position.y, width: n.width, height: n.height })),
+  );
 };
 
 const defaultFill = (shape: GraphDocument["nodes"][number]["shape"]): string => {

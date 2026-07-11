@@ -1,0 +1,19 @@
+---
+title: 🚧 Pages
+status: draft
+sidebar_position: 48
+---
+
+The data model has no multi-page document. A scene is a single, flat canvas. The closest equivalent to pages is **layers** — named, ordered containers for shapes and edges, defined in `@oh-just-another/scene`.
+
+A `Layer` has an `id`, a `name`, `visible` and `locked` flags, and an `order` (a fractional index governing z-order between layers). Membership lives on the children (each shape and edge carries a `layerId`), so moving an element between layers is a single-field update.
+
+```ts
+import { addLayer, updateLayer, removeLayer, getLayersInOrder } from "@oh-just-another/scene";
+```
+
+The editor exposes layer operations imperatively (create, rename, remove, toggle visibility/lock, move the selection to a layer, set the active layer), and `@oh-just-another/react-ui` ships a `LayerPanel` plus `useLayers` / `useActiveLayerId` hooks. New shapes land on the editor's active layer when their input doesn't name one.
+
+Use layers to separate concerns on one canvas (background, content, annotations) and to show/hide or lock groups of elements. Frames (see Frame Shape) give you named, movable regions within a single canvas — another organising tool short of true pages.
+
+Planned — not yet available: multi-page documents, where one file holds several independent canvases with their own viewports and navigation between them. Today the unit of a document is one scene.

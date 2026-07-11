@@ -1,5 +1,5 @@
 import type { LineCap, LineJoin } from "@oh-just-another/renderer-core";
-import { req, type Transform, type Vec2 } from "@oh-just-another/types";
+import { req, type Transform } from "@oh-just-another/types";
 
 /**
  * GPU-side stroke pipeline for the WebGL2 backend. Builds a single
@@ -92,7 +92,7 @@ export interface StrokeStyle {
  * Exported so `webgl2-target.ts` can reuse it for closed-polyline seam
  * vertices.
  */
-export const miterOffset = (
+const miterOffset = (
   n1x: number,
   n1y: number,
   n2x: number,
@@ -125,7 +125,10 @@ export const miterOffset = (
  */
 export const drawPolylineStroke = (
   gl: WebGL2RenderingContext,
-  polyline: readonly Vec2[],
+  /** Flat `[x0, y0, x1, y1, ...]` polyline vertices. */
+  xy: ArrayLike<number>,
+  /** Number of (x, y) points in `xy`. */
+  pointCount: number,
   style: StrokeStyle,
   transform: Transform,
   size: { width: number; height: number },
@@ -137,27 +140,24 @@ export const drawPolylineStroke = (
   aPosLoc: number,
   identityMat3: Float32Array,
 ): void => {
-  if (style.width <= 0 || polyline.length < 2) return;
+  if (style.width <= 0 || pointCount < 2) return;
   const half = style.width / 2;
 
-  const segCount = polyline.length - 1;
+  const segCount = pointCount - 1;
   // Reuse the module-level scratch nx/ny buffers — grow on demand.
   ensureNCapacity(segCount);
   const nx = scratchNx;
   const ny = scratchNy;
   for (let i = 0; i < segCount; i++) {
-    const a = req(polyline[i]);
-    const b = req(polyline[i + 1]);
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
+    const dx = req(xy[i * 2 + 2]) - req(xy[i * 2]);
+    const dy = req(xy[i * 2 + 3]) - req(xy[i * 2 + 1]);
     const len = Math.hypot(dx, dy) || 1;
     nx[i] = -dy / len;
     ny[i] = dx / len;
   }
 
-  const first = req(polyline[0]);
-  const last = req(polyline[polyline.length - 1]);
-  const closed = polyline.length >= 3 && first.x === last.x && first.y === last.y;
+  const closed =
+    pointCount >= 3 && xy[0] === xy[(pointCount - 1) * 2] && xy[1] === xy[(pointCount - 1) * 2 + 1];
 
   // Reset the scratch vertex stream length — world-space (x, y) pairs
   // are pushed into `scratchTris` via `trisPush`, then projected
@@ -197,10 +197,17 @@ export const drawPolylineStroke = (
 
   // Emit the rect bands for every segment.
   for (let i = 0; i < segCount; i++) {
-    const a = req(polyline[i]);
-    const b = req(polyline[i + 1]);
     const o = segLeft(i);
-    band(a.x, a.y, o.ox, o.oy, b.x, b.y, o.ox, o.oy);
+    band(
+      req(xy[i * 2]),
+      req(xy[i * 2 + 1]),
+      o.ox,
+      o.oy,
+      req(xy[i * 2 + 2]),
+      req(xy[i * 2 + 3]),
+      o.ox,
+      o.oy,
+    );
   }
 
   // Emit join geometry at every interior vertex (and at the seam for
@@ -276,38 +283,46 @@ export const drawPolylineStroke = (
   };
 
   for (let i = 1; i < segCount; i++) {
-    const p = req(polyline[i]);
-    emitJoin(p.x, p.y, req(nx[i - 1]), req(ny[i - 1]), req(nx[i]), req(ny[i]));
+    emitJoin(
+      req(xy[i * 2]),
+      req(xy[i * 2 + 1]),
+      req(nx[i - 1]),
+      req(ny[i - 1]),
+      req(nx[i]),
+      req(ny[i]),
+    );
   }
   if (closed) {
-    const p = req(polyline[0]);
-    emitJoin(p.x, p.y, req(nx[segCount - 1]), req(ny[segCount - 1]), req(nx[0]), req(ny[0]));
+    emitJoin(
+      req(xy[0]),
+      req(xy[1]),
+      req(nx[segCount - 1]),
+      req(ny[segCount - 1]),
+      req(nx[0]),
+      req(ny[0]),
+    );
   }
 
   // Caps on open polylines (closed shapes don't have caps).
   if (!closed) {
-    const capFirst = req(polyline[0]);
-    const second = req(polyline[1]);
     emitCap(
       push,
-      capFirst.x,
-      capFirst.y,
-      second.x,
-      second.y,
+      req(xy[0]),
+      req(xy[1]),
+      req(xy[2]),
+      req(xy[3]),
       req(nx[0]),
       req(ny[0]),
       half,
       style.cap,
       true,
     );
-    const lastVx = req(polyline[polyline.length - 1]);
-    const prevVx = req(polyline[polyline.length - 2]);
     emitCap(
       push,
-      lastVx.x,
-      lastVx.y,
-      prevVx.x,
-      prevVx.y,
+      req(xy[(pointCount - 1) * 2]),
+      req(xy[(pointCount - 1) * 2 + 1]),
+      req(xy[(pointCount - 2) * 2]),
+      req(xy[(pointCount - 2) * 2 + 1]),
       req(nx[segCount - 1]),
       req(ny[segCount - 1]),
       half,

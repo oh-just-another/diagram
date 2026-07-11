@@ -1,5 +1,6 @@
 import {
   addElement,
+  applyStyleToRange,
   getElement,
   getElementWorldBounds,
   isText,
@@ -213,6 +214,29 @@ export const computeUpdateStyle = (
     patch:
       patches.length === 1 && firstPatch !== undefined ? firstPatch : { kind: "batch", patches },
   };
+};
+
+/**
+ * Apply a partial {@link TextStyle} overlay to the character range
+ * `[from, to)` of a single text element, producing (or updating) its styled
+ * runs. Delegates the run splitting/merging to the pure `applyStyleToRange`
+ * in `@oh-just-another/scene`; here we only wrap it as a scene update + patch.
+ * Returns `null` when `id` is missing, not a text shape, or the operation is
+ * a no-op (e.g. an empty range or unchanged runs).
+ */
+export const computeApplyTextRunStyle = (
+  scene: Scene,
+  id: ElementId,
+  from: number,
+  to: number,
+  partial: Partial<TextStyle>,
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  const el = getElement(scene, id);
+  if (el === undefined || !isText(el)) return null;
+  const next = applyStyleToRange(el, from, to, partial);
+  if (next === el) return null;
+  const r = updateElement(scene, id, () => next);
+  return { scene: r.scene, patch: r.patch };
 };
 
 /**

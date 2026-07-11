@@ -1,0 +1,45 @@
+---
+title: Version History
+sidebar_position: 84
+---
+
+`@oh-just-another/versioning` provides git-like version control for scenes: named snapshots, a branch tree, and diff/merge utilities. This is distinct from undo/redo — that is `@oh-just-another/history`, an ephemeral linear stack of edits. Versioning is about durable, named snapshots that branch and merge.
+
+## Snapshot store
+
+`SnapshotStore` is the system-of-record for the version tree. It starts on the `"main"` branch (`DEFAULT_BRANCH_ID`). `capture()` takes a `CaptureRequest` (`scene`, `author`, `message`, optional `branchId`) and returns an immutable `Snapshot`; the store generates id, parent, and timestamp. `branch()` takes a `BranchRequest` (`name`, `fromVersion`) and forks a new `Branch` from any snapshot. Ids are branded `VersionId` / `BranchId`, constructed via `versionId()` / `branchId()`.
+
+```ts
+import {
+  SnapshotStore,
+  diffScenes,
+  isEmptyDiff,
+  serializeStore,
+} from "@oh-just-another/versioning";
+
+const store = new SnapshotStore(); // starts on "main"
+
+const v1 = store.capture({
+  scene,
+  author: { id: "u1", name: "Ada" },
+  message: "init",
+});
+const feature = store.branch({ name: "feature", fromVersion: v1.id });
+
+const diff = diffScenes(sceneA, sceneB);
+if (!isEmptyDiff(diff)) console.log(diff.elements.added);
+
+const json = serializeStore(store); // persist with the host's storage of choice
+```
+
+## Diff
+
+`diffScenes(before, after)` returns a `SceneDiff` that splits each part of the scene (elements, links, layers, annotations) into `added`, `removed`, and `modified` id lists via `DiffCategory`. `isEmptyDiff(diff)` reports whether anything changed.
+
+## Merge
+
+For divergent branch heads the package exposes `findCommonAncestor`, `threeWayMerge`, `mergeBranchHeads`, and `resolveConflict`, plus the `Conflict`, `SceneConflict`, `MergeReport`, and `ConflictResolution` types.
+
+## Editor bridge and serialization
+
+`captureFromEditor` and `restoreSnapshot` (with `EditorLike` and `CaptureOptions`) connect a live editor to the store. Persistence helpers include `serializeStore` / `stringifyStore` / `importStoreJson` / `importIntoStore` for the whole tree, and `serializeSnapshot` / `deserializeSnapshot` for a single snapshot. The store is in-memory; wrap these helpers with localStorage, IndexedDB, or a server API of your choice.

@@ -206,13 +206,6 @@ export const shapeSelectionFrame = (shape: ElementBase): SelectionFrame => {
   };
 };
 
-/** Axis-aligned selection frame (rotation 0) — groups / multi-selection. */
-export const aabbSelectionFrame = (bounds: Bounds): SelectionFrame => ({
-  bounds,
-  rotation: 0,
-  pivot: { x: bounds.x, y: bounds.y },
-});
-
 /** The four world corners of the frame, in `nw → ne → se → sw` order. */
 export const frameCorners = (frame: SelectionFrame): readonly [Vec2, Vec2, Vec2, Vec2] => {
   const b = frame.bounds;

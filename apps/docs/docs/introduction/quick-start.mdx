@@ -1,6 +1,5 @@
 ---
 title: Quick Start
-status: draft
 sidebar_position: 2
 ---
 
@@ -35,7 +34,7 @@ Force one with the `capabilities` prop instead of auto-detecting:
 <Editor capabilities={{ renderer: "webgl2" }} /> // "auto" | "webgl2" | "offscreen" | "canvas2d"
 ```
 
-To render without an editor (server, thumbnails), use `renderSceneToSvg(scene)` from `@oh-just-another/renderer-svg` for an SVG string, or `exportSceneToPng(scene, options)` from `@oh-just-another/editor` for a PNG `Blob`.
+To render without an editor (server, thumbnails), use `renderSceneToSvg(scene)` from `@oh-just-another/renderer-svg` for an SVG string, or `exportSceneToPng(scene, options)` from `@oh-just-another/editor` for a PNG `Blob` (resolves to `null` on an empty scene or without `OffscreenCanvas`).
 
 ## Drive it from code
 
@@ -96,4 +95,4 @@ To load into an already-mounted editor instead of on mount, call `api.current.lo
 
 ## Customize the chrome
 
-Props such as `initialMode`, `theme`, `hideToolbar`, and the `renderTopBar*` slots let you toggle or replace parts of the UI, and `onSceneChange` / `onSelectionChange` notify you of edits. See the full props reference in the [package README](https://github.com/oh-just-another/diagram).
+Props such as `initialMode`, `theme`, `hideToolbar`, and the `renderTopBar*` slots let you toggle or replace parts of the UI, and `onSceneChange` / `onSelectionChange` notify you of edits. See the full props reference in the [package README](https://github.com/oh-just-another/diagram/tree/master/packages/editor).

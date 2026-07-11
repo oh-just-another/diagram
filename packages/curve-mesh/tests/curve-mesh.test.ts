@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cubicToTriangles,
+  CurveTriangleBatch,
   packCurveTriangles,
   quadraticToTriangle,
   subdivideCubic,
@@ -164,5 +165,65 @@ describe("packCurveTriangles", () => {
     const packed = packCurveTriangles([]);
     expect(packed.positions.length).toBe(0);
     expect(packed.uvs.length).toBe(0);
+  });
+});
+
+describe("CurveTriangleBatch", () => {
+  it("addQuadratic matches quadraticToTriangle output", () => {
+    const batch = new CurveTriangleBatch();
+    const p0 = { x: 0, y: 0 };
+    const p1 = { x: 10, y: 20 };
+    const p2 = { x: 30, y: 0 };
+    expect(batch.addQuadratic(p0, p1, p2)).toBe(true);
+    const tri = quadraticToTriangle(p0, p1, p2)!;
+    expect(batch.triangleCount).toBe(1);
+    expect(Array.from(batch.positions)).toEqual(Array.from(tri.positions));
+    expect(Array.from(batch.uvs)).toEqual(Array.from(tri.uvs));
+  });
+
+  it("skips degenerate quadratics and reports false", () => {
+    const batch = new CurveTriangleBatch();
+    expect(batch.addQuadratic({ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 10, y: 0 })).toBe(false);
+    expect(batch.triangleCount).toBe(0);
+    expect(batch.positions.length).toBe(0);
+    expect(batch.uvs.length).toBe(0);
+  });
+
+  it("addCubic matches cubicToTriangles + packCurveTriangles output", () => {
+    const batch = new CurveTriangleBatch();
+    const p0 = { x: 0, y: 0 };
+    const p1 = { x: 0, y: 100 };
+    const p2 = { x: 100, y: 100 };
+    const p3 = { x: 100, y: 0 };
+    batch.addCubic(p0, p1, p2, p3);
+    const packed = packCurveTriangles(cubicToTriangles(p0, p1, p2, p3));
+    expect(batch.triangleCount).toBe(8);
+    expect(Array.from(batch.positions)).toEqual(Array.from(packed.positions));
+    expect(Array.from(batch.uvs)).toEqual(Array.from(packed.uvs));
+  });
+
+  it("accumulates across mixed adds and rewinds on reset", () => {
+    const batch = new CurveTriangleBatch();
+    batch.addQuadratic({ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 0 });
+    batch.addCubic({ x: 0, y: 0 }, { x: 0, y: 10 }, { x: 10, y: 10 }, { x: 10, y: 0 });
+    expect(batch.triangleCount).toBe(9);
+    expect(batch.positions.length).toBe(9 * 6);
+    expect(batch.uvs.length).toBe(9 * 9);
+    batch.reset();
+    expect(batch.triangleCount).toBe(0);
+    expect(batch.positions.length).toBe(0);
+  });
+
+  it("grows past the initial capacity without corrupting earlier triangles", () => {
+    const batch = new CurveTriangleBatch();
+    // 100 distinct quadratics — beyond the initial 64-triangle capacity.
+    for (let i = 0; i < 100; i++) {
+      batch.addQuadratic({ x: i, y: 0 }, { x: i + 1, y: 1 }, { x: i + 2, y: 0 });
+    }
+    expect(batch.triangleCount).toBe(100);
+    // First triangle survived the grow-copy.
+    expect(Array.from(batch.positions.subarray(0, 6))).toEqual([0, 0, 1, 1, 2, 0]);
+    // Last triangle landed at the right offset.
+    expect(Array.from(batch.positions.subarray(99 * 6, 100 * 6))).toEqual([99, 0, 100, 1, 101, 0]);
   });
 });

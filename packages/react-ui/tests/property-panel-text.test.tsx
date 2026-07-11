@@ -109,4 +109,72 @@ describe("PropertyPanel for text shapes", () => {
     ).toBe("bold");
     editor.dispose();
   });
+
+  it("Bold toggle applies to the in-edit text selection as a styled run", () => {
+    const editor = mountEditor();
+    editor.setSelection([text.id]);
+    // Enter inline edit and select the first character only.
+    editor.beginTextEdit(text.id);
+    act(() => {
+      editor.setEditingSelection(0, 1, "forward");
+    });
+    render(
+      <TooltipProvider>
+        <DiagramProvider editor={editor}>
+          <PropertyPanel />
+        </DiagramProvider>
+      </TooltipProvider>,
+    );
+    const trigger = document.body.querySelector('button[aria-label="Text style"]') as HTMLElement;
+    act(() => fireEvent.click(trigger));
+    const bold = document.body.querySelector('button[aria-label="Bold"]') as HTMLElement;
+    act(() => fireEvent.click(bold));
+    const el = editor.scene.elements.get(text.id) as {
+      text: string;
+      runs?: readonly { text: string; style?: { fontWeight?: string } }[];
+    };
+    // Only the first char is bold; flat text unchanged.
+    expect(el.text).toBe("hi");
+    expect(el.runs).toEqual([{ text: "h", style: { fontWeight: "bold" } }, { text: "i" }]);
+    editor.dispose();
+  });
+
+  // Regression: while a text edit is live the panel re-renders constantly
+  // (caret blink → notify). If a decoration toggle is a component defined
+  // inside its parent, each re-render gives it a fresh identity and React
+  // remounts the <button>; a click that spans a re-render then lands on a
+  // detached node and is swallowed. This reproduces that race by capturing
+  // the Bold button, forcing a panel re-render, then clicking the captured
+  // node — it must still apply, which only holds when the toggle is a
+  // stable module-level component.
+  it("Bold toggle still fires after the panel re-renders (no remount race)", () => {
+    const editor = mountEditor();
+    editor.setSelection([text.id]);
+    editor.beginTextEdit(text.id);
+    act(() => {
+      editor.setEditingSelection(0, 1, "forward");
+    });
+    render(
+      <TooltipProvider>
+        <DiagramProvider editor={editor}>
+          <PropertyPanel />
+        </DiagramProvider>
+      </TooltipProvider>,
+    );
+    const trigger = document.body.querySelector('button[aria-label="Text style"]') as HTMLElement;
+    act(() => fireEvent.click(trigger));
+    // Capture the Bold button, then force a re-render (as a caret-blink
+    // notify would) BEFORE clicking the captured reference.
+    const bold = document.body.querySelector('button[aria-label="Bold"]') as HTMLElement;
+    expect(bold).not.toBeNull();
+    act(() => {
+      editor.setEditingSelection(0, 1, "forward");
+    });
+    act(() => fireEvent.click(bold));
+    const el = editor.scene.elements.get(text.id) as {
+      runs?: readonly { text: string; style?: { fontWeight?: string } }[];
+    };
+    expect(el.runs).toEqual([{ text: "h", style: { fontWeight: "bold" } }, { text: "i" }]);
+    editor.dispose();
+  });
 });

@@ -16,6 +16,11 @@ import {
   type RectangleElement,
   type Style,
   type TextElement,
+  type TextRun,
+  type TextStyle,
+  sliceRuns,
+  brushBodyColor,
+  brushOutline,
 } from "@oh-just-another/scene";
 import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "./render-target.js";
@@ -245,7 +250,105 @@ const drawPath: ElementRenderer<PathElement> = (shape, target) => {
   if (stroke) target.stroke();
 };
 
+/**
+ * Rich-text path: draw a text element whose glyphs carry per-run styling
+ * (bold / italic / colour / decoration). Each visual line is split into
+ * style segments (via `sliceRuns` against the line's source offsets) and each
+ * segment is painted with its own font + fill at an accumulated x offset —
+ * so it renders identically on Canvas2D, WebGL2 and SVG through the shared
+ * `RenderTarget`. Line breaking uses the ELEMENT's base font metrics (matches
+ * the plain-text path); per-run weight only affects glyph paint + segment
+ * widths, an acceptable etap-1 approximation for wrapping.
+ */
+const drawStyledText = (shape: TextElement, target: RenderTarget): void => {
+  const align = shape.style.textAlign ?? "left";
+  const fontSize = shape.fontSize;
+  target.setTextAlign("left");
+  target.setTextBaseline(shape.style.textBaseline ?? "top");
+
+  // Apply the resolved font for a run: run overlay wins, element style is
+  // the fallback for any field the run omits.
+  const setSegFont = (st: TextRun["style"]): void => {
+    const weight = st?.fontWeight ?? shape.style.fontWeight;
+    const style = st?.fontStyle ?? shape.style.fontStyle;
+    target.setFont(shape.fontFamily, fontSize, {
+      ...(weight ? { weight } : {}),
+      ...(style ? { style } : {}),
+    });
+  };
+
+  // Base-font line breaking — same metrics the plain path wraps with.
+  setSegFont(undefined);
+  const layout = layoutText(shape.text, (s) => target.measureText(s).width, {
+    fontSize,
+    ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
+  });
+
+  interface Seg {
+    readonly text: string;
+    readonly style: TextStyle | undefined;
+    readonly width: number;
+  }
+  const perLine = layout.lines.map((line) => {
+    const segs: Seg[] = sliceRuns(shape, line.start, line.end).map((r) => {
+      setSegFont(r.style);
+      return { text: r.text, style: r.style, width: target.measureText(r.text).width };
+    });
+    const total = segs.reduce((a, s) => a + s.width, 0);
+    return { segs, total };
+  });
+
+  // Alignment box: fixed budget, or the widest STYLED line so bold text
+  // stays self-consistently aligned.
+  const blockWidth = shape.maxWidth ?? perLine.reduce((m, l) => Math.max(m, l.total), 0);
+  const thickness = Math.max(1, fontSize * TEXT_DECORATION_THICKNESS);
+
+  perLine.forEach((line, i) => {
+    const top = i * layout.lineHeight;
+    let x =
+      align === "center"
+        ? blockWidth / 2 - line.total / 2
+        : align === "right"
+          ? blockWidth - line.total
+          : 0;
+    for (const seg of line.segs) {
+      const color = seg.style?.fill ?? shape.style.fill ?? "#000";
+      const opacity = seg.style?.opacity ?? shape.style.opacity;
+      setSegFont(seg.style);
+      target.setFill(color);
+      if (opacity !== undefined) target.setOpacity(opacity);
+      target.fillText(seg.text, x, top);
+
+      const deco = seg.style?.textDecoration ?? shape.style.textDecoration;
+      if (seg.width > 0 && (deco?.underline || deco?.strikethrough)) {
+        if (deco.underline) {
+          target.beginPath();
+          target.rect(x, top + fontSize * TEXT_UNDERLINE_OFFSET, seg.width, thickness);
+          target.fill();
+        }
+        if (deco.strikethrough) {
+          target.beginPath();
+          target.rect(
+            x,
+            top + fontSize * TEXT_STRIKETHROUGH_OFFSET - thickness / 2,
+            seg.width,
+            thickness,
+          );
+          target.fill();
+        }
+      }
+      x += seg.width;
+    }
+  });
+};
+
 const drawText: ElementRenderer<TextElement> = (shape, target) => {
+  // Rich text (styled runs) takes a dedicated path; plain text keeps the
+  // original single-style path byte-for-byte (golden-SVG compatible).
+  if (shape.runs !== undefined && shape.runs.length > 0) {
+    drawStyledText(shape, target);
+    return;
+  }
   const align = shape.style.textAlign ?? "left";
   const weight = shape.style.fontWeight;
   const fontStyle = shape.style.fontStyle;
@@ -330,8 +433,31 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
 const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
   const pts = shape.points;
   if (pts.length === 0) return;
-  const fill = shape.style.fill ?? shape.style.stroke ?? "#000";
-  target.setFill(fill);
+  // Honour the stroke's opacity (drawBrush paints fills directly, so it can't
+  // rely on the shared `applyStyle` the other renderers use). Set once up front
+  // so both the enclosed-area fill and the body get it; the scene renderer resets
+  // opacity to 1 between shapes.
+  if (shape.style.opacity !== undefined) target.setOpacity(shape.style.opacity);
+  // Closed stroke with a fill colour: paint the enclosed area FIRST (under the
+  // stroke body) as a polygon through the centreline points. Needs ≥3 points to
+  // enclose an area. Open strokes skip this entirely and are unchanged.
+  if (shape.closed === true && shape.style.fill !== undefined && pts.length >= 3) {
+    target.setFill(shape.style.fill);
+    target.setStroke(null);
+    target.beginPath();
+    const start = req(pts[0]);
+    target.moveTo(start.x, start.y);
+    for (let i = 1; i < pts.length; i++) {
+      const p = req(pts[i]);
+      target.lineTo(p.x, p.y);
+    }
+    target.closePath();
+    target.fill();
+  }
+  // The variable-width stroke body is painted with the shared brush-body colour
+  // (the same resolution the live preview uses — see `brushBodyColor`).
+  const paint = brushBodyColor(shape.style);
+  target.setFill(paint);
   target.setStroke(null);
   // Single dot for one-point strokes — degenerate quad would be invisible.
   if (pts.length === 1) {
@@ -341,42 +467,41 @@ const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
     target.fill();
     return;
   }
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = req(pts[i]);
-    const b = req(pts[i + 1]);
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const nx = -dy / len;
-    const ny = dx / len;
+  // Body as ONE closed outline polygon, filled once. Per-segment quads + joint
+  // discs (the old approach) overlap, so at `opacity < 1` the joins double-blend
+  // into dark blotches; a single fill paints every pixel exactly once.
+  const outline = brushOutline(pts);
+  if (outline.length >= 3) {
     target.beginPath();
-    target.moveTo(a.x + nx * a.width, a.y + ny * a.width);
-    target.lineTo(b.x + nx * b.width, b.y + ny * b.width);
-    target.lineTo(b.x - nx * b.width, b.y - ny * b.width);
-    target.lineTo(a.x - nx * a.width, a.y - ny * a.width);
+    const first = req(outline[0]);
+    target.moveTo(first.x, first.y);
+    for (let i = 1; i < outline.length; i++) {
+      const p = req(outline[i]);
+      target.lineTo(p.x, p.y);
+    }
     target.closePath();
-    target.fill();
-    // End-cap as a disk at the joint — smooths the kink between segments.
-    target.beginPath();
-    target.ellipse(b.x, b.y, b.width, b.width);
     target.fill();
   }
 };
 
-const drawImage: ElementRenderer<ImageElement> = (shape, target) => {
+const drawImage: ElementRenderer<ImageElement> = (shape, target, ctx) => {
   // Priority: for an animated source prefer the per-frame image the
   // registered adapter returns; otherwise a preloaded handle in
   // `metadata.image`; otherwise the static `src` fallback.
   // `resolveImageSource` returns `null` while an async decode is still
   // in flight, which the backend's drawImage guard skips.
+  // Sample at the per-instance clock when the caller threaded one via the
+  // render context; `undefined` defers to `resolveImageSource`'s process-global
+  // fallback clock (headless / preview paths).
+  const t = ctx?.clock?.(shape);
   const handle = shape.animationKind
-    ? resolveImageSource(shape)
-    : (shape.metadata?.image ?? resolveImageSource(shape));
+    ? resolveImageSource(shape, t)
+    : (shape.metadata?.image ?? resolveImageSource(shape, t));
   // `dynamic` → backends that cache the upload (WebGL2) re-upload the
   // current frame. GIF / video sources flag `metadata.animated`, and
   // any adapter-driven source is dynamic by definition.
   const dynamic = shape.metadata?.animated === true || shape.animationKind !== undefined;
-  target.drawImage(handle, 0, 0, shape.width, shape.height, dynamic);
+  target.drawImage(handle, 0, 0, shape.width, shape.height, dynamic, shape.crop);
 };
 
 /**

@@ -15,7 +15,10 @@ import {
   CaseSensitive,
   ChevronsDown,
   ChevronsUp,
+  Circle,
   Copy as CopyIcon,
+  Crop,
+  Diamond,
   FlipHorizontal2 as FlipHorizontalIcon,
   FlipVertical2 as FlipVerticalIcon,
   Group as GroupIcon,
@@ -43,6 +46,9 @@ import {
   isImage,
   isFrame,
   isRectangle,
+  isEllipse,
+  isPolygon,
+  sliceRuns,
   type ArrowheadStyle,
   type Link,
   type LinkRouting,
@@ -52,7 +58,15 @@ import {
   type TextElement,
   type TextStyle,
 } from "@oh-just-another/scene";
-import { useDiagramOptional, useScene, useSelectedLink, useSelection } from "./hooks.js";
+import type { ConvertTarget } from "@oh-just-another/state";
+import {
+  useDiagramOptional,
+  useReadOnly,
+  useScene,
+  useSelectedLink,
+  useSelection,
+} from "./hooks.js";
+import { useEditorSelector } from "./context.js";
 import { useContextMenuController } from "./context-menu-controller.js";
 import { ColorSwatchPicker } from "./color-swatch-picker.js";
 import { Popover } from "./popover.js";
@@ -95,6 +109,12 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
   const selection = useSelection();
   const selectedLinkId = useSelectedLink();
   const scene = useScene();
+  const readOnly = useReadOnly();
+
+  // Every control here mutates the selection (style / text / z-order / align /
+  // convert / delete / link). In read-only / view mode the whole panel is
+  // suppressed — the canvas is view-only, so there's nothing to edit.
+  if (readOnly) return null;
 
   // Dispatcher: edge wins only when no shape is selected — if both
   // happen to be set (rare), the shape panel is more useful. Each branch
@@ -127,7 +147,10 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       );
     } else if (allImage) {
       // An image's pixels are the content — fill/stroke make no sense.
-      primary.push(<OpacityControl key="opacity" shapes={shapes} />);
+      primary.push(
+        <OpacityControl key="opacity" shapes={shapes} />,
+        <CropControl key="crop" shapes={shapes} />,
+      );
     } else {
       primary.push(
         <FillControl key="fill" shapes={shapes} />,
@@ -138,6 +161,7 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <StrokeStyleControl key="dash" shapes={shapes} />,
         <RoundnessControl key="round" shapes={shapes} />,
         <OpacityControl key="opacity" shapes={shapes} />,
+        <ConvertTypeControl key="convert" shapes={shapes} />,
       );
     }
     // Common trailing controls for every shape type.
@@ -388,11 +412,13 @@ const ColorTrigger = ({
   color,
   onChange,
   ariaLabel,
+  onEyedrop,
 }: {
   readonly label: string;
   readonly color: string | null;
   readonly onChange: (c: string | null) => void;
   readonly ariaLabel: string;
+  readonly onEyedrop?: (onPicked: (color: string) => void) => void;
 }) => (
   <Popover
     ariaLabel={ariaLabel}
@@ -412,10 +438,31 @@ const ColorTrigger = ({
   >
     <div className="du-sel-popover-section">
       <header className="du-sel-popover-label">{label}</header>
-      <ColorSwatchPicker value={color} onChange={onChange} />
+      <ColorSwatchPicker value={color} onChange={onChange} {...(onEyedrop ? { onEyedrop } : {})} />
     </div>
   </Popover>
 );
+
+/**
+ * Active inline-text-edit selection over a single shown text element, if any.
+ * When present, text-style controls (colour, bold/italic/…) target JUST the
+ * selected characters — producing styled runs (rich text) — instead of the
+ * whole element. `null` when there is no inline edit, the selection is
+ * collapsed, or the edited element isn't in the panel's `shapes`.
+ */
+interface TextRunRange {
+  readonly target: TextElement;
+  readonly from: number;
+  readonly to: number;
+}
+const useTextRunRange = (shapes: readonly ElementBase[]): TextRunRange | null => {
+  const editingId = useEditorSelector((e) => e.editingTextElement, null);
+  const sel = useEditorSelector((e) => e.editingTextSelection, null);
+  if (editingId === null || sel === null || sel.start === sel.end) return null;
+  const target = shapes.find((s) => s.id === editingId);
+  if (target === undefined || !isText(target)) return null;
+  return { target, from: Math.min(sel.start, sel.end), to: Math.max(sel.start, sel.end) };
+};
 
 /**
  * Combined color & opacity control — a single swatch trigger whose
@@ -425,6 +472,7 @@ const ColorTrigger = ({
  */
 const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
+  const runRange = useTextRunRange(shapes);
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
   const color = sharedString(shapes, (s) => s.style.fill);
@@ -456,7 +504,18 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
         <ColorSwatchPicker
           value={color}
           onChange={(v) => {
-            editor.updateStyle(ids, { fill: v ?? "transparent" });
+            // In-edit text selection → colour just those characters (runs);
+            // otherwise colour the whole element(s).
+            if (runRange) {
+              editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
+                fill: v ?? "transparent",
+              });
+            } else {
+              editor.updateStyle(ids, { fill: v ?? "transparent" });
+            }
+          }}
+          onEyedrop={(cb) => {
+            editor.beginEyedropperPick(cb);
           }}
         />
         <header className="du-sel-popover-label">Opacity</header>
@@ -488,6 +547,9 @@ const FillControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
       color={value}
       onChange={(v) => {
         editor.updateStyle(ids, { fill: v ?? "transparent" });
+      }}
+      onEyedrop={(cb) => {
+        editor.beginEyedropperPick(cb);
       }}
     />
   );
@@ -622,6 +684,38 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
 };
 
 /**
+ * One decoration toggle inside {@link TextDecorationControl}'s popover.
+ * MUST stay a module-level component: defining it inside its parent would
+ * give it a fresh identity on every parent re-render, so React would
+ * remount the `<button>` each frame. During inline text editing the panel
+ * re-renders constantly (caret blink), and a remount between `mousedown`
+ * and `mouseup` swallows the synthesized `click` — the toggle would then
+ * silently never fire.
+ */
+const TextStyleToggle = ({
+  active,
+  label,
+  icon,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    className={`du-sel-icon-button${active ? " is-active" : ""}`}
+    title={label}
+    aria-label={label}
+    aria-pressed={active}
+    onClick={onClick}
+  >
+    {icon}
+  </button>
+);
+
+/**
  * Bold / Italic / Underline / Strikethrough. One trigger (Aa) opens a
  * popover with four independent toggles. Each writes through
  * `editor.updateStyle`: bold→`fontWeight`, italic→`fontStyle`,
@@ -630,46 +724,55 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
  */
 const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
+  const runRange = useTextRunRange(shapes);
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
-  const allBold = shapes.every((s) => (s.style as TextStyle | undefined)?.fontWeight === "bold");
-  const allItalic = shapes.every((s) => (s.style as TextStyle | undefined)?.fontStyle === "italic");
-  const allUnderline = shapes.every(
-    (s) => (s.style as TextStyle | undefined)?.textDecoration?.underline === true,
-  );
-  const allStrike = shapes.every(
-    (s) => (s.style as TextStyle | undefined)?.textDecoration?.strikethrough === true,
-  );
-  // Toggling underline/strikethrough must preserve the other flag per
-  // shape, so merge into each shape's current decoration individually.
-  const setDecoration = (key: "underline" | "strikethrough", on: boolean): void => {
-    for (const s of shapes) {
-      const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
-      editor.updateStyle([s.id], { textDecoration: { ...cur, [key]: on } });
+
+  // Active state: over an in-edit range, read the effective per-run style
+  // (run overlay ?? element style); otherwise read the whole-element style.
+  const rangeSegs = runRange ? sliceRuns(runRange.target, runRange.from, runRange.to) : [];
+  const base = runRange?.target.style;
+  const segEvery = (pred: (st: Partial<TextStyle> | undefined) => boolean): boolean =>
+    rangeSegs.length > 0 && rangeSegs.every((r) => pred(r.style));
+  const allBold = runRange
+    ? segEvery((st) => (st?.fontWeight ?? base?.fontWeight) === "bold")
+    : shapes.every((s) => (s.style as TextStyle | undefined)?.fontWeight === "bold");
+  const allItalic = runRange
+    ? segEvery((st) => (st?.fontStyle ?? base?.fontStyle) === "italic")
+    : shapes.every((s) => (s.style as TextStyle | undefined)?.fontStyle === "italic");
+  const allUnderline = runRange
+    ? segEvery((st) => (st?.textDecoration ?? base?.textDecoration)?.underline === true)
+    : shapes.every((s) => (s.style as TextStyle | undefined)?.textDecoration?.underline === true);
+  const allStrike = runRange
+    ? segEvery((st) => (st?.textDecoration ?? base?.textDecoration)?.strikethrough === true)
+    : shapes.every(
+        (s) => (s.style as TextStyle | undefined)?.textDecoration?.strikethrough === true,
+      );
+
+  // Apply a partial text style to the in-edit range (rich text) or, with no
+  // active range, to the whole selected element(s).
+  const applyPartial = (partial: Partial<TextStyle>): void => {
+    if (runRange) {
+      editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
+    } else {
+      editor.updateStyle(ids, partial);
     }
   };
-  const Toggle = ({
-    active,
-    label,
-    icon,
-    onClick,
-  }: {
-    active: boolean;
-    label: string;
-    icon: ReactNode;
-    onClick: () => void;
-  }) => (
-    <button
-      type="button"
-      className={`du-sel-icon-button${active ? " is-active" : ""}`}
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-      onClick={onClick}
-    >
-      {icon}
-    </button>
-  );
+  // Toggling underline/strikethrough must preserve the other flag. Range mode
+  // replaces the whole `textDecoration`, so rebuild both flags from the
+  // range's current state; whole-element mode merges per shape.
+  const setDecoration = (key: "underline" | "strikethrough", on: boolean): void => {
+    if (runRange) {
+      editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
+        textDecoration: { underline: allUnderline, strikethrough: allStrike, [key]: on },
+      });
+    } else {
+      for (const s of shapes) {
+        const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
+        editor.updateStyle([s.id], { textDecoration: { ...cur, [key]: on } });
+      }
+    }
+  };
   return (
     <Popover
       ariaLabel="Text style"
@@ -687,23 +790,23 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
       <div className="du-sel-popover-section">
         <header className="du-sel-popover-label">Style</header>
         <div style={{ display: "flex", gap: 2 }}>
-          <Toggle
+          <TextStyleToggle
             active={allBold}
             label="Bold"
             icon={<Bold size={14} strokeWidth={1.75} />}
             onClick={() => {
-              editor.updateStyle(ids, { fontWeight: allBold ? "normal" : "bold" });
+              applyPartial({ fontWeight: allBold ? "normal" : "bold" });
             }}
           />
-          <Toggle
+          <TextStyleToggle
             active={allItalic}
             label="Italic"
             icon={<Italic size={14} strokeWidth={1.75} />}
             onClick={() => {
-              editor.updateStyle(ids, { fontStyle: allItalic ? "normal" : "italic" });
+              applyPartial({ fontStyle: allItalic ? "normal" : "italic" });
             }}
           />
-          <Toggle
+          <TextStyleToggle
             active={allUnderline}
             label="Underline"
             icon={<Underline size={14} strokeWidth={1.75} />}
@@ -711,7 +814,7 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
               setDecoration("underline", !allUnderline);
             }}
           />
-          <Toggle
+          <TextStyleToggle
             active={allStrike}
             label="Strikethrough"
             icon={<Strikethrough size={14} strokeWidth={1.75} />}
@@ -737,6 +840,9 @@ const StrokeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) 
       color={value}
       onChange={(v) => {
         editor.updateStyle(ids, { stroke: v ?? "transparent" });
+      }}
+      onEyedrop={(cb) => {
+        editor.beginEyedropperPick(cb);
       }}
     />
   );
@@ -951,6 +1057,62 @@ const ZOrderControl = () => {
 };
 
 /**
+ * Convert-type control (F9): switch every selected rectangle / ellipse /
+ * diamond to another of those types, preserving position, size and style.
+ * Renders only when every selected shape is convertible. The active type is
+ * shown as the pressed segment (or `null` for a mixed selection).
+ */
+const ConvertTypeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const convertible = shapes.every((s) => isRectangle(s) || isEllipse(s) || isPolygon(s));
+  if (!convertible) return null;
+  const value = sharedValue<ConvertTarget>(shapes, (s) =>
+    isRectangle(s) ? "rectangle" : isEllipse(s) ? "ellipse" : "polygon",
+  );
+  return (
+    <SegmentedControl<ConvertTarget>
+      ariaLabel="Shape type"
+      value={value}
+      options={[
+        { value: "rectangle", label: "Rectangle", icon: <Square size={14} strokeWidth={1.75} /> },
+        { value: "ellipse", label: "Ellipse", icon: <Circle size={14} strokeWidth={1.75} /> },
+        { value: "polygon", label: "Diamond", icon: <Diamond size={14} strokeWidth={1.75} /> },
+      ]}
+      onChange={(v) => {
+        editor.convertSelection(v);
+      }}
+    />
+  );
+};
+
+/**
+ * Crop control (F10): a button that enters image-crop mode for the single
+ * selected image. Renders only for a lone image selection (crop is
+ * single-target). Double-clicking the image on the canvas does the same.
+ */
+const CropControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const only = shapes.length === 1 ? shapes[0] : undefined;
+  if (only === undefined || !isImage(only)) return null;
+  const id = only.id;
+  return (
+    <button
+      type="button"
+      className="du-icon-button"
+      title="Crop image (double-click)"
+      aria-label="Crop image"
+      onClick={() => {
+        editor.beginImageCrop(id);
+      }}
+    >
+      <Crop size={16} strokeWidth={1.75} />
+    </button>
+  );
+};
+
+/**
  * Conditional Group / Ungroup visibility:
  *   - Group is meaningful only when ≥2 shapes are selected.
  *   - Ungroup is meaningful only when at least one selected shape is
@@ -1130,6 +1292,9 @@ const LinkStrokeColorControl = ({ edge }: { readonly edge: Link }) => {
           ...e,
           style: { ...e.style, stroke: v ?? "transparent" },
         }));
+      }}
+      onEyedrop={(cb) => {
+        editor.beginEyedropperPick(cb);
       }}
     />
   );

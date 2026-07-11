@@ -47,6 +47,15 @@ export {
 
 export { bindEditorHotkeys, type HotkeyBindingOptions } from "./hotkeys-binding.js";
 
+// Scene text search — pure substring index over shape text / frame names /
+// edge labels. UI-agnostic; drives the search overlay.
+export {
+  searchScene,
+  elementSearchText,
+  type SceneSearchMatch,
+  type SceneSearchKind,
+} from "./search.js";
+
 export type { InteractiveHitTester } from "./interactive.js";
 export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive.js";
 
@@ -54,6 +63,30 @@ export type { EditorOptions, LoadSceneOptions, CursorRole, CursorSpec } from "./
 export { Editor } from "./editor.js";
 export type { EditorEvents } from "./editor-events.js";
 export { normalizeHref, safeHref } from "./editor/public/link.js";
+export { DEFAULT_BRUSH_SETTINGS } from "./editor/public/brush.js";
+export type { BrushSettings } from "./editor/public/brush.js";
+
+// Tool operations (eyedropper / convert-type / image-crop / spawn-connected).
+export {
+  clampCrop,
+  computeConvertType,
+  computeSetImageCrop,
+  computeCommitImageCrop,
+  computeSpawnConnectedNode,
+  cropFullImageLocalRect,
+  cropHandleWorldPoints,
+  computeCropHandleDrag,
+  computeCropBodyPan,
+  CROP_HANDLES,
+  FULL_CROP,
+  pickColorAt,
+} from "./editor/public/tool-ops.js";
+export type {
+  ConvertTarget,
+  CropDragResult,
+  CropHandle,
+  SpawnDirection,
+} from "./editor/public/tool-ops.js";
 
 // File-drop registry (host-extensible image / scene / custom).
 export type { FileDropHandler, FileDropContext, WalkOptions } from "./file-drop.js";
@@ -84,13 +117,20 @@ export {
   actionSelectAll,
   actionDeleteSelection,
   actionDuplicateSelection,
+  actionToggleLock,
+  actionEnterContainer,
+  actionExitContainer,
   selectionActions,
   actionCopy,
   actionCut,
   actionPaste,
+  actionCopyStyle,
+  actionPasteStyle,
   clipboardActions,
   actionBringToFront,
   actionSendToBack,
+  actionBringForward,
+  actionSendBackward,
   zOrderActions,
   actionGroupSelection,
   actionUngroupSelection,
@@ -99,7 +139,25 @@ export {
   actionZoomOut,
   actionZoomReset,
   actionZoomToFit,
+  actionZoomToSelection,
   zoomActions,
+  actionToggleGrid,
+  actionToggleReadOnly,
+  viewActions,
+  actionFlipHorizontal,
+  actionFlipVertical,
+  actionAlignLeft,
+  actionAlignHCenter,
+  actionAlignRight,
+  actionAlignTop,
+  actionAlignVCenter,
+  actionAlignBottom,
+  actionDistributeHorizontal,
+  actionDistributeVertical,
+  arrangeActions,
+  actionIncreaseFontSize,
+  actionDecreaseFontSize,
+  textActions,
   actionModeSelect,
   actionModeHand,
   actionModeRect,
@@ -107,6 +165,8 @@ export {
   actionModeText,
   actionModeLink,
   actionModeBrush,
+  actionModeErase,
+  actionModeLaser,
   actionModeFrame,
   actionToggleToolLock,
   actionCancel,

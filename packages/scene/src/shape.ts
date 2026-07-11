@@ -3,6 +3,7 @@ import type { FractionalIndex } from "fractional-keys";
 import { bounds as B } from "@oh-just-another/math";
 import type { AnchorRef } from "./edge.js";
 import type { Style, TextStyle } from "./style.js";
+import type { TextRun } from "./text-runs.js";
 import { TEXT_APPROX_CHAR_WIDTH_FACTOR, TEXT_LINE_HEIGHT_FACTOR } from "./constants.js";
 import { getTextMeasurer } from "./text-measure.js";
 
@@ -152,6 +153,30 @@ export interface TextElement extends ElementBase {
   /** Width budget for wrapping; `undefined` = single line. */
   readonly maxWidth?: number;
   readonly style: TextStyle;
+  /**
+   * Optional styled-run overlay for rich text. Each run styles a contiguous
+   * substring; `runs.map(r => r.text).join("")` MUST equal `text`, which
+   * stays the flat source of truth. Omitted (or empty) = uniform styling
+   * (renders exactly like a plain text block). See {@link TextRun}.
+   */
+  readonly runs?: readonly TextRun[];
+}
+
+/**
+ * Normalised crop rectangle for an {@link ImageElement}. All four
+ * values are fractions in `[0, 1]` of the source image's intrinsic
+ * dimensions: `{ x: 0, y: 0, width: 1, height: 1 }` shows the whole
+ * image (equivalent to omitting `crop`). The cropped source region is
+ * stretched to fill the element's `width` × `height` box, so cropping
+ * does not change the element's on-canvas footprint — only which part
+ * of the bitmap is visible. Being normalised keeps the crop stable when
+ * the backing file is swapped for a differently-sized copy.
+ */
+export interface ImageCrop {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 export interface ImageElement extends ElementBase {
@@ -162,6 +187,12 @@ export interface ImageElement extends ElementBase {
    * `Scene.files` entry, which keeps scene.json small for large bitmaps.
    */
   readonly src: string;
+  /**
+   * Optional normalised source-crop rectangle. Omitted = whole image.
+   * See {@link ImageCrop}. Additive: scenes and renderers that predate
+   * cropping simply ignore it and draw the full bitmap.
+   */
+  readonly crop?: ImageCrop;
   /**
    * Id of the `BinaryFile` in `Scene.files` that backs this image.
    * When present, hosts should resolve through the file registry
@@ -223,6 +254,13 @@ export interface BrushPoint {
 export interface BrushElement extends ElementBase {
   readonly type: "brush";
   readonly points: readonly BrushPoint[];
+  /**
+   * A closed stroke: its ends meet, so the renderer fills the area enclosed by
+   * the centreline with `style.fill` (under the variable-width stroke body).
+   * Set on commit only when a fill colour is chosen and the stroke loops back
+   * on itself. Omitted (undefined) for ordinary open strokes.
+   */
+  readonly closed?: boolean;
 }
 
 /**
@@ -308,6 +346,15 @@ export const isGroup = (s: ElementBase): s is GroupElement => s.type === "group"
 export const isFrame = (s: ElementBase): s is FrameElement => s.type === "frame";
 export const isBlockArrow = (s: ElementBase): s is BlockArrowElement => s.type === "block-arrow";
 export const isBrush = (s: ElementBase): s is BrushElement => s.type === "brush";
+
+/**
+ * The colour the variable-width brush BODY is painted with: the line colour
+ * (`style.stroke`, set by the drawing panel), falling back to `style.fill` for
+ * strokes authored before the stroke/fill split (their line lived in `fill`),
+ * then to opaque black. Shared by the committed-stroke renderer and the live
+ * overlay preview so the two never diverge.
+ */
+export const brushBodyColor = (style: Style): string => style.stroke ?? style.fill ?? "#000";
 
 // --- bounder registry ---
 

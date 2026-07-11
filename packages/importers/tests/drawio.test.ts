@@ -57,7 +57,10 @@ describe("parseDrawio", () => {
   it("parses attributes linearly on a pathological run (no ReDoS)", () => {
     // A long colon run in the attribute area used to drive polynomial
     // backtracking in the attribute regex; it must still return promptly.
+    // ~200ms on a dev machine, ~2s on a loaded shared CI runner. The budget
+    // only needs to catch the polynomial blow-up (minutes on this input), so
+    // it is generous to runner speed, not tight to local timings.
     const evil = `<mxGraphModel><root><mxCell ${":".repeat(20_000)} /></root></mxGraphModel>`;
     expect(parseDrawio(evil).nodes).toEqual([]);
-  }, 2000);
+  }, 10_000);
 });

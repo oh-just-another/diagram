@@ -95,15 +95,25 @@ export const notifyAnimationContentReady = (): void => {
  * playback map — returning a frozen value for paused shapes, an
  * offset for shapes started later, etc.
  *
- * Module-global by design: the shape-renderer signature is
- * `(shape, target)` with no options channel, so the host sets the
- * clock immediately before each synchronous render pass.
+ * Preferred channel: pass a per-instance clock through the render context
+ * (`RenderSceneOptions.clock` → {@link ElementRenderContext.clock}). Each
+ * `Editor` threads its own clock that way, so two editors on one page no
+ * longer fight over a shared module global. This module-level clock remains a
+ * process-global **fallback** for paths that can't thread a context — headless
+ * `renderScene` (SVG / worker / PNG export) and the tile compositor — where
+ * the wall-clock default (or a single host override) is sufficient.
  */
-type AnimationClock = (shape: { readonly id?: unknown }) => number;
+export type AnimationClock = (shape: { readonly id?: unknown }) => number;
 
 let animationClock: AnimationClock = () =>
   typeof performance !== "undefined" ? performance.now() : 0;
 
+/**
+ * Install the process-global fallback playback clock. Prefer threading a
+ * per-instance clock via `RenderSceneOptions.clock`; this setter only affects
+ * render paths that don't carry a render context (headless renderers, the tile
+ * compositor). Idempotent — last write wins.
+ */
 export const setAnimationClock = (clock: AnimationClock): void => {
   animationClock = clock;
 };

@@ -2,7 +2,8 @@ import { LAYER_ORDER, type LayerName, type RenderTarget } from "@oh-just-another
 import { LayeredCanvas } from "./layered-canvas.js";
 import { WebGL2Target } from "./webgl2-target.js";
 import { RecordingTarget } from "./recording-target.js";
-import { setupHiDpi } from "./hi-dpi.js";
+import { cappedDpr, setupHiDpi } from "./hi-dpi.js";
+import { MAX_DEVICE_PIXEL_RATIO } from "./constants.js";
 
 /**
  * Backend selector for `createLayeredSurface`.
@@ -58,6 +59,22 @@ export interface CreateLayeredSurfaceOptions {
    * always-safe `canvas2d` backend. Only the offscreen backend calls it.
    */
   readonly onWorkerError?: (error: unknown) => void;
+  /**
+   * Cap applied to `window.devicePixelRatio` when sizing layer bitmaps.
+   * Defaults to `MAX_DEVICE_PIXEL_RATIO` (2). Raise it for hosts that
+   * need native sharpness on DPR-3+ displays at the cost of 2–4× the
+   * raster work per layer.
+   */
+  readonly maxDpr?: number;
+  /**
+   * Forwarded to the `webgl2` backend's main-layer context. Defaults to
+   * `true`, which the incremental dirty-rect renderer requires (the rest
+   * of the previous frame must survive between composites). Set `false`
+   * only when the host redraws the whole frame every time — it removes a
+   * Safari/iOS full-recomposite-per-swap cost. Ignored by the `canvas2d`
+   * and `offscreen` backends. Does not affect PNG export / screenshots.
+   */
+  readonly preserveDrawingBuffer?: boolean;
 }
 
 /**
@@ -77,11 +94,16 @@ export const createLayeredSurface = (
   options: CreateLayeredSurfaceOptions = {},
 ): LayeredSurface => {
   const backend = options.backend ?? "canvas2d";
+  const maxDpr = options.maxDpr ?? MAX_DEVICE_PIXEL_RATIO;
   switch (backend) {
     case "canvas2d":
-      return new Canvas2DLayeredSurface(host, width, height);
+      return new Canvas2DLayeredSurface(host, width, height, maxDpr);
     case "webgl2":
-      return new WebGL2LayeredSurface(host, width, height);
+      return new WebGL2LayeredSurface(host, width, height, maxDpr, {
+        ...(options.preserveDrawingBuffer !== undefined
+          ? { preserveDrawingBuffer: options.preserveDrawingBuffer }
+          : {}),
+      });
     case "offscreen":
       if (!options.workerFactory) {
         throw new Error(
@@ -94,6 +116,7 @@ export const createLayeredSurface = (
         height,
         options.workerFactory,
         options.onWorkerError,
+        maxDpr,
       );
   }
 };
@@ -137,8 +160,8 @@ class Canvas2DLayeredSurface implements LayeredSurface {
   readonly backend = "canvas2d" as const;
   private readonly inner: LayeredCanvas;
 
-  constructor(host: HTMLElement, width: number, height: number) {
-    this.inner = new LayeredCanvas(host, width, height);
+  constructor(host: HTMLElement, width: number, height: number, maxDpr: number) {
+    this.inner = new LayeredCanvas(host, width, height, { maxDpr });
   }
 
   get(name: LayerName): RenderTarget {
@@ -181,14 +204,23 @@ class WebGL2LayeredSurface implements LayeredSurface {
   private readonly mainTarget: WebGL2Target;
   private _width: number;
   private _height: number;
+  private readonly maxDpr: number;
 
-  constructor(host: HTMLElement, width: number, height: number) {
+  constructor(
+    host: HTMLElement,
+    width: number,
+    height: number,
+    maxDpr: number,
+    options: { readonly preserveDrawingBuffer?: boolean } = {},
+  ) {
     this._width = width;
     this._height = height;
+    this.maxDpr = maxDpr;
     // Build the Canvas2D layers first; the WebGL2 main canvas is
     // spliced into the same stack between background and overlay.
     this.base = new LayeredCanvas(host, width, height, {
       layers: LAYER_ORDER.filter((name): name is "overlay" | "background" => name !== "main"),
+      maxDpr,
     });
 
     const overlay = this.base.getCanvas("overlay");
@@ -204,10 +236,14 @@ class WebGL2LayeredSurface implements LayeredSurface {
     // exclusive — one canvas, one context kind, for the life of the
     // element. `setupContext: false` sizes the bitmap without touching
     // the context.
-    setupHiDpi(canvas, width, height, window.devicePixelRatio || 1, false);
+    setupHiDpi(canvas, width, height, cappedDpr(maxDpr), false);
     try {
       this.mainCanvas = canvas;
-      this.mainTarget = new WebGL2Target(canvas, width, height);
+      this.mainTarget = new WebGL2Target(canvas, width, height, {
+        ...(options.preserveDrawingBuffer !== undefined
+          ? { preserveDrawingBuffer: options.preserveDrawingBuffer }
+          : {}),
+      });
     } catch (err) {
       canvas.remove();
       this.base.dispose();
@@ -228,14 +264,17 @@ class WebGL2LayeredSurface implements LayeredSurface {
     this._width = width;
     this._height = height;
     this.base.resize(width, height);
-    setupHiDpi(this.mainCanvas, width, height, window.devicePixelRatio || 1, false);
+    setupHiDpi(this.mainCanvas, width, height, cappedDpr(this.maxDpr), false);
     this.mainTarget.resize(width, height);
   }
   get size(): { readonly width: number; readonly height: number } {
     return { width: this._width, height: this._height };
   }
   present(): void {
-    // Canvas2D + WebGL2 both paint synchronously — nothing to flush.
+    // Canvas2D paints synchronously; the WebGL2 main layer defers
+    // same-style sharp-rect fills into an instanced batch, so drain it
+    // here so trailing rects reach the framebuffer within this frame.
+    this.mainTarget.flushBatch();
   }
   dispose(): void {
     this.mainTarget.dispose();
@@ -263,6 +302,14 @@ class OffscreenLayeredSurface implements LayeredSurface {
   private readonly canvases = new Map<LayerName, HTMLCanvasElement>();
   private readonly targets = new Map<LayerName, RecordingTarget>();
   private readonly workers = new Map<LayerName, Worker>();
+  /**
+   * Content signature of the command stream last posted to each layer's
+   * worker. A frame whose flushed buffer matches its layer's entry replays
+   * to the same pixels the worker already shows, so `present()` skips the
+   * postMessage (clone) + replay entirely — e.g. a static grid / overlay
+   * while only the main layer's GIF advances.
+   */
+  private readonly lastSentSig = new Map<LayerName, string>();
   private _width: number;
   private _height: number;
   private readonly dpr: number;
@@ -273,10 +320,11 @@ class OffscreenLayeredSurface implements LayeredSurface {
     height: number,
     workerFactory: () => Worker,
     onWorkerError?: (error: unknown) => void,
+    maxDpr: number = MAX_DEVICE_PIXEL_RATIO,
   ) {
     this._width = width;
     this._height = height;
-    this.dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+    this.dpr = cappedDpr(maxDpr);
 
     if (getComputedStyle(host).position === "static") {
       host.style.position = "relative";
@@ -345,6 +393,10 @@ class OffscreenLayeredSurface implements LayeredSurface {
       this.targets.get(name)?.resize(width, height);
       this.workers.get(name)?.postMessage({ type: "resize", width, height });
     }
+    // A resize clears each worker's OffscreenCanvas (its bitmap is re-sized),
+    // so the next frame must repost even if its content signature is
+    // unchanged — drop the cached signatures to force it.
+    this.lastSentSig.clear();
   }
   get size(): { readonly width: number; readonly height: number } {
     return { width: this._width, height: this._height };
@@ -353,6 +405,14 @@ class OffscreenLayeredSurface implements LayeredSurface {
     for (const [name, target] of this.targets) {
       const cmds = target.flush();
       if (cmds.length === 0) continue;
+      // Skip layers whose command stream is identical to the one already
+      // shipped: the worker retains its last frame between replays, so not
+      // reposting leaves the correct pixels in place and saves the clone +
+      // worker redraw. `defineImage` (first bitmap ship) and `resize` change
+      // the stream, so image / size updates never get skipped.
+      const sig = target.lastSignature;
+      if (this.lastSentSig.get(name) === sig) continue;
+      this.lastSentSig.set(name, sig);
       this.workers.get(name)?.postMessage({ type: "replay", commands: cmds });
     }
   }

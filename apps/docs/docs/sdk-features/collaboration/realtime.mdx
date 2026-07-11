@@ -1,0 +1,57 @@
+---
+title: Realtime Editing
+sidebar_position: 11
+---
+
+Real-time multi-peer editing is provided by `@oh-just-another/collab`, a CRDT layer built on Yjs. It mirrors the scene into a `Y.Doc`, syncs over a pluggable `@oh-just-another/network` transport, and carries presence (cursors, selections) alongside the document.
+
+## Wire an editor to a shared document
+
+`SceneDoc` is the CRDT-backed scene mirror; `bindEditor` keeps an `Editor` and a `SceneDoc` in sync (self-origin filtered). `TransportProvider` ferries Yjs updates over a transport.
+
+```ts
+import * as Y from "yjs";
+import { BroadcastChannelTransport } from "@oh-just-another/network";
+import {
+  SceneDoc,
+  CollabAwareness,
+  TransportProvider,
+  bindEditor,
+  bindAwareness,
+} from "@oh-just-another/collab";
+
+const doc = new Y.Doc();
+const sceneDoc = new SceneDoc(doc);
+const awareness = new CollabAwareness(doc);
+
+const transport = new BroadcastChannelTransport("room-foo");
+const provider = new TransportProvider({ doc, transport, awareness: awareness.awareness });
+
+const unbindScene = bindEditor(editor, sceneDoc, { waitForSyncMs: 200 });
+const unbindPresence = bindAwareness(editor, awareness, {
+  user: { id: "me", name: "Alice", color: "#1a73e8" },
+});
+```
+
+`waitForSyncMs` (default 0) makes a joiner wait for the room's state before seeding the doc from its own scene — set it on async transports (BroadcastChannel, WebSocket). `yjs` and `y-protocols` ship as regular dependencies of `@oh-just-another/collab`.
+
+## Transports
+
+Pick a `@oh-just-another/network` transport for your topology: `BroadcastChannelTransport` for tabs on the same origin, `WebSocketTransport` for cross-machine rooms (auto-reconnect with exponential backoff, `onStatusChange` for connection badges). Any transport implementing the `Transport` interface works.
+
+## Teardown
+
+The bind functions and provider each return / expose a cleanup path. Call them on unmount:
+
+```ts
+unbindPresence();
+unbindScene();
+provider.destroy();
+awareness.destroy();
+transport.close();
+doc.destroy();
+```
+
+## Beyond the basics
+
+`@oh-just-another/collab` also exports `extractMentions` / `resolveMentions` / `notifyMention` for `@handle` mentions, `BranchDoc` for branch-and-merge, `CollabHistory` for Yjs-aware undo, and an `EncryptedTransport` (client-side AES-GCM) for blind-relay servers.

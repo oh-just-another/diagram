@@ -1,0 +1,66 @@
+{
+  "name": "@oh-just-another/diagram-angular",
+  "version": "0.1.0",
+  "description": "Angular wrapper for the diagram editor — a thin standalone component over the <oja-diagram> custom element.",
+  "license": "MIT",
+  "author": "Rustam Garifulin <rustam@n69.in>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oh-just-another/diagram.git",
+    "directory": "packages/diagram-angular"
+  },
+  "homepage": "https://github.com/oh-just-another/diagram#readme",
+  "bugs": "https://github.com/oh-just-another/diagram/issues",
+  "keywords": [
+    "diagram",
+    "canvas",
+    "editor",
+    "angular"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "./dist/Diagram.js"
+  ],
+  "scripts": {
+    "build": "ngc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=17.0.0"
+  },
+  "dependencies": {
+    "@oh-just-another/diagram": "workspace:*",
+    "@oh-just-another/scene": "workspace:*"
+  },
+  "devDependencies": {
+    "@angular/compiler": "20.3.25",
+    "@angular/compiler-cli": "20.3.25",
+    "@angular/core": "20.3.25",
+    "@angular/platform-browser": "20.3.25",
+    "jsdom": "25.0.1",
+    "rxjs": "7.8.2",
+    "vite": "6.4.3",
+    "zone.js": "0.15.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,66 @@
+---
+title: Rich Text
+sidebar_position: 54
+---
+
+A text element can carry styled runs — bold, italic, color, underline / strikethrough on part of its string. Runs are an additive overlay: the element's flat `text` stays the source of truth, and an element without runs renders as one uniform style.
+
+## Data model
+
+`TextElement.runs` is an optional list of `TextRun` (both from `@oh-just-another/scene`). Each run styles a contiguous substring with a `Partial<TextStyle>` merged over the element's base `style` (element style wins for fields the run omits). Invariant: `runs.map(r => r.text).join("")` must equal `text`.
+
+```ts
+import type { TextElement, TextRun } from "@oh-just-another/scene";
+
+// TextRun:
+//   text: string                  // raw substring
+//   style?: Partial<TextStyle>    // overlay over the element's style
+
+const el: Pick<TextElement, "text" | "runs"> = {
+  text: "plain bold plain",
+  runs: [{ text: "plain " }, { text: "bold", style: { fontWeight: "bold" } }, { text: " plain" }],
+};
+```
+
+Per-run styling covers `TextStyle` fields: `fontWeight`, `fontStyle`, `textDecoration`, `fill` (text color), etc. Font family and size live on the element, not the style, so they cannot vary per run. Links and lists are not supported.
+
+## Scene helpers
+
+`@oh-just-another/scene` exports pure helpers:
+
+```ts
+import { runsToText, normalizeRuns, sliceRuns, applyStyleToRange } from "@oh-just-another/scene";
+
+runsToText(runs); // concatenated flat text
+normalizeRuns(runs); // drop empty runs, coalesce equal-styled neighbours
+sliceRuns(el, from, to); // runs inside a character range, clipped
+applyStyleToRange(el, from, to, { fontWeight: "bold" }); // new element with styled range
+```
+
+`applyStyleToRange` splits runs at the range boundaries, merges the patch, and coalesces; when the result collapses to a single unstyled run it drops `runs` entirely, so the element round-trips back to plain text.
+
+## Editor API
+
+`Editor.applyTextStyleToRange` (from `@oh-just-another/state`) applies a partial style to a character range of one text element as a single undo step:
+
+```ts
+editor.applyTextStyleToRange(id, from, to, { fontStyle: "italic" });
+```
+
+No-op when the id isn't a text element or the range is empty; read-only editors ignore it. Use `updateStyle` to style whole elements instead.
+
+In `@oh-just-another/react-ui`, the property panel targets the current inline-edit text selection automatically: with characters selected during text editing, the bold / italic / decoration / color controls style just those characters.
+
+## Rendering and persistence
+
+The renderer splits each wrapped line into per-style segments via `sliceRuns`, so runs draw identically on Canvas2D and WebGL2. Serialization (`@oh-just-another/serialization`) round-trips `runs` as an optional field — scenes and consumers that predate runs are unaffected.
+
+## Markdown rendering
+
+Separately, `@oh-just-another/react-ui` ships a `Markdown` component for editor chrome (comment threads, popovers). It does not turn canvas text elements into rich text:
+
+```tsx
+import { Markdown } from "@oh-just-another/react-ui";
+
+<Markdown>{"**Bold** and _italic_ in a comment thread."}</Markdown>;
+```

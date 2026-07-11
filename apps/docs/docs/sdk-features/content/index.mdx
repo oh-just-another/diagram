@@ -1,0 +1,47 @@
+---
+title: Mermaid
+sidebar_position: 9
+---
+
+`@oh-just-another/importers` converts popular diagram source formats — Mermaid flowcharts, Graphviz dot, drawio XML, `.excalidraw` JSON, and JSON Canvas — into a `Scene`. It's the bridge for text-authored or LLM-generated diagrams. This page covers Mermaid; see [Importers](./importers.mdx) for the full format matrix.
+
+## One-shot import
+
+`importMermaid` parses, lays out, and materialises a scene in a single call:
+
+```ts
+import { importMermaid } from "@oh-just-another/importers";
+import { stringifyScene } from "@oh-just-another/serialization";
+
+const scene = importMermaid("flowchart TD\n A[Start] --> B{Decide}\n B --> C[Done]");
+const json = stringifyScene(scene, 2);
+```
+
+`importDot` and `importDrawio` are the equivalents for Graphviz and drawio.
+
+## The two-stage pipeline
+
+Under the hood, importing is two steps: parse to an intermediate `GraphDocument`, then `graphToScene` to lay out and materialise. Call them separately when you want to inspect or transform nodes/edges first — rename labels, override shapes, pre-assign theme colours:
+
+```ts
+import { parseMermaid, graphToScene } from "@oh-just-another/importers";
+
+const graph = parseMermaid("flowchart LR\n A --> B");
+// ...mutate `graph.nodes` / `graph.edges`...
+const scene = graphToScene(graph);
+```
+
+Layout for graphs without explicit coordinates is computed with `@dagrejs/dagre`; drawio files keep their original positions and skip layout entirely.
+
+## Supported Mermaid subset
+
+The Mermaid parser is intentionally minimal:
+
+- Direction headers: `flowchart TD` / `TB` / `BT` / `LR` / `RL` (and the `graph` alias).
+- Node shapes: `A`, `A[Label]`, `A(Round)`, `A((Circle))`, `A{Decision}`.
+- Edges: `-->` (directed), `---` (undirected), `-->|label|` (labelled), and chains like `A --> B --> C`.
+- Comments (`%%`), `class` / `classDef` / `style` / `subgraph` are silently ignored.
+
+## Notes
+
+Each labelled node becomes two elements — the geometry plus a centred `text` label — so labels are normal text elements you can move and edit independently. For full Mermaid fidelity, pre-process with the official tool and hand the result in as a `GraphDocument`. Use `layoutGraph` on its own if you only need the layout pass.

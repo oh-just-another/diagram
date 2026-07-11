@@ -1,0 +1,87 @@
+---
+title: LLM Docs
+sidebar_position: 8
+---
+
+How to point an LLM or agent at the editor's API so it can drive scenes. There is no separate "AI mode" — the machine-readable surface is the same typed public API human code uses.
+
+## What an agent needs to know
+
+Three real surfaces cover almost everything an agent does:
+
+- `@oh-just-another/scene` — the data model and pure operations (`emptyScene`, `addElement`, `addLink`, `updateElement`, `removeElement`) that return `{ scene, patch }`.
+- `@oh-just-another/serialization` — `serializeScene` / `stringifyScene` / `parseScene` to round-trip a scene as JSON through a model.
+- `@oh-just-another/editor` — `EditorAPI` and `EditorInstance` to drive a live editor (mode, selection, history, viewport, mutations).
+
+## JSON Schema of the scene document
+
+`sceneJsonSchema()` returns a JSON Schema (draft-07) of the serialized scene document, generated from the same zod schema `parseScene` validates against — hand it to a model as a structured-output schema or to any external validator:
+
+```ts
+import { sceneJsonSchema } from "@oh-just-another/serialization";
+
+const schema = sceneJsonSchema(); // { $schema, type: "object", properties: { elements, links, ... } }
+```
+
+Over MCP the same schema is available as the `get_scene_schema` tool.
+
+## MCP server
+
+`@oh-just-another/mcp` exposes the scene surface as MCP tools over stdio — the fastest way to let an agent draw without writing integration code.
+
+```json
+{
+  "mcpServers": {
+    "oja": { "command": "npx", "args": ["-y", "@oh-just-another/mcp"] }
+  }
+}
+```
+
+| Tool                                                  | Purpose                                                      |
+| ----------------------------------------------------- | ------------------------------------------------------------ |
+| `create_scene` / `load_scene` / `get_scene`           | Scene lifecycle; scenes live in memory per session.          |
+| `add_elements` / `update_element` / `remove_elements` | Edit elements; validated against the scene schema.           |
+| `add_link(from, to, routing?, label?)`                | Connect elements with arrows.                                |
+| `query_scene`                                         | Compact summary: counts, bounds, elements with id/type/text. |
+| `export_svg` / `export_png`                           | Render (PNG needs the optional peer `@resvg/resvg-js`).      |
+| `import_mermaid`                                      | Mermaid flowchart → scene.                                   |
+| `get_scene_schema`                                    | JSON Schema of the scene document.                           |
+
+### Prompt cookbook
+
+Prompts that work well against these tools:
+
+- _"Create a scene and draw a 3-tier web architecture: browser, API, database as rectangles left to right, connected with orthogonal arrows labelled HTTPS and SQL. Export it as SVG."_
+- _"Import this Mermaid flowchart, then query the scene and rename the node that says 'Start' to 'Begin' via update_element."_
+- _"Call get_scene_schema, then produce a valid scene document for a login flow diagram and load it with load_scene."_
+
+## Feeding the surface to a model
+
+The TypeScript types **are** the schema. Today, the most reliable way to ground an agent is to give it these package entry points and their exported types, plus a JSON example produced by `stringifyScene`:
+
+```ts
+import { emptyScene, addElement } from "@oh-just-another/scene";
+import { stringifyScene, parseScene } from "@oh-just-another/serialization";
+
+// A concrete example doubles as a schema for the model:
+const example = stringifyScene(emptyScene(), 2);
+
+// The model returns scene JSON; validate it on the way back in:
+const scene = parseScene(modelOutput);
+```
+
+`parseScene` validates against the wire schema (`SceneDocumentZ`) and throws `DeserializationError` on malformed input — a useful guardrail when a model hands back JSON.
+
+## Importers as a text bridge
+
+LLMs are good at emitting Mermaid, Graphviz dot, or drawio XML. `@oh-just-another/importers` turns that text into a `Scene`, which sidesteps the model having to learn the full element schema:
+
+```ts
+import { importMermaid } from "@oh-just-another/importers";
+
+const scene = importMermaid("flowchart TD\n A[Start] --> B{Decide}");
+```
+
+## Status
+
+Machine-readable surfaces shipped today: the MCP tool bundle (`@oh-just-another/mcp`) and the scene JSON Schema (`sceneJsonSchema` / `get_scene_schema`). There is no auto-generated manifest of the full TypeScript API and no `llms.txt` — for everything beyond scene documents and MCP tools, treat the exported types and a `stringifyScene` example as the contract.

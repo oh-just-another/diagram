@@ -37,12 +37,16 @@ export {
   type DiagramSurfaceProps,
 } from "./diagram-root.js";
 export { DiagramCanvas, type DiagramCanvasProps } from "./diagram-canvas.js";
+export { Minimap, type MinimapProps } from "./minimap.js";
+export { DrawingPanel } from "./drawing-panel.js";
 export {
   useDiagram,
   useDiagramOptional,
   useScene,
   useSelection,
   useMode,
+  useBrushSettings,
+  useReadOnly,
   useHistory,
   useLayers,
   useActiveLayerId,
@@ -117,6 +121,9 @@ export {
   type HelpSection,
 } from "./help-dialog.js";
 export { CommandPalette } from "./command-palette.js";
+export { SearchOverlay } from "./search-overlay.js";
+export { StatsPanel } from "./stats-panel.js";
+export { ZenModeProvider, useZenMode, useZenModeOptional, type ZenModeApi } from "./zen-mode.js";
 export {
   ToastHost,
   useToast,
@@ -150,4 +157,9 @@ export {
   LAYER_SWATCH_SIZE,
   COMMENTS_PANEL_WIDTH,
   TOOLBAR_SEPARATOR_HEIGHT,
+  MINIMAP_WIDTH_PX,
+  MINIMAP_HEIGHT_PX,
+  MINIMAP_PADDING_PX,
+  MINIMAP_THROTTLE_MS,
+  SEARCH_ZOOM_PADDING_PX,
 } from "./constants.js";

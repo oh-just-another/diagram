@@ -543,6 +543,102 @@ describe("drawText", () => {
 });
 
 // ---------------------------------------------------------------------------
+// drawText — styled runs (rich text)
+// ---------------------------------------------------------------------------
+describe("drawText with styled runs", () => {
+  it("draws one fillText per run segment", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "Hello world",
+      fontFamily: "Arial",
+      fontSize: 16,
+      style: {},
+      runs: [
+        { text: "Hello", style: { fontWeight: "bold" } },
+        { text: " world", style: { fontStyle: "italic" } },
+      ],
+    });
+    const fillTexts = calls.filter((c) => c.method === "fillText");
+    expect(fillTexts.map((c) => c.args[0])).toEqual(["Hello", " world"]);
+  });
+
+  it("applies per-run weight / style / colour", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "AB",
+      fontFamily: "Arial",
+      fontSize: 16,
+      style: { fill: "#000" },
+      runs: [
+        { text: "A", style: { fontWeight: "bold", fill: "#f00" } },
+        { text: "B", style: { fontStyle: "italic" } },
+      ],
+    });
+    // Bold red for segment A.
+    const boldFont = calls.find(
+      (c) => c.method === "setFont" && (c.args[2] as { weight?: string })?.weight === "bold",
+    );
+    expect(boldFont).toBeDefined();
+    expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#f00")).toBe(true);
+    // Italic for segment B.
+    const italicFont = calls.find(
+      (c) => c.method === "setFont" && (c.args[2] as { style?: string })?.style === "italic",
+    );
+    expect(italicFont).toBeDefined();
+  });
+
+  it("positions segments left-to-right by measured width (x accumulates)", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "abcd",
+      fontFamily: "Arial",
+      fontSize: 16,
+      style: {},
+      runs: [{ text: "ab", style: { fontWeight: "bold" } }, { text: "cd" }],
+    });
+    const fillTexts = calls.filter((c) => c.method === "fillText");
+    // Recorder measure = length * 7 → "ab" is 14 wide, so "cd" starts at x=14.
+    expect(fillTexts[0]?.args).toEqual(["ab", 0, 0]);
+    expect(fillTexts[1]?.args).toEqual(["cd", 14, 0]);
+  });
+
+  it("places runs on their source line for multi-line text", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "one\ntwo",
+      fontFamily: "Arial",
+      fontSize: 10,
+      style: {},
+      runs: [{ text: "one\ntwo", style: { fill: "#123" } }],
+    });
+    const fillTexts = calls.filter((c) => c.method === "fillText");
+    // Line height = fontSize * 1.2 = 12; second line at y = 12.
+    expect(fillTexts.map((c) => [c.args[0], c.args[2]])).toEqual([
+      ["one", 0],
+      ["two", 12],
+    ]);
+  });
+
+  it("falls back to the plain path when runs is empty", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "plain",
+      fontFamily: "Arial",
+      fontSize: 16,
+      style: {},
+      runs: [],
+    });
+    const fillTexts = calls.filter((c) => c.method === "fillText");
+    expect(fillTexts.map((c) => c.args[0])).toEqual(["plain"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // drawImage
 // ---------------------------------------------------------------------------
 describe("drawImage", () => {
@@ -766,7 +862,7 @@ describe("drawBrush", () => {
     expect(calls.some((c) => c.method === "fill")).toBe(true);
   });
 
-  it("emits polygon segments + end-cap ellipses for multi-point stroke", () => {
+  it("emits ONE closed outline polygon for a multi-point stroke (single fill)", () => {
     const calls = addAndRender({
       ...base(),
       type: "brush",
@@ -777,10 +873,14 @@ describe("drawBrush", () => {
       ],
       style: { fill: "#333" },
     });
-    // For N-1 segments: each emits moveTo + 3 lineTo + closePath + fill + ellipse + fill
-    expect(calls.filter((c) => c.method === "fill").length).toBeGreaterThan(1);
-    // End-cap ellipses
-    expect(calls.filter((c) => c.method === "ellipse").length).toBeGreaterThan(0);
+    // The body is one closed outline filled once — no per-segment quads, no joint
+    // discs (which double-blend at opacity < 1).
+    expect(calls.filter((c) => c.method === "fill").length).toBe(1);
+    expect(calls.filter((c) => c.method === "ellipse").length).toBe(0);
+    // A real polygon: one moveTo, many lineTo, closed.
+    expect(calls.filter((c) => c.method === "moveTo").length).toBe(1);
+    expect(calls.filter((c) => c.method === "lineTo").length).toBeGreaterThan(3);
+    expect(calls.filter((c) => c.method === "closePath").length).toBe(1);
   });
 
   it("uses fill color from style.fill when set", () => {
@@ -796,6 +896,22 @@ describe("drawBrush", () => {
     expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#abc")).toBe(true);
   });
 
+  it("applies style.opacity to the committed stroke (matches the live preview)", () => {
+    // Regression: drawBrush painted fills directly and never applied style.opacity,
+    // so a translucent brush drew opaque once committed — the opacity seen while
+    // drawing vanished on release.
+    const calls = addAndRender({
+      ...base(),
+      type: "brush",
+      points: [
+        { x: 0, y: 0, width: 4 },
+        { x: 10, y: 0, width: 4 },
+      ],
+      style: { stroke: "#000", opacity: 0.4 },
+    });
+    expect(calls.some((c) => c.method === "setOpacity" && c.args[0] === 0.4)).toBe(true);
+  });
+
   it("falls back to style.stroke for fill color when fill is undefined", () => {
     const calls = addAndRender({
       ...base(),
@@ -809,6 +925,22 @@ describe("drawBrush", () => {
     expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#f0f")).toBe(true);
   });
 
+  it("paints the line with style.stroke when both stroke and fill are set", () => {
+    // The drawing panel sets `stroke` = line colour and `fill` = enclosed-area
+    // colour; the stroke body must use the line colour, not the fill.
+    const calls = addAndRender({
+      ...base(),
+      type: "brush",
+      points: [
+        { x: 0, y: 0, width: 4 },
+        { x: 10, y: 0, width: 4 },
+      ],
+      style: { stroke: "#123456", fill: "#abcdef" },
+    });
+    expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#123456")).toBe(true);
+    expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#abcdef")).toBe(false);
+  });
+
   it("sets stroke to null (brush uses filled quads, not stroked paths)", () => {
     const calls = addAndRender({
       ...base(),
@@ -820,5 +952,49 @@ describe("drawBrush", () => {
       style: {},
     });
     expect(calls.some((c) => c.method === "setStroke" && c.args[0] === null)).toBe(true);
+  });
+
+  it("fills the enclosed area of a closed stroke with style.fill", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "brush",
+      closed: true,
+      points: [
+        { x: 0, y: 0, width: 3 },
+        { x: 40, y: 0, width: 3 },
+        { x: 40, y: 40, width: 3 },
+        { x: 0, y: 40, width: 3 },
+      ],
+      style: { stroke: "#111827", fill: "#fca5a5" },
+    });
+    // The fill colour is applied for the enclosed polygon.
+    expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#fca5a5")).toBe(true);
+    // A polygon fill: closePath preceded by ≥3 lineTo, followed by fill(), all
+    // before the first stroke-body segment (which sets fill to the line colour).
+    const firstStrokeFill = calls.findIndex(
+      (c) => c.method === "setFill" && c.args[0] === "#111827",
+    );
+    const closeIdx = calls.findIndex((c, i) => c.method === "closePath" && i < firstStrokeFill);
+    expect(closeIdx).toBeGreaterThan(-1);
+    const lineTosBeforeClose = calls.slice(0, closeIdx).filter((c) => c.method === "lineTo").length;
+    expect(lineTosBeforeClose).toBeGreaterThanOrEqual(3);
+    const fillAfterClose = calls.slice(closeIdx, firstStrokeFill).some((c) => c.method === "fill");
+    expect(fillAfterClose).toBe(true);
+  });
+
+  it("does not emit an enclosed-area fill for a non-closed stroke", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "brush",
+      points: [
+        { x: 0, y: 0, width: 3 },
+        { x: 40, y: 0, width: 3 },
+        { x: 40, y: 40, width: 3 },
+        { x: 0, y: 40, width: 3 },
+      ],
+      style: { stroke: "#111827", fill: "#fca5a5" },
+    });
+    // Open stroke: the fill colour is never applied (line uses `stroke`).
+    expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#fca5a5")).toBe(false);
   });
 });

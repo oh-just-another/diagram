@@ -41,6 +41,36 @@ export const isDrawableImageSource = (value: unknown): value is CanvasImageSourc
 };
 
 /**
+ * Intrinsic pixel size of a drawable image source, or `null` when it can't be
+ * determined. Handles the differing width/height accessors of the DOM image
+ * types (`naturalWidth` for `<img>`, `videoWidth` for `<video>`, plain
+ * `width`/`height` for bitmaps / canvases). Needed to turn a normalised crop
+ * (fractions) into a pixel source rectangle for `ctx.drawImage`.
+ */
+export const intrinsicImageSize = (
+  source: CanvasImageSource,
+): { readonly width: number; readonly height: number } | null => {
+  const s = source as {
+    naturalWidth?: number;
+    naturalHeight?: number;
+    videoWidth?: number;
+    videoHeight?: number;
+    width?: number | { baseVal?: unknown };
+    height?: number | { baseVal?: unknown };
+  };
+  if (typeof s.naturalWidth === "number" && s.naturalWidth > 0) {
+    return { width: s.naturalWidth, height: s.naturalHeight ?? s.naturalWidth };
+  }
+  if (typeof s.videoWidth === "number" && s.videoWidth > 0) {
+    return { width: s.videoWidth, height: s.videoHeight ?? s.videoWidth };
+  }
+  if (typeof s.width === "number" && s.width > 0 && typeof s.height === "number") {
+    return { width: s.width, height: s.height };
+  }
+  return null;
+};
+
+/**
  * Warn (once per distinct kind) when an image draw is skipped because
  * the handle isn't drawable. Throttled by a module-level `Set` so a
  * per-frame render loop doesn't spam the console — but the host still
