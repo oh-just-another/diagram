@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Coordinates
-status: draft
+title: Coordinates
 sidebar_position: 12
 ---
 
@@ -23,7 +22,7 @@ const worldPt = matrix.applyToPoint(toWorld, { x: 640, y: 360 });
 
 ## Moving the camera
 
-`panBy` shifts the camera by a screen-space delta (divided by `zoom`, so one screen pixel pans one screen pixel). `zoomAt` zooms multiplicatively around a world anchor that stays under the same pixel. `resize` updates the viewport's pixel size.
+`panBy` shifts the camera by a screen-space delta; the delta is divided by `zoom`, so one screen pixel moves the world by `1 / zoom` world units. `zoomAt` zooms multiplicatively around a world anchor that stays under the same pixel. `resize` updates the viewport's pixel size.
 
 ```ts
 import { panBy, zoomAt, resize } from "@oh-just-another/scene";
