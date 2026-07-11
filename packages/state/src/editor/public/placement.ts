@@ -8,6 +8,7 @@ import {
   getElement,
   getElementWorldBounds,
   getLink,
+  isBrush,
   isFrame,
   isText,
   orderForTop,
@@ -211,6 +212,8 @@ export const previewClickCreate = (
 } | null => {
   const src = getElement(scene, fromElement);
   if (!src) return null;
+  // Brush strokes don't offer a click-create ghost (see computeLinkedElementFromAnchor).
+  if (isBrush(src)) return null;
   const anchor: AnchorRef = { kind: "named", name: anchorName };
   const normal = getAnchorOutwardNormal(src, anchor);
   const b = getElementWorldBounds(src);
@@ -295,6 +298,10 @@ export const computeLinkedElementFromAnchor = (
 ): { scene: Scene; addPatch: Patch; linkPatch: Patch } | null => {
   const src = getElement(scene, fromElement);
   if (!src) return null;
+  // Drawn lines (brush strokes) don't clone-create a connected node from a
+  // start-dot click — duplicating a freehand line as a "node" is nonsensical.
+  // Dragging a real link from the line still works (that path skips this).
+  if (isBrush(src)) return null;
   const anchor: AnchorRef = { kind: "named", name: anchorName };
   const normal = getAnchorOutwardNormal(src, anchor);
   const bounds = getElementWorldBounds(src);
