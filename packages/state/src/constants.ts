@@ -571,6 +571,23 @@ export const BRUSH_SIM_PRESSURE_MIN = 0.25;
 export const BRUSH_SIM_PRESSURE_START = 0.5;
 
 /**
+ * Minimum SCREEN-pixel displacement of the raw input before a new brush point
+ * is stored — decimation of near-duplicate pointer samples (120 Hz devices
+ * emit far more moves than a stroke needs). Skipped samples still update the
+ * commit catch-up point. Smaller = denser capture; larger = coarser but
+ * cheaper strokes. Range: 1-4.
+ */
+export const BRUSH_MIN_POINT_DIST_PX = 1.5;
+
+/**
+ * Soft cap on captured brush points per stroke. When capture exceeds it, the
+ * stroke's interior points are halved (endpoints kept), bounding memory and
+ * render cost on very long strokes — each halving doubles the remaining
+ * capacity instead of stopping the stroke. Range: 1024-8192.
+ */
+export const MAX_BRUSH_POINTS = 2048;
+
+/**
  * World-pixel distance under which a brush stroke's last point is treated as
  * meeting its first — the trigger for auto-closing (and filling) a stroke on
  * commit. Only applies when a fill colour is set and the stroke has ≥3 points.

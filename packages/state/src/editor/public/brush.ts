@@ -11,6 +11,7 @@ import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
 import {
   BRUSH_CLOSE_DISTANCE,
+  BRUSH_MIN_POINT_DIST_PX,
   BRUSH_PRESSURE_SMOOTHING,
   BRUSH_SIM_PRESSURE_MIN,
   BRUSH_SIM_PRESSURE_START,
@@ -20,6 +21,7 @@ import {
   DEFAULT_BRUSH_COLOR,
   DEFAULT_BRUSH_OPACITY,
   DEFAULT_BRUSH_WIDTH,
+  MAX_BRUSH_POINTS,
   MAX_BRUSH_WIDTH,
 } from "../../constants.js";
 import { smoothStrokePoints } from "./stroke-smoothing.js";
@@ -92,6 +94,13 @@ export interface BrushStrokeState {
    * pointer was released, not a half-step behind it.
    */
   lastRaw: WeightedPoint;
+  /**
+   * RAW position that produced the last STORED point — the decimation anchor.
+   * A new point is stored only once the raw input has moved at least
+   * `BRUSH_MIN_POINT_DIST_PX` screen pixels away from it, so a slow drag
+   * doesn't spam near-duplicate vertices.
+   */
+  lastStoredRaw: Vec2;
 }
 
 export const beginBrushStroke = (
@@ -108,8 +117,21 @@ export const beginBrushStroke = (
     simulatePressure,
     baseWidth: maxWidth,
     lastRaw: first,
+    lastStoredRaw: { x: 0, y: 0 },
     origin: world,
   };
+};
+
+/**
+ * Halve a stroke's interior points (keep both endpoints) when the capture
+ * exceeds {@link MAX_BRUSH_POINTS} — bounds memory and render cost on very
+ * long strokes while the stroke keeps following the pointer. Each halving
+ * doubles the remaining capacity, so the cap is soft, not a hard stop.
+ */
+const thinStroke = (stroke: BrushStrokeState): void => {
+  const keep = (i: number, len: number): boolean => i === 0 || i === len - 1 || i % 2 === 0;
+  stroke.points = stroke.points.filter((_, i, a) => keep(i, a.length));
+  stroke.pressures = stroke.pressures.filter((_, i, a) => keep(i, a.length));
 };
 
 export const extendBrushStroke = (
@@ -144,6 +166,17 @@ export const extendBrushStroke = (
     width: pressureToWidth(stroke.simulatePressure ? p : pressure, stroke.baseWidth),
     pressure: stroke.simulatePressure ? p : pressure,
   };
+  // Decimation: store a new point only once the raw input has moved at least
+  // BRUSH_MIN_POINT_DIST_PX screen pixels (world dist × zoom) from the raw
+  // position that produced the last stored point. Skipped samples still
+  // advance `lastRaw`, so the commit catch-up keeps the stroke ending under
+  // the cursor.
+  const sdx = (rawX - stroke.lastStoredRaw.x) * zoom;
+  const sdy = (rawY - stroke.lastStoredRaw.y) * zoom;
+  if (sdx * sdx + sdy * sdy < BRUSH_MIN_POINT_DIST_PX * BRUSH_MIN_POINT_DIST_PX) {
+    stroke.lastRaw = raw;
+    return;
+  }
   // Streamline: pull the stored point only part of the way toward the raw
   // input (exponential moving average). Raw pointer-move samples carry hand
   // jitter and sensor noise; the low-pass turns them into a steady line. The
@@ -157,6 +190,8 @@ export const extendBrushStroke = (
   });
   stroke.pressures.push(p);
   stroke.lastRaw = raw;
+  stroke.lastStoredRaw = { x: rawX, y: rawY };
+  if (stroke.points.length > MAX_BRUSH_POINTS) thinStroke(stroke);
 };
 
 /**

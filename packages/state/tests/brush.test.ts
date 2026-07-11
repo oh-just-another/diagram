@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { emptyScene, type Scene, type Element, type BrushPoint } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
-import { brushCommitPoints } from "../src/editor/public/brush.js";
+import {
+  beginBrushStroke,
+  brushCommitPoints,
+  extendBrushStroke,
+} from "../src/editor/public/brush.js";
 
 const makeEditor = (scene: Scene): Editor => {
   const noopTarget = {
@@ -206,6 +210,37 @@ describe("brush stroke", () => {
     const pen = editor.scene.elements.get(penId!) as Extract<Element, { type: "brush" }>;
     expect(pen.simulatePressure).toBeUndefined();
     expect(pen.pressures).toHaveLength(pen.points.length);
+  });
+
+  it("decimates near-duplicate samples but the stroke still ends at the raw endpoint", () => {
+    const editor = makeEditor(emptyScene());
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    // 100 micro-moves of 0.5px each (50px total). Below the min-distance
+    // threshold most samples are dropped; roughly one point per 1.5px survives.
+    for (let i = 1; i <= 100; i++) editor.extendBrushStroke({ x: i * 0.5, y: 0 }, 0.5);
+    const pending = editor.pendingBrushStroke!;
+    expect(pending.points.length).toBeLessThan(50);
+    expect(pending.points.length).toBeGreaterThan(10);
+    // The dropped tail is recovered by the commit catch-up point.
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    const tail = shape.points[shape.points.length - 1]!;
+    expect(tail.x).toBeCloseTo(50);
+  });
+
+  it("caps runaway strokes at MAX_BRUSH_POINTS by thinning, not by stopping", () => {
+    // Pure capture pipeline (no editor): the cap is a property of the stroke
+    // state, and 5k pointer events through the full editor would re-smooth the
+    // live preview per event (O(n²) in a synchronous test harness).
+    const stroke = beginBrushStroke({ x: 0, y: 0 }, 0.5, 6, false);
+    // 5000 samples, each far above the decimation threshold.
+    for (let i = 1; i <= 5000; i++) extendBrushStroke(stroke, { x: i * 5, y: 0 }, 0.5, 1);
+    expect(stroke.points.length).toBeLessThanOrEqual(2048);
+    // The stroke kept following the pointer to the end (thinning, no hard stop).
+    expect(stroke.lastRaw.x).toBeCloseTo(25000);
+    expect(stroke.pressures.length).toBe(stroke.points.length);
+    // Both endpoints survive every halving pass.
+    expect(stroke.points[0]).toMatchObject({ x: 0, y: 0 });
   });
 
   it("cancel discards the in-progress stroke", () => {
