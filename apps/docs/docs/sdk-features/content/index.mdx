@@ -1,10 +1,9 @@
 ---
-title: ⚠️ Mermaid
-status: draft
+title: Mermaid
 sidebar_position: 9
 ---
 
-`@oh-just-another/importers` converts popular diagram source formats — Mermaid flowcharts, Graphviz dot, and drawio XML — into a `Scene`. It's the bridge for text-authored or LLM-generated diagrams.
+`@oh-just-another/importers` converts popular diagram source formats — Mermaid flowcharts, Graphviz dot, drawio XML, `.excalidraw` JSON, and JSON Canvas — into a `Scene`. It's the bridge for text-authored or LLM-generated diagrams. This page covers Mermaid; see [Importers](./importers.mdx) for the full format matrix.
 
 ## One-shot import
 
@@ -45,4 +44,4 @@ The Mermaid parser is intentionally minimal:
 
 ## Notes
 
-Each node becomes two elements — the geometry plus a centred `text` label — so labels are normal text elements you can move and edit independently. For full Mermaid fidelity, pre-process with the official tool and hand the result in as a `GraphDocument`. Use `layoutGraph` on its own if you only need the layout pass.
+Each labelled node becomes two elements — the geometry plus a centred `text` label — so labels are normal text elements you can move and edit independently. For full Mermaid fidelity, pre-process with the official tool and hand the result in as a `GraphDocument`. Use `layoutGraph` on its own if you only need the layout pass.

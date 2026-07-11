@@ -1,5 +1,5 @@
 ---
-title: ⚠️ Hyperlinks
+title: Hyperlinks
 sidebar_position: 81
 ---
 
@@ -12,10 +12,11 @@ A hyperlink is an `href` attached to a shape (element) in the scene. This is dis
 ```ts
 import type { Editor as EditorInstance } from "@oh-just-another/state";
 import { normalizeHref, safeHref } from "@oh-just-another/state";
+import type { ElementId } from "@oh-just-another/types";
 
-function link(editor: EditorInstance, id: string) {
-  editor.setLink([id as never], "example.com"); // stored as https://example.com
-  editor.setLink([id as never], null); // clears it
+function link(editor: EditorInstance, id: ElementId) {
+  editor.setLink([id], "example.com"); // stored as https://example.com
+  editor.setLink([id], null); // clears it
 
   // The standalone helpers are also exported:
   normalizeHref("ada@example.com"); // "mailto:ada@example.com"
