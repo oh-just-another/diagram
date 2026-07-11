@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Editor
-status: draft
+title: Editor API
 sidebar_position: 22
 ---
 
@@ -39,12 +38,15 @@ function Host() {
 
 ## The engine class
 
-For non-React hosts, construct `Editor` directly with render targets and an initial scene. The engine never touches the DOM itself — hosts feed it normalized events. Subscribe with `editor.subscribe(fn)` (coarse-grained) or the typed `EditorEvents` surface (`change`, `mode`, `selection`, `scene`, `history`, `viewport`).
+For non-React hosts, construct `Editor` directly with `EditorOptions`: a `host` element, `mainTarget` / `overlayTarget` render targets, and an `initialScene`. The engine binds pointer and wheel events on the host itself; keyboard shortcuts are opt-in via `bindEditorHotkeys`. Subscribe with `editor.subscribe(fn)` (coarse-grained) or the typed `EditorEvents` surface via `editor.on` (`change`, `mode`, `selection`, `scene`, `history`, `viewport`).
 
 ```ts
-import { Editor } from "@oh-just-another/state";
+import { Editor, bindEditorHotkeys } from "@oh-just-another/state";
 
-editor.subscribe(() => render());
+const editor = new Editor({ host, mainTarget, overlayTarget, initialScene });
+const unbindKeys = bindEditorHotkeys(editor);
+
+editor.subscribe(() => syncUi());
 editor.setMode("draw-rect");
 ```
 

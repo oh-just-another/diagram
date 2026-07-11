@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Environment
-status: draft
+title: Environment
 sidebar_position: 24
 ---
 
@@ -43,8 +42,9 @@ const overrides: CapabilityOverrides = { wasmText: false, renderer: "canvas2d" }
 const profile = await detectCapabilities(overrides);
 ```
 
-The same overrides can be passed to the component as `<Diagram capabilities={…}>`,
-where they shallow-merge over the auto-detected result.
+The same overrides can be passed to the component as `<Editor capabilities={…}>`,
+where they shallow-merge over the auto-detected result. (`touch` is detected
+only — it is not overridable.)
 
 ## Logging the result
 

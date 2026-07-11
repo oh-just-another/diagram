@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Editor
-status: draft
+title: Editor
 sidebar_position: 5
 ---
 
@@ -33,7 +32,7 @@ On mount, `detectCapabilities()` runs once and picks the best backend the runtim
 
 ## The underlying engine
 
-Everything the component does sits on top of the `Editor` engine from `@oh-just-another/state` (re-exported here as `EditorInstance`). The component is the batteries-included path; the engine is the headless core. You can drop down to it directly through the imperative handle — see the Driver page — or compose the lower-level building blocks (`@oh-just-another/react-ui`, `@oh-just-another/scene`, the renderers) yourself.
+Everything the component does sits on top of the `Editor` engine from `@oh-just-another/state` (re-exported here as `EditorInstance`). The component is the batteries-included path; the engine is the framework-agnostic core. You can drop down to it directly through the imperative handle — see [Editor API](./api.mdx) — or compose the lower-level building blocks (`@oh-just-another/react-ui`, `@oh-just-another/scene`, the renderers) yourself.
 
 ## Extending the kernel
 

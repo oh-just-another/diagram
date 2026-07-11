@@ -1,43 +1,47 @@
 ---
-title: 🚧 Errors
-status: draft
+title: Errors
 sidebar_position: 26
 ---
 
-A dedicated, typed error taxonomy for `@oh-just-another/editor` is **planned —
-not yet available**. There are no exported error classes or error-type unions in
-the editor's public API today, so this page documents the current behaviour
-rather than a stable error contract.
+There is no editor-wide branded error hierarchy. `@oh-just-another/editor` itself exports no error classes — failures surface as ordinary thrown `Error` instances, `null` returns, and console diagnostics. Typed errors exist where a stable contract matters: serialization.
 
-## Current behaviour
+## Serialization errors
 
-The editor and renderer surface failures through ordinary thrown `Error`
-instances and console diagnostics rather than a branded error hierarchy. Treat
-error handling as you would any browser API: wrap calls that can fail (decoding,
-export) in `try` / `catch` and inspect `error.message`.
+`@oh-just-another/serialization` exports two error classes:
+
+- `DeserializationError` — thrown by `deserializeScene` / `parseScene` when validation fails (non-object input, document version newer than the build, schema mismatch). Carries the failure cause in `reason` (a `z.ZodError` for schema failures).
+- `MissingMigrationError` — thrown by `runMigrations` when no migration is registered for a version step.
+
+```ts
+import { parseScene, DeserializationError } from "@oh-just-another/serialization";
+
+try {
+  const scene = parseScene(json);
+} catch (error) {
+  if (error instanceof DeserializationError) {
+    console.error("Invalid scene document", error.message, error.reason);
+  }
+}
+```
+
+## Null returns instead of throws
+
+Operations that can legitimately produce nothing return `null` rather than throwing. `exportSceneToPng` returns `null` for an empty scene or when `OffscreenCanvas` is unavailable:
 
 ```ts
 import { exportSceneToPng } from "@oh-just-another/editor";
 
-try {
-  const blob = await exportSceneToPng(scene, { background: "#fff" });
-} catch (error) {
-  console.error("PNG export failed", error);
+const blob = await exportSceneToPng(scene, {
+  background: "color",
+  backgroundColor: "#ffffff",
+  scale: 2,
+});
+if (!blob) {
+  // empty scene or no OffscreenCanvas support
 }
 ```
 
-## What exists today
+## Diagnostics
 
-- Capability detection is logged via `logCapabilities` so misconfiguration is
-  visible in DevTools at boot.
-- Listener exceptions in the `@oh-just-another/events` emitter do not abort the
-  emit loop — remaining listeners still run and the first error is re-thrown
-  afterwards.
-
-## Planned
-
-A future release intends to introduce stable, discriminable error types (for
-serialization/migration, capability, and export failures) exported from
-`@oh-just-another/editor`. Until then, do not rely on `instanceof` checks against
-internal error shapes. Track the
-[issue tracker](https://github.com/oh-just-another/diagram/issues) for updates.
+- Capability detection is logged via `logCapabilities` at boot, so renderer/WASM/worker misconfiguration is visible in DevTools.
+- Listener exceptions in the `@oh-just-another/events` emitter do not abort the emit loop — remaining listeners still run and the first error is re-thrown afterwards.

@@ -1,6 +1,5 @@
 ---
-title: ⚠️ License Key
-status: draft
+title: License Key
 sidebar_position: 43
 ---
 
@@ -15,15 +14,12 @@ pnpm add @oh-just-another/editor
 ```
 
 ```tsx
-import { DiagramRoot, DiagramSurface } from "@oh-just-another/react-ui";
+import { Editor } from "@oh-just-another/editor";
+import "@oh-just-another/react-ui/styles.css";
 
 // No key, no activation, no gate.
 export function App() {
-  return (
-    <DiagramRoot>
-      <DiagramSurface />
-    </DiagramRoot>
-  );
+  return <Editor style={{ position: "fixed", inset: 0 }} />;
 }
 ```
 
