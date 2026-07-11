@@ -48,7 +48,7 @@ The centerpiece controller (`Editor`, `EditorOptions`, `LoadSceneOptions`). It o
 - **Text editing** — inline caret/selection model: `beginTextEdit`, `commitTextEdit`, `cancelTextEdit`, `setEditingText`, `setTextCaretFromPoint`, `extendTextSelectionToPoint`, `caretIndexAtWorldPoint`, `editingTextOverlay`, plus `createTextAt`.
 - **Image / file insert** — `insertImage`, `addElement`, `beginPlacement`, and a `FileDropRegistry` (see below).
 - **GIF / animation playback** — `togglePlayback`, `hoverAnimatedElement`, `isPlaybackPaused`.
-- **Brush strokes** — `beginBrushStroke`, `extendBrushStroke`, `commitBrushStroke`, `cancelBrushStroke`, `pendingBrushStroke`.
+- **Brush strokes** — `beginBrushStroke` (a `pointerType` argument picks the pressure source: real pen pressure, or speed-simulated for mouse/touch), `extendBrushStroke`, `commitBrushStroke`, `cancelBrushStroke`, `pendingBrushStroke`. Capture streamlines input, decimates samples, and tapers stroke ends on commit; the live preview matches the committed result.
 - **Annotations / comments** — `addAnnotation`, `removeAnnotation`, `toggleAnnotationResolved`, `addComment`, `removeComment`, `setSelectedAnnotation`, `setCommentAuthor`.
 - **Scene lifecycle** — `scene`, `loadScene`.
 

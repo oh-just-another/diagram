@@ -13,6 +13,19 @@ declare const stroke: BrushElement;
 const points: readonly BrushPoint[] = stroke.points;
 ```
 
+Strokes committed by the editor also carry a regeneration payload: `pressures` (raw input pressure per point, aligned with `points`), `simulatePressure` (`true` when pressure was synthesised from pointer speed — mouse and touch have no pressure channel), and `baseWidth` (the brush width the pressure curve scaled toward). Baked `width` values can be re-derived from it with a different base width or thinning. All three fields are optional; strokes from older scenes omit them.
+
 A stroke whose ends meet and that has a fill colour is committed with `closed: true`; the renderer then fills the area enclosed by the centreline with `style.fill` under the stroke body.
+
+### Capture pipeline
+
+The editor's `brush` mode processes pointer input before a stroke is committed:
+
+- **Streamline** — a low-pass filter damps hand jitter; the stroke still ends exactly at the release point (a catch-up point is appended on commit).
+- **Pressure** — pens use the device pressure channel (rate-limited against outlier samples); mouse and touch simulate it from pointer speed: slow is thick, fast is thin.
+- **Decimation** — samples closer than a screen-pixel threshold are dropped, and a runaway stroke is thinned in place once it exceeds the point cap.
+- **Smoothing and taper** — on commit the polyline is resampled along a Catmull-Rom spline and the ends taper down like a lifting pen (closed, filled loops keep their full-width seam).
+
+The live preview runs the same pipeline, so a stroke commits exactly as drawn. Tuning constants (`BRUSH_STREAMLINE`, `BRUSH_SIM_THIN_DIST_PX`, `BRUSH_TAPER_LENGTH_FACTOR`, `MAX_BRUSH_POINTS` and friends) live in `@oh-just-another/state` `constants.ts`.
 
 Strokes are drawn interactively with the editor's `brush` mode. The `erase` mode removes them (and any other element): dragging sweeps an object eraser — hits are previewed dimmed and deleted on release, Alt-dragging un-marks them. Holding Shift at press switches to stroke-erase, which cuts brush strokes into fragments by covered arc length instead of deleting them whole.
