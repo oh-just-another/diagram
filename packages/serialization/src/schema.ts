@@ -172,6 +172,12 @@ const BrushZ = ElementBaseZ.extend({
   style: StyleZ,
   points: z.array(BrushPointZ),
   closed: z.boolean().optional(),
+  // Regeneration payload (see `BrushElement`): raw pressures aligned with
+  // `points`, whether they were speed-simulated, and the base half-width the
+  // widths were baked against. All optional — legacy strokes omit them.
+  pressures: z.array(z.number()).optional(),
+  simulatePressure: z.boolean().optional(),
+  baseWidth: z.number().optional(),
 }).strict();
 
 /**

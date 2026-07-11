@@ -261,6 +261,24 @@ export interface BrushElement extends ElementBase {
    * on itself. Omitted (undefined) for ordinary open strokes.
    */
   readonly closed?: boolean;
+  /**
+   * Raw input pressure (0–1) per point, aligned 1:1 with `points`. The baked
+   * `width` is derived from it (base width × pressure curve × taper), so a
+   * stroke can be regenerated with a different base width / thinning without
+   * re-capturing. Omitted on strokes committed before pressures were stored.
+   */
+  readonly pressures?: readonly number[];
+  /**
+   * True when `pressures` were synthesised from pointer speed (mouse / touch
+   * without a real pressure channel) rather than read from the device. Lets a
+   * regeneration pass know whether re-simulating is appropriate.
+   */
+  readonly simulatePressure?: boolean;
+  /**
+   * The brush base half-width (local px) the stroke was committed with — the
+   * value the pressure curve scaled toward. Omitted on legacy strokes.
+   */
+  readonly baseWidth?: number;
 }
 
 /**
