@@ -1,45 +1,24 @@
 ---
-title: ⚠️ Persistence
-status: draft
+title: Data & Persistence
 sidebar_position: 10
 ---
 
-A `Scene` is a plain, serialisable data structure. `@oh-just-another/serialization` turns it into a versioned JSON document and back, so you can store scenes anywhere — a file, a database, `localStorage`, or over the wire.
+A `Scene` is a plain, immutable, serialisable data structure. This section covers the data layer around it:
 
-## Serialize and parse
+- [Store](./store.mdx) — the immutable `Scene` model: pure operations that return `{ scene, patch }`, and invertible patches.
+- [Persistence](./persistence.mdx) — `@oh-just-another/serialization`: `serializeScene` / `stringifyScene` out, `parseScene` / `deserializeScene` back, with forward-only migrations.
+- [Validation](./validation.mdx) — every loaded document is validated against the `SceneDocumentZ` zod schema; failures throw `DeserializationError`.
+- [Image export](./image-export.mdx) — browser PNG from the editor, headless SVG/PNG on the server, and document-grade PNG/PDF via `@oh-just-another/exporter`.
+- [Version history](./versioning.mdx) — `@oh-just-another/versioning`: named snapshots, branches, diff, and three-way merge.
+- [Signals](./signals.mdx) — the reactivity model: immutable state plus typed events (no fine-grained signals yet).
 
-`serializeScene` produces a `SceneDocument` (a stamped, schema-shaped object); `stringifyScene` is the JSON-string convenience. On the way back, `parseScene` validates against the wire schema and reconstructs a typed `Scene`.
-
-```ts
-import { emptyScene } from "@oh-just-another/scene";
-import { serializeScene, stringifyScene, parseScene } from "@oh-just-another/serialization";
-
-const scene = emptyScene();
-
-const json = stringifyScene(scene, 2); // pretty-printed JSON string
-const restored = parseScene(json);     // -> Scene
-```
-
-`parseScene` throws a `DeserializationError` on malformed or invalid input, so it doubles as a guardrail for untrusted JSON.
-
-## Versioning and migrations
-
-Documents are stamped with `CURRENT_VERSION` and validated against `SceneDocumentZ`. As the format evolves, register migrations so old documents upgrade on load instead of breaking:
+Quick save/restore through the `EditorAPI` ref handle (`getScene()` / `loadScene()`):
 
 ```ts
-import { registerMigration } from "@oh-just-another/serialization";
+import { stringifyScene, parseScene } from "@oh-just-another/serialization";
 
-registerMigration({
-  /* from / to version + an upgrade function */
-} as never);
+const json = stringifyScene(api.getScene(), 2); // pretty-printed JSON string
+api.loadScene(parseScene(json)); // resets undo history
 ```
 
-`runMigrations` applies the chain; a gap raises `MissingMigrationError`. The umbrella editor re-exports `registerMigration` so you can wire migrations from a single import.
-
-## Binary file sidecars
-
-Scenes that embed images keep large binary blobs in a `files` registry rather than inlining them into the scene JSON. `serializeFiles` / `stringifyFiles` / `parseFiles` persist that sidecar separately, producing a `SerializedFilesDocument` you can store alongside the scene (see Assets).
-
-## With the editor
-
-The `EditorAPI` handle exposes `getScene()` and `loadScene(scene)`, so a typical save/restore flow is `stringifyScene(api.getScene())` to persist and `api.loadScene(parseScene(json))` to restore. Loading a scene resets undo history.
+Binary blobs (embedded images) live in the `Scene.files` registry and persist separately via `serializeFiles` / `stringifyFiles` / `parseFiles` — see [Assets](../content/assets.mdx).

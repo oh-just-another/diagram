@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Validation
-status: draft
+title: Validation
 sidebar_position: 75
 ---
 
@@ -27,7 +26,7 @@ try {
 
 ## The schema
 
-`SceneDocumentZ` is the exported zod schema for a full scene document; `SceneDocument` is its inferred type. The element sub-schema is a `z.discriminatedUnion` over every built-in shape `type`, with a `passthrough` arm so plugin-registered custom shapes validate and persist without modifying the kernel schema.
+`SceneDocumentZ` is the exported zod schema for a full scene document; `SceneDocument` is its inferred type. The element sub-schema is a `z.union` of strict per-shape schemas for the built-in `type` literals, plus a `passthrough` arm that accepts any non-builtin `type` with the standard base fields — so plugin-registered custom shapes validate and persist without modifying the kernel schema.
 
 ```ts
 import { SceneDocumentZ, type SceneDocument } from "@oh-just-another/serialization";
@@ -42,6 +41,6 @@ if (result.success) {
 
 - `format` magic constant and numeric `version`.
 - Each element against its discriminated shape schema (unknown types pass through the plugin arm).
-- Links, layers, and the viewport (`pan`, `zoom`, `rotation`, `size`).
+- Links, layers, and the viewport (`pan`, `zoom`, `rotation`, `size`, `gridEnabled`).
 
 After validation, the hydrate step re-brands `ElementId` / `LinkId` / `LayerId` back to their branded kernel types and strips `undefined`-valued optional keys.

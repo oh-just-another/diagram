@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Store
-status: draft
+title: Store
 sidebar_position: 64
 ---
 
@@ -43,4 +42,4 @@ const undone = apply(scene, invert(patch)); // back to the original scene
 
 ## Structural sharing
 
-Maps are replaced wholesale on each operation, but only touched entries are reallocated, so deriving a new scene stays cheap. This immutable-patch design is what powers history and conflict-free collaborative replay.
+Applying a patch shallow-copies only the touched map (`elements`, `links`, `layers`, `annotations`, or `files`); entry objects and the untouched maps are shared by reference, so deriving a new scene stays cheap. This immutable-patch design is what powers undo/redo history and collaborative replay.

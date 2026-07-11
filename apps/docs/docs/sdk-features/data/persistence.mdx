@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Persistence
-status: draft
+title: Persistence
 sidebar_position: 52
 ---
 
@@ -44,7 +43,7 @@ import { registerMigration, CURRENT_VERSION } from "@oh-just-another/serializati
 registerMigration(1, (doc) => ({ ...doc, version: 2 /* …reshape elements… */ }));
 ```
 
-If an intermediate version has no registered migration, loading throws `MissingMigrationError`.
+If an intermediate version has no registered migration, loading throws `MissingMigrationError`. A document newer than the build understands (above `CURRENT_VERSION`, or `deserializeScene`'s `maxVersion` option) throws `DeserializationError`. The umbrella `@oh-just-another/editor` re-exports `registerMigration`.
 
 ## Binary file sidecar
 

@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Image Export
-status: draft
+title: Image Export
 sidebar_position: 38
 ---
 
@@ -39,7 +38,7 @@ await writeFile("scene.svg", renderToSvg(sceneJson));
 await writeFile("scene.png", await renderToPng(sceneJson, { scale: 2 }));
 ```
 
-Both accept either an in-memory `Scene` or the JSON document `@oh-just-another/serialization` emits (the JSON form is validated before rendering).
+Both accept either an in-memory `Scene` or the JSON document string `@oh-just-another/serialization` emits (parsed and validated before rendering). `renderToSvg` returns a `string`; `renderToPng` resolves to a `Uint8Array`.
 
 ## Document-grade export (PNG with DPI, PDF, cropping)
 
@@ -48,9 +47,11 @@ Both accept either an in-memory `Scene` or the JSON document `@oh-just-another/s
 ```ts
 import { exportPng, exportPdf } from "@oh-just-another/exporter";
 
-await exportPng(scene, { scale: 2, dpi: 300, background: "#ffffff" });
-await exportPng(scene, { region: { x: 0, y: 0, width: 400, height: 300 } });
-await exportPdf(scene, { pageSize: "Letter", orientation: "landscape", title: "Diagram" });
+const png = await exportPng(scene, { scale: 2, dpi: 300, background: "#ffffff" }); // Uint8Array
+const crop = await exportPng(scene, { region: { x: 0, y: 0, width: 400, height: 300 } });
+const pdf = await exportPdf(scene, { pageSize: "Letter", orientation: "landscape", title: "Diagram" });
 ```
+
+Both take a `Scene` or JSON document string. `region` crops in world coordinates (default: the scene's `viewport.size`); `frameId` instead exports a single frame's content and wins over `region`. `dpi` only embeds a `pHYs` chunk — pixel dimensions come from `scale`.
 
 PNG needs `@resvg/resvg-js`; PDF needs `pdfkit` + `svg-to-pdfkit`. Both are optional peers — install only what you call.
