@@ -62,12 +62,14 @@ describe("brush stroke", () => {
     const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
     expect(shape.type).toBe("brush");
     expect(shape.position).toEqual({ x: 10, y: 10 });
-    // Endpoints survive the smoothing pass verbatim (first vertex is the origin,
-    // pressure-weighted widths kept): head 0.5·6=3, tail 0.3·6=1.8.
-    expect(shape.points[0]).toEqual({ x: 0, y: 0, width: 3 });
+    // Endpoint POSITIONS survive the pipeline verbatim (first vertex is the
+    // origin, last is the raw catch-up). Widths are pressure-weighted then
+    // end-tapered: head 0.5·6·0.1=0.3, tail 0.3·6·0.1=0.18 (BRUSH_TAPER_MIN
+    // at the tips of a stroke short enough to sit entirely in the taper zone).
+    expect(shape.points[0]).toEqual({ x: 0, y: 0, width: expect.closeTo(0.3) as number });
     const tail = shape.points[shape.points.length - 1]!;
     expect(tail.x).toBeCloseTo(20);
-    expect(tail.width).toBeCloseTo(1.8);
+    expect(tail.width).toBeCloseTo(0.18);
     expect(editor.pendingBrushStroke).toBeNull();
   });
 
@@ -241,6 +243,46 @@ describe("brush stroke", () => {
     expect(stroke.pressures.length).toBe(stroke.points.length);
     // Both endpoints survive every halving pass.
     expect(stroke.points[0]).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it("tapers stroke ends: tips are thin, the middle keeps its full width", () => {
+    const editor = makeEditor(emptyScene());
+    // Long straight pen stroke at constant pressure 0.5 → captured width 3
+    // everywhere; the taper must thin only the ends (18px zones at base 6).
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5, "pen");
+    for (let i = 1; i <= 20; i++) editor.extendBrushStroke({ x: i * 10, y: 0 }, 0.5);
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    const first = shape.points[0]!;
+    const mid = shape.points[Math.floor(shape.points.length / 2)]!;
+    const last = shape.points[shape.points.length - 1]!;
+    // Tips converge to BRUSH_TAPER_MIN (0.1) of the captured width.
+    expect(first.width).toBeCloseTo(0.3);
+    expect(last.width).toBeCloseTo(0.3);
+    // The middle is outside both taper zones — full captured width.
+    expect(mid.width).toBeCloseTo(3);
+    // Width grows monotonically away from the tip through the taper zone.
+    expect(shape.points[1]!.width).toBeGreaterThan(first.width);
+    expect(shape.points[2]!.width).toBeGreaterThan(shape.points[1]!.width);
+  });
+
+  it("does not taper a closed (filled loop) stroke", () => {
+    const editor = makeEditor(emptyScene());
+    editor.setBrushSettings({ fill: "#00ff00" });
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 40 }, 0.5);
+    editor.extendBrushStroke({ x: 0, y: 40 }, 0.5);
+    editor.extendBrushStroke({ x: 2, y: 2 }, 0.5);
+    const id = editor.commitBrushStroke();
+    const shape = editor.scene.elements.get(id!) as Extract<Element, { type: "brush" }>;
+    expect(shape.closed).toBe(true);
+    // A filled loop keeps its full-width seam — tapering it would notch the
+    // outline where the ends meet.
+    const first = shape.points[0]!;
+    const last = shape.points[shape.points.length - 1]!;
+    expect(first.width).toBeGreaterThan(1);
+    expect(last.width).toBeGreaterThan(1);
   });
 
   it("cancel discards the in-progress stroke", () => {

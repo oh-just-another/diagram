@@ -7,7 +7,7 @@ import {
   type Patch,
   type Style,
 } from "@oh-just-another/scene";
-import type { LayerId, ElementId, Vec2 } from "@oh-just-another/types";
+import { req, type LayerId, type ElementId, type Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
 import {
   BRUSH_CLOSE_DISTANCE,
@@ -18,6 +18,8 @@ import {
   BRUSH_SIM_THIN_DIST_PX,
   BRUSH_SMOOTH_SEGMENTS,
   BRUSH_STREAMLINE,
+  BRUSH_TAPER_LENGTH_FACTOR,
+  BRUSH_TAPER_MIN,
   DEFAULT_BRUSH_COLOR,
   DEFAULT_BRUSH_OPACITY,
   DEFAULT_BRUSH_WIDTH,
@@ -195,18 +197,57 @@ export const extendBrushStroke = (
 };
 
 /**
+ * Taper a stroke's widths toward both ends: within the taper zone (arc length
+ * `BRUSH_TAPER_LENGTH_FACTOR × baseWidth` from each tip, capped at half the
+ * stroke so short strokes stay symmetric) the width eases down to
+ * `BRUSH_TAPER_MIN` of its captured value — the natural pen-lift look instead
+ * of full-width round discs at the ends. Positions are untouched.
+ */
+export const taperBrushPoints = (
+  points: readonly BrushPoint[],
+  baseWidth: number,
+): BrushPoint[] => {
+  const n = points.length;
+  if (n < 3) return points.slice();
+  // Cumulative arc length from the start.
+  const cum = new Array<number>(n);
+  cum[0] = 0;
+  for (let i = 1; i < n; i++) {
+    const a = req(points[i - 1]);
+    const b = req(points[i]);
+    cum[i] = req(cum[i - 1]) + Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  const total = req(cum[n - 1]);
+  const taperLen = Math.min(baseWidth * BRUSH_TAPER_LENGTH_FACTOR, total / 2);
+  if (taperLen <= 0) return points.slice();
+  return points.map((pt, i) => {
+    const fromTip = Math.min(req(cum[i]), total - req(cum[i]));
+    if (fromTip >= taperLen) return pt;
+    const u = fromTip / taperLen;
+    // Ease-out (u·(2−u)): the width sheds fastest right at the tip.
+    const f = BRUSH_TAPER_MIN + (1 - BRUSH_TAPER_MIN) * u * (2 - u);
+    return { x: pt.x, y: pt.y, width: pt.width * f };
+  });
+};
+
+/**
  * The commit-ready geometry of an in-progress stroke: the streamlined points
  * plus the raw catch-up point (when the filter left a trailing gap at the
  * cursor), resampled by the shared Catmull-Rom smoother with pressure carried
- * across the resample. Used by BOTH `commitBrushStroke` and the live overlay
- * preview so what is drawn while the button is down is exactly what lands in
- * the scene.
+ * across the resample, then end-tapered (unless the stroke qualifies as
+ * closed for `style` — a filled loop keeps its full-width seam). Used by BOTH
+ * `commitBrushStroke` and the live overlay preview so what is drawn while the
+ * button is down is exactly what lands in the scene.
  */
-export const brushCommitPoints = (stroke: {
-  readonly points: readonly BrushPoint[];
-  readonly pressures: readonly number[];
-  readonly lastRaw: WeightedPoint;
-}): { points: BrushPoint[]; pressures: number[] } => {
+export const brushCommitPoints = (
+  stroke: {
+    readonly points: readonly BrushPoint[];
+    readonly pressures: readonly number[];
+    readonly baseWidth: number;
+    readonly lastRaw: WeightedPoint;
+  },
+  style?: Style,
+): { points: BrushPoint[]; pressures: number[] } => {
   const zipped: WeightedPoint[] = stroke.points.map((pt, i) => ({
     ...pt,
     pressure: stroke.pressures[i] ?? BRUSH_SIM_PRESSURE_START,
@@ -222,8 +263,10 @@ export const brushCommitPoints = (stroke: {
     width: a.width + (b.width - a.width) * u,
     pressure: a.pressure + (b.pressure - a.pressure) * u,
   }));
+  const points: BrushPoint[] = smoothed.map(({ x, y, width }) => ({ x, y, width }));
+  const closed = style !== undefined && isClosedStroke(points, style);
   return {
-    points: smoothed.map(({ x, y, width }) => ({ x, y, width })),
+    points: closed ? points : taperBrushPoints(points, stroke.baseWidth),
     pressures: smoothed.map((pt) => pt.pressure),
   };
 };
@@ -262,7 +305,7 @@ export const commitBrushStroke = (
   const order = orderForTop(
     [...scene.elements.values()].filter((s) => s.layerId === activeLayerId).map((s) => s.order),
   );
-  const { points, pressures } = brushCommitPoints(stroke);
+  const { points, pressures } = brushCommitPoints(stroke, style);
   const shape: Element = {
     id: newElementId,
     layerId: activeLayerId,

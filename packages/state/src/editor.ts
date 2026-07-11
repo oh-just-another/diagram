@@ -815,7 +815,7 @@ export class Editor {
     const style = brushStyleFromSettings(this._brushSettings);
     return {
       origin: s.origin,
-      points: brushCommitPoints(s).points,
+      points: brushCommitPoints(s, style).points,
       fill: brushBodyColor(style),
       opacity: style.opacity ?? 1,
     };
@@ -2500,6 +2500,7 @@ export class Editor {
     readonly origin: Vec2;
     readonly points: readonly BrushPoint[];
     readonly pressures: readonly number[];
+    readonly baseWidth: number;
     readonly lastRaw: BrushPoint & { readonly pressure: number };
   } | null {
     return this.brushStroke;

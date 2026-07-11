@@ -588,6 +588,21 @@ export const BRUSH_MIN_POINT_DIST_PX = 1.5;
 export const MAX_BRUSH_POINTS = 2048;
 
 /**
+ * Length of the end taper of a brush stroke, as a multiple of the base
+ * half-width — arc length from each tip over which the width eases down (18px
+ * at the default width 6). Capped at half the stroke length so short strokes
+ * stay symmetric. 0 disables tapering. Range: 2-5.
+ */
+export const BRUSH_TAPER_LENGTH_FACTOR = 3;
+
+/**
+ * Width factor at the very tip of a tapered brush stroke (0-1 of the captured
+ * width) — the tip converges to this instead of a full-width round cap,
+ * mimicking a pen lifting off. Range: 0.05-0.3.
+ */
+export const BRUSH_TAPER_MIN = 0.1;
+
+/**
  * World-pixel distance under which a brush stroke's last point is treated as
  * meeting its first — the trigger for auto-closing (and filling) a stroke on
  * commit. Only applies when a fill colour is set and the stroke has ≥3 points.
