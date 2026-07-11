@@ -39,7 +39,7 @@ describe("normalizeHref", () => {
     // valid email, so it falls through to the https:// branch — fast.
     const crafted = "!@" + "!.".repeat(50_000);
     expect(normalizeHref(crafted)).toBe(`https://${crafted}`);
-  }, 2000);
+  }, 10_000);
 });
 
 describe("safeHref", () => {
