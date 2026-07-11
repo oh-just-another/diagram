@@ -31,7 +31,9 @@ export default defineConfig({
       // The golden-scene visual regression runs in its own project below with
       // a software-GL launch arg so WebGL2 works headless; keep it out of the
       // default project so it isn't run twice with the wrong GL backend.
-      testIgnore: /golden-visual\.spec\.ts/,
+      // Touch sims run only in mobile-chromium — Desktop Chrome has
+      // hasTouch: false, so `locator.tap` throws there.
+      testIgnore: /(golden-visual|touch)\.spec\.ts/,
     },
     {
       // Golden-scene visual regression: renders the reference scenes through

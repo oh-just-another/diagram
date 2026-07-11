@@ -21,12 +21,16 @@ test("keyboard-only shape creation: R → Enter creates a rectangle", async ({ p
   await page.waitForLoadState("networkidle");
   // Click the interactive surface (role="application"), not a raw canvas:
   // the layered backend's non-overlay canvases are pointer-events:none, so
-  // clicking `canvas.first()` lands on a click-transparent layer.
-  await page.getByRole("application").click({ position: { x: 50, y: 50 } });
+  // clicking `canvas.first()` lands on a click-transparent layer. The point
+  // must clear the UI chrome — the logo / main-menu group overlays the
+  // surface's top-left corner and intercepts clicks there.
+  await page.getByRole("application").click({ position: { x: 300, y: 300 } });
   await page.keyboard.press("r");
   await page.keyboard.press("Enter");
-  // Selection panel should show 1 selected (PropertyPanel renders the count).
-  await expect(page.getByText(/1 selected|Selected /i).first()).toBeVisible({ timeout: 2_000 });
+  // The editor announces the creation through its aria-live region ("Created
+  // rectangle <id>") — the same signal a screen-reader user gets. The region
+  // is visually hidden, so assert attachment, not visibility.
+  await expect(page.getByText(/Created rectangle/i).first()).toBeAttached({ timeout: 2_000 });
 });
 
 test("undo restores empty selection after delete", async ({ page }) => {
