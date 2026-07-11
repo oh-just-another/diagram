@@ -5,6 +5,7 @@ import {
   beginBrushStroke,
   brushCommitPoints,
   extendBrushStroke,
+  taperBrushPoints,
 } from "../src/editor/public/brush.js";
 
 const makeEditor = (scene: Scene): Editor => {
@@ -63,13 +64,13 @@ describe("brush stroke", () => {
     expect(shape.type).toBe("brush");
     expect(shape.position).toEqual({ x: 10, y: 10 });
     // Endpoint POSITIONS survive the pipeline verbatim (first vertex is the
-    // origin, last is the raw catch-up). Widths are pressure-weighted then
-    // end-tapered: head 0.5·6·0.1=0.3, tail 0.3·6·0.1=0.18 (BRUSH_TAPER_MIN
-    // at the tips of a stroke short enough to sit entirely in the taper zone).
-    expect(shape.points[0]).toEqual({ x: 0, y: 0, width: expect.closeTo(0.3) as number });
+    // origin, last is the raw catch-up). Pen widths follow the raw device
+    // pressure at the endpoints (taper is disabled in the default marker
+    // profile): head 0.5·6=3, tail 0.3·6=1.8.
+    expect(shape.points[0]).toEqual({ x: 0, y: 0, width: 3 });
     const tail = shape.points[shape.points.length - 1]!;
     expect(tail.x).toBeCloseTo(20);
-    expect(tail.width).toBeCloseTo(0.18);
+    expect(tail.width).toBeCloseTo(1.8);
     expect(editor.pendingBrushStroke).toBeNull();
   });
 
@@ -156,7 +157,8 @@ describe("brush stroke", () => {
   it("simulates pressure from speed for mouse strokes: slow = thick, fast = thin", () => {
     const editor = makeEditor(emptyScene());
     // Mouse reports the constant spec pressure 0.5 — widths must diverge by
-    // speed anyway. Slow stroke: 2px per sample → pressure climbs toward 1.
+    // speed anyway. Slow stroke: 2px per sample → pressure rises to the
+    // BRUSH_SIM_PRESSURE_MAX ceiling (0.7).
     editor.beginBrushStroke({ x: 0, y: 0 }, 0.5, "mouse");
     for (let i = 1; i <= 12; i++) editor.extendBrushStroke({ x: i * 2, y: 0 }, 0.5);
     const slow = editor.pendingBrushStroke!;
@@ -169,10 +171,10 @@ describe("brush stroke", () => {
     const fastWidth = fast.points[fast.points.length - 1]!.width;
     expect(slowWidth).toBeGreaterThan(fastWidth);
     // Slow converges to the ceiling, fast to the floor of the simulated
-    // pressure clamp [BRUSH_SIM_PRESSURE_MIN, BRUSH_SIM_PRESSURE_MAX].
-    expect(slowWidth).toBeGreaterThan(4); // → 4.8 (0.8 ceiling × 6)
-    expect(slowWidth).toBeLessThanOrEqual(4.8 + 1e-9); // never the full base width
-    expect(fastWidth).toBeLessThan(2.5); // → 1.5 (0.25 floor × 6)
+    // pressure clamp — the narrow marker band [0.55, 0.7] × base width 6.
+    expect(slowWidth).toBeCloseTo(4.2); // 0.7 ceiling × 6, never the full base
+    expect(fastWidth).toBeLessThan(3.5); // → 3.3 (0.55 floor × 6)
+    expect(fastWidth).toBeGreaterThanOrEqual(3.3 - 1e-9);
   });
 
   it("honours real pen pressure (no speed simulation), rate-limiting spikes", () => {
@@ -246,10 +248,10 @@ describe("brush stroke", () => {
     expect(stroke.points[0]).toMatchObject({ x: 0, y: 0 });
   });
 
-  it("tapers stroke ends: tips are thin, the middle keeps its full width", () => {
+  it("keeps blunt marker ends by default (taper disabled), taper works when enabled", () => {
+    // Default profile: BRUSH_TAPER_LENGTH_FACTOR = 0 → felt-tip look, the
+    // ends keep their full captured width (blunt round caps).
     const editor = makeEditor(emptyScene());
-    // Long straight pen stroke at constant pressure 0.5 → captured width 3
-    // everywhere; the taper must thin only the ends (18px zones at base 6).
     editor.beginBrushStroke({ x: 0, y: 0 }, 0.5, "pen");
     for (let i = 1; i <= 20; i++) editor.extendBrushStroke({ x: i * 10, y: 0 }, 0.5);
     const id = editor.commitBrushStroke();
@@ -257,14 +259,21 @@ describe("brush stroke", () => {
     const first = shape.points[0]!;
     const mid = shape.points[Math.floor(shape.points.length / 2)]!;
     const last = shape.points[shape.points.length - 1]!;
-    // Tips converge to BRUSH_TAPER_MIN (0.1) of the captured width.
-    expect(first.width).toBeCloseTo(0.3);
-    expect(last.width).toBeCloseTo(0.3);
-    // The middle is outside both taper zones — full captured width.
+    expect(first.width).toBeCloseTo(3);
     expect(mid.width).toBeCloseTo(3);
-    // Width grows monotonically away from the tip through the taper zone.
-    expect(shape.points[1]!.width).toBeGreaterThan(first.width);
-    expect(shape.points[2]!.width).toBeGreaterThan(shape.points[1]!.width);
+    expect(last.width).toBeCloseTo(3);
+
+    // The taper mechanism itself (explicit factor/min — the pen-style tuning):
+    // tips converge to taperMin × width, the middle keeps full width, and the
+    // width grows monotonically away from the tip.
+    const straight: BrushPoint[] = [];
+    for (let i = 0; i <= 20; i++) straight.push({ x: i * 10, y: 0, width: 3 });
+    const tapered = taperBrushPoints(straight, 6, 3, 0.1);
+    expect(tapered[0]!.width).toBeCloseTo(0.3);
+    expect(tapered[tapered.length - 1]!.width).toBeCloseTo(0.3);
+    expect(tapered[10]!.width).toBeCloseTo(3);
+    expect(tapered[1]!.width).toBeGreaterThan(tapered[0]!.width);
+    expect(tapered[2]!.width).toBeGreaterThan(tapered[1]!.width);
   });
 
   it("does not taper a closed (filled loop) stroke", () => {

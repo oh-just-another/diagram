@@ -209,9 +209,11 @@ export const extendBrushStroke = (
 export const taperBrushPoints = (
   points: readonly BrushPoint[],
   baseWidth: number,
+  taperFactor: number = BRUSH_TAPER_LENGTH_FACTOR,
+  taperMin: number = BRUSH_TAPER_MIN,
 ): BrushPoint[] => {
   const n = points.length;
-  if (n < 3) return points.slice();
+  if (n < 3 || taperFactor <= 0) return points.slice();
   // Cumulative arc length from the start.
   const cum = new Array<number>(n);
   cum[0] = 0;
@@ -221,14 +223,14 @@ export const taperBrushPoints = (
     cum[i] = req(cum[i - 1]) + Math.hypot(b.x - a.x, b.y - a.y);
   }
   const total = req(cum[n - 1]);
-  const taperLen = Math.min(baseWidth * BRUSH_TAPER_LENGTH_FACTOR, total / 2);
+  const taperLen = Math.min(baseWidth * taperFactor, total / 2);
   if (taperLen <= 0) return points.slice();
   return points.map((pt, i) => {
     const fromTip = Math.min(req(cum[i]), total - req(cum[i]));
     if (fromTip >= taperLen) return pt;
     const u = fromTip / taperLen;
     // Ease-out (u·(2−u)): the width sheds fastest right at the tip.
-    const f = BRUSH_TAPER_MIN + (1 - BRUSH_TAPER_MIN) * u * (2 - u);
+    const f = taperMin + (1 - taperMin) * u * (2 - u);
     return { x: pt.x, y: pt.y, width: pt.width * f };
   });
 };

@@ -543,41 +543,47 @@ export const BRUSH_STREAMLINE = 0.5;
  * Per-sample lerp rate (0-1) toward the target pressure while capturing a
  * brush stroke — rate-limits pressure changes so a single outlier sample (pen
  * lift-off spike, sudden speed jump on mouse) can't kink the width profile.
- * 1 = follow instantly (off); lower = smoother but slower to adapt.
- * Range: 0.3-0.7.
+ * 1 = follow instantly (off); lower = smoother but slower to adapt. 0.3 keeps
+ * the width felt-tip steady. Range: 0.2-0.7.
  */
-export const BRUSH_PRESSURE_SMOOTHING = 0.5;
+export const BRUSH_PRESSURE_SMOOTHING = 0.3;
 
 /**
  * Screen-pixel distance per pointer sample at which SIMULATED pressure (mouse /
  * touch — no real pressure channel) bottoms out. Standing still targets full
  * pressure (thick); moving this fast per sample targets the minimum (thin) —
- * the "slower = thicker" calligraphic response. Measured in screen px so the
- * feel is zoom-independent. Range: 8-32.
+ * the "slower = thicker" response. Measured in screen px so the feel is
+ * zoom-independent. 32 keeps the speed response gentle (marker-like); halve it
+ * for a livelier calligraphic feel. Range: 8-48.
  */
-export const BRUSH_SIM_THIN_DIST_PX = 16;
+export const BRUSH_SIM_THIN_DIST_PX = 32;
 
 /**
- * Floor for simulated brush pressure (0-1) so a fast mouse stroke stays
- * visible instead of collapsing to a hairline. Range: 0.15-0.4.
+ * Floor for simulated brush pressure (0-1) — the width multiplier a fast
+ * mouse / touch stroke converges to (`× base width`). Together with
+ * BRUSH_SIM_PRESSURE_MAX it sets the width band of a simulated stroke: a
+ * narrow band (0.55-0.7, the default) reads as a felt-tip marker; widen it
+ * (e.g. 0.25-0.8) for a pen-like thin-thick response. Range: 0.15-0.7.
  */
-export const BRUSH_SIM_PRESSURE_MIN = 0.25;
+export const BRUSH_SIM_PRESSURE_MIN = 0.55;
 
 /**
  * Ceiling for simulated brush pressure (0-1) — the width multiplier a slow /
  * stationary mouse or touch stroke converges to (`× base width`). Without a
  * ceiling a slow stroke fattens all the way to the full base width, which
- * reads too thick next to the medium-speed line; 0.8 keeps "slower = thicker"
- * without the bloat. Real pen pressure is not clamped. Range: 0.6-1.
+ * reads too thick next to the medium-speed line. See BRUSH_SIM_PRESSURE_MIN
+ * for the band the two clamps form. Real pen pressure is not clamped.
+ * Range: 0.6-1.
  */
-export const BRUSH_SIM_PRESSURE_MAX = 0.8;
+export const BRUSH_SIM_PRESSURE_MAX = 0.7;
 
 /**
  * Initial simulated pressure (0-1) for the first sample of a mouse / touch
- * stroke — matches the spec's mid pressure so a stroke starts at the familiar
- * medium width and adapts from there. Range: 0.4-0.7.
+ * stroke. A felt-tip touches the paper at full width, so it starts at the
+ * BRUSH_SIM_PRESSURE_MAX ceiling and thins as the stroke speeds up. Keep
+ * within the [MIN, MAX] clamp band. Range: 0.4-0.7.
  */
-export const BRUSH_SIM_PRESSURE_START = 0.5;
+export const BRUSH_SIM_PRESSURE_START = 0.7;
 
 /**
  * Minimum SCREEN-pixel displacement of the raw input before a new brush point
@@ -598,11 +604,12 @@ export const MAX_BRUSH_POINTS = 2048;
 
 /**
  * Length of the end taper of a brush stroke, as a multiple of the base
- * half-width — arc length from each tip over which the width eases down (18px
- * at the default width 6). Capped at half the stroke length so short strokes
- * stay symmetric. 0 disables tapering. Range: 2-5.
+ * half-width — arc length from each tip over which the width eases down.
+ * Capped at half the stroke length so short strokes stay symmetric. 0 (the
+ * default) disables tapering: blunt round caps, the felt-tip marker look.
+ * Set 2-5 for pen-like ends that trail off to a point. Range: 0-5.
  */
-export const BRUSH_TAPER_LENGTH_FACTOR = 3;
+export const BRUSH_TAPER_LENGTH_FACTOR = 0;
 
 /**
  * Width factor at the very tip of a tapered brush stroke (0-1 of the captured
