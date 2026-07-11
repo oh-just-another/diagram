@@ -73,6 +73,16 @@ import type { LaserStroke } from "./public/laser.js";
 import type { TileComposeFn } from "../editor.js";
 
 /**
+ * Live brush-stroke preview: the in-progress stroke's smoothed geometry plus the
+ * paint colour and opacity it will commit with, so the overlay preview matches
+ * the committed stroke exactly (no colour / opacity snap on release).
+ */
+export interface BrushPreview extends BrushStrokeState {
+  readonly fill: string;
+  readonly opacity: number;
+}
+
+/**
  * Flat, self-contained data bag the {@link renderEditor} orchestrator paints
  * from — every field the render pass reads, precomputed by the Editor. Breaks
  * the Editor ↔ orchestrator import cycle: the orchestrator no longer imports
@@ -166,7 +176,7 @@ export interface RenderSnapshot {
   readonly anchorStartHitSlop: number;
   readonly anchorClickRadius: number;
   readonly containerHover: ContainerHover | null;
-  readonly brushStroke: BrushStrokeState | null;
+  readonly brushStroke: BrushPreview | null;
   readonly laserStrokes: readonly LaserStroke[];
   /** Fading eraser drag trail (laser-style), painted in neutral grey. */
   readonly eraserTrail: readonly LaserStroke[];
@@ -658,10 +668,15 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       overlayOpts.containerDropZone = editor.containerHover.dropZone;
     }
     if (editor.brushStroke) {
+      // The preview stroke is precomputed by `buildRenderSnapshot`: Catmull-Rom
+      // smoothed (same resampler the commit uses) with the real paint colour and
+      // opacity, so it matches the committed stroke exactly — no geometry / colour
+      // / opacity snap when the pointer is lifted.
       overlayOpts.brushPreview = {
         origin: editor.brushStroke.origin,
         points: editor.brushStroke.points,
-        fill: "#222",
+        fill: editor.brushStroke.fill,
+        opacity: editor.brushStroke.opacity,
       };
     }
     if (editor.laserStrokes.length > 0) {

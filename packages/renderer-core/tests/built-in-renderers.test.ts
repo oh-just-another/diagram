@@ -862,7 +862,7 @@ describe("drawBrush", () => {
     expect(calls.some((c) => c.method === "fill")).toBe(true);
   });
 
-  it("emits polygon segments + end-cap ellipses for multi-point stroke", () => {
+  it("emits ONE closed outline polygon for a multi-point stroke (single fill)", () => {
     const calls = addAndRender({
       ...base(),
       type: "brush",
@@ -873,10 +873,14 @@ describe("drawBrush", () => {
       ],
       style: { fill: "#333" },
     });
-    // For N-1 segments: each emits moveTo + 3 lineTo + closePath + fill + ellipse + fill
-    expect(calls.filter((c) => c.method === "fill").length).toBeGreaterThan(1);
-    // End-cap ellipses
-    expect(calls.filter((c) => c.method === "ellipse").length).toBeGreaterThan(0);
+    // The body is one closed outline filled once — no per-segment quads, no joint
+    // discs (which double-blend at opacity < 1).
+    expect(calls.filter((c) => c.method === "fill").length).toBe(1);
+    expect(calls.filter((c) => c.method === "ellipse").length).toBe(0);
+    // A real polygon: one moveTo, many lineTo, closed.
+    expect(calls.filter((c) => c.method === "moveTo").length).toBe(1);
+    expect(calls.filter((c) => c.method === "lineTo").length).toBeGreaterThan(3);
+    expect(calls.filter((c) => c.method === "closePath").length).toBe(1);
   });
 
   it("uses fill color from style.fill when set", () => {
@@ -890,6 +894,22 @@ describe("drawBrush", () => {
       style: { fill: "#abc" },
     });
     expect(calls.some((c) => c.method === "setFill" && c.args[0] === "#abc")).toBe(true);
+  });
+
+  it("applies style.opacity to the committed stroke (matches the live preview)", () => {
+    // Regression: drawBrush painted fills directly and never applied style.opacity,
+    // so a translucent brush drew opaque once committed — the opacity seen while
+    // drawing vanished on release.
+    const calls = addAndRender({
+      ...base(),
+      type: "brush",
+      points: [
+        { x: 0, y: 0, width: 4 },
+        { x: 10, y: 0, width: 4 },
+      ],
+      style: { stroke: "#000", opacity: 0.4 },
+    });
+    expect(calls.some((c) => c.method === "setOpacity" && c.args[0] === 0.4)).toBe(true);
   });
 
   it("falls back to style.stroke for fill color when fill is undefined", () => {

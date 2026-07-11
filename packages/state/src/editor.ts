@@ -29,6 +29,7 @@ import {
   isText,
   isImage,
   isBrush,
+  brushBodyColor,
   getElementWorldBounds,
   setTextMeasurer,
   getScreenToWorld,
@@ -167,6 +168,7 @@ import {
   beginBrushStroke as beginBrushStrokePure,
   commitBrushStroke as commitBrushStrokePure,
   extendBrushStroke as extendBrushStrokePure,
+  smoothBrushPoints,
   brushStyleFromSettings,
   DEFAULT_BRUSH_SETTINGS,
   newBrushId,
@@ -302,7 +304,11 @@ import {
   type CropHandle,
   type SpawnDirection,
 } from "./editor/public/tool-ops.js";
-import { renderEditor, type RenderSnapshot } from "./editor/render-orchestrator.js";
+import {
+  renderEditor,
+  type RenderSnapshot,
+  type BrushPreview,
+} from "./editor/render-orchestrator.js";
 import { TextEditController } from "./editor/text-edit.js";
 import { LinkHandleDragController } from "./editor/link-handle-drag.js";
 import {
@@ -793,6 +799,26 @@ export class Editor {
   }
   set brushStroke(v: BrushStrokeState | null) {
     this.interaction.brushStroke = v;
+  }
+
+  /**
+   * The in-progress brush stroke with its captured vertices Catmull-Rom-smoothed
+   * for the LIVE overlay preview — the SAME resampler `commitBrushStroke` applies
+   * on release (see {@link smoothBrushPoints}), so the stroke reads smooth while
+   * drawn instead of snapping from an angular polyline to a curve on release. A
+   * fresh object each call (points diverge from `brushStroke.points`), so the
+   * overlay memo repaints every move that grows the stroke.
+   */
+  private get brushPreviewStroke(): BrushPreview | null {
+    const s = this.interaction.brushStroke;
+    if (!s) return null;
+    const style = brushStyleFromSettings(this._brushSettings);
+    return {
+      origin: s.origin,
+      points: smoothBrushPoints(s.points),
+      fill: brushBodyColor(style),
+      opacity: style.opacity ?? 1,
+    };
   }
 
   /** In-progress eraser stroke (pending-delete set), or null between strokes. */
@@ -5676,7 +5702,7 @@ export class Editor {
       anchorStartHitSlop: this.anchorStartHitSlop,
       anchorClickRadius: this.anchorClickRadius,
       containerHover: this.containerHover,
-      brushStroke: this.brushStroke,
+      brushStroke: this.brushPreviewStroke,
       laserStrokes: this.interaction.laserStrokes,
       eraserTrail: this.interaction.eraserTrail,
       // Eraser cursor ring: a size-matched circle following the pointer while

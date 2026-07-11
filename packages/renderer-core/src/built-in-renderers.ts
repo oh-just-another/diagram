@@ -19,6 +19,8 @@ import {
   type TextRun,
   type TextStyle,
   sliceRuns,
+  brushBodyColor,
+  brushOutline,
 } from "@oh-just-another/scene";
 import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "./render-target.js";
@@ -431,6 +433,11 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
 const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
   const pts = shape.points;
   if (pts.length === 0) return;
+  // Honour the stroke's opacity (drawBrush paints fills directly, so it can't
+  // rely on the shared `applyStyle` the other renderers use). Set once up front
+  // so both the enclosed-area fill and the body get it; the scene renderer resets
+  // opacity to 1 between shapes.
+  if (shape.style.opacity !== undefined) target.setOpacity(shape.style.opacity);
   // Closed stroke with a fill colour: paint the enclosed area FIRST (under the
   // stroke body) as a polygon through the centreline points. Needs ≥3 points to
   // enclose an area. Open strokes skip this entirely and are unchanged.
@@ -447,10 +454,9 @@ const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
     target.closePath();
     target.fill();
   }
-  // The variable-width stroke body is painted with the line colour: prefer
-  // `style.stroke` (set by the drawing panel), falling back to `style.fill` for
-  // strokes authored before the stroke/fill split (their line lived in `fill`).
-  const paint = shape.style.stroke ?? shape.style.fill ?? "#000";
+  // The variable-width stroke body is painted with the shared brush-body colour
+  // (the same resolution the live preview uses — see `brushBodyColor`).
+  const paint = brushBodyColor(shape.style);
   target.setFill(paint);
   target.setStroke(null);
   // Single dot for one-point strokes — degenerate quad would be invisible.
@@ -461,24 +467,19 @@ const drawBrush: ElementRenderer<BrushElement> = (shape, target) => {
     target.fill();
     return;
   }
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = req(pts[i]);
-    const b = req(pts[i + 1]);
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const nx = -dy / len;
-    const ny = dx / len;
+  // Body as ONE closed outline polygon, filled once. Per-segment quads + joint
+  // discs (the old approach) overlap, so at `opacity < 1` the joins double-blend
+  // into dark blotches; a single fill paints every pixel exactly once.
+  const outline = brushOutline(pts);
+  if (outline.length >= 3) {
     target.beginPath();
-    target.moveTo(a.x + nx * a.width, a.y + ny * a.width);
-    target.lineTo(b.x + nx * b.width, b.y + ny * b.width);
-    target.lineTo(b.x - nx * b.width, b.y - ny * b.width);
-    target.lineTo(a.x - nx * a.width, a.y - ny * a.width);
+    const first = req(outline[0]);
+    target.moveTo(first.x, first.y);
+    for (let i = 1; i < outline.length; i++) {
+      const p = req(outline[i]);
+      target.lineTo(p.x, p.y);
+    }
     target.closePath();
-    target.fill();
-    // End-cap as a disk at the joint — smooths the kink between segments.
-    target.beginPath();
-    target.ellipse(b.x, b.y, b.width, b.width);
     target.fill();
   }
 };

@@ -262,3 +262,19 @@ export const FLOATING_OUTLINE_SAMPLES = 96;
  */
 export const FALLBACK_SCENE_WIDTH = 800;
 export const FALLBACK_SCENE_HEIGHT = 600;
+
+/**
+ * Max angular step (radians) between sampled points along a brush-outline round
+ * join or cap arc. Smaller = smoother curves / more points; larger = coarser /
+ * cheaper. ~0.35 rad (20°) keeps joins visually round without flooding the
+ * polygon. Range: 0.2–0.6.
+ */
+export const BRUSH_OUTLINE_ARC_STEP = 0.35;
+
+/**
+ * Miter limit for a brush-outline concave corner: when the miter point would run
+ * more than this many half-widths from the vertex (a very sharp turn), fall back
+ * to a bevel (two offset points) so the outline can't spike into a long spar.
+ * Range: 1.5–4.
+ */
+export const BRUSH_OUTLINE_MITER_LIMIT = 2.5;

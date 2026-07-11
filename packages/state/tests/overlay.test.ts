@@ -517,11 +517,13 @@ describe("renderOverlay", () => {
           { x: 20, y: 5, width: 4 },
         ],
         fill: "#ff0000",
+        opacity: 1,
       },
     });
-    // Should call fill at least twice (quad-strips between pts)
+    // One closed outline polygon, filled once (matches the committed stroke).
     const fills = calls.filter((c) => c.method === "fill");
-    expect(fills.length).toBeGreaterThanOrEqual(2);
+    expect(fills.length).toBe(1);
+    expect(calls.filter((c) => c.method === "lineTo").length).toBeGreaterThan(3);
   });
 
   it("draws a brush preview as a single dot when only one point", () => {
@@ -531,6 +533,7 @@ describe("renderOverlay", () => {
         origin: { x: 5, y: 5 },
         points: [{ x: 0, y: 0, width: 8 }],
         fill: "#0000ff",
+        opacity: 1,
       },
     });
     // Single point → single ellipse
@@ -541,7 +544,7 @@ describe("renderOverlay", () => {
   it("skips brush preview drawing when points array is empty", () => {
     const { target, calls } = makeRecorder();
     renderOverlay(emptyScene(), emptySelection, target, {
-      brushPreview: { origin: { x: 0, y: 0 }, points: [], fill: "#abcdef" },
+      brushPreview: { origin: { x: 0, y: 0 }, points: [], fill: "#abcdef", opacity: 1 },
     });
     // No fill calls using our unique fill color since points is empty
     const brushFills = calls.filter((c) => c.method === "setFill" && c.args[0] === "#abcdef");

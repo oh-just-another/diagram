@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { emptyScene, type Scene, type Element } from "@oh-just-another/scene";
+import { emptyScene, type Scene, type Element, type BrushPoint } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
+import { smoothBrushPoints } from "../src/editor/public/brush.js";
 
 const makeEditor = (scene: Scene): Editor => {
   const noopTarget = {
@@ -91,6 +92,43 @@ describe("brush stroke", () => {
     const isCaptured = (p: { x: number; y: number }) =>
       captured.some((c) => Math.abs(c.x - p.x) < 1e-6 && Math.abs(c.y - p.y) < 1e-6);
     expect(shape.points.filter((p) => !isCaptured(p)).length).toBeGreaterThan(0);
+  });
+
+  it("smooths the LIVE preview stroke, not just the committed one", () => {
+    // The render snapshot must carry the in-progress stroke resampled with the
+    // SAME smoother the commit uses, so it reads smooth as it's drawn instead of
+    // snapping from an angular polyline to a curve only on release.
+    const editor = makeEditor(emptyScene());
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 40, y: 40 }, 0.5); // 3 raw vertices, sharp corner
+    const raw = editor.pendingBrushStroke!.points;
+    const snap = (
+      editor as unknown as {
+        buildRenderSnapshot(): { brushStroke: { points: readonly BrushPoint[] } | null };
+      }
+    ).buildRenderSnapshot();
+    expect(snap.brushStroke).not.toBeNull();
+    // The preview points are the commit-time smoother output — denser than raw.
+    expect(snap.brushStroke!.points.length).toBe(smoothBrushPoints(raw).length);
+    expect(snap.brushStroke!.points.length).toBeGreaterThan(raw.length);
+  });
+
+  it("preview carries the chosen brush colour and opacity (not a hardcoded fill)", () => {
+    // Regression: the live preview used a hardcoded dark-grey fill at full alpha,
+    // so it ignored the palette colour and opacity the committed stroke uses.
+    const editor = makeEditor(emptyScene());
+    editor.setBrushSettings({ stroke: "#ff0000", opacity: 0.4 });
+    editor.beginBrushStroke({ x: 0, y: 0 }, 0.5);
+    editor.extendBrushStroke({ x: 10, y: 0 }, 0.5);
+    const snap = (
+      editor as unknown as {
+        buildRenderSnapshot(): { brushStroke: { fill: string; opacity: number } | null };
+      }
+    ).buildRenderSnapshot();
+    expect(snap.brushStroke).not.toBeNull();
+    expect(snap.brushStroke!.fill).toBe("#ff0000");
+    expect(snap.brushStroke!.opacity).toBe(0.4);
   });
 
   it("cancel discards the in-progress stroke", () => {

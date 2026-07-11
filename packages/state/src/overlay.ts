@@ -4,6 +4,7 @@ import {
   getElementWorldBounds,
   getWorldToScreen,
   isGroup,
+  brushOutline,
   type Annotation,
   type Element,
   type ImageElement,
@@ -380,6 +381,8 @@ export interface OverlayOptions {
     readonly origin: Vec2;
     readonly points: readonly { x: number; y: number; width: number }[];
     readonly fill: string;
+    /** Stroke opacity (0–1), matching the committed brush. Defaults to 1. */
+    readonly opacity: number;
   };
   /**
    * Ephemeral laser-pointer trails. Each point carries a birth timestamp (`t`,
@@ -879,6 +882,7 @@ const renderBrushPreview = (ctx: OverlayCtx): void => {
     const bp = options.brushPreview;
     target.save();
     target.setTransform(w2s);
+    target.setOpacity(bp.opacity);
     target.setFill(bp.fill);
     target.setStroke(null);
     const pts = bp.points;
@@ -890,27 +894,19 @@ const renderBrushPreview = (ctx: OverlayCtx): void => {
       target.ellipse(ox + p.x, oy + p.y, p.width, p.width);
       target.fill();
     } else {
-      for (let i = 0; i < pts.length - 1; i++) {
-        const a = req(pts[i]);
-        const b = req(pts[i + 1]);
-        const ax = ox + a.x;
-        const ay = oy + a.y;
-        const bx = ox + b.x;
-        const by = oy + b.y;
-        const dx = bx - ax;
-        const dy = by - ay;
-        const len = Math.hypot(dx, dy) || 1;
-        const nx = -dy / len;
-        const ny = dx / len;
+      // Same single-outline fill as the committed stroke (see `brushOutline` /
+      // `drawBrush`), so the preview matches the result and honours `opacity`
+      // without the per-segment double-blend at joins.
+      const outline = brushOutline(pts);
+      if (outline.length >= 3) {
         target.beginPath();
-        target.moveTo(ax + nx * a.width, ay + ny * a.width);
-        target.lineTo(bx + nx * b.width, by + ny * b.width);
-        target.lineTo(bx - nx * b.width, by - ny * b.width);
-        target.lineTo(ax - nx * a.width, ay - ny * a.width);
+        const first = req(outline[0]);
+        target.moveTo(ox + first.x, oy + first.y);
+        for (let i = 1; i < outline.length; i++) {
+          const p = req(outline[i]);
+          target.lineTo(ox + p.x, oy + p.y);
+        }
         target.closePath();
-        target.fill();
-        target.beginPath();
-        target.ellipse(bx, by, b.width, b.width);
         target.fill();
       }
     }

@@ -83,11 +83,13 @@ export {
   isFrame,
   isBlockArrow,
   isBrush,
+  brushBodyColor,
   registerBounder,
   getBounder,
   getElementLocalBounds,
   getElementWorldBounds,
 } from "./shape.js";
+export { brushOutline } from "./brush-outline.js";
 export {
   registerRenderOverflow,
   getElementRenderBounds,

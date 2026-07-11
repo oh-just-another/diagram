@@ -347,6 +347,15 @@ export const isFrame = (s: ElementBase): s is FrameElement => s.type === "frame"
 export const isBlockArrow = (s: ElementBase): s is BlockArrowElement => s.type === "block-arrow";
 export const isBrush = (s: ElementBase): s is BrushElement => s.type === "brush";
 
+/**
+ * The colour the variable-width brush BODY is painted with: the line colour
+ * (`style.stroke`, set by the drawing panel), falling back to `style.fill` for
+ * strokes authored before the stroke/fill split (their line lived in `fill`),
+ * then to opaque black. Shared by the committed-stroke renderer and the live
+ * overlay preview so the two never diverge.
+ */
+export const brushBodyColor = (style: Style): string => style.stroke ?? style.fill ?? "#000";
+
 // --- bounder registry ---
 
 /**
