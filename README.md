@@ -40,18 +40,6 @@ A drop-in **infinite-canvas diagram editor for React** — and renderable headle
 - **Extensible** — registry-based custom shapes, renderers, templates,
   importers (Mermaid / Graphviz / draw.io), and layouts.
 
-## Documentation
-
-## Features
-
-- **Drop-in** — one `<Editor>` component. Add the package, render, ship.
-- **Multi-renderer** — WebGL2 / Canvas2D / OffscreenCanvas.
-- **Headless render** — turn a scene into PNG or SVG in Node, no DOM — for servers, thumbnails, and exports.
-- **Import** — Mermaid, Graphviz, and drawio diagrams.
-- **Persistence & history** — versioned serialization with migrations, transactional undo/redo, and snapshot /
-  branch / diff history.
-- **MIT** — free for any project, commercial included; no production gate, no forced watermark.
-
 ## Use in your app
 
 ```bash
