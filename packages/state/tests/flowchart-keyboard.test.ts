@@ -222,8 +222,10 @@ describe("flowchart keyboard dispatch (registry)", () => {
   it("Cmd/Ctrl+Shift+Arrow dispatches align (not create)", () => {
     const editor = makeEditor(sceneWith([rect("a", 0, 0), rect("b", 100, 40)]));
     editor.setSelection([elementId("a"), elementId("b")]);
+    // Both modifier flags set: the registry reads metaKey on macOS and ctrlKey
+    // elsewhere, so a single-flag event only matches on one platform.
     const handled = defaultActionRegistry.dispatchHotkey(
-      arrow("ArrowLeft", { meta: true, shift: true }),
+      arrow("ArrowLeft", { meta: true, ctrl: true, shift: true }),
       { editor },
     );
     expect(handled).toBe(true);
