@@ -8,4 +8,4 @@ User following would let you lock your viewport to another collaborator's camera
 
 **Planned — not yet available.**
 
-The collaboration primitives needed to build it exist in `@oh-just-another/collab`: `CollabAwareness` broadcasts each peer's presence (`Peer`, `PeerUser`) and `bindAwareness` renders peer cursors and selections. Following a peer's camera would mean subscribing to their broadcast viewport and applying it locally via the `@oh-just-another/scene` viewport helpers, but no built-in follow API is shipped yet.
+The collaboration primitives needed to build it exist in `@oh-just-another/collab`: `CollabAwareness` broadcasts each peer's presence (`Peer`, `PeerUser`) and `bindAwareness` renders peer cursors and selections. Peers do not broadcast their camera today; a host could ship it in the free-form `extra` presence field (`updateLocal({ extra: { viewport } })`) and apply it locally, but no built-in follow API is shipped yet.

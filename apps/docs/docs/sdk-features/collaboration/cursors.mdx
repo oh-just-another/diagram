@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Cursors
-status: draft
+title: Cursors
 sidebar_position: 16
 ---
 
@@ -17,7 +16,7 @@ const awareness = new CollabAwareness(doc);
 
 const unbind = bindAwareness(editor, awareness, {
   user: { id: "me", name: "Alice", color: "#1a73e8" },
-  cursorThrottleMs: 50, // optional
+  cursorThrottleMs: 50, // optional; default 33 ms (~30 fps)
 });
 
 // …on unmount
@@ -28,15 +27,15 @@ The `user` field is a `PeerUser` — an identity (`id`, `name`, `color`) attache
 
 ## Read the peer list
 
-`CollabAwareness` exposes the current peers and a subscription for changes, which you can use to render an avatar stack or a "who's here" list.
+`CollabAwareness` exposes the current peers and a subscription for changes, which you can use to render an avatar stack or a "who's here" list. `getPeers()` includes the local peer; `getOthers()` filters it out. `onPeers` fires with the full list (local included).
 
 ```ts
 import type { Peer } from "@oh-just-another/collab";
 
-const peers: Peer[] = awareness.getOthers();
+const others: readonly Peer[] = awareness.getOthers();
 
 const off = awareness.onPeers((all) => {
-  console.log("peers now:", all.map((p) => p.user?.name));
+  console.log("peers now:", all.map((p) => p.user.name));
 });
 ```
 

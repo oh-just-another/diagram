@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Collaboration
-status: draft
+title: Realtime Editing
 sidebar_position: 11
 ---
 
@@ -28,17 +27,17 @@ const awareness = new CollabAwareness(doc);
 const transport = new BroadcastChannelTransport("room-foo");
 const provider = new TransportProvider({ doc, transport, awareness: awareness.awareness });
 
-const unbindScene = bindEditor(editor, sceneDoc);
+const unbindScene = bindEditor(editor, sceneDoc, { waitForSyncMs: 200 });
 const unbindPresence = bindAwareness(editor, awareness, {
   user: { id: "me", name: "Alice", color: "#1a73e8" },
 });
 ```
 
-`yjs` and `y-protocols` are peer dependencies.
+`waitForSyncMs` (default 0) makes a joiner wait for the room's state before seeding the doc from its own scene — set it on async transports (BroadcastChannel, WebSocket). `yjs` and `y-protocols` ship as regular dependencies of `@oh-just-another/collab`.
 
 ## Transports
 
-Pick a `@oh-just-another/network` transport for your topology: `BroadcastChannelTransport` for tabs on the same origin, `WebSocketTransport` for cross-machine rooms (with auto-reconnect). Any transport implementing the `Transport` interface works.
+Pick a `@oh-just-another/network` transport for your topology: `BroadcastChannelTransport` for tabs on the same origin, `WebSocketTransport` for cross-machine rooms (auto-reconnect with exponential backoff, `onStatusChange` for connection badges). Any transport implementing the `Transport` interface works.
 
 ## Teardown
 

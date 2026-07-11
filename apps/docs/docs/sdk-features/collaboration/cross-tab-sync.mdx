@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Cross-Tab Sync
-status: draft
+title: Cross-Tab Sync
 sidebar_position: 13
 ---
 
@@ -22,7 +21,7 @@ off();
 transport.close();
 ```
 
-`BroadcastChannel` is read from `globalThis`, so no runtime dependency is added.
+The transport uses the platform's native `BroadcastChannel` — no polyfill or extra dependency.
 
 ## Cross-tab collaboration
 
@@ -38,8 +37,10 @@ const sceneDoc = new SceneDoc(doc);
 const transport = new BroadcastChannelTransport("my-doc");
 const provider = new TransportProvider({ doc, transport });
 
-const unbind = bindEditor(editor, sceneDoc);
+const unbind = bindEditor(editor, sceneDoc, { waitForSyncMs: 200 });
 ```
+
+`waitForSyncMs` makes a newly opened tab wait briefly for the room's state before seeding the doc from its own scene — without it (default 0) a joiner with a non-empty editor can clobber the shared document.
 
 ## Notes
 

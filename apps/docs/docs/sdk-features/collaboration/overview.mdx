@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Collaboration
-status: draft
+title: Collaboration
 sidebar_position: 3
 ---
 
@@ -9,7 +8,7 @@ sidebar_position: 3
 ## The pieces
 
 - `SceneDoc` — a CRDT mirror of a `Scene` over a `Y.Doc`; `snapshot()` rebuilds a typed scene on demand.
-- `bindEditor(editor, sceneDoc)` — wires an `Editor` to the doc (self-origin filtered); returns an unbind function.
+- `bindEditor(editor, sceneDoc, options?)` — wires an `Editor` to the doc (self-origin filtered); returns an unbind function. Pass `waitForSyncMs` (default 0) so a joiner adopts the room's existing state instead of seeding it with its own scene.
 - `CollabAwareness` + `bindAwareness` — publish the local user, cursor and selection, and paint peers' cursors and selection halos back into the editor.
 - `TransportProvider` — bridges the `Y.Doc` and awareness onto a single transport channel.
 
@@ -44,7 +43,7 @@ Tear down in reverse with the returned unbind functions plus `provider.destroy()
 ## Beyond live editing
 
 - **Mentions** — `extractMentions` / `resolveMentions` / `notifyMention` pull `@handle` tokens from a comment body and fire a browser notification when the local user is mentioned.
-- **Branch & merge** — `BranchDoc` models named branches as Yjs subdocs; `mergeBranch` does a three-way merge and surfaces a `MergeReport` with conflicts for host resolution (`ConflictChoice` is `"ours" | "theirs" | "both"`).
+- **Branch & merge** — `BranchDoc` models named branches as Yjs subdocs; its `mergeBranch()` runs a three-way merge against the fork ancestor and returns a `MergeReport` whose conflicts the host resolves via `applyConflictResolution()` (`ConflictChoice` is `"ours" | "theirs" | "both"`).
 - **CRDT-aware undo** — `CollabHistory` is a `HistoryProvider` backed by `Y.UndoManager`, scoping undo/redo to the local client.
 - **Encryption** — `generateRoomKey` / `EncryptedTransport` wrap any transport in AES-GCM so a blind relay sees only ciphertext.
 

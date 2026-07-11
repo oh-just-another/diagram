@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Sync
-status: draft
+title: Sync
 sidebar_position: 12
 ---
 
@@ -11,7 +10,7 @@ Collaboration needs a way to move bytes between peers. `@oh-just-another/network
 Every transport implements the same `Transport` contract, so you pick the one that fits your topology and the rest of the stack is unchanged.
 
 - `BroadcastChannelTransport` — syncs across tabs/windows of the same browser. Zero infrastructure; ideal for local multi-window demos.
-- `WebSocketTransport` — syncs across machines through a relay server, with a `WebSocketStatus` you can surface in the UI and `WebSocketTransportOptions` for configuration.
+- `WebSocketTransport` — syncs across machines through a relay server. Auto-reconnects with exponential backoff; exposes a `WebSocketStatus` (`status` / `onStatusChange`) to surface in the UI, and `WebSocketTransportOptions` for reconnect delays or a custom `WebSocket` implementation.
 
 ```ts
 import { BroadcastChannelTransport, WebSocketTransport } from "@oh-just-another/network";
@@ -20,7 +19,8 @@ import { BroadcastChannelTransport, WebSocketTransport } from "@oh-just-another/
 const local = new BroadcastChannelTransport("room-foo");
 
 // Cross-machine, through a relay:
-const remote = new WebSocketTransport({ url: "wss://example.com/room-foo" } as never);
+const remote = new WebSocketTransport("wss://example.com/room-foo");
+const offStatus = remote.onStatusChange((status) => console.log(status));
 ```
 
 ## Wiring a transport to collaboration
