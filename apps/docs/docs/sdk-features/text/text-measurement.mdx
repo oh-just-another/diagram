@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Text Measurement
-status: draft
+title: Text Measurement
 sidebar_position: 66
 ---
 
@@ -8,13 +7,16 @@ Accurate text width matters: the selection box has to hug the rendered glyphs, a
 
 ## The WASM shaper
 
-`@oh-just-another/text-wasm` provides a `WasmTextShaper` implementing the renderer's `TextShaper` interface. Until a real WASM module is loaded it returns a synchronous geometric estimate (so first paint isn't blank); `loadModule(...)` swaps in a real engine at runtime, and results are cached in a small LRU keyed on the (text, font) pair:
+`@oh-just-another/text-wasm` provides a `WasmTextShaper` implementing the `TextShaper` interface from `@oh-just-another/renderer-core`. Until a WASM module is loaded it returns a synchronous geometric estimate (so first paint isn't blank); `loadModule(...)` (URL, bytes, or `Response`) swaps in a real engine at runtime, and results are cached in a small LRU keyed on the (text, font) pair:
 
 ```ts
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
 
 const shaper = new WasmTextShaper();
 await shaper.loadModule("/text-shaper.wasm"); // optional — fallback estimate until loaded
+
+// Or load the module shipped with the package:
+const bundled = await WasmTextShaper.loadBundled();
 ```
 
 The drop-in `<Editor>` (from `@oh-just-another/editor`) wires this up for you: it detects WebGL2/WASM capability and loads the bundled MSDF-capable shaper automatically, so labels render in their final font from the first frame.
