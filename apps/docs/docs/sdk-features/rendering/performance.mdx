@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Performance
-status: draft
+title: Performance
 sidebar_position: 51
 ---
 
@@ -10,54 +9,63 @@ via capability detection, but you can drive each one directly.
 
 ## Pick a backend
 
-Capability detection chooses between WebGL2, OffscreenCanvas, and Canvas2D. Let
-it pick, or force a backend for benchmarking.
+`detectCapabilities` chooses between `"webgl2"`, `"offscreen"`, and
+`"canvas2d"` by probing the runtime (WebGPU currently maps to `webgl2`;
+OffscreenCanvas + Worker enables `offscreen`). Let it pick, or force a backend
+via the `capabilities` prop for benchmarking. Low-level probes
+(`isWebGL2Available`, `pickAvailableBackend`) live in
+`@oh-just-another/renderer-canvas`.
 
-```ts
-import { detectCapabilities } from "@oh-just-another/editor";
-import { pickAvailableBackend, isWebGL2Available } from "@oh-just-another/renderer-canvas";
+```tsx
+import { Editor, detectCapabilities } from "@oh-just-another/editor";
 
 const profile = await detectCapabilities();
 console.log(profile.renderer); // "webgl2" | "offscreen" | "canvas2d"
+
+// Force a backend:
+<Editor capabilities={{ renderer: "canvas2d" }} />;
 ```
 
 ## Cull and cache
 
-Pass a `viewport`, a shared `boundsCache`, and (for big scenes) a `spatialIndex`
-to `renderScene` so frame cost tracks on-screen content rather than scene size.
-See the culling page for the full set of options.
+Pass a `viewport`, a shared `boundsCache`, and (for big scenes) a
+`spatialIndex` to `renderScene` so frame cost tracks on-screen content rather
+than scene size. See the culling page for the full set of options.
 
 ```ts
 import { renderScene } from "@oh-just-another/renderer-core";
 
-renderScene(target, scene, camera, { viewport, boundsCache, spatialIndex });
+renderScene(scene, target, { viewport, boundsCache, spatialIndex });
 ```
 
 ## Off-thread rendering
 
-For large scenes, the renderer can pre-rasterize tiles in OffscreenCanvas
-workers. `WORKER_AUTO_THRESHOLD` (5,000) is the element count at which off-thread
-work is considered, and `LARGE_SCENE_WORKER_THRESHOLD` (50,000) marks the very
-large scenes where the tile compositor pays off.
+Hosts that wire up `WorkerPool` + `transferCanvasToWorker` can render layers in
+OffscreenCanvas workers, and `renderViaTiles` pre-rasterizes tiles for very
+large scenes. `WORKER_AUTO_THRESHOLD` (5,000 elements) is where off-thread work
+starts to beat the `postMessage` overhead; `LARGE_SCENE_WORKER_THRESHOLD`
+(50,000) marks where a full main-thread render starts dropping frames even
+with culling.
 
 ```ts
 import { WORKER_AUTO_THRESHOLD } from "@oh-just-another/renderer-core";
 import { WorkerPool, LARGE_SCENE_WORKER_THRESHOLD } from "@oh-just-another/renderer-canvas";
 
-if (scene.elements.length > WORKER_AUTO_THRESHOLD) {
+if (scene.elements.size > WORKER_AUTO_THRESHOLD) {
   // worker-backed rendering becomes worthwhile
 }
 ```
 
 ## Level of detail
 
-`LodOptions` lets cheaper paths kick in at low zoom — drawing placeholders below
-a zoom threshold and hiding text below another. Pass it via `RenderSceneOptions`
-and tune the defaults from `DEFAULT_LOD`.
+`LodOptions` lets cheaper paths kick in at low zoom: below `placeholder` zoom,
+shapes degrade to flat AABB fills; below `hideText` zoom, text layout and
+glyph drawing are skipped. Pass it via `RenderSceneOptions.lod`; the defaults
+are exported as `DEFAULT_LOD` (`placeholder: 0.15`, `hideText: 0.4`).
 
 ```ts
 import { renderScene, type LodOptions } from "@oh-just-another/renderer-core";
 
 const lod: LodOptions = { placeholder: 0.1, hideText: 0.4 };
-renderScene(target, scene, camera, { viewport, lod });
+renderScene(scene, target, { viewport, lod });
 ```

@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Culling
-status: draft
+title: Culling
 sidebar_position: 14
 ---
 
@@ -11,10 +10,10 @@ size. It is driven entirely through `renderScene` options in
 
 ## Enabling viewport culling
 
-Pass a world-space `viewport` rectangle to `renderScene`. Shapes whose AABB does
-not intersect that rectangle are skipped. Inflate the rect slightly to avoid
-pop-in during a pan — `VIEWPORT_CULL_PADDING_RATIO` is exported so you can tune
-the inflation in one place.
+Pass a world-space `viewport` rectangle in `RenderSceneOptions`. Shapes whose
+AABB does not intersect that rectangle are skipped. Inflate the rect slightly
+to avoid pop-in during a pan — `VIEWPORT_CULL_PADDING_RATIO` (0.05 = 5% per
+side) is exported so you can tune the inflation in one place.
 
 ```ts
 import {
@@ -31,28 +30,34 @@ const viewport = {
   height: viewportHeight + pad * 2,
 };
 
-const options: RenderSceneOptions = { viewport };
+renderScene(scene, target, { viewport });
 ```
+
+`renderScene(scene, target, options)` takes no separate camera argument — the
+world-to-screen transform comes from `scene.viewport`.
 
 ## Spatial index for large scenes
 
-For very large scenes, pass a pre-built `spatialIndex` alongside `viewport`. The
-renderer then picks candidate shapes from the index instead of scanning every
-layer — it starts to pay off around ~10k shapes.
+For very large scenes, pass a pre-built `spatialIndex` (a `SpatialGrid` from
+`@oh-just-another/scene`) alongside `viewport`. The renderer then queries the
+index for candidate shapes instead of scanning every layer — it starts to pay
+off around ~10k shapes.
 
 ## Bounds cache and dirty rectangles
 
-`boundsCache` shares AABB computations across frames, hit-testing, and overlay
-drawing. When only a small region changed, pass a world-space dirty rectangle so
-the renderer clears and redraws just that region and culls the rest.
+`boundsCache` (an `ElementCache<Bounds>`) shares AABB computations across
+frames, hit-testing, and overlay drawing. When only a small region changed,
+pass a world-space `dirtyWorld` rectangle so the renderer clips to that region
+and skips shapes outside it.
 
 ```ts
 import { ElementCache, renderScene } from "@oh-just-another/renderer-core";
+import type { Bounds } from "@oh-just-another/types";
 
-const boundsCache = new ElementCache();
-renderScene(target, scene, camera, { viewport, boundsCache });
+const boundsCache = new ElementCache<Bounds>();
+renderScene(scene, target, { viewport, boundsCache });
 ```
 
-These options compose: combine `viewport`, `spatialIndex`, and `boundsCache` to
-cull aggressively while reusing work across the editor, hit-test, and overlay
-passes.
+These options compose: combine `viewport`, `spatialIndex`, `boundsCache`, and
+`dirtyWorld` to cull aggressively while reusing work across the editor,
+hit-test, and overlay passes.

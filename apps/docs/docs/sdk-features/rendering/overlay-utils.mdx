@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Overlay Utils
-status: draft
+title: Overlay Utils
 sidebar_position: 47
 ---
 
@@ -12,24 +11,28 @@ invalidates the others.
 ## Hi-DPI setup
 
 `setupHiDpi` configures a canvas for crisp rendering on retina displays: it
-scales the bitmap by the device pixel ratio, sets the CSS size, and (by default)
-applies a context transform so your draw calls stay in CSS pixels. It is
-idempotent and safe to call from a `ResizeObserver`.
+scales the bitmap by the device pixel ratio, sets the CSS size, and (by
+default) applies a context transform so your draw calls stay in CSS pixels.
+The default ratio is `cappedDpr()` — `window.devicePixelRatio` clamped to
+`MAX_DEVICE_PIXEL_RATIO`; pass an explicit `dpr` to opt out of the cap. It is
+idempotent (early-returns when sizes already match, so canvas content is not
+wiped) and safe to call from a `ResizeObserver`.
 
 ```ts
 import { setupHiDpi } from "@oh-just-another/renderer-canvas";
 
 const dpr = setupHiDpi(canvas, width, height);
-// Pass setupContext=false for a canvas headed for WebGL2/WebGPU:
+// Pass setupContext=false for a canvas headed for WebGL2 — touching the
+// "2d" context would poison the slot for getContext("webgl2"):
 setupHiDpi(glCanvas, width, height, window.devicePixelRatio, false);
 ```
 
 ## Layered canvas stack
 
 `LayeredCanvas` manages one `<canvas>` per layer inside a host element. The
-background sits at the bottom of the DOM stack and the overlay at the top; each
-layer is a `Canvas2DTarget` with its own CSS-pixel coordinate space. The host is
-made `position: relative` automatically.
+background sits at the bottom of the DOM stack and the overlay at the top;
+each layer is a `Canvas2DTarget` with its own CSS-pixel coordinate space. The
+host is made `position: relative` automatically.
 
 ```ts
 import { LayeredCanvas, type LayeredCanvasOptions } from "@oh-just-another/renderer-canvas";
@@ -46,9 +49,27 @@ import { LAYER_ORDER, type LayerName } from "@oh-just-another/renderer-core";
 // LAYER_ORDER === ["background", "main", "overlay"]
 ```
 
-## Backend-agnostic surfaces
+## Backend-selectable surfaces
 
-For a surface that auto-selects a backend (WebGL2, OffscreenCanvas, or
-Canvas2D), use `createLayeredSurface` / `createLayeredSurfaceWithFallback`. They
-return a `LayeredSurface` with the same per-layer model and a `RendererBackend`
-tag so the host can report what was activated.
+`createLayeredSurface` builds a `LayeredSurface` for a chosen
+`RendererBackend` — `"canvas2d"` (default), `"webgl2"`, or `"offscreen"` —
+with the same per-layer model. `createLayeredSurfaceWithFallback` tries the
+requested backend and falls back down the chain on failure, returning the
+`effectiveBackend` so the host can report what was activated. Pick the backend
+via capability detection (see the performance page).
+
+Each layer's `RenderTarget` is reached via `surface.get(name)`; call
+`surface.present()` once per frame so deferred backends (offscreen) ship their
+buffered commands.
+
+## Drawing editor chrome onto the overlay
+
+Selection outlines, resize handles, previews, and peer cursors are drawn by
+`renderOverlay` from `@oh-just-another/state` — a pure draw call targeting the
+overlay layer:
+
+```ts
+import { renderOverlay } from "@oh-just-another/state";
+
+renderOverlay(scene, selection, surface.get("overlay"));
+```

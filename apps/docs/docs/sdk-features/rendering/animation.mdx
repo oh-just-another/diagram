@@ -1,19 +1,19 @@
 ---
-title: ⚠️ Animation
-status: draft
+title: Animation
 sidebar_position: 3
 ---
 
 Animated image content (GIFs and other animated sources) is handled by a
 pluggable adapter registry in `@oh-just-another/renderer-core`. An adapter
-decodes frames and exposes the current frame to the renderer; `<Editor>` ships
-a GIF adapter you can install explicitly.
+decodes frames and answers the stateless "what does this frame look like at
+time `t`?" question; live playback ticking is the host's job. `<Editor>` ships
+a GIF adapter and installs it by default.
 
 ## Installing the GIF adapter
 
-`@oh-just-another/editor` re-exports `installGifAnimationAdapter`. The `<Editor>`
-component installs it by default, but you can call it yourself for headless use
-or to opt in without the component.
+`@oh-just-another/editor` exports `installGifAnimationAdapter`. The `<Editor>`
+component installs it automatically, but you can call it yourself for headless
+use or to opt in without the component.
 
 ```ts
 import { installGifAnimationAdapter } from "@oh-just-another/editor";
@@ -23,9 +23,10 @@ installGifAnimationAdapter();
 
 ## Registering a custom adapter
 
-Register your own adapter against an animation kind with
-`registerAnimationAdapter`. The adapter type is exported as
-`AnimatedSourceAdapter`.
+Register your own adapter with `registerAnimationAdapter`. The registry is
+indexed by the adapter's `kind` (`"gif"`, `"lottie"`, `"video"`, …); an
+`ImageElement` carrying `animationKind` + `animationData` resolves its frames
+through the matching adapter, otherwise its static `src` is used.
 
 ```ts
 import {
@@ -33,21 +34,31 @@ import {
   type AnimatedSourceAdapter,
 } from "@oh-just-another/renderer-core";
 
-const myAdapter: AnimatedSourceAdapter = {
-  /* decode + expose current frame */
+const myAdapter: AnimatedSourceAdapter<MyData> = {
+  kind: "my-format",
+  getFrameAt(data, timestampMs) {
+    return decodedFrameFor(data, timestampMs); // passed to target.drawImage
+  },
+  totalDurationMs: (data) => data.durationMs, // optional; unset = tick forever
 };
 registerAnimationAdapter(myAdapter);
 ```
 
-`registerAnimationAdapter` is also re-exported from `@oh-just-another/editor` so
-the umbrella package is a single import for extending the editor.
+`registerAnimationAdapter` is also re-exported from `@oh-just-another/editor`
+so the umbrella package is a single import for extending the editor.
 
 ## Driving the clock
 
-The animation clock is controllable for deterministic rendering and tests.
-`setAnimationClock` / `resetAnimationClock` set or restore the time source, and
-`notifyAnimationContentReady` / `onAnimationContentReady` let the host schedule a
-redraw once frames are decoded.
+Playback time comes from a pluggable `AnimationClock` — a function
+`(shape) => number` (ms), defaulting to `performance.now()`.
+`setAnimationClock` / `resetAnimationClock` replace or restore the
+process-global fallback clock — useful for deterministic tests and headless
+export of a specific frame. Per-render, prefer `RenderSceneOptions.clock`,
+which overrides the global clock for that `renderScene` call.
+
+Adapters decode asynchronously; `notifyAnimationContentReady` /
+`onAnimationContentReady` let the host schedule one redraw once frames are
+decoded, so a paused shape paints instead of staying blank.
 
 ```ts
 import {
