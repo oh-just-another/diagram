@@ -168,9 +168,10 @@ describe("brush stroke", () => {
     const fast = editor.pendingBrushStroke!;
     const fastWidth = fast.points[fast.points.length - 1]!.width;
     expect(slowWidth).toBeGreaterThan(fastWidth);
-    // Slow approaches the full base width; fast approaches the floor — both
-    // stay inside the simulated-pressure clamp.
-    expect(slowWidth).toBeGreaterThan(4); // → 6 (base width) as pressure → 1
+    // Slow converges to the ceiling, fast to the floor of the simulated
+    // pressure clamp [BRUSH_SIM_PRESSURE_MIN, BRUSH_SIM_PRESSURE_MAX].
+    expect(slowWidth).toBeGreaterThan(4); // → 4.8 (0.8 ceiling × 6)
+    expect(slowWidth).toBeLessThanOrEqual(4.8 + 1e-9); // never the full base width
     expect(fastWidth).toBeLessThan(2.5); // → 1.5 (0.25 floor × 6)
   });
 

@@ -564,6 +564,15 @@ export const BRUSH_SIM_THIN_DIST_PX = 16;
 export const BRUSH_SIM_PRESSURE_MIN = 0.25;
 
 /**
+ * Ceiling for simulated brush pressure (0-1) — the width multiplier a slow /
+ * stationary mouse or touch stroke converges to (`× base width`). Without a
+ * ceiling a slow stroke fattens all the way to the full base width, which
+ * reads too thick next to the medium-speed line; 0.8 keeps "slower = thicker"
+ * without the bloat. Real pen pressure is not clamped. Range: 0.6-1.
+ */
+export const BRUSH_SIM_PRESSURE_MAX = 0.8;
+
+/**
  * Initial simulated pressure (0-1) for the first sample of a mouse / touch
  * stroke — matches the spec's mid pressure so a stroke starts at the familiar
  * medium width and adapts from there. Range: 0.4-0.7.

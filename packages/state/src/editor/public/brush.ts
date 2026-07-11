@@ -13,6 +13,7 @@ import {
   BRUSH_CLOSE_DISTANCE,
   BRUSH_MIN_POINT_DIST_PX,
   BRUSH_PRESSURE_SMOOTHING,
+  BRUSH_SIM_PRESSURE_MAX,
   BRUSH_SIM_PRESSURE_MIN,
   BRUSH_SIM_PRESSURE_START,
   BRUSH_SIM_THIN_DIST_PX,
@@ -152,11 +153,13 @@ export const extendBrushStroke = (
     // RAW input travelled since the last sample, in SCREEN pixels (world dist ×
     // zoom) so the feel doesn't change with the zoom level. Standing still
     // targets full pressure (thick); at BRUSH_SIM_THIN_DIST_PX per sample the
-    // target bottoms out (thin). The smoothing lerp rate-limits the change.
+    // target bottoms out (thin). The smoothing lerp rate-limits the change, and
+    // the result is clamped to [MIN, MAX] — the width-multiplier band a
+    // simulated stroke can span (a slow stroke converges to MAX × base width).
     const dist = Math.hypot(rawX - stroke.lastRaw.x, rawY - stroke.lastRaw.y) * zoom;
     const target = 1 - Math.min(1, dist / BRUSH_SIM_THIN_DIST_PX);
     p = prevP + (target - prevP) * BRUSH_PRESSURE_SMOOTHING;
-    p = Math.min(1, Math.max(BRUSH_SIM_PRESSURE_MIN, p));
+    p = Math.min(BRUSH_SIM_PRESSURE_MAX, Math.max(BRUSH_SIM_PRESSURE_MIN, p));
   } else {
     // Real pressure channel: follow the device but rate-limit spikes (a pen
     // lifting off can emit a single outlier sample) with the same lerp.
