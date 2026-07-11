@@ -1,10 +1,9 @@
 ---
-title: ⚠️ LLM Docs
-status: draft
+title: LLM Docs
 sidebar_position: 8
 ---
 
-How to point an LLM or agent at the editor's API so it can drive scenes. There is no separate "AI mode" — the machine-readable surface is the same typed public API human code uses. This page is honest about what exists today versus what's aspirational.
+How to point an LLM or agent at the editor's API so it can drive scenes. There is no separate "AI mode" — the machine-readable surface is the same typed public API human code uses.
 
 ## What an agent needs to know
 
@@ -28,7 +27,7 @@ Over MCP the same schema is available as the `get_scene_schema` tool.
 
 ## MCP server
 
-`@oh-just-another/mcp` exposes the scene surface as MCP tools over stdio — the fastest way to let an agent draw without writing integration code:
+`@oh-just-another/mcp` exposes the scene surface as MCP tools over stdio — the fastest way to let an agent draw without writing integration code. Until the package's first npm publish, run the built binary from a repo checkout instead: `node packages/mcp/dist/bin.js`.
 
 ```json
 {
@@ -83,6 +82,6 @@ import { importMermaid } from "@oh-just-another/importers";
 const scene = importMermaid("flowchart TD\n A[Start] --> B{Decide}");
 ```
 
-## Honest status
+## Status
 
-Machine-readable surfaces shipped today: the MCP tool bundle (`@oh-just-another/mcp`) and the scene JSON Schema (`sceneJsonSchema` / `get_scene_schema`). There is no auto-generated manifest of the full TypeScript API — for everything beyond scene documents and MCP tools, treat the exported types and a `stringifyScene` example as the contract.
+Machine-readable surfaces shipped today: the MCP tool bundle (`@oh-just-another/mcp`) and the scene JSON Schema (`sceneJsonSchema` / `get_scene_schema`). There is no auto-generated manifest of the full TypeScript API and no `llms.txt` — for everything beyond scene documents and MCP tools, treat the exported types and a `stringifyScene` example as the contract.

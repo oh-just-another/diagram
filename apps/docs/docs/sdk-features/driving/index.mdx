@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Driver
-status: draft
+title: Driver
 sidebar_position: 4
 ---
 
@@ -8,7 +7,7 @@ The editor is fully drivable from code. Pass a `ref` to `Editor` and you get an 
 
 ## The curated handle
 
-`EditorAPI` exposes the common operations without reaching into internals. The handle is live the moment the editor mounts (`onReady`); `editor` and `capabilities` are `null` before then.
+`EditorAPI` exposes the common operations without reaching into internals. The handle is live the moment the editor mounts (`onReady`); `editor` is `null` before then, and `capabilities` is `null` until backend detection settles.
 
 ```tsx
 import { useRef } from "react";
@@ -38,7 +37,6 @@ Anything not on the curated handle is reachable through `editor` — the full `E
 
 ```tsx
 import type { EditorInstance } from "@oh-just-another/editor";
-import { addElement } from "@oh-just-another/scene";
 
 function build(editor: EditorInstance) {
   const unsubscribe = editor.subscribe(() => {
@@ -51,4 +49,4 @@ function build(editor: EditorInstance) {
 
 ## Why this matters
 
-Because the engine is the single source of truth, programmatic control and human interaction stay in sync — a script that calls `setMode` or `addElement` produces exactly the same scene a click would. This is the foundation the AI-native direction builds on: an agent drives the editor through the very same `EditorAPI` / `EditorInstance` surface documented here.
+Because the engine is the single source of truth, programmatic control and human interaction stay in sync — a script that calls `setMode` or `addElement` produces exactly the same scene a click would. This is the foundation the AI-native direction builds on: an agent drives the editor through the very same `EditorAPI` / `EditorInstance` surface documented here — see [AI](./ai.mdx).
