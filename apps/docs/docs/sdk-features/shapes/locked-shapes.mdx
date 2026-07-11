@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Locked Shapes
-status: draft
+title: Locked Shapes
 sidebar_position: 44
 ---
 
@@ -22,15 +21,18 @@ const { scene: locked } = updateElement(scene, elementId("r1"), (el) => ({
 
 ## Propagation and the effective state
 
-Lock state propagates down the `parentId` chain: if any ancestor is locked, the descendant is effectively locked. It is also independent from the shape's layer — either the shape's `locked` flag or its `Layer.locked` being true is enough. Consult the resolved state with `isElementLocked`, which folds in both sources.
+Lock state propagates down the `parentId` chain: if any ancestor is locked, the descendant is effectively locked. `isElementLocked` resolves this propagated state — the shape's own flag plus its ancestors'. It does **not** consult `Layer.locked`: the layer flag is an independent gate, and either source being true is enough to lock, so callers needing the combined state must `||` both.
 
 ```ts
 import { isElementLocked, getElement } from "@oh-just-another/scene";
 import { elementId } from "@oh-just-another/types";
 
 const el = getElement(scene, elementId("r1"));
-if (el && isElementLocked(scene, el)) {
-  // skip interaction
+if (el) {
+  const layerLocked = scene.layers.get(el.layerId)?.locked ?? false;
+  if (isElementLocked(scene, el) || layerLocked) {
+    // skip interaction
+  }
 }
 ```
 

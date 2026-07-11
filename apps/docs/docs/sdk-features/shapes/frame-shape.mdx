@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Frame Shape
-status: draft
+title: Frame Shape
 sidebar_position: 30
 ---
 
@@ -15,4 +14,4 @@ declare const elements: { id: string; frameId?: string }[];
 const members = elements.filter((e) => e.frameId === frame.id);
 ```
 
-Frames are drawn interactively with the editor's `draw-frame` mode. Frame header geometry is tunable through the `FRAME_HEADER_*` constants exported from `@oh-just-another/scene`.
+Frames are drawn interactively with the editor's `draw-frame` mode; the editor auto-numbers new frames ("Frame N") unless a `name` is set. Frame header geometry is tunable through the `FRAME_HEADER_HEIGHT` / `FRAME_HEADER_PADDING_X` / `FRAME_HEADER_FONT_SIZE` constants exported from `@oh-just-another/scene`.

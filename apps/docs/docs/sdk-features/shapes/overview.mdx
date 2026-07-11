@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Shapes
-status: draft
+title: Shapes
 sidebar_position: 11
 ---
 
@@ -22,15 +21,35 @@ Type guards (`isRectangle`, `isText`, `isImage`, `isGroup`, `isFrame`, …) narr
 
 Operations are pure functions that take a scene and return `{ scene, patch }` — they never mutate in place. The `patch` is what history and collaboration replay.
 
+`updateElement` takes an updater function, not a partial:
+
 ```ts
-import { emptyScene, addElement, updateElement, removeElement } from "@oh-just-another/scene";
+import {
+  emptyScene,
+  addElement,
+  updateElement,
+  removeElement,
+  orderForTop,
+  DEFAULT_LAYER_ID,
+} from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
 
+const id = elementId("r1");
 let { scene } = addElement(emptyScene(), {
-  /* a RectangleElement */
-} as never);
+  id,
+  layerId: DEFAULT_LAYER_ID,
+  type: "rectangle",
+  position: { x: 0, y: 0 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderForTop([]),
+  style: { fill: "#88f" },
+  width: 100,
+  height: 50,
+});
 
-({ scene } = updateElement(scene, /* id */ "" as never, { /* style changes */ }));
-({ scene } = removeElement(scene, /* id */ "" as never));
+({ scene } = updateElement(scene, id, (el) => ({ ...el, style: { fill: "#f80" } })));
+({ scene } = removeElement(scene, id));
 ```
 
 Links (edges) have their own operations — `addLink`, `updateLink`, `removeLink` — and a `Link` model with endpoints, routing, arrowheads and labels.

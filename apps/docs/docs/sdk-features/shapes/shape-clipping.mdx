@@ -10,7 +10,7 @@ The grouping primitive closest to clipping is the **frame**. A `FrameElement` is
 import { isFrame, type FrameElement } from "@oh-just-another/scene";
 ```
 
-So a frame already gives you the two behaviours people usually want from clipping at export time — a bounded region and "crop to this region" on export. Membership is reconciled automatically as you drag shapes in and out of a frame's bounds.
+So a frame already gives you the two behaviours people usually want from clipping at export time — a bounded region and "crop to this region" on export. Membership is reconciled automatically as you drag shapes: a shape whose centre lands over a frame is adopted, and one whose centre leaves is released.
 
 Planned — not yet available: true render-time clipping, where content that extends past a frame's (or any container's) edges is visually masked on the live canvas. `FrameElement` today has no `clip` flag, and the renderer does not mask children to a parent's bounds — overflow is drawn in full. Frames are a logical grouping and export-crop mechanism, not a render mask.
 

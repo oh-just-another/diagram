@@ -1,10 +1,9 @@
 ---
-title: ⚠️ Shape Indexing
-status: draft
+title: Shape Indexing
 sidebar_position: 58
 ---
 
-Z-order is governed by each entity's `order` field, a **fractional index** string. Sorting by `order` gives the paint order; inserting or reordering picks a new key strictly between neighbors, so it is O(1) and conflict-free under concurrent edits — no neighbor renumbering required.
+Z-order is governed by each entity's `order` field, a **fractional index** string. Sorting by `order` gives the paint order within a layer; inserting or reordering picks a new key strictly between neighbors, so it is O(1) and conflict-free under concurrent edits — no neighbor renumbering required.
 
 ## Picking an order key
 

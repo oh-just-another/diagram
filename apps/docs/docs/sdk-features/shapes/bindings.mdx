@@ -1,16 +1,23 @@
 ---
-title: ⚠️ Bindings
-status: draft
+title: Bindings
 sidebar_position: 7
 ---
 
-A binding keeps a connector attached to a shape so it follows on move, resize, and rotate. Today this lives on link endpoints rather than as a separate system: a `LinkEndpoint` can be of kind `"anchor"` (pinned to a shape via an `AnchorRef` — a named port, a bounds ratio, an absolute offset, or a polygon edge) or `"outline"` (a fraction along the shape's real outline). The renderer re-resolves these every frame, so they survive transforms.
+A binding keeps a connector attached to a shape so it follows on move, resize, and rotate. Today this lives on link endpoints rather than as a separate system. A `LinkEndpoint` is one of four kinds:
+
+- `"point"` — a free world position, not bound to any shape.
+- `"anchor"` — pinned to a shape via an `AnchorRef`: a named port (`"named"`), a bounds ratio (`"ratio"`), an absolute pixel offset (`"absolute"`), or a polygon edge point (`"edge"`).
+- `"outline"` — a fraction (0..1) along the shape's real outline.
+- `"floating"` — no fixed point stored; recomputed every frame as the outline intersection with the ray toward the other endpoint, so the connection slides along the perimeter as either shape moves.
+
+The renderer re-resolves bound endpoints every frame, so they survive transforms.
 
 ```ts
 import type { LinkEndpoint, AnchorRef } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
 
 const anchor: AnchorRef = { kind: "named", name: "right" };
-const end: LinkEndpoint = { kind: "anchor", elementId: "shape-1", anchor };
+const end: LinkEndpoint = { kind: "anchor", elementId: elementId("shape-1"), anchor };
 ```
 
 A general, standalone binding registry (arbitrary element-to-element bindings beyond link endpoints) is **planned — not yet available.**

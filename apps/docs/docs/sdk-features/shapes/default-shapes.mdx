@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Default Shapes
-status: draft
+title: Default Shapes
 sidebar_position: 18
 ---
 
@@ -14,13 +13,13 @@ sidebar_position: 18
 | `ellipse`     | `EllipseElement`      | `width`, `height`                              |
 | `polygon`     | `PolygonElement`      | `points` (local `Vec2[]`)                      |
 | `path`        | `PathElement`         | `commands` (`PathCommand[]`)                   |
-| `text`        | `TextElement`         | `text`, `fontFamily`, `fontSize`, `maxWidth?`  |
-| `image`       | `ImageElement`        | `src`, `fileId?`, `width`, `height`            |
+| `text`        | `TextElement`         | `text`, `fontFamily`, `fontSize`, `maxWidth?`, `runs?` (rich-text overlay) |
+| `image`       | `ImageElement`        | `src`, `fileId?`, `crop?`, `width`, `height`   |
 | `template`    | `TemplateElement`     | `templateId`, `data`, `width`, `height`        |
 | `group`       | `GroupElement`        | (zero-render container)                        |
 | `frame`       | `FrameElement`        | `width`, `height`, `name?`                     |
-| `block-arrow` | `BlockArrowElement`   | `width`, `height`, `direction?`, `headRatio?`  |
-| `brush`       | `BrushElement`        | `points` (`BrushPoint[]` with per-vertex width)|
+| `block-arrow` | `BlockArrowElement`   | `width`, `height`, `direction?`, `headRatio?`, `bodyThickness?` |
+| `brush`       | `BrushElement`        | `points` (`BrushPoint[]`, per-vertex half-width), `closed?` |
 
 ## Creating a built-in
 
@@ -44,6 +43,10 @@ const ellipse: EllipseElement = {
 
 const { scene } = addElement(emptyScene(), ellipse);
 ```
+
+## Brush strokes
+
+`BrushPoint` is `{ x, y, width }` — `width` is the stroke half-width at that vertex (typically pressure-derived). The renderer builds a single filled outline from the variable-width centreline (`brushOutline`). Body colour is `brushBodyColor(style)` = `style.stroke ?? style.fill ?? "#000"`. `closed: true` marks a looped stroke (set on commit when a fill colour is chosen and the ends meet); its enclosed area is filled with `style.fill`.
 
 ## Path commands
 

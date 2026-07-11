@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Shapes
-status: draft
+title: Shape Model
 sidebar_position: 60
 ---
 
@@ -8,7 +7,7 @@ Shapes (called *elements* in the SDK) are the visual entities in a scene. Every 
 
 ## The element base
 
-Every shape carries `id`, `layerId`, `type`, `position`, `rotation`, `scale`, `order`, and `style`. Optional fields cover resize constraints (`minWidth` / `maxHeight`), `parentId`, `frameId`, `locked`, `hidden`, custom `anchors`, and `href`.
+Every shape carries `id`, `layerId`, `type`, `position`, `rotation`, `scale`, `order`, and `style`. Optional fields cover resize constraints (`minWidth` / `minHeight` / `maxWidth` / `maxHeight`, plus `noFlip`), `parentId`, `frameId`, `locked`, `hidden`, custom `anchors`, `href`, and free-form `metadata`.
 
 ```ts
 import { addElement, emptyScene, orderForTop, DEFAULT_LAYER_ID } from "@oh-just-another/scene";

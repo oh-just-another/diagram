@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Scribble
-status: draft
+title: Scribble
 sidebar_position: 55
 ---
 
@@ -14,4 +13,6 @@ declare const stroke: BrushElement;
 const points: readonly BrushPoint[] = stroke.points;
 ```
 
-Strokes are drawn interactively with the editor's `brush` mode. There is no separate eraser tool yet — remove a stroke like any other element.
+A stroke whose ends meet and that has a fill colour is committed with `closed: true`; the renderer then fills the area enclosed by the centreline with `style.fill` under the stroke body.
+
+Strokes are drawn interactively with the editor's `brush` mode. The `erase` mode removes them (and any other element): dragging sweeps an object eraser — hits are previewed dimmed and deleted on release, Alt-dragging un-marks them. Holding Shift at press switches to stroke-erase, which cuts brush strokes into fragments by covered arc length instead of deleting them whole.

@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Visibility
-status: draft
+title: Visibility
 sidebar_position: 76
 ---
 
@@ -22,15 +21,18 @@ const { scene: hidden } = updateElement(scene, elementId("r1"), (el) => ({
 
 ## Propagation and the effective state
 
-Like `locked`, the `hidden` flag propagates down the `parentId` chain — if any ancestor is hidden, the descendant is hidden too. It is independent from the layer: either the shape's `hidden` being true or its `Layer.visible` being false hides the shape. Resolve the combined state with `isElementHidden`.
+Like `locked`, the `hidden` flag propagates down the `parentId` chain — if any ancestor is hidden, the descendant is hidden too. `isElementHidden` resolves this propagated state (own flag plus ancestors'). It does **not** consult `Layer.visible`: the layer flag is an independent gate — either the shape's `hidden` being true or its layer's `visible` being false hides the shape — so combine both yourself.
 
 ```ts
 import { isElementHidden, getElement } from "@oh-just-another/scene";
 import { elementId } from "@oh-just-another/types";
 
 const el = getElement(scene, elementId("r1"));
-if (el && isElementHidden(scene, el)) {
-  // skip rendering / hit-testing
+if (el) {
+  const layerHidden = !(scene.layers.get(el.layerId)?.visible ?? true);
+  if (isElementHidden(scene, el) || layerHidden) {
+    // skip rendering / hit-testing
+  }
 }
 ```
 
