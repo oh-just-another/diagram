@@ -1,5 +1,44 @@
 # @oh-just-another/collab
 
+## 0.58.1
+
+### Patch Changes
+
+- Updated dependencies [783749e]
+- Updated dependencies [c189261]
+- Updated dependencies [c189261]
+- Updated dependencies [641842b]
+- Updated dependencies [c189261]
+- Updated dependencies [c58054b]
+- Updated dependencies [b156869]
+- Updated dependencies [0d3934e]
+- Updated dependencies [b0a9f3b]
+- Updated dependencies [571f13b]
+- Updated dependencies [ca48e8a]
+- Updated dependencies [1975a9b]
+- Updated dependencies [1975a9b]
+- Updated dependencies [bdc847e]
+- Updated dependencies [511a22a]
+- Updated dependencies [a9558d9]
+- Updated dependencies [22b90f9]
+- Updated dependencies [f381039]
+- Updated dependencies [295f38b]
+- Updated dependencies [bd2e26c]
+- Updated dependencies [97de2fd]
+- Updated dependencies [71a6c8b]
+- Updated dependencies [7f69f29]
+- Updated dependencies [dde8279]
+- Updated dependencies [cec8f83]
+- Updated dependencies [1975a9b]
+- Updated dependencies [1975a9b]
+- Updated dependencies [1975a9b]
+- Updated dependencies [1975a9b]
+- Updated dependencies [cf8b735]
+- Updated dependencies [571f13b]
+  - @oh-just-another/scene@0.60.0
+  - @oh-just-another/state@0.60.0
+  - @oh-just-another/history@0.57.3
+
 ## 0.58.0
 
 ### Minor Changes

@@ -1,5 +1,22 @@
 # @oh-just-another/importers
 
+## 0.59.0
+
+### Minor Changes
+
+- 1d6c289: Add `.excalidraw` import (`importExcalidraw`) and export (`exportExcalidraw`, round-trippable) and JSON Canvas import (`importJsonCanvas`). Shapes, text, freedraw strokes, images, frames, groups and connectors are mapped to the corresponding scene elements; unknown element types are skipped instead of failing.
+- dda2e56: Add a `<Minimap>` component (react-ui) — a small overview canvas that renders the whole scene with a frame for the current viewport; click / drag to pan the main view. Add `exportMermaid(scene)` (importers) — writes a `flowchart TD` string (inverse of `importMermaid`), round-tripping node + edge structure and emitting `%% skipped: <type>` comments for non-graph elements.
+
+### Patch Changes
+
+- Updated dependencies [783749e]
+- Updated dependencies [c189261]
+- Updated dependencies [c189261]
+- Updated dependencies [bdc847e]
+- Updated dependencies [a9558d9]
+- Updated dependencies [cf8b735]
+  - @oh-just-another/scene@0.60.0
+
 ## 0.58.0
 
 ### Minor Changes
