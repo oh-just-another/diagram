@@ -412,11 +412,13 @@ const ColorTrigger = ({
   color,
   onChange,
   ariaLabel,
+  onEyedrop,
 }: {
   readonly label: string;
   readonly color: string | null;
   readonly onChange: (c: string | null) => void;
   readonly ariaLabel: string;
+  readonly onEyedrop?: (onPicked: (color: string) => void) => void;
 }) => (
   <Popover
     ariaLabel={ariaLabel}
@@ -436,7 +438,7 @@ const ColorTrigger = ({
   >
     <div className="du-sel-popover-section">
       <header className="du-sel-popover-label">{label}</header>
-      <ColorSwatchPicker value={color} onChange={onChange} />
+      <ColorSwatchPicker value={color} onChange={onChange} {...(onEyedrop ? { onEyedrop } : {})} />
     </div>
   </Popover>
 );
@@ -512,6 +514,9 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
               editor.updateStyle(ids, { fill: v ?? "transparent" });
             }
           }}
+          onEyedrop={(cb) => {
+            editor.beginEyedropperPick(cb);
+          }}
         />
         <header className="du-sel-popover-label">Opacity</header>
         <Slider
@@ -542,6 +547,9 @@ const FillControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
       color={value}
       onChange={(v) => {
         editor.updateStyle(ids, { fill: v ?? "transparent" });
+      }}
+      onEyedrop={(cb) => {
+        editor.beginEyedropperPick(cb);
       }}
     />
   );
@@ -832,6 +840,9 @@ const StrokeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) 
       color={value}
       onChange={(v) => {
         editor.updateStyle(ids, { stroke: v ?? "transparent" });
+      }}
+      onEyedrop={(cb) => {
+        editor.beginEyedropperPick(cb);
       }}
     />
   );
@@ -1281,6 +1292,9 @@ const LinkStrokeColorControl = ({ edge }: { readonly edge: Link }) => {
           ...e,
           style: { ...e.style, stroke: v ?? "transparent" },
         }));
+      }}
+      onEyedrop={(cb) => {
+        editor.beginEyedropperPick(cb);
       }}
     />
   );

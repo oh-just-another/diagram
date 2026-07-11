@@ -31,6 +31,9 @@ export const DrawingPanel = ({ style }: { readonly style?: CSSProperties }) => {
               onChange={(c) => {
                 editor.setBrushSettings({ stroke: c ?? settings.stroke });
               }}
+              onEyedrop={(cb) => {
+                editor.beginEyedropperPick(cb);
+              }}
               allowClear={false}
             />
           </Row>
@@ -39,6 +42,9 @@ export const DrawingPanel = ({ style }: { readonly style?: CSSProperties }) => {
               value={settings.fill}
               onChange={(c) => {
                 editor.setBrushSettings({ fill: c });
+              }}
+              onEyedrop={(cb) => {
+                editor.beginEyedropperPick(cb);
               }}
             />
           </Row>

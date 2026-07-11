@@ -96,6 +96,33 @@ describe("Editor.applyEyedropperAt (F8)", () => {
     expect(e.applyEyedropperAt({ x: 900, y: 900 })).toBeNull();
     expect(getElement(e.scene, elementId("dst"))!.style.fill).toBe("#000");
   });
+
+  it("when armed by a colour-picker pipette, routes the colour to the callback (not the selection fill)", () => {
+    const e = editorWith(sceneWith(rect("src", 0, 0, { fill: "#123456" }), rect("dst", 200, 0)));
+    e.setSelection([elementId("dst")]);
+    let picked: string | null = null;
+    e.beginEyedropperPick((c) => {
+      picked = c;
+    });
+    expect(e.isEyedropperArmed).toBe(true);
+    const color = e.applyEyedropperAt({ x: 10, y: 10 });
+    expect(color).toBe("#123456");
+    expect(picked).toBe("#123456");
+    // The selection is NOT recoloured — the pipette feeds the picker, not the fill.
+    expect(getElement(e.scene, elementId("dst"))!.style.fill).toBeUndefined();
+    // One-shot: disarmed after the pick.
+    expect(e.isEyedropperArmed).toBe(false);
+  });
+
+  it("a mode switch cancels an armed pipette", () => {
+    const e = editorWith(sceneWith(rect("src", 0, 0, { fill: "#111" })));
+    e.beginEyedropperPick(() => {
+      /* never called */
+    });
+    expect(e.isEyedropperArmed).toBe(true);
+    e.setMode("brush");
+    expect(e.isEyedropperArmed).toBe(false);
+  });
 });
 
 describe("Editor.convertSelection (F9)", () => {

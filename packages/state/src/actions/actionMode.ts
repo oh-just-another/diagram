@@ -139,20 +139,6 @@ export const actionModeFrame: Action = {
   },
 };
 
-export const actionModeEyedropper: Action = {
-  id: "mode-eyedropper",
-  label: "Eyedropper",
-  category: "mode",
-  // `I` is insert-image; the eyedropper takes Alt+I to avoid the clash.
-  hotkey: { key: "i", alt: true },
-  iconId: "mode-eyedropper",
-  uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "eyedropper",
-  perform: ({ editor }) => {
-    editor.setMode("eyedropper");
-  },
-};
-
 export const actionToggleToolLock: Action = {
   id: "toggle-tool-lock",
   label: "Toggle tool lock",
@@ -213,7 +199,6 @@ export const modeActions: readonly Action[] = [
   actionModeErase,
   actionModeLaser,
   actionModeFrame,
-  actionModeEyedropper,
   actionToggleToolLock,
   actionCommitCrop,
   actionCancelCrop,

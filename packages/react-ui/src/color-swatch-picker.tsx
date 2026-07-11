@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Pipette, Plus, X } from "lucide-react";
 import {
   ELEMENT_PALETTE_LIGHT,
   ELEMENT_PALETTE_DARK,
@@ -32,6 +32,13 @@ export interface ColorSwatchPickerProps {
   readonly allowCustom?: boolean;
   /** Show the `×` clear button that sets value to `null`. Default `true`. */
   readonly allowClear?: boolean;
+  /**
+   * When set, show a pipette button that samples a colour from the canvas. The
+   * host arms the editor's eyedropper with the supplied callback (typically
+   * `(c) => editor.beginEyedropperPick(c)`); the next canvas click routes the
+   * picked colour back through `onChange`. Omit to hide the pipette.
+   */
+  readonly onEyedrop?: (onPicked: (color: string) => void) => void;
 }
 
 export const ColorSwatchPicker = ({
@@ -40,6 +47,7 @@ export const ColorSwatchPicker = ({
   palette,
   allowCustom = true,
   allowClear = true,
+  onEyedrop,
 }: ColorSwatchPickerProps) => {
   const resolved = palette ?? defaultPaletteForCurrentTheme();
   const [customOpen, setCustomOpen] = useState(false);
@@ -62,6 +70,23 @@ export const ColorSwatchPicker = ({
           open={customOpen}
           onOpenChange={setCustomOpen}
         />
+      ) : null}
+      {onEyedrop ? (
+        <button
+          type="button"
+          aria-label="Pick colour from canvas"
+          title="Pick colour from canvas"
+          onClick={() => {
+            onEyedrop((c) => {
+              onChange(c);
+            });
+          }}
+          className="du-swatch du-swatch-eyedrop"
+        >
+          <span className="du-swatch-fill du-swatch-fill-blank">
+            <Pipette size={12} strokeWidth={2} />
+          </span>
+        </button>
       ) : null}
       {allowClear ? (
         <button

@@ -127,6 +127,8 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
       return r("move", "grabbing");
     }
   }
+  // 1b. Armed colour-picker pipette → crosshair, waiting for the pick click.
+  if (editor.isEyedropperArmed) return r("draw", "crosshair");
   // 2. In-canvas text editing → I-beam.
   if (editor.editingTextElement !== null) return r("text", "text");
   // 3. Pan affordance (idle): Space held or hand tool.

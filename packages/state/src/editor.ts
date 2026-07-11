@@ -1833,6 +1833,8 @@ export class Editor {
   }
 
   setMode(mode: Mode): void {
+    // A tool switch cancels any armed colour-picker pipette.
+    this.pendingEyedropperPick = null;
     // Switching tools commits any in-flight text edit (standard: leaving the
     // editing context ends it, keeping the typed text).
     if (this.editingTextElement !== null) this.commitTextEdit();
@@ -3033,14 +3035,43 @@ export class Editor {
     return pickColorAt(this._scene, worldPoint, role);
   }
 
+  /** One-shot callback armed by {@link beginEyedropperPick}; consumes the next canvas click. */
+  private pendingEyedropperPick: ((color: Color) => void) | null = null;
+
+  /** `true` while a colour-picker pipette is armed and waiting for a canvas click. */
+  get isEyedropperArmed(): boolean {
+    return this.pendingEyedropperPick !== null;
+  }
+
   /**
-   * Eyedropper: sample the colour under `worldPoint` and apply it as the fill
-   * of the current selection. Returns the sampled colour (or `null` when the
-   * point was empty). Reverts to `select` mode afterwards unless the tool is
-   * locked. Read-only editors sample but don't mutate.
+   * Arm the eyedropper for a one-shot canvas pick that routes the sampled colour
+   * to `onPick` (e.g. a colour-picker swatch) instead of the selection fill. Does
+   * NOT change the tool mode — the next canvas press is intercepted by
+   * {@link applyEyedropperAt}. Cancelled by a mode switch or an empty-canvas click.
+   */
+  beginEyedropperPick(onPick: (color: Color) => void): void {
+    this.pendingEyedropperPick = onPick;
+    this.refreshCursor();
+    this.notify();
+  }
+
+  /**
+   * Sample the colour under `worldPoint`. When a pipette pick is armed (see
+   * {@link beginEyedropperPick}), route the colour to that callback and disarm.
+   * Otherwise (legacy tool path) apply it as the current selection's fill and
+   * revert to `select` mode. Returns the sampled colour, or `null` on empty
+   * canvas. Read-only editors sample but don't mutate.
    */
   applyEyedropperAt(worldPoint: Vec2): Color | null {
     const color = pickColorAt(this._scene, worldPoint, "fill");
+    const pick = this.pendingEyedropperPick;
+    if (pick !== null) {
+      this.pendingEyedropperPick = null;
+      if (color !== null) pick(color);
+      this.refreshCursor();
+      this.notify();
+      return color;
+    }
     if (color === null) return null;
     if (!this.readOnly && this._selection.size > 0) {
       this.updateStyle(this._selection, { fill: color });

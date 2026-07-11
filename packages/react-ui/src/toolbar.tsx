@@ -8,7 +8,6 @@ import {
   Lock,
   MousePointer2,
   PenLine,
-  Pipette,
   Radio,
   Redo2,
   Slash,
@@ -48,7 +47,6 @@ const ACTION_ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: 
   "mode-erase": Eraser,
   "mode-laser": Radio,
   "mode-frame": Frame,
-  "mode-eyedropper": Pipette,
   "insert-image": ImageIcon,
   "tool-lock": Lock,
   undo: Undo2,
@@ -227,7 +225,6 @@ export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
       openImageFilePicker(editor);
     },
   },
-  { kind: "action-ref", id: "mode-eyedropper" },
   { kind: "action-ref", id: "toggle-tool-lock" },
   { kind: "divider" },
   { kind: "action-ref", id: "undo" },
@@ -263,7 +260,6 @@ export const DEFAULT_VERTICAL_TOOLBAR: readonly ToolbarItem[] = [
       openImageFilePicker(editor);
     },
   },
-  { kind: "action-ref", id: "mode-eyedropper" },
   { kind: "divider" },
   { kind: "action-ref", id: "toggle-tool-lock" },
 ];

@@ -186,12 +186,12 @@ const handleDownLaser = (editor: Editor, worldPoint: Vec2): boolean => {
 };
 
 /**
- * Eyedropper tool — a click samples the colour of the shape under the cursor
- * and applies it to the current selection, then reverts to select mode (unless
- * the tool is locked). Owns the gesture end-to-end.
+ * Eyedropper — a click samples the colour of the shape under the cursor. Fires
+ * when the colour-picker pipette is armed ({@link Editor.isEyedropperArmed}, mode
+ * unchanged) or in the legacy `eyedropper` tool mode. Owns the gesture end-to-end.
  */
 const handleDownEyedropper = (editor: Editor, worldPoint: Vec2): boolean => {
-  if (editor.mode !== "eyedropper") return false;
+  if (editor.mode !== "eyedropper" && !editor.isEyedropperArmed) return false;
   editor.cancelLongPress();
   editor.applyEyedropperAt(worldPoint);
   return true;
@@ -1166,10 +1166,12 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
 
     // Mode / target-specific take-overs (each short-circuits when it consumes
     // the press). Order matters — it mirrors the original monolith exactly.
+    // An armed colour-picker pipette captures the next canvas click first,
+    // regardless of the current tool mode.
+    if (handleDownEyedropper(editor, worldPoint)) return;
     if (handleDownEditingText(editor, worldPoint)) return;
     if (handleDownCrop(editor, worldPoint)) return;
     if (handleDownCropEnter(editor, worldPoint, ev.detail)) return;
-    if (handleDownEyedropper(editor, worldPoint)) return;
     if (handleDownBrush(editor, worldPoint, ev.pressure)) return;
     if (handleDownErase(editor, worldPoint, data.modifiers.alt, data.modifiers.shift)) return;
     if (handleDownLaser(editor, worldPoint)) return;
