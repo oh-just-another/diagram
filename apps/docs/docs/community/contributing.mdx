@@ -1,6 +1,5 @@
 ---
-title: ⚠️ Contributing
-status: draft
+title: Contributing
 sidebar_position: 1
 ---
 
@@ -8,7 +7,7 @@ Contributions are welcome. The project is an MIT-licensed monorepo of independen
 
 ## Get the repo running
 
-Clone, install, and build. The repo uses pnpm workspaces:
+Requires **Node.js >= 22** (see `.nvmrc`) and pnpm. Clone, install, and build:
 
 ```bash
 git clone https://github.com/oh-just-another/diagram.git
@@ -28,9 +27,10 @@ pnpm --filter @oh-just-another/playground dev   # http://localhost:5174
 Keep tests, types, and lint green — these gates run in CI:
 
 ```bash
-pnpm test        # vitest across all packages
-pnpm typecheck   # tsc --noEmit (vitest does not check types)
-pnpm lint        # eslint
+pnpm test         # vitest across all packages
+pnpm typecheck    # tsc --noEmit (vitest does not check types)
+pnpm lint         # eslint
+pnpm deps:check   # dependency-cruiser: layering + no runtime cycles
 ```
 
 Add or update tests for any behavior change, and run a changeset for any change to a package's public API:
@@ -41,10 +41,11 @@ pnpm changeset
 
 ## Conventions
 
-- Commits follow Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`, `test:`, `perf:`, `build:`, `ci:`).
+- Branch off `master`; open pull requests against `master`.
+- Commits follow Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`, `test:`, `perf:`, `build:`, `ci:`), subject line only (no body).
 - Everything committed to the repo is English-only — code, comments, identifiers, and docs.
 - Respect the package layering: dependencies only flow downward (L0 to L6); a lower-level package must never import from a higher one. `pnpm deps:check` enforces this.
 
 ## Licensing of contributions
 
-There is no CLA. By contributing, you agree your contributions are licensed under the project's MIT license. Open issues and pull requests at https://github.com/oh-just-another/diagram
+There is no CLA. By contributing, you agree your contributions are licensed under the project's MIT license. Open issues and pull requests at [github.com/oh-just-another/diagram](https://github.com/oh-just-another/diagram). Full details: [CONTRIBUTING.md](https://github.com/oh-just-another/diagram/blob/master/CONTRIBUTING.md).
