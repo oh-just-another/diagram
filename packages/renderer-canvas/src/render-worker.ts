@@ -123,7 +123,13 @@ const replay = (msg: PackedReplayMessage): void => {
   // Register this frame's bitmaps BEFORE replaying so the stream's
   // drawImage id references resolve. These are worker-owned clones —
   // the LRU's evict hook closes them.
-  for (const { id, bitmap } of msg.bitmaps) state.images.set(id, bitmap);
+  for (const { id, bitmap } of msg.bitmaps) {
+    // A re-defined id (re-captured video frame) replaces the stored clone;
+    // close the old one — LruCache.set does not fire onEvict on overwrite.
+    const prev = state.images.get(id);
+    if (prev && prev !== bitmap) prev.close();
+    state.images.set(id, bitmap);
+  }
   replayPackedFrame(state.target, msg.buffer, msg.strings, state.images);
 };
 
