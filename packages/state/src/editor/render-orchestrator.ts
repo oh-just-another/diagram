@@ -431,6 +431,10 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
     // Read-only: keep selection outlines but drop every interactive handle.
     if (editor.readOnly) overlayOpts.readOnly = true;
+    // Non-select tool active: same handle suppression — the chrome is not
+    // pressable (pickPressTarget gates it), so don't advertise it. `hand` is
+    // navigation-only and keeps the chrome visible for context.
+    if (editor.mode !== "select" && editor.mode !== "hand") overlayOpts.suppressHandles = true;
     // Image-crop chrome (crop mode) — dashed accent quad over the pending
     // window, 8 grab handles, and the faint full-image ghost behind them.
     if (editor.cropFrame) overlayOpts.cropFrame = editor.cropFrame;

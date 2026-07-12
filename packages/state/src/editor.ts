@@ -4132,6 +4132,10 @@ export class Editor {
     return pickPressTarget(worldPoint, {
       scene: this._scene,
       selection: this._selection,
+      // Selection chrome (resize / rotate / endpoint handles) is pressable
+      // only under the select tool — a creation tool's press on a selected
+      // shape must start the new element / link instead.
+      selectionChromeActive: this.activeTool.type === "select",
       selectedLink: this.selectedLink,
       selectedLinkCount: this._selectedLinks.size,
       enteredGroup: this._enteredGroup,

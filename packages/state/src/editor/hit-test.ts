@@ -71,6 +71,14 @@ import { req } from "../util.js";
 export interface HitTestContext {
   readonly scene: Scene;
   readonly selection: Selection.Selection;
+  /**
+   * `true` only while the `select` tool is active. Selection chrome —
+   * resize / rotate / group handles and selected-edge endpoint grips — is a
+   * select-tool affordance: with a creation tool active (draw-edge, draw-rect,
+   * …) a press on a selected shape's edge must start the new element / link,
+   * not grab a handle of the still-selected shape.
+   */
+  readonly selectionChromeActive: boolean;
   readonly selectedLink: LinkId | null;
   /** Count of selected links — group handles trigger on total objects > 1. */
   readonly selectedLinkCount: number;
@@ -119,6 +127,42 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
     }
   }
 
+  // 1a–2. Selection chrome (resize / rotate / endpoint handles) is pressable
+  //        only under the select tool — see `selectionChromeActive`.
+  if (ctx.selectionChromeActive) {
+    const chrome = pickSelectionChrome(worldPoint, ctx, zoom);
+    if (chrome) return chrome;
+  }
+
+  // 3. Topmost shape under cursor. Skip shapes whose layer is locked
+  //    OR whose own / ancestor `locked` flag is set (group lock
+  //    propagation). When the hit shape is a child of a group,
+  //    promote to the group root unless the user has "entered" that
+  //    group via double-click.
+  const shape = ctx.acceleratedElementAt(worldPoint);
+  if (shape && ctx.isElementInteractable(shape)) {
+    const target = ctx.promoteToGroupRoot(shape);
+    return { kind: "element", id: target.id, bounds: getElementWorldBounds(target) };
+  }
+
+  // 4. Link body under cursor.
+  const edge = findLinkAt(ctx.scene, worldPoint, ctx.edgeHitThreshold / zoom);
+  if (edge && !ctx.isLayerLocked(edge.layerId)) {
+    return { kind: "link", id: edge.id };
+  }
+  return { kind: "empty" };
+};
+
+/**
+ * Sections 1a–2 of the press hit-test: group / single-shape resize handles,
+ * the rotate grip and selected-edge endpoint handles. Returns `null` when the
+ * point lands on none of them.
+ */
+const pickSelectionChrome = (
+  worldPoint: Vec2,
+  ctx: HitTestContext,
+  zoom: number,
+): PressTarget | null => {
   // 1a. Group resize handles win when several shapes are selected,
   //     OR when a single group-typed shape is selected (which has
   //     no intrinsic bounds — children's union AABB serves as the
@@ -213,23 +257,7 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
     }
   }
 
-  // 3. Topmost shape under cursor. Skip shapes whose layer is locked
-  //    OR whose own / ancestor `locked` flag is set (group lock
-  //    propagation). When the hit shape is a child of a group,
-  //    promote to the group root unless the user has "entered" that
-  //    group via double-click.
-  const shape = ctx.acceleratedElementAt(worldPoint);
-  if (shape && ctx.isElementInteractable(shape)) {
-    const target = ctx.promoteToGroupRoot(shape);
-    return { kind: "element", id: target.id, bounds: getElementWorldBounds(target) };
-  }
-
-  // 4. Link body under cursor.
-  const edge = findLinkAt(ctx.scene, worldPoint, ctx.edgeHitThreshold / zoom);
-  if (edge && !ctx.isLayerLocked(edge.layerId)) {
-    return { kind: "link", id: edge.id };
-  }
-  return { kind: "empty" };
+  return null;
 };
 
 // ---------------------------------------------------------------------------
