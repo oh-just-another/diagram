@@ -1,5 +1,6 @@
 import { bench, describe } from "vitest";
 import { RecordingTarget, type RenderCommand } from "../src/index";
+import { packReplayFrame } from "../src/replay-codec";
 
 /**
  * Bench for the CPU-side cost of the offscreen (worker) backend's
@@ -7,17 +8,19 @@ import { RecordingTarget, type RenderCommand } from "../src/index";
  * `RecordingTarget` and ships the command buffer to the worker via
  * `postMessage`, which structured-clones the payload.
  *
- * Two halves:
+ * Three parts:
  *  - "record frame": buffering a representative frame's command stream
  *    (~500 shapes: fills, multi-segment paths, text) into a
  *    RecordingTarget — includes the rolling content-signature mixing
  *    that `emit()` folds into every command.
- *  - "structuredClone(commands)": the serialisation of that stream.
- *    `structuredClone` uses the same HTML structured-clone algorithm as
- *    `postMessage`, so it is the Node-measurable proxy for the payload
- *    cost; the real cross-thread postMessage (clone + transfer + worker
- *    deserialise) is measured in-browser. This pins CPU-side
- *    serialisation growth as the command schema evolves.
+ *  - "structuredClone(commands)": what shipping the raw command objects
+ *    used to cost — `structuredClone` uses the same HTML structured-clone
+ *    algorithm as `postMessage`, so it is the Node-measurable proxy for
+ *    that payload. Kept as the comparison baseline.
+ *  - "packReplayFrame(commands)": the codec that replaced it — encode
+ *    into one transferable ArrayBuffer + deduplicated string table.
+ *    Pack cost is the new per-layer CPU price; the buffer itself is
+ *    transferred (not cloned) by postMessage.
  */
 
 const SHAPES = 500;
@@ -75,5 +78,13 @@ describe(`offscreen transfer — ${String(SHAPES)}-shape frame (${String(frameCo
 
   bench("structuredClone(commands) — postMessage serialisation proxy", () => {
     structuredClone(frameCommands);
+  });
+
+  // What present() actually pays per changed layer since the packed-frame
+  // codec landed: flatten the stream into one transferable ArrayBuffer +
+  // deduplicated string table. The buffer then moves across postMessage
+  // for free (transfer list) instead of being structured-cloned.
+  bench("packReplayFrame(commands) — transferable packed-frame encode", () => {
+    packReplayFrame(frameCommands);
   });
 });
