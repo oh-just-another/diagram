@@ -113,9 +113,13 @@ describe("stroke path VAO discipline (via WebGL2Target)", () => {
     } as unknown as HTMLCanvasElement;
     const target = new WebGL2Target(canvas, 800, 600);
 
-    // Constructor: default-VAO layout (static quad) + dynamic VAO layout.
+    // Constructor: default-VAO layout (static quad) + dynamic VAO layout +
+    // every eagerly-compiled pipeline's own VAO layout (rect / curve /
+    // ellipse / MSDF / image quad). The exact count doesn't matter — what
+    // the discipline guarantees is that NO pointer is declared after
+    // construction (asserted below per stroke).
     const pointersAfterInit = log.vertexAttribPointer;
-    expect(pointersAfterInit).toBe(2);
+    expect(pointersAfterInit).toBeGreaterThanOrEqual(2);
     expect(log.bindVertexArray.at(-1)).toBeNull();
     const dynamicVao = log.bindVertexArray[0];
     expect(dynamicVao).toBeTruthy();

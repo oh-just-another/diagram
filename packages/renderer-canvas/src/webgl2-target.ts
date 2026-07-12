@@ -253,6 +253,20 @@ export class WebGL2Target implements RenderTarget {
     this.uColorLoc = this.gl.getUniformLocation(this.program, "uColor");
     this.uOpacityLoc = this.gl.getUniformLocation(this.program, "uOpacity");
 
+    // Compile EVERY pipeline eagerly. Lazy first-use compilation used to
+    // throw in the middle of a render pass (e.g. the first ellipse of a
+    // frame), where nothing catches it — the frame loop died with a raw
+    // "shader compile failed" instead of falling back. Constructor-time
+    // failure is what `createLayeredSurfaceWithFallback` catches, so a
+    // context that can't compile (driver quirk, context-limit eviction)
+    // degrades to canvas2d with a toast instead of a broken canvas. The
+    // upfront cost is a handful of small shaders, paid once per surface.
+    this.rectPipeline = new RectInstancePipeline(this.gl);
+    this.curvePipeline = new LoopBlinnCurvePipeline(this.gl);
+    this.ellipsePipeline = new EllipsePipeline(this.gl);
+    this.msdfPipeline = new MsdfTextPipeline(this.gl);
+    this.ensureImageProgram();
+
     this.gl.enable(this.gl.BLEND);
     // Premultiplied-alpha blending. The context was created with
     // `premultipliedAlpha: true` — that's the contract with the browser
@@ -656,29 +670,7 @@ export class WebGL2Target implements RenderTarget {
     this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     const tex = this.textureFor(image as TexImageSource, dynamic ?? false);
     if (!tex) return;
-    if (!this.imageProgram) {
-      this.imageProgram = createImageProgram(this.gl);
-      // Lazily create the image quad VBO too — interleaved
-      // (pos.xy, uv.xy) for a TRIANGLE_STRIP unit quad. Static — never
-      // re-uploaded; the per-call placement goes through `uTransform`.
-      // The attribute layout is recorded into a VAO once; per draw the
-      // image path just binds the VAO.
-      this.imageQuadVbo = this.gl.createBuffer();
-      this.imageQuadVao = glReq(this.gl.createVertexArray());
-      this.gl.bindVertexArray(this.imageQuadVao);
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.imageQuadVbo);
-      this.gl.bufferData(
-        this.gl.ARRAY_BUFFER,
-        new Float32Array([0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1]),
-        this.gl.STATIC_DRAW,
-      );
-      this.gl.enableVertexAttribArray(this.imageProgram.aPos);
-      this.gl.vertexAttribPointer(this.imageProgram.aPos, 2, this.gl.FLOAT, false, 16, 0);
-      this.gl.enableVertexAttribArray(this.imageProgram.aUV);
-      this.gl.vertexAttribPointer(this.imageProgram.aUV, 2, this.gl.FLOAT, false, 16, 8);
-      this.gl.bindVertexArray(null);
-    }
-    const ip = this.imageProgram;
+    const ip = this.ensureImageProgram();
     this.gl.useProgram(ip.program);
     this.gl.bindVertexArray(this.imageQuadVao);
 
@@ -719,8 +711,37 @@ export class WebGL2Target implements RenderTarget {
     this.restoreSolidProgram();
   }
 
-  /** Lazy image program + its static unit quad+UV VBO + recorded VAO. */
+  /**
+   * Image program + its static unit quad+UV VBO + recorded VAO. Built by
+   * `ensureImageProgram` — called from the constructor so a shader compile
+   * failure surfaces there (and triggers the backend fallback) rather than
+   * mid-frame on the first drawn image.
+   */
   private imageProgram: ImageProgram | null = null;
+
+  private ensureImageProgram(): ImageProgram {
+    if (this.imageProgram) return this.imageProgram;
+    this.imageProgram = createImageProgram(this.gl);
+    // Interleaved (pos.xy, uv.xy) TRIANGLE_STRIP unit quad. Static — never
+    // re-uploaded; per-call placement goes through `uTransform`. The
+    // attribute layout is recorded into a VAO once; per draw the image path
+    // just binds the VAO.
+    this.imageQuadVbo = this.gl.createBuffer();
+    this.imageQuadVao = glReq(this.gl.createVertexArray());
+    this.gl.bindVertexArray(this.imageQuadVao);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.imageQuadVbo);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array([0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1]),
+      this.gl.STATIC_DRAW,
+    );
+    this.gl.enableVertexAttribArray(this.imageProgram.aPos);
+    this.gl.vertexAttribPointer(this.imageProgram.aPos, 2, this.gl.FLOAT, false, 16, 0);
+    this.gl.enableVertexAttribArray(this.imageProgram.aUV);
+    this.gl.vertexAttribPointer(this.imageProgram.aUV, 2, this.gl.FLOAT, false, 16, 8);
+    this.gl.bindVertexArray(null);
+    return this.imageProgram;
+  }
   private imageQuadVbo: WebGLBuffer | null = null;
   private imageQuadVao: WebGLVertexArrayObject | null = null;
   /**
@@ -849,7 +870,7 @@ export class WebGL2Target implements RenderTarget {
     // Vector-perfect at any zoom; 4 vertices instead of 24-512.
     if (this.currentEllipse) {
       this.flushRectBatch(); // preserve z-order: emit queued rects first
-      this.ellipsePipeline ??= new EllipsePipeline(this.gl);
+      this.ellipsePipeline ??= new EllipsePipeline(this.gl); // rebuilt only after dispose
       const e = this.currentEllipse;
       this.ellipsePipeline.draw(
         e.cx,
@@ -924,7 +945,7 @@ export class WebGL2Target implements RenderTarget {
     // at 20×.
     if (this.currentCurves.length > 0) {
       this.flushRectBatch(); // preserve z-order: emit queued rects first
-      this.curvePipeline ??= new LoopBlinnCurvePipeline(this.gl);
+      this.curvePipeline ??= new LoopBlinnCurvePipeline(this.gl); // rebuilt only after dispose
       this.curvePipeline.draw(
         this.currentCurves,
         this.fillColor,
