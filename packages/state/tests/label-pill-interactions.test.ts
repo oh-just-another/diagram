@@ -156,3 +156,56 @@ describe("caption pill vs bend handles", () => {
     expect(after.waypoints).toHaveLength(1);
   });
 });
+
+describe("caption drag along the path", () => {
+  // Select by clicking the LINE far from the pill: a select-click at the pill
+  // centre followed by an immediate press there would read as a double-click
+  // (caption edit), not a drag.
+  const select = (h: ReturnType<typeof harness>) => {
+    h.down(150, 100);
+    h.up(150, 100);
+  };
+
+  it("dragging the pill slides it along the link (projected arc-length position)", () => {
+    const h = harness("hello");
+    select(h);
+    h.down(PILL_CENTRE.x, PILL_CENTRE.y);
+    h.move(450, 160); // off-path cursor — projects back onto y=100
+    h.up(450, 160);
+    const edge = h.editor.scene.links.get(linkId("L"))!;
+    expect(edge.label?.position).toBeCloseTo((450 - 100) / 400);
+    // The link itself did not move.
+    expect(edge.from).toEqual({ kind: "point", position: { x: 100, y: 100 } });
+  });
+
+  it("snaps back to the default placement near the middle (position removed)", () => {
+    const h = harness("hello");
+    select(h);
+    h.down(PILL_CENTRE.x, PILL_CENTRE.y);
+    h.move(450, 100);
+    h.move(302, 100); // 2px from the arc middle < LINK_LABEL_DRAG_SNAP_PX
+    h.up(302, 100);
+    expect(h.editor.scene.links.get(linkId("L"))!.label?.position).toBeUndefined();
+  });
+
+  it("is one undo step", () => {
+    const h = harness("hello");
+    select(h);
+    h.down(PILL_CENTRE.x, PILL_CENTRE.y);
+    h.move(450, 100);
+    h.up(450, 100);
+    expect(h.editor.scene.links.get(linkId("L"))!.label?.position).toBeDefined();
+    h.editor.undo();
+    expect(h.editor.scene.links.get(linkId("L"))!.label?.position).toBeUndefined();
+  });
+
+  it("Escape mid-drag reverts the position", () => {
+    const h = harness("hello");
+    select(h);
+    h.down(PILL_CENTRE.x, PILL_CENTRE.y);
+    h.move(450, 100);
+    h.editor.cancelInteraction();
+    expect(h.editor.scene.links.get(linkId("L"))!.label?.position).toBeUndefined();
+    expect(h.editor.isDraggingLabel).toBe(false);
+  });
+});

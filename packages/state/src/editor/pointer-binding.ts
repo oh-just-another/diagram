@@ -1,6 +1,7 @@
 import {
   findContainerAt,
   getElbowSegmentHandles,
+  linkLabelBounds,
   getAnchorWorld,
   getDropZoneWorld,
   getElement,
@@ -28,6 +29,8 @@ import { anchorOverlayPoints } from "./anchor-points.js";
 import { snapshotMovingLinks } from "./applies/link-move.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
+  DOUBLE_CLICK_MS,
+  DOUBLE_CLICK_TOLERANCE_PX,
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_START_ANCHOR_OUTSET,
   LONG_PRESS_MAX_MOVEMENT_PX,
@@ -40,6 +43,60 @@ import { vec2 } from "@oh-just-another/math";
 import { clampZoom } from "./public/zoom-pan.js";
 import { req } from "../util.js";
 import type { Editor } from "../editor.js";
+
+/**
+ * Caption pill drag — a press inside the SELECTED link's label pill grabs the
+ * caption: dragging slides it along the link's path (projection, snap back to
+ * the middle), a double-click opens the inline text editor. Owns the press so
+ * the machine's link-move gesture doesn't translate the whole link instead.
+ * An unselected link falls through (first click selects as before).
+ */
+const handleDownLabelDrag = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.readOnly) return false;
+  const linkId = editor.selectedLink;
+  if (!(editor.activeTool.type === "select" && linkId)) return false;
+  const edge = getLink(editor._scene, linkId);
+  if (!edge?.label) return false;
+  const b = linkLabelBounds(editor._scene, edge);
+  const inside =
+    b !== null &&
+    worldPoint.x >= b.x &&
+    worldPoint.x <= b.x + b.width &&
+    worldPoint.y >= b.y &&
+    worldPoint.y <= b.y + b.height;
+  if (!inside) return false;
+  editor.cancelLongPress();
+  // Second click of a double-click → edit the caption text. The FIRST click
+  // usually travelled the machine path (it selected the link), so consult the
+  // machine's click bookkeeping, not the handle chain.
+  const now = performance.now();
+  const last = editor.interaction.lastClickWorldPoint;
+  const isDouble =
+    now - editor.interaction.lastClickAt < DOUBLE_CLICK_MS &&
+    last !== null &&
+    Math.hypot(last.x - worldPoint.x, last.y - worldPoint.y) <= DOUBLE_CLICK_TOLERANCE_PX;
+  editor.interaction.lastClickAt = now;
+  editor.interaction.lastClickWorldPoint = worldPoint;
+  if (isDouble) {
+    editor.beginLinkCaptionEdit(linkId);
+    return true;
+  }
+  editor.beginLabelDrag(linkId);
+  return true;
+};
+
+/** Caption drag move / release. */
+const handleMoveLabelDrag = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (!editor.isDraggingLabel) return false;
+  editor.updateLabelDrag(worldPoint);
+  return true;
+};
+
+const handleUpLabelDrag = (editor: Editor): boolean => {
+  if (!editor.isDraggingLabel) return false;
+  editor.endLabelDrag();
+  return true;
+};
 
 /** True when `p` lies within `√r2` of `center` (squared-distance compare). */
 const withinRadiusSq = (p: Vec2, center: Vec2, r2: number): boolean => {
@@ -1175,8 +1232,11 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (handleDownDrawText(editor, worldPoint)) return;
     if (handleDownAnnotation(editor, worldPoint)) return;
     if (handleDownInteractiveHit(editor, worldPoint)) return;
+    // Order: concrete handle dots (segment / waypoint) win over the caption
+    // pill — the dots draw ABOVE it; the pill takes any other press inside it.
     if (handleDownSegmentDrag(editor, worldPoint)) return;
     if (handleDownWaypointDrag(editor, worldPoint)) return;
+    if (handleDownLabelDrag(editor, worldPoint)) return;
 
     // Resolve the press target up-front so the anchor-drag path can defer to the
     // rotate grip (which floats above the top anchor's grab zone).
@@ -1231,6 +1291,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     editor.refreshCursor(worldPoint);
 
     if (handleMoveCrop(editor, worldPoint)) return;
+    if (handleMoveLabelDrag(editor, worldPoint)) return;
     if (handleMoveSegmentDrag(editor, worldPoint)) return;
     if (handleMoveWaypointDrag(editor, worldPoint)) return;
     if (handleMoveLinkAnchorDrag(editor, worldPoint)) return;
@@ -1260,6 +1321,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     editor.cancelLongPress();
 
     if (handleUpCrop(editor)) return;
+    if (handleUpLabelDrag(editor)) return;
     if (handleUpSegmentDrag(editor)) return;
     if (handleUpWaypointDrag(editor)) return;
     if (handleUpLinkAnchorDrag(editor, ev)) return;

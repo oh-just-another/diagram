@@ -178,3 +178,36 @@ export const nudgeHandleOffLabel = (pointAt: (t: number) => Vec2, label: Bounds 
   }
   return mid;
 };
+
+/**
+ * Fractional arc-length position (0..1) of the point on `path` nearest to
+ * `p` — the inverse of {@link pointAlongPath}. Used by the caption-drag
+ * gesture: the cursor is projected back onto the polyline so the label can
+ * only slide ALONG its link. Returns 0.5 for a degenerate (zero-length) path.
+ */
+export const projectPointToPathT = (path: readonly Vec2[], p: Vec2): number => {
+  let total = 0;
+  let bestDist = Infinity;
+  let bestAt = 0;
+  let walked = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = req(path[i - 1]);
+    const b = req(path[i]);
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len > 0) {
+      const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (len * len)));
+      const qx = a.x + dx * t;
+      const qy = a.y + dy * t;
+      const d = (p.x - qx) ** 2 + (p.y - qy) ** 2;
+      if (d < bestDist) {
+        bestDist = d;
+        bestAt = walked + len * t;
+      }
+    }
+    walked += len;
+    total += len;
+  }
+  return total > 0 ? bestAt / total : 0.5;
+};

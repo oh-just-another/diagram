@@ -66,6 +66,7 @@ export {
   linkLabelBoundsForPath,
   nudgeHandleOffLabel,
   pointAlongPath,
+  projectPointToPathT,
 } from "./edge-label.js";
 export {
   catmullRomBeziers,

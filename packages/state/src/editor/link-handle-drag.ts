@@ -1,7 +1,9 @@
 import {
   getLink,
+  getLinkCurvePoints,
   getLinkPath,
   isNoop,
+  projectPointToPathT,
   updateLink,
   type LinkEndpoint,
   type Patch,
@@ -12,6 +14,7 @@ import { hitTest, vec2 } from "@oh-just-another/math";
 import {
   DOUBLE_CLICK_MS,
   DOUBLE_CLICK_TOLERANCE_PX,
+  LINK_LABEL_DRAG_SNAP_PX,
   WAYPOINT_COLLAPSE_RADIUS,
 } from "../constants.js";
 import { req } from "../util.js";
@@ -85,6 +88,15 @@ export class LinkHandleDragController {
    * step via the gesture tx.
    */
   private _segmentDrag: { linkId: LinkId; axis: "h" | "v"; at: number } | null = null;
+  /**
+   * Host-managed caption (label pill) drag along the link's path. The cursor
+   * is projected back onto the drawn polyline so the pill can only slide
+   * ALONG the link; near the arc-length middle it snaps back to the default
+   * position (`label.position` removed). One undo step via the gesture tx.
+   * `moved` distinguishes a click (kept for the double-click-to-edit chain)
+   * from a real drag.
+   */
+  private _labelDrag: { linkId: LinkId; moved: boolean } | null = null;
   /** Wall-clock of the previous handle press — drives `isHandleDoubleClick`. */
   private lastHandleClickAt = 0;
   private lastHandleClickWorld: Vec2 | null = null;
@@ -103,11 +115,20 @@ export class LinkHandleDragController {
     return this._segmentDrag;
   }
 
+  get labelDrag(): { linkId: LinkId; moved: boolean } | null {
+    return this._labelDrag;
+  }
+
+  get isDraggingLabel(): boolean {
+    return this._labelDrag !== null;
+  }
+
   /** Drop all drag state without committing (Escape / cancelInteraction). */
   reset(): void {
     this._waypointDrag = null;
     this._segmentDrag = null;
     this._endpointDrag = null;
+    this._labelDrag = null;
   }
 
   /**
@@ -289,6 +310,55 @@ export class LinkHandleDragController {
   endSegmentDrag(): void {
     if (!this._segmentDrag) return;
     this._segmentDrag = null;
+    this.host.commitGesture();
+  }
+
+  /** Begin dragging the selected link's caption pill along its path. */
+  beginLabelDrag(linkId: LinkId): void {
+    if (!getLink(this.host.scene, linkId)?.label) return;
+    this._labelDrag = { linkId, moved: false };
+  }
+
+  /** Live update: project the cursor onto the path, snap near the middle. */
+  updateLabelDrag(world: Vec2): void {
+    const drag = this._labelDrag;
+    if (!drag) return;
+    drag.moved = true;
+    // A real drag breaks the handle double-click chain (see updateSegmentDrag).
+    this.lastHandleClickAt = 0;
+    const edge = getLink(this.host.scene, drag.linkId);
+    if (!edge?.label) return;
+    const path = getLinkCurvePoints(this.host.scene, edge);
+    if (!path || path.length < 2) return;
+    let total = 0;
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1];
+      const b = path[i];
+      if (a && b) total += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    const t = projectPointToPathT(path, world);
+    // Snap back to the default placement near the middle: remove the explicit
+    // position so elbow links regain their longest-segment auto-placement.
+    const zoom = this.host.scene.viewport.zoom || 1;
+    const snapped = total > 0 && Math.abs(t - 0.5) * total < LINK_LABEL_DRAG_SNAP_PX / zoom;
+    const r = updateLink(this.host.scene, drag.linkId, (e) => {
+      if (!e.label) return e;
+      if (snapped) {
+        const { position: _position, ...rest } = e.label;
+        void _position;
+        return { ...e, label: rest };
+      }
+      return { ...e, label: { ...e.label, position: t } };
+    });
+    this.host.scene = r.scene;
+    this.host.recordGesturePatch(r.patch);
+    this.host.notify();
+  }
+
+  /** Finish the caption drag (commits the gesture as one undo step). */
+  endLabelDrag(): void {
+    if (!this._labelDrag) return;
+    this._labelDrag = null;
     this.host.commitGesture();
   }
 

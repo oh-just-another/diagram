@@ -898,3 +898,11 @@ export const CROP_HANDLE_HIT_RADIUS = 11;
 export const CROP_GHOST_OPACITY = 0.12;
 export const CROP_BRACKET_LEN = 14;
 export const CROP_BRACKET_WIDTH = 3;
+
+/**
+ * Snap radius (screen px) of the caption drag: while the pill's arc-length
+ * position is within this distance of the path middle, the explicit
+ * `label.position` is dropped and the label returns to its default placement
+ * (midpoint / elbow longest-segment). Range: 4–16.
+ */
+export const LINK_LABEL_DRAG_SNAP_PX = 8;

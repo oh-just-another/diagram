@@ -5318,6 +5318,20 @@ export class Editor {
     this.linkHandles.beginWaypointDrag(linkId, index, insert);
   }
 
+  /** Caption (label pill) drag along the selected link's path. */
+  get isDraggingLabel(): boolean {
+    return this.linkHandles.isDraggingLabel;
+  }
+  beginLabelDrag(linkId: LinkId): void {
+    this.linkHandles.beginLabelDrag(linkId);
+  }
+  updateLabelDrag(world: Vec2): void {
+    this.linkHandles.updateLabelDrag(world);
+  }
+  endLabelDrag(): void {
+    this.linkHandles.endLabelDrag();
+  }
+
   /** Live update of the dragged waypoint to `world`. */
   updateWaypointDrag(world: Vec2): void {
     this.linkHandles.updateWaypointDrag(world);

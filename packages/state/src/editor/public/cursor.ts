@@ -114,7 +114,8 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
   // 1. Active gestures (highest priority — what the pointer is doing now).
   if (editor.panGesture) return r("pan-active", "grabbing");
   if (editor.linkDragFromAnchor?.moved === true) return r("draw", "crosshair");
-  if (editor.isDraggingWaypoint || editor.isDraggingSegment) return r("move", "grabbing");
+  if (editor.isDraggingWaypoint || editor.isDraggingSegment || editor.isDraggingLabel)
+    return r("move", "grabbing");
   if (editor.annotationDrag?.moved === true) return r("move", "grabbing");
   if (editor.brushStroke) return r("draw", "crosshair");
   // Machine-driven drag past the threshold (`gestureTx` opens then): resize
