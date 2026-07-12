@@ -1,7 +1,6 @@
 import {
   findContainerAt,
   getElbowSegmentHandles,
-  linkLabelBounds,
   getAnchorWorld,
   getDropZoneWorld,
   getElement,
@@ -14,7 +13,6 @@ import {
   isImage,
   isText,
   updateAnnotation,
-  type Link,
 } from "@oh-just-another/scene";
 import {
   boundsFromPoints,
@@ -42,16 +40,6 @@ import { vec2 } from "@oh-just-another/math";
 import { clampZoom } from "./public/zoom-pan.js";
 import { req } from "../util.js";
 import type { Editor } from "../editor.js";
-
-/**
- * True when the press lands inside the selected link's caption pill — such a
- * press belongs to the caption (click selects, double-click edits the text),
- * so bend / segment handle grabs must not consume it.
- */
-const pressInsideLabel = (editor: Editor, edge: Link, p: Vec2): boolean => {
-  const b = linkLabelBounds(editor._scene, edge);
-  return b !== null && p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
-};
 
 /** True when `p` lies within `√r2` of `center` (squared-distance compare). */
 const withinRadiusSq = (p: Vec2, center: Vec2, r2: number): boolean => {
@@ -323,9 +311,6 @@ const handleDownSegmentDrag = (editor: Editor, worldPoint: Vec2): boolean => {
   if (!(edge && (edge.routing ?? "straight") === "orthogonal")) return false;
   const path = getLinkPath(editor._scene, edge);
   if (!(path && path.length >= 2)) return false;
-  // A press inside the caption pill is the caption's (select the link,
-  // double-click edits the text) — never a segment grab.
-  if (pressInsideLabel(editor, edge, worldPoint)) return false;
   const zoom = editor._scene.viewport.zoom || 1;
   const r = LINK_ENDPOINT_HANDLE_RADIUS / zoom;
   const r2 = r * r;
@@ -367,8 +352,6 @@ const handleDownWaypointDrag = (editor: Editor, worldPoint: Vec2): boolean => {
   const path =
     edge && (edge.routing ?? "straight") !== "orthogonal" ? getLinkPath(editor._scene, edge) : null;
   if (!(edge && path && path.length >= 2)) return false;
-  // A press inside the caption pill is the caption's — see pressInsideLabel.
-  if (pressInsideLabel(editor, edge, worldPoint)) return false;
   const zoom = editor._scene.viewport.zoom || 1;
   const r = LINK_ENDPOINT_HANDLE_RADIUS / zoom;
   const r2 = r * r;

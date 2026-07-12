@@ -130,6 +130,21 @@ describe("caption pill vs bend handles", () => {
     expect(after.waypoints).toHaveLength(1);
   });
 
+  it("an existing waypoint dot inside the pill is still grabbable (dot draws above the pill)", () => {
+    const { editor, down, move, up } = harness("hello");
+    down(PILL_CENTRE.x, PILL_CENTRE.y);
+    up(PILL_CENTRE.x, PILL_CENTRE.y); // select the link
+    // Put a real bend point at the pill centre programmatically.
+    editor.updateSelectedLink((l) => ({ ...l, waypoints: [{ ...PILL_CENTRE }] }));
+    // Grab and drag it — the visible dot wins over the pill under it.
+    down(PILL_CENTRE.x, PILL_CENTRE.y);
+    move(PILL_CENTRE.x, 250);
+    up(PILL_CENTRE.x, 250);
+    const after = editor.scene.links.get(linkId("L"))!;
+    expect(after.waypoints).toHaveLength(1);
+    expect(after.waypoints![0]!.y).toBeCloseTo(250);
+  });
+
   it("without a label the add handle stays at the exact midpoint (unchanged)", () => {
     const { editor, down, move, up } = harness(null);
     down(PILL_CENTRE.x, PILL_CENTRE.y);
