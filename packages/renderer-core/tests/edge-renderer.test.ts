@@ -604,7 +604,7 @@ describe("renderLinks — hidden layer", () => {
 // ---------------------------------------------------------------------------
 // strokeRoundedPolyline — adaptive corner radius
 // ---------------------------------------------------------------------------
-describe("strokeRoundedPolyline — adaptive corner radius", () => {
+describe("strokeRoundedPolyline — corner radius clamp", () => {
   const lShape = (jog: number) =>
     [
       { x: 0, y: 0 },
@@ -612,37 +612,37 @@ describe("strokeRoundedPolyline — adaptive corner radius", () => {
       { x: jog, y: 200 },
     ] as const;
 
-  it("long knees round to the full max radius", () => {
+  it("long knees round to the full requested radius", () => {
     const t = stubTarget();
-    strokeRoundedPolyline(t, [...lShape(200)], 16);
-    // Arc entry point sits `r` before the corner: min(16, 0.35×200) = 16.
-    expect(t.lineTo).toHaveBeenCalledWith(184, 0);
-    expect(t.quadraticCurveTo).toHaveBeenCalledWith(200, 0, 200, 16);
+    strokeRoundedPolyline(t, [...lShape(200)], 10);
+    // Arc entry point sits `r` before the corner.
+    expect(t.lineTo).toHaveBeenCalledWith(190, 0);
+    expect(t.quadraticCurveTo).toHaveBeenCalledWith(200, 0, 200, 10);
   });
 
-  it("a short jog rounds proportionally smaller (fraction of the segment)", () => {
+  it("a short jog clamps the radius to half of each adjacent segment", () => {
     const t = stubTarget();
-    strokeRoundedPolyline(t, [...lShape(20)], 16);
-    // min(16, 0.35×20) = 7 — the arc never eats more than the fraction.
-    expect(t.lineTo).toHaveBeenCalledWith(13, 0);
-    expect(t.quadraticCurveTo).toHaveBeenCalledWith(20, 0, 20, 7);
+    strokeRoundedPolyline(t, [...lShape(16)], 10);
+    // min(10, 16/2, 200/2) = 8 — never overshoots the short segment.
+    expect(t.lineTo).toHaveBeenCalledWith(8, 0);
+    expect(t.quadraticCurveTo).toHaveBeenCalledWith(16, 0, 16, 8);
   });
 
   it("two corners sharing a short segment never overlap", () => {
     const t = stubTarget();
-    // Z-shape with a 20px middle segment and two corners on it.
+    // Z-shape with a 16px middle segment and two corners on it.
     strokeRoundedPolyline(
       t,
       [
         { x: 0, y: 0 },
         { x: 100, y: 0 },
-        { x: 100, y: 20 },
-        { x: 200, y: 20 },
+        { x: 100, y: 16 },
+        { x: 200, y: 16 },
       ],
-      16,
+      10,
     );
-    // Each corner consumes 0.35×20 = 7 of the shared segment: 7+7 < 20.
-    expect(t.quadraticCurveTo).toHaveBeenCalledWith(100, 0, 100, 7);
-    expect(t.quadraticCurveTo).toHaveBeenCalledWith(100, 20, 107, 20);
+    // Each corner consumes 16/2 = 8 of the shared segment: 8+8 ≤ 16.
+    expect(t.quadraticCurveTo).toHaveBeenCalledWith(100, 0, 100, 8);
+    expect(t.quadraticCurveTo).toHaveBeenCalledWith(100, 16, 108, 16);
   });
 });
