@@ -783,6 +783,24 @@ export class WebGL2Target implements RenderTarget {
     }
   }
 
+  /**
+   * Synchronously release the GPU texture cached for `source` (B6). Hosts
+   * call this when an image is discarded or its bitmap replaced, so the VRAM
+   * is freed immediately instead of waiting for LRU pressure to reach the
+   * entry. No-op (returns `false`) for sources that were never uploaded.
+   * Text-bitmap-backed handles are owned by the text cache (its own evictor
+   * deletes them) and are left alone.
+   */
+  invalidateImage(source: TexImageSource): boolean {
+    const key = source as object;
+    const tex = this.textures.get(key);
+    if (tex === undefined) return false;
+    if (isTextBitmapBacked(this.textBitmaps, key)) return false;
+    this.textures.delete(key);
+    this.gl.deleteTexture(tex);
+    return true;
+  }
+
   fill(_rule?: FillRule): void {
     void _rule;
     const effectiveAlpha = this.opacity * this.fillAlpha;
