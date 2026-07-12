@@ -141,7 +141,6 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
     case "draw-edge":
     case "brush":
     case "laser":
-    case "eyedropper":
     case "crop":
       return r("draw", "crosshair");
     // Erase hides the OS cursor: the overlay paints a size-matched ring (and a

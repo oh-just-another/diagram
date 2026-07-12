@@ -82,10 +82,9 @@ describe("Editor.applyEyedropperAt (F8)", () => {
     expect(getElement(e.scene, elementId("dst"))!.style.fill).toBe("#123456");
   });
 
-  it("reverts to select mode after a pick (tool not locked)", () => {
+  it("keeps the current mode after a pick (sampling is not a tool switch)", () => {
     const e = editorWith(sceneWith(rect("src", 0, 0, { fill: "#abcdef" }), rect("dst", 200, 0)));
     e.setSelection([elementId("dst")]);
-    e.setMode("eyedropper");
     e.applyEyedropperAt({ x: 10, y: 10 });
     expect(e.mode).toBe("select");
   });

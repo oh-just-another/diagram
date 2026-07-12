@@ -20,10 +20,6 @@
  * - `laser` — ephemeral presentation pointer. Press-and-drag paints a
  *   red trail that fades over a couple of seconds; nothing is written
  *   to the scene or history — it lives purely on the overlay.
- * - `eyedropper` — sample a colour. A click reads the fill (or stroke)
- *   of the shape under the cursor and applies it to the current
- *   selection, then reverts to `select` (unless the tool is locked).
- *   Never mutates geometry.
  * - `crop` — image-crop mode, entered by double-clicking an image.
  *   The overlay shows a draggable crop frame over the target image;
  *   Enter commits the crop, Escape cancels. Owned end-to-end by the
@@ -44,7 +40,6 @@ export type Mode =
   | "brush"
   | "erase"
   | "laser"
-  | "eyedropper"
   | "crop";
 
 export const DEFAULT_MODE: Mode = "select";

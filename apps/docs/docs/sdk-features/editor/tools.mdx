@@ -21,8 +21,9 @@ Tools are expressed as the editor's active _mode_. The mode dictates how a point
 | `brush`        | B      | Pressure-sensitive freehand stroke.                                                                                                                                                             |
 | `erase`        | E      | Drag to sweep shapes into a pending set (previewed dimmed); release deletes in one undo step. Brush strokes are erased partially — the swept arc is removed and the survivors become fragments. |
 | `laser`        | K      | Ephemeral presentation pointer; the fading trail never touches the scene or history.                                                                                                            |
-| `eyedropper`   | —      | Colour sampling. Not on the toolbar: armed from the colour picker via `editor.beginEyedropperPick(onPick)`; the next canvas click samples the colour under the cursor.                          |
 | `crop`         | —      | Image crop, entered by double-clicking an image. Enter commits, Escape cancels.                                                                                                                 |
+
+Colour sampling is not a mode: the colour picker arms a one-shot pipette via `editor.beginEyedropperPick(onPick)`, and the next canvas click samples the colour under the cursor without leaving the current tool.
 
 Pan and zoom remain available as gestures (middle-mouse, Space+drag, wheel) regardless of the active mode. In read-only mode only `select`, `hand` and `laser` mode switches are allowed.
 

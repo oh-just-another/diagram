@@ -194,11 +194,11 @@ const handleDownLaser = (editor: Editor, worldPoint: Vec2): boolean => {
 
 /**
  * Eyedropper — a click samples the colour of the shape under the cursor. Fires
- * when the colour-picker pipette is armed ({@link Editor.isEyedropperArmed}, mode
- * unchanged) or in the legacy `eyedropper` tool mode. Owns the gesture end-to-end.
+ * only while the colour-picker pipette is armed ({@link Editor.isEyedropperArmed};
+ * the tool mode never changes). Owns the gesture end-to-end.
  */
 const handleDownEyedropper = (editor: Editor, worldPoint: Vec2): boolean => {
-  if (editor.mode !== "eyedropper" && !editor.isEyedropperArmed) return false;
+  if (!editor.isEyedropperArmed) return false;
   editor.cancelLongPress();
   editor.applyEyedropperAt(worldPoint);
   return true;

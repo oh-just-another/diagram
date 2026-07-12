@@ -3073,9 +3073,9 @@ export class Editor {
   /**
    * Sample the colour under `worldPoint`. When a pipette pick is armed (see
    * {@link beginEyedropperPick}), route the colour to that callback and disarm.
-   * Otherwise (legacy tool path) apply it as the current selection's fill and
-   * revert to `select` mode. Returns the sampled colour, or `null` on empty
-   * canvas. Read-only editors sample but don't mutate.
+   * Otherwise apply it as the current selection's fill (programmatic path).
+   * Returns the sampled colour, or `null` on empty canvas. Read-only editors
+   * sample but don't mutate.
    */
   applyEyedropperAt(worldPoint: Vec2): Color | null {
     const color = pickColorAt(this._scene, worldPoint, "fill");
@@ -3091,7 +3091,6 @@ export class Editor {
     if (!this.readOnly && this._selection.size > 0) {
       this.updateStyle(this._selection, { fill: color });
     }
-    if (this.mode === "eyedropper" && !this.toolLocked) this.setMode("select");
     return color;
   }
 
