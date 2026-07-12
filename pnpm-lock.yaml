@@ -130,9 +130,21 @@ importers:
       '@oh-just-another/editor':
         specifier: workspace:*
         version: link:../../packages/editor
+      '@oh-just-another/importers':
+        specifier: workspace:*
+        version: link:../../packages/importers
       '@oh-just-another/react-ui':
         specifier: workspace:*
         version: link:../../packages/react-ui
+      '@oh-just-another/scene':
+        specifier: workspace:*
+        version: link:../../packages/scene
+      '@oh-just-another/serialization':
+        specifier: workspace:*
+        version: link:../../packages/serialization
+      '@oh-just-another/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       clsx:
         specifier: ^2.0.0
         version: 2.1.1

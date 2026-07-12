@@ -1,0 +1,43 @@
+---
+title: "Vue"
+sidebar_position: 11
+---
+
+`@oh-just-another/diagram-vue` wraps the [`<oja-diagram>` custom element](/docs/examples/custom-element) as a Vue 3 component. Vue can't run inside this React docs site — see the [React pages](/docs/examples/react-basic) for live demos.
+
+```vue title="App.vue"
+<script setup lang="ts">
+import { ref } from "vue";
+import { Diagram } from "@oh-just-another/diagram-vue";
+import type { OjaDiagramController } from "@oh-just-another/diagram";
+import type { Scene } from "@oh-just-another/scene";
+
+const diagram = ref<OjaDiagramController | null>(null);
+
+const onReady = () => diagram.value?.zoomToFit();
+const onSceneChange = (scene: Scene) => console.log("scene", scene);
+const drawRect = () => diagram.value?.setActiveTool("draw-rect");
+</script>
+
+<template>
+  <button @click="drawRect">Rectangle tool</button>
+  <button @click="diagram?.undo()">Undo</button>
+  <Diagram
+    ref="diagram"
+    grid
+    snap
+    theme="dark"
+    style="height: 80vh"
+    @ready="onReady"
+    @scenechange="onSceneChange"
+  />
+</template>
+```
+
+## Notes
+
+- Install: `npm i @oh-just-another/diagram-vue`. Peer dependency: `vue ^3.4`.
+- Props: `scene` (a `Scene` object), `theme`, `renderer`, `grid`, `snap` — same meaning as the element's [attributes](/docs/examples/custom-element#api).
+- Events: `@ready`, `@scenechange`, `@selectionchange`, `@themechange` — handlers receive the unwrapped payload (no `CustomEvent`).
+- Imperative control via template ref: the component exposes the controller — `getScene` / `loadScene`, `undo` / `redo`, `zoomToFit`, `getActiveTool` / `setActiveTool`, `getSelection` / `setSelection`. Methods no-op before `ready`.
+- Importing the package registers `<oja-diagram>` automatically.

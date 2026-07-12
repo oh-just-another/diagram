@@ -128,6 +128,8 @@ const config: Config = {
       },
       items: [
         { to: DOCS_ENTRY, label: "Docs", position: "left" },
+        { to: "/docs/examples/", label: "Examples", position: "left" },
+        { to: "/features", label: "Features", position: "left" },
         { href: GITHUB_URL, label: "GitHub", position: "right" },
       ],
     },
@@ -138,7 +140,7 @@ const config: Config = {
           title: "Product",
           items: [
             { label: "Features", to: "/features" },
-            { label: "Examples", to: "/examples" },
+            { label: "Examples", to: "/docs/examples/" },
             { label: "FAQ", to: "/faq" },
           ],
         },

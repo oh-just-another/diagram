@@ -1,0 +1,33 @@
+{
+  "format": "oh-just-another/scene",
+  "version": 2,
+  "elements": [
+    {
+      "layerId": "default",
+      "order": "a0",
+      "id": "d",
+      "type": "polygon",
+      "position": { "x": 100, "y": 100 },
+      "rotation": 0,
+      "scale": { "x": 1, "y": 1 },
+      "style": { "fill": "#17bf63", "stroke": "#0c6b38", "strokeWidth": 3 },
+      "points": [
+        { "x": 0, "y": -70 },
+        { "x": 70, "y": 0 },
+        { "x": 0, "y": 70 },
+        { "x": -70, "y": 0 }
+      ]
+    }
+  ],
+  "links": [],
+  "layers": [
+    { "id": "default", "name": "Default", "visible": true, "locked": false, "order": "a0" }
+  ],
+  "viewport": {
+    "pan": { "x": 0, "y": 0 },
+    "zoom": 1,
+    "rotation": 0,
+    "size": { "width": 200, "height": 200 },
+    "gridEnabled": false
+  }
+}

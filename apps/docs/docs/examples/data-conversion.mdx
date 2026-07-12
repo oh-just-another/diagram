@@ -1,0 +1,36 @@
+---
+title: Data conversion
+sidebar_position: 21
+---
+
+import ExampleEditor from "@site/src/components/ExampleEditor";
+
+Text formats convert into scenes (and back), so external data renders as an editable diagram. This editor's content came from the Mermaid string below — live, on this page:
+
+<ExampleEditor
+  height="360px"
+  mermaid="graph LR; A[Order placed] --> B{In stock?}; B -->|yes| C[Ship]; B -->|no| D[Backorder]; D --> C"
+/>
+
+```ts
+import { importMermaid } from "@oh-just-another/importers";
+
+const scene = importMermaid(
+  "graph LR; A[Order placed] --> B{In stock?}; B -->|yes| C[Ship]; B -->|no| D[Backorder]; D --> C",
+);
+editor.loadScene(scene);
+```
+
+## The conversion matrix
+
+| Direction | API |
+| --- | --- |
+| Mermaid → scene | `importMermaid(text)` |
+| Graphviz (dot) → scene | `importDot(text)` |
+| drawio → scene | `importDrawio(xml)` |
+| Excalidraw → scene | `importExcalidraw(json)` |
+| JSON Canvas (Obsidian) → scene | `importJsonCanvas(json)` |
+| scene → Mermaid | `exportMermaid(scene)` |
+| scene ⇄ JSON | `serializeScene` / `parseScene` (versioned, with migrations) |
+
+All importers are pure functions in `@oh-just-another/importers` — they run in the browser, in Node, and inside agents. Combine with [headless rendering](./headless) to turn any of these formats into SVG/PNG on a server.

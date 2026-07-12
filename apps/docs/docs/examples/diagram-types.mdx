@@ -1,0 +1,26 @@
+---
+title: Diagram types
+sidebar_position: 20
+---
+
+import ExampleEditor from "@site/src/components/ExampleEditor";
+
+The same scene model covers different diagram families. These are real scenes (the renderer test fixtures), live and editable.
+
+## Flowchart-style: elbow connectors with arrowheads
+
+<ExampleEditor sceneUrl="/scenes/edges-straight-ortho.json" height="320px" />
+
+## ERD-style: bezier links, crow's-foot + diamond arrowheads, captions
+
+<ExampleEditor sceneUrl="/scenes/edges-bezier-labeled.json" height="320px" />
+
+## Freehand + block arrows
+
+<ExampleEditor sceneUrl="/scenes/block-arrow-brush.json" height="320px" />
+
+## Frames and grouping
+
+<ExampleEditor sceneUrl="/scenes/group-frame.json" height="320px" />
+
+Element types: rectangle, ellipse, diamond, text, image, brush, frame, block-arrow; links route straight, orthogonal (elbow) or bezier, with `ArrowheadStyle` covering line caps, filled heads and ERD crow's-foot notation. See [Shapes](/docs/sdk-features/shapes/overview).
