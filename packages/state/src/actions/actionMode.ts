@@ -7,150 +7,150 @@ import type { Action } from "./types.js";
 export const actionModeSelect: Action = {
   id: "mode-select",
   label: "Select tool",
-  category: "mode",
+  category: "tool",
   viewMode: true,
   hotkey: { key: "v" },
   iconId: "mode-select",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "select",
+  checked: ({ editor }) => editor.activeTool.type === "select",
   perform: ({ editor }) => {
-    editor.setMode("select");
+    editor.setActiveTool("select");
   },
 };
 
 export const actionModeHand: Action = {
   id: "mode-hand",
   label: "Hand tool",
-  category: "mode",
+  category: "tool",
   viewMode: true,
   hotkey: { key: "h" },
   iconId: "mode-hand",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "hand",
+  checked: ({ editor }) => editor.activeTool.type === "hand",
   perform: ({ editor }) => {
-    editor.setMode("hand");
+    editor.setActiveTool("hand");
   },
 };
 
 export const actionModeRect: Action = {
   id: "mode-rect",
   label: "Rectangle tool",
-  category: "mode",
+  category: "tool",
   hotkey: { key: "r" },
   iconId: "mode-rect",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "draw-rect",
+  checked: ({ editor }) => editor.activeTool.type === "draw-rect",
   perform: ({ editor }) => {
-    editor.setMode("draw-rect");
+    editor.setActiveTool("draw-rect");
   },
 };
 
 export const actionModeEllipse: Action = {
   id: "mode-ellipse",
   label: "Ellipse tool",
-  category: "mode",
+  category: "tool",
   // `O` (standard "Oval").
   hotkey: { key: "o" },
   iconId: "mode-ellipse",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "draw-ellipse",
+  checked: ({ editor }) => editor.activeTool.type === "draw-ellipse",
   perform: ({ editor }) => {
-    editor.setMode("draw-ellipse");
+    editor.setActiveTool("draw-ellipse");
   },
 };
 
 export const actionModeText: Action = {
   id: "mode-text",
   label: "Text tool",
-  category: "mode",
+  category: "tool",
   hotkey: { key: "t" },
   iconId: "mode-text",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "draw-text",
+  checked: ({ editor }) => editor.activeTool.type === "draw-text",
   perform: ({ editor }) => {
-    editor.setMode("draw-text");
+    editor.setActiveTool("draw-text");
   },
 };
 
 export const actionModeLink: Action = {
   id: "mode-edge",
   label: "Link tool",
-  category: "mode",
+  category: "tool",
   hotkey: { key: "l" },
   iconId: "mode-edge",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "draw-edge",
+  checked: ({ editor }) => editor.activeTool.type === "draw-edge",
   perform: ({ editor }) => {
-    editor.setMode("draw-edge");
+    editor.setActiveTool("draw-edge");
   },
 };
 
 export const actionModeBrush: Action = {
   id: "mode-brush",
   label: "Brush tool",
-  category: "mode",
+  category: "tool",
   hotkey: { key: "b" },
   iconId: "mode-brush",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "brush",
+  checked: ({ editor }) => editor.activeTool.type === "brush",
   perform: ({ editor }) => {
-    editor.setMode("brush");
+    editor.setActiveTool("brush");
   },
 };
 
 export const actionModeErase: Action = {
   id: "mode-erase",
   label: "Eraser tool",
-  category: "mode",
+  category: "tool",
   hotkey: { key: "e" },
   iconId: "mode-erase",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "erase",
+  checked: ({ editor }) => editor.activeTool.type === "erase",
   perform: ({ editor }) => {
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
   },
 };
 
 export const actionModeLaser: Action = {
   id: "mode-laser",
   label: "Laser pointer",
-  category: "mode",
+  category: "tool",
   // Laser is presentation-only (no scene mutation) → available in read-only.
   viewMode: true,
   hotkey: { key: "k" },
   iconId: "mode-laser",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "laser",
+  checked: ({ editor }) => editor.activeTool.type === "laser",
   perform: ({ editor }) => {
-    editor.setMode("laser");
+    editor.setActiveTool("laser");
   },
 };
 
 export const actionModeFrame: Action = {
   id: "mode-frame",
   label: "Frame tool",
-  category: "mode",
+  category: "tool",
   hotkey: { key: "f" },
   iconId: "mode-frame",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.mode === "draw-frame",
+  checked: ({ editor }) => editor.activeTool.type === "draw-frame",
   perform: ({ editor }) => {
-    editor.setMode("draw-frame");
+    editor.setActiveTool("draw-frame");
   },
 };
 
 export const actionToggleToolLock: Action = {
   id: "toggle-tool-lock",
   label: "Toggle tool lock",
-  category: "mode",
+  category: "tool",
   iconId: "tool-lock",
   uiKind: "toggle",
-  checked: ({ editor }) => editor.toolLocked,
+  checked: ({ editor }) => editor.activeTool.locked,
   // No default hotkey — toolbar button only. Hosts can register one
   // via `defaultActionRegistry.replace({...actionToggleToolLock,
   // hotkey: ...})` if needed.
   perform: ({ editor }) => {
-    editor.setToolLocked(!editor.toolLocked);
+    editor.setToolLocked(!editor.activeTool.locked);
   },
 };
 
@@ -159,7 +159,7 @@ const actionCommitCrop: Action = {
   label: "Apply crop",
   category: "edit",
   hotkey: { key: "Enter" },
-  predicate: ({ editor }) => editor.mode === "crop",
+  predicate: ({ editor }) => editor.activeTool.type === "crop",
   perform: ({ editor }) => {
     editor.commitImageCrop();
   },
@@ -171,7 +171,7 @@ const actionCancelCrop: Action = {
   category: "edit",
   viewMode: true,
   hotkey: { key: "Escape" },
-  predicate: ({ editor }) => editor.mode === "crop",
+  predicate: ({ editor }) => editor.activeTool.type === "crop",
   perform: ({ editor }) => {
     editor.cancelImageCrop();
   },

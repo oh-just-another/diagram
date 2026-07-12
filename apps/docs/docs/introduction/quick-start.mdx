@@ -58,7 +58,7 @@ export function App() {
 }
 ```
 
-`EditorAPI` includes `getScene()`, `loadScene(scene)`, `getMode()` / `setMode(mode)`, `getSelection()` / `setSelection(ids)`, `undo()` / `redo()`, and `zoomToFit()`. The `editor` field on the handle is the full live `EditorInstance` — the escape hatch for anything not on the curated surface.
+`EditorAPI` includes `getScene()`, `loadScene(scene)`, `getActiveTool()` / `setActiveTool(tool)`, `getSelection()` / `setSelection(ids)`, `undo()` / `redo()`, and `zoomToFit()`. The `editor` field on the handle is the full live `EditorInstance` — the escape hatch for anything not on the curated surface.
 
 ## Persist and restore a scene
 
@@ -95,4 +95,4 @@ To load into an already-mounted editor instead of on mount, call `api.current.lo
 
 ## Customize the chrome
 
-Props such as `initialMode`, `theme`, `hideToolbar`, and the `renderTopBar*` slots let you toggle or replace parts of the UI, and `onSceneChange` / `onSelectionChange` notify you of edits. See the full props reference in the [package README](https://github.com/oh-just-another/diagram/tree/master/packages/editor).
+Props such as `initialTool`, `theme`, `hideToolbar`, and the `renderTopBar*` slots let you toggle or replace parts of the UI, and `onSceneChange` / `onSelectionChange` notify you of edits. See the full props reference in the [package README](https://github.com/oh-just-another/diagram/tree/master/packages/editor).

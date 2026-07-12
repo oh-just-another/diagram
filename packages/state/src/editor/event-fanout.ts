@@ -1,7 +1,7 @@
 import type { Scene } from "@oh-just-another/scene";
 import type { Emitter } from "@oh-just-another/events";
 import type * as Selection from "../selection.js";
-import type { Mode } from "../modes.js";
+import type { ActiveTool } from "../modes.js";
 import type { EditorEvents } from "../editor-events.js";
 
 /**
@@ -12,7 +12,7 @@ import type { EditorEvents } from "../editor-events.js";
  * update only fires on a real flip.
  */
 export interface EditorEventCache {
-  mode: Mode | null;
+  activeTool: ActiveTool | null;
   selection: Selection.Selection | null;
   scene: Scene | null;
   viewport: Scene["viewport"] | null;
@@ -21,7 +21,7 @@ export interface EditorEventCache {
 }
 
 export const createEventCache = (): EditorEventCache => ({
-  mode: null,
+  activeTool: null,
   selection: null,
   scene: null,
   viewport: null,
@@ -35,7 +35,7 @@ export const createEventCache = (): EditorEventCache => ({
  * module doesn't import the Editor class (would create a cycle).
  */
 export interface EditorObservableSnapshot {
-  readonly mode: Mode;
+  readonly activeTool: ActiveTool;
   readonly selection: Selection.Selection;
   readonly scene: Scene;
   readonly canUndo: boolean;
@@ -49,18 +49,18 @@ export interface EditorObservableSnapshot {
  * place to the new values. Side-effect free apart from the emit
  * calls themselves.
  *
- * Scene / viewport are compared by identity (scene structures use
- * structural sharing — a new reference iff something inside
- * changed).
+ * Scene / viewport / activeTool are compared by identity (the
+ * structures use structural sharing — a new reference iff
+ * something inside changed).
  */
 export const fanOutEvents = (
   cache: EditorEventCache,
   events: Emitter<EditorEvents>,
   snapshot: EditorObservableSnapshot,
 ): void => {
-  if (snapshot.mode !== cache.mode) {
-    cache.mode = snapshot.mode;
-    events.emit("mode", snapshot.mode);
+  if (snapshot.activeTool !== cache.activeTool) {
+    cache.activeTool = snapshot.activeTool;
+    events.emit("tool", snapshot.activeTool);
   }
   if (snapshot.selection !== cache.selection) {
     cache.selection = snapshot.selection;
@@ -87,7 +87,7 @@ export const primeEventCache = (
   cache: EditorEventCache,
   snapshot: EditorObservableSnapshot,
 ): void => {
-  cache.mode = snapshot.mode;
+  cache.activeTool = snapshot.activeTool;
   cache.selection = snapshot.selection;
   cache.scene = snapshot.scene;
   cache.viewport = snapshot.scene.viewport;

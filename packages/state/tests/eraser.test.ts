@@ -83,7 +83,7 @@ describe("eraser tool", () => {
     const b = rect("b", 100, 0); // covers 100..140
     const far = rect("far", 0, 300); // way below the sweep line
     const editor = makeEditor(sceneWith(a, b, far));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
 
     // Drag from inside `a` to inside `b` along y≈20.
     editor.beginEraseStroke({ x: 20, y: 20 });
@@ -104,7 +104,7 @@ describe("eraser tool", () => {
 
   it("deletes an entire stroke in ONE undo step (undo restores every shape)", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0), rect("b", 100, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 20, y: 20 });
     editor.extendEraseStroke({ x: 120, y: 20 });
     editor.commitEraseStroke();
@@ -119,7 +119,7 @@ describe("eraser tool", () => {
 
   it("does not touch shapes outside the eraser path", () => {
     const editor = makeEditor(sceneWith(rect("hit", 0, 0), rect("miss", 200, 200)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 20, y: 20 });
     editor.extendEraseStroke({ x: 30, y: 25 });
     editor.commitEraseStroke();
@@ -129,7 +129,7 @@ describe("eraser tool", () => {
 
   it("cancel aborts the stroke without deleting", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 20, y: 20 });
     expect(editor.pendingErase.size).toBe(1);
     editor.cancelEraseStroke();
@@ -141,7 +141,7 @@ describe("eraser tool", () => {
     // `a` at x0..40, `b` far right at x200..240 — a restore wiggle inside `b`
     // can rescue it without touching `a`.
     const editor = makeEditor(sceneWith(rect("a", 0, 0), rect("b", 200, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 20, y: 20 }); // seeds `a`
     editor.extendEraseStroke({ x: 220, y: 20 }); // sweeps across to `b` — both marked
     expect([...editor.pendingErase].sort()).toEqual(["a", "b"]);
@@ -155,7 +155,7 @@ describe("eraser tool", () => {
 
   it("beginning the stroke with restore (Alt) seeds nothing under the press", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 20, y: 20 }, true);
     // Alt at press = un-mark mode; there's nothing marked yet, so no seed.
     expect(editor.pendingErase.size).toBe(0);
@@ -166,7 +166,7 @@ describe("eraser tool", () => {
     // scene-diff dirty rect is empty (renderScene would cull everything and the
     // dim would never paint). An active eraser must force a full repaint.
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.setViewportSize(500, 500);
     const ed = editor as unknown as {
       lastRenderedScene: Scene | null;
@@ -185,7 +185,7 @@ describe("eraser tool", () => {
     // Esc-cancel un-marks the shapes without a scene change; without a forced
     // repaint on that active→inactive transition the dim would stick on screen.
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.setViewportSize(500, 500);
     const ed = editor as unknown as {
       lastRenderedScene: Scene | null;
@@ -205,7 +205,7 @@ describe("eraser tool", () => {
 
   it("flags eraseActive on the render snapshot only while shapes are marked", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     const snap = () =>
       (
         editor as unknown as { buildRenderSnapshot(): { eraseActive: boolean } }

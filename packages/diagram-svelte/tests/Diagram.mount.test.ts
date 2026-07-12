@@ -28,8 +28,8 @@ interface MountedDiagram {
   undo: () => void;
   redo: () => void;
   zoomToFit: () => void;
-  getMode: () => string | null;
-  setMode: (mode: string) => void;
+  getActiveTool: () => string | null;
+  setActiveTool: (mode: string) => void;
   getSelection: () => ReadonlySet<string>;
   setSelection: (ids: Iterable<string>) => void;
 }
@@ -111,19 +111,19 @@ describe("<Diagram> mount", () => {
     const undo = vi.spyOn(el, "undo");
     const redo = vi.spyOn(el, "redo");
     const zoomToFit = vi.spyOn(el, "zoomToFit");
-    const setMode = vi.spyOn(el, "setMode");
+    const setActiveTool = vi.spyOn(el, "setActiveTool");
 
     api.undo();
     api.redo();
     api.zoomToFit();
-    api.setMode("select");
+    api.setActiveTool("select");
 
     expect(undo).toHaveBeenCalledOnce();
     expect(redo).toHaveBeenCalledOnce();
     expect(zoomToFit).toHaveBeenCalledOnce();
-    expect(setMode).toHaveBeenCalledExactlyOnceWith("select");
+    expect(setActiveTool).toHaveBeenCalledExactlyOnceWith("select");
     // Before the editor is ready the element returns inert defaults.
-    expect(api.getMode()).toBeNull();
+    expect(api.getActiveTool()).toBeNull();
     expect(api.getSelection().size).toBe(0);
     expect(api.getScene()).toBeUndefined();
   });

@@ -49,7 +49,7 @@ export type ActionCategory =
   | "z-order"
   | "grouping"
   | "zoom"
-  | "mode"
+  | "tool"
   | "layout"
   | "arrange"
   | "edit"

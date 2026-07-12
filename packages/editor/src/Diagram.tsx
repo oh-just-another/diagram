@@ -96,7 +96,7 @@ const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } a
 
 /** Default target for the Help-menu "GitHub" link (overridable / hideable via the `repositoryUrl` prop). */
 const DEFAULT_REPOSITORY_URL = "https://github.com/oh-just-another/diagram";
-import type { Editor, FileDropHandler, Mode } from "@oh-just-another/state";
+import type { ActiveTool, Editor, FileDropHandler, Mode } from "@oh-just-another/state";
 import type { ElementId } from "@oh-just-another/types";
 import { formatHotkey } from "@oh-just-another/state";
 import {
@@ -171,9 +171,9 @@ export interface DiagramAPI {
   // --- Scene ---
   readonly getScene: () => Scene;
   readonly loadScene: (scene: Scene) => void;
-  // --- Mode ---
-  readonly getMode: () => Mode | null;
-  readonly setMode: (mode: Mode) => void;
+  // --- Tool ---
+  readonly getActiveTool: () => ActiveTool | null;
+  readonly setActiveTool: (tool: Mode) => void;
   // --- Selection ---
   readonly getSelection: () => ReadonlySet<ElementId>;
   readonly setSelection: (ids: Iterable<ElementId>) => void;
@@ -187,7 +187,7 @@ export interface DiagramAPI {
 export interface DiagramProps {
   // --- Data ---
   readonly initialScene?: Scene;
-  readonly initialMode?: Mode;
+  readonly initialTool?: Mode;
 
   // --- Scene settings ---
   // Granular initial scene settings, merged over the defaults. A persisted
@@ -313,7 +313,7 @@ export type DiagramTheme = "dark" | "light" | "system";
 export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(props, ref) {
   const {
     initialScene,
-    initialMode = "select",
+    initialTool = "select",
     grid,
     snap,
     templates,
@@ -516,7 +516,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   useEffect(() => {
     if (!editor) return undefined;
     if (!wasmShaper && !wasmRaster) return undefined;
-    editor.setMode(editor.mode);
+    editor.setActiveTool(editor.activeTool.type);
     return undefined;
   }, [editor, wasmShaper, wasmRaster]);
 
@@ -612,8 +612,8 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
       capabilities: profile,
       getScene: () => editor?.scene ?? seed,
       loadScene: (scene) => editor?.loadScene(scene),
-      getMode: () => editor?.mode ?? null,
-      setMode: (mode) => editor?.setMode(mode),
+      getActiveTool: () => editor?.activeTool ?? null,
+      setActiveTool: (tool) => editor?.setActiveTool(tool),
       getSelection: () => editor?.selection ?? new Set<ElementId>(),
       setSelection: (ids) => editor?.setSelection(ids),
       undo: () => {
@@ -666,7 +666,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
           >
             <DiagramRoot
               initialScene={seed}
-              initialMode={initialMode}
+              initialTool={initialTool}
               onReady={handleReady}
               renderer={profile.renderer}
               {...(profile.renderer === "offscreen"

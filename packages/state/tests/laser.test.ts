@@ -123,7 +123,7 @@ describe("laser tool (editor)", () => {
 
   it("records an ephemeral trail without mutating scene or history", () => {
     const editor = makeEditor(emptyScene());
-    editor.setMode("laser");
+    editor.setActiveTool("laser");
 
     editor.beginLaserStroke({ x: 0, y: 0 });
     editor.extendLaserStroke({ x: 10, y: 10 });
@@ -140,7 +140,7 @@ describe("laser tool (editor)", () => {
 
   it("stops appending after the gesture ends (hover moves are ignored)", () => {
     const editor = makeEditor(emptyScene());
-    editor.setMode("laser");
+    editor.setActiveTool("laser");
     editor.beginLaserStroke({ x: 0, y: 0 });
     editor.extendLaserStroke({ x: 5, y: 5 });
     editor.endLaserStroke();
@@ -152,7 +152,7 @@ describe("laser tool (editor)", () => {
 
   it("expires the trail over time and leaves the scene untouched", () => {
     const editor = makeEditor(emptyScene());
-    editor.setMode("laser");
+    editor.setActiveTool("laser");
     editor.beginLaserStroke({ x: 0, y: 0 });
     editor.extendLaserStroke({ x: 5, y: 5 });
     editor.endLaserStroke();
@@ -169,7 +169,7 @@ describe("laser tool (editor)", () => {
   it("paints the trail immediately on move, not seconds later (FT4)", () => {
     const { target, lineToCount } = makeRecordingTarget();
     const editor = makeEditorWithOverlay(emptyScene(), target);
-    editor.setMode("laser");
+    editor.setActiveTool("laser");
 
     // Seed the overlay memo while no trail exists (mirrors an idle frame before
     // the gesture). This is what used to hide the trail: the memo cached an
@@ -192,7 +192,7 @@ describe("laser tool (editor)", () => {
 
   it("requests a render on every laser move (scheduleRender via notify)", () => {
     const editor = makeEditor(emptyScene());
-    editor.setMode("laser");
+    editor.setActiveTool("laser");
     editor.beginLaserStroke({ x: 0, y: 0 });
 
     const before = editor.laserStrokes;

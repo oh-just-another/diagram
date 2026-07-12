@@ -24,7 +24,7 @@ import { installBuiltinTemplates, loadTemplateLibrary } from "@oh-just-another/t
 installBuiltinTemplates();
 
 export const App = () => (
-  <DiagramCanvas initialScene={emptyScene()} initialMode="select">
+  <DiagramCanvas initialScene={emptyScene()} initialTool="select">
     <Toolbar />
     <Palette />
     <PropertyPanel />
@@ -124,7 +124,7 @@ Every component reads the editor from context, so most take no required props.
 | `useDiagram()` / `useDiagramOptional()`                                  | Live `Editor` (imperative; no re-render on change).            |
 | `useDiagramContext()` / `useDiagramContextOptional()`                    | Raw context value.                                             |
 | `useEditorSelector(select)`                                              | Custom selector — re-renders when the projected value changes. |
-| `useScene()` / `useSelection()` / `useMode()`                            | Reactive slices of editor state.                               |
+| `useScene()` / `useSelection()` / `useActiveTool()`                      | Reactive slices of editor state.                               |
 | `useHistory()`                                                           | `canUndo` / `canRedo` + `undo` / `redo`.                       |
 | `useLayers()` / `useActiveLayerId()`                                     | Layer list and active layer.                                   |
 | `useAnnotations()` / `useSelectedAnnotation()` / `useSelectedLink()`     | Annotation and link selection state.                           |
@@ -149,8 +149,8 @@ help, and context-menu modules additionally export their item/section types (`To
 
 ## Design notes
 
-- **`<DiagramCanvas>` owns the editor's lifetime.** Created in `useLayoutEffect` so children's effects see the provider value on first paint; disposed on unmount. `initialScene` and `initialMode` are read once — runtime updates go through the editor API (`editor.loadScene`, `editor.setMode`).
-- **Hooks subscribe via the editor's `subscribe`.** `Editor.setMode` calls `notify()` so `useMode` (and similar bespoke selectors) re-render on mode changes.
+- **`<DiagramCanvas>` owns the editor's lifetime.** Created in `useLayoutEffect` so children's effects see the provider value on first paint; disposed on unmount. `initialScene` and `initialTool` are read once — runtime updates go through the editor API (`editor.loadScene`, `editor.setActiveTool`).
+- **Hooks subscribe via the editor's `subscribe`.** `Editor.setActiveTool` calls `notify()` so `useActiveTool` (and similar bespoke selectors) re-render on tool changes.
 - **No global state.** Every editor instance is independent — composition via context lets multiple canvases live on the same page (useful for diff viewers, presentation modes).
 - **Toolbar item kinds are a discriminated union.** Hosts can mix builtin `mode` / `undo` / `redo` items with arbitrary `action` items in one declarative array.
 - **Palette uses SVG icons through `dangerouslySetInnerHTML`.** Template authors define the icon markup; the same SVG goes through the canvas renderer's SVG parser, so palette and canvas stay visually identical.

@@ -19,7 +19,7 @@ import {
   selection,
   type BrushSettings,
   type Editor,
-  type Mode,
+  type ActiveTool,
   type Selection,
 } from "@oh-just-another/state";
 import { useDiagramContext, useDiagramContextOptional, useEditorSelector } from "./context.js";
@@ -79,8 +79,15 @@ export const useScene = (): Scene => useEditorSelector((e) => e.scene, EMPTY_SCE
 export const useSelection = (): Selection =>
   useEditorSelector((e) => e.selection, selection.EMPTY, "selection");
 
-/** Current interaction mode. Defaults to `"select"` pre-mount. */
-export const useMode = (): Mode => useEditorSelector<Mode>((e) => e.mode, "select", "mode");
+/** Pre-mount fallback for {@link useActiveTool} — the editor's initial tool state. */
+const DEFAULT_ACTIVE_TOOL: ActiveTool = { type: "select", locked: false, lastActiveTool: null };
+
+/**
+ * The active tool as one value object (`{ type, locked, lastActiveTool }`).
+ * Re-renders on any tool change — a type switch or a lock flip.
+ */
+export const useActiveTool = (): ActiveTool =>
+  useEditorSelector<ActiveTool>((e) => e.activeTool, DEFAULT_ACTIVE_TOOL, "tool");
 
 /**
  * Live brush paint settings (line colour, fill, opacity, width) — what the

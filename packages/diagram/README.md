@@ -47,20 +47,20 @@ el.loadScene(savedScene);
 
 ## API
 
-| Kind      | Name                                                                  | Notes                                                             |
-| --------- | --------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Attribute | `theme`                                                               | `dark` \| `light` \| `system`.                                    |
-| Attribute | `renderer`                                                            | `canvas2d` \| `webgl2` \| `offscreen`. Omit to auto-detect.       |
-| Attribute | `grid` / `snap`                                                       | Boolean — present = on.                                           |
-| Property  | `scene`                                                               | A `Scene`. Reading returns the current scene; assigning loads it. |
-| Property  | `editor`                                                              | The live engine (`EditorInstance`), or `null` before `ready`.     |
-| Method    | `getScene()` / `loadScene(scene)`                                     | Read / replace the scene.                                         |
-| Method    | `undo()` / `redo()` / `zoomToFit()`                                   | History and viewport.                                             |
-| Method    | `getMode()` / `setMode(mode)`, `getSelection()` / `setSelection(ids)` | Tool mode and selection.                                          |
-| Event     | `ready`                                                               | Fires once the editor mounts; `detail.editor` is the live engine. |
-| Event     | `scenechange`                                                         | `detail` is the new `Scene`.                                      |
-| Event     | `selectionchange`                                                     | `detail` is an array of selected element ids.                     |
-| Event     | `themechange`                                                         | `detail` is the new theme.                                        |
+| Kind      | Name                                                                              | Notes                                                             |
+| --------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Attribute | `theme`                                                                           | `dark` \| `light` \| `system`.                                    |
+| Attribute | `renderer`                                                                        | `canvas2d` \| `webgl2` \| `offscreen`. Omit to auto-detect.       |
+| Attribute | `grid` / `snap`                                                                   | Boolean — present = on.                                           |
+| Property  | `scene`                                                                           | A `Scene`. Reading returns the current scene; assigning loads it. |
+| Property  | `editor`                                                                          | The live engine (`EditorInstance`), or `null` before `ready`.     |
+| Method    | `getScene()` / `loadScene(scene)`                                                 | Read / replace the scene.                                         |
+| Method    | `undo()` / `redo()` / `zoomToFit()`                                               | History and viewport.                                             |
+| Method    | `getActiveTool()` / `setActiveTool(tool)`, `getSelection()` / `setSelection(ids)` | Active tool and selection.                                        |
+| Event     | `ready`                                                                           | Fires once the editor mounts; `detail.editor` is the live engine. |
+| Event     | `scenechange`                                                                     | `detail` is the new `Scene`.                                      |
+| Event     | `selectionchange`                                                                 | `detail` is an array of selected element ids.                     |
+| Event     | `themechange`                                                                     | `detail` is the new theme.                                        |
 
 `defineOjaDiagram(tag?)` registers the element (the package does this on import); pass a tag name to register under a different name.
 

@@ -23,11 +23,11 @@ const editor = new Editor({
   mainTarget: layered.get("main"),
   overlayTarget: layered.get("overlay"),
   initialScene: emptyScene(),
-  initialMode: "select",
+  initialTool: "select",
 });
 
 editor.subscribe(() => render());
-editor.setMode("draw-rect");
+editor.setActiveTool("draw-rect");
 ```
 
 ## Concepts
@@ -36,7 +36,7 @@ editor.setMode("draw-rect");
 
 The centerpiece controller (`Editor`, `EditorOptions`, `LoadSceneOptions`). It owns the scene, selection, and viewport, and exposes a high-level API spanning:
 
-- **Tools / modes** — `mode`, `setMode`, `toolLocked` / `setToolLocked` (sticky tool).
+- **Tools** — `activeTool` (`{ type, locked, lastActiveTool }`, the single source of truth), `setActiveTool`, `setToolLocked` (sticky tool).
 - **Selection** — `selection`, `selectAll`, `deleteSelected`, `moveSelectionBy`, `focusCycle`, plus link selection (`selectedLinks`, `selectedLink`).
 - **History** — `undo`, `redo`, `canUndo`, `canRedo`, `history` (backed by `@oh-just-another/history`).
 - **Hit-testing** — `hitTest(worldPoint)` returns a `PressTarget`; `hitAnnotation`.

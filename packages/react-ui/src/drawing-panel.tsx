@@ -1,6 +1,6 @@
 import { type CSSProperties, type ReactNode } from "react";
 import { ColorSwatchPicker } from "./color-swatch-picker.js";
-import { useBrushSettings, useDiagramOptional, useMode } from "./hooks.js";
+import { useActiveTool, useBrushSettings, useDiagramOptional } from "./hooks.js";
 import { BRUSH_WIDTH_MAX, BRUSH_WIDTH_MIN, DRAWING_PANEL_WIDTH } from "./constants.js";
 
 /**
@@ -14,7 +14,7 @@ import { BRUSH_WIDTH_MAX, BRUSH_WIDTH_MIN, DRAWING_PANEL_WIDTH } from "./constan
  */
 export const DrawingPanel = ({ style }: { readonly style?: CSSProperties }) => {
   const editor = useDiagramOptional();
-  const mode = useMode();
+  const mode = useActiveTool().type;
   const settings = useBrushSettings();
   if (!editor || (mode !== "brush" && mode !== "erase")) return null;
   const isEraser = mode === "erase";

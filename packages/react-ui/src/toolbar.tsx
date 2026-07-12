@@ -18,7 +18,7 @@ import {
 import type { Editor, Mode } from "@oh-just-another/state";
 import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
 import { useEditorSelector } from "./context.js";
-import { useDiagramOptional, useHistory, useMode, useReadOnly } from "./hooks.js";
+import { useActiveTool, useDiagramOptional, useHistory, useReadOnly } from "./hooks.js";
 import { TOOLBAR_SEPARATOR_HEIGHT } from "./constants.js";
 import { Tooltip } from "./tooltip.js";
 
@@ -112,7 +112,7 @@ const HK_ZOOM_RESET = formatHotkey({ meta: true, key: "0" });
 const HK_ZOOM_FIT = formatHotkey({ meta: true, key: "1" });
 
 /**
- * Single toolbar item. Builtin `mode` items wire to `editor.setMode`;
+ * Single toolbar item. Builtin `mode` items wire to `editor.setActiveTool`;
  * `action` items receive the live editor and decide what to do; `divider`
  * draws a thin vertical separator. The `zoom-*` kinds let hosts place
  * individual zoom controls anywhere in the toolbar; `zoom` packs all
@@ -157,7 +157,7 @@ export type ToolbarItem =
   | {
       /**
        * Tool-lock toggle. Renders a pressed-when-locked button; click flips
-       * `editor.toolLocked`. When locked, draw modes (rectangle / ellipse /
+       * `editor.activeTool.locked`. When locked, draw modes (rectangle / ellipse /
        * edge / brush) persist after each create instead of reverting to
        * select.
        */
@@ -283,7 +283,7 @@ export const Toolbar = ({
   orientation = "horizontal",
 }: ToolbarProps) => {
   const editor = useDiagramOptional();
-  const mode = useMode();
+  const activeTool = useActiveTool();
   const readOnly = useReadOnly();
   const { canUndo, canRedo, undo, redo } = useHistory();
   const vertical = orientation === "vertical";
@@ -302,7 +302,7 @@ export const Toolbar = ({
           case "action-ref":
             return <ActionRefButton key={i} id={item.id} />;
           case "mode": {
-            const active = mode === item.mode;
+            const active = activeTool.type === item.mode;
             // Only select / hand are navigation-safe; every other mode
             // creates, so it disables in read-only.
             const navSafe = item.mode === "select" || item.mode === "hand";
@@ -312,7 +312,7 @@ export const Toolbar = ({
                 {...(item.title !== undefined ? { title: item.title } : {})}
                 disabled={!editor || (readOnly && !navSafe)}
                 active={active}
-                onClick={() => editor?.setMode(item.mode)}
+                onClick={() => editor?.setActiveTool(item.mode)}
               >
                 {item.label}
               </ToolbarButton>
@@ -359,7 +359,7 @@ export const Toolbar = ({
 };
 
 /**
- * Pressable tool-lock affordance. Reads `editor.toolLocked` reactively so
+ * Pressable tool-lock affordance. Reads `editor.activeTool.locked` reactively so
  * the active state stays in sync when the user toggles via hotkey or
  * context menu.
  */
@@ -371,7 +371,7 @@ const ToolLockButton = ({
   readonly title?: string;
 }) => {
   const editor = useDiagramOptional();
-  const locked = useEditorSelector((e) => e.toolLocked, false);
+  const locked = useEditorSelector((e) => e.activeTool.locked, false);
   const readOnly = useReadOnly();
   return (
     <ToolbarButton

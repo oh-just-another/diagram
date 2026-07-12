@@ -15,7 +15,7 @@ import { DiagramCanvas, Toolbar, Palette, PropertyPanel } from "@oh-just-another
 import "@oh-just-another/react-ui/styles.css";
 
 export const App = () => (
-  <DiagramCanvas initialScene={emptyScene()} initialMode="select">
+  <DiagramCanvas initialScene={emptyScene()} initialTool="select">
     <Toolbar />
     <Palette />
     <PropertyPanel />
@@ -36,13 +36,13 @@ Because every component reads the editor from context, most take no required pro
 
 ## Hooks
 
-State is read through hooks rather than prop drilling. `useDiagram()` returns the live editor (imperative, no re-render); reactive slices come from `useScene()`, `useSelection()`, `useMode()`, `useHistory()`, `useLayers()`. For anything custom, `useEditorSelector(select)` re-renders only when the projected value changes.
+State is read through hooks rather than prop drilling. `useDiagram()` returns the live editor (imperative, no re-render); reactive slices come from `useScene()`, `useSelection()`, `useActiveTool()`, `useHistory()`, `useLayers()`. For anything custom, `useEditorSelector(select)` re-renders only when the projected value changes.
 
 ```tsx
-import { useMode, useHistory } from "@oh-just-another/react-ui";
+import { useActiveTool, useHistory } from "@oh-just-another/react-ui";
 
 function StatusBar() {
-  const mode = useMode();
+  const mode = useActiveTool().type;
   const { canUndo, undo } = useHistory();
   return (
     <button disabled={!canUndo} onClick={undo}>

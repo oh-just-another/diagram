@@ -124,11 +124,11 @@ export class DiagramComponent implements AfterViewInit, OnChanges, OnDestroy, Oj
   zoomToFit(): void {
     this.controller.zoomToFit();
   }
-  getMode(): ReturnType<OjaDiagramController["getMode"]> {
-    return this.controller.getMode();
+  getActiveTool(): ReturnType<OjaDiagramController["getActiveTool"]> {
+    return this.controller.getActiveTool();
   }
-  setMode(mode: Parameters<OjaDiagramController["setMode"]>[0]): void {
-    this.controller.setMode(mode);
+  setActiveTool(tool: Parameters<OjaDiagramController["setActiveTool"]>[0]): void {
+    this.controller.setActiveTool(tool);
   }
   getSelection(): ReturnType<OjaDiagramController["getSelection"]> {
     return this.controller.getSelection();

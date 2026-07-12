@@ -61,7 +61,7 @@ const CATEGORY_TITLES: Record<ActionCategory, string> = {
   "z-order": "Z-order",
   grouping: "Grouping",
   zoom: "Zoom",
-  mode: "Tools",
+  tool: "Tools",
   layout: "Layout",
   arrange: "Arrange",
   edit: "Editing",
@@ -72,7 +72,7 @@ const CATEGORY_TITLES: Record<ActionCategory, string> = {
 // dialog entirely (a category absent from this list is never rendered). Keep in
 // sync with the `ActionCategory` union.
 const CATEGORY_ORDER: ActionCategory[] = [
-  "mode",
+  "tool",
   "edit",
   "selection",
   "clipboard",

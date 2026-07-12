@@ -73,7 +73,7 @@ export const useEditorSelector = <T,>(
   /**
    * Optional typed event to subscribe to instead of the umbrella
    * `change`. When omitted, falls back to `editor.subscribe(fn)`, which
-   * fires on every notify. Passing e.g. `"mode"` makes the hook re-run
+   * fires on every notify. Passing e.g. `"tool"` makes the hook re-run
    * the selector only when the mode flipped, skipping selection /
    * viewport / scene notifies entirely.
    */

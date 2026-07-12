@@ -42,7 +42,7 @@ describe("<oja-diagram> custom element", () => {
   it("returns inert defaults before mount", () => {
     const el = document.createElement("oja-diagram");
     expect(el.getSelection().size).toBe(0);
-    expect(el.getMode()).toBeNull();
+    expect(el.getActiveTool()).toBeNull();
     expect(el.getScene()).toBeUndefined();
     expect(el.editor).toBeNull();
     // Imperative calls are no-ops until ready — they must not throw.

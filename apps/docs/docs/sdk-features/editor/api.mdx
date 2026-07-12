@@ -20,7 +20,7 @@ export function App() {
 
 ## Driving it from code
 
-Pass a `ref` to get an `EditorAPI` handle. It exposes curated verbs — `getScene`, `loadScene`, `getMode` / `setMode`, `getSelection` / `setSelection`, `undo` / `redo`, `zoomToFit` — plus `editor`, the full live engine (`EditorInstance`) as the escape hatch (`null` until `onReady` fires).
+Pass a `ref` to get an `EditorAPI` handle. It exposes curated verbs — `getScene`, `loadScene`, `getActiveTool` / `setActiveTool`, `getSelection` / `setSelection`, `undo` / `redo`, `zoomToFit` — plus `editor`, the full live engine (`EditorInstance`) as the escape hatch (`null` until `onReady` fires).
 
 ```tsx
 import { useRef } from "react";
@@ -47,7 +47,7 @@ const editor = new Editor({ host, mainTarget, overlayTarget, initialScene });
 const unbindKeys = bindEditorHotkeys(editor);
 
 editor.subscribe(() => syncUi());
-editor.setMode("draw-rect");
+editor.setActiveTool("draw-rect");
 ```
 
 `Diagram` is a deprecated alias of the `Editor` component.

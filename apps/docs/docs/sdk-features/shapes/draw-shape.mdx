@@ -10,7 +10,7 @@ import { Editor } from "@oh-just-another/state";
 import { addElement } from "@oh-just-another/scene";
 
 declare const editor: Editor;
-editor.setMode("draw-rect");
+editor.setActiveTool("draw-rect");
 ```
 
 `Mode` from `@oh-just-another/state` enumerates the full set of tools. For non-interactive creation, call the pure `addElement` operation from `@oh-just-another/scene`, which returns the next scene plus a patch.

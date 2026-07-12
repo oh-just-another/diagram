@@ -5,6 +5,7 @@ import {
   type EditorAPI,
   type EditorProps,
   type ElementId,
+  type ActiveTool,
   type Mode,
 } from "@oh-just-another/editor";
 import { PortalContainerProvider } from "@oh-just-another/react-ui";
@@ -42,7 +43,7 @@ const styleSheet = (): CSSStyleSheet => {
  * (`canvas2d` | `webgl2` | `offscreen`), `grid` / `snap` (boolean — present
  * = on). Properties: `scene` (a `Scene` object). Events: `ready`,
  * `scenechange`, `selectionchange`, `themechange`. Methods: `undo`, `redo`,
- * `zoomToFit`, `getScene`, `loadScene`, `getMode`, `setMode`,
+ * `zoomToFit`, `getScene`, `loadScene`, `getActiveTool`, `setActiveTool`,
  * `getSelection`, `setSelection`, plus the `editor` escape hatch.
  */
 export class OjaDiagramElement extends HTMLElement {
@@ -155,11 +156,11 @@ export class OjaDiagramElement extends HTMLElement {
   zoomToFit(): void {
     this.#api?.zoomToFit();
   }
-  getMode(): Mode | null {
-    return this.#api?.getMode() ?? null;
+  getActiveTool(): ActiveTool | null {
+    return this.#api?.getActiveTool() ?? null;
   }
-  setMode(mode: Mode): void {
-    this.#api?.setMode(mode);
+  setActiveTool(tool: Mode): void {
+    this.#api?.setActiveTool(tool);
   }
   getSelection(): ReadonlySet<ElementId> {
     return this.#api?.getSelection() ?? new Set();

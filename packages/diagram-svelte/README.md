@@ -50,7 +50,7 @@ The component fills its parent — give the parent a height.
 
 ## Imperative API
 
-Through `bind:this`: `getScene`, `loadScene`, `undo`, `redo`, `zoomToFit`, `getMode`, `setMode`, `getSelection`, `setSelection`.
+Through `bind:this`: `getScene`, `loadScene`, `undo`, `redo`, `zoomToFit`, `getActiveTool`, `setActiveTool`, `getSelection`, `setSelection`.
 
 ## Dev
 

@@ -136,7 +136,7 @@ describe("pan triggers", () => {
 
   it("hand mode left drag pans the viewport", () => {
     const { editor, fire } = setup();
-    editor.setMode("hand");
+    editor.setActiveTool("hand");
     const pan0 = { ...editor.scene.viewport.pan };
     fire("pointerdown", 120, 120, { button: 0 });
     fire("pointermove", 60, 90, { button: 0 });

@@ -20,6 +20,6 @@ const unsub = editor.subscribe(() => {
 });
 ```
 
-`@oh-just-another/react-ui` builds React bindings on this — `useScene`, `useSelection`, `useMode`, `useHistory`, `useLayers`, and `useEditorSelector` re-render a component only when the slice it reads changes.
+`@oh-just-another/react-ui` builds React bindings on this — `useScene`, `useSelection`, `useActiveTool`, `useHistory`, `useLayers`, and `useEditorSelector` re-render a component only when the slice it reads changes.
 
 Planned — not yet available: a dependency-tracking signals/computed primitive. If your framework provides signals (Solid, Preact, Vue refs), bridge them to `editor.on(...)` / `editor.subscribe(...)` — write the slice into your signal inside the listener.

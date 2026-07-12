@@ -27,14 +27,22 @@ Colour sampling is not a mode: the colour picker arms a one-shot pipette via `ed
 
 Pan and zoom remain available as gestures (middle-mouse, Space+drag, wheel) regardless of the active mode. In read-only mode only `select`, `hand` and `laser` mode switches are allowed.
 
-```ts
-import { Editor, DEFAULT_MODE, type Mode } from "@oh-just-another/state";
+## The `activeTool` object
 
-editor.setMode("draw-rect");
-const mode: Mode = editor.mode;
+`editor.activeTool` is the single source of truth for the current tool — a value object `{ type, locked, lastActiveTool }` (`ActiveTool`). `editor.setActiveTool(type)` is the only way to switch; toolbar buttons and hotkeys reach it through the action registry.
+
+```ts
+import { Editor, DEFAULT_MODE, type ActiveTool, type Mode } from "@oh-just-another/state";
+
+editor.setActiveTool("draw-rect");
+const tool: ActiveTool = editor.activeTool;
+tool.type; // "draw-rect"
+tool.lastActiveTool; // "select" — the tool active before the switch
 ```
 
-With the React component, the mode is on the `EditorAPI` handle:
+The object reference is stable between changes, so it is safe in React dependency arrays.
+
+With the React component, the tool is on the `EditorAPI` handle:
 
 ```tsx
 import { useRef } from "react";
@@ -42,24 +50,24 @@ import { Editor, type EditorAPI } from "@oh-just-another/editor";
 
 function Host() {
   const ref = useRef<EditorAPI>(null);
-  const drawRect = () => ref.current?.setMode("draw-rect");
-  return <Editor ref={ref} initialMode="select" />;
+  const drawRect = () => ref.current?.setActiveTool("draw-rect");
+  return <Editor ref={ref} initialTool="select" />;
 }
 ```
 
 ## Sticky tools (tool lock)
 
-By default a draw mode auto-reverts to `select` after one successful create. Toggle tool-lock to keep the tool active so the user can draw many shapes in a row.
+By default a draw tool auto-reverts to `select` after one successful create. Toggle tool-lock (`activeTool.locked`) to keep the tool active so the user can draw many shapes in a row.
 
 ```ts
 editor.setToolLocked(true);
-const locked = editor.toolLocked;
+const locked = editor.activeTool.locked;
 ```
 
-## Reacting to mode changes
+## Reacting to tool changes
 
-Listen to the typed `mode` event to keep a toolbar in sync.
+Listen to the typed `tool` event to keep a toolbar in sync. It fires on a type switch and on a lock flip.
 
 ```ts
-editor.on("mode", (mode) => highlightToolButton(mode));
+editor.on("tool", (tool) => highlightToolButton(tool.type));
 ```

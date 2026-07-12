@@ -1,4 +1,4 @@
-import type { EditorAPI, ElementId, Mode } from "@oh-just-another/editor";
+import type { ActiveTool, EditorAPI, ElementId, Mode } from "@oh-just-another/editor";
 import type { Scene } from "@oh-just-another/scene";
 import type { OjaDiagramElement } from "./oja-diagram-element.js";
 
@@ -117,8 +117,8 @@ export interface OjaDiagramController {
   undo: () => void;
   redo: () => void;
   zoomToFit: () => void;
-  getMode: () => Mode | null;
-  setMode: (mode: Mode) => void;
+  getActiveTool: () => ActiveTool | null;
+  setActiveTool: (tool: Mode) => void;
   getSelection: () => ReadonlySet<ElementId>;
   setSelection: (ids: Iterable<ElementId>) => void;
 }
@@ -132,8 +132,8 @@ export const ojaDiagramController = (
   undo: () => get()?.undo(),
   redo: () => get()?.redo(),
   zoomToFit: () => get()?.zoomToFit(),
-  getMode: () => get()?.getMode() ?? null,
-  setMode: (mode) => get()?.setMode(mode),
+  getActiveTool: () => get()?.getActiveTool() ?? null,
+  setActiveTool: (tool) => get()?.setActiveTool(tool),
   getSelection: () => get()?.getSelection() ?? new Set<ElementId>(),
   setSelection: (ids) => get()?.setSelection(ids),
 });

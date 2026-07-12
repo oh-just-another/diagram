@@ -9,6 +9,7 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
+import type { Mode } from "../src/modes.js";
 import { modeActions } from "../src/actions/actionMode.js";
 import { selectionActions } from "../src/actions/actionSelection.js";
 import { zOrderActions } from "../src/actions/actionZOrder.js";
@@ -75,7 +76,7 @@ const byId = (actions: readonly { id: string }[], id: string) => {
 };
 
 describe("modeActions", () => {
-  const cases: ReadonlyArray<[string, Editor["mode"]]> = [
+  const cases: ReadonlyArray<[string, Mode]> = [
     ["mode-select", "select"],
     ["mode-hand", "hand"],
     ["mode-rect", "draw-rect"],
@@ -93,23 +94,23 @@ describe("modeActions", () => {
     // the non-select cases; for mode-select itself the default is select).
     if (id !== "mode-select") expect(action.checked?.({ editor })).toBe(false);
     action.perform({ editor });
-    expect(editor.mode).toBe(mode);
+    expect(editor.activeTool.type).toBe(mode);
     expect(action.checked?.({ editor })).toBe(true);
     // Switching to a different mode flips checked() back off.
     byId(modeActions, "mode-hand").perform({ editor });
     if (id !== "mode-hand") expect(action.checked?.({ editor })).toBe(false);
   });
 
-  it("toggle-tool-lock flips editor.toolLocked and reflects checked()", () => {
+  it("toggle-tool-lock flips editor.activeTool.locked and reflects checked()", () => {
     const editor = makeEditor();
     const action = byId(modeActions, "toggle-tool-lock");
-    expect(editor.toolLocked).toBe(false);
+    expect(editor.activeTool.locked).toBe(false);
     expect(action.checked?.({ editor })).toBe(false);
     action.perform({ editor });
-    expect(editor.toolLocked).toBe(true);
+    expect(editor.activeTool.locked).toBe(true);
     expect(action.checked?.({ editor })).toBe(true);
     action.perform({ editor });
-    expect(editor.toolLocked).toBe(false);
+    expect(editor.activeTool.locked).toBe(false);
   });
 
   it("cancel clears the selection via cancelInteraction", () => {

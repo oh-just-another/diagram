@@ -63,8 +63,8 @@ const makeApi = (over: Partial<EditorAPI> = {}): EditorAPI =>
     undo: vi.fn(),
     redo: vi.fn(),
     zoomToFit: vi.fn(),
-    getMode: vi.fn(() => "select"),
-    setMode: vi.fn(),
+    getActiveTool: vi.fn(() => ({ type: "select", locked: false, lastActiveTool: null })),
+    setActiveTool: vi.fn(),
     getSelection: vi.fn(() => new Set()),
     setSelection: vi.fn(),
     ...over,
@@ -214,14 +214,14 @@ describe("<oja-diagram> imperative API delegation", () => {
     el.undo();
     el.redo();
     el.zoomToFit();
-    el.setMode("draw-rect" as never);
+    el.setActiveTool("draw-rect" as never);
     el.setSelection(["a"] as never);
     expect(api.undo).toHaveBeenCalledOnce();
     expect(api.redo).toHaveBeenCalledOnce();
     expect(api.zoomToFit).toHaveBeenCalledOnce();
-    expect(api.setMode).toHaveBeenCalledExactlyOnceWith("draw-rect");
+    expect(api.setActiveTool).toHaveBeenCalledExactlyOnceWith("draw-rect");
     expect(api.setSelection).toHaveBeenCalledExactlyOnceWith(["a"]);
-    expect(el.getMode()).toBe("select");
+    expect(el.getActiveTool()).toEqual({ type: "select", locked: false, lastActiveTool: null });
     expect(el.getSelection().size).toBe(0);
   });
 

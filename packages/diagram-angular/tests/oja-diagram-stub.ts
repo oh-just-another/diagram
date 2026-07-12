@@ -16,10 +16,10 @@ class OjaDiagramStub extends HTMLElement {
   undo(): void {}
   redo(): void {}
   zoomToFit(): void {}
-  getMode(): null {
+  getActiveTool(): null {
     return null;
   }
-  setMode(_mode: unknown): void {}
+  setActiveTool(_mode: unknown): void {}
   getSelection(): ReadonlySet<never> {
     return new Set();
   }

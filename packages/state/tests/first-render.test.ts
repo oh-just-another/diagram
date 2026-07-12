@@ -199,7 +199,7 @@ describe("first render after ResizeObserver", () => {
     const fillsAfterMount = mainLog.fillCalls;
     expect(fillsAfterMount).toBeGreaterThanOrEqual(1);
     // Simulate "setMode(sameMode)" — notify with no scene change.
-    editor.setMode(editor.mode);
+    editor.setActiveTool(editor.activeTool.type);
     // Await microtasks so any queued auto-compact runs and flushes.
     await Promise.resolve();
     // A same-scene notify is a no-op on the main canvas (no new fills); the

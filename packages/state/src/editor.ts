@@ -124,7 +124,8 @@ import {
   type PressTarget,
 } from "./machine.js";
 import type { HandleId } from "./handle.js";
-import type { Mode } from "./modes.js";
+import type { ActiveTool, Mode } from "./modes.js";
+import { DEFAULT_MODE } from "./modes.js";
 import type { EditorEvents } from "./editor-events.js";
 import {
   createEventCache,
@@ -362,7 +363,7 @@ import * as LinkSelection from "./link-selection.js";
  * Memoized by {@link Editor.observableSnapshot} while its slices are unchanged.
  */
 interface ObservableSnapshot {
-  readonly mode: Mode;
+  readonly activeTool: ActiveTool;
   readonly selection: Selection.Selection;
   readonly selectedLinks: LinkSelection.LinkSelection;
   readonly scene: Scene;
@@ -405,7 +406,7 @@ export interface EditorOptions {
    */
   readonly onAfterRender?: () => void;
   readonly initialScene: Scene;
-  readonly initialMode?: Mode;
+  readonly initialTool?: Mode;
   /**
    * Start the editor in read-only / view mode. Pointer edits (create /
    * move / resize / rotate / delete) and non-`viewMode` actions are gated;
@@ -1050,6 +1051,16 @@ export class Editor {
    */
   private _toolLocked = false;
 
+  /** The tool active before the current one — `activeTool.lastActiveTool`. */
+  private _lastActiveTool: Mode | null = null;
+
+  /** Cached `activeTool` value object; rebuilt only when a component changes. */
+  private _activeToolCache: ActiveTool = {
+    type: DEFAULT_MODE,
+    locked: false,
+    lastActiveTool: null,
+  };
+
   /**
    * Host-extensible file-drop dispatch. Built-ins (image / scene
    * JSON) register themselves at editor construction; hosts add
@@ -1269,10 +1280,10 @@ export class Editor {
         return self._toolLocked;
       },
       get mode() {
-        return self.mode;
+        return self.activeTool.type;
       },
       setMode: (m) => {
-        self.setMode(m);
+        self.setActiveTool(m);
       },
       notify: () => {
         self.notify();
@@ -1460,8 +1471,8 @@ export class Editor {
 
     this._readOnly = options.readOnly ?? false;
 
-    if (options.initialMode) {
-      this.actor.send({ type: "SET_MODE", mode: options.initialMode });
+    if (options.initialTool) {
+      this.actor.send({ type: "SET_MODE", mode: options.initialTool });
     }
   }
 
@@ -1484,7 +1495,7 @@ export class Editor {
    * either way, so emitted events are unchanged.
    */
   private observableSnapshot(): ObservableSnapshot {
-    const mode = this.mode;
+    const activeTool = this.activeTool;
     const selection = this._selection;
     const selectedLinks = this._selectedLinks;
     const scene = this._scene;
@@ -1493,7 +1504,7 @@ export class Editor {
     const cached = this.snapshotCache;
     if (
       cached !== null &&
-      cached.mode === mode &&
+      cached.activeTool === activeTool &&
       cached.selection === selection &&
       cached.selectedLinks === selectedLinks &&
       cached.scene === scene &&
@@ -1503,7 +1514,7 @@ export class Editor {
       return cached;
     }
     const snapshot: ObservableSnapshot = {
-      mode,
+      activeTool,
       selection,
       selectedLinks,
       scene,
@@ -1522,8 +1533,26 @@ export class Editor {
   get selection(): Selection.Selection {
     return this._selection;
   }
-  get mode(): Mode {
-    return this.actor.getSnapshot().context.mode;
+  /**
+   * The active tool as a single value object (`{ type, locked,
+   * lastActiveTool }`) — the one source of truth for the current tool.
+   * The reference is stable between changes (safe for React deps).
+   */
+  get activeTool(): ActiveTool {
+    const type = this.actor.getSnapshot().context.mode;
+    const c = this._activeToolCache;
+    if (
+      c.type !== type ||
+      c.locked !== this._toolLocked ||
+      c.lastActiveTool !== this._lastActiveTool
+    ) {
+      this._activeToolCache = {
+        type,
+        locked: this._toolLocked,
+        lastActiveTool: this._lastActiveTool,
+      };
+    }
+    return this._activeToolCache;
   }
   get history(): HistoryProvider {
     return this._history;
@@ -1751,11 +1780,6 @@ export class Editor {
     this.setGrid({ enabled: !this.gridEnabled });
   }
 
-  /** Whether the active draw-mode sticks after a create (toolbar lock). */
-  get toolLocked(): boolean {
-    return this._toolLocked;
-  }
-
   /** All currently-selected link (connector) ids. */
   get selectedLinks(): LinkSelection.LinkSelection {
     return this._selectedLinks;
@@ -1817,8 +1841,8 @@ export class Editor {
   }
 
   /**
-   * Toggle the tool-lock affordance. With `true`, draw-modes persist
-   * after each successful shape create — the user keeps drawing
+   * Toggle the tool lock (`activeTool.locked`). With `true`, draw tools
+   * persist after each successful shape create — the user keeps drawing
    * rectangles without re-pressing R. With `false` (default), the
    * editor reverts to `select` after each create.
    */
@@ -1828,11 +1852,18 @@ export class Editor {
     this.notify();
   }
 
-  private maybeRevertModeAfterCreate(): void {
+  private maybeRevertToolAfterCreate(): void {
     this.gestures.maybeRevertModeAfterCreate();
   }
 
-  setMode(mode: Mode): void {
+  /**
+   * Switch the active tool. The single entry point for tool changes —
+   * toolbar buttons and hotkeys reach it through the action registry.
+   * Records the outgoing tool in `activeTool.lastActiveTool`.
+   */
+  setActiveTool(mode: Mode): void {
+    const prev = this.actor.getSnapshot().context.mode;
+    if (prev !== mode) this._lastActiveTool = prev;
     // A tool switch cancels any armed colour-picker pipette.
     this.pendingEyedropperPick = null;
     // Switching tools commits any in-flight text edit (standard: leaving the
@@ -2400,7 +2431,13 @@ export class Editor {
       y: (vp.size.height || 200) / 2,
     });
     const id = newElementIdAtCursor(++this.nextId);
-    const shape = buildElementAtCursor(this._scene, this.mode, world, this._activeLayerId, id);
+    const shape = buildElementAtCursor(
+      this._scene,
+      this.activeTool.type,
+      world,
+      this._activeLayerId,
+      id,
+    );
     const r = addElement(this._scene, shape);
     this._scene = r.scene;
     this._history.push(r.patch);
@@ -2427,7 +2464,7 @@ export class Editor {
     this._scene = r.scene;
     this.textEdit.markPendingCreate(id);
     this._selection = Selection.single(id);
-    this.maybeRevertModeAfterCreate();
+    this.maybeRevertToolAfterCreate();
     this.notify();
     this.announce(`Created text ${id}`);
     this.beginTextEdit(id);
@@ -3340,7 +3377,7 @@ export class Editor {
       drag: null,
       dragStartWorld: null,
     };
-    this.setMode("crop");
+    this.setActiveTool("crop");
     this.refreshCursor();
     this.notify();
   }
@@ -3435,7 +3472,7 @@ export class Editor {
       this._scene = result.scene;
       this._history.push(result.patch);
     }
-    this.setMode("select");
+    this.setActiveTool("select");
     this.refreshCursor();
     this.notify();
   }
@@ -3444,7 +3481,7 @@ export class Editor {
   cancelImageCrop(): void {
     if (this.cropSession === null) return;
     this.cropSession = null;
-    this.setMode("select");
+    this.setActiveTool("select");
     this.refreshCursor();
     this.notify();
   }
@@ -5011,7 +5048,7 @@ export class Editor {
     if (kind === "frame") {
       this.assignFrameMembers(id, b);
     }
-    this.maybeRevertModeAfterCreate();
+    this.maybeRevertToolAfterCreate();
     this.notify();
   }
 
@@ -5050,7 +5087,7 @@ export class Editor {
     this._scene = result.scene;
     this._history.push(result.patch);
     this.edgePreview = null;
-    this.maybeRevertModeAfterCreate();
+    this.maybeRevertToolAfterCreate();
     // Dropped on empty canvas (free `point` end) → offer a shape-picker at
     // the drop point (standard). The free-ended link stays; picking re-points
     // it, dismissing keeps it. Only the `to` end is user-dragged here.
@@ -5724,7 +5761,7 @@ export class Editor {
         this.gifPlayback.clock(castElementId(typeof shape.id === "string" ? shape.id : "")),
       tileComposeFn: this.tileComposeFn,
       tileDirtyElements: this.tileDirtyElements,
-      mode: this.mode,
+      mode: this.activeTool.type,
       activeLayerId: this._activeLayerId,
       cropFrame: this.cropFrameCorners(),
       cropGhost: this.cropGhost(),
@@ -5756,7 +5793,7 @@ export class Editor {
       // null outside select mode. Radius is the panel's eraser width in SCREEN
       // px (matches the slider number).
       eraserCursor:
-        this.mode === "erase" && !this._readOnly && this.lastPointerWorld !== null
+        this.activeTool.type === "erase" && !this._readOnly && this.lastPointerWorld !== null
           ? { center: this.lastPointerWorld, radius: this._brushSettings.width }
           : null,
       peerCursors: this._peerCursors,

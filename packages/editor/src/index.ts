@@ -70,7 +70,12 @@ export { installGifAnimationAdapter } from "./gif-animation.js";
 // (state's `Editor`) is re-exported as `EditorInstance` to avoid clashing
 // with the `<Editor>` component above.
 export type { ElementId } from "@oh-just-another/types";
-export type { Editor as EditorInstance, Mode, FileDropHandler } from "@oh-just-another/state";
+export type {
+  ActiveTool,
+  Editor as EditorInstance,
+  Mode,
+  FileDropHandler,
+} from "@oh-just-another/state";
 // Tool operations + types (eyedropper / convert-type / image-crop / spawn).
 export {
   clampCrop,

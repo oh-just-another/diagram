@@ -126,7 +126,7 @@ describe("draw-by-drag shows a WYSIWYG shape preview (not just a dashed box)", (
       initialScene: emptyScene(),
     });
     editor.setViewportSize(800, 600);
-    editor.setMode("draw-ellipse");
+    editor.setActiveTool("draw-ellipse");
     flushRAF();
 
     overlay.ellipses.length = 0;

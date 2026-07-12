@@ -57,7 +57,7 @@ The component fills its parent — give the parent (or the component) a height.
 
 ## Imperative API
 
-Through a template `ref`: `getScene`, `loadScene`, `undo`, `redo`, `zoomToFit`, `getMode`, `setMode`, `getSelection`, `setSelection`.
+Through a template `ref`: `getScene`, `loadScene`, `undo`, `redo`, `zoomToFit`, `getActiveTool`, `setActiveTool`, `getSelection`, `setSelection`.
 
 ## Dev
 
