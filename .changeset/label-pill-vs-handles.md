@@ -1,0 +1,12 @@
+---
+"@oh-just-another/scene": patch
+"@oh-just-another/state": patch
+---
+
+Fix: the caption pill no longer fights the bend/segment handles. The
+"add waypoint" and elbow segment handles slide out from under the label pill
+along their own span (`getLinkWaypointMidpoints` is label-aware; new shared
+`getElbowSegmentHandles` keeps the drawn dot and the grab point identical),
+and a press inside the pill always belongs to the caption — click selects the
+link, double-click opens the inline caption editor instead of being swallowed
+by a handle grab.

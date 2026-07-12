@@ -1,5 +1,7 @@
 import {
   findContainerAt,
+  getElbowSegmentHandles,
+  linkLabelBounds,
   getAnchorWorld,
   getDropZoneWorld,
   getElement,
@@ -12,6 +14,7 @@ import {
   isImage,
   isText,
   updateAnnotation,
+  type Link,
 } from "@oh-just-another/scene";
 import {
   boundsFromPoints,
@@ -40,11 +43,14 @@ import { clampZoom } from "./public/zoom-pan.js";
 import { req } from "../util.js";
 import type { Editor } from "../editor.js";
 
-/** Inclusive integer range `[a..b]`; empty when `b < a`. */
-const range = (a: number, b: number): number[] => {
-  const out: number[] = [];
-  for (let i = a; i <= b; i++) out.push(i);
-  return out;
+/**
+ * True when the press lands inside the selected link's caption pill — such a
+ * press belongs to the caption (click selects, double-click edits the text),
+ * so bend / segment handle grabs must not consume it.
+ */
+const pressInsideLabel = (editor: Editor, edge: Link, p: Vec2): boolean => {
+  const b = linkLabelBounds(editor._scene, edge);
+  return b !== null && p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
 };
 
 /** True when `p` lies within `√r2` of `center` (squared-distance compare). */
@@ -317,20 +323,19 @@ const handleDownSegmentDrag = (editor: Editor, worldPoint: Vec2): boolean => {
   if (!(edge && (edge.routing ?? "straight") === "orthogonal")) return false;
   const path = getLinkPath(editor._scene, edge);
   if (!(path && path.length >= 2)) return false;
+  // A press inside the caption pill is the caption's (select the link,
+  // double-click edits the text) — never a segment grab.
+  if (pressInsideLabel(editor, edge, worldPoint)) return false;
   const zoom = editor._scene.viewport.zoom || 1;
   const r = LINK_ENDPOINT_HANDLE_RADIUS / zoom;
   const r2 = r * r;
-  // Draggable segments: the single segment of a straight elbow (grab to bend it
-  // → insert), or interior segments k in 1..len-3 of a routed elbow (terminal
-  // stubs touch from/to and aren't slid).
-  const segs = path.length === 2 ? [0] : range(1, path.length - 3);
-  for (const k of segs) {
+  // Draggable segments — shared with the overlay so the grab point always
+  // matches the drawn dot (handles slide out from under the caption pill).
+  for (const { k, point } of getElbowSegmentHandles(editor._scene, edge, path)) {
     const a = req(path[k]);
     const b = req(path[k + 1]);
-    const mx = (a.x + b.x) / 2;
-    const my = (a.y + b.y) / 2;
-    const dx = mx - worldPoint.x;
-    const dy = my - worldPoint.y;
+    const dx = point.x - worldPoint.x;
+    const dy = point.y - worldPoint.y;
     if (dx * dx + dy * dy <= r2) {
       const axis = Math.abs(a.y - b.y) < 1e-6 ? "h" : "v";
       const at = axis === "h" ? (a.x + b.x) / 2 : (a.y + b.y) / 2;
@@ -362,6 +367,8 @@ const handleDownWaypointDrag = (editor: Editor, worldPoint: Vec2): boolean => {
   const path =
     edge && (edge.routing ?? "straight") !== "orthogonal" ? getLinkPath(editor._scene, edge) : null;
   if (!(edge && path && path.length >= 2)) return false;
+  // A press inside the caption pill is the caption's — see pressInsideLabel.
+  if (pressInsideLabel(editor, edge, worldPoint)) return false;
   const zoom = editor._scene.viewport.zoom || 1;
   const r = LINK_ENDPOINT_HANDLE_RADIUS / zoom;
   const r2 = r * r;

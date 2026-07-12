@@ -1,5 +1,5 @@
 import { req, type Bounds, type ElementId, type Vec2 } from "@oh-just-another/types";
-import { bezier, hitTest, intersect, vec2 } from "@oh-just-another/math";
+import { bezier, hitTest, intersect } from "@oh-just-another/math";
 import { getAnchorOutwardNormal, getAnchorWorld } from "./anchors.js";
 import {
   ELBOW_STUB_DISTANCE_DIVISOR,
@@ -16,7 +16,7 @@ import {
   flattenSegments,
   type BezierSegment,
 } from "./edge-curve.js";
-import { linkLabelBoundsForPath } from "./edge-label.js";
+import { linkLabelBoundsForPath, nudgeHandleOffLabel } from "./edge-label.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { headingForEdgePoint } from "./heading.js";
 import { getOutlinePoint, getOutlineSampler } from "./outline.js";
@@ -451,13 +451,18 @@ export const getLinkCurvePoints = (scene: Scene, edge: Link): readonly Vec2[] | 
 export const getLinkWaypointMidpoints = (scene: Scene, edge: Link): Vec2[] | null => {
   const routing = edge.routing ?? "straight";
   if (routing === "orthogonal") return null;
+  // The caption pill sits at the label anchor — typically exactly where a
+  // span's midpoint handle would land. Slide such handles out of the pill
+  // along their span so both stay usable (press-in-pill edits the caption).
+  const label = linkLabelBounds(scene, edge);
   if (routing === "bezier") {
     const curve = getLinkCurveSegments(scene, edge);
     if (!curve) return null;
     const mids: Vec2[] = [];
     let prev = curve.start;
     for (const s of curve.segments) {
-      mids.push(bezier.cubicAt(prev, s.c1, s.c2, s.to, 0.5));
+      const from = prev;
+      mids.push(nudgeHandleOffLabel((t) => bezier.cubicAt(from, s.c1, s.c2, s.to, t), label));
       prev = s.to;
     }
     return mids;
@@ -468,9 +473,41 @@ export const getLinkWaypointMidpoints = (scene: Scene, edge: Link): Vec2[] | nul
   for (let i = 0; i < path.length - 1; i++) {
     const a = req(path[i]);
     const b = req(path[i + 1]);
-    mids.push(vec2.midpoint(a, b));
+    mids.push(
+      nudgeHandleOffLabel((t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }), label),
+    );
   }
   return mids;
+};
+
+/**
+ * Grab-handle points for a selected ELBOW link's draggable segments — one per
+ * slidable segment of the routed chain (`k` indexes the segment `path[k] →
+ * path[k+1]`): the single segment of a straight elbow, or interior segments of
+ * a routed one (terminal stubs touch from/to and can't slide). Handle points
+ * sit at the segment midpoint, slid out of the caption pill when they'd land
+ * under it. Shared by the overlay (drawing) and the pointer hit-test so the
+ * grab point always matches the drawn dot.
+ */
+export const getElbowSegmentHandles = (
+  scene: Scene,
+  edge: Link,
+  path: readonly Vec2[],
+): { readonly k: number; readonly point: Vec2 }[] => {
+  const label = linkLabelBounds(scene, edge);
+  const segs =
+    path.length === 2 ? [0] : Array.from({ length: Math.max(0, path.length - 3) }, (_, i) => i + 1);
+  return segs.map((k) => {
+    const a = req(path[k]);
+    const b = req(path[k + 1]);
+    return {
+      k,
+      point: nudgeHandleOffLabel(
+        (t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }),
+        label,
+      ),
+    };
+  });
 };
 
 /**

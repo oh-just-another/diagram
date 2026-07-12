@@ -17,6 +17,7 @@ import {
   type Element,
   type Link,
   type SpatialGrid,
+  getElbowSegmentHandles,
 } from "@oh-just-another/scene";
 import {
   DEFAULT_LOD,
@@ -731,23 +732,14 @@ export const renderEditor = (editor: RenderSnapshot): void => {
           // a separate mechanic). Only straight / bezier show free waypoints.
           const isElbow = (edge.routing ?? "straight") === "orthogonal";
           if (isElbow) {
-            // Segment handles on interior segments of the routed chain
-            // (k in 1..len-3; the two terminal segments touch from/to and
-            // can't be slid). Hidden during an active segment / endpoint drag.
-            const midpoints: Vec2[] = [];
-            if (!editor.linkSegmentDrag && !editor.linkEndpointDrag) {
-              // Straight elbow → one handle on its single segment (grab to
-              // bend). Routed elbow → handles on interior segments.
-              const segs =
-                path.length === 2
-                  ? [0]
-                  : Array.from({ length: Math.max(0, path.length - 3) }, (_, i) => i + 1);
-              for (const k of segs) {
-                const a = req(path[k]);
-                const b = req(path[k + 1]);
-                midpoints.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-              }
-            }
+            // Segment handles on the slidable segments of the routed chain —
+            // positions shared with the pointer hit-test (and slid out from
+            // under the caption pill). Hidden during an active segment /
+            // endpoint drag.
+            const midpoints: Vec2[] =
+              editor.linkSegmentDrag || editor.linkEndpointDrag
+                ? []
+                : getElbowSegmentHandles(editor.scene, edge, path).map((h) => h.point);
             overlayOpts.edgeSelection = { from, to, midpoints };
           } else {
             const waypoints = [...(edge.waypoints ?? [])];

@@ -52,6 +52,7 @@ export {
   getLinkEndpointWorld,
   getLinkPath,
   findLinkAt,
+  getElbowSegmentHandles,
   getLinkCurvePoints,
   getLinkCurveSegments,
   linkLabelBounds,
@@ -63,6 +64,7 @@ export {
   estimateLinkLabelBox,
   linkLabelAnchor,
   linkLabelBoundsForPath,
+  nudgeHandleOffLabel,
   pointAlongPath,
 } from "./edge-label.js";
 export {

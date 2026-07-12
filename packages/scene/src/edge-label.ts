@@ -149,3 +149,32 @@ export const linkLabelBoundsForPath = (path: readonly Vec2[], edge: Link): Bound
     height: box.height,
   };
 };
+
+/**
+ * Sampling offsets (fractions of a span, ordered by distance from the
+ * midpoint) used to slide a per-span handle out of the label pill. The first
+ * sample outside the pill wins, so the handle stays as close to the visual
+ * middle as possible.
+ */
+const HANDLE_NUDGE_TS: readonly number[] = [0.5, 0.38, 0.62, 0.26, 0.74, 0.14, 0.86];
+
+const insideBounds = (p: Vec2, b: Bounds): boolean =>
+  p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
+
+/**
+ * Slide a per-span handle point out of the label pill along its own span.
+ * `pointAt(t)` maps a span fraction to a world point (chord lerp for straight
+ * spans, the cubic for bezier). Returns the first sampled point outside
+ * `label`, or the plain midpoint when the whole span is covered (degenerate —
+ * better a conflicting handle than a missing one, and callers keep 1:1 span
+ * indexing either way).
+ */
+export const nudgeHandleOffLabel = (pointAt: (t: number) => Vec2, label: Bounds | null): Vec2 => {
+  const mid = pointAt(0.5);
+  if (label === null || !insideBounds(mid, label)) return mid;
+  for (const t of HANDLE_NUDGE_TS) {
+    const p = pointAt(t);
+    if (!insideBounds(p, label)) return p;
+  }
+  return mid;
+};
