@@ -1,5 +1,9 @@
 import type { Vec2 } from "@oh-just-another/types";
-import { DEFAULT_IMAGE_MAX_EDGE_PX } from "./constants.js";
+import {
+  DEFAULT_IMAGE_MAX_EDGE_PX,
+  VIDEO_FALLBACK_WIDTH_PX,
+  VIDEO_FALLBACK_HEIGHT_PX,
+} from "./constants.js";
 import { isImageFile, isVideoFile, readFileAsDataURL, type FileDropHandler } from "./file-drop.js";
 
 /**
@@ -211,8 +215,8 @@ export const videoFileDropHandler: FileDropHandler = {
       video.onloadedmetadata = done;
       video.onerror = done;
     });
-    const nW = video.videoWidth || 480;
-    const nH = video.videoHeight || 270;
+    const nW = video.videoWidth || VIDEO_FALLBACK_WIDTH_PX;
+    const nH = video.videoHeight || VIDEO_FALLBACK_HEIGHT_PX;
     const max = DEFAULT_IMAGE_MAX_EDGE_PX;
     const scale = Math.max(nW, nH) > max ? max / Math.max(nW, nH) : 1;
     const width = Math.round(nW * scale);

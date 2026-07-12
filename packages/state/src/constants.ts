@@ -731,6 +731,14 @@ export const LASER_SMOOTH_SEGMENTS = 8;
 export const DEFAULT_IMAGE_MAX_EDGE_PX = 480;
 
 /**
+ * Placeholder size (world px, 16:9) for a dropped video whose metadata never
+ * loads (`videoWidth`/`videoHeight` = 0 — unsupported codec, aborted load).
+ * Only affects the created element's initial box. Range: 160×90 – 960×540.
+ */
+export const VIDEO_FALLBACK_WIDTH_PX = 480;
+export const VIDEO_FALLBACK_HEIGHT_PX = 270;
+
+/**
  * Adaptive animation-tick throttling (GIF / video playback). The tick
  * drives a full re-render every frame while an animated shape is
  * visible; under load it is throttled so playback doesn't starve the
