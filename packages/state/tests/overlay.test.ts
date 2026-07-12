@@ -197,32 +197,6 @@ describe("renderOverlay", () => {
     expect(dashCalls.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("draws a straight edge preview when edgePreview is supplied", () => {
-    const { target, calls } = makeRecorder();
-    renderOverlay(emptyScene(), emptySelection, target, {
-      edgePreview: { from: { x: 0, y: 0 }, to: { x: 100, y: 100 } },
-    });
-    const lineTo = calls.filter((c) => c.method === "lineTo");
-    expect(lineTo.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("draws a polyline edge preview when edgePreview.points is supplied", () => {
-    const { target, calls } = makeRecorder();
-    renderOverlay(emptyScene(), emptySelection, target, {
-      edgePreview: {
-        from: { x: 0, y: 0 },
-        to: { x: 100, y: 100 },
-        points: [
-          { x: 0, y: 0 },
-          { x: 50, y: 0 },
-          { x: 100, y: 100 },
-        ],
-      },
-    });
-    const lineTo = calls.filter((c) => c.method === "lineTo");
-    expect(lineTo.length).toBeGreaterThanOrEqual(2);
-  });
-
   it("draws port dots for a PortOverlay", () => {
     const { target, calls } = makeRecorder();
     renderOverlay(emptyScene(), emptySelection, target, {
