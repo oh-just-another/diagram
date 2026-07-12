@@ -497,6 +497,12 @@ export type TileComposeFn = (
     >;
     readonly zoomBucket: number;
     /**
+     * Elements omitted from tile rasterisation (stroke-eraser preview and
+     * per-element hide). The compositor invalidates the tiles an element
+     * touches when it enters/leaves the set.
+     */
+    readonly hideElements?: ReadonlySet<ElementId>;
+    /**
      * Persistent spatial index over the scene's current element world-AABBs,
      * when the editor maintains one (large scenes, shared with the hit-test
      * path). A tile compositor that supports it (`renderViaTiles`) queries the

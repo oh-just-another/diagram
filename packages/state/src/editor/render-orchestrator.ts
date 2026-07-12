@@ -364,18 +364,17 @@ export const renderEditor = (editor: RenderSnapshot): void => {
   const dimElements = editor.dimElements;
   const hideElements = editor.hideElements;
 
-  // Group isolation (dim) and per-element hide can't be honoured by the tile
-  // cache: tiles bake every shape at full opacity, so neither a scrim nor an
-  // overlay can reproduce `renderScene`'s per-element dim, nor un-bake a hidden
-  // shape, without re-rasterising the affected tiles — which would tie the
-  // cache to isolation state and defeat it. So while either set is non-empty
-  // we take the full `renderScene` path (which honours both). With both empty
-  // — the intended very-large-static-scene case — the tile path runs and
-  // behaves exactly as before.
-  const isolationActive =
-    (dimElements !== undefined && dimElements.size > 0) ||
-    (hideElements !== undefined && hideElements.size > 0);
-  if (editor.tileComposeFn && viewportWorld && !isolationActive) {
+  // Group isolation (dim) can't be honoured by the tile cache: tiles bake
+  // every shape at full opacity, and neither a scrim nor an overlay can
+  // reproduce `renderScene`'s per-element dim without re-rasterising most
+  // tiles (isolation dims almost everything), which would defeat the cache.
+  // While the dim set is non-empty we take the full `renderScene` path.
+  // Per-element HIDE stays on the tile path: the sets are small (stroke-eraser
+  // preview, visibility), so the compositor honours them directly — it bakes
+  // tiles with the set applied and re-rasterises only the tiles a shape
+  // touches when it enters/leaves the set.
+  const dimActive = dimElements !== undefined && dimElements.size > 0;
+  if (editor.tileComposeFn && viewportWorld && !dimActive) {
     // Tile-cache path: clear main once, then composite cached tiles.
     // The compositor rasterises tiles through its own `renderScene` calls,
     // which we can't hand a render context — bridge this editor's per-instance
@@ -392,6 +391,7 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       changedElements: editor.tileDirtyElements,
       zoomBucket:
         editor.scene.viewport.zoom > 0 ? 2 ** Math.round(Math.log2(editor.scene.viewport.zoom)) : 1,
+      ...(hideElements && hideElements.size > 0 ? { hideElements } : {}),
       ...(editor.sharedIndex ? { index: editor.sharedIndex } : {}),
     });
     renderLinks(editor.scene, editor.mainTarget, { viewportWorld });
