@@ -56,13 +56,21 @@ export const TEXT_UNDERLINE_OFFSET = 0.92;
 export const TEXT_STRIKETHROUGH_OFFSET = 0.5;
 
 /**
- * Corner radius (world px) for the rounded bends of an elbow (orthogonal)
- * connector and of a straight connector broken by user waypoints. Each
- * corner is replaced by a quadratic arc of this radius, clamped to half the
- * shorter adjacent segment so short segments don't overshoot. 0 disables
- * rounding (sharp corners). Range: 0–16.
+ * MAX corner radius (world px) for the rounded bends of an elbow (orthogonal)
+ * connector and of a straight connector broken by user waypoints. The actual
+ * per-corner radius is adaptive: `min(LINK_CORNER_RADIUS,
+ * LINK_CORNER_RADIUS_FRACTION × shorter adjacent segment)` — long knees round
+ * generously, short jogs round proportionally smaller and never overshoot.
+ * 0 disables rounding (sharp corners). Range: 0–24.
  */
-export const LINK_CORNER_RADIUS = 10;
+export const LINK_CORNER_RADIUS = 16;
+
+/**
+ * Fraction of the SHORTER adjacent segment a corner arc may consume (see
+ * {@link LINK_CORNER_RADIUS}). Higher = softer, larger bends; 0.5 makes two
+ * corners sharing a segment meet exactly. Range: 0.2–0.5.
+ */
+export const LINK_CORNER_RADIUS_FRACTION = 0.35;
 
 // --- Grid -------------------------------------------------------------------
 //

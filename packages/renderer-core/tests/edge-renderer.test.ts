@@ -16,7 +16,7 @@ import {
   type Link,
   type Element,
 } from "@oh-just-another/scene";
-import { renderLinks, type RenderLinksOptions } from "../src/index";
+import { renderLinks, strokeRoundedPolyline, type RenderLinksOptions } from "../src/index";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -598,5 +598,51 @@ describe("renderLinks — hidden layer", () => {
     const t = stubTarget();
     renderLinks(s, t);
     expect(t.stroke).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// strokeRoundedPolyline — adaptive corner radius
+// ---------------------------------------------------------------------------
+describe("strokeRoundedPolyline — adaptive corner radius", () => {
+  const lShape = (jog: number) =>
+    [
+      { x: 0, y: 0 },
+      { x: jog, y: 0 },
+      { x: jog, y: 200 },
+    ] as const;
+
+  it("long knees round to the full max radius", () => {
+    const t = stubTarget();
+    strokeRoundedPolyline(t, [...lShape(200)], 16);
+    // Arc entry point sits `r` before the corner: min(16, 0.35×200) = 16.
+    expect(t.lineTo).toHaveBeenCalledWith(184, 0);
+    expect(t.quadraticCurveTo).toHaveBeenCalledWith(200, 0, 200, 16);
+  });
+
+  it("a short jog rounds proportionally smaller (fraction of the segment)", () => {
+    const t = stubTarget();
+    strokeRoundedPolyline(t, [...lShape(20)], 16);
+    // min(16, 0.35×20) = 7 — the arc never eats more than the fraction.
+    expect(t.lineTo).toHaveBeenCalledWith(13, 0);
+    expect(t.quadraticCurveTo).toHaveBeenCalledWith(20, 0, 20, 7);
+  });
+
+  it("two corners sharing a short segment never overlap", () => {
+    const t = stubTarget();
+    // Z-shape with a 20px middle segment and two corners on it.
+    strokeRoundedPolyline(
+      t,
+      [
+        { x: 0, y: 0 },
+        { x: 100, y: 0 },
+        { x: 100, y: 20 },
+        { x: 200, y: 20 },
+      ],
+      16,
+    );
+    // Each corner consumes 0.35×20 = 7 of the shared segment: 7+7 < 20.
+    expect(t.quadraticCurveTo).toHaveBeenCalledWith(100, 0, 100, 7);
+    expect(t.quadraticCurveTo).toHaveBeenCalledWith(100, 20, 107, 20);
   });
 });

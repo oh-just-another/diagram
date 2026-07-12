@@ -25,6 +25,7 @@ import type { LinkBitmapCache } from "./edge-cache-bitmap.js";
 import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
 import {
   LINK_CORNER_RADIUS,
+  LINK_CORNER_RADIUS_FRACTION,
   BLOCK_ARROW_HEAD_LENGTH,
   BLOCK_ARROW_BODY_THICKNESS,
   BLOCK_ARROW_FILL_COLOR,
@@ -393,12 +394,13 @@ export const strokeRoundedPolyline = (
     }
     return;
   }
-  // Per-corner radius: each corner rounds to the requested radius, clamped to
-  // half of EACH adjacent segment (so two corners sharing a short segment meet
-  // without overlapping). With spurious tiny segments already removed
-  // (cornersOnly + the router's symmetric buffer clamp), every normal corner
-  // gets the full radius — stable, no global "jump" — while a deliberately
-  // short jog (tight-gap overlap step) rounds smoothly to its own size.
+  // Adaptive per-corner radius: each corner rounds to the requested MAX
+  // radius, scaled down to a fraction of the shorter adjacent segment — long
+  // knees get a generous, soft bend while a deliberately short jog (tight-gap
+  // overlap step) rounds proportionally smaller. The fraction (< 0.5) also
+  // guarantees two corners sharing a short segment never overlap. Spurious
+  // tiny segments are already removed (cornersOnly + the router's symmetric
+  // buffer clamp), so normal corners stay stable — no global "jump".
   const ptsFirst = req(pts[0]);
   target.moveTo(ptsFirst.x, ptsFirst.y);
   for (let i = 1; i < pts.length - 1; i++) {
@@ -411,7 +413,7 @@ export const strokeRoundedPolyline = (
       target.lineTo(cur.x, cur.y);
       continue;
     }
-    const r = Math.min(radius, l1 / 2, l2 / 2);
+    const r = Math.min(radius, LINK_CORNER_RADIUS_FRACTION * Math.min(l1, l2));
     const a = { x: cur.x + ((prev.x - cur.x) / l1) * r, y: cur.y + ((prev.y - cur.y) / l1) * r };
     const b = { x: cur.x + ((next.x - cur.x) / l2) * r, y: cur.y + ((next.y - cur.y) / l2) * r };
     target.lineTo(a.x, a.y);
