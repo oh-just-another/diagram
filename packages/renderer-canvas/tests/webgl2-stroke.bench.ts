@@ -21,10 +21,9 @@ const glStub = {
   FLOAT: 0x1406,
   TRIANGLES: 0x0004,
   useProgram: noop,
+  bindVertexArray: noop,
   bindBuffer: noop,
   bufferData: noop,
-  enableVertexAttribArray: noop,
-  vertexAttribPointer: noop,
   uniformMatrix3fv: noop,
   uniform3f: noop,
   uniform1f: noop,
@@ -33,6 +32,7 @@ const glStub = {
 
 const program = {} as WebGLProgram;
 const vbo = {} as WebGLBuffer;
+const vao = {} as WebGLVertexArrayObject;
 const identityMat3 = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
 const transform: Transform = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 const size = { width: 1920, height: 1080 };
@@ -73,7 +73,7 @@ const stroke = (xy: Float64Array, points: number, s: StrokeStyle): void => {
     null,
     null,
     vbo,
-    0,
+    vao,
     identityMat3,
   );
 };

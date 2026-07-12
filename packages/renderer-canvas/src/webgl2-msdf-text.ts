@@ -27,26 +27,38 @@ export interface Msdf2DTextStyle {
 export class MsdfTextPipeline {
   private readonly program: WebGLProgram;
   private readonly vbo: WebGLBuffer;
+  private readonly vao: WebGLVertexArrayObject;
   private readonly uTransform: WebGLUniformLocation | null;
   private readonly uColor: WebGLUniformLocation | null;
   private readonly uOpacity: WebGLUniformLocation | null;
   private readonly uPxRange: WebGLUniformLocation | null;
   private readonly uAtlas: WebGLUniformLocation | null;
-  private readonly aPos: number;
-  private readonly aUV: number;
 
   constructor(private readonly gl: WebGL2RenderingContext) {
     const vert = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SRC, "MSDF");
     const frag = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SRC, "MSDF");
     this.program = linkProgram(gl, vert, frag, "MSDF");
     this.vbo = glReq(gl.createBuffer());
-    this.aPos = gl.getAttribLocation(this.program, "aPos");
-    this.aUV = gl.getAttribLocation(this.program, "aUV");
+    const aPos = gl.getAttribLocation(this.program, "aPos");
+    const aUV = gl.getAttribLocation(this.program, "aUV");
     this.uTransform = gl.getUniformLocation(this.program, "uTransform");
     this.uColor = gl.getUniformLocation(this.program, "uColor");
     this.uOpacity = gl.getUniformLocation(this.program, "uOpacity");
     this.uPxRange = gl.getUniformLocation(this.program, "uPxRange");
     this.uAtlas = gl.getUniformLocation(this.program, "uAtlas");
+    // Record the interleaved (x, y, u, v) layout on the persistent VBO
+    // into a VAO once — per draw the pipeline just binds the VAO and
+    // re-uploads vertex data with `bufferData` (bufferData targets the
+    // ARRAY_BUFFER binding point, not the VAO, so the recorded pointers
+    // stay valid).
+    this.vao = glReq(gl.createVertexArray());
+    gl.bindVertexArray(this.vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(aUV);
+    gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 16, 8);
+    gl.bindVertexArray(null);
   }
 
   /**
@@ -122,12 +134,9 @@ export class MsdfTextPipeline {
     const tex = atlas.uploadTo(this.gl);
     const gl = this.gl;
     gl.useProgram(this.program);
+    gl.bindVertexArray(this.vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
     gl.bufferData(gl.ARRAY_BUFFER, buf.subarray(0, writeOffset), gl.DYNAMIC_DRAW);
-    gl.enableVertexAttribArray(this.aPos);
-    gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 16, 0);
-    gl.enableVertexAttribArray(this.aUV);
-    gl.vertexAttribPointer(this.aUV, 2, gl.FLOAT, false, 16, 8);
     // Alignment: shift the whole run left by `width × alignFactor` in
     // world space, folded into the transform's translation (screen
     // shift = column-0 × worldDx). One walk total — no separate width
@@ -152,10 +161,14 @@ export class MsdfTextPipeline {
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.uniform1i(this.uAtlas, 0);
     gl.drawArrays(gl.TRIANGLES, 0, writeOffset / floatsPerVertex);
+    // Reset to the default VAO so this pipeline's attribute state can't
+    // leak into other pipelines (matches the rect-batch discipline).
+    gl.bindVertexArray(null);
     return cursor - x;
   }
 
   dispose(): void {
+    this.gl.deleteVertexArray(this.vao);
     this.gl.deleteBuffer(this.vbo);
     this.gl.deleteProgram(this.program);
   }
