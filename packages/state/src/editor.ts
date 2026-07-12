@@ -173,6 +173,7 @@ import {
   extendBrushStroke as extendBrushStrokePure,
   brushCommitPoints,
   brushStyleFromSettings,
+  computeSetBrushWidth,
   DEFAULT_BRUSH_SETTINGS,
   newBrushId,
   type BrushSettings,
@@ -3047,6 +3048,21 @@ export class Editor {
   updateStyle(ids: Iterable<ElementId>, partial: Partial<TextStyle>): void {
     if (this.readOnly) return;
     const result = computeUpdateStyle(this._scene, ids, partial);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Re-base the width of committed brush strokes (`style.strokeWidth` has no
+   * effect on brushes — their widths are baked per point). Scales every baked
+   * point width proportionally and records the new `baseWidth`, keeping the
+   * stroke's pressure profile. One undo step. Read-only editors ignore it.
+   */
+  setBrushWidth(ids: Iterable<ElementId>, width: number): void {
+    if (this.readOnly) return;
+    const result = computeSetBrushWidth(this._scene, ids, width);
     if (!result) return;
     this._scene = result.scene;
     this._history.push(result.patch);

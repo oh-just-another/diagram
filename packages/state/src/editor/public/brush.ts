@@ -1,6 +1,10 @@
 import {
   addElement,
+  getElement,
+  isBrush,
   orderForTop,
+  updateElement,
+  type BrushElement,
   type BrushPoint,
   type Scene,
   type Element,
@@ -339,3 +343,42 @@ export const commitBrushStroke = (
 /** Generate a fresh brush shape id with the editor's nextId counter. */
 export const newBrushId = (next: number): ElementId =>
   castElementId(`brush-${next}-${Date.now().toString(36)}`);
+
+/**
+ * Re-base the width of committed brush strokes: scale every baked point
+ * width by `newWidth / oldBase` and store `baseWidth = newWidth`, so the
+ * stroke keeps its exact pressure profile at the new thickness. `oldBase`
+ * is the stroke's recorded `baseWidth`; strokes committed before the
+ * regeneration payload existed fall back to their widest point (a sane
+ * monotonic approximation). Non-brush ids are skipped. Returns `null`
+ * when nothing changed.
+ */
+export const computeSetBrushWidth = (
+  scene: Scene,
+  ids: Iterable<ElementId>,
+  newWidth: number,
+): { readonly scene: Scene; readonly patch: Patch } | null => {
+  if (!(newWidth > 0)) return null;
+  let s = scene;
+  const patches: Patch[] = [];
+  for (const id of ids) {
+    const el = getElement(s, id);
+    if (!el || !isBrush(el)) continue;
+    const oldBase = el.baseWidth ?? el.points.reduce((m, p) => Math.max(m, p.width), 0);
+    if (!(oldBase > 0) || oldBase === newWidth) continue;
+    const factor = newWidth / oldBase;
+    const r = updateElement(s, id, (sh) => ({
+      ...sh,
+      points: (sh as BrushElement).points.map((p) => ({ ...p, width: p.width * factor })),
+      baseWidth: newWidth,
+    }));
+    s = r.scene;
+    patches.push(r.patch);
+  }
+  const first = patches[0];
+  if (first === undefined) return null;
+  return {
+    scene: s,
+    patch: patches.length === 1 ? first : { kind: "batch", patches },
+  };
+};
