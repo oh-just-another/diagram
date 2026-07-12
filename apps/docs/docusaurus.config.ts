@@ -46,15 +46,29 @@ const config: Config = {
         configureWebpack(_config: unknown, isServer: boolean) {
           return {
             module: {
-              rules: [{ test: /\.m?js$/, resolve: { fullySpecified: false } }],
+              rules: [
+                { test: /\.m?js$/, resolve: { fullySpecified: false } },
+                // Compile the Svelte wrapper's shipped .svelte source for the
+                // live framework demo on the examples pages.
+                { test: /\.svelte$/, use: { loader: "svelte-loader" } },
+              ],
             },
             resolve: {
               // The @oh-just-another/* packages publish ESM-only ("import")
               // exports. Docusaurus' SSR (node) build resolves without the
-              // "import" condition, so add it for the server compiler.
+              // "import" condition, so add it for the server compiler. The
+              // client compiler additionally needs the "svelte" condition so
+              // @oh-just-another/diagram-svelte resolves to its .svelte
+              // source (compiled by svelte-loader) for the live demo.
               ...(isServer
-                ? { conditionNames: ["import", "require", "module", "node", "default"] }
-                : {}),
+                ? {
+                    conditionNames: ["import", "require", "module", "node", "default"],
+                    // The Svelte wrapper resolves only through the "svelte"
+                    // export condition; the live demo imports it in a
+                    // browser-only effect, so the server bundle just stubs it.
+                    alias: { "@oh-just-another/diagram-svelte": false },
+                  }
+                : { conditionNames: ["svelte", "..."] }),
               fallback: {
                 "fs/promises": false,
                 fs: false,

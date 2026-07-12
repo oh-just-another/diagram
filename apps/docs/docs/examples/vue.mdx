@@ -3,7 +3,11 @@ title: "Vue"
 sidebar_position: 11
 ---
 
-`@oh-just-another/diagram-vue` wraps the [`<oja-diagram>` custom element](/docs/examples/custom-element) as a Vue 3 component. Vue can't run inside this React docs site — see the [React pages](/docs/examples/react-basic) for live demos.
+Below is the REAL wrapper running live — a Vue app created at runtime and mounted into this (React) page; no microfrontend machinery, the wrapper is a thin shell over the custom element:
+
+import VueDemo from "@site/src/components/ExampleEditor/VueDemo";
+
+<VueDemo />
 
 ```vue title="App.vue"
 <script setup lang="ts">

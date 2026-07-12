@@ -17,6 +17,9 @@
     "@docusaurus/preset-classic": "3.10.1",
     "@easyops-cn/docusaurus-search-local": "^0.55.2",
     "@mdx-js/react": "^3.0.0",
+    "@oh-just-another/diagram": "workspace:*",
+    "@oh-just-another/diagram-svelte": "workspace:*",
+    "@oh-just-another/diagram-vue": "workspace:*",
     "@oh-just-another/editor": "workspace:*",
     "@oh-just-another/importers": "workspace:*",
     "@oh-just-another/react-ui": "workspace:*",
@@ -26,7 +29,8 @@
     "clsx": "^2.0.0",
     "prism-react-renderer": "^2.3.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "vue": "3.5.38"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.10.1",
@@ -34,6 +38,8 @@
     "@docusaurus/types": "3.10.1",
     "@swc/core": "^1.10.0",
     "@types/react": "^19.0.0",
+    "svelte": "5.56.4",
+    "svelte-loader": "3.2.4",
     "swc-loader": "^0.2.6",
     "typescript": "~5.7.0",
     "webpack": "^5.107.2"

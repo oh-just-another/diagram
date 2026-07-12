@@ -127,6 +127,15 @@ importers:
       '@mdx-js/react':
         specifier: ^3.0.0
         version: 3.1.1(@types/react@19.2.15)(react@19.2.6)
+      '@oh-just-another/diagram':
+        specifier: workspace:*
+        version: link:../../packages/diagram
+      '@oh-just-another/diagram-svelte':
+        specifier: workspace:*
+        version: link:../../packages/diagram-svelte
+      '@oh-just-another/diagram-vue':
+        specifier: workspace:*
+        version: link:../../packages/diagram-vue
       '@oh-just-another/editor':
         specifier: workspace:*
         version: link:../../packages/editor
@@ -157,6 +166,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.6(react@19.2.6)
+      vue:
+        specifier: 3.5.38
+        version: 3.5.38(typescript@5.7.3)
     devDependencies:
       '@docusaurus/module-type-aliases':
         specifier: 3.10.1
@@ -173,6 +185,12 @@ importers:
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.15
+      svelte:
+        specifier: 5.56.4
+        version: 5.56.4(@typescript-eslint/types@8.59.4)
+      svelte-loader:
+        specifier: 3.2.4
+        version: 3.2.4(svelte@5.56.4(@typescript-eslint/types@8.59.4))
       swc-loader:
         specifier: ^0.2.6
         version: 0.2.7(@swc/core@1.15.41)(webpack@5.107.2(@swc/core@1.15.41)(lightningcss@1.32.0)(postcss@8.5.15))
@@ -8339,6 +8357,20 @@ packages:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
 
+  svelte-dev-helper@1.1.9:
+    resolution: {integrity: sha512-oU+Xv7Dl4kRU2kdFjsoPLfJfnt5hUhsFUZtuzI3Ku/f2iAFZqBoEuXOqK3N9ngD4dxQOmN4OKWPHVi3NeAeAfQ==}
+
+  svelte-hmr@0.14.12:
+    resolution: {integrity: sha512-4QSW/VvXuqVcFZ+RhxiR8/newmwOCTlbYIezvkeN6302YFRE8cXy0naamHcjz8Y9Ce3ITTZtrHrIL0AGfyo61w==}
+    engines: {node: ^12.20 || ^14.13.1 || >= 16}
+    peerDependencies:
+      svelte: '>=3.19.0'
+
+  svelte-loader@3.2.4:
+    resolution: {integrity: sha512-e0HdDnkYH/MDx4/IfTSka5AOFg9yYJcPuoZJB5x0l60fkHjVjNvrrxr+rJegDG9J7ZymmdHt00/hdLw+QF299w==}
+    peerDependencies:
+      svelte: ^3.0.0 || ^4.0.0-next.0 || ^5.0.0-next.1
+
   svelte@5.56.4:
     resolution: {integrity: sha512-/d0QHehmRuJW8gVz395MTkPcPozxzdjBMBE8oEYGz8O3b9KTMzzQ9ZHJQLuFKOHOPQbU6kx/X4iid/EBBzH7iw==}
     engines: {node: '>=18'}
@@ -13134,6 +13166,12 @@ snapshots:
       '@vue/runtime-core': 3.5.38
       '@vue/shared': 3.5.38
       csstype: 3.2.3
+
+  '@vue/server-renderer@3.5.38(vue@3.5.38(typescript@5.7.3))':
+    dependencies:
+      '@vue/compiler-ssr': 3.5.38
+      '@vue/shared': 3.5.38
+      vue: 3.5.38(typescript@5.7.3)
 
   '@vue/server-renderer@3.5.38(vue@3.5.38(typescript@5.9.3))':
     dependencies:
@@ -18267,6 +18305,19 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
+  svelte-dev-helper@1.1.9: {}
+
+  svelte-hmr@0.14.12(svelte@5.56.4(@typescript-eslint/types@8.59.4)):
+    dependencies:
+      svelte: 5.56.4(@typescript-eslint/types@8.59.4)
+
+  svelte-loader@3.2.4(svelte@5.56.4(@typescript-eslint/types@8.59.4)):
+    dependencies:
+      loader-utils: 2.0.4
+      svelte: 5.56.4(@typescript-eslint/types@8.59.4)
+      svelte-dev-helper: 1.1.9
+      svelte-hmr: 0.14.12(svelte@5.56.4(@typescript-eslint/types@8.59.4))
+
   svelte@5.56.4(@typescript-eslint/types@8.59.4):
     dependencies:
       '@jridgewell/remapping': 2.3.5
@@ -18709,6 +18760,16 @@ snapshots:
       - yaml
 
   vue-component-type-helpers@3.3.5: {}
+
+  vue@3.5.38(typescript@5.7.3):
+    dependencies:
+      '@vue/compiler-dom': 3.5.38
+      '@vue/compiler-sfc': 3.5.38
+      '@vue/runtime-dom': 3.5.38
+      '@vue/server-renderer': 3.5.38(vue@3.5.38(typescript@5.7.3))
+      '@vue/shared': 3.5.38
+    optionalDependencies:
+      typescript: 5.7.3
 
   vue@3.5.38(typescript@5.9.3):
     dependencies:

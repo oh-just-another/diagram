@@ -3,7 +3,11 @@ title: "Svelte"
 sidebar_position: 12
 ---
 
-`@oh-just-another/diagram-svelte` wraps the [`<oja-diagram>` custom element](/docs/examples/custom-element) as a Svelte 5 component (runes; ships `.svelte` source compiled by your bundler). Svelte can't run inside this React docs site — see the [React pages](/docs/examples/react-basic) for live demos.
+Below is the REAL wrapper running live — its shipped `.svelte` source compiled by this site's svelte-loader and mounted with Svelte 5 `mount()`:
+
+import SvelteDemo from "@site/src/components/ExampleEditor/SvelteDemo";
+
+<SvelteDemo />
 
 ```svelte title="App.svelte"
 <script lang="ts">
