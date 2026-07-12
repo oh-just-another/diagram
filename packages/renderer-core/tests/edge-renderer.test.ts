@@ -50,7 +50,7 @@ const stubTarget = () => ({
   fill: vi.fn(),
   stroke: vi.fn(),
   fillText: vi.fn(),
-  measureText: vi.fn(() => ({ width: 0 })),
+  measureText: vi.fn((_text: string) => ({ width: 0 })),
   drawImage: vi.fn(),
   clear: vi.fn(),
   size: { width: 800, height: 600 },
@@ -329,14 +329,57 @@ describe("renderLinks — edge label", () => {
     expect(t.fillText).not.toHaveBeenCalled();
   });
 
-  it("draws a background rect behind the label", () => {
+  it("draws a rounded pill behind the label (quadratic corner arcs)", () => {
     const link: Link = baseLink("a", "b", {
       label: { text: "caption", fontSize: 12 },
     });
     const s = sceneWith(link);
     const t = stubTarget();
     renderLinks(s, t);
-    expect(t.rect).toHaveBeenCalled();
+    // Rounded-rect path = 4 quadratic corner arcs; no plain rect() call.
+    expect(t.quadraticCurveTo).toHaveBeenCalledTimes(4);
+    expect(t.rect).not.toHaveBeenCalled();
+    expect(t.fill).toHaveBeenCalled();
+  });
+
+  it("sizes the pill by real text measurement (measureText is consulted)", () => {
+    const link: Link = baseLink("a", "b", {
+      label: { text: "measured caption", fontSize: 12 },
+    });
+    const s = sceneWith(link);
+    const t = stubTarget();
+    t.measureText.mockImplementation((text: string) => ({ width: text.length * 7 }));
+    renderLinks(s, t);
+    expect(t.measureText).toHaveBeenCalled();
+  });
+
+  it("renders a multiline label as one fillText per line", () => {
+    const link: Link = baseLink("a", "b", {
+      label: { text: "first\nsecond", fontSize: 12 },
+    });
+    const s = sceneWith(link);
+    const t = stubTarget();
+    renderLinks(s, t);
+    const texts = t.fillText.mock.calls.map((c) => c[0] as string);
+    expect(texts).toContain("first");
+    expect(texts).toContain("second");
+    // Lines are stacked: same x, growing y.
+    const first = t.fillText.mock.calls.find((c) => c[0] === "first");
+    const second = t.fillText.mock.calls.find((c) => c[0] === "second");
+    expect(first?.[1]).toBe(second?.[1]);
+    expect(second?.[2] as number).toBeGreaterThan(first?.[2] as number);
+  });
+
+  it("word-wraps a long label by measured width", () => {
+    const link: Link = baseLink("a", "b", {
+      label: { text: "alpha beta gamma delta epsilon zeta", fontSize: 12 },
+    });
+    const s = sceneWith(link);
+    const t = stubTarget();
+    // 12 px/char → "alpha beta gamma..." exceeds the 160px wrap width fast.
+    t.measureText.mockImplementation((text: string) => ({ width: text.length * 12 }));
+    renderLinks(s, t);
+    expect(t.fillText.mock.calls.length).toBeGreaterThan(1);
   });
 
   it("label uses custom fill color when specified", () => {

@@ -1,5 +1,10 @@
 import type { Bounds, LinkId } from "@oh-just-another/types";
-import { getLinkCurvePoints, type Link, type Scene } from "@oh-just-another/scene";
+import {
+  getLinkCurvePoints,
+  linkLabelBoundsForPath,
+  type Link,
+  type Scene,
+} from "@oh-just-another/scene";
 
 /**
  * Per-edge memo invalidated by identity of either the `Link` ref or the
@@ -85,12 +90,21 @@ export const computeLinkWorldBounds = (scene: Scene, edge: Link): Bounds | null 
     (heads?.from !== undefined && heads.from !== "none") ||
     (heads?.to !== undefined && heads.to !== "none");
   const pad = Math.max(2, (edge.style.strokeWidth ?? 1) / 2 + (hasHead ? (heads.size ?? 10) : 0));
-  return {
-    x: minX - pad,
-    y: minY - pad,
-    width: maxX - minX + pad * 2,
-    height: maxY - minY + pad * 2,
-  };
+  let x = minX - pad;
+  let y = minY - pad;
+  let right = maxX + pad;
+  let bottom = maxY + pad;
+  // The label pill can stick out past the path AABB (long text, elbow
+  // longest-segment placement) — union it in so dirty-rect repaint and
+  // viewport culling never clip a caption.
+  const label = linkLabelBoundsForPath(path, edge);
+  if (label) {
+    x = Math.min(x, label.x);
+    y = Math.min(y, label.y);
+    right = Math.max(right, label.x + label.width);
+    bottom = Math.max(bottom, label.y + label.height);
+  }
+  return { x, y, width: right - x, height: bottom - y };
 };
 
 /**

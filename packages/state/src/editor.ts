@@ -5,6 +5,8 @@ import { elementId as castElementId } from "@oh-just-another/types";
 import type { SpatialGrid } from "@oh-just-another/scene";
 import {
   addElement,
+  getLinkCurvePoints,
+  linkLabelAnchor,
   addLink,
   endpointElementId,
   anchorSnapper,
@@ -2221,27 +2223,17 @@ export class Editor {
     this.notify();
   }
 
-  /** World-space anchor point for a link's caption (midpoint of its path). */
+  /**
+   * World-space anchor point for a link's caption — the same shared geometry
+   * the renderer places the pill at (`linkLabelAnchor` over the drawn
+   * polyline), so the inline editor opens exactly over the label.
+   */
   linkLabelWorld(id: LinkId): Vec2 | null {
     const edge = getLink(this._scene, id);
     if (!edge) return null;
-    const path = getLinkPath(this._scene, edge);
+    const path = getLinkCurvePoints(this._scene, edge);
     if (!path || path.length < 2) return null;
-    const t = edge.label?.position ?? 0.5;
-    let total = 0;
-    for (let i = 1; i < path.length; i++) total += vec2.distance(req(path[i - 1]), req(path[i]));
-    let remaining = total * t;
-    for (let i = 1; i < path.length; i++) {
-      const a = req(path[i - 1]);
-      const b = req(path[i]);
-      const seg = vec2.distance(a, b);
-      if (remaining <= seg) {
-        const r = seg === 0 ? 0 : remaining / seg;
-        return { x: a.x + (b.x - a.x) * r, y: a.y + (b.y - a.y) * r };
-      }
-      remaining -= seg;
-    }
-    return req(path[path.length - 1]);
+    return linkLabelAnchor(path, edge);
   }
 
   beginTextEdit(id: ElementId): void {

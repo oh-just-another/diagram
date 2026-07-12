@@ -16,6 +16,7 @@ import {
   flattenSegments,
   type BezierSegment,
 } from "./edge-curve.js";
+import { linkLabelBoundsForPath } from "./edge-label.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { headingForEdgePoint } from "./heading.js";
 import { getOutlinePoint, getOutlineSampler } from "./outline.js";
@@ -479,6 +480,8 @@ export const getLinkWaypointMidpoints = (scene: Scene, edge: Link): Vec2[] | nul
  *
  * Curved (bezier) edges are tested against the flattened curve (via
  * `getLinkCurvePoints`) so the clickable line matches the drawn arc.
+ * A press inside the edge's label pill also hits (the pill can extend
+ * away from the line, and clicking the caption must select its link).
  */
 export const findLinkAt = (scene: Scene, worldPoint: Vec2, threshold = 5): Link | null => {
   let best: { edge: Link; distance: number } | null = null;
@@ -490,7 +493,7 @@ export const findLinkAt = (scene: Scene, worldPoint: Vec2, threshold = 5): Link 
       const d = hitTest.distanceToSegment(worldPoint, req(path[i - 1]), req(path[i]));
       if (d < minDistance) minDistance = d;
     }
-    if (minDistance > threshold) continue;
+    if (minDistance > threshold && !linkLabelHit(scene, edge, worldPoint)) continue;
     // Layer ordering: a later edge in iteration order is rendered on top,
     // so it should win for ties.
     if (!best || minDistance <= best.distance) {
@@ -498,4 +501,21 @@ export const findLinkAt = (scene: Scene, worldPoint: Vec2, threshold = 5): Link 
     }
   }
   return best?.edge ?? null;
+};
+
+/**
+ * Estimated world AABB of a link's label pill, or `null` when the link has no
+ * label / no resolvable path. The drawn polyline (`getLinkCurvePoints`) is the
+ * label's ride path, so pill, hit-test and bounds all agree.
+ */
+export const linkLabelBounds = (scene: Scene, edge: Link): Bounds | null => {
+  const path = getLinkCurvePoints(scene, edge);
+  if (!path || path.length < 2) return null;
+  return linkLabelBoundsForPath(path, edge);
+};
+
+/** True when `p` is inside the edge's label pill (estimated bounds). */
+const linkLabelHit = (scene: Scene, edge: Link, p: Vec2): boolean => {
+  const b = linkLabelBounds(scene, edge);
+  return b !== null && p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
 };

@@ -54,10 +54,17 @@ export {
   findLinkAt,
   getLinkCurvePoints,
   getLinkCurveSegments,
+  linkLabelBounds,
   getLinkWaypointMidpoints,
   getSelfLoopSpec,
   straightElbowFallback,
 } from "./edge-geometry.js";
+export {
+  estimateLinkLabelBox,
+  linkLabelAnchor,
+  linkLabelBoundsForPath,
+  pointAlongPath,
+} from "./edge-label.js";
 export {
   catmullRomBeziers,
   cubicWithEndTangents,
@@ -263,6 +270,14 @@ export {
   FRAME_HEADER_FONT_SIZE,
   FALLBACK_SCENE_WIDTH,
   FALLBACK_SCENE_HEIGHT,
+  LINK_LABEL_DEFAULT_POSITION,
+  LINK_LABEL_DEFAULT_FONT_SIZE,
+  LINK_LABEL_MAX_WIDTH,
+  LINK_LABEL_PAD_X,
+  LINK_LABEL_PAD_Y,
+  LINK_LABEL_LINE_HEIGHT,
+  LINK_LABEL_END_CLEARANCE,
+  LINK_LABEL_CHAR_WIDTH_FACTOR,
 } from "./constants.js";
 
 // Elbow router — A*-based obstacle-avoiding 90° routing.
