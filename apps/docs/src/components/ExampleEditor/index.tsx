@@ -16,7 +16,7 @@ import "@oh-just-another/react-ui/styles.css";
  * the static (SSR) build never executes it.
  */
 export default function ExampleEditor({
-  height = "420px",
+  height = "780px",
   editorProps,
   mermaid,
   sceneUrl,

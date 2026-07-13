@@ -7,21 +7,28 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
  * are the element's real public surface. Browser-only, so the import lives in
  * an effect (never runs during the static build).
  */
-export default function ElementDemo({ height = "420px" }: { height?: string }): ReactNode {
+export default function ElementDemo({ height = "780px" }: { height?: string }): ReactNode {
   const [ready, setReady] = useState(false);
   const hostRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let alive = true;
-    void import("@oh-just-another/diagram").then(() => {
+    void Promise.all([
+      import("@oh-just-another/diagram"),
+      import("@oh-just-another/serialization"),
+      fetch("/scenes/edges-straight-ortho.json").then((r) => r.text()),
+    ]).then(([, ser, sceneJson]) => {
       if (!alive || !hostRef.current) return;
       // Created imperatively so the static build never sees the unknown tag.
-      const el = document.createElement("oja-diagram");
+      const el = document.createElement("oja-diagram") as HTMLElement & { scene: unknown };
       el.setAttribute("theme", "system");
       el.setAttribute("grid", "");
       el.setAttribute("snap", "");
       el.style.display = "block";
       el.style.height = "100%";
+      // The `scene` property queues until the element is ready — set it up
+      // front so the demo opens with content instead of a blank canvas.
+      el.scene = ser.parseScene(sceneJson);
       hostRef.current.appendChild(el);
       setReady(true);
     });

@@ -7,7 +7,7 @@ import "@oh-just-another/react-ui/styles.css";
  * use — `EditorAPI.setActiveTool`, the `editor` escape hatch for scene
  * operations, and `zoomToFit`.
  */
-export default function DrivingDemo({ height = "380px" }: { height?: string }): ReactNode {
+export default function DrivingDemo({ height = "780px" }: { height?: string }): ReactNode {
   const [Editor, setEditor] = useState<ComponentType<Record<string, unknown>> | null>(null);
   const ref = useRef<{
     setActiveTool: (tool: string) => void;
@@ -29,9 +29,7 @@ export default function DrivingDemo({ height = "380px" }: { height?: string }): 
     };
   }, []);
 
-  const addRectangle = async () => {
-    const engine = ref.current?.editor;
-    if (!engine) return;
+  const addRectangleTo = async (engine: { addElement: (el: unknown) => void }) => {
     const { orderBetween, DEFAULT_LAYER_ID } = await import("@oh-just-another/scene");
     const { elementId } = await import("@oh-just-another/types");
     const n = seq.current++;
@@ -47,6 +45,19 @@ export default function DrivingDemo({ height = "380px" }: { height?: string }): 
       width: 120,
       height: 80,
     });
+  };
+
+  const addRectangle = async () => {
+    const engine = ref.current?.editor;
+    if (engine) await addRectangleTo(engine);
+  };
+
+  // Seed the canvas through the same public surface the buttons use — the
+  // starting content is itself "driven from code".
+  const seed = async (engine: { addElement: (el: unknown) => void }) => {
+    await addRectangleTo(engine);
+    await addRectangleTo(engine);
+    await addRectangleTo(engine);
   };
 
   const button = (label: string, onClick: () => void) => (
@@ -77,7 +88,10 @@ export default function DrivingDemo({ height = "380px" }: { height?: string }): 
         }}
       >
         {Editor ? (
-          <Editor ref={ref} />
+          <Editor
+            ref={ref}
+            onReady={(engine: { addElement: (el: unknown) => void }) => void seed(engine)}
+          />
         ) : (
           <div
             style={{
