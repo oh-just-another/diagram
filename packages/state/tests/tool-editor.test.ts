@@ -82,12 +82,11 @@ describe("Editor.applyEyedropperAt (F8)", () => {
     expect(getElement(e.scene, elementId("dst"))!.style.fill).toBe("#123456");
   });
 
-  it("reverts to select mode after a pick (tool not locked)", () => {
+  it("keeps the current mode after a pick (sampling is not a tool switch)", () => {
     const e = editorWith(sceneWith(rect("src", 0, 0, { fill: "#abcdef" }), rect("dst", 200, 0)));
     e.setSelection([elementId("dst")]);
-    e.setMode("eyedropper");
     e.applyEyedropperAt({ x: 10, y: 10 });
-    expect(e.mode).toBe("select");
+    expect(e.activeTool.type).toBe("select");
   });
 
   it("returns null on empty canvas and mutates nothing", () => {
@@ -120,7 +119,7 @@ describe("Editor.applyEyedropperAt (F8)", () => {
       /* never called */
     });
     expect(e.isEyedropperArmed).toBe(true);
-    e.setMode("brush");
+    e.setActiveTool("brush");
     expect(e.isEyedropperArmed).toBe(false);
   });
 });
@@ -147,7 +146,7 @@ describe("Editor image-crop session (F10, Excalidraw-style)", () => {
   it("entering crop mode selects the image and seeds the pending box", () => {
     const e = editorWith(sceneWith(image("i")));
     e.beginImageCrop(elementId("i"));
-    expect(e.mode).toBe("crop");
+    expect(e.activeTool.type).toBe("crop");
     expect(e.imageCropSession?.id).toBe(elementId("i"));
     expect(e.imageCropSession?.width).toBe(100);
     expect(e.imageCropSession?.height).toBe(80);
@@ -172,7 +171,7 @@ describe("Editor image-crop session (F10, Excalidraw-style)", () => {
     expect(e.imageCropSession?.crop.x).toBeCloseTo(0.2);
     e.endImageCropDrag();
     e.commitImageCrop();
-    expect(e.mode).toBe("select");
+    expect(e.activeTool.type).toBe("select");
     const el = getElement(e.scene, elementId("i"))! as {
       crop?: { x: number };
       position: { x: number };
@@ -220,7 +219,7 @@ describe("Editor image-crop session (F10, Excalidraw-style)", () => {
     e.beginImageCropHandle("w", { x: 0, y: 40 });
     e.updateImageCropDrag({ x: 20, y: 40 });
     e.cancelImageCrop();
-    expect(e.mode).toBe("select");
+    expect(e.activeTool.type).toBe("select");
     expect(e.imageCropSession).toBeNull();
     const el = getElement(e.scene, elementId("i"))! as { crop?: unknown; width: number };
     expect(el.crop).toBeUndefined();
@@ -230,7 +229,7 @@ describe("Editor image-crop session (F10, Excalidraw-style)", () => {
   it("ignores beginImageCrop on a non-image", () => {
     const e = editorWith(sceneWith(rect("r")));
     e.beginImageCrop(elementId("r"));
-    expect(e.mode).not.toBe("crop");
+    expect(e.activeTool.type).not.toBe("crop");
     expect(e.imageCropSession).toBeNull();
   });
 
@@ -238,7 +237,7 @@ describe("Editor image-crop session (F10, Excalidraw-style)", () => {
     const e = editorWith(sceneWith(image("i")));
     e.setReadOnly(true);
     e.beginImageCrop(elementId("i"));
-    expect(e.mode).not.toBe("crop");
+    expect(e.activeTool.type).not.toBe("crop");
     expect(e.imageCropSession).toBeNull();
   });
 });

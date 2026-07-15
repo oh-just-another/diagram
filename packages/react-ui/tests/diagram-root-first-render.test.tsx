@@ -106,7 +106,7 @@ describe("DiagramRoot first render", () => {
     };
 
     const result = render(
-      <DiagramRoot initialScene={seedScene()} initialMode="select" skipInstallRenderers={false}>
+      <DiagramRoot initialScene={seedScene()} initialTool="select" skipInstallRenderers={false}>
         <ProbeRoot />
         <DiagramSurface style={{ width: 800, height: 600 }} />
       </DiagramRoot>,
@@ -175,7 +175,7 @@ describe("DiagramRoot first render", () => {
     };
 
     const result = render(
-      <DiagramRoot initialScene={seedScene()} initialMode="select" skipInstallRenderers={false}>
+      <DiagramRoot initialScene={seedScene()} initialTool="select" skipInstallRenderers={false}>
         <ProbeRoot />
         <DiagramSurface style={{ width: 800, height: 600 }} />
       </DiagramRoot>,

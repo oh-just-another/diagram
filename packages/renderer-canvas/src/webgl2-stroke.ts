@@ -118,10 +118,11 @@ const miterOffset = (
  * caller's dynamic VBO, and draw. Identity uTransform — vertices are
  * pre-projected into clip space here.
  *
- * The caller passes its solid program + cached `aPos` attribute
- * location + its dynamic VBO. This function binds & sets up the
- * attribute itself so it's self-contained — no implicit dependency on
- * the previous draw's GL state.
+ * The caller passes its solid program + its dynamic VBO + the VAO that
+ * has the `aPos` layout on that VBO recorded once at target init.
+ * Binding the VAO replaces the per-draw `enableVertexAttribArray` /
+ * `vertexAttribPointer` re-declaration; the VAO is unbound after the
+ * draw so stroke state can't leak into other pipelines.
  */
 export const drawPolylineStroke = (
   gl: WebGL2RenderingContext,
@@ -137,7 +138,8 @@ export const drawPolylineStroke = (
   uColorLoc: WebGLUniformLocation | null,
   uOpacityLoc: WebGLUniformLocation | null,
   dynamicVbo: WebGLBuffer,
-  aPosLoc: number,
+  /** VAO with the `aPos` (2 × FLOAT, tight) layout recorded on `dynamicVbo`. */
+  dynamicVao: WebGLVertexArrayObject,
   identityMat3: Float32Array,
 ): void => {
   if (style.width <= 0 || pointCount < 2) return;
@@ -348,15 +350,17 @@ export const drawPolylineStroke = (
   }
 
   gl.useProgram(program);
+  gl.bindVertexArray(dynamicVao);
   gl.bindBuffer(gl.ARRAY_BUFFER, dynamicVbo);
   // subarray gives a view into the live scratch buffer — no copy.
   gl.bufferData(gl.ARRAY_BUFFER, scratchTris.subarray(0, scratchTrisLen), gl.DYNAMIC_DRAW);
-  gl.enableVertexAttribArray(aPosLoc);
-  gl.vertexAttribPointer(aPosLoc, 2, gl.FLOAT, false, 0, 0);
   gl.uniformMatrix3fv(uTransformLoc, false, identityMat3);
   gl.uniform3f(uColorLoc, style.color[0], style.color[1], style.color[2]);
   gl.uniform1f(uOpacityLoc, style.opacity);
   gl.drawArrays(gl.TRIANGLES, 0, scratchTrisLen / 2);
+  // Reset to the default VAO so stroke state can't leak into other
+  // pipelines (matches the rect-batch discipline).
+  gl.bindVertexArray(null);
 };
 
 /**

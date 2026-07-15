@@ -15,3 +15,9 @@ const heads: LinkArrowheads = { to: "triangle" };
 Use a link when the arrow should connect and re-route as shapes move; use a block arrow when you want a filled arrow that resizes like any other element. Arrowhead variants are listed in `ArrowheadStyle` — line caps (`arrow`, `openArrow`, `roundedArrow`, `arcArrow`), filled caps (`triangle`, `filledArrow`, `circle` / `filledCircle`, `rhombus` / `filledRhombus`, `diamond`), and ERD crow's-foot notation (`erdOne`, `erdMany`, …).
 
 A link can also render its whole body as a filled arrow: set `lineKind: "block-arrow"` on the `Link`, tuned via `blockArrow.headLength` / `blockArrow.bodyThickness`.
+
+## Captions
+
+A link carries an optional caption via `Link.label` (`LinkLabel`): `text` (multiline — `\n` breaks a line, long lines word-wrap at `LINK_LABEL_MAX_WIDTH`), plus optional `position` (0–1 along the path), `fontSize`, `fill` and `background`. The caption renders as a rounded pill sized by real text measurement, centred on the drawn geometry — the flattened curve for bezier routing; elbow links place it on the longest segment's midpoint so it never sits on a corner. The position is clamped away from the ends so the pill never covers an arrowhead, and clicking the pill selects the link.
+
+Double-click a link to edit its caption inline: Enter commits, Shift+Enter inserts a newline, Escape cancels, empty text removes the label. The same field is editable from the edge style panel. Dragging the pill slides the caption along the link (`label.position`); near the middle it snaps back to the default placement.

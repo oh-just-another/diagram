@@ -1,0 +1,74 @@
+---
+title: "Custom templates"
+sidebar_position: 22
+---
+
+Palette entries are `Template`s — factories that turn a `TemplateContext` (id, layer, position, z-order) into one element. Register your own and it appears in the palette next to the built-ins, draggable and searchable.
+
+## A "service card" template
+
+The richest route is a `type: "template"` blueprint: a flex-laid node tree with data bindings and connection ports, packed into a single resizable element. `templateFromSpec` turns the JSON spec into a callable `Template`; the `<Editor>` `templates` prop registers it in the shared `defaultRegistry` that the palette reads.
+
+```tsx
+import { Editor, registerInteractiveHitTester } from "@oh-just-another/editor";
+import { rich, templateFromSpec } from "@oh-just-another/templates";
+import "@oh-just-another/react-ui/styles.css";
+
+// Rich templates add an element type ("template") beyond the built-in six —
+// register its renderer and hit-tester once at module load.
+rich.installTemplateShapeRenderer();
+registerInteractiveHitTester("template", rich.templateInteractiveHitTester);
+
+const serviceCard = templateFromSpec({
+  id: "custom.service-card",
+  name: "Service card",
+  category: "services", // any string; new categories become palette sections
+  tags: ["service", "api", "card"], // palette search keywords
+  icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  blueprint: {
+    type: "template",
+    width: 220,
+    height: 96,
+    minWidth: 160,
+    minHeight: 72,
+    defaults: { title: "Payments API", status: "healthy" }, // bound data
+    schema: { title: "string", status: "string" },
+    root: {
+      type: "container",
+      style: { fill: "#ffffff", stroke: "#3b82f6", strokeWidth: 2 },
+      layout: { flexDirection: "column", padding: 12, gap: 4 },
+      children: [
+        {
+          type: "text",
+          id: "title",
+          text: { bind: "title" },
+          style: { fontSize: 14, fontWeight: "bold", color: "#1f2937" },
+        },
+        {
+          type: "text",
+          id: "status",
+          text: { bind: "status" },
+          style: { fontSize: 11, color: "#6b7280" },
+        },
+        // Named connection ports — links snap to them; ratio anchors
+        // survive resize.
+        { type: "port", id: "in", layout: { position: "spot", anchor: "left" } },
+        { type: "port", id: "out", layout: { position: "spot", anchor: "right" } },
+      ],
+    },
+  },
+});
+
+export const App = () => <Editor templates={[serviceCard]} />;
+```
+
+Drag "Service card" from the new **services** palette section onto the canvas; the two texts render from `defaults`, and drawing a link near the left/right edge snaps to the `in` / `out` ports.
+
+## Notes
+
+- **Simple shapes need less.** For a single rectangle / ellipse / polygon / path / text / image, use the matching `ShapeBlueprint` `type` instead of `"template"` — no renderer registration required, the element is a plain built-in shape.
+- **JSON libraries.** `loadTemplateLibrary(input, registry?)` validates and registers a whole `{ format: "oh-just-another/template-library", version: 1, templates: [...] }` bundle (object or JSON string) in one call. Invalid input throws `TemplateLibraryError`; duplicate ids throw unless `{ replace: true }`.
+- **Registry.** The palette defaults to the `defaultRegistry` singleton (`register` throws on duplicate ids, `replace` overwrites, `byCategory` / `categories` drive the sections). Pass a custom `TemplateRegistry` via the palette's `registry` prop to scope templates per instance.
+- **Fully custom factory.** A `Template` is just `{ id, name, category, icon, factory(ctx) }` — you can write the factory by hand and return any element your renderers understand.
+
+Full API reference: [Templates](/docs/sdk-features/content/templates). For a new element _type_ (custom geometry, hit-testing, rendering) rather than a palette preset, see `defineShape` in [the shape model](/docs/sdk-features/shapes/model).

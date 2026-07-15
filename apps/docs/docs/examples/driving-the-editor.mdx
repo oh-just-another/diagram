@@ -1,0 +1,39 @@
+---
+title: "React: driving from code"
+sidebar_position: 4
+---
+
+import DrivingDemo from "@site/src/components/ExampleEditor/DrivingDemo";
+
+Everything the UI does goes through one public surface, so a host app (or an agent) can do the same. The buttons below drive the live editor through `EditorAPI` and the `editor` engine escape hatch:
+
+<DrivingDemo />
+
+```tsx
+import { useRef } from "react";
+import { Editor, type EditorAPI } from "@oh-just-another/editor";
+import { DEFAULT_LAYER_ID, orderBetween } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
+
+const ref = useRef<EditorAPI>(null);
+
+const addRectangle = () =>
+  ref.current?.editor?.addElement({
+    id: elementId("r1"),
+    layerId: DEFAULT_LAYER_ID,
+    type: "rectangle",
+    position: { x: 80, y: 80 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: { fill: "#dbeafe", stroke: "#1d4ed8" },
+    width: 120,
+    height: 80,
+  });
+
+<Editor ref={ref} />;
+// ref.current?.setActiveTool("draw-edge");
+// ref.current?.zoomToFit();
+```
+
+The curated `EditorAPI` verbs: `getScene` / `loadScene`, `getActiveTool` / `setActiveTool`, `getSelection` / `setSelection`, `undo` / `redo`, `zoomToFit` — plus `editor`, the full live engine. See [AI & agents](/docs/sdk-features/driving/ai) for the MCP server that drives the same surface without a browser.

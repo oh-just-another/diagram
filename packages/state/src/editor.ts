@@ -5,6 +5,8 @@ import { elementId as castElementId } from "@oh-just-another/types";
 import type { SpatialGrid } from "@oh-just-another/scene";
 import {
   addElement,
+  getLinkCurvePoints,
+  linkLabelAnchor,
   addLink,
   endpointElementId,
   anchorSnapper,
@@ -124,7 +126,8 @@ import {
   type PressTarget,
 } from "./machine.js";
 import type { HandleId } from "./handle.js";
-import type { Mode } from "./modes.js";
+import type { ActiveTool, Mode } from "./modes.js";
+import { DEFAULT_MODE } from "./modes.js";
 import type { EditorEvents } from "./editor-events.js";
 import {
   createEventCache,
@@ -168,8 +171,9 @@ import {
   beginBrushStroke as beginBrushStrokePure,
   commitBrushStroke as commitBrushStrokePure,
   extendBrushStroke as extendBrushStrokePure,
-  smoothBrushPoints,
+  brushCommitPoints,
   brushStyleFromSettings,
+  computeSetBrushWidth,
   DEFAULT_BRUSH_SETTINGS,
   newBrushId,
   type BrushSettings,
@@ -362,7 +366,7 @@ import * as LinkSelection from "./link-selection.js";
  * Memoized by {@link Editor.observableSnapshot} while its slices are unchanged.
  */
 interface ObservableSnapshot {
-  readonly mode: Mode;
+  readonly activeTool: ActiveTool;
   readonly selection: Selection.Selection;
   readonly selectedLinks: LinkSelection.LinkSelection;
   readonly scene: Scene;
@@ -405,7 +409,7 @@ export interface EditorOptions {
    */
   readonly onAfterRender?: () => void;
   readonly initialScene: Scene;
-  readonly initialMode?: Mode;
+  readonly initialTool?: Mode;
   /**
    * Start the editor in read-only / view mode. Pointer edits (create /
    * move / resize / rotate / delete) and non-`viewMode` actions are gated;
@@ -493,6 +497,12 @@ export type TileComposeFn = (
       { before: Bounds | null; after: Bounds | null }
     >;
     readonly zoomBucket: number;
+    /**
+     * Elements omitted from tile rasterisation (stroke-eraser preview and
+     * per-element hide). The compositor invalidates the tiles an element
+     * touches when it enters/leaves the set.
+     */
+    readonly hideElements?: ReadonlySet<ElementId>;
     /**
      * Persistent spatial index over the scene's current element world-AABBs,
      * when the editor maintains one (large scenes, shared with the hit-test
@@ -802,11 +812,11 @@ export class Editor {
   }
 
   /**
-   * The in-progress brush stroke with its captured vertices Catmull-Rom-smoothed
-   * for the LIVE overlay preview — the SAME resampler `commitBrushStroke` applies
-   * on release (see {@link smoothBrushPoints}), so the stroke reads smooth while
-   * drawn instead of snapping from an angular polyline to a curve on release. A
-   * fresh object each call (points diverge from `brushStroke.points`), so the
+   * The in-progress brush stroke run through the SAME commit pipeline
+   * `commitBrushStroke` applies on release (see {@link brushCommitPoints}:
+   * raw catch-up point + Catmull-Rom resample), so the stroke reads exactly
+   * as it will land in the scene instead of snapping on release. A fresh
+   * object each call (points diverge from `brushStroke.points`), so the
    * overlay memo repaints every move that grows the stroke.
    */
   private get brushPreviewStroke(): BrushPreview | null {
@@ -815,7 +825,7 @@ export class Editor {
     const style = brushStyleFromSettings(this._brushSettings);
     return {
       origin: s.origin,
-      points: smoothBrushPoints(s.points),
+      points: brushCommitPoints(s, style).points,
       fill: brushBodyColor(style),
       opacity: style.opacity ?? 1,
     };
@@ -1050,6 +1060,16 @@ export class Editor {
    */
   private _toolLocked = false;
 
+  /** The tool active before the current one — `activeTool.lastActiveTool`. */
+  private _lastActiveTool: Mode | null = null;
+
+  /** Cached `activeTool` value object; rebuilt only when a component changes. */
+  private _activeToolCache: ActiveTool = {
+    type: DEFAULT_MODE,
+    locked: false,
+    lastActiveTool: null,
+  };
+
   /**
    * Host-extensible file-drop dispatch. Built-ins (image / scene
    * JSON) register themselves at editor construction; hosts add
@@ -1269,10 +1289,10 @@ export class Editor {
         return self._toolLocked;
       },
       get mode() {
-        return self.mode;
+        return self.activeTool.type;
       },
       setMode: (m) => {
-        self.setMode(m);
+        self.setActiveTool(m);
       },
       notify: () => {
         self.notify();
@@ -1460,8 +1480,8 @@ export class Editor {
 
     this._readOnly = options.readOnly ?? false;
 
-    if (options.initialMode) {
-      this.actor.send({ type: "SET_MODE", mode: options.initialMode });
+    if (options.initialTool) {
+      this.actor.send({ type: "SET_MODE", mode: options.initialTool });
     }
   }
 
@@ -1484,7 +1504,7 @@ export class Editor {
    * either way, so emitted events are unchanged.
    */
   private observableSnapshot(): ObservableSnapshot {
-    const mode = this.mode;
+    const activeTool = this.activeTool;
     const selection = this._selection;
     const selectedLinks = this._selectedLinks;
     const scene = this._scene;
@@ -1493,7 +1513,7 @@ export class Editor {
     const cached = this.snapshotCache;
     if (
       cached !== null &&
-      cached.mode === mode &&
+      cached.activeTool === activeTool &&
       cached.selection === selection &&
       cached.selectedLinks === selectedLinks &&
       cached.scene === scene &&
@@ -1503,7 +1523,7 @@ export class Editor {
       return cached;
     }
     const snapshot: ObservableSnapshot = {
-      mode,
+      activeTool,
       selection,
       selectedLinks,
       scene,
@@ -1522,8 +1542,26 @@ export class Editor {
   get selection(): Selection.Selection {
     return this._selection;
   }
-  get mode(): Mode {
-    return this.actor.getSnapshot().context.mode;
+  /**
+   * The active tool as a single value object (`{ type, locked,
+   * lastActiveTool }`) — the one source of truth for the current tool.
+   * The reference is stable between changes (safe for React deps).
+   */
+  get activeTool(): ActiveTool {
+    const type = this.actor.getSnapshot().context.mode;
+    const c = this._activeToolCache;
+    if (
+      c.type !== type ||
+      c.locked !== this._toolLocked ||
+      c.lastActiveTool !== this._lastActiveTool
+    ) {
+      this._activeToolCache = {
+        type,
+        locked: this._toolLocked,
+        lastActiveTool: this._lastActiveTool,
+      };
+    }
+    return this._activeToolCache;
   }
   get history(): HistoryProvider {
     return this._history;
@@ -1751,11 +1789,6 @@ export class Editor {
     this.setGrid({ enabled: !this.gridEnabled });
   }
 
-  /** Whether the active draw-mode sticks after a create (toolbar lock). */
-  get toolLocked(): boolean {
-    return this._toolLocked;
-  }
-
   /** All currently-selected link (connector) ids. */
   get selectedLinks(): LinkSelection.LinkSelection {
     return this._selectedLinks;
@@ -1817,8 +1850,8 @@ export class Editor {
   }
 
   /**
-   * Toggle the tool-lock affordance. With `true`, draw-modes persist
-   * after each successful shape create — the user keeps drawing
+   * Toggle the tool lock (`activeTool.locked`). With `true`, draw tools
+   * persist after each successful shape create — the user keeps drawing
    * rectangles without re-pressing R. With `false` (default), the
    * editor reverts to `select` after each create.
    */
@@ -1828,11 +1861,18 @@ export class Editor {
     this.notify();
   }
 
-  private maybeRevertModeAfterCreate(): void {
+  private maybeRevertToolAfterCreate(): void {
     this.gestures.maybeRevertModeAfterCreate();
   }
 
-  setMode(mode: Mode): void {
+  /**
+   * Switch the active tool. The single entry point for tool changes —
+   * toolbar buttons and hotkeys reach it through the action registry.
+   * Records the outgoing tool in `activeTool.lastActiveTool`.
+   */
+  setActiveTool(mode: Mode): void {
+    const prev = this.actor.getSnapshot().context.mode;
+    if (prev !== mode) this._lastActiveTool = prev;
     // A tool switch cancels any armed colour-picker pipette.
     this.pendingEyedropperPick = null;
     // Switching tools commits any in-flight text edit (standard: leaving the
@@ -2190,27 +2230,17 @@ export class Editor {
     this.notify();
   }
 
-  /** World-space anchor point for a link's caption (midpoint of its path). */
+  /**
+   * World-space anchor point for a link's caption — the same shared geometry
+   * the renderer places the pill at (`linkLabelAnchor` over the drawn
+   * polyline), so the inline editor opens exactly over the label.
+   */
   linkLabelWorld(id: LinkId): Vec2 | null {
     const edge = getLink(this._scene, id);
     if (!edge) return null;
-    const path = getLinkPath(this._scene, edge);
+    const path = getLinkCurvePoints(this._scene, edge);
     if (!path || path.length < 2) return null;
-    const t = edge.label?.position ?? 0.5;
-    let total = 0;
-    for (let i = 1; i < path.length; i++) total += vec2.distance(req(path[i - 1]), req(path[i]));
-    let remaining = total * t;
-    for (let i = 1; i < path.length; i++) {
-      const a = req(path[i - 1]);
-      const b = req(path[i]);
-      const seg = vec2.distance(a, b);
-      if (remaining <= seg) {
-        const r = seg === 0 ? 0 : remaining / seg;
-        return { x: a.x + (b.x - a.x) * r, y: a.y + (b.y - a.y) * r };
-      }
-      remaining -= seg;
-    }
-    return req(path[path.length - 1]);
+    return linkLabelAnchor(path, edge);
   }
 
   beginTextEdit(id: ElementId): void {
@@ -2400,7 +2430,13 @@ export class Editor {
       y: (vp.size.height || 200) / 2,
     });
     const id = newElementIdAtCursor(++this.nextId);
-    const shape = buildElementAtCursor(this._scene, this.mode, world, this._activeLayerId, id);
+    const shape = buildElementAtCursor(
+      this._scene,
+      this.activeTool.type,
+      world,
+      this._activeLayerId,
+      id,
+    );
     const r = addElement(this._scene, shape);
     this._scene = r.scene;
     this._history.push(r.patch);
@@ -2427,7 +2463,7 @@ export class Editor {
     this._scene = r.scene;
     this.textEdit.markPendingCreate(id);
     this._selection = Selection.single(id);
-    this.maybeRevertModeAfterCreate();
+    this.maybeRevertToolAfterCreate();
     this.notify();
     this.announce(`Created text ${id}`);
     this.beginTextEdit(id);
@@ -2449,13 +2485,25 @@ export class Editor {
     this.notify();
   }
 
-  beginBrushStroke(world: Vec2, pressure = 0.5): void {
-    this.brushStroke = beginBrushStrokePure(world, pressure, this._brushSettings.width);
+  /**
+   * Start a brush stroke. `pointerType` (a `PointerEvent.pointerType`) decides
+   * the pressure source: a pen has a real pressure channel and is honoured
+   * verbatim (the default, which also keeps programmatic callers exact); mouse
+   * and touch have none, so pressure is simulated from pointer speed.
+   */
+  beginBrushStroke(world: Vec2, pressure = 0.5, pointerType = "pen"): void {
+    this.brushStroke = beginBrushStrokePure(
+      world,
+      pressure,
+      this._brushSettings.width,
+      pointerType !== "pen",
+    );
     this.notify();
   }
   extendBrushStroke(world: Vec2, pressure = 0.5): void {
     if (!this.brushStroke) return;
-    extendBrushStrokePure(this.brushStroke, world, pressure, this._brushSettings.width);
+    // Zoom feeds the speed-based pressure simulation (screen-px speed).
+    extendBrushStrokePure(this.brushStroke, world, pressure, this._scene.viewport.zoom || 1);
     this.notify();
   }
   commitBrushStroke(): ElementId | null {
@@ -2487,6 +2535,9 @@ export class Editor {
   get pendingBrushStroke(): {
     readonly origin: Vec2;
     readonly points: readonly BrushPoint[];
+    readonly pressures: readonly number[];
+    readonly baseWidth: number;
+    readonly lastRaw: BrushPoint & { readonly pressure: number };
   } | null {
     return this.brushStroke;
   }
@@ -3004,6 +3055,21 @@ export class Editor {
   }
 
   /**
+   * Re-base the width of committed brush strokes (`style.strokeWidth` has no
+   * effect on brushes — their widths are baked per point). Scales every baked
+   * point width proportionally and records the new `baseWidth`, keeping the
+   * stroke's pressure profile. One undo step. Read-only editors ignore it.
+   */
+  setBrushWidth(ids: Iterable<ElementId>, width: number): void {
+    if (this.readOnly) return;
+    const result = computeSetBrushWidth(this._scene, ids, width);
+    if (!result) return;
+    this._scene = result.scene;
+    this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
    * Apply a partial text style (bold / italic / colour / decoration) to the
    * character range `[from, to)` of a single text element, producing styled
    * runs (rich text). One undo step. No-op when the id isn't a text shape or
@@ -3058,9 +3124,9 @@ export class Editor {
   /**
    * Sample the colour under `worldPoint`. When a pipette pick is armed (see
    * {@link beginEyedropperPick}), route the colour to that callback and disarm.
-   * Otherwise (legacy tool path) apply it as the current selection's fill and
-   * revert to `select` mode. Returns the sampled colour, or `null` on empty
-   * canvas. Read-only editors sample but don't mutate.
+   * Otherwise apply it as the current selection's fill (programmatic path).
+   * Returns the sampled colour, or `null` on empty canvas. Read-only editors
+   * sample but don't mutate.
    */
   applyEyedropperAt(worldPoint: Vec2): Color | null {
     const color = pickColorAt(this._scene, worldPoint, "fill");
@@ -3076,7 +3142,6 @@ export class Editor {
     if (!this.readOnly && this._selection.size > 0) {
       this.updateStyle(this._selection, { fill: color });
     }
-    if (this.mode === "eyedropper" && !this.toolLocked) this.setMode("select");
     return color;
   }
 
@@ -3326,7 +3391,7 @@ export class Editor {
       drag: null,
       dragStartWorld: null,
     };
-    this.setMode("crop");
+    this.setActiveTool("crop");
     this.refreshCursor();
     this.notify();
   }
@@ -3421,7 +3486,7 @@ export class Editor {
       this._scene = result.scene;
       this._history.push(result.patch);
     }
-    this.setMode("select");
+    this.setActiveTool("select");
     this.refreshCursor();
     this.notify();
   }
@@ -3430,7 +3495,7 @@ export class Editor {
   cancelImageCrop(): void {
     if (this.cropSession === null) return;
     this.cropSession = null;
-    this.setMode("select");
+    this.setActiveTool("select");
     this.refreshCursor();
     this.notify();
   }
@@ -4089,6 +4154,10 @@ export class Editor {
     return pickPressTarget(worldPoint, {
       scene: this._scene,
       selection: this._selection,
+      // Selection chrome (resize / rotate / endpoint handles) is pressable
+      // only under the select tool — a creation tool's press on a selected
+      // shape must start the new element / link instead.
+      selectionChromeActive: this.activeTool.type === "select",
       selectedLink: this.selectedLink,
       selectedLinkCount: this._selectedLinks.size,
       enteredGroup: this._enteredGroup,
@@ -4997,7 +5066,7 @@ export class Editor {
     if (kind === "frame") {
       this.assignFrameMembers(id, b);
     }
-    this.maybeRevertModeAfterCreate();
+    this.maybeRevertToolAfterCreate();
     this.notify();
   }
 
@@ -5036,7 +5105,7 @@ export class Editor {
     this._scene = result.scene;
     this._history.push(result.patch);
     this.edgePreview = null;
-    this.maybeRevertModeAfterCreate();
+    this.maybeRevertToolAfterCreate();
     // Dropped on empty canvas (free `point` end) → offer a shape-picker at
     // the drop point (standard). The free-ended link stays; picking re-points
     // it, dismissing keeps it. Only the `to` end is user-dragged here.
@@ -5247,6 +5316,20 @@ export class Editor {
    */
   beginWaypointDrag(linkId: LinkId, index: number, insert: boolean): void {
     this.linkHandles.beginWaypointDrag(linkId, index, insert);
+  }
+
+  /** Caption (label pill) drag along the selected link's path. */
+  get isDraggingLabel(): boolean {
+    return this.linkHandles.isDraggingLabel;
+  }
+  beginLabelDrag(linkId: LinkId): void {
+    this.linkHandles.beginLabelDrag(linkId);
+  }
+  updateLabelDrag(world: Vec2): void {
+    this.linkHandles.updateLabelDrag(world);
+  }
+  endLabelDrag(): void {
+    this.linkHandles.endLabelDrag();
   }
 
   /** Live update of the dragged waypoint to `world`. */
@@ -5710,7 +5793,7 @@ export class Editor {
         this.gifPlayback.clock(castElementId(typeof shape.id === "string" ? shape.id : "")),
       tileComposeFn: this.tileComposeFn,
       tileDirtyElements: this.tileDirtyElements,
-      mode: this.mode,
+      mode: this.activeTool.type,
       activeLayerId: this._activeLayerId,
       cropFrame: this.cropFrameCorners(),
       cropGhost: this.cropGhost(),
@@ -5742,7 +5825,7 @@ export class Editor {
       // null outside select mode. Radius is the panel's eraser width in SCREEN
       // px (matches the slider number).
       eraserCursor:
-        this.mode === "erase" && !this._readOnly && this.lastPointerWorld !== null
+        this.activeTool.type === "erase" && !this._readOnly && this.lastPointerWorld !== null
           ? { center: this.lastPointerWorld, radius: this._brushSettings.width }
           : null,
       peerCursors: this._peerCursors,

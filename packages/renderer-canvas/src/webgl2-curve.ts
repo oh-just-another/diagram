@@ -29,11 +29,10 @@ export class LoopBlinnCurvePipeline {
   private readonly program: WebGLProgram;
   private readonly vbo: WebGLBuffer;
   private readonly uvBuf: WebGLBuffer;
+  private readonly vao: WebGLVertexArrayObject;
   private readonly uTransform: WebGLUniformLocation | null;
   private readonly uColor: WebGLUniformLocation | null;
   private readonly uOpacity: WebGLUniformLocation | null;
-  private readonly aPos: number;
-  private readonly aUVW: number;
 
   constructor(private readonly gl: WebGL2RenderingContext) {
     const vert = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SRC, "Loop-Blinn");
@@ -41,11 +40,24 @@ export class LoopBlinnCurvePipeline {
     this.program = linkProgram(gl, vert, frag, "Loop-Blinn");
     this.vbo = glReq(gl.createBuffer());
     this.uvBuf = glReq(gl.createBuffer());
-    this.aPos = gl.getAttribLocation(this.program, "aPos");
-    this.aUVW = gl.getAttribLocation(this.program, "aUVW");
+    const aPos = gl.getAttribLocation(this.program, "aPos");
+    const aUVW = gl.getAttribLocation(this.program, "aUVW");
     this.uTransform = gl.getUniformLocation(this.program, "uTransform");
     this.uColor = gl.getUniformLocation(this.program, "uColor");
     this.uOpacity = gl.getUniformLocation(this.program, "uOpacity");
+    // Record the two-stream layout (positions VBO + uvw VBO, both
+    // persistent) into a VAO once — per draw the pipeline binds the VAO
+    // and re-uploads with `bufferData`, which targets the ARRAY_BUFFER
+    // binding point, not the VAO, so the recorded pointers stay valid.
+    this.vao = glReq(gl.createVertexArray());
+    gl.bindVertexArray(this.vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuf);
+    gl.enableVertexAttribArray(aUVW);
+    gl.vertexAttribPointer(aUVW, 3, gl.FLOAT, false, 0, 0);
+    gl.bindVertexArray(null);
   }
 
   /**
@@ -65,14 +77,11 @@ export class LoopBlinnCurvePipeline {
     if (positions.length === 0) return;
     const gl = this.gl;
     gl.useProgram(this.program);
+    gl.bindVertexArray(this.vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
-    gl.enableVertexAttribArray(this.aPos);
-    gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.uvBuf);
     gl.bufferData(gl.ARRAY_BUFFER, uvs, gl.DYNAMIC_DRAW);
-    gl.enableVertexAttribArray(this.aUVW);
-    gl.vertexAttribPointer(this.aUVW, 3, gl.FLOAT, false, 0, 0);
     gl.uniformMatrix3fv(
       this.uTransform,
       false,
@@ -81,9 +90,13 @@ export class LoopBlinnCurvePipeline {
     gl.uniform3f(this.uColor, color[0], color[1], color[2]);
     gl.uniform1f(this.uOpacity, opacity);
     gl.drawArrays(gl.TRIANGLES, 0, positions.length / 2);
+    // Reset to the default VAO so this pipeline's attribute state can't
+    // leak into other pipelines (matches the rect-batch discipline).
+    gl.bindVertexArray(null);
   }
 
   dispose(): void {
+    this.gl.deleteVertexArray(this.vao);
     this.gl.deleteBuffer(this.vbo);
     this.gl.deleteBuffer(this.uvBuf);
     this.gl.deleteProgram(this.program);

@@ -191,25 +191,6 @@ export const paintElementSelectionHalo = (
 };
 
 /**
- * Draws selection outlines, resize handles, and the rubber-band rectangle on
- * the overlay layer. Pure draw — does not alter scene or state.
- *
- * Handles are sized in *screen* pixels regardless of zoom (4 × 4 CSS px) — the
- * caller passes the viewport so this function can compensate.
- */
-export interface LinkPreview {
-  /** World-space anchor on the source shape, or null for a free point. */
-  readonly from: Vec2;
-  readonly to: Vec2;
-  /**
-   * Optional full polyline (world) for an elbow preview — `[from, ...corners,
-   * to]`. When present it is drawn instead of the straight `from→to` line so
-   * the preview matches the orthogonal connector that will be committed.
-   */
-  readonly points?: readonly Vec2[];
-}
-
-/**
  * Set of world-space points to render as port dots — used when the editor
  * wants to show "you can attach here" affordances on a hovered shape in
  * draw-edge mode.
@@ -315,7 +296,6 @@ export interface OverlayOptions {
    * clear the overlay and wipe the eraser cursor / trail).
    */
   strokeErasePreviewElements?: readonly Element[];
-  edgePreview?: LinkPreview;
   /**
    * Port-dot affordances to paint. A single set (one shape's anchors)
    * or several sets at once — e.g. the source's link-start dots AND the
@@ -473,6 +453,13 @@ export interface OverlayOptions {
    * selected but has no affordance to grab-and-mutate.
    */
   readOnly?: boolean;
+  /**
+   * Draw selection outlines but no interactive handles — same suppression as
+   * `readOnly`, without the rest of view-mode semantics. Set while a
+   * non-select tool is active: the chrome isn't pressable there (see
+   * `pickPressTarget`), so drawing it would advertise dead affordances.
+   */
+  suppressHandles?: boolean;
   style?: Partial<OverlayStyle>;
 }
 
@@ -588,7 +575,13 @@ const renderSelectionHandles = (ctx: OverlayCtx): void => {
         continue;
       }
       // Read-only: outline only — no resize/rotate affordances to grab.
-      if (multiSelect || !isResizable(shape) || options.readOnly === true) continue;
+      if (
+        multiSelect ||
+        !isResizable(shape) ||
+        options.readOnly === true ||
+        options.suppressHandles === true
+      )
+        continue;
       for (const handle of CORNER_HANDLES) {
         const worldPoint = handlePosition(handle, worldBounds, zoom);
         drawHandle(target, matrix.applyToPoint(w2s, worldPoint), style);
@@ -614,7 +607,13 @@ const renderSelectionHandles = (ctx: OverlayCtx): void => {
     }
 
     // Read-only: outline only — no resize/rotate affordances to grab.
-    if (multiSelect || !isResizable(shape) || options.readOnly === true) continue;
+    if (
+      multiSelect ||
+      !isResizable(shape) ||
+      options.readOnly === true ||
+      options.suppressHandles === true
+    )
+      continue;
 
     // Draw only the four CORNER dots — at the rotated frame corners. Edge
     // resize is done by dragging the selection-box side itself, so no midpoint
@@ -710,24 +709,6 @@ const renderPreviews = (ctx: OverlayCtx): void => {
       if (el.scale.x !== 1 || el.scale.y !== 1) target.scale(el.scale.x, el.scale.y);
       renderer(el, target);
       target.restore();
-    }
-  }
-
-  // 3. Link-drawing preview — dashed line in screen space. An elbow preview
-  //    carries the full orthogonal polyline (`points`); otherwise a straight
-  //    from→to segment.
-  if (options.edgePreview) {
-    const pts = options.edgePreview.points;
-    if (pts && pts.length >= 2) {
-      drawLinkPreviewPath(
-        target,
-        pts.map((p) => matrix.applyToPoint(w2s, p)),
-        style,
-      );
-    } else {
-      const from = matrix.applyToPoint(w2s, options.edgePreview.from);
-      const to = matrix.applyToPoint(w2s, options.edgePreview.to);
-      drawLinkPreview(target, from, to, style);
     }
   }
 
@@ -834,7 +815,7 @@ const renderLinkHandles = (ctx: OverlayCtx): void => {
   // 5. Selected-edge endpoint handles + bend-point (waypoint) handles.
   //    Read-only: the halo above still marks the selected link, but the
   //    endpoint/bend grips are suppressed (nothing to re-bind or drag).
-  if (options.edgeSelection && options.readOnly !== true) {
+  if (options.edgeSelection && options.readOnly !== true && options.suppressHandles !== true) {
     const from = matrix.applyToPoint(w2s, options.edgeSelection.from);
     const to = matrix.applyToPoint(w2s, options.edgeSelection.to);
     // Segment-midpoint "add waypoint" handles (drawn first, under the rest).
@@ -1084,8 +1065,8 @@ const renderGroupBounds = (ctx: OverlayCtx): void => {
   if (options.groupBounds) {
     const groupScreen = projectBounds(options.groupBounds, w2s);
     drawOutline(target, groupScreen, style);
-    // Read-only: combined-bounds outline only — no resize/rotate handles.
-    if (options.readOnly === true) return;
+    // Read-only / non-select tool: combined-bounds outline only — no handles.
+    if (options.readOnly === true || options.suppressHandles === true) return;
     const handleSet = CORNER_HANDLES;
     for (const handle of handleSet) {
       const worldPoint = handlePosition(handle, options.groupBounds, zoom);
@@ -1392,17 +1373,6 @@ const drawDrawingPreview = (target: RenderTarget, b: Bounds, style: OverlayStyle
   target.stroke();
 };
 
-const drawLinkPreview = (target: RenderTarget, from: Vec2, to: Vec2, style: OverlayStyle): void => {
-  target.setStroke(style.drawingStroke);
-  target.setStrokeWidth(1.5);
-  target.setDashArray(style.drawingDash);
-  target.beginPath();
-  target.moveTo(from.x, from.y);
-  target.lineTo(to.x, to.y);
-  target.stroke();
-};
-
-/** Dashed polyline preview (elbow) in screen space. */
 /**
  * Dashed accent quad for the image-crop window. `pts` are already in screen
  * space (4 corners, clockwise). The grab handles are drawn separately (all 8
@@ -1496,24 +1466,6 @@ const drawCropGhost = (
   target.drawImage(handle, fullRect.x, fullRect.y, fullRect.width, fullRect.height, dynamic);
   target.setOpacity(1);
   target.restore();
-};
-
-const drawLinkPreviewPath = (
-  target: RenderTarget,
-  pts: readonly Vec2[],
-  style: OverlayStyle,
-): void => {
-  target.setStroke(style.drawingStroke);
-  target.setStrokeWidth(1.5);
-  target.setDashArray(style.drawingDash);
-  target.beginPath();
-  const first = req(pts[0]);
-  target.moveTo(first.x, first.y);
-  for (let i = 1; i < pts.length; i++) {
-    const p = req(pts[i]);
-    target.lineTo(p.x, p.y);
-  }
-  target.stroke();
 };
 
 const drawPortDot = (

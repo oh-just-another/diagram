@@ -1,0 +1,27 @@
+---
+title: "React: viewer / embed"
+sidebar_position: 3
+---
+
+import ExampleEditor from "@site/src/components/ExampleEditor";
+
+A read-only diagram for embedding into product pages: chrome trimmed, edits gated, pan / zoom / select still available. Try dragging a shape — nothing moves.
+
+<ExampleEditor
+  sceneUrl="/scenes/edges-straight-ortho.json"
+  readOnly
+  editorProps={{ hideToolbar: true, theme: "system" }}
+/>
+
+```tsx
+import { Editor, type EditorInstance } from "@oh-just-another/editor";
+
+<Editor
+  initialScene={scene}
+  hideToolbar
+  theme="system"
+  onReady={(editor: EditorInstance) => {
+    editor.setReadOnly(true);
+  }}
+/>;
+```

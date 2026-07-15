@@ -10,7 +10,9 @@ import { Editor } from "@oh-just-another/state";
 import { addElement } from "@oh-just-another/scene";
 
 declare const editor: Editor;
-editor.setMode("draw-rect");
+editor.setActiveTool("draw-rect");
 ```
 
 `Mode` from `@oh-just-another/state` enumerates the full set of tools. For non-interactive creation, call the pure `addElement` operation from `@oh-just-another/scene`, which returns the next scene plus a patch.
+
+Drag previews are WYSIWYG: `draw-rect` / `draw-ellipse` render the would-be element through its real renderer (actual shape and default style, not a dashed box), and `draw-edge` renders the would-be link through the real link renderer — the default elbow routing, arrowhead and colour the committed link will have.

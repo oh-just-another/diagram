@@ -278,3 +278,48 @@ export const BRUSH_OUTLINE_ARC_STEP = 0.35;
  * Range: 1.5–4.
  */
 export const BRUSH_OUTLINE_MITER_LIMIT = 2.5;
+
+/**
+ * Default fractional position of a link label along its path (0 = source end,
+ * 1 = target end). Used when `LinkLabel.position` is unset. Range: 0–1.
+ */
+export const LINK_LABEL_DEFAULT_POSITION = 0.5;
+
+/**
+ * Default link-label font size (world px at zoom 1). Range: 10–16.
+ */
+export const LINK_LABEL_DEFAULT_FONT_SIZE = 12;
+
+/**
+ * Max link-label line width before word-wrap kicks in (world px at zoom 1).
+ * Wider = fewer, longer lines; narrower = taller pill. Range: 100–240.
+ */
+export const LINK_LABEL_MAX_WIDTH = 160;
+
+/**
+ * Inner padding of the label pill around the text block (world px at zoom 1).
+ * Range: 2–10.
+ */
+export const LINK_LABEL_PAD_X = 6;
+export const LINK_LABEL_PAD_Y = 3;
+
+/**
+ * Line-height factor for multiline link labels (× fontSize). Range: 1.1–1.5.
+ */
+export const LINK_LABEL_LINE_HEIGHT = 1.25;
+
+/**
+ * Min arc-length distance (world px) the label anchor keeps from either path
+ * end, so the pill never sits on an arrowhead. Applied as a clamp on the
+ * fractional position; ignored when the whole path is shorter than twice this.
+ * Range: 12–40.
+ */
+export const LINK_LABEL_END_CLEARANCE = 24;
+
+/**
+ * Average glyph advance as a fraction of fontSize — the conservative width
+ * estimate used where real text measurement is unavailable (hit-testing,
+ * dirty-rect / culling bounds). Slightly generous on purpose: overestimating
+ * keeps a label inside its computed bounds. Range: 0.55–0.7.
+ */
+export const LINK_LABEL_CHAR_WIDTH_FACTOR = 0.62;

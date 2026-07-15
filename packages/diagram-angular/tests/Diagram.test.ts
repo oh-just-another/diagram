@@ -67,6 +67,6 @@ describe("<oja-diagram-ng> (Angular)", () => {
     expect(() => {
       instance.undo();
     }).not.toThrow();
-    expect(instance.getMode()).toBeNull();
+    expect(instance.getActiveTool()).toBeNull();
   });
 });

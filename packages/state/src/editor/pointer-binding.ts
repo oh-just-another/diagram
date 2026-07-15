@@ -1,5 +1,7 @@
 import {
   findContainerAt,
+  getElbowSegmentHandles,
+  linkLabelBounds,
   getAnchorWorld,
   getDropZoneWorld,
   getElement,
@@ -27,6 +29,8 @@ import { anchorOverlayPoints } from "./anchor-points.js";
 import { snapshotMovingLinks } from "./applies/link-move.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
+  DOUBLE_CLICK_MS,
+  DOUBLE_CLICK_TOLERANCE_PX,
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_START_ANCHOR_OUTSET,
   LONG_PRESS_MAX_MOVEMENT_PX,
@@ -40,11 +44,58 @@ import { clampZoom } from "./public/zoom-pan.js";
 import { req } from "../util.js";
 import type { Editor } from "../editor.js";
 
-/** Inclusive integer range `[a..b]`; empty when `b < a`. */
-const range = (a: number, b: number): number[] => {
-  const out: number[] = [];
-  for (let i = a; i <= b; i++) out.push(i);
-  return out;
+/**
+ * Caption pill drag — a press inside the SELECTED link's label pill grabs the
+ * caption: dragging slides it along the link's path (projection, snap back to
+ * the middle), a double-click opens the inline text editor. Owns the press so
+ * the machine's link-move gesture doesn't translate the whole link instead.
+ * An unselected link falls through (first click selects as before).
+ */
+const handleDownLabelDrag = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (editor.readOnly) return false;
+  const linkId = editor.selectedLink;
+  if (!(editor.activeTool.type === "select" && linkId)) return false;
+  const edge = getLink(editor._scene, linkId);
+  if (!edge?.label) return false;
+  const b = linkLabelBounds(editor._scene, edge);
+  const inside =
+    b !== null &&
+    worldPoint.x >= b.x &&
+    worldPoint.x <= b.x + b.width &&
+    worldPoint.y >= b.y &&
+    worldPoint.y <= b.y + b.height;
+  if (!inside) return false;
+  editor.cancelLongPress();
+  // Second click of a double-click → edit the caption text. The FIRST click
+  // usually travelled the machine path (it selected the link), so consult the
+  // machine's click bookkeeping, not the handle chain.
+  const now = performance.now();
+  const last = editor.interaction.lastClickWorldPoint;
+  const isDouble =
+    now - editor.interaction.lastClickAt < DOUBLE_CLICK_MS &&
+    last !== null &&
+    Math.hypot(last.x - worldPoint.x, last.y - worldPoint.y) <= DOUBLE_CLICK_TOLERANCE_PX;
+  editor.interaction.lastClickAt = now;
+  editor.interaction.lastClickWorldPoint = worldPoint;
+  if (isDouble) {
+    editor.beginLinkCaptionEdit(linkId);
+    return true;
+  }
+  editor.beginLabelDrag(linkId);
+  return true;
+};
+
+/** Caption drag move / release. */
+const handleMoveLabelDrag = (editor: Editor, worldPoint: Vec2): boolean => {
+  if (!editor.isDraggingLabel) return false;
+  editor.updateLabelDrag(worldPoint);
+  return true;
+};
+
+const handleUpLabelDrag = (editor: Editor): boolean => {
+  if (!editor.isDraggingLabel) return false;
+  editor.endLabelDrag();
+  return true;
 };
 
 /** True when `p` lies within `√r2` of `center` (squared-distance compare). */
@@ -77,7 +128,7 @@ const handleDownPanTrigger = (
 ): boolean => {
   const isRightClick = ev.button === 2 || ev.button === 1;
   const isSpaceLeftDrag = ev.button === 0 && editor.spaceHeld;
-  const isHandModeLeftDrag = ev.button === 0 && editor.mode === "hand";
+  const isHandModeLeftDrag = ev.button === 0 && editor.activeTool.type === "hand";
   if (isRightClick || isSpaceLeftDrag || isHandModeLeftDrag) {
     // Suppress the next native contextmenu — we'll either pan (drag) or fire
     // the long-press callback at pointerup (click-style right-click).
@@ -139,23 +190,30 @@ const handleDownEditingText = (editor: Editor, worldPoint: Vec2): boolean => {
 
 /** Crop-drag move — resize the window (handle) or pan the source (body). */
 const handleMoveCrop = (editor: Editor, worldPoint: Vec2): boolean => {
-  if (editor.mode !== "crop" || editor.cropSession?.drag == null) return false;
+  if (editor.activeTool.type !== "crop" || editor.cropSession?.drag == null) return false;
   editor.updateImageCropDrag(worldPoint);
   return true;
 };
 
 /** Crop-drag release — finish the drag (keeps the pending crop / box). */
 const handleUpCrop = (editor: Editor): boolean => {
-  if (editor.mode !== "crop" || editor.cropSession?.drag == null) return false;
+  if (editor.activeTool.type !== "crop" || editor.cropSession?.drag == null) return false;
   editor.endImageCropDrag();
   return true;
 };
 
 /** Brush mode owns the gesture end-to-end — start a stroke, skip machine. */
-const handleDownBrush = (editor: Editor, worldPoint: Vec2, pressure: number): boolean => {
+const handleDownBrush = (
+  editor: Editor,
+  worldPoint: Vec2,
+  pressure: number,
+  pointerType: string,
+): boolean => {
   if (editor.readOnly) return false;
-  if (editor.mode !== "brush") return false;
-  editor.beginBrushStroke(worldPoint, pressure);
+  if (editor.activeTool.type !== "brush") return false;
+  // pointerType picks the pressure source: pens report real pressure, mouse /
+  // touch get it simulated from pointer speed.
+  editor.beginBrushStroke(worldPoint, pressure, pointerType);
   return true;
 };
 
@@ -171,7 +229,7 @@ const handleDownErase = (
   strokeErase: boolean,
 ): boolean => {
   if (editor.readOnly) return false;
-  if (editor.mode !== "erase") return false;
+  if (editor.activeTool.type !== "erase") return false;
   editor.cancelLongPress();
   editor.beginEraseStroke(worldPoint, restore, strokeErase);
   return true;
@@ -179,7 +237,7 @@ const handleDownErase = (
 
 /** Laser mode — begin an ephemeral trail. Never touches the scene. */
 const handleDownLaser = (editor: Editor, worldPoint: Vec2): boolean => {
-  if (editor.mode !== "laser") return false;
+  if (editor.activeTool.type !== "laser") return false;
   editor.cancelLongPress();
   editor.beginLaserStroke(worldPoint);
   return true;
@@ -187,11 +245,11 @@ const handleDownLaser = (editor: Editor, worldPoint: Vec2): boolean => {
 
 /**
  * Eyedropper — a click samples the colour of the shape under the cursor. Fires
- * when the colour-picker pipette is armed ({@link Editor.isEyedropperArmed}, mode
- * unchanged) or in the legacy `eyedropper` tool mode. Owns the gesture end-to-end.
+ * only while the colour-picker pipette is armed ({@link Editor.isEyedropperArmed};
+ * the tool mode never changes). Owns the gesture end-to-end.
  */
 const handleDownEyedropper = (editor: Editor, worldPoint: Vec2): boolean => {
-  if (editor.mode !== "eyedropper" && !editor.isEyedropperArmed) return false;
+  if (!editor.isEyedropperArmed) return false;
   editor.cancelLongPress();
   editor.applyEyedropperAt(worldPoint);
   return true;
@@ -205,7 +263,7 @@ const handleDownEyedropper = (editor: Editor, worldPoint: Vec2): boolean => {
  * gesture only when it grabbed a handle / the body.
  */
 const handleDownCrop = (editor: Editor, worldPoint: Vec2): boolean => {
-  if (editor.mode !== "crop" || editor.cropSession === null) return false;
+  if (editor.activeTool.type !== "crop" || editor.cropSession === null) return false;
   const target = editor.cropHandleAtWorld(worldPoint);
   if (target === null) {
     // Clicked away from the image — apply the crop and let the press proceed.
@@ -226,7 +284,7 @@ const handleDownCrop = (editor: Editor, worldPoint: Vec2): boolean => {
  * crop (which would otherwise swallow the press and break tap gestures).
  */
 const handleDownCropEnter = (editor: Editor, worldPoint: Vec2, detail: number): boolean => {
-  if (editor.readOnly || editor.mode !== "select" || (detail || 0) < 2) return false;
+  if (editor.readOnly || editor.activeTool.type !== "select" || (detail || 0) < 2) return false;
   const hit = editor.hitTest(worldPoint);
   if (hit.kind !== "element") return false;
   const el = getElement(editor._scene, hit.id);
@@ -241,7 +299,7 @@ const handleDownCropEnter = (editor: Editor, worldPoint: Vec2, detail: number): 
  */
 const handleDownDrawText = (editor: Editor, worldPoint: Vec2): boolean => {
   if (editor.readOnly) return false;
-  if (editor.mode !== "draw-text") return false;
+  if (editor.activeTool.type !== "draw-text") return false;
   editor.cancelLongPress();
   const hit = editor.hitTest(worldPoint);
   const existing = hit.kind === "element" ? getElement(editor._scene, hit.id) : undefined;
@@ -305,7 +363,7 @@ const handleDownInteractiveHit = (editor: Editor, worldPoint: Vec2): boolean => 
 const handleDownSegmentDrag = (editor: Editor, worldPoint: Vec2): boolean => {
   if (editor.readOnly) return false;
   const segDragLink = editor.selectedLink;
-  if (!(editor.mode === "select" && segDragLink)) return false;
+  if (!(editor.activeTool.type === "select" && segDragLink)) return false;
   const edge = getLink(editor._scene, segDragLink);
   if (!(edge && (edge.routing ?? "straight") === "orthogonal")) return false;
   const path = getLinkPath(editor._scene, edge);
@@ -313,17 +371,13 @@ const handleDownSegmentDrag = (editor: Editor, worldPoint: Vec2): boolean => {
   const zoom = editor._scene.viewport.zoom || 1;
   const r = LINK_ENDPOINT_HANDLE_RADIUS / zoom;
   const r2 = r * r;
-  // Draggable segments: the single segment of a straight elbow (grab to bend it
-  // → insert), or interior segments k in 1..len-3 of a routed elbow (terminal
-  // stubs touch from/to and aren't slid).
-  const segs = path.length === 2 ? [0] : range(1, path.length - 3);
-  for (const k of segs) {
+  // Draggable segments — shared with the overlay so the grab point always
+  // matches the drawn dot (handles slide out from under the caption pill).
+  for (const { k, point } of getElbowSegmentHandles(editor._scene, edge, path)) {
     const a = req(path[k]);
     const b = req(path[k + 1]);
-    const mx = (a.x + b.x) / 2;
-    const my = (a.y + b.y) / 2;
-    const dx = mx - worldPoint.x;
-    const dy = my - worldPoint.y;
+    const dx = point.x - worldPoint.x;
+    const dy = point.y - worldPoint.y;
     if (dx * dx + dy * dy <= r2) {
       const axis = Math.abs(a.y - b.y) < 1e-6 ? "h" : "v";
       const at = axis === "h" ? (a.x + b.x) / 2 : (a.y + b.y) / 2;
@@ -349,7 +403,7 @@ const handleDownSegmentDrag = (editor: Editor, worldPoint: Vec2): boolean => {
 const handleDownWaypointDrag = (editor: Editor, worldPoint: Vec2): boolean => {
   if (editor.readOnly) return false;
   const wpDragLink = editor.selectedLink;
-  if (!(editor.mode === "select" && wpDragLink)) return false;
+  if (!(editor.activeTool.type === "select" && wpDragLink)) return false;
   const edge = getLink(editor._scene, wpDragLink);
   // Elbow links use segment-drag (separate mechanic), not free waypoints.
   const path =
@@ -443,7 +497,7 @@ const handleDownAnchorStart = (
   if (editor.readOnly) return false;
   if (
     !(
-      editor.mode === "select" &&
+      editor.activeTool.type === "select" &&
       !data.modifiers.shift &&
       !data.modifiers.meta &&
       !data.modifiers.ctrl &&
@@ -497,7 +551,7 @@ const applyAltDragDuplicate = (
   if (editor.readOnly) return target;
   if (
     data.modifiers.alt &&
-    editor.mode === "select" &&
+    editor.activeTool.type === "select" &&
     target.kind === "element" &&
     editor._selection.has(target.id)
   ) {
@@ -846,11 +900,11 @@ const dispatchMoveToMachine = (editor: Editor, worldPoint: Vec2): void => {
     );
     // Track the idle cursor so the SINGLE selected element's link-start dot
     // grows by proximity. Only the selected element's dots react.
-    editor.setHoverCursorWorld(editor.mode === "select" ? worldPoint : null);
+    editor.setHoverCursorWorld(editor.activeTool.type === "select" ? worldPoint : null);
     // Erase-mode hover: repaint so the eraser cursor ring follows the pointer
     // (its centre is `lastPointerWorld`, already updated above). Drag moves
     // repaint via `extendEraseStroke`; this covers the pointer-up hover.
-    if (editor.mode === "erase") editor.notify();
+    if (editor.activeTool.type === "erase") editor.notify();
   }
   editor.actor.send({ type: "POINTER_MOVE", point: worldPoint });
 };
@@ -1172,14 +1226,17 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (handleDownEditingText(editor, worldPoint)) return;
     if (handleDownCrop(editor, worldPoint)) return;
     if (handleDownCropEnter(editor, worldPoint, ev.detail)) return;
-    if (handleDownBrush(editor, worldPoint, ev.pressure)) return;
+    if (handleDownBrush(editor, worldPoint, ev.pressure, ev.pointerType)) return;
     if (handleDownErase(editor, worldPoint, data.modifiers.alt, data.modifiers.shift)) return;
     if (handleDownLaser(editor, worldPoint)) return;
     if (handleDownDrawText(editor, worldPoint)) return;
     if (handleDownAnnotation(editor, worldPoint)) return;
     if (handleDownInteractiveHit(editor, worldPoint)) return;
+    // Order: concrete handle dots (segment / waypoint) win over the caption
+    // pill — the dots draw ABOVE it; the pill takes any other press inside it.
     if (handleDownSegmentDrag(editor, worldPoint)) return;
     if (handleDownWaypointDrag(editor, worldPoint)) return;
+    if (handleDownLabelDrag(editor, worldPoint)) return;
 
     // Resolve the press target up-front so the anchor-drag path can defer to the
     // rotate grip (which floats above the top anchor's grab zone).
@@ -1204,7 +1261,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     // still deselects via the machine below; onMove promotes this to a pan once
     // the finger drags past slop.
     editor.touchPanCandidate =
-      data.kind === "touch" && editor.mode === "select" && target.kind === "empty"
+      data.kind === "touch" && editor.activeTool.type === "select" && target.kind === "empty"
         ? data.point
         : null;
 
@@ -1234,6 +1291,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     editor.refreshCursor(worldPoint);
 
     if (handleMoveCrop(editor, worldPoint)) return;
+    if (handleMoveLabelDrag(editor, worldPoint)) return;
     if (handleMoveSegmentDrag(editor, worldPoint)) return;
     if (handleMoveWaypointDrag(editor, worldPoint)) return;
     if (handleMoveLinkAnchorDrag(editor, worldPoint)) return;
@@ -1263,6 +1321,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     editor.cancelLongPress();
 
     if (handleUpCrop(editor)) return;
+    if (handleUpLabelDrag(editor)) return;
     if (handleUpSegmentDrag(editor)) return;
     if (handleUpWaypointDrag(editor)) return;
     if (handleUpLinkAnchorDrag(editor, ev)) return;

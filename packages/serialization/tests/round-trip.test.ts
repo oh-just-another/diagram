@@ -214,6 +214,54 @@ describe("round-trip", () => {
     expect(ro.closed).toBeUndefined();
   });
 
+  it("preserves a brush stroke's regeneration payload (pressures / simulatePressure / baseWidth)", () => {
+    let scene = emptyScene();
+    const stroke: Element = {
+      id: elementId("bp"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "brush",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: { stroke: "#111" },
+      points: [
+        { x: 0, y: 0, width: 3 },
+        { x: 10, y: 0, width: 4 },
+        { x: 20, y: 0, width: 5 },
+      ],
+      pressures: [0.5, 0.66, 0.83],
+      simulatePressure: true,
+      baseWidth: 6,
+    };
+    const legacy: Element = {
+      id: elementId("bl"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "brush",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: { stroke: "#111" },
+      points: [
+        { x: 0, y: 0, width: 3 },
+        { x: 10, y: 0, width: 3 },
+      ],
+    };
+    ({ scene } = addElement(scene, stroke));
+    ({ scene } = addElement(scene, legacy));
+    const restored = deserializeScene(serializeScene(scene));
+    const rs = restored.elements.get(elementId("bp")) as Extract<Element, { type: "brush" }>;
+    const rl = restored.elements.get(elementId("bl")) as Extract<Element, { type: "brush" }>;
+    expect(rs.pressures).toEqual([0.5, 0.66, 0.83]);
+    expect(rs.simulatePressure).toBe(true);
+    expect(rs.baseWidth).toBe(6);
+    // Legacy strokes stay clean — the optional payload must not be invented.
+    expect(rl.pressures).toBeUndefined();
+    expect(rl.simulatePressure).toBeUndefined();
+    expect(rl.baseWidth).toBeUndefined();
+  });
+
   it("preserves an optional image crop rect (stringify → parse)", () => {
     let scene = emptyScene();
     const img: Element = {

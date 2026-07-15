@@ -23,11 +23,11 @@ const editor = new Editor({
   mainTarget: layered.get("main"),
   overlayTarget: layered.get("overlay"),
   initialScene: emptyScene(),
-  initialMode: "select",
+  initialTool: "select",
 });
 
 editor.subscribe(() => render());
-editor.setMode("draw-rect");
+editor.setActiveTool("draw-rect");
 ```
 
 ## Concepts
@@ -36,7 +36,7 @@ editor.setMode("draw-rect");
 
 The centerpiece controller (`Editor`, `EditorOptions`, `LoadSceneOptions`). It owns the scene, selection, and viewport, and exposes a high-level API spanning:
 
-- **Tools / modes** — `mode`, `setMode`, `toolLocked` / `setToolLocked` (sticky tool).
+- **Tools** — `activeTool` (`{ type, locked, lastActiveTool }`, the single source of truth), `setActiveTool`, `setToolLocked` (sticky tool).
 - **Selection** — `selection`, `selectAll`, `deleteSelected`, `moveSelectionBy`, `focusCycle`, plus link selection (`selectedLinks`, `selectedLink`).
 - **History** — `undo`, `redo`, `canUndo`, `canRedo`, `history` (backed by `@oh-just-another/history`).
 - **Hit-testing** — `hitTest(worldPoint)` returns a `PressTarget`; `hitAnnotation`.
@@ -48,7 +48,7 @@ The centerpiece controller (`Editor`, `EditorOptions`, `LoadSceneOptions`). It o
 - **Text editing** — inline caret/selection model: `beginTextEdit`, `commitTextEdit`, `cancelTextEdit`, `setEditingText`, `setTextCaretFromPoint`, `extendTextSelectionToPoint`, `caretIndexAtWorldPoint`, `editingTextOverlay`, plus `createTextAt`.
 - **Image / file insert** — `insertImage`, `addElement`, `beginPlacement`, and a `FileDropRegistry` (see below).
 - **GIF / animation playback** — `togglePlayback`, `hoverAnimatedElement`, `isPlaybackPaused`.
-- **Brush strokes** — `beginBrushStroke`, `extendBrushStroke`, `commitBrushStroke`, `cancelBrushStroke`, `pendingBrushStroke`.
+- **Brush strokes** — `beginBrushStroke` (a `pointerType` argument picks the pressure source: real pen pressure, or speed-simulated for mouse/touch), `extendBrushStroke`, `commitBrushStroke`, `cancelBrushStroke`, `pendingBrushStroke`. Capture streamlines input, decimates samples, and tapers stroke ends on commit; the live preview matches the committed result.
 - **Annotations / comments** — `addAnnotation`, `removeAnnotation`, `toggleAnnotationResolved`, `addComment`, `removeComment`, `setSelectedAnnotation`, `setCommentAuthor`.
 - **Scene lifecycle** — `scene`, `loadScene`.
 

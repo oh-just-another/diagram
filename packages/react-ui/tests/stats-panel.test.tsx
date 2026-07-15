@@ -60,7 +60,7 @@ const mountEditor = (): { editor: Editor; cleanup: () => void } => {
     mainTarget: layered.get("main"),
     overlayTarget: layered.get("overlay"),
     initialScene: scene,
-    initialMode: "select",
+    initialTool: "select",
   });
   return {
     editor,

@@ -106,17 +106,17 @@ describe("cursorForHandle", () => {
 describe("context cursor", () => {
   it("draw tools show crosshair / text", () => {
     const e = makeEditor(rect("a", 0, 0));
-    e.setMode("draw-rect");
+    e.setActiveTool("draw-rect");
     expect(cursorOf(e)).toBe("crosshair");
-    e.setMode("draw-text");
+    e.setActiveTool("draw-text");
     expect(cursorOf(e)).toBe("text");
-    e.setMode("draw-edge");
+    e.setActiveTool("draw-edge");
     expect(cursorOf(e)).toBe("crosshair");
   });
 
   it("hand mode shows grab", () => {
     const e = makeEditor(rect("a", 0, 0));
-    e.setMode("hand");
+    e.setActiveTool("hand");
     expect(cursorOf(e)).toBe("grab");
   });
 
@@ -153,7 +153,7 @@ describe("context cursor", () => {
       hotspot: { x: 6, y: 6 },
       fallback: "crosshair",
     });
-    e.setMode("draw-rect"); // role "draw"
+    e.setActiveTool("draw-rect"); // role "draw"
     expect(cursorOf(e)).toBe('image-set(url("a.png") 1x, url("a@2x.png") 2x) 6 6, crosshair');
     // Clearing restores the keyword.
     e.setCursorOverride("draw", null);
@@ -163,7 +163,7 @@ describe("context cursor", () => {
   it("override without @2x emits a plain url()", () => {
     const e = makeEditor(rect("a", 0, 0));
     e.setCursorOverride("draw", { url: "a.png", hotspot: { x: 2, y: 3 } });
-    e.setMode("draw-rect");
+    e.setActiveTool("draw-rect");
     expect(cursorOf(e)).toBe('url("a.png") 2 3, crosshair');
   });
 });

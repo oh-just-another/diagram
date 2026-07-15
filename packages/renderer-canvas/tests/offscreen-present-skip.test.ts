@@ -62,7 +62,7 @@ const buildOffscreen = () => {
 
 describe("OffscreenLayeredSurface.present skip-unchanged", () => {
   it("posts a replay only when a layer's command stream changes", () => {
-    const { surface, replayCounts } = buildOffscreen();
+    const { surface, replayCounts, workers } = buildOffscreen();
     const main = surface.get("main");
 
     // Frame 1: content recorded → one replay.
@@ -72,6 +72,18 @@ describe("OffscreenLayeredSurface.present skip-unchanged", () => {
     main.fill();
     surface.present();
     expect(replayCounts()).toBe(1);
+
+    // The replay ships a packed transferable frame (buffer in the
+    // transfer list + string table), not an array of command objects.
+    const mainWorker = workers[1]!; // LAYER_ORDER index of "main"
+    const [msg, transfer] = mainWorker.postMessage.mock.calls.find(
+      (c) => (c[0] as { type?: string }).type === "replay",
+    ) as [{ buffer: unknown; strings: unknown; bitmaps: unknown; commands?: unknown }, unknown[]];
+    expect(msg.buffer).toBeInstanceOf(ArrayBuffer);
+    expect(msg.strings).toEqual(["red"]);
+    expect(msg.bitmaps).toEqual([]);
+    expect(msg.commands).toBeUndefined();
+    expect(transfer).toEqual([msg.buffer]);
 
     // Frame 2: identical stream → skipped, still 1.
     main.setFill("red");

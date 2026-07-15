@@ -14,10 +14,10 @@ const config: Config = {
   tagline: "Drop-in diagram editor for React — auto-detecting renderer, driveable from code.",
   favicon: "img/favicon.ico",
 
-  // Served from the custom apex domain (Cloudflare A/AAAA → GitHub Pages IPs,
-  // CNAME file in static/). At the domain root, so baseUrl is "/".
-  url: "https://ohjustanother.site",
-  baseUrl: "/",
+  // Served under the org's Pages custom domain (the domain is attached to the
+  // oh-just-another/site repo), mounted at the project-site path /diagram/.
+  url: "https://oh-just-another.site",
+  baseUrl: "/diagram/",
   organizationName: "oh-just-another",
   projectName: "diagram",
   trailingSlash: false,
@@ -46,15 +46,29 @@ const config: Config = {
         configureWebpack(_config: unknown, isServer: boolean) {
           return {
             module: {
-              rules: [{ test: /\.m?js$/, resolve: { fullySpecified: false } }],
+              rules: [
+                { test: /\.m?js$/, resolve: { fullySpecified: false } },
+                // Compile the Svelte wrapper's shipped .svelte source for the
+                // live framework demo on the examples pages.
+                { test: /\.svelte$/, use: { loader: "svelte-loader" } },
+              ],
             },
             resolve: {
               // The @oh-just-another/* packages publish ESM-only ("import")
               // exports. Docusaurus' SSR (node) build resolves without the
-              // "import" condition, so add it for the server compiler.
+              // "import" condition, so add it for the server compiler. The
+              // client compiler additionally needs the "svelte" condition so
+              // @oh-just-another/diagram-svelte resolves to its .svelte
+              // source (compiled by svelte-loader) for the live demo.
               ...(isServer
-                ? { conditionNames: ["import", "require", "module", "node", "default"] }
-                : {}),
+                ? {
+                    conditionNames: ["import", "require", "module", "node", "default"],
+                    // The Svelte wrapper resolves only through the "svelte"
+                    // export condition; the live demo imports it in a
+                    // browser-only effect, so the server bundle just stubs it.
+                    alias: { "@oh-just-another/diagram-svelte": false },
+                  }
+                : { conditionNames: ["svelte", "..."] }),
               fallback: {
                 "fs/promises": false,
                 fs: false,
@@ -128,6 +142,8 @@ const config: Config = {
       },
       items: [
         { to: DOCS_ENTRY, label: "Docs", position: "left" },
+        { to: "/docs/examples/", label: "Examples", position: "left" },
+        { to: "/features", label: "Features", position: "left" },
         { href: GITHUB_URL, label: "GitHub", position: "right" },
       ],
     },
@@ -138,6 +154,7 @@ const config: Config = {
           title: "Product",
           items: [
             { label: "Features", to: "/features" },
+            { label: "Examples", to: "/docs/examples/" },
             { label: "FAQ", to: "/faq" },
           ],
         },

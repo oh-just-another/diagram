@@ -63,6 +63,25 @@ describe("LinkBoundsCache", () => {
     expect(b!.height).toBeGreaterThan(0);
   });
 
+  it("unions the label pill into the AABB (caption never clipped by culling)", () => {
+    // Horizontal free link: the bare AABB is just the padded line, so the
+    // pill's height must visibly extend it.
+    const flat: Link = {
+      ...baseLink,
+      from: { kind: "point", position: { x: 0, y: 50 } },
+      to: { kind: "point", position: { x: 300, y: 50 } },
+    };
+    const bare = sceneWithLink(flat);
+    const withLabel = sceneWithLink({
+      ...flat,
+      label: { text: "a fairly long caption that widens the pill" },
+    });
+    const b0 = computeLinkWorldBounds(bare.scene, bare.edge)!;
+    const b1 = computeLinkWorldBounds(withLabel.scene, withLabel.edge)!;
+    expect(b1.height).toBeGreaterThan(b0.height);
+    expect(b1.width).toBeGreaterThanOrEqual(b0.width);
+  });
+
   it("memoizes by (scene, edge) identity", () => {
     const { scene, edge } = sceneWithLink(baseLink);
     const cache = new LinkBoundsCache();

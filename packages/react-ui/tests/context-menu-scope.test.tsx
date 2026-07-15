@@ -66,7 +66,7 @@ describe("ContextMenu listener scope", () => {
     });
 
     const result = render(
-      <DiagramRoot initialScene={emptyScene()} initialMode="select" skipInstallRenderers={false}>
+      <DiagramRoot initialScene={emptyScene()} initialTool="select" skipInstallRenderers={false}>
         <DiagramSurface style={{ width: 800, height: 600 }} />
         <ContextMenu items={items} />
       </DiagramRoot>,

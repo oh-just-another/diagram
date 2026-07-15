@@ -4,7 +4,7 @@ import type { Scene } from "@oh-just-another/scene";
 import type { WorkerRenderMessage, WorkerRenderResponse } from "@oh-just-another/renderer-core";
 import { registerBundledFonts, type FontScope } from "@oh-just-another/fonts";
 import { Canvas2DTarget } from "./canvas-target.js";
-import { replayCommands, type RenderCommand } from "./recording-target.js";
+import { replayPackedFrame, type PackedReplayMessage } from "./replay-codec.js";
 import { OFFSCREEN_IMAGE_CACHE_CAP } from "./constants.js";
 
 /**
@@ -109,24 +109,31 @@ const snapshot = (scene: Scene): void => {
 };
 
 /**
- * Replay a serialised RecordingTarget command stream onto the owned
+ * Replay a packed RecordingTarget command stream onto the owned
  * OffscreenCanvas. Used by the LayeredSurface "offscreen" backend: the
- * main thread captures every RenderTarget call into a buffer and ships
- * it here per frame; the worker replays.
+ * main thread captures every RenderTarget call into a buffer, packs it
+ * via `packReplayFrame`, and ships it here per frame (numeric stream in
+ * the transfer list, bitmaps cloned alongside); the worker replays.
  */
-const replay = (commands: readonly RenderCommand[]): void => {
+const replay = (msg: PackedReplayMessage): void => {
   if (!state.target) {
     post({ type: "error", message: "Worker not initialised" });
     return;
   }
-  replayCommands(state.target, commands, state.images);
+  // Register this frame's bitmaps BEFORE replaying so the stream's
+  // drawImage id references resolve. These are worker-owned clones —
+  // the LRU's evict hook closes them.
+  for (const { id, bitmap } of msg.bitmaps) {
+    // A re-defined id (re-captured video frame) replaces the stored clone;
+    // close the old one — LruCache.set does not fire onEvict on overwrite.
+    const prev = state.images.get(id);
+    if (prev && prev !== bitmap) prev.close();
+    state.images.set(id, bitmap);
+  }
+  replayPackedFrame(state.target, msg.buffer, msg.strings, state.images);
 };
 
-interface ReplayMessage {
-  readonly type: "replay";
-  readonly commands: readonly RenderCommand[];
-}
-type InboundMessage = WorkerRenderMessage | ReplayMessage;
+type InboundMessage = WorkerRenderMessage | PackedReplayMessage;
 
 (self as unknown as DedicatedWorkerGlobalScope).addEventListener(
   "message",
@@ -146,7 +153,7 @@ type InboundMessage = WorkerRenderMessage | ReplayMessage;
           snapshot(msg.scene);
           break;
         case "replay":
-          replay(msg.commands);
+          replay(msg);
           break;
         case "frame":
           // Patch-stream frames are not implemented; the protocol is

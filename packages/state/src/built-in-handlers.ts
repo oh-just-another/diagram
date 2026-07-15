@@ -1,5 +1,9 @@
 import type { Vec2 } from "@oh-just-another/types";
-import { DEFAULT_IMAGE_MAX_EDGE_PX } from "./constants.js";
+import {
+  DEFAULT_IMAGE_MAX_EDGE_PX,
+  VIDEO_FALLBACK_WIDTH_PX,
+  VIDEO_FALLBACK_HEIGHT_PX,
+} from "./constants.js";
 import { isImageFile, isVideoFile, readFileAsDataURL, type FileDropHandler } from "./file-drop.js";
 
 /**
@@ -176,6 +180,29 @@ const ensureAnimatedImageSink = (): HTMLElement => {
 };
 
 /**
+ * Build the hidden, muted, looping `<video>` element both the drop handler
+ * and scene rehydration attach for an mp4/webm shape. The element is parked
+ * in the animated-image sink (1px, off to the side) so it keeps decoding
+ * frames; the canvas reads the current frame every animation tick. The
+ * caller decides when to await `loadedmetadata` / call `play()`.
+ */
+export const createHiddenLoopingVideo = (src: string): HTMLVideoElement => {
+  const video = document.createElement("video");
+  video.src = src;
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.autoplay = true;
+  video.style.position = "absolute";
+  video.style.left = "-99999px";
+  video.style.top = "-99999px";
+  video.style.width = "1px";
+  video.style.height = "1px";
+  ensureAnimatedImageSink().appendChild(video);
+  return video;
+};
+
+/**
  * Built-in video file-drop handler. Drops a `<video>` element into
  * the hidden sink (autoplay + muted + loop so it advances frames
  * without user-gesture limits), reads the natural dimensions, and
@@ -190,20 +217,12 @@ export const videoFileDropHandler: FileDropHandler = {
   accept: (file) => isVideoFile(file),
   handle: async (file, { editor, worldPoint }) => {
     if (typeof document === "undefined") return;
+    // Persist the bytes in Scene.files FIRST — the live <video> handle and
+    // its blob: URL die with the page, so without a `fileId` a reloaded
+    // scene has nothing to rehydrate the video from.
+    const fileId = await editor.addBinaryFile(file, file.name);
     const url = URL.createObjectURL(file);
-    const video = document.createElement("video");
-    video.src = url;
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.autoplay = true;
-    const sink = ensureAnimatedImageSink();
-    video.style.position = "absolute";
-    video.style.left = "-99999px";
-    video.style.top = "-99999px";
-    video.style.width = "1px";
-    video.style.height = "1px";
-    sink.appendChild(video);
+    const video = createHiddenLoopingVideo(url);
     await new Promise<void>((resolve) => {
       const done = (): void => {
         resolve();
@@ -211,8 +230,8 @@ export const videoFileDropHandler: FileDropHandler = {
       video.onloadedmetadata = done;
       video.onerror = done;
     });
-    const nW = video.videoWidth || 480;
-    const nH = video.videoHeight || 270;
+    const nW = video.videoWidth || VIDEO_FALLBACK_WIDTH_PX;
+    const nH = video.videoHeight || VIDEO_FALLBACK_HEIGHT_PX;
     const max = DEFAULT_IMAGE_MAX_EDGE_PX;
     const scale = Math.max(nW, nH) > max ? max / Math.max(nW, nH) : 1;
     const width = Math.round(nW * scale);
@@ -233,6 +252,7 @@ export const videoFileDropHandler: FileDropHandler = {
       position: topLeft,
       image: video as unknown as HTMLImageElement,
       animated: true,
+      fileId,
     });
   },
 };

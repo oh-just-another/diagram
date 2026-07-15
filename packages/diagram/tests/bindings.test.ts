@@ -73,7 +73,7 @@ describe("ojaDiagramController", () => {
     let el: OjaDiagramElement | null = null;
     const controller = ojaDiagramController(() => el);
     expect(controller.getScene()).toBeUndefined();
-    expect(controller.getMode()).toBeNull();
+    expect(controller.getActiveTool()).toBeNull();
     expect(controller.getSelection().size).toBe(0);
     expect(() => {
       controller.undo();

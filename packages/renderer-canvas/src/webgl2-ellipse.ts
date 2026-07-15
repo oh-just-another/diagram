@@ -40,8 +40,7 @@ const scratchMat3 = new Float32Array(9);
 export class EllipsePipeline {
   private readonly program: WebGLProgram;
   private readonly vbo: WebGLBuffer;
-  private readonly aPos: number;
-  private readonly aLocal: number;
+  private readonly vao: WebGLVertexArrayObject;
   private readonly uTransform: WebGLUniformLocation | null;
   private readonly uColor: WebGLUniformLocation | null;
   private readonly uOpacity: WebGLUniformLocation | null;
@@ -50,19 +49,28 @@ export class EllipsePipeline {
     const vert = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SRC, "Ellipse");
     const frag = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SRC, "Ellipse");
     this.program = linkProgram(gl, vert, frag, "Ellipse");
-    this.aPos = gl.getAttribLocation(this.program, "aPos");
-    this.aLocal = gl.getAttribLocation(this.program, "aLocal");
+    const aPos = gl.getAttribLocation(this.program, "aPos");
+    const aLocal = gl.getAttribLocation(this.program, "aLocal");
     this.uTransform = gl.getUniformLocation(this.program, "uTransform");
     this.uColor = gl.getUniformLocation(this.program, "uColor");
     this.uOpacity = gl.getUniformLocation(this.program, "uOpacity");
-    // Static interleaved buffer — never re-uploaded.
+    // Static interleaved buffer — never re-uploaded. The attribute
+    // layout is recorded into a VAO once; per draw the pipeline just
+    // binds the VAO (no bufferData, no pointer re-declaration).
     this.vbo = glReq(gl.createBuffer());
+    this.vao = glReq(gl.createVertexArray());
+    gl.bindVertexArray(this.vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
     gl.bufferData(
       gl.ARRAY_BUFFER,
       new Float32Array([0, 0, -1, -1, 1, 0, 1, -1, 0, 1, -1, 1, 1, 1, 1, 1]),
       gl.STATIC_DRAW,
     );
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(aLocal);
+    gl.vertexAttribPointer(aLocal, 2, gl.FLOAT, false, 16, 8);
+    gl.bindVertexArray(null);
   }
 
   /**
@@ -85,11 +93,7 @@ export class EllipsePipeline {
     if (opacity <= 0 || rx <= 0 || ry <= 0) return;
     const gl = this.gl;
     gl.useProgram(this.program);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
-    gl.enableVertexAttribArray(this.aPos);
-    gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 16, 0);
-    gl.enableVertexAttribArray(this.aLocal);
-    gl.vertexAttribPointer(this.aLocal, 2, gl.FLOAT, false, 16, 8);
+    gl.bindVertexArray(this.vao);
 
     const w = 2 * rx;
     const h = 2 * ry;
@@ -116,9 +120,13 @@ export class EllipsePipeline {
     gl.uniform3f(this.uColor, color[0], color[1], color[2]);
     gl.uniform1f(this.uOpacity, opacity);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    // Reset to the default VAO so this pipeline's attribute state can't
+    // leak into other pipelines (matches the rect-batch discipline).
+    gl.bindVertexArray(null);
   }
 
   dispose(): void {
+    this.gl.deleteVertexArray(this.vao);
     this.gl.deleteBuffer(this.vbo);
     this.gl.deleteProgram(this.program);
   }

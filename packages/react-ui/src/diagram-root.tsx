@@ -28,7 +28,7 @@ import { ContextMenuControllerProvider } from "./context-menu-controller.js";
  * Palette / PropertyPanel, so all three live as flex siblings.
  *
  * ```tsx
- * <DiagramRoot initialScene={...} initialMode="select">
+ * <DiagramRoot initialScene={...} initialTool="select">
  *   <Toolbar />
  *   <Palette />
  *   <DiagramSurface style={{ flex: 1, background: "#fff" }} />
@@ -42,7 +42,7 @@ const RegisterSurfaceContext = createContext<RegisterSurface | null>(null);
 
 export interface DiagramRootProps {
   readonly initialScene: Scene;
-  readonly initialMode?: Mode;
+  readonly initialTool?: Mode;
   readonly children: ReactNode;
   /**
    * Start (and keep) the editor in read-only / view mode. Pointer edits
@@ -90,7 +90,7 @@ export interface DiagramRootProps {
 
 export const DiagramRoot = ({
   initialScene,
-  initialMode,
+  initialTool,
   children,
   onReady,
   skipInstallRenderers,
@@ -163,7 +163,7 @@ export const DiagramRoot = ({
       // behind.
       onAfterRender: () => surfaceRef.current?.present(),
       initialScene,
-      ...(initialMode !== undefined ? { initialMode } : {}),
+      ...(initialTool !== undefined ? { initialTool } : {}),
       ...(textShaperRef.current ? { textShaper: textShaperRef.current } : {}),
       ...(rasterizerRef.current ? { rasterizer: rasterizerRef.current } : {}),
     };

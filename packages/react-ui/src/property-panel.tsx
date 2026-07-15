@@ -47,9 +47,11 @@ import {
   isFrame,
   isRectangle,
   isEllipse,
+  isBrush,
   isPolygon,
   sliceRuns,
   type ArrowheadStyle,
+  type BrushElement,
   type Link,
   type LinkRouting,
   type Roundness,
@@ -73,6 +75,8 @@ import { Popover } from "./popover.js";
 import { SegmentedControl } from "./segmented-control.js";
 import { Slider } from "./slider.js";
 import {
+  BRUSH_WIDTH_MAX,
+  BRUSH_WIDTH_MIN,
   TEXT_FONT_SIZE_MAX,
   TEXT_FONT_SIZE_MIN,
   TEXT_FONT_SIZE_PRESETS,
@@ -127,6 +131,7 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
     if (shapes.length === 0) return null;
     const allText = shapes.every((s) => isText(s));
     const allImage = shapes.every((s) => isImage(s));
+    const allBrush = shapes.every((s) => isBrush(s as BrushElement));
     const allFrame = shapes.every((s) => isFrame(s));
 
     const primary: ReactNode[] = [];
@@ -155,7 +160,14 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       primary.push(
         <FillControl key="fill" shapes={shapes} />,
         <StrokeControl key="stroke" shapes={shapes} />,
-        <StrokeWidthControl key="width" shapes={shapes} />,
+        // Brush widths are baked per point — `style.strokeWidth` has no
+        // effect, so brush-only selections get a slider that re-bases the
+        // baked widths instead of the Thin/Medium/Thick segmented control.
+        allBrush ? (
+          <BrushWidthControl key="width" shapes={shapes} />
+        ) : (
+          <StrokeWidthControl key="width" shapes={shapes} />
+        ),
       );
       overflow.push(
         <StrokeStyleControl key="dash" shapes={shapes} />,
@@ -845,6 +857,54 @@ const StrokeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) 
         editor.beginEyedropperPick(cb);
       }}
     />
+  );
+};
+
+/**
+ * Width control for brush strokes: a popover with a range slider driving
+ * `editor.setBrushWidth`, which re-bases the baked per-point widths while
+ * keeping the stroke's pressure profile. Rendered instead of
+ * {@link StrokeWidthControl} when the whole selection is brush strokes.
+ */
+const BrushWidthControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const value = sharedValue<number>(shapes, (s) => {
+    const brush = s as unknown as BrushElement;
+    const base = brush.baseWidth ?? brush.points.reduce((m, p) => Math.max(m, p.width), 0);
+    return base > 0 ? Math.round(base) : null;
+  });
+  return (
+    <Popover
+      ariaLabel="Brush width"
+      trigger={
+        <button
+          type="button"
+          className="du-sel-icon-button"
+          title="Brush width"
+          aria-label="Brush width"
+        >
+          <StrokeWidthIcon thickness={2.5} />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">{`Width ${value !== null ? String(value) : "mixed"}`}</header>
+        <input
+          type="range"
+          min={BRUSH_WIDTH_MIN}
+          max={BRUSH_WIDTH_MAX}
+          step={1}
+          value={value ?? BRUSH_WIDTH_MIN}
+          onChange={(e) => {
+            editor.setBrushWidth(ids, e.currentTarget.valueAsNumber);
+          }}
+          style={{ width: "100%" }}
+          aria-label="Brush width"
+        />
+      </div>
+    </Popover>
   );
 };
 

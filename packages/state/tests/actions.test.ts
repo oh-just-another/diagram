@@ -237,9 +237,9 @@ describe("defaultActionRegistry built-ins", () => {
   it("mode-* actions switch editor mode", () => {
     const editor = makeEditor();
     defaultActionRegistry.dispatch("mode-hand", { editor });
-    expect(editor.mode).toBe("hand");
+    expect(editor.activeTool.type).toBe("hand");
     defaultActionRegistry.dispatch("mode-select", { editor });
-    expect(editor.mode).toBe("select");
+    expect(editor.activeTool.type).toBe("select");
   });
 
   // A LINK lives in a separate single-selection slot (editor.selectedLink),
@@ -459,7 +459,7 @@ describe("defaultActionRegistry built-ins", () => {
   it("`o` switches to the ellipse tool", () => {
     const editor = makeEditor();
     expect(defaultActionRegistry.dispatchHotkey(plainKey("o"), { editor })).toBe(true);
-    expect(editor.mode).toBe("draw-ellipse");
+    expect(editor.activeTool.type).toBe("draw-ellipse");
   });
 
   it("`g` toggles the background grid", () => {

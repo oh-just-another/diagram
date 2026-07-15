@@ -43,7 +43,7 @@ export const setFileActionNotifier = (fn: (message: string) => void): void => {
  * `<a>`, clicks it, and revokes the object URL on the next frame so the
  * browser has time to start the download.
  */
-export const downloadBlob = (blob: Blob, filename: string): void => {
+const downloadBlob = (blob: Blob, filename: string): void => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -92,7 +92,7 @@ export const openSceneFile = (editor: Editor): void => {
  * Read the host's current `--du-canvas-bg` CSS variable (falls back to
  * white). Matches what the user sees behind the shapes on the live canvas.
  */
-export const readCanvasBackgroundColor = (): string => {
+const readCanvasBackgroundColor = (): string => {
   if (typeof document === "undefined") return "#ffffff";
   const probe = document.querySelector('canvas[data-layer="main"]') ?? document.body;
   const value = getComputedStyle(probe).getPropertyValue("--du-canvas-bg").trim();

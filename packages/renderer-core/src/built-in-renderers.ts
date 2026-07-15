@@ -139,7 +139,7 @@ const strokeAlignOffset = (style: Style): number => {
  * Radius `r` is pre-clamped by `getCornerRadius` to half the
  * smaller side, so no overlap-handling is needed here.
  */
-const buildRoundedRectPath = (
+export const buildRoundedRectPath = (
   target: RenderTarget,
   x: number,
   y: number,

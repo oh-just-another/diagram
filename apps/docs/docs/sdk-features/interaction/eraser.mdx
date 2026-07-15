@@ -9,7 +9,7 @@ The eraser is the `erase` mode (hotkey `E`, `actionModeErase`). Press-and-drag s
 import { Editor } from "@oh-just-another/state";
 
 declare const editor: Editor;
-editor.setMode("erase");
+editor.setActiveTool("erase");
 ```
 
 The sweep is sampled along each pointer-move segment, so a fast swipe cannot skip small shapes between two move events. A size-matched cursor ring follows the pointer, and the drag lays a short fading trail. `Escape` cancels the in-progress stroke without deleting anything; read-only mode disables erasing entirely.

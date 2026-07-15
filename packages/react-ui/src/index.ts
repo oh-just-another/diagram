@@ -44,7 +44,7 @@ export {
   useDiagramOptional,
   useScene,
   useSelection,
-  useMode,
+  useActiveTool,
   useBrushSettings,
   useReadOnly,
   useHistory,

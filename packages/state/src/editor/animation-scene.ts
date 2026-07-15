@@ -3,6 +3,7 @@ import { bounds as B } from "@oh-just-another/math";
 import { apply, getBinaryFile, getElementWorldBounds, isImage } from "@oh-just-another/scene";
 import { HEAVY_GIF_BYTES } from "../constants.js";
 import { hasAnimatedElement } from "./public/image-insert.js";
+import { createHiddenLoopingVideo } from "../built-in-handlers.js";
 import type { Editor } from "../editor.js";
 
 /**
@@ -139,6 +140,45 @@ const decodeImageHandle = async (
 };
 
 /**
+ * Rebuild the live `<video>` handle for a restored video shape: a fresh
+ * blob URL over the persisted bytes, mounted as the same hidden, muted,
+ * looping element the drop handler creates. Resolves when the element has
+ * its first frame (or `null` on error / SSR); playback resumes best-effort
+ * (autoplay may need a user gesture — the muted flag usually suffices).
+ */
+const rehydrateVideoHandle = async (
+  data: ArrayBuffer,
+  mime: string,
+): Promise<HTMLVideoElement | null> => {
+  if (
+    typeof document === "undefined" ||
+    typeof URL === "undefined" ||
+    typeof URL.createObjectURL !== "function"
+  ) {
+    return null;
+  }
+  const url = URL.createObjectURL(new Blob([data], { type: mime }));
+  const video = createHiddenLoopingVideo(url);
+  const ok = await new Promise<boolean>((resolve) => {
+    video.onloadedmetadata = () => {
+      resolve(true);
+    };
+    video.onerror = () => {
+      resolve(false);
+    };
+  });
+  if (!ok) {
+    URL.revokeObjectURL(url);
+    video.remove();
+    return null;
+  }
+  void video.play().catch(() => {
+    /* intentional no-op: autoplay rejection is expected before user interaction */
+  });
+  return video;
+};
+
+/**
  * Restore live image handles for *static* image shapes after a scene load.
  *
  * A live `<img>` / `ImageBitmap` in `metadata.image` does not survive
@@ -168,7 +208,9 @@ export const rehydrateStaticImages = async (editor: Editor): Promise<void> => {
 
   let changed = false;
   for (const target of targets) {
-    const handle = await decodeImageHandle(target.data, target.mime);
+    const handle = target.mime.startsWith("video/")
+      ? await rehydrateVideoHandle(target.data, target.mime)
+      : await decodeImageHandle(target.data, target.mime);
     if (!handle) continue;
     // The scene may have mutated while decoding — re-read the current shape
     // and skip if it vanished or already regained a live handle.

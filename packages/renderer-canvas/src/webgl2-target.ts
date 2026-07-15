@@ -60,6 +60,15 @@ export class WebGL2Target implements RenderTarget {
    * from `vbo` so the static unit quad never gets stomped.
    */
   private readonly dynamicVbo: WebGLBuffer;
+  /**
+   * VAO recording the solid program's `aPos` layout (2 × FLOAT, tight)
+   * on `dynamicVbo`. Recorded once in the constructor; the polygon /
+   * triangle-fan / stroke draws just bind it instead of re-issuing
+   * `enableVertexAttribArray` + `vertexAttribPointer` per draw. The
+   * earcut path's ELEMENT_ARRAY_BUFFER binding is captured by this VAO
+   * too (a single shared index buffer, bound lazily on first use).
+   */
+  private readonly dynamicVao: WebGLVertexArrayObject;
   private readonly uTransformLoc: WebGLUniformLocation | null;
   private readonly uColorLoc: WebGLUniformLocation | null;
   private readonly uOpacityLoc: WebGLUniformLocation | null;
@@ -221,12 +230,42 @@ export class WebGL2Target implements RenderTarget {
     this.dynamicVbo = glReq(this.gl.createBuffer());
 
     this.aPosLoc = this.gl.getAttribLocation(this.program, "aPos");
+    // Default-VAO layout: `aPos` on the static unit-quad VBO (bound
+    // above). Recorded once here; every VAO-owning pipeline restores the
+    // default VAO after its draw, so this state is never clobbered.
     this.gl.enableVertexAttribArray(this.aPosLoc);
     this.gl.vertexAttribPointer(this.aPosLoc, 2, this.gl.FLOAT, false, 0, 0);
+
+    // Dynamic-geometry VAO: same `aPos` layout, on the dynamic VBO.
+    // Shared by the polygon-fill, triangle-fan and stroke draws (all use
+    // the identical single-attribute layout).
+    this.dynamicVao = glReq(this.gl.createVertexArray());
+    this.gl.bindVertexArray(this.dynamicVao);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.dynamicVbo);
+    this.gl.enableVertexAttribArray(this.aPosLoc);
+    this.gl.vertexAttribPointer(this.aPosLoc, 2, this.gl.FLOAT, false, 0, 0);
+    this.gl.bindVertexArray(null);
+    // Leave the static unit-quad VBO as the bound ARRAY_BUFFER, matching
+    // the default-VAO setup above.
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
 
     this.uTransformLoc = this.gl.getUniformLocation(this.program, "uTransform");
     this.uColorLoc = this.gl.getUniformLocation(this.program, "uColor");
     this.uOpacityLoc = this.gl.getUniformLocation(this.program, "uOpacity");
+
+    // Compile EVERY pipeline eagerly. Lazy first-use compilation used to
+    // throw in the middle of a render pass (e.g. the first ellipse of a
+    // frame), where nothing catches it — the frame loop died with a raw
+    // "shader compile failed" instead of falling back. Constructor-time
+    // failure is what `createLayeredSurfaceWithFallback` catches, so a
+    // context that can't compile (driver quirk, context-limit eviction)
+    // degrades to canvas2d with a toast instead of a broken canvas. The
+    // upfront cost is a handful of small shaders, paid once per surface.
+    this.rectPipeline = new RectInstancePipeline(this.gl);
+    this.curvePipeline = new LoopBlinnCurvePipeline(this.gl);
+    this.ellipsePipeline = new EllipsePipeline(this.gl);
+    this.msdfPipeline = new MsdfTextPipeline(this.gl);
+    this.ensureImageProgram();
 
     this.gl.enable(this.gl.BLEND);
     // Premultiplied-alpha blending. The context was created with
@@ -298,7 +337,12 @@ export class WebGL2Target implements RenderTarget {
       this.ellipsePipeline.dispose();
       this.ellipsePipeline = null;
     }
+    this.gl.deleteVertexArray(this.dynamicVao);
     this.gl.deleteBuffer(this.dynamicVbo);
+    if (this.imageQuadVao) {
+      this.gl.deleteVertexArray(this.imageQuadVao);
+      this.imageQuadVao = null;
+    }
     if (this.imageQuadVbo) {
       this.gl.deleteBuffer(this.imageQuadVbo);
       this.imageQuadVbo = null;
@@ -626,26 +670,9 @@ export class WebGL2Target implements RenderTarget {
     this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     const tex = this.textureFor(image as TexImageSource, dynamic ?? false);
     if (!tex) return;
-    if (!this.imageProgram) {
-      this.imageProgram = createImageProgram(this.gl);
-      // Lazily create the image quad VBO too — interleaved
-      // (pos.xy, uv.xy) for a TRIANGLE_STRIP unit quad. Static — never
-      // re-uploaded; the per-call placement goes through `uTransform`.
-      this.imageQuadVbo = this.gl.createBuffer();
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.imageQuadVbo);
-      this.gl.bufferData(
-        this.gl.ARRAY_BUFFER,
-        new Float32Array([0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1]),
-        this.gl.STATIC_DRAW,
-      );
-    }
-    const ip = this.imageProgram;
+    const ip = this.ensureImageProgram();
     this.gl.useProgram(ip.program);
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.imageQuadVbo);
-    this.gl.enableVertexAttribArray(ip.aPos);
-    this.gl.vertexAttribPointer(ip.aPos, 2, this.gl.FLOAT, false, 16, 0);
-    this.gl.enableVertexAttribArray(ip.aUV);
-    this.gl.vertexAttribPointer(ip.aUV, 2, this.gl.FLOAT, false, 16, 8);
+    this.gl.bindVertexArray(this.imageQuadVao);
 
     // Project the drawn region through transform + viewport.
     const projected = applyMat(
@@ -676,14 +703,47 @@ export class WebGL2Target implements RenderTarget {
     this.gl.bindTexture(this.gl.TEXTURE_2D, tex);
     this.gl.uniform1i(ip.uTex, 0);
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    // Reset to the default VAO so the image quad's attribute state can't
+    // leak into other pipelines (matches the rect-batch discipline).
+    this.gl.bindVertexArray(null);
 
     // Restore the solid-colour program for subsequent fills / strokes.
     this.restoreSolidProgram();
   }
 
-  /** Lazy image program + its static unit quad+UV VBO. */
+  /**
+   * Image program + its static unit quad+UV VBO + recorded VAO. Built by
+   * `ensureImageProgram` — called from the constructor so a shader compile
+   * failure surfaces there (and triggers the backend fallback) rather than
+   * mid-frame on the first drawn image.
+   */
   private imageProgram: ImageProgram | null = null;
+
+  private ensureImageProgram(): ImageProgram {
+    if (this.imageProgram) return this.imageProgram;
+    this.imageProgram = createImageProgram(this.gl);
+    // Interleaved (pos.xy, uv.xy) TRIANGLE_STRIP unit quad. Static — never
+    // re-uploaded; per-call placement goes through `uTransform`. The
+    // attribute layout is recorded into a VAO once; per draw the image path
+    // just binds the VAO.
+    this.imageQuadVbo = this.gl.createBuffer();
+    this.imageQuadVao = glReq(this.gl.createVertexArray());
+    this.gl.bindVertexArray(this.imageQuadVao);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.imageQuadVbo);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array([0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1]),
+      this.gl.STATIC_DRAW,
+    );
+    this.gl.enableVertexAttribArray(this.imageProgram.aPos);
+    this.gl.vertexAttribPointer(this.imageProgram.aPos, 2, this.gl.FLOAT, false, 16, 0);
+    this.gl.enableVertexAttribArray(this.imageProgram.aUV);
+    this.gl.vertexAttribPointer(this.imageProgram.aUV, 2, this.gl.FLOAT, false, 16, 8);
+    this.gl.bindVertexArray(null);
+    return this.imageProgram;
+  }
   private imageQuadVbo: WebGLBuffer | null = null;
+  private imageQuadVao: WebGLVertexArrayObject | null = null;
   /**
    * `TexImageSource` → uploaded `WebGLTexture` cache. A plain `Map`
    * with LRU eviction + explicit `gl.deleteTexture` (see
@@ -783,6 +843,24 @@ export class WebGL2Target implements RenderTarget {
     }
   }
 
+  /**
+   * Synchronously release the GPU texture cached for `source` (B6). Hosts
+   * call this when an image is discarded or its bitmap replaced, so the VRAM
+   * is freed immediately instead of waiting for LRU pressure to reach the
+   * entry. No-op (returns `false`) for sources that were never uploaded.
+   * Text-bitmap-backed handles are owned by the text cache (its own evictor
+   * deletes them) and are left alone.
+   */
+  invalidateImage(source: TexImageSource): boolean {
+    const key = source as object;
+    const tex = this.textures.get(key);
+    if (tex === undefined) return false;
+    if (isTextBitmapBacked(this.textBitmaps, key)) return false;
+    this.textures.delete(key);
+    this.gl.deleteTexture(tex);
+    return true;
+  }
+
   fill(_rule?: FillRule): void {
     void _rule;
     const effectiveAlpha = this.opacity * this.fillAlpha;
@@ -792,7 +870,7 @@ export class WebGL2Target implements RenderTarget {
     // Vector-perfect at any zoom; 4 vertices instead of 24-512.
     if (this.currentEllipse) {
       this.flushRectBatch(); // preserve z-order: emit queued rects first
-      this.ellipsePipeline ??= new EllipsePipeline(this.gl);
+      this.ellipsePipeline ??= new EllipsePipeline(this.gl); // rebuilt only after dispose
       const e = this.currentEllipse;
       this.ellipsePipeline.draw(
         e.cx,
@@ -867,7 +945,7 @@ export class WebGL2Target implements RenderTarget {
     // at 20×.
     if (this.currentCurves.length > 0) {
       this.flushRectBatch(); // preserve z-order: emit queued rects first
-      this.curvePipeline ??= new LoopBlinnCurvePipeline(this.gl);
+      this.curvePipeline ??= new LoopBlinnCurvePipeline(this.gl); // rebuilt only after dispose
       this.curvePipeline.draw(
         this.currentCurves,
         this.fillColor,
@@ -934,17 +1012,19 @@ export class WebGL2Target implements RenderTarget {
 
     const gl = this.gl;
     gl.useProgram(this.program);
-    // Use the dynamic VBO — leaves the static unit-quad VBO untouched so
-    // subsequent rect fills don't pay for a re-upload.
+    // Bind the dynamic-geometry VAO — the `aPos` layout on the dynamic
+    // VBO was recorded once in the constructor. The static unit-quad VBO
+    // stays untouched so subsequent rect fills don't pay for a re-upload.
+    gl.bindVertexArray(this.dynamicVao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.dynamicVbo);
     gl.bufferData(gl.ARRAY_BUFFER, verts.subarray(0, n * 2), gl.DYNAMIC_DRAW);
-    gl.enableVertexAttribArray(this.aPosLoc);
-    gl.vertexAttribPointer(this.aPosLoc, 2, gl.FLOAT, false, 0, 0);
     gl.uniformMatrix3fv(this.uTransformLoc, false, IDENTITY_MAT3);
     gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
     gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
     // Lazy IBO — earcut returns 16-bit indices for ≤65535 verts (the
-    // realistic ceiling for any one polygon).
+    // realistic ceiling for any one polygon). Bound while `dynamicVao`
+    // is active, so the ELEMENT_ARRAY_BUFFER binding is captured by the
+    // VAO and never leaks into the default VAO.
     this.indexBuffer ??= gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     gl.bufferData(
@@ -953,8 +1033,8 @@ export class WebGL2Target implements RenderTarget {
       gl.DYNAMIC_DRAW,
     );
     gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
-    // Restore solid program's attribute binding to the static unit-quad
-    // VBO so the next rect fill picks up the right vertex stream.
+    // Reset to the default VAO so the next draw starts from clean state.
+    gl.bindVertexArray(null);
     this.restoreSolidProgram();
   }
   private indexBuffer: WebGLBuffer | null = null;
@@ -980,14 +1060,15 @@ export class WebGL2Target implements RenderTarget {
     }
     const gl = this.gl;
     gl.useProgram(this.program);
+    gl.bindVertexArray(this.dynamicVao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.dynamicVbo);
     gl.bufferData(gl.ARRAY_BUFFER, verts.subarray(0, n * 2), gl.DYNAMIC_DRAW);
-    gl.enableVertexAttribArray(this.aPosLoc);
-    gl.vertexAttribPointer(this.aPosLoc, 2, gl.FLOAT, false, 0, 0);
     gl.uniformMatrix3fv(this.uTransformLoc, false, IDENTITY_MAT3);
     gl.uniform3f(this.uColorLoc, this.fillColor[0], this.fillColor[1], this.fillColor[2]);
     gl.uniform1f(this.uOpacityLoc, effectiveAlpha);
     gl.drawArrays(gl.TRIANGLE_FAN, 0, n);
+    // Reset to the default VAO so the next draw starts from clean state.
+    gl.bindVertexArray(null);
     this.restoreSolidProgram();
   }
 
@@ -1100,8 +1181,8 @@ export class WebGL2Target implements RenderTarget {
     } else {
       this.strokePolylineFlat(this.pathXY, this.pathPts, style);
     }
-    // Stroke wrote into the dynamic VBO; rebind the static unit-quad VBO
-    // so the next solid rect fill picks up the right vertex stream.
+    // Stroke drew via the dynamic-geometry VAO and restored the default
+    // VAO; just make sure the solid program is active again.
     this.restoreSolidProgram();
   }
 
@@ -1129,7 +1210,7 @@ export class WebGL2Target implements RenderTarget {
       this.uColorLoc,
       this.uOpacityLoc,
       this.dynamicVbo,
-      this.aPosLoc,
+      this.dynamicVao,
       IDENTITY_MAT3,
     );
   }
@@ -1264,17 +1345,15 @@ export class WebGL2Target implements RenderTarget {
   }
 
   /**
-   * Rebind the solid program + static unit-quad VBO + cached aPos
-   * pointer. Three GL calls, no allocation, no upload, no string-keyed
-   * driver lookup. Called after any draw that switched program or
-   * rebound the buffer (image, MSDF text, curves, polygon fill, triangle
-   * fan).
+   * Rebind the solid program after a draw that switched programs
+   * (image, MSDF text, curves, ellipse, polygon fill, triangle fan,
+   * rect batch). One GL call — the default VAO's `aPos` layout on the
+   * static unit-quad VBO was recorded once in the constructor and every
+   * pipeline restores the default VAO (`bindVertexArray(null)`) after
+   * its draw, so attribute state never needs re-declaring here.
    */
   private restoreSolidProgram(): void {
     this.gl.useProgram(this.program);
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vbo);
-    this.gl.enableVertexAttribArray(this.aPosLoc);
-    this.gl.vertexAttribPointer(this.aPosLoc, 2, this.gl.FLOAT, false, 0, 0);
   }
 
   /**

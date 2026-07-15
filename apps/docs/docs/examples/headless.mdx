@@ -1,0 +1,45 @@
+---
+title: "Headless rendering"
+sidebar_position: 30
+---
+
+`@oh-just-another/headless` renders scene documents to SVG/PNG in plain Node.js — no DOM, no browser, no canvas shim. (Server-side by definition, so no live demo on this page.)
+
+```bash
+pnpm add @oh-just-another/headless
+pnpm add @resvg/resvg-js   # optional peer dep — only needed for renderToPng
+```
+
+## Scene JSON → SVG + PNG
+
+Both functions accept an in-memory `Scene` or the JSON string that `@oh-just-another/serialization` emits (parsed and validated for you):
+
+```ts
+// render.mjs — run with: node render.mjs
+import { readFile, writeFile } from "node:fs/promises";
+import { renderToSvg, renderToPng } from "@oh-just-another/headless";
+
+const sceneJson = await readFile("scene.json", "utf8");
+
+// SVG — synchronous, pure JS, no optional deps.
+await writeFile("out.svg", renderToSvg(sceneJson));
+
+// PNG — async, rasterized via @resvg/resvg-js (Rust → WASM).
+await writeFile("out.png", await renderToPng(sceneJson, { scale: 2 }));
+```
+
+## Options
+
+| Option                       | Applies to | Effect                                                                                     |
+| ---------------------------- | ---------- | ------------------------------------------------------------------------------------------ |
+| `width` / `height`           | both       | Output size in CSS px; defaults to the scene viewport's size                               |
+| `measureText`                | both       | Custom text measurer (defaults to a built-in approximation)                                |
+| `skipInstall`                | both       | Skip the implicit `installBuiltinRenderers()` when you registered your own shape renderers |
+| `scale`                      | PNG        | Device-pixel factor; `2` = retina. Default 1                                               |
+| `background`                 | PNG        | Colour behind the scene. Default white                                                     |
+| `fitToWidth` / `fitToHeight` | PNG        | Fit output to N device px (aspect preserved); overrides `scale`                            |
+
+## Notes
+
+- `renderToSvg(scene, options?)` returns a `string`; `renderToPng(scene, options?)` returns a `Promise<Uint8Array>` and throws with an install hint if `@resvg/resvg-js` is missing. SVG-only consumers never pay for the ~3 MB WASM payload.
+- Typical uses: rendering diagrams in CI, OG images, thumbnails for a document list, server-side export endpoints. Combine with [data conversion](./data-conversion) to turn Mermaid/dot/drawio input into images.

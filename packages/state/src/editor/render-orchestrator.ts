@@ -11,11 +11,13 @@ import {
   strokeOutsideExtent,
   isFrame,
   isImage,
+  type BrushPoint,
   type Scene,
   type Style,
   type Element,
   type Link,
   type SpatialGrid,
+  getElbowSegmentHandles,
 } from "@oh-just-another/scene";
 import {
   DEFAULT_LOD,
@@ -68,16 +70,19 @@ import type {
   LinkDragFromAnchor,
   PanGesture,
 } from "./interaction-state.js";
-import type { BrushStrokeState } from "./public/brush.js";
 import type { LaserStroke } from "./public/laser.js";
 import type { TileComposeFn } from "../editor.js";
 
 /**
- * Live brush-stroke preview: the in-progress stroke's smoothed geometry plus the
- * paint colour and opacity it will commit with, so the overlay preview matches
- * the committed stroke exactly (no colour / opacity snap on release).
+ * Live brush-stroke preview: the in-progress stroke run through the commit
+ * pipeline (catch-up + smoothing) plus the paint colour and opacity it will
+ * commit with, so the overlay preview matches the committed stroke exactly
+ * (no geometry / colour / opacity snap on release). A derived snapshot — it
+ * deliberately does NOT extend the mutable `BrushStrokeState` capture bag.
  */
-export interface BrushPreview extends BrushStrokeState {
+export interface BrushPreview {
+  readonly origin: Vec2;
+  readonly points: readonly BrushPoint[];
   readonly fill: string;
   readonly opacity: number;
 }
@@ -359,18 +364,17 @@ export const renderEditor = (editor: RenderSnapshot): void => {
   const dimElements = editor.dimElements;
   const hideElements = editor.hideElements;
 
-  // Group isolation (dim) and per-element hide can't be honoured by the tile
-  // cache: tiles bake every shape at full opacity, so neither a scrim nor an
-  // overlay can reproduce `renderScene`'s per-element dim, nor un-bake a hidden
-  // shape, without re-rasterising the affected tiles — which would tie the
-  // cache to isolation state and defeat it. So while either set is non-empty
-  // we take the full `renderScene` path (which honours both). With both empty
-  // — the intended very-large-static-scene case — the tile path runs and
-  // behaves exactly as before.
-  const isolationActive =
-    (dimElements !== undefined && dimElements.size > 0) ||
-    (hideElements !== undefined && hideElements.size > 0);
-  if (editor.tileComposeFn && viewportWorld && !isolationActive) {
+  // Group isolation (dim) can't be honoured by the tile cache: tiles bake
+  // every shape at full opacity, and neither a scrim nor an overlay can
+  // reproduce `renderScene`'s per-element dim without re-rasterising most
+  // tiles (isolation dims almost everything), which would defeat the cache.
+  // While the dim set is non-empty we take the full `renderScene` path.
+  // Per-element HIDE stays on the tile path: the sets are small (stroke-eraser
+  // preview, visibility), so the compositor honours them directly — it bakes
+  // tiles with the set applied and re-rasterises only the tiles a shape
+  // touches when it enters/leaves the set.
+  const dimActive = dimElements !== undefined && dimElements.size > 0;
+  if (editor.tileComposeFn && viewportWorld && !dimActive) {
     // Tile-cache path: clear main once, then composite cached tiles.
     // The compositor rasterises tiles through its own `renderScene` calls,
     // which we can't hand a render context — bridge this editor's per-instance
@@ -387,6 +391,7 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       changedElements: editor.tileDirtyElements,
       zoomBucket:
         editor.scene.viewport.zoom > 0 ? 2 ** Math.round(Math.log2(editor.scene.viewport.zoom)) : 1,
+      ...(hideElements && hideElements.size > 0 ? { hideElements } : {}),
       ...(editor.sharedIndex ? { index: editor.sharedIndex } : {}),
     });
     renderLinks(editor.scene, editor.mainTarget, { viewportWorld });
@@ -427,6 +432,10 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     const overlayOpts: Parameters<typeof renderOverlay>[3] = {};
     // Read-only: keep selection outlines but drop every interactive handle.
     if (editor.readOnly) overlayOpts.readOnly = true;
+    // Non-select tool active: same handle suppression — the chrome is not
+    // pressable (pickPressTarget gates it), so don't advertise it. `hand` is
+    // navigation-only and keeps the chrome visible for context.
+    if (editor.mode !== "select" && editor.mode !== "hand") overlayOpts.suppressHandles = true;
     // Image-crop chrome (crop mode) — dashed accent quad over the pending
     // window, 8 grab handles, and the faint full-image ghost behind them.
     if (editor.cropFrame) overlayOpts.cropFrame = editor.cropFrame;
@@ -723,23 +732,14 @@ export const renderEditor = (editor: RenderSnapshot): void => {
           // a separate mechanic). Only straight / bezier show free waypoints.
           const isElbow = (edge.routing ?? "straight") === "orthogonal";
           if (isElbow) {
-            // Segment handles on interior segments of the routed chain
-            // (k in 1..len-3; the two terminal segments touch from/to and
-            // can't be slid). Hidden during an active segment / endpoint drag.
-            const midpoints: Vec2[] = [];
-            if (!editor.linkSegmentDrag && !editor.linkEndpointDrag) {
-              // Straight elbow → one handle on its single segment (grab to
-              // bend). Routed elbow → handles on interior segments.
-              const segs =
-                path.length === 2
-                  ? [0]
-                  : Array.from({ length: Math.max(0, path.length - 3) }, (_, i) => i + 1);
-              for (const k of segs) {
-                const a = req(path[k]);
-                const b = req(path[k + 1]);
-                midpoints.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-              }
-            }
+            // Segment handles on the slidable segments of the routed chain —
+            // positions shared with the pointer hit-test (and slid out from
+            // under the caption pill). Hidden during an active segment /
+            // endpoint drag.
+            const midpoints: Vec2[] =
+              editor.linkSegmentDrag || editor.linkEndpointDrag
+                ? []
+                : getElbowSegmentHandles(editor.scene, edge, path).map((h) => h.point);
             overlayOpts.edgeSelection = { from, to, midpoints };
           } else {
             const waypoints = [...(edge.waypoints ?? [])];

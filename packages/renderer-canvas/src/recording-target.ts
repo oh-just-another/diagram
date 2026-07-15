@@ -10,6 +10,7 @@ import {
 } from "@oh-just-another/renderer-core";
 import { resolveBundledFamily } from "@oh-just-another/fonts";
 import { OFFSCREEN_IMAGE_CACHE_CAP } from "./constants.js";
+import { intrinsicImageSize, isDrawableImageSource } from "./image-source.js";
 
 /**
  * Backend-agnostic RenderTarget that captures every method call as a
@@ -115,7 +116,17 @@ export type RenderCommand =
   | { readonly k: "clear"; readonly bounds?: Bounds }
   | { readonly k: "markDirty"; readonly bounds: Bounds }
   | { readonly k: "resize"; readonly w: number; readonly h: number }
-  | { readonly k: "defineImage"; readonly id: number; readonly bitmap: ImageBitmap }
+  | {
+      readonly k: "defineImage";
+      readonly id: number;
+      readonly bitmap: ImageBitmap;
+      /**
+       * Capture generation for re-captured dynamic sources (video frames):
+       * bumps every snapshot so the content signature changes and the
+       * offscreen surface reposts the frame. Absent for interned statics.
+       */
+      readonly gen?: number;
+    }
   | {
       readonly k: "drawImage";
       readonly id: number;
@@ -160,7 +171,11 @@ export class RecordingTarget implements RenderTarget {
    * it without bound. Ids are monotonic and never reused, so an evicted
    * bitmap that reappears is simply re-defined under a fresh id.
    */
-  private readonly imageIds = new LruCache<ImageBitmap, number>(OFFSCREEN_IMAGE_CACHE_CAP);
+  private readonly imageIds = new LruCache<object, number>(OFFSCREEN_IMAGE_CACHE_CAP);
+  /** Monotonic generation counter for re-captured dynamic frames. */
+  private captureGen = 0;
+  /** Scratch canvas reused to snapshot non-bitmap sources (video frames). */
+  private captureCanvas: OffscreenCanvas | null = null;
   private nextImageId = 0;
 
   /**
@@ -421,9 +436,8 @@ export class RecordingTarget implements RenderTarget {
     dy: number,
     dw: number,
     dh: number,
-    _dynamic?: boolean,
+    dynamic?: boolean,
   ): void {
-    void _dynamic;
     if (typeof ImageBitmap !== "undefined" && image instanceof ImageBitmap) {
       let id = this.imageIds.get(image);
       if (id === undefined) {
@@ -434,9 +448,61 @@ export class RecordingTarget implements RenderTarget {
         this.emit({ k: "defineImage", id, bitmap: image });
       }
       this.emit({ k: "drawImage", id, dx, dy, dw, dh });
-    } else {
-      this.skippedImageDraws++;
+      return;
     }
+    if (isDrawableImageSource(image)) {
+      // Non-bitmap drawable (a <video> frame, <img>, canvas): the worker
+      // can't touch DOM elements, so snapshot the CURRENT pixels into an
+      // ImageBitmap it can own. Statics intern by source identity (captured
+      // once); dynamic sources (video, animated <img>) re-capture on every
+      // draw and re-define under the SAME id — the `gen` bump makes the
+      // signature differ so the frame reposts, and the worker closes the
+      // replaced bitmap.
+      let id = this.imageIds.get(image);
+      if (id === undefined || dynamic === true) {
+        const bitmap = this.captureBitmap(image);
+        if (!bitmap) {
+          this.skippedImageDraws++;
+          return;
+        }
+        if (id === undefined) {
+          id = this.nextImageId++;
+          this.imageIds.set(image, id);
+        }
+        this.emit({ k: "defineImage", id, bitmap, gen: ++this.captureGen });
+      }
+      this.emit({ k: "drawImage", id, dx, dy, dw, dh });
+      return;
+    }
+    this.skippedImageDraws++;
+  }
+
+  /**
+   * Synchronously snapshot a drawable source's current pixels into an
+   * ImageBitmap via a reused scratch OffscreenCanvas
+   * (`transferToImageBitmap` detaches the backing store, so the canvas is
+   * cheap to keep around). Returns `null` when the source has no pixels yet
+   * (a <video> before its first frame) or the environment lacks
+   * OffscreenCanvas.
+   */
+  private captureBitmap(source: CanvasImageSource): ImageBitmap | null {
+    if (typeof OffscreenCanvas === "undefined") return null;
+    const size = intrinsicImageSize(source);
+    if (!size || size.width <= 0 || size.height <= 0) return null;
+    // HAVE_CURRENT_DATA (2) is the earliest state with drawable pixels.
+    const video = source as Partial<HTMLVideoElement>;
+    if (typeof video.readyState === "number" && video.readyState < 2) return null;
+    this.captureCanvas ??= new OffscreenCanvas(size.width, size.height);
+    const canvas = this.captureCanvas;
+    if (canvas.width !== size.width || canvas.height !== size.height) {
+      canvas.width = size.width;
+      canvas.height = size.height;
+    }
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, size.width, size.height);
+    ctx.drawImage(source, 0, 0);
+    return canvas.transferToImageBitmap();
   }
 
   clear(bounds?: Bounds): void {
@@ -564,9 +630,15 @@ export const replayCommands = (
         // resizes via its own `resize` message, not via the command
         // stream.
         break;
-      case "defineImage":
+      case "defineImage": {
+        // Re-defining an id (re-captured video frame) replaces the stored
+        // bitmap; close the old clone so worker memory doesn't leak
+        // (LruCache.set does not fire onEvict for an overwrite).
+        const prev = images.get(cmd.id);
+        if (prev && prev !== cmd.bitmap) prev.close();
         images.set(cmd.id, cmd.bitmap);
         break;
+      }
       case "drawImage": {
         // `get` bumps recency so the worker LRU evicts in lockstep with
         // the recorder's. A miss means an out-of-sync stream — skip

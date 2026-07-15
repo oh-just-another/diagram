@@ -60,4 +60,4 @@ The component fills its parent — give the parent a height.
 
 ## Imperative API
 
-On the component instance (template reference variable or `viewChild`): `getScene`, `loadScene`, `undo`, `redo`, `zoomToFit`, `getMode`, `setMode`, `getSelection`, `setSelection`.
+On the component instance (template reference variable or `viewChild`): `getScene`, `loadScene`, `undo`, `redo`, `zoomToFit`, `getActiveTool`, `setActiveTool`, `getSelection`, `setSelection`.

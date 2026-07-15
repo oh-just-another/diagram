@@ -19,7 +19,7 @@ function Host() {
   const run = () => {
     const api = ref.current;
     if (!api) return;
-    api.setMode("draw-rect");
+    api.setActiveTool("draw-rect");
     api.zoomToFit();
     const scene = api.getScene();
     // ...persist `scene`
@@ -29,7 +29,7 @@ function Host() {
 }
 ```
 
-`EditorAPI` covers scene (`getScene` / `loadScene`), mode (`getMode` / `setMode`), selection (`getSelection` / `setSelection`), history (`undo` / `redo`) and viewport (`zoomToFit`).
+`EditorAPI` covers scene (`getScene` / `loadScene`), tool (`getActiveTool` / `setActiveTool`), selection (`getSelection` / `setSelection`), history (`undo` / `redo`) and viewport (`zoomToFit`).
 
 ## The escape hatch: EditorInstance
 
@@ -49,4 +49,4 @@ function build(editor: EditorInstance) {
 
 ## Why this matters
 
-Because the engine is the single source of truth, programmatic control and human interaction stay in sync — a script that calls `setMode` or `addElement` produces exactly the same scene a click would. This is the foundation the AI-native direction builds on: an agent drives the editor through the very same `EditorAPI` / `EditorInstance` surface documented here — see [AI](./ai.mdx).
+Because the engine is the single source of truth, programmatic control and human interaction stay in sync — a script that calls `setActiveTool` or `addElement` produces exactly the same scene a click would. This is the foundation the AI-native direction builds on: an agent drives the editor through the very same `EditorAPI` / `EditorInstance` surface documented here — see [AI](./ai.mdx).

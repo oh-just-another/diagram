@@ -204,17 +204,14 @@ export const ARROWHEAD_SIZE = 10;
 /** Fallback stroke colour for an edge / its arrowheads when `style.stroke` is omitted. Black. */
 export const EDGE_STROKE_COLOR = "#000";
 
-/**
- * Position along the edge (0 = start, 1 = end) where a link label sits when
- * `LinkLabel.position` is omitted. 0.5 = midpoint.
- */
-export const LABEL_POSITION = 0.5;
-
-/** Font size (world px) of a link label when `LinkLabel.fontSize` is omitted. */
-export const LABEL_FONT_SIZE = 12;
-
 /** Fallback text colour of a link label when `LinkLabel.fill` is omitted. Near-black. */
 export const LABEL_FILL_COLOR = "#222";
 
 /** Fallback pill-background colour of a link label when `LinkLabel.background` is omitted. White. */
 export const LABEL_BG_COLOR = "#fff";
+
+/**
+ * Corner radius of the label pill behind a link caption (world px at zoom 1).
+ * 0 = square. Range: 0–8 (clamped visually by the pill height).
+ */
+export const LINK_LABEL_RADIUS = 4;

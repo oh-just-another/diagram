@@ -2,6 +2,7 @@ import { LAYER_ORDER, type LayerName, type RenderTarget } from "@oh-just-another
 import { LayeredCanvas } from "./layered-canvas.js";
 import { WebGL2Target } from "./webgl2-target.js";
 import { RecordingTarget } from "./recording-target.js";
+import { packReplayFrame, type PackedReplayMessage } from "./replay-codec.js";
 import { cappedDpr, setupHiDpi } from "./hi-dpi.js";
 import { MAX_DEVICE_PIXEL_RATIO } from "./constants.js";
 
@@ -407,13 +408,20 @@ class OffscreenLayeredSurface implements LayeredSurface {
       if (cmds.length === 0) continue;
       // Skip layers whose command stream is identical to the one already
       // shipped: the worker retains its last frame between replays, so not
-      // reposting leaves the correct pixels in place and saves the clone +
-      // worker redraw. `defineImage` (first bitmap ship) and `resize` change
+      // reposting leaves the correct pixels in place and saves the pack +
+      // post + worker redraw. `defineImage` (first bitmap ship) and `resize` change
       // the stream, so image / size updates never get skipped.
       const sig = target.lastSignature;
       if (this.lastSentSig.get(name) === sig) continue;
       this.lastSentSig.set(name, sig);
-      this.workers.get(name)?.postMessage({ type: "replay", commands: cmds });
+      // Pack into a transferable frame: the numeric buffer moves for free
+      // (transfer list), the deduplicated string table is a cheap clone.
+      // Side bitmaps are deliberately NOT in the transfer list — the
+      // recorder's intern LRU still owns the sources, so postMessage must
+      // clone them, not detach them.
+      const { buffer, strings, bitmaps } = packReplayFrame(cmds);
+      const msg: PackedReplayMessage = { type: "replay", buffer, strings, bitmaps };
+      this.workers.get(name)?.postMessage(msg, [buffer]);
     }
   }
   dispose(): void {

@@ -49,7 +49,7 @@ describe("DrawingPanel", () => {
 
   it("renders nothing outside brush / eraser mode", () => {
     const editor = mountEditor();
-    editor.setMode("select");
+    editor.setActiveTool("select");
     const { container } = renderPanel(editor);
     expect(container.querySelector(".du-drawing-panel")).toBeNull();
     editor.dispose();
@@ -57,7 +57,7 @@ describe("DrawingPanel", () => {
 
   it("shows stroke / fill / opacity / width controls in brush mode", () => {
     const editor = mountEditor();
-    act(() => editor.setMode("brush"));
+    act(() => editor.setActiveTool("brush"));
     const { container } = renderPanel(editor);
     expect(container.querySelector(".du-drawing-panel")).not.toBeNull();
     expect(container.querySelector('input[aria-label="Brush opacity"]')).not.toBeNull();
@@ -71,7 +71,7 @@ describe("DrawingPanel", () => {
 
   it("shows only the radius (width) control in eraser mode", () => {
     const editor = mountEditor();
-    act(() => editor.setMode("erase"));
+    act(() => editor.setActiveTool("erase"));
     const { container } = renderPanel(editor);
     expect(container.querySelector(".du-drawing-panel")).not.toBeNull();
     // Eraser exposes the shared width as "radius", and hides brush-only paint.

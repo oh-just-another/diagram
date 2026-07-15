@@ -1,0 +1,23 @@
+---
+title: "React: configured"
+sidebar_position: 2
+---
+
+import ExampleEditor from "@site/src/components/ExampleEditor";
+
+Granular scene settings merge over the defaults (a persisted scene wins over host config): a dotted grid with snapping, dark theme, and the rectangle tool pre-armed.
+
+<ExampleEditor
+  editorProps={{
+    grid: { enabled: true, style: "dots" },
+    snap: true,
+    theme: "dark",
+    initialTool: "draw-rect",
+  }}
+/>
+
+```tsx
+<Editor grid={{ enabled: true, style: "dots" }} snap theme="dark" initialTool="draw-rect" />
+```
+
+`grid.style` is `"lines" | "dots"`; `theme` is `"light" | "dark" | "system"`; `initialTool` accepts any `Mode` id.

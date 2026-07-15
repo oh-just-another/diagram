@@ -11,7 +11,7 @@ import {
 } from "@oh-just-another/scene";
 import { Editor } from "@oh-just-another/state";
 import { installBuiltinRenderers, LayeredCanvas } from "@oh-just-another/renderer-canvas";
-import { DiagramProvider, useDiagram, useHistory, useMode, useSelection } from "../src/index";
+import { DiagramProvider, useDiagram, useHistory, useActiveTool, useSelection } from "../src/index";
 
 void layerId; // imported for type tests below
 
@@ -54,7 +54,7 @@ const mountEditor = (): { editor: Editor; cleanup: () => void } => {
     mainTarget: layered.get("main"),
     overlayTarget: layered.get("overlay"),
     initialScene: scene,
-    initialMode: "select",
+    initialTool: "select",
   });
   return {
     editor,
@@ -104,15 +104,15 @@ describe("react-ui hooks", () => {
     expect(screen.getByTestId("size").textContent).toBe("1");
   });
 
-  it("useMode reflects setMode", () => {
+  it("useActiveTool reflects setActiveTool", () => {
     const Probe = () => {
-      const mode = useMode();
-      return <span data-testid="mode">{mode}</span>;
+      const tool = useActiveTool();
+      return <span data-testid="mode">{tool.type}</span>;
     };
     render(<Probe />, { wrapper: wrap(ctx.editor) });
     expect(screen.getByTestId("mode").textContent).toBe("select");
     act(() => {
-      ctx.editor.setMode("draw-rect");
+      ctx.editor.setActiveTool("draw-rect");
     });
     expect(screen.getByTestId("mode").textContent).toBe("draw-rect");
   });

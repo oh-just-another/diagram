@@ -114,7 +114,7 @@ describe("draw-shape commit render", () => {
       overlayTarget: overlay.target,
       initialScene: emptyScene(),
     });
-    editor.setMode("draw-rect");
+    editor.setActiveTool("draw-rect");
     flushRAF();
 
     const down = (x: number, y: number) => handlers.get("pointerdown")!(ev("pointerdown", x, y));
@@ -166,7 +166,7 @@ describe("draw-shape commit render", () => {
       onAfterRender: () => timeline.push("present"),
       initialScene: emptyScene(),
     });
-    editor.setMode("draw-rect");
+    editor.setActiveTool("draw-rect");
     flushRAF();
 
     timeline.length = 0;

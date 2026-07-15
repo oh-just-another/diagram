@@ -5,14 +5,21 @@ import {
   getLinksInLayer,
   getLayersInOrder,
   getWorldToScreen,
+  linkLabelAnchor,
+  LINK_LABEL_DEFAULT_FONT_SIZE,
+  LINK_LABEL_LINE_HEIGHT,
+  LINK_LABEL_MAX_WIDTH,
+  LINK_LABEL_PAD_X,
+  LINK_LABEL_PAD_Y,
   type Link,
   type LinkArrowheads,
-  type LinkLabel,
   type Scene,
 } from "@oh-just-another/scene";
 import { bounds as B } from "@oh-just-another/math";
 import { req, type Bounds, type Vec2 } from "@oh-just-another/types";
 import type { RenderTarget } from "./render-target.js";
+import { wrapText } from "./text-layout.js";
+import { buildRoundedRectPath } from "./built-in-renderers.js";
 import { sharedLinkBoundsCache, type LinkBoundsCache } from "./edge-cache.js";
 import type { LinkBitmapCache } from "./edge-cache-bitmap.js";
 import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
@@ -24,10 +31,9 @@ import {
   BLOCK_ARROW_STROKE_COLOR,
   ARROWHEAD_SIZE,
   EDGE_STROKE_COLOR,
-  LABEL_POSITION,
-  LABEL_FONT_SIZE,
   LABEL_FILL_COLOR,
   LABEL_BG_COLOR,
+  LINK_LABEL_RADIUS,
 } from "./constants.js";
 
 export interface RenderLinksOptions {
@@ -164,19 +170,20 @@ const drawLink = (
     return;
   }
 
+  // Curved (bezier): the cubic-bezier curve resolved by scene — a no-waypoint
+  // span exits/enters perpendicular to the element edges (flowchart look); a
+  // waypointed span splines through the bends. The flattened curve feeds the
+  // arrowheads and the label so their geometry matches the drawn arc.
+  const curve =
+    (edge.routing ?? "straight") === "bezier" ? getLinkCurveSegments(scene, edge) : null;
+  const drawnPath = curve ? flattenSegments(curve.start, curve.segments) : path;
+
   target.save();
 
   if ((edge.lineKind ?? "line") === "block-arrow") {
     drawBlockArrowLink(edge, path, target);
   } else {
     applyStrokeStyle(edge, target);
-
-    // Curved (bezier): draw the cubic-bezier curve resolved by scene — a
-    // no-waypoint span exits/enters perpendicular to the element edges
-    // (flowchart look); a waypointed span splines through the bends. The
-    // flattened curve feeds the arrowhead so its tangent matches.
-    const curve =
-      (edge.routing ?? "straight") === "bezier" ? getLinkCurveSegments(scene, edge) : null;
 
     target.beginPath();
     if (curve) {
@@ -200,12 +207,13 @@ const drawLink = (
     target.stroke();
 
     if (edge.arrowheads) {
-      const headPath = curve ? flattenSegments(curve.start, curve.segments) : path;
-      drawArrowheads(headPath, edge.arrowheads, target, edge.style.stroke ?? EDGE_STROKE_COLOR);
+      drawArrowheads(drawnPath, edge.arrowheads, target, edge.style.stroke ?? EDGE_STROKE_COLOR);
     }
   }
   if (edge.label) {
-    drawLabel(path, edge.label, target);
+    // The label rides the DRAWN geometry (flattened curve for bezier), so the
+    // pill sits on the visible arc, not the straight chord beside it.
+    drawLabel(drawnPath, edge, target);
   }
   target.restore();
 };
@@ -614,56 +622,53 @@ const drawArrowhead = (
 // Tuple helper so `target.lineTo(...xy(p))` reads cleanly.
 const xy = (p: Vec2): [number, number] => [p.x, p.y];
 
-const drawLabel = (path: readonly Vec2[], label: LinkLabel, target: RenderTarget): void => {
-  const t = label.position ?? LABEL_POSITION;
-  const fontSize = label.fontSize ?? LABEL_FONT_SIZE;
+/**
+ * Caption pill on a link: measured word-wrapped text (multiline, `\n` forces a
+ * break) centred on the shared label anchor (`linkLabelAnchor` — clamped away
+ * from arrowheads; elbow links use the longest segment's midpoint), behind a
+ * rounded pill sized by real `measureText` so wide glyphs never overflow.
+ */
+const drawLabel = (path: readonly Vec2[], edge: Link, target: RenderTarget): void => {
+  const label = edge.label;
+  if (!label || label.text === "") return;
+  const fontSize = label.fontSize ?? LINK_LABEL_DEFAULT_FONT_SIZE;
   const fill = label.fill ?? LABEL_FILL_COLOR;
   const bg = label.background ?? LABEL_BG_COLOR;
-  const point = pointAlongPath(path, t);
-  const halfWidth = label.text.length * fontSize * 0.3 + 4; // rough estimate
-  const halfHeight = fontSize * 0.7;
+  const anchor = linkLabelAnchor(path, edge);
 
-  // Pill background so the label is readable over the line.
+  // wrapText measures through the target — the font must be set first.
+  target.setFont("system-ui, sans-serif", fontSize);
+  const { lines, lineHeight } = wrapText(label.text, target, {
+    maxWidth: LINK_LABEL_MAX_WIDTH,
+    fontSize,
+    lineHeightFactor: LINK_LABEL_LINE_HEIGHT,
+  });
+  let textWidth = 0;
+  for (const line of lines) textWidth = Math.max(textWidth, line.width);
+  const boxW = textWidth + LINK_LABEL_PAD_X * 2;
+  const boxH = lines.length * lineHeight + LINK_LABEL_PAD_Y * 2;
+
+  // Rounded pill so the caption reads over the line / grid.
   target.beginPath();
   target.setFill(bg);
   target.setStroke(null);
-  target.rect(point.x - halfWidth, point.y - halfHeight, halfWidth * 2, halfHeight * 2);
+  buildRoundedRectPath(
+    target,
+    anchor.x - boxW / 2,
+    anchor.y - boxH / 2,
+    boxW,
+    boxH,
+    Math.min(LINK_LABEL_RADIUS, boxH / 2),
+  );
   target.fill();
 
   target.setFill(fill);
-  target.setFont("system-ui, sans-serif", fontSize);
   target.setTextAlign("center");
   target.setTextBaseline("middle");
-  target.fillText(label.text, point.x, point.y);
-};
-
-const pointAlongPath = (path: readonly Vec2[], t: number): Vec2 => {
-  if (path.length === 2) {
-    const [a, b] = path as [Vec2, Vec2];
-    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  const firstLineY = anchor.y - ((lines.length - 1) * lineHeight) / 2;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || line.text === "") continue;
+    target.fillText(line.text, anchor.x, firstLineY + i * lineHeight);
   }
-  // Walk segments by cumulative length and find the point at `t * total`.
-  const lengths: number[] = [];
-  let total = 0;
-  for (let i = 1; i < path.length; i++) {
-    const cur = req(path[i]);
-    const prev = req(path[i - 1]);
-    const dx = cur.x - prev.x;
-    const dy = cur.y - prev.y;
-    const len = Math.hypot(dx, dy);
-    lengths.push(len);
-    total += len;
-  }
-  let remaining = total * t;
-  for (let i = 0; i < lengths.length; i++) {
-    const segLen = req(lengths[i]);
-    if (remaining <= segLen) {
-      const ratio = segLen === 0 ? 0 : remaining / segLen;
-      const a = req(path[i]);
-      const b = req(path[i + 1]);
-      return { x: a.x + (b.x - a.x) * ratio, y: a.y + (b.y - a.y) * ratio };
-    }
-    remaining -= segLen;
-  }
-  return req(path[path.length - 1]);
 };

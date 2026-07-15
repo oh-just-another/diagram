@@ -28,7 +28,7 @@ On mount, `detectCapabilities()` runs once and picks the best backend the runtim
 
 ## Customising the chrome
 
-`EditorProps` is the customisation surface. Seed the scene and mode with `initialScene` / `initialMode`, toggle individual chrome off (`hideTopBar`, `hideToolbar`, `hideSelectionPanel`, and friends), inject content with the `renderTopBar*` / `renderBottomBar*` slot props, and manage the `theme` (controlled or self-managed, with optional `localStorage` persistence). Lifecycle callbacks `onReady`, `onSceneChange` and `onSelectionChange` keep the host in sync.
+`EditorProps` is the customisation surface. Seed the scene and mode with `initialScene` / `initialTool`, toggle individual chrome off (`hideTopBar`, `hideToolbar`, `hideSelectionPanel`, and friends), inject content with the `renderTopBar*` / `renderBottomBar*` slot props, and manage the `theme` (controlled or self-managed, with optional `localStorage` persistence). Lifecycle callbacks `onReady`, `onSceneChange` and `onSelectionChange` keep the host in sync.
 
 ## The underlying engine
 

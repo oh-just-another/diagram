@@ -65,8 +65,8 @@
   export const undo = api.undo;
   export const redo = api.redo;
   export const zoomToFit = api.zoomToFit;
-  export const getMode = api.getMode;
-  export const setMode = api.setMode;
+  export const getActiveTool = api.getActiveTool;
+  export const setActiveTool = api.setActiveTool;
   export const getSelection = api.getSelection;
   export const setSelection = api.setSelection;
 </script>

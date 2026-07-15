@@ -37,7 +37,7 @@ const mountEditor = (): { editor: Editor; cleanup: () => void } => {
     mainTarget: layered.get("main"),
     overlayTarget: layered.get("overlay"),
     initialScene: scene,
-    initialMode: "select",
+    initialTool: "select",
   });
   return {
     editor,
@@ -79,12 +79,12 @@ describe("Toolbar eraser + laser tools", () => {
     act(() => {
       eraser?.click();
     });
-    expect(ctx.editor.mode).toBe("erase");
+    expect(ctx.editor.activeTool.type).toBe("erase");
 
     act(() => {
       laser?.click();
     });
-    expect(ctx.editor.mode).toBe("laser");
+    expect(ctx.editor.activeTool.type).toBe("laser");
   });
 
   it("laser stays enabled in read-only; eraser disables (mutating tool)", () => {
@@ -104,13 +104,13 @@ describe("Toolbar eraser + laser tools", () => {
         editor: ctx.editor,
       });
     });
-    expect(ctx.editor.mode).toBe("erase");
+    expect(ctx.editor.activeTool.type).toBe("erase");
 
     act(() => {
       defaultActionRegistry.dispatchHotkey(new KeyboardEvent("keydown", { key: "k" }), {
         editor: ctx.editor,
       });
     });
-    expect(ctx.editor.mode).toBe("laser");
+    expect(ctx.editor.activeTool.type).toBe("laser");
   });
 });

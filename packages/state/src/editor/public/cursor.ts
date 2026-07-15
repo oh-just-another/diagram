@@ -84,7 +84,7 @@ const resolveCursor = (editor: Editor, role: CursorRole, fallbackKeyword: string
  * exactly where a press would begin a link.
  */
 const isOverLinkStartDot = (editor: Editor, p: Vec2): boolean => {
-  if (editor.mode !== "select" || editor._selection.size !== 1) return false;
+  if (editor.activeTool.type !== "select" || editor._selection.size !== 1) return false;
   const id = [...editor._selection][0];
   if (id === undefined) return false;
   const shape = getElement(editor._scene, id);
@@ -114,7 +114,8 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
   // 1. Active gestures (highest priority — what the pointer is doing now).
   if (editor.panGesture) return r("pan-active", "grabbing");
   if (editor.linkDragFromAnchor?.moved === true) return r("draw", "crosshair");
-  if (editor.isDraggingWaypoint || editor.isDraggingSegment) return r("move", "grabbing");
+  if (editor.isDraggingWaypoint || editor.isDraggingSegment || editor.isDraggingLabel)
+    return r("move", "grabbing");
   if (editor.annotationDrag?.moved === true) return r("move", "grabbing");
   if (editor.brushStroke) return r("draw", "crosshair");
   // Machine-driven drag past the threshold (`gestureTx` opens then): resize
@@ -132,16 +133,15 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
   // 2. In-canvas text editing → I-beam.
   if (editor.editingTextElement !== null) return r("text", "text");
   // 3. Pan affordance (idle): Space held or hand tool.
-  if (editor.spaceHeld || editor.mode === "hand") return r("pan-ready", "grab");
+  if (editor.spaceHeld || editor.activeTool.type === "hand") return r("pan-ready", "grab");
   // 4. Draw tools (idle, before a gesture starts).
-  switch (editor.mode) {
+  switch (editor.activeTool.type) {
     case "draw-rect":
     case "draw-ellipse":
     case "draw-frame":
     case "draw-edge":
     case "brush":
     case "laser":
-    case "eyedropper":
     case "crop":
       return r("draw", "crosshair");
     // Erase hides the OS cursor: the overlay paints a size-matched ring (and a

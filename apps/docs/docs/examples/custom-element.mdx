@@ -1,0 +1,76 @@
+---
+title: "Custom element (no framework)"
+sidebar_position: 10
+---
+
+It runs anywhere plain DOM does — including live on this page:
+
+import ElementDemo from "@site/src/components/ExampleEditor/ElementDemo";
+
+<ElementDemo />
+
+## CDN one-pager
+
+A complete HTML file — no build step:
+
+```html
+<!doctype html>
+<html>
+  <head>
+    <script
+      type="module"
+      src="https://unpkg.com/@oh-just-another/diagram/dist/oja-diagram.global.js"
+    ></script>
+    <style>
+      body {
+        margin: 0;
+      }
+      oja-diagram {
+        display: block;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <oja-diagram grid snap theme="dark"></oja-diagram>
+    <script type="module">
+      const el = document.querySelector("oja-diagram");
+      el.addEventListener("ready", () => el.zoomToFit());
+      el.addEventListener("scenechange", (e) => console.log("scene", e.detail));
+      el.addEventListener("selectionchange", (e) => console.log("selected", e.detail));
+    </script>
+  </body>
+</html>
+```
+
+## npm / ESM
+
+```bash
+npm i @oh-just-another/diagram
+```
+
+```ts
+import "@oh-just-another/diagram"; // side effect: registers <oja-diagram>
+```
+
+```html
+<oja-diagram grid theme="dark" style="height: 100vh"></oja-diagram>
+```
+
+Importing the package registers the element automatically. `defineOjaDiagram(tag?)` is exported for registering under a different tag name; calling it is otherwise unnecessary (it is idempotent).
+
+## API
+
+- **Attributes:** `theme` (`dark` | `light` | `system`), `renderer` (`canvas2d` | `webgl2` | `offscreen`, omit to auto-detect), `grid` / `snap` (boolean — attribute present = on).
+- **Property:** `scene` — a `Scene` object; assigning loads it (queued until the editor is ready), reading returns the current scene.
+- **Events** (`CustomEvent`, payload in `event.detail`): `ready` (`detail.editor` is the live engine), `scenechange` (the new `Scene`), `selectionchange` (array of selected element ids), `themechange` (the new theme).
+- **Methods:** `getScene()` / `loadScene(scene)`, `undo()` / `redo()`, `zoomToFit()`, `getActiveTool()` / `setActiveTool(tool)`, `getSelection()` / `setSelection(ids)`.
+- **Escape hatch:** the `editor` property is the full live engine (`null` before `ready`) — same surface as in [React: driving from code](/docs/examples/driving-the-editor).
+
+```ts
+el.setActiveTool("draw-rect"); // "select" | "hand" | "draw-rect" | "draw-ellipse" | ...
+el.loadScene(savedScene);
+const editor = el.editor; // full engine after `ready`
+```
+
+The Vue / Svelte / Angular wrappers below are thin bindings over this exact element.

@@ -1,0 +1,71 @@
+---
+title: "Collaboration"
+sidebar_position: 31
+---
+
+Realtime multiplayer is a Yjs CRDT (`@oh-just-another/collab`) synced over a pluggable transport (`@oh-just-another/network`). It needs one piece of infrastructure — a blind WebSocket relay — so there is no live demo on this page; run the [self-hosted relay](/docs/sdk-features/collaboration/self-hosting) (the separate `diagram-collab` repo, ~150 lines of Node + `ws`) or any compatible fan-out server.
+
+## Editor → encrypted room
+
+End-to-end encryption is built in: `EncryptedTransport` AES-GCM-encrypts every frame client-side, and the key travels only in the URL fragment — the relay routes blobs it can never read.
+
+```tsx
+import * as Y from "yjs";
+import { Editor, type EditorInstance } from "@oh-just-another/editor";
+import { WebSocketTransport } from "@oh-just-another/network";
+import {
+  SceneDoc,
+  CollabAwareness,
+  TransportProvider,
+  bindEditor,
+  bindAwareness,
+  generateRoomKey,
+  EncryptedTransport,
+} from "@oh-just-another/collab";
+import "@oh-just-another/react-ui/styles.css";
+
+const RELAY = "wss://relay.example.com"; // your diagram-collab instance
+
+async function connect(editor: EditorInstance): Promise<() => void> {
+  // New room: mint credentials. Share `#room=${roomId},${keyBase64}` to
+  // invite peers — joiners parse the fragment and use importRoomKey().
+  const { roomId, keyBase64, key } = await generateRoomKey();
+  console.log(`invite: ${location.origin}/#room=${roomId},${keyBase64}`);
+
+  const doc = new Y.Doc();
+  const sceneDoc = new SceneDoc(doc); // CRDT mirror of the scene
+  const awareness = new CollabAwareness(doc); // cursors + presence
+
+  // roomId in the WS path (relay routes by it); key never leaves the client.
+  const ws = new WebSocketTransport(`${RELAY}/${roomId}`);
+  const transport = new EncryptedTransport(ws, key);
+  const provider = new TransportProvider({ doc, transport, awareness: awareness.awareness });
+
+  // waitForSyncMs: joiners adopt the room's state instead of clobbering it.
+  const unbindScene = bindEditor(editor, sceneDoc, { waitForSyncMs: 200 });
+  const unbindPresence = bindAwareness(editor, awareness, {
+    user: { id: crypto.randomUUID(), name: "Alice", color: "#1a73e8" },
+  });
+
+  return () => {
+    unbindPresence();
+    unbindScene();
+    provider.destroy();
+    awareness.destroy();
+    ws.close();
+  };
+}
+
+export const App = () => <Editor onReady={(e) => void connect(e)} />;
+```
+
+Open the invite URL in a second browser: edits, cursors, and selections sync live.
+
+## Notes
+
+- **Signatures.** `bindEditor(editor, sceneDoc | Y.Doc, { waitForSyncMs? })` and `bindAwareness(editor, awareness, { user, cursorThrottleMs? })` each return an unbind function; `provider.destroy()` / `awareness.destroy()` / `ws.close()` complete teardown.
+- **Transports are pluggable.** `BroadcastChannelTransport("room")` syncs same-origin tabs with zero servers; anything implementing the `Transport` interface (`send`, `onMessage`, `close`) works. `WebSocketTransport` auto-reconnects with exponential backoff and exposes `onStatusChange` for a connection badge.
+- **Encryption is optional but recommended.** Skip `EncryptedTransport` only if you run a trusted server; with it, the relay sees room ids and blob sizes, never content. Joiners rebuild the key with `importRoomKey(keyBase64)`.
+- **No persistence in the relay.** Rooms vanish when the last peer leaves — snapshot scenes via `@oh-just-another/serialization` in your host app if you need durability.
+
+More depth: [Realtime editing](/docs/sdk-features/collaboration/realtime), [live cursors](/docs/sdk-features/collaboration/cursors), [self-hosting the relay](/docs/sdk-features/collaboration/self-hosting).

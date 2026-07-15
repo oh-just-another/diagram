@@ -438,10 +438,10 @@ const StateTab = ({ editor }: { editor: Editor }) => {
     <Card>
       <Section title="Mode">
         <Row label="mode">
-          <Code>{editor.mode}</Code>
+          <Code>{editor.activeTool.type}</Code>
         </Row>
         <Row label="tool locked">
-          <Code>{String(editor.toolLocked)}</Code>
+          <Code>{String(editor.activeTool.locked)}</Code>
         </Row>
       </Section>
       <Section title="Selection">

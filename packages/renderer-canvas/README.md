@@ -24,13 +24,13 @@ renderScene(scene, surface.get("main"));
 
 ### Render targets
 
-| Name              | Purpose                                                                           |
-| ----------------- | --------------------------------------------------------------------------------- |
-| `Canvas2DTarget`  | `RenderTarget` over `CanvasRenderingContext2D`. CSS-pixel coordinate space.       |
-| `WebGL2Target`    | `RenderTarget` backed by a WebGL2 context.                                        |
-| `RecordingTarget` | `RenderTarget` that captures draw calls as `RenderCommand[]` instead of painting. |
-| `replayCommands`  | Replays a recorded `RenderCommand[]` against another `RenderTarget`.              |
-| `RenderCommand`   | Serializable record of a single captured draw call.                               |
+| Name              | Purpose                                                                                                           |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `Canvas2DTarget`  | `RenderTarget` over `CanvasRenderingContext2D`. CSS-pixel coordinate space.                                       |
+| `WebGL2Target`    | `RenderTarget` backed by a WebGL2 context. `invalidateImage(source)` releases a cached GPU texture synchronously. |
+| `RecordingTarget` | `RenderTarget` that captures draw calls as `RenderCommand[]` instead of painting.                                 |
+| `replayCommands`  | Replays a recorded `RenderCommand[]` against another `RenderTarget`.                                              |
+| `RenderCommand`   | Serializable record of a single captured draw call.                                                               |
 
 ### Layered surface
 

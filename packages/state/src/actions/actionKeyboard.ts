@@ -183,7 +183,7 @@ const editOrCreate: Action = {
       const [id] = [...editor.selection];
       if (id && editor.scene.elements.get(id)?.type === "text") return true;
     }
-    return editor.mode === "draw-rect" || editor.mode === "draw-ellipse";
+    return editor.activeTool.type === "draw-rect" || editor.activeTool.type === "draw-ellipse";
   },
   perform: ({ editor }) => {
     if (editor.selection.size === 1) {
@@ -193,7 +193,7 @@ const editOrCreate: Action = {
         return;
       }
     }
-    if (editor.mode === "draw-rect" || editor.mode === "draw-ellipse") {
+    if (editor.activeTool.type === "draw-rect" || editor.activeTool.type === "draw-ellipse") {
       editor.createElementAtCursor();
     }
   },

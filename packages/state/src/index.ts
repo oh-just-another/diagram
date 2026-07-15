@@ -1,4 +1,4 @@
-export type { Mode } from "./modes.js";
+export type { ActiveTool, Mode } from "./modes.js";
 export { DEFAULT_MODE } from "./modes.js";
 
 export type { Selection } from "./selection.js";

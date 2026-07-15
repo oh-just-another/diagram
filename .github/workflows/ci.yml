@@ -47,6 +47,12 @@ jobs:
       - name: Dependency graph check
         run: pnpm deps:check
 
+      # Dead-code gate (unused files / exports / dependencies). False
+      # positives are triaged into knip.json ignores; a red run here means
+      # a genuinely orphaned export or dependency slipped in.
+      - name: Dead code check (knip)
+        run: pnpm knip
+
       - name: Test
         run: pnpm test
 

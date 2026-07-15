@@ -12,14 +12,16 @@ export default defineConfig({
   // `on-first-retry`); locally a failure should surface immediately.
   retries: process.env.CI ? 2 : 0,
   use: {
-    baseURL: "http://localhost:5173",
+    // 127.0.0.1 (not localhost): the readiness probe must hit the vite server
+    // even when an unrelated process holds [::1]:5173 on the developer machine.
+    baseURL: "http://127.0.0.1:5173",
     actionTimeout: 5_000,
     trace: "on-first-retry",
   },
   webServer: [
     {
       command: "pnpm --filter @oh-just-another/playground dev --port 5173 --strictPort",
-      url: "http://localhost:5173",
+      url: "http://127.0.0.1:5173",
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },
@@ -43,6 +45,11 @@ export default defineConfig({
       // runners that have no real GPU. `--use-gl=angle` picks the ANGLE path.
       name: "golden-visual",
       testMatch: /golden-visual\.spec\.ts/,
+      // Software GL is CPU-bound: with every worker rasterizing through
+      // SwiftShader, screenshot stabilization can exceed the default 5s
+      // expect timeout under full parallel load. The wider timeout only
+      // delays failure reporting; it never hides a real pixel diff.
+      expect: { timeout: 15_000 },
       use: {
         ...devices["Desktop Chrome"],
         launchOptions: {

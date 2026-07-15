@@ -16,10 +16,12 @@ import {
 } from "../src/editor/event-fanout.js";
 import type { EditorEvents } from "../src/editor-events.js";
 import * as Selection from "../src/selection.js";
-import { DEFAULT_MODE } from "../src/modes.js";
+import { DEFAULT_MODE, type ActiveTool } from "../src/modes.js";
+
+const TOOL: ActiveTool = { type: DEFAULT_MODE, locked: false, lastActiveTool: null };
 
 const makeSnapshot = (over: Partial<EditorObservableSnapshot> = {}): EditorObservableSnapshot => ({
-  mode: DEFAULT_MODE,
+  activeTool: TOOL,
   selection: Selection.EMPTY,
   scene: emptyScene(),
   canUndo: false,
@@ -29,7 +31,7 @@ const makeSnapshot = (over: Partial<EditorObservableSnapshot> = {}): EditorObser
 
 interface Spies {
   change: ReturnType<typeof vi.fn>;
-  mode: ReturnType<typeof vi.fn>;
+  tool: ReturnType<typeof vi.fn>;
   selection: ReturnType<typeof vi.fn>;
   scene: ReturnType<typeof vi.fn>;
   history: ReturnType<typeof vi.fn>;
@@ -40,14 +42,14 @@ const setup = (): { emitter: ReturnType<typeof createEmitter<EditorEvents>>; spi
   const emitter = createEmitter<EditorEvents>();
   const spies: Spies = {
     change: vi.fn(),
-    mode: vi.fn(),
+    tool: vi.fn(),
     selection: vi.fn(),
     scene: vi.fn(),
     history: vi.fn(),
     viewport: vi.fn(),
   };
   emitter.on("change", spies.change);
-  emitter.on("mode", spies.mode);
+  emitter.on("tool", spies.tool);
   emitter.on("selection", spies.selection);
   emitter.on("scene", spies.scene);
   emitter.on("history", spies.history);
@@ -59,7 +61,7 @@ describe("createEventCache", () => {
   it("starts empty so the first fan-out fires every slice", () => {
     const cache = createEventCache();
     expect(cache).toEqual({
-      mode: null,
+      activeTool: null,
       selection: null,
       scene: null,
       viewport: null,
@@ -78,7 +80,7 @@ describe("primeEventCache", () => {
     const { emitter, spies } = setup();
     fanOutEvents(cache, emitter, snapshot);
 
-    expect(spies.mode).not.toHaveBeenCalled();
+    expect(spies.tool).not.toHaveBeenCalled();
     expect(spies.selection).not.toHaveBeenCalled();
     expect(spies.scene).not.toHaveBeenCalled();
     expect(spies.viewport).not.toHaveBeenCalled();
@@ -95,7 +97,7 @@ describe("fanOutEvents — per-slice dispatch", () => {
 
     fanOutEvents(cache, emitter, snapshot);
 
-    expect(spies.mode).toHaveBeenCalledExactlyOnceWith(snapshot.mode);
+    expect(spies.tool).toHaveBeenCalledExactlyOnceWith(snapshot.activeTool);
     expect(spies.selection).toHaveBeenCalledExactlyOnceWith(snapshot.selection);
     expect(spies.scene).toHaveBeenCalledExactlyOnceWith(snapshot.scene);
     expect(spies.viewport).toHaveBeenCalledExactlyOnceWith(snapshot.scene);
@@ -104,19 +106,30 @@ describe("fanOutEvents — per-slice dispatch", () => {
     expect(spies.change).toHaveBeenCalledTimes(1);
   });
 
-  it("fires mode only when the mode flips", () => {
+  it("fires tool only when the activeTool reference changes", () => {
     const cache = createEventCache();
     const base = makeSnapshot();
     primeEventCache(cache, base);
     const { emitter, spies } = setup();
 
-    fanOutEvents(cache, emitter, makeSnapshot({ mode: "hand" }));
-    expect(spies.mode).toHaveBeenCalledExactlyOnceWith("hand");
+    const hand: ActiveTool = { type: "hand", locked: false, lastActiveTool: "select" };
+    fanOutEvents(cache, emitter, makeSnapshot({ activeTool: hand }));
+    expect(spies.tool).toHaveBeenCalledExactlyOnceWith(hand);
 
-    // Same mode again → no second emit.
-    fanOutEvents(cache, emitter, makeSnapshot({ mode: "hand" }));
-    expect(spies.mode).toHaveBeenCalledTimes(1);
+    // Same object again → no second emit (identity compare).
+    fanOutEvents(cache, emitter, makeSnapshot({ activeTool: hand }));
+    expect(spies.tool).toHaveBeenCalledTimes(1);
     expect(spies.change).toHaveBeenCalledTimes(2);
+  });
+
+  it("fires tool on a lock flip (type unchanged, new object)", () => {
+    const cache = createEventCache();
+    primeEventCache(cache, makeSnapshot());
+    const { emitter, spies } = setup();
+
+    const locked: ActiveTool = { ...TOOL, locked: true };
+    fanOutEvents(cache, emitter, makeSnapshot({ activeTool: locked }));
+    expect(spies.tool).toHaveBeenCalledExactlyOnceWith(locked);
   });
 
   it("fires selection only on a new selection reference", () => {
@@ -205,7 +218,7 @@ describe("fanOutEvents — per-slice dispatch", () => {
     fanOutEvents(cache, emitter, snapshot);
 
     // Every typed event fires once (first call); second call only fires change.
-    expect(spies.mode).toHaveBeenCalledTimes(1);
+    expect(spies.tool).toHaveBeenCalledTimes(1);
     expect(spies.selection).toHaveBeenCalledTimes(1);
     expect(spies.scene).toHaveBeenCalledTimes(1);
     expect(spies.viewport).toHaveBeenCalledTimes(1);

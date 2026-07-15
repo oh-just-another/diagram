@@ -1,11 +1,11 @@
 import type { Scene } from "@oh-just-another/scene";
 import type * as Selection from "./selection.js";
-import type { Mode } from "./modes.js";
+import type { ActiveTool } from "./modes.js";
 
 /**
  * Typed event surface for `Editor`. Each event has a focused payload so
- * subscribers listen only to what they care about — `useMode` re-renders
- * on `mode` only, `useHistory` on `history`, etc. The umbrella `change`
+ * subscribers listen only to what they care about — `useActiveTool` re-renders
+ * on `tool` only, `useHistory` on `history`, etc. The umbrella `change`
  * event keeps the `editor.subscribe(fn)` contract: anything that fires a
  * specific event also fires `change` so coarse-grained listeners still
  * wake up exactly once per logical update.
@@ -17,8 +17,8 @@ export interface EditorEvents {
    * subscribe to several slices and don't want a per-slice fan-out.
    */
   change: () => void;
-  /** Active interaction mode flipped (select → draw-rect etc.). */
-  mode: (mode: Mode) => void;
+  /** Active tool changed — type switch, lock flip or revert-target update. */
+  tool: (tool: ActiveTool) => void;
   /** Selection set changed (added, removed, replaced). */
   selection: (selection: Selection.Selection) => void;
   /** Scene identity changed (any patch applied through the model). */

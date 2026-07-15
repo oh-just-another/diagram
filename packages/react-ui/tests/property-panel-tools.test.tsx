@@ -113,7 +113,7 @@ describe("PropertyPanel crop control (F10)", () => {
     const cropBtn = container.querySelector('button[aria-label="Crop image"]');
     expect(cropBtn).not.toBeNull();
     fireEvent.click(cropBtn!);
-    expect(editor.mode).toBe("crop");
+    expect(editor.activeTool.type).toBe("crop");
     expect(editor.imageCropSession?.id).toBe(image.id);
     editor.dispose();
   });

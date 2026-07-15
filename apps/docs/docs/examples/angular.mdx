@@ -1,0 +1,46 @@
+---
+title: "Angular"
+sidebar_position: 13
+---
+
+`@oh-just-another/diagram-angular` wraps the [`<oja-diagram>` custom element](/docs/examples/custom-element) as a standalone Angular component, `<oja-diagram-ng>`. A live embed would require Angular's Ivy linker and `zone.js` inside this site's toolchain — not worth the weight; the [custom element demo](/docs/examples/custom-element) shows the exact surface this wrapper drives, live.
+
+```ts title="app.component.ts"
+import { Component, ViewChild } from "@angular/core";
+import { DiagramComponent } from "@oh-just-another/diagram-angular";
+import type { Scene } from "@oh-just-another/scene";
+
+@Component({
+  selector: "app-root",
+  standalone: true,
+  imports: [DiagramComponent],
+  template: `
+    <button (click)="diagram.setActiveTool('draw-rect')">Rectangle tool</button>
+    <button (click)="diagram.undo()">Undo</button>
+    <oja-diagram-ng
+      #diagram
+      [grid]="true"
+      [snap]="true"
+      theme="dark"
+      style="height: 80vh"
+      (ready)="diagram.zoomToFit()"
+      (scenechange)="onSceneChange($event)"
+    />
+  `,
+})
+export class AppComponent {
+  @ViewChild("diagram") diagram!: DiagramComponent;
+
+  onSceneChange(scene: Scene): void {
+    console.log("scene", scene);
+  }
+}
+```
+
+## Notes
+
+- Install: `npm i @oh-just-another/diagram-angular`. Peer dependency: `@angular/core >=17`.
+- Inputs: `scene` (a `Scene` object), `theme`, `renderer`, `grid`, `snap` — same meaning as the element's [attributes](/docs/examples/custom-element#api).
+- Outputs: `(ready)`, `(scenechange)`, `(selectionchange)`, `(themechange)` — `$event` is the unwrapped payload.
+- Imperative control on the component instance (template reference variable or `viewChild`): `getScene` / `loadScene`, `undo` / `redo`, `zoomToFit`, `getActiveTool` / `setActiveTool`, `getSelection` / `setSelection`. Methods no-op before `(ready)`.
+- Importing the package registers `<oja-diagram>` automatically.

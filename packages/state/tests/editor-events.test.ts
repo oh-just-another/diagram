@@ -58,22 +58,32 @@ const makeEditor = (): Editor =>
   });
 
 describe("editor typed events", () => {
-  it("fires `mode` only when mode actually flips", () => {
+  it("fires `tool` only when the active tool actually flips", () => {
     const editor = makeEditor();
     const fn = vi.fn();
-    editor.on("mode", fn);
-    editor.setMode("select"); // same value
+    editor.on("tool", fn);
+    editor.setActiveTool("select"); // same value
     expect(fn).not.toHaveBeenCalled();
-    editor.setMode("draw-rect");
-    expect(fn).toHaveBeenCalledWith("draw-rect");
-    editor.setMode("draw-rect"); // re-set same → no event
+    editor.setActiveTool("draw-rect");
+    expect(fn).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "draw-rect", lastActiveTool: "select" }),
+    );
+    editor.setActiveTool("draw-rect"); // re-set same → no event
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
-  it("does NOT fire `mode` when only viewport changed", () => {
+  it("fires `tool` on a lock flip (type unchanged)", () => {
     const editor = makeEditor();
     const fn = vi.fn();
-    editor.on("mode", fn);
+    editor.on("tool", fn);
+    editor.setToolLocked(true);
+    expect(fn).toHaveBeenCalledWith(expect.objectContaining({ type: "select", locked: true }));
+  });
+
+  it("does NOT fire `tool` when only viewport changed", () => {
+    const editor = makeEditor();
+    const fn = vi.fn();
+    editor.on("tool", fn);
     editor.setViewportSize(200, 200);
     expect(fn).not.toHaveBeenCalled();
   });
@@ -83,17 +93,17 @@ describe("editor typed events", () => {
     const fn = vi.fn();
     editor.on("change", fn);
     const before = fn.mock.calls.length;
-    editor.setMode("draw-rect");
+    editor.setActiveTool("draw-rect");
     expect(fn.mock.calls.length - before).toBe(1);
   });
 
   it("unsubscribe via returned fn", () => {
     const editor = makeEditor();
     const fn = vi.fn();
-    const off = editor.on("mode", fn);
-    editor.setMode("draw-rect");
+    const off = editor.on("tool", fn);
+    editor.setActiveTool("draw-rect");
     off();
-    editor.setMode("draw-ellipse");
+    editor.setActiveTool("draw-ellipse");
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
@@ -105,7 +115,7 @@ describe("editor typed events", () => {
     editor.on("change", typed);
     const lBefore = legacy.mock.calls.length;
     const tBefore = typed.mock.calls.length;
-    editor.setMode("draw-rect");
+    editor.setActiveTool("draw-rect");
     expect(legacy.mock.calls.length - lBefore).toBe(1);
     expect(typed.mock.calls.length - tBefore).toBe(1);
   });

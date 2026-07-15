@@ -20,7 +20,7 @@ import { DiagramRoot, DiagramSurface } from "./diagram-root.js";
  */
 export interface DiagramCanvasProps {
   readonly initialScene: Scene;
-  readonly initialMode?: Mode;
+  readonly initialTool?: Mode;
   readonly onReady?: (editor: Editor) => void;
   readonly style?: CSSProperties;
   readonly className?: string;
@@ -42,7 +42,7 @@ export interface DiagramCanvasProps {
 
 export const DiagramCanvas = ({
   initialScene,
-  initialMode,
+  initialTool,
   onReady,
   style,
   className,
@@ -52,7 +52,7 @@ export const DiagramCanvas = ({
 }: DiagramCanvasProps) => (
   <DiagramRoot
     initialScene={initialScene}
-    {...(initialMode !== undefined ? { initialMode } : {})}
+    {...(initialTool !== undefined ? { initialTool } : {})}
     {...(onReady !== undefined ? { onReady } : {})}
     {...(skipInstallRenderers !== undefined ? { skipInstallRenderers } : {})}
     {...(readOnly !== undefined ? { readOnly } : {})}

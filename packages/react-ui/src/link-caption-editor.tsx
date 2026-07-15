@@ -5,15 +5,15 @@ import { usePortalContainer } from "./portal-container.js";
 
 /**
  * Inline editor for a link's caption. Opens on double-click of a link
- * (state layer sets `editor.editingLinkCaption`). Renders a small input at
- * the link's label point (midpoint of its path). Enter / blur commits,
- * Escape cancels. Empty text removes the label. Portaled to body.
+ * (state layer sets `editor.editingLinkCaption`). Renders a small multiline
+ * textarea at the link's label anchor. Enter / blur commits, Shift+Enter
+ * inserts a newline, Escape cancels. Empty text removes the label. Portaled.
  */
 export const LinkCaptionEditor = () => {
   const editor = useDiagramOptional();
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const [value, setValue] = useState("");
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const portalContainer = usePortalContainer();
 
   useEffect(() => {
@@ -54,12 +54,17 @@ export const LinkCaptionEditor = () => {
     editor.commitLinkCaptionEdit(value);
   };
 
+  // Grow with the content: one visual row per line, capped so a long caption
+  // doesn't cover half the canvas while being edited.
+  const rows = Math.min(5, value.split("\n").length);
+
   return createPortal(
-    <input
+    <textarea
       ref={inputRef}
       className="du-link-caption-input"
       value={value}
       placeholder="Label"
+      rows={rows}
       style={{
         position: "fixed",
         left: sx,
@@ -72,7 +77,7 @@ export const LinkCaptionEditor = () => {
       }}
       onBlur={commit}
       onKeyDown={(e) => {
-        if (e.key === "Enter") {
+        if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           commit();
         } else if (e.key === "Escape") {

@@ -107,7 +107,7 @@ describe("stroke-eraser (Shift-gated)", () => {
 
   it("Shift cut across the middle → two brush fragments in ONE undo step", () => {
     const editor = makeEditor(sceneWith(brush("b", [0, 10, 20, 30, 40])));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     // Vertical eraser stroke crossing x=20 (Shift held → strokeErase).
     editor.beginEraseStroke({ x: 20, y: -50 }, false, true);
     editor.extendEraseStroke({ x: 20, y: 50 }, false);
@@ -125,7 +125,7 @@ describe("stroke-eraser (Shift-gated)", () => {
 
   it("WITHOUT Shift the same gesture deletes the whole brush", () => {
     const editor = makeEditor(sceneWith(brush("b", [0, 10, 20, 30, 40])));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     // No strokeErase: object-erase mode. Seed via a press on the brush body.
     editor.beginEraseStroke({ x: 20, y: 0 }, false, false);
     editor.extendEraseStroke({ x: 20, y: 5 }, false);
@@ -136,7 +136,7 @@ describe("stroke-eraser (Shift-gated)", () => {
 
   it("a non-brush under Shift is still object-deleted (fallback)", () => {
     const editor = makeEditor(sceneWith(rect("r", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 20, y: 20 }, false, true); // Shift, but over a rect
     editor.commitEraseStroke();
     expect(editor.scene.elements.has(elementId("r"))).toBe(false);
@@ -144,7 +144,7 @@ describe("stroke-eraser (Shift-gated)", () => {
 
   it("shows a live preview mid-drag: fragments exposed, original hidden", () => {
     const editor = makeEditor(sceneWith(brush("b", [0, 10, 20, 30, 40])));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     // Shift drag across the middle, WITHOUT committing yet.
     editor.beginEraseStroke({ x: 20, y: -50 }, false, true);
     editor.extendEraseStroke({ x: 20, y: 50 }, false);
@@ -176,7 +176,7 @@ describe("stroke-eraser (Shift-gated)", () => {
     };
     s = addLink(s, link).scene;
     const editor = makeEditor(s);
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     expect(editor.scene.links.size).toBe(1);
 
     editor.beginEraseStroke({ x: 20, y: -50 }, false, true);
@@ -196,7 +196,7 @@ describe("stroke-eraser (Shift-gated)", () => {
     let clock = 0;
     vi.spyOn(performance, "now").mockImplementation(() => clock);
     const editor = makeEditor(sceneWith(brush("b", [0, 10, 20, 30, 40])));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 20, y: -50 }, false, true);
     editor.extendEraseStroke({ x: 20, y: -40 }, false);
     // Age the trail past its TTL and prune it — a paused cursor.
@@ -220,7 +220,7 @@ describe("stroke-eraser (Shift-gated)", () => {
     // skips the full main pass (empty dirty rect → cull only). Drive the gate
     // directly — `notify()`'s render would otherwise consume the flag.
     const editor = makeEditor(sceneWith(brush("b", [0, 10, 20, 30, 40])));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.setViewportSize(500, 500);
     editor.beginEraseStroke({ x: 20, y: 50 }, false, true); // erase stroke active
     const ed = editor as unknown as {
@@ -269,7 +269,7 @@ describe("stroke-eraser (Shift-gated)", () => {
       initialScene: sceneWith(brush("b", [0, 10, 20, 30, 40])),
     });
     editor.setViewportSize(500, 500);
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 20, y: -50 }, false, true); // Shift stroke-erase
     editor.extendEraseStroke({ x: 20, y: 50 }, false); // cut through the brush
     editor.lastPointerWorld = { x: 20, y: 50 }; // the pointer handler sets this live

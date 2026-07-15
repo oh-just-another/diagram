@@ -98,21 +98,21 @@ describe("eraser cursor ring (snapshot)", () => {
 
   it("is null when read-only, even in erase mode with a hover point", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)), { readOnly: true });
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.lastPointerWorld = { x: 20, y: 20 };
     expect(snapshot(editor).eraserCursor).toBeNull();
   });
 
   it("is null in erase mode when there is no hover point", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.lastPointerWorld = null;
     expect(snapshot(editor).eraserCursor).toBeNull();
   });
 
   it("is {center, radius=brushSettings.width} in erase mode with a hover point", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.lastPointerWorld = { x: 20, y: 30 };
     const c = snapshot(editor).eraserCursor;
     expect(c).not.toBeNull();
@@ -122,7 +122,7 @@ describe("eraser cursor ring (snapshot)", () => {
 
   it("radius tracks the panel eraser size (setBrushSettings)", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.lastPointerWorld = { x: 0, y: 0 };
     editor.setBrushSettings({ width: 37 });
     expect(snapshot(editor).eraserCursor?.radius).toBe(37);
@@ -134,7 +134,7 @@ describe("eraser cursor ring (snapshot)", () => {
 describe("eraser cursor (CSS)", () => {
   it("hides the OS cursor in erase mode", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     expect(cursorOf(editor)).toBe("none");
   });
 });
@@ -152,7 +152,7 @@ describe("eraser drag trail", () => {
 
   it("grows a fading trail while the eraser is dragged", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 0, y: 0 });
     editor.extendEraseStroke({ x: 10, y: 10 });
     expect(editor.eraserTrail.length).toBe(1);
@@ -162,7 +162,7 @@ describe("eraser drag trail", () => {
 
   it("keeps the trail (fading) after commit but stops growing it", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 0, y: 0 });
     editor.extendEraseStroke({ x: 10, y: 10 });
     const lenBefore = editor.eraserTrail[0]?.points.length ?? 0;
@@ -176,7 +176,7 @@ describe("eraser drag trail", () => {
 
   it("prunes the trail at the eraser's OWN (short) TTL, not the laser's", () => {
     const editor = makeEditor(sceneWith(rect("a", 0, 0)));
-    editor.setMode("erase");
+    editor.setActiveTool("erase");
     editor.beginEraseStroke({ x: 0, y: 0 });
     editor.extendEraseStroke({ x: 10, y: 10 });
     editor.commitEraseStroke();

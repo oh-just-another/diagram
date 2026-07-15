@@ -1,0 +1,37 @@
+---
+title: "Svelte"
+sidebar_position: 12
+---
+
+Below is the REAL wrapper running live — its shipped `.svelte` source compiled by this site's svelte-loader and mounted with Svelte 5 `mount()`:
+
+import SvelteDemo from "@site/src/components/ExampleEditor/SvelteDemo";
+
+<SvelteDemo />
+
+```svelte title="App.svelte"
+<script lang="ts">
+  import Diagram from "@oh-just-another/diagram-svelte";
+  import type { Scene } from "@oh-just-another/scene";
+
+  let diagram: Diagram;
+
+  const onready = () => diagram.zoomToFit();
+  const onscenechange = (scene: Scene) => console.log("scene", scene);
+</script>
+
+<button onclick={() => diagram.setActiveTool("draw-rect")}>Rectangle tool</button>
+<button onclick={() => diagram.undo()}>Undo</button>
+
+<div style="height: 80vh">
+  <Diagram bind:this={diagram} grid snap theme="dark" {onready} {onscenechange} />
+</div>
+```
+
+## Notes
+
+- Install: `npm i @oh-just-another/diagram-svelte`. Peer dependency: `svelte ^5`.
+- Props: `scene` (a `Scene` object), `theme`, `renderer`, `grid`, `snap` — same meaning as the element's [attributes](/docs/examples/custom-element#api).
+- Events are callback props: `onready`, `onscenechange`, `onselectionchange`, `onthemechange` — each receives the unwrapped payload.
+- Imperative control via `bind:this`: the component exports `getScene` / `loadScene`, `undo` / `redo`, `zoomToFit`, `getActiveTool` / `setActiveTool`, `getSelection` / `setSelection`. Methods no-op before `onready`.
+- Importing the component registers `<oja-diagram>` automatically.

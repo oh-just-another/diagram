@@ -530,6 +530,95 @@ export const DEFAULT_BRUSH_OPACITY = 1;
 export const BRUSH_SMOOTH_SEGMENTS = 4;
 
 /**
+ * Input-time low-pass (streamline) strength for brush capture, 0-0.9. Each
+ * pointer-move stores a point pulled only `1 - BRUSH_STREAMLINE` of the way
+ * from the previous stored point toward the raw sample, filtering hand jitter
+ * and sensor noise into a steady line. 0 = raw input (off); higher = steadier
+ * but laggier (the commit-time catch-up point hides the lag at the stroke
+ * end). Range: 0.3-0.7.
+ */
+export const BRUSH_STREAMLINE = 0.5;
+
+/**
+ * Per-sample lerp rate (0-1) toward the target pressure while capturing a
+ * brush stroke — rate-limits pressure changes so a single outlier sample (pen
+ * lift-off spike, sudden speed jump on mouse) can't kink the width profile.
+ * 1 = follow instantly (off); lower = smoother but slower to adapt. 0.3 keeps
+ * the width felt-tip steady. Range: 0.2-0.7.
+ */
+export const BRUSH_PRESSURE_SMOOTHING = 0.3;
+
+/**
+ * Screen-pixel distance per pointer sample at which SIMULATED pressure (mouse /
+ * touch — no real pressure channel) bottoms out. Standing still targets full
+ * pressure (thick); moving this fast per sample targets the minimum (thin) —
+ * the "slower = thicker" response. Measured in screen px so the feel is
+ * zoom-independent. 32 keeps the speed response gentle (marker-like); halve it
+ * for a livelier calligraphic feel. Range: 8-48.
+ */
+export const BRUSH_SIM_THIN_DIST_PX = 32;
+
+/**
+ * Floor for simulated brush pressure (0-1) — the width multiplier a fast
+ * mouse / touch stroke converges to (`× base width`). Together with
+ * BRUSH_SIM_PRESSURE_MAX it sets the width band of a simulated stroke: a
+ * narrow band (0.55-0.7, the default) reads as a felt-tip marker; widen it
+ * (e.g. 0.25-0.8) for a pen-like thin-thick response. Range: 0.15-0.7.
+ */
+export const BRUSH_SIM_PRESSURE_MIN = 0.55;
+
+/**
+ * Ceiling for simulated brush pressure (0-1) — the width multiplier a slow /
+ * stationary mouse or touch stroke converges to (`× base width`). Without a
+ * ceiling a slow stroke fattens all the way to the full base width, which
+ * reads too thick next to the medium-speed line. See BRUSH_SIM_PRESSURE_MIN
+ * for the band the two clamps form. Real pen pressure is not clamped.
+ * Range: 0.6-1.
+ */
+export const BRUSH_SIM_PRESSURE_MAX = 0.7;
+
+/**
+ * Initial simulated pressure (0-1) for the first sample of a mouse / touch
+ * stroke. A felt-tip touches the paper at full width, so it starts at the
+ * BRUSH_SIM_PRESSURE_MAX ceiling and thins as the stroke speeds up. Keep
+ * within the [MIN, MAX] clamp band. Range: 0.4-0.7.
+ */
+export const BRUSH_SIM_PRESSURE_START = 0.7;
+
+/**
+ * Minimum SCREEN-pixel displacement of the raw input before a new brush point
+ * is stored — decimation of near-duplicate pointer samples (120 Hz devices
+ * emit far more moves than a stroke needs). Skipped samples still update the
+ * commit catch-up point. Smaller = denser capture; larger = coarser but
+ * cheaper strokes. Range: 1-4.
+ */
+export const BRUSH_MIN_POINT_DIST_PX = 1.5;
+
+/**
+ * Soft cap on captured brush points per stroke. When capture exceeds it, the
+ * stroke's interior points are halved (endpoints kept), bounding memory and
+ * render cost on very long strokes — each halving doubles the remaining
+ * capacity instead of stopping the stroke. Range: 1024-8192.
+ */
+export const MAX_BRUSH_POINTS = 2048;
+
+/**
+ * Length of the end taper of a brush stroke, as a multiple of the base
+ * half-width — arc length from each tip over which the width eases down.
+ * Capped at half the stroke length so short strokes stay symmetric. 0 (the
+ * default) disables tapering: blunt round caps, the felt-tip marker look.
+ * Set 2-5 for pen-like ends that trail off to a point. Range: 0-5.
+ */
+export const BRUSH_TAPER_LENGTH_FACTOR = 0;
+
+/**
+ * Width factor at the very tip of a tapered brush stroke (0-1 of the captured
+ * width) — the tip converges to this instead of a full-width round cap,
+ * mimicking a pen lifting off. Range: 0.05-0.3.
+ */
+export const BRUSH_TAPER_MIN = 0.1;
+
+/**
  * World-pixel distance under which a brush stroke's last point is treated as
  * meeting its first — the trigger for auto-closing (and filling) a stroke on
  * commit. Only applies when a fill colour is set and the stroke has ≥3 points.
@@ -640,6 +729,14 @@ export const LASER_SMOOTH_SEGMENTS = 8;
  * register their own.
  */
 export const DEFAULT_IMAGE_MAX_EDGE_PX = 480;
+
+/**
+ * Placeholder size (world px, 16:9) for a dropped video whose metadata never
+ * loads (`videoWidth`/`videoHeight` = 0 — unsupported codec, aborted load).
+ * Only affects the created element's initial box. Range: 160×90 – 960×540.
+ */
+export const VIDEO_FALLBACK_WIDTH_PX = 480;
+export const VIDEO_FALLBACK_HEIGHT_PX = 270;
 
 /**
  * Adaptive animation-tick throttling (GIF / video playback). The tick
@@ -801,3 +898,11 @@ export const CROP_HANDLE_HIT_RADIUS = 11;
 export const CROP_GHOST_OPACITY = 0.12;
 export const CROP_BRACKET_LEN = 14;
 export const CROP_BRACKET_WIDTH = 3;
+
+/**
+ * Snap radius (screen px) of the caption drag: while the pill's arc-length
+ * position is within this distance of the path middle, the explicit
+ * `label.position` is dropped and the label returns to its default placement
+ * (midpoint / elbow longest-segment). Range: 4–16.
+ */
+export const LINK_LABEL_DRAG_SNAP_PX = 8;

@@ -20,10 +20,6 @@
  * - `laser` — ephemeral presentation pointer. Press-and-drag paints a
  *   red trail that fades over a couple of seconds; nothing is written
  *   to the scene or history — it lives purely on the overlay.
- * - `eyedropper` — sample a colour. A click reads the fill (or stroke)
- *   of the shape under the cursor and applies it to the current
- *   selection, then reverts to `select` (unless the tool is locked).
- *   Never mutates geometry.
  * - `crop` — image-crop mode, entered by double-clicking an image.
  *   The overlay shows a draggable crop frame over the target image;
  *   Enter commits the crop, Escape cancels. Owned end-to-end by the
@@ -44,7 +40,30 @@ export type Mode =
   | "brush"
   | "erase"
   | "laser"
-  | "eyedropper"
   | "crop";
 
 export const DEFAULT_MODE: Mode = "select";
+
+/**
+ * The editor's active tool as one value object — the single source of truth
+ * for "which tool is active and in what state". Replaces the former trio of
+ * `editor.mode` (string), `editor.toolLocked` (loose flag) and the hardwired
+ * revert-after-create.
+ *
+ * The object reference is stable between changes, so hosts can use it directly
+ * in React dependency arrays / memo comparisons.
+ */
+export interface ActiveTool {
+  /** The active tool id — dictates how a pointer-down is interpreted. */
+  readonly type: Mode;
+  /**
+   * Tool lock. When `true`, creating an element does NOT revert the tool to
+   * `select`, so several shapes can be placed in a row.
+   */
+  readonly locked: boolean;
+  /**
+   * The tool that was active before the current one — the revert target for
+   * temporary tools (e.g. a one-off `hand` pan). `null` until the first switch.
+   */
+  readonly lastActiveTool: Mode | null;
+}
