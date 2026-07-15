@@ -1,5 +1,19 @@
 # @oh-just-another/serialization
 
+## 0.60.0
+
+### Minor Changes
+
+- 762dd8a: Brush capture pipeline upgrade: input streamlining (low-pass with commit-time catch-up), speed-simulated pressure for mouse/touch (slow = thick, fast = thin) with rate-limited pen pressure, sample decimation with a soft point cap, and end tapering. `BrushElement` gains an optional regeneration payload (`pressures`, `simulatePressure`, `baseWidth`) carried through serialization; `Editor.beginBrushStroke` accepts a `pointerType` argument to pick the pressure source. The live preview runs the same pipeline as the commit.
+
+### Patch Changes
+
+- Updated dependencies [762dd8a]
+- Updated dependencies [05707ed]
+- Updated dependencies [20af638]
+- Updated dependencies [84450bc]
+  - @oh-just-another/scene@0.61.0
+
 ## 0.59.0
 
 ### Minor Changes

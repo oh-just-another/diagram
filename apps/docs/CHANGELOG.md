@@ -1,5 +1,24 @@
 # @oh-just-another/docs
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies [0548ab3]
+- Updated dependencies [762dd8a]
+- Updated dependencies [4722388]
+- Updated dependencies [05707ed]
+- Updated dependencies [20af638]
+- Updated dependencies [84450bc]
+  - @oh-just-another/react-ui@0.60.0
+  - @oh-just-another/editor@0.61.0
+  - @oh-just-another/diagram@0.2.0
+  - @oh-just-another/diagram-vue@0.3.0
+  - @oh-just-another/diagram-svelte@0.3.0
+  - @oh-just-another/scene@0.61.0
+  - @oh-just-another/serialization@0.60.0
+  - @oh-just-another/importers@0.59.1
+
 ## 0.0.3
 
 ### Patch Changes
