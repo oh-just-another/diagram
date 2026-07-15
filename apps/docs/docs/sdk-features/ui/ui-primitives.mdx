@@ -26,7 +26,13 @@ import { IconButton, ButtonGroup, SegmentedControl, Slider } from "@oh-just-anot
 Hooks let custom components read editor state. Imperative hooks (`useDiagram`) return the live `Editor` without re-rendering; reactive hooks re-render on the slice they observe:
 
 ```tsx
-import { useDiagram, useScene, useSelection, useActiveTool, useHistory } from "@oh-just-another/react-ui";
+import {
+  useDiagram,
+  useScene,
+  useSelection,
+  useActiveTool,
+  useHistory,
+} from "@oh-just-another/react-ui";
 
 function StatusBar() {
   const { canUndo, canRedo, undo, redo } = useHistory();

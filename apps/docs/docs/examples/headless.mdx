@@ -30,14 +30,14 @@ await writeFile("out.png", await renderToPng(sceneJson, { scale: 2 }));
 
 ## Options
 
-| Option | Applies to | Effect |
-| --- | --- | --- |
-| `width` / `height` | both | Output size in CSS px; defaults to the scene viewport's size |
-| `measureText` | both | Custom text measurer (defaults to a built-in approximation) |
-| `skipInstall` | both | Skip the implicit `installBuiltinRenderers()` when you registered your own shape renderers |
-| `scale` | PNG | Device-pixel factor; `2` = retina. Default 1 |
-| `background` | PNG | Colour behind the scene. Default white |
-| `fitToWidth` / `fitToHeight` | PNG | Fit output to N device px (aspect preserved); overrides `scale` |
+| Option                       | Applies to | Effect                                                                                     |
+| ---------------------------- | ---------- | ------------------------------------------------------------------------------------------ |
+| `width` / `height`           | both       | Output size in CSS px; defaults to the scene viewport's size                               |
+| `measureText`                | both       | Custom text measurer (defaults to a built-in approximation)                                |
+| `skipInstall`                | both       | Skip the implicit `installBuiltinRenderers()` when you registered your own shape renderers |
+| `scale`                      | PNG        | Device-pixel factor; `2` = retina. Default 1                                               |
+| `background`                 | PNG        | Colour behind the scene. Default white                                                     |
+| `fitToWidth` / `fitToHeight` | PNG        | Fit output to N device px (aspect preserved); overrides `scale`                            |
 
 ## Notes
 

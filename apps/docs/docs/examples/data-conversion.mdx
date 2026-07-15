@@ -23,14 +23,14 @@ editor.loadScene(scene);
 
 ## The conversion matrix
 
-| Direction | API |
-| --- | --- |
-| Mermaid → scene | `importMermaid(text)` |
-| Graphviz (dot) → scene | `importDot(text)` |
-| drawio → scene | `importDrawio(xml)` |
-| Excalidraw → scene | `importExcalidraw(json)` |
-| JSON Canvas (Obsidian) → scene | `importJsonCanvas(json)` |
-| scene → Mermaid | `exportMermaid(scene)` |
-| scene ⇄ JSON | `serializeScene` / `parseScene` (versioned, with migrations) |
+| Direction                      | API                                                          |
+| ------------------------------ | ------------------------------------------------------------ |
+| Mermaid → scene                | `importMermaid(text)`                                        |
+| Graphviz (dot) → scene         | `importDot(text)`                                            |
+| drawio → scene                 | `importDrawio(xml)`                                          |
+| Excalidraw → scene             | `importExcalidraw(json)`                                     |
+| JSON Canvas (Obsidian) → scene | `importJsonCanvas(json)`                                     |
+| scene → Mermaid                | `exportMermaid(scene)`                                       |
+| scene ⇄ JSON                   | `serializeScene` / `parseScene` (versioned, with migrations) |
 
 All importers are pure functions in `@oh-just-another/importers` — they run in the browser, in Node, and inside agents. Combine with [headless rendering](./headless) to turn any of these formats into SVG/PNG on a server.
