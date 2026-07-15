@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import useBaseUrl from "@docusaurus/useBaseUrl";
 
 /**
  * Live `<oja-diagram>` demo. The custom element is framework-agnostic, so it
@@ -10,13 +11,14 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 export default function ElementDemo({ height = "780px" }: { height?: string }): ReactNode {
   const [ready, setReady] = useState(false);
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const sceneUrl = useBaseUrl("/scenes/edges-straight-ortho.json");
 
   useEffect(() => {
     let alive = true;
     void Promise.all([
       import("@oh-just-another/diagram"),
       import("@oh-just-another/serialization"),
-      fetch("/scenes/edges-straight-ortho.json").then((r) => r.text()),
+      fetch(sceneUrl).then((r) => r.text()),
     ]).then(([, ser, sceneJson]) => {
       if (!alive || !hostRef.current) return;
       // Created imperatively so the static build never sees the unknown tag.

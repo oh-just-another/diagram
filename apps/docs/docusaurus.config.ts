@@ -14,10 +14,10 @@ const config: Config = {
   tagline: "Drop-in diagram editor for React — auto-detecting renderer, driveable from code.",
   favicon: "img/favicon.ico",
 
-  // Served from the custom apex domain (Cloudflare A/AAAA → GitHub Pages IPs,
-  // CNAME file in static/). At the domain root, so baseUrl is "/".
-  url: "https://ohjustanother.site",
-  baseUrl: "/",
+  // Served under the org's Pages custom domain (the domain is attached to the
+  // oh-just-another/site repo), mounted at the project-site path /diagram/.
+  url: "https://oh-just-another.site",
+  baseUrl: "/diagram/",
   organizationName: "oh-just-another",
   projectName: "diagram",
   trailingSlash: false,
