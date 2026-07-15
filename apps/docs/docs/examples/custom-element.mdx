@@ -61,7 +61,7 @@ Importing the package registers the element automatically. `defineOjaDiagram(tag
 
 ## API
 
-- **Attributes:** `theme` (`dark` | `light` | `system`), `renderer` (`canvas2d` | `webgl2` | `offscreen`, omit to auto-detect), `grid` / `snap` (boolean — attribute present = on).
+- **Attributes:** `theme` (`dark` | `light` | `system` — themes the chrome; the canvas itself always stays light), `renderer` (`canvas2d` | `webgl2` | `offscreen`, omit to auto-detect), `grid` / `snap` (boolean — attribute present = on).
 - **Property:** `scene` — a `Scene` object; assigning loads it (queued until the editor is ready), reading returns the current scene.
 - **Events** (`CustomEvent`, payload in `event.detail`): `ready` (`detail.editor` is the live engine), `scenechange` (the new `Scene`), `selectionchange` (array of selected element ids), `themechange` (the new theme).
 - **Methods:** `getScene()` / `loadScene(scene)`, `undo()` / `redo()`, `zoomToFit()`, `getActiveTool()` / `setActiveTool(tool)`, `getSelection()` / `setSelection(ids)`.

@@ -27,6 +27,8 @@ import {
   ANNOTATION_PIN_RADIUS,
   ANNOTATION_PIN_RESOLVED_FILL,
   ANNOTATION_PIN_STROKE,
+  CANVAS_CHROME_ACCENT,
+  CANVAS_CHROME_ACCENT_SOFT,
   CURSOR_ARROW_SIZE,
   CURSOR_NAME_CHIP_OFFSET,
   CURSOR_NAME_CHIP_PADDING_X,
@@ -117,11 +119,11 @@ export interface OverlayStyle {
 }
 
 export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
-  selectionStroke: "#1a73e8",
+  selectionStroke: CANVAS_CHROME_ACCENT,
   selectionStrokeWidth: 1,
   handleFill: "#fff",
-  handleStroke: "#1a73e8",
-  drawingStroke: "#1a73e8",
+  handleStroke: CANVAS_CHROME_ACCENT,
+  drawingStroke: CANVAS_CHROME_ACCENT,
   drawingDash: [4, 4],
 };
 
@@ -1039,8 +1041,8 @@ const renderContainerDropZone = (ctx: OverlayCtx): void => {
   const { target, options, w2s } = ctx;
   if (options.containerDropZone) {
     const zoneScreen = projectBounds(options.containerDropZone, w2s);
-    target.setFill("rgba(26, 115, 232, 0.10)");
-    target.setStroke("#1a73e8");
+    target.setFill(CANVAS_CHROME_ACCENT_SOFT);
+    target.setStroke(CANVAS_CHROME_ACCENT);
     target.setStrokeWidth(2);
     target.setDashArray([6, 3]);
     target.beginPath();
@@ -1573,7 +1575,7 @@ const drawAnnotationPin = (
 
   // Circle body.
   target.setFill(fill);
-  target.setStroke(selected ? "#1a73e8" : ANNOTATION_PIN_STROKE);
+  target.setStroke(selected ? CANVAS_CHROME_ACCENT : ANNOTATION_PIN_STROKE);
   target.setStrokeWidth(selected ? 2 : 1.5);
   target.setDashArray(null);
   target.beginPath();

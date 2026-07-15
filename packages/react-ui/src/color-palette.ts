@@ -41,6 +41,11 @@ export const ELEMENT_PALETTE_LIGHT: readonly string[] = [
  * step-9 dark for solids. The step-9 hex matches the light variant
  * so brand colour stays anchored across themes; only the tint row
  * swaps to deep-tinted backgrounds.
+ *
+ * Not used by the bundled picker: the editor canvas is always light
+ * (dark mode themes the chrome only), so element colors are picked
+ * from {@link ELEMENT_PALETTE_LIGHT}. Kept for hosts that render
+ * scenes on their own dark surface.
  */
 export const ELEMENT_PALETTE_DARK: readonly string[] = [
   ...fillsDark,

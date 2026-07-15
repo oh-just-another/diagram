@@ -117,7 +117,7 @@ const ToastStack = ({
 };
 
 const KIND_ACCENT: Record<ToastKind, string> = {
-  info: "var(--accent, #1a73e8)",
+  info: "var(--accent, #5b5bd6)",
   success: "#2e8b57",
   warn: "#c79100",
   error: "#c83232",

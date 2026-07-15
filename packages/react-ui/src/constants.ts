@@ -3,6 +3,7 @@
  * overridable via component props when a host wants a different layout —
  * these are the defaults baked into the built-in panels.
  */
+import { UI_ACCENT } from "@oh-just-another/tokens";
 
 /**
  * Viewport width (CSS px) at/below which the chrome switches to its mobile
@@ -156,9 +157,11 @@ export const MINIMAP_WIDTH_PX = 200;
 export const MINIMAP_HEIGHT_PX = 150;
 export const MINIMAP_PADDING_PX = 8;
 export const MINIMAP_THROTTLE_MS = 150;
-export const MINIMAP_FRAME_COLOR = "#2563eb";
+/** Viewport frame on the minimap — the shared chrome accent (iris9). */
+export const MINIMAP_FRAME_COLOR: string = UI_ACCENT.light.accent;
 export const MINIMAP_FRAME_LINE_WIDTH = 1.5;
-export const MINIMAP_FRAME_FILL = "rgba(37, 99, 235, 0.12)";
+/** Translucent accent wash inside the frame; rgb matches the accent hex. */
+export const MINIMAP_FRAME_FILL = "rgba(91, 91, 214, 0.12)";
 export const MINIMAP_WHEEL_ZOOM_SPEED = 1;
 export const MINIMAP_WHEEL_ZOOM_MAX_STEP = 10;
 

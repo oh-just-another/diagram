@@ -215,7 +215,7 @@ export const VersionPanel = ({ store, author, style, className }: VersionPanelPr
                   borderBottom: "1px solid var(--divider, #333)",
                   borderLeft:
                     br.id === currentBranchId
-                      ? "3px solid var(--accent, #1a73e8)"
+                      ? "3px solid var(--accent, #5b5bd6)"
                       : "3px solid transparent",
                   background:
                     br.id === currentBranchId
