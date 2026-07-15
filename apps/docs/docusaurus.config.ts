@@ -16,7 +16,7 @@ const config: Config = {
 
   // Served under the org's Pages custom domain (the domain is attached to the
   // oh-just-another/site repo), mounted at the project-site path /diagram/.
-  url: "https://oh-just-another.site",
+  url: "https://ohjustanother.site",
   baseUrl: "/diagram/",
   organizationName: "oh-just-another",
   projectName: "diagram",
