@@ -1,5 +1,59 @@
 # @oh-just-another/renderer-canvas
 
+## 0.61.0
+
+### Minor Changes
+
+- acd01dc: Offscreen backend (B18): the per-frame worker hop no longer structured-clones
+  an array of command objects. Frames are packed into one transferable
+  `ArrayBuffer` of Float64 words plus a deduplicated string table
+  (`packReplayFrame` / `replayPackedFrame` in `replay-codec.ts`) — encode is
+  ~15× cheaper than the old clone (~0.1 ms vs ~1.5 ms for a 500-shape frame)
+  and the numeric bulk transfers zero-copy. `ImageBitmap` payloads still travel
+  as clones in a side array (the recorder's intern LRU owns the sources).
+  Unchanged-layer skip behaviour is untouched.
+- 3c50ef1: Tile cache honours per-element hide (B12, hide half). `renderViaTiles` accepts
+  `hideElements`: tiles bake with the set applied, and an element entering or
+  leaving the set invalidates only the tiles it touches — so the stroke-eraser
+  preview and per-element visibility no longer drop very large scenes off the
+  tile-cache path into a full re-render every frame. Group-isolation dim still
+  takes the full path (dimming almost everything would re-rasterise most tiles
+  anyway).
+- f9778a1: `WebGL2Target.invalidateImage(source)` (B6): synchronously deletes the GPU
+  texture cached for an image source, so hosts can release VRAM the moment an
+  image is discarded or its bitmap replaced — instead of waiting for LRU
+  pressure to reach the entry. Returns `false` for sources that were never
+  uploaded; text-bitmap-backed handles stay owned by the text cache.
+
+### Patch Changes
+
+- da9d406: Fix: video (and other non-bitmap drawable) sources now render on the
+  offscreen backend. The recorder used to ship only `ImageBitmap`s and silently
+  skipped `<video>` elements — mp4 images never drew. It now snapshots the
+  source's current pixels into a worker-ownable `ImageBitmap` via a reused
+  scratch `OffscreenCanvas` (`transferToImageBitmap`): statics are interned
+  once, dynamic sources (playing video, animated `<img>`) re-capture per draw
+  under the same id with a generation bump so the frame signature changes and
+  the layer reposts; the worker closes each replaced clone.
+- 99f9ab1: WebGL2: all shader pipelines (rect batch, curves, ellipses, MSDF text, image
+  quad) compile eagerly in the `WebGL2Target` constructor. A shader that can't
+  compile (driver quirk, context lost to the per-page WebGL context limit) now
+  fails at construction — where `createLayeredSurfaceWithFallback` catches it
+  and degrades to Canvas2D with a toast — instead of throwing mid-frame on the
+  first ellipse/text/image draw and killing the render loop.
+- ea2f4e3: WebGL2: every pipeline (MSDF text, Loop-Blinn curves, strokes/fills via the
+  shared dynamic VBO, ellipses, image quads) now records its vertex layout into
+  its own VAO once at init and just binds it per draw — matching the rect-batch
+  discipline — instead of re-issuing `enableVertexAttribArray` +
+  `vertexAttribPointer` on every draw. Draw output is identical (golden-visual
+  suite passes pixel-for-pixel); this trims redundant GL state calls per frame.
+- Updated dependencies [762dd8a]
+- Updated dependencies [05707ed]
+- Updated dependencies [20af638]
+- Updated dependencies [84450bc]
+  - @oh-just-another/scene@0.61.0
+  - @oh-just-another/renderer-core@0.60.0
+
 ## 0.60.0
 
 ### Minor Changes

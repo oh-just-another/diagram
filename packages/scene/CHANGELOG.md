@@ -1,5 +1,47 @@
 # @oh-just-another/scene
 
+## 0.61.0
+
+### Minor Changes
+
+- 762dd8a: Brush capture pipeline upgrade: input streamlining (low-pass with commit-time catch-up), speed-simulated pressure for mouse/touch (slow = thick, fast = thin) with rate-limited pen pressure, sample decimation with a soft point cap, and end tapering. `BrushElement` gains an optional regeneration payload (`pressures`, `simulatePressure`, `baseWidth`) carried through serialization; `Editor.beginBrushStroke` accepts a `pointerType` argument to pick the pressure source. The live preview runs the same pipeline as the commit.
+- 84450bc: Link captions: measured rounded pill, multiline, correct placement and hit-testing.
+  - `scene`: new shared label geometry (`linkLabelAnchor`, `estimateLinkLabelBox`,
+    `linkLabelBounds`, `pointAlongPath`) — one source of truth for the renderer,
+    hit-testing and culling. `findLinkAt` now also hits inside the caption pill.
+    Elbow links place an unpositioned label on the longest segment's midpoint;
+    explicit `label.position` is clamped away from the arrowheads. Tunables in
+    `constants.ts` (`LINK_LABEL_MAX_WIDTH`, paddings, clearance).
+  - `renderer-core`: the caption is a rounded pill sized by real `measureText`
+    word-wrap (multiline, `\n` breaks) instead of a square estimated box; it
+    rides the drawn geometry (flattened curve for bezier, not the chord), and
+    `computeLinkWorldBounds` unions the pill so dirty-rect / viewport culling
+    never clip it. `LABEL_POSITION` / `LABEL_FONT_SIZE` constants moved to
+    `scene` as `LINK_LABEL_DEFAULT_POSITION` / `LINK_LABEL_DEFAULT_FONT_SIZE`.
+  - `state`: `linkLabelWorld` uses the shared anchor, so the inline editor opens
+    exactly over the pill (including bezier and elbow links).
+  - `react-ui`: the inline caption editor is a multiline textarea — Enter
+    commits, Shift+Enter inserts a newline, Escape cancels.
+
+### Patch Changes
+
+- 05707ed: Drag the caption pill along its link. With the link selected, dragging the
+  pill slides the label along the drawn path (the cursor is projected back onto
+  the polyline — new `projectPointToPathT` in scene); within a few pixels of
+  the arc-length middle it snaps back to the default placement
+  (`label.position` removed, so elbow links regain longest-segment
+  auto-placement). One undo step, Escape reverts, double-click still opens the
+  inline text editor, and handle dots keep pointer priority over the pill.
+  Tunable snap radius: `LINK_LABEL_DRAG_SNAP_PX`.
+- 20af638: Fix: the caption pill no longer fights the bend/segment handles. The
+  "add waypoint" and elbow segment handles slide out from under the label pill
+  along their own span (`getLinkWaypointMidpoints` is label-aware; new shared
+  `getElbowSegmentHandles` keeps the drawn dot and the grab point identical), so
+  a click on the pill selects the link and a double-click opens the inline
+  caption editor. Visible handle dots keep pointer priority — an existing
+  waypoint dot sitting inside the pill is still grabbable (dots draw above the
+  pill).
+
 ## 0.60.0
 
 ### Minor Changes

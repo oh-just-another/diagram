@@ -1,5 +1,22 @@
 # @oh-just-another/collab
 
+## 0.58.2
+
+### Patch Changes
+
+- Updated dependencies [0548ab3]
+- Updated dependencies [762dd8a]
+- Updated dependencies [4722388]
+- Updated dependencies [05707ed]
+- Updated dependencies [50a2bd4]
+- Updated dependencies [20af638]
+- Updated dependencies [84450bc]
+- Updated dependencies [3c50ef1]
+- Updated dependencies [f960332]
+  - @oh-just-another/state@0.61.0
+  - @oh-just-another/scene@0.61.0
+  - @oh-just-another/history@0.57.4
+
 ## 0.58.1
 
 ### Patch Changes

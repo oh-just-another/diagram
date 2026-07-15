@@ -1,5 +1,15 @@
 # @oh-just-another/importers
 
+## 0.59.1
+
+### Patch Changes
+
+- Updated dependencies [762dd8a]
+- Updated dependencies [05707ed]
+- Updated dependencies [20af638]
+- Updated dependencies [84450bc]
+  - @oh-just-another/scene@0.61.0
+
 ## 0.59.0
 
 ### Minor Changes

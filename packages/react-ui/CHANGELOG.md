@@ -1,5 +1,78 @@
 # @oh-just-another/react-ui
 
+## 0.60.0
+
+### Minor Changes
+
+- 0548ab3: Unify the active tool into a single `editor.activeTool` value object (breaking).
+  - `state`: `editor.activeTool: ActiveTool` (`{ type, locked, lastActiveTool }`)
+    replaces `editor.mode` and `editor.toolLocked`; `setActiveTool(type)` replaces
+    `setMode`. `EditorOptions.initialMode` → `initialTool`. The typed `mode` event
+    is now `tool` and fires with the `ActiveTool` object on a type switch or a
+    lock flip. The action category `"mode"` is now `"tool"`. The vestigial
+    `"eyedropper"` mode is removed from `Mode` — colour sampling is armed from
+    the colour picker (`beginEyedropperPick`) and never was a toolbar tool.
+  - `react-ui`: `useMode()` → `useActiveTool(): ActiveTool`;
+    `DiagramRoot`/`DiagramCanvas` prop `initialMode` → `initialTool`.
+  - `editor`: `EditorAPI.getMode/setMode` → `getActiveTool/setActiveTool`;
+    `initialMode` prop → `initialTool`; re-exports `ActiveTool`.
+  - `diagram` (+ vue/svelte/angular wrappers): element methods and controller
+    `getMode/setMode` → `getActiveTool/setActiveTool`.
+
+  Tool ids are unchanged (`"select"`, `"draw-rect"`, …). There are no visible
+  behaviour changes — this is an API refactor establishing one source of truth
+  for "which tool is active".
+
+- 4722388: Editable width for committed brush strokes. `style.strokeWidth` never
+  affected brushes (their widths are baked per point), so the property panel's
+  Thin/Medium/Thick control silently did nothing for them. A brush-only
+  selection now gets a popover range slider driving the new
+  `Editor.setBrushWidth(ids, width)`, which scales every baked point width by
+  `newWidth / baseWidth` — the stroke keeps its exact pressure profile at the
+  new thickness — and records the new `baseWidth`. Legacy strokes without a
+  recorded base fall back to their widest point. One undo step.
+- 84450bc: Link captions: measured rounded pill, multiline, correct placement and hit-testing.
+  - `scene`: new shared label geometry (`linkLabelAnchor`, `estimateLinkLabelBox`,
+    `linkLabelBounds`, `pointAlongPath`) — one source of truth for the renderer,
+    hit-testing and culling. `findLinkAt` now also hits inside the caption pill.
+    Elbow links place an unpositioned label on the longest segment's midpoint;
+    explicit `label.position` is clamped away from the arrowheads. Tunables in
+    `constants.ts` (`LINK_LABEL_MAX_WIDTH`, paddings, clearance).
+  - `renderer-core`: the caption is a rounded pill sized by real `measureText`
+    word-wrap (multiline, `\n` breaks) instead of a square estimated box; it
+    rides the drawn geometry (flattened curve for bezier, not the chord), and
+    `computeLinkWorldBounds` unions the pill so dirty-rect / viewport culling
+    never clip it. `LABEL_POSITION` / `LABEL_FONT_SIZE` constants moved to
+    `scene` as `LINK_LABEL_DEFAULT_POSITION` / `LINK_LABEL_DEFAULT_FONT_SIZE`.
+  - `state`: `linkLabelWorld` uses the shared anchor, so the inline editor opens
+    exactly over the pill (including bezier and elbow links).
+  - `react-ui`: the inline caption editor is a multiline textarea — Enter
+    commits, Shift+Enter inserts a newline, Escape cancels.
+
+### Patch Changes
+
+- Updated dependencies [0548ab3]
+- Updated dependencies [762dd8a]
+- Updated dependencies [4722388]
+- Updated dependencies [05707ed]
+- Updated dependencies [50a2bd4]
+- Updated dependencies [20af638]
+- Updated dependencies [84450bc]
+- Updated dependencies [acd01dc]
+- Updated dependencies [da9d406]
+- Updated dependencies [3c50ef1]
+- Updated dependencies [f960332]
+- Updated dependencies [99f9ab1]
+- Updated dependencies [f9778a1]
+- Updated dependencies [ea2f4e3]
+  - @oh-just-another/state@0.61.0
+  - @oh-just-another/scene@0.61.0
+  - @oh-just-another/renderer-core@0.60.0
+  - @oh-just-another/renderer-canvas@0.61.0
+  - @oh-just-another/renderer-svg@0.57.4
+  - @oh-just-another/templates@0.57.4
+  - @oh-just-another/versioning@0.57.4
+
 ## 0.59.0
 
 ### Minor Changes
