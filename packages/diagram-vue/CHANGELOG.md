@@ -1,5 +1,12 @@
 # @oh-just-another/diagram-vue
 
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies [ac128db]
+  - @oh-just-another/diagram@0.3.0
+
 ## 0.3.0
 
 ### Minor Changes

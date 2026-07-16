@@ -1,5 +1,11 @@
 # @oh-just-another/renderer-svg
 
+## 0.57.5
+
+### Patch Changes
+
+- @oh-just-another/renderer-core@0.60.1
+
 ## 0.57.4
 
 ### Patch Changes

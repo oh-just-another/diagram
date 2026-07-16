@@ -1,5 +1,12 @@
 # @oh-just-another/importers
 
+## 0.59.2
+
+### Patch Changes
+
+- Updated dependencies [ac128db]
+  - @oh-just-another/tokens@0.58.0
+
 ## 0.59.1
 
 ### Patch Changes

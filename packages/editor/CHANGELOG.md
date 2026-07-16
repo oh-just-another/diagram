@@ -1,5 +1,19 @@
 # @oh-just-another/editor
 
+## 0.61.1
+
+### Patch Changes
+
+- Updated dependencies [ac128db]
+  - @oh-just-another/react-ui@0.61.0
+  - @oh-just-another/state@0.62.0
+  - @oh-just-another/renderer-core@0.60.1
+  - @oh-just-another/templates@0.57.5
+  - @oh-just-another/raster-wasm@0.57.5
+  - @oh-just-another/renderer-canvas@0.61.1
+  - @oh-just-another/renderer-svg@0.57.5
+  - @oh-just-another/text-wasm@0.57.5
+
 ## 0.61.0
 
 ### Minor Changes
