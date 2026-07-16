@@ -5,6 +5,22 @@
  * of the hot path code.
  */
 import type { ArrowheadStyle, LinkRouting } from "@oh-just-another/scene";
+import { UI_ACCENT } from "@oh-just-another/tokens";
+
+/**
+ * Single accent for all chrome drawn ON the canvas (selection, handles,
+ * anchors, marquee, badges, text selection). One hex for both themes: the
+ * canvas itself is always light (dark mode themes the DOM chrome only), so
+ * no per-theme pair is needed. Equals the light `--du-accent` CSS value
+ * (iris9), keeping canvas chrome and DOM chrome on one accent.
+ */
+export const CANVAS_CHROME_ACCENT: string = UI_ACCENT.light.accent;
+
+/**
+ * Translucent wash of {@link CANVAS_CHROME_ACCENT} for area highlights
+ * (container drop-zone). Keep the rgb triplet in sync with the accent hex.
+ */
+export const CANVAS_CHROME_ACCENT_SOFT = "rgba(91, 91, 214, 0.10)";
 
 /**
  * World-unit distance below which a snap candidate is preferred over
@@ -142,10 +158,10 @@ export const SELECTION_HALO_PEEK_PX = 4;
  *     differently at a glance.
  *
  * Radii are screen px (zoom-independent). Colours reuse the selection
- * brand blue / handle white so anchors share the resize-handle visual
+ * accent / handle white so anchors share the resize-handle visual
  * language (they equal `DEFAULT_OVERLAY_STYLE.selectionStroke` / `.handleFill`).
  */
-const ANCHOR_BRAND_COLOR = "#1a73e8";
+const ANCHOR_BRAND_COLOR = CANVAS_CHROME_ACCENT;
 const ANCHOR_NEUTRAL_COLOR = "#fff";
 
 /** Resting anchor-dot radius (screen px). */
@@ -811,7 +827,7 @@ export const NUDGE_STEP_PX = 1;
 export const NUDGE_STEP_SHIFT_PX = 10;
 
 export const CARET_BLINK_INTERVAL_MS = 530;
-export const TEXT_SELECTION_FILL = "#1a73e8";
+export const TEXT_SELECTION_FILL: string = CANVAS_CHROME_ACCENT;
 export const TEXT_SELECTION_OPACITY = 0.25;
 export const TEXT_CARET_WIDTH_PX = 1.5;
 export const TEXT_RESIZE_MIN_FONT_SIZE = 4;
@@ -871,7 +887,7 @@ export const GIF_BADGE_BG_COLOR = "rgba(0,0,0,0.65)";
  * a contrasting fill.
  */
 export const LOCK_BADGE_SIZE = 16;
-export const LOCK_BADGE_COLOR = "#1a73e8";
+export const LOCK_BADGE_COLOR: string = CANVAS_CHROME_ACCENT;
 export const LOCK_BADGE_KEYHOLE_COLOR = "#fff";
 
 /**

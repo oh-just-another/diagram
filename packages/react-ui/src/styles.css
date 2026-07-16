@@ -79,7 +79,9 @@
   :root {
     /* All values mirror UI_SURFACE.dark + UI_ACCENT.dark from
        `@oh-just-another/tokens`. */
-    --du-canvas-bg: #121212; /* UI_SURFACE.dark.canvas */
+    /* The canvas is NOT themed (user content is authored against light
+       paper); dark mode darkens the chrome only. UI_SURFACE.dark.canvas. */
+    --du-canvas-bg: #f5f5f5;
     --du-ui-bg: rgba(35, 35, 35, 0.95); /* UI_SURFACE.dark.bg */
     --du-ui-bg-solid: #252525; /* UI_SURFACE.dark.bgSolid */
     --du-ui-border: rgba(255, 255, 255, 0.08); /* UI_SURFACE.dark.border */
@@ -162,7 +164,8 @@
 
 [data-theme="dark"] {
   /* Mirrors UI_SURFACE.dark + UI_ACCENT.dark from `@oh-just-another/tokens`. */
-  --du-canvas-bg: #121212;
+  /* Canvas stays light — see the note in the media-query block above. */
+  --du-canvas-bg: #f5f5f5;
   --du-ui-bg: rgba(35, 35, 35, 0.95);
   --du-ui-bg-solid: #252525;
   --du-ui-border: rgba(255, 255, 255, 0.08);
@@ -1291,8 +1294,8 @@
    `is-active` class had no visual, so toggles never reflected the
    selection's current style. */
 .du-sel-icon-button.is-active {
-  background: var(--du-accent-soft, rgba(80, 130, 255, 0.22));
-  color: var(--du-accent, #5082ff);
+  background: var(--du-selected-bg);
+  color: var(--du-selected-fg);
 }
 
 .du-sel-icon-button:focus-visible {
@@ -1378,16 +1381,16 @@
   padding: 6px 10px;
   border-radius: 4px;
   font-size: 13px;
-  color: var(--du-text, #ddd);
+  color: var(--du-text);
   cursor: pointer;
 }
 
 .du-sel-menu-row:hover {
-  background: var(--du-ui-hover, #2a2a2a);
+  background: var(--du-hover-overlay);
 }
 
 .du-sel-menu-row.is-active {
-  background: var(--du-accent-soft, rgba(80, 130, 255, 0.2));
+  background: var(--du-selected-bg);
 }
 
 /* URL field inside the element-link popover. */
@@ -1397,15 +1400,15 @@
   box-sizing: border-box;
   padding: 6px 8px;
   font-size: 13px;
-  color: var(--du-text, #ddd);
-  background: var(--du-ui-bg, #1a1a1a);
-  border: 1px solid var(--du-ui-border, #333);
+  color: var(--du-text);
+  background: var(--du-ui-bg);
+  border: 1px solid var(--du-ui-border);
   border-radius: 4px;
   outline: none;
 }
 
 .du-sel-link-input:focus-visible {
-  outline: 2px solid var(--du-accent, #5082ff);
+  outline: 2px solid var(--du-accent);
   outline-offset: -1px;
 }
 
@@ -1428,17 +1431,17 @@
     Segoe UI,
     Roboto,
     sans-serif;
-  color: var(--du-accent, #5082ff);
+  color: var(--du-accent);
   text-decoration: none;
-  background: var(--menu-bg, #1a1a1a);
-  border: 1px solid var(--menu-border, #333);
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
   border-radius: 6px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   cursor: pointer;
 }
 
 .du-link-popup-url:hover {
-  background: var(--du-ui-hover, #2a2a2a);
+  background: var(--du-hover-overlay);
 }
 
 .du-link-popup-text {
@@ -1466,13 +1469,13 @@
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
-  color: var(--du-fg, #1c1c1e);
+  color: var(--du-text);
 }
 .du-arrowhead-option:hover {
-  background: var(--du-hover, #f0f0f3);
+  background: var(--du-hover-overlay);
 }
 .du-arrowhead-option--active {
-  border-color: var(--du-accent, #5082ff);
+  border-color: var(--du-accent);
 }
 .du-arrowhead-none {
   font-size: 13px;
@@ -1491,11 +1494,11 @@
   background: transparent;
   cursor: pointer;
   font-size: 11px;
-  color: var(--du-muted, #6b6b70);
+  color: var(--du-text-muted);
   padding: 2px 0;
 }
 .du-arrowhead-erd-toggle:hover {
-  color: var(--du-fg, #1c1c1e);
+  color: var(--du-text);
 }
 
 /* Inline link caption editor (multiline textarea). */
@@ -1508,9 +1511,9 @@
     sans-serif;
   line-height: 1.25;
   text-align: center;
-  color: var(--du-fg, #222);
-  background: var(--du-panel-bg, #fff);
-  border: 1px solid var(--du-accent, #5082ff);
+  color: var(--du-text);
+  background: var(--du-ui-bg-solid);
+  border: 1px solid var(--du-accent);
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   outline: none;
@@ -1523,8 +1526,8 @@
   display: flex;
   gap: 2px;
   padding: 4px;
-  background: var(--du-panel-bg, #fff);
-  border: 1px solid var(--du-border, #e3e3e6);
+  background: var(--du-ui-bg-solid);
+  border: 1px solid var(--du-ui-border);
   border-radius: 8px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
 }
@@ -1539,10 +1542,10 @@
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
-  color: var(--du-fg, #1c1c1e);
+  color: var(--du-text);
 }
 .du-link-drop-item:hover {
-  background: var(--du-hover, #f0f0f3);
+  background: var(--du-hover-overlay);
 }
 .du-link-drop-item svg {
   width: 100%;
@@ -1550,6 +1553,6 @@
 }
 
 .du-sel-menu-row:focus-visible {
-  outline: 2px solid var(--du-accent, #5082ff);
+  outline: 2px solid var(--du-accent);
   outline-offset: -2px;
 }

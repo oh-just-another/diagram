@@ -5,6 +5,8 @@ sidebar_position: 68
 
 The editor ships light and dark themes plus a `"system"` option that follows the OS preference. Theming is scoped to the editor root, so multiple editors on one page can theme independently without touching the host document.
 
+Themes restyle the **chrome only** — toolbar, panels, menus, popovers. The canvas stays light in every theme: element colors are plain hex values stored in the scene, authored against light paper, so a dark canvas would silently break user content. Dark mode = dark chrome around a light drawing.
+
 ## Controlling the theme
 
 The `<Editor>` component (`@oh-just-another/editor`) manages its own theme by default. Pass `theme` to control it, or `defaultTheme` to set the initial value while leaving the menu interactive:

@@ -67,7 +67,7 @@ export const CommentsPanel = ({ style, className }: CommentsPanelProps) => {
                   textAlign: "left",
                   padding: "8px 12px",
                   border: "none",
-                  borderLeft: isOpen ? "3px solid var(--accent, #1a73e8)" : "3px solid transparent",
+                  borderLeft: isOpen ? "3px solid var(--accent, #5b5bd6)" : "3px solid transparent",
                   background: isOpen ? "var(--cursor-bg, rgba(26,115,232,0.12))" : "transparent",
                   color: "inherit",
                   cursor: "pointer",

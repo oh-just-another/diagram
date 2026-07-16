@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { Pipette, Plus, X } from "lucide-react";
-import {
-  ELEMENT_PALETTE_LIGHT,
-  ELEMENT_PALETTE_DARK,
-  resolvePaletteTheme,
-} from "./color-palette.js";
+import { ELEMENT_PALETTE_LIGHT } from "./color-palette.js";
 
 /**
  * Swatch grid + custom-colour picker. A row of pinned palette colours;
@@ -49,7 +45,9 @@ export const ColorSwatchPicker = ({
   allowClear = true,
   onEyedrop,
 }: ColorSwatchPickerProps) => {
-  const resolved = palette ?? defaultPaletteForCurrentTheme();
+  // The canvas is not themed (always light paper), so element colors are
+  // picked from the light palette regardless of the chrome theme.
+  const resolved = palette ?? ELEMENT_PALETTE_LIGHT;
   const [customOpen, setCustomOpen] = useState(false);
   return (
     <div className="du-swatch-grid" role="radiogroup" aria-label="Colour">
@@ -189,14 +187,4 @@ const normaliseHex = (value: string | null): string => {
     return `#${v[0]}${v[0]}${v[1]}${v[1]}${v[2]}${v[2]}`.toLowerCase();
   }
   return "#000000";
-};
-
-const defaultPaletteForCurrentTheme = (): readonly string[] => {
-  if (typeof document === "undefined") return ELEMENT_PALETTE_LIGHT;
-  // Respect the host's forced theme attribute when present; fall
-  // back to OS preference otherwise.
-  const attr = document.documentElement.getAttribute("data-theme");
-  if (attr === "dark") return ELEMENT_PALETTE_DARK;
-  if (attr === "light") return ELEMENT_PALETTE_LIGHT;
-  return resolvePaletteTheme("system") === "dark" ? ELEMENT_PALETTE_DARK : ELEMENT_PALETTE_LIGHT;
 };

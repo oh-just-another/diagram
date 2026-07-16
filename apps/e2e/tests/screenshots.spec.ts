@@ -35,7 +35,9 @@ test.describe("mobile UI screenshots", () => {
 
   test("home screen — dark theme via localStorage", async ({ page }) => {
     await page.addInitScript(() => {
-      window.localStorage.setItem("diagram-demo-theme", "dark");
+      // Key + raw-string format must match the playground's `persistTheme`
+      // default ("diagram-theme"); a wrong key silently captures light theme.
+      window.localStorage.setItem("diagram-theme", "dark");
     });
     await page.goto("/");
     await page.waitForLoadState("networkidle");

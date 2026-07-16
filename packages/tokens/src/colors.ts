@@ -168,7 +168,10 @@ export const UI_SURFACE = {
     hoverOverlay: "rgba(0, 0, 0, 0.05)",
   },
   dark: {
-    canvas: "#121212",
+    // The canvas is deliberately NOT themed: user content (raw hex colors in
+    // the scene) is authored against light paper, so dark mode darkens the
+    // chrome only. Keep in sync with the light value above.
+    canvas: "#f5f5f5",
     bg: "rgba(35, 35, 35, 0.95)",
     bgSolid: "#252525",
     border: "rgba(255, 255, 255, 0.08)",

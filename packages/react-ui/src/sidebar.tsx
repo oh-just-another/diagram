@@ -115,9 +115,9 @@ const Trigger = ({ tab, children }: { tab: string; children: ReactNode }) => {
         setActive(tab);
       }}
       style={{
-        background: isActive ? "var(--accent, #1a73e8)" : "transparent",
+        background: isActive ? "var(--accent, #5b5bd6)" : "transparent",
         color: isActive ? "var(--surface, #fff)" : "var(--text, #ddd)",
-        border: `1px solid ${isActive ? "var(--accent, #1a73e8)" : "var(--border, #2a2a2a)"}`,
+        border: `1px solid ${isActive ? "var(--accent, #5b5bd6)" : "var(--border, #2a2a2a)"}`,
         borderRadius: 4,
         padding: "4px 10px",
         fontSize: 12,

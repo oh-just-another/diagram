@@ -11,9 +11,9 @@ test("the demo boots and renders the toolbar", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("body")).toBeVisible();
   // Toolbar / palette indicator. Use `getByRole("button")` for resilience;
-  // we only verify there is at least one.
-  const buttons = await page.getByRole("button").count();
-  expect(buttons).toBeGreaterThan(0);
+  // we only verify there is at least one. Must be a retrying assertion —
+  // a one-shot count() races React mounting under parallel-suite load.
+  await expect(page.getByRole("button").first()).toBeVisible();
 });
 
 test("keyboard-only shape creation: R → Enter creates a rectangle", async ({ page }) => {

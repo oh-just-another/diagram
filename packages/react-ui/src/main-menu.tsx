@@ -210,7 +210,7 @@ const Item = ({ children, onClick, shortcut, disabled, active, icon }: MainMenuI
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: active ? "var(--du-accent, #1a73e8)" : "var(--du-text-muted, #888)",
+            color: active ? "var(--du-accent, #5b5bd6)" : "var(--du-text-muted, #888)",
           }}
         >
           {active ? <Check size={12} strokeWidth={2.25} /> : (icon ?? "")}

@@ -135,7 +135,7 @@ const LayerRow = ({
         gap: 6,
         padding: "6px 10px",
         background: active ? "var(--cursor-bg, rgba(26,115,232,0.14))" : "transparent",
-        borderLeft: `3px solid ${active ? "var(--accent, #1a73e8)" : "transparent"}`,
+        borderLeft: `3px solid ${active ? "var(--accent, #5b5bd6)" : "transparent"}`,
         cursor: "pointer",
       }}
       onClick={onActivate}
@@ -186,7 +186,7 @@ const LayerRow = ({
             flex: 1,
             background: "var(--button-bg, #2a2a2a)",
             color: "var(--text, #ddd)",
-            border: "1px solid var(--accent, #1a73e8)",
+            border: "1px solid var(--accent, #5b5bd6)",
             borderRadius: 3,
             padding: "2px 4px",
             font: "inherit",

@@ -142,7 +142,7 @@ export const CommandPalette = (): ReactElement | null => {
     padding: "8px 14px",
     cursor: enabled ? "pointer" : "default",
     opacity: enabled ? 1 : 0.4,
-    background: i === active ? "var(--du-ui-hover, rgba(0,0,0,0.06))" : "transparent",
+    background: i === active ? "var(--du-hover-overlay)" : "transparent",
   });
 
   return (
