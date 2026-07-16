@@ -44,10 +44,19 @@ export const bindEditor = (
 
   let lastSyncedScene: Scene = editor.scene;
   let disposed = false;
+  // Guards the local subscriber while a REMOTE snapshot is being loaded:
+  // `editor.subscribe` fires synchronously inside `loadScene`, before
+  // `lastSyncedScene` can be advanced, so without the guard the binding
+  // would diff the stale scene against the freshly loaded one and re-write
+  // every remote change into the doc under ITS OWN clientID. Such echoes
+  // win Y.Map conflicts against the author's next concurrent write when
+  // this client's id is higher — dragging on the other peer then keeps
+  // "snapping back".
+  let applyingRemote = false;
 
   // Local change → CRDT.
   const unsubscribeLocal = editor.subscribe(() => {
-    if (disposed) return;
+    if (disposed || applyingRemote) return;
     if (editor.scene === lastSyncedScene) return;
     sceneDoc.applyDelta(lastSyncedScene, editor.scene, origin);
     lastSyncedScene = editor.scene;
@@ -57,7 +66,12 @@ export const bindEditor = (
   const onUpdate = (_update: Uint8Array, originOfUpdate: unknown): void => {
     if (disposed || originOfUpdate === origin) return;
     const snapshot = sceneDoc.snapshot();
-    editor.loadScene(snapshot, { preserveHistory: true });
+    applyingRemote = true;
+    try {
+      editor.loadScene(snapshot, { preserveHistory: true });
+    } finally {
+      applyingRemote = false;
+    }
     lastSyncedScene = editor.scene;
   };
   sceneDoc.doc.on("update", onUpdate);
@@ -75,7 +89,12 @@ export const bindEditor = (
   const adoptFromCrdt = (): void => {
     if (disposed) return;
     const snapshot = sceneDoc.snapshot();
-    editor.loadScene(snapshot);
+    applyingRemote = true;
+    try {
+      editor.loadScene(snapshot);
+    } finally {
+      applyingRemote = false;
+    }
     lastSyncedScene = editor.scene;
   };
 
