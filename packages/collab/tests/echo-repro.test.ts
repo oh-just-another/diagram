@@ -199,3 +199,42 @@ describe("collab echo: peers must not re-emit remote updates as their own", () =
     expect(posOf(a.editor, "box")).toEqual({ x: 200, y: 200 });
   });
 });
+
+describe("viewport scope over collab", () => {
+  const pair = () => {
+    const a = makeStack(sceneWith(rect("box", 0, 0)), 1);
+    const b = makeStack(emptyScene(), 2 ** 30);
+    a.transport.peer = b.transport;
+    b.transport.peer = a.transport;
+    b.transport.pump();
+    a.transport.pump();
+    b.transport.pump();
+    return { a, b };
+  };
+
+  it("pan/zoom stays local: panning A sends nothing and B's camera holds", () => {
+    const { a, b } = pair();
+    const bPanBefore = b.editor.scene.viewport.pan;
+    a.transport.outbox.length = 0;
+
+    a.editor.panBy({ x: 300, y: 200 });
+    expect(a.editor.scene.viewport.pan).not.toEqual({ x: 0, y: 0 });
+    // Camera motion is browser-scoped — nothing should hit the wire.
+    expect(a.transport.outbox.length).toBe(0);
+    a.transport.pump();
+    expect(b.editor.scene.viewport.pan).toEqual(bPanBefore);
+  });
+
+  it("grid toggle is a document setting: it syncs, without touching B's camera", () => {
+    const { a, b } = pair();
+    b.editor.panBy({ x: 111, y: 222 });
+    const bPan = b.editor.scene.viewport.pan;
+    const gridBefore = b.editor.scene.viewport.gridEnabled;
+
+    a.editor.toggleGrid();
+    a.transport.pump();
+
+    expect(b.editor.scene.viewport.gridEnabled).toBe(!gridBefore);
+    expect(b.editor.scene.viewport.pan).toEqual(bPan);
+  });
+});

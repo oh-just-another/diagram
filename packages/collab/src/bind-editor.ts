@@ -1,7 +1,20 @@
 import type * as Y from "yjs";
 import type { Editor } from "@oh-just-another/state";
-import type { Scene } from "@oh-just-another/scene";
+import { VIEWPORT_SCOPE, type Scene, type Viewport } from "@oh-just-another/scene";
 import { SceneDoc } from "./scene-doc.js";
+
+/**
+ * Overlay the LOCAL camera onto a remote snapshot: only export-scoped
+ * viewport settings (grid, snap) are shared between peers; pan / zoom /
+ * rotation / size stay this user's own (`VIEWPORT_SCOPE`).
+ */
+const withLocalCamera = (remote: Scene, local: Viewport): Scene => {
+  const viewport: Record<string, unknown> = { ...remote.viewport };
+  for (const [key, scope] of Object.entries(VIEWPORT_SCOPE)) {
+    if (scope !== "export") viewport[key] = local[key as keyof Viewport];
+  }
+  return { ...remote, viewport: viewport as unknown as Viewport };
+};
 
 export interface BindEditorOptions {
   /**
@@ -65,7 +78,7 @@ export const bindEditor = (
   // CRDT change → local. Filter out self-origin updates by transaction tag.
   const onUpdate = (_update: Uint8Array, originOfUpdate: unknown): void => {
     if (disposed || originOfUpdate === origin) return;
-    const snapshot = sceneDoc.snapshot();
+    const snapshot = withLocalCamera(sceneDoc.snapshot(), editor.scene.viewport);
     applyingRemote = true;
     try {
       editor.loadScene(snapshot, { preserveHistory: true });
@@ -88,7 +101,7 @@ export const bindEditor = (
 
   const adoptFromCrdt = (): void => {
     if (disposed) return;
-    const snapshot = sceneDoc.snapshot();
+    const snapshot = withLocalCamera(sceneDoc.snapshot(), editor.scene.viewport);
     applyingRemote = true;
     try {
       editor.loadScene(snapshot);

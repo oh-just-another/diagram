@@ -1,14 +1,41 @@
 import * as Y from "yjs";
 import {
   DEFAULT_VIEWPORT,
+  VIEWPORT_SCOPE,
   type Annotation,
   type Link,
   type Layer,
   type Scene,
   type Element,
+  type Viewport,
 } from "@oh-just-another/scene";
 import { annotationId, layerId, linkId, elementId } from "@oh-just-another/types";
 import { diffMapInto } from "./diff-map.js";
+
+/**
+ * The subset of the viewport that belongs to the DOCUMENT and therefore
+ * replicates (grid on/off, grid style, snap) — per `VIEWPORT_SCOPE`'s
+ * `"export"` scope. Camera state (pan / zoom / rotation / size) is
+ * user-local and must never travel between peers.
+ */
+const sharedViewportSettings = (viewport: Viewport): Partial<Viewport> => {
+  const shared: Record<string, unknown> = {};
+  for (const [key, scope] of Object.entries(VIEWPORT_SCOPE)) {
+    if (scope === "export") shared[key] = viewport[key as keyof Viewport];
+  }
+  return shared;
+};
+
+const sharedViewportEqual = (a: Viewport, b: Viewport): boolean => {
+  for (const [key, scope] of Object.entries(VIEWPORT_SCOPE)) {
+    if (scope !== "export") continue;
+    const k = key as keyof Viewport;
+    // Export-scoped settings are primitives today; if a structured one
+    // appears, replace this with a per-key deep compare.
+    if (a[k] !== b[k]) return false;
+  }
+  return true;
+};
 
 /**
  * CRDT-backed mirror of a `Scene`. Wraps a `Y.Doc` whose top-level maps
@@ -50,8 +77,11 @@ export class SceneDoc {
     const layerMap = new Map<Layer["id"], Layer>();
     for (const [id, layer] of this.layers) layerMap.set(layerId(id), layer);
 
-    const vp = this.viewport.get("current");
-    const viewport = (vp ?? DEFAULT_VIEWPORT) as Scene["viewport"];
+    // The doc carries only the shared (export-scoped) viewport settings;
+    // older docs may carry a full viewport — camera keys are ignored by
+    // `bindEditor`, which overlays the local camera on adoption.
+    const vp = this.viewport.get("current") as Partial<Viewport> | undefined;
+    const viewport: Viewport = { ...DEFAULT_VIEWPORT, ...vp };
 
     const annotationMap = new Map<Annotation["id"], Annotation>();
     for (const [id, ann] of this.annotations) annotationMap.set(annotationId(id), ann);
@@ -85,7 +115,7 @@ export class SceneDoc {
       for (const [id, layer] of scene.layers) this.layers.set(id, layer);
       this.annotations.clear();
       for (const [id, ann] of scene.annotations) this.annotations.set(id, ann);
-      this.viewport.set("current", scene.viewport);
+      this.viewport.set("current", sharedViewportSettings(scene.viewport));
     }, origin);
   }
 
@@ -100,8 +130,8 @@ export class SceneDoc {
       diffMapInto(prev.links, next.links, this.links);
       diffMapInto(prev.layers, next.layers, this.layers);
       diffMapInto(prev.annotations, next.annotations, this.annotations);
-      if (prev.viewport !== next.viewport) {
-        this.viewport.set("current", next.viewport);
+      if (prev.viewport !== next.viewport && !sharedViewportEqual(prev.viewport, next.viewport)) {
+        this.viewport.set("current", sharedViewportSettings(next.viewport));
       }
     }, origin);
   }
