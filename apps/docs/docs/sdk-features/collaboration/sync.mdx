@@ -42,6 +42,8 @@ provider.destroy();
 transport.close();
 ```
 
+On join, the provider requests the peers' current state; when a transport reports a reconnect (`onStatusChange` → `"open"` after a drop), it re-requests state, offers its own, and re-announces local presence — frames lost on the dying socket never leave the docs diverged.
+
 See Collaboration for the full editor binding.
 
 ## Encryption over any transport

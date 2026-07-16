@@ -1,4 +1,4 @@
-import type { Transport } from "@oh-just-another/network";
+import type { Transport, TransportStatus } from "@oh-just-another/network";
 import { ENCRYPTION_IV_BYTES, ENCRYPTION_KEY_BITS, ROOM_ID_BYTES } from "./constants.js";
 
 /**
@@ -109,6 +109,19 @@ export class EncryptedTransport implements Transport {
     return () => {
       this.handlers.delete(handler);
     };
+  }
+
+  /**
+   * Forwards the inner transport's connection status when it reports one —
+   * encryption is stateless per frame, so the wrapper's status IS the
+   * socket's. Protocol layers above use this to re-sync after reconnects.
+   */
+  onStatusChange(handler: (status: TransportStatus) => void): () => void {
+    if (!this.inner.onStatusChange) {
+      handler("open");
+      return () => undefined;
+    }
+    return this.inner.onStatusChange(handler);
   }
 
   close(): void {

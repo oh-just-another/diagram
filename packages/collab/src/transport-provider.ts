@@ -39,6 +39,7 @@ export class TransportProvider {
   private readonly awareness: Awareness | null;
   private readonly origin = Symbol("transport-provider");
   private readonly unsubscribeMessage: () => void;
+  private readonly unsubscribeStatus: (() => void) | null;
 
   constructor(options: TransportProviderOptions) {
     this.doc = options.doc;
@@ -56,12 +57,44 @@ export class TransportProvider {
 
     // Ask peers for their current state on join.
     this.transport.send(new Uint8Array([TAG_SYNC_REQUEST]));
+
+    // Re-sync after every reconnect: frames sent while the link was dying
+    // are silently lost, and Yjs parks any delta whose dependency is
+    // missing in the doc's pending queue forever. Requesting the full peer
+    // state (and re-announcing our own) on each new `open` closes the gap.
+    // The first `open` is skipped — the constructor's sync request above
+    // is still buffered in the transport and flushes on that open.
+    let sawOpen = false;
+    this.unsubscribeStatus =
+      this.transport.onStatusChange?.((status) => {
+        if (status !== "open") return;
+        if (!sawOpen) {
+          sawOpen = true;
+          return;
+        }
+        this.resync();
+      }) ?? null;
   }
 
   destroy(): void {
     this.doc.off("updateV2", this.onDocUpdate);
     if (this.awareness) this.awareness.off("update", this.onAwarenessUpdate);
+    this.unsubscribeStatus?.();
     this.unsubscribeMessage();
+  }
+
+  /**
+   * Post-reconnect catch-up: ask peers for their current state, offer ours,
+   * and re-announce local presence (peers may have timed our awareness out
+   * or lost its last renewal with the dead socket).
+   */
+  private resync(): void {
+    this.transport.send(new Uint8Array([TAG_SYNC_REQUEST]));
+    this.transport.send(prependTag(TAG_DOC, Y.encodeStateAsUpdateV2(this.doc)));
+    if (this.awareness) {
+      const payload = encodeAwarenessUpdate(this.awareness, [this.awareness.clientID]);
+      this.transport.send(prependTag(TAG_AWARENESS, payload));
+    }
   }
 
   // --- inbound ---
