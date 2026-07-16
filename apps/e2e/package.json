@@ -19,7 +19,8 @@
     "e2e:headed": "playwright test --headed",
     "install-browsers": "playwright install chromium webkit",
     "lint": "eslint tests relay playwright.config.ts",
-    "fixtures:generate": "tsx fixtures/generate.ts"
+    "fixtures:generate": "tsx fixtures/generate.ts",
+    "relay": "tsx relay/serve.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.3",
