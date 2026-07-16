@@ -1,5 +1,13 @@
 # @oh-just-another/headless
 
+## 0.58.3
+
+### Patch Changes
+
+- Updated dependencies [ac128db]
+  - @oh-just-another/tokens@0.58.0
+  - @oh-just-another/renderer-svg@0.57.5
+
 ## 0.58.2
 
 ### Patch Changes

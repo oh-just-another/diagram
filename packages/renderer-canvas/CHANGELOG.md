@@ -1,5 +1,11 @@
 # @oh-just-another/renderer-canvas
 
+## 0.61.1
+
+### Patch Changes
+
+- @oh-just-another/renderer-core@0.60.1
+
 ## 0.61.0
 
 ### Minor Changes

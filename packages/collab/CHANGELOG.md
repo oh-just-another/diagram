@@ -1,5 +1,12 @@
 # @oh-just-another/collab
 
+## 0.58.3
+
+### Patch Changes
+
+- Updated dependencies [ac128db]
+  - @oh-just-another/state@0.62.0
+
 ## 0.58.2
 
 ### Patch Changes
