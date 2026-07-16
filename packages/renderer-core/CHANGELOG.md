@@ -1,5 +1,12 @@
 # @oh-just-another/renderer-core
 
+## 0.60.1
+
+### Patch Changes
+
+- Updated dependencies [ac128db]
+  - @oh-just-another/tokens@0.58.0
+
 ## 0.60.0
 
 ### Minor Changes

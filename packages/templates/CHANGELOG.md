@@ -1,5 +1,13 @@
 # @oh-just-another/templates
 
+## 0.57.5
+
+### Patch Changes
+
+- Updated dependencies [ac128db]
+  - @oh-just-another/tokens@0.58.0
+  - @oh-just-another/renderer-core@0.60.1
+
 ## 0.57.4
 
 ### Patch Changes
