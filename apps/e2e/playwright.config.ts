@@ -22,6 +22,12 @@ export default defineConfig({
     {
       command: "pnpm --filter @oh-just-another/playground dev --port 5173 --strictPort",
       url: "http://127.0.0.1:5173",
+      // Collab specs dial the (test-spawned) relay DIRECTLY, matching
+      // production. Vite's `/relay` ws proxy is dev-only sugar and leaves
+      // half-open tunnels when its upstream is down — the client sees
+      // `open` on a socket whose relay leg is dead, which breaks the
+      // relay-restart scenario with a false "connected".
+      env: { VITE_RELAY_URL: "ws://127.0.0.1:1234" },
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },

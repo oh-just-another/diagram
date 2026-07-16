@@ -224,6 +224,9 @@ importers:
       '@types/pngjs':
         specifier: 6.0.5
         version: 6.0.5
+      '@types/ws':
+        specifier: 8.18.1
+        version: 8.18.1
       pixelmatch:
         specifier: 6.0.0
         version: 6.0.0
@@ -233,6 +236,9 @@ importers:
       tsx:
         specifier: 4.22.3
         version: 4.22.3
+      ws:
+        specifier: 8.21.1
+        version: 8.21.1
 
   apps/playground:
     dependencies:
@@ -9015,6 +9021,18 @@ packages:
 
   ws@8.21.0:
     resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
+  ws@8.21.1:
+    resolution: {integrity: sha512-+0NTnW77fFN/DjQi6k/Sq/Yvk4Sgajw7urW8V+asjXnRgDs9gyGkdb7EzgfhA4goXsRIZKE28fzIXBHEzhuiWw==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -19028,6 +19046,8 @@ snapshots:
   ws@7.5.11: {}
 
   ws@8.21.0: {}
+
+  ws@8.21.1: {}
 
   wsl-utils@0.1.0:
     dependencies:

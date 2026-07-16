@@ -18,7 +18,7 @@
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
     "install-browsers": "playwright install chromium webkit",
-    "lint": "eslint tests playwright.config.ts",
+    "lint": "eslint tests relay playwright.config.ts",
     "fixtures:generate": "tsx fixtures/generate.ts"
   },
   "devDependencies": {
@@ -29,8 +29,10 @@
     "@playwright/test": "1.60.0",
     "@types/pixelmatch": "5.2.6",
     "@types/pngjs": "6.0.5",
+    "@types/ws": "8.18.1",
     "pixelmatch": "6.0.0",
     "pngjs": "7.0.0",
-    "tsx": "4.22.3"
+    "tsx": "4.22.3",
+    "ws": "8.21.1"
   }
 }
