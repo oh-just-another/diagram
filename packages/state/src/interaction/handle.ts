@@ -7,7 +7,7 @@ import {
   type AnchorRef,
   type ElementBase,
 } from "@oh-just-another/scene";
-import { HANDLE_HIT_SLOP, HANDLE_OUTSET, HANDLE_SIZE, ROTATE_HANDLE_OFFSET } from "./constants.js";
+import { HANDLE_HIT_SLOP, HANDLE_OUTSET, HANDLE_SIZE, ROTATE_HANDLE_OFFSET } from "../constants.js";
 
 /**
  * Eight resize-handle positions arranged around the shape's AABB. `nw` is

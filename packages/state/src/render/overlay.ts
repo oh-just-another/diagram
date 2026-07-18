@@ -68,8 +68,8 @@ import {
   ERASER_CURSOR_STROKE,
   ERASER_CURSOR_LINE_WIDTH,
   ERASER_TRAIL_TTL_MS,
-} from "./constants.js";
-import { smoothLaserPoints, type LaserStroke } from "./editor/public/laser.js";
+} from "../constants.js";
+import { smoothLaserPoints, type LaserStroke } from "../editor/public/laser.js";
 import {
   CORNER_HANDLES,
   HANDLE_SIZE,
@@ -80,18 +80,18 @@ import {
   rotateGripWorld,
   shapeSelectionFrame,
   type SelectionFrame,
-} from "./handle.js";
-import { isResizable } from "./editor/shape-traits.js";
+} from "../interaction/handle.js";
+import { isResizable } from "../editor/shape-traits.js";
 import {
   drawHitZones,
   hitZoneVisibility,
   type HitZoneAttach,
   type HitZoneContainers,
   type HitZoneVisibility,
-} from "./editor/hit-test.js";
-import type { Selection } from "./selection.js";
+} from "../editor/hit-test.js";
+import type { Selection } from "../selection/selection.js";
 
-import { req } from "./util.js";
+import { req } from "../helpers/util.js";
 
 /**
  * Union AABB of every direct child of `groupId` (recursive). Returns

@@ -1,7 +1,11 @@
 import { createActor } from "xstate";
 import { describe, expect, it, vi } from "vitest";
 import { elementId } from "@oh-just-another/types";
-import { interactionMachine, interpretPressEnd, type InteractionEmit } from "../src/machine";
+import {
+  interactionMachine,
+  interpretPressEnd,
+  type InteractionEmit,
+} from "../src/interaction/machine";
 
 const start = () => {
   const actor = createActor(interactionMachine);

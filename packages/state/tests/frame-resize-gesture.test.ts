@@ -10,7 +10,7 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
-import { handlePosition } from "../src/handle.js";
+import { handlePosition } from "../src/interaction/handle.js";
 
 const frame = (id: string, w: number, h: number): Element =>
   ({

@@ -13,7 +13,7 @@ import {
   type Link,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
-import { rotateGripWorld } from "../src/handle.js";
+import { rotateGripWorld } from "../src/interaction/handle.js";
 
 const rect = (id: string, x: number): Element => ({
   id: elementId(id),

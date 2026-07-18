@@ -3,7 +3,7 @@
  * these fill in sw, w, s, and the n/ne variants with different axis emphasis.
  */
 import { describe, expect, it } from "vitest";
-import { resizeBounds } from "../src/handle.js";
+import { resizeBounds } from "../src/interaction/handle.js";
 
 const bounds = { x: 0, y: 0, width: 100, height: 50 };
 

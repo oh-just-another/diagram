@@ -1,6 +1,6 @@
 import type { Scene } from "@oh-just-another/scene";
-import type * as Selection from "./selection.js";
-import type { ActiveTool } from "./modes.js";
+import type * as Selection from "../selection/selection.js";
+import type { ActiveTool } from "../interaction/modes.js";
 
 /**
  * Typed event surface for `Editor`. Each event has a focused payload so

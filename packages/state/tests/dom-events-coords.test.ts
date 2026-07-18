@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fromPointerEvent, fromWheelEvent } from "../src/dom-events.js";
+import { fromPointerEvent, fromWheelEvent } from "../src/input/dom-events.js";
 
 /**
  * Pointer / wheel coordinate mapping is host-relative: the domain point is

@@ -8,7 +8,7 @@ import {
   isSceneJsonFile,
   readFileAsDataURL,
   readFileAsText,
-} from "../src/file-drop.js";
+} from "../src/features/file-drop.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

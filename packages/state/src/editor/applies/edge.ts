@@ -13,7 +13,7 @@ import {
 } from "@oh-just-another/scene";
 import type { ElementId, Vec2 } from "@oh-just-another/types";
 import type { LinkId } from "@oh-just-another/types";
-import type { InteractionEmit } from "../../machine.js";
+import type { InteractionEmit } from "../../interaction/machine.js";
 
 /**
  * Compute the visible (snapped) endpoints for an in-progress

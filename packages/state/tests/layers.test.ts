@@ -21,7 +21,7 @@ import {
   computeToggleLayerVisibility,
   newLayerId,
 } from "../src/editor/public/layers.js";
-import type { Selection } from "../src/selection.js";
+import type { Selection } from "../src/selection/selection.js";
 
 const selectionOf = (ids: ReturnType<typeof elementId>[]): Selection => new Set(ids);
 const emptySelection = (): Selection => new Set();

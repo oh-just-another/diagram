@@ -14,9 +14,9 @@ import {
   primeEventCache,
   type EditorObservableSnapshot,
 } from "../src/editor/event-fanout.js";
-import type { EditorEvents } from "../src/editor-events.js";
-import * as Selection from "../src/selection.js";
-import { DEFAULT_MODE, type ActiveTool } from "../src/modes.js";
+import type { EditorEvents } from "../src/editor/editor-events.js";
+import * as Selection from "../src/selection/selection.js";
+import { DEFAULT_MODE, type ActiveTool } from "../src/interaction/modes.js";
 
 const TOOL: ActiveTool = { type: DEFAULT_MODE, locked: false, lastActiveTool: null };
 

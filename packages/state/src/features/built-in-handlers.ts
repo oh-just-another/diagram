@@ -3,7 +3,7 @@ import {
   DEFAULT_IMAGE_MAX_EDGE_PX,
   VIDEO_FALLBACK_WIDTH_PX,
   VIDEO_FALLBACK_HEIGHT_PX,
-} from "./constants.js";
+} from "../constants.js";
 import { isImageFile, isVideoFile, readFileAsDataURL, type FileDropHandler } from "./file-drop.js";
 
 /**

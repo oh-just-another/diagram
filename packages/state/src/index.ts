@@ -1,10 +1,10 @@
-export type { ActiveTool, Mode } from "./modes.js";
-export { DEFAULT_MODE } from "./modes.js";
+export type { ActiveTool, Mode } from "./interaction/modes.js";
+export { DEFAULT_MODE } from "./interaction/modes.js";
 
-export type { Selection } from "./selection.js";
-export * as selection from "./selection.js";
+export type { Selection } from "./selection/selection.js";
+export * as selection from "./selection/selection.js";
 
-export type { HandleId } from "./handle.js";
+export type { HandleId } from "./interaction/handle.js";
 export {
   ALL_HANDLES,
   HANDLE_SIZE,
@@ -13,7 +13,7 @@ export {
   resizeBounds,
   registerRotateAnchor,
   getRotateAnchor,
-} from "./handle.js";
+} from "./interaction/handle.js";
 
 export type {
   InteractionContext,
@@ -25,16 +25,16 @@ export type {
   PointerUpEvent,
   PointerCancelEvent,
   SetModeEvent,
-} from "./machine.js";
+} from "./interaction/machine.js";
 export {
   interactionMachine,
   interpretPressEnd,
   DRAG_THRESHOLD,
   boundsFromPoints,
-} from "./machine.js";
+} from "./interaction/machine.js";
 
-export type { OverlayStyle, PeerCursor, PeerSelection } from "./overlay.js";
-export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./overlay.js";
+export type { OverlayStyle, PeerCursor, PeerSelection } from "./render/overlay.js";
+export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./render/overlay.js";
 
 export { PEER_CURSOR_BROADCAST_INTERVAL_MS } from "./constants.js";
 
@@ -43,9 +43,9 @@ export {
   fromKeyboardEvent,
   fromWheelEvent,
   isEditableTarget,
-} from "./dom-events.js";
+} from "./input/dom-events.js";
 
-export { bindEditorHotkeys, type HotkeyBindingOptions } from "./hotkeys-binding.js";
+export { bindEditorHotkeys, type HotkeyBindingOptions } from "./input/hotkeys-binding.js";
 
 // Scene text search — pure substring index over shape text / frame names /
 // edge labels. UI-agnostic; drives the search overlay.
@@ -54,14 +54,17 @@ export {
   elementSearchText,
   type SceneSearchMatch,
   type SceneSearchKind,
-} from "./search.js";
+} from "./features/search.js";
 
-export type { InteractiveHitTester } from "./interactive.js";
-export { registerInteractiveHitTester, getInteractiveHitTester } from "./interactive.js";
+export type { InteractiveHitTester } from "./interaction/interactive.js";
+export {
+  registerInteractiveHitTester,
+  getInteractiveHitTester,
+} from "./interaction/interactive.js";
 
 export type { EditorOptions, LoadSceneOptions, CursorRole, CursorSpec } from "./editor.js";
 export { Editor } from "./editor.js";
-export type { EditorEvents } from "./editor-events.js";
+export type { EditorEvents } from "./editor/editor-events.js";
 export { normalizeHref, safeHref } from "./editor/public/link.js";
 export { DEFAULT_BRUSH_SETTINGS } from "./editor/public/brush.js";
 export type { BrushSettings } from "./editor/public/brush.js";
@@ -89,7 +92,7 @@ export type {
 } from "./editor/public/tool-ops.js";
 
 // File-drop registry (host-extensible image / scene / custom).
-export type { FileDropHandler, FileDropContext, WalkOptions } from "./file-drop.js";
+export type { FileDropHandler, FileDropContext, WalkOptions } from "./features/file-drop.js";
 export {
   FileDropRegistry,
   IMAGE_MIME_TYPES,
@@ -100,7 +103,7 @@ export {
   readFileAsDataURL,
   readFileAsText,
   walkDataTransfer,
-} from "./file-drop.js";
+} from "./features/file-drop.js";
 
 // Action architecture — command registry.
 export type { Action, ActionCategory, ActionContext, HotkeyMatcher } from "./actions/index.js";
@@ -174,7 +177,7 @@ export {
 } from "./actions/index.js";
 
 // Platform / device detection (+ hotkey pretty-printer).
-export type { PrettyHotkeyDesc } from "./platform.js";
+export type { PrettyHotkeyDesc } from "./input/platform.js";
 export {
   isMac,
   isWindows,
@@ -187,7 +190,7 @@ export {
   getDevicePixelRatio,
   formatHotkey,
   formatHotkeyParts,
-} from "./platform.js";
+} from "./input/platform.js";
 
 // Re-export annotation types so hosts that wire `addAnnotation` /
 // `addComment` don't need a direct @scene dep just for the data shape.

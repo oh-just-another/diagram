@@ -24,14 +24,14 @@ import {
 } from "@oh-just-another/scene";
 import type { LayerId, ElementId, LinkId, Bounds, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
-import type { Mode } from "../../modes.js";
+import type { Mode } from "../../interaction/modes.js";
 import {
   ANCHOR_CLICK_NEW_ELEMENT_GAP,
   TEXT_DEFAULT_FILL,
   TEXT_DEFAULT_FONT_FAMILY,
   TEXT_DEFAULT_FONT_SIZE,
 } from "../../constants.js";
-import { req } from "../../util.js";
+import { req } from "../../helpers/util.js";
 import { computeCreateLink } from "../applies/create.js";
 
 /**

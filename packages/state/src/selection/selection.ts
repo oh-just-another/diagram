@@ -1,5 +1,5 @@
 import type { ElementId } from "@oh-just-another/types";
-import { setsEqual } from "./util.js";
+import { setsEqual } from "../helpers/util.js";
 
 /**
  * Set of currently selected shape ids. Immutable — operations return new sets.

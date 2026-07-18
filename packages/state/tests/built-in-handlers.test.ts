@@ -8,9 +8,9 @@
  * callback driven manually.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { imageFileDropHandler, videoFileDropHandler } from "../src/built-in-handlers.js";
+import { imageFileDropHandler, videoFileDropHandler } from "../src/features/built-in-handlers.js";
 import { DEFAULT_IMAGE_MAX_EDGE_PX } from "../src/constants.js";
-import type { FileDropContext } from "../src/file-drop.js";
+import type { FileDropContext } from "../src/features/file-drop.js";
 import type { Editor } from "../src/editor.js";
 
 // ---------------------------------------------------------------------------

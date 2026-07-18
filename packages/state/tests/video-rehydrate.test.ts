@@ -17,7 +17,7 @@ import {
 } from "@oh-just-another/scene";
 import { emptyScene } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
-import { videoFileDropHandler } from "../src/built-in-handlers.js";
+import { videoFileDropHandler } from "../src/features/built-in-handlers.js";
 import { rehydrateStaticImages } from "../src/editor/animation-scene.js";
 
 const noopTarget = new Proxy(

@@ -1,6 +1,6 @@
 import { getElement } from "@oh-just-another/scene";
 import type { Vec2 } from "@oh-just-another/types";
-import { cursorForHandle, type HandleId } from "../../handle.js";
+import { cursorForHandle, type HandleId } from "../../interaction/handle.js";
 import { ANCHOR_DOT_ACTIVE_RADIUS, LINK_START_ANCHOR_OUTSET } from "../../constants.js";
 import { anchorOverlayPoints } from "../anchor-points.js";
 import type { Editor } from "../../editor.js";

@@ -4,8 +4,8 @@ import type { Element, Link } from "@oh-just-another/scene";
 import type { BrushStrokeState } from "./public/brush.js";
 import type { EraseStrokeState } from "./public/eraser.js";
 import type { LaserStroke } from "./public/laser.js";
-import type * as Selection from "../selection.js";
-import type * as LinkSelection from "../link-selection.js";
+import type * as Selection from "../selection/selection.js";
+import type * as LinkSelection from "../selection/link-selection.js";
 
 /** Live preview of an edge being drawn (draw-edge mode / anchor drag). */
 export interface EdgePreview {

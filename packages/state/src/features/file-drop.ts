@@ -1,5 +1,5 @@
 import type { Vec2 } from "@oh-just-another/types";
-import type { Editor } from "./editor.js";
+import type { Editor } from "../editor.js";
 
 /**
  * File-drop handler registry — host extension point for "user dropped a file

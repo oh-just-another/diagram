@@ -1,5 +1,5 @@
 import type { LinkId } from "@oh-just-another/types";
-import { setsEqual } from "./util.js";
+import { setsEqual } from "../helpers/util.js";
 
 /**
  * Set of currently selected link (connector) ids. A parallel set to the

@@ -9,7 +9,7 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
-import type { Mode } from "../src/modes.js";
+import type { Mode } from "../src/interaction/modes.js";
 import { modeActions } from "../src/actions/actionMode.js";
 import { selectionActions } from "../src/actions/actionSelection.js";
 import { zOrderActions } from "../src/actions/actionZOrder.js";

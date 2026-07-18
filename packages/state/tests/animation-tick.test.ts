@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { AnimationTick } from "../src/animation-tick.js";
+import { AnimationTick } from "../src/render/animation-tick.js";
 
 // ---------------------------------------------------------------------------
 // Fake rAF helpers

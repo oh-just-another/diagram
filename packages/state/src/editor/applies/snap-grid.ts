@@ -1,6 +1,6 @@
 import type { Bounds, Vec2 } from "@oh-just-another/types";
 import type { ElementId } from "@oh-just-another/types";
-import type { HandleId } from "../../handle.js";
+import type { HandleId } from "../../interaction/handle.js";
 
 /**
  * Snap-to-grid math. Pure functions that round gesture deltas / bounds

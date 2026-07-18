@@ -2,11 +2,11 @@ import type { Scene, Element } from "@oh-just-another/scene";
 import {
   copyElements as copyElementsHelper,
   pasteElements as pasteElementsHelper,
-} from "../../clipboard.js";
+} from "../../features/clipboard.js";
 import type { HistoryProvider } from "@oh-just-another/history";
 import type { ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
-import * as Selection from "../../selection.js";
+import * as Selection from "../../selection/selection.js";
 
 /**
  * Copy / paste delegators over the editor-owned clipboard buffer. Copies are

@@ -81,22 +81,26 @@ import {
   type TransactionHandle,
 } from "@oh-just-another/history";
 import { DEFAULT_LINK_ROUTING } from "./constants.js";
-import { FileDropRegistry, type FileDropContext, type FileDropHandler } from "./file-drop.js";
-import { imageFileDropHandler, videoFileDropHandler } from "./built-in-handlers.js";
+import {
+  FileDropRegistry,
+  type FileDropContext,
+  type FileDropHandler,
+} from "./features/file-drop.js";
+import { imageFileDropHandler, videoFileDropHandler } from "./features/built-in-handlers.js";
 import {
   computeDimElements as computeDimElementsHelper,
   isDescendantOfGroup as isDescendantOfGroupHelper,
   pickDrillTarget as pickDrillTargetHelper,
   promoteToGroupRoot as promoteToGroupRootHelper,
   topGroupAncestor as topGroupAncestorHelper,
-} from "./group-helpers.js";
+} from "./helpers/group-helpers.js";
 import {
   assignFrameMembers as assignFrameMembersHelper,
   nextFrameName as nextFrameNameHelper,
   reconcileFrameMembership as reconcileFrameMembershipHelper,
-} from "./frame-helpers.js";
-import { AutoCompactScheduler } from "./auto-compact.js";
-import { AutoLayoutScheduler } from "./auto-layout-scheduler.js";
+} from "./helpers/frame-helpers.js";
+import { AutoCompactScheduler } from "./helpers/auto-compact.js";
+import { AutoLayoutScheduler } from "./helpers/auto-layout-scheduler.js";
 import {
   DEFAULT_SNAP_THRESHOLD,
   LINK_ENDPOINT_HANDLE_RADIUS,
@@ -117,18 +121,18 @@ import {
   FLOWCHART_MAX_SIBLINGS,
   ERASER_TRAIL_TTL_MS,
 } from "./constants.js";
-import { HANDLE_HIT_SLOP } from "./handle.js";
-import { req } from "./util.js";
+import { HANDLE_HIT_SLOP } from "./interaction/handle.js";
+import { req } from "./helpers/util.js";
 import {
   interactionMachine,
   type InteractionContext,
   type InteractionEmit,
   type PressTarget,
-} from "./machine.js";
-import type { HandleId } from "./handle.js";
-import type { ActiveTool, Mode } from "./modes.js";
-import { DEFAULT_MODE } from "./modes.js";
-import type { EditorEvents } from "./editor-events.js";
+} from "./interaction/machine.js";
+import type { HandleId } from "./interaction/handle.js";
+import type { ActiveTool, Mode } from "./interaction/modes.js";
+import { DEFAULT_MODE } from "./interaction/modes.js";
+import type { EditorEvents } from "./editor/editor-events.js";
 import {
   createEventCache,
   fanOutEvents,
@@ -356,9 +360,9 @@ import {
   snapMoveDelta,
   snapResizeDelta,
 } from "./editor/applies/snap-grid.js";
-import { type PeerCursor, type PeerSelection } from "./overlay.js";
-import * as Selection from "./selection.js";
-import * as LinkSelection from "./link-selection.js";
+import { type PeerCursor, type PeerSelection } from "./render/overlay.js";
+import * as Selection from "./selection/selection.js";
+import * as LinkSelection from "./selection/link-selection.js";
 
 /**
  * The editor's observable state at one instant — the object handed to the

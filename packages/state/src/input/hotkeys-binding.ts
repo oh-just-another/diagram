@@ -1,6 +1,6 @@
-import { defaultActionRegistry, type ActionRegistry } from "./actions/registry.js";
+import { defaultActionRegistry, type ActionRegistry } from "../actions/registry.js";
 import { isEditableTarget } from "./dom-events.js";
-import type { Editor } from "./editor.js";
+import type { Editor } from "../editor.js";
 
 export interface HotkeyBindingOptions {
   /**

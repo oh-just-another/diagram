@@ -11,9 +11,13 @@ import {
   type Element,
 } from "@oh-just-another/scene";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
-import { renderOverlay, paintElementSelectionHalo, DEFAULT_OVERLAY_STYLE } from "../src/overlay.js";
+import {
+  renderOverlay,
+  paintElementSelectionHalo,
+  DEFAULT_OVERLAY_STYLE,
+} from "../src/render/overlay.js";
 import { isResizable, resizeHandlesFor } from "../src/editor/shape-traits.js";
-import type { Selection } from "../src/selection.js";
+import type { Selection } from "../src/selection/selection.js";
 
 // ---------------------------------------------------------------------------
 // RenderTarget recorder (Proxy-based — same pattern as scene-renderer tests)

@@ -1,8 +1,8 @@
 import type { Scene } from "@oh-just-another/scene";
 import type { Emitter } from "@oh-just-another/events";
-import type * as Selection from "../selection.js";
-import type { ActiveTool } from "../modes.js";
-import type { EditorEvents } from "../editor-events.js";
+import type * as Selection from "../selection/selection.js";
+import type { ActiveTool } from "../interaction/modes.js";
+import type { EditorEvents } from "./editor-events.js";
 
 /**
  * Holds the last-emitted snapshot of every observable Editor slice

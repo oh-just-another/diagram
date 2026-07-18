@@ -1,6 +1,6 @@
 import type { LayerId } from "@oh-just-another/types";
 import type { Scene } from "@oh-just-another/scene";
-import { AUTO_COMPACT_THRESHOLD } from "./constants.js";
+import { AUTO_COMPACT_THRESHOLD } from "../constants.js";
 
 /**
  * Microtask-scheduled rebalancer for fractional `order` keys. When any

@@ -10,7 +10,7 @@ import {
   type Element,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
-import { cursorForHandle, handlePosition } from "../src/handle.js";
+import { cursorForHandle, handlePosition } from "../src/interaction/handle.js";
 
 const rect = (id: string, x: number, y: number): Element => ({
   id: elementId(id),
