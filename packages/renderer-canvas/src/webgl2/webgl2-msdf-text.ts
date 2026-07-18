@@ -1,7 +1,7 @@
 import type { AtlasGlyph, GlyphAtlas } from "@oh-just-another/glyph-atlas";
 import type { Transform } from "@oh-just-another/types";
 import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
-import { WEBGL2_MSDF_RUN_WIDTH_CACHE_CAP } from "./constants.js";
+import { WEBGL2_MSDF_RUN_WIDTH_CACHE_CAP } from "../constants.js";
 
 /**
  * MSDF text-rendering glue for WebGL2Target. Owns the dedicated shader

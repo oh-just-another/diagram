@@ -1,6 +1,6 @@
 import { CurveTriangleBatch, type Point } from "@oh-just-another/curve-mesh";
 import type { Transform } from "@oh-just-another/types";
-import { WEBGL2_CURVE_TRIANGULATION_CACHE_CAP } from "./constants.js";
+import { WEBGL2_CURVE_TRIANGULATION_CACHE_CAP } from "../constants.js";
 import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
 
 /**

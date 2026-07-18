@@ -5,7 +5,7 @@
  * GL records `deleteTexture` calls; no GPU in the test env.
  */
 import { describe, expect, it, vi } from "vitest";
-import { WebGL2Target } from "../src/webgl2-target";
+import { WebGL2Target } from "../src/webgl2/webgl2-target";
 
 const makeStubGl = (deleted: unknown[]) => {
   let texSeq = 0;

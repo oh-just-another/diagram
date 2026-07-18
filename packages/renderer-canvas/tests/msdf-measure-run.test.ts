@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AtlasGlyph, GlyphAtlas } from "@oh-just-another/glyph-atlas";
-import { measureGlyphRunEm } from "../src/webgl2-msdf-text";
+import { measureGlyphRunEm } from "../src/webgl2/webgl2-msdf-text";
 
 /**
  * B7 — single-pass MSDF width measurement.

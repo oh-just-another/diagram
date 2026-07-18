@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { parseWebGL2Color } from "../src/webgl2-color";
+import { parseWebGL2Color } from "../src/webgl2/webgl2-color";
 
 describe("parseWebGL2Color", () => {
   it("parses long hex (#rrggbb)", () => {

@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
 import { RecordingTarget, type RenderCommand } from "../src/index";
-import { packReplayFrame } from "../src/replay-codec";
+import { packReplayFrame } from "../src/offscreen/replay-codec";
 
 /**
  * Bench for the CPU-side cost of the offscreen (worker) backend's

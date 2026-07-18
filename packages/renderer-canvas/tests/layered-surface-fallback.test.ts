@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createLayeredSurfaceWithFallback } from "../src/layered-surface";
+import { createLayeredSurfaceWithFallback } from "../src/surface/layered-surface";
 
 /**
  * Tests the graceful-degrade contract without a real DOM: we stub

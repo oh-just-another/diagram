@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RectBatch, RECT_INSTANCE_FLOATS } from "../src/webgl2-rect-batch";
+import { RectBatch, RECT_INSTANCE_FLOATS } from "../src/webgl2/webgl2-rect-batch";
 
 /**
  * A recording sink standing in for the GL pipeline — captures each flush

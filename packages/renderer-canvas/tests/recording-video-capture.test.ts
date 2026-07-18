@@ -7,7 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LruCache } from "@oh-just-another/renderer-core";
-import { RecordingTarget, replayCommands } from "../src/recording-target";
+import { RecordingTarget, replayCommands } from "../src/offscreen/recording-target";
 
 /** Fake bitmap produced by the scratch canvas / consumed by the worker. */
 class FakeBitmap {

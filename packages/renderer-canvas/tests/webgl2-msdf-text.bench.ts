@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
 import type { AtlasGlyph, GlyphAtlas } from "@oh-just-another/glyph-atlas";
-import { glyphQuadGeometry, measureGlyphRunEm } from "../src/webgl2-msdf-text";
+import { glyphQuadGeometry, measureGlyphRunEm } from "../src/webgl2/webgl2-msdf-text";
 
 /**
  * Micro-bench for the CPU side of the MSDF text pipeline:

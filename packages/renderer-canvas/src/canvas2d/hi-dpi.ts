@@ -1,4 +1,4 @@
-import { MAX_DEVICE_PIXEL_RATIO } from "./constants.js";
+import { MAX_DEVICE_PIXEL_RATIO } from "../constants.js";
 
 /**
  * Configures a `<canvas>` for hi-DPI rendering. Sets the bitmap size to

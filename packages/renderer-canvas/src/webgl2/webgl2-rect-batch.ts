@@ -1,5 +1,5 @@
 import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
-import { INITIAL_RECT_BATCH_INSTANCES } from "./constants.js";
+import { INITIAL_RECT_BATCH_INSTANCES } from "../constants.js";
 
 /**
  * Floats per instance in a {@link RectBatch}:

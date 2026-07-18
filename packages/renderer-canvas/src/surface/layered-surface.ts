@@ -1,10 +1,10 @@
 import { LAYER_ORDER, type LayerName, type RenderTarget } from "@oh-just-another/renderer-core";
-import { LayeredCanvas } from "./layered-canvas.js";
-import { WebGL2Target } from "./webgl2-target.js";
-import { RecordingTarget } from "./recording-target.js";
-import { packReplayFrame, type PackedReplayMessage } from "./replay-codec.js";
-import { cappedDpr, setupHiDpi } from "./hi-dpi.js";
-import { MAX_DEVICE_PIXEL_RATIO } from "./constants.js";
+import { LayeredCanvas } from "../canvas2d/layered-canvas.js";
+import { WebGL2Target } from "../webgl2/webgl2-target.js";
+import { RecordingTarget } from "../offscreen/recording-target.js";
+import { packReplayFrame, type PackedReplayMessage } from "../offscreen/replay-codec.js";
+import { cappedDpr, setupHiDpi } from "../canvas2d/hi-dpi.js";
+import { MAX_DEVICE_PIXEL_RATIO } from "../constants.js";
 
 /**
  * Backend selector for `createLayeredSurface`.

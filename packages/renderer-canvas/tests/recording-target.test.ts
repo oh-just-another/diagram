@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { LruCache } from "@oh-just-another/renderer-core";
-import { RecordingTarget, replayCommands } from "../src/recording-target";
+import { RecordingTarget, replayCommands } from "../src/offscreen/recording-target";
 
 describe("RecordingTarget", () => {
   it("captures every draw call as a structured command", () => {

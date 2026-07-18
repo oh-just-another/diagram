@@ -1,7 +1,7 @@
 import { LAYER_ORDER, type LayerName } from "@oh-just-another/renderer-core";
 import { Canvas2DTarget } from "./canvas-target.js";
 import { cappedDpr, setupHiDpi } from "./hi-dpi.js";
-import { MAX_DEVICE_PIXEL_RATIO } from "./constants.js";
+import { MAX_DEVICE_PIXEL_RATIO } from "../constants.js";
 
 export interface LayeredCanvasOptions {
   /** Subset of layers to create. Defaults to all three. */

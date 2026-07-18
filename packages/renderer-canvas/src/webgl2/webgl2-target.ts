@@ -17,12 +17,12 @@ import {
   ELLIPSE_MIN_SEGMENTS,
   WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
   WEBGL2_TEXT_BITMAP_CACHE_CAP,
-} from "./constants.js";
+} from "../constants.js";
 import { MsdfTextPipeline, measureGlyphRunEm } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
 import { LoopBlinnCurvePipeline, type CurveSegment } from "./webgl2-curve.js";
 import { EllipsePipeline } from "./webgl2-ellipse.js";
-import { isDrawableImageSource, warnSkippedImage } from "./image-source.js";
+import { isDrawableImageSource, warnSkippedImage } from "../canvas2d/image-source.js";
 import { compileShader, glReq, linkProgram } from "./webgl-helpers.js";
 import { RectBatch, RectInstancePipeline } from "./webgl2-rect-batch.js";
 

@@ -1,4 +1,4 @@
-import { Canvas2DTarget } from "./canvas-target.js";
+import { Canvas2DTarget } from "../canvas2d/canvas-target.js";
 
 /**
  * Browser-feature detection. `true` when both `OffscreenCanvas` and the

@@ -8,7 +8,7 @@ import {
   type TextAlign,
   type TextBaseline,
 } from "@oh-just-another/renderer-core";
-import { OFFSCREEN_IMAGE_CACHE_CAP } from "./constants.js";
+import { OFFSCREEN_IMAGE_CACHE_CAP } from "../constants.js";
 import type { RenderCommand } from "./recording-target.js";
 
 /**

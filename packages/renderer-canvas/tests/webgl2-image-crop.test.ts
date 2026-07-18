@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { WebGL2Target } from "../src/webgl2-target";
+import { WebGL2Target } from "../src/webgl2/webgl2-target";
 
 /**
  * WebGL2 image cropping. The crop rect (normalised [0,1] fractions of the

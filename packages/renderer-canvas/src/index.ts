@@ -1,25 +1,33 @@
-export { Canvas2DTarget } from "./canvas-target.js";
-export { Canvas2DTextShaper } from "./canvas-text-shaper.js";
-export { WebGL2Target, type WebGL2TargetOptions } from "./webgl2-target.js";
-export { renderViaTiles, type RenderViaTilesOptions } from "./tile-compositor.js";
-export { setupHiDpi, cappedDpr } from "./hi-dpi.js";
-export { LayeredCanvas, type LayeredCanvasOptions } from "./layered-canvas.js";
+export { Canvas2DTarget } from "./canvas2d/canvas-target.js";
+export { Canvas2DTextShaper } from "./canvas2d/canvas-text-shaper.js";
+export { WebGL2Target, type WebGL2TargetOptions } from "./webgl2/webgl2-target.js";
+export { renderViaTiles, type RenderViaTilesOptions } from "./surface/tile-compositor.js";
+export { setupHiDpi, cappedDpr } from "./canvas2d/hi-dpi.js";
+export { LayeredCanvas, type LayeredCanvasOptions } from "./canvas2d/layered-canvas.js";
 export {
   supportsOffscreenCanvas,
   createOffscreenCanvas2DTarget,
   transferCanvasToWorker,
-} from "./offscreen.js";
-export { createRenderWorker } from "./worker-factory.js";
+} from "./offscreen/offscreen.js";
+export { createRenderWorker } from "./offscreen/worker-factory.js";
 export { WorkerPool, LayerWorkerPool } from "@oh-just-another/renderer-workers";
-export { RecordingTarget, replayCommands, type RenderCommand } from "./recording-target.js";
+export {
+  RecordingTarget,
+  replayCommands,
+  type RenderCommand,
+} from "./offscreen/recording-target.js";
 export {
   createLayeredSurface,
   createLayeredSurfaceWithFallback,
   type LayeredSurface,
   type RendererBackend,
   type CreateLayeredSurfaceOptions,
-} from "./layered-surface.js";
-export { isWebGPUAvailable, isWebGL2Available, pickAvailableBackend } from "./webgpu-detect.js";
+} from "./surface/layered-surface.js";
+export {
+  isWebGPUAvailable,
+  isWebGL2Available,
+  pickAvailableBackend,
+} from "./webgl2/webgpu-detect.js";
 export { LARGE_SCENE_WORKER_THRESHOLD, MAX_DEVICE_PIXEL_RATIO } from "./constants.js";
 
 export { installBuiltinRenderers, wrapText } from "@oh-just-another/renderer-core";

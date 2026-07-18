@@ -14,7 +14,7 @@ import {
   buildDrawOrderIndex,
   elementsIntersectingTile,
   elementsIntersectingTileIndexed,
-} from "../src/tile-compositor";
+} from "../src/surface/tile-compositor";
 
 /**
  * B11 — spatial index for tile element queries.

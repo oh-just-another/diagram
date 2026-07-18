@@ -9,8 +9,8 @@ import {
   type TextBaseline,
 } from "@oh-just-another/renderer-core";
 import { resolveBundledFamily } from "@oh-just-another/fonts";
-import { OFFSCREEN_IMAGE_CACHE_CAP } from "./constants.js";
-import { intrinsicImageSize, isDrawableImageSource } from "./image-source.js";
+import { OFFSCREEN_IMAGE_CACHE_CAP } from "../constants.js";
+import { intrinsicImageSize, isDrawableImageSource } from "../canvas2d/image-source.js";
 
 /**
  * Backend-agnostic RenderTarget that captures every method call as a
