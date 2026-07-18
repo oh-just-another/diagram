@@ -5,7 +5,7 @@
  */
 
 import { GRID_COLOR, GRID_DOT_COLOR } from "@oh-just-another/tokens";
-import type { LodOptions } from "./scene-renderer.js";
+import type { LodOptions } from "./rendering/scene-renderer.js";
 
 /**
  * Default zoom thresholds for the level-of-detail pipeline. Tuned for

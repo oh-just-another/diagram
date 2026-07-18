@@ -1,4 +1,4 @@
-import type { RenderTarget } from "./render-target.js";
+import type { RenderTarget } from "../targets/render-target.js";
 import type { TextShaper } from "./text-shaper.js";
 
 export interface WrapOptions {

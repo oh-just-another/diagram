@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { linkId, layerId } from "@oh-just-another/types";
 import { orderBetween, type Link } from "@oh-just-another/scene";
-import { InMemoryLinkBitmapCache } from "../src/edge-cache-bitmap";
+import { InMemoryLinkBitmapCache } from "../src/caches/edge-cache-bitmap";
 
 const edge = (id: string): Link =>
   ({

@@ -1,6 +1,6 @@
 import type { ElementBase } from "@oh-just-another/scene";
-import type { RenderTarget } from "./render-target.js";
-import type { AnimationClock } from "./animation-adapter.js";
+import type { RenderTarget } from "../targets/render-target.js";
+import type { AnimationClock } from "../raster/animation-adapter.js";
 
 /**
  * Optional draw context passed to an {@link ElementRenderer}. Carries the

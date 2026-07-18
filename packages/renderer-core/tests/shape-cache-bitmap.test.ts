@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ElementBase } from "@oh-just-another/scene";
-import { InMemoryElementBitmapCache, zoomBucket } from "../src/shape-cache-bitmap";
+import { InMemoryElementBitmapCache, zoomBucket } from "../src/caches/shape-cache-bitmap";
 
 const shape = (id: string): ElementBase =>
   ({ id, type: "rectangle", position: { x: 0, y: 0 } }) as unknown as ElementBase;

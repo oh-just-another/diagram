@@ -17,12 +17,12 @@ import {
 } from "@oh-just-another/scene";
 import { bounds as B } from "@oh-just-another/math";
 import { req, type Bounds, type Vec2 } from "@oh-just-another/types";
-import type { RenderTarget } from "./render-target.js";
-import { wrapText } from "./text-layout.js";
+import type { RenderTarget } from "../targets/render-target.js";
+import { wrapText } from "../text/text-layout.js";
 import { buildRoundedRectPath } from "./built-in-renderers.js";
-import { sharedLinkBoundsCache, type LinkBoundsCache } from "./edge-cache.js";
-import type { LinkBitmapCache } from "./edge-cache-bitmap.js";
-import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
+import { sharedLinkBoundsCache, type LinkBoundsCache } from "../caches/edge-cache.js";
+import type { LinkBitmapCache } from "../caches/edge-cache-bitmap.js";
+import { zoomBucket as bucketFor } from "../caches/shape-cache-bitmap.js";
 import {
   LINK_CORNER_RADIUS,
   BLOCK_ARROW_HEAD_LENGTH,
@@ -34,7 +34,7 @@ import {
   LABEL_FILL_COLOR,
   LABEL_BG_COLOR,
   LINK_LABEL_RADIUS,
-} from "./constants.js";
+} from "../constants.js";
 
 export interface RenderLinksOptions {
   /**

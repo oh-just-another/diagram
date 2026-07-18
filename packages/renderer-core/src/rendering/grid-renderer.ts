@@ -6,7 +6,7 @@ import {
 } from "@oh-just-another/scene";
 import { bounds, matrix } from "@oh-just-another/math";
 import type { Bounds } from "@oh-just-another/types";
-import type { RenderTarget } from "./render-target.js";
+import type { RenderTarget } from "../targets/render-target.js";
 import {
   GRID_DOT_FADE_FROM_PX,
   GRID_DOT_FADE_FULL_PX,
@@ -19,7 +19,7 @@ import {
   GRID_LINE_FADE_FULL_PX,
   GRID_LINE_WIDTH_PX,
   GRID_MIN_SCREEN_SPACING_PX,
-} from "./constants.js";
+} from "../constants.js";
 
 export interface RenderGridOptions {
   /** Stroke / fill colour for the grid primitives. Defaults to `GRID_COLOR` from `@oh-just-another/tokens`. */

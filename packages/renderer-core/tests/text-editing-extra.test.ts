@@ -5,7 +5,7 @@ import {
   pointToCaretIndex,
   selectionRects,
   type MeasureText,
-} from "../src/text-editing.js";
+} from "../src/text/text-editing.js";
 
 // Monospace stub: every character is 10px wide.
 const measure: MeasureText = (s) => s.length * 10;

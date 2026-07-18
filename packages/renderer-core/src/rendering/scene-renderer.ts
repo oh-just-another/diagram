@@ -9,14 +9,14 @@ import {
 } from "@oh-just-another/scene";
 import type { Bounds, LayerId, ElementId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
-import type { RenderTarget } from "./render-target.js";
-import type { AnimationClock } from "./animation-adapter.js";
+import type { RenderTarget } from "../targets/render-target.js";
+import type { AnimationClock } from "../raster/animation-adapter.js";
 import { getElementRenderer } from "./shape-renderer.js";
-import { createDimTarget } from "./dim-target.js";
-import { cachedWorldBounds, ElementCache } from "./shape-cache.js";
-import { DEFAULT_PLACEHOLDER_FILL } from "./constants.js";
-import type { LayerCompositeCache } from "./layer-cache-composite.js";
-import { zoomBucket as bucketFor } from "./shape-cache-bitmap.js";
+import { createDimTarget } from "../targets/dim-target.js";
+import { cachedWorldBounds, ElementCache } from "../caches/shape-cache.js";
+import { DEFAULT_PLACEHOLDER_FILL } from "../constants.js";
+import type { LayerCompositeCache } from "../caches/layer-cache-composite.js";
+import { zoomBucket as bucketFor } from "../caches/shape-cache-bitmap.js";
 
 /**
  * Zoom-based level-of-detail thresholds. Each threshold turns on a

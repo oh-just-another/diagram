@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
-import { InMemoryTileCache, type TileCacheEntry } from "../src/tile-renderer";
+import { InMemoryTileCache, type TileCacheEntry } from "../src/caches/tile-renderer";
 
 const entry = (
   col: number,

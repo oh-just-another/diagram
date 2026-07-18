@@ -23,9 +23,9 @@ import {
   brushOutline,
 } from "@oh-just-another/scene";
 import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.js";
-import type { RenderTarget } from "./render-target.js";
-import { layoutText } from "./text-editing.js";
-import { resolveImageSource } from "./animation-adapter.js";
+import type { RenderTarget } from "../targets/render-target.js";
+import { layoutText } from "../text/text-editing.js";
+import { resolveImageSource } from "../raster/animation-adapter.js";
 import {
   TEXT_DECORATION_THICKNESS,
   TEXT_UNDERLINE_OFFSET,
@@ -38,7 +38,7 @@ import {
   FRAME_FILL_COLOR,
   FRAME_HEADER_BG_COLOR,
   FRAME_HEADER_TEXT_COLOR,
-} from "./constants.js";
+} from "../constants.js";
 import { req, type Vec2 } from "@oh-just-another/types";
 
 /**

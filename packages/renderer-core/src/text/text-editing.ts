@@ -1,4 +1,4 @@
-import type { TextAlign } from "./render-target.js";
+import type { TextAlign } from "../targets/render-target.js";
 import { req, type Vec2 } from "@oh-just-another/types";
 
 /**

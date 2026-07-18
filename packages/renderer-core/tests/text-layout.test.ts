@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { wrapText, type WrapOptions } from "../src/text-layout.js";
-import type { RenderTarget } from "../src/render-target.js";
-import type { TextShaper } from "../src/text-shaper.js";
+import { wrapText, type WrapOptions } from "../src/text/text-layout.js";
+import type { RenderTarget } from "../src/targets/render-target.js";
+import type { TextShaper } from "../src/text/text-shaper.js";
 
 // ---------------------------------------------------------------------------
 // Minimal RenderTarget that uses a simple char-width model.
