@@ -1,7 +1,7 @@
 import { vec2 } from "@oh-just-another/math";
 import { req, type Vec2 } from "@oh-just-another/types";
 import type { BrushPoint } from "./shape.js";
-import { BRUSH_OUTLINE_ARC_STEP, BRUSH_OUTLINE_MITER_LIMIT } from "./constants.js";
+import { BRUSH_OUTLINE_ARC_STEP, BRUSH_OUTLINE_MITER_LIMIT } from "../constants.js";
 
 /**
  * The single closed outline polygon of a variable-width brush stroke: the left

@@ -15,8 +15,8 @@ import {
   stackLayout,
   treeLayout,
   wrapLayout,
-} from "../src/layout.js";
-import { registerLayoutKind, unregisterLayoutKind } from "../src/layout-registry.js";
+} from "../src/layout/layout.js";
+import { registerLayoutKind, unregisterLayoutKind } from "../src/layout/layout-registry.js";
 
 const rect = (id: string, parentId: string | null, w = 40, h = 30): Element => ({
   id: elementId(id),

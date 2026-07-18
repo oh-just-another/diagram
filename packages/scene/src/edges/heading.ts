@@ -1,5 +1,5 @@
 import type { Vec2 } from "@oh-just-another/types";
-import { getElementWorldBounds, type ElementBase } from "./shape.js";
+import { getElementWorldBounds, type ElementBase } from "../shapes/shape.js";
 
 /**
  * Heading — the cardinal direction an elbow connector exits a shape on.

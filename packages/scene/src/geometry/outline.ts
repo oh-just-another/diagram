@@ -1,9 +1,9 @@
 import { req, type Vec2 } from "@oh-just-another/types";
 import { scalar, vec2 } from "@oh-just-another/math";
-import { getElementLocalBounds, type ElementBase, type PolygonElement } from "./shape.js";
-import { localToWorld } from "./shape-transform.js";
-import { ellipseOutlinePoint } from "./ellipse.js";
-import { DEFAULT_OUTLINE_SAMPLES } from "./constants.js";
+import { getElementLocalBounds, type ElementBase, type PolygonElement } from "../shapes/shape.js";
+import { localToWorld } from "../shapes/shape-transform.js";
+import { ellipseOutlinePoint } from "../shapes/ellipse.js";
+import { DEFAULT_OUTLINE_SAMPLES } from "../constants.js";
 
 /**
  * Built-in outline samplers — one per shape `type` that the kernel ships.

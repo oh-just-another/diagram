@@ -5,7 +5,7 @@ import {
   CURVE_END_TANGENT_MAX_PX,
   CURVE_END_TANGENT_RATIO,
   CURVE_FLATTEN_SEGMENTS,
-} from "./constants.js";
+} from "../constants.js";
 
 /**
  * Curved (bezier) link geometry — the single source of truth for the curve

@@ -1,9 +1,9 @@
 import type { AnnotationId, LinkId, FileId, LayerId, ElementId } from "@oh-just-another/types";
-import type { Annotation } from "./annotation.js";
-import type { Link } from "./edge.js";
+import type { Annotation } from "../annotations/annotation.js";
+import type { Link } from "../edges/edge.js";
 import type { BinaryFile } from "./file.js";
 import type { Layer } from "./layer.js";
-import type { Element } from "./shape.js";
+import type { Element } from "../shapes/shape.js";
 import type { Viewport } from "./viewport.js";
 
 /**

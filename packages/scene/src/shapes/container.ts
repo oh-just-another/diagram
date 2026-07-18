@@ -1,8 +1,8 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import { bounds as B } from "@oh-just-another/math";
-import type { Scene } from "./scene.js";
+import type { Scene } from "../model/scene.js";
 import type { Element, ElementBase } from "./shape.js";
-import { getLayersInOrder, getElementsInLayer } from "./queries.js";
+import { getLayersInOrder, getElementsInLayer } from "../query/queries.js";
 
 /**
  * Container behaviour spec. Carried on a shape via

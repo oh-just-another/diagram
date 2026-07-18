@@ -1,6 +1,6 @@
 import type { ElementId } from "@oh-just-another/types";
 import type { Scene } from "./scene.js";
-import type { Element } from "./shape.js";
+import type { Element } from "../shapes/shape.js";
 
 /**
  * Pure three-way merge for scene shapes. Takes the common ancestor of two

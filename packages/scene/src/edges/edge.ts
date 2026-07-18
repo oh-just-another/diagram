@@ -1,6 +1,6 @@
 import type { LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import type { FractionalIndex } from "fractional-keys";
-import type { Style } from "./style.js";
+import type { Style } from "../text/style.js";
 
 /**
  * Standard named connection points exposed by every shape — four corners,

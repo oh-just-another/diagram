@@ -1,10 +1,10 @@
 import type { AnnotationId, LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
-import type { Annotation } from "./annotation.js";
-import type { Link } from "./edge.js";
+import type { Annotation } from "../annotations/annotation.js";
+import type { Link } from "../edges/edge.js";
 import type { Layer } from "./layer.js";
 import type { Patch } from "./patch.js";
 import { apply, type Scene } from "./scene.js";
-import type { Element } from "./shape.js";
+import type { Element } from "../shapes/shape.js";
 import type { Viewport } from "./viewport.js";
 
 /**

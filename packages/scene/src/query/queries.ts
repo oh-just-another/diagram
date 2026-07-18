@@ -1,8 +1,8 @@
 import type { Bounds, LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { bounds as B } from "@oh-just-another/math";
-import type { Link } from "./edge.js";
-import type { Layer } from "./layer.js";
-import type { Scene } from "./scene.js";
+import type { Link } from "../edges/edge.js";
+import type { Layer } from "../model/layer.js";
+import type { Scene } from "../model/scene.js";
 import {
   getElementWorldBounds,
   getElementLocalBounds,
@@ -15,12 +15,12 @@ import {
   isGroup,
   type Element,
   type PathCommand,
-} from "./shape.js";
-import { getCornerRadius } from "./style.js";
+} from "../shapes/shape.js";
+import { getCornerRadius } from "../text/style.js";
 import { SpatialGrid } from "./spatial.js";
-import { byOrderAsc } from "./order.js";
-import { localToWorld } from "./shape-transform.js";
-import { ellipseOutlinePoint } from "./ellipse.js";
+import { byOrderAsc } from "../model/order.js";
+import { localToWorld } from "../shapes/shape-transform.js";
+import { ellipseOutlinePoint } from "../shapes/ellipse.js";
 
 // --- direct lookups ---
 

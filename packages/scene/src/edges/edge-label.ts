@@ -9,7 +9,7 @@ import {
   LINK_LABEL_MAX_WIDTH,
   LINK_LABEL_PAD_X,
   LINK_LABEL_PAD_Y,
-} from "./constants.js";
+} from "../constants.js";
 
 /**
  * Label geometry shared by the renderer (pill placement), hit-testing and

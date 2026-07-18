@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Bounds, Vec2 } from "@oh-just-another/types";
-import { elbowRoute } from "../src/elbow-router";
+import { elbowRoute } from "../src/edges/elbow-router";
 
 const segmentsAreAxisAligned = (path: readonly Vec2[]): boolean => {
   for (let i = 1; i < path.length; i++) {

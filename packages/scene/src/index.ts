@@ -11,10 +11,10 @@ export type {
   TextDecoration,
   StrokeAlign,
   Roundness,
-} from "./style.js";
-export { getCornerRadius, strokeOutsideExtent } from "./style.js";
-export type { TextRun } from "./text-runs.js";
-export { runsToText, normalizeRuns, sliceRuns, applyStyleToRange } from "./text-runs.js";
+} from "./text/style.js";
+export { getCornerRadius, strokeOutsideExtent } from "./text/style.js";
+export type { TextRun } from "./text/text-runs.js";
+export { runsToText, normalizeRuns, sliceRuns, applyStyleToRange } from "./text/text-runs.js";
 export { ADAPTIVE_CORNER_RADIUS, PROPORTIONAL_CORNER_RADIUS } from "./constants.js";
 export type {
   Element,
@@ -35,7 +35,7 @@ export type {
   BrushElement,
   BrushPoint,
   ElementBounder,
-} from "./shape.js";
+} from "./shapes/shape.js";
 export type {
   Link,
   LinkEndpoint,
@@ -46,8 +46,8 @@ export type {
   AnchorRef,
   NamedAnchor,
   StandardAnchor,
-} from "./edge.js";
-export { isAnchorRef, endpointElementId } from "./edge.js";
+} from "./edges/edge.js";
+export { isAnchorRef, endpointElementId } from "./edges/edge.js";
 export {
   getLinkEndpointWorld,
   getLinkPath,
@@ -59,7 +59,7 @@ export {
   getLinkWaypointMidpoints,
   getSelfLoopSpec,
   straightElbowFallback,
-} from "./edge-geometry.js";
+} from "./edges/edge-geometry.js";
 export {
   estimateLinkLabelBox,
   linkLabelAnchor,
@@ -67,18 +67,18 @@ export {
   nudgeHandleOffLabel,
   pointAlongPath,
   projectPointToPathT,
-} from "./edge-label.js";
+} from "./edges/edge-label.js";
 export {
   catmullRomBeziers,
   cubicWithEndTangents,
   flattenSegments,
   type BezierSegment,
-} from "./edge-curve.js";
-export type { Layer } from "./layer.js";
-export type { Viewport, GridStyle } from "./viewport.js";
-export type { Scene } from "./scene.js";
-export type { Patch } from "./patch.js";
-export type { OperationResult } from "./operations.js";
+} from "./edges/edge-curve.js";
+export type { Layer } from "./model/layer.js";
+export type { Viewport, GridStyle } from "./model/viewport.js";
+export type { Scene } from "./model/scene.js";
+export type { Patch } from "./model/patch.js";
+export type { OperationResult } from "./model/operations.js";
 
 // Element helpers + bounder registry
 export {
@@ -98,19 +98,19 @@ export {
   getBounder,
   getElementLocalBounds,
   getElementWorldBounds,
-} from "./shape.js";
-export { brushOutline } from "./brush-outline.js";
+} from "./shapes/shape.js";
+export { brushOutline } from "./shapes/brush-outline.js";
 export {
   registerRenderOverflow,
   getElementRenderBounds,
   type RenderOverflow,
-} from "./render-bounds.js";
+} from "./shapes/render-bounds.js";
 export {
   setTextMeasurer,
   getTextMeasurer,
   type TextMeasurer,
   type TextMeasureOpts,
-} from "./text-measure.js";
+} from "./text/text-measure.js";
 
 // Anchor helpers
 export {
@@ -125,20 +125,20 @@ export {
   geometryDefaultAnchorsLocal,
   findNearestAnchor,
   snapExcludedAnchors,
-} from "./anchors.js";
+} from "./geometry/anchors.js";
 
 // Snap engine + built-in contributors
-export type { SnapCandidate, SnapContext, SnapContributor } from "./snap.js";
-export { SnapEngine, gridSnapper, anchorSnapper, outlineSnapper } from "./snap.js";
+export type { SnapCandidate, SnapContext, SnapContributor } from "./geometry/snap.js";
+export { SnapEngine, gridSnapper, anchorSnapper, outlineSnapper } from "./geometry/snap.js";
 
 // Outline samplers + helpers
-export type { OutlineSampler } from "./outline.js";
+export type { OutlineSampler } from "./geometry/outline.js";
 export {
   registerOutlineSampler,
   getOutlineSampler,
   getOutlinePoint,
   findNearestOutlinePoint,
-} from "./outline.js";
+} from "./geometry/outline.js";
 
 // Viewport helpers
 export {
@@ -150,7 +150,7 @@ export {
   resize,
   resolveSnapSpacing,
   isSnapToGridEnabled,
-} from "./viewport.js";
+} from "./model/viewport.js";
 
 // Scene constructor + apply + ordering helpers
 export {
@@ -165,22 +165,22 @@ export {
   addBinaryFile,
   removeBinaryFile,
   getBinaryFile,
-} from "./scene.js";
+} from "./model/scene.js";
 export type { FractionalIndex } from "fractional-keys";
 
 // Z-order comparators.
-export { byOrderAsc, byOrderDesc } from "./order.js";
+export { byOrderAsc, byOrderDesc } from "./model/order.js";
 
 // Scene defaults: hydration / dehydration + per-key persistence scope
-export { hydrateScene, dehydrateScene, VIEWPORT_SCOPE } from "./hydrate.js";
-export type { SettingScope, SceneSettings, HydrateInput } from "./hydrate.js";
+export { hydrateScene, dehydrateScene, VIEWPORT_SCOPE } from "./model/hydrate.js";
+export type { SettingScope, SceneSettings, HydrateInput } from "./model/hydrate.js";
 
 // Binary file registry.
-export type { BinaryFile } from "./file.js";
-export { createBinaryFile } from "./file.js";
+export type { BinaryFile } from "./model/file.js";
+export { createBinaryFile } from "./model/file.js";
 
 // Patch utilities
-export { invert, batch, isNoop } from "./patch.js";
+export { invert, batch, isNoop } from "./model/patch.js";
 
 // Operations (return { scene, patch })
 export {
@@ -198,11 +198,11 @@ export {
   addAnnotation,
   removeAnnotation,
   updateAnnotation,
-} from "./operations.js";
+} from "./model/operations.js";
 
 // Annotations
-export type { Annotation, Comment } from "./annotation.js";
-export { getAnnotationWorldPosition } from "./annotation-geometry.js";
+export type { Annotation, Comment } from "./annotations/annotation.js";
+export { getAnnotationWorldPosition } from "./annotations/annotation-geometry.js";
 
 // Queries
 export {
@@ -226,10 +226,10 @@ export {
   getDescendantsOf,
   isElementLocked,
   isElementHidden,
-} from "./queries.js";
+} from "./query/queries.js";
 
 // Spatial index (the class itself, for advanced uses)
-export { SpatialGrid } from "./spatial.js";
+export { SpatialGrid } from "./query/spatial.js";
 
 // Accessibility helpers
 export type { AccessibleNameResolver } from "./a11y.js";
@@ -244,7 +244,7 @@ export type {
   WrapLayoutSpec,
   TreeLayoutSpec,
   AutoLayoutSpec,
-} from "./layout.js";
+} from "./layout/layout.js";
 export {
   gridLayout,
   stackLayout,
@@ -253,14 +253,14 @@ export {
   treeLayout,
   getAutoLayoutSpec,
   runAutoLayout,
-} from "./layout.js";
-export type { LayoutKindEntry } from "./layout-registry.js";
+} from "./layout/layout.js";
+export type { LayoutKindEntry } from "./layout/layout-registry.js";
 export {
   registerLayoutKind,
   unregisterLayoutKind,
   getLayoutKind,
   listLayoutKinds,
-} from "./layout-registry.js";
+} from "./layout/layout-registry.js";
 
 // Tunable thresholds.
 export {
@@ -284,8 +284,8 @@ export {
 } from "./constants.js";
 
 // Elbow router — A*-based obstacle-avoiding 90° routing.
-export { elbowRoute, type ElbowRouteOptions } from "./elbow-router.js";
-export { routeElbowLink, routeElbowPreview } from "./elbow-link.js";
+export { elbowRoute, type ElbowRouteOptions } from "./edges/elbow-router.js";
+export { routeElbowLink, routeElbowPreview } from "./edges/elbow-link.js";
 export {
   type Heading,
   HEADING_RIGHT,
@@ -299,12 +299,12 @@ export {
   headingForPoint,
   headingForPointFromElement,
   headingForEdgePoint,
-} from "./heading.js";
+} from "./edges/heading.js";
 
 // Scene-level shape diff (added / removed / modified) for diff
 // visualisation and merge.
-export type { SceneElementDiff } from "./diff.js";
-export { diffSceneElements } from "./diff.js";
+export type { SceneElementDiff } from "./model/diff.js";
+export { diffSceneElements } from "./model/diff.js";
 
 // Three-way merge (the Y.Doc subdoc runtime remains in @collab).
 export type {
@@ -312,11 +312,11 @@ export type {
   ThreeWayMergeConflict,
   ThreeWayMergeOptions,
   ThreeWayMergeReport,
-} from "./three-way-merge.js";
-export { mergeScenesThreeWay, applyConflictResolutions } from "./three-way-merge.js";
+} from "./model/three-way-merge.js";
+export { mergeScenesThreeWay, applyConflictResolutions } from "./model/three-way-merge.js";
 
 // Shape local↔world transform helpers.
-export { localToWorld, worldToLocal } from "./shape-transform.js";
+export { localToWorld, worldToLocal } from "./shapes/shape-transform.js";
 
 // Container / drop-zone protocol.
 export {
@@ -332,4 +332,4 @@ export {
   type ContainerSpec,
   type ContainerResolver,
   type ContainerZonesResolver,
-} from "./container.js";
+} from "./shapes/container.js";

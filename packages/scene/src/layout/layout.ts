@@ -1,13 +1,13 @@
 import { req, type ElementId, type Vec2 } from "@oh-just-another/types";
-import { getDropZoneWorld } from "./container.js";
-import type { Scene } from "./scene.js";
-import { getElementLocalBounds, type Element } from "./shape.js";
-import { getElement } from "./queries.js";
-import { updateElement, type OperationResult } from "./operations.js";
-import { batch, type Patch } from "./patch.js";
+import { getDropZoneWorld } from "../shapes/container.js";
+import type { Scene } from "../model/scene.js";
+import { getElementLocalBounds, type Element } from "../shapes/shape.js";
+import { getElement } from "../query/queries.js";
+import { updateElement, type OperationResult } from "../model/operations.js";
+import { batch, type Patch } from "../model/patch.js";
 import { getLayoutKind } from "./layout-registry.js";
-import { byOrderAsc } from "./order.js";
-import { DEFAULT_LAYOUT_GAP, DEFAULT_TREE_NODE_SEP, DEFAULT_TREE_RANK_SEP } from "./constants.js";
+import { byOrderAsc } from "../model/order.js";
+import { DEFAULT_LAYOUT_GAP, DEFAULT_TREE_NODE_SEP, DEFAULT_TREE_RANK_SEP } from "../constants.js";
 
 /**
  * Visual width / height of a shape in its OWN frame (no `position`,

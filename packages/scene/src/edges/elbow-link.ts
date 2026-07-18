@@ -6,7 +6,7 @@ import {
   ELBOW_OBSTACLE_MARGIN,
   ELBOW_TERMINAL_BUFFER,
   ELBOW_WRAP_HYSTERESIS,
-} from "./constants.js";
+} from "../constants.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { getLinkEndpointWorld } from "./edge-geometry.js";
 import { elbowRoute } from "./elbow-router.js";
@@ -21,9 +21,9 @@ import {
   headingIsHorizontal,
   type Heading,
 } from "./heading.js";
-import { getElement } from "./queries.js";
-import type { Scene } from "./scene.js";
-import { getElementWorldBounds } from "./shape.js";
+import { getElement } from "../query/queries.js";
+import type { Scene } from "../model/scene.js";
+import { getElementWorldBounds } from "../shapes/shape.js";
 
 /**
  * Compute the orthogonal (elbow) route for a link: the corner points

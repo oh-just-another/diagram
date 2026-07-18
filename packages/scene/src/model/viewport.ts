@@ -1,6 +1,6 @@
 import type { Transform, Vec2 } from "@oh-just-another/types";
 import { matrix } from "@oh-just-another/math";
-import { DEFAULT_GRID_SPACING } from "./constants.js";
+import { DEFAULT_GRID_SPACING } from "../constants.js";
 
 /**
  * How the background grid is painted.

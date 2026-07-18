@@ -16,7 +16,7 @@ import {
   stackLayout,
   treeLayout,
   wrapLayout,
-} from "../src/layout.js";
+} from "../src/layout/layout.js";
 
 const rect = (id: string, parentId: string | null, w = 40, h = 30): Element => ({
   id: elementId(id),

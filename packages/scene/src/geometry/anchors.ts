@@ -1,9 +1,9 @@
 import type { Vec2 } from "@oh-just-another/types";
 import { vec2 } from "@oh-just-another/math";
-import { isContainer } from "./container.js";
-import type { AnchorRef, NamedAnchor, StandardAnchor } from "./edge.js";
-import type { ElementBase, PolygonElement } from "./shape.js";
-import { getElementLocalBounds, isPolygon } from "./shape.js";
+import { isContainer } from "../shapes/container.js";
+import type { AnchorRef, NamedAnchor, StandardAnchor } from "../edges/edge.js";
+import type { ElementBase, PolygonElement } from "../shapes/shape.js";
+import { getElementLocalBounds, isPolygon } from "../shapes/shape.js";
 
 const EMPTY_ANCHOR_EXCLUDE: ReadonlySet<string> = new Set<string>();
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SCENE, emptyScene } from "../src/scene";
-import { dehydrateScene, hydrateScene, VIEWPORT_SCOPE } from "../src/hydrate";
-import { DEFAULT_VIEWPORT, type Viewport } from "../src/viewport";
+import { DEFAULT_SCENE, emptyScene } from "../src/model/scene";
+import { dehydrateScene, hydrateScene, VIEWPORT_SCOPE } from "../src/model/hydrate";
+import { DEFAULT_VIEWPORT, type Viewport } from "../src/model/viewport";
 
 describe("hydrateScene", () => {
   it("returns the default settings with no input", () => {

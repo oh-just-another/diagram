@@ -1,11 +1,11 @@
 import type { Bounds, FileId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import type { FractionalIndex } from "fractional-keys";
 import { bounds as B } from "@oh-just-another/math";
-import type { AnchorRef } from "./edge.js";
-import type { Style, TextStyle } from "./style.js";
-import type { TextRun } from "./text-runs.js";
-import { TEXT_APPROX_CHAR_WIDTH_FACTOR, TEXT_LINE_HEIGHT_FACTOR } from "./constants.js";
-import { getTextMeasurer } from "./text-measure.js";
+import type { AnchorRef } from "../edges/edge.js";
+import type { Style, TextStyle } from "../text/style.js";
+import type { TextRun } from "../text/text-runs.js";
+import { TEXT_APPROX_CHAR_WIDTH_FACTOR, TEXT_LINE_HEIGHT_FACTOR } from "../constants.js";
+import { getTextMeasurer } from "../text/text-measure.js";
 
 /**
  * Fields shared by every shape variant. `order` is a fractional-index string

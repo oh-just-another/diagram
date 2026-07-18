@@ -7,12 +7,12 @@ import {
   type ElementId,
 } from "@oh-just-another/types";
 import { generateKeyBetween, generateNKeysBetween, type FractionalIndex } from "fractional-keys";
-import type { Annotation } from "./annotation.js";
-import type { Link } from "./edge.js";
+import type { Annotation } from "../annotations/annotation.js";
+import type { Link } from "../edges/edge.js";
 import type { BinaryFile } from "./file.js";
 import { type Layer } from "./layer.js";
 import type { Patch } from "./patch.js";
-import type { Element } from "./shape.js";
+import type { Element } from "../shapes/shape.js";
 import { DEFAULT_VIEWPORT, type Viewport } from "./viewport.js";
 
 /**

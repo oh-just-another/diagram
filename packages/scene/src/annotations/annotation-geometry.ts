@@ -1,7 +1,7 @@
 import type { Vec2 } from "@oh-just-another/types";
 import type { Annotation } from "./annotation.js";
-import type { Scene } from "./scene.js";
-import { getElement } from "./queries.js";
+import type { Scene } from "../model/scene.js";
+import { getElement } from "../query/queries.js";
 
 /**
  * World-space position where the pin should render. When the annotation

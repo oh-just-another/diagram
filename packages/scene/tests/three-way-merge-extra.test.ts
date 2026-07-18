@@ -8,7 +8,7 @@ import {
   type Scene,
   type Element,
 } from "../src/index.js";
-import { applyConflictResolutions, mergeScenesThreeWay } from "../src/three-way-merge.js";
+import { applyConflictResolutions, mergeScenesThreeWay } from "../src/model/three-way-merge.js";
 
 const rect = (id: string, x: number, y: number): Element => ({
   id: elementId(id),

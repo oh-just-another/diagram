@@ -1,5 +1,5 @@
 import type { TextStyle } from "./style.js";
-import type { TextElement } from "./shape.js";
+import type { TextElement } from "../shapes/shape.js";
 
 /**
  * A styled segment of a text block. `text` is the raw substring; `style`

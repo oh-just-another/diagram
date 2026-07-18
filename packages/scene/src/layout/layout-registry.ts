@@ -1,6 +1,6 @@
 import type { ElementId, Vec2 } from "@oh-just-another/types";
-import type { Patch } from "./patch.js";
-import type { Scene } from "./scene.js";
+import type { Patch } from "../model/patch.js";
+import type { Scene } from "../model/scene.js";
 
 /**
  * Pluggable layout registry.

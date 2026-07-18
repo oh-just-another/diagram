@@ -1,10 +1,10 @@
 import type { Vec2 } from "@oh-just-another/types";
-import type { AnchorRef } from "./edge.js";
+import type { AnchorRef } from "../edges/edge.js";
 import { findNearestOutlinePoint } from "./outline.js";
-import type { Scene } from "./scene.js";
-import type { ElementBase } from "./shape.js";
+import type { Scene } from "../model/scene.js";
+import type { ElementBase } from "../shapes/shape.js";
 import { findNearestAnchor, snapExcludedAnchors } from "./anchors.js";
-import { DEFAULT_GRID_SPACING, SNAP_PROBE_CULL_RADIUS } from "./constants.js";
+import { DEFAULT_GRID_SPACING, SNAP_PROBE_CULL_RADIUS } from "../constants.js";
 
 /**
  * One snap target a contributor can offer for a probe point. `snapped` is

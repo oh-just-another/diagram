@@ -1,6 +1,6 @@
 import { req, type Bounds, type ElementId, type Vec2 } from "@oh-just-another/types";
 import { bezier, hitTest, intersect } from "@oh-just-another/math";
-import { getAnchorOutwardNormal, getAnchorWorld } from "./anchors.js";
+import { getAnchorOutwardNormal, getAnchorWorld } from "../geometry/anchors.js";
 import {
   ELBOW_STUB_DISTANCE_DIVISOR,
   ELBOW_STUB_MAX,
@@ -9,7 +9,7 @@ import {
   SELF_LOOP_CURVE_ARM_FACTOR,
   SELF_LOOP_SIZE,
   SELF_LOOP_SPREAD,
-} from "./constants.js";
+} from "../constants.js";
 import {
   catmullRomBeziers,
   cubicWithEndTangents,
@@ -19,10 +19,10 @@ import {
 import { linkLabelBoundsForPath, nudgeHandleOffLabel } from "./edge-label.js";
 import type { Link, LinkEndpoint } from "./edge.js";
 import { headingForEdgePoint } from "./heading.js";
-import { getOutlinePoint, getOutlineSampler } from "./outline.js";
-import { getElementWorldBounds, type ElementBase } from "./shape.js";
-import type { Scene } from "./scene.js";
-import { getElement } from "./queries.js";
+import { getOutlinePoint, getOutlineSampler } from "../geometry/outline.js";
+import { getElementWorldBounds, type ElementBase } from "../shapes/shape.js";
+import type { Scene } from "../model/scene.js";
+import { getElement } from "../query/queries.js";
 
 /**
  * --- Self-loop geometry ---
