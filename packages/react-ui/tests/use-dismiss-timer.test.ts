@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useDismissTimer } from "../src/use-dismiss-timer";
+import { useDismissTimer } from "../src/utils/use-dismiss-timer";
 
 describe("useDismissTimer", () => {
   beforeEach(() => {

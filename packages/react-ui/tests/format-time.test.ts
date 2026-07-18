@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatTime } from "../src/format-time";
+import { formatTime } from "../src/utils/format-time";
 
 const ISO = "2026-06-16T13:45:30.000Z";
 
