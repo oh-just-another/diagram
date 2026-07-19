@@ -1,0 +1,382 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import {
+  createLayeredSurfaceWithFallback,
+  installBuiltinRenderers,
+  type LayeredSurface,
+  type RendererBackend,
+} from "@oh-just-another/renderer-canvas";
+import { Editor, type EditorOptions, type Mode } from "@oh-just-another/state";
+import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
+import type { Scene } from "@oh-just-another/scene";
+import { DiagramEditorBridge } from "../core/context.js";
+import { ContextMenuControllerProvider } from "../menus/context-menu-controller.js";
+
+/**
+ * Recommended composition: `<DiagramRoot>` owns the editor and provides it
+ * to *all* descendants. The actual canvas DOM is rendered by a child
+ * `<DiagramSurface>` somewhere inside the tree — typically next to the
+ * Palette / PropertyPanel, so all three live as flex siblings.
+ *
+ * ```tsx
+ * <DiagramRoot initialScene={...} initialTool="select">
+ *   <Toolbar />
+ *   <Palette />
+ *   <DiagramSurface style={{ flex: 1, background: "#fff" }} />
+ *   <PropertyPanel />
+ * </DiagramRoot>
+ * ```
+ */
+
+type RegisterSurface = (host: HTMLElement | null) => void;
+const RegisterSurfaceContext = createContext<RegisterSurface | null>(null);
+
+export interface DiagramRootProps {
+  readonly initialScene: Scene;
+  readonly initialTool?: Mode;
+  readonly children: ReactNode;
+  /**
+   * Start (and keep) the editor in read-only / view mode. Pointer edits
+   * are gated and creation chrome disables itself; pan / zoom / select
+   * stay live. Changing this prop after mount flips the live editor.
+   */
+  readonly readOnly?: boolean;
+  /** Called once the editor is ready (after a `<DiagramSurface>` mounts). */
+  readonly onReady?: (editor: Editor) => void;
+  /** Skip the implicit `installBuiltinRenderers()` call. */
+  readonly skipInstallRenderers?: boolean;
+  /**
+   * Renderer backend. `"canvas2d"` (default) is the always-safe path;
+   * `"webgl2"` and `"offscreen"` are opt-in and require host support
+   * (the demo wires a switcher to try each at runtime).
+   *
+   * Changing this prop after mount **recreates** the editor and
+   * surface — the host should keep the value stable except when the
+   * user explicitly switches backend.
+   */
+  readonly renderer?: RendererBackend;
+  /**
+   * Worker factory for the `offscreen` backend. Hosts must provide
+   * a function that returns a fresh `Worker` instance pointing at
+   * `@oh-just-another/renderer-canvas`'s `render-worker.ts`. The factory
+   * is bundler-specific (Vite vs webpack vs Rollup all spell the
+   * URL differently), so the kernel never ships a default.
+   */
+  readonly workerFactory?: () => Worker;
+  /**
+   * Pre-loaded WASM text shaper (or any `TextShaper` impl).
+   * Forwarded straight into `EditorOptions.textShaper` so the
+   * built-in `drawText` renderer uses it for wrap measurements.
+   * Pass `WasmTextShaper.loadBundled()` (await first!) from
+   * `@oh-just-another/text-wasm`.
+   */
+  readonly textShaper?: TextShaper;
+  /**
+   * Pre-loaded WASM rasterizer. Forwarded into the editor for
+   * hosts that want path-heavy code to go through WASM bezier
+   * flatten / stroke-to-fill.
+   */
+  readonly rasterizer?: Rasterizer;
+}
+
+export const DiagramRoot = ({
+  initialScene,
+  initialTool,
+  children,
+  onReady,
+  skipInstallRenderers,
+  renderer = "canvas2d",
+  workerFactory,
+  textShaper,
+  rasterizer,
+  readOnly = false,
+}: DiagramRootProps) => {
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const editorRef = useRef<Editor | null>(null);
+  const surfaceRef = useRef<LayeredSurface | null>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
+  const hostRef = useRef<HTMLElement | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  // Set once an offscreen surface has been degraded to canvas2d after an
+  // async worker failure — keeps the rebuild from looping and pins us on the
+  // safe backend until the host explicitly changes `renderer`.
+  const fellBackRef = useRef(false);
+  const onWorkerErrorRef = useRef<(error: unknown) => void>(() => undefined);
+  // The factory ref keeps `registerSurface`'s deps stable while
+  // still letting renderer/backend reactivity below see the latest
+  // values when it re-mounts the surface.
+  const rendererRef = useRef<RendererBackend>(renderer);
+  const workerFactoryRef = useRef<(() => Worker) | undefined>(workerFactory);
+  const textShaperRef = useRef<TextShaper | undefined>(textShaper);
+  const rasterizerRef = useRef<Rasterizer | undefined>(rasterizer);
+  const readOnlyRef = useRef<boolean>(readOnly);
+  rendererRef.current = renderer;
+  workerFactoryRef.current = workerFactory;
+  textShaperRef.current = textShaper;
+  rasterizerRef.current = rasterizer;
+  readOnlyRef.current = readOnly;
+
+  const mountSurface = useCallback((host: HTMLElement) => {
+    if (!skipInstallRenderers) installBuiltinRenderers();
+
+    const { width, height } = host.getBoundingClientRect();
+    const { surface, effectiveBackend } = createLayeredSurfaceWithFallback(
+      host,
+      width,
+      height,
+      {
+        backend: fellBackRef.current ? "canvas2d" : rendererRef.current,
+        ...(workerFactoryRef.current ? { workerFactory: workerFactoryRef.current } : {}),
+        onWorkerError: (error) => {
+          onWorkerErrorRef.current(error);
+        },
+      },
+      (requested, err) => {
+        // Backend unavailable (no WebGL2 / OffscreenCanvas / context
+        // limit hit). The fallback already returned a canvas2d
+        // surface; log so dev tools surface the reason. Hosts that
+        // want a toast can read `editor.host.dataset.effectiveBackend`.
+        console.warn(
+          `[DiagramRoot] ${requested} renderer unavailable, falling back to canvas2d:`,
+          err,
+        );
+      },
+    );
+    host.dataset.effectiveBackend = effectiveBackend;
+    const opts: EditorOptions = {
+      host,
+      mainTarget: surface.get("main"),
+      overlayTarget: surface.get("overlay"),
+      backgroundTarget: surface.get("background"),
+      // Flush deferred backends (WebGL2 / OffscreenCanvas) right after each
+      // paint, on the same rAF tick. Must NOT be a notify-microtask: notify
+      // fires before the rAF render, which would leave the surface one frame
+      // behind.
+      onAfterRender: () => surfaceRef.current?.present(),
+      initialScene,
+      ...(initialTool !== undefined ? { initialTool } : {}),
+      ...(textShaperRef.current ? { textShaper: textShaperRef.current } : {}),
+      ...(rasterizerRef.current ? { rasterizer: rasterizerRef.current } : {}),
+    };
+    const e = new Editor(opts);
+    e.setViewportSize(width, height);
+    e.setReadOnly(readOnlyRef.current);
+
+    surfaceRef.current = surface;
+    editorRef.current = e;
+    setEditor(e);
+    onReady?.(e);
+
+    // Deferred backends are flushed via the editor's `onAfterRender` hook
+    // (set in EditorOptions above) so present() runs right after the paint
+    // on the same rAF tick. Present once now for the initial frame.
+    surface.present();
+
+    const ro = new ResizeObserver(() => {
+      const next = host.getBoundingClientRect();
+      surface.resize(next.width, next.height);
+      e.setViewportSize(next.width, next.height);
+      // Repaint synchronously, inside the ResizeObserver callback (which runs
+      // after layout but before the browser paints). `surface.resize` clears
+      // the canvas immediately; a deferred (rAF-scheduled) render would let the
+      // cleared frame paint first — one blank frame per resize event, i.e.
+      // visible flicker. forceRender draws the new size before this paint.
+      e.forceRender();
+    });
+    ro.observe(host);
+    observerRef.current = ro;
+  }, []);
+
+  const teardownSurface = useCallback(() => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = null;
+    editorRef.current?.dispose();
+    editorRef.current = null;
+    surfaceRef.current?.dispose();
+    surfaceRef.current = null;
+  }, []);
+
+  // If an offscreen worker dies asynchronously (e.g. a non-Vite bundle that
+  // never emitted the worker chunk), rebuild the surface on canvas2d instead
+  // of leaving a blank canvas. Reassigned each render so it closes over the
+  // current (stable) mount/teardown callbacks; guarded against re-entry.
+  onWorkerErrorRef.current = (error) => {
+    if (fellBackRef.current) return;
+    fellBackRef.current = true;
+    console.warn(
+      "[DiagramRoot] offscreen render worker failed to load; falling back to canvas2d:",
+      error,
+    );
+    const host = hostRef.current;
+    if (!host) return;
+    teardownSurface();
+    mountSurface(host);
+  };
+
+  const registerSurface = useCallback<RegisterSurface>(
+    (host) => {
+      teardownSurface();
+      hostRef.current = host;
+      if (!host) {
+        setEditor(null);
+        return;
+      }
+      mountSurface(host);
+    },
+    [mountSurface, teardownSurface],
+  );
+
+  // Re-mount the surface only when the host swaps backends at runtime.
+  // The first mount is driven by `registerSurface` (the host ref callback,
+  // which runs before this passive effect), so the effect must SKIP its
+  // initial run — otherwise it tears down the just-mounted surface and
+  // builds a second one, double-firing `onReady` with a stale editor.
+  // Subsequent `renderer` changes need an explicit tear-down + remount
+  // because `LayeredSurface` ownership is per-backend.
+  const mountedRendererRef = useRef<RendererBackend | null>(null);
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    if (mountedRendererRef.current === null) {
+      // registerSurface already mounted with this backend — record it, no remount.
+      mountedRendererRef.current = renderer;
+      return;
+    }
+    if (mountedRendererRef.current === renderer) return;
+    mountedRendererRef.current = renderer;
+    // Explicit backend switch — give the new one a fresh chance even if a
+    // previous offscreen attempt had fallen back to canvas2d.
+    fellBackRef.current = false;
+    teardownSurface();
+    mountSurface(host);
+  }, [renderer, mountSurface, teardownSurface]);
+
+  // Flip the live editor when the `readOnly` prop changes after mount.
+  // The initial value is applied in `mountSurface`; this only handles
+  // runtime toggles from the host.
+  useEffect(() => {
+    editor?.setReadOnly(readOnly);
+  }, [editor, readOnly]);
+
+  // Make sure the editor is disposed if `<DiagramRoot>` unmounts even if
+  // no surface registered an unmount first (defensive).
+  useLayoutEffect(() => {
+    return () => {
+      teardownSurface();
+      hostRef.current = null;
+    };
+  }, [teardownSurface]);
+
+  return (
+    <DiagramEditorBridge.Provider value={editor}>
+      <RegisterSurfaceContext.Provider value={registerSurface}>
+        <ContextMenuControllerProvider>
+          {children}
+          <LiveRegion editor={editor} />
+        </ContextMenuControllerProvider>
+      </RegisterSurfaceContext.Provider>
+    </DiagramEditorBridge.Provider>
+  );
+};
+
+/**
+ * Hidden `aria-live="polite"` region that pipes `editor.onAnnounce`
+ * messages to assistive tech. Rendered automatically by every
+ * `<DiagramRoot>`; visually hidden but readable by screen readers.
+ */
+const LiveRegion = ({ editor }: { readonly editor: Editor | null }) => {
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    if (!editor) return undefined;
+    return editor.onAnnounce(setMessage);
+  }, [editor]);
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      style={{
+        position: "absolute",
+        width: 1,
+        height: 1,
+        padding: 0,
+        margin: -1,
+        overflow: "hidden",
+        clip: "rect(0,0,0,0)",
+        whiteSpace: "nowrap",
+        border: 0,
+      }}
+    >
+      {message}
+    </div>
+  );
+};
+
+export interface DiagramSurfaceProps {
+  readonly style?: CSSProperties;
+  readonly className?: string;
+  /**
+   * Accessible name for the canvas region — read out by screen readers
+   * and shown as the visible focus-ring tooltip. Defaults to
+   * `"Diagram canvas"`. Override per-app to give context (e.g. the
+   * document title).
+   */
+  readonly ariaLabel?: string;
+}
+
+/**
+ * Mounts the canvas host DOM where it is placed in the tree. Must live
+ * inside a `<DiagramRoot>`. Renders a plain `<div>` and registers it with
+ * the root; the root then creates the editor + `LayeredCanvas` against it.
+ *
+ * The surface is `tabIndex=0` + `role="application"` so keyboard users
+ * can land on it via Tab and screen readers announce it as an interactive
+ * canvas (the contents are non-DOM). Hosts that want a different
+ * accessible name pass `ariaLabel`.
+ */
+export const DiagramSurface = ({ style, className, ariaLabel }: DiagramSurfaceProps) => {
+  const register = useContext(RegisterSurfaceContext);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!register) return undefined;
+    register(ref.current);
+    return () => {
+      register(null);
+    };
+  }, [register]);
+
+  if (!register) {
+    throw new Error("@oh-just-another/react-ui: <DiagramSurface> rendered outside <DiagramRoot>.");
+  }
+
+  return (
+    <div
+      ref={ref}
+      className={className ? `du-canvas-surface ${className}` : "du-canvas-surface"}
+      role="application"
+      tabIndex={0}
+      aria-label={ariaLabel ?? "Diagram canvas"}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        touchAction: "none",
+        userSelect: "none",
+        ...style,
+      }}
+    />
+  );
+};

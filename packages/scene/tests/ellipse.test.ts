@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ellipseOutlinePoint } from "../src/ellipse";
+import { ellipseOutlinePoint } from "../src/shapes/ellipse";
 
 describe("ellipseOutlinePoint", () => {
   describe("clock positions on a circle (cx=10, cy=20, r=5)", () => {

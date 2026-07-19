@@ -1,7 +1,20 @@
 import type * as Y from "yjs";
 import type { Editor } from "@oh-just-another/state";
-import type { Scene } from "@oh-just-another/scene";
+import { VIEWPORT_SCOPE, type Scene, type Viewport } from "@oh-just-another/scene";
 import { SceneDoc } from "./scene-doc.js";
+
+/**
+ * Overlay the LOCAL camera onto a remote snapshot: only export-scoped
+ * viewport settings (grid, snap) are shared between peers; pan / zoom /
+ * rotation / size stay this user's own (`VIEWPORT_SCOPE`).
+ */
+const withLocalCamera = (remote: Scene, local: Viewport): Scene => {
+  const viewport: Record<string, unknown> = { ...remote.viewport };
+  for (const [key, scope] of Object.entries(VIEWPORT_SCOPE)) {
+    if (scope !== "export") viewport[key] = local[key as keyof Viewport];
+  }
+  return { ...remote, viewport: viewport as unknown as Viewport };
+};
 
 export interface BindEditorOptions {
   /**
@@ -44,10 +57,19 @@ export const bindEditor = (
 
   let lastSyncedScene: Scene = editor.scene;
   let disposed = false;
+  // Guards the local subscriber while a REMOTE snapshot is being loaded:
+  // `editor.subscribe` fires synchronously inside `loadScene`, before
+  // `lastSyncedScene` can be advanced, so without the guard the binding
+  // would diff the stale scene against the freshly loaded one and re-write
+  // every remote change into the doc under ITS OWN clientID. Such echoes
+  // win Y.Map conflicts against the author's next concurrent write when
+  // this client's id is higher — dragging on the other peer then keeps
+  // "snapping back".
+  let applyingRemote = false;
 
   // Local change → CRDT.
   const unsubscribeLocal = editor.subscribe(() => {
-    if (disposed) return;
+    if (disposed || applyingRemote) return;
     if (editor.scene === lastSyncedScene) return;
     sceneDoc.applyDelta(lastSyncedScene, editor.scene, origin);
     lastSyncedScene = editor.scene;
@@ -56,8 +78,13 @@ export const bindEditor = (
   // CRDT change → local. Filter out self-origin updates by transaction tag.
   const onUpdate = (_update: Uint8Array, originOfUpdate: unknown): void => {
     if (disposed || originOfUpdate === origin) return;
-    const snapshot = sceneDoc.snapshot();
-    editor.loadScene(snapshot, { preserveHistory: true });
+    const snapshot = withLocalCamera(sceneDoc.snapshot(), editor.scene.viewport);
+    applyingRemote = true;
+    try {
+      editor.loadScene(snapshot, { preserveHistory: true });
+    } finally {
+      applyingRemote = false;
+    }
     lastSyncedScene = editor.scene;
   };
   sceneDoc.doc.on("update", onUpdate);
@@ -74,8 +101,13 @@ export const bindEditor = (
 
   const adoptFromCrdt = (): void => {
     if (disposed) return;
-    const snapshot = sceneDoc.snapshot();
-    editor.loadScene(snapshot);
+    const snapshot = withLocalCamera(sceneDoc.snapshot(), editor.scene.viewport);
+    applyingRemote = true;
+    try {
+      editor.loadScene(snapshot);
+    } finally {
+      applyingRemote = false;
+    }
     lastSyncedScene = editor.scene;
   };
 

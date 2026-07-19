@@ -3,8 +3,8 @@ import { LruCache, installBuiltinRenderers, renderScene } from "@oh-just-another
 import type { Scene } from "@oh-just-another/scene";
 import type { WorkerRenderMessage, WorkerRenderResponse } from "@oh-just-another/renderer-core";
 import { registerBundledFonts, type FontScope } from "@oh-just-another/fonts";
-import { Canvas2DTarget } from "./canvas-target.js";
-import { replayPackedFrame, type PackedReplayMessage } from "./replay-codec.js";
+import { Canvas2DTarget } from "./canvas2d/canvas-target.js";
+import { replayPackedFrame, type PackedReplayMessage } from "./offscreen/replay-codec.js";
 import { OFFSCREEN_IMAGE_CACHE_CAP } from "./constants.js";
 
 /**

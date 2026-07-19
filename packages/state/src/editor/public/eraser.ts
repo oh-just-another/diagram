@@ -1,6 +1,6 @@
 import type { Element, Scene, Patch } from "@oh-just-another/scene";
 import type { ElementId, Vec2 } from "@oh-just-another/types";
-import * as Selection from "../../selection.js";
+import * as Selection from "../../selection/selection.js";
 import { computeDeleteSelection } from "./selection-ops.js";
 import { ERASER_SAMPLE_STEP } from "../../constants.js";
 import type { Interval } from "./stroke-eraser-coverage.js";

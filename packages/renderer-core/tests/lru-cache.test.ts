@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { LruCache } from "../src/lru-cache";
+import { LruCache } from "../src/caches/lru-cache";
 
 describe("LruCache", () => {
   it("set/get/has/size on a fresh cache", () => {

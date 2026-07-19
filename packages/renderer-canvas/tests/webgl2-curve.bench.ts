@@ -1,5 +1,5 @@
 import { bench, describe } from "vitest";
-import { triangulateCached, type CurveSegment } from "../src/webgl2-curve";
+import { triangulateCached, type CurveSegment } from "../src/webgl2/webgl2-curve";
 
 /**
  * Micro-bench for the CPU side of the WebGL2 Loop-Blinn curve pipeline:

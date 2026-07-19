@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { interactionMachine } from "../src/machine.js";
+import { interactionMachine } from "../src/interaction/machine.js";
 import { createActor } from "xstate";
 
 describe("xstate re-entrant send", () => {

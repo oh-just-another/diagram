@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getCornerRadius } from "../src/style";
+import { getCornerRadius } from "../src/text/style";
 import { ADAPTIVE_CORNER_RADIUS, PROPORTIONAL_CORNER_RADIUS } from "../src/constants";
 
 describe("getCornerRadius", () => {

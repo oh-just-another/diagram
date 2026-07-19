@@ -7,32 +7,32 @@ export type {
   FillRule,
   FontStyleOptions,
   DrawPoint,
-} from "./render-target.js";
-export type { ElementRenderer, ElementRenderContext } from "./shape-renderer.js";
-export type { LayerName } from "./layers.js";
-export type { RenderSceneOptions, LodOptions } from "./scene-renderer.js";
-export type { RenderLinksOptions } from "./edge-renderer.js";
-export type { RenderGridOptions, GridLevel, GridRung } from "./grid-renderer.js";
+} from "./targets/render-target.js";
+export type { ElementRenderer, ElementRenderContext } from "./rendering/shape-renderer.js";
+export type { LayerName } from "./targets/layers.js";
+export type { RenderSceneOptions, LodOptions } from "./rendering/scene-renderer.js";
+export type { RenderLinksOptions } from "./rendering/edge-renderer.js";
+export type { RenderGridOptions, GridLevel, GridRung } from "./rendering/grid-renderer.js";
 
 export {
   registerElementRenderer,
   getElementRenderer,
   hasElementRenderer,
-} from "./shape-renderer.js";
-export { LAYER_ORDER } from "./layers.js";
-export { renderScene } from "./scene-renderer.js";
-export { renderLinks, strokeRoundedPolyline } from "./edge-renderer.js";
-export { renderGrid, computeGridRungs } from "./grid-renderer.js";
+} from "./rendering/shape-renderer.js";
+export { LAYER_ORDER } from "./targets/layers.js";
+export { renderScene } from "./rendering/scene-renderer.js";
+export { renderLinks, strokeRoundedPolyline } from "./rendering/edge-renderer.js";
+export { renderGrid, computeGridRungs } from "./rendering/grid-renderer.js";
 
 // Backend-agnostic shape renderers for the built-in `BuiltinElement` types.
 // `installBuiltinRenderers()` registers them via `registerElementRenderer` and
 // is safe to call multiple times.
-export { installBuiltinRenderers } from "./built-in-renderers.js";
-export { fetchModuleBytes, allocBytes, instantiateWasm } from "./wasm-bytes.js";
-export type { WasmArena } from "./wasm-bytes.js";
-export { LruCache } from "./lru-cache.js";
-export type { WrapOptions, WrappedLine } from "./text-layout.js";
-export { wrapText } from "./text-layout.js";
+export { installBuiltinRenderers } from "./rendering/built-in-renderers.js";
+export { fetchModuleBytes, allocBytes, instantiateWasm } from "./raster/wasm-bytes.js";
+export type { WasmArena } from "./raster/wasm-bytes.js";
+export { LruCache } from "./caches/lru-cache.js";
+export type { WrapOptions, WrappedLine } from "./text/text-layout.js";
+export { wrapText } from "./text/text-layout.js";
 export type {
   LaidOutLine,
   EditableTextLayout,
@@ -40,25 +40,25 @@ export type {
   LayoutTextOptions,
   CaretGeometry,
   SelectionRect,
-} from "./text-editing.js";
+} from "./text/text-editing.js";
 export {
   layoutText,
   caretGeometry,
   pointToCaretIndex,
   selectionRects,
   DEFAULT_LINE_HEIGHT_FACTOR,
-} from "./text-editing.js";
+} from "./text/text-editing.js";
 
-export { ElementCache, sharedBoundsCache, cachedWorldBounds } from "./shape-cache.js";
-export type { ElementBitmapCache } from "./shape-cache-bitmap.js";
-export { InMemoryElementBitmapCache, zoomBucket } from "./shape-cache-bitmap.js";
-export type { LinkBitmapCache } from "./edge-cache-bitmap.js";
-export { InMemoryLinkBitmapCache } from "./edge-cache-bitmap.js";
-export type { LayerCompositeCache } from "./layer-cache-composite.js";
-export { InMemoryLayerCompositeCache } from "./layer-cache-composite.js";
+export { ElementCache, sharedBoundsCache, cachedWorldBounds } from "./caches/shape-cache.js";
+export type { ElementBitmapCache } from "./caches/shape-cache-bitmap.js";
+export { InMemoryElementBitmapCache, zoomBucket } from "./caches/shape-cache-bitmap.js";
+export type { LinkBitmapCache } from "./caches/edge-cache-bitmap.js";
+export { InMemoryLinkBitmapCache } from "./caches/edge-cache-bitmap.js";
+export type { LayerCompositeCache } from "./caches/layer-cache-composite.js";
+export { InMemoryLayerCompositeCache } from "./caches/layer-cache-composite.js";
 
 // Animated content adapter registry.
-export type { AnimatedSourceAdapter, AnimationClock } from "./animation-adapter.js";
+export type { AnimatedSourceAdapter, AnimationClock } from "./raster/animation-adapter.js";
 export {
   registerAnimationAdapter,
   unregisterAnimationAdapter,
@@ -69,24 +69,28 @@ export {
   resetAnimationClock,
   onAnimationContentReady,
   notifyAnimationContentReady,
-} from "./animation-adapter.js";
+} from "./raster/animation-adapter.js";
 
 // Pluggable text-shaper and rasterizer interfaces.
-export type { TextShaper, ShaperFont, ShapedGlyph } from "./text-shaper.js";
-export { setActiveTextShaper, getActiveTextShaper } from "./text-shaper.js";
-export type { Rasterizer } from "./rasterizer.js";
-export { setActiveRasterizer, getActiveRasterizer } from "./rasterizer.js";
-export { jsRasterizer } from "./js-rasterizer.js";
+export type { TextShaper, ShaperFont, ShapedGlyph } from "./text/text-shaper.js";
+export { setActiveTextShaper, getActiveTextShaper } from "./text/text-shaper.js";
+export type { Rasterizer } from "./raster/rasterizer.js";
+export { setActiveRasterizer, getActiveRasterizer } from "./raster/rasterizer.js";
+export { jsRasterizer } from "./raster/js-rasterizer.js";
 export type { WorkerRenderMessage, WorkerRenderResponse } from "./worker-render.js";
 export { WORKER_AUTO_THRESHOLD } from "./worker-render.js";
-export type { TileKey, TileCache, TileCacheEntry } from "./tile-renderer.js";
+export type { TileKey, TileCache, TileCacheEntry } from "./caches/tile-renderer.js";
 export {
   TILE_SIZE,
   MAX_TILE_CACHE_BYTES,
   LOD_THRESHOLD,
   InMemoryTileCache,
-} from "./tile-renderer.js";
-export { LinkBoundsCache, computeLinkWorldBounds, sharedLinkBoundsCache } from "./edge-cache.js";
+} from "./caches/tile-renderer.js";
+export {
+  LinkBoundsCache,
+  computeLinkWorldBounds,
+  sharedLinkBoundsCache,
+} from "./caches/edge-cache.js";
 
 export {
   DEFAULT_LOD,

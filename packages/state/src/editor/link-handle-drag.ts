@@ -17,9 +17,9 @@ import {
   LINK_LABEL_DRAG_SNAP_PX,
   WAYPOINT_COLLAPSE_RADIUS,
 } from "../constants.js";
-import { req } from "../util.js";
+import { req } from "../helpers/util.js";
 import { computeLinkEndpointUpdate } from "./applies/edge.js";
-import type { InteractionEmit, PressTarget } from "../machine.js";
+import type { InteractionEmit, PressTarget } from "../interaction/machine.js";
 
 /**
  * Editor capabilities the link handle drags need. Keeps the controller off

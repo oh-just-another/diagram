@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { taperedTrailOutline } from "../src/overlay.js";
+import { taperedTrailOutline } from "../src/render/overlay.js";
 
 /**
  * The trail (laser / eraser) is drawn as ONE filled ribbon whose half-width

@@ -1,4 +1,4 @@
-import { isMac } from "../platform.js";
+import { isMac } from "../input/platform.js";
 import { SEQUENCE_HOTKEY_WINDOW_MS } from "../constants.js";
 import { historyActions } from "./actionHistory.js";
 import { selectionActions } from "./actionSelection.js";

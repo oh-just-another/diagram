@@ -20,11 +20,11 @@ import {
   interpretPressEnd,
   DRAG_THRESHOLD,
   type PressTarget,
-} from "../machine.js";
-import { fromPointerEvent, isEditableTarget } from "../dom-events.js";
-import * as Selection from "../selection.js";
-import * as LinkSelection from "../link-selection.js";
-import { getInteractiveHitTester } from "../interactive.js";
+} from "../interaction/machine.js";
+import { fromPointerEvent, isEditableTarget } from "../input/dom-events.js";
+import * as Selection from "../selection/selection.js";
+import * as LinkSelection from "../selection/link-selection.js";
+import { getInteractiveHitTester } from "../interaction/interactive.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import { snapshotMovingLinks } from "./applies/link-move.js";
 import {
@@ -41,7 +41,7 @@ import {
 import type { Bounds, ElementId, PointerEventData, Vec2 } from "@oh-just-another/types";
 import { vec2 } from "@oh-just-another/math";
 import { clampZoom } from "./public/zoom-pan.js";
-import { req } from "../util.js";
+import { req } from "../helpers/util.js";
 import type { Editor } from "../editor.js";
 
 /**

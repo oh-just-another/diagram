@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AtlasGlyph } from "@oh-just-another/glyph-atlas";
-import { glyphQuadGeometry } from "../src/webgl2-msdf-text";
+import { glyphQuadGeometry } from "../src/webgl2/webgl2-msdf-text";
 
 /**
  * Pins the screen-space + UV math used by `MsdfTextPipeline.drawText`:

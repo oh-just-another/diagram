@@ -1,0 +1,302 @@
+import {
+  TILE_SIZE,
+  type TileCache,
+  type TileCacheEntry,
+  type TileKey,
+} from "@oh-just-another/renderer-core";
+import type { Bounds, ElementId } from "@oh-just-another/types";
+import {
+  getElementsInLayer,
+  getElementWorldBounds,
+  getLayersInOrder,
+  type SpatialGrid,
+  type Scene,
+  type Element,
+} from "@oh-just-another/scene";
+import { createOffscreenCanvas2DTarget } from "../offscreen/offscreen.js";
+import type { Canvas2DTarget } from "../canvas2d/canvas-target.js";
+import { getElementRenderer } from "@oh-just-another/renderer-core";
+
+/**
+ * Main-thread Canvas2D tile compositor.
+ *
+ * Splits the visible viewport into a fixed-size world-space grid
+ * (`TILE_SIZE` per side; default 2048 world units). Each tile is
+ * rasterised once into its own OffscreenCanvas, stored in a
+ * `TileCache`, and composited onto the main canvas via `drawImage`.
+ * Pure pan re-composites from cache; zoom changes the bucket and may
+ * invalidate.
+ *
+ * Designed for very large scenes where the per-frame `renderScene`
+ * walks every visible shape — composite of N cached bitmaps is far
+ * cheaper than re-rasterising N shapes.
+ */
+
+export interface ChangedElementRecord {
+  /** World bbox of the shape in the previous frame, or null if it was just added. */
+  readonly before: Bounds | null;
+  /** World bbox of the shape in the current frame, or null if it was just removed. */
+  readonly after: Bounds | null;
+}
+
+export interface RenderViaTilesOptions {
+  /** World-space rect currently visible. Tiles outside are skipped. */
+  readonly viewport: Bounds;
+  /** Persistent tile cache — same instance across frames. */
+  readonly cache: TileCache<OffscreenCanvas>;
+  /**
+   * Element ids whose scene-reference changed since the previous frame,
+   * each with the before/after world bbox. The compositor routes
+   * invalidation by case:
+   *   • removed   (after null)  → invalidateForElement (id present in
+   *     reverse index)
+   *   • added     (before null) → invalidateRect (no id yet)
+   *   • mutated/moved (both)    → both rects
+   */
+  readonly changedElements?: ReadonlyMap<ElementId, ChangedElementRecord>;
+  /** Current zoom (used to pick the cache bucket). */
+  readonly zoomBucket: number;
+  /**
+   * Optional spatial index over the scene's current element world-AABBs,
+   * keyed by element id. When supplied, per-tile element selection queries
+   * the index (`query(tileBounds)`) instead of scanning every shape in
+   * every layer — O(shapes + Σtiles·candidates) vs O(tiles×shapes). The
+   * index must hold the same bounds `getElementWorldBounds` returns for the
+   * current frame (a stale index rasterises wrong tiles). Omit it to fall
+   * back to the full scan, which is always correct — callers without a
+   * persistent index pay nothing and behave exactly as before.
+   */
+  readonly index?: SpatialGrid;
+  /**
+   * Elements to omit from tile rasterisation (e.g. the stroke-eraser preview
+   * hides touched originals while their fragments draw on the overlay). Tiles
+   * are baked WITH the set applied; when the set changes between frames the
+   * compositor invalidates every tile the entering/leaving elements touch, so
+   * the cache never shows a stale hidden/unhidden shape. Keep the set small —
+   * each membership change re-rasterises the affected tiles.
+   */
+  readonly hideElements?: ReadonlySet<ElementId>;
+}
+
+/**
+ * Last hide-set a given cache was baked with — keyed by the cache instance so
+ * the stateless `renderViaTiles` can detect set changes across frames without
+ * growing its public API. WeakMap: dropping the cache drops the record.
+ */
+const lastHideByCache = new WeakMap<TileCache<OffscreenCanvas>, ReadonlySet<ElementId>>();
+
+const EMPTY_HIDE: ReadonlySet<ElementId> = new Set<ElementId>();
+
+const setsEqual = (a: ReadonlySet<ElementId>, b: ReadonlySet<ElementId>): boolean => {
+  if (a.size !== b.size) return false;
+  for (const id of a) if (!b.has(id)) return false;
+  return true;
+};
+
+/**
+ * Precomputed draw-order lookup used by the indexed tile-query path.
+ *
+ * The spatial index returns candidate ids in arbitrary order, but tiles
+ * must rasterise shapes in global z-order (layer order, then in-layer
+ * order) or overlapping fills composite wrong. Building this once per
+ * frame — a single O(shapes) walk over the ordered layers — lets each
+ * tile map its (few) candidate ids back to elements and re-sort them by
+ * draw order without re-walking the whole scene per tile.
+ */
+interface DrawOrderIndex {
+  /** Element id → element reference (visible layers only). */
+  readonly byId: ReadonlyMap<ElementId, Element>;
+  /** Element id → global draw-order rank (ascending = drawn first). */
+  readonly order: ReadonlyMap<ElementId, number>;
+}
+
+/** @internal Exported for unit tests; not part of the package API. */
+export const buildDrawOrderIndex = (scene: Scene): DrawOrderIndex => {
+  const byId = new Map<ElementId, Element>();
+  const order = new Map<ElementId, number>();
+  let rank = 0;
+  for (const layer of getLayersInOrder(scene)) {
+    if (!layer.visible) continue;
+    for (const shape of getElementsInLayer(scene, layer.id)) {
+      byId.set(shape.id, shape);
+      order.set(shape.id, rank++);
+    }
+  }
+  return { byId, order };
+};
+
+export const renderViaTiles = (
+  scene: Scene,
+  mainTarget: Canvas2DTarget,
+  options: RenderViaTilesOptions,
+): void => {
+  const { viewport, cache, changedElements, zoomBucket, index } = options;
+  const hide =
+    options.hideElements && options.hideElements.size > 0 ? options.hideElements : EMPTY_HIDE;
+
+  // Build the draw-order lookup once per frame when an index is supplied;
+  // each fresh tile reuses it instead of re-walking the scene.
+  const drawOrder = index ? buildDrawOrderIndex(scene) : null;
+
+  // 0) Hide-set diff: tiles are baked with `hideElements` applied, so any
+  //    element entering or leaving the set makes the tiles it touches stale.
+  //    Invalidate by the element's current world bbox (a removed element's
+  //    tiles are already handled by `changedElements`).
+  const lastHide = lastHideByCache.get(cache) ?? EMPTY_HIDE;
+  if (!setsEqual(hide, lastHide)) {
+    const affected = new Set<ElementId>([...hide, ...lastHide]);
+    for (const id of affected) {
+      if (hide.has(id) && lastHide.has(id)) continue; // still hidden — tiles stay valid
+      const el = scene.elements.get(id);
+      if (!el) continue;
+      cache.invalidateRect(getElementWorldBounds(el));
+    }
+    lastHideByCache.set(cache, new Set(hide));
+  }
+
+  // 1) Invalidate cached tiles per patch (covers add / remove / move).
+  if (changedElements) {
+    for (const [id, record] of changedElements) {
+      cache.invalidateForPatch({
+        ...(record.after === null ? { removedElementId: id } : {}),
+        ...(record.before ? { beforeBounds: record.before } : {}),
+        ...(record.after ? { afterBounds: record.after } : {}),
+      });
+    }
+  }
+
+  // 2) Visible tile range.
+  const colMin = Math.floor(viewport.x / TILE_SIZE);
+  const rowMin = Math.floor(viewport.y / TILE_SIZE);
+  const colMax = Math.floor((viewport.x + viewport.width) / TILE_SIZE);
+  const rowMax = Math.floor((viewport.y + viewport.height) / TILE_SIZE);
+
+  // 3) For each visible tile, hit cache or render fresh.
+  for (let row = rowMin; row <= rowMax; row++) {
+    for (let col = colMin; col <= colMax; col++) {
+      const key: TileKey = { col, row, zoom: zoomBucket };
+      let entry: TileCacheEntry<OffscreenCanvas> | undefined = cache.get(key);
+      if (!entry) {
+        const fresh = rasteriseTile(scene, col, row, zoomBucket, index, drawOrder, hide);
+        if (!fresh) continue;
+        cache.set(fresh);
+        entry = fresh;
+      }
+      // Composite — draw the cached bitmap at its world position. The
+      // main target's transform already maps world→screen.
+      mainTarget.drawImage(
+        entry.bitmap,
+        entry.bounds.x,
+        entry.bounds.y,
+        entry.bounds.width,
+        entry.bounds.height,
+      );
+    }
+  }
+};
+
+/**
+ * Render a single tile's worth of shapes into a fresh OffscreenCanvas
+ * sized at `TILE_SIZE * zoomBucket` device pixels per side. Returns
+ * `null` when the tile contains no shapes.
+ */
+const rasteriseTile = (
+  scene: Scene,
+  col: number,
+  row: number,
+  zoomBucket: number,
+  index: SpatialGrid | undefined,
+  drawOrder: DrawOrderIndex | null,
+  hide: ReadonlySet<ElementId>,
+): TileCacheEntry<OffscreenCanvas> | null => {
+  if (typeof OffscreenCanvas === "undefined") return null;
+  const worldX = col * TILE_SIZE;
+  const worldY = row * TILE_SIZE;
+  const worldBounds: Bounds = {
+    x: worldX,
+    y: worldY,
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+  };
+  const visible =
+    index && drawOrder
+      ? elementsIntersectingTileIndexed(index, drawOrder, worldBounds)
+      : elementsIntersectingTile(scene, worldBounds);
+  const shapes = hide.size > 0 ? visible.filter((sh) => !hide.has(sh.id)) : visible;
+  if (shapes.length === 0) return null;
+
+  // Bitmap size — `TILE_SIZE * zoomBucket` device pixels so the tile
+  // stays crisp at this bucket. Higher buckets allocate more memory;
+  // cache eviction keeps total bounded.
+  const bitmapSize = Math.max(1, Math.round(TILE_SIZE * zoomBucket));
+  const { canvas, target } = createOffscreenCanvas2DTarget(bitmapSize, bitmapSize);
+
+  // World → tile-local + zoom scaling.
+  target.save();
+  target.scale(zoomBucket, zoomBucket);
+  target.translate(-worldX, -worldY);
+  for (const shape of shapes) {
+    const renderer = getElementRenderer(shape.type);
+    if (!renderer) continue;
+    target.save();
+    target.translate(shape.position.x, shape.position.y);
+    if (shape.rotation !== 0) target.rotate(shape.rotation);
+    if (shape.scale.x !== 1 || shape.scale.y !== 1) {
+      target.scale(shape.scale.x, shape.scale.y);
+    }
+    renderer(shape, target, { zoom: zoomBucket });
+    target.restore();
+  }
+  target.restore();
+
+  // 4 bytes per pixel (RGBA) — byte accounting for LRU.
+  const bytes = bitmapSize * bitmapSize * 4;
+  return {
+    key: { col, row, zoom: zoomBucket },
+    bitmap: canvas,
+    bounds: worldBounds,
+    bytes,
+    elements: shapes.map((s) => s.id),
+  };
+};
+
+/** @internal Exported for unit tests; not part of the package API. */
+export const elementsIntersectingTile = (scene: Scene, tileBounds: Bounds): readonly Element[] => {
+  const out: Element[] = [];
+  for (const layer of getLayersInOrder(scene)) {
+    if (!layer.visible) continue;
+    for (const shape of getElementsInLayer(scene, layer.id)) {
+      const b = getElementWorldBounds(shape);
+      if (intersects(b, tileBounds)) out.push(shape);
+    }
+  }
+  return out;
+};
+
+/**
+ * Index-backed equivalent of {@link elementsIntersectingTile}. Queries the
+ * spatial index for candidate ids overlapping the tile, filters them
+ * against the precise world-AABB (same predicate the full scan uses), then
+ * restores global draw order via `drawOrder.order`. Returns the identical
+ * set and ordering as the full scan for a correctly-populated index — only
+ * the work is O(candidates) instead of O(shapes).
+ */
+/** @internal Exported for unit tests; not part of the package API. */
+export const elementsIntersectingTileIndexed = (
+  index: SpatialGrid,
+  drawOrder: DrawOrderIndex,
+  tileBounds: Bounds,
+): readonly Element[] => {
+  const hits: { shape: Element; order: number }[] = [];
+  for (const id of index.query(tileBounds)) {
+    const shape = drawOrder.byId.get(id);
+    if (!shape) continue; // hidden layer or not in the current scene
+    if (!intersects(getElementWorldBounds(shape), tileBounds)) continue;
+    hits.push({ shape, order: drawOrder.order.get(id) ?? 0 });
+  }
+  hits.sort((a, b) => a.order - b.order);
+  return hits.map((h) => h.shape);
+};
+
+const intersects = (a: Bounds, b: Bounds): boolean =>
+  a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;

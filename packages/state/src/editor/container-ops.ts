@@ -18,7 +18,7 @@ import {
 import { bounds as B } from "@oh-just-another/math";
 import type { Bounds, ElementId } from "@oh-just-another/types";
 import { CONTAINER_KEEP_THRESHOLD } from "../constants.js";
-import type { HandleId } from "../handle.js";
+import type { HandleId } from "../interaction/handle.js";
 import { hasWidthHeight } from "./shape-traits.js";
 
 /**

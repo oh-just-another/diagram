@@ -1,7 +1,7 @@
 import { getElementsCoveredByBounds, getLinkPath, type Scene } from "@oh-just-another/scene";
 import type { Bounds, LayerId, Vec2 } from "@oh-just-another/types";
-import * as Selection from "../../selection.js";
-import * as LinkSelection from "../../link-selection.js";
+import * as Selection from "../../selection/selection.js";
+import * as LinkSelection from "../../selection/link-selection.js";
 import { LASSO_COVERAGE_THRESHOLD } from "../../constants.js";
 
 /**

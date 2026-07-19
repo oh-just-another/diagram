@@ -10,7 +10,7 @@ import {
   type Element,
   type Scene,
 } from "@oh-just-another/scene";
-import { AutoLayoutScheduler } from "../src/auto-layout-scheduler.js";
+import { AutoLayoutScheduler } from "../src/helpers/auto-layout-scheduler.js";
 
 const rect = (
   id: string,

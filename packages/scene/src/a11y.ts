@@ -1,4 +1,4 @@
-import type { ElementBase, TemplateElement, TextElement } from "./shape.js";
+import type { ElementBase, TemplateElement, TextElement } from "./shapes/shape.js";
 
 /**
  * Resolver from a shape to an accessible name (screen-reader label).

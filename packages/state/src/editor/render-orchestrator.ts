@@ -37,7 +37,7 @@ import {
   type PortOverlay,
   type PeerCursor,
   type PeerSelection,
-} from "../overlay.js";
+} from "../render/overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import { hitZoneVisibility } from "./hit-test.js";
 import { buildElementForCreate, buildEdgePreviewLink } from "./applies/create.js";
@@ -62,7 +62,7 @@ import type {
   AnnotationId,
   Vec2,
 } from "@oh-just-another/types";
-import type { Mode } from "../modes.js";
+import type { Mode } from "../interaction/modes.js";
 import type {
   ContainerHover,
   EdgePreview,
@@ -234,7 +234,7 @@ const DRAW_PREVIEW_ELEMENT_ID = "__draw-preview__" as ElementId;
 /** Throwaway id for the live draw-edge connector preview link. */
 const DRAW_PREVIEW_LINK_ID = "__draw-preview-link__" as LinkId;
 
-import { req } from "../util.js";
+import { req } from "../helpers/util.js";
 
 /**
  * Per-overlay-target memo of the last-painted {@link renderOverlay} options bag

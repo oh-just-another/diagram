@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { MsdfTextPipeline } from "../src/webgl2-msdf-text";
-import { LoopBlinnCurvePipeline } from "../src/webgl2-curve";
-import { EllipsePipeline } from "../src/webgl2-ellipse";
-import { WebGL2Target } from "../src/webgl2-target";
+import { MsdfTextPipeline } from "../src/webgl2/webgl2-msdf-text";
+import { LoopBlinnCurvePipeline } from "../src/webgl2/webgl2-curve";
+import { EllipsePipeline } from "../src/webgl2/webgl2-ellipse";
+import { WebGL2Target } from "../src/webgl2/webgl2-target";
 import type { GlyphAtlas } from "@oh-just-another/glyph-atlas";
 
 /**

@@ -3,7 +3,7 @@ import { bounds as B } from "@oh-just-another/math";
 import { apply, getBinaryFile, getElementWorldBounds, isImage } from "@oh-just-another/scene";
 import { HEAVY_GIF_BYTES } from "../constants.js";
 import { hasAnimatedElement } from "./public/image-insert.js";
-import { createHiddenLoopingVideo } from "../built-in-handlers.js";
+import { createHiddenLoopingVideo } from "../features/built-in-handlers.js";
 import type { Editor } from "../editor.js";
 
 /**

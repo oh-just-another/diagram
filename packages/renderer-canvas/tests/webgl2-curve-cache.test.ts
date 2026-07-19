@@ -4,7 +4,7 @@ import {
   packCurveTriangles,
   quadraticToTriangle,
 } from "@oh-just-another/curve-mesh";
-import { triangulateCached, type CurveSegment } from "../src/webgl2-curve";
+import { triangulateCached, type CurveSegment } from "../src/webgl2/webgl2-curve";
 import { WEBGL2_CURVE_TRIANGULATION_CACHE_CAP } from "../src/constants";
 
 /**

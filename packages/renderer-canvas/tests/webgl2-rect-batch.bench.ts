@@ -1,5 +1,5 @@
 import { bench, describe } from "vitest";
-import { RectBatch } from "../src/webgl2-rect-batch";
+import { RectBatch } from "../src/webgl2/webgl2-rect-batch";
 
 /**
  * Micro-bench for the CPU-side hot path of the sharp-rect batcher:

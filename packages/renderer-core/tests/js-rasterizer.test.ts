@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PathCommand } from "@oh-just-another/scene";
-import { jsRasterizer } from "../src/js-rasterizer";
-import { getActiveRasterizer, setActiveRasterizer } from "../src/rasterizer";
+import { jsRasterizer } from "../src/raster/js-rasterizer";
+import { getActiveRasterizer, setActiveRasterizer } from "../src/raster/rasterizer";
 
 describe("jsRasterizer.flatten", () => {
   it("passes M and L commands through as polyline points", () => {

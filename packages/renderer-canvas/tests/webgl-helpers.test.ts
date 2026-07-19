@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { compileShader, glReq, linkProgram } from "../src/webgl-helpers";
+import { compileShader, glReq, linkProgram } from "../src/webgl2/webgl-helpers";
 
 const COMPILE_STATUS = 0x8b81;
 const LINK_STATUS = 0x8b82;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createLayeredSurface } from "../src/layered-surface";
+import { createLayeredSurface } from "../src/surface/layered-surface";
 
 /**
  * Exercises `OffscreenLayeredSurface.present()`'s skip-unchanged path

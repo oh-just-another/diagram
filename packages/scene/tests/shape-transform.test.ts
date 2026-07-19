@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { layerId, elementId } from "@oh-just-another/types";
 import type { Vec2 } from "@oh-just-another/types";
 import { orderBetween } from "../src/index";
-import type { ElementBase } from "../src/shape";
-import { localToWorld } from "../src/shape-transform";
+import type { ElementBase } from "../src/shapes/shape";
+import { localToWorld } from "../src/shapes/shape-transform";
 
 /**
  * Minimal `ElementBase` fixture. `localToWorld` only reads `position`,

@@ -14,7 +14,7 @@ import {
 } from "@oh-just-another/scene";
 import { Editor } from "@oh-just-another/state";
 import { installBuiltinRenderers } from "@oh-just-another/renderer-canvas";
-import { _computeSelectionWorldBboxForTesting as computeBbox } from "../src/selection-floating-panel.js";
+import { _computeSelectionWorldBboxForTesting as computeBbox } from "../src/panels/selection-floating-panel.js";
 
 installBuiltinRenderers();
 

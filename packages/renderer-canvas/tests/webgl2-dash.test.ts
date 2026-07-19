@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dashPolyline } from "../src/webgl2-target";
+import { dashPolyline } from "../src/webgl2/webgl2-target";
 
 /**
  * WebGL2 dashed strokes: `stroke()` splits the polyline into "on" runs

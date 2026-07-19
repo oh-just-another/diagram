@@ -1,0 +1,127 @@
+import type { Color } from "@oh-just-another/types";
+import { ADAPTIVE_CORNER_RADIUS, PROPORTIONAL_CORNER_RADIUS } from "../constants.js";
+
+export type LineCap = "butt" | "round" | "square";
+export type LineJoin = "miter" | "round" | "bevel";
+
+/**
+ * Where the stroke sits relative to the shape's path.
+ *   `center`  — half the stroke width inside the path, half outside.
+ *               Canvas2D / SVG default.
+ *   `inside`  — stroke is fully inside the path (path = outer edge).
+ *               Useful when shape bounds must match the fill region
+ *               exactly (auto-layout / hit-tests).
+ *   `outside` — stroke is fully outside (path = inner edge).
+ */
+export type StrokeAlign = "center" | "inside" | "outside";
+
+/**
+ * Corner-rounding spec for shapes that support it (rectangle, container,
+ * box arrow, …):
+ *   `sharp`  — no rounding (sharp corners). Equivalent to omitting the
+ *              field; lets the value be set explicitly.
+ *   `round`  — rounded corners. Without `value`, falls back to the
+ *              adaptive radius (fixed 32 px for big shapes, scales to
+ *              25 % of the smaller side for shapes < 128 px so they
+ *              don't read as a capsule).
+ */
+export interface Roundness {
+  readonly type: "sharp" | "round";
+  /**
+   * Override the rounded-corner radius in world units. Ignored when
+   * `type === "sharp"`. When omitted on `round` shapes the renderer
+   * applies the adaptive default (see {@link Style}).
+   */
+  readonly value?: number;
+}
+
+/**
+ * Visual style for shapes and edges. Every field is optional so that scenes,
+ * patches and partial updates stay compact; renderers fall back to library
+ * defaults when a field is omitted.
+ */
+export interface Style {
+  readonly fill?: Color;
+  readonly stroke?: Color;
+  readonly strokeWidth?: number;
+  readonly opacity?: number;
+  readonly dashArray?: readonly number[];
+  readonly lineCap?: LineCap;
+  readonly lineJoin?: LineJoin;
+  /** Stroke alignment relative to the path. Defaults to `center`. */
+  readonly strokeAlign?: StrokeAlign;
+  /** Corner-rounding spec. Omitted = sharp corners. */
+  readonly roundness?: Roundness;
+}
+
+export type TextAlign = "left" | "center" | "right";
+export type TextBaseline = "top" | "middle" | "bottom";
+export type FontWeight = "normal" | "bold";
+export type FontStyle = "normal" | "italic";
+
+/**
+ * Text decorations (underline / strikethrough). Both can be on at once.
+ * Rendered as thin line-rects under / through the text by the renderer,
+ * so they work identically on Canvas2D and WebGL2.
+ */
+export interface TextDecoration {
+  readonly underline?: boolean;
+  readonly strikethrough?: boolean;
+}
+
+/**
+ * Text-specific style overlay. Inherits all `Style` fields (fill = text color,
+ * stroke = outline). Layout metrics live on the `TextElement` itself, not here.
+ */
+export interface TextStyle extends Style {
+  readonly textAlign?: TextAlign;
+  readonly textBaseline?: TextBaseline;
+  /** Bold toggle. Default `"normal"`. */
+  readonly fontWeight?: FontWeight;
+  /** Italic toggle. Default `"normal"`. */
+  readonly fontStyle?: FontStyle;
+  /** Underline / strikethrough. Omitted = neither. */
+  readonly textDecoration?: TextDecoration;
+}
+
+/**
+ * How far a shape's stroke extends OUTSIDE its geometric contour, in world
+ * units. Depends on stroke width and alignment: `outside` → the full width,
+ * `center` → half, `inside` → none. No stroke → 0. Used to place the
+ * selection halo a constant distance beyond the shape's VISIBLE outer edge
+ * (contour + this extent), regardless of border thickness / alignment.
+ */
+export const strokeOutsideExtent = (style: Style): number => {
+  const hasStroke = style.stroke !== undefined && style.stroke !== "transparent";
+  if (!hasStroke) return 0;
+  const w = style.strokeWidth ?? 1;
+  if (w <= 0) return 0;
+  switch (style.strokeAlign ?? "center") {
+    case "outside":
+      return w;
+    case "inside":
+      return 0;
+    default:
+      return w / 2;
+  }
+};
+
+export const getCornerRadius = (
+  roundness: Roundness | undefined,
+  width: number,
+  height: number,
+): number => {
+  if (!roundness || roundness.type === "sharp") return 0;
+  const smaller = Math.min(Math.abs(width), Math.abs(height));
+  if (smaller <= 0) return 0;
+  if (roundness.value !== undefined) {
+    // Honour the override but clamp to half the smaller side so
+    // the corner radii can't overlap on narrow shapes (would
+    // produce a degenerate path).
+    return Math.max(0, Math.min(roundness.value, smaller / 2));
+  }
+  // Adaptive default: proportional below the cutoff, fixed above.
+  const cutoff = ADAPTIVE_CORNER_RADIUS / PROPORTIONAL_CORNER_RADIUS;
+  if (smaller <= cutoff) return smaller * PROPORTIONAL_CORNER_RADIUS;
+  return ADAPTIVE_CORNER_RADIUS;
+};

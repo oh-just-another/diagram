@@ -15,7 +15,7 @@ import {
   promoteToGroupRoot,
   computeDimElements,
   pickDrillTarget,
-} from "../src/group-helpers.js";
+} from "../src/helpers/group-helpers.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

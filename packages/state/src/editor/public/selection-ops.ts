@@ -15,7 +15,7 @@ import {
 } from "@oh-just-another/scene";
 import type { LinkId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
-import * as Selection from "../../selection.js";
+import * as Selection from "../../selection/selection.js";
 import {
   TEXT_FONT_SIZE_STEP,
   TEXT_MAX_FONT_SIZE,

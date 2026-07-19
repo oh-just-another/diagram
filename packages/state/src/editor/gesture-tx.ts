@@ -1,7 +1,7 @@
 import type { Link, Patch } from "@oh-just-another/scene";
 import type { Bounds, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
 import type { HistoryProvider, TransactionHandle } from "@oh-just-another/history";
-import type { Mode } from "../modes.js";
+import type { Mode } from "../interaction/modes.js";
 
 /**
  * Narrow editor surface that `GestureController` needs. Editor

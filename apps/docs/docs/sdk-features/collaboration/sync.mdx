@@ -42,6 +42,10 @@ provider.destroy();
 transport.close();
 ```
 
+Only document content replicates: elements, links, layers, annotations and document-level viewport settings (grid, snap). Camera state — pan, zoom, rotation — is per-user and never travels between peers.
+
+On join, the provider requests the peers' current state; when a transport reports a reconnect (`onStatusChange` → `"open"` after a drop), it re-requests state, offers its own, and re-announces local presence — frames lost on the dying socket never leave the docs diverged.
+
 See Collaboration for the full editor binding.
 
 ## Encryption over any transport

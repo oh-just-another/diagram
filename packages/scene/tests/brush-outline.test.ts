@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Vec2 } from "@oh-just-another/types";
-import { brushOutline } from "../src/brush-outline.js";
-import type { BrushPoint } from "../src/shape.js";
+import { brushOutline } from "../src/shapes/brush-outline.js";
+import type { BrushPoint } from "../src/shapes/shape.js";
 
 const bp = (x: number, y: number, width = 5): BrushPoint => ({ x, y, width });
 

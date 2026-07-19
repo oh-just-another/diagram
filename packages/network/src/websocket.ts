@@ -1,6 +1,6 @@
 import { createListeners } from "@oh-just-another/events";
 
-import type { Transport } from "./transport.js";
+import type { Transport, TransportStatus } from "./transport.js";
 import {
   DEFAULT_INITIAL_RECONNECT_DELAY_MS,
   DEFAULT_MAX_RECONNECT_DELAY_MS,
@@ -38,7 +38,7 @@ export interface WebSocketTransportOptions {
  *   - `reconnecting` — back-off timer is running before next dial
  *   - `closed` — `close()` has been called; no further attempts
  */
-export type WebSocketStatus = "connecting" | "open" | "reconnecting" | "closed";
+export type WebSocketStatus = TransportStatus;
 
 export class WebSocketTransport implements Transport {
   private readonly url: string;

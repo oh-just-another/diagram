@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MsdfTextPipeline } from "../src/webgl2-msdf-text";
+import { MsdfTextPipeline } from "../src/webgl2/webgl2-msdf-text";
 
 /**
  * `getUniformLocation` returns `null` for any name that isn't an ACTIVE

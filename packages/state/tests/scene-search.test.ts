@@ -10,7 +10,7 @@ import {
   type Link,
   type Scene,
 } from "@oh-just-another/scene";
-import { elementSearchText, searchScene } from "../src/search.js";
+import { elementSearchText, searchScene } from "../src/features/search.js";
 
 const text = (id: string, body: string): Element => ({
   id: elementId(id),

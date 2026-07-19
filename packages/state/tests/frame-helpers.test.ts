@@ -13,7 +13,7 @@ import {
   nextFrameName,
   assignFrameMembers,
   reconcileFrameMembership,
-} from "../src/frame-helpers.js";
+} from "../src/helpers/frame-helpers.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

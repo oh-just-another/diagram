@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { WebGL2Target } from "../src/webgl2-target";
+import { WebGL2Target } from "../src/webgl2/webgl2-target";
 
 /**
  * When no MSDF shaper is registered (WASM blocked / still loading / an

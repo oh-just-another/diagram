@@ -19,7 +19,7 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import { InMemoryTileCache, type TileCacheEntry } from "@oh-just-another/renderer-core";
-import { renderViaTiles } from "../src/tile-compositor";
+import { renderViaTiles } from "../src/surface/tile-compositor";
 
 const rect = (id: string, x: number, y: number): RectangleElement => ({
   id: elementId(id),

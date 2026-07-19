@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { emptyScene } from "@oh-just-another/scene";
 import type { Scene } from "@oh-just-another/scene";
-import type { RenderTarget } from "../src/render-target.js";
-import { computeGridRungs, renderGrid, type GridLevel } from "../src/grid-renderer.js";
+import type { RenderTarget } from "../src/targets/render-target.js";
+import { computeGridRungs, renderGrid, type GridLevel } from "../src/rendering/grid-renderer.js";
 import {
   GRID_DOT_FADE_FROM_PX,
   GRID_DOT_FADE_FULL_PX,

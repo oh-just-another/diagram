@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { getActiveTextShaper, setActiveTextShaper, type TextShaper } from "../src/text-shaper";
+import { getActiveTextShaper, setActiveTextShaper, type TextShaper } from "../src/text/text-shaper";
 
 const shaper: TextShaper = {
   measure: (text, font) => ({ width: text.length * font.size * 0.6 }),

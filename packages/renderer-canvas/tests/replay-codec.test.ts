@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LruCache } from "@oh-just-another/renderer-core";
-import { RecordingTarget, type RenderCommand } from "../src/recording-target";
-import { packReplayFrame, replayPackedFrame } from "../src/replay-codec";
+import { RecordingTarget, type RenderCommand } from "../src/offscreen/recording-target";
+import { packReplayFrame, replayPackedFrame } from "../src/offscreen/replay-codec";
 import { OFFSCREEN_IMAGE_CACHE_CAP } from "../src/constants";
 
 /**

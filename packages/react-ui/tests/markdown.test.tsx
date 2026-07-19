@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { Markdown } from "../src/markdown";
+import { Markdown } from "../src/primitives/markdown";
 
 const html = (text: string): string => {
   const { container } = render(<div>{<Markdown text={text} />}</div>);

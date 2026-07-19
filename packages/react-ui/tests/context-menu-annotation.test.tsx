@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Editor } from "@oh-just-another/state";
 import { annotationId, type AnnotationId } from "@oh-just-another/types";
-import { DEFAULT_CONTEXT_MENU, type ContextMenuItem } from "../src/context-menu";
+import { DEFAULT_CONTEXT_MENU, type ContextMenuItem } from "../src/menus/context-menu";
 
 /**
  * The three annotation-pin items (Open thread / Toggle resolved / Delete

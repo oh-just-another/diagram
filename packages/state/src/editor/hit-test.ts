@@ -31,7 +31,7 @@ import {
   rotateGripWorld,
   shapeSelectionFrame,
   type HandleId,
-} from "../handle.js";
+} from "../interaction/handle.js";
 import { isResizable, resizeHandlesFor } from "./shape-traits.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import {
@@ -55,11 +55,11 @@ import {
   LINK_HIT_THRESHOLD,
   LINK_START_ANCHOR_OUTSET,
 } from "../constants.js";
-import type { PressTarget } from "../machine.js";
-import type * as Selection from "../selection.js";
+import type { PressTarget } from "../interaction/machine.js";
+import type * as Selection from "../selection/selection.js";
 import { getElement } from "@oh-just-another/scene";
 
-import { req } from "../util.js";
+import { req } from "../helpers/util.js";
 
 /**
  * Bundle of everything `pickPressTarget` needs from the host

@@ -1,5 +1,5 @@
 import { hitTest } from "@oh-just-another/math";
-import { req } from "../../util.js";
+import { req } from "../../helpers/util.js";
 import type { BrushElement, BrushPoint } from "@oh-just-another/scene";
 import type { Vec2 } from "@oh-just-another/types";
 import {

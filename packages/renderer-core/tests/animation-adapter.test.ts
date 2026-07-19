@@ -5,7 +5,7 @@ import {
   unregisterAnimationAdapter,
   onAnimationContentReady,
   notifyAnimationContentReady,
-} from "../src/animation-adapter";
+} from "../src/raster/animation-adapter";
 
 describe("animation adapter registry", () => {
   afterEach(() => {

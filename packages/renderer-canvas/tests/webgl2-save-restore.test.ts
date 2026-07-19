@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { WebGL2Target } from "../src/webgl2-target";
+import { WebGL2Target } from "../src/webgl2/webgl2-target";
 
 /**
  * WebGL2Target.save()/restore() snapshot the FULL paint state (opacity,

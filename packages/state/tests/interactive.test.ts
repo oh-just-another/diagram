@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { registerInteractiveHitTester, getInteractiveHitTester } from "../src/interactive.js";
+import {
+  registerInteractiveHitTester,
+  getInteractiveHitTester,
+} from "../src/interaction/interactive.js";
 
 describe("interactive hit-tester registry", () => {
   it("getInteractiveHitTester returns undefined for an unregistered type", () => {

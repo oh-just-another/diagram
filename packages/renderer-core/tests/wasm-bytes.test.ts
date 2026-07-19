@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { allocBytes, type WasmArena } from "../src/wasm-bytes";
+import { allocBytes, type WasmArena } from "../src/raster/wasm-bytes";
 
 /**
  * Fake bump-allocator arena over a fixed ArrayBuffer. `alloc` hands out a

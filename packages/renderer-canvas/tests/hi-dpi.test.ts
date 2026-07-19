@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { setupHiDpi } from "../src/hi-dpi";
+import { setupHiDpi } from "../src/canvas2d/hi-dpi";
 
 const makeCanvasStub = () => {
   const ctx = {

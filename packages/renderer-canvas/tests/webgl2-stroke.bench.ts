@@ -1,6 +1,6 @@
 import { bench, describe } from "vitest";
-import { drawPolylineStroke, type StrokeStyle } from "../src/webgl2-stroke";
-import { dashPolyline } from "../src/webgl2-target";
+import { drawPolylineStroke, type StrokeStyle } from "../src/webgl2/webgl2-stroke";
+import { dashPolyline } from "../src/webgl2/webgl2-target";
 import type { Transform, Vec2 } from "@oh-just-another/types";
 
 /**

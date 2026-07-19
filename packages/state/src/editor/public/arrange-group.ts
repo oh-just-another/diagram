@@ -16,7 +16,7 @@ import {
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
-import type * as Selection from "../../selection.js";
+import type * as Selection from "../../selection/selection.js";
 
 /**
  * Arrange selected shapes on a regular grid. Returns the next scene +

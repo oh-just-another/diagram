@@ -10,7 +10,7 @@ import {
   type TextElement,
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, LinkId, Vec2 } from "@oh-just-another/types";
-import { frameCorners, shapeSelectionFrame, type HandleId } from "../../handle.js";
+import { frameCorners, shapeSelectionFrame, type HandleId } from "../../interaction/handle.js";
 import {
   applyResizeConstraints,
   lockAspectRatio,

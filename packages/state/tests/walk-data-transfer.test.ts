@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { walkDataTransfer } from "../src/file-drop.js";
+import { walkDataTransfer } from "../src/features/file-drop.js";
 
 const makeFile = (name: string, content = "hello"): File =>
   new File([content], name, { type: "text/plain" });

@@ -1,4 +1,4 @@
-import { AnimationTick } from "../animation-tick.js";
+import { AnimationTick } from "../render/animation-tick.js";
 import {
   ANIMATION_MAX_INTERVAL_MS,
   ANIMATION_MIN_INTERVAL_MS,

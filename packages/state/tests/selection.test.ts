@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { elementId } from "@oh-just-another/types";
-import * as Selection from "../src/selection";
+import * as Selection from "../src/selection/selection";
 
 describe("selection", () => {
   it("EMPTY has no members and is frozen", () => {

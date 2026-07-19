@@ -1,5 +1,5 @@
 import type { Element, ElementBase } from "@oh-just-another/scene";
-import { ALL_HANDLES, type HandleId } from "../handle.js";
+import { ALL_HANDLES, type HandleId } from "../interaction/handle.js";
 
 /**
  * True when the shape's geometry is parametrised by `width` / `height` fields

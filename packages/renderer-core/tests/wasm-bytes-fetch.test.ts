@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchModuleBytes } from "../src/wasm-bytes";
+import { fetchModuleBytes } from "../src/raster/wasm-bytes";
 
 /**
  * Source-normalisation coverage for `fetchModuleBytes` — the `allocBytes`

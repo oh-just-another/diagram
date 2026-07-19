@@ -3,42 +3,42 @@ export {
   useDiagramContext,
   useDiagramContextOptional,
   useEditorSelector,
-} from "./context.js";
-export { IconButton, type IconButtonProps } from "./icon-button.js";
-export { ButtonGroup, type ButtonGroupProps } from "./button-group.js";
+} from "./core/context.js";
+export { IconButton, type IconButtonProps } from "./primitives/icon-button.js";
+export { ButtonGroup, type ButtonGroupProps } from "./primitives/button-group.js";
 export {
   SegmentedControl,
   type SegmentedControlOption,
   type SegmentedControlProps,
-} from "./segmented-control.js";
-export { Slider, type SliderProps } from "./slider.js";
-export { UILayer, type UILayerProps } from "./ui-layer.js";
-export { TopBar, BottomBar, type DiagramBarProps } from "./diagram-bars.js";
-export { HelpButton, type HelpButtonProps } from "./help-button.js";
-export { ResetToContentButton } from "./reset-to-content-button.js";
-export { LibraryPanel, type LibraryPanelProps } from "./library-panel.js";
+} from "./primitives/segmented-control.js";
+export { Slider, type SliderProps } from "./primitives/slider.js";
+export { UILayer, type UILayerProps } from "./layout/ui-layer.js";
+export { TopBar, BottomBar, type DiagramBarProps } from "./layout/diagram-bars.js";
+export { HelpButton, type HelpButtonProps } from "./overlays/help-button.js";
+export { ResetToContentButton } from "./widgets/reset-to-content-button.js";
+export { LibraryPanel, type LibraryPanelProps } from "./panels/library-panel.js";
 export {
   SelectionFloatingPanel,
   type SelectionFloatingPanelProps,
-} from "./selection-floating-panel.js";
-export { Popover, type PopoverProps } from "./popover.js";
-export { ColorSwatchPicker, type ColorSwatchPickerProps } from "./color-swatch-picker.js";
+} from "./panels/selection-floating-panel.js";
+export { Popover, type PopoverProps } from "./primitives/popover.js";
+export { ColorSwatchPicker, type ColorSwatchPickerProps } from "./color/color-swatch-picker.js";
 export {
   ELEMENT_PALETTE_LIGHT,
   ELEMENT_PALETTE_DARK,
   CANVAS_PALETTE_LIGHT,
   CANVAS_PALETTE_DARK,
   resolvePaletteTheme,
-} from "./color-palette.js";
+} from "./color/color-palette.js";
 export {
   DiagramRoot,
   DiagramSurface,
   type DiagramRootProps,
   type DiagramSurfaceProps,
-} from "./diagram-root.js";
-export { DiagramCanvas, type DiagramCanvasProps } from "./diagram-canvas.js";
-export { Minimap, type MinimapProps } from "./minimap.js";
-export { DrawingPanel } from "./drawing-panel.js";
+} from "./layout/diagram-root.js";
+export { DiagramCanvas, type DiagramCanvasProps } from "./layout/diagram-canvas.js";
+export { Minimap, type MinimapProps } from "./widgets/minimap.js";
+export { DrawingPanel } from "./panels/drawing-panel.js";
 export {
   useDiagram,
   useDiagramOptional,
@@ -54,24 +54,24 @@ export {
   useSelectedAnnotation,
   useSelectedLink,
   useMobileLayout,
-} from "./hooks.js";
-export { LayerPanel, type LayerPanelProps } from "./layer-panel.js";
+} from "./core/hooks.js";
+export { LayerPanel, type LayerPanelProps } from "./panels/layer-panel.js";
 export {
   CommentsPanel,
   CommentsPopover,
   type CommentsPanelProps,
   type CommentsPopoverProps,
-} from "./comments-panel.js";
-export { VersionPanel, useSnapshotStore, type VersionPanelProps } from "./versioning.js";
-export { MergeDialog, type MergeDialogProps } from "./merge-dialog.js";
-export { BottomSheet, type BottomSheetProps } from "./bottom-sheet.js";
-export { FramePanel, type FramePanelProps } from "./frame-panel.js";
-export { Markdown, type MarkdownProps } from "./markdown.js";
-export { TextEditorOverlay } from "./text-editor-overlay.js";
-export { FrameNameEditorOverlay } from "./frame-name-editor-overlay.js";
-export { LinkHoverPopup } from "./link-hover-popup.js";
-export { LinkDropShapeMenu } from "./link-drop-shape-menu.js";
-export { LinkCaptionEditor } from "./link-caption-editor.js";
+} from "./panels/comments-panel.js";
+export { VersionPanel, useSnapshotStore, type VersionPanelProps } from "./widgets/versioning.js";
+export { MergeDialog, type MergeDialogProps } from "./overlays/merge-dialog.js";
+export { BottomSheet, type BottomSheetProps } from "./primitives/bottom-sheet.js";
+export { FramePanel, type FramePanelProps } from "./panels/frame-panel.js";
+export { Markdown, type MarkdownProps } from "./primitives/markdown.js";
+export { TextEditorOverlay } from "./overlays/text-editor-overlay.js";
+export { FrameNameEditorOverlay } from "./overlays/frame-name-editor-overlay.js";
+export { LinkHoverPopup } from "./overlays/link-hover-popup.js";
+export { LinkDropShapeMenu } from "./menus/link-drop-shape-menu.js";
+export { LinkCaptionEditor } from "./overlays/link-caption-editor.js";
 export {
   Toolbar,
   DEFAULT_TOOLBAR,
@@ -87,7 +87,7 @@ export {
   type ToolbarItem,
   type ToolbarProps,
   type ZoomButtonProps,
-} from "./toolbar.js";
+} from "./toolbar/toolbar.js";
 export {
   Palette,
   usePaletteDropHandler,
@@ -96,34 +96,39 @@ export {
   getActivePaletteDrag,
   subscribePaletteDrag,
   type PaletteProps,
-} from "./palette.js";
-export { PropertyPanel, type PropertyPanelProps } from "./property-panel.js";
-export { LinkStylePanel, type LinkStylePanelProps } from "./edge-style-panel.js";
-export { DiffPanel, type DiffPanelProps } from "./diff-panel.js";
+} from "./toolbar/palette.js";
+export { PropertyPanel, type PropertyPanelProps } from "./panels/property-panel.js";
+export { LinkStylePanel, type LinkStylePanelProps } from "./panels/edge-style-panel.js";
+export { DiffPanel, type DiffPanelProps } from "./panels/diff-panel.js";
 export {
   ContextMenu,
   DEFAULT_CONTEXT_MENU,
   type ContextMenuItem,
   type ContextMenuContext,
   type ContextMenuProps,
-} from "./context-menu.js";
+} from "./menus/context-menu.js";
 export {
   ContextMenuControllerProvider,
   useContextMenuController,
   type ContextMenuController,
   type ContextMenuOpenRequest,
-} from "./context-menu-controller.js";
+} from "./menus/context-menu-controller.js";
 export {
   HelpDialog,
   useHelpDialogHotkey,
   type HelpDialogProps,
   type HelpRow,
   type HelpSection,
-} from "./help-dialog.js";
-export { CommandPalette } from "./command-palette.js";
-export { SearchOverlay } from "./search-overlay.js";
-export { StatsPanel } from "./stats-panel.js";
-export { ZenModeProvider, useZenMode, useZenModeOptional, type ZenModeApi } from "./zen-mode.js";
+} from "./overlays/help-dialog.js";
+export { CommandPalette } from "./menus/command-palette.js";
+export { SearchOverlay } from "./overlays/search-overlay.js";
+export { StatsPanel } from "./panels/stats-panel.js";
+export {
+  ZenModeProvider,
+  useZenMode,
+  useZenModeOptional,
+  type ZenModeApi,
+} from "./widgets/zen-mode.js";
 export {
   ToastHost,
   useToast,
@@ -133,18 +138,23 @@ export {
   type ToastApi,
   type ToastKind,
   type ToastHostProps,
-} from "./toast.js";
+} from "./primitives/toast.js";
 export {
   MainMenu,
   type MainMenuProps,
   type MainMenuItemProps,
   type MainMenuItemLinkProps,
   type MainMenuSubmenuProps,
-} from "./main-menu.js";
-export { Modal, type ModalProps } from "./modal.js";
-export { Sidebar, type SidebarProps } from "./sidebar.js";
-export { Tooltip, TooltipProvider, type TooltipProps, type TooltipSide } from "./tooltip.js";
-export { PortalContainerProvider, usePortalContainer } from "./portal-container.js";
+} from "./menus/main-menu.js";
+export { Modal, type ModalProps } from "./primitives/modal.js";
+export { Sidebar, type SidebarProps } from "./layout/sidebar.js";
+export {
+  Tooltip,
+  TooltipProvider,
+  type TooltipProps,
+  type TooltipSide,
+} from "./primitives/tooltip.js";
+export { PortalContainerProvider, usePortalContainer } from "./core/portal-container.js";
 
 // Tunable layout sizes for the built-in panels and toolbar.
 export {
@@ -162,4 +172,4 @@ export {
   MINIMAP_PADDING_PX,
   MINIMAP_THROTTLE_MS,
   SEARCH_ZOOM_PADDING_PX,
-} from "./constants.js";
+} from "./core/constants.js";
