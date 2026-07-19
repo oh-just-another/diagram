@@ -1,5 +1,18 @@
 # @oh-just-another/collab
 
+## 0.59.0
+
+### Minor Changes
+
+- 855fdb7: Collab sessions now re-synchronize after a reconnect. `Transport` gains an optional `onStatusChange` (with the new `TransportStatus` type); `EncryptedTransport` forwards the inner transport's status; `TransportProvider` listens for it and, on every reconnect, re-requests the peers' state, offers its own full state and re-announces local awareness. Previously, frames lost while the socket was dying left the Yjs delta chain broken — peers silently stopped applying each other's updates until a full reload.
+
+### Patch Changes
+
+- e47c768: `bindEditor` no longer re-emits remote updates as its own writes. The editor's change subscriber fires synchronously inside `loadScene`, so applying a remote snapshot used to diff it against the stale scene and re-write every remote change under the local clientID. Those echoes win Y.Map conflicts against the author's next concurrent write whenever the echoing client has the higher clientID — on the other peer, dragging kept snapping back to the old position. Remote application is now guarded, so peers stay silent for changes they merely adopt.
+- c3fde98: Collab no longer replicates the camera. Only document-scoped viewport settings (grid on/off, grid style, snap-to-grid — the `"export"` scope of `VIEWPORT_SCOPE`) travel through the CRDT; pan, zoom, rotation and viewport size stay local to each peer. Remote snapshots are applied with the local camera overlaid, so another user's panning or zooming never moves your view.
+- Updated dependencies [855fdb7]
+  - @oh-just-another/network@0.58.0
+
 ## 0.58.3
 
 ### Patch Changes
