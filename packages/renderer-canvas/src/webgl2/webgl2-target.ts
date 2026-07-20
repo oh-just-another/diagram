@@ -309,6 +309,7 @@ export class WebGL2Target implements RenderTarget {
    * and runtime backend switches quickly hit the cap.
    */
   dispose(): void {
+    this.disposed = true;
     // Drop any undrawn queued rects and release the instance pipeline's
     // GL resources (VAO / buffers / program).
     this.rectBatch.reset();
@@ -667,6 +668,7 @@ export class WebGL2Target implements RenderTarget {
       readonly height: number;
     },
   ): void {
+    if (this.disposed) return; // late async frame — never recompile on a lost context
     this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     const tex = this.textureFor(image as TexImageSource, dynamic ?? false);
     if (!tex) return;
@@ -863,6 +865,7 @@ export class WebGL2Target implements RenderTarget {
 
   fill(_rule?: FillRule): void {
     void _rule;
+    if (this.disposed) return; // late async frame — never recompile on a lost context
     const effectiveAlpha = this.opacity * this.fillAlpha;
     if (effectiveAlpha <= 0) return; // transparent fill — nothing to draw
 
@@ -958,6 +961,14 @@ export class WebGL2Target implements RenderTarget {
   }
   private curvePipeline: LoopBlinnCurvePipeline | null = null;
   private ellipsePipeline: EllipsePipeline | null = null;
+  /**
+   * Set by {@link dispose}. Draw entry points bail out when set: a late
+   * async frame (image decode / font load resolving after a backend
+   * switch) must not touch the lost context — the lazy `??=` pipeline
+   * rebuilds would recompile shaders on it and throw
+   * "shader compile failed: null" from inside a promise chain.
+   */
+  private disposed = false;
 
   /**
    * Triangulate the polygon via earcut and emit one TRIANGLES draw.
@@ -1256,6 +1267,7 @@ export class WebGL2Target implements RenderTarget {
    */
   fillText(text: string, x: number, y: number, maxWidth?: number): void {
     if (text.length === 0) return;
+    if (this.disposed) return; // late async frame — never recompile on a lost context
     this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     void maxWidth;
     const atlas = this.ensureGlyphAtlas();
@@ -1364,6 +1376,10 @@ export class WebGL2Target implements RenderTarget {
    */
   private flushRectBatch(): void {
     if (this.rectBatch.pending === 0) return;
+    if (this.disposed) {
+      this.rectBatch.reset();
+      return;
+    }
     this.rectPipeline ??= new RectInstancePipeline(this.gl);
     const pipeline = this.rectPipeline;
     this.rectBatch.flush((data, count) => {

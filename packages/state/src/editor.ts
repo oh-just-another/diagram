@@ -4033,6 +4033,7 @@ export class Editor {
 
   /** Detach all DOM listeners and stop the actor. */
   dispose(): void {
+    this.disposed = true;
     this.cancelLongPress();
     this.unbind();
     this.actor.stop();
@@ -5615,6 +5616,13 @@ export class Editor {
    * into a single render per frame.
    */
   private renderRafId: number | null = null;
+  /**
+   * Set by {@link dispose}. Render scheduling bails out when set:
+   * async completions (image decode, font load, wasm init) can resolve
+   * after the host tears the editor down (e.g. a runtime backend
+   * switch) and must not paint onto disposed render targets.
+   */
+  private disposed = false;
   /** Unsubscribe for the animation-content-ready listener (decode → re-render). */
   private animationContentOff: (() => void) | null = null;
 
@@ -5631,6 +5639,7 @@ export class Editor {
    * compare bitmap output after a mutation).
    */
   private scheduleRender(): void {
+    if (this.disposed) return; // async completions (image decode, font load) may outlive the editor
     if (this.renderRafId !== null) return;
     if (typeof requestAnimationFrame === "undefined") {
       // SSR / Node fallback. Keep behaviour synchronous so headless
@@ -5656,6 +5665,7 @@ export class Editor {
    * Normal interactive flows should let `scheduleRender` do its job.
    */
   forceRender(): void {
+    if (this.disposed) return;
     if (this.renderRafId !== null && typeof cancelAnimationFrame !== "undefined") {
       cancelAnimationFrame(this.renderRafId);
       this.renderRafId = null;
