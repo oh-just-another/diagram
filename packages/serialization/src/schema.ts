@@ -282,6 +282,14 @@ const LinkZ = z
       .optional(),
     routing: LinkRoutingZ.optional(),
     avoidObstacles: z.boolean().optional(),
+    lineKind: z.enum(["line", "block-arrow"]).optional(),
+    blockArrow: z
+      .object({
+        headLength: z.number().optional(),
+        bodyThickness: z.number().optional(),
+      })
+      .strict()
+      .optional(),
     arrowheads: LinkArrowheadsZ.optional(),
     label: LinkLabelZ.optional(),
     order: z.string(),

@@ -80,7 +80,11 @@ const restoreScene = async (): Promise<Scene | undefined> => {
     parsed = parseScene(saved);
   } catch (err) {
     console.warn("[diagram] stored scene unparseable, starting fresh", err);
+    // Never destroy the payload: a validation failure is more often schema
+    // drift (a fixable bug) than real corruption. Park it under a backup key
+    // so it can be recovered once parsing is fixed.
     try {
+      localStorage.setItem(`${STORAGE_KEY}.unparseable`, saved);
       localStorage.removeItem(STORAGE_KEY);
     } catch {
       /* ignore */
