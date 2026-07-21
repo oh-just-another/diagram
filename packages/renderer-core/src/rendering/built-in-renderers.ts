@@ -26,6 +26,7 @@ import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.
 import type { RenderTarget } from "../targets/render-target.js";
 import { layoutText } from "../text/text-editing.js";
 import { resolveImageSource } from "../raster/animation-adapter.js";
+import { isDrawableImageSource } from "../raster/image-source-guard.js";
 import {
   TEXT_DECORATION_THICKNESS,
   TEXT_UNDERLINE_OFFSET,
@@ -497,6 +498,16 @@ const drawImage: ElementRenderer<ImageElement> = (shape, target, ctx) => {
   const handle = shape.animationKind
     ? resolveImageSource(shape, t)
     : (shape.metadata?.image ?? resolveImageSource(shape, t));
+  // A non-drawable handle with a `fileId` is a TRANSIENT state, not a
+  // problem: the first paint after a scene restore runs before async
+  // rehydration re-attaches a live handle from `Scene.files`. Skip the
+  // frame silently — rehydration repaints when it lands, and reports its
+  // own failure if the bytes are missing or won't decode. Only handles
+  // with no rehydration source fall through to the backend, which warns
+  // (the image really will stay blank).
+  if (!isDrawableImageSource(handle)) {
+    if (handle == null || shape.fileId) return;
+  }
   // `dynamic` → backends that cache the upload (WebGL2) re-upload the
   // current frame. GIF / video sources flag `metadata.animated`, and
   // any adapter-driven source is dynamic by definition.

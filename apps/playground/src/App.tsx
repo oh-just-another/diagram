@@ -192,6 +192,11 @@ export const App = () => {
     // ready, same as the renderer override. The debug panel can still
     // toggle it afterwards.
     if (readDebugHitZones()) ed.setDebugHitZones(true);
+    // Dev-only console handle for debugging live sessions
+    // (`__editor.scene` etc.); stripped from production builds.
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).__editor = ed;
+    }
     setEditor(ed);
   }, []);
   const apiRef = useRef<DiagramAPI>(null);
