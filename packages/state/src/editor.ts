@@ -4106,7 +4106,12 @@ export class Editor {
   }
 
   public isDrawingPhase(ctx: InteractionContext): boolean {
-    return ctx.mode === "draw-rect" || ctx.mode === "draw-ellipse" || ctx.mode === "draw-edge";
+    return (
+      ctx.mode === "draw-rect" ||
+      ctx.mode === "draw-ellipse" ||
+      ctx.mode === "draw-frame" ||
+      ctx.mode === "draw-edge"
+    );
   }
 
   // --- Long-press ---
@@ -5056,9 +5061,19 @@ export class Editor {
     this.notify();
   }
 
+  /**
+   * Snap freshly-drawn bounds onto the grid when snapping is active.
+   * Shared by the live rubber-band preview and the final CREATE so the
+   * preview shows exactly where the shape will land (parity with how
+   * move / resize snap live during the gesture).
+   */
+  snapCreateBoundsIfActive(bounds: Bounds): Bounds {
+    return this.snapActive() ? snapCreateBounds(bounds, this.snapSpacing()) : bounds;
+  }
+
   private applyCreate(kind: "rect" | "ellipse" | "frame", bounds: Bounds): void {
     const id = newElementId(++this.nextId);
-    const b = this.snapActive() ? snapCreateBounds(bounds, this.snapSpacing()) : bounds;
+    const b = this.snapCreateBoundsIfActive(bounds);
     const result = computeCreateElement(this._scene, kind, b, id, this._activeLayerId, () =>
       this.nextFrameName(),
     );

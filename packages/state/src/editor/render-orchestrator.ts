@@ -41,6 +41,7 @@ import {
 import { anchorOverlayPoints } from "./anchor-points.js";
 import { hitZoneVisibility } from "./hit-test.js";
 import { buildElementForCreate, buildEdgePreviewLink } from "./applies/create.js";
+import { nextFrameName } from "../helpers/frame-helpers.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   ANCHOR_DOT_RADIUS,
@@ -454,7 +455,13 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       overlayOpts.drawingPreview = editor.lassoPreview;
     } else if (editor.drawingPreview) {
       const kind =
-        editor.mode === "draw-rect" ? "rect" : editor.mode === "draw-ellipse" ? "ellipse" : null;
+        editor.mode === "draw-rect"
+          ? "rect"
+          : editor.mode === "draw-ellipse"
+            ? "ellipse"
+            : editor.mode === "draw-frame"
+              ? "frame"
+              : null;
       if (kind) {
         overlayOpts.drawingPreviewElement = buildElementForCreate(
           editor.scene,
@@ -462,7 +469,8 @@ export const renderEditor = (editor: RenderSnapshot): void => {
           editor.drawingPreview,
           DRAW_PREVIEW_ELEMENT_ID,
           editor.activeLayerId,
-          () => "",
+          // WYSIWYG: the frame preview shows the auto-number it will get.
+          () => nextFrameName(editor.scene),
         );
       } else {
         overlayOpts.drawingPreview = editor.drawingPreview;

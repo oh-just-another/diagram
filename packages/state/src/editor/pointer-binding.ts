@@ -880,8 +880,12 @@ const dispatchMoveToMachine = (editor: Editor, worldPoint: Vec2): void => {
     ctx.mode !== "draw-edge" &&
     editor.isDrawingPhase(ctx)
   ) {
-    // Update rubber-band preview live for rect / ellipse drawing.
-    editor.drawingPreview = boundsFromPoints(ctx.pressOrigin, worldPoint);
+    // Update rubber-band preview live for rect / ellipse drawing. Snapped
+    // through the same helper as the final CREATE so the preview always
+    // shows where the shape will actually land.
+    editor.drawingPreview = editor.snapCreateBoundsIfActive(
+      boundsFromPoints(ctx.pressOrigin, worldPoint),
+    );
   }
   // Port-overlay tracking in draw-edge mode — both when idle and during gesture.
   if (ctx.mode === "draw-edge") {
