@@ -1,5 +1,16 @@
 import type { Scene } from "@oh-just-another/scene";
 import { CURRENT_VERSION, type SceneDocument } from "./schema.js";
+import { serializeFiles } from "./files.js";
+
+export interface SerializeSceneOptions {
+  /**
+   * Embed `Scene.files` (base64) into the document so image / gif / video
+   * shapes survive the round-trip to another machine or session. Use for
+   * file export / share. Off by default: autosave documents stay small —
+   * the bytes live in the host's binary store (e.g. IndexedDB).
+   */
+  readonly includeFiles?: boolean;
+}
 
 /**
  * Convert an in-memory `Scene` into a plain JSON-ready document. The result is
@@ -8,7 +19,10 @@ import { CURRENT_VERSION, type SceneDocument } from "./schema.js";
  *
  * Pure: doesn't read or write any global state.
  */
-export const serializeScene = (scene: Scene): SceneDocument => {
+export const serializeScene = (
+  scene: Scene,
+  options: SerializeSceneOptions = {},
+): SceneDocument => {
   const annotations =
     scene.annotations.size > 0
       ? ([...scene.annotations.values()] as unknown as NonNullable<SceneDocument["annotations"]>)
@@ -23,6 +37,9 @@ export const serializeScene = (scene: Scene): SceneDocument => {
   };
   // Omit `annotations` for empty collections.
   if (annotations) doc.annotations = annotations;
+  if (options.includeFiles && scene.files.size > 0) {
+    doc.files = [...serializeFiles(scene).files];
+  }
   return doc;
 };
 
@@ -69,5 +86,8 @@ const stripTransientMetadata = <
  * Stringify a scene. Convenience for `JSON.stringify(serializeScene(s))` with
  * optional 2-space indent for human-readable output.
  */
-export const stringifyScene = (scene: Scene, indent: number | null = null): string =>
-  JSON.stringify(serializeScene(scene), null, indent ?? undefined);
+export const stringifyScene = (
+  scene: Scene,
+  indent: number | null = null,
+  options: SerializeSceneOptions = {},
+): string => JSON.stringify(serializeScene(scene, options), null, indent ?? undefined);

@@ -6,7 +6,7 @@
  * mocked download / clipboard.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { elementId } from "@oh-just-another/types";
+import { elementId, fileId } from "@oh-just-another/types";
 import {
   addElement,
   DEFAULT_LAYER_ID,
@@ -97,6 +97,34 @@ describe("downloadScene", () => {
     expect(created[0]?.type).toBe("application/json");
     expect(anchor.download).toBe("scene.diagram.json");
     expect(anchor.click).toHaveBeenCalledOnce();
+  });
+
+  // Regression: the saved file carried only `fileId` references, so a scene
+  // with media opened elsewhere rendered blank shapes.
+  it("embeds Scene.files bytes so the saved file is self-contained", async () => {
+    const scene = sceneWith(rect("a"));
+    const bytes = new Uint8Array([9, 8, 7]);
+    const withFile = {
+      ...scene,
+      files: new Map([
+        [fileId("f1"), { id: fileId("f1"), mime: "image/png", createdAt: 1, data: bytes.buffer }],
+      ]),
+    };
+    downloadScene(withFile);
+    // jsdom's Blob lacks `.text()` — go through FileReader instead.
+    const text = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(reader.result as string);
+      };
+      reader.onerror = () => {
+        reject(new Error("read failed"));
+      };
+      reader.readAsText(created[0]!);
+    });
+    const doc = JSON.parse(text) as { files?: { id: string; mime: string }[] };
+    expect(doc.files).toHaveLength(1);
+    expect(doc.files?.[0]).toMatchObject({ id: "f1", mime: "image/png" });
   });
 });
 

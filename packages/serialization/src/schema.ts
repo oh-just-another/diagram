@@ -347,6 +347,25 @@ const AnnotationZ = z
   })
   .strict();
 
+// --- Binary files (optional, embedded on file export) ---
+
+/**
+ * One `Scene.files` entry with base64-encoded bytes. Present only in
+ * documents serialized with `includeFiles` (file export / share) — the
+ * autosave path omits them to keep localStorage payloads small (bytes
+ * live in the host's binary store, e.g. IndexedDB).
+ */
+const BinaryFileEntryZ = z
+  .object({
+    id: z.string(),
+    mime: z.string(),
+    name: z.string().optional(),
+    createdAt: z.number(),
+    /** base64-encoded bytes (no data-URL prefix). */
+    data: z.string(),
+  })
+  .strict();
+
 // --- Document ---
 
 export const SceneDocumentZ = z
@@ -362,6 +381,12 @@ export const SceneDocumentZ = z
      * deserialize as an empty thread list.
      */
     annotations: z.array(AnnotationZ).optional(),
+    /**
+     * Embedded `Scene.files` bytes. Optional — see {@link BinaryFileEntryZ}:
+     * present on file exports so image / gif / video shapes survive the
+     * round-trip to another machine; absent on autosave documents.
+     */
+    files: z.array(BinaryFileEntryZ).optional(),
     viewport: ViewportZ,
   })
   .strict();

@@ -56,9 +56,15 @@ const downloadBlob = (blob: Blob, filename: string): void => {
   });
 };
 
-/** "Save as JSON" — serialises the scene through `@serialization`. */
+/**
+ * "Save as JSON" — serialises the scene through `@serialization`.
+ * Binary files (image / gif / video bytes) are embedded so the saved
+ * file is self-contained: without them a scene opened on another
+ * machine (or after clearing the browser store) has only dangling
+ * `fileId` references and every media shape renders blank.
+ */
 export const downloadScene = (scene: Scene): void => {
-  const json = stringifyScene(scene, 2);
+  const json = stringifyScene(scene, 2, { includeFiles: true });
   downloadBlob(new Blob([json], { type: "application/json" }), "scene.diagram.json");
 };
 

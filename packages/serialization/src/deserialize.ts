@@ -14,6 +14,7 @@ import type { Annotation, Link, Layer, Scene, Element, Viewport } from "@oh-just
 import { type FractionalIndex } from "fractional-keys";
 import { z } from "zod";
 import { CURRENT_VERSION, type SceneDocument, SceneDocumentZ } from "./schema.js";
+import { parseFiles, type SerializedFilesDocument } from "./files.js";
 import { runMigrations } from "./migrations.js";
 import "./migrations-builtin.js";
 
@@ -133,7 +134,15 @@ const hydrate = (doc: SceneDocument): Scene => {
     }
   }
 
-  return { elements, links, layers, annotations, files: new Map(), viewport };
+  // Embedded binary files (file exports carry them; autosave docs don't).
+  // The zod-parsed entries match the sidecar wire shape, so reuse its parser
+  // (the cast bridges zod's `?: string | undefined` optionals under
+  // `exactOptionalPropertyTypes`).
+  const files = doc.files
+    ? parseFiles({ version: 1, files: doc.files } as SerializedFilesDocument)
+    : new Map();
+
+  return { elements, links, layers, annotations, files, viewport };
 };
 
 const hydrateElement = (s: SceneDocument["elements"][number], id: ElementId): Element => {

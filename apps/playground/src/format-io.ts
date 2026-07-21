@@ -35,8 +35,11 @@ export const DIAGRAM_FORMATS: readonly DiagramFormat[] = [
     label: "Native JSON",
     extension: ".oja.json",
     parse: (source) => parseScene(source),
-    // Pretty-printed so a hand-inspected export is readable.
-    serialize: (scene) => stringifyScene(scene, 2),
+    // Pretty-printed so a hand-inspected export is readable. Binary files
+    // (images / gif / video bytes) are embedded so the exported file is
+    // self-contained on another machine — unlike the autosave path, which
+    // keeps them in IndexedDB.
+    serialize: (scene) => stringifyScene(scene, 2, { includeFiles: true }),
   },
   {
     id: "excalidraw",

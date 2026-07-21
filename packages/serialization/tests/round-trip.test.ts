@@ -105,6 +105,56 @@ describe("round-trip", () => {
     expect(r.routing).toBe("orthogonal");
   });
 
+  // Regression: `lineKind`/`blockArrow` existed on `Link` but not in the wire
+  // schema — a stored scene containing a block-arrow link failed strict
+  // validation and the host dropped it as unparseable.
+  it("preserves a block-arrow link through stringify → parseScene", () => {
+    let scene = emptyScene();
+    const link: Link = {
+      id: linkId("L"),
+      layerId: DEFAULT_LAYER_ID,
+      from: { kind: "point", position: { x: 0, y: 0 } },
+      to: { kind: "point", position: { x: 100, y: 0 } },
+      lineKind: "block-arrow",
+      blockArrow: { headLength: 24, bodyThickness: 10 },
+      order: orderBetween(null, null),
+      style: { stroke: "#000" },
+    };
+    ({ scene } = addLink(scene, link));
+    const restored = parseScene(stringifyScene(scene));
+    const r = [...restored.links.values()][0]!;
+    expect(r.lineKind).toBe("block-arrow");
+    expect(r.blockArrow).toEqual({ headLength: 24, bodyThickness: 10 });
+  });
+
+  // Regression: the file export serialized only `fileId` references, so a
+  // scene with images / gif / video opened on another machine rendered
+  // blank shapes (nothing to rehydrate from). `includeFiles` embeds the
+  // bytes; parseScene restores them into `Scene.files`.
+  it("embeds and restores Scene.files with includeFiles", () => {
+    let scene = emptyScene();
+    ({ scene } = addElement(scene, rect("a")));
+    const bytes = new Uint8Array([1, 2, 3, 250, 251, 252]);
+    const file = {
+      id: fileId("f1"),
+      mime: "video/mp4",
+      name: "clip.mp4",
+      createdAt: 123,
+      data: bytes.buffer,
+    };
+    scene = { ...scene, files: new Map([[file.id, file]]) };
+
+    const withFiles = parseScene(stringifyScene(scene, null, { includeFiles: true }));
+    const restored = withFiles.files.get(fileId("f1"));
+    expect(restored?.mime).toBe("video/mp4");
+    expect(restored?.name).toBe("clip.mp4");
+    expect(new Uint8Array(restored?.data ?? new ArrayBuffer(0))).toEqual(bytes);
+
+    // Default (autosave) path still omits the bytes.
+    const withoutFiles = parseScene(stringifyScene(scene));
+    expect(withoutFiles.files.size).toBe(0);
+  });
+
   it("stringify → parseScene round-trip", () => {
     let scene = emptyScene();
     ({ scene } = addElement(scene, rect("a")));

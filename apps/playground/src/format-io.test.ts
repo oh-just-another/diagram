@@ -43,8 +43,9 @@ describe("diagram format IO", () => {
     const el = back.elements.get(elementId("r1"));
     expect(el?.type).toBe("rectangle");
     expect(el?.position).toEqual({ x: 10, y: 20 });
-    // Exported text is the same document a direct serialize would produce.
-    expect(text).toBe(stringifyScene(scene, 2));
+    // Exported text is the same document a direct serialize (with embedded
+    // binary files — the file export is self-contained) would produce.
+    expect(text).toBe(stringifyScene(scene, 2, { includeFiles: true }));
   });
 
   it("exports Excalidraw and Mermaid as non-empty strings", () => {
