@@ -24,6 +24,7 @@ import {
   Group as GroupIcon,
   Italic,
   Link as LinkIcon,
+  Lock as LockIcon,
   Minus,
   MoreHorizontal,
   MoreVertical,
@@ -180,7 +181,11 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
     overflow.push(<ZOrderControl key="z" />, <LinkControl key="link" shapes={shapes} />);
     // Alignment needs a reference box — only meaningful for 2+ shapes.
     if (shapes.length >= 2) overflow.push(<AlignControl key="align" />);
-    overflow.push(<ActionsControl key="actions" shapes={shapes} />, <MoreButton key="more" />);
+    overflow.push(
+      <ActionsControl key="actions" shapes={shapes} />,
+      <LockControl key="lock" />,
+      <MoreButton key="more" />,
+    );
     return (
       <PanelShell
         mobile={mobile}
@@ -379,6 +384,29 @@ const LinkControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
         </div>
       </div>
     </Popover>
+  );
+};
+
+/**
+ * Lock the current selection. Locked shapes become click-through (the
+ * hit-test skips them), so locking also drops the selection and hides
+ * this panel; unlocking goes through the right-click context menu.
+ */
+const LockControl = () => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  return (
+    <button
+      type="button"
+      className="du-sel-icon-button"
+      title="Lock"
+      aria-label="Lock selection"
+      onClick={() => {
+        editor.toggleLockSelection();
+      }}
+    >
+      <LockIcon size={14} strokeWidth={1.75} aria-hidden />
+    </button>
   );
 };
 

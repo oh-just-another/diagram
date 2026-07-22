@@ -3626,8 +3626,8 @@ export class Editor {
    * with its world bounds — for the hover link-popup. `null` when none.
    */
   linkAt(worldPoint: Vec2): { id: ElementId; href: string; bounds: Bounds } | null {
-    const shape = this.acceleratedElementAt(worldPoint);
-    if (!shape || !this.isElementInteractable(shape)) return null;
+    const shape = this.acceleratedElementAt(worldPoint, (s) => this.isElementInteractable(s));
+    if (!shape) return null;
     const href = safeHref(shape.href);
     if (!href) return null;
     return { id: shape.id, href, bounds: getElementWorldBounds(shape) };
@@ -4152,8 +4152,8 @@ export class Editor {
    * `undefined` → dropped on empty space (the end stays a free point).
    */
   public linkAttachTargetAt(worldPoint: Vec2): PressTarget | undefined {
-    const shape = this.acceleratedElementAt(worldPoint);
-    if (shape && this.isElementInteractable(shape)) {
+    const shape = this.acceleratedElementAt(worldPoint, (s) => this.isElementInteractable(s));
+    if (shape) {
       const target = this.promoteToGroupRoot(shape);
       return { kind: "element", id: target.id, bounds: getElementWorldBounds(target) };
     }
@@ -4177,7 +4177,7 @@ export class Editor {
       hitAnnotation: (p) => this.hitAnnotation(p),
       selectionIsAspectLocked: () => this.selectionIsAspectLocked(),
       combinedSelectionBounds: () => this.combinedSelectionBounds(),
-      acceleratedElementAt: (p) => this.acceleratedElementAt(p),
+      acceleratedElementAt: (p, accept) => this.acceleratedElementAt(p, accept),
       isElementInteractable: (s) => this.isElementInteractable(s),
       isLayerLocked: (id) => this.isLayerLocked(id),
       promoteToGroupRoot: (s) => this.promoteToGroupRoot(s),
@@ -4233,10 +4233,11 @@ export class Editor {
   private isElementInteractable(shape: Element): boolean {
     if (this.isLayerLocked(shape.layerId)) return false;
     if (isElementHidden(this._scene, shape)) return false;
-    // NOTE: a `locked` element IS interactable for SELECTION (so the user can
-    // click it to unlock) — movement / resize are blocked separately via
-    // `isElementManipulable`. Click-through past a locked shape is therefore
-    // disabled, matching standard.
+    // A locked element is click-through: pointer hits pass to the shapes
+    // beneath it (the hit-test scans past rejected candidates). Unlocking
+    // goes through the context menu (`lockedElementAt` + `unlockElement`),
+    // not through selection.
+    if (isElementLocked(this._scene, shape)) return false;
     return true;
   }
 
@@ -4276,7 +4277,56 @@ export class Editor {
       tx.add(r.patch);
     }
     tx.commit();
+    // Locked elements are click-through (not selectable) — keeping them
+    // selected would leave a live toolbar on an element clicks can no
+    // longer reach. Locking therefore drops the selection.
+    if (anyUnlocked) this._selection = Selection.EMPTY;
     this.notify();
+  }
+
+  /**
+   * Topmost locked (own or inherited `locked`) shape at `worldPoint`, on a
+   * visible, unlocked layer. Locked shapes are click-through for normal
+   * interaction, so this is the dedicated lookup for affordances that must
+   * still find them — the context menu's Unlock entry.
+   */
+  lockedElementAt(worldPoint: Vec2): Element | null {
+    const shape = this.acceleratedElementAt(
+      worldPoint,
+      (s) =>
+        !this.isLayerLocked(s.layerId) &&
+        !isElementHidden(this._scene, s) &&
+        isElementLocked(this._scene, s),
+    );
+    return shape ?? null;
+  }
+
+  /**
+   * Clear the `locked` flag on the shape that carries it. When the flag
+   * lives on an ancestor (group lock propagation), the closest locked
+   * ancestor is unlocked instead, so the whole locked unit is released.
+   * Selects the unlocked shape afterwards — the natural next step after
+   * an unlock is editing it. One undo step.
+   */
+  unlockElement(id: ElementId): void {
+    if (this.readOnly) return;
+    let target = getElement(this._scene, id);
+    if (!target || !isElementLocked(this._scene, target)) return;
+    // Walk up to the shape that actually carries the flag.
+    while (target.locked !== true && target.parentId !== undefined) {
+      const parent = getElement(this._scene, target.parentId);
+      if (!parent) break;
+      target = parent;
+    }
+    if (target.locked !== true) return;
+    const r = updateElement(this._scene, target.id, (s) => {
+      const copy: typeof s = { ...s };
+      delete (copy as { locked?: boolean }).locked;
+      return copy;
+    });
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this.setSelection([target.id]);
   }
 
   /**
@@ -4442,11 +4492,14 @@ export class Editor {
    * scene-identity. Scene operations replace `_scene` (immutable patches),
    * so reference-equality is a sufficient invalidation signal.
    */
-  public acceleratedElementAt(worldPoint: Vec2): Element | undefined {
+  public acceleratedElementAt(
+    worldPoint: Vec2,
+    accept?: (shape: Element) => boolean,
+  ): Element | undefined {
     if (this._scene.elements.size < LARGE_SCENE_HIT_THRESHOLD) {
-      return getElementAt(this._scene, worldPoint);
+      return getElementAt(this._scene, worldPoint, accept);
     }
-    return getElementAtIndexed(this._scene, this.ensureSpatialIndex(), worldPoint);
+    return getElementAtIndexed(this._scene, this.ensureSpatialIndex(), worldPoint, accept);
   }
 
   /**

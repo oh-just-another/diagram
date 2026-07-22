@@ -128,13 +128,18 @@ describe("misc public setters", () => {
     off();
   });
 
-  it("toggleLockSelection locks then unlocks the selection", () => {
+  it("toggleLockSelection locks the selection and drops it (locked = click-through)", () => {
     const e = editorWith(sceneWith(rect("a"), rect("b")));
     e.toggleLockSelection(); // empty selection → no-op
     e.setSelection([elementId("a"), elementId("b")]);
     e.toggleLockSelection();
     expect(e.scene.elements.get(elementId("a"))?.locked).toBe(true);
-    e.toggleLockSelection();
+    expect(e.scene.elements.get(elementId("b"))?.locked).toBe(true);
+    // Locked shapes are unreachable by click, so the selection is cleared.
+    expect(e.selection.size).toBe(0);
+    // Unlock goes through the dedicated per-element API (context menu path).
+    e.unlockElement(elementId("a"));
     expect(e.scene.elements.get(elementId("a"))?.locked).not.toBe(true);
+    expect([...e.selection]).toEqual([elementId("a")]);
   });
 });

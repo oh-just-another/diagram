@@ -89,7 +89,10 @@ export interface HitTestContext {
   readonly hitAnnotation: (worldPoint: Vec2) => AnnotationId | null;
   readonly selectionIsAspectLocked: () => boolean;
   readonly combinedSelectionBounds: () => Bounds | null;
-  readonly acceleratedElementAt: (worldPoint: Vec2) => Element | undefined;
+  readonly acceleratedElementAt: (
+    worldPoint: Vec2,
+    accept?: (shape: Element) => boolean,
+  ) => Element | undefined;
   readonly isElementInteractable: (shape: Element) => boolean;
   readonly isLayerLocked: (layerId: LayerId) => boolean;
   readonly promoteToGroupRoot: (shape: Element) => Element;
@@ -134,13 +137,14 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
     if (chrome) return chrome;
   }
 
-  // 3. Topmost shape under cursor. Skip shapes whose layer is locked
-  //    OR whose own / ancestor `locked` flag is set (group lock
-  //    propagation). When the hit shape is a child of a group,
-  //    promote to the group root unless the user has "entered" that
-  //    group via double-click.
-  const shape = ctx.acceleratedElementAt(worldPoint);
-  if (shape && ctx.isElementInteractable(shape)) {
+  // 3. Topmost INTERACTABLE shape under cursor. The predicate makes
+  //    locked / hidden / layer-locked shapes click-through: the scan
+  //    skips them and keeps looking beneath, instead of letting a locked
+  //    shape shadow what's under it. When the hit shape is a child of a
+  //    group, promote to the group root unless the user has "entered"
+  //    that group via double-click.
+  const shape = ctx.acceleratedElementAt(worldPoint, ctx.isElementInteractable);
+  if (shape) {
     const target = ctx.promoteToGroupRoot(shape);
     return { kind: "element", id: target.id, bounds: getElementWorldBounds(target) };
   }

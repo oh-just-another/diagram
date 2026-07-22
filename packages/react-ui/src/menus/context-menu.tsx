@@ -357,6 +357,20 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   actionMenuItem("copy-style", { label: "Copy style" }),
   actionMenuItem("paste-style", { label: "Paste style" }),
   actionMenuItem("select-all"),
+  actionMenuItem("toggle-lock", { label: "Lock" }),
+  // Locked shapes are click-through, so the regular selection path can't
+  // reach them — Unlock resolves the shape under the right-click point via
+  // the dedicated locked-aware lookup instead.
+  {
+    kind: "action",
+    id: "unlock-element",
+    label: "Unlock",
+    visible: (e, ctx) => !e.readOnly && e.lockedElementAt(ctx.worldPoint) !== null,
+    onClick: (e, ctx) => {
+      const shape = e.lockedElementAt(ctx.worldPoint);
+      if (shape) e.unlockElement(shape.id);
+    },
+  },
   { kind: "divider" },
   // --- Grouping + arrange (registry-backed) ---
   actionMenuItem("group-selection", { label: "Group" }),

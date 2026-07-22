@@ -499,17 +499,20 @@ describe("defaultActionRegistry built-ins", () => {
     expect(zoom).toHaveBeenCalledOnce();
   });
 
-  it("⌘⇧L locks/unlocks selection; locked elements don't move", () => {
+  it("⌘⇧L locks the selection; locked elements don't move until unlocked", () => {
     const editor = makeEditor();
     const lockKey = plainKey("l", { metaKey: true, ctrlKey: true, shiftKey: true });
     editor.setSelection([elementId("a")]);
     expect(defaultActionRegistry.dispatchHotkey(lockKey, { editor })).toBe(true);
     expect(editor.scene.elements.get(elementId("a"))?.locked).toBe(true);
-    // Locked → nudge is a no-op.
+    // Locking drops the selection (locked = click-through); a programmatic
+    // re-selection still can't move the locked shape.
+    expect(editor.selection.size).toBe(0);
+    editor.setSelection([elementId("a")]);
     editor.moveSelectionBy({ x: 10, y: 0 });
     expect(editor.scene.elements.get(elementId("a"))?.position.x).toBe(0);
-    // Unlock → moves again.
-    defaultActionRegistry.dispatchHotkey(lockKey, { editor });
+    // Unlock (context-menu path) → selects the shape, moves again.
+    editor.unlockElement(elementId("a"));
     expect(editor.scene.elements.get(elementId("a"))?.locked).toBeUndefined();
     editor.moveSelectionBy({ x: 10, y: 0 });
     expect(editor.scene.elements.get(elementId("a"))?.position.x).toBe(10);

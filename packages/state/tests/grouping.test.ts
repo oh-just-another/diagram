@@ -339,16 +339,18 @@ describe("group lock / hide propagation", () => {
       elements: new Map(editor.scene.elements).set(groupId, locked),
     };
 
-    // Clicking A selects (promoted to the group root) so it can be unlocked;
-    // a locked group is not click-through.
+    // A locked group is click-through: clicking a child hits nothing (the
+    // hit-test scans past the whole locked unit)…
     const target = (
       editor as unknown as { hitTest(p: { x: number; y: number }): { kind: string } }
     ).hitTest({
       x: 10,
       y: 10,
     });
-    expect(target.kind).toBe("element");
-    // …but the locked group and its descendants can't be moved/resized.
+    expect(target.kind).toBe("empty");
+    // …the context-menu lookup still finds it for Unlock…
+    expect(editor.lockedElementAt({ x: 10, y: 10 })?.id).toBe(a.id);
+    // …and the locked group's descendants can't be moved/resized.
     const childA = editor.scene.elements.get(a.id)!;
     expect(editor.isElementManipulable(childA)).toBe(false);
   });
