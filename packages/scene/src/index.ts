@@ -177,7 +177,7 @@ export type { SettingScope, SceneSettings, HydrateInput } from "./model/hydrate.
 
 // Binary file registry.
 export type { BinaryFile } from "./model/file.js";
-export { createBinaryFile } from "./model/file.js";
+export { createBinaryFile, sniffBinaryFileMime } from "./model/file.js";
 
 // Patch utilities
 export { invert, batch, isNoop } from "./model/patch.js";

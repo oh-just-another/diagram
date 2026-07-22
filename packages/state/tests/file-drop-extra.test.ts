@@ -3,6 +3,7 @@ import {
   FileDropRegistry,
   IMAGE_MIME_TYPES,
   VIDEO_MIME_TYPES,
+  inferFileMime,
   isVideoFile,
   isImageFile,
   isSceneJsonFile,
@@ -15,6 +16,29 @@ import {
 // ---------------------------------------------------------------------------
 
 const makeFile = (name: string, type = ""): File => new File(["content"], name, { type });
+
+// ---------------------------------------------------------------------------
+// inferFileMime
+// ---------------------------------------------------------------------------
+
+describe("inferFileMime", () => {
+  it("keeps a declared non-generic type", () => {
+    expect(inferFileMime("video/mp4", "clip.bin")).toBe("video/mp4");
+  });
+  it("falls back to the extension for an empty type", () => {
+    // Regression: an .mp4 dropped with empty File.type was stored as
+    // octet-stream and rehydration sent it to the image decoder.
+    expect(inferFileMime("", "clip.mp4")).toBe("video/mp4");
+    expect(inferFileMime(undefined, "pic.PNG")).toBe("image/png");
+  });
+  it("falls back to the extension for octet-stream", () => {
+    expect(inferFileMime("application/octet-stream", "clip.mov")).toBe("video/quicktime");
+  });
+  it("returns octet-stream when nothing is known", () => {
+    expect(inferFileMime("", "noext")).toBe("application/octet-stream");
+    expect(inferFileMime(undefined, undefined)).toBe("application/octet-stream");
+  });
+});
 
 // ---------------------------------------------------------------------------
 // isVideoFile

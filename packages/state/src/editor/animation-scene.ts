@@ -1,6 +1,13 @@
 import type { ElementId } from "@oh-just-another/types";
 import { bounds as B } from "@oh-just-another/math";
-import { apply, getBinaryFile, getElementWorldBounds, isImage } from "@oh-just-another/scene";
+import {
+  apply,
+  getBinaryFile,
+  getElementWorldBounds,
+  isImage,
+  sniffBinaryFileMime,
+} from "@oh-just-another/scene";
+import { isDrawableImageSource } from "@oh-just-another/renderer-core";
 import { HEAVY_GIF_BYTES } from "../constants.js";
 import { hasAnimatedElement } from "./public/image-insert.js";
 import { createHiddenLoopingVideo } from "../features/built-in-handlers.js";
@@ -62,41 +69,6 @@ export const rehydrateAnimatedImages = (editor: Editor): void => {
       after: { ...shape, animationData: file.data },
     });
   }
-};
-
-/**
- * DOM/bitmap constructors that `ctx.drawImage` / `gl.texImage2D` accept as a
- * live image source. Probed by name so a missing global (SSR / worker) is a
- * plain "not live" rather than a throw.
- */
-const DRAWABLE_CTOR_NAMES = [
-  "HTMLImageElement",
-  "HTMLCanvasElement",
-  "HTMLVideoElement",
-  "ImageBitmap",
-  "OffscreenCanvas",
-  "SVGImageElement",
-  "VideoFrame",
-] as const;
-
-/**
- * True when `value` is a live, drawable image handle (not a `{}` left behind
- * by a serialised `<img>` nor an absent handle). A freshly inserted image
- * already carries one, so rehydration can skip it.
- */
-const isLiveImageHandle = (value: unknown): boolean => {
-  if (typeof value !== "object" || value === null) return false;
-  const g = globalThis as Record<string, unknown>;
-  for (const name of DRAWABLE_CTOR_NAMES) {
-    const ctor = g[name];
-    if (
-      typeof ctor === "function" &&
-      value instanceof (ctor as new (...args: never[]) => unknown)
-    ) {
-      return true;
-    }
-  }
-  return false;
 };
 
 /**
@@ -198,11 +170,28 @@ export const rehydrateStaticImages = async (editor: Editor): Promise<void> => {
   for (const shape of editor._scene.elements.values()) {
     if (!isImage(shape)) continue;
     if (shape.animationKind) continue; // animated path rebuilds via animationData
-    if (isLiveImageHandle(shape.metadata?.image)) continue; // freshly inserted — already live
+    if (isDrawableImageSource(shape.metadata?.image)) continue; // freshly inserted — already live
     if (!shape.fileId) continue;
     const file = getBinaryFile(editor._scene, shape.fileId);
-    if (!file) continue;
-    targets.push({ id: shape.id, data: file.data, mime: file.mime });
+    if (!file) {
+      // Dangling fileId: the renderer skips this shape silently on the
+      // promise of rehydration, so a missing Scene.files entry must be
+      // reported here or the blank shape is unexplained.
+      console.warn(
+        `[state] could not rehydrate image handle: element ${shape.id} points at ` +
+          `fileId "${shape.fileId}" but Scene.files has no such entry — ` +
+          "the shape will render blank.",
+      );
+      continue;
+    }
+    // Generic mime (empty File.type at drop time in older scenes) can't
+    // route image-vs-video decoding — recover the real type from the
+    // leading magic bytes.
+    const mime =
+      file.mime === "application/octet-stream"
+        ? (sniffBinaryFileMime(file.data) ?? file.mime)
+        : file.mime;
+    targets.push({ id: shape.id, data: file.data, mime });
   }
   if (targets.length === 0) return;
 
@@ -211,12 +200,21 @@ export const rehydrateStaticImages = async (editor: Editor): Promise<void> => {
     const handle = target.mime.startsWith("video/")
       ? await rehydrateVideoHandle(target.data, target.mime)
       : await decodeImageHandle(target.data, target.mime);
-    if (!handle) continue;
+    if (!handle) {
+      // Silent skip would leave the shape permanently blank (the renderer's
+      // "dead-blob-url" warning with no follow-up) — say why instead.
+      console.warn(
+        `[state] could not rehydrate image handle from Scene.files ` +
+          `(element ${target.id}, mime "${target.mime}", ${target.data.byteLength} bytes) — ` +
+          "decode/loadedmetadata failed; the shape will render blank.",
+      );
+      continue;
+    }
     // The scene may have mutated while decoding — re-read the current shape
     // and skip if it vanished or already regained a live handle.
     const shape = editor._scene.elements.get(target.id);
     if (!shape || !isImage(shape)) continue;
-    if (isLiveImageHandle(shape.metadata?.image)) continue;
+    if (isDrawableImageSource(shape.metadata?.image)) continue;
     editor._scene = apply(editor._scene, {
       kind: "element",
       id: shape.id,

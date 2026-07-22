@@ -46,3 +46,27 @@ export const createBinaryFile = (
   createdAt: options.createdAt ?? Date.now(),
   ...(options.name !== undefined ? { name: options.name } : {}),
 });
+
+/**
+ * Content-sniff a media MIME from the leading magic bytes, or `null`
+ * when unrecognised. Used as a fallback when a stored `BinaryFile`
+ * carries a generic mime (`application/octet-stream` — e.g. a file
+ * dropped with an empty `File.type` by the browser): rehydration
+ * routes image-vs-video decoding by mime, so a generic one would send
+ * an mp4 into the image decoder and the shape would reload blank.
+ */
+export const sniffBinaryFileMime = (data: ArrayBuffer): string | null => {
+  const b = new Uint8Array(data, 0, Math.min(16, data.byteLength));
+  const ascii = (from: number, to: number): string =>
+    String.fromCharCode(...b.subarray(from, Math.min(to, b.length)));
+  if (b.length >= 12 && ascii(4, 8) === "ftyp") return "video/mp4"; // ISO-BMFF (mp4 / mov)
+  if (b.length >= 4 && b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3)
+    return "video/webm"; // EBML (webm / mkv)
+  if (b.length >= 4 && ascii(0, 4) === "OggS") return "video/ogg";
+  if (b.length >= 8 && b[0] === 0x89 && ascii(1, 4) === "PNG") return "image/png";
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b.length >= 4 && ascii(0, 4) === "GIF8") return "image/gif";
+  if (b.length >= 12 && ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") return "image/webp";
+  if (b.length >= 4 && (ascii(0, 4) === "<svg" || ascii(0, 2) === "<?")) return "image/svg+xml";
+  return null;
+};
