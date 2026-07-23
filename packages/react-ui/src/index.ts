@@ -70,6 +70,7 @@ export { Markdown, type MarkdownProps } from "./primitives/markdown.js";
 export { TextEditorOverlay } from "./overlays/text-editor-overlay.js";
 export { FrameNameEditorOverlay } from "./overlays/frame-name-editor-overlay.js";
 export { LinkHoverPopup } from "./overlays/link-hover-popup.js";
+export { LinkBadges } from "./overlays/link-badges.js";
 export { LinkDropShapeMenu } from "./menus/link-drop-shape-menu.js";
 export { LinkCaptionEditor } from "./overlays/link-caption-editor.js";
 export {

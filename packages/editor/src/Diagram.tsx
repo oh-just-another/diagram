@@ -56,6 +56,7 @@ import {
   Minimap,
   ResetToContentButton,
   LinkHoverPopup,
+  LinkBadges,
   LinkDropShapeMenu,
   LinkCaptionEditor,
   SelectionFloatingPanel,
@@ -868,6 +869,7 @@ const EditorShell = ({
         <TextEditorOverlay />
         <FrameNameEditorOverlay />
         <LinkHoverPopup />
+        <LinkBadges />
         <LinkDropShapeMenu />
         <LinkCaptionEditor />
         {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}

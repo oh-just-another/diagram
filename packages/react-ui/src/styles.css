@@ -1419,6 +1419,31 @@
   pointer-events: auto;
 }
 
+/* Persistent link badge at an element's top-right corner. Slightly offset
+   outward so it reads as attached to the shape without covering content. */
+.du-link-badge {
+  z-index: 1390;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: var(--du-accent);
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transform: translate(-40%, -60%);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.du-link-badge:hover {
+  color: var(--du-accent-strong, var(--du-accent));
+  border-color: var(--du-accent);
+}
+
 .du-link-popup-url {
   display: inline-flex;
   align-items: center;
