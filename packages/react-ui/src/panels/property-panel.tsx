@@ -25,6 +25,7 @@ import {
   Italic,
   Link as LinkIcon,
   Lock as LockIcon,
+  MessageCircle,
   Minus,
   MoreHorizontal,
   MoreVertical,
@@ -135,6 +136,9 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
     const allBrush = shapes.every((s) => isBrush(s as BrushElement));
     const allFrame = shapes.every((s) => isFrame(s));
 
+    // Branch layouts mirror the target design (design.md): per-type clusters
+    // separated by dividers, then a shared tail
+    // (`… | z-order | align | actions | comment | lock | ⋯`).
     const primary: ReactNode[] = [];
     const overflow: ReactNode[] = [];
     if (allFrame) {
@@ -142,24 +146,30 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       // is user-configurable. No stroke / width / dash / roundness controls.
       primary.push(<FillControl key="fill" shapes={shapes} />);
     } else if (allText) {
+      // font family | size | style | align | link — then colors.
       primary.push(
+        <FontFamilyControl key="family" shapes={shapes} />,
         <FontSizeControl key="size" shapes={shapes} />,
-        <ColorOpacityControl key="color" shapes={shapes} />,
+        <TextDecorationControl key="decor" shapes={shapes} />,
         <TextAlignControl key="align" shapes={shapes} />,
       );
       overflow.push(
-        <FontFamilyControl key="family" shapes={shapes} />,
-        <TextDecorationControl key="decor" shapes={shapes} />,
+        <LinkControl key="link" shapes={shapes} />,
+        <Divider key="d-color" />,
+        <ColorOpacityControl key="color" shapes={shapes} />,
       );
     } else if (allImage) {
       // An image's pixels are the content — fill/stroke make no sense.
       primary.push(
-        <OpacityControl key="opacity" shapes={shapes} />,
         <CropControl key="crop" shapes={shapes} />,
+        <OpacityControl key="opacity" shapes={shapes} />,
       );
     } else {
+      // type | border cluster (stroke color / width / dash / corners) |
+      // fill cluster (fill / opacity) | link.
       primary.push(
-        <FillControl key="fill" shapes={shapes} />,
+        <ConvertTypeControl key="convert" shapes={shapes} />,
+        <Divider key="d-border" />,
         <StrokeControl key="stroke" shapes={shapes} />,
         // Brush widths are baked per point — `style.strokeWidth` has no
         // effect, so brush-only selections get a slider that re-bases the
@@ -169,20 +179,26 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         ) : (
           <StrokeWidthControl key="width" shapes={shapes} />
         ),
+        <FillControl key="fill" shapes={shapes} />,
       );
       overflow.push(
         <StrokeStyleControl key="dash" shapes={shapes} />,
         <RoundnessControl key="round" shapes={shapes} />,
         <OpacityControl key="opacity" shapes={shapes} />,
-        <ConvertTypeControl key="convert" shapes={shapes} />,
+        <Divider key="d-link" />,
+        <LinkControl key="link" shapes={shapes} />,
       );
     }
-    // Common trailing controls for every shape type.
-    overflow.push(<ZOrderControl key="z" />, <LinkControl key="link" shapes={shapes} />);
+    // Common trailing controls for every shape type. Text has its link
+    // control in the type cluster above; the rest get it here.
+    if (allFrame || allImage) overflow.push(<LinkControl key="link" shapes={shapes} />);
+    overflow.push(<ZOrderControl key="z" />);
     // Alignment needs a reference box — only meaningful for 2+ shapes.
     if (shapes.length >= 2) overflow.push(<AlignControl key="align" />);
     overflow.push(
       <ActionsControl key="actions" shapes={shapes} />,
+      <CommentControl key="comment" shapes={shapes} />,
+      <Divider key="d-lock" />,
       <LockControl key="lock" />,
       <MoreButton key="more" />,
     );
@@ -384,6 +400,31 @@ const LinkControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
         </div>
       </div>
     </Popover>
+  );
+};
+
+/**
+ * Start a comment thread on the selected element: adds an annotation pin
+ * anchored to the (first) selected shape and selects it, which opens the
+ * comment thread UI. Same backing model as the context menu's
+ * "Add comment" — this is just the toolbar affordance for it.
+ */
+const CommentControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  const first = shapes[0];
+  if (!editor || !first) return null;
+  return (
+    <button
+      type="button"
+      className="du-sel-icon-button"
+      title="Add comment"
+      aria-label="Add comment"
+      onClick={() => {
+        editor.addAnnotation({ position: { x: 0, y: 0 }, elementId: first.id });
+      }}
+    >
+      <MessageCircle size={14} strokeWidth={1.75} aria-hidden />
+    </button>
   );
 };
 

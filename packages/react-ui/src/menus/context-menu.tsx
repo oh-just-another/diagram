@@ -314,105 +314,16 @@ const actionMenuItem = (
 };
 
 export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
-  // --- Annotation pin actions (only when right-click landed on a pin) ---
-  {
-    kind: "action",
-    id: "annotation-open",
-    label: "Open thread",
-    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
-    onClick: (e, ctx) => {
-      const id = e.hitAnnotation(ctx.worldPoint);
-      if (id) e.setSelectedAnnotation(id);
-    },
-  },
-  {
-    kind: "action",
-    id: "annotation-toggle-resolved",
-    label: "Toggle resolved",
-    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
-    onClick: (e, ctx) => {
-      const id = e.hitAnnotation(ctx.worldPoint);
-      if (id) e.toggleAnnotationResolved(id);
-    },
-  },
-  {
-    kind: "action",
-    id: "annotation-delete",
-    label: "Delete annotation",
-    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
-    onClick: (e, ctx) => {
-      const id = e.hitAnnotation(ctx.worldPoint);
-      if (id) e.removeAnnotation(id);
-    },
-  },
-  {
-    kind: "divider",
-  },
-  // --- Selection ops (registry-backed) ---
-  actionMenuItem("delete-selection", { label: "Delete" }),
-  actionMenuItem("duplicate-selection", { label: "Duplicate" }),
+  // --- Clipboard / duplication ---
   actionMenuItem("copy"),
   actionMenuItem("cut"),
   actionMenuItem("paste"),
+  actionMenuItem("duplicate-selection", { label: "Duplicate" }),
+  { kind: "divider" },
   actionMenuItem("copy-style", { label: "Copy style" }),
   actionMenuItem("paste-style", { label: "Paste style" }),
-  actionMenuItem("select-all"),
-  actionMenuItem("toggle-lock", { label: "Lock" }),
-  // Locked shapes are click-through, so the regular selection path can't
-  // reach them — Unlock resolves the shape under the right-click point via
-  // the dedicated locked-aware lookup instead.
-  {
-    kind: "action",
-    id: "unlock-element",
-    label: "Unlock",
-    visible: (e, ctx) => !e.readOnly && e.lockedElementAt(ctx.worldPoint) !== null,
-    onClick: (e, ctx) => {
-      const shape = e.lockedElementAt(ctx.worldPoint);
-      if (shape) e.unlockElement(shape.id);
-    },
-  },
   { kind: "divider" },
-  // --- Grouping + arrange (registry-backed) ---
-  actionMenuItem("group-selection", { label: "Group" }),
-  actionMenuItem("ungroup-selection", { label: "Ungroup" }),
-  actionMenuItem("flip-horizontal", { label: "Flip horizontal" }),
-  actionMenuItem("flip-vertical", { label: "Flip vertical" }),
-  actionMenuItem("align-left", { label: "Align left" }),
-  actionMenuItem("align-h-center", { label: "Align horizontal centres" }),
-  actionMenuItem("align-right", { label: "Align right" }),
-  actionMenuItem("align-top", { label: "Align top" }),
-  actionMenuItem("align-v-center", { label: "Align vertical centres" }),
-  actionMenuItem("align-bottom", { label: "Align bottom" }),
-  actionMenuItem("distribute-horizontal", { label: "Distribute horizontally" }),
-  actionMenuItem("distribute-vertical", { label: "Distribute vertically" }),
-  actionMenuItem("arrange-grid"),
-  actionMenuItem("arrange-stack-h"),
-  actionMenuItem("arrange-stack-v"),
-  actionMenuItem("auto-arrange"),
-  actionMenuItem("compact-z-order"),
-  { kind: "divider" },
-  // --- Z-order (single-selection scope; registry-backed, visibility
-  //     narrowed to a single selection) ---
-  actionMenuItem("bring-to-front", { visible: (e) => e.selection.size === 1 }),
-  actionMenuItem("send-to-back", { visible: (e) => e.selection.size === 1 }),
-  {
-    kind: "action",
-    id: "move-to-layer",
-    label: "Move to layer…",
-    visible: (e) => !e.readOnly && e.selection.size > 0 && e.scene.layers.size > 1,
-    onClick: (e) => {
-      if (typeof window === "undefined") return;
-      const layers = [...e.scene.layers.values()];
-      const names = layers.map((l, i) => `${i + 1}. ${l.name}`).join("\n");
-      const choice = window.prompt(`Move selection to layer (1-${layers.length}):\n${names}`);
-      if (!choice) return;
-      const idx = parseInt(choice, 10) - 1;
-      const target = layers[idx];
-      if (target) e.moveSelectionToLayer(target.id);
-    },
-  },
-  { kind: "divider" },
-  // --- Annotation actions (when right-click hits a pin) ---
+  // --- Comments (annotation-pin ops win when the click hit a pin) ---
   {
     kind: "action",
     id: "open-thread",
@@ -469,6 +380,73 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
       e.addAnnotation({ position, elementId: elementUnder?.id ?? null });
     },
   },
+  { kind: "divider" },
+  // --- Z-order + layers ---
+  actionMenuItem("bring-to-front", { visible: (e) => e.selection.size === 1 }),
+  actionMenuItem("bring-forward", {
+    label: "Bring forward",
+    visible: (e) => e.selection.size === 1,
+  }),
+  actionMenuItem("send-backward", {
+    label: "Send backward",
+    visible: (e) => e.selection.size === 1,
+  }),
+  actionMenuItem("send-to-back", { visible: (e) => e.selection.size === 1 }),
+  {
+    kind: "action",
+    id: "move-to-layer",
+    label: "Move to layer…",
+    visible: (e) => !e.readOnly && e.selection.size > 0 && e.scene.layers.size > 1,
+    onClick: (e) => {
+      if (typeof window === "undefined") return;
+      const layers = [...e.scene.layers.values()];
+      const names = layers.map((l, i) => `${i + 1}. ${l.name}`).join("\n");
+      const choice = window.prompt(`Move selection to layer (1-${layers.length}):\n${names}`);
+      if (!choice) return;
+      const idx = parseInt(choice, 10) - 1;
+      const target = layers[idx];
+      if (target) e.moveSelectionToLayer(target.id);
+    },
+  },
+  { kind: "divider" },
+  // --- Selection / grouping / arrange ---
+  actionMenuItem("select-all"),
+  actionMenuItem("group-selection", { label: "Group" }),
+  actionMenuItem("ungroup-selection", { label: "Ungroup" }),
+  actionMenuItem("flip-horizontal", { label: "Flip horizontal" }),
+  actionMenuItem("flip-vertical", { label: "Flip vertical" }),
+  actionMenuItem("align-left", { label: "Align left" }),
+  actionMenuItem("align-h-center", { label: "Align horizontal centres" }),
+  actionMenuItem("align-right", { label: "Align right" }),
+  actionMenuItem("align-top", { label: "Align top" }),
+  actionMenuItem("align-v-center", { label: "Align vertical centres" }),
+  actionMenuItem("align-bottom", { label: "Align bottom" }),
+  actionMenuItem("distribute-horizontal", { label: "Distribute horizontally" }),
+  actionMenuItem("distribute-vertical", { label: "Distribute vertically" }),
+  actionMenuItem("arrange-grid"),
+  actionMenuItem("arrange-stack-h"),
+  actionMenuItem("arrange-stack-v"),
+  actionMenuItem("auto-arrange"),
+  actionMenuItem("compact-z-order"),
+  { kind: "divider" },
+  // --- Lock ---
+  actionMenuItem("toggle-lock", { label: "Lock" }),
+  // Locked shapes are click-through, so the regular selection path can't
+  // reach them — Unlock resolves the shape under the right-click point via
+  // the dedicated locked-aware lookup instead.
+  {
+    kind: "action",
+    id: "unlock-element",
+    label: "Unlock",
+    visible: (e, ctx) => !e.readOnly && e.lockedElementAt(ctx.worldPoint) !== null,
+    onClick: (e, ctx) => {
+      const shape = e.lockedElementAt(ctx.worldPoint);
+      if (shape) e.unlockElement(shape.id);
+    },
+  },
+  { kind: "divider" },
+  // --- Delete last among the mutating ops ---
+  actionMenuItem("delete-selection", { label: "Delete" }),
   { kind: "divider" },
   // --- Viewport (registry-backed) ---
   actionMenuItem("zoom-in"),
