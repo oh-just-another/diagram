@@ -59,6 +59,7 @@ import {
   type Roundness,
   type ElementBase,
   type TextAlign,
+  type TextBaseline,
   type TextElement,
   type TextStyle,
 } from "@oh-just-another/scene";
@@ -743,24 +744,84 @@ const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ElementBase[]
   );
 };
 
+/**
+ * Text alignment as a two-row dropdown block: horizontal (left / center /
+ * right → `textAlign`) over vertical (top / middle / bottom →
+ * `textBaseline`). One trigger keeps the toolbar row compact and matches
+ * the target design's grouped alignment control.
+ */
 const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
   const value = sharedValue<TextAlign>(shapes, (s) => (s as TextElement).style.textAlign ?? "left");
+  const valign = sharedValue<TextBaseline>(
+    shapes,
+    (s) => (s as TextElement).style.textBaseline ?? "top",
+  );
   return (
-    <SegmentedControl<TextAlign>
+    <Popover
       ariaLabel="Text alignment"
-      value={value}
-      options={[
-        { value: "left", label: "Left", icon: <AlignLeft size={14} strokeWidth={1.75} /> },
-        { value: "center", label: "Center", icon: <AlignCenter size={14} strokeWidth={1.75} /> },
-        { value: "right", label: "Right", icon: <AlignRight size={14} strokeWidth={1.75} /> },
-      ]}
-      onChange={(v) => {
-        editor.updateStyle(ids, { textAlign: v });
-      }}
-    />
+      trigger={
+        <button
+          type="button"
+          className="du-sel-icon-button"
+          title="Text alignment"
+          aria-label="Text alignment"
+        >
+          {value === "right" ? (
+            <AlignRight size={14} strokeWidth={1.75} aria-hidden />
+          ) : value === "center" ? (
+            <AlignCenter size={14} strokeWidth={1.75} aria-hidden />
+          ) : (
+            <AlignLeft size={14} strokeWidth={1.75} aria-hidden />
+          )}
+        </button>
+      }
+    >
+      <div className="du-sel-align-rows">
+        <SegmentedControl<TextAlign>
+          ariaLabel="Horizontal text alignment"
+          value={value}
+          options={[
+            { value: "left", label: "Left", icon: <AlignLeft size={14} strokeWidth={1.75} /> },
+            {
+              value: "center",
+              label: "Center",
+              icon: <AlignCenter size={14} strokeWidth={1.75} />,
+            },
+            { value: "right", label: "Right", icon: <AlignRight size={14} strokeWidth={1.75} /> },
+          ]}
+          onChange={(v) => {
+            editor.updateStyle(ids, { textAlign: v });
+          }}
+        />
+        <SegmentedControl<TextBaseline>
+          ariaLabel="Vertical text alignment"
+          value={valign}
+          options={[
+            {
+              value: "top",
+              label: "Top",
+              icon: <AlignStartHorizontal size={14} strokeWidth={1.75} />,
+            },
+            {
+              value: "middle",
+              label: "Middle",
+              icon: <AlignCenterHorizontal size={14} strokeWidth={1.75} />,
+            },
+            {
+              value: "bottom",
+              label: "Bottom",
+              icon: <AlignEndHorizontal size={14} strokeWidth={1.75} />,
+            },
+          ]}
+          onChange={(v) => {
+            editor.updateStyle(ids, { textBaseline: v });
+          }}
+        />
+      </div>
+    </Popover>
   );
 };
 

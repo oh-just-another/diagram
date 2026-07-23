@@ -1419,6 +1419,14 @@
   pointer-events: auto;
 }
 
+/* Two-row alignment dropdown: horizontal segments over vertical segments. */
+.du-sel-align-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px;
+}
+
 /* Persistent link badge at an element's top-right corner. Slightly offset
    outward so it reads as attached to the shape without covering content. */
 .du-link-badge {
