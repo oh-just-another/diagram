@@ -377,6 +377,30 @@ describe("round-trip", () => {
     expect(el.runs[0]?.style?.highlight).toBe("#d0ebff");
   });
 
+  it("preserves paragraph list attributes through stringify → parseScene", () => {
+    let scene = emptyScene();
+    const t = {
+      id: elementId("tl"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "text",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      text: "one\ntwo\nthree",
+      fontFamily: "system-ui",
+      fontSize: 14,
+      paragraphs: [{ list: "bullet" }, { list: "numbered", indent: 1 }, {}],
+    } as unknown as Element;
+    ({ scene } = addElement(scene, t));
+    const restored = parseScene(stringifyScene(scene));
+    const el = restored.elements.get(elementId("tl")) as unknown as {
+      paragraphs?: readonly { list?: string; indent?: number }[];
+    };
+    expect(el.paragraphs).toEqual([{ list: "bullet" }, { list: "numbered", indent: 1 }, {}]);
+  });
+
   it("preserves element href", () => {
     let scene = emptyScene();
     const r: Element = {

@@ -52,6 +52,16 @@ export const VIEWPORT_CULL_PADDING_RATIO = 0.05;
  * - `TEXT_STRIKETHROUGH_OFFSET` — strikethrough centre, ~50% (x-height).
  */
 export const TEXT_DECORATION_THICKNESS = 0.06;
+
+/**
+ * List layout metrics, in em (× font size):
+ * - `LIST_INDENT_EM` — horizontal shift per nesting level; list paragraphs
+ *   get one extra level for the marker slot. Reasonable range 1.2–1.8.
+ * - `LIST_MARKER_GAP_EM` — gap between the marker's right edge and the
+ *   item text. Reasonable range 0.3–0.6.
+ */
+export const LIST_INDENT_EM = 1.4;
+export const LIST_MARKER_GAP_EM = 0.4;
 export const TEXT_UNDERLINE_OFFSET = 0.92;
 export const TEXT_STRIKETHROUGH_OFFSET = 0.5;
 

@@ -84,6 +84,15 @@ export const TextEditorOverlay = () => {
           ev.preventDefault();
           ev.stopPropagation();
           editor.commitTextEdit();
+          return;
+        }
+        // Tab / Shift+Tab change list nesting for the caret's paragraphs
+        // (no-op on plain paragraphs beyond clamping at level 0). Always
+        // swallowed so the textarea never tabs focus away mid-edit.
+        if (ev.key === "Tab") {
+          ev.preventDefault();
+          ev.stopPropagation();
+          editor.indentParagraphs([editingId], ev.shiftKey ? -1 : 1);
         }
       }}
       onBlur={() => {

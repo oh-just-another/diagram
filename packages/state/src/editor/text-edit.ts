@@ -11,11 +11,13 @@ import {
   getElementWorldBounds,
   isText,
   removeElement,
+  remapParagraphsForTextChange,
   updateElement,
   type Element,
   type Patch,
   type Scene,
   type TextElement,
+  type TextParagraph,
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, LayerId, Vec2 } from "@oh-just-another/types";
 import { CaretBlinkController } from "./caret-blink.js";
@@ -152,7 +154,21 @@ export class TextEditController {
   ): void {
     const id = this._editingElement;
     if (!id) return;
-    const r = updateElement(this.host.scene, id, (s) => ({ ...s, text: value }));
+    const r = updateElement(this.host.scene, id, (s) => {
+      const next = { ...s, text: value } as typeof s & {
+        paragraphs?: readonly TextParagraph[];
+        text: string;
+      };
+      // Keep paragraph list attrs aligned as newlines come and go —
+      // Enter inside a list item continues the list, deleting a line
+      // drops its attrs.
+      if (isText(s) && s.paragraphs !== undefined) {
+        const remapped = remapParagraphsForTextChange(s.text, value, s.paragraphs);
+        if (remapped !== undefined) next.paragraphs = remapped;
+        else delete next.paragraphs;
+      }
+      return next;
+    });
     this.host.scene = r.scene;
     this._sel = { start: selStart, end: selEnd, dir };
     this.caretBlink.wake();
@@ -239,6 +255,7 @@ export class TextEditController {
     return layoutText(shape.text, this.measureFor(shape), {
       fontSize: shape.fontSize,
       ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
+      ...(shape.paragraphs !== undefined ? { paragraphs: shape.paragraphs } : {}),
     });
   }
 

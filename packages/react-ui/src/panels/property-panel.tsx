@@ -23,8 +23,12 @@ import {
   FlipVertical2 as FlipVerticalIcon,
   Group as GroupIcon,
   Highlighter,
+  IndentDecrease,
+  IndentIncrease,
   Italic,
   Link as LinkIcon,
+  List,
+  ListOrdered,
   Lock as LockIcon,
   MessageCircle,
   Minus,
@@ -154,6 +158,7 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <FontSizeControl key="size" shapes={shapes} />,
         <TextDecorationControl key="decor" shapes={shapes} />,
         <TextAlignControl key="align" shapes={shapes} />,
+        <ListControl key="list" shapes={shapes} />,
       );
       overflow.push(
         <LinkControl key="link" shapes={shapes} />,
@@ -614,6 +619,80 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
             editor.updateStyle(ids, { opacity: v / 100 });
           }}
         />
+      </div>
+    </Popover>
+  );
+};
+
+/**
+ * Text lists as a two-row dropdown block: list kind (bulleted / ordered)
+ * over nesting (decrease / increase indent). While inline-editing, the
+ * operations target the paragraphs under the caret / selection; otherwise
+ * the whole element. Clicking the active kind again clears it.
+ */
+const ListControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const kind = sharedValue<"bullet" | "numbered" | "none">(shapes, (s) => {
+    const paragraphs = (s as TextElement).paragraphs ?? [];
+    const first = paragraphs[0]?.list;
+    if (first === undefined) return "none";
+    return paragraphs.every((p) => p.list === first) ? first : "none";
+  });
+  return (
+    <Popover
+      ariaLabel="List"
+      trigger={
+        <button type="button" className="du-sel-icon-button" title="List" aria-label="List">
+          <List size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-align-rows">
+        <SegmentedControl<"bullet" | "numbered">
+          ariaLabel="List kind"
+          value={kind === "none" ? null : kind}
+          options={[
+            {
+              value: "bullet",
+              label: "Bulleted list",
+              icon: <List size={14} strokeWidth={1.75} />,
+            },
+            {
+              value: "numbered",
+              label: "Ordered list",
+              icon: <ListOrdered size={14} strokeWidth={1.75} />,
+            },
+          ]}
+          onChange={(v) => {
+            editor.setParagraphList(ids, kind === v ? null : v);
+          }}
+        />
+        <div className="du-sel-align-rows-row">
+          <button
+            type="button"
+            className="du-sel-icon-button"
+            title="Decrease indent"
+            aria-label="Decrease indent"
+            onClick={() => {
+              editor.indentParagraphs(ids, -1);
+            }}
+          >
+            <IndentDecrease size={14} strokeWidth={1.75} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="du-sel-icon-button"
+            title="Increase indent"
+            aria-label="Increase indent"
+            onClick={() => {
+              editor.indentParagraphs(ids, 1);
+            }}
+          >
+            <IndentIncrease size={14} strokeWidth={1.75} aria-hidden />
+          </button>
+        </div>
       </div>
     </Popover>
   );

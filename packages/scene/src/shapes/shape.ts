@@ -160,6 +160,26 @@ export interface TextElement extends ElementBase {
    * (renders exactly like a plain text block). See {@link TextRun}.
    */
   readonly runs?: readonly TextRun[];
+  /**
+   * Optional per-paragraph attributes (lists / nesting), aligned by index
+   * with `text.split("\n")`. A shorter array leaves the trailing
+   * paragraphs plain; omitted = every paragraph plain. Numbering for
+   * `"numbered"` items is derived at render time (consecutive numbered
+   * paragraphs at the same indent count up), never stored.
+   */
+  readonly paragraphs?: readonly TextParagraph[];
+}
+
+/**
+ * Paragraph-level attributes for a {@link TextElement}. Both fields are
+ * optional so plain paragraphs serialize as `{}` (or are omitted entirely
+ * via a short array).
+ */
+export interface TextParagraph {
+  /** List marker kind; omitted = plain paragraph. */
+  readonly list?: "bullet" | "numbered";
+  /** 0-based nesting level. Omitted = 0. */
+  readonly indent?: number;
 }
 
 /**

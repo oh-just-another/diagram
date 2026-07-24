@@ -121,6 +121,13 @@ const PathZ = ElementBaseZ.extend({
 // overlay (reuses `TextStyleZ` — every field there is already optional).
 const TextRunZ = z.object({ text: z.string(), style: TextStyleZ.optional() }).strict();
 
+const TextParagraphZ = z
+  .object({
+    list: z.enum(["bullet", "numbered"]).optional(),
+    indent: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
 const TextZ = ElementBaseZ.extend({
   type: z.literal("text"),
   style: TextStyleZ,
@@ -131,6 +138,7 @@ const TextZ = ElementBaseZ.extend({
   // Additive rich-text overlay. Omitted = uniform styling (legacy scenes
   // round-trip unchanged). Invariant: run texts concatenate to `text`.
   runs: z.array(TextRunZ).optional(),
+  paragraphs: z.array(TextParagraphZ).optional(),
 }).strict();
 
 const ImageZ = ElementBaseZ.extend({

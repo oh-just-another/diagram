@@ -1419,12 +1419,18 @@
   pointer-events: auto;
 }
 
-/* Two-row alignment dropdown: horizontal segments over vertical segments. */
+/* Two-row alignment / list dropdowns: stacked segment rows. */
 .du-sel-align-rows {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 4px;
+}
+
+.du-sel-align-rows-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
 }
 
 /* Persistent link badge at an element's top-right corner. Slightly offset

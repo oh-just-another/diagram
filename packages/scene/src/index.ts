@@ -15,6 +15,14 @@ export type {
 export { getCornerRadius, strokeOutsideExtent } from "./text/style.js";
 export type { TextRun } from "./text/text-runs.js";
 export { runsToText, normalizeRuns, sliceRuns, applyStyleToRange } from "./text/text-runs.js";
+export {
+  paragraphCount,
+  paragraphRangeForOffsets,
+  paragraphAt,
+  normalizeParagraphs,
+  remapParagraphsForTextChange,
+  listMarkers,
+} from "./text/paragraphs.js";
 export { ADAPTIVE_CORNER_RADIUS, PROPORTIONAL_CORNER_RADIUS } from "./constants.js";
 export type {
   Element,
@@ -26,6 +34,7 @@ export type {
   PathElement,
   PathCommand,
   TextElement,
+  TextParagraph,
   ImageElement,
   ImageCrop,
   TemplateElement,

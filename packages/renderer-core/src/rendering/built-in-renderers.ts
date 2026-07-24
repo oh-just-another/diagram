@@ -19,15 +19,23 @@ import {
   type TextRun,
   type TextStyle,
   sliceRuns,
+  listMarkers,
+  paragraphCount,
   brushBodyColor,
   brushOutline,
 } from "@oh-just-another/scene";
 import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "../targets/render-target.js";
-import { DEFAULT_LINE_HEIGHT_FACTOR, layoutText } from "../text/text-editing.js";
+import {
+  DEFAULT_LINE_HEIGHT_FACTOR,
+  layoutText,
+  lineLeft,
+  type EditableTextLayout,
+} from "../text/text-editing.js";
 import { resolveImageSource } from "../raster/animation-adapter.js";
 import { isDrawableImageSource } from "../raster/image-source-guard.js";
 import {
+  LIST_MARKER_GAP_EM,
   TEXT_DECORATION_THICKNESS,
   TEXT_UNDERLINE_OFFSET,
   TEXT_STRIKETHROUGH_OFFSET,
@@ -261,6 +269,32 @@ const drawPath: ElementRenderer<PathElement> = (shape, target) => {
  * the plain-text path); per-run weight only affects glyph paint + segment
  * widths, an acceptable etap-1 approximation for wrapping.
  */
+/**
+ * Draw the derived list markers ("•" / "1.") for every paragraph's first
+ * visual line, right-aligned into the indent slot the layout reserved.
+ * Uses the element's base font + fill; leaves the fill set to `color`.
+ */
+const drawListMarkersForLayout = (
+  shape: TextElement,
+  layout: EditableTextLayout,
+  target: RenderTarget,
+  color: string,
+): void => {
+  if (shape.paragraphs === undefined) return;
+  const align = shape.style.textAlign ?? "left";
+  const markers = listMarkers(shape.paragraphs, paragraphCount(shape.text));
+  const gap = LIST_MARKER_GAP_EM * shape.fontSize;
+  target.setFill(color);
+  layout.lines.forEach((line, i) => {
+    if (!line.paraFirst) return;
+    const marker = markers[line.para];
+    if (marker == null) return;
+    const w = target.measureText(marker).width;
+    const left = lineLeft(line, layout.blockWidth, align);
+    target.fillText(marker, left - gap - w, i * layout.lineHeight);
+  });
+};
+
 const drawStyledText = (shape: TextElement, target: RenderTarget): void => {
   const align = shape.style.textAlign ?? "left";
   const fontSize = shape.fontSize;
@@ -283,6 +317,7 @@ const drawStyledText = (shape: TextElement, target: RenderTarget): void => {
   const layout = layoutText(shape.text, (s) => target.measureText(s).width, {
     fontSize,
     ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
+    ...(shape.paragraphs !== undefined ? { paragraphs: shape.paragraphs } : {}),
   });
 
   interface Seg {
@@ -301,17 +336,21 @@ const drawStyledText = (shape: TextElement, target: RenderTarget): void => {
 
   // Alignment box: fixed budget, or the widest STYLED line so bold text
   // stays self-consistently aligned.
-  const blockWidth = shape.maxWidth ?? perLine.reduce((m, l) => Math.max(m, l.total), 0);
+  const blockWidth =
+    shape.maxWidth ??
+    perLine.reduce((m, l, i) => Math.max(m, l.total + req(layout.lines[i]).indentX), 0);
   const thickness = Math.max(1, fontSize * TEXT_DECORATION_THICKNESS);
 
   perLine.forEach((line, i) => {
     const top = i * layout.lineHeight;
+    const indentX = req(layout.lines[i]).indentX;
     let x =
-      align === "center"
-        ? blockWidth / 2 - line.total / 2
+      indentX +
+      (align === "center"
+        ? (blockWidth - indentX) / 2 - line.total / 2
         : align === "right"
-          ? blockWidth - line.total
-          : 0;
+          ? blockWidth - indentX - line.total
+          : 0);
     for (const seg of line.segs) {
       const color = seg.style?.fill ?? shape.style.fill ?? "#000";
       const opacity = seg.style?.opacity ?? shape.style.opacity;
@@ -350,6 +389,10 @@ const drawStyledText = (shape: TextElement, target: RenderTarget): void => {
       x += seg.width;
     }
   });
+  // Markers use the element's base font/colour, after the segments so the
+  // font state is deterministic.
+  setSegFont(undefined);
+  drawListMarkersForLayout(shape, layout, target, shape.style.fill ?? "#000");
 };
 
 const drawText: ElementRenderer<TextElement> = (shape, target) => {
@@ -378,10 +421,14 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
   if (shape.style.opacity !== undefined) target.setOpacity(shape.style.opacity);
 
   // Resolve per-line geometry once (x = align offset, top = i ×
-  // lineHeight). Single-line text skips the wrap engine.
+  // lineHeight). Single-line text without list attrs skips the wrap engine.
   const fontSize = shape.fontSize;
   let lines: { text: string; x: number; width: number; top: number }[];
-  if (shape.maxWidth === undefined && !shape.text.includes("\n")) {
+  if (
+    shape.maxWidth === undefined &&
+    !shape.text.includes("\n") &&
+    shape.paragraphs === undefined
+  ) {
     lines = [{ text: shape.text, x: 0, width: target.measureText(shape.text).width, top: 0 }];
   } else {
     // Measure with the target's own `measureText` so wrapping matches
@@ -390,18 +437,15 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
     const layout = layoutText(shape.text, measure, {
       fontSize,
       ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
+      ...(shape.paragraphs !== undefined ? { paragraphs: shape.paragraphs } : {}),
     });
     lines = layout.lines.map((line, i) => ({
       text: line.text,
-      x:
-        align === "center"
-          ? layout.blockWidth / 2 - line.width / 2
-          : align === "right"
-            ? layout.blockWidth - line.width
-            : 0,
+      x: lineLeft(line, layout.blockWidth, align),
       width: line.width,
       top: i * layout.lineHeight,
     }));
+    drawListMarkersForLayout(shape, layout, target, color);
   }
 
   // Highlight stripes under the glyphs (marker-style), then the text on top.

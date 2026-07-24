@@ -32,6 +32,10 @@ import {
   isImage,
   isBrush,
   brushBodyColor,
+  paragraphAt,
+  paragraphCount,
+  paragraphRangeForOffsets,
+  normalizeParagraphs,
   getElementWorldBounds,
   setTextMeasurer,
   getScreenToWorld,
@@ -52,6 +56,8 @@ import {
   type GridStyle,
   type ImageCrop,
   type Style,
+  type TextElement,
+  type TextParagraph,
   type TextStyle,
   isSnapToGridEnabled,
   resolveSnapSpacing,
@@ -120,6 +126,7 @@ import {
   CROP_HANDLE_HIT_RADIUS,
   FLOWCHART_MAX_SIBLINGS,
   ERASER_TRAIL_TTL_MS,
+  MAX_LIST_INDENT,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP } from "./interaction/handle.js";
 import { req } from "./helpers/util.js";
@@ -3092,6 +3099,95 @@ export class Editor {
     if (!result) return;
     this._scene = result.scene;
     this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Paragraph targets for the list operations: while inline-editing one
+   * of `ids`, only the paragraphs covered by the caret / selection;
+   * otherwise every paragraph of each text element. Returns `null` for
+   * non-text ids.
+   */
+  private paragraphTargets(id: ElementId): { first: number; last: number } | null {
+    const shape = getElement(this._scene, id);
+    if (!shape || !isText(shape)) return null;
+    const sel = this.editingTextElement === id ? this.editingTextSelection : null;
+    if (sel) return paragraphRangeForOffsets(shape.text, sel.start, sel.end);
+    return { first: 0, last: paragraphCount(shape.text) - 1 };
+  }
+
+  /**
+   * Set (or clear, with `null`) the list kind on the targeted paragraphs
+   * of every text element in `ids` — the inline-edit selection's
+   * paragraphs while editing, the whole element otherwise. One undo step.
+   */
+  setParagraphList(ids: Iterable<ElementId>, kind: "bullet" | "numbered" | null): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const range = this.paragraphTargets(id);
+      if (!range) continue;
+      const r = updateElement(this._scene, id, (s) => {
+        const shape = s as TextElement;
+        const count = paragraphCount(shape.text);
+        const next = Array.from({ length: count }, (_, i) => paragraphAt(shape.paragraphs, i)).map(
+          (p, i) => {
+            if (i < range.first || i > range.last) return p;
+            const { list: _list, ...rest } = p;
+            return kind === null ? rest : { ...rest, list: kind };
+          },
+        );
+        const normalized = normalizeParagraphs(next);
+        const copy = { ...s } as TextElement & { paragraphs?: readonly TextParagraph[] };
+        if (normalized === undefined) delete copy.paragraphs;
+        else copy.paragraphs = normalized;
+        return copy;
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /**
+   * Shift the targeted paragraphs' list nesting by `delta` (±1), clamped
+   * to `[0, MAX_LIST_INDENT]`. Same targeting rules as
+   * {@link setParagraphList}. One undo step.
+   */
+  indentParagraphs(ids: Iterable<ElementId>, delta: 1 | -1): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const range = this.paragraphTargets(id);
+      if (!range) continue;
+      const r = updateElement(this._scene, id, (s) => {
+        const shape = s as TextElement;
+        const count = paragraphCount(shape.text);
+        const next = Array.from({ length: count }, (_, i) => paragraphAt(shape.paragraphs, i)).map(
+          (p, i) => {
+            if (i < range.first || i > range.last) return p;
+            const level = Math.max(0, Math.min(MAX_LIST_INDENT, (p.indent ?? 0) + delta));
+            const { indent: _indent, ...rest } = p;
+            return level === 0 ? rest : { ...rest, indent: level };
+          },
+        );
+        const normalized = normalizeParagraphs(next);
+        const copy = { ...s } as TextElement & { paragraphs?: readonly TextParagraph[] };
+        if (normalized === undefined) delete copy.paragraphs;
+        else copy.paragraphs = normalized;
+        return copy;
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
     this.notify();
   }
 

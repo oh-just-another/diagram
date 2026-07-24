@@ -675,6 +675,13 @@ export const ERASER_CURSOR_LINE_WIDTH = 1.5;
 export const ERASER_TRAIL_TTL_MS = 120;
 
 /**
+ * Deepest list nesting level reachable via Tab / the indent buttons
+ * (0-based, so 8 = nine visual levels). Guards runaway indents that
+ * would push items past the wrap budget. Reasonable range 4–10.
+ */
+export const MAX_LIST_INDENT = 8;
+
+/**
  * Stroke-eraser (Shift) samples a brush polyline this densely — as a FRACTION of
  * the eraser radius — when computing which arc-length spans fall under the disc.
  * The eraser cuts the line's GEOMETRY (segments), not just its vertices, so a big
