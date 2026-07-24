@@ -24,7 +24,7 @@ import {
 } from "@oh-just-another/scene";
 import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "../targets/render-target.js";
-import { layoutText } from "../text/text-editing.js";
+import { DEFAULT_LINE_HEIGHT_FACTOR, layoutText } from "../text/text-editing.js";
 import { resolveImageSource } from "../raster/animation-adapter.js";
 import { isDrawableImageSource } from "../raster/image-source-guard.js";
 import {
@@ -316,8 +316,17 @@ const drawStyledText = (shape: TextElement, target: RenderTarget): void => {
       const color = seg.style?.fill ?? shape.style.fill ?? "#000";
       const opacity = seg.style?.opacity ?? shape.style.opacity;
       setSegFont(seg.style);
-      target.setFill(color);
       if (opacity !== undefined) target.setOpacity(opacity);
+      // Highlight first — a full line-height rect under the glyphs, so the
+      // text paints on top of its own marker stripe.
+      const highlight = seg.style?.highlight ?? shape.style.highlight;
+      if (seg.width > 0 && highlight !== undefined && highlight !== "transparent") {
+        target.setFill(highlight);
+        target.beginPath();
+        target.rect(x, top, seg.width, layout.lineHeight);
+        target.fill();
+      }
+      target.setFill(color);
       target.fillText(seg.text, x, top);
 
       const deco = seg.style?.textDecoration ?? shape.style.textDecoration;
@@ -395,6 +404,19 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
     }));
   }
 
+  // Highlight stripes under the glyphs (marker-style), then the text on top.
+  const highlight = shape.style.highlight;
+  if (highlight !== undefined && highlight !== "transparent") {
+    const lineHeight = fontSize * DEFAULT_LINE_HEIGHT_FACTOR;
+    target.setFill(highlight);
+    for (const l of lines) {
+      if (l.width <= 0) continue;
+      target.beginPath();
+      target.rect(l.x, l.top, l.width, lineHeight);
+      target.fill();
+    }
+    target.setFill(color);
+  }
   for (const l of lines) target.fillText(l.text, l.x, l.top);
 
   // Underline / strikethrough — thin filled rects per line, same on

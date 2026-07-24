@@ -545,6 +545,57 @@ describe("drawText", () => {
 // ---------------------------------------------------------------------------
 // drawText — styled runs (rich text)
 // ---------------------------------------------------------------------------
+describe("drawText highlight", () => {
+  it("paints a line-height rect in the highlight colour under plain text", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "Hi",
+      fontFamily: "monospace",
+      fontSize: 10,
+      style: { fill: "#000", highlight: "#ffec99" },
+    } as Element);
+    const hlFill = calls.findIndex((c) => c.method === "setFill" && c.args[0] === "#ffec99");
+    expect(hlFill).toBeGreaterThan(-1);
+    // The rect right after the highlight fill spans the measured width and
+    // one line-height (10 × 1.2); the glyphs paint after it.
+    const rect = calls.slice(hlFill).find((c) => c.method === "rect");
+    expect(rect?.args).toEqual([0, 0, 14, 12]);
+    const textAt = calls.findIndex((c) => c.method === "fillText");
+    expect(textAt).toBeGreaterThan(hlFill);
+  });
+
+  it("skips the highlight rect when no highlight is set", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "Hi",
+      fontFamily: "monospace",
+      fontSize: 10,
+      style: { fill: "#000" },
+    } as Element);
+    expect(calls.some((c) => c.method === "rect")).toBe(false);
+  });
+
+  it("applies per-run highlight only to that segment", () => {
+    const calls = addAndRender({
+      ...base(),
+      type: "text",
+      text: "AB",
+      fontFamily: "Arial",
+      fontSize: 10,
+      style: {},
+      runs: [{ text: "A", style: { highlight: "#d0ebff" } }, { text: "B" }],
+    } as Element);
+    const hlFill = calls.findIndex((c) => c.method === "setFill" && c.args[0] === "#d0ebff");
+    expect(hlFill).toBeGreaterThan(-1);
+    const rects = calls.filter((c) => c.method === "rect");
+    // Only the "A" segment (width 7) gets a stripe.
+    expect(rects).toHaveLength(1);
+    expect(rects[0]?.args).toEqual([0, 0, 7, 12]);
+  });
+});
+
 describe("drawText with styled runs", () => {
   it("draws one fillText per run segment", () => {
     const calls = addAndRender({

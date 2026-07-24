@@ -355,20 +355,26 @@ describe("round-trip", () => {
         fontWeight: "bold",
         fontStyle: "italic",
         textDecoration: { underline: true, strikethrough: true },
+        highlight: "#ffec99",
       },
       text: "Hi",
       fontFamily: "system-ui",
       fontSize: 18,
+      runs: [{ text: "H", style: { highlight: "#d0ebff" } }, { text: "i" }],
     } as unknown as Element;
     ({ scene } = addElement(scene, t));
     const restored = deserializeScene(serializeScene(scene));
-    const st = (
-      restored.elements.get(elementId("td")) as unknown as { style: Record<string, unknown> }
-    ).style;
+    const el = restored.elements.get(elementId("td")) as unknown as {
+      style: Record<string, unknown>;
+      runs: readonly { style?: Record<string, unknown> }[];
+    };
+    const st = el.style;
     expect(st.fontWeight).toBe("bold");
     expect(st.fontStyle).toBe("italic");
     expect(st.textDecoration).toEqual({ underline: true, strikethrough: true });
     expect(st.textAlign).toBe("center");
+    expect(st.highlight).toBe("#ffec99");
+    expect(el.runs[0]?.style?.highlight).toBe("#d0ebff");
   });
 
   it("preserves element href", () => {

@@ -36,6 +36,7 @@ const StyleZ = z
 const TextStyleZ = StyleZ.extend({
   textAlign: z.enum(["left", "center", "right"]).optional(),
   textBaseline: z.enum(["top", "middle", "bottom"]).optional(),
+  highlight: z.string().optional(),
   fontWeight: z.enum(["normal", "bold"]).optional(),
   fontStyle: z.enum(["normal", "italic"]).optional(),
   textDecoration: z

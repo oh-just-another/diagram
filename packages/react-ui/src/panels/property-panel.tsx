@@ -22,6 +22,7 @@ import {
   FlipHorizontal2 as FlipHorizontalIcon,
   FlipVertical2 as FlipVerticalIcon,
   Group as GroupIcon,
+  Highlighter,
   Italic,
   Link as LinkIcon,
   Lock as LockIcon,
@@ -158,6 +159,7 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <LinkControl key="link" shapes={shapes} />,
         <Divider key="d-color" />,
         <ColorOpacityControl key="color" shapes={shapes} />,
+        <HighlightControl key="highlight" shapes={shapes} />,
       );
     } else if (allImage) {
       // An image's pixels are the content — fill/stroke make no sense.
@@ -610,6 +612,53 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
           valueLabel={pct === null ? "—" : `${pct}%`}
           onChange={(v) => {
             editor.updateStyle(ids, { opacity: v / 100 });
+          }}
+        />
+      </div>
+    </Popover>
+  );
+};
+
+/**
+ * Marker-style text highlight (background behind glyphs). During inline
+ * editing with a selected range the highlight lands on just those
+ * characters (styled runs); otherwise on the whole element(s). Picking
+ * "no color" clears the highlight.
+ */
+const HighlightControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  const runRange = useTextRunRange(shapes);
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const value = sharedString(shapes, (s) => (s.style as TextStyle).highlight);
+  return (
+    <Popover
+      ariaLabel="Highlight color"
+      trigger={
+        <button
+          type="button"
+          className="du-sel-icon-button"
+          title="Highlight color"
+          aria-label="Highlight color"
+        >
+          <Highlighter size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Highlight</header>
+        <ColorSwatchPicker
+          value={value}
+          onChange={(v) => {
+            const partial = { highlight: v ?? "transparent" };
+            if (runRange) {
+              editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
+            } else {
+              editor.updateStyle(ids, partial);
+            }
+          }}
+          onEyedrop={(cb) => {
+            editor.beginEyedropperPick(cb);
           }}
         />
       </div>
