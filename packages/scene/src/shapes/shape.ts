@@ -223,6 +223,12 @@ export interface ImageElement extends ElementBase {
   readonly width: number;
   readonly height: number;
   /**
+   * Accessible description of the image content. Surfaced as `<title>`
+   * in SVG output and available to hosts for `aria` wiring. Omitted =
+   * decorative / undescribed.
+   */
+  readonly alt?: string;
+  /**
    * Animated-content hint (opt-in). When set, the
    * renderer's image path consults `getAnimationAdapter(kind)`
    * to fetch the current frame's image source instead of using

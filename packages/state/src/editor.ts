@@ -32,6 +32,7 @@ import {
   isImage,
   isBrush,
   brushBodyColor,
+  getBinaryFile,
   paragraphAt,
   paragraphCount,
   paragraphRangeForOffsets,
@@ -3100,6 +3101,79 @@ export class Editor {
     this._scene = result.scene;
     this._history.push(result.patch);
     this.notify();
+  }
+
+  /**
+   * Rename the binary file behind an image (the toolbar's file-name
+   * input). One undo step; no-op when the id is unknown or the name is
+   * unchanged.
+   */
+  renameBinaryFile(id: FileId, name: string): void {
+    if (this.readOnly) return;
+    const file = getBinaryFile(this._scene, id);
+    if (!file || file.name === name) return;
+    const patch: Patch = { kind: "file", id, before: file, after: { ...file, name } };
+    this._scene = apply(this._scene, patch);
+    this._history.push(patch);
+    this.notify();
+  }
+
+  /** Set (or clear, with `null`) the accessible description on image shapes. */
+  setImageAlt(ids: Iterable<ElementId>, alt: string | null): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (!shape || !isImage(shape)) continue;
+      const r = updateElement(this._scene, id, (s) => {
+        const copy = { ...s } as typeof s & { alt?: string };
+        if (alt === null || alt === "") delete copy.alt;
+        else copy.alt = alt;
+        return copy;
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /**
+   * Swap an image shape's backing file for `blob` while keeping its
+   * position / size / crop. Registers the new `BinaryFile`, points the
+   * shape at it, drops the stale live handle (`metadata.image`) and lets
+   * the standard rehydration pass decode the new bytes. One undo step.
+   */
+  async replaceImageFile(id: ElementId, blob: Blob, name?: string): Promise<void> {
+    if (this.readOnly) return;
+    const shape = getElement(this._scene, id);
+    if (!shape || !isImage(shape)) return;
+    const added = await computeAddBinaryFile(this._scene, blob, name, () => ++this.nextId);
+    const tx = this._history.transaction();
+    tx.add(added.patch);
+    const r = updateElement(added.scene, id, (s) => {
+      const copy = { ...s } as typeof s & {
+        fileId?: FileId;
+        metadata?: Record<string, unknown>;
+        animationData?: unknown;
+      };
+      copy.fileId = added.id;
+      if (copy.metadata && "image" in copy.metadata) {
+        const { image: _image, ...rest } = copy.metadata;
+        if (Object.keys(rest).length > 0) copy.metadata = rest;
+        else delete copy.metadata;
+      }
+      delete copy.animationData;
+      return copy;
+    });
+    this._scene = r.scene;
+    tx.add(r.patch);
+    tx.commit();
+    this.notify();
+    await animScene.rehydrateStaticImages(this);
   }
 
   /**

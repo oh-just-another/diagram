@@ -1433,6 +1433,35 @@
   justify-content: center;
 }
 
+/* Image file-name input in the toolbar row. */
+.du-sel-name-input {
+  width: 140px;
+  padding: 3px 6px;
+  font: 12px system-ui, sans-serif;
+  color: var(--panel-fg, inherit);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.du-sel-name-input:hover,
+.du-sel-name-input:focus {
+  border-color: var(--menu-border);
+  outline: none;
+}
+
+/* Alt-text textarea inside its popover. */
+.du-sel-alt-input {
+  width: 200px;
+  padding: 4px 6px;
+  font: 12px system-ui, sans-serif;
+  color: var(--panel-fg, inherit);
+  background: transparent;
+  border: 1px solid var(--menu-border);
+  border-radius: 4px;
+  resize: vertical;
+}
+
 /* Persistent link badge at an element's top-right corner. Slightly offset
    outward so it reads as attached to the shape without covering content. */
 .du-link-badge {

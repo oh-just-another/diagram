@@ -377,6 +377,29 @@ describe("round-trip", () => {
     expect(el.runs[0]?.style?.highlight).toBe("#d0ebff");
   });
 
+  it("preserves an image's alt text", () => {
+    let scene = emptyScene();
+    const img = {
+      id: elementId("ia"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "image",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      src: "data:,",
+      width: 10,
+      height: 10,
+      alt: "a red square",
+    } as unknown as Element;
+    ({ scene } = addElement(scene, img));
+    const restored = parseScene(stringifyScene(scene));
+    expect((restored.elements.get(elementId("ia")) as unknown as { alt?: string }).alt).toBe(
+      "a red square",
+    );
+  });
+
   it("preserves paragraph list attributes through stringify → parseScene", () => {
     let scene = emptyScene();
     const t = {

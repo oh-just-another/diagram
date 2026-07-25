@@ -13,12 +13,14 @@ import {
   AlignVerticalDistributeCenter,
   Bold,
   CaseSensitive,
+  Download,
   ChevronsDown,
   ChevronsUp,
   Circle,
   Copy as CopyIcon,
   Crop,
   Diamond,
+  FileText,
   FlipHorizontal2 as FlipHorizontalIcon,
   FlipVertical2 as FlipVerticalIcon,
   Group as GroupIcon,
@@ -44,10 +46,12 @@ import {
   Strikethrough,
   Trash2,
   Underline,
+  Upload,
   Ungroup as UngroupIcon,
   Waypoints,
 } from "lucide-react";
 import {
+  getBinaryFile,
   isGroup,
   isText,
   isImage,
@@ -69,6 +73,8 @@ import {
   type TextStyle,
 } from "@oh-just-another/scene";
 import type { ConvertTarget } from "@oh-just-another/state";
+import type { BinaryFile } from "@oh-just-another/scene";
+import type { FileId } from "@oh-just-another/types";
 import {
   useDiagramOptional,
   useReadOnly,
@@ -168,7 +174,17 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       );
     } else if (allImage) {
       // An image's pixels are the content — fill/stroke make no sense.
-      primary.push(
+      // name | replace | download | alt | crop | opacity.
+      if (shapes.length === 1) {
+        primary.push(<ImageNameControl key="name" shapes={shapes} />);
+        overflow.push(
+          <ReplaceImageControl key="replace" shapes={shapes} />,
+          <DownloadImageControl key="download" shapes={shapes} />,
+          <ImageAltControl key="alt" shapes={shapes} />,
+          <Divider key="d-crop" />,
+        );
+      }
+      overflow.push(
         <CropControl key="crop" shapes={shapes} />,
         <OpacityControl key="opacity" shapes={shapes} />,
       );
@@ -617,6 +633,153 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
           valueLabel={pct === null ? "—" : `${pct}%`}
           onChange={(v) => {
             editor.updateStyle(ids, { opacity: v / 100 });
+          }}
+        />
+      </div>
+    </Popover>
+  );
+};
+
+/** The backing BinaryFile of a single-image selection, if any. */
+const backingFile = (
+  editor: NonNullable<ReturnType<typeof useDiagramOptional>>,
+  shapes: readonly ElementBase[],
+): {
+  readonly elementId: ElementBase["id"];
+  readonly fileId: FileId;
+  readonly file: BinaryFile;
+} | null => {
+  const first = shapes[0];
+  if (!first || !isImage(first) || first.fileId === undefined) return null;
+  const file = getBinaryFile(editor.scene, first.fileId);
+  return file ? { elementId: first.id, fileId: first.fileId, file } : null;
+};
+
+/**
+ * File-name input for a single selected image backed by a registered
+ * binary file. Commits on Enter / blur through the editor (undoable);
+ * images without a file registry entry (raw `src`) hide the control.
+ */
+const ImageNameControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const backing = backingFile(editor, shapes);
+  if (!backing) return null;
+  const commit = (value: string): void => {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) editor.renameBinaryFile(backing.fileId, trimmed);
+  };
+  return (
+    <input
+      key={backing.file.name ?? backing.fileId}
+      type="text"
+      className="du-sel-name-input"
+      defaultValue={backing.file.name ?? ""}
+      placeholder="File name"
+      aria-label="File name"
+      onBlur={(ev) => {
+        commit(ev.currentTarget.value);
+      }}
+      onKeyDown={(ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          commit(ev.currentTarget.value);
+          ev.currentTarget.blur();
+        }
+      }}
+    />
+  );
+};
+
+/** Pick a new image file and swap it under the selected shape (size / crop kept). */
+const ReplaceImageControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const first = shapes[0];
+  if (!editor || !first || !isImage(first)) return null;
+  return (
+    <>
+      <button
+        type="button"
+        className="du-sel-icon-button"
+        title="Replace image"
+        aria-label="Replace image"
+        onClick={() => {
+          inputRef.current?.click();
+        }}
+      >
+        <Upload size={14} strokeWidth={1.75} aria-hidden />
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(ev) => {
+          const file = ev.currentTarget.files?.[0];
+          ev.currentTarget.value = "";
+          if (file) void editor.replaceImageFile(first.id, file, file.name);
+        }}
+      />
+    </>
+  );
+};
+
+/** Download the image's original bytes with their stored name / mime. */
+const DownloadImageControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const backing = backingFile(editor, shapes);
+  if (!backing) return null;
+  return (
+    <button
+      type="button"
+      className="du-sel-icon-button"
+      title="Download image"
+      aria-label="Download image"
+      onClick={() => {
+        const blob = new Blob([backing.file.data], { type: backing.file.mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = backing.file.name ?? "image";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }}
+    >
+      <Download size={14} strokeWidth={1.75} aria-hidden />
+    </button>
+  );
+};
+
+/** Alt-text editor (accessible description) for the selected image. */
+const ImageAltControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  const first = shapes[0];
+  if (!editor || !first || !isImage(first)) return null;
+  const current = first.alt ?? "";
+  return (
+    <Popover
+      ariaLabel="Alt text"
+      trigger={
+        <button type="button" className="du-sel-icon-button" title="Alt text" aria-label="Alt text">
+          <FileText size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Alt text</header>
+        <textarea
+          className="du-sel-alt-input"
+          defaultValue={current}
+          rows={3}
+          placeholder="Describe this image"
+          aria-label="Alt text"
+          onBlur={(ev) => {
+            const value = ev.currentTarget.value.trim();
+            if (value !== current) editor.setImageAlt([first.id], value === "" ? null : value);
           }}
         />
       </div>
