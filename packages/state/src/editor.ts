@@ -3104,6 +3104,46 @@ export class Editor {
   }
 
   /**
+   * Resize a frame to one of the `FRAME_SIZE_PRESETS` (top-left corner
+   * stays put; members keep their absolute positions). One undo step.
+   */
+  applyFramePreset(id: ElementId, preset: { width: number; height: number }): void {
+    if (this.readOnly) return;
+    const shape = getElement(this._scene, id);
+    if (!shape || !isFrame(shape)) return;
+    const r = updateElement(this._scene, id, (s) => ({
+      ...s,
+      width: preset.width,
+      height: preset.height,
+    }));
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this.notify();
+  }
+
+  /**
+   * Toggle a frame's `hidden` flag. A hidden frame takes its content with
+   * it (frame membership propagates `hidden`), disappears from rendering
+   * and becomes click-through; bring it back via the frames panel's eye
+   * toggle. Hiding also drops the selection (same reasoning as locking).
+   */
+  toggleFrameHidden(id: ElementId): void {
+    if (this.readOnly) return;
+    const shape = getElement(this._scene, id);
+    if (!shape || !isFrame(shape)) return;
+    const r = updateElement(this._scene, id, (s) => {
+      const copy = { ...s };
+      if (copy.hidden === true) delete copy.hidden;
+      else copy.hidden = true;
+      return copy;
+    });
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    if (getElement(this._scene, id)?.hidden === true) this._selection = Selection.EMPTY;
+    this.notify();
+  }
+
+  /**
    * Rename the binary file behind an image (the toolbar's file-name
    * input). One undo step; no-op when the id is unknown or the name is
    * unchanged.

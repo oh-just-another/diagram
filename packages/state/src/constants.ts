@@ -682,6 +682,31 @@ export const ERASER_TRAIL_TTL_MS = 120;
 export const MAX_LIST_INDENT = 8;
 
 /**
+ * Frame size presets for the frame toolbar's ratio dropdown. Applying one
+ * resizes the frame to the canonical size (world units ≈ CSS px at zoom 1),
+ * keeping its top-left corner; free resizing afterwards simply diverges
+ * from the preset (nothing is stored on the element). Sizes are the
+ * common paper / screen defaults and safe to tune.
+ */
+export interface FrameSizePreset {
+  readonly id: string;
+  readonly label: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+export const FRAME_SIZE_PRESETS: readonly FrameSizePreset[] = [
+  { id: "a4", label: "A4", width: 794, height: 1123 },
+  { id: "letter", label: "Letter", width: 816, height: 1056 },
+  { id: "16:9", label: "16:9", width: 1280, height: 720 },
+  { id: "4:3", label: "4:3", width: 1024, height: 768 },
+  { id: "1:1", label: "1:1", width: 800, height: 800 },
+  { id: "phone", label: "Phone", width: 390, height: 844 },
+  { id: "tablet", label: "Tablet", width: 820, height: 1180 },
+  { id: "browser", label: "Browser", width: 1280, height: 800 },
+];
+
+/**
  * Stroke-eraser (Shift) samples a brush polyline this densely — as a FRACTION of
  * the eraser radius — when computing which arc-length spans fall under the disc.
  * The eraser cuts the line's GEOMETRY (segments), not just its vertices, so a big

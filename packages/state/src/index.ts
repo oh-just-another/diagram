@@ -36,7 +36,8 @@ export {
 export type { OverlayStyle, PeerCursor, PeerSelection } from "./render/overlay.js";
 export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./render/overlay.js";
 
-export { PEER_CURSOR_BROADCAST_INTERVAL_MS } from "./constants.js";
+export { PEER_CURSOR_BROADCAST_INTERVAL_MS, FRAME_SIZE_PRESETS } from "./constants.js";
+export type { FrameSizePreset } from "./constants.js";
 
 export {
   fromPointerEvent,

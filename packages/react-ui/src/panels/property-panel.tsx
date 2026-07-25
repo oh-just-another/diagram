@@ -20,6 +20,7 @@ import {
   Copy as CopyIcon,
   Crop,
   Diamond,
+  EyeOff,
   FileText,
   FlipHorizontal2 as FlipHorizontalIcon,
   FlipVertical2 as FlipVerticalIcon,
@@ -39,6 +40,7 @@ import {
   MoveDown,
   MoveRight,
   MoveUp,
+  Proportions,
   Spline,
   Square,
   SquareDashed,
@@ -72,7 +74,7 @@ import {
   type TextElement,
   type TextStyle,
 } from "@oh-just-another/scene";
-import type { ConvertTarget } from "@oh-just-another/state";
+import { FRAME_SIZE_PRESETS, type ConvertTarget } from "@oh-just-another/state";
 import type { BinaryFile } from "@oh-just-another/scene";
 import type { FileId } from "@oh-just-another/types";
 import {
@@ -157,6 +159,10 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       // A frame's border is fixed chrome (dashed outline); only its body fill
       // is user-configurable. No stroke / width / dash / roundness controls.
       primary.push(<FillControl key="fill" shapes={shapes} />);
+      if (shapes.length === 1) {
+        primary.push(<FrameRatioControl key="ratio" shapes={shapes} />);
+        overflow.push(<HideFrameControl key="hide" shapes={shapes} />);
+      }
     } else if (allText) {
       // font family | size | style | align | link — then colors.
       primary.push(
@@ -637,6 +643,70 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
         />
       </div>
     </Popover>
+  );
+};
+
+/**
+ * Frame size presets (paper / screen ratios) as a dropdown. Applying one
+ * resizes the frame to the canonical size; free resize simply diverges
+ * (Custom is implicit — nothing is stored on the element).
+ */
+const FrameRatioControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  const first = shapes[0];
+  if (!editor || !first) return null;
+  return (
+    <Popover
+      ariaLabel="Frame size"
+      trigger={
+        <button
+          type="button"
+          className="du-sel-icon-button"
+          title="Frame size"
+          aria-label="Frame size"
+        >
+          <Proportions size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Frame size</header>
+        <div className="du-sel-preset-list">
+          {FRAME_SIZE_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className="du-sel-preset-item"
+              onClick={() => {
+                editor.applyFramePreset(first.id, preset);
+              }}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </Popover>
+  );
+};
+
+/** Hide the frame together with its content (unhide via the frames panel). */
+const HideFrameControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  const first = shapes[0];
+  if (!editor || !first) return null;
+  return (
+    <button
+      type="button"
+      className="du-sel-icon-button"
+      title="Hide frame"
+      aria-label="Hide frame"
+      onClick={() => {
+        editor.toggleFrameHidden(first.id);
+      }}
+    >
+      <EyeOff size={14} strokeWidth={1.75} aria-hidden />
+    </button>
   );
 };
 

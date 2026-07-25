@@ -1450,6 +1450,27 @@
   outline: none;
 }
 
+/* Frame size preset list inside its popover. */
+.du-sel-preset-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.du-sel-preset-item {
+  padding: 4px 8px;
+  font: 12px system-ui, sans-serif;
+  color: var(--panel-fg, inherit);
+  background: transparent;
+  border: 1px solid var(--menu-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.du-sel-preset-item:hover {
+  border-color: var(--du-accent);
+}
+
 /* Alt-text textarea inside its popover. */
 .du-sel-alt-input {
   width: 200px;

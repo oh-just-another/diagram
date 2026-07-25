@@ -1,4 +1,5 @@
 import { useMemo, type CSSProperties } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import type { ElementId } from "@oh-just-another/types";
 import { isFrame, type FrameElement } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene } from "../core/hooks.js";
@@ -99,6 +100,26 @@ export const FramePanel = ({ onExport, style }: FramePanelProps) => {
                 <div style={{ color: "var(--faint)", fontSize: 10 }}>
                   {Math.round(frame.width)} × {Math.round(frame.height)}
                 </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => editor?.toggleFrameHidden(frame.id)}
+                style={{
+                  background: "transparent",
+                  border: 0,
+                  padding: 2,
+                  cursor: "pointer",
+                  color: frame.hidden === true ? "var(--faint)" : "var(--text)",
+                  display: "inline-flex",
+                }}
+                title={frame.hidden === true ? "Show frame" : "Hide frame"}
+                aria-label={frame.hidden === true ? "Show frame" : "Hide frame"}
+              >
+                {frame.hidden === true ? (
+                  <EyeOff size={13} strokeWidth={1.75} aria-hidden />
+                ) : (
+                  <Eye size={13} strokeWidth={1.75} aria-hidden />
+                )}
               </button>
               {onExport ? (
                 <button
