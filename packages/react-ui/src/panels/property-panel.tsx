@@ -49,6 +49,7 @@ import {
   Trash2,
   Underline,
   Upload,
+  UserRound,
   Ungroup as UngroupIcon,
   Waypoints,
 } from "lucide-react";
@@ -57,6 +58,8 @@ import {
   isGroup,
   isText,
   isImage,
+  isSticky,
+  isEmoji,
   isFrame,
   isRectangle,
   isEllipse,
@@ -74,8 +77,12 @@ import {
   type TextElement,
   type TextStyle,
 } from "@oh-just-another/scene";
-import { FRAME_SIZE_PRESETS, type ConvertTarget } from "@oh-just-another/state";
-import type { BinaryFile } from "@oh-just-another/scene";
+import {
+  FRAME_SIZE_PRESETS,
+  STICKY_SIZE_PRESETS,
+  type ConvertTarget,
+} from "@oh-just-another/state";
+import type { BinaryFile, EmojiElement, StickyElement } from "@oh-just-another/scene";
 import type { FileId } from "@oh-just-another/types";
 import {
   useDiagramOptional,
@@ -149,13 +156,24 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
     const allImage = shapes.every((s) => isImage(s));
     const allBrush = shapes.every((s) => isBrush(s as BrushElement));
     const allFrame = shapes.every((s) => isFrame(s));
+    const allSticky = shapes.every((s) => isSticky(s));
+    const allEmoji = shapes.every((s) => isEmoji(s));
 
     // Branch layouts mirror the target design (design.md): per-type clusters
     // separated by dividers, then a shared tail
     // (`… | z-order | align | actions | comment | lock | ⋯`).
     const primary: ReactNode[] = [];
     const overflow: ReactNode[] = [];
-    if (allFrame) {
+    if (allSticky) {
+      // size S/M/L | background | author strip.
+      primary.push(
+        <StickySizeControl key="size" shapes={shapes} />,
+        <FillOpacityControl key="bg" shapes={shapes} />,
+      );
+      overflow.push(<StickyAuthorControl key="author" shapes={shapes} />);
+    } else if (allEmoji) {
+      primary.push(<EmojiPickerControl key="glyph" shapes={shapes} />);
+    } else if (allFrame) {
       // A frame's border is fixed chrome (dashed outline); only its body fill
       // is user-configurable. No stroke / width / dash / roundness controls.
       primary.push(<FillControl key="fill" shapes={shapes} />);
@@ -639,6 +657,116 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
             editor.updateStyle(ids, { opacity: v / 100 });
           }}
         />
+      </div>
+    </Popover>
+  );
+};
+
+/** Sticky size presets (S / M / L squares). */
+const StickySizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const side = sharedValue<number>(shapes, (s) => (s as StickyElement).width);
+  return (
+    <SegmentedControl<number>
+      ariaLabel="Sticky size"
+      value={side}
+      options={STICKY_SIZE_PRESETS.map((p) => ({
+        value: p.side,
+        label: p.id.toUpperCase(),
+        icon: <span className="du-sel-size-letter">{p.id.toUpperCase()}</span>,
+      }))}
+      onChange={(v) => {
+        editor.setStickySize(ids, v);
+      }}
+    />
+  );
+};
+
+/** Toggle the author-name strip along the sticky's bottom edge. */
+const StickyAuthorControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const on = shapes.every((s) => (s as StickyElement).showAuthor === true);
+  return (
+    <button
+      type="button"
+      className={`du-sel-icon-button${on ? " is-active" : ""}`}
+      title="Show author"
+      aria-label="Show author"
+      aria-pressed={on}
+      onClick={() => {
+        editor.toggleStickyAuthor(ids);
+      }}
+    >
+      <UserRound size={14} strokeWidth={1.75} aria-hidden />
+    </button>
+  );
+};
+
+/** Common quick-pick glyphs for the emoji element (replace the current one). */
+const EMOJI_CHOICES: readonly string[] = [
+  "😀",
+  "😂",
+  "😍",
+  "🤔",
+  "😎",
+  "🙌",
+  "👍",
+  "👎",
+  "👏",
+  "🔥",
+  "❤️",
+  "💡",
+  "⭐",
+  "✅",
+  "❌",
+  "⚠️",
+  "❓",
+  "🎉",
+  "🚀",
+  "👀",
+];
+
+/** Emoji picker: replace the element's glyph with one of the presets. */
+const EmojiPickerControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  const first = shapes[0];
+  if (!editor || !first) return null;
+  const current = (first as EmojiElement).glyph;
+  return (
+    <Popover
+      ariaLabel="Choose emoji"
+      trigger={
+        <button
+          type="button"
+          className="du-sel-text-button"
+          title="Choose emoji"
+          aria-label="Choose emoji"
+        >
+          {current}
+        </button>
+      }
+    >
+      <div className="du-sel-emoji-grid">
+        {EMOJI_CHOICES.map((glyph) => (
+          <button
+            key={glyph}
+            type="button"
+            className="du-sel-emoji-item"
+            aria-label={`Emoji ${glyph}`}
+            onClick={() => {
+              editor.setEmojiGlyph(
+                shapes.map((s) => s.id),
+                glyph,
+              );
+            }}
+          >
+            {glyph}
+          </button>
+        ))}
       </div>
     </Popover>
   );

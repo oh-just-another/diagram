@@ -33,6 +33,8 @@ import {
   isBrush,
   brushBodyColor,
   canCarryLabel,
+  isSticky,
+  isEmoji,
   getBinaryFile,
   paragraphAt,
   paragraphCount,
@@ -58,6 +60,7 @@ import {
   type GridStyle,
   type ImageCrop,
   type Style,
+  type StickyElement,
   type TextElement,
   type TextParagraph,
   type TextStyle,
@@ -3101,6 +3104,75 @@ export class Editor {
     if (!result) return;
     this._scene = result.scene;
     this._history.push(result.patch);
+    this.notify();
+  }
+
+  /**
+   * Resize sticky notes to a square preset side (`STICKY_SIZE_PRESETS`).
+   * One undo step; non-sticky ids are skipped.
+   */
+  setStickySize(ids: Iterable<ElementId>, side: number): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (!shape || !isSticky(shape)) continue;
+      const r = updateElement(this._scene, id, (s) => ({ ...s, width: side, height: side }));
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /**
+   * Toggle the author-name strip on sticky notes. Turning it on fills a
+   * missing `authorName` from the editor's comment author (the local
+   * user). One undo step.
+   */
+  toggleStickyAuthor(ids: Iterable<ElementId>): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (!shape || !isSticky(shape)) continue;
+      const r = updateElement(this._scene, id, (s) => {
+        const sticky = s as StickyElement;
+        const showAuthor = sticky.showAuthor !== true;
+        return {
+          ...s,
+          showAuthor,
+          authorName: sticky.authorName ?? this.commentAuthor.name,
+        };
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /** Replace an emoji element's glyph (the toolbar picker). One undo step. */
+  setEmojiGlyph(ids: Iterable<ElementId>, glyph: string): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (!shape || !isEmoji(shape)) continue;
+      const r = updateElement(this._scene, id, (s) => ({ ...s, glyph }));
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
     this.notify();
   }
 

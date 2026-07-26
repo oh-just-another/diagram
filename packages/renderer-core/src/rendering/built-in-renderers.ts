@@ -8,6 +8,8 @@ import {
   FRAME_HEADER_FONT_SIZE,
   type BlockArrowElement,
   type ElementBase,
+  type EmojiElement,
+  type StickyElement,
   type BrushElement,
   type EllipseElement,
   type FrameElement,
@@ -38,6 +40,10 @@ import { resolveImageSource } from "../raster/animation-adapter.js";
 import { isDrawableImageSource } from "../raster/image-source-guard.js";
 import {
   LABEL_PADDING_EM,
+  STICKY_DEFAULT_FILL,
+  STICKY_CORNER_RADIUS,
+  STICKY_AUTHOR_FONT_SIZE,
+  STICKY_AUTHOR_COLOR,
   LIST_MARKER_GAP_EM,
   TEXT_DECORATION_THICKNESS,
   TEXT_UNDERLINE_OFFSET,
@@ -272,6 +278,42 @@ const drawPath: ElementRenderer<PathElement> = (shape, target) => {
  * the plain-text path); per-run weight only affects glyph paint + segment
  * widths, an acceptable etap-1 approximation for wrapping.
  */
+/**
+ * Sticky note: a rounded card filled with `style.fill` (default sticky
+ * yellow); the text itself is the shared embedded label, drawn by the
+ * scene renderer's label pass. The author name renders along the bottom
+ * edge when `showAuthor` is set.
+ */
+const drawSticky: ElementRenderer<StickyElement> = (shape, target) => {
+  const fill = shape.style.fill ?? STICKY_DEFAULT_FILL;
+  if (shape.style.opacity !== undefined) target.setOpacity(shape.style.opacity);
+  target.setFill(fill);
+  target.beginPath();
+  buildRoundedRectPath(target, 0, 0, shape.width, shape.height, STICKY_CORNER_RADIUS);
+  target.fill();
+  if (shape.showAuthor === true && shape.authorName !== undefined && shape.authorName !== "") {
+    target.setFont("system-ui, sans-serif", STICKY_AUTHOR_FONT_SIZE, {});
+    target.setTextAlign("left");
+    target.setTextBaseline("top");
+    target.setFill(STICKY_AUTHOR_COLOR);
+    target.fillText(
+      shape.authorName,
+      STICKY_CORNER_RADIUS + 2,
+      shape.height - STICKY_AUTHOR_FONT_SIZE - 4,
+    );
+  }
+};
+
+/** Emoji element: one glyph filling the element's square via the text path. */
+const drawEmoji: ElementRenderer<EmojiElement> = (shape, target) => {
+  if (shape.style.opacity !== undefined) target.setOpacity(shape.style.opacity);
+  target.setFont("system-ui, sans-serif", shape.size, {});
+  target.setTextAlign("left");
+  target.setTextBaseline("top");
+  target.setFill(shape.style.fill ?? "#000");
+  target.fillText(shape.glyph, 0, 0);
+};
+
 /**
  * Geometry of an embedded shape label: the synthetic text element the
  * text renderer can draw, plus the local-space offset where it starts.
@@ -685,6 +727,8 @@ export const installBuiltinRenderers = (): void => {
   registerRenderOverflow("frame", () => ({ top: FRAME_HEADER_HEIGHT }));
   registerElementRenderer<BlockArrowElement>("block-arrow", drawBlockArrow);
   registerElementRenderer<BrushElement>("brush", drawBrush);
+  registerElementRenderer<StickyElement>("sticky", drawSticky);
+  registerElementRenderer<EmojiElement>("emoji", drawEmoji);
 };
 
 /**

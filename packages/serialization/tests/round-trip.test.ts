@@ -403,6 +403,56 @@ describe("round-trip", () => {
     expect(el.label?.paragraphs).toEqual([{ list: "bullet" }]);
   });
 
+  it("stickies and emoji survive the custom-element schema", () => {
+    let scene = emptyScene();
+    ({ scene } = addElement(scene, {
+      id: elementId("s"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "sticky",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: { fill: "#fff9b1" },
+      width: 160,
+      height: 160,
+      authorName: "R",
+      showAuthor: true,
+      label: { text: "hi", fontFamily: "system-ui", fontSize: 16 },
+    } as unknown as Element));
+    ({ scene } = addElement(scene, {
+      id: elementId("e"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "emoji",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      glyph: "😀",
+      size: 48,
+    } as unknown as Element));
+    const restored = parseScene(stringifyScene(scene));
+    const st = restored.elements.get(elementId("s")) as unknown as {
+      type: string;
+      width: number;
+      authorName?: string;
+      label?: { text: string };
+    };
+    expect(st.type).toBe("sticky");
+    expect(st.width).toBe(160);
+    expect(st.authorName).toBe("R");
+    expect(st.label?.text).toBe("hi");
+    const em = restored.elements.get(elementId("e")) as unknown as {
+      type: string;
+      glyph: string;
+      size: number;
+    };
+    expect(em.type).toBe("emoji");
+    expect(em.glyph).toBe("😀");
+    expect(em.size).toBe(48);
+  });
+
   it("preserves an image's alt text", () => {
     let scene = emptyScene();
     const img = {

@@ -689,6 +689,16 @@ export const MAX_LIST_INDENT = 8;
 export const LABEL_DEFAULT_FONT_SIZE = 16;
 
 /**
+ * Sticky-note size presets (square side in world units) behind the
+ * toolbar's S / M / L segments. Reasonable range 100–300.
+ */
+export const STICKY_SIZE_PRESETS: readonly { id: "s" | "m" | "l"; side: number }[] = [
+  { id: "s", side: 120 },
+  { id: "m", side: 160 },
+  { id: "l", side: 220 },
+];
+
+/**
  * Frame size presets for the frame toolbar's ratio dropdown. Applying one
  * resizes the frame to the canonical size (world units ≈ CSS px at zoom 1),
  * keeping its top-left corner; free resizing afterwards simply diverges

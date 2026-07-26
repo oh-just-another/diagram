@@ -68,6 +68,18 @@ export const LIST_MARKER_GAP_EM = 0.4;
  * (× label font size). Reasonable range 0.3–1.0.
  */
 export const LABEL_PADDING_EM = 0.5;
+
+/**
+ * Sticky-note chrome:
+ * - `STICKY_DEFAULT_FILL` — card colour when `style.fill` is omitted.
+ * - `STICKY_CORNER_RADIUS` — corner rounding in world units.
+ * - `STICKY_AUTHOR_FONT_SIZE` — author-name strip font size.
+ * - `STICKY_AUTHOR_COLOR` — author-name text colour.
+ */
+export const STICKY_DEFAULT_FILL = "#fff9b1";
+export const STICKY_CORNER_RADIUS = 4;
+export const STICKY_AUTHOR_FONT_SIZE = 10;
+export const STICKY_AUTHOR_COLOR = "#8a8a6f";
 export const TEXT_UNDERLINE_OFFSET = 0.92;
 export const TEXT_STRIKETHROUGH_OFFSET = 0.5;
 

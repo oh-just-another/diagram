@@ -196,12 +196,45 @@ export interface ShapeLabel {
   readonly paragraphs?: readonly TextParagraph[];
 }
 
+/**
+ * Sticky note — a bounded card whose text lives in the shared embedded
+ * `label` (double-click to edit). Background comes from `style.fill`;
+ * `authorName` renders along the bottom edge when `showAuthor` is on.
+ * Registered as a plugin-style type: not part of the built-in `Element`
+ * union, handled through the renderer / bounder registries and the
+ * custom-element wire schema.
+ */
+export interface StickyElement extends ElementBase {
+  readonly type: "sticky";
+  readonly width: number;
+  readonly height: number;
+  readonly authorName?: string;
+  readonly showAuthor?: boolean;
+}
+
+/** True when the shape is a sticky note. */
+export const isSticky = (shape: ElementBase): shape is StickyElement => shape.type === "sticky";
+
+/**
+ * Emoji element — a single glyph drawn at `size` world units. The glyph
+ * is replaced via the toolbar picker. Plugin-style type like `sticky`.
+ */
+export interface EmojiElement extends ElementBase {
+  readonly type: "emoji";
+  readonly glyph: string;
+  readonly size: number;
+}
+
+/** True when the shape is an emoji element. */
+export const isEmoji = (shape: ElementBase): shape is EmojiElement => shape.type === "emoji";
+
 /** Shape types whose body can host an embedded label. */
 const LABELABLE_TYPES: ReadonlySet<string> = new Set([
   "rectangle",
   "ellipse",
   "polygon",
   "block-arrow",
+  "sticky",
 ]);
 
 /** True when the shape's type supports an embedded text label. */
@@ -517,6 +550,15 @@ registerBounder<EllipseElement>("ellipse", (s) => ({
 }));
 
 registerBounder<PolygonElement>("polygon", (s) => B.fromPoints(s.points));
+
+registerBounder<StickyElement>("sticky", (s) => ({
+  x: 0,
+  y: 0,
+  width: s.width,
+  height: s.height,
+}));
+
+registerBounder<EmojiElement>("emoji", (s) => ({ x: 0, y: 0, width: s.size, height: s.size }));
 
 registerBounder<PathElement>("path", (s) => {
   const points: Vec2[] = [];

@@ -1450,6 +1450,37 @@
   outline: none;
 }
 
+/* Sticky size letters (S / M / L segments). */
+.du-sel-size-letter {
+  font:
+    600 11px system-ui,
+    sans-serif;
+}
+
+/* Emoji picker grid inside its popover. */
+.du-sel-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 28px);
+  gap: 2px;
+  padding: 4px;
+}
+
+.du-sel-emoji-item {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.du-sel-emoji-item:hover {
+  border-color: var(--menu-border);
+}
+
 /* Border-group trigger: an outlined ring showing the stroke colour. */
 .du-sel-swatch-ring {
   background: transparent;
