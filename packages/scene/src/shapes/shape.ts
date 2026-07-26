@@ -104,6 +104,16 @@ export interface ElementBase {
   readonly hidden?: boolean;
 
   /**
+   * Embedded text label — the shape's own text content, drawn inside its
+   * bounds (wrapped to the width, aligned via `style.textAlign` /
+   * `style.textBaseline`, `middle`+`center` by default). Shares the text
+   * element's building blocks (styled runs, list paragraphs) as data;
+   * layout is the renderer's job. Double-click opens the inline editor
+   * on shapes that support it (see `canCarryLabel`).
+   */
+  readonly label?: ShapeLabel;
+
+  /**
    * Element-level hyperlink. Any shape — text, image,
    * rectangle — can carry one. The host opens it on Cmd/Ctrl-click or via
    * the hover link-popup. Stored verbatim; the host MUST validate the
@@ -169,6 +179,33 @@ export interface TextElement extends ElementBase {
    */
   readonly paragraphs?: readonly TextParagraph[];
 }
+
+/**
+ * Embedded text carried by a non-text shape (see `ElementBase.label`).
+ * Field-for-field compatible with the text element's content model so
+ * the text pipeline (runs, paragraphs, layout, inline editing) applies
+ * unchanged.
+ */
+export interface ShapeLabel {
+  readonly text: string;
+  readonly fontFamily: string;
+  readonly fontSize: number;
+  /** Optional style overlay; `textAlign`/`textBaseline` default to center/middle. */
+  readonly style?: TextStyle;
+  readonly runs?: readonly TextRun[];
+  readonly paragraphs?: readonly TextParagraph[];
+}
+
+/** Shape types whose body can host an embedded label. */
+const LABELABLE_TYPES: ReadonlySet<string> = new Set([
+  "rectangle",
+  "ellipse",
+  "polygon",
+  "block-arrow",
+]);
+
+/** True when the shape's type supports an embedded text label. */
+export const canCarryLabel = (shape: ElementBase): boolean => LABELABLE_TYPES.has(shape.type);
 
 /**
  * Paragraph-level attributes for a {@link TextElement}. Both fields are

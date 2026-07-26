@@ -12,6 +12,7 @@ import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "../targets/render-target.js";
 import type { AnimationClock } from "../raster/animation-adapter.js";
 import { getElementRenderer } from "./shape-renderer.js";
+import { drawShapeLabel } from "./built-in-renderers.js";
 import { createDimTarget } from "../targets/dim-target.js";
 import { cachedWorldBounds, ElementCache } from "../caches/shape-cache.js";
 import { DEFAULT_PLACEHOLDER_FILL } from "../constants.js";
@@ -289,6 +290,12 @@ export const renderScene = (
         draw.scale(shape.scale.x, shape.scale.y);
       }
       renderer(shape, draw, ctx);
+      // Embedded label — drawn in the shape's local space, after its
+      // body so the text sits on top. Skipped under the hide-text LOD
+      // together with standalone text.
+      if (shape.label !== undefined && !isText(shape) && !dropText) {
+        drawShapeLabel(shape, draw);
+      }
       target.restore();
     }
   }

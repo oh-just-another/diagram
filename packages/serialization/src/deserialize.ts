@@ -155,7 +155,7 @@ const hydrateElement = (s: SceneDocument["elements"][number], id: ElementId): El
     id,
     layerId: layerId(s.layerId),
     order: s.order as FractionalIndex,
-  } as Element;
+  } as unknown as Element;
 };
 
 const hydrateLink = (e: SceneDocument["links"][number], id: LinkId): Link => {

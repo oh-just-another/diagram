@@ -30,7 +30,9 @@ export const serializeScene = (
   const doc: SceneDocument = {
     format: "oh-just-another/scene",
     version: CURRENT_VERSION,
-    elements: [...scene.elements.values()].map(stripTransientMetadata) as SceneDocument["elements"],
+    elements: [...scene.elements.values()].map(
+      stripTransientMetadata,
+    ) as unknown as SceneDocument["elements"],
     links: [...scene.links.values()] as SceneDocument["links"],
     layers: [...scene.layers.values()],
     viewport: scene.viewport,

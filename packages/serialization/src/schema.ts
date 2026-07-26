@@ -64,6 +64,15 @@ const AnchorRefZ = z.discriminatedUnion("kind", [
 
 // --- Shapes ---
 
+const TextRunZ = z.object({ text: z.string(), style: TextStyleZ.optional() }).strict();
+
+const TextParagraphZ = z
+  .object({
+    list: z.enum(["bullet", "numbered"]).optional(),
+    indent: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
 const ElementBaseZ = z.object({
   id: z.string(),
   layerId: z.string(),
@@ -80,7 +89,23 @@ const ElementBaseZ = z.object({
   anchors: z.record(z.string(), AnchorRefZ).optional(),
   parentId: z.string().optional(),
   frameId: z.string().optional(),
+  // Per-shape lock / visibility flags (propagate to descendants and
+  // frame members at runtime; only the flag itself is stored).
+  locked: z.boolean().optional(),
+  hidden: z.boolean().optional(),
   href: z.string().optional(),
+  // Embedded text label (rect / ellipse / polygon / block-arrow).
+  label: z
+    .object({
+      text: z.string(),
+      fontFamily: z.string(),
+      fontSize: z.number(),
+      style: TextStyleZ.optional(),
+      runs: z.array(TextRunZ).optional(),
+      paragraphs: z.array(TextParagraphZ).optional(),
+    })
+    .strict()
+    .optional(),
 });
 
 const RectangleZ = ElementBaseZ.extend({
@@ -119,14 +144,6 @@ const PathZ = ElementBaseZ.extend({
 
 // A styled run persists its raw substring plus an optional partial style
 // overlay (reuses `TextStyleZ` — every field there is already optional).
-const TextRunZ = z.object({ text: z.string(), style: TextStyleZ.optional() }).strict();
-
-const TextParagraphZ = z
-  .object({
-    list: z.enum(["bullet", "numbered"]).optional(),
-    indent: z.number().int().nonnegative().optional(),
-  })
-  .strict();
 
 const TextZ = ElementBaseZ.extend({
   type: z.literal("text"),

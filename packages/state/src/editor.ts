@@ -32,6 +32,7 @@ import {
   isImage,
   isBrush,
   brushBodyColor,
+  canCarryLabel,
   getBinaryFile,
   paragraphAt,
   paragraphCount,
@@ -4828,6 +4829,13 @@ export class Editor {
           this._selection = Selection.single(raw.id);
           if (this._selectedLinks.size > 0) this._selectedLinks = LinkSelection.EMPTY;
           this.notify();
+          return true;
+        }
+        // No group to drill into — double-click on a labelable shape
+        // opens its embedded label editor (creating an empty label on
+        // the first edit).
+        if (canCarryLabel(raw)) {
+          this.beginTextEdit(raw.id);
           return true;
         }
       }

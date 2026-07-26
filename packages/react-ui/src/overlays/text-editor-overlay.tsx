@@ -1,6 +1,13 @@
 import { useEffect, useLayoutEffect, useReducer, useRef } from "react";
-import { getElement, type TextElement } from "@oh-just-another/scene";
+import { getElement, isText, type Element } from "@oh-just-another/scene";
 import { useDiagramOptional } from "../core/hooks.js";
+
+/** Flat edited text: the element's own for text shapes, its label's otherwise. */
+const editedTextOf = (shape: Element | undefined): string => {
+  if (shape === undefined) return "";
+  if (isText(shape)) return shape.text;
+  return shape.label?.text ?? "";
+};
 
 /**
  * Invisible keystroke/IME sink for in-canvas text editing. The caret and
@@ -41,8 +48,8 @@ export const TextEditorOverlay = () => {
   useLayoutEffect(() => {
     const ta = ref.current;
     if (!editor || !editingId || !ta) return;
-    const shape = getElement(editor.scene, editingId) as TextElement | undefined;
-    const text = shape?.type === "text" ? shape.text : "";
+    const shape = getElement(editor.scene, editingId);
+    const text = editedTextOf(shape);
     if (ta.value !== text) ta.value = text;
     const sel = editor.editingTextSelection;
     if (sel && (ta.selectionStart !== sel.start || ta.selectionEnd !== sel.end)) {
@@ -51,8 +58,8 @@ export const TextEditorOverlay = () => {
   });
 
   if (!editor || !editingId) return null;
-  const shape = getElement(editor.scene, editingId) as TextElement | undefined;
-  if (shape?.type !== "text") return null;
+  const shape = getElement(editor.scene, editingId);
+  if (shape === undefined || (!isText(shape) && shape.label === undefined)) return null;
 
   // Park the sink at the text's screen position so the IME candidate
   // window appears near the caret. It's invisible and click-through.
@@ -66,7 +73,7 @@ export const TextEditorOverlay = () => {
   return (
     <textarea
       ref={ref}
-      defaultValue={shape.text}
+      defaultValue={editedTextOf(shape)}
       // `onInput` covers typing, paste, cut, delete and IME end — read
       // the textarea's authoritative value + caret and push them live.
       onInput={(ev) => {

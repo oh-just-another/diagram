@@ -62,6 +62,12 @@ export const TEXT_DECORATION_THICKNESS = 0.06;
  */
 export const LIST_INDENT_EM = 1.4;
 export const LIST_MARKER_GAP_EM = 0.4;
+
+/**
+ * Inset between a shape's bounds and its embedded label text, in em
+ * (× label font size). Reasonable range 0.3–1.0.
+ */
+export const LABEL_PADDING_EM = 0.5;
 export const TEXT_UNDERLINE_OFFSET = 0.92;
 export const TEXT_STRIKETHROUGH_OFFSET = 0.5;
 

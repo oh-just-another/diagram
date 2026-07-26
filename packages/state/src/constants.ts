@@ -682,6 +682,13 @@ export const ERASER_TRAIL_TTL_MS = 120;
 export const MAX_LIST_INDENT = 8;
 
 /**
+ * Font size a freshly-created embedded shape label starts with (world
+ * units). Smaller than `TEXT_DEFAULT_FONT_SIZE` — labels live inside a
+ * bounded shape body. Reasonable range 12–20.
+ */
+export const LABEL_DEFAULT_FONT_SIZE = 16;
+
+/**
  * Frame size presets for the frame toolbar's ratio dropdown. Applying one
  * resizes the frame to the canonical size (world units ≈ CSS px at zoom 1),
  * keeping its top-left corner; free resizing afterwards simply diverges

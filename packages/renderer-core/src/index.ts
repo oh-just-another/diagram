@@ -27,7 +27,11 @@ export { renderGrid, computeGridRungs } from "./rendering/grid-renderer.js";
 // Backend-agnostic shape renderers for the built-in `BuiltinElement` types.
 // `installBuiltinRenderers()` registers them via `registerElementRenderer` and
 // is safe to call multiple times.
-export { installBuiltinRenderers } from "./rendering/built-in-renderers.js";
+export {
+  installBuiltinRenderers,
+  drawShapeLabel,
+  shapeLabelLayout,
+} from "./rendering/built-in-renderers.js";
 export { isDrawableImageSource } from "./raster/image-source-guard.js";
 export { fetchModuleBytes, allocBytes, instantiateWasm } from "./raster/wasm-bytes.js";
 export type { WasmArena } from "./raster/wasm-bytes.js";

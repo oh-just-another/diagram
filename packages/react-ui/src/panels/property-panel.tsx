@@ -195,29 +195,27 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <OpacityControl key="opacity" shapes={shapes} />,
       );
     } else {
-      // type | border cluster (stroke color / width / dash / corners) |
-      // fill cluster (fill / opacity) | link.
+      // type | border group (color / width / dash / corners) |
+      // fill group (color / opacity) | link.
       primary.push(
         <ConvertTypeControl key="convert" shapes={shapes} />,
         <Divider key="d-border" />,
-        <StrokeControl key="stroke" shapes={shapes} />,
+      );
+      if (allBrush) {
         // Brush widths are baked per point — `style.strokeWidth` has no
         // effect, so brush-only selections get a slider that re-bases the
-        // baked widths instead of the Thin/Medium/Thick segmented control.
-        allBrush ? (
-          <BrushWidthControl key="width" shapes={shapes} />
-        ) : (
-          <StrokeWidthControl key="width" shapes={shapes} />
-        ),
-        <FillControl key="fill" shapes={shapes} />,
-      );
-      overflow.push(
-        <StrokeStyleControl key="dash" shapes={shapes} />,
-        <RoundnessControl key="round" shapes={shapes} />,
-        <OpacityControl key="opacity" shapes={shapes} />,
-        <Divider key="d-link" />,
-        <LinkControl key="link" shapes={shapes} />,
-      );
+        // baked widths, plus the plain stroke color picker.
+        primary.push(
+          <StrokeControl key="stroke" shapes={shapes} />,
+          <BrushWidthControl key="width" shapes={shapes} />,
+        );
+      } else {
+        primary.push(
+          <BorderGroupControl key="border" shapes={shapes} />,
+          <FillOpacityControl key="fill" shapes={shapes} />,
+        );
+      }
+      overflow.push(<Divider key="d-link" />, <LinkControl key="link" shapes={shapes} />);
     }
     // Common trailing controls for every shape type. Text has its link
     // control in the type cluster above; the rest get it here.
@@ -637,6 +635,165 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
           step={5}
           ariaLabel="Opacity"
           valueLabel={pct === null ? "—" : `${pct}%`}
+          onChange={(v) => {
+            editor.updateStyle(ids, { opacity: v / 100 });
+          }}
+        />
+      </div>
+    </Popover>
+  );
+};
+
+/**
+ * Grouped border editor: stroke color, width, dash style and corner
+ * rounding in ONE popover ("border style, opacity, corners and color").
+ * Every write goes through `editor.updateStyle` on the whole selection.
+ */
+const BorderGroupControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const ids = shapes.map((s) => s.id);
+  const stroke = sharedString(shapes, (s) => s.style.stroke);
+  const width = sharedValue<number>(shapes, (s) => s.style.strokeWidth ?? 1);
+  const dash = sharedValue<string>(shapes, (s) => {
+    const d = s.style.dashArray;
+    if (!d || d.length === 0) return "solid";
+    return (d[0] ?? 0) <= 2 ? "dotted" : "dashed";
+  });
+  const round = sharedValue<"sharp" | "round">(shapes, (s) => s.style.roundness?.type ?? "sharp");
+  const roundable = shapes.some((s) => isRectangle(s));
+  return (
+    <Popover
+      ariaLabel="Border style"
+      trigger={
+        <button
+          type="button"
+          className="du-sel-color-trigger"
+          title="Border style, corners and color"
+          aria-label="Border style, corners and color"
+        >
+          <span
+            className="du-sel-color-swatch du-sel-swatch-ring"
+            style={{ borderColor: stroke ?? "var(--menu-border)" }}
+          />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Border color</header>
+        <ColorSwatchPicker
+          value={stroke}
+          onChange={(v) => {
+            editor.updateStyle(ids, { stroke: v ?? "transparent" });
+          }}
+          onEyedrop={(cb) => {
+            editor.beginEyedropperPick(cb);
+          }}
+        />
+        <header className="du-sel-popover-label">Width</header>
+        <SegmentedControl<number>
+          ariaLabel="Border width"
+          value={width}
+          options={[
+            { value: 1, label: "Thin", icon: <StrokeWidthIcon thickness={1} /> },
+            { value: 2, label: "Medium", icon: <StrokeWidthIcon thickness={2.5} /> },
+            { value: 4, label: "Thick", icon: <StrokeWidthIcon thickness={4} /> },
+          ]}
+          onChange={(v) => {
+            editor.updateStyle(ids, { strokeWidth: v });
+          }}
+        />
+        <header className="du-sel-popover-label">Style</header>
+        <SegmentedControl<string>
+          ariaLabel="Border dash style"
+          value={dash}
+          options={[
+            { value: "solid", label: "Solid", icon: <Square size={14} strokeWidth={1.75} /> },
+            {
+              value: "dashed",
+              label: "Dashed",
+              icon: <SquareDashed size={14} strokeWidth={1.75} />,
+            },
+            { value: "dotted", label: "Dotted", icon: <SquareDot size={14} strokeWidth={1.75} /> },
+          ]}
+          onChange={(v) => {
+            editor.updateStyle(ids, {
+              dashArray: v === "solid" ? [] : v === "dashed" ? [8, 4] : [2, 4],
+            });
+          }}
+        />
+        {roundable ? (
+          <>
+            <header className="du-sel-popover-label">Corners</header>
+            <SegmentedControl<"sharp" | "round">
+              ariaLabel="Corner rounding"
+              value={round}
+              options={[
+                { value: "sharp", label: "Sharp", icon: <CornerIcon kind="sharp" /> },
+                { value: "round", label: "Round", icon: <CornerIcon kind="round" /> },
+              ]}
+              onChange={(v) => {
+                editor.updateStyle(ids, { roundness: { type: v } });
+              }}
+            />
+          </>
+        ) : null}
+      </div>
+    </Popover>
+  );
+};
+
+/**
+ * Grouped fill editor: fill color + opacity in one popover
+ * ("set color and opacity").
+ */
+const FillOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor || !shapes.some(hasFill)) return null;
+  const ids = shapes.map((s) => s.id);
+  const fill = sharedString(shapes, (s) => s.style.fill);
+  const opacity = sharedValue<number>(shapes, (s) => s.style.opacity ?? 1);
+  const pct = opacity === null ? null : Math.round(opacity * 100);
+  const swatchBg =
+    !fill || fill === "transparent"
+      ? "repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 6px 6px"
+      : fill;
+  return (
+    <Popover
+      ariaLabel="Fill color and opacity"
+      trigger={
+        <button
+          type="button"
+          className="du-sel-color-trigger"
+          title="Fill color & opacity"
+          aria-label="Fill color and opacity"
+        >
+          <span
+            className="du-sel-color-swatch"
+            style={{ background: swatchBg, opacity: opacity ?? 1 }}
+          />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Fill</header>
+        <ColorSwatchPicker
+          value={fill}
+          onChange={(v) => {
+            editor.updateStyle(ids, { fill: v ?? "transparent" });
+          }}
+          onEyedrop={(cb) => {
+            editor.beginEyedropperPick(cb);
+          }}
+        />
+        <header className="du-sel-popover-label">Opacity</header>
+        <Slider
+          value={pct}
+          min={0}
+          max={100}
+          step={5}
+          ariaLabel="Fill opacity"
+          valueLabel={pct === null ? "—" : `${String(pct)}%`}
           onChange={(v) => {
             editor.updateStyle(ids, { opacity: v / 100 });
           }}
@@ -1394,135 +1551,6 @@ const BrushWidthControl = ({ shapes }: { readonly shapes: readonly ElementBase[]
           style={{ width: "100%" }}
           aria-label="Brush width"
         />
-      </div>
-    </Popover>
-  );
-};
-
-const StrokeWidthControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
-  const editor = useDiagramOptional();
-  if (!editor || !shapes.some((s) => s.style.stroke !== undefined)) return null;
-  const value = sharedValue<number>(shapes, (s) => s.style.strokeWidth ?? null);
-  const ids = shapes.map((s) => s.id);
-  return (
-    <SegmentedControl<number>
-      ariaLabel="Stroke width"
-      value={value}
-      options={[
-        { value: 1, label: "Thin", icon: <StrokeWidthIcon thickness={1} /> },
-        { value: 2, label: "Medium", icon: <StrokeWidthIcon thickness={2.5} /> },
-        { value: 4, label: "Thick", icon: <StrokeWidthIcon thickness={4} /> },
-      ]}
-      onChange={(v) => {
-        editor.updateStyle(ids, { strokeWidth: v });
-      }}
-    />
-  );
-};
-
-const StrokeStyleControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
-  const editor = useDiagramOptional();
-  if (!editor || !shapes.some(hasStroke)) return null;
-  // Tolerant detection: any 2-element array with first ≤ 3 → dotted;
-  // anything else with first > 3 → dashed. Lets the panel recognise
-  // template-authored arrays like `[6, 4]` (auto-grid frames) as
-  // "dashed" instead of "mixed".
-  const value = sharedValue<"solid" | "dashed" | "dotted">(shapes, (s) => {
-    const da = s.style.dashArray;
-    if (!da || da.length === 0) return "solid";
-    const first = da[0] ?? 0;
-    return first <= 3 ? "dotted" : "dashed";
-  });
-  const ids = shapes.map((s) => s.id);
-  return (
-    <SegmentedControl<"solid" | "dashed" | "dotted">
-      ariaLabel="Stroke style"
-      value={value}
-      options={[
-        { value: "solid", label: "Solid", icon: <Square size={14} strokeWidth={1.75} /> },
-        { value: "dashed", label: "Dashed", icon: <SquareDashed size={14} strokeWidth={1.75} /> },
-        { value: "dotted", label: "Dotted", icon: <SquareDot size={14} strokeWidth={1.75} /> },
-      ]}
-      onChange={(v) => {
-        // An empty `dashArray: []` renders solid (Canvas2D `setLineDash([])`),
-        // and an empty array is truthy in JS so the renderer's dash call still
-        // goes through. Always pass an array.
-        const dashArray = v === "solid" ? [] : v === "dashed" ? [8, 4] : [2, 4];
-        editor.updateStyle(ids, { dashArray });
-      }}
-    />
-  );
-};
-
-/**
- * Corner control: an icon button (sharp / round) opens a popover with
- * the round-radius slider plus an auto checkbox. Renders nothing when no
- * corner-capable shapes are selected.
- */
-const RoundnessControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
-  const editor = useDiagramOptional();
-  if (!editor) return null;
-  const supports = shapes.every((s) => isRectangle(s) || s.type === "container");
-  if (!supports) return null;
-  const type = sharedValue<Roundness["type"]>(shapes, (s) => s.style.roundness?.type ?? "sharp");
-  const radius = sharedValue<number>(shapes, (s) => s.style.roundness?.value ?? null);
-  const ids = shapes.map((s) => s.id);
-  const isAuto = radius === null;
-  return (
-    <Popover
-      ariaLabel="Corners"
-      trigger={
-        <button type="button" className="du-sel-icon-button" title="Corners" aria-label="Corners">
-          <CornerIcon kind={type ?? "sharp"} />
-        </button>
-      }
-    >
-      <div className="du-sel-popover-section">
-        <header className="du-sel-popover-label">Corners</header>
-        <SegmentedControl<Roundness["type"]>
-          ariaLabel="Corner roundness"
-          value={type}
-          options={[
-            { value: "sharp", label: "Sharp", icon: <CornerIcon kind="sharp" /> },
-            { value: "round", label: "Round", icon: <CornerIcon kind="round" /> },
-          ]}
-          onChange={(v) => {
-            editor.updateStyle(ids, { roundness: { type: v } });
-          }}
-        />
-        {type === "round" ? (
-          <>
-            <label className="du-prop-checkbox">
-              <input
-                type="checkbox"
-                checked={isAuto}
-                onChange={(ev) => {
-                  if (ev.target.checked) {
-                    editor.updateStyle(ids, { roundness: { type: "round" } });
-                  } else {
-                    editor.updateStyle(ids, {
-                      roundness: { type: "round", value: radius ?? 8 },
-                    });
-                  }
-                }}
-              />
-              <span>Auto radius</span>
-            </label>
-            {!isAuto ? (
-              <Slider
-                value={radius}
-                min={0}
-                max={64}
-                step={1}
-                ariaLabel="Corner radius"
-                valueLabel={`${radius}px`}
-                onChange={(v) => {
-                  editor.updateStyle(ids, { roundness: { type: "round", value: v } });
-                }}
-              />
-            ) : null}
-          </>
-        ) : null}
       </div>
     </Popover>
   );

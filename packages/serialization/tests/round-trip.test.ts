@@ -377,6 +377,32 @@ describe("round-trip", () => {
     expect(el.runs[0]?.style?.highlight).toBe("#d0ebff");
   });
 
+  it("preserves lock/hidden flags and an embedded label", () => {
+    let scene = emptyScene();
+    ({ scene } = addElement(scene, {
+      ...rect("l"),
+      locked: true,
+      hidden: true,
+      label: {
+        text: "inside",
+        fontFamily: "system-ui",
+        fontSize: 16,
+        style: { textAlign: "center", highlight: "#ffec99" },
+        paragraphs: [{ list: "bullet" }],
+      },
+    } as unknown as Element));
+    const restored = parseScene(stringifyScene(scene));
+    const el = restored.elements.get(elementId("l")) as unknown as {
+      locked?: boolean;
+      hidden?: boolean;
+      label?: { text: string; paragraphs?: unknown };
+    };
+    expect(el.locked).toBe(true);
+    expect(el.hidden).toBe(true);
+    expect(el.label?.text).toBe("inside");
+    expect(el.label?.paragraphs).toEqual([{ list: "bullet" }]);
+  });
+
   it("preserves an image's alt text", () => {
     let scene = emptyScene();
     const img = {

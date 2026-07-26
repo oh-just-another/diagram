@@ -134,7 +134,9 @@ describe("shift-click multi-select", () => {
     const { editor, tap } = setup();
     tap(20, 20); // A
     tap(120, 20, true); // {A,B}
-    tap(120, 20); // plain click B → replace → {B}
+    // Click B again, but outside the double-click tolerance of the previous
+    // tap — a same-spot repeat now opens the shape's label editor instead.
+    tap(110, 20); // plain click B → replace → {B}
     expect([...editor.selection]).toEqual([elementId("b")]);
   });
 });

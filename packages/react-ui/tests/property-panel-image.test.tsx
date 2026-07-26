@@ -105,8 +105,10 @@ describe("PropertyPanel for image shapes", () => {
     const editor = mountEditor(rect);
     editor.setSelection([rect.id]);
     const { container } = renderPanel(editor);
-    expect(container.querySelector('button[aria-label="Fill color"]')).not.toBeNull();
-    expect(container.querySelector('button[aria-label="Stroke color"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Fill color and opacity"]')).not.toBeNull();
+    expect(
+      container.querySelector('button[aria-label="Border style, corners and color"]'),
+    ).not.toBeNull();
     editor.dispose();
   });
 });

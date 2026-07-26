@@ -1450,6 +1450,12 @@
   outline: none;
 }
 
+/* Border-group trigger: an outlined ring showing the stroke colour. */
+.du-sel-swatch-ring {
+  background: transparent;
+  border: 3px solid var(--menu-border);
+}
+
 /* Frame size preset list inside its popover. */
 .du-sel-preset-list {
   display: grid;

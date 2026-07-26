@@ -1,11 +1,13 @@
 import { polygon as polygonMath } from "@oh-just-another/math";
 import {
   getCornerRadius,
+  getElementLocalBounds,
   registerRenderOverflow,
   FRAME_HEADER_HEIGHT,
   FRAME_HEADER_PADDING_X,
   FRAME_HEADER_FONT_SIZE,
   type BlockArrowElement,
+  type ElementBase,
   type BrushElement,
   type EllipseElement,
   type FrameElement,
@@ -35,6 +37,7 @@ import {
 import { resolveImageSource } from "../raster/animation-adapter.js";
 import { isDrawableImageSource } from "../raster/image-source-guard.js";
 import {
+  LABEL_PADDING_EM,
   LIST_MARKER_GAP_EM,
   TEXT_DECORATION_THICKNESS,
   TEXT_UNDERLINE_OFFSET,
@@ -269,6 +272,86 @@ const drawPath: ElementRenderer<PathElement> = (shape, target) => {
  * the plain-text path); per-run weight only affects glyph paint + segment
  * widths, an acceptable etap-1 approximation for wrapping.
  */
+/**
+ * Geometry of an embedded shape label: the synthetic text element the
+ * text renderer can draw, plus the local-space offset where it starts.
+ * Shared by the renderer and the inline-edit caret path (state) so the
+ * glyphs and the caret can't drift apart.
+ */
+export const shapeLabelLayout = (
+  shape: ElementBase,
+  measure: (s: string) => number,
+): {
+  readonly synthetic: TextElement;
+  readonly offsetX: number;
+  readonly offsetY: number;
+} | null => {
+  const label = shape.label;
+  if (label === undefined) return null;
+  const bounds = getElementLocalBounds(shape);
+  const pad = LABEL_PADDING_EM * label.fontSize;
+  const maxWidth = Math.max(label.fontSize, bounds.width - 2 * pad);
+  const style: TextStyle = {
+    textAlign: "center",
+    textBaseline: "middle",
+    ...label.style,
+  };
+  const synthetic = {
+    id: shape.id,
+    layerId: shape.layerId,
+    type: "text",
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: shape.order,
+    style,
+    text: label.text,
+    fontFamily: label.fontFamily,
+    fontSize: label.fontSize,
+    maxWidth,
+    ...(label.runs !== undefined ? { runs: label.runs } : {}),
+    ...(label.paragraphs !== undefined ? { paragraphs: label.paragraphs } : {}),
+  } as TextElement;
+  const layout = layoutText(label.text, measure, {
+    fontSize: label.fontSize,
+    maxWidth,
+    ...(label.paragraphs !== undefined ? { paragraphs: label.paragraphs } : {}),
+  });
+  const textH = layout.lines.length * layout.lineHeight;
+  const valign = style.textBaseline ?? "middle";
+  const offsetY =
+    valign === "top"
+      ? bounds.y + pad
+      : valign === "bottom"
+        ? bounds.y + bounds.height - textH - pad
+        : bounds.y + (bounds.height - textH) / 2;
+  return { synthetic, offsetX: bounds.x + pad, offsetY };
+};
+
+/**
+ * Draw a shape's embedded label inside its local bounds. Reuses the text
+ * renderer wholesale (wrap, runs, lists, highlight); vertical alignment
+ * places the whole block, `textAlign` centres lines within the padded
+ * width. Called by the scene renderer after the shape body.
+ */
+export const drawShapeLabel = (shape: ElementBase, target: RenderTarget): void => {
+  const label = shape.label;
+  if (label === undefined || label.text === "") return;
+  // Measure with the label's base font — same metrics drawText wraps with.
+  const weight = label.style?.fontWeight;
+  const fontStyle = label.style?.fontStyle;
+  target.setFont(label.fontFamily, label.fontSize, {
+    ...(weight ? { weight } : {}),
+    ...(fontStyle ? { style: fontStyle } : {}),
+  });
+  const placed = shapeLabelLayout(shape, (s) => target.measureText(s).width);
+  if (!placed) return;
+  target.save();
+  target.translate(placed.offsetX, placed.offsetY);
+  drawText(placed.synthetic, target);
+  target.restore();
+};
+
 /**
  * Draw the derived list markers ("•" / "1.") for every paragraph's first
  * visual line, right-aligned into the indent slot the layout reserved.

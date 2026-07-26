@@ -86,11 +86,11 @@ describe("TextEditController", () => {
     expect(h.notify).toHaveBeenCalledTimes(1);
   });
 
-  it("begin() is a no-op on a non-text shape", () => {
+  it("begin() on a labelable shape starts a label edit (empty label seeded)", () => {
     const h = makeHarness(sceneWith(rect("a")));
     h.c.begin(A);
-    expect(h.c.editingElement).toBeNull();
-    expect(h.notify).not.toHaveBeenCalled();
+    expect(h.c.editingElement).toBe(A);
+    expect((h.host.scene.elements.get(A) as { label?: { text: string } }).label?.text).toBe("");
   });
 
   it("begin() is a no-op on a locked layer", () => {
