@@ -20,7 +20,6 @@ import {
   Copy as CopyIcon,
   Crop,
   Diamond,
-  EyeOff,
   FileText,
   FlipHorizontal2 as FlipHorizontalIcon,
   FlipVertical2 as FlipVerticalIcon,
@@ -45,6 +44,7 @@ import {
   Square,
   SquareDashed,
   SquareDot,
+  Tag,
   Strikethrough,
   Trash2,
   Underline,
@@ -104,6 +104,7 @@ import {
   TEXT_FONT_SIZE_MIN,
   TEXT_FONT_SIZE_PRESETS,
   TEXT_FONT_STACKS,
+  EMOJI_QUICK_PICKS,
 } from "../core/constants.js";
 
 /**
@@ -170,7 +171,10 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <StickySizeControl key="size" shapes={shapes} />,
         <FillOpacityControl key="bg" shapes={shapes} />,
       );
-      overflow.push(<StickyAuthorControl key="author" shapes={shapes} />);
+      overflow.push(
+        <StickyTagControl key="tags" shapes={shapes} />,
+        <StickyAuthorControl key="author" shapes={shapes} />,
+      );
     } else if (allEmoji) {
       primary.push(<EmojiPickerControl key="glyph" shapes={shapes} />);
     } else if (allFrame) {
@@ -179,7 +183,6 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       primary.push(<FillControl key="fill" shapes={shapes} />);
       if (shapes.length === 1) {
         primary.push(<FrameRatioControl key="ratio" shapes={shapes} />);
-        overflow.push(<HideFrameControl key="hide" shapes={shapes} />);
       }
     } else if (allText) {
       // font family | size | style | align | link — then colors.
@@ -213,12 +216,35 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <OpacityControl key="opacity" shapes={shapes} />,
       );
     } else {
-      // type | border group (color / width / dash / corners) |
-      // fill group (color / opacity) | link.
+      // type | label text controls (when every shape has one) | border group
+      // (color / width / dash / corners) | fill group (color / opacity) | link.
       primary.push(
         <ConvertTypeControl key="convert" shapes={shapes} />,
         <Divider key="d-border" />,
       );
+      if (shapes.every((s) => s.label !== undefined)) {
+        // Pseudo-shapes exposing the LABEL's font + style so the text
+        // controls read label values; `labelMode` reroutes their writes
+        // through the label APIs.
+        const labelViews = shapes.map(
+          (s) =>
+            ({
+              ...s,
+              style: s.label?.style ?? {},
+              fontSize: s.label?.fontSize,
+              fontFamily: s.label?.fontFamily,
+            }) as unknown as ElementBase,
+        );
+        primary.push(
+          <FontFamilyControl key="l-family" shapes={labelViews} labelMode />,
+          <FontSizeControl key="l-size" shapes={labelViews} labelMode />,
+          <TextDecorationControl key="l-decor" shapes={labelViews} labelMode />,
+          <TextAlignControl key="l-align" shapes={labelViews} labelMode />,
+          <ColorOpacityControl key="l-color" shapes={labelViews} labelMode />,
+          <HighlightControl key="l-highlight" shapes={labelViews} labelMode />,
+          <Divider key="d-label" />,
+        );
+      }
       if (allBrush) {
         // Brush widths are baked per point — `style.strokeWidth` has no
         // effect, so brush-only selections get a slider that re-bases the
@@ -597,7 +623,13 @@ const useTextRunRange = (shapes: readonly ElementBase[]): TextRunRange | null =>
  * panel in place of separate Fill + Opacity triggers. Writes `fill` and
  * `opacity` through `editor.updateStyle`.
  */
-const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+const ColorOpacityControl = ({
+  shapes,
+  labelMode,
+}: {
+  readonly shapes: readonly ElementBase[];
+  readonly labelMode?: boolean;
+}) => {
   const editor = useDiagramOptional();
   const runRange = useTextRunRange(shapes);
   if (!editor) return null;
@@ -632,8 +664,10 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
           value={color}
           onChange={(v) => {
             // In-edit text selection → colour just those characters (runs);
-            // otherwise colour the whole element(s).
-            if (runRange) {
+            // otherwise colour the whole element(s) / label(s).
+            if (labelMode) {
+              editor.updateLabelStyle(ids, { fill: v ?? "transparent" });
+            } else if (runRange) {
               editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
                 fill: v ?? "transparent",
               });
@@ -654,7 +688,8 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
           ariaLabel="Opacity"
           valueLabel={pct === null ? "—" : `${pct}%`}
           onChange={(v) => {
-            editor.updateStyle(ids, { opacity: v / 100 });
+            if (labelMode) editor.updateLabelStyle(ids, { opacity: v / 100 });
+            else editor.updateStyle(ids, { opacity: v / 100 });
           }}
         />
       </div>
@@ -684,6 +719,65 @@ const StickySizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[]
   );
 };
 
+/** Tag editor for sticky notes: pills with remove + an input that adds on Enter. */
+const StickyTagControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  const first = shapes[0];
+  if (!editor || !first) return null;
+  const tags = (first as StickyElement).tags ?? [];
+  const ids = shapes.map((s) => s.id);
+  return (
+    <Popover
+      ariaLabel="Tags"
+      trigger={
+        <button type="button" className="du-sel-icon-button" title="Add tag" aria-label="Add tag">
+          <Tag size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Tags</header>
+        {tags.length > 0 ? (
+          <div className="du-sel-tag-list">
+            {tags.map((tag) => (
+              <span key={tag} className="du-sel-tag-pill">
+                {tag}
+                <button
+                  type="button"
+                  className="du-sel-tag-remove"
+                  aria-label={`Remove tag ${tag}`}
+                  onClick={() => {
+                    editor.setStickyTags(
+                      ids,
+                      tags.filter((t) => t !== tag),
+                    );
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <input
+          type="text"
+          className="du-sel-name-input"
+          placeholder="Add tag…"
+          aria-label="New tag"
+          onKeyDown={(ev) => {
+            if (ev.key !== "Enter") return;
+            ev.preventDefault();
+            const value = ev.currentTarget.value.trim();
+            if (value === "" || tags.includes(value)) return;
+            editor.setStickyTags(ids, [...tags, value]);
+            ev.currentTarget.value = "";
+          }}
+        />
+      </div>
+    </Popover>
+  );
+};
+
 /** Toggle the author-name strip along the sticky's bottom edge. */
 const StickyAuthorControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
@@ -706,30 +800,6 @@ const StickyAuthorControl = ({ shapes }: { readonly shapes: readonly ElementBase
   );
 };
 
-/** Common quick-pick glyphs for the emoji element (replace the current one). */
-const EMOJI_CHOICES: readonly string[] = [
-  "😀",
-  "😂",
-  "😍",
-  "🤔",
-  "😎",
-  "🙌",
-  "👍",
-  "👎",
-  "👏",
-  "🔥",
-  "❤️",
-  "💡",
-  "⭐",
-  "✅",
-  "❌",
-  "⚠️",
-  "❓",
-  "🎉",
-  "🚀",
-  "👀",
-];
-
 /** Emoji picker: replace the element's glyph with one of the presets. */
 const EmojiPickerControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
@@ -751,7 +821,7 @@ const EmojiPickerControl = ({ shapes }: { readonly shapes: readonly ElementBase[
       }
     >
       <div className="du-sel-emoji-grid">
-        {EMOJI_CHOICES.map((glyph) => (
+        {EMOJI_QUICK_PICKS.map((glyph) => (
           <button
             key={glyph}
             type="button"
@@ -972,26 +1042,6 @@ const FrameRatioControl = ({ shapes }: { readonly shapes: readonly ElementBase[]
         </div>
       </div>
     </Popover>
-  );
-};
-
-/** Hide the frame together with its content (unhide via the frames panel). */
-const HideFrameControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
-  const editor = useDiagramOptional();
-  const first = shapes[0];
-  if (!editor || !first) return null;
-  return (
-    <button
-      type="button"
-      className="du-sel-icon-button"
-      title="Hide frame"
-      aria-label="Hide frame"
-      onClick={() => {
-        editor.toggleFrameHidden(first.id);
-      }}
-    >
-      <EyeOff size={14} strokeWidth={1.75} aria-hidden />
-    </button>
   );
 };
 
@@ -1222,7 +1272,13 @@ const ListControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
  * characters (styled runs); otherwise on the whole element(s). Picking
  * "no color" clears the highlight.
  */
-const HighlightControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+const HighlightControl = ({
+  shapes,
+  labelMode,
+}: {
+  readonly shapes: readonly ElementBase[];
+  readonly labelMode?: boolean;
+}) => {
   const editor = useDiagramOptional();
   const runRange = useTextRunRange(shapes);
   if (!editor) return null;
@@ -1248,7 +1304,9 @@ const HighlightControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
           value={value}
           onChange={(v) => {
             const partial = { highlight: v ?? "transparent" };
-            if (runRange) {
+            if (labelMode) {
+              editor.updateLabelStyle(ids, partial);
+            } else if (runRange) {
               editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
             } else {
               editor.updateStyle(ids, partial);
@@ -1291,7 +1349,13 @@ const FillControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
 // `editor.updateStyle`.
 // ---------------------------------------------------------------------------
 
-const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+const FontSizeControl = ({
+  shapes,
+  labelMode,
+}: {
+  readonly shapes: readonly ElementBase[];
+  readonly labelMode?: boolean;
+}) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
@@ -1327,7 +1391,8 @@ const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }
             icon: <span style={{ fontSize: 11, fontWeight: 600 }}>{p.label}</span>,
           }))}
           onChange={(v) => {
-            editor.updateTextProps(ids, { fontSize: v });
+            if (labelMode) editor.updateLabelProps(ids, { fontSize: v });
+            else editor.updateTextProps(ids, { fontSize: v });
           }}
         />
         <Slider
@@ -1338,7 +1403,8 @@ const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }
           ariaLabel="Font size"
           valueLabel={value === null ? "—" : `${value}px`}
           onChange={(v) => {
-            editor.updateTextProps(ids, { fontSize: v });
+            if (labelMode) editor.updateLabelProps(ids, { fontSize: v });
+            else editor.updateTextProps(ids, { fontSize: v });
           }}
         />
       </div>
@@ -1346,7 +1412,13 @@ const FontSizeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }
   );
 };
 
-const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+const FontFamilyControl = ({
+  shapes,
+  labelMode,
+}: {
+  readonly shapes: readonly ElementBase[];
+  readonly labelMode?: boolean;
+}) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
@@ -1379,7 +1451,8 @@ const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ElementBase[]
             className={`du-sel-menu-row${f.value === value ? " is-active" : ""}`}
             style={{ fontFamily: f.value }}
             onClick={() => {
-              editor.updateTextProps(ids, { fontFamily: f.value });
+              if (labelMode) editor.updateLabelProps(ids, { fontFamily: f.value });
+              else editor.updateTextProps(ids, { fontFamily: f.value });
             }}
           >
             {f.label}
@@ -1396,7 +1469,13 @@ const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ElementBase[]
  * `textBaseline`). One trigger keeps the toolbar row compact and matches
  * the target design's grouped alignment control.
  */
-const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+const TextAlignControl = ({
+  shapes,
+  labelMode,
+}: {
+  readonly shapes: readonly ElementBase[];
+  readonly labelMode?: boolean;
+}) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
@@ -1439,7 +1518,8 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
             { value: "right", label: "Right", icon: <AlignRight size={14} strokeWidth={1.75} /> },
           ]}
           onChange={(v) => {
-            editor.updateStyle(ids, { textAlign: v });
+            if (labelMode) editor.updateLabelStyle(ids, { textAlign: v });
+            else editor.updateStyle(ids, { textAlign: v });
           }}
         />
         <SegmentedControl<TextBaseline>
@@ -1463,7 +1543,8 @@ const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
             },
           ]}
           onChange={(v) => {
-            editor.updateStyle(ids, { textBaseline: v });
+            if (labelMode) editor.updateLabelStyle(ids, { textBaseline: v });
+            else editor.updateStyle(ids, { textBaseline: v });
           }}
         />
       </div>
@@ -1510,7 +1591,13 @@ const TextStyleToggle = ({
  * underline/strikethrough→merged `textDecoration`. Active = every
  * selected shape already has that decoration on.
  */
-const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+const TextDecorationControl = ({
+  shapes,
+  labelMode,
+}: {
+  readonly shapes: readonly ElementBase[];
+  readonly labelMode?: boolean;
+}) => {
   const editor = useDiagramOptional();
   const runRange = useTextRunRange(shapes);
   if (!editor) return null;
@@ -1540,7 +1627,9 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
   // Apply a partial text style to the in-edit range (rich text) or, with no
   // active range, to the whole selected element(s).
   const applyPartial = (partial: Partial<TextStyle>): void => {
-    if (runRange) {
+    if (labelMode) {
+      editor.updateLabelStyle(ids, partial);
+    } else if (runRange) {
       editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
     } else {
       editor.updateStyle(ids, partial);
@@ -1550,6 +1639,13 @@ const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBa
   // replaces the whole `textDecoration`, so rebuild both flags from the
   // range's current state; whole-element mode merges per shape.
   const setDecoration = (key: "underline" | "strikethrough", on: boolean): void => {
+    if (labelMode) {
+      for (const s of shapes) {
+        const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
+        editor.updateLabelStyle([s.id], { textDecoration: { ...cur, [key]: on } });
+      }
+      return;
+    }
     if (runRange) {
       editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
         textDecoration: { underline: allUnderline, strikethrough: allStrike, [key]: on },
@@ -1807,14 +1903,14 @@ const CropControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
   return (
     <button
       type="button"
-      className="du-icon-button"
+      className="du-sel-icon-button"
       title="Crop image (double-click)"
       aria-label="Crop image"
       onClick={() => {
         editor.beginImageCrop(id);
       }}
     >
-      <Crop size={16} strokeWidth={1.75} />
+      <Crop size={14} strokeWidth={1.75} aria-hidden />
     </button>
   );
 };

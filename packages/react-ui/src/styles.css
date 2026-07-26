@@ -1481,6 +1481,83 @@
   border-color: var(--menu-border);
 }
 
+/* Sticky tag pills in the tag popover. */
+.du-sel-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.du-sel-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font: 11px system-ui, sans-serif;
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
+  border-radius: 10px;
+}
+
+.du-sel-tag-remove {
+  padding: 0 2px;
+  font-size: 12px;
+  line-height: 1;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+/* Sticky reaction bar at the card's bottom-left corner. */
+.du-sticky-reactions {
+  position: fixed;
+  z-index: 1380;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transform: translateY(-100%);
+  pointer-events: auto;
+}
+
+.du-sticky-reaction-pill {
+  padding: 1px 6px;
+  font: 11px system-ui, sans-serif;
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.du-sticky-reaction-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  color: var(--du-accent);
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.du-sticky-reaction-picker {
+  position: absolute;
+  bottom: 22px;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 28px);
+  gap: 2px;
+  padding: 4px;
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
 /* Border-group trigger: an outlined ring showing the stroke colour. */
 .du-sel-swatch-ring {
   background: transparent;

@@ -184,3 +184,30 @@ export const TEXT_FONT_STACKS: readonly { readonly label: string; readonly value
 export const DRAWING_PANEL_WIDTH = 176;
 export const BRUSH_WIDTH_MIN = 1;
 export const BRUSH_WIDTH_MAX = 40;
+
+/**
+ * Quick-pick emoji shared by the emoji-element picker and the sticky
+ * reaction bar. Order is display order.
+ */
+export const EMOJI_QUICK_PICKS: readonly string[] = [
+  "😀",
+  "😂",
+  "😍",
+  "🤔",
+  "😎",
+  "🙌",
+  "👍",
+  "👎",
+  "👏",
+  "🔥",
+  "❤️",
+  "💡",
+  "⭐",
+  "✅",
+  "❌",
+  "⚠️",
+  "❓",
+  "🎉",
+  "🚀",
+  "👀",
+];

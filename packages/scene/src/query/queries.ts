@@ -236,20 +236,9 @@ export const isElementLocked = (scene: Scene, shape: Element): boolean => {
  * `hidden: true`. Same propagation semantics as `isElementLocked`.
  */
 export const isElementHidden = (scene: Scene, shape: Element): boolean => {
-  // Walk both containment systems, bounded against cycles: the `parentId`
-  // chain (groups / containers) and, from every node on it, the `frameId`
-  // chain — hiding a frame hides its content (members are flat in the
-  // scene, linked via `frameId`, so the parent walk alone would miss
-  // them).
   let current: Element | undefined = shape;
   for (let i = 0; current && i < MAX_PARENT_DEPTH; i++) {
     if (current.hidden === true) return true;
-    let frame: Element | undefined =
-      current.frameId !== undefined ? scene.elements.get(current.frameId) : undefined;
-    for (let j = 0; frame && j < MAX_PARENT_DEPTH; j++) {
-      if (frame.hidden === true) return true;
-      frame = frame.frameId !== undefined ? scene.elements.get(frame.frameId) : undefined;
-    }
     if (!current.parentId) return false;
     current = scene.elements.get(current.parentId);
   }

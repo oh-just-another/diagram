@@ -3108,6 +3108,56 @@ export class Editor {
   }
 
   /**
+   * Merge a partial text style into the embedded label's style on every
+   * shape in `ids` that carries a label. One undo step. The counterpart
+   * of `updateStyle` for shape labels (which must not collide with the
+   * shape body's own fill / stroke).
+   */
+  updateLabelStyle(ids: Iterable<ElementId>, partial: Partial<TextStyle>): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (shape?.label === undefined) continue;
+      const r = updateElement(this._scene, id, (s) =>
+        s.label === undefined
+          ? s
+          : { ...s, label: { ...s.label, style: { ...s.label.style, ...partial } } },
+      );
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /** Merge font family / size into the embedded label. One undo step. */
+  updateLabelProps(
+    ids: Iterable<ElementId>,
+    partial: { readonly fontFamily?: string; readonly fontSize?: number },
+  ): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (shape?.label === undefined) continue;
+      const r = updateElement(this._scene, id, (s) =>
+        s.label === undefined ? s : { ...s, label: { ...s.label, ...partial } },
+      );
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /**
    * Resize sticky notes to a square preset side (`STICKY_SIZE_PRESETS`).
    * One undo step; non-sticky ids are skipped.
    */
@@ -3158,6 +3208,52 @@ export class Editor {
     this.notify();
   }
 
+  /** Replace the tag list on sticky notes. One undo step. */
+  setStickyTags(ids: Iterable<ElementId>, tags: readonly string[]): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (!shape || !isSticky(shape)) continue;
+      const r = updateElement(this._scene, id, (s) => {
+        const copy = { ...s } as typeof s & { tags?: readonly string[] };
+        if (tags.length === 0) delete copy.tags;
+        else copy.tags = tags;
+        return copy;
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /**
+   * Add (or +1) an emoji reaction on a sticky note. Any collaborator can
+   * click a reaction to increment it — the state is plain element data,
+   * so it syncs through the normal scene channel. One undo step.
+   */
+  addStickyReaction(id: ElementId, glyph: string): void {
+    if (this.readOnly) return;
+    const shape = getElement(this._scene, id);
+    if (!shape || !isSticky(shape)) return;
+    const r = updateElement(this._scene, id, (s) => {
+      const sticky = s as StickyElement;
+      const reactions = [...(sticky.reactions ?? [])];
+      const i = reactions.findIndex((x) => x.glyph === glyph);
+      const existing = i >= 0 ? reactions[i] : undefined;
+      if (existing !== undefined) reactions[i] = { glyph, count: existing.count + 1 };
+      else reactions.push({ glyph, count: 1 });
+      return { ...s, reactions };
+    });
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this.notify();
+  }
+
   /** Replace an emoji element's glyph (the toolbar picker). One undo step. */
   setEmojiGlyph(ids: Iterable<ElementId>, glyph: string): void {
     if (this.readOnly) return;
@@ -3191,28 +3287,6 @@ export class Editor {
     }));
     this._scene = r.scene;
     this._history.push(r.patch);
-    this.notify();
-  }
-
-  /**
-   * Toggle a frame's `hidden` flag. A hidden frame takes its content with
-   * it (frame membership propagates `hidden`), disappears from rendering
-   * and becomes click-through; bring it back via the frames panel's eye
-   * toggle. Hiding also drops the selection (same reasoning as locking).
-   */
-  toggleFrameHidden(id: ElementId): void {
-    if (this.readOnly) return;
-    const shape = getElement(this._scene, id);
-    if (!shape || !isFrame(shape)) return;
-    const r = updateElement(this._scene, id, (s) => {
-      const copy = { ...s };
-      if (copy.hidden === true) delete copy.hidden;
-      else copy.hidden = true;
-      return copy;
-    });
-    this._scene = r.scene;
-    this._history.push(r.patch);
-    if (getElement(this._scene, id)?.hidden === true) this._selection = Selection.EMPTY;
     this.notify();
   }
 
@@ -3265,15 +3339,32 @@ export class Editor {
     const shape = getElement(this._scene, id);
     if (!shape || !isImage(shape)) return;
     const added = await computeAddBinaryFile(this._scene, blob, name, () => ++this.nextId);
+    // The new bitmap's aspect ratio replaces the old one: keep the shape's
+    // width, refit the height — otherwise a differently-proportioned file
+    // renders stretched into the old box.
+    let refitHeight: number | null = null;
+    if (typeof createImageBitmap === "function") {
+      try {
+        const bitmap = await createImageBitmap(blob);
+        if (bitmap.width > 0) {
+          refitHeight = (shape.width * bitmap.height) / bitmap.width;
+        }
+        bitmap.close();
+      } catch {
+        /* undecodable here — keep the old box; rehydration reports errors */
+      }
+    }
     const tx = this._history.transaction();
     tx.add(added.patch);
     const r = updateElement(added.scene, id, (s) => {
       const copy = { ...s } as typeof s & {
         fileId?: FileId;
+        height: number;
         metadata?: Record<string, unknown>;
         animationData?: unknown;
       };
       copy.fileId = added.id;
+      if (refitHeight !== null) copy.height = refitHeight;
       if (copy.metadata && "image" in copy.metadata) {
         const { image: _image, ...rest } = copy.metadata;
         if (Object.keys(rest).length > 0) copy.metadata = rest;

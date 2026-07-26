@@ -3,6 +3,7 @@ import {
   getAutoLayoutSpec,
   getElement,
   getLink,
+  isImage,
   type Scene,
   type Element,
   type Link,
@@ -55,7 +56,9 @@ export const computeElementResize = (
   // edge would otherwise hand control to that opposite edge ("flip through
   // the face"). Force `noFlip` regardless of the element's stored flag so
   // instances that lack it behave the same.
-  const noFlip = shape.noFlip === true || getAutoLayoutSpec(shape) !== null;
+  // Images never mirror by overshooting a handle — a flipped bitmap reads
+  // as a glitch, not an intent (flip lives in the Actions menu).
+  const noFlip = shape.noFlip === true || isImage(shape) || getAutoLayoutSpec(shape) !== null;
   const constraints: Element = noFlip ? { ...shape, noFlip: true } : shape;
   const intermediate = applyResizeConstraints(originalBounds, raw, handle, constraints, fromCenter);
   const constrained = clampContainer(shape, intermediate, handle);
@@ -124,7 +127,8 @@ export const computeRotatedElementResize = (
   const free = resizeFromHandle(base, handle, localDelta);
   const shaped = lockAspect ? lockAspectRatio(base, free) : free;
   const raw = fromCenter ? resizeFromCenter(base, shaped) : shaped;
-  const noFlip = original.noFlip === true || getAutoLayoutSpec(original) !== null;
+  const noFlip =
+    original.noFlip === true || isImage(original) || getAutoLayoutSpec(original) !== null;
   const constraints: Element = noFlip ? { ...original, noFlip: true } : original;
   const constrained = applyResizeConstraints(base, raw, handle, constraints, fromCenter);
 

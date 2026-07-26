@@ -57,6 +57,7 @@ import {
   ResetToContentButton,
   LinkHoverPopup,
   LinkBadges,
+  StickyReactions,
   LinkDropShapeMenu,
   LinkCaptionEditor,
   SelectionFloatingPanel,
@@ -870,6 +871,7 @@ const EditorShell = ({
         <FrameNameEditorOverlay />
         <LinkHoverPopup />
         <LinkBadges />
+        <StickyReactions />
         <LinkDropShapeMenu />
         <LinkCaptionEditor />
         {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}

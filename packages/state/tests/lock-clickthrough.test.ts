@@ -94,6 +94,21 @@ describe("locked hit-test click-through", () => {
   });
 });
 
+describe("lasso vs locked", () => {
+  it("marquee selection skips locked shapes", () => {
+    const e = editorWith(sceneWith(rect("a"), rect("b", { locked: true })));
+    (
+      e as unknown as {
+        applySelectByBounds(
+          b: { x: number; y: number; width: number; height: number },
+          m: string,
+        ): void;
+      }
+    ).applySelectByBounds({ x: -10, y: -10, width: 200, height: 200 }, "replace");
+    expect([...e.selection]).toEqual([elementId("a")]);
+  });
+});
+
 describe("lockedElementAt / unlockElement", () => {
   it("finds the topmost locked shape that normal hit-testing skips", () => {
     const e = editorWith(sceneWith(rect("a"), rect("b", { locked: true })));

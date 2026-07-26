@@ -1,4 +1,10 @@
-import { getElementsCoveredByBounds, getLinkPath, type Scene } from "@oh-just-another/scene";
+import {
+  getElementsCoveredByBounds,
+  getLinkPath,
+  isElementHidden,
+  isElementLocked,
+  type Scene,
+} from "@oh-just-another/scene";
 import type { Bounds, LayerId, Vec2 } from "@oh-just-another/types";
 import * as Selection from "../../selection/selection.js";
 import * as LinkSelection from "../../selection/link-selection.js";
@@ -26,6 +32,9 @@ export const selectByBounds = (
   let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : current;
   for (const shape of hits) {
     if (isLayerLocked(shape.layerId)) continue;
+    // Locked / hidden shapes are click-through and must not be lassoed
+    // either — the marquee skips them like the pointer does.
+    if (isElementLocked(scene, shape) || isElementHidden(scene, shape)) continue;
     next = Selection.add(next, shape.id);
   }
   return next;
@@ -50,6 +59,7 @@ export const selectByBoundsLive = (
   const hits = getElementsCoveredByBounds(scene, bounds, LASSO_COVERAGE_THRESHOLD);
   for (const shape of hits) {
     if (isLayerLocked(shape.layerId)) continue;
+    if (isElementLocked(scene, shape) || isElementHidden(scene, shape)) continue;
     next = Selection.add(next, shape.id);
   }
   return next;

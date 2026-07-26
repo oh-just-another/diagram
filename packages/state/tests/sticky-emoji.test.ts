@@ -132,3 +132,28 @@ describe("emoji elements", () => {
     expect((e.scene.elements.get(elementId("e")) as EmojiElement).glyph).toBe("😀");
   });
 });
+
+describe("sticky tags and reactions", () => {
+  it("setStickyTags replaces the list and clears with []", () => {
+    const e = editorWith(sceneWith(sticky("s")));
+    e.setStickyTags([elementId("s")], ["idea", "todo"]);
+    expect((e.scene.elements.get(elementId("s")) as StickyElement).tags).toEqual(["idea", "todo"]);
+    e.setStickyTags([elementId("s")], []);
+    expect((e.scene.elements.get(elementId("s")) as StickyElement).tags).toBeUndefined();
+  });
+
+  it("addStickyReaction adds then increments a counter", () => {
+    const e = editorWith(sceneWith(sticky("s")));
+    e.addStickyReaction(elementId("s"), "🔥");
+    e.addStickyReaction(elementId("s"), "🔥");
+    e.addStickyReaction(elementId("s"), "👍");
+    expect((e.scene.elements.get(elementId("s")) as StickyElement).reactions).toEqual([
+      { glyph: "🔥", count: 2 },
+      { glyph: "👍", count: 1 },
+    ]);
+    e.undo();
+    expect((e.scene.elements.get(elementId("s")) as StickyElement).reactions).toEqual([
+      { glyph: "🔥", count: 2 },
+    ]);
+  });
+});

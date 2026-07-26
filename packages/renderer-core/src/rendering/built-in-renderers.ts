@@ -44,6 +44,16 @@ import {
   STICKY_CORNER_RADIUS,
   STICKY_AUTHOR_FONT_SIZE,
   STICKY_AUTHOR_COLOR,
+  STICKY_SHADOW_COLOR,
+  STICKY_SHADOW_OFFSET_Y,
+  STICKY_CURL,
+  STICKY_FOLD_SHADE,
+  STICKY_TAG_FONT_SIZE,
+  STICKY_TAG_PAD_X,
+  STICKY_TAG_HEIGHT,
+  STICKY_TAG_GAP,
+  STICKY_TAG_BG,
+  STICKY_TAG_COLOR,
   LIST_MARKER_GAP_EM,
   TEXT_DECORATION_THICKNESS,
   TEXT_UNDERLINE_OFFSET,
@@ -287,20 +297,82 @@ const drawPath: ElementRenderer<PathElement> = (shape, target) => {
 const drawSticky: ElementRenderer<StickyElement> = (shape, target) => {
   const fill = shape.style.fill ?? STICKY_DEFAULT_FILL;
   if (shape.style.opacity !== undefined) target.setOpacity(shape.style.opacity);
+  const w = shape.width;
+  const h = shape.height;
+  const r = STICKY_CORNER_RADIUS;
+  const curl = Math.min(STICKY_CURL, w / 3, h / 3);
+
+  // Soft drop shadow under the card, offset downwards.
+  target.setFill(STICKY_SHADOW_COLOR);
+  target.beginPath();
+  buildRoundedRectPath(target, 1, STICKY_SHADOW_OFFSET_Y, w - 2, h - 2, r);
+  target.fill();
+
+  // The card body with the bottom-right corner cut for the fold.
   target.setFill(fill);
   target.beginPath();
-  buildRoundedRectPath(target, 0, 0, shape.width, shape.height, STICKY_CORNER_RADIUS);
+  target.moveTo(r, 0);
+  target.lineTo(w - r, 0);
+  target.quadraticCurveTo(w, 0, w, r);
+  target.lineTo(w, h - curl);
+  target.lineTo(w - curl, h);
+  target.lineTo(r, h);
+  target.quadraticCurveTo(0, h, 0, h - r);
+  target.lineTo(0, r);
+  target.quadraticCurveTo(0, 0, r, 0);
+  target.closePath();
   target.fill();
+
+  // Folded corner: same paper colour, then a translucent shade so it reads
+  // as the sheet curling over.
+  target.beginPath();
+  target.moveTo(w - curl, h);
+  target.lineTo(w, h - curl);
+  target.lineTo(w - curl, h - curl);
+  target.closePath();
+  target.fill();
+  target.setFill(STICKY_FOLD_SHADE);
+  target.beginPath();
+  target.moveTo(w - curl, h);
+  target.lineTo(w, h - curl);
+  target.lineTo(w - curl, h - curl);
+  target.closePath();
+  target.fill();
+
+  // Tag pills along the bottom edge (left of the fold).
+  if (shape.tags !== undefined && shape.tags.length > 0) {
+    target.setFont("system-ui, sans-serif", STICKY_TAG_FONT_SIZE, {});
+    target.setTextAlign("left");
+    target.setTextBaseline("top");
+    let x = r + 2;
+    const y = h - STICKY_TAG_HEIGHT - 3;
+    for (const tag of shape.tags) {
+      const tw = target.measureText(tag).width + 2 * STICKY_TAG_PAD_X;
+      if (x + tw > w - curl) break;
+      target.setFill(STICKY_TAG_BG);
+      target.beginPath();
+      buildRoundedRectPath(target, x, y, tw, STICKY_TAG_HEIGHT, STICKY_TAG_HEIGHT / 2);
+      target.fill();
+      target.setFill(STICKY_TAG_COLOR);
+      target.fillText(
+        tag,
+        x + STICKY_TAG_PAD_X,
+        y + (STICKY_TAG_HEIGHT - STICKY_TAG_FONT_SIZE) / 2,
+      );
+      x += tw + STICKY_TAG_GAP;
+    }
+  }
+
   if (shape.showAuthor === true && shape.authorName !== undefined && shape.authorName !== "") {
     target.setFont("system-ui, sans-serif", STICKY_AUTHOR_FONT_SIZE, {});
     target.setTextAlign("left");
     target.setTextBaseline("top");
     target.setFill(STICKY_AUTHOR_COLOR);
-    target.fillText(
-      shape.authorName,
-      STICKY_CORNER_RADIUS + 2,
-      shape.height - STICKY_AUTHOR_FONT_SIZE - 4,
-    );
+    const authorY =
+      shape.tags !== undefined && shape.tags.length > 0
+        ? h - STICKY_TAG_HEIGHT - STICKY_AUTHOR_FONT_SIZE - 8
+        : h - STICKY_AUTHOR_FONT_SIZE - 4;
+    target.fillText(shape.authorName, r + 2, authorY);
   }
 };
 
@@ -333,11 +405,24 @@ export const shapeLabelLayout = (
   const bounds = getElementLocalBounds(shape);
   const pad = LABEL_PADDING_EM * label.fontSize;
   const maxWidth = Math.max(label.fontSize, bounds.width - 2 * pad);
+  // Block-level vertical alignment is applied via `offsetY` below; the
+  // synthetic's glyph baseline stays "top" so drawn glyphs, the caret and
+  // selection rects all share top-anchored line coordinates.
+  const valign = label.style?.textBaseline ?? "middle";
   const style: TextStyle = {
     textAlign: "center",
-    textBaseline: "middle",
     ...label.style,
+    textBaseline: "top",
   };
+  const layout = layoutText(label.text, measure, {
+    fontSize: label.fontSize,
+    maxWidth,
+    ...(label.paragraphs !== undefined ? { paragraphs: label.paragraphs } : {}),
+  });
+  // Text never escapes the shape body: only the lines that fit inside the
+  // padded height are painted (the flat text keeps the rest for editing).
+  const innerHeight = Math.max(layout.lineHeight, bounds.height - 2 * pad);
+  const clipLines = Math.max(1, Math.floor(innerHeight / layout.lineHeight));
   const synthetic = {
     id: shape.id,
     layerId: shape.layerId,
@@ -351,22 +436,17 @@ export const shapeLabelLayout = (
     fontFamily: label.fontFamily,
     fontSize: label.fontSize,
     maxWidth,
+    clipLines,
     ...(label.runs !== undefined ? { runs: label.runs } : {}),
     ...(label.paragraphs !== undefined ? { paragraphs: label.paragraphs } : {}),
   } as TextElement;
-  const layout = layoutText(label.text, measure, {
-    fontSize: label.fontSize,
-    maxWidth,
-    ...(label.paragraphs !== undefined ? { paragraphs: label.paragraphs } : {}),
-  });
-  const textH = layout.lines.length * layout.lineHeight;
-  const valign = style.textBaseline ?? "middle";
+  const textH = Math.min(layout.lines.length, clipLines) * layout.lineHeight;
   const offsetY =
     valign === "top"
       ? bounds.y + pad
       : valign === "bottom"
         ? bounds.y + bounds.height - textH - pad
-        : bounds.y + (bounds.height - textH) / 2;
+        : bounds.y + Math.max(pad, (bounds.height - textH) / 2);
   return { synthetic, offsetX: bounds.x + pad, offsetY };
 };
 
@@ -395,6 +475,13 @@ export const drawShapeLabel = (shape: ElementBase, target: RenderTarget): void =
 };
 
 /**
+ * Internal draw hint carried by label synthetics: paint at most this many
+ * visual lines so the text never escapes the shape body. Never serialized.
+ */
+const clipLinesOf = (shape: TextElement): number | undefined =>
+  (shape as { readonly clipLines?: number }).clipLines;
+
+/**
  * Draw the derived list markers ("•" / "1.") for every paragraph's first
  * visual line, right-aligned into the indent slot the layout reserved.
  * Uses the element's base font + fill; leaves the fill set to `color`.
@@ -410,7 +497,9 @@ const drawListMarkersForLayout = (
   const markers = listMarkers(shape.paragraphs, paragraphCount(shape.text));
   const gap = LIST_MARKER_GAP_EM * shape.fontSize;
   target.setFill(color);
+  const markerClip = clipLinesOf(shape);
   layout.lines.forEach((line, i) => {
+    if (markerClip !== undefined && i >= markerClip) return;
     if (!line.paraFirst) return;
     const marker = markers[line.para];
     if (marker == null) return;
@@ -466,7 +555,9 @@ const drawStyledText = (shape: TextElement, target: RenderTarget): void => {
     perLine.reduce((m, l, i) => Math.max(m, l.total + req(layout.lines[i]).indentX), 0);
   const thickness = Math.max(1, fontSize * TEXT_DECORATION_THICKNESS);
 
+  const styledClip = clipLinesOf(shape);
   perLine.forEach((line, i) => {
+    if (styledClip !== undefined && i >= styledClip) return;
     const top = i * layout.lineHeight;
     const indentX = req(layout.lines[i]).indentX;
     let x =
@@ -570,6 +661,8 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
       width: line.width,
       top: i * layout.lineHeight,
     }));
+    const clip = clipLinesOf(shape);
+    if (clip !== undefined) lines = lines.slice(0, clip);
     drawListMarkersForLayout(shape, layout, target, color);
   }
 
@@ -728,6 +821,9 @@ export const installBuiltinRenderers = (): void => {
   registerElementRenderer<BlockArrowElement>("block-arrow", drawBlockArrow);
   registerElementRenderer<BrushElement>("brush", drawBrush);
   registerElementRenderer<StickyElement>("sticky", drawSticky);
+  // The sticky's drop shadow paints below its box — extend the dirty
+  // region so moving/deleting it doesn't leave the shadow behind.
+  registerRenderOverflow("sticky", () => ({ bottom: STICKY_SHADOW_OFFSET_Y + 2 }));
   registerElementRenderer<EmojiElement>("emoji", drawEmoji);
 };
 
