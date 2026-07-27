@@ -113,3 +113,17 @@ describe("shape label editing", () => {
     expect(overlay).not.toBeNull();
   });
 });
+
+describe("label rich-text ranges", () => {
+  it("applyTextStyleToRange writes styled runs onto the label", () => {
+    const e = editorWith(sceneWith(rect("r", "hello")));
+    e.applyTextStyleToRange(elementId("r"), 0, 2, { fontWeight: "bold" });
+    const label = (
+      e.scene.elements.get(elementId("r")) as unknown as {
+        label: { runs?: readonly { text: string; style?: { fontWeight?: string } }[] };
+      }
+    ).label;
+    expect(label.runs?.map((r) => r.text).join("")).toBe("hello");
+    expect(label.runs?.[0]).toMatchObject({ text: "he", style: { fontWeight: "bold" } });
+  });
+});

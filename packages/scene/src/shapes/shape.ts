@@ -213,11 +213,13 @@ export interface StickyElement extends ElementBase {
   /** Free-form tags, rendered as small pills along the bottom edge. */
   readonly tags?: readonly string[];
   /**
-   * Emoji reactions with counters. Clicking a reaction pill increments
-   * its count (any collaborator); the add button lives in the host UI at
-   * the sticky's bottom-left corner.
+   * Emoji reactions. Each glyph tracks WHO reacted (`users` — collab
+   * user ids); the visible counter is `users.length`. A user's click on
+   * a glyph they already reacted with removes their reaction (toggle),
+   * anyone else's click adds theirs. The add button lives in the host
+   * UI at the sticky's bottom-left corner.
    */
-  readonly reactions?: readonly { readonly glyph: string; readonly count: number }[];
+  readonly reactions?: readonly { readonly glyph: string; readonly users: readonly string[] }[];
 }
 
 /** True when the shape is a sticky note. */

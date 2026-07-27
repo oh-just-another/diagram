@@ -85,15 +85,10 @@ export const STICKY_AUTHOR_COLOR = "#8a8a6f";
  * Sticky skeuomorphism (paper look):
  * - `STICKY_SHADOW_COLOR` / `STICKY_SHADOW_OFFSET_Y` — soft drop shadow
  *   under the card (offset in world units, 2–6 reasonable).
- * - `STICKY_CURL` — side length of the folded bottom-right corner in
- *   world units (10–24 reasonable).
- * - `STICKY_FOLD_SHADE` — translucent darkening painted on the fold.
  * - `STICKY_TAG_*` — tag pill metrics along the bottom edge.
  */
 export const STICKY_SHADOW_COLOR = "rgba(0, 0, 0, 0.18)";
 export const STICKY_SHADOW_OFFSET_Y = 4;
-export const STICKY_CURL = 16;
-export const STICKY_FOLD_SHADE = "rgba(0, 0, 0, 0.12)";
 export const STICKY_TAG_FONT_SIZE = 9;
 export const STICKY_TAG_PAD_X = 5;
 export const STICKY_TAG_HEIGHT = 14;

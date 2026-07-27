@@ -3232,22 +3232,36 @@ export class Editor {
   }
 
   /**
-   * Add (or +1) an emoji reaction on a sticky note. Any collaborator can
-   * click a reaction to increment it — the state is plain element data,
-   * so it syncs through the normal scene channel. One undo step.
+   * Toggle the local user's emoji reaction on a sticky note. A glyph the
+   * user has NOT reacted with gains their reaction (+1); one they
+   * already reacted with loses it (-1, removing the glyph at zero).
+   * Other users' reactions are never touched — so counters only grow
+   * through OTHER collaborators. Plain element data → syncs through the
+   * normal scene channel. One undo step.
    */
-  addStickyReaction(id: ElementId, glyph: string): void {
+  toggleStickyReaction(id: ElementId, glyph: string): void {
     if (this.readOnly) return;
     const shape = getElement(this._scene, id);
     if (!shape || !isSticky(shape)) return;
+    const user = this.commentAuthor.id;
     const r = updateElement(this._scene, id, (s) => {
       const sticky = s as StickyElement;
       const reactions = [...(sticky.reactions ?? [])];
       const i = reactions.findIndex((x) => x.glyph === glyph);
       const existing = i >= 0 ? reactions[i] : undefined;
-      if (existing !== undefined) reactions[i] = { glyph, count: existing.count + 1 };
-      else reactions.push({ glyph, count: 1 });
-      return { ...s, reactions };
+      if (existing === undefined) {
+        reactions.push({ glyph, users: [user] });
+      } else if (existing.users.includes(user)) {
+        const users = existing.users.filter((u) => u !== user);
+        if (users.length === 0) reactions.splice(i, 1);
+        else reactions[i] = { glyph, users };
+      } else {
+        reactions[i] = { glyph, users: [...existing.users, user] };
+      }
+      const copy = { ...s } as typeof s & { reactions?: unknown };
+      if (reactions.length === 0) delete copy.reactions;
+      else copy.reactions = reactions;
+      return copy;
     });
     this._scene = r.scene;
     this._history.push(r.patch);
@@ -4976,6 +4990,8 @@ export class Editor {
       const raw = this.acceleratedElementAt(worldPoint);
       if (raw !== undefined && isText(raw)) {
         this.beginTextEdit(raw.id);
+        // Caret lands where the user double-clicked, not at the text end.
+        this.setTextCaretFromPoint(worldPoint);
         return true;
       }
       if (raw !== undefined && isFrame(raw)) {
@@ -4999,6 +5015,9 @@ export class Editor {
         // the first edit).
         if (canCarryLabel(raw)) {
           this.beginTextEdit(raw.id);
+          // Same as text elements: the caret starts at the click point —
+          // important for long labels whose tail is clipped by the shape.
+          this.setTextCaretFromPoint(worldPoint);
           return true;
         }
       }

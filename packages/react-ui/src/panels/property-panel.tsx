@@ -233,6 +233,8 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
               style: s.label?.style ?? {},
               fontSize: s.label?.fontSize,
               fontFamily: s.label?.fontFamily,
+              text: s.label?.text,
+              runs: s.label?.runs,
             }) as unknown as ElementBase,
         );
         primary.push(
@@ -613,8 +615,13 @@ const useTextRunRange = (shapes: readonly ElementBase[]): TextRunRange | null =>
   const sel = useEditorSelector((e) => e.editingTextSelection, null);
   if (editingId === null || sel === null || sel.start === sel.end) return null;
   const target = shapes.find((s) => s.id === editingId);
-  if (target === undefined || !isText(target)) return null;
-  return { target, from: Math.min(sel.start, sel.end), to: Math.max(sel.start, sel.end) };
+  if (target === undefined) return null;
+  if (!isText(target) && !("text" in target && target.label !== undefined)) return null;
+  return {
+    target: target as TextElement,
+    from: Math.min(sel.start, sel.end),
+    to: Math.max(sel.start, sel.end),
+  };
 };
 
 /**
@@ -665,12 +672,12 @@ const ColorOpacityControl = ({
           onChange={(v) => {
             // In-edit text selection → colour just those characters (runs);
             // otherwise colour the whole element(s) / label(s).
-            if (labelMode) {
-              editor.updateLabelStyle(ids, { fill: v ?? "transparent" });
-            } else if (runRange) {
+            if (runRange) {
               editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
                 fill: v ?? "transparent",
               });
+            } else if (labelMode) {
+              editor.updateLabelStyle(ids, { fill: v ?? "transparent" });
             } else {
               editor.updateStyle(ids, { fill: v ?? "transparent" });
             }
@@ -1304,10 +1311,10 @@ const HighlightControl = ({
           value={value}
           onChange={(v) => {
             const partial = { highlight: v ?? "transparent" };
-            if (labelMode) {
-              editor.updateLabelStyle(ids, partial);
-            } else if (runRange) {
+            if (runRange) {
               editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
+            } else if (labelMode) {
+              editor.updateLabelStyle(ids, partial);
             } else {
               editor.updateStyle(ids, partial);
             }
@@ -1627,10 +1634,10 @@ const TextDecorationControl = ({
   // Apply a partial text style to the in-edit range (rich text) or, with no
   // active range, to the whole selected element(s).
   const applyPartial = (partial: Partial<TextStyle>): void => {
-    if (labelMode) {
-      editor.updateLabelStyle(ids, partial);
-    } else if (runRange) {
+    if (runRange) {
       editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
+    } else if (labelMode) {
+      editor.updateLabelStyle(ids, partial);
     } else {
       editor.updateStyle(ids, partial);
     }
@@ -1639,7 +1646,7 @@ const TextDecorationControl = ({
   // replaces the whole `textDecoration`, so rebuild both flags from the
   // range's current state; whole-element mode merges per shape.
   const setDecoration = (key: "underline" | "strikethrough", on: boolean): void => {
-    if (labelMode) {
+    if (labelMode && !runRange) {
       for (const s of shapes) {
         const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
         editor.updateLabelStyle([s.id], { textDecoration: { ...cur, [key]: on } });

@@ -46,8 +46,6 @@ import {
   STICKY_AUTHOR_COLOR,
   STICKY_SHADOW_COLOR,
   STICKY_SHADOW_OFFSET_Y,
-  STICKY_CURL,
-  STICKY_FOLD_SHADE,
   STICKY_TAG_FONT_SIZE,
   STICKY_TAG_PAD_X,
   STICKY_TAG_HEIGHT,
@@ -300,7 +298,6 @@ const drawSticky: ElementRenderer<StickyElement> = (shape, target) => {
   const w = shape.width;
   const h = shape.height;
   const r = STICKY_CORNER_RADIUS;
-  const curl = Math.min(STICKY_CURL, w / 3, h / 3);
 
   // Soft drop shadow under the card, offset downwards.
   target.setFill(STICKY_SHADOW_COLOR);
@@ -308,38 +305,13 @@ const drawSticky: ElementRenderer<StickyElement> = (shape, target) => {
   buildRoundedRectPath(target, 1, STICKY_SHADOW_OFFSET_Y, w - 2, h - 2, r);
   target.fill();
 
-  // The card body with the bottom-right corner cut for the fold.
+  // The card body — a plain rounded sheet over its drop shadow.
   target.setFill(fill);
   target.beginPath();
-  target.moveTo(r, 0);
-  target.lineTo(w - r, 0);
-  target.quadraticCurveTo(w, 0, w, r);
-  target.lineTo(w, h - curl);
-  target.lineTo(w - curl, h);
-  target.lineTo(r, h);
-  target.quadraticCurveTo(0, h, 0, h - r);
-  target.lineTo(0, r);
-  target.quadraticCurveTo(0, 0, r, 0);
-  target.closePath();
+  buildRoundedRectPath(target, 0, 0, w, h, r);
   target.fill();
 
-  // Folded corner: same paper colour, then a translucent shade so it reads
-  // as the sheet curling over.
-  target.beginPath();
-  target.moveTo(w - curl, h);
-  target.lineTo(w, h - curl);
-  target.lineTo(w - curl, h - curl);
-  target.closePath();
-  target.fill();
-  target.setFill(STICKY_FOLD_SHADE);
-  target.beginPath();
-  target.moveTo(w - curl, h);
-  target.lineTo(w, h - curl);
-  target.lineTo(w - curl, h - curl);
-  target.closePath();
-  target.fill();
-
-  // Tag pills along the bottom edge (left of the fold).
+  // Tag pills along the bottom edge.
   if (shape.tags !== undefined && shape.tags.length > 0) {
     target.setFont("system-ui, sans-serif", STICKY_TAG_FONT_SIZE, {});
     target.setTextAlign("left");
@@ -348,7 +320,7 @@ const drawSticky: ElementRenderer<StickyElement> = (shape, target) => {
     const y = h - STICKY_TAG_HEIGHT - 3;
     for (const tag of shape.tags) {
       const tw = target.measureText(tag).width + 2 * STICKY_TAG_PAD_X;
-      if (x + tw > w - curl) break;
+      if (x + tw > w - r) break;
       target.setFill(STICKY_TAG_BG);
       target.beginPath();
       buildRoundedRectPath(target, x, y, tw, STICKY_TAG_HEIGHT, STICKY_TAG_HEIGHT / 2);
@@ -421,8 +393,8 @@ export const shapeLabelLayout = (
   });
   // Text never escapes the shape body: only the lines that fit inside the
   // padded height are painted (the flat text keeps the rest for editing).
-  const innerHeight = Math.max(layout.lineHeight, bounds.height - 2 * pad);
-  const clipLines = Math.max(1, Math.floor(innerHeight / layout.lineHeight));
+  const innerHeight = Math.max(0, bounds.height - 2 * pad);
+  const clipLines = Math.max(0, Math.floor(innerHeight / layout.lineHeight));
   const synthetic = {
     id: shape.id,
     layerId: shape.layerId,

@@ -8,8 +8,10 @@ import { EMOJI_QUICK_PICKS } from "../core/constants.js";
 
 /**
  * Emoji-reaction bar pinned to every sticky note's bottom-left corner:
- * the existing reactions as counter pills (click = +1, from anyone) and
- * an add button that opens a quick emoji picker. Reaction state lives on
+ * the existing reactions as counter pills (click toggles YOUR reaction —
+ * adds it if you haven't reacted, removes it if you have; counters grow
+ * only through other collaborators) and an add button that opens a quick
+ * emoji picker. Reaction state lives on
  * the element (`StickyElement.reactions`), so it syncs through the
  * normal scene channel in collaborative sessions. Hidden in read-only
  * mode (reacting mutates the scene).
@@ -54,13 +56,13 @@ export const StickyReactions = () => {
               key={reaction.glyph}
               type="button"
               className="du-sticky-reaction-pill"
-              title={`React with ${reaction.glyph}`}
-              aria-label={`React with ${reaction.glyph} (${String(reaction.count)})`}
+              title={`Toggle ${reaction.glyph} reaction`}
+              aria-label={`Toggle ${reaction.glyph} reaction (${String(reaction.users.length)})`}
               onClick={() => {
-                editor.addStickyReaction(shape.id, reaction.glyph);
+                editor.toggleStickyReaction(shape.id, reaction.glyph);
               }}
             >
-              {reaction.glyph} {reaction.count}
+              {reaction.glyph} {reaction.users.length}
             </button>
           ))}
           <button
@@ -83,7 +85,7 @@ export const StickyReactions = () => {
                   className="du-sel-emoji-item"
                   aria-label={`React with ${glyph}`}
                   onClick={() => {
-                    editor.addStickyReaction(shape.id, glyph);
+                    editor.toggleStickyReaction(shape.id, glyph);
                     setPickerFor(null);
                   }}
                 >

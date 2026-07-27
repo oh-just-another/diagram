@@ -93,6 +93,21 @@ export const TextEditorOverlay = () => {
           editor.commitTextEdit();
           return;
         }
+        // Select-all handled explicitly: the native path raced the
+        // editor→textarea selection mirror (a caret-blink re-render could
+        // restore the pre-Cmd+A selection before `onSelect` fired), which
+        // made Cmd+A intermittently need a second press. Setting both the
+        // textarea range and the editor selection synchronously removes
+        // the race.
+        if (ev.key.toLowerCase() === "a" && (ev.metaKey || ev.ctrlKey)) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const ta = ev.currentTarget;
+          const len = ta.value.length;
+          ta.setSelectionRange(0, len, "forward");
+          editor.setEditingSelection(0, len, "forward");
+          return;
+        }
         // Tab / Shift+Tab change list nesting for the caret's paragraphs
         // (no-op on plain paragraphs beyond clamping at level 0). Always
         // swallowed so the textarea never tabs focus away mid-edit.

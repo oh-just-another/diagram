@@ -142,18 +142,26 @@ describe("sticky tags and reactions", () => {
     expect((e.scene.elements.get(elementId("s")) as StickyElement).tags).toBeUndefined();
   });
 
-  it("addStickyReaction adds then increments a counter", () => {
+  it("toggleStickyReaction: own click adds then removes; other users stack", () => {
     const e = editorWith(sceneWith(sticky("s")));
-    e.addStickyReaction(elementId("s"), "🔥");
-    e.addStickyReaction(elementId("s"), "🔥");
-    e.addStickyReaction(elementId("s"), "👍");
+    e.setCommentAuthor({ id: "u1", name: "One" });
+    e.toggleStickyReaction(elementId("s"), "🔥");
     expect((e.scene.elements.get(elementId("s")) as StickyElement).reactions).toEqual([
-      { glyph: "🔥", count: 2 },
-      { glyph: "👍", count: 1 },
+      { glyph: "🔥", users: ["u1"] },
     ]);
-    e.undo();
+    // Another collaborator reacting stacks the counter…
+    e.setCommentAuthor({ id: "u2", name: "Two" });
+    e.toggleStickyReaction(elementId("s"), "🔥");
     expect((e.scene.elements.get(elementId("s")) as StickyElement).reactions).toEqual([
-      { glyph: "🔥", count: 2 },
+      { glyph: "🔥", users: ["u1", "u2"] },
     ]);
+    // …while re-clicking your OWN reaction removes it.
+    e.toggleStickyReaction(elementId("s"), "🔥");
+    expect((e.scene.elements.get(elementId("s")) as StickyElement).reactions).toEqual([
+      { glyph: "🔥", users: ["u1"] },
+    ]);
+    e.setCommentAuthor({ id: "u1", name: "One" });
+    e.toggleStickyReaction(elementId("s"), "🔥");
+    expect((e.scene.elements.get(elementId("s")) as StickyElement).reactions).toBeUndefined();
   });
 });
