@@ -51,20 +51,27 @@ export const StickyReactions = () => {
     <>
       {stickies.map(({ shape, x, y }) => (
         <div key={shape.id} className="du-sticky-reactions" style={{ left: x + 4, top: y + 4 }}>
-          {(shape.reactions ?? []).map((reaction) => (
-            <button
-              key={reaction.glyph}
-              type="button"
-              className="du-sticky-reaction-pill"
-              title={`Toggle ${reaction.glyph} reaction`}
-              aria-label={`Toggle ${reaction.glyph} reaction (${String(reaction.users.length)})`}
-              onClick={() => {
-                editor.toggleStickyReaction(shape.id, reaction.glyph);
-              }}
-            >
-              {reaction.glyph} {reaction.users.length}
-            </button>
-          ))}
+          {(shape.reactions ?? []).map((reaction) => {
+            // Scenes saved before reactions became per-user carry
+            // `{glyph, count}` without `users` — show their count until
+            // the first toggle rewrites the entry.
+            const legacy = reaction as { users?: readonly string[]; count?: number };
+            const count = legacy.users?.length ?? legacy.count ?? 0;
+            return (
+              <button
+                key={reaction.glyph}
+                type="button"
+                className="du-sticky-reaction-pill"
+                title={`Toggle ${reaction.glyph} reaction`}
+                aria-label={`Toggle ${reaction.glyph} reaction (${String(count)})`}
+                onClick={() => {
+                  editor.toggleStickyReaction(shape.id, reaction.glyph);
+                }}
+              >
+                {reaction.glyph} {count}
+              </button>
+            );
+          })}
           <button
             type="button"
             className="du-sticky-reaction-add"

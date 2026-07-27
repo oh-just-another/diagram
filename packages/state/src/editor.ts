@@ -3249,14 +3249,17 @@ export class Editor {
       const reactions = [...(sticky.reactions ?? [])];
       const i = reactions.findIndex((x) => x.glyph === glyph);
       const existing = i >= 0 ? reactions[i] : undefined;
+      // Pre-per-user scenes may carry `{glyph, count}` without `users` —
+      // treat those as nobody-having-reacted and rewrite on first toggle.
+      const existingUsers: readonly string[] = existing?.users ?? [];
       if (existing === undefined) {
         reactions.push({ glyph, users: [user] });
-      } else if (existing.users.includes(user)) {
-        const users = existing.users.filter((u) => u !== user);
+      } else if (existingUsers.includes(user)) {
+        const users = existingUsers.filter((u) => u !== user);
         if (users.length === 0) reactions.splice(i, 1);
         else reactions[i] = { glyph, users };
       } else {
-        reactions[i] = { glyph, users: [...existing.users, user] };
+        reactions[i] = { glyph, users: [...existingUsers, user] };
       }
       const copy = { ...s } as typeof s & { reactions?: unknown };
       if (reactions.length === 0) delete copy.reactions;
