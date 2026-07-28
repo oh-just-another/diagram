@@ -1491,7 +1491,9 @@ export class WebGL2Target implements RenderTarget {
     // system-font width (a different, usually wider font) and callers —
     // caret geometry, selection bounds — would drift from what's drawn.
     const atlas = this.ensureGlyphAtlas();
-    if (atlas) {
+    // Pictographs (emoji) are not in the MSDF atlas — their glyph-run
+    // measure is NaN; those strings render AND measure via Canvas2D.
+    if (atlas && !HAS_PICTOGRAPH_RE.test(text)) {
       const fontId = atlas.resolveFontId(
         this.fontFamily,
         this.fontWeight === "bold",
@@ -1522,10 +1524,18 @@ export class WebGL2Target implements RenderTarget {
       this.textBitmaps.set(key, cached);
       return cached;
     }
-    const m = this.textMetrics(text);
+    // Measure with the SAME Canvas2D font the bitmap is painted with —
+    // atlas advances would disagree with the system font (and are NaN
+    // for emoji, which previously blew up the OffscreenCanvas ctor).
+    const measureCtx = this.ensureTextCtx();
+    let width = this.fontSize * 0.55 * text.length;
+    if (measureCtx) {
+      measureCtx.font = this.textFontSpec();
+      width = measureCtx.measureText(text).width;
+    }
     // Pad height by 40% — covers font ascent/descent fuzz without
     // requiring per-font TextMetrics support.
-    const w = Math.max(1, Math.ceil(m.width));
+    const w = Math.max(1, Math.ceil(Number.isFinite(width) ? width : 1));
     const h = Math.max(1, Math.ceil(this.fontSize * 1.4));
     const canvas = new OffscreenCanvas(w, h);
     const ctx = canvas.getContext("2d");
