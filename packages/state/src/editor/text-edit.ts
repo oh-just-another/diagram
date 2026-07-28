@@ -168,7 +168,12 @@ export class TextEditController {
    * offset for labelled shapes (same geometry the renderer draws with,
    * via `shapeLabelLayout` — caret and glyphs can't drift apart).
    */
-  private editView(shape: Element): { text: TextElement; offX: number; offY: number } | null {
+  private editView(shape: Element): {
+    text: TextElement;
+    offX: number;
+    offY: number;
+    window?: { top: number; bottom: number };
+  } | null {
     if (isText(shape)) return { text: shape, offX: 0, offY: 0 };
     const label = shape.label;
     if (label === undefined) return null;
@@ -180,7 +185,61 @@ export class TextEditController {
     );
     const placed = shapeLabelLayout(shape, measure);
     if (!placed) return null;
-    return { text: placed.synthetic, offX: placed.offsetX, offY: placed.offsetY };
+    return {
+      text: placed.synthetic,
+      offX: placed.offsetX,
+      offY: placed.offsetY,
+      window: { top: placed.windowTop, bottom: placed.windowBottom },
+    };
+  }
+
+  /**
+   * Keep the caret inside the label's visible line window by adjusting
+   * the transient `metadata.labelScrollLines` on the edited shape (live,
+   * no history — stripped again on commit / cancel). No-op for text
+   * elements (they have no clip window).
+   */
+  private followLabelCaret(): void {
+    const id = this._editingElement;
+    if (!id || !this._sel) return;
+    const shape = getElement(this.host.scene, id);
+    if (!shape || isText(shape) || shape.label === undefined) return;
+    const view = this.editView(shape);
+    if (!view) return;
+    const layout = this.editingTextLayout(view.text);
+    const win = view.window;
+    if (!layout || !win) return;
+    const clipLines = Math.max(1, Math.round((win.bottom - win.top) / layout.lineHeight));
+    const caretIdx = this._sel.dir === "backward" ? this._sel.start : this._sel.end;
+    const g = caretGeometry(
+      layout,
+      caretIdx,
+      this.measureFor(view.text),
+      view.text.fontSize,
+      "left",
+    );
+    const scroll = Math.round(win.top / layout.lineHeight);
+    let next = scroll;
+    if (g.line < scroll) next = g.line;
+    else if (g.line >= scroll + clipLines) next = g.line - clipLines + 1;
+    if (next === scroll) return;
+    this.host.scene = updateElement(this.host.scene, id, (sh) => ({
+      ...sh,
+      metadata: { ...sh.metadata, labelScrollLines: next },
+    })).scene;
+  }
+
+  /** Drop the transient label-scroll hint when the edit session ends. */
+  private clearLabelScroll(id: ElementId): void {
+    const shape = getElement(this.host.scene, id);
+    if (shape?.metadata?.labelScrollLines === undefined) return;
+    this.host.scene = updateElement(this.host.scene, id, (sh) => {
+      const { labelScrollLines: _drop, ...rest } = sh.metadata ?? {};
+      const copy: typeof sh = { ...sh };
+      if (Object.keys(rest).length > 0) (copy as { metadata?: unknown }).metadata = rest;
+      else delete (copy as { metadata?: unknown }).metadata;
+      return copy;
+    }).scene;
   }
 
   /**
@@ -226,6 +285,7 @@ export class TextEditController {
     });
     this.host.scene = r.scene;
     this._sel = { start: selStart, end: selEnd, dir };
+    this.followLabelCaret();
     this.caretBlink.wake();
     this.host.notify();
   }
@@ -234,6 +294,7 @@ export class TextEditController {
   setSelection(selStart: number, selEnd: number, dir: "forward" | "backward" = "forward"): void {
     if (!this._editingElement) return;
     this._sel = { start: selStart, end: selEnd, dir };
+    this.followLabelCaret();
     this.caretBlink.wake();
     this.host.notify();
   }
@@ -378,7 +439,17 @@ export class TextEditController {
     const px = shape.position.x + view.offX * sx;
     const py = shape.position.y + view.offY * sy;
 
-    const local = textSelectionRects(layout, this._sel.start, this._sel.end, measure, align);
+    // Clip highlight rects (and the caret) to the label's visible window
+    // so nothing paints outside the shape body.
+    const win = view.window;
+    const local = textSelectionRects(layout, this._sel.start, this._sel.end, measure, align)
+      .map((r) => {
+        if (!win) return r;
+        const top = Math.max(r.y, win.top);
+        const bottom = Math.min(r.y + r.height, win.bottom);
+        return { ...r, y: top, height: bottom - top };
+      })
+      .filter((r) => r.height > 0);
     const selectionRects: Bounds[] = local.map((r) => ({
       x: px + Math.min(r.x * sx, (r.x + r.width) * sx),
       y: py + Math.min(r.y * sy, (r.y + r.height) * sy),
@@ -390,7 +461,10 @@ export class TextEditController {
     if (this.caretBlink.on) {
       const cIdx = this._sel.dir === "backward" ? this._sel.start : this._sel.end;
       const g = caretGeometry(layout, cIdx, measure, view.text.fontSize, align);
-      caret = { x: px + g.x * sx, y: py + g.y * sy, height: g.height * Math.abs(sy) };
+      const visible = !win || (g.y >= win.top && g.y < win.bottom);
+      if (visible) {
+        caret = { x: px + g.x * sx, y: py + g.y * sy, height: g.height * Math.abs(sy) };
+      }
     }
     return { caret, caretColor: view.text.style.fill ?? "#1a1a1a", selectionRects };
   }
@@ -398,6 +472,7 @@ export class TextEditController {
   commit(next?: string): void {
     const id = this._editingElement;
     if (!id) return;
+    this.clearLabelScroll(id);
     const pending = this._pendingCreate === id;
     const origin = this._origin;
     // Optional explicit text (keyboard / test callers); the live path
@@ -481,6 +556,7 @@ export class TextEditController {
   cancel(): void {
     const id = this._editingElement;
     if (id === null) return;
+    this.clearLabelScroll(id);
     const pending = this._pendingCreate === id;
     const origin = this._origin;
     this._editingElement = null;

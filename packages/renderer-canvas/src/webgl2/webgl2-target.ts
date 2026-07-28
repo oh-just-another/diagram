@@ -44,6 +44,13 @@ export interface WebGL2TargetOptions {
  * primitives (rect / polyline / ellipse / Bezier), fill, stroke, text
  * (MSDF or OffscreenCanvas-bitmap fallback), and image drawing.
  */
+/**
+ * Colour-glyph detector: emoji / pictographs (incl. variation selectors and
+ * ZWJ sequences) that the monochrome MSDF glyph atlas cannot render. Strings
+ * matching this take the rasterised-bitmap text path instead.
+ */
+const HAS_PICTOGRAPH_RE = /\p{Extended_Pictographic}|\uFE0F|\u200D/u;
+
 export class WebGL2Target implements RenderTarget {
   private readonly gl: WebGL2RenderingContext;
   private readonly program: WebGLProgram;
@@ -1271,7 +1278,10 @@ export class WebGL2Target implements RenderTarget {
     this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     void maxWidth;
     const atlas = this.ensureGlyphAtlas();
-    if (atlas) {
+    // Emoji (and other pictographs) are colour glyphs the MSDF atlas
+    // cannot shape — routing them through it draws nothing. Fall back to
+    // the rasterised-bitmap path for any string containing them.
+    if (atlas && !HAS_PICTOGRAPH_RE.test(text)) {
       this.fillTextMSDF(text, x, y, atlas);
       return;
     }

@@ -371,6 +371,9 @@ export const shapeLabelLayout = (
   readonly synthetic: TextElement;
   readonly offsetX: number;
   readonly offsetY: number;
+  /** Visible window in layout-space Y (lines outside are not painted). */
+  readonly windowTop: number;
+  readonly windowBottom: number;
 } | null => {
   const label = shape.label;
   if (label === undefined) return null;
@@ -391,10 +394,18 @@ export const shapeLabelLayout = (
     maxWidth,
     ...(label.paragraphs !== undefined ? { paragraphs: label.paragraphs } : {}),
   });
-  // Text never escapes the shape body: only the lines that fit inside the
-  // padded height are painted (the flat text keeps the rest for editing).
+  // Text never escapes the shape body: only the lines inside the padded
+  // window are painted (the flat text keeps the rest for editing). While
+  // the inline editor is open the transient `metadata.labelScrollLines`
+  // scrolls that window so the caret stays visible.
   const innerHeight = Math.max(0, bounds.height - 2 * pad);
   const clipLines = Math.max(0, Math.floor(innerHeight / layout.lineHeight));
+  const rawScroll = shape.metadata?.labelScrollLines;
+  const maxScroll = Math.max(0, layout.lines.length - clipLines);
+  const scroll = Math.max(
+    0,
+    Math.min(maxScroll, typeof rawScroll === "number" ? Math.floor(rawScroll) : 0),
+  );
   const synthetic = {
     id: shape.id,
     layerId: shape.layerId,
@@ -408,18 +419,28 @@ export const shapeLabelLayout = (
     fontFamily: label.fontFamily,
     fontSize: label.fontSize,
     maxWidth,
+    clipStart: scroll,
     clipLines,
     ...(label.runs !== undefined ? { runs: label.runs } : {}),
     ...(label.paragraphs !== undefined ? { paragraphs: label.paragraphs } : {}),
   } as TextElement;
-  const textH = Math.min(layout.lines.length, clipLines) * layout.lineHeight;
-  const offsetY =
+  const textH = Math.min(layout.lines.length - scroll, clipLines) * layout.lineHeight;
+  const windowAnchor =
     valign === "top"
       ? bounds.y + pad
       : valign === "bottom"
         ? bounds.y + bounds.height - textH - pad
         : bounds.y + Math.max(pad, (bounds.height - textH) / 2);
-  return { synthetic, offsetX: bounds.x + pad, offsetY };
+  // Lines keep their absolute layout Y (line × lineHeight); shifting the
+  // whole block up by the scroll puts the visible window at the anchor.
+  const offsetY = windowAnchor - scroll * layout.lineHeight;
+  return {
+    synthetic,
+    offsetX: bounds.x + pad,
+    offsetY,
+    windowTop: scroll * layout.lineHeight,
+    windowBottom: (scroll + clipLines) * layout.lineHeight,
+  };
 };
 
 /**
@@ -450,8 +471,14 @@ export const drawShapeLabel = (shape: ElementBase, target: RenderTarget): void =
  * Internal draw hint carried by label synthetics: paint at most this many
  * visual lines so the text never escapes the shape body. Never serialized.
  */
-const clipLinesOf = (shape: TextElement): number | undefined =>
-  (shape as { readonly clipLines?: number }).clipLines;
+const clipWindowOf = (
+  shape: TextElement,
+): { readonly start: number; readonly end: number } | undefined => {
+  const hint = shape as { readonly clipStart?: number; readonly clipLines?: number };
+  if (hint.clipLines === undefined) return undefined;
+  const start = hint.clipStart ?? 0;
+  return { start, end: start + hint.clipLines };
+};
 
 /**
  * Draw the derived list markers ("•" / "1.") for every paragraph's first
@@ -469,9 +496,9 @@ const drawListMarkersForLayout = (
   const markers = listMarkers(shape.paragraphs, paragraphCount(shape.text));
   const gap = LIST_MARKER_GAP_EM * shape.fontSize;
   target.setFill(color);
-  const markerClip = clipLinesOf(shape);
+  const markerClip = clipWindowOf(shape);
   layout.lines.forEach((line, i) => {
-    if (markerClip !== undefined && i >= markerClip) return;
+    if (markerClip !== undefined && (i < markerClip.start || i >= markerClip.end)) return;
     if (!line.paraFirst) return;
     const marker = markers[line.para];
     if (marker == null) return;
@@ -527,9 +554,9 @@ const drawStyledText = (shape: TextElement, target: RenderTarget): void => {
     perLine.reduce((m, l, i) => Math.max(m, l.total + req(layout.lines[i]).indentX), 0);
   const thickness = Math.max(1, fontSize * TEXT_DECORATION_THICKNESS);
 
-  const styledClip = clipLinesOf(shape);
+  const styledClip = clipWindowOf(shape);
   perLine.forEach((line, i) => {
-    if (styledClip !== undefined && i >= styledClip) return;
+    if (styledClip !== undefined && (i < styledClip.start || i >= styledClip.end)) return;
     const top = i * layout.lineHeight;
     const indentX = req(layout.lines[i]).indentX;
     let x =
@@ -633,8 +660,8 @@ const drawText: ElementRenderer<TextElement> = (shape, target) => {
       width: line.width,
       top: i * layout.lineHeight,
     }));
-    const clip = clipLinesOf(shape);
-    if (clip !== undefined) lines = lines.slice(0, clip);
+    const clip = clipWindowOf(shape);
+    if (clip !== undefined) lines = lines.filter((_, i) => i >= clip.start && i < clip.end);
     drawListMarkersForLayout(shape, layout, target, color);
   }
 

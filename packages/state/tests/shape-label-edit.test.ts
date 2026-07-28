@@ -127,3 +127,47 @@ describe("label rich-text ranges", () => {
     expect(label.runs?.[0]).toMatchObject({ text: "he", style: { fontWeight: "bold" } });
   });
 });
+
+describe("label edit window (scroll + clipping)", () => {
+  // 120×60 shape, fontSize 16 → pad 8, inner 44, lineHeight 19.2 → 2 lines fit.
+  it("caret navigation past the window scrolls it (labelScrollLines)", () => {
+    const e = editorWith(sceneWith(rect("r")));
+    e.beginTextEdit(elementId("r"));
+    e.setEditingText("one\ntwo\nthree\nfour", 18, 18); // caret on line 4
+    const scroll = (
+      e.scene.elements.get(elementId("r")) as unknown as {
+        metadata?: { labelScrollLines?: number };
+      }
+    ).metadata?.labelScrollLines;
+    expect(scroll).toBeGreaterThan(0);
+    // Jumping back to the start scrolls the window back up.
+    e.setEditingSelection(0, 0);
+    const back = (
+      e.scene.elements.get(elementId("r")) as unknown as {
+        metadata?: { labelScrollLines?: number };
+      }
+    ).metadata?.labelScrollLines;
+    expect(back ?? 0).toBe(0);
+    // Committing strips the transient hint.
+    e.commitTextEdit();
+    expect(
+      (e.scene.elements.get(elementId("r")) as unknown as { metadata?: object }).metadata,
+    ).toBeUndefined();
+  });
+
+  it("selection highlight never extends past the visible window", () => {
+    const e = editorWith(sceneWith(rect("r")));
+    e.beginTextEdit(elementId("r"));
+    e.setEditingText("one\ntwo\nthree\nfour", 0, 0);
+    e.setEditingSelection(0, 18); // select everything
+    const overlay = e.editingTextOverlay();
+    expect(overlay).not.toBeNull();
+    const shape = e.scene.elements.get(elementId("r"))!;
+    const top = shape.position.y;
+    const bottom = shape.position.y + 60;
+    for (const r of overlay!.selectionRects) {
+      expect(r.y).toBeGreaterThanOrEqual(top);
+      expect(r.y + r.height).toBeLessThanOrEqual(bottom + 0.01);
+    }
+  });
+});

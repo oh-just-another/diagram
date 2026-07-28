@@ -4994,7 +4994,10 @@ export class Editor {
       if (raw !== undefined && isText(raw)) {
         this.beginTextEdit(raw.id);
         // Caret lands where the user double-clicked, not at the text end.
-        this.setTextCaretFromPoint(worldPoint);
+        // Collapsed selection WITHOUT a drag anchor — the double-click's
+        // own pointer movement must not start a drag-select.
+        const caretIdx = this.caretIndexAtWorldPoint(worldPoint);
+        if (caretIdx !== null) this.setEditingSelection(caretIdx, caretIdx);
         return true;
       }
       if (raw !== undefined && isFrame(raw)) {
@@ -5020,7 +5023,8 @@ export class Editor {
           this.beginTextEdit(raw.id);
           // Same as text elements: the caret starts at the click point —
           // important for long labels whose tail is clipped by the shape.
-          this.setTextCaretFromPoint(worldPoint);
+          const labelCaretIdx = this.caretIndexAtWorldPoint(worldPoint);
+          if (labelCaretIdx !== null) this.setEditingSelection(labelCaretIdx, labelCaretIdx);
           return true;
         }
       }

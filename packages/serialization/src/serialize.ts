@@ -66,7 +66,7 @@ const stripTransientMetadata = <
   shape: T,
 ): T => {
   const md = shape.metadata;
-  const hasTransientMeta = md && "image" in md;
+  const hasTransientMeta = md !== undefined && ("image" in md || "labelScrollLines" in md);
   const hasTransientAnim = shape.animationData !== undefined;
   if (!hasTransientMeta && !hasTransientAnim) return shape;
 
@@ -75,8 +75,9 @@ const stripTransientMetadata = <
     animationData?: unknown;
   };
   if (hasTransientMeta) {
-    const { image: _image, ...rest } = md;
+    const { image: _image, labelScrollLines: _scroll, ...rest } = md;
     void _image;
+    void _scroll;
     if (Object.keys(rest).length > 0) next.metadata = rest;
     else delete next.metadata;
   }
