@@ -47,15 +47,31 @@ export interface ShapedGlyph {
 // time.
 
 let activeShaper: TextShaper | null = null;
+const shaperListeners = new Set<(shaper: TextShaper | null) => void>();
 
 /**
  * Install a process-global text shaper. Subsequent `getActiveTextShaper()`
  * calls (used by the built-in `drawText` renderer) return it; passing `null`
  * reverts to the Canvas2D `target.measureText` path. Idempotent — last write
- * wins.
+ * wins. Registered listeners are notified so backends can react at the
+ * moment the shaper arrives (e.g. warm up a glyph atlas) instead of on
+ * the next frame that happens to draw text.
  */
 export const setActiveTextShaper = (shaper: TextShaper | null): void => {
   activeShaper = shaper;
+  for (const listener of shaperListeners) listener(shaper);
+};
+
+/**
+ * Subscribe to active-shaper changes. Returns an unsubscribe function.
+ * The listener is NOT called for the current value — read it via
+ * `getActiveTextShaper()` first when needed.
+ */
+export const onTextShaperChange = (listener: (shaper: TextShaper | null) => void): (() => void) => {
+  shaperListeners.add(listener);
+  return () => {
+    shaperListeners.delete(listener);
+  };
 };
 
 export const getActiveTextShaper = (): TextShaper | null => activeShaper;

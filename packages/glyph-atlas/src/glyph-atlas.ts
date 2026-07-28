@@ -141,6 +141,11 @@ export class GlyphAtlas {
     this.buffer = new Uint8Array(this.atlasSize * this.atlasSize * 3);
   }
 
+  /** True when the glyph is already baked — a pure cache probe, never rasterizes. */
+  has(codePoint: number, fontId = 0): boolean {
+    return this.glyphs.has(fontId * UNICODE_CODEPOINT_SPAN + codePoint);
+  }
+
   /** Resolve a CSS font-family (+ bold/italic) to the shaper's font id (0 when single-font). */
   resolveFontId(family: string, bold = false, italic = false): number {
     return this.shaper.resolveFontId?.(family, bold, italic) ?? 0;

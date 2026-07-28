@@ -78,7 +78,11 @@ export {
 
 // Pluggable text-shaper and rasterizer interfaces.
 export type { TextShaper, ShaperFont, ShapedGlyph } from "./text/text-shaper.js";
-export { setActiveTextShaper, getActiveTextShaper } from "./text/text-shaper.js";
+export {
+  setActiveTextShaper,
+  onTextShaperChange,
+  getActiveTextShaper,
+} from "./text/text-shaper.js";
 export type { Rasterizer } from "./raster/rasterizer.js";
 export { setActiveRasterizer, getActiveRasterizer } from "./raster/rasterizer.js";
 export { jsRasterizer } from "./raster/js-rasterizer.js";

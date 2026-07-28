@@ -38,6 +38,17 @@ export const LARGE_SCENE_WORKER_THRESHOLD = 50_000;
 export const WEBGL2_TEXT_BITMAP_CACHE_CAP = 256;
 
 /**
+ * Background glyph-baking pacing. One WASM MSDF bake costs ~10–15 ms, so
+ * the drain loop is TIME-budgeted, not count-budgeted:
+ * - `WEBGL2_ATLAS_BAKE_BUDGET_MS` — max main-thread time per slice
+ *   (keeps 60 fps interaction; reasonable range 4–10).
+ * - `WEBGL2_ATLAS_BAKE_REST_MS` — pause between slices so input and
+ *   rAF frames interleave (reasonable range 16–100).
+ */
+export const WEBGL2_ATLAS_BAKE_BUDGET_MS = 6;
+export const WEBGL2_ATLAS_BAKE_REST_MS = 32;
+
+/**
  * LRU cap on the offscreen image cache shared by `RecordingTarget`
  * (main thread, identity → id) and the render worker (id → ImageBitmap).
  *

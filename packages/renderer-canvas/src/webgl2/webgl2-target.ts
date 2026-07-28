@@ -7,7 +7,11 @@ import type {
   TextAlign,
   TextBaseline,
 } from "@oh-just-another/renderer-core";
-import { getActiveRasterizer, getActiveTextShaper } from "@oh-just-another/renderer-core";
+import {
+  getActiveRasterizer,
+  getActiveTextShaper,
+  onTextShaperChange,
+} from "@oh-just-another/renderer-core";
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
 import { resolveBundledFamily } from "@oh-just-another/fonts";
 import earcut from "earcut";
@@ -17,6 +21,8 @@ import {
   ELLIPSE_MIN_SEGMENTS,
   WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
   WEBGL2_TEXT_BITMAP_CACHE_CAP,
+  WEBGL2_ATLAS_BAKE_BUDGET_MS,
+  WEBGL2_ATLAS_BAKE_REST_MS,
 } from "../constants.js";
 import { MsdfTextPipeline, measureGlyphRunEm } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
@@ -288,6 +294,26 @@ export class WebGL2Target implements RenderTarget {
     // canvas was resized via setupHiDpi (no-context) after creation the
     // viewport stays at the first size, so set it explicitly.
     this.gl.viewport(0, 0, canvas.width, canvas.height);
+
+    // Warm the MSDF atlas the moment a shaper becomes active — not on
+    // the first frame that happens to draw text (which used to be the
+    // user's first pan/zoom). Also covers a shaper that loaded BEFORE
+    // this target was constructed.
+    this.ensureGlyphAtlas();
+    this.offShaperChange = onTextShaperChange(() => {
+      if (!this.disposed) this.ensureGlyphAtlas();
+    });
+    // Pre-compile every lazy GL pipeline off the first interaction frame:
+    // shader compile + link through ANGLE can cost tens of ms each, and
+    // paying them lazily used to land inside the user's first pan/zoom.
+    setTimeout(() => {
+      if (this.disposed) return;
+      this.rectPipeline ??= new RectInstancePipeline(this.gl);
+      this.ellipsePipeline ??= new EllipsePipeline(this.gl);
+      this.curvePipeline ??= new LoopBlinnCurvePipeline(this.gl);
+      this.msdfPipeline ??= new MsdfTextPipeline(this.gl);
+      this.restoreSolidProgram();
+    }, 0);
   }
 
   get size(): { readonly width: number; readonly height: number } {
@@ -315,8 +341,12 @@ export class WebGL2Target implements RenderTarget {
    * `WEBGL_lose_context`, GC can take a while to collect old surfaces
    * and runtime backend switches quickly hit the cap.
    */
+  private offShaperChange: (() => void) | null = null;
+
   dispose(): void {
     this.disposed = true;
+    this.offShaperChange?.();
+    this.offShaperChange = null;
     // Drop any undrawn queued rects and release the instance pipeline's
     // GL resources (VAO / buffers / program).
     this.rectBatch.reset();
@@ -1279,11 +1309,19 @@ export class WebGL2Target implements RenderTarget {
     void maxWidth;
     const atlas = this.ensureGlyphAtlas();
     // Emoji (and other pictographs) are colour glyphs the MSDF atlas
-    // cannot shape — routing them through it draws nothing. Fall back to
-    // the rasterised-bitmap path for any string containing them.
+    // cannot shape — routing them through it draws nothing. Strings with
+    // un-baked glyphs also take the bitmap path (baking is background
+    // work, never in-frame — see `atlasCovers`).
     if (atlas && !HAS_PICTOGRAPH_RE.test(text)) {
-      this.fillTextMSDF(text, x, y, atlas);
-      return;
+      const fontId = atlas.resolveFontId(
+        this.fontFamily,
+        this.fontWeight === "bold",
+        this.fontStyle === "italic",
+      );
+      if (this.atlasCovers(text, fontId, atlas)) {
+        this.fillTextMSDF(text, x, y, atlas);
+        return;
+      }
     }
     const bitmap = this.rasteriseString(text);
     if (!bitmap) return;
@@ -1317,9 +1355,75 @@ export class WebGL2Target implements RenderTarget {
     if (!isMsdfShaper(shaper)) return null;
     if (this.glyphAtlas && this.glyphAtlasShaper === shaper) return this.glyphAtlas;
     if (this.glyphAtlas) this.glyphAtlas.dispose(this.gl);
+    // The atlas object itself is cheap; the EXPENSIVE part — per-glyph WASM
+    // MSDF baking — never happens inside a frame. Strings whose glyphs are
+    // not baked yet render through the bitmap path while the background
+    // queue bakes them in small chunks (printable ASCII is pre-queued).
     this.glyphAtlas = new GlyphAtlas(shaper);
     this.glyphAtlasShaper = shaper;
+    this.pendingGlyphBake.clear();
+    for (let cp = 0x20; cp <= 0x7e; cp++) this.queueGlyphBake(cp, 0);
     return this.glyphAtlas;
+  }
+
+  /** Code points awaiting background baking. Key = fontId × 0x110000 + cp. */
+  private readonly pendingGlyphBake = new Set<number>();
+  private glyphBakeScheduled = false;
+
+  private queueGlyphBake(codePoint: number, fontId: number): void {
+    this.pendingGlyphBake.add(fontId * 0x110000 + codePoint);
+    if (this.glyphBakeScheduled) return;
+    this.glyphBakeScheduled = true;
+    setTimeout(() => {
+      this.drainGlyphBakeQueue();
+    }, 0);
+  }
+
+  /**
+   * Bake queued glyphs until the per-slice TIME budget runs out, then
+   * yield. A fixed glyph-count chunk turned out to block the main thread
+   * for 150–270 ms (WASM MSDF generation costs ~10–15 ms PER GLYPH), so
+   * the drain is budgeted by wall-clock instead: every slice stays under
+   * `WEBGL2_ATLAS_BAKE_BUDGET_MS` and interaction frames run in between.
+   */
+  private drainGlyphBakeQueue(): void {
+    this.glyphBakeScheduled = false;
+    if (this.disposed || !this.glyphAtlas) {
+      this.pendingGlyphBake.clear();
+      return;
+    }
+    const start = performance.now();
+    for (const key of this.pendingGlyphBake) {
+      this.pendingGlyphBake.delete(key);
+      const fontId = Math.floor(key / 0x110000);
+      const cp = key % 0x110000;
+      this.glyphAtlas.getOrRasterize(cp, fontId);
+      if (performance.now() - start >= WEBGL2_ATLAS_BAKE_BUDGET_MS) break;
+    }
+    if (this.pendingGlyphBake.size > 0) {
+      this.glyphBakeScheduled = true;
+      setTimeout(() => {
+        this.drainGlyphBakeQueue();
+      }, WEBGL2_ATLAS_BAKE_REST_MS);
+    }
+  }
+
+  /**
+   * True when every glyph of `text` is already baked. Missing ones are
+   * queued for background baking — the caller falls back to the bitmap
+   * path for THIS frame and switches to MSDF once the queue catches up.
+   */
+  private atlasCovers(text: string, fontId: number, atlas: GlyphAtlas): boolean {
+    let covered = true;
+    for (const ch of text) {
+      const cp = ch.codePointAt(0);
+      if (cp === undefined) continue;
+      if (!atlas.has(cp, fontId)) {
+        covered = false;
+        this.queueGlyphBake(cp, fontId);
+      }
+    }
+    return covered;
   }
 
   /**
@@ -1492,13 +1596,21 @@ export class WebGL2Target implements RenderTarget {
     // caret geometry, selection bounds — would drift from what's drawn.
     const atlas = this.ensureGlyphAtlas();
     // Pictographs (emoji) are not in the MSDF atlas — their glyph-run
-    // measure is NaN; those strings render AND measure via Canvas2D.
+    // measure is NaN; those strings render AND measure via Canvas2D. So
+    // do strings whose glyphs are not baked yet (measuring would bake
+    // them synchronously — the very jank the background queue avoids).
     if (atlas && !HAS_PICTOGRAPH_RE.test(text)) {
       const fontId = atlas.resolveFontId(
         this.fontFamily,
         this.fontWeight === "bold",
         this.fontStyle === "italic",
       );
+      if (!this.atlasCovers(text, fontId, atlas)) {
+        const fallbackCtx = this.ensureTextCtx();
+        if (!fallbackCtx) return { width: text.length * this.fontSize * 0.55 };
+        fallbackCtx.font = this.textFontSpec();
+        return { width: fallbackCtx.measureText(text).width };
+      }
       // Shared single-pass, memoized walk — same advances `fillTextMSDF`
       // lays out (`advance * fontSize / unitsPerEm`), so measured width
       // and drawn width stay 1:1. em-width is fontSize-independent; scale
