@@ -12,6 +12,7 @@ import {
   getActiveTextShaper,
   onTextShaperChange,
 } from "@oh-just-another/renderer-core";
+import type { GlyphBakeRequest, GlyphBakeResponse } from "../glyph-bake-worker.js";
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
 import { resolveBundledFamily } from "@oh-just-another/fonts";
 import earcut from "earcut";
@@ -21,7 +22,6 @@ import {
   ELLIPSE_MIN_SEGMENTS,
   WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
   WEBGL2_TEXT_BITMAP_CACHE_CAP,
-  WEBGL2_ATLAS_BAKE_BUDGET_MS,
   WEBGL2_ATLAS_BAKE_REST_MS,
 } from "../constants.js";
 import { MsdfTextPipeline, measureGlyphRunEm } from "./webgl2-msdf-text.js";
@@ -347,6 +347,8 @@ export class WebGL2Target implements RenderTarget {
     this.disposed = true;
     this.offShaperChange?.();
     this.offShaperChange = null;
+    this.glyphBakeWorker?.terminate();
+    this.glyphBakeWorker = null;
     // Drop any undrawn queued rects and release the instance pipeline's
     // GL resources (VAO / buffers / program).
     this.rectBatch.reset();
@@ -1379,12 +1381,53 @@ export class WebGL2Target implements RenderTarget {
     }, 0);
   }
 
+  /** Worker doing the WASM MSDF baking; spawned lazily, killed on dispose. */
+  private glyphBakeWorker: Worker | null = null;
+  private glyphBakeWorkerFailed = false;
+
+  private ensureGlyphBakeWorker(): Worker | null {
+    if (this.glyphBakeWorkerFailed || typeof Worker === "undefined") return null;
+    if (this.glyphBakeWorker) return this.glyphBakeWorker;
+    try {
+      const worker = new Worker(new URL("../glyph-bake-worker.js", import.meta.url), {
+        type: "module",
+      });
+      worker.onmessage = (ev: MessageEvent<GlyphBakeResponse>) => {
+        this.onGlyphBaked(ev.data);
+      };
+      worker.onerror = () => {
+        // Worker path unavailable (CSP / bundler) — fall back to the
+        // throttled main-thread baking for future requests.
+        this.glyphBakeWorkerFailed = true;
+        this.glyphBakeWorker?.terminate();
+        this.glyphBakeWorker = null;
+        if (this.pendingGlyphBake.size > 0 && !this.glyphBakeScheduled) {
+          this.glyphBakeScheduled = true;
+          setTimeout(() => {
+            this.drainGlyphBakeQueueSync();
+          }, 0);
+        }
+      };
+      this.glyphBakeWorker = worker;
+      return worker;
+    } catch {
+      this.glyphBakeWorkerFailed = true;
+      return null;
+    }
+  }
+
+  private onGlyphBaked(res: GlyphBakeResponse): void {
+    if (this.disposed || !this.glyphAtlas) return;
+    if (res.metrics === null) return; // shaper couldn't resolve the glyph
+    this.glyphAtlas.insertBaked(res.codePoint, res.fontId, res.metrics, res.tile);
+  }
+
   /**
-   * Bake queued glyphs until the per-slice TIME budget runs out, then
-   * yield. A fixed glyph-count chunk turned out to block the main thread
-   * for 150–270 ms (WASM MSDF generation costs ~10–15 ms PER GLYPH), so
-   * the drain is budgeted by wall-clock instead: every slice stays under
-   * `WEBGL2_ATLAS_BAKE_BUDGET_MS` and interaction frames run in between.
+   * Drain the bake queue: WASM MSDF generation costs 15–50 ms PER
+   * GLYPH, so the requests go to a dedicated worker and the main thread
+   * never rasterises. The synchronous fallback below only runs where
+   * workers are unavailable (tests / exotic hosts), throttled to one
+   * glyph per macrotask.
    */
   private drainGlyphBakeQueue(): void {
     this.glyphBakeScheduled = false;
@@ -1392,18 +1435,44 @@ export class WebGL2Target implements RenderTarget {
       this.pendingGlyphBake.clear();
       return;
     }
-    const start = performance.now();
+    const worker = this.ensureGlyphBakeWorker();
+    if (!worker) {
+      this.drainGlyphBakeQueueSync();
+      return;
+    }
+    for (const key of this.pendingGlyphBake) {
+      this.pendingGlyphBake.delete(key);
+      const fontId = Math.floor(key / 0x110000);
+      const cp = key % 0x110000;
+      if (this.glyphAtlas.has(cp, fontId)) continue;
+      const request: GlyphBakeRequest = {
+        codePoint: cp,
+        fontId,
+        tileSize: this.glyphAtlas.tileSize,
+        range: this.glyphAtlas.range,
+      };
+      worker.postMessage(request);
+    }
+  }
+
+  /** Main-thread fallback: one glyph per macrotask (workers unavailable). */
+  private drainGlyphBakeQueueSync(): void {
+    this.glyphBakeScheduled = false;
+    if (this.disposed || !this.glyphAtlas) {
+      this.pendingGlyphBake.clear();
+      return;
+    }
     for (const key of this.pendingGlyphBake) {
       this.pendingGlyphBake.delete(key);
       const fontId = Math.floor(key / 0x110000);
       const cp = key % 0x110000;
       this.glyphAtlas.getOrRasterize(cp, fontId);
-      if (performance.now() - start >= WEBGL2_ATLAS_BAKE_BUDGET_MS) break;
+      break;
     }
     if (this.pendingGlyphBake.size > 0) {
       this.glyphBakeScheduled = true;
       setTimeout(() => {
-        this.drainGlyphBakeQueue();
+        this.drainGlyphBakeQueueSync();
       }, WEBGL2_ATLAS_BAKE_REST_MS);
     }
   }

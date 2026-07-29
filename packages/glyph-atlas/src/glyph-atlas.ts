@@ -212,6 +212,64 @@ export class GlyphAtlas {
     return entry;
   }
 
+  /**
+   * Insert a glyph baked ELSEWHERE (a worker) — same slotting and cache
+   * semantics as `getOrRasterize`, but metrics + MSDF tile bytes arrive
+   * from the caller instead of the shaper, so no WASM runs on this
+   * thread. `tile` is `tileSize × tileSize × 3` RGB (or `null` for an
+   * empty glyph). Returns the cached entry (existing one on duplicate
+   * insert), or `null` when the atlas is full.
+   */
+  insertBaked(
+    codePoint: number,
+    fontId: number,
+    metrics: {
+      readonly advance: number;
+      readonly bboxXMin: number;
+      readonly bboxYMin: number;
+      readonly bboxW: number;
+      readonly bboxH: number;
+      readonly unitsPerEm: number;
+    },
+    tile: Uint8Array | null,
+  ): AtlasGlyph | null {
+    const key = fontId * UNICODE_CODEPOINT_SPAN + codePoint;
+    const cached = this.glyphs.get(key);
+    if (cached) return cached;
+    if (this.nextSlot >= this.capacity) return null;
+
+    const slot = this.nextSlot++;
+    const col = slot % this.columns;
+    const row = Math.floor(slot / this.columns);
+    const atlasX = col * this.tileSize;
+    const atlasY = row * this.tileSize;
+    const isEmpty = metrics.bboxW <= 0 || metrics.bboxH <= 0;
+    if (!isEmpty && tile !== null && tile.length >= this.tileSize * this.tileSize * 3) {
+      for (let y = 0; y < this.tileSize; y++) {
+        const srcOffset = y * this.tileSize * 3;
+        const dstOffset = ((atlasY + y) * this.atlasSize + atlasX) * 3;
+        this.buffer.set(tile.subarray(srcOffset, srcOffset + this.tileSize * 3), dstOffset);
+      }
+      this.dirtyTiles.add(slot);
+    }
+    const entry: AtlasGlyph = {
+      codePoint,
+      atlasX,
+      atlasY,
+      tileSize: this.tileSize,
+      range: this.range,
+      advance: metrics.advance,
+      bboxXMin: metrics.bboxXMin,
+      bboxYMin: metrics.bboxYMin,
+      bboxW: metrics.bboxW,
+      bboxH: metrics.bboxH,
+      unitsPerEm: metrics.unitsPerEm,
+      empty: isEmpty || tile === null,
+    };
+    this.glyphs.set(key, entry);
+    return entry;
+  }
+
   /** Number of glyphs currently cached. */
   get glyphCount(): number {
     return this.glyphs.size;

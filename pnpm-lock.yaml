@@ -768,6 +768,9 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
+      '@oh-just-another/text-wasm':
+        specifier: workspace:*
+        version: link:../text-wasm
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../types
