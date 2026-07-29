@@ -211,3 +211,10 @@ export const EMOJI_QUICK_PICKS: readonly string[] = [
   "🚀",
   "👀",
 ];
+
+/**
+ * How long the viewport must stay still before canvas-anchored DOM
+ * overlays (link badges, sticky reactions) reappear after a pan/zoom.
+ * Reasonable range 80–300 ms.
+ */
+export const VIEWPORT_QUIET_MS = 150;

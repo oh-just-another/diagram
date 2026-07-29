@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Link as LinkIcon } from "lucide-react";
 import { getElementWorldBounds } from "@oh-just-another/scene";
 import { useDiagramOptional } from "../core/hooks.js";
+import { useQuietViewport } from "../core/use-quiet-viewport.js";
 import { usePortalContainer } from "../core/portal-container.js";
 
 /**
@@ -21,6 +22,7 @@ export const LinkBadges = () => {
   const editor = useDiagramOptional();
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const portalContainer = usePortalContainer();
+  const quiet = useQuietViewport(editor);
 
   useEffect(() => {
     if (!editor) return undefined;
@@ -29,7 +31,7 @@ export const LinkBadges = () => {
     });
   }, [editor]);
 
-  if (!editor) return null;
+  if (!editor || !quiet) return null;
   const host = editor.hostElement as HTMLElement | null;
   if (!host) return null;
 

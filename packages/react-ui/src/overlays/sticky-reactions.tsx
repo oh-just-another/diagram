@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { SmilePlus } from "lucide-react";
 import { getElementWorldBounds, isSticky, type StickyElement } from "@oh-just-another/scene";
 import { useDiagramOptional } from "../core/hooks.js";
+import { useQuietViewport } from "../core/use-quiet-viewport.js";
 import { usePortalContainer } from "../core/portal-container.js";
 import { EMOJI_QUICK_PICKS } from "../core/constants.js";
 
@@ -21,6 +22,7 @@ export const StickyReactions = () => {
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const portalContainer = usePortalContainer();
+  const quiet = useQuietViewport(editor);
 
   useEffect(() => {
     if (!editor) return undefined;
@@ -29,7 +31,7 @@ export const StickyReactions = () => {
     });
   }, [editor]);
 
-  if (!editor || editor.readOnly) return null;
+  if (!editor || editor.readOnly || !quiet) return null;
   const host = editor.hostElement as HTMLElement | null;
   if (!host) return null;
 

@@ -23,6 +23,7 @@ import {
   WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
   WEBGL2_TEXT_BITMAP_CACHE_CAP,
   WEBGL2_ATLAS_BAKE_REST_MS,
+  WEBGL2_ATLAS_UPLOAD_IDLE_MS,
 } from "../constants.js";
 import { MsdfTextPipeline, measureGlyphRunEm } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
@@ -1420,7 +1421,20 @@ export class WebGL2Target implements RenderTarget {
     if (this.disposed || !this.glyphAtlas) return;
     if (res.metrics === null) return; // shaper couldn't resolve the glyph
     this.glyphAtlas.insertBaked(res.codePoint, res.fontId, res.metrics, res.tile);
+    // Push the new tiles (and the one-time 12 MB full upload) to the GPU
+    // from an idle task, NOT from the next draw — texture uploads landing
+    // inside a pan frame read as intermittent slow-downs.
+    if (!this.glyphUploadScheduled) {
+      this.glyphUploadScheduled = true;
+      setTimeout(() => {
+        this.glyphUploadScheduled = false;
+        if (this.disposed || !this.glyphAtlas) return;
+        this.glyphAtlas.uploadTo(this.gl);
+      }, WEBGL2_ATLAS_UPLOAD_IDLE_MS);
+    }
   }
+
+  private glyphUploadScheduled = false;
 
   /**
    * Drain the bake queue: WASM MSDF generation costs 15–50 ms PER

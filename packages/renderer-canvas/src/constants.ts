@@ -47,6 +47,13 @@ export const WEBGL2_TEXT_BITMAP_CACHE_CAP = 256;
 export const WEBGL2_ATLAS_BAKE_REST_MS = 32;
 
 /**
+ * Delay before freshly-baked glyph tiles are pushed to the GPU. Batches
+ * several worker responses into one upload and keeps the (one-time,
+ * ~12 MB) full atlas upload out of interaction frames. Range 30–200.
+ */
+export const WEBGL2_ATLAS_UPLOAD_IDLE_MS = 60;
+
+/**
  * LRU cap on the offscreen image cache shared by `RecordingTarget`
  * (main thread, identity → id) and the render worker (id → ImageBitmap).
  *
