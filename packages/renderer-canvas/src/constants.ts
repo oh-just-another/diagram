@@ -38,6 +38,26 @@ export const LARGE_SCENE_WORKER_THRESHOLD = 50_000;
 export const WEBGL2_TEXT_BITMAP_CACHE_CAP = 256;
 
 /**
+ * Cap on the supersampling factor for bitmap-path text (emoji, strings
+ * with unbaked glyphs, no-MSDF fallback). Bitmaps are rasterised at the
+ * current effective screen scale (view zoom × devicePixelRatio),
+ * quantised to powers of two so a smooth zoom doesn't re-rasterise every
+ * frame, and clamped here so extreme zooms don't allocate huge
+ * offscreens. 8 keeps a 10 px label crisp up to ~800 % zoom on 1×
+ * displays; range 4–16.
+ */
+export const WEBGL2_TEXT_RASTER_MAX_SCALE = 8;
+
+/**
+ * Extra headroom above the em box in bitmap-path text rasters, as a
+ * fraction of the font size. Colour emoji glyphs regularly paint above
+ * the em top ("top" baseline); without this pad their upper edge is
+ * clipped by the offscreen bitmap. Compensated at draw time so glyph
+ * positioning is unchanged. Range 0.15–0.4.
+ */
+export const WEBGL2_TEXT_RASTER_TOP_PAD = 0.25;
+
+/**
  * Pause between main-thread fallback bake slices (one glyph each) when
  * Web Workers are unavailable — a WASM MSDF bake costs 15–50 ms per
  * glyph, so the fallback spreads them out (reasonable range 16–100).

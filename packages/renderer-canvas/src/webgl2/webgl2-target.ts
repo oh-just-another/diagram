@@ -22,6 +22,8 @@ import {
   ELLIPSE_MIN_SEGMENTS,
   WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
   WEBGL2_TEXT_BITMAP_CACHE_CAP,
+  WEBGL2_TEXT_RASTER_MAX_SCALE,
+  WEBGL2_TEXT_RASTER_TOP_PAD,
   WEBGL2_ATLAS_BAKE_REST_MS,
   WEBGL2_ATLAS_UPLOAD_IDLE_MS,
 } from "../constants.js";
@@ -1326,8 +1328,8 @@ export class WebGL2Target implements RenderTarget {
         return;
       }
     }
-    const bitmap = this.rasteriseString(text);
-    if (!bitmap) return;
+    const raster = this.rasteriseString(text);
+    if (!raster) return;
     const m = this.textMetrics(text);
     let px = x;
     if (this.textAlign === "center") px -= m.width / 2;
@@ -1335,7 +1337,10 @@ export class WebGL2Target implements RenderTarget {
     let py = y;
     if (this.textBaseline === "middle") py -= this.fontSize / 2;
     else if (this.textBaseline === "bottom") py -= this.fontSize;
-    this.drawImage(bitmap, px, py, m.width, this.fontSize * 1.4);
+    // Shift up by the raster's top pad so the glyph lands where an
+    // unpadded bake would put it (the pad only adds emoji headroom).
+    const topPad = this.fontSize * WEBGL2_TEXT_RASTER_TOP_PAD;
+    this.drawImage(raster.canvas, px, py - topPad, m.width, this.fontSize * 1.4 + topPad);
   }
 
   private msdfPipeline: MsdfTextPipeline | null = null;
@@ -1708,16 +1713,37 @@ export class WebGL2Target implements RenderTarget {
     return { width: ctx.measureText(text).width };
   }
 
-  private rasteriseString(text: string): OffscreenCanvas | null {
+  /**
+   * Effective on-screen scale of text drawn at the current transform:
+   * the transform's linear scale (view zoom × shape scale) times the
+   * backbuffer's device-pixel ratio (the transform maps to LOGICAL
+   * pixels; the backbuffer is physical). Quantised to powers of two so a
+   * smooth zoom re-rasterises at discrete steps, clamped to
+   * `WEBGL2_TEXT_RASTER_MAX_SCALE`.
+   */
+  private textRasterScale(): number {
+    const t = Math.hypot(this.transform.a, this.transform.b);
+    const dpr = this._size.width > 0 ? this.gl.drawingBufferWidth / this._size.width : 1;
+    const s = t * dpr;
+    // Non-finite guard: stub GL contexts (tests) may lack a real
+    // drawingBufferWidth.
+    if (!Number.isFinite(s) || s <= 1) return 1;
+    return 2 ** Math.ceil(Math.log2(Math.min(s, WEBGL2_TEXT_RASTER_MAX_SCALE)));
+  }
+
+  private rasteriseString(text: string): { canvas: OffscreenCanvas; scale: number } | null {
     if (typeof OffscreenCanvas === "undefined") return null;
-    const key = `${text}|${this.textFontSpec()}|${this.fillColorString}`;
+    // Rasterise at the current screen scale so bitmap text (emoji, pill
+    // labels) stays sharp under zoom instead of stretching a 1× bake.
+    const scale = this.textRasterScale();
+    const key = `${text}|${this.textFontSpec()}|${this.fillColorString}|${String(scale)}`;
     const cached = this.textBitmaps.get(key);
     if (cached) {
       // Touch — re-insert at the tail so the LRU eviction below picks
       // colder entries first.
       this.textBitmaps.delete(key);
       this.textBitmaps.set(key, cached);
-      return cached;
+      return { canvas: cached, scale };
     }
     // Measure with the SAME Canvas2D font the bitmap is painted with —
     // atlas advances would disagree with the system font (and are NaN
@@ -1728,21 +1754,25 @@ export class WebGL2Target implements RenderTarget {
       measureCtx.font = this.textFontSpec();
       width = measureCtx.measureText(text).width;
     }
-    // Pad height by 40% — covers font ascent/descent fuzz without
-    // requiring per-font TextMetrics support.
-    const w = Math.max(1, Math.ceil(Number.isFinite(width) ? width : 1));
-    const h = Math.max(1, Math.ceil(this.fontSize * 1.4));
+    // Pad height by 40% below and `WEBGL2_TEXT_RASTER_TOP_PAD` above —
+    // covers font ascent/descent fuzz (emoji paint above the em top and
+    // would otherwise clip) without per-font TextMetrics support. The
+    // top pad is compensated at draw time (`fillText` shifts up by it).
+    const topPad = this.fontSize * WEBGL2_TEXT_RASTER_TOP_PAD;
+    const w = Math.max(1, Math.ceil((Number.isFinite(width) ? width : 1) * scale));
+    const h = Math.max(1, Math.ceil((this.fontSize * 1.4 + topPad) * scale));
     const canvas = new OffscreenCanvas(w, h);
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
+    if (scale !== 1) ctx.scale(scale, scale);
     ctx.font = this.textFontSpec();
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillStyle = this.fillColorString;
-    ctx.fillText(text, 0, 0);
+    ctx.fillText(text, 0, topPad);
     this.textBitmaps.set(key, canvas);
     this.evictTextBitmapsIfOverCap();
-    return canvas;
+    return { canvas, scale };
   }
 
   /**
