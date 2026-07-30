@@ -9,6 +9,7 @@ import {
 import {
   getElement,
   getElementWorldBounds,
+  isSticky,
   isText,
   removeElement,
   remapParagraphsForTextChange,
@@ -139,12 +140,16 @@ export class TextEditController {
     // A labelable shape without a label yet gets an empty one live (no
     // history — the commit patch covers it, the origin snapshot lacks it).
     if (shape !== undefined && !isText(shape) && shape.label === undefined) {
+      // Sticky notes start in auto-fit mode (the reference behaviour):
+      // the rendered size tracks the card until an explicit size is picked.
+      const autoFit = isSticky(shape);
       const r = updateElement(this.host.scene, id, (s) => ({
         ...s,
         label: {
           text: "",
           fontFamily: TEXT_DEFAULT_FONT_FAMILY,
           fontSize: LABEL_DEFAULT_FONT_SIZE,
+          ...(autoFit ? { autoFit: true } : {}),
         },
       }));
       this.host.scene = r.scene;

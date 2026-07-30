@@ -1450,6 +1450,13 @@
   outline: none;
 }
 
+/* Sticky Auto font-size toggle inside the size popover. */
+.du-sel-auto-size {
+  width: auto;
+  padding: 2px 10px;
+  font: 600 11px system-ui, sans-serif;
+}
+
 /* Sticky size letters (S / M / L segments). */
 .du-sel-size-letter {
   font:

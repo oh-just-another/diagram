@@ -165,3 +165,19 @@ describe("sticky tags and reactions", () => {
     expect((e.scene.elements.get(elementId("s")) as StickyElement).reactions).toBeUndefined();
   });
 });
+
+describe("sticky auto-fit font", () => {
+  it("first edit seeds an auto-fit label; explicit size clears it; Auto returns", () => {
+    const e = editorWith(sceneWith(sticky("s")));
+    e.beginTextEdit(elementId("s"));
+    e.setEditingText("note", 4, 4);
+    e.commitTextEdit();
+    const label = () =>
+      (e.scene.elements.get(elementId("s")) as unknown as { label: { autoFit?: boolean } }).label;
+    expect(label().autoFit).toBe(true);
+    e.updateLabelProps([elementId("s")], { fontSize: 24 });
+    expect(label().autoFit).toBeUndefined();
+    e.setLabelAutoFit([elementId("s")], true);
+    expect(label().autoFit).toBe(true);
+  });
+});

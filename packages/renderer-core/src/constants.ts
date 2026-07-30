@@ -70,6 +70,14 @@ export const LIST_MARKER_GAP_EM = 0.4;
 export const LABEL_PADDING_EM = 0.5;
 
 /**
+ * Auto-fit font-size bounds (world px) for `ShapeLabel.autoFit` — the
+ * binary search picks the largest size in this range whose layout fits
+ * the shape body. Reasonable ranges: min 8–14, max 48–96.
+ */
+export const LABEL_AUTOFIT_MIN_PX = 10;
+export const LABEL_AUTOFIT_MAX_PX = 64;
+
+/**
  * Sticky-note chrome:
  * - `STICKY_DEFAULT_FILL` — card colour when `style.fill` is omitted.
  * - `STICKY_CORNER_RADIUS` — corner rounding in world units.

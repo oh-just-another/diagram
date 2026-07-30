@@ -100,6 +100,7 @@ const ElementBaseZ = z.object({
       text: z.string(),
       fontFamily: z.string(),
       fontSize: z.number(),
+      autoFit: z.boolean().optional(),
       style: TextStyleZ.optional(),
       runs: z.array(TextRunZ).optional(),
       paragraphs: z.array(TextParagraphZ).optional(),

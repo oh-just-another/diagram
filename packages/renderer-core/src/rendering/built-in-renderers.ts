@@ -40,6 +40,8 @@ import { resolveImageSource } from "../raster/animation-adapter.js";
 import { isDrawableImageSource } from "../raster/image-source-guard.js";
 import {
   LABEL_PADDING_EM,
+  LABEL_AUTOFIT_MIN_PX,
+  LABEL_AUTOFIT_MAX_PX,
   STICKY_DEFAULT_FILL,
   STICKY_CORNER_RADIUS,
   STICKY_AUTHOR_FONT_SIZE,
@@ -364,6 +366,56 @@ const drawEmoji: ElementRenderer<EmojiElement> = (shape, target) => {
  * Shared by the renderer and the inline-edit caret path (state) so the
  * glyphs and the caret can't drift apart.
  */
+/**
+ * Auto-fit font sizing for `ShapeLabel.autoFit` (sticky notes): the
+ * largest size in [`LABEL_AUTOFIT_MIN_PX`, `LABEL_AUTOFIT_MAX_PX`]
+ * whose wrapped layout fits the padded shape body, found by binary
+ * search over `layoutText`. Memoized — the measure callback varies by
+ * backend, so the cache key folds in a coarse measure fingerprint.
+ */
+const autoFitCache = new Map<string, number>();
+
+const autoFitFontSize = (
+  text: string,
+  boxW: number,
+  boxH: number,
+  measure: (s: string) => number,
+  baseSize: number,
+  paragraphs: TextElement["paragraphs"],
+): number => {
+  // The measure callback is bound to `baseSize`; normalise so the cache
+  // key (and the search) are stable across backends and base sizes.
+  const fingerprint = Math.round((measure("Mg водоём") / baseSize) * 1000);
+  const key = `${text}|${String(Math.round(boxW))}x${String(Math.round(boxH))}|${String(fingerprint)}`;
+  const cached = autoFitCache.get(key);
+  if (cached !== undefined) return cached;
+
+  const fits = (size: number): boolean => {
+    const pad = LABEL_PADDING_EM * size;
+    const maxWidth = boxW - 2 * pad;
+    if (maxWidth < size) return false;
+    // Rescale the base-size measurement to the candidate size so the
+    // wrap decisions inside layoutText are internally consistent.
+    const scaled = (t: string): number => (measure(t) * size) / baseSize;
+    const layout = layoutText(text, scaled, {
+      fontSize: size,
+      maxWidth,
+      ...(paragraphs !== undefined ? { paragraphs } : {}),
+    });
+    return layout.lines.length * layout.lineHeight <= boxH - 2 * pad;
+  };
+  let lo = LABEL_AUTOFIT_MIN_PX;
+  let hi = LABEL_AUTOFIT_MAX_PX;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (fits(mid)) lo = mid;
+    else hi = mid;
+  }
+  if (autoFitCache.size > 512) autoFitCache.clear();
+  autoFitCache.set(key, lo);
+  return lo;
+};
+
 export const shapeLabelLayout = (
   shape: ElementBase,
   measure: (s: string) => number,
@@ -378,8 +430,26 @@ export const shapeLabelLayout = (
   const label = shape.label;
   if (label === undefined) return null;
   const bounds = getElementLocalBounds(shape);
-  const pad = LABEL_PADDING_EM * label.fontSize;
-  const maxWidth = Math.max(label.fontSize, bounds.width - 2 * pad);
+  const fontSize =
+    label.autoFit === true && label.text !== ""
+      ? autoFitFontSize(
+          label.text,
+          bounds.width,
+          bounds.height,
+          measure,
+          label.fontSize,
+          label.paragraphs,
+        )
+      : label.fontSize;
+  const pad = LABEL_PADDING_EM * fontSize;
+  const maxWidth = Math.max(fontSize, bounds.width - 2 * pad);
+  // `measure` arrives bound to the label's BASE font size; when auto-fit
+  // picked a different size, rescale so wrap decisions match the glyphs
+  // that will actually be drawn.
+  const scaledMeasure =
+    fontSize === label.fontSize
+      ? measure
+      : (t: string): number => (measure(t) * fontSize) / label.fontSize;
   // Block-level vertical alignment is applied via `offsetY` below; the
   // synthetic's glyph baseline stays "top" so drawn glyphs, the caret and
   // selection rects all share top-anchored line coordinates.
@@ -389,8 +459,8 @@ export const shapeLabelLayout = (
     ...label.style,
     textBaseline: "top",
   };
-  const layout = layoutText(label.text, measure, {
-    fontSize: label.fontSize,
+  const layout = layoutText(label.text, scaledMeasure, {
+    fontSize,
     maxWidth,
     ...(label.paragraphs !== undefined ? { paragraphs: label.paragraphs } : {}),
   });
@@ -417,7 +487,7 @@ export const shapeLabelLayout = (
     style,
     text: label.text,
     fontFamily: label.fontFamily,
-    fontSize: label.fontSize,
+    fontSize,
     maxWidth,
     clipStart: scroll,
     clipLines,

@@ -166,7 +166,27 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
     const primary: ReactNode[] = [];
     const overflow: ReactNode[] = [];
     if (allSticky) {
-      // size S/M/L | background | author strip.
+      // text (with Auto size) | size S/M/L | background | tags / author.
+      if (shapes.every((s) => s.label !== undefined)) {
+        const labelViews = shapes.map(
+          (s) =>
+            ({
+              ...s,
+              style: s.label?.style ?? {},
+              fontSize: s.label?.fontSize,
+              fontFamily: s.label?.fontFamily,
+              text: s.label?.text,
+              runs: s.label?.runs,
+            }) as unknown as ElementBase,
+        );
+        primary.push(
+          <FontFamilyControl key="l-family" shapes={labelViews} labelMode />,
+          <FontSizeControl key="l-size" shapes={labelViews} labelMode allowAuto />,
+          <TextDecorationControl key="l-decor" shapes={labelViews} labelMode />,
+          <TextAlignControl key="l-align" shapes={labelViews} labelMode />,
+          <Divider key="d-sticky" />,
+        );
+      }
       primary.push(
         <StickySizeControl key="size" shapes={shapes} />,
         <FillOpacityControl key="bg" shapes={shapes} />,
@@ -1359,9 +1379,12 @@ const FillControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
 const FontSizeControl = ({
   shapes,
   labelMode,
+  allowAuto,
 }: {
   readonly shapes: readonly ElementBase[];
   readonly labelMode?: boolean;
+  /** Offer the sticky "Auto" mode (rendered size tracks the card). */
+  readonly allowAuto?: boolean;
 }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
@@ -1371,6 +1394,7 @@ const FontSizeControl = ({
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- cast asserts TextElement; non-text shapes lack fontSize at runtime
     (s) => (s as TextElement).fontSize ?? null,
   );
+  const auto = allowAuto === true && shapes.every((s) => s.label?.autoFit === true);
   const presetValue =
     value !== null && TEXT_FONT_SIZE_PRESETS.some((p) => p.value === value) ? value : null;
   return (
@@ -1381,14 +1405,27 @@ const FontSizeControl = ({
           type="button"
           className="du-sel-text-button"
           title="Font size"
-          aria-label={`Font size ${value ?? "mixed"}`}
+          aria-label={`Font size ${auto ? "auto" : (value ?? "mixed")}`}
         >
-          {value === null ? "—" : `${Math.round(value)}`}
+          {auto ? "A" : value === null ? "—" : `${Math.round(value)}`}
         </button>
       }
     >
       <div className="du-sel-popover-section">
         <header className="du-sel-popover-label">Font size</header>
+        {allowAuto === true ? (
+          <button
+            type="button"
+            className={`du-sel-icon-button du-sel-auto-size${auto ? " is-active" : ""}`}
+            aria-pressed={auto}
+            title="Auto — text size follows the sticky"
+            onClick={() => {
+              editor.setLabelAutoFit(ids, !auto);
+            }}
+          >
+            Auto
+          </button>
+        ) : null}
         <SegmentedControl<number>
           ariaLabel="Font size preset"
           value={presetValue}

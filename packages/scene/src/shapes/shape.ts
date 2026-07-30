@@ -190,6 +190,13 @@ export interface ShapeLabel {
   readonly text: string;
   readonly fontFamily: string;
   readonly fontSize: number;
+  /**
+   * Auto-fit mode (sticky notes): the RENDERED font size is derived so
+   * the text fills the shape body, scaling with the shape; `fontSize`
+   * then only serves as the fallback / upper hint. Picking an explicit
+   * size in the toolbar clears the flag.
+   */
+  readonly autoFit?: boolean;
   /** Optional style overlay; `textAlign`/`textBaseline` default to center/middle. */
   readonly style?: TextStyle;
   readonly runs?: readonly TextRun[];

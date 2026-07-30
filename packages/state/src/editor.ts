@@ -3134,7 +3134,11 @@ export class Editor {
     this.notify();
   }
 
-  /** Merge font family / size into the embedded label. One undo step. */
+  /**
+   * Merge font family / size into the embedded label. Picking an
+   * explicit `fontSize` also leaves auto-fit mode (reference behaviour —
+   * a concrete size wins over the automatic one). One undo step.
+   */
   updateLabelProps(
     ids: Iterable<ElementId>,
     partial: { readonly fontFamily?: string; readonly fontSize?: number },
@@ -3145,9 +3149,36 @@ export class Editor {
     for (const id of ids) {
       const shape = getElement(this._scene, id);
       if (shape?.label === undefined) continue;
-      const r = updateElement(this._scene, id, (s) =>
-        s.label === undefined ? s : { ...s, label: { ...s.label, ...partial } },
-      );
+      const r = updateElement(this._scene, id, (s) => {
+        if (s.label === undefined) return s;
+        const label = { ...s.label, ...partial } as typeof s.label & { autoFit?: boolean };
+        if (partial.fontSize !== undefined) delete label.autoFit;
+        return { ...s, label };
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /** Toggle auto-fit label sizing (sticky notes). One undo step. */
+  setLabelAutoFit(ids: Iterable<ElementId>, on: boolean): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (shape?.label === undefined) continue;
+      const r = updateElement(this._scene, id, (s) => {
+        if (s.label === undefined) return s;
+        const label = { ...s.label } as typeof s.label & { autoFit?: boolean };
+        if (on) label.autoFit = true;
+        else delete label.autoFit;
+        return { ...s, label };
+      });
       this._scene = r.scene;
       tx.add(r.patch);
       changed = true;
