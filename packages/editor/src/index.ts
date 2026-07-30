@@ -48,6 +48,7 @@ export {
   downloadPng,
   openSceneFile,
   copySceneAsImage,
+  type ExportContent,
 } from "./file-actions.js";
 
 // Plug-in registries from the underlying packages, surfaced here so the

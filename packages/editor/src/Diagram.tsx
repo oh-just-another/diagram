@@ -137,6 +137,7 @@ import {
   copySceneAsImage,
   registerFileActions,
   setFileActionNotifier,
+  type ExportContent,
 } from "./file-actions.js";
 import { isEditableTarget } from "./dom-focus";
 
@@ -810,6 +811,13 @@ const EditorShell = ({
   // toggle and closed via its ✕. Starts closed; no dock / pin.
   const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  // Export content switches (sticky reactions / tags / author) — session
+  // state seeded by EXPORT_CONTENT_DEFAULTS inside the export helpers;
+  // the Export… submenu checkboxes flip them per run.
+  const [exportContent, setExportContent] = useState<ExportContent>({});
+  const toggleExportContent = (key: "stickyReactions" | "stickyTags" | "stickyAuthor"): void => {
+    setExportContent((cur) => ({ ...cur, [key]: !(cur?.[key] ?? true) }));
+  };
   useHelpDialogHotkey(() => {
     setHelpOpen((v) => !v);
   });
@@ -959,14 +967,16 @@ const EditorShell = ({
                       >
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "transparent")}
+                          onClick={() =>
+                            editor && void downloadPng(editor, "transparent", exportContent)
+                          }
                           disabled={!editor}
                         >
                           PNG (transparent)
                         </MainMenu.Item>
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "color")}
+                          onClick={() => editor && void downloadPng(editor, "color", exportContent)}
                           disabled={!editor}
                           shortcut={formatHotkey({ key: "E", meta: true, shift: true })}
                         >
@@ -974,7 +984,9 @@ const EditorShell = ({
                         </MainMenu.Item>
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "color-and-grid")}
+                          onClick={() =>
+                            editor && void downloadPng(editor, "color-and-grid", exportContent)
+                          }
                           disabled={!editor}
                         >
                           PNG (with background + grid)
@@ -983,12 +995,42 @@ const EditorShell = ({
                         <MainMenu.Item
                           icon={<Download {...menuIcon} />}
                           onClick={() => {
-                            if (editor) downloadSvg(editor.scene);
+                            if (editor) downloadSvg(editor.scene, exportContent);
                           }}
                           disabled={!editor}
                         >
                           SVG
                         </MainMenu.Item>
+                        <MainMenu.Separator />
+                        <MainMenu.Group title="Include in export">
+                          <MainMenu.Item
+                            active={exportContent?.stickyReactions !== false}
+                            keepOpen
+                            onClick={() => {
+                              toggleExportContent("stickyReactions");
+                            }}
+                          >
+                            Sticky reactions
+                          </MainMenu.Item>
+                          <MainMenu.Item
+                            active={exportContent?.stickyTags !== false}
+                            keepOpen
+                            onClick={() => {
+                              toggleExportContent("stickyTags");
+                            }}
+                          >
+                            Sticky tags
+                          </MainMenu.Item>
+                          <MainMenu.Item
+                            active={exportContent?.stickyAuthor !== false}
+                            keepOpen
+                            onClick={() => {
+                              toggleExportContent("stickyAuthor");
+                            }}
+                          >
+                            Sticky author
+                          </MainMenu.Item>
+                        </MainMenu.Group>
                       </MainMenu.Submenu>
                       <MainMenu.Item
                         icon={<RotateCcw {...menuIcon} />}

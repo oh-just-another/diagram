@@ -5,7 +5,13 @@ import {
   type Scene,
 } from "@oh-just-another/scene";
 import type { Bounds } from "@oh-just-another/types";
-import { renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
+import {
+  renderLinks,
+  renderGrid,
+  renderScene,
+  EXPORT_CONTENT_DEFAULTS,
+  type RenderSceneOptions,
+} from "@oh-just-another/renderer-core";
 import { createOffscreenCanvas2DTarget } from "@oh-just-another/renderer-canvas";
 import { EXPORT_PADDING_WORLD } from "./constants.js";
 
@@ -37,6 +43,11 @@ export interface PngExportOptions {
    * `--du-canvas-bg` CSS variable so the PNG matches what the user sees.
    */
   readonly backgroundColor: string;
+  /**
+   * Content switches for meta layers (sticky reactions / tags / author).
+   * Merged over {@link EXPORT_CONTENT_DEFAULTS}; omit for the defaults.
+   */
+  readonly content?: RenderSceneOptions["content"];
 }
 
 export const exportSceneToPng = async (
@@ -95,7 +106,10 @@ export const exportSceneToPng = async (
   }
 
   // Shapes (skipClear: true so background / grid survive).
-  renderScene(exportScene, target, { skipClear: true });
+  renderScene(exportScene, target, {
+    skipClear: true,
+    content: { ...EXPORT_CONTENT_DEFAULTS, ...options.content },
+  });
   renderLinks(exportScene, target);
 
   return canvas.convertToBlob({ type: "image/png" });

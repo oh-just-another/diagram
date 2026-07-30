@@ -11,7 +11,7 @@ import type { Bounds, LayerId, ElementId } from "@oh-just-another/types";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import type { RenderTarget } from "../targets/render-target.js";
 import type { AnimationClock } from "../raster/animation-adapter.js";
-import { getElementRenderer } from "./shape-renderer.js";
+import { getElementRenderer, type ElementRenderContext } from "./shape-renderer.js";
 import { drawShapeLabel } from "./built-in-renderers.js";
 import { createDimTarget } from "../targets/dim-target.js";
 import { cachedWorldBounds, ElementCache } from "../caches/shape-cache.js";
@@ -130,6 +130,17 @@ export interface RenderSceneOptions {
    * {@link setAnimationClock}. Omit to fall back to the module clock.
    */
   readonly clock?: AnimationClock;
+  /**
+   * Static-export content switches, forwarded to element renderers via
+   * the render context (see `ElementRenderContext.content`). Omit for
+   * interactive rendering.
+   */
+  readonly content?: ElementRenderContext["content"];
+  /**
+   * Hovered element id, forwarded to `ElementRenderContext.hoveredElement`
+   * (hover-only chrome like the sticky "+" button). Omit when untracked.
+   */
+  readonly hoveredElement?: string;
 }
 
 /**
@@ -189,7 +200,12 @@ export const renderScene = (
   // Reused per-shape render context. `clock` is per-instance when the caller
   // (Editor) threads one; omitted otherwise so the image renderer falls back
   // to the process-global animation clock.
-  const ctx: { zoom: number; clock?: AnimationClock } = clock ? { zoom, clock } : { zoom };
+  const ctx: ElementRenderContext = {
+    zoom,
+    ...(clock ? { clock } : {}),
+    ...(options.content ? { content: options.content } : {}),
+    ...(options.hoveredElement !== undefined ? { hoveredElement: options.hoveredElement } : {}),
+  };
   const lod = options.lod;
   const usePlaceholder = lod?.placeholder !== undefined && zoom < lod.placeholder;
   const dropText = lod?.hideText !== undefined && zoom < lod.hideText;

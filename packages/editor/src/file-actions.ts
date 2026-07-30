@@ -1,6 +1,7 @@
 import type { Scene } from "@oh-just-another/scene";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
+import { EXPORT_CONTENT_DEFAULTS, type RenderSceneOptions } from "@oh-just-another/renderer-core";
 import {
   type Action,
   type ActionRegistry,
@@ -23,6 +24,13 @@ import { exportSceneToPng, type PngExportBackground } from "./png-export.js";
 
 /** Device-pixel scale for PNG export / copy. 2 = retina-quality. */
 const PNG_EXPORT_SCALE = 2;
+
+/**
+ * Per-run content switches for static exports (sticky reactions / tags /
+ * author). Merged over {@link EXPORT_CONTENT_DEFAULTS} by the export
+ * helpers; the host's export UI feeds its checkboxes through here.
+ */
+export type ExportContent = RenderSceneOptions["content"];
 
 /**
  * Host notifier for user-facing errors (bad file, empty canvas,
@@ -113,11 +121,13 @@ const readCanvasBackgroundColor = (): string => {
 export const downloadPng = async (
   editor: Editor,
   background: PngExportBackground,
+  content?: ExportContent,
 ): Promise<void> => {
   const blob = await exportSceneToPng(editor.scene, {
     background,
     scale: PNG_EXPORT_SCALE,
     backgroundColor: readCanvasBackgroundColor(),
+    ...(content ? { content } : {}),
   });
   if (!blob) {
     notify("Nothing to export — the canvas is empty.");
@@ -127,8 +137,10 @@ export const downloadPng = async (
 };
 
 /** "Export as SVG" — vector export via `renderSceneToSvg`. */
-export const downloadSvg = (scene: Scene): void => {
-  const svg = renderSceneToSvg(scene);
+export const downloadSvg = (scene: Scene, content?: ExportContent): void => {
+  const svg = renderSceneToSvg(scene, {
+    content: { ...EXPORT_CONTENT_DEFAULTS, ...content },
+  });
   downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "scene.svg");
 };
 

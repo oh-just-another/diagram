@@ -904,6 +904,14 @@ export class Editor {
    */
   public lastRenderedEraseActive = false;
   /**
+   * Last-painted hovered sticky — paired with `lastRenderedScene` like
+   * {@link lastRenderedEnteredGroup}. Hovering changes only chrome (the
+   * "+" add-reaction button), not the scene, so the dirty-rect diff is
+   * empty and the button would never appear / disappear without this
+   * forcing a full repaint on hover transitions.
+   */
+  public lastRenderedHoveredSticky: ElementId | null = null;
+  /**
    * Set whenever an eraser move actually CHANGES the marked / cut set (a new
    * shape marked, un-marked, or a brush point cut). Gates the forced full
    * repaint during erasing: only the frames that change the preview repaint the
@@ -2054,6 +2062,23 @@ export class Editor {
       this.maybeAnimate();
       this.scheduleRender();
     }
+  }
+
+  /**
+   * Sticky under the idle cursor (its render bounds, so the reaction row
+   * below the card counts too) — drives the canvas-drawn hover-only "+"
+   * add-reaction button. Set by the pointer-move path; `null` clears.
+   */
+  private _hoveredStickyId: ElementId | null = null;
+
+  get hoveredStickyId(): ElementId | null {
+    return this._hoveredStickyId;
+  }
+
+  setHoveredSticky(id: ElementId | null): void {
+    if (this._hoveredStickyId === id) return;
+    this._hoveredStickyId = id;
+    this.notify();
   }
 
   /** True when the shape's GIF is paused (drives the overlay badge). */
@@ -5375,6 +5400,9 @@ export class Editor {
     // of shapes without touching the scene reference, so force a full
     // repaint when the entered-group identity changes between frames.
     if (this.lastRenderedEnteredGroup !== this._enteredGroup) return null;
+    // Hover transition on a sticky toggles the "+" chrome without a scene
+    // change — force a repaint frame for it.
+    if (this.lastRenderedHoveredSticky !== this._hoveredStickyId) return null;
     // Eraser just STOPPED (the active-stroke guard above already returned, so
     // `eraseStroke` is null here): on an Esc-cancel the marked shapes un-dim
     // without a scene change — commit changes the scene and is caught by the
@@ -6352,6 +6380,7 @@ export class Editor {
       peerSelections: this._peerSelections,
       debugHitZones: this.debugHitZones,
       readOnly: this._readOnly,
+      hoveredStickyId: this._hoveredStickyId,
       groupMoveOrigin: this.groupMoveOrigin,
       aspectLocked: this.selectionIsAspectLocked(),
       combinedSelectionBounds: this.combinedSelectionBounds(),
@@ -6378,6 +6407,7 @@ export class Editor {
     // and, on the tile-cache path, clear the consumed dirty set.
     this.lastRenderedScene = this._scene;
     this.lastRenderedEnteredGroup = this._enteredGroup;
+    this.lastRenderedHoveredSticky = this._hoveredStickyId;
     this.lastRenderedEraseActive = snapshot.eraseActive;
     // The forced erase repaint (if any) has now happened — later idle frames
     // (cursor moving / trail fading) skip the full main pass until the next cut.

@@ -16,6 +16,7 @@ const blob = await exportSceneToPng(editor.scene, {
   background: "color-and-grid", // "transparent" | "color" | "color-and-grid"
   scale: 2, // device-pixel scale; 2 = retina
   backgroundColor: "#ffffff",
+  content: { stickyReactions: false }, // optional meta-layer switches
 });
 
 if (blob) {
@@ -23,6 +24,10 @@ if (blob) {
   // …trigger a download
 }
 ```
+
+### Content switches
+
+`content` toggles sticky meta layers per export: `stickyReactions`, `stickyTags`, `stickyAuthor`. Defaults come from `EXPORT_CONTENT_DEFAULTS` (`@oh-just-another/renderer-core`) — everything included. The same flags exist on `RenderSceneOptions.content` for direct `renderScene` / `renderSceneToSvg` calls, and in the built-in Export… menu as "Include in export" checkboxes.
 
 ## Headless SVG / PNG (server-side)
 

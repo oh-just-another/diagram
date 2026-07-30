@@ -31,6 +31,9 @@ export {
   installBuiltinRenderers,
   drawShapeLabel,
   shapeLabelLayout,
+  stickyReactionLayout,
+  stickyReactionPillRects,
+  stickyReactionAddRect,
 } from "./rendering/built-in-renderers.js";
 export { isDrawableImageSource } from "./raster/image-source-guard.js";
 export { fetchModuleBytes, allocBytes, instantiateWasm } from "./raster/wasm-bytes.js";
@@ -117,4 +120,9 @@ export {
   GRID_LINE_FADE_FULL_PX,
   GRID_DOT_FADE_FROM_PX,
   GRID_DOT_FADE_FULL_PX,
+  STICKY_REACTION_FONT_SIZE,
+  STICKY_REACTION_HEIGHT,
+  STICKY_REACTION_GAP,
+  STICKY_REACTION_MIN_ZOOM,
+  EXPORT_CONTENT_DEFAULTS,
 } from "./constants.js";

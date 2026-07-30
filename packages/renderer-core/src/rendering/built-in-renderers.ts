@@ -54,6 +54,14 @@ import {
   STICKY_TAG_GAP,
   STICKY_TAG_BG,
   STICKY_TAG_COLOR,
+  STICKY_REACTION_FONT_SIZE,
+  STICKY_REACTION_HEIGHT,
+  STICKY_REACTION_PAD_X,
+  STICKY_REACTION_GAP,
+  STICKY_REACTION_BG,
+  STICKY_REACTION_ADD_COLOR,
+  STICKY_REACTION_MIN_ZOOM,
+  STICKY_REACTION_COLOR,
   LIST_MARKER_GAP_EM,
   TEXT_DECORATION_THICKNESS,
   TEXT_UNDERLINE_OFFSET,
@@ -294,7 +302,86 @@ const drawPath: ElementRenderer<PathElement> = (shape, target) => {
  * scene renderer's label pass. The author name renders along the bottom
  * edge when `showAuthor` is set.
  */
-const drawSticky: ElementRenderer<StickyElement> = (shape, target) => {
+/**
+ * The pill scale factor keeping reaction chrome at a CONSTANT on-screen
+ * size: world size = base / zoom, with the divisor clamped at
+ * `STICKY_REACTION_MIN_ZOOM` so a zoomed-out board gets shrinking (not
+ * card-swallowing) pills.
+ */
+const stickyReactionScale = (zoom: number): number =>
+  1 / Math.max(zoom > 0 ? zoom : 1, STICKY_REACTION_MIN_ZOOM);
+
+interface StickyReactionRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+interface StickyReactionPill extends StickyReactionRect {
+  readonly glyph: string;
+  readonly label: string;
+}
+
+/**
+ * Layout of a sticky's reaction pills + the "+" add button under its
+ * bottom edge, in the shape's LOCAL space. Pills flow left-to-right and
+ * WRAP onto new rows (inline-block style) when they'd overrun the card
+ * width — every reaction is always laid out, none are dropped. ONE
+ * implementation shared by the canvas renderer and the DOM click-zone
+ * overlay so the hit areas always match the painted pills.
+ *
+ * `measure` must be bound to `STICKY_REACTION_FONT_SIZE`-sized system-ui
+ * text (base px); `zoom` is the current view scale — pill sizes are
+ * divided by it so they stay visually constant (see
+ * {@link STICKY_REACTION_MIN_ZOOM} for the low-zoom clamp).
+ */
+export const stickyReactionLayout = (
+  shape: StickyElement,
+  measure: (s: string) => number,
+  zoom = 1,
+): { readonly pills: readonly StickyReactionPill[]; readonly add: StickyReactionRect } => {
+  const k = stickyReactionScale(zoom);
+  const gap = STICKY_REACTION_GAP * k;
+  const h = STICKY_REACTION_HEIGHT * k;
+  const x0 = STICKY_CORNER_RADIUS + 2;
+  const pills: StickyReactionPill[] = [];
+  let x = x0;
+  let y = shape.height + gap;
+  for (const reaction of shape.reactions ?? []) {
+    const users = (reaction as { users?: readonly string[]; count?: number }).users;
+    const count = users?.length ?? (reaction as { count?: number }).count ?? 0;
+    const label = `${reaction.glyph} ${String(count)}`;
+    const width = (measure(label) + 2 * STICKY_REACTION_PAD_X) * k;
+    if (x > x0 && x + width > shape.width) {
+      x = x0;
+      y += h + gap;
+    }
+    pills.push({ glyph: reaction.glyph, label, x, y, width, height: h });
+    x += width + gap;
+  }
+  if (x > x0 && x + h > shape.width) {
+    x = x0;
+    y += h + gap;
+  }
+  return { pills, add: { x, y, width: h, height: h } };
+};
+
+/** Pills half of {@link stickyReactionLayout} (click-zone overlay helper). */
+export const stickyReactionPillRects = (
+  shape: StickyElement,
+  measure: (s: string) => number,
+  zoom = 1,
+): readonly StickyReactionPill[] => stickyReactionLayout(shape, measure, zoom).pills;
+
+/** "+" button half of {@link stickyReactionLayout} (click-zone overlay helper). */
+export const stickyReactionAddRect = (
+  shape: StickyElement,
+  measure: (s: string) => number,
+  zoom = 1,
+): StickyReactionRect => stickyReactionLayout(shape, measure, zoom).add;
+
+const drawSticky: ElementRenderer<StickyElement> = (shape, target, ctx) => {
   const fill = shape.style.fill ?? STICKY_DEFAULT_FILL;
   if (shape.style.opacity !== undefined) target.setOpacity(shape.style.opacity);
   const w = shape.width;
@@ -314,7 +401,7 @@ const drawSticky: ElementRenderer<StickyElement> = (shape, target) => {
   target.fill();
 
   // Tag pills along the bottom edge.
-  if (shape.tags !== undefined && shape.tags.length > 0) {
+  if (ctx?.content?.stickyTags !== false && shape.tags !== undefined && shape.tags.length > 0) {
     target.setFont("system-ui, sans-serif", STICKY_TAG_FONT_SIZE, {});
     target.setTextAlign("left");
     target.setTextBaseline("top");
@@ -337,7 +424,12 @@ const drawSticky: ElementRenderer<StickyElement> = (shape, target) => {
     }
   }
 
-  if (shape.showAuthor === true && shape.authorName !== undefined && shape.authorName !== "") {
+  if (
+    ctx?.content?.stickyAuthor !== false &&
+    shape.showAuthor === true &&
+    shape.authorName !== undefined &&
+    shape.authorName !== ""
+  ) {
     target.setFont("system-ui, sans-serif", STICKY_AUTHOR_FONT_SIZE, {});
     target.setTextAlign("left");
     target.setTextBaseline("top");
@@ -347,6 +439,69 @@ const drawSticky: ElementRenderer<StickyElement> = (shape, target) => {
         ? h - STICKY_TAG_HEIGHT - STICKY_AUTHOR_FONT_SIZE - 8
         : h - STICKY_AUTHOR_FONT_SIZE - 4;
     target.fillText(shape.authorName, r + 2, authorY);
+  }
+
+  // Reaction pills under the bottom-left edge — canvas is the single
+  // visual source (exports included); the DOM overlay only overlays
+  // transparent click zones on the same rects.
+  const zoom = ctx?.zoom ?? 1;
+  const k = 1 / Math.max(zoom > 0 ? zoom : 1, STICKY_REACTION_MIN_ZOOM);
+  // Below the min zoom the whole reaction chrome is hidden — constant
+  // on-screen pills would swallow the cards on a zoomed-out board.
+  const chromeVisible = zoom >= STICKY_REACTION_MIN_ZOOM;
+  const drawReactions = chromeVisible && ctx?.content?.stickyReactions !== false;
+  // "+" add-reaction button — UI chrome drawn on the canvas so it tracks
+  // the shape 1:1 while dragging. Shown only for the HOVERED sticky in
+  // interactive renders; exports and read-only views switch it off.
+  const drawAdd =
+    chromeVisible && ctx?.content?.stickyAddButton !== false && ctx?.hoveredElement === shape.id;
+  if (drawReactions || drawAdd) {
+    // Measure at the BASE font size (the layout contract). Text is also
+    // DRAWN at the base size inside a `scale(k)` transform: a fractional
+    // per-frame font size would defeat the backend's string-bitmap cache
+    // during smooth zoom (a fresh rasterisation per pill per frame).
+    target.setFont("system-ui, sans-serif", STICKY_REACTION_FONT_SIZE, {});
+    target.setTextAlign("left");
+    target.setTextBaseline("top");
+    const layout = stickyReactionLayout(shape, (t) => target.measureText(t).width, zoom);
+    if (drawReactions) {
+      for (const pill of layout.pills) {
+        target.setFill(STICKY_REACTION_BG);
+        target.beginPath();
+        buildRoundedRectPath(target, pill.x, pill.y, pill.width, pill.height, pill.height / 2);
+        target.fill();
+        target.setFill(STICKY_REACTION_COLOR);
+        target.save();
+        target.translate(pill.x, pill.y);
+        target.scale(k, k);
+        target.fillText(
+          pill.label,
+          STICKY_REACTION_PAD_X,
+          (STICKY_REACTION_HEIGHT - STICKY_REACTION_FONT_SIZE) / 2,
+        );
+        target.restore();
+      }
+    }
+    if (drawAdd) {
+      const add = layout.add;
+      target.setFill(STICKY_REACTION_BG);
+      target.beginPath();
+      buildRoundedRectPath(target, add.x, add.y, add.width, add.height, add.height / 2);
+      target.fill();
+      // Vector "+" cross as two filled bars — crisper than a glyph at any
+      // zoom, and immune to per-backend multi-subpath stroke quirks.
+      const cx = add.x + add.width / 2;
+      const cy = add.y + add.height / 2;
+      const arm = add.height * 0.22;
+      const bar = 1.4 * k;
+      target.setFill(STICKY_REACTION_ADD_COLOR);
+      target.beginPath();
+      target.rect(cx - arm, cy - bar / 2, arm * 2, bar);
+      target.fill();
+      target.beginPath();
+      target.rect(cx - bar / 2, cy - arm, bar, arm * 2);
+      target.fill();
+    }
   }
 };
 
@@ -892,7 +1047,20 @@ export const installBuiltinRenderers = (): void => {
   registerElementRenderer<StickyElement>("sticky", drawSticky);
   // The sticky's drop shadow paints below its box — extend the dirty
   // region so moving/deleting it doesn't leave the shadow behind.
-  registerRenderOverflow("sticky", () => ({ bottom: STICKY_SHADOW_OFFSET_Y + 2 }));
+  registerRenderOverflow("sticky", (shape) => {
+    // Worst-case invalidation bound for the reaction rows: every pill on
+    // its own row (+ the "+" button row), at the largest world size the
+    // low-zoom clamp allows (1 / STICKY_REACTION_MIN_ZOOM). Overflow
+    // providers have no zoom access, so this over-approximates — costs
+    // only redraw area, never leaves ghosts.
+    const n = ((shape as StickyElement).reactions?.length ?? 0) + 1;
+    const kMax = 1 / STICKY_REACTION_MIN_ZOOM;
+    return {
+      bottom:
+        STICKY_SHADOW_OFFSET_Y + (STICKY_REACTION_GAP + STICKY_REACTION_HEIGHT) * kMax * n + 2,
+      right: (STICKY_REACTION_GAP + STICKY_REACTION_HEIGHT) * kMax + 2,
+    };
+  });
   registerElementRenderer<EmojiElement>("emoji", drawEmoji);
 };
 

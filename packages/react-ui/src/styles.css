@@ -1517,37 +1517,24 @@
   cursor: pointer;
 }
 
-/* Sticky reaction bar at the card's bottom-left corner. */
+/* Sticky reactions: pills are painted by the canvas renderer; the DOM
+   only carries transparent click zones on the same rects plus the "+"
+   button / picker anchor. */
 .du-sticky-reactions {
   position: fixed;
   z-index: 1380;
   display: flex;
   align-items: center;
-  gap: 3px;
-  transform: translateY(-100%);
   pointer-events: auto;
 }
 
-.du-sticky-reaction-pill {
-  padding: 1px 6px;
-  font: 11px system-ui, sans-serif;
-  background: var(--menu-bg);
-  border: 1px solid var(--menu-border);
-  border-radius: 9px;
-  cursor: pointer;
-}
-
-.du-sticky-reaction-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
+.du-sticky-reaction-hit {
+  position: fixed;
+  z-index: 1380;
   padding: 0;
-  color: var(--du-accent);
-  background: var(--menu-bg);
-  border: 1px solid var(--menu-border);
-  border-radius: 50%;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
   cursor: pointer;
 }
 

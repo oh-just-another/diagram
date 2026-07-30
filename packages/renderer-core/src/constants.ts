@@ -103,6 +103,40 @@ export const STICKY_TAG_HEIGHT = 14;
 export const STICKY_TAG_GAP = 4;
 export const STICKY_TAG_BG = "rgba(0, 0, 0, 0.08)";
 export const STICKY_TAG_COLOR = "#555";
+
+/**
+ * Sticky reaction pills (bottom-left row, drawn by the renderer so they
+ * reach PNG / SVG exports; the DOM layer only provides click zones).
+ */
+export const STICKY_REACTION_FONT_SIZE = 10;
+export const STICKY_REACTION_HEIGHT = 16;
+export const STICKY_REACTION_PAD_X = 6;
+export const STICKY_REACTION_GAP = 4;
+export const STICKY_REACTION_BG = "rgba(255, 255, 255, 0.85)";
+export const STICKY_REACTION_COLOR = "#333";
+/** Accent for the canvas-drawn "+" add-reaction button (iris 9). */
+export const STICKY_REACTION_ADD_COLOR = "#5b5bd6";
+/**
+ * Reaction pills keep a CONSTANT on-screen size: their world size is
+ * `base / zoom`. Below this zoom the reaction chrome (pills AND the "+"
+ * button) is HIDDEN entirely — on a zoomed-out board constant-size
+ * pills would swallow the cards. Also bounds the worst-case world size
+ * for render-overflow estimates. Range 0.25–1.
+ */
+export const STICKY_REACTION_MIN_ZOOM = 0.5;
+
+/**
+ * What static exports (PNG / SVG) include by default. The export UI can
+ * override per run; interactive rendering ignores these and draws
+ * everything.
+ */
+export const EXPORT_CONTENT_DEFAULTS = {
+  stickyReactions: true,
+  stickyTags: true,
+  stickyAuthor: true,
+  // UI chrome, not content — never wanted in a static image.
+  stickyAddButton: false,
+} as const;
 export const TEXT_UNDERLINE_OFFSET = 0.92;
 export const TEXT_STRIKETHROUGH_OFFSET = 0.5;
 

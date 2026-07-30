@@ -177,9 +177,22 @@ export interface MainMenuItemProps {
    * aligned across mixed icon / no-icon items.
    */
   readonly icon?: ReactNode;
+  /**
+   * Keep the menu open after a click — for checkbox-style items (export
+   * content switches, etc.) where the user toggles several in a row.
+   */
+  readonly keepOpen?: boolean;
 }
 
-const Item = ({ children, onClick, shortcut, disabled, active, icon }: MainMenuItemProps) => {
+const Item = ({
+  children,
+  onClick,
+  shortcut,
+  disabled,
+  active,
+  icon,
+  keepOpen,
+}: MainMenuItemProps) => {
   const { close } = useMenuCtx();
   return (
     <button
@@ -189,7 +202,7 @@ const Item = ({ children, onClick, shortcut, disabled, active, icon }: MainMenuI
       onClick={() => {
         if (disabled) return;
         onClick?.();
-        close();
+        if (!keepOpen) close();
       }}
       style={{
         ...itemHoverable(),

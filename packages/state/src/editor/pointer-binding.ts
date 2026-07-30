@@ -9,9 +9,11 @@ import {
   getLink,
   getLinkPath,
   getLinkWaypointMidpoints,
+  getElementRenderBounds,
   isFrame,
   isGroup,
   isImage,
+  isSticky,
   isText,
   updateAnnotation,
 } from "@oh-just-another/scene";
@@ -902,6 +904,28 @@ const dispatchMoveToMachine = (editor: Editor, worldPoint: Vec2): void => {
     editor.hoverAnimatedElement(
       directHs && isImage(directHs) && directHs.animationKind ? directHs.id : null,
     );
+    // Hover-only sticky chrome (the "+" add-reaction button). Once a
+    // sticky is hovered, keep it while the cursor stays inside its
+    // RENDER bounds — the reaction row lives below the card, and losing
+    // hover on the way to the button would hide it before the click.
+    if (directHs && isSticky(directHs)) {
+      editor.setHoveredSticky(directHs.id);
+    } else if (editor.hoveredStickyId !== null) {
+      const cur = editor._scene.elements.get(editor.hoveredStickyId);
+      const keep =
+        cur !== undefined &&
+        isSticky(cur) &&
+        (() => {
+          const b = getElementRenderBounds(cur);
+          return (
+            worldPoint.x >= b.x &&
+            worldPoint.x <= b.x + b.width &&
+            worldPoint.y >= b.y &&
+            worldPoint.y <= b.y + b.height
+          );
+        })();
+      if (!keep) editor.setHoveredSticky(null);
+    }
     // Track the idle cursor so the SINGLE selected element's link-start dot
     // grows by proximity. Only the selected element's dots react.
     editor.setHoverCursorWorld(editor.activeTool.type === "select" ? worldPoint : null);

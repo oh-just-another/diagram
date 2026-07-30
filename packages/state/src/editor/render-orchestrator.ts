@@ -203,6 +203,8 @@ export interface RenderSnapshot {
    * grab an affordance that would mutate the scene.
    */
   readonly readOnly: boolean;
+  /** Sticky under the idle cursor — drives the hover-only "+" chrome. */
+  readonly hoveredStickyId: ElementId | null;
   readonly groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null;
   readonly aspectLocked: boolean;
   readonly combinedSelectionBounds: Bounds | null;
@@ -407,6 +409,11 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       boundsCache: editor.boundsCache,
       clock: editor.animationClock,
       lod: DEFAULT_LOD,
+      // Read-only views get no add-reaction chrome (reacting mutates the
+      // scene); everything else stays on — interactive default.
+      ...(editor.readOnly ? { content: { stickyAddButton: false } } : {}),
+      // Hover-only chrome (sticky "+" button) needs the hovered id.
+      ...(editor.hoveredStickyId !== null ? { hoveredElement: editor.hoveredStickyId } : {}),
       ...(dimElements
         ? {
             dimElements,

@@ -21,6 +21,30 @@ export interface ElementRenderContext {
    * / preview paths, which fall back to the module clock.
    */
   readonly clock?: AnimationClock;
+  /**
+   * Static-export content switches. Omitted (interactive rendering) =
+   * draw everything; export pipelines pass explicit flags (defaults in
+   * `EXPORT_CONTENT_DEFAULTS`, overridable in the export UI) so hosts
+   * can strip collaborative chrome — sticky reactions / tags / author —
+   * from PNG / SVG output.
+   */
+  readonly content?: {
+    readonly stickyReactions?: boolean;
+    readonly stickyTags?: boolean;
+    readonly stickyAuthor?: boolean;
+    /**
+     * The "+" add-reaction button next to the pills — pure UI chrome:
+     * drawn on the canvas so it tracks the shape 1:1 while dragging,
+     * but excluded from static exports and read-only views.
+     */
+    readonly stickyAddButton?: boolean;
+  };
+  /**
+   * Id of the element under the idle cursor, when the host tracks it.
+   * Drives hover-only chrome (the sticky "+" add-reaction button).
+   * Omitted by exports / headless paths — hover chrome never shows.
+   */
+  readonly hoveredElement?: string;
 }
 
 /**
