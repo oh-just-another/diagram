@@ -137,6 +137,53 @@ describe("previewClickCreate (ghost of click-creates-element)", () => {
     expect(editor.previewClickCreate(elementId("nope"), "right")).toBeNull();
   });
 
+  it("clones only the base look of a sticky — no label, reactions, tags or author", () => {
+    const sticky: Element = {
+      id: elementId("s"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "sticky",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: { fill: "#fde047" },
+      width: 160,
+      height: 160,
+      label: { text: "hello", fontSize: 24 },
+      reactions: [{ glyph: "👍", users: ["a"] }],
+      tags: ["todo"],
+      showAuthor: true,
+      authorName: "Alice",
+    } as unknown as Element;
+    const editor = new Editor({
+      host,
+      mainTarget: noopTarget,
+      overlayTarget: noopTarget,
+      initialScene: sceneWith(sticky),
+    });
+    // Ghost preview carries no content either.
+    const p = editor.previewClickCreate(elementId("s"), "right")!;
+    const ghost = p.element as unknown as Record<string, unknown>;
+    expect(ghost.label).toBeUndefined();
+    expect(ghost.reactions).toBeUndefined();
+    expect(ghost.tags).toBeUndefined();
+    expect(ghost.authorName).toBeUndefined();
+    expect(ghost.showAuthor).toBeUndefined();
+    // Clicking the dot creates a blank same-look sticky.
+    editor.createLinkedElementFromAnchor(elementId("s"), "right");
+    const clone = [...editor.scene.elements.values()].find(
+      (e) => e.id !== elementId("s"),
+    ) as unknown as Record<string, unknown>;
+    expect(clone.type).toBe("sticky");
+    expect(clone.width).toBe(160);
+    expect((clone.style as { fill?: string }).fill).toBe("#fde047");
+    expect(clone.label).toBeUndefined();
+    expect(clone.reactions).toBeUndefined();
+    expect(clone.tags).toBeUndefined();
+    expect(clone.authorName).toBeUndefined();
+    expect(clone.showAuthor).toBeUndefined();
+  });
+
   it("returns null for a drawn line (brush strokes don't clone-create)", () => {
     const editor = new Editor({
       host,

@@ -193,6 +193,31 @@ const PREVIEW_GHOST_ELEMENT_ID = "__ghost-preview__" as ElementId;
 const PREVIEW_GHOST_LINK_ID = "__ghost-preview-link__" as LinkId;
 
 /**
+ * Strip user CONTENT from a click-create clone so it's a fresh same-kind
+ * shape (colour, size, style), not a content copy: plain text / frame
+ * name blank out; the embedded label and sticky reactions / tags /
+ * author never carry over.
+ */
+const blankCloneContent = (el: Element): Element => {
+  let out = el;
+  if (isText(out)) out = { ...out, text: "" };
+  else if (isFrame(out)) out = { ...out, name: "" };
+  const copy = { ...out } as Element & {
+    label?: unknown;
+    reactions?: unknown;
+    tags?: unknown;
+    authorName?: unknown;
+    showAuthor?: unknown;
+  };
+  delete copy.label;
+  delete copy.reactions;
+  delete copy.tags;
+  delete copy.authorName;
+  delete copy.showAuthor;
+  return copy;
+};
+
+/**
  * Ghost geometry for what clicking a start dot would create (standard hover
  * preview): the would-be new element's world bounds + the connector path from
  * the dot to it. Pure — no mutation. Mirrors the placement in the Editor's
@@ -234,13 +259,11 @@ export const previewClickCreate = (
   // ghost bounds, with blank user text. The overlay renders THIS through the real
   // renderer so the ghost looks like the actual shape (an ellipse ghosts as an
   // ellipse), not a bounding rect. Throwaway id — never enters the real scene.
-  let element = {
+  const element = blankCloneContent({
     ...src,
     id: PREVIEW_GHOST_ELEMENT_ID,
     position: { x: src.position.x + delta.x, y: src.position.y + delta.y },
-  } as Element;
-  if (isText(element)) element = { ...element, text: "" };
-  else if (isFrame(element)) element = { ...element, name: "" };
+  });
 
   // Build a throwaway scene holding the ghost element + the would-be link so the
   // connector can be drawn through the REAL link renderer (same routing,
@@ -317,17 +340,13 @@ export const computeLinkedElementFromAnchor = (
   const order = orderForTop(
     [...scene.elements.values()].filter((sh) => sh.layerId === src.layerId).map((sh) => sh.order),
   );
-  let clone = {
+  // Blank user content — a fresh same-kind shape, not a content copy.
+  const clone = blankCloneContent({
     ...src,
     id: newId,
     position: { x: src.position.x + delta.x, y: src.position.y + delta.y },
     order,
-  } as Element;
-  // Blank user text — a fresh same-kind shape, not a content copy. Cast through
-  // `Element` because `exactOptionalPropertyTypes` rejects the bare literal
-  // against the union (TS2375), though the narrowed branch is sound.
-  if (isText(clone)) clone = { ...clone, text: "" };
-  else if (isFrame(clone)) clone = { ...clone, name: "" };
+  });
 
   const added = addElement(scene, clone);
   const placed = req(getElement(added.scene, newId));
