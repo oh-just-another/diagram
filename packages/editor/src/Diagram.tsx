@@ -77,7 +77,7 @@ import {
   useHelpDialogHotkey,
   useMobileLayout,
   usePalettePlacement,
-  useScene,
+  useEditorSelector,
   useZenMode,
 } from "@oh-just-another/react-ui";
 
@@ -799,10 +799,13 @@ const EditorShell = ({
     registerFileActions();
     setFileActionNotifier(notify);
   }, [notify]);
-  // Subscribe to scene changes so the Grid toggle in MainMenu reads
-  // the latest viewport.gridEnabled / gridStyle. `useScene` is a thin
-  // selector hook — re-renders only on scene identity flips.
-  void useScene();
+  // Subscribe ONLY to the Grid / Snap toggle VALUES, not the scene
+  // identity: the scene reference flips on every frame of a drag, and a
+  // whole-shell re-render (menus, toolbars, HelpDialog) per frame makes
+  // moving elements visibly sluggish. The selectors return primitives,
+  // so `Object.is` skips re-renders until a toggle actually changes.
+  useEditorSelector((e) => gridSelection(e), "lines", "scene");
+  useEditorSelector((e) => snapSelection(e), "on");
   const paletteDropHandlers = usePalettePlacement();
   // Touch / narrow screens: the library opens as a bottom sheet instead of
   // a left overlay (which would cover the whole small canvas).
