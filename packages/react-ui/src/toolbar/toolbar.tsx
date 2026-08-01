@@ -1,4 +1,11 @@
-import { useEffect, useState, type CSSProperties, type ComponentType, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import {
   Circle,
   Eraser,
@@ -63,22 +70,37 @@ const ACTION_ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: 
  */
 const ActionRefButton = ({ id }: { readonly id: string }) => {
   const editor = useDiagramOptional();
-  const [, force] = useState(0);
+  // Derive the two live bits (pressed / disabled) inside the change
+  // handler and re-render ONLY when one of them flips — a plain
+  // force-render here made every toolbar button re-render on every
+  // frame of an element drag.
+  const derive = useCallback((): { active: boolean; enabled: boolean } => {
+    const action = defaultActionRegistry.get(id);
+    if (!action || !editor) return { active: false, enabled: false };
+    const ctx = { editor };
+    const active = action.checked?.(ctx) ?? false;
+    // Read-only gate: creating / mutating actions (no `viewMode`) disable
+    // themselves in view mode, matching the registry's dispatch gate.
+    const viewGated = editor.readOnly && action.viewMode !== true;
+    const enabled = !viewGated && (action.predicate ? action.predicate(ctx) : true);
+    return { active, enabled };
+  }, [editor, id]);
+  const [live, setLive] = useState(derive);
   useEffect(() => {
     if (!editor) return undefined;
-    return editor.on("change", () => {
-      force((n) => n + 1);
-    });
-  }, [editor]);
+    const update = () => {
+      const next = derive();
+      setLive((prev) =>
+        prev.active === next.active && prev.enabled === next.enabled ? prev : next,
+      );
+    };
+    update();
+    return editor.on("change", update);
+  }, [editor, derive]);
   const action = defaultActionRegistry.get(id);
   if (!action) return null;
   const Icon = action.iconId ? ACTION_ICONS[action.iconId] : undefined;
-  const ctx = editor ? { editor } : null;
-  const active = ctx ? (action.checked?.(ctx) ?? false) : false;
-  // Read-only gate: creating / mutating actions (no `viewMode`) disable
-  // themselves in view mode, matching the registry's dispatch gate.
-  const viewGated = !!editor?.readOnly && action.viewMode !== true;
-  const enabled = ctx && !viewGated ? (action.predicate ? action.predicate(ctx) : true) : false;
+  const { active, enabled } = live;
   const matchers: readonly HotkeyMatcher[] =
     action.hotkey === undefined
       ? []

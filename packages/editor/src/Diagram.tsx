@@ -1363,16 +1363,10 @@ const ZOOM_FIT_HOTKEY = formatHotkey({ alt: true, key: "1" });
  */
 const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
   const editor = useDiagramOptional();
-  // Force re-render on viewport change.
-  const [, force] = useState(0);
-  useEffect(() => {
-    if (!editor) return undefined;
-    return editor.subscribe(() => {
-      force((n) => n + 1);
-    });
-  }, [editor]);
+  // Subscribe to the zoom VALUE only — a whole-editor subscription would
+  // re-render these buttons on every frame of an element drag.
+  const zoom = useEditorSelector((e) => e.scene.viewport.zoom, 1);
   if (!editor) return null;
-  const zoom = editor.scene.viewport.zoom;
   return (
     <ButtonGroup ariaLabel="Zoom">
       <IconButton
