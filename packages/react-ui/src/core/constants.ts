@@ -218,3 +218,12 @@ export const EMOJI_QUICK_PICKS: readonly string[] = [
  * Reasonable range 80–300 ms.
  */
 export const VIEWPORT_QUIET_MS = 150;
+
+/**
+ * How long after an element gesture (move / resize / rotate) ends before
+ * the floating selection toolbar reappears. During the gesture the
+ * toolbar is hidden entirely — repositioning it (floating-ui
+ * autoUpdate + React re-render) on every frame of a drag costs more
+ * than the whole canvas repaint. Reasonable range 100–400 ms.
+ */
+export const GESTURE_QUIET_MS = 200;
