@@ -72,6 +72,9 @@ const recordEveryVariant = (t: RecordingTarget): void => {
   t.fill("nonzero");
   t.fill("evenodd");
   t.stroke();
+  t.clip();
+  t.clip("nonzero");
+  t.clip("evenodd");
   // Text — with and without maxWidth.
   t.fillText("hello", 1, 2);
   t.fillText("hello", 3, 4, 120);

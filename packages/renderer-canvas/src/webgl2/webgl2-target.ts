@@ -212,10 +212,12 @@ export class WebGL2Target implements RenderTarget {
       antialias: true,
       premultipliedAlpha: true,
       preserveDrawingBuffer,
+      stencil: true, // clip() carves regions through the stencil buffer
     });
     gl ??= (canvas as HTMLCanvasElement).getContext("webgl2", {
       premultipliedAlpha: true,
       preserveDrawingBuffer,
+      stencil: true,
     });
     if (!gl) {
       throw new Error(
@@ -435,12 +437,25 @@ export class WebGL2Target implements RenderTarget {
       fontStyle: this.fontStyle,
       textAlign: this.textAlign,
       textBaseline: this.textBaseline,
+      clipDepth: this.clipDepth,
     });
   }
 
   restore(): void {
     const s = this.stack.pop();
     if (!s) return;
+    // Lift clip levels installed since the matching save(). Queued rect
+    // fills must hit the framebuffer while their clip is still active.
+    if (this.clipDepth > s.clipDepth) {
+      this.flushRectBatch();
+      while (this.clipDepth > s.clipDepth) {
+        const level = this.clipLevels.pop();
+        if (!level) break;
+        this.writeClipStencil(level, -1);
+        this.clipDepth--;
+      }
+      this.applyStencilTest();
+    }
     this.transform = s.transform;
     this.fillColor = s.fillColor;
     this.fillAlpha = s.fillAlpha;
@@ -1003,6 +1018,104 @@ export class WebGL2Target implements RenderTarget {
   }
   private curvePipeline: LoopBlinnCurvePipeline | null = null;
   private ellipsePipeline: EllipsePipeline | null = null;
+
+  // --- Clip (stencil buffer) ---
+
+  /** Nesting depth of active clip regions (= stencil value inside them all). */
+  private clipDepth = 0;
+  /**
+   * Flattened polygon + transform snapshot per active clip level, so
+   * `restore()` can erase exactly the pixels that level incremented
+   * (same geometry, same transform → same rasterisation → clean DECR).
+   */
+  private readonly clipLevels: {
+    pts: Float64Array;
+    count: number;
+    transform: MutableTransform;
+  }[] = [];
+
+  /**
+   * Intersect the clip region with the current path. The path is
+   * flattened to a polygon ring (curves are already flattened into the
+   * path buffer; rect / ellipse fast-paths convert here) and drawn into
+   * the STENCIL buffer with colour writes off: inside pixels increment
+   * to `clipDepth + 1`, then every subsequent draw stencil-tests
+   * `EQUAL clipDepth`. Nested save/clip pairs intersect naturally.
+   * Note: stencil coverage is aliased (no MSAA resolve on the mask
+   * edge) — acceptable for image masks; Canvas2D clips are aliased too.
+   */
+  clip(_rule?: FillRule): void {
+    void _rule; // stencil pass uses earcut (nonzero); evenodd masks are not used by the kernel
+    if (this.disposed) return;
+    this.flushRectBatch(); // queued rects belong OUTSIDE the new clip
+    let pts: Float64Array;
+    let count: number;
+    if (this.currentEllipse) {
+      this.buildEllipseStrokePolyline(this.currentEllipse);
+      count = this.pathPts;
+      pts = this.pathXY.slice(0, count * 2);
+    } else if (this.currentPath) {
+      const r = this.currentPath;
+      pts = Float64Array.of(
+        r.x,
+        r.y,
+        r.x + r.width,
+        r.y,
+        r.x + r.width,
+        r.y + r.height,
+        r.x,
+        r.y + r.height,
+      );
+      count = 4;
+    } else if (this.pathPts >= 3) {
+      count = this.pathPts;
+      pts = this.pathXY.slice(0, count * 2);
+    } else {
+      return; // no meaningful path — Canvas2D would clip to empty; keep drawing instead
+    }
+    const level = { pts, count, transform: { ...this.transform } };
+    this.writeClipStencil(level, 1);
+    this.clipLevels.push(level);
+    this.clipDepth++;
+    this.applyStencilTest();
+  }
+
+  /**
+   * Rasterise a clip level's polygon into the stencil buffer.
+   * `delta = 1` increments inside pixels (install, intersecting with the
+   * existing clip via the EQUAL test); `delta = -1` decrements them back
+   * (uninstall on restore). Colour writes are off for the whole pass.
+   */
+  private writeClipStencil(
+    level: { pts: Float64Array; count: number; transform: MutableTransform },
+    delta: 1 | -1,
+  ): void {
+    const gl = this.gl;
+    gl.enable(gl.STENCIL_TEST);
+    gl.colorMask(false, false, false, false);
+    // Install: only pixels already inside every outer clip (== depth)
+    // increment. Uninstall: only pixels this level raised (== depth)
+    // decrement — the caller pops levels in LIFO order.
+    gl.stencilFunc(gl.EQUAL, this.clipDepth, 0xff);
+    gl.stencilOp(gl.KEEP, gl.KEEP, delta === 1 ? gl.INCR : gl.DECR);
+    const saved = this.transform;
+    this.transform = level.transform;
+    this.fillPolygonEarcut(level.pts, level.count, 1);
+    this.transform = saved;
+    gl.colorMask(true, true, true, true);
+  }
+
+  /** Sync the global stencil test with the current clip depth. */
+  private applyStencilTest(): void {
+    const gl = this.gl;
+    if (this.clipDepth > 0) {
+      gl.enable(gl.STENCIL_TEST);
+      gl.stencilFunc(gl.EQUAL, this.clipDepth, 0xff);
+      gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+    } else {
+      gl.disable(gl.STENCIL_TEST);
+    }
+  }
   /**
    * Set by {@link dispose}. Draw entry points bail out when set: a late
    * async frame (image decode / font load resolving after a backend
@@ -1167,7 +1280,15 @@ export class WebGL2Target implements RenderTarget {
     }
     this.gl.viewport(0, 0, bitmapW, bitmapH);
     this.gl.clearColor(0, 0, 0, 0);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    // Also wipe the stencil buffer — a frame that died mid-clip (lost
+    // restore) must not leak its mask into the next frame.
+    this.gl.clearStencil(0);
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
+    if (this.clipDepth > 0) {
+      this.clipDepth = 0;
+      this.clipLevels.length = 0;
+      this.applyStencilTest();
+    }
   }
 
   // --- Stroke pipeline ---
@@ -1880,6 +2001,7 @@ export const dashPolyline = (pts: readonly Vec2[], pattern: readonly number[]): 
  * (Canvas2D doesn't snapshot it either).
  */
 interface GfxState {
+  clipDepth: number;
   transform: MutableTransform;
   fillColor: [number, number, number];
   fillAlpha: number;

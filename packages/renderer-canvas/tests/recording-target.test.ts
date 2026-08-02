@@ -190,6 +190,7 @@ describe("replayCommands", () => {
       ellipse: vi.fn(),
       fill: vi.fn(() => calls.push("fill")),
       stroke: vi.fn(),
+      clip: vi.fn(),
       fillText: vi.fn(),
       measureText: vi.fn(() => ({ width: 0 })),
       drawImage: vi.fn(),
@@ -214,6 +215,17 @@ describe("replayCommands", () => {
     rec.fill("evenodd");
     replayCommands(fake, rec.flush());
     expect(fill).toHaveBeenCalledWith("evenodd");
+  });
+
+  it("records and replays clip (with and without a rule)", () => {
+    const clip = vi.fn();
+    const fake = stubTarget({ clip });
+    const rec = new RecordingTarget(10, 10);
+    rec.clip();
+    rec.clip("evenodd");
+    replayCommands(fake, rec.flush());
+    expect(clip).toHaveBeenNthCalledWith(1);
+    expect(clip).toHaveBeenNthCalledWith(2, "evenodd");
   });
 
   it("defines a bitmap then replays drawImage-by-id onto the target", () => {
@@ -289,6 +301,7 @@ const stubTarget = (override: Partial<Record<string, ReturnType<typeof vi.fn>>>)
     ellipse: vi.fn(),
     fill: vi.fn(),
     stroke: vi.fn(),
+    clip: vi.fn(),
     fillText: vi.fn(),
     measureText: vi.fn(() => ({ width: 0 })),
     drawImage: vi.fn(),
