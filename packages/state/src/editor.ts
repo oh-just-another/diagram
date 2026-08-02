@@ -97,7 +97,11 @@ import {
   type FileDropContext,
   type FileDropHandler,
 } from "./features/file-drop.js";
-import { imageFileDropHandler, videoFileDropHandler } from "./features/built-in-handlers.js";
+import {
+  imageFileDropHandler,
+  videoFileDropHandler,
+  createHiddenLoopingVideo,
+} from "./features/built-in-handlers.js";
 import {
   computeDimElements as computeDimElementsHelper,
   isDescendantOfGroup as isDescendantOfGroupHelper,
@@ -3402,21 +3406,56 @@ export class Editor {
   }
 
   /**
-   * Swap an image shape's backing file for `blob` while keeping its
-   * position / size / crop. Registers the new `BinaryFile`, points the
-   * shape at it, drops the stale live handle (`metadata.image`) and lets
-   * the standard rehydration pass decode the new bytes. One undo step.
+   * Swap a media shape's backing file for `blob` while keeping its
+   * position and width (height refits to the new aspect). Accepts static
+   * images, GIFs and videos — the shape's animation fields are rewritten
+   * to match the NEW media kind, and `crop` resets when the media kind
+   * changes (its pixel rect targeted the old content). Registers the new
+   * `BinaryFile`, points the shape at it, drops the stale live handle
+   * (`metadata.image`) and rebuilds handles for the new bytes. One undo
+   * step.
    */
   async replaceImageFile(id: ElementId, blob: Blob, name?: string): Promise<void> {
     if (this.readOnly) return;
     const shape = getElement(this._scene, id);
     if (!shape || !isImage(shape)) return;
     const added = await computeAddBinaryFile(this._scene, blob, name, () => ++this.nextId);
-    // The new bitmap's aspect ratio replaces the old one: keep the shape's
+    const mime = blob.type;
+    const isVideo = mime.startsWith("video/") || /\.(mp4|webm|ogv|mov)$/i.test(name ?? "");
+    const isGif = !isVideo && (mime === "image/gif" || /\.gif$/i.test(name ?? ""));
+    const url =
+      typeof URL !== "undefined" && typeof URL.createObjectURL === "function"
+        ? URL.createObjectURL(blob)
+        : null;
+
+    // The new media's aspect ratio replaces the old one: keep the shape's
     // width, refit the height — otherwise a differently-proportioned file
-    // renders stretched into the old box.
+    // renders stretched into the old box. Videos measure through a hidden
+    // looping <video> (which then stays on as the live handle, same as the
+    // video drop handler); images/GIFs through createImageBitmap.
     let refitHeight: number | null = null;
-    if (typeof createImageBitmap === "function") {
+    let videoHandle: HTMLVideoElement | null = null;
+    if (isVideo) {
+      if (typeof document !== "undefined" && url !== null) {
+        const video = createHiddenLoopingVideo(url);
+        await new Promise<void>((resolve) => {
+          video.onloadedmetadata = () => {
+            resolve();
+          };
+          video.onerror = () => {
+            resolve();
+          };
+        });
+        if (video.videoWidth > 0) {
+          refitHeight = (shape.width * video.videoHeight) / video.videoWidth;
+        }
+        // Best-effort play (muted autoplay can still need a prior gesture).
+        void video.play().catch(() => {
+          /* intentional no-op */
+        });
+        videoHandle = video;
+      }
+    } else if (typeof createImageBitmap === "function") {
       try {
         const bitmap = await createImageBitmap(blob);
         if (bitmap.width > 0) {
@@ -3427,30 +3466,58 @@ export class Editor {
         /* undecodable here — keep the old box; rehydration reports errors */
       }
     }
+    // GIF frames decode from the raw bytes via the "gif" adapter.
+    const animationBytes = isGif ? await blob.arrayBuffer() : undefined;
+
+    const oldKind = shape.animationKind
+      ? "gif"
+      : shape.metadata?.animated === true
+        ? "video"
+        : "static";
+    const newKind = isGif ? "gif" : isVideo ? "video" : "static";
+
     const tx = this._history.transaction();
     tx.add(added.patch);
     const r = updateElement(added.scene, id, (s) => {
       const copy = { ...s } as typeof s & {
+        src: string;
         fileId?: FileId;
         height: number;
         metadata?: Record<string, unknown>;
+        animationKind?: string;
         animationData?: unknown;
+        crop?: unknown;
       };
       copy.fileId = added.id;
+      if (url !== null) copy.src = url;
       if (refitHeight !== null) copy.height = refitHeight;
-      if (copy.metadata && "image" in copy.metadata) {
-        const { image: _image, ...rest } = copy.metadata;
-        if (Object.keys(rest).length > 0) copy.metadata = rest;
-        else delete copy.metadata;
-      }
+      const meta: Record<string, unknown> = { ...copy.metadata };
+      delete meta.image;
+      delete meta.animated;
+      if (newKind !== "static") meta.animated = true;
+      if (videoHandle) meta.image = videoHandle;
+      if (Object.keys(meta).length > 0) copy.metadata = meta;
+      else delete copy.metadata;
+      delete copy.animationKind;
       delete copy.animationData;
+      if (isGif) {
+        copy.animationKind = "gif";
+        copy.animationData = animationBytes;
+      }
+      // The crop rect addressed the OLD media's pixels — meaningless
+      // across a media-kind switch.
+      if (oldKind !== newKind) delete copy.crop;
       return copy;
     });
     this._scene = r.scene;
     tx.add(r.patch);
     tx.commit();
+    if (newKind !== "static") {
+      this.gifPlayback.ensure(id);
+      this.maybeAnimate();
+    }
     this.notify();
-    await animScene.rehydrateStaticImages(this);
+    if (newKind === "static") await animScene.rehydrateStaticImages(this);
   }
 
   /**

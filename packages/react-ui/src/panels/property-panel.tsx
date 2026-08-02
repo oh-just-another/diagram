@@ -1123,7 +1123,11 @@ const ImageNameControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
   );
 };
 
-/** Pick a new image file and swap it under the selected shape (size / crop kept). */
+/**
+ * Pick a new media file (image / GIF / video) and swap it under the
+ * selected shape. Position and width are kept (height refits to the new
+ * aspect); the crop resets when the media kind changes.
+ */
 const ReplaceImageControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -1134,8 +1138,8 @@ const ReplaceImageControl = ({ shapes }: { readonly shapes: readonly ElementBase
       <button
         type="button"
         className="du-sel-icon-button"
-        title="Replace image"
-        aria-label="Replace image"
+        title="Replace media"
+        aria-label="Replace media"
         onClick={() => {
           inputRef.current?.click();
         }}
@@ -1145,7 +1149,7 @@ const ReplaceImageControl = ({ shapes }: { readonly shapes: readonly ElementBase
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*,.gif,.mp4,.webm,.mov"
         style={{ display: "none" }}
         onChange={(ev) => {
           const file = ev.currentTarget.files?.[0];

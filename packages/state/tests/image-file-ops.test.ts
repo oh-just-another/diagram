@@ -111,4 +111,47 @@ describe("replaceImageFile", () => {
     const reverted = e.scene.elements.get(elementId("i")) as ImageElement;
     expect(reverted.fileId).toBe(before.fileId);
   });
+
+  it("replacing with a GIF sets the animation fields and resets the crop", async () => {
+    const cropped = {
+      ...image("i", "f1"),
+      crop: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 },
+    } as unknown as Element;
+    const e = editorWith(withFile(sceneWith(cropped), "f1", "old.png"));
+    const blob = new Blob([new Uint8Array([1, 2, 3])], { type: "image/gif" });
+    await e.replaceImageFile(elementId("i"), blob, "anim.gif");
+    const after = e.scene.elements.get(elementId("i")) as ImageElement;
+    expect(after.animationKind).toBe("gif");
+    expect(after.animationData).toBeInstanceOf(ArrayBuffer);
+    expect(after.metadata?.animated).toBe(true);
+    expect(after.crop).toBeUndefined(); // media kind changed — crop reset
+  });
+
+  it("replacing a GIF with a static image clears the animation fields", async () => {
+    const gifShape = {
+      ...image("i", "f1"),
+      animationKind: "gif",
+      animationData: new Uint8Array([1]).buffer,
+      metadata: { animated: true },
+    } as unknown as Element;
+    const e = editorWith(withFile(sceneWith(gifShape), "f1", "old.gif"));
+    const blob = new Blob([new Uint8Array([9])], { type: "image/png" });
+    await e.replaceImageFile(elementId("i"), blob, "still.png");
+    const after = e.scene.elements.get(elementId("i")) as ImageElement;
+    expect(after.animationKind).toBeUndefined();
+    expect(after.animationData).toBeUndefined();
+    expect(after.metadata?.animated).toBeUndefined();
+  });
+
+  it("keeps the crop when the media kind is unchanged", async () => {
+    const cropped = {
+      ...image("i", "f1"),
+      crop: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 },
+    } as unknown as Element;
+    const e = editorWith(withFile(sceneWith(cropped), "f1", "old.png"));
+    const blob = new Blob([new Uint8Array([9, 9])], { type: "image/png" });
+    await e.replaceImageFile(elementId("i"), blob, "next.png");
+    const after = e.scene.elements.get(elementId("i")) as ImageElement;
+    expect(after.crop).toEqual({ x: 0.1, y: 0.1, width: 0.5, height: 0.5 });
+  });
 });
