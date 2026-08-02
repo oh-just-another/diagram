@@ -97,6 +97,72 @@ describe("setImageAlt", () => {
   });
 });
 
+describe("setImageMask", () => {
+  it("sets, replaces and clears the mask (undoable)", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.setImageMask([elementId("i")], { kind: "ellipse" });
+    let img = e.scene.elements.get(elementId("i")) as ImageElement & { mask?: unknown };
+    expect(img.mask).toEqual({ kind: "ellipse" });
+    e.setImageMask([elementId("i")], { kind: "round-rect", radius: 0.3 });
+    img = e.scene.elements.get(elementId("i")) as ImageElement & { mask?: unknown };
+    expect(img.mask).toEqual({ kind: "round-rect", radius: 0.3 });
+    e.setImageMask([elementId("i")], null);
+    img = e.scene.elements.get(elementId("i")) as ImageElement & { mask?: unknown };
+    expect(img.mask).toBeUndefined();
+    e.undo();
+    img = e.scene.elements.get(elementId("i")) as ImageElement & { mask?: unknown };
+    expect(img.mask).toEqual({ kind: "round-rect", radius: 0.3 });
+  });
+
+  it("ignores non-image shapes", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.setImageMask([elementId("nope")], { kind: "ellipse" });
+    expect((e.scene.elements.get(elementId("i")) as { mask?: unknown }).mask).toBeUndefined();
+  });
+});
+
+describe("setImageAspectPreset", () => {
+  // Base image: 40×30 box, no crop → natural aspect 4:3.
+  it("square centre-crops the longer axis and refits the box to 1:1", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.setImageAspectPreset([elementId("i")], "square");
+    const img = e.scene.elements.get(elementId("i")) as ImageElement;
+    expect(img.width).toBe(40);
+    expect(img.height).toBe(40);
+    expect(img.crop).toEqual({ x: (1 - 0.75) / 2, y: 0, width: 0.75, height: 1 });
+  });
+
+  it("circle = square box + ellipse mask", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.setImageAspectPreset([elementId("i")], "circle");
+    const img = e.scene.elements.get(elementId("i")) as ImageElement & { mask?: unknown };
+    expect(img.height).toBe(img.width);
+    expect(img.mask).toEqual({ kind: "ellipse" });
+  });
+
+  it("wide trims the vertical axis when the source is taller than 16:9", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.setImageAspectPreset([elementId("i")], "wide");
+    const img = e.scene.elements.get(elementId("i")) as ImageElement;
+    expect(img.height).toBeCloseTo(40 / (16 / 9));
+    // natural 4/3 < 16/9 → full width, cropped height = (4/3) / (16/9) = 0.75.
+    expect(img.crop?.width).toBe(1);
+    expect(img.crop?.height).toBeCloseTo(0.75);
+    expect(img.crop?.y).toBeCloseTo(0.125);
+  });
+
+  it("original clears crop + mask and restores the natural aspect", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.setImageAspectPreset([elementId("i")], "circle");
+    e.setImageAspectPreset([elementId("i")], "original");
+    const img = e.scene.elements.get(elementId("i")) as ImageElement & { mask?: unknown };
+    expect(img.crop).toBeUndefined();
+    expect(img.mask).toBeUndefined();
+    // Natural aspect 4:3 survives the round-trip through the square crop.
+    expect(img.width / img.height).toBeCloseTo(4 / 3);
+  });
+});
+
 describe("replaceImageFile", () => {
   it("registers new bytes, repoints fileId and keeps geometry (one undo)", async () => {
     const e = editorWith(withFile(sceneWith(image("i", "f1")), "f1", "old.png"));

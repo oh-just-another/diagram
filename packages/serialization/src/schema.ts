@@ -175,6 +175,20 @@ const ImageZ = ElementBaseZ.extend({
   crop: z
     .object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() })
     .optional(),
+  // Shape mask over the element box (applied after crop); omitted = no
+  // mask. Additive — older scenes lack it.
+  mask: z
+    .discriminatedUnion("kind", [
+      z.object({ kind: z.literal("ellipse") }).strict(),
+      z.object({ kind: z.literal("round-rect"), radius: z.number() }).strict(),
+      z
+        .object({
+          kind: z.literal("polygon"),
+          points: z.array(z.object({ x: z.number(), y: z.number() }).strict()).min(3),
+        })
+        .strict(),
+    ])
+    .optional(),
   // Animated-content hints (gif / lottie / video).
   animationKind: z.string().optional(),
   animationData: z.unknown().optional(),

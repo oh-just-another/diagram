@@ -12,6 +12,21 @@ import { isFrame, type FrameElement } from "@oh-just-another/scene";
 
 So a frame already gives you the two behaviours people usually want from clipping at export time — a bounded region and "crop to this region" on export. Membership is reconciled automatically as you drag shapes: a shape whose centre lands over a frame is adopted, and one whose centre leaves is released.
 
-Planned — not yet available: true render-time clipping, where content that extends past a frame's (or any container's) edges is visually masked on the live canvas. `FrameElement` today has no `clip` flag, and the renderer does not mask children to a parent's bounds — overflow is drawn in full. Frames are a logical grouping and export-crop mechanism, not a render mask.
+## Image masks
 
-If you need hard masking now, crop on export to the frame bounds, or keep off-frame content on a separate hidden layer.
+Image elements support true render-time masking via `ImageElement.mask` — the drawn box is clipped to a shape, in every backend and in PNG / SVG exports:
+
+```ts
+import { IMAGE_MASK_POLYGON_PRESETS, type ImageMask } from "@oh-just-another/scene";
+
+editor.setImageMask(ids, { kind: "ellipse" }); // circle on a square box
+editor.setImageMask(ids, { kind: "round-rect", radius: 0.2 }); // fraction of the shorter side
+editor.setImageMask(ids, { kind: "polygon", points: IMAGE_MASK_POLYGON_PRESETS.star });
+editor.setImageMask(ids, null); // clear
+```
+
+Mask coordinates are normalised to the element box (0..1), so masks survive resizes. `polygon` accepts any closed ring of ≥ 3 points; built-in presets: `diamond`, `triangle`, `hexagon`, `star`. The mask applies after (and independently of) the pixel `crop`. The toolbar exposes a mask picker next to the Crop control.
+
+Under the hood this uses `RenderTarget.clip(rule?)` — clip the current path within `save()`/`restore()` (Canvas2D `ctx.clip`, SVG `<clipPath>`, WebGL2 stencil buffer) — available to custom shape renderers too.
+
+Planned — not yet available: render-time clipping of frame / container children. `FrameElement` has no `clip` flag and the renderer does not mask children to a parent's bounds — overflow is drawn in full. If you need that today, crop on export to the frame bounds, or keep off-frame content on a separate hidden layer.

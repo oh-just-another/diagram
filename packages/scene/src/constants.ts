@@ -323,3 +323,46 @@ export const LINK_LABEL_END_CLEARANCE = 24;
  * keeps a label inside its computed bounds. Range: 0.55–0.7.
  */
 export const LINK_LABEL_CHAR_WIDTH_FACTOR = 0.62;
+
+/**
+ * Built-in polygon presets for image masks (`ImageMask.kind: "polygon"`),
+ * as normalised (0..1) closed rings over the element box. Offered by the
+ * mask picker UI; hosts may pass any other ring — the model accepts
+ * arbitrary polygons. Point counts stay low: masks clip through the
+ * render targets' clip API, and every vertex costs path work per frame.
+ */
+export const IMAGE_MASK_POLYGON_PRESETS: Readonly<
+  Record<string, readonly { readonly x: number; readonly y: number }[]>
+> = {
+  diamond: [
+    { x: 0.5, y: 0 },
+    { x: 1, y: 0.5 },
+    { x: 0.5, y: 1 },
+    { x: 0, y: 0.5 },
+  ],
+  triangle: [
+    { x: 0.5, y: 0 },
+    { x: 1, y: 1 },
+    { x: 0, y: 1 },
+  ],
+  hexagon: [
+    { x: 0.25, y: 0 },
+    { x: 0.75, y: 0 },
+    { x: 1, y: 0.5 },
+    { x: 0.75, y: 1 },
+    { x: 0.25, y: 1 },
+    { x: 0, y: 0.5 },
+  ],
+  star: [
+    { x: 0.5, y: 0 },
+    { x: 0.618, y: 0.363 },
+    { x: 1, y: 0.382 },
+    { x: 0.691, y: 0.618 },
+    { x: 0.809, y: 1 },
+    { x: 0.5, y: 0.764 },
+    { x: 0.191, y: 1 },
+    { x: 0.309, y: 0.618 },
+    { x: 0, y: 0.382 },
+    { x: 0.382, y: 0.363 },
+  ],
+};

@@ -31,6 +31,7 @@ export {
   installBuiltinRenderers,
   drawShapeLabel,
   shapeLabelLayout,
+  buildImageMaskPath,
   stickyReactionLayout,
   stickyReactionPillRects,
   stickyReactionAddRect,

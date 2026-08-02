@@ -339,6 +339,42 @@ describe("round-trip", () => {
     });
   });
 
+  it("preserves an optional image mask (all three kinds)", () => {
+    const masks = [
+      { kind: "ellipse" },
+      { kind: "round-rect", radius: 0.25 },
+      {
+        kind: "polygon",
+        points: [
+          { x: 0.5, y: 0 },
+          { x: 1, y: 1 },
+          { x: 0, y: 1 },
+        ],
+      },
+    ];
+    for (const [i, mask] of masks.entries()) {
+      let scene = emptyScene();
+      const img: Element = {
+        id: elementId(`im${String(i)}`),
+        layerId: DEFAULT_LAYER_ID,
+        type: "image",
+        position: { x: 0, y: 0 },
+        rotation: 0,
+        scale: { x: 1, y: 1 },
+        order: orderBetween(null, null),
+        style: {},
+        src: "data:,",
+        width: 50,
+        height: 50,
+        mask,
+      } as unknown as Element;
+      ({ scene } = addElement(scene, img));
+      const restored = parseScene(stringifyScene(scene, 2));
+      const el = restored.elements.get(elementId(`im${String(i)}`));
+      expect((el as { mask?: unknown } | undefined)?.mask).toEqual(mask);
+    }
+  });
+
   it("preserves text decoration style (weight / italic / underline / strike)", () => {
     let scene = emptyScene();
     const t: Element = {

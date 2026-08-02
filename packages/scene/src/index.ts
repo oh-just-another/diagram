@@ -40,6 +40,7 @@ export type {
   EmojiElement,
   ImageElement,
   ImageCrop,
+  ImageMask,
   TemplateElement,
   GroupElement,
   FrameElement,
@@ -296,6 +297,7 @@ export {
   LINK_LABEL_LINE_HEIGHT,
   LINK_LABEL_END_CLEARANCE,
   LINK_LABEL_CHAR_WIDTH_FACTOR,
+  IMAGE_MASK_POLYGON_PRESETS,
 } from "./constants.js";
 
 // Elbow router — A*-based obstacle-avoiding 90° routing.

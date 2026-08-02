@@ -59,6 +59,7 @@ import {
   type Element,
   type GridStyle,
   type ImageCrop,
+  type ImageMask,
   type Style,
   type StickyElement,
   type TextElement,
@@ -136,6 +137,8 @@ import {
   FLOWCHART_MAX_SIBLINGS,
   ERASER_TRAIL_TTL_MS,
   MAX_LIST_INDENT,
+  IMAGE_ASPECT_PRESETS,
+  type ImageAspectPreset,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP } from "./interaction/handle.js";
 import { req } from "./helpers/util.js";
@@ -3394,6 +3397,91 @@ export class Editor {
         const copy = { ...s } as typeof s & { alt?: string };
         if (alt === null || alt === "") delete copy.alt;
         else copy.alt = alt;
+        return copy;
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /**
+   * Set (or clear, with `null`) the shape mask on image elements. The
+   * mask clips the drawn box (renderer-side `RenderTarget.clip`);
+   * normalised coordinates make it survive resizes. One undo step.
+   */
+  setImageMask(ids: Iterable<ElementId>, mask: ImageMask | null): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (!shape || !isImage(shape)) continue;
+      const r = updateElement(this._scene, id, (s) => {
+        const copy = { ...s } as typeof s & { mask?: ImageMask };
+        if (mask === null) delete copy.mask;
+        else copy.mask = mask;
+        return copy;
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /**
+   * Apply an aspect preset from the mask picker to image elements.
+   * `"original"` clears crop AND mask and refits the box to the source's
+   * natural aspect; the ratio presets centre-crop the source to the
+   * target aspect and refit the box height (width kept), with `"circle"`
+   * additionally installing an ellipse mask on the square box. The
+   * source's natural aspect derives from the current box + crop (the box
+   * always displays the crop region undistorted), so no live image
+   * handle is needed. One undo step.
+   */
+  setImageAspectPreset(ids: Iterable<ElementId>, preset: ImageAspectPreset): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (!shape || !isImage(shape)) continue;
+      const crop = shape.crop ?? { x: 0, y: 0, width: 1, height: 1 };
+      const naturalAspect =
+        shape.height > 0 && crop.width > 0
+          ? (shape.width / shape.height) * (crop.height / crop.width)
+          : 1;
+      const r = updateElement(this._scene, id, (s) => {
+        const copy = { ...s } as typeof s & {
+          width: number;
+          height: number;
+          crop?: ImageCrop;
+          mask?: ImageMask;
+        };
+        if (preset === "original") {
+          delete copy.crop;
+          delete copy.mask;
+          if (naturalAspect > 0) copy.height = copy.width / naturalAspect;
+          return copy;
+        }
+        const aspect = IMAGE_ASPECT_PRESETS[preset];
+        // Centred source crop with the target aspect: trim the longer axis.
+        if (naturalAspect > aspect) {
+          const w = aspect / naturalAspect;
+          copy.crop = { x: (1 - w) / 2, y: 0, width: w, height: 1 };
+        } else {
+          const h = naturalAspect / aspect;
+          copy.crop = { x: 0, y: (1 - h) / 2, width: 1, height: h };
+        }
+        copy.height = copy.width / aspect;
+        if (preset === "circle") copy.mask = { kind: "ellipse" };
+        else delete copy.mask;
         return copy;
       });
       this._scene = r.scene;

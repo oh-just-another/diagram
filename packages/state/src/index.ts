@@ -40,6 +40,8 @@ export {
   PEER_CURSOR_BROADCAST_INTERVAL_MS,
   FRAME_SIZE_PRESETS,
   STICKY_SIZE_PRESETS,
+  IMAGE_ASPECT_PRESETS,
+  type ImageAspectPreset,
 } from "./constants.js";
 export type { FrameSizePreset } from "./constants.js";
 

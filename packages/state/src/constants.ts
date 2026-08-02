@@ -971,3 +971,19 @@ export const CROP_BRACKET_WIDTH = 3;
  * (midpoint / elbow longest-segment). Range: 4–16.
  */
 export const LINK_LABEL_DRAG_SNAP_PX = 8;
+
+/**
+ * Aspect presets for the image mask picker. Applying one centre-crops
+ * the source to the target aspect (`Editor.setImageAspectPreset`) and
+ * refits the element box; `circle` additionally installs an ellipse
+ * mask on the square box. Values are width / height ratios.
+ */
+export const IMAGE_ASPECT_PRESETS = {
+  circle: 1,
+  square: 1,
+  portrait: 3 / 4,
+  landscape: 4 / 3,
+  wide: 16 / 9,
+} as const;
+
+export type ImageAspectPreset = keyof typeof IMAGE_ASPECT_PRESETS | "original";

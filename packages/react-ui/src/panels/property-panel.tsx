@@ -24,7 +24,9 @@ import {
   FlipHorizontal2 as FlipHorizontalIcon,
   FlipVertical2 as FlipVerticalIcon,
   Group as GroupIcon,
+  Hexagon as HexagonIcon,
   Highlighter,
+  Image as ImageIcon,
   IndentDecrease,
   IndentIncrease,
   Italic,
@@ -40,18 +42,25 @@ import {
   MoveRight,
   MoveUp,
   Proportions,
+  RectangleHorizontal,
+  RectangleVertical,
   Spline,
   Square,
+  Squircle,
+  Star as StarIcon,
   SquareDashed,
   SquareDot,
   Tag,
   Strikethrough,
   Trash2,
+  Tv,
   Underline,
   Upload,
   UserRound,
   Ungroup as UngroupIcon,
   Waypoints,
+  Triangle as TriangleIcon,
+  type LucideIcon,
 } from "lucide-react";
 import {
   getBinaryFile,
@@ -66,12 +75,14 @@ import {
   isBrush,
   isPolygon,
   sliceRuns,
+  IMAGE_MASK_POLYGON_PRESETS,
   type ArrowheadStyle,
   type BrushElement,
   type Link,
   type LinkRouting,
   type Roundness,
   type ElementBase,
+  type ImageMask,
   type TextAlign,
   type TextBaseline,
   type TextElement,
@@ -81,6 +92,7 @@ import {
   FRAME_SIZE_PRESETS,
   STICKY_SIZE_PRESETS,
   type ConvertTarget,
+  type ImageAspectPreset,
 } from "@oh-just-another/state";
 import type { BinaryFile, EmojiElement, StickyElement } from "@oh-just-another/scene";
 import type { FileId } from "@oh-just-another/types";
@@ -105,6 +117,7 @@ import {
   TEXT_FONT_SIZE_PRESETS,
   TEXT_FONT_STACKS,
   EMOJI_QUICK_PICKS,
+  IMAGE_MASK_DEFAULT_RADIUS,
 } from "../core/constants.js";
 
 /**
@@ -233,6 +246,7 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       }
       overflow.push(
         <CropControl key="crop" shapes={shapes} />,
+        <MaskControl key="mask" shapes={shapes} />,
         <OpacityControl key="opacity" shapes={shapes} />,
       );
     } else {
@@ -1934,6 +1948,180 @@ const ConvertTypeControl = ({ shapes }: { readonly shapes: readonly ElementBase[
         editor.convertSelection(v);
       }}
     />
+  );
+};
+
+/**
+ * Mask presets offered by {@link MaskControl}: `null` = no mask, plus
+ * the two parametric kinds and the built-in polygon rings. `radius`
+ * default for round-rect comes from `IMAGE_MASK_DEFAULT_RADIUS`.
+ */
+const MASK_TILES: readonly {
+  readonly key: string;
+  readonly label: string;
+  readonly icon: LucideIcon;
+  readonly mask: ImageMask | null;
+}[] = [
+  { key: "none", label: "No mask", icon: Square, mask: null },
+  { key: "ellipse", label: "Ellipse mask", icon: Circle, mask: { kind: "ellipse" } },
+  {
+    key: "round-rect",
+    label: "Rounded mask",
+    icon: Squircle,
+    mask: { kind: "round-rect", radius: IMAGE_MASK_DEFAULT_RADIUS },
+  },
+  ...(
+    [
+      ["diamond", "Diamond mask", Diamond],
+      ["triangle", "Triangle mask", TriangleIcon],
+      ["hexagon", "Hexagon mask", HexagonIcon],
+      ["star", "Star mask", StarIcon],
+    ] as const
+  ).map(([key, label, icon]) => ({
+    key,
+    label,
+    icon,
+    mask: {
+      kind: "polygon" as const,
+      points: IMAGE_MASK_POLYGON_PRESETS[key] ?? [],
+    },
+  })),
+];
+
+/**
+ * Aspect-preset tiles (reference mask list): momentary actions, not
+ * stored kinds — Custom enters the free-crop mode, Original resets
+ * crop + mask to the source's natural aspect, the rest centre-crop to
+ * the ratio via `Editor.setImageAspectPreset` (Circle also installs an
+ * ellipse mask on the square box).
+ */
+const ASPECT_TILES: readonly {
+  readonly key: ImageAspectPreset | "custom";
+  readonly label: string;
+  readonly icon: LucideIcon;
+  /** Crop ratio hint shown right-aligned in the row (w:h). */
+  readonly ratio?: string;
+}[] = [
+  { key: "custom", label: "Custom", icon: Crop },
+  { key: "original", label: "Original", icon: ImageIcon },
+  { key: "circle", label: "Circle", icon: Circle },
+  { key: "square", label: "Square", icon: Square },
+  { key: "portrait", label: "Portrait", icon: RectangleVertical, ratio: "3:4" },
+  { key: "landscape", label: "Landscape", icon: RectangleHorizontal, ratio: "4:3" },
+  { key: "wide", label: "Wide", icon: Tv, ratio: "16:9" },
+];
+
+/** The tile a shape's current mask corresponds to (for the pressed state). */
+const maskTileKey = (mask: ImageMask | undefined): string => {
+  if (!mask) return "none";
+  if (mask.kind === "polygon") {
+    for (const [name, ring] of Object.entries(IMAGE_MASK_POLYGON_PRESETS)) {
+      if (
+        ring.length === mask.points.length &&
+        ring.every((p, i) => {
+          const q = mask.points[i];
+          return q?.x === p.x && q.y === p.y;
+        })
+      ) {
+        return name;
+      }
+    }
+    return "polygon";
+  }
+  return mask.kind;
+};
+
+/**
+ * Shape-mask picker for image selections: a popover of shape tiles
+ * (None / Ellipse / Rounded / polygon presets) applied instantly, plus a
+ * corner-radius slider when the rounded mask is active. The canvas
+ * renderer clips through `RenderTarget.clip`, so the mask reaches every
+ * backend and PNG / SVG exports.
+ */
+const MaskControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const images = shapes.filter((s) => isImage(s));
+  if (images.length === 0) return null;
+  const ids = images.map((s) => s.id);
+  const current = sharedValue<string>(images, (s) => maskTileKey((s as { mask?: ImageMask }).mask));
+  const firstMask = (images[0] as { mask?: ImageMask } | undefined)?.mask;
+  const radius = firstMask?.kind === "round-rect" ? firstMask.radius : null;
+  return (
+    <Popover
+      ariaLabel="Image mask"
+      trigger={
+        <button type="button" className="du-sel-icon-button" title="Mask" aria-label="Image mask">
+          <Squircle size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Mask</header>
+        <div className="du-sel-mask-list" role="menu" aria-label="Aspect presets">
+          {ASPECT_TILES.map((tile) => {
+            const Icon = tile.icon;
+            return (
+              <button
+                key={tile.key}
+                type="button"
+                role="menuitem"
+                className="du-sel-mask-row"
+                aria-label={tile.label}
+                onClick={() => {
+                  if (tile.key === "custom") {
+                    const first = ids[0];
+                    if (first !== undefined) editor.beginImageCrop(first);
+                  } else {
+                    editor.setImageAspectPreset(ids, tile.key);
+                  }
+                }}
+              >
+                <Icon size={14} strokeWidth={1.75} aria-hidden />
+                <span>{tile.label}</span>
+                {tile.ratio !== undefined ? (
+                  <span className="du-sel-mask-ratio">{tile.ratio}</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        <div className="du-sel-mask-tiles">
+          {MASK_TILES.map((tile) => {
+            const Icon = tile.icon;
+            const active = current === tile.key;
+            return (
+              <button
+                key={tile.key}
+                type="button"
+                className={`du-sel-icon-button${active ? " is-active" : ""}`}
+                title={tile.label}
+                aria-label={tile.label}
+                aria-pressed={active}
+                onClick={() => {
+                  editor.setImageMask(ids, tile.mask);
+                }}
+              >
+                <Icon size={14} strokeWidth={1.75} aria-hidden />
+              </button>
+            );
+          })}
+        </div>
+        {radius !== null ? (
+          <Slider
+            value={Math.round(radius * 100)}
+            min={0}
+            max={50}
+            step={5}
+            ariaLabel="Corner radius"
+            valueLabel={`${String(Math.round(radius * 100))}%`}
+            onChange={(v) => {
+              editor.setImageMask(ids, { kind: "round-rect", radius: v / 100 });
+            }}
+          />
+        ) : null}
+      </div>
+    </Popover>
   );
 };
 

@@ -286,6 +286,25 @@ export interface ImageCrop {
   readonly height: number;
 }
 
+/**
+ * Shape mask applied to an image element's BOX (after crop): pixels
+ * outside the mask are clipped away by the renderer (`RenderTarget.clip`
+ * — canvas2d clip / svg clipPath / webgl2 stencil). Coordinates are
+ * normalised to the element box (0..1 on both axes), so the mask scales
+ * with the shape. Additive: scenes and renderers that predate masks
+ * ignore it and draw the full box.
+ *
+ * - `ellipse` — inscribed ellipse (circle on a square box).
+ * - `round-rect` — rounded rectangle; `radius` is a fraction of the
+ *   SHORTER box side (0..0.5; 0.5 = capsule).
+ * - `polygon` — arbitrary closed ring of normalised points (≥ 3). The
+ *   built-in presets live in {@link IMAGE_MASK_POLYGON_PRESETS}.
+ */
+export type ImageMask =
+  | { readonly kind: "ellipse" }
+  | { readonly kind: "round-rect"; readonly radius: number }
+  | { readonly kind: "polygon"; readonly points: readonly Vec2[] };
+
 export interface ImageElement extends ElementBase {
   readonly type: "image";
   /**
@@ -300,6 +319,11 @@ export interface ImageElement extends ElementBase {
    * cropping simply ignore it and draw the full bitmap.
    */
   readonly crop?: ImageCrop;
+  /**
+   * Optional shape mask clipping the drawn box. Omitted = no mask.
+   * Independent of (and applied after) `crop`. See {@link ImageMask}.
+   */
+  readonly mask?: ImageMask;
   /**
    * Id of the `BinaryFile` in `Scene.files` that backs this image.
    * When present, hosts should resolve through the file registry

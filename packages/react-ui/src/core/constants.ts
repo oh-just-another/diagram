@@ -226,4 +226,11 @@ export const VIEWPORT_QUIET_MS = 150;
  * autoUpdate + React re-render) on every frame of a drag costs more
  * than the whole canvas repaint. Reasonable range 100–400 ms.
  */
-export const GESTURE_QUIET_MS = 200;
+export const GESTURE_QUIET_MS = 100;
+
+/**
+ * Default corner radius for a freshly applied rounded-rect image mask,
+ * as a fraction of the shorter box side (0..0.5). The mask popover's
+ * slider adjusts it per shape afterwards.
+ */
+export const IMAGE_MASK_DEFAULT_RADIUS = 0.2;

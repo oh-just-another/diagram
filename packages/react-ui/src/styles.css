@@ -1753,3 +1753,44 @@
   outline: 2px solid var(--du-accent);
   outline-offset: -2px;
 }
+
+/* Mask picker tiles inside the image-mask popover. */
+.du-sel-mask-tiles {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+/* Aspect-preset rows in the mask popover: icon + name, crop ratio
+   right-aligned. */
+.du-sel-mask-list {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 6px;
+}
+
+.du-sel-mask-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-height: 32px;
+  padding: 7px 8px;
+  font-size: 13px;
+  color: var(--du-text);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--du-radius-sm);
+  cursor: pointer;
+}
+
+.du-sel-mask-row:hover {
+  background: var(--du-hover-overlay);
+}
+
+.du-sel-mask-ratio {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--du-text-muted);
+}

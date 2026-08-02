@@ -15,6 +15,7 @@ import {
   type FrameElement,
   type GroupElement,
   type ImageElement,
+  type ImageMask,
   type PathElement,
   type PolygonElement,
   type RectangleElement,
@@ -1020,7 +1021,50 @@ const drawImage: ElementRenderer<ImageElement> = (shape, target, ctx) => {
   // current frame. GIF / video sources flag `metadata.animated`, and
   // any adapter-driven source is dynamic by definition.
   const dynamic = shape.metadata?.animated === true || shape.animationKind !== undefined;
+  const mask = shape.mask;
+  if (mask) {
+    target.save();
+    target.beginPath();
+    buildImageMaskPath(target, mask, shape.width, shape.height);
+    target.clip();
+  }
   target.drawImage(handle, 0, 0, shape.width, shape.height, dynamic, shape.crop);
+  if (mask) target.restore();
+};
+
+/**
+ * Build an {@link ImageMask}'s path in the shape's LOCAL space
+ * (normalised mask coordinates × the element box). Exported so overlays
+ * (crop/mask preview) can trace the same outline the renderer clips by.
+ */
+export const buildImageMaskPath = (
+  target: RenderTarget,
+  mask: ImageMask,
+  width: number,
+  height: number,
+): void => {
+  switch (mask.kind) {
+    case "ellipse":
+      target.ellipse(width / 2, height / 2, width / 2, height / 2);
+      return;
+    case "round-rect": {
+      const r = Math.max(0, Math.min(0.5, mask.radius)) * Math.min(width, height);
+      buildRoundedRectPath(target, 0, 0, width, height, r);
+      return;
+    }
+    case "polygon": {
+      const pts = mask.points;
+      if (pts.length < 3) return;
+      const first = req(pts[0]);
+      target.moveTo(first.x * width, first.y * height);
+      for (let i = 1; i < pts.length; i++) {
+        const p = req(pts[i]);
+        target.lineTo(p.x * width, p.y * height);
+      }
+      target.closePath();
+      return;
+    }
+  }
 };
 
 /**
