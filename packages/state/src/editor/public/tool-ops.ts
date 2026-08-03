@@ -21,6 +21,11 @@ import {
   DEFAULT_LINK_ARROWHEAD,
   DEFAULT_LINK_ROUTING,
   SPAWN_CONNECTED_GAP_PX,
+  STICKY_PALETTE,
+  STICKY_SIZE_PRESETS,
+  TEXT_DEFAULT_FILL,
+  TEXT_DEFAULT_FONT_FAMILY,
+  TEXT_DEFAULT_FONT_SIZE,
 } from "../../constants.js";
 
 // ---------------------------------------------------------------------------
@@ -47,14 +52,14 @@ export const pickColorAt = (
 };
 
 // ---------------------------------------------------------------------------
-// F9 — Convert element type (rectangle ↔ ellipse ↔ diamond/polygon).
+// F9 — Switch type: shape kinds ↔ text ↔ sticky.
 // ---------------------------------------------------------------------------
 
 /** Target types accepted by {@link computeConvertType}. `"polygon"` = diamond. */
-export type ConvertTarget = "rectangle" | "ellipse" | "polygon";
+export type ConvertTarget = "rectangle" | "ellipse" | "polygon" | "text" | "sticky";
 
-/** The convertible built-in types (share a width×height footprint). */
-const CONVERTIBLE = new Set(["rectangle", "ellipse", "polygon"]);
+/** The convertible source types (reference parity: shapes, text, sticky). */
+const CONVERTIBLE = new Set(["rectangle", "ellipse", "polygon", "text", "sticky"]);
 
 /** Diamond corner points inscribed in a `w × h` box, anchored at the origin. */
 const diamondPoints = (w: number, h: number): readonly Vec2[] => [
@@ -64,13 +69,74 @@ const diamondPoints = (w: number, h: number): readonly Vec2[] => [
   { x: 0, y: h / 2 },
 ];
 
+/** RGB distance to the nearest colour of the sticky palette. */
+const nearestStickyFill = (fill: string | undefined): string | undefined => {
+  if (fill === undefined) return undefined;
+  const parse = (hex: string): readonly [number, number, number] | null => {
+    const m = /^#([0-9a-f]{6})$/i.exec(hex);
+    if (!m) return null;
+    const v = Number.parseInt(m[1] ?? "0", 16);
+    return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
+  };
+  const src = parse(fill);
+  if (!src) return STICKY_PALETTE[0];
+  let best = STICKY_PALETTE[0];
+  let bestDist = Infinity;
+  for (const candidate of STICKY_PALETTE) {
+    const c = parse(candidate);
+    if (!c) continue;
+    const d = (c[0] - src[0]) ** 2 + (c[1] - src[1]) ** 2 + (c[2] - src[2]) ** 2;
+    if (d < bestDist) {
+      bestDist = d;
+      best = candidate;
+    }
+  }
+  return best;
+};
+
 /**
- * Convert every convertible shape in `ids` to `target`, preserving
- * position / rotation / scale / style and the on-canvas footprint. rectangle
- * and ellipse carry `width` × `height`; `"polygon"` renders a diamond
- * inscribed in that box. Shapes already of the target type, and non-convertible
- * types (text, image, …), are skipped. One undo step (batched for 2+). Returns
- * `null` when nothing changed.
+ * The user text carried by a convertible element, with its font, for
+ * transplanting into the target's text carrier (`text` field / `label`).
+ */
+const extractText = (
+  el: Element,
+): { text: string; fontFamily?: string; fontSize?: number; runs?: unknown } => {
+  const anyEl = el as unknown as {
+    type: string;
+    text?: string;
+    fontFamily?: string;
+    fontSize?: number;
+    runs?: unknown;
+    label?: { text: string; fontFamily?: string; fontSize?: number; runs?: unknown };
+  };
+  if (anyEl.type === "text") {
+    return {
+      text: anyEl.text ?? "",
+      ...(anyEl.fontFamily !== undefined ? { fontFamily: anyEl.fontFamily } : {}),
+      ...(anyEl.fontSize !== undefined ? { fontSize: anyEl.fontSize } : {}),
+      ...(anyEl.runs !== undefined ? { runs: anyEl.runs } : {}),
+    };
+  }
+  const label = anyEl.label;
+  if (!label) return { text: "" };
+  return {
+    text: label.text,
+    ...(label.fontFamily !== undefined ? { fontFamily: label.fontFamily } : {}),
+    ...(label.fontSize !== undefined ? { fontSize: label.fontSize } : {}),
+    ...(label.runs !== undefined ? { runs: label.runs } : {}),
+  };
+};
+
+/**
+ * Convert every convertible element in `ids` to `target` — the full
+ * switch-type matrix: shape kinds (rectangle / ellipse / diamond) ↔ text
+ * ↔ sticky, any to any. Position / rotation / scale survive; the user
+ * text transplants between carriers (`TextElement.text` ↔ `label`);
+ * converting INTO a sticky snaps the fill to the nearest sticky-palette
+ * colour, converting FROM a sticky drops its reactions / tags / author
+ * (they have no home on other types). Elements already of the target
+ * type and non-convertible types (image, brush, frame, …) are skipped.
+ * One undo step (batched for 2+). Returns `null` when nothing changed.
  */
 export const computeConvertType = (
   scene: Scene,
@@ -85,22 +151,106 @@ export const computeConvertType = (
     const local = getElementLocalBounds(el);
     const w = local.width;
     const h = local.height;
+    const carried = extractText(el);
     const r = updateElement(s, id, (sh) => {
-      // Drop the source-shape-specific geometry fields so the result is a
-      // clean shape of the target type (no stale `points` / `width`).
+      // Drop every source-type-specific field so the result is a clean
+      // element of the target type (no stale geometry / text carriers /
+      // sticky social fields).
       const {
         width: _w,
         height: _h,
         points: _p,
+        text: _t,
+        fontFamily: _ff,
+        fontSize: _fs,
+        maxWidth: _mw,
+        runs: _r,
+        label: _l,
+        tags: _tags,
+        reactions: _re,
+        showAuthor: _sa,
+        authorName: _an,
         ...rest
       } = sh as unknown as Record<string, unknown>;
       void _w;
       void _h;
       void _p;
+      void _t;
+      void _ff;
+      void _fs;
+      void _mw;
+      void _r;
+      void _l;
+      void _tags;
+      void _re;
+      void _sa;
+      void _an;
+      const style = (rest.style ?? {}) as { fill?: string };
+
+      if (target === "text") {
+        const next = {
+          ...rest,
+          type: "text",
+          text: carried.text,
+          fontFamily: carried.fontFamily ?? TEXT_DEFAULT_FONT_FAMILY,
+          fontSize: carried.fontSize ?? TEXT_DEFAULT_FONT_SIZE,
+          maxWidth: w,
+          ...(carried.runs !== undefined ? { runs: carried.runs } : {}),
+          // The box fill has no meaning on plain text — the text colour
+          // takes over (label colour when present, default otherwise).
+          style: { fill: TEXT_DEFAULT_FILL, textAlign: "left", textBaseline: "top" },
+        };
+        return next as unknown as typeof sh;
+      }
+      if (target === "sticky") {
+        // Shapes keep their footprint; text has no stored box, so it
+        // lands on the default (M) square sticky.
+        const side = STICKY_SIZE_PRESETS[1]?.side ?? 160;
+        const isText = (sh as { type: string }).type === "text";
+        const fill = isText ? undefined : nearestStickyFill(style.fill);
+        // A text source's `fill` is its FONT colour — never carry it onto
+        // the card; the sticky falls back to the default yellow.
+        const { fill: _srcFill, ...styleRest } = (rest.style ?? {}) as Record<string, unknown>;
+        void _srcFill;
+        const next = {
+          ...rest,
+          type: "sticky",
+          width: isText ? side : w,
+          height: isText ? side : h,
+          style: isText
+            ? styleRest
+            : { ...(rest.style ?? {}), ...(fill !== undefined ? { fill } : {}) },
+          ...(carried.text !== ""
+            ? {
+                label: {
+                  text: carried.text,
+                  fontFamily: carried.fontFamily ?? TEXT_DEFAULT_FONT_FAMILY,
+                  fontSize: carried.fontSize ?? TEXT_DEFAULT_FONT_SIZE,
+                  autoFit: true,
+                  ...(carried.runs !== undefined ? { runs: carried.runs } : {}),
+                },
+              }
+            : {}),
+        };
+        return next as unknown as typeof sh;
+      }
+      // Shape targets: keep the footprint; the carried text becomes the
+      // shape's embedded label.
+      const labelPart =
+        carried.text !== ""
+          ? {
+              label: {
+                text: carried.text,
+                fontFamily: carried.fontFamily ?? TEXT_DEFAULT_FONT_FAMILY,
+                fontSize: carried.fontSize ?? TEXT_DEFAULT_FONT_SIZE,
+                ...(carried.runs !== undefined ? { runs: carried.runs } : {}),
+              },
+            }
+          : {};
       const next =
         target === "polygon"
-          ? { ...rest, type: "polygon", points: diamondPoints(w, h) }
-          : { ...rest, type: target, width: w, height: h };
+          ? { ...rest, type: "polygon", points: diamondPoints(w, h), ...labelPart }
+          : { ...rest, type: target, width: w, height: h, ...labelPart };
       return next as unknown as typeof sh;
     });
     s = r.scene;

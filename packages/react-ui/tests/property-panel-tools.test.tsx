@@ -95,7 +95,7 @@ describe("PropertyPanel convert-type control (F9)", () => {
     const editor = mountEditor(rect);
     editor.setSelection([rect.id]);
     const { container } = renderPanel(editor);
-    const group = container.querySelector('[role="group"][aria-label="Shape type"]');
+    const group = container.querySelector('[role="group"][aria-label="Switch type"]');
     expect(group).not.toBeNull();
     const ellipseBtn = group!.querySelector('button[aria-label="Ellipse"]');
     expect(ellipseBtn).not.toBeNull();

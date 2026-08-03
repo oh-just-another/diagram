@@ -987,3 +987,20 @@ export const IMAGE_ASPECT_PRESETS = {
 } as const;
 
 export type ImageAspectPreset = keyof typeof IMAGE_ASPECT_PRESETS | "original";
+
+/**
+ * Sticky-note colour palette. Converting a shape / text into a sticky
+ * snaps its fill to the NEAREST of these (RGB distance) so stickies stay
+ * within the classic sticky look; the first entry is the default yellow
+ * (matches renderer-core `STICKY_DEFAULT_FILL`).
+ */
+export const STICKY_PALETTE: readonly string[] = [
+  "#fff9b1", // yellow (default)
+  "#f5f6f8", // gray
+  "#d5f692", // light green
+  "#a6ccf5", // light blue
+  "#67c6c0", // teal
+  "#ffcee0", // pink
+  "#ff9d48", // orange
+  "#b384bb", // purple
+];

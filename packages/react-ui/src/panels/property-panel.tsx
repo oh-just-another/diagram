@@ -48,6 +48,7 @@ import {
   Square,
   Squircle,
   Star as StarIcon,
+  StickyNote,
   SquareDashed,
   SquareDot,
   Tag,
@@ -205,6 +206,7 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <FillOpacityControl key="bg" shapes={shapes} />,
       );
       overflow.push(
+        <ConvertTypeControl key="convert" shapes={shapes} />,
         <StickyTagControl key="tags" shapes={shapes} />,
         <StickyAuthorControl key="author" shapes={shapes} />,
       );
@@ -227,6 +229,7 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <ListControl key="list" shapes={shapes} />,
       );
       overflow.push(
+        <ConvertTypeControl key="convert" shapes={shapes} />,
         <LinkControl key="link" shapes={shapes} />,
         <Divider key="d-color" />,
         <ColorOpacityControl key="color" shapes={shapes} />,
@@ -1930,19 +1933,36 @@ const ZOrderControl = () => {
 const ConvertTypeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
-  const convertible = shapes.every((s) => isRectangle(s) || isEllipse(s) || isPolygon(s));
+  // Switch-type matrix (reference parity): shape kinds ↔ text ↔ sticky.
+  const convertible = shapes.every(
+    (s) => isRectangle(s) || isEllipse(s) || isPolygon(s) || isText(s) || isSticky(s),
+  );
   if (!convertible) return null;
   const value = sharedValue<ConvertTarget>(shapes, (s) =>
-    isRectangle(s) ? "rectangle" : isEllipse(s) ? "ellipse" : "polygon",
+    isRectangle(s)
+      ? "rectangle"
+      : isEllipse(s)
+        ? "ellipse"
+        : isText(s)
+          ? "text"
+          : isSticky(s)
+            ? "sticky"
+            : "polygon",
   );
   return (
     <SegmentedControl<ConvertTarget>
-      ariaLabel="Shape type"
+      ariaLabel="Switch type"
       value={value}
       options={[
         { value: "rectangle", label: "Rectangle", icon: <Square size={14} strokeWidth={1.75} /> },
         { value: "ellipse", label: "Ellipse", icon: <Circle size={14} strokeWidth={1.75} /> },
         { value: "polygon", label: "Diamond", icon: <Diamond size={14} strokeWidth={1.75} /> },
+        { value: "text", label: "Text", icon: <CaseSensitive size={14} strokeWidth={1.75} /> },
+        {
+          value: "sticky",
+          label: "Sticky note",
+          icon: <StickyNote size={14} strokeWidth={1.75} />,
+        },
       ]}
       onChange={(v) => {
         editor.convertSelection(v);
