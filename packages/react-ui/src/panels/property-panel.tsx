@@ -32,6 +32,7 @@ import {
   Italic,
   Link as LinkIcon,
   List,
+  ListFilter,
   ListOrdered,
   Lock as LockIcon,
   MessageCircle,
@@ -44,6 +45,7 @@ import {
   Proportions,
   RectangleHorizontal,
   RectangleVertical,
+  SmilePlus,
   Spline,
   Square,
   Squircle,
@@ -252,6 +254,12 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <MaskControl key="mask" shapes={shapes} />,
         <OpacityControl key="opacity" shapes={shapes} />,
       );
+    } else if (selectionBuckets(shapes).size > 1) {
+      // MIXED types (reference behaviour): the toolbar SHRINKS to the
+      // shared tail below, plus a Filter that narrows the actual
+      // selection to one type bucket. Per-type controls come back once
+      // the selection is uniform again.
+      primary.push(<SelectionFilterControl key="filter" shapes={shapes} />);
     } else {
       // type | label text controls (when every shape has one) | border group
       // (color / width / dash / corners) | fill group (color / opacity) | link.
@@ -1930,6 +1938,103 @@ const ZOrderControl = () => {
  * Renders only when every selected shape is convertible. The active type is
  * shown as the pressed segment (or `null` for a mixed selection).
  */
+/**
+ * Selection-filter buckets (reference grouping): coarse type groups the
+ * Filter menu offers, keyed by bucket id. `types` maps element `type`
+ * strings into the bucket.
+ */
+const SELECTION_BUCKETS: readonly {
+  readonly id: string;
+  readonly label: string;
+  readonly icon: LucideIcon;
+  readonly types: readonly string[];
+}[] = [
+  {
+    id: "shapes",
+    label: "Shapes",
+    icon: Square,
+    types: ["rectangle", "ellipse", "polygon", "path", "block-arrow"],
+  },
+  { id: "sticky", label: "Sticky notes", icon: StickyNote, types: ["sticky"] },
+  { id: "text", label: "Text", icon: CaseSensitive, types: ["text"] },
+  { id: "image", label: "Images", icon: ImageIcon, types: ["image"] },
+  { id: "frame", label: "Frames", icon: Proportions, types: ["frame"] },
+  { id: "brush", label: "Drawings", icon: Spline, types: ["brush"] },
+  { id: "emoji", label: "Emoji", icon: SmilePlus, types: ["emoji"] },
+  { id: "other", label: "Other", icon: MoreHorizontal, types: [] },
+];
+
+const bucketIdOf = (type: string): string =>
+  SELECTION_BUCKETS.find((b) => b.types.includes(type))?.id ?? "other";
+
+/** Group a selection's shapes into type buckets (insertion-ordered). */
+const selectionBuckets = (
+  shapes: readonly ElementBase[],
+): ReadonlyMap<string, readonly ElementBase[]> => {
+  const out = new Map<string, ElementBase[]>();
+  for (const shape of shapes) {
+    const id = bucketIdOf(shape.type);
+    const list = out.get(id);
+    if (list) list.push(shape);
+    else out.set(id, [shape]);
+  }
+  return out;
+};
+
+/**
+ * Filter control for MIXED selections (reference behaviour): a popover
+ * listing the selection's type buckets with counts; picking one NARROWS
+ * THE ACTUAL SELECTION to that bucket's elements (the per-type toolbar
+ * then takes over). Single bucket per pick — no multi-filter.
+ */
+const SelectionFilterControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
+  const editor = useDiagramOptional();
+  if (!editor) return null;
+  const buckets = selectionBuckets(shapes);
+  return (
+    <Popover
+      ariaLabel="Filter selection"
+      trigger={
+        <button
+          type="button"
+          className="du-sel-icon-button"
+          title="Filter selection by type"
+          aria-label="Filter selection by type"
+        >
+          <ListFilter size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Select only</header>
+        <div className="du-sel-mask-list" role="menu" aria-label="Selection type filter">
+          {[...buckets.entries()].map(([id, members]) => {
+            const bucket = SELECTION_BUCKETS.find((b) => b.id === id);
+            if (!bucket) return null;
+            const Icon = bucket.icon;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="menuitem"
+                className="du-sel-mask-row"
+                aria-label={`Select only ${bucket.label}`}
+                onClick={() => {
+                  editor.setSelection(members.map((m) => m.id));
+                }}
+              >
+                <Icon size={14} strokeWidth={1.75} aria-hidden />
+                <span>{bucket.label}</span>
+                <span className="du-sel-mask-ratio">{members.length}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </Popover>
+  );
+};
+
 const ConvertTypeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;

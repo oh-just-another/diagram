@@ -118,3 +118,41 @@ describe("PropertyPanel crop control (F10)", () => {
     editor.dispose();
   });
 });
+
+describe("SelectionFilterControl (mixed selections)", () => {
+  const sticky: Element = {
+    id: elementId("s1"),
+    layerId: DEFAULT_LAYER_ID,
+    type: "sticky",
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: {},
+    width: 160,
+    height: 160,
+  } as unknown as Element;
+
+  it("mixed selection shows the Filter; picking a bucket narrows the selection", () => {
+    const editor = mountEditor(rect, image, sticky);
+    editor.setSelection([rect.id, image.id, sticky.id]);
+    const { container, getByRole } = renderPanel(editor);
+    // Mixed → per-type controls are gone, Filter present.
+    expect(container.querySelector('[aria-label="Switch type"]')).toBeNull();
+    const trigger = container.querySelector('button[aria-label="Filter selection by type"]');
+    expect(trigger).not.toBeNull();
+    fireEvent.click(trigger!);
+    // Menu lists buckets with counts.
+    const stickyRow = getByRole("menuitem", { name: "Select only Sticky notes" });
+    expect(stickyRow.textContent).toContain("1");
+    fireEvent.click(stickyRow);
+    expect([...editor.selection]).toEqual([sticky.id]);
+  });
+
+  it("uniform selection shows no Filter", () => {
+    const editor = mountEditor(rect);
+    editor.setSelection([rect.id]);
+    const { container } = renderPanel(editor);
+    expect(container.querySelector('button[aria-label="Filter selection by type"]')).toBeNull();
+  });
+});
