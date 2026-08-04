@@ -1260,7 +1260,6 @@ const EditorShell = ({
           <LibraryPanel
             open={libraryOpen}
             side="left"
-            style={{ left: 0 }}
             onClose={() => {
               setLibraryOpen(false);
             }}

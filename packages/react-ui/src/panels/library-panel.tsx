@@ -68,13 +68,24 @@ export const LibraryPanel = ({
   return (
     <aside className={`du-side-panel ${variantClass}`} style={style}>
       <header className="du-side-panel-header">
+        <span className="du-side-panel-title">Shape library</span>
         <div style={{ display: "inline-flex", gap: 4 }}>
           {onImport ? (
-            <IconButton label="Import templates" size="sm" onClick={onImport}>
+            <IconButton
+              label="Import templates"
+              size="sm"
+              className="du-icon-button-flat"
+              onClick={onImport}
+            >
               <Upload size={SIDE_PANEL_ICON_SIZE} strokeWidth={SIDE_PANEL_ICON_STROKE} />
             </IconButton>
           ) : null}
-          <IconButton label="Close library" size="sm" onClick={onClose}>
+          <IconButton
+            label="Close library"
+            size="sm"
+            className="du-icon-button-flat"
+            onClick={onClose}
+          >
             <X size={SIDE_PANEL_ICON_SIZE} strokeWidth={SIDE_PANEL_ICON_STROKE} />
           </IconButton>
         </div>
@@ -90,7 +101,7 @@ export const LibraryPanel = ({
           ref={searchRef}
           type="search"
           value={search}
-          placeholder="Search templates…"
+          placeholder="Search templates"
           aria-label="Search templates"
           onChange={(ev) => {
             setSearch(ev.target.value);

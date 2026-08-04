@@ -485,7 +485,7 @@
 .du-side-panel-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: var(--du-gap-sm);
   padding: var(--du-pad-sm) var(--du-pad-sm) var(--du-pad-sm) var(--du-pad);
   font-size: 12px;
@@ -498,6 +498,16 @@
 /* Hide the header when it's empty (no action buttons configured). */
 .du-side-panel-header:empty {
   display: none;
+}
+
+/* Panel title in the header's left slot (normal case, full text colour —
+   the header's uppercase muted styling is for action captions). */
+.du-side-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--du-text);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 /* Auto-height variant — content hugs its natural height instead
