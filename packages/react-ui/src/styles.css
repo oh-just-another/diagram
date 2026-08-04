@@ -959,7 +959,6 @@
 .du-side-panel-search {
   position: relative;
   padding: var(--du-pad-sm) var(--du-pad);
-  border-bottom: 1px solid var(--du-ui-border);
 }
 
 .du-side-panel-search input[type="search"] {
