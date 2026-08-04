@@ -33,9 +33,24 @@ const DEFAULT_ELLIPSE_STYLE = DEFAULT_ELEMENT_STYLES.ellipse;
  * them still receive clicks; rect / ellipse go to the top of the
  * stack as usual.
  */
+/** Inscribed polygon rings for the draw-shape kinds beyond rect/ellipse. */
+const inscribedPoints = (kind: "diamond" | "triangle", w: number, h: number) =>
+  kind === "diamond"
+    ? [
+        { x: w / 2, y: 0 },
+        { x: w, y: h / 2 },
+        { x: w / 2, y: h },
+        { x: 0, y: h / 2 },
+      ]
+    : [
+        { x: w / 2, y: 0 },
+        { x: w, y: h },
+        { x: 0, y: h },
+      ];
+
 export const buildElementForCreate = (
   scene: Scene,
-  kind: "rect" | "ellipse" | "frame",
+  kind: "rect" | "ellipse" | "frame" | "diamond" | "triangle",
   bounds: Bounds,
   id: ElementId,
   layerId: LayerId,
@@ -61,6 +76,17 @@ export const buildElementForCreate = (
   if (kind === "ellipse") {
     return { ...common, type: "ellipse", style: { ...DEFAULT_ELLIPSE_STYLE } };
   }
+  if (kind === "diamond" || kind === "triangle") {
+    const { width: _w, height: _h, ...polyCommon } = common;
+    void _w;
+    void _h;
+    return {
+      ...polyCommon,
+      type: "polygon",
+      points: inscribedPoints(kind, bounds.width, bounds.height),
+      style: { ...DEFAULT_RECT_STYLE },
+    };
+  }
   // Frame: white body fill (configurable from the panel; border is fixed
   // chrome). Auto-numbered name.
   return { ...common, type: "frame", style: { fill: FRAME_DEFAULT_FILL }, name: nextFrameName() };
@@ -71,27 +97,40 @@ export const buildElementForCreate = (
  * pre-resolved (snapped) by the caller — we just compose them with the
  * layer / order / style boilerplate.
  */
+/**
+ * Per-draw overrides for new connectors (the "Shapes and lines" line
+ * presets): routing and the end arrowhead (`null` = no arrowhead).
+ * Omitted fields fall back to the defaults.
+ */
+export interface LinkCreateOverrides {
+  readonly routing?: "straight" | "orthogonal";
+  readonly arrowheadTo?: "triangle" | null;
+}
+
 const buildLinkForCreate = (
   scene: Scene,
   from: LinkEndpoint,
   to: LinkEndpoint,
   id: LinkId,
   layerId: LayerId,
+  overrides?: LinkCreateOverrides,
 ): Link => {
   const order = orderForTop(
     Array.from(scene.links.values())
       .filter((e) => e.layerId === layerId)
       .map((e) => e.order),
   );
+  const arrowheadTo =
+    overrides?.arrowheadTo === undefined ? DEFAULT_LINK_ARROWHEAD : overrides.arrowheadTo;
   return {
     id,
     layerId,
     from,
     to,
     order,
-    routing: DEFAULT_LINK_ROUTING,
+    routing: overrides?.routing ?? DEFAULT_LINK_ROUTING,
     style: { ...DEFAULT_EDGE_STYLE },
-    arrowheads: { to: DEFAULT_LINK_ARROWHEAD },
+    ...(arrowheadTo === null ? {} : { arrowheads: { to: arrowheadTo } }),
   };
 };
 
@@ -108,6 +147,7 @@ export const buildEdgePreviewLink = (
   preview: { readonly from: Vec2; readonly to: Vec2; readonly points?: readonly Vec2[] },
   id: LinkId,
   layerId: LayerId,
+  overrides?: LinkCreateOverrides,
 ): Link => {
   const base = buildLinkForCreate(
     scene,
@@ -115,6 +155,7 @@ export const buildEdgePreviewLink = (
     { kind: "point", position: preview.to },
     id,
     layerId,
+    overrides,
   );
   return preview.points && preview.points.length > 2
     ? { ...base, routedPoints: preview.points.slice(1, -1) }
@@ -132,7 +173,7 @@ export const buildEdgePreviewLink = (
  */
 export const computeCreateElement = (
   scene: Scene,
-  kind: "rect" | "ellipse" | "frame",
+  kind: "rect" | "ellipse" | "frame" | "diamond" | "triangle",
   bounds: Bounds,
   id: ElementId,
   layerId: LayerId,
@@ -155,8 +196,9 @@ export const computeCreateLink = (
   to: LinkEndpoint,
   id: LinkId,
   layerId: LayerId,
+  overrides?: LinkCreateOverrides,
 ): { readonly scene: Scene; readonly patch: Patch; readonly linkId: LinkId } => {
-  const edge = buildLinkForCreate(scene, from, to, id, layerId);
+  const edge = buildLinkForCreate(scene, from, to, id, layerId, overrides);
   const result = addLink(scene, edge);
   return { scene: result.scene, patch: result.patch, linkId: id };
 };

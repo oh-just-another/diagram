@@ -42,6 +42,9 @@ export {
   STICKY_SIZE_PRESETS,
   IMAGE_ASPECT_PRESETS,
   type ImageAspectPreset,
+  LINK_DRAW_PRESETS,
+  type DrawShapeKind,
+  type LinkDrawPreset,
 } from "./constants.js";
 export type { FrameSizePreset } from "./constants.js";
 

@@ -20,7 +20,6 @@ import {
   Grip,
   HelpCircle,
   ImageDown,
-  Library as LibraryIcon,
   Magnet,
   Maximize,
   Minus,
@@ -837,25 +836,22 @@ const EditorShell = ({
   // Items for the vertical creation dock: an optional templates-library
   // toggle on top (hidden with `hideLibraryButton`), then the standard
   // creation tools.
+  // The template library's only toolbar entry point is the "More shapes"
+  // row inside the Shapes and lines flyout (`hideLibraryButton` removes
+  // it). No standalone library toggle in the dock.
   const toolbarItems = useMemo<ToolbarItem[]>(
     () =>
-      hideLibraryButton
-        ? [...DEFAULT_VERTICAL_TOOLBAR]
-        : [
-            {
-              kind: "action",
-              id: "toggle-library",
-              label: <LibraryIcon {...buttonIcon} />,
-              title: "Templates library",
-              active: libraryOpen,
-              onClick: () => {
-                setLibraryOpen((v) => !v);
+      DEFAULT_VERTICAL_TOOLBAR.map<ToolbarItem>((item) =>
+        item.kind === "shapes-flyout" && !hideLibraryButton
+          ? {
+              ...item,
+              onMoreShapes: () => {
+                setLibraryOpen(true);
               },
-            },
-            { kind: "divider" },
-            ...DEFAULT_VERTICAL_TOOLBAR,
-          ],
-    [hideLibraryButton, libraryOpen],
+            }
+          : item,
+      ),
+    [hideLibraryButton],
   );
 
   return (

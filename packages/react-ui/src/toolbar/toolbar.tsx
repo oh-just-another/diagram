@@ -1,13 +1,17 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type CSSProperties,
   type ComponentType,
   type ReactNode,
 } from "react";
 import {
+  ArrowUpRight,
   Circle,
+  CornerUpRight,
+  Diamond,
   Eraser,
   Frame,
   Hand,
@@ -17,8 +21,10 @@ import {
   PenLine,
   Radio,
   Redo2,
+  Shapes,
   Slash,
   Square,
+  Triangle,
   Type,
   Undo2,
 } from "lucide-react";
@@ -124,6 +130,153 @@ const ActionRefButton = ({ id }: { readonly id: string }) => {
 };
 
 /**
+ * Rows of the "Shapes and lines" flyout (reference layout): line presets,
+ * then shape kinds, then "More shapes" opening the template library.
+ * Hotkey hints mirror the registered mode hotkeys (R / O arm the same
+ * tools; L arms the stock draw-edge, whose defaults equal the Elbow
+ * arrow preset).
+ */
+const SHAPES_FLYOUT_ROWS: readonly (
+  | {
+      readonly kind: "line";
+      readonly preset: "line" | "arrow" | "elbow";
+      readonly label: string;
+      readonly icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+      readonly hotkey?: string;
+    }
+  | {
+      readonly kind: "shape";
+      readonly shape: "rect" | "ellipse" | "diamond" | "triangle";
+      readonly label: string;
+      readonly icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+      readonly hotkey?: string;
+    }
+  | { readonly kind: "divider" }
+)[] = [
+  { kind: "line", preset: "line", label: "Line", icon: Slash },
+  { kind: "line", preset: "arrow", label: "Arrow", icon: ArrowUpRight },
+  { kind: "line", preset: "elbow", label: "Elbow arrow", icon: CornerUpRight, hotkey: "L" },
+  { kind: "divider" },
+  { kind: "shape", shape: "rect", label: "Rectangle", icon: Square, hotkey: "R" },
+  { kind: "shape", shape: "ellipse", label: "Oval", icon: Circle, hotkey: "O" },
+  { kind: "shape", shape: "diamond", label: "Rhombus", icon: Diamond },
+  { kind: "shape", shape: "triangle", label: "Triangle", icon: Triangle },
+];
+
+/**
+ * "Shapes and lines" toolbar button (reference behaviour): opens a
+ * vertical flyout beside the toolbar with line presets and shape kinds —
+ * picking a row arms the corresponding drawing tool (`armLineTool` /
+ * `armShapeTool`) — plus a "More shapes" row that opens the host's
+ * template library. Closes on pick, outside click and Esc.
+ */
+const ShapesAndLinesButton = ({
+  vertical,
+  onMoreShapes,
+}: {
+  readonly vertical: boolean;
+  readonly onMoreShapes?: () => void;
+}) => {
+  const editor = useDiagramOptional();
+  const activeTool = useActiveTool();
+  const readOnly = useReadOnly();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (ev: MouseEvent | PointerEvent): void => {
+      if (ref.current?.contains(ev.target as Node)) return;
+      setOpen(false);
+    };
+    const onKey = (ev: KeyboardEvent): void => {
+      if (ev.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const toolActive =
+    activeTool.type === "draw-rect" ||
+    activeTool.type === "draw-ellipse" ||
+    activeTool.type === "draw-edge";
+  return (
+    <div
+      ref={ref}
+      className="du-shapes-wrap"
+      style={{ position: "relative", display: "inline-flex" }}
+    >
+      <ToolbarButton
+        title="Shapes and lines"
+        disabled={!editor || readOnly}
+        active={toolActive || open}
+        onClick={() => {
+          setOpen((v) => !v);
+        }}
+      >
+        <Shapes {...iconProps} />
+      </ToolbarButton>
+      {open ? (
+        <div
+          className="du-shapes-flyout"
+          role="menu"
+          aria-label="Shapes and lines"
+          style={vertical ? {} : { top: "calc(100% + 10px)", left: 0 }}
+        >
+          {SHAPES_FLYOUT_ROWS.map((row, i) => {
+            if (row.kind === "divider") return <hr key={i} className="du-shapes-flyout-divider" />;
+            const Icon = row.icon;
+            return (
+              <button
+                key={i}
+                type="button"
+                role="menuitem"
+                className="du-shapes-flyout-row"
+                aria-label={row.label}
+                onClick={() => {
+                  if (!editor) return;
+                  if (row.kind === "line") editor.armLineTool(row.preset);
+                  else editor.armShapeTool(row.shape);
+                  setOpen(false);
+                }}
+              >
+                <Icon size={14} strokeWidth={1.75} />
+                <span>{row.label}</span>
+                {row.hotkey !== undefined ? (
+                  <span className="du-shapes-flyout-hotkey">{row.hotkey}</span>
+                ) : null}
+              </button>
+            );
+          })}
+          {onMoreShapes ? (
+            <>
+              <hr className="du-shapes-flyout-divider" />
+              <button
+                type="button"
+                role="menuitem"
+                className="du-shapes-flyout-row"
+                aria-label="More shapes"
+                onClick={() => {
+                  onMoreShapes();
+                  setOpen(false);
+                }}
+              >
+                <Shapes size={14} strokeWidth={1.75} />
+                <span>More shapes</span>
+              </button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+/**
  * Platform-correct zoom hotkey labels — ⌘ glyphs on macOS, "Ctrl+…"
  * elsewhere. Descriptors mirror the bound zoom hotkeys; display uses the
  * minus/plus glyphs.
@@ -166,6 +319,16 @@ export type ToolbarItem =
        */
       readonly kind: "action-ref";
       readonly id: string;
+    }
+  | {
+      /**
+       * "Shapes and lines" button: opens a flyout beside the toolbar with
+       * line presets (Line / Arrow / Elbow arrow), shape kinds
+       * (Rectangle / Oval / Rhombus / Triangle) and a "More shapes" row.
+       * `onMoreShapes` opens the host's template library.
+       */
+      readonly kind: "shapes-flyout";
+      readonly onMoreShapes?: () => void;
     }
   | { readonly kind: "divider" }
   | { readonly kind: "undo"; readonly label?: ReactNode }
@@ -230,10 +393,8 @@ export const openImageFilePicker = (editor: Editor): void => {
 export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "action-ref", id: "mode-select" },
   { kind: "action-ref", id: "mode-hand" },
-  { kind: "action-ref", id: "mode-rect" },
-  { kind: "action-ref", id: "mode-ellipse" },
+  { kind: "shapes-flyout" },
   { kind: "action-ref", id: "mode-text" },
-  { kind: "action-ref", id: "mode-edge" },
   { kind: "action-ref", id: "mode-brush" },
   { kind: "action-ref", id: "mode-erase" },
   { kind: "action-ref", id: "mode-laser" },
@@ -265,10 +426,8 @@ export const DEFAULT_VERTICAL_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "action-ref", id: "mode-select" },
   { kind: "action-ref", id: "mode-hand" },
   { kind: "divider" },
-  { kind: "action-ref", id: "mode-rect" },
-  { kind: "action-ref", id: "mode-ellipse" },
+  { kind: "shapes-flyout" },
   { kind: "action-ref", id: "mode-text" },
-  { kind: "action-ref", id: "mode-edge" },
   { kind: "action-ref", id: "mode-brush" },
   { kind: "action-ref", id: "mode-erase" },
   { kind: "action-ref", id: "mode-laser" },
@@ -323,6 +482,14 @@ export const Toolbar = ({
             return <ToolbarDivider key={i} vertical={vertical} />;
           case "action-ref":
             return <ActionRefButton key={i} id={item.id} />;
+          case "shapes-flyout":
+            return (
+              <ShapesAndLinesButton
+                key={i}
+                vertical={vertical}
+                {...(item.onMoreShapes ? { onMoreShapes: item.onMoreShapes } : {})}
+              />
+            );
           case "mode": {
             const active = activeTool.type === item.mode;
             // Only select / hand are navigation-safe; every other mode

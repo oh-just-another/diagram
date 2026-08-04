@@ -362,7 +362,8 @@
   align-items: stretch;
 }
 
-.du-button-group > .du-icon-button {
+.du-button-group > .du-icon-button,
+.du-button-group > .du-shapes-wrap > .du-icon-button {
   border: none;
   box-shadow: none;
   border-radius: var(--du-radius-sm);
@@ -372,7 +373,8 @@
 }
 
 /* Vertical dock buttons are square + centred (icon-only tools). */
-.du-button-group-vertical > .du-icon-button {
+.du-button-group-vertical > .du-icon-button,
+.du-button-group-vertical > .du-shapes-wrap > .du-icon-button {
   width: var(--du-button-size-sm) !important;
   min-width: var(--du-button-size-sm) !important;
   padding: 0 !important;
@@ -408,25 +410,31 @@
   .du-button-group-vertical::-webkit-scrollbar {
     display: none;
   }
-  .du-button-group-vertical > .du-icon-button {
+  .du-button-group-vertical > .du-icon-button,
+  .du-button-group-vertical > .du-shapes-wrap > .du-icon-button {
     width: 44px !important;
     min-width: 44px !important;
     height: 44px !important;
   }
 }
 
-.du-button-group > .du-icon-button:hover:not(:disabled) {
+.du-button-group > .du-icon-button:hover:not(:disabled),
+.du-button-group > .du-shapes-wrap > .du-icon-button:hover:not(:disabled) {
   background: var(--du-hover-overlay);
 }
 
 .du-button-group > .du-icon-button[aria-pressed="true"],
-.du-button-group > .du-icon-button.is-active {
+.du-button-group > .du-shapes-wrap > .du-icon-button[aria-pressed="true"],
+.du-button-group > .du-icon-button.is-active,
+.du-button-group > .du-shapes-wrap > .du-icon-button.is-active {
   background: var(--du-selected-bg);
   color: var(--du-selected-fg);
 }
 
 .du-button-group > .du-icon-button[aria-pressed="true"]:hover:not(:disabled),
-.du-button-group > .du-icon-button.is-active:hover:not(:disabled) {
+.du-button-group > .du-shapes-wrap > .du-icon-button[aria-pressed="true"]:hover:not(:disabled),
+.du-button-group > .du-icon-button.is-active:hover:not(:disabled),
+.du-button-group > .du-shapes-wrap > .du-icon-button.is-active:hover:not(:disabled) {
   background: color-mix(in srgb, var(--du-selected-bg) 90%, var(--du-text) 10%);
 }
 
@@ -1793,4 +1801,52 @@
   margin-left: auto;
   font-size: 11px;
   color: var(--du-text-muted);
+}
+
+/* "Shapes and lines" flyout beside the vertical toolbar. */
+.du-shapes-flyout {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 10px);
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 6px;
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
+  border-radius: var(--du-radius);
+  box-shadow: var(--du-ui-shadow);
+}
+
+.du-shapes-flyout-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--du-text);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--du-radius-sm);
+  cursor: pointer;
+}
+
+.du-shapes-flyout-row:hover {
+  background: var(--du-hover-overlay);
+}
+
+.du-shapes-flyout-hotkey {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--du-text-muted);
+}
+
+.du-shapes-flyout-divider {
+  margin: 4px 6px;
+  border: none;
+  border-top: 1px solid var(--du-ui-border);
 }

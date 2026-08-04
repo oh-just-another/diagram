@@ -1004,3 +1004,30 @@ export const STICKY_PALETTE: readonly string[] = [
   "#ff9d48", // orange
   "#b384bb", // purple
 ];
+
+/**
+ * "Shapes and lines" flyout: the shape kind armed by a shape row. The
+ * rubber-band draw gesture then creates that kind (diamond / triangle
+ * materialise as polygons inscribed in the dragged box).
+ */
+export type DrawShapeKind = "rect" | "ellipse" | "diamond" | "triangle";
+
+/**
+ * "Shapes and lines" flyout: connector presets armed by the line rows.
+ * Overrides applied to NEW links drawn in `draw-edge` mode (and the
+ * live preview): `line` — straight, no arrowhead; `arrow` — straight
+ * with the default arrowhead; `elbow` — orthogonal with the default
+ * arrowhead (same as the bare draw-edge tool).
+ */
+export type LinkDrawPreset = "line" | "arrow" | "elbow";
+
+export const LINK_DRAW_PRESETS: Readonly<
+  Record<
+    LinkDrawPreset,
+    { readonly routing: "straight" | "orthogonal"; readonly arrowheadTo: "triangle" | null }
+  >
+> = {
+  line: { routing: "straight", arrowheadTo: null },
+  arrow: { routing: "straight", arrowheadTo: "triangle" },
+  elbow: { routing: "orthogonal", arrowheadTo: "triangle" },
+};

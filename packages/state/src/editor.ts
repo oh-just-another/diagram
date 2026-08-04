@@ -138,7 +138,10 @@ import {
   ERASER_TRAIL_TTL_MS,
   MAX_LIST_INDENT,
   IMAGE_ASPECT_PRESETS,
+  LINK_DRAW_PRESETS,
   type ImageAspectPreset,
+  type DrawShapeKind,
+  type LinkDrawPreset,
 } from "./constants.js";
 import { HANDLE_HIT_SLOP } from "./interaction/handle.js";
 import { req } from "./helpers/util.js";
@@ -1901,9 +1904,45 @@ export class Editor {
    * toolbar buttons and hotkeys reach it through the action registry.
    * Records the outgoing tool in `activeTool.lastActiveTool`.
    */
+  /**
+   * Shape kind the next rubber-band draw creates while `draw-rect` is
+   * armed (the "Shapes and lines" flyout arms diamond / triangle through
+   * the same mode). Reset to "rect" on every tool switch so hotkeys and
+   * plain toolbar buttons keep their stock behaviour.
+   */
+  private _drawShapeKind: DrawShapeKind = "rect";
+  get drawShapeKind(): DrawShapeKind {
+    return this._drawShapeKind;
+  }
+
+  /**
+   * Connector preset for NEW links drawn in `draw-edge` mode (see
+   * `LINK_DRAW_PRESETS`); `null` = stock defaults. Reset on tool switch.
+   */
+  private _linkDrawPreset: LinkDrawPreset | null = null;
+  get linkDrawPreset(): LinkDrawPreset | null {
+    return this._linkDrawPreset;
+  }
+
+  /** Arm the shape-drawing tool for `kind` (the flyout's shape rows). */
+  armShapeTool(kind: DrawShapeKind): void {
+    this.setActiveTool(kind === "ellipse" ? "draw-ellipse" : "draw-rect");
+    this._drawShapeKind = kind;
+  }
+
+  /** Arm the connector tool with a line preset (the flyout's line rows). */
+  armLineTool(preset: LinkDrawPreset): void {
+    this.setActiveTool("draw-edge");
+    this._linkDrawPreset = preset;
+  }
+
   setActiveTool(mode: Mode): void {
     const prev = this.actor.getSnapshot().context.mode;
     if (prev !== mode) this._lastActiveTool = prev;
+    // Flyout-armed variants reset on every switch — `armShapeTool` /
+    // `armLineTool` re-set them right after when they are the caller.
+    this._drawShapeKind = "rect";
+    this._linkDrawPreset = null;
     // A tool switch cancels any armed colour-picker pipette.
     this.pendingEyedropperPick = null;
     // Switching tools commits any in-flight text edit (standard: leaving the
@@ -5748,8 +5787,19 @@ export class Editor {
   private applyCreate(kind: "rect" | "ellipse" | "frame", bounds: Bounds): void {
     const id = newElementId(++this.nextId);
     const b = this.snapCreateBoundsIfActive(bounds);
-    const result = computeCreateElement(this._scene, kind, b, id, this._activeLayerId, () =>
-      this.nextFrameName(),
+    // The machine only knows the MODE ("rect" for draw-rect); the flyout
+    // may have armed a diamond / triangle variant on top of it.
+    const effectiveKind =
+      kind === "rect" && this._drawShapeKind !== "rect" && this._drawShapeKind !== "ellipse"
+        ? this._drawShapeKind
+        : kind;
+    const result = computeCreateElement(
+      this._scene,
+      effectiveKind,
+      b,
+      id,
+      this._activeLayerId,
+      () => this.nextFrameName(),
     );
     this._scene = result.scene;
     this._selection = Selection.single(id);
@@ -5795,7 +5845,14 @@ export class Editor {
     const from = this.snapLinkEndpoint(emit.fromElement, emit.fromPoint);
     const to = this.snapLinkEndpoint(emit.toElement, emit.toPoint);
     const id = newLinkId(++this.nextId);
-    const result = computeCreateLink(this._scene, from, to, id, this._activeLayerId);
+    const result = computeCreateLink(
+      this._scene,
+      from,
+      to,
+      id,
+      this._activeLayerId,
+      this._linkDrawPreset !== null ? LINK_DRAW_PRESETS[this._linkDrawPreset] : undefined,
+    );
     this._scene = result.scene;
     this._history.push(result.patch);
     this.edgePreview = null;
@@ -6186,9 +6243,13 @@ export class Editor {
 
   public applyLinkPreview(fromElement: ElementId | null, fromPoint: Vec2, toPoint: Vec2): void {
     const ep = computeLinkPreviewEndpoints(this._scene, fromElement, fromPoint, toPoint);
-    // Match the preview to the connector that will be committed: when new
-    // links default to elbow, draw the orthogonal route, not a straight line.
-    if (DEFAULT_LINK_ROUTING === "orthogonal") {
+    // Match the preview to the connector that will be committed: elbow
+    // presets/defaults draw the orthogonal route, straight presets a line.
+    const previewRouting =
+      this._linkDrawPreset !== null
+        ? LINK_DRAW_PRESETS[this._linkDrawPreset].routing
+        : DEFAULT_LINK_ROUTING;
+    if (previewRouting === "orthogonal") {
       const hit = this.hitTest(ep.to);
       const toElement = hit.kind === "element" ? hit.id : null;
       const points = routeElbowPreview(this._scene, fromElement, ep.from, toElement, ep.to);
@@ -6536,6 +6597,8 @@ export class Editor {
       debugHitZones: this.debugHitZones,
       readOnly: this._readOnly,
       hoveredStickyId: this._hoveredStickyId,
+      linkDrawOverrides:
+        this._linkDrawPreset !== null ? LINK_DRAW_PRESETS[this._linkDrawPreset] : undefined,
       groupMoveOrigin: this.groupMoveOrigin,
       aspectLocked: this.selectionIsAspectLocked(),
       combinedSelectionBounds: this.combinedSelectionBounds(),

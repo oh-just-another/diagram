@@ -40,7 +40,11 @@ import {
 } from "../render/overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
 import { hitZoneVisibility } from "./hit-test.js";
-import { buildElementForCreate, buildEdgePreviewLink } from "./applies/create.js";
+import {
+  buildElementForCreate,
+  buildEdgePreviewLink,
+  type LinkCreateOverrides,
+} from "./applies/create.js";
 import { nextFrameName } from "../helpers/frame-helpers.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
@@ -205,6 +209,8 @@ export interface RenderSnapshot {
   readonly readOnly: boolean;
   /** Sticky under the idle cursor — drives the hover-only "+" chrome. */
   readonly hoveredStickyId: ElementId | null;
+  /** Line-preset overrides for the draw-edge PREVIEW connector (WYSIWYG). */
+  readonly linkDrawOverrides: LinkCreateOverrides | undefined;
   readonly groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null;
   readonly aspectLocked: boolean;
   readonly combinedSelectionBounds: Bounds | null;
@@ -494,6 +500,7 @@ export const renderEditor = (editor: RenderSnapshot): void => {
         editor.edgePreview,
         DRAW_PREVIEW_LINK_ID,
         editor.activeLayerId,
+        editor.linkDrawOverrides,
       );
       edgePreviewScene = {
         ...editor.scene,
