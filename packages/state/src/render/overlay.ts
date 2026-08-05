@@ -256,6 +256,22 @@ export interface PeerSelection {
  * frame. Split out of the function signature so the per-section renderers can
  * share a typed context (see {@link OverlayCtx}).
  */
+/**
+ * In-canvas text editing chrome for the shape under edit. `caret` and
+ * `selectionRects` are WORLD-space *before rotation*: position + scale
+ * applied, rotation not — the overlay rotates them by `rotation` about
+ * `pivot` (the element's position) so they turn with the glyphs. `caret`
+ * is `null` while blinked off. Selection rects render as a translucent
+ * highlight under the caret.
+ */
+export interface EditingTextOverlay {
+  readonly caret: { readonly x: number; readonly y: number; readonly height: number } | null;
+  readonly caretColor: string;
+  readonly selectionRects: readonly Bounds[];
+  readonly rotation: number;
+  readonly pivot: Vec2;
+}
+
 export interface OverlayOptions {
   /**
    * Image-crop frame: the world-space corners (clockwise, 4 points) of the
@@ -412,16 +428,10 @@ export interface OverlayOptions {
    */
   gifBadges?: readonly Bounds[];
   /**
-   * In-canvas text editing chrome for the shape under edit. All rects
-   * are WORLD-space; the overlay projects them to screen. `caret` is
-   * `null` while blinked off. Selection rects render as a translucent
-   * highlight under the caret.
+   * In-canvas text editing chrome for the shape under edit — see
+   * {@link EditingTextOverlay}.
    */
-  editingText?: {
-    readonly caret: { readonly x: number; readonly y: number; readonly height: number } | null;
-    readonly caretColor: string;
-    readonly selectionRects: readonly Bounds[];
-  };
+  editingText?: EditingTextOverlay;
   /**
    * Debug: paint the mouse hit-zones (resize-handle slop, edge-
    * endpoint radius, edge-body threshold) for **every** element, so
@@ -1131,25 +1141,34 @@ const renderTextEditing = (ctx: OverlayCtx): void => {
   const { target, options, w2s, zoom } = ctx;
   if (options.editingText) {
     const et = options.editingText;
+    // Draw in world space under the element's rotation (about its
+    // position) so the chrome turns with the glyphs; the caret keeps a
+    // constant on-screen width by dividing it out of the zoom.
+    target.save();
+    target.setTransform(w2s);
+    if (et.rotation !== 0) {
+      target.translate(et.pivot.x, et.pivot.y);
+      target.rotate(et.rotation);
+      target.translate(-et.pivot.x, -et.pivot.y);
+    }
     if (et.selectionRects.length > 0) {
       target.setFill(TEXT_SELECTION_FILL);
       target.setOpacity(TEXT_SELECTION_OPACITY);
       for (const r of et.selectionRects) {
-        const s = projectBounds(r, w2s);
         target.beginPath();
-        target.rect(s.x, s.y, s.width, s.height);
+        target.rect(r.x, r.y, r.width, r.height);
         target.fill();
       }
       target.setOpacity(1);
     }
     if (et.caret) {
-      const p = matrix.applyToPoint(w2s, { x: et.caret.x, y: et.caret.y });
       target.setFill(et.caretColor);
       target.setOpacity(1);
       target.beginPath();
-      target.rect(p.x, p.y, TEXT_CARET_WIDTH_PX, et.caret.height * zoom);
+      target.rect(et.caret.x, et.caret.y, TEXT_CARET_WIDTH_PX / zoom, et.caret.height);
       target.fill();
     }
+    target.restore();
   }
 };
 

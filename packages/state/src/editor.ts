@@ -382,7 +382,7 @@ import {
   snapMoveDelta,
   snapResizeDelta,
 } from "./editor/applies/snap-grid.js";
-import { type PeerCursor, type PeerSelection } from "./render/overlay.js";
+import { type EditingTextOverlay, type PeerCursor, type PeerSelection } from "./render/overlay.js";
 import * as Selection from "./selection/selection.js";
 import * as LinkSelection from "./selection/link-selection.js";
 
@@ -2445,11 +2445,7 @@ export class Editor {
    * Returns `null` when not editing. The caret is `null` while blinked
    * off so the overlay can simply skip drawing it.
    */
-  editingTextOverlay(): {
-    caret: { x: number; y: number; height: number } | null;
-    caretColor: string;
-    selectionRects: readonly Bounds[];
-  } | null {
+  editingTextOverlay(): EditingTextOverlay | null {
     return this.textEdit.overlay();
   }
 

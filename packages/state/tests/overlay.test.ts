@@ -440,10 +440,31 @@ describe("renderOverlay", () => {
         caret: { x: 10, y: 20, height: 16 },
         caretColor: "#000",
         selectionRects: [],
+        rotation: 0,
+        pivot: { x: 0, y: 0 },
       },
     });
     const rects = calls.filter((c) => c.method === "rect");
     expect(rects.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("rotates the editing-text chrome about the pivot when the element is rotated", () => {
+    const { target, calls } = makeRecorder();
+    renderOverlay(emptyScene(), emptySelection, target, {
+      editingText: {
+        caret: { x: 10, y: 20, height: 16 },
+        caretColor: "#000",
+        selectionRects: [{ x: 5, y: 5, width: 40, height: 14 }],
+        rotation: Math.PI / 4,
+        pivot: { x: 100, y: 50 },
+      },
+    });
+    const rotate = calls.find((c) => c.method === "rotate");
+    expect(rotate?.args[0]).toBeCloseTo(Math.PI / 4);
+    // Rects are emitted in world units (not projected); the rotate wraps them.
+    const rects = calls.filter((c) => c.method === "rect");
+    expect(rects.some((c) => c.args[0] === 5 && c.args[1] === 5)).toBe(true);
+    expect(rects.some((c) => c.args[0] === 10 && c.args[1] === 20)).toBe(true);
   });
 
   it("draws text selection rects when selectionRects is non-empty", () => {
@@ -453,6 +474,8 @@ describe("renderOverlay", () => {
         caret: null,
         caretColor: "#000",
         selectionRects: [{ x: 5, y: 5, width: 40, height: 14 }],
+        rotation: 0,
+        pivot: { x: 0, y: 0 },
       },
     });
     const fillCalls = calls.filter((c) => c.method === "fill");

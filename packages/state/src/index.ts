@@ -33,7 +33,12 @@ export {
   boundsFromPoints,
 } from "./interaction/machine.js";
 
-export type { OverlayStyle, PeerCursor, PeerSelection } from "./render/overlay.js";
+export type {
+  EditingTextOverlay,
+  OverlayStyle,
+  PeerCursor,
+  PeerSelection,
+} from "./render/overlay.js";
 export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./render/overlay.js";
 
 export {

@@ -32,6 +32,7 @@ import {
 import {
   renderOverlay,
   paintElementSelectionHalo,
+  type EditingTextOverlay,
   type ElementHalo,
   type OverlayOptions,
   type PortOverlay,
@@ -214,11 +215,7 @@ export interface RenderSnapshot {
   readonly groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null;
   readonly aspectLocked: boolean;
   readonly combinedSelectionBounds: Bounds | null;
-  readonly editingText: {
-    caret: { x: number; y: number; height: number } | null;
-    caretColor: string;
-    selectionRects: readonly Bounds[];
-  } | null;
+  readonly editingText: EditingTextOverlay | null;
   // Runtime-parameterised lookups (narrow callbacks, not the Editor class).
   readonly previewClickCreate: (
     fromElement: ElementId,

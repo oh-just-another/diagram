@@ -254,4 +254,38 @@ describe("TextEditController", () => {
     // 5 chars × 7 px fixed advance
     expect(ov?.selectionRects[0]?.width).toBe(35);
   });
+
+  it("overlay() carries the element rotation + pivot and keeps rects unrotated", () => {
+    const rotated: TextElement = {
+      ...textElement("a", "hello"),
+      position: { x: 100, y: 50 },
+      rotation: Math.PI / 2,
+    };
+    const h = makeHarness(sceneWith(rotated));
+    h.c.begin(A);
+    h.c.setSelection(0, 5, "forward");
+    const ov = h.c.overlay();
+    expect(ov?.rotation).toBeCloseTo(Math.PI / 2);
+    expect(ov?.pivot).toEqual({ x: 100, y: 50 });
+    // Position + scale applied, rotation left to the overlay.
+    expect(ov?.selectionRects[0]?.x).toBe(100);
+    expect(ov?.selectionRects[0]?.width).toBe(35);
+  });
+
+  it("caretIndexAtWorldPoint() undoes rotation before hitting glyphs", () => {
+    const rotated: TextElement = {
+      ...textElement("a", "hello"),
+      position: { x: 100, y: 50 },
+      rotation: Math.PI / 2,
+    };
+    const h = makeHarness(sceneWith(rotated));
+    h.c.begin(A);
+    // Local (x: 17, y: 7) → rotated 90° about the position → world
+    // (100 − 7, 50 + 17). 17 px = 2 chars + 3 px, so the caret lands after
+    // "he" (index 2), not at the unrotated hit of (−7, 17).
+    expect(h.c.caretIndexAtWorldPoint({ x: 93, y: 67 })).toBe(2);
+    expect(h.c.editedElementContainsPoint({ x: 93, y: 67 })).toBe(true);
+    // Same offsets applied without rotation fall outside the rotated body.
+    expect(h.c.editedElementContainsPoint({ x: 117, y: 57 })).toBe(false);
+  });
 });

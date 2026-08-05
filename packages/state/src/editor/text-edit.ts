@@ -8,7 +8,7 @@ import {
 } from "@oh-just-another/renderer-core";
 import {
   getElement,
-  getElementWorldBounds,
+  getElementLocalBounds,
   isSticky,
   isText,
   removeElement,
@@ -19,8 +19,10 @@ import {
   type Scene,
   type TextElement,
   type TextParagraph,
+  worldToLocal,
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, LayerId, Vec2 } from "@oh-just-another/types";
+import type { EditingTextOverlay } from "../render/overlay.js";
 import { shapeLabelLayout } from "@oh-just-another/renderer-core";
 import { CaretBlinkController } from "./caret-blink.js";
 import { LABEL_DEFAULT_FONT_SIZE, TEXT_DEFAULT_FONT_FAMILY } from "../constants.js";
@@ -318,23 +320,19 @@ export class TextEditController {
     if (!view) return null;
     const layout = this.editingTextLayout(view.text);
     if (!layout) return null;
-    // World → shape-local: undo the element transform so the hit lands on the
-    // right glyph. Translate by position (+ the label offset for embedded
-    // labels), then divide out scale (rotation while editing text is not
-    // handled — an uncommon case).
-    const sx = shape.scale.x || 1;
-    const sy = shape.scale.y || 1;
-    const local = {
-      x: (worldPoint.x - shape.position.x) / sx - view.offX,
-      y: (worldPoint.y - shape.position.y) / sy - view.offY,
-    };
+    // World → shape-local: undo the element transform (translate, rotate,
+    // scale) so the hit lands on the right glyph, then strip the label
+    // offset for embedded labels.
+    const p = worldToLocal(shape, worldPoint);
+    const local = { x: p.x - view.offX, y: p.y - view.offY };
     const align = view.text.style.textAlign ?? "left";
     return pointToCaretIndex(layout, local, this.measureFor(view.text), align);
   }
 
   /**
    * `true` when a point is inside the currently-edited text shape's
-   * world bounds. Used by the pointer binding to decide between
+   * body (its local bounds, so a rotated shape tests its real outline,
+   * not the world AABB). Used by the pointer binding to decide between
    * repositioning the caret (inside) and committing (outside).
    */
   editedElementContainsPoint(worldPoint: Vec2): boolean {
@@ -342,13 +340,9 @@ export class TextEditController {
     if (!id) return false;
     const shape = getElement(this.host.scene, id);
     if (!shape) return false;
-    const b = getElementWorldBounds(shape);
-    return (
-      worldPoint.x >= b.x &&
-      worldPoint.x <= b.x + b.width &&
-      worldPoint.y >= b.y &&
-      worldPoint.y <= b.y + b.height
-    );
+    const b = getElementLocalBounds(shape);
+    const p = worldToLocal(shape, worldPoint);
+    return p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
   }
 
   /** Place a collapsed caret at the clicked point and start a drag-select. */
@@ -419,11 +413,7 @@ export class TextEditController {
    * Returns `null` when not editing. The caret is `null` while blinked
    * off so the overlay can simply skip drawing it.
    */
-  overlay(): {
-    caret: { x: number; y: number; height: number } | null;
-    caretColor: string;
-    selectionRects: readonly Bounds[];
-  } | null {
+  overlay(): EditingTextOverlay | null {
     const id = this._editingElement;
     if (!id || !this._sel) return null;
     const shape = getElement(this.host.scene, id);
@@ -436,9 +426,10 @@ export class TextEditController {
     const measure = this.measureFor(view.text);
     // The layout is in the shape's own (unscaled) space; the renderer draws it
     // through the element transform, so caret + selection geometry must scale
-    // too or they trail the rendered text on a scaled element. (Rotation while
-    // editing text is not handled — an uncommon case.) Embedded labels add
-    // their local offset before the transform.
+    // too or they trail the rendered text on a scaled element. Rotation is
+    // left to the overlay (it rotates the result about the position) so the
+    // rects stay axis-aligned here. Embedded labels add their local offset
+    // before the transform.
     const sx = shape.scale.x;
     const sy = shape.scale.y;
     const px = shape.position.x + view.offX * sx;
@@ -471,7 +462,13 @@ export class TextEditController {
         caret = { x: px + g.x * sx, y: py + g.y * sy, height: g.height * Math.abs(sy) };
       }
     }
-    return { caret, caretColor: view.text.style.fill ?? "#1a1a1a", selectionRects };
+    return {
+      caret,
+      caretColor: view.text.style.fill ?? "#1a1a1a",
+      selectionRects,
+      rotation: shape.rotation,
+      pivot: shape.position,
+    };
   }
 
   commit(next?: string): void {
