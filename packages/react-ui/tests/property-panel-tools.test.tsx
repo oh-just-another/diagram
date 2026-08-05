@@ -95,12 +95,19 @@ describe("PropertyPanel convert-type control (F9)", () => {
     const editor = mountEditor(rect);
     editor.setSelection([rect.id]);
     const { container } = renderPanel(editor);
-    const group = container.querySelector('[role="group"][aria-label="Switch type"]');
-    expect(group).not.toBeNull();
-    const ellipseBtn = group!.querySelector('button[aria-label="Ellipse"]');
-    expect(ellipseBtn).not.toBeNull();
-    fireEvent.click(ellipseBtn!);
+    const trigger = container.querySelector('button[aria-label="Switch type"]');
+    expect(trigger).not.toBeNull();
+    // Targets are hidden behind the trigger until it is clicked.
+    expect(document.querySelector('[role="menuitemradio"][aria-label="Ellipse"]')).toBeNull();
+    fireEvent.click(trigger!);
+    const rectRow = document.querySelector('[role="menuitemradio"][aria-label="Rectangle"]');
+    expect(rectRow?.getAttribute("aria-checked")).toBe("true");
+    const ellipseRow = document.querySelector('[role="menuitemradio"][aria-label="Ellipse"]');
+    expect(ellipseRow).not.toBeNull();
+    fireEvent.click(ellipseRow!);
     expect(isEllipse(editor.scene.elements.get(rect.id)!)).toBe(true);
+    // Menu closes after a pick.
+    expect(document.querySelector('[role="menuitemradio"][aria-label="Ellipse"]')).toBeNull();
     editor.dispose();
   });
 });

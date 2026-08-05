@@ -181,6 +181,11 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
     // (`… | z-order | align | actions | comment | lock | ⋯`).
     const primary: ReactNode[] = [];
     const overflow: ReactNode[] = [];
+    // Shared head: the type switcher always leads the toolbar (the
+    // control renders nothing for kinds outside the switch-type matrix).
+    if (shapes.every((s) => isConvertible(s))) {
+      primary.push(<ConvertTypeControl key="convert" shapes={shapes} />, <Divider key="d-type" />);
+    }
     if (allSticky) {
       // text (with Auto size) | size S/M/L | background | tags / author.
       if (shapes.every((s) => s.label !== undefined)) {
@@ -208,7 +213,6 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <FillOpacityControl key="bg" shapes={shapes} />,
       );
       overflow.push(
-        <ConvertTypeControl key="convert" shapes={shapes} />,
         <StickyTagControl key="tags" shapes={shapes} />,
         <StickyAuthorControl key="author" shapes={shapes} />,
       );
@@ -231,7 +235,6 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         <ListControl key="list" shapes={shapes} />,
       );
       overflow.push(
-        <ConvertTypeControl key="convert" shapes={shapes} />,
         <LinkControl key="link" shapes={shapes} />,
         <Divider key="d-color" />,
         <ColorOpacityControl key="color" shapes={shapes} />,
@@ -261,12 +264,8 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       // the selection is uniform again.
       primary.push(<SelectionFilterControl key="filter" shapes={shapes} />);
     } else {
-      // type | label text controls (when every shape has one) | border group
+      // label text controls (when every shape has one) | border group
       // (color / width / dash / corners) | fill group (color / opacity) | link.
-      primary.push(
-        <ConvertTypeControl key="convert" shapes={shapes} />,
-        <Divider key="d-border" />,
-      );
       if (shapes.every((s) => s.label !== undefined)) {
         // Pseudo-shapes exposing the LABEL's font + style so the text
         // controls read label values; `labelMode` reroutes their writes
@@ -308,8 +307,9 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       }
       overflow.push(<Divider key="d-link" />, <LinkControl key="link" shapes={shapes} />);
     }
-    // Common trailing controls for every shape type. Text has its link
-    // control in the type cluster above; the rest get it here.
+    // Shared tail for every selection type:
+    // `link (frame / image) | z-order | align (2+) | actions | comment | lock | ⋯`.
+    // Text and shapes carry their link control in the type cluster above.
     if (allFrame || allImage) overflow.push(<LinkControl key="link" shapes={shapes} />);
     overflow.push(<ZOrderControl key="z" />);
     // Alignment needs a reference box — only meaningful for 2+ shapes.
@@ -2035,44 +2035,93 @@ const SelectionFilterControl = ({ shapes }: { readonly shapes: readonly ElementB
   );
 };
 
+/**
+ * Switch-type targets offered by {@link ConvertTypeControl}, in menu
+ * order. Every listed kind converts to every other one (shape kinds ↔
+ * text ↔ sticky).
+ */
+const CONVERT_TARGETS: readonly {
+  readonly value: ConvertTarget;
+  readonly label: string;
+  readonly icon: LucideIcon;
+}[] = [
+  { value: "rectangle", label: "Rectangle", icon: Square },
+  { value: "ellipse", label: "Ellipse", icon: Circle },
+  { value: "polygon", label: "Diamond", icon: Diamond },
+  { value: "text", label: "Text", icon: CaseSensitive },
+  { value: "sticky", label: "Sticky note", icon: StickyNote },
+];
+
+/** Kinds inside the switch-type matrix — the only ones the picker handles. */
+const isConvertible = (s: ElementBase): boolean =>
+  isRectangle(s) || isEllipse(s) || isPolygon(s) || isText(s) || isSticky(s);
+
+const convertTargetOf = (s: ElementBase): ConvertTarget =>
+  isRectangle(s)
+    ? "rectangle"
+    : isEllipse(s)
+      ? "ellipse"
+      : isText(s)
+        ? "text"
+        : isSticky(s)
+          ? "sticky"
+          : "polygon";
+
+/**
+ * Switch-type picker: one trigger showing the selection's current kind
+ * that opens a menu of every target kind. Picking a row converts the
+ * selection in place and closes the menu.
+ */
 const ConvertTypeControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
+  const [open, setOpen] = useState(false);
   if (!editor) return null;
-  // Switch-type matrix (reference parity): shape kinds ↔ text ↔ sticky.
-  const convertible = shapes.every(
-    (s) => isRectangle(s) || isEllipse(s) || isPolygon(s) || isText(s) || isSticky(s),
-  );
-  if (!convertible) return null;
-  const value = sharedValue<ConvertTarget>(shapes, (s) =>
-    isRectangle(s)
-      ? "rectangle"
-      : isEllipse(s)
-        ? "ellipse"
-        : isText(s)
-          ? "text"
-          : isSticky(s)
-            ? "sticky"
-            : "polygon",
-  );
+  const value = sharedValue<ConvertTarget>(shapes, convertTargetOf);
+  const current = CONVERT_TARGETS.find((t) => t.value === value);
+  const TriggerIcon = current?.icon ?? Square;
   return (
-    <SegmentedControl<ConvertTarget>
+    <Popover
       ariaLabel="Switch type"
-      value={value}
-      options={[
-        { value: "rectangle", label: "Rectangle", icon: <Square size={14} strokeWidth={1.75} /> },
-        { value: "ellipse", label: "Ellipse", icon: <Circle size={14} strokeWidth={1.75} /> },
-        { value: "polygon", label: "Diamond", icon: <Diamond size={14} strokeWidth={1.75} /> },
-        { value: "text", label: "Text", icon: <CaseSensitive size={14} strokeWidth={1.75} /> },
-        {
-          value: "sticky",
-          label: "Sticky note",
-          icon: <StickyNote size={14} strokeWidth={1.75} />,
-        },
-      ]}
-      onChange={(v) => {
-        editor.convertSelection(v);
-      }}
-    />
+      open={open}
+      onOpenChange={setOpen}
+      trigger={
+        <button
+          type="button"
+          className="du-sel-icon-button"
+          title="Switch type"
+          aria-label="Switch type"
+        >
+          <TriggerIcon size={14} strokeWidth={1.75} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Switch type</header>
+        <div className="du-sel-mask-list" role="menu" aria-label="Switch type targets">
+          {CONVERT_TARGETS.map((target) => {
+            const Icon = target.icon;
+            const active = target.value === value;
+            return (
+              <button
+                key={target.value}
+                type="button"
+                role="menuitemradio"
+                aria-checked={active}
+                className={`du-sel-mask-row${active ? " is-active" : ""}`}
+                aria-label={target.label}
+                onClick={() => {
+                  editor.convertSelection(target.value);
+                  setOpen(false);
+                }}
+              >
+                <Icon size={14} strokeWidth={1.75} aria-hidden />
+                <span>{target.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </Popover>
   );
 };
 

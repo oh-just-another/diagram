@@ -1806,6 +1806,10 @@
   background: var(--du-hover-overlay);
 }
 
+.du-sel-mask-row.is-active {
+  background: var(--du-selected-bg);
+}
+
 .du-sel-mask-ratio {
   margin-left: auto;
   font-size: 11px;
