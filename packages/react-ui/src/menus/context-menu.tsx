@@ -33,6 +33,17 @@ export type ContextMenuItem =
       readonly visible?: (editor: Editor, ctx: ContextMenuContext) => boolean;
       readonly disabled?: (editor: Editor, ctx: ContextMenuContext) => boolean;
       readonly onClick: (editor: Editor, ctx: ContextMenuContext) => void;
+    }
+  | {
+      /**
+       * Nested group: a row that opens `items` in a child panel beside it
+       * (hover or click). Hidden when none of its items is visible.
+       */
+      readonly kind: "submenu";
+      readonly id: string;
+      readonly label: ReactNode;
+      readonly items: readonly ContextMenuItem[];
+      readonly visible?: (editor: Editor, ctx: ContextMenuContext) => boolean;
     };
 
 /** Per-open snapshot the menu hands to predicates and click handlers. */
@@ -127,11 +138,7 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
 
   // Filter visibility once per open — items that compute `visible` against
   // the editor still see a consistent snapshot.
-  const visibleItems = items.filter(
-    (item) => item.kind === "divider" || item.visible?.(editor, ctx) !== false,
-  );
-  // Collapse adjacent dividers + leading/trailing dividers.
-  const cleanedItems = collapseDividers(visibleItems);
+  const cleanedItems = resolveItems(items, editor, ctx);
   if (cleanedItems.length === 0) return null;
 
   // Portal into the themed container so the menu inherits the app theme — when
@@ -143,47 +150,163 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
       ref={menuRef}
       role="menu"
       style={{
+        ...MENU_PANEL_STYLE,
         position: "fixed",
         zIndex: 1000,
         top: open.screenPoint.y,
         left: open.screenPoint.x,
-        background: "var(--menu-bg, var(--du-ui-bg-solid, #fff))",
-        color: "var(--menu-text, var(--du-text, #1a1a1a))",
-        border: "1px solid var(--menu-border, var(--du-ui-border, rgba(0,0,0,0.08)))",
-        borderRadius: 6,
-        padding: "4px 0",
-        minWidth: 180,
-        boxShadow: "var(--du-ui-shadow, 0 4px 16px rgba(0,0,0,0.18))",
-        font: "13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
         ...style,
       }}
       className={className}
     >
-      {cleanedItems.map((item, i) =>
-        item.kind === "divider" ? (
-          <hr
-            key={`d-${i}`}
-            style={{
-              border: 0,
-              borderTop: "1px solid var(--menu-divider, var(--du-ui-border, rgba(0,0,0,0.08)))",
-              margin: "4px 0",
-            }}
-          />
-        ) : (
-          <ContextMenuRow
-            key={item.id}
-            item={item}
-            editor={editor}
-            ctx={ctx}
-            onActivate={() => {
-              close();
-              item.onClick(editor, ctx);
-            }}
-          />
-        ),
-      )}
+      <MenuRows items={cleanedItems} editor={editor} ctx={ctx} close={close} />
     </div>,
     portalContainer,
+  );
+};
+
+/** Shared chrome for the root panel and every submenu panel. */
+const MENU_PANEL_STYLE: CSSProperties = {
+  background: "var(--menu-bg, var(--du-ui-bg-solid, #fff))",
+  color: "var(--menu-text, var(--du-text, #1a1a1a))",
+  border: "1px solid var(--menu-border, var(--du-ui-border, rgba(0,0,0,0.08)))",
+  borderRadius: 6,
+  padding: "4px 0",
+  minWidth: 180,
+  boxShadow: "var(--du-ui-shadow, 0 4px 16px rgba(0,0,0,0.18))",
+  font: "13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+};
+
+const ROW_STYLE: CSSProperties = {
+  all: "unset",
+  display: "flex",
+  justifyContent: "space-between",
+  padding: "6px 12px",
+  width: "100%",
+  boxSizing: "border-box",
+};
+
+/**
+ * Drop hidden items (recursively — a submenu with nothing visible goes too),
+ * then collapse adjacent / leading / trailing dividers.
+ */
+const resolveItems = (
+  items: readonly ContextMenuItem[],
+  editor: Editor,
+  ctx: ContextMenuContext,
+): readonly ContextMenuItem[] => {
+  const visible: ContextMenuItem[] = [];
+  for (const item of items) {
+    if (item.kind === "divider") {
+      visible.push(item);
+    } else if (item.kind === "submenu") {
+      if (item.visible?.(editor, ctx) === false) continue;
+      const nested = resolveItems(item.items, editor, ctx);
+      if (nested.length > 0) visible.push({ ...item, items: nested });
+    } else if (item.visible?.(editor, ctx) !== false) {
+      visible.push(item);
+    }
+  }
+  return collapseDividers(visible);
+};
+
+const MenuRows = ({
+  items,
+  editor,
+  ctx,
+  close,
+}: {
+  readonly items: readonly ContextMenuItem[];
+  readonly editor: Editor;
+  readonly ctx: ContextMenuContext;
+  readonly close: () => void;
+}) => (
+  <>
+    {items.map((item, i) =>
+      item.kind === "divider" ? (
+        <hr
+          key={`d-${i}`}
+          style={{
+            border: 0,
+            borderTop: "1px solid var(--menu-divider, var(--du-ui-border, rgba(0,0,0,0.08)))",
+            margin: "4px 0",
+          }}
+        />
+      ) : item.kind === "submenu" ? (
+        <ContextSubmenuRow key={item.id} item={item} editor={editor} ctx={ctx} close={close} />
+      ) : (
+        <ContextMenuRow
+          key={item.id}
+          item={item}
+          editor={editor}
+          ctx={ctx}
+          onActivate={() => {
+            close();
+            item.onClick(editor, ctx);
+          }}
+        />
+      ),
+    )}
+  </>
+);
+
+/**
+ * Submenu row: hovering (or clicking) opens the child panel to the right,
+ * top-aligned with the row; leaving the row + panel closes it. Items are
+ * already visibility-resolved by the parent.
+ */
+const ContextSubmenuRow = ({
+  item,
+  editor,
+  ctx,
+  close,
+}: {
+  readonly item: Extract<ContextMenuItem, { kind: "submenu" }>;
+  readonly editor: Editor;
+  readonly ctx: ContextMenuContext;
+  readonly close: () => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      style={{ position: "relative" }}
+      onMouseEnter={() => {
+        setOpen(true);
+      }}
+      onMouseLeave={() => {
+        setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        role="menuitem"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(ev) => {
+          ev.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        style={{
+          ...ROW_STYLE,
+          cursor: "pointer",
+          background: open ? "var(--du-hover-overlay, rgba(0,0,0,0.05))" : "transparent",
+        }}
+      >
+        <span>{item.label}</span>
+        <span aria-hidden style={{ marginLeft: 16, opacity: 0.6 }}>
+          ›
+        </span>
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          aria-label={typeof item.label === "string" ? item.label : undefined}
+          style={{ ...MENU_PANEL_STYLE, position: "absolute", top: -5, left: "100%" }}
+        >
+          <MenuRows items={item.items} editor={editor} ctx={ctx} close={close} />
+        </div>
+      ) : null}
+    </div>
   );
 };
 
@@ -214,14 +337,9 @@ const ContextMenuRow = ({
       onClick={handle}
       disabled={disabled}
       style={{
-        all: "unset",
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "6px 12px",
+        ...ROW_STYLE,
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.4 : 1,
-        width: "100%",
-        boxSizing: "border-box",
       }}
       onMouseEnter={(ev) => {
         if (!disabled)
@@ -381,17 +499,59 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     },
   },
   { kind: "divider" },
-  // --- Z-order + layers ---
-  actionMenuItem("bring-to-front", { visible: (e) => e.selection.size === 1 }),
-  actionMenuItem("bring-forward", {
-    label: "Bring forward",
-    visible: (e) => e.selection.size === 1,
-  }),
-  actionMenuItem("send-backward", {
-    label: "Send backward",
-    visible: (e) => e.selection.size === 1,
-  }),
-  actionMenuItem("send-to-back", { visible: (e) => e.selection.size === 1 }),
+  // --- Arrange / Align / Layout submenus + layers ---
+  // Arrange: stacking order and mirroring.
+  {
+    kind: "submenu",
+    id: "arrange",
+    label: "Arrange",
+    items: [
+      actionMenuItem("bring-to-front", { visible: (e) => e.selection.size === 1 }),
+      actionMenuItem("bring-forward", {
+        label: "Bring forward",
+        visible: (e) => e.selection.size === 1,
+      }),
+      actionMenuItem("send-backward", {
+        label: "Send backward",
+        visible: (e) => e.selection.size === 1,
+      }),
+      actionMenuItem("send-to-back", { visible: (e) => e.selection.size === 1 }),
+      { kind: "divider" },
+      actionMenuItem("flip-horizontal", { label: "Flip horizontal" }),
+      actionMenuItem("flip-vertical", { label: "Flip vertical" }),
+    ],
+  },
+  // Align: edge / centre alignment (2+), then even spacing (3+).
+  {
+    kind: "submenu",
+    id: "align",
+    label: "Align",
+    items: [
+      actionMenuItem("align-left", { label: "Align left" }),
+      actionMenuItem("align-h-center", { label: "Align horizontal centres" }),
+      actionMenuItem("align-right", { label: "Align right" }),
+      { kind: "divider" },
+      actionMenuItem("align-top", { label: "Align top" }),
+      actionMenuItem("align-v-center", { label: "Align vertical centres" }),
+      actionMenuItem("align-bottom", { label: "Align bottom" }),
+      { kind: "divider" },
+      actionMenuItem("distribute-horizontal", { label: "Distribute horizontally" }),
+      actionMenuItem("distribute-vertical", { label: "Distribute vertically" }),
+    ],
+  },
+  // Layout: re-place the selection as a whole (grid / stacks / container).
+  {
+    kind: "submenu",
+    id: "layout",
+    label: "Layout",
+    items: [
+      actionMenuItem("arrange-grid"),
+      actionMenuItem("arrange-stack-h"),
+      actionMenuItem("arrange-stack-v"),
+      { kind: "divider" },
+      actionMenuItem("auto-arrange"),
+    ],
+  },
   {
     kind: "action",
     id: "move-to-layer",
@@ -409,25 +569,10 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     },
   },
   { kind: "divider" },
-  // --- Selection / grouping / arrange ---
+  // --- Selection / grouping ---
   actionMenuItem("select-all"),
   actionMenuItem("group-selection", { label: "Group" }),
   actionMenuItem("ungroup-selection", { label: "Ungroup" }),
-  actionMenuItem("flip-horizontal", { label: "Flip horizontal" }),
-  actionMenuItem("flip-vertical", { label: "Flip vertical" }),
-  actionMenuItem("align-left", { label: "Align left" }),
-  actionMenuItem("align-h-center", { label: "Align horizontal centres" }),
-  actionMenuItem("align-right", { label: "Align right" }),
-  actionMenuItem("align-top", { label: "Align top" }),
-  actionMenuItem("align-v-center", { label: "Align vertical centres" }),
-  actionMenuItem("align-bottom", { label: "Align bottom" }),
-  actionMenuItem("distribute-horizontal", { label: "Distribute horizontally" }),
-  actionMenuItem("distribute-vertical", { label: "Distribute vertically" }),
-  actionMenuItem("arrange-grid"),
-  actionMenuItem("arrange-stack-h"),
-  actionMenuItem("arrange-stack-v"),
-  actionMenuItem("auto-arrange"),
-  actionMenuItem("compact-z-order"),
   { kind: "divider" },
   // --- Lock ---
   actionMenuItem("toggle-lock", { label: "Lock" }),

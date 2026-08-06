@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CONTEXT_MENU } from "../src/menus/context-menu";
+import { DEFAULT_CONTEXT_MENU, type ContextMenuItem } from "../src/menus/context-menu";
 
 /**
  * Pins the context-menu section order: clipboard → styles → comments →
@@ -8,8 +8,13 @@ import { DEFAULT_CONTEXT_MENU } from "../src/menus/context-menu";
  * regressions here silently reshuffle the whole right-click UX.
  */
 
+// Flatten submenus in place so nested ids keep their parent's position.
+const flatten = (items: readonly ContextMenuItem[]): readonly ContextMenuItem[] =>
+  items.flatMap((item) => (item.kind === "submenu" ? [item, ...flatten(item.items)] : [item]));
+const FLAT = flatten(DEFAULT_CONTEXT_MENU);
+
 const indexOf = (id: string): number => {
-  const i = DEFAULT_CONTEXT_MENU.findIndex((item) => item.kind === "action" && item.id === id);
+  const i = FLAT.findIndex((item) => item.kind !== "divider" && item.id === id);
   if (i === -1) throw new Error(`Action ${id} missing from DEFAULT_CONTEXT_MENU`);
   return i;
 };
@@ -21,10 +26,18 @@ describe("DEFAULT_CONTEXT_MENU order", () => {
       "duplicate-selection",
       "copy-style",
       "add-comment",
+      "arrange",
       "bring-to-front",
       "bring-forward",
       "send-backward",
       "send-to-back",
+      "flip-horizontal",
+      "align",
+      "align-left",
+      "distribute-vertical",
+      "layout",
+      "arrange-grid",
+      "auto-arrange",
       "move-to-layer",
       "select-all",
       "group-selection",
@@ -37,6 +50,50 @@ describe("DEFAULT_CONTEXT_MENU order", () => {
     const positions = order.map(indexOf);
     const sorted = [...positions].sort((a, b) => a - b);
     expect(positions).toEqual(sorted);
+  });
+
+  const submenuIds = (id: string): readonly string[] => {
+    const sub = DEFAULT_CONTEXT_MENU.find((i) => i.kind === "submenu" && i.id === id);
+    if (sub?.kind !== "submenu") throw new Error(`Submenu ${id} missing`);
+    return sub.items.map((i) => (i.kind === "divider" ? "-" : i.id));
+  };
+
+  it("groups order / flip / align / distribute / layout under three submenus", () => {
+    expect(submenuIds("arrange")).toEqual([
+      "bring-to-front",
+      "bring-forward",
+      "send-backward",
+      "send-to-back",
+      "-",
+      "flip-horizontal",
+      "flip-vertical",
+    ]);
+    expect(submenuIds("align")).toEqual([
+      "align-left",
+      "align-h-center",
+      "align-right",
+      "-",
+      "align-top",
+      "align-v-center",
+      "align-bottom",
+      "-",
+      "distribute-horizontal",
+      "distribute-vertical",
+    ]);
+    expect(submenuIds("layout")).toEqual([
+      "arrange-grid",
+      "arrange-stack-h",
+      "arrange-stack-v",
+      "-",
+      "auto-arrange",
+    ]);
+    // None of the nested ids leak to the top level.
+    const nested = new Set([
+      ...submenuIds("arrange"),
+      ...submenuIds("align"),
+      ...submenuIds("layout"),
+    ]);
+    expect(DEFAULT_CONTEXT_MENU.some((i) => i.kind === "action" && nested.has(i.id))).toBe(false);
   });
 
   it("keeps delete after every other mutating selection op", () => {

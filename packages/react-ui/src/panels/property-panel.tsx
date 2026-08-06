@@ -14,8 +14,6 @@ import {
   Bold,
   CaseSensitive,
   Download,
-  ChevronsDown,
-  ChevronsUp,
   Circle,
   Copy as CopyIcon,
   Crop,
@@ -39,9 +37,7 @@ import {
   Minus,
   MoreHorizontal,
   MoreVertical,
-  MoveDown,
   MoveRight,
-  MoveUp,
   Proportions,
   RectangleHorizontal,
   RectangleVertical,
@@ -308,10 +304,10 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       overflow.push(<Divider key="d-link" />, <LinkControl key="link" shapes={shapes} />);
     }
     // Shared tail for every selection type:
-    // `link (frame / image) | z-order | align (2+) | actions | comment | lock | ⋯`.
-    // Text and shapes carry their link control in the type cluster above.
+    // `link (frame / image) | align (2+) | actions | comment | lock | ⋯`.
+    // Text and shapes carry their link control in the type cluster above;
+    // z-order lives in the context menu (⋯ → Arrange).
     if (allFrame || allImage) overflow.push(<LinkControl key="link" shapes={shapes} />);
-    overflow.push(<ZOrderControl key="z" />);
     // Alignment needs a reference box — only meaningful for 2+ shapes.
     if (shapes.length >= 2) overflow.push(<AlignControl key="align" />);
     overflow.push(
@@ -1894,41 +1890,6 @@ const OpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
         />
       </div>
     </Popover>
-  );
-};
-
-const ZOrderControl = () => {
-  const editor = useDiagramOptional();
-  if (!editor) return null;
-  return (
-    <SegmentedControl<"back" | "backward" | "forward" | "front">
-      ariaLabel="Z-order"
-      value={null}
-      options={[
-        {
-          value: "back",
-          label: "Send to back",
-          icon: <ChevronsDown size={14} strokeWidth={1.75} />,
-        },
-        {
-          value: "backward",
-          label: "Send backward",
-          icon: <MoveDown size={14} strokeWidth={1.75} />,
-        },
-        { value: "forward", label: "Bring forward", icon: <MoveUp size={14} strokeWidth={1.75} /> },
-        {
-          value: "front",
-          label: "Bring to front",
-          icon: <ChevronsUp size={14} strokeWidth={1.75} />,
-        },
-      ]}
-      onChange={(v) => {
-        if (v === "back") editor.sendToBack();
-        else if (v === "backward") editor.sendBackward();
-        else if (v === "forward") editor.bringForward();
-        else editor.bringToFront();
-      }}
-    />
   );
 };
 
