@@ -1,4 +1,6 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
+import { vec2 } from "@oh-just-another/math";
+import { DOUBLE_CLICK_MS, DOUBLE_CLICK_TOLERANCE_PX } from "../constants.js";
 import type { AnnotationId, LinkId } from "@oh-just-another/types";
 import type { Element, Link } from "@oh-just-another/scene";
 import type { BrushStrokeState } from "./public/brush.js";
@@ -154,6 +156,21 @@ export class InteractionState {
   lastClickAt = 0;
   /** World point of the last non-drag pointer-up (double-click detection). */
   lastClickWorldPoint: Vec2 | null = null;
+
+  /**
+   * `true` when a press at `worldPoint` now would be the second click of a
+   * double-click: within `DOUBLE_CLICK_MS` of the last recorded click and
+   * within `DOUBLE_CLICK_TOLERANCE_PX` of its point. Read-only — callers
+   * record the click themselves. The time/distance bookkeeping is the
+   * source of truth because `PointerEvent.detail` is 0 in most browsers.
+   */
+  isDoubleClickAt(worldPoint: Vec2, now = performance.now()): boolean {
+    return (
+      now - this.lastClickAt < DOUBLE_CLICK_MS &&
+      this.lastClickWorldPoint !== null &&
+      vec2.distance(this.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX
+    );
+  }
 
   /** In-progress brush stroke (live overlay preview). */
   brushStroke: BrushStrokeState | null = null;

@@ -76,7 +76,7 @@ import {
   type LinkId,
   type LayerId,
 } from "@oh-just-another/types";
-import { bounds as B, matrix, vec2 } from "@oh-just-another/math";
+import { bounds as B, matrix } from "@oh-just-another/math";
 import {
   onAnimationContentReady,
   setActiveRasterizer,
@@ -129,8 +129,6 @@ import {
   ANCHOR_DOT_CLICK_RADIUS,
   TOUCH_ANCHOR_START_HIT_SLOP,
   TOUCH_ANCHOR_DOT_CLICK_RADIUS,
-  DOUBLE_CLICK_MS,
-  DOUBLE_CLICK_TOLERANCE_PX,
   WHEEL_ZOOM_STEP,
   ROTATE_SNAP_RADIANS,
   CROP_HANDLE_HIT_RADIUS,
@@ -4353,6 +4351,25 @@ export class Editor {
     this.commitArrange(computeRotatePatches(this._scene, origin, pivot, delta));
   }
 
+  /**
+   * Straighten the selection: every selected element (and descendants of
+   * selected groups) goes back to `rotation: 0`, each turning about its own
+   * centre so it stays where it is. One undoable step; no-op when nothing
+   * is rotated. Triggered by a double-click on the rotate grip.
+   */
+  resetSelectionRotation(): void {
+    const patches: Patch[] = [];
+    for (const id of this.expandSelectionWithDescendants()) {
+      const el = getElement(this._scene, id);
+      if (el === undefined || el.rotation === 0) continue;
+      const origin = new Map([[id, { position: el.position, rotation: el.rotation }]]);
+      patches.push(
+        ...computeRotatePatches(this._scene, origin, selectionCenter([el]), -el.rotation),
+      );
+    }
+    this.commitArrange(patches);
+  }
+
   /** Apply a batch of arrange patches as a single undoable step. */
   private commitArrange(patches: readonly Patch[]): void {
     if (this.readOnly) return;
@@ -5180,10 +5197,7 @@ export class Editor {
    */
   public routeIsolationClick(clickEffect: InteractionEmit | null, worldPoint: Vec2): boolean {
     const now = performance.now();
-    const isDouble =
-      now - this.interaction.lastClickAt < DOUBLE_CLICK_MS &&
-      this.interaction.lastClickWorldPoint !== null &&
-      vec2.distance(this.interaction.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX;
+    const isDouble = this.interaction.isDoubleClickAt(worldPoint, now);
     this.interaction.lastClickAt = now;
     this.interaction.lastClickWorldPoint = worldPoint;
 

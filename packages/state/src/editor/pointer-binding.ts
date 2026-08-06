@@ -31,8 +31,6 @@ import { anchorOverlayPoints } from "./anchor-points.js";
 import { snapshotMovingLinks } from "./applies/link-move.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
-  DOUBLE_CLICK_MS,
-  DOUBLE_CLICK_TOLERANCE_PX,
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_START_ANCHOR_OUTSET,
   LONG_PRESS_MAX_MOVEMENT_PX,
@@ -72,11 +70,7 @@ const handleDownLabelDrag = (editor: Editor, worldPoint: Vec2): boolean => {
   // usually travelled the machine path (it selected the link), so consult the
   // machine's click bookkeeping, not the handle chain.
   const now = performance.now();
-  const last = editor.interaction.lastClickWorldPoint;
-  const isDouble =
-    now - editor.interaction.lastClickAt < DOUBLE_CLICK_MS &&
-    last !== null &&
-    Math.hypot(last.x - worldPoint.x, last.y - worldPoint.y) <= DOUBLE_CLICK_TOLERANCE_PX;
+  const isDouble = editor.interaction.isDoubleClickAt(worldPoint, now);
   editor.interaction.lastClickAt = now;
   editor.interaction.lastClickWorldPoint = worldPoint;
   if (isDouble) {
@@ -279,19 +273,42 @@ const handleDownCrop = (editor: Editor, worldPoint: Vec2): boolean => {
 };
 
 /**
- * Double-click on an image (in select mode) enters crop mode. Detected via the
- * native click-count (`detail`), matching the browser's dblclick timing.
- * `detail` may be absent (synthetic events / pointer backends that don't set
- * it); treat a missing count as a single click so a plain tap never enters
- * crop (which would otherwise swallow the press and break tap gestures).
+ * Second press of a double-click? Trusts a native click-count (`detail` ≥ 2,
+ * set by some pointer backends) and otherwise falls back to the editor's
+ * time / distance bookkeeping — `PointerEvent.detail` is 0 in most browsers,
+ * so the previous tap's pointer-up (recorded by `routeIsolationClick`) is the
+ * reliable signal. A missing count on a first press reads as a single click,
+ * so a plain tap never triggers a double-click action.
+ */
+const isDoublePress = (editor: Editor, worldPoint: Vec2, detail: number): boolean =>
+  (detail || 0) >= 2 || editor.interaction.isDoubleClickAt(worldPoint);
+
+/**
+ * Double-click on an image (in select mode) enters crop mode.
  */
 const handleDownCropEnter = (editor: Editor, worldPoint: Vec2, detail: number): boolean => {
-  if (editor.readOnly || editor.activeTool.type !== "select" || (detail || 0) < 2) return false;
+  if (editor.readOnly || editor.activeTool.type !== "select") return false;
+  if (!isDoublePress(editor, worldPoint, detail)) return false;
   const hit = editor.hitTest(worldPoint);
   if (hit.kind !== "element") return false;
   const el = getElement(editor._scene, hit.id);
   if (el === undefined || !isImage(el)) return false;
   editor.beginImageCrop(hit.id);
+  return true;
+};
+
+/**
+ * Double-click on the rotate grip (in select mode) straightens the selection
+ * back to `rotation: 0`. Same double-press detection as crop entry; the first
+ * press of the pair already ran the (motionless) rotate gesture, so nothing
+ * needs unwinding here.
+ */
+const handleDownRotateReset = (editor: Editor, worldPoint: Vec2, detail: number): boolean => {
+  if (editor.readOnly || editor.activeTool.type !== "select") return false;
+  if (editor.hitTest(worldPoint).kind !== "rotate-handle") return false;
+  if (!isDoublePress(editor, worldPoint, detail)) return false;
+  editor.cancelLongPress();
+  editor.resetSelectionRotation();
   return true;
 };
 
@@ -1254,6 +1271,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (handleDownEditingText(editor, worldPoint)) return;
     if (handleDownCrop(editor, worldPoint)) return;
     if (handleDownCropEnter(editor, worldPoint, ev.detail)) return;
+    if (handleDownRotateReset(editor, worldPoint, ev.detail)) return;
     if (handleDownBrush(editor, worldPoint, ev.pressure, ev.pointerType)) return;
     if (handleDownErase(editor, worldPoint, data.modifiers.alt, data.modifiers.shift)) return;
     if (handleDownLaser(editor, worldPoint)) return;

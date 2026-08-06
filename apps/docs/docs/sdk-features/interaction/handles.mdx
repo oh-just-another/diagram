@@ -44,7 +44,9 @@ if (grabbed) {
 `resizeBounds(bounds, handle, delta)` applies a world-space drag delta to the
 bounds, keeping the opposite corner anchored; the result may have negative
 width/height mid-drag (normalized on commit). Rotation uses the registered
-rotate anchor (`registerRotateAnchor` / `getRotateAnchor`).
+rotate anchor (`registerRotateAnchor` / `getRotateAnchor`). Double-clicking
+the rotate grip straightens the selection (`editor.resetSelectionRotation()`
+— each element back to `rotation: 0` about its own centre, one undo step).
 
 ```ts
 import { resizeBounds } from "@oh-just-another/state";
