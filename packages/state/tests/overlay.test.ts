@@ -4,18 +4,13 @@ import {
   apply,
   DEFAULT_LAYER_ID,
   emptyScene,
-  getWorldToScreen,
   orderBetween,
   type Patch,
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
 import type { RenderTarget } from "@oh-just-another/renderer-core";
-import {
-  renderOverlay,
-  paintElementSelectionHalo,
-  DEFAULT_OVERLAY_STYLE,
-} from "../src/render/overlay.js";
+import { renderOverlay, DEFAULT_OVERLAY_STYLE } from "../src/render/overlay.js";
 import { isResizable, resizeHandlesFor } from "../src/editor/shape-traits.js";
 import type { Selection } from "../src/selection/selection.js";
 
@@ -278,32 +273,6 @@ describe("renderOverlay", () => {
     });
     const ellipses = calls.filter((c) => c.method === "ellipse");
     expect(ellipses.length).toBe(4);
-  });
-
-  it("element halo peeks a constant width past the border: 2×(outset + peek/zoom)", () => {
-    const { target, calls } = makeRecorder();
-    const w2s = getWorldToScreen(emptyScene().viewport); // zoom 1
-    paintElementSelectionHalo(
-      target,
-      w2s,
-      [
-        {
-          loops: [
-            [
-              { x: 0, y: 0 },
-              { x: 10, y: 0 },
-              { x: 10, y: 10 },
-            ],
-          ],
-          outsetWorld: 2,
-        },
-      ],
-      1,
-    );
-    // peek = SELECTION_HALO_PEEK_PX (4), zoom 1 → 2×(2 + 4) = 12.
-    expect(calls.some((c) => c.method === "setStrokeWidth" && c.args[0] === 12)).toBe(true);
-    // miter join so rect/polygon corners stay sharp.
-    expect(calls.some((c) => c.method === "setLineJoin" && c.args[0] === "miter")).toBe(true);
   });
 
   it("link halo peeks the same constant past the link's centred stroke", () => {

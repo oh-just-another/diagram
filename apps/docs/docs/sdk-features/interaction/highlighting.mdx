@@ -10,7 +10,7 @@ There is no general-purpose "highlight this shape" API (a setter that paints an 
 - **Link attachment** — in draw-edge mode the element under the cursor is highlighted, and its anchor dots grow as the pointer nears them, so you can see where a connector will attach (`Editor.hoveredLinkTarget`).
 - **Annotation focus** — the focused annotation thread's pin gets an accent ring (`Editor.setSelectedAnnotation`).
 
-These are view-only overlay states, recomputed each frame from the current gesture; they are never recorded in history or persisted. The persistent selection halo around selected shapes and links is separate — see Selection.
+These are view-only overlay states, recomputed each frame from the current gesture; they are never recorded in history or persisted. The persistent selection frame around selected shapes and the halo around selected links are separate — see Selection.
 
 For accessibility, the editor also emits short live-region strings (for example "Selected Rectangle") via `Editor.onAnnounce`, which a host pipes into an `aria-live` region.
 

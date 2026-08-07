@@ -127,70 +127,8 @@ export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
   drawingDash: [4, 4],
 };
 
-/** Translucent fill opacity for the under-shape selection halo. */
+/** Translucent opacity for the selected-link halo. */
 const SELECTION_HALO_OPACITY = 0.32;
-
-/**
- * One selected element's contour halo: its outline loop(s) plus `outsetWorld`
- * — how far the element's own border extends OUTSIDE the contour (world
- * units; see `strokeOutsideExtent`). The halo is sized so it peeks exactly
- * `SELECTION_HALO_PEEK_PX` screen px beyond contour + outset.
- */
-export interface ElementHalo {
-  readonly loops: readonly (readonly Vec2[])[];
-  readonly outsetWorld: number;
-}
-
-/**
- * Paint the contour selection halo for elements — a translucent stroke
- * hugging each world-space outline loop. Drawn on the dedicated background
- * layer (under the shapes) so it peeks out from behind them. The stroke is
- * centred on the contour with width `2 × (outset + peek/zoom)`, so its outer
- * edge lands exactly `peek` screen px beyond the element's VISIBLE edge
- * (contour + border outset) at every zoom and border thickness. Sets the
- * world transform itself; resets to identity at the end.
- */
-export const paintElementSelectionHalo = (
-  target: RenderTarget,
-  w2s: Transform,
-  halos: readonly ElementHalo[],
-  zoom: number,
-  style: OverlayStyle = DEFAULT_OVERLAY_STYLE,
-): void => {
-  if (halos.length === 0) return;
-  const z = zoom || 1;
-  const peekWorld = SELECTION_HALO_PEEK_PX / z;
-  target.setTransform(w2s);
-  target.setStroke(style.selectionStroke);
-  target.setOpacity(SELECTION_HALO_OPACITY);
-  target.setDashArray(null);
-  // Miter join so the halo reproduces the element's own corners (sharp on a
-  // rectangle / polygon, pointed on a star); rounded corners come from the
-  // traced outline points (rounded-rect / ellipse), not the join.
-  target.setLineJoin("miter");
-  target.setLineCap("butt");
-  for (const { loops, outsetWorld } of halos) {
-    // Centred stroke → outer edge sits (width/2) past the contour. We want
-    // that to be outset + peek, so width = 2 × (outset + peek).
-    target.setStrokeWidth(2 * (outsetWorld + peekWorld));
-    for (const loop of loops) {
-      if (loop.length < 2) continue;
-      target.beginPath();
-      let started = false;
-      for (const p of loop) {
-        if (started) target.lineTo(p.x, p.y);
-        else {
-          target.moveTo(p.x, p.y);
-          started = true;
-        }
-      }
-      target.closePath();
-      target.stroke();
-    }
-  }
-  target.setOpacity(1);
-  target.setTransform(matrix.IDENTITY);
-};
 
 /**
  * Set of world-space points to render as port dots — used when the editor
@@ -458,7 +396,7 @@ export interface OverlayOptions {
    */
   debugHitZoneVisibility?: HitZoneVisibility;
   /**
-   * Read-only / view mode. When set, selection outlines (halos) still paint
+   * Read-only / view mode. When set, selection outlines still paint
    * but every interactive handle is suppressed: per-shape resize/rotate grips
    * (section 1), the combined group-bounds handles (section 7) and the
    * selected-link endpoint/bend handles (section 5). A viewer sees what's

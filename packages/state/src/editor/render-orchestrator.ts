@@ -6,14 +6,11 @@ import {
   getElement,
   getElementWorldBounds,
   getElementOutline,
-  getWorldToScreen,
   getDropZonesWorld,
-  strokeOutsideExtent,
   isFrame,
   isImage,
   type BrushPoint,
   type Scene,
-  type Style,
   type Element,
   type Link,
   type SpatialGrid,
@@ -31,9 +28,7 @@ import {
 } from "@oh-just-another/renderer-core";
 import {
   renderOverlay,
-  paintElementSelectionHalo,
   type EditingTextOverlay,
-  type ElementHalo,
   type OverlayOptions,
   type PortOverlay,
   type PeerCursor,
@@ -330,36 +325,15 @@ const overlaySigEqual = (a: readonly unknown[], b: readonly unknown[]): boolean 
  * `lastRendered*` bookkeeping and the tile-dirty reset.
  */
 export const renderEditor = (editor: RenderSnapshot): void => {
-  // Background layer (grid + selection halo), when the host gave us a
-  // dedicated target. The grid clears it each frame; the contour selection
-  // halo is then painted on top of the grid but UNDER the shapes (main
-  // layer), so it peeks out from behind each selected element. Its own clean
-  // Canvas2D layer avoids dirty-rect flicker and paint-state bleed into the
-  // shape pass. Without a background layer the grid lives on mainTarget
-  // before shapes are drawn, so renderScene's clear takes care of it.
+  // Background layer (grid), when the host gave us a dedicated target. The
+  // grid pass clears it each frame; when the grid is toggled off, still clear
+  // it so nothing stale lingers under the shapes. Without a background layer
+  // the grid lives on mainTarget before shapes are drawn, so renderScene's
+  // clear takes care of it. Selected shapes are marked by the selection frame
+  // + handles in the overlay pass only — no contour halo under the shape.
   if (editor.backgroundTarget) {
-    // Grid pass also clears the background layer each frame. When the grid is
-    // toggled off, still clear it so no stale grid lingers under the halos.
     if (editor.gridEnabled) renderGrid(editor.scene, editor.backgroundTarget);
     else editor.backgroundTarget.clear();
-    const halos: ElementHalo[] = [];
-    for (const id of editor.selection) {
-      const shape = getElement(editor.scene, id);
-      if (!shape) continue;
-      const style: Style = (shape as { style?: Style }).style ?? {};
-      halos.push({
-        loops: getElementOutline(editor.scene, shape),
-        outsetWorld: strokeOutsideExtent(style),
-      });
-    }
-    if (halos.length > 0) {
-      paintElementSelectionHalo(
-        editor.backgroundTarget,
-        getWorldToScreen(editor.scene.viewport),
-        halos,
-        editor.scene.viewport.zoom || 1,
-      );
-    }
   }
   // World-space viewport rect — used by `renderScene` to skip off-screen
   // shapes. Computed by mapping the screen viewport corners through the
