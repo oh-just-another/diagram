@@ -85,7 +85,7 @@ describe("ContextMenu submenu", () => {
     // Z-order rows are not at the top level.
     expect(document.querySelector('[role="menu"][aria-label="Arrange"]')).toBeNull();
     act(() => {
-      fireEvent.mouseEnter(arrange!.parentElement!);
+      fireEvent.mouseEnter(arrange!);
     });
     const panel = document.querySelector('[role="menu"][aria-label="Arrange"]');
     expect(panel).not.toBeNull();

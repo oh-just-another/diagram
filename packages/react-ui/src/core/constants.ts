@@ -106,6 +106,17 @@ export const SELECTION_PANEL_EDGE_INSET_BOTTOM_PX = 66;
 /** Inset from the LEFT edge — small margin (no left-docked chrome by default). */
 export const SELECTION_PANEL_EDGE_INSET_LEFT_PX = 16;
 export const POPOVER_OFFSET_PX = 6;
+/** Minimum distance a popover keeps from the viewport edges (px). Range: 4–16. */
+export const POPOVER_VIEWPORT_PADDING_PX = 6;
+/**
+ * Minimum distance the context menu (and its submenus) keeps from the
+ * viewport edges — matches the side inset of the static toolbars, so a menu
+ * pushed against an edge lines up with the docked chrome. The menu is
+ * clamped to the WINDOW, not the canvas: it may overhang an embedded
+ * canvas, and when the window is shorter than the menu it scrolls.
+ * Range: 8–24.
+ */
+export const MENU_VIEWPORT_PADDING_PX = 16;
 
 /**
  * Text contextual-panel controls.

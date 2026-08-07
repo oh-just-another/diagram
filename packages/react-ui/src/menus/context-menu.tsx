@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -8,6 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { MENU_VIEWPORT_PADDING_PX } from "../core/constants.js";
+import { floatPanel } from "../primitives/float-panel.js";
 import type { Vec2 } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
@@ -77,6 +80,9 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   const portalContainer = usePortalContainer();
   const [open, setOpen] = useState<OpenState | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  // Every open panel (root + submenus, each in its own portal) — a press
+  // inside any of them is "inside the menu" for the dismiss listener.
+  const panelsRef = useRef(new Set<HTMLElement>());
 
   // Register an imperative opener so UI outside the canvas (e.g. the
   // "⋯" button in the selection floating panel) can open this same
@@ -111,7 +117,8 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   useEffect(() => {
     if (!open) return undefined;
     const onPointer = (ev: PointerEvent): void => {
-      if (menuRef.current?.contains(ev.target as Node)) return;
+      const t = ev.target as Node;
+      for (const panel of panelsRef.current) if (panel.contains(t)) return;
       setOpen(null);
     };
     const onKey = (ev: KeyboardEvent): void => {
@@ -128,6 +135,40 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   const close = useCallback(() => {
     setOpen(null);
   }, []);
+
+  // Anchor the panel at the press point but keep it inside the WINDOW:
+  // flip above the point when there is no room below, shift along the
+  // edges by `MENU_VIEWPORT_PADDING_PX`, and cap the height (scrolling)
+  // when the window is shorter than the menu. The viewport is the bound —
+  // an embedded canvas may be overhung, like the floating toolbars do.
+  useLayoutEffect(() => {
+    const panel = menuRef.current;
+    if (!open || !panel) return undefined;
+    const { x, y } = open.screenPoint;
+    const anchor = {
+      getBoundingClientRect: () => ({
+        x,
+        y,
+        width: 0,
+        height: 0,
+        top: y,
+        left: x,
+        right: x,
+        bottom: y,
+      }),
+    };
+    panelsRef.current.add(panel);
+    const stop = floatPanel(anchor, panel, {
+      placement: "bottom-start",
+      padding: MENU_VIEWPORT_PADDING_PX,
+      strategy: "fixed",
+      clampHeight: true,
+    });
+    return () => {
+      stop();
+      panelsRef.current.delete(panel);
+    };
+  }, [open]);
 
   if (!editor || !open) return null;
 
@@ -151,15 +192,23 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
       role="menu"
       style={{
         ...MENU_PANEL_STYLE,
+        // `transform` is set by `floatPanel`; the pre-position paint at
+        // (0,0) lasts one layout pass.
         position: "fixed",
+        top: 0,
+        left: 0,
         zIndex: 1000,
-        top: open.screenPoint.y,
-        left: open.screenPoint.x,
         ...style,
       }}
       className={className}
     >
-      <MenuRows items={cleanedItems} editor={editor} ctx={ctx} close={close} />
+      <MenuRows
+        items={cleanedItems}
+        editor={editor}
+        ctx={ctx}
+        close={close}
+        panels={panelsRef.current}
+      />
     </div>,
     portalContainer,
   );
@@ -176,6 +225,9 @@ const MENU_PANEL_STYLE: CSSProperties = {
   boxShadow: "var(--du-ui-shadow, 0 4px 16px rgba(0,0,0,0.18))",
   font: "13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
 };
+
+/** Panel padding (4) + border (1): offset so a submenu's first row aligns with its parent row. */
+const SUBMENU_ALIGN_PX = 5;
 
 const ROW_STYLE: CSSProperties = {
   all: "unset",
@@ -210,81 +262,134 @@ const resolveItems = (
   return collapseDividers(visible);
 };
 
+/**
+ * One panel's rows. At most one submenu per level is open — hovering any
+ * row (action or submenu) makes it the active one, so moving the pointer
+ * to a sibling closes the previous child panel; moving into the child
+ * panel itself keeps it (it is not a sibling row).
+ */
 const MenuRows = ({
   items,
   editor,
   ctx,
   close,
+  panels,
 }: {
   readonly items: readonly ContextMenuItem[];
   readonly editor: Editor;
   readonly ctx: ContextMenuContext;
   readonly close: () => void;
-}) => (
-  <>
-    {items.map((item, i) =>
-      item.kind === "divider" ? (
-        <hr
-          key={`d-${i}`}
-          style={{
-            border: 0,
-            borderTop: "1px solid var(--menu-divider, var(--du-ui-border, rgba(0,0,0,0.08)))",
-            margin: "4px 0",
-          }}
-        />
-      ) : item.kind === "submenu" ? (
-        <ContextSubmenuRow key={item.id} item={item} editor={editor} ctx={ctx} close={close} />
-      ) : (
-        <ContextMenuRow
-          key={item.id}
-          item={item}
-          editor={editor}
-          ctx={ctx}
-          onActivate={() => {
-            close();
-            item.onClick(editor, ctx);
-          }}
-        />
-      ),
-    )}
-  </>
-);
+  readonly panels: Set<HTMLElement>;
+}) => {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return (
+    <>
+      {items.map((item, i) =>
+        item.kind === "divider" ? (
+          <hr
+            key={`d-${i}`}
+            style={{
+              border: 0,
+              borderTop: "1px solid var(--menu-divider, var(--du-ui-border, rgba(0,0,0,0.08)))",
+              margin: "4px 0",
+            }}
+          />
+        ) : item.kind === "submenu" ? (
+          <ContextSubmenuRow
+            key={item.id}
+            item={item}
+            editor={editor}
+            ctx={ctx}
+            close={close}
+            panels={panels}
+            open={openId === item.id}
+            onOpen={() => {
+              setOpenId(item.id);
+            }}
+            onToggle={() => {
+              setOpenId((cur) => (cur === item.id ? null : item.id));
+            }}
+          />
+        ) : (
+          <ContextMenuRow
+            key={item.id}
+            item={item}
+            editor={editor}
+            ctx={ctx}
+            onHover={() => {
+              setOpenId(null);
+            }}
+            onActivate={() => {
+              close();
+              item.onClick(editor, ctx);
+            }}
+          />
+        ),
+      )}
+    </>
+  );
+};
 
 /**
- * Submenu row: hovering (or clicking) opens the child panel to the right,
- * top-aligned with the row; leaving the row + panel closes it. Items are
- * already visibility-resolved by the parent.
+ * Submenu row: hovering (or clicking) opens the child panel beside the row
+ * — to the right by default, to the left when the right side has no room,
+ * shifted / height-capped like the root panel. The child renders in its
+ * own portal (a scrolling parent would clip it) and registers itself with
+ * `panels` so outside-click dismissal treats it as part of the menu.
  */
 const ContextSubmenuRow = ({
   item,
   editor,
   ctx,
   close,
+  panels,
+  open,
+  onOpen,
+  onToggle,
 }: {
   readonly item: Extract<ContextMenuItem, { kind: "submenu" }>;
   readonly editor: Editor;
   readonly ctx: ContextMenuContext;
   readonly close: () => void;
+  readonly panels: Set<HTMLElement>;
+  readonly open: boolean;
+  readonly onOpen: () => void;
+  readonly onToggle: () => void;
 }) => {
-  const [open, setOpen] = useState(false);
+  const portalContainer = usePortalContainer();
+  const rowRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const panel = panelRef.current;
+    if (!open || !row || !panel) return undefined;
+    panels.add(panel);
+    const stop = floatPanel(row, panel, {
+      placement: "right-start",
+      fallbackPlacements: ["left-start"],
+      // Align the first child row with this row: undo the panel padding + border.
+      crossAxis: -SUBMENU_ALIGN_PX,
+      padding: MENU_VIEWPORT_PADDING_PX,
+      strategy: "fixed",
+      clampHeight: true,
+    });
+    return () => {
+      stop();
+      panels.delete(panel);
+    };
+  }, [open, panels]);
   return (
-    <div
-      style={{ position: "relative" }}
-      onMouseEnter={() => {
-        setOpen(true);
-      }}
-      onMouseLeave={() => {
-        setOpen(false);
-      }}
-    >
+    <>
       <button
+        ref={rowRef}
         type="button"
         role="menuitem"
         aria-haspopup="menu"
         aria-expanded={open}
+        onMouseEnter={onOpen}
         onClick={(ev) => {
           ev.stopPropagation();
-          setOpen((v) => !v);
+          onToggle();
         }}
         style={{
           ...ROW_STYLE,
@@ -297,16 +402,26 @@ const ContextSubmenuRow = ({
           ›
         </span>
       </button>
-      {open ? (
-        <div
-          role="menu"
-          aria-label={typeof item.label === "string" ? item.label : undefined}
-          style={{ ...MENU_PANEL_STYLE, position: "absolute", top: -5, left: "100%" }}
-        >
-          <MenuRows items={item.items} editor={editor} ctx={ctx} close={close} />
-        </div>
-      ) : null}
-    </div>
+      {open
+        ? createPortal(
+            <div
+              ref={panelRef}
+              role="menu"
+              aria-label={typeof item.label === "string" ? item.label : undefined}
+              style={{ ...MENU_PANEL_STYLE, position: "fixed", top: 0, left: 0, zIndex: 1001 }}
+            >
+              <MenuRows
+                items={item.items}
+                editor={editor}
+                ctx={ctx}
+                close={close}
+                panels={panels}
+              />
+            </div>,
+            portalContainer,
+          )
+        : null}
+    </>
   );
 };
 
@@ -314,11 +429,13 @@ const ContextMenuRow = ({
   item,
   editor,
   ctx,
+  onHover,
   onActivate,
 }: {
   readonly item: Extract<ContextMenuItem, { kind: "action" }>;
   readonly editor: Editor;
   readonly ctx: ContextMenuContext;
+  readonly onHover: () => void;
   readonly onActivate: () => void;
 }) => {
   const disabled = item.disabled?.(editor, ctx) ?? false;
@@ -342,6 +459,7 @@ const ContextMenuRow = ({
         opacity: disabled ? 0.4 : 1,
       }}
       onMouseEnter={(ev) => {
+        onHover();
         if (!disabled)
           ev.currentTarget.style.background = "var(--du-hover-overlay, rgba(0,0,0,0.05))";
       }}
