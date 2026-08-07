@@ -212,6 +212,8 @@ export interface RenderSnapshot {
   readonly combinedSelectionBounds: Bounds | null;
   readonly editingText: EditingTextOverlay | null;
   // Runtime-parameterised lookups (narrow callbacks, not the Editor class).
+  /** Can the shape be moved / resized (not locked, layer unlocked, visible)? */
+  readonly isElementManipulable: (shape: Element) => boolean;
   readonly previewClickCreate: (
     fromElement: ElementId,
     anchorName: string,
@@ -661,7 +663,16 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     // Group-handle overlay: a multi-object selection (elements + links) OR a
     // single group-typed shape. A lone link keeps its endpoint handles, not a
     // resize box. Aspect-locked groups flag the overlay for corner-only handles.
-    if (editor.selection.size + editor.selectedLinks.size > 1 || editor.aspectLocked) {
+    // Skipped when nothing selected is manipulable (e.g. a locked group) —
+    // mirrors the hit-test, which ignores group handles in that case.
+    const anyManipulable = [...editor.selection].some((id) => {
+      const shape = getElement(editor.scene, id);
+      return shape !== undefined && editor.isElementManipulable(shape);
+    });
+    if (
+      anyManipulable &&
+      (editor.selection.size + editor.selectedLinks.size > 1 || editor.aspectLocked)
+    ) {
       const combined = editor.combinedSelectionBounds;
       if (combined) overlayOpts.groupBounds = combined;
       if (editor.aspectLocked) overlayOpts.groupAspectLocked = true;

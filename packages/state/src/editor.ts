@@ -4833,6 +4833,7 @@ export class Editor {
       combinedSelectionBounds: () => this.combinedSelectionBounds(),
       acceleratedElementAt: (p, accept) => this.acceleratedElementAt(p, accept),
       isElementInteractable: (s) => this.isElementInteractable(s),
+      isElementManipulable: (s) => this.isElementManipulable(s),
       isLayerLocked: (id) => this.isLayerLocked(id),
       promoteToGroupRoot: (s) => this.promoteToGroupRoot(s),
     });
@@ -6613,6 +6614,7 @@ export class Editor {
       aspectLocked: this.selectionIsAspectLocked(),
       combinedSelectionBounds: this.combinedSelectionBounds(),
       editingText: this.editingTextOverlay(),
+      isElementManipulable: (s) => this.isElementManipulable(s),
       previewClickCreate: (fromElement, anchorName) =>
         this.previewClickCreate(fromElement, anchorName),
       isPlaybackPaused: (id) => this.isPlaybackPaused(id),

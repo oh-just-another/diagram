@@ -94,6 +94,8 @@ export interface HitTestContext {
     accept?: (shape: Element) => boolean,
   ) => Element | undefined;
   readonly isElementInteractable: (shape: Element) => boolean;
+  /** Can the shape be moved / resized (not locked, layer unlocked, visible)? */
+  readonly isElementManipulable: (shape: Element) => boolean;
   readonly isLayerLocked: (layerId: LayerId) => boolean;
   readonly promoteToGroupRoot: (shape: Element) => Element;
 }
@@ -172,8 +174,15 @@ const pickSelectionChrome = (
   //     no intrinsic bounds — children's union AABB serves as the
   //     resize frame). Aspect-locked groups restrict the hit set to
   //     the four corner handles.
+  //     A selection with nothing manipulable (e.g. a locked group) shows no
+  //     resize / rotate chrome, so its handles must not swallow the press.
+  const anyManipulable = [...ctx.selection].some((id) => {
+    const shape = getElement(ctx.scene, id);
+    return shape !== undefined && ctx.isElementManipulable(shape);
+  });
   const useGroupHandles =
-    ctx.selection.size + ctx.selectedLinkCount > 1 || ctx.selectionIsAspectLocked();
+    anyManipulable &&
+    (ctx.selection.size + ctx.selectedLinkCount > 1 || ctx.selectionIsAspectLocked());
   if (useGroupHandles) {
     const combined = ctx.combinedSelectionBounds();
     if (combined) {

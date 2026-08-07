@@ -60,12 +60,12 @@ export const VIEWPORT_CULL_PADDING_RATIO = 0.05;
 export const HANDLE_SIZE = 5;
 
 /**
- * Screen-pixel offset between the handle's centre and the shape's bbox
- * edge — pushes the handle just outside the body so its hit area never
- * overlaps the shape interior, making corners grabbable without
- * precision-pointing. Range: 2–4.
+ * Screen-pixel offset between a resize handle's centre and the shape's bbox
+ * edge. 0 centres every handle exactly on the frame corner / edge midpoint;
+ * a positive value pushes them outward so the grab area clears the body.
+ * Range: 0–4.
  */
-export const HANDLE_OUTSET = 3;
+export const HANDLE_OUTSET = 0;
 
 /**
  * Screen-pixel hit-test half-size (mouse) for a resize handle —
