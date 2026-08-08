@@ -180,19 +180,16 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Canvas surface focus ring. The surface is `tabIndex=0` so keyboard   */
-/* users can land on it, but it also takes focus on a pointer press     */
-/* (so shortcuts work right after a click). Gate the ring on            */
-/* `:focus-visible` so it shows ONLY for keyboard focus — a mouse click */
-/* never draws an input-like outline. Class+pseudo specificity (0,2,0)  */
-/* beats a host's `*:focus { outline: none }`.                          */
+/* Canvas surface: `tabIndex=0` so it can hold focus (shortcuts work    */
+/* right after a click / Tab), but it never draws a focus ring — the    */
+/* selection chrome on the canvas is the focus indication. Programmatic */
+/* re-focus after a click makes browsers match `:focus-visible`, so     */
+/* that state is silenced too.                                          */
 /* ------------------------------------------------------------------ */
-.du-canvas-surface {
-  outline: none;
-}
+.du-canvas-surface,
+.du-canvas-surface:focus,
 .du-canvas-surface:focus-visible {
-  outline: 2px solid var(--du-accent);
-  outline-offset: -2px;
+  outline: none;
 }
 
 /* ------------------------------------------------------------------ */
