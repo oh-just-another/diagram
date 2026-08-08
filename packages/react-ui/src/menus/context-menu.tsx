@@ -708,25 +708,7 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     },
   },
   { kind: "divider" },
-  // --- Delete last among the mutating ops ---
+  // --- Delete last. Viewport (zoom) and clear-canvas are NOT here: the
+  //     static zoom bar / main menu already carry them. ---
   actionMenuItem("delete-selection", { label: "Delete" }),
-  { kind: "divider" },
-  // --- Viewport (registry-backed) ---
-  actionMenuItem("zoom-in"),
-  actionMenuItem("zoom-out"),
-  actionMenuItem("zoom-reset", { label: "Reset zoom (100%)" }),
-  actionMenuItem("zoom-to-fit", {
-    label: "Fit to screen",
-    visible: (e) => e.scene.elements.size > 0,
-  }),
-  { kind: "divider" },
-  {
-    kind: "action",
-    id: "clear-canvas",
-    label: "Clear canvas",
-    visible: (e) => !e.readOnly && (e.scene.elements.size > 0 || e.scene.links.size > 0),
-    onClick: (e) => {
-      clearCanvasWithConfirm(e);
-    },
-  },
 ];

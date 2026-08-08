@@ -3,7 +3,8 @@ import { DEFAULT_CONTEXT_MENU, type ContextMenuItem } from "../src/menus/context
 
 /**
  * Pins the context-menu section order: clipboard → styles → comments →
- * z-order/layers → selection & arrange → lock → delete → viewport. The
+ * arrange/align/layout/layers → selection → lock → delete. Viewport and
+ * clear-canvas entries live in the static chrome, not here. The
  * grouping mirrors the target toolbar/menu design (see design docs) and
  * regressions here silently reshuffle the whole right-click UX.
  */
@@ -44,8 +45,6 @@ describe("DEFAULT_CONTEXT_MENU order", () => {
       "toggle-lock",
       "unlock-element",
       "delete-selection",
-      "zoom-in",
-      "clear-canvas",
     ];
     const positions = order.map(indexOf);
     const sorted = [...positions].sort((a, b) => a - b);
@@ -99,6 +98,6 @@ describe("DEFAULT_CONTEXT_MENU order", () => {
   it("keeps delete after every other mutating selection op", () => {
     expect(indexOf("delete-selection")).toBeGreaterThan(indexOf("duplicate-selection"));
     expect(indexOf("delete-selection")).toBeGreaterThan(indexOf("toggle-lock"));
-    expect(indexOf("delete-selection")).toBeLessThan(indexOf("zoom-in"));
+    expect(indexOf("delete-selection")).toBe(FLAT.length - 1);
   });
 });
