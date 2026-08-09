@@ -88,7 +88,7 @@ export {
   type BezierSegment,
 } from "./edges/edge-curve.js";
 export type { Layer } from "./model/layer.js";
-export type { Viewport, GridStyle } from "./model/viewport.js";
+export type { Viewport, GridStyle, StartView } from "./model/viewport.js";
 export type { Scene } from "./model/scene.js";
 export type { Patch } from "./model/patch.js";
 export type { OperationResult } from "./model/operations.js";

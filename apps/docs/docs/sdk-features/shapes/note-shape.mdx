@@ -1,11 +1,41 @@
 ---
-title: 🚧 Note Shape
-status: draft
+title: Note Shape
 sidebar_position: 45
 ---
 
-A note (sticky-note) shape would be a fixed-size coloured card that auto-sizes its text — the staple of brainstorming boards.
+`StickyElement` (`type: "sticky"`) is the sticky-note card: a fixed-size coloured square whose embedded `label` auto-fits its text, plus optional author strip, tags and emoji reactions.
 
-**Planned — not yet available** as a built-in element type.
+```ts
+import { isSticky, type StickyElement } from "@oh-just-another/scene";
 
-Adjacent capabilities that exist today: `TextElement` for plain text content, `TemplateElement` for host-defined card components, and the annotation/comment layer in `@oh-just-another/scene` (`Annotation`, `Comment`, `addAnnotation`) for pinned discussion. A sticky note could be built as a `TemplateElement` until a first-class note type ships.
+const note: StickyElement = {
+  id,
+  layerId,
+  order,
+  type: "sticky",
+  position: { x: 0, y: 0 },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  width: 160,
+  height: 160,
+  style: { fill: "#fff9b1" },
+  label: { text: "Idea", fontFamily: "Inter", fontSize: 16, autoFit: true },
+  tags: ["ux"],
+  showAuthor: true,
+  authorName: "Ann",
+  reactions: [{ glyph: "👍", users: ["u1"] }],
+};
+```
+
+## Editor API
+
+```ts
+editor.createStickyAt(worldPoint); // default M-size yellow note, selected + editing
+editor.setStickySize(ids, 220); // side from STICKY_SIZE_PRESETS (S / M / L)
+editor.toggleStickyAuthor(ids);
+editor.setStickyTags(ids, ["ux", "p1"]);
+editor.toggleStickyReaction(id, "👍"); // toggles the local user's reaction
+editor.convertSelection("sticky"); // shape / text ↔ sticky
+```
+
+Fill colours snap to `STICKY_PALETTE` (nearest entry) when converting, so notes keep the classic sticky look. Reactions and the "+" button are drawn by the canvas renderer; hosts control what reaches exports through `RenderSceneOptions.content` (see Image export).

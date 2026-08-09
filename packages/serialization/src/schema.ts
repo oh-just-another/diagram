@@ -364,6 +364,7 @@ const ViewportZ = z
     gridEnabled: z.boolean(),
     gridStyle: z.enum(["lines", "dots"]).optional(),
     snapToGrid: z.boolean().optional(),
+    startView: z.object({ pan: Vec2Z, zoom: z.number() }).strict().optional(),
   })
   .strict();
 

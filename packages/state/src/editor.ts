@@ -58,6 +58,7 @@ import {
   type Scene,
   type Element,
   type GridStyle,
+  type StartView,
   type ImageCrop,
   type ImageMask,
   type Style,
@@ -137,6 +138,8 @@ import {
   MAX_LIST_INDENT,
   IMAGE_ASPECT_PRESETS,
   LINK_DRAW_PRESETS,
+  DEFAULT_EDITOR_PREFERENCES,
+  type EditorPreferences,
   type ImageAspectPreset,
   type DrawShapeKind,
   type LinkDrawPreset,
@@ -305,6 +308,7 @@ import {
 import {
   beginPlacementState,
   buildElementAtCursor,
+  buildStickyElementAt,
   buildTextElementAt,
   computePlacementCancel,
   computePlacementContainerDrop,
@@ -458,6 +462,13 @@ export interface EditorOptions {
    *   reports a coarse primary pointer, else `"mouse"`. Default.
    */
   readonly inputMode?: "mouse" | "touch" | "auto";
+  /**
+   * Initial per-user preferences (object snapping, size readouts, wheel
+   * routing) — see {@link EditorPreferences}. Missing keys take
+   * {@link DEFAULT_EDITOR_PREFERENCES}; change at runtime via
+   * {@link Editor.setPreferences}.
+   */
+  readonly preferences?: Partial<EditorPreferences>;
 
   /**
    * Optional text shaper. When supplied, replaces the renderer's
@@ -578,6 +589,18 @@ const EMPTY_ELEMENT_SET: ReadonlySet<ElementId> = Object.freeze(new Set<ElementI
 
 /** Monotonic wall-clock in ms, matching the domain used by the overlay fade. */
 const nowMs = (): number => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
+/**
+ * Camera at the scene's saved start view (pan + zoom), or the scene itself
+ * when no start view is set or the camera is already there.
+ */
+const withStartViewApplied = (scene: Scene): Scene => {
+  const sv = scene.viewport.startView;
+  if (sv === undefined) return scene;
+  const { pan, zoom } = scene.viewport;
+  if (pan.x === sv.pan.x && pan.y === sv.pan.y && zoom === sv.zoom) return scene;
+  return { ...scene, viewport: { ...scene.viewport, pan: { ...sv.pan }, zoom: sv.zoom } };
+};
 
 export class Editor {
   public readonly host: HTMLElement;
@@ -1213,7 +1236,8 @@ export class Editor {
     this.overlayTarget = options.overlayTarget;
     this.backgroundTarget = options.backgroundTarget ?? null;
     this.onAfterRender = options.onAfterRender ?? null;
-    this._scene = options.initialScene;
+    this._preferences = { ...DEFAULT_EDITOR_PREFERENCES, ...options.preferences };
+    this._scene = withStartViewApplied(options.initialScene);
     this._history = isHistoryProvider(options.history)
       ? options.history
       : new History(options.history ?? {});
@@ -1819,6 +1843,89 @@ export class Editor {
   /** Toggle the background grid on/off. */
   toggleGrid(): void {
     this.setGrid({ enabled: !this.gridEnabled });
+  }
+
+  private _preferences: EditorPreferences;
+  /** Per-user preferences — see {@link EditorPreferences}. */
+  get preferences(): EditorPreferences {
+    return this._preferences;
+  }
+  /**
+   * Merge `patch` over the current preferences. Not part of the document
+   * and never recorded in history; hosts persist the result per browser.
+   * Subscribers are notified (the object identity changes only when a
+   * value actually changed).
+   */
+  setPreferences(patch: Partial<EditorPreferences>): void {
+    const next = { ...this._preferences, ...patch };
+    if (
+      next.snapObjects === this._preferences.snapObjects &&
+      next.showObjectSize === this._preferences.showObjectSize &&
+      next.suggestObjectSize === this._preferences.suggestObjectSize &&
+      next.wheelMode === this._preferences.wheelMode
+    ) {
+      return;
+    }
+    this._preferences = next;
+    this.notify();
+  }
+
+  /**
+   * Clear the `locked` flag on every locked element (one undo step).
+   * The canvas menu's "Unlock all"; no-op when nothing is locked.
+   */
+  unlockAll(): void {
+    if (this.readOnly) return;
+    const ids = [...this._scene.elements.values()]
+      .filter((s) => s.locked === true)
+      .map((s) => s.id);
+    if (ids.length === 0) return;
+    const tx = this._history.transaction();
+    for (const id of ids) {
+      const r = updateElement(this._scene, id, (s) => {
+        const copy: typeof s = { ...s };
+        delete (copy as { locked?: boolean }).locked;
+        return copy;
+      });
+      this._scene = r.scene;
+      tx.add(r.patch);
+    }
+    tx.commit();
+    this.notify();
+    this.announce(`Unlocked ${String(ids.length)} element(s)`);
+  }
+
+  /** The document's saved start view, or `null` when none is set. */
+  get startView(): StartView | null {
+    return this._scene.viewport.startView ?? null;
+  }
+  /**
+   * Save the current camera (pan + zoom) as the document's start view —
+   * where the document opens and where {@link goToStartView} jumps.
+   * Persists in the viewport (exported with the scene), not in history.
+   */
+  setCurrentViewAsStart(): void {
+    const { pan, zoom } = this._scene.viewport;
+    this._scene = {
+      ...this._scene,
+      viewport: { ...this._scene.viewport, startView: { pan: { ...pan }, zoom } },
+    };
+    this.notify();
+  }
+  /** Forget the saved start view. No-op when none is set. */
+  clearStartView(): void {
+    if (this._scene.viewport.startView === undefined) return;
+    const { startView: _dropped, ...viewport } = this._scene.viewport;
+    void _dropped;
+    this._scene = { ...this._scene, viewport };
+    this.notify();
+  }
+  /** Move the camera to the saved start view. No-op when none is set. */
+  goToStartView(): void {
+    const next = withStartViewApplied(this._scene);
+    if (next === this._scene) return;
+    this._scene = next;
+    this.notify();
   }
 
   /** All currently-selected link (connector) ids. */
@@ -2547,6 +2654,25 @@ export class Editor {
     this.maybeRevertToolAfterCreate();
     this.notify();
     this.announce(`Created text ${id}`);
+    this.beginTextEdit(id);
+    return id;
+  }
+
+  /**
+   * Drop a default sticky note centred on `worldPoint`, select it and open
+   * its inline editor (the canvas menu's "Add sticky note"). One undo step.
+   */
+  createStickyAt(worldPoint: Vec2): ElementId | null {
+    if (this.readOnly) return null;
+    const id = newElementIdAtCursor(++this.nextId);
+    const shape = buildStickyElementAt(this._scene, worldPoint, this._activeLayerId, id);
+    const r = addElement(this._scene, shape);
+    this._scene = r.scene;
+    this._history.push(r.patch);
+    this._selection = Selection.single(id);
+    this._selectedLinks = LinkSelection.EMPTY;
+    this.notify();
+    this.announce(`Created sticky ${id}`);
     this.beginTextEdit(id);
     return id;
   }
@@ -4652,7 +4778,9 @@ export class Editor {
       this.gestureTx.cancel();
       this.gestureTx = null;
     }
-    this._scene = scene;
+    // A saved start view is where a freshly opened document lands; a
+    // peer update (`preserveHistory`) must not yank the local camera.
+    this._scene = options.preserveHistory ? scene : withStartViewApplied(scene);
     // Snap active layer back into the loaded scene's layer set.
     if (!scene.layers.has(this._activeLayerId)) {
       const first = scene.layers.keys().next().value;

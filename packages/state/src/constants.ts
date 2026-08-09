@@ -1031,3 +1031,39 @@ export const LINK_DRAW_PRESETS: Readonly<
   arrow: { routing: "straight", arrowheadTo: "triangle" },
   elbow: { routing: "orthogonal", arrowheadTo: "triangle" },
 };
+
+/**
+ * How the editor routes `wheel` events.
+ * - `"auto"` — per-event heuristic: any horizontal delta reads as a trackpad
+ *   swipe (pan), a pure vertical delta as a mouse wheel (zoom).
+ * - `"mouse"` — the wheel zooms; Shift + wheel pans sideways; a tilt wheel
+ *   (horizontal-only delta) pans.
+ * - `"trackpad"` — two-finger swipes pan on both axes; pinch (Ctrl/Cmd +
+ *   wheel) zooms.
+ * Ctrl / Cmd + wheel zooms in every mode.
+ */
+export type WheelMode = "auto" | "mouse" | "trackpad";
+
+/**
+ * Per-user editor preferences — device / assist settings that are NOT part
+ * of the document (hosts persist them per browser, e.g. `localStorage`).
+ * - `snapObjects` — snap moved / resized shapes to the edges and centres of
+ *   nearby shapes, with alignment guides.
+ * - `showObjectSize` — show a `W × H` readout under a shape while resizing.
+ * - `suggestObjectSize` — while resizing, snap to the width / height of
+ *   nearby shapes and highlight the matched one.
+ * - `wheelMode` — see {@link WheelMode}.
+ */
+export interface EditorPreferences {
+  readonly snapObjects: boolean;
+  readonly showObjectSize: boolean;
+  readonly suggestObjectSize: boolean;
+  readonly wheelMode: WheelMode;
+}
+
+export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
+  snapObjects: true,
+  showObjectSize: true,
+  suggestObjectSize: true,
+  wheelMode: "auto",
+};

@@ -24,6 +24,17 @@ const anchor = editor.screenToWorld({ x: clientX, y: clientY });
 editor.zoomAt(1.1, anchor);
 ```
 
+## Start view
+
+A document can carry a saved camera (`viewport.startView`, exported with the scene): a freshly opened scene lands there, and the canvas menu's "Set start view" jumps back to it.
+
+```ts
+editor.setCurrentViewAsStart(); // save the current pan + zoom
+editor.goToStartView(); // jump to it (no-op when none is saved)
+editor.clearStartView();
+editor.startView; // { pan, zoom } | null
+```
+
 ## Pan and viewport size
 
 `panBy(deltaScreen)` moves the camera by a screen-pixel delta. Tell the engine the canvas size with `setViewportSize` whenever the host element resizes.

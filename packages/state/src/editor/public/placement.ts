@@ -27,6 +27,8 @@ import { elementId as castElementId } from "@oh-just-another/types";
 import type { Mode } from "../../interaction/modes.js";
 import {
   ANCHOR_CLICK_NEW_ELEMENT_GAP,
+  STICKY_PALETTE,
+  STICKY_SIZE_PRESETS,
   TEXT_DEFAULT_FILL,
   TEXT_DEFAULT_FONT_FAMILY,
   TEXT_DEFAULT_FONT_SIZE,
@@ -94,6 +96,34 @@ export const buildTextElementAt = (
     fontSize: TEXT_DEFAULT_FONT_SIZE,
     style: { fill: TEXT_DEFAULT_FILL, textAlign: "left", textBaseline: "top" },
   };
+};
+
+/**
+ * Build a default (M-size, palette-yellow, empty) sticky note centred on
+ * `worldCenter` — the "Add sticky note" entry of the canvas menu.
+ */
+export const buildStickyElementAt = (
+  scene: Scene,
+  worldCenter: Vec2,
+  layerId: LayerId,
+  id: ElementId,
+): Element => {
+  const order = orderForTop(
+    [...scene.elements.values()].filter((s) => s.layerId === layerId).map((s) => s.order),
+  );
+  const side = STICKY_SIZE_PRESETS[1]?.side ?? 160;
+  return {
+    id,
+    layerId,
+    type: "sticky",
+    position: { x: worldCenter.x - side / 2, y: worldCenter.y - side / 2 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order,
+    style: { fill: STICKY_PALETTE[0] },
+    width: side,
+    height: side,
+  } as Element;
 };
 
 /** Generate a fresh shape id with the editor's nextId counter. */

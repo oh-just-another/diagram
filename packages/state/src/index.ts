@@ -50,6 +50,9 @@ export {
   LINK_DRAW_PRESETS,
   type DrawShapeKind,
   type LinkDrawPreset,
+  DEFAULT_EDITOR_PREFERENCES,
+  type EditorPreferences,
+  type WheelMode,
 } from "./constants.js";
 export type { FrameSizePreset } from "./constants.js";
 

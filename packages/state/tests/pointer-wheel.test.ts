@@ -101,6 +101,31 @@ describe("wheel routing", () => {
   });
 });
 
+describe("wheel routing by wheelMode preference", () => {
+  it("trackpad: a plain vertical wheel pans, pinch (ctrl) zooms", () => {
+    const { editor, handlers } = makeEditor();
+    editor.setPreferences({ wheelMode: "trackpad" });
+    const p0 = editor.scene.viewport.pan;
+    const z0 = editor.scene.viewport.zoom;
+    handlers.get("wheel")!(wheel({ deltaY: -100 }));
+    expect(editor.scene.viewport.zoom).toBe(z0);
+    expect(editor.scene.viewport.pan).not.toEqual(p0);
+    handlers.get("wheel")!(wheel({ ctrlKey: true, deltaY: -100 }));
+    expect(editor.scene.viewport.zoom).not.toBe(z0);
+  });
+
+  it("mouse: a wheel with a horizontal component still zooms; a tilt wheel pans", () => {
+    const { editor, handlers } = makeEditor();
+    editor.setPreferences({ wheelMode: "mouse" });
+    const z0 = editor.scene.viewport.zoom;
+    handlers.get("wheel")!(wheel({ deltaX: 40, deltaY: -100 }));
+    expect(editor.scene.viewport.zoom).not.toBe(z0);
+    const p0 = editor.scene.viewport.pan;
+    handlers.get("wheel")!(wheel({ deltaX: 40, deltaY: 0 }));
+    expect(editor.scene.viewport.pan).not.toEqual(p0);
+  });
+});
+
 describe("contextmenu suppression + pointercancel", () => {
   it("suppresses the native menu exactly once after a right-click arm", () => {
     const { editor, handlers } = makeEditor();

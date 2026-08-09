@@ -1486,6 +1486,9 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
   //   • Any deltaX ≠ 0 → trackpad 2D swipe → PAN both axes.
   //   • Plain deltaY only → ZOOM (mouse wheel; rare pure-vertical trackpad
   //     swipes also land here).
+  //   The `wheelMode` preference overrides the heuristic: `mouse` zooms on
+  //   every plain wheel (Shift → sideways pan, tilt wheel → pan), `trackpad`
+  //   pans on every plain wheel and zooms only on pinch (Ctrl/Cmd).
   const onWheel = (ev: WheelEvent): void => {
     ev.preventDefault();
     const rect = editor.host.getBoundingClientRect();
@@ -1496,13 +1499,24 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       applyWheelZoom(editor, ev, screenPoint);
       return;
     }
-    // Trackpad 2-finger swipe with any horizontal component → pan both axes.
-    // Mouse wheels never set deltaX, so this branch never misroutes mouse input.
-    if (ev.deltaX !== 0) {
+    const mode = editor.preferences.wheelMode;
+    if (mode === "trackpad") {
       applyWheelPan(editor, ev);
       return;
     }
-    // Plain vertical wheel — always ZOOM.
+    if (mode === "mouse") {
+      // Shift + wheel → sideways pan; a tilt wheel reports deltaX only.
+      if (ev.shiftKey || (ev.deltaX !== 0 && ev.deltaY === 0)) applyWheelPan(editor, ev);
+      else applyWheelZoom(editor, ev, screenPoint);
+      return;
+    }
+    // Auto — trackpad 2-finger swipe with any horizontal component → pan both
+    // axes. Mouse wheels never set deltaX, so this never misroutes mouse input.
+    if (ev.deltaX !== 0 || ev.shiftKey) {
+      applyWheelPan(editor, ev);
+      return;
+    }
+    // Plain vertical wheel — ZOOM.
     applyWheelZoom(editor, ev, screenPoint);
   };
   // `passive: false` because we preventDefault. Browsers default wheel listeners

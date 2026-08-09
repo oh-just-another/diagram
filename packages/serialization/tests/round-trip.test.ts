@@ -86,6 +86,16 @@ describe("round-trip", () => {
     expect(restored.viewport.gridEnabled).toBe(true);
   });
 
+  it("preserves the saved start view", () => {
+    let scene = emptyScene();
+    scene = {
+      ...scene,
+      viewport: { ...scene.viewport, startView: { pan: { x: 120, y: -40 }, zoom: 1.5 } },
+    };
+    const restored = deserializeScene(serializeScene(scene));
+    expect(restored.viewport.startView).toEqual({ pan: { x: 120, y: -40 }, zoom: 1.5 });
+  });
+
   it("preserves a link's avoidObstacles + routing", () => {
     let scene = emptyScene();
     const link: Link = {
