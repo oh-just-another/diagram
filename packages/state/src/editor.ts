@@ -1389,7 +1389,7 @@ export class Editor {
     this.longPress = new LongPressController(
       (p) => this.screenToWorld(p),
       (payload) => {
-        for (const fn of this.longPressListeners) fn(payload);
+        this.fireContextPress(payload);
       },
     );
     // Pinch gesture controller — two-finger pan + zoom. Hooks into
@@ -4744,10 +4744,10 @@ export class Editor {
       // Right-click without a drag → trigger the context-menu listeners.
       // Same payload as touch long-press so existing UI (e.g.
       // `@react-ui/ContextMenu`) works without changes.
-      const worldPoint = this.screenToWorld(gesture.startPoint);
-      for (const fn of this.longPressListeners) {
-        fn({ screenPoint: gesture.startPoint, worldPoint });
-      }
+      this.fireContextPress({
+        screenPoint: gesture.startPoint,
+        worldPoint: this.screenToWorld(gesture.startPoint),
+      });
     } else {
       // Either it was a real drag, or Space + left drag. In both cases the
       // native context menu stays suppressed until the upcoming
@@ -4766,6 +4766,37 @@ export class Editor {
       ctx.mode === "draw-frame" ||
       ctx.mode === "draw-edge"
     );
+  }
+
+  /**
+   * Context press (right-click / touch long-press): first make the selection
+   * match what was pressed, then notify the `onLongPress` listeners so the
+   * menu they open describes that point.
+   * - On an unselected element / link → it becomes the selection.
+   * - On a selected element (or its chrome: handles, rotate grip) → keep.
+   * - On empty canvas → clear elements + links, so the menu is the canvas
+   *   menu rather than the previous selection's.
+   */
+  private fireContextPress(payload: { screenPoint: Vec2; worldPoint: Vec2 }): void {
+    this.routeContextPress(payload.worldPoint);
+    for (const fn of this.longPressListeners) fn(payload);
+  }
+
+  private routeContextPress(worldPoint: Vec2): void {
+    const target = this.hitTest(worldPoint);
+    if (target.kind === "element") {
+      if (!this._selection.has(target.id)) {
+        this.applyEmit({ type: "SELECT_REPLACE", id: target.id });
+      }
+    } else if (target.kind === "link") {
+      if (!this._selectedLinks.has(target.id)) {
+        this.applyEmit({ type: "SELECT_EDGE_REPLACE", id: target.id });
+      }
+    } else if (target.kind === "empty") {
+      if (this._selection.size > 0 || this._selectedLinks.size > 0) {
+        this.applyEmit({ type: "SELECT_CLEAR" });
+      }
+    }
   }
 
   // --- Long-press ---

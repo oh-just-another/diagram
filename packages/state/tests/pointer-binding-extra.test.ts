@@ -157,6 +157,36 @@ describe("pan triggers", () => {
     expect(seen).toHaveLength(1);
     editor.dispose();
   });
+
+  it("a right-click on empty canvas clears the selection before the menu opens", () => {
+    const { editor, fire } = setup();
+    editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
+    const selectionAtOpen: number[] = [];
+    editor.onLongPress(() => selectionAtOpen.push(editor.selection.size));
+    // Rect "a" covers (0..50, 0..50); (300, 300) is empty canvas.
+    fire("pointerdown", 300, 300, { button: 2 });
+    fire("pointerup", 300, 300, { button: 2 });
+    expect(selectionAtOpen).toEqual([0]);
+    expect(editor.selection.size).toBe(0);
+    editor.dispose();
+  });
+
+  it("a right-click on an unselected shape selects it; on a selected one keeps the selection", () => {
+    const { editor, fire } = setup(sceneWith(rect("a", 0, 0), rect("b", 100, 0)));
+    editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
+    const selectionAtOpen: string[][] = [];
+    editor.onLongPress(() => selectionAtOpen.push([...editor.selection].map(String)));
+    // Right-click inside "b" → the menu is for "b" alone.
+    fire("pointerdown", 125, 25, { button: 2 });
+    fire("pointerup", 125, 25, { button: 2 });
+    expect(selectionAtOpen).toEqual([["b"]]);
+    // Now select both and right-click inside "a" — the pair stays selected.
+    editor.setSelection([elementId("a"), elementId("b")]);
+    fire("pointerdown", 25, 25, { button: 2 });
+    fire("pointerup", 25, 25, { button: 2 });
+    expect(selectionAtOpen[1]).toEqual(["a", "b"]);
+    editor.dispose();
+  });
 });
 
 describe("⌥-drag duplicate", () => {
