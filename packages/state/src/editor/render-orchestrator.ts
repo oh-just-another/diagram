@@ -29,12 +29,14 @@ import {
 import {
   renderOverlay,
   type EditingTextOverlay,
+  type SizeReadout,
   type OverlayOptions,
   type PortOverlay,
   type PeerCursor,
   type PeerSelection,
 } from "../render/overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
+import type { SizeMatch, SnapGuide } from "./applies/object-snap.js";
 import { hitZoneVisibility } from "./hit-test.js";
 import {
   buildElementForCreate,
@@ -211,6 +213,12 @@ export interface RenderSnapshot {
   readonly aspectLocked: boolean;
   readonly combinedSelectionBounds: Bounds | null;
   readonly editingText: EditingTextOverlay | null;
+  /** Object-snap guides / size assists of the current gesture tick. */
+  readonly snapGuides: readonly SnapGuide[];
+  readonly sizeReadout: SizeReadout | null;
+  readonly sizeMatch: SizeMatch | null;
+  /** Label the distance / size segments (the `showObjectSize` preference). */
+  readonly showDistances: boolean;
   // Runtime-parameterised lookups (narrow callbacks, not the Editor class).
   /** Can the shape be moved / resized (not locked, layer unlocked, visible)? */
   readonly isElementManipulable: (shape: Element) => boolean;
@@ -680,6 +688,10 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     if (editor.containerHover) {
       overlayOpts.containerDropZone = editor.containerHover.dropZone;
     }
+    if (editor.snapGuides.length > 0) overlayOpts.snapGuides = editor.snapGuides;
+    if (editor.sizeReadout) overlayOpts.sizeReadout = editor.sizeReadout;
+    if (editor.sizeMatch) overlayOpts.sizeMatch = editor.sizeMatch;
+    if (editor.showDistances) overlayOpts.showDistances = true;
     if (editor.brushStroke) {
       // The preview stroke is precomputed by `buildRenderSnapshot`: Catmull-Rom
       // smoothed (same resampler the commit uses) with the real paint colour and

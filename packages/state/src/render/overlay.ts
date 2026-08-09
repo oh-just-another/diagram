@@ -12,6 +12,7 @@ import {
 } from "@oh-just-another/scene";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import {
+  buildRoundedRectPath,
   getElementRenderer,
   resolveImageSource,
   strokeRoundedPolyline,
@@ -34,6 +35,22 @@ import {
   CURSOR_NAME_CHIP_PADDING_X,
   CURSOR_NAME_CHIP_PADDING_Y,
   CURSOR_NAME_FONT_SIZE,
+  SIZE_READOUT_FILL,
+  SIZE_READOUT_FONT_SIZE,
+  SIZE_READOUT_OFFSET_PX,
+  SIZE_READOUT_PADDING_X,
+  SIZE_READOUT_PADDING_Y,
+  SIZE_READOUT_RADIUS_PX,
+  SIZE_READOUT_TEXT_COLOR,
+  SNAP_GUIDE_COLOR,
+  SNAP_GUIDE_DASH,
+  SNAP_GUIDE_OVERSHOOT_PX,
+  SNAP_GUIDE_WIDTH_PX,
+  SNAP_MEASURE_COLOR,
+  SNAP_MEASURE_INSET_PX,
+  SNAP_MEASURE_LABEL_GAP_PX,
+  SNAP_MEASURE_TICK_PX,
+  SNAP_SIZE_SEGMENT_OFFSET_PX,
   CROP_BRACKET_LEN,
   CROP_BRACKET_WIDTH,
   CROP_GHOST_OPACITY,
@@ -70,6 +87,7 @@ import {
   ERASER_TRAIL_TTL_MS,
 } from "../constants.js";
 import { smoothLaserPoints, type LaserStroke } from "../editor/public/laser.js";
+import { gapIntervals, type SizeMatch, type SnapGuide } from "../editor/applies/object-snap.js";
 import {
   CORNER_HANDLES,
   HANDLE_SIZE,
@@ -202,6 +220,13 @@ export interface PeerSelection {
  * is `null` while blinked off. Selection rects render as a translucent
  * highlight under the caret.
  */
+/** Size readout for the overlay: the resized shape's world AABB + size. */
+export interface SizeReadout {
+  readonly bounds: Bounds;
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface EditingTextOverlay {
   readonly caret: { readonly x: number; readonly y: number; readonly height: number } | null;
   readonly caretColor: string;
@@ -301,6 +326,14 @@ export interface OverlayOptions {
    * independently along one axis.
    */
   groupAspectLocked?: boolean;
+  /** Object-snap alignment guides (world lines) of the current gesture tick. */
+  snapGuides?: readonly SnapGuide[];
+  /** `W × H` pill under the shape being resized. */
+  sizeReadout?: SizeReadout;
+  /** The shape (and axis) whose size the resize matched — measured with segments. */
+  sizeMatch?: SizeMatch;
+  /** Label distance / size segments with their rounded value. */
+  showDistances?: boolean;
   /**
    * Drop-zone of the container currently under the dragged shape.
    * Drawn as a dashed accent rect so the user sees where the element
@@ -461,6 +494,7 @@ export const renderOverlay = (
   renderEraserCursor(ctx);
   renderContainerDropZone(ctx);
   renderGroupBounds(ctx);
+  renderSnapAssists(ctx);
   renderAnnotations(ctx);
   renderPeerCursors(ctx);
   renderGifBadges(ctx);
@@ -1025,6 +1059,199 @@ const renderGroupBounds = (ctx: OverlayCtx): void => {
     }
     drawRotateGripForBounds(target, options.groupBounds, zoom, w2s, style);
   }
+};
+
+/**
+ * Section 7.2 — object-snap assists (reference look):
+ * - alignment guide: dashed line through the snapped edges / centres,
+ *   running `SNAP_GUIDE_OVERSHOOT_PX` past the outermost of the two shapes;
+ * - distance segments: for an edge snap, each gap between the two shapes
+ *   along the guide is measured with a solid ticked segment (inset from the
+ *   shapes) and, when `showDistances`, labelled with the rounded distance;
+ * - size match: the matched width / height is measured on both shapes with
+ *   the same ticked segment, offset outside them;
+ * - the `W × H` pill under the shape being resized.
+ * All drawn in screen space at constant size.
+ */
+const renderSnapAssists = (ctx: OverlayCtx): void => {
+  const { target, options, w2s } = ctx;
+  const labels = options.showDistances === true;
+  if (options.snapGuides) {
+    for (const g of options.snapGuides) {
+      drawSnapGuideLine(target, g, w2s);
+      if (g.kind !== "edge") continue;
+      // Gaps along the guide between the aligned-with shape and the moved one.
+      const [a1, a2, b1, b2] =
+        g.axis === "x"
+          ? [g.other.y, g.other.y + g.other.height, g.moving.y, g.moving.y + g.moving.height]
+          : [g.other.x, g.other.x + g.other.width, g.moving.x, g.moving.x + g.moving.width];
+      for (const gap of gapIntervals(a1, a2, b1, b2)) {
+        const from = matrix.applyToPoint(
+          w2s,
+          g.axis === "x" ? { x: g.at, y: gap.start } : { x: gap.start, y: g.at },
+        );
+        const to = matrix.applyToPoint(
+          w2s,
+          g.axis === "x" ? { x: g.at, y: gap.end } : { x: gap.end, y: g.at },
+        );
+        drawMeasureSegment(target, from, to, labels ? gap.end - gap.start : null);
+      }
+    }
+  }
+  if (options.sizeMatch) {
+    const { bounds, axis } = options.sizeMatch;
+    const shapes = options.sizeReadout ? [bounds, options.sizeReadout.bounds] : [bounds];
+    for (const b of shapes) {
+      const s = projectBounds(b, w2s);
+      if (axis !== "height") {
+        // Width: a segment above the shape.
+        const y = s.y - SNAP_SIZE_SEGMENT_OFFSET_PX;
+        drawMeasureSegment(target, { x: s.x, y }, { x: s.x + s.width, y }, labels ? b.width : null);
+      }
+      if (axis !== "width") {
+        // Height: a segment to the left of the shape.
+        const x = s.x - SNAP_SIZE_SEGMENT_OFFSET_PX;
+        drawMeasureSegment(
+          target,
+          { x, y: s.y },
+          { x, y: s.y + s.height },
+          labels ? b.height : null,
+        );
+      }
+    }
+  }
+  if (options.sizeReadout) {
+    const r = options.sizeReadout;
+    const s = projectBounds(r.bounds, w2s);
+    const text = `${String(Math.round(r.width))} × ${String(Math.round(r.height))}`;
+    const size = labelChipSize(target, text);
+    drawLabelChip(
+      target,
+      text,
+      s.x + s.width / 2 - size.width / 2,
+      s.y + s.height + SIZE_READOUT_OFFSET_PX,
+      SIZE_READOUT_FILL,
+    );
+  }
+};
+
+/** Dashed alignment guide, pixel-snapped, overshooting both shapes. */
+const drawSnapGuideLine = (target: RenderTarget, g: SnapGuide, w2s: Transform): void => {
+  const a = matrix.applyToPoint(
+    w2s,
+    g.axis === "x" ? { x: g.at, y: g.from } : { x: g.from, y: g.at },
+  );
+  const b = matrix.applyToPoint(w2s, g.axis === "x" ? { x: g.at, y: g.to } : { x: g.to, y: g.at });
+  const o = SNAP_GUIDE_OVERSHOOT_PX;
+  target.setStroke(SNAP_GUIDE_COLOR);
+  target.setStrokeWidth(SNAP_GUIDE_WIDTH_PX);
+  target.setDashArray([...SNAP_GUIDE_DASH]);
+  target.beginPath();
+  if (g.axis === "x") {
+    const x = Math.round(a.x) + 0.5;
+    target.moveTo(x, Math.min(a.y, b.y) - o);
+    target.lineTo(x, Math.max(a.y, b.y) + o);
+  } else {
+    const y = Math.round(a.y) + 0.5;
+    target.moveTo(Math.min(a.x, b.x) - o, y);
+    target.lineTo(Math.max(a.x, b.x) + o, y);
+  }
+  target.stroke();
+  target.setDashArray(null);
+};
+
+/**
+ * Solid measure segment between two screen points (axis-aligned), inset
+ * `SNAP_MEASURE_INSET_PX` from both ends, with perpendicular ticks and an
+ * optional distance label (below a horizontal segment, left of a vertical).
+ */
+const drawMeasureSegment = (
+  target: RenderTarget,
+  from: Vec2,
+  to: Vec2,
+  distance: number | null,
+): void => {
+  const vertical = Math.abs(to.x - from.x) < Math.abs(to.y - from.y);
+  const inset = SNAP_MEASURE_INSET_PX;
+  const tick = SNAP_MEASURE_TICK_PX;
+  let a: Vec2;
+  let b: Vec2;
+  if (vertical) {
+    const x = Math.round(from.x) + 0.5;
+    a = { x, y: Math.min(from.y, to.y) + inset };
+    b = { x, y: Math.max(from.y, to.y) - inset };
+  } else {
+    const y = Math.round(from.y) + 0.5;
+    a = { x: Math.min(from.x, to.x) + inset, y };
+    b = { x: Math.max(from.x, to.x) - inset, y };
+  }
+  if ((vertical ? b.y - a.y : b.x - a.x) <= 0) return;
+  target.setStroke(SNAP_MEASURE_COLOR);
+  target.setStrokeWidth(SNAP_GUIDE_WIDTH_PX);
+  target.setDashArray(null);
+  target.beginPath();
+  target.moveTo(a.x, a.y);
+  target.lineTo(b.x, b.y);
+  if (vertical) {
+    target.moveTo(a.x - tick, a.y);
+    target.lineTo(a.x + tick, a.y);
+    target.moveTo(b.x - tick, b.y);
+    target.lineTo(b.x + tick, b.y);
+  } else {
+    target.moveTo(a.x, a.y - tick);
+    target.lineTo(a.x, a.y + tick);
+    target.moveTo(b.x, b.y - tick);
+    target.lineTo(b.x, b.y + tick);
+  }
+  target.stroke();
+  if (distance === null) return;
+  const text = String(Math.round(distance));
+  const size = labelChipSize(target, text);
+  if (vertical) {
+    drawLabelChip(
+      target,
+      text,
+      a.x - SNAP_MEASURE_LABEL_GAP_PX - tick - size.width,
+      (a.y + b.y) / 2 - size.height / 2,
+      SNAP_MEASURE_COLOR,
+    );
+  } else {
+    drawLabelChip(
+      target,
+      text,
+      (a.x + b.x) / 2 - size.width / 2,
+      a.y + tick + SNAP_MEASURE_LABEL_GAP_PX,
+      SNAP_MEASURE_COLOR,
+    );
+  }
+};
+
+const labelChipSize = (target: RenderTarget, text: string): { width: number; height: number } => {
+  target.setFont("sans-serif", SIZE_READOUT_FONT_SIZE);
+  return {
+    width: target.measureText(text).width + 2 * SIZE_READOUT_PADDING_X,
+    height: SIZE_READOUT_FONT_SIZE + 2 * SIZE_READOUT_PADDING_Y,
+  };
+};
+
+/** Rounded label chip (fill + white text) at screen `x, y` (top-left). */
+const drawLabelChip = (
+  target: RenderTarget,
+  text: string,
+  x: number,
+  y: number,
+  fill: string,
+): void => {
+  const { width, height } = labelChipSize(target, text);
+  target.setTextBaseline("top");
+  target.setTextAlign("left");
+  target.setFill(fill);
+  target.setStroke(null);
+  target.beginPath();
+  buildRoundedRectPath(target, x, y, width, height, SIZE_READOUT_RADIUS_PX);
+  target.fill();
+  target.setFill(SIZE_READOUT_TEXT_COLOR);
+  target.fillText(text, x + SIZE_READOUT_PADDING_X, y + SIZE_READOUT_PADDING_Y);
 };
 
 /**

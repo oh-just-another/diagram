@@ -38,6 +38,27 @@ const spacing = resolveSnapSpacing();
 
 The spacing default lives in the package's `constants.ts` (`DEFAULT_GRID_SPACING`), so hosts that want a different grid can tune it there.
 
+## Object snapping and size assists
+
+The `Editor` in `@oh-just-another/state` also snaps move / resize gestures to **other shapes**, independent of the grid: the dragged shape's edges and centres align with the edges / centres of visible nearby shapes within `OBJECT_SNAP_THRESHOLD_PX` (6 screen px). While moving, an edge meets an edge and a centre meets a centre (never edge-to-centre); while resizing, the dragged edge may land on any line. On a tie an edge beats a centre. Object snapping wins over grid snapping when it lands; Cmd / Ctrl suppresses both for the gesture.
+
+Who takes part: every visible on-screen shape is a target except brush strokes, groups, shapes rotated off the 90° grid, shapes smaller than `OBJECT_SNAP_MIN_SIZE_PX` on screen, and the selection itself; nothing snaps on a view with more than `OBJECT_SNAP_MAX_CANDIDATES` shapes. Brush strokes never snap as movers either. A multi-selection snaps by its frame edges only (no centre line); a single shape snaps by its world AABB.
+
+The overlay draws a dashed **alignment guide** through the aligned lines, overshooting both shapes by `SNAP_GUIDE_OVERSHOOT_PX`; for an edge snap the gap between the two shapes along the guide is measured with a solid ticked **distance segment**, labelled with the rounded distance when `showObjectSize` is on (`SnapGuide.kind`, `moving`, `other`; `gapIntervals` computes the stretches).
+
+While resizing, the dragged edge can also land where the width / height equals a nearby shape's (`SIZE_SUGGEST_THRESHOLD_PX`); the matched size is measured with the same ticked segment on both shapes (`SizeMatch.axis`), and a `W × H` pill shows the live size under the shape.
+
+All three are per-user preferences (see `EditorPreferences`):
+
+```ts
+editor.setPreferences({ snapObjects: true, suggestObjectSize: true, showObjectSize: true });
+editor.snapGuides; // SnapGuide[] of the current gesture tick (overlay input)
+editor.sizeReadout; // { bounds, width, height } | null while resizing
+editor.sizeMatch; // bounds of the size-matched shape | null
+```
+
+The pure math lives in `snapMoveDeltaToObjects` / `snapResizeDeltaToObjects`; thresholds and guide colours are in the package's `constants.ts`.
+
 ## Custom contributors
 
 A `SnapContributor` is an object with an `id` and a `contribute(ctx: SnapContext): readonly SnapCandidate[]` method. Add your own to the engine's list to snap to guides, rulers, or domain-specific geometry; the `"guideline"` candidate kind is reserved for alignment-guide contributors.

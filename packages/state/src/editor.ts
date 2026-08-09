@@ -138,6 +138,10 @@ import {
   MAX_LIST_INDENT,
   IMAGE_ASPECT_PRESETS,
   LINK_DRAW_PRESETS,
+  OBJECT_SNAP_MAX_CANDIDATES,
+  OBJECT_SNAP_MIN_SIZE_PX,
+  OBJECT_SNAP_THRESHOLD_PX,
+  SIZE_SUGGEST_THRESHOLD_PX,
   DEFAULT_EDITOR_PREFERENCES,
   type EditorPreferences,
   type ImageAspectPreset,
@@ -384,7 +388,18 @@ import {
   snapMoveDelta,
   snapResizeDelta,
 } from "./editor/applies/snap-grid.js";
-import { type EditingTextOverlay, type PeerCursor, type PeerSelection } from "./render/overlay.js";
+import {
+  snapMoveDeltaToObjects,
+  snapResizeDeltaToObjects,
+  type SizeMatch,
+  type SnapGuide,
+} from "./editor/applies/object-snap.js";
+import {
+  type EditingTextOverlay,
+  type PeerCursor,
+  type PeerSelection,
+  type SizeReadout,
+} from "./render/overlay.js";
 import * as Selection from "./selection/selection.js";
 import * as LinkSelection from "./selection/link-selection.js";
 
@@ -589,6 +604,12 @@ const EMPTY_ELEMENT_SET: ReadonlySet<ElementId> = Object.freeze(new Set<ElementI
 
 /** Monotonic wall-clock in ms, matching the domain used by the overlay fade. */
 const nowMs = (): number => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
+/** `rotation` is a multiple of 90° (within float noise) — the only poses that snap. */
+const isRightAngle = (rotation: number): boolean => {
+  const q = rotation / (Math.PI / 2);
+  return Math.abs(q - Math.round(q)) < 1e-6;
+};
 
 /**
  * Camera at the scene's saved start view (pan + zoom), or the scene itself
@@ -4770,6 +4791,157 @@ export class Editor {
   }
 
   /**
+   * Object snapping is a per-user preference; the suppress modifier
+   * (Cmd/Ctrl) bypasses it for the current gesture like grid snapping.
+   */
+  private objectSnapActive(): boolean {
+    return !this.interaction.snapSuppressed && this._preferences.snapObjects;
+  }
+
+  private sizeSuggestActive(): boolean {
+    return !this.interaction.snapSuppressed && this._preferences.suggestObjectSize;
+  }
+
+  /**
+   * World AABBs of the shapes a gesture may snap to (reference rules): every
+   * visible element on screen that is not being moved / resized, except
+   * groups (no geometry of their own), brush strokes (freehand ink is never
+   * a snap target), shapes rotated off the 90° grid, and shapes too small on
+   * screen (`OBJECT_SNAP_MIN_SIZE_PX`). Returns nothing on a crowded view
+   * (`OBJECT_SNAP_MAX_CANDIDATES`) so a huge board never stalls a drag.
+   */
+  private snapCandidates(moving: ReadonlySet<ElementId>): Bounds[] {
+    const view = this.computeViewportWorld();
+    const zoom = this._scene.viewport.zoom || 1;
+    const minSize = OBJECT_SNAP_MIN_SIZE_PX / zoom;
+    const out: Bounds[] = [];
+    for (const shape of this._scene.elements.values()) {
+      if (moving.has(shape.id) || isGroup(shape) || isBrush(shape)) continue;
+      if (!isRightAngle(shape.rotation)) continue;
+      if (isElementHidden(this._scene, shape)) continue;
+      const b = getElementWorldBounds(shape);
+      if (view && !B.intersects(view, b)) continue;
+      if (b.width < minSize && b.height < minSize) continue;
+      out.push(b);
+      if (out.length > OBJECT_SNAP_MAX_CANDIDATES) return [];
+    }
+    return out;
+  }
+
+  /** Brush strokes never snap (as movers or targets) — freehand ink has no meaningful edges. */
+  private snapsAsMover(id: ElementId): boolean {
+    const shape = getElement(this._scene, id);
+    return shape !== undefined && !isBrush(shape);
+  }
+
+  /**
+   * Move-delta snapping: object snapping (edges / centres of nearby shapes)
+   * wins when it lands; otherwise grid snapping. Records the guides for the
+   * overlay either way.
+   */
+  private snapMoveDeltaFor(moving: ReadonlySet<ElementId>, bounds: Bounds, delta: Vec2): Vec2 {
+    this.interaction.snapGuides = [];
+    if (this.objectSnapActive() && [...moving].some((id) => this.snapsAsMover(id))) {
+      const threshold = OBJECT_SNAP_THRESHOLD_PX / (this._scene.viewport.zoom || 1);
+      const r = snapMoveDeltaToObjects(bounds, delta, this.snapCandidates(moving), threshold);
+      if (r.guides.length > 0) {
+        this.interaction.snapGuides = r.guides;
+        return r.delta;
+      }
+    }
+    return this.snapActive() ? snapMoveDelta(bounds, delta, this.snapSpacing()) : delta;
+  }
+
+  /**
+   * Group move: the press-time union AABB of the members (each member's
+   * current geometry at its press-time position; brush strokes excluded)
+   * snaps to nearby shapes by its frame EDGES only — a multi-selection has
+   * no centre line, like the reference. Falls back to the grid
+   * reference-point snap.
+   */
+  private snapGroupMoveDelta(origins: ReadonlyMap<ElementId, Vec2>, delta: Vec2): Vec2 {
+    this.interaction.snapGuides = [];
+    if (this.objectSnapActive()) {
+      let union: Bounds | null = null;
+      let members = 0;
+      for (const [id, position] of origins) {
+        const shape = getElement(this._scene, id);
+        if (!shape || isGroup(shape) || isBrush(shape)) continue;
+        members += 1;
+        const b = getElementWorldBounds({ ...shape, position });
+        union = union ? B.union(union, b) : b;
+      }
+      if (union) {
+        const threshold = OBJECT_SNAP_THRESHOLD_PX / (this._scene.viewport.zoom || 1);
+        const r = snapMoveDeltaToObjects(
+          union,
+          delta,
+          this.snapCandidates(new Set(origins.keys())),
+          threshold,
+          { centerLines: members === 1 },
+        );
+        if (r.guides.length > 0) {
+          this.interaction.snapGuides = r.guides;
+          return r.delta;
+        }
+      }
+    }
+    return this.snapActive() ? snapGroupDelta(origins, delta, this.snapSpacing()) : delta;
+  }
+
+  /** Resize-delta counterpart of {@link snapMoveDeltaFor}; also sets `sizeMatch`. */
+  private snapResizeDeltaFor(
+    moving: ReadonlySet<ElementId>,
+    original: Bounds,
+    handle: HandleId,
+    delta: Vec2,
+  ): Vec2 {
+    this.interaction.snapGuides = [];
+    this.interaction.sizeMatch = null;
+    const alignEdges = this.objectSnapActive();
+    const matchSizes = this.sizeSuggestActive();
+    if ((alignEdges || matchSizes) && [...moving].some((id) => this.snapsAsMover(id))) {
+      const zoom = this._scene.viewport.zoom || 1;
+      const threshold = Math.max(OBJECT_SNAP_THRESHOLD_PX, SIZE_SUGGEST_THRESHOLD_PX) / zoom;
+      const r = snapResizeDeltaToObjects(
+        original,
+        handle,
+        delta,
+        this.snapCandidates(moving),
+        threshold,
+        { alignEdges, matchSizes },
+      );
+      if (r.guides.length > 0 || r.sizeMatch !== null) {
+        this.interaction.snapGuides = r.guides;
+        this.interaction.sizeMatch = r.sizeMatch;
+        return r.delta;
+      }
+    }
+    return this.snapActive() ? snapResizeDelta(original, handle, delta, this.snapSpacing()) : delta;
+  }
+
+  /** Publish the `W × H` readout for `bounds` when the preference is on. */
+  private setSizeReadout(bounds: Bounds | null): void {
+    this.interaction.sizeReadout =
+      bounds && this._preferences.showObjectSize
+        ? { bounds, width: bounds.width, height: bounds.height }
+        : null;
+  }
+
+  /** Alignment guides of the current gesture tick (object snapping). */
+  get snapGuides(): readonly SnapGuide[] {
+    return this.interaction.snapGuides;
+  }
+  /** `W × H` readout of the shape being resized, when `showObjectSize` is on. */
+  get sizeReadout(): SizeReadout | null {
+    return this.interaction.sizeReadout;
+  }
+  /** Bounds of the shape whose size the current resize matched, if any. */
+  get sizeMatch(): SizeMatch | null {
+    return this.interaction.sizeMatch;
+  }
+
+  /**
    * Replace the entire scene (e.g. after `parseScene`). Clears history,
    * selection and any open gesture. Use to load a saved document.
    */
@@ -5655,7 +5827,9 @@ export class Editor {
     if (el && !this.isElementManipulable(el)) return;
     // Shift constrains the drag to one axis before snapping.
     const moved = this.interaction.transformShiftKey ? constrainDeltaToAxis(delta) : delta;
-    const d = this.snapActive() ? snapMoveDelta(originalBounds, moved, this.snapSpacing()) : moved;
+    // Rotated shapes keep their AABB-based snapping (edges still align in
+    // world space); the object pass is skipped only when nothing is nearby.
+    const d = this.snapMoveDeltaFor(new Set([id]), originalBounds, moved);
     const patch = computeElementMovePatch(this._scene, id, d, originalBounds);
     if (!patch) return;
     this._scene = apply(this._scene, patch);
@@ -5667,9 +5841,7 @@ export class Editor {
     if (!this.groupMoveOrigin) return;
     // Shift constrains the drag to one axis before snapping.
     const moved = this.interaction.transformShiftKey ? constrainDeltaToAxis(delta) : delta;
-    const d = this.snapActive()
-      ? snapGroupDelta(this.groupMoveOrigin, moved, this.snapSpacing())
-      : moved;
+    const d = this.snapGroupMoveDelta(this.groupMoveOrigin, moved);
     const patches = computeGroupMovePatches(this._scene, this.groupMoveOrigin, d);
     for (const patch of patches) {
       this._scene = apply(this._scene, patch);
@@ -5858,9 +6030,12 @@ export class Editor {
 
   private applyGroupResize(handle: HandleId, delta: Vec2, originalBounds: Bounds): void {
     if (!this.groupResizeOrigin) return;
-    const d = this.snapActive()
-      ? snapResizeDelta(originalBounds, handle, delta, this.snapSpacing())
-      : delta;
+    const d = this.snapResizeDeltaFor(
+      new Set(this.groupResizeOrigin.elements.keys()),
+      originalBounds,
+      handle,
+      delta,
+    );
     const result = computeGroupResizePatches(
       this._scene,
       this.groupResizeOrigin,
@@ -5874,6 +6049,7 @@ export class Editor {
     );
     this._scene = result.scene;
     for (const patch of result.patches) this.recordGesturePatch(patch);
+    this.setSizeReadout(this.combinedSelectionBounds());
     this.notify();
   }
 
@@ -5898,12 +6074,11 @@ export class Editor {
       if (!result) return;
       this._scene = result.scene;
       this.recordGesturePatch(result.patch);
+      this.setSizeReadout(this.resizedBounds(id));
       this.notify();
       return;
     }
-    const d = this.snapActive()
-      ? snapResizeDelta(originalBounds, handle, delta, this.snapSpacing())
-      : delta;
+    const d = this.snapResizeDeltaFor(new Set([id]), originalBounds, handle, delta);
     // Text: aspect-locked font scaling. Snapshot the pristine shape on
     // the gesture's first tick so the scale base never compounds.
     if (shape !== undefined && isText(shape)) {
@@ -5925,6 +6100,7 @@ export class Editor {
       if (!result) return;
       this._scene = result.scene;
       this.recordGesturePatch(result.patch);
+      this.setSizeReadout(this.resizedBounds(id));
       this.notify();
       return;
     }
@@ -5941,7 +6117,14 @@ export class Editor {
     if (!result) return;
     this._scene = result.scene;
     this.recordGesturePatch(result.patch);
+    this.setSizeReadout(this.resizedBounds(id));
     this.notify();
+  }
+
+  /** World AABB of `id` after a resize tick (null when the shape is gone). */
+  private resizedBounds(id: ElementId): Bounds | null {
+    const shape = getElement(this._scene, id);
+    return shape ? getElementWorldBounds(shape) : null;
   }
 
   /**
@@ -6442,6 +6625,7 @@ export class Editor {
   }
   public commitGesture(): void {
     this.interaction.resizeOriginElement = null;
+    this.interaction.clearSnapAssists();
     this.rotateGestureOrigin = null;
     this.gestures.commit();
     this.gestureStartScene = null;
@@ -6492,6 +6676,7 @@ export class Editor {
 
   public cancelGesture(): void {
     this.interaction.resizeOriginElement = null;
+    this.interaction.clearSnapAssists();
     this.interaction.rotateGestureOrigin = null;
     this.gestures.cancel();
     // Roll the scene back to the pre-gesture snapshot — cancelling the history
@@ -6773,6 +6958,10 @@ export class Editor {
       aspectLocked: this.selectionIsAspectLocked(),
       combinedSelectionBounds: this.combinedSelectionBounds(),
       editingText: this.editingTextOverlay(),
+      snapGuides: this.interaction.snapGuides,
+      sizeReadout: this.interaction.sizeReadout,
+      sizeMatch: this.interaction.sizeMatch,
+      showDistances: this._preferences.showObjectSize,
       isElementManipulable: (s) => this.isElementManipulable(s),
       previewClickCreate: (fromElement, anchorName) =>
         this.previewClickCreate(fromElement, anchorName),

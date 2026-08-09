@@ -877,6 +877,54 @@ export const NUDGE_STEP_SHIFT_PX = 10;
 
 export const CARET_BLINK_INTERVAL_MS = 530;
 export const TEXT_SELECTION_FILL: string = CANVAS_CHROME_ACCENT;
+
+/**
+ * Object snapping / size assists (see `EditorPreferences`).
+ * - `OBJECT_SNAP_THRESHOLD_PX` — screen distance within which a dragged
+ *   edge / centre snaps to another shape's. Range: 4–10.
+ * - `OBJECT_SNAP_MIN_SIZE_PX` / `OBJECT_SNAP_MAX_CANDIDATES` — which shapes
+ *   count as snap targets (see below).
+ * - `SIZE_SUGGEST_THRESHOLD_PX` — screen distance within which a resized
+ *   width / height snaps to a nearby shape's size. Range: 4–10.
+ * - `SNAP_GUIDE_*` / `SNAP_MEASURE_*` — alignment guide and distance segment
+ *   chrome (reference look: dashed guide, ticked measure with a label).
+ * - `SIZE_READOUT_*` — the `W × H` pill under a shape being resized:
+ *   font size, padding, and gap below the shape's bottom edge (screen px).
+ */
+export const OBJECT_SNAP_THRESHOLD_PX = 6;
+/**
+ * Snap-target eligibility (reference rules): a shape must be at least this
+ * many screen px wide OR tall to be snapped to, and object snapping is
+ * skipped entirely when more than `OBJECT_SNAP_MAX_CANDIDATES` shapes are
+ * on screen (keeps a huge board responsive). Ranges: 12–24 / 500–5000.
+ */
+export const OBJECT_SNAP_MIN_SIZE_PX = 18;
+export const OBJECT_SNAP_MAX_CANDIDATES = 2000;
+export const SIZE_SUGGEST_THRESHOLD_PX = 6;
+/** Alignment guide: dashed line through the aligned edges / centres. */
+export const SNAP_GUIDE_COLOR = "#2a78ff";
+export const SNAP_GUIDE_WIDTH_PX = 1;
+export const SNAP_GUIDE_DASH: readonly number[] = [4, 4];
+/** How far (screen px) the guide runs past the outermost of the two shapes. */
+export const SNAP_GUIDE_OVERSHOOT_PX = 15;
+/**
+ * Distance segments: solid line with perpendicular ticks at both ends,
+ * inset from the shapes it measures, labelled with the rounded distance.
+ * `SNAP_SIZE_SEGMENT_OFFSET_PX` — gap between a shape and the segment that
+ * measures its width (above) / height (left) on a size match.
+ */
+export const SNAP_MEASURE_COLOR = "#4262ff";
+export const SNAP_MEASURE_INSET_PX = 4;
+export const SNAP_MEASURE_TICK_PX = 3;
+export const SNAP_MEASURE_LABEL_GAP_PX = 3;
+export const SNAP_SIZE_SEGMENT_OFFSET_PX = 15;
+export const SIZE_READOUT_FONT_SIZE = 11;
+export const SIZE_READOUT_PADDING_X = 6;
+export const SIZE_READOUT_PADDING_Y = 3;
+export const SIZE_READOUT_OFFSET_PX = 8;
+export const SIZE_READOUT_RADIUS_PX = 4;
+export const SIZE_READOUT_FILL: string = CANVAS_CHROME_ACCENT;
+export const SIZE_READOUT_TEXT_COLOR = "#fff";
 export const TEXT_SELECTION_OPACITY = 0.25;
 export const TEXT_CARET_WIDTH_PX = 1.5;
 export const TEXT_RESIZE_MIN_FONT_SIZE = 4;

@@ -22,6 +22,7 @@ export {
 export { LAYER_ORDER } from "./targets/layers.js";
 export { renderScene } from "./rendering/scene-renderer.js";
 export { renderLinks, strokeRoundedPolyline } from "./rendering/edge-renderer.js";
+export { buildRoundedRectPath } from "./rendering/built-in-renderers.js";
 export { renderGrid, computeGridRungs } from "./rendering/grid-renderer.js";
 
 // Backend-agnostic shape renderers for the built-in `BuiltinElement` types.

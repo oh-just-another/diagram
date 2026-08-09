@@ -436,6 +436,60 @@ describe("renderOverlay", () => {
     expect(rects.some((c) => c.args[0] === 10 && c.args[1] === 20)).toBe(true);
   });
 
+  it("draws a dashed overshooting guide, ticked distance segments with labels, and the readout", () => {
+    const { target, calls } = makeRecorder();
+    // Moved shape (100..150 × 0..50) aligned on x=100 with a shape below (100..180 × 120..150).
+    const moving = { x: 100, y: 0, width: 50, height: 50 };
+    const other = { x: 100, y: 120, width: 80, height: 30 };
+    renderOverlay(emptyScene(), emptySelection, target, {
+      snapGuides: [{ axis: "x", at: 100, from: 0, to: 150, kind: "edge", moving, other }],
+      showDistances: true,
+    });
+    // Guide: dashed, pixel-snapped, 15 px past both shapes.
+    expect(calls.some((c) => c.method === "setDashArray" && Array.isArray(c.args[0]))).toBe(true);
+    const moves = calls.filter((c) => c.method === "moveTo").map((c) => c.args);
+    expect(moves).toContainEqual([100.5, -15]);
+    // Distance segment across the 50..120 gap, inset 4 px, with ticks (±3 px).
+    expect(moves).toContainEqual([100.5, 54]);
+    expect(moves).toContainEqual([97.5, 54]);
+    expect(moves).toContainEqual([97.5, 116]);
+    // Label = rounded gap.
+    expect(calls.some((c) => c.method === "fillText" && c.args[0] === "70")).toBe(true);
+  });
+
+  it("measures a size match on both shapes and draws the W × H readout", () => {
+    const { target, calls } = makeRecorder();
+    renderOverlay(emptyScene(), emptySelection, target, {
+      sizeMatch: { bounds: { x: 300, y: 300, width: 80, height: 30 }, axis: "width" },
+      sizeReadout: { bounds: { x: 0, y: 0, width: 80, height: 79.6 }, width: 80, height: 79.6 },
+      showDistances: true,
+    });
+    const moves = calls.filter((c) => c.method === "moveTo").map((c) => c.args);
+    // Width segments 15 px above each shape (inset 4 px): y = 300 − 15 → 285.5, y = −15 → −14.5.
+    expect(moves).toContainEqual([304, 285.5]);
+    expect(moves).toContainEqual([4, -14.5]);
+    const texts = calls.filter((c) => c.method === "fillText").map((c) => c.args[0]);
+    expect(texts).toContain("80");
+    expect(texts).toContain("80 × 80");
+  });
+
+  it("skips distance segments for centre guides and labels when showDistances is off", () => {
+    const { target, calls } = makeRecorder();
+    const moving = { x: 100, y: 0, width: 50, height: 50 };
+    const other = { x: 100, y: 120, width: 80, height: 30 };
+    renderOverlay(emptyScene(), emptySelection, target, {
+      snapGuides: [
+        { axis: "x", at: 125, from: 0, to: 150, kind: "center", moving, other },
+        { axis: "y", at: 0, from: 100, to: 180, kind: "edge", moving, other },
+      ],
+    });
+    expect(calls.some((c) => c.method === "fillText")).toBe(false);
+    // Only the two guides + the y-guide's gap segment (150..100? none: x extents overlap
+    // partially → two stretches) — no tick lines for the centre guide (x = 125 ± 3).
+    const moves = calls.filter((c) => c.method === "moveTo").map((c) => c.args);
+    expect(moves.some((m) => m[0] === 122.5)).toBe(false);
+  });
+
   it("draws text selection rects when selectionRects is non-empty", () => {
     const { target, calls } = makeRecorder();
     renderOverlay(emptyScene(), emptySelection, target, {

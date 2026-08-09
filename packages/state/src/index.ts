@@ -33,8 +33,10 @@ export {
   boundsFromPoints,
 } from "./interaction/machine.js";
 
+export type { SnapGuide } from "./editor/applies/object-snap.js";
 export type {
   EditingTextOverlay,
+  SizeReadout,
   OverlayStyle,
   PeerCursor,
   PeerSelection,

@@ -3,6 +3,7 @@ import { vec2 } from "@oh-just-another/math";
 import { DOUBLE_CLICK_MS, DOUBLE_CLICK_TOLERANCE_PX } from "../constants.js";
 import type { AnnotationId, LinkId } from "@oh-just-another/types";
 import type { Element, Link } from "@oh-just-another/scene";
+import type { SizeMatch, SnapGuide } from "./applies/object-snap.js";
 import type { BrushStrokeState } from "./public/brush.js";
 import type { EraseStrokeState } from "./public/eraser.js";
 import type { LaserStroke } from "./public/laser.js";
@@ -152,6 +153,14 @@ export class InteractionState {
   /** Host-mirrored transform-modifier: aspect-lock resize / axis-lock move. */
   transformShiftKey = false;
 
+  /** Alignment guides of the current move / resize tick (object snapping). */
+  snapGuides: readonly SnapGuide[] = [];
+  /** `W × H` readout for the shape being resized (world bounds + size). */
+  sizeReadout: { readonly bounds: Bounds; readonly width: number; readonly height: number } | null =
+    null;
+  /** The shape whose size the current resize matched (size suggestion). */
+  sizeMatch: SizeMatch | null = null;
+
   /** Timestamp of the last non-drag pointer-up (double-click detection). */
   lastClickAt = 0;
   /** World point of the last non-drag pointer-up (double-click detection). */
@@ -222,6 +231,13 @@ export class InteractionState {
     this.hoverCursorWorld = null;
   }
 
+  /** Drop the per-tick snap guides / size readout (gesture ended). */
+  clearSnapAssists(): void {
+    this.snapGuides = [];
+    this.sizeReadout = null;
+    this.sizeMatch = null;
+  }
+
   /** Full teardown — return every ephemeral field to its default. */
   reset(): void {
     this.resetPreviews();
@@ -238,6 +254,7 @@ export class InteractionState {
     this.snapSuppressed = false;
     this.transformAltKey = false;
     this.transformShiftKey = false;
+    this.clearSnapAssists();
     this.lastClickAt = 0;
     this.lastClickWorldPoint = null;
     this.brushStroke = null;
