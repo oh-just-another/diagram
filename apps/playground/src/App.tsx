@@ -315,6 +315,7 @@ export const App = () => {
         renderTopBarRight={renderHeaderRight}
         {...(editor ? { renderMainMenuExtras: () => <ImportExportMenu editor={editor} /> } : {})}
         persistTheme
+        persistPreferences
         minimap
         {...(initialScene ? { initialScene } : {})}
         {...(capabilityOverrides ? { capabilities: capabilityOverrides } : {})}
