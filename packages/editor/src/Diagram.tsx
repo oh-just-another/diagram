@@ -98,6 +98,10 @@ const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } a
 /** Default target for the Help-menu "GitHub" link (overridable / hideable via the `repositoryUrl` prop). */
 const DEFAULT_REPOSITORY_URL = "https://github.com/oh-just-another/diagram";
 import type { ActiveTool, Editor, FileDropHandler, Mode } from "@oh-just-another/state";
+import {
+  DEFAULT_PREFERENCES_STORAGE_KEY,
+  bindPreferencesPersistence,
+} from "./preferences-storage.js";
 import type { ElementId } from "@oh-just-another/types";
 import { formatHotkey } from "@oh-just-another/state";
 import {
@@ -282,6 +286,13 @@ export interface DiagramProps {
    * on reload).
    */
   readonly persistTheme?: boolean | string;
+  /**
+   * Persist the per-user editor preferences (`EditorPreferences`: object
+   * snapping, size readouts, wheel mode — the canvas menu's check rows) in
+   * `localStorage`. Pass `true` for the default key `"diagram-preferences"`,
+   * or a custom key string. Omit to keep them in memory for the session.
+   */
+  readonly persistPreferences?: boolean | string;
 
   // --- Branding ---
   /**
@@ -351,6 +362,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     defaultTheme = "system",
     onThemeChange,
     persistTheme,
+    persistPreferences,
     repositoryUrl,
     onConfirm,
     onNotify,
@@ -514,6 +526,17 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     },
     [fileDropHandlers, onReady],
   );
+
+  // Per-user preferences: load once the editor exists, then mirror changes.
+  const preferencesKey = useMemo(() => {
+    if (persistPreferences === true) return DEFAULT_PREFERENCES_STORAGE_KEY;
+    if (typeof persistPreferences === "string") return persistPreferences;
+    return null;
+  }, [persistPreferences]);
+  useEffect(() => {
+    if (!editor || !preferencesKey) return undefined;
+    return bindPreferencesPersistence(editor, preferencesKey);
+  }, [editor, preferencesKey]);
 
   useEffect(() => {
     if (!editor) return undefined;

@@ -111,3 +111,9 @@ export type { InteractiveHitTester } from "@oh-just-another/state";
 export type { Template } from "@oh-just-another/templates";
 export type { AnimatedSourceAdapter } from "@oh-just-another/renderer-core";
 export type { RendererBackend } from "@oh-just-another/renderer-canvas";
+export {
+  DEFAULT_PREFERENCES_STORAGE_KEY,
+  bindPreferencesPersistence,
+  loadPreferences,
+  parseStoredPreferences,
+} from "./preferences-storage.js";

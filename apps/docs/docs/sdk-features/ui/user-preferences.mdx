@@ -1,6 +1,5 @@
 ---
-title: 🚧 User Preferences
-status: draft
+title: User Preferences
 sidebar_position: 74
 ---
 
@@ -20,4 +19,14 @@ Several user-facing toggles live on the viewport and persist with it rather than
 
 Theme persistence exists only in the drop-in editor: `<Editor persistTheme>` (`@oh-just-another/editor`) stores the choice in `localStorage` (default key `"diagram-theme"`, or pass a custom key string). `@oh-just-another/react-ui` itself does not persist a theme — it exports light and dark palettes (`ELEMENT_PALETTE_LIGHT` / `_DARK`, `CANVAS_PALETTE_LIGHT` / `_DARK`) and `resolvePaletteTheme`; store the preference yourself when composing chrome directly. The bundled color picker always offers `ELEMENT_PALETTE_LIGHT`: the canvas is not themed (dark mode darkens the chrome only), so element colors are always picked against light paper.
 
-Planned — not yet available: a unified, namespaced user-preferences API (default tool, grid defaults, theme in one store) that the editor reads on startup. Today, assemble preferences from the scoped viewport settings above, `persistTheme`, and your own storage.
+## Editor preferences
+
+Device / assist settings that are not document data live on the editor as `EditorPreferences`: `snapObjects`, `showObjectSize`, `suggestObjectSize` and `wheelMode` (`"auto"` | `"mouse"` | `"trackpad"`). They are the check rows of the canvas context menu.
+
+```ts
+editor.preferences; // EditorPreferences
+editor.setPreferences({ snapObjects: false, wheelMode: "trackpad" });
+new Editor({ ..., preferences: { wheelMode: "mouse" } }); // seed
+```
+
+The drop-in editor persists them per browser with `<Diagram persistPreferences>` (default key `"diagram-preferences"`, or a custom key); `bindPreferencesPersistence(editor, key)` / `loadPreferences(key)` from `@oh-just-another/editor` do the same for a hand-composed shell. Theme, viewport scopes and preferences remain separate stores.

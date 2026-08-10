@@ -13,7 +13,12 @@ import { MENU_VIEWPORT_PADDING_PX } from "../core/constants.js";
 import { floatPanel } from "../primitives/float-panel.js";
 import type { Vec2 } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
-import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
+import {
+  defaultActionRegistry,
+  formatHotkey,
+  type HotkeyMatcher,
+  type WheelMode,
+} from "@oh-just-another/state";
 import { useDiagramOptional } from "../core/hooks.js";
 import { useContextMenuController } from "./context-menu-controller.js";
 import { usePortalContainer } from "../core/portal-container.js";
@@ -35,6 +40,8 @@ export type ContextMenuItem =
       readonly shortcut?: string;
       readonly visible?: (editor: Editor, ctx: ContextMenuContext) => boolean;
       readonly disabled?: (editor: Editor, ctx: ContextMenuContext) => boolean;
+      /** Toggle / radio row: renders a check mark in the leading gutter when `true`. */
+      readonly checked?: (editor: Editor, ctx: ContextMenuContext) => boolean;
       readonly onClick: (editor: Editor, ctx: ContextMenuContext) => void;
     }
   | {
@@ -229,6 +236,15 @@ const MENU_PANEL_STYLE: CSSProperties = {
 /** Panel padding (4) + border (1): offset so a submenu's first row aligns with its parent row. */
 const SUBMENU_ALIGN_PX = 5;
 
+/** Leading gutter every row reserves so check marks never shift labels. */
+const CHECK_GUTTER_STYLE: CSSProperties = {
+  display: "inline-block",
+  width: 14,
+  textAlign: "center",
+  fontSize: 12,
+  lineHeight: 1,
+};
+
 const ROW_STYLE: CSSProperties = {
   all: "unset",
   display: "flex",
@@ -397,7 +413,10 @@ const ContextSubmenuRow = ({
           background: open ? "var(--du-hover-overlay, rgba(0,0,0,0.05))" : "transparent",
         }}
       >
-        <span>{item.label}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span aria-hidden style={CHECK_GUTTER_STYLE} />
+          <span>{item.label}</span>
+        </span>
         <span aria-hidden style={{ marginLeft: 16, opacity: 0.6 }}>
           ›
         </span>
@@ -439,6 +458,7 @@ const ContextMenuRow = ({
   readonly onActivate: () => void;
 }) => {
   const disabled = item.disabled?.(editor, ctx) ?? false;
+  const checked = item.checked?.(editor, ctx) ?? false;
   const handle = (ev: ReactMouseEvent): void => {
     if (disabled) {
       ev.preventDefault();
@@ -450,7 +470,8 @@ const ContextMenuRow = ({
   return (
     <button
       type="button"
-      role="menuitem"
+      role={item.checked ? "menuitemcheckbox" : "menuitem"}
+      {...(item.checked ? { "aria-checked": checked } : {})}
       onClick={handle}
       disabled={disabled}
       style={{
@@ -467,7 +488,12 @@ const ContextMenuRow = ({
         ev.currentTarget.style.background = "transparent";
       }}
     >
-      <span>{item.label}</span>
+      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span aria-hidden style={{ ...CHECK_GUTTER_STYLE, color: "var(--du-accent, #5b5bd6)" }}>
+          {checked ? "✓" : ""}
+        </span>
+        <span>{item.label}</span>
+      </span>
       {item.shortcut ? (
         <span style={{ marginLeft: 16, opacity: 0.6, fontSize: 11 }}>{item.shortcut}</span>
       ) : null}
@@ -521,6 +547,7 @@ const actionMenuItem = (
   opts?: {
     readonly label?: ReactNode;
     readonly visible?: (editor: Editor, ctx: ContextMenuContext) => boolean;
+    readonly checked?: (editor: Editor, ctx: ContextMenuContext) => boolean;
   },
 ): ContextMenuItem => {
   const action = defaultActionRegistry.get(actionId);
@@ -543,11 +570,42 @@ const actionMenuItem = (
     label: opts?.label ?? action?.label ?? actionId,
     ...(first ? { shortcut: formatHotkey(first) } : {}),
     visible,
+    ...(opts?.checked ? { checked: opts.checked } : {}),
     onClick: (editor: Editor) => {
       defaultActionRegistry.dispatch(actionId, { editor });
     },
   };
 };
+
+/**
+ * "Canvas" context: the right-click landed on empty canvas (the press
+ * routing has already cleared the selection) and not on an annotation pin.
+ * Canvas-only entries (add text / sticky, start view, grid & snap toggles,
+ * wheel mode, show all) are gated on this.
+ */
+const onCanvas = (e: Editor, ctx: ContextMenuContext): boolean =>
+  e.selection.size === 0 && e.selectedLinks.size === 0 && e.hitAnnotation(ctx.worldPoint) === null;
+
+const WHEEL_MODES: readonly { readonly mode: WheelMode; readonly label: string }[] = [
+  { mode: "auto", label: "Auto-detect" },
+  { mode: "mouse", label: "Mouse" },
+  { mode: "trackpad", label: "Trackpad" },
+];
+
+/** Toggle row bound to one boolean editor preference. */
+const preferenceToggle = (
+  key: "snapObjects" | "showObjectSize" | "suggestObjectSize",
+  label: string,
+): ContextMenuItem => ({
+  kind: "action",
+  id: key,
+  label,
+  visible: onCanvas,
+  checked: (e) => e.preferences[key],
+  onClick: (e) => {
+    e.setPreferences({ [key]: !e.preferences[key] });
+  },
+});
 
 export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   // --- Clipboard / duplication ---
@@ -555,6 +613,18 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   actionMenuItem("cut"),
   actionMenuItem("paste"),
   actionMenuItem("duplicate-selection", { label: "Duplicate" }),
+  {
+    kind: "action",
+    id: "unlock-all",
+    label: "Unlock all",
+    visible: (e, ctx) =>
+      !e.readOnly &&
+      onCanvas(e, ctx) &&
+      [...e.scene.elements.values()].some((s) => s.locked === true),
+    onClick: (e) => {
+      e.unlockAll();
+    },
+  },
   { kind: "divider" },
   actionMenuItem("copy-style", { label: "Copy style" }),
   actionMenuItem("paste-style", { label: "Paste style" }),
@@ -592,6 +662,24 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   },
   {
     kind: "action",
+    id: "add-text",
+    label: "Add text",
+    visible: (e, ctx) => !e.readOnly && onCanvas(e, ctx),
+    onClick: (e, ctx) => {
+      e.createTextAt(ctx.worldPoint);
+    },
+  },
+  {
+    kind: "action",
+    id: "add-sticky",
+    label: "Add sticky note",
+    visible: (e, ctx) => !e.readOnly && onCanvas(e, ctx),
+    onClick: (e, ctx) => {
+      e.createStickyAt(ctx.worldPoint);
+    },
+  },
+  {
+    kind: "action",
     id: "add-comment",
     label: "Add comment",
     visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) === null,
@@ -616,6 +704,70 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
       e.addAnnotation({ position, elementId: elementUnder?.id ?? null });
     },
   },
+  { kind: "divider" },
+  // --- Canvas: start view ---
+  {
+    kind: "action",
+    id: "go-to-start-view",
+    label: "Set start view",
+    visible: (e, ctx) => onCanvas(e, ctx) && e.startView !== null,
+    onClick: (e) => {
+      e.goToStartView();
+    },
+  },
+  {
+    kind: "action",
+    id: "set-current-view-as-start",
+    label: "Set current view as start",
+    visible: (e, ctx) => !e.readOnly && onCanvas(e, ctx),
+    onClick: (e) => {
+      e.setCurrentViewAsStart();
+    },
+  },
+  { kind: "divider" },
+  // --- Canvas: grid, snapping and size assists (check rows) ---
+  actionMenuItem("toggle-grid", {
+    label: "Show grid",
+    visible: onCanvas,
+    checked: (e) => e.gridEnabled,
+  }),
+  {
+    kind: "action",
+    id: "snap-to-grid",
+    label: "Snap to grid",
+    visible: onCanvas,
+    checked: (e) => e.gridEnabled && e.snapToGridEnabled,
+    onClick: (e) => {
+      // Snapping needs a visible grid: enabling it also shows the grid.
+      const next = !(e.gridEnabled && e.snapToGridEnabled);
+      if (next && !e.gridEnabled) e.setGridVisible(true);
+      e.setSnapToGrid(next);
+    },
+  },
+  preferenceToggle("snapObjects", "Snap objects"),
+  preferenceToggle("showObjectSize", "Show object size"),
+  preferenceToggle("suggestObjectSize", "Suggest object size"),
+  { kind: "divider" },
+  // --- Canvas: wheel routing (radio submenu) + show all ---
+  {
+    kind: "submenu",
+    id: "wheel-mode",
+    label: "Mouse or trackpad",
+    visible: onCanvas,
+    items: WHEEL_MODES.map(({ mode, label }) => ({
+      kind: "action",
+      id: `wheel-mode-${mode}`,
+      label,
+      checked: (e) => e.preferences.wheelMode === mode,
+      onClick: (e) => {
+        e.setPreferences({ wheelMode: mode });
+      },
+    })),
+  },
+  actionMenuItem("zoom-to-fit", {
+    label: "Show all",
+    visible: (e, ctx) => onCanvas(e, ctx) && e.scene.elements.size > 0,
+  }),
   { kind: "divider" },
   // --- Arrange / Align / Layout submenus + layers ---
   // Arrange: stacking order and mirroring.
