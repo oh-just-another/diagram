@@ -2,11 +2,13 @@ import { bounds as B } from "@oh-just-another/math";
 import {
   getElement,
   getElementWorldBounds,
+  isGroup,
   type Element,
   type Patch,
   type Scene,
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
+import { arrangeUnits, translateUnit, unitsBounds } from "./arrange-units.js";
 
 export type FlipAxis = "horizontal" | "vertical";
 
@@ -19,41 +21,33 @@ export type DistributeAxis = "horizontal" | "vertical";
 /** Press-time snapshot for a rotate gesture: each element's pristine pose. */
 export type RotateOrigin = ReadonlyMap<ElementId, { position: Vec2; rotation: number }>;
 
-/** Collect the live elements for `ids`, skipping any that no longer exist. */
-const collect = (scene: Scene, ids: Iterable<ElementId>): Element[] => {
-  const out: Element[] = [];
-  for (const id of ids) {
-    const el = getElement(scene, id);
-    if (el) out.push(el);
-  }
-  return out;
-};
-
 /** World-space AABB enclosing every element in `elements` (assumed non-empty). */
 const enclosingBounds = (elements: readonly Element[]): Bounds =>
   elements.map((el) => getElementWorldBounds(el)).reduce((acc, b) => B.union(acc, b));
 
 /**
- * Pure: mirror every selected element about the combined selection's centre on
- * the given axis. Each element's position reflects across the centre and its
- * scale sign flips on that axis, so the content mirrors in place; size is
- * unchanged. Mirroring a single element flips it about its own centre. Edges
- * bound to the moved elements re-route from their endpoints; free links are
- * left untouched.
+ * Pure: mirror the selection about its combined centre on the given axis.
+ * Every visible member of every unit (a selected group mirrors as a whole:
+ * its descendants reflect about the shared centre) has its position
+ * reflected across the centre and its scale sign flipped on that axis, so
+ * the content mirrors in place; size is unchanged. Mirroring a single
+ * element flips it about its own centre. Edges bound to the moved elements
+ * re-route from their endpoints; free links are left untouched.
  */
 export const computeFlipPatches = (
   scene: Scene,
   ids: Iterable<ElementId>,
   axis: FlipAxis,
 ): Patch[] => {
-  const elements = collect(scene, ids);
-  if (elements.length === 0) return [];
-  const box = enclosingBounds(elements);
+  const units = arrangeUnits(scene, ids);
+  if (units.length === 0) return [];
+  const box = unitsBounds(units);
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
   const horizontal = axis === "horizontal";
 
   const patches: Patch[] = [];
+  const elements = units.flatMap((u) => u.members).filter((el) => !isGroup(el));
   for (const el of elements) {
     const after: Element = horizontal
       ? {
@@ -72,24 +66,24 @@ export const computeFlipPatches = (
 };
 
 /**
- * Pure: align every selected element to the given edge / centre line of the
- * combined selection's bounding box (e.g. `left` moves each shape so its left
- * edge meets the box's left edge; `h-center` lines up horizontal centres).
- * Only the relevant axis moves; sizes are unchanged. A no-op below two
- * elements.
+ * Pure: align every unit of the selection (a selected group counts as one
+ * unit and moves as a whole) to the given edge / centre line of the
+ * combined bounding box (e.g. `left` moves each unit so its left edge meets
+ * the box's left edge; `h-center` lines up horizontal centres). Only the
+ * relevant axis moves; sizes are unchanged. A no-op below two units.
  */
 export const computeAlignPatches = (
   scene: Scene,
   ids: Iterable<ElementId>,
   edge: AlignEdge,
 ): Patch[] => {
-  const elements = collect(scene, ids);
-  if (elements.length < 2) return [];
-  const box = enclosingBounds(elements);
+  const units = arrangeUnits(scene, ids);
+  if (units.length < 2) return [];
+  const box = unitsBounds(units);
 
   const patches: Patch[] = [];
-  for (const el of elements) {
-    const b = getElementWorldBounds(el);
+  for (const unit of units) {
+    const b = unit.bounds;
     let dx = 0;
     let dy = 0;
     switch (edge) {
@@ -112,32 +106,30 @@ export const computeAlignPatches = (
         dy = box.y + box.height / 2 - (b.y + b.height / 2);
         break;
     }
-    if (dx === 0 && dy === 0) continue;
-    const after: Element = { ...el, position: { x: el.position.x + dx, y: el.position.y + dy } };
-    patches.push({ kind: "element", id: el.id, before: el, after });
+    patches.push(...translateUnit(unit, dx, dy));
   }
   return patches;
 };
 
 /**
- * Pure: evenly space the selection along the given axis so the gaps between
- * adjacent elements are equal. The outermost two elements stay put; the rest
- * shift to balance the gaps (accounting for differing sizes). A no-op below
- * three elements.
+ * Pure: evenly space the selection's units along the given axis so the gaps
+ * between adjacent units are equal (a selected group is one unit). The
+ * outermost two stay put; the rest shift to balance the gaps (accounting for
+ * differing sizes). A no-op below three units.
  */
 export const computeDistributePatches = (
   scene: Scene,
   ids: Iterable<ElementId>,
   axis: DistributeAxis,
 ): Patch[] => {
-  const elements = collect(scene, ids);
-  if (elements.length < 3) return [];
+  const units = arrangeUnits(scene, ids);
+  if (units.length < 3) return [];
   const horizontal = axis === "horizontal";
   const start = (b: Bounds): number => (horizontal ? b.x : b.y);
   const size = (b: Bounds): number => (horizontal ? b.width : b.height);
 
-  const sorted = elements
-    .map((el) => ({ el, b: getElementWorldBounds(el) }))
+  const sorted = units
+    .map((unit) => ({ unit, b: unit.bounds }))
     .sort((p, q) => start(p.b) - start(q.b));
   const first = sorted[0];
   const last = sorted[sorted.length - 1];
@@ -153,12 +145,7 @@ export const computeDistributePatches = (
     const p = sorted[i];
     if (!p) continue;
     const delta = cursor - start(p.b);
-    if (delta !== 0) {
-      const after: Element = horizontal
-        ? { ...p.el, position: { x: p.el.position.x + delta, y: p.el.position.y } }
-        : { ...p.el, position: { x: p.el.position.x, y: p.el.position.y + delta } };
-      patches.push({ kind: "element", id: p.el.id, before: p.el, after });
-    }
+    patches.push(...translateUnit(p.unit, horizontal ? delta : 0, horizontal ? 0 : delta));
     cursor += size(p.b) + gap;
   }
   return patches;

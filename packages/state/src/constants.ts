@@ -1081,6 +1081,12 @@ export const LINK_DRAW_PRESETS: Readonly<
 };
 
 /**
+ * Gap (world units) between cells / stacked units of "Arrange as grid" and
+ * "Stack horizontally / vertically" when the caller passes none. Range: 8–32.
+ */
+export const ARRANGE_LAYOUT_GAP = 16;
+
+/**
  * How the editor routes `wheel` events.
  * - `"auto"` — per-event heuristic: any horizontal delta reads as a trackpad
  *   swipe (pan), a pure vertical delta as a mouse wheel (zoom).

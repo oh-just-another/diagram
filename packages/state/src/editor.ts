@@ -4486,16 +4486,16 @@ export class Editor {
    * rotate gesture drives the same maths from a press-time snapshot.
    */
   rotateSelection(delta: number): void {
-    const elements: Element[] = [];
+    // Groups carry their subtree: every descendant orbits the shared pivot.
     const origin = new Map<ElementId, { position: Vec2; rotation: number }>();
-    for (const id of this._selection) {
+    for (const id of this.expandSelectionWithDescendants()) {
       const el = getElement(this._scene, id);
-      if (el === undefined) continue;
-      elements.push(el);
+      if (el === undefined || isGroup(el)) continue;
       origin.set(id, { position: el.position, rotation: el.rotation });
     }
-    if (elements.length === 0) return;
-    const pivot = selectionCenter(elements);
+    const box = this.combinedSelectionBounds();
+    if (origin.size === 0 || !box) return;
+    const pivot = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     this.commitArrange(computeRotatePatches(this._scene, origin, pivot, delta));
   }
 
