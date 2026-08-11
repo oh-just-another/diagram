@@ -236,3 +236,63 @@ describe("<Editor> — prop permutations", () => {
     expect(screen.getByTestId("bc")).toBeTruthy();
   });
 });
+
+describe("<Editor> — zoom menu", () => {
+  it("opens from the zoom percentage and lists the view rows + presets", async () => {
+    const { ref } = await mountEditor({ minimap: true });
+    const trigger = screen.getByRole("button", { name: "Zoom menu" });
+    expect(trigger.textContent).toBe("100%");
+    act(() => {
+      trigger.click();
+    });
+    for (const label of [
+      "Hide minimap",
+      "Grid",
+      "Object dimensions",
+      "Fit to screen",
+      "50%",
+      "2000%",
+    ]) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+    // A preset sets the absolute zoom and closes the menu.
+    act(() => {
+      screen.getByText("400%").click();
+    });
+    expect(ref.current?.editor?.scene.viewport.zoom).toBeCloseTo(4, 5);
+    expect(screen.queryByText("Fit to screen")).toBeNull();
+    expect(trigger.textContent).toBe("400%");
+  });
+
+  it("the Object dimensions switch flips the preference and keeps the menu open", async () => {
+    const { ref } = await mountEditor({});
+    act(() => {
+      screen.getByRole("button", { name: "Zoom menu" }).click();
+    });
+    const sw = screen.getByRole("switch", { name: "Object dimensions" });
+    expect(sw.getAttribute("aria-checked")).toBe("true");
+    act(() => {
+      sw.click();
+    });
+    expect(ref.current?.editor?.preferences.showObjectSize).toBe(false);
+    expect(
+      screen.getByRole("switch", { name: "Object dimensions" }).getAttribute("aria-checked"),
+    ).toBe("false");
+  });
+
+  it("the minimap row and the M key toggle the minimap", async () => {
+    await mountEditor({ minimap: true });
+    expect(screen.queryByLabelText("Diagram minimap")).not.toBeNull();
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "m", bubbles: true }));
+    });
+    expect(screen.queryByLabelText("Diagram minimap")).toBeNull();
+    act(() => {
+      screen.getByRole("button", { name: "Zoom menu" }).click();
+    });
+    act(() => {
+      screen.getByText("Show minimap").click();
+    });
+    expect(screen.queryByLabelText("Diagram minimap")).not.toBeNull();
+  });
+});

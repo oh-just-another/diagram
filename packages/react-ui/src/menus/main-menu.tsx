@@ -56,6 +56,17 @@ export interface MainMenuProps {
   readonly trigger?: ReactNode;
   readonly className?: string;
   readonly style?: CSSProperties;
+  /** Accessible name + tooltip of the trigger button. Default `"Main menu"`. */
+  readonly ariaLabel?: string;
+  /** Class / style for the trigger button (default: flat icon button). */
+  readonly triggerClassName?: string;
+  readonly triggerStyle?: CSSProperties;
+  /**
+   * Where the panel opens relative to the trigger. `"bottom-start"`
+   * (default) hangs below, left-aligned; `"top-end"` rises above,
+   * right-aligned — for menus in a bottom bar.
+   */
+  readonly placement?: "bottom-start" | "top-end";
 }
 
 export const MainMenu = ({
@@ -63,6 +74,10 @@ export const MainMenu = ({
   trigger = <MenuIcon size={TRIGGER_ICON_SIZE} strokeWidth={TRIGGER_ICON_STROKE} />,
   className,
   style,
+  ariaLabel = "Main menu",
+  triggerClassName,
+  triggerStyle,
+  placement = "bottom-start",
 }: MainMenuProps) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -104,8 +119,9 @@ export const MainMenu = ({
 
   const panelStyle: CSSProperties = {
     position: "absolute",
-    top: "calc(100% + 6px)",
-    left: 0,
+    ...(placement === "top-end"
+      ? { bottom: "calc(100% + 6px)", right: 0 }
+      : { top: "calc(100% + 6px)", left: 0 }),
     minWidth: 200,
     background: "var(--menu-bg)",
     color: "var(--menu-text)",
@@ -120,12 +136,13 @@ export const MainMenu = ({
     <div ref={ref} className={className} style={containerStyle}>
       <button
         type="button"
-        className={`du-icon-button du-icon-button-flat${open ? " is-active" : ""}`}
+        className={`${triggerClassName ?? "du-icon-button du-icon-button-flat"}${open ? " is-active" : ""}`}
+        style={triggerStyle}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        aria-label="Main menu"
-        title="Main menu"
+        aria-label={ariaLabel}
+        title={ariaLabel}
         onClick={() => {
           setOpen((p) => !p);
         }}
@@ -177,6 +194,8 @@ export interface MainMenuItemProps {
    * aligned across mixed icon / no-icon items.
    */
   readonly icon?: ReactNode;
+  /** Trailing control on the right (e.g. a `Switch`); rendered instead of `shortcut`. */
+  readonly trailing?: ReactNode;
   /**
    * Keep the menu open after a click — for checkbox-style items (export
    * content switches, etc.) where the user toggles several in a row.
@@ -191,6 +210,7 @@ const Item = ({
   disabled,
   active,
   icon,
+  trailing,
   keepOpen,
 }: MainMenuItemProps) => {
   const { close } = useMenuCtx();
@@ -230,9 +250,10 @@ const Item = ({
         </span>
         {children}
       </span>
-      {shortcut ? (
-        <span style={{ color: "var(--muted, #888)", fontSize: 11 }}>{shortcut}</span>
-      ) : null}
+      {trailing ??
+        (shortcut ? (
+          <span style={{ color: "var(--muted, #888)", fontSize: 11 }}>{shortcut}</span>
+        ) : null)}
     </button>
   );
 };

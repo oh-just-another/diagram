@@ -8,12 +8,14 @@ import {
   useState,
   type CSSProperties,
   type ReactNode,
+  type RefObject,
 } from "react";
 import {
   Clipboard,
   Copy,
   Delete,
   Download,
+  Expand,
   FileDown,
   FileUp,
   Grid3x3,
@@ -21,6 +23,7 @@ import {
   HelpCircle,
   ImageDown,
   Magnet,
+  Map as MapIcon,
   Maximize,
   Minus,
   Monitor,
@@ -29,7 +32,9 @@ import {
   Plus,
   Redo2,
   RotateCcw,
+  Ruler,
   Scissors,
+  Shrink,
   Sun,
   Undo2,
   ZoomIn,
@@ -62,12 +67,12 @@ import {
   SelectionFloatingPanel,
   SearchOverlay,
   StatsPanel,
+  Switch,
   TextEditorOverlay,
   FrameNameEditorOverlay,
   PortalContainerProvider,
   ToastHost,
   Toolbar,
-  Tooltip,
   TooltipProvider,
   TopBar,
   UILayer,
@@ -77,6 +82,7 @@ import {
   useMobileLayout,
   usePalettePlacement,
   useEditorSelector,
+  useFullscreen,
   useZenMode,
 } from "@oh-just-another/react-ui";
 
@@ -241,7 +247,7 @@ export interface DiagramProps {
    */
   readonly hideDrawingPanel?: boolean;
   /**
-   * Show the built-in minimap: a scene overview + viewport rect, docked
+   * Show the built-in minimap at startup: a scene overview + viewport rect, docked
    * bottom-right above the zoom controls. Click / drag it to pan. Hidden in
    * zen mode along with the rest of the chrome. Off by default.
    */
@@ -527,6 +533,18 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     [fileDropHandlers, onReady],
   );
 
+  // Minimap visibility: the `minimap` prop seeds it; the zoom menu's
+  // "Hide / Show minimap" row and the `M` key toggle it at runtime.
+  const [minimapVisible, setMinimapVisible] = useState(minimap === true);
+  useEffect(() => {
+    setMinimapVisible(minimap === true);
+  }, [minimap]);
+  const toggleMinimap = useCallback(() => {
+    setMinimapVisible((v) => !v);
+  }, []);
+  // Fullscreen target: the editor root (chrome + canvas), see the zoom menu.
+  const rootRef = useRef<HTMLDivElement>(null);
+
   // Per-user preferences: load once the editor exists, then mirror changes.
   const preferencesKey = useMemo(() => {
     if (persistPreferences === true) return DEFAULT_PREFERENCES_STORAGE_KEY;
@@ -603,6 +621,11 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
         ed.cancelFlowchart();
         e.preventDefault();
       }
+      // `M` — toggle the minimap (zoom menu parity).
+      if (e.key.toLowerCase() === "m" && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        toggleMinimap();
+        e.preventDefault();
+      }
     };
     const onKeyUp = (e: KeyboardEvent) => {
       sync(e);
@@ -628,7 +651,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
       ed.setSnapSuppressed(false);
       ed.setTransformModifiers({ alt: false, shift: false });
     };
-  }, [editor]);
+  }, [editor, toggleMinimap]);
 
   useImperativeHandle<DiagramAPI, DiagramAPI>(
     ref,
@@ -674,6 +697,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
       <ToastHost>
         <TooltipProvider>
           <div
+            ref={rootRef}
             className={className}
             data-diagram-root
             // Theme is scoped to this editor root (not the global <html>), so
@@ -713,7 +737,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
                   hideContextMenu={hideContextMenu}
                   hideSelectionPanel={hideSelectionPanel}
                   hideDrawingPanel={hideDrawingPanel}
-                  minimap={minimap}
+                  minimapVisible={minimapVisible}
+                  onToggleMinimap={toggleMinimap}
+                  rootRef={rootRef}
                   renderTopBarLeft={renderTopBarLeft}
                   renderTopBarCenter={renderTopBarCenter}
                   renderTopBarRight={renderTopBarRight}
@@ -759,7 +785,9 @@ const EditorShell = ({
   hideContextMenu,
   hideSelectionPanel,
   hideDrawingPanel,
-  minimap,
+  minimapVisible,
+  onToggleMinimap,
+  rootRef,
   renderTopBarLeft,
   renderTopBarCenter,
   renderTopBarRight,
@@ -785,7 +813,9 @@ const EditorShell = ({
   readonly hideContextMenu: boolean | undefined;
   readonly hideSelectionPanel: boolean | undefined;
   readonly hideDrawingPanel: boolean | undefined;
-  readonly minimap: boolean | undefined;
+  readonly minimapVisible: boolean;
+  readonly onToggleMinimap: () => void;
+  readonly rootRef: RefObject<HTMLDivElement | null>;
   readonly renderTopBarLeft: (() => ReactNode) | undefined;
   readonly renderTopBarCenter: (() => ReactNode) | undefined;
   readonly renderTopBarRight: (() => ReactNode) | undefined;
@@ -804,6 +834,7 @@ const EditorShell = ({
   // Zen mode (⌥Z): hide every chrome surface for focused work, leaving the
   // canvas + the observational overlays (search, stats, command palette).
   const { zen } = useZenMode();
+  const fullscreen = useFullscreen(rootRef);
   // Omitted → project repo; explicit string → that URL; null → no link.
   const repositoryHref = repositoryUrl === undefined ? DEFAULT_REPOSITORY_URL : repositoryUrl;
   // Native dialogs by default; hosts can route through their own UI.
@@ -1247,7 +1278,12 @@ const EditorShell = ({
                 renderBottomBarRight()
               ) : !hideZoomControls ? (
                 // Help sits inside the zoom pill group, right next to it.
-                <ZoomControls trailing={!hideHelpButton ? <HelpButton /> : undefined} />
+                <ZoomControls
+                  trailing={!hideHelpButton ? <HelpButton /> : undefined}
+                  fullscreen={fullscreen}
+                  minimapVisible={minimapVisible}
+                  onToggleMinimap={onToggleMinimap}
+                />
               ) : !hideHelpButton ? (
                 <HelpButton />
               ) : null
@@ -1294,7 +1330,7 @@ const EditorShell = ({
       {/* Minimap — docked bottom-right ABOVE the zoom controls, hidden in
           zen mode with the rest of the chrome. Reads the editor from context.
           The bottom offset clears the bottom bar (inset + bar height + gap). */}
-      {minimap && !zen && (
+      {minimapVisible && !zen && (
         <div
           style={{
             position: "absolute",
@@ -1379,12 +1415,29 @@ const ZOOM_FIT_HOTKEY = formatHotkey({ alt: true, key: "1" });
  * `trailing` lets the host append extra controls inside the same pill
  * group (e.g. the Help button, so it sits right next to zoom).
  */
-const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
+/** Zoom presets of the zoom menu (fractions of 100 %). */
+const ZOOM_PRESETS: readonly number[] = [0.5, 0.7, 1, 4, 12, 20];
+
+const ZoomControls = ({
+  trailing,
+  fullscreen,
+  minimapVisible,
+  onToggleMinimap,
+}: {
+  readonly trailing?: ReactNode;
+  readonly fullscreen: ReturnType<typeof useFullscreen>;
+  readonly minimapVisible: boolean;
+  readonly onToggleMinimap: () => void;
+}) => {
   const editor = useDiagramOptional();
   // Subscribe to the zoom VALUE only — a whole-editor subscription would
   // re-render these buttons on every frame of an element drag.
   const zoom = useEditorSelector((e) => e.scene.viewport.zoom, 1);
+  const showObjectSize = useEditorSelector((e) => e.preferences.showObjectSize, true);
   if (!editor) return null;
+  const setShowObjectSize = (next: boolean) => {
+    editor.setPreferences({ showObjectSize: next });
+  };
   return (
     <ButtonGroup ariaLabel="Zoom">
       <IconButton
@@ -1395,23 +1448,78 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
       >
         <Minus {...buttonIcon} />
       </IconButton>
-      <Tooltip content={`Reset zoom to 100% (${ZOOM_RESET_HOTKEY})`}>
-        <button
-          type="button"
-          className="du-icon-button"
-          aria-label="Reset zoom to 100%"
+      {/* The zoom percentage opens the view menu: fullscreen, minimap, grid,
+          object dimensions, then Fit + zoom presets (reference parity). */}
+      <MainMenu
+        ariaLabel="Zoom menu"
+        placement="top-end"
+        triggerClassName="du-icon-button"
+        triggerStyle={{ minWidth: 56, padding: "0 8px", borderRadius: 0 }}
+        trigger={<>{Math.round(zoom * 100)}%</>}
+      >
+        {fullscreen.supported ? (
+          <MainMenu.Item
+            icon={fullscreen.active ? <Shrink {...menuIcon} /> : <Expand {...menuIcon} />}
+            onClick={fullscreen.toggle}
+          >
+            {fullscreen.active ? "Exit full screen" : "Enter full screen"}
+          </MainMenu.Item>
+        ) : null}
+        <MainMenu.Item icon={<MapIcon {...menuIcon} />} shortcut="M" onClick={onToggleMinimap}>
+          {minimapVisible ? "Hide minimap" : "Show minimap"}
+        </MainMenu.Item>
+        <MainMenu.Submenu icon={<Grid3x3 {...menuIcon} />} label="Grid">
+          {GRID_OPTIONS.map((opt) => (
+            <MainMenu.Item
+              key={opt.value}
+              active={gridSelection(editor) === opt.value}
+              onClick={() => {
+                applyGridSelection(editor, opt.value);
+              }}
+            >
+              {opt.label}
+            </MainMenu.Item>
+          ))}
+        </MainMenu.Submenu>
+        <MainMenu.Item
+          icon={<Ruler {...menuIcon} />}
+          keepOpen
           onClick={() => {
-            editor.resetZoom();
+            setShowObjectSize(!showObjectSize);
           }}
-          style={{
-            minWidth: 56,
-            padding: "0 8px",
-            borderRadius: 0,
+          trailing={
+            <Switch
+              checked={showObjectSize}
+              onChange={setShowObjectSize}
+              ariaLabel="Object dimensions"
+            />
+          }
+        >
+          Object dimensions
+        </MainMenu.Item>
+        <MainMenu.Separator />
+        <MainMenu.Item
+          icon={<Maximize {...menuIcon} />}
+          shortcut={ZOOM_FIT_HOTKEY}
+          onClick={() => {
+            editor.zoomToFit();
           }}
         >
-          {Math.round(zoom * 100)}%
-        </button>
-      </Tooltip>
+          Fit to screen
+        </MainMenu.Item>
+        {ZOOM_PRESETS.map((level) => (
+          <MainMenu.Item
+            key={level}
+            icon={<ZoomIn {...menuIcon} />}
+            {...(level === 1 ? { shortcut: ZOOM_RESET_HOTKEY } : {})}
+            onClick={() => {
+              editor.setZoom(level);
+            }}
+          >
+            {`${String(Math.round(level * 100))}%`}
+          </MainMenu.Item>
+        ))}
+      </MainMenu>
       <IconButton
         label={`Zoom in (${ZOOM_IN_HOTKEY})`}
         onClick={() => {
@@ -1432,6 +1540,16 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
     </ButtonGroup>
   );
 };
+
+/** Grid submenu rows (reference labels), mapped onto the grid toggle values. */
+const GRID_OPTIONS: readonly {
+  readonly value: "off" | "dots" | "lines";
+  readonly label: string;
+}[] = [
+  { value: "off", label: "None" },
+  { value: "dots", label: "Dot grid" },
+  { value: "lines", label: "Line grid" },
+];
 
 // --- Grid toggle helpers ----------------------------------------------------
 

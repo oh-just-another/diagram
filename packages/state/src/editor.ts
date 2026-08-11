@@ -244,6 +244,7 @@ import {
 } from "./editor/public/layers.js";
 import {
   computePan,
+  clampZoom,
   computeResetZoom,
   computeSetGrid,
   computeViewportResize,
@@ -4663,6 +4664,17 @@ export class Editor {
     if (vp.size.width <= 0 || vp.size.height <= 0) return;
     const center = this.screenToWorld({ x: vp.size.width / 2, y: vp.size.height / 2 });
     this.zoomAt(factor, center);
+  }
+  /**
+   * Set an absolute zoom level (1 = 100%), scaling about the viewport
+   * centre and clamped to `MIN_ZOOM..MAX_ZOOM`. The zoom menu's presets.
+   */
+  setZoom(level: number): void {
+    const vp = this._scene.viewport;
+    const current = vp.zoom || 1;
+    const target = clampZoom(level);
+    if (target === current || vp.size.width <= 0 || vp.size.height <= 0) return;
+    this.zoomStep(target / current);
   }
   resetZoom(): void {
     const next = computeResetZoom(this._scene);

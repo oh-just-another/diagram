@@ -12,6 +12,8 @@ export {
   type SegmentedControlProps,
 } from "./primitives/segmented-control.js";
 export { Slider, type SliderProps } from "./primitives/slider.js";
+export { Switch, type SwitchProps } from "./primitives/switch.js";
+export { useFullscreen } from "./core/use-fullscreen.js";
 export { UILayer, type UILayerProps } from "./layout/ui-layer.js";
 export { TopBar, BottomBar, type DiagramBarProps } from "./layout/diagram-bars.js";
 export { HelpButton, type HelpButtonProps } from "./overlays/help-button.js";

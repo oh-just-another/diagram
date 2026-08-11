@@ -133,3 +133,18 @@ describe("start view", () => {
     expect(editor.scene.viewport.zoom).toBe(2);
   });
 });
+
+describe("setZoom", () => {
+  it("sets an absolute level about the viewport centre, clamped to the zoom range", () => {
+    const editor = makeEditor(emptyScene());
+    editor.setViewportSize(800, 600);
+    const centre = editor.screenToWorld({ x: 400, y: 300 });
+    editor.setZoom(4);
+    expect(editor.scene.viewport.zoom).toBe(4);
+    expect(editor.screenToWorld({ x: 400, y: 300 })).toEqual(centre);
+    editor.setZoom(1000);
+    expect(editor.scene.viewport.zoom).toBe(32);
+    editor.setZoom(0.0001);
+    expect(editor.scene.viewport.zoom).toBe(0.05);
+  });
+});
