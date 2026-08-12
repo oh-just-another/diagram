@@ -205,7 +205,7 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
         position: "fixed",
         top: 0,
         left: 0,
-        zIndex: 1000,
+        zIndex: "var(--du-z-context-menu, 1700)",
         ...style,
       }}
     >
@@ -398,7 +398,12 @@ const ContextSubmenuRow = ({
               role="menu"
               aria-label={typeof item.label === "string" ? item.label : undefined}
               className="du-menu-panel"
-              style={{ position: "fixed", top: 0, left: 0, zIndex: 1001 }}
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                zIndex: "calc(var(--du-z-context-menu, 1700) + 1)",
+              }}
             >
               <MenuRows
                 items={item.items}

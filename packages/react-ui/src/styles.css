@@ -78,6 +78,9 @@
   --du-z-canvas: 1;
   --du-z-ui: 100;
   --du-z-modal: 1000;
+  /* Context menu (and its submenus) sit above every toolbar, floating
+     panel and popover; only tooltips (10000) stay on top. */
+  --du-z-context-menu: 1700;
 }
 
 /**
