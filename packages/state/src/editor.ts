@@ -2084,6 +2084,17 @@ export class Editor {
     if (mode !== "draw-edge" && this.hoveredLinkTarget !== null) {
       this.hoveredLinkTarget = null;
     }
+    // Creation / ink / laser tools work on a blank slate: the selection (and
+    // with it the selection toolbar) goes away. `select` and `hand` keep it —
+    // panning is not editing — and `crop` is entered WITH the image selected.
+    if (mode !== "select" && mode !== "hand" && mode !== "crop") {
+      this._selection = Selection.EMPTY;
+      this._selectedLinks = LinkSelection.EMPTY;
+    }
+    // Leaving crop for any other tool abandons the pending crop box (the
+    // commit / cancel paths route through here with the session already
+    // cleared), so no crop frame lingers over the image.
+    if (prev === "crop" && mode !== "crop") this.cropSession = null;
     this.actor.send({ type: "SET_MODE", mode });
     // Cursor affordance follows the new mode (hand → grab, draw tools →
     // crosshair, etc.) — recompute through the single chokepoint.

@@ -135,6 +135,41 @@ describe("Editor.convertSelection (F9)", () => {
   });
 });
 
+describe("tool switch vs selection", () => {
+  it("switching to a drawing / ink / laser tool clears the selection; select, hand and crop keep it", () => {
+    for (const mode of [
+      "laser",
+      "brush",
+      "erase",
+      "draw-rect",
+      "draw-text",
+      "draw-edge",
+      "draw-frame",
+    ] as const) {
+      const e = editorWith(sceneWith(rect("r")));
+      e.setSelection([elementId("r")]);
+      e.setActiveTool(mode);
+      expect(e.selection.size, mode).toBe(0);
+    }
+    const e = editorWith(sceneWith(rect("r")));
+    e.setSelection([elementId("r")]);
+    e.setActiveTool("hand");
+    expect(e.selection.size).toBe(1);
+    e.setActiveTool("select");
+    expect(e.selection.size).toBe(1);
+  });
+
+  it("switching tools during a crop session abandons the pending crop", () => {
+    const e = editorWith(sceneWith(image("i")));
+    e.beginImageCrop(elementId("i"));
+    expect(e.activeTool.type).toBe("crop");
+    expect(e.cropSession).not.toBeNull();
+    e.setActiveTool("brush");
+    expect(e.cropSession).toBeNull();
+    expect(e.selection.size).toBe(0);
+  });
+});
+
 describe("Editor image-crop session (F10, Excalidraw-style)", () => {
   // Image is 100 × 80 at the origin (see `image` helper), scale 1.
   const croppedImage = (id: string): Element =>
