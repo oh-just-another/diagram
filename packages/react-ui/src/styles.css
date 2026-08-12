@@ -56,6 +56,23 @@
   --du-gap-sm: 4px;
   --du-pad: 8px;
   --du-pad-sm: 4px;
+  /* --- Menus & popover lists (one system for every menu surface) --- */
+  --du-menu-pad: 6px; /* panel inner padding */
+  --du-menu-min-w: 220px;
+  --du-menu-radius: var(--du-radius);
+  --du-menu-row-h: 36px; /* = --du-button-size */
+  --du-menu-row-pad-x: 10px;
+  --du-menu-row-radius: var(--du-radius-sm);
+  --du-menu-gutter: 20px; /* icon / check column, same width everywhere */
+  --du-menu-gap: 8px; /* gutter ↔ label */
+  --du-menu-font: 13px;
+  --du-menu-shortcut-font: 11px;
+  --du-menu-sep: 6px; /* separator / group-title vertical rhythm */
+  /* --- Modals --- */
+  --du-modal-pad-y: 16px;
+  --du-modal-pad-x: 20px;
+  --du-modal-radius: var(--du-radius-lg);
+  --du-modal-gap: 12px;
   --du-hover-overlay: rgba(0, 0, 0, 0.05);
   --du-bar-inset: 12px;
   --du-z-canvas: 1;
@@ -857,6 +874,117 @@
 }
 
 /* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ */
+/* Menu system — shared by the context menu, the main / zoom menus,    */
+/* the Shapes and lines flyout and list rows inside popovers. All      */
+/* metrics come from the `--du-menu-*` tokens.                         */
+/* ------------------------------------------------------------------ */
+.du-menu-panel {
+  box-sizing: border-box;
+  min-width: var(--du-menu-min-w);
+  padding: var(--du-menu-pad);
+  font-size: var(--du-menu-font);
+  color: var(--menu-text);
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
+  border-radius: var(--du-menu-radius);
+  box-shadow: var(--du-ui-shadow);
+}
+
+.du-menu-row {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  gap: var(--du-menu-gap);
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--du-menu-row-h);
+  padding: 0 var(--du-menu-row-pad-x);
+  font-size: var(--du-menu-font);
+  color: var(--du-text);
+  text-align: left;
+  border-radius: var(--du-menu-row-radius);
+  cursor: pointer;
+}
+
+.du-menu-row:hover:not(:disabled),
+.du-menu-row.is-open {
+  background: var(--du-hover-overlay);
+}
+
+.du-menu-row.is-active {
+  background: var(--du-selected-bg);
+}
+
+.du-menu-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.du-menu-row:focus-visible {
+  outline: 2px solid var(--du-accent);
+  outline-offset: -2px;
+}
+
+/* Label side: gutter + text. */
+.du-menu-row-main {
+  display: inline-flex;
+  gap: var(--du-menu-gap);
+  align-items: center;
+  min-width: 0;
+}
+
+/* Leading gutter: icon, check mark or empty — labels align across rows. */
+.du-menu-gutter {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--du-menu-gutter);
+  color: var(--du-text-muted);
+}
+
+.du-menu-gutter.is-accent {
+  color: var(--du-accent);
+}
+
+/* Trailing side: shortcut / chevron / control. */
+.du-menu-shortcut {
+  margin-left: auto;
+  font-size: var(--du-menu-shortcut-font);
+  color: var(--du-text-muted);
+}
+
+.du-menu-sep {
+  margin: var(--du-menu-sep) 0;
+  border: 0;
+  border-top: 1px solid var(--menu-divider);
+}
+
+.du-menu-group-title {
+  padding: var(--du-menu-sep) var(--du-menu-row-pad-x) 2px;
+  font-size: var(--du-menu-shortcut-font);
+  letter-spacing: 0.5px;
+  color: var(--du-text-muted);
+  text-transform: uppercase;
+}
+
+/* Modals share one padding / radius rhythm. */
+.du-modal-header {
+  display: flex;
+  gap: var(--du-modal-gap);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--du-modal-pad-y) var(--du-modal-pad-x);
+  border-bottom: 1px solid var(--du-ui-border);
+}
+
+.du-modal-body {
+  padding: var(--du-modal-pad-y) var(--du-modal-pad-x);
+  overflow-y: auto;
+}
+
 /* Switch — pill toggle used for on/off settings inside menus. */
 .du-switch {
   position: relative;
@@ -1433,12 +1561,14 @@
    current value. */
 .du-sel-menu-row {
   all: unset;
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
+  min-height: var(--du-menu-row-h);
   box-sizing: border-box;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 13px;
+  padding: 0 var(--du-menu-row-pad-x);
+  border-radius: var(--du-menu-row-radius);
+  font-size: var(--du-menu-font);
   color: var(--du-text);
   cursor: pointer;
 }
@@ -1829,17 +1959,17 @@
 
 .du-sel-mask-row {
   display: flex;
-  gap: 8px;
+  gap: var(--du-menu-gap);
   align-items: center;
   width: 100%;
-  min-height: 32px;
-  padding: 7px 8px;
-  font-size: 13px;
+  min-height: var(--du-menu-row-h);
+  padding: 0 var(--du-menu-row-pad-x);
+  font-size: var(--du-menu-font);
   color: var(--du-text);
   text-align: left;
   background: transparent;
   border: 0;
-  border-radius: var(--du-radius-sm);
+  border-radius: var(--du-menu-row-radius);
   cursor: pointer;
 }
 
@@ -1853,7 +1983,7 @@
 
 .du-sel-mask-ratio {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--du-menu-shortcut-font);
   color: var(--du-text-muted);
 }
 
@@ -1865,27 +1995,29 @@
   z-index: 900;
   display: flex;
   flex-direction: column;
-  min-width: 180px;
-  padding: 6px;
+  box-sizing: border-box;
+  min-width: var(--du-menu-min-w);
+  padding: var(--du-menu-pad);
   background: var(--menu-bg);
   border: 1px solid var(--menu-border);
-  border-radius: var(--du-radius);
+  border-radius: var(--du-menu-radius);
   box-shadow: var(--du-ui-shadow);
 }
 
+/* Rows use the shared menu metrics (see `.du-menu-row`). */
 .du-shapes-flyout-row {
   display: flex;
-  gap: 10px;
+  gap: var(--du-menu-gap);
   align-items: center;
   width: 100%;
-  min-height: 34px;
-  padding: 7px 10px;
-  font-size: 13px;
+  min-height: var(--du-menu-row-h);
+  padding: 0 var(--du-menu-row-pad-x);
+  font-size: var(--du-menu-font);
   color: var(--du-text);
   text-align: left;
   background: transparent;
   border: 0;
-  border-radius: var(--du-radius-sm);
+  border-radius: var(--du-menu-row-radius);
   cursor: pointer;
 }
 
@@ -1895,12 +2027,12 @@
 
 .du-shapes-flyout-hotkey {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--du-menu-shortcut-font);
   color: var(--du-text-muted);
 }
 
 .du-shapes-flyout-divider {
-  margin: 4px 6px;
+  margin: var(--du-menu-sep) 0;
   border: none;
   border-top: 1px solid var(--du-ui-border);
 }

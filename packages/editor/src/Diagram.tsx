@@ -1453,8 +1453,8 @@ const ZoomControls = ({
       <MainMenu
         ariaLabel="Zoom menu"
         placement="top-end"
-        triggerClassName="du-icon-button"
-        triggerStyle={{ minWidth: 56, padding: "0 8px", borderRadius: 0 }}
+        triggerClassName="du-icon-button du-icon-button-flat"
+        triggerStyle={{ minWidth: 56, padding: "0 8px" }}
         trigger={<>{Math.round(zoom * 100)}%</>}
       >
         {fullscreen.supported ? (

@@ -99,7 +99,7 @@ export const Modal = ({
     background: "var(--panel, #1a1a1a)",
     color: "var(--text, #ddd)",
     border: "1px solid var(--border, #2a2a2a)",
-    borderRadius: 8,
+    borderRadius: "var(--du-modal-radius, 14px)",
     boxShadow: "0 8px 32px rgba(0, 0, 0, 0.45)",
     maxWidth: "calc(100vw - 64px)",
     maxHeight: "calc(100vh - 64px)",

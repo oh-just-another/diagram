@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { Check } from "lucide-react";
 import { MENU_VIEWPORT_PADDING_PX } from "../core/constants.js";
 import { floatPanel } from "../primitives/float-panel.js";
 import type { Vec2 } from "@oh-just-another/types";
@@ -197,8 +198,8 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
     <div
       ref={menuRef}
       role="menu"
+      className={`du-menu-panel${className ? ` ${className}` : ""}`}
       style={{
-        ...MENU_PANEL_STYLE,
         // `transform` is set by `floatPanel`; the pre-position paint at
         // (0,0) lasts one layout pass.
         position: "fixed",
@@ -207,7 +208,6 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
         zIndex: 1000,
         ...style,
       }}
-      className={className}
     >
       <MenuRows
         items={cleanedItems}
@@ -221,38 +221,12 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   );
 };
 
-/** Shared chrome for the root panel and every submenu panel. */
-const MENU_PANEL_STYLE: CSSProperties = {
-  background: "var(--menu-bg, var(--du-ui-bg-solid, #fff))",
-  color: "var(--menu-text, var(--du-text, #1a1a1a))",
-  border: "1px solid var(--menu-border, var(--du-ui-border, rgba(0,0,0,0.08)))",
-  borderRadius: 6,
-  padding: "4px 0",
-  minWidth: 180,
-  boxShadow: "var(--du-ui-shadow, 0 4px 16px rgba(0,0,0,0.18))",
-  font: "13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-};
-
-/** Panel padding (4) + border (1): offset so a submenu's first row aligns with its parent row. */
-const SUBMENU_ALIGN_PX = 5;
-
-/** Leading gutter every row reserves so check marks never shift labels. */
-const CHECK_GUTTER_STYLE: CSSProperties = {
-  display: "inline-block",
-  width: 14,
-  textAlign: "center",
-  fontSize: 12,
-  lineHeight: 1,
-};
-
-const ROW_STYLE: CSSProperties = {
-  all: "unset",
-  display: "flex",
-  justifyContent: "space-between",
-  padding: "6px 12px",
-  width: "100%",
-  boxSizing: "border-box",
-};
+/**
+ * Panel padding (`--du-menu-pad`, 6) + border (1): offset so a submenu's
+ * first row aligns with its parent row. Chrome itself comes from the
+ * shared `.du-menu-panel` / `.du-menu-row` classes (styles.css).
+ */
+const SUBMENU_ALIGN_PX = 7;
 
 /**
  * Drop hidden items (recursively — a submenu with nothing visible goes too),
@@ -298,18 +272,14 @@ const MenuRows = ({
   readonly panels: Set<HTMLElement>;
 }) => {
   const [openId, setOpenId] = useState<string | null>(null);
+  // Reserve the leading gutter only when this panel has check rows — a
+  // plain list keeps its labels flush with the panel edge.
+  const gutter = items.some((item) => item.kind === "action" && item.checked !== undefined);
   return (
     <>
       {items.map((item, i) =>
         item.kind === "divider" ? (
-          <hr
-            key={`d-${i}`}
-            style={{
-              border: 0,
-              borderTop: "1px solid var(--menu-divider, var(--du-ui-border, rgba(0,0,0,0.08)))",
-              margin: "4px 0",
-            }}
-          />
+          <hr key={`d-${i}`} className="du-menu-sep" />
         ) : item.kind === "submenu" ? (
           <ContextSubmenuRow
             key={item.id}
@@ -318,6 +288,7 @@ const MenuRows = ({
             ctx={ctx}
             close={close}
             panels={panels}
+            gutter={gutter}
             open={openId === item.id}
             onOpen={() => {
               setOpenId(item.id);
@@ -332,6 +303,7 @@ const MenuRows = ({
             item={item}
             editor={editor}
             ctx={ctx}
+            gutter={gutter}
             onHover={() => {
               setOpenId(null);
             }}
@@ -359,6 +331,7 @@ const ContextSubmenuRow = ({
   ctx,
   close,
   panels,
+  gutter,
   open,
   onOpen,
   onToggle,
@@ -368,6 +341,7 @@ const ContextSubmenuRow = ({
   readonly ctx: ContextMenuContext;
   readonly close: () => void;
   readonly panels: Set<HTMLElement>;
+  readonly gutter: boolean;
   readonly open: boolean;
   readonly onOpen: () => void;
   readonly onToggle: () => void;
@@ -407,17 +381,13 @@ const ContextSubmenuRow = ({
           ev.stopPropagation();
           onToggle();
         }}
-        style={{
-          ...ROW_STYLE,
-          cursor: "pointer",
-          background: open ? "var(--du-hover-overlay, rgba(0,0,0,0.05))" : "transparent",
-        }}
+        className={`du-menu-row${open ? " is-open" : ""}`}
       >
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span aria-hidden style={CHECK_GUTTER_STYLE} />
+        <span className="du-menu-row-main">
+          {gutter ? <span aria-hidden className="du-menu-gutter" /> : null}
           <span>{item.label}</span>
         </span>
-        <span aria-hidden style={{ marginLeft: 16, opacity: 0.6 }}>
+        <span aria-hidden className="du-menu-shortcut">
           ›
         </span>
       </button>
@@ -427,7 +397,8 @@ const ContextSubmenuRow = ({
               ref={panelRef}
               role="menu"
               aria-label={typeof item.label === "string" ? item.label : undefined}
-              style={{ ...MENU_PANEL_STYLE, position: "fixed", top: 0, left: 0, zIndex: 1001 }}
+              className="du-menu-panel"
+              style={{ position: "fixed", top: 0, left: 0, zIndex: 1001 }}
             >
               <MenuRows
                 items={item.items}
@@ -448,12 +419,14 @@ const ContextMenuRow = ({
   item,
   editor,
   ctx,
+  gutter,
   onHover,
   onActivate,
 }: {
   readonly item: Extract<ContextMenuItem, { kind: "action" }>;
   readonly editor: Editor;
   readonly ctx: ContextMenuContext;
+  readonly gutter: boolean;
   readonly onHover: () => void;
   readonly onActivate: () => void;
 }) => {
@@ -474,29 +447,18 @@ const ContextMenuRow = ({
       {...(item.checked ? { "aria-checked": checked } : {})}
       onClick={handle}
       disabled={disabled}
-      style={{
-        ...ROW_STYLE,
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1,
-      }}
-      onMouseEnter={(ev) => {
-        onHover();
-        if (!disabled)
-          ev.currentTarget.style.background = "var(--du-hover-overlay, rgba(0,0,0,0.05))";
-      }}
-      onMouseLeave={(ev) => {
-        ev.currentTarget.style.background = "transparent";
-      }}
+      className="du-menu-row"
+      onMouseEnter={onHover}
     >
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span aria-hidden style={{ ...CHECK_GUTTER_STYLE, color: "var(--du-accent, #5b5bd6)" }}>
-          {checked ? "✓" : ""}
-        </span>
+      <span className="du-menu-row-main">
+        {gutter ? (
+          <span aria-hidden className="du-menu-gutter is-accent">
+            {checked ? <Check size={14} strokeWidth={2.25} /> : ""}
+          </span>
+        ) : null}
         <span>{item.label}</span>
       </span>
-      {item.shortcut ? (
-        <span style={{ marginLeft: 16, opacity: 0.6, fontSize: 11 }}>{item.shortcut}</span>
-      ) : null}
+      {item.shortcut ? <span className="du-menu-shortcut">{item.shortcut}</span> : null}
     </button>
   );
 };

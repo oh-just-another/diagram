@@ -118,11 +118,12 @@ describe("MainMenu.ItemLink", () => {
     act(() => {
       fireEvent.click(trigger(container));
     });
-    const internal = getByText("Docs") as HTMLAnchorElement;
+    // Labels sit inside a gutter span; climb to the anchor itself.
+    const internal = getByText("Docs").closest("a") as HTMLAnchorElement;
     expect(internal.getAttribute("href")).toBe("#docs");
     expect(internal.getAttribute("target")).toBeNull();
 
-    const external = getByText("External") as HTMLAnchorElement;
+    const external = getByText("External").closest("a") as HTMLAnchorElement;
     expect(external.getAttribute("target")).toBe("_blank");
     expect(external.getAttribute("rel")).toContain("noopener");
 

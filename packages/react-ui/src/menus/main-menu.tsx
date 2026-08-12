@@ -122,13 +122,6 @@ export const MainMenu = ({
     ...(placement === "top-end"
       ? { bottom: "calc(100% + 6px)", right: 0 }
       : { top: "calc(100% + 6px)", left: 0 }),
-    minWidth: 200,
-    background: "var(--menu-bg)",
-    color: "var(--menu-text)",
-    border: "1px solid var(--menu-border)",
-    borderRadius: 6,
-    boxShadow: "var(--du-ui-shadow)",
-    padding: 4,
     zIndex: 900,
   };
 
@@ -150,7 +143,7 @@ export const MainMenu = ({
         {trigger}
       </button>
       {open ? (
-        <div id={menuId} role="menu" style={panelStyle}>
+        <div id={menuId} role="menu" className="du-menu-panel" style={panelStyle}>
           <Ctx.Provider value={{ close }}>{children}</Ctx.Provider>
         </div>
       ) : null}
@@ -158,24 +151,12 @@ export const MainMenu = ({
   );
 };
 
-const itemBase: CSSProperties = {
-  display: "block",
-  width: "100%",
-  textAlign: "left",
-  background: "transparent",
-  color: "inherit",
-  border: "none",
-  borderRadius: 4,
-  padding: "6px 10px",
-  font: "inherit",
-  fontSize: 13,
-  cursor: "pointer",
-};
-
-const itemHoverable = (extra?: CSSProperties): CSSProperties => ({
-  ...itemBase,
-  ...extra,
-});
+/** Gutter content: check mark when active, else the icon (or nothing). */
+const Gutter = ({ active, icon }: { readonly active?: boolean; readonly icon?: ReactNode }) => (
+  <span aria-hidden className={`du-menu-gutter${active ? " is-accent" : ""}`}>
+    {active ? <Check size={14} strokeWidth={2.25} /> : (icon ?? "")}
+  </span>
+);
 
 export interface MainMenuItemProps {
   readonly children: ReactNode;
@@ -224,36 +205,13 @@ const Item = ({
         onClick?.();
         if (!keepOpen) close();
       }}
-      style={{
-        ...itemHoverable(),
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-      }}
+      className="du-menu-row"
     >
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-        <span
-          aria-hidden
-          style={{
-            width: 14,
-            height: 14,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: active ? "var(--du-accent, #5b5bd6)" : "var(--du-text-muted, #888)",
-          }}
-        >
-          {active ? <Check size={12} strokeWidth={2.25} /> : (icon ?? "")}
-        </span>
+      <span className="du-menu-row-main">
+        <Gutter active={active === true} icon={icon} />
         {children}
       </span>
-      {trailing ??
-        (shortcut ? (
-          <span style={{ color: "var(--muted, #888)", fontSize: 11 }}>{shortcut}</span>
-        ) : null)}
+      {trailing ?? (shortcut ? <span className="du-menu-shortcut">{shortcut}</span> : null)}
     </button>
   );
 };
@@ -273,39 +231,22 @@ const ItemLink = ({ children, href, external }: MainMenuItemLinkProps) => {
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer noopener" : undefined}
       onClick={close}
-      style={{
-        ...itemHoverable({ textDecoration: "none" }),
-        color: "var(--text, #ddd)",
-      }}
+      className="du-menu-row"
+      style={{ textDecoration: "none" }}
     >
-      {children}
+      <span className="du-menu-row-main">
+        <Gutter />
+        {children}
+      </span>
     </a>
   );
 };
 
-const Separator = () => (
-  <hr
-    style={{
-      margin: "4px 6px",
-      border: "none",
-      borderTop: "1px solid var(--border, #2a2a2a)",
-    }}
-  />
-);
+const Separator = () => <hr className="du-menu-sep" />;
 
 const Group = ({ title, children }: { title: string; children: ReactNode }) => (
   <div>
-    <div
-      style={{
-        padding: "6px 10px 2px",
-        fontSize: 11,
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-        color: "var(--muted, #888)",
-      }}
-    >
-      {title}
-    </div>
+    <div className="du-menu-group-title">{title}</div>
     {children}
   </div>
 );
@@ -328,7 +269,7 @@ const Toggle = <T extends string>({ value, onChange, options }: MainMenuTogglePr
       role="radiogroup"
       style={{
         display: "flex",
-        margin: "4px 8px 6px",
+        margin: "var(--du-menu-sep) var(--du-menu-row-pad-x)",
         background: "var(--menu-divider, #2a2a2a)",
         borderRadius: 6,
         padding: 2,
@@ -427,18 +368,13 @@ const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
   // detached component.
   useEffect(() => cancelClose, [cancelClose]);
 
+  // `top` undoes the panel padding + border so the first child row aligns
+  // with this row (see `--du-menu-pad`).
   const panelStyle: CSSProperties = {
     position: "absolute",
-    top: -4,
+    top: "calc(-1 * var(--du-menu-pad) - 1px)",
     left: "100%",
     marginLeft: 4,
-    minWidth: 220,
-    background: "var(--menu-bg)",
-    color: "var(--menu-text)",
-    border: "1px solid var(--menu-border)",
-    borderRadius: 6,
-    boxShadow: "var(--du-ui-shadow)",
-    padding: 4,
     zIndex: 1000,
   };
 
@@ -463,36 +399,18 @@ const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
           cancelClose();
           setOpen((p) => !p);
         }}
-        style={{
-          ...itemHoverable(),
-          cursor: disabled ? "not-allowed" : "pointer",
-          opacity: disabled ? 0.4 : 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
+        className={`du-menu-row${open ? " is-open" : ""}`}
       >
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <span
-            aria-hidden
-            style={{
-              width: 14,
-              height: 14,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--du-text-muted, #888)",
-            }}
-          >
-            {icon ?? ""}
-          </span>
+        <span className="du-menu-row-main">
+          <Gutter icon={icon} />
           {label}
         </span>
-        <ChevronRight size={12} strokeWidth={2.25} aria-hidden />
+        <span className="du-menu-shortcut">
+          <ChevronRight size={12} strokeWidth={2.25} aria-hidden />
+        </span>
       </button>
       {open ? (
-        <div role="menu" style={panelStyle}>
+        <div role="menu" className="du-menu-panel" style={panelStyle}>
           {children}
         </div>
       ) : null}

@@ -172,24 +172,13 @@ export const HelpDialog = ({
     display: "flex",
     flexDirection: "column",
   };
-  const headerStyle: CSSProperties = {
-    padding: "16px 20px",
-    borderBottom: "1px solid var(--du-ui-border)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  };
-  const bodyStyle: CSSProperties = {
-    padding: "16px 20px 20px",
-    overflowY: "auto",
-  };
 
   return (
     <Modal open={open} onClose={onClose} title={title} style={modalStyle}>
       <div>
-        <div style={headerStyle}>
+        <div className="du-modal-header">
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--du-modal-gap)" }}>
             <span className="du-help-platform-badge">{isMac ? "macOS" : "Win / Linux"}</span>
             <button
               type="button"
@@ -210,7 +199,7 @@ export const HelpDialog = ({
             </button>
           </div>
         </div>
-        <div style={bodyStyle}>
+        <div className="du-modal-body">
           <div className="du-help-islands">
             {sections.map((section) => (
               <section key={section.title} className="du-help-island">
