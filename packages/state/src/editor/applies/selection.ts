@@ -1,4 +1,5 @@
 import {
+  type Element,
   getElementsCoveredByBounds,
   getLinkPath,
   isElementHidden,
@@ -27,6 +28,7 @@ export const selectByBounds = (
   isLayerLocked: (id: LayerId) => boolean,
   bounds: Bounds,
   mode: "replace" | "add",
+  rootOf: (shape: Element) => Element = (shape) => shape,
 ): Selection.Selection => {
   const hits = getElementsCoveredByBounds(scene, bounds, LASSO_COVERAGE_THRESHOLD);
   let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : current;
@@ -35,7 +37,9 @@ export const selectByBounds = (
     // Locked / hidden shapes are click-through and must not be lassoed
     // either — the marquee skips them like the pointer does.
     if (isElementLocked(scene, shape) || isElementHidden(scene, shape)) continue;
-    next = Selection.add(next, shape.id);
+    // A grouped child selects its group (like a click), so the lasso picks
+    // whole groups — never a loose subset of a group's children.
+    next = Selection.add(next, rootOf(shape).id);
   }
   return next;
 };
@@ -54,13 +58,14 @@ export const selectByBoundsLive = (
   isLayerLocked: (id: LayerId) => boolean,
   bounds: Bounds,
   mode: "replace" | "add",
+  rootOf: (shape: Element) => Element = (shape) => shape,
 ): Selection.Selection => {
   let next: Selection.Selection = mode === "replace" ? Selection.EMPTY : base;
   const hits = getElementsCoveredByBounds(scene, bounds, LASSO_COVERAGE_THRESHOLD);
   for (const shape of hits) {
     if (isLayerLocked(shape.layerId)) continue;
     if (isElementLocked(scene, shape) || isElementHidden(scene, shape)) continue;
-    next = Selection.add(next, shape.id);
+    next = Selection.add(next, rootOf(shape).id);
   }
   return next;
 };

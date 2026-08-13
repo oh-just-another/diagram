@@ -6369,6 +6369,7 @@ export class Editor {
       (id) => this.isLayerLocked(id),
       bounds,
       mode,
+      (shape) => this.promoteToGroupRoot(shape),
     );
     const nextLinks = selectLinksByBoundsLivePure(
       this._scene,
@@ -6395,6 +6396,7 @@ export class Editor {
       (id) => this.isLayerLocked(id),
       bounds,
       mode,
+      (shape) => this.promoteToGroupRoot(shape),
     );
     const linkBase = this.interaction.lassoBaseLinks ?? LinkSelection.EMPTY;
     const nextLinks = selectLinksByBoundsLivePure(
