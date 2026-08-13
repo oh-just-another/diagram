@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  isValidElement,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   AlignCenter,
   AlignCenterHorizontal,
@@ -301,7 +308,8 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
           <FillOpacityControl key="fill" shapes={shapes} />,
         );
       }
-      overflow.push(<Divider key="d-link" />, <LinkControl key="link" shapes={shapes} />);
+      // PanelShell already separates `primary` from `overflow`.
+      overflow.push(<LinkControl key="link" shapes={shapes} />);
     }
     // Shared tail for every selection type:
     // `link (frame / image) | align (2+) | actions | comment | lock | ⋯`.
@@ -397,9 +405,7 @@ const PanelShell = ({
   if (!mobile) {
     return (
       <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style}>
-        {primary}
-        {overflow.length > 0 ? <Divider /> : null}
-        {overflow}
+        {groupControls([...primary, <Divider key="d-overflow" />, ...overflow])}
       </div>
     );
   }
@@ -410,7 +416,7 @@ const PanelShell = ({
       style={style}
     >
       <div className="du-sel-mobile-row">
-        <div className="du-sel-mobile-primary">{primary}</div>
+        <div className="du-sel-mobile-primary">{groupControls(primary)}</div>
         {overflow.length > 0 ? (
           <button
             type="button"
@@ -427,7 +433,7 @@ const PanelShell = ({
         ) : null}
       </div>
       {expanded && overflow.length > 0 ? (
-        <div className="du-sel-mobile-overflow">{overflow}</div>
+        <div className="du-sel-mobile-overflow">{groupControls(overflow)}</div>
       ) : null}
     </div>
   );
@@ -2884,6 +2890,28 @@ const ArrowheadGlyph = ({
 // ---------------------------------------------------------------------------
 
 const Divider = () => <span className="du-sel-divider" aria-hidden />;
+
+/**
+ * Split the control list on `<Divider />` markers into `.du-sel-group`
+ * clusters. The separators themselves are CSS: a group draws one before
+ * itself only when a NON-EMPTY group precedes it, so an optional cluster
+ * whose controls all render `null` for this selection (no label text, no
+ * crop, …) never leaves a stray or doubled divider.
+ */
+const groupControls = (nodes: readonly ReactNode[]): ReactNode[] => {
+  const groups: ReactNode[][] = [[]];
+  for (const node of nodes) {
+    if (isValidElement(node) && node.type === Divider) groups.push([]);
+    else groups[groups.length - 1]?.push(node);
+  }
+  return groups
+    .filter((g) => g.length > 0)
+    .map((g, i) => (
+      <span key={`g-${String(i)}`} className="du-sel-group">
+        {g}
+      </span>
+    ));
+};
 
 // ---------------------------------------------------------------------------
 // Inline SVG glyphs

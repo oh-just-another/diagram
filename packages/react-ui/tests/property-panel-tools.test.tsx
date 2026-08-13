@@ -163,3 +163,28 @@ describe("SelectionFilterControl (mixed selections)", () => {
     expect(container.querySelector('button[aria-label="Filter selection by type"]')).toBeNull();
   });
 });
+
+describe("PropertyPanel control groups", () => {
+  it("wraps controls in groups (separators are CSS between non-empty groups) and renders no divider elements", () => {
+    const sticky: Element = {
+      ...rect,
+      id: elementId("s1"),
+      type: "sticky",
+      style: {},
+      width: 160,
+      height: 160,
+    } as unknown as Element;
+    for (const shape of [rect, image, sticky]) {
+      const editor = mountEditor(shape);
+      editor.setSelection([shape.id]);
+      const { container, unmount } = renderPanel(editor);
+      const panel = container.querySelector(".du-sel-panel")!;
+      expect(panel.querySelector(".du-sel-divider")).toBeNull();
+      const groups = [...panel.children];
+      expect(groups.length).toBeGreaterThan(1);
+      expect(groups.every((g) => g.classList.contains("du-sel-group"))).toBe(true);
+      unmount();
+      editor.dispose();
+    }
+  });
+});

@@ -1519,12 +1519,27 @@
 }
 
 /* Visual divider between inline groups (z-order, actions). */
-.du-sel-divider {
+/* Control clusters of the selection panel. The separator is drawn by a
+   group that has a NON-EMPTY group before it — so clusters whose controls
+   all rendered nothing for this selection never leave a stray or doubled
+   divider, and no divider ever sits at either end. */
+.du-sel-group {
+  display: inline-flex;
+  gap: var(--du-gap-sm);
+  align-items: center;
+}
+
+.du-sel-group:empty {
+  display: none;
+}
+
+.du-sel-group:not(:empty) ~ .du-sel-group:not(:empty)::before {
   display: inline-block;
   width: 1px;
   height: 18px;
-  background: var(--du-ui-border);
   margin: 0 2px;
+  content: "";
+  background: var(--du-ui-border);
 }
 
 /* ------------------------------------------------------------------ */
