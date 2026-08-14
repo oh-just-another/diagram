@@ -9,24 +9,17 @@ import {
 import {
   AlignCenter,
   AlignCenterHorizontal,
-  AlignCenterVertical,
   AlignEndHorizontal,
-  AlignEndVertical,
-  AlignHorizontalDistributeCenter,
   AlignLeft,
   AlignRight,
   AlignStartHorizontal,
-  AlignStartVertical,
-  AlignVerticalDistributeCenter,
   Bold,
   CaseSensitive,
   Download,
   Circle,
-  Copy as CopyIcon,
   Crop,
   Diamond,
   FileText,
-  Group as GroupIcon,
   Hexagon as HexagonIcon,
   Highlighter,
   Image as ImageIcon,
@@ -61,14 +54,12 @@ import {
   Underline,
   Upload,
   UserRound,
-  Ungroup as UngroupIcon,
   Waypoints,
   Triangle as TriangleIcon,
   type LucideIcon,
 } from "lucide-react";
 import {
   getBinaryFile,
-  isGroup,
   isText,
   isImage,
   isSticky,
@@ -310,14 +301,12 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       overflow.push(<LinkControl key="link" shapes={shapes} />);
     }
     // Shared tail for every selection type:
-    // `link (frame / image) | align (2+) | actions | comment | lock | ⋯`.
+    // `link (frame / image) | comment | lock | ⋯`.
     // Text and shapes carry their link control in the type cluster above;
-    // z-order lives in the context menu (⋯ → Arrange).
+    // z-order, align / distribute, duplicate / delete, group / ungroup and
+    // flip all live in the context menu (⋯).
     if (allFrame || allImage) overflow.push(<LinkControl key="link" shapes={shapes} />);
-    // Alignment needs a reference box — only meaningful for 2+ shapes.
-    if (shapes.length >= 2) overflow.push(<AlignControl key="align" />);
     overflow.push(
-      <ActionsControl key="actions" shapes={shapes} />,
       <CommentControl key="comment" shapes={shapes} />,
       <Divider key="d-lock" />,
       <LockControl key="lock" />,
@@ -2287,152 +2276,6 @@ const CropControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
     >
       <Crop size={14} strokeWidth={1.75} aria-hidden />
     </button>
-  );
-};
-
-/**
- * Conditional Group / Ungroup visibility:
- *   - Group is meaningful only when ≥2 shapes are selected.
- *   - Ungroup is meaningful only when at least one selected shape is
- *     itself a group (`type === "group"`) — `Editor.ungroup` unwraps its
- *     children. A leaf shape with a group parent doesn't allow ungroup;
- *     the user has to click the group first (matches `computeUngroup`).
- *
- * Duplicate / Delete are always shown.
- */
-type ActionId = "duplicate" | "delete" | "group" | "ungroup";
-
-const ActionsControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
-  const editor = useDiagramOptional();
-  if (!editor) return null;
-  const canGroup = shapes.length >= 2;
-  const canUngroup = shapes.some((s) => isGroup(s));
-  const options: { value: ActionId; label: string; icon: ReactNode }[] = [
-    { value: "duplicate", label: "Duplicate", icon: <CopyIcon size={14} strokeWidth={1.75} /> },
-    { value: "delete", label: "Delete", icon: <Trash2 size={14} strokeWidth={1.75} /> },
-  ];
-  if (canGroup) {
-    options.push({
-      value: "group",
-      label: "Group",
-      icon: <GroupIcon size={14} strokeWidth={1.75} />,
-    });
-  }
-  if (canUngroup) {
-    options.push({
-      value: "ungroup",
-      label: "Ungroup",
-      icon: <UngroupIcon size={14} strokeWidth={1.75} />,
-    });
-  }
-  // Flip lives in the context menu (Arrange ›), not on the toolbar.
-  return (
-    <SegmentedControl<ActionId>
-      ariaLabel="Element actions"
-      value={null}
-      options={options}
-      onChange={(v) => {
-        if (v === "duplicate") editor.duplicateSelected();
-        else if (v === "delete") editor.deleteSelected();
-        else if (v === "group") editor.groupSelected();
-        else editor.ungroup();
-      }}
-    />
-  );
-};
-
-/**
- * Align popover — a 3×2 grid of edge / centre alignments for the current
- * multi-selection. Mounted only when two or more shapes are selected (a single
- * shape has nothing to align to).
- */
-type AlignEdgeId = "left" | "h-center" | "right" | "top" | "v-center" | "bottom";
-
-const ALIGN_OPTIONS: { edge: AlignEdgeId; label: string; icon: ReactNode }[] = [
-  { edge: "left", label: "Align left", icon: <AlignStartVertical size={16} strokeWidth={1.75} /> },
-  {
-    edge: "h-center",
-    label: "Align horizontal centres",
-    icon: <AlignCenterVertical size={16} strokeWidth={1.75} />,
-  },
-  { edge: "right", label: "Align right", icon: <AlignEndVertical size={16} strokeWidth={1.75} /> },
-  { edge: "top", label: "Align top", icon: <AlignStartHorizontal size={16} strokeWidth={1.75} /> },
-  {
-    edge: "v-center",
-    label: "Align vertical centres",
-    icon: <AlignCenterHorizontal size={16} strokeWidth={1.75} />,
-  },
-  {
-    edge: "bottom",
-    label: "Align bottom",
-    icon: <AlignEndHorizontal size={16} strokeWidth={1.75} />,
-  },
-];
-
-const AlignControl = () => {
-  const editor = useDiagramOptional();
-  const selection = useSelection();
-  if (!editor) return null;
-  // Distribution needs three+ elements; alignment is offered from two.
-  const canDistribute = selection.size >= 3;
-  return (
-    <Popover
-      ariaLabel="Align and distribute"
-      trigger={
-        <button type="button" className="du-sel-icon-button" title="Align" aria-label="Align">
-          <AlignCenterVertical size={16} strokeWidth={1.75} />
-        </button>
-      }
-    >
-      <div className="du-sel-popover-section">
-        <header className="du-sel-popover-label">Align</header>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
-          {ALIGN_OPTIONS.map((o) => (
-            <button
-              key={o.edge}
-              type="button"
-              className="du-sel-icon-button"
-              title={o.label}
-              aria-label={o.label}
-              onClick={() => {
-                editor.alignSelection(o.edge);
-              }}
-            >
-              {o.icon}
-            </button>
-          ))}
-        </div>
-        {canDistribute ? (
-          <>
-            <header className="du-sel-popover-label">Distribute</header>
-            <div style={{ display: "flex", gap: 4 }}>
-              <button
-                type="button"
-                className="du-sel-icon-button"
-                title="Distribute horizontally"
-                aria-label="Distribute horizontally"
-                onClick={() => {
-                  editor.distributeSelection("horizontal");
-                }}
-              >
-                <AlignHorizontalDistributeCenter size={16} strokeWidth={1.75} />
-              </button>
-              <button
-                type="button"
-                className="du-sel-icon-button"
-                title="Distribute vertically"
-                aria-label="Distribute vertically"
-                onClick={() => {
-                  editor.distributeSelection("vertical");
-                }}
-              >
-                <AlignVerticalDistributeCenter size={16} strokeWidth={1.75} />
-              </button>
-            </div>
-          </>
-        ) : null}
-      </div>
-    </Popover>
   );
 };
 
