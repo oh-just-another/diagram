@@ -372,6 +372,15 @@
      be able to render outside the group's bounds. */
 }
 
+/* Inside a popover the group is a plain segmented row: the popover
+   already provides the surface, so no nested card chrome. */
+.du-popover .du-button-group {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 /* Vertical variant — the left creation dock. Stacks buttons in a
    column; dividers (rendered inline by <Toolbar>) become horizontal. */
 .du-button-group-vertical {
