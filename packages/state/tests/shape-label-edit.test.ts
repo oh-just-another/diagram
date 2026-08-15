@@ -12,6 +12,7 @@ import {
   orderBetween,
   type Element,
   type Scene,
+  getElement,
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 
@@ -169,5 +170,30 @@ describe("label edit window (scroll + clipping)", () => {
       expect(r.y).toBeGreaterThanOrEqual(top);
       expect(r.y + r.height).toBeLessThanOrEqual(bottom + 0.01);
     }
+  });
+});
+
+describe("label style APIs create the label on write", () => {
+  it("updateLabelProps / updateLabelStyle on a shape without a label seed one with the change applied", () => {
+    const e = editorWith(sceneWith(rect("r")));
+    expect(getElement(e.scene, elementId("r"))!.label).toBeUndefined();
+    e.updateLabelProps([elementId("r")], { fontSize: 20 });
+    const seeded = getElement(e.scene, elementId("r"))!.label!;
+    expect(seeded.text).toBe("");
+    expect(seeded.fontSize).toBe(20);
+    e.updateLabelStyle([elementId("r")], { fontWeight: "bold" });
+    expect(getElement(e.scene, elementId("r"))!.label!.style?.fontWeight).toBe("bold");
+    // Typing afterwards keeps the pre-set style.
+    e.beginTextEdit(elementId("r"));
+    e.setEditingText("Hi", 2, 2);
+    e.commitTextEdit();
+    const after = getElement(e.scene, elementId("r"))!.label!;
+    expect(after.text).toBe("Hi");
+    expect(after.fontSize).toBe(20);
+    expect(after.style?.fontWeight).toBe("bold");
+    e.undo();
+    e.undo();
+    e.undo();
+    expect(getElement(e.scene, elementId("r"))!.label).toBeUndefined();
   });
 });

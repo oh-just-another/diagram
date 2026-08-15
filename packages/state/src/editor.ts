@@ -325,6 +325,7 @@ import {
   previewClickCreate as previewClickCreatePure,
   type PlacementState,
 } from "./editor/public/placement.js";
+import { withLabel } from "./editor/public/label-seed.js";
 import {
   computeConvertType,
   computeCommitImageCrop,
@@ -3343,12 +3344,15 @@ export class Editor {
     let changed = false;
     for (const id of ids) {
       const shape = getElement(this._scene, id);
-      if (shape?.label === undefined) continue;
-      const r = updateElement(this._scene, id, (s) =>
-        s.label === undefined
+      // A labelable shape without a label yet gets one so the style sticks
+      // (create-on-write); non-labelable shapes are skipped.
+      if (shape === undefined || withLabel(shape).label === undefined) continue;
+      const r = updateElement(this._scene, id, (raw) => {
+        const s = withLabel(raw);
+        return s.label === undefined
           ? s
-          : { ...s, label: { ...s.label, style: { ...s.label.style, ...partial } } },
-      );
+          : { ...s, label: { ...s.label, style: { ...s.label.style, ...partial } } };
+      });
       this._scene = r.scene;
       tx.add(r.patch);
       changed = true;
@@ -3372,8 +3376,9 @@ export class Editor {
     let changed = false;
     for (const id of ids) {
       const shape = getElement(this._scene, id);
-      if (shape?.label === undefined) continue;
-      const r = updateElement(this._scene, id, (s) => {
+      if (shape === undefined || withLabel(shape).label === undefined) continue;
+      const r = updateElement(this._scene, id, (raw) => {
+        const s = withLabel(raw);
         if (s.label === undefined) return s;
         const label = { ...s.label, ...partial } as typeof s.label & { autoFit?: boolean };
         if (partial.fontSize !== undefined) delete label.autoFit;
@@ -3395,8 +3400,9 @@ export class Editor {
     let changed = false;
     for (const id of ids) {
       const shape = getElement(this._scene, id);
-      if (shape?.label === undefined) continue;
-      const r = updateElement(this._scene, id, (s) => {
+      if (shape === undefined || withLabel(shape).label === undefined) continue;
+      const r = updateElement(this._scene, id, (raw) => {
+        const s = withLabel(raw);
         if (s.label === undefined) return s;
         const label = { ...s.label } as typeof s.label & { autoFit?: boolean };
         if (on) label.autoFit = true;

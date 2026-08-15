@@ -62,6 +62,7 @@ import {
   getBinaryFile,
   isText,
   isImage,
+  canCarryLabel,
   isSticky,
   isEmoji,
   isFrame,
@@ -85,7 +86,9 @@ import {
 } from "@oh-just-another/scene";
 import {
   FRAME_SIZE_PRESETS,
+  LABEL_DEFAULT_FONT_SIZE,
   STICKY_SIZE_PRESETS,
+  TEXT_DEFAULT_FONT_FAMILY,
   type ConvertTarget,
   type ImageAspectPreset,
 } from "@oh-just-another/state";
@@ -180,18 +183,10 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
     }
     if (allSticky) {
       // text (with Auto size) | size S/M/L | background | tags / author.
-      if (shapes.every((s) => s.label !== undefined)) {
-        const labelViews = shapes.map(
-          (s) =>
-            ({
-              ...s,
-              style: s.label?.style ?? {},
-              fontSize: s.label?.fontSize,
-              fontFamily: s.label?.fontFamily,
-              text: s.label?.text,
-              runs: s.label?.runs,
-            }) as unknown as ElementBase,
-        );
+      // Text controls always show — a note without text yet edits the
+      // defaults its first text will take (create-on-write in the editor).
+      {
+        const labelViews = shapes.map(labelView);
         primary.push(
           <FontFamilyControl key="l-family" shapes={labelViews} labelMode />,
           <FontSizeControl key="l-size" shapes={labelViews} labelMode allowAuto />,
@@ -256,23 +251,14 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       // the selection is uniform again.
       primary.push(<SelectionFilterControl key="filter" shapes={shapes} />);
     } else {
-      // label text controls (when every shape has one) | border group
-      // (color / width / dash / corners) | fill group (color / opacity) | link.
-      if (shapes.every((s) => s.label !== undefined)) {
+      // label text controls (for every shape type that can carry text, even
+      // before it has any) | border group (color / width / dash / corners) |
+      // fill group (color / opacity) | link.
+      if (shapes.every((s) => canCarryLabel(s))) {
         // Pseudo-shapes exposing the LABEL's font + style so the text
         // controls read label values; `labelMode` reroutes their writes
         // through the label APIs.
-        const labelViews = shapes.map(
-          (s) =>
-            ({
-              ...s,
-              style: s.label?.style ?? {},
-              fontSize: s.label?.fontSize,
-              fontFamily: s.label?.fontFamily,
-              text: s.label?.text,
-              runs: s.label?.runs,
-            }) as unknown as ElementBase,
-        );
+        const labelViews = shapes.map(labelView);
         primary.push(
           <FontFamilyControl key="l-family" shapes={labelViews} labelMode />,
           <FontSizeControl key="l-size" shapes={labelViews} labelMode />,
@@ -2718,6 +2704,21 @@ const ArrowheadGlyph = ({
 // ---------------------------------------------------------------------------
 
 const Divider = () => <span className="du-sel-divider" aria-hidden />;
+
+/**
+ * Pseudo-shape exposing a shape's LABEL as if it were a text element, so
+ * the text controls read label values. A shape without a label yet shows
+ * the defaults its first text will take (`seedLabel` in the editor).
+ */
+const labelView = (s: ElementBase): ElementBase =>
+  ({
+    ...s,
+    style: s.label?.style ?? {},
+    fontSize: s.label?.fontSize ?? LABEL_DEFAULT_FONT_SIZE,
+    fontFamily: s.label?.fontFamily ?? TEXT_DEFAULT_FONT_FAMILY,
+    text: s.label?.text ?? "",
+    runs: s.label?.runs,
+  }) as unknown as ElementBase;
 
 /**
  * Split the control list on `<Divider />` markers into `.du-sel-group`

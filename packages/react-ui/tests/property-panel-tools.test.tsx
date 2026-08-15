@@ -188,3 +188,15 @@ describe("PropertyPanel control groups", () => {
     }
   });
 });
+
+describe("PropertyPanel text controls for label-capable shapes", () => {
+  it("a rectangle without text still shows the text controls (defaults)", () => {
+    const editor = mountEditor(rect);
+    editor.setSelection([rect.id]);
+    const { container, unmount } = renderPanel(editor);
+    expect(container.querySelector('[aria-label^="Font family"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label^="Font size"]')).not.toBeNull();
+    unmount();
+    editor.dispose();
+  });
+});
