@@ -11,34 +11,41 @@ import {
   type RefObject,
 } from "react";
 import {
+  Ban,
   Clipboard,
+  Command,
   Copy,
   Delete,
   Download,
   Expand,
+  Eye,
   FileDown,
   FileUp,
   Grid3x3,
   Grip,
-  HelpCircle,
   ImageDown,
+  Keyboard,
+  LayoutDashboard,
   Magnet,
   Map as MapIcon,
   Maximize,
   Minus,
   Monitor,
   Moon,
+  Mouse,
   MousePointer,
+  Pencil,
   Plus,
   Redo2,
   RotateCcw,
   Ruler,
   Scissors,
+  Search,
   Shrink,
+  SlidersHorizontal,
   Sun,
   Undo2,
   ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import {
   BottomBar,
@@ -88,22 +95,20 @@ import {
 
 /**
  * Lucide icon sizing — `MENU_ICON_SIZE` is for in-row icons of
- * `MainMenu.Item`, `TOGGLE_ICON_SIZE` is for the segmented Theme /
- * Grid toggles, `BUTTON_ICON_SIZE` is for `IconButton` slot
+ * `MainMenu.Item`, `BUTTON_ICON_SIZE` is for `IconButton` slot
  * children (library, zoom, fit). All share `BUTTON_ICON_STROKE`
  * for visual consistency with the toolbar.
  */
 const MENU_ICON_SIZE = 14;
-const TOGGLE_ICON_SIZE = 14;
 const BUTTON_ICON_SIZE = 16;
 const BUTTON_ICON_STROKE = 1.75;
 const menuIcon = { size: MENU_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
-const toggleIcon = { size: TOGGLE_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
 
 /** Default target for the Help-menu "GitHub" link (overridable / hideable via the `repositoryUrl` prop). */
 const DEFAULT_REPOSITORY_URL = "https://github.com/oh-just-another/diagram";
-import type { ActiveTool, Editor, FileDropHandler, Mode } from "@oh-just-another/state";
+import type { ActiveTool, Editor, FileDropHandler, Mode, WheelMode } from "@oh-just-another/state";
+import { defaultActionRegistry } from "@oh-just-another/state";
 import {
   DEFAULT_PREFERENCES_STORAGE_KEY,
   bindPreferencesPersistence,
@@ -260,7 +265,10 @@ export interface DiagramProps {
   readonly renderBottomBarLeft?: () => ReactNode;
   readonly renderBottomBarCenter?: () => ReactNode;
   readonly renderBottomBarRight?: () => ReactNode;
+  /** Extra rows appended to the main menu's top level (after a separator). */
   readonly renderMainMenuExtras?: () => ReactNode;
+  /** Extra rows inside the main menu's Board › submenu, right after Export (e.g. import / export formats). */
+  readonly renderBoardMenuExtras?: () => ReactNode;
   /** Called when user clicks the "Import" button in the Library panel. */
   readonly onImportTemplates?: () => void;
 
@@ -363,6 +371,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     renderBottomBarCenter,
     renderBottomBarRight,
     renderMainMenuExtras,
+    renderBoardMenuExtras,
     onImportTemplates,
     theme: themeProp,
     defaultTheme = "system",
@@ -747,6 +756,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
                   renderBottomBarCenter={renderBottomBarCenter}
                   renderBottomBarRight={renderBottomBarRight}
                   renderMainMenuExtras={renderMainMenuExtras}
+                  renderBoardMenuExtras={renderBoardMenuExtras}
                   onImportTemplates={onImportTemplates}
                   repositoryUrl={repositoryUrl}
                   onConfirm={onConfirm}
@@ -795,6 +805,7 @@ const EditorShell = ({
   renderBottomBarCenter,
   renderBottomBarRight,
   renderMainMenuExtras,
+  renderBoardMenuExtras,
   onImportTemplates,
   repositoryUrl,
   onConfirm,
@@ -823,6 +834,7 @@ const EditorShell = ({
   readonly renderBottomBarCenter: (() => ReactNode) | undefined;
   readonly renderBottomBarRight: (() => ReactNode) | undefined;
   readonly renderMainMenuExtras: (() => ReactNode) | undefined;
+  readonly renderBoardMenuExtras: (() => ReactNode) | undefined;
   readonly onImportTemplates: (() => void) | undefined;
   readonly repositoryUrl: string | null | undefined;
   readonly onConfirm: ((message: string) => boolean) | undefined;
@@ -859,6 +871,11 @@ const EditorShell = ({
   // so `Object.is` skips re-renders until a toggle actually changes.
   useEditorSelector((e) => gridSelection(e), "lines", "scene");
   useEditorSelector((e) => snapSelection(e), "on");
+  // Preference switches in the View / Preferences submenus.
+  const showObjectSize = useEditorSelector((e) => e.preferences.showObjectSize, true);
+  const snapObjects = useEditorSelector((e) => e.preferences.snapObjects, true);
+  const suggestObjectSize = useEditorSelector((e) => e.preferences.suggestObjectSize, true);
+  const wheelMode = useEditorSelector((e) => e.preferences.wheelMode, "auto");
   const paletteDropHandlers = usePalettePlacement();
   // Touch / narrow screens: the library opens as a bottom sheet instead of
   // a left overlay (which would cover the whole small canvas).
@@ -983,7 +1000,8 @@ const EditorShell = ({
                 </span>
                 {!hideMainMenu && (
                   <MainMenu>
-                    <MainMenu.Group title="File">
+                    {/* Board — the document: file in / out, export, start view. */}
+                    <MainMenu.Submenu icon={<LayoutDashboard {...menuIcon} />} label="Board">
                       <MainMenu.Item
                         icon={<FileUp {...menuIcon} />}
                         onClick={() => {
@@ -1015,7 +1033,7 @@ const EditorShell = ({
                       </MainMenu.Item>
                       <MainMenu.Submenu
                         icon={<Download {...menuIcon} />}
-                        label="Export…"
+                        label="Export"
                         disabled={!editor}
                       >
                         <MainMenu.Item
@@ -1057,34 +1075,75 @@ const EditorShell = ({
                         <MainMenu.Separator />
                         <MainMenu.Group title="Include in export">
                           <MainMenu.Item
-                            active={exportContent?.stickyReactions !== false}
                             keepOpen
                             onClick={() => {
                               toggleExportContent("stickyReactions");
                             }}
+                            trailing={
+                              <Switch
+                                checked={exportContent?.stickyReactions !== false}
+                                onChange={() => {
+                                  toggleExportContent("stickyReactions");
+                                }}
+                                ariaLabel="Sticky reactions"
+                              />
+                            }
                           >
                             Sticky reactions
                           </MainMenu.Item>
                           <MainMenu.Item
-                            active={exportContent?.stickyTags !== false}
                             keepOpen
                             onClick={() => {
                               toggleExportContent("stickyTags");
                             }}
+                            trailing={
+                              <Switch
+                                checked={exportContent?.stickyTags !== false}
+                                onChange={() => {
+                                  toggleExportContent("stickyTags");
+                                }}
+                                ariaLabel="Sticky tags"
+                              />
+                            }
                           >
                             Sticky tags
                           </MainMenu.Item>
                           <MainMenu.Item
-                            active={exportContent?.stickyAuthor !== false}
                             keepOpen
                             onClick={() => {
                               toggleExportContent("stickyAuthor");
                             }}
+                            trailing={
+                              <Switch
+                                checked={exportContent?.stickyAuthor !== false}
+                                onChange={() => {
+                                  toggleExportContent("stickyAuthor");
+                                }}
+                                ariaLabel="Sticky author"
+                              />
+                            }
                           >
                             Sticky author
                           </MainMenu.Item>
                         </MainMenu.Group>
                       </MainMenu.Submenu>
+                      {renderBoardMenuExtras?.()}
+                      <MainMenu.Separator />
+                      <MainMenu.Item
+                        icon={<MapIcon {...menuIcon} />}
+                        onClick={() => editor?.goToStartView()}
+                        disabled={(editor?.startView ?? null) === null}
+                      >
+                        Start view
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        icon={<MapIcon {...menuIcon} />}
+                        onClick={() => editor?.setCurrentViewAsStart()}
+                        disabled={!editor}
+                      >
+                        Set current view as start
+                      </MainMenu.Item>
+                      <MainMenu.Separator />
                       <MainMenu.Item
                         icon={<RotateCcw {...menuIcon} />}
                         onClick={() => {
@@ -1102,9 +1161,9 @@ const EditorShell = ({
                       >
                         Reset canvas
                       </MainMenu.Item>
-                    </MainMenu.Group>
-                    <MainMenu.Separator />
-                    <MainMenu.Group title="Edit">
+                    </MainMenu.Submenu>
+                    {/* Edit — history, clipboard, selection, palettes. */}
+                    <MainMenu.Submenu icon={<Pencil {...menuIcon} />} label="Edit">
                       <MainMenu.Item
                         icon={<Undo2 {...menuIcon} />}
                         shortcut="⌘Z"
@@ -1121,6 +1180,7 @@ const EditorShell = ({
                       >
                         Redo
                       </MainMenu.Item>
+                      <MainMenu.Separator />
                       <MainMenu.Item
                         icon={<Scissors {...menuIcon} />}
                         shortcut="⌘X"
@@ -1145,6 +1205,7 @@ const EditorShell = ({
                       >
                         Paste
                       </MainMenu.Item>
+                      <MainMenu.Separator />
                       <MainMenu.Item
                         icon={<MousePointer {...menuIcon} />}
                         shortcut="⌘A"
@@ -1161,88 +1222,186 @@ const EditorShell = ({
                       >
                         Delete selected
                       </MainMenu.Item>
-                    </MainMenu.Group>
-                    <MainMenu.Separator />
-                    <MainMenu.Group title="View">
+                      <MainMenu.Separator />
                       <MainMenu.Item
-                        icon={<Maximize {...menuIcon} />}
-                        shortcut="⇧F"
-                        onClick={() => editor?.zoomToFit()}
-                        disabled={!editor}
-                      >
-                        Fit to screen
-                      </MainMenu.Item>
-                      <MainMenu.Item
-                        icon={<ZoomIn {...menuIcon} />}
-                        shortcut="⌘+"
-                        onClick={() => editor?.zoomIn()}
-                        disabled={!editor}
-                      >
-                        Zoom in
-                      </MainMenu.Item>
-                      <MainMenu.Item
-                        icon={<ZoomOut {...menuIcon} />}
-                        shortcut="⌘−"
-                        onClick={() => editor?.zoomOut()}
-                        disabled={!editor}
-                      >
-                        Zoom out
-                      </MainMenu.Item>
-                    </MainMenu.Group>
-                    <MainMenu.Separator />
-                    <MainMenu.Group title="Theme">
-                      <MainMenu.Toggle<DiagramTheme>
-                        value={theme}
-                        onChange={changeTheme}
-                        options={[
-                          { value: "light", label: "Light", icon: <Sun {...toggleIcon} /> },
-                          { value: "dark", label: "Dark", icon: <Moon {...toggleIcon} /> },
-                          { value: "system", label: "System", icon: <Monitor {...toggleIcon} /> },
-                        ]}
-                      />
-                    </MainMenu.Group>
-                    <MainMenu.Group title="Grid">
-                      <MainMenu.Toggle<"lines" | "dots" | "off">
-                        value={gridSelection(editor)}
-                        onChange={(next) => {
-                          applyGridSelection(editor, next);
-                        }}
-                        options={[
-                          { value: "lines", label: "Lines", icon: <Grid3x3 {...toggleIcon} /> },
-                          { value: "dots", label: "Dots", icon: <Grip {...toggleIcon} /> },
-                          { value: "off", label: "Off", icon: <Minus {...toggleIcon} /> },
-                        ]}
-                      />
-                    </MainMenu.Group>
-                    <MainMenu.Group title="Snap to grid">
-                      <MainMenu.Toggle<"on" | "off">
-                        value={snapSelection(editor)}
-                        onChange={(next) => {
-                          editor?.setSnapToGrid(next === "on");
-                        }}
-                        options={[
-                          { value: "on", label: "On", icon: <Magnet {...toggleIcon} /> },
-                          { value: "off", label: "Off", icon: <Minus {...toggleIcon} /> },
-                        ]}
-                      />
-                    </MainMenu.Group>
-                    <MainMenu.Separator />
-                    <MainMenu.Group title="Help">
-                      <MainMenu.Item
-                        icon={<HelpCircle {...menuIcon} />}
-                        shortcut="?"
+                        icon={<Command {...menuIcon} />}
+                        shortcut="⌘K"
                         onClick={() => {
-                          setHelpOpen(true);
+                          if (editor) {
+                            defaultActionRegistry.dispatch("open-command-palette", { editor });
+                          }
                         }}
+                        disabled={!editor}
                       >
-                        Hotkeys
+                        Commands
                       </MainMenu.Item>
-                      {repositoryHref ? (
-                        <MainMenu.ItemLink href={repositoryHref} external>
-                          GitHub
-                        </MainMenu.ItemLink>
+                      <MainMenu.Item
+                        icon={<Search {...menuIcon} />}
+                        shortcut="⌘F"
+                        onClick={() => {
+                          if (editor) defaultActionRegistry.dispatch("open-search", { editor });
+                        }}
+                        disabled={!editor}
+                      >
+                        Find
+                      </MainMenu.Item>
+                    </MainMenu.Submenu>
+                    {/* View — what the canvas shows (grid, chrome, theme, fullscreen).
+                        Zoom lives in the bottom-bar zoom menu, not here. */}
+                    <MainMenu.Submenu icon={<Eye {...menuIcon} />} label="View">
+                      <MainMenu.Submenu icon={<Grid3x3 {...menuIcon} />} label="Grid">
+                        {GRID_OPTIONS.map((opt) => (
+                          <MainMenu.Item
+                            key={opt.value}
+                            icon={opt.icon}
+                            active={gridSelection(editor) === opt.value}
+                            onClick={() => {
+                              applyGridSelection(editor, opt.value);
+                            }}
+                          >
+                            {opt.label}
+                          </MainMenu.Item>
+                        ))}
+                        <MainMenu.Separator />
+                        <MainMenu.Item
+                          icon={<Magnet {...menuIcon} />}
+                          keepOpen
+                          onClick={() => editor?.setSnapToGrid(!editor.snapToGridEnabled)}
+                          trailing={
+                            <Switch
+                              checked={snapSelection(editor) === "on"}
+                              onChange={(on) => editor?.setSnapToGrid(on)}
+                              ariaLabel="Snap to grid"
+                            />
+                          }
+                        >
+                          Snap to grid
+                        </MainMenu.Item>
+                      </MainMenu.Submenu>
+                      <MainMenu.Item
+                        icon={<Ruler {...menuIcon} />}
+                        keepOpen
+                        onClick={() => editor?.setPreferences({ showObjectSize: !showObjectSize })}
+                        trailing={
+                          <Switch
+                            checked={showObjectSize}
+                            onChange={(on) => editor?.setPreferences({ showObjectSize: on })}
+                            ariaLabel="Object dimensions"
+                          />
+                        }
+                      >
+                        Object dimensions
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        icon={<MapIcon {...menuIcon} />}
+                        keepOpen
+                        onClick={onToggleMinimap}
+                        trailing={
+                          <Switch
+                            checked={minimapVisible}
+                            onChange={onToggleMinimap}
+                            ariaLabel="Minimap"
+                          />
+                        }
+                      >
+                        Minimap
+                      </MainMenu.Item>
+                      <MainMenu.Separator />
+                      <MainMenu.Submenu icon={<Sun {...menuIcon} />} label="Theme">
+                        {THEME_OPTIONS.map((opt) => (
+                          <MainMenu.Item
+                            key={opt.value}
+                            icon={opt.icon}
+                            active={theme === opt.value}
+                            onClick={() => {
+                              changeTheme(opt.value);
+                            }}
+                          >
+                            {opt.label}
+                          </MainMenu.Item>
+                        ))}
+                      </MainMenu.Submenu>
+                      {fullscreen.supported ? (
+                        <>
+                          <MainMenu.Separator />
+                          <MainMenu.Item
+                            icon={
+                              fullscreen.active ? (
+                                <Shrink {...menuIcon} />
+                              ) : (
+                                <Expand {...menuIcon} />
+                              )
+                            }
+                            onClick={fullscreen.toggle}
+                          >
+                            {fullscreen.active ? "Exit full screen" : "Enter full screen"}
+                          </MainMenu.Item>
+                        </>
                       ) : null}
-                    </MainMenu.Group>
+                    </MainMenu.Submenu>
+                    {/* Preferences — per-user editor settings (persisted per browser). */}
+                    <MainMenu.Submenu
+                      icon={<SlidersHorizontal {...menuIcon} />}
+                      label="Preferences"
+                    >
+                      <MainMenu.Submenu icon={<Mouse {...menuIcon} />} label="Mouse or trackpad">
+                        {WHEEL_MODE_OPTIONS.map((opt) => (
+                          <MainMenu.Item
+                            key={opt.value}
+                            active={wheelMode === opt.value}
+                            onClick={() => editor?.setPreferences({ wheelMode: opt.value })}
+                          >
+                            {opt.label}
+                          </MainMenu.Item>
+                        ))}
+                      </MainMenu.Submenu>
+                      <MainMenu.Item
+                        icon={<Magnet {...menuIcon} />}
+                        keepOpen
+                        onClick={() => editor?.setPreferences({ snapObjects: !snapObjects })}
+                        trailing={
+                          <Switch
+                            checked={snapObjects}
+                            onChange={(on) => editor?.setPreferences({ snapObjects: on })}
+                            ariaLabel="Snap objects"
+                          />
+                        }
+                      >
+                        Snap objects
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        icon={<Ruler {...menuIcon} />}
+                        keepOpen
+                        onClick={() =>
+                          editor?.setPreferences({ suggestObjectSize: !suggestObjectSize })
+                        }
+                        trailing={
+                          <Switch
+                            checked={suggestObjectSize}
+                            onChange={(on) => editor?.setPreferences({ suggestObjectSize: on })}
+                            ariaLabel="Suggest object size"
+                          />
+                        }
+                      >
+                        Suggest object size
+                      </MainMenu.Item>
+                    </MainMenu.Submenu>
+                    {/* Help — top-level rows, not a submenu. */}
+                    <MainMenu.Separator />
+                    <MainMenu.Item
+                      icon={<Keyboard {...menuIcon} />}
+                      shortcut="?"
+                      onClick={() => {
+                        setHelpOpen(true);
+                      }}
+                    >
+                      Hotkeys
+                    </MainMenu.Item>
+                    {repositoryHref ? (
+                      <MainMenu.ItemLink href={repositoryHref} external>
+                        GitHub
+                      </MainMenu.ItemLink>
+                    ) : null}
                     {renderMainMenuExtras ? (
                       <>
                         <MainMenu.Separator />
@@ -1472,6 +1631,7 @@ const ZoomControls = ({
           {GRID_OPTIONS.map((opt) => (
             <MainMenu.Item
               key={opt.value}
+              icon={opt.icon}
               active={gridSelection(editor) === opt.value}
               onClick={() => {
                 applyGridSelection(editor, opt.value);
@@ -1545,10 +1705,27 @@ const ZoomControls = ({
 const GRID_OPTIONS: readonly {
   readonly value: "off" | "dots" | "lines";
   readonly label: string;
+  readonly icon: ReactNode;
 }[] = [
-  { value: "off", label: "None" },
-  { value: "dots", label: "Dot grid" },
-  { value: "lines", label: "Line grid" },
+  { value: "off", label: "None", icon: <Ban {...menuIcon} /> },
+  { value: "lines", label: "Line grid", icon: <Grid3x3 {...menuIcon} /> },
+  { value: "dots", label: "Dot grid", icon: <Grip {...menuIcon} /> },
+];
+
+const THEME_OPTIONS: readonly {
+  readonly value: DiagramTheme;
+  readonly label: string;
+  readonly icon: ReactNode;
+}[] = [
+  { value: "light", label: "Light", icon: <Sun {...menuIcon} /> },
+  { value: "dark", label: "Dark", icon: <Moon {...menuIcon} /> },
+  { value: "system", label: "System", icon: <Monitor {...menuIcon} /> },
+];
+
+const WHEEL_MODE_OPTIONS: readonly { readonly value: WheelMode; readonly label: string }[] = [
+  { value: "auto", label: "Auto-detect" },
+  { value: "mouse", label: "Mouse" },
+  { value: "trackpad", label: "Trackpad" },
 ];
 
 // --- Grid toggle helpers ----------------------------------------------------

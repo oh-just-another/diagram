@@ -313,7 +313,7 @@ export const App = () => {
         onSceneChange={handleSceneChange}
         renderTopBarLeft={renderHeaderLeft}
         renderTopBarRight={renderHeaderRight}
-        {...(editor ? { renderMainMenuExtras: () => <ImportExportMenu editor={editor} /> } : {})}
+        {...(editor ? { renderBoardMenuExtras: () => <ImportExportMenu editor={editor} /> } : {})}
         persistTheme
         persistPreferences
         minimap

@@ -296,3 +296,44 @@ describe("<Editor> — zoom menu", () => {
     expect(screen.queryByLabelText("Diagram minimap")).not.toBeNull();
   });
 });
+
+describe("<Editor> — nested main menu", () => {
+  it("shows the five sections and opens View › Grid / Preferences › Mouse or trackpad", async () => {
+    const { ref } = await mountEditor({});
+    act(() => {
+      screen.getByRole("button", { name: "Main menu" }).click();
+    });
+    for (const label of ["Board", "Edit", "View", "Preferences", "Hotkeys"]) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+    // Sections are collapsed until hovered / clicked.
+    expect(screen.queryByText("Undo")).toBeNull();
+    act(() => {
+      screen.getByText("View").click();
+    });
+    expect(screen.getByRole("switch", { name: "Object dimensions" })).toBeTruthy();
+    act(() => {
+      screen.getByText("Grid").click();
+    });
+    expect(screen.getByText("Dot grid")).toBeTruthy();
+    act(() => {
+      screen.getByText("Dot grid").click();
+    });
+    expect(ref.current?.editor?.scene.viewport.gridStyle).toBe("dots");
+    expect(ref.current?.editor?.gridEnabled).toBe(true);
+    // Preferences › Mouse or trackpad is a radio list over the wheel mode.
+    act(() => {
+      screen.getByRole("button", { name: "Main menu" }).click();
+    });
+    act(() => {
+      screen.getByText("Preferences").click();
+    });
+    act(() => {
+      screen.getByText("Mouse or trackpad").click();
+    });
+    act(() => {
+      screen.getByText("Trackpad").click();
+    });
+    expect(ref.current?.editor?.preferences.wheelMode).toBe("trackpad");
+  });
+});

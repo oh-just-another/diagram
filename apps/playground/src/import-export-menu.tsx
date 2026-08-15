@@ -73,8 +73,8 @@ export const ImportExportMenu = ({ editor }: { readonly editor: Editor }) => {
   };
 
   return (
-    <MainMenu.Group title="File">
-      <MainMenu.Submenu icon={<Upload size={15} />} label="Import…">
+    <>
+      <MainMenu.Submenu icon={<Upload size={15} />} label="Import">
         {IMPORT_FORMATS.map((f) => (
           <MainMenu.Item
             key={f.id}
@@ -86,7 +86,7 @@ export const ImportExportMenu = ({ editor }: { readonly editor: Editor }) => {
           </MainMenu.Item>
         ))}
       </MainMenu.Submenu>
-      <MainMenu.Submenu icon={<Download size={15} />} label="Export…">
+      <MainMenu.Submenu icon={<Download size={15} />} label="Export as">
         {EXPORT_FORMATS.map((f) => (
           <MainMenu.Item
             key={f.id}
@@ -98,6 +98,6 @@ export const ImportExportMenu = ({ editor }: { readonly editor: Editor }) => {
           </MainMenu.Item>
         ))}
       </MainMenu.Submenu>
-    </MainMenu.Group>
+    </>
   );
 };
