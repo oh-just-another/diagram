@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -38,6 +39,73 @@ interface MenuContext {
 }
 
 const Ctx = createContext<MenuContext | null>(null);
+
+/**
+ * One panel's submenu coordinator: at most ONE submenu per level is open.
+ * Hovering a submenu row opens it at once and closes the previous sibling
+ * immediately (no overlapping panels); leaving a row / its panel, or
+ * hovering a plain item, closes after `SUBMENU_CLOSE_DELAY_MS` so a
+ * diagonal move into the child panel survives.
+ */
+interface LevelContext {
+  readonly openId: string | null;
+  readonly open: (id: string) => void;
+  readonly toggle: (id: string) => void;
+  readonly scheduleClose: (id: string) => void;
+  readonly closeSoon: () => void;
+  readonly cancelClose: () => void;
+}
+const LevelCtx = createContext<LevelContext | null>(null);
+
+const SUBMENU_CLOSE_DELAY_MS = 120;
+
+const MenuLevel = ({ children }: { readonly children: ReactNode }) => {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const timer = useRef<number | null>(null);
+  const cancelClose = useCallback(() => {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }, []);
+  const closeSoon = useCallback(() => {
+    cancelClose();
+    timer.current = window.setTimeout(() => {
+      setOpenId(null);
+      timer.current = null;
+    }, SUBMENU_CLOSE_DELAY_MS);
+  }, [cancelClose]);
+  const scheduleClose = useCallback(
+    (id: string) => {
+      cancelClose();
+      timer.current = window.setTimeout(() => {
+        setOpenId((cur) => (cur === id ? null : cur));
+        timer.current = null;
+      }, SUBMENU_CLOSE_DELAY_MS);
+    },
+    [cancelClose],
+  );
+  const open = useCallback(
+    (id: string) => {
+      cancelClose();
+      setOpenId(id);
+    },
+    [cancelClose],
+  );
+  const toggle = useCallback(
+    (id: string) => {
+      cancelClose();
+      setOpenId((cur) => (cur === id ? null : id));
+    },
+    [cancelClose],
+  );
+  useEffect(() => cancelClose, [cancelClose]);
+  const value = useMemo(
+    () => ({ openId, open, toggle, scheduleClose, closeSoon, cancelClose }),
+    [openId, open, toggle, scheduleClose, closeSoon, cancelClose],
+  );
+  return <LevelCtx.Provider value={value}>{children}</LevelCtx.Provider>;
+};
 
 const useMenuCtx = (): MenuContext => {
   const ctx = useContext(Ctx);
@@ -144,7 +212,9 @@ export const MainMenu = ({
       </button>
       {open ? (
         <div id={menuId} role="menu" className="du-menu-panel" style={panelStyle}>
-          <Ctx.Provider value={{ close }}>{children}</Ctx.Provider>
+          <Ctx.Provider value={{ close }}>
+            <MenuLevel>{children}</MenuLevel>
+          </Ctx.Provider>
         </div>
       ) : null}
     </div>
@@ -195,6 +265,7 @@ const Item = ({
   keepOpen,
 }: MainMenuItemProps) => {
   const { close } = useMenuCtx();
+  const level = useContext(LevelCtx);
   return (
     <button
       type="button"
@@ -205,6 +276,7 @@ const Item = ({
         onClick?.();
         if (!keepOpen) close();
       }}
+      onMouseEnter={() => level?.closeSoon()}
       className="du-menu-row"
     >
       <span className="du-menu-row-main">
@@ -334,7 +406,6 @@ const Toggle = <T extends string>({ value, onChange, options }: MainMenuTogglePr
  * Positioning is fixed to "right of trigger, top-aligned with the
  * trigger row".
  */
-const SUBMENU_CLOSE_DELAY_MS = 120;
 
 export interface MainMenuSubmenuProps {
   readonly children: ReactNode;
@@ -346,27 +417,9 @@ export interface MainMenuSubmenuProps {
 }
 
 const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
-  const [open, setOpen] = useState(false);
-  const closeTimerRef = useRef<number | null>(null);
-
-  const cancelClose = useCallback((): void => {
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-  }, []);
-
-  const scheduleClose = useCallback((): void => {
-    cancelClose();
-    closeTimerRef.current = window.setTimeout(() => {
-      setOpen(false);
-      closeTimerRef.current = null;
-    }, SUBMENU_CLOSE_DELAY_MS);
-  }, [cancelClose]);
-
-  // Clear a pending close-timer on unmount so it doesn't fire on a
-  // detached component.
-  useEffect(() => cancelClose, [cancelClose]);
+  const id = useId();
+  const level = useContext(LevelCtx);
+  const open = level?.openId === id;
 
   // `top` undoes the panel padding + border so the first child row aligns
   // with this row (see `--du-menu-pad`).
@@ -383,10 +436,11 @@ const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
       style={{ position: "relative" }}
       onMouseEnter={() => {
         if (disabled) return;
-        cancelClose();
-        setOpen(true);
+        level?.open(id);
       }}
-      onMouseLeave={scheduleClose}
+      onMouseLeave={() => {
+        level?.scheduleClose(id);
+      }}
     >
       <button
         type="button"
@@ -396,8 +450,7 @@ const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
         aria-expanded={open}
         onClick={() => {
           if (disabled) return;
-          cancelClose();
-          setOpen((p) => !p);
+          level?.toggle(id);
         }}
         className={`du-menu-row${open ? " is-open" : ""}`}
       >
@@ -410,8 +463,15 @@ const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
         </span>
       </button>
       {open ? (
-        <div role="menu" className="du-menu-panel" style={panelStyle}>
-          {children}
+        <div
+          role="menu"
+          className="du-menu-panel"
+          style={panelStyle}
+          onMouseEnter={() => {
+            level.cancelClose();
+          }}
+        >
+          <MenuLevel>{children}</MenuLevel>
         </div>
       ) : null}
     </div>
