@@ -26,6 +26,8 @@ describe("DEFAULT_CONTEXT_MENU order", () => {
       "copy",
       "duplicate-selection",
       "unlock-all",
+      "copy-as-png",
+      "copy-as-text",
       "copy-style",
       "add-text",
       "add-sticky",

@@ -593,6 +593,21 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     },
   },
   { kind: "divider" },
+  // Clipboard copies of the selection as an asset. The actions are
+  // registered by the host package (`@oh-just-another/editor`); the rows
+  // hide when the host didn't register them.
+  ...(["copy-as-png", "copy-as-svg", "copy-as-text"] as const).map((id) =>
+    actionMenuItem(id, {
+      label:
+        id === "copy-as-png"
+          ? "Copy as PNG"
+          : id === "copy-as-svg"
+            ? "Copy as SVG"
+            : "Copy as text",
+      visible: (e) => e.selection.size > 0 && defaultActionRegistry.get(id) !== undefined,
+    }),
+  ),
+  { kind: "divider" },
   actionMenuItem("copy-style", { label: "Copy style" }),
   actionMenuItem("paste-style", { label: "Paste style" }),
   { kind: "divider" },

@@ -64,3 +64,20 @@ const pdf = await exportPdf(scene, {
 Both take a `Scene` or JSON document string. `region` crops in world coordinates (default: the scene's `viewport.size`); `frameId` instead exports a single frame's content and wins over `region`. `dpi` only embeds a `pHYs` chunk — pixel dimensions come from `scale`.
 
 PNG needs `@resvg/resvg-js`; PDF needs `pdfkit` + `svg-to-pdfkit`. Both are optional peers — install only what you call.
+
+## Copying the selection
+
+The context menu's "Copy as PNG / SVG / text" rows copy the **selection** (groups with their subtrees, plus links bound within it) to the clipboard: a transparent retina PNG, fitted SVG markup as text, or the elements' text / labels one per line in z-order. The helpers are exported from `@oh-just-another/editor`:
+
+```ts
+import {
+  copySelectionAsPng,
+  copySelectionAsSvg,
+  copySelectionAsText,
+  subsetScene, // scene reduced to a set of element ids
+  sceneToSvgMarkup, // fitted SVG of any scene
+  selectionText,
+} from "@oh-just-another/editor";
+```
+
+They are registered as actions (`copy-as-png`, `copy-as-svg`, `copy-as-text`, read-only safe) so hosts can bind hotkeys or palette entries to them.

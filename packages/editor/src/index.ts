@@ -36,6 +36,7 @@ export {
 export { isEditableTarget } from "./dom-focus.js";
 export { bindEditorHotkeys, type HotkeyBindingOptions } from "@oh-just-another/state";
 export { exportSceneToPng, type PngExportBackground, type PngExportOptions } from "./png-export.js";
+export { subsetScene, sceneBounds, fitViewportTo } from "./scene-subset.js";
 // File operations (Save / Open / Export / Copy-as-image) — registered on
 // the action registry by `<Editor>`; exported so hosts can wire them to
 // their own chrome or a custom registry.
@@ -48,6 +49,11 @@ export {
   downloadPng,
   openSceneFile,
   copySceneAsImage,
+  copySelectionAsPng,
+  copySelectionAsSvg,
+  copySelectionAsText,
+  sceneToSvgMarkup,
+  selectionText,
   type ExportContent,
 } from "./file-actions.js";
 
