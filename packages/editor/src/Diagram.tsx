@@ -1493,12 +1493,14 @@ const EditorShell = ({
         <div
           style={{
             position: "absolute",
-            right: "var(--du-bar-inset, 12px)",
-            bottom: "calc(var(--du-bar-inset, 12px) + 52px)",
-            border: "1px solid var(--du-border, #d0d0d0)",
-            borderRadius: 6,
-            background: "var(--du-surface, #fff)",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+            right: "var(--du-bar-inset, 16px)",
+            // Clears the bottom bar: inset + bar height (button + 2×pad + border) + gap.
+            bottom:
+              "calc(var(--du-bar-inset, 16px) + var(--du-button-size, 40px) + 2 * var(--du-pad-sm, 4px) + 2px + var(--du-gap, 8px))",
+            border: "1px solid var(--du-ui-border)",
+            borderRadius: "var(--du-radius, 8px)",
+            background: "var(--du-ui-bg-solid, #fff)",
+            boxShadow: "var(--du-ui-shadow)",
             overflow: "hidden",
             zIndex: 40,
           }}

@@ -25,7 +25,7 @@
   --du-ui-bg: rgba(255, 255, 255, 0.95); /* UI_SURFACE.light.bg */
   --du-ui-bg-solid: #ffffff; /* UI_SURFACE.light.bgSolid */
   --du-ui-border: rgba(0, 0, 0, 0.08); /* UI_SURFACE.light.border */
-  --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --du-ui-shadow: 0 2px 8px rgba(34, 36, 40, 0.12), 0 0 12px rgba(34, 36, 40, 0.04);
 
   /* --- Text (from UI_SURFACE.light) --- */
   --du-text: #1a1a1a; /* UI_SURFACE.light.text */
@@ -45,36 +45,41 @@
   --du-selected-bg: #e6e7ff; /* UI_ACCENT.light.selectedBg (iris.iris4) */
   --du-selected-fg: #5753c6; /* UI_ACCENT.light.selectedFg (iris.iris11) */
 
-  /* --- Sizing --- */
-  --du-radius: 10px;
-  --du-radius-sm: 6px;
-  --du-radius-lg: 14px;
-  --du-button-size: 36px;
+  /* --- Sizing (reference-aligned: 4-px grid; radius 4 = items, 8 = toolbars /
+     dropdowns, 12 = panels / dialogs; 40-px tool buttons; 16-px screen inset) --- */
+  --du-radius: 8px;
+  --du-radius-sm: 4px;
+  --du-radius-lg: 12px;
+  --du-button-size: 40px;
   --du-button-size-sm: 32px;
-  --du-icon-size: 18px;
+  --du-icon-size: 20px;
   --du-gap: 8px;
   --du-gap-sm: 4px;
   --du-pad: 8px;
   --du-pad-sm: 4px;
+  /* --- Typography --- */
+  --du-font-size: 14px;
+  --du-font-size-sm: 12px;
+  --du-line-height: 20px;
   /* --- Menus & popover lists (one system for every menu surface) --- */
-  --du-menu-pad: 6px; /* panel inner padding */
-  --du-menu-min-w: 220px;
+  --du-menu-pad: 8px; /* panel inner padding */
+  --du-menu-min-w: 240px;
   --du-menu-radius: var(--du-radius);
-  --du-menu-row-h: 36px; /* = --du-button-size */
-  --du-menu-row-pad-x: 10px;
+  --du-menu-row-h: 44px;
+  --du-menu-row-pad-x: 16px;
   --du-menu-row-radius: var(--du-radius-sm);
-  --du-menu-gutter: 20px; /* icon / check column, same width everywhere */
+  --du-menu-gutter: 24px; /* icon / check column, same width everywhere */
   --du-menu-gap: 8px; /* gutter ↔ label */
-  --du-menu-font: 13px;
-  --du-menu-shortcut-font: 11px;
-  --du-menu-sep: 6px; /* separator / group-title vertical rhythm */
+  --du-menu-font: var(--du-font-size);
+  --du-menu-shortcut-font: var(--du-font-size-sm);
+  --du-menu-sep: 8px; /* separator / group-title vertical rhythm */
   /* --- Modals --- */
   --du-modal-pad-y: 16px;
   --du-modal-pad-x: 20px;
   --du-modal-radius: var(--du-radius-lg);
   --du-modal-gap: 12px;
   --du-hover-overlay: rgba(0, 0, 0, 0.05);
-  --du-bar-inset: 12px;
+  --du-bar-inset: 16px;
   --du-z-canvas: 1;
   --du-z-ui: 100;
   --du-z-modal: 1000;
@@ -105,7 +110,7 @@
     --du-ui-bg: rgba(35, 35, 35, 0.95); /* UI_SURFACE.dark.bg */
     --du-ui-bg-solid: #252525; /* UI_SURFACE.dark.bgSolid */
     --du-ui-border: rgba(255, 255, 255, 0.08); /* UI_SURFACE.dark.border */
-    --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+    --du-ui-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 12px rgba(0, 0, 0, 0.25);
     --du-text: #e8e8e8; /* UI_SURFACE.dark.text */
     --du-text-muted: #9a9a9a; /* UI_SURFACE.dark.textMuted */
     --du-accent: #5b5bd6; /* UI_ACCENT.dark.accent (irisDark.iris9) */
@@ -125,7 +130,7 @@
   --du-ui-bg: rgba(255, 255, 255, 0.95);
   --du-ui-bg-solid: #ffffff;
   --du-ui-border: rgba(0, 0, 0, 0.08);
-  --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --du-ui-shadow: 0 2px 8px rgba(34, 36, 40, 0.12), 0 0 12px rgba(34, 36, 40, 0.04);
   --du-text: #1a1a1a;
   --du-text-muted: #6b6b6b;
   --du-accent: #5b5bd6; /* iris.iris9 */
@@ -189,7 +194,7 @@
   --du-ui-bg: rgba(35, 35, 35, 0.95);
   --du-ui-bg-solid: #252525;
   --du-ui-border: rgba(255, 255, 255, 0.08);
-  --du-ui-shadow: 0 1px 4px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --du-ui-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 12px rgba(0, 0, 0, 0.25);
   --du-text: #e8e8e8;
   --du-text-muted: #9a9a9a;
   --du-accent: #5b5bd6; /* irisDark.iris9 */
@@ -329,7 +334,7 @@
 .du-icon-button-sm {
   width: var(--du-button-size-sm);
   height: var(--du-button-size-sm);
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
 }
 
 /**
@@ -370,6 +375,13 @@
   padding: var(--du-pad-sm);
   /* No `overflow: hidden` — a child popup (MainMenu dropdown) must
      be able to render outside the group's bounds. */
+}
+
+/* Items inside a toolbar group take the item radius (4); the group itself
+   keeps the toolbar radius (8). */
+.du-button-group > .du-icon-button,
+.du-button-group > .du-shapes-wrap > .du-icon-button {
+  border-radius: var(--du-radius-sm);
 }
 
 /* Inside a popover the group is a plain segmented row: the popover
@@ -514,7 +526,7 @@
   justify-content: space-between;
   gap: var(--du-gap-sm);
   padding: var(--du-pad-sm) var(--du-pad-sm) var(--du-pad-sm) var(--du-pad);
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -529,7 +541,7 @@
 /* Panel title in the header's left slot (normal case, full text colour —
    the header's uppercase muted styling is for action captions). */
 .du-side-panel-title {
-  font-size: 13px;
+  font-size: var(--du-font-size);
   font-weight: 600;
   color: var(--du-text);
   text-transform: none;
@@ -591,7 +603,7 @@
   border: none;
   padding: 10px 0 6px;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--du-font-size-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -643,7 +655,7 @@
   gap: 8px;
   padding: 5px 8px;
   text-align: left;
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
   line-height: 1.2;
 }
 .du-palette-list .du-palette-item-icon {
@@ -661,7 +673,7 @@
 .du-palette-empty {
   padding: 24px 12px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
 }
 
@@ -726,7 +738,7 @@
   gap: 16px;
   padding: 4px 0;
   color: var(--du-text);
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
 }
 
 .du-prop-section {
@@ -752,7 +764,7 @@
 }
 
 .du-prop-row-label {
-  font-size: 11px;
+  font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
   min-width: 48px;
 }
@@ -760,7 +772,7 @@
 .du-prop-empty {
   font-style: italic;
   color: var(--du-text-muted);
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
 }
 
 /* modern-style flat segmented control inside the panel:
@@ -788,7 +800,7 @@
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
   color: var(--du-text);
   user-select: none;
 }
@@ -1110,7 +1122,7 @@
   min-width: 36px;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  font-size: 11px;
+  font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
 }
 
@@ -1127,7 +1139,7 @@
   border-radius: var(--du-radius-sm);
   padding: 0 6px;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--du-font-size-sm);
   font-variant-numeric: tabular-nums;
   outline: none;
 }
@@ -1152,7 +1164,7 @@
   border-radius: var(--du-radius-sm);
   padding: 0 8px 0 26px;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
   outline: none;
 }
 
@@ -1188,7 +1200,7 @@
   border-radius: 999px;
   box-shadow: var(--du-ui-shadow);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--du-font-size);
   line-height: 1;
   white-space: nowrap;
   transition:
@@ -1213,7 +1225,7 @@
   color: var(--du-ui-bg-solid);
   padding: 4px 8px;
   border-radius: var(--du-radius-sm);
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
   line-height: 1.4;
   white-space: nowrap;
   box-shadow: var(--du-ui-shadow);
@@ -1241,7 +1253,7 @@
 
 .du-help-island-title {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--du-font-size);
   font-weight: 600;
   color: var(--du-text);
   letter-spacing: 0.2px;
@@ -1259,7 +1271,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: var(--du-font-size);
   color: var(--du-text);
   border-bottom: 1px solid var(--du-ui-border);
 }
@@ -1281,7 +1293,7 @@
 }
 
 .du-help-keys-separator {
-  font-size: 11px;
+  font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
   padding: 0 2px;
 }
@@ -1297,14 +1309,14 @@
   color: var(--du-selected-fg);
   border-radius: var(--du-radius-sm);
   font-family: inherit;
-  font-size: 11px;
+  font-size: var(--du-font-size-sm);
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
 }
 
 .du-help-platform-badge {
-  font-size: 11px;
+  font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1332,7 +1344,7 @@
   border-radius: var(--du-radius);
   box-shadow: var(--du-ui-shadow);
   padding: var(--du-pad-sm);
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
   color: var(--du-text);
   max-width: calc(100vw - 32px);
   /* Allow horizontal scroll within the pill when too many controls
@@ -1514,7 +1526,7 @@
   border-radius: var(--du-radius-sm);
   cursor: pointer;
   color: var(--du-text);
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1561,7 +1573,7 @@
   border-radius: var(--du-radius);
   box-shadow: var(--du-ui-shadow);
   padding: var(--du-pad);
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
   color: var(--du-text);
   min-width: 120px;
   max-width: 320px;
@@ -1614,7 +1626,7 @@
   max-width: 60vw;
   box-sizing: border-box;
   padding: 6px 8px;
-  font-size: 13px;
+  font-size: var(--du-font-size);
   color: var(--du-text);
   background: var(--du-ui-bg);
   border: 1px solid var(--du-ui-border);
@@ -1724,7 +1736,7 @@
 
 .du-sel-tag-remove {
   padding: 0 2px;
-  font-size: 12px;
+  font-size: var(--du-font-size-sm);
   line-height: 1;
   color: inherit;
   background: transparent;
@@ -1890,7 +1902,7 @@
   border-color: var(--du-accent);
 }
 .du-arrowhead-none {
-  font-size: 13px;
+  font-size: var(--du-font-size);
   opacity: 0.6;
 }
 .du-arrowhead-erd-label {
@@ -1905,7 +1917,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
   padding: 2px 0;
 }
