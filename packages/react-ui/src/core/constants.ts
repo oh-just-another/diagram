@@ -153,9 +153,13 @@ export const SEARCH_ZOOM_PADDING_PX = 160;
  * - `MINIMAP_WIDTH_PX` / `MINIMAP_HEIGHT_PX` — default canvas size in CSS px.
  * - `MINIMAP_PADDING_PX` — inner margin kept clear around the fitted scene so
  *   shapes at the edge aren't clipped. Range: 0–32.
- * - `MINIMAP_THROTTLE_MS` — minimum interval between overview repaints while
- *   the scene / viewport changes rapidly (pan, drag). Lower = smoother but
- *   more work per frame. Range: 60–500.
+ * - `MINIMAP_IDLE_MS` — the overview repaints only once the editor has been
+ *   quiet for this long: never during a drag / pan / pinch / wheel burst, so
+ *   the minimap costs nothing while the user is moving things, and once
+ *   right after. Range: 50–300.
+ * - `MINIMAP_BACKGROUND` / `MINIMAP_ELEMENT_COLOR` / `MINIMAP_ELEMENT_OPACITY` —
+ *   the overview is a schematic: white paper with every element's box in the
+ *   system accent colour (no real rendering).
  * - `MINIMAP_FRAME_COLOR` / `MINIMAP_FRAME_LINE_WIDTH` — stroke of the current
  *   viewport rectangle drawn over the overview.
  * - `MINIMAP_FRAME_FILL` — translucent wash inside the viewport rectangle.
@@ -167,7 +171,10 @@ export const SEARCH_ZOOM_PADDING_PX = 160;
 export const MINIMAP_WIDTH_PX = 200;
 export const MINIMAP_HEIGHT_PX = 150;
 export const MINIMAP_PADDING_PX = 8;
-export const MINIMAP_THROTTLE_MS = 150;
+export const MINIMAP_IDLE_MS = 120;
+export const MINIMAP_BACKGROUND = "#ffffff";
+export const MINIMAP_ELEMENT_COLOR: string = UI_ACCENT.light.accent;
+export const MINIMAP_ELEMENT_OPACITY = 0.55;
 /** Viewport frame on the minimap — the shared chrome accent (iris9). */
 export const MINIMAP_FRAME_COLOR: string = UI_ACCENT.light.accent;
 export const MINIMAP_FRAME_LINE_WIDTH = 1.5;

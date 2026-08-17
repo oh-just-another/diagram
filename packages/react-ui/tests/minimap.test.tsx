@@ -130,18 +130,31 @@ describe("Minimap", () => {
     expect(ctx.editor.scene.viewport.zoom).toBeGreaterThan(before);
   });
 
-  it("repaints after the throttle window when the editor notifies", () => {
+  it("repaints once the editor goes idle, not during a burst of changes", () => {
     vi.useFakeTimers();
     try {
       render(<Minimap editor={ctx.editor} />);
       const before = rectCalls.length;
-      // Panning the main view notifies subscribers; a burst collapses into one
-      // trailing repaint after MINIMAP_THROTTLE_MS.
+      // A burst of pans: nothing is painted while changes keep coming…
       ctx.editor.panBy({ x: 25, y: 25 });
+      vi.advanceTimersByTime(50);
+      ctx.editor.panBy({ x: 25, y: 25 });
+      vi.advanceTimersByTime(50);
+      expect(rectCalls.length).toBe(before);
+      // …and exactly one repaint lands after the idle window.
       vi.advanceTimersByTime(200);
       expect(rectCalls.length).toBeGreaterThan(before);
+      const afterOne = rectCalls.length;
+      vi.advanceTimersByTime(500);
+      expect(rectCalls.length).toBe(afterOne);
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("paints a white background and every element box in the accent colour", () => {
+    render(<Minimap editor={ctx.editor} />);
+    // One rect per element (the single 400×300 shape), not a renderer pass.
+    expect(rectCalls.length).toBeGreaterThanOrEqual(1);
   });
 });

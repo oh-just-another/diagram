@@ -1,18 +1,20 @@
 import { useCallback, useEffect, useRef, type CSSProperties, type PointerEvent } from "react";
-import { getElementWorldBounds, type Scene } from "@oh-just-another/scene";
-import { renderScene, renderLinks } from "@oh-just-another/renderer-core";
-import { Canvas2DTarget, setupHiDpi } from "@oh-just-another/renderer-canvas";
+import { getElementWorldBounds, isGroup, type Scene } from "@oh-just-another/scene";
+import { setupHiDpi } from "@oh-just-another/renderer-canvas";
 import { bounds as B } from "@oh-just-another/math";
 import type { Bounds, Vec2 } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
 import { useDiagramOptional } from "../core/hooks.js";
 import {
+  MINIMAP_BACKGROUND,
+  MINIMAP_ELEMENT_COLOR,
+  MINIMAP_ELEMENT_OPACITY,
   MINIMAP_FRAME_COLOR,
   MINIMAP_FRAME_FILL,
   MINIMAP_FRAME_LINE_WIDTH,
   MINIMAP_HEIGHT_PX,
+  MINIMAP_IDLE_MS,
   MINIMAP_PADDING_PX,
-  MINIMAP_THROTTLE_MS,
   MINIMAP_WHEEL_ZOOM_MAX_STEP,
   MINIMAP_WHEEL_ZOOM_SPEED,
   MINIMAP_WIDTH_PX,
@@ -91,26 +93,31 @@ export const Minimap = ({
     const dpr = setupHiDpi(canvas, width, height);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const target = new Canvas2DTarget(ctx, width, height, dpr);
-    target.clear();
+    // Schematic overview: white paper + one accent-coloured box per element.
+    // Drawn straight on the 2D context (no renderer pass) — cheap enough to
+    // be unnoticeable, and it reads at a glance the way the reference does.
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = MINIMAP_BACKGROUND;
+    ctx.fillRect(0, 0, width, height);
 
     const content = sceneContentBounds(scene);
     const fit = content ? fitContent(content, width, height) : null;
     fitRef.current = fit;
     if (!fit) return;
 
-    const miniScene: Scene = {
-      ...scene,
-      viewport: {
-        ...scene.viewport,
-        pan: fit.pan,
-        zoom: fit.zoom,
-        rotation: 0,
-        size: { width, height },
-      },
-    };
-    renderScene(miniScene, target);
-    renderLinks(miniScene, target);
+    ctx.fillStyle = MINIMAP_ELEMENT_COLOR;
+    ctx.globalAlpha = MINIMAP_ELEMENT_OPACITY;
+    ctx.beginPath();
+    for (const el of scene.elements.values()) {
+      if (el.hidden === true || isGroup(el)) continue;
+      const b = getElementWorldBounds(el);
+      const x = (b.x - fit.pan.x) * fit.zoom;
+      const y = (b.y - fit.pan.y) * fit.zoom;
+      // Keep hairline shapes visible at extreme zoom-outs.
+      ctx.rect(x, y, Math.max(1, b.width * fit.zoom), Math.max(1, b.height * fit.zoom));
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
     // Viewport frame — the world rect currently visible in the main view,
     // projected into minimap pixels. Drawn in CSS px on the dpr-scaled ctx.
@@ -120,7 +127,6 @@ export const Minimap = ({
       const fy = (vp.pan.y - fit.pan.y) * fit.zoom;
       const fw = (vp.size.width / vp.zoom) * fit.zoom;
       const fh = (vp.size.height / vp.zoom) * fit.zoom;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.fillStyle = MINIMAP_FRAME_FILL;
       ctx.fillRect(fx, fy, fw, fh);
       ctx.strokeStyle = MINIMAP_FRAME_COLOR;
@@ -129,30 +135,38 @@ export const Minimap = ({
     }
   }, [editor, width, height]);
 
-  // Throttled repaint on every editor change. A leading draw runs immediately;
-  // bursts within the window collapse into a single trailing draw.
+  // Repaint only when the editor goes quiet: every change (re)arms an idle
+  // timer, and while a gesture is in flight (element drag / resize, pan,
+  // pinch) nothing is scheduled at all — the overview never competes with
+  // the main canvas for frame time, and repaints once right after the
+  // gesture ends. Wheel zoom / pan bursts collapse into one trailing paint.
   useEffect(() => {
     if (!editor) return undefined;
     draw();
-    let last = Date.now();
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const schedule = () => {
-      const elapsed = Date.now() - last;
-      if (elapsed >= MINIMAP_THROTTLE_MS) {
-        last = Date.now();
-        draw();
-      } else {
-        timer ??= setTimeout(() => {
-          timer = null;
-          last = Date.now();
-          draw();
-        }, MINIMAP_THROTTLE_MS - elapsed);
+    const clear = () => {
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
       }
+    };
+    const busy = () =>
+      editor.gestureTx !== null || editor.dragElementId !== null || editor.panGesture !== null;
+    // Every change re-arms the idle timer; while a gesture is in flight no
+    // timer runs. The gesture's end is itself a change (commit / release
+    // notifies), which arms the one trailing paint.
+    const schedule = () => {
+      clear();
+      if (busy()) return;
+      timer = setTimeout(() => {
+        timer = null;
+        if (!busy()) draw();
+      }, MINIMAP_IDLE_MS);
     };
     const unsubscribe = editor.subscribe(schedule);
     return () => {
       unsubscribe();
-      if (timer !== null) clearTimeout(timer);
+      clear();
     };
   }, [editor, draw]);
 
