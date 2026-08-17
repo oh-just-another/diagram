@@ -675,7 +675,7 @@ const ColorOpacityControl = ({
         <button
           type="button"
           className="du-sel-color-trigger"
-          title="Color & opacity"
+          title="Text color & opacity"
           aria-label="Text color and opacity"
         >
           <span
@@ -686,7 +686,7 @@ const ColorOpacityControl = ({
       }
     >
       <div className="du-sel-popover-section">
-        <header className="du-sel-popover-label">Color</header>
+        <header className="du-sel-popover-label">Text color</header>
         <ColorSwatchPicker
           value={color}
           onChange={(v) => {
