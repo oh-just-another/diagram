@@ -32,7 +32,6 @@ import type { Editor, Mode } from "@oh-just-another/state";
 import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
 import { useEditorSelector } from "../core/context.js";
 import { useActiveTool, useDiagramOptional, useHistory, useReadOnly } from "../core/hooks.js";
-import { TOOLBAR_SEPARATOR_HEIGHT } from "../core/constants.js";
 import { Tooltip } from "../primitives/tooltip.js";
 
 /**
@@ -225,7 +224,7 @@ const ShapesAndLinesButton = ({
           className="du-shapes-flyout"
           role="menu"
           aria-label="Shapes and lines"
-          style={vertical ? {} : { top: "calc(100% + 10px)", left: 0 }}
+          style={vertical ? {} : { top: "calc(100% + var(--du-gap))", left: 0 }}
         >
           {SHAPES_FLYOUT_ROWS.map((row, i) => {
             if (row.kind === "divider") return <hr key={i} className="du-shapes-flyout-divider" />;
@@ -697,7 +696,7 @@ export const ZoomDisplay = ({
       style={style}
       onClick={() => editor?.resetZoom()}
     >
-      <span style={{ minWidth: 40, display: "inline-block", textAlign: "center" }}>{percent}</span>
+      <span className="du-zoom-readout">{percent}</span>
     </ToolbarButton>
   );
 };
@@ -715,7 +714,7 @@ export const ZoomWidget = ({
 }) => (
   <span
     className={className}
-    style={{ display: "inline-flex", alignItems: "center", gap: 2, ...style }}
+    style={{ display: "inline-flex", alignItems: "center", gap: "var(--du-gap-sm)", ...style }}
   >
     <ZoomOutButton />
     <ZoomDisplay />
@@ -737,22 +736,8 @@ export const FloatingZoomControls = ({
   readonly style?: CSSProperties;
 }) => (
   <div
-    className={className}
-    style={{
-      position: "absolute",
-      bottom: 16,
-      right: 16,
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 2,
-      padding: "4px 6px",
-      background: "var(--toolbar-bg, #1a1a1a)",
-      border: "1px solid var(--border, #2a2a2a)",
-      borderRadius: 6,
-      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.18)",
-      zIndex: 50,
-      ...style,
-    }}
+    className={`du-button-group du-zoom-floating${className ? ` ${className}` : ""}`}
+    style={style}
   >
     <ZoomOutButton />
     <ZoomDisplay />
@@ -795,8 +780,8 @@ const ToolbarButton = ({
         // characters or short words. Match the IconButton height but
         // let the width grow with the content.
         width: "auto",
-        minWidth: "var(--du-button-size, 36px)",
-        padding: "0 8px",
+        minWidth: "var(--du-button-size)",
+        padding: "0 var(--du-space-md)",
         ...style,
       }}
     >
@@ -808,23 +793,6 @@ const ToolbarButton = ({
   return title ? <Tooltip content={title}>{btn}</Tooltip> : btn;
 };
 
-const ToolbarDivider = ({ vertical = false }: { readonly vertical?: boolean }) =>
-  vertical ? (
-    <span
-      style={{
-        height: 1,
-        width: "100%",
-        background: "var(--du-ui-border, #333)",
-        margin: "4px 0",
-      }}
-    />
-  ) : (
-    <span
-      style={{
-        width: 1,
-        height: TOOLBAR_SEPARATOR_HEIGHT,
-        background: "var(--du-ui-border, #333)",
-        margin: "0 4px",
-      }}
-    />
-  );
+const ToolbarDivider = ({ vertical = false }: { readonly vertical?: boolean }) => (
+  <span className={`du-toolbar-divider${vertical ? " is-vertical" : ""}`} />
+);

@@ -972,7 +972,7 @@ const EditorShell = ({
             top: "50%",
             left: `calc(env(safe-area-inset-left, 0px) + ${toolbarLeft}px)`,
             transform: "translateY(-50%)",
-            zIndex: 60,
+            zIndex: "var(--du-z-ui)",
           }}
         />
       ) : null}
@@ -984,18 +984,7 @@ const EditorShell = ({
           <TopBar
             left={
               <ButtonGroup ariaLabel="Logo and main menu">
-                <span
-                  aria-label="Diagram"
-                  title="Diagram"
-                  className="du-icon-button"
-                  style={{
-                    minWidth: 36,
-                    padding: "0 10px",
-                    cursor: "default",
-                    fontWeight: 600,
-                    letterSpacing: 0.5,
-                  }}
-                >
+                <span aria-label="Diagram" title="Diagram" className="du-icon-button du-brand">
                   ⌗
                 </span>
                 {!hideMainMenu && (
@@ -1490,21 +1479,7 @@ const EditorShell = ({
           zen mode with the rest of the chrome. Reads the editor from context.
           The bottom offset clears the bottom bar (inset + bar height + gap). */}
       {minimapVisible && !zen && (
-        <div
-          style={{
-            position: "absolute",
-            right: "var(--du-bar-inset, 16px)",
-            // Clears the bottom bar: inset + bar height (button + 2×pad + border) + gap.
-            bottom:
-              "calc(var(--du-bar-inset, 16px) + var(--du-button-size, 40px) + 2 * var(--du-pad-sm, 4px) + 2px + var(--du-gap, 8px))",
-            border: "1px solid var(--du-ui-border)",
-            borderRadius: "var(--du-radius, 8px)",
-            background: "var(--du-ui-bg-solid, #fff)",
-            boxShadow: "var(--du-ui-shadow)",
-            overflow: "hidden",
-            zIndex: 40,
-          }}
-        >
+        <div className="du-minimap-dock">
           <Minimap />
         </div>
       )}
@@ -1513,14 +1488,7 @@ const EditorShell = ({
           bar while the brush or eraser is active (DrawingPanel self-gates on
           mode). Hidden in zen mode with the rest of the chrome. */}
       {!hideDrawingPanel && !zen && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(var(--du-bar-inset, 12px) + 52px)",
-            right: "var(--du-bar-inset, 12px)",
-            zIndex: 40,
-          }}
-        >
+        <div className="du-tool-options-dock">
           <DrawingPanel />
         </div>
       )}
@@ -1614,8 +1582,7 @@ const ZoomControls = ({
       <MainMenu
         ariaLabel="Zoom menu"
         placement="top-end"
-        triggerClassName="du-icon-button du-icon-button-flat"
-        triggerStyle={{ minWidth: 56, padding: "0 8px" }}
+        triggerClassName="du-icon-button du-icon-button-flat du-zoom-trigger"
         trigger={<>{Math.round(zoom * 100)}%</>}
       >
         {fullscreen.supported ? (

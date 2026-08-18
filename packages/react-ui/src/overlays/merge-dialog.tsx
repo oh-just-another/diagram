@@ -75,17 +75,20 @@ export const MergeDialog = ({
         ...style,
       }}
     >
-      <header style={{ padding: 12, borderBottom: "1px solid var(--border, #2a2a2a)" }}>
-        <h2 style={{ margin: 0, fontSize: 14 }}>Merge branches</h2>
-        <p style={{ margin: "4px 0 0", fontSize: 11, opacity: 0.7 }}>
+      <header
+        className="du-modal-header"
+        style={{ flexDirection: "column", alignItems: "stretch" }}
+      >
+        <h2 className="du-modal-title">Merge branches</h2>
+        <p className="du-modal-subtitle">
           Auto-applied {report.applied.length} change{report.applied.length === 1 ? "" : "s"}.{" "}
           {report.conflicts.length} conflict{report.conflicts.length === 1 ? "" : "s"} need
           resolution.
         </p>
       </header>
-      <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
+      <div className="du-modal-body" style={{ flex: 1, overflowY: "auto" }}>
         {report.conflicts.length === 0 ? (
-          <p style={{ margin: 0, opacity: 0.7 }}>No conflicts — ready to apply.</p>
+          <p className="du-modal-subtitle">No conflicts — ready to apply.</p>
         ) : (
           report.conflicts.map((c) => (
             <ConflictRow
@@ -99,15 +102,7 @@ export const MergeDialog = ({
           ))
         )}
       </div>
-      <footer
-        style={{
-          display: "flex",
-          gap: 8,
-          justifyContent: "flex-end",
-          padding: 12,
-          borderTop: "1px solid var(--border, #2a2a2a)",
-        }}
-      >
+      <footer className="du-modal-footer">
         <button type="button" onClick={onCancel}>
           Cancel
         </button>
@@ -128,20 +123,13 @@ const ConflictRow = ({
   readonly pick: ConflictResolution;
   readonly onPick: (p: ConflictResolution) => void;
 }) => (
-  <div
-    style={{
-      marginBottom: 12,
-      padding: 8,
-      border: "1px solid var(--border, #2a2a2a)",
-      borderRadius: 4,
-    }}
-  >
-    <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
+  <div className="du-merge-conflict">
+    <div className="du-merge-conflict-title">
       {conflict.kind} • {String(conflict.id)}
     </div>
-    <div style={{ display: "flex", gap: 8 }}>
+    <div className="du-merge-conflict-picks">
       {(["source", "target", "both"] as const).map((side) => (
-        <label key={side} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+        <label key={side} className="du-merge-conflict-pick">
           <input
             type="radio"
             checked={pick === side}

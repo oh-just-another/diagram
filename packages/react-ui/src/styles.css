@@ -19,73 +19,156 @@
  * value in `packages/tokens/src/colors.ts`.
  */
 
+/* ================================================================== */
+/* DESIGN TOKENS                                                        */
+/* Every component reads its colours, sizes and rhythm through these    */
+/* custom properties. They are grouped by TYPE; hosts override any of   */
+/* them in their own stylesheet. Theme-dependent groups (colour,        */
+/* elevation) are re-declared per theme scope below; the rest are       */
+/* theme-neutral and live here only.                                    */
+/* ================================================================== */
 :root {
-  /* --- Surfaces (from UI_SURFACE.light) --- */
-  --du-canvas-bg: #f5f5f5; /* UI_SURFACE.light.canvas */
-  --du-ui-bg: rgba(255, 255, 255, 0.95); /* UI_SURFACE.light.bg */
-  --du-ui-bg-solid: #ffffff; /* UI_SURFACE.light.bgSolid */
-  --du-ui-border: rgba(0, 0, 0, 0.08); /* UI_SURFACE.light.border */
-  --du-ui-shadow: 0 2px 8px rgba(34, 36, 40, 0.12), 0 0 12px rgba(34, 36, 40, 0.04);
+  /* ---- Colour · surfaces (UI_SURFACE.light in @oh-just-another/tokens) ---- */
+  --du-canvas-bg: #f5f5f5; /* paper under the scene — NOT themed (see dark note) */
+  --du-ui-bg: rgba(255, 255, 255, 0.95); /* translucent chrome (bars, groups) */
+  --du-ui-bg-solid: #ffffff; /* opaque chrome (menus, popovers, panels) */
+  --du-ui-border: rgba(0, 0, 0, 0.08); /* hairline on every chrome edge */
+  --du-hover-overlay: rgba(0, 0, 0, 0.05); /* hover wash on flat controls */
+  --du-scrim: rgba(0, 0, 0, 0.55); /* backdrop behind modals / sheets */
 
-  /* --- Text (from UI_SURFACE.light) --- */
-  --du-text: #1a1a1a; /* UI_SURFACE.light.text */
-  --du-text-muted: #6b6b6b; /* UI_SURFACE.light.textMuted */
+  /* ---- Colour · text ---- */
+  --du-text: #1a1a1a;
+  --du-text-muted: #6b6b6b; /* captions, shortcuts, group titles */
   --du-text-on-accent: #ffffff;
 
-  /* --- Accent (from UI_ACCENT.light — Radix iris) --- */
-  --du-accent: #5b5bd6; /* UI_ACCENT.light.accent (iris.iris9) */
-  --du-accent-hover: #5151cd; /* UI_ACCENT.light.accentHover (iris.iris10) */
-  --du-danger: #e54d2e; /* UI_ACCENT.light.danger (tomato.tomato9) */
+  /* ---- Colour · accent (UI_ACCENT.light — Radix iris) ---- */
+  --du-accent: #5b5bd6; /* iris9 — focus rings, active glyphs, links */
+  --du-accent-hover: #5151cd; /* iris10 */
+  --du-danger: #e54d2e; /* tomato9 */
+  --du-success: #30a46c; /* grass9 */
+  --du-warning: #ffc53d; /* amber9 */
+  /* Selected state is TONAL: a muted iris wash + iris text, never a
+     saturated fill, so a pressed tool doesn't hijack the eye. */
+  --du-selected-bg: #e6e7ff; /* iris4 */
+  --du-selected-fg: #5753c6; /* iris11 */
 
-  /* --- Selected (tonal, modern-style) --- */
-  /* Active toolbar / icon buttons get a *muted* tonal fill so they
-     read as "this state is selected" without hijacking the eye like
-     a saturated accent fill would. The icon switches to the accent
-     hue, the background stays close to the surface. */
-  --du-selected-bg: #e6e7ff; /* UI_ACCENT.light.selectedBg (iris.iris4) */
-  --du-selected-fg: #5753c6; /* UI_ACCENT.light.selectedFg (iris.iris11) */
+  /* ---- Colour · inverse (tooltip) ---- */
+  --du-tooltip-bg: var(--du-text);
+  --du-tooltip-fg: var(--du-ui-bg-solid);
 
-  /* --- Sizing (reference-aligned: 4-px grid; radius 4 = items, 8 = toolbars /
-     dropdowns, 12 = panels / dialogs; 40-px tool buttons; 16-px screen inset) --- */
-  --du-radius: 8px;
+  /* ---- Elevation — ONE level for every floating chrome surface
+     (toolbars, groups, menus, popovers, panels, minimap), a heavier one
+     for dialogs that sit on a scrim. Tinted with the text colour. ---- */
+  --du-ui-shadow: 0 2px 8px rgba(34, 36, 40, 0.12), 0 0 12px rgba(34, 36, 40, 0.04);
+  --du-modal-shadow: 0 8px 32px rgba(34, 36, 40, 0.24);
+
+  /* ---- Radius — three steps: items inside a group (4), toolbars /
+     dropdowns / popovers (8), panels / dialogs (12); pills are round. ---- */
   --du-radius-sm: 4px;
+  --du-radius: 8px;
   --du-radius-lg: 12px;
-  --du-button-size: 40px;
-  --du-button-size-sm: 32px;
-  --du-icon-size: 20px;
-  --du-gap: 8px;
-  --du-gap-sm: 4px;
-  --du-pad: 8px;
-  --du-pad-sm: 4px;
-  /* --- Typography --- */
-  --du-font-size: 14px;
+  --du-radius-round: 999px;
+
+  /* ---- Spacing — 4-px grid. `--du-gap` / `--du-pad` are the working
+     defaults for chrome (8 = between controls / inside a surface,
+     4 = inside a group / between grouped items). ---- */
+  --du-space-xs: 2px;
+  --du-space-sm: 4px;
+  --du-space-md: 8px;
+  --du-space-lg: 12px;
+  --du-space-xl: 16px;
+  --du-space-2xl: 24px;
+  --du-gap: var(--du-space-md);
+  --du-gap-sm: var(--du-space-sm);
+  --du-pad: var(--du-space-md);
+  --du-pad-sm: var(--du-space-sm);
+
+  /* ---- Sizing · controls ---- */
+  --du-button-size: 40px; /* standalone icon button / bar height driver */
+  --du-button-size-sm: 32px; /* icon button inside a group / panel */
+  --du-touch-size: 44px; /* minimum tap target on coarse pointers */
+  --du-icon-size: 20px; /* toolbar glyph */
+  --du-icon-size-sm: 16px; /* in-row glyph (menus, panels) */
+  --du-input-h: 28px; /* text / search / number inputs */
+  --du-control-h: 24px; /* small inline controls (number input, swatch fill) */
+  --du-swatch-size: 26px; /* colour cell (fill grows from 24 → 26 on hover) */
+  --du-switch-w: 30px;
+  --du-switch-h: 18px;
+  --du-key-h: 22px; /* <kbd> pill in the help dialog */
+  --du-divider-h: 18px; /* vertical separator inside a toolbar row */
+
+  /* ---- Typography — system stack; 14 body, 12 captions, 10 micro caps. ---- */
+  --du-font-family:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --du-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --du-font-size-xs: 10px;
   --du-font-size-sm: 12px;
+  --du-font-size: 14px;
+  --du-font-size-lg: 16px;
+  --du-font-weight: 400;
+  --du-font-weight-strong: 600;
   --du-line-height: 20px;
-  /* --- Menus & popover lists (one system for every menu surface) --- */
-  --du-menu-pad: 8px; /* panel inner padding */
+  --du-caps-tracking: 0.5px; /* letter-spacing of uppercase captions */
+
+  /* ---- Layout — where the static chrome sits ---- */
+  --du-bar-inset: 16px; /* distance from the canvas edge to every bar / panel */
+  /* Height of a bar = group padding + button + padding + border. */
+  --du-bar-height: calc(var(--du-button-size) + 2 * var(--du-pad-sm) + 2px);
+  /* Top edge of anything docked under the top bar / above the bottom bar. */
+  --du-bar-clear: calc(var(--du-bar-inset) + var(--du-bar-height) + var(--du-gap));
+  --du-side-panel-w: 240px;
+
+  /* ---- Menus — one system for the context menu, main / zoom menus, the
+     Shapes and lines flyout and list rows inside popovers. ---- */
+  --du-menu-pad: var(--du-space-md); /* panel inner padding */
   --du-menu-min-w: 240px;
   --du-menu-radius: var(--du-radius);
   --du-menu-row-h: 44px;
-  --du-menu-row-pad-x: 16px;
+  --du-menu-row-pad-x: var(--du-space-xl);
   --du-menu-row-radius: var(--du-radius-sm);
   --du-menu-gutter: 24px; /* icon / check column, same width everywhere */
-  --du-menu-gap: 8px; /* gutter ↔ label */
+  --du-menu-gap: var(--du-space-md); /* gutter ↔ label */
   --du-menu-font: var(--du-font-size);
   --du-menu-shortcut-font: var(--du-font-size-sm);
-  --du-menu-sep: 8px; /* separator / group-title vertical rhythm */
-  /* --- Modals --- */
-  --du-modal-pad-y: 16px;
+  --du-menu-sep: var(--du-space-md); /* separator / group-title vertical rhythm */
+
+  /* ---- Popovers (property controls) ---- */
+  --du-popover-pad: var(--du-pad);
+  --du-popover-min-w: 120px;
+  --du-popover-max-w: 320px;
+
+  /* ---- Modals / dialogs ---- */
+  --du-modal-pad-y: var(--du-space-xl);
   --du-modal-pad-x: 20px;
+  --du-modal-gap: var(--du-space-lg);
   --du-modal-radius: var(--du-radius-lg);
-  --du-modal-gap: 12px;
-  --du-hover-overlay: rgba(0, 0, 0, 0.05);
-  --du-bar-inset: 16px;
+  --du-modal-max-w: 560px;
+  --du-modal-margin: 32px; /* kept clear on each side of the viewport */
+
+  /* ---- Toasts ---- */
+  --du-toast-inset: var(--du-space-xl);
+  --du-toast-min-w: 240px;
+  --du-toast-max-w: 360px;
+
+  /* ---- Tooltip ---- */
+  --du-tooltip-max-w: 260px;
+
+  /* ---- z-index scale (one place; chrome inside the UI layer stacks in
+     its own context, dialogs / toasts / tooltips portal to body) ---- */
   --du-z-canvas: 1;
-  --du-z-ui: 100;
-  --du-z-modal: 1000;
-  /* Context menu (and its submenus) sit above every toolbar, floating
-     panel and popover; only tooltips (10000) stay on top. */
-  --du-z-context-menu: 1700;
+  --du-z-ui: 100; /* UI layer (bars, docks, panels) + bottom sheets */
+  --du-z-link-chrome: 1380; /* sticky reactions, link badges / popups */
+  --du-z-floating: 1500; /* selection floating toolbar */
+  --du-z-popover: 1600; /* popovers, drop menus, caption editor */
+  --du-z-context-menu: 1700; /* above every toolbar, panel and popover */
+  --du-z-modal: 1000; /* body-level dialogs (own stacking context) */
+  --du-z-toast: 1100;
+  --du-z-tooltip: 10000; /* always on top */
+
+  /* ---- Motion ---- */
+  --du-motion-fast: 0.12s ease; /* hover / state changes */
+  --du-motion-press: 0.05s ease; /* press scale */
+  --du-motion-sheet: 0.18s ease; /* bottom-sheet height snap */
 }
 
 /**
@@ -111,6 +194,8 @@
     --du-ui-bg-solid: #252525; /* UI_SURFACE.dark.bgSolid */
     --du-ui-border: rgba(255, 255, 255, 0.08); /* UI_SURFACE.dark.border */
     --du-ui-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 12px rgba(0, 0, 0, 0.25);
+    --du-modal-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    --du-scrim: rgba(0, 0, 0, 0.65);
     --du-text: #e8e8e8; /* UI_SURFACE.dark.text */
     --du-text-muted: #9a9a9a; /* UI_SURFACE.dark.textMuted */
     --du-accent: #5b5bd6; /* UI_ACCENT.dark.accent (irisDark.iris9) */
@@ -131,6 +216,8 @@
   --du-ui-bg-solid: #ffffff;
   --du-ui-border: rgba(0, 0, 0, 0.08);
   --du-ui-shadow: 0 2px 8px rgba(34, 36, 40, 0.12), 0 0 12px rgba(34, 36, 40, 0.04);
+  --du-modal-shadow: 0 8px 32px rgba(34, 36, 40, 0.24);
+  --du-scrim: rgba(0, 0, 0, 0.55);
   --du-text: #1a1a1a;
   --du-text-muted: #6b6b6b;
   --du-accent: #5b5bd6; /* iris.iris9 */
@@ -141,8 +228,8 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* Legacy variable aliases — kept so the older components (MainMenu,  */
-/* ContextMenu, Modal, HelpDialog) that read `var(--panel)` /         */
+/* Legacy variable aliases (DEPRECATED — prefer `--du-*`). Kept so   */
+/* hosts and older components that read `var(--panel)` /              */
 /* `var(--text)` / `var(--button-bg)` etc. still pick up the active   */
 /* theme without being rewritten to the `--du-*` namespace.           */
 /*                                                                    */
@@ -184,7 +271,9 @@
   --toolbar-bg: var(--du-ui-bg-solid);
   --cursor-bg: var(--du-selected-bg);
   --code-bg: var(--du-ui-bg-solid);
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --font-mono: var(--du-font-mono);
+  --panel-fg: var(--du-text);
+  --du-accent-strong: var(--du-accent-hover);
 }
 
 [data-theme="dark"] {
@@ -195,6 +284,8 @@
   --du-ui-bg-solid: #252525;
   --du-ui-border: rgba(255, 255, 255, 0.08);
   --du-ui-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 12px rgba(0, 0, 0, 0.25);
+  --du-modal-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --du-scrim: rgba(0, 0, 0, 0.65);
   --du-text: #e8e8e8;
   --du-text-muted: #9a9a9a;
   --du-accent: #5b5bd6; /* irisDark.iris9 */
@@ -287,13 +378,14 @@
   border: 1px solid var(--du-ui-border);
   border-radius: var(--du-radius);
   cursor: pointer;
-  font-size: 14px;
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size);
   line-height: 1;
   box-shadow: var(--du-ui-shadow);
   transition:
-    background 0.12s ease,
-    color 0.12s ease,
-    transform 0.05s ease;
+    background var(--du-motion-fast),
+    color var(--du-motion-fast),
+    transform var(--du-motion-press);
   padding: 0;
   outline: none;
   user-select: none;
@@ -314,7 +406,7 @@
 
 .du-icon-button:focus-visible {
   outline: 2px solid var(--du-accent);
-  outline-offset: 2px;
+  outline-offset: var(--du-space-xs);
 }
 
 .du-icon-button[aria-pressed="true"],
@@ -450,9 +542,9 @@
   }
   .du-button-group-vertical > .du-icon-button,
   .du-button-group-vertical > .du-shapes-wrap > .du-icon-button {
-    width: 44px !important;
-    min-width: 44px !important;
-    height: 44px !important;
+    width: var(--du-touch-size) !important;
+    min-width: var(--du-touch-size) !important;
+    height: var(--du-touch-size) !important;
   }
 }
 
@@ -483,13 +575,13 @@
 /* ------------------------------------------------------------------ */
 .du-side-panel {
   position: absolute;
-  top: calc(var(--du-bar-inset) + var(--du-button-size) + var(--du-gap));
-  bottom: calc(var(--du-bar-inset) + var(--du-button-size) + var(--du-gap));
-  width: 240px;
+  top: var(--du-bar-clear);
+  bottom: var(--du-bar-clear);
+  width: var(--du-side-panel-w);
   background: var(--du-ui-bg);
   color: var(--du-text);
   border: 1px solid var(--du-ui-border);
-  border-radius: var(--du-radius);
+  border-radius: var(--du-radius-lg);
   box-shadow: var(--du-ui-shadow);
   display: flex;
   flex-direction: column;
@@ -527,9 +619,9 @@
   gap: var(--du-gap-sm);
   padding: var(--du-pad-sm) var(--du-pad-sm) var(--du-pad-sm) var(--du-pad);
   font-size: var(--du-font-size-sm);
-  font-weight: 600;
+  font-weight: var(--du-font-weight-strong);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--du-caps-tracking);
   color: var(--du-text-muted);
 }
 
@@ -555,7 +647,7 @@
    so its long grid can scroll. */
 .du-side-panel-auto-height {
   bottom: auto;
-  max-height: calc(100% - 2 * var(--du-bar-inset) - 2 * var(--du-button-size) - 2 * var(--du-gap));
+  max-height: calc(100% - 2 * var(--du-bar-clear));
 }
 
 .du-side-panel-body {
@@ -601,12 +693,12 @@
   background: transparent;
   color: var(--du-text-muted);
   border: none;
-  padding: 10px 0 6px;
+  padding: var(--du-space-md) 0 var(--du-space-sm);
   font: inherit;
   font-size: var(--du-font-size-sm);
-  font-weight: 600;
+  font-weight: var(--du-font-weight-strong);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--du-caps-tracking);
   text-align: left;
   cursor: pointer;
   display: flex;
@@ -641,7 +733,7 @@
 .du-palette-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--du-space-xs);
   padding: 0 var(--du-pad) var(--du-pad-sm);
 }
 .du-palette-section > .du-palette-list {
@@ -652,15 +744,15 @@
   align-items: center;
   justify-content: flex-start;
   aspect-ratio: auto;
-  gap: 8px;
-  padding: 5px 8px;
+  gap: var(--du-space-md);
+  padding: var(--du-space-sm) var(--du-space-md);
   text-align: left;
   font-size: var(--du-font-size-sm);
   line-height: 1.2;
 }
 .du-palette-list .du-palette-item-icon {
-  width: 20px !important;
-  height: 20px !important;
+  width: var(--du-icon-size) !important;
+  height: var(--du-icon-size) !important;
   flex: 0 0 auto;
 }
 .du-palette-list .du-palette-item-label {
@@ -671,7 +763,7 @@
 }
 
 .du-palette-empty {
-  padding: 24px 12px;
+  padding: var(--du-space-2xl) var(--du-space-lg);
   text-align: center;
   font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
@@ -682,18 +774,18 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--du-space-sm);
   aspect-ratio: 1;
-  padding: 6px 4px;
+  padding: var(--du-space-sm);
   background: transparent;
   color: var(--du-text);
   border: none;
   border-radius: var(--du-radius-sm);
   cursor: grab;
   text-align: center;
-  font-size: 10px;
+  font-size: var(--du-font-size-xs);
   line-height: 1.1;
-  transition: background 0.12s ease;
+  transition: background var(--du-motion-fast);
 }
 
 .du-palette-item:hover {
@@ -735,8 +827,8 @@
 .du-prop-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 4px 0;
+  gap: var(--du-space-xl);
+  padding: var(--du-space-sm) 0;
   color: var(--du-text);
   font-size: var(--du-font-size-sm);
 }
@@ -744,15 +836,15 @@
 .du-prop-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--du-space-sm);
 }
 
 .du-prop-section-label {
   margin: 0;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--du-font-size-xs);
+  font-weight: var(--du-font-weight-strong);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--du-caps-tracking);
   color: var(--du-text-muted);
 }
 
@@ -766,7 +858,7 @@
 .du-prop-row-label {
   font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
-  min-width: 48px;
+  min-width: 48px; /* label column of a prop row */
 }
 
 .du-prop-empty {
@@ -783,7 +875,7 @@
   border: none;
   box-shadow: none;
   padding: 0;
-  gap: 2px;
+  gap: var(--du-space-xs);
 }
 
 /* Tighter active state inside the panel (smaller buttons, same
@@ -798,7 +890,7 @@
 .du-prop-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--du-space-sm);
   cursor: pointer;
   font-size: var(--du-font-size-sm);
   color: var(--du-text);
@@ -806,8 +898,8 @@
 }
 
 .du-prop-checkbox input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
+  width: var(--du-icon-size-sm);
+  height: var(--du-icon-size-sm);
   margin: 0;
   accent-color: var(--du-selected-fg);
   cursor: pointer;
@@ -822,14 +914,14 @@
 .du-swatch-grid {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 4px;
-  max-width: 232px; /* 8 cells (26 × 8 = 208) + 7 gaps × 4 = ~232 */
+  gap: var(--du-space-sm);
+  max-width: calc(8 * var(--du-swatch-size) + 7 * var(--du-space-sm)); /* 8 cells per row */
 }
 
 .du-swatch {
   position: relative;
-  width: 26px;
-  height: 26px;
+  width: var(--du-swatch-size);
+  height: var(--du-swatch-size);
   padding: 0;
   background: transparent;
   border: none;
@@ -840,7 +932,7 @@
   justify-content: center;
   /* Reserve the ring space so width never changes on selection. */
   box-shadow: inset 0 0 0 0 transparent;
-  transition: box-shadow 0.12s ease;
+  transition: box-shadow var(--du-motion-fast);
   /* Suppress the UA tap-highlight on iOS so the cell looks clean
      while the user drags through swatches. */
   -webkit-tap-highlight-color: transparent;
@@ -859,21 +951,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: var(--du-control-h);
+  height: var(--du-control-h);
   border-radius: var(--du-radius-sm);
   border: 1px solid var(--du-ui-border);
   box-sizing: border-box;
   transition:
-    width 0.12s ease,
-    height 0.12s ease,
-    border-color 0.12s ease;
+    width var(--du-motion-fast),
+    height var(--du-motion-fast),
+    border-color var(--du-motion-fast);
 }
 
 .du-swatch:hover .du-swatch-fill,
 .du-swatch:focus-visible .du-swatch-fill {
-  width: 26px;
-  height: 26px;
+  width: var(--du-swatch-size);
+  height: var(--du-swatch-size);
 }
 
 /* Clear (×) + custom-picker (+) cells use the same chrome as a
@@ -987,9 +1079,9 @@
 }
 
 .du-menu-group-title {
-  padding: var(--du-menu-sep) var(--du-menu-row-pad-x) 2px;
+  padding: var(--du-menu-sep) var(--du-menu-row-pad-x) var(--du-space-xs);
   font-size: var(--du-menu-shortcut-font);
-  letter-spacing: 0.5px;
+  letter-spacing: var(--du-caps-tracking);
   color: var(--du-text-muted);
   text-transform: uppercase;
 }
@@ -1009,18 +1101,224 @@
   overflow-y: auto;
 }
 
+.du-modal-footer {
+  display: flex;
+  gap: var(--du-gap);
+  justify-content: flex-end;
+  padding: var(--du-modal-pad-y) var(--du-modal-pad-x);
+  border-top: 1px solid var(--du-ui-border);
+}
+
+.du-modal-title {
+  margin: 0;
+  font-size: var(--du-font-size-lg);
+  font-weight: var(--du-font-weight-strong);
+  line-height: var(--du-line-height);
+  color: var(--du-text);
+}
+
+.du-modal-subtitle {
+  margin: var(--du-space-sm) 0 0;
+  font-size: var(--du-font-size-sm);
+  color: var(--du-text-muted);
+}
+
+/* Flat close glyph in a modal header. */
+.du-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--du-space-sm);
+  color: var(--du-text);
+  background: transparent;
+  border: none;
+  border-radius: var(--du-radius-sm);
+  cursor: pointer;
+}
+
+.du-modal-close:hover {
+  background: var(--du-hover-overlay);
+}
+
+.du-modal-close:focus-visible {
+  outline: 2px solid var(--du-accent);
+  outline-offset: var(--du-space-xs);
+}
+
+/* Merge dialog — one bordered card per conflict. */
+.du-merge-conflict {
+  margin-bottom: var(--du-space-lg);
+  padding: var(--du-space-md);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius-sm);
+}
+
+.du-merge-conflict-title {
+  margin-bottom: var(--du-space-sm);
+  font-size: var(--du-font-size-sm);
+  color: var(--du-text-muted);
+}
+
+.du-merge-conflict-picks {
+  display: flex;
+  gap: var(--du-gap);
+}
+
+.du-merge-conflict-pick {
+  display: flex;
+  align-items: center;
+  gap: var(--du-space-sm);
+  font-size: var(--du-font-size-sm);
+}
+
+/* ------------------------------------------------------------------ */
+/* Toast — top-right stack; the kind accent is the left border, set    */
+/* inline by <ToastItem>.                                              */
+/* ------------------------------------------------------------------ */
+.du-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--du-space-lg);
+  min-width: var(--du-toast-min-w);
+  max-width: var(--du-toast-max-w);
+  padding: var(--du-space-md) var(--du-space-lg);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size);
+  line-height: var(--du-line-height);
+  color: var(--du-text);
+  background: var(--du-ui-bg-solid);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius);
+  box-shadow: var(--du-ui-shadow);
+  pointer-events: auto;
+}
+
+.du-toast-message {
+  flex: 1;
+}
+
+.du-toast-dismiss {
+  padding: 0;
+  font-size: var(--du-font-size-lg);
+  line-height: 1;
+  color: var(--du-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.du-toast-dismiss:hover {
+  color: var(--du-text);
+}
+
+/* ------------------------------------------------------------------ */
+/* Bottom sheet — mobile dialog docked to the bottom edge.             */
+/* ------------------------------------------------------------------ */
+.du-sheet-grip {
+  display: flex;
+  justify-content: center;
+  padding: var(--du-space-md) 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.du-sheet-grip-bar {
+  display: block;
+  width: 36px;
+  height: var(--du-space-sm);
+  border-radius: var(--du-radius-round);
+  background: var(--du-text);
+  opacity: 0.4;
+}
+
+.du-sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--du-space-lg) var(--du-space-lg);
+}
+
+/* ------------------------------------------------------------------ */
+/* Static chrome docks — where the fixed toolbars live.               */
+/* ------------------------------------------------------------------ */
+/* Logo / product name cell at the start of the top-left bar. */
+.du-brand {
+  min-width: var(--du-button-size);
+  padding: 0 var(--du-space-md);
+  font-weight: var(--du-font-weight-strong);
+  letter-spacing: var(--du-caps-tracking);
+  cursor: default;
+}
+
+/* Zoom value trigger (opens the zoom menu) — flat, wide enough for "100%". */
+.du-zoom-trigger {
+  min-width: 56px;
+  padding: 0 var(--du-space-md);
+  font-variant-numeric: tabular-nums;
+}
+
+.du-zoom-readout {
+  display: inline-block;
+  min-width: var(--du-button-size);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Standalone bottom-right zoom cluster (hosts without the bottom bar). */
+.du-zoom-floating {
+  position: absolute;
+  right: var(--du-bar-inset);
+  bottom: var(--du-bar-inset);
+  z-index: var(--du-z-ui);
+}
+
+/* Hairline between button clusters inside a toolbar row / column. */
+.du-toolbar-divider {
+  flex: none;
+  width: 1px;
+  height: var(--du-icon-size);
+  margin: 0 var(--du-space-sm);
+  background: var(--du-ui-border);
+}
+
+.du-toolbar-divider.is-vertical {
+  width: 100%;
+  height: 1px;
+  margin: var(--du-space-sm) 0;
+}
+
+/* Minimap — bottom-right, stacked above the bottom bar. */
+.du-minimap-dock {
+  position: absolute;
+  right: var(--du-bar-inset);
+  bottom: var(--du-bar-clear);
+  z-index: var(--du-z-ui);
+  overflow: hidden;
+  background: var(--du-ui-bg-solid);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius);
+  box-shadow: var(--du-ui-shadow);
+}
+
+/* Tool-options panel (brush / eraser) — top-right, under the top bar. */
+.du-tool-options-dock {
+  position: absolute;
+  top: var(--du-bar-clear);
+  right: var(--du-bar-inset);
+  z-index: var(--du-z-ui);
+}
+
 /* Switch — pill toggle used for on/off settings inside menus. */
 .du-switch {
   position: relative;
   flex: none;
-  width: 30px;
-  height: 18px;
+  width: var(--du-switch-w);
+  height: var(--du-switch-h);
   padding: 0;
-  background: var(--du-ui-border, rgba(0, 0, 0, 0.18));
+  background: var(--du-ui-border);
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--du-radius-round);
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition: background var(--du-motion-fast);
 }
 
 .du-switch.is-on {
@@ -1034,18 +1332,18 @@
 
 .du-switch-knob {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  background: #fff;
+  top: var(--du-space-xs);
+  left: var(--du-space-xs);
+  width: calc(var(--du-switch-h) - 2 * var(--du-space-xs));
+  height: calc(var(--du-switch-h) - 2 * var(--du-space-xs));
+  background: var(--du-text-on-accent);
   border-radius: 50%;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-  transition: transform 0.12s ease;
+  box-shadow: var(--du-ui-shadow);
+  transition: transform var(--du-motion-fast);
 }
 
 .du-switch.is-on .du-switch-knob {
-  transform: translateX(12px);
+  transform: translateX(calc(var(--du-switch-w) - var(--du-switch-h)));
 }
 
 .du-switch:focus-visible {
@@ -1058,7 +1356,7 @@
 .du-slider {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--du-space-md);
   width: 100%;
 }
 
@@ -1067,22 +1365,22 @@
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
-  height: 18px;
+  height: var(--du-switch-h);
   margin: 0;
   padding: 0;
   cursor: pointer;
 }
 
 .du-slider-track::-webkit-slider-runnable-track {
-  height: 4px;
+  height: var(--du-space-sm);
   background: var(--du-selected-bg);
-  border-radius: 2px;
+  border-radius: var(--du-space-xs);
 }
 
 .du-slider-track::-moz-range-track {
-  height: 4px;
+  height: var(--du-space-sm);
   background: var(--du-selected-bg);
-  border-radius: 2px;
+  border-radius: var(--du-space-xs);
   border: none;
 }
 
@@ -1096,7 +1394,7 @@
   border: 2px solid var(--du-ui-bg-solid);
   margin-top: -5px;
   cursor: grab;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--du-ui-shadow);
 }
 
 .du-slider-track::-moz-range-thumb {
@@ -1106,7 +1404,7 @@
   border-radius: 50%;
   border: 2px solid var(--du-ui-bg-solid);
   cursor: grab;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--du-ui-shadow);
 }
 
 .du-slider-track:focus {
@@ -1119,7 +1417,7 @@
 }
 
 .du-slider-value {
-  min-width: 36px;
+  min-width: 36px; /* "100%" */
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-size: var(--du-font-size-sm);
@@ -1131,13 +1429,13 @@
 /* ------------------------------------------------------------------ */
 .du-number-input {
   width: 64px;
-  height: 24px;
+  height: var(--du-control-h);
   box-sizing: border-box;
   background: var(--du-ui-bg-solid);
   color: var(--du-text);
   border: 1px solid var(--du-ui-border);
   border-radius: var(--du-radius-sm);
-  padding: 0 6px;
+  padding: 0 var(--du-space-sm);
   font: inherit;
   font-size: var(--du-font-size-sm);
   font-variant-numeric: tabular-nums;
@@ -1156,13 +1454,14 @@
 
 .du-side-panel-search input[type="search"] {
   width: 100%;
-  height: 28px;
+  height: var(--du-input-h);
   box-sizing: border-box;
   background: var(--du-ui-bg-solid);
   color: var(--du-text);
   border: 1px solid var(--du-ui-border);
   border-radius: var(--du-radius-sm);
-  padding: 0 8px 0 26px;
+  padding: 0 var(--du-space-md) 0
+    calc(var(--du-space-md) + var(--du-icon-size-sm) + var(--du-space-xs));
   font: inherit;
   font-size: var(--du-font-size-sm);
   outline: none;
@@ -1178,7 +1477,7 @@
 
 .du-side-panel-search-icon {
   position: absolute;
-  left: calc(var(--du-pad) + 8px);
+  left: calc(var(--du-pad) + var(--du-space-md));
   top: 50%;
   transform: translateY(-50%);
   color: var(--du-text-muted);
@@ -1192,20 +1491,21 @@
   display: inline-flex;
   align-items: center;
   gap: var(--du-gap-sm);
-  padding: 0 12px;
+  padding: 0 var(--du-space-lg);
   height: var(--du-button-size);
   background: var(--du-ui-bg);
   color: var(--du-text);
   border: 1px solid var(--du-ui-border);
-  border-radius: 999px;
+  border-radius: var(--du-radius-round);
   box-shadow: var(--du-ui-shadow);
   cursor: pointer;
+  font-family: var(--du-font-family);
   font-size: var(--du-font-size);
   line-height: 1;
   white-space: nowrap;
   transition:
-    background 0.15s ease,
-    transform 0.05s ease;
+    background var(--du-motion-fast),
+    transform var(--du-motion-press);
 }
 
 .du-pill-button:hover {
@@ -1221,16 +1521,16 @@
 /* Pointer-events-none so it never blocks hover on neighbour buttons. */
 /* ------------------------------------------------------------------ */
 .du-tooltip {
-  background: var(--du-text);
-  color: var(--du-ui-bg-solid);
-  padding: 4px 8px;
+  background: var(--du-tooltip-bg);
+  color: var(--du-tooltip-fg);
+  padding: var(--du-space-sm) var(--du-space-md);
   border-radius: var(--du-radius-sm);
   font-size: var(--du-font-size-sm);
   line-height: 1.4;
   white-space: nowrap;
   box-shadow: var(--du-ui-shadow);
-  font-family: inherit;
-  max-width: 260px;
+  font-family: var(--du-font-family);
+  max-width: var(--du-tooltip-max-w);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1241,22 +1541,21 @@
 /* ------------------------------------------------------------------ */
 .du-help-islands {
   display: grid;
-  gap: 24px;
+  gap: var(--du-space-2xl);
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
 .du-help-island {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--du-space-md);
 }
 
 .du-help-island-title {
   margin: 0;
   font-size: var(--du-font-size);
-  font-weight: 600;
+  font-weight: var(--du-font-weight-strong);
   color: var(--du-text);
-  letter-spacing: 0.2px;
 }
 
 .du-help-island-rows {
@@ -1269,9 +1568,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: var(--du-space-lg);
+  padding: var(--du-space-md) var(--du-space-lg);
   font-size: var(--du-font-size);
+  line-height: var(--du-line-height);
   color: var(--du-text);
   border-bottom: 1px solid var(--du-ui-border);
 }
@@ -1288,29 +1588,29 @@
 .du-help-keys {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--du-space-sm);
   flex-shrink: 0;
 }
 
 .du-help-keys-separator {
   font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
-  padding: 0 2px;
+  padding: 0 var(--du-space-xs);
 }
 
 .du-help-key {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
+  min-width: var(--du-key-h);
+  height: var(--du-key-h);
+  padding: 0 var(--du-space-sm);
   background: var(--du-selected-bg);
   color: var(--du-selected-fg);
   border-radius: var(--du-radius-sm);
-  font-family: inherit;
+  font-family: var(--du-font-family);
   font-size: var(--du-font-size-sm);
-  font-weight: 600;
+  font-weight: var(--du-font-weight-strong);
   line-height: 1;
   white-space: nowrap;
 }
@@ -1319,7 +1619,7 @@
   font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--du-caps-tracking);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1346,7 +1646,7 @@
   padding: var(--du-pad-sm);
   font-size: var(--du-font-size-sm);
   color: var(--du-text);
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw - 2 * var(--du-bar-inset));
   /* Allow horizontal scroll within the pill when too many controls
      are visible; `shift` middleware clamps the outer position but
      a panel wider than viewport still needs internal overflow. */
@@ -1364,13 +1664,11 @@
   right: 0;
   /* Sit ABOVE the bottom bar (zoom / help) + the home-indicator safe area
      so the two don't overlap. Mirrors the side-panel top offset. */
-  bottom: calc(
-    var(--du-bar-inset) + var(--du-button-size) + var(--du-gap) + env(safe-area-inset-bottom, 0px)
-  );
-  z-index: 1500;
+  bottom: calc(var(--du-bar-clear) + env(safe-area-inset-bottom, 0px));
+  z-index: var(--du-z-floating);
   display: flex;
   justify-content: center;
-  padding: 0 8px;
+  padding: 0 var(--du-space-md);
   pointer-events: none;
 }
 
@@ -1381,10 +1679,10 @@
   flex-direction: column;
   align-items: stretch;
   width: 100%;
-  max-width: 560px;
+  max-width: var(--du-modal-max-w);
   overflow: visible;
-  gap: 6px;
-  padding: 8px;
+  gap: var(--du-space-sm);
+  padding: var(--du-space-md);
 }
 .du-sel-mobile-row {
   display: flex;
@@ -1415,19 +1713,19 @@
   align-items: center;
   gap: var(--du-gap-sm);
   border-top: 1px solid var(--du-ui-border);
-  padding-top: 8px;
+  padding-top: var(--du-space-md);
 }
 /* ≥44px touch targets on the mobile panel (Apple HIG). Standalone icon
    buttons + color triggers grow; grouped segmented buttons stay a touch
    smaller so wide controls (font-size S/M/L/XL) still fit one row. */
 .du-sel-panel-mobile .du-sel-icon-button,
 .du-sel-panel-mobile .du-sel-color-trigger {
-  width: 44px;
-  height: 44px;
+  width: var(--du-touch-size);
+  height: var(--du-touch-size);
 }
 .du-sel-panel-mobile .du-button-group > .du-icon-button {
-  width: 38px;
-  height: 38px;
+  width: calc(var(--du-touch-size) - 6px);
+  height: calc(var(--du-touch-size) - 6px);
 }
 
 /* Flat segmented controls inside the floating panel — no group
@@ -1438,7 +1736,7 @@
   border: none;
   box-shadow: none;
   padding: 0;
-  gap: 2px;
+  gap: var(--du-space-xs);
 }
 
 .du-sel-panel .du-button-group > .du-icon-button {
@@ -1472,9 +1770,9 @@
 
 .du-sel-color-swatch {
   display: inline-block;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
+  width: var(--du-divider-h);
+  height: var(--du-divider-h);
+  border-radius: var(--du-radius-sm);
   border: 1px solid var(--du-ui-border);
   box-sizing: border-box;
 }
@@ -1520,7 +1818,7 @@
   justify-content: center;
   height: var(--du-button-size-sm);
   min-width: var(--du-button-size-sm);
-  padding: 0 8px;
+  padding: 0 var(--du-space-md);
   background: transparent;
   border: none;
   border-radius: var(--du-radius-sm);
@@ -1557,8 +1855,8 @@
 .du-sel-group:not(:empty) ~ .du-sel-group:not(:empty)::before {
   display: inline-block;
   width: 1px;
-  height: 18px;
-  margin: 0 2px;
+  height: var(--du-divider-h);
+  margin: 0 var(--du-space-xs);
   content: "";
   background: var(--du-ui-border);
 }
@@ -1572,26 +1870,26 @@
   border: 1px solid var(--du-ui-border);
   border-radius: var(--du-radius);
   box-shadow: var(--du-ui-shadow);
-  padding: var(--du-pad);
+  padding: var(--du-popover-pad);
   font-size: var(--du-font-size-sm);
   color: var(--du-text);
-  min-width: 120px;
-  max-width: 320px;
+  min-width: var(--du-popover-min-w);
+  max-width: var(--du-popover-max-w);
 }
 
 .du-sel-popover-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--du-space-md);
   min-width: 0;
 }
 
 .du-sel-popover-label {
   margin: 0;
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--du-font-size-xs);
+  font-weight: var(--du-font-weight-strong);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--du-caps-tracking);
   color: var(--du-text-muted);
 }
 
@@ -1625,12 +1923,12 @@
   width: 220px;
   max-width: 60vw;
   box-sizing: border-box;
-  padding: 6px 8px;
+  padding: var(--du-space-sm) var(--du-space-md);
   font-size: var(--du-font-size);
   color: var(--du-text);
   background: var(--du-ui-bg);
   border: 1px solid var(--du-ui-border);
-  border-radius: 4px;
+  border-radius: var(--du-radius-sm);
   outline: none;
 }
 
@@ -1641,8 +1939,8 @@
 
 /* Hover link popup (chip above a linked element). */
 .du-link-popup {
-  z-index: 1400;
-  margin-top: -6px;
+  z-index: var(--du-z-link-chrome);
+  margin-top: calc(-1 * var(--du-space-sm));
   pointer-events: auto;
 }
 
@@ -1650,25 +1948,26 @@
 .du-sel-align-rows {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 4px;
+  gap: var(--du-space-sm);
+  padding: var(--du-space-sm);
 }
 
 .du-sel-align-rows-row {
   display: flex;
-  gap: 4px;
+  gap: var(--du-space-sm);
   justify-content: center;
 }
 
 /* Image file-name input in the toolbar row. */
 .du-sel-name-input {
   width: 140px;
-  padding: 3px 6px;
-  font: 12px system-ui, sans-serif;
-  color: var(--panel-fg, inherit);
+  padding: var(--du-space-xs) var(--du-space-sm);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size-sm);
+  color: var(--du-text);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--du-radius-sm);
 }
 
 .du-sel-name-input:hover,
@@ -1680,34 +1979,36 @@
 /* Sticky Auto font-size toggle inside the size popover. */
 .du-sel-auto-size {
   width: auto;
-  padding: 2px 10px;
-  font: 600 11px system-ui, sans-serif;
+  padding: var(--du-space-xs) var(--du-space-md);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size-sm);
+  font-weight: var(--du-font-weight-strong);
 }
 
 /* Sticky size letters (S / M / L segments). */
 .du-sel-size-letter {
-  font:
-    600 11px system-ui,
-    sans-serif;
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size-sm);
+  font-weight: var(--du-font-weight-strong);
 }
 
 /* Emoji picker grid inside its popover. */
 .du-sel-emoji-grid {
   display: grid;
-  grid-template-columns: repeat(5, 28px);
-  gap: 2px;
-  padding: 4px;
+  grid-template-columns: repeat(5, var(--du-input-h));
+  gap: var(--du-space-xs);
+  padding: var(--du-space-sm);
 }
 
 .du-sel-emoji-item {
-  width: 28px;
-  height: 28px;
+  width: var(--du-input-h);
+  height: var(--du-input-h);
   padding: 0;
-  font-size: 16px;
+  font-size: var(--du-font-size-lg);
   line-height: 1;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--du-radius-sm);
   cursor: pointer;
 }
 
@@ -1719,23 +2020,24 @@
 .du-sel-tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: var(--du-space-sm);
+  margin-bottom: var(--du-space-sm);
 }
 
 .du-sel-tag-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  font: 11px system-ui, sans-serif;
+  gap: var(--du-space-sm);
+  padding: var(--du-space-xs) var(--du-space-md);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size-sm);
   background: var(--menu-bg);
   border: 1px solid var(--menu-border);
-  border-radius: 10px;
+  border-radius: var(--du-radius-round);
 }
 
 .du-sel-tag-remove {
-  padding: 0 2px;
+  padding: 0 var(--du-space-xs);
   font-size: var(--du-font-size-sm);
   line-height: 1;
   color: inherit;
@@ -1749,7 +2051,7 @@
    button / picker anchor. */
 .du-sticky-reactions {
   position: fixed;
-  z-index: 1380;
+  z-index: var(--du-z-link-chrome);
   display: flex;
   align-items: center;
   pointer-events: auto;
@@ -1757,48 +2059,49 @@
 
 .du-sticky-reaction-hit {
   position: fixed;
-  z-index: 1380;
+  z-index: var(--du-z-link-chrome);
   padding: 0;
   background: transparent;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--du-radius-round);
   cursor: pointer;
 }
 
 .du-sticky-reaction-picker {
   position: absolute;
-  bottom: 22px;
+  bottom: var(--du-key-h);
   left: 0;
   display: grid;
-  grid-template-columns: repeat(5, 28px);
-  gap: 2px;
-  padding: 4px;
+  grid-template-columns: repeat(5, var(--du-input-h));
+  gap: var(--du-space-xs);
+  padding: var(--du-space-sm);
   background: var(--menu-bg);
   border: 1px solid var(--menu-border);
-  border-radius: 6px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  border-radius: var(--du-radius);
+  box-shadow: var(--du-ui-shadow);
 }
 
 /* Border-group trigger: an outlined ring showing the stroke colour. */
 .du-sel-swatch-ring {
   background: transparent;
-  border: 3px solid var(--menu-border);
+  border: 3px solid var(--menu-border); /* ring thickness = stroke preview */
 }
 
 /* Frame size preset list inside its popover. */
 .du-sel-preset-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
+  gap: var(--du-space-sm);
 }
 
 .du-sel-preset-item {
-  padding: 4px 8px;
-  font: 12px system-ui, sans-serif;
-  color: var(--panel-fg, inherit);
+  padding: var(--du-space-sm) var(--du-space-md);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size-sm);
+  color: var(--du-text);
   background: transparent;
   border: 1px solid var(--menu-border);
-  border-radius: 4px;
+  border-radius: var(--du-radius-sm);
   cursor: pointer;
 }
 
@@ -1809,30 +2112,31 @@
 /* Alt-text textarea inside its popover. */
 .du-sel-alt-input {
   width: 200px;
-  padding: 4px 6px;
-  font: 12px system-ui, sans-serif;
-  color: var(--panel-fg, inherit);
+  padding: var(--du-space-sm);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size-sm);
+  color: var(--du-text);
   background: transparent;
   border: 1px solid var(--menu-border);
-  border-radius: 4px;
+  border-radius: var(--du-radius-sm);
   resize: vertical;
 }
 
 /* Persistent link badge at an element's top-right corner. Slightly offset
    outward so it reads as attached to the shape without covering content. */
 .du-link-badge {
-  z-index: 1390;
+  z-index: var(--du-z-link-chrome);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: var(--du-divider-h);
+  height: var(--du-divider-h);
   padding: 0;
   color: var(--du-accent);
   background: var(--menu-bg);
   border: 1px solid var(--menu-border);
   border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--du-ui-shadow);
   transform: translate(-40%, -60%);
   cursor: pointer;
   pointer-events: auto;
@@ -1846,21 +2150,17 @@
 .du-link-popup-url {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--du-space-sm);
   max-width: 280px;
-  padding: 4px 8px;
-  font:
-    12px system-ui,
-    -apple-system,
-    Segoe UI,
-    Roboto,
-    sans-serif;
+  padding: var(--du-space-sm) var(--du-space-md);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size-sm);
   color: var(--du-accent);
   text-decoration: none;
   background: var(--menu-bg);
   border: 1px solid var(--menu-border);
-  border-radius: 6px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  border-radius: var(--du-radius);
+  box-shadow: var(--du-ui-shadow);
   cursor: pointer;
 }
 
@@ -1879,18 +2179,18 @@
 .du-arrowhead-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 2px;
-  margin-top: 4px;
+  gap: var(--du-space-xs);
+  margin-top: var(--du-space-sm);
 }
 .du-arrowhead-option {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 30px;
-  height: 26px;
-  padding: 2px;
+  min-width: var(--du-swatch-size);
+  height: var(--du-swatch-size);
+  padding: var(--du-space-xs);
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--du-radius-sm);
   background: transparent;
   cursor: pointer;
   color: var(--du-text);
@@ -1906,12 +2206,12 @@
   opacity: 0.6;
 }
 .du-arrowhead-erd-label {
-  font-size: 9px;
+  font-size: var(--du-font-size-xs);
   line-height: 1.05;
   text-align: center;
 }
 .du-arrowhead-erd-toggle {
-  margin-top: 6px;
+  margin-top: var(--du-space-sm);
   width: 100%;
   text-align: left;
   border: none;
@@ -1919,7 +2219,7 @@
   cursor: pointer;
   font-size: var(--du-font-size-sm);
   color: var(--du-text-muted);
-  padding: 2px 0;
+  padding: var(--du-space-xs) 0;
 }
 .du-arrowhead-erd-toggle:hover {
   color: var(--du-text);
@@ -1929,17 +2229,16 @@
 .du-link-caption-input {
   min-width: 60px;
   max-width: 220px;
-  padding: 2px 6px;
-  font:
-    12px system-ui,
-    sans-serif;
+  padding: var(--du-space-xs) var(--du-space-sm);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size-sm);
   line-height: 1.25;
   text-align: center;
   color: var(--du-text);
   background: var(--du-ui-bg-solid);
   border: 1px solid var(--du-accent);
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  border-radius: var(--du-radius-sm);
+  box-shadow: var(--du-ui-shadow);
   outline: none;
   resize: none;
   overflow: hidden;
@@ -1948,22 +2247,22 @@
 /* Mini shape-picker shown after a link is dropped on empty canvas. */
 .du-link-drop-menu {
   display: flex;
-  gap: 2px;
-  padding: 4px;
+  gap: var(--du-space-xs);
+  padding: var(--du-space-sm);
   background: var(--du-ui-bg-solid);
   border: 1px solid var(--du-ui-border);
-  border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  border-radius: var(--du-radius);
+  box-shadow: var(--du-ui-shadow);
 }
 .du-link-drop-item {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 4px;
+  width: var(--du-button-size-sm);
+  height: var(--du-button-size-sm);
+  padding: var(--du-space-sm);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--du-radius-sm);
   background: transparent;
   cursor: pointer;
   color: var(--du-text);
@@ -1984,8 +2283,8 @@
 /* Mask picker tiles inside the image-mask popover. */
 .du-sel-mask-tiles {
   display: flex;
-  gap: 4px;
-  margin-bottom: 6px;
+  gap: var(--du-space-sm);
+  margin-bottom: var(--du-space-sm);
 }
 
 /* Aspect-preset rows in the mask popover: icon + name, crop ratio
@@ -1993,7 +2292,7 @@
 .du-sel-mask-list {
   display: flex;
   flex-direction: column;
-  margin-bottom: 6px;
+  margin-bottom: var(--du-space-sm);
 }
 
 .du-sel-mask-row {
@@ -2030,8 +2329,8 @@
 .du-shapes-flyout {
   position: absolute;
   top: 0;
-  left: calc(100% + 10px);
-  z-index: 900;
+  left: calc(100% + var(--du-gap));
+  z-index: var(--du-z-ui);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;

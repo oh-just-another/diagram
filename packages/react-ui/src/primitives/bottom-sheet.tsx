@@ -112,17 +112,17 @@ export const BottomSheet = ({
         right: 0,
         bottom: 0,
         height: `${current}vh`,
-        background: "var(--panel, #1a1a1a)",
-        color: "var(--text, #ddd)",
-        borderTop: "1px solid var(--border, #2a2a2a)",
-        borderTopLeftRadius: 12,
-        borderTopRightRadius: 12,
-        boxShadow: "0 -4px 18px rgba(0,0,0,0.4)",
+        background: "var(--du-ui-bg-solid)",
+        color: "var(--du-text)",
+        borderTop: "1px solid var(--du-ui-border)",
+        borderTopLeftRadius: "var(--du-radius-lg)",
+        borderTopRightRadius: "var(--du-radius-lg)",
+        boxShadow: "var(--du-modal-shadow)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        transition: dragState.current ? "none" : "height 180ms ease",
-        zIndex: 100,
+        transition: dragState.current ? "none" : "height var(--du-motion-sheet)",
+        zIndex: "var(--du-z-ui)",
         ...style,
       }}
     >
@@ -133,27 +133,11 @@ export const BottomSheet = ({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        style={{
-          touchAction: "none",
-          padding: "8px 0",
-          display: "flex",
-          justifyContent: "center",
-          cursor: "grab",
-        }}
+        className="du-sheet-grip"
       >
-        <span
-          aria-hidden
-          style={{
-            display: "block",
-            width: 36,
-            height: 4,
-            borderRadius: 2,
-            background: "var(--text, #ddd)",
-            opacity: 0.4,
-          }}
-        />
+        <span aria-hidden className="du-sheet-grip-bar" />
       </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 12px" }}>{children}</div>
+      <div className="du-sheet-body">{children}</div>
     </div>
   );
 };

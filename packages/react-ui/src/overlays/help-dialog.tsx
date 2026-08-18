@@ -168,7 +168,7 @@ export const HelpDialog = ({
 
   const modalStyle: CSSProperties = {
     maxWidth: HELP_DIALOG_MAX_WIDTH_PX,
-    width: "calc(100vw - 64px)",
+    width: "calc(100vw - 2 * var(--du-modal-margin))",
     display: "flex",
     flexDirection: "column",
   };
@@ -177,23 +177,14 @@ export const HelpDialog = ({
     <Modal open={open} onClose={onClose} title={title} style={modalStyle}>
       <div>
         <div className="du-modal-header">
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{title}</h2>
+          <h2 className="du-modal-title">{title}</h2>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--du-modal-gap)" }}>
             <span className="du-help-platform-badge">{isMac ? "macOS" : "Win / Linux"}</span>
             <button
               type="button"
               aria-label="Close help"
               onClick={onClose}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "var(--du-text)",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 4,
-              }}
+              className="du-modal-close"
             >
               <X size={18} strokeWidth={1.75} />
             </button>

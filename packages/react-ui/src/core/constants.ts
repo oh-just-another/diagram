@@ -37,9 +37,6 @@ export const LAYER_SWATCH_SIZE = 22;
 /** Width of the comments popover, in CSS pixels. */
 export const COMMENTS_PANEL_WIDTH = 280;
 
-/** Pixel height of the toolbar vertical separator. */
-export const TOOLBAR_SEPARATOR_HEIGHT = 20;
-
 /**
  * Default auto-dismiss time for a toast (ms). 0 / Infinity keep it
  * open until the user clicks the × — useful for sticky errors.

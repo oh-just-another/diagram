@@ -53,7 +53,7 @@ export const LinkDropShapeMenu = () => {
       {/* Click-away catcher — dismiss, leaving the free-ended link. */}
       <div
         className="du-link-drop-backdrop"
-        style={{ position: "fixed", inset: 0, zIndex: 1600 }}
+        style={{ position: "fixed", inset: 0, zIndex: "var(--du-z-popover)" }}
         onPointerDown={() => {
           editor.dismissLinkDropMenu();
         }}
@@ -67,7 +67,7 @@ export const LinkDropShapeMenu = () => {
           left: sx,
           top: sy,
           transform: "translate(-50%, -100%)",
-          zIndex: 1601,
+          zIndex: "calc(var(--du-z-popover) + 1)",
         }}
         onPointerDown={(e) => {
           e.stopPropagation();
