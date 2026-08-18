@@ -74,7 +74,6 @@ import {
   SelectionFloatingPanel,
   SearchOverlay,
   StatsPanel,
-  Switch,
   TextEditorOverlay,
   FrameNameEditorOverlay,
   PortalContainerProvider,
@@ -1068,15 +1067,7 @@ const EditorShell = ({
                             onClick={() => {
                               toggleExportContent("stickyReactions");
                             }}
-                            trailing={
-                              <Switch
-                                checked={exportContent?.stickyReactions !== false}
-                                onChange={() => {
-                                  toggleExportContent("stickyReactions");
-                                }}
-                                ariaLabel="Sticky reactions"
-                              />
-                            }
+                            checked={exportContent?.stickyReactions !== false}
                           >
                             Sticky reactions
                           </MainMenu.Item>
@@ -1085,15 +1076,7 @@ const EditorShell = ({
                             onClick={() => {
                               toggleExportContent("stickyTags");
                             }}
-                            trailing={
-                              <Switch
-                                checked={exportContent?.stickyTags !== false}
-                                onChange={() => {
-                                  toggleExportContent("stickyTags");
-                                }}
-                                ariaLabel="Sticky tags"
-                              />
-                            }
+                            checked={exportContent?.stickyTags !== false}
                           >
                             Sticky tags
                           </MainMenu.Item>
@@ -1102,15 +1085,7 @@ const EditorShell = ({
                             onClick={() => {
                               toggleExportContent("stickyAuthor");
                             }}
-                            trailing={
-                              <Switch
-                                checked={exportContent?.stickyAuthor !== false}
-                                onChange={() => {
-                                  toggleExportContent("stickyAuthor");
-                                }}
-                                ariaLabel="Sticky author"
-                              />
-                            }
+                            checked={exportContent?.stickyAuthor !== false}
                           >
                             Sticky author
                           </MainMenu.Item>
@@ -1256,13 +1231,7 @@ const EditorShell = ({
                           icon={<Magnet {...menuIcon} />}
                           keepOpen
                           onClick={() => editor?.setSnapToGrid(!editor.snapToGridEnabled)}
-                          trailing={
-                            <Switch
-                              checked={snapSelection(editor) === "on"}
-                              onChange={(on) => editor?.setSnapToGrid(on)}
-                              ariaLabel="Snap to grid"
-                            />
-                          }
+                          checked={snapSelection(editor) === "on"}
                         >
                           Snap to grid
                         </MainMenu.Item>
@@ -1271,13 +1240,7 @@ const EditorShell = ({
                         icon={<Ruler {...menuIcon} />}
                         keepOpen
                         onClick={() => editor?.setPreferences({ showObjectSize: !showObjectSize })}
-                        trailing={
-                          <Switch
-                            checked={showObjectSize}
-                            onChange={(on) => editor?.setPreferences({ showObjectSize: on })}
-                            ariaLabel="Object dimensions"
-                          />
-                        }
+                        checked={showObjectSize}
                       >
                         Object dimensions
                       </MainMenu.Item>
@@ -1285,13 +1248,7 @@ const EditorShell = ({
                         icon={<MapIcon {...menuIcon} />}
                         keepOpen
                         onClick={onToggleMinimap}
-                        trailing={
-                          <Switch
-                            checked={minimapVisible}
-                            onChange={onToggleMinimap}
-                            ariaLabel="Minimap"
-                          />
-                        }
+                        checked={minimapVisible}
                       >
                         Minimap
                       </MainMenu.Item>
@@ -1348,13 +1305,7 @@ const EditorShell = ({
                         icon={<Magnet {...menuIcon} />}
                         keepOpen
                         onClick={() => editor?.setPreferences({ snapObjects: !snapObjects })}
-                        trailing={
-                          <Switch
-                            checked={snapObjects}
-                            onChange={(on) => editor?.setPreferences({ snapObjects: on })}
-                            ariaLabel="Snap objects"
-                          />
-                        }
+                        checked={snapObjects}
                       >
                         Snap objects
                       </MainMenu.Item>
@@ -1364,13 +1315,7 @@ const EditorShell = ({
                         onClick={() =>
                           editor?.setPreferences({ suggestObjectSize: !suggestObjectSize })
                         }
-                        trailing={
-                          <Switch
-                            checked={suggestObjectSize}
-                            onChange={(on) => editor?.setPreferences({ suggestObjectSize: on })}
-                            ariaLabel="Suggest object size"
-                          />
-                        }
+                        checked={suggestObjectSize}
                       >
                         Suggest object size
                       </MainMenu.Item>
@@ -1616,13 +1561,7 @@ const ZoomControls = ({
           onClick={() => {
             setShowObjectSize(!showObjectSize);
           }}
-          trailing={
-            <Switch
-              checked={showObjectSize}
-              onChange={setShowObjectSize}
-              ariaLabel="Object dimensions"
-            />
-          }
+          checked={showObjectSize}
         >
           Object dimensions
         </MainMenu.Item>

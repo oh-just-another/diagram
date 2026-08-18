@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { Check, ChevronRight, Menu as MenuIcon } from "lucide-react";
+import { Switch } from "../primitives/switch.js";
 
 /** Pixel size for the trigger icon — matches the toolbar tool buttons. */
 const TRIGGER_ICON_SIZE = 16;
@@ -245,8 +246,15 @@ export interface MainMenuItemProps {
    * aligned across mixed icon / no-icon items.
    */
   readonly icon?: ReactNode;
-  /** Trailing control on the right (e.g. a `Switch`); rendered instead of `shortcut`. */
+  /** Trailing content on the right (non-interactive); rendered instead of `shortcut`. */
   readonly trailing?: ReactNode;
+  /**
+   * On/off setting row: renders as `menuitemcheckbox` with a trailing
+   * switch that mirrors `checked`. The row itself is the control —
+   * `onClick` toggles the value — so the switch is decorative (nested
+   * buttons are invalid HTML). Implies `keepOpen`.
+   */
+  readonly checked?: boolean;
   /**
    * Keep the menu open after a click — for checkbox-style items (export
    * content switches, etc.) where the user toggles several in a row.
@@ -262,19 +270,22 @@ const Item = ({
   active,
   icon,
   trailing,
+  checked,
   keepOpen,
 }: MainMenuItemProps) => {
   const { close } = useMenuCtx();
   const level = useContext(LevelCtx);
+  const isCheckbox = checked !== undefined;
   return (
     <button
       type="button"
-      role="menuitem"
+      role={isCheckbox ? "menuitemcheckbox" : "menuitem"}
+      aria-checked={isCheckbox ? checked : undefined}
       disabled={disabled}
       onClick={() => {
         if (disabled) return;
         onClick?.();
-        if (!keepOpen) close();
+        if (!keepOpen && !isCheckbox) close();
       }}
       onMouseEnter={() => level?.closeSoon()}
       className="du-menu-row"
@@ -283,7 +294,11 @@ const Item = ({
         <Gutter active={active === true} icon={icon} />
         {children}
       </span>
-      {trailing ?? (shortcut ? <span className="du-menu-shortcut">{shortcut}</span> : null)}
+      {isCheckbox ? (
+        <Switch checked={checked} presentational />
+      ) : (
+        (trailing ?? (shortcut ? <span className="du-menu-shortcut">{shortcut}</span> : null))
+      )}
     </button>
   );
 };

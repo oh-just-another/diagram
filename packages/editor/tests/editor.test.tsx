@@ -264,19 +264,21 @@ describe("<Editor> — zoom menu", () => {
     expect(trigger.textContent).toBe("400%");
   });
 
-  it("the Object dimensions switch flips the preference and keeps the menu open", async () => {
+  it("the Object dimensions row flips the preference and keeps the menu open", async () => {
     const { ref } = await mountEditor({});
     act(() => {
       screen.getByRole("button", { name: "Zoom menu" }).click();
     });
-    const sw = screen.getByRole("switch", { name: "Object dimensions" });
+    const sw = screen.getByRole("menuitemcheckbox", { name: "Object dimensions" });
     expect(sw.getAttribute("aria-checked")).toBe("true");
     act(() => {
       sw.click();
     });
     expect(ref.current?.editor?.preferences.showObjectSize).toBe(false);
     expect(
-      screen.getByRole("switch", { name: "Object dimensions" }).getAttribute("aria-checked"),
+      screen
+        .getByRole("menuitemcheckbox", { name: "Object dimensions" })
+        .getAttribute("aria-checked"),
     ).toBe("false");
   });
 
@@ -311,7 +313,7 @@ describe("<Editor> — nested main menu", () => {
     act(() => {
       screen.getByText("View").click();
     });
-    expect(screen.getByRole("switch", { name: "Object dimensions" })).toBeTruthy();
+    expect(screen.getByRole("menuitemcheckbox", { name: "Object dimensions" })).toBeTruthy();
     act(() => {
       screen.getByText("Grid").click();
     });
