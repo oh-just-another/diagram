@@ -103,10 +103,10 @@ export const MergeDialog = ({
         )}
       </div>
       <footer className="du-modal-footer">
-        <button type="button" onClick={onCancel}>
+        <button type="button" className="du-button" onClick={onCancel}>
           Cancel
         </button>
-        <button type="button" onClick={onApplyClick}>
+        <button type="button" className="du-button du-button-primary" onClick={onApplyClick}>
           Apply
         </button>
       </footer>

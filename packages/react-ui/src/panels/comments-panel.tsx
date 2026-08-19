@@ -1,8 +1,12 @@
 import { useState, type CSSProperties } from "react";
+import { ChevronDown, X } from "lucide-react";
 import { useAnnotations, useDiagramOptional, useSelectedAnnotation } from "../core/hooks.js";
-import { COMMENTS_PANEL_WIDTH } from "../core/constants.js";
 import { formatTime } from "../utils/format-time.js";
 import { Markdown } from "../primitives/markdown.js";
+
+const GLYPH_SIZE = 16;
+const GLYPH_STROKE = 1.75;
+const glyph = { size: GLYPH_SIZE, strokeWidth: GLYPH_STROKE } as const;
 
 /**
  * Side-panel listing every annotation thread in the scene. Each row is
@@ -10,6 +14,8 @@ import { Markdown } from "../primitives/markdown.js";
  * highlights the pin). Resolved threads render dimmed. Hosts that want
  * a different layout can compose their own from `useAnnotations` +
  * `editor.setSelectedAnnotation`.
+ *
+ * Renders as a static side-panel card (`du-side-panel du-side-panel-static`).
  */
 export interface CommentsPanelProps {
   readonly style?: CSSProperties;
@@ -23,33 +29,15 @@ export const CommentsPanel = ({ style, className }: CommentsPanelProps) => {
 
   return (
     <aside
-      className={className}
-      style={{
-        flex: "0 0 240px",
-        background: "var(--panel, #161616)",
-        color: "var(--text, #ddd)",
-        borderLeft: "1px solid var(--border, #2a2a2a)",
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        ...style,
-      }}
+      className={`du-side-panel du-side-panel-static${className ? ` ${className}` : ""}`}
+      style={style}
     >
-      <header
-        style={{
-          padding: "8px 12px",
-          fontSize: 11,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          color: "var(--muted, #888)",
-          borderBottom: "1px solid var(--border, #2a2a2a)",
-        }}
-      >
-        Comments ({annotations.length})
+      <header className="du-side-panel-header">
+        <span className="du-side-panel-title">Comments ({annotations.length})</span>
       </header>
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div className="du-side-panel-body du-side-panel-body-flush du-panel-list">
         {annotations.length === 0 ? (
-          <div style={{ padding: "16px 12px", color: "var(--faint, #555)", fontSize: 12 }}>
+          <div className="du-panel-empty">
             No comments yet. Right-click on the canvas to add one.
           </div>
         ) : (
@@ -61,43 +49,17 @@ export const CommentsPanel = ({ style, className }: CommentsPanelProps) => {
                 key={ann.id}
                 type="button"
                 onClick={() => editor?.setSelectedAnnotation(ann.id)}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "8px 12px",
-                  border: "none",
-                  borderLeft: isOpen ? "3px solid var(--accent, #5b5bd6)" : "3px solid transparent",
-                  background: isOpen ? "var(--cursor-bg, rgba(26,115,232,0.12))" : "transparent",
-                  color: "inherit",
-                  cursor: "pointer",
-                  opacity: ann.resolved ? 0.55 : 1,
-                  borderBottom: "1px solid var(--divider, #333)",
-                  font: "inherit",
-                  fontSize: 12,
-                }}
+                aria-current={isOpen ? "true" : undefined}
+                className={`du-panel-row du-panel-row-stack${isOpen ? " is-active" : ""}${
+                  ann.resolved ? " is-muted" : ""
+                }`}
               >
-                <div style={{ display: "flex", gap: 6, marginBottom: 2 }}>
-                  <span style={{ fontWeight: 600 }}>{first?.authorName ?? "—"}</span>
-                  {ann.thread.length > 1 ? (
-                    <span style={{ color: "var(--muted, #888)" }}>+{ann.thread.length - 1}</span>
-                  ) : null}
-                  {ann.resolved ? (
-                    <span style={{ marginLeft: "auto", color: "var(--muted, #888)" }}>
-                      resolved
-                    </span>
-                  ) : null}
-                </div>
-                <div
-                  style={{
-                    color: "var(--muted, #888)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {first?.body ?? "(empty)"}
-                </div>
+                <span className="du-panel-row-meta">
+                  <strong>{first?.authorName ?? "—"}</strong>
+                  {ann.thread.length > 1 ? <span>+{ann.thread.length - 1}</span> : null}
+                  {ann.resolved ? <span className="du-panel-row-meta-end">resolved</span> : null}
+                </span>
+                <span className="du-panel-row-label is-muted">{first?.body ?? "(empty)"}</span>
               </button>
             );
           })
@@ -110,7 +72,8 @@ export const CommentsPanel = ({ style, className }: CommentsPanelProps) => {
 /**
  * Floating thread view for the focused annotation. Renders nothing
  * when no annotation is open. Drop it as a sibling of `<DiagramSurface>`
- * inside `<DiagramRoot>` so it can position itself over the canvas.
+ * inside `<DiagramRoot>` so it can position itself over the canvas
+ * (top-right, `--du-bar-inset` from the edges; width `--du-thread-w`).
  *
  * Composes from `useAnnotations` + `useSelectedAnnotation`; hosts that
  * want a different layout (modal, side-panel, etc.) can rebuild it.
@@ -139,44 +102,19 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
 
   return (
     <div
-      className={className}
+      className={`du-thread${className ? ` ${className}` : ""}`}
       role="dialog"
       aria-label="Annotation thread"
-      style={{
-        position: "absolute",
-        top: 16,
-        right: 16,
-        width: COMMENTS_PANEL_WIDTH,
-        maxHeight: "70vh",
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--panel, #161616)",
-        color: "var(--text, #ddd)",
-        border: "1px solid var(--border, #2a2a2a)",
-        borderRadius: 8,
-        boxShadow: "0 6px 24px rgba(0,0,0,0.4)",
-        font: "13px system-ui, -apple-system, sans-serif",
-        ...style,
-      }}
+      style={style}
     >
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "8px 10px",
-          borderBottom: "1px solid var(--divider, #333)",
-        }}
-      >
-        <span style={{ fontSize: 11, color: "var(--muted, #888)" }}>
-          {ann.resolved ? "Resolved" : "Open"}
-        </span>
+      <header className="du-thread-header">
+        <span className="du-thread-status">{ann.resolved ? "Resolved" : "Open"}</span>
         <button
           type="button"
           onClick={() => {
             editor.toggleAnnotationResolved(ann.id);
           }}
-          style={popoverButtonStyle}
+          className="du-button"
         >
           {ann.resolved ? "Reopen" : "Resolve"}
         </button>
@@ -185,28 +123,30 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
           onClick={() => {
             editor.removeAnnotation(ann.id);
           }}
-          style={popoverButtonStyle}
+          className="du-icon-button du-icon-button-flat"
           aria-label="Delete thread"
+          title="Delete thread"
         >
-          ×
+          <X {...glyph} />
         </button>
         <button
           type="button"
           onClick={() => {
             editor.setSelectedAnnotation(null);
           }}
-          style={{ ...popoverButtonStyle, marginLeft: 4 }}
+          className="du-icon-button du-icon-button-flat"
           aria-label="Close"
+          title="Close"
         >
-          ⌄
+          <ChevronDown {...glyph} />
         </button>
       </header>
-      <div style={{ flex: 1, overflowY: "auto", padding: "8px 10px" }}>
+      <div className="du-thread-body">
         {ann.thread.length === 0 ? (
-          <div style={{ color: "var(--faint, #555)" }}>No comments yet.</div>
+          <div className="du-panel-empty">No comments yet.</div>
         ) : (
           ann.thread.map((c) => (
-            <div key={c.id} style={{ marginBottom: 10, position: "relative" }}>
+            <div key={c.id} className="du-thread-item">
               <button
                 type="button"
                 onClick={() => {
@@ -214,32 +154,14 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
                 }}
                 aria-label="Delete comment"
                 title="Delete comment"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  right: 0,
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--muted, #888)",
-                  cursor: "pointer",
-                  padding: "0 4px",
-                  fontSize: 12,
-                  lineHeight: 1,
-                }}
+                className="du-icon-button du-icon-button-flat du-thread-item-remove"
               >
-                ×
+                <X {...glyph} />
               </button>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "var(--muted, #888)",
-                  marginBottom: 2,
-                }}
-              >
-                <strong style={{ color: "var(--text, #ddd)" }}>{c.authorName}</strong>{" "}
-                {formatTime(c.createdAt)}
+              <div className="du-thread-item-meta">
+                <strong>{c.authorName}</strong> {formatTime(c.createdAt)}
               </div>
-              <div style={{ whiteSpace: "pre-wrap", paddingRight: 16 }}>
+              <div className="du-thread-item-body">
                 <Markdown text={c.body} />
               </div>
             </div>
@@ -251,12 +173,7 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
           ev.preventDefault();
           submit();
         }}
-        style={{
-          padding: "8px 10px",
-          borderTop: "1px solid var(--divider, #333)",
-          display: "flex",
-          gap: 6,
-        }}
+        className="du-thread-form"
       >
         <input
           type="text"
@@ -265,30 +182,13 @@ export const CommentsPopover = ({ style, className }: CommentsPopoverProps) => {
             setDraft(ev.target.value);
           }}
           placeholder="Reply…"
-          style={{
-            flex: 1,
-            background: "var(--button-bg, #2a2a2a)",
-            border: "1px solid var(--border, #2a2a2a)",
-            color: "inherit",
-            padding: "4px 8px",
-            borderRadius: 4,
-            font: "inherit",
-          }}
+          aria-label="Reply"
+          className="du-panel-input"
         />
-        <button type="submit" style={popoverButtonStyle} disabled={!draft.trim()}>
+        <button type="submit" className="du-button du-button-primary" disabled={!draft.trim()}>
           Send
         </button>
       </form>
     </div>
   );
-};
-
-const popoverButtonStyle: CSSProperties = {
-  background: "var(--button-bg, #2a2a2a)",
-  border: "1px solid var(--border, #2a2a2a)",
-  color: "inherit",
-  padding: "3px 8px",
-  borderRadius: 4,
-  cursor: "pointer",
-  fontSize: 11,
 };

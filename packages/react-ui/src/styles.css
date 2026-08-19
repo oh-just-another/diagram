@@ -117,6 +117,9 @@
   /* Top edge of anything docked under the top bar / above the bottom bar. */
   --du-bar-clear: calc(var(--du-bar-inset) + var(--du-bar-height) + var(--du-gap));
   --du-side-panel-w: 240px;
+  --du-sidebar-w: 280px; /* host-composed <Sidebar> */
+  --du-thread-w: 280px; /* comment thread popover */
+  --du-panel-row-h: 40px; /* list row inside a panel (layers, comments) */
 
   /* ---- Menus — one system for the context menu, main / zoom menus, the
      Shapes and lines flyout and list rows inside popovers. ---- */
@@ -662,6 +665,335 @@
    behaviour. */
 .du-side-panel-body-flush {
   padding: 0;
+}
+
+/* Static variant — a card the host lays out itself (LayerPanel,
+   CommentsPanel inside a <Sidebar> or any flex column). Same chrome, no
+   absolute positioning; stretches to the host's height. */
+.du-side-panel-static {
+  position: static;
+  top: auto;
+  bottom: auto;
+  min-height: 0;
+  max-height: 100%;
+}
+
+/* ------------------------------------------------------------------ */
+/* Panel lists — rows inside a side panel share the menu-row rhythm    */
+/* (40-px rows, hover wash, tonal selected state).                     */
+/* ------------------------------------------------------------------ */
+.du-panel-list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--du-pad-sm);
+}
+
+.du-panel-row {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: var(--du-gap-sm);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--du-panel-row-h);
+  padding: 0 var(--du-pad-sm) 0 var(--du-pad);
+  border-radius: var(--du-radius-sm);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size);
+  line-height: var(--du-line-height);
+  color: var(--du-text);
+  cursor: pointer;
+}
+
+.du-panel-row:hover {
+  background: var(--du-hover-overlay);
+}
+
+.du-panel-row.is-active {
+  background: var(--du-selected-bg);
+  color: var(--du-selected-fg);
+}
+
+.du-panel-row.is-muted {
+  opacity: 0.55;
+}
+
+.du-panel-row:focus-visible {
+  outline: 2px solid var(--du-accent);
+  outline-offset: -2px;
+}
+
+/* Two-line row (comments): meta line + preview, both left-aligned. */
+.du-panel-row-stack {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  padding: var(--du-pad-sm) var(--du-pad);
+  text-align: left;
+}
+
+.du-panel-row-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.du-panel-row-label.is-muted {
+  color: var(--du-text-muted);
+}
+
+.du-panel-row.is-active .du-panel-row-label.is-muted {
+  color: inherit;
+}
+
+.du-panel-row-meta {
+  display: flex;
+  gap: var(--du-gap-sm);
+  font-size: var(--du-font-size-sm);
+  color: var(--du-text-muted);
+}
+
+.du-panel-row-meta > strong {
+  color: var(--du-text);
+  font-weight: var(--du-font-weight-strong);
+}
+
+.du-panel-row.is-active .du-panel-row-meta,
+.du-panel-row.is-active .du-panel-row-meta > strong {
+  color: inherit;
+}
+
+.du-panel-row-meta-end {
+  margin-left: auto;
+}
+
+.du-panel-empty {
+  padding: var(--du-space-xl) var(--du-pad);
+  font-size: var(--du-font-size-sm);
+  line-height: var(--du-line-height);
+  color: var(--du-text-muted);
+}
+
+/* Inline text input inside a panel row / form. */
+.du-panel-input {
+  flex: 1;
+  min-width: 0;
+  height: var(--du-input-h);
+  box-sizing: border-box;
+  padding: 0 var(--du-space-md);
+  font: inherit;
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size-sm);
+  color: var(--du-text);
+  background: var(--du-ui-bg-solid);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius-sm);
+  outline: none;
+}
+
+.du-panel-input::placeholder {
+  color: var(--du-text-muted);
+}
+
+.du-panel-input:focus {
+  border-color: var(--du-accent);
+}
+
+/* Muted flat icon button (hidden / unlocked layer toggles). */
+.du-icon-button-flat.is-muted {
+  opacity: 0.4;
+}
+
+.du-icon-button-flat.is-muted:hover:not(:disabled) {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* Text button — small labelled action (dialog footers, thread header, */
+/* sidebar tabs). `is-active` = tonal selected; `-primary` = accent.   */
+/* ------------------------------------------------------------------ */
+.du-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--du-gap-sm);
+  height: var(--du-button-size-sm);
+  padding: 0 var(--du-space-lg);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size);
+  font-weight: var(--du-font-weight);
+  line-height: 1;
+  color: var(--du-text);
+  background: var(--du-ui-bg-solid);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--du-motion-fast),
+    color var(--du-motion-fast);
+}
+
+.du-button:hover:not(:disabled) {
+  background: var(--du-hover-overlay);
+}
+
+.du-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.du-button.is-active {
+  background: var(--du-selected-bg);
+  color: var(--du-selected-fg);
+  border-color: transparent;
+}
+
+.du-button-primary {
+  background: var(--du-accent);
+  color: var(--du-text-on-accent);
+  border-color: transparent;
+}
+
+.du-button-primary:hover:not(:disabled) {
+  background: var(--du-accent-hover);
+}
+
+.du-button:focus-visible {
+  outline: 2px solid var(--du-accent);
+  outline-offset: var(--du-space-xs);
+}
+
+/* ------------------------------------------------------------------ */
+/* Sidebar — host-composed docked column with tabs (see <Sidebar>).    */
+/* ------------------------------------------------------------------ */
+.du-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: var(--du-sidebar-w);
+  min-height: 0;
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size);
+  color: var(--du-text);
+  background: var(--du-ui-bg-solid);
+}
+
+.du-sidebar-right {
+  border-left: 1px solid var(--du-ui-border);
+}
+
+.du-sidebar-left {
+  border-right: 1px solid var(--du-ui-border);
+}
+
+.du-sidebar-header {
+  padding: var(--du-space-lg) var(--du-space-xl);
+  font-size: var(--du-font-size);
+  font-weight: var(--du-font-weight-strong);
+  line-height: var(--du-line-height);
+  border-bottom: 1px solid var(--du-ui-border);
+}
+
+.du-sidebar-tabs {
+  display: flex;
+  gap: var(--du-gap-sm);
+  padding: var(--du-pad);
+  border-bottom: 1px solid var(--du-ui-border);
+}
+
+.du-sidebar-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--du-pad);
+}
+
+.du-sidebar-section {
+  padding: var(--du-pad) var(--du-space-lg);
+  border-bottom: 1px solid var(--du-ui-border);
+}
+
+/* ------------------------------------------------------------------ */
+/* Comment thread popover — floating card top-right of the canvas.     */
+/* ------------------------------------------------------------------ */
+.du-thread {
+  position: absolute;
+  top: var(--du-bar-inset);
+  right: var(--du-bar-inset);
+  z-index: var(--du-z-popover);
+  display: flex;
+  flex-direction: column;
+  width: var(--du-thread-w);
+  max-height: 70vh;
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size);
+  line-height: var(--du-line-height);
+  color: var(--du-text);
+  background: var(--du-ui-bg-solid);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius-lg);
+  box-shadow: var(--du-ui-shadow);
+}
+
+.du-thread-header {
+  display: flex;
+  align-items: center;
+  gap: var(--du-gap-sm);
+  padding: var(--du-pad-sm) var(--du-pad-sm) var(--du-pad-sm) var(--du-pad);
+  border-bottom: 1px solid var(--du-ui-border);
+}
+
+.du-thread-status {
+  flex: 1;
+  font-size: var(--du-font-size-sm);
+  color: var(--du-text-muted);
+}
+
+.du-thread-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--du-pad);
+}
+
+.du-thread-item {
+  position: relative;
+  padding-right: var(--du-button-size-sm);
+  margin-bottom: var(--du-space-lg);
+}
+
+.du-thread-item:last-child {
+  margin-bottom: 0;
+}
+
+.du-thread-item-remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.du-thread-item-meta {
+  margin-bottom: var(--du-space-xs);
+  font-size: var(--du-font-size-sm);
+  color: var(--du-text-muted);
+}
+
+.du-thread-item-meta > strong {
+  color: var(--du-text);
+  font-weight: var(--du-font-weight-strong);
+}
+
+.du-thread-item-body {
+  white-space: pre-wrap;
+}
+
+.du-thread-form {
+  display: flex;
+  gap: var(--du-gap-sm);
+  padding: var(--du-pad);
+  border-top: 1px solid var(--du-ui-border);
 }
 
 /* ------------------------------------------------------------------ */

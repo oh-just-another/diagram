@@ -139,9 +139,9 @@ Every component reads the editor from context, so most take no required props.
 ## Layout constants
 
 Tunable sizes for the built-in panels and toolbar:
-`PALETTE_WIDTH`, `PALETTE_ITEM_SIZE`, `PROPERTY_PANEL_WIDTH`, `PROPERTY_SWATCH_SIZE`,
-`LAYER_PANEL_WIDTH`, `LAYER_TOGGLE_ICON_SIZE`, `LAYER_SWATCH_SIZE`,
-`COMMENTS_PANEL_WIDTH`. Toolbar separator size lives in CSS (`--du-icon-size`).
+`PALETTE_WIDTH`, `PALETTE_ITEM_SIZE`, `PROPERTY_PANEL_WIDTH`, `PROPERTY_SWATCH_SIZE`.
+Chrome sizes (side panels, sidebar, comment thread, toolbar separator) are CSS tokens —
+`--du-side-panel-w`, `--du-sidebar-w`, `--du-thread-w`, `--du-panel-row-h`, `--du-icon-size`.
 
 Each component also exports its `*Props` type (e.g. `ToolbarProps`, `PaletteProps`); menu, toast,
 help, and context-menu modules additionally export their item/section types (`ToolbarItem`,

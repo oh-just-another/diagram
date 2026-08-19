@@ -1,18 +1,22 @@
 import { useState, type CSSProperties } from "react";
-import { Eye, EyeOff, Lock, Trash2, Unlock } from "lucide-react";
+import { Eye, EyeOff, Lock, Plus, Trash2, Unlock } from "lucide-react";
 import type { Layer } from "@oh-just-another/scene";
 import type { LayerId } from "@oh-just-another/types";
-
-const LAYER_GLYPH_SIZE = 14;
-const LAYER_GLYPH_STROKE = 1.75;
 import { useActiveLayerId, useDiagramOptional, useLayers } from "../core/hooks.js";
-import { LAYER_PANEL_WIDTH, LAYER_SWATCH_SIZE, LAYER_TOGGLE_ICON_SIZE } from "../core/constants.js";
+
+const LAYER_GLYPH_SIZE = 16;
+const LAYER_GLYPH_STROKE = 1.75;
+const glyph = { size: LAYER_GLYPH_SIZE, strokeWidth: LAYER_GLYPH_STROKE } as const;
 
 /**
  * Read-write list of scene layers. Click a row to make it active; click
  * the eye / lock icons to toggle visibility / lock; double-click the
  * name to rename; trash to delete (the panel guards against removing
- * the last layer). "+" at the top creates a new layer.
+ * the last layer). "+" in the header creates a new layer.
+ *
+ * Renders as a static side-panel card (`du-side-panel du-side-panel-static`);
+ * hosts place it in their own layout. Sizing and colours come from the
+ * `--du-*` design tokens.
  */
 export interface LayerPanelProps {
   readonly style?: CSSProperties;
@@ -25,47 +29,25 @@ export const LayerPanel = ({ style, className }: LayerPanelProps) => {
   const activeId = useActiveLayerId();
   const [renamingId, setRenamingId] = useState<LayerId | null>(null);
 
-  const containerStyle: CSSProperties = {
-    width: LAYER_PANEL_WIDTH,
-    padding: 0,
-    background: "var(--panel, #161616)",
-    color: "var(--text, #ddd)",
-    borderLeft: "1px solid var(--border, #2a2a2a)",
-    display: "flex",
-    flexDirection: "column",
-    minHeight: 0,
-    fontSize: 12,
-    ...style,
-  };
-
   return (
-    <aside className={className} style={containerStyle}>
-      <header
-        style={{
-          margin: 0,
-          padding: "10px 12px",
-          fontSize: 11,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          color: "var(--muted, #888)",
-          borderBottom: "1px solid var(--border, #2a2a2a)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <span>Layers</span>
+    <aside
+      className={`du-side-panel du-side-panel-static${className ? ` ${className}` : ""}`}
+      style={style}
+    >
+      <header className="du-side-panel-header">
+        <span className="du-side-panel-title">Layers</span>
         <button
           type="button"
           title="New layer"
+          aria-label="New layer"
           disabled={!editor}
           onClick={() => editor?.createLayer(`Layer ${layers.length + 1}`)}
-          style={iconButtonStyle}
+          className="du-icon-button du-icon-button-flat"
         >
-          +
+          <Plus {...glyph} />
         </button>
       </header>
-      <div style={{ flex: "1 1 auto", overflowY: "auto", padding: "4px 0" }}>
+      <div className="du-side-panel-body du-side-panel-body-flush du-panel-list">
         {/* Top-of-stack first */}
         {[...layers].reverse().map((layer) => (
           <LayerRow
@@ -129,15 +111,8 @@ const LayerRow = ({
 }: LayerRowProps) => {
   return (
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "6px 10px",
-        background: active ? "var(--cursor-bg, rgba(26,115,232,0.14))" : "transparent",
-        borderLeft: `3px solid ${active ? "var(--accent, #5b5bd6)" : "transparent"}`,
-        cursor: "pointer",
-      }}
+      className={`du-panel-row${active ? " is-active" : ""}`}
+      aria-current={active ? "true" : undefined}
       onClick={onActivate}
     >
       <IconBtn
@@ -148,11 +123,7 @@ const LayerRow = ({
         }}
         muted={!layer.visible}
       >
-        {layer.visible ? (
-          <Eye size={LAYER_GLYPH_SIZE} strokeWidth={LAYER_GLYPH_STROKE} />
-        ) : (
-          <EyeOff size={LAYER_GLYPH_SIZE} strokeWidth={LAYER_GLYPH_STROKE} />
-        )}
+        {layer.visible ? <Eye {...glyph} /> : <EyeOff {...glyph} />}
       </IconBtn>
       <IconBtn
         title={layer.locked ? "Unlock layer" : "Lock layer"}
@@ -162,16 +133,14 @@ const LayerRow = ({
         }}
         muted={!layer.locked}
       >
-        {layer.locked ? (
-          <Lock size={LAYER_GLYPH_SIZE} strokeWidth={LAYER_GLYPH_STROKE} />
-        ) : (
-          <Unlock size={LAYER_GLYPH_SIZE} strokeWidth={LAYER_GLYPH_STROKE} />
-        )}
+        {layer.locked ? <Lock {...glyph} /> : <Unlock {...glyph} />}
       </IconBtn>
       {renaming ? (
         <input
           autoFocus
           defaultValue={layer.name}
+          aria-label="Layer name"
+          className="du-panel-input"
           onClick={(ev) => {
             ev.stopPropagation();
           }}
@@ -182,27 +151,10 @@ const LayerRow = ({
             if (ev.key === "Enter") onCommitRename((ev.target as HTMLInputElement).value);
             else if (ev.key === "Escape") onCancelRename();
           }}
-          style={{
-            flex: 1,
-            background: "var(--button-bg, #2a2a2a)",
-            color: "var(--text, #ddd)",
-            border: "1px solid var(--accent, #5b5bd6)",
-            borderRadius: 3,
-            padding: "2px 4px",
-            font: "inherit",
-            minWidth: 0,
-          }}
         />
       ) : (
         <span
-          style={{
-            flex: 1,
-            minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            opacity: layer.visible ? 1 : 0.5,
-          }}
+          className={`du-panel-row-label${layer.visible ? "" : " is-muted"}`}
           onDoubleClick={(ev) => {
             ev.stopPropagation();
             onStartRename();
@@ -219,24 +171,11 @@ const LayerRow = ({
             onDelete();
           }}
         >
-          <Trash2 size={LAYER_GLYPH_SIZE} strokeWidth={LAYER_GLYPH_STROKE} />
+          <Trash2 {...glyph} />
         </IconBtn>
       ) : null}
     </div>
   );
-};
-
-const iconButtonStyle: CSSProperties = {
-  background: "transparent",
-  color: "var(--text, #ddd)",
-  border: "1px solid var(--border, #2a2a2a)",
-  borderRadius: 3,
-  width: LAYER_TOGGLE_ICON_SIZE,
-  height: LAYER_TOGGLE_ICON_SIZE,
-  cursor: "pointer",
-  font: "inherit",
-  fontSize: 12,
-  padding: 0,
 };
 
 const IconBtn = ({
@@ -253,13 +192,9 @@ const IconBtn = ({
   <button
     type="button"
     title={title}
+    aria-label={title}
     onClick={onClick}
-    style={{
-      ...iconButtonStyle,
-      opacity: muted ? 0.4 : 1,
-      width: LAYER_SWATCH_SIZE,
-      height: LAYER_SWATCH_SIZE,
-    }}
+    className={`du-icon-button du-icon-button-flat${muted ? " is-muted" : ""}`}
   >
     {children}
   </button>
