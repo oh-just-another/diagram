@@ -899,9 +899,12 @@ const EditorShell = ({
   // The library overlays the canvas (no reflow); the toolbar floats just
   // to its right when open, else near the edge. On mobile the library is a
   // bottom sheet, so the toolbar never shifts.
-  const LIBRARY_PANEL_WIDTH = 240;
-  const BAR_INSET = 12;
-  const toolbarLeft = !mobile && libraryOpen ? LIBRARY_PANEL_WIDTH + BAR_INSET : BAR_INSET;
+  // Dock inset from the edge, or past the open library (its inset + width)
+  // with a flyout gap — all CSS tokens so hosts retune them in one place.
+  const toolbarLeft =
+    !mobile && libraryOpen
+      ? "var(--du-bar-inset) + var(--du-side-panel-w) + var(--du-flyout-gap)"
+      : "var(--du-dock-inset)";
 
   // Items for the vertical creation dock: an optional templates-library
   // toggle on top (hidden with `hideLibraryButton`), then the standard
@@ -969,7 +972,7 @@ const EditorShell = ({
             // `env(safe-area-inset-left)` is 0 on desktop, clears the notch
             // in mobile landscape.
             top: "50%",
-            left: `calc(env(safe-area-inset-left, 0px) + ${toolbarLeft}px)`,
+            left: `calc(env(safe-area-inset-left, 0px) + ${toolbarLeft})`,
             transform: "translateY(-50%)",
             zIndex: "var(--du-z-ui)",
           }}

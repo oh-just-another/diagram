@@ -186,12 +186,13 @@ export const MainMenu = ({
     ...style,
   };
 
+  // The trigger sits inside a bar group: clear the group inset + border,
+  // then keep `--du-flyout-gap` between the bar and the panel.
+  const barClear = "calc(100% + var(--du-pad-sm) + 1px + var(--du-flyout-gap))";
   const panelStyle: CSSProperties = {
     position: "absolute",
-    ...(placement === "top-end"
-      ? { bottom: "calc(100% + 6px)", right: 0 }
-      : { top: "calc(100% + 6px)", left: 0 }),
-    zIndex: 900,
+    ...(placement === "top-end" ? { bottom: barClear, right: 0 } : { top: barClear, left: 0 }),
+    zIndex: "var(--du-z-popover)",
   };
 
   return (
@@ -437,13 +438,14 @@ const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
   const open = level?.openId === id;
 
   // `top` undoes the panel padding + border so the first child row aligns
-  // with this row (see `--du-menu-pad`).
+  // with this row; `marginLeft` clears the parent column's padding + border
+  // and then keeps `--du-submenu-gap` between the two panels.
   const panelStyle: CSSProperties = {
     position: "absolute",
     top: "calc(-1 * var(--du-menu-pad) - 1px)",
     left: "100%",
-    marginLeft: 4,
-    zIndex: 1000,
+    marginLeft: "calc(var(--du-menu-pad) + 1px + var(--du-submenu-gap))",
+    zIndex: "calc(var(--du-z-popover) + 1)",
   };
 
   return (

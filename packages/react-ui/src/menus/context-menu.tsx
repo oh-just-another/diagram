@@ -226,7 +226,18 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
  * first row aligns with its parent row. Chrome itself comes from the
  * shared `.du-menu-panel` / `.du-menu-row` classes (styles.css).
  */
-const SUBMENU_ALIGN_PX = 7;
+/**
+ * Submenu geometry read from the live panel so it follows the CSS tokens:
+ * `align` = padding + border (undone on the cross axis so the first child
+ * row lines up with its parent row), `gap` = the same clearance plus
+ * `--du-submenu-gap` on the main axis.
+ */
+const submenuGeometry = (panel: HTMLElement): { align: number; gap: number } => {
+  const cs = getComputedStyle(panel);
+  const align = parseFloat(cs.paddingTop) + parseFloat(cs.borderTopWidth);
+  const gap = parseFloat(cs.getPropertyValue("--du-submenu-gap"));
+  return { align, gap: align + (Number.isNaN(gap) ? 0 : gap) };
+};
 
 /**
  * Drop hidden items (recursively — a submenu with nothing visible goes too),
@@ -354,11 +365,12 @@ const ContextSubmenuRow = ({
     const panel = panelRef.current;
     if (!open || !row || !panel) return undefined;
     panels.add(panel);
+    const { align, gap } = submenuGeometry(panel);
     const stop = floatPanel(row, panel, {
       placement: "right-start",
       fallbackPlacements: ["left-start"],
-      // Align the first child row with this row: undo the panel padding + border.
-      crossAxis: -SUBMENU_ALIGN_PX,
+      gap,
+      crossAxis: -align,
       padding: MENU_VIEWPORT_PADDING_PX,
       strategy: "fixed",
       clampHeight: true,

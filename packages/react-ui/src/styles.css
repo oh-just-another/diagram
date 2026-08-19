@@ -120,7 +120,10 @@
   --du-caps-tracking: 0.5px; /* letter-spacing of uppercase captions */
 
   /* ---- Layout — where the static chrome sits ---- */
-  --du-bar-inset: 16px; /* distance from the canvas edge to every bar / panel */
+  --du-bar-inset: 16px; /* canvas edge → top / bottom bars, side panels, minimap */
+  --du-dock-inset: 14px; /* canvas edge → the vertical tool dock */
+  --du-flyout-gap: 14px; /* a bar → the menu / flyout that opens from it */
+  --du-submenu-gap: 10px; /* parent menu column → nested menu */
   /* Height of a bar = group padding + button + padding + border. */
   --du-bar-height: calc(var(--du-button-size) + 2 * var(--du-pad-sm) + 2px);
   /* Top edge of anything docked under the top bar / above the bottom bar. */
@@ -2670,7 +2673,8 @@
 .du-shapes-flyout {
   position: absolute;
   top: 0;
-  left: calc(100% + var(--du-gap));
+  /* The wrap sits inside the dock: clear its inset + border, then the gap. */
+  left: calc(100% + var(--du-pad-sm) + 1px + var(--du-flyout-gap));
   z-index: var(--du-z-ui);
   display: flex;
   flex-direction: column;
