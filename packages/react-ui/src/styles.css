@@ -69,6 +69,15 @@
   --du-radius-lg: 12px;
   --du-radius-round: 999px;
 
+  /* ---- Chrome rhythm — ONE size and ONE inset shared by toolbars and
+     menus: a toolbar button, a menu row (Shapes and lines, context / main
+     / zoom menus) and a panel list row are all `--du-control-size` tall;
+     the padding around a toolbar's button column and around a menu's rows
+     is `--du-chrome-pad`. Change these two to rescale every bar and menu
+     together. ---- */
+  --du-control-size: 40px;
+  --du-chrome-pad: 4px;
+
   /* ---- Spacing — 4-px grid. `--du-gap` / `--du-pad` are the working
      defaults for chrome (8 = between controls / inside a surface,
      4 = inside a group / between grouped items). ---- */
@@ -81,10 +90,10 @@
   --du-gap: var(--du-space-md);
   --du-gap-sm: var(--du-space-sm);
   --du-pad: var(--du-space-md);
-  --du-pad-sm: var(--du-space-sm);
+  --du-pad-sm: var(--du-chrome-pad); /* inset of a button group / dock */
 
   /* ---- Sizing · controls ---- */
-  --du-button-size: 40px; /* standalone icon button / bar height driver */
+  --du-button-size: var(--du-control-size); /* toolbar icon button / bar height driver */
   --du-button-size-sm: 32px; /* icon button inside a group / panel */
   --du-touch-size: 44px; /* minimum tap target on coarse pointers */
   --du-icon-size: 20px; /* toolbar glyph */
@@ -119,14 +128,14 @@
   --du-side-panel-w: 240px;
   --du-sidebar-w: 280px; /* host-composed <Sidebar> */
   --du-thread-w: 280px; /* comment thread popover */
-  --du-panel-row-h: 40px; /* list row inside a panel (layers, comments) */
+  --du-panel-row-h: var(--du-control-size); /* list row inside a panel (layers, comments) */
 
   /* ---- Menus — one system for the context menu, main / zoom menus, the
      Shapes and lines flyout and list rows inside popovers. ---- */
-  --du-menu-pad: var(--du-space-md); /* panel inner padding */
+  --du-menu-pad: var(--du-chrome-pad); /* inset around the rows = toolbar group inset */
   --du-menu-min-w: 240px;
   --du-menu-radius: var(--du-radius);
-  --du-menu-row-h: 44px;
+  --du-menu-row-h: var(--du-control-size); /* = toolbar button height */
   --du-menu-row-pad-x: var(--du-space-xl);
   --du-menu-row-radius: var(--du-radius-sm);
   --du-menu-gutter: 24px; /* icon / check column, same width everywhere */
