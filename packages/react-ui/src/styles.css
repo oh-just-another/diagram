@@ -2708,6 +2708,16 @@
   background: var(--du-hover-overlay);
 }
 
+/* The armed tool (shape kind / line preset) — tonal selected, like menus. */
+.du-shapes-flyout-row.is-active {
+  background: var(--du-selected-bg);
+  color: var(--du-selected-fg);
+}
+
+.du-shapes-flyout-row.is-active .du-shapes-flyout-hotkey {
+  color: inherit;
+}
+
 .du-shapes-flyout-hotkey {
   margin-left: auto;
   font-size: var(--du-menu-shortcut-font);

@@ -38,6 +38,19 @@ const makeEditor = (scene: Scene = emptyScene()): Editor =>
 const LAYER = castLayerId(DEFAULT_LAYER_ID);
 
 describe("armShapeTool / armLineTool", () => {
+  it("notifies subscribers after the armed variant is set", () => {
+    const e = makeEditor();
+    const seen: string[] = [];
+    const off = e.subscribe(() =>
+      seen.push(`${e.activeTool.type}:${e.drawShapeKind}:${String(e.linkDrawPreset)}`),
+    );
+    e.armShapeTool("diamond");
+    expect(seen.at(-1)).toBe("draw-rect:diamond:null");
+    e.armLineTool("arrow");
+    expect(seen.at(-1)).toBe("draw-edge:rect:arrow");
+    off();
+  });
+
   it("arms draw-rect with a diamond kind; a plain tool switch resets it", () => {
     const e = makeEditor();
     e.armShapeTool("diamond");

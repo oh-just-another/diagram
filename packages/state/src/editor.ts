@@ -2056,12 +2056,16 @@ export class Editor {
   armShapeTool(kind: DrawShapeKind): void {
     this.setActiveTool(kind === "ellipse" ? "draw-ellipse" : "draw-rect");
     this._drawShapeKind = kind;
+    // `setActiveTool` already notified with the reset variant — notify again
+    // so subscribers (the flyout's active row) see the armed kind.
+    this.notify();
   }
 
   /** Arm the connector tool with a line preset (the flyout's line rows). */
   armLineTool(preset: LinkDrawPreset): void {
     this.setActiveTool("draw-edge");
     this._linkDrawPreset = preset;
+    this.notify();
   }
 
   setActiveTool(mode: Mode): void {

@@ -31,6 +31,7 @@ import {
 import type { Editor, Mode } from "@oh-just-another/state";
 import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
 import { useEditorSelector } from "../core/context.js";
+import type { DrawShapeKind, LinkDrawPreset } from "@oh-just-another/state";
 import { useActiveTool, useDiagramOptional, useHistory, useReadOnly } from "../core/hooks.js";
 import { Tooltip } from "../primitives/tooltip.js";
 
@@ -179,8 +180,25 @@ const ShapesAndLinesButton = ({
   const editor = useDiagramOptional();
   const activeTool = useActiveTool();
   const readOnly = useReadOnly();
+  // Armed variants (which shape / which line preset) — the flyout marks the
+  // matching row as the current choice.
+  const drawShapeKind = useEditorSelector<DrawShapeKind>((e) => e.drawShapeKind, "rect");
+  const linkDrawPreset = useEditorSelector<LinkDrawPreset | null>((e) => e.linkDrawPreset, null);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const isRowActive = (row: (typeof SHAPES_FLYOUT_ROWS)[number]): boolean => {
+    if (row.kind === "line") {
+      // Stock `draw-edge` (hotkey L, no preset) draws the Elbow arrow defaults.
+      return activeTool.type === "draw-edge" && (linkDrawPreset ?? "elbow") === row.preset;
+    }
+    if (row.kind === "shape") {
+      return (
+        (activeTool.type === "draw-rect" || activeTool.type === "draw-ellipse") &&
+        drawShapeKind === row.shape
+      );
+    }
+    return false;
+  };
 
   useEffect(() => {
     if (!open) return undefined;
@@ -229,12 +247,14 @@ const ShapesAndLinesButton = ({
           {SHAPES_FLYOUT_ROWS.map((row, i) => {
             if (row.kind === "divider") return <hr key={i} className="du-shapes-flyout-divider" />;
             const Icon = row.icon;
+            const active = isRowActive(row);
             return (
               <button
                 key={i}
                 type="button"
-                role="menuitem"
-                className="du-shapes-flyout-row"
+                role="menuitemradio"
+                aria-checked={active}
+                className={`du-shapes-flyout-row${active ? " is-active" : ""}`}
                 aria-label={row.label}
                 onClick={() => {
                   if (!editor) return;
