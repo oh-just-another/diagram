@@ -482,7 +482,7 @@ const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
       {open ? (
         <div
           role="menu"
-          className="du-menu-panel"
+          className="du-menu-panel du-menu-submenu"
           style={panelStyle}
           onMouseEnter={() => {
             level.cancelClose();

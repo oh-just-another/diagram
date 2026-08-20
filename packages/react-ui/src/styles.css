@@ -120,10 +120,10 @@
   --du-caps-tracking: 0.5px; /* letter-spacing of uppercase captions */
 
   /* ---- Layout — where the static chrome sits ---- */
-  --du-bar-inset: 16px; /* canvas edge → top / bottom bars, side panels, minimap */
-  --du-dock-inset: 14px; /* canvas edge → the vertical tool dock */
-  --du-flyout-gap: 14px; /* a bar → the menu / flyout that opens from it */
-  --du-submenu-gap: 10px; /* parent menu column → nested menu */
+  --du-bar-inset: 12px; /* canvas edge → top / bottom bars, side panels, minimap */
+  --du-dock-inset: 10px; /* canvas edge → the vertical tool dock */
+  --du-flyout-gap: 10px; /* a bar → the menu / flyout that opens from it */
+  --du-submenu-gap: 6px; /* parent menu column → nested menu */
   /* Height of a bar = group padding + button + padding + border. */
   --du-bar-height: calc(var(--du-button-size) + 2 * var(--du-pad-sm) + 2px);
   /* Top edge of anything docked under the top bar / above the bottom bar. */
@@ -1428,6 +1428,19 @@
   letter-spacing: var(--du-caps-tracking);
   color: var(--du-text-muted);
   text-transform: uppercase;
+}
+
+/* Nested panel of the main menu. The `::before` bridge covers the
+   `--du-submenu-gap` strip (plus the parent's inset + border) so the
+   pointer travelling from the parent row into the child never leaves the
+   submenu wrapper — otherwise the gap would fire the delayed close. */
+.du-menu-submenu::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 100%;
+  width: calc(var(--du-menu-pad) + 1px + var(--du-submenu-gap));
 }
 
 /* Modals share one padding / radius rhythm. */
