@@ -5090,6 +5090,10 @@ export class Editor {
     // Pan over — recompute (→ "grab" if Space/hand still armed, else the
     // idle hover cursor).
     this.refreshCursor();
+    // The gesture's end is itself a change: idle-gated observers (the
+    // minimap) skip every pan notify while `panGesture` is set and rely on
+    // this trailing one to repaint.
+    this.notify();
   }
 
   public isDrawingPhase(ctx: InteractionContext): boolean {

@@ -152,6 +152,24 @@ describe("Minimap", () => {
     }
   });
 
+  it("repaints once a drag-pan gesture ends, even though no other state changed", () => {
+    vi.useFakeTimers();
+    try {
+      render(<Minimap editor={ctx.editor} />);
+      const before = rectCalls.length;
+      ctx.editor.beginPanGesture(1, 0, { x: 10, y: 10 });
+      ctx.editor.panBy({ x: 40, y: 0 });
+      vi.advanceTimersByTime(300);
+      // In flight: gated.
+      expect(rectCalls.length).toBe(before);
+      ctx.editor.endPanGesture();
+      vi.advanceTimersByTime(300);
+      expect(rectCalls.length).toBeGreaterThan(before);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("paints a white background and every element box in the accent colour", () => {
     render(<Minimap editor={ctx.editor} />);
     // One rect per element (the single 400×300 shape), not a renderer pass.
