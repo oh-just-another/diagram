@@ -130,9 +130,9 @@ export const CANVAS_TONES = {
 export interface UISurface {
   /** Canvas / page background. */
   readonly canvas: string;
-  /** Floating UI background (top bar, panels, popovers). */
+  /** Floating UI background (top bar, panels, popovers) — opaque. */
   readonly bg: string;
-  /** Solid version when transparency would be a problem. */
+  /** Same as `bg`; kept for hosts that distinguished the two. */
   readonly bgSolid: string;
   /** Subtle border around floating chrome. */
   readonly border: string;
@@ -160,7 +160,7 @@ export interface UIAccent {
 export const UI_SURFACE = {
   light: {
     canvas: "#f5f5f5",
-    bg: "rgba(255, 255, 255, 0.95)",
+    bg: "#ffffff",
     bgSolid: "#ffffff",
     border: "rgba(0, 0, 0, 0.08)",
     text: "#1a1a1a",
@@ -172,7 +172,7 @@ export const UI_SURFACE = {
     // the scene) is authored against light paper, so dark mode darkens the
     // chrome only. Keep in sync with the light value above.
     canvas: "#f5f5f5",
-    bg: "rgba(35, 35, 35, 0.95)",
+    bg: "#252525",
     bgSolid: "#252525",
     border: "rgba(255, 255, 255, 0.08)",
     text: "#e8e8e8",
