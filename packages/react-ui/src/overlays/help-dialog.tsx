@@ -9,7 +9,7 @@ import {
   type ActionRegistry,
   type HotkeyMatcher,
 } from "@oh-just-another/state";
-import { HELP_DIALOG_MAX_WIDTH_PX } from "../core/constants.js";
+import { HELP_DIALOG_MAX_WIDTH_PX, CONTROL_ICON } from "../core/constants.js";
 import { Modal } from "../primitives/modal.js";
 
 /**
@@ -186,7 +186,7 @@ export const HelpDialog = ({
               onClick={onClose}
               className="du-modal-close"
             >
-              <X size={18} strokeWidth={1.75} />
+              <X {...CONTROL_ICON} />
             </button>
           </div>
         </div>

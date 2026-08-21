@@ -34,15 +34,10 @@ import { useEditorSelector } from "../core/context.js";
 import type { DrawShapeKind, LinkDrawPreset } from "@oh-just-another/state";
 import { useActiveTool, useDiagramOptional, useHistory, useReadOnly } from "../core/hooks.js";
 import { Tooltip } from "../primitives/tooltip.js";
+import { CONTROL_ICON, ROW_ICON } from "../core/constants.js";
 
-/**
- * Pixel size for icons rendered inside `du-icon-button` (32-px
- * inside-group footprint). Lucide draws crisp at 16 px stroke-width
- * 1.75.
- */
-const TOOLBAR_ICON_SIZE = 16;
-const TOOLBAR_ICON_STROKE = 1.75;
-const iconProps = { size: TOOLBAR_ICON_SIZE, strokeWidth: TOOLBAR_ICON_STROKE } as const;
+/** Toolbar buttons are 40-px controls — their glyphs use `CONTROL_ICON`. */
+const iconProps = CONTROL_ICON;
 
 /**
  * Maps an action's serializable `iconId` (declared in core, no React) to a
@@ -263,7 +258,7 @@ const ShapesAndLinesButton = ({
                   setOpen(false);
                 }}
               >
-                <Icon size={14} strokeWidth={1.75} />
+                <Icon {...ROW_ICON} />
                 <span>{row.label}</span>
                 {row.hotkey !== undefined ? (
                   <span className="du-shapes-flyout-hotkey">{row.hotkey}</span>
@@ -284,7 +279,7 @@ const ShapesAndLinesButton = ({
                   setOpen(false);
                 }}
               >
-                <Shapes size={14} strokeWidth={1.75} />
+                <Shapes {...ROW_ICON} />
                 <span>More shapes</span>
               </button>
             </>

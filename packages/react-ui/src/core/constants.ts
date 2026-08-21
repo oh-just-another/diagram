@@ -22,6 +22,27 @@ export const PALETTE_ITEM_SIZE = 28;
 /** Width of the right property panel, in CSS pixels. */
 export const PROPERTY_PANEL_WIDTH = 240;
 
+/**
+ * Lucide icon sizing — one set for the whole chrome so a 40-px control, a
+ * menu row and a chip all read at the same weight.
+ * - `CONTROL_ICON` — glyph inside a 40-px control (toolbar buttons, the
+ *   selection panel, panel headers, dialog buttons).
+ * - `ROW_ICON` — leading icon of a menu / list row (fits the 24-px gutter).
+ * - `MARK_ICON` — check / chevron marks; heavier stroke so they stay crisp.
+ * - `BADGE_ICON` — tiny glyphs inside chips and badges.
+ */
+export const ICON_STROKE = 1.75;
+export const MARK_ICON_STROKE = 2.25;
+export const BADGE_ICON_STROKE = 2;
+export const CONTROL_ICON_SIZE = 20;
+export const ROW_ICON_SIZE = 16;
+export const MARK_ICON_SIZE = 14;
+export const BADGE_ICON_SIZE = 12;
+export const CONTROL_ICON = { size: CONTROL_ICON_SIZE, strokeWidth: ICON_STROKE } as const;
+export const ROW_ICON = { size: ROW_ICON_SIZE, strokeWidth: ICON_STROKE } as const;
+export const MARK_ICON = { size: MARK_ICON_SIZE, strokeWidth: MARK_ICON_STROKE } as const;
+export const BADGE_ICON = { size: BADGE_ICON_SIZE, strokeWidth: BADGE_ICON_STROKE } as const;
+
 /** Pixel side of the colour swatches inside the property panel. */
 export const PROPERTY_SWATCH_SIZE = 12;
 

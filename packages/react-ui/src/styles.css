@@ -94,17 +94,17 @@
 
   /* ---- Sizing · controls ---- */
   --du-button-size: var(--du-control-size); /* toolbar icon button / bar height driver */
-  --du-button-size-sm: 32px; /* icon button inside a group / panel */
+  --du-button-size-sm: var(--du-control-size); /* grouped / panel buttons — same 40 (alias) */
   --du-touch-size: 44px; /* minimum tap target on coarse pointers */
   --du-icon-size: 20px; /* toolbar glyph */
   --du-icon-size-sm: 16px; /* in-row glyph (menus, panels) */
-  --du-input-h: 28px; /* text / search / number inputs */
-  --du-control-h: 24px; /* small inline controls (number input, swatch fill) */
-  --du-swatch-size: 26px; /* colour cell (fill grows from 24 → 26 on hover) */
+  --du-input-h: 36px; /* text / search inputs */
+  --du-control-h: 28px; /* small inline controls (number input, swatch fill) */
+  --du-swatch-size: 32px; /* colour cell (fill grows from 28 → 32 on hover) */
   --du-switch-w: 30px;
   --du-switch-h: 18px;
-  --du-key-h: 22px; /* <kbd> pill in the help dialog */
-  --du-divider-h: 18px; /* vertical separator inside a toolbar row */
+  --du-key-h: 24px; /* <kbd> pill in the help dialog */
+  --du-divider-h: var(--du-icon-size); /* vertical separator inside a toolbar row */
 
   /* ---- Typography — system stack; 14 body, 12 captions, 10 micro caps. ---- */
   --du-font-family:
@@ -2081,8 +2081,8 @@
   height: var(--du-touch-size);
 }
 .du-sel-panel-mobile .du-button-group > .du-icon-button {
-  width: calc(var(--du-touch-size) - 6px);
-  height: calc(var(--du-touch-size) - 6px);
+  width: var(--du-control-size);
+  height: var(--du-control-size);
 }
 
 /* Flat segmented controls inside the floating panel — no group

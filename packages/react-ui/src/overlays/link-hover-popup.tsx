@@ -5,6 +5,7 @@ import type { Bounds } from "@oh-just-another/types";
 import { useDiagramOptional } from "../core/hooks.js";
 import { useDismissTimer } from "../utils/use-dismiss-timer.js";
 import { usePortalContainer } from "../core/portal-container.js";
+import { BADGE_ICON } from "../core/constants.js";
 
 /**
  * Hover link popup. When the pointer is over an element that carries a
@@ -105,7 +106,7 @@ export const LinkHoverPopup = () => {
         }}
       >
         <span className="du-link-popup-text">{display}</span>
-        <ExternalLink size={13} strokeWidth={1.75} aria-hidden />
+        <ExternalLink {...BADGE_ICON} aria-hidden />
       </a>
     </div>,
     portalContainer,

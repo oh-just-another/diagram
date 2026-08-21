@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pipette, Plus, X } from "lucide-react";
 import { ELEMENT_PALETTE_LIGHT } from "./color-palette.js";
+import { BADGE_ICON } from "../core/constants.js";
 
 /**
  * Swatch grid + custom-colour picker. A row of pinned palette colours;
@@ -82,7 +83,7 @@ export const ColorSwatchPicker = ({
           className="du-swatch du-swatch-eyedrop"
         >
           <span className="du-swatch-fill du-swatch-fill-blank">
-            <Pipette size={12} strokeWidth={2} />
+            <Pipette {...BADGE_ICON} />
           </span>
         </button>
       ) : null}
@@ -97,7 +98,7 @@ export const ColorSwatchPicker = ({
           className="du-swatch du-swatch-clear"
         >
           <span className="du-swatch-fill du-swatch-fill-blank">
-            <X size={12} strokeWidth={2} />
+            <X {...BADGE_ICON} />
           </span>
         </button>
       ) : null}
@@ -157,7 +158,7 @@ const CustomSwatch = ({
   return (
     <label className="du-swatch du-swatch-custom" title="Pick custom colour">
       <span className="du-swatch-fill" style={hasColour ? { background: value } : undefined}>
-        {hasColour ? null : <Plus size={12} strokeWidth={2} />}
+        {hasColour ? null : <Plus {...BADGE_ICON} />}
       </span>
       <input
         type="color"

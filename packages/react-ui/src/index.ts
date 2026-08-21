@@ -162,6 +162,10 @@ export { PortalContainerProvider, usePortalContainer } from "./core/portal-conta
 
 // Tunable layout sizes for the built-in panels and toolbar.
 export {
+  CONTROL_ICON,
+  ROW_ICON,
+  MARK_ICON,
+  BADGE_ICON,
   PALETTE_WIDTH,
   PALETTE_ITEM_SIZE,
   PROPERTY_PANEL_WIDTH,

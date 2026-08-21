@@ -12,7 +12,7 @@ import {
 import { walkDataTransfer } from "@oh-just-another/state";
 import { createListeners } from "@oh-just-another/events";
 import { useDiagramOptional } from "../core/hooks.js";
-import { PALETTE_ITEM_SIZE } from "../core/constants.js";
+import { PALETTE_ITEM_SIZE, MARK_ICON } from "../core/constants.js";
 
 /**
  * Draggable shape palette. Defaults to the global `defaultRegistry`; pass a
@@ -155,11 +155,7 @@ const CategorySection = ({
       >
         <span>{category}</span>
         <span className="du-palette-category-caret" aria-hidden>
-          {collapsed ? (
-            <ChevronRight size={12} strokeWidth={1.75} />
-          ) : (
-            <ChevronDown size={12} strokeWidth={1.75} />
-          )}
+          {collapsed ? <ChevronRight {...MARK_ICON} /> : <ChevronDown {...MARK_ICON} />}
         </span>
       </button>
       {collapsed ? null : (

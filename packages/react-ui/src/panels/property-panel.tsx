@@ -116,6 +116,7 @@ import {
   TEXT_FONT_STACKS,
   EMOJI_QUICK_PICKS,
   IMAGE_MASK_DEFAULT_RADIUS,
+  CONTROL_ICON,
 } from "../core/constants.js";
 
 /**
@@ -401,7 +402,7 @@ const PanelShell = ({
               setExpanded((v) => !v);
             }}
           >
-            <MoreVertical size={18} strokeWidth={1.75} aria-hidden />
+            <MoreVertical {...CONTROL_ICON} aria-hidden />
           </button>
         ) : null}
       </div>
@@ -439,7 +440,7 @@ const LinkControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
           title="Link"
           aria-label="Link"
         >
-          <LinkIcon size={14} strokeWidth={1.75} aria-hidden />
+          <LinkIcon {...CONTROL_ICON} aria-hidden />
         </button>
       }
     >
@@ -517,7 +518,7 @@ const CommentControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
         editor.addAnnotation({ position: { x: 0, y: 0 }, elementId: first.id });
       }}
     >
-      <MessageCircle size={14} strokeWidth={1.75} aria-hidden />
+      <MessageCircle {...CONTROL_ICON} aria-hidden />
     </button>
   );
 };
@@ -540,7 +541,7 @@ const LockControl = () => {
         editor.toggleLockSelection();
       }}
     >
-      <LockIcon size={14} strokeWidth={1.75} aria-hidden />
+      <LockIcon {...CONTROL_ICON} aria-hidden />
     </button>
   );
 };
@@ -569,7 +570,7 @@ const MoreButton = () => {
         controller.open({ screenPoint, worldPoint });
       }}
     >
-      <MoreHorizontal size={14} strokeWidth={1.75} aria-hidden />
+      <MoreHorizontal {...CONTROL_ICON} aria-hidden />
     </button>
   );
 };
@@ -758,7 +759,7 @@ const StickyTagControl = ({ shapes }: { readonly shapes: readonly ElementBase[] 
       ariaLabel="Tags"
       trigger={
         <button type="button" className="du-sel-icon-button" title="Add tag" aria-label="Add tag">
-          <Tag size={14} strokeWidth={1.75} aria-hidden />
+          <Tag {...CONTROL_ICON} aria-hidden />
         </button>
       }
     >
@@ -822,7 +823,7 @@ const StickyAuthorControl = ({ shapes }: { readonly shapes: readonly ElementBase
         editor.toggleStickyAuthor(ids);
       }}
     >
-      <UserRound size={14} strokeWidth={1.75} aria-hidden />
+      <UserRound {...CONTROL_ICON} aria-hidden />
     </button>
   );
 };
@@ -933,13 +934,13 @@ const BorderGroupControl = ({ shapes }: { readonly shapes: readonly ElementBase[
           ariaLabel="Border dash style"
           value={dash}
           options={[
-            { value: "solid", label: "Solid", icon: <Square size={14} strokeWidth={1.75} /> },
+            { value: "solid", label: "Solid", icon: <Square {...CONTROL_ICON} /> },
             {
               value: "dashed",
               label: "Dashed",
-              icon: <SquareDashed size={14} strokeWidth={1.75} />,
+              icon: <SquareDashed {...CONTROL_ICON} />,
             },
-            { value: "dotted", label: "Dotted", icon: <SquareDot size={14} strokeWidth={1.75} /> },
+            { value: "dotted", label: "Dotted", icon: <SquareDot {...CONTROL_ICON} /> },
           ]}
           onChange={(v) => {
             editor.updateStyle(ids, {
@@ -1047,7 +1048,7 @@ const FrameRatioControl = ({ shapes }: { readonly shapes: readonly ElementBase[]
           title="Frame size"
           aria-label="Frame size"
         >
-          <Proportions size={14} strokeWidth={1.75} aria-hidden />
+          <Proportions {...CONTROL_ICON} aria-hidden />
         </button>
       }
     >
@@ -1144,7 +1145,7 @@ const ReplaceImageControl = ({ shapes }: { readonly shapes: readonly ElementBase
           inputRef.current?.click();
         }}
       >
-        <Upload size={14} strokeWidth={1.75} aria-hidden />
+        <Upload {...CONTROL_ICON} aria-hidden />
       </button>
       <input
         ref={inputRef}
@@ -1185,7 +1186,7 @@ const DownloadImageControl = ({ shapes }: { readonly shapes: readonly ElementBas
         URL.revokeObjectURL(url);
       }}
     >
-      <Download size={14} strokeWidth={1.75} aria-hidden />
+      <Download {...CONTROL_ICON} aria-hidden />
     </button>
   );
 };
@@ -1201,7 +1202,7 @@ const ImageAltControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }
       ariaLabel="Alt text"
       trigger={
         <button type="button" className="du-sel-icon-button" title="Alt text" aria-label="Alt text">
-          <FileText size={14} strokeWidth={1.75} aria-hidden />
+          <FileText {...CONTROL_ICON} aria-hidden />
         </button>
       }
     >
@@ -1244,7 +1245,7 @@ const ListControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
       ariaLabel="List"
       trigger={
         <button type="button" className="du-sel-icon-button" title="List" aria-label="List">
-          <List size={14} strokeWidth={1.75} aria-hidden />
+          <List {...CONTROL_ICON} aria-hidden />
         </button>
       }
     >
@@ -1256,12 +1257,12 @@ const ListControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
             {
               value: "bullet",
               label: "Bulleted list",
-              icon: <List size={14} strokeWidth={1.75} />,
+              icon: <List {...CONTROL_ICON} />,
             },
             {
               value: "numbered",
               label: "Ordered list",
-              icon: <ListOrdered size={14} strokeWidth={1.75} />,
+              icon: <ListOrdered {...CONTROL_ICON} />,
             },
           ]}
           onChange={(v) => {
@@ -1278,7 +1279,7 @@ const ListControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
               editor.indentParagraphs(ids, -1);
             }}
           >
-            <IndentDecrease size={14} strokeWidth={1.75} aria-hidden />
+            <IndentDecrease {...CONTROL_ICON} aria-hidden />
           </button>
           <button
             type="button"
@@ -1289,7 +1290,7 @@ const ListControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
               editor.indentParagraphs(ids, 1);
             }}
           >
-            <IndentIncrease size={14} strokeWidth={1.75} aria-hidden />
+            <IndentIncrease {...CONTROL_ICON} aria-hidden />
           </button>
         </div>
       </div>
@@ -1325,7 +1326,7 @@ const HighlightControl = ({
           title="Highlight color"
           aria-label="Highlight color"
         >
-          <Highlighter size={14} strokeWidth={1.75} aria-hidden />
+          <Highlighter {...CONTROL_ICON} aria-hidden />
         </button>
       }
     >
@@ -1543,11 +1544,11 @@ const TextAlignControl = ({
           aria-label="Text alignment"
         >
           {value === "right" ? (
-            <AlignRight size={14} strokeWidth={1.75} aria-hidden />
+            <AlignRight {...CONTROL_ICON} aria-hidden />
           ) : value === "center" ? (
-            <AlignCenter size={14} strokeWidth={1.75} aria-hidden />
+            <AlignCenter {...CONTROL_ICON} aria-hidden />
           ) : (
-            <AlignLeft size={14} strokeWidth={1.75} aria-hidden />
+            <AlignLeft {...CONTROL_ICON} aria-hidden />
           )}
         </button>
       }
@@ -1557,13 +1558,13 @@ const TextAlignControl = ({
           ariaLabel="Horizontal text alignment"
           value={value}
           options={[
-            { value: "left", label: "Left", icon: <AlignLeft size={14} strokeWidth={1.75} /> },
+            { value: "left", label: "Left", icon: <AlignLeft {...CONTROL_ICON} /> },
             {
               value: "center",
               label: "Center",
-              icon: <AlignCenter size={14} strokeWidth={1.75} />,
+              icon: <AlignCenter {...CONTROL_ICON} />,
             },
-            { value: "right", label: "Right", icon: <AlignRight size={14} strokeWidth={1.75} /> },
+            { value: "right", label: "Right", icon: <AlignRight {...CONTROL_ICON} /> },
           ]}
           onChange={(v) => {
             if (labelMode) editor.updateLabelStyle(ids, { textAlign: v });
@@ -1577,17 +1578,17 @@ const TextAlignControl = ({
             {
               value: "top",
               label: "Top",
-              icon: <AlignStartHorizontal size={14} strokeWidth={1.75} />,
+              icon: <AlignStartHorizontal {...CONTROL_ICON} />,
             },
             {
               value: "middle",
               label: "Middle",
-              icon: <AlignCenterHorizontal size={14} strokeWidth={1.75} />,
+              icon: <AlignCenterHorizontal {...CONTROL_ICON} />,
             },
             {
               value: "bottom",
               label: "Bottom",
-              icon: <AlignEndHorizontal size={14} strokeWidth={1.75} />,
+              icon: <AlignEndHorizontal {...CONTROL_ICON} />,
             },
           ]}
           onChange={(v) => {
@@ -1715,7 +1716,7 @@ const TextDecorationControl = ({
           title="Text style (bold / italic / …)"
           aria-label="Text style"
         >
-          <CaseSensitive size={16} strokeWidth={1.75} aria-hidden />
+          <CaseSensitive {...CONTROL_ICON} aria-hidden />
         </button>
       }
     >
@@ -1725,7 +1726,7 @@ const TextDecorationControl = ({
           <TextStyleToggle
             active={allBold}
             label="Bold"
-            icon={<Bold size={14} strokeWidth={1.75} />}
+            icon={<Bold {...CONTROL_ICON} />}
             onClick={() => {
               applyPartial({ fontWeight: allBold ? "normal" : "bold" });
             }}
@@ -1733,7 +1734,7 @@ const TextDecorationControl = ({
           <TextStyleToggle
             active={allItalic}
             label="Italic"
-            icon={<Italic size={14} strokeWidth={1.75} />}
+            icon={<Italic {...CONTROL_ICON} />}
             onClick={() => {
               applyPartial({ fontStyle: allItalic ? "normal" : "italic" });
             }}
@@ -1741,7 +1742,7 @@ const TextDecorationControl = ({
           <TextStyleToggle
             active={allUnderline}
             label="Underline"
-            icon={<Underline size={14} strokeWidth={1.75} />}
+            icon={<Underline {...CONTROL_ICON} />}
             onClick={() => {
               setDecoration("underline", !allUnderline);
             }}
@@ -1749,7 +1750,7 @@ const TextDecorationControl = ({
           <TextStyleToggle
             active={allStrike}
             label="Strikethrough"
-            icon={<Strikethrough size={14} strokeWidth={1.75} />}
+            icon={<Strikethrough {...CONTROL_ICON} />}
             onClick={() => {
               setDecoration("strikethrough", !allStrike);
             }}
@@ -1941,7 +1942,7 @@ const SelectionFilterControl = ({ shapes }: { readonly shapes: readonly ElementB
           title="Filter selection by type"
           aria-label="Filter selection by type"
         >
-          <ListFilter size={14} strokeWidth={1.75} aria-hidden />
+          <ListFilter {...CONTROL_ICON} aria-hidden />
         </button>
       }
     >
@@ -1963,7 +1964,7 @@ const SelectionFilterControl = ({ shapes }: { readonly shapes: readonly ElementB
                   editor.setSelection(members.map((m) => m.id));
                 }}
               >
-                <Icon size={14} strokeWidth={1.75} aria-hidden />
+                <Icon {...CONTROL_ICON} aria-hidden />
                 <span>{bucket.label}</span>
                 <span className="du-sel-mask-ratio">{members.length}</span>
               </button>
@@ -2031,7 +2032,7 @@ const ConvertTypeControl = ({ shapes }: { readonly shapes: readonly ElementBase[
           title="Switch type"
           aria-label="Switch type"
         >
-          <TriggerIcon size={14} strokeWidth={1.75} aria-hidden />
+          <TriggerIcon {...CONTROL_ICON} aria-hidden />
         </button>
       }
     >
@@ -2054,7 +2055,7 @@ const ConvertTypeControl = ({ shapes }: { readonly shapes: readonly ElementBase[
                   setOpen(false);
                 }}
               >
-                <Icon size={14} strokeWidth={1.75} aria-hidden />
+                <Icon {...CONTROL_ICON} aria-hidden />
                 <span>{target.label}</span>
               </button>
             );
@@ -2166,7 +2167,7 @@ const MaskControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
       ariaLabel="Image mask"
       trigger={
         <button type="button" className="du-sel-icon-button" title="Mask" aria-label="Image mask">
-          <Squircle size={14} strokeWidth={1.75} aria-hidden />
+          <Squircle {...CONTROL_ICON} aria-hidden />
         </button>
       }
     >
@@ -2191,7 +2192,7 @@ const MaskControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
                   }
                 }}
               >
-                <Icon size={14} strokeWidth={1.75} aria-hidden />
+                <Icon {...CONTROL_ICON} aria-hidden />
                 <span>{tile.label}</span>
                 {tile.ratio !== undefined ? (
                   <span className="du-sel-mask-ratio">{tile.ratio}</span>
@@ -2216,7 +2217,7 @@ const MaskControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
                   editor.setImageMask(ids, tile.mask);
                 }}
               >
-                <Icon size={14} strokeWidth={1.75} aria-hidden />
+                <Icon {...CONTROL_ICON} aria-hidden />
               </button>
             );
           })}
@@ -2260,7 +2261,7 @@ const CropControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
         editor.beginImageCrop(id);
       }}
     >
-      <Crop size={14} strokeWidth={1.75} aria-hidden />
+      <Crop {...CONTROL_ICON} aria-hidden />
     </button>
   );
 };
@@ -2331,9 +2332,9 @@ const LinkStrokeStyleControl = ({ edge }: { readonly edge: Link }) => {
       ariaLabel="Link stroke style"
       value={value}
       options={[
-        { value: "solid", label: "Solid", icon: <Square size={14} strokeWidth={1.75} /> },
-        { value: "dashed", label: "Dashed", icon: <SquareDashed size={14} strokeWidth={1.75} /> },
-        { value: "dotted", label: "Dotted", icon: <SquareDot size={14} strokeWidth={1.75} /> },
+        { value: "solid", label: "Solid", icon: <Square {...CONTROL_ICON} /> },
+        { value: "dashed", label: "Dashed", icon: <SquareDashed {...CONTROL_ICON} /> },
+        { value: "dotted", label: "Dotted", icon: <SquareDot {...CONTROL_ICON} /> },
       ]}
       onChange={(v) => {
         const dashArray = v === "solid" ? [] : v === "dashed" ? [8, 4] : [2, 4];
@@ -2355,11 +2356,11 @@ const LinkLineKindControl = ({ edge }: { readonly edge: Link }) => {
       ariaLabel="Link body"
       value={value}
       options={[
-        { value: "line", label: "Line", icon: <Minus size={14} strokeWidth={1.75} /> },
+        { value: "line", label: "Line", icon: <Minus {...CONTROL_ICON} /> },
         {
           value: "block-arrow",
           label: "Block arrow",
-          icon: <MoveRight size={14} strokeWidth={2.5} />,
+          icon: <MoveRight {...CONTROL_ICON} />,
         },
       ]}
       onChange={(v) => {
@@ -2380,7 +2381,7 @@ const LinkRoutingControl = ({ edge }: { readonly edge: Link }) => {
       options={[
         { value: "straight", label: "Straight", icon: <RoutingIcon kind="straight" /> },
         { value: "orthogonal", label: "Elbow", icon: <RoutingIcon kind="orthogonal" /> },
-        { value: "bezier", label: "Curved", icon: <Spline size={14} strokeWidth={1.75} /> },
+        { value: "bezier", label: "Curved", icon: <Spline {...CONTROL_ICON} /> },
       ]}
       onChange={(v) => {
         editor.updateSelectedLink((e) => ({ ...e, routing: v }));
@@ -2490,7 +2491,7 @@ const LinkAutoRouteControl = ({ edge }: { readonly edge: Link }) => {
         editor.setSelectedLinkAvoidObstacles(!on);
       }}
     >
-      <Waypoints size={14} strokeWidth={1.75} aria-hidden />
+      <Waypoints {...CONTROL_ICON} aria-hidden />
     </button>
   );
 };
@@ -2508,7 +2509,7 @@ const LinkDeleteControl = () => {
         editor.deleteSelected();
       }}
     >
-      <Trash2 size={14} strokeWidth={1.75} aria-hidden />
+      <Trash2 {...CONTROL_ICON} aria-hidden />
     </button>
   );
 };
@@ -2762,7 +2763,7 @@ const StrokeWidthIcon = ({ thickness }: { readonly thickness: number }) => (
 
 const CornerIcon = ({ kind }: { readonly kind: Roundness["type"] }) => {
   if (kind === "sharp") {
-    return <Square size={14} strokeWidth={1.75} aria-hidden />;
+    return <Square {...CONTROL_ICON} aria-hidden />;
   }
   return (
     <svg width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden>

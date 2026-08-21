@@ -90,6 +90,8 @@ import {
   useEditorSelector,
   useFullscreen,
   useZenMode,
+  CONTROL_ICON,
+  ROW_ICON,
 } from "@oh-just-another/react-ui";
 
 /**
@@ -98,11 +100,8 @@ import {
  * children (library, zoom, fit). All share `BUTTON_ICON_STROKE`
  * for visual consistency with the toolbar.
  */
-const MENU_ICON_SIZE = 14;
-const BUTTON_ICON_SIZE = 16;
-const BUTTON_ICON_STROKE = 1.75;
-const menuIcon = { size: MENU_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
-const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
+const menuIcon = ROW_ICON;
+const buttonIcon = CONTROL_ICON;
 
 /** Default target for the Help-menu "GitHub" link (overridable / hideable via the `repositoryUrl` prop). */
 const DEFAULT_REPOSITORY_URL = "https://github.com/oh-just-another/diagram";

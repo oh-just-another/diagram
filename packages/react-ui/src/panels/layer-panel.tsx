@@ -3,10 +3,9 @@ import { Eye, EyeOff, Lock, Plus, Trash2, Unlock } from "lucide-react";
 import type { Layer } from "@oh-just-another/scene";
 import type { LayerId } from "@oh-just-another/types";
 import { useActiveLayerId, useDiagramOptional, useLayers } from "../core/hooks.js";
+import { CONTROL_ICON } from "../core/constants.js";
 
-const LAYER_GLYPH_SIZE = 16;
-const LAYER_GLYPH_STROKE = 1.75;
-const glyph = { size: LAYER_GLYPH_SIZE, strokeWidth: LAYER_GLYPH_STROKE } as const;
+const glyph = CONTROL_ICON;
 
 /**
  * Read-write list of scene layers. Click a row to make it active; click

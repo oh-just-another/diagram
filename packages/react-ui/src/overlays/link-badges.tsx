@@ -5,6 +5,7 @@ import { getElementWorldBounds } from "@oh-just-another/scene";
 import { useDiagramOptional } from "../core/hooks.js";
 import { useQuietViewport } from "../core/use-quiet-viewport.js";
 import { usePortalContainer } from "../core/portal-container.js";
+import { BADGE_ICON } from "../core/constants.js";
 
 /**
  * Persistent link badges. Every element carrying a (safe) `href` shows a
@@ -65,7 +66,7 @@ export const LinkBadges = () => {
             editor.openLink(badge.href);
           }}
         >
-          <LinkIcon size={11} strokeWidth={2} aria-hidden />
+          <LinkIcon {...BADGE_ICON} aria-hidden />
         </button>
       ))}
     </>,

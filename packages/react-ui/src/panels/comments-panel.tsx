@@ -3,10 +3,9 @@ import { ChevronDown, X } from "lucide-react";
 import { useAnnotations, useDiagramOptional, useSelectedAnnotation } from "../core/hooks.js";
 import { formatTime } from "../utils/format-time.js";
 import { Markdown } from "../primitives/markdown.js";
+import { CONTROL_ICON } from "../core/constants.js";
 
-const GLYPH_SIZE = 16;
-const GLYPH_STROKE = 1.75;
-const glyph = { size: GLYPH_SIZE, strokeWidth: GLYPH_STROKE } as const;
+const glyph = CONTROL_ICON;
 
 /**
  * Side-panel listing every annotation thread in the scene. Each row is

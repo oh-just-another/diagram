@@ -10,7 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
-import { MENU_VIEWPORT_PADDING_PX } from "../core/constants.js";
+import { MENU_VIEWPORT_PADDING_PX, MARK_ICON } from "../core/constants.js";
 import { floatPanel } from "../primitives/float-panel.js";
 import type { Vec2 } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
@@ -470,7 +470,7 @@ const ContextMenuRow = ({
       <span className="du-menu-row-main">
         {gutter ? (
           <span aria-hidden className="du-menu-gutter is-accent">
-            {checked ? <Check size={14} strokeWidth={2.25} /> : ""}
+            {checked ? <Check {...MARK_ICON} /> : ""}
           </span>
         ) : null}
         <span>{item.label}</span>

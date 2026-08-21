@@ -12,6 +12,7 @@ import {
 } from "react";
 import { Check, ChevronRight, Menu as MenuIcon } from "lucide-react";
 import { Switch } from "../primitives/switch.js";
+import { MARK_ICON } from "../core/constants.js";
 
 /** Pixel size for the trigger icon — matches the toolbar tool buttons. */
 const TRIGGER_ICON_SIZE = 16;
@@ -226,7 +227,7 @@ export const MainMenu = ({
 /** Gutter content: check mark when active, else the icon (or nothing). */
 const Gutter = ({ active, icon }: { readonly active?: boolean; readonly icon?: ReactNode }) => (
   <span aria-hidden className={`du-menu-gutter${active ? " is-accent" : ""}`}>
-    {active ? <Check size={14} strokeWidth={2.25} /> : (icon ?? "")}
+    {active ? <Check {...MARK_ICON} /> : (icon ?? "")}
   </span>
 );
 
@@ -476,7 +477,7 @@ const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
           {label}
         </span>
         <span className="du-menu-shortcut">
-          <ChevronRight size={12} strokeWidth={2.25} aria-hidden />
+          <ChevronRight {...MARK_ICON} aria-hidden />
         </span>
       </button>
       {open ? (
