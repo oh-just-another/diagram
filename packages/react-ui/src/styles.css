@@ -1028,8 +1028,9 @@
   flex-direction: column;
 }
 
+/* Sections sit inside the same inset a menu panel gives its rows. */
 .du-palette-section {
-  padding: 0 var(--du-pad) var(--du-pad-sm);
+  padding: 0 var(--du-menu-pad);
 }
 
 .du-palette-category {
@@ -1037,9 +1038,10 @@
   background: transparent;
   color: var(--du-text-muted);
   border: none;
-  padding: var(--du-space-md) 0 var(--du-space-sm);
+  /* Same rhythm as `.du-menu-group-title`. */
+  padding: var(--du-menu-sep) var(--du-menu-row-pad-x) var(--du-space-xs);
   font: inherit;
-  font-size: var(--du-font-size-sm);
+  font-size: var(--du-menu-shortcut-font);
   font-weight: var(--du-font-weight-strong);
   text-transform: uppercase;
   letter-spacing: var(--du-caps-tracking);
@@ -1071,14 +1073,12 @@
   padding: 0;
 }
 
-/* Compact list layout (modern-style templates panel) — single column of
-   icon + name rows. Denser than the grid; the label reads left-aligned
-   beside a small icon. */
+/* List layout (templates panel) — single column of icon + name rows in
+   the shared menu-row rhythm (`--du-panel-row-h`, `--du-menu-row-pad-x`). */
 .du-palette-list {
   display: flex;
   flex-direction: column;
-  gap: var(--du-space-xs);
-  padding: 0 var(--du-pad) var(--du-pad-sm);
+  padding: 0 var(--du-menu-pad);
 }
 .du-palette-section > .du-palette-list {
   padding: 0;
@@ -1088,11 +1088,13 @@
   align-items: center;
   justify-content: flex-start;
   aspect-ratio: auto;
-  gap: var(--du-space-md);
-  padding: var(--du-space-sm) var(--du-space-md);
+  gap: var(--du-menu-gap);
+  min-height: var(--du-panel-row-h);
+  padding: 0 var(--du-menu-row-pad-x);
+  border-radius: var(--du-menu-row-radius);
   text-align: left;
-  font-size: var(--du-font-size-sm);
-  line-height: 1.2;
+  font-size: var(--du-menu-font);
+  line-height: var(--du-line-height);
 }
 .du-palette-list .du-palette-item-icon {
   width: var(--du-icon-size) !important;
@@ -1806,7 +1808,7 @@
 /* Search input row — sits between the header and the body. */
 .du-side-panel-search {
   position: relative;
-  padding: var(--du-pad-sm) var(--du-pad);
+  padding: var(--du-pad-sm) var(--du-pad) var(--du-pad);
 }
 
 .du-side-panel-search input[type="search"] {
