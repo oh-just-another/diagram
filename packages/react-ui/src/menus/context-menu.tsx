@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 import { MENU_VIEWPORT_PADDING_PX, MARK_ICON } from "../core/constants.js";
+import { cssPx } from "../primitives/css-var.js";
 import { floatPanel } from "../primitives/float-panel.js";
 import type { Vec2 } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
@@ -235,8 +236,7 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
 const submenuGeometry = (panel: HTMLElement): { align: number; gap: number } => {
   const cs = getComputedStyle(panel);
   const align = parseFloat(cs.paddingTop) + parseFloat(cs.borderTopWidth);
-  const gap = parseFloat(cs.getPropertyValue("--du-submenu-gap"));
-  return { align, gap: align + (Number.isNaN(gap) ? 0 : gap) };
+  return { align, gap: align + cssPx(panel, "--du-submenu-gap") };
 };
 
 /**

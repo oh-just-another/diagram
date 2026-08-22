@@ -4,15 +4,20 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronRight, Menu as MenuIcon } from "lucide-react";
 import { Switch } from "../primitives/switch.js";
-import { MARK_ICON } from "../core/constants.js";
+import { floatPanel } from "../primitives/float-panel.js";
+import { cssPx } from "../primitives/css-var.js";
+import { usePortalContainer } from "../core/portal-container.js";
+import { MARK_ICON, MENU_VIEWPORT_PADDING_PX } from "../core/constants.js";
 
 /** Pixel size for the trigger icon — matches the toolbar tool buttons. */
 const TRIGGER_ICON_SIZE = 16;
@@ -41,6 +46,13 @@ interface MenuContext {
 }
 
 const Ctx = createContext<MenuContext | null>(null);
+
+/**
+ * Every open panel of one menu (root + nested), portaled to the portal
+ * container so they stack above the UI layer (`--du-z-popover`) — the
+ * click-outside handler treats a press inside any of them as "inside".
+ */
+const PanelsCtx = createContext<Set<HTMLElement> | null>(null);
 
 /**
  * One panel's submenu coordinator: at most ONE submenu per level is open.
@@ -151,13 +163,40 @@ export const MainMenu = ({
 }: MainMenuProps) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const panels = useRef(new Set<HTMLElement>()).current;
+  const portalContainer = usePortalContainer();
   const menuId = useId();
+
+  // Float the panel off the trigger: clear the bar group's inset + border,
+  // then keep `--du-flyout-gap` between the bar and the panel; flip / shift
+  // inside the viewport like the context menu.
+  useLayoutEffect(() => {
+    const trigger = triggerRef.current;
+    const panel = panelRef.current;
+    if (!open || !trigger || !panel) return undefined;
+    panels.add(panel);
+    const gap = cssPx(panel, "--du-pad-sm") + 1 + cssPx(panel, "--du-flyout-gap");
+    const stop = floatPanel(trigger, panel, {
+      placement,
+      gap,
+      padding: MENU_VIEWPORT_PADDING_PX,
+      strategy: "fixed",
+      clampHeight: true,
+    });
+    return () => {
+      stop();
+      panels.delete(panel);
+    };
+  }, [open, placement, panels]);
 
   useEffect(() => {
     if (!open) return undefined;
     const onDown = (ev: MouseEvent | PointerEvent): void => {
-      if (!ref.current) return;
-      if (ref.current.contains(ev.target as Node)) return;
+      const t = ev.target as Node;
+      if (ref.current?.contains(t)) return;
+      for (const panel of panels) if (panel.contains(t)) return;
       setOpen(false);
     };
     const onKey = (ev: KeyboardEvent): void => {
@@ -175,7 +214,7 @@ export const MainMenu = ({
       window.removeEventListener("pointerdown", onDown);
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, panels]);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -187,18 +226,17 @@ export const MainMenu = ({
     ...style,
   };
 
-  // The trigger sits inside a bar group: clear the group inset + border,
-  // then keep `--du-flyout-gap` between the bar and the panel.
-  const barClear = "calc(100% + var(--du-pad-sm) + 1px + var(--du-flyout-gap))";
   const panelStyle: CSSProperties = {
-    position: "absolute",
-    ...(placement === "top-end" ? { bottom: barClear, right: 0 } : { top: barClear, left: 0 }),
+    position: "fixed",
+    top: 0,
+    left: 0,
     zIndex: "var(--du-z-popover)",
   };
 
   return (
     <div ref={ref} className={className} style={containerStyle}>
       <button
+        ref={triggerRef}
         type="button"
         className={`${triggerClassName ?? "du-icon-button du-icon-button-flat"}${open ? " is-active" : ""}`}
         style={triggerStyle}
@@ -213,13 +251,25 @@ export const MainMenu = ({
       >
         {trigger}
       </button>
-      {open ? (
-        <div id={menuId} role="menu" className="du-menu-panel" style={panelStyle}>
-          <Ctx.Provider value={{ close }}>
-            <MenuLevel>{children}</MenuLevel>
-          </Ctx.Provider>
-        </div>
-      ) : null}
+      {open
+        ? createPortal(
+            <div
+              ref={panelRef}
+              id={menuId}
+              role="menu"
+              aria-label={ariaLabel}
+              className="du-menu-panel"
+              style={panelStyle}
+            >
+              <Ctx.Provider value={{ close }}>
+                <PanelsCtx.Provider value={panels}>
+                  <MenuLevel>{children}</MenuLevel>
+                </PanelsCtx.Provider>
+              </Ctx.Provider>
+            </div>,
+            portalContainer,
+          )
+        : null}
     </div>
   );
 };
@@ -436,36 +486,61 @@ export interface MainMenuSubmenuProps {
 const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
   const id = useId();
   const level = useContext(LevelCtx);
+  const panels = useContext(PanelsCtx);
+  const portalContainer = usePortalContainer();
   const open = level?.openId === id;
+  const rowRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  // `top` undoes the panel padding + border so the first child row aligns
-  // with this row; `marginLeft` clears the parent column's padding + border
-  // and then keeps `--du-submenu-gap` between the two panels.
+  // Beside the row (left when the right side has no room), first child row
+  // aligned with this row: the cross-axis shift undoes the panel padding +
+  // border, the main-axis gap clears the parent column and adds
+  // `--du-submenu-gap`. Portaled like the root panel so it stacks above
+  // the UI layer and is never clipped by a scrolling parent.
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const panel = panelRef.current;
+    if (!open || !row || !panel) return undefined;
+    panels?.add(panel);
+    const align = cssPx(panel, "--du-menu-pad") + 1;
+    const stop = floatPanel(row, panel, {
+      placement: "right-start",
+      fallbackPlacements: ["left-start"],
+      gap: align + cssPx(panel, "--du-submenu-gap"),
+      crossAxis: -align,
+      padding: MENU_VIEWPORT_PADDING_PX,
+      strategy: "fixed",
+      clampHeight: true,
+    });
+    return () => {
+      stop();
+      panels?.delete(panel);
+    };
+  }, [open, panels]);
+
   const panelStyle: CSSProperties = {
-    position: "absolute",
-    top: "calc(-1 * var(--du-menu-pad) - 1px)",
-    left: "100%",
-    marginLeft: "calc(var(--du-menu-pad) + 1px + var(--du-submenu-gap))",
+    position: "fixed",
+    top: 0,
+    left: 0,
     zIndex: "calc(var(--du-z-popover) + 1)",
   };
 
   return (
-    <div
-      style={{ position: "relative" }}
-      onMouseEnter={() => {
-        if (disabled) return;
-        level?.open(id);
-      }}
-      onMouseLeave={() => {
-        level?.scheduleClose(id);
-      }}
-    >
+    <>
       <button
+        ref={rowRef}
         type="button"
         role="menuitem"
         disabled={disabled}
         aria-haspopup="menu"
         aria-expanded={open}
+        onMouseEnter={() => {
+          if (disabled) return;
+          level?.open(id);
+        }}
+        onMouseLeave={() => {
+          level?.scheduleClose(id);
+        }}
         onClick={() => {
           if (disabled) return;
           level?.toggle(id);
@@ -480,19 +555,26 @@ const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
           <ChevronRight {...MARK_ICON} aria-hidden />
         </span>
       </button>
-      {open ? (
-        <div
-          role="menu"
-          className="du-menu-panel du-menu-submenu"
-          style={panelStyle}
-          onMouseEnter={() => {
-            level.cancelClose();
-          }}
-        >
-          <MenuLevel>{children}</MenuLevel>
-        </div>
-      ) : null}
-    </div>
+      {open
+        ? createPortal(
+            <div
+              ref={panelRef}
+              role="menu"
+              className="du-menu-panel du-menu-submenu"
+              style={panelStyle}
+              onMouseEnter={() => {
+                level.cancelClose();
+              }}
+              onMouseLeave={() => {
+                level.scheduleClose(id);
+              }}
+            >
+              <MenuLevel>{children}</MenuLevel>
+            </div>,
+            portalContainer,
+          )
+        : null}
+    </>
   );
 };
 

@@ -5,7 +5,7 @@
  * the radio `Toggle`, and nested `Submenu` expansion.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MainMenu } from "../src/index";
 
 afterEach(cleanup);
@@ -22,18 +22,18 @@ describe("MainMenu open/close", () => {
     );
     const btn = trigger(container);
     expect(btn.getAttribute("aria-expanded")).toBe("false");
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
 
     act(() => {
       fireEvent.click(btn);
     });
     expect(btn.getAttribute("aria-expanded")).toBe("true");
-    expect(container.querySelector('[role="menu"]')).not.toBeNull();
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
 
     act(() => {
       fireEvent.click(btn);
     });
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 
   it("closes on Escape and on outside pointerdown", () => {
@@ -45,12 +45,12 @@ describe("MainMenu open/close", () => {
     act(() => {
       fireEvent.click(trigger(container));
     });
-    expect(container.querySelector('[role="menu"]')).not.toBeNull();
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
 
     act(() => {
       fireEvent.keyDown(window, { key: "Escape" });
     });
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
 
     // Re-open, then click outside.
     act(() => {
@@ -59,7 +59,7 @@ describe("MainMenu open/close", () => {
     act(() => {
       fireEvent.mouseDown(document.body);
     });
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 });
 
@@ -81,7 +81,7 @@ describe("MainMenu.Item", () => {
     });
     expect(onClick).toHaveBeenCalledTimes(1);
     // Menu closed after activation.
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 
   it("does not fire onClick when disabled and keeps the menu open", () => {
@@ -101,7 +101,7 @@ describe("MainMenu.Item", () => {
     });
     expect(onClick).not.toHaveBeenCalled();
     // Disabled item click is a no-op; the click never reaches `close()`.
-    expect(container.querySelector('[role="menu"]')).not.toBeNull();
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
   });
 });
 
@@ -131,7 +131,7 @@ describe("MainMenu.ItemLink", () => {
     act(() => {
       fireEvent.click(internal);
     });
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 });
 
@@ -163,14 +163,14 @@ describe("MainMenu.Toggle", () => {
     });
     expect(onChange).toHaveBeenCalledWith("light");
     // Toggle keeps the menu open.
-    expect(container.querySelector('[role="menu"]')).not.toBeNull();
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
   });
 });
 
 describe("MainMenu.Submenu", () => {
   it("expands on click and lets a child item fire + close the whole chain", () => {
     const onExport = vi.fn();
-    const { container, getByText } = render(
+    const { container } = render(
       <MainMenu>
         <MainMenu.Submenu label="Export">
           <MainMenu.Item onClick={onExport}>PNG</MainMenu.Item>
@@ -181,23 +181,23 @@ describe("MainMenu.Submenu", () => {
       fireEvent.click(trigger(container));
     });
     // Child not visible until the submenu opens.
-    expect(container.querySelectorAll('[role="menu"]').length).toBe(1);
+    expect(document.querySelectorAll('[role="menu"]').length).toBe(1);
 
     act(() => {
-      fireEvent.click(getByText("Export"));
+      fireEvent.click(screen.getByText("Export"));
     });
-    expect(container.querySelectorAll('[role="menu"]').length).toBe(2);
+    expect(document.querySelectorAll('[role="menu"]').length).toBe(2);
 
     act(() => {
-      fireEvent.click(getByText("PNG"));
+      fireEvent.click(screen.getByText("PNG"));
     });
     expect(onExport).toHaveBeenCalledTimes(1);
     // Root menu collapses via the shared close() context.
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 
   it("does not open when disabled", () => {
-    const { container, getByText } = render(
+    const { container } = render(
       <MainMenu>
         <MainMenu.Submenu label="Export" disabled>
           <MainMenu.Item>PNG</MainMenu.Item>
@@ -208,9 +208,9 @@ describe("MainMenu.Submenu", () => {
       fireEvent.click(trigger(container));
     });
     act(() => {
-      fireEvent.click(getByText("Export"));
+      fireEvent.click(screen.getByText("Export"));
     });
     // Still only the root menu — submenu stayed closed.
-    expect(container.querySelectorAll('[role="menu"]').length).toBe(1);
+    expect(document.querySelectorAll('[role="menu"]').length).toBe(1);
   });
 });
