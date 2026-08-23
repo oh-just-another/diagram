@@ -21,7 +21,7 @@ import { readUrlParam } from "./url-params";
  * Example app showing how to embed `<Diagram>` into a host
  * project. Everything host-side here (autosave, theme toggle,
  * collab room badge) is wired via `<Diagram>`'s public props —
- * `onSceneChange`, `onReady`, `renderHeaderLeft`, `renderHeaderRight`.
+ * `onSceneChange`, `onReady`, `renderHeaderRight`.
  */
 
 setupTemplates();
@@ -272,23 +272,6 @@ export const App = () => {
     void status;
   }, [status]);
 
-  const renderHeaderLeft = useCallback(
-    () => (
-      <h1
-        style={{
-          fontSize: 13,
-          fontWeight: 500,
-          color: "var(--muted)",
-          margin: 0,
-          letterSpacing: 0.5,
-        }}
-      >
-        Diagram
-      </h1>
-    ),
-    [],
-  );
-
   const renderHeaderRight = useCallback(
     () => (
       <>
@@ -311,7 +294,6 @@ export const App = () => {
         grid={{ enabled: true }}
         onReady={handleReady}
         onSceneChange={handleSceneChange}
-        renderTopBarLeft={renderHeaderLeft}
         renderTopBarRight={renderHeaderRight}
         {...(editor ? { renderBoardMenuExtras: () => <ImportExportMenu editor={editor} /> } : {})}
         persistTheme

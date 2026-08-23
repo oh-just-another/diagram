@@ -93,6 +93,7 @@ import {
   CONTROL_ICON,
   ROW_ICON,
 } from "@oh-just-another/react-ui";
+import { BrandLogo } from "./brand/brand-logo.js";
 
 /**
  * Lucide icon sizing — `MENU_ICON_SIZE` is for in-row icons of
@@ -257,6 +258,12 @@ export interface DiagramProps {
   readonly minimap?: boolean;
 
   // --- Slots ---
+  /**
+   * Brand cell at the start of the top bar. Defaults to the built-in
+   * `BrandLogo` (light / dark artwork from `assets/logo*.svg`); pass a node
+   * to replace it, or `null` to drop the cell.
+   */
+  readonly logo?: ReactNode;
   readonly renderTopBarLeft?: () => ReactNode;
   readonly renderTopBarCenter?: () => ReactNode;
   readonly renderTopBarRight?: () => ReactNode;
@@ -362,6 +369,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     hideSelectionPanel,
     hideDrawingPanel,
     minimap,
+    logo = <BrandLogo />,
     renderTopBarLeft,
     renderTopBarCenter,
     renderTopBarRight,
@@ -738,6 +746,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
                   hideToolbar={hideToolbar}
                   hideLibraryButton={hideLibraryButton}
                   hideMainMenu={hideMainMenu}
+                  logo={logo}
                   hideZoomControls={hideZoomControls}
                   hideResetToContent={hideResetToContent}
                   hideHelpButton={hideHelpButton}
@@ -787,6 +796,7 @@ const EditorShell = ({
   hideToolbar,
   hideLibraryButton,
   hideMainMenu,
+  logo,
   hideZoomControls,
   hideResetToContent,
   hideHelpButton,
@@ -816,6 +826,7 @@ const EditorShell = ({
   readonly hideToolbar: boolean | undefined;
   readonly hideLibraryButton: boolean | undefined;
   readonly hideMainMenu: boolean | undefined;
+  readonly logo: ReactNode;
   readonly hideZoomControls: boolean | undefined;
   readonly hideResetToContent: boolean | undefined;
   readonly hideHelpButton: boolean | undefined;
@@ -985,9 +996,7 @@ const EditorShell = ({
           <TopBar
             left={
               <ButtonGroup ariaLabel="Logo and main menu">
-                <span aria-label="Diagram" title="Diagram" className="du-icon-button du-brand">
-                  ⌗
-                </span>
+                {logo !== null && <span className="du-icon-button du-brand">{logo}</span>}
                 {!hideMainMenu && (
                   <MainMenu>
                     {/* Board — the document: file in / out, export, start view. */}

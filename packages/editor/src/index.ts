@@ -123,3 +123,4 @@ export {
   loadPreferences,
   parseStoredPreferences,
 } from "./preferences-storage.js";
+export { BrandLogo } from "./brand/brand-logo.js";

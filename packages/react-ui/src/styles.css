@@ -129,6 +129,7 @@
   /* Top edge of anything docked under the top bar / above the bottom bar. */
   --du-bar-clear: calc(var(--du-bar-inset) + var(--du-bar-height) + var(--du-gap));
   --du-side-panel-w: 240px;
+  --du-brand-h: 24px; /* logo artwork height inside the 40-px brand cell */
   --du-sidebar-w: 280px; /* host-composed <Sidebar> */
   --du-thread-w: 280px; /* comment thread popover */
   --du-panel-row-h: var(--du-control-size); /* list row inside a panel (layers, comments) */
@@ -1599,13 +1600,60 @@
 /* ------------------------------------------------------------------ */
 /* Static chrome docks — where the fixed toolbars live.               */
 /* ------------------------------------------------------------------ */
-/* Logo / product name cell at the start of the top-left bar. */
+/* Brand cell at the start of the top-left bar: a 40-px cell holding the
+   logo (or any host node), as wide as its content. Not interactive. */
+.du-button-group > .du-brand,
 .du-brand {
+  width: auto;
   min-width: var(--du-button-size);
   padding: 0 var(--du-space-md);
-  font-weight: var(--du-font-weight-strong);
-  letter-spacing: var(--du-caps-tracking);
   cursor: default;
+}
+
+.du-brand:hover {
+  background: transparent;
+}
+
+.du-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  height: var(--du-brand-h);
+}
+
+.du-brand-logo > svg {
+  display: block;
+  height: var(--du-brand-h);
+  width: auto;
+}
+
+/* Theme-matched artwork: light by default, dark under the dark theme —
+   mirrors the token scopes (system preference, then explicit data-theme).
+   Selectors keep the `.du-brand-logo > …` form so they outrank the base
+   `> svg` rule above. */
+.du-brand-logo > .du-brand-logo-dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .du-brand-logo > .du-brand-logo-light {
+    display: none;
+  }
+  .du-brand-logo > .du-brand-logo-dark {
+    display: block;
+  }
+}
+
+[data-theme="light"] .du-brand-logo > .du-brand-logo-light {
+  display: block;
+}
+[data-theme="light"] .du-brand-logo > .du-brand-logo-dark {
+  display: none;
+}
+[data-theme="dark"] .du-brand-logo > .du-brand-logo-light {
+  display: none;
+}
+[data-theme="dark"] .du-brand-logo > .du-brand-logo-dark {
+  display: block;
 }
 
 /* Zoom value trigger (opens the zoom menu) — flat, wide enough for "100%". */
