@@ -140,17 +140,18 @@ describe("SelectionFilterControl (mixed selections)", () => {
     height: 160,
   } as unknown as Element;
 
-  it("mixed selection shows the Filter; picking a bucket narrows the selection", () => {
+  it("mixed selection shows the Filter; picking a bucket narrows the selection", async () => {
     const editor = mountEditor(rect, image, sticky);
     editor.setSelection([rect.id, image.id, sticky.id]);
-    const { container, getByRole } = renderPanel(editor);
+    const { container, findByRole } = renderPanel(editor);
     // Mixed → per-type controls are gone, Filter present.
     expect(container.querySelector('[aria-label="Switch type"]')).toBeNull();
     const trigger = container.querySelector('button[aria-label="Filter selection by type"]');
     expect(trigger).not.toBeNull();
     fireEvent.click(trigger!);
-    // Menu lists buckets with counts.
-    const stickyRow = getByRole("menuitem", { name: "Select only Sticky notes" });
+    // Menu lists buckets with counts (the popover is hidden until floating-ui
+    // positions it, so wait for the row to become accessible).
+    const stickyRow = await findByRole("menuitem", { name: "Select only Sticky notes" });
     expect(stickyRow.textContent).toContain("1");
     fireEvent.click(stickyRow);
     expect([...editor.selection]).toEqual([sticky.id]);

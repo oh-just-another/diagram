@@ -213,6 +213,12 @@ export class InteractionState {
   spaceHeld = false;
   /** Active pan gesture, or null between gestures. */
   panGesture: PanGesture | null = null;
+  /**
+   * Element being placed by a library drag (`beginPlacement` → commit /
+   * cancel). A gesture like a move: chrome that hides during element
+   * gestures (selection toolbar, minimap repaint) treats it the same.
+   */
+  placementId: ElementId | null = null;
   /** Set on right-click pointerdown so the next native contextmenu is suppressed. */
   suppressNextContextMenu = false;
 
@@ -270,6 +276,7 @@ export class InteractionState {
     this.touchPanCandidate = null;
     this.spaceHeld = false;
     this.panGesture = null;
+    this.placementId = null;
     this.suppressNextContextMenu = false;
     this.editingLinkCaption = null;
   }

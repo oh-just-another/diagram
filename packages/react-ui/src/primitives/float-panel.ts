@@ -47,6 +47,11 @@ export const floatPanel = (
   floating: HTMLElement,
   opts: FloatPanelOptions,
 ): (() => void) => {
+  // The panel mounts at (0, 0) and only gets its `transform` once
+  // `computePosition` resolves — keep it invisible until then so the first
+  // paint is already in place (no jump from the corner, no entrance
+  // animation: floating chrome appears where it belongs, instantly).
+  floating.style.visibility = "hidden";
   const update = () => {
     if (opts.clampHeight) {
       // Applied BEFORE measuring so flip / shift see the capped size.
@@ -68,6 +73,7 @@ export const floatPanel = (
       ],
     }).then(({ x, y }) => {
       floating.style.transform = `translate(${String(Math.round(x))}px, ${String(Math.round(y))}px)`;
+      floating.style.visibility = "";
     });
   };
   update();

@@ -216,8 +216,7 @@ export const SelectionFloatingPanel = ({
 
   // Portal to body so the panel survives any overflow:hidden on the
   // canvas container. Inline `transform` is set by the layout effect
-  // above; the pre-paint at (0,0) is hidden by the CSS opacity 0 → 1
-  // animation on `.du-sel-panel-floating`.
+  // above; the pre-paint at (0,0) is hidden by the `positioned` gate.
   return createPortal(
     <div
       ref={panelRef}
@@ -231,12 +230,9 @@ export const SelectionFloatingPanel = ({
         zIndex: 1500,
         pointerEvents: "auto",
         // Hide-until-positioned so the user never sees the panel at
-        // (0, 0) for the first frame. `pointer-events:none` while hidden
-        // so a stray click during the gap doesn't fire on the
-        // out-of-place panel.
-        opacity: positioned ? 1 : 0,
-        transition: positioned ? "opacity 120ms ease" : "none",
-        ...(positioned ? {} : { pointerEvents: "none" }),
+        // (0, 0) for the first frame — shown instantly once floating-ui
+        // lands (no entrance animation, like every other floating panel).
+        visibility: positioned ? "visible" : "hidden",
       }}
     >
       <PropertyPanel />

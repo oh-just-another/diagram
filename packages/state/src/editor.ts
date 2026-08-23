@@ -1174,6 +1174,13 @@ export class Editor {
   set panGesture(v: PanGesture | null) {
     this.interaction.panGesture = v;
   }
+  /** Element being placed by a library drag, or null (see `beginPlacement`). */
+  get placementId(): ElementId | null {
+    return this.interaction.placementId;
+  }
+  set placementId(v: ElementId | null) {
+    this.interaction.placementId = v;
+  }
 
   /**
    * Set on a right-click pointerdown so the upcoming native
@@ -2320,6 +2327,7 @@ export class Editor {
     const initial = add(this._scene);
     this._scene = initial.scene;
     this._selection = Selection.single(shape.id);
+    this.placementId = shape.id;
     this.notify();
     const state: PlacementState = { ...initialState };
     return {
@@ -2337,6 +2345,7 @@ export class Editor {
         }
         tx.add({ kind: "element", id: shape.id, before: null, after: state.current });
         tx.commit();
+        this.placementId = null;
         // Notify is mandatory here. The dragover snapshots carried the
         // placement preview WITHOUT `parentId`, so the
         // AutoLayoutScheduler's `signatureFor(parent)` did not include the
@@ -2350,6 +2359,7 @@ export class Editor {
         const { scene } = computePlacementCancel(this._scene, shape.id);
         this._scene = scene;
         tx.cancel();
+        this.placementId = null;
         this._selection = Selection.EMPTY;
         this.notify();
       },

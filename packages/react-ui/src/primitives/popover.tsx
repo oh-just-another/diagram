@@ -148,9 +148,8 @@ export const Popover = ({
                 position: "absolute",
                 top: 0,
                 left: 0,
-                // `transform` is updated by the `computePosition` callback
-                // above. The pre-paint at (0,0) is hidden by the CSS
-                // opacity 0 → 1 animation on `.du-popover`.
+                // `transform` is set by `floatPanel`, which keeps the panel
+                // invisible until the first position resolves.
                 zIndex: 1600,
               }}
             >

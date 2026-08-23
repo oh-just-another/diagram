@@ -269,7 +269,7 @@ describe("<Editor> — zoom menu", () => {
     act(() => {
       screen.getByRole("button", { name: "Zoom menu" }).click();
     });
-    const sw = screen.getByRole("menuitemcheckbox", { name: "Object dimensions" });
+    const sw = await screen.findByRole("menuitemcheckbox", { name: "Object dimensions" });
     expect(sw.getAttribute("aria-checked")).toBe("true");
     act(() => {
       sw.click();
@@ -313,7 +313,7 @@ describe("<Editor> — nested main menu", () => {
     act(() => {
       screen.getByText("View").click();
     });
-    expect(screen.getByRole("menuitemcheckbox", { name: "Object dimensions" })).toBeTruthy();
+    expect(await screen.findByRole("menuitemcheckbox", { name: "Object dimensions" })).toBeTruthy();
     act(() => {
       screen.getByText("Grid").click();
     });

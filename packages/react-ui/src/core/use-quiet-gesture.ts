@@ -4,8 +4,8 @@ import { GESTURE_QUIET_MS } from "./constants.js";
 
 /**
  * `true` while no element gesture (move / resize / rotate — anything
- * running through the editor's gesture transaction or element drag) is
- * active, plus a `GESTURE_QUIET_MS` settle delay after it ends. The
+ * running through the editor's gesture transaction or element drag — or
+ * a library drag-to-place) is active, plus a `GESTURE_QUIET_MS` settle delay after it ends. The
  * floating selection toolbar hides while this is `false`: repositioning
  * it (floating-ui autoUpdate + a React re-render of the whole property
  * toolbar) on every frame of a drag makes the element visibly lag.
@@ -23,10 +23,13 @@ export const useQuietGesture = (editor: Editor | null): boolean => {
   useEffect(() => {
     if (!editor) return undefined;
     const off = editor.on("change", () => {
-      const active = editor.gestureTx !== null || editor.dragElementId !== null;
+      // A library placement is a drag from its first frame — no press-only
+      // phase to wait out, hide at once.
+      const placing = editor.placementId !== null;
+      const active = placing || editor.gestureTx !== null || editor.dragElementId !== null;
       if (active) {
         gestureBaseScene.current ??= editor.scene;
-        if (editor.scene === gestureBaseScene.current) return; // press, no movement yet
+        if (!placing && editor.scene === gestureBaseScene.current) return; // press, no movement yet
         if (timer.current !== null) {
           clearTimeout(timer.current);
           timer.current = null;

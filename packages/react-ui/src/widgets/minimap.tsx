@@ -151,7 +151,10 @@ export const Minimap = ({
       }
     };
     const busy = () =>
-      editor.gestureTx !== null || editor.dragElementId !== null || editor.panGesture !== null;
+      editor.gestureTx !== null ||
+      editor.dragElementId !== null ||
+      editor.panGesture !== null ||
+      editor.placementId !== null;
     // Every change re-arms the idle timer; while a gesture is in flight no
     // timer runs. The gesture's end is itself a change (commit / release
     // notifies), which arms the one trailing paint.
