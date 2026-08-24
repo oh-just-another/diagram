@@ -24,22 +24,28 @@ export const PROPERTY_PANEL_WIDTH = 240;
 
 /**
  * Lucide icon sizing — one set for the whole chrome so a 40-px control, a
- * menu row and a chip all read at the same weight.
+ * menu row and a chip all read at the same weight, and every stroke lands
+ * on whole device pixels. Lucide draws on a 24-unit grid with a 2-unit
+ * stroke: rendered at 24 px the artwork is 1:1 (2-px lines); at 16 px the
+ * grid scales ×⅔, so a 1.5 stroke gives exactly 1-px lines; at 12 px (×½)
+ * a 2 stroke gives 1-px lines. Sizes like 20 / 14 with 1.75 put lines
+ * between pixels and read blurry.
  * - `CONTROL_ICON` — glyph inside a 40-px control (toolbar buttons, the
- *   selection panel, panel headers, dialog buttons).
- * - `ROW_ICON` — leading icon of a menu / list row (fits the 24-px gutter).
- * - `MARK_ICON` — check / chevron marks; heavier stroke so they stay crisp.
- * - `BADGE_ICON` — tiny glyphs inside chips and badges.
+ *   selection panel, panel headers, dialog buttons): native 24 / 2.
+ * - `ROW_ICON` — leading icon of a menu / list row (24-px gutter): 16 / 1.5.
+ * - `MARK_ICON` — check / chevron marks: 16 / 1.5.
+ * - `BADGE_ICON` — tiny glyphs inside chips and badges: 12 / 2.
  */
-export const ICON_STROKE = 1.75;
-export const MARK_ICON_STROKE = 2.25;
-export const BADGE_ICON_STROKE = 2;
-export const CONTROL_ICON_SIZE = 20;
+export const CONTROL_ICON_SIZE = 24;
+export const CONTROL_ICON_STROKE = 2;
 export const ROW_ICON_SIZE = 16;
-export const MARK_ICON_SIZE = 14;
+export const ROW_ICON_STROKE = 1.5;
+export const MARK_ICON_SIZE = 16;
+export const MARK_ICON_STROKE = 1.5;
 export const BADGE_ICON_SIZE = 12;
-export const CONTROL_ICON = { size: CONTROL_ICON_SIZE, strokeWidth: ICON_STROKE } as const;
-export const ROW_ICON = { size: ROW_ICON_SIZE, strokeWidth: ICON_STROKE } as const;
+export const BADGE_ICON_STROKE = 2;
+export const CONTROL_ICON = { size: CONTROL_ICON_SIZE, strokeWidth: CONTROL_ICON_STROKE } as const;
+export const ROW_ICON = { size: ROW_ICON_SIZE, strokeWidth: ROW_ICON_STROKE } as const;
 export const MARK_ICON = { size: MARK_ICON_SIZE, strokeWidth: MARK_ICON_STROKE } as const;
 export const BADGE_ICON = { size: BADGE_ICON_SIZE, strokeWidth: BADGE_ICON_STROKE } as const;
 

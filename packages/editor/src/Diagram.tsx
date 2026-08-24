@@ -972,21 +972,17 @@ const EditorShell = ({
           (whose wrapper is pointer-events:none) so its buttons stay
           interactive. */}
       {!hideToolbar && !zen ? (
-        <Toolbar
-          orientation="vertical"
-          items={toolbarItems}
+        <div
+          className="du-dock"
           style={{
-            position: "absolute",
-            // Vertically centred on the left; floats just to the right of
-            // the library when it's open (else flush near the edge).
-            // `env(safe-area-inset-left)` is 0 on desktop, clears the notch
-            // in mobile landscape.
-            top: "50%",
+            // Floats just to the right of the library when it's open (else
+            // near the edge). `env(safe-area-inset-left)` is 0 on desktop,
+            // clears the notch in mobile landscape.
             left: `calc(env(safe-area-inset-left, 0px) + ${toolbarLeft})`,
-            transform: "translateY(-50%)",
-            zIndex: "var(--du-z-ui)",
           }}
-        />
+        >
+          <Toolbar orientation="vertical" items={toolbarItems} />
+        </div>
       ) : null}
 
       {/* UI layer — top/bottom bars + overlay panels (full width; the

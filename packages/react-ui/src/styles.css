@@ -96,7 +96,7 @@
   --du-button-size: var(--du-control-size); /* toolbar icon button / bar height driver */
   --du-button-size-sm: var(--du-control-size); /* grouped / panel buttons — same 40 (alias) */
   --du-touch-size: 44px; /* minimum tap target on coarse pointers */
-  --du-icon-size: 20px; /* toolbar glyph */
+  --du-icon-size: 24px; /* toolbar glyph — lucide's native grid, crisp strokes */
   --du-icon-size-sm: 16px; /* in-row glyph (menus, panels) */
   --du-input-h: 36px; /* text / search inputs */
   --du-control-h: 28px; /* small inline controls (number input, swatch fill) */
@@ -1704,6 +1704,16 @@
   border: 1px solid var(--du-ui-border);
   border-radius: var(--du-radius);
   box-shadow: var(--du-ui-shadow);
+}
+
+/* Vertical tool dock — vertically centred with a WHOLE-pixel offset:
+   a plain `translateY(-50%)` (or flex centring) lands on half pixels when
+   the free space is odd, and every glyph in the dock renders blurry. */
+.du-dock {
+  position: absolute;
+  top: round(50%, 1px);
+  z-index: var(--du-z-ui);
+  translate: 0 round(-50%, 1px);
 }
 
 /* Tool-options panel (brush / eraser) — top-right, under the top bar. */
