@@ -70,7 +70,7 @@ export const LinkCaptionEditor = () => {
         left: sx,
         top: sy,
         transform: "translate(-50%, -50%)",
-        zIndex: 1602,
+        zIndex: "calc(var(--du-z-popover) + 2)",
       }}
       onChange={(e) => {
         setValue(e.target.value);

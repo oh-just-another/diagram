@@ -227,7 +227,7 @@ export const SelectionFloatingPanel = ({
         position: "absolute",
         top: 0,
         left: 0,
-        zIndex: 1500,
+        zIndex: "var(--du-z-floating)",
         pointerEvents: "auto",
         // Hide-until-positioned so the user never sees the panel at
         // (0, 0) for the first frame — shown instantly once floating-ui

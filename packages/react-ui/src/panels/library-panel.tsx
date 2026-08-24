@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Search, Upload, X } from "lucide-react";
 import { Palette } from "../toolbar/palette.js";
 import { IconButton } from "../primitives/icon-button.js";
-import { CONTROL_ICON, ROW_ICON } from "../core/constants.js";
+import { BADGE_ICON, CONTROL_ICON } from "../core/constants.js";
 
 /**
  * Slide-in side library panel. Opened by a host button, closed by the
@@ -89,7 +89,7 @@ export const LibraryPanel = ({
         </div>
       </header>
       <div className="du-side-panel-search">
-        <Search {...ROW_ICON} className="du-side-panel-search-icon" aria-hidden />
+        <Search {...BADGE_ICON} className="du-side-panel-search-icon" aria-hidden />
         <input
           ref={searchRef}
           type="search"

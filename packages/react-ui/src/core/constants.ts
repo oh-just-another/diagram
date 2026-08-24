@@ -24,24 +24,24 @@ export const PROPERTY_PANEL_WIDTH = 240;
 
 /**
  * Lucide icon sizing — one set for the whole chrome so a 40-px control, a
- * menu row and a chip all read at the same weight, and every stroke lands
- * on whole device pixels. Lucide draws on a 24-unit grid with a 2-unit
- * stroke: rendered at 24 px the artwork is 1:1 (2-px lines); at 16 px the
- * grid scales ×⅔, so a 1.5 stroke gives exactly 1-px lines; at 12 px (×½)
- * a 2 stroke gives 1-px lines. Sizes like 20 / 14 with 1.75 put lines
- * between pixels and read blurry.
+ * menu row and a chip all read at the same weight, and every glyph lands
+ * on the pixel grid. Lucide draws on a 24-unit grid with a 2-unit stroke:
+ * only whole multiples keep that geometry on device pixels — 24 (1:1) and
+ * 12 (×½, stroke 2 → 1-px lines). Any other size (20, 16, 14 …) scales the
+ * grid fractionally and every edge lands between pixels, which reads
+ * blurry at 1× and 2× alike.
  * - `CONTROL_ICON` — glyph inside a 40-px control (toolbar buttons, the
- *   selection panel, panel headers, dialog buttons): native 24 / 2.
- * - `ROW_ICON` — leading icon of a menu / list row (24-px gutter): 16 / 1.5.
- * - `MARK_ICON` — check / chevron marks: 16 / 1.5.
+ *   selection panel, panel headers, dialog buttons): 24 / 2.
+ * - `ROW_ICON` — leading icon of a menu / list row (24-px gutter): 24 / 2.
+ * - `MARK_ICON` — check / chevron marks: 12 / 2.
  * - `BADGE_ICON` — tiny glyphs inside chips and badges: 12 / 2.
  */
 export const CONTROL_ICON_SIZE = 24;
 export const CONTROL_ICON_STROKE = 2;
-export const ROW_ICON_SIZE = 16;
-export const ROW_ICON_STROKE = 1.5;
-export const MARK_ICON_SIZE = 16;
-export const MARK_ICON_STROKE = 1.5;
+export const ROW_ICON_SIZE = 24;
+export const ROW_ICON_STROKE = 2;
+export const MARK_ICON_SIZE = 12;
+export const MARK_ICON_STROKE = 2;
 export const BADGE_ICON_SIZE = 12;
 export const BADGE_ICON_STROKE = 2;
 export const CONTROL_ICON = { size: CONTROL_ICON_SIZE, strokeWidth: CONTROL_ICON_STROKE } as const;

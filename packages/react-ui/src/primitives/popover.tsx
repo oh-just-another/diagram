@@ -150,7 +150,7 @@ export const Popover = ({
                 left: 0,
                 // `transform` is set by `floatPanel`, which keeps the panel
                 // invisible until the first position resolves.
-                zIndex: 1600,
+                zIndex: "var(--du-z-popover)",
               }}
             >
               {children}

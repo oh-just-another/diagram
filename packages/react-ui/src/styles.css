@@ -97,13 +97,15 @@
   --du-button-size-sm: var(--du-control-size); /* grouped / panel buttons — same 40 (alias) */
   --du-touch-size: 44px; /* minimum tap target on coarse pointers */
   --du-icon-size: 24px; /* toolbar glyph — lucide's native grid, crisp strokes */
-  --du-icon-size-sm: 16px; /* in-row glyph (menus, panels) */
+  --du-icon-size-sm: 24px; /* in-row glyph (menus, panels) — same grid as controls */
   --du-input-h: 36px; /* text / search inputs */
   --du-control-h: 28px; /* small inline controls (number input, swatch fill) */
   --du-swatch-size: 32px; /* colour cell (fill grows from 28 → 32 on hover) */
   --du-switch-w: 30px;
   --du-switch-h: 18px;
   --du-key-h: 24px; /* <kbd> pill in the help dialog */
+  --du-checkbox-size: 16px; /* native checkbox in property rows */
+  --du-input-icon-size: 12px; /* glyph inside a text input (search) */
   --du-divider-h: var(--du-icon-size); /* vertical separator inside a toolbar row */
 
   /* ---- Typography — system stack; 14 body, 12 captions, 10 micro caps. ---- */
@@ -177,8 +179,8 @@
   --du-z-floating: 1500; /* selection floating toolbar */
   --du-z-popover: 1600; /* popovers, drop menus, caption editor */
   --du-z-context-menu: 1700; /* above every toolbar, panel and popover */
-  --du-z-modal: 1000; /* body-level dialogs (own stacking context) */
-  --du-z-toast: 1100;
+  --du-z-modal: 1800; /* dialogs — above all floating chrome */
+  --du-z-toast: 1900; /* above dialogs */
   --du-z-tooltip: 10000; /* always on top */
 
   /* ---- Motion ---- */
@@ -1245,8 +1247,8 @@
 }
 
 .du-prop-checkbox input[type="checkbox"] {
-  width: var(--du-icon-size-sm);
-  height: var(--du-icon-size-sm);
+  width: var(--du-checkbox-size);
+  height: var(--du-checkbox-size);
   margin: 0;
   accent-color: var(--du-selected-fg);
   cursor: pointer;
@@ -1878,7 +1880,7 @@
   border: 1px solid var(--du-ui-border);
   border-radius: var(--du-radius-sm);
   padding: 0 var(--du-space-md) 0
-    calc(var(--du-space-md) + var(--du-icon-size-sm) + var(--du-space-xs));
+    calc(var(--du-space-md) + var(--du-input-icon-size) + var(--du-space-sm));
   font: inherit;
   font-size: var(--du-font-size-sm);
   outline: none;
