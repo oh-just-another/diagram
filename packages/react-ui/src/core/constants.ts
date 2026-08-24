@@ -32,13 +32,15 @@ export const PROPERTY_PANEL_WIDTH = 240;
  * blurry at 1× and 2× alike.
  * - `CONTROL_ICON` — glyph inside a 40-px control (toolbar buttons, the
  *   selection panel, panel headers, dialog buttons): 24 / 2.
- * - `ROW_ICON` — leading icon of a menu / list row (24-px gutter): 24 / 2.
+ * - `ROW_ICON` — leading icon of a menu / list row (24-px gutter): 20 / 2 —
+ *   a step below the controls by design; the ×⅚ scale costs a little
+ *   crispness, the trade the menus make for a lighter row.
  * - `MARK_ICON` — check / chevron marks: 12 / 2.
  * - `BADGE_ICON` — tiny glyphs inside chips and badges: 12 / 2.
  */
 export const CONTROL_ICON_SIZE = 24;
 export const CONTROL_ICON_STROKE = 2;
-export const ROW_ICON_SIZE = 24;
+export const ROW_ICON_SIZE = 20;
 export const ROW_ICON_STROKE = 2;
 export const MARK_ICON_SIZE = 12;
 export const MARK_ICON_STROKE = 2;

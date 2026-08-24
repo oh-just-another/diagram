@@ -97,7 +97,7 @@
   --du-button-size-sm: var(--du-control-size); /* grouped / panel buttons — same 40 (alias) */
   --du-touch-size: 44px; /* minimum tap target on coarse pointers */
   --du-icon-size: 24px; /* toolbar glyph — lucide's native grid, crisp strokes */
-  --du-icon-size-sm: 24px; /* in-row glyph (menus, panels) — same grid as controls */
+  --du-icon-size-sm: 20px; /* in-row glyph (menus, panels) — a step below controls */
   --du-input-h: 36px; /* text / search inputs */
   --du-control-h: 28px; /* small inline controls (number input, swatch fill) */
   --du-swatch-size: 32px; /* colour cell (fill grows from 28 → 32 on hover) */
