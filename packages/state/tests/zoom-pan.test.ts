@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { emptyScene, type Scene } from "@oh-just-another/scene";
-import { computeResetZoom, computeRevealBounds } from "../src/editor/public/zoom-pan.js";
+import {
+  computeResetZoom,
+  computeRevealBounds,
+  computeRevealNearest,
+} from "../src/editor/public/zoom-pan.js";
+import { DEFAULT_LAYER_ID, orderBetween, type Element } from "@oh-just-another/scene";
+import { elementId } from "@oh-just-another/types";
 
 /** Scene with an explicit panned + zoomed camera of a known size. */
 const scene = (zoom: number, pan: { x: number; y: number }): Scene => ({
@@ -46,6 +52,62 @@ describe("computeResetZoom", () => {
     const next = computeResetZoom(scene(3, { x: 0, y: 0 }));
     expect(next).not.toBeNull();
     expect(next!.viewport.zoom).toBe(1);
+  });
+});
+
+const rect = (id: string, x: number, y: number, w: number, h: number): Element => ({
+  id: elementId(id),
+  layerId: DEFAULT_LAYER_ID,
+  type: "rectangle",
+  position: { x, y },
+  rotation: 0,
+  scale: { x: 1, y: 1 },
+  order: orderBetween(null, null),
+  style: { fill: "#000" },
+  width: w,
+  height: h,
+});
+
+const withElements = (base: Scene, ...els: Element[]): Scene => {
+  const elements = new Map(base.elements);
+  for (const e of els) elements.set(e.id, e);
+  return { ...base, elements };
+};
+
+describe("computeRevealNearest", () => {
+  const accept = (e: Element) => e.type !== "group";
+
+  it("centres the element nearest the camera and keeps the zoom", () => {
+    // Camera centre at world (400, 300); `near` is 100 px away, `far` 5000.
+    const before = withElements(
+      scene(1, { x: 0, y: 0 }),
+      rect("far", 5000, 5000, 20, 20),
+      rect("near", 500, 300, 20, 20),
+    );
+    const next = computeRevealNearest(before, 80, accept);
+    expect(next).not.toBeNull();
+    expect(next!.viewport.zoom).toBe(1);
+    expect(centerWorld(next!.viewport).x).toBeCloseTo(510, 6);
+    expect(centerWorld(next!.viewport).y).toBeCloseTo(310, 6);
+  });
+
+  it("never zooms in for a lone small shape, zooms out only for an oversized one", () => {
+    const small = computeRevealNearest(
+      withElements(scene(0.5, { x: 0, y: 0 }), rect("s", 3000, 3000, 10, 10)),
+      80,
+      accept,
+    );
+    expect(small!.viewport.zoom).toBe(0.5);
+    const big = computeRevealNearest(
+      withElements(scene(1, { x: 0, y: 0 }), rect("b", 3000, 3000, 2000, 2000)),
+      80,
+      accept,
+    );
+    expect(big!.viewport.zoom).toBeLessThan(1);
+  });
+
+  it("is a no-op (null) when nothing qualifies", () => {
+    expect(computeRevealNearest(scene(1, { x: 0, y: 0 }), 80, accept)).toBeNull();
   });
 });
 

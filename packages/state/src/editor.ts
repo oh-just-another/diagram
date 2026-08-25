@@ -252,6 +252,7 @@ import {
   computeZoomToFit,
   computeZoomToBounds,
   computeRevealBounds,
+  computeRevealNearest,
 } from "./editor/public/zoom-pan.js";
 import {
   computeAddAnnotation,
@@ -4739,6 +4740,20 @@ export class Editor {
     const bounds = this.combinedSelectionBounds();
     if (!bounds) return;
     const next = computeRevealBounds(this._scene, bounds, padding);
+    if (!next) return;
+    this._scene = next;
+    this.notify();
+  }
+
+  /**
+   * "Back to content": jump to the element nearest the camera centre, keeping
+   * the current zoom (it only drops when that element doesn't fit). Unlike
+   * {@link zoomToFit} this neither shrinks a large board to a speck nor blows
+   * a single small shape up to full screen. Groups are skipped (their own
+   * bounds are empty — their children count). No-op on an empty scene.
+   */
+  revealNearestContent(padding = 80): void {
+    const next = computeRevealNearest(this._scene, padding, (s) => s.type !== "group");
     if (!next) return;
     this._scene = next;
     this.notify();
