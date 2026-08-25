@@ -7,7 +7,7 @@ import { loadAllFiles, saveFiles, pruneFilesExcept } from "./idb-files";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "@oh-just-another/editor";
 import { setupTemplates } from "./templates";
-import { ImportExportMenu } from "./import-export-menu";
+import { ExportFormatItems, ImportMenu } from "./import-export-menu";
 import { installConfettiRenderer } from "./confetti";
 import { useHotkeys } from "./hotkeys";
 import { useCollab } from "./collab";
@@ -295,7 +295,12 @@ export const App = () => {
         onReady={handleReady}
         onSceneChange={handleSceneChange}
         renderTopBarRight={renderHeaderRight}
-        {...(editor ? { renderBoardMenuExtras: () => <ImportExportMenu editor={editor} /> } : {})}
+        {...(editor
+          ? {
+              renderBoardMenuExtras: () => <ImportMenu editor={editor} />,
+              renderExportMenuExtras: () => <ExportFormatItems editor={editor} />,
+            }
+          : {})}
         persistTheme
         persistPreferences
         minimap

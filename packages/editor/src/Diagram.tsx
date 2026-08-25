@@ -274,6 +274,11 @@ export interface DiagramProps {
   readonly renderMainMenuExtras?: () => ReactNode;
   /** Extra rows inside the main menu's Board › submenu, right after Export (e.g. import / export formats). */
   readonly renderBoardMenuExtras?: () => ReactNode;
+  /**
+   * Extra rows inside Board › Export, after the built-in PNG / SVG entries —
+   * for host export formats (JSON, Mermaid, …). Render `MainMenu.Item`s.
+   */
+  readonly renderExportMenuExtras?: () => ReactNode;
   /** Called when user clicks the "Import" button in the Library panel. */
   readonly onImportTemplates?: () => void;
 
@@ -378,6 +383,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     renderBottomBarRight,
     renderMainMenuExtras,
     renderBoardMenuExtras,
+    renderExportMenuExtras,
     onImportTemplates,
     theme: themeProp,
     defaultTheme = "system",
@@ -764,6 +770,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
                   renderBottomBarRight={renderBottomBarRight}
                   renderMainMenuExtras={renderMainMenuExtras}
                   renderBoardMenuExtras={renderBoardMenuExtras}
+                  renderExportMenuExtras={renderExportMenuExtras}
                   onImportTemplates={onImportTemplates}
                   repositoryUrl={repositoryUrl}
                   onConfirm={onConfirm}
@@ -814,6 +821,7 @@ const EditorShell = ({
   renderBottomBarRight,
   renderMainMenuExtras,
   renderBoardMenuExtras,
+  renderExportMenuExtras,
   onImportTemplates,
   repositoryUrl,
   onConfirm,
@@ -844,6 +852,7 @@ const EditorShell = ({
   readonly renderBottomBarRight: (() => ReactNode) | undefined;
   readonly renderMainMenuExtras: (() => ReactNode) | undefined;
   readonly renderBoardMenuExtras: (() => ReactNode) | undefined;
+  readonly renderExportMenuExtras: (() => ReactNode) | undefined;
   readonly onImportTemplates: (() => void) | undefined;
   readonly repositoryUrl: string | null | undefined;
   readonly onConfirm: ((message: string) => boolean) | undefined;
@@ -1067,6 +1076,7 @@ const EditorShell = ({
                         >
                           SVG
                         </MainMenu.Item>
+                        {renderExportMenuExtras?.()}
                         <MainMenu.Separator />
                         <MainMenu.Group title="Include in export">
                           <MainMenu.Item
