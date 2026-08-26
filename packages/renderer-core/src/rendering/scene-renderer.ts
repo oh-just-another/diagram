@@ -127,6 +127,8 @@ export interface RenderSceneOptions {
    * (hover-only chrome like the sticky "+" button). Omit when untracked.
    */
   readonly hoveredElement?: string;
+  /** Forwarded to `ElementRenderContext.textPlaceholders` (grey prompt in empty text). */
+  readonly textPlaceholders?: boolean;
 }
 
 /**
@@ -191,6 +193,7 @@ export const renderScene = (
     ...(clock ? { clock } : {}),
     ...(options.content ? { content: options.content } : {}),
     ...(options.hoveredElement !== undefined ? { hoveredElement: options.hoveredElement } : {}),
+    ...(options.textPlaceholders === true ? { textPlaceholders: true } : {}),
   };
   const lod = options.lod;
   const placeholderMax = lod?.placeholderMaxScreenPx;

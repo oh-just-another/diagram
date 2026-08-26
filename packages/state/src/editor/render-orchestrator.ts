@@ -399,6 +399,8 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       // Read-only views get no add-reaction chrome (reacting mutates the
       // scene); everything else stays on — interactive default.
       ...(editor.readOnly ? { content: { stickyAddButton: false } } : {}),
+      // Grey prompt inside empty text elements — while writing, never in view mode.
+      ...(editor.readOnly ? {} : { textPlaceholders: true }),
       // Hover-only chrome (sticky "+" button) needs the hovered id.
       ...(editor.hoveredStickyId !== null ? { hoveredElement: editor.hoveredStickyId } : {}),
       ...(dimElements

@@ -45,6 +45,12 @@ export interface ElementRenderContext {
    * Omitted by exports / headless paths — hover chrome never shows.
    */
   readonly hoveredElement?: string;
+  /**
+   * Draw a grey prompt inside EMPTY text elements (see
+   * `pickTextPlaceholder`). Set by the interactive editor; omitted by
+   * exports / headless / read-only paths so an empty text stays blank.
+   */
+  readonly textPlaceholders?: boolean;
 }
 
 /**

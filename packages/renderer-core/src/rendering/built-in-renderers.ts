@@ -32,6 +32,7 @@ import {
 import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "../targets/render-target.js";
 import { isTextBelowLod, type LodOptions } from "./lod.js";
+import { pickTextPlaceholder } from "./text-placeholder.js";
 import {
   DEFAULT_LINE_HEIGHT_FACTOR,
   layoutText,
@@ -76,6 +77,7 @@ import {
   FRAME_FILL_COLOR,
   FRAME_HEADER_BG_COLOR,
   FRAME_HEADER_TEXT_COLOR,
+  TEXT_PLACEHOLDER_COLOR,
 } from "../constants.js";
 import { req, type Vec2 } from "@oh-just-another/types";
 
@@ -845,7 +847,22 @@ const drawStyledText = (shape: TextElement, target: RenderTarget): void => {
   drawListMarkersForLayout(shape, layout, target, shape.style.fill ?? "#000");
 };
 
-const drawText: ElementRenderer<TextElement> = (shape, target) => {
+const drawText: ElementRenderer<TextElement> = (shape, target, ctx) => {
+  // Empty text while writing: draw the element's placeholder prompt in the
+  // neutral grey, with the element's own font / alignment so the caret and
+  // the prompt line up. Interactive rendering only (`ctx.textPlaceholders`).
+  if (shape.text === "" && ctx?.textPlaceholders === true) {
+    const { runs: _runs, ...plain } = shape;
+    drawText(
+      {
+        ...plain,
+        text: pickTextPlaceholder(shape.id),
+        style: { ...shape.style, fill: TEXT_PLACEHOLDER_COLOR },
+      },
+      target,
+    );
+    return;
+  }
   // Rich text (styled runs) takes a dedicated path; plain text keeps the
   // original single-style path byte-for-byte (golden-SVG compatible).
   if (shape.runs !== undefined && shape.runs.length > 0) {

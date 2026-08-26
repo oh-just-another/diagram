@@ -4,7 +4,7 @@
  * place to tweak performance / visual behaviour.
  */
 
-import { GRID_COLOR, GRID_DOT_COLOR } from "@oh-just-another/tokens";
+import { GRID_COLOR, GRID_DOT_COLOR, UI_SURFACE } from "@oh-just-another/tokens";
 import type { LodOptions } from "./rendering/scene-renderer.js";
 
 /**
@@ -27,6 +27,36 @@ export const DEFAULT_LOD: LodOptions = {
   placeholderMaxScreenPx: LOD_PLACEHOLDER_MAX_SCREEN_PX,
   minTextScreenPx: LOD_MIN_TEXT_SCREEN_PX,
 };
+
+/**
+ * Placeholder shown inside an EMPTY text element while it is being
+ * written (interactive rendering only — never in exports). One entry is
+ * picked per element, deterministically from its id, with these relative
+ * weights (`weight` = chance ticket count): the plain prompts dominate, the
+ * jokes are rare treats. Hosts may pass their own list to
+ * `pickTextPlaceholder`.
+ */
+export interface TextPlaceholder {
+  readonly text: string;
+  /** Relative chance; integer ≥ 1. */
+  readonly weight: number;
+}
+export const TEXT_PLACEHOLDERS: readonly TextPlaceholder[] = [
+  { text: "Type something", weight: 40 },
+  { text: "Place for text", weight: 20 },
+  { text: "Start typing…", weight: 12 },
+  { text: "Your text here", weight: 10 },
+  { text: "Add a note", weight: 8 },
+  { text: "What's on your mind?", weight: 6 },
+  { text: "Words go here", weight: 5 },
+  { text: "Say it in a few words", weight: 4 },
+  { text: "Lorem ipsum? No — your words.", weight: 3 },
+  { text: "Blank is a state of mind", weight: 2 },
+  { text: "Insert genius here", weight: 2 },
+  { text: "The cursor is waiting patiently", weight: 1 },
+];
+/** Neutral grey for text placeholders — the muted text tone of the light UI (the canvas is always light). */
+export const TEXT_PLACEHOLDER_COLOR = UI_SURFACE.light.textMuted;
 
 /**
  * Grey colour used for placeholder fills when LOD switches to the
