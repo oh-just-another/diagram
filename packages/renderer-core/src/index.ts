@@ -12,7 +12,6 @@ export type { ElementRenderer, ElementRenderContext } from "./rendering/shape-re
 export type { LayerName } from "./targets/layers.js";
 export type { RenderSceneOptions } from "./rendering/scene-renderer.js";
 export { isTextBelowLod, screenSizeOf, type LodOptions } from "./rendering/lod.js";
-export { pickTextPlaceholder } from "./rendering/text-placeholder.js";
 export type { RenderLinksOptions } from "./rendering/edge-renderer.js";
 export type { RenderGridOptions, GridLevel, GridRung } from "./rendering/grid-renderer.js";
 
@@ -112,9 +111,7 @@ export {
   DEFAULT_LOD,
   LOD_PLACEHOLDER_MAX_SCREEN_PX,
   LOD_MIN_TEXT_SCREEN_PX,
-  TEXT_PLACEHOLDERS,
   TEXT_PLACEHOLDER_COLOR,
-  type TextPlaceholder,
   DEFAULT_PLACEHOLDER_FILL,
   VIEWPORT_CULL_PADDING_RATIO,
   LINK_CORNER_RADIUS,

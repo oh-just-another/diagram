@@ -28,11 +28,11 @@ import {
   paragraphCount,
   brushBodyColor,
   brushOutline,
+  pickTextPlaceholder,
 } from "@oh-just-another/scene";
 import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "../targets/render-target.js";
 import { isTextBelowLod, type LodOptions } from "./lod.js";
-import { pickTextPlaceholder } from "./text-placeholder.js";
 import {
   DEFAULT_LINE_HEIGHT_FACTOR,
   layoutText,

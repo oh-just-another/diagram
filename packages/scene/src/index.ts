@@ -13,6 +13,7 @@ export type {
   Roundness,
 } from "./text/style.js";
 export { getCornerRadius, strokeOutsideExtent } from "./text/style.js";
+export { pickTextPlaceholder } from "./text/placeholder.js";
 export type { TextRun } from "./text/text-runs.js";
 export { runsToText, normalizeRuns, sliceRuns, applyStyleToRange } from "./text/text-runs.js";
 export {
@@ -298,6 +299,8 @@ export {
   LINK_LABEL_END_CLEARANCE,
   LINK_LABEL_CHAR_WIDTH_FACTOR,
   IMAGE_MASK_POLYGON_PRESETS,
+  TEXT_PLACEHOLDERS,
+  type TextPlaceholder,
 } from "./constants.js";
 
 // Elbow router — A*-based obstacle-avoiding 90° routing.

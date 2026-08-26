@@ -9,13 +9,13 @@ import {
   emptyScene,
   DEFAULT_LAYER_ID,
   orderBetween,
+  pickTextPlaceholder,
+  TEXT_PLACEHOLDERS,
   type Element,
 } from "@oh-just-another/scene";
 import {
   installBuiltinRenderers,
-  pickTextPlaceholder,
   renderScene,
-  TEXT_PLACEHOLDERS,
   TEXT_PLACEHOLDER_COLOR,
   type RenderTarget,
 } from "../src/index";

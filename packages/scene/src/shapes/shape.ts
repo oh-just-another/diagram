@@ -6,6 +6,7 @@ import type { Style, TextStyle } from "../text/style.js";
 import type { TextRun } from "../text/text-runs.js";
 import { TEXT_APPROX_CHAR_WIDTH_FACTOR, TEXT_LINE_HEIGHT_FACTOR } from "../constants.js";
 import { getTextMeasurer } from "../text/text-measure.js";
+import { pickTextPlaceholder } from "../text/placeholder.js";
 
 /**
  * Fields shared by every shape variant. `order` is a fractional-index string
@@ -635,7 +636,11 @@ registerBounder<TextElement>("text", (s) => {
   // estimate (`chars × fontSize × factor`) headless / in tests. Height
   // is line count × line-height; hard newlines honoured in both modes.
   const lineHeight = s.fontSize * TEXT_LINE_HEIGHT_FACTOR;
-  const paragraphs = s.text.split("\n");
+  // An empty element is sized by its placeholder prompt (the renderer draws
+  // it while the text is being written), so the selection box and the
+  // dirty rect cover exactly what is on screen; the box snaps to the real
+  // text from the first keystroke.
+  const paragraphs = (s.text === "" ? pickTextPlaceholder(s.id) : s.text).split("\n");
   const measurer = getTextMeasurer();
   // Pass weight/style so the measured width matches the rendered (bold /
   // italic) glyphs — otherwise the box wouldn't grow when text is bolded.
@@ -652,8 +657,7 @@ registerBounder<TextElement>("text", (s) => {
   };
   if (s.maxWidth === undefined) {
     // Auto-width: widest paragraph drives width, one visual line per
-    // paragraph. Empty text keeps a caret-sized box so it stays
-    // selectable / editable.
+    // paragraph.
     let width = 0;
     for (const p of paragraphs) width = Math.max(width, measureLine(p));
     width = Math.max(width, s.fontSize * 0.5);
