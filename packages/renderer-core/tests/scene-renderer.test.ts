@@ -203,7 +203,7 @@ describe("renderScene", () => {
       return scene;
     };
 
-    it("hideText drops text shapes when zoom is below threshold", () => {
+    it("drops text whose on-screen font size is below minTextScreenPx", () => {
       const rectRenderer = vi.fn<ElementRenderer>();
       const textRenderer = vi.fn<ElementRenderer>();
       registerElementRenderer("rectangle", rectRenderer);
@@ -225,9 +225,33 @@ describe("renderScene", () => {
         },
       ]);
       const { target } = makeRecorder();
-      renderScene(scene, target, { lod: { hideText: 0.5 } });
+      // 12 px × zoom 0.2 = 2.4 px on screen — unreadable, skipped.
+      renderScene(scene, target, { lod: { minTextScreenPx: 6 } });
       expect(rectRenderer).toHaveBeenCalledOnce();
       expect(textRenderer).not.toHaveBeenCalled();
+    });
+
+    it("keeps large text readable at a tiny zoom (LOD is per element, not per zoom)", () => {
+      const textRenderer = vi.fn<ElementRenderer>();
+      registerElementRenderer("text", textRenderer);
+      const scene = sceneWithZoom(0.01, [
+        {
+          id: elementId("h1"),
+          layerId: DEFAULT_LAYER_ID,
+          type: "text",
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          scale: { x: 1, y: 1 },
+          order: orderBetween(null, null),
+          style: {},
+          text: "HEADLINE",
+          fontFamily: "sans",
+          fontSize: 2000, // 20 px on screen at 1 %
+        },
+      ]);
+      const { target } = makeRecorder();
+      renderScene(scene, target, { lod: { minTextScreenPx: 6 } });
+      expect(textRenderer).toHaveBeenCalledOnce();
     });
 
     it("placeholder skips renderers and emits world-bounds rect", () => {
@@ -235,10 +259,23 @@ describe("renderScene", () => {
       registerElementRenderer("rectangle", rectRenderer);
       const scene = sceneWithZoom(0.1, [placeRect("a", 0, 0), placeRect("b", 100, 100)]);
       const { target, calls } = makeRecorder();
-      renderScene(scene, target, { lod: { placeholder: 0.2 } });
+      // Both rects are far smaller than 1000 px on screen → flat fills.
+      renderScene(scene, target, { lod: { placeholderMaxScreenPx: 1000 } });
       expect(rectRenderer).not.toHaveBeenCalled();
       const fills = calls.filter((c) => c.method === "fill").length;
       expect(fills).toBe(2);
+    });
+
+    it("keeps a shape that is still large on screen fully rendered at the same zoom", () => {
+      const rectRenderer = vi.fn<ElementRenderer>();
+      registerElementRenderer("rectangle", rectRenderer);
+      const scene = sceneWithZoom(0.1, [
+        { ...placeRect("big", 0, 0), width: 5000, height: 5000 } as Element, // 500 px on screen
+        placeRect("small", 100, 100),
+      ]);
+      const { target } = makeRecorder();
+      renderScene(scene, target, { lod: { placeholderMaxScreenPx: 20 } });
+      expect(rectRenderer).toHaveBeenCalledOnce();
     });
 
     it("LOD inactive at high zoom — full render", () => {
@@ -246,7 +283,7 @@ describe("renderScene", () => {
       registerElementRenderer("rectangle", rectRenderer);
       const scene = sceneWithZoom(1.5, [placeRect("a", 0, 0)]);
       const { target } = makeRecorder();
-      renderScene(scene, target, { lod: { placeholder: 0.2, hideText: 0.5 } });
+      renderScene(scene, target, { lod: { placeholderMaxScreenPx: 8, minTextScreenPx: 6 } });
       expect(rectRenderer).toHaveBeenCalledOnce();
     });
   });

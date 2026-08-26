@@ -10,7 +10,8 @@ export type {
 } from "./targets/render-target.js";
 export type { ElementRenderer, ElementRenderContext } from "./rendering/shape-renderer.js";
 export type { LayerName } from "./targets/layers.js";
-export type { RenderSceneOptions, LodOptions } from "./rendering/scene-renderer.js";
+export type { RenderSceneOptions } from "./rendering/scene-renderer.js";
+export { isTextBelowLod, screenSizeOf, type LodOptions } from "./rendering/lod.js";
 export type { RenderLinksOptions } from "./rendering/edge-renderer.js";
 export type { RenderGridOptions, GridLevel, GridRung } from "./rendering/grid-renderer.js";
 
@@ -108,6 +109,8 @@ export {
 
 export {
   DEFAULT_LOD,
+  LOD_PLACEHOLDER_MAX_SCREEN_PX,
+  LOD_MIN_TEXT_SCREEN_PX,
   DEFAULT_PLACEHOLDER_FILL,
   VIEWPORT_CULL_PADDING_RATIO,
   LINK_CORNER_RADIUS,

@@ -145,6 +145,6 @@ describe("setZoom", () => {
     editor.setZoom(1000);
     expect(editor.scene.viewport.zoom).toBe(32);
     editor.setZoom(0.0001);
-    expect(editor.scene.viewport.zoom).toBe(0.05);
+    expect(editor.scene.viewport.zoom).toBe(0.01);
   });
 });

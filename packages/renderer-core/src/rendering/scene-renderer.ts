@@ -18,23 +18,9 @@ import { cachedWorldBounds, ElementCache } from "../caches/shape-cache.js";
 import { DEFAULT_PLACEHOLDER_FILL } from "../constants.js";
 import type { LayerCompositeCache } from "../caches/layer-cache-composite.js";
 import { zoomBucket as bucketFor } from "../caches/shape-cache-bitmap.js";
+import { isTextBelowLod, screenSizeOf, type LodOptions } from "./lod.js";
 
-/**
- * Zoom-based level-of-detail thresholds. Each threshold turns on a
- * cheaper render path when the scene zoom drops below it:
- *
- * - **placeholder** → draw a flat fill at the shape's world AABB and
- *   skip the registered renderer entirely. Highest savings, biggest
- *   visual fidelity loss; reserve for very-zoomed-out overviews.
- * - **hideText** → skip text shapes (their wrap+measure cost is high).
- *
- * Thresholds compare against `scene.viewport.zoom` (1.0 = 1:1 pixels).
- * Omit a threshold to disable that level.
- */
-export interface LodOptions {
-  readonly placeholder?: number;
-  readonly hideText?: number;
-}
+export type { LodOptions } from "./lod.js";
 
 export interface RenderSceneOptions {
   /** Skip clearing the target before drawing. Default: false. */
@@ -61,7 +47,7 @@ export interface RenderSceneOptions {
    */
   readonly spatialIndex?: SpatialGrid;
   /**
-   * Zoom thresholds for cheaper render paths. See {@link LodOptions}.
+   * On-screen size thresholds for cheaper render paths. See {@link LodOptions}.
    */
   readonly lod?: LodOptions;
   /**
@@ -207,8 +193,7 @@ export const renderScene = (
     ...(options.hoveredElement !== undefined ? { hoveredElement: options.hoveredElement } : {}),
   };
   const lod = options.lod;
-  const usePlaceholder = lod?.placeholder !== undefined && zoom < lod.placeholder;
-  const dropText = lod?.hideText !== undefined && zoom < lod.hideText;
+  const placeholderMax = lod?.placeholderMaxScreenPx;
   const placeholderFill = options.placeholderFill ?? DEFAULT_PLACEHOLDER_FILL;
 
   const layerCache = options.layerCompositeCache;
@@ -271,9 +256,15 @@ export const renderScene = (
         if (!B.intersects(bb, dirtyWorld)) continue;
       }
 
-      if (dropText && isText(shape)) continue;
+      // LOD is per element, from what actually lands on screen: unreadable
+      // text is skipped, a shape too small to show detail becomes a flat
+      // fill — regardless of the zoom level itself.
+      if (isText(shape) && isTextBelowLod(shape.fontSize, zoom, lod)) continue;
 
-      if (usePlaceholder) {
+      if (
+        placeholderMax !== undefined &&
+        screenSizeOf(cachedWorldBounds(boundsCache, shape), zoom) < placeholderMax
+      ) {
         // Draw the AABB directly in world coords — skip the renderer
         // entirely. The shape's TRS is folded into the cached bounds.
         const bb = cachedWorldBounds(boundsCache, shape);
@@ -307,10 +298,10 @@ export const renderScene = (
       }
       renderer(shape, draw, ctx);
       // Embedded label — drawn in the shape's local space, after its
-      // body so the text sits on top. Skipped under the hide-text LOD
-      // together with standalone text.
-      if (shape.label !== undefined && !isText(shape) && !dropText) {
-        drawShapeLabel(shape, draw);
+      // body so the text sits on top. Subject to the same readable-text
+      // LOD floor as standalone text (checked on the resolved font size).
+      if (shape.label !== undefined && !isText(shape)) {
+        drawShapeLabel(shape, draw, lod?.minTextScreenPx !== undefined ? { zoom, lod } : undefined);
       }
       target.restore();
     }

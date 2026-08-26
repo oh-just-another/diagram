@@ -339,8 +339,9 @@ export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
  *   (2–5) and bypass the clamp, so they stay smooth and granular.
  *   Defaults: clamp at 10, speed 1 → ~10 % per mouse notch,
  *   ~2 % per pinch frame.
- * - `MIN_ZOOM` / `MAX_ZOOM` — hard caps. Below MIN_ZOOM (very far
- *   out) culling/LOD save the frame; above MAX_ZOOM pixel-snapping
+ * - `MIN_ZOOM` / `MAX_ZOOM` — hard caps (1 % … 3200 %). Far out, the
+ *   per-element screen-size LOD keeps the frame cheap while anything still
+ *   large enough on screen stays fully drawn; above MAX_ZOOM pixel-snapping
  *   artefacts appear.
  *
  * Device classification in the wheel handler is `deltaX`-based —
@@ -353,7 +354,7 @@ export const WHEEL_PAN_FACTOR = 1;
 export const WHEEL_ZOOM_STEP = 1.6;
 export const WHEEL_ZOOM_MAX_STEP = 10;
 export const WHEEL_ZOOM_SPEED = 1;
-export const MIN_ZOOM = 0.05;
+export const MIN_ZOOM = 0.01;
 export const MAX_ZOOM = 32;
 
 /**

@@ -8,21 +8,24 @@ import { GRID_COLOR, GRID_DOT_COLOR } from "@oh-just-another/tokens";
 import type { LodOptions } from "./rendering/scene-renderer.js";
 
 /**
- * Default zoom thresholds for the level-of-detail pipeline. Tuned for
- * a typical 1920×1080 viewport viewing a 10k-shape scene.
+ * Level-of-detail floors, in ON-SCREEN pixels — decided per element from
+ * what actually lands on screen, so the zoom level alone never degrades a
+ * shape that is still large or a heading that is still readable.
  *
- * - `placeholder: 0.15` — below 15% zoom (one screen ≈ 6.7× world),
- *   shapes degrade to flat AABB fills. Saves ~10× renderer cost per
- *   shape.
- * - `hideText: 0.4` — below 40% zoom text glyphs are too small to read
- *   anyway; skipping the `wrapText` + `measureText` calls saves the
- *   bulk of text rendering cost.
+ * - `LOD_PLACEHOLDER_MAX_SCREEN_PX` — a shape whose longer side is below
+ *   this on screen is a flat AABB fill (no detail is visible at that size
+ *   anyway; saves ~10× renderer cost per shape). Range: 4–16.
+ * - `LOD_MIN_TEXT_SCREEN_PX` — text whose font size on screen is below this
+ *   is skipped (glyphs are unreadable below ~6 px; skipping the
+ *   wrap + measure is the bulk of text cost). Range: 4–8.
  *
  * Hosts override per-render by passing `RenderSceneOptions.lod`.
  */
+export const LOD_PLACEHOLDER_MAX_SCREEN_PX = 8;
+export const LOD_MIN_TEXT_SCREEN_PX = 6;
 export const DEFAULT_LOD: LodOptions = {
-  placeholder: 0.15,
-  hideText: 0.4,
+  placeholderMaxScreenPx: LOD_PLACEHOLDER_MAX_SCREEN_PX,
+  minTextScreenPx: LOD_MIN_TEXT_SCREEN_PX,
 };
 
 /**

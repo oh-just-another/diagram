@@ -31,6 +31,7 @@ import {
 } from "@oh-just-another/scene";
 import { registerElementRenderer, type ElementRenderer } from "./shape-renderer.js";
 import type { RenderTarget } from "../targets/render-target.js";
+import { isTextBelowLod, type LodOptions } from "./lod.js";
 import {
   DEFAULT_LINE_HEIGHT_FACTOR,
   layoutText,
@@ -675,9 +676,16 @@ export const shapeLabelLayout = (
  * places the whole block, `textAlign` centres lines within the padded
  * width. Called by the scene renderer after the shape body.
  */
-export const drawShapeLabel = (shape: ElementBase, target: RenderTarget): void => {
+export const drawShapeLabel = (
+  shape: ElementBase,
+  target: RenderTarget,
+  /** Readable-text LOD: skip the label when its resolved font size is below the floor on screen. */
+  lod?: { readonly zoom: number; readonly lod: LodOptions },
+): void => {
   const label = shape.label;
   if (label === undefined || label.text === "") return;
+  // Fast path on the base size: an auto-fit label can only grow from it.
+  if (lod && !label.autoFit && isTextBelowLod(label.fontSize, lod.zoom, lod.lod)) return;
   // Measure with the label's base font — same metrics drawText wraps with.
   const weight = label.style?.fontWeight;
   const fontStyle = label.style?.fontStyle;
@@ -687,6 +695,7 @@ export const drawShapeLabel = (shape: ElementBase, target: RenderTarget): void =
   });
   const placed = shapeLabelLayout(shape, (s) => target.measureText(s).width);
   if (!placed) return;
+  if (lod && isTextBelowLod(placed.synthetic.fontSize, lod.zoom, lod.lod)) return;
   target.save();
   target.translate(placed.offsetX, placed.offsetY);
   drawText(placed.synthetic, target);
