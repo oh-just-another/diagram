@@ -2,7 +2,7 @@ name: Deploy docs to GitHub Pages
 
 on:
   push:
-    branches: [main, master]
+    branches: [master]
   workflow_dispatch:
 
 # Allow the workflow to publish to Pages via OIDC.
@@ -20,23 +20,17 @@ jobs:
   build:
     name: Build apps/docs
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
 
       - name: Build workspace packages
         # The docs site imports the built @oh-just-another/editor (and its deps)
         # via package `exports`, so the packages must be built before Docusaurus
         # bundles the site. baseUrl (/diagram/) is set in docusaurus.config.ts.
+        # Served from the Nx cache the CI build job saved for this commit.
         run: pnpm build
 
       - name: Build docs site
@@ -51,6 +45,7 @@ jobs:
     name: Deploy to Pages
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

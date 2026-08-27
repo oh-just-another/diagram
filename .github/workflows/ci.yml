@@ -8,56 +8,94 @@ on:
 
 permissions:
   contents: read
+  # nx-set-shas looks up the last successful run of this workflow on master.
+  actions: read
+  # dorny/paths-filter lists the PR's changed files through the API.
+  pull-requests: read
 
+# Superseded PR pushes are cancelled; a master run is never cancelled because
+# its release job may be mid-publish.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The version PR opened by changesets (branch `changeset-release/master`) only
+# bumps versions and CHANGELOGs; its code was already checked on the PRs that
+# produced the changesets. Jobs that re-test code skip it via
+# `github.head_ref != 'changeset-release/master'` — only `static` (format) and
+# `build` (lockfile / versions still install and build) stay on.
 
 jobs:
-  check:
-    name: Lint • Typecheck • Test • Coverage • Build
+  static:
+    name: Format • Lint • Typecheck • Deps • Dead code
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
+          # nx affected needs the base commit reachable.
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - uses: ./.github/actions/setup
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      # NX_BASE / NX_HEAD: merge-base with master for PRs, the last successful
+      # master run for pushes (falls back to HEAD~1 when there is none).
+      - uses: nrwl/nx-set-shas@v4
 
       - name: Format check
         run: pnpm format:check
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm typecheck
 
       # Layering gate (L0→L8, core purity, runtime cycles). Runs in the
       # pre-push hook locally, but forks without hooks bypass it, so it must
       # also gate PRs here.
       - name: Dependency graph check
+        if: github.head_ref != 'changeset-release/master'
         run: pnpm deps:check
 
       # Dead-code gate (unused files / exports / dependencies). False
       # positives are triaged into knip.json ignores; a red run here means
       # a genuinely orphaned export or dependency slipped in.
       - name: Dead code check (knip)
+        if: github.head_ref != 'changeset-release/master'
         run: pnpm knip
 
-      - name: Test
-        run: pnpm test
+      # Only projects touched since the base (plus their dependents); untouched
+      # ones are also served from the restored Nx cache.
+      - name: Lint + typecheck (affected)
+        if: github.head_ref != 'changeset-release/master'
+        run: pnpm exec nx affected -t lint,typecheck
 
-      - name: Coverage gate
+  test:
+    name: Test • Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.head_ref != 'changeset-release/master'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+
+      # Tests import sibling packages through their `exports`, which point at
+      # `dist` — so the workspace must be built first (mostly served from the
+      # restored Nx cache).
+      - name: Build
+        run: pnpm build
+
+      # Single full run: the coverage gate executes every vitest project in
+      # vitest.workspace.ts (same set as `pnpm test`) and enforces the per-layer
+      # thresholds, which need the whole workspace — so it is not affected-scoped.
+      - name: Test + coverage gate
         run: pnpm test:coverage:gate
+
+  build:
+    name: Build • Bundle size
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup
+        id: setup
 
       - name: Build
         run: pnpm build
@@ -68,44 +106,58 @@ jobs:
       - name: Bundle size
         run: pnpm size
 
-      # Smoke-run the benchmarks so they keep compiling and executing. Absolute
-      # timings are not gated — shared CI runners are too noisy for a stable
-      # threshold; baselines are tracked by running `pnpm bench` locally.
-      # Only on push to master: the full sampling adds ~3.5 min and the smoke
-      # value is low on every PR (typecheck already proves they compile), so we
-      # keep it off the PR critical path and still catch breakage at merge.
-      - name: Benchmarks
-        if: github.event_name == 'push'
-        run: pnpm bench
+      # Persist the Nx cache filled by this build for later runs on this branch
+      # and — when this is a master run — for every PR.
+      - name: Save Nx cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .nx/cache
+          key: ${{ steps.setup.outputs.nx-cache-key }}
 
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: github.head_ref != 'changeset-release/master'
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
         with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
+          fetch-depth: 0
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
+
+      - uses: nrwl/nx-set-shas@v4
+
+      # The suite drives the playground, so it only matters when the
+      # playground or a package under it changed. Master pushes always run it.
+      - name: Decide whether the playground is affected
+        id: scope
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif pnpm exec nx show projects --affected | grep -qx '@oh-just-another/playground'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Playground not affected — e2e skipped."
+          fi
 
       - name: Resolve Playwright version
+        if: steps.scope.outputs.run == 'true'
         id: playwright-version
         run: |
           echo "version=$(node -p "require('./apps/e2e/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
+        if: steps.scope.outputs.run == 'true'
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
 
       - name: Install Chromium + WebKit
+        if: steps.scope.outputs.run == 'true'
         run: pnpm --filter @oh-just-another/e2e exec playwright install chromium webkit --with-deps
 
       # Screenshot specs are excluded: their baselines are captured locally
@@ -113,13 +165,21 @@ jobs:
       # Playwright would treat every screenshot as a missing snapshot and
       # fail. Visual baselines stay a local-only check until per-platform
       # (linux) snapshots are recorded and committed.
+      #
+      # Projects are listed explicitly so `webkit-smoke` runs once, in the
+      # dedicated step below.
       - name: Run e2e suite (Chromium)
-        run: pnpm --filter @oh-just-another/e2e e2e --grep-invert "mobile UI screenshots"
+        if: steps.scope.outputs.run == 'true'
+        run: >-
+          pnpm --filter @oh-just-another/e2e e2e
+          --project=chromium --project=golden-visual --project=mobile-chromium
+          --grep-invert "mobile UI screenshots"
 
       # Cross-engine smoke on WebKit (Desktop Safari): the `webkit-smoke`
       # project runs only smoke.spec.ts, catching Safari-specific regressions
       # in the core boot / keyboard-creation path.
       - name: Run WebKit smoke
+        if: steps.scope.outputs.run == 'true'
         run: pnpm --filter @oh-just-another/e2e e2e --project=webkit-smoke
 
       - name: Upload test results
@@ -129,3 +189,98 @@ jobs:
           name: playwright-test-results
           path: apps/e2e/test-results/
           retention-days: 7
+
+  docs:
+    name: Docs build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Master pushes build the site in the Pages workflow anyway.
+    if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/master'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            docs:
+              - "apps/docs/**"
+
+      - if: steps.changes.outputs.docs == 'true'
+        uses: ./.github/actions/setup
+
+      # The docs site imports the built @oh-just-another/editor (and its deps)
+      # via package `exports`, so the packages must be built before Docusaurus
+      # bundles the site.
+      - name: Build workspace packages
+        if: steps.changes.outputs.docs == 'true'
+        run: pnpm build
+
+      - name: Build docs site
+        if: steps.changes.outputs.docs == 'true'
+        run: pnpm docs:build
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Publishing (and opening the version PR) waits for every gate above.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [static, test, build, e2e]
+    # Never cancel a publish in flight.
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+      # Mint the OIDC token npm needs to attach build provenance on publish.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+        with:
+          registry-url: "https://registry.npmjs.org"
+
+      # Import a dedicated signing key so the version-bump commit changesets
+      # makes is verifiable. The action sets git user.name / user.email from the
+      # key's UID and turns on commit.gpgsign — so the commit is authored by the
+      # key's identity (a verified email) and signed. `required_signatures` on
+      # master then accepts the release PR, allowing a merge commit.
+      #
+      # The key is passphrase-less: CI has no TTY, so a passphrase-protected key
+      # makes git's commit signing fall back to pinentry and fail ("Inappropriate
+      # ioctl for device"). The private key is already a protected repo secret.
+      - name: Import GPG signing key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.RELEASE_GPG_PRIVATE_KEY }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      # `pnpm release` = `pnpm build && changeset publish`; the build is served
+      # from the Nx cache the `build` job just saved.
+      - name: Create release PR or publish
+        uses: changesets/action@v1
+        with:
+          publish: pnpm release
+          version: pnpm version-packages
+          commit: "chore: release packages"
+          title: "chore: release packages"
+          # Keep the identity set by the GPG import step (a verified address)
+          # instead of changesets' default github-actions[bot] — otherwise the
+          # committer email wouldn't match the signing key and the commit shows
+          # as Unverified.
+          setupGitUser: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # setup-node's registry-url writes an .npmrc that reads NODE_AUTH_TOKEN,
+          # so the npm token must be exposed under that name for `changeset publish`.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Publish with signed build provenance (npm shows the verified-build
+          # badge). Needs the id-token permission above; each package's
+          # repository field must match this repo.
+          NPM_CONFIG_PROVENANCE: "true"

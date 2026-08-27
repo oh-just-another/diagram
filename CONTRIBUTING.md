@@ -44,9 +44,12 @@ pnpm deps:check   # layering / cycles
 ```
 
 Git hooks run a subset automatically: **pre-commit** (eslint --fix + prettier on
-staged files) and **pre-push** (format check, typecheck, lint, test,
-deps:check). After
-changes to a core/shared package, run tests without the nx cache
+staged files) and **pre-push** (format check, deps:check, knip, and
+`nx affected -t build,typecheck,lint,test` against `origin/master` — only the
+projects you touched and their dependents). CI runs the full workspace: the
+coverage gate, bundle-size budgets (`pnpm build && pnpm size` — run it yourself
+after touching `editor` / `react-ui`), e2e and the docs build. After changes to
+a core/shared package, run tests without the nx cache
 (`pnpm test --skip-nx-cache`) to avoid stale green results.
 
 ## Commit messages
