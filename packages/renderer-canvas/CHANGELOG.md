@@ -1,5 +1,47 @@
 # @oh-just-another/renderer-canvas
 
+## 0.62.0
+
+### Minor Changes
+
+- 3543dc7: `RenderTarget` gained `clip(rule?)`: intersect the clip region with the current path, scoped by `save()`/`restore()` (nested pairs intersect). Canvas2D uses native `ctx.clip`, SVG emits `<clipPath>` + a `<g clip-path>` wrapper, WebGL2 rasterises the flattened path into the stencil buffer (aliased edge, like Canvas2D clips); the offscreen recording/replay codec carries the new op.
+
+### Patch Changes
+
+- e0e4ea9: Stop rendering after dispose. Async completions (image decode, font load) resolving after a runtime backend switch could schedule a frame onto disposed targets; on WebGL2 the lazy pipeline rebuild then recompiled shaders on the lost context and threw "Ellipse shader compile failed: null" from a promise chain. `Editor` no longer schedules renders once disposed, and `WebGL2Target` draw calls become no-ops after `dispose()`.
+
+  Also make the "skipped a non-drawable image source" warning signal-only: the image element renderer now silently skips shapes whose handle is dead but rehydratable (`fileId` present — the transient first paint after a scene restore), and rehydration itself reports missing `Scene.files` bytes or decode failures. The renderer warning now fires only when an image really will stay blank.
+
+- 3ff16ab: MSDF glyph baking moved off the main thread. Profiling showed a single WASM MSDF bake costs 15–50 ms — over a frame budget no matter how the queue is paced — so the WebGL2 backend now ships bake requests to a dedicated worker (`glyph-bake-worker`, its own `WasmTextShaper` instance) and inserts the returned tiles via the new `GlyphAtlas.insertBaked`. The main thread never runs the rasteriser; strings with un-baked glyphs keep rendering through the cached bitmap path until their tiles arrive. Where workers are unavailable, a throttled one-glyph-per-macrotask fallback applies.
+- 3019bc7: Inline label editing behaves like a proper text box. The label's visible line window now scrolls to follow the caret (transient `metadata.labelScrollLines`, stripped on commit/cancel and on save), so arrowing to the end of a long label keeps the edited line on screen; selection highlight and the caret are clipped to the shape body. Double-click places a collapsed caret without arming a drag-select (no more accidental part-selection). Emoji now survive the WebGL2 backend: strings containing pictographs take the rasterised-bitmap text path instead of the monochrome MSDF atlas that cannot shape them.
+- 97daf50: WebGL2 bitmap-path text (emoji, strings with unbaked glyphs, no-MSDF fallback) is now rasterised at the current effective screen scale (view zoom × devicePixelRatio, quantised to powers of two, capped by `WEBGL2_TEXT_RASTER_MAX_SCALE`) instead of a fixed 1× bake, so sticky reaction pills and other small labels stay sharp under zoom.
+- 4c2b27b: WebGL2 text stability and interaction smoothness. Emoji strings are measured with Canvas2D (the MSDF atlas has no colour glyphs; its NaN advance crashed the render loop every frame, freezing the canvas and dropping emoji after the first pan). Per-glyph MSDF baking (~9 ms per glyph in WASM) no longer happens inside a frame at all: the atlas tracks coverage (`GlyphAtlas.has`), strings with un-baked glyphs draw and measure through the cached Canvas2D bitmap path for that frame while a background queue bakes the missing glyphs in small chunks (printable ASCII is pre-queued the moment the shaper loads). The first pan/zoom after load — and the first frame containing new characters — no longer stutters.
+- Updated dependencies [76463dd]
+- Updated dependencies [e0e4ea9]
+- Updated dependencies [e66a8a5]
+- Updated dependencies [06a0625]
+- Updated dependencies [3ff16ab]
+- Updated dependencies [e2ff8df]
+- Updated dependencies [5f08d13]
+- Updated dependencies [3019bc7]
+- Updated dependencies [2e2a9e7]
+- Updated dependencies [350c6d3]
+- Updated dependencies [518a6d1]
+- Updated dependencies [3543dc7]
+- Updated dependencies [2cd199e]
+- Updated dependencies [745d7a9]
+- Updated dependencies [586b7ed]
+- Updated dependencies [d4c2c2f]
+- Updated dependencies [993b46a]
+- Updated dependencies [ef7388f]
+- Updated dependencies [e15fa56]
+- Updated dependencies [8163681]
+- Updated dependencies [4c2b27b]
+  - @oh-just-another/renderer-core@0.61.0
+  - @oh-just-another/scene@0.62.0
+  - @oh-just-another/glyph-atlas@0.58.0
+  - @oh-just-another/text-wasm@0.57.6
+
 ## 0.61.1
 
 ### Patch Changes

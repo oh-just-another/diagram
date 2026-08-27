@@ -1,5 +1,11 @@
 # @oh-just-another/tokens
 
+## 0.58.1
+
+### Patch Changes
+
+- 3f45f83: Chrome surfaces are opaque: `UI_SURFACE.bg` / `--du-ui-bg` drop the 0.95 alpha (`#ffffff` light, `#252525` dark), so toolbars and button groups no longer show the canvas grid through them. `bgSolid` / `--du-ui-bg-solid` now equal `bg`.
+
 ## 0.58.0
 
 ### Minor Changes

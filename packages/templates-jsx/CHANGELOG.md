@@ -1,5 +1,12 @@
 # @oh-just-another/templates-jsx
 
+## 0.57.6
+
+### Patch Changes
+
+- Updated dependencies [d4c2c2f]
+  - @oh-just-another/templates@0.58.0
+
 ## 0.57.5
 
 ### Patch Changes
