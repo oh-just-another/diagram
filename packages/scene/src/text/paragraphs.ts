@@ -26,18 +26,16 @@ export const paragraphRangeForOffsets = (
 ): { readonly first: number; readonly last: number } => {
   const lo = Math.max(0, Math.min(from, to));
   const hi = Math.min(text.length, Math.max(from, to));
+  // Paragraph index = newlines before the offset; `hi` may equal `text.length`
+  // (caret at the very end), so the count runs over `[0, hi)` only.
   let idx = 0;
   let first = 0;
-  let last = 0;
-  for (let i = 0; i <= text.length; i++) {
+  for (let i = 0; i < hi; i++) {
     if (i === lo) first = idx;
-    if (i === hi) {
-      last = idx;
-      break;
-    }
     if (text[i] === "\n") idx++;
   }
-  return { first, last: Math.max(first, last) };
+  if (lo >= hi) first = idx;
+  return { first, last: idx };
 };
 
 /** Attrs for a paragraph index (missing / short array → plain). */
