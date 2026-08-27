@@ -37,6 +37,7 @@ jobs:
           fetch-depth: 0
 
       - uses: ./.github/actions/setup
+        id: setup
 
       # NX_BASE / NX_HEAD: merge-base with master for PRs, the last successful
       # master run for pushes (falls back to HEAD~1 when there is none).
@@ -64,6 +65,16 @@ jobs:
       - name: Lint + typecheck (affected)
         if: github.head_ref != 'changeset-release/master'
         run: pnpm exec nx affected -t lint,typecheck
+
+      # This job's cache is the richest one (the `^build` outputs plus lint and
+      # typecheck results), so persist it too; later runs restore the newest
+      # entry for their commit / branch / master.
+      - name: Save Nx cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .nx/cache
+          key: ${{ steps.setup.outputs.nx-cache-key }}
 
   test:
     name: Test • Coverage
