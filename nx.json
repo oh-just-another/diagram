@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "namedInputs": {
-    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "default": ["{projectRoot}/**/*", "!{projectRoot}/**/*.md", "sharedGlobals"],
     "production": [
       "default",
       "!{projectRoot}/**/*.spec.ts",
@@ -37,6 +37,10 @@
       "dependsOn": ["^build"],
       "inputs": ["default", "{workspaceRoot}/eslint.config.js"],
       "cache": true
+    },
+    "bench": {
+      "dependsOn": ["^build"],
+      "cache": false
     }
   },
   "defaultBase": "master"

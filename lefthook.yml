@@ -10,16 +10,16 @@ pre-commit:
       run: pnpm exec prettier --write {staged_files}
       stage_fixed: true
 
+# Fast local gate: only projects changed since origin/master (and their
+# dependents) are built, typechecked, linted and tested, in one Nx run.
+# The full workspace — coverage thresholds, bundle size, e2e — is CI's job.
 pre-push:
+  parallel: true
   commands:
     format:
       run: pnpm format:check
-    typecheck:
-      run: pnpm typecheck
-    lint:
-      run: pnpm lint
-    test:
-      run: pnpm test
+    affected:
+      run: pnpm exec nx affected --base=origin/master --head=HEAD -t build,typecheck,lint,test
     deps:
       run: pnpm deps:check
     knip:
