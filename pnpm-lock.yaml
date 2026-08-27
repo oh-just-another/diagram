@@ -134,10 +134,10 @@ importers:
         specifier: 3.10.1
         version: 3.10.1(@algolia/client-search@5.55.0)(@mdx-js/react@3.1.1(@types/react@19.2.15)(react@19.2.6))(@swc/core@1.15.41)(@types/react@19.2.15)(lightningcss@1.32.0)(postcss@8.5.23)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(search-insights@2.17.3)(typescript@5.7.3)
       '@easyops-cn/docusaurus-search-local':
-        specifier: ^0.55.2
+        specifier: 0.55.2
         version: 0.55.2(@docusaurus/theme-common@3.10.1(@docusaurus/plugin-content-docs@3.10.1(@mdx-js/react@3.1.1(@types/react@19.2.15)(react@19.2.6))(@swc/core@1.15.41)(lightningcss@1.32.0)(postcss@8.5.23)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.7.3))(@swc/core@1.15.41)(lightningcss@1.32.0)(postcss@8.5.23)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@mdx-js/react@3.1.1(@types/react@19.2.15)(react@19.2.6))(@swc/core@1.15.41)(lightningcss@1.32.0)(postcss@8.5.23)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.7.3)
       '@mdx-js/react':
-        specifier: ^3.0.0
+        specifier: 3.1.1
         version: 3.1.1(@types/react@19.2.15)(react@19.2.6)
       '@oh-just-another/diagram':
         specifier: workspace:*
@@ -167,16 +167,16 @@ importers:
         specifier: workspace:*
         version: link:../../packages/types
       clsx:
-        specifier: ^2.0.0
+        specifier: 2.1.1
         version: 2.1.1
       prism-react-renderer:
-        specifier: ^2.3.0
+        specifier: 2.4.1
         version: 2.4.1(react@19.2.6)
       react:
-        specifier: ^19.0.0
+        specifier: 19.2.6
         version: 19.2.6
       react-dom:
-        specifier: ^19.0.0
+        specifier: 19.2.6
         version: 19.2.6(react@19.2.6)
       vue:
         specifier: 3.5.38
@@ -192,10 +192,10 @@ importers:
         specifier: 3.10.1
         version: 3.10.1(@swc/core@1.15.41)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.23))(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.23)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@swc/core':
-        specifier: ^1.10.0
+        specifier: 1.15.41
         version: 1.15.41
       '@types/react':
-        specifier: ^19.0.0
+        specifier: 19.2.15
         version: 19.2.15
       svelte:
         specifier: 5.56.4
@@ -204,13 +204,13 @@ importers:
         specifier: 3.2.4
         version: 3.2.4(svelte@5.56.4(@typescript-eslint/types@8.59.4))
       swc-loader:
-        specifier: ^0.2.6
+        specifier: 0.2.7
         version: 0.2.7(@swc/core@1.15.41)(webpack@5.107.2(@swc/core@1.15.41)(lightningcss@1.32.0)(postcss@8.5.23))
       typescript:
         specifier: ~5.7.0
         version: 5.7.3
       webpack:
-        specifier: ^5.107.2
+        specifier: 5.107.2
         version: 5.107.2(@swc/core@1.15.41)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.23))(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.23)
 
   apps/e2e:
