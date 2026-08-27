@@ -44,5 +44,7 @@
       "cache": false
     }
   },
-  "defaultBase": "master"
+  "defaultBase": "master",
+  "analytics": false,
+  "neverConnectToCloud": true
 }
