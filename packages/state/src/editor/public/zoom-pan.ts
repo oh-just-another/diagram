@@ -129,7 +129,7 @@ const distanceToBounds = (b: Bounds, point: Vec2): number => {
  * (distance point → element AABB; a containing element wins with 0).
  * `null` when nothing qualifies.
  */
-export const nearestElementBounds = (
+const nearestElementBounds = (
   scene: Scene,
   point: Vec2,
   accept: (element: Element) => boolean,

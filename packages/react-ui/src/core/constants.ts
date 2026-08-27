@@ -38,14 +38,14 @@ export const PROPERTY_PANEL_WIDTH = 240;
  * - `MARK_ICON` — check / chevron marks: 12 / 2.
  * - `BADGE_ICON` — tiny glyphs inside chips and badges: 12 / 2.
  */
-export const CONTROL_ICON_SIZE = 24;
-export const CONTROL_ICON_STROKE = 2;
-export const ROW_ICON_SIZE = 20;
-export const ROW_ICON_STROKE = 2;
-export const MARK_ICON_SIZE = 12;
-export const MARK_ICON_STROKE = 2;
-export const BADGE_ICON_SIZE = 12;
-export const BADGE_ICON_STROKE = 2;
+const CONTROL_ICON_SIZE = 24;
+const CONTROL_ICON_STROKE = 2;
+const ROW_ICON_SIZE = 20;
+const ROW_ICON_STROKE = 2;
+const MARK_ICON_SIZE = 12;
+const MARK_ICON_STROKE = 2;
+const BADGE_ICON_SIZE = 12;
+const BADGE_ICON_STROKE = 2;
 /** Drop glyph in the centre of the file-drop overlay. */
 export const DROP_OVERLAY_ICON_SIZE = 48;
 export const ICON_STROKE = 2;

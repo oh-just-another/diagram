@@ -19,7 +19,7 @@ import {
  * Decode a `data:<mime>;base64,…` URL into bytes. `null` for anything else
  * (blob: / http: URLs stay as they are).
  */
-export const dataUrlToBytes = (url: string): { mime: string; data: ArrayBuffer } | null => {
+const dataUrlToBytes = (url: string): { mime: string; data: ArrayBuffer } | null => {
   const m = /^data:([^;,]+);base64,(.*)$/s.exec(url);
   if (!m) return null;
   const [, mime = "application/octet-stream", b64 = ""] = m;
