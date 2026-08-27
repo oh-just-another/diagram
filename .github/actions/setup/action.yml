@@ -30,15 +30,15 @@ runs:
       shell: bash
       run: pnpm install --frozen-lockfile
 
-    # One unique key per run so the save step never collides with an existing
-    # entry; restore-keys fall back to the newest cache for the same commit,
+    # One unique key per job and run so the save steps never collide with an
+    # existing entry; restore-keys fall back to the newest cache for the same commit,
     # then the newest cache this run is allowed to see (own branch, then
     # master — GitHub scopes caches by branch). Nx hashes every task by its
     # inputs, so a stale entry can only miss, never serve wrong output.
     - name: Compute Nx cache key
       id: nx-cache-key
       shell: bash
-      run: echo "key=nx-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+      run: echo "key=nx-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}" >> "$GITHUB_OUTPUT"
 
     - name: Restore Nx cache
       uses: actions/cache/restore@v4
