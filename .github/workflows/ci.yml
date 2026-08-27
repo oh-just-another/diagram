@@ -75,6 +75,12 @@ jobs:
 
       - uses: ./.github/actions/setup
 
+      # Tests import sibling packages through their `exports`, which point at
+      # `dist` — so the workspace must be built first (mostly served from the
+      # restored Nx cache).
+      - name: Build
+        run: pnpm build
+
       # Single full run: the coverage gate executes every vitest project in
       # vitest.workspace.ts (same set as `pnpm test`) and enforces the per-layer
       # thresholds, which need the whole workspace — so it is not affected-scoped.

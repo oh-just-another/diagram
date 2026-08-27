@@ -29,6 +29,7 @@
       "cache": true
     },
     "test": {
+      "dependsOn": ["^build"],
       "inputs": ["default", "^production"],
       "outputs": ["{projectRoot}/coverage"],
       "cache": true
