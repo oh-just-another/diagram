@@ -70,7 +70,9 @@ import {
   resolveSnapSpacing,
 } from "@oh-just-another/scene";
 import {
+  fileId as castFileId,
   layerId as castLayerId,
+  linkId as castLinkId,
   type AnnotationId,
   type Color,
   type CommentId,
@@ -104,6 +106,7 @@ import {
   videoFileDropHandler,
   createHiddenLoopingVideo,
 } from "./features/built-in-handlers.js";
+import { insertSceneFragment } from "./features/insert-scene.js";
 import {
   computeDimElements as computeDimElementsHelper,
   isDescendantOfGroup as isDescendantOfGroupHelper,
@@ -3270,6 +3273,40 @@ export class Editor {
     this._selection = selectionFromPasted(result.newIds);
     this.notify();
     this.announce(`Pasted ${result.newIds.length} shapes`);
+  }
+
+  /**
+   * Insert a whole scene fragment (an imported diagram — elements, links,
+   * binary files) into the current scene, centred on `targetWorld` (default:
+   * the last pointer position, else the fragment stays where it is). Ids are
+   * remapped, everything lands on the active layer, one undo step; the new
+   * elements become the selection. Returns their ids.
+   */
+  insertScene(fragment: Scene, targetWorld?: Vec2): readonly ElementId[] {
+    if (this.readOnly) return [];
+    this.finalizeOpenGestureTx();
+    const target = targetWorld ?? this.lastPointerWorld;
+    const result = insertSceneFragment(
+      this._scene,
+      this._history,
+      fragment,
+      target ?? null,
+      this._activeLayerId,
+      () => castElementId(`shape-${String(++this.nextId)}-${Date.now().toString(36)}`),
+      () => castLinkId(`link-${String(++this.nextId)}-${Date.now().toString(36)}`),
+      () => castFileId(`file-${String(++this.nextId)}-${Date.now().toString(36)}`),
+    );
+    this._scene = result.scene;
+    this._selection = selectionFromPasted(result.newIds);
+    // Same as `loadScene`: rebuild live handles for the inserted media from
+    // `Scene.files` (importers hand images over as data URLs — persisted as
+    // files above — and a native fragment carries its own files).
+    animScene.rehydrateAnimatedImages(this);
+    void animScene.rehydrateStaticImages(this);
+    this.notify();
+    this.maybeAnimate();
+    this.announce(`Inserted ${String(result.newIds.length)} shapes`);
+    return result.newIds;
   }
 
   /**

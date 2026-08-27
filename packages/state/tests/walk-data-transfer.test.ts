@@ -62,6 +62,16 @@ describe("walkDataTransfer", () => {
     expect(out.map((f) => f.name)).toEqual(["a.txt", "b.txt"]);
   });
 
+  it("falls back to getAsFile() when an item has no filesystem entry", async () => {
+    const a = makeFile("a.mmd");
+    const transfer = {
+      items: [{ kind: "file", webkitGetAsEntry: () => null, getAsFile: () => a }],
+      files: [a],
+    } as unknown as DataTransfer;
+    const out = await collect(walkDataTransfer(transfer));
+    expect(out.map((f) => f.name)).toEqual(["a.mmd"]);
+  });
+
   it("yields a single file entry verbatim", async () => {
     const a = makeFile("a.txt");
     const out = await collect(walkDataTransfer(dt([fileEntry(a)])));

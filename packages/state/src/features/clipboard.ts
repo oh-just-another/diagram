@@ -40,7 +40,7 @@ export interface PasteResult {
  * The live `<img>` / buffer is shared, so the pasted shape draws
  * immediately (same as the original) and still references its `fileId`.
  */
-const cloneElementForClipboard = (shape: Element): Element => {
+export const cloneElementForClipboard = (shape: Element): Element => {
   const meta = (shape as { metadata?: Record<string, unknown> }).metadata;
   const liveImage = meta && "image" in meta ? meta.image : undefined;
   const liveAnim = (shape as { animationData?: unknown }).animationData;

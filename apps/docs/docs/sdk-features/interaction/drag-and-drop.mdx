@@ -3,7 +3,7 @@ title: Drag And Drop
 sidebar_position: 19
 ---
 
-Dropping a file onto the canvas is dispatched through a host-extensible registry. Built-in handlers cover images and videos; hosts add their own for custom payloads (CSV, scene JSON, …).
+Dropping a file onto the canvas is dispatched through a host-extensible registry. Built-in handlers cover images, videos and — in the `Editor` component — every importable diagram format (native JSON, Excalidraw, Mermaid, JSON Canvas, Graphviz DOT, draw.io: `diagramFileDropHandler` from `@oh-just-another/importers`, which parses the file and inserts it at the drop point via `editor.insertScene`). Hosts add their own for custom payloads (CSV, …).
 
 ## File-drop registry
 

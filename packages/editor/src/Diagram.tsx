@@ -95,6 +95,7 @@ import {
   FileDropOverlay,
 } from "@oh-just-another/react-ui";
 import { BrandLogo } from "./brand/brand-logo.js";
+import { diagramFileDropHandler } from "@oh-just-another/importers";
 
 /**
  * Lucide icon sizing — `MENU_ICON_SIZE` is for in-row icons of
@@ -546,6 +547,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   const [editor, setEditor] = useState<Editor | null>(null);
   const handleReady = useCallback(
     (e: Editor) => {
+      // Built-in diagram import (native JSON, Excalidraw, Mermaid, …) first,
+      // then the host's handlers.
+      e.registerFileDropHandler(diagramFileDropHandler);
       if (fileDropHandlers) {
         for (const handler of fileDropHandlers) e.registerFileDropHandler(handler);
       }

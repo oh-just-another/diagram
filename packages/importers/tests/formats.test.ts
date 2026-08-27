@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_LAYER_ID, addElement, emptyScene, orderBetween } from "@oh-just-another/scene";
 import { elementId } from "@oh-just-another/types";
 import { stringifyScene } from "@oh-just-another/serialization";
-import { EXPORT_FORMATS, IMPORT_FORMATS, exportSceneAs, importSceneFrom } from "./format-io";
+import { EXPORT_FORMATS, IMPORT_FORMATS, exportSceneAs, importSceneFrom } from "../src/formats.js";
 
 const sceneWithRect = () => {
   const { scene } = addElement(emptyScene(), {

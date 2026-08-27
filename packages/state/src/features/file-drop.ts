@@ -260,6 +260,7 @@ interface FileSystemDirectoryReaderLike {
 interface DataTransferItemLike {
   kind: string;
   webkitGetAsEntry?(): FileSystemEntryLike | null;
+  getAsFile?(): File | null;
 }
 
 export const walkDataTransfer = async function* (
@@ -284,7 +285,13 @@ export const walkDataTransfer = async function* (
   for (const item of Array.from(items)) {
     if (item.kind !== "file") continue;
     const entry = item.webkitGetAsEntry?.();
-    if (!entry) continue;
+    if (!entry) {
+      // No filesystem entry (some drag sources, synthetic `DataTransfer`s):
+      // fall back to the plain file the item carries.
+      const file = item.getAsFile?.();
+      if (file) yield file;
+      continue;
+    }
     yield* walkEntry(entry, "", 0, skip, maxDepth, options.onError);
   }
 };

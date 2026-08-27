@@ -16,6 +16,7 @@ editor.resetZoom();
 editor.zoomToFit(); // fit the whole scene (optional padding, default 40)
 editor.zoomToSelection(); // fit the current selection (default padding 80)
 editor.revealNearestContent(); // "Back to content": centre the element nearest the camera, never zooming in
+editor.insertScene(fragment, worldPoint); // merge an imported scene at a point (fresh ids, links kept, one undo step)
 editor.setZoom(4); // absolute level (400 %) about the viewport centre, clamped
 ```
 
