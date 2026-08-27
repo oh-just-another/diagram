@@ -178,6 +178,7 @@
   --du-z-link-chrome: 1380; /* sticky reactions, link badges / popups */
   --du-z-floating: 1500; /* selection floating toolbar */
   --du-z-popover: 1600; /* popovers, drop menus, caption editor */
+  --du-z-drop-overlay: 1650; /* file-drop hint — over panels and popovers, under menus */
   --du-z-context-menu: 1700; /* above every toolbar, panel and popover */
   --du-z-modal: 1800; /* dialogs — above all floating chrome */
   --du-z-toast: 1900; /* above dialogs */
@@ -1716,6 +1717,89 @@
   top: round(50%, 1px);
   z-index: var(--du-z-ui);
   translate: 0 round(-50%, 1px);
+}
+
+/* ------------------------------------------------------------------ */
+/* File-drop overlay — shown while an OS file drag hovers the canvas.  */
+/* Pointer-events none: the drop lands on the canvas handlers beneath. */
+/* ------------------------------------------------------------------ */
+.du-drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--du-z-drop-overlay);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--du-accent) 6%, transparent);
+}
+
+.du-drop-overlay-frame {
+  position: absolute;
+  inset: var(--du-bar-inset);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--du-accent);
+  border-radius: var(--du-radius-lg);
+}
+
+/* One card: the drop glyph + DROP on top, the accepted kinds listed
+   beneath a hairline — no nested chips. */
+.du-drop-overlay-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 320px;
+  max-width: min(560px, 80%);
+  background: var(--du-ui-bg-solid);
+  border: 1px solid var(--du-ui-border);
+  border-radius: var(--du-radius-lg);
+  box-shadow: var(--du-ui-shadow);
+  overflow: hidden;
+}
+
+.du-drop-overlay-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--du-space-md);
+  padding: var(--du-space-2xl) calc(2 * var(--du-space-2xl));
+  color: var(--du-accent);
+}
+
+.du-drop-overlay-label {
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size-lg);
+  font-weight: var(--du-font-weight-strong);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.du-drop-overlay-types {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: var(--du-space-md) var(--du-space-xl);
+  border-top: 1px solid var(--du-ui-border);
+  list-style: none;
+}
+
+.du-drop-type {
+  display: flex;
+  align-items: center;
+  gap: var(--du-gap);
+  min-height: var(--du-control-size);
+  font-family: var(--du-font-family);
+  font-size: var(--du-font-size);
+  color: var(--du-text);
+}
+
+.du-drop-type-label {
+  font-weight: var(--du-font-weight-strong);
+  white-space: nowrap;
+}
+
+.du-drop-type-formats {
+  font-size: var(--du-font-size-sm);
+  color: var(--du-text-muted);
 }
 
 /* Tool-options panel (brush / eraser) — top-right, under the top bar. */

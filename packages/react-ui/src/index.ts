@@ -76,6 +76,7 @@ export { LinkBadges } from "./overlays/link-badges.js";
 export { StickyReactions } from "./overlays/sticky-reactions.js";
 export { LinkDropShapeMenu } from "./menus/link-drop-shape-menu.js";
 export { LinkCaptionEditor } from "./overlays/link-caption-editor.js";
+export { FileDropOverlay, type FileDropOverlayProps } from "./overlays/file-drop-overlay.js";
 export {
   Toolbar,
   DEFAULT_TOOLBAR,

@@ -25,6 +25,25 @@ editor.registerFileDropHandler(csvHandler);
 // later: editor.unregisterFileDropHandler("host.csv");
 ```
 
+## Drop overlay
+
+While a file is dragged over the canvas the editor shows `FileDropOverlay`: a dashed frame, a drop glyph with **DROP**, and a chip per registered handler that carries presentation metadata — `label` (what it is), `formats` (what it takes) and `kind` (`image` · `video` · `scene` · `text` · `data` · `file`, picks the glyph). Handlers without a `label` stay out of the hint; the built-in image and video handlers ship theirs.
+
+```ts
+const csvHandler: FileDropHandler = {
+  id: "host.csv",
+  label: "Spreadsheets",
+  kind: "data",
+  formats: ["CSV"],
+  accept: (file) => file.name.endsWith(".csv"),
+  handle: async (file, ctx) => {
+    /* … */
+  },
+};
+```
+
+Hosts composing their own canvas drive it from `usePalettePlacement({ onFileDrag })` and read the list via `editor.getFileDropHandlers()`.
+
 ## Helpers
 
 The state package exports MIME constants and readers so handlers don't reinvent them:

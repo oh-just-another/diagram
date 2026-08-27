@@ -2006,6 +2006,11 @@ export class Editor {
     this.fileDropRegistry.unregister(id);
   }
 
+  /** Registered file-drop handlers, in dispatch order — the drop overlay lists the labelled ones. */
+  getFileDropHandlers(): readonly FileDropHandler[] {
+    return this.fileDropRegistry.getAll();
+  }
+
   /**
    * Dispatch a dropped file (or pasted file from clipboard) into
    * the registered handlers. Returns `true` when a handler accepted

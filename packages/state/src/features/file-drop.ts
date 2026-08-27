@@ -13,6 +13,9 @@ export interface FileDropContext {
   readonly worldPoint: Vec2;
 }
 
+/** Coarse file category — picks the glyph the drop overlay shows for a handler. */
+export type FileDropKind = "image" | "video" | "scene" | "text" | "data" | "file";
+
 export interface FileDropHandler {
   /**
    * Stable identifier — used for `unregister`. Avoid collisions in the global
@@ -20,6 +23,15 @@ export interface FileDropHandler {
    * "host.custom").
    */
   readonly id: string;
+  /**
+   * Presentation for the drop overlay (the "what can I drop here" hint shown
+   * while a file is dragged over the canvas). `label` names the payload
+   * ("Images"), `formats` lists what it takes ("PNG", "SVG", …), `kind`
+   * picks the glyph. Handlers without a `label` stay out of the hint.
+   */
+  readonly label?: string;
+  readonly kind?: FileDropKind;
+  readonly formats?: readonly string[];
   /**
    * Sync predicate — does this handler want the file? Receives the raw `File`
    * so it can sniff MIME or extension. Should be cheap; heavy work goes inside

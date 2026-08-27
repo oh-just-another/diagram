@@ -92,6 +92,7 @@ import {
   useZenMode,
   CONTROL_ICON,
   ROW_ICON,
+  FileDropOverlay,
 } from "@oh-just-another/react-ui";
 import { BrandLogo } from "./brand/brand-logo.js";
 
@@ -894,7 +895,8 @@ const EditorShell = ({
   const snapObjects = useEditorSelector((e) => e.preferences.snapObjects, true);
   const suggestObjectSize = useEditorSelector((e) => e.preferences.suggestObjectSize, true);
   const wheelMode = useEditorSelector((e) => e.preferences.wheelMode, "auto");
-  const paletteDropHandlers = usePalettePlacement();
+  const [fileDragging, setFileDragging] = useState(false);
+  const paletteDropHandlers = usePalettePlacement({ onFileDrag: setFileDragging });
   // Touch / narrow screens: the library opens as a bottom sheet instead of
   // a left overlay (which would cover the whole small canvas).
   const mobile = useMobileLayout();
@@ -954,6 +956,7 @@ const EditorShell = ({
       onDragLeave={paletteDropHandlers.onDragLeave}
       onDrop={paletteDropHandlers.onDrop}
     >
+      <FileDropOverlay active={fileDragging} />
       {/* Canvas area — full width; the library is a floating overlay
           that doesn't reflow the canvas. */}
       <div

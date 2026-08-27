@@ -46,6 +46,9 @@ export const MARK_ICON_SIZE = 12;
 export const MARK_ICON_STROKE = 2;
 export const BADGE_ICON_SIZE = 12;
 export const BADGE_ICON_STROKE = 2;
+/** Drop glyph in the centre of the file-drop overlay. */
+export const DROP_OVERLAY_ICON_SIZE = 48;
+export const ICON_STROKE = 2;
 export const CONTROL_ICON = { size: CONTROL_ICON_SIZE, strokeWidth: CONTROL_ICON_STROKE } as const;
 export const ROW_ICON = { size: ROW_ICON_SIZE, strokeWidth: ROW_ICON_STROKE } as const;
 export const MARK_ICON = { size: MARK_ICON_SIZE, strokeWidth: MARK_ICON_STROKE } as const;

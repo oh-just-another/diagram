@@ -114,7 +114,12 @@ export type {
 } from "./editor/public/tool-ops.js";
 
 // File-drop registry (host-extensible image / scene / custom).
-export type { FileDropHandler, FileDropContext, WalkOptions } from "./features/file-drop.js";
+export type {
+  FileDropHandler,
+  FileDropContext,
+  FileDropKind,
+  WalkOptions,
+} from "./features/file-drop.js";
 export {
   FileDropRegistry,
   IMAGE_MIME_TYPES,
