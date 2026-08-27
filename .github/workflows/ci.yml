@@ -40,8 +40,11 @@ jobs:
         id: setup
 
       # NX_BASE / NX_HEAD: merge-base with master for PRs, the last successful
-      # master run for pushes (falls back to HEAD~1 when there is none).
+      # master run for pushes (falls back to HEAD~1 when there is none). The
+      # action assumes `main` unless told otherwise.
       - uses: nrwl/nx-set-shas@v4
+        with:
+          main-branch-name: master
 
       - name: Format check
         run: pnpm format:check
@@ -139,6 +142,8 @@ jobs:
       - uses: ./.github/actions/setup
 
       - uses: nrwl/nx-set-shas@v4
+        with:
+          main-branch-name: master
 
       # The suite drives the playground, so it only matters when the
       # playground or a package under it changed. Master pushes always run it.
