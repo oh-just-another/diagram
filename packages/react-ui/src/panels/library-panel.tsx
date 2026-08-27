@@ -2,9 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Search, Upload, X } from "lucide-react";
 import { Palette } from "../toolbar/palette.js";
 import { IconButton } from "../primitives/icon-button.js";
-
-const SIDE_PANEL_ICON_SIZE = 14;
-const SIDE_PANEL_ICON_STROKE = 1.75;
+import { BADGE_ICON, CONTROL_ICON } from "../core/constants.js";
 
 /**
  * Slide-in side library panel. Opened by a host button, closed by the
@@ -68,29 +66,35 @@ export const LibraryPanel = ({
   return (
     <aside className={`du-side-panel ${variantClass}`} style={style}>
       <header className="du-side-panel-header">
+        <span className="du-side-panel-title">Shape library</span>
         <div style={{ display: "inline-flex", gap: 4 }}>
           {onImport ? (
-            <IconButton label="Import templates" size="sm" onClick={onImport}>
-              <Upload size={SIDE_PANEL_ICON_SIZE} strokeWidth={SIDE_PANEL_ICON_STROKE} />
+            <IconButton
+              label="Import templates"
+              size="sm"
+              className="du-icon-button-flat"
+              onClick={onImport}
+            >
+              <Upload {...CONTROL_ICON} />
             </IconButton>
           ) : null}
-          <IconButton label="Close library" size="sm" onClick={onClose}>
-            <X size={SIDE_PANEL_ICON_SIZE} strokeWidth={SIDE_PANEL_ICON_STROKE} />
+          <IconButton
+            label="Close library"
+            size="sm"
+            className="du-icon-button-flat"
+            onClick={onClose}
+          >
+            <X {...CONTROL_ICON} />
           </IconButton>
         </div>
       </header>
       <div className="du-side-panel-search">
-        <Search
-          size={SIDE_PANEL_ICON_SIZE}
-          strokeWidth={SIDE_PANEL_ICON_STROKE}
-          className="du-side-panel-search-icon"
-          aria-hidden
-        />
+        <Search {...BADGE_ICON} className="du-side-panel-search-icon" aria-hidden />
         <input
           ref={searchRef}
           type="search"
           value={search}
-          placeholder="Search templates…"
+          placeholder="Search templates"
           aria-label="Search templates"
           onChange={(ev) => {
             setSearch(ev.target.value);

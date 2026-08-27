@@ -4,6 +4,7 @@ import {
   panBy as viewportPanBy,
   resize as viewportResize,
   zoomAt as viewportZoomAt,
+  type Element,
   type GridStyle,
   type Scene,
 } from "@oh-just-another/scene";
@@ -114,6 +115,62 @@ export const computeRevealBounds = (
     y: centerWorld.y - vp.size.height / 2 / zoom,
   };
   return { ...scene, viewport: { ...vp, zoom, pan } };
+};
+
+/** Euclidean distance from `point` to the nearest edge of `b` (0 when inside). */
+const distanceToBounds = (b: Bounds, point: Vec2): number => {
+  const dx = Math.max(b.x - point.x, 0, point.x - (b.x + b.width));
+  const dy = Math.max(b.y - point.y, 0, point.y - (b.y + b.height));
+  return Math.hypot(dx, dy);
+};
+
+/**
+ * World bounds of the element nearest to `point` among those `accept`s
+ * (distance point → element AABB; a containing element wins with 0).
+ * `null` when nothing qualifies.
+ */
+const nearestElementBounds = (
+  scene: Scene,
+  point: Vec2,
+  accept: (element: Element) => boolean,
+): Bounds | null => {
+  let best: Bounds | null = null;
+  let bestDist = Infinity;
+  for (const s of scene.elements.values()) {
+    if (!accept(s)) continue;
+    const b = getElementWorldBounds(s);
+    if (b.width <= 0 || b.height <= 0) continue;
+    const d = distanceToBounds(b, point);
+    if (d < bestDist) {
+      bestDist = d;
+      best = b;
+    }
+  }
+  return best;
+};
+
+/**
+ * "Back to content" for a large board: instead of fitting EVERYTHING (which
+ * on a big diagram zooms out to a speck, and on a single small shape zooms
+ * in to fill the screen), jump to the element nearest the camera centre,
+ * keeping the current zoom — see {@link computeRevealBounds}: it only
+ * zooms OUT when that element doesn't fit. `null` when no element
+ * qualifies or the viewport is degenerate.
+ */
+export const computeRevealNearest = (
+  scene: Scene,
+  padding: number,
+  accept: (element: Element) => boolean,
+): Scene | null => {
+  const vp = scene.viewport;
+  if (vp.size.width <= 0 || vp.size.height <= 0) return null;
+  const centre: Vec2 = {
+    x: vp.pan.x + vp.size.width / 2 / vp.zoom,
+    y: vp.pan.y + vp.size.height / 2 / vp.zoom,
+  };
+  const bounds = nearestElementBounds(scene, centre, accept);
+  if (!bounds) return null;
+  return computeRevealBounds(scene, bounds, padding);
 };
 
 export const computeZoomToFit = (scene: Scene, padding: number): Scene | null => {

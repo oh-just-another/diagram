@@ -15,6 +15,9 @@ editor.zoomOut();
 editor.resetZoom();
 editor.zoomToFit(); // fit the whole scene (optional padding, default 40)
 editor.zoomToSelection(); // fit the current selection (default padding 80)
+editor.revealNearestContent(); // "Back to content": centre the element nearest the camera, never zooming in
+editor.insertScene(fragment, worldPoint); // merge an imported scene at a point (fresh ids, links kept, one undo step)
+editor.setZoom(4); // absolute level (400 %) about the viewport centre, clamped
 ```
 
 For zoom anchored at a point (e.g. wheel-zoom toward the cursor), use `zoomAt(factor, anchorWorld)` — the anchor world point stays put while everything scales around it.
@@ -22,6 +25,17 @@ For zoom anchored at a point (e.g. wheel-zoom toward the cursor), use `zoomAt(fa
 ```ts
 const anchor = editor.screenToWorld({ x: clientX, y: clientY });
 editor.zoomAt(1.1, anchor);
+```
+
+## Start view
+
+A document can carry a saved camera (`viewport.startView`, exported with the scene): a freshly opened scene lands there, and the canvas menu's "Set start view" jumps back to it.
+
+```ts
+editor.setCurrentViewAsStart(); // save the current pan + zoom
+editor.goToStartView(); // jump to it (no-op when none is saved)
+editor.clearStartView();
+editor.startView; // { pan, zoom } | null
 ```
 
 ## Pan and viewport size

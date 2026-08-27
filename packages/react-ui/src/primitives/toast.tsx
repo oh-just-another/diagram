@@ -98,12 +98,12 @@ const ToastStack = ({
 }) => {
   const stackStyle: CSSProperties = {
     position: "fixed",
-    top: 16,
-    right: 16,
-    zIndex: 1100,
+    top: "var(--du-toast-inset)",
+    right: "var(--du-toast-inset)",
+    zIndex: "var(--du-z-toast)",
     display: "flex",
     flexDirection: "column",
-    gap: 8,
+    gap: "var(--du-gap)",
     pointerEvents: "none",
     ...style,
   };
@@ -117,47 +117,26 @@ const ToastStack = ({
 };
 
 const KIND_ACCENT: Record<ToastKind, string> = {
-  info: "var(--accent, #5b5bd6)",
-  success: "#2e8b57",
-  warn: "#c79100",
-  error: "#c83232",
+  info: "var(--du-accent)",
+  success: "var(--du-success)",
+  warn: "var(--du-warning)",
+  error: "var(--du-danger)",
 };
 
 const ToastItem = ({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) => {
   const itemStyle: CSSProperties = {
-    pointerEvents: "auto",
-    minWidth: 240,
-    maxWidth: 360,
-    padding: "10px 12px",
-    background: "var(--panel, #1a1a1a)",
-    color: "var(--text, #ddd)",
-    border: "1px solid var(--border, #2a2a2a)",
-    borderLeft: `4px solid ${KIND_ACCENT[toast.kind]}`,
-    borderRadius: 4,
-    boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3)",
-    fontSize: 13,
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 12,
+    borderLeft: `var(--du-space-sm) solid ${KIND_ACCENT[toast.kind]}`,
   };
   return (
-    <div role="status" style={itemStyle}>
-      <span style={{ flex: 1, lineHeight: 1.35 }}>{toast.message}</span>
+    <div role="status" className="du-toast" style={itemStyle}>
+      <span className="du-toast-message">{toast.message}</span>
       <button
         type="button"
         aria-label="Dismiss"
         onClick={() => {
           onDismiss(toast.id);
         }}
-        style={{
-          background: "transparent",
-          border: "none",
-          color: "var(--muted, #888)",
-          cursor: "pointer",
-          fontSize: 16,
-          lineHeight: 1,
-          padding: 0,
-        }}
+        className="du-toast-dismiss"
       >
         ×
       </button>

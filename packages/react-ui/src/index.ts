@@ -12,6 +12,8 @@ export {
   type SegmentedControlProps,
 } from "./primitives/segmented-control.js";
 export { Slider, type SliderProps } from "./primitives/slider.js";
+export { Switch, type SwitchProps } from "./primitives/switch.js";
+export { useFullscreen } from "./core/use-fullscreen.js";
 export { UILayer, type UILayerProps } from "./layout/ui-layer.js";
 export { TopBar, BottomBar, type DiagramBarProps } from "./layout/diagram-bars.js";
 export { HelpButton, type HelpButtonProps } from "./overlays/help-button.js";
@@ -70,8 +72,11 @@ export { Markdown, type MarkdownProps } from "./primitives/markdown.js";
 export { TextEditorOverlay } from "./overlays/text-editor-overlay.js";
 export { FrameNameEditorOverlay } from "./overlays/frame-name-editor-overlay.js";
 export { LinkHoverPopup } from "./overlays/link-hover-popup.js";
+export { LinkBadges } from "./overlays/link-badges.js";
+export { StickyReactions } from "./overlays/sticky-reactions.js";
 export { LinkDropShapeMenu } from "./menus/link-drop-shape-menu.js";
 export { LinkCaptionEditor } from "./overlays/link-caption-editor.js";
+export { FileDropOverlay, type FileDropOverlayProps } from "./overlays/file-drop-overlay.js";
 export {
   Toolbar,
   DEFAULT_TOOLBAR,
@@ -158,18 +163,20 @@ export { PortalContainerProvider, usePortalContainer } from "./core/portal-conta
 
 // Tunable layout sizes for the built-in panels and toolbar.
 export {
+  CONTROL_ICON,
+  ROW_ICON,
+  MARK_ICON,
+  BADGE_ICON,
   PALETTE_WIDTH,
   PALETTE_ITEM_SIZE,
   PROPERTY_PANEL_WIDTH,
   PROPERTY_SWATCH_SIZE,
-  LAYER_PANEL_WIDTH,
-  LAYER_TOGGLE_ICON_SIZE,
-  LAYER_SWATCH_SIZE,
-  COMMENTS_PANEL_WIDTH,
-  TOOLBAR_SEPARATOR_HEIGHT,
   MINIMAP_WIDTH_PX,
   MINIMAP_HEIGHT_PX,
   MINIMAP_PADDING_PX,
-  MINIMAP_THROTTLE_MS,
+  MINIMAP_IDLE_MS,
+  MINIMAP_BACKGROUND,
+  MINIMAP_ELEMENT_COLOR,
+  MINIMAP_ELEMENT_OPACITY,
   SEARCH_ZOOM_PADDING_PX,
 } from "./core/constants.js";

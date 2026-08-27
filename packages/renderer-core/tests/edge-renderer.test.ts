@@ -49,6 +49,7 @@ const stubTarget = () => ({
   ellipse: vi.fn(),
   fill: vi.fn(),
   stroke: vi.fn(),
+  clip: vi.fn(),
   fillText: vi.fn(),
   measureText: vi.fn((_text: string) => ({ width: 0 })),
   drawImage: vi.fn(),

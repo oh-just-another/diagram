@@ -25,6 +25,7 @@ import {
   SELECTION_PANEL_EDGE_INSET_LEFT_PX,
 } from "../core/constants.js";
 import { useDiagramOptional, useMobileLayout, useReadOnly } from "../core/hooks.js";
+import { useQuietGesture } from "../core/use-quiet-gesture.js";
 import { usePortalContainer } from "../core/portal-container.js";
 import { PropertyPanel } from "./property-panel.js";
 
@@ -89,6 +90,10 @@ export const SelectionFloatingPanel = ({
   // On touch / narrow screens the panel docks to the bottom instead of
   // floating at the selection bbox — no floating-ui math.
   const mobile = useMobileLayout();
+  // Hidden for the whole element gesture (move / resize / rotate) and a
+  // short settle delay after — per-frame floating-ui repositioning +
+  // toolbar re-render is what makes a dragged element lag.
+  const quiet = useQuietGesture(editor);
   const [hasSelection, setHasSelection] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   // Force-rerender token bumped every time selection or scene or
@@ -99,6 +104,13 @@ export const SelectionFloatingPanel = ({
   // `computePosition` for the current selection, otherwise the panel
   // mounts at (0, 0) for one frame before snapping into place.
   const [positioned, setPositioned] = useState(false);
+
+  // Re-arm the hide-until-positioned gate whenever the panel hides for a
+  // gesture, so the remount after the settle delay doesn't flash at the
+  // pre-drag position before floating-ui lands on the new bbox.
+  useEffect(() => {
+    if (!quiet) setPositioned(false);
+  }, [quiet]);
 
   // Subscribe to editor events via the umbrella `"change"` event:
   //
@@ -174,6 +186,7 @@ export const SelectionFloatingPanel = ({
     editor,
     hasSelection,
     mobile,
+    quiet, // re-run on remount after a gesture (timer flip — no editor event)
     tick,
     gap,
     placement,
@@ -185,7 +198,9 @@ export const SelectionFloatingPanel = ({
 
   // Its only content is <PropertyPanel>, which is empty in read-only — hide
   // the whole floating chrome so no stray toolbar shell appears in view mode.
-  if (!editor || !hasSelection || readOnly) return null;
+  // Also hidden during element gestures (`quiet`): the panel remounts after
+  // the settle delay and the `positioned` gate hides the pre-position frame.
+  if (!editor || !hasSelection || readOnly || !quiet) return null;
 
   // Mobile: dock the panel to the bottom edge (above the bottom bar +
   // safe-area), full width. The PropertyPanel's own mobile variant shows
@@ -201,8 +216,7 @@ export const SelectionFloatingPanel = ({
 
   // Portal to body so the panel survives any overflow:hidden on the
   // canvas container. Inline `transform` is set by the layout effect
-  // above; the pre-paint at (0,0) is hidden by the CSS opacity 0 → 1
-  // animation on `.du-sel-panel-floating`.
+  // above; the pre-paint at (0,0) is hidden by the `positioned` gate.
   return createPortal(
     <div
       ref={panelRef}
@@ -213,15 +227,12 @@ export const SelectionFloatingPanel = ({
         position: "absolute",
         top: 0,
         left: 0,
-        zIndex: 1500,
+        zIndex: "var(--du-z-floating)",
         pointerEvents: "auto",
         // Hide-until-positioned so the user never sees the panel at
-        // (0, 0) for the first frame. `pointer-events:none` while hidden
-        // so a stray click during the gap doesn't fire on the
-        // out-of-place panel.
-        opacity: positioned ? 1 : 0,
-        transition: positioned ? "opacity 120ms ease" : "none",
-        ...(positioned ? {} : { pointerEvents: "none" }),
+        // (0, 0) for the first frame — shown instantly once floating-ui
+        // lands (no entrance animation, like every other floating panel).
+        visibility: positioned ? "visible" : "hidden",
       }}
     >
       <PropertyPanel />

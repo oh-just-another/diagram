@@ -323,3 +323,75 @@ export const LINK_LABEL_END_CLEARANCE = 24;
  * keeps a label inside its computed bounds. Range: 0.55–0.7.
  */
 export const LINK_LABEL_CHAR_WIDTH_FACTOR = 0.62;
+
+/**
+ * Built-in polygon presets for image masks (`ImageMask.kind: "polygon"`),
+ * as normalised (0..1) closed rings over the element box. Offered by the
+ * mask picker UI; hosts may pass any other ring — the model accepts
+ * arbitrary polygons. Point counts stay low: masks clip through the
+ * render targets' clip API, and every vertex costs path work per frame.
+ */
+export const IMAGE_MASK_POLYGON_PRESETS: Readonly<
+  Record<string, readonly { readonly x: number; readonly y: number }[]>
+> = {
+  diamond: [
+    { x: 0.5, y: 0 },
+    { x: 1, y: 0.5 },
+    { x: 0.5, y: 1 },
+    { x: 0, y: 0.5 },
+  ],
+  triangle: [
+    { x: 0.5, y: 0 },
+    { x: 1, y: 1 },
+    { x: 0, y: 1 },
+  ],
+  hexagon: [
+    { x: 0.25, y: 0 },
+    { x: 0.75, y: 0 },
+    { x: 1, y: 0.5 },
+    { x: 0.75, y: 1 },
+    { x: 0.25, y: 1 },
+    { x: 0, y: 0.5 },
+  ],
+  star: [
+    { x: 0.5, y: 0 },
+    { x: 0.618, y: 0.363 },
+    { x: 1, y: 0.382 },
+    { x: 0.691, y: 0.618 },
+    { x: 0.809, y: 1 },
+    { x: 0.5, y: 0.764 },
+    { x: 0.191, y: 1 },
+    { x: 0.309, y: 0.618 },
+    { x: 0, y: 0.382 },
+    { x: 0.382, y: 0.363 },
+  ],
+};
+
+/**
+ * Placeholder shown inside an EMPTY text element while it is being
+ * written (interactive rendering only — never in exports). One entry is
+ * picked per element, deterministically from its id, with these relative
+ * weights (`weight` = chance ticket count): the plain prompts dominate, the
+ * jokes are rare treats. Hosts may pass their own list to
+ * `pickTextPlaceholder`. The text bounder sizes an empty text element by
+ * its prompt, so the selection box wraps what is on screen.
+ */
+export interface TextPlaceholder {
+  readonly text: string;
+  /** Relative chance; integer ≥ 1. */
+  readonly weight: number;
+}
+export const TEXT_PLACEHOLDERS: readonly TextPlaceholder[] = [
+  { text: "Type something", weight: 40 },
+  { text: "Place for text", weight: 20 },
+  { text: "Start typing…", weight: 12 },
+  { text: "Your text here", weight: 10 },
+  { text: "Add a note", weight: 8 },
+  { text: "What's on your mind?", weight: 6 },
+  { text: "Words go here", weight: 5 },
+  { text: "Say it in a few words", weight: 4 },
+  { text: "Lorem ipsum? No — your words.", weight: 3 },
+  { text: "Blank is a state of mind", weight: 2 },
+  { text: "Insert genius here", weight: 2 },
+  { text: "The cursor is waiting patiently", weight: 1 },
+];

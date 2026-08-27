@@ -339,16 +339,18 @@ describe("group lock / hide propagation", () => {
       elements: new Map(editor.scene.elements).set(groupId, locked),
     };
 
-    // Clicking A selects (promoted to the group root) so it can be unlocked;
-    // a locked group is not click-through.
+    // A locked group is click-through: clicking a child hits nothing (the
+    // hit-test scans past the whole locked unit)…
     const target = (
       editor as unknown as { hitTest(p: { x: number; y: number }): { kind: string } }
     ).hitTest({
       x: 10,
       y: 10,
     });
-    expect(target.kind).toBe("element");
-    // …but the locked group and its descendants can't be moved/resized.
+    expect(target.kind).toBe("empty");
+    // …the context-menu lookup still finds it for Unlock…
+    expect(editor.lockedElementAt({ x: 10, y: 10 })?.id).toBe(a.id);
+    // …and the locked group's descendants can't be moved/resized.
     const childA = editor.scene.elements.get(a.id)!;
     expect(editor.isElementManipulable(childA)).toBe(false);
   });
@@ -600,5 +602,69 @@ describe("arrange layouts", () => {
     editor.setSelection(new Set([a.id]));
     editor.arrangeAsGrid({ cols: 2 });
     expect(editor.scene.elements.get(a.id)!.position).toEqual({ x: 100, y: 100 });
+  });
+});
+
+describe("multi-element commands treat a selected group as ONE unit", () => {
+  // Group of a (0,0) + b (30,0), plus a loose c far away. Every command must
+  // keep a and b at their relative offset (30 apart) and place / move the
+  // group as a whole.
+  const setup = () => {
+    const a = rect("a", 0, 0);
+    const b = rect("b", 30, 0);
+    const c = rect("c", 500, 500);
+    const editor = makeEditor(sceneWith(a, b, c));
+    editor.setSelection(new Set([a.id, b.id]));
+    const r = editor.groupSelected();
+    if (r.kind !== "grouped") throw new Error("expected group");
+    editor.setSelection(new Set([r.groupId, c.id]));
+    const pos = (id: string) => editor.scene.elements.get(elementId(id))!.position;
+    return { editor, groupId: r.groupId, pos };
+  };
+
+  it("arrangeAsGrid / arrangeAsStack place the group as a single cell", () => {
+    const { editor, pos } = setup();
+    editor.arrangeAsGrid({ cols: 2, gap: 4 });
+    expect(pos("b").x - pos("a").x).toBe(30);
+    expect(pos("b").y).toBe(pos("a").y);
+    // Group unit is 50 wide (0..50) → cell 50 + gap 4: the two cells sit 54
+    // apart (cell order follows z-order: the newer group comes last).
+    expect(Math.abs(pos("c").x - pos("a").x)).toBe(54);
+    expect(pos("c").y).toBe(pos("a").y);
+    editor.arrangeAsStack({ direction: "vertical", gap: 10 });
+    expect(pos("b").x - pos("a").x).toBe(30);
+    expect(Math.abs(pos("c").y - pos("a").y)).toBe(20 + 10); // unit height 20 + gap
+    expect(pos("c").x).toBe(pos("a").x);
+  });
+
+  it("align / distribute move the group as a whole", () => {
+    const { editor, pos } = setup();
+    editor.alignSelection("right"); // box right = 520 → group (0..50) shifts by 470
+    expect(pos("a").x).toBe(470);
+    expect(pos("b").x).toBe(500);
+    expect(pos("c").x).toBe(500);
+    editor.alignSelection("top"); // box top = 0 → c moves up
+    expect(pos("c").y).toBe(0);
+    expect(pos("a").y).toBe(0);
+  });
+
+  it("flip / rotate mirror and turn the group's members about the shared centre", () => {
+    const { editor, pos } = setup();
+    // Selection box: x 0..520 → centre 260. Positions (local origins) reflect
+    // across it and scale.x flips, so a draws at 500..520, b at 470..490.
+    editor.flipSelection("horizontal");
+    expect(pos("a").x).toBe(520);
+    expect(pos("b").x).toBe(490);
+    expect(pos("c").x).toBe(20);
+    expect(editor.scene.elements.get(elementId("a"))!.scale.x).toBe(-1);
+    editor.undo();
+    editor.rotateSelection(Math.PI / 2);
+    const a = editor.scene.elements.get(elementId("a"))!;
+    const b = editor.scene.elements.get(elementId("b"))!;
+    expect(a.rotation).toBeCloseTo(Math.PI / 2, 5);
+    expect(b.rotation).toBeCloseTo(Math.PI / 2, 5);
+    // a and b stay 30 apart, now along y (the pair turned rigidly).
+    expect(b.position.y - a.position.y).toBeCloseTo(30, 5);
+    expect(b.position.x - a.position.x).toBeCloseTo(0, 5);
   });
 });

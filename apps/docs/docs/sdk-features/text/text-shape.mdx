@@ -39,3 +39,7 @@ resolveBundledFamily("system-ui"); // FONT_SANS (fallback)
 ```
 
 On WebGL2 these faces are baked into an MSDF glyph atlas (`@oh-just-another/glyph-atlas`) for sharp text at any zoom; the Canvas2D backend draws the same bundled web fonts, so text stays consistent rather than falling back to whatever the OS resolves.
+
+## Empty-text placeholder
+
+While a text element is empty (right after the Text tool drops it, before the first keystroke) the interactive renderer draws a grey prompt inside it — "Type something", "Place for text", … — picked per element from `TEXT_PLACEHOLDERS` in `@oh-just-another/scene` (weighted; `pickTextPlaceholder(id)` is deterministic in the element id, so the prompt never changes under the caret). The text bounder sizes an empty element by its prompt, so the selection box wraps the prompt and snaps to the real text from the first keystroke. It is drawn only when `RenderSceneOptions.textPlaceholders` is set — the editor sets it outside view mode; exports and headless rendering leave empty text blank. Colour: `TEXT_PLACEHOLDER_COLOR`.

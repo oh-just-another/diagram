@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -8,9 +9,18 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { Check } from "lucide-react";
+import { MENU_VIEWPORT_PADDING_PX, MARK_ICON } from "../core/constants.js";
+import { cssPx } from "../primitives/css-var.js";
+import { floatPanel } from "../primitives/float-panel.js";
 import type { Vec2 } from "@oh-just-another/types";
 import type { Editor } from "@oh-just-another/state";
-import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
+import {
+  defaultActionRegistry,
+  formatHotkey,
+  type HotkeyMatcher,
+  type WheelMode,
+} from "@oh-just-another/state";
 import { useDiagramOptional } from "../core/hooks.js";
 import { useContextMenuController } from "./context-menu-controller.js";
 import { usePortalContainer } from "../core/portal-container.js";
@@ -32,7 +42,20 @@ export type ContextMenuItem =
       readonly shortcut?: string;
       readonly visible?: (editor: Editor, ctx: ContextMenuContext) => boolean;
       readonly disabled?: (editor: Editor, ctx: ContextMenuContext) => boolean;
+      /** Toggle / radio row: renders a check mark in the leading gutter when `true`. */
+      readonly checked?: (editor: Editor, ctx: ContextMenuContext) => boolean;
       readonly onClick: (editor: Editor, ctx: ContextMenuContext) => void;
+    }
+  | {
+      /**
+       * Nested group: a row that opens `items` in a child panel beside it
+       * (hover or click). Hidden when none of its items is visible.
+       */
+      readonly kind: "submenu";
+      readonly id: string;
+      readonly label: ReactNode;
+      readonly items: readonly ContextMenuItem[];
+      readonly visible?: (editor: Editor, ctx: ContextMenuContext) => boolean;
     };
 
 /** Per-open snapshot the menu hands to predicates and click handlers. */
@@ -66,6 +89,9 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   const portalContainer = usePortalContainer();
   const [open, setOpen] = useState<OpenState | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  // Every open panel (root + submenus, each in its own portal) — a press
+  // inside any of them is "inside the menu" for the dismiss listener.
+  const panelsRef = useRef(new Set<HTMLElement>());
 
   // Register an imperative opener so UI outside the canvas (e.g. the
   // "⋯" button in the selection floating panel) can open this same
@@ -100,7 +126,8 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
   useEffect(() => {
     if (!open) return undefined;
     const onPointer = (ev: PointerEvent): void => {
-      if (menuRef.current?.contains(ev.target as Node)) return;
+      const t = ev.target as Node;
+      for (const panel of panelsRef.current) if (panel.contains(t)) return;
       setOpen(null);
     };
     const onKey = (ev: KeyboardEvent): void => {
@@ -118,6 +145,40 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
     setOpen(null);
   }, []);
 
+  // Anchor the panel at the press point but keep it inside the WINDOW:
+  // flip above the point when there is no room below, shift along the
+  // edges by `MENU_VIEWPORT_PADDING_PX`, and cap the height (scrolling)
+  // when the window is shorter than the menu. The viewport is the bound —
+  // an embedded canvas may be overhung, like the floating toolbars do.
+  useLayoutEffect(() => {
+    const panel = menuRef.current;
+    if (!open || !panel) return undefined;
+    const { x, y } = open.screenPoint;
+    const anchor = {
+      getBoundingClientRect: () => ({
+        x,
+        y,
+        width: 0,
+        height: 0,
+        top: y,
+        left: x,
+        right: x,
+        bottom: y,
+      }),
+    };
+    panelsRef.current.add(panel);
+    const stop = floatPanel(anchor, panel, {
+      placement: "bottom-start",
+      padding: MENU_VIEWPORT_PADDING_PX,
+      strategy: "fixed",
+      clampHeight: true,
+    });
+    return () => {
+      stop();
+      panelsRef.current.delete(panel);
+    };
+  }, [open]);
+
   if (!editor || !open) return null;
 
   const ctx: ContextMenuContext = {
@@ -127,11 +188,7 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
 
   // Filter visibility once per open — items that compute `visible` against
   // the editor still see a consistent snapshot.
-  const visibleItems = items.filter(
-    (item) => item.kind === "divider" || item.visible?.(editor, ctx) !== false,
-  );
-  // Collapse adjacent dividers + leading/trailing dividers.
-  const cleanedItems = collapseDividers(visibleItems);
+  const cleanedItems = resolveItems(items, editor, ctx);
   if (cleanedItems.length === 0) return null;
 
   // Portal into the themed container so the menu inherits the app theme — when
@@ -142,31 +199,113 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
     <div
       ref={menuRef}
       role="menu"
+      className={`du-menu-panel${className ? ` ${className}` : ""}`}
       style={{
+        // `transform` is set by `floatPanel`; the pre-position paint at
+        // (0,0) lasts one layout pass.
         position: "fixed",
-        zIndex: 1000,
-        top: open.screenPoint.y,
-        left: open.screenPoint.x,
-        background: "var(--menu-bg, var(--du-ui-bg-solid, #fff))",
-        color: "var(--menu-text, var(--du-text, #1a1a1a))",
-        border: "1px solid var(--menu-border, var(--du-ui-border, rgba(0,0,0,0.08)))",
-        borderRadius: 6,
-        padding: "4px 0",
-        minWidth: 180,
-        boxShadow: "var(--du-ui-shadow, 0 4px 16px rgba(0,0,0,0.18))",
-        font: "13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+        top: 0,
+        left: 0,
+        zIndex: "var(--du-z-context-menu, 1700)",
         ...style,
       }}
-      className={className}
     >
-      {cleanedItems.map((item, i) =>
+      <MenuRows
+        items={cleanedItems}
+        editor={editor}
+        ctx={ctx}
+        close={close}
+        panels={panelsRef.current}
+      />
+    </div>,
+    portalContainer,
+  );
+};
+
+/**
+ * Panel padding (`--du-menu-pad`, 6) + border (1): offset so a submenu's
+ * first row aligns with its parent row. Chrome itself comes from the
+ * shared `.du-menu-panel` / `.du-menu-row` classes (styles.css).
+ */
+/**
+ * Submenu geometry read from the live panel so it follows the CSS tokens:
+ * `align` = padding + border (undone on the cross axis so the first child
+ * row lines up with its parent row), `gap` = the same clearance plus
+ * `--du-submenu-gap` on the main axis.
+ */
+const submenuGeometry = (panel: HTMLElement): { align: number; gap: number } => {
+  const cs = getComputedStyle(panel);
+  const align = parseFloat(cs.paddingTop) + parseFloat(cs.borderTopWidth);
+  return { align, gap: align + cssPx(panel, "--du-submenu-gap") };
+};
+
+/**
+ * Drop hidden items (recursively — a submenu with nothing visible goes too),
+ * then collapse adjacent / leading / trailing dividers.
+ */
+const resolveItems = (
+  items: readonly ContextMenuItem[],
+  editor: Editor,
+  ctx: ContextMenuContext,
+): readonly ContextMenuItem[] => {
+  const visible: ContextMenuItem[] = [];
+  for (const item of items) {
+    if (item.kind === "divider") {
+      visible.push(item);
+    } else if (item.kind === "submenu") {
+      if (item.visible?.(editor, ctx) === false) continue;
+      const nested = resolveItems(item.items, editor, ctx);
+      if (nested.length > 0) visible.push({ ...item, items: nested });
+    } else if (item.visible?.(editor, ctx) !== false) {
+      visible.push(item);
+    }
+  }
+  return collapseDividers(visible);
+};
+
+/**
+ * One panel's rows. At most one submenu per level is open — hovering any
+ * row (action or submenu) makes it the active one, so moving the pointer
+ * to a sibling closes the previous child panel; moving into the child
+ * panel itself keeps it (it is not a sibling row).
+ */
+const MenuRows = ({
+  items,
+  editor,
+  ctx,
+  close,
+  panels,
+}: {
+  readonly items: readonly ContextMenuItem[];
+  readonly editor: Editor;
+  readonly ctx: ContextMenuContext;
+  readonly close: () => void;
+  readonly panels: Set<HTMLElement>;
+}) => {
+  const [openId, setOpenId] = useState<string | null>(null);
+  // Reserve the leading gutter only when this panel has check rows — a
+  // plain list keeps its labels flush with the panel edge.
+  const gutter = items.some((item) => item.kind === "action" && item.checked !== undefined);
+  return (
+    <>
+      {items.map((item, i) =>
         item.kind === "divider" ? (
-          <hr
-            key={`d-${i}`}
-            style={{
-              border: 0,
-              borderTop: "1px solid var(--menu-divider, var(--du-ui-border, rgba(0,0,0,0.08)))",
-              margin: "4px 0",
+          <hr key={`d-${i}`} className="du-menu-sep" />
+        ) : item.kind === "submenu" ? (
+          <ContextSubmenuRow
+            key={item.id}
+            item={item}
+            editor={editor}
+            ctx={ctx}
+            close={close}
+            panels={panels}
+            gutter={gutter}
+            open={openId === item.id}
+            onOpen={() => {
+              setOpenId(item.id);
+            }}
+            onToggle={() => {
+              setOpenId((cur) => (cur === item.id ? null : item.id));
             }}
           />
         ) : (
@@ -175,6 +314,10 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
             item={item}
             editor={editor}
             ctx={ctx}
+            gutter={gutter}
+            onHover={() => {
+              setOpenId(null);
+            }}
             onActivate={() => {
               close();
               item.onClick(editor, ctx);
@@ -182,8 +325,110 @@ export const ContextMenu = ({ items, style, className }: ContextMenuProps) => {
           />
         ),
       )}
-    </div>,
-    portalContainer,
+    </>
+  );
+};
+
+/**
+ * Submenu row: hovering (or clicking) opens the child panel beside the row
+ * — to the right by default, to the left when the right side has no room,
+ * shifted / height-capped like the root panel. The child renders in its
+ * own portal (a scrolling parent would clip it) and registers itself with
+ * `panels` so outside-click dismissal treats it as part of the menu.
+ */
+const ContextSubmenuRow = ({
+  item,
+  editor,
+  ctx,
+  close,
+  panels,
+  gutter,
+  open,
+  onOpen,
+  onToggle,
+}: {
+  readonly item: Extract<ContextMenuItem, { kind: "submenu" }>;
+  readonly editor: Editor;
+  readonly ctx: ContextMenuContext;
+  readonly close: () => void;
+  readonly panels: Set<HTMLElement>;
+  readonly gutter: boolean;
+  readonly open: boolean;
+  readonly onOpen: () => void;
+  readonly onToggle: () => void;
+}) => {
+  const portalContainer = usePortalContainer();
+  const rowRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const panel = panelRef.current;
+    if (!open || !row || !panel) return undefined;
+    panels.add(panel);
+    const { align, gap } = submenuGeometry(panel);
+    const stop = floatPanel(row, panel, {
+      placement: "right-start",
+      fallbackPlacements: ["left-start"],
+      gap,
+      crossAxis: -align,
+      padding: MENU_VIEWPORT_PADDING_PX,
+      strategy: "fixed",
+      clampHeight: true,
+    });
+    return () => {
+      stop();
+      panels.delete(panel);
+    };
+  }, [open, panels]);
+  return (
+    <>
+      <button
+        ref={rowRef}
+        type="button"
+        role="menuitem"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onMouseEnter={onOpen}
+        onClick={(ev) => {
+          ev.stopPropagation();
+          onToggle();
+        }}
+        className={`du-menu-row${open ? " is-open" : ""}`}
+      >
+        <span className="du-menu-row-main">
+          {gutter ? <span aria-hidden className="du-menu-gutter" /> : null}
+          <span>{item.label}</span>
+        </span>
+        <span aria-hidden className="du-menu-shortcut">
+          ›
+        </span>
+      </button>
+      {open
+        ? createPortal(
+            <div
+              ref={panelRef}
+              role="menu"
+              aria-label={typeof item.label === "string" ? item.label : undefined}
+              className="du-menu-panel"
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                zIndex: "calc(var(--du-z-context-menu, 1700) + 1)",
+              }}
+            >
+              <MenuRows
+                items={item.items}
+                editor={editor}
+                ctx={ctx}
+                close={close}
+                panels={panels}
+              />
+            </div>,
+            portalContainer,
+          )
+        : null}
+    </>
   );
 };
 
@@ -191,14 +436,19 @@ const ContextMenuRow = ({
   item,
   editor,
   ctx,
+  gutter,
+  onHover,
   onActivate,
 }: {
   readonly item: Extract<ContextMenuItem, { kind: "action" }>;
   readonly editor: Editor;
   readonly ctx: ContextMenuContext;
+  readonly gutter: boolean;
+  readonly onHover: () => void;
   readonly onActivate: () => void;
 }) => {
   const disabled = item.disabled?.(editor, ctx) ?? false;
+  const checked = item.checked?.(editor, ctx) ?? false;
   const handle = (ev: ReactMouseEvent): void => {
     if (disabled) {
       ev.preventDefault();
@@ -210,31 +460,22 @@ const ContextMenuRow = ({
   return (
     <button
       type="button"
-      role="menuitem"
+      role={item.checked ? "menuitemcheckbox" : "menuitem"}
+      {...(item.checked ? { "aria-checked": checked } : {})}
       onClick={handle}
       disabled={disabled}
-      style={{
-        all: "unset",
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "6px 12px",
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1,
-        width: "100%",
-        boxSizing: "border-box",
-      }}
-      onMouseEnter={(ev) => {
-        if (!disabled)
-          ev.currentTarget.style.background = "var(--du-hover-overlay, rgba(0,0,0,0.05))";
-      }}
-      onMouseLeave={(ev) => {
-        ev.currentTarget.style.background = "transparent";
-      }}
+      className="du-menu-row"
+      onMouseEnter={onHover}
     >
-      <span>{item.label}</span>
-      {item.shortcut ? (
-        <span style={{ marginLeft: 16, opacity: 0.6, fontSize: 11 }}>{item.shortcut}</span>
-      ) : null}
+      <span className="du-menu-row-main">
+        {gutter ? (
+          <span aria-hidden className="du-menu-gutter is-accent">
+            {checked ? <Check {...MARK_ICON} /> : ""}
+          </span>
+        ) : null}
+        <span>{item.label}</span>
+      </span>
+      {item.shortcut ? <span className="du-menu-shortcut">{item.shortcut}</span> : null}
     </button>
   );
 };
@@ -285,6 +526,7 @@ const actionMenuItem = (
   opts?: {
     readonly label?: ReactNode;
     readonly visible?: (editor: Editor, ctx: ContextMenuContext) => boolean;
+    readonly checked?: (editor: Editor, ctx: ContextMenuContext) => boolean;
   },
 ): ContextMenuItem => {
   const action = defaultActionRegistry.get(actionId);
@@ -307,98 +549,81 @@ const actionMenuItem = (
     label: opts?.label ?? action?.label ?? actionId,
     ...(first ? { shortcut: formatHotkey(first) } : {}),
     visible,
+    ...(opts?.checked ? { checked: opts.checked } : {}),
     onClick: (editor: Editor) => {
       defaultActionRegistry.dispatch(actionId, { editor });
     },
   };
 };
 
+/**
+ * "Canvas" context: the right-click landed on empty canvas (the press
+ * routing has already cleared the selection) and not on an annotation pin.
+ * Canvas-only entries (add text / sticky, start view, grid & snap toggles,
+ * wheel mode, show all) are gated on this.
+ */
+const onCanvas = (e: Editor, ctx: ContextMenuContext): boolean =>
+  e.selection.size === 0 && e.selectedLinks.size === 0 && e.hitAnnotation(ctx.worldPoint) === null;
+
+const WHEEL_MODES: readonly { readonly mode: WheelMode; readonly label: string }[] = [
+  { mode: "auto", label: "Auto-detect" },
+  { mode: "mouse", label: "Mouse" },
+  { mode: "trackpad", label: "Trackpad" },
+];
+
+/** Toggle row bound to one boolean editor preference. */
+const preferenceToggle = (
+  key: "snapObjects" | "showObjectSize" | "suggestObjectSize",
+  label: string,
+): ContextMenuItem => ({
+  kind: "action",
+  id: key,
+  label,
+  visible: onCanvas,
+  checked: (e) => e.preferences[key],
+  onClick: (e) => {
+    e.setPreferences({ [key]: !e.preferences[key] });
+  },
+});
+
 export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
-  // --- Annotation pin actions (only when right-click landed on a pin) ---
-  {
-    kind: "action",
-    id: "annotation-open",
-    label: "Open thread",
-    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
-    onClick: (e, ctx) => {
-      const id = e.hitAnnotation(ctx.worldPoint);
-      if (id) e.setSelectedAnnotation(id);
-    },
-  },
-  {
-    kind: "action",
-    id: "annotation-toggle-resolved",
-    label: "Toggle resolved",
-    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
-    onClick: (e, ctx) => {
-      const id = e.hitAnnotation(ctx.worldPoint);
-      if (id) e.toggleAnnotationResolved(id);
-    },
-  },
-  {
-    kind: "action",
-    id: "annotation-delete",
-    label: "Delete annotation",
-    visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) !== null,
-    onClick: (e, ctx) => {
-      const id = e.hitAnnotation(ctx.worldPoint);
-      if (id) e.removeAnnotation(id);
-    },
-  },
-  {
-    kind: "divider",
-  },
-  // --- Selection ops (registry-backed) ---
-  actionMenuItem("delete-selection", { label: "Delete" }),
-  actionMenuItem("duplicate-selection", { label: "Duplicate" }),
+  // --- Clipboard / duplication ---
   actionMenuItem("copy"),
   actionMenuItem("cut"),
   actionMenuItem("paste"),
-  actionMenuItem("copy-style", { label: "Copy style" }),
-  actionMenuItem("paste-style", { label: "Paste style" }),
-  actionMenuItem("select-all"),
-  { kind: "divider" },
-  // --- Grouping + arrange (registry-backed) ---
-  actionMenuItem("group-selection", { label: "Group" }),
-  actionMenuItem("ungroup-selection", { label: "Ungroup" }),
-  actionMenuItem("flip-horizontal", { label: "Flip horizontal" }),
-  actionMenuItem("flip-vertical", { label: "Flip vertical" }),
-  actionMenuItem("align-left", { label: "Align left" }),
-  actionMenuItem("align-h-center", { label: "Align horizontal centres" }),
-  actionMenuItem("align-right", { label: "Align right" }),
-  actionMenuItem("align-top", { label: "Align top" }),
-  actionMenuItem("align-v-center", { label: "Align vertical centres" }),
-  actionMenuItem("align-bottom", { label: "Align bottom" }),
-  actionMenuItem("distribute-horizontal", { label: "Distribute horizontally" }),
-  actionMenuItem("distribute-vertical", { label: "Distribute vertically" }),
-  actionMenuItem("arrange-grid"),
-  actionMenuItem("arrange-stack-h"),
-  actionMenuItem("arrange-stack-v"),
-  actionMenuItem("auto-arrange"),
-  actionMenuItem("compact-z-order"),
-  { kind: "divider" },
-  // --- Z-order (single-selection scope; registry-backed, visibility
-  //     narrowed to a single selection) ---
-  actionMenuItem("bring-to-front", { visible: (e) => e.selection.size === 1 }),
-  actionMenuItem("send-to-back", { visible: (e) => e.selection.size === 1 }),
+  actionMenuItem("duplicate-selection", { label: "Duplicate" }),
   {
     kind: "action",
-    id: "move-to-layer",
-    label: "Move to layer…",
-    visible: (e) => !e.readOnly && e.selection.size > 0 && e.scene.layers.size > 1,
+    id: "unlock-all",
+    label: "Unlock all",
+    visible: (e, ctx) =>
+      !e.readOnly &&
+      onCanvas(e, ctx) &&
+      [...e.scene.elements.values()].some((s) => s.locked === true),
     onClick: (e) => {
-      if (typeof window === "undefined") return;
-      const layers = [...e.scene.layers.values()];
-      const names = layers.map((l, i) => `${i + 1}. ${l.name}`).join("\n");
-      const choice = window.prompt(`Move selection to layer (1-${layers.length}):\n${names}`);
-      if (!choice) return;
-      const idx = parseInt(choice, 10) - 1;
-      const target = layers[idx];
-      if (target) e.moveSelectionToLayer(target.id);
+      e.unlockAll();
     },
   },
   { kind: "divider" },
-  // --- Annotation actions (when right-click hits a pin) ---
+  // Clipboard copies of the selection as an asset. The actions are
+  // registered by the host package (`@oh-just-another/editor`); the rows
+  // hide when the host didn't register them.
+  ...(["copy-as-png", "copy-as-svg", "copy-as-text"] as const).map((id) =>
+    actionMenuItem(id, {
+      label:
+        id === "copy-as-png"
+          ? "Copy as PNG"
+          : id === "copy-as-svg"
+            ? "Copy as SVG"
+            : "Copy as text",
+      visible: (e) => e.selection.size > 0 && defaultActionRegistry.get(id) !== undefined,
+    }),
+  ),
+  { kind: "divider" },
+  actionMenuItem("copy-style", { label: "Copy style" }),
+  actionMenuItem("paste-style", { label: "Paste style" }),
+  { kind: "divider" },
+  // --- Comments (annotation-pin ops win when the click hit a pin) ---
   {
     kind: "action",
     id: "open-thread",
@@ -431,6 +656,24 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
   },
   {
     kind: "action",
+    id: "add-text",
+    label: "Add text",
+    visible: (e, ctx) => !e.readOnly && onCanvas(e, ctx),
+    onClick: (e, ctx) => {
+      e.createTextAt(ctx.worldPoint);
+    },
+  },
+  {
+    kind: "action",
+    id: "add-sticky",
+    label: "Add sticky note",
+    visible: (e, ctx) => !e.readOnly && onCanvas(e, ctx),
+    onClick: (e, ctx) => {
+      e.createStickyAt(ctx.worldPoint);
+    },
+  },
+  {
+    kind: "action",
     id: "add-comment",
     label: "Add comment",
     visible: (e, ctx) => e.hitAnnotation(ctx.worldPoint) === null,
@@ -456,22 +699,162 @@ export const DEFAULT_CONTEXT_MENU: readonly ContextMenuItem[] = [
     },
   },
   { kind: "divider" },
-  // --- Viewport (registry-backed) ---
-  actionMenuItem("zoom-in"),
-  actionMenuItem("zoom-out"),
-  actionMenuItem("zoom-reset", { label: "Reset zoom (100%)" }),
-  actionMenuItem("zoom-to-fit", {
-    label: "Fit to screen",
-    visible: (e) => e.scene.elements.size > 0,
-  }),
-  { kind: "divider" },
+  // --- Canvas: start view ---
   {
     kind: "action",
-    id: "clear-canvas",
-    label: "Clear canvas",
-    visible: (e) => !e.readOnly && (e.scene.elements.size > 0 || e.scene.links.size > 0),
+    id: "go-to-start-view",
+    label: "Set start view",
+    visible: (e, ctx) => onCanvas(e, ctx) && e.startView !== null,
     onClick: (e) => {
-      clearCanvasWithConfirm(e);
+      e.goToStartView();
     },
   },
+  {
+    kind: "action",
+    id: "set-current-view-as-start",
+    label: "Set current view as start",
+    visible: (e, ctx) => !e.readOnly && onCanvas(e, ctx),
+    onClick: (e) => {
+      e.setCurrentViewAsStart();
+    },
+  },
+  { kind: "divider" },
+  // --- Canvas: grid, snapping and size assists (check rows) ---
+  actionMenuItem("toggle-grid", {
+    label: "Show grid",
+    visible: onCanvas,
+    checked: (e) => e.gridEnabled,
+  }),
+  {
+    kind: "action",
+    id: "snap-to-grid",
+    label: "Snap to grid",
+    visible: onCanvas,
+    checked: (e) => e.gridEnabled && e.snapToGridEnabled,
+    onClick: (e) => {
+      // Snapping needs a visible grid: enabling it also shows the grid.
+      const next = !(e.gridEnabled && e.snapToGridEnabled);
+      if (next && !e.gridEnabled) e.setGridVisible(true);
+      e.setSnapToGrid(next);
+    },
+  },
+  preferenceToggle("snapObjects", "Snap objects"),
+  preferenceToggle("showObjectSize", "Show object size"),
+  preferenceToggle("suggestObjectSize", "Suggest object size"),
+  { kind: "divider" },
+  // --- Canvas: wheel routing (radio submenu) + show all ---
+  {
+    kind: "submenu",
+    id: "wheel-mode",
+    label: "Mouse or trackpad",
+    visible: onCanvas,
+    items: WHEEL_MODES.map(({ mode, label }) => ({
+      kind: "action",
+      id: `wheel-mode-${mode}`,
+      label,
+      checked: (e) => e.preferences.wheelMode === mode,
+      onClick: (e) => {
+        e.setPreferences({ wheelMode: mode });
+      },
+    })),
+  },
+  actionMenuItem("zoom-to-fit", {
+    label: "Show all",
+    visible: (e, ctx) => onCanvas(e, ctx) && e.scene.elements.size > 0,
+  }),
+  { kind: "divider" },
+  // --- Arrange / Align / Layout submenus + layers ---
+  // Arrange: stacking order and mirroring.
+  {
+    kind: "submenu",
+    id: "arrange",
+    label: "Arrange",
+    items: [
+      actionMenuItem("bring-to-front", { visible: (e) => e.selection.size === 1 }),
+      actionMenuItem("bring-forward", {
+        label: "Bring forward",
+        visible: (e) => e.selection.size === 1,
+      }),
+      actionMenuItem("send-backward", {
+        label: "Send backward",
+        visible: (e) => e.selection.size === 1,
+      }),
+      actionMenuItem("send-to-back", { visible: (e) => e.selection.size === 1 }),
+      { kind: "divider" },
+      actionMenuItem("flip-horizontal", { label: "Flip horizontal" }),
+      actionMenuItem("flip-vertical", { label: "Flip vertical" }),
+    ],
+  },
+  // Align: edge / centre alignment (2+), then even spacing (3+).
+  {
+    kind: "submenu",
+    id: "align",
+    label: "Align",
+    items: [
+      actionMenuItem("align-left", { label: "Align left" }),
+      actionMenuItem("align-h-center", { label: "Align horizontal centres" }),
+      actionMenuItem("align-right", { label: "Align right" }),
+      { kind: "divider" },
+      actionMenuItem("align-top", { label: "Align top" }),
+      actionMenuItem("align-v-center", { label: "Align vertical centres" }),
+      actionMenuItem("align-bottom", { label: "Align bottom" }),
+      { kind: "divider" },
+      actionMenuItem("distribute-horizontal", { label: "Distribute horizontally" }),
+      actionMenuItem("distribute-vertical", { label: "Distribute vertically" }),
+    ],
+  },
+  // Layout: re-place the selection as a whole (grid / stacks / container).
+  {
+    kind: "submenu",
+    id: "layout",
+    label: "Layout",
+    items: [
+      actionMenuItem("arrange-grid"),
+      actionMenuItem("arrange-stack-h"),
+      actionMenuItem("arrange-stack-v"),
+      { kind: "divider" },
+      actionMenuItem("auto-arrange"),
+    ],
+  },
+  {
+    kind: "action",
+    id: "move-to-layer",
+    label: "Move to layer…",
+    visible: (e) => !e.readOnly && e.selection.size > 0 && e.scene.layers.size > 1,
+    onClick: (e) => {
+      if (typeof window === "undefined") return;
+      const layers = [...e.scene.layers.values()];
+      const names = layers.map((l, i) => `${i + 1}. ${l.name}`).join("\n");
+      const choice = window.prompt(`Move selection to layer (1-${layers.length}):\n${names}`);
+      if (!choice) return;
+      const idx = parseInt(choice, 10) - 1;
+      const target = layers[idx];
+      if (target) e.moveSelectionToLayer(target.id);
+    },
+  },
+  { kind: "divider" },
+  // --- Selection / grouping ---
+  actionMenuItem("select-all"),
+  actionMenuItem("group-selection", { label: "Group" }),
+  actionMenuItem("ungroup-selection", { label: "Ungroup" }),
+  { kind: "divider" },
+  // --- Lock ---
+  actionMenuItem("toggle-lock", { label: "Lock" }),
+  // Locked shapes are click-through, so the regular selection path can't
+  // reach them — Unlock resolves the shape under the right-click point via
+  // the dedicated locked-aware lookup instead.
+  {
+    kind: "action",
+    id: "unlock-element",
+    label: "Unlock",
+    visible: (e, ctx) => !e.readOnly && e.lockedElementAt(ctx.worldPoint) !== null,
+    onClick: (e, ctx) => {
+      const shape = e.lockedElementAt(ctx.worldPoint);
+      if (shape) e.unlockElement(shape.id);
+    },
+  },
+  { kind: "divider" },
+  // --- Delete last. Viewport (zoom) and clear-canvas are NOT here: the
+  //     static zoom bar / main menu already carry them. ---
+  actionMenuItem("delete-selection", { label: "Delete" }),
 ];

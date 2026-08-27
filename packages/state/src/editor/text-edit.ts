@@ -8,18 +8,24 @@ import {
 } from "@oh-just-another/renderer-core";
 import {
   getElement,
-  getElementWorldBounds,
+  getElementLocalBounds,
   isText,
   removeElement,
+  remapParagraphsForTextChange,
   updateElement,
   type Element,
   type Patch,
   type Scene,
   type TextElement,
+  type TextParagraph,
+  worldToLocal,
 } from "@oh-just-another/scene";
 import type { Bounds, ElementId, LayerId, Vec2 } from "@oh-just-another/types";
+import type { EditingTextOverlay } from "../render/overlay.js";
+import { shapeLabelLayout } from "@oh-just-another/renderer-core";
 import { CaretBlinkController } from "./caret-blink.js";
 import { canBeginTextEdit } from "./public/text-edit.js";
+import { seedLabel } from "./public/label-seed.js";
 
 /** Live selection inside the edited text (source offsets; `dir` is the anchored end). */
 export interface TextSelection {
@@ -131,11 +137,104 @@ export class TextEditController {
     if (this._editingElement !== null && this._editingElement !== id) this.commit();
     this._editingElement = id;
     this._origin = this._pendingCreate === id ? null : (getElement(this.host.scene, id) ?? null);
-    const shape = getElement(this.host.scene, id);
-    const len = shape !== undefined && isText(shape) ? shape.text.length : 0;
+    let shape = getElement(this.host.scene, id);
+    // A labelable shape without a label yet gets an empty one live (no
+    // history — the commit patch covers it, the origin snapshot lacks it).
+    if (shape !== undefined && !isText(shape) && shape.label === undefined) {
+      const r = updateElement(this.host.scene, id, (s) => ({ ...s, label: seedLabel(s) }));
+      this.host.scene = r.scene;
+      shape = getElement(this.host.scene, id);
+    }
+    const len = shape !== undefined ? this.editedText(shape).length : 0;
     this._sel = { start: len, end: len, dir: "forward" };
     this.caretBlink.start();
     this.host.notify();
+  }
+
+  /** Flat text of the edited shape — its own for text, the label's otherwise. */
+  private editedText(shape: Element): string {
+    if (isText(shape)) return shape.text;
+    return shape.label?.text ?? "";
+  }
+
+  /**
+   * Content view of the edited shape: the element itself for text shapes,
+   * the embedded label as a synthetic text element PLUS its local-space
+   * offset for labelled shapes (same geometry the renderer draws with,
+   * via `shapeLabelLayout` — caret and glyphs can't drift apart).
+   */
+  private editView(shape: Element): {
+    text: TextElement;
+    offX: number;
+    offY: number;
+    window?: { top: number; bottom: number };
+  } | null {
+    if (isText(shape)) return { text: shape, offX: 0, offY: 0 };
+    const label = shape.label;
+    if (label === undefined) return null;
+    const measure = this.measureForFont(
+      label.fontFamily,
+      label.fontSize,
+      label.style?.fontWeight,
+      label.style?.fontStyle,
+    );
+    const placed = shapeLabelLayout(shape, measure);
+    if (!placed) return null;
+    return {
+      text: placed.synthetic,
+      offX: placed.offsetX,
+      offY: placed.offsetY,
+      window: { top: placed.windowTop, bottom: placed.windowBottom },
+    };
+  }
+
+  /**
+   * Keep the caret inside the label's visible line window by adjusting
+   * the transient `metadata.labelScrollLines` on the edited shape (live,
+   * no history — stripped again on commit / cancel). No-op for text
+   * elements (they have no clip window).
+   */
+  private followLabelCaret(): void {
+    const id = this._editingElement;
+    if (!id || !this._sel) return;
+    const shape = getElement(this.host.scene, id);
+    if (!shape || isText(shape) || shape.label === undefined) return;
+    const view = this.editView(shape);
+    if (!view) return;
+    const layout = this.editingTextLayout(view.text);
+    const win = view.window;
+    if (!layout || !win) return;
+    const clipLines = Math.max(1, Math.round((win.bottom - win.top) / layout.lineHeight));
+    const caretIdx = this._sel.dir === "backward" ? this._sel.start : this._sel.end;
+    const g = caretGeometry(
+      layout,
+      caretIdx,
+      this.measureFor(view.text),
+      view.text.fontSize,
+      "left",
+    );
+    const scroll = Math.round(win.top / layout.lineHeight);
+    let next = scroll;
+    if (g.line < scroll) next = g.line;
+    else if (g.line >= scroll + clipLines) next = g.line - clipLines + 1;
+    if (next === scroll) return;
+    this.host.scene = updateElement(this.host.scene, id, (sh) => ({
+      ...sh,
+      metadata: { ...sh.metadata, labelScrollLines: next },
+    })).scene;
+  }
+
+  /** Drop the transient label-scroll hint when the edit session ends. */
+  private clearLabelScroll(id: ElementId): void {
+    const shape = getElement(this.host.scene, id);
+    if (shape?.metadata?.labelScrollLines === undefined) return;
+    this.host.scene = updateElement(this.host.scene, id, (sh) => {
+      const { labelScrollLines: _drop, ...rest } = sh.metadata ?? {};
+      const copy: typeof sh = { ...sh };
+      if (Object.keys(rest).length > 0) (copy as { metadata?: unknown }).metadata = rest;
+      else delete (copy as { metadata?: unknown }).metadata;
+      return copy;
+    }).scene;
   }
 
   /**
@@ -152,9 +251,36 @@ export class TextEditController {
   ): void {
     const id = this._editingElement;
     if (!id) return;
-    const r = updateElement(this.host.scene, id, (s) => ({ ...s, text: value }));
+    const r = updateElement(this.host.scene, id, (s) => {
+      // Label mode: the typed text lands on the embedded label.
+      if (!isText(s) && s.label !== undefined) {
+        const label = { ...s.label, text: value } as typeof s.label & {
+          paragraphs?: readonly TextParagraph[];
+        };
+        if (s.label.paragraphs !== undefined) {
+          const remapped = remapParagraphsForTextChange(s.label.text, value, s.label.paragraphs);
+          if (remapped !== undefined) label.paragraphs = remapped;
+          else delete label.paragraphs;
+        }
+        return { ...s, label };
+      }
+      const next = { ...s, text: value } as typeof s & {
+        paragraphs?: readonly TextParagraph[];
+        text: string;
+      };
+      // Keep paragraph list attrs aligned as newlines come and go —
+      // Enter inside a list item continues the list, deleting a line
+      // drops its attrs.
+      if (isText(s) && s.paragraphs !== undefined) {
+        const remapped = remapParagraphsForTextChange(s.text, value, s.paragraphs);
+        if (remapped !== undefined) next.paragraphs = remapped;
+        else delete next.paragraphs;
+      }
+      return next;
+    });
     this.host.scene = r.scene;
     this._sel = { start: selStart, end: selEnd, dir };
+    this.followLabelCaret();
     this.caretBlink.wake();
     this.host.notify();
   }
@@ -163,6 +289,7 @@ export class TextEditController {
   setSelection(selStart: number, selEnd: number, dir: "forward" | "backward" = "forward"): void {
     if (!this._editingElement) return;
     this._sel = { start: selStart, end: selEnd, dir };
+    this.followLabelCaret();
     this.caretBlink.wake();
     this.host.notify();
   }
@@ -176,25 +303,24 @@ export class TextEditController {
     const id = this._editingElement;
     if (!id) return null;
     const shape = getElement(this.host.scene, id);
-    if (shape === undefined || !isText(shape)) return null;
-    const layout = this.editingTextLayout(shape);
+    if (shape === undefined) return null;
+    const view = this.editView(shape);
+    if (!view) return null;
+    const layout = this.editingTextLayout(view.text);
     if (!layout) return null;
-    // World → shape-local: undo the element transform so the hit lands on the
-    // right glyph. Translate by position, then divide out scale (rotation
-    // while editing text is not handled — an uncommon case).
-    const sx = shape.scale.x || 1;
-    const sy = shape.scale.y || 1;
-    const local = {
-      x: (worldPoint.x - shape.position.x) / sx,
-      y: (worldPoint.y - shape.position.y) / sy,
-    };
-    const align = shape.style.textAlign ?? "left";
-    return pointToCaretIndex(layout, local, this.measureFor(shape), align);
+    // World → shape-local: undo the element transform (translate, rotate,
+    // scale) so the hit lands on the right glyph, then strip the label
+    // offset for embedded labels.
+    const p = worldToLocal(shape, worldPoint);
+    const local = { x: p.x - view.offX, y: p.y - view.offY };
+    const align = view.text.style.textAlign ?? "left";
+    return pointToCaretIndex(layout, local, this.measureFor(view.text), align);
   }
 
   /**
    * `true` when a point is inside the currently-edited text shape's
-   * world bounds. Used by the pointer binding to decide between
+   * body (its local bounds, so a rotated shape tests its real outline,
+   * not the world AABB). Used by the pointer binding to decide between
    * repositioning the caret (inside) and committing (outside).
    */
   editedElementContainsPoint(worldPoint: Vec2): boolean {
@@ -202,13 +328,9 @@ export class TextEditController {
     if (!id) return false;
     const shape = getElement(this.host.scene, id);
     if (!shape) return false;
-    const b = getElementWorldBounds(shape);
-    return (
-      worldPoint.x >= b.x &&
-      worldPoint.x <= b.x + b.width &&
-      worldPoint.y >= b.y &&
-      worldPoint.y <= b.y + b.height
-    );
+    const b = getElementLocalBounds(shape);
+    const p = worldToLocal(shape, worldPoint);
+    return p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
   }
 
   /** Place a collapsed caret at the clicked point and start a drag-select. */
@@ -239,6 +361,7 @@ export class TextEditController {
     return layoutText(shape.text, this.measureFor(shape), {
       fontSize: shape.fontSize,
       ...(shape.maxWidth !== undefined ? { maxWidth: shape.maxWidth } : {}),
+      ...(shape.paragraphs !== undefined ? { paragraphs: shape.paragraphs } : {}),
     });
   }
 
@@ -249,12 +372,26 @@ export class TextEditController {
    * selection geometry therefore lines up exactly with the glyphs.
    */
   private measureFor(shape: TextElement): (s: string) => number {
+    return this.measureForFont(
+      shape.fontFamily,
+      shape.fontSize,
+      shape.style.fontWeight,
+      shape.style.fontStyle,
+    );
+  }
+
+  private measureForFont(
+    fontFamily: string,
+    fontSize: number,
+    weight?: string,
+    style?: string,
+  ): (s: string) => number {
     const target = this.host.mainTarget;
     // Match the rendered weight/style so caret / selection geometry lines
     // up with bold / italic glyphs (which have different advances).
-    target.setFont(shape.fontFamily, shape.fontSize, {
-      ...(shape.style.fontWeight === "bold" ? { weight: "bold" as const } : {}),
-      ...(shape.style.fontStyle === "italic" ? { style: "italic" as const } : {}),
+    target.setFont(fontFamily, fontSize, {
+      ...(weight === "bold" ? { weight: "bold" as const } : {}),
+      ...(style === "italic" ? { style: "italic" as const } : {}),
     });
     return (s: string) => target.measureText(s).width;
   }
@@ -264,28 +401,39 @@ export class TextEditController {
    * Returns `null` when not editing. The caret is `null` while blinked
    * off so the overlay can simply skip drawing it.
    */
-  overlay(): {
-    caret: { x: number; y: number; height: number } | null;
-    caretColor: string;
-    selectionRects: readonly Bounds[];
-  } | null {
+  overlay(): EditingTextOverlay | null {
     const id = this._editingElement;
     if (!id || !this._sel) return null;
     const shape = getElement(this.host.scene, id);
-    if (shape === undefined || !isText(shape)) return null;
-    const layout = this.editingTextLayout(shape);
+    if (shape === undefined) return null;
+    const view = this.editView(shape);
+    if (!view) return null;
+    const layout = this.editingTextLayout(view.text);
     if (!layout) return null;
-    const align = shape.style.textAlign ?? "left";
-    const measure = this.measureFor(shape);
-    const { x: px, y: py } = shape.position;
+    const align = view.text.style.textAlign ?? "left";
+    const measure = this.measureFor(view.text);
     // The layout is in the shape's own (unscaled) space; the renderer draws it
     // through the element transform, so caret + selection geometry must scale
-    // too or they trail the rendered text on a scaled element. (Rotation while
-    // editing text is not handled — an uncommon case.)
+    // too or they trail the rendered text on a scaled element. Rotation is
+    // left to the overlay (it rotates the result about the position) so the
+    // rects stay axis-aligned here. Embedded labels add their local offset
+    // before the transform.
     const sx = shape.scale.x;
     const sy = shape.scale.y;
+    const px = shape.position.x + view.offX * sx;
+    const py = shape.position.y + view.offY * sy;
 
-    const local = textSelectionRects(layout, this._sel.start, this._sel.end, measure, align);
+    // Clip highlight rects (and the caret) to the label's visible window
+    // so nothing paints outside the shape body.
+    const win = view.window;
+    const local = textSelectionRects(layout, this._sel.start, this._sel.end, measure, align)
+      .map((r) => {
+        if (!win) return r;
+        const top = Math.max(r.y, win.top);
+        const bottom = Math.min(r.y + r.height, win.bottom);
+        return { ...r, y: top, height: bottom - top };
+      })
+      .filter((r) => r.height > 0);
     const selectionRects: Bounds[] = local.map((r) => ({
       x: px + Math.min(r.x * sx, (r.x + r.width) * sx),
       y: py + Math.min(r.y * sy, (r.y + r.height) * sy),
@@ -296,21 +444,35 @@ export class TextEditController {
     let caret: { x: number; y: number; height: number } | null = null;
     if (this.caretBlink.on) {
       const cIdx = this._sel.dir === "backward" ? this._sel.start : this._sel.end;
-      const g = caretGeometry(layout, cIdx, measure, shape.fontSize, align);
-      caret = { x: px + g.x * sx, y: py + g.y * sy, height: g.height * Math.abs(sy) };
+      const g = caretGeometry(layout, cIdx, measure, view.text.fontSize, align);
+      const visible = !win || (g.y >= win.top && g.y < win.bottom);
+      if (visible) {
+        caret = { x: px + g.x * sx, y: py + g.y * sy, height: g.height * Math.abs(sy) };
+      }
     }
-    return { caret, caretColor: shape.style.fill ?? "#1a1a1a", selectionRects };
+    return {
+      caret,
+      caretColor: view.text.style.fill ?? "#1a1a1a",
+      selectionRects,
+      rotation: shape.rotation,
+      pivot: shape.position,
+    };
   }
 
   commit(next?: string): void {
     const id = this._editingElement;
     if (!id) return;
+    this.clearLabelScroll(id);
     const pending = this._pendingCreate === id;
     const origin = this._origin;
     // Optional explicit text (keyboard / test callers); the live path
     // passes nothing because the scene already holds the typed text.
     if (next !== undefined) {
-      this.host.scene = updateElement(this.host.scene, id, (s) => ({ ...s, text: next })).scene;
+      this.host.scene = updateElement(this.host.scene, id, (s) =>
+        !isText(s) && s.label !== undefined
+          ? { ...s, label: { ...s.label, text: next } }
+          : { ...s, text: next },
+      ).scene;
     }
     this._editingElement = null;
     this._pendingCreate = null;
@@ -319,6 +481,33 @@ export class TextEditController {
     this.caretBlink.stop();
 
     const committed = getElement(this.host.scene, id);
+
+    // Label mode commits separately: an empty label is stripped from the
+    // shape (the shape itself stays), a non-empty one records a single
+    // whole-element patch against the origin.
+    if (committed !== undefined && !isText(committed)) {
+      if ((committed.label?.text ?? "").trim() === "") {
+        const r = updateElement(this.host.scene, id, (s) => {
+          const copy: typeof s = { ...s };
+          delete (copy as { label?: unknown }).label;
+          return copy;
+        });
+        this.host.scene = r.scene;
+        if (origin?.label !== undefined) {
+          this.host.pushHistory({
+            kind: "element",
+            id,
+            before: origin,
+            after: getElement(this.host.scene, id) ?? origin,
+          });
+        }
+      } else if (origin && origin.label?.text !== committed.label?.text) {
+        this.host.pushHistory({ kind: "element", id, before: origin, after: committed });
+      }
+      this.host.notify();
+      return;
+    }
+
     const finalElement = committed !== undefined && isText(committed) ? committed : undefined;
     const text = finalElement?.text ?? "";
 
@@ -357,6 +546,7 @@ export class TextEditController {
   cancel(): void {
     const id = this._editingElement;
     if (id === null) return;
+    this.clearLabelScroll(id);
     const pending = this._pendingCreate === id;
     const origin = this._origin;
     this._editingElement = null;
@@ -366,8 +556,8 @@ export class TextEditController {
     this.caretBlink.stop();
 
     // Revert live edits with no history entry. Pending creations are
-    // removed entirely; existing shapes have only their TEXT restored
-    // (panel-driven field changes during the edit keep their own
+    // removed entirely; existing shapes have only their TEXT (or label)
+    // restored (panel-driven field changes during the edit keep their own
     // committed history and must survive the cancel).
     if (pending) {
       if (getElement(this.host.scene, id)) {
@@ -375,11 +565,15 @@ export class TextEditController {
         this.host.clearSelectionFor(id);
       }
     } else if (origin) {
-      const originText = isText(origin) ? origin.text : "";
-      this.host.scene = updateElement(this.host.scene, id, (s) => ({
-        ...s,
-        text: originText,
-      })).scene;
+      this.host.scene = updateElement(this.host.scene, id, (s) => {
+        if (!isText(s)) {
+          const copy: typeof s = { ...s };
+          if (origin.label !== undefined) (copy as { label?: unknown }).label = origin.label;
+          else delete (copy as { label?: unknown }).label;
+          return copy;
+        }
+        return { ...s, text: isText(origin) ? origin.text : "" };
+      }).scene;
     }
     this.host.notify();
   }

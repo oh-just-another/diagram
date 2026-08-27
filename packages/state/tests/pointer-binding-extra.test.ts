@@ -157,6 +157,36 @@ describe("pan triggers", () => {
     expect(seen).toHaveLength(1);
     editor.dispose();
   });
+
+  it("a right-click on empty canvas clears the selection before the menu opens", () => {
+    const { editor, fire } = setup();
+    editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
+    const selectionAtOpen: number[] = [];
+    editor.onLongPress(() => selectionAtOpen.push(editor.selection.size));
+    // Rect "a" covers (0..50, 0..50); (300, 300) is empty canvas.
+    fire("pointerdown", 300, 300, { button: 2 });
+    fire("pointerup", 300, 300, { button: 2 });
+    expect(selectionAtOpen).toEqual([0]);
+    expect(editor.selection.size).toBe(0);
+    editor.dispose();
+  });
+
+  it("a right-click on an unselected shape selects it; on a selected one keeps the selection", () => {
+    const { editor, fire } = setup(sceneWith(rect("a", 0, 0), rect("b", 100, 0)));
+    editor.applyEmit({ type: "SELECT_REPLACE", id: elementId("a") });
+    const selectionAtOpen: string[][] = [];
+    editor.onLongPress(() => selectionAtOpen.push([...editor.selection].map(String)));
+    // Right-click inside "b" → the menu is for "b" alone.
+    fire("pointerdown", 125, 25, { button: 2 });
+    fire("pointerup", 125, 25, { button: 2 });
+    expect(selectionAtOpen).toEqual([["b"]]);
+    // Now select both and right-click inside "a" — the pair stays selected.
+    editor.setSelection([elementId("a"), elementId("b")]);
+    fire("pointerdown", 25, 25, { button: 2 });
+    fire("pointerup", 25, 25, { button: 2 });
+    expect(selectionAtOpen[1]).toEqual(["a", "b"]);
+    editor.dispose();
+  });
 });
 
 describe("⌥-drag duplicate", () => {
@@ -200,6 +230,28 @@ describe("marquee lasso select", () => {
     fire("pointermove", -20, -20, { button: 0 });
     fire("pointerup", -20, -20, { button: 0 });
     expect(editor.selection.has(elementId("a"))).toBe(true);
+    editor.dispose();
+  });
+
+  it("rubber-banding grouped children selects the GROUP, so arrange treats it as one unit", () => {
+    const { editor, fire } = setup(
+      sceneWith(rect("a", 0, 0), rect("b", 60, 0), rect("c", 300, 300)),
+    );
+    editor.setSelection([elementId("a"), elementId("b")]);
+    const r = editor.groupSelected();
+    if (r.kind !== "grouped") throw new Error("expected group");
+    editor.setSelection([]);
+    // Lasso over everything: the group (not a, b separately) + c.
+    fire("pointerdown", 380, 380, { button: 0 });
+    fire("pointermove", 200, 200, { button: 0 });
+    fire("pointermove", -20, -20, { button: 0 });
+    fire("pointerup", -20, -20, { button: 0 });
+    expect([...editor.selection].sort()).toEqual([r.groupId, elementId("c")].sort());
+    editor.arrangeAsGrid({ cols: 2, gap: 4 });
+    const pos = (id: string) => editor.scene.elements.get(elementId(id))!.position;
+    // a and b keep their 60 px offset — the group moved as one cell.
+    expect(pos("b").x - pos("a").x).toBe(60);
+    expect(pos("b").y).toBe(pos("a").y);
     editor.dispose();
   });
 });

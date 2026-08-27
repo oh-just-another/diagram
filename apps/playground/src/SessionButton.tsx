@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Share2, Users } from "lucide-react";
 import type { CollabAPI } from "./collab";
-
-const SESSION_ICON_SIZE = 16;
-const SESSION_ICON_STROKE = 1.75;
+import { CONTROL_ICON, MARK_ICON } from "@oh-just-another/react-ui";
 
 /**
  * "Start session" / "Active session" control. When no session is
@@ -85,11 +83,7 @@ export const SessionButton = ({ collab }: { readonly collab: CollabAPI }) => {
         onClick={() => void startOrToggle()}
         disabled={busy}
       >
-        {active ? (
-          <Users size={SESSION_ICON_SIZE} strokeWidth={SESSION_ICON_STROKE} />
-        ) : (
-          <Share2 size={SESSION_ICON_SIZE} strokeWidth={SESSION_ICON_STROKE} />
-        )}
+        {active ? <Users {...CONTROL_ICON} /> : <Share2 {...CONTROL_ICON} />}
       </button>
       {open && active ? (
         <div
@@ -139,7 +133,7 @@ export const SessionButton = ({ collab }: { readonly collab: CollabAPI }) => {
             >
               {copied ? (
                 <>
-                  <Check size={14} strokeWidth={SESSION_ICON_STROKE} /> Copied
+                  <Check {...MARK_ICON} /> Copied
                 </>
               ) : (
                 "Copy"

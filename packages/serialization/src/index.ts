@@ -7,7 +7,7 @@ export type {
   SerializedViewport,
 } from "./schema.js";
 
-export { serializeScene, stringifyScene } from "./serialize.js";
+export { serializeScene, stringifyScene, type SerializeSceneOptions } from "./serialize.js";
 
 export { sceneJsonSchema } from "./json-schema.js";
 

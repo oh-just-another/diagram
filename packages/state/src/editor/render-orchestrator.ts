@@ -6,14 +6,11 @@ import {
   getElement,
   getElementWorldBounds,
   getElementOutline,
-  getWorldToScreen,
   getDropZonesWorld,
-  strokeOutsideExtent,
   isFrame,
   isImage,
   type BrushPoint,
   type Scene,
-  type Style,
   type Element,
   type Link,
   type SpatialGrid,
@@ -31,16 +28,22 @@ import {
 } from "@oh-just-another/renderer-core";
 import {
   renderOverlay,
-  paintElementSelectionHalo,
-  type ElementHalo,
+  type EditingTextOverlay,
+  type SizeReadout,
   type OverlayOptions,
   type PortOverlay,
   type PeerCursor,
   type PeerSelection,
 } from "../render/overlay.js";
 import { anchorOverlayPoints } from "./anchor-points.js";
+import type { SizeMatch, SnapGuide } from "./applies/object-snap.js";
 import { hitZoneVisibility } from "./hit-test.js";
-import { buildElementForCreate, buildEdgePreviewLink } from "./applies/create.js";
+import {
+  buildElementForCreate,
+  buildEdgePreviewLink,
+  type LinkCreateOverrides,
+} from "./applies/create.js";
+import { nextFrameName } from "../helpers/frame-helpers.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
   ANCHOR_DOT_RADIUS,
@@ -202,15 +205,23 @@ export interface RenderSnapshot {
    * grab an affordance that would mutate the scene.
    */
   readonly readOnly: boolean;
+  /** Sticky under the idle cursor — drives the hover-only "+" chrome. */
+  readonly hoveredStickyId: ElementId | null;
+  /** Line-preset overrides for the draw-edge PREVIEW connector (WYSIWYG). */
+  readonly linkDrawOverrides: LinkCreateOverrides | undefined;
   readonly groupMoveOrigin: ReadonlyMap<ElementId, Vec2> | null;
   readonly aspectLocked: boolean;
   readonly combinedSelectionBounds: Bounds | null;
-  readonly editingText: {
-    caret: { x: number; y: number; height: number } | null;
-    caretColor: string;
-    selectionRects: readonly Bounds[];
-  } | null;
+  readonly editingText: EditingTextOverlay | null;
+  /** Object-snap guides / size assists of the current gesture tick. */
+  readonly snapGuides: readonly SnapGuide[];
+  readonly sizeReadout: SizeReadout | null;
+  readonly sizeMatch: SizeMatch | null;
+  /** Label the distance / size segments (the `showObjectSize` preference). */
+  readonly showDistances: boolean;
   // Runtime-parameterised lookups (narrow callbacks, not the Editor class).
+  /** Can the shape be moved / resized (not locked, layer unlocked, visible)? */
+  readonly isElementManipulable: (shape: Element) => boolean;
   readonly previewClickCreate: (
     fromElement: ElementId,
     anchorName: string,
@@ -324,36 +335,15 @@ const overlaySigEqual = (a: readonly unknown[], b: readonly unknown[]): boolean 
  * `lastRendered*` bookkeeping and the tile-dirty reset.
  */
 export const renderEditor = (editor: RenderSnapshot): void => {
-  // Background layer (grid + selection halo), when the host gave us a
-  // dedicated target. The grid clears it each frame; the contour selection
-  // halo is then painted on top of the grid but UNDER the shapes (main
-  // layer), so it peeks out from behind each selected element. Its own clean
-  // Canvas2D layer avoids dirty-rect flicker and paint-state bleed into the
-  // shape pass. Without a background layer the grid lives on mainTarget
-  // before shapes are drawn, so renderScene's clear takes care of it.
+  // Background layer (grid), when the host gave us a dedicated target. The
+  // grid pass clears it each frame; when the grid is toggled off, still clear
+  // it so nothing stale lingers under the shapes. Without a background layer
+  // the grid lives on mainTarget before shapes are drawn, so renderScene's
+  // clear takes care of it. Selected shapes are marked by the selection frame
+  // + handles in the overlay pass only — no contour halo under the shape.
   if (editor.backgroundTarget) {
-    // Grid pass also clears the background layer each frame. When the grid is
-    // toggled off, still clear it so no stale grid lingers under the halos.
     if (editor.gridEnabled) renderGrid(editor.scene, editor.backgroundTarget);
     else editor.backgroundTarget.clear();
-    const halos: ElementHalo[] = [];
-    for (const id of editor.selection) {
-      const shape = getElement(editor.scene, id);
-      if (!shape) continue;
-      const style: Style = (shape as { style?: Style }).style ?? {};
-      halos.push({
-        loops: getElementOutline(editor.scene, shape),
-        outsetWorld: strokeOutsideExtent(style),
-      });
-    }
-    if (halos.length > 0) {
-      paintElementSelectionHalo(
-        editor.backgroundTarget,
-        getWorldToScreen(editor.scene.viewport),
-        halos,
-        editor.scene.viewport.zoom || 1,
-      );
-    }
   }
   // World-space viewport rect — used by `renderScene` to skip off-screen
   // shapes. Computed by mapping the screen viewport corners through the
@@ -406,6 +396,13 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       boundsCache: editor.boundsCache,
       clock: editor.animationClock,
       lod: DEFAULT_LOD,
+      // Read-only views get no add-reaction chrome (reacting mutates the
+      // scene); everything else stays on — interactive default.
+      ...(editor.readOnly ? { content: { stickyAddButton: false } } : {}),
+      // Grey prompt inside empty text elements — while writing, never in view mode.
+      ...(editor.readOnly ? {} : { textPlaceholders: true }),
+      // Hover-only chrome (sticky "+" button) needs the hovered id.
+      ...(editor.hoveredStickyId !== null ? { hoveredElement: editor.hoveredStickyId } : {}),
       ...(dimElements
         ? {
             dimElements,
@@ -454,7 +451,13 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       overlayOpts.drawingPreview = editor.lassoPreview;
     } else if (editor.drawingPreview) {
       const kind =
-        editor.mode === "draw-rect" ? "rect" : editor.mode === "draw-ellipse" ? "ellipse" : null;
+        editor.mode === "draw-rect"
+          ? "rect"
+          : editor.mode === "draw-ellipse"
+            ? "ellipse"
+            : editor.mode === "draw-frame"
+              ? "frame"
+              : null;
       if (kind) {
         overlayOpts.drawingPreviewElement = buildElementForCreate(
           editor.scene,
@@ -462,7 +465,8 @@ export const renderEditor = (editor: RenderSnapshot): void => {
           editor.drawingPreview,
           DRAW_PREVIEW_ELEMENT_ID,
           editor.activeLayerId,
-          () => "",
+          // WYSIWYG: the frame preview shows the auto-number it will get.
+          () => nextFrameName(editor.scene),
         );
       } else {
         overlayOpts.drawingPreview = editor.drawingPreview;
@@ -479,6 +483,7 @@ export const renderEditor = (editor: RenderSnapshot): void => {
         editor.edgePreview,
         DRAW_PREVIEW_LINK_ID,
         editor.activeLayerId,
+        editor.linkDrawOverrides,
       );
       edgePreviewScene = {
         ...editor.scene,
@@ -668,7 +673,16 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     // Group-handle overlay: a multi-object selection (elements + links) OR a
     // single group-typed shape. A lone link keeps its endpoint handles, not a
     // resize box. Aspect-locked groups flag the overlay for corner-only handles.
-    if (editor.selection.size + editor.selectedLinks.size > 1 || editor.aspectLocked) {
+    // Skipped when nothing selected is manipulable (e.g. a locked group) —
+    // mirrors the hit-test, which ignores group handles in that case.
+    const anyManipulable = [...editor.selection].some((id) => {
+      const shape = getElement(editor.scene, id);
+      return shape !== undefined && editor.isElementManipulable(shape);
+    });
+    if (
+      anyManipulable &&
+      (editor.selection.size + editor.selectedLinks.size > 1 || editor.aspectLocked)
+    ) {
       const combined = editor.combinedSelectionBounds;
       if (combined) overlayOpts.groupBounds = combined;
       if (editor.aspectLocked) overlayOpts.groupAspectLocked = true;
@@ -676,6 +690,10 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     if (editor.containerHover) {
       overlayOpts.containerDropZone = editor.containerHover.dropZone;
     }
+    if (editor.snapGuides.length > 0) overlayOpts.snapGuides = editor.snapGuides;
+    if (editor.sizeReadout) overlayOpts.sizeReadout = editor.sizeReadout;
+    if (editor.sizeMatch) overlayOpts.sizeMatch = editor.sizeMatch;
+    if (editor.showDistances) overlayOpts.showDistances = true;
     if (editor.brushStroke) {
       // The preview stroke is precomputed by `buildRenderSnapshot`: Catmull-Rom
       // smoothed (same resampler the commit uses) with the real paint colour and

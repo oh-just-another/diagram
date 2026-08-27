@@ -13,8 +13,17 @@ export type {
   Roundness,
 } from "./text/style.js";
 export { getCornerRadius, strokeOutsideExtent } from "./text/style.js";
+export { pickTextPlaceholder } from "./text/placeholder.js";
 export type { TextRun } from "./text/text-runs.js";
 export { runsToText, normalizeRuns, sliceRuns, applyStyleToRange } from "./text/text-runs.js";
+export {
+  paragraphCount,
+  paragraphRangeForOffsets,
+  paragraphAt,
+  normalizeParagraphs,
+  remapParagraphsForTextChange,
+  listMarkers,
+} from "./text/paragraphs.js";
 export { ADAPTIVE_CORNER_RADIUS, PROPORTIONAL_CORNER_RADIUS } from "./constants.js";
 export type {
   Element,
@@ -26,8 +35,13 @@ export type {
   PathElement,
   PathCommand,
   TextElement,
+  TextParagraph,
+  ShapeLabel,
+  StickyElement,
+  EmojiElement,
   ImageElement,
   ImageCrop,
+  ImageMask,
   TemplateElement,
   GroupElement,
   FrameElement,
@@ -75,7 +89,7 @@ export {
   type BezierSegment,
 } from "./edges/edge-curve.js";
 export type { Layer } from "./model/layer.js";
-export type { Viewport, GridStyle } from "./model/viewport.js";
+export type { Viewport, GridStyle, StartView } from "./model/viewport.js";
 export type { Scene } from "./model/scene.js";
 export type { Patch } from "./model/patch.js";
 export type { OperationResult } from "./model/operations.js";
@@ -93,6 +107,9 @@ export {
   isFrame,
   isBlockArrow,
   isBrush,
+  canCarryLabel,
+  isSticky,
+  isEmoji,
   brushBodyColor,
   registerBounder,
   getBounder,
@@ -177,7 +194,7 @@ export type { SettingScope, SceneSettings, HydrateInput } from "./model/hydrate.
 
 // Binary file registry.
 export type { BinaryFile } from "./model/file.js";
-export { createBinaryFile } from "./model/file.js";
+export { createBinaryFile, sniffBinaryFileMime } from "./model/file.js";
 
 // Patch utilities
 export { invert, batch, isNoop } from "./model/patch.js";
@@ -281,6 +298,9 @@ export {
   LINK_LABEL_LINE_HEIGHT,
   LINK_LABEL_END_CLEARANCE,
   LINK_LABEL_CHAR_WIDTH_FACTOR,
+  IMAGE_MASK_POLYGON_PRESETS,
+  TEXT_PLACEHOLDERS,
+  type TextPlaceholder,
 } from "./constants.js";
 
 // Elbow router — A*-based obstacle-avoiding 90° routing.

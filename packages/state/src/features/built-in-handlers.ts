@@ -38,6 +38,9 @@ const measureImage = (dataUrl: string): Promise<{ width: number; height: number 
  */
 export const imageFileDropHandler: FileDropHandler = {
   id: "image",
+  label: "Images",
+  kind: "image",
+  formats: ["PNG", "JPG", "SVG", "GIF", "WebP", "BMP", "ICO", "AVIF"],
   accept: (file) => isImageFile(file),
   handle: async (file, { editor, worldPoint }) => {
     // Register the blob in Scene.files first, then create an object-URL
@@ -214,6 +217,9 @@ export const createHiddenLoopingVideo = (src: string): HTMLVideoElement => {
  */
 export const videoFileDropHandler: FileDropHandler = {
   id: "video",
+  label: "Video",
+  kind: "video",
+  formats: ["MP4", "WebM", "OGG", "MOV"],
   accept: (file) => isVideoFile(file),
   handle: async (file, { editor, worldPoint }) => {
     if (typeof document === "undefined") return;

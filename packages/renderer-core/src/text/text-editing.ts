@@ -1,5 +1,7 @@
 import type { TextAlign } from "../targets/render-target.js";
+import type { TextParagraph } from "@oh-just-another/scene";
 import { req, type Vec2 } from "@oh-just-another/types";
+import { LIST_INDENT_EM } from "../constants.js";
 
 /**
  * Caret-aware text layout. Unlike {@link wrapText} (which collapses
@@ -24,6 +26,12 @@ export interface LaidOutLine {
   readonly end: number;
   /** Measured width of `text` in CSS px. */
   readonly width: number;
+  /** List indent offset in CSS px (0 for plain paragraphs). */
+  readonly indentX: number;
+  /** Index of the source paragraph this line belongs to. */
+  readonly para: number;
+  /** True on the paragraph's first visual line (where the marker draws). */
+  readonly paraFirst: boolean;
 }
 
 export interface EditableTextLayout {
@@ -41,6 +49,13 @@ export interface LayoutTextOptions {
   readonly maxWidth?: number;
   /** Line-height multiplier. Default 1.2 (matches the text renderer). */
   readonly lineHeightFactor?: number;
+  /**
+   * Per-paragraph list attributes (aligned by paragraph index). List
+   * paragraphs are indented by `(indent + 1) × LIST_INDENT_EM × fontSize`
+   * and their wrap budget shrinks accordingly; plain paragraphs with a
+   * bare `indent` shift without the marker slot.
+   */
+  readonly paragraphs?: readonly TextParagraph[];
 }
 
 /** Default multiplier from font size to line height (matches `drawText`). */
@@ -52,9 +67,13 @@ const wrapParagraph = (
   maxWidth: number,
   measure: MeasureText,
   out: LaidOutLine[],
+  paraIndex: number,
+  indentX: number,
 ): void => {
+  const lineBase = { indentX, para: paraIndex };
+  const first = (): boolean => out.length === 0 || req(out[out.length - 1]).para !== paraIndex;
   if (para === "") {
-    out.push({ text: "", start: base, end: base, width: 0 });
+    out.push({ text: "", start: base, end: base, width: 0, ...lineBase, paraFirst: first() });
     return;
   }
   // Word spans (non-whitespace runs) with offsets relative to `para`.
@@ -64,7 +83,14 @@ const wrapParagraph = (
   while ((m = re.exec(para)) !== null) words.push({ s: m.index, e: m.index + m[0].length });
   if (words.length === 0) {
     // Whitespace-only paragraph — keep it as one line so offsets survive.
-    out.push({ text: para, start: base, end: base + para.length, width: measure(para) });
+    out.push({
+      text: para,
+      start: base,
+      end: base + para.length,
+      width: measure(para),
+      ...lineBase,
+      paraFirst: first(),
+    });
     return;
   }
 
@@ -79,7 +105,14 @@ const wrapParagraph = (
   let lineStart = 0;
   const push = (start: number, end: number): void => {
     const text = para.slice(start, end);
-    out.push({ text, start: base + start, end: base + end, width: measure(text) });
+    out.push({
+      text,
+      start: base + start,
+      end: base + end,
+      width: measure(text),
+      ...lineBase,
+      paraFirst: first(),
+    });
   };
   let i = 0;
   while (i < words.length) {
@@ -126,20 +159,38 @@ export const layoutText = (
   const lineHeight = options.fontSize * (options.lineHeightFactor ?? DEFAULT_LINE_HEIGHT_FACTOR);
   const lines: LaidOutLine[] = [];
   let paraStart = 0;
+  let paraIndex = 0;
   for (let i = 0; i <= text.length; i++) {
     if (i === text.length || text[i] === "\n") {
       const para = text.slice(paraStart, i);
+      const attrs = options.paragraphs?.[paraIndex];
+      const levels = (attrs?.indent ?? 0) + (attrs?.list !== undefined ? 1 : 0);
+      const indentX = levels * LIST_INDENT_EM * options.fontSize;
       if (options.maxWidth === undefined) {
-        lines.push({ text: para, start: paraStart, end: i, width: measure(para) });
+        lines.push({
+          text: para,
+          start: paraStart,
+          end: i,
+          width: measure(para),
+          indentX,
+          para: paraIndex,
+          paraFirst: true,
+        });
       } else {
-        wrapParagraph(para, paraStart, options.maxWidth, measure, lines);
+        // Keep at least one em of budget so a huge indent can't wedge the
+        // wrapper into zero-width lines.
+        const budget = Math.max(options.fontSize, options.maxWidth - indentX);
+        wrapParagraph(para, paraStart, budget, measure, lines, paraIndex, indentX);
       }
       paraStart = i + 1;
+      paraIndex++;
     }
   }
-  if (lines.length === 0) lines.push({ text: "", start: 0, end: 0, width: 0 });
+  if (lines.length === 0) {
+    lines.push({ text: "", start: 0, end: 0, width: 0, indentX: 0, para: 0, paraFirst: true });
+  }
   let widest = 0;
-  for (const l of lines) widest = Math.max(widest, l.width);
+  for (const l of lines) widest = Math.max(widest, l.width + l.indentX);
   const blockWidth = options.maxWidth ?? widest;
   return { lines, lineHeight, blockWidth };
 };
@@ -150,6 +201,15 @@ const lineLeftX = (lineWidth: number, blockWidth: number, align: TextAlign): num
   if (align === "right") return blockWidth - lineWidth;
   return 0;
 };
+
+/**
+ * Left edge of a laid-out line INCLUDING its list indent: alignment is
+ * computed within the space remaining after the indent, then shifted by
+ * it. The single source of glyph-left-x for the renderer, caret,
+ * click-to-caret and selection rects — keep them in lockstep.
+ */
+export const lineLeft = (line: LaidOutLine, blockWidth: number, align: TextAlign): number =>
+  lineLeftX(line.width, blockWidth - line.indentX, align) + line.indentX;
 
 /** Index of the line a caret offset falls on (handles boundaries). */
 const lineIndexForCaret = (layout: EditableTextLayout, caret: number): number => {
@@ -191,7 +251,7 @@ export const caretGeometry = (
   const line = req(layout.lines[i]);
   const col = Math.max(0, Math.min(caret, line.end) - line.start);
   const prefixWidth = col === 0 ? 0 : measure(line.text.slice(0, col));
-  const left = lineLeftX(line.width, layout.blockWidth, align);
+  const left = lineLeft(line, layout.blockWidth, align);
   return { x: left + prefixWidth, y: i * layout.lineHeight, height: fontSize, line: i };
 };
 
@@ -208,7 +268,7 @@ export const pointToCaretIndex = (
   const { lines, lineHeight } = layout;
   const i = Math.max(0, Math.min(lines.length - 1, Math.floor(point.y / lineHeight)));
   const line = req(lines[i]);
-  const left = lineLeftX(line.width, layout.blockWidth, align);
+  const left = lineLeft(line, layout.blockWidth, align);
   // Walk columns, picking the boundary whose x is closest to point.x.
   let best = 0;
   let bestDist = Math.abs(left - point.x);
@@ -255,7 +315,7 @@ export const selectionRects = (
       // hard break past it (then show a thin trailing marker).
       if (!(hi > line.end && lo <= line.end)) continue;
     }
-    const left = lineLeftX(line.width, layout.blockWidth, align);
+    const left = lineLeft(line, layout.blockWidth, align);
     const xa = left + (a === line.start ? 0 : measure(line.text.slice(0, a - line.start)));
     const xb = left + (b === line.start ? 0 : measure(line.text.slice(0, b - line.start)));
     // A line whose break is inside the selection gets a small trailing

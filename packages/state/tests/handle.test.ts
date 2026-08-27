@@ -12,22 +12,23 @@ import {
 const bounds = { x: 0, y: 0, width: 100, height: 50 };
 
 describe("handle positions", () => {
-  // At zoom=1 the outset is HANDLE_OUTSET world units. The handles
-  // sit outside the bbox so they don't overlap the shape body.
+  // At zoom=1 the outset is HANDLE_OUTSET world units (0 → handle centres
+  // sit exactly on the frame corners / edge midpoints). `0 - o` keeps the
+  // expected value +0 rather than -0 when the outset is zero.
   const o = HANDLE_OUTSET;
   it("nw is top-left, se is bottom-right (offset outward by HANDLE_OUTSET)", () => {
-    expect(handlePosition("nw", bounds)).toEqual({ x: -o, y: -o });
+    expect(handlePosition("nw", bounds)).toEqual({ x: 0 - o, y: 0 - o });
     expect(handlePosition("se", bounds)).toEqual({ x: 100 + o, y: 50 + o });
   });
   it("n / s / e / w are midpoints (offset outward)", () => {
-    expect(handlePosition("n", bounds)).toEqual({ x: 50, y: -o });
+    expect(handlePosition("n", bounds)).toEqual({ x: 50, y: 0 - o });
     expect(handlePosition("s", bounds)).toEqual({ x: 50, y: 50 + o });
     expect(handlePosition("e", bounds)).toEqual({ x: 100 + o, y: 25 });
-    expect(handlePosition("w", bounds)).toEqual({ x: -o, y: 25 });
+    expect(handlePosition("w", bounds)).toEqual({ x: 0 - o, y: 25 });
   });
   it("zoom keeps the outset constant on screen", () => {
-    // At zoom=2 the outset shrinks in world units (3px screen / 2).
-    expect(handlePosition("nw", bounds, 2)).toEqual({ x: -o / 2, y: -o / 2 });
+    // At zoom=2 the outset shrinks in world units (screen px / 2).
+    expect(handlePosition("nw", bounds, 2)).toEqual({ x: 0 - o / 2, y: 0 - o / 2 });
   });
   it("ALL_HANDLES has 8 unique entries", () => {
     expect(new Set(ALL_HANDLES).size).toBe(8);

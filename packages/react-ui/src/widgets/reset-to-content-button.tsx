@@ -4,15 +4,13 @@ import { bounds as B, matrix } from "@oh-just-another/math";
 import type { Bounds } from "@oh-just-another/types";
 import { getScreenToWorld, getElementWorldBounds } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene } from "../core/hooks.js";
-
-/** Pill-button icon footprint — matches BottomBar density. */
-const PILL_ICON_SIZE = 14;
-const PILL_ICON_STROKE = 1.75;
+import { ROW_ICON } from "../core/constants.js";
 
 /**
- * Pill button that runs `editor.zoomToFit()` — only renders when the
- * scene has content AND that content lies (entirely or partly) outside
- * the current viewport. Hidden otherwise.
+ * Pill button that runs `editor.revealNearestContent()` — jumps to the
+ * element nearest the camera at the current zoom (never zooms in; zooms
+ * out only if that element doesn't fit). Only renders when the scene has
+ * content AND all of it lies outside the current viewport.
  *
  * The visibility check projects the scene's world AABB through the
  * inverse of the viewport transform and intersects with the screen rect.
@@ -27,11 +25,11 @@ export const ResetToContentButton = () => {
       type="button"
       className="du-pill-button"
       onClick={() => {
-        editor.zoomToFit();
+        editor.revealNearestContent();
       }}
-      title="Reset view to fit all content"
+      title="Jump to the nearest content"
     >
-      <LocateFixed size={PILL_ICON_SIZE} strokeWidth={PILL_ICON_STROKE} aria-hidden />
+      <LocateFixed {...ROW_ICON} aria-hidden />
       <span>Back to content</span>
     </button>
   );

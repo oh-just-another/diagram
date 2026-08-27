@@ -1,6 +1,7 @@
-import type { Scene } from "@oh-just-another/scene";
+import { byOrderAsc, isText, type Element, type Scene } from "@oh-just-another/scene";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
+import { EXPORT_CONTENT_DEFAULTS, type RenderSceneOptions } from "@oh-just-another/renderer-core";
 import {
   type Action,
   type ActionRegistry,
@@ -8,6 +9,7 @@ import {
   defaultActionRegistry,
 } from "@oh-just-another/state";
 import { exportSceneToPng, type PngExportBackground } from "./png-export.js";
+import { fitViewportTo, sceneBounds, subsetScene } from "./scene-subset.js";
 
 /**
  * File operations for the editor — Save / Open / Export / Copy-as-image —
@@ -23,6 +25,13 @@ import { exportSceneToPng, type PngExportBackground } from "./png-export.js";
 
 /** Device-pixel scale for PNG export / copy. 2 = retina-quality. */
 const PNG_EXPORT_SCALE = 2;
+
+/**
+ * Per-run content switches for static exports (sticky reactions / tags /
+ * author). Merged over {@link EXPORT_CONTENT_DEFAULTS} by the export
+ * helpers; the host's export UI feeds its checkboxes through here.
+ */
+export type ExportContent = RenderSceneOptions["content"];
 
 /**
  * Host notifier for user-facing errors (bad file, empty canvas,
@@ -56,9 +65,15 @@ const downloadBlob = (blob: Blob, filename: string): void => {
   });
 };
 
-/** "Save as JSON" — serialises the scene through `@serialization`. */
+/**
+ * "Save as JSON" — serialises the scene through `@serialization`.
+ * Binary files (image / gif / video bytes) are embedded so the saved
+ * file is self-contained: without them a scene opened on another
+ * machine (or after clearing the browser store) has only dangling
+ * `fileId` references and every media shape renders blank.
+ */
 export const downloadScene = (scene: Scene): void => {
-  const json = stringifyScene(scene, 2);
+  const json = stringifyScene(scene, 2, { includeFiles: true });
   downloadBlob(new Blob([json], { type: "application/json" }), "scene.diagram.json");
 };
 
@@ -107,11 +122,13 @@ const readCanvasBackgroundColor = (): string => {
 export const downloadPng = async (
   editor: Editor,
   background: PngExportBackground,
+  content?: ExportContent,
 ): Promise<void> => {
   const blob = await exportSceneToPng(editor.scene, {
     background,
     scale: PNG_EXPORT_SCALE,
     backgroundColor: readCanvasBackgroundColor(),
+    ...(content ? { content } : {}),
   });
   if (!blob) {
     notify("Nothing to export — the canvas is empty.");
@@ -121,23 +138,55 @@ export const downloadPng = async (
 };
 
 /** "Export as SVG" — vector export via `renderSceneToSvg`. */
-export const downloadSvg = (scene: Scene): void => {
-  const svg = renderSceneToSvg(scene);
+export const downloadSvg = (scene: Scene, content?: ExportContent): void => {
+  const svg = renderSceneToSvg(scene, {
+    content: { ...EXPORT_CONTENT_DEFAULTS, ...content },
+  });
   downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "scene.svg");
+};
+
+/** The async Clipboard API, or `undefined` in insecure contexts / old browsers. */
+const clipboardApi = (): Clipboard | undefined =>
+  typeof navigator === "undefined" ? undefined : navigator.clipboard;
+
+/** Blob writes need `clipboard.write` + `ClipboardItem`; checked BEFORE rendering. */
+const canWriteClipboardBlob = (): boolean =>
+  typeof clipboardApi()?.write === "function" && typeof ClipboardItem !== "undefined";
+
+const writeClipboardBlob = async (blob: Blob, mime: string): Promise<void> => {
+  const clipboard = clipboardApi();
+  if (!clipboard || !canWriteClipboardBlob()) {
+    notify("Copy to clipboard isn't supported in this browser.");
+    return;
+  }
+  try {
+    await clipboard.write([new ClipboardItem({ [mime]: blob })]);
+  } catch (err) {
+    console.error("[diagram] clipboard write failed:", err);
+    notify("Couldn't copy to the clipboard.");
+  }
+};
+
+const writeClipboardText = async (text: string): Promise<void> => {
+  const clipboard = clipboardApi();
+  if (typeof clipboard?.writeText !== "function") {
+    notify("Copy to clipboard isn't supported in this browser.");
+    return;
+  }
+  try {
+    await clipboard.writeText(text);
+  } catch (err) {
+    console.error("[diagram] clipboard write failed:", err);
+    notify("Couldn't copy to the clipboard.");
+  }
 };
 
 /**
  * "Copy as image" — writes a PNG of the full scene to the system
- * clipboard via the async Clipboard API. SVG-to-clipboard is a follow-up
- * (no reliable cross-browser `image/svg+xml` clipboard support today, so
- * we ship the PNG path that works everywhere the API exists).
+ * clipboard via the async Clipboard API.
  */
 export const copySceneAsImage = async (editor: Editor): Promise<void> => {
-  // `navigator.clipboard` is typed as always-present but is absent in
-  // insecure contexts / older browsers, so probe it through an optional cast.
-  const clipboard =
-    typeof navigator === "undefined" ? undefined : (navigator.clipboard as Clipboard | undefined);
-  if (typeof clipboard?.write !== "function" || typeof ClipboardItem === "undefined") {
+  if (!canWriteClipboardBlob()) {
     notify("Copy to clipboard isn't supported in this browser.");
     return;
   }
@@ -150,12 +199,96 @@ export const copySceneAsImage = async (editor: Editor): Promise<void> => {
     notify("Nothing to copy — the canvas is empty.");
     return;
   }
-  try {
-    await clipboard.write([new ClipboardItem({ "image/png": blob })]);
-  } catch (err) {
-    console.error("[diagram] copy-as-image failed:", err);
-    notify("Couldn't copy the image to the clipboard.");
+  await writeClipboardBlob(blob, "image/png");
+};
+
+/** The selection (groups with their subtrees) as a stand-alone scene, or `null` when empty. */
+const selectionScene = (editor: Editor): Scene | null => {
+  const ids = editor.expandSelectionWithDescendants();
+  if (ids.size === 0) return null;
+  return subsetScene(editor.scene, ids);
+};
+
+/** "Copy as PNG" — the selection only, transparent background, retina scale. */
+export const copySelectionAsPng = async (editor: Editor): Promise<void> => {
+  if (!canWriteClipboardBlob()) {
+    notify("Copy to clipboard isn't supported in this browser.");
+    return;
   }
+  const scene = selectionScene(editor);
+  if (!scene) {
+    notify("Nothing to copy — select something first.");
+    return;
+  }
+  const blob = await exportSceneToPng(scene, {
+    background: "transparent",
+    scale: PNG_EXPORT_SCALE,
+    backgroundColor: readCanvasBackgroundColor(),
+  });
+  if (!blob) {
+    notify("Nothing to copy — select something first.");
+    return;
+  }
+  await writeClipboardBlob(blob, "image/png");
+};
+
+/**
+ * SVG markup of `scene` fitted to its content (padded bbox, 1:1 scale).
+ * `null` when the scene has nothing on a visible layer.
+ */
+export const sceneToSvgMarkup = (scene: Scene, content?: ExportContent): string | null => {
+  const bbox = sceneBounds(scene);
+  if (!bbox) return null;
+  const fitted = fitViewportTo(scene, bbox, 1);
+  return renderSceneToSvg(fitted.scene, {
+    width: fitted.width,
+    height: fitted.height,
+    content: { ...EXPORT_CONTENT_DEFAULTS, ...content },
+  });
+};
+
+/**
+ * "Copy as SVG" — the selection's SVG markup as clipboard text (browsers
+ * have no reliable `image/svg+xml` clipboard item; text pastes into
+ * editors and design tools alike).
+ */
+export const copySelectionAsSvg = async (editor: Editor): Promise<void> => {
+  const scene = selectionScene(editor);
+  const svg = scene ? sceneToSvgMarkup(scene) : null;
+  if (svg === null) {
+    notify("Nothing to copy — select something first.");
+    return;
+  }
+  await writeClipboardText(svg);
+};
+
+/**
+ * Plain text of the selection: each element's text / label on its own
+ * line, in z-order. Elements without text contribute nothing.
+ */
+export const selectionText = (editor: Editor): string => {
+  const ids = editor.expandSelectionWithDescendants();
+  const elements: Element[] = [];
+  for (const id of ids) {
+    const el = editor.scene.elements.get(id);
+    if (el) elements.push(el);
+  }
+  return elements
+    .sort(byOrderAsc)
+    .map((el) => (isText(el) ? el.text : (el.label?.text ?? "")))
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0)
+    .join("\n");
+};
+
+/** "Copy as text" — the selection's text lines to the clipboard. */
+export const copySelectionAsText = async (editor: Editor): Promise<void> => {
+  const text = selectionText(editor);
+  if (text.length === 0) {
+    notify("Nothing to copy — the selection has no text.");
+    return;
+  }
+  await writeClipboardText(text);
 };
 
 /**
@@ -202,6 +335,37 @@ export const fileActions: readonly Action[] = [
     hotkey: { key: "c", shift: true, alt: true },
     perform: ({ editor }) => {
       void copySceneAsImage(editor);
+    },
+  },
+  // Selection-scoped clipboard copies — the context menu's "Copy as …" rows.
+  {
+    id: "copy-as-png",
+    label: "Copy as PNG",
+    category: "clipboard",
+    viewMode: true,
+    predicate: ({ editor }) => editor.selection.size > 0,
+    perform: ({ editor }) => {
+      void copySelectionAsPng(editor);
+    },
+  },
+  {
+    id: "copy-as-svg",
+    label: "Copy as SVG",
+    category: "clipboard",
+    viewMode: true,
+    predicate: ({ editor }) => editor.selection.size > 0,
+    perform: ({ editor }) => {
+      void copySelectionAsSvg(editor);
+    },
+  },
+  {
+    id: "copy-as-text",
+    label: "Copy as text",
+    category: "clipboard",
+    viewMode: true,
+    predicate: ({ editor }) => editor.selection.size > 0,
+    perform: ({ editor }) => {
+      void copySelectionAsText(editor);
     },
   },
 ];

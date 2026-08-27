@@ -55,8 +55,12 @@ export class SvgTarget implements RenderTarget {
   // --- Output ---
   private readonly elements: string[] = [];
 
-  // Monotonic counter for unique `<clipPath>` ids (cropped images).
+  // Monotonic counter for unique `<clipPath>` ids (cropped images, clip()).
   private clipIdCounter = 0;
+
+  // `<g clip-path>` groups opened by `clip()` and not yet closed by a
+  // matching `restore()`. Saved/restored through the state stack.
+  private openClipGroups = 0;
 
   // --- State stack ---
   private readonly stack: SavedState[] = [];
@@ -80,6 +84,9 @@ export class SvgTarget implements RenderTarget {
     return (
       `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
       this.elements.join("") +
+      // Balance clip groups a caller forgot to restore() — emitting an
+      // unclosed <g> would produce invalid SVG.
+      "</g>".repeat(this.openClipGroups) +
       `</svg>`
     );
   }
@@ -142,6 +149,7 @@ export class SvgTarget implements RenderTarget {
       textAlign: this.textAlign,
       textBaseline: this.textBaseline,
       transform: this.currentTransform,
+      openClipGroups: this.openClipGroups,
     });
   }
 
@@ -162,6 +170,11 @@ export class SvgTarget implements RenderTarget {
     this.textAlign = prev.textAlign;
     this.textBaseline = prev.textBaseline;
     this.currentTransform = prev.transform;
+    // Close `<g clip-path>` groups opened since the matching save().
+    while (this.openClipGroups > prev.openClipGroups) {
+      this.elements.push("</g>");
+      this.openClipGroups--;
+    }
   }
 
   // --- Transform ---
@@ -258,6 +271,20 @@ export class SvgTarget implements RenderTarget {
       .filter(Boolean)
       .join(" ");
     this.elements.push(`<path ${attrs}/>`);
+  }
+
+  clip(rule: FillRule = "nonzero"): void {
+    if (this.pathSegments.length === 0) return;
+    const d = this.pathSegments.join(" ");
+    const id = `oja-clip-${(this.clipIdCounter++).toString()}`;
+    const ruleAttr = rule === "evenodd" ? ` clip-rule="evenodd"` : "";
+    // Coordinates are pre-baked into the path data (see class doc), so the
+    // clipPath needs no transform. Every element emitted until the matching
+    // restore() lands inside the `<g clip-path>` wrapper.
+    this.elements.push(
+      `<clipPath id="${id}"><path d="${d}"${ruleAttr}/></clipPath><g clip-path="url(#${id})">`,
+    );
+    this.openClipGroups++;
   }
 
   stroke(): void {
@@ -390,6 +417,7 @@ export class SvgTarget implements RenderTarget {
   clear(bounds?: Bounds): void {
     if (!bounds) {
       this.elements.length = 0;
+      this.openClipGroups = 0;
       return;
     }
     // Bounded clear → white rect (mirrors what a canvas `clearRect` would do
@@ -427,6 +455,7 @@ interface SavedState {
   textAlign: TextAlign;
   textBaseline: TextBaseline;
   transform: Transform;
+  openClipGroups: number;
 }
 
 /** Trim trailing zeros from numeric attributes to keep the output compact. */

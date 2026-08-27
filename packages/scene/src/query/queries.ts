@@ -353,8 +353,16 @@ export const getElementsCoveredByBounds = (
  * within each layer top-to-bottom; returns the first hit. Hit-test here is the
  * conservative AABB test; renderer-specific shape-precise hit-tests belong
  * with the renderer.
+ *
+ * `accept` filters candidates: a shape it rejects is skipped and the scan
+ * continues to the shapes beneath it (click-through), instead of shadowing
+ * them the way a post-hoc filter on the topmost hit would.
  */
-export const getElementAt = (scene: Scene, point: Vec2): Element | undefined => {
+export const getElementAt = (
+  scene: Scene,
+  point: Vec2,
+  accept?: (shape: Element) => boolean,
+): Element | undefined => {
   const layers = getLayersInOrder(scene);
   for (let i = layers.length - 1; i >= 0; i--) {
     const layer = layers[i];
@@ -363,7 +371,9 @@ export const getElementAt = (scene: Scene, point: Vec2): Element | undefined => 
     for (let j = shapes.length - 1; j >= 0; j--) {
       const s = shapes[j];
       if (s === undefined) continue;
-      if (B.contains(getElementWorldBounds(s), point)) return s;
+      if (!B.contains(getElementWorldBounds(s), point)) continue;
+      if (accept && !accept(s)) continue;
+      return s;
     }
   }
   return undefined;
@@ -410,12 +420,14 @@ export const queryByIndex = (
  * pre-filters candidates through `grid.query` — O(k) where k is the
  * shapes overlapping the point's cell. Walks layers top-to-bottom for
  * stable z-order; within a layer picks the highest-`order` shape that
- * actually contains the point.
+ * actually contains the point. `accept` skips rejected shapes and keeps
+ * scanning beneath them (same click-through contract as `getElementAt`).
  */
 export const getElementAtIndexed = (
   scene: Scene,
   grid: SpatialGrid,
   point: Vec2,
+  accept?: (shape: Element) => boolean,
 ): Element | undefined => {
   const pointRange: Bounds = { x: point.x, y: point.y, width: 0, height: 0 };
   const candidates = grid.query(pointRange);
@@ -428,6 +440,7 @@ export const getElementAtIndexed = (
     const shape = scene.elements.get(id);
     if (!shape) continue;
     if (!B.contains(getElementWorldBounds(shape), point)) continue;
+    if (accept && !accept(shape)) continue;
     const layer = scene.layers.get(shape.layerId);
     if (!layer?.visible) continue;
     const layerOrder = layer.order as string;

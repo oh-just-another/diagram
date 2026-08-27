@@ -12,7 +12,7 @@ import {
 import { walkDataTransfer } from "@oh-just-another/state";
 import { createListeners } from "@oh-just-another/events";
 import { useDiagramOptional } from "../core/hooks.js";
-import { PALETTE_ITEM_SIZE } from "../core/constants.js";
+import { PALETTE_ITEM_SIZE, MARK_ICON } from "../core/constants.js";
 
 /**
  * Draggable shape palette. Defaults to the global `defaultRegistry`; pass a
@@ -155,11 +155,7 @@ const CategorySection = ({
       >
         <span>{category}</span>
         <span className="du-palette-category-caret" aria-hidden>
-          {collapsed ? (
-            <ChevronRight size={12} strokeWidth={1.75} />
-          ) : (
-            <ChevronDown size={12} strokeWidth={1.75} />
-          )}
+          {collapsed ? <ChevronRight {...MARK_ICON} /> : <ChevronDown {...MARK_ICON} />}
         </span>
       </button>
       {collapsed ? null : (
@@ -307,9 +303,34 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
  * const placement = usePalettePlacement();
  * <section {...placement}>...</section>
  * ```
+ *
+ * `onFileDrag` fires with `true` when an OS file drag enters the element and
+ * `false` when it leaves / drops / ends — drive a drop overlay from it.
  */
-export const usePalettePlacement = () => {
+export const usePalettePlacement = (opts?: { readonly onFileDrag?: (active: boolean) => void }) => {
   const editor = useDiagramOptional();
+  const onFileDrag = opts?.onFileDrag;
+  const fileDragRef = useRef(false);
+  const setFileDrag = (active: boolean): void => {
+    if (fileDragRef.current === active) return;
+    fileDragRef.current = active;
+    onFileDrag?.(active);
+  };
+  // A drag that ends outside the element (dropped elsewhere, cancelled with
+  // Esc) never fires `dragleave` here — clear on the window's `dragend` / `drop`.
+  useEffect(() => {
+    if (!onFileDrag) return undefined;
+    const clear = () => {
+      setFileDrag(false);
+    };
+    window.addEventListener("dragend", clear);
+    window.addEventListener("drop", clear);
+    return () => {
+      window.removeEventListener("dragend", clear);
+      window.removeEventListener("drop", clear);
+    };
+    // `setFileDrag` closes over the stable ref + the callback in deps.
+  }, [onFileDrag]);
   const placementRef = useRef<{
     update: (worldCenter: Vec2) => void;
     commit: () => void;
@@ -382,8 +403,10 @@ export const usePalettePlacement = () => {
       if (!isTemplate && !isFile) return;
       ev.preventDefault();
       // Drag-preview overlay only applies to template drags — files
-      // get inserted at drop time, not previewed.
+      // get inserted at drop time, not previewed (the drop overlay shows
+      // what the canvas accepts instead).
       if (isTemplate) ensurePlacement(ev);
+      else setFileDrag(true);
     },
     onDragOver: (ev: DragEvent<HTMLElement>): void => {
       const types = ev.dataTransfer.types;
@@ -392,6 +415,7 @@ export const usePalettePlacement = () => {
       if (!isTemplate && !isFile) return;
       ev.preventDefault();
       ev.dataTransfer.dropEffect = "copy";
+      if (!isTemplate) setFileDrag(true);
       if (isTemplate) {
         if (!placementRef.current) {
           ensurePlacement(ev);
@@ -404,6 +428,7 @@ export const usePalettePlacement = () => {
       // dragleave fires for every child element too — only act when the
       // pointer truly left the current target.
       if (ev.currentTarget.contains(ev.relatedTarget as Node | null)) return;
+      setFileDrag(false);
       if (placementRef.current) {
         placementRef.current.cancel();
         placementRef.current = null;
@@ -411,6 +436,7 @@ export const usePalettePlacement = () => {
     },
     onDrop: (ev: DragEvent<HTMLElement>): void => {
       ev.preventDefault();
+      setFileDrag(false);
       // Palette-template drop has priority — that's the active drag
       // started by `<Palette>` items.
       if (placementRef.current) {

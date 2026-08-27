@@ -4,26 +4,36 @@
  * place to tweak performance / visual behaviour.
  */
 
-import { GRID_COLOR, GRID_DOT_COLOR } from "@oh-just-another/tokens";
+import { GRID_COLOR, GRID_DOT_COLOR, UI_SURFACE } from "@oh-just-another/tokens";
 import type { LodOptions } from "./rendering/scene-renderer.js";
 
 /**
- * Default zoom thresholds for the level-of-detail pipeline. Tuned for
- * a typical 1920×1080 viewport viewing a 10k-shape scene.
+ * Level-of-detail floors, in ON-SCREEN pixels — decided per element from
+ * what actually lands on screen, so the zoom level alone never degrades a
+ * shape that is still large or a heading that is still readable.
  *
- * - `placeholder: 0.15` — below 15% zoom (one screen ≈ 6.7× world),
- *   shapes degrade to flat AABB fills. Saves ~10× renderer cost per
- *   shape.
- * - `hideText: 0.4` — below 40% zoom text glyphs are too small to read
- *   anyway; skipping the `wrapText` + `measureText` calls saves the
- *   bulk of text rendering cost.
+ * - `LOD_PLACEHOLDER_MAX_SCREEN_PX` — a shape whose longer side is below
+ *   this on screen is a flat AABB fill (no detail is visible at that size
+ *   anyway; saves ~10× renderer cost per shape). Range: 4–16.
+ * - `LOD_MIN_TEXT_SCREEN_PX` — text whose font size on screen is below this
+ *   is skipped (glyphs are unreadable below ~6 px; skipping the
+ *   wrap + measure is the bulk of text cost). Range: 4–8.
  *
  * Hosts override per-render by passing `RenderSceneOptions.lod`.
  */
+export const LOD_PLACEHOLDER_MAX_SCREEN_PX = 8;
+export const LOD_MIN_TEXT_SCREEN_PX = 6;
 export const DEFAULT_LOD: LodOptions = {
-  placeholder: 0.15,
-  hideText: 0.4,
+  placeholderMaxScreenPx: LOD_PLACEHOLDER_MAX_SCREEN_PX,
+  minTextScreenPx: LOD_MIN_TEXT_SCREEN_PX,
 };
+
+/**
+ * Neutral grey for the empty-text placeholder prompt (`TEXT_PLACEHOLDERS`
+ * in `@oh-just-another/scene`) — the muted text tone of the light UI (the
+ * canvas is always light).
+ */
+export const TEXT_PLACEHOLDER_COLOR = UI_SURFACE.light.textMuted;
 
 /**
  * Grey colour used for placeholder fills when LOD switches to the
@@ -52,6 +62,91 @@ export const VIEWPORT_CULL_PADDING_RATIO = 0.05;
  * - `TEXT_STRIKETHROUGH_OFFSET` — strikethrough centre, ~50% (x-height).
  */
 export const TEXT_DECORATION_THICKNESS = 0.06;
+
+/**
+ * List layout metrics, in em (× font size):
+ * - `LIST_INDENT_EM` — horizontal shift per nesting level; list paragraphs
+ *   get one extra level for the marker slot. Reasonable range 1.2–1.8.
+ * - `LIST_MARKER_GAP_EM` — gap between the marker's right edge and the
+ *   item text. Reasonable range 0.3–0.6.
+ */
+export const LIST_INDENT_EM = 1.4;
+export const LIST_MARKER_GAP_EM = 0.4;
+
+/**
+ * Inset between a shape's bounds and its embedded label text, in em
+ * (× label font size). Reasonable range 0.3–1.0.
+ */
+export const LABEL_PADDING_EM = 0.5;
+
+/**
+ * Auto-fit font-size bounds (world px) for `ShapeLabel.autoFit` — the
+ * binary search picks the largest size in this range whose layout fits
+ * the shape body. Reasonable ranges: min 8–14, max 48–96.
+ */
+export const LABEL_AUTOFIT_MIN_PX = 10;
+export const LABEL_AUTOFIT_MAX_PX = 64;
+
+/**
+ * Sticky-note chrome:
+ * - `STICKY_DEFAULT_FILL` — card colour when `style.fill` is omitted.
+ * - `STICKY_CORNER_RADIUS` — corner rounding in world units.
+ * - `STICKY_AUTHOR_FONT_SIZE` — author-name strip font size.
+ * - `STICKY_AUTHOR_COLOR` — author-name text colour.
+ */
+export const STICKY_DEFAULT_FILL = "#fff9b1";
+export const STICKY_CORNER_RADIUS = 4;
+export const STICKY_AUTHOR_FONT_SIZE = 10;
+export const STICKY_AUTHOR_COLOR = "#8a8a6f";
+
+/**
+ * Sticky skeuomorphism (paper look):
+ * - `STICKY_SHADOW_COLOR` / `STICKY_SHADOW_OFFSET_Y` — soft drop shadow
+ *   under the card (offset in world units, 2–6 reasonable).
+ * - `STICKY_TAG_*` — tag pill metrics along the bottom edge.
+ */
+export const STICKY_SHADOW_COLOR = "rgba(0, 0, 0, 0.18)";
+export const STICKY_SHADOW_OFFSET_Y = 4;
+export const STICKY_TAG_FONT_SIZE = 9;
+export const STICKY_TAG_PAD_X = 5;
+export const STICKY_TAG_HEIGHT = 14;
+export const STICKY_TAG_GAP = 4;
+export const STICKY_TAG_BG = "rgba(0, 0, 0, 0.08)";
+export const STICKY_TAG_COLOR = "#555";
+
+/**
+ * Sticky reaction pills (bottom-left row, drawn by the renderer so they
+ * reach PNG / SVG exports; the DOM layer only provides click zones).
+ */
+export const STICKY_REACTION_FONT_SIZE = 10;
+export const STICKY_REACTION_HEIGHT = 16;
+export const STICKY_REACTION_PAD_X = 6;
+export const STICKY_REACTION_GAP = 4;
+export const STICKY_REACTION_BG = "rgba(255, 255, 255, 0.85)";
+export const STICKY_REACTION_COLOR = "#333";
+/** Accent for the canvas-drawn "+" add-reaction button (iris 9). */
+export const STICKY_REACTION_ADD_COLOR = "#5b5bd6";
+/**
+ * Reaction pills keep a CONSTANT on-screen size: their world size is
+ * `base / zoom`. Below this zoom the reaction chrome (pills AND the "+"
+ * button) is HIDDEN entirely — on a zoomed-out board constant-size
+ * pills would swallow the cards. Also bounds the worst-case world size
+ * for render-overflow estimates. Range 0.25–1.
+ */
+export const STICKY_REACTION_MIN_ZOOM = 0.5;
+
+/**
+ * What static exports (PNG / SVG) include by default. The export UI can
+ * override per run; interactive rendering ignores these and draws
+ * everything.
+ */
+export const EXPORT_CONTENT_DEFAULTS = {
+  stickyReactions: true,
+  stickyTags: true,
+  stickyAuthor: true,
+  // UI chrome, not content — never wanted in a static image.
+  stickyAddButton: false,
+} as const;
 export const TEXT_UNDERLINE_OFFSET = 0.92;
 export const TEXT_STRIKETHROUGH_OFFSET = 0.5;
 

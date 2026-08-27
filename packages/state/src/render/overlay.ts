@@ -12,6 +12,7 @@ import {
 } from "@oh-just-another/scene";
 import { bounds as B, matrix } from "@oh-just-another/math";
 import {
+  buildRoundedRectPath,
   getElementRenderer,
   resolveImageSource,
   strokeRoundedPolyline,
@@ -34,6 +35,22 @@ import {
   CURSOR_NAME_CHIP_PADDING_X,
   CURSOR_NAME_CHIP_PADDING_Y,
   CURSOR_NAME_FONT_SIZE,
+  SIZE_READOUT_FILL,
+  SIZE_READOUT_FONT_SIZE,
+  SIZE_READOUT_OFFSET_PX,
+  SIZE_READOUT_PADDING_X,
+  SIZE_READOUT_PADDING_Y,
+  SIZE_READOUT_RADIUS_PX,
+  SIZE_READOUT_TEXT_COLOR,
+  SNAP_GUIDE_COLOR,
+  SNAP_GUIDE_DASH,
+  SNAP_GUIDE_OVERSHOOT_PX,
+  SNAP_GUIDE_WIDTH_PX,
+  SNAP_MEASURE_COLOR,
+  SNAP_MEASURE_INSET_PX,
+  SNAP_MEASURE_LABEL_GAP_PX,
+  SNAP_MEASURE_TICK_PX,
+  SNAP_SIZE_SEGMENT_OFFSET_PX,
   CROP_BRACKET_LEN,
   CROP_BRACKET_WIDTH,
   CROP_GHOST_OPACITY,
@@ -70,6 +87,7 @@ import {
   ERASER_TRAIL_TTL_MS,
 } from "../constants.js";
 import { smoothLaserPoints, type LaserStroke } from "../editor/public/laser.js";
+import { gapIntervals, type SizeMatch, type SnapGuide } from "../editor/applies/object-snap.js";
 import {
   CORNER_HANDLES,
   HANDLE_SIZE,
@@ -127,70 +145,8 @@ export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
   drawingDash: [4, 4],
 };
 
-/** Translucent fill opacity for the under-shape selection halo. */
+/** Translucent opacity for the selected-link halo. */
 const SELECTION_HALO_OPACITY = 0.32;
-
-/**
- * One selected element's contour halo: its outline loop(s) plus `outsetWorld`
- * — how far the element's own border extends OUTSIDE the contour (world
- * units; see `strokeOutsideExtent`). The halo is sized so it peeks exactly
- * `SELECTION_HALO_PEEK_PX` screen px beyond contour + outset.
- */
-export interface ElementHalo {
-  readonly loops: readonly (readonly Vec2[])[];
-  readonly outsetWorld: number;
-}
-
-/**
- * Paint the contour selection halo for elements — a translucent stroke
- * hugging each world-space outline loop. Drawn on the dedicated background
- * layer (under the shapes) so it peeks out from behind them. The stroke is
- * centred on the contour with width `2 × (outset + peek/zoom)`, so its outer
- * edge lands exactly `peek` screen px beyond the element's VISIBLE edge
- * (contour + border outset) at every zoom and border thickness. Sets the
- * world transform itself; resets to identity at the end.
- */
-export const paintElementSelectionHalo = (
-  target: RenderTarget,
-  w2s: Transform,
-  halos: readonly ElementHalo[],
-  zoom: number,
-  style: OverlayStyle = DEFAULT_OVERLAY_STYLE,
-): void => {
-  if (halos.length === 0) return;
-  const z = zoom || 1;
-  const peekWorld = SELECTION_HALO_PEEK_PX / z;
-  target.setTransform(w2s);
-  target.setStroke(style.selectionStroke);
-  target.setOpacity(SELECTION_HALO_OPACITY);
-  target.setDashArray(null);
-  // Miter join so the halo reproduces the element's own corners (sharp on a
-  // rectangle / polygon, pointed on a star); rounded corners come from the
-  // traced outline points (rounded-rect / ellipse), not the join.
-  target.setLineJoin("miter");
-  target.setLineCap("butt");
-  for (const { loops, outsetWorld } of halos) {
-    // Centred stroke → outer edge sits (width/2) past the contour. We want
-    // that to be outset + peek, so width = 2 × (outset + peek).
-    target.setStrokeWidth(2 * (outsetWorld + peekWorld));
-    for (const loop of loops) {
-      if (loop.length < 2) continue;
-      target.beginPath();
-      let started = false;
-      for (const p of loop) {
-        if (started) target.lineTo(p.x, p.y);
-        else {
-          target.moveTo(p.x, p.y);
-          started = true;
-        }
-      }
-      target.closePath();
-      target.stroke();
-    }
-  }
-  target.setOpacity(1);
-  target.setTransform(matrix.IDENTITY);
-};
 
 /**
  * Set of world-space points to render as port dots — used when the editor
@@ -256,6 +212,29 @@ export interface PeerSelection {
  * frame. Split out of the function signature so the per-section renderers can
  * share a typed context (see {@link OverlayCtx}).
  */
+/**
+ * In-canvas text editing chrome for the shape under edit. `caret` and
+ * `selectionRects` are WORLD-space *before rotation*: position + scale
+ * applied, rotation not — the overlay rotates them by `rotation` about
+ * `pivot` (the element's position) so they turn with the glyphs. `caret`
+ * is `null` while blinked off. Selection rects render as a translucent
+ * highlight under the caret.
+ */
+/** Size readout for the overlay: the resized shape's world AABB + size. */
+export interface SizeReadout {
+  readonly bounds: Bounds;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface EditingTextOverlay {
+  readonly caret: { readonly x: number; readonly y: number; readonly height: number } | null;
+  readonly caretColor: string;
+  readonly selectionRects: readonly Bounds[];
+  readonly rotation: number;
+  readonly pivot: Vec2;
+}
+
 export interface OverlayOptions {
   /**
    * Image-crop frame: the world-space corners (clockwise, 4 points) of the
@@ -347,6 +326,14 @@ export interface OverlayOptions {
    * independently along one axis.
    */
   groupAspectLocked?: boolean;
+  /** Object-snap alignment guides (world lines) of the current gesture tick. */
+  snapGuides?: readonly SnapGuide[];
+  /** `W × H` pill under the shape being resized. */
+  sizeReadout?: SizeReadout;
+  /** The shape (and axis) whose size the resize matched — measured with segments. */
+  sizeMatch?: SizeMatch;
+  /** Label distance / size segments with their rounded value. */
+  showDistances?: boolean;
   /**
    * Drop-zone of the container currently under the dragged shape.
    * Drawn as a dashed accent rect so the user sees where the element
@@ -412,16 +399,10 @@ export interface OverlayOptions {
    */
   gifBadges?: readonly Bounds[];
   /**
-   * In-canvas text editing chrome for the shape under edit. All rects
-   * are WORLD-space; the overlay projects them to screen. `caret` is
-   * `null` while blinked off. Selection rects render as a translucent
-   * highlight under the caret.
+   * In-canvas text editing chrome for the shape under edit — see
+   * {@link EditingTextOverlay}.
    */
-  editingText?: {
-    readonly caret: { readonly x: number; readonly y: number; readonly height: number } | null;
-    readonly caretColor: string;
-    readonly selectionRects: readonly Bounds[];
-  };
+  editingText?: EditingTextOverlay;
   /**
    * Debug: paint the mouse hit-zones (resize-handle slop, edge-
    * endpoint radius, edge-body threshold) for **every** element, so
@@ -448,7 +429,7 @@ export interface OverlayOptions {
    */
   debugHitZoneVisibility?: HitZoneVisibility;
   /**
-   * Read-only / view mode. When set, selection outlines (halos) still paint
+   * Read-only / view mode. When set, selection outlines still paint
    * but every interactive handle is suppressed: per-shape resize/rotate grips
    * (section 1), the combined group-bounds handles (section 7) and the
    * selected-link endpoint/bend handles (section 5). A viewer sees what's
@@ -513,6 +494,7 @@ export const renderOverlay = (
   renderEraserCursor(ctx);
   renderContainerDropZone(ctx);
   renderGroupBounds(ctx);
+  renderSnapAssists(ctx);
   renderAnnotations(ctx);
   renderPeerCursors(ctx);
   renderGifBadges(ctx);
@@ -1080,6 +1062,199 @@ const renderGroupBounds = (ctx: OverlayCtx): void => {
 };
 
 /**
+ * Section 7.2 — object-snap assists (reference look):
+ * - alignment guide: dashed line through the snapped edges / centres,
+ *   running `SNAP_GUIDE_OVERSHOOT_PX` past the outermost of the two shapes;
+ * - distance segments: for an edge snap, each gap between the two shapes
+ *   along the guide is measured with a solid ticked segment (inset from the
+ *   shapes) and, when `showDistances`, labelled with the rounded distance;
+ * - size match: the matched width / height is measured on both shapes with
+ *   the same ticked segment, offset outside them;
+ * - the `W × H` pill under the shape being resized.
+ * All drawn in screen space at constant size.
+ */
+const renderSnapAssists = (ctx: OverlayCtx): void => {
+  const { target, options, w2s } = ctx;
+  const labels = options.showDistances === true;
+  if (options.snapGuides) {
+    for (const g of options.snapGuides) {
+      drawSnapGuideLine(target, g, w2s);
+      if (g.kind !== "edge") continue;
+      // Gaps along the guide between the aligned-with shape and the moved one.
+      const [a1, a2, b1, b2] =
+        g.axis === "x"
+          ? [g.other.y, g.other.y + g.other.height, g.moving.y, g.moving.y + g.moving.height]
+          : [g.other.x, g.other.x + g.other.width, g.moving.x, g.moving.x + g.moving.width];
+      for (const gap of gapIntervals(a1, a2, b1, b2)) {
+        const from = matrix.applyToPoint(
+          w2s,
+          g.axis === "x" ? { x: g.at, y: gap.start } : { x: gap.start, y: g.at },
+        );
+        const to = matrix.applyToPoint(
+          w2s,
+          g.axis === "x" ? { x: g.at, y: gap.end } : { x: gap.end, y: g.at },
+        );
+        drawMeasureSegment(target, from, to, labels ? gap.end - gap.start : null);
+      }
+    }
+  }
+  if (options.sizeMatch) {
+    const { bounds, axis } = options.sizeMatch;
+    const shapes = options.sizeReadout ? [bounds, options.sizeReadout.bounds] : [bounds];
+    for (const b of shapes) {
+      const s = projectBounds(b, w2s);
+      if (axis !== "height") {
+        // Width: a segment above the shape.
+        const y = s.y - SNAP_SIZE_SEGMENT_OFFSET_PX;
+        drawMeasureSegment(target, { x: s.x, y }, { x: s.x + s.width, y }, labels ? b.width : null);
+      }
+      if (axis !== "width") {
+        // Height: a segment to the left of the shape.
+        const x = s.x - SNAP_SIZE_SEGMENT_OFFSET_PX;
+        drawMeasureSegment(
+          target,
+          { x, y: s.y },
+          { x, y: s.y + s.height },
+          labels ? b.height : null,
+        );
+      }
+    }
+  }
+  if (options.sizeReadout) {
+    const r = options.sizeReadout;
+    const s = projectBounds(r.bounds, w2s);
+    const text = `${String(Math.round(r.width))} × ${String(Math.round(r.height))}`;
+    const size = labelChipSize(target, text);
+    drawLabelChip(
+      target,
+      text,
+      s.x + s.width / 2 - size.width / 2,
+      s.y + s.height + SIZE_READOUT_OFFSET_PX,
+      SIZE_READOUT_FILL,
+    );
+  }
+};
+
+/** Dashed alignment guide, pixel-snapped, overshooting both shapes. */
+const drawSnapGuideLine = (target: RenderTarget, g: SnapGuide, w2s: Transform): void => {
+  const a = matrix.applyToPoint(
+    w2s,
+    g.axis === "x" ? { x: g.at, y: g.from } : { x: g.from, y: g.at },
+  );
+  const b = matrix.applyToPoint(w2s, g.axis === "x" ? { x: g.at, y: g.to } : { x: g.to, y: g.at });
+  const o = SNAP_GUIDE_OVERSHOOT_PX;
+  target.setStroke(SNAP_GUIDE_COLOR);
+  target.setStrokeWidth(SNAP_GUIDE_WIDTH_PX);
+  target.setDashArray([...SNAP_GUIDE_DASH]);
+  target.beginPath();
+  if (g.axis === "x") {
+    const x = Math.round(a.x) + 0.5;
+    target.moveTo(x, Math.min(a.y, b.y) - o);
+    target.lineTo(x, Math.max(a.y, b.y) + o);
+  } else {
+    const y = Math.round(a.y) + 0.5;
+    target.moveTo(Math.min(a.x, b.x) - o, y);
+    target.lineTo(Math.max(a.x, b.x) + o, y);
+  }
+  target.stroke();
+  target.setDashArray(null);
+};
+
+/**
+ * Solid measure segment between two screen points (axis-aligned), inset
+ * `SNAP_MEASURE_INSET_PX` from both ends, with perpendicular ticks and an
+ * optional distance label (below a horizontal segment, left of a vertical).
+ */
+const drawMeasureSegment = (
+  target: RenderTarget,
+  from: Vec2,
+  to: Vec2,
+  distance: number | null,
+): void => {
+  const vertical = Math.abs(to.x - from.x) < Math.abs(to.y - from.y);
+  const inset = SNAP_MEASURE_INSET_PX;
+  const tick = SNAP_MEASURE_TICK_PX;
+  let a: Vec2;
+  let b: Vec2;
+  if (vertical) {
+    const x = Math.round(from.x) + 0.5;
+    a = { x, y: Math.min(from.y, to.y) + inset };
+    b = { x, y: Math.max(from.y, to.y) - inset };
+  } else {
+    const y = Math.round(from.y) + 0.5;
+    a = { x: Math.min(from.x, to.x) + inset, y };
+    b = { x: Math.max(from.x, to.x) - inset, y };
+  }
+  if ((vertical ? b.y - a.y : b.x - a.x) <= 0) return;
+  target.setStroke(SNAP_MEASURE_COLOR);
+  target.setStrokeWidth(SNAP_GUIDE_WIDTH_PX);
+  target.setDashArray(null);
+  target.beginPath();
+  target.moveTo(a.x, a.y);
+  target.lineTo(b.x, b.y);
+  if (vertical) {
+    target.moveTo(a.x - tick, a.y);
+    target.lineTo(a.x + tick, a.y);
+    target.moveTo(b.x - tick, b.y);
+    target.lineTo(b.x + tick, b.y);
+  } else {
+    target.moveTo(a.x, a.y - tick);
+    target.lineTo(a.x, a.y + tick);
+    target.moveTo(b.x, b.y - tick);
+    target.lineTo(b.x, b.y + tick);
+  }
+  target.stroke();
+  if (distance === null) return;
+  const text = String(Math.round(distance));
+  const size = labelChipSize(target, text);
+  if (vertical) {
+    drawLabelChip(
+      target,
+      text,
+      a.x - SNAP_MEASURE_LABEL_GAP_PX - tick - size.width,
+      (a.y + b.y) / 2 - size.height / 2,
+      SNAP_MEASURE_COLOR,
+    );
+  } else {
+    drawLabelChip(
+      target,
+      text,
+      (a.x + b.x) / 2 - size.width / 2,
+      a.y + tick + SNAP_MEASURE_LABEL_GAP_PX,
+      SNAP_MEASURE_COLOR,
+    );
+  }
+};
+
+const labelChipSize = (target: RenderTarget, text: string): { width: number; height: number } => {
+  target.setFont("sans-serif", SIZE_READOUT_FONT_SIZE);
+  return {
+    width: target.measureText(text).width + 2 * SIZE_READOUT_PADDING_X,
+    height: SIZE_READOUT_FONT_SIZE + 2 * SIZE_READOUT_PADDING_Y,
+  };
+};
+
+/** Rounded label chip (fill + white text) at screen `x, y` (top-left). */
+const drawLabelChip = (
+  target: RenderTarget,
+  text: string,
+  x: number,
+  y: number,
+  fill: string,
+): void => {
+  const { width, height } = labelChipSize(target, text);
+  target.setTextBaseline("top");
+  target.setTextAlign("left");
+  target.setFill(fill);
+  target.setStroke(null);
+  target.beginPath();
+  buildRoundedRectPath(target, x, y, width, height, SIZE_READOUT_RADIUS_PX);
+  target.fill();
+  target.setFill(SIZE_READOUT_TEXT_COLOR);
+  target.fillText(text, x + SIZE_READOUT_PADDING_X, y + SIZE_READOUT_PADDING_Y);
+};
+
+/**
  * Section 7.5 — annotation pins. Drawn before peer cursors so cursors stay on
  * top, but on top of selection handles. Each pin shows a comment-count badge
  * when the thread has > 0 replies.
@@ -1131,25 +1306,34 @@ const renderTextEditing = (ctx: OverlayCtx): void => {
   const { target, options, w2s, zoom } = ctx;
   if (options.editingText) {
     const et = options.editingText;
+    // Draw in world space under the element's rotation (about its
+    // position) so the chrome turns with the glyphs; the caret keeps a
+    // constant on-screen width by dividing it out of the zoom.
+    target.save();
+    target.setTransform(w2s);
+    if (et.rotation !== 0) {
+      target.translate(et.pivot.x, et.pivot.y);
+      target.rotate(et.rotation);
+      target.translate(-et.pivot.x, -et.pivot.y);
+    }
     if (et.selectionRects.length > 0) {
       target.setFill(TEXT_SELECTION_FILL);
       target.setOpacity(TEXT_SELECTION_OPACITY);
       for (const r of et.selectionRects) {
-        const s = projectBounds(r, w2s);
         target.beginPath();
-        target.rect(s.x, s.y, s.width, s.height);
+        target.rect(r.x, r.y, r.width, r.height);
         target.fill();
       }
       target.setOpacity(1);
     }
     if (et.caret) {
-      const p = matrix.applyToPoint(w2s, { x: et.caret.x, y: et.caret.y });
       target.setFill(et.caretColor);
       target.setOpacity(1);
       target.beginPath();
-      target.rect(p.x, p.y, TEXT_CARET_WIDTH_PX, et.caret.height * zoom);
+      target.rect(et.caret.x, et.caret.y, TEXT_CARET_WIDTH_PX / zoom, et.caret.height);
       target.fill();
     }
+    target.restore();
   }
 };
 

@@ -89,8 +89,13 @@ export interface HitTestContext {
   readonly hitAnnotation: (worldPoint: Vec2) => AnnotationId | null;
   readonly selectionIsAspectLocked: () => boolean;
   readonly combinedSelectionBounds: () => Bounds | null;
-  readonly acceleratedElementAt: (worldPoint: Vec2) => Element | undefined;
+  readonly acceleratedElementAt: (
+    worldPoint: Vec2,
+    accept?: (shape: Element) => boolean,
+  ) => Element | undefined;
   readonly isElementInteractable: (shape: Element) => boolean;
+  /** Can the shape be moved / resized (not locked, layer unlocked, visible)? */
+  readonly isElementManipulable: (shape: Element) => boolean;
   readonly isLayerLocked: (layerId: LayerId) => boolean;
   readonly promoteToGroupRoot: (shape: Element) => Element;
 }
@@ -134,13 +139,14 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
     if (chrome) return chrome;
   }
 
-  // 3. Topmost shape under cursor. Skip shapes whose layer is locked
-  //    OR whose own / ancestor `locked` flag is set (group lock
-  //    propagation). When the hit shape is a child of a group,
-  //    promote to the group root unless the user has "entered" that
-  //    group via double-click.
-  const shape = ctx.acceleratedElementAt(worldPoint);
-  if (shape && ctx.isElementInteractable(shape)) {
+  // 3. Topmost INTERACTABLE shape under cursor. The predicate makes
+  //    locked / hidden / layer-locked shapes click-through: the scan
+  //    skips them and keeps looking beneath, instead of letting a locked
+  //    shape shadow what's under it. When the hit shape is a child of a
+  //    group, promote to the group root unless the user has "entered"
+  //    that group via double-click.
+  const shape = ctx.acceleratedElementAt(worldPoint, ctx.isElementInteractable);
+  if (shape) {
     const target = ctx.promoteToGroupRoot(shape);
     return { kind: "element", id: target.id, bounds: getElementWorldBounds(target) };
   }
@@ -168,8 +174,15 @@ const pickSelectionChrome = (
   //     no intrinsic bounds — children's union AABB serves as the
   //     resize frame). Aspect-locked groups restrict the hit set to
   //     the four corner handles.
+  //     A selection with nothing manipulable (e.g. a locked group) shows no
+  //     resize / rotate chrome, so its handles must not swallow the press.
+  const anyManipulable = [...ctx.selection].some((id) => {
+    const shape = getElement(ctx.scene, id);
+    return shape !== undefined && ctx.isElementManipulable(shape);
+  });
   const useGroupHandles =
-    ctx.selection.size + ctx.selectedLinkCount > 1 || ctx.selectionIsAspectLocked();
+    anyManipulable &&
+    (ctx.selection.size + ctx.selectedLinkCount > 1 || ctx.selectionIsAspectLocked());
   if (useGroupHandles) {
     const combined = ctx.combinedSelectionBounds();
     if (combined) {

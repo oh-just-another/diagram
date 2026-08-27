@@ -1,9 +1,3 @@
-import type { Scene } from "@oh-just-another/scene";
-import { parseMermaid } from "./mermaid.js";
-import { parseDot } from "./dot.js";
-import { parseDrawio } from "./drawio.js";
-import { graphToScene } from "./to-scene.js";
-
 export type {
   GraphDocument,
   GraphNode,
@@ -29,6 +23,14 @@ export { importJsonCanvas } from "./jsoncanvas.js";
  * single call. Use these when you don't need intermediate access to the
  * `GraphDocument`.
  */
-export const importMermaid = (source: string): Scene => graphToScene(parseMermaid(source));
-export const importDot = (source: string): Scene => graphToScene(parseDot(source));
-export const importDrawio = (source: string): Scene => graphToScene(parseDrawio(source));
+export { importMermaid, importDot, importDrawio } from "./convenience.js";
+export {
+  DIAGRAM_FORMATS,
+  IMPORT_FORMATS,
+  EXPORT_FORMATS,
+  importSceneFrom,
+  exportSceneAs,
+  importFormatForFile,
+  type DiagramFormat,
+} from "./formats.js";
+export { diagramFileDropHandler } from "./file-drop.js";

@@ -475,6 +475,9 @@ importers:
       '@oh-just-another/fonts':
         specifier: workspace:*
         version: link:../fonts
+      '@oh-just-another/importers':
+        specifier: workspace:*
+        version: link:../importers
       '@oh-just-another/raster-wasm':
         specifier: workspace:*
         version: link:../raster-wasm
@@ -622,6 +625,12 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
+      '@oh-just-another/serialization':
+        specifier: workspace:*
+        version: link:../serialization
+      '@oh-just-another/state':
+        specifier: workspace:*
+        version: link:../state
       '@oh-just-another/tokens':
         specifier: workspace:*
         version: link:../tokens
@@ -768,6 +777,9 @@ importers:
       '@oh-just-another/scene':
         specifier: workspace:*
         version: link:../scene
+      '@oh-just-another/text-wasm':
+        specifier: workspace:*
+        version: link:../text-wasm
       '@oh-just-another/types':
         specifier: workspace:*
         version: link:../types

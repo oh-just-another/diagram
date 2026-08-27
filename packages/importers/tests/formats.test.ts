@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_LAYER_ID, addElement, emptyScene, orderBetween } from "@oh-just-another/scene";
 import { elementId } from "@oh-just-another/types";
 import { stringifyScene } from "@oh-just-another/serialization";
-import { EXPORT_FORMATS, IMPORT_FORMATS, exportSceneAs, importSceneFrom } from "./format-io";
+import { EXPORT_FORMATS, IMPORT_FORMATS, exportSceneAs, importSceneFrom } from "../src/formats.js";
 
 const sceneWithRect = () => {
   const { scene } = addElement(emptyScene(), {
@@ -43,8 +43,9 @@ describe("diagram format IO", () => {
     const el = back.elements.get(elementId("r1"));
     expect(el?.type).toBe("rectangle");
     expect(el?.position).toEqual({ x: 10, y: 20 });
-    // Exported text is the same document a direct serialize would produce.
-    expect(text).toBe(stringifyScene(scene, 2));
+    // Exported text is the same document a direct serialize (with embedded
+    // binary files — the file export is self-contained) would produce.
+    expect(text).toBe(stringifyScene(scene, 2, { includeFiles: true }));
   });
 
   it("exports Excalidraw and Mermaid as non-empty strings", () => {

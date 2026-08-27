@@ -78,8 +78,14 @@ describe("PropertyPanel stroke-style click", () => {
       </TooltipProvider>,
     );
 
+    // The dash options live inside the border-group popover now.
+    act(() => {
+      fireEvent.click(
+        container.querySelector('button[aria-label="Border style, corners and color"]')!,
+      );
+    });
     // Find the button by accessible name (label).
-    const dashedBtn = container.querySelector('button[aria-label="Dashed"]');
+    const dashedBtn = [...document.querySelectorAll('button[aria-label="Dashed"]')].pop() ?? null;
     if (!dashedBtn) {
       // eslint-disable-next-line no-console
       console.log("DOM at failure:", container.innerHTML.slice(0, 2000));
@@ -106,7 +112,13 @@ describe("PropertyPanel stroke-style click", () => {
         </DiagramProvider>
       </TooltipProvider>,
     );
-    const btn = container.querySelector('button[aria-label="Dotted"]');
+    // The dash options live inside the border-group popover now.
+    act(() => {
+      fireEvent.click(
+        container.querySelector('button[aria-label="Border style, corners and color"]')!,
+      );
+    });
+    const btn = [...document.querySelectorAll('button[aria-label="Dotted"]')].pop() ?? null;
     expect(btn).not.toBeNull();
     act(() => {
       fireEvent.click(btn!);
@@ -127,7 +139,13 @@ describe("PropertyPanel stroke-style click", () => {
         </DiagramProvider>
       </TooltipProvider>,
     );
-    const btn = container.querySelector('button[aria-label="Solid"]');
+    // The dash options live inside the border-group popover now.
+    act(() => {
+      fireEvent.click(
+        container.querySelector('button[aria-label="Border style, corners and color"]')!,
+      );
+    });
+    const btn = [...document.querySelectorAll('button[aria-label="Solid"]')].pop() ?? null;
     expect(btn).not.toBeNull();
     act(() => {
       fireEvent.click(btn!);

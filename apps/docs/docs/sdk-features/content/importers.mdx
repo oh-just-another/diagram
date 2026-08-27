@@ -110,6 +110,17 @@ import { importJsonCanvas } from "@oh-just-another/importers";
 const scene = importJsonCanvas(await readFile("board.canvas", "utf8"));
 ```
 
+## Formats table and file drop
+
+`DIAGRAM_FORMATS` is the single table of interchange formats (`id`, `label`, `extensions`, `parse?`, `serialize?`); `IMPORT_FORMATS` / `EXPORT_FORMATS` are its importable / exportable subsets, `importSceneFrom(id, text)` / `exportSceneAs(id, scene)` run them, `importFormatForFile(name)` resolves a format by extension. `diagramFileDropHandler` is a ready `FileDropHandler` that parses a dropped file with the matching format and calls `editor.insertScene(scene, worldPoint)` — the `Editor` component registers it by default.
+
+```ts
+import { diagramFileDropHandler, importFormatForFile } from "@oh-just-another/importers";
+
+importFormatForFile("flow.mmd")?.id; // "mermaid"
+editor.registerFileDropHandler(diagramFileDropHandler);
+```
+
 ## Two-stage pipeline
 
 ```ts

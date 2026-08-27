@@ -90,10 +90,15 @@ const makeEditor = (scene: Scene): Editor =>
   new Editor({ host, mainTarget: noopTarget, overlayTarget: noopTarget, initialScene: scene });
 
 describe("inline text edit", () => {
-  it("beginTextEdit sets editingTextElement only for text shapes", () => {
+  it("beginTextEdit works on text shapes and labelable shapes (embedded label)", () => {
     const e = makeEditor(sceneWith(textElement("t1"), rect("r1")));
+    // A rectangle is labelable: editing starts and seeds an empty label.
     e.beginTextEdit(elementId("r1"));
-    expect(e.editingTextElement).toBeNull();
+    expect(e.editingTextElement).toBe(elementId("r1"));
+    expect(
+      (e.scene.elements.get(elementId("r1")) as { label?: { text: string } }).label?.text,
+    ).toBe("");
+    e.cancelTextEdit();
     e.beginTextEdit(elementId("t1"));
     expect(e.editingTextElement).toBe(elementId("t1"));
   });

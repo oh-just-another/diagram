@@ -10,6 +10,7 @@ import {
   HEXAGON_ICON,
   PROCESS_ICON,
   RECT_ICON,
+  EMOJI_ICON,
   STICKY_ICON,
   TERMINATOR_ICON,
   TRIANGLE_ICON,
@@ -144,7 +145,31 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
     category: "basic",
     icon: STICKY_ICON,
     tags: ["sticky", "note", "postit", "post-it", "memo", "card"],
-    factory: (c) => filledRect(c, 120, 100, STICKY_STYLE),
+    // First-class sticky element: text via the embedded label
+    // (double-click), background from `style.fill`.
+    factory: (c) =>
+      ({
+        ...baseElement(c),
+        type: "sticky",
+        style: STICKY_STYLE,
+        width: 160,
+        height: 160,
+      }) as unknown as Element,
+  },
+  {
+    id: "basic.emoji",
+    name: "Emoji",
+    category: "basic",
+    icon: EMOJI_ICON,
+    tags: ["emoji", "smiley", "reaction", "icon"],
+    factory: (c) =>
+      ({
+        ...baseElement(c),
+        type: "emoji",
+        style: {},
+        glyph: "\u{1F600}",
+        size: 48,
+      }) as unknown as Element,
   },
 
   // --- flowchart ---

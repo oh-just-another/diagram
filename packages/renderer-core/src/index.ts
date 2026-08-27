@@ -10,7 +10,8 @@ export type {
 } from "./targets/render-target.js";
 export type { ElementRenderer, ElementRenderContext } from "./rendering/shape-renderer.js";
 export type { LayerName } from "./targets/layers.js";
-export type { RenderSceneOptions, LodOptions } from "./rendering/scene-renderer.js";
+export type { RenderSceneOptions } from "./rendering/scene-renderer.js";
+export { isTextBelowLod, screenSizeOf, type LodOptions } from "./rendering/lod.js";
 export type { RenderLinksOptions } from "./rendering/edge-renderer.js";
 export type { RenderGridOptions, GridLevel, GridRung } from "./rendering/grid-renderer.js";
 
@@ -22,12 +23,22 @@ export {
 export { LAYER_ORDER } from "./targets/layers.js";
 export { renderScene } from "./rendering/scene-renderer.js";
 export { renderLinks, strokeRoundedPolyline } from "./rendering/edge-renderer.js";
+export { buildRoundedRectPath } from "./rendering/built-in-renderers.js";
 export { renderGrid, computeGridRungs } from "./rendering/grid-renderer.js";
 
 // Backend-agnostic shape renderers for the built-in `BuiltinElement` types.
 // `installBuiltinRenderers()` registers them via `registerElementRenderer` and
 // is safe to call multiple times.
-export { installBuiltinRenderers } from "./rendering/built-in-renderers.js";
+export {
+  installBuiltinRenderers,
+  drawShapeLabel,
+  shapeLabelLayout,
+  buildImageMaskPath,
+  stickyReactionLayout,
+  stickyReactionPillRects,
+  stickyReactionAddRect,
+} from "./rendering/built-in-renderers.js";
+export { isDrawableImageSource } from "./raster/image-source-guard.js";
 export { fetchModuleBytes, allocBytes, instantiateWasm } from "./raster/wasm-bytes.js";
 export type { WasmArena } from "./raster/wasm-bytes.js";
 export { LruCache } from "./caches/lru-cache.js";
@@ -73,7 +84,11 @@ export {
 
 // Pluggable text-shaper and rasterizer interfaces.
 export type { TextShaper, ShaperFont, ShapedGlyph } from "./text/text-shaper.js";
-export { setActiveTextShaper, getActiveTextShaper } from "./text/text-shaper.js";
+export {
+  setActiveTextShaper,
+  onTextShaperChange,
+  getActiveTextShaper,
+} from "./text/text-shaper.js";
 export type { Rasterizer } from "./raster/rasterizer.js";
 export { setActiveRasterizer, getActiveRasterizer } from "./raster/rasterizer.js";
 export { jsRasterizer } from "./raster/js-rasterizer.js";
@@ -94,6 +109,9 @@ export {
 
 export {
   DEFAULT_LOD,
+  LOD_PLACEHOLDER_MAX_SCREEN_PX,
+  LOD_MIN_TEXT_SCREEN_PX,
+  TEXT_PLACEHOLDER_COLOR,
   DEFAULT_PLACEHOLDER_FILL,
   VIEWPORT_CULL_PADDING_RATIO,
   LINK_CORNER_RADIUS,
@@ -108,4 +126,9 @@ export {
   GRID_LINE_FADE_FULL_PX,
   GRID_DOT_FADE_FROM_PX,
   GRID_DOT_FADE_FULL_PX,
+  STICKY_REACTION_FONT_SIZE,
+  STICKY_REACTION_HEIGHT,
+  STICKY_REACTION_GAP,
+  STICKY_REACTION_MIN_ZOOM,
+  EXPORT_CONTENT_DEFAULTS,
 } from "./constants.js";

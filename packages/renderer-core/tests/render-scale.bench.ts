@@ -128,13 +128,13 @@ describe("renderScene — LOD placeholder (zoom 0.1)", () => {
   });
   bench("10k", () =>
     renderScene(zoomed(setups[10000].scene), nullTarget, {
-      lod: { placeholder: 0.2 },
+      lod: { placeholderMaxScreenPx: 1000 },
       boundsCache: setups[10000].cache,
     }),
   );
   bench("50k", () =>
     renderScene(zoomed(setups[50000].scene), nullTarget, {
-      lod: { placeholder: 0.2 },
+      lod: { placeholderMaxScreenPx: 1000 },
       boundsCache: setups[50000].cache,
     }),
   );

@@ -7,7 +7,12 @@ import type {
   TextAlign,
   TextBaseline,
 } from "@oh-just-another/renderer-core";
-import { getActiveRasterizer, getActiveTextShaper } from "@oh-just-another/renderer-core";
+import {
+  getActiveRasterizer,
+  getActiveTextShaper,
+  onTextShaperChange,
+} from "@oh-just-another/renderer-core";
+import type { GlyphBakeRequest, GlyphBakeResponse } from "../glyph-bake-worker.js";
 import { GlyphAtlas, type MsdfShaper } from "@oh-just-another/glyph-atlas";
 import { resolveBundledFamily } from "@oh-just-another/fonts";
 import earcut from "earcut";
@@ -17,6 +22,10 @@ import {
   ELLIPSE_MIN_SEGMENTS,
   WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
   WEBGL2_TEXT_BITMAP_CACHE_CAP,
+  WEBGL2_TEXT_RASTER_MAX_SCALE,
+  WEBGL2_TEXT_RASTER_TOP_PAD,
+  WEBGL2_ATLAS_BAKE_REST_MS,
+  WEBGL2_ATLAS_UPLOAD_IDLE_MS,
 } from "../constants.js";
 import { MsdfTextPipeline, measureGlyphRunEm } from "./webgl2-msdf-text.js";
 import { drawPolylineStroke as drawPolylineStrokeImpl } from "./webgl2-stroke.js";
@@ -44,6 +53,13 @@ export interface WebGL2TargetOptions {
  * primitives (rect / polyline / ellipse / Bezier), fill, stroke, text
  * (MSDF or OffscreenCanvas-bitmap fallback), and image drawing.
  */
+/**
+ * Colour-glyph detector: emoji / pictographs (incl. variation selectors and
+ * ZWJ sequences) that the monochrome MSDF glyph atlas cannot render. Strings
+ * matching this take the rasterised-bitmap text path instead.
+ */
+const HAS_PICTOGRAPH_RE = /\p{Extended_Pictographic}|\uFE0F|\u200D/u;
+
 export class WebGL2Target implements RenderTarget {
   private readonly gl: WebGL2RenderingContext;
   private readonly program: WebGLProgram;
@@ -196,10 +212,12 @@ export class WebGL2Target implements RenderTarget {
       antialias: true,
       premultipliedAlpha: true,
       preserveDrawingBuffer,
+      stencil: true, // clip() carves regions through the stencil buffer
     });
     gl ??= (canvas as HTMLCanvasElement).getContext("webgl2", {
       premultipliedAlpha: true,
       preserveDrawingBuffer,
+      stencil: true,
     });
     if (!gl) {
       throw new Error(
@@ -281,6 +299,26 @@ export class WebGL2Target implements RenderTarget {
     // canvas was resized via setupHiDpi (no-context) after creation the
     // viewport stays at the first size, so set it explicitly.
     this.gl.viewport(0, 0, canvas.width, canvas.height);
+
+    // Warm the MSDF atlas the moment a shaper becomes active — not on
+    // the first frame that happens to draw text (which used to be the
+    // user's first pan/zoom). Also covers a shaper that loaded BEFORE
+    // this target was constructed.
+    this.ensureGlyphAtlas();
+    this.offShaperChange = onTextShaperChange(() => {
+      if (!this.disposed) this.ensureGlyphAtlas();
+    });
+    // Pre-compile every lazy GL pipeline off the first interaction frame:
+    // shader compile + link through ANGLE can cost tens of ms each, and
+    // paying them lazily used to land inside the user's first pan/zoom.
+    setTimeout(() => {
+      if (this.disposed) return;
+      this.rectPipeline ??= new RectInstancePipeline(this.gl);
+      this.ellipsePipeline ??= new EllipsePipeline(this.gl);
+      this.curvePipeline ??= new LoopBlinnCurvePipeline(this.gl);
+      this.msdfPipeline ??= new MsdfTextPipeline(this.gl);
+      this.restoreSolidProgram();
+    }, 0);
   }
 
   get size(): { readonly width: number; readonly height: number } {
@@ -308,7 +346,14 @@ export class WebGL2Target implements RenderTarget {
    * `WEBGL_lose_context`, GC can take a while to collect old surfaces
    * and runtime backend switches quickly hit the cap.
    */
+  private offShaperChange: (() => void) | null = null;
+
   dispose(): void {
+    this.disposed = true;
+    this.offShaperChange?.();
+    this.offShaperChange = null;
+    this.glyphBakeWorker?.terminate();
+    this.glyphBakeWorker = null;
     // Drop any undrawn queued rects and release the instance pipeline's
     // GL resources (VAO / buffers / program).
     this.rectBatch.reset();
@@ -392,12 +437,25 @@ export class WebGL2Target implements RenderTarget {
       fontStyle: this.fontStyle,
       textAlign: this.textAlign,
       textBaseline: this.textBaseline,
+      clipDepth: this.clipDepth,
     });
   }
 
   restore(): void {
     const s = this.stack.pop();
     if (!s) return;
+    // Lift clip levels installed since the matching save(). Queued rect
+    // fills must hit the framebuffer while their clip is still active.
+    if (this.clipDepth > s.clipDepth) {
+      this.flushRectBatch();
+      while (this.clipDepth > s.clipDepth) {
+        const level = this.clipLevels.pop();
+        if (!level) break;
+        this.writeClipStencil(level, -1);
+        this.clipDepth--;
+      }
+      this.applyStencilTest();
+    }
     this.transform = s.transform;
     this.fillColor = s.fillColor;
     this.fillAlpha = s.fillAlpha;
@@ -667,6 +725,7 @@ export class WebGL2Target implements RenderTarget {
       readonly height: number;
     },
   ): void {
+    if (this.disposed) return; // late async frame — never recompile on a lost context
     this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     const tex = this.textureFor(image as TexImageSource, dynamic ?? false);
     if (!tex) return;
@@ -863,6 +922,7 @@ export class WebGL2Target implements RenderTarget {
 
   fill(_rule?: FillRule): void {
     void _rule;
+    if (this.disposed) return; // late async frame — never recompile on a lost context
     const effectiveAlpha = this.opacity * this.fillAlpha;
     if (effectiveAlpha <= 0) return; // transparent fill — nothing to draw
 
@@ -958,6 +1018,112 @@ export class WebGL2Target implements RenderTarget {
   }
   private curvePipeline: LoopBlinnCurvePipeline | null = null;
   private ellipsePipeline: EllipsePipeline | null = null;
+
+  // --- Clip (stencil buffer) ---
+
+  /** Nesting depth of active clip regions (= stencil value inside them all). */
+  private clipDepth = 0;
+  /**
+   * Flattened polygon + transform snapshot per active clip level, so
+   * `restore()` can erase exactly the pixels that level incremented
+   * (same geometry, same transform → same rasterisation → clean DECR).
+   */
+  private readonly clipLevels: {
+    pts: Float64Array;
+    count: number;
+    transform: MutableTransform;
+  }[] = [];
+
+  /**
+   * Intersect the clip region with the current path. The path is
+   * flattened to a polygon ring (curves are already flattened into the
+   * path buffer; rect / ellipse fast-paths convert here) and drawn into
+   * the STENCIL buffer with colour writes off: inside pixels increment
+   * to `clipDepth + 1`, then every subsequent draw stencil-tests
+   * `EQUAL clipDepth`. Nested save/clip pairs intersect naturally.
+   * Note: stencil coverage is aliased (no MSAA resolve on the mask
+   * edge) — acceptable for image masks; Canvas2D clips are aliased too.
+   */
+  clip(_rule?: FillRule): void {
+    void _rule; // stencil pass uses earcut (nonzero); evenodd masks are not used by the kernel
+    if (this.disposed) return;
+    this.flushRectBatch(); // queued rects belong OUTSIDE the new clip
+    let pts: Float64Array;
+    let count: number;
+    if (this.currentEllipse) {
+      this.buildEllipseStrokePolyline(this.currentEllipse);
+      count = this.pathPts;
+      pts = this.pathXY.slice(0, count * 2);
+    } else if (this.currentPath) {
+      const r = this.currentPath;
+      pts = Float64Array.of(
+        r.x,
+        r.y,
+        r.x + r.width,
+        r.y,
+        r.x + r.width,
+        r.y + r.height,
+        r.x,
+        r.y + r.height,
+      );
+      count = 4;
+    } else if (this.pathPts >= 3) {
+      count = this.pathPts;
+      pts = this.pathXY.slice(0, count * 2);
+    } else {
+      return; // no meaningful path — Canvas2D would clip to empty; keep drawing instead
+    }
+    const level = { pts, count, transform: { ...this.transform } };
+    this.writeClipStencil(level, 1);
+    this.clipLevels.push(level);
+    this.clipDepth++;
+    this.applyStencilTest();
+  }
+
+  /**
+   * Rasterise a clip level's polygon into the stencil buffer.
+   * `delta = 1` increments inside pixels (install, intersecting with the
+   * existing clip via the EQUAL test); `delta = -1` decrements them back
+   * (uninstall on restore). Colour writes are off for the whole pass.
+   */
+  private writeClipStencil(
+    level: { pts: Float64Array; count: number; transform: MutableTransform },
+    delta: 1 | -1,
+  ): void {
+    const gl = this.gl;
+    gl.enable(gl.STENCIL_TEST);
+    gl.colorMask(false, false, false, false);
+    // Install: only pixels already inside every outer clip (== depth)
+    // increment. Uninstall: only pixels this level raised (== depth)
+    // decrement — the caller pops levels in LIFO order.
+    gl.stencilFunc(gl.EQUAL, this.clipDepth, 0xff);
+    gl.stencilOp(gl.KEEP, gl.KEEP, delta === 1 ? gl.INCR : gl.DECR);
+    const saved = this.transform;
+    this.transform = level.transform;
+    this.fillPolygonEarcut(level.pts, level.count, 1);
+    this.transform = saved;
+    gl.colorMask(true, true, true, true);
+  }
+
+  /** Sync the global stencil test with the current clip depth. */
+  private applyStencilTest(): void {
+    const gl = this.gl;
+    if (this.clipDepth > 0) {
+      gl.enable(gl.STENCIL_TEST);
+      gl.stencilFunc(gl.EQUAL, this.clipDepth, 0xff);
+      gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+    } else {
+      gl.disable(gl.STENCIL_TEST);
+    }
+  }
+  /**
+   * Set by {@link dispose}. Draw entry points bail out when set: a late
+   * async frame (image decode / font load resolving after a backend
+   * switch) must not touch the lost context — the lazy `??=` pipeline
+   * rebuilds would recompile shaders on it and throw
+   * "shader compile failed: null" from inside a promise chain.
+   */
+  private disposed = false;
 
   /**
    * Triangulate the polygon via earcut and emit one TRIANGLES draw.
@@ -1114,7 +1280,15 @@ export class WebGL2Target implements RenderTarget {
     }
     this.gl.viewport(0, 0, bitmapW, bitmapH);
     this.gl.clearColor(0, 0, 0, 0);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    // Also wipe the stencil buffer — a frame that died mid-clip (lost
+    // restore) must not leak its mask into the next frame.
+    this.gl.clearStencil(0);
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
+    if (this.clipDepth > 0) {
+      this.clipDepth = 0;
+      this.clipLevels.length = 0;
+      this.applyStencilTest();
+    }
   }
 
   // --- Stroke pipeline ---
@@ -1256,15 +1430,27 @@ export class WebGL2Target implements RenderTarget {
    */
   fillText(text: string, x: number, y: number, maxWidth?: number): void {
     if (text.length === 0) return;
+    if (this.disposed) return; // late async frame — never recompile on a lost context
     this.flushRectBatch(); // preserve z-order: emit queued rect fills first
     void maxWidth;
     const atlas = this.ensureGlyphAtlas();
-    if (atlas) {
-      this.fillTextMSDF(text, x, y, atlas);
-      return;
+    // Emoji (and other pictographs) are colour glyphs the MSDF atlas
+    // cannot shape — routing them through it draws nothing. Strings with
+    // un-baked glyphs also take the bitmap path (baking is background
+    // work, never in-frame — see `atlasCovers`).
+    if (atlas && !HAS_PICTOGRAPH_RE.test(text)) {
+      const fontId = atlas.resolveFontId(
+        this.fontFamily,
+        this.fontWeight === "bold",
+        this.fontStyle === "italic",
+      );
+      if (this.atlasCovers(text, fontId, atlas)) {
+        this.fillTextMSDF(text, x, y, atlas);
+        return;
+      }
     }
-    const bitmap = this.rasteriseString(text);
-    if (!bitmap) return;
+    const raster = this.rasteriseString(text);
+    if (!raster) return;
     const m = this.textMetrics(text);
     let px = x;
     if (this.textAlign === "center") px -= m.width / 2;
@@ -1272,7 +1458,10 @@ export class WebGL2Target implements RenderTarget {
     let py = y;
     if (this.textBaseline === "middle") py -= this.fontSize / 2;
     else if (this.textBaseline === "bottom") py -= this.fontSize;
-    this.drawImage(bitmap, px, py, m.width, this.fontSize * 1.4);
+    // Shift up by the raster's top pad so the glyph lands where an
+    // unpadded bake would put it (the pad only adds emoji headroom).
+    const topPad = this.fontSize * WEBGL2_TEXT_RASTER_TOP_PAD;
+    this.drawImage(raster.canvas, px, py - topPad, m.width, this.fontSize * 1.4 + topPad);
   }
 
   private msdfPipeline: MsdfTextPipeline | null = null;
@@ -1295,9 +1484,155 @@ export class WebGL2Target implements RenderTarget {
     if (!isMsdfShaper(shaper)) return null;
     if (this.glyphAtlas && this.glyphAtlasShaper === shaper) return this.glyphAtlas;
     if (this.glyphAtlas) this.glyphAtlas.dispose(this.gl);
+    // The atlas object itself is cheap; the EXPENSIVE part — per-glyph WASM
+    // MSDF baking — never happens inside a frame. Strings whose glyphs are
+    // not baked yet render through the bitmap path while the background
+    // queue bakes them in small chunks (printable ASCII is pre-queued).
     this.glyphAtlas = new GlyphAtlas(shaper);
     this.glyphAtlasShaper = shaper;
+    this.pendingGlyphBake.clear();
+    for (let cp = 0x20; cp <= 0x7e; cp++) this.queueGlyphBake(cp, 0);
     return this.glyphAtlas;
+  }
+
+  /** Code points awaiting background baking. Key = fontId × 0x110000 + cp. */
+  private readonly pendingGlyphBake = new Set<number>();
+  private glyphBakeScheduled = false;
+
+  private queueGlyphBake(codePoint: number, fontId: number): void {
+    this.pendingGlyphBake.add(fontId * 0x110000 + codePoint);
+    if (this.glyphBakeScheduled) return;
+    this.glyphBakeScheduled = true;
+    setTimeout(() => {
+      this.drainGlyphBakeQueue();
+    }, 0);
+  }
+
+  /** Worker doing the WASM MSDF baking; spawned lazily, killed on dispose. */
+  private glyphBakeWorker: Worker | null = null;
+  private glyphBakeWorkerFailed = false;
+
+  private ensureGlyphBakeWorker(): Worker | null {
+    if (this.glyphBakeWorkerFailed || typeof Worker === "undefined") return null;
+    if (this.glyphBakeWorker) return this.glyphBakeWorker;
+    try {
+      const worker = new Worker(new URL("../glyph-bake-worker.js", import.meta.url), {
+        type: "module",
+      });
+      worker.onmessage = (ev: MessageEvent<GlyphBakeResponse>) => {
+        this.onGlyphBaked(ev.data);
+      };
+      worker.onerror = () => {
+        // Worker path unavailable (CSP / bundler) — fall back to the
+        // throttled main-thread baking for future requests.
+        this.glyphBakeWorkerFailed = true;
+        this.glyphBakeWorker?.terminate();
+        this.glyphBakeWorker = null;
+        if (this.pendingGlyphBake.size > 0 && !this.glyphBakeScheduled) {
+          this.glyphBakeScheduled = true;
+          setTimeout(() => {
+            this.drainGlyphBakeQueueSync();
+          }, 0);
+        }
+      };
+      this.glyphBakeWorker = worker;
+      return worker;
+    } catch {
+      this.glyphBakeWorkerFailed = true;
+      return null;
+    }
+  }
+
+  private onGlyphBaked(res: GlyphBakeResponse): void {
+    if (this.disposed || !this.glyphAtlas) return;
+    if (res.metrics === null) return; // shaper couldn't resolve the glyph
+    this.glyphAtlas.insertBaked(res.codePoint, res.fontId, res.metrics, res.tile);
+    // Push the new tiles (and the one-time 12 MB full upload) to the GPU
+    // from an idle task, NOT from the next draw — texture uploads landing
+    // inside a pan frame read as intermittent slow-downs.
+    if (!this.glyphUploadScheduled) {
+      this.glyphUploadScheduled = true;
+      setTimeout(() => {
+        this.glyphUploadScheduled = false;
+        if (this.disposed || !this.glyphAtlas) return;
+        this.glyphAtlas.uploadTo(this.gl);
+      }, WEBGL2_ATLAS_UPLOAD_IDLE_MS);
+    }
+  }
+
+  private glyphUploadScheduled = false;
+
+  /**
+   * Drain the bake queue: WASM MSDF generation costs 15–50 ms PER
+   * GLYPH, so the requests go to a dedicated worker and the main thread
+   * never rasterises. The synchronous fallback below only runs where
+   * workers are unavailable (tests / exotic hosts), throttled to one
+   * glyph per macrotask.
+   */
+  private drainGlyphBakeQueue(): void {
+    this.glyphBakeScheduled = false;
+    if (this.disposed || !this.glyphAtlas) {
+      this.pendingGlyphBake.clear();
+      return;
+    }
+    const worker = this.ensureGlyphBakeWorker();
+    if (!worker) {
+      this.drainGlyphBakeQueueSync();
+      return;
+    }
+    for (const key of this.pendingGlyphBake) {
+      this.pendingGlyphBake.delete(key);
+      const fontId = Math.floor(key / 0x110000);
+      const cp = key % 0x110000;
+      if (this.glyphAtlas.has(cp, fontId)) continue;
+      const request: GlyphBakeRequest = {
+        codePoint: cp,
+        fontId,
+        tileSize: this.glyphAtlas.tileSize,
+        range: this.glyphAtlas.range,
+      };
+      worker.postMessage(request);
+    }
+  }
+
+  /** Main-thread fallback: one glyph per macrotask (workers unavailable). */
+  private drainGlyphBakeQueueSync(): void {
+    this.glyphBakeScheduled = false;
+    if (this.disposed || !this.glyphAtlas) {
+      this.pendingGlyphBake.clear();
+      return;
+    }
+    for (const key of this.pendingGlyphBake) {
+      this.pendingGlyphBake.delete(key);
+      const fontId = Math.floor(key / 0x110000);
+      const cp = key % 0x110000;
+      this.glyphAtlas.getOrRasterize(cp, fontId);
+      break;
+    }
+    if (this.pendingGlyphBake.size > 0) {
+      this.glyphBakeScheduled = true;
+      setTimeout(() => {
+        this.drainGlyphBakeQueueSync();
+      }, WEBGL2_ATLAS_BAKE_REST_MS);
+    }
+  }
+
+  /**
+   * True when every glyph of `text` is already baked. Missing ones are
+   * queued for background baking — the caller falls back to the bitmap
+   * path for THIS frame and switches to MSDF once the queue catches up.
+   */
+  private atlasCovers(text: string, fontId: number, atlas: GlyphAtlas): boolean {
+    let covered = true;
+    for (const ch of text) {
+      const cp = ch.codePointAt(0);
+      if (cp === undefined) continue;
+      if (!atlas.has(cp, fontId)) {
+        covered = false;
+        this.queueGlyphBake(cp, fontId);
+      }
+    }
+    return covered;
   }
 
   /**
@@ -1364,6 +1699,10 @@ export class WebGL2Target implements RenderTarget {
    */
   private flushRectBatch(): void {
     if (this.rectBatch.pending === 0) return;
+    if (this.disposed) {
+      this.rectBatch.reset();
+      return;
+    }
     this.rectPipeline ??= new RectInstancePipeline(this.gl);
     const pipeline = this.rectPipeline;
     this.rectBatch.flush((data, count) => {
@@ -1465,12 +1804,22 @@ export class WebGL2Target implements RenderTarget {
     // system-font width (a different, usually wider font) and callers —
     // caret geometry, selection bounds — would drift from what's drawn.
     const atlas = this.ensureGlyphAtlas();
-    if (atlas) {
+    // Pictographs (emoji) are not in the MSDF atlas — their glyph-run
+    // measure is NaN; those strings render AND measure via Canvas2D. So
+    // do strings whose glyphs are not baked yet (measuring would bake
+    // them synchronously — the very jank the background queue avoids).
+    if (atlas && !HAS_PICTOGRAPH_RE.test(text)) {
       const fontId = atlas.resolveFontId(
         this.fontFamily,
         this.fontWeight === "bold",
         this.fontStyle === "italic",
       );
+      if (!this.atlasCovers(text, fontId, atlas)) {
+        const fallbackCtx = this.ensureTextCtx();
+        if (!fallbackCtx) return { width: text.length * this.fontSize * 0.55 };
+        fallbackCtx.font = this.textFontSpec();
+        return { width: fallbackCtx.measureText(text).width };
+      }
       // Shared single-pass, memoized walk — same advances `fillTextMSDF`
       // lays out (`advance * fontSize / unitsPerEm`), so measured width
       // and drawn width stay 1:1. em-width is fontSize-independent; scale
@@ -1485,33 +1834,66 @@ export class WebGL2Target implements RenderTarget {
     return { width: ctx.measureText(text).width };
   }
 
-  private rasteriseString(text: string): OffscreenCanvas | null {
+  /**
+   * Effective on-screen scale of text drawn at the current transform:
+   * the transform's linear scale (view zoom × shape scale) times the
+   * backbuffer's device-pixel ratio (the transform maps to LOGICAL
+   * pixels; the backbuffer is physical). Quantised to powers of two so a
+   * smooth zoom re-rasterises at discrete steps, clamped to
+   * `WEBGL2_TEXT_RASTER_MAX_SCALE`.
+   */
+  private textRasterScale(): number {
+    const t = Math.hypot(this.transform.a, this.transform.b);
+    const dpr = this._size.width > 0 ? this.gl.drawingBufferWidth / this._size.width : 1;
+    const s = t * dpr;
+    // Non-finite guard: stub GL contexts (tests) may lack a real
+    // drawingBufferWidth.
+    if (!Number.isFinite(s) || s <= 1) return 1;
+    return 2 ** Math.ceil(Math.log2(Math.min(s, WEBGL2_TEXT_RASTER_MAX_SCALE)));
+  }
+
+  private rasteriseString(text: string): { canvas: OffscreenCanvas; scale: number } | null {
     if (typeof OffscreenCanvas === "undefined") return null;
-    const key = `${text}|${this.textFontSpec()}|${this.fillColorString}`;
+    // Rasterise at the current screen scale so bitmap text (emoji, pill
+    // labels) stays sharp under zoom instead of stretching a 1× bake.
+    const scale = this.textRasterScale();
+    const key = `${text}|${this.textFontSpec()}|${this.fillColorString}|${String(scale)}`;
     const cached = this.textBitmaps.get(key);
     if (cached) {
       // Touch — re-insert at the tail so the LRU eviction below picks
       // colder entries first.
       this.textBitmaps.delete(key);
       this.textBitmaps.set(key, cached);
-      return cached;
+      return { canvas: cached, scale };
     }
-    const m = this.textMetrics(text);
-    // Pad height by 40% — covers font ascent/descent fuzz without
-    // requiring per-font TextMetrics support.
-    const w = Math.max(1, Math.ceil(m.width));
-    const h = Math.max(1, Math.ceil(this.fontSize * 1.4));
+    // Measure with the SAME Canvas2D font the bitmap is painted with —
+    // atlas advances would disagree with the system font (and are NaN
+    // for emoji, which previously blew up the OffscreenCanvas ctor).
+    const measureCtx = this.ensureTextCtx();
+    let width = this.fontSize * 0.55 * text.length;
+    if (measureCtx) {
+      measureCtx.font = this.textFontSpec();
+      width = measureCtx.measureText(text).width;
+    }
+    // Pad height by 40% below and `WEBGL2_TEXT_RASTER_TOP_PAD` above —
+    // covers font ascent/descent fuzz (emoji paint above the em top and
+    // would otherwise clip) without per-font TextMetrics support. The
+    // top pad is compensated at draw time (`fillText` shifts up by it).
+    const topPad = this.fontSize * WEBGL2_TEXT_RASTER_TOP_PAD;
+    const w = Math.max(1, Math.ceil((Number.isFinite(width) ? width : 1) * scale));
+    const h = Math.max(1, Math.ceil((this.fontSize * 1.4 + topPad) * scale));
     const canvas = new OffscreenCanvas(w, h);
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
+    if (scale !== 1) ctx.scale(scale, scale);
     ctx.font = this.textFontSpec();
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillStyle = this.fillColorString;
-    ctx.fillText(text, 0, 0);
+    ctx.fillText(text, 0, topPad);
     this.textBitmaps.set(key, canvas);
     this.evictTextBitmapsIfOverCap();
-    return canvas;
+    return { canvas, scale };
   }
 
   /**
@@ -1619,6 +2001,7 @@ export const dashPolyline = (pts: readonly Vec2[], pattern: readonly number[]): 
  * (Canvas2D doesn't snapshot it either).
  */
 interface GfxState {
+  clipDepth: number;
   transform: MutableTransform;
   fillColor: [number, number, number];
   fillAlpha: number;

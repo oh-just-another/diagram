@@ -13,6 +13,9 @@ export interface FileDropContext {
   readonly worldPoint: Vec2;
 }
 
+/** Coarse file category — picks the glyph the drop overlay shows for a handler. */
+export type FileDropKind = "image" | "video" | "scene" | "text" | "data" | "file";
+
 export interface FileDropHandler {
   /**
    * Stable identifier — used for `unregister`. Avoid collisions in the global
@@ -20,6 +23,15 @@ export interface FileDropHandler {
    * "host.custom").
    */
   readonly id: string;
+  /**
+   * Presentation for the drop overlay (the "what can I drop here" hint shown
+   * while a file is dragged over the canvas). `label` names the payload
+   * ("Images"), `formats` lists what it takes ("PNG", "SVG", …), `kind`
+   * picks the glyph. Handlers without a `label` stay out of the hint.
+   */
+  readonly label?: string;
+  readonly kind?: FileDropKind;
+  readonly formats?: readonly string[];
   /**
    * Sync predicate — does this handler want the file? Receives the raw `File`
    * so it can sniff MIME or extension. Should be cheap; heavy work goes inside
@@ -101,32 +113,60 @@ export const VIDEO_MIME_TYPES: readonly string[] = [
   "video/quicktime",
 ];
 
+/**
+ * Extension → MIME table shared by the accept predicates and
+ * {@link inferFileMime}. Browsers sometimes hand over a `File` with an
+ * empty `type` (downloads without metadata, some drag sources); routing
+ * and persistence then fall back to the filename extension.
+ */
+const MIME_BY_EXTENSION: Readonly<Record<string, string>> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  jfif: "image/jfif",
+  svg: "image/svg+xml",
+  gif: "image/gif",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  ico: "image/x-icon",
+  avif: "image/avif",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  ogv: "video/ogg",
+  mov: "video/quicktime",
+};
+
+const mimeByFileName = (name: string | undefined): string | undefined => {
+  const ext = name?.toLowerCase().split(".").pop();
+  return ext ? MIME_BY_EXTENSION[ext] : undefined;
+};
+
+/**
+ * Best-effort MIME for persisting a dropped blob. A declared non-generic
+ * type wins; an empty / `application/octet-stream` type falls back to the
+ * filename extension. Without this, a `.mp4` dropped with an empty
+ * `File.type` is stored as octet-stream and rehydration can't route it
+ * to the video decoder — the shape reloads blank.
+ */
+export const inferFileMime = (
+  declaredType: string | undefined,
+  name: string | undefined,
+): string => {
+  if (declaredType && declaredType !== "application/octet-stream") return declaredType;
+  return mimeByFileName(name) ?? "application/octet-stream";
+};
+
 /** True when the file MIME (or extension) indicates a video. */
 export const isVideoFile = (file: File): boolean => {
   if (file.type.startsWith("video/")) return true;
-  const ext = file.name.toLowerCase().split(".").pop();
-  return ext === "mp4" || ext === "webm" || ext === "ogv" || ext === "mov";
+  return mimeByFileName(file.name)?.startsWith("video/") ?? false;
 };
 
 /** True if the file's declared MIME (or extension fallback) is in IMAGE_MIME_TYPES. */
 export const isImageFile = (file: File): boolean => {
   if (file.type && IMAGE_MIME_TYPES.includes(file.type)) return true;
   // Some browsers omit `file.type`; fall back to extension sniffing.
-  const ext = file.name.toLowerCase().split(".").pop();
-  if (!ext) return false;
-  const byExt: Record<string, string> = {
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    jfif: "image/jfif",
-    svg: "image/svg+xml",
-    gif: "image/gif",
-    webp: "image/webp",
-    bmp: "image/bmp",
-    ico: "image/x-icon",
-    avif: "image/avif",
-  };
-  return byExt[ext] !== undefined;
+  return mimeByFileName(file.name)?.startsWith("image/") ?? false;
 };
 
 /** True if the file is a scene-document JSON (best-effort via extension). */
@@ -220,6 +260,7 @@ interface FileSystemDirectoryReaderLike {
 interface DataTransferItemLike {
   kind: string;
   webkitGetAsEntry?(): FileSystemEntryLike | null;
+  getAsFile?(): File | null;
 }
 
 export const walkDataTransfer = async function* (
@@ -244,7 +285,13 @@ export const walkDataTransfer = async function* (
   for (const item of Array.from(items)) {
     if (item.kind !== "file") continue;
     const entry = item.webkitGetAsEntry?.();
-    if (!entry) continue;
+    if (!entry) {
+      // No filesystem entry (some drag sources, synthetic `DataTransfer`s):
+      // fall back to the plain file the item carries.
+      const file = item.getAsFile?.();
+      if (file) yield file;
+      continue;
+    }
     yield* walkEntry(entry, "", 0, skip, maxDepth, options.onError);
   }
 };

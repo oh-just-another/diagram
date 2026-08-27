@@ -9,6 +9,7 @@ import {
 } from "@oh-just-another/scene";
 import type { FileId, LayerId, ElementId, Vec2 } from "@oh-just-another/types";
 import { fileId as castFileId } from "@oh-just-another/types";
+import { inferFileMime } from "../../features/file-drop.js";
 
 /**
  * Build the image-shape object for `insertImage`. Caller threads it
@@ -71,7 +72,9 @@ export const computeAddBinaryFile = async (
   const data = await blob.arrayBuffer();
   const id = castFileId(`file-${nextIdSeed()}-${Date.now().toString(36)}`);
   const file: BinaryFile = createBinaryFile(id, data, {
-    mime: blob.type || "application/octet-stream",
+    // Fall back to the filename extension when the blob's declared type is
+    // empty / generic — rehydration routes decode by this mime.
+    mime: inferFileMime(blob.type, name),
     ...(name !== undefined ? { name } : {}),
   });
   const patch: Patch = { kind: "file", id, before: null, after: file };

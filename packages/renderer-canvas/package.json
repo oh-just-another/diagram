@@ -32,7 +32,11 @@
       "types": "./dist/render-worker.d.ts",
       "import": "./dist/render-worker.js"
     },
-    "./dist/render-worker.js": "./dist/render-worker.js"
+    "./dist/render-worker.js": "./dist/render-worker.js",
+    "./glyph-bake-worker": {
+      "types": "./dist/glyph-bake-worker.d.ts",
+      "import": "./dist/glyph-bake-worker.js"
+    }
   },
   "files": [
     "dist",
@@ -61,7 +65,8 @@
     "@oh-just-another/renderer-workers": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/types": "workspace:*",
-    "earcut": "3.0.2"
+    "earcut": "3.0.2",
+    "@oh-just-another/text-wasm": "workspace:*"
   },
   "devDependencies": {
     "@types/earcut": "3.0.0"

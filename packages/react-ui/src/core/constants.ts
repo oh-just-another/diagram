@@ -22,23 +22,40 @@ export const PALETTE_ITEM_SIZE = 28;
 /** Width of the right property panel, in CSS pixels. */
 export const PROPERTY_PANEL_WIDTH = 240;
 
+/**
+ * Lucide icon sizing — one set for the whole chrome so a 40-px control, a
+ * menu row and a chip all read at the same weight, and every glyph lands
+ * on the pixel grid. Lucide draws on a 24-unit grid with a 2-unit stroke:
+ * only whole multiples keep that geometry on device pixels — 24 (1:1) and
+ * 12 (×½, stroke 2 → 1-px lines). Any other size (20, 16, 14 …) scales the
+ * grid fractionally and every edge lands between pixels, which reads
+ * blurry at 1× and 2× alike.
+ * - `CONTROL_ICON` — glyph inside a 40-px control (toolbar buttons, the
+ *   selection panel, panel headers, dialog buttons): 24 / 2.
+ * - `ROW_ICON` — leading icon of a menu / list row (24-px gutter): 20 / 2 —
+ *   a step below the controls by design; the ×⅚ scale costs a little
+ *   crispness, the trade the menus make for a lighter row.
+ * - `MARK_ICON` — check / chevron marks: 12 / 2.
+ * - `BADGE_ICON` — tiny glyphs inside chips and badges: 12 / 2.
+ */
+const CONTROL_ICON_SIZE = 24;
+const CONTROL_ICON_STROKE = 2;
+const ROW_ICON_SIZE = 20;
+const ROW_ICON_STROKE = 2;
+const MARK_ICON_SIZE = 12;
+const MARK_ICON_STROKE = 2;
+const BADGE_ICON_SIZE = 12;
+const BADGE_ICON_STROKE = 2;
+/** Drop glyph in the centre of the file-drop overlay. */
+export const DROP_OVERLAY_ICON_SIZE = 48;
+export const ICON_STROKE = 2;
+export const CONTROL_ICON = { size: CONTROL_ICON_SIZE, strokeWidth: CONTROL_ICON_STROKE } as const;
+export const ROW_ICON = { size: ROW_ICON_SIZE, strokeWidth: ROW_ICON_STROKE } as const;
+export const MARK_ICON = { size: MARK_ICON_SIZE, strokeWidth: MARK_ICON_STROKE } as const;
+export const BADGE_ICON = { size: BADGE_ICON_SIZE, strokeWidth: BADGE_ICON_STROKE } as const;
+
 /** Pixel side of the colour swatches inside the property panel. */
 export const PROPERTY_SWATCH_SIZE = 12;
-
-/** Width of the layer panel, in CSS pixels. */
-export const LAYER_PANEL_WIDTH = 220;
-
-/** Pixel side of the toggle icon (visibility / lock) buttons. */
-export const LAYER_TOGGLE_ICON_SIZE = 20;
-
-/** Pixel side of the per-row colour swatch in the layer panel. */
-export const LAYER_SWATCH_SIZE = 22;
-
-/** Width of the comments popover, in CSS pixels. */
-export const COMMENTS_PANEL_WIDTH = 280;
-
-/** Pixel height of the toolbar vertical separator. */
-export const TOOLBAR_SEPARATOR_HEIGHT = 20;
 
 /**
  * Default auto-dismiss time for a toast (ms). 0 / Infinity keep it
@@ -106,6 +123,17 @@ export const SELECTION_PANEL_EDGE_INSET_BOTTOM_PX = 66;
 /** Inset from the LEFT edge — small margin (no left-docked chrome by default). */
 export const SELECTION_PANEL_EDGE_INSET_LEFT_PX = 16;
 export const POPOVER_OFFSET_PX = 6;
+/** Minimum distance a popover keeps from the viewport edges (px). Range: 4–16. */
+export const POPOVER_VIEWPORT_PADDING_PX = 6;
+/**
+ * Minimum distance the context menu (and its submenus) keeps from the
+ * viewport edges — matches the side inset of the static toolbars, so a menu
+ * pushed against an edge lines up with the docked chrome. The menu is
+ * clamped to the WINDOW, not the canvas: it may overhang an embedded
+ * canvas, and when the window is shorter than the menu it scrolls.
+ * Range: 8–24.
+ */
+export const MENU_VIEWPORT_PADDING_PX = 16;
 
 /**
  * Text contextual-panel controls.
@@ -142,9 +170,13 @@ export const SEARCH_ZOOM_PADDING_PX = 160;
  * - `MINIMAP_WIDTH_PX` / `MINIMAP_HEIGHT_PX` — default canvas size in CSS px.
  * - `MINIMAP_PADDING_PX` — inner margin kept clear around the fitted scene so
  *   shapes at the edge aren't clipped. Range: 0–32.
- * - `MINIMAP_THROTTLE_MS` — minimum interval between overview repaints while
- *   the scene / viewport changes rapidly (pan, drag). Lower = smoother but
- *   more work per frame. Range: 60–500.
+ * - `MINIMAP_IDLE_MS` — the overview repaints only once the editor has been
+ *   quiet for this long: never during a drag / pan / pinch / wheel burst, so
+ *   the minimap costs nothing while the user is moving things, and once
+ *   right after. Range: 50–300.
+ * - `MINIMAP_BACKGROUND` / `MINIMAP_ELEMENT_COLOR` / `MINIMAP_ELEMENT_OPACITY` —
+ *   the overview is a schematic: white paper with every element's box in the
+ *   system accent colour (no real rendering).
  * - `MINIMAP_FRAME_COLOR` / `MINIMAP_FRAME_LINE_WIDTH` — stroke of the current
  *   viewport rectangle drawn over the overview.
  * - `MINIMAP_FRAME_FILL` — translucent wash inside the viewport rectangle.
@@ -156,7 +188,10 @@ export const SEARCH_ZOOM_PADDING_PX = 160;
 export const MINIMAP_WIDTH_PX = 200;
 export const MINIMAP_HEIGHT_PX = 150;
 export const MINIMAP_PADDING_PX = 8;
-export const MINIMAP_THROTTLE_MS = 150;
+export const MINIMAP_IDLE_MS = 120;
+export const MINIMAP_BACKGROUND = "#ffffff";
+export const MINIMAP_ELEMENT_COLOR: string = UI_ACCENT.light.accent;
+export const MINIMAP_ELEMENT_OPACITY = 0.55;
 /** Viewport frame on the minimap — the shared chrome accent (iris9). */
 export const MINIMAP_FRAME_COLOR: string = UI_ACCENT.light.accent;
 export const MINIMAP_FRAME_LINE_WIDTH = 1.5;
@@ -184,3 +219,53 @@ export const TEXT_FONT_STACKS: readonly { readonly label: string; readonly value
 export const DRAWING_PANEL_WIDTH = 176;
 export const BRUSH_WIDTH_MIN = 1;
 export const BRUSH_WIDTH_MAX = 40;
+
+/**
+ * Quick-pick emoji shared by the emoji-element picker and the sticky
+ * reaction bar. Order is display order.
+ */
+export const EMOJI_QUICK_PICKS: readonly string[] = [
+  "😀",
+  "😂",
+  "😍",
+  "🤔",
+  "😎",
+  "🙌",
+  "👍",
+  "👎",
+  "👏",
+  "🔥",
+  "❤️",
+  "💡",
+  "⭐",
+  "✅",
+  "❌",
+  "⚠️",
+  "❓",
+  "🎉",
+  "🚀",
+  "👀",
+];
+
+/**
+ * How long the viewport must stay still before canvas-anchored DOM
+ * overlays (link badges, sticky reactions) reappear after a pan/zoom.
+ * Reasonable range 80–300 ms.
+ */
+export const VIEWPORT_QUIET_MS = 150;
+
+/**
+ * How long after an element gesture (move / resize / rotate) ends before
+ * the floating selection toolbar reappears. During the gesture the
+ * toolbar is hidden entirely — repositioning it (floating-ui
+ * autoUpdate + React re-render) on every frame of a drag costs more
+ * than the whole canvas repaint. Reasonable range 100–400 ms.
+ */
+export const GESTURE_QUIET_MS = 100;
+
+/**
+ * Default corner radius for a freshly applied rounded-rect image mask,
+ * as a fraction of the shorter box side (0..0.5). The mask popover's
+ * slider adjusts it per shape afterwards.
+ */
+export const IMAGE_MASK_DEFAULT_RADIUS = 0.2;

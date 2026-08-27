@@ -6,6 +6,7 @@ import type { Style, TextStyle } from "../text/style.js";
 import type { TextRun } from "../text/text-runs.js";
 import { TEXT_APPROX_CHAR_WIDTH_FACTOR, TEXT_LINE_HEIGHT_FACTOR } from "../constants.js";
 import { getTextMeasurer } from "../text/text-measure.js";
+import { pickTextPlaceholder } from "../text/placeholder.js";
 
 /**
  * Fields shared by every shape variant. `order` is a fractional-index string
@@ -104,6 +105,16 @@ export interface ElementBase {
   readonly hidden?: boolean;
 
   /**
+   * Embedded text label — the shape's own text content, drawn inside its
+   * bounds (wrapped to the width, aligned via `style.textAlign` /
+   * `style.textBaseline`, `middle`+`center` by default). Shares the text
+   * element's building blocks (styled runs, list paragraphs) as data;
+   * layout is the renderer's job. Double-click opens the inline editor
+   * on shapes that support it (see `canCarryLabel`).
+   */
+  readonly label?: ShapeLabel;
+
+  /**
    * Element-level hyperlink. Any shape — text, image,
    * rectangle — can carry one. The host opens it on Cmd/Ctrl-click or via
    * the hover link-popup. Stored verbatim; the host MUST validate the
@@ -160,6 +171,103 @@ export interface TextElement extends ElementBase {
    * (renders exactly like a plain text block). See {@link TextRun}.
    */
   readonly runs?: readonly TextRun[];
+  /**
+   * Optional per-paragraph attributes (lists / nesting), aligned by index
+   * with `text.split("\n")`. A shorter array leaves the trailing
+   * paragraphs plain; omitted = every paragraph plain. Numbering for
+   * `"numbered"` items is derived at render time (consecutive numbered
+   * paragraphs at the same indent count up), never stored.
+   */
+  readonly paragraphs?: readonly TextParagraph[];
+}
+
+/**
+ * Embedded text carried by a non-text shape (see `ElementBase.label`).
+ * Field-for-field compatible with the text element's content model so
+ * the text pipeline (runs, paragraphs, layout, inline editing) applies
+ * unchanged.
+ */
+export interface ShapeLabel {
+  readonly text: string;
+  readonly fontFamily: string;
+  readonly fontSize: number;
+  /**
+   * Auto-fit mode (sticky notes): the RENDERED font size is derived so
+   * the text fills the shape body, scaling with the shape; `fontSize`
+   * then only serves as the fallback / upper hint. Picking an explicit
+   * size in the toolbar clears the flag.
+   */
+  readonly autoFit?: boolean;
+  /** Optional style overlay; `textAlign`/`textBaseline` default to center/middle. */
+  readonly style?: TextStyle;
+  readonly runs?: readonly TextRun[];
+  readonly paragraphs?: readonly TextParagraph[];
+}
+
+/**
+ * Sticky note — a bounded card whose text lives in the shared embedded
+ * `label` (double-click to edit). Background comes from `style.fill`;
+ * `authorName` renders along the bottom edge when `showAuthor` is on.
+ * Registered as a plugin-style type: not part of the built-in `Element`
+ * union, handled through the renderer / bounder registries and the
+ * custom-element wire schema.
+ */
+export interface StickyElement extends ElementBase {
+  readonly type: "sticky";
+  readonly width: number;
+  readonly height: number;
+  readonly authorName?: string;
+  readonly showAuthor?: boolean;
+  /** Free-form tags, rendered as small pills along the bottom edge. */
+  readonly tags?: readonly string[];
+  /**
+   * Emoji reactions. Each glyph tracks WHO reacted (`users` — collab
+   * user ids); the visible counter is `users.length`. A user's click on
+   * a glyph they already reacted with removes their reaction (toggle),
+   * anyone else's click adds theirs. The add button lives in the host
+   * UI at the sticky's bottom-left corner.
+   */
+  readonly reactions?: readonly { readonly glyph: string; readonly users: readonly string[] }[];
+}
+
+/** True when the shape is a sticky note. */
+export const isSticky = (shape: ElementBase): shape is StickyElement => shape.type === "sticky";
+
+/**
+ * Emoji element — a single glyph drawn at `size` world units. The glyph
+ * is replaced via the toolbar picker. Plugin-style type like `sticky`.
+ */
+export interface EmojiElement extends ElementBase {
+  readonly type: "emoji";
+  readonly glyph: string;
+  readonly size: number;
+}
+
+/** True when the shape is an emoji element. */
+export const isEmoji = (shape: ElementBase): shape is EmojiElement => shape.type === "emoji";
+
+/** Shape types whose body can host an embedded label. */
+const LABELABLE_TYPES: ReadonlySet<string> = new Set([
+  "rectangle",
+  "ellipse",
+  "polygon",
+  "block-arrow",
+  "sticky",
+]);
+
+/** True when the shape's type supports an embedded text label. */
+export const canCarryLabel = (shape: ElementBase): boolean => LABELABLE_TYPES.has(shape.type);
+
+/**
+ * Paragraph-level attributes for a {@link TextElement}. Both fields are
+ * optional so plain paragraphs serialize as `{}` (or are omitted entirely
+ * via a short array).
+ */
+export interface TextParagraph {
+  /** List marker kind; omitted = plain paragraph. */
+  readonly list?: "bullet" | "numbered";
+  /** 0-based nesting level. Omitted = 0. */
+  readonly indent?: number;
 }
 
 /**
@@ -179,6 +287,25 @@ export interface ImageCrop {
   readonly height: number;
 }
 
+/**
+ * Shape mask applied to an image element's BOX (after crop): pixels
+ * outside the mask are clipped away by the renderer (`RenderTarget.clip`
+ * — canvas2d clip / svg clipPath / webgl2 stencil). Coordinates are
+ * normalised to the element box (0..1 on both axes), so the mask scales
+ * with the shape. Additive: scenes and renderers that predate masks
+ * ignore it and draw the full box.
+ *
+ * - `ellipse` — inscribed ellipse (circle on a square box).
+ * - `round-rect` — rounded rectangle; `radius` is a fraction of the
+ *   SHORTER box side (0..0.5; 0.5 = capsule).
+ * - `polygon` — arbitrary closed ring of normalised points (≥ 3). The
+ *   built-in presets live in {@link IMAGE_MASK_POLYGON_PRESETS}.
+ */
+export type ImageMask =
+  | { readonly kind: "ellipse" }
+  | { readonly kind: "round-rect"; readonly radius: number }
+  | { readonly kind: "polygon"; readonly points: readonly Vec2[] };
+
 export interface ImageElement extends ElementBase {
   readonly type: "image";
   /**
@@ -194,6 +321,11 @@ export interface ImageElement extends ElementBase {
    */
   readonly crop?: ImageCrop;
   /**
+   * Optional shape mask clipping the drawn box. Omitted = no mask.
+   * Independent of (and applied after) `crop`. See {@link ImageMask}.
+   */
+  readonly mask?: ImageMask;
+  /**
    * Id of the `BinaryFile` in `Scene.files` that backs this image.
    * When present, hosts should resolve through the file registry
    * (creates an object-URL or ImageBitmap on demand); `src` stays
@@ -202,6 +334,12 @@ export interface ImageElement extends ElementBase {
   readonly fileId?: FileId;
   readonly width: number;
   readonly height: number;
+  /**
+   * Accessible description of the image content. Surfaced as `<title>`
+   * in SVG output and available to hosts for `aria` wiring. Omitted =
+   * decorative / undescribed.
+   */
+  readonly alt?: string;
   /**
    * Animated-content hint (opt-in). When set, the
    * renderer's image path consults `getAnimationAdapter(kind)`
@@ -455,6 +593,15 @@ registerBounder<EllipseElement>("ellipse", (s) => ({
 
 registerBounder<PolygonElement>("polygon", (s) => B.fromPoints(s.points));
 
+registerBounder<StickyElement>("sticky", (s) => ({
+  x: 0,
+  y: 0,
+  width: s.width,
+  height: s.height,
+}));
+
+registerBounder<EmojiElement>("emoji", (s) => ({ x: 0, y: 0, width: s.size, height: s.size }));
+
 registerBounder<PathElement>("path", (s) => {
   const points: Vec2[] = [];
   let cursor: Vec2 = { x: 0, y: 0 };
@@ -489,7 +636,11 @@ registerBounder<TextElement>("text", (s) => {
   // estimate (`chars × fontSize × factor`) headless / in tests. Height
   // is line count × line-height; hard newlines honoured in both modes.
   const lineHeight = s.fontSize * TEXT_LINE_HEIGHT_FACTOR;
-  const paragraphs = s.text.split("\n");
+  // An empty element is sized by its placeholder prompt (the renderer draws
+  // it while the text is being written), so the selection box and the
+  // dirty rect cover exactly what is on screen; the box snaps to the real
+  // text from the first keystroke.
+  const paragraphs = (s.text === "" ? pickTextPlaceholder(s.id) : s.text).split("\n");
   const measurer = getTextMeasurer();
   // Pass weight/style so the measured width matches the rendered (bold /
   // italic) glyphs — otherwise the box wouldn't grow when text is bolded.
@@ -506,8 +657,7 @@ registerBounder<TextElement>("text", (s) => {
   };
   if (s.maxWidth === undefined) {
     // Auto-width: widest paragraph drives width, one visual line per
-    // paragraph. Empty text keeps a caret-sized box so it stays
-    // selectable / editable.
+    // paragraph.
     let width = 0;
     for (const p of paragraphs) width = Math.max(width, measureLine(p));
     width = Math.max(width, s.fontSize * 0.5);

@@ -153,7 +153,7 @@ describe("selectionActions", () => {
     expect(editor.scene.elements.size).toBe(before + 1);
   });
 
-  it("toggle-lock locks the selected element; predicate requires a selection", () => {
+  it("toggle-lock locks the selected element and drops the selection; predicate requires a selection", () => {
     const editor = makeEditor();
     const action = byId(selectionActions, "toggle-lock");
     expect(action.predicate?.({ editor })).toBe(false);
@@ -161,7 +161,11 @@ describe("selectionActions", () => {
     expect(action.predicate?.({ editor })).toBe(true);
     action.perform({ editor });
     expect(editor.scene.elements.get(elementId("a"))?.locked).toBe(true);
-    action.perform({ editor });
+    // Locked = click-through, so locking clears the selection and the
+    // action's predicate goes false again; unlock is per-element.
+    expect(editor.selection.size).toBe(0);
+    expect(action.predicate?.({ editor })).toBe(false);
+    editor.unlockElement(elementId("a"));
     expect(editor.scene.elements.get(elementId("a"))?.locked).toBeUndefined();
   });
 

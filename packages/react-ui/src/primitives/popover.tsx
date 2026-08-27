@@ -1,4 +1,4 @@
-import { autoUpdate, computePosition, flip, offset, shift, type Placement } from "@floating-ui/dom";
+import type { Placement } from "@floating-ui/dom";
 import {
   cloneElement,
   isValidElement,
@@ -13,7 +13,8 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { POPOVER_OFFSET_PX } from "../core/constants.js";
+import { POPOVER_OFFSET_PX, POPOVER_VIEWPORT_PADDING_PX } from "../core/constants.js";
+import { floatPanel } from "./float-panel.js";
 import { usePortalContainer } from "../core/portal-container.js";
 
 /**
@@ -80,17 +81,7 @@ export const Popover = ({
     const t = triggerRef.current;
     const p = popoverRef.current;
     if (!t || !p) return;
-    const update = () => {
-      void computePosition(t, p, {
-        placement,
-        middleware: [offset(gap), flip(), shift({ padding: 6 })],
-      }).then(({ x, y }) => {
-        p.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
-      });
-    };
-    update();
-    const cleanup = autoUpdate(t, p, update);
-    return cleanup;
+    return floatPanel(t, p, { placement, gap, padding: POPOVER_VIEWPORT_PADDING_PX });
   }, [open, placement, gap]);
 
   // Outside-click + Escape close. Bound only while open.
@@ -157,10 +148,9 @@ export const Popover = ({
                 position: "absolute",
                 top: 0,
                 left: 0,
-                // `transform` is updated by the `computePosition` callback
-                // above. The pre-paint at (0,0) is hidden by the CSS
-                // opacity 0 → 1 animation on `.du-popover`.
-                zIndex: 1600,
+                // `transform` is set by `floatPanel`, which keeps the panel
+                // invisible until the first position resolves.
+                zIndex: "var(--du-z-popover)",
               }}
             >
               {children}

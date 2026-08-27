@@ -86,6 +86,16 @@ describe("round-trip", () => {
     expect(restored.viewport.gridEnabled).toBe(true);
   });
 
+  it("preserves the saved start view", () => {
+    let scene = emptyScene();
+    scene = {
+      ...scene,
+      viewport: { ...scene.viewport, startView: { pan: { x: 120, y: -40 }, zoom: 1.5 } },
+    };
+    const restored = deserializeScene(serializeScene(scene));
+    expect(restored.viewport.startView).toEqual({ pan: { x: 120, y: -40 }, zoom: 1.5 });
+  });
+
   it("preserves a link's avoidObstacles + routing", () => {
     let scene = emptyScene();
     const link: Link = {
@@ -103,6 +113,56 @@ describe("round-trip", () => {
     const r = [...restored.links.values()][0]!;
     expect(r.avoidObstacles).toBe(true);
     expect(r.routing).toBe("orthogonal");
+  });
+
+  // Regression: `lineKind`/`blockArrow` existed on `Link` but not in the wire
+  // schema — a stored scene containing a block-arrow link failed strict
+  // validation and the host dropped it as unparseable.
+  it("preserves a block-arrow link through stringify → parseScene", () => {
+    let scene = emptyScene();
+    const link: Link = {
+      id: linkId("L"),
+      layerId: DEFAULT_LAYER_ID,
+      from: { kind: "point", position: { x: 0, y: 0 } },
+      to: { kind: "point", position: { x: 100, y: 0 } },
+      lineKind: "block-arrow",
+      blockArrow: { headLength: 24, bodyThickness: 10 },
+      order: orderBetween(null, null),
+      style: { stroke: "#000" },
+    };
+    ({ scene } = addLink(scene, link));
+    const restored = parseScene(stringifyScene(scene));
+    const r = [...restored.links.values()][0]!;
+    expect(r.lineKind).toBe("block-arrow");
+    expect(r.blockArrow).toEqual({ headLength: 24, bodyThickness: 10 });
+  });
+
+  // Regression: the file export serialized only `fileId` references, so a
+  // scene with images / gif / video opened on another machine rendered
+  // blank shapes (nothing to rehydrate from). `includeFiles` embeds the
+  // bytes; parseScene restores them into `Scene.files`.
+  it("embeds and restores Scene.files with includeFiles", () => {
+    let scene = emptyScene();
+    ({ scene } = addElement(scene, rect("a")));
+    const bytes = new Uint8Array([1, 2, 3, 250, 251, 252]);
+    const file = {
+      id: fileId("f1"),
+      mime: "video/mp4",
+      name: "clip.mp4",
+      createdAt: 123,
+      data: bytes.buffer,
+    };
+    scene = { ...scene, files: new Map([[file.id, file]]) };
+
+    const withFiles = parseScene(stringifyScene(scene, null, { includeFiles: true }));
+    const restored = withFiles.files.get(fileId("f1"));
+    expect(restored?.mime).toBe("video/mp4");
+    expect(restored?.name).toBe("clip.mp4");
+    expect(new Uint8Array(restored?.data ?? new ArrayBuffer(0))).toEqual(bytes);
+
+    // Default (autosave) path still omits the bytes.
+    const withoutFiles = parseScene(stringifyScene(scene));
+    expect(withoutFiles.files.size).toBe(0);
   });
 
   it("stringify → parseScene round-trip", () => {
@@ -289,6 +349,42 @@ describe("round-trip", () => {
     });
   });
 
+  it("preserves an optional image mask (all three kinds)", () => {
+    const masks = [
+      { kind: "ellipse" },
+      { kind: "round-rect", radius: 0.25 },
+      {
+        kind: "polygon",
+        points: [
+          { x: 0.5, y: 0 },
+          { x: 1, y: 1 },
+          { x: 0, y: 1 },
+        ],
+      },
+    ];
+    for (const [i, mask] of masks.entries()) {
+      let scene = emptyScene();
+      const img: Element = {
+        id: elementId(`im${String(i)}`),
+        layerId: DEFAULT_LAYER_ID,
+        type: "image",
+        position: { x: 0, y: 0 },
+        rotation: 0,
+        scale: { x: 1, y: 1 },
+        order: orderBetween(null, null),
+        style: {},
+        src: "data:,",
+        width: 50,
+        height: 50,
+        mask,
+      } as unknown as Element;
+      ({ scene } = addElement(scene, img));
+      const restored = parseScene(stringifyScene(scene, 2));
+      const el = restored.elements.get(elementId(`im${String(i)}`));
+      expect((el as { mask?: unknown } | undefined)?.mask).toEqual(mask);
+    }
+  });
+
   it("preserves text decoration style (weight / italic / underline / strike)", () => {
     let scene = emptyScene();
     const t: Element = {
@@ -305,20 +401,149 @@ describe("round-trip", () => {
         fontWeight: "bold",
         fontStyle: "italic",
         textDecoration: { underline: true, strikethrough: true },
+        highlight: "#ffec99",
       },
       text: "Hi",
       fontFamily: "system-ui",
       fontSize: 18,
+      runs: [{ text: "H", style: { highlight: "#d0ebff" } }, { text: "i" }],
     } as unknown as Element;
     ({ scene } = addElement(scene, t));
     const restored = deserializeScene(serializeScene(scene));
-    const st = (
-      restored.elements.get(elementId("td")) as unknown as { style: Record<string, unknown> }
-    ).style;
+    const el = restored.elements.get(elementId("td")) as unknown as {
+      style: Record<string, unknown>;
+      runs: readonly { style?: Record<string, unknown> }[];
+    };
+    const st = el.style;
     expect(st.fontWeight).toBe("bold");
     expect(st.fontStyle).toBe("italic");
     expect(st.textDecoration).toEqual({ underline: true, strikethrough: true });
     expect(st.textAlign).toBe("center");
+    expect(st.highlight).toBe("#ffec99");
+    expect(el.runs[0]?.style?.highlight).toBe("#d0ebff");
+  });
+
+  it("preserves lock/hidden flags and an embedded label", () => {
+    let scene = emptyScene();
+    ({ scene } = addElement(scene, {
+      ...rect("l"),
+      locked: true,
+      hidden: true,
+      label: {
+        text: "inside",
+        fontFamily: "system-ui",
+        fontSize: 16,
+        style: { textAlign: "center", highlight: "#ffec99" },
+        paragraphs: [{ list: "bullet" }],
+      },
+    } as unknown as Element));
+    const restored = parseScene(stringifyScene(scene));
+    const el = restored.elements.get(elementId("l")) as unknown as {
+      locked?: boolean;
+      hidden?: boolean;
+      label?: { text: string; paragraphs?: unknown };
+    };
+    expect(el.locked).toBe(true);
+    expect(el.hidden).toBe(true);
+    expect(el.label?.text).toBe("inside");
+    expect(el.label?.paragraphs).toEqual([{ list: "bullet" }]);
+  });
+
+  it("stickies and emoji survive the custom-element schema", () => {
+    let scene = emptyScene();
+    ({ scene } = addElement(scene, {
+      id: elementId("s"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "sticky",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: { fill: "#fff9b1" },
+      width: 160,
+      height: 160,
+      authorName: "R",
+      showAuthor: true,
+      label: { text: "hi", fontFamily: "system-ui", fontSize: 16 },
+    } as unknown as Element));
+    ({ scene } = addElement(scene, {
+      id: elementId("e"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "emoji",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      glyph: "😀",
+      size: 48,
+    } as unknown as Element));
+    const restored = parseScene(stringifyScene(scene));
+    const st = restored.elements.get(elementId("s")) as unknown as {
+      type: string;
+      width: number;
+      authorName?: string;
+      label?: { text: string };
+    };
+    expect(st.type).toBe("sticky");
+    expect(st.width).toBe(160);
+    expect(st.authorName).toBe("R");
+    expect(st.label?.text).toBe("hi");
+    const em = restored.elements.get(elementId("e")) as unknown as {
+      type: string;
+      glyph: string;
+      size: number;
+    };
+    expect(em.type).toBe("emoji");
+    expect(em.glyph).toBe("😀");
+    expect(em.size).toBe(48);
+  });
+
+  it("preserves an image's alt text", () => {
+    let scene = emptyScene();
+    const img = {
+      id: elementId("ia"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "image",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      src: "data:,",
+      width: 10,
+      height: 10,
+      alt: "a red square",
+    } as unknown as Element;
+    ({ scene } = addElement(scene, img));
+    const restored = parseScene(stringifyScene(scene));
+    expect((restored.elements.get(elementId("ia")) as unknown as { alt?: string }).alt).toBe(
+      "a red square",
+    );
+  });
+
+  it("preserves paragraph list attributes through stringify → parseScene", () => {
+    let scene = emptyScene();
+    const t = {
+      id: elementId("tl"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "text",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: {},
+      text: "one\ntwo\nthree",
+      fontFamily: "system-ui",
+      fontSize: 14,
+      paragraphs: [{ list: "bullet" }, { list: "numbered", indent: 1 }, {}],
+    } as unknown as Element;
+    ({ scene } = addElement(scene, t));
+    const restored = parseScene(stringifyScene(scene));
+    const el = restored.elements.get(elementId("tl")) as unknown as {
+      paragraphs?: readonly { list?: string; indent?: number }[];
+    };
+    expect(el.paragraphs).toEqual([{ list: "bullet" }, { list: "numbered", indent: 1 }, {}]);
   });
 
   it("preserves element href", () => {

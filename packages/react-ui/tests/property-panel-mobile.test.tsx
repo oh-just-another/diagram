@@ -86,13 +86,13 @@ describe("PropertyPanel — mobile bottom-sheet variant", () => {
     expect(expand).not.toBeNull();
 
     // An overflow control (stroke style "Dashed") is NOT rendered yet.
-    expect(container.querySelector('button[aria-label="Dashed"]')).toBeNull();
+    expect(container.querySelector('button[aria-label="Link"]')).toBeNull();
 
     // Tap ⋮ → overflow grid appears, Dashed now reachable.
     act(() => {
       fireEvent.click(expand!);
     });
-    expect(container.querySelector('button[aria-label="Dashed"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Link"]')).not.toBeNull();
 
     // ⋮ now collapses.
     expect(container.querySelector('button[aria-label="Hide more properties"]')).not.toBeNull();
@@ -106,7 +106,7 @@ describe("PropertyPanel — mobile bottom-sheet variant", () => {
     // No bottom-sheet expand button on desktop…
     expect(container.querySelector('button[aria-label="More properties"]')).toBeNull();
     // …and overflow control is inline from the start.
-    expect(container.querySelector('button[aria-label="Dashed"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Link"]')).not.toBeNull();
     editor.dispose();
   });
 });

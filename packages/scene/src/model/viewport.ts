@@ -38,6 +38,17 @@ export interface Viewport {
    * matters while `gridEnabled` is true.
    */
   readonly snapToGrid?: boolean;
+  /**
+   * Saved "start view" camera — where the document opens (and where
+   * "go to start view" jumps). Absent until the author sets one.
+   */
+  readonly startView?: StartView;
+}
+
+/** A saved camera pose: pan + zoom (rotation is not part of a start view). */
+export interface StartView {
+  readonly pan: Vec2;
+  readonly zoom: number;
 }
 
 /** World-unit spacing snap-to-grid rounds to (the fixed grid spacing). */

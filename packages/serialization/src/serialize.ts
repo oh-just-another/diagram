@@ -1,5 +1,16 @@
 import type { Scene } from "@oh-just-another/scene";
 import { CURRENT_VERSION, type SceneDocument } from "./schema.js";
+import { serializeFiles } from "./files.js";
+
+export interface SerializeSceneOptions {
+  /**
+   * Embed `Scene.files` (base64) into the document so image / gif / video
+   * shapes survive the round-trip to another machine or session. Use for
+   * file export / share. Off by default: autosave documents stay small —
+   * the bytes live in the host's binary store (e.g. IndexedDB).
+   */
+  readonly includeFiles?: boolean;
+}
 
 /**
  * Convert an in-memory `Scene` into a plain JSON-ready document. The result is
@@ -8,7 +19,10 @@ import { CURRENT_VERSION, type SceneDocument } from "./schema.js";
  *
  * Pure: doesn't read or write any global state.
  */
-export const serializeScene = (scene: Scene): SceneDocument => {
+export const serializeScene = (
+  scene: Scene,
+  options: SerializeSceneOptions = {},
+): SceneDocument => {
   const annotations =
     scene.annotations.size > 0
       ? ([...scene.annotations.values()] as unknown as NonNullable<SceneDocument["annotations"]>)
@@ -16,13 +30,18 @@ export const serializeScene = (scene: Scene): SceneDocument => {
   const doc: SceneDocument = {
     format: "oh-just-another/scene",
     version: CURRENT_VERSION,
-    elements: [...scene.elements.values()].map(stripTransientMetadata) as SceneDocument["elements"],
+    elements: [...scene.elements.values()].map(
+      stripTransientMetadata,
+    ) as unknown as SceneDocument["elements"],
     links: [...scene.links.values()] as SceneDocument["links"],
     layers: [...scene.layers.values()],
     viewport: scene.viewport,
   };
   // Omit `annotations` for empty collections.
   if (annotations) doc.annotations = annotations;
+  if (options.includeFiles && scene.files.size > 0) {
+    doc.files = [...serializeFiles(scene).files];
+  }
   return doc;
 };
 
@@ -47,7 +66,7 @@ const stripTransientMetadata = <
   shape: T,
 ): T => {
   const md = shape.metadata;
-  const hasTransientMeta = md && "image" in md;
+  const hasTransientMeta = md !== undefined && ("image" in md || "labelScrollLines" in md);
   const hasTransientAnim = shape.animationData !== undefined;
   if (!hasTransientMeta && !hasTransientAnim) return shape;
 
@@ -56,8 +75,9 @@ const stripTransientMetadata = <
     animationData?: unknown;
   };
   if (hasTransientMeta) {
-    const { image: _image, ...rest } = md;
+    const { image: _image, labelScrollLines: _scroll, ...rest } = md;
     void _image;
+    void _scroll;
     if (Object.keys(rest).length > 0) next.metadata = rest;
     else delete next.metadata;
   }
@@ -69,5 +89,8 @@ const stripTransientMetadata = <
  * Stringify a scene. Convenience for `JSON.stringify(serializeScene(s))` with
  * optional 2-space indent for human-readable output.
  */
-export const stringifyScene = (scene: Scene, indent: number | null = null): string =>
-  JSON.stringify(serializeScene(scene), null, indent ?? undefined);
+export const stringifyScene = (
+  scene: Scene,
+  indent: number | null = null,
+  options: SerializeSceneOptions = {},
+): string => JSON.stringify(serializeScene(scene, options), null, indent ?? undefined);

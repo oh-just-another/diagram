@@ -14,7 +14,7 @@ import {
   type RectangleElement,
   type ElementBase,
 } from "../src/index";
-import { orderBetween } from "../src/index";
+import { orderBetween, pickTextPlaceholder } from "../src/index";
 
 const baseProps = {
   layerId: layerId("L"),
@@ -172,6 +172,25 @@ describe("shape", () => {
       const b = getElementLocalBounds(t);
       expect(b.width).toBeGreaterThan(0);
       expect(b.height).toBeGreaterThan(0);
+    });
+
+    it("sizes an EMPTY text element by its placeholder prompt (and snaps to real text once typed)", () => {
+      const empty = {
+        ...baseProps,
+        id: elementId("t-empty"),
+        type: "text" as const,
+        text: "",
+        fontFamily: "sans-serif",
+        fontSize: 10,
+        style: {},
+      };
+      const prompt = pickTextPlaceholder("t-empty");
+      const placeholderBox = getElementLocalBounds(empty);
+      const promptBox = getElementLocalBounds({ ...empty, text: prompt } as typeof empty);
+      expect(placeholderBox).toEqual(promptBox);
+      expect(placeholderBox.width).toBeGreaterThan(10 * 0.5);
+      const typed = getElementLocalBounds({ ...empty, text: "x" } as typeof empty);
+      expect(typed.width).toBeLessThan(placeholderBox.width);
     });
     it("text with maxWidth wraps into multiple line heights", () => {
       const t = {

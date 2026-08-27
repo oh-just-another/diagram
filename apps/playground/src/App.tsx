@@ -7,7 +7,7 @@ import { loadAllFiles, saveFiles, pruneFilesExcept } from "./idb-files";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "@oh-just-another/editor";
 import { setupTemplates } from "./templates";
-import { ImportExportMenu } from "./import-export-menu";
+import { ExportFormatItems, ImportMenu } from "./import-export-menu";
 import { installConfettiRenderer } from "./confetti";
 import { useHotkeys } from "./hotkeys";
 import { useCollab } from "./collab";
@@ -21,7 +21,7 @@ import { readUrlParam } from "./url-params";
  * Example app showing how to embed `<Diagram>` into a host
  * project. Everything host-side here (autosave, theme toggle,
  * collab room badge) is wired via `<Diagram>`'s public props —
- * `onSceneChange`, `onReady`, `renderHeaderLeft`, `renderHeaderRight`.
+ * `onSceneChange`, `onReady`, `renderHeaderRight`.
  */
 
 setupTemplates();
@@ -80,7 +80,11 @@ const restoreScene = async (): Promise<Scene | undefined> => {
     parsed = parseScene(saved);
   } catch (err) {
     console.warn("[diagram] stored scene unparseable, starting fresh", err);
+    // Never destroy the payload: a validation failure is more often schema
+    // drift (a fixable bug) than real corruption. Park it under a backup key
+    // so it can be recovered once parsing is fixed.
     try {
+      localStorage.setItem(`${STORAGE_KEY}.unparseable`, saved);
       localStorage.removeItem(STORAGE_KEY);
     } catch {
       /* ignore */
@@ -188,6 +192,11 @@ export const App = () => {
     // ready, same as the renderer override. The debug panel can still
     // toggle it afterwards.
     if (readDebugHitZones()) ed.setDebugHitZones(true);
+    // Dev-only console handle for debugging live sessions
+    // (`__editor.scene` etc.); stripped from production builds.
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).__editor = ed;
+    }
     setEditor(ed);
   }, []);
   const apiRef = useRef<DiagramAPI>(null);
@@ -263,23 +272,6 @@ export const App = () => {
     void status;
   }, [status]);
 
-  const renderHeaderLeft = useCallback(
-    () => (
-      <h1
-        style={{
-          fontSize: 13,
-          fontWeight: 500,
-          color: "var(--muted)",
-          margin: 0,
-          letterSpacing: 0.5,
-        }}
-      >
-        Diagram
-      </h1>
-    ),
-    [],
-  );
-
   const renderHeaderRight = useCallback(
     () => (
       <>
@@ -302,10 +294,15 @@ export const App = () => {
         grid={{ enabled: true }}
         onReady={handleReady}
         onSceneChange={handleSceneChange}
-        renderTopBarLeft={renderHeaderLeft}
         renderTopBarRight={renderHeaderRight}
-        {...(editor ? { renderMainMenuExtras: () => <ImportExportMenu editor={editor} /> } : {})}
+        {...(editor
+          ? {
+              renderBoardMenuExtras: () => <ImportMenu editor={editor} />,
+              renderExportMenuExtras: () => <ExportFormatItems editor={editor} />,
+            }
+          : {})}
         persistTheme
+        persistPreferences
         minimap
         {...(initialScene ? { initialScene } : {})}
         {...(capabilityOverrides ? { capabilities: capabilityOverrides } : {})}

@@ -29,28 +29,28 @@ const editorWith = (hit: AnnotationId | null, overrides: Partial<Editor> = {}): 
 const ctx = { worldPoint: { x: 0, y: 0 }, screenPoint: { x: 0, y: 0 } };
 
 describe("annotation pin context menu items", () => {
-  it("annotation-open: visible when pin is under cursor, hidden otherwise", () => {
-    const item = findAction("annotation-open");
+  it("open-thread: visible when pin is under cursor, hidden otherwise", () => {
+    const item = findAction("open-thread");
     expect(item.visible?.(editorWith(annotationId("a1")), ctx)).toBe(true);
     expect(item.visible?.(editorWith(null), ctx)).toBe(false);
   });
 
-  it("annotation-open click calls setSelectedAnnotation with the hit id", () => {
-    const item = findAction("annotation-open");
+  it("open-thread click calls setSelectedAnnotation with the hit id", () => {
+    const item = findAction("open-thread");
     const editor = editorWith(annotationId("a1"));
     item.onClick(editor, ctx);
     expect(editor.setSelectedAnnotation).toHaveBeenCalledWith(annotationId("a1"));
   });
 
-  it("annotation-toggle-resolved click calls toggleAnnotationResolved", () => {
-    const item = findAction("annotation-toggle-resolved");
+  it("resolve-annotation click calls toggleAnnotationResolved", () => {
+    const item = findAction("resolve-annotation");
     const editor = editorWith(annotationId("a1"));
     item.onClick(editor, ctx);
     expect(editor.toggleAnnotationResolved).toHaveBeenCalledWith(annotationId("a1"));
   });
 
-  it("annotation-delete click calls removeAnnotation", () => {
-    const item = findAction("annotation-delete");
+  it("remove-annotation click calls removeAnnotation", () => {
+    const item = findAction("remove-annotation");
     const editor = editorWith(annotationId("a1"));
     item.onClick(editor, ctx);
     expect(editor.removeAnnotation).toHaveBeenCalledWith(annotationId("a1"));
@@ -58,7 +58,7 @@ describe("annotation pin context menu items", () => {
 
   it("no-op when pointer lands away from any pin (visible=false guards)", () => {
     const editor = editorWith(null);
-    for (const id of ["annotation-open", "annotation-toggle-resolved", "annotation-delete"]) {
+    for (const id of ["open-thread", "resolve-annotation", "remove-annotation"]) {
       const item = findAction(id);
       expect(item.visible?.(editor, ctx)).toBe(false);
     }

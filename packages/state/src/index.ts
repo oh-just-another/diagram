@@ -33,10 +33,32 @@ export {
   boundsFromPoints,
 } from "./interaction/machine.js";
 
-export type { OverlayStyle, PeerCursor, PeerSelection } from "./render/overlay.js";
+export type { SnapGuide } from "./editor/applies/object-snap.js";
+export type {
+  EditingTextOverlay,
+  SizeReadout,
+  OverlayStyle,
+  PeerCursor,
+  PeerSelection,
+} from "./render/overlay.js";
 export { renderOverlay, DEFAULT_OVERLAY_STYLE } from "./render/overlay.js";
 
-export { PEER_CURSOR_BROADCAST_INTERVAL_MS } from "./constants.js";
+export {
+  PEER_CURSOR_BROADCAST_INTERVAL_MS,
+  FRAME_SIZE_PRESETS,
+  STICKY_SIZE_PRESETS,
+  LABEL_DEFAULT_FONT_SIZE,
+  TEXT_DEFAULT_FONT_FAMILY,
+  IMAGE_ASPECT_PRESETS,
+  type ImageAspectPreset,
+  LINK_DRAW_PRESETS,
+  type DrawShapeKind,
+  type LinkDrawPreset,
+  DEFAULT_EDITOR_PREFERENCES,
+  type EditorPreferences,
+  type WheelMode,
+} from "./constants.js";
+export type { FrameSizePreset } from "./constants.js";
 
 export {
   fromPointerEvent,
@@ -92,7 +114,12 @@ export type {
 } from "./editor/public/tool-ops.js";
 
 // File-drop registry (host-extensible image / scene / custom).
-export type { FileDropHandler, FileDropContext, WalkOptions } from "./features/file-drop.js";
+export type {
+  FileDropHandler,
+  FileDropContext,
+  FileDropKind,
+  WalkOptions,
+} from "./features/file-drop.js";
 export {
   FileDropRegistry,
   IMAGE_MIME_TYPES,

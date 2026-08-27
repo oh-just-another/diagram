@@ -36,6 +36,7 @@ export {
 export { isEditableTarget } from "./dom-focus.js";
 export { bindEditorHotkeys, type HotkeyBindingOptions } from "@oh-just-another/state";
 export { exportSceneToPng, type PngExportBackground, type PngExportOptions } from "./png-export.js";
+export { subsetScene, sceneBounds, fitViewportTo } from "./scene-subset.js";
 // File operations (Save / Open / Export / Copy-as-image) — registered on
 // the action registry by `<Editor>`; exported so hosts can wire them to
 // their own chrome or a custom registry.
@@ -48,6 +49,12 @@ export {
   downloadPng,
   openSceneFile,
   copySceneAsImage,
+  copySelectionAsPng,
+  copySelectionAsSvg,
+  copySelectionAsText,
+  sceneToSvgMarkup,
+  selectionText,
+  type ExportContent,
 } from "./file-actions.js";
 
 // Plug-in registries from the underlying packages, surfaced here so the
@@ -110,3 +117,10 @@ export type { InteractiveHitTester } from "@oh-just-another/state";
 export type { Template } from "@oh-just-another/templates";
 export type { AnimatedSourceAdapter } from "@oh-just-another/renderer-core";
 export type { RendererBackend } from "@oh-just-another/renderer-canvas";
+export {
+  DEFAULT_PREFERENCES_STORAGE_KEY,
+  bindPreferencesPersistence,
+  loadPreferences,
+  parseStoredPreferences,
+} from "./preferences-storage.js";
+export { BrandLogo } from "./brand/brand-logo.js";

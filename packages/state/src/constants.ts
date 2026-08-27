@@ -60,12 +60,12 @@ export const VIEWPORT_CULL_PADDING_RATIO = 0.05;
 export const HANDLE_SIZE = 5;
 
 /**
- * Screen-pixel offset between the handle's centre and the shape's bbox
- * edge — pushes the handle just outside the body so its hit area never
- * overlaps the shape interior, making corners grabbable without
- * precision-pointing. Range: 2–4.
+ * Screen-pixel offset between a resize handle's centre and the shape's bbox
+ * edge. 0 centres every handle exactly on the frame corner / edge midpoint;
+ * a positive value pushes them outward so the grab area clears the body.
+ * Range: 0–4.
  */
-export const HANDLE_OUTSET = 3;
+export const HANDLE_OUTSET = 0;
 
 /**
  * Screen-pixel hit-test half-size (mouse) for a resize handle —
@@ -339,8 +339,9 @@ export const PEER_CURSOR_BROADCAST_INTERVAL_MS = 33;
  *   (2–5) and bypass the clamp, so they stay smooth and granular.
  *   Defaults: clamp at 10, speed 1 → ~10 % per mouse notch,
  *   ~2 % per pinch frame.
- * - `MIN_ZOOM` / `MAX_ZOOM` — hard caps. Below MIN_ZOOM (very far
- *   out) culling/LOD save the frame; above MAX_ZOOM pixel-snapping
+ * - `MIN_ZOOM` / `MAX_ZOOM` — hard caps (1 % … 3200 %). Far out, the
+ *   per-element screen-size LOD keeps the frame cheap while anything still
+ *   large enough on screen stays fully drawn; above MAX_ZOOM pixel-snapping
  *   artefacts appear.
  *
  * Device classification in the wheel handler is `deltaX`-based —
@@ -353,7 +354,7 @@ export const WHEEL_PAN_FACTOR = 1;
 export const WHEEL_ZOOM_STEP = 1.6;
 export const WHEEL_ZOOM_MAX_STEP = 10;
 export const WHEEL_ZOOM_SPEED = 1;
-export const MIN_ZOOM = 0.05;
+export const MIN_ZOOM = 0.01;
 export const MAX_ZOOM = 32;
 
 /**
@@ -675,6 +676,55 @@ export const ERASER_CURSOR_LINE_WIDTH = 1.5;
 export const ERASER_TRAIL_TTL_MS = 120;
 
 /**
+ * Deepest list nesting level reachable via Tab / the indent buttons
+ * (0-based, so 8 = nine visual levels). Guards runaway indents that
+ * would push items past the wrap budget. Reasonable range 4–10.
+ */
+export const MAX_LIST_INDENT = 8;
+
+/**
+ * Font size a freshly-created embedded shape label starts with (world
+ * units). Smaller than `TEXT_DEFAULT_FONT_SIZE` — labels live inside a
+ * bounded shape body. Reasonable range 12–20.
+ */
+export const LABEL_DEFAULT_FONT_SIZE = 16;
+
+/**
+ * Sticky-note size presets (square side in world units) behind the
+ * toolbar's S / M / L segments. Reasonable range 100–300.
+ */
+export const STICKY_SIZE_PRESETS: readonly { id: "s" | "m" | "l"; side: number }[] = [
+  { id: "s", side: 120 },
+  { id: "m", side: 160 },
+  { id: "l", side: 220 },
+];
+
+/**
+ * Frame size presets for the frame toolbar's ratio dropdown. Applying one
+ * resizes the frame to the canonical size (world units ≈ CSS px at zoom 1),
+ * keeping its top-left corner; free resizing afterwards simply diverges
+ * from the preset (nothing is stored on the element). Sizes are the
+ * common paper / screen defaults and safe to tune.
+ */
+export interface FrameSizePreset {
+  readonly id: string;
+  readonly label: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+export const FRAME_SIZE_PRESETS: readonly FrameSizePreset[] = [
+  { id: "a4", label: "A4", width: 794, height: 1123 },
+  { id: "letter", label: "Letter", width: 816, height: 1056 },
+  { id: "16:9", label: "16:9", width: 1280, height: 720 },
+  { id: "4:3", label: "4:3", width: 1024, height: 768 },
+  { id: "1:1", label: "1:1", width: 800, height: 800 },
+  { id: "phone", label: "Phone", width: 390, height: 844 },
+  { id: "tablet", label: "Tablet", width: 820, height: 1180 },
+  { id: "browser", label: "Browser", width: 1280, height: 800 },
+];
+
+/**
  * Stroke-eraser (Shift) samples a brush polyline this densely — as a FRACTION of
  * the eraser radius — when computing which arc-length spans fall under the disc.
  * The eraser cuts the line's GEOMETRY (segments), not just its vertices, so a big
@@ -828,6 +878,54 @@ export const NUDGE_STEP_SHIFT_PX = 10;
 
 export const CARET_BLINK_INTERVAL_MS = 530;
 export const TEXT_SELECTION_FILL: string = CANVAS_CHROME_ACCENT;
+
+/**
+ * Object snapping / size assists (see `EditorPreferences`).
+ * - `OBJECT_SNAP_THRESHOLD_PX` — screen distance within which a dragged
+ *   edge / centre snaps to another shape's. Range: 4–10.
+ * - `OBJECT_SNAP_MIN_SIZE_PX` / `OBJECT_SNAP_MAX_CANDIDATES` — which shapes
+ *   count as snap targets (see below).
+ * - `SIZE_SUGGEST_THRESHOLD_PX` — screen distance within which a resized
+ *   width / height snaps to a nearby shape's size. Range: 4–10.
+ * - `SNAP_GUIDE_*` / `SNAP_MEASURE_*` — alignment guide and distance segment
+ *   chrome (reference look: dashed guide, ticked measure with a label).
+ * - `SIZE_READOUT_*` — the `W × H` pill under a shape being resized:
+ *   font size, padding, and gap below the shape's bottom edge (screen px).
+ */
+export const OBJECT_SNAP_THRESHOLD_PX = 6;
+/**
+ * Snap-target eligibility (reference rules): a shape must be at least this
+ * many screen px wide OR tall to be snapped to, and object snapping is
+ * skipped entirely when more than `OBJECT_SNAP_MAX_CANDIDATES` shapes are
+ * on screen (keeps a huge board responsive). Ranges: 12–24 / 500–5000.
+ */
+export const OBJECT_SNAP_MIN_SIZE_PX = 18;
+export const OBJECT_SNAP_MAX_CANDIDATES = 2000;
+export const SIZE_SUGGEST_THRESHOLD_PX = 6;
+/** Alignment guide: dashed line through the aligned edges / centres. */
+export const SNAP_GUIDE_COLOR = "#2a78ff";
+export const SNAP_GUIDE_WIDTH_PX = 1;
+export const SNAP_GUIDE_DASH: readonly number[] = [4, 4];
+/** How far (screen px) the guide runs past the outermost of the two shapes. */
+export const SNAP_GUIDE_OVERSHOOT_PX = 15;
+/**
+ * Distance segments: solid line with perpendicular ticks at both ends,
+ * inset from the shapes it measures, labelled with the rounded distance.
+ * `SNAP_SIZE_SEGMENT_OFFSET_PX` — gap between a shape and the segment that
+ * measures its width (above) / height (left) on a size match.
+ */
+export const SNAP_MEASURE_COLOR = "#4262ff";
+export const SNAP_MEASURE_INSET_PX = 4;
+export const SNAP_MEASURE_TICK_PX = 3;
+export const SNAP_MEASURE_LABEL_GAP_PX = 3;
+export const SNAP_SIZE_SEGMENT_OFFSET_PX = 15;
+export const SIZE_READOUT_FONT_SIZE = 11;
+export const SIZE_READOUT_PADDING_X = 6;
+export const SIZE_READOUT_PADDING_Y = 3;
+export const SIZE_READOUT_OFFSET_PX = 8;
+export const SIZE_READOUT_RADIUS_PX = 4;
+export const SIZE_READOUT_FILL: string = CANVAS_CHROME_ACCENT;
+export const SIZE_READOUT_TEXT_COLOR = "#fff";
 export const TEXT_SELECTION_OPACITY = 0.25;
 export const TEXT_CARET_WIDTH_PX = 1.5;
 export const TEXT_RESIZE_MIN_FONT_SIZE = 4;
@@ -922,3 +1020,105 @@ export const CROP_BRACKET_WIDTH = 3;
  * (midpoint / elbow longest-segment). Range: 4–16.
  */
 export const LINK_LABEL_DRAG_SNAP_PX = 8;
+
+/**
+ * Aspect presets for the image mask picker. Applying one centre-crops
+ * the source to the target aspect (`Editor.setImageAspectPreset`) and
+ * refits the element box; `circle` additionally installs an ellipse
+ * mask on the square box. Values are width / height ratios.
+ */
+export const IMAGE_ASPECT_PRESETS = {
+  circle: 1,
+  square: 1,
+  portrait: 3 / 4,
+  landscape: 4 / 3,
+  wide: 16 / 9,
+} as const;
+
+export type ImageAspectPreset = keyof typeof IMAGE_ASPECT_PRESETS | "original";
+
+/**
+ * Sticky-note colour palette. Converting a shape / text into a sticky
+ * snaps its fill to the NEAREST of these (RGB distance) so stickies stay
+ * within the classic sticky look; the first entry is the default yellow
+ * (matches renderer-core `STICKY_DEFAULT_FILL`).
+ */
+export const STICKY_PALETTE: readonly string[] = [
+  "#fff9b1", // yellow (default)
+  "#f5f6f8", // gray
+  "#d5f692", // light green
+  "#a6ccf5", // light blue
+  "#67c6c0", // teal
+  "#ffcee0", // pink
+  "#ff9d48", // orange
+  "#b384bb", // purple
+];
+
+/**
+ * "Shapes and lines" flyout: the shape kind armed by a shape row. The
+ * rubber-band draw gesture then creates that kind (diamond / triangle
+ * materialise as polygons inscribed in the dragged box).
+ */
+export type DrawShapeKind = "rect" | "ellipse" | "diamond" | "triangle";
+
+/**
+ * "Shapes and lines" flyout: connector presets armed by the line rows.
+ * Overrides applied to NEW links drawn in `draw-edge` mode (and the
+ * live preview): `line` — straight, no arrowhead; `arrow` — straight
+ * with the default arrowhead; `elbow` — orthogonal with the default
+ * arrowhead (same as the bare draw-edge tool).
+ */
+export type LinkDrawPreset = "line" | "arrow" | "elbow";
+
+export const LINK_DRAW_PRESETS: Readonly<
+  Record<
+    LinkDrawPreset,
+    { readonly routing: "straight" | "orthogonal"; readonly arrowheadTo: "triangle" | null }
+  >
+> = {
+  line: { routing: "straight", arrowheadTo: null },
+  arrow: { routing: "straight", arrowheadTo: "triangle" },
+  elbow: { routing: "orthogonal", arrowheadTo: "triangle" },
+};
+
+/**
+ * Gap (world units) between cells / stacked units of "Arrange as grid" and
+ * "Stack horizontally / vertically" when the caller passes none. Range: 8–32.
+ */
+export const ARRANGE_LAYOUT_GAP = 16;
+
+/**
+ * How the editor routes `wheel` events.
+ * - `"auto"` — per-event heuristic: any horizontal delta reads as a trackpad
+ *   swipe (pan), a pure vertical delta as a mouse wheel (zoom).
+ * - `"mouse"` — the wheel zooms; Shift + wheel pans sideways; a tilt wheel
+ *   (horizontal-only delta) pans.
+ * - `"trackpad"` — two-finger swipes pan on both axes; pinch (Ctrl/Cmd +
+ *   wheel) zooms.
+ * Ctrl / Cmd + wheel zooms in every mode.
+ */
+export type WheelMode = "auto" | "mouse" | "trackpad";
+
+/**
+ * Per-user editor preferences — device / assist settings that are NOT part
+ * of the document (hosts persist them per browser, e.g. `localStorage`).
+ * - `snapObjects` — snap moved / resized shapes to the edges and centres of
+ *   nearby shapes, with alignment guides.
+ * - `showObjectSize` — show a `W × H` readout under a shape while resizing.
+ * - `suggestObjectSize` — while resizing, snap to the width / height of
+ *   nearby shapes and highlight the matched one.
+ * - `wheelMode` — see {@link WheelMode}.
+ */
+export interface EditorPreferences {
+  readonly snapObjects: boolean;
+  readonly showObjectSize: boolean;
+  readonly suggestObjectSize: boolean;
+  readonly wheelMode: WheelMode;
+}
+
+export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
+  snapObjects: true,
+  showObjectSize: true,
+  suggestObjectSize: true,
+  wheelMode: "auto",
+};

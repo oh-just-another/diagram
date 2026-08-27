@@ -60,6 +60,14 @@ export interface RenderTarget {
   // --- Fill / stroke ---
   fill(rule?: FillRule): void;
   stroke(): void;
+  /**
+   * Intersect the clip region with the CURRENT path: subsequent draws
+   * only touch pixels inside it. Scoped by the state stack — `restore()`
+   * lifts the clip installed after the matching `save()`. Nested
+   * save/clip pairs intersect. Backends: Canvas2D `ctx.clip`, SVG
+   * `<clipPath>`, WebGL2 stencil buffer.
+   */
+  clip(rule?: FillRule): void;
 
   // --- Text ---
   fillText(text: string, x: number, y: number, maxWidth?: number): void;

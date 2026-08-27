@@ -223,7 +223,7 @@ const TooltipSurface = ({ target }: { readonly target: TooltipTarget }) => {
     left: pos?.left ?? -9999,
     top: pos?.top ?? -9999,
     pointerEvents: "none",
-    zIndex: 10000,
+    zIndex: "var(--du-z-tooltip)",
     visibility: pos ? "visible" : "hidden",
   };
 

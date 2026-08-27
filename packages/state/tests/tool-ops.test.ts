@@ -129,6 +129,89 @@ describe("computeConvertType (F9 convert)", () => {
     expect(computeConvertType(s, [elementId("r")], "rectangle")).toBeNull();
     expect(computeConvertType(s, [elementId("i")], "ellipse")).toBeNull();
   });
+
+  it("shape with a label → text: label text transplants, box fill dropped", () => {
+    const labelled = {
+      ...rect("r", 5, 7, { fill: "#ff0000" }),
+      label: { text: "hello", fontFamily: "serif", fontSize: 20 },
+    } as unknown as Element;
+    const s = sceneWith(labelled);
+    const res = computeConvertType(s, [elementId("r")], "text")!;
+    const el = getElement(res.scene, elementId("r")) as unknown as Record<string, unknown>;
+    expect(el.type).toBe("text");
+    expect(el.text).toBe("hello");
+    expect(el.fontFamily).toBe("serif");
+    expect(el.fontSize).toBe(20);
+    expect(el.maxWidth).toBe(60);
+    expect(el.label).toBeUndefined();
+    expect((el.position as { x: number }).x).toBe(5);
+  });
+
+  it("text → sticky: default square, auto-fit label, default fill", () => {
+    const text = {
+      id: elementId("t"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "text",
+      position: { x: 1, y: 2 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      text: "note",
+      fontFamily: "system-ui, sans-serif",
+      fontSize: 24,
+      style: { fill: "#111111" },
+    } as unknown as Element;
+    const s = sceneWith(text);
+    const res = computeConvertType(s, [elementId("t")], "sticky")!;
+    const el = getElement(res.scene, elementId("t")) as unknown as Record<string, unknown>;
+    expect(el.type).toBe("sticky");
+    expect(el.width).toBe(160);
+    expect(el.height).toBe(160);
+    const label = el.label as { text: string; autoFit?: boolean };
+    expect(label.text).toBe("note");
+    expect(label.autoFit).toBe(true);
+    expect(el.text).toBeUndefined();
+    // Text colour must not become the card colour.
+    expect((el.style as { fill?: string }).fill).toBeUndefined();
+  });
+
+  it("shape → sticky snaps the fill to the nearest sticky-palette colour", () => {
+    const s = sceneWith(rect("r", 0, 0, { fill: "#fdf39a" })); // близко к жёлтому
+    const res = computeConvertType(s, [elementId("r")], "sticky")!;
+    const el = getElement(res.scene, elementId("r")) as unknown as Record<string, unknown>;
+    expect((el.style as { fill?: string }).fill).toBe("#fff9b1");
+    expect(el.width).toBe(60); // footprint kept for shapes
+  });
+
+  it("sticky → ellipse: label carries over, reactions/tags/author drop", () => {
+    const sticky = {
+      id: elementId("s"),
+      layerId: DEFAULT_LAYER_ID,
+      type: "sticky",
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+      style: { fill: "#fff9b1" },
+      width: 160,
+      height: 160,
+      label: { text: "idea", fontFamily: "system-ui, sans-serif", fontSize: 14, autoFit: true },
+      reactions: [{ glyph: "👍", users: ["a"] }],
+      tags: ["todo"],
+      showAuthor: true,
+      authorName: "Alice",
+    } as unknown as Element;
+    const s = sceneWith(sticky);
+    const res = computeConvertType(s, [elementId("s")], "ellipse")!;
+    const el = getElement(res.scene, elementId("s")) as unknown as Record<string, unknown>;
+    expect(el.type).toBe("ellipse");
+    expect((el.label as { text: string }).text).toBe("idea");
+    expect(el.reactions).toBeUndefined();
+    expect(el.tags).toBeUndefined();
+    expect(el.authorName).toBeUndefined();
+    expect(el.showAuthor).toBeUndefined();
+    expect(el.width).toBe(160);
+  });
 });
 
 describe("clampCrop + computeSetImageCrop (F10 crop)", () => {

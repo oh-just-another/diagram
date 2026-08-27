@@ -36,6 +36,7 @@ const StyleZ = z
 const TextStyleZ = StyleZ.extend({
   textAlign: z.enum(["left", "center", "right"]).optional(),
   textBaseline: z.enum(["top", "middle", "bottom"]).optional(),
+  highlight: z.string().optional(),
   fontWeight: z.enum(["normal", "bold"]).optional(),
   fontStyle: z.enum(["normal", "italic"]).optional(),
   textDecoration: z
@@ -63,6 +64,15 @@ const AnchorRefZ = z.discriminatedUnion("kind", [
 
 // --- Shapes ---
 
+const TextRunZ = z.object({ text: z.string(), style: TextStyleZ.optional() }).strict();
+
+const TextParagraphZ = z
+  .object({
+    list: z.enum(["bullet", "numbered"]).optional(),
+    indent: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
 const ElementBaseZ = z.object({
   id: z.string(),
   layerId: z.string(),
@@ -79,7 +89,24 @@ const ElementBaseZ = z.object({
   anchors: z.record(z.string(), AnchorRefZ).optional(),
   parentId: z.string().optional(),
   frameId: z.string().optional(),
+  // Per-shape lock / visibility flags (propagate to descendants and
+  // frame members at runtime; only the flag itself is stored).
+  locked: z.boolean().optional(),
+  hidden: z.boolean().optional(),
   href: z.string().optional(),
+  // Embedded text label (rect / ellipse / polygon / block-arrow).
+  label: z
+    .object({
+      text: z.string(),
+      fontFamily: z.string(),
+      fontSize: z.number(),
+      autoFit: z.boolean().optional(),
+      style: TextStyleZ.optional(),
+      runs: z.array(TextRunZ).optional(),
+      paragraphs: z.array(TextParagraphZ).optional(),
+    })
+    .strict()
+    .optional(),
 });
 
 const RectangleZ = ElementBaseZ.extend({
@@ -118,7 +145,6 @@ const PathZ = ElementBaseZ.extend({
 
 // A styled run persists its raw substring plus an optional partial style
 // overlay (reuses `TextStyleZ` — every field there is already optional).
-const TextRunZ = z.object({ text: z.string(), style: TextStyleZ.optional() }).strict();
 
 const TextZ = ElementBaseZ.extend({
   type: z.literal("text"),
@@ -130,6 +156,7 @@ const TextZ = ElementBaseZ.extend({
   // Additive rich-text overlay. Omitted = uniform styling (legacy scenes
   // round-trip unchanged). Invariant: run texts concatenate to `text`.
   runs: z.array(TextRunZ).optional(),
+  paragraphs: z.array(TextParagraphZ).optional(),
 }).strict();
 
 const ImageZ = ElementBaseZ.extend({
@@ -141,10 +168,26 @@ const ImageZ = ElementBaseZ.extend({
   // Points at a `Scene.files` BinaryFile entry. Set by `buildImageElement`
   // on every insert.
   fileId: z.string().optional(),
+  // Accessible description (SVG <title> / host aria).
+  alt: z.string().optional(),
   // Normalised source-crop rectangle (fractions of the intrinsic image
   // size); omitted = whole image. Additive — older scenes lack it.
   crop: z
     .object({ x: z.number(), y: z.number(), width: z.number(), height: z.number() })
+    .optional(),
+  // Shape mask over the element box (applied after crop); omitted = no
+  // mask. Additive — older scenes lack it.
+  mask: z
+    .discriminatedUnion("kind", [
+      z.object({ kind: z.literal("ellipse") }).strict(),
+      z.object({ kind: z.literal("round-rect"), radius: z.number() }).strict(),
+      z
+        .object({
+          kind: z.literal("polygon"),
+          points: z.array(z.object({ x: z.number(), y: z.number() }).strict()).min(3),
+        })
+        .strict(),
+    ])
     .optional(),
   // Animated-content hints (gif / lottie / video).
   animationKind: z.string().optional(),
@@ -282,6 +325,14 @@ const LinkZ = z
       .optional(),
     routing: LinkRoutingZ.optional(),
     avoidObstacles: z.boolean().optional(),
+    lineKind: z.enum(["line", "block-arrow"]).optional(),
+    blockArrow: z
+      .object({
+        headLength: z.number().optional(),
+        bodyThickness: z.number().optional(),
+      })
+      .strict()
+      .optional(),
     arrowheads: LinkArrowheadsZ.optional(),
     label: LinkLabelZ.optional(),
     order: z.string(),
@@ -313,6 +364,7 @@ const ViewportZ = z
     gridEnabled: z.boolean(),
     gridStyle: z.enum(["lines", "dots"]).optional(),
     snapToGrid: z.boolean().optional(),
+    startView: z.object({ pan: Vec2Z, zoom: z.number() }).strict().optional(),
   })
   .strict();
 
@@ -339,6 +391,25 @@ const AnnotationZ = z
   })
   .strict();
 
+// --- Binary files (optional, embedded on file export) ---
+
+/**
+ * One `Scene.files` entry with base64-encoded bytes. Present only in
+ * documents serialized with `includeFiles` (file export / share) — the
+ * autosave path omits them to keep localStorage payloads small (bytes
+ * live in the host's binary store, e.g. IndexedDB).
+ */
+const BinaryFileEntryZ = z
+  .object({
+    id: z.string(),
+    mime: z.string(),
+    name: z.string().optional(),
+    createdAt: z.number(),
+    /** base64-encoded bytes (no data-URL prefix). */
+    data: z.string(),
+  })
+  .strict();
+
 // --- Document ---
 
 export const SceneDocumentZ = z
@@ -354,6 +425,12 @@ export const SceneDocumentZ = z
      * deserialize as an empty thread list.
      */
     annotations: z.array(AnnotationZ).optional(),
+    /**
+     * Embedded `Scene.files` bytes. Optional — see {@link BinaryFileEntryZ}:
+     * present on file exports so image / gif / video shapes survive the
+     * round-trip to another machine; absent on autosave documents.
+     */
+    files: z.array(BinaryFileEntryZ).optional(),
     viewport: ViewportZ,
   })
   .strict();

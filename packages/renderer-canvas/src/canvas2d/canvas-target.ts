@@ -164,6 +164,9 @@ export class Canvas2DTarget implements RenderTarget {
   stroke(): void {
     this.ctx.stroke();
   }
+  clip(rule?: FillRule): void {
+    this.ctx.clip(rule);
+  }
 
   // --- Text ---
 

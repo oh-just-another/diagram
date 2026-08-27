@@ -72,16 +72,16 @@ describe("Toolbar read-only chrome", () => {
       wrapper: wrap(ctx.editor),
     });
 
-    // Editable: rectangle tool is enabled.
-    expect(btnByLabel(container, "Rectangle tool (R)")?.disabled).toBe(false);
+    // Editable: the Shapes and lines flyout trigger is enabled.
+    expect(btnByLabel(container, "Shapes and lines")?.disabled).toBe(false);
 
     act(() => {
       ctx.editor.setReadOnly(true);
     });
 
     // Creation tools disabled …
-    expect(btnByLabel(container, "Rectangle tool (R)")?.disabled).toBe(true);
-    expect(btnByLabel(container, "Ellipse tool (O)")?.disabled).toBe(true);
+    expect(btnByLabel(container, "Shapes and lines")?.disabled).toBe(true);
+    expect(btnByLabel(container, "Text tool (T)")?.disabled).toBe(true);
     expect(btnByLabel(container, "Insert image (I)")?.disabled).toBe(true);
     // … navigation stays live.
     expect(btnByLabel(container, "Select tool (V)")?.disabled).toBe(false);
@@ -90,6 +90,6 @@ describe("Toolbar read-only chrome", () => {
     act(() => {
       ctx.editor.setReadOnly(false);
     });
-    expect(btnByLabel(container, "Rectangle tool (R)")?.disabled).toBe(false);
+    expect(btnByLabel(container, "Shapes and lines")?.disabled).toBe(false);
   });
 });

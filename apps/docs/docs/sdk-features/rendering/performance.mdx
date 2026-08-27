@@ -58,14 +58,18 @@ if (scene.elements.size > WORKER_AUTO_THRESHOLD) {
 
 ## Level of detail
 
-`LodOptions` lets cheaper paths kick in at low zoom: below `placeholder` zoom,
-shapes degrade to flat AABB fills; below `hideText` zoom, text layout and
-glyph drawing are skipped. Pass it via `RenderSceneOptions.lod`; the defaults
-are exported as `DEFAULT_LOD` (`placeholder: 0.15`, `hideText: 0.4`).
+`LodOptions` picks cheaper paths **per element, from its size on screen** —
+not from the zoom level — so a huge shape or a giant heading stays fully
+drawn at 1 % while small ones degrade first. A shape whose longer side is
+below `placeholderMaxScreenPx` on screen becomes a flat AABB fill; text
+(standalone and embedded labels) whose font size on screen is below
+`minTextScreenPx` is skipped. Pass it via `RenderSceneOptions.lod`; the
+defaults are exported as `DEFAULT_LOD` (`placeholderMaxScreenPx: 8`,
+`minTextScreenPx: 6`).
 
 ```ts
 import { renderScene, type LodOptions } from "@oh-just-another/renderer-core";
 
-const lod: LodOptions = { placeholder: 0.1, hideText: 0.4 };
+const lod: LodOptions = { placeholderMaxScreenPx: 12, minTextScreenPx: 5 };
 renderScene(scene, target, { viewport, lod });
 ```

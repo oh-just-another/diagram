@@ -4,12 +4,20 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronRight, Menu as MenuIcon } from "lucide-react";
+import { Switch } from "../primitives/switch.js";
+import { floatPanel } from "../primitives/float-panel.js";
+import { cssPx } from "../primitives/css-var.js";
+import { usePortalContainer } from "../core/portal-container.js";
+import { MARK_ICON, MENU_VIEWPORT_PADDING_PX } from "../core/constants.js";
 
 /** Pixel size for the trigger icon — matches the toolbar tool buttons. */
 const TRIGGER_ICON_SIZE = 16;
@@ -39,6 +47,80 @@ interface MenuContext {
 
 const Ctx = createContext<MenuContext | null>(null);
 
+/**
+ * Every open panel of one menu (root + nested), portaled to the portal
+ * container so they stack above the UI layer (`--du-z-popover`) — the
+ * click-outside handler treats a press inside any of them as "inside".
+ */
+const PanelsCtx = createContext<Set<HTMLElement> | null>(null);
+
+/**
+ * One panel's submenu coordinator: at most ONE submenu per level is open.
+ * Hovering a submenu row opens it at once and closes the previous sibling
+ * immediately (no overlapping panels); leaving a row / its panel, or
+ * hovering a plain item, closes after `SUBMENU_CLOSE_DELAY_MS` so a
+ * diagonal move into the child panel survives.
+ */
+interface LevelContext {
+  readonly openId: string | null;
+  readonly open: (id: string) => void;
+  readonly toggle: (id: string) => void;
+  readonly scheduleClose: (id: string) => void;
+  readonly closeSoon: () => void;
+  readonly cancelClose: () => void;
+}
+const LevelCtx = createContext<LevelContext | null>(null);
+
+const SUBMENU_CLOSE_DELAY_MS = 120;
+
+const MenuLevel = ({ children }: { readonly children: ReactNode }) => {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const timer = useRef<number | null>(null);
+  const cancelClose = useCallback(() => {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }, []);
+  const closeSoon = useCallback(() => {
+    cancelClose();
+    timer.current = window.setTimeout(() => {
+      setOpenId(null);
+      timer.current = null;
+    }, SUBMENU_CLOSE_DELAY_MS);
+  }, [cancelClose]);
+  const scheduleClose = useCallback(
+    (id: string) => {
+      cancelClose();
+      timer.current = window.setTimeout(() => {
+        setOpenId((cur) => (cur === id ? null : cur));
+        timer.current = null;
+      }, SUBMENU_CLOSE_DELAY_MS);
+    },
+    [cancelClose],
+  );
+  const open = useCallback(
+    (id: string) => {
+      cancelClose();
+      setOpenId(id);
+    },
+    [cancelClose],
+  );
+  const toggle = useCallback(
+    (id: string) => {
+      cancelClose();
+      setOpenId((cur) => (cur === id ? null : id));
+    },
+    [cancelClose],
+  );
+  useEffect(() => cancelClose, [cancelClose]);
+  const value = useMemo(
+    () => ({ openId, open, toggle, scheduleClose, closeSoon, cancelClose }),
+    [openId, open, toggle, scheduleClose, closeSoon, cancelClose],
+  );
+  return <LevelCtx.Provider value={value}>{children}</LevelCtx.Provider>;
+};
+
 const useMenuCtx = (): MenuContext => {
   const ctx = useContext(Ctx);
   return (
@@ -56,6 +138,17 @@ export interface MainMenuProps {
   readonly trigger?: ReactNode;
   readonly className?: string;
   readonly style?: CSSProperties;
+  /** Accessible name + tooltip of the trigger button. Default `"Main menu"`. */
+  readonly ariaLabel?: string;
+  /** Class / style for the trigger button (default: flat icon button). */
+  readonly triggerClassName?: string;
+  readonly triggerStyle?: CSSProperties;
+  /**
+   * Where the panel opens relative to the trigger. `"bottom-start"`
+   * (default) hangs below, left-aligned; `"top-end"` rises above,
+   * right-aligned — for menus in a bottom bar.
+   */
+  readonly placement?: "bottom-start" | "top-end";
 }
 
 export const MainMenu = ({
@@ -63,16 +156,47 @@ export const MainMenu = ({
   trigger = <MenuIcon size={TRIGGER_ICON_SIZE} strokeWidth={TRIGGER_ICON_STROKE} />,
   className,
   style,
+  ariaLabel = "Main menu",
+  triggerClassName,
+  triggerStyle,
+  placement = "bottom-start",
 }: MainMenuProps) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const panels = useRef(new Set<HTMLElement>()).current;
+  const portalContainer = usePortalContainer();
   const menuId = useId();
+
+  // Float the panel off the trigger: clear the bar group's inset + border,
+  // then keep `--du-flyout-gap` between the bar and the panel; flip / shift
+  // inside the viewport like the context menu.
+  useLayoutEffect(() => {
+    const trigger = triggerRef.current;
+    const panel = panelRef.current;
+    if (!open || !trigger || !panel) return undefined;
+    panels.add(panel);
+    const gap = cssPx(panel, "--du-pad-sm") + 1 + cssPx(panel, "--du-flyout-gap");
+    const stop = floatPanel(trigger, panel, {
+      placement,
+      gap,
+      padding: MENU_VIEWPORT_PADDING_PX,
+      strategy: "fixed",
+      clampHeight: true,
+    });
+    return () => {
+      stop();
+      panels.delete(panel);
+    };
+  }, [open, placement, panels]);
 
   useEffect(() => {
     if (!open) return undefined;
     const onDown = (ev: MouseEvent | PointerEvent): void => {
-      if (!ref.current) return;
-      if (ref.current.contains(ev.target as Node)) return;
+      const t = ev.target as Node;
+      if (ref.current?.contains(t)) return;
+      for (const panel of panels) if (panel.contains(t)) return;
       setOpen(false);
     };
     const onKey = (ev: KeyboardEvent): void => {
@@ -90,7 +214,7 @@ export const MainMenu = ({
       window.removeEventListener("pointerdown", onDown);
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, panels]);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -103,62 +227,59 @@ export const MainMenu = ({
   };
 
   const panelStyle: CSSProperties = {
-    position: "absolute",
-    top: "calc(100% + 6px)",
+    position: "fixed",
+    top: 0,
     left: 0,
-    minWidth: 200,
-    background: "var(--menu-bg)",
-    color: "var(--menu-text)",
-    border: "1px solid var(--menu-border)",
-    borderRadius: 6,
-    boxShadow: "var(--du-ui-shadow)",
-    padding: 4,
-    zIndex: 900,
+    zIndex: "var(--du-z-popover)",
   };
 
   return (
     <div ref={ref} className={className} style={containerStyle}>
       <button
+        ref={triggerRef}
         type="button"
-        className={`du-icon-button du-icon-button-flat${open ? " is-active" : ""}`}
+        className={`${triggerClassName ?? "du-icon-button du-icon-button-flat"}${open ? " is-active" : ""}`}
+        style={triggerStyle}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        aria-label="Main menu"
-        title="Main menu"
+        aria-label={ariaLabel}
+        title={ariaLabel}
         onClick={() => {
           setOpen((p) => !p);
         }}
       >
         {trigger}
       </button>
-      {open ? (
-        <div id={menuId} role="menu" style={panelStyle}>
-          <Ctx.Provider value={{ close }}>{children}</Ctx.Provider>
-        </div>
-      ) : null}
+      {open
+        ? createPortal(
+            <div
+              ref={panelRef}
+              id={menuId}
+              role="menu"
+              aria-label={ariaLabel}
+              className="du-menu-panel"
+              style={panelStyle}
+            >
+              <Ctx.Provider value={{ close }}>
+                <PanelsCtx.Provider value={panels}>
+                  <MenuLevel>{children}</MenuLevel>
+                </PanelsCtx.Provider>
+              </Ctx.Provider>
+            </div>,
+            portalContainer,
+          )
+        : null}
     </div>
   );
 };
 
-const itemBase: CSSProperties = {
-  display: "block",
-  width: "100%",
-  textAlign: "left",
-  background: "transparent",
-  color: "inherit",
-  border: "none",
-  borderRadius: 4,
-  padding: "6px 10px",
-  font: "inherit",
-  fontSize: 13,
-  cursor: "pointer",
-};
-
-const itemHoverable = (extra?: CSSProperties): CSSProperties => ({
-  ...itemBase,
-  ...extra,
-});
+/** Gutter content: check mark when active, else the icon (or nothing). */
+const Gutter = ({ active, icon }: { readonly active?: boolean; readonly icon?: ReactNode }) => (
+  <span aria-hidden className={`du-menu-gutter${active ? " is-accent" : ""}`}>
+    {active ? <Check {...MARK_ICON} /> : (icon ?? "")}
+  </span>
+);
 
 export interface MainMenuItemProps {
   readonly children: ReactNode;
@@ -177,49 +298,59 @@ export interface MainMenuItemProps {
    * aligned across mixed icon / no-icon items.
    */
   readonly icon?: ReactNode;
+  /** Trailing content on the right (non-interactive); rendered instead of `shortcut`. */
+  readonly trailing?: ReactNode;
+  /**
+   * On/off setting row: renders as `menuitemcheckbox` with a trailing
+   * switch that mirrors `checked`. The row itself is the control —
+   * `onClick` toggles the value — so the switch is decorative (nested
+   * buttons are invalid HTML). Implies `keepOpen`.
+   */
+  readonly checked?: boolean;
+  /**
+   * Keep the menu open after a click — for checkbox-style items (export
+   * content switches, etc.) where the user toggles several in a row.
+   */
+  readonly keepOpen?: boolean;
 }
 
-const Item = ({ children, onClick, shortcut, disabled, active, icon }: MainMenuItemProps) => {
+const Item = ({
+  children,
+  onClick,
+  shortcut,
+  disabled,
+  active,
+  icon,
+  trailing,
+  checked,
+  keepOpen,
+}: MainMenuItemProps) => {
   const { close } = useMenuCtx();
+  const level = useContext(LevelCtx);
+  const isCheckbox = checked !== undefined;
   return (
     <button
       type="button"
-      role="menuitem"
+      role={isCheckbox ? "menuitemcheckbox" : "menuitem"}
+      aria-checked={isCheckbox ? checked : undefined}
       disabled={disabled}
       onClick={() => {
         if (disabled) return;
         onClick?.();
-        close();
+        if (!keepOpen && !isCheckbox) close();
       }}
-      style={{
-        ...itemHoverable(),
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-      }}
+      onMouseEnter={() => level?.closeSoon()}
+      className="du-menu-row"
     >
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-        <span
-          aria-hidden
-          style={{
-            width: 14,
-            height: 14,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: active ? "var(--du-accent, #5b5bd6)" : "var(--du-text-muted, #888)",
-          }}
-        >
-          {active ? <Check size={12} strokeWidth={2.25} /> : (icon ?? "")}
-        </span>
+      <span className="du-menu-row-main">
+        <Gutter active={active === true} icon={icon} />
         {children}
       </span>
-      {shortcut ? (
-        <span style={{ color: "var(--muted, #888)", fontSize: 11 }}>{shortcut}</span>
-      ) : null}
+      {isCheckbox ? (
+        <Switch checked={checked} presentational />
+      ) : (
+        (trailing ?? (shortcut ? <span className="du-menu-shortcut">{shortcut}</span> : null))
+      )}
     </button>
   );
 };
@@ -239,39 +370,22 @@ const ItemLink = ({ children, href, external }: MainMenuItemLinkProps) => {
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer noopener" : undefined}
       onClick={close}
-      style={{
-        ...itemHoverable({ textDecoration: "none" }),
-        color: "var(--text, #ddd)",
-      }}
+      className="du-menu-row"
+      style={{ textDecoration: "none" }}
     >
-      {children}
+      <span className="du-menu-row-main">
+        <Gutter />
+        {children}
+      </span>
     </a>
   );
 };
 
-const Separator = () => (
-  <hr
-    style={{
-      margin: "4px 6px",
-      border: "none",
-      borderTop: "1px solid var(--border, #2a2a2a)",
-    }}
-  />
-);
+const Separator = () => <hr className="du-menu-sep" />;
 
 const Group = ({ title, children }: { title: string; children: ReactNode }) => (
   <div>
-    <div
-      style={{
-        padding: "6px 10px 2px",
-        fontSize: 11,
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
-        color: "var(--muted, #888)",
-      }}
-    >
-      {title}
-    </div>
+    <div className="du-menu-group-title">{title}</div>
     {children}
   </div>
 );
@@ -294,7 +408,7 @@ const Toggle = <T extends string>({ value, onChange, options }: MainMenuTogglePr
       role="radiogroup"
       style={{
         display: "flex",
-        margin: "4px 8px 6px",
+        margin: "var(--du-menu-sep) var(--du-menu-row-pad-x)",
         background: "var(--menu-divider, #2a2a2a)",
         borderRadius: 6,
         padding: 2,
@@ -359,7 +473,6 @@ const Toggle = <T extends string>({ value, onChange, options }: MainMenuTogglePr
  * Positioning is fixed to "right of trigger, top-aligned with the
  * trigger row".
  */
-const SUBMENU_CLOSE_DELAY_MS = 120;
 
 export interface MainMenuSubmenuProps {
   readonly children: ReactNode;
@@ -371,98 +484,97 @@ export interface MainMenuSubmenuProps {
 }
 
 const Submenu = ({ children, label, icon, disabled }: MainMenuSubmenuProps) => {
-  const [open, setOpen] = useState(false);
-  const closeTimerRef = useRef<number | null>(null);
+  const id = useId();
+  const level = useContext(LevelCtx);
+  const panels = useContext(PanelsCtx);
+  const portalContainer = usePortalContainer();
+  const open = level?.openId === id;
+  const rowRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  const cancelClose = useCallback((): void => {
-    if (closeTimerRef.current !== null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-  }, []);
-
-  const scheduleClose = useCallback((): void => {
-    cancelClose();
-    closeTimerRef.current = window.setTimeout(() => {
-      setOpen(false);
-      closeTimerRef.current = null;
-    }, SUBMENU_CLOSE_DELAY_MS);
-  }, [cancelClose]);
-
-  // Clear a pending close-timer on unmount so it doesn't fire on a
-  // detached component.
-  useEffect(() => cancelClose, [cancelClose]);
+  // Beside the row (left when the right side has no room), first child row
+  // aligned with this row: the cross-axis shift undoes the panel padding +
+  // border, the main-axis gap clears the parent column and adds
+  // `--du-submenu-gap`. Portaled like the root panel so it stacks above
+  // the UI layer and is never clipped by a scrolling parent.
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    const panel = panelRef.current;
+    if (!open || !row || !panel) return undefined;
+    panels?.add(panel);
+    const align = cssPx(panel, "--du-menu-pad") + 1;
+    const stop = floatPanel(row, panel, {
+      placement: "right-start",
+      fallbackPlacements: ["left-start"],
+      gap: align + cssPx(panel, "--du-submenu-gap"),
+      crossAxis: -align,
+      padding: MENU_VIEWPORT_PADDING_PX,
+      strategy: "fixed",
+      clampHeight: true,
+    });
+    return () => {
+      stop();
+      panels?.delete(panel);
+    };
+  }, [open, panels]);
 
   const panelStyle: CSSProperties = {
-    position: "absolute",
-    top: -4,
-    left: "100%",
-    marginLeft: 4,
-    minWidth: 220,
-    background: "var(--menu-bg)",
-    color: "var(--menu-text)",
-    border: "1px solid var(--menu-border)",
-    borderRadius: 6,
-    boxShadow: "var(--du-ui-shadow)",
-    padding: 4,
-    zIndex: 1000,
+    position: "fixed",
+    top: 0,
+    left: 0,
+    zIndex: "calc(var(--du-z-popover) + 1)",
   };
 
   return (
-    <div
-      style={{ position: "relative" }}
-      onMouseEnter={() => {
-        if (disabled) return;
-        cancelClose();
-        setOpen(true);
-      }}
-      onMouseLeave={scheduleClose}
-    >
+    <>
       <button
+        ref={rowRef}
         type="button"
         role="menuitem"
         disabled={disabled}
         aria-haspopup="menu"
         aria-expanded={open}
+        onMouseEnter={() => {
+          if (disabled) return;
+          level?.open(id);
+        }}
+        onMouseLeave={() => {
+          level?.scheduleClose(id);
+        }}
         onClick={() => {
           if (disabled) return;
-          cancelClose();
-          setOpen((p) => !p);
+          level?.toggle(id);
         }}
-        style={{
-          ...itemHoverable(),
-          cursor: disabled ? "not-allowed" : "pointer",
-          opacity: disabled ? 0.4 : 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
+        className={`du-menu-row${open ? " is-open" : ""}`}
       >
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <span
-            aria-hidden
-            style={{
-              width: 14,
-              height: 14,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--du-text-muted, #888)",
-            }}
-          >
-            {icon ?? ""}
-          </span>
+        <span className="du-menu-row-main">
+          <Gutter icon={icon} />
           {label}
         </span>
-        <ChevronRight size={12} strokeWidth={2.25} aria-hidden />
+        <span className="du-menu-shortcut">
+          <ChevronRight {...MARK_ICON} aria-hidden />
+        </span>
       </button>
-      {open ? (
-        <div role="menu" style={panelStyle}>
-          {children}
-        </div>
-      ) : null}
-    </div>
+      {open
+        ? createPortal(
+            <div
+              ref={panelRef}
+              role="menu"
+              className="du-menu-panel du-menu-submenu"
+              style={panelStyle}
+              onMouseEnter={() => {
+                level.cancelClose();
+              }}
+              onMouseLeave={() => {
+                level.scheduleClose(id);
+              }}
+            >
+              <MenuLevel>{children}</MenuLevel>
+            </div>,
+            portalContainer,
+          )
+        : null}
+    </>
   );
 };
 

@@ -9,9 +9,11 @@ import {
   getLink,
   getLinkPath,
   getLinkWaypointMidpoints,
+  getElementRenderBounds,
   isFrame,
   isGroup,
   isImage,
+  isSticky,
   isText,
   updateAnnotation,
 } from "@oh-just-another/scene";
@@ -29,8 +31,6 @@ import { anchorOverlayPoints } from "./anchor-points.js";
 import { snapshotMovingLinks } from "./applies/link-move.js";
 import {
   ANCHOR_DOT_ACTIVE_RADIUS,
-  DOUBLE_CLICK_MS,
-  DOUBLE_CLICK_TOLERANCE_PX,
   LINK_ENDPOINT_HANDLE_RADIUS,
   LINK_START_ANCHOR_OUTSET,
   LONG_PRESS_MAX_MOVEMENT_PX,
@@ -70,11 +70,7 @@ const handleDownLabelDrag = (editor: Editor, worldPoint: Vec2): boolean => {
   // usually travelled the machine path (it selected the link), so consult the
   // machine's click bookkeeping, not the handle chain.
   const now = performance.now();
-  const last = editor.interaction.lastClickWorldPoint;
-  const isDouble =
-    now - editor.interaction.lastClickAt < DOUBLE_CLICK_MS &&
-    last !== null &&
-    Math.hypot(last.x - worldPoint.x, last.y - worldPoint.y) <= DOUBLE_CLICK_TOLERANCE_PX;
+  const isDouble = editor.interaction.isDoubleClickAt(worldPoint, now);
   editor.interaction.lastClickAt = now;
   editor.interaction.lastClickWorldPoint = worldPoint;
   if (isDouble) {
@@ -277,19 +273,42 @@ const handleDownCrop = (editor: Editor, worldPoint: Vec2): boolean => {
 };
 
 /**
- * Double-click on an image (in select mode) enters crop mode. Detected via the
- * native click-count (`detail`), matching the browser's dblclick timing.
- * `detail` may be absent (synthetic events / pointer backends that don't set
- * it); treat a missing count as a single click so a plain tap never enters
- * crop (which would otherwise swallow the press and break tap gestures).
+ * Second press of a double-click? Trusts a native click-count (`detail` ≥ 2,
+ * set by some pointer backends) and otherwise falls back to the editor's
+ * time / distance bookkeeping — `PointerEvent.detail` is 0 in most browsers,
+ * so the previous tap's pointer-up (recorded by `routeIsolationClick`) is the
+ * reliable signal. A missing count on a first press reads as a single click,
+ * so a plain tap never triggers a double-click action.
+ */
+const isDoublePress = (editor: Editor, worldPoint: Vec2, detail: number): boolean =>
+  (detail || 0) >= 2 || editor.interaction.isDoubleClickAt(worldPoint);
+
+/**
+ * Double-click on an image (in select mode) enters crop mode.
  */
 const handleDownCropEnter = (editor: Editor, worldPoint: Vec2, detail: number): boolean => {
-  if (editor.readOnly || editor.activeTool.type !== "select" || (detail || 0) < 2) return false;
+  if (editor.readOnly || editor.activeTool.type !== "select") return false;
+  if (!isDoublePress(editor, worldPoint, detail)) return false;
   const hit = editor.hitTest(worldPoint);
   if (hit.kind !== "element") return false;
   const el = getElement(editor._scene, hit.id);
   if (el === undefined || !isImage(el)) return false;
   editor.beginImageCrop(hit.id);
+  return true;
+};
+
+/**
+ * Double-click on the rotate grip (in select mode) straightens the selection
+ * back to `rotation: 0`. Same double-press detection as crop entry; the first
+ * press of the pair already ran the (motionless) rotate gesture, so nothing
+ * needs unwinding here.
+ */
+const handleDownRotateReset = (editor: Editor, worldPoint: Vec2, detail: number): boolean => {
+  if (editor.readOnly || editor.activeTool.type !== "select") return false;
+  if (editor.hitTest(worldPoint).kind !== "rotate-handle") return false;
+  if (!isDoublePress(editor, worldPoint, detail)) return false;
+  editor.cancelLongPress();
+  editor.resetSelectionRotation();
   return true;
 };
 
@@ -880,8 +899,12 @@ const dispatchMoveToMachine = (editor: Editor, worldPoint: Vec2): void => {
     ctx.mode !== "draw-edge" &&
     editor.isDrawingPhase(ctx)
   ) {
-    // Update rubber-band preview live for rect / ellipse drawing.
-    editor.drawingPreview = boundsFromPoints(ctx.pressOrigin, worldPoint);
+    // Update rubber-band preview live for rect / ellipse drawing. Snapped
+    // through the same helper as the final CREATE so the preview always
+    // shows where the shape will actually land.
+    editor.drawingPreview = editor.snapCreateBoundsIfActive(
+      boundsFromPoints(ctx.pressOrigin, worldPoint),
+    );
   }
   // Port-overlay tracking in draw-edge mode — both when idle and during gesture.
   if (ctx.mode === "draw-edge") {
@@ -898,6 +921,28 @@ const dispatchMoveToMachine = (editor: Editor, worldPoint: Vec2): void => {
     editor.hoverAnimatedElement(
       directHs && isImage(directHs) && directHs.animationKind ? directHs.id : null,
     );
+    // Hover-only sticky chrome (the "+" add-reaction button). Once a
+    // sticky is hovered, keep it while the cursor stays inside its
+    // RENDER bounds — the reaction row lives below the card, and losing
+    // hover on the way to the button would hide it before the click.
+    if (directHs && isSticky(directHs)) {
+      editor.setHoveredSticky(directHs.id);
+    } else if (editor.hoveredStickyId !== null) {
+      const cur = editor._scene.elements.get(editor.hoveredStickyId);
+      const keep =
+        cur !== undefined &&
+        isSticky(cur) &&
+        (() => {
+          const b = getElementRenderBounds(cur);
+          return (
+            worldPoint.x >= b.x &&
+            worldPoint.x <= b.x + b.width &&
+            worldPoint.y >= b.y &&
+            worldPoint.y <= b.y + b.height
+          );
+        })();
+      if (!keep) editor.setHoveredSticky(null);
+    }
     // Track the idle cursor so the SINGLE selected element's link-start dot
     // grows by proximity. Only the selected element's dots react.
     editor.setHoverCursorWorld(editor.activeTool.type === "select" ? worldPoint : null);
@@ -1226,6 +1271,7 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
     if (handleDownEditingText(editor, worldPoint)) return;
     if (handleDownCrop(editor, worldPoint)) return;
     if (handleDownCropEnter(editor, worldPoint, ev.detail)) return;
+    if (handleDownRotateReset(editor, worldPoint, ev.detail)) return;
     if (handleDownBrush(editor, worldPoint, ev.pressure, ev.pointerType)) return;
     if (handleDownErase(editor, worldPoint, data.modifiers.alt, data.modifiers.shift)) return;
     if (handleDownLaser(editor, worldPoint)) return;
@@ -1440,6 +1486,9 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
   //   • Any deltaX ≠ 0 → trackpad 2D swipe → PAN both axes.
   //   • Plain deltaY only → ZOOM (mouse wheel; rare pure-vertical trackpad
   //     swipes also land here).
+  //   The `wheelMode` preference overrides the heuristic: `mouse` zooms on
+  //   every plain wheel (Shift → sideways pan, tilt wheel → pan), `trackpad`
+  //   pans on every plain wheel and zooms only on pinch (Ctrl/Cmd).
   const onWheel = (ev: WheelEvent): void => {
     ev.preventDefault();
     const rect = editor.host.getBoundingClientRect();
@@ -1450,13 +1499,24 @@ export const bindPointerEvents = (editor: Editor): (() => void) => {
       applyWheelZoom(editor, ev, screenPoint);
       return;
     }
-    // Trackpad 2-finger swipe with any horizontal component → pan both axes.
-    // Mouse wheels never set deltaX, so this branch never misroutes mouse input.
-    if (ev.deltaX !== 0) {
+    const mode = editor.preferences.wheelMode;
+    if (mode === "trackpad") {
       applyWheelPan(editor, ev);
       return;
     }
-    // Plain vertical wheel — always ZOOM.
+    if (mode === "mouse") {
+      // Shift + wheel → sideways pan; a tilt wheel reports deltaX only.
+      if (ev.shiftKey || (ev.deltaX !== 0 && ev.deltaY === 0)) applyWheelPan(editor, ev);
+      else applyWheelZoom(editor, ev, screenPoint);
+      return;
+    }
+    // Auto — trackpad 2-finger swipe with any horizontal component → pan both
+    // axes. Mouse wheels never set deltaX, so this never misroutes mouse input.
+    if (ev.deltaX !== 0 || ev.shiftKey) {
+      applyWheelPan(editor, ev);
+      return;
+    }
+    // Plain vertical wheel — ZOOM.
     applyWheelZoom(editor, ev, screenPoint);
   };
   // `passive: false` because we preventDefault. Browsers default wheel listeners

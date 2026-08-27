@@ -19,6 +19,9 @@ export const DIAMOND_ICON = wrap('<path d="M12 3 L21 12 L12 21 L3 12 Z" />');
 export const HEXAGON_ICON = wrap('<path d="M7 4 L17 4 L21 12 L17 20 L7 20 L3 12 Z" />');
 export const ARROW_ICON = wrap('<path d="M4 12 H18" /><path d="M14 7 L19 12 L14 17" />');
 export const STICKY_ICON = wrap('<path d="M5 4 H17 L19 6 V20 H5 Z" /><path d="M17 4 V6 H19" />');
+export const EMOJI_ICON = wrap(
+  '<circle cx="12" cy="12" r="9" /><path d="M8 14 Q12 18 16 14" /><circle cx="9" cy="10" r="0.5" /><circle cx="15" cy="10" r="0.5" />',
+);
 
 // Flowchart symbols
 export const PROCESS_ICON = wrap('<rect x="3" y="7" width="18" height="10" rx="1" />');

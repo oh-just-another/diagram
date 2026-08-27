@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { DeserializationError, deserializeScene, parseScene } from "../src/index";
+import type { Link } from "@oh-just-another/scene";
+import {
+  DeserializationError,
+  deserializeScene,
+  parseScene,
+  type SerializedLink,
+} from "../src/index";
+
+// Compile-time drift guard: every top-level `Link` field must exist in the
+// wire schema. Structural `extends` can't catch a missing OPTIONAL field
+// (extra props never fail assignability), so compare key sets instead. A key
+// added to `Link` without a matching `LinkZ` entry turns this into `never`
+// and breaks typecheck — exactly the drift that made strict validation drop
+// stored scenes containing `lineKind`.
+type LinkKeysMissingFromWire = Exclude<keyof Link, keyof SerializedLink>;
+const _linkSchemaCoversLink: LinkKeysMissingFromWire extends never ? true : never = true;
+void _linkSchemaCoversLink;
 
 const validBaseDoc = {
   format: "oh-just-another/scene",

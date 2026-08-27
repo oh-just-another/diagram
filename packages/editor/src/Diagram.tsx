@@ -8,33 +8,44 @@ import {
   useState,
   type CSSProperties,
   type ReactNode,
+  type RefObject,
 } from "react";
 import {
+  Ban,
   Clipboard,
+  Command,
   Copy,
   Delete,
   Download,
+  Expand,
+  Eye,
   FileDown,
   FileUp,
   Grid3x3,
   Grip,
-  HelpCircle,
   ImageDown,
-  Library as LibraryIcon,
+  Keyboard,
+  LayoutDashboard,
   Magnet,
+  Map as MapIcon,
   Maximize,
   Minus,
   Monitor,
   Moon,
+  Mouse,
   MousePointer,
+  Pencil,
   Plus,
   Redo2,
   RotateCcw,
+  Ruler,
   Scissors,
+  Search,
+  Shrink,
+  SlidersHorizontal,
   Sun,
   Undo2,
   ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import {
   BottomBar,
@@ -56,6 +67,8 @@ import {
   Minimap,
   ResetToContentButton,
   LinkHoverPopup,
+  LinkBadges,
+  StickyReactions,
   LinkDropShapeMenu,
   LinkCaptionEditor,
   SelectionFloatingPanel,
@@ -66,7 +79,6 @@ import {
   PortalContainerProvider,
   ToastHost,
   Toolbar,
-  Tooltip,
   TooltipProvider,
   TopBar,
   UILayer,
@@ -75,28 +87,33 @@ import {
   useHelpDialogHotkey,
   useMobileLayout,
   usePalettePlacement,
-  useScene,
+  useEditorSelector,
+  useFullscreen,
   useZenMode,
+  CONTROL_ICON,
+  ROW_ICON,
+  FileDropOverlay,
 } from "@oh-just-another/react-ui";
+import { BrandLogo } from "./brand/brand-logo.js";
+import { diagramFileDropHandler } from "@oh-just-another/importers";
 
 /**
  * Lucide icon sizing — `MENU_ICON_SIZE` is for in-row icons of
- * `MainMenu.Item`, `TOGGLE_ICON_SIZE` is for the segmented Theme /
- * Grid toggles, `BUTTON_ICON_SIZE` is for `IconButton` slot
+ * `MainMenu.Item`, `BUTTON_ICON_SIZE` is for `IconButton` slot
  * children (library, zoom, fit). All share `BUTTON_ICON_STROKE`
  * for visual consistency with the toolbar.
  */
-const MENU_ICON_SIZE = 14;
-const TOGGLE_ICON_SIZE = 14;
-const BUTTON_ICON_SIZE = 16;
-const BUTTON_ICON_STROKE = 1.75;
-const menuIcon = { size: MENU_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
-const toggleIcon = { size: TOGGLE_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
-const buttonIcon = { size: BUTTON_ICON_SIZE, strokeWidth: BUTTON_ICON_STROKE } as const;
+const menuIcon = ROW_ICON;
+const buttonIcon = CONTROL_ICON;
 
 /** Default target for the Help-menu "GitHub" link (overridable / hideable via the `repositoryUrl` prop). */
 const DEFAULT_REPOSITORY_URL = "https://github.com/oh-just-another/diagram";
-import type { ActiveTool, Editor, FileDropHandler, Mode } from "@oh-just-another/state";
+import type { ActiveTool, Editor, FileDropHandler, Mode, WheelMode } from "@oh-just-another/state";
+import { defaultActionRegistry } from "@oh-just-another/state";
+import {
+  DEFAULT_PREFERENCES_STORAGE_KEY,
+  bindPreferencesPersistence,
+} from "./preferences-storage.js";
 import type { ElementId } from "@oh-just-another/types";
 import { formatHotkey } from "@oh-just-another/state";
 import {
@@ -135,6 +152,7 @@ import {
   copySceneAsImage,
   registerFileActions,
   setFileActionNotifier,
+  type ExportContent,
 } from "./file-actions.js";
 import { isEditableTarget } from "./dom-focus";
 
@@ -235,20 +253,34 @@ export interface DiagramProps {
    */
   readonly hideDrawingPanel?: boolean;
   /**
-   * Show the built-in minimap: a scene overview + viewport rect, docked
+   * Show the built-in minimap at startup: a scene overview + viewport rect, docked
    * bottom-right above the zoom controls. Click / drag it to pan. Hidden in
    * zen mode along with the rest of the chrome. Off by default.
    */
   readonly minimap?: boolean;
 
   // --- Slots ---
+  /**
+   * Brand cell at the start of the top bar. Defaults to the built-in
+   * `BrandLogo` (light / dark artwork from `assets/logo*.svg`); pass a node
+   * to replace it, or `null` to drop the cell.
+   */
+  readonly logo?: ReactNode;
   readonly renderTopBarLeft?: () => ReactNode;
   readonly renderTopBarCenter?: () => ReactNode;
   readonly renderTopBarRight?: () => ReactNode;
   readonly renderBottomBarLeft?: () => ReactNode;
   readonly renderBottomBarCenter?: () => ReactNode;
   readonly renderBottomBarRight?: () => ReactNode;
+  /** Extra rows appended to the main menu's top level (after a separator). */
   readonly renderMainMenuExtras?: () => ReactNode;
+  /** Extra rows inside the main menu's Board › submenu, right after Export (e.g. import / export formats). */
+  readonly renderBoardMenuExtras?: () => ReactNode;
+  /**
+   * Extra rows inside Board › Export, after the built-in PNG / SVG entries —
+   * for host export formats (JSON, Mermaid, …). Render `MainMenu.Item`s.
+   */
+  readonly renderExportMenuExtras?: () => ReactNode;
   /** Called when user clicks the "Import" button in the Library panel. */
   readonly onImportTemplates?: () => void;
 
@@ -280,6 +312,13 @@ export interface DiagramProps {
    * on reload).
    */
   readonly persistTheme?: boolean | string;
+  /**
+   * Persist the per-user editor preferences (`EditorPreferences`: object
+   * snapping, size readouts, wheel mode — the canvas menu's check rows) in
+   * `localStorage`. Pass `true` for the default key `"diagram-preferences"`,
+   * or a custom key string. Omit to keep them in memory for the session.
+   */
+  readonly persistPreferences?: boolean | string;
 
   // --- Branding ---
   /**
@@ -337,6 +376,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     hideSelectionPanel,
     hideDrawingPanel,
     minimap,
+    logo = <BrandLogo />,
     renderTopBarLeft,
     renderTopBarCenter,
     renderTopBarRight,
@@ -344,11 +384,14 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     renderBottomBarCenter,
     renderBottomBarRight,
     renderMainMenuExtras,
+    renderBoardMenuExtras,
+    renderExportMenuExtras,
     onImportTemplates,
     theme: themeProp,
     defaultTheme = "system",
     onThemeChange,
     persistTheme,
+    persistPreferences,
     repositoryUrl,
     onConfirm,
     onNotify,
@@ -504,6 +547,9 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   const [editor, setEditor] = useState<Editor | null>(null);
   const handleReady = useCallback(
     (e: Editor) => {
+      // Built-in diagram import (native JSON, Excalidraw, Mermaid, …) first,
+      // then the host's handlers.
+      e.registerFileDropHandler(diagramFileDropHandler);
       if (fileDropHandlers) {
         for (const handler of fileDropHandlers) e.registerFileDropHandler(handler);
       }
@@ -512,6 +558,29 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     },
     [fileDropHandlers, onReady],
   );
+
+  // Minimap visibility: the `minimap` prop seeds it; the zoom menu's
+  // "Hide / Show minimap" row and the `M` key toggle it at runtime.
+  const [minimapVisible, setMinimapVisible] = useState(minimap === true);
+  useEffect(() => {
+    setMinimapVisible(minimap === true);
+  }, [minimap]);
+  const toggleMinimap = useCallback(() => {
+    setMinimapVisible((v) => !v);
+  }, []);
+  // Fullscreen target: the editor root (chrome + canvas), see the zoom menu.
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Per-user preferences: load once the editor exists, then mirror changes.
+  const preferencesKey = useMemo(() => {
+    if (persistPreferences === true) return DEFAULT_PREFERENCES_STORAGE_KEY;
+    if (typeof persistPreferences === "string") return persistPreferences;
+    return null;
+  }, [persistPreferences]);
+  useEffect(() => {
+    if (!editor || !preferencesKey) return undefined;
+    return bindPreferencesPersistence(editor, preferencesKey);
+  }, [editor, preferencesKey]);
 
   useEffect(() => {
     if (!editor) return undefined;
@@ -578,6 +647,11 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
         ed.cancelFlowchart();
         e.preventDefault();
       }
+      // `M` — toggle the minimap (zoom menu parity).
+      if (e.key.toLowerCase() === "m" && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        toggleMinimap();
+        e.preventDefault();
+      }
     };
     const onKeyUp = (e: KeyboardEvent) => {
       sync(e);
@@ -603,7 +677,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
       ed.setSnapSuppressed(false);
       ed.setTransformModifiers({ alt: false, shift: false });
     };
-  }, [editor]);
+  }, [editor, toggleMinimap]);
 
   useImperativeHandle<DiagramAPI, DiagramAPI>(
     ref,
@@ -649,6 +723,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
       <ToastHost>
         <TooltipProvider>
           <div
+            ref={rootRef}
             className={className}
             data-diagram-root
             // Theme is scoped to this editor root (not the global <html>), so
@@ -682,13 +757,16 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
                   hideToolbar={hideToolbar}
                   hideLibraryButton={hideLibraryButton}
                   hideMainMenu={hideMainMenu}
+                  logo={logo}
                   hideZoomControls={hideZoomControls}
                   hideResetToContent={hideResetToContent}
                   hideHelpButton={hideHelpButton}
                   hideContextMenu={hideContextMenu}
                   hideSelectionPanel={hideSelectionPanel}
                   hideDrawingPanel={hideDrawingPanel}
-                  minimap={minimap}
+                  minimapVisible={minimapVisible}
+                  onToggleMinimap={toggleMinimap}
+                  rootRef={rootRef}
                   renderTopBarLeft={renderTopBarLeft}
                   renderTopBarCenter={renderTopBarCenter}
                   renderTopBarRight={renderTopBarRight}
@@ -696,6 +774,8 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
                   renderBottomBarCenter={renderBottomBarCenter}
                   renderBottomBarRight={renderBottomBarRight}
                   renderMainMenuExtras={renderMainMenuExtras}
+                  renderBoardMenuExtras={renderBoardMenuExtras}
+                  renderExportMenuExtras={renderExportMenuExtras}
                   onImportTemplates={onImportTemplates}
                   repositoryUrl={repositoryUrl}
                   onConfirm={onConfirm}
@@ -728,13 +808,16 @@ const EditorShell = ({
   hideToolbar,
   hideLibraryButton,
   hideMainMenu,
+  logo,
   hideZoomControls,
   hideResetToContent,
   hideHelpButton,
   hideContextMenu,
   hideSelectionPanel,
   hideDrawingPanel,
-  minimap,
+  minimapVisible,
+  onToggleMinimap,
+  rootRef,
   renderTopBarLeft,
   renderTopBarCenter,
   renderTopBarRight,
@@ -742,6 +825,8 @@ const EditorShell = ({
   renderBottomBarCenter,
   renderBottomBarRight,
   renderMainMenuExtras,
+  renderBoardMenuExtras,
+  renderExportMenuExtras,
   onImportTemplates,
   repositoryUrl,
   onConfirm,
@@ -754,13 +839,16 @@ const EditorShell = ({
   readonly hideToolbar: boolean | undefined;
   readonly hideLibraryButton: boolean | undefined;
   readonly hideMainMenu: boolean | undefined;
+  readonly logo: ReactNode;
   readonly hideZoomControls: boolean | undefined;
   readonly hideResetToContent: boolean | undefined;
   readonly hideHelpButton: boolean | undefined;
   readonly hideContextMenu: boolean | undefined;
   readonly hideSelectionPanel: boolean | undefined;
   readonly hideDrawingPanel: boolean | undefined;
-  readonly minimap: boolean | undefined;
+  readonly minimapVisible: boolean;
+  readonly onToggleMinimap: () => void;
+  readonly rootRef: RefObject<HTMLDivElement | null>;
   readonly renderTopBarLeft: (() => ReactNode) | undefined;
   readonly renderTopBarCenter: (() => ReactNode) | undefined;
   readonly renderTopBarRight: (() => ReactNode) | undefined;
@@ -768,6 +856,8 @@ const EditorShell = ({
   readonly renderBottomBarCenter: (() => ReactNode) | undefined;
   readonly renderBottomBarRight: (() => ReactNode) | undefined;
   readonly renderMainMenuExtras: (() => ReactNode) | undefined;
+  readonly renderBoardMenuExtras: (() => ReactNode) | undefined;
+  readonly renderExportMenuExtras: (() => ReactNode) | undefined;
   readonly onImportTemplates: (() => void) | undefined;
   readonly repositoryUrl: string | null | undefined;
   readonly onConfirm: ((message: string) => boolean) | undefined;
@@ -779,6 +869,7 @@ const EditorShell = ({
   // Zen mode (⌥Z): hide every chrome surface for focused work, leaving the
   // canvas + the observational overlays (search, stats, command palette).
   const { zen } = useZenMode();
+  const fullscreen = useFullscreen(rootRef);
   // Omitted → project repo; explicit string → that URL; null → no link.
   const repositoryHref = repositoryUrl === undefined ? DEFAULT_REPOSITORY_URL : repositoryUrl;
   // Native dialogs by default; hosts can route through their own UI.
@@ -796,11 +887,20 @@ const EditorShell = ({
     registerFileActions();
     setFileActionNotifier(notify);
   }, [notify]);
-  // Subscribe to scene changes so the Grid toggle in MainMenu reads
-  // the latest viewport.gridEnabled / gridStyle. `useScene` is a thin
-  // selector hook — re-renders only on scene identity flips.
-  void useScene();
-  const paletteDropHandlers = usePalettePlacement();
+  // Subscribe ONLY to the Grid / Snap toggle VALUES, not the scene
+  // identity: the scene reference flips on every frame of a drag, and a
+  // whole-shell re-render (menus, toolbars, HelpDialog) per frame makes
+  // moving elements visibly sluggish. The selectors return primitives,
+  // so `Object.is` skips re-renders until a toggle actually changes.
+  useEditorSelector((e) => gridSelection(e), "lines", "scene");
+  useEditorSelector((e) => snapSelection(e), "on");
+  // Preference switches in the View / Preferences submenus.
+  const showObjectSize = useEditorSelector((e) => e.preferences.showObjectSize, true);
+  const snapObjects = useEditorSelector((e) => e.preferences.snapObjects, true);
+  const suggestObjectSize = useEditorSelector((e) => e.preferences.suggestObjectSize, true);
+  const wheelMode = useEditorSelector((e) => e.preferences.wheelMode, "auto");
+  const [fileDragging, setFileDragging] = useState(false);
+  const paletteDropHandlers = usePalettePlacement({ onFileDrag: setFileDragging });
   // Touch / narrow screens: the library opens as a bottom sheet instead of
   // a left overlay (which would cover the whole small canvas).
   const mobile = useMobileLayout();
@@ -808,6 +908,13 @@ const EditorShell = ({
   // toggle and closed via its ✕. Starts closed; no dock / pin.
   const [libraryOpen, setLibraryOpen] = useState<boolean>(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  // Export content switches (sticky reactions / tags / author) — session
+  // state seeded by EXPORT_CONTENT_DEFAULTS inside the export helpers;
+  // the Export… submenu checkboxes flip them per run.
+  const [exportContent, setExportContent] = useState<ExportContent>({});
+  const toggleExportContent = (key: "stickyReactions" | "stickyTags" | "stickyAuthor"): void => {
+    setExportContent((cur) => ({ ...cur, [key]: !(cur?.[key] ?? true) }));
+  };
   useHelpDialogHotkey(() => {
     setHelpOpen((v) => !v);
   });
@@ -817,32 +924,32 @@ const EditorShell = ({
   // The library overlays the canvas (no reflow); the toolbar floats just
   // to its right when open, else near the edge. On mobile the library is a
   // bottom sheet, so the toolbar never shifts.
-  const LIBRARY_PANEL_WIDTH = 240;
-  const BAR_INSET = 12;
-  const toolbarLeft = !mobile && libraryOpen ? LIBRARY_PANEL_WIDTH + BAR_INSET : BAR_INSET;
+  // Dock inset from the edge, or past the open library (its inset + width)
+  // with a flyout gap — all CSS tokens so hosts retune them in one place.
+  const toolbarLeft =
+    !mobile && libraryOpen
+      ? "var(--du-bar-inset) + var(--du-side-panel-w) + var(--du-flyout-gap)"
+      : "var(--du-dock-inset)";
 
   // Items for the vertical creation dock: an optional templates-library
   // toggle on top (hidden with `hideLibraryButton`), then the standard
   // creation tools.
+  // The template library's only toolbar entry point is the "More shapes"
+  // row inside the Shapes and lines flyout (`hideLibraryButton` removes
+  // it). No standalone library toggle in the dock.
   const toolbarItems = useMemo<ToolbarItem[]>(
     () =>
-      hideLibraryButton
-        ? [...DEFAULT_VERTICAL_TOOLBAR]
-        : [
-            {
-              kind: "action",
-              id: "toggle-library",
-              label: <LibraryIcon {...buttonIcon} />,
-              title: "Templates library",
-              active: libraryOpen,
-              onClick: () => {
-                setLibraryOpen((v) => !v);
+      DEFAULT_VERTICAL_TOOLBAR.map<ToolbarItem>((item) =>
+        item.kind === "shapes-flyout" && !hideLibraryButton
+          ? {
+              ...item,
+              onMoreShapes: () => {
+                setLibraryOpen(true);
               },
-            },
-            { kind: "divider" },
-            ...DEFAULT_VERTICAL_TOOLBAR,
-          ],
-    [hideLibraryButton, libraryOpen],
+            }
+          : item,
+      ),
+    [hideLibraryButton],
   );
 
   return (
@@ -853,6 +960,7 @@ const EditorShell = ({
       onDragLeave={paletteDropHandlers.onDragLeave}
       onDrop={paletteDropHandlers.onDrop}
     >
+      <FileDropOverlay active={fileDragging} />
       {/* Canvas area — full width; the library is a floating overlay
           that doesn't reflow the canvas. */}
       <div
@@ -868,6 +976,8 @@ const EditorShell = ({
         <TextEditorOverlay />
         <FrameNameEditorOverlay />
         <LinkHoverPopup />
+        <LinkBadges />
+        <StickyReactions />
         <LinkDropShapeMenu />
         <LinkCaptionEditor />
         {!hideContextMenu && <ContextMenu items={DEFAULT_CONTEXT_MENU} />}
@@ -878,21 +988,17 @@ const EditorShell = ({
           (whose wrapper is pointer-events:none) so its buttons stay
           interactive. */}
       {!hideToolbar && !zen ? (
-        <Toolbar
-          orientation="vertical"
-          items={toolbarItems}
+        <div
+          className="du-dock"
           style={{
-            position: "absolute",
-            // Vertically centred on the left; floats just to the right of
-            // the library when it's open (else flush near the edge).
-            // `env(safe-area-inset-left)` is 0 on desktop, clears the notch
-            // in mobile landscape.
-            top: "50%",
-            left: `calc(env(safe-area-inset-left, 0px) + ${toolbarLeft}px)`,
-            transform: "translateY(-50%)",
-            zIndex: 60,
+            // Floats just to the right of the library when it's open (else
+            // near the edge). `env(safe-area-inset-left)` is 0 on desktop,
+            // clears the notch in mobile landscape.
+            left: `calc(env(safe-area-inset-left, 0px) + ${toolbarLeft})`,
           }}
-        />
+        >
+          <Toolbar orientation="vertical" items={toolbarItems} />
+        </div>
       ) : null}
 
       {/* UI layer — top/bottom bars + overlay panels (full width; the
@@ -902,23 +1008,11 @@ const EditorShell = ({
           <TopBar
             left={
               <ButtonGroup ariaLabel="Logo and main menu">
-                <span
-                  aria-label="Diagram"
-                  title="Diagram"
-                  className="du-icon-button"
-                  style={{
-                    minWidth: 36,
-                    padding: "0 10px",
-                    cursor: "default",
-                    fontWeight: 600,
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  ⌗
-                </span>
+                {logo !== null && <span className="du-icon-button du-brand">{logo}</span>}
                 {!hideMainMenu && (
                   <MainMenu>
-                    <MainMenu.Group title="File">
+                    {/* Board — the document: file in / out, export, start view. */}
+                    <MainMenu.Submenu icon={<LayoutDashboard {...menuIcon} />} label="Board">
                       <MainMenu.Item
                         icon={<FileUp {...menuIcon} />}
                         onClick={() => {
@@ -950,19 +1044,21 @@ const EditorShell = ({
                       </MainMenu.Item>
                       <MainMenu.Submenu
                         icon={<Download {...menuIcon} />}
-                        label="Export…"
+                        label="Export"
                         disabled={!editor}
                       >
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "transparent")}
+                          onClick={() =>
+                            editor && void downloadPng(editor, "transparent", exportContent)
+                          }
                           disabled={!editor}
                         >
                           PNG (transparent)
                         </MainMenu.Item>
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "color")}
+                          onClick={() => editor && void downloadPng(editor, "color", exportContent)}
                           disabled={!editor}
                           shortcut={formatHotkey({ key: "E", meta: true, shift: true })}
                         >
@@ -970,7 +1066,9 @@ const EditorShell = ({
                         </MainMenu.Item>
                         <MainMenu.Item
                           icon={<ImageDown {...menuIcon} />}
-                          onClick={() => editor && void downloadPng(editor, "color-and-grid")}
+                          onClick={() =>
+                            editor && void downloadPng(editor, "color-and-grid", exportContent)
+                          }
                           disabled={!editor}
                         >
                           PNG (with background + grid)
@@ -979,13 +1077,61 @@ const EditorShell = ({
                         <MainMenu.Item
                           icon={<Download {...menuIcon} />}
                           onClick={() => {
-                            if (editor) downloadSvg(editor.scene);
+                            if (editor) downloadSvg(editor.scene, exportContent);
                           }}
                           disabled={!editor}
                         >
                           SVG
                         </MainMenu.Item>
+                        {renderExportMenuExtras?.()}
+                        <MainMenu.Separator />
+                        <MainMenu.Group title="Include in export">
+                          <MainMenu.Item
+                            keepOpen
+                            onClick={() => {
+                              toggleExportContent("stickyReactions");
+                            }}
+                            checked={exportContent?.stickyReactions !== false}
+                          >
+                            Sticky reactions
+                          </MainMenu.Item>
+                          <MainMenu.Item
+                            keepOpen
+                            onClick={() => {
+                              toggleExportContent("stickyTags");
+                            }}
+                            checked={exportContent?.stickyTags !== false}
+                          >
+                            Sticky tags
+                          </MainMenu.Item>
+                          <MainMenu.Item
+                            keepOpen
+                            onClick={() => {
+                              toggleExportContent("stickyAuthor");
+                            }}
+                            checked={exportContent?.stickyAuthor !== false}
+                          >
+                            Sticky author
+                          </MainMenu.Item>
+                        </MainMenu.Group>
                       </MainMenu.Submenu>
+                      {renderBoardMenuExtras?.()}
+                      <MainMenu.Separator />
+                      <MainMenu.Item
+                        icon={<MapIcon {...menuIcon} />}
+                        onClick={() => editor?.goToStartView()}
+                        disabled={(editor?.startView ?? null) === null}
+                      >
+                        Start view
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        icon={<MapIcon {...menuIcon} />}
+                        onClick={() => editor?.setCurrentViewAsStart()}
+                        disabled={!editor}
+                      >
+                        Set current view as start
+                      </MainMenu.Item>
+                      <MainMenu.Separator />
                       <MainMenu.Item
                         icon={<RotateCcw {...menuIcon} />}
                         onClick={() => {
@@ -1003,9 +1149,9 @@ const EditorShell = ({
                       >
                         Reset canvas
                       </MainMenu.Item>
-                    </MainMenu.Group>
-                    <MainMenu.Separator />
-                    <MainMenu.Group title="Edit">
+                    </MainMenu.Submenu>
+                    {/* Edit — history, clipboard, selection, palettes. */}
+                    <MainMenu.Submenu icon={<Pencil {...menuIcon} />} label="Edit">
                       <MainMenu.Item
                         icon={<Undo2 {...menuIcon} />}
                         shortcut="⌘Z"
@@ -1022,6 +1168,7 @@ const EditorShell = ({
                       >
                         Redo
                       </MainMenu.Item>
+                      <MainMenu.Separator />
                       <MainMenu.Item
                         icon={<Scissors {...menuIcon} />}
                         shortcut="⌘X"
@@ -1046,6 +1193,7 @@ const EditorShell = ({
                       >
                         Paste
                       </MainMenu.Item>
+                      <MainMenu.Separator />
                       <MainMenu.Item
                         icon={<MousePointer {...menuIcon} />}
                         shortcut="⌘A"
@@ -1062,88 +1210,156 @@ const EditorShell = ({
                       >
                         Delete selected
                       </MainMenu.Item>
-                    </MainMenu.Group>
-                    <MainMenu.Separator />
-                    <MainMenu.Group title="View">
+                      <MainMenu.Separator />
                       <MainMenu.Item
-                        icon={<Maximize {...menuIcon} />}
-                        shortcut="⇧F"
-                        onClick={() => editor?.zoomToFit()}
-                        disabled={!editor}
-                      >
-                        Fit to screen
-                      </MainMenu.Item>
-                      <MainMenu.Item
-                        icon={<ZoomIn {...menuIcon} />}
-                        shortcut="⌘+"
-                        onClick={() => editor?.zoomIn()}
-                        disabled={!editor}
-                      >
-                        Zoom in
-                      </MainMenu.Item>
-                      <MainMenu.Item
-                        icon={<ZoomOut {...menuIcon} />}
-                        shortcut="⌘−"
-                        onClick={() => editor?.zoomOut()}
-                        disabled={!editor}
-                      >
-                        Zoom out
-                      </MainMenu.Item>
-                    </MainMenu.Group>
-                    <MainMenu.Separator />
-                    <MainMenu.Group title="Theme">
-                      <MainMenu.Toggle<DiagramTheme>
-                        value={theme}
-                        onChange={changeTheme}
-                        options={[
-                          { value: "light", label: "Light", icon: <Sun {...toggleIcon} /> },
-                          { value: "dark", label: "Dark", icon: <Moon {...toggleIcon} /> },
-                          { value: "system", label: "System", icon: <Monitor {...toggleIcon} /> },
-                        ]}
-                      />
-                    </MainMenu.Group>
-                    <MainMenu.Group title="Grid">
-                      <MainMenu.Toggle<"lines" | "dots" | "off">
-                        value={gridSelection(editor)}
-                        onChange={(next) => {
-                          applyGridSelection(editor, next);
-                        }}
-                        options={[
-                          { value: "lines", label: "Lines", icon: <Grid3x3 {...toggleIcon} /> },
-                          { value: "dots", label: "Dots", icon: <Grip {...toggleIcon} /> },
-                          { value: "off", label: "Off", icon: <Minus {...toggleIcon} /> },
-                        ]}
-                      />
-                    </MainMenu.Group>
-                    <MainMenu.Group title="Snap to grid">
-                      <MainMenu.Toggle<"on" | "off">
-                        value={snapSelection(editor)}
-                        onChange={(next) => {
-                          editor?.setSnapToGrid(next === "on");
-                        }}
-                        options={[
-                          { value: "on", label: "On", icon: <Magnet {...toggleIcon} /> },
-                          { value: "off", label: "Off", icon: <Minus {...toggleIcon} /> },
-                        ]}
-                      />
-                    </MainMenu.Group>
-                    <MainMenu.Separator />
-                    <MainMenu.Group title="Help">
-                      <MainMenu.Item
-                        icon={<HelpCircle {...menuIcon} />}
-                        shortcut="?"
+                        icon={<Command {...menuIcon} />}
+                        shortcut="⌘K"
                         onClick={() => {
-                          setHelpOpen(true);
+                          if (editor) {
+                            defaultActionRegistry.dispatch("open-command-palette", { editor });
+                          }
                         }}
+                        disabled={!editor}
                       >
-                        Hotkeys
+                        Commands
                       </MainMenu.Item>
-                      {repositoryHref ? (
-                        <MainMenu.ItemLink href={repositoryHref} external>
-                          GitHub
-                        </MainMenu.ItemLink>
+                      <MainMenu.Item
+                        icon={<Search {...menuIcon} />}
+                        shortcut="⌘F"
+                        onClick={() => {
+                          if (editor) defaultActionRegistry.dispatch("open-search", { editor });
+                        }}
+                        disabled={!editor}
+                      >
+                        Find
+                      </MainMenu.Item>
+                    </MainMenu.Submenu>
+                    {/* View — what the canvas shows (grid, chrome, theme, fullscreen).
+                        Zoom lives in the bottom-bar zoom menu, not here. */}
+                    <MainMenu.Submenu icon={<Eye {...menuIcon} />} label="View">
+                      <MainMenu.Submenu icon={<Grid3x3 {...menuIcon} />} label="Grid">
+                        {GRID_OPTIONS.map((opt) => (
+                          <MainMenu.Item
+                            key={opt.value}
+                            icon={opt.icon}
+                            active={gridSelection(editor) === opt.value}
+                            onClick={() => {
+                              applyGridSelection(editor, opt.value);
+                            }}
+                          >
+                            {opt.label}
+                          </MainMenu.Item>
+                        ))}
+                        <MainMenu.Separator />
+                        <MainMenu.Item
+                          icon={<Magnet {...menuIcon} />}
+                          keepOpen
+                          onClick={() => editor?.setSnapToGrid(!editor.snapToGridEnabled)}
+                          checked={snapSelection(editor) === "on"}
+                        >
+                          Snap to grid
+                        </MainMenu.Item>
+                      </MainMenu.Submenu>
+                      <MainMenu.Item
+                        icon={<Ruler {...menuIcon} />}
+                        keepOpen
+                        onClick={() => editor?.setPreferences({ showObjectSize: !showObjectSize })}
+                        checked={showObjectSize}
+                      >
+                        Object dimensions
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        icon={<MapIcon {...menuIcon} />}
+                        keepOpen
+                        onClick={onToggleMinimap}
+                        checked={minimapVisible}
+                      >
+                        Minimap
+                      </MainMenu.Item>
+                      <MainMenu.Separator />
+                      <MainMenu.Submenu icon={<Sun {...menuIcon} />} label="Theme">
+                        {THEME_OPTIONS.map((opt) => (
+                          <MainMenu.Item
+                            key={opt.value}
+                            icon={opt.icon}
+                            active={theme === opt.value}
+                            onClick={() => {
+                              changeTheme(opt.value);
+                            }}
+                          >
+                            {opt.label}
+                          </MainMenu.Item>
+                        ))}
+                      </MainMenu.Submenu>
+                      {fullscreen.supported ? (
+                        <>
+                          <MainMenu.Separator />
+                          <MainMenu.Item
+                            icon={
+                              fullscreen.active ? (
+                                <Shrink {...menuIcon} />
+                              ) : (
+                                <Expand {...menuIcon} />
+                              )
+                            }
+                            onClick={fullscreen.toggle}
+                          >
+                            {fullscreen.active ? "Exit full screen" : "Enter full screen"}
+                          </MainMenu.Item>
+                        </>
                       ) : null}
-                    </MainMenu.Group>
+                    </MainMenu.Submenu>
+                    {/* Preferences — per-user editor settings (persisted per browser). */}
+                    <MainMenu.Submenu
+                      icon={<SlidersHorizontal {...menuIcon} />}
+                      label="Preferences"
+                    >
+                      <MainMenu.Submenu icon={<Mouse {...menuIcon} />} label="Mouse or trackpad">
+                        {WHEEL_MODE_OPTIONS.map((opt) => (
+                          <MainMenu.Item
+                            key={opt.value}
+                            active={wheelMode === opt.value}
+                            onClick={() => editor?.setPreferences({ wheelMode: opt.value })}
+                          >
+                            {opt.label}
+                          </MainMenu.Item>
+                        ))}
+                      </MainMenu.Submenu>
+                      <MainMenu.Item
+                        icon={<Magnet {...menuIcon} />}
+                        keepOpen
+                        onClick={() => editor?.setPreferences({ snapObjects: !snapObjects })}
+                        checked={snapObjects}
+                      >
+                        Snap objects
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        icon={<Ruler {...menuIcon} />}
+                        keepOpen
+                        onClick={() =>
+                          editor?.setPreferences({ suggestObjectSize: !suggestObjectSize })
+                        }
+                        checked={suggestObjectSize}
+                      >
+                        Suggest object size
+                      </MainMenu.Item>
+                    </MainMenu.Submenu>
+                    {/* Help — top-level rows, not a submenu. */}
+                    <MainMenu.Separator />
+                    <MainMenu.Item
+                      icon={<Keyboard {...menuIcon} />}
+                      shortcut="?"
+                      onClick={() => {
+                        setHelpOpen(true);
+                      }}
+                    >
+                      Hotkeys
+                    </MainMenu.Item>
+                    {repositoryHref ? (
+                      <MainMenu.ItemLink href={repositoryHref} external>
+                        GitHub
+                      </MainMenu.ItemLink>
+                    ) : null}
                     {renderMainMenuExtras ? (
                       <>
                         <MainMenu.Separator />
@@ -1179,7 +1395,12 @@ const EditorShell = ({
                 renderBottomBarRight()
               ) : !hideZoomControls ? (
                 // Help sits inside the zoom pill group, right next to it.
-                <ZoomControls trailing={!hideHelpButton ? <HelpButton /> : undefined} />
+                <ZoomControls
+                  trailing={!hideHelpButton ? <HelpButton /> : undefined}
+                  fullscreen={fullscreen}
+                  minimapVisible={minimapVisible}
+                  onToggleMinimap={onToggleMinimap}
+                />
               ) : !hideHelpButton ? (
                 <HelpButton />
               ) : null
@@ -1215,7 +1436,6 @@ const EditorShell = ({
           <LibraryPanel
             open={libraryOpen}
             side="left"
-            style={{ left: 0 }}
             onClose={() => {
               setLibraryOpen(false);
             }}
@@ -1227,20 +1447,8 @@ const EditorShell = ({
       {/* Minimap — docked bottom-right ABOVE the zoom controls, hidden in
           zen mode with the rest of the chrome. Reads the editor from context.
           The bottom offset clears the bottom bar (inset + bar height + gap). */}
-      {minimap && !zen && (
-        <div
-          style={{
-            position: "absolute",
-            right: "var(--du-bar-inset, 12px)",
-            bottom: "calc(var(--du-bar-inset, 12px) + 52px)",
-            border: "1px solid var(--du-border, #d0d0d0)",
-            borderRadius: 6,
-            background: "var(--du-surface, #fff)",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
-            overflow: "hidden",
-            zIndex: 40,
-          }}
-        >
+      {minimapVisible && !zen && (
+        <div className="du-minimap-dock">
           <Minimap />
         </div>
       )}
@@ -1249,14 +1457,7 @@ const EditorShell = ({
           bar while the brush or eraser is active (DrawingPanel self-gates on
           mode). Hidden in zen mode with the rest of the chrome. */}
       {!hideDrawingPanel && !zen && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(var(--du-bar-inset, 12px) + 52px)",
-            right: "var(--du-bar-inset, 12px)",
-            zIndex: 40,
-          }}
-        >
+        <div className="du-tool-options-dock">
           <DrawingPanel />
         </div>
       )}
@@ -1312,18 +1513,29 @@ const ZOOM_FIT_HOTKEY = formatHotkey({ alt: true, key: "1" });
  * `trailing` lets the host append extra controls inside the same pill
  * group (e.g. the Help button, so it sits right next to zoom).
  */
-const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
+/** Zoom presets of the zoom menu (fractions of 100 %). */
+const ZOOM_PRESETS: readonly number[] = [0.5, 0.7, 1, 4, 12, 20];
+
+const ZoomControls = ({
+  trailing,
+  fullscreen,
+  minimapVisible,
+  onToggleMinimap,
+}: {
+  readonly trailing?: ReactNode;
+  readonly fullscreen: ReturnType<typeof useFullscreen>;
+  readonly minimapVisible: boolean;
+  readonly onToggleMinimap: () => void;
+}) => {
   const editor = useDiagramOptional();
-  // Force re-render on viewport change.
-  const [, force] = useState(0);
-  useEffect(() => {
-    if (!editor) return undefined;
-    return editor.subscribe(() => {
-      force((n) => n + 1);
-    });
-  }, [editor]);
+  // Subscribe to the zoom VALUE only — a whole-editor subscription would
+  // re-render these buttons on every frame of an element drag.
+  const zoom = useEditorSelector((e) => e.scene.viewport.zoom, 1);
+  const showObjectSize = useEditorSelector((e) => e.preferences.showObjectSize, true);
   if (!editor) return null;
-  const zoom = editor.scene.viewport.zoom;
+  const setShowObjectSize = (next: boolean) => {
+    editor.setPreferences({ showObjectSize: next });
+  };
   return (
     <ButtonGroup ariaLabel="Zoom">
       <IconButton
@@ -1334,23 +1546,72 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
       >
         <Minus {...buttonIcon} />
       </IconButton>
-      <Tooltip content={`Reset zoom to 100% (${ZOOM_RESET_HOTKEY})`}>
-        <button
-          type="button"
-          className="du-icon-button"
-          aria-label="Reset zoom to 100%"
+      {/* The zoom percentage opens the view menu: fullscreen, minimap, grid,
+          object dimensions, then Fit + zoom presets (reference parity). */}
+      <MainMenu
+        ariaLabel="Zoom menu"
+        placement="top-end"
+        triggerClassName="du-icon-button du-icon-button-flat du-zoom-trigger"
+        trigger={<>{Math.round(zoom * 100)}%</>}
+      >
+        {fullscreen.supported ? (
+          <MainMenu.Item
+            icon={fullscreen.active ? <Shrink {...menuIcon} /> : <Expand {...menuIcon} />}
+            onClick={fullscreen.toggle}
+          >
+            {fullscreen.active ? "Exit full screen" : "Enter full screen"}
+          </MainMenu.Item>
+        ) : null}
+        <MainMenu.Item icon={<MapIcon {...menuIcon} />} shortcut="M" onClick={onToggleMinimap}>
+          {minimapVisible ? "Hide minimap" : "Show minimap"}
+        </MainMenu.Item>
+        <MainMenu.Submenu icon={<Grid3x3 {...menuIcon} />} label="Grid">
+          {GRID_OPTIONS.map((opt) => (
+            <MainMenu.Item
+              key={opt.value}
+              icon={opt.icon}
+              active={gridSelection(editor) === opt.value}
+              onClick={() => {
+                applyGridSelection(editor, opt.value);
+              }}
+            >
+              {opt.label}
+            </MainMenu.Item>
+          ))}
+        </MainMenu.Submenu>
+        <MainMenu.Item
+          icon={<Ruler {...menuIcon} />}
+          keepOpen
           onClick={() => {
-            editor.resetZoom();
+            setShowObjectSize(!showObjectSize);
           }}
-          style={{
-            minWidth: 56,
-            padding: "0 8px",
-            borderRadius: 0,
+          checked={showObjectSize}
+        >
+          Object dimensions
+        </MainMenu.Item>
+        <MainMenu.Separator />
+        <MainMenu.Item
+          icon={<Maximize {...menuIcon} />}
+          shortcut={ZOOM_FIT_HOTKEY}
+          onClick={() => {
+            editor.zoomToFit();
           }}
         >
-          {Math.round(zoom * 100)}%
-        </button>
-      </Tooltip>
+          Fit to screen
+        </MainMenu.Item>
+        {ZOOM_PRESETS.map((level) => (
+          <MainMenu.Item
+            key={level}
+            icon={<ZoomIn {...menuIcon} />}
+            {...(level === 1 ? { shortcut: ZOOM_RESET_HOTKEY } : {})}
+            onClick={() => {
+              editor.setZoom(level);
+            }}
+          >
+            {`${String(Math.round(level * 100))}%`}
+          </MainMenu.Item>
+        ))}
+      </MainMenu>
       <IconButton
         label={`Zoom in (${ZOOM_IN_HOTKEY})`}
         onClick={() => {
@@ -1371,6 +1632,33 @@ const ZoomControls = ({ trailing }: { readonly trailing?: ReactNode }) => {
     </ButtonGroup>
   );
 };
+
+/** Grid submenu rows (reference labels), mapped onto the grid toggle values. */
+const GRID_OPTIONS: readonly {
+  readonly value: "off" | "dots" | "lines";
+  readonly label: string;
+  readonly icon: ReactNode;
+}[] = [
+  { value: "off", label: "None", icon: <Ban {...menuIcon} /> },
+  { value: "lines", label: "Line grid", icon: <Grid3x3 {...menuIcon} /> },
+  { value: "dots", label: "Dot grid", icon: <Grip {...menuIcon} /> },
+];
+
+const THEME_OPTIONS: readonly {
+  readonly value: DiagramTheme;
+  readonly label: string;
+  readonly icon: ReactNode;
+}[] = [
+  { value: "light", label: "Light", icon: <Sun {...menuIcon} /> },
+  { value: "dark", label: "Dark", icon: <Moon {...menuIcon} /> },
+  { value: "system", label: "System", icon: <Monitor {...menuIcon} /> },
+];
+
+const WHEEL_MODE_OPTIONS: readonly { readonly value: WheelMode; readonly label: string }[] = [
+  { value: "auto", label: "Auto-detect" },
+  { value: "mouse", label: "Mouse" },
+  { value: "trackpad", label: "Trackpad" },
+];
 
 // --- Grid toggle helpers ----------------------------------------------------
 

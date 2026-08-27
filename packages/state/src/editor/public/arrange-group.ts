@@ -1,27 +1,29 @@
 import {
   addElement,
   apply,
+  batch,
   byOrderAsc,
   getElement,
   getElementAccessibleName,
-  gridLayout,
   isGroup,
   orderForTop,
   removeElement,
-  stackLayout,
   updateElement,
   type Scene,
   type Element,
   type Patch,
 } from "@oh-just-another/scene";
+import { arrangeUnits, translateUnit } from "../applies/arrange-units.js";
+import { ARRANGE_LAYOUT_GAP } from "../../constants.js";
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
 import { elementId as castElementId } from "@oh-just-another/types";
 import type * as Selection from "../../selection/selection.js";
 
 /**
- * Arrange selected shapes on a regular grid. Returns the next scene +
- * the patch when something changed, `null` for a no-op (< 2 shapes or
- * layout collapsed to identity).
+ * Arrange the selection's units on a regular grid: each selected group is
+ * ONE cell (its subtree moves together), cells are as wide / tall as the
+ * largest unit, order follows the roots' z-order. Returns the next scene +
+ * the patch when something changed, `null` for a no-op (< 2 units).
  */
 export const computeArrangeAsGrid = (
   scene: Scene,
@@ -34,21 +36,25 @@ export const computeArrangeAsGrid = (
   readonly count: number;
   readonly cols: number;
 } | null => {
-  const ids = [...selection];
-  if (ids.length < 2) return null;
-  const cols = Math.max(1, opts.cols ?? Math.ceil(Math.sqrt(ids.length)));
-  const gap = opts.gap ?? 16;
-  const patch = gridLayout(scene, { shapeIds: ids, origin, cols, gap });
-  if (!patch) return null;
-  return {
-    scene: apply(scene, patch),
-    patch,
-    count: ids.length,
-    cols,
-  };
+  const units = arrangeUnits(scene, selection).sort((a, b) => byOrderAsc(a.root, b.root));
+  if (units.length < 2) return null;
+  const cols = Math.max(1, opts.cols ?? Math.ceil(Math.sqrt(units.length)));
+  const gap = opts.gap ?? ARRANGE_LAYOUT_GAP;
+  const cellW = units.reduce((m, u) => Math.max(m, u.bounds.width), 0);
+  const cellH = units.reduce((m, u) => Math.max(m, u.bounds.height), 0);
+  const patches: Patch[] = [];
+  units.forEach((unit, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const target = { x: origin.x + col * (cellW + gap), y: origin.y + row * (cellH + gap) };
+    patches.push(...translateUnit(unit, target.x - unit.bounds.x, target.y - unit.bounds.y));
+  });
+  if (patches.length === 0) return null;
+  const patch = batch(patches);
+  return { scene: apply(scene, patch), patch, count: units.length, cols };
 };
 
-/** Stack selected shapes horizontally or vertically. */
+/** Stack the selection's units horizontally or vertically (a group is one unit). */
 export const computeArrangeAsStack = (
   scene: Scene,
   selection: Selection.Selection,
@@ -60,13 +66,22 @@ export const computeArrangeAsStack = (
   readonly count: number;
   readonly direction: "horizontal" | "vertical";
 } | null => {
-  const ids = [...selection];
-  if (ids.length < 2) return null;
+  const units = arrangeUnits(scene, selection).sort((a, b) => byOrderAsc(a.root, b.root));
+  if (units.length < 2) return null;
   const direction = opts.direction ?? "horizontal";
-  const gap = opts.gap ?? 16;
-  const patch = stackLayout(scene, { shapeIds: ids, origin, direction, gap });
-  if (!patch) return null;
-  return { scene: apply(scene, patch), patch, count: ids.length, direction };
+  const gap = opts.gap ?? ARRANGE_LAYOUT_GAP;
+  const patches: Patch[] = [];
+  let cursor = { x: origin.x, y: origin.y };
+  for (const unit of units) {
+    patches.push(...translateUnit(unit, cursor.x - unit.bounds.x, cursor.y - unit.bounds.y));
+    cursor =
+      direction === "horizontal"
+        ? { x: cursor.x + unit.bounds.width + gap, y: cursor.y }
+        : { x: cursor.x, y: cursor.y + unit.bounds.height + gap };
+  }
+  if (patches.length === 0) return null;
+  const patch = batch(patches);
+  return { scene: apply(scene, patch), patch, count: units.length, direction };
 };
 
 /**

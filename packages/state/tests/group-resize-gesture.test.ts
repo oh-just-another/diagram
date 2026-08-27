@@ -14,6 +14,7 @@ import {
 } from "@oh-just-another/scene";
 import { Editor } from "../src/editor.js";
 import { rotateGripWorld } from "../src/interaction/handle.js";
+import { selectionCenter } from "../src/editor/applies/arrange.js";
 
 const rect = (id: string, x: number): Element => ({
   id: elementId(id),
@@ -83,7 +84,7 @@ const makeHost = () => {
   return { host, handlers };
 };
 
-const pointer = (type: string, x: number, y: number, shift = false) => ({
+const pointer = (type: string, x: number, y: number, shift = false, detail = 1) => ({
   type,
   clientX: x,
   clientY: y,
@@ -96,6 +97,7 @@ const pointer = (type: string, x: number, y: number, shift = false) => ({
   altKey: false,
   metaKey: false,
   timeStamp: 0,
+  detail,
   preventDefault: () => {},
 });
 
@@ -238,5 +240,38 @@ describe("rotate gesture (end-to-end through pointer)", () => {
     handlers.get("pointerup")!(pointer("pointerup", to.x, to.y, true));
     const a = getElement(editor.scene, elementId("a"))!;
     expect(a.rotation).toBeCloseTo(-Math.PI / 4, 5);
+  });
+
+  it("a single click on the rotate grip leaves the rotation alone", () => {
+    const { editor, handlers } = setup();
+    editor.rotateSelection(Math.PI / 3);
+    const grip = rotateGripWorld(getElement(editor.scene, elementId("a"))!);
+    handlers.get("pointerdown")!(pointer("pointerdown", grip.x, grip.y, false, 0));
+    handlers.get("pointerup")!(pointer("pointerup", grip.x, grip.y, false, 0));
+    expect(getElement(editor.scene, elementId("a"))!.rotation).toBeCloseTo(Math.PI / 3, 5);
+  });
+
+  it("double-clicking the rotate grip resets the rotation in place (undoable)", () => {
+    const { editor, handlers } = setup();
+    editor.rotateSelection(Math.PI / 3);
+    const turned = getElement(editor.scene, elementId("a"))!;
+    expect(turned.rotation).toBeCloseTo(Math.PI / 3, 5);
+    const centreBefore = selectionCenter([turned]);
+    // Grip of the rotated shape; first click of the pair is a motionless
+    // rotate gesture, the second (detail 2) straightens the shape.
+    const grip = rotateGripWorld(turned);
+    handlers.get("pointerdown")!(pointer("pointerdown", grip.x, grip.y));
+    handlers.get("pointerup")!(pointer("pointerup", grip.x, grip.y));
+    // Browsers report `detail: 0` on pointerdown — the second press is
+    // recognised purely from the first tap's timing / position.
+    handlers.get("pointerdown")!(pointer("pointerdown", grip.x, grip.y, false, 0));
+    handlers.get("pointerup")!(pointer("pointerup", grip.x, grip.y, false, 0));
+    const straight = getElement(editor.scene, elementId("a"))!;
+    expect(straight.rotation).toBe(0);
+    const centreAfter = selectionCenter([straight]);
+    expect(centreAfter.x).toBeCloseTo(centreBefore.x, 5);
+    expect(centreAfter.y).toBeCloseTo(centreBefore.y, 5);
+    editor.undo();
+    expect(getElement(editor.scene, elementId("a"))!.rotation).toBeCloseTo(Math.PI / 3, 5);
   });
 });

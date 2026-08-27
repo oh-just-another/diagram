@@ -28,6 +28,23 @@ host.addEventListener("wheel", (ev) => {
 });
 ```
 
+## Wheel routing (mouse vs trackpad)
+
+Browsers fire the same `wheel` event for a mouse wheel and a trackpad swipe. The `wheelMode` preference decides how a plain wheel is read; Ctrl / Cmd + wheel (and trackpad pinch) always zooms.
+
+| `wheelMode`        | plain wheel                                      | Shift + wheel |
+| ------------------ | ------------------------------------------------ | ------------- |
+| `"auto"` (default) | any horizontal delta → pan, pure vertical → zoom | pan sideways  |
+| `"mouse"`          | zoom (a tilt wheel's horizontal-only delta pans) | pan sideways  |
+| `"trackpad"`       | pan on both axes                                 | pan           |
+
+```ts
+editor.setPreferences({ wheelMode: "trackpad" });
+editor.preferences.wheelMode; // "auto" | "mouse" | "trackpad"
+```
+
+`EditorPreferences` (`snapObjects`, `showObjectSize`, `suggestObjectSize`, `wheelMode`) are per-user settings, not document data — seed them through `EditorOptions.preferences` and persist them per browser.
+
 ## Skipping editable targets
 
 Global keyboard handlers must bail when the event is aimed at a text field, `<select>`, or any `contenteditable` host, so the user's typing is not hijacked. `isEditableTarget` answers that for the node you pass; inside a shadow root, pass `event.composedPath()[0]` (the real focused node) rather than the retargeted `event.target`.

@@ -23,6 +23,9 @@ import {
  *     <Sidebar.Tab tab="layers"><LayerPanel/></Sidebar.Tab>
  *     <Sidebar.Tab tab="comments"><CommentsPanel/></Sidebar.Tab>
  *   </Sidebar>
+ *
+ * Chrome comes from the `du-sidebar*` classes (design tokens); the
+ * default width is `--du-sidebar-w`.
  */
 
 interface SidebarContext {
@@ -42,6 +45,7 @@ export interface SidebarProps {
   readonly defaultTab?: string;
   /** Where the sidebar attaches; affects the divider border. */
   readonly docked?: "left" | "right";
+  /** Override the `--du-sidebar-w` token for this instance. */
   readonly width?: number;
   readonly className?: string;
   readonly style?: CSSProperties;
@@ -51,26 +55,19 @@ export const Sidebar = ({
   children,
   defaultTab = "",
   docked = "right",
-  width = 280,
+  width,
   className,
   style,
 }: SidebarProps) => {
   const [active, setActive] = useState(defaultTab);
   const ctx = useMemo<SidebarContext>(() => ({ active, setActive }), [active]);
-  const wrapper: CSSProperties = {
-    width,
-    background: "var(--panel, #161616)",
-    color: "var(--text, #ddd)",
-    display: "flex",
-    flexDirection: "column",
-    minHeight: 0,
-    borderLeft: docked === "right" ? "1px solid var(--border, #2a2a2a)" : "none",
-    borderRight: docked === "left" ? "1px solid var(--border, #2a2a2a)" : "none",
-    ...style,
-  };
+  const wrapper: CSSProperties = width === undefined ? { ...style } : { width, ...style };
   return (
     <Ctx.Provider value={ctx}>
-      <aside className={className} style={wrapper}>
+      <aside
+        className={`du-sidebar du-sidebar-${docked}${className ? ` ${className}` : ""}`}
+        style={wrapper}
+      >
         {children}
       </aside>
     </Ctx.Provider>
@@ -78,28 +75,11 @@ export const Sidebar = ({
 };
 
 const Header = ({ children }: { children: ReactNode }) => (
-  <header
-    style={{
-      padding: "12px 14px",
-      fontSize: 13,
-      fontWeight: 600,
-      color: "var(--text-strong, #fff)",
-      borderBottom: "1px solid var(--border, #2a2a2a)",
-    }}
-  >
-    {children}
-  </header>
+  <header className="du-sidebar-header">{children}</header>
 );
 
 const TabTriggers = ({ children }: { children: ReactNode }) => (
-  <div
-    style={{
-      display: "flex",
-      gap: 4,
-      padding: "8px 10px",
-      borderBottom: "1px solid var(--border, #2a2a2a)",
-    }}
-  >
+  <div className="du-sidebar-tabs" role="tablist">
     {children}
   </div>
 );
@@ -110,20 +90,13 @@ const Trigger = ({ tab, children }: { tab: string; children: ReactNode }) => {
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={isActive}
       aria-pressed={isActive}
       onClick={() => {
         setActive(tab);
       }}
-      style={{
-        background: isActive ? "var(--accent, #5b5bd6)" : "transparent",
-        color: isActive ? "var(--surface, #fff)" : "var(--text, #ddd)",
-        border: `1px solid ${isActive ? "var(--accent, #5b5bd6)" : "var(--border, #2a2a2a)"}`,
-        borderRadius: 4,
-        padding: "4px 10px",
-        fontSize: 12,
-        cursor: "pointer",
-        font: "inherit",
-      }}
+      className={`du-button${isActive ? " is-active" : ""}`}
     >
       {children}
     </button>
@@ -134,15 +107,15 @@ const Tab = ({ tab, children }: { tab: string; children: ReactNode }) => {
   const { active } = useSidebar();
   if (active !== tab) return null;
   return (
-    <div style={{ flex: "1 1 auto", overflowY: "auto", padding: "10px 12px" }}>{children}</div>
+    <div className="du-sidebar-body" role="tabpanel">
+      {children}
+    </div>
   );
 };
 
 /** Plain section (no tab gating) — for content that's always visible. */
 const Section = ({ children }: { children: ReactNode }) => (
-  <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border, #2a2a2a)" }}>
-    {children}
-  </div>
+  <div className="du-sidebar-section">{children}</div>
 );
 
 Sidebar.Header = Header;

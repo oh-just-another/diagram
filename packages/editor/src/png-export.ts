@@ -1,13 +1,13 @@
+import type { Scene } from "@oh-just-another/scene";
 import {
-  getLayersInOrder,
-  getElementWorldBounds,
-  getElementsInLayer,
-  type Scene,
-} from "@oh-just-another/scene";
-import type { Bounds } from "@oh-just-another/types";
-import { renderLinks, renderGrid, renderScene } from "@oh-just-another/renderer-core";
+  renderLinks,
+  renderGrid,
+  renderScene,
+  EXPORT_CONTENT_DEFAULTS,
+  type RenderSceneOptions,
+} from "@oh-just-another/renderer-core";
 import { createOffscreenCanvas2DTarget } from "@oh-just-another/renderer-canvas";
-import { EXPORT_PADDING_WORLD } from "./constants.js";
+import { fitViewportTo, sceneBounds } from "./scene-subset.js";
 
 /**
  * Browser-side PNG export — renders the **full scene** (not just the
@@ -37,6 +37,11 @@ export interface PngExportOptions {
    * `--du-canvas-bg` CSS variable so the PNG matches what the user sees.
    */
   readonly backgroundColor: string;
+  /**
+   * Content switches for meta layers (sticky reactions / tags / author).
+   * Merged over {@link EXPORT_CONTENT_DEFAULTS}; omit for the defaults.
+   */
+  readonly content?: RenderSceneOptions["content"];
 }
 
 export const exportSceneToPng = async (
@@ -45,18 +50,15 @@ export const exportSceneToPng = async (
 ): Promise<Blob | null> => {
   if (typeof OffscreenCanvas === "undefined") return null;
 
-  const bbox = computeSceneBbox(scene);
+  const bbox = sceneBounds(scene);
   if (!bbox) return null; // empty scene — host shows an alert
 
-  const padded: Bounds = {
-    x: bbox.x - EXPORT_PADDING_WORLD,
-    y: bbox.y - EXPORT_PADDING_WORLD,
-    width: bbox.width + 2 * EXPORT_PADDING_WORLD,
-    height: bbox.height + 2 * EXPORT_PADDING_WORLD,
-  };
-
-  const canvasW = Math.max(1, Math.ceil(padded.width * options.scale));
-  const canvasH = Math.max(1, Math.ceil(padded.height * options.scale));
+  // Synthesise a viewport that maps the padded world bbox onto the
+  // OffscreenCanvas backbuffer at the requested scale.
+  const fitted = fitViewportTo(scene, bbox, options.scale);
+  const canvasW = fitted.width;
+  const canvasH = fitted.height;
+  const exportScene = fitted.scene;
 
   const { canvas, target } = createOffscreenCanvas2DTarget(canvasW, canvasH);
 
@@ -71,23 +73,6 @@ export const exportSceneToPng = async (
     target.fill();
   }
 
-  // Synthesise a viewport that maps the padded world bbox onto the
-  // OffscreenCanvas backbuffer at the requested scale.
-  // `pan = (padded.x, padded.y)` → world origin pixel (0, 0).
-  // `zoom = scale` → world unit covers `scale` device pixels.
-  // `size = canvasW × canvasH` → renderers see the full backbuffer.
-  const exportScene: Scene = {
-    ...scene,
-    viewport: {
-      pan: { x: padded.x, y: padded.y },
-      zoom: options.scale,
-      rotation: 0,
-      size: { width: canvasW, height: canvasH },
-      gridEnabled: scene.viewport.gridEnabled,
-      ...(scene.viewport.gridStyle !== undefined ? { gridStyle: scene.viewport.gridStyle } : {}),
-    },
-  };
-
   // Grid pass — only for the color-and-grid variant, and only when the scene
   // has the grid enabled.
   if (options.background === "color-and-grid" && exportScene.viewport.gridEnabled) {
@@ -95,29 +80,11 @@ export const exportSceneToPng = async (
   }
 
   // Shapes (skipClear: true so background / grid survive).
-  renderScene(exportScene, target, { skipClear: true });
+  renderScene(exportScene, target, {
+    skipClear: true,
+    content: { ...EXPORT_CONTENT_DEFAULTS, ...options.content },
+  });
   renderLinks(exportScene, target);
 
   return canvas.convertToBlob({ type: "image/png" });
-};
-
-const computeSceneBbox = (scene: Scene): Bounds | null => {
-  let acc: Bounds | null = null;
-  for (const layer of getLayersInOrder(scene)) {
-    if (!layer.visible) continue;
-    for (const shape of getElementsInLayer(scene, layer.id)) {
-      const b = getElementWorldBounds(shape);
-      acc = acc ? unionBounds(acc, b) : b;
-    }
-  }
-  return acc;
-};
-
-/** Inlined AABB union — avoids pulling `@math` into the host package. */
-const unionBounds = (a: Bounds, b: Bounds): Bounds => {
-  const x = Math.min(a.x, b.x);
-  const y = Math.min(a.y, b.y);
-  const right = Math.max(a.x + a.width, b.x + b.width);
-  const bottom = Math.max(a.y + a.height, b.y + b.height);
-  return { x, y, width: right - x, height: bottom - y };
 };

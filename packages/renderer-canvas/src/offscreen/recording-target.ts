@@ -106,6 +106,7 @@ export type RenderCommand =
     }
   | { readonly k: "fill"; readonly rule?: FillRule }
   | { readonly k: "stroke" }
+  | { readonly k: "clip"; readonly rule?: FillRule }
   | {
       readonly k: "fillText";
       readonly text: string;
@@ -401,6 +402,9 @@ export class RecordingTarget implements RenderTarget {
   stroke(): void {
     this.emit({ k: "stroke" });
   }
+  clip(rule?: FillRule): void {
+    this.emit(rule !== undefined ? { k: "clip", rule } : { k: "clip" });
+  }
 
   fillText(text: string, x: number, y: number, maxWidth?: number): void {
     this.emit(
@@ -613,6 +617,10 @@ export const replayCommands = (
         break;
       case "stroke":
         target.stroke();
+        break;
+      case "clip":
+        if (cmd.rule !== undefined) target.clip(cmd.rule);
+        else target.clip();
         break;
       case "fillText":
         if (cmd.maxWidth !== undefined) target.fillText(cmd.text, cmd.x, cmd.y, cmd.maxWidth);

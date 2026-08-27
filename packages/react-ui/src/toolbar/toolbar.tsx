@@ -1,6 +1,17 @@
-import { useEffect, useState, type CSSProperties, type ComponentType, type ReactNode } from "react";
 import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ComponentType,
+  type ReactNode,
+} from "react";
+import {
+  ArrowUpRight,
   Circle,
+  CornerUpRight,
+  Diamond,
   Eraser,
   Frame,
   Hand,
@@ -10,26 +21,23 @@ import {
   PenLine,
   Radio,
   Redo2,
+  Shapes,
   Slash,
   Square,
+  Triangle,
   Type,
   Undo2,
 } from "lucide-react";
 import type { Editor, Mode } from "@oh-just-another/state";
 import { defaultActionRegistry, formatHotkey, type HotkeyMatcher } from "@oh-just-another/state";
 import { useEditorSelector } from "../core/context.js";
+import type { DrawShapeKind, LinkDrawPreset } from "@oh-just-another/state";
 import { useActiveTool, useDiagramOptional, useHistory, useReadOnly } from "../core/hooks.js";
-import { TOOLBAR_SEPARATOR_HEIGHT } from "../core/constants.js";
 import { Tooltip } from "../primitives/tooltip.js";
+import { CONTROL_ICON, ROW_ICON } from "../core/constants.js";
 
-/**
- * Pixel size for icons rendered inside `du-icon-button` (32-px
- * inside-group footprint). Lucide draws crisp at 16 px stroke-width
- * 1.75.
- */
-const TOOLBAR_ICON_SIZE = 16;
-const TOOLBAR_ICON_STROKE = 1.75;
-const iconProps = { size: TOOLBAR_ICON_SIZE, strokeWidth: TOOLBAR_ICON_STROKE } as const;
+/** Toolbar buttons are 40-px controls — their glyphs use `CONTROL_ICON`. */
+const iconProps = CONTROL_ICON;
 
 /**
  * Maps an action's serializable `iconId` (declared in core, no React) to a
@@ -63,22 +71,37 @@ const ACTION_ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: 
  */
 const ActionRefButton = ({ id }: { readonly id: string }) => {
   const editor = useDiagramOptional();
-  const [, force] = useState(0);
+  // Derive the two live bits (pressed / disabled) inside the change
+  // handler and re-render ONLY when one of them flips — a plain
+  // force-render here made every toolbar button re-render on every
+  // frame of an element drag.
+  const derive = useCallback((): { active: boolean; enabled: boolean } => {
+    const action = defaultActionRegistry.get(id);
+    if (!action || !editor) return { active: false, enabled: false };
+    const ctx = { editor };
+    const active = action.checked?.(ctx) ?? false;
+    // Read-only gate: creating / mutating actions (no `viewMode`) disable
+    // themselves in view mode, matching the registry's dispatch gate.
+    const viewGated = editor.readOnly && action.viewMode !== true;
+    const enabled = !viewGated && (action.predicate ? action.predicate(ctx) : true);
+    return { active, enabled };
+  }, [editor, id]);
+  const [live, setLive] = useState(derive);
   useEffect(() => {
     if (!editor) return undefined;
-    return editor.on("change", () => {
-      force((n) => n + 1);
-    });
-  }, [editor]);
+    const update = () => {
+      const next = derive();
+      setLive((prev) =>
+        prev.active === next.active && prev.enabled === next.enabled ? prev : next,
+      );
+    };
+    update();
+    return editor.on("change", update);
+  }, [editor, derive]);
   const action = defaultActionRegistry.get(id);
   if (!action) return null;
   const Icon = action.iconId ? ACTION_ICONS[action.iconId] : undefined;
-  const ctx = editor ? { editor } : null;
-  const active = ctx ? (action.checked?.(ctx) ?? false) : false;
-  // Read-only gate: creating / mutating actions (no `viewMode`) disable
-  // themselves in view mode, matching the registry's dispatch gate.
-  const viewGated = !!editor?.readOnly && action.viewMode !== true;
-  const enabled = ctx && !viewGated ? (action.predicate ? action.predicate(ctx) : true) : false;
+  const { active, enabled } = live;
   const matchers: readonly HotkeyMatcher[] =
     action.hotkey === undefined
       ? []
@@ -98,6 +121,172 @@ const ActionRefButton = ({ id }: { readonly id: string }) => {
     >
       {Icon ? <Icon {...iconProps} /> : (action.label ?? id)}
     </ToolbarButton>
+  );
+};
+
+/**
+ * Rows of the "Shapes and lines" flyout (reference layout): line presets,
+ * then shape kinds, then "More shapes" opening the template library.
+ * Hotkey hints mirror the registered mode hotkeys (R / O arm the same
+ * tools; L arms the stock draw-edge, whose defaults equal the Elbow
+ * arrow preset).
+ */
+const SHAPES_FLYOUT_ROWS: readonly (
+  | {
+      readonly kind: "line";
+      readonly preset: "line" | "arrow" | "elbow";
+      readonly label: string;
+      readonly icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+      readonly hotkey?: string;
+    }
+  | {
+      readonly kind: "shape";
+      readonly shape: "rect" | "ellipse" | "diamond" | "triangle";
+      readonly label: string;
+      readonly icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+      readonly hotkey?: string;
+    }
+  | { readonly kind: "divider" }
+)[] = [
+  { kind: "line", preset: "line", label: "Line", icon: Slash },
+  { kind: "line", preset: "arrow", label: "Arrow", icon: ArrowUpRight },
+  { kind: "line", preset: "elbow", label: "Elbow arrow", icon: CornerUpRight, hotkey: "L" },
+  { kind: "divider" },
+  { kind: "shape", shape: "rect", label: "Rectangle", icon: Square, hotkey: "R" },
+  { kind: "shape", shape: "ellipse", label: "Oval", icon: Circle, hotkey: "O" },
+  { kind: "shape", shape: "diamond", label: "Rhombus", icon: Diamond },
+  { kind: "shape", shape: "triangle", label: "Triangle", icon: Triangle },
+];
+
+/**
+ * "Shapes and lines" toolbar button (reference behaviour): opens a
+ * vertical flyout beside the toolbar with line presets and shape kinds —
+ * picking a row arms the corresponding drawing tool (`armLineTool` /
+ * `armShapeTool`) — plus a "More shapes" row that opens the host's
+ * template library. Closes on pick, outside click and Esc.
+ */
+const ShapesAndLinesButton = ({
+  vertical,
+  onMoreShapes,
+}: {
+  readonly vertical: boolean;
+  readonly onMoreShapes?: () => void;
+}) => {
+  const editor = useDiagramOptional();
+  const activeTool = useActiveTool();
+  const readOnly = useReadOnly();
+  // Armed variants (which shape / which line preset) — the flyout marks the
+  // matching row as the current choice.
+  const drawShapeKind = useEditorSelector<DrawShapeKind>((e) => e.drawShapeKind, "rect");
+  const linkDrawPreset = useEditorSelector<LinkDrawPreset | null>((e) => e.linkDrawPreset, null);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const isRowActive = (row: (typeof SHAPES_FLYOUT_ROWS)[number]): boolean => {
+    if (row.kind === "line") {
+      // Stock `draw-edge` (hotkey L, no preset) draws the Elbow arrow defaults.
+      return activeTool.type === "draw-edge" && (linkDrawPreset ?? "elbow") === row.preset;
+    }
+    if (row.kind === "shape") {
+      return (
+        (activeTool.type === "draw-rect" || activeTool.type === "draw-ellipse") &&
+        drawShapeKind === row.shape
+      );
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (ev: MouseEvent | PointerEvent): void => {
+      if (ref.current?.contains(ev.target as Node)) return;
+      setOpen(false);
+    };
+    const onKey = (ev: KeyboardEvent): void => {
+      if (ev.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const toolActive =
+    activeTool.type === "draw-rect" ||
+    activeTool.type === "draw-ellipse" ||
+    activeTool.type === "draw-edge";
+  return (
+    <div
+      ref={ref}
+      className="du-shapes-wrap"
+      style={{ position: "relative", display: "inline-flex" }}
+    >
+      <ToolbarButton
+        title="Shapes and lines"
+        disabled={!editor || readOnly}
+        active={toolActive || open}
+        onClick={() => {
+          setOpen((v) => !v);
+        }}
+      >
+        <Shapes {...iconProps} />
+      </ToolbarButton>
+      {open ? (
+        <div
+          className="du-shapes-flyout"
+          role="menu"
+          aria-label="Shapes and lines"
+          style={vertical ? {} : { top: "calc(100% + var(--du-gap))", left: 0 }}
+        >
+          {SHAPES_FLYOUT_ROWS.map((row, i) => {
+            if (row.kind === "divider") return <hr key={i} className="du-shapes-flyout-divider" />;
+            const Icon = row.icon;
+            const active = isRowActive(row);
+            return (
+              <button
+                key={i}
+                type="button"
+                role="menuitemradio"
+                aria-checked={active}
+                className={`du-shapes-flyout-row${active ? " is-active" : ""}`}
+                aria-label={row.label}
+                onClick={() => {
+                  if (!editor) return;
+                  if (row.kind === "line") editor.armLineTool(row.preset);
+                  else editor.armShapeTool(row.shape);
+                  setOpen(false);
+                }}
+              >
+                <Icon {...ROW_ICON} />
+                <span>{row.label}</span>
+                {row.hotkey !== undefined ? (
+                  <span className="du-shapes-flyout-hotkey">{row.hotkey}</span>
+                ) : null}
+              </button>
+            );
+          })}
+          {onMoreShapes ? (
+            <>
+              <hr className="du-shapes-flyout-divider" />
+              <button
+                type="button"
+                role="menuitem"
+                className="du-shapes-flyout-row"
+                aria-label="More shapes"
+                onClick={() => {
+                  onMoreShapes();
+                  setOpen(false);
+                }}
+              >
+                <Shapes {...ROW_ICON} />
+                <span>More shapes</span>
+              </button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 };
 
@@ -144,6 +333,16 @@ export type ToolbarItem =
        */
       readonly kind: "action-ref";
       readonly id: string;
+    }
+  | {
+      /**
+       * "Shapes and lines" button: opens a flyout beside the toolbar with
+       * line presets (Line / Arrow / Elbow arrow), shape kinds
+       * (Rectangle / Oval / Rhombus / Triangle) and a "More shapes" row.
+       * `onMoreShapes` opens the host's template library.
+       */
+      readonly kind: "shapes-flyout";
+      readonly onMoreShapes?: () => void;
     }
   | { readonly kind: "divider" }
   | { readonly kind: "undo"; readonly label?: ReactNode }
@@ -208,10 +407,8 @@ export const openImageFilePicker = (editor: Editor): void => {
 export const DEFAULT_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "action-ref", id: "mode-select" },
   { kind: "action-ref", id: "mode-hand" },
-  { kind: "action-ref", id: "mode-rect" },
-  { kind: "action-ref", id: "mode-ellipse" },
+  { kind: "shapes-flyout" },
   { kind: "action-ref", id: "mode-text" },
-  { kind: "action-ref", id: "mode-edge" },
   { kind: "action-ref", id: "mode-brush" },
   { kind: "action-ref", id: "mode-erase" },
   { kind: "action-ref", id: "mode-laser" },
@@ -243,10 +440,8 @@ export const DEFAULT_VERTICAL_TOOLBAR: readonly ToolbarItem[] = [
   { kind: "action-ref", id: "mode-select" },
   { kind: "action-ref", id: "mode-hand" },
   { kind: "divider" },
-  { kind: "action-ref", id: "mode-rect" },
-  { kind: "action-ref", id: "mode-ellipse" },
+  { kind: "shapes-flyout" },
   { kind: "action-ref", id: "mode-text" },
-  { kind: "action-ref", id: "mode-edge" },
   { kind: "action-ref", id: "mode-brush" },
   { kind: "action-ref", id: "mode-erase" },
   { kind: "action-ref", id: "mode-laser" },
@@ -301,6 +496,14 @@ export const Toolbar = ({
             return <ToolbarDivider key={i} vertical={vertical} />;
           case "action-ref":
             return <ActionRefButton key={i} id={item.id} />;
+          case "shapes-flyout":
+            return (
+              <ShapesAndLinesButton
+                key={i}
+                vertical={vertical}
+                {...(item.onMoreShapes ? { onMoreShapes: item.onMoreShapes } : {})}
+              />
+            );
           case "mode": {
             const active = activeTool.type === item.mode;
             // Only select / hand are navigation-safe; every other mode
@@ -508,7 +711,7 @@ export const ZoomDisplay = ({
       style={style}
       onClick={() => editor?.resetZoom()}
     >
-      <span style={{ minWidth: 40, display: "inline-block", textAlign: "center" }}>{percent}</span>
+      <span className="du-zoom-readout">{percent}</span>
     </ToolbarButton>
   );
 };
@@ -526,7 +729,7 @@ export const ZoomWidget = ({
 }) => (
   <span
     className={className}
-    style={{ display: "inline-flex", alignItems: "center", gap: 2, ...style }}
+    style={{ display: "inline-flex", alignItems: "center", gap: "var(--du-gap-sm)", ...style }}
   >
     <ZoomOutButton />
     <ZoomDisplay />
@@ -548,22 +751,8 @@ export const FloatingZoomControls = ({
   readonly style?: CSSProperties;
 }) => (
   <div
-    className={className}
-    style={{
-      position: "absolute",
-      bottom: 16,
-      right: 16,
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 2,
-      padding: "4px 6px",
-      background: "var(--toolbar-bg, #1a1a1a)",
-      border: "1px solid var(--border, #2a2a2a)",
-      borderRadius: 6,
-      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.18)",
-      zIndex: 50,
-      ...style,
-    }}
+    className={`du-button-group du-zoom-floating${className ? ` ${className}` : ""}`}
+    style={style}
   >
     <ZoomOutButton />
     <ZoomDisplay />
@@ -606,8 +795,8 @@ const ToolbarButton = ({
         // characters or short words. Match the IconButton height but
         // let the width grow with the content.
         width: "auto",
-        minWidth: "var(--du-button-size, 36px)",
-        padding: "0 8px",
+        minWidth: "var(--du-button-size)",
+        padding: "0 var(--du-space-md)",
         ...style,
       }}
     >
@@ -619,23 +808,6 @@ const ToolbarButton = ({
   return title ? <Tooltip content={title}>{btn}</Tooltip> : btn;
 };
 
-const ToolbarDivider = ({ vertical = false }: { readonly vertical?: boolean }) =>
-  vertical ? (
-    <span
-      style={{
-        height: 1,
-        width: "100%",
-        background: "var(--du-ui-border, #333)",
-        margin: "4px 0",
-      }}
-    />
-  ) : (
-    <span
-      style={{
-        width: 1,
-        height: TOOLBAR_SEPARATOR_HEIGHT,
-        background: "var(--du-ui-border, #333)",
-        margin: "0 4px",
-      }}
-    />
-  );
+const ToolbarDivider = ({ vertical = false }: { readonly vertical?: boolean }) => (
+  <span className={`du-toolbar-divider${vertical ? " is-vertical" : ""}`} />
+);

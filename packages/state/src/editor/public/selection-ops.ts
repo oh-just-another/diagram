@@ -1,6 +1,7 @@
 import {
   addElement,
   applyStyleToRange,
+  type TextElement,
   getElement,
   getElementWorldBounds,
   isText,
@@ -232,7 +233,36 @@ export const computeApplyTextRunStyle = (
   partial: Partial<TextStyle>,
 ): { readonly scene: Scene; readonly patch: Patch } | null => {
   const el = getElement(scene, id);
-  if (el === undefined || !isText(el)) return null;
+  if (el === undefined) return null;
+  // Embedded labels are rich text too: run the same run-splitting on a
+  // label view and write the resulting runs back onto the label.
+  if (!isText(el)) {
+    const label = el.label;
+    if (label === undefined) return null;
+    const view = {
+      ...el,
+      type: "text",
+      text: label.text,
+      fontFamily: label.fontFamily,
+      fontSize: label.fontSize,
+      style: label.style ?? {},
+      ...(label.runs !== undefined ? { runs: label.runs } : {}),
+    } as unknown as TextElement;
+    const styled = applyStyleToRange(view, from, to, partial);
+    if (styled === view) return null;
+    const r = updateElement(scene, id, (s) =>
+      s.label === undefined
+        ? s
+        : {
+            ...s,
+            label: {
+              ...s.label,
+              ...(styled.runs !== undefined ? { runs: styled.runs } : {}),
+            },
+          },
+    );
+    return { scene: r.scene, patch: r.patch };
+  }
   const next = applyStyleToRange(el, from, to, partial);
   if (next === el) return null;
   const r = updateElement(scene, id, () => next);

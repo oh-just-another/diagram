@@ -63,6 +63,7 @@ const OP_CLEAR = 28;
 const OP_MARK_DIRTY = 29;
 const OP_RESIZE = 30;
 const OP_DRAW_IMAGE = 31;
+const OP_CLIP = 32;
 
 /**
  * String-table index sentinel for a `null` color (`setFill` / `setStroke`
@@ -324,6 +325,10 @@ export const packReplayFrame = (commands: readonly RenderCommand[]): PackedRepla
         push(OP_FILL);
         push(cmd.rule === undefined ? ABSENT : FILL_RULE_CODE[cmd.rule]);
         break;
+      case "clip":
+        push(OP_CLIP);
+        push(cmd.rule === undefined ? ABSENT : FILL_RULE_CODE[cmd.rule]);
+        break;
       case "stroke":
         push(OP_STROKE);
         break;
@@ -540,6 +545,13 @@ export const replayPackedFrame = (
       case OP_STROKE:
         target.stroke();
         break;
+      case OP_CLIP: {
+        const code = next();
+        if (code === FILL_RULE_CODE.nonzero) target.clip("nonzero");
+        else if (code === FILL_RULE_CODE.evenodd) target.clip("evenodd");
+        else target.clip();
+        break;
+      }
       case OP_FILL_TEXT: {
         const text = str(next());
         const x = next();

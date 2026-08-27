@@ -1,6 +1,9 @@
 import type { Bounds, ElementId, Vec2 } from "@oh-just-another/types";
+import { vec2 } from "@oh-just-another/math";
+import { DOUBLE_CLICK_MS, DOUBLE_CLICK_TOLERANCE_PX } from "../constants.js";
 import type { AnnotationId, LinkId } from "@oh-just-another/types";
 import type { Element, Link } from "@oh-just-another/scene";
+import type { SizeMatch, SnapGuide } from "./applies/object-snap.js";
 import type { BrushStrokeState } from "./public/brush.js";
 import type { EraseStrokeState } from "./public/eraser.js";
 import type { LaserStroke } from "./public/laser.js";
@@ -150,10 +153,33 @@ export class InteractionState {
   /** Host-mirrored transform-modifier: aspect-lock resize / axis-lock move. */
   transformShiftKey = false;
 
+  /** Alignment guides of the current move / resize tick (object snapping). */
+  snapGuides: readonly SnapGuide[] = [];
+  /** `W × H` readout for the shape being resized (world bounds + size). */
+  sizeReadout: { readonly bounds: Bounds; readonly width: number; readonly height: number } | null =
+    null;
+  /** The shape whose size the current resize matched (size suggestion). */
+  sizeMatch: SizeMatch | null = null;
+
   /** Timestamp of the last non-drag pointer-up (double-click detection). */
   lastClickAt = 0;
   /** World point of the last non-drag pointer-up (double-click detection). */
   lastClickWorldPoint: Vec2 | null = null;
+
+  /**
+   * `true` when a press at `worldPoint` now would be the second click of a
+   * double-click: within `DOUBLE_CLICK_MS` of the last recorded click and
+   * within `DOUBLE_CLICK_TOLERANCE_PX` of its point. Read-only — callers
+   * record the click themselves. The time/distance bookkeeping is the
+   * source of truth because `PointerEvent.detail` is 0 in most browsers.
+   */
+  isDoubleClickAt(worldPoint: Vec2, now = performance.now()): boolean {
+    return (
+      now - this.lastClickAt < DOUBLE_CLICK_MS &&
+      this.lastClickWorldPoint !== null &&
+      vec2.distance(this.lastClickWorldPoint, worldPoint) <= DOUBLE_CLICK_TOLERANCE_PX
+    );
+  }
 
   /** In-progress brush stroke (live overlay preview). */
   brushStroke: BrushStrokeState | null = null;
@@ -187,6 +213,12 @@ export class InteractionState {
   spaceHeld = false;
   /** Active pan gesture, or null between gestures. */
   panGesture: PanGesture | null = null;
+  /**
+   * Element being placed by a library drag (`beginPlacement` → commit /
+   * cancel). A gesture like a move: chrome that hides during element
+   * gestures (selection toolbar, minimap repaint) treats it the same.
+   */
+  placementId: ElementId | null = null;
   /** Set on right-click pointerdown so the next native contextmenu is suppressed. */
   suppressNextContextMenu = false;
 
@@ -205,6 +237,13 @@ export class InteractionState {
     this.hoverCursorWorld = null;
   }
 
+  /** Drop the per-tick snap guides / size readout (gesture ended). */
+  clearSnapAssists(): void {
+    this.snapGuides = [];
+    this.sizeReadout = null;
+    this.sizeMatch = null;
+  }
+
   /** Full teardown — return every ephemeral field to its default. */
   reset(): void {
     this.resetPreviews();
@@ -221,6 +260,7 @@ export class InteractionState {
     this.snapSuppressed = false;
     this.transformAltKey = false;
     this.transformShiftKey = false;
+    this.clearSnapAssists();
     this.lastClickAt = 0;
     this.lastClickWorldPoint = null;
     this.brushStroke = null;
@@ -236,6 +276,7 @@ export class InteractionState {
     this.touchPanCandidate = null;
     this.spaceHeld = false;
     this.panGesture = null;
+    this.placementId = null;
     this.suppressNextContextMenu = false;
     this.editingLinkCaption = null;
   }

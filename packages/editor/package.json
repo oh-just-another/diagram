@@ -36,12 +36,13 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsc -b tsconfig.build.json",
+    "build": "pnpm gen:logo && tsc -b tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src tests",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "gen:logo": "node scripts/gen-logo.mjs"
   },
   "publishConfig": {
     "access": "public"
@@ -60,7 +61,8 @@
     "@oh-just-another/text-wasm": "workspace:*",
     "@oh-just-another/types": "workspace:*",
     "gifuct-js": "2.1.2",
-    "lucide-react": "1.16.0"
+    "lucide-react": "1.16.0",
+    "@oh-just-another/importers": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",

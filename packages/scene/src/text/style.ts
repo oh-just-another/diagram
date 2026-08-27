@@ -76,6 +76,12 @@ export interface TextDecoration {
 export interface TextStyle extends Style {
   readonly textAlign?: TextAlign;
   readonly textBaseline?: TextBaseline;
+  /**
+   * Marker-style background behind the glyphs (highlight colour). Painted
+   * as a full line-height rect under the text, per styled run when runs are
+   * present. Omitted = no highlight.
+   */
+  readonly highlight?: Color;
   /** Bold toggle. Default `"normal"`. */
   readonly fontWeight?: FontWeight;
   /** Italic toggle. Default `"normal"`. */
