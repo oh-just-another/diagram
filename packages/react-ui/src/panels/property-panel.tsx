@@ -189,10 +189,10 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       {
         const labelViews = shapes.map(labelView);
         primary.push(
-          <FontFamilyControl key="l-family" shapes={labelViews} labelMode />,
-          <FontSizeControl key="l-size" shapes={labelViews} labelMode allowAuto />,
-          <TextDecorationControl key="l-decor" shapes={labelViews} labelMode />,
-          <TextAlignControl key="l-align" shapes={labelViews} labelMode />,
+          <FontFamilyControl key="l-family" shapes={labelViews} />,
+          <FontSizeControl key="l-size" shapes={labelViews} allowAuto />,
+          <TextDecorationControl key="l-decor" shapes={labelViews} />,
+          <TextAlignControl key="l-align" shapes={labelViews} />,
           <Divider key="d-sticky" />,
         );
       }
@@ -257,16 +257,16 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
       // fill group (color / opacity) | link.
       if (shapes.every((s) => canCarryLabel(s))) {
         // Pseudo-shapes exposing the LABEL's font + style so the text
-        // controls read label values; `labelMode` reroutes their writes
+        // controls read label values; writes route through the label APIs
         // through the label APIs.
         const labelViews = shapes.map(labelView);
         primary.push(
-          <FontFamilyControl key="l-family" shapes={labelViews} labelMode />,
-          <FontSizeControl key="l-size" shapes={labelViews} labelMode />,
-          <TextDecorationControl key="l-decor" shapes={labelViews} labelMode />,
-          <TextAlignControl key="l-align" shapes={labelViews} labelMode />,
-          <ColorOpacityControl key="l-color" shapes={labelViews} labelMode />,
-          <HighlightControl key="l-highlight" shapes={labelViews} labelMode />,
+          <FontFamilyControl key="l-family" shapes={labelViews} />,
+          <FontSizeControl key="l-size" shapes={labelViews} />,
+          <TextDecorationControl key="l-decor" shapes={labelViews} />,
+          <TextAlignControl key="l-align" shapes={labelViews} />,
+          <ColorOpacityControl key="l-color" shapes={labelViews} />,
+          <HighlightControl key="l-highlight" shapes={labelViews} />,
           <Divider key="d-label" />,
         );
       }
@@ -649,15 +649,10 @@ const useTextRunRange = (shapes: readonly ElementBase[]): TextRunRange | null =>
  * Combined color & opacity control — a single swatch trigger whose
  * popover has both the palette and an opacity slider. Used for the text
  * panel in place of separate Fill + Opacity triggers. Writes `fill` and
- * `opacity` through `editor.updateStyle`.
+ * `opacity` through `editor.updateTextStyle` (element style for text,
+ * label style for labelable shapes).
  */
-const ColorOpacityControl = ({
-  shapes,
-  labelMode,
-}: {
-  readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
-}) => {
+const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   const runRange = useTextRunRange(shapes);
   if (!editor) return null;
@@ -697,10 +692,8 @@ const ColorOpacityControl = ({
               editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
                 fill: v ?? "transparent",
               });
-            } else if (labelMode) {
-              editor.updateLabelStyle(ids, { fill: v ?? "transparent" });
             } else {
-              editor.updateStyle(ids, { fill: v ?? "transparent" });
+              editor.updateTextStyle(ids, { fill: v ?? "transparent" });
             }
           }}
           onEyedrop={(cb) => {
@@ -716,8 +709,7 @@ const ColorOpacityControl = ({
           ariaLabel="Opacity"
           valueLabel={pct === null ? "—" : `${pct}%`}
           onChange={(v) => {
-            if (labelMode) editor.updateLabelStyle(ids, { opacity: v / 100 });
-            else editor.updateStyle(ids, { opacity: v / 100 });
+            editor.updateTextStyle(ids, { opacity: v / 100 });
           }}
         />
       </div>
@@ -1304,13 +1296,7 @@ const ListControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
  * characters (styled runs); otherwise on the whole element(s). Picking
  * "no color" clears the highlight.
  */
-const HighlightControl = ({
-  shapes,
-  labelMode,
-}: {
-  readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
-}) => {
+const HighlightControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   const runRange = useTextRunRange(shapes);
   if (!editor) return null;
@@ -1338,10 +1324,8 @@ const HighlightControl = ({
             const partial = { highlight: v ?? "transparent" };
             if (runRange) {
               editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
-            } else if (labelMode) {
-              editor.updateLabelStyle(ids, partial);
             } else {
-              editor.updateStyle(ids, partial);
+              editor.updateTextStyle(ids, partial);
             }
           }}
           onEyedrop={(cb) => {
@@ -1383,11 +1367,9 @@ const FillControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
 
 const FontSizeControl = ({
   shapes,
-  labelMode,
   allowAuto,
 }: {
   readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
   /** Offer the sticky "Auto" mode (rendered size tracks the card). */
   readonly allowAuto?: boolean;
 }) => {
@@ -1440,8 +1422,7 @@ const FontSizeControl = ({
             icon: <span style={{ fontSize: 11, fontWeight: 600 }}>{p.label}</span>,
           }))}
           onChange={(v) => {
-            if (labelMode) editor.updateLabelProps(ids, { fontSize: v });
-            else editor.updateTextProps(ids, { fontSize: v });
+            editor.updateTextProps(ids, { fontSize: v });
           }}
         />
         <Slider
@@ -1452,8 +1433,7 @@ const FontSizeControl = ({
           ariaLabel="Font size"
           valueLabel={value === null ? "—" : `${value}px`}
           onChange={(v) => {
-            if (labelMode) editor.updateLabelProps(ids, { fontSize: v });
-            else editor.updateTextProps(ids, { fontSize: v });
+            editor.updateTextProps(ids, { fontSize: v });
           }}
         />
       </div>
@@ -1461,13 +1441,7 @@ const FontSizeControl = ({
   );
 };
 
-const FontFamilyControl = ({
-  shapes,
-  labelMode,
-}: {
-  readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
-}) => {
+const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
@@ -1500,8 +1474,7 @@ const FontFamilyControl = ({
             className={`du-sel-menu-row${f.value === value ? " is-active" : ""}`}
             style={{ fontFamily: f.value }}
             onClick={() => {
-              if (labelMode) editor.updateLabelProps(ids, { fontFamily: f.value });
-              else editor.updateTextProps(ids, { fontFamily: f.value });
+              editor.updateTextProps(ids, { fontFamily: f.value });
             }}
           >
             {f.label}
@@ -1518,13 +1491,7 @@ const FontFamilyControl = ({
  * `textBaseline`). One trigger keeps the toolbar row compact and matches
  * the target design's grouped alignment control.
  */
-const TextAlignControl = ({
-  shapes,
-  labelMode,
-}: {
-  readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
-}) => {
+const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
@@ -1567,8 +1534,7 @@ const TextAlignControl = ({
             { value: "right", label: "Right", icon: <AlignRight {...CONTROL_ICON} /> },
           ]}
           onChange={(v) => {
-            if (labelMode) editor.updateLabelStyle(ids, { textAlign: v });
-            else editor.updateStyle(ids, { textAlign: v });
+            editor.updateTextStyle(ids, { textAlign: v });
           }}
         />
         <SegmentedControl<TextBaseline>
@@ -1592,8 +1558,7 @@ const TextAlignControl = ({
             },
           ]}
           onChange={(v) => {
-            if (labelMode) editor.updateLabelStyle(ids, { textBaseline: v });
-            else editor.updateStyle(ids, { textBaseline: v });
+            editor.updateTextStyle(ids, { textBaseline: v });
           }}
         />
       </div>
@@ -1640,13 +1605,7 @@ const TextStyleToggle = ({
  * underline/strikethrough→merged `textDecoration`. Active = every
  * selected shape already has that decoration on.
  */
-const TextDecorationControl = ({
-  shapes,
-  labelMode,
-}: {
-  readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
-}) => {
+const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   const runRange = useTextRunRange(shapes);
   if (!editor) return null;
@@ -1678,23 +1637,14 @@ const TextDecorationControl = ({
   const applyPartial = (partial: Partial<TextStyle>): void => {
     if (runRange) {
       editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
-    } else if (labelMode) {
-      editor.updateLabelStyle(ids, partial);
     } else {
-      editor.updateStyle(ids, partial);
+      editor.updateTextStyle(ids, partial);
     }
   };
   // Toggling underline/strikethrough must preserve the other flag. Range mode
   // replaces the whole `textDecoration`, so rebuild both flags from the
   // range's current state; whole-element mode merges per shape.
   const setDecoration = (key: "underline" | "strikethrough", on: boolean): void => {
-    if (labelMode && !runRange) {
-      for (const s of shapes) {
-        const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
-        editor.updateLabelStyle([s.id], { textDecoration: { ...cur, [key]: on } });
-      }
-      return;
-    }
     if (runRange) {
       editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
         textDecoration: { underline: allUnderline, strikethrough: allStrike, [key]: on },
@@ -1702,7 +1652,7 @@ const TextDecorationControl = ({
     } else {
       for (const s of shapes) {
         const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
-        editor.updateStyle([s.id], { textDecoration: { ...cur, [key]: on } });
+        editor.updateTextStyle([s.id], { textDecoration: { ...cur, [key]: on } });
       }
     }
   };
