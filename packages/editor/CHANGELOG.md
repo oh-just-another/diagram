@@ -1,5 +1,14 @@
 # @oh-just-another/editor
 
+## 0.62.2
+
+### Patch Changes
+
+- Updated dependencies [e28d529]
+  - @oh-just-another/state@0.65.0
+  - @oh-just-another/importers@0.60.2
+  - @oh-just-another/react-ui@0.63.1
+
 ## 0.62.1
 
 ### Patch Changes
