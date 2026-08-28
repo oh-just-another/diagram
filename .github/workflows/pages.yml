@@ -21,6 +21,11 @@ jobs:
     name: Build apps/docs
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # A newer master push supersedes a queued docs build; only the deploy
+    # itself is never cancelled (workflow-level group above).
+    concurrency:
+      group: pages-build
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
 
