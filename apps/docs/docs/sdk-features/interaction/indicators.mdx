@@ -53,6 +53,31 @@ What the panel shows depends on the selection:
   Double-click a child to edit inside the group: the toolbar then targets the
   children and hides Group / Ungroup; `Esc` or a click outside leaves.
 
+## Cursors
+
+The canvas cursor is computed from the interaction state (`computeCursor`) and
+uses system keywords only:
+
+| State                                                                     | Cursor                                                               |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Idle, hover over empty canvas or an element (selected or not)             | `default`                                                            |
+| Dragging an element, link, waypoint, caption or comment                   | `default`                                                            |
+| Resize handle (hover / drag)                                              | `ns` / `ew` / `nwse` / `nesw-resize`, following the shape's rotation |
+| Rotate handle                                                             | `grab` / `grabbing`                                                  |
+| Link start dot, drawing a link from an anchor                             | `crosshair`                                                          |
+| Link endpoint / waypoint handle                                           | `grab`                                                               |
+| Caption of the selected link                                              | `text`                                                               |
+| Rubber-band selection                                                     | `crosshair`                                                          |
+| Hand tool, `Space`, panning, read-only board                              | `grab` / `grabbing`                                                  |
+| Rect / ellipse / frame / edge / brush / laser / crop tools, colour picker | `crosshair`                                                          |
+| Text tool, in-canvas text editing                                         | `text`                                                               |
+| Eraser                                                                    | `none` (the overlay paints the eraser ring)                          |
+| Comment pin                                                               | `pointer`                                                            |
+
+Every outcome has a `CursorRole`; a host can replace the image per role with
+`editor.setCursorOverride(role, { url, url2x, hotspot, fallback })` (DPR-aware
+via `image-set`) or reset it with `null`.
+
 The full `<Editor>` from `@oh-just-another/editor` wires these indicators up by
 default; reach for the lower-level pieces above only when building a custom
 overlay or a headless rendering of the selection state.

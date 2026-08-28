@@ -1,8 +1,9 @@
 import { getElement } from "@oh-just-another/scene";
-import type { Vec2 } from "@oh-just-another/types";
+import type { ElementId, Vec2 } from "@oh-just-another/types";
 import { cursorForHandle, type HandleId } from "../../interaction/handle.js";
 import { ANCHOR_DOT_ACTIVE_RADIUS, LINK_START_ANCHOR_OUTSET } from "../../constants.js";
 import { anchorOverlayPoints } from "../anchor-points.js";
+import { isOverSelectedLinkLabel } from "../link-label-hit.js";
 import type { Editor } from "../../editor.js";
 
 /**
@@ -105,35 +106,49 @@ const isOverLinkStartDot = (editor: Editor, p: Vec2): boolean => {
  * The CSS cursor for the current interaction state. Priority: active gesture →
  * text edit → pan affordance → draw tool → idle hover hit-test. Pure read of
  * editor state; no side effects.
+ *
+ * Keyword choices follow the reference board: moving an element / link /
+ * caption keeps the plain arrow (only panning shows the grabbing hand), resize
+ * arrows follow the shape's rotation, rubber-band selection shows a
+ * crosshair, a view-only board behaves like the hand tool.
  */
 export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
   // Each outcome is a (role, fallback-keyword) pair; `resolveCursor` returns a
   // host-registered custom image for that role if one exists, else the keyword.
   const r = (role: CursorRole, keyword: string): string => resolveCursor(editor, role, keyword);
-  const resizeRole = (h: HandleId): string => r(RESIZE_ROLE[h], cursorForHandle(h));
+  const resizeRole = (h: HandleId, rotation: number): string =>
+    r(RESIZE_ROLE[h], cursorForHandle(h, rotation));
+  const rotationOf = (id: ElementId | undefined): number =>
+    id === undefined ? 0 : (getElement(editor.scene, id)?.rotation ?? 0);
   // 1. Active gestures (highest priority — what the pointer is doing now).
   if (editor.panGesture) return r("pan-active", "grabbing");
   if (editor.linkDragFromAnchor?.moved === true) return r("draw", "crosshair");
   if (editor.isDraggingWaypoint || editor.isDraggingSegment || editor.isDraggingLabel)
-    return r("move", "grabbing");
-  if (editor.annotationDrag?.moved === true) return r("move", "grabbing");
+    return r("move", "default");
+  if (editor.annotationDrag?.moved === true) return r("move", "default");
   if (editor.brushStroke) return r("draw", "crosshair");
+  // Rubber-band selection in progress.
+  if (editor.lassoPreview !== null) return r("draw", "crosshair");
   // Machine-driven drag past the threshold (`gestureTx` opens then): resize
-  // shows the handle's arrow; element / link move shows grabbing.
+  // shows the handle's arrow; element / link move keeps the plain arrow.
   if (editor.gestureTx) {
     const t = editor.actor.getSnapshot().context.pressTarget;
-    if (t && (t.kind === "handle" || t.kind === "group-handle")) return resizeRole(t.handle);
+    if (t?.kind === "handle") return resizeRole(t.handle, rotationOf(t.elementId));
+    if (t?.kind === "group-handle") return resizeRole(t.handle, 0);
     if (t?.kind === "rotate-handle") return r("rotate", "grabbing");
     if (t && (t.kind === "element" || t.kind === "link" || t.kind === "edge-endpoint")) {
-      return r("move", "grabbing");
+      return r("move", "default");
     }
   }
   // 1b. Armed colour-picker pipette → crosshair, waiting for the pick click.
   if (editor.isEyedropperArmed) return r("draw", "crosshair");
   // 2. In-canvas text editing → I-beam.
   if (editor.editingTextElement !== null) return r("text", "text");
-  // 3. Pan affordance (idle): Space held or hand tool.
-  if (editor.spaceHeld || editor.activeTool.type === "hand") return r("pan-ready", "grab");
+  // 3. Pan affordance (idle): Space held, hand tool, or a view-only board
+  //    (nothing to edit, so the whole canvas is a pan surface).
+  if (editor.spaceHeld || editor.activeTool.type === "hand" || editor.readOnly) {
+    return r("pan-ready", "grab");
+  }
   // 4. Draw tools (idle, before a gesture starts).
   switch (editor.activeTool.type) {
     case "draw-rect":
@@ -157,11 +172,14 @@ export const computeCursor = (editor: Editor, p: Vec2 | null): string => {
   // 5. Idle hover in select mode — key off the hit-test target.
   if (p) {
     if (isOverLinkStartDot(editor, p)) return r("link-start", "crosshair");
+    // The selected link's caption is editable in place → I-beam.
+    if (isOverSelectedLinkLabel(editor, p)) return r("text", "text");
     const t = editor.hitTest(p);
     switch (t.kind) {
       case "handle":
+        return resizeRole(t.handle, rotationOf(t.elementId));
       case "group-handle":
-        return resizeRole(t.handle);
+        return resizeRole(t.handle, 0);
       case "rotate-handle":
         return r("rotate", "grab");
       case "edge-endpoint":
