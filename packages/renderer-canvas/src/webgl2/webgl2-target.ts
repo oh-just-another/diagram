@@ -872,33 +872,30 @@ export class WebGL2Target implements RenderTarget {
   }
 
   /**
-   * Trim `textures` down to `WEBGL2_IMAGE_TEXTURE_CACHE_CAP` entries by
-   * dropping least-recently-used keys and explicitly releasing the GPU
-   * texture for each evicted entry.
+   * Trim the IMAGE entries of `textures` down to
+   * `WEBGL2_IMAGE_TEXTURE_CACHE_CAP` by dropping least-recently-used keys
+   * and explicitly releasing the GPU texture for each evicted entry.
    *
-   * Skips entries also held by `textBitmaps` — those are evicted through
-   * `evictTextBitmapsIfOverCap` instead, which already deletes the
-   * texture. Skipping here keeps the two cache layers from
-   * double-`gl.deleteTexture`'ing the same handle.
+   * Entries also held by `textBitmaps` are neither counted nor evicted
+   * here — `evictTextBitmapsIfOverCap` owns those handles (its own cap,
+   * its own `gl.deleteTexture`). Counting them would let a text-heavy
+   * frame (more than the image cap of distinct bitmap strings, e.g. the
+   * first frame before the MSDF atlas is warm) push the map over the cap
+   * with entries this loop may not touch, and the eviction would never
+   * terminate.
    */
   private evictImageTexturesIfOverCap(): void {
-    while (this.textures.size > WEBGL2_IMAGE_TEXTURE_CACHE_CAP) {
-      const oldestKey = this.textures.keys().next().value;
-      if (oldestKey === undefined) break;
-      // Don't evict a texture that's currently backing a live
-      // text-bitmap cache entry — `evictTextBitmapsIfOverCap` owns those
-      // handles. Move it to the tail so the LRU pointer advances and the
-      // next-oldest entry is tried.
-      if (isTextBitmapBacked(this.textBitmaps, oldestKey)) {
-        const tex = this.textures.get(oldestKey);
-        if (tex === undefined) continue;
-        this.textures.delete(oldestKey);
-        this.textures.set(oldestKey, tex);
-        continue;
-      }
-      const tex = this.textures.get(oldestKey);
-      this.textures.delete(oldestKey);
+    const textBacked = new Set<object>(this.textBitmaps.values());
+    let images = 0;
+    for (const key of this.textures.keys()) if (!textBacked.has(key)) images++;
+    if (images <= WEBGL2_IMAGE_TEXTURE_CACHE_CAP) return;
+    for (const key of [...this.textures.keys()]) {
+      if (images <= WEBGL2_IMAGE_TEXTURE_CACHE_CAP) break;
+      if (textBacked.has(key)) continue;
+      const tex = this.textures.get(key);
+      this.textures.delete(key);
       if (tex) this.gl.deleteTexture(tex);
+      images--;
     }
   }
 
