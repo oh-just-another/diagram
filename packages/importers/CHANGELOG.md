@@ -1,5 +1,12 @@
 # @oh-just-another/importers
 
+## 0.60.1
+
+### Patch Changes
+
+- Updated dependencies [c738f81]
+  - @oh-just-another/state@0.64.0
+
 ## 0.60.0
 
 ### Minor Changes

@@ -1,5 +1,16 @@
 # @oh-just-another/react-ui
 
+## 0.63.0
+
+### Minor Changes
+
+- c738f81: Multi-selection and group toolbars follow the reference. Every element type declares an ordered control set for single and multi selections (`panels/control-sets.ts`); a selection of two or more elements shows the intersection of the members' multi sets — two shapes keep the shape controls minus the link, a shape + a text share the text controls, a shape + a frame share nothing — and mixed types keep the Filter. The shared tail gains an **Arrange** popover (align left / centre / right / top / middle / bottom, distribute from three) and **Group** / **Ungroup** buttons driven by the action registry; the comment button is single-selection only. A selected group stands for its leaf children (their shared controls, writes to them), shows Ungroup instead of Group and keeps align / distribute disabled while it is the only thing selected; editing inside a group (double-click) hides Group / Ungroup. Text controls no longer take a `labelMode` prop — they write through the label-aware `Editor.updateTextStyle` / `updateTextProps`.
+
+### Patch Changes
+
+- Updated dependencies [c738f81]
+  - @oh-just-another/state@0.64.0
+
 ## 0.62.0
 
 ### Minor Changes
