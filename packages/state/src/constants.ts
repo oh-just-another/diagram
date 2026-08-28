@@ -817,10 +817,13 @@ export const VIDEO_FALLBACK_HEIGHT_PX = 270;
  * - `ANIMATION_COST_FACTOR` — target interval = clamp(emaRenderCost ×
  *   factor, min, max). Factor > 1 leaves headroom for the rest of the
  *   frame (input, layout) so the render cost doesn't fill the budget.
+ * - `ANIMATION_COST_EMA_ALPHA` — weight of the newest tick in the cost
+ *   EMA; higher reacts faster to a spike, lower smooths it. Range 0.1–0.5.
  */
 export const ANIMATION_MIN_INTERVAL_MS = 1000 / 60;
 export const ANIMATION_MAX_INTERVAL_MS = 1000 / 12;
 export const ANIMATION_COST_FACTOR = 2;
+export const ANIMATION_COST_EMA_ALPHA = 0.2;
 
 /**
  * Per-shape GIF playback policy.

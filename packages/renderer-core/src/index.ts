@@ -95,12 +95,7 @@ export { jsRasterizer } from "./raster/js-rasterizer.js";
 export type { WorkerRenderMessage, WorkerRenderResponse } from "./worker-render.js";
 export { WORKER_AUTO_THRESHOLD } from "./worker-render.js";
 export type { TileKey, TileCache, TileCacheEntry } from "./caches/tile-renderer.js";
-export {
-  TILE_SIZE,
-  MAX_TILE_CACHE_BYTES,
-  LOD_THRESHOLD,
-  InMemoryTileCache,
-} from "./caches/tile-renderer.js";
+export { TILE_SIZE, MAX_TILE_CACHE_BYTES, InMemoryTileCache } from "./caches/tile-renderer.js";
 export {
   LinkBoundsCache,
   computeLinkWorldBounds,

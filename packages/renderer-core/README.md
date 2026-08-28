@@ -92,7 +92,7 @@ The cache _interfaces_ are backend-agnostic; the `InMemory*` classes are default
 | Name                                                                   | Purpose                                                                                                         |
 | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `TileCache`, `TileKey`, `TileCacheEntry`, `InMemoryTileCache`          | Tiled rendering: cache fixed-size tiles keyed by position and zoom.                                             |
-| `TILE_SIZE`, `MAX_TILE_CACHE_BYTES`, `LOD_THRESHOLD`                   | Tile size (2048 px), cache byte budget, and the scale below which low-detail rendering kicks in.                |
+| `TILE_SIZE`, `MAX_TILE_CACHE_BYTES`                                    | Tile size (2048 px) and cache byte budget.                                                                      |
 | `WorkerRenderMessage`, `WorkerRenderResponse`, `WORKER_AUTO_THRESHOLD` | Message protocol for off-main-thread rendering; renders auto-route to a worker above 5000 elements.             |
 | `fetchModuleBytes`, `allocBytes`, `WasmArena`                          | Helpers for loading WASM module bytes and allocating into a shared arena (for WASM shaper/rasterizer backends). |
 

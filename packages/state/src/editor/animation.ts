@@ -3,6 +3,7 @@ import {
   ANIMATION_MAX_INTERVAL_MS,
   ANIMATION_MIN_INTERVAL_MS,
   ANIMATION_COST_FACTOR,
+  ANIMATION_COST_EMA_ALPHA,
 } from "../constants.js";
 
 /**
@@ -70,7 +71,7 @@ export class AnimationController {
     this.host.forceAnimationRepaint();
     const cost = (typeof performance !== "undefined" ? performance.now() : Date.now()) - now;
     // EMA so a single spike doesn't overreact; decays back when load drops.
-    this.costEma = this.costEma * 0.8 + cost * 0.2;
+    this.costEma = this.costEma * (1 - ANIMATION_COST_EMA_ALPHA) + cost * ANIMATION_COST_EMA_ALPHA;
   }
 
   /** Register the document visibility listener (browser host only). */
