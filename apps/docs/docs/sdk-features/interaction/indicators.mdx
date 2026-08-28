@@ -37,6 +37,22 @@ function Overlay() {
 }
 ```
 
+What the panel shows depends on the selection:
+
+- **One element** — the full control set of its type, a comment button and the
+  element link.
+- **Several elements** — the intersection of the members' multi-selection
+  sets: two shapes keep the shape controls (minus the link), a shape + a text
+  share the text controls (font, style, colour — written through
+  `Editor.updateTextStyle` / `updateTextProps`, which route to a shape's label
+  or a text element's own style), a shape + a frame share nothing. Mixed types
+  add a **Filter** that narrows the selection to one type. The tail gains
+  **Arrange** (align, distribute from three) and **Group**.
+- **A group** — its children's shared controls; **Ungroup** replaces Group and
+  align / distribute stay disabled until something else joins the selection.
+  Double-click a child to edit inside the group: the toolbar then targets the
+  children and hides Group / Ungroup; `Esc` or a click outside leaves.
+
 The full `<Editor>` from `@oh-just-another/editor` wires these indicators up by
 default; reach for the lower-level pieces above only when building a custom
 overlay or a headless rendering of the selection state.
