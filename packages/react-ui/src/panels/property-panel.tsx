@@ -1,4 +1,5 @@
 import {
+  Fragment,
   isValidElement,
   useEffect,
   useRef,
@@ -9,7 +10,15 @@ import {
 import {
   AlignCenter,
   AlignCenterHorizontal,
+  AlignCenterVertical,
   AlignEndHorizontal,
+  AlignEndVertical,
+  AlignHorizontalDistributeCenter,
+  AlignStartVertical,
+  AlignVerticalDistributeCenter,
+  Group as GroupIcon,
+  LayoutGrid,
+  Ungroup as UngroupIcon,
   AlignLeft,
   AlignRight,
   AlignStartHorizontal,
@@ -66,6 +75,8 @@ import {
   isSticky,
   isEmoji,
   isFrame,
+  isGroup,
+  getDescendantsOf,
   isRectangle,
   isEllipse,
   isBrush,
@@ -79,6 +90,7 @@ import {
   type Roundness,
   type ElementBase,
   type ImageMask,
+  type Scene,
   type TextAlign,
   type TextBaseline,
   type TextElement,
@@ -89,7 +101,10 @@ import {
   LABEL_DEFAULT_FONT_SIZE,
   STICKY_SIZE_PRESETS,
   TEXT_DEFAULT_FONT_FAMILY,
+  defaultActionRegistry,
+  formatHotkey,
   type ConvertTarget,
+  type HotkeyMatcher,
   type ImageAspectPreset,
 } from "@oh-just-another/state";
 import type { BinaryFile, EmojiElement, StickyElement } from "@oh-just-another/scene";
@@ -107,6 +122,13 @@ import { ColorSwatchPicker } from "../color/color-swatch-picker.js";
 import { Popover } from "../primitives/popover.js";
 import { SegmentedControl } from "../primitives/segmented-control.js";
 import { Slider } from "../primitives/slider.js";
+import {
+  SEPARATOR,
+  intersectControlSets,
+  type ControlMode,
+  type ControlSet,
+  type ControlSetEntry,
+} from "./control-sets.js";
 import {
   BRUSH_WIDTH_MAX,
   BRUSH_WIDTH_MIN,
@@ -161,144 +183,41 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
   // splits its controls into `primary` (always visible) and `overflow`
   // (behind the ⋮ on mobile; inline on desktop).
   if (selection.size > 0) {
-    const shapes = [...selection]
+    const selected = [...selection]
       .map((id) => scene.elements.get(id))
       .filter((s): s is ElementBase => s !== undefined);
-    if (shapes.length === 0) return null;
-    const allText = shapes.every((s) => isText(s));
-    const allImage = shapes.every((s) => isImage(s));
-    const allBrush = shapes.every((s) => isBrush(s as BrushElement));
-    const allFrame = shapes.every((s) => isFrame(s));
-    const allSticky = shapes.every((s) => isSticky(s));
-    const allEmoji = shapes.every((s) => isEmoji(s));
-
-    // Branch layouts mirror the target design (design.md): per-type clusters
-    // separated by dividers, then a shared tail
-    // (`… | z-order | align | actions | comment | lock | ⋯`).
-    const primary: ReactNode[] = [];
-    const overflow: ReactNode[] = [];
-    // Shared head: the type switcher always leads the toolbar (the
-    // control renders nothing for kinds outside the switch-type matrix).
-    if (shapes.every((s) => isConvertible(s))) {
-      primary.push(<ConvertTypeControl key="convert" shapes={shapes} />, <Divider key="d-type" />);
-    }
-    if (allSticky) {
-      // text (with Auto size) | size S/M/L | background | tags / author.
-      // Text controls always show — a note without text yet edits the
-      // defaults its first text will take (create-on-write in the editor).
-      {
-        const labelViews = shapes.map(labelView);
-        primary.push(
-          <FontFamilyControl key="l-family" shapes={labelViews} labelMode />,
-          <FontSizeControl key="l-size" shapes={labelViews} labelMode allowAuto />,
-          <TextDecorationControl key="l-decor" shapes={labelViews} labelMode />,
-          <TextAlignControl key="l-align" shapes={labelViews} labelMode />,
-          <Divider key="d-sticky" />,
-        );
-      }
-      primary.push(
-        <StickySizeControl key="size" shapes={shapes} />,
-        <FillOpacityControl key="bg" shapes={shapes} />,
-      );
-      overflow.push(
-        <StickyTagControl key="tags" shapes={shapes} />,
-        <StickyAuthorControl key="author" shapes={shapes} />,
-      );
-    } else if (allEmoji) {
-      primary.push(<EmojiPickerControl key="glyph" shapes={shapes} />);
-    } else if (allFrame) {
-      // A frame's border is fixed chrome (dashed outline); only its body fill
-      // is user-configurable. No stroke / width / dash / roundness controls.
-      primary.push(<FillControl key="fill" shapes={shapes} />);
-      if (shapes.length === 1) {
-        primary.push(<FrameRatioControl key="ratio" shapes={shapes} />);
-      }
-    } else if (allText) {
-      // font family | size | style | align | link — then colors.
-      primary.push(
-        <FontFamilyControl key="family" shapes={shapes} />,
-        <FontSizeControl key="size" shapes={shapes} />,
-        <TextDecorationControl key="decor" shapes={shapes} />,
-        <TextAlignControl key="align" shapes={shapes} />,
-        <ListControl key="list" shapes={shapes} />,
-      );
-      overflow.push(
-        <LinkControl key="link" shapes={shapes} />,
-        <Divider key="d-color" />,
-        <ColorOpacityControl key="color" shapes={shapes} />,
-        <HighlightControl key="highlight" shapes={shapes} />,
-      );
-    } else if (allImage) {
-      // An image's pixels are the content — fill/stroke make no sense.
-      // name | replace | download | alt | crop | opacity.
-      if (shapes.length === 1) {
-        primary.push(<ImageNameControl key="name" shapes={shapes} />);
-        overflow.push(
-          <ReplaceImageControl key="replace" shapes={shapes} />,
-          <DownloadImageControl key="download" shapes={shapes} />,
-          <ImageAltControl key="alt" shapes={shapes} />,
-          <Divider key="d-crop" />,
-        );
-      }
-      overflow.push(
-        <CropControl key="crop" shapes={shapes} />,
-        <MaskControl key="mask" shapes={shapes} />,
-        <OpacityControl key="opacity" shapes={shapes} />,
-      );
-    } else if (selectionBuckets(shapes).size > 1) {
-      // MIXED types (reference behaviour): the toolbar SHRINKS to the
-      // shared tail below, plus a Filter that narrows the actual
-      // selection to one type bucket. Per-type controls come back once
-      // the selection is uniform again.
-      primary.push(<SelectionFilterControl key="filter" shapes={shapes} />);
-    } else {
-      // label text controls (for every shape type that can carry text, even
-      // before it has any) | border group (color / width / dash / corners) |
-      // fill group (color / opacity) | link.
-      if (shapes.every((s) => canCarryLabel(s))) {
-        // Pseudo-shapes exposing the LABEL's font + style so the text
-        // controls read label values; `labelMode` reroutes their writes
-        // through the label APIs.
-        const labelViews = shapes.map(labelView);
-        primary.push(
-          <FontFamilyControl key="l-family" shapes={labelViews} labelMode />,
-          <FontSizeControl key="l-size" shapes={labelViews} labelMode />,
-          <TextDecorationControl key="l-decor" shapes={labelViews} labelMode />,
-          <TextAlignControl key="l-align" shapes={labelViews} labelMode />,
-          <ColorOpacityControl key="l-color" shapes={labelViews} labelMode />,
-          <HighlightControl key="l-highlight" shapes={labelViews} labelMode />,
-          <Divider key="d-label" />,
-        );
-      }
-      if (allBrush) {
-        // Brush widths are baked per point — `style.strokeWidth` has no
-        // effect, so brush-only selections get a slider that re-bases the
-        // baked widths, plus the plain stroke color picker.
-        primary.push(
-          <StrokeControl key="stroke" shapes={shapes} />,
-          <BrushWidthControl key="width" shapes={shapes} />,
-        );
-      } else {
-        primary.push(
-          <BorderGroupControl key="border" shapes={shapes} />,
-          <FillOpacityControl key="fill" shapes={shapes} />,
-        );
-      }
-      // PanelShell already separates `primary` from `overflow`.
-      overflow.push(<LinkControl key="link" shapes={shapes} />);
-    }
-    // Shared tail for every selection type:
-    // `link (frame / image) | comment | lock | ⋯`.
-    // Text and shapes carry their link control in the type cluster above;
-    // z-order, align / distribute, duplicate / delete, group / ungroup and
-    // flip all live in the context menu (⋯).
-    if (allFrame || allImage) overflow.push(<LinkControl key="link" shapes={shapes} />);
-    overflow.push(
-      <CommentControl key="comment" shapes={shapes} />,
-      <Divider key="d-lock" />,
-      <LockControl key="lock" />,
-      <MoreButton key="more" />,
+    if (selected.length === 0) return null;
+    // A selected group stands for its leaf descendants (reference
+    // behaviour): the toolbar shows — and writes — what those children share;
+    // the group element itself carries no editable style.
+    const targets = expandGroups(scene, selected);
+    if (targets.length === 0) return null;
+    const single = targets.length === 1;
+    // Per-element control sets, intersected by control id for ≥2 targets
+    // (see control-sets.ts): uniform selections keep their type's multi set,
+    // mixed ones keep only what every member offers.
+    const set = intersectControlSets(
+      targets.map((s) => controlSetFor(s, single ? "single" : "multi")),
     );
+    const primary = renderControlSet(set.primary, targets);
+    const overflow = renderControlSet(set.overflow, targets);
+    // Mixed types: a Filter that narrows the actual selection to one type
+    // bucket leads the row, so the per-type controls come back on demand.
+    if (!single && selectionBuckets(targets).size > 1) {
+      primary.unshift(<SelectionFilterControl key="filter" shapes={targets} />);
+    }
+    // Shared tail: `arrange · group · ungroup | comment | lock | ⋯`.
+    // Arrange / group / ungroup gate themselves on the selection; comment is
+    // single-only; z-order, duplicate / delete and flip stay in the context
+    // menu (⋯).
+    overflow.push(
+      <Divider key="d-arrange" />,
+      <ArrangeControl key="arrange" targets={targets} />,
+      <GroupControls key="group" selected={selected} />,
+      <Divider key="d-comment" />,
+    );
+    if (single) overflow.push(<CommentControl key="comment" shapes={targets} />);
+    overflow.push(<Divider key="d-lock" />, <LockControl key="lock" />, <MoreButton key="more" />);
     return (
       <PanelShell
         mobile={mobile}
@@ -345,6 +264,275 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
  * pill row (primary · divider · overflow). Mobile = a primary row with a
  * vertical-dots ⋮ that expands a wrapped overflow grid below it.
  */
+// ---------------------------------------------------------------------------
+// Control sets (see control-sets.ts) — what each element type offers
+// ---------------------------------------------------------------------------
+
+type ControlRender = (targets: readonly ElementBase[]) => ReactNode;
+type PanelControlSet = ControlSet<ControlRender>;
+type PanelEntry = ControlSetEntry<ControlRender>;
+
+const control = (id: string, render: ControlRender): PanelEntry => ({ id, payload: render });
+
+/**
+ * The text-carrying view of an element: text elements as they are, labelable
+ * shapes through their embedded label (`labelView`), so one control reads
+ * font / style / colour off a shape + text selection alike. Writes go through
+ * the label-aware `editor.updateTextStyle` / `updateTextProps`.
+ */
+const textView = (s: ElementBase): ElementBase => (isText(s) ? s : labelView(s));
+const textViews = (targets: readonly ElementBase[]): ElementBase[] => targets.map(textView);
+
+/** Shared text-carrier cluster ids — identical for text and labelled shapes. */
+const TEXT_CLUSTER: readonly PanelEntry[] = [
+  control("font-family", (t) => <FontFamilyControl shapes={textViews(t)} />),
+  control("font-size", (t) => <FontSizeControl shapes={textViews(t)} />),
+  control("text-decoration", (t) => <TextDecorationControl shapes={textViews(t)} />),
+  control("text-align", (t) => <TextAlignControl shapes={textViews(t)} />),
+];
+const TEXT_COLOR_CLUSTER: readonly PanelEntry[] = [
+  control("text-color", (t) => <ColorOpacityControl shapes={textViews(t)} />),
+  control("highlight", (t) => <HighlightControl shapes={textViews(t)} />),
+];
+const CONVERT: PanelEntry = control("convert", (t) => <ConvertTypeControl shapes={t} />);
+const LINK: PanelEntry = control("link", (t) => <LinkControl shapes={t} />);
+
+/**
+ * Ordered controls one element offers. `multi` is the single set minus what
+ * makes no sense for several elements: the hyperlink, the text list type,
+ * per-file image actions, the frame ratio. Sticky notes use their own
+ * font ids (auto-size font, note fonts) so a note + shape selection shares
+ * only the style / alignment controls, as in the reference.
+ */
+const controlSetFor = (s: ElementBase, mode: ControlMode): PanelControlSet => {
+  const single = mode === "single";
+  const convert: PanelEntry[] = isConvertible(s) ? [CONVERT, SEPARATOR] : [];
+  if (isSticky(s)) {
+    return {
+      primary: [
+        ...convert,
+        control("sticky-font-family", (t) => <FontFamilyControl shapes={textViews(t)} />),
+        control("sticky-font-size", (t) => <FontSizeControl shapes={textViews(t)} allowAuto />),
+        ...TEXT_CLUSTER.slice(2),
+        SEPARATOR,
+        control("sticky-size", (t) => <StickySizeControl shapes={t} />),
+        control("sticky-bg", (t) => <FillOpacityControl shapes={t} />),
+      ],
+      overflow: [
+        control("sticky-tags", (t) => <StickyTagControl shapes={t} />),
+        control("sticky-author", (t) => <StickyAuthorControl shapes={t} />),
+      ],
+    };
+  }
+  if (isEmoji(s)) {
+    return { primary: [control("emoji", (t) => <EmojiPickerControl shapes={t} />)], overflow: [] };
+  }
+  if (isFrame(s)) {
+    // A frame's border is fixed chrome; only its body fill is configurable.
+    return {
+      primary: [
+        control("frame-fill", (t) => <FillControl shapes={t} />),
+        ...(single ? [control("frame-ratio", (t) => <FrameRatioControl shapes={t} />)] : []),
+      ],
+      overflow: single ? [LINK] : [],
+    };
+  }
+  if (isText(s)) {
+    return {
+      primary: [
+        ...convert,
+        ...TEXT_CLUSTER,
+        ...(single ? [control("list", (t) => <ListControl shapes={t} />)] : []),
+      ],
+      overflow: [...(single ? [LINK, SEPARATOR] : []), ...TEXT_COLOR_CLUSTER],
+    };
+  }
+  if (isImage(s)) {
+    // Pixels are the content — no fill / stroke. Per-file actions are
+    // single-only; crop / mask / opacity apply in bulk.
+    return {
+      primary: single ? [control("image-name", (t) => <ImageNameControl shapes={t} />)] : [],
+      overflow: [
+        ...(single
+          ? [
+              control("image-replace", (t) => <ReplaceImageControl shapes={t} />),
+              control("image-download", (t) => <DownloadImageControl shapes={t} />),
+              control("image-alt", (t) => <ImageAltControl shapes={t} />),
+              SEPARATOR,
+            ]
+          : []),
+        control("image-crop", (t) => <CropControl shapes={t} />),
+        control("image-mask", (t) => <MaskControl shapes={t} />),
+        control("image-opacity", (t) => <OpacityControl shapes={t} />),
+      ],
+    };
+  }
+  if (isGroup(s)) return { primary: [], overflow: [] };
+  const body: PanelEntry[] = isBrush(s)
+    ? [
+        // Brush widths are baked per point — `style.strokeWidth` has no
+        // effect, so brushes get a slider that re-bases the baked widths.
+        control("stroke", (t) => <StrokeControl shapes={t} />),
+        control("brush-width", (t) => <BrushWidthControl shapes={t} />),
+      ]
+    : [
+        control("border", (t) => <BorderGroupControl shapes={t} />),
+        control("fill", (t) => <FillOpacityControl shapes={t} />),
+      ];
+  return {
+    primary: [
+      ...convert,
+      ...(canCarryLabel(s) ? [...TEXT_CLUSTER, ...TEXT_COLOR_CLUSTER, SEPARATOR] : []),
+      ...body,
+    ],
+    overflow: single ? [LINK] : [],
+  };
+};
+
+const renderControlSet = (
+  entries: readonly PanelEntry[],
+  targets: readonly ElementBase[],
+): ReactNode[] =>
+  entries.map((e, i) =>
+    e === SEPARATOR ? (
+      <Divider key={`sep-${String(i)}`} />
+    ) : (
+      <Fragment key={e.id}>{e.payload(targets)}</Fragment>
+    ),
+  );
+
+/**
+ * Replace every selected group by its leaf descendants (nested groups
+ * flattened); plain elements pass through. Order and uniqueness preserved.
+ */
+const expandGroups = (scene: Scene, selected: readonly ElementBase[]): ElementBase[] => {
+  const out: ElementBase[] = [];
+  const seen = new Set<string>();
+  const push = (s: ElementBase): void => {
+    if (seen.has(s.id)) return;
+    seen.add(s.id);
+    out.push(s);
+  };
+  for (const s of selected) {
+    if (!isGroup(s)) {
+      push(s);
+      continue;
+    }
+    for (const d of getDescendantsOf(scene, s.id)) if (!isGroup(d)) push(d);
+  }
+  return out;
+};
+
+// ---------------------------------------------------------------------------
+// Tail: arrange / group / ungroup (registry-driven)
+// ---------------------------------------------------------------------------
+
+const ARRANGE_ALIGN: readonly { readonly id: string; readonly Icon: typeof AlignStartVertical }[] =
+  [
+    { id: "align-left", Icon: AlignStartVertical },
+    { id: "align-h-center", Icon: AlignCenterVertical },
+    { id: "align-right", Icon: AlignEndVertical },
+    { id: "align-top", Icon: AlignStartHorizontal },
+    { id: "align-v-center", Icon: AlignCenterHorizontal },
+    { id: "align-bottom", Icon: AlignEndHorizontal },
+  ];
+const ARRANGE_DISTRIBUTE: readonly {
+  readonly id: string;
+  readonly Icon: typeof AlignStartVertical;
+}[] = [
+  { id: "distribute-horizontal", Icon: AlignHorizontalDistributeCenter },
+  { id: "distribute-vertical", Icon: AlignVerticalDistributeCenter },
+];
+
+/** One registry action as a toolbar / popover button (disabled by its predicate). */
+const ActionIconButton = ({
+  id,
+  Icon,
+}: {
+  readonly id: string;
+  readonly Icon: typeof AlignStartVertical;
+}) => {
+  const editor = useDiagramOptional();
+  const action = defaultActionRegistry.get(id);
+  if (!editor || !action) return null;
+  const enabled = action.predicate ? action.predicate({ editor }) : true;
+  const matchers: readonly HotkeyMatcher[] =
+    action.hotkey === undefined
+      ? []
+      : Array.isArray(action.hotkey)
+        ? action.hotkey
+        : [action.hotkey];
+  const first = matchers[0];
+  const label = action.label ?? id;
+  return (
+    <button
+      type="button"
+      className="du-sel-icon-button"
+      aria-label={label}
+      title={first ? `${label} (${formatHotkey(first)})` : label}
+      disabled={!enabled}
+      onClick={() => {
+        defaultActionRegistry.dispatch(id, { editor });
+      }}
+    >
+      <Icon {...CONTROL_ICON} aria-hidden />
+    </button>
+  );
+};
+
+/**
+ * Arrange popover for ≥2 targets: align (left / centre / right, top /
+ * middle / bottom) and distribute (horizontally / vertically, from 3). The
+ * buttons follow the registry predicates, so a single whole group — two
+ * children but one selected id — shows them disabled, as in the reference.
+ */
+const ArrangeControl = ({ targets }: { readonly targets: readonly ElementBase[] }) => {
+  if (targets.length < 2) return null;
+  return (
+    <Popover
+      ariaLabel="Arrange"
+      trigger={
+        <button type="button" className="du-sel-icon-button" aria-label="Arrange" title="Arrange">
+          <LayoutGrid {...CONTROL_ICON} aria-hidden />
+        </button>
+      }
+    >
+      <div className="du-sel-popover-section">
+        <header className="du-sel-popover-label">Align</header>
+        <div className="du-sel-arrange-row">
+          {ARRANGE_ALIGN.map((a) => (
+            <ActionIconButton key={a.id} id={a.id} Icon={a.Icon} />
+          ))}
+        </div>
+        <header className="du-sel-popover-label">Distribute</header>
+        <div className="du-sel-arrange-row">
+          {ARRANGE_DISTRIBUTE.map((a) => (
+            <ActionIconButton key={a.id} id={a.id} Icon={a.Icon} />
+          ))}
+        </div>
+      </div>
+    </Popover>
+  );
+};
+
+/**
+ * Group / Ungroup buttons. Group needs ≥2 selected ids; Ungroup needs a
+ * group among them (both show for a group + something else). Neither shows
+ * while editing inside a group (double-clicked in): the children are being
+ * edited in place, not regrouped.
+ */
+const GroupControls = ({ selected }: { readonly selected: readonly ElementBase[] }) => {
+  const enteredGroup = useEditorSelector((e) => e.enteredGroup, null);
+  if (enteredGroup !== null) return null;
+  const hasGroup = selected.some((s) => isGroup(s));
+  return (
+    <>
+      {selected.length >= 2 ? <ActionIconButton id="group-selection" Icon={GroupIcon} /> : null}
+      {hasGroup ? <ActionIconButton id="ungroup-selection" Icon={UngroupIcon} /> : null}
+    </>
+  );
+};
+
 const PanelShell = ({
   mobile,
   primary,
@@ -649,15 +837,10 @@ const useTextRunRange = (shapes: readonly ElementBase[]): TextRunRange | null =>
  * Combined color & opacity control — a single swatch trigger whose
  * popover has both the palette and an opacity slider. Used for the text
  * panel in place of separate Fill + Opacity triggers. Writes `fill` and
- * `opacity` through `editor.updateStyle`.
+ * `opacity` through `editor.updateTextStyle` (element style for text,
+ * label style for labelable shapes).
  */
-const ColorOpacityControl = ({
-  shapes,
-  labelMode,
-}: {
-  readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
-}) => {
+const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   const runRange = useTextRunRange(shapes);
   if (!editor) return null;
@@ -697,10 +880,8 @@ const ColorOpacityControl = ({
               editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
                 fill: v ?? "transparent",
               });
-            } else if (labelMode) {
-              editor.updateLabelStyle(ids, { fill: v ?? "transparent" });
             } else {
-              editor.updateStyle(ids, { fill: v ?? "transparent" });
+              editor.updateTextStyle(ids, { fill: v ?? "transparent" });
             }
           }}
           onEyedrop={(cb) => {
@@ -716,8 +897,7 @@ const ColorOpacityControl = ({
           ariaLabel="Opacity"
           valueLabel={pct === null ? "—" : `${pct}%`}
           onChange={(v) => {
-            if (labelMode) editor.updateLabelStyle(ids, { opacity: v / 100 });
-            else editor.updateStyle(ids, { opacity: v / 100 });
+            editor.updateTextStyle(ids, { opacity: v / 100 });
           }}
         />
       </div>
@@ -1304,13 +1484,7 @@ const ListControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
  * characters (styled runs); otherwise on the whole element(s). Picking
  * "no color" clears the highlight.
  */
-const HighlightControl = ({
-  shapes,
-  labelMode,
-}: {
-  readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
-}) => {
+const HighlightControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   const runRange = useTextRunRange(shapes);
   if (!editor) return null;
@@ -1338,10 +1512,8 @@ const HighlightControl = ({
             const partial = { highlight: v ?? "transparent" };
             if (runRange) {
               editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
-            } else if (labelMode) {
-              editor.updateLabelStyle(ids, partial);
             } else {
-              editor.updateStyle(ids, partial);
+              editor.updateTextStyle(ids, partial);
             }
           }}
           onEyedrop={(cb) => {
@@ -1383,11 +1555,9 @@ const FillControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
 
 const FontSizeControl = ({
   shapes,
-  labelMode,
   allowAuto,
 }: {
   readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
   /** Offer the sticky "Auto" mode (rendered size tracks the card). */
   readonly allowAuto?: boolean;
 }) => {
@@ -1440,8 +1610,7 @@ const FontSizeControl = ({
             icon: <span style={{ fontSize: 11, fontWeight: 600 }}>{p.label}</span>,
           }))}
           onChange={(v) => {
-            if (labelMode) editor.updateLabelProps(ids, { fontSize: v });
-            else editor.updateTextProps(ids, { fontSize: v });
+            editor.updateTextProps(ids, { fontSize: v });
           }}
         />
         <Slider
@@ -1452,8 +1621,7 @@ const FontSizeControl = ({
           ariaLabel="Font size"
           valueLabel={value === null ? "—" : `${value}px`}
           onChange={(v) => {
-            if (labelMode) editor.updateLabelProps(ids, { fontSize: v });
-            else editor.updateTextProps(ids, { fontSize: v });
+            editor.updateTextProps(ids, { fontSize: v });
           }}
         />
       </div>
@@ -1461,13 +1629,7 @@ const FontSizeControl = ({
   );
 };
 
-const FontFamilyControl = ({
-  shapes,
-  labelMode,
-}: {
-  readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
-}) => {
+const FontFamilyControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
@@ -1500,8 +1662,7 @@ const FontFamilyControl = ({
             className={`du-sel-menu-row${f.value === value ? " is-active" : ""}`}
             style={{ fontFamily: f.value }}
             onClick={() => {
-              if (labelMode) editor.updateLabelProps(ids, { fontFamily: f.value });
-              else editor.updateTextProps(ids, { fontFamily: f.value });
+              editor.updateTextProps(ids, { fontFamily: f.value });
             }}
           >
             {f.label}
@@ -1518,13 +1679,7 @@ const FontFamilyControl = ({
  * `textBaseline`). One trigger keeps the toolbar row compact and matches
  * the target design's grouped alignment control.
  */
-const TextAlignControl = ({
-  shapes,
-  labelMode,
-}: {
-  readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
-}) => {
+const TextAlignControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   if (!editor) return null;
   const ids = shapes.map((s) => s.id);
@@ -1567,8 +1722,7 @@ const TextAlignControl = ({
             { value: "right", label: "Right", icon: <AlignRight {...CONTROL_ICON} /> },
           ]}
           onChange={(v) => {
-            if (labelMode) editor.updateLabelStyle(ids, { textAlign: v });
-            else editor.updateStyle(ids, { textAlign: v });
+            editor.updateTextStyle(ids, { textAlign: v });
           }}
         />
         <SegmentedControl<TextBaseline>
@@ -1592,8 +1746,7 @@ const TextAlignControl = ({
             },
           ]}
           onChange={(v) => {
-            if (labelMode) editor.updateLabelStyle(ids, { textBaseline: v });
-            else editor.updateStyle(ids, { textBaseline: v });
+            editor.updateTextStyle(ids, { textBaseline: v });
           }}
         />
       </div>
@@ -1640,13 +1793,7 @@ const TextStyleToggle = ({
  * underline/strikethrough→merged `textDecoration`. Active = every
  * selected shape already has that decoration on.
  */
-const TextDecorationControl = ({
-  shapes,
-  labelMode,
-}: {
-  readonly shapes: readonly ElementBase[];
-  readonly labelMode?: boolean;
-}) => {
+const TextDecorationControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) => {
   const editor = useDiagramOptional();
   const runRange = useTextRunRange(shapes);
   if (!editor) return null;
@@ -1678,23 +1825,14 @@ const TextDecorationControl = ({
   const applyPartial = (partial: Partial<TextStyle>): void => {
     if (runRange) {
       editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, partial);
-    } else if (labelMode) {
-      editor.updateLabelStyle(ids, partial);
     } else {
-      editor.updateStyle(ids, partial);
+      editor.updateTextStyle(ids, partial);
     }
   };
   // Toggling underline/strikethrough must preserve the other flag. Range mode
   // replaces the whole `textDecoration`, so rebuild both flags from the
   // range's current state; whole-element mode merges per shape.
   const setDecoration = (key: "underline" | "strikethrough", on: boolean): void => {
-    if (labelMode && !runRange) {
-      for (const s of shapes) {
-        const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
-        editor.updateLabelStyle([s.id], { textDecoration: { ...cur, [key]: on } });
-      }
-      return;
-    }
     if (runRange) {
       editor.applyTextStyleToRange(runRange.target.id, runRange.from, runRange.to, {
         textDecoration: { underline: allUnderline, strikethrough: allStrike, [key]: on },
@@ -1702,7 +1840,7 @@ const TextDecorationControl = ({
     } else {
       for (const s of shapes) {
         const cur = (s.style as TextStyle | undefined)?.textDecoration ?? {};
-        editor.updateStyle([s.id], { textDecoration: { ...cur, [key]: on } });
+        editor.updateTextStyle([s.id], { textDecoration: { ...cur, [key]: on } });
       }
     }
   };

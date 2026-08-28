@@ -197,3 +197,72 @@ describe("label style APIs create the label on write", () => {
     expect(getElement(e.scene, elementId("r"))!.label).toBeUndefined();
   });
 });
+
+const textEl = (id: string): Element =>
+  ({
+    id: elementId(id),
+    layerId: DEFAULT_LAYER_ID,
+    type: "text",
+    position: { x: 0, y: 0 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: { fill: "#000" },
+    text: "hello",
+    fontFamily: "system-ui",
+    fontSize: 16,
+  }) as unknown as Element;
+
+describe("text-carrier routing for mixed selections", () => {
+  it("updateTextStyle writes element style on text and label style on shapes, one undo step", () => {
+    const e = editorWith(sceneWith(textEl("t"), rect("r", "Label"), rect("plain")));
+    e.updateTextStyle([elementId("t"), elementId("r"), elementId("plain")], {
+      fill: "#ff0000",
+      fontWeight: "bold",
+    });
+    expect(getElement(e.scene, elementId("t"))!.style.fill).toBe("#ff0000");
+    expect(getElement(e.scene, elementId("r"))!.label!.style?.fill).toBe("#ff0000");
+    // The shape body keeps its own fill — only the label was styled.
+    expect(getElement(e.scene, elementId("r"))!.style.fill).toBeUndefined();
+    // A labelable shape without a label gets one seeded with the style.
+    expect(getElement(e.scene, elementId("plain"))!.label!.style?.fontWeight).toBe("bold");
+    e.undo();
+    expect(getElement(e.scene, elementId("t"))!.style.fill).toBe("#000");
+    expect(getElement(e.scene, elementId("r"))!.label!.style?.fill).toBeUndefined();
+    expect(getElement(e.scene, elementId("plain"))!.label).toBeUndefined();
+  });
+
+  it("updateTextProps routes font family / size to labels and clears auto-fit, one undo step", () => {
+    const e = editorWith(sceneWith(textEl("t"), rect("r", "Label")));
+    e.setLabelAutoFit([elementId("r")], true);
+    e.updateTextProps([elementId("t"), elementId("r")], { fontFamily: "serif", fontSize: 24 });
+    const t = getElement(e.scene, elementId("t")) as unknown as {
+      fontFamily: string;
+      fontSize: number;
+    };
+    expect(t.fontFamily).toBe("serif");
+    expect(t.fontSize).toBe(24);
+    const label = getElement(e.scene, elementId("r"))!.label as {
+      fontFamily: string;
+      fontSize: number;
+      autoFit?: boolean;
+    };
+    expect(label.fontFamily).toBe("serif");
+    expect(label.fontSize).toBe(24);
+    expect(label.autoFit).toBeUndefined();
+    e.undo();
+    expect((getElement(e.scene, elementId("t")) as unknown as { fontSize: number }).fontSize).toBe(
+      16,
+    );
+    expect((getElement(e.scene, elementId("r"))!.label as { autoFit?: boolean }).autoFit).toBe(
+      true,
+    );
+  });
+
+  it("updateTextProps ignores maxWidth for labels and skips non-carriers", () => {
+    const e = editorWith(sceneWith(rect("r", "Label")));
+    const before = e.scene;
+    e.updateTextProps([elementId("r")], { maxWidth: 300 });
+    expect(e.scene).toBe(before);
+  });
+});
