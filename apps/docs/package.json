@@ -13,9 +13,9 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@docusaurus/core": "3.10.1",
-    "@docusaurus/preset-classic": "3.10.1",
-    "@easyops-cn/docusaurus-search-local": "0.55.2",
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/preset-classic": "3.10.2",
+    "@easyops-cn/docusaurus-search-local": "0.55.3",
     "@mdx-js/react": "3.1.1",
     "@oh-just-another/diagram": "workspace:*",
     "@oh-just-another/diagram-svelte": "workspace:*",
@@ -28,16 +28,16 @@
     "@oh-just-another/types": "workspace:*",
     "clsx": "2.1.1",
     "prism-react-renderer": "2.4.1",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "vue": "3.5.38"
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "vue": "3.5.41"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "3.10.1",
     "@docusaurus/tsconfig": "3.10.1",
     "@docusaurus/types": "3.10.1",
     "@swc/core": "1.15.41",
-    "@types/react": "19.2.15",
+    "@types/react": "19.2.18",
     "svelte": "5.56.4",
     "svelte-loader": "3.2.4",
     "swc-loader": "0.2.7",

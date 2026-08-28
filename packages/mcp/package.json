@@ -51,7 +51,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@oh-just-another/headless": "workspace:*",
     "@oh-just-another/importers": "workspace:*",
     "@oh-just-another/scene": "workspace:*",

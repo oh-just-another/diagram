@@ -48,14 +48,14 @@
     "@oh-just-another/tokens": "workspace:*",
     "@oh-just-another/types": "workspace:*",
     "@oh-just-another/versioning": "workspace:*",
-    "lucide-react": "1.16.0",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "yjs": "13.6.30"
+    "lucide-react": "1.34.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "yjs": "13.6.32"
   },
   "devDependencies": {
-    "@types/react": "19.2.15",
-    "@types/react-dom": "19.2.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "4.7.0",
     "vite": "6.4.3"
   }

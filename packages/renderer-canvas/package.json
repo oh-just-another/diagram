@@ -65,7 +65,7 @@
     "@oh-just-another/renderer-workers": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/types": "workspace:*",
-    "earcut": "3.0.2",
+    "earcut": "3.2.3",
     "@oh-just-another/text-wasm": "workspace:*"
   },
   "devDependencies": {

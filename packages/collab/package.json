@@ -53,7 +53,7 @@
     "@oh-just-another/history": "workspace:*",
     "@oh-just-another/state": "workspace:*",
     "@oh-just-another/network": "workspace:*",
-    "yjs": "13.6.30",
+    "yjs": "13.6.32",
     "y-protocols": "1.0.7"
   }
 }

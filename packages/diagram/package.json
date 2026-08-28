@@ -58,12 +58,12 @@
     "@oh-just-another/editor": "workspace:*",
     "@oh-just-another/react-ui": "workspace:*",
     "@oh-just-another/scene": "workspace:*",
-    "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@types/react": "19.2.15",
-    "@types/react-dom": "19.2.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "4.7.0",
     "esbuild": "0.25.12",
     "jsdom": "25.0.1",
