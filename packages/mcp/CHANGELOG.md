@@ -1,5 +1,11 @@
 # @oh-just-another/mcp
 
+## 0.2.4
+
+### Patch Changes
+
+- @oh-just-another/importers@0.60.1
+
 ## 0.2.3
 
 ### Patch Changes
