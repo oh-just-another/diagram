@@ -139,3 +139,83 @@ describe("renderScene — LOD placeholder (zoom 0.1)", () => {
     }),
   );
 });
+
+// ---------------------------------------------------------------------------
+// Text LOD ladder — the render budget's only automatic step. A text-heavy
+// mix (standalone text + labelled shapes) rendered at a zoom where the body
+// text is ~8 px on screen, with the `minTextScreenPx` threshold stepped up:
+// 0 (never skip) → 6 (default) → 10 → 14 → 20.
+// ---------------------------------------------------------------------------
+
+const textTarget: RenderTarget = new Proxy(
+  {},
+  {
+    get: (_t, prop: string) => {
+      if (prop === "size") return { width: 1920, height: 1080 };
+      if (prop === "measureText") return (s: string) => ({ width: s.length * 7 });
+      if (prop === "then") return undefined;
+      return () => undefined;
+    },
+  },
+) as unknown as RenderTarget;
+
+const makeTextScene = (count: number, gridStep = 120): Scene => {
+  let scene = emptyScene();
+  scene = {
+    ...scene,
+    viewport: { ...scene.viewport, size: { width: 1920, height: 1080 }, zoom: 0.5 },
+  };
+  const cols = Math.ceil(Math.sqrt(count));
+  for (let i = 0; i < count; i++) {
+    const position = { x: (i % cols) * gridStep, y: Math.floor(i / cols) * gridStep };
+    const base = {
+      id: elementId(`t-${i}`),
+      layerId: DEFAULT_LAYER_ID,
+      position,
+      rotation: 0,
+      scale: { x: 1, y: 1 },
+      order: orderBetween(null, null),
+    };
+    const shape: Element =
+      i % 3 === 0
+        ? ({
+            ...base,
+            type: "text",
+            style: { fill: "#222" },
+            text: `Note ${String(i)} — lorem ipsum dolor sit amet`,
+            fontFamily: "system-ui",
+            fontSize: 16,
+            maxWidth: 100,
+          } as unknown as Element)
+        : ({
+            ...base,
+            type: i % 3 === 1 ? "rectangle" : "ellipse",
+            style: { fill: "#e8f0fe", stroke: "#333", strokeWidth: 1 },
+            width: 100,
+            height: 60,
+            label: { text: `Step ${String(i)}`, fontFamily: "system-ui", fontSize: 16 },
+          } as unknown as Element);
+    ({ scene } = addElement(scene, shape));
+  }
+  return scene;
+};
+
+const textSetups = { 10000: makeTextScene(10000), 50000: makeTextScene(50000) };
+type BoundsCache = ElementCache<{ x: number; y: number; width: number; height: number }>;
+const textCaches: Record<10000 | 50000, BoundsCache> = {
+  10000: new ElementCache(),
+  50000: new ElementCache(),
+};
+
+for (const count of [10000, 50000] as const) {
+  describe(`renderScene — text LOD ladder, ${String(count / 1000)}k mixed (zoom 0.5)`, () => {
+    for (const px of [0, 6, 10, 14, 20]) {
+      bench(`minTextScreenPx=${String(px)}`, () =>
+        renderScene(textSetups[count], textTarget, {
+          lod: { placeholderMaxScreenPx: 8, ...(px > 0 ? { minTextScreenPx: px } : {}) },
+          boundsCache: textCaches[count],
+        }),
+      );
+    }
+  });
+}
