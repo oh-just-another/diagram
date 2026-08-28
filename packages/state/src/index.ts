@@ -87,6 +87,7 @@ export {
 export type { EditorOptions, LoadSceneOptions, CursorRole, CursorSpec } from "./editor.js";
 export { Editor } from "./editor.js";
 export type { EditorEvents } from "./editor/editor-events.js";
+export type { FrameStats } from "./editor/frame-stats.js";
 export { normalizeHref, safeHref } from "./editor/public/link.js";
 export { DEFAULT_BRUSH_SETTINGS } from "./editor/public/brush.js";
 export type { BrushSettings } from "./editor/public/brush.js";

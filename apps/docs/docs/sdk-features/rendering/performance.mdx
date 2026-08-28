@@ -73,3 +73,24 @@ import { renderScene, type LodOptions } from "@oh-just-another/renderer-core";
 const lod: LodOptions = { placeholderMaxScreenPx: 12, minTextScreenPx: 5 };
 renderScene(scene, target, { viewport, lod });
 ```
+
+Inside an `Editor` the main pass reads `editor.renderLod` (defaults to
+`DEFAULT_LOD`); `editor.setRenderLod(lod)` repaints everything with the new
+thresholds — a full repaint, so do not toggle it per frame.
+
+## Frame cost
+
+`editor.frameStats` reports the last painted frame: `lastMs`, an EMA `emaMs`
+(main + overlay pass), the achieved frame gap `gapMs` (wall-clock between
+paints — `1000 / gapMs` is the fps the user sees, including everything outside
+the pass), the display interval `intervalMs` (the panel's refresh rate, measured by a
+probe of empty `requestAnimationFrame` callbacks while the editor is idle),
+and the frame counter. The `frame` event fires after
+every paint with the same object — subscribe from diagnostics, not from
+React state that re-renders chrome.
+
+```ts
+editor.on("frame", ({ emaMs, intervalMs }) => {
+  if (emaMs > intervalMs) console.warn("dropping frames");
+});
+```

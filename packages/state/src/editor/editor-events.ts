@@ -1,6 +1,7 @@
 import type { Scene } from "@oh-just-another/scene";
 import type * as Selection from "../selection/selection.js";
 import type { ActiveTool } from "../interaction/modes.js";
+import type { FrameStats } from "./frame-stats.js";
 
 /**
  * Typed event surface for `Editor`. Each event has a focused payload so
@@ -27,4 +28,10 @@ export interface EditorEvents {
   history: (state: { readonly canUndo: boolean; readonly canRedo: boolean }) => void;
   /** Viewport (zoom / pan / size / gridEnabled / gridStyle) changed. */
   viewport: (scene: Scene) => void;
+  /**
+   * A frame was painted; carries the updated {@link FrameStats}. Fires per
+   * render (not per `notify()`), so subscribe only from diagnostics —
+   * never from React state that re-renders chrome.
+   */
+  frame: (stats: FrameStats) => void;
 }

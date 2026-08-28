@@ -1122,3 +1122,27 @@ export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
   suggestObjectSize: true,
   wheelMode: "auto",
 };
+
+/**
+ * Frame-cost statistics ({@link Editor.frameStats}).
+ * - `FRAME_COST_EMA_ALPHA` — weight of the newest frame in the cost and
+ *   frame-gap EMAs. 0.2 ≈ a 5-frame memory; higher reacts faster but
+ *   flickers. Range 0.05–0.5.
+ * - `FRAME_INTERVAL_MAX_MS` — frame gaps longer than this (hidden tab, idle)
+ *   are ignored by the gap EMA. Range 100–1000.
+ * - `FRAME_REFRESH_RATES_HZ` — candidate display rates the refresh probe
+ *   snaps to. Add exotic panels here.
+ * - `REFRESH_PROBE_IDLE_MS` — the display rate is measured by a probe of
+ *   empty `requestAnimationFrame` callbacks that runs only after this long
+ *   without a paint, so nothing of ours stretches the gaps; main-thread
+ *   work during a probe aborts it. Range 300–2000.
+ * - `REFRESH_PROBE_FRAMES` — callbacks per probe; the median gap is used.
+ *   Range 6–30.
+ */
+export const FRAME_COST_EMA_ALPHA = 0.2;
+export const FRAME_INTERVAL_MAX_MS = 250;
+export const FRAME_REFRESH_RATES_HZ: readonly number[] = [
+  30, 48, 50, 60, 72, 75, 90, 100, 120, 144, 165, 180, 240, 360,
+];
+export const REFRESH_PROBE_IDLE_MS = 600;
+export const REFRESH_PROBE_FRAMES = 12;
