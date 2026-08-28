@@ -1,7 +1,6 @@
 import {
   findContainerAt,
   getElbowSegmentHandles,
-  linkLabelBounds,
   getAnchorWorld,
   getDropZoneWorld,
   getElement,
@@ -43,6 +42,7 @@ import { vec2 } from "@oh-just-another/math";
 import { clampZoom } from "./public/zoom-pan.js";
 import { req } from "../helpers/util.js";
 import type { Editor } from "../editor.js";
+import { isOverSelectedLinkLabel } from "./link-label-hit.js";
 
 /**
  * Caption pill drag — a press inside the SELECTED link's label pill grabs the
@@ -55,16 +55,7 @@ const handleDownLabelDrag = (editor: Editor, worldPoint: Vec2): boolean => {
   if (editor.readOnly) return false;
   const linkId = editor.selectedLink;
   if (!(editor.activeTool.type === "select" && linkId)) return false;
-  const edge = getLink(editor._scene, linkId);
-  if (!edge?.label) return false;
-  const b = linkLabelBounds(editor._scene, edge);
-  const inside =
-    b !== null &&
-    worldPoint.x >= b.x &&
-    worldPoint.x <= b.x + b.width &&
-    worldPoint.y >= b.y &&
-    worldPoint.y <= b.y + b.height;
-  if (!inside) return false;
+  if (!isOverSelectedLinkLabel(editor, worldPoint)) return false;
   editor.cancelLongPress();
   // Second click of a double-click → edit the caption text. The FIRST click
   // usually travelled the machine path (it selected the link), so consult the

@@ -32,21 +32,48 @@ export const CORNER_HANDLES: readonly HandleId[] = ["nw", "ne", "se", "sw"];
  * Ignores element rotation — a rotated shape's handles technically want a
  * rotated cursor, but CSS only offers the 8 fixed arrows; we map by handle id.
  */
-export const cursorForHandle = (handle: HandleId): string => {
-  switch (handle) {
-    case "nw":
-    case "se":
-      return "nwse-resize";
-    case "ne":
-    case "sw":
-      return "nesw-resize";
-    case "n":
-    case "s":
-      return "ns-resize";
-    case "e":
-    case "w":
-      return "ew-resize";
-  }
+/** Outward unit direction of each handle in the un-rotated frame (screen y down). */
+const HANDLE_DIRECTION: Record<HandleId, Vec2> = {
+  n: { x: 0, y: -1 },
+  ne: { x: 1, y: -1 },
+  e: { x: 1, y: 0 },
+  se: { x: 1, y: 1 },
+  s: { x: 0, y: 1 },
+  sw: { x: -1, y: 1 },
+  w: { x: -1, y: 0 },
+  nw: { x: -1, y: -1 },
+};
+
+/**
+ * Resize cursors by 45° screen sector, starting east and turning clockwise
+ * (screen y grows downwards): E, SE, S, SW, W, NW, N, NE.
+ */
+const SECTOR_CURSORS: readonly string[] = [
+  "ew-resize",
+  "nwse-resize",
+  "ns-resize",
+  "nesw-resize",
+  "ew-resize",
+  "nwse-resize",
+  "ns-resize",
+  "nesw-resize",
+];
+
+/**
+ * The resize cursor for a handle, following the frame's `rotation` (radians,
+ * same convention as the selection frame): the handle's outward direction is
+ * rotated and snapped to the nearest of the eight screen sectors, so the
+ * arrow always points along the edge the user is about to drag — a rotated
+ * shape's "north" handle shows a diagonal arrow once it sits at 45°.
+ */
+export const cursorForHandle = (handle: HandleId, rotation = 0): string => {
+  const d = HANDLE_DIRECTION[handle];
+  const c = Math.cos(rotation);
+  const s = Math.sin(rotation);
+  const x = d.x * c - d.y * s;
+  const y = d.x * s + d.y * c;
+  const sector = ((Math.round(Math.atan2(y, x) / (Math.PI / 4)) % 8) + 8) % 8;
+  return SECTOR_CURSORS[sector] ?? "default";
 };
 
 /**
