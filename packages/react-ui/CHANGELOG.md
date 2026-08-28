@@ -1,5 +1,12 @@
 # @oh-just-another/react-ui
 
+## 0.63.1
+
+### Patch Changes
+
+- Updated dependencies [e28d529]
+  - @oh-just-another/state@0.65.0
+
 ## 0.63.0
 
 ### Minor Changes
