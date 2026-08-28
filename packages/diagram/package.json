@@ -65,7 +65,7 @@
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "4.7.0",
-    "esbuild": "0.25.12",
+    "esbuild": "0.28.2",
     "jsdom": "25.0.1",
     "vite": "6.4.3"
   }

@@ -23,17 +23,17 @@
     "relay": "tsx relay/serve.ts"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.11.3",
+    "@axe-core/playwright": "4.13.0",
     "@oh-just-another/scene": "workspace:*",
     "@oh-just-another/serialization": "workspace:*",
     "@oh-just-another/types": "workspace:*",
-    "@playwright/test": "1.60.0",
+    "@playwright/test": "1.62.1",
     "@types/pixelmatch": "5.2.6",
     "@types/pngjs": "6.0.5",
     "@types/ws": "8.18.1",
     "pixelmatch": "6.0.0",
     "pngjs": "7.0.0",
-    "tsx": "4.22.3",
-    "ws": "8.21.1"
+    "tsx": "4.23.12",
+    "ws": "8.21.3"
   }
 }

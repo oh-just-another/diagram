@@ -70,9 +70,9 @@
   },
   "devDependencies": {
     "@resvg/resvg-js": "2.6.2",
-    "pdfkit": "0.15.2",
+    "pdfkit": "0.20.1",
     "svg-to-pdfkit": "0.1.8",
-    "@types/pdfkit": "0.13.9",
+    "@types/pdfkit": "0.17.6",
     "@types/svg-to-pdfkit": "0.1.4"
   }
 }
