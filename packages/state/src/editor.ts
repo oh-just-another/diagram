@@ -3420,6 +3420,46 @@ export class Editor {
   }
 
   /**
+   * Text-carrier routing for mixed selections: merge a partial text style
+   * into the element style of text elements and into the label style of
+   * labelable shapes (seeding the label when missing); other elements are
+   * skipped. One undo step. The selection toolbar writes through this so a
+   * shape + text selection shares one text-colour / decoration control
+   * instead of choosing between `updateStyle` and `updateLabelStyle`.
+   */
+  updateTextStyle(ids: Iterable<ElementId>, partial: Partial<TextStyle>): void {
+    if (this.readOnly) return;
+    const tx = this._history.transaction();
+    let changed = false;
+    for (const id of ids) {
+      const shape = getElement(this._scene, id);
+      if (shape === undefined) continue;
+      let r: ReturnType<typeof updateElement>;
+      if (isText(shape)) {
+        r = updateElement(this._scene, id, (raw) => ({
+          ...raw,
+          style: { ...raw.style, ...partial },
+        }));
+      } else if (withLabel(shape).label !== undefined) {
+        r = updateElement(this._scene, id, (raw) => {
+          const l = withLabel(raw);
+          return l.label === undefined
+            ? l
+            : { ...l, label: { ...l.label, style: { ...l.label.style, ...partial } } };
+        });
+      } else {
+        continue;
+      }
+      this._scene = r.scene;
+      tx.add(r.patch);
+      changed = true;
+    }
+    if (!changed) return;
+    tx.commit();
+    this.notify();
+  }
+
+  /**
    * Merge font family / size into the embedded label. Picking an
    * explicit `fontSize` also leaves auto-fit mode (reference behaviour —
    * a concrete size wins over the automatic one). One undo step.
@@ -4414,18 +4454,54 @@ export class Editor {
 
   /**
    * Update non-style text properties (`fontSize`, `fontFamily`,
-   * `maxWidth`) on every selected text shape. Non-text shapes are
-   * skipped. Single undo step. Used by the text contextual panel.
+   * `maxWidth`) on every text shape in `ids`; labelable shapes route
+   * `fontSize` / `fontFamily` to their embedded label instead (as
+   * `updateLabelProps` — an explicit size leaves auto-fit). Anything else is
+   * skipped. Single undo step. Used by the selection toolbar, so a mixed
+   * text + shape selection shares one font control.
    */
   updateTextProps(
     ids: Iterable<ElementId>,
     partial: { fontSize?: number; fontFamily?: string; maxWidth?: number },
   ): void {
     if (this.readOnly) return;
-    const result = computeUpdateTextProps(this._scene, ids, partial);
-    if (!result) return;
-    this._scene = result.scene;
-    this._history.push(result.patch);
+    const textIds: ElementId[] = [];
+    const labelIds: ElementId[] = [];
+    for (const id of ids) {
+      const el = getElement(this._scene, id);
+      if (el === undefined) continue;
+      if (isText(el)) textIds.push(id);
+      else if (withLabel(el).label !== undefined) labelIds.push(id);
+    }
+    const tx = this._history.transaction();
+    let changed = false;
+    const text = computeUpdateTextProps(this._scene, textIds, partial);
+    if (text) {
+      this._scene = text.scene;
+      tx.add(text.patch);
+      changed = true;
+    }
+    const { fontFamily, fontSize } = partial;
+    if (fontFamily !== undefined || fontSize !== undefined) {
+      const labelPartial = {
+        ...(fontFamily !== undefined ? { fontFamily } : {}),
+        ...(fontSize !== undefined ? { fontSize } : {}),
+      };
+      for (const id of labelIds) {
+        const r = updateElement(this._scene, id, (raw) => {
+          const l = withLabel(raw);
+          if (l.label === undefined) return l;
+          const label = { ...l.label, ...labelPartial } as typeof l.label & { autoFit?: boolean };
+          if (fontSize !== undefined) delete label.autoFit;
+          return { ...l, label };
+        });
+        this._scene = r.scene;
+        tx.add(r.patch);
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    tx.commit();
     this.notify();
   }
 
