@@ -37,7 +37,6 @@ jobs:
           fetch-depth: 0
 
       - uses: ./.github/actions/setup
-        id: setup
 
       # NX_BASE / NX_HEAD: merge-base with master for PRs, the last successful
       # master run for pushes (falls back to HEAD~1 when there is none). The
@@ -63,21 +62,10 @@ jobs:
         if: github.head_ref != 'changeset-release/master'
         run: pnpm knip
 
-      # Only projects touched since the base (plus their dependents); untouched
-      # ones are also served from the restored Nx cache.
+      # Only projects touched since the base (plus their dependents).
       - name: Lint + typecheck (affected)
         if: github.head_ref != 'changeset-release/master'
         run: pnpm exec nx affected -t lint,typecheck
-
-      # This job's cache is the richest one (the `^build` outputs plus lint and
-      # typecheck results), so persist it too; later runs restore the newest
-      # entry for their commit / branch / master.
-      - name: Save Nx cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: .nx/cache
-          key: ${{ steps.setup.outputs.nx-cache-key }}
 
   test:
     name: Test • Coverage
@@ -90,8 +78,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       # Tests import sibling packages through their `exports`, which point at
-      # `dist` — so the workspace must be built first (mostly served from the
-      # restored Nx cache).
+      # `dist` — so the workspace must be built first.
       - name: Build
         run: pnpm build
 
@@ -109,7 +96,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup
-        id: setup
 
       - name: Build
         run: pnpm build
@@ -119,15 +105,6 @@ jobs:
       # entries. Needs the dist artifacts, so it runs right after Build.
       - name: Bundle size
         run: pnpm size
-
-      # Persist the Nx cache filled by this build for later runs on this branch
-      # and — when this is a master run — for every PR.
-      - name: Save Nx cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: .nx/cache
-          key: ${{ steps.setup.outputs.nx-cache-key }}
 
   e2e:
     name: E2E (Playwright)
@@ -204,7 +181,7 @@ jobs:
         with:
           name: playwright-test-results
           path: apps/e2e/test-results/
-          retention-days: 7
+          retention-days: 3
 
   docs:
     name: Docs build
@@ -277,8 +254,7 @@ jobs:
           git_user_signingkey: true
           git_commit_gpgsign: true
 
-      # `pnpm release` = `pnpm build && changeset publish`; the build is served
-      # from the Nx cache the `build` job just saved.
+      # `pnpm release` = `pnpm build && changeset publish`.
       - name: Create release PR or publish
         uses: changesets/action@v1
         with:

@@ -21,6 +21,11 @@ jobs:
     name: Build apps/docs
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # A newer master push supersedes a queued docs build; only the deploy
+    # itself is never cancelled (workflow-level group above).
+    concurrency:
+      group: pages-build
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
 
@@ -30,7 +35,6 @@ jobs:
         # The docs site imports the built @oh-just-another/editor (and its deps)
         # via package `exports`, so the packages must be built before Docusaurus
         # bundles the site. baseUrl (/diagram/) is set in docusaurus.config.ts.
-        # Served from the Nx cache the CI build job saved for this commit.
         run: pnpm build
 
       - name: Build docs site
