@@ -2792,6 +2792,12 @@
 
 /* Aspect-preset rows in the mask popover: icon + name, crop ratio
    right-aligned. */
+/* Arrange popover: one row of align / distribute action buttons. */
+.du-sel-arrange-row {
+  display: flex;
+  gap: var(--du-space-xs);
+}
+
 .du-sel-mask-list {
   display: flex;
   flex-direction: column;
