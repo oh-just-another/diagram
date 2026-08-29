@@ -3,6 +3,7 @@ import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { importExcalidraw } from "./excalidraw.js";
 import { exportExcalidraw } from "./excalidraw-export.js";
 import { exportMermaid } from "./mermaid-export.js";
+import { exportCsv } from "./csv-export.js";
 import { importJsonCanvas } from "./jsoncanvas.js";
 import { importDot, importDrawio, importMermaid } from "./convenience.js";
 
@@ -55,6 +56,14 @@ export const DIAGRAM_FORMATS: readonly DiagramFormat[] = [
     extensions: [".mmd", ".mermaid"],
     parse: (source) => importMermaid(source),
     serialize: (scene) => exportMermaid(scene),
+  },
+  {
+    // Export-only: a content listing for spreadsheets, not a document.
+    id: "csv",
+    label: "Spreadsheet (CSV)",
+    extension: ".csv",
+    extensions: [".csv"],
+    serialize: (scene) => exportCsv(scene),
   },
   {
     id: "jsoncanvas",

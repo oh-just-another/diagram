@@ -16,6 +16,7 @@ export { layoutGraph } from "./layout.js";
 export { graphToScene } from "./to-scene.js";
 export { importExcalidraw } from "./excalidraw.js";
 export { exportExcalidraw } from "./excalidraw-export.js";
+export { exportCsv, CSV_COLUMNS } from "./csv-export.js";
 export { importJsonCanvas } from "./jsoncanvas.js";
 
 /**

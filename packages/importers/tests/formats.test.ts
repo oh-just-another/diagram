@@ -28,7 +28,8 @@ describe("diagram format IO", () => {
     expect(importIds).toEqual(
       expect.arrayContaining(["native", "excalidraw", "mermaid", "jsoncanvas", "dot", "drawio"]),
     );
-    expect(exportIds).toEqual(expect.arrayContaining(["native", "excalidraw", "mermaid"]));
+    expect(exportIds).toEqual(expect.arrayContaining(["native", "excalidraw", "mermaid", "csv"]));
+    expect(importIds).not.toContain("csv");
     expect(exportIds).not.toContain("jsoncanvas");
     expect(exportIds).not.toContain("dot");
     expect(exportIds).not.toContain("drawio");
