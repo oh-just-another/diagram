@@ -942,6 +942,10 @@ const EditorShell = ({
     DEFAULT_CANVAS_BACKGROUND,
     "scene",
   );
+  // "Start view" is enabled only once a start view exists; subscribe so the
+  // row wakes up right after "Set current view as start" (the shell does
+  // not re-render on scene identity).
+  const hasStartView = useEditorSelector((e) => e.startView !== null, false);
   const [fileDragging, setFileDragging] = useState(false);
   const paletteDropHandlers = usePalettePlacement({ onFileDrag: setFileDragging });
   // Touch / narrow screens: the library opens as a bottom sheet instead of
@@ -1163,7 +1167,7 @@ const EditorShell = ({
                       <MainMenu.Item
                         icon={<MapIcon {...menuIcon} />}
                         onClick={() => editor?.goToStartView()}
-                        disabled={(editor?.startView ?? null) === null}
+                        disabled={!hasStartView}
                       >
                         Start view
                       </MainMenu.Item>
