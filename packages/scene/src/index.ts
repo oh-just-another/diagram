@@ -160,6 +160,7 @@ export {
 // Viewport helpers
 export {
   DEFAULT_VIEWPORT,
+  canvasBackgroundOf,
   getWorldToScreen,
   getScreenToWorld,
   panBy,
@@ -299,6 +300,7 @@ export {
   LINK_LABEL_END_CLEARANCE,
   LINK_LABEL_CHAR_WIDTH_FACTOR,
   IMAGE_MASK_POLYGON_PRESETS,
+  DEFAULT_CANVAS_BACKGROUND,
   TEXT_PLACEHOLDERS,
   type TextPlaceholder,
 } from "./constants.js";

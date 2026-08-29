@@ -1,5 +1,6 @@
 import type { Scene } from "@oh-just-another/scene";
 import { UI_SURFACE } from "@oh-just-another/tokens";
+import { parseScene } from "@oh-just-another/serialization";
 import { renderToSvg, type RenderToSvgOptions } from "./render-to-svg.js";
 
 /**
@@ -12,7 +13,10 @@ export interface RenderToPngOptions extends RenderToSvgOptions {
    * the logical width / height. Default: 1.
    */
   readonly scale?: number;
-  /** Background colour rendered behind the scene. Default: white. */
+  /**
+   * Background colour rendered behind the scene. Default: the scene's
+   * `viewport.background`, else white.
+   */
   readonly background?: string;
   /**
    * Fit the rendered image to this width in device pixels. Overrides
@@ -47,7 +51,8 @@ export const renderToPng = async (
   // ESM-importable in pure-JS contexts (e.g. just for SVG).
   const resvg = await loadResvg();
 
-  const svg = renderToSvg(scene, options);
+  const resolved = typeof scene === "string" ? parseScene(scene) : scene;
+  const svg = renderToSvg(resolved, options);
 
   const fitTo: { mode: "width"; value: number } | { mode: "height"; value: number } | undefined =
     options.fitToWidth !== undefined
@@ -58,7 +63,7 @@ export const renderToPng = async (
 
   const resvgOptions: Record<string, unknown> = {
     fitTo: fitTo ?? { mode: "zoom", value: options.scale ?? 1 },
-    background: options.background ?? UI_SURFACE.light.bgSolid,
+    background: options.background ?? resolved.viewport.background ?? UI_SURFACE.light.bgSolid,
   };
 
   const rendered = new resvg.Resvg(svg, resvgOptions).render();

@@ -34,6 +34,7 @@ import {
   Moon,
   Mouse,
   MousePointer,
+  Palette,
   Pencil,
   Plus,
   Redo2,
@@ -104,6 +105,21 @@ import { diagramFileDropHandler } from "@oh-just-another/importers";
  * for visual consistency with the toolbar.
  */
 const menuIcon = ROW_ICON;
+
+/** Colour chip in a Background color menu row. */
+const BackgroundSwatch = ({ color }: { readonly color: string }) => (
+  <span
+    aria-hidden
+    style={{
+      display: "inline-block",
+      width: CANVAS_BACKGROUND_SWATCH_PX,
+      height: CANVAS_BACKGROUND_SWATCH_PX,
+      borderRadius: "var(--du-radius-sm)",
+      background: color,
+      boxShadow: "inset 0 0 0 1px var(--du-ui-border)",
+    }}
+  />
+);
 const buttonIcon = CONTROL_ICON;
 
 /** Default target for the Help-menu "GitHub" link (overridable / hideable via the `repositoryUrl` prop). */
@@ -117,6 +133,8 @@ import {
 import type { ElementId } from "@oh-just-another/types";
 import { formatHotkey } from "@oh-just-another/state";
 import {
+  canvasBackgroundOf,
+  DEFAULT_CANVAS_BACKGROUND,
   hydrateScene,
   isText,
   type Scene,
@@ -124,6 +142,7 @@ import {
   type GridStyle,
 } from "@oh-just-another/scene";
 import type { Rasterizer, TextShaper } from "@oh-just-another/renderer-core";
+import { CANVAS_BACKGROUND_PRESETS, CANVAS_BACKGROUND_SWATCH_PX } from "./constants.js";
 import { WasmTextShaper } from "@oh-just-another/text-wasm";
 import { WasmRasterizer } from "@oh-just-another/raster-wasm";
 import { registerBundledFonts } from "@oh-just-another/fonts";
@@ -571,6 +590,18 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
   // Fullscreen target: the editor root (chrome + canvas), see the zoom menu.
   const rootRef = useRef<HTMLDivElement>(null);
 
+  // The scene's paper colour drives the root's `--du-canvas-bg`; `null`
+  // (no colour in the document) leaves the stylesheet token in charge.
+  const [canvasBackground, setCanvasBackground] = useState<string | null>(null);
+  useEffect(() => {
+    if (!editor) return undefined;
+    const sync = () => {
+      setCanvasBackground(editor.scene.viewport.background ?? null);
+    };
+    sync();
+    return editor.on("change", sync);
+  }, [editor]);
+
   // Per-user preferences: load once the editor exists, then mirror changes.
   const preferencesKey = useMemo(() => {
     if (persistPreferences === true) return DEFAULT_PREFERENCES_STORAGE_KEY;
@@ -736,6 +767,11 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
               width: "100%",
               height: "100%",
               background: "var(--du-canvas-bg)",
+              // The scene's paper colour wins over the stylesheet token, so
+              // the same document looks the same in every host.
+              ...(canvasBackground !== null
+                ? ({ "--du-canvas-bg": canvasBackground } as CSSProperties)
+                : {}),
               ...style,
             }}
           >
@@ -899,6 +935,13 @@ const EditorShell = ({
   const snapObjects = useEditorSelector((e) => e.preferences.snapObjects, true);
   const suggestObjectSize = useEditorSelector((e) => e.preferences.suggestObjectSize, true);
   const wheelMode = useEditorSelector((e) => e.preferences.wheelMode, "auto");
+  // Current paper colour for the Background color rows (a primitive, so the
+  // shell re-renders only when the colour actually changes).
+  const paperColor = useEditorSelector(
+    (e) => canvasBackgroundOf(e.scene.viewport),
+    DEFAULT_CANVAS_BACKGROUND,
+    "scene",
+  );
   const [fileDragging, setFileDragging] = useState(false);
   const paletteDropHandlers = usePalettePlacement({ onFileDrag: setFileDragging });
   // Touch / narrow screens: the library opens as a bottom sheet instead of
@@ -1131,6 +1174,24 @@ const EditorShell = ({
                       >
                         Set current view as start
                       </MainMenu.Item>
+                      <MainMenu.Separator />
+                      <MainMenu.Submenu icon={<Palette {...menuIcon} />} label="Background color">
+                        {CANVAS_BACKGROUND_PRESETS.map((preset) => (
+                          <MainMenu.Item
+                            key={preset.id}
+                            icon={<BackgroundSwatch color={preset.color} />}
+                            active={paperColor.toLowerCase() === preset.color}
+                            onClick={() => {
+                              editor?.setCanvasBackground(
+                                preset.color === DEFAULT_CANVAS_BACKGROUND ? null : preset.color,
+                              );
+                            }}
+                            disabled={!editor}
+                          >
+                            {preset.label}
+                          </MainMenu.Item>
+                        ))}
+                      </MainMenu.Submenu>
                       <MainMenu.Separator />
                       <MainMenu.Item
                         icon={<RotateCcw {...menuIcon} />}

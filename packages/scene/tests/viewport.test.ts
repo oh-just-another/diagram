@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { matrix } from "@oh-just-another/math";
 import {
+  DEFAULT_CANVAS_BACKGROUND,
   DEFAULT_VIEWPORT,
+  canvasBackgroundOf,
   getScreenToWorld,
   getWorldToScreen,
   panBy,
@@ -57,5 +59,12 @@ describe("viewport", () => {
       expect(out.pan).toEqual(DEFAULT_VIEWPORT.pan);
       expect(out.zoom).toBe(DEFAULT_VIEWPORT.zoom);
     });
+  });
+});
+
+describe("canvasBackgroundOf", () => {
+  it("defaults to the paper colour and honours an explicit background", () => {
+    expect(canvasBackgroundOf(DEFAULT_VIEWPORT)).toBe(DEFAULT_CANVAS_BACKGROUND);
+    expect(canvasBackgroundOf({ ...DEFAULT_VIEWPORT, background: "#000000" })).toBe("#000000");
   });
 });

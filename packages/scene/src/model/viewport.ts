@@ -1,6 +1,6 @@
 import type { Transform, Vec2 } from "@oh-just-another/types";
 import { matrix } from "@oh-just-another/math";
-import { DEFAULT_GRID_SPACING } from "../constants.js";
+import { DEFAULT_GRID_SPACING, DEFAULT_CANVAS_BACKGROUND } from "../constants.js";
 
 /**
  * How the background grid is painted.
@@ -43,7 +43,17 @@ export interface Viewport {
    * "go to start view" jumps). Absent until the author sets one.
    */
   readonly startView?: StartView;
+  /**
+   * Canvas paper colour (any CSS colour) behind the grid and the shapes.
+   * Absent = {@link DEFAULT_CANVAS_BACKGROUND}. Part of the document: it
+   * serialises with the scene and reaches "with background" exports.
+   */
+  readonly background?: string;
 }
+
+/** The canvas paper colour of `viewport`, defaulted. */
+export const canvasBackgroundOf = (viewport: Viewport): string =>
+  viewport.background ?? DEFAULT_CANVAS_BACKGROUND;
 
 /** A saved camera pose: pan + zoom (rotation is not part of a start view). */
 export interface StartView {

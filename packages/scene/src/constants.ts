@@ -5,6 +5,15 @@
  */
 
 /**
+ * Canvas paper colour when the scene's viewport carries no `background`.
+ * Matches the light chrome token (`UI_SURFACE.light.canvas`) so a scene
+ * without an explicit colour looks exactly as before the field existed.
+ * Any CSS colour; keep it light unless the scene's own colours are authored
+ * for dark paper.
+ */
+export const DEFAULT_CANVAS_BACKGROUND = "#f5f5f5";
+
+/**
  * Half-side of the bounding box used by `isProbeNearElement` to cheap-cull
  * snap candidates. Shapes farther than this from the probe (plus the
  * snap threshold cushion) are skipped without the full anchor walk.
