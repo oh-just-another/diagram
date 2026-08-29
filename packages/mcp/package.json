@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/mcp",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "MCP server exposing headless scene tools (create / edit / query / render) over stdio for LLM agents.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

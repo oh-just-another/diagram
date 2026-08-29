@@ -1,5 +1,11 @@
 # @oh-just-another/scene
 
+## 0.63.1
+
+### Patch Changes
+
+- 7f26f79: `getElementAccessibleName` appends a labelled shape's label (`Rectangle "Item 3"`), truncated at `ACCESSIBLE_NAME_MAX_CHARS`.
+
 ## 0.63.0
 
 ### Minor Changes
