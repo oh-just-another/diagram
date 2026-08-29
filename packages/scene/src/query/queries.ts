@@ -4,6 +4,13 @@ import type { Link } from "../edges/edge.js";
 import type { Layer } from "../model/layer.js";
 import type { Scene } from "../model/scene.js";
 import {
+  MAX_PARENT_DEPTH,
+  SELECTION_OUTLINE_CORNER_SAMPLES,
+  SELECTION_OUTLINE_CURVE_SAMPLES,
+  SELECTION_OUTLINE_ELLIPSE_SAMPLES,
+  SPATIAL_GRID_CELL_SIZE,
+} from "../constants.js";
+import {
   getElementWorldBounds,
   getElementLocalBounds,
   isPolygon,
@@ -49,11 +56,6 @@ export const getLinksInLayer = (scene: Scene, layerId: LayerId): readonly Link[]
 
 // --- selection outline (contour) ---
 
-/** Number of samples for an ellipse's outline polyline. */
-const ELLIPSE_OUTLINE_SAMPLES = 48;
-/** Samples per Q/C path segment when flattening to a polyline. */
-const PATH_CURVE_SAMPLES = 10;
-
 const rectLoop = (b: Bounds): Vec2[] => [
   { x: b.x, y: b.y },
   { x: b.x + b.width, y: b.y },
@@ -61,16 +63,13 @@ const rectLoop = (b: Bounds): Vec2[] => [
   { x: b.x, y: b.y + b.height },
 ];
 
-/** Samples per rounded-rect corner arc. */
-const CORNER_ARC_SAMPLES = 6;
-
 /** Rounded-rect outline as a polyline — straight edges + sampled corner arcs. */
 const roundedRectLoop = (b: Bounds, r: number): Vec2[] => {
   const { x, y, width: w, height: h } = b;
   const arc = (cx: number, cy: number, from: number, to: number): Vec2[] => {
     const pts: Vec2[] = [];
-    for (let i = 0; i <= CORNER_ARC_SAMPLES; i++) {
-      const a = from + (to - from) * (i / CORNER_ARC_SAMPLES);
+    for (let i = 0; i <= SELECTION_OUTLINE_CORNER_SAMPLES; i++) {
+      const a = from + (to - from) * (i / SELECTION_OUTLINE_CORNER_SAMPLES);
       pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
     }
     return pts;
@@ -93,8 +92,8 @@ const flattenPath = (commands: readonly PathCommand[]): Vec2[] => {
       cur = c.to;
       pts.push({ x: cur.x, y: cur.y });
     } else if (c.kind === "Q") {
-      for (let i = 1; i <= PATH_CURVE_SAMPLES; i++) {
-        const t = i / PATH_CURVE_SAMPLES;
+      for (let i = 1; i <= SELECTION_OUTLINE_CURVE_SAMPLES; i++) {
+        const t = i / SELECTION_OUTLINE_CURVE_SAMPLES;
         const u = 1 - t;
         pts.push({
           x: u * u * cur.x + 2 * u * t * c.control.x + t * t * c.to.x,
@@ -103,8 +102,8 @@ const flattenPath = (commands: readonly PathCommand[]): Vec2[] => {
       }
       cur = c.to;
     } else if (c.kind === "C") {
-      for (let i = 1; i <= PATH_CURVE_SAMPLES; i++) {
-        const t = i / PATH_CURVE_SAMPLES;
+      for (let i = 1; i <= SELECTION_OUTLINE_CURVE_SAMPLES; i++) {
+        const t = i / SELECTION_OUTLINE_CURVE_SAMPLES;
         const u = 1 - t;
         pts.push({
           x:
@@ -152,8 +151,8 @@ const localOutlineLoops = (shape: Element): Vec2[][] | null => {
     const rx = b.width / 2;
     const ry = b.height / 2;
     const pts: Vec2[] = [];
-    for (let i = 0; i < ELLIPSE_OUTLINE_SAMPLES; i++) {
-      pts.push(ellipseOutlinePoint(cx, cy, rx, ry, i / ELLIPSE_OUTLINE_SAMPLES));
+    for (let i = 0; i < SELECTION_OUTLINE_ELLIPSE_SAMPLES; i++) {
+      pts.push(ellipseOutlinePoint(cx, cy, rx, ry, i / SELECTION_OUTLINE_ELLIPSE_SAMPLES));
     }
     return [pts];
   }
@@ -285,8 +284,6 @@ export const getDescendantsOf = (scene: Scene, parentId: ElementId): readonly El
   return out;
 };
 
-const MAX_PARENT_DEPTH = 64;
-
 // --- spatial queries (linear scan) ---
 
 /**
@@ -387,7 +384,10 @@ export const getElementAt = (
  * scene. The default cell size is tuned for typical editor scenes; pass an
  * explicit value if your shapes are much larger or smaller.
  */
-export const buildSpatialIndex = (scene: Scene, cellSize?: number): SpatialGrid => {
+export const buildSpatialIndex = (
+  scene: Scene,
+  cellSize: number = SPATIAL_GRID_CELL_SIZE,
+): SpatialGrid => {
   const grid = new SpatialGrid(cellSize);
   for (const shape of scene.elements.values()) {
     grid.insert(shape.id, getElementWorldBounds(shape));

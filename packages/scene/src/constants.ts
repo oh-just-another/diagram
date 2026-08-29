@@ -390,6 +390,42 @@ export interface TextPlaceholder {
   /** Relative chance; integer ≥ 1. */
   readonly weight: number;
 }
+/**
+ * Selection-outline (contour) sampling — how many polyline points stand in
+ * for a curve when a shape's outline is walked (hit-testing, snap probes,
+ * link end-points along the outline).
+ * - `SELECTION_OUTLINE_ELLIPSE_SAMPLES` — points around a whole ellipse.
+ *   Range 24–96; fewer = faster, coarser hit areas.
+ * - `SELECTION_OUTLINE_CURVE_SAMPLES` — points per Q/C path segment.
+ *   Range 4–24.
+ * - `SELECTION_OUTLINE_CORNER_SAMPLES` — points per rounded-rect corner arc.
+ *   Range 2–12.
+ */
+export const SELECTION_OUTLINE_ELLIPSE_SAMPLES = 48;
+export const SELECTION_OUTLINE_CURVE_SAMPLES = 10;
+export const SELECTION_OUTLINE_CORNER_SAMPLES = 6;
+
+/**
+ * Upper bound on parent-chain walks (`getAncestors` / nesting queries) so a
+ * corrupted `parentId` cycle terminates instead of looping. Larger than any
+ * sane nesting depth; range 16–256.
+ */
+export const MAX_PARENT_DEPTH = 64;
+
+/**
+ * Default `SpatialGrid` cell size in world units. Tuned for editor-scale
+ * scenes with ~100–400 px shapes: a shape touches 1–4 cells, range queries
+ * visit few cells. Raise for very large shapes, lower for dense tiny ones.
+ * Range 64–1024.
+ */
+export const SPATIAL_GRID_CELL_SIZE = 256;
+
+/**
+ * Default hit tolerance (world units) for `findLinkAt` — how far from a
+ * link's stroke a point still counts as "on the link". Range 2–12.
+ */
+export const LINK_HIT_THRESHOLD = 5;
+
 export const TEXT_PLACEHOLDERS: readonly TextPlaceholder[] = [
   { text: "Type something", weight: 40 },
   { text: "Place for text", weight: 20 },
