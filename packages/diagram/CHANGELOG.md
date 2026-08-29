@@ -1,5 +1,14 @@
 # @oh-just-another/diagram
 
+## 0.3.5
+
+### Patch Changes
+
+- Updated dependencies [0846934]
+  - @oh-just-another/scene@0.63.0
+  - @oh-just-another/editor@0.63.0
+  - @oh-just-another/react-ui@0.63.3
+
 ## 0.3.4
 
 ### Patch Changes

@@ -1,5 +1,14 @@
 # @oh-just-another/collab
 
+## 0.59.5
+
+### Patch Changes
+
+- Updated dependencies [0846934]
+  - @oh-just-another/scene@0.63.0
+  - @oh-just-another/state@0.67.0
+  - @oh-just-another/history@0.57.6
+
 ## 0.59.4
 
 ### Patch Changes
