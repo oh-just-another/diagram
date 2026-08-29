@@ -1,5 +1,12 @@
 # @oh-just-another/mcp
 
+## 0.2.8
+
+### Patch Changes
+
+- Updated dependencies [ca75023]
+  - @oh-just-another/importers@0.61.0
+
 ## 0.2.7
 
 ### Patch Changes
