@@ -60,6 +60,7 @@ import {
   CommandPalette,
   DiagramSurface,
   HelpButton,
+  HistoryControls,
   HelpDialog,
   IconButton,
   DrawingPanel,
@@ -263,6 +264,8 @@ export interface DiagramProps {
   readonly hideLibraryButton?: boolean;
   readonly hideMainMenu?: boolean;
   readonly hideZoomControls?: boolean;
+  /** Hide the undo / redo pair next to the zoom controls. */
+  readonly hideHistoryControls?: boolean;
   readonly hideResetToContent?: boolean;
   readonly hideHelpButton?: boolean;
   readonly hideContextMenu?: boolean;
@@ -390,6 +393,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
     hideLibraryButton,
     hideMainMenu,
     hideZoomControls,
+    hideHistoryControls,
     hideResetToContent,
     hideHelpButton,
     hideContextMenu,
@@ -796,6 +800,7 @@ export const Diagram = forwardRef<DiagramAPI, DiagramProps>(function Diagram(pro
                   hideMainMenu={hideMainMenu}
                   logo={logo}
                   hideZoomControls={hideZoomControls}
+                  hideHistoryControls={hideHistoryControls}
                   hideResetToContent={hideResetToContent}
                   hideHelpButton={hideHelpButton}
                   hideContextMenu={hideContextMenu}
@@ -847,6 +852,7 @@ const EditorShell = ({
   hideMainMenu,
   logo,
   hideZoomControls,
+  hideHistoryControls,
   hideResetToContent,
   hideHelpButton,
   hideContextMenu,
@@ -878,6 +884,7 @@ const EditorShell = ({
   readonly hideMainMenu: boolean | undefined;
   readonly logo: ReactNode;
   readonly hideZoomControls: boolean | undefined;
+  readonly hideHistoryControls: boolean | undefined;
   readonly hideResetToContent: boolean | undefined;
   readonly hideHelpButton: boolean | undefined;
   readonly hideContextMenu: boolean | undefined;
@@ -1469,13 +1476,17 @@ const EditorShell = ({
               renderBottomBarRight ? (
                 renderBottomBarRight()
               ) : !hideZoomControls ? (
-                // Help sits inside the zoom pill group, right next to it.
-                <ZoomControls
-                  trailing={!hideHelpButton ? <HelpButton /> : undefined}
-                  fullscreen={fullscreen}
-                  minimapVisible={minimapVisible}
-                  onToggleMinimap={onToggleMinimap}
-                />
+                // Undo / redo pair, then the zoom pill group with Help
+                // inside it, right next to zoom.
+                <>
+                  {!hideHistoryControls ? <HistoryControls /> : null}
+                  <ZoomControls
+                    trailing={!hideHelpButton ? <HelpButton /> : undefined}
+                    fullscreen={fullscreen}
+                    minimapVisible={minimapVisible}
+                    onToggleMinimap={onToggleMinimap}
+                  />
+                </>
               ) : !hideHelpButton ? (
                 <HelpButton />
               ) : null

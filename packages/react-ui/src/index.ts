@@ -18,6 +18,7 @@ export { UILayer, type UILayerProps } from "./layout/ui-layer.js";
 export { TopBar, BottomBar, type DiagramBarProps } from "./layout/diagram-bars.js";
 export { HelpButton, type HelpButtonProps } from "./overlays/help-button.js";
 export { ResetToContentButton } from "./widgets/reset-to-content-button.js";
+export { HistoryControls } from "./widgets/history-controls.js";
 export { LibraryPanel, type LibraryPanelProps } from "./panels/library-panel.js";
 export {
   SelectionFloatingPanel,
