@@ -63,7 +63,7 @@ import {
   STICKY_REACTION_GAP,
   STICKY_REACTION_BG,
   STICKY_REACTION_ADD_COLOR,
-  STICKY_REACTION_MIN_ZOOM,
+  STICKY_REACTION_MIN_SCREEN_PX,
   STICKY_REACTION_COLOR,
   LIST_MARKER_GAP_EM,
   TEXT_DECORATION_THICKNESS,
@@ -307,13 +307,28 @@ const drawPath: ElementRenderer<PathElement> = (shape, target) => {
  * edge when `showAuthor` is set.
  */
 /**
+ * The zoom at which `shape`'s shorter side spans exactly
+ * `STICKY_REACTION_MIN_SCREEN_PX` on screen — the reaction chrome's
+ * visibility threshold for that sticky.
+ */
+const stickyReactionMinZoom = (shape: StickyElement): number =>
+  STICKY_REACTION_MIN_SCREEN_PX / Math.max(1, Math.min(shape.width, shape.height));
+
+/**
+ * Whether `shape` is large enough on screen at `zoom` for its reaction
+ * chrome (pills and the "+" button) to be drawn and clickable.
+ */
+export const stickyReactionChromeVisible = (shape: StickyElement, zoom: number): boolean =>
+  Math.min(shape.width, shape.height) * zoom >= STICKY_REACTION_MIN_SCREEN_PX;
+
+/**
  * The pill scale factor keeping reaction chrome at a CONSTANT on-screen
- * size: world size = base / zoom, with the divisor clamped at
- * `STICKY_REACTION_MIN_ZOOM` so a zoomed-out board gets shrinking (not
+ * size: world size = base / zoom, with the divisor clamped at the sticky's
+ * visibility threshold so a zoomed-out board gets shrinking (not
  * card-swallowing) pills.
  */
-const stickyReactionScale = (zoom: number): number =>
-  1 / Math.max(zoom > 0 ? zoom : 1, STICKY_REACTION_MIN_ZOOM);
+const stickyReactionScale = (shape: StickyElement, zoom: number): number =>
+  1 / Math.max(zoom > 0 ? zoom : 1, stickyReactionMinZoom(shape));
 
 interface StickyReactionRect {
   readonly x: number;
@@ -337,15 +352,15 @@ interface StickyReactionPill extends StickyReactionRect {
  *
  * `measure` must be bound to `STICKY_REACTION_FONT_SIZE`-sized system-ui
  * text (base px); `zoom` is the current view scale — pill sizes are
- * divided by it so they stay visually constant (see
- * {@link STICKY_REACTION_MIN_ZOOM} for the low-zoom clamp).
+ * divided by it so they stay visually constant (clamped at the sticky's
+ * {@link stickyReactionChromeVisible} threshold).
  */
 export const stickyReactionLayout = (
   shape: StickyElement,
   measure: (s: string) => number,
   zoom = 1,
 ): { readonly pills: readonly StickyReactionPill[]; readonly add: StickyReactionRect } => {
-  const k = stickyReactionScale(zoom);
+  const k = stickyReactionScale(shape, zoom);
   const gap = STICKY_REACTION_GAP * k;
   const h = STICKY_REACTION_HEIGHT * k;
   const x0 = STICKY_CORNER_RADIUS + 2;
@@ -449,10 +464,10 @@ const drawSticky: ElementRenderer<StickyElement> = (shape, target, ctx) => {
   // visual source (exports included); the DOM overlay only overlays
   // transparent click zones on the same rects.
   const zoom = ctx?.zoom ?? 1;
-  const k = 1 / Math.max(zoom > 0 ? zoom : 1, STICKY_REACTION_MIN_ZOOM);
-  // Below the min zoom the whole reaction chrome is hidden — constant
-  // on-screen pills would swallow the cards on a zoomed-out board.
-  const chromeVisible = zoom >= STICKY_REACTION_MIN_ZOOM;
+  const k = stickyReactionScale(shape, zoom);
+  // Once the card is small on screen the whole reaction chrome is hidden —
+  // constant on-screen pills would swallow it.
+  const chromeVisible = stickyReactionChromeVisible(shape, zoom);
   const drawReactions = chromeVisible && ctx?.content?.stickyReactions !== false;
   // "+" add-reaction button — UI chrome drawn on the canvas so it tracks
   // the shape 1:1 while dragging. Shown only for the HOVERED sticky in
@@ -1120,11 +1135,12 @@ export const installBuiltinRenderers = (): void => {
   registerRenderOverflow("sticky", (shape) => {
     // Worst-case invalidation bound for the reaction rows: every pill on
     // its own row (+ the "+" button row), at the largest world size the
-    // low-zoom clamp allows (1 / STICKY_REACTION_MIN_ZOOM). Overflow
+    // visibility clamp allows (1 / the sticky's threshold zoom). Overflow
     // providers have no zoom access, so this over-approximates — costs
     // only redraw area, never leaves ghosts.
-    const n = ((shape as StickyElement).reactions?.length ?? 0) + 1;
-    const kMax = 1 / STICKY_REACTION_MIN_ZOOM;
+    const s = shape as StickyElement;
+    const n = (s.reactions?.length ?? 0) + 1;
+    const kMax = 1 / stickyReactionMinZoom(s);
     return {
       bottom:
         STICKY_SHADOW_OFFSET_Y + (STICKY_REACTION_GAP + STICKY_REACTION_HEIGHT) * kMax * n + 2,

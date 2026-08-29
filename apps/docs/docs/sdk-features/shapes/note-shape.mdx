@@ -38,4 +38,4 @@ editor.toggleStickyReaction(id, "👍"); // toggles the local user's reaction
 editor.convertSelection("sticky"); // shape / text ↔ sticky
 ```
 
-Fill colours snap to `STICKY_PALETTE` (nearest entry) when converting, so notes keep the classic sticky look. Reactions and the "+" button are drawn by the canvas renderer; hosts control what reaches exports through `RenderSceneOptions.content` (see Image export).
+Fill colours snap to `STICKY_PALETTE` (nearest entry) when converting, so notes keep the classic sticky look. Reactions and the "+" button are drawn by the canvas renderer at a constant on-screen size, and hide once the note's shorter side is under `STICKY_REACTION_MIN_SCREEN_PX` (80 px) on screen — a screen-size gate like the text LOD, so a large note keeps its reactions at a zoom where a small one already hides them. Hosts control what reaches exports through `RenderSceneOptions.content` (see Image export).

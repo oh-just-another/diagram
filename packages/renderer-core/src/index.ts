@@ -37,6 +37,7 @@ export {
   stickyReactionLayout,
   stickyReactionPillRects,
   stickyReactionAddRect,
+  stickyReactionChromeVisible,
 } from "./rendering/built-in-renderers.js";
 export { isDrawableImageSource } from "./raster/image-source-guard.js";
 export { fetchModuleBytes, allocBytes, instantiateWasm } from "./raster/wasm-bytes.js";
@@ -124,6 +125,6 @@ export {
   STICKY_REACTION_FONT_SIZE,
   STICKY_REACTION_HEIGHT,
   STICKY_REACTION_GAP,
-  STICKY_REACTION_MIN_ZOOM,
+  STICKY_REACTION_MIN_SCREEN_PX,
   EXPORT_CONTENT_DEFAULTS,
 } from "./constants.js";

@@ -5,7 +5,7 @@ import {
   stickyReactionPillRects,
   stickyReactionAddRect,
   STICKY_REACTION_FONT_SIZE,
-  STICKY_REACTION_MIN_ZOOM,
+  stickyReactionChromeVisible,
 } from "@oh-just-another/renderer-core";
 import { useDiagramOptional } from "../core/hooks.js";
 import { useQuietViewport } from "../core/use-quiet-viewport.js";
@@ -57,13 +57,12 @@ export const StickyReactions = () => {
   if (!host) return null;
 
   const v = editor.scene.viewport;
-  // Below the min zoom the canvas hides the reaction chrome entirely —
-  // no zones to click.
-  if (v.zoom < STICKY_REACTION_MIN_ZOOM) return null;
   const hostRect = host.getBoundingClientRect();
+  // A sticky too small on screen has no reaction chrome on the canvas —
+  // no zones to click.
   const stickies: StickyElement[] = [];
   for (const shape of editor.scene.elements.values()) {
-    if (isSticky(shape)) stickies.push(shape);
+    if (isSticky(shape) && stickyReactionChromeVisible(shape, v.zoom)) stickies.push(shape);
   }
   if (stickies.length === 0) return null;
 

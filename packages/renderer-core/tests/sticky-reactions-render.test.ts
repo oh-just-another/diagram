@@ -19,6 +19,7 @@ import {
   renderScene,
   stickyReactionPillRects,
   stickyReactionAddRect,
+  stickyReactionChromeVisible,
   STICKY_REACTION_GAP,
   STICKY_REACTION_HEIGHT,
   EXPORT_CONTENT_DEFAULTS,
@@ -127,10 +128,24 @@ describe("stickyReactionPillRects", () => {
     const at4 = stickyReactionPillRects(shape, measure, 4)[0];
     expect((at4?.width ?? NaN) * 4).toBeCloseTo(at1?.width ?? NaN);
     expect((at4?.height ?? NaN) * 4).toBeCloseTo(at1?.height ?? NaN);
-    // Below the min-zoom clamp world size stops growing.
+    // Below the visibility threshold (80 px / 160 side = zoom 0.5) the
+    // world size stops growing.
     const at01 = stickyReactionPillRects(shape, measure, 0.1)[0];
     const atMin = stickyReactionPillRects(shape, measure, 0.5)[0];
     expect(at01?.height).toBe(atMin?.height);
+    // The clamp follows the card: a 320 px note keeps growing pills down to 0.25.
+    const big = sticky({ width: 320, height: 320, reactions: [{ glyph: "👍", users: ["a"] }] });
+    const big03 = stickyReactionPillRects(big, measure, 0.3)[0];
+    const big05 = stickyReactionPillRects(big, measure, 0.5)[0];
+    expect((big03?.height ?? NaN) * 0.3).toBeCloseTo((big05?.height ?? NaN) * 0.5);
+  });
+
+  it("chrome visibility is a screen-size gate, not a zoom gate", () => {
+    const small = sticky({ width: 160, height: 160 });
+    expect(stickyReactionChromeVisible(small, 0.5)).toBe(true);
+    expect(stickyReactionChromeVisible(small, 0.4)).toBe(false);
+    expect(stickyReactionChromeVisible(sticky({ width: 400, height: 400 }), 0.4)).toBe(true);
+    expect(stickyReactionChromeVisible(sticky({ width: 60, height: 60 }), 1)).toBe(false);
   });
 });
 
@@ -197,10 +212,17 @@ describe("drawSticky content switches", () => {
     expect(calls.some((c) => c.method === "scale" && c.args[0] === 0.5)).toBe(true);
   });
 
-  it("hides all reaction chrome below the min zoom", () => {
+  it("hides all reaction chrome once the card is under the screen-size threshold", () => {
     const calls = render(shape, { hoveredElement: shape.id }, 0.4);
     expect(textDrawn(calls, "👍 1")).toBe(false);
     expect(calls.filter((c) => c.method === "rect").length).toBe(0);
+    // Same zoom, a note twice the size: still above the threshold → drawn.
+    const big = render(
+      sticky({ ...shape, width: 320, height: 320 }),
+      { hoveredElement: shape.id },
+      0.4,
+    );
+    expect(textDrawn(big, "👍 1")).toBe(true);
   });
 
   it("suppresses each meta layer via its content flag", () => {
