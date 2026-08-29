@@ -1,5 +1,13 @@
 # @oh-just-another/diagram
 
+## 0.3.8
+
+### Patch Changes
+
+- Updated dependencies [000e777]
+  - @oh-just-another/react-ui@0.64.0
+  - @oh-just-another/editor@0.65.0
+
 ## 0.3.7
 
 ### Patch Changes

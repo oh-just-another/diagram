@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/diagram-vue",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "description": "Vue 3 wrapper for the diagram editor — a thin <Diagram> component over the <oja-diagram> custom element.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
