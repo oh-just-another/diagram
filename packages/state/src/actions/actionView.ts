@@ -35,4 +35,35 @@ export const actionToggleReadOnly: Action = {
   },
 };
 
-export const viewActions: readonly Action[] = [actionToggleGrid, actionToggleReadOnly];
+/** Show / hide every link (flow connector). View state — no hotkey by default. */
+export const actionToggleConnectors: Action = {
+  id: "toggle-connectors",
+  label: "Flow connectors",
+  category: "other",
+  viewMode: true,
+  uiKind: "toggle",
+  checked: ({ editor }) => editor.showConnectors,
+  perform: ({ editor }) => {
+    editor.toggleConnectors();
+  },
+};
+
+/** Show / hide comment (annotation) pins. View state — no hotkey by default. */
+export const actionToggleComments: Action = {
+  id: "toggle-comments",
+  label: "Comments",
+  category: "other",
+  viewMode: true,
+  uiKind: "toggle",
+  checked: ({ editor }) => editor.showComments,
+  perform: ({ editor }) => {
+    editor.toggleComments();
+  },
+};
+
+export const viewActions: readonly Action[] = [
+  actionToggleGrid,
+  actionToggleReadOnly,
+  actionToggleConnectors,
+  actionToggleComments,
+];

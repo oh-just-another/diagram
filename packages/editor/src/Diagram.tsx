@@ -29,6 +29,7 @@ import {
   Magnet,
   Map as MapIcon,
   Maximize,
+  MessageSquare,
   Minus,
   Monitor,
   Moon,
@@ -44,6 +45,7 @@ import {
   Search,
   Shrink,
   SlidersHorizontal,
+  Spline,
   Sun,
   Undo2,
   ZoomIn,
@@ -940,6 +942,9 @@ const EditorShell = ({
   useEditorSelector((e) => snapSelection(e), "on");
   // Preference switches in the View / Preferences submenus.
   const showObjectSize = useEditorSelector((e) => e.preferences.showObjectSize, true);
+  // View toggles — editor state (not persisted): links and comment pins.
+  const showConnectors = useEditorSelector((e) => e.showConnectors, true);
+  const showComments = useEditorSelector((e) => e.showComments, true);
   const snapObjects = useEditorSelector((e) => e.preferences.snapObjects, true);
   const suggestObjectSize = useEditorSelector((e) => e.preferences.suggestObjectSize, true);
   const wheelMode = useEditorSelector((e) => e.preferences.wheelMode, "auto");
@@ -1357,6 +1362,22 @@ const EditorShell = ({
                         checked={minimapVisible}
                       >
                         Minimap
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        icon={<Spline {...menuIcon} />}
+                        keepOpen
+                        onClick={() => editor?.setShowConnectors(!showConnectors)}
+                        checked={showConnectors}
+                      >
+                        Flow connectors
+                      </MainMenu.Item>
+                      <MainMenu.Item
+                        icon={<MessageSquare {...menuIcon} />}
+                        keepOpen
+                        onClick={() => editor?.setShowComments(!showComments)}
+                        checked={showComments}
+                      >
+                        Comments
                       </MainMenu.Item>
                       <MainMenu.Separator />
                       <MainMenu.Submenu icon={<Sun {...menuIcon} />} label="Theme">

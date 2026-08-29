@@ -207,6 +207,10 @@ export interface RenderSnapshot {
    * grab an affordance that would mutate the scene.
    */
   readonly readOnly: boolean;
+  /** View toggle: links are painted (main pass) only when true. */
+  readonly showConnectors: boolean;
+  /** View toggle: comment (annotation) pins are painted only when true. */
+  readonly showComments: boolean;
   /** Sticky under the idle cursor — drives the hover-only "+" chrome. */
   readonly hoveredStickyId: ElementId | null;
   /** Line-preset overrides for the draw-edge PREVIEW connector (WYSIWYG). */
@@ -314,6 +318,8 @@ const buildOverlaySignature = (e: RenderSnapshot): readonly unknown[] => [
   e.peerSelections,
   e.debugHitZones,
   e.readOnly,
+  e.showConnectors,
+  e.showComments,
   e.groupMoveOrigin,
   e.editingText,
 ];
@@ -386,7 +392,7 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       ...(hideElements && hideElements.size > 0 ? { hideElements } : {}),
       ...(editor.sharedIndex ? { index: editor.sharedIndex } : {}),
     });
-    renderLinks(editor.scene, editor.mainTarget, { viewportWorld });
+    if (editor.showConnectors) renderLinks(editor.scene, editor.mainTarget, { viewportWorld });
   } else {
     // For very large scenes share the same SpatialGrid the hit-test path
     // already maintains — `renderScene` uses it to skip the per-shape AABB
@@ -414,10 +420,12 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       ...(hideElements ? { hideElements } : {}),
       ...(sharedIndex ? { spatialIndex: sharedIndex } : {}),
     });
-    renderLinks(editor.scene, editor.mainTarget, {
-      ...(viewportWorld ? { viewportWorld } : {}),
-      ...(dirtyWorld ? { dirtyWorld } : {}),
-    });
+    if (editor.showConnectors) {
+      renderLinks(editor.scene, editor.mainTarget, {
+        ...(viewportWorld ? { viewportWorld } : {}),
+        ...(dirtyWorld ? { dirtyWorld } : {}),
+      });
+    }
   }
   // Overlay options bag — rebuilding it allocates dozens of objects (port
   // sets, link halos, handle midpoints, debug zones). On idle / animation /
@@ -777,7 +785,7 @@ export const renderEditor = (editor: RenderSnapshot): void => {
     }
     if (editor.peerCursors.length > 0) overlayOpts.peerCursors = editor.peerCursors;
     if (editor.peerSelections.length > 0) overlayOpts.peerSelections = editor.peerSelections;
-    if (editor.scene.annotations.size > 0) {
+    if (editor.showComments && editor.scene.annotations.size > 0) {
       overlayOpts.annotations = [...editor.scene.annotations.values()];
       overlayOpts.selectedAnnotation = editor.selectedAnnotation;
     }

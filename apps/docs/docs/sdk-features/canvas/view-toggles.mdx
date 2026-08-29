@@ -1,0 +1,18 @@
+---
+title: View toggles
+sidebar_position: 34
+---
+
+Two editor-level switches hide parts of the canvas without touching the scene: **Flow connectors** (every link) and **Comments** (annotation pins). Both live on the editor — not persisted, not exported — and default to shown.
+
+```ts
+editor.setShowConnectors(false); // links vanish, can't be clicked, a selected link is deselected
+editor.setShowComments(false); // pins vanish, can't be clicked, the selected annotation is dropped
+editor.toggleConnectors();
+editor.toggleComments();
+const { showConnectors, showComments } = editor;
+```
+
+A hidden link is skipped by the render pass and by the press hit-test; the scene's `links` / `annotations` maps are unchanged, so exports and saves keep them. Hosts subscribe through `editor.subscribe` / `useEditorSelector((e) => e.showConnectors, true)`.
+
+The bundled main menu exposes both under **View › Flow connectors / Comments**; the actions `toggle-connectors` and `toggle-comments` (`viewMode`, no default hotkey) are registered for the command palette and custom bindings.
