@@ -5,6 +5,7 @@ import {
   DEFAULT_LAYER_ID,
   emptyScene,
   orderBetween,
+  type Annotation,
   type Patch,
   type Scene,
   type Element,
@@ -105,6 +106,61 @@ describe("renderOverlay", () => {
     const restores = calls.filter((c) => c.method === "restore").length;
     expect(saves).toBeGreaterThanOrEqual(1);
     expect(restores).toBe(saves);
+  });
+
+  it("paints a contrast ring under the selected-link halo (two strokes per link)", () => {
+    const { target, calls } = makeRecorder();
+    renderOverlay(emptyScene(), emptySelection, target, {
+      selectedLinkPaths: [
+        {
+          path: [
+            { x: 0, y: 0 },
+            { x: 100, y: 0 },
+          ],
+          width: 2,
+        },
+      ],
+    });
+    const strokes = calls.filter((c) => c.method === "setStroke").map((c) => c.args[0]);
+    expect(strokes).toContain("#ffffff");
+    const widths = calls
+      .filter((c) => c.method === "setStrokeWidth")
+      .map((c) => c.args[0] as number);
+    // Contrast ring: 2 + 2 × (4 + 1.5); halo: 2 + 2 × 4.
+    expect(widths).toContain(13);
+    expect(widths).toContain(10);
+    expect(widths.indexOf(13)).toBeLessThan(widths.indexOf(10));
+  });
+
+  it("marks a resolved annotation pin with a ✓ glyph instead of the count badge", () => {
+    const comment = (id: string) => ({
+      id,
+      authorId: "a",
+      authorName: "A",
+      body: id,
+      createdAt: "",
+    });
+    const base = {
+      id: annotationId("ann-r"),
+      elementId: null,
+      position: { x: 20, y: 20 },
+      thread: [comment("c1"), comment("c2")],
+      createdAt: "",
+    } as unknown as Omit<Annotation, "resolved">;
+    const open = makeRecorder();
+    renderOverlay(emptyScene(), emptySelection, open.target, {
+      annotations: [{ ...base, resolved: false }],
+    });
+    expect(open.calls.some((c) => c.method === "fillText" && c.args[0] === "2")).toBe(true);
+    const resolved = makeRecorder();
+    renderOverlay(emptyScene(), emptySelection, resolved.target, {
+      annotations: [{ ...base, resolved: true }],
+    });
+    expect(resolved.calls.some((c) => c.method === "fillText" && c.args[0] === "2")).toBe(false);
+    const pinIdx = resolved.calls.findIndex((c) => c.method === "ellipse");
+    const after = resolved.calls.slice(pinIdx);
+    expect(after.filter((c) => c.method === "lineTo").length).toBeGreaterThanOrEqual(2);
+    expect(after.some((c) => c.method === "setStroke" && c.args[0] === "#fff")).toBe(true);
   });
 
   it("draws a selection outline when a shape is selected", () => {
