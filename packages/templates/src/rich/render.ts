@@ -26,6 +26,26 @@ import type {
 } from "./node.js";
 import { defaultRichRegistry } from "./registry.js";
 import type { NodeStyle } from "./style.js";
+import {
+  RICH_BUTTON_FILL,
+  RICH_BUTTON_LABEL_FONT_SIZE,
+  RICH_BUTTON_LABEL_INSET,
+  RICH_BUTTON_STROKE,
+  RICH_BUTTON_TEXT_COLOR,
+  RICH_CHROME_FONT_FAMILY,
+  RICH_DASH_PATTERN,
+  RICH_DEFAULT_FONT_FAMILY,
+  RICH_DEFAULT_FONT_SIZE,
+  RICH_DROP_ZONE_LABEL_COLOR,
+  RICH_DROP_ZONE_LABEL_FONT_SIZE,
+  RICH_DROP_ZONE_PADDING,
+  RICH_DROP_ZONE_STROKE,
+  RICH_ICON_TINT,
+  RICH_MISSING_COLOR,
+  RICH_MISSING_FONT_SIZE,
+  RICH_PORT_STROKE,
+  RICH_TEXT_COLOR,
+} from "../constants.js";
 import { paintSvgIcon, parseSvg } from "./svg.js";
 
 /**
@@ -129,9 +149,9 @@ const paintBox = (node: TemplateNode, b: Bounds, target: RenderTarget): void => 
 };
 
 const paintText = (node: TextNode, b: Bounds, target: RenderTarget): void => {
-  const color = node.style?.color ?? node.style?.fill ?? "#000";
-  const fontFamily = node.style?.fontFamily ?? "system-ui, sans-serif";
-  const fontSize = node.style?.fontSize ?? 14;
+  const color = node.style?.color ?? node.style?.fill ?? RICH_TEXT_COLOR;
+  const fontFamily = node.style?.fontFamily ?? RICH_DEFAULT_FONT_FAMILY;
+  const fontSize = node.style?.fontSize ?? RICH_DEFAULT_FONT_SIZE;
   const align = node.style?.textAlign ?? "left";
   target.setFont(fontFamily, fontSize);
   target.setTextAlign(align);
@@ -147,9 +167,9 @@ const paintText = (node: TextNode, b: Bounds, target: RenderTarget): void => {
 };
 
 const paintButton = (node: ButtonNode, b: Bounds, target: RenderTarget): void => {
-  const fill = node.style?.fill ?? "#f4f4f4";
-  const stroke = node.style?.stroke ?? "#888";
-  const color = node.style?.color ?? "#222";
+  const fill = node.style?.fill ?? RICH_BUTTON_FILL;
+  const stroke = node.style?.stroke ?? RICH_BUTTON_STROKE;
+  const color = node.style?.color ?? RICH_BUTTON_TEXT_COLOR;
   target.setFill(fill);
   target.setStroke(stroke);
   target.setStrokeWidth(node.style?.strokeWidth ?? 1);
@@ -159,29 +179,36 @@ const paintButton = (node: ButtonNode, b: Bounds, target: RenderTarget): void =>
   target.stroke();
   if (node.label !== undefined) {
     const rawLabel = typeof node.label === "string" ? node.label : "";
-    const fontFamily = node.style?.fontFamily ?? "system-ui, sans-serif";
-    const fontSize = node.style?.fontSize ?? 13;
+    const fontFamily = node.style?.fontFamily ?? RICH_DEFAULT_FONT_FAMILY;
+    const fontSize = node.style?.fontSize ?? RICH_BUTTON_LABEL_FONT_SIZE;
     target.setFont(fontFamily, fontSize);
     target.setTextAlign("center");
     target.setTextBaseline("middle");
     target.setFill(color);
-    const labelText = truncateToWidth(rawLabel, Math.max(0, b.width - 12), target);
+    const labelText = truncateToWidth(
+      rawLabel,
+      Math.max(0, b.width - RICH_BUTTON_LABEL_INSET),
+      target,
+    );
     target.fillText(labelText, b.x + b.width / 2, b.y + b.height / 2);
   }
 };
 
 const paintDropZone = (node: DropZoneNode, b: Bounds, target: RenderTarget): void => {
-  target.setStroke(node.style?.stroke ?? "#888");
+  target.setStroke(node.style?.stroke ?? RICH_DROP_ZONE_STROKE);
   target.setStrokeWidth(node.style?.strokeWidth ?? 1);
-  target.setDashArray([4, 4]);
+  target.setDashArray(RICH_DASH_PATTERN);
   target.beginPath();
   target.rect(b.x, b.y, b.width, b.height);
   target.stroke();
   target.setDashArray(null);
   if (node.label !== undefined) {
     const labelText = typeof node.label === "string" ? node.label : "Drop here";
-    const color = node.style?.color ?? "#999";
-    target.setFont(node.style?.fontFamily ?? "system-ui", node.style?.fontSize ?? 12);
+    const color = node.style?.color ?? RICH_DROP_ZONE_LABEL_COLOR;
+    target.setFont(
+      node.style?.fontFamily ?? RICH_CHROME_FONT_FAMILY,
+      node.style?.fontSize ?? RICH_DROP_ZONE_LABEL_FONT_SIZE,
+    );
     target.setTextAlign("center");
     target.setTextBaseline("middle");
     target.setFill(color);
@@ -192,7 +219,7 @@ const paintDropZone = (node: DropZoneNode, b: Bounds, target: RenderTarget): voi
 const paintIcon = (node: IconNode, b: Bounds, target: RenderTarget): void => {
   const svg = typeof node.svg === "string" ? node.svg : "";
   if (!svg) return;
-  const tint = node.style?.color ?? node.style?.stroke ?? node.style?.fill ?? "#222";
+  const tint = node.style?.color ?? node.style?.stroke ?? node.style?.fill ?? RICH_ICON_TINT;
   const cached = getCachedSvg(svg, tint);
   if (!cached) {
     // Couldn't parse — fall back to a hairline placeholder so the layout
@@ -219,7 +246,7 @@ const getCachedSvg = (markup: string, tint: string) => {
 };
 
 const paintImagePlaceholder = (_node: ImageNode, b: Bounds, target: RenderTarget): void => {
-  target.setStroke("#888");
+  target.setStroke(RICH_PORT_STROKE);
   target.setStrokeWidth(1);
   target.setFill("#eee");
   target.beginPath();
@@ -251,15 +278,15 @@ const truncateToWidth = (text: string, maxWidth: number, target: RenderTarget): 
 };
 
 const paintMissing = (target: RenderTarget, width: number, height: number, id: string): void => {
-  target.setStroke("#c00");
+  target.setStroke(RICH_MISSING_COLOR);
   target.setStrokeWidth(1);
-  target.setDashArray([4, 4]);
+  target.setDashArray(RICH_DASH_PATTERN);
   target.beginPath();
   target.rect(0, 0, width, height);
   target.stroke();
   target.setDashArray(null);
-  target.setFill("#c00");
-  target.setFont("system-ui", 11);
+  target.setFill(RICH_MISSING_COLOR);
+  target.setFont(RICH_CHROME_FONT_FAMILY, RICH_MISSING_FONT_SIZE);
   target.setTextAlign("center");
   target.setTextBaseline("middle");
   target.fillText(`missing template: ${id}`, width / 2, height / 2);
@@ -309,7 +336,7 @@ export const installTemplateShapeRenderer = (): void => {
     // Read padding from the shape's static metadata fallback (if any)
     // so authors can tune it per-template; default 8.
     const staticMeta = (shape.metadata?.container as { padding?: number } | undefined) ?? {};
-    return { dropZone, padding: staticMeta.padding ?? 8 };
+    return { dropZone, padding: staticMeta.padding ?? RICH_DROP_ZONE_PADDING };
   });
   // Live multi-zone resolver — every lane of a multi-lane template, for the
   // debug hit-zone overlay (the attach protocol still uses the single zone).
