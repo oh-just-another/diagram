@@ -36,6 +36,12 @@ export interface TemplateContext {
 export interface Template {
   readonly id: string;
   readonly name: string;
+  /**
+   * Short geometry hint read by assistive tech alongside `name` (the
+   * palette announces "Process, Rectangle, draggable"). Add it when the
+   * name alone does not say what the shape looks like.
+   */
+  readonly description?: string;
   readonly category: Category;
   /**
    * SVG markup or data-URI for the palette thumbnail. The kernel doesn't
