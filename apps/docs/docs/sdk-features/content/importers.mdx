@@ -112,12 +112,17 @@ const scene = importJsonCanvas(await readFile("board.canvas", "utf8"));
 
 ## Spreadsheet (CSV) — export only
 
-`exportCsv(scene: Scene): string` lists every element as one RFC 4180 row —
-`id, type, layer, text, tags, author, x, y, width, height` (`CSV_COLUMNS`):
-the text element's text or the shape's label, sticky tags (`;`-joined) and
-author, and the world bounding box. Links, files and the viewport are not
-included; it is a content listing, not a document to import back. The
-`Editor` offers it as Board › Export › Spreadsheet (CSV) (`export-csv` action).
+`exportCsv(scene: Scene): string` lists the board as RFC 4180 rows
+(`CSV_COLUMNS`): `id, type, layer, parent, text, tags, author, reactions,
+comments, link, fill, stroke, locked, hidden, x, y, width, height, rotation,
+from, to`. One row per element — text / label (image `alt` for images), group
+or frame parent, sticky tags (`;`-joined), author and reactions (`👍:3;❤️:1`),
+comment-thread counts (`2 open;1 resolved`), hyperlink, fill / stroke, flags,
+world bounding box and rotation — then one `link` row per connector of the
+layer with its label, stroke and the element ids it joins (`from` / `to`,
+empty for a free point). Files and the viewport are not included; it is a
+content listing, not a document to import back. The `Editor` offers it as
+Board › Export › Spreadsheet (CSV) (`export-csv` action).
 
 ```ts
 import { exportCsv } from "@oh-just-another/importers";
