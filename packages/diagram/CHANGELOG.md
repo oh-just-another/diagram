@@ -1,5 +1,12 @@
 # @oh-just-another/diagram
 
+## 0.3.4
+
+### Patch Changes
+
+- @oh-just-another/editor@0.62.3
+- @oh-just-another/react-ui@0.63.2
+
 ## 0.3.3
 
 ### Patch Changes
