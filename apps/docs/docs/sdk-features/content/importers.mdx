@@ -6,7 +6,7 @@ sidebar_position: 82
 `@oh-just-another/importers` converts popular diagram source formats into a
 `@oh-just-another/scene` `Scene`. Five formats are supported: Mermaid
 flowcharts, Graphviz `dot`, drawio XML, `.excalidraw` JSON (import and
-export), and JSON Canvas (`.canvas`).
+export), and JSON Canvas (`.canvas`); CSV is export-only.
 
 Each format has a one-shot helper (`importMermaid` / `importDot` /
 `importDrawio`) that parses, lays out, and materialises a `Scene` in a single
@@ -108,6 +108,21 @@ elements, `file` / `link` nodes → text elements showing the path / URL,
 import { importJsonCanvas } from "@oh-just-another/importers";
 
 const scene = importJsonCanvas(await readFile("board.canvas", "utf8"));
+```
+
+## Spreadsheet (CSV) — export only
+
+`exportCsv(scene: Scene): string` lists every element as one RFC 4180 row —
+`id, type, layer, text, tags, author, x, y, width, height` (`CSV_COLUMNS`):
+the text element's text or the shape's label, sticky tags (`;`-joined) and
+author, and the world bounding box. Links, files and the viewport are not
+included; it is a content listing, not a document to import back. The
+`Editor` offers it as Board › Export › Spreadsheet (CSV) (`export-csv` action).
+
+```ts
+import { exportCsv } from "@oh-just-another/importers";
+
+await writeFile("board.csv", exportCsv(scene));
 ```
 
 ## Formats table and file drop

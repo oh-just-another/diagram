@@ -1,6 +1,7 @@
 import { byOrderAsc, isText, type Element, type Scene } from "@oh-just-another/scene";
 import { parseScene, stringifyScene } from "@oh-just-another/serialization";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
+import { exportSceneAs } from "@oh-just-another/importers";
 import { EXPORT_CONTENT_DEFAULTS, type RenderSceneOptions } from "@oh-just-another/renderer-core";
 import {
   type Action,
@@ -148,6 +149,12 @@ export const downloadSvg = (scene: Scene, content?: ExportContent): void => {
     content: { ...EXPORT_CONTENT_DEFAULTS, ...content },
   });
   downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "scene.svg");
+};
+
+/** "Export as spreadsheet" — one CSV row per element (`exportCsv` in importers). */
+export const downloadCsv = (scene: Scene): void => {
+  const { text, filename } = exportSceneAs("csv", scene);
+  downloadBlob(new Blob([text], { type: "text/csv" }), filename);
 };
 
 /** The async Clipboard API, or `undefined` in insecure contexts / old browsers. */
@@ -329,6 +336,15 @@ export const fileActions: readonly Action[] = [
     hotkey: { key: "e", meta: true, shift: true },
     perform: ({ editor }) => {
       void downloadPng(editor, "color");
+    },
+  },
+  {
+    id: "export-csv",
+    label: "Export as spreadsheet (CSV)",
+    category: "other",
+    viewMode: true,
+    perform: ({ editor }) => {
+      downloadCsv(editor.scene);
     },
   },
   {

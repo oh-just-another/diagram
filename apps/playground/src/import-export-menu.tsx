@@ -79,6 +79,8 @@ export const ImportMenu = ({ editor }: { readonly editor: Editor }) => {
   );
 };
 
+const EDITOR_EXPORT_IDS: ReadonlySet<string> = new Set(["native", "csv"]);
+
 export const ExportFormatItems = ({ editor }: { readonly editor: Editor }) => {
   const runExport = (formatId: string): void => {
     try {
@@ -89,9 +91,11 @@ export const ExportFormatItems = ({ editor }: { readonly editor: Editor }) => {
       window.alert(`Could not export: ${(err as Error).message}`);
     }
   };
+  // Formats the editor's own Export rows already offer (native JSON via
+  // "Board › Save as JSON" ⌘S, CSV) are skipped — one menu path per file.
   return (
     <>
-      {EXPORT_FORMATS.map((f) => (
+      {EXPORT_FORMATS.filter((f) => !EDITOR_EXPORT_IDS.has(f.id)).map((f) => (
         <MainMenu.Item
           key={f.id}
           icon={<Download {...ROW_ICON} />}

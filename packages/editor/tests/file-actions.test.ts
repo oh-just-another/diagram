@@ -21,6 +21,7 @@ import {
   registerFileActions,
   setFileActionNotifier,
   downloadScene,
+  downloadCsv,
   copySceneAsImage,
   copySelectionAsSvg,
   copySelectionAsText,
@@ -59,6 +60,7 @@ describe("file actions metadata", () => {
         "copy-as-png",
         "copy-as-svg",
         "copy-as-text",
+        "export-csv",
         "export-png",
         "open-scene",
         "save-scene",
@@ -206,5 +208,22 @@ describe("selection copies", () => {
     expect(svg).toContain("<text");
     expect(svg).toMatch(/<(path|rect)/);
     Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+  });
+});
+
+describe("downloadCsv", () => {
+  it("downloads a text/csv blob named diagram.csv", () => {
+    const createObjectURL = vi.fn((_blob: Blob) => "blob:csv");
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    downloadCsv(sceneWith(rect("a")));
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(createObjectURL.mock.calls[0]?.[0].type).toBe("text/csv");
+    expect(click).toHaveBeenCalledTimes(1);
+    click.mockRestore();
+  });
+
+  it("is registered as the export-csv action", () => {
+    expect(fileActions.find((a) => a.id === "export-csv")?.viewMode).toBe(true);
   });
 });

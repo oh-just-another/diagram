@@ -165,6 +165,7 @@ import { installGifAnimationAdapter } from "./gif-animation.js";
 import { useThemedPortalContainer } from "./themed-portal-container.js";
 import {
   downloadScene,
+  downloadCsv,
   downloadSvg,
   downloadPng,
   openSceneFile,
@@ -1129,6 +1130,15 @@ const EditorShell = ({
                           disabled={!editor}
                         >
                           SVG
+                        </MainMenu.Item>
+                        <MainMenu.Item
+                          icon={<Download {...menuIcon} />}
+                          onClick={() => {
+                            if (editor) downloadCsv(editor.scene);
+                          }}
+                          disabled={!editor}
+                        >
+                          Spreadsheet (CSV)
                         </MainMenu.Item>
                         {renderExportMenuExtras?.()}
                         <MainMenu.Separator />
