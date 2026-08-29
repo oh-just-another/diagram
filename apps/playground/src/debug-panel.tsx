@@ -2,14 +2,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { describe as describePatch } from "@oh-just-another/history";
 import {
   apply,
+  canCarryLabel,
   emptyScene,
   getElementWorldBounds,
+  isText,
   orderBetween,
   type Link,
   type Patch,
   type Element,
 } from "@oh-just-another/scene";
-import { defaultActionRegistry, type Editor } from "@oh-just-another/state";
+import {
+  LABEL_DEFAULT_FONT_SIZE,
+  TEXT_DEFAULT_FONT_FAMILY,
+  defaultActionRegistry,
+  type Editor,
+  type FrameStats,
+} from "@oh-just-another/state";
 import { defaultRegistry, type Template, type TemplateContext } from "@oh-just-another/templates";
 import {
   linkId,
@@ -108,17 +116,27 @@ export const DebugPanel = ({ editor }: { editor: Editor | null }) => {
     };
   }, []);
 
-  // Force re-render on every editor mutation. The four tabs read
-  // ephemeral fields off the editor — scene, selection, history,
-  // mode — that all flow through `notify()`. Subscribing once is
-  // cheaper than wiring four separate `editor.on(slice, …)` hooks.
+  // Re-render on editor mutations so the tabs read fresh ephemeral state
+  // (scene, selection, history, mode) — but throttled: a pan / drag notifies
+  // every frame, and re-rendering the whole drawer per frame (dozens of
+  // form rows) was ~10 % of the main thread on a large scene, distorting the
+  // very numbers the Display tab shows. Only while open.
   const [, force] = useState(0);
   useEffect(() => {
-    if (!editor) return;
-    return editor.subscribe(() => {
-      force((v) => v + 1);
+    if (!editor || !open) return undefined;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const off = editor.subscribe(() => {
+      if (timer !== null) return;
+      timer = setTimeout(() => {
+        timer = null;
+        force((v) => v + 1);
+      }, DEBUG_PANEL_REFRESH_MS);
     });
-  }, [editor]);
+    return () => {
+      off();
+      if (timer !== null) clearTimeout(timer);
+    };
+  }, [editor, open]);
 
   if (!open) return null;
   if (!editor) {
@@ -170,8 +188,35 @@ const TABS: readonly { id: TabId; label: string }[] = [
 const DisplayTab = ({ editor }: { editor: Editor }) => {
   const [renderer, setRenderer] = useState<RendererChoice>(() => readRendererParam());
   const [hitZones, setHitZones] = useState<boolean>(() => editor.debugHitZones);
+  const stats = useFrameStats(editor);
+  const [logStats, setLogStats] = useState(false);
+  useFrameStatsLogger(editor, logStats);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 13 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <span style={{ fontWeight: 600 }}>Frame cost</span>
+        <code style={{ fontSize: 12 }}>
+          paint {stats.lastMs.toFixed(1)} ms · ema {stats.emaMs.toFixed(1)} ms · fps{" "}
+          {stats.gapMs > 0 ? (1000 / stats.gapMs).toFixed(0) : "—"} (gap {stats.gapMs.toFixed(0)}{" "}
+          ms) · refresh {stats.intervalMs > 0 ? `${(1000 / stats.intervalMs).toFixed(0)} Hz` : "—"}{" "}
+          · frames {stats.frames}
+        </code>
+        <span style={{ color: "var(--du-text-muted, #6b6b6b)", fontSize: 11 }}>
+          paint = main + overlay pass; fps = achieved (gap between paints, includes everything
+          outside the pass); refresh = display rate (min rAF gap). Sampled every{" "}
+          {FRAME_STATS_REFRESH_MS} ms.
+        </span>
+        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={logStats}
+            onChange={(ev) => {
+              setLogStats(ev.target.checked);
+            }}
+          />
+          <span>Log frame stats to the console every {FRAME_STATS_LOG_MS / 1000} s</span>
+        </label>
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <label htmlFor="dbg-renderer" style={{ fontWeight: 600 }}>
           Renderer backend
@@ -215,6 +260,59 @@ const DisplayTab = ({ editor }: { editor: Editor }) => {
       </label>
     </div>
   );
+};
+
+/** Refresh cadence of the frame-cost readout — the `frame` event fires per paint. */
+const FRAME_STATS_REFRESH_MS = 250;
+
+/**
+ * Latest {@link FrameStats}, re-rendered at most every
+ * {@link FRAME_STATS_REFRESH_MS} so the readout doesn't itself cost frames.
+ */
+const useFrameStats = (editor: Editor): FrameStats => {
+  const [stats, setStats] = useState<FrameStats>(() => editor.frameStats);
+  useEffect(() => {
+    let last = 0;
+    const off = editor.on("frame", (s) => {
+      const now = performance.now();
+      if (now - last < FRAME_STATS_REFRESH_MS) return;
+      last = now;
+      setStats(s);
+    });
+    return off;
+  }, [editor]);
+  return stats;
+};
+
+/** Drawer re-render cadence while the editor is changing (a pan notifies per frame). */
+const DEBUG_PANEL_REFRESH_MS = 250;
+
+/** Cadence of the console log line while "Log frame stats" is on. */
+const FRAME_STATS_LOG_MS = 1000;
+
+/**
+ * Print one line per second to the DevTools console — paint / ema / fps /
+ * refresh — plus the raw objects, so a slow session can be
+ * analysed after the fact (the panel readout only shows the latest sample).
+ */
+const useFrameStatsLogger = (editor: Editor, on: boolean): void => {
+  useEffect(() => {
+    if (!on) return undefined;
+    const id = setInterval(() => {
+      const s = editor.frameStats;
+      const fps = s.gapMs > 0 ? (1000 / s.gapMs).toFixed(1) : "—";
+      const hz = s.intervalMs > 0 ? (1000 / s.intervalMs).toFixed(0) : "—";
+      // Dev-only diagnostics, opted into by the checkbox above.
+      // eslint-disable-next-line no-console
+      console.log(
+        `[frame] paint ${s.lastMs.toFixed(1)} ms · ema ${s.emaMs.toFixed(1)} ms · fps ${fps} (gap ${s.gapMs.toFixed(0)} ms) · refresh ${hz} Hz · frames ${String(s.frames)}`,
+        { frameStats: s },
+      );
+    }, FRAME_STATS_LOG_MS);
+    return () => {
+      clearInterval(id);
+    };
+  }, [editor, on]);
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -669,6 +767,7 @@ const GridSection = ({ editor, template }: { editor: Editor; template: Template 
   const [gap, setGap] = useState(20);
   const [rainbow, setRainbow] = useState(false);
   const [connect, setConnect] = useState(false);
+  const [withText, setWithText] = useState(false);
   if (!template) return null;
   return (
     <Section title="Grid">
@@ -683,6 +782,11 @@ const GridSection = ({ editor, template }: { editor: Editor; template: Template 
       </Field>
       <CheckboxRow checked={rainbow} onChange={setRainbow} label="Rainbow fill" />
       <CheckboxRow checked={connect} onChange={setConnect} label="Connect first → each" />
+      <CheckboxRow
+        checked={withText}
+        onChange={setWithText}
+        label="With text (label / text content) — for text-LOD and frame-cost checks"
+      />
       <button
         type="button"
         onClick={() => {
@@ -693,6 +797,7 @@ const GridSection = ({ editor, template }: { editor: Editor; template: Template 
               gap,
               rainbow,
               connect,
+              withText,
               origin: viewportTopLeftWithMargin(editor),
             }),
           );
@@ -1162,6 +1267,8 @@ interface GridOptions {
   readonly gap: number;
   readonly rainbow: boolean;
   readonly connect: boolean;
+  /** Give every shape text: a label on labelable shapes, content on text elements. */
+  readonly withText: boolean;
   readonly origin: Vec2;
 }
 
@@ -1195,7 +1302,8 @@ const buildGrid = (editor: Editor, template: Template, opts: GridOptions): Build
       position: { x, y },
       order,
     });
-    shapes.push(opts.rainbow ? withFill(shape, rainbow(i, opts.count)) : shape);
+    const filled = opts.rainbow ? withFill(shape, rainbow(i, opts.count)) : shape;
+    shapes.push(opts.withText ? withText(filled, `Item ${String(i + 1)}`) : filled);
     order = orderBetween(order, null);
   }
 
@@ -1573,6 +1681,21 @@ const safeBounds = (shape: Element) => {
   } catch {
     return { x: 0, y: 0, width: 80, height: 60 };
   }
+};
+
+/** Text content for a generated shape: element text for text, a label for labelable shapes. */
+const withText = (shape: Element, text: string): Element => {
+  if (isText(shape)) return { ...shape, text };
+  if (!canCarryLabel(shape)) return shape;
+  return {
+    ...shape,
+    label: {
+      ...shape.label,
+      text,
+      fontFamily: shape.label?.fontFamily ?? TEXT_DEFAULT_FONT_FAMILY,
+      fontSize: shape.label?.fontSize ?? LABEL_DEFAULT_FONT_SIZE,
+    },
+  };
 };
 
 const withFill = (shape: Element, fill: string): Element => ({

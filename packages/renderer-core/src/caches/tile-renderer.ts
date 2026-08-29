@@ -67,12 +67,6 @@ export const MAX_TILE_CACHE_BYTES = Math.min(
   guessDeviceMemoryGB() * TILE_CACHE_BYTES_PER_GB,
 );
 
-/**
- * Below this zoom we drop to LOD: cache tiles render only AABBs
- * (no stroke / text / detail) so 1 M+ shape scenes stay smooth.
- */
-export const LOD_THRESHOLD = 0.25;
-
 export interface TileKey {
   /** Tile column in world-space grid. */
   readonly col: number;

@@ -17,7 +17,6 @@ import {
   getElbowSegmentHandles,
 } from "@oh-just-another/scene";
 import {
-  DEFAULT_LOD,
   renderLinks,
   renderGrid,
   renderScene,
@@ -25,6 +24,7 @@ import {
   type AnimationClock,
   type RenderTarget,
   type ElementCache,
+  type LodOptions,
 } from "@oh-just-another/renderer-core";
 import {
   renderOverlay,
@@ -116,6 +116,8 @@ export interface RenderSnapshot {
   readonly enteredGroup: ElementId | null;
   // Precomputed render inputs.
   readonly gridEnabled: boolean;
+  /** Level-of-detail thresholds for the main pass (see `Editor.renderLod`). */
+  readonly lod: LodOptions;
   readonly viewportWorld: Bounds | null;
   readonly dirtyWorld: Bounds | null;
   readonly dimElements: ReadonlySet<ElementId> | undefined;
@@ -395,7 +397,7 @@ export const renderEditor = (editor: RenderSnapshot): void => {
       ...(dirtyWorld ? { dirtyWorld } : {}),
       boundsCache: editor.boundsCache,
       clock: editor.animationClock,
-      lod: DEFAULT_LOD,
+      lod: editor.lod,
       // Read-only views get no add-reaction chrome (reacting mutates the
       // scene); everything else stays on — interactive default.
       ...(editor.readOnly ? { content: { stickyAddButton: false } } : {}),

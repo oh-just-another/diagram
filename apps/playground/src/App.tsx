@@ -3,7 +3,13 @@ import { type Scene, type BinaryFile } from "@oh-just-another/scene";
 import { type FileId } from "@oh-just-another/types";
 import { createSceneAutosave } from "./autosave";
 import { parseScene, parseFiles, stringifyScene } from "@oh-just-another/serialization";
-import { loadAllFiles, saveFiles, pruneFilesExcept } from "./idb-files";
+import {
+  loadAllFiles,
+  loadSceneJson,
+  pruneFilesExcept,
+  saveFiles,
+  saveSceneJson,
+} from "./idb-files";
 import type { Editor } from "@oh-just-another/state";
 import { Diagram, type CapabilityOverrides, type DiagramAPI } from "@oh-just-another/editor";
 import { setupTemplates } from "./templates";
@@ -28,12 +34,14 @@ setupTemplates();
 // The GIF frame decoder is registered by default inside `<Diagram>`
 // (built-in `installGifAnimationAdapter`), so animated GIFs play out of the box.
 
+// The scene JSON and its binary files both live in IndexedDB (see
+// `idb-files`): localStorage's ~5 MB quota is exceeded by a large scene
+// (`QuotaExceededError` on every autosave). This localStorage key is read
+// on start as a seed / migration source — a scene found there wins over the
+// IndexedDB copy, is moved across, and the key is cleared. The e2e suite
+// and the reference fixtures seed scenes through it.
 const STORAGE_KEY = "oh-just-another-diagram-scene-v2";
-// Binary files (image / GIF bytes) live in IndexedDB (see `idb-files`):
-// `stringifyScene` omits `Scene.files` to keep scene.json small, and the
-// bytes can outgrow the localStorage quota, so they get their own store.
-// This key is only read once to migrate a sidecar written by an earlier
-// build into IndexedDB.
+// Legacy binary-file sidecar, migrated once into IndexedDB.
 const FILES_KEY = "oh-just-another-diagram-files-v1";
 
 // Autosave debounce. A pan / drag mutates the scene (viewport or shape
@@ -68,13 +76,33 @@ const migrateLegacyFiles = async (): Promise<void> => {
 const restoreScene = async (): Promise<Scene | undefined> => {
   if (typeof window === "undefined") return undefined;
   let saved: string | null = null;
+  let seeded = false;
   try {
     saved = localStorage.getItem(STORAGE_KEY);
+    seeded = saved !== null;
   } catch (err) {
     console.warn("[diagram] localStorage unavailable", err);
-    return undefined;
+  }
+  if (saved === null) {
+    try {
+      saved = await loadSceneJson();
+    } catch (err) {
+      console.warn("[diagram] indexedDB unavailable", err);
+      return undefined;
+    }
   }
   if (!saved) return undefined;
+  if (seeded) {
+    // Move the seed into IndexedDB and clear the small-quota key.
+    void saveSceneJson(saved).catch(() => {
+      /* best-effort */
+    });
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
   let parsed: Scene;
   try {
     parsed = parseScene(saved);
@@ -210,15 +238,13 @@ export const App = () => {
   // (add / remove image) — pan / move / typing never touch `files`, so
   // a viewport change never rewrites multi-megabyte bytes.
   const lastFilesRef = useRef<Scene["files"] | null>(null);
-  // Persist `s`: the scene JSON goes to localStorage (small — bytes are
-  // stripped), the binary assets go to IndexedDB. Safe to call from both
+  // Persist `s`: the scene JSON (bytes stripped) and the binary assets both
+  // go to IndexedDB. Safe to call from both
   // the debounce timer and an unload flush.
   const writeScene = useCallback((s: Scene) => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, stringifyScene(s));
-    } catch (err) {
+    void saveSceneJson(stringifyScene(s)).catch((err: unknown) => {
       console.warn("[diagram] could not persist scene", err);
-    }
+    });
     if (s.files === lastFilesRef.current) return;
     lastFilesRef.current = s.files;
     // Fire-and-forget — the bytes are already in memory, so a write that

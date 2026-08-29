@@ -88,6 +88,8 @@ import {
   type RenderTarget,
   type TextShaper,
   type Rasterizer,
+  DEFAULT_LOD,
+  type LodOptions,
 } from "@oh-just-another/renderer-core";
 import {
   History,
@@ -146,6 +148,9 @@ import {
   OBJECT_SNAP_THRESHOLD_PX,
   SIZE_SUGGEST_THRESHOLD_PX,
   DEFAULT_EDITOR_PREFERENCES,
+  FRAME_INTERVAL_MAX_MS,
+  REFRESH_PROBE_FRAMES,
+  REFRESH_PROBE_IDLE_MS,
   type EditorPreferences,
   type ImageAspectPreset,
   type DrawShapeKind,
@@ -330,6 +335,14 @@ import {
   type PlacementState,
 } from "./editor/public/placement.js";
 import { withLabel } from "./editor/public/label-seed.js";
+import {
+  INITIAL_FRAME_STATS,
+  probeGapMedian,
+  recordFrameCost,
+  recordFrameGap,
+  recordRefreshProbe,
+  type FrameStats,
+} from "./editor/frame-stats.js";
 import {
   computeConvertType,
   computeCommitImageCrop,
@@ -662,6 +675,16 @@ export class Editor {
    * The `subscribe()` set runs in lockstep with the typed events.
    */
   private readonly events: Emitter<EditorEvents> = createEmitter<EditorEvents>();
+  /** Level-of-detail thresholds handed to the main render pass. */
+  private _renderLod: LodOptions = DEFAULT_LOD;
+  /** Live frame-cost statistics; see {@link frameStats}. */
+  private _frameStats: FrameStats = INITIAL_FRAME_STATS;
+  /** Idle timer that starts a refresh probe once nothing has painted for a while. */
+  private refreshProbeTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Timestamps collected by the running refresh probe, or `null` when idle. */
+  private refreshProbe: number[] | null = null;
+  /** `performance.now()` at the start of the previous paint, for the frame-gap EMA. */
+  private lastPaintTs: number | null = null;
   /**
    * Last-emitted snapshot of every observable slice. Used by
    * `fanOutEvents` to decide which
@@ -863,7 +886,7 @@ export class Editor {
    * and the cached index's source-scene reference is stale (any scene
    * op replaces the `_scene` field, invalidating identity).
    */
-  private spatialIndexCache: { scene: Scene; index: SpatialGrid } | null = null;
+  private spatialIndexCache: { elements: Scene["elements"]; index: SpatialGrid } | null = null;
 
   /**
    * The group the user has "entered" via double-click. While set, the
@@ -5163,6 +5186,11 @@ export class Editor {
 
   /** Detach all DOM listeners and stop the actor. */
   dispose(): void {
+    if (this.refreshProbeTimer !== null) {
+      clearTimeout(this.refreshProbeTimer);
+      this.refreshProbeTimer = null;
+    }
+    this.refreshProbe = null;
     this.disposed = true;
     this.cancelLongPress();
     this.unbind();
@@ -5670,9 +5698,11 @@ export class Editor {
 
   /**
    * Build (or return the cached) `SpatialGrid` for the current scene.
-   * Re-built only when `_scene` reference changes — scene operations
-   * always produce a fresh object, so reference equality is a
-   * sufficient invalidation signal.
+   * Re-built only when the `elements` map identity changes — the grid
+   * indexes element bounds and nothing else, so a viewport change (every
+   * pan / zoom frame produces a fresh `Scene` with the same `elements`)
+   * must NOT rebuild it: on a 20 k scene that rebuild is ~20 % of the main
+   * thread while panning.
    *
    * Shared between the hit-test path (`acceleratedElementAt`) and the
    * renderer pass (passed to `renderScene` as `spatialIndex`), so
@@ -5680,9 +5710,9 @@ export class Editor {
    */
   public ensureSpatialIndex(): SpatialGrid {
     const cached = this.spatialIndexCache;
-    if (cached?.scene === this._scene) return cached.index;
+    if (cached?.elements === this._scene.elements) return cached.index;
     const index = buildSpatialIndex(this._scene);
-    this.spatialIndexCache = { scene: this._scene, index };
+    this.spatialIndexCache = { elements: this._scene.elements, index };
     return index;
   }
 
@@ -6966,6 +6996,28 @@ export class Editor {
    * `change`. For callers that only care about one dimension;
    * `subscribe()` fires in lock-step with these.
    */
+  /**
+   * Level-of-detail thresholds for the main pass ({@link LodOptions}):
+   * shapes smaller than `placeholderMaxScreenPx` on screen paint as flat
+   * fills, text below `minTextScreenPx` is skipped. Defaults to
+   * `DEFAULT_LOD`; hosts set their own to trade detail for speed.
+   */
+  get renderLod(): LodOptions {
+    return this._renderLod;
+  }
+  /** Set the LOD thresholds. Repaints everything, since they apply to every shape. */
+  setRenderLod(lod: LodOptions): void {
+    if (lod === this._renderLod) return;
+    this._renderLod = lod;
+    // Thresholds changed for every shape — drop the dirty diff so the next
+    // frame repaints the whole main layer (and the tile cache re-bakes).
+    this.lastRenderedScene = null;
+    this.scheduleRender();
+  }
+  /** Live render-cost statistics ({@link FrameStats}); also emitted as `frame`. */
+  get frameStats(): FrameStats {
+    return this._frameStats;
+  }
   on<K extends keyof EditorEvents>(event: K, fn: EditorEvents[K]): () => void {
     // Cast through `never`: TS can't prove that EditorEvents[K]
     // satisfies the emitter's `extends AnyListener ? T : never`
@@ -7074,6 +7126,7 @@ export class Editor {
       selectedAnnotation: this._selectedAnnotation,
       enteredGroup: this._enteredGroup,
       gridEnabled: this.gridEnabled,
+      lod: this._renderLod,
       viewportWorld: this.computeViewportWorld(),
       dirtyWorld: this.computeDirtyWorld(),
       dimElements: this.computeDimSet(),
@@ -7161,7 +7214,17 @@ export class Editor {
     // the process-global module clock each frame — so concurrent editors keep
     // independent playback.
     const snapshot = this.buildRenderSnapshot();
+    const t0 = performance.now();
+    if (this.lastPaintTs !== null) {
+      this._frameStats = recordFrameGap(
+        this._frameStats,
+        t0 - this.lastPaintTs,
+        FRAME_INTERVAL_MAX_MS,
+      );
+    }
+    this.lastPaintTs = t0;
     renderEditor(snapshot);
+    this._frameStats = recordFrameCost(this._frameStats, performance.now() - t0);
     // Bookkeeping the orchestrator used to do inline: record what we just
     // painted (for the next frame's dirty diff / isolation-transition check)
     // and, on the tile-cache path, clear the consumed dirty set.
@@ -7187,6 +7250,47 @@ export class Editor {
     // Present AFTER the paint, on the same tick — deferred-submission
     // surfaces (WebGL2 / OffscreenCanvas) would otherwise lag one frame.
     this.onAfterRender?.();
+    this.events.emit("frame", this._frameStats);
+    // A paint means we are busy — cancel a running probe (its gaps would
+    // include our work) and re-arm the idle countdown.
+    this.refreshProbe = null;
+    this.armRefreshProbe();
+  }
+  /**
+   * Measure the display refresh rate with a probe of empty rAF callbacks,
+   * started only after `REFRESH_PROBE_IDLE_MS` without a paint so nothing
+   * of ours stretches the gaps. Measuring inside the render loop is hopeless:
+   * expensive frames and main-thread work make rAF fire at the achieved
+   * frame rate, not the panel's. Runs once per idle period.
+   */
+  private armRefreshProbe(): void {
+    if (this.refreshProbeTimer !== null) clearTimeout(this.refreshProbeTimer);
+    this.refreshProbeTimer = null;
+    if (this.disposed || typeof requestAnimationFrame === "undefined") return;
+    this.refreshProbeTimer = setTimeout(() => {
+      this.refreshProbeTimer = null;
+      if (this.disposed || this.refreshProbe !== null) return;
+      const stamps: number[] = [];
+      this.refreshProbe = stamps;
+      const tick = (ts: number): void => {
+        // Aborted by a paint (`refreshProbe` reset) or by disposal.
+        if (this.refreshProbe !== stamps || this.disposed) return;
+        stamps.push(ts);
+        if (stamps.length < REFRESH_PROBE_FRAMES) {
+          requestAnimationFrame(tick);
+          return;
+        }
+        this.refreshProbe = null;
+        const median = probeGapMedian(stamps);
+        if (median === null) return;
+        const next = recordRefreshProbe(this._frameStats, median);
+        if (next.intervalMs !== this._frameStats.intervalMs) {
+          this._frameStats = next;
+          this.events.emit("frame", this._frameStats);
+        }
+      };
+      requestAnimationFrame(tick);
+    }, REFRESH_PROBE_IDLE_MS);
   }
 }
 

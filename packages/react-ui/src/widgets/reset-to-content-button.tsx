@@ -18,7 +18,11 @@ import { ROW_ICON } from "../core/constants.js";
 export const ResetToContentButton = () => {
   const editor = useDiagramOptional();
   const scene = useScene();
-  const isOff = useMemo(() => isContentOffscreen(scene), [scene]);
+  // The content AABB is O(elements); a pan / zoom frame produces a new
+  // `scene` with the same `elements` map, so key the walk on the map — on a
+  // 20 k scene walking it per frame was ~10 % of the main thread.
+  const content = useMemo(() => contentBounds(scene.elements), [scene.elements]);
+  const isOff = useMemo(() => isContentOffscreen(scene, content), [scene, content]);
   if (!editor || scene.elements.size === 0 || !isOff) return null;
   return (
     <button
@@ -41,16 +45,23 @@ export const ResetToContentButton = () => {
  * counts as visible — only fully-off-screen content triggers the
  * prompt. Empty scene → `false`.
  */
-const isContentOffscreen = (scene: ReturnType<typeof useScene>): boolean => {
-  if (scene.elements.size === 0) return false;
-  const vp = scene.viewport;
-  if (vp.size.width <= 0 || vp.size.height <= 0) return false;
+/** Union AABB of every element, or `null` for an empty scene. */
+const contentBounds = (elements: ReturnType<typeof useScene>["elements"]): Bounds | null => {
   let combined: Bounds | null = null;
-  for (const s of scene.elements.values()) {
+  for (const s of elements.values()) {
     const b = getElementWorldBounds(s);
     combined = combined ? B.union(combined, b) : b;
   }
+  return combined;
+};
+
+const isContentOffscreen = (
+  scene: ReturnType<typeof useScene>,
+  combined: Bounds | null,
+): boolean => {
   if (!combined) return false;
+  const vp = scene.viewport;
+  if (vp.size.width <= 0 || vp.size.height <= 0) return false;
   // Project the viewport rect into world coords; check intersection.
   const s2w = getScreenToWorld(vp);
   const tl = matrix.applyToPoint(s2w, { x: 0, y: 0 });

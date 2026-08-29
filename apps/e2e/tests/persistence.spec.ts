@@ -15,14 +15,52 @@ import { expect, test } from "@playwright/test";
  * selection cycle.
  */
 
+// The playground autosaves the scene JSON into IndexedDB (database
+// `oh-just-another-diagram`, store `scene`, key `current` — see
+// apps/playground/src/idb-files.ts); localStorage only seeds a scene.
+const readStoredScene = (): Promise<string | null> =>
+  new Promise((resolve, reject) => {
+    const req = indexedDB.open("oh-just-another-diagram");
+    req.onerror = () => {
+      reject(req.error ?? new Error("open failed"));
+    };
+    req.onsuccess = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("scene")) {
+        db.close();
+        resolve(null);
+        return;
+      }
+      const get = db.transaction("scene", "readonly").objectStore("scene").get("current");
+      get.onsuccess = () => {
+        db.close();
+        resolve(typeof get.result === "string" ? get.result : null);
+      };
+      get.onerror = () => {
+        db.close();
+        reject(get.error ?? new Error("read failed"));
+      };
+    };
+  });
+
 test("persistence: created shape survives a hard reload", async ({ page }) => {
   // Fresh storage for this test — cleared once, NOT via addInitScript
   // (an init script re-runs on every navigation and would wipe the
   // autosave during the reload this test is about).
   await page.goto("/");
-  await page.evaluate(() => {
-    window.localStorage.clear();
-  });
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        window.localStorage.clear();
+        const req = indexedDB.deleteDatabase("oh-just-another-diagram");
+        req.onsuccess =
+          req.onerror =
+          req.onblocked =
+            () => {
+              resolve();
+            };
+      }),
+  );
   await page.reload();
   await page.waitForLoadState("networkidle");
 
@@ -33,33 +71,27 @@ test("persistence: created shape survives a hard reload", async ({ page }) => {
   await page.keyboard.press("r");
   await page.keyboard.press("Enter");
   // The autosave is debounced — poll for the write instead of a fixed sleep.
-  await page.waitForFunction(
-    () => (window.localStorage.getItem("oh-just-another-diagram-scene-v2")?.length ?? 0) > 20,
-  );
+  await expect.poll(() => page.evaluate(readStoredScene), { timeout: 10_000 }).not.toBeNull();
 
-  // Read storage directly — autosave key from apps/playground/src/App.tsx.
-  const stored = await page.evaluate(() =>
-    window.localStorage.getItem("oh-just-another-diagram-scene-v2"),
-  );
+  const stored = await page.evaluate(readStoredScene);
   expect(stored, "autosave should have written a scene").toBeTruthy();
   expect(stored!.length).toBeGreaterThan(20);
 
   await page.reload();
   await page.waitForLoadState("networkidle");
 
-  // Storage should still be there after reload.
-  const afterReload = await page.evaluate(() =>
-    window.localStorage.getItem("oh-just-another-diagram-scene-v2"),
-  );
+  // Storage should still be there after reload, and the scene restored.
+  const afterReload = await page.evaluate(readStoredScene);
   expect(afterReload).toBe(stored);
-
-  // Cycle keyboard focus to confirm the restored scene exposes selectable
-  // shapes — Tab + Enter inside the editor mode picks the first focusable
-  // shape. This just checks a no-throw boot path; the assertion above
-  // already proves persistence happened.
-  await page.getByRole("application").click({ position: { x: 300, y: 300 } });
-  await page.keyboard.press("Tab");
-  await expect(page.locator("body")).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { __editor?: { scene: { elements: { size: number } } } }).__editor
+            ?.scene.elements.size ?? 0,
+      ),
+    )
+    .toBe(1);
 });
 
 test("renderer-mode persistence: query string survives reload via dropdown", async ({ page }) => {
