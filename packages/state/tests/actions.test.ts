@@ -429,6 +429,34 @@ describe("defaultActionRegistry built-ins", () => {
     expect(defaultActionRegistry.dispatchHotkey(keyEv("Enter", 0), { editor })).toBe(false);
   });
 
+  it("R then Enter creates a rectangle at the viewport centre and selects it", () => {
+    const editor = makeEditor();
+    editor.setViewportSize(800, 600);
+    const before = editor.scene.elements.size;
+    expect(defaultActionRegistry.dispatchHotkey(keyEv("r", 0), { editor })).toBe(true);
+    expect(editor.activeTool.type).toBe("draw-rect");
+    expect(defaultActionRegistry.dispatchHotkey(keyEv("Enter", 0), { editor })).toBe(true);
+    expect(editor.scene.elements.size).toBe(before + 1);
+    const [id] = [...editor.selection];
+    const created = editor.scene.elements.get(id!)!;
+    expect(created.type).toBe("rectangle");
+    const centre = editor.screenToWorld({ x: 400, y: 300 });
+    const w = (created as { width: number }).width;
+    const h = (created as { height: number }).height;
+    expect(created.position.x + w / 2).toBeCloseTo(centre.x, 3);
+    expect(created.position.y + h / 2).toBeCloseTo(centre.y, 3);
+  });
+
+  it("Tab focus cycle announces the element's name and its position in the order", () => {
+    const editor = makeEditor();
+    const announced: string[] = [];
+    editor.onAnnounce((m) => announced.push(m));
+    expect(defaultActionRegistry.dispatchHotkey(keyEv("Tab", 0), { editor })).toBe(true);
+    expect(announced.at(-1)).toBe("Selected Rectangle, 1 of 2");
+    defaultActionRegistry.dispatchHotkey(keyEv("Tab", 0), { editor });
+    expect(announced.at(-1)).toBe("Selected Rectangle, 2 of 2");
+  });
+
   it("arrange actions require a multi-selection", () => {
     const editor = makeEditor();
     expect(defaultActionRegistry.dispatch("arrange-grid", { editor })).toBe(false);

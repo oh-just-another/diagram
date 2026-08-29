@@ -29,6 +29,24 @@ describe("getElementAccessibleName", () => {
     expect(getElementAccessibleName(rect)).toBe("Rectangle");
   });
 
+  it("appends a shape's label so focus cycling reads the content", () => {
+    const labelled: Element = {
+      ...baseFields,
+      id: elementId("b"),
+      type: "rectangle",
+      width: 10,
+      height: 10,
+      label: { text: "  Item   3 ", fontFamily: "sans", fontSize: 12 },
+    };
+    expect(getElementAccessibleName(labelled)).toBe('Rectangle "Item 3"');
+    const long = {
+      ...labelled,
+      label: { text: "x".repeat(100), fontFamily: "sans", fontSize: 12 },
+    } as Element;
+    expect(getElementAccessibleName(long).length).toBeLessThanOrEqual('Rectangle ""'.length + 80);
+    expect(getElementAccessibleName(long).endsWith('…"')).toBe(true);
+  });
+
   it("uses text body for text shapes", () => {
     const text: Element = {
       ...baseFields,
