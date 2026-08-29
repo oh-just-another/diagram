@@ -11,6 +11,9 @@ import {
   endpointElementId,
   anchorSnapper,
   apply,
+  setViewport,
+  canvasBackgroundOf,
+  type Viewport,
   buildSpatialIndex,
   isElementHidden,
   isElementLocked,
@@ -4938,6 +4941,28 @@ export class Editor {
     const next = computeSetGrid(this._scene, patch);
     if (!next) return;
     this._scene = next;
+    this.notify();
+  }
+
+  /** The canvas paper colour (`viewport.background`, defaulted). */
+  get canvasBackground(): string {
+    return canvasBackgroundOf(this._scene.viewport);
+  }
+
+  /**
+   * Set the canvas paper colour; `null` restores the default. Part of the
+   * document (persists in the viewport, reaches "with background" exports)
+   * and of history — undo brings the previous colour back.
+   */
+  setCanvasBackground(color: string | null): void {
+    const next = color ?? undefined;
+    if (this._scene.viewport.background === next) return;
+    const { background: _dropped, ...rest } = this._scene.viewport;
+    void _dropped;
+    const viewport: Viewport = next === undefined ? rest : { ...rest, background: next };
+    const { scene, patch } = setViewport(this._scene, viewport);
+    this._scene = scene;
+    this._history.push(patch);
     this.notify();
   }
 

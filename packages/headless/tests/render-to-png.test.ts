@@ -58,3 +58,21 @@ describe("renderToPng", () => {
     expect(white).not.toEqual(red);
   });
 });
+
+describe("renderToPng background", () => {
+  it("paints the scene's paper colour unless an explicit background is given", async () => {
+    let scene = sceneOf(40, 30);
+    ({ scene } = addElement(scene, rect("a", 5, 5, 10, 10)));
+    const plain = await renderToPng(scene);
+    const paper = await renderToPng({
+      ...scene,
+      viewport: { ...scene.viewport, background: "#000000" },
+    });
+    const explicit = await renderToPng(
+      { ...scene, viewport: { ...scene.viewport, background: "#000000" } },
+      { background: "#ffffff" },
+    );
+    expect(Buffer.from(paper).equals(Buffer.from(plain))).toBe(false);
+    expect(Buffer.from(explicit).equals(Buffer.from(plain))).toBe(true);
+  });
+});

@@ -104,9 +104,14 @@ export const openSceneFile = (editor: Editor): void => {
 };
 
 /**
- * Read the host's current `--du-canvas-bg` CSS variable (falls back to
- * white). Matches what the user sees behind the shapes on the live canvas.
+ * Background for "with background" exports: the scene's own paper colour
+ * when set, else the host's current `--du-canvas-bg` CSS variable (falls
+ * back to white). Matches what the user sees behind the shapes.
  */
+const exportBackgroundColor = (scene: Scene): string =>
+  scene.viewport.background ?? readCanvasBackgroundColor();
+
+/** The host's current `--du-canvas-bg` CSS variable (falls back to white). */
 const readCanvasBackgroundColor = (): string => {
   if (typeof document === "undefined") return "#ffffff";
   const probe = document.querySelector('canvas[data-layer="main"]') ?? document.body;
@@ -127,7 +132,7 @@ export const downloadPng = async (
   const blob = await exportSceneToPng(editor.scene, {
     background,
     scale: PNG_EXPORT_SCALE,
-    backgroundColor: readCanvasBackgroundColor(),
+    backgroundColor: exportBackgroundColor(editor.scene),
     ...(content ? { content } : {}),
   });
   if (!blob) {
@@ -193,7 +198,7 @@ export const copySceneAsImage = async (editor: Editor): Promise<void> => {
   const blob = await exportSceneToPng(editor.scene, {
     background: "color",
     scale: PNG_EXPORT_SCALE,
-    backgroundColor: readCanvasBackgroundColor(),
+    backgroundColor: exportBackgroundColor(editor.scene),
   });
   if (!blob) {
     notify("Nothing to copy — the canvas is empty.");
@@ -223,7 +228,7 @@ export const copySelectionAsPng = async (editor: Editor): Promise<void> => {
   const blob = await exportSceneToPng(scene, {
     background: "transparent",
     scale: PNG_EXPORT_SCALE,
-    backgroundColor: readCanvasBackgroundColor(),
+    backgroundColor: exportBackgroundColor(editor.scene),
   });
   if (!blob) {
     notify("Nothing to copy — select something first.");

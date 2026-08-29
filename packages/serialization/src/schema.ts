@@ -365,6 +365,8 @@ const ViewportZ = z
     gridStyle: z.enum(["lines", "dots"]).optional(),
     snapToGrid: z.boolean().optional(),
     startView: z.object({ pan: Vec2Z, zoom: z.number() }).strict().optional(),
+    // Canvas paper colour (any CSS colour). Additive — older scenes lack it.
+    background: z.string().optional(),
   })
   .strict();
 

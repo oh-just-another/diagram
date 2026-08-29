@@ -19,6 +19,7 @@ export const VIEWPORT_SCOPE = {
   gridStyle: "export",
   snapToGrid: "export",
   startView: "export",
+  background: "export",
 } as const satisfies Record<keyof Viewport, SettingScope>;
 
 const VIEWPORT_KEYS = Object.keys(VIEWPORT_SCOPE) as (keyof Viewport)[];
