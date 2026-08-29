@@ -169,6 +169,27 @@ describe("multi-selection toolbar = intersection of control sets", () => {
   });
 });
 
+describe("multi-selection screen-reader summary", () => {
+  it("the toolbar is described by the count and the first three types", () => {
+    const editor = mountEditor(rect("a"), rect("b", 100), text, frame);
+    editor.setSelection([elementId("a"), elementId("b"), text.id, frame.id]);
+    const { container } = renderPanel(editor);
+    const toolbar = container.querySelector('[role="toolbar"]')!;
+    expect(toolbar.getAttribute("aria-label")).toBe("Selection");
+    const descId = toolbar.getAttribute("aria-describedby")!;
+    expect(document.getElementById(descId)?.textContent).toBe("4 elements: rectangle, text, frame");
+  });
+
+  it("a single selection has no summary", () => {
+    const editor = mountEditor(rect("a"));
+    editor.setSelection([elementId("a")]);
+    const { container } = renderPanel(editor);
+    expect(
+      container.querySelector('[role="toolbar"]')?.getAttribute("aria-describedby"),
+    ).toBeNull();
+  });
+});
+
 describe("group toolbar", () => {
   it("a selected group shows its children's shared controls, Ungroup (no Group), no comment", () => {
     const editor = mountEditor(rect("a"), rect("b", 100));

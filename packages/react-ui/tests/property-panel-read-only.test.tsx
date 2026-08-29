@@ -4,8 +4,8 @@
  * render nothing — every control mutates the selection, so a viewer gets no
  * edit affordance at all. Navigation stays elsewhere (toolbar zoom, etc.).
  */
-import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render } from "@testing-library/react";
 import { elementId } from "@oh-just-another/types";
 import {
   DEFAULT_LAYER_ID,
@@ -24,6 +24,8 @@ import {
 } from "../src/index";
 
 installBuiltinRenderers();
+
+afterEach(cleanup);
 
 const rect: Element = {
   id: elementId("r1"),
