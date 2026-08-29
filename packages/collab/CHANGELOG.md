@@ -1,5 +1,11 @@
 # @oh-just-another/collab
 
+## 0.59.7
+
+### Patch Changes
+
+- @oh-just-another/state@0.67.2
+
 ## 0.59.6
 
 ### Patch Changes

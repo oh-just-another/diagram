@@ -1,5 +1,12 @@
 # @oh-just-another/templates
 
+## 0.59.1
+
+### Patch Changes
+
+- Updated dependencies [f293c80]
+  - @oh-just-another/renderer-core@0.62.0
+
 ## 0.59.0
 
 ### Minor Changes

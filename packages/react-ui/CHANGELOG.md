@@ -1,5 +1,17 @@
 # @oh-just-another/react-ui
 
+## 0.64.2
+
+### Patch Changes
+
+- f293c80: Sticky reaction chrome (pills and the "+" button) now hides by on-screen size instead of a fixed zoom: `STICKY_REACTION_MIN_SCREEN_PX` (80 px on the note's shorter side) replaces `STICKY_REACTION_MIN_ZOOM`, and `stickyReactionChromeVisible(shape, zoom)` is exported for hosts. A large note keeps its reactions at a zoom where a small one already hides them; the click-zone overlay follows per note.
+- Updated dependencies [f293c80]
+  - @oh-just-another/renderer-core@0.62.0
+  - @oh-just-another/renderer-canvas@0.62.4
+  - @oh-just-another/renderer-svg@0.58.4
+  - @oh-just-another/state@0.67.2
+  - @oh-just-another/templates@0.59.1
+
 ## 0.64.1
 
 ### Patch Changes

@@ -1,5 +1,20 @@
 # @oh-just-another/editor
 
+## 0.65.2
+
+### Patch Changes
+
+- Updated dependencies [f293c80]
+  - @oh-just-another/renderer-core@0.62.0
+  - @oh-just-another/react-ui@0.64.2
+  - @oh-just-another/raster-wasm@0.57.10
+  - @oh-just-another/renderer-canvas@0.62.4
+  - @oh-just-another/renderer-svg@0.58.4
+  - @oh-just-another/state@0.67.2
+  - @oh-just-another/templates@0.59.1
+  - @oh-just-another/text-wasm@0.57.10
+  - @oh-just-another/importers@0.61.2
+
 ## 0.65.1
 
 ### Patch Changes
