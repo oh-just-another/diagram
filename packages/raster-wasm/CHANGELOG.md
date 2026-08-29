@@ -1,5 +1,12 @@
 # @oh-just-another/raster-wasm
 
+## 0.57.7
+
+### Patch Changes
+
+- Updated dependencies [8f0ec5d]
+  - @oh-just-another/renderer-core@0.61.1
+
 ## 0.57.6
 
 ### Patch Changes

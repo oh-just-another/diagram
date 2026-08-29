@@ -1,5 +1,11 @@
 # @oh-just-another/diagram-svelte
 
+## 0.3.5
+
+### Patch Changes
+
+- @oh-just-another/diagram@0.3.4
+
 ## 0.3.4
 
 ### Patch Changes

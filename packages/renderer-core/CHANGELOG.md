@@ -1,5 +1,11 @@
 # @oh-just-another/renderer-core
 
+## 0.61.1
+
+### Patch Changes
+
+- 8f0ec5d: Remove the unused `LOD_THRESHOLD` export — the tile compositor never read it; screen-size LOD (`LodOptions`) is the only level-of-detail mechanism.
+
 ## 0.61.0
 
 ### Minor Changes

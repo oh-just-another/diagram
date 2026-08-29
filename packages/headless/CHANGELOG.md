@@ -1,5 +1,11 @@
 # @oh-just-another/headless
 
+## 0.58.5
+
+### Patch Changes
+
+- @oh-just-another/renderer-svg@0.58.1
+
 ## 0.58.4
 
 ### Patch Changes

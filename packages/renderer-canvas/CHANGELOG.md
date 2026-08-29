@@ -1,5 +1,14 @@
 # @oh-just-another/renderer-canvas
 
+## 0.62.1
+
+### Patch Changes
+
+- fc09e7c: Fix a WebGL2 hang when a frame draws more distinct bitmap-text strings than the image-texture cache cap (e.g. the first frame of a large scene before the MSDF atlas is warm): text-bitmap textures no longer count against the image LRU, whose eviction loop could never terminate.
+- Updated dependencies [8f0ec5d]
+  - @oh-just-another/renderer-core@0.61.1
+  - @oh-just-another/text-wasm@0.57.7
+
 ## 0.62.0
 
 ### Minor Changes
