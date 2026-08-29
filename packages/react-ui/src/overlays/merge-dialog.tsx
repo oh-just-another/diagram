@@ -9,6 +9,7 @@ import {
   type VersionId,
 } from "@oh-just-another/versioning";
 import { Modal } from "../primitives/modal.js";
+import { MERGE_DIALOG_WIDTH_PX } from "../core/constants.js";
 
 /**
  * Modal that drives a three-way branch merge. The host supplies the
@@ -68,7 +69,7 @@ export const MergeDialog = ({
       onClose={onCancel}
       title="Merge branches"
       style={{
-        width: 480,
+        width: MERGE_DIALOG_WIDTH_PX,
         maxHeight: "80vh",
         display: "flex",
         flexDirection: "column",

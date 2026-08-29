@@ -139,6 +139,14 @@ import {
   TEXT_FONT_STACKS,
   EMOJI_QUICK_PICKS,
   IMAGE_MASK_DEFAULT_RADIUS,
+  IMAGE_MASK_RADIUS_MAX_PCT,
+  IMAGE_MASK_RADIUS_STEP_PCT,
+  OPACITY_SLIDER_STEP,
+  STROKE_DASH_PRESETS,
+  DOTTED_DASH_MAX_SEGMENT,
+  STROKE_WIDTH_PRESETS,
+  STROKE_WIDTH_PRESET_ICON_THICKNESS,
+  SWATCH_POPOVER_GAP_PX,
   CONTROL_ICON,
   SELECTION_DESCRIPTION_TYPES,
 } from "../core/constants.js";
@@ -795,7 +803,7 @@ const MoreButton = () => {
       aria-label="More actions"
       onClick={(ev) => {
         const rect = ev.currentTarget.getBoundingClientRect();
-        const screenPoint = { x: rect.left, y: rect.bottom + 4 };
+        const screenPoint = { x: rect.left, y: rect.bottom + SWATCH_POPOVER_GAP_PX };
         const host = editor.hostElement as HTMLElement | null;
         const hostRect = host?.getBoundingClientRect();
         const worldPoint = hostRect
@@ -942,7 +950,7 @@ const ColorOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase
           value={pct}
           min={0}
           max={100}
-          step={5}
+          step={OPACITY_SLIDER_STEP}
           ariaLabel="Opacity"
           valueLabel={pct === null ? "—" : `${pct}%`}
           onChange={(v) => {
@@ -1150,9 +1158,12 @@ const BorderGroupControl = ({ shapes }: { readonly shapes: readonly ElementBase[
           ariaLabel="Border width"
           value={width}
           options={[
-            { value: 1, label: "Thin", icon: <StrokeWidthIcon thickness={1} /> },
-            { value: 2, label: "Medium", icon: <StrokeWidthIcon thickness={2.5} /> },
-            { value: 4, label: "Thick", icon: <StrokeWidthIcon thickness={4} /> },
+            ...STROKE_WIDTH_PRESETS.map((p, i) => ({
+              ...p,
+              icon: (
+                <StrokeWidthIcon thickness={STROKE_WIDTH_PRESET_ICON_THICKNESS[i] ?? p.value} />
+              ),
+            })),
           ]}
           onChange={(v) => {
             editor.updateStyle(ids, { strokeWidth: v });
@@ -1173,7 +1184,12 @@ const BorderGroupControl = ({ shapes }: { readonly shapes: readonly ElementBase[
           ]}
           onChange={(v) => {
             editor.updateStyle(ids, {
-              dashArray: v === "solid" ? [] : v === "dashed" ? [8, 4] : [2, 4],
+              dashArray:
+                v === "solid"
+                  ? []
+                  : v === "dashed"
+                    ? [...STROKE_DASH_PRESETS.dashed]
+                    : [...STROKE_DASH_PRESETS.dotted],
             });
           }}
         />
@@ -1246,7 +1262,7 @@ const FillOpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[
           value={pct}
           min={0}
           max={100}
-          step={5}
+          step={OPACITY_SLIDER_STEP}
           ariaLabel="Fill opacity"
           valueLabel={pct === null ? "—" : `${String(pct)}%`}
           onChange={(v) => {
@@ -2048,7 +2064,7 @@ const OpacityControl = ({ shapes }: { readonly shapes: readonly ElementBase[] })
           value={percent}
           min={0}
           max={100}
-          step={5}
+          step={OPACITY_SLIDER_STEP}
           ariaLabel="Opacity"
           valueLabel={label}
           onChange={(v) => {
@@ -2413,8 +2429,8 @@ const MaskControl = ({ shapes }: { readonly shapes: readonly ElementBase[] }) =>
           <Slider
             value={Math.round(radius * 100)}
             min={0}
-            max={50}
-            step={5}
+            max={IMAGE_MASK_RADIUS_MAX_PCT}
+            step={IMAGE_MASK_RADIUS_STEP_PCT}
             ariaLabel="Corner radius"
             valueLabel={`${String(Math.round(radius * 100))}%`}
             onChange={(v) => {
@@ -2491,9 +2507,10 @@ const LinkStrokeWidthControl = ({ edge }: { readonly edge: Link }) => {
       ariaLabel="Link stroke width"
       value={value}
       options={[
-        { value: 1, label: "Thin", icon: <StrokeWidthIcon thickness={1} /> },
-        { value: 2, label: "Medium", icon: <StrokeWidthIcon thickness={2.5} /> },
-        { value: 4, label: "Thick", icon: <StrokeWidthIcon thickness={4} /> },
+        ...STROKE_WIDTH_PRESETS.map((p, i) => ({
+          ...p,
+          icon: <StrokeWidthIcon thickness={STROKE_WIDTH_PRESET_ICON_THICKNESS[i] ?? p.value} />,
+        })),
       ]}
       onChange={(v) => {
         editor.updateSelectedLink((e) => ({
@@ -2512,7 +2529,7 @@ const LinkStrokeStyleControl = ({ edge }: { readonly edge: Link }) => {
   const value: "solid" | "dashed" | "dotted" = (() => {
     if (!da || da.length === 0) return "solid";
     const first = da[0] ?? 0;
-    return first <= 3 ? "dotted" : "dashed";
+    return first <= DOTTED_DASH_MAX_SEGMENT ? "dotted" : "dashed";
   })();
   return (
     <SegmentedControl<"solid" | "dashed" | "dotted">
@@ -2524,7 +2541,12 @@ const LinkStrokeStyleControl = ({ edge }: { readonly edge: Link }) => {
         { value: "dotted", label: "Dotted", icon: <SquareDot {...CONTROL_ICON} /> },
       ]}
       onChange={(v) => {
-        const dashArray = v === "solid" ? [] : v === "dashed" ? [8, 4] : [2, 4];
+        const dashArray =
+          v === "solid"
+            ? []
+            : v === "dashed"
+              ? [...STROKE_DASH_PRESETS.dashed]
+              : [...STROKE_DASH_PRESETS.dotted];
         editor.updateSelectedLink((e) => ({
           ...e,
           style: { ...e.style, dashArray },

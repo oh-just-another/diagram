@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDiagramOptional } from "../core/hooks.js";
 import { usePortalContainer } from "../core/portal-container.js";
+import { LINK_CAPTION_EDITOR_MAX_ROWS } from "../core/constants.js";
 
 /**
  * Inline editor for a link's caption. Opens on double-click of a link
@@ -56,7 +57,7 @@ export const LinkCaptionEditor = () => {
 
   // Grow with the content: one visual row per line, capped so a long caption
   // doesn't cover half the canvas while being edited.
-  const rows = Math.min(5, value.split("\n").length);
+  const rows = Math.min(LINK_CAPTION_EDITOR_MAX_ROWS, value.split("\n").length);
 
   return createPortal(
     <textarea

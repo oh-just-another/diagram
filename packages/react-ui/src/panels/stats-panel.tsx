@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { defaultActionRegistry } from "@oh-just-another/state";
 import { useDiagramOptional } from "../core/hooks.js";
+import { FLOATING_OVERLAY_TOP_PX } from "../core/constants.js";
 
 /**
  * Read-only stats / dimensions overlay (`⌥/`). A small corner card showing
@@ -101,7 +102,7 @@ const Row = ({
 
 const PANEL_STYLE: CSSProperties = {
   position: "absolute",
-  top: 64,
+  top: FLOATING_OVERLAY_TOP_PX,
   right: 12,
   minWidth: 148,
   padding: "8px 10px",

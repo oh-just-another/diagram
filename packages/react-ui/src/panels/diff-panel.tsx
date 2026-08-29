@@ -7,6 +7,7 @@ import {
 } from "@oh-just-another/scene";
 import { renderSceneToSvg } from "@oh-just-another/renderer-svg";
 import { DIFF_COLORS } from "@oh-just-another/tokens";
+import { DIFF_PANEL_HEIGHT_PX, DIFF_PANEL_WIDTH_PX } from "../core/constants.js";
 
 /**
  * Side-by-side scene comparison. Renders two snapshots to SVG via the
@@ -31,9 +32,6 @@ export interface DiffPanelProps {
   readonly style?: CSSProperties;
 }
 
-const PANEL_WIDTH = 480;
-const PANEL_HEIGHT = 360;
-
 export const DiffPanel = ({
   left,
   right,
@@ -44,11 +42,11 @@ export const DiffPanel = ({
 }: DiffPanelProps) => {
   const diff = useMemo(() => diffSceneElements(left, right), [left, right]);
   const leftSvg = useMemo(
-    () => renderSceneToSvg(left, { width: PANEL_WIDTH, height: PANEL_HEIGHT }),
+    () => renderSceneToSvg(left, { width: DIFF_PANEL_WIDTH_PX, height: DIFF_PANEL_HEIGHT_PX }),
     [left],
   );
   const rightSvg = useMemo(
-    () => renderSceneToSvg(right, { width: PANEL_WIDTH, height: PANEL_HEIGHT }),
+    () => renderSceneToSvg(right, { width: DIFF_PANEL_WIDTH_PX, height: DIFF_PANEL_HEIGHT_PX }),
     [right],
   );
 
@@ -120,8 +118,8 @@ const SideView = ({
   };
   const figureStyle: CSSProperties = {
     position: "relative",
-    width: PANEL_WIDTH,
-    height: PANEL_HEIGHT,
+    width: DIFF_PANEL_WIDTH_PX,
+    height: DIFF_PANEL_HEIGHT_PX,
     background: "var(--surface, #fff)",
     border: "1px solid var(--border, #2a2a2a)",
     borderRadius: 4,
@@ -145,7 +143,7 @@ const SideView = ({
         <div dangerouslySetInnerHTML={{ __html: svg }} style={{ position: "absolute", inset: 0 }} />
         <svg
           style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
-          viewBox={`0 0 ${PANEL_WIDTH} ${PANEL_HEIGHT}`}
+          viewBox={`0 0 ${DIFF_PANEL_WIDTH_PX} ${DIFF_PANEL_HEIGHT_PX}`}
         >
           {overlays.map((m) => (
             <rect
