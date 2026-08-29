@@ -1,5 +1,17 @@
 # @oh-just-another/templates
 
+## 0.59.0
+
+### Minor Changes
+
+- bb878d3: `Template.description` — an optional geometry hint ("Diamond", "Parallelogram") read by assistive tech next to the template name; the built-in flowchart / sticky / emoji templates set it.
+
+### Patch Changes
+
+- Updated dependencies [7f26f79]
+  - @oh-just-another/scene@0.63.1
+  - @oh-just-another/renderer-core@0.61.3
+
 ## 0.58.2
 
 ### Patch Changes

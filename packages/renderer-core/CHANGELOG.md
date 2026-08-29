@@ -1,5 +1,12 @@
 # @oh-just-another/renderer-core
 
+## 0.61.3
+
+### Patch Changes
+
+- Updated dependencies [7f26f79]
+  - @oh-just-another/scene@0.63.1
+
 ## 0.61.2
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @oh-just-another/diagram-vue
 
+## 0.3.10
+
+### Patch Changes
+
+- Updated dependencies [7f26f79]
+  - @oh-just-another/scene@0.63.1
+  - @oh-just-another/diagram@0.3.9
+
 ## 0.3.9
 
 ### Patch Changes

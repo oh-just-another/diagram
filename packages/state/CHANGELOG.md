@@ -1,5 +1,15 @@
 # @oh-just-another/state
 
+## 0.67.1
+
+### Patch Changes
+
+- 4aec396: Accessibility: `focusCycle` announces the element's name and position ("Selected Rectangle "Item 3", 2 of 10"); resolved annotation pins draw a ✓ glyph instead of the count badge; the selected-link halo gets an opaque contrast ring (`SELECTION_HALO_CONTRAST_STROKE` / `_PX`) so it reads in monochrome themes.
+- Updated dependencies [7f26f79]
+  - @oh-just-another/scene@0.63.1
+  - @oh-just-another/history@0.57.7
+  - @oh-just-another/renderer-core@0.61.3
+
 ## 0.67.0
 
 ### Minor Changes

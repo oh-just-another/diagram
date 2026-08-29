@@ -1,5 +1,21 @@
 # @oh-just-another/react-ui
 
+## 0.64.1
+
+### Patch Changes
+
+- 199e270: Accessibility: palette items are focusable (`tabIndex=0`), named `<name>, <hint>, draggable` and place their shape on Enter / Space; the selection toolbar is a `role="toolbar"` named "Selection" with an `aria-describedby` summary of a multi-selection (`describeSelection`).
+- Updated dependencies [7f26f79]
+- Updated dependencies [4aec396]
+- Updated dependencies [bb878d3]
+  - @oh-just-another/scene@0.63.1
+  - @oh-just-another/state@0.67.1
+  - @oh-just-another/templates@0.59.0
+  - @oh-just-another/renderer-canvas@0.62.3
+  - @oh-just-another/renderer-core@0.61.3
+  - @oh-just-another/renderer-svg@0.58.3
+  - @oh-just-another/versioning@0.57.7
+
 ## 0.64.0
 
 ### Minor Changes
