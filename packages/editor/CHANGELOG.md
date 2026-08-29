@@ -1,5 +1,11 @@
 # @oh-just-another/editor
 
+## 0.63.1
+
+### Patch Changes
+
+- e2852f8: The main menu's "Start view" row enables right after "Set current view as start" instead of staying disabled until the next re-render.
+
 ## 0.63.0
 
 ### Minor Changes
