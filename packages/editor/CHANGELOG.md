@@ -1,5 +1,16 @@
 # @oh-just-another/editor
 
+## 0.65.0
+
+### Minor Changes
+
+- 000e777: Undo / redo buttons in the bottom bar, left of the zoom controls: `HistoryControls` (react-ui) disables each side when its stack is empty or in read-only mode; the `Editor` mounts it by default, `hideHistoryControls` removes it.
+
+### Patch Changes
+
+- Updated dependencies [000e777]
+  - @oh-just-another/react-ui@0.64.0
+
 ## 0.64.0
 
 ### Minor Changes
