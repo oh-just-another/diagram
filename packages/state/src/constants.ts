@@ -144,6 +144,13 @@ export const LINK_HIT_THRESHOLD = 9;
  * thickness. Range: 3–8.
  */
 export const SELECTION_HALO_PEEK_PX = 4;
+/**
+ * Contrast ring outside the selected-link halo so the selection reads in
+ * monochrome / high-contrast themes where the accent alone would not:
+ * colour and how many screen px it peeks beyond the halo. Range 1–3.
+ */
+export const SELECTION_HALO_CONTRAST_STROKE = "#ffffff";
+export const SELECTION_HALO_CONTRAST_PX = 1.5;
 
 /**
  * Connection anchors.
@@ -465,6 +472,12 @@ export const ANNOTATION_PIN_FILL = "#f9a825";
 export const ANNOTATION_PIN_STROKE = "#fff";
 export const ANNOTATION_PIN_RESOLVED_FILL = "#888";
 export const ANNOTATION_PIN_BADGE_FONT_SIZE = 10;
+/**
+ * Resolved pins carry a ✓ glyph (colour alone must not encode state):
+ * stroke colour and width (screen px) of the check drawn inside the pin.
+ */
+export const ANNOTATION_PIN_RESOLVED_GLYPH_STROKE = "#fff";
+export const ANNOTATION_PIN_RESOLVED_GLYPH_WIDTH = 2;
 
 /**
  * Hit-test acceleration threshold. When `scene.elements.size` reaches

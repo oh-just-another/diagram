@@ -404,3 +404,10 @@ export const TEXT_PLACEHOLDERS: readonly TextPlaceholder[] = [
   { text: "Insert genius here", weight: 2 },
   { text: "The cursor is waiting patiently", weight: 1 },
 ];
+
+/**
+ * Longest accessible name (screen-reader announcement) built from a text
+ * body or a shape label; longer content is cut with an ellipsis so the
+ * announcement stays actionable. Range 40–160.
+ */
+export const ACCESSIBLE_NAME_MAX_CHARS = 80;

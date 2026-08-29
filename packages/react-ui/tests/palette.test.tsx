@@ -30,6 +30,20 @@ const buildDataTransfer = () => {
   };
 };
 
+describe("Palette accessibility", () => {
+  it("items are focusable buttons named with the geometry hint and the drag affordance", () => {
+    const registry = makeRegistry();
+    const { container } = render(<Palette registry={registry} />);
+    const items = [...container.querySelectorAll('[role="button"].du-palette-item')];
+    expect(items.length).toBeGreaterThan(0);
+    for (const item of items) expect(item.getAttribute("tabindex")).toBe("0");
+    const labels = items.map((i) => i.getAttribute("aria-label"));
+    expect(labels).toContain("Rectangle, draggable");
+    expect(labels).toContain("Decision, Diamond, draggable");
+    expect(labels).toContain("Process, Rectangle, draggable");
+  });
+});
+
 describe("Palette sections", () => {
   it("renders a section header per present category", () => {
     const registry = makeRegistry();

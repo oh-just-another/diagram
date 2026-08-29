@@ -269,3 +269,9 @@ export const GESTURE_QUIET_MS = 100;
  * slider adjusts it per shape afterwards.
  */
 export const IMAGE_MASK_DEFAULT_RADIUS = 0.2;
+
+/**
+ * How many distinct element types the selection toolbar's screen-reader
+ * summary lists ("3 elements: rectangle, text, sticky, …"). Range 2–5.
+ */
+export const SELECTION_DESCRIPTION_TYPES = 3;

@@ -3112,7 +3112,8 @@ export class Editor {
     if (!result) return;
     this._selection = Selection.single(result.id);
     this.notify();
-    this.announce(`Selected ${result.name}`);
+    // Name (type + label) and position, the way a listbox reads its items.
+    this.announce(`Selected ${result.name}, ${String(result.position)} of ${String(result.total)}`);
   }
 
   /**

@@ -26,6 +26,11 @@ export function App() {
 - The canvas surface is keyboard-focusable with a visible focus ring.
 - UI chrome carries ARIA semantics: the toolbar, main menu, palettes, sliders, popovers, and color pickers expose `aria-label`, `role="group"` / `role="radiogroup"`, and keyboard handlers.
 - Editing shortcuts (selection, nudging, undo/redo, etc.) are driven from the keyboard.
+- Keyboard-only creation: pick a shape tool (`R`, `E`) and press `Enter` — the default shape lands at the viewport centre, selected.
+- `Tab` / `Shift+Tab` cycle focus through elements; each step is announced through the live region as name and position — `Selected Rectangle "Item 3", 2 of 10` (type plus label or text body, see `getElementAccessibleName`).
+- Palette items are focusable buttons named `<name>, <geometry hint>, draggable` (`Decision, Diamond, draggable`); `Enter` / `Space` places the shape at the viewport centre. Custom templates set the hint via `Template.description`.
+- The selection toolbar is a `role="toolbar"` named "Selection"; a multi-selection is described by its count and first three types (`4 elements: rectangle, text, frame`).
+- State is never colour-only: resolved comment pins carry a ✓ glyph, and a selected connector gets a contrast ring around its accent halo (`SELECTION_HALO_CONTRAST_STROKE`).
 
 ## Known gaps
 

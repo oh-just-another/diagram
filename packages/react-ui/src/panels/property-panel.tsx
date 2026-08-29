@@ -6,6 +6,7 @@ import {
   useState,
   type CSSProperties,
   type ReactNode,
+  useId,
 } from "react";
 import {
   AlignCenter,
@@ -139,6 +140,7 @@ import {
   EMOJI_QUICK_PICKS,
   IMAGE_MASK_DEFAULT_RADIUS,
   CONTROL_ICON,
+  SELECTION_DESCRIPTION_TYPES,
 } from "../core/constants.js";
 
 /**
@@ -225,6 +227,7 @@ export const PropertyPanel = ({ style, className, mobile = false }: PropertyPane
         overflow={overflow}
         className={className}
         style={style}
+        description={single ? undefined : describeSelection(targets)}
       />
     );
   }
@@ -533,21 +536,64 @@ const GroupControls = ({ selected }: { readonly selected: readonly ElementBase[]
   );
 };
 
+/**
+ * Screen-reader summary of a multi-selection: the count and the first
+ * `SELECTION_DESCRIPTION_TYPES` element types ("3 elements: rectangle,
+ * text, sticky"). Visual users see the row of controls; this is the
+ * `aria-describedby` of the toolbar.
+ */
+const describeSelection = (targets: readonly ElementBase[]): string => {
+  const types: string[] = [];
+  for (const t of targets) {
+    if (!types.includes(t.type)) types.push(t.type);
+    if (types.length === SELECTION_DESCRIPTION_TYPES) break;
+  }
+  const more = targets.some((t) => !types.includes(t.type));
+  return `${String(targets.length)} elements: ${types.join(", ")}${more ? ", …" : ""}`;
+};
+
+const VISUALLY_HIDDEN: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0,0,0,0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
 const PanelShell = ({
   mobile,
   primary,
   overflow,
   className,
   style,
+  description,
 }: {
   readonly mobile: boolean;
   readonly primary: readonly ReactNode[];
   readonly overflow: readonly ReactNode[];
   readonly className?: string | undefined;
   readonly style?: CSSProperties | undefined;
+  /** `aria-describedby` text for the toolbar (multi-selection summary). */
+  readonly description?: string | undefined;
 }) => {
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const descriptionId = useId();
+  const a11y = {
+    role: "toolbar" as const,
+    "aria-label": "Selection",
+    ...(description === undefined ? {} : { "aria-describedby": descriptionId }),
+  };
+  const hidden =
+    description === undefined ? null : (
+      <span id={descriptionId} style={VISUALLY_HIDDEN}>
+        {description}
+      </span>
+    );
   // Collapse the expanded overflow sheet on a tap outside the panel.
   // The ⋮ button and the grabber collapse it directly; this covers taps
   // on the canvas / elsewhere.
@@ -566,7 +612,8 @@ const PanelShell = ({
 
   if (!mobile) {
     return (
-      <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style}>
+      <div className={`du-sel-panel ${className ?? ""}`.trim()} style={style} {...a11y}>
+        {hidden}
         {groupControls([...primary, <Divider key="d-overflow" />, ...overflow])}
       </div>
     );
@@ -576,7 +623,9 @@ const PanelShell = ({
       ref={panelRef}
       className={`du-sel-panel du-sel-panel-mobile ${className ?? ""}`.trim()}
       style={style}
+      {...a11y}
     >
+      {hidden}
       <div className="du-sel-mobile-row">
         <div className="du-sel-mobile-primary">{groupControls(primary)}</div>
         {overflow.length > 0 ? (

@@ -27,6 +27,8 @@ import {
   ANNOTATION_PIN_FILL,
   ANNOTATION_PIN_RADIUS,
   ANNOTATION_PIN_RESOLVED_FILL,
+  ANNOTATION_PIN_RESOLVED_GLYPH_STROKE,
+  ANNOTATION_PIN_RESOLVED_GLYPH_WIDTH,
   ANNOTATION_PIN_STROKE,
   CANVAS_CHROME_ACCENT,
   CANVAS_CHROME_ACCENT_SOFT,
@@ -62,6 +64,8 @@ import {
   LINK_ENDPOINT_HANDLE_DRAW_RADIUS,
   LINK_MIDPOINT_HANDLE_DRAW_RADIUS,
   SELECTION_HALO_PEEK_PX,
+  SELECTION_HALO_CONTRAST_PX,
+  SELECTION_HALO_CONTRAST_STROKE,
   LINK_START_ANCHOR_FILL,
   LINK_START_ANCHOR_STROKE,
   PEER_SELECTION_DASH,
@@ -147,6 +151,9 @@ export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
 
 /** Translucent opacity for the selected-link halo. */
 const SELECTION_HALO_OPACITY = 0.32;
+
+/** Half-width of the resolved ✓ glyph as a fraction of the pin radius. */
+const ANNOTATION_PIN_GLYPH_SCALE = 0.55;
 
 /**
  * Set of world-space points to render as port dots — used when the editor
@@ -783,8 +790,19 @@ const renderLinkHandles = (ctx: OverlayCtx): void => {
     // `2 × (width/2 + peek/zoom)` → peeks exactly `peek` screen px beyond the
     // link's visible edge, same constant as elements.
     const peekWorld = SELECTION_HALO_PEEK_PX / (zoom || 1);
+    const contrastWorld = SELECTION_HALO_CONTRAST_PX / (zoom || 1);
     for (const { path, width } of options.selectedLinkPaths) {
       if (path.length < 2) continue;
+      // Opaque contrast ring first, the translucent accent halo on top —
+      // a monochrome theme still shows a two-tone outline.
+      target.setOpacity(1);
+      target.setStroke(SELECTION_HALO_CONTRAST_STROKE);
+      target.setStrokeWidth(width + 2 * (peekWorld + contrastWorld));
+      target.beginPath();
+      strokeRoundedPolyline(target, path, LINK_CORNER_RADIUS);
+      target.stroke();
+      target.setOpacity(SELECTION_HALO_OPACITY);
+      target.setStroke(style.selectionStroke);
       target.setStrokeWidth(width + 2 * peekWorld);
       target.beginPath();
       strokeRoundedPolyline(target, path, LINK_CORNER_RADIUS);
@@ -1767,6 +1785,24 @@ const drawAnnotationPin = (
   target.fill();
   target.stroke();
 
+  // Resolved: a ✓ glyph inside the pin — the muted fill alone must not be
+  // the only cue. It replaces the count badge; the thread panel keeps the
+  // count.
+  if (annotation.resolved) {
+    const r = radius * ANNOTATION_PIN_GLYPH_SCALE;
+    target.setStroke(ANNOTATION_PIN_RESOLVED_GLYPH_STROKE);
+    target.setStrokeWidth(ANNOTATION_PIN_RESOLVED_GLYPH_WIDTH);
+    target.setLineCap("round");
+    target.setLineJoin("round");
+    target.beginPath();
+    target.moveTo(center.x - r, center.y);
+    target.lineTo(center.x - r * 0.3, center.y + r * 0.7);
+    target.lineTo(center.x + r, center.y - r * 0.6);
+    target.stroke();
+    target.setLineCap("butt");
+    target.setLineJoin("miter");
+    return;
+  }
   // Comment-count badge (when thread length > 1; the first comment is the
   // body of the pin itself).
   if (annotation.thread.length > 0) {

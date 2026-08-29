@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { DEFAULT_LAYER_ID, orderForTop } from "@oh-just-another/scene";
 import { elementId, type Vec2 } from "@oh-just-another/types";
@@ -244,9 +252,10 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
   // coarse-pointer devices a tap drops the template's default shape at
   // the viewport centre (one undo step), then selects it for the user
   // to move. Desktop keeps drag-to-position — the click is a no-op there.
-  const onClick = (): void => {
+  // Keyboard users have no drag either: Enter / Space on a focused item
+  // places the shape the same way a tap does.
+  const placeAtCentre = (): void => {
     if (!editor) return;
-    if (typeof window !== "undefined" && !window.matchMedia("(pointer: coarse)").matches) return;
     const host = editor.hostElement;
     const rect = host.getBoundingClientRect();
     const center = editor.screenToWorld({ x: rect.width / 2, y: rect.height / 2 });
@@ -267,15 +276,32 @@ const PaletteItem = ({ template }: { readonly template: Template }) => {
     placement.update(center);
     placement.commit();
   };
+  const onClick = (): void => {
+    if (typeof window !== "undefined" && !window.matchMedia("(pointer: coarse)").matches) return;
+    placeAtCentre();
+  };
+  const onKeyDown = (ev: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    ev.preventDefault();
+    placeAtCentre();
+  };
+  // Name + geometry hint + affordance, so a screen reader tells "Process,
+  // Rectangle, draggable" apart from "Decision, Diamond, draggable".
+  const accessibleName = `${template.name}${
+    template.description ? `, ${template.description}` : ""
+  }, draggable`;
 
   return (
     <div
       role="button"
+      tabIndex={0}
+      aria-label={accessibleName}
       draggable
       title={template.name}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onClick}
+      onKeyDown={onKeyDown}
       className="du-palette-item"
     >
       <span

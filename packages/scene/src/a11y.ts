@@ -1,4 +1,5 @@
 import type { ElementBase, TemplateElement, TextElement } from "./shapes/shape.js";
+import { ACCESSIBLE_NAME_MAX_CHARS } from "./constants.js";
 
 /**
  * Resolver from a shape to an accessible name (screen-reader label).
@@ -35,8 +36,17 @@ export const getElementAccessibleName = (shape: ElementBase): string => {
     const name = resolver(shape).trim();
     if (name) return name;
   }
+  // Labelled shapes (rectangle "Item 3", sticky, …): type + label, so a
+  // focus cycle reads the content, not just the geometry.
+  const label = (shape as { readonly label?: { readonly text?: string } }).label?.text
+    ?.replace(/\s+/g, " ")
+    .trim();
+  if (label) return `${titleise(shape.type)} "${truncate(label)}"`;
   return titleise(shape.type);
 };
+
+const truncate = (s: string): string =>
+  s.length > ACCESSIBLE_NAME_MAX_CHARS ? `${s.slice(0, ACCESSIBLE_NAME_MAX_CHARS - 3)}…` : s;
 
 const titleise = (s: string): string =>
   s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1).replace(/[-_]/g, " ");
@@ -47,7 +57,7 @@ registerAccessibleName<TextElement>("text", (s) => {
   // Collapse whitespace and truncate long bodies so screen-reader
   // announcements stay actionable.
   const body = s.text.replace(/\s+/g, " ").trim();
-  return body.length > 80 ? `${body.slice(0, 77)}…` : body;
+  return truncate(body);
 });
 
 registerAccessibleName<TemplateElement>("template", (s) => {

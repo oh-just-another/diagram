@@ -234,7 +234,13 @@ export const pickFocusCycle = (
   scene: Scene,
   current: ElementId | undefined,
   direction: "next" | "prev",
-): { readonly id: ElementId; readonly name: string } | null => {
+): {
+  readonly id: ElementId;
+  readonly name: string;
+  /** 1-based position in the focus order and the order's length. */
+  readonly position: number;
+  readonly total: number;
+} | null => {
   const layers = [...scene.layers.values()].filter((l) => l.visible && !l.locked).sort(byOrderAsc);
   const ordered: ElementId[] = [];
   for (const layer of layers) {
@@ -253,7 +259,12 @@ export const pickFocusCycle = (
   const nextId = ordered[idx];
   if (!nextId) return null;
   const shape = getElement(scene, nextId);
-  return { id: nextId, name: shape ? getElementAccessibleName(shape) : nextId };
+  return {
+    id: nextId,
+    name: shape ? getElementAccessibleName(shape) : nextId,
+    position: idx + 1,
+    total: ordered.length,
+  };
 };
 
 /** Generate a fresh group shape id with the editor's nextId counter. */

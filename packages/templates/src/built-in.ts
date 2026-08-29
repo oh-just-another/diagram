@@ -142,6 +142,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
   {
     id: "basic.sticky-note",
     name: "Sticky note",
+    description: "Square card",
     category: "basic",
     icon: STICKY_ICON,
     tags: ["sticky", "note", "postit", "post-it", "memo", "card"],
@@ -159,6 +160,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
   {
     id: "basic.emoji",
     name: "Emoji",
+    description: "Single emoji glyph",
     category: "basic",
     icon: EMOJI_ICON,
     tags: ["emoji", "smiley", "reaction", "icon"],
@@ -176,6 +178,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
   {
     id: "flowchart.process",
     name: "Process",
+    description: "Rectangle",
     category: "flowchart",
     icon: PROCESS_ICON,
     tags: ["process", "action", "step", "task", "rectangle"],
@@ -184,6 +187,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
   {
     id: "flowchart.decision",
     name: "Decision",
+    description: "Diamond",
     category: "flowchart",
     icon: DECISION_ICON,
     tags: ["decision", "branch", "if", "condition", "diamond", "choice"],
@@ -202,6 +206,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
   {
     id: "flowchart.terminator",
     name: "Terminator",
+    description: "Ellipse",
     category: "flowchart",
     icon: TERMINATOR_ICON,
     tags: ["terminator", "start", "end", "stop", "begin", "finish", "pill"],
@@ -210,6 +215,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
   {
     id: "flowchart.document",
     name: "Document",
+    description: "Rectangle with a wavy bottom edge",
     category: "flowchart",
     icon: DOCUMENT_ICON,
     tags: ["document", "file", "report", "paper", "doc"],
@@ -239,6 +245,7 @@ export const BUILTIN_TEMPLATES: readonly Template[] = [
   {
     id: "flowchart.data",
     name: "Data",
+    description: "Parallelogram",
     category: "flowchart",
     icon: DATA_ICON,
     tags: ["data", "input", "output", "io", "parallelogram"],
