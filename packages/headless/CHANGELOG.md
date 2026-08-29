@@ -1,5 +1,15 @@
 # @oh-just-another/headless
 
+## 0.58.6
+
+### Patch Changes
+
+- 0846934: Canvas paper colour per scene: `viewport.background` (serialised, additive; `DEFAULT_CANVAS_BACKGROUND` / `canvasBackgroundOf` in `scene`), `Editor.setCanvasBackground(color | null)` / `Editor.canvasBackground` with undo, a Board › Background color submenu (`CANVAS_BACKGROUND_PRESETS`) that also drives the editor root's `--du-canvas-bg`, and "with background" PNG exports plus headless `renderToPng` that paint the scene colour by default.
+- Updated dependencies [0846934]
+  - @oh-just-another/scene@0.63.0
+  - @oh-just-another/serialization@0.61.1
+  - @oh-just-another/renderer-svg@0.58.2
+
 ## 0.58.5
 
 ### Patch Changes

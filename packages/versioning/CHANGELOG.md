@@ -1,5 +1,13 @@
 # @oh-just-another/versioning
 
+## 0.57.6
+
+### Patch Changes
+
+- Updated dependencies [0846934]
+  - @oh-just-another/scene@0.63.0
+  - @oh-just-another/serialization@0.61.1
+
 ## 0.57.5
 
 ### Patch Changes

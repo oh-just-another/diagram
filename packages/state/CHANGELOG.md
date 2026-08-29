@@ -1,5 +1,18 @@
 # @oh-just-another/state
 
+## 0.67.0
+
+### Minor Changes
+
+- 0846934: Canvas paper colour per scene: `viewport.background` (serialised, additive; `DEFAULT_CANVAS_BACKGROUND` / `canvasBackgroundOf` in `scene`), `Editor.setCanvasBackground(color | null)` / `Editor.canvasBackground` with undo, a Board › Background color submenu (`CANVAS_BACKGROUND_PRESETS`) that also drives the editor root's `--du-canvas-bg`, and "with background" PNG exports plus headless `renderToPng` that paint the scene colour by default.
+
+### Patch Changes
+
+- Updated dependencies [0846934]
+  - @oh-just-another/scene@0.63.0
+  - @oh-just-another/history@0.57.6
+  - @oh-just-another/renderer-core@0.61.2
+
 ## 0.66.0
 
 ### Minor Changes

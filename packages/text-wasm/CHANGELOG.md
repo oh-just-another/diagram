@@ -1,5 +1,11 @@
 # @oh-just-another/text-wasm
 
+## 0.57.8
+
+### Patch Changes
+
+- @oh-just-another/renderer-core@0.61.2
+
 ## 0.57.7
 
 ### Patch Changes
