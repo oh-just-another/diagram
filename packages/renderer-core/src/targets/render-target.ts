@@ -91,6 +91,10 @@ export interface RenderTarget {
    * image's intrinsic size, `[0,1]`) — only the cropped region is drawn,
    * stretched to fill `dw` × `dh`. Backends that can't sample a source
    * sub-rectangle ignore it and draw the whole image (graceful degradation).
+   *
+   * `alt` (optional) is the image's accessible description. Document
+   * backends carry it as metadata (SVG emits a `<title>` child); raster
+   * backends have nowhere to put it and ignore it.
    */
   drawImage(
     image: unknown,
@@ -105,6 +109,7 @@ export interface RenderTarget {
       readonly width: number;
       readonly height: number;
     },
+    alt?: string,
   ): void;
 
   // --- Surface control ---

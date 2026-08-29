@@ -219,9 +219,26 @@ describe("built-in renderers", () => {
     const { target, calls } = recorder();
     getElementRenderer("image")!(i, target);
     const di = calls.find((c) => c.method === "drawImage");
-    // args: (image, dx, dy, dw, dh, dynamic, crop). Static, uncropped image →
-    // dynamic=false, crop=undefined.
-    expect(di?.args.slice(1)).toEqual([0, 0, 100, 50, false, undefined]);
+    // args: (image, dx, dy, dw, dh, dynamic, crop, alt). Static, uncropped
+    // image without alt → dynamic=false, crop=undefined, alt=undefined.
+    expect(di?.args.slice(1)).toEqual([0, 0, 100, 50, false, undefined, undefined]);
+  });
+
+  it("image forwards its alt to drawImage", () => {
+    const i: ImageElement = {
+      ...baseProps,
+      id: elementId("i"),
+      type: "image",
+      style: {},
+      src: "data:,",
+      width: 100,
+      height: 50,
+      alt: "Quarterly chart",
+    };
+    const { target, calls } = recorder();
+    getElementRenderer("image")!(i, target);
+    const di = calls.find((c) => c.method === "drawImage");
+    expect(di?.args[7]).toBe("Quarterly chart");
   });
 
   it("image forwards its normalised crop rect to drawImage", () => {

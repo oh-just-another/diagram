@@ -45,6 +45,8 @@ await writeFile("scene.png", await renderToPng(sceneJson, { scale: 2 }));
 
 Both accept either an in-memory `Scene` or the JSON document string `@oh-just-another/serialization` emits (parsed and validated before rendering). `renderToSvg` returns a `string`; `renderToPng` resolves to a `Uint8Array`.
 
+An image element's `alt` becomes the `<title>` of its SVG `<image>` (the accessible name screen readers announce); images without `alt` stay self-closing. Raster exports have no metadata slot and ignore it.
+
 ## Document-grade export (PNG with DPI, PDF, cropping)
 
 `@oh-just-another/exporter` builds on the headless renderer for print-quality output: high-resolution PNG with embedded DPI metadata, vector PDF, and world-coordinate cropping.
