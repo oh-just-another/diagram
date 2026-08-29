@@ -144,14 +144,21 @@ jobs:
 
       - name: Cache Playwright browsers
         if: steps.scope.outputs.run == 'true'
+        id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
 
+      # Cache miss: download the browsers and their OS packages. Cache hit:
+      # the browsers are already on disk, only the OS packages are needed.
       - name: Install Chromium + WebKit
-        if: steps.scope.outputs.run == 'true'
+        if: steps.scope.outputs.run == 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm --filter @oh-just-another/e2e exec playwright install chromium webkit --with-deps
+
+      - name: Install browser OS dependencies (cached browsers)
+        if: steps.scope.outputs.run == 'true' && steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @oh-just-another/e2e exec playwright install-deps chromium webkit
 
       # Screenshot specs are excluded: their baselines are captured locally
       # (macOS) and are not committed to the repo, so on a Linux runner
