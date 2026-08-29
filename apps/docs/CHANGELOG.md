@@ -1,5 +1,16 @@
 # @oh-just-another/docs
 
+## 0.0.12
+
+### Patch Changes
+
+- Updated dependencies [ca75023]
+  - @oh-just-another/importers@0.61.0
+  - @oh-just-another/editor@0.64.0
+  - @oh-just-another/diagram@0.3.7
+  - @oh-just-another/diagram-svelte@0.3.8
+  - @oh-just-another/diagram-vue@0.3.8
+
 ## 0.0.11
 
 ### Patch Changes

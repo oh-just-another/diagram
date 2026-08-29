@@ -1,5 +1,11 @@
 # @oh-just-another/diagram-vue
 
+## 0.3.8
+
+### Patch Changes
+
+- @oh-just-another/diagram@0.3.7
+
 ## 0.3.7
 
 ### Patch Changes

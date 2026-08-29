@@ -1,5 +1,12 @@
 # @oh-just-another/diagram
 
+## 0.3.7
+
+### Patch Changes
+
+- Updated dependencies [ca75023]
+  - @oh-just-another/editor@0.64.0
+
 ## 0.3.6
 
 ### Patch Changes
