@@ -128,12 +128,15 @@ export const STICKY_REACTION_COLOR = "#333";
 export const STICKY_REACTION_ADD_COLOR = "#5b5bd6";
 /**
  * Reaction pills keep a CONSTANT on-screen size: their world size is
- * `base / zoom`. Below this zoom the reaction chrome (pills AND the "+"
- * button) is HIDDEN entirely — on a zoomed-out board constant-size
- * pills would swallow the cards. Also bounds the worst-case world size
- * for render-overflow estimates. Range 0.25–1.
+ * `base / zoom`. Once the sticky's shorter side is narrower than this
+ * many screen pixels the reaction chrome (pills AND the "+" button) is
+ * HIDDEN entirely — constant-size pills would swallow a small card. A
+ * screen-size gate (like the text / placeholder LOD), so a large note keeps
+ * its reactions at a zoom where a small one already hides them. Also bounds
+ * the worst-case pill world size for render-overflow estimates. Range
+ * 40–160 (80 = the medium 160 px preset at 50 % zoom).
  */
-export const STICKY_REACTION_MIN_ZOOM = 0.5;
+export const STICKY_REACTION_MIN_SCREEN_PX = 80;
 
 /**
  * What static exports (PNG / SVG) include by default. The export UI can
