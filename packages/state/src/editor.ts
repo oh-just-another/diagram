@@ -149,6 +149,7 @@ import {
   OBJECT_SNAP_MAX_CANDIDATES,
   OBJECT_SNAP_MIN_SIZE_PX,
   OBJECT_SNAP_THRESHOLD_PX,
+  OBJECT_SNAP_ALIGN_EPSILON_PX,
   SIZE_SUGGEST_THRESHOLD_PX,
   DEFAULT_EDITOR_PREFERENCES,
   FRAME_INTERVAL_MAX_MS,
@@ -414,6 +415,9 @@ import {
   snapMoveDeltaToObjects,
   snappedAxes,
   composeAxisDeltas,
+  alignmentGuides,
+  rebaseGuides,
+  boundsAfterResize,
   snapResizeDeltaToObjects,
   type SizeMatch,
   type SnapGuide,
@@ -5117,22 +5121,33 @@ export class Editor {
   /**
    * Move-delta snapping: object snapping (edges / centres of nearby shapes)
    * wins on the axes it lands on, the grid keeps the rest — a shape aligned
-   * to a neighbour on x still snaps to the grid vertically. Records the
-   * guides for the overlay either way.
+   * to a neighbour on x still snaps to the grid vertically. The guides are
+   * then recomputed against the position the shape ACTUALLY lands on, so
+   * the distance segments measure real geometry and an alignment the grid
+   * preserves keeps its guide after the object snap released.
    */
   private snapMoveDeltaFor(moving: ReadonlySet<ElementId>, bounds: Bounds, delta: Vec2): Vec2 {
     this.interaction.snapGuides = [];
-    if (this.objectSnapActive() && [...moving].some((id) => this.snapsAsMover(id))) {
-      const threshold = OBJECT_SNAP_THRESHOLD_PX / (this._scene.viewport.zoom || 1);
-      const r = snapMoveDeltaToObjects(bounds, delta, this.snapCandidates(moving), threshold);
-      if (r.guides.length > 0) {
-        this.interaction.snapGuides = r.guides;
-        if (!this.snapActive()) return r.delta;
-        const grid = snapMoveDelta(bounds, delta, this.snapSpacing());
-        return composeAxisDeltas(r.delta, snappedAxes(r.guides), grid);
-      }
+    const gridDelta = (): Vec2 =>
+      this.snapActive() ? snapMoveDelta(bounds, delta, this.snapSpacing()) : delta;
+    if (!this.objectSnapActive() || ![...moving].some((id) => this.snapsAsMover(id))) {
+      return gridDelta();
     }
-    return this.snapActive() ? snapMoveDelta(bounds, delta, this.snapSpacing()) : delta;
+    const zoom = this._scene.viewport.zoom || 1;
+    const candidates = this.snapCandidates(moving);
+    const r = snapMoveDeltaToObjects(bounds, delta, candidates, OBJECT_SNAP_THRESHOLD_PX / zoom);
+    const out =
+      r.guides.length > 0 && this.snapActive()
+        ? composeAxisDeltas(r.delta, snappedAxes(r.guides), gridDelta())
+        : r.guides.length > 0
+          ? r.delta
+          : gridDelta();
+    this.interaction.snapGuides = alignmentGuides(
+      { ...bounds, x: bounds.x + out.x, y: bounds.y + out.y },
+      candidates,
+      OBJECT_SNAP_ALIGN_EPSILON_PX / zoom,
+    );
+    return out;
   }
 
   /**
@@ -5144,34 +5159,42 @@ export class Editor {
    */
   private snapGroupMoveDelta(origins: ReadonlyMap<ElementId, Vec2>, delta: Vec2): Vec2 {
     this.interaction.snapGuides = [];
-    if (this.objectSnapActive()) {
-      let union: Bounds | null = null;
-      let members = 0;
-      for (const [id, position] of origins) {
-        const shape = getElement(this._scene, id);
-        if (!shape || isGroup(shape) || isBrush(shape)) continue;
-        members += 1;
-        const b = getElementWorldBounds({ ...shape, position });
-        union = union ? B.union(union, b) : b;
-      }
-      if (union) {
-        const threshold = OBJECT_SNAP_THRESHOLD_PX / (this._scene.viewport.zoom || 1);
-        const r = snapMoveDeltaToObjects(
-          union,
-          delta,
-          this.snapCandidates(new Set(origins.keys())),
-          threshold,
-          { centerLines: members === 1 },
-        );
-        if (r.guides.length > 0) {
-          this.interaction.snapGuides = r.guides;
-          if (!this.snapActive()) return r.delta;
-          const grid = snapGroupDelta(origins, delta, this.snapSpacing());
-          return composeAxisDeltas(r.delta, snappedAxes(r.guides), grid);
-        }
-      }
+    const gridDelta = (): Vec2 =>
+      this.snapActive() ? snapGroupDelta(origins, delta, this.snapSpacing()) : delta;
+    if (!this.objectSnapActive()) return gridDelta();
+    let union: Bounds | null = null;
+    let members = 0;
+    for (const [id, position] of origins) {
+      const shape = getElement(this._scene, id);
+      if (!shape || isGroup(shape) || isBrush(shape)) continue;
+      members += 1;
+      const b = getElementWorldBounds({ ...shape, position });
+      union = union ? B.union(union, b) : b;
     }
-    return this.snapActive() ? snapGroupDelta(origins, delta, this.snapSpacing()) : delta;
+    if (!union) return gridDelta();
+    const zoom = this._scene.viewport.zoom || 1;
+    const candidates = this.snapCandidates(new Set(origins.keys()));
+    const opts = { centerLines: members === 1 };
+    const r = snapMoveDeltaToObjects(
+      union,
+      delta,
+      candidates,
+      OBJECT_SNAP_THRESHOLD_PX / zoom,
+      opts,
+    );
+    const out =
+      r.guides.length > 0 && this.snapActive()
+        ? composeAxisDeltas(r.delta, snappedAxes(r.guides), gridDelta())
+        : r.guides.length > 0
+          ? r.delta
+          : gridDelta();
+    this.interaction.snapGuides = alignmentGuides(
+      { ...union, x: union.x + out.x, y: union.y + out.y },
+      candidates,
+      OBJECT_SNAP_ALIGN_EPSILON_PX / zoom,
+      opts,
+    );
+    return out;
   }
 
   /** Resize-delta counterpart of {@link snapMoveDeltaFor}; also sets `sizeMatch`. */
@@ -5208,7 +5231,14 @@ export class Editor {
           y: axes.y || match === "height" || match === "both",
         };
         const grid = snapResizeDelta(original, handle, delta, this.snapSpacing());
-        return composeAxisDeltas(r.delta, covered, grid);
+        const out = composeAxisDeltas(r.delta, covered, grid);
+        // Re-anchor the guides onto the geometry the resize landed on: the
+        // grid may own an axis the object pass measured against.
+        this.interaction.snapGuides = rebaseGuides(
+          r.guides,
+          boundsAfterResize(original, handle, out),
+        );
+        return out;
       }
     }
     return this.snapActive() ? snapResizeDelta(original, handle, delta, this.snapSpacing()) : delta;

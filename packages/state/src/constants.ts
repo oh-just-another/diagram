@@ -905,10 +905,15 @@ export const TEXT_SELECTION_FILL: string = CANVAS_CHROME_ACCENT;
  *   width / height snaps to a nearby shape's size. Range: 4–10.
  * - `SNAP_GUIDE_*` / `SNAP_MEASURE_*` — alignment guide and distance segment
  *   chrome (reference look: dashed guide, ticked measure with a label).
+ * - `OBJECT_SNAP_ALIGN_EPSILON_PX` — how close two lines must sit to count
+ *   as aligned when the guides are recomputed against the position the
+ *   gesture actually landed on (so an alignment the grid keeps stays lit
+ *   after the object snap released). Sub-pixel; range 0.1–1.
  * - `SIZE_READOUT_*` — the `W × H` pill under a shape being resized:
  *   font size, padding, and gap below the shape's bottom edge (screen px).
  */
 export const OBJECT_SNAP_THRESHOLD_PX = 6;
+export const OBJECT_SNAP_ALIGN_EPSILON_PX = 0.5;
 /**
  * Snap-target eligibility (reference rules): a shape must be at least this
  * many screen px wide OR tall to be snapped to, and object snapping is
