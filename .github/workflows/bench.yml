@@ -1,9 +1,10 @@
 name: Benchmarks
 
-# Smoke-run the benchmarks so they keep compiling and executing. Absolute
-# timings are not gated — shared CI runners are too noisy for a stable
-# threshold; baselines are tracked by running `pnpm bench` locally. Off the
-# release path on purpose: weekly plus on demand.
+# Run the benchmarks weekly / on demand and compare them with the previous
+# successful run (its `bench-results` artifact is the baseline). Absolute
+# timings are not gated — shared CI runners are too noisy for a hard
+# threshold — but rows slower by more than `BENCH_REGRESSION_PCT` are flagged
+# in the job summary. Off the release path on purpose.
 on:
   schedule:
     - cron: "0 6 * * 1"
@@ -11,6 +12,8 @@ on:
 
 permissions:
   contents: read
+  # `gh run download` of the previous run's baseline artifact.
+  actions: read
 
 jobs:
   bench:
@@ -22,5 +25,27 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: Benchmarks
-        run: pnpm bench
+      - name: Benchmarks (JSON per package)
+        run: pnpm bench -- --outputJson bench-results.json
+
+      - name: Download the baseline (last successful run on master)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          id=$(gh run list --workflow bench.yml --branch master --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$id" ]; then echo "No previous successful run — nothing to compare."; exit 0; fi
+          gh run download "$id" --name bench-results --dir .bench-baseline || echo "Baseline artifact missing on run $id."
+
+      - name: Compare with the baseline
+        env:
+          BENCH_REGRESSION_PCT: "25"
+        run: node scripts/bench-compare.mjs .bench-baseline .
+
+      - name: Upload results (next run's baseline)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-results
+          path: |
+            packages/*/bench-results.json
+            apps/*/bench-results.json
+          retention-days: 90

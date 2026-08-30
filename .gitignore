@@ -42,3 +42,7 @@ Thumbs.db
 .turbo
 
 packages/element/src/styles.generated.ts
+
+# vitest bench --outputJson (CI compares runs; never committed)
+bench-results.json
+.bench-baseline/
