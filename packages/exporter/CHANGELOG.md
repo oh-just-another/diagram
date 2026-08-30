@@ -1,5 +1,11 @@
 # @oh-just-another/exporter
 
+## 0.57.10
+
+### Patch Changes
+
+- @oh-just-another/headless@0.58.8
+
 ## 0.57.9
 
 ### Patch Changes
