@@ -1,9 +1,11 @@
-import type { ElementId, Vec2 } from "@oh-just-another/types";
+import type { ElementId, FileId, Vec2 } from "@oh-just-another/types";
 import {
   addElement,
+  apply,
   batch,
   getElement,
   orderForTop,
+  type BinaryFile,
   type Patch,
   type Scene,
   type Element,
@@ -70,6 +72,25 @@ export const cloneElementForClipboard = (shape: Element): Element => {
  * image element, animation buffer) survive — a plain `structuredClone`
  * throws on the DOM `<img>` an image shape carries in `metadata.image`.
  */
+/**
+ * The binary entries the copied shapes reference — the clipboard has to
+ * carry them because deleting the originals (cut) takes their bytes out of
+ * the document with them.
+ */
+export const copiedFiles = (
+  scene: Scene,
+  clipboard: readonly Element[],
+): Map<FileId, BinaryFile> => {
+  const out = new Map<FileId, BinaryFile>();
+  for (const el of clipboard) {
+    const id = (el as { readonly fileId?: FileId }).fileId;
+    if (id === undefined || out.has(id)) continue;
+    const file = scene.files.get(id);
+    if (file) out.set(id, file);
+  }
+  return out;
+};
+
 export const copyElements = (scene: Scene, selection: Iterable<ElementId>): Element[] => {
   const out: Element[] = [];
   for (const id of selection) {
@@ -95,6 +116,7 @@ export const pasteElements = (
   clipboard: readonly Element[],
   target: Vec2 | null,
   genId: () => ElementId,
+  files: ReadonlyMap<FileId, BinaryFile> = new Map(),
 ): PasteResult => {
   if (clipboard.length === 0) return { scene, newIds: [] };
 
@@ -116,6 +138,14 @@ export const pasteElements = (
   const patches: Patch[] = [];
   const newIds: ElementId[] = [];
   let next = scene;
+  // Bytes the cut took out of the document come back with the paste, so a
+  // cut image pastes as an image rather than a dangling `fileId`.
+  for (const [id, file] of files) {
+    if (next.files.has(id)) continue;
+    const patch: Patch = { kind: "file", id, before: null, after: file };
+    next = apply(next, patch);
+    patches.push(patch);
+  }
   for (const tmpl of clipboard) {
     const newId = genId();
     const order = orderForTop(

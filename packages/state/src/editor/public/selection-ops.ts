@@ -1,5 +1,6 @@
 import {
   addElement,
+  apply,
   applyStyleToRange,
   type TextElement,
   getElement,
@@ -8,6 +9,7 @@ import {
   orderForTop,
   removeLink,
   removeElement,
+  unreferencedFileIds,
   updateElement,
   type Scene,
   type Element,
@@ -57,6 +59,9 @@ export const computeMoveSelectionBy = (
 /**
  * Delete selected shapes + a selected edge, dropping any edges
  * attached to selected shapes first so endpoint refs don't dangle.
+ * Binary files the deletion orphans go in the SAME patch list, so the
+ * bytes leave the document with their last shape (a host store follows
+ * `scene.files`) and undo brings both back in one step.
  * Returns the next scene + patches; `null` when nothing is selected.
  */
 export const computeDeleteSelection = (
@@ -91,6 +96,13 @@ export const computeDeleteSelection = (
     patches.push(r.patch);
   }
   for (const id of selectedLinks) dropLink(id);
+  for (const fid of unreferencedFileIds(s)) {
+    const before = s.files.get(fid);
+    if (!before) continue;
+    const patch: Patch = { kind: "file", id: fid, before, after: null };
+    s = apply(s, patch);
+    patches.push(patch);
+  }
   return { scene: s, patches };
 };
 
