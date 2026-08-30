@@ -1,5 +1,12 @@
 # @oh-just-another/collab
 
+## 0.59.11
+
+### Patch Changes
+
+- Updated dependencies [4dbd4d8]
+  - @oh-just-another/state@0.68.1
+
 ## 0.59.10
 
 ### Patch Changes
