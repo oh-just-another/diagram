@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/state",
-  "version": "0.67.2",
+  "version": "0.67.3",
   "description": "Interactive editor engine over a Scene: tools, selection, history, and hit-testing.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
