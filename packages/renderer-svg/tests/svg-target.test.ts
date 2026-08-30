@@ -171,4 +171,31 @@ describe("SvgTarget", () => {
     const svg = t.toSvg();
     expect(svg).toContain('<image x="10" y="20" width="40" height="30" href="data:,"/>');
   });
+
+  it("drawImage with alt emits a <title> child, escaped", () => {
+    const t = make();
+    t.drawImage("data:,", 0, 0, 40, 30, false, undefined, 'Chart <"Q3">');
+    expect(t.toSvg()).toContain(
+      '<image x="0" y="0" width="40" height="30" href="data:,"><title>Chart &lt;"Q3"&gt;</title></image>',
+    );
+    const cropped = make();
+    cropped.drawImage(
+      "data:,",
+      0,
+      0,
+      40,
+      30,
+      false,
+      { x: 0.5, y: 0, width: 0.5, height: 1 },
+      "Half",
+    );
+    expect(cropped.toSvg()).toContain("<title>Half</title></image></g>");
+  });
+
+  it("drawImage without alt (or empty alt) keeps the self-closing <image>", () => {
+    const t = make();
+    t.drawImage("data:,", 0, 0, 40, 30, false, undefined, "");
+    expect(t.toSvg()).toContain('href="data:,"/>');
+    expect(t.toSvg()).not.toContain("<title>");
+  });
 });

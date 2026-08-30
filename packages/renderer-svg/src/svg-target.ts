@@ -362,6 +362,7 @@ export class SvgTarget implements RenderTarget {
       readonly width: number;
       readonly height: number;
     },
+    alt?: string,
   ): void {
     if (typeof image !== "string" || image === "") return;
     const p = this.apply(dx, dy);
@@ -369,11 +370,11 @@ export class SvgTarget implements RenderTarget {
     // not preserved on the `<image>` element. For richer cases the caller
     // should compose with a `<g transform>` themselves.
     if (crop && (crop.x !== 0 || crop.y !== 0 || crop.width !== 1 || crop.height !== 1)) {
-      this.drawCroppedImage(image, p.x, p.y, dw, dh, crop);
+      this.drawCroppedImage(image, p.x, p.y, dw, dh, crop, alt);
       return;
     }
     this.elements.push(
-      `<image x="${fmt(p.x)}" y="${fmt(p.y)}" width="${dw}" height="${dh}" href="${escapeAttr(image)}"/>`,
+      `<image x="${fmt(p.x)}" y="${fmt(p.y)}" width="${dw}" height="${dh}" href="${escapeAttr(image)}"${imageTitle(alt)}`,
     );
   }
 
@@ -397,6 +398,7 @@ export class SvgTarget implements RenderTarget {
       readonly width: number;
       readonly height: number;
     },
+    alt?: string,
   ): void {
     const fullW = dw / crop.width;
     const fullH = dh / crop.height;
@@ -407,7 +409,7 @@ export class SvgTarget implements RenderTarget {
       `<clipPath id="${id}"><rect x="${fmt(x)}" y="${fmt(y)}" width="${dw}" height="${dh}"/></clipPath>` +
         `<g clip-path="url(#${id})">` +
         `<image x="${fmt(imgX)}" y="${fmt(imgY)}" width="${fmt(fullW)}" height="${fmt(fullH)}"` +
-        ` preserveAspectRatio="none" href="${escapeAttr(image)}"/>` +
+        ` preserveAspectRatio="none" href="${escapeAttr(image)}"${imageTitle(alt)}` +
         `</g>`,
     );
   }
@@ -469,3 +471,10 @@ const escapeAttr = (s: string): string =>
 
 const escapeText = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/**
+ * Close an `<image` tag, with a `<title>` child (the SVG accessible name,
+ * read by screen readers and shown as a tooltip) when `alt` is non-empty.
+ */
+const imageTitle = (alt: string | undefined): string =>
+  alt === undefined || alt === "" ? "/>" : `><title>${escapeText(alt)}</title></image>`;

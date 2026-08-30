@@ -1069,7 +1069,7 @@ const drawImage: ElementRenderer<ImageElement> = (shape, target, ctx) => {
     buildImageMaskPath(target, mask, shape.width, shape.height);
     target.clip();
   }
-  target.drawImage(handle, 0, 0, shape.width, shape.height, dynamic, shape.crop);
+  target.drawImage(handle, 0, 0, shape.width, shape.height, dynamic, shape.crop, shape.alt);
   if (mask) target.restore();
 };
 

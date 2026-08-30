@@ -28,7 +28,33 @@ const rect = (id: string, x = 0, y = 0, w = 50, h = 30, fill = "#abc"): Element 
   height: h,
 });
 
+const image = (id: string, alt?: string): Element =>
+  ({
+    id: elementId(id),
+    layerId: DEFAULT_LAYER_ID,
+    type: "image",
+    position: { x: 5, y: 5 },
+    rotation: 0,
+    scale: { x: 1, y: 1 },
+    order: orderBetween(null, null),
+    style: {},
+    src: "data:,",
+    width: 40,
+    height: 30,
+    ...(alt === undefined ? {} : { alt }),
+  }) as Element;
+
 describe("renderSceneToSvg", () => {
+  it("emits an image element's alt as the <title> of its <image>", () => {
+    let scene = sceneOf(200, 100);
+    ({ scene } = addElement(scene, image("img", "Sales by region")));
+    const svg = renderSceneToSvg(scene);
+    expect(svg).toContain('href="data:,"><title>Sales by region</title></image>');
+    let plain = sceneOf(200, 100);
+    ({ scene: plain } = addElement(plain, image("img2")));
+    expect(renderSceneToSvg(plain)).not.toContain("<title>");
+  });
+
   it("renders an empty scene as an empty SVG document", () => {
     const svg = renderSceneToSvg(sceneOf(200, 100));
     expect(svg).toMatch(/^<svg /);
