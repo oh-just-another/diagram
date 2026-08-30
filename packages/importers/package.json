@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/importers",
-  "version": "0.61.5",
+  "version": "0.61.6",
   "description": "Importers: Mermaid, Graphviz dot, drawio XML, .excalidraw (import/export), JSON Canvas → @oh-just-another/scene documents.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",
