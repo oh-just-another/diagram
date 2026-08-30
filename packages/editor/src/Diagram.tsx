@@ -107,7 +107,7 @@ import { diagramFileDropHandler } from "@oh-just-another/importers";
  */
 const menuIcon = ROW_ICON;
 
-/** Colour chip in a Background color menu row. */
+/** Colour chip in a Background colour menu row. */
 const BackgroundSwatch = ({ color }: { readonly color: string }) => (
   <span
     aria-hidden
@@ -943,7 +943,7 @@ const EditorShell = ({
   const snapObjects = useEditorSelector((e) => e.preferences.snapObjects, true);
   const suggestObjectSize = useEditorSelector((e) => e.preferences.suggestObjectSize, true);
   const wheelMode = useEditorSelector((e) => e.preferences.wheelMode, "auto");
-  // Current paper colour for the Background color rows (a primitive, so the
+  // Current paper colour for the Background colour rows (a primitive, so the
   // shell re-renders only when the colour actually changes).
   const paperColor = useEditorSelector(
     (e) => canvasBackgroundOf(e.scene.viewport),
@@ -1196,7 +1196,7 @@ const EditorShell = ({
                         Set current view as start
                       </MainMenu.Item>
                       <MainMenu.Separator />
-                      <MainMenu.Submenu icon={<Palette {...menuIcon} />} label="Background color">
+                      <MainMenu.Submenu icon={<Palette {...menuIcon} />} label="Background colour">
                         {CANVAS_BACKGROUND_PRESETS.map((preset) => (
                           <MainMenu.Item
                             key={preset.id}
