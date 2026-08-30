@@ -274,6 +274,9 @@ export const App = () => {
     void saveFiles(s.files)
       .catch((err: unknown) => {
         console.warn("[diagram] could not persist files", err);
+        // Let the next autosave retry instead of skipping the write
+        // forever because the ref already claims these bytes are stored.
+        lastFilesRef.current = null;
       })
       .then(writeJson)
       .then(() => pruneFilesExcept(new Set(s.files.keys())))
