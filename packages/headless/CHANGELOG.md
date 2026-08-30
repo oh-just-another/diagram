@@ -1,5 +1,12 @@
 # @oh-just-another/headless
 
+## 0.58.9
+
+### Patch Changes
+
+- Updated dependencies [40cdc3b]
+  - @oh-just-another/renderer-svg@0.58.5
+
 ## 0.58.8
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @oh-just-another/diagram-angular
 
+## 0.3.12
+
+### Patch Changes
+
+- @oh-just-another/diagram@0.3.11
+
 ## 0.3.11
 
 ### Patch Changes

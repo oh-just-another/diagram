@@ -1,5 +1,16 @@
 # @oh-just-another/docs
 
+## 0.0.16
+
+### Patch Changes
+
+- @oh-just-another/editor@0.65.3
+- @oh-just-another/react-ui@0.64.3
+- @oh-just-another/diagram@0.3.11
+- @oh-just-another/importers@0.61.3
+- @oh-just-another/diagram-svelte@0.3.12
+- @oh-just-another/diagram-vue@0.3.12
+
 ## 0.0.15
 
 ### Patch Changes

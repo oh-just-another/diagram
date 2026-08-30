@@ -1,5 +1,12 @@
 # @oh-just-another/state
 
+## 0.67.3
+
+### Patch Changes
+
+- Updated dependencies [40cdc3b]
+  - @oh-just-another/renderer-core@0.62.1
+
 ## 0.67.2
 
 ### Patch Changes

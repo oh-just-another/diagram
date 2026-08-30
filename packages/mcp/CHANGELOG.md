@@ -1,5 +1,12 @@
 # @oh-just-another/mcp
 
+## 0.2.11
+
+### Patch Changes
+
+- @oh-just-another/headless@0.58.9
+- @oh-just-another/importers@0.61.3
+
 ## 0.2.10
 
 ### Patch Changes

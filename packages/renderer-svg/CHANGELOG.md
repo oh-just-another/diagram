@@ -1,5 +1,13 @@
 # @oh-just-another/renderer-svg
 
+## 0.58.5
+
+### Patch Changes
+
+- 40cdc3b: `RenderTarget.drawImage` takes an optional `alt` (the image element's accessible description); the SVG target emits it as a `<title>` child of the `<image>`. Raster targets ignore it.
+- Updated dependencies [40cdc3b]
+  - @oh-just-another/renderer-core@0.62.1
+
 ## 0.58.4
 
 ### Patch Changes
