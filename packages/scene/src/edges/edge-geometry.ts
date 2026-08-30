@@ -9,6 +9,7 @@ import {
   SELF_LOOP_CURVE_ARM_FACTOR,
   SELF_LOOP_SIZE,
   SELF_LOOP_SPREAD,
+  LINK_HIT_THRESHOLD,
 } from "../constants.js";
 import {
   catmullRomBeziers,
@@ -520,7 +521,11 @@ export const getElbowSegmentHandles = (
  * A press inside the edge's label pill also hits (the pill can extend
  * away from the line, and clicking the caption must select its link).
  */
-export const findLinkAt = (scene: Scene, worldPoint: Vec2, threshold = 5): Link | null => {
+export const findLinkAt = (
+  scene: Scene,
+  worldPoint: Vec2,
+  threshold: number = LINK_HIT_THRESHOLD,
+): Link | null => {
   let best: { edge: Link; distance: number } | null = null;
   for (const edge of scene.links.values()) {
     const path = getLinkCurvePoints(scene, edge);

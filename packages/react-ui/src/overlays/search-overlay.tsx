@@ -10,7 +10,7 @@ import {
 import { defaultActionRegistry, searchScene, type SceneSearchMatch } from "@oh-just-another/state";
 import type { ElementId, LinkId } from "@oh-just-another/types";
 import { useDiagramOptional, useScene } from "../core/hooks.js";
-import { SEARCH_ZOOM_PADDING_PX } from "../core/constants.js";
+import { FLOATING_OVERLAY_TOP_PX, SEARCH_ZOOM_PADDING_PX } from "../core/constants.js";
 
 /**
  * Text-search overlay (`⌘F`). A slim floating bar over the canvas: type a
@@ -186,7 +186,7 @@ export const SearchOverlay = (): ReactElement | null => {
 
 const BAR_STYLE: CSSProperties = {
   position: "absolute",
-  top: 64,
+  top: FLOATING_OVERLAY_TOP_PX,
   left: "50%",
   transform: "translateX(-50%)",
   display: "flex",

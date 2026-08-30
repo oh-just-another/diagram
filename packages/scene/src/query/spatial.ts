@@ -1,4 +1,5 @@
 import type { Bounds, ElementId } from "@oh-just-another/types";
+import { SPATIAL_GRID_CELL_SIZE } from "../constants.js";
 
 /**
  * Uniform-cell spatial index over shape world-AABBs.
@@ -22,7 +23,7 @@ export class SpatialGrid {
   /** Reverse index: shape id → cached AABB, used on remove/update. */
   private readonly bounds = new Map<ElementId, Bounds>();
 
-  constructor(cellSize = 256) {
+  constructor(cellSize: number = SPATIAL_GRID_CELL_SIZE) {
     if (cellSize <= 0) throw new Error("cellSize must be positive");
     this.cellSize = cellSize;
   }

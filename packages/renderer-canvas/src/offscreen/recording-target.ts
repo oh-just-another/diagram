@@ -9,7 +9,11 @@ import {
   type TextBaseline,
 } from "@oh-just-another/renderer-core";
 import { resolveBundledFamily } from "@oh-just-another/fonts";
-import { OFFSCREEN_IMAGE_CACHE_CAP } from "../constants.js";
+import {
+  OFFSCREEN_IMAGE_CACHE_CAP,
+  RECORDING_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR,
+  RECORDING_MEASURE_FALLBACK_FONT_PX,
+} from "../constants.js";
 import { intrinsicImageSize, isDrawableImageSource } from "../canvas2d/image-source.js";
 
 /**
@@ -419,7 +423,14 @@ export class RecordingTarget implements RenderTarget {
     // offscreen backend lines up with the drawn glyphs. Falls back to a
     // proportional estimate where `OffscreenCanvas` is unavailable.
     const ctx = this.ensureMeasureCtx();
-    if (!ctx) return { width: text.length * (Number.parseFloat(this.fontSpec) || 8) * 0.5 };
+    if (!ctx) {
+      return {
+        width:
+          text.length *
+          (Number.parseFloat(this.fontSpec) || RECORDING_MEASURE_FALLBACK_FONT_PX) *
+          RECORDING_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR,
+      };
+    }
     ctx.font = this.fontSpec;
     return { width: ctx.measureText(text).width };
   }

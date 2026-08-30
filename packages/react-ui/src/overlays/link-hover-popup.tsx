@@ -5,7 +5,7 @@ import type { Bounds } from "@oh-just-another/types";
 import { useDiagramOptional } from "../core/hooks.js";
 import { useDismissTimer } from "../utils/use-dismiss-timer.js";
 import { usePortalContainer } from "../core/portal-container.js";
-import { BADGE_ICON } from "../core/constants.js";
+import { BADGE_ICON, LINK_HOVER_POPUP_CLOSE_GRACE_MS } from "../core/constants.js";
 
 /**
  * Hover link popup. When the pointer is over an element that carries a
@@ -20,7 +20,6 @@ import { BADGE_ICON } from "../core/constants.js";
  *
  * Opening also works via Cmd/Ctrl-click on the element (state layer).
  */
-const CLOSE_GRACE_MS = 220;
 
 export const LinkHoverPopup = () => {
   const editor = useDiagramOptional();
@@ -49,11 +48,11 @@ export const LinkHoverPopup = () => {
         cancel();
         setHover({ href: link.href, bounds: link.bounds });
       } else if (!overPopup.current) {
-        schedule(CLOSE_GRACE_MS);
+        schedule(LINK_HOVER_POPUP_CLOSE_GRACE_MS);
       }
     };
     const onLeave = () => {
-      schedule(CLOSE_GRACE_MS);
+      schedule(LINK_HOVER_POPUP_CLOSE_GRACE_MS);
     };
 
     host.addEventListener("pointermove", onMove);

@@ -153,6 +153,57 @@ export const ELLIPSE_MIN_SEGMENTS = 24;
 export const ELLIPSE_MAX_SEGMENTS = 512;
 
 /**
+ * Ellipse segment count per screen pixel of radius (× π), between the
+ * min / max bounds above. Higher = smoother big ellipses at more GPU
+ * work. Range: 0.4–1.
+ */
+export const ELLIPSE_SEGMENTS_PER_SCREEN_PX = 0.7;
+
+/**
+ * WebGL2 path flattening: how many line segments stand in for one curve
+ * segment, `clamp(length / tolerance, min, max)`.
+ * - `QUADRATIC_FLATTEN_MIN_SEGMENTS` / `_MAX_SEGMENTS` — Q segments.
+ * - `CUBIC_FLATTEN_MIN_SEGMENTS` / `_MAX_SEGMENTS` — C segments.
+ * Raise the minimums if tight small curves look polygonal; lower the
+ * maximums to cap vertex counts on huge curves. Range: min 4–24, max 64–512.
+ */
+export const QUADRATIC_FLATTEN_MIN_SEGMENTS = 8;
+export const QUADRATIC_FLATTEN_MAX_SEGMENTS = 128;
+export const CUBIC_FLATTEN_MIN_SEGMENTS = 12;
+export const CUBIC_FLATTEN_MAX_SEGMENTS = 192;
+
+/**
+ * WebGL2 stroke tessellation.
+ * - `WEBGL2_STROKE_MITER_LIMIT` — ratio of miter length to stroke width
+ *   above which a sharp join falls back to a bevel; matches Canvas2D's
+ *   `miterLimit` default and SVG's. Range: 2–20.
+ * - `WEBGL2_ROUND_SEGMENTS_PER_PI` — fan segments per π radians of a
+ *   round join / cap (12 ≈ 15° each). Range: 6–24.
+ */
+export const WEBGL2_STROKE_MITER_LIMIT = 10;
+export const WEBGL2_ROUND_SEGMENTS_PER_PI = 12;
+
+/**
+ * Text state before the first `setFont` on a WebGL2 target (mirrors the
+ * Canvas2D default `10px sans-serif` family with the editor's usual size).
+ */
+export const WEBGL2_DEFAULT_FONT_FAMILY = "sans-serif";
+export const WEBGL2_DEFAULT_FONT_SIZE = 14;
+
+/**
+ * Text-measure fallbacks when no 2D context exists (SSR / Node / no
+ * `OffscreenCanvas`): width ≈ `chars × fontSize × factor`.
+ * - `CANVAS_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR` — the Canvas2D text shaper.
+ * - `RECORDING_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR` and
+ *   `RECORDING_MEASURE_FALLBACK_FONT_PX` (used when the font spec has no
+ *   parsable size) — the offscreen recording target.
+ * Range: factor 0.45–0.65; font px 8–16.
+ */
+export const CANVAS_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR = 0.55;
+export const RECORDING_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR = 0.5;
+export const RECORDING_MEASURE_FALLBACK_FONT_PX = 8;
+
+/**
  * Initial per-target capacity, in instances, of the sharp-rect instance
  * batcher (`webgl2-rect-batch.ts` `RectBatch`). One frame's worth of
  * same-run rect fills packs into this without a grow; capacity doubles

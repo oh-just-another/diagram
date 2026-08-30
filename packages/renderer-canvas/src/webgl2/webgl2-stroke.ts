@@ -1,5 +1,6 @@
 import type { LineCap, LineJoin } from "@oh-just-another/renderer-core";
 import { req, type Transform } from "@oh-just-another/types";
+import { WEBGL2_ROUND_SEGMENTS_PER_PI, WEBGL2_STROKE_MITER_LIMIT } from "../constants.js";
 
 /**
  * GPU-side stroke pipeline for the WebGL2 backend. Builds a single
@@ -22,17 +23,6 @@ interface SideOffset {
   ox: number;
   oy: number;
 }
-
-/**
- * Maximum miter overshoot, in units of stroke width. Past this the
- * miter falls back to a bevel — matches Canvas2D's `miterLimit` default
- * of 10 and SVG's spec default.
- */
-const MITER_LIMIT = 10;
-
-/** Round-join / round-cap fan segments per pi radians. 12 keeps each
- *  segment ≈ 15°, smooth at any sensible zoom. */
-const ROUND_SEGMENTS_PER_PI = 12;
 
 /**
  * Module-level scratch buffers — reused across every
@@ -88,7 +78,7 @@ export interface StrokeStyle {
 
 /**
  * Compute one miter offset at the hinge between two unit normals.
- * Returns `{ ox, oy }` along the bisector, clamped to MITER_LIMIT.
+ * Returns `{ ox, oy }` along the bisector, clamped to WEBGL2_STROKE_MITER_LIMIT.
  * Exported so `webgl2-target.ts` can reuse it for closed-polyline seam
  * vertices.
  */
@@ -109,7 +99,7 @@ const miterOffset = (
   by /= blen;
   const cos = bx * n1x + by * n1y;
   const miterLen = cos > 1e-6 ? half / cos : half;
-  const clamped = Math.min(miterLen, half * MITER_LIMIT);
+  const clamped = Math.min(miterLen, half * WEBGL2_STROKE_MITER_LIMIT);
   return { ox: bx * clamped, oy: by * clamped };
 };
 
@@ -267,7 +257,10 @@ export const drawPolylineStroke = (
       let delta = endAngle - startAngle;
       while (delta > Math.PI) delta -= 2 * Math.PI;
       while (delta < -Math.PI) delta += 2 * Math.PI;
-      const segs = Math.max(2, Math.ceil((Math.abs(delta) / Math.PI) * ROUND_SEGMENTS_PER_PI));
+      const segs = Math.max(
+        2,
+        Math.ceil((Math.abs(delta) / Math.PI) * WEBGL2_ROUND_SEGMENTS_PER_PI),
+      );
       let prevX = vertexX + Math.cos(startAngle) * half;
       let prevY = vertexY + Math.sin(startAngle) * half;
       for (let s = 1; s <= segs; s++) {
@@ -415,7 +408,7 @@ const emitCap = (
   // round cap: half-circle fan starting from +normal, sweeping through
   // the outward tangent, ending at -normal.
   const startAngle = Math.atan2(nrmY, nrmX);
-  const segs = ROUND_SEGMENTS_PER_PI;
+  const segs = WEBGL2_ROUND_SEGMENTS_PER_PI;
   // Sweep π radians in the outward direction. The sweep direction
   // (CW vs CCW) depends on which side `out` is relative to the normal —
   // use the cross-product sign.

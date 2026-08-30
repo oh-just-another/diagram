@@ -275,3 +275,79 @@ export const IMAGE_MASK_DEFAULT_RADIUS = 0.2;
  * summary lists ("3 elements: rectangle, text, sticky, …"). Range 2–5.
  */
 export const SELECTION_DESCRIPTION_TYPES = 3;
+
+/**
+ * Property-panel stroke controls.
+ * - `STROKE_WIDTH_PRESETS` — the Thin / Medium / Thick segments (world px)
+ *   for shape borders and links; `STROKE_WIDTH_PRESET_ICON_THICKNESS` is
+ *   the icon stroke drawn for each (the medium icon is thicker than its
+ *   value so the three steps read distinctly at 16 px).
+ * - `STROKE_DASH_PRESETS` — dash arrays behind the Dashed / Dotted
+ *   segments; `DOTTED_DASH_MAX_SEGMENT` — a dash array whose first entry is
+ *   ≤ this reads back as "dotted", longer as "dashed".
+ * - `OPACITY_SLIDER_STEP` — percent step of the opacity sliders. Range 1–10.
+ * - `IMAGE_MASK_RADIUS_MAX_PCT` / `IMAGE_MASK_RADIUS_STEP_PCT` — corner
+ *   radius slider of the round-rect mask, in % of the shorter side.
+ * - `SWATCH_POPOVER_GAP_PX` — gap between a swatch button and the popover
+ *   it opens below itself.
+ */
+export const STROKE_WIDTH_PRESETS: readonly { readonly value: number; readonly label: string }[] = [
+  { value: 1, label: "Thin" },
+  { value: 2, label: "Medium" },
+  { value: 4, label: "Thick" },
+];
+export const STROKE_WIDTH_PRESET_ICON_THICKNESS: readonly number[] = [1, 2.5, 4];
+export const STROKE_DASH_PRESETS: {
+  readonly dashed: readonly number[];
+  readonly dotted: readonly number[];
+} = {
+  dashed: [8, 4],
+  dotted: [2, 4],
+};
+export const DOTTED_DASH_MAX_SEGMENT = 3;
+export const OPACITY_SLIDER_STEP = 5;
+export const IMAGE_MASK_RADIUS_MAX_PCT = 50;
+export const IMAGE_MASK_RADIUS_STEP_PCT = 5;
+export const SWATCH_POPOVER_GAP_PX = 4;
+
+/**
+ * Standalone link style panel (`LinkStylePanel`).
+ * - `LINK_PANEL_DASH_PRESETS` — its Dashed / Dotted arrays (a shorter dash
+ *   than the property panel's).
+ * - `LINK_PANEL_STROKE_WIDTH_MIN` / `_MAX` / `_STEP` / `_DEFAULT` — the
+ *   numeric width input; the default shows when the link has no width.
+ */
+export const LINK_PANEL_DASH_PRESETS: {
+  readonly dashed: readonly number[];
+  readonly dotted: readonly number[];
+} = {
+  dashed: [6, 4],
+  dotted: [2, 4],
+};
+export const LINK_PANEL_STROKE_WIDTH_MIN = 0.5;
+export const LINK_PANEL_STROKE_WIDTH_MAX = 20;
+export const LINK_PANEL_STROKE_WIDTH_STEP = 0.5;
+export const LINK_PANEL_STROKE_WIDTH_DEFAULT = 1.5;
+
+/**
+ * Floating overlays and dialogs.
+ * - `FLOATING_OVERLAY_TOP_PX` — top offset of the search bar and the stats
+ *   panel: below the top bar. Range 48–96.
+ * - `DIFF_PANEL_WIDTH_PX` / `DIFF_PANEL_HEIGHT_PX` — each side of the
+ *   diff panel's SVG preview.
+ * - `MERGE_DIALOG_WIDTH_PX` — the merge-branches dialog width.
+ * - `LINK_CAPTION_EDITOR_MAX_ROWS` — the caption textarea grows one row per
+ *   line up to this many, so a long caption never covers half the canvas.
+ * - `LINK_HOVER_POPUP_CLOSE_GRACE_MS` — how long the hyperlink popup stays
+ *   after the pointer leaves the badge / popup (lets the pointer cross the
+ *   gap). Range 100–400.
+ * - `STICKY_REACTION_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR` — pill-width
+ *   estimate per character (× font size) when no 2D context exists.
+ */
+export const FLOATING_OVERLAY_TOP_PX = 64;
+export const DIFF_PANEL_WIDTH_PX = 480;
+export const DIFF_PANEL_HEIGHT_PX = 360;
+export const MERGE_DIALOG_WIDTH_PX = 480;
+export const LINK_CAPTION_EDITOR_MAX_ROWS = 5;
+export const LINK_HOVER_POPUP_CLOSE_GRACE_MS = 220;
+export const STICKY_REACTION_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR = 0.6;

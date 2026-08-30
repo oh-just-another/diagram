@@ -1,4 +1,5 @@
 import type { ShaperFont, TextShaper } from "@oh-just-another/renderer-core";
+import { CANVAS_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR } from "../constants.js";
 
 /**
  * Default `TextShaper` for Canvas2D backends. Uses an off-screen
@@ -29,7 +30,7 @@ export class Canvas2DTextShaper implements TextShaper {
   measure(text: string, font: ShaperFont): { width: number } {
     if (!this.ctx) {
       // SSR / Node fallback.
-      return { width: text.length * font.size * 0.55 };
+      return { width: text.length * font.size * CANVAS_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR };
     }
     const key = this.keyFor(text, font);
     const cached = this.cache.get(key);

@@ -20,6 +20,13 @@ import { parseWebGL2Color } from "./webgl2-color.js";
 import {
   ELLIPSE_MAX_SEGMENTS,
   ELLIPSE_MIN_SEGMENTS,
+  ELLIPSE_SEGMENTS_PER_SCREEN_PX,
+  QUADRATIC_FLATTEN_MIN_SEGMENTS,
+  QUADRATIC_FLATTEN_MAX_SEGMENTS,
+  CUBIC_FLATTEN_MIN_SEGMENTS,
+  CUBIC_FLATTEN_MAX_SEGMENTS,
+  WEBGL2_DEFAULT_FONT_FAMILY,
+  WEBGL2_DEFAULT_FONT_SIZE,
   WEBGL2_IMAGE_TEXTURE_CACHE_CAP,
   WEBGL2_TEXT_BITMAP_CACHE_CAP,
   WEBGL2_TEXT_RASTER_MAX_SCALE,
@@ -112,8 +119,8 @@ export class WebGL2Target implements RenderTarget {
   private currentPath: Bounds | null = null;
   // Text state — kept in sync with Canvas2D semantics and replayed into
   // the hidden text bitmap canvas per fillText call.
-  private fontFamily = "sans-serif";
-  private fontSize = 14;
+  private fontFamily: string = WEBGL2_DEFAULT_FONT_FAMILY;
+  private fontSize: number = WEBGL2_DEFAULT_FONT_SIZE;
   private fontWeight: "normal" | "bold" = "normal";
   private fontStyle: "normal" | "italic" = "normal";
   private textAlign: TextAlign = "left";
@@ -573,7 +580,10 @@ export class WebGL2Target implements RenderTarget {
     const screenRadius = Math.max(e.rx, e.ry) * (Number.isFinite(scale) && scale > 0 ? scale : 1);
     const segments = Math.max(
       ELLIPSE_MIN_SEGMENTS,
-      Math.min(ELLIPSE_MAX_SEGMENTS, Math.ceil(Math.PI * screenRadius * 0.7)),
+      Math.min(
+        ELLIPSE_MAX_SEGMENTS,
+        Math.ceil(Math.PI * screenRadius * ELLIPSE_SEGMENTS_PER_SCREEN_PX),
+      ),
     );
     this.pathPts = 0;
     for (let i = 0; i <= segments; i++) {
@@ -619,8 +629,11 @@ export class WebGL2Target implements RenderTarget {
       return;
     }
     const count = Math.max(
-      8,
-      Math.min(128, Math.ceil(curveLengthEstimate(start.x, start.y, x, y) / tolerance)),
+      QUADRATIC_FLATTEN_MIN_SEGMENTS,
+      Math.min(
+        QUADRATIC_FLATTEN_MAX_SEGMENTS,
+        Math.ceil(curveLengthEstimate(start.x, start.y, x, y) / tolerance),
+      ),
     );
     // Sample t in (0, 1] directly into the flat path buffer — the
     // start point (t = 0) is already the path's last vertex.
@@ -663,8 +676,11 @@ export class WebGL2Target implements RenderTarget {
       return;
     }
     const count = Math.max(
-      12,
-      Math.min(192, Math.ceil(curveLengthEstimate(start.x, start.y, x, y) / tolerance)),
+      CUBIC_FLATTEN_MIN_SEGMENTS,
+      Math.min(
+        CUBIC_FLATTEN_MAX_SEGMENTS,
+        Math.ceil(curveLengthEstimate(start.x, start.y, x, y) / tolerance),
+      ),
     );
     // Sample t in (0, 1] directly into the flat path buffer.
     for (let i = 1; i <= count; i++) {

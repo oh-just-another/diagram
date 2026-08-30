@@ -10,7 +10,10 @@ import {
 import { useDiagramOptional } from "../core/hooks.js";
 import { useQuietViewport } from "../core/use-quiet-viewport.js";
 import { usePortalContainer } from "../core/portal-container.js";
-import { EMOJI_QUICK_PICKS } from "../core/constants.js";
+import {
+  EMOJI_QUICK_PICKS,
+  STICKY_REACTION_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR,
+} from "../core/constants.js";
 
 /**
  * Sticky reactions, interaction half. The pills AND the "+" button are
@@ -33,7 +36,11 @@ const pillMeasure = (text: string): number => {
     measureCtx =
       typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d");
   }
-  if (!measureCtx) return text.length * STICKY_REACTION_FONT_SIZE * 0.6;
+  if (!measureCtx) {
+    return (
+      text.length * STICKY_REACTION_FONT_SIZE * STICKY_REACTION_MEASURE_FALLBACK_CHAR_WIDTH_FACTOR
+    );
+  }
   measureCtx.font = `${String(STICKY_REACTION_FONT_SIZE)}px system-ui, sans-serif`;
   return measureCtx.measureText(text).width;
 };

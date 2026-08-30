@@ -16,6 +16,18 @@ import {
   type Length,
   type Position,
 } from "./style.js";
+import {
+  RICH_BUTTON_PAD_X,
+  RICH_BUTTON_PAD_Y,
+  RICH_DEFAULT_FONT_FAMILY,
+  RICH_DEFAULT_FONT_SIZE,
+  RICH_DEFAULT_LINE_HEIGHT,
+  RICH_DROP_ZONE_INTRINSIC_HEIGHT,
+  RICH_DROP_ZONE_INTRINSIC_WIDTH,
+  RICH_FALLBACK_CHAR_WIDTH_FACTOR,
+  RICH_ICON_INTRINSIC_SIZE,
+  RICH_TEXT_BASELINE_FACTOR,
+} from "../constants.js";
 
 /**
  * `MeasureText(text, fontFamily, fontSize)` returns the rendered width of the
@@ -29,11 +41,7 @@ export type MeasureText = (text: string, fontFamily: string, fontSize: number) =
 
 /** Best-effort defaults when the host doesn't supply a measurer. */
 export const fallbackMeasureText: MeasureText = (text, _fontFamily, fontSize) =>
-  text.length * fontSize * 0.55;
-
-const DEFAULT_FONT_FAMILY = "system-ui, sans-serif";
-const DEFAULT_FONT_SIZE = 14;
-const DEFAULT_LINE_HEIGHT = 1.2;
+  text.length * fontSize * RICH_FALLBACK_CHAR_WIDTH_FACTOR;
 
 /** A node augmented with its computed bounds in template-local coordinates. */
 export interface LayoutedNode {
@@ -107,13 +115,16 @@ const measureNode = (node: TemplateNode, available: Size, measure: MeasureText):
       break;
     case "icon":
     case "image":
-      intrinsic = { width: 24, height: 24 };
+      intrinsic = { width: RICH_ICON_INTRINSIC_SIZE, height: RICH_ICON_INTRINSIC_SIZE };
       break;
     case "button":
       intrinsic = measureButton(node, available, measure);
       break;
     case "drop-zone":
-      intrinsic = { width: 80, height: 60 };
+      intrinsic = {
+        width: RICH_DROP_ZONE_INTRINSIC_WIDTH,
+        height: RICH_DROP_ZONE_INTRINSIC_HEIGHT,
+      };
       break;
     case "port":
       // Ports are dimensionless — they collapse to a 0×0 point at their
@@ -183,29 +194,29 @@ const measureContainer = (node: ContainerNode, available: Size, measure: Measure
 
 const measureText = (node: TextNode, available: Size, measure: MeasureText): Size => {
   const text = typeof node.text === "string" ? node.text : "";
-  const fontFamily = node.style?.fontFamily ?? DEFAULT_FONT_FAMILY;
-  const fontSize = node.style?.fontSize ?? DEFAULT_FONT_SIZE;
+  const fontFamily = node.style?.fontFamily ?? RICH_DEFAULT_FONT_FAMILY;
+  const fontSize = node.style?.fontSize ?? RICH_DEFAULT_FONT_SIZE;
   const intrinsic = measure(text, fontFamily, fontSize);
   // Cap by available width — the renderer will paint with ellipsis when the
   // string doesn't fit. Without this cap a long label would push siblings
   // outside the container.
   return {
     width: Math.min(intrinsic, available.width),
-    height: fontSize * DEFAULT_LINE_HEIGHT,
+    height: fontSize * RICH_DEFAULT_LINE_HEIGHT,
   };
 };
 
 const measureButton = (node: ButtonNode, available: Size, measure: MeasureText): Size => {
   const labelText = typeof node.label === "string" ? node.label : "";
-  const fontFamily = node.style?.fontFamily ?? DEFAULT_FONT_FAMILY;
-  const fontSize = node.style?.fontSize ?? DEFAULT_FONT_SIZE;
-  const padX = 10;
-  const padY = 6;
+  const fontFamily = node.style?.fontFamily ?? RICH_DEFAULT_FONT_FAMILY;
+  const fontSize = node.style?.fontSize ?? RICH_DEFAULT_FONT_SIZE;
+  const padX = RICH_BUTTON_PAD_X;
+  const padY = RICH_BUTTON_PAD_Y;
   const labelW = measure(labelText, fontFamily, fontSize);
   const intrinsicW = labelW + padX * 2;
   return {
     width: Math.min(intrinsicW, available.width),
-    height: fontSize * DEFAULT_LINE_HEIGHT + padY * 2,
+    height: fontSize * RICH_DEFAULT_LINE_HEIGHT + padY * 2,
   };
 };
 
@@ -466,14 +477,14 @@ const placeLine = (
  */
 const nodeBaselineOffset = (node: TemplateNode): number => {
   if (node.type === "text") {
-    const fontSize = node.style?.fontSize ?? DEFAULT_FONT_SIZE;
-    return fontSize * 0.8;
+    const fontSize = node.style?.fontSize ?? RICH_DEFAULT_FONT_SIZE;
+    return fontSize * RICH_TEXT_BASELINE_FACTOR;
   }
   if (node.type === "button") {
-    const fontSize = node.style?.fontSize ?? DEFAULT_FONT_SIZE;
+    const fontSize = node.style?.fontSize ?? RICH_DEFAULT_FONT_SIZE;
     // Buttons render their label centered vertically — baseline ≈ vertical
     // center + half-ascent.
-    return fontSize * 0.8 + 6; // mirrors paintButton's padY
+    return fontSize * RICH_TEXT_BASELINE_FACTOR + RICH_BUTTON_PAD_Y;
   }
   return Infinity; // non-text: ignored when reducing the line baseline.
 };

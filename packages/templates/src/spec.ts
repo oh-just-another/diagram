@@ -8,6 +8,7 @@ import { defaultRichRegistry } from "./rich/registry.js";
 import type { TemplateNode } from "./rich/node.js";
 import type { LayoutStyle, NodeStyle } from "./rich/style.js";
 import type { Template, TemplateContext } from "./types.js";
+import { RICH_DROP_ZONE_PADDING } from "./constants.js";
 
 /**
  * A `TemplateSpec` is the *serializable* form of a `Template`. Functions
@@ -225,7 +226,9 @@ export const templateFromSpec = (spec: TemplateSpec): Template => {
           ...(blueprint.maxWidth !== undefined ? { maxWidth: blueprint.maxWidth } : {}),
           ...(blueprint.maxHeight !== undefined ? { maxHeight: blueprint.maxHeight } : {}),
           ...(blueprint.noFlip !== undefined ? { noFlip: blueprint.noFlip } : {}),
-          ...(dropZone ? { metadata: { container: { dropZone, padding: 8 } } } : {}),
+          ...(dropZone
+            ? { metadata: { container: { dropZone, padding: RICH_DROP_ZONE_PADDING } } }
+            : {}),
         };
         return shape;
       },

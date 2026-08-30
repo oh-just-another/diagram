@@ -1,6 +1,13 @@
 import type { CSSProperties } from "react";
 import type { ArrowheadStyle, Link, LinkRouting } from "@oh-just-another/scene";
 import { useDiagramOptional, useScene, useSelectedLink } from "../core/hooks.js";
+import {
+  LINK_PANEL_DASH_PRESETS,
+  LINK_PANEL_STROKE_WIDTH_DEFAULT,
+  LINK_PANEL_STROKE_WIDTH_MAX,
+  LINK_PANEL_STROKE_WIDTH_MIN,
+  LINK_PANEL_STROKE_WIDTH_STEP,
+} from "../core/constants.js";
 
 /**
  * Mini-panel that surfaces the most-edited properties of the
@@ -40,8 +47,8 @@ const DASH_OPTIONS: {
   readonly array: readonly number[] | null;
 }[] = [
   { value: "solid", label: "Solid", array: null },
-  { value: "dashed", label: "Dashed", array: [6, 4] },
-  { value: "dotted", label: "Dotted", array: [2, 4] },
+  { value: "dashed", label: "Dashed", array: LINK_PANEL_DASH_PRESETS.dashed },
+  { value: "dotted", label: "Dotted", array: LINK_PANEL_DASH_PRESETS.dotted },
 ];
 
 const dashKey = (arr: readonly number[] | undefined): string => {
@@ -210,10 +217,10 @@ export const LinkStylePanel = ({ className, style }: LinkStylePanelProps) => {
       <Row label="Width">
         <input
           type="number"
-          min={0.5}
-          max={20}
-          step={0.5}
-          value={edge.style.strokeWidth ?? 1.5}
+          min={LINK_PANEL_STROKE_WIDTH_MIN}
+          max={LINK_PANEL_STROKE_WIDTH_MAX}
+          step={LINK_PANEL_STROKE_WIDTH_STEP}
+          value={edge.style.strokeWidth ?? LINK_PANEL_STROKE_WIDTH_DEFAULT}
           onChange={(ev) => {
             setStrokeWidth(Number(ev.target.value) || 1);
           }}
