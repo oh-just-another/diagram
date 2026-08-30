@@ -52,7 +52,13 @@ export {
   actionCancel,
   modeActions,
 } from "./actionMode.js";
-export { actionToggleGrid, actionToggleReadOnly, viewActions } from "./actionView.js";
+export {
+  actionToggleGrid,
+  actionToggleReadOnly,
+  actionToggleConnectors,
+  actionToggleComments,
+  viewActions,
+} from "./actionView.js";
 export {
   actionFlipHorizontal,
   actionFlipVertical,

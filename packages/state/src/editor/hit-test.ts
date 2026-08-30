@@ -86,6 +86,8 @@ export interface HitTestContext {
   readonly handleHitSlop: number;
   readonly edgeHandleHitSlop: number;
   readonly edgeHitThreshold: number;
+  /** `false` while links are hidden (view toggle) — their bodies are not pressable. */
+  readonly linksHittable: boolean;
   readonly hitAnnotation: (worldPoint: Vec2) => AnnotationId | null;
   readonly selectionIsAspectLocked: () => boolean;
   readonly combinedSelectionBounds: () => Bounds | null;
@@ -151,10 +153,12 @@ export const pickPressTarget = (worldPoint: Vec2, ctx: HitTestContext): PressTar
     return { kind: "element", id: target.id, bounds: getElementWorldBounds(target) };
   }
 
-  // 4. Link body under cursor.
-  const edge = findLinkAt(ctx.scene, worldPoint, ctx.edgeHitThreshold / zoom);
-  if (edge && !ctx.isLayerLocked(edge.layerId)) {
-    return { kind: "link", id: edge.id };
+  // 4. Link body under cursor (skipped while links are hidden).
+  if (ctx.linksHittable) {
+    const edge = findLinkAt(ctx.scene, worldPoint, ctx.edgeHitThreshold / zoom);
+    if (edge && !ctx.isLayerLocked(edge.layerId)) {
+      return { kind: "link", id: edge.id };
+    }
   }
   return { kind: "empty" };
 };

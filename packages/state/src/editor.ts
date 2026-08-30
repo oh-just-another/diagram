@@ -666,6 +666,10 @@ export class Editor {
    * Read via {@link readOnly}; flip via {@link setReadOnly}.
    */
   private _readOnly = false;
+  /** View toggle: paint + hit-test links (connectors). Not persisted. */
+  private _showConnectors = true;
+  /** View toggle: paint + hit-test comment (annotation) pins. Not persisted. */
+  private _showComments = true;
   public actor!: Actor<typeof interactionMachine>;
   private readonly listeners = new Set<() => void>();
   /**
@@ -1796,6 +1800,7 @@ export class Editor {
     this.notify();
   }
   hitAnnotation(worldPoint: Vec2): AnnotationId | null {
+    if (!this._showComments) return null;
     return hitAnnotationPure(this._scene, worldPoint);
   }
 
@@ -1888,6 +1893,54 @@ export class Editor {
   /** Toggle read-only (view) mode. */
   toggleReadOnly(): void {
     this.setReadOnly(!this._readOnly);
+  }
+
+  /** Whether links (flow connectors) are painted and hit-testable. View state, not persisted. */
+  get showConnectors(): boolean {
+    return this._showConnectors;
+  }
+
+  /**
+   * Show / hide every link. Hidden links are neither painted nor
+   * hit-testable, and a hidden selected link is deselected. Exports are
+   * unaffected (the flag lives on the editor, not the scene). Idempotent.
+   */
+  setShowConnectors(on: boolean): void {
+    if (this._showConnectors === on) return;
+    this._showConnectors = on;
+    if (!on && this._selectedLinks.size > 0) this.selectLink(null);
+    // Links are painted outside the dirty diff — repaint the whole layer.
+    this.lastRenderedScene = null;
+    this.notify();
+    this.scheduleRender();
+  }
+
+  /** Toggle link (flow connector) visibility. */
+  toggleConnectors(): void {
+    this.setShowConnectors(!this._showConnectors);
+  }
+
+  /** Whether comment (annotation) pins are painted and hit-testable. View state, not persisted. */
+  get showComments(): boolean {
+    return this._showComments;
+  }
+
+  /**
+   * Show / hide comment pins. Hidden pins are neither painted nor
+   * hit-testable, and the selected annotation is dropped. The annotations
+   * themselves stay in the scene. Idempotent.
+   */
+  setShowComments(on: boolean): void {
+    if (this._showComments === on) return;
+    this._showComments = on;
+    if (!on && this._selectedAnnotation !== null) this._selectedAnnotation = null;
+    this.notify();
+    this.scheduleRender();
+  }
+
+  /** Toggle comment (annotation) pin visibility. */
+  toggleComments(): void {
+    this.setShowComments(!this._showComments);
   }
 
   /** Whether the background grid is enabled for the scene. */
@@ -5393,6 +5446,7 @@ export class Editor {
       handleHitSlop: this.handleHitSlop,
       edgeHandleHitSlop: this.edgeHandleHitSlop,
       edgeHitThreshold: this.edgeHitThreshold,
+      linksHittable: this._showConnectors,
       hitAnnotation: (p) => this.hitAnnotation(p),
       selectionIsAspectLocked: () => this.selectionIsAspectLocked(),
       combinedSelectionBounds: () => this.combinedSelectionBounds(),
@@ -7212,6 +7266,8 @@ export class Editor {
       peerSelections: this._peerSelections,
       debugHitZones: this.debugHitZones,
       readOnly: this._readOnly,
+      showConnectors: this._showConnectors,
+      showComments: this._showComments,
       hoveredStickyId: this._hoveredStickyId,
       linkDrawOverrides:
         this._linkDrawPreset !== null ? LINK_DRAW_PRESETS[this._linkDrawPreset] : undefined,
