@@ -1,6 +1,6 @@
 {
   "name": "@oh-just-another/serialization",
-  "version": "0.61.2",
+  "version": "0.61.3",
   "description": "Versioned scene (de)serialization with forward migrations and zod validation.",
   "license": "MIT",
   "author": "Rustam Garifulin <rustam@n69.in>",

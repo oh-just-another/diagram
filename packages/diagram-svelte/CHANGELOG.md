@@ -1,5 +1,13 @@
 # @oh-just-another/diagram-svelte
 
+## 0.3.13
+
+### Patch Changes
+
+- Updated dependencies [20fc326]
+  - @oh-just-another/scene@0.63.2
+  - @oh-just-another/diagram@0.3.12
+
 ## 0.3.12
 
 ### Patch Changes

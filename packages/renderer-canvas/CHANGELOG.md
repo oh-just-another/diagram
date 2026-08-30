@@ -1,5 +1,14 @@
 # @oh-just-another/renderer-canvas
 
+## 0.62.6
+
+### Patch Changes
+
+- Updated dependencies [20fc326]
+  - @oh-just-another/scene@0.63.2
+  - @oh-just-another/renderer-core@0.62.2
+  - @oh-just-another/text-wasm@0.57.12
+
 ## 0.62.5
 
 ### Patch Changes

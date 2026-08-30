@@ -1,5 +1,11 @@
 # @oh-just-another/scene
 
+## 0.63.2
+
+### Patch Changes
+
+- 20fc326: Tunables that lived as file-local literals are now named exports: `SPATIAL_GRID_CELL_SIZE` (default `SpatialGrid` / `buildSpatialIndex` cell), `LINK_HIT_THRESHOLD` (default `findLinkAt` tolerance) and `MAX_PARENT_DEPTH` (parent-chain walk bound). Values unchanged.
+
 ## 0.63.1
 
 ### Patch Changes

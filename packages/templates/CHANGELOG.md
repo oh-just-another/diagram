@@ -1,5 +1,13 @@
 # @oh-just-another/templates
 
+## 0.59.3
+
+### Patch Changes
+
+- Updated dependencies [20fc326]
+  - @oh-just-another/scene@0.63.2
+  - @oh-just-another/renderer-core@0.62.2
+
 ## 0.59.2
 
 ### Patch Changes
