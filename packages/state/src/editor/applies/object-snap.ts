@@ -136,6 +136,67 @@ const guideFor = (
 
 const shifted = (b: Bounds, d: Vec2): Bounds => ({ ...b, x: b.x + d.x, y: b.y + d.y });
 
+/**
+ * Which axes an object snap actually corrected, read off its guides (a
+ * guide is emitted exactly for a corrected axis). Callers compose the
+ * uncovered axes with grid snapping — object snapping lands per axis, so
+ * a single alignment must not disable the grid on the free one.
+ */
+export const snappedAxes = (
+  guides: readonly SnapGuide[],
+): { readonly x: boolean; readonly y: boolean } => ({
+  x: guides.some((g) => g.axis === "x"),
+  y: guides.some((g) => g.axis === "y"),
+});
+
+/**
+ * Guides for the lines that coincide at `moving` — where the gesture
+ * ACTUALLY landed, after object and grid snapping were composed. Emitted
+ * per axis like {@link snapMoveDeltaToObjects}, with the same
+ * edge-meets-edge / centre-meets-centre pairing, but with a sub-pixel
+ * `epsilon` instead of the snap threshold: it reports existing alignment
+ * rather than creating it. Keeps the overlay honest — distance segments
+ * measure the real gap, and an alignment the grid preserves stays lit
+ * after the object snap released.
+ */
+export const alignmentGuides = (
+  moving: Bounds,
+  others: readonly Bounds[],
+  epsilon: number,
+  opts: MoveSnapOptions = {},
+): readonly SnapGuide[] => {
+  if (others.length === 0) return [];
+  const own = (lines: readonly number[]): readonly number[] =>
+    opts.centerLines === false ? lines.slice(0, 2) : lines;
+  const sx = bestAxisSnap(own(linesX(moving)), others, linesX, epsilon, true);
+  const sy = bestAxisSnap(own(linesY(moving)), others, linesY, epsilon, true);
+  const guides: SnapGuide[] = [];
+  if (sx) guides.push(guideFor("x", sx, moving));
+  if (sy) guides.push(guideFor("y", sy, moving));
+  return guides;
+};
+
+/**
+ * Re-anchor guides onto the bounds the gesture landed on, keeping their
+ * lines and partners. For resizes, where the landed geometry is not a
+ * translation of the press-time AABB.
+ */
+export const rebaseGuides = (guides: readonly SnapGuide[], moving: Bounds): readonly SnapGuide[] =>
+  guides.map((g) =>
+    guideFor(
+      g.axis,
+      { correction: 0, guideAt: g.at, other: g.other, center: g.kind === "center" },
+      moving,
+    ),
+  );
+
+/** Per-axis pick: `object` where `covered`, `grid` elsewhere. */
+export const composeAxisDeltas = (
+  object: Vec2,
+  covered: { readonly x: boolean; readonly y: boolean },
+  grid: Vec2,
+): Vec2 => ({ x: covered.x ? object.x : grid.x, y: covered.y ? object.y : grid.y });
+
 export interface MoveSnapOptions {
   /**
    * Offer the moved shape's centre lines (default `true`). A multi-shape
@@ -177,7 +238,7 @@ const MOVES_NORTH: ReadonlySet<HandleId> = new Set(["nw", "n", "ne"]);
 const MOVES_SOUTH: ReadonlySet<HandleId> = new Set(["sw", "s", "se"]);
 
 /** Bounds after applying a raw resize delta to the handle's edges (may be inverted). */
-const resized = (b: Bounds, handle: HandleId, d: Vec2): Bounds => {
+export const boundsAfterResize = (b: Bounds, handle: HandleId, d: Vec2): Bounds => {
   let x = b.x;
   let w = b.width;
   let y = b.y;
@@ -210,7 +271,7 @@ export const snapResizeDeltaToObjects = (
   if (others.length === 0 || (!opts.alignEdges && !opts.matchSizes)) {
     return { delta, guides: [], sizeMatch: null };
   }
-  const raw = resized(original, handle, delta);
+  const raw = boundsAfterResize(original, handle, delta);
   let dx = delta.x;
   let dy = delta.y;
   const guides: SnapGuide[] = [];
@@ -244,7 +305,9 @@ export const snapResizeDeltaToObjects = (
     if (pick) {
       dx += pick.correction;
       if (pick === align)
-        guides.push(guideFor("x", pick, resized(original, handle, { x: dx, y: dy }), "edge"));
+        guides.push(
+          guideFor("x", pick, boundsAfterResize(original, handle, { x: dx, y: dy }), "edge"),
+        );
       else sizeMatch = { bounds: pick.other, axis: "width" };
     }
   }
@@ -271,7 +334,9 @@ export const snapResizeDeltaToObjects = (
     if (pick) {
       dy += pick.correction;
       if (pick === align)
-        guides.push(guideFor("y", pick, resized(original, handle, { x: dx, y: dy }), "edge"));
+        guides.push(
+          guideFor("y", pick, boundsAfterResize(original, handle, { x: dx, y: dy }), "edge"),
+        );
       else if (sizeMatch?.bounds === pick.other) sizeMatch = { bounds: pick.other, axis: "both" };
       else sizeMatch ??= { bounds: pick.other, axis: "height" };
     }

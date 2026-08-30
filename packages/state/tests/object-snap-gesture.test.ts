@@ -13,6 +13,7 @@ import {
   emptyScene,
   orderBetween,
   getElement,
+  resolveSnapSpacing,
   type Scene,
   type Element,
 } from "@oh-just-another/scene";
@@ -131,6 +132,58 @@ describe("object snapping (end-to-end through pointer)", () => {
     expect(getElement(editor.scene, elementId("a"))!.position.x).toBe(100);
     // Guides are gone once the gesture ends.
     expect(editor.snapGuides).toEqual([]);
+  });
+
+  it("keeps grid snapping on the axis object snapping did not take", () => {
+    // Grid + object snapping both on. The drag aligns x with b's left edge
+    // (a guide), while y lands off-grid: the free axis must still snap to
+    // the grid instead of following the raw pointer.
+    const { editor, down, move, up } = setup((e) => {
+      e.setGridVisible(true);
+      e.setSnapToGrid(true);
+    });
+    down(20, 20);
+    move(20 + 97, 20 + 13);
+    expect(editor.snapGuides.some((g) => g.axis === "x" && g.at === 100)).toBe(true);
+    expect(editor.snapGuides.some((g) => g.axis === "y")).toBe(false);
+    up(20 + 97, 20 + 13);
+    const a = getElement(editor.scene, elementId("a"))!;
+    expect(a.position.x).toBe(100);
+    expect(a.position.y % resolveSnapSpacing()).toBe(0);
+  });
+
+  it("guides report where the shape landed, not where the pointer is", () => {
+    // Grid + object snap: x aligns with b's left edge, y is grid-snapped.
+    // The guide (and the distance segments drawn from it) must describe the
+    // landed bounds — measuring from the raw pointer position was a bug.
+    const { editor, down, move } = setup((e) => {
+      e.setGridVisible(true);
+      e.setSnapToGrid(true);
+    });
+    down(20, 20);
+    move(20 + 97, 20 + 13);
+    const guide = editor.snapGuides.find((g) => g.axis === "x");
+    const landed = getElementWorldBounds(getElement(editor.scene, elementId("a"))!);
+    expect(guide?.moving).toEqual(landed);
+  });
+
+  it("keeps the guide while the shapes stay aligned, past the snap threshold", () => {
+    // Once the grid holds x at 100, dragging further must not drop the
+    // guide: the shapes are still aligned even though the object snap
+    // (6 px threshold) no longer corrects anything.
+    const { editor, down, move } = setup((e) => {
+      e.setGridVisible(true);
+      e.setSnapToGrid(true);
+    });
+    down(20, 20);
+    for (const dx of [97, 103, 107, 109]) {
+      move(20 + dx, 20);
+      expect(getElement(editor.scene, elementId("a"))!.position.x, `dx=${String(dx)}`).toBe(100);
+      expect(
+        editor.snapGuides.some((g) => g.axis === "x" && g.at === 100),
+        `dx=${String(dx)}`,
+      ).toBe(true);
+    }
   });
 
   it("does not snap when the snapObjects preference is off", () => {

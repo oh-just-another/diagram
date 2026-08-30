@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  alignmentGuides,
+  composeAxisDeltas,
   gapIntervals,
   snapMoveDeltaToObjects,
   snapResizeDeltaToObjects,
+  snappedAxes,
+  rebaseGuides,
 } from "../src/editor/applies/object-snap.js";
 
 const b = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
@@ -129,5 +133,47 @@ describe("gapIntervals", () => {
     ]);
     expect(gapIntervals(0, 100, 20, 60)).toEqual([]);
     expect(gapIntervals(0, 40, 0, 40)).toEqual([]);
+  });
+});
+
+describe("snappedAxes / composeAxisDeltas", () => {
+  it("reads the corrected axes off the guides", () => {
+    expect(snappedAxes([])).toEqual({ x: false, y: false });
+    const r = snapMoveDeltaToObjects(b(0, 0, 50, 50), { x: 103, y: 0 }, [b(50, 200, 50, 50)], 6);
+    expect(snappedAxes(r.guides)).toEqual({ x: true, y: false });
+  });
+
+  it("takes the object delta on covered axes and the grid delta elsewhere", () => {
+    const object = { x: 100, y: 13 };
+    const grid = { x: 105, y: 10 };
+    expect(composeAxisDeltas(object, { x: true, y: false }, grid)).toEqual({ x: 100, y: 10 });
+    expect(composeAxisDeltas(object, { x: false, y: true }, grid)).toEqual({ x: 105, y: 13 });
+    expect(composeAxisDeltas(object, { x: true, y: true }, grid)).toEqual(object);
+  });
+});
+
+describe("alignmentGuides / rebaseGuides", () => {
+  it("reports an existing alignment within epsilon, and nothing beyond it", () => {
+    // Left edges both at 100 → an x guide; y extents are far apart.
+    const g = alignmentGuides(b(100, 0, 50, 50), [b(100, 200, 50, 50)], 0.5);
+    expect(g).toMatchObject([{ axis: "x", at: 100, kind: "edge", moving: b(100, 0, 50, 50) }]);
+    expect(alignmentGuides(b(101, 0, 50, 50), [b(100, 200, 50, 50)], 0.5)).toEqual([]);
+    expect(alignmentGuides(b(100, 0, 50, 50), [], 0.5)).toEqual([]);
+  });
+
+  it("honours the no-centre-lines option of a multi-selection", () => {
+    // The moved frame's centre (125) meets the other's centre (125).
+    const others = [b(100, 200, 50, 50)];
+    expect(alignmentGuides(b(100, 0, 50, 50), others, 0.5)).toHaveLength(1);
+    const noCentre = alignmentGuides(b(75, 0, 100, 50), others, 0.5, { centerLines: false });
+    expect(noCentre).toEqual([]);
+  });
+
+  it("rebases guides onto other bounds, keeping the line and the partner", () => {
+    const [g] = alignmentGuides(b(100, 0, 50, 50), [b(100, 200, 50, 50)], 0.5);
+    const moved = b(100, 40, 50, 50);
+    const [r] = rebaseGuides([g!], moved);
+    expect(r).toMatchObject({ axis: "x", at: 100, other: b(100, 200, 50, 50), moving: moved });
+    expect(r!.from).toBe(40);
   });
 });
